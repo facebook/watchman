@@ -1,0 +1,4 @@
+{
+  "project_id"  : "watchman",
+  "conduit_uri" : "https://phabricator.fb.com/api/"
+}
