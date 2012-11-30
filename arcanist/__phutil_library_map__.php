@@ -11,6 +11,7 @@ phutil_register_library_map(array(
   'class' =>
   array(
     'WatchmanLintEngine' => 'lib/WatchmanLintEngine.php',
+    'WatchmanTapEngine' => 'lib/WatchmanTapEngine.php',
   ),
   'function' =>
   array(
@@ -18,5 +19,6 @@ phutil_register_library_map(array(
   'xmap' =>
   array(
     'WatchmanLintEngine' => 'ArcanistLintEngine',
+    'WatchmanTapEngine' => 'ArcanistBaseUnitTestEngine',
   ),
 ));

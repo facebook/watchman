@@ -1,6 +1,7 @@
 {
   "project_id"  : "watchman",
   "lint_engine" : "WatchmanLintEngine",
+  "unit_engine" : "WatchmanTapEngine",
   "load"        : ["arcanist"],
   "copyright_holder" : "Facebook, Inc.",
   "conduit_uri" : "https://phabricator.fb.com/api/"

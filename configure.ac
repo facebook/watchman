@@ -1,5 +1,5 @@
 AC_INIT([watchman], [1.0], [], [watchman])
-AM_INIT_AUTOMAKE([dist-bzip2])
+AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects -Wall])
 AC_PROG_CC
 AC_C_BIGENDIAN
 

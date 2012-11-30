@@ -17,3 +17,6 @@ arcanist/.phutil_module_cache
 compile
 stamp-h1
 watchman-config.h
+compile
+tests/*.t
+.dirstamp
