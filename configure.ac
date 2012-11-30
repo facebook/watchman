@@ -13,10 +13,14 @@ AC_SEARCH_LIBS(
   [found_libevent=no]
 )
 
+AC_CHECK_HEADERS(event.h sys/inotify.h sys/event.h)
+
+AC_CHECK_FUNCS(kqueue inotify_init)
+
 if test "x$found_libevent" = "xno" ; then
   AC_MSG_ERROR("we need libevent")
 fi
-AC_CHECK_HEADERS([event.h])
+AC_CONFIG_HEADER([watchman-config.h])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
 

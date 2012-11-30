@@ -22,11 +22,18 @@ extern "C" {
 #endif
 
 #define _GNU_SOURCE 1
+#include "watchman-config.h"
+
 #include <assert.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <sys/stat.h>
-#include <sys/inotify.h>
+#if HAVE_SYS_INOTIFY_H
+# include <sys/inotify.h>
+#endif
+#if HAVE_SYS_EVENT_H
+# include <sys/event.h>
+#endif
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -142,17 +149,38 @@ struct watchman_file {
 
   /* whether we believe that this file still exists */
   bool exists;
+
+  /* cache stat results so we can tell if an entry
+   * changed */
+  struct stat st;
+
+#if HAVE_KQUEUE
+  /* open descriptor on the file so we can monitor it.
+   * It sucks that we need one descriptor per filesystem
+   * entry, but on the plus side, we don't need to
+   * maintain a mapping of descriptor to structs as
+   * kqueue will do that for us */
+  int kq_fd;
+#endif
 };
 
 struct watchman_root {
+#if HAVE_INOTIFY_INIT
   /* we use one inotify instance per watched root dir */
   int infd;
 
-  /* path to root */
-  w_string_t *root_path;
-
   /* map of active watch descriptor to a dir */
   w_ht_t *wd_to_dir;
+#endif
+#if HAVE_KQUEUE
+  /* to avoid needing magic markers in our structs,
+   * we use one kqueue for dirs and another for files */
+  int kq_dirs;
+  int kq_files;
+#endif
+
+  /* path to root */
+  w_string_t *root_path;
 
   /* map of dir name to a dir */
   w_ht_t *dirname_to_dir;

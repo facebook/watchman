@@ -7,9 +7,13 @@ install-sh
 missing
 config.log
 .deps/
-.in
+*.in
 Makefile
 *.o
 config.status
 watchman
 arcanist/.phutil_module_cache
+*.swp
+compile
+stamp-h1
+watchman-config.h

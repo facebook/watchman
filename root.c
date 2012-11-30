@@ -16,6 +16,8 @@
 
 #include "watchman.h"
 #include <spawn.h>
+// Not explicitly exported on Darwin, so we get to define it.
+extern char **environ;
 
 static w_ht_t *watched_roots = NULL;
 static pthread_mutex_t root_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -49,9 +51,17 @@ w_root_t *w_root_new(const char *path)
   pthread_cond_init(&root->cond, NULL);
   root->root_path = w_string_new(path);
 
+#if HAVE_INOTIFY_INIT
   root->infd = inotify_init();
   w_set_cloexec(root->infd);
   root->wd_to_dir = w_ht_new(HINT_NUM_DIRS, NULL);
+#endif
+#if HAVE_KQUEUE
+  root->kq_dirs = kqueue();
+  root->kq_files = kqueue();
+  w_set_cloexec(root->kq_dirs);
+  w_set_cloexec(root->kq_files);
+#endif
   root->dirname_to_dir = w_ht_new(HINT_NUM_DIRS, &w_ht_string_funcs);
   root->commands = w_ht_new(2, NULL);
   root->ticks = 1;
@@ -179,9 +189,67 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
   return dir;
 }
 
+static void watch_file(w_root_t *root, struct watchman_file *file)
+{
+#if HAVE_KQUEUE
+  struct kevent k;
+  char buf[WATCHMAN_NAME_MAX];
+
+  if (file->kq_fd != -1) {
+    return;
+  }
+
+  snprintf(buf, sizeof(buf), "%.*s/%.*s",
+      file->parent->path->len, file->parent->path->buf,
+      file->name->len, file->name->buf);
+
+  file->kq_fd = open(buf, O_EVTONLY);
+  if (file->kq_fd == -1) {
+    printf("failed to open %s O_EVTONLY: %s\n",
+        buf, strerror(errno));
+    return;
+  }
+
+  memset(&k, 0, sizeof(k));
+  EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
+    NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME|NOTE_NONE|NOTE_ATTRIB,
+    0, file);
+
+  if (kevent(root->kq_files, &k, 1, NULL, 0, 0)) {
+    perror("kevent");
+    close(file->kq_fd);
+    file->kq_fd = -1;
+  }
+#endif
+}
+
+static void stop_watching_file(w_root_t *root, struct watchman_file *file)
+{
+#if HAVE_KQUEUE
+  struct kevent k;
+
+  if (file->kq_fd == -1) {
+    return;
+  }
+
+  memset(&k, 0, sizeof(k));
+  EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_DELETE, 0, 0, file);
+  kevent(root->kq_files, &k, 1, NULL, 0, 0);
+  close(file->kq_fd);
+  file->kq_fd = -1;
+
+#endif
+}
+
 void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
     time_t now, bool confident)
 {
+  if (file->exists) {
+    watch_file(root, file);
+  } else {
+    stop_watching_file(root, file);
+  }
+
   file->confident = confident;
   file->otime.seconds = (uint32_t)now;
   file->otime.ticks = root->ticks;
@@ -228,11 +296,54 @@ struct watchman_file *w_root_resolve_file(w_root_t *root,
   w_string_addref(file->name);
   file->parent = dir;
   file->exists = true;
+#if HAVE_KQUEUE
+  file->kq_fd = -1;
+#endif
 
   w_ht_set(dir->files, (w_ht_val_t)file->name, (w_ht_val_t)file);
+  watch_file(root, file);
 
   return file;
 }
+
+static void stop_watching_dir(w_root_t *root,
+    struct watchman_dir *dir)
+{
+  w_ht_iter_t i;
+
+  if (w_ht_first(dir->dirs, &i)) do {
+    struct watchman_dir *child = (struct watchman_dir*)i.value;
+
+    stop_watching_dir(root, child);
+  } while (w_ht_next(dir->dirs, &i));
+
+  if (dir->wd == -1) {
+    return;
+  }
+
+  /* turn off watch */
+#if HAVE_INOTIFY_INIT
+  inotify_rm_watch(root->infd, dir->wd);
+  w_ht_del(root->wd_to_dir, dir->wd);
+#endif
+#if HAVE_KQUEUE
+  {
+    struct kevent k;
+
+    memset(&k, 0, sizeof(k));
+    EV_SET(&k, dir->wd, EVFILT_VNODE, EV_DELETE,
+        0, 0, dir);
+
+    if (kevent(root->kq_dirs, &k, 1, NULL, 0, 0)) {
+      perror("kevent");
+    }
+
+    close(dir->wd);
+  }
+#endif
+  dir->wd = -1;
+}
+
 
 static void stat_path(w_root_t *root,
     w_string_t *full_path, time_t now, bool confident)
@@ -272,6 +383,7 @@ static void stat_path(w_root_t *root,
     /* it's not there, update our state */
     if (dir_ent) {
       w_root_mark_deleted(root, dir_ent, now, true, true);
+      stop_watching_dir(root, dir);
     }
     if (file) {
       file->exists = false;
@@ -284,7 +396,10 @@ static void stat_path(w_root_t *root,
     if (!file) {
       file = w_root_resolve_file(root, dir, file_name);
     }
-    w_root_mark_file_changed(root, file, now, confident);
+    if (memcmp(&file->st, &st, sizeof(st))) {
+      w_root_mark_file_changed(root, file, now, confident);
+    }
+    memcpy(&file->st, &st, sizeof(st));
   } else if (S_ISDIR(st.st_mode)) {
     if (!dir_ent) {
       /* we've never seen this dir before */
@@ -307,25 +422,19 @@ void w_root_process_path(w_root_t *root, w_string_t *full_path,
   }
 }
 
-
 /* recursively mark the dir contents as deleted */
 void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
     time_t now, bool confident, bool recursive)
 {
   w_ht_iter_t i;
 
-  /* turn off watch */
-  if (dir->wd != -1) {
-    w_ht_del(root->wd_to_dir, dir->wd);
-    inotify_rm_watch(root->infd, dir->wd);
-    dir->wd = -1;
-  }
-
   if (w_ht_first(dir->files, &i)) do {
     struct watchman_file *file = (struct watchman_file*)i.value;
 
-    file->exists = false;
-    w_root_mark_file_changed(root, file, now, confident);
+    if (file->exists) {
+      file->exists = false;
+      w_root_mark_file_changed(root, file, now, confident);
+    }
 
   } while (w_ht_next(dir->files, &i));
 
@@ -336,15 +445,18 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
   } while (w_ht_next(dir->dirs, &i));
 }
 
+#if HAVE_INOTIFY_INIT
 struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd)
 {
   return (struct watchman_dir*)w_ht_get(root->wd_to_dir, wd);
 }
+#endif
 
 static void crawler(w_root_t *root, w_string_t *dir_name,
     time_t now, bool confident)
 {
   struct watchman_dir *dir;
+  struct watchman_file *file;
   DIR *osdir;
   struct dirent *dirent;
   w_ht_iter_t i;
@@ -354,6 +466,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   osdir = opendir(dir_name->buf);
   if (!osdir) {
     if (errno == ENOENT || errno == ENOTDIR) {
+      stop_watching_dir(root, dir);
       w_root_mark_deleted(root, dir, now, true, true);
     }
     return;
@@ -361,15 +474,36 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
 
   /* make sure we're watching this guy */
   if (dir->wd == -1) {
+#if HAVE_INOTIFY_INIT
     dir->wd = inotify_add_watch(root->infd, dir_name->buf,
         WATCHMAN_INOTIFY_MASK);
     /* record mapping */
     if (dir->wd != -1) {
       w_ht_set(root->wd_to_dir, dir->wd, (w_ht_val_t)dir);
     }
+#endif
+#if HAVE_KQUEUE
+    dir->wd = open(dir_name->buf, O_EVTONLY);
+    if (dir->wd != -1) {
+      struct kevent k;
+
+      memset(&k, 0, sizeof(k));
+      EV_SET(&k, dir->wd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
+        NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME,
+        0, dir);
+
+      if (kevent(root->kq_dirs, &k, 1, NULL, 0, 0)) {
+        perror("kevent");
+        close(dir->wd);
+        dir->wd = -1;
+      }
+    }
+#endif
   }
 
   while ((dirent = readdir(osdir)) != NULL) {
+    w_string_t *name;
+
     // Don't follow parent/self links
     if (dirent->d_name[0] == '.' && (
           !strcmp(dirent->d_name, ".") ||
@@ -378,12 +512,29 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       continue;
     }
 
-    // Queue it up for analysis
-    w_root_add_pending_rel(root, dir, dirent->d_name, confident, now);
+    // Queue it up for analysis if the file is newly existing
+    name = w_string_new(dirent->d_name);
+    if (dir->files) {
+      file = (struct watchman_file*)w_ht_get(dir->files, (w_ht_val_t)name);
+    } else {
+      file = NULL;
+    }
+    if (!file || !file->exists) {
+      w_root_add_pending_rel(root, dir, dirent->d_name, confident, now);
+    }
+    w_string_delref(name);
   }
   closedir(osdir);
 
-  // if we have any child dirs, add thos to the list too
+  // Re-examine all the files we think exist
+  if (w_ht_first(dir->files, &i)) do {
+    file = (struct watchman_file*)i.value;
+    if (file->exists) {
+      w_root_add_pending_rel(root, dir, file->name->buf, confident, now);
+    }
+  } while (w_ht_next(dir->files, &i));
+
+  // if we have any child dirs, add those to the list too
   if (w_ht_first(dir->dirs, &i)) do {
     struct watchman_dir *child = (struct watchman_dir*)i.value;
 
@@ -551,12 +702,87 @@ static void *stat_thread(void *arg)
   return 0;
 }
 
+#if HAVE_KQUEUE
+static void *kqueue_dir_thread(void *arg)
+{
+  w_root_t *root = arg;
+
+  for (;;) {
+    struct kevent k[32];
+    struct watchman_dir *dir, *last;
+    int n;
+    int i;
+    time_t now;
+
+    n = kevent(root->kq_dirs, NULL, 0, k, sizeof(k) / sizeof(k[0]), NULL);
+
+    w_root_lock(root);
+    root->ticks++;
+    time(&now);
+    last = NULL;
+    for (i = 0; n > 0 && i < n; i++) {
+      // Which dir just changed?
+      dir = k[i].udata;
+
+      if (dir == last) {
+        // We just looked, no point looking again right now
+        continue;
+      }
+
+      last = dir;
+      // We know *something* changed in the dir, but we don't know
+      // what it was, so crawl it.
+      printf("notify on dir %.*s\n", dir->path->len, dir->path->buf);
+      w_root_add_pending(root, dir->path, true, now);
+    }
+    w_root_unlock(root);
+  }
+}
+
+static void *kqueue_file_thread(void *arg)
+{
+  w_root_t *root = arg;
+
+  for (;;) {
+    struct kevent k[32];
+    struct watchman_file *file, *last;
+    int n;
+    int i;
+    time_t now;
+
+    n = kevent(root->kq_files, NULL, 0, k, sizeof(k) / sizeof(k[0]), NULL);
+
+    w_root_lock(root);
+    root->ticks++;
+    time(&now);
+    last = NULL;
+    for (i = 0; n > 0 && i < n; i++) {
+      // Which dir just changed?
+      file = k[i].udata;
+
+      if (file == last) {
+        // We just looked, no point looking again right now
+        continue;
+      }
+
+      last = file;
+      printf("notify on file %.*s/%.*s\n",
+          file->parent->path->len, file->parent->path->buf,
+          file->name->len, file->name->buf);
+      w_root_add_pending_rel(root, file->parent, file->name->buf, true, now);
+    }
+    w_root_unlock(root);
+  }
+}
+#endif
+
+#if HAVE_INOTIFY_INIT
 // we want to consume inotify events as quickly as possible
 // to minimize the risk that the kernel event buffer overflows,
 // so we do this as a blocking thread that reads the inotify
 // descriptor and then queues the filesystem IO work to the
 // stat_thread above.
-static void *notify_thread(void *arg)
+static void *inotify_thread(void *arg)
 {
   w_root_t *root = arg;
 
@@ -636,6 +862,7 @@ static void *notify_thread(void *arg)
 
   return 0;
 }
+#endif
 
 w_root_t *w_root_resolve(const char *filename, bool auto_watch)
 {
@@ -676,7 +903,13 @@ w_root_t *w_root_resolve(const char *filename, bool auto_watch)
   w_ht_set(watched_roots, (w_ht_val_t)root->root_path, (w_ht_val_t)root);
   pthread_mutex_unlock(&root_lock);
 
-  pthread_create(&thr, NULL, notify_thread, root);
+#if HAVE_INOTIFY_INIT
+  pthread_create(&thr, NULL, inotify_thread, root);
+#endif
+#if HAVE_KQUEUE
+  pthread_create(&thr, NULL, kqueue_dir_thread, root);
+  pthread_create(&thr, NULL, kqueue_file_thread, root);
+#endif
   pthread_create(&thr, NULL, stat_thread, root);
 
   return root;

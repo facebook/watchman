@@ -30,7 +30,7 @@ typedef int64_t w_ht_val_t;
 
 /* copies a key.  If NULL, simply does a bit copy, but you
  * can provide an implementation that manages a refcount */
-typedef intptr_t (*w_hash_table_copy_t)(w_ht_val_t key);
+typedef w_ht_val_t (*w_hash_table_copy_t)(w_ht_val_t key);
 
 /* deletes a key.  If NULL, simply NOPs, but you can
  * provide an implementation that manages a refcount */
