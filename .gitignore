@@ -12,3 +12,4 @@ Makefile
 *.o
 config.status
 watchman
+arcanist/.phutil_module_cache
