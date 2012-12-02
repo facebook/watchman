@@ -23,6 +23,7 @@ class WatchmanInstance {
   private $dir;
   private $invocations = 0;
   private $debug = false;
+  private $sock;
 
   function __construct() {
     $this->dir = PhutilDirectoryFixture::newEmptyFixture();
@@ -43,6 +44,27 @@ class WatchmanInstance {
     return newv('ExecFuture', $args);
   }
 
+  function request() {
+    $args = func_get_args();
+
+    if (!$this->invocations) {
+      return call_user_func_array(
+        array($this, 'resolveCommand'),
+        $args);
+    }
+
+    // Use a socket instead
+    if (!$this->sock) {
+      $this->sock = fsockopen('unix://' .
+        $this->dir->getPath() . '/.watchman.' .
+        getenv('USER'));
+    }
+
+    fwrite($this->sock, json_encode($args));
+    $data = fgets($this->sock);
+    return json_decode($data, true);
+  }
+
   function resolveCommand() {
     $args = func_get_args();
 
@@ -53,9 +75,7 @@ class WatchmanInstance {
     if ($this->debug) {
       echo "running: " . $future->getCommand() . "\n";
     }
-    list($out) = $future->resolvex();
-
-    return $out;
+    return $future->resolveJSON();
   }
 
   function __destruct() {

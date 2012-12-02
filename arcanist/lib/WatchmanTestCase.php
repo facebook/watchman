@@ -39,7 +39,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     }
 
     return call_user_func_array(
-      array($this->watchman, 'resolveCommand'),
+      array($this->watchman, 'request'),
       $args);
   }
 

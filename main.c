@@ -60,10 +60,9 @@ static void daemonize(void)
     close(fd);
   }
 
-  event_init();
-  w_start_listener(sock_name);
+  /* we are the child, let's set things up */
   chdir("/");
-  event_dispatch();
+  w_start_listener(sock_name);
   exit(1);
 }
 
@@ -121,15 +120,28 @@ static bool should_start(int err)
   return false;
 }
 
+static int cmd_write(const char *buffer, size_t size, void *ptr)
+{
+  int fd = (intptr_t)ptr;
+
+  return (size_t)write(fd, buffer, size) == size ? 0 : -1;
+}
+
+static size_t cmd_read(void *buffer, size_t buflen, void *ptr)
+{
+  int fd = (intptr_t)ptr;
+
+  return read(fd, buffer, buflen);
+}
+
 static bool try_command(int argc, char **argv, int timeout)
 {
   int fd;
   int res;
   int tries;
   int i;
-  FILE *client;
-  char buf[WATCHMAN_NAME_MAX * 2];
-  char *line;
+  json_t *j;
+  json_error_t jerr;
 
   fd = socket(PF_LOCAL, SOCK_STREAM, 0);
   if (fd == -1) {
@@ -156,39 +168,29 @@ static bool try_command(int argc, char **argv, int timeout)
     return false;
   }
 
-  w_set_nonblock(fd);
-
   // Send command
-  // TODO: quote parameters as needed
+  j = json_array();
   for (i = 1; i < argc; i++) {
-    if (i > 1) {
-      write(fd, " ", 1);
-    }
-    write(fd, argv[i], strlen(argv[i]));
+    json_array_append_new(j, json_string(argv[i]));
   }
-  write(fd, "\n", 1);
+  json_dump_callback(j, cmd_write, (void*)(intptr_t)fd, JSON_COMPACT);
+  json_decref(j);
 
-  // This is poor-mans end-of-response detection.
-  // Will need to replace this with a better structured
-  // protocol so that it is more robust
-  while (true) {
-    struct pollfd pfd;
+  memset(&jerr, 0, sizeof(jerr));
+  j = json_load_callback(cmd_read, (void*)(intptr_t)fd,
+        JSON_DISABLE_EOF_CHECK, &jerr);
 
-    pfd.fd = fd;
-    pfd.events = POLLIN|POLLHUP;
-    if (poll(&pfd, 1, 1000) && errno == ETIMEDOUT) {
-      break;
-    }
-
-    res = read(fd, buf, sizeof(buf));
-    if (res <= 0) {
-      if (errno != EAGAIN) {
-        perror("read");
-      }
-      break;
-    }
-    write(STDOUT_FILENO, buf, res);
+  if (!j) {
+    fprintf(stderr, "failed to parse response: %s\n",
+        jerr.text);
+    return true;
   }
+
+  // Let's just pretty print the JSON response
+  json_dumpf(j, stdout, JSON_INDENT(4));
+  printf("\n");
+
+  json_decref(j);
 
   return true;
 }

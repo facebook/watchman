@@ -22,7 +22,7 @@ extern "C" {
 #endif
 
 #define _GNU_SOURCE 1
-#include "watchman-config.h"
+#include "config.h"
 
 #include <assert.h>
 #include <unistd.h>
@@ -34,6 +34,7 @@ extern "C" {
 #if HAVE_SYS_EVENT_H
 # include <sys/event.h>
 #endif
+#include <signal.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,12 +47,13 @@ extern "C" {
 #include <time.h>
 #include <libgen.h>
 #include <inttypes.h>
-#include <event.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <fcntl.h>
 
 #include "watchman_hash.h"
+
+#include "jansson.h"
 
 /* sane, reasonably large filename size that we'll use
  * throughout; POSIX seems to define smallish buffers
@@ -225,7 +227,6 @@ struct watchman_rule {
 
 struct watchman_client {
   int fd;
-  struct bufferevent *bev;
 };
 
 struct watchman_trigger_command {

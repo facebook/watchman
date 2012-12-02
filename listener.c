@@ -17,16 +17,57 @@
 #include "watchman.h"
 #include <fnmatch.h>
 
-static struct event listener_ev;
+static pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
 static w_ht_t *clients = NULL;
 static w_ht_t *command_funcs = NULL;
+
+static json_t *make_response(void)
+{
+  json_t *resp = json_object();
+
+  json_object_set_new(resp, "version", json_string(PACKAGE_VERSION));
+
+  return resp;
+}
+
+static int client_json_write(const char *buffer, size_t size, void *ptr)
+{
+  struct watchman_client *client = ptr;
+  int res;
+
+  res = write(client->fd, buffer, size);
+
+  return (size_t)res == size ? 0 : -1;
+}
+
+static void send_and_dispose_response(struct watchman_client *client,
+    json_t *response)
+{
+  json_dump_callback(response, client_json_write, client, JSON_COMPACT);
+  write(client->fd, "\n", 1);
+  json_decref(response);
+}
+
+static void send_error_response(struct watchman_client *client,
+    const char *fmt, ...)
+{
+  char buf[WATCHMAN_NAME_MAX];
+  va_list ap;
+  json_t *resp = make_response();
+
+  va_start(ap, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, ap);
+  va_end(ap);
+
+  json_object_set_new(resp, "error", json_string(buf));
+
+  send_and_dispose_response(client, resp);
+}
 
 static void client_delete(w_ht_val_t val)
 {
   struct watchman_client *client = (struct watchman_client*)val;
 
-  bufferevent_disable(client->bev, EV_READ|EV_WRITE);
-  bufferevent_free(client->bev);
   close(client->fd);
   free(client);
 }
@@ -197,6 +238,8 @@ static void run_rules(struct watchman_client *client,
   uint32_t matches;
   w_ht_t *uniq;
   struct watchman_file *oldest = NULL, *f;
+  json_t *response = make_response();
+  json_t *file_list = json_array();
 
   uniq = w_ht_new(8, &w_ht_string_funcs);
   printf("running rules!\n");
@@ -210,22 +253,26 @@ static void run_rules(struct watchman_client *client,
   }
   matches = w_rules_match(root, oldest, uniq, rules);
   w_root_unlock(root);
-  /* advise client of success and tell them how many lines follow */
-  w_client_printf(client, "OK %" PRIu32 " matches\n", matches);
+
   printf("rules were run, we have %" PRIu32 " matches\n", matches);
 
   if (w_ht_first(uniq, &iter)) do {
     struct watchman_file *file = (struct watchman_file*)iter.value;
     w_string_t *relname = (w_string_t*)iter.key;
+    json_t *record = json_object();
 
-    w_client_printf(client, "%c %.*s\n",
-        file->exists ? 'M' : 'D',
-        relname->len, relname->buf);
+    json_object_set_new(record, "name", json_string(relname->buf));
+    json_object_set_new(record, "exists", json_boolean(file->exists));
+
+    json_array_append_new(file_list, record);
 
   } while (w_ht_next(uniq, &iter));
-  w_client_printf(client, "DONE\n");
 
   w_ht_free(uniq);
+
+  json_object_set_new(response, "files", file_list);
+
+  send_and_dispose_response(client, response);
 }
 
 /* find /root [patterns] */
@@ -234,24 +281,24 @@ static void cmd_find(
     int argc,
     char **argv)
 {
-  struct watchman_rule *rules = NULL, *rule;
+  struct watchman_rule *rules = NULL;
   w_root_t *root;
 
   /* resolve the root */
   if (argc < 2) {
-    w_client_printf(client, "ERR: not enough arguments to find\n");
+    send_error_response(client, "not enough arguments for 'find'");
     return;
   }
 
   root = w_root_resolve(argv[1], false);
   if (!root) {
-    w_client_printf(client, "ERR: not watching %s\n", argv[1]);
+    send_error_response(client, "not watching %s", argv[1]);
     return;
   }
 
   /* parse argv into a chain of watchman_rule */
   if (!parse_watch_params(2, argc, argv, &rules, NULL)) {
-    w_client_printf(client, "ERR: %s\n", strerror(errno));
+    send_error_response(client, "invalid rule spec: %s", strerror(errno));
     return;
   }
 
@@ -265,19 +312,19 @@ static void cmd_since(
     int argc,
     char **argv)
 {
-  struct watchman_rule *rules = NULL, *rule;
+  struct watchman_rule *rules = NULL;
   w_root_t *root;
   w_clock_t since;
 
   /* resolve the root */
   if (argc < 3) {
-    w_client_printf(client, "ERR: not enough arguments to find\n");
+    send_error_response(client, "not enough arguments for 'since'");
     return;
   }
 
   root = w_root_resolve(argv[1], false);
   if (!root) {
-    w_client_printf(client, "ERR: not watching %s\n", argv[1]);
+    send_error_response(client, "not watching %s", argv[1]);
     return;
   }
 
@@ -286,7 +333,7 @@ static void cmd_since(
 
   /* parse argv into a chain of watchman_rule */
   if (!parse_watch_params(3, argc, argv, &rules, NULL)) {
-    w_client_printf(client, "ERR: %s\n", strerror(errno));
+    send_error_response(client, "invalid rule spec: %s", strerror(errno));
     return;
   }
 
@@ -306,26 +353,27 @@ static void cmd_trigger(
   w_root_t *root;
   int next_arg = 0;
   struct watchman_trigger_command *cmd;
+  json_t *resp;
 
   root = w_root_resolve(argv[1], true);
   if (!root) {
-    w_client_printf(client, "ERR: can't watch %s\n", argv[1]);
+    send_error_response(client, "can't watch %s", argv[1]);
     return;
   }
 
   if (!parse_watch_params(2, argc, argv, &rules, &next_arg)) {
-    w_client_printf(client, "ERR: %s\n", strerror(errno));
+    send_error_response(client, "invalid rule spec: %s", strerror(errno));
     return;
   }
 
   if (next_arg >= argc) {
-    w_client_printf(client, "ERR: no command was specified\n");
+    send_error_response(client, "no command was specified");
     return;
   }
 
   cmd = calloc(1, sizeof(*cmd));
   if (!cmd) {
-    w_client_printf(client, "ERR: no memory!\n");
+    send_error_response(client, "no memory!");
     return;
   }
 
@@ -334,7 +382,7 @@ static void cmd_trigger(
   cmd->argv = w_argv_dup(cmd->argc, argv + next_arg);
   if (!cmd->argv) {
     free(cmd);
-    w_client_printf(client, "ERR: no memory!\n");
+    send_error_response(client, "no memory!");
     return;
   }
 
@@ -343,8 +391,9 @@ static void cmd_trigger(
   w_ht_set(root->commands, cmd->triggerid, (w_ht_val_t)cmd);
   w_root_unlock(root);
 
-  w_client_printf(client, "OK: %" PRIu32 " registered\n",
-      cmd->triggerid);
+  resp = make_response();
+  json_object_set_new(resp, "triggerid", json_integer(cmd->triggerid));
+  send_and_dispose_response(client, resp);
 }
 
 /* watch /root */
@@ -353,23 +402,24 @@ static void cmd_watch(
     int argc,
     char **argv)
 {
-  struct watchman_rule *rules = NULL, *rule;
   w_root_t *root;
-  w_clock_t since;
+  json_t *resp;
 
   /* resolve the root */
   if (argc != 2) {
-    w_client_printf(client, "ERR: wrong number of arguments to watch\n");
+    send_error_response(client, "wrong number of arguments to 'watch'");
     return;
   }
 
   root = w_root_resolve(argv[1], true);
   if (!root) {
-    w_client_printf(client, "ERR: not watching %s\n", argv[1]);
+    send_error_response(client, "can't watch %s", argv[1]);
     return;
   }
 
-  w_client_printf(client, "OK: watching %s\n", argv[1]);
+  resp = make_response();
+  json_object_set_new(resp, "watch", json_string(root->root_path->buf));
+  send_and_dispose_response(client, resp);
 }
 
 static void cmd_shutdown(
@@ -377,6 +427,9 @@ static void cmd_shutdown(
     int argc,
     char **argv)
 {
+  (void)client;
+  (void)argc;
+  (void)argv;
   exit(0);
 }
 
@@ -392,106 +445,68 @@ static struct {
   { NULL, NULL }
 };
 
-int w_client_printf(struct watchman_client *client,
-    const char *fmt, ...)
+
+static size_t client_read_json(void *buffer, size_t buflen, void *ptr)
 {
-  int ret;
-  va_list ap;
+  struct watchman_client *client = ptr;
 
-  va_start(ap, fmt);
-  ret = evbuffer_add_vprintf(
-      client->bev->output,
-      fmt, ap);
-  va_end(ap);
-
-  return ret;
+  return read(client->fd, buffer, buflen);
 }
 
-int w_client_vprintf(struct watchman_client *client,
-    const char *fmt, va_list ap)
+// The client thread reads and decodes json packets,
+// then dispatches the commands that it finds
+// TODO: want to allow notifications to be sent over
+// the socket as we notice them
+static void *client_thread(void *ptr)
 {
-  return evbuffer_add_vprintf(
-      client->bev->output,
-      fmt, ap);
-}
-
-static void client_read(struct bufferevent *bev, void *arg)
-{
-  struct watchman_client *client = arg;
-  char *line;
-  size_t len;
+  struct watchman_client *client = ptr;
   int i;
   char **argv;
   int argc;
   watchman_command_func func;
   w_string_t *cmd;
+  json_t *request;
+  json_error_t jerr;
 
-  line = evbuffer_readline(bev->input);
-  if (!line) {
-    return;
-  }
-  len = strlen(line);
-  printf("[%d] %" PRIi64 " %s\n", client->fd, (int64_t)len, line);
+  while (true) {
+    memset(&jerr, 0, sizeof(jerr));
+    request = json_load_callback(client_read_json, client,
+        JSON_DISABLE_EOF_CHECK, &jerr);
 
-  if (!w_argv_parse(line, &argc, &argv)) {
-    printf("bad quoting or something\n");
-    free(line);
-    w_ht_del(clients, client->fd);
-    return;
-  }
+    if (!request) {
+      send_error_response(client, "invalid json at position %d: %s",
+          jerr.position, jerr.text);
 
-  printf("argc=%d\n", argc);
-  for (i = 0; i < argc; i++) {
-    printf("[%d] %s\n", i, argv[i]);
-  }
+      pthread_mutex_lock(&client_lock);
+      w_ht_del(clients, client->fd);
+      pthread_mutex_unlock(&client_lock);
+      break;
+    }
 
-  cmd = w_string_new(argv[0]);
-  func = (watchman_command_func)w_ht_get(command_funcs, (w_ht_val_t)cmd);
-  w_string_delref(cmd);
+    argc = json_array_size(request);
+    argv = calloc(argc, sizeof(char*));
+    for (i = 0; i < argc; i++) {
+      json_t *str;
 
-  if (func) {
-    func(client, argc, argv);
-  }
+      str = json_array_get(request, i);
+      argv[i] = (char*)json_string_value(str);
+    }
 
-  /* there's no implicit flush so we need to explicitly re-enable
-   * writes so that our buffered output goes out */
-  bufferevent_enable(client->bev, EV_READ|EV_WRITE);
+    cmd = w_string_new(argv[0]);
+    func = (watchman_command_func)w_ht_get(command_funcs, (w_ht_val_t)cmd);
+    w_string_delref(cmd);
 
-  free(argv);
-  free(line);
-}
+    if (func) {
+      func(client, argc, argv);
+    } else {
+      send_error_response(client, "invalid command %s", argv[0]);
+    }
 
-static void client_error(struct bufferevent *bev, short what, void *arg)
-{
-  struct watchman_client *client = arg;
-
-  printf("client error: %d what=%x\n", client->fd, what);
-
-  w_ht_del(clients, client->fd);
-}
-
-static void accept_client(int listener_fd, short mask, void *ignore)
-{
-  struct watchman_client *client;
-  int fd = accept(listener_fd, NULL, 0);
-
-  if (fd == -1) {
-    return;
+    free(argv);
+    json_decref(request);
   }
 
-  client = calloc(1, sizeof(*client));
-  client->fd = fd;
-  w_set_cloexec(fd);
-
-  client->bev = bufferevent_new(client->fd,
-      client_read, NULL, client_error,
-      client);
-
-  bufferevent_enable(client->bev, EV_READ|EV_WRITE);
-
-  w_client_printf(client, "WATCHMAN 1.0\n");
-
-  w_ht_set(clients, client->fd, (w_ht_val_t)client);
+  return NULL;
 }
 
 bool w_start_listener(const char *path)
@@ -505,6 +520,8 @@ bool w_start_listener(const char *path)
         path);
     return false;
   }
+
+  signal(SIGPIPE, SIG_IGN);
 
   fd = socket(PF_LOCAL, SOCK_STREAM, 0);
   if (fd == -1) {
@@ -530,13 +547,6 @@ bool w_start_listener(const char *path)
   }
 
   w_set_cloexec(fd);
-  event_set(&listener_ev, fd, EV_PERSIST|EV_READ, accept_client, NULL);
-  if (event_add(&listener_ev, NULL) != 0) {
-    fprintf(stderr, "event_add failed: %s\n",
-      strerror(errno));
-    close(fd);
-    return false;
-  }
 
   if (!clients) {
     clients = w_ht_new(2, &client_hash_funcs);
@@ -548,6 +558,42 @@ bool w_start_listener(const char *path)
     w_ht_set(command_funcs,
         (w_ht_val_t)w_string_new(commands[i].name),
         (w_ht_val_t)commands[i].func);
+  }
+
+  // Now run the dispatch
+  while (true) {
+    int client_fd;
+    struct watchman_client *client;
+    pthread_t thr;
+    pthread_attr_t attr;
+
+    client_fd = accept(fd, NULL, 0);
+    if (client_fd == -1) {
+      continue;
+    }
+    w_set_cloexec(client_fd);
+
+    client = calloc(1, sizeof(*client));
+    client->fd = client_fd;
+
+    pthread_mutex_lock(&client_lock);
+    w_ht_set(clients, client->fd, (w_ht_val_t)client);
+    pthread_mutex_unlock(&client_lock);
+
+    // Start a thread for the client.
+    // We used to use libevent for this, but we have
+    // a low volume of concurrent clients and the json
+    // parse/encode APIs are not easily used in a non-blocking
+    // server architecture.
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    if (pthread_create(&thr, &attr, client_thread, client)) {
+      // It didn't work out, sorry!
+      pthread_mutex_lock(&client_lock);
+      w_ht_del(clients, client->fd);
+      pthread_mutex_unlock(&client_lock);
+    }
+    pthread_attr_destroy(&attr);
   }
 
   return true;

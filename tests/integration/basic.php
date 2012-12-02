@@ -19,13 +19,21 @@
 class basicTestCase extends WatchmanTestCase {
 
   function testSomething() {
-    $out = $this->watchmanCommand('watch', $this->getRoot());
+    $root = realpath($this->getRoot());
 
-    $this->assertRegex("/OK: watching/", $out);
+    $out = $this->watchmanCommand('watch', $root);
+    $this->assertEqual($out['watch'], $root);
 
-    $out = $this->watchmanCommand('find', $this->getRoot(), '*.c');
-
-    $this->assertRegex("/^M hash.c$/m", $out);
+    $out = $this->watchmanCommand('find', $root, '*.c');
+    $hash_ent = null;
+    foreach ($out['files'] as $ent) {
+      if ($ent['name'] == 'hash.c') {
+        $hash_ent = $ent;
+        break;
+      }
+    }
+    $this->assertEqual($hash_ent['name'], 'hash.c');
+    $this->assertEqual($hash_ent['exists'], true);
   }
 }
 
