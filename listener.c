@@ -94,38 +94,47 @@ static struct watchman_hash_funcs client_hash_funcs = {
  * We stop processing args when we find "--" and update
  * *next_arg to the argv index after that argument.
  */
-static bool parse_watch_params(int start, int argc, char **argv,
+static bool parse_watch_params(int start, json_t *args,
     struct watchman_rule **head_ptr,
-    int *next_arg)
+    uint32_t *next_arg)
 {
   bool include = true;
   bool negated = false;
   struct watchman_rule *rule, *prior = NULL;
-  int i;
+  uint32_t i;
 
+  if (!json_is_array(args)) {
+    return false;
+  }
   *head_ptr = NULL;
 
-  for (i = start; i < argc; i++) {
-    if (!strcmp(argv[i], "--")) {
+  for (i = start; i < json_array_size(args); i++) {
+    const char *arg = json_string_value(json_array_get(args, i));
+    if (!arg) {
+      /* not a string value! */
+      return false; // FIXME: leak
+    }
+
+    if (!strcmp(arg, "--")) {
       i++;
       break;
     }
-    if (!strcmp(argv[i], "-X")) {
+    if (!strcmp(arg, "-X")) {
       include = false;
       continue;
     }
-    if (!strcmp(argv[i], "-I")) {
+    if (!strcmp(arg, "-I")) {
       include = true;
       continue;
     }
-    if (!strcmp(argv[i], "!")) {
+    if (!strcmp(arg, "!")) {
       negated = true;
       continue;
     }
 
     rule = calloc(1, sizeof(*rule));
     if (!rule) {
-      return false;
+      return false; // FIXME: leak
     }
 
     rule->include = include;
@@ -136,7 +145,7 @@ static bool parse_watch_params(int start, int argc, char **argv,
     // "C" source files, use "*.c".  To match all makefiles, use
     // "*/Makefile" + "Makefile" (include the latter if the Makefile might
     // be at the top level).
-    rule->pattern = strdup(argv[i]);
+    rule->pattern = strdup(arg);
     rule->flags = FNM_PERIOD;
 
     if (!prior) {
@@ -226,8 +235,7 @@ uint32_t w_rules_match(w_root_t *root,
 
 typedef void (*watchman_command_func)(
     struct watchman_client *client,
-    int argc,
-    char **argv);
+    json_t *args);
 
 static void run_rules(struct watchman_client *client,
     w_root_t *root,
@@ -275,29 +283,61 @@ static void run_rules(struct watchman_client *client,
   send_and_dispose_response(client, response);
 }
 
+static w_root_t *resolve_root_or_err(
+    struct watchman_client *client,
+    json_t *args,
+    int root_index,
+    bool create)
+{
+  w_root_t *root;
+  const char *root_name;
+  json_t *ele;
+
+  ele = json_array_get(args, root_index);
+  if (!ele) {
+    send_error_response(client, "wrong number of arguments");
+    return NULL;
+  }
+
+  root_name = json_string_value(ele);
+  if (!root_name) {
+    send_error_response(client,
+        "invalid value for argument %d, expected "
+        "a string naming the root dir",
+        root_index);
+    return NULL;
+  }
+
+  root = w_root_resolve(root_name, create);
+  if (!root) {
+    send_error_response(client,
+        "unable to resolve root %s",
+        root_name);
+  }
+  return root;
+}
+
 /* find /root [patterns] */
 static void cmd_find(
     struct watchman_client *client,
-    int argc,
-    char **argv)
+    json_t *args)
 {
   struct watchman_rule *rules = NULL;
   w_root_t *root;
 
   /* resolve the root */
-  if (argc < 2) {
+  if (json_array_size(args) < 2) {
     send_error_response(client, "not enough arguments for 'find'");
     return;
   }
 
-  root = w_root_resolve(argv[1], false);
+  root = resolve_root_or_err(client, args, 1, false);
   if (!root) {
-    send_error_response(client, "not watching %s", argv[1]);
     return;
   }
 
   /* parse argv into a chain of watchman_rule */
-  if (!parse_watch_params(2, argc, argv, &rules, NULL)) {
+  if (!parse_watch_params(2, args, &rules, NULL)) {
     send_error_response(client, "invalid rule spec: %s", strerror(errno));
     return;
   }
@@ -309,30 +349,38 @@ static void cmd_find(
 /* since /root <timestamp> [patterns] */
 static void cmd_since(
     struct watchman_client *client,
-    int argc,
-    char **argv)
+    json_t *args)
 {
   struct watchman_rule *rules = NULL;
   w_root_t *root;
   w_clock_t since;
+  json_t *clock_ele;
 
   /* resolve the root */
-  if (argc < 3) {
+  if (json_array_size(args) < 3) {
     send_error_response(client, "not enough arguments for 'since'");
     return;
   }
 
-  root = w_root_resolve(argv[1], false);
+  root = resolve_root_or_err(client, args, 1, false);
   if (!root) {
-    send_error_response(client, "not watching %s", argv[1]);
     return;
   }
 
   // FIXME: allow using a safer clock representation instead.
-  since.seconds = atoi(argv[2]);
+  clock_ele = json_array_get(args, 2);
+  if (json_is_integer(clock_ele)) {
+    since.seconds = json_integer_value(clock_ele);
+  } else if (json_is_string(clock_ele)) {
+    since.seconds = atoi(json_string_value(clock_ele));
+  } else {
+    send_error_response(client,
+        "expected argument 2 to be a valid clock/timespec");
+    return;
+  }
 
   /* parse argv into a chain of watchman_rule */
-  if (!parse_watch_params(3, argc, argv, &rules, NULL)) {
+  if (!parse_watch_params(3, args, &rules, NULL)) {
     send_error_response(client, "invalid rule spec: %s", strerror(errno));
     return;
   }
@@ -346,27 +394,25 @@ static void cmd_since(
  * is detected */
 static void cmd_trigger(
     struct watchman_client *client,
-    int argc,
-    char **argv)
+    json_t *args)
 {
   struct watchman_rule *rules;
   w_root_t *root;
-  int next_arg = 0;
+  uint32_t next_arg = 0;
   struct watchman_trigger_command *cmd;
   json_t *resp;
 
-  root = w_root_resolve(argv[1], true);
+  root = resolve_root_or_err(client, args, 1, true);
   if (!root) {
-    send_error_response(client, "can't watch %s", argv[1]);
     return;
   }
 
-  if (!parse_watch_params(2, argc, argv, &rules, &next_arg)) {
+  if (!parse_watch_params(2, args, &rules, &next_arg)) {
     send_error_response(client, "invalid rule spec: %s", strerror(errno));
     return;
   }
 
-  if (next_arg >= argc) {
+  if (next_arg >= json_array_size(args)) {
     send_error_response(client, "no command was specified");
     return;
   }
@@ -378,11 +424,11 @@ static void cmd_trigger(
   }
 
   cmd->rules = rules;
-  cmd->argc = argc - next_arg;
-  cmd->argv = w_argv_dup(cmd->argc, argv + next_arg);
+  cmd->argc = json_array_size(args) - next_arg;
+  cmd->argv = w_argv_copy_from_json(args, next_arg);
   if (!cmd->argv) {
     free(cmd);
-    send_error_response(client, "no memory!");
+    send_error_response(client, "unable to build argv array");
     return;
   }
 
@@ -399,27 +445,34 @@ static void cmd_trigger(
 /* watch /root */
 static void cmd_watch(
     struct watchman_client *client,
-    int argc,
-    char **argv)
+    json_t *args)
 {
   w_root_t *root;
   json_t *resp;
 
   /* resolve the root */
-  if (argc != 2) {
+  if (json_array_size(args) != 2) {
     send_error_response(client, "wrong number of arguments to 'watch'");
     return;
   }
 
-  root = w_root_resolve(argv[1], true);
+  root = resolve_root_or_err(client, args, 1, true);
   if (!root) {
-    send_error_response(client, "can't watch %s", argv[1]);
     return;
   }
 
   resp = make_response();
   json_object_set_new(resp, "watch", json_string(root->root_path->buf));
   send_and_dispose_response(client, resp);
+}
+
+static void cmd_shutdown(
+    struct watchman_client *client,
+    json_t *args)
+{
+  (void)client;
+  (void)args;
+  exit(0);
 }
 
 static void cmd_shutdown(
@@ -461,9 +514,8 @@ static void *client_thread(void *ptr)
 {
   struct watchman_client *client = ptr;
   int i;
-  char **argv;
-  int argc;
   watchman_command_func func;
+  const char *cmd_name;
   w_string_t *cmd;
   json_t *request;
   json_error_t jerr;
@@ -483,26 +535,28 @@ static void *client_thread(void *ptr)
       break;
     }
 
-    argc = json_array_size(request);
-    argv = calloc(argc, sizeof(char*));
-    for (i = 0; i < argc; i++) {
-      json_t *str;
-
-      str = json_array_get(request, i);
-      argv[i] = (char*)json_string_value(str);
+    if (!json_array_size(request)) {
+      send_error_response(client,
+          "invalid command (expected an array with some elements!)");
+      continue;
     }
 
-    cmd = w_string_new(argv[0]);
+    cmd_name = json_string_value(json_array_get(request, 0));
+    if (!cmd_name) {
+      send_error_response(client,
+          "invalid command: expected element 0 to be the command name");
+      continue;
+    }
+    cmd = w_string_new(cmd_name);
     func = (watchman_command_func)w_ht_get(command_funcs, (w_ht_val_t)cmd);
     w_string_delref(cmd);
 
     if (func) {
-      func(client, argc, argv);
+      func(client, request);
     } else {
-      send_error_response(client, "invalid command %s", argv[0]);
+      send_error_response(client, "unknown command %s", cmd_name);
     }
 
-    free(argv);
     json_decref(request);
   }
 

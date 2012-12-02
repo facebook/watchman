@@ -16,21 +16,33 @@
 
 #include "watchman.h"
 
-/* Duplicates an argv array, constructing an argv array that
- * occupies a single contiguous chunk of memory such that all
- * data associated with it can be released by a single call
- * to free(3) the returned array.
- * The last element of the returned argv is set to NULL
- * for compatibility with posix_spawn() */
-char **w_argv_dup(int argc, char **argv)
+/* Constructs an argv array by copying elements from a json
+ * array.  The returned argv array occupies a single contiguous
+ * block of memory such that it can be release by a single call
+ * to free(3).
+ * The last element of the returned argv is set to NULL for
+ * compatibility with posix_spawn() */
+char **w_argv_copy_from_json(json_t *arr, int skip)
 {
+  int argc = json_array_size(arr) - skip;
   int len = (1 + argc) * sizeof(char*);
-  int i;
+  uint32_t i;
   char **dup_argv;
   char *buf;
+  const char *str;
 
-  for (i = 0; i < argc; i++) {
-    len += strlen(argv[i]) + 1;
+  /* compute required size, and sanity check the
+   * element types */
+  for (i = skip; i < json_array_size(arr); i++) {
+    json_t *ele = json_array_get(arr, i);
+    if (!ele) {
+      return NULL;
+    }
+    str = json_string_value(ele);
+    if (!str) {
+      return NULL;
+    }
+    len += strlen(str) + 1;
   }
 
   dup_argv = malloc(len);
@@ -40,10 +52,12 @@ char **w_argv_dup(int argc, char **argv)
 
   buf = (char*)(dup_argv + argc + 1);
 
-  for (i = 0; i < argc; i++) {
-    dup_argv[i] = buf;
-    len = strlen(argv[i]);
-    memcpy(buf, argv[i], len);
+  for (i = skip; i < json_array_size(arr); i++) {
+    str = json_string_value(json_array_get(arr, i));
+
+    dup_argv[i - skip] = buf;
+    len = strlen(str);
+    memcpy(buf, str, len);
     buf[len] = 0;
     buf += len + 1;
   }
@@ -51,112 +65,6 @@ char **w_argv_dup(int argc, char **argv)
   dup_argv[argc] = NULL;
 
   return dup_argv;
-}
-
-/* parses a string into a space separate argv array, respecting
- * single and double quoted tokens and backslashed escapes.
- * Caller must free(3) argv_ptr and this will release all
- * memory retained by the argv array.
- * The last element of the returned argv is set to NULL
- * for compatibility with posix_spawn() */
-bool w_argv_parse(const char *text, int *argc_ptr, char ***argv_ptr)
-{
-  int argc, len, i;
-  char *pos, *end;
-  int quoted;
-  char *dup_line;
-  char **argv;
-
-  /* first make a pass to approximate how many args we might want
-   * to fit in our vector; we over estimate in the face of quoting */
-  len = strlen(text);
-  argc = 1;
-  for (i = 0; i < len; i++) {
-    if (text[i] == ' ' || text[i] == '\t') {
-      argc++;
-    }
-  }
-
-  /* arrange the vector at the front of the memory we return
-   * and put the string data after it, so that the caller only
-   * needs to free(argv) to get everything */
-  argv = malloc(len + 1 + ((1 + argc) * sizeof(char*)));
-  if (!argv) {
-    return false;
-  }
-
-  dup_line = (char*)(argv + argc + 1);
-  memcpy(dup_line, text, len + 1);
-
-  /* parse into an argument vector */
-  end = dup_line + len;
-  pos = dup_line;
-  argc = 0;
-  while (pos < end) {
-    // Skip space
-    if (*pos == ' ' || *pos == '\t') {
-      pos++;
-      continue;
-    }
-
-    // Figure out quoting
-    if (*pos == '"' || *pos == '\'') {
-      quoted = *pos;
-      pos++;
-    } else {
-      quoted = 0;
-    }
-
-    // Collect this word
-    argv[argc++] = pos;
-    for (;;) {
-      if (*pos == 0) {
-        // End of the input string
-        if (quoted) {
-          goto error;
-        }
-        // We'll also break out of the while because
-        // pos >= end
-        assert(pos >= end);
-        break;
-      }
-
-      if (quoted && *pos == '\\') {
-        // de-quote by sliding the memory down
-        memmove(pos, pos + 1, end - (pos + 1));
-        // this made the string shorter
-        end--;
-        // we ate the quote and put the quoted character
-        // in its place; now we need to advance to the next
-        // character
-        pos++;
-        continue;
-      }
-
-      if ((quoted && *pos == quoted) ||
-          (!quoted && (*pos == ' ' || *pos == '\t'))) {
-        // End of word; terminate it
-        *pos = 0;
-        // and advance past
-        pos++;
-        // Ready for next word
-        break;
-      }
-
-      // Accumulate
-      pos++;
-    }
-  }
-
-  *argc_ptr = argc;
-  *argv_ptr = argv;
-  argv[argc] = NULL;
-
-  return true;
-
-error:
-  free(argv);
-  return false;
 }
 
 /* vim:ts=2:sw=2:et:

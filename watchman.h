@@ -302,8 +302,7 @@ static inline double time_diff(struct timeval start, struct timeval end)
 
 
 bool w_start_listener(const char *socket_path);
-bool w_argv_parse(const char *text, int *argc_ptr, char ***argv_ptr);
-char **w_argv_dup(int argc, char **argv);
+char **w_argv_copy_from_json(json_t *arr, int skip);
 
 #ifdef __cplusplus
 }

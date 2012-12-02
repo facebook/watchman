@@ -1,9 +1,10 @@
 bin_PROGRAMS = watchman
 
 THIRDPARTY_CPPFLAGS = -Ithirdparty/jansson
+JSON_LIB = -L. -lwmanjson
 
 watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
-watchman_LDADD = -L. -lwmanjson
+watchman_LDADD = $(JSON_LIB)
 watchman_SOURCES = \
 	argv.c       \
 	hash.c       \
@@ -50,6 +51,7 @@ integration:
 	arc unit --engine WatchmanIntegrationEngine
 
 tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_argv_t_LDADD = $(JSON_LIB)
 tests_argv_t_SOURCES = \
 	thirdparty/tap.c  \
 	tests/argv.c \

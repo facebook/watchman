@@ -19,16 +19,28 @@
 
 int main(int argc, char **argv)
 {
-  bool res;
-  int num;
-  char **args;
+  char **dupd;
+  json_t *args;
 
-  plan_tests(4);
+  plan_tests(8);
 
-  ok(w_argv_parse("one two", &num, &args), "parse 'one two'");
-  ok(num == 2, "got 2 elements");
-  ok(!strcmp(args[0], "one"), "got 'one'");
-  ok(!strcmp(args[1], "two"), "got 'two'");
+  args = json_array();
+  json_array_append_new(args, json_string("one"));
+  json_array_append_new(args, json_string("two"));
+  ok(json_array_size(args) == 2, "sanity check array size");
+
+  dupd = w_argv_copy_from_json(args, 0);
+  ok(dupd != NULL, "got a result");
+  ok(dupd[0] != NULL && !strcmp(dupd[0], "one"), "got one");
+  ok(dupd[1] != NULL && !strcmp(dupd[1], "two"), "got two");
+  ok(dupd[2] == NULL, "terminated");
+  free(dupd);
+
+  dupd = w_argv_copy_from_json(args, 1);
+  ok(dupd != NULL, "got a result");
+  ok(dupd[0] != NULL && !strcmp(dupd[0], "two"), "got two");
+  ok(dupd[1] == NULL, "terminated");
+  free(dupd);
 
   return exit_status();
 }
