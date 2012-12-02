@@ -51,6 +51,8 @@ w_root_t *w_root_new(const char *path)
   pthread_cond_init(&root->cond, NULL);
   root->root_path = w_string_new(path);
 
+  root->cursors = w_ht_new(2, &w_ht_string_funcs);
+
 #if HAVE_INOTIFY_INIT
   root->infd = inotify_init();
   w_set_cloexec(root->infd);

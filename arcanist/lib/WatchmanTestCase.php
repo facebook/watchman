@@ -17,7 +17,6 @@
  */
 
 class WatchmanTestCase extends ArcanistPhutilTestCase {
-  private $watchman = null;
   protected $root;
 
   // because setProjectRoot is final and $this->projectRoot
@@ -34,12 +33,8 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
   function watchmanCommand() {
     $args = func_get_args();
 
-    if (!$this->watchman) {
-      $this->watchman = new WatchmanInstance();
-    }
-
     return call_user_func_array(
-      array($this->watchman, 'request'),
+      array(WatchmanInstance::get(), 'request'),
       $args);
   }
 

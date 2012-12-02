@@ -24,9 +24,17 @@ class WatchmanInstance {
   private $invocations = 0;
   private $debug = false;
   private $sock;
+  static $singleton = null;
+
+  static function get() {
+    if (!self::$singleton) {
+      self::$singleton = new WatchmanInstance;
+    }
+    return self::$singleton;
+  }
 
   function __construct() {
-    $this->dir = PhutilDirectoryFixture::newEmptyFixture();
+    $this->dir = realpath(dirname(__FILE__) . '/../../tests/integration');
   }
 
   function setDebug($enable) {
@@ -36,7 +44,7 @@ class WatchmanInstance {
   function command() {
     $args = func_get_args();
 
-    $fmt = "TMP=" . $this->dir->getPath() . " ./watchman " .
+    $fmt = "TMP=" . $this->dir . " ./watchman " .
              trim(str_repeat('%s ', count($args)));
     array_unshift($args, $fmt);
     $this->invocations++;
@@ -56,7 +64,7 @@ class WatchmanInstance {
     // Use a socket instead
     if (!$this->sock) {
       $this->sock = fsockopen('unix://' .
-        $this->dir->getPath() . '/.watchman.' .
+        $this->dir . '/.watchman.' .
         getenv('USER'));
     }
 

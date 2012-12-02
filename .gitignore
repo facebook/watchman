@@ -22,3 +22,4 @@ compile
 tests/*.t
 .dirstamp
 *.a
+tests/integration/.watchman.*

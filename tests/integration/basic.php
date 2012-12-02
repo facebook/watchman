@@ -18,22 +18,49 @@
 
 class basicTestCase extends WatchmanTestCase {
 
-  function testSomething() {
-    $root = realpath($this->getRoot());
+  function testFind() {
+    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $root = realpath($dir->getPath());
+
+    touch("$root/foo.c");
+    touch("$root/bar.txt");
 
     $out = $this->watchmanCommand('watch', $root);
-    $this->assertEqual($out['watch'], $root);
+    $this->assertEqual($root, $out['watch']);
 
     $out = $this->watchmanCommand('find', $root, '*.c');
-    $hash_ent = null;
-    foreach ($out['files'] as $ent) {
-      if ($ent['name'] == 'hash.c') {
-        $hash_ent = $ent;
+    $this->assertEqual('foo.c', $out['files'][0]['name']);
+    $this->assertEqual(1, count($out['files']), 'only one match');
+  }
+
+  function testCursor() {
+    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $root = realpath($dir->getPath());
+    $watch = $this->watchmanCommand('watch', $root);
+
+    $initial = $this->watchmanCommand('since', $root,
+      'n:testCursor');
+
+    $this->assertRegex('/^c:\d+:\d+$/', $initial['clock'],
+      "clock seemslegit");
+
+    touch($root . '/one');
+
+    // Allow time for the change to be observed
+    for ($tries = 0; $tries < 20; $tries++) {
+      $update = $this->watchmanCommand('since', $root,
+        'n:testCursor');
+      if (count($update['files'])) {
         break;
       }
+      usleep(2000);
     }
-    $this->assertEqual($hash_ent['name'], 'hash.c');
-    $this->assertEqual($hash_ent['exists'], true);
+    $this->assertEqual('one',
+      $update['files'][0]['name'], 'saw file change');
+
+    $later = $this->watchmanCommand('since', $root,
+      'n:testCursor');
+    $this->assertEqual(array(), $later['files'], 'no changes');
   }
 }
 

@@ -198,6 +198,9 @@ struct watchman_root {
 
   bool done_initial;
 
+  /* map of cursor name => last observed tick value */
+  w_ht_t *cursors;
+
   /* map of rule id => struct watchman_trigger_command */
   w_ht_t *commands;
   uint32_t next_cmd_id;

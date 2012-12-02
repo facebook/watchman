@@ -60,11 +60,43 @@ exactly the same way.
 Finds all files that match the optional list of patterns under the
 specified dir.  If no patterns were specified, all files are returned.
 
-### watchman since /path/to/dir <timestamp> [patterns]
+### watchman since /path/to/dir <clockspec> [patterns]
 
-Finds all files that were modified since the specified timestamp that
+Finds all files that were modified since the specified clockspec that
 match the optional list of patterns.  If no patterns are specified,
 all modified files are returned.
+
+### Clockspec
+
+For commands that query based on time, watchman offers a couple of different
+ways to measure time.
+
+ * number of seconds since the unix epoch (unix time_t style)
+ * clock id of the form "c:123:234"
+ * a named cursor of the form "n:whatever"
+
+The first and most obvious is passing a unix timestamp.  Watchman records
+the observed time that files change and allows you to find file that have
+changed since that time.  Using a timestamp is prone to race conditions
+in understanding the complete state of the file tree.
+
+Using an abstract clock id insulates the client from these race conditions by
+ticking as changes are detected rather than as time moves.  Watchman returns
+the current clock id when it delivers match results; you can use that value as
+the clockspec in your next time relative query to get a race free assessment of
+changed files.
+
+As a convenience, watchman can maintain the last observed clock for a client by
+associating it with a client defined cursor name.  For example, you could
+enumerate all the "C" source files on your first invocation of:
+
+```
+watchman since /path/to/src n:c_srcs *.c
+```
+
+and when you run it a second time, it will show you only the "C" source files
+that changed since the last time that someone queried using "n:c_srcs" as the
+clock spec.
 
 ## Implementation details
 

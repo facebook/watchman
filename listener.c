@@ -19,6 +19,10 @@
 
 static pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
 static w_ht_t *clients = NULL;
+
+typedef void (*watchman_command_func)(
+    struct watchman_client *client,
+    json_t *args);
 static w_ht_t *command_funcs = NULL;
 
 static json_t *make_response(void)
@@ -28,6 +32,31 @@ static json_t *make_response(void)
   json_object_set_new(resp, "version", json_string(PACKAGE_VERSION));
 
   return resp;
+}
+
+// Renders the current clock id string to the supplied buffer.
+// Must be called with the root locked.
+static bool current_clock_id_string(w_root_t *root,
+    char *buf, size_t bufsize)
+{
+  int res = snprintf(buf, bufsize, "c:%d:%" PRIu32,
+              (int)getpid(), root->ticks);
+
+  if (res == -1) {
+    return false;
+  }
+  return (size_t)res < bufsize;
+}
+
+/* Add the current clock value to the response.
+ * must be called with the root locked */
+static void annotate_with_clock(w_root_t *root, json_t *resp)
+{
+  char buf[128];
+
+  if (current_clock_id_string(root, buf, sizeof(buf))) {
+    json_object_set_new(resp, "clock", json_string(buf));
+  }
 }
 
 static int client_json_write(const char *buffer, size_t size, void *ptr)
@@ -233,13 +262,72 @@ uint32_t w_rules_match(w_root_t *root,
   return num_matches;
 }
 
-typedef void (*watchman_command_func)(
-    struct watchman_client *client,
-    json_t *args);
+struct w_clockspec_query {
+  bool is_timestamp;
+  time_t seconds;
+  uint32_t ticks;
+};
+
+// may attempt to lock the root!
+static bool parse_clockspec(w_root_t *root,
+    json_t *value,
+    struct w_clockspec_query *since)
+{
+  const char *str;
+  int pid;
+
+  if (json_is_integer(value)) {
+    since->is_timestamp = true;
+    since->seconds = json_integer_value(value);
+    return true;
+  }
+
+  str = json_string_value(value);
+  if (!str) {
+    return false;
+  }
+
+  if (str[0] == 'n' && str[1] == ':') {
+    w_string_t *name = w_string_new(str);
+
+    since->is_timestamp = false;
+    w_root_lock(root);
+    // If we've never seen it before, ticks will be set to 0
+    // which is exactly what we want here.
+    since->ticks = (uint32_t)w_ht_get(root->cursors, (w_ht_val_t)name);
+
+    // Bump the tick value and record it against the cursor.
+    // We need to bump the tick value so that repeated queries
+    // when nothing has changed in the filesystem won't continue
+    // to return the same set of files; we only want the first
+    // of these to return the files and the rest to return nothing
+    // until something subsequently changes
+    w_ht_replace(root->cursors, (w_ht_val_t)name, ++root->ticks);
+
+    w_string_delref(name);
+
+    w_root_unlock(root);
+    return true;
+  }
+
+  if (sscanf(str, "c:%d:%" PRIu32, &pid, &since->ticks) == 2) {
+    since->is_timestamp = false;
+    if (pid == getpid()) {
+      return true;
+    }
+    // If the pid doesn't match, they asked a different
+    // incarnation of the server, so we treat them as having
+    // never spoken to us before
+    since->ticks = 0;
+    return true;
+  }
+
+  return false;
+}
 
 static void run_rules(struct watchman_client *client,
     w_root_t *root,
-    w_clock_t *since,
+    struct w_clockspec_query *since,
     struct watchman_rule *rules)
 {
   w_ht_iter_t iter;
@@ -254,11 +342,17 @@ static void run_rules(struct watchman_client *client,
 
   w_root_lock(root);
   for (f = root->latest_file; f; f = f->next) {
-    if (since && f->otime.seconds < since->seconds) {
-      break;
+    if (since) {
+      if (since->is_timestamp && f->otime.seconds < since->seconds) {
+        break;
+      }
+      if (!since->is_timestamp && f->otime.ticks < since->ticks) {
+        break;
+      }
     }
     oldest = f;
   }
+  annotate_with_clock(root, response);
   matches = w_rules_match(root, oldest, uniq, rules);
   w_root_unlock(root);
 
@@ -353,8 +447,8 @@ static void cmd_since(
 {
   struct watchman_rule *rules = NULL;
   w_root_t *root;
-  w_clock_t since;
   json_t *clock_ele;
+  struct w_clockspec_query since;
 
   /* resolve the root */
   if (json_array_size(args) < 3) {
@@ -367,15 +461,10 @@ static void cmd_since(
     return;
   }
 
-  // FIXME: allow using a safer clock representation instead.
   clock_ele = json_array_get(args, 2);
-  if (json_is_integer(clock_ele)) {
-    since.seconds = json_integer_value(clock_ele);
-  } else if (json_is_string(clock_ele)) {
-    since.seconds = atoi(json_string_value(clock_ele));
-  } else {
+  if (!parse_clockspec(root, clock_ele, &since)) {
     send_error_response(client,
-        "expected argument 2 to be a valid clock/timespec");
+        "expected argument 2 to be a valid clockspec");
     return;
   }
 
