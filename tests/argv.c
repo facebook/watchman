@@ -21,6 +21,8 @@ int main(int argc, char **argv)
 {
   char **dupd;
   json_t *args;
+  (void)argc;
+  (void)argv;
 
   plan_tests(8);
 

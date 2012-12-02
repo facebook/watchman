@@ -13,7 +13,17 @@ dnl of warnings, and also add an option to turn on -Werror
 dnl for maintainers.
 if test -n "$GCC" ; then
   CFLAGS="$CFLAGS -Wall -Wextra -Wdeclaration-after-statement"
-  dnl -Werror
+fi
+
+lenient=no
+AC_ARG_ENABLE(lenient, [
+  --enable-lenient  Turn off more pedantic levels of warnings
+                    and compilation checks
+],[
+   lenient=$enableval
+])
+if test -n "$GCC" -a "$lenient" == "no" ; then
+   CFLAGS="$CFLAGS -Werror"
 fi
 
 AC_SEARCH_LIBS([pthread_create], [pthread])

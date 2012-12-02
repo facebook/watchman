@@ -475,17 +475,6 @@ static void cmd_shutdown(
   exit(0);
 }
 
-static void cmd_shutdown(
-    struct watchman_client *client,
-    int argc,
-    char **argv)
-{
-  (void)client;
-  (void)argc;
-  (void)argv;
-  exit(0);
-}
-
 static struct {
   const char *name;
   watchman_command_func func;
@@ -513,7 +502,6 @@ static size_t client_read_json(void *buffer, size_t buflen, void *ptr)
 static void *client_thread(void *ptr)
 {
   struct watchman_client *client = ptr;
-  int i;
   watchman_command_func func;
   const char *cmd_name;
   w_string_t *cmd;

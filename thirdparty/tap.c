@@ -24,13 +24,8 @@
  * SUCH DAMAGE.
  */
 
+#include "watchman.h"
 #include <ctype.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include <time.h>
 
 #include "tap.h"
 

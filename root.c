@@ -220,6 +220,9 @@ static void watch_file(w_root_t *root, struct watchman_file *file)
     close(file->kq_fd);
     file->kq_fd = -1;
   }
+#else
+  (void)root;
+  (void)file;
 #endif
 }
 
@@ -237,7 +240,9 @@ static void stop_watching_file(w_root_t *root, struct watchman_file *file)
   kevent(root->kq_files, &k, 1, NULL, 0, 0);
   close(file->kq_fd);
   file->kq_fd = -1;
-
+#else
+  (void)root;
+  (void)file;
 #endif
 }
 
@@ -807,7 +812,7 @@ static void *inotify_thread(void *arg)
       abort();
     }
 
-    if (n < sizeof(ibuf.ine)) {
+    if ((uint32_t)n < sizeof(ibuf.ine)) {
       fprintf(stderr, "expected to read sizeof(ine) %lu, but got %d\n",
           sizeof(ibuf.ine), n);
       continue;

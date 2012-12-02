@@ -301,7 +301,7 @@ bool w_ht_next(w_ht_t *ht, w_ht_iter_t *iter)
 {
   struct watchman_hash_bucket *b = iter->ptr;
 
-  if (iter->slot != -1 && iter->slot >= ht->table_size) {
+  if (iter->slot != (uint32_t)-1 && iter->slot >= ht->table_size) {
     return false;
   }
 

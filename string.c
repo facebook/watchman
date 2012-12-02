@@ -27,6 +27,7 @@
 // so play with this to find out.
 #define USE_SLICES 1
 
+#if DO_STRING_INTERN
 static struct watchman_hash_funcs intern_funcs = {
   w_ht_string_copy,
   w_ht_string_del,
@@ -38,6 +39,7 @@ static struct watchman_hash_funcs intern_funcs = {
 
 static w_ht_t *intern = NULL;
 static pthread_rwlock_t intern_lock = PTHREAD_RWLOCK_INITIALIZER;
+#endif
 
 w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
 {
@@ -73,12 +75,12 @@ w_string_t *w_string_new(const char *str)
   w_string_t *s;
   uint32_t len = strlen(str);
   uint32_t hval = w_hash_bytes(str, len, 0);
-  bool found;
   char *buf;
 
 #if DO_STRING_INTERN
   if (CAN_INTERN(len) && intern) {
     w_string_t fake;
+    bool found;
 
     fake.hval = hval;
     fake.len = len;

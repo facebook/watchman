@@ -62,7 +62,7 @@ extern "C" {
 
 static inline void w_refcnt_add(int *refcnt)
 {
-  __sync_fetch_and_add(refcnt, 1);
+  (void)__sync_fetch_and_add(refcnt, 1);
 }
 
 /* returns true if we deleted the last ref */

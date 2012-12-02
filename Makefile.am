@@ -18,7 +18,7 @@ noinst_HEADERS =   \
 	watchman.h       \
 	watchman_hash.h
 
-noinst_LIBRARIES = libwmanjson.a
+noinst_LIBRARIES = libwmanjson.a libtap.a
 
 # bundled json library
 libwmanjson_a_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
@@ -38,6 +38,11 @@ libwmanjson_a_SOURCES = \
 	thirdparty/jansson/utf.h \
 	thirdparty/jansson/value.c
 
+# bundled testing library
+libtap_a_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+libtap_a_SOURCES = thirdparty/tap.c
+TAP_LIB = -ltap
+
 # unit tests
 TESTS = tests/argv.t
 noinst_PROGRAMS = tests/argv.t
@@ -51,8 +56,7 @@ integration:
 	arc unit --engine WatchmanIntegrationEngine
 
 tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
-tests_argv_t_LDADD = $(JSON_LIB)
+tests_argv_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_argv_t_SOURCES = \
-	thirdparty/tap.c  \
 	tests/argv.c \
 	argv.c
