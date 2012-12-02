@@ -18,10 +18,13 @@
 #include <poll.h>
 
 static char sock_name[WATCHMAN_NAME_MAX];
+static char log_name[WATCHMAN_NAME_MAX];
 static struct sockaddr_un un;
 
 static void daemonize(void)
 {
+  int fd;
+
   // the double-fork-and-setsid trick establishes a
   // child process that runs in its own process group
   // with its own session and that won't get killed
@@ -42,9 +45,21 @@ static void daemonize(void)
     _exit(0);
   }
 
-  // TODO: redirect std{in,out,err}
+  // we are the child, let's set things up
 
-  /* we are the child, let's set things up */
+  // redirect std{in,out,err}
+  fd = open("/dev/null", O_RDONLY);
+  if (fd != -1) {
+    dup2(fd, STDIN_FILENO);
+    close(fd);
+  }
+  fd = open(log_name, O_WRONLY|O_APPEND|O_CREAT, 0600);
+  if (fd != -1) {
+    dup2(fd, STDOUT_FILENO);
+    dup2(fd, STDERR_FILENO);
+    close(fd);
+  }
+
   event_init();
   w_start_listener(sock_name);
   chdir("/");
@@ -80,6 +95,9 @@ static void setup_sock_name(void)
 
   snprintf(sock_name, sizeof(sock_name),
       "%s/.watchman.%s",
+      tmp, user);
+  snprintf(log_name, sizeof(log_name),
+      "%s/.watchman.%s.log",
       tmp, user);
 
   un.sun_family = PF_LOCAL;
