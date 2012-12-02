@@ -28,6 +28,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <inttypes.h>
+#include <time.h>
 
 #include "tap.h"
 
@@ -41,6 +44,7 @@ static char *todo_msg = NULL;
 static char *todo_msg_fixed = "libtap malloc issue";
 static int todo = 0;
 static int test_died = 0;
+static struct timeval start_time;
 
 /* Encapsulate the pthread code in a conditional.  In the absence of
    libpthread the code does nothing */
@@ -177,6 +181,7 @@ _tap_init(void)
 		   with Test::Harness */
 		setbuf(stdout, 0);
 		run_once = 1;
+		gettimeofday(&start_time, NULL);
 	}
 }
 
@@ -372,6 +377,11 @@ exit_status(void)
 	return r;
 }
 
+static uint64_t timeval_to_ms(struct timeval tv)
+{
+	return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
+}
+
 /*
  * Cleanup at the end of the run, produce any final output that might be
  * required.
@@ -379,6 +389,11 @@ exit_status(void)
 void
 _cleanup(void)
 {
+	struct timeval end_time;
+	uint64_t ms;
+
+	gettimeofday(&end_time, NULL);
+	ms = timeval_to_ms(end_time) - timeval_to_ms(start_time);
 
 	LOCK;
 
@@ -421,6 +436,8 @@ _cleanup(void)
 	if(failures)
 		diag("Looks like you failed %d %s of %d.", 
 		     failures, failures == 1 ? "test" : "tests", test_count);
+
+	diag("ELAPSED: %" PRIu64 "ms\n", ms);
 
 	UNLOCK;
 }

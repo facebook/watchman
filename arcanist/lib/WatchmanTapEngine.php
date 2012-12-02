@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Copyright 2012 Facebook, Inc.
  *
@@ -63,6 +64,9 @@ class WatchmanTapEngine extends ArcanistBaseUnitTestEngine {
       ArcanistUnitTestResult::RESULT_PASS :
       ArcanistUnitTestResult::RESULT_FAIL
     );
+    if (preg_match("/# ELAPSED: (\d+)ms/", $stderr, $M)) {
+      $result->setDuration($M[1] / 1000);
+    }
 
     return $result;
   }
