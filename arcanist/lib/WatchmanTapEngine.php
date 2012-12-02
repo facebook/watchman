@@ -19,25 +19,29 @@
 class WatchmanTapEngine extends ArcanistBaseUnitTestEngine {
   private $projectRoot;
 
-  public function run() {
-    $this->projectRoot = $this->getWorkingCopy()->getProjectRoot();
-    chdir($this->projectRoot);
-
-    // Ensure that the test programs are up to date
-    $res = 0;
-    $output = array();
-    exec("make build-tests 2>&1", $output, $res);
-    if ($res) {
-      $res = new ArcanistUnitTestResult();
-      $res->setName('make build-tests');
-      $res->setResult(ArcanistUnitTestResult::RESULT_BROKEN);
-      $res->setUserData(implode("\n", $output));
-
-      return array($res);
+  protected function getProjectRoot() {
+    if (!$this->projectRoot) {
+      $this->projectRoot = $this->getWorkingCopy()->getProjectRoot();
     }
+    return $this->projectRoot;
+  }
+
+  protected function make($target) {
+    return execx("cd %s && make %s",
+      $this->getProjectRoot(), $target);
+  }
+
+  public function run() {
+    return $this->runUnitTests();
+  }
+
+  public function runUnitTests() {
+    // Build any unit tests
+    $this->make('build-tests');
 
     // Now find all the test programs
-    $test_dir = $this->projectRoot . "/tests/";
+    $root = $this->getProjectRoot();
+    $test_dir = $root . "/tests/";
     $futures = array();
 
     foreach (glob($test_dir . "*.t") as $test) {

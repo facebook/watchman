@@ -372,6 +372,14 @@ static void cmd_watch(
   w_client_printf(client, "OK: watching %s\n", argv[1]);
 }
 
+static void cmd_shutdown(
+    struct watchman_client *client,
+    int argc,
+    char **argv)
+{
+  exit(0);
+}
+
 static struct {
   const char *name;
   watchman_command_func func;
@@ -380,6 +388,7 @@ static struct {
   { "since", cmd_since },
   { "watch", cmd_watch },
   { "trigger", cmd_trigger },
+  { "shutdown-server", cmd_shutdown },
   { NULL, NULL }
 };
 

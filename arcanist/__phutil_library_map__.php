@@ -10,15 +10,20 @@ phutil_register_library_map(array(
   '__library_version__' => 2,
   'class' =>
   array(
+    'WatchmanInstance' => 'lib/WatchmanInstance.php',
+    'WatchmanIntegrationEngine' => 'lib/WatchmanIntegrationEngine.php',
     'WatchmanLintEngine' => 'lib/WatchmanLintEngine.php',
     'WatchmanTapEngine' => 'lib/WatchmanTapEngine.php',
+    'WatchmanTestCase' => 'lib/WatchmanTestCase.php',
   ),
   'function' =>
   array(
   ),
   'xmap' =>
   array(
+    'WatchmanIntegrationEngine' => 'WatchmanTapEngine',
     'WatchmanLintEngine' => 'ArcanistLintEngine',
     'WatchmanTapEngine' => 'ArcanistBaseUnitTestEngine',
+    'WatchmanTestCase' => 'ArcanistPhutilTestCase',
   ),
 ));
