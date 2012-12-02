@@ -216,6 +216,7 @@ static void watch_file(w_root_t *root, struct watchman_file *file)
   EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
     NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME|NOTE_NONE|NOTE_ATTRIB,
     0, file);
+  w_set_cloexec(file->kq_fd);
 
   if (kevent(root->kq_files, &k, 1, NULL, 0, 0)) {
     perror("kevent");
@@ -498,6 +499,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       EV_SET(&k, dir->wd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
         NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME,
         0, dir);
+      w_set_cloexec(dir->wd);
 
       if (kevent(root->kq_dirs, &k, 1, NULL, 0, 0)) {
         perror("kevent");
@@ -744,6 +746,7 @@ static void *kqueue_dir_thread(void *arg)
     }
     w_root_unlock(root);
   }
+  return NULL;
 }
 
 static void *kqueue_file_thread(void *arg)
@@ -780,6 +783,7 @@ static void *kqueue_file_thread(void *arg)
     }
     w_root_unlock(root);
   }
+  return NULL;
 }
 #endif
 

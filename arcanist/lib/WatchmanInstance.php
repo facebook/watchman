@@ -44,7 +44,7 @@ class WatchmanInstance {
   function command() {
     $args = func_get_args();
 
-    $fmt = "TMP=" . $this->dir . " ./watchman " .
+    $fmt = "TMPDIR=" . $this->dir . " ./watchman " .
              trim(str_repeat('%s ', count($args)));
     array_unshift($args, $fmt);
     $this->invocations++;

@@ -28,7 +28,15 @@ class basicTestCase extends WatchmanTestCase {
     $out = $this->watchmanCommand('watch', $root);
     $this->assertEqual($root, $out['watch']);
 
-    $out = $this->watchmanCommand('find', $root, '*.c');
+    // Allow time for the files to be found
+    for ($tries = 0; $tries < 20; $tries++) {
+      $out = $this->watchmanCommand('find', $root, '*.c');
+      if (count($out['files'])) {
+        break;
+      }
+      usleep(2000);
+    }
+
     $this->assertEqual('foo.c', $out['files'][0]['name']);
     $this->assertEqual(1, count($out['files']), 'only one match');
   }
