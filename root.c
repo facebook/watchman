@@ -59,10 +59,8 @@ w_root_t *w_root_new(const char *path)
   root->wd_to_dir = w_ht_new(HINT_NUM_DIRS, NULL);
 #endif
 #if HAVE_KQUEUE
-  root->kq_dirs = kqueue();
-  root->kq_files = kqueue();
-  w_set_cloexec(root->kq_dirs);
-  w_set_cloexec(root->kq_files);
+  root->kq_fd = kqueue();
+  w_set_cloexec(root->kq_fd);
 #endif
   root->dirname_to_dir = w_ht_new(HINT_NUM_DIRS, &w_ht_string_funcs);
   root->commands = w_ht_new(2, NULL);
@@ -218,7 +216,7 @@ static void watch_file(w_root_t *root, struct watchman_file *file)
     0, file);
   w_set_cloexec(file->kq_fd);
 
-  if (kevent(root->kq_files, &k, 1, NULL, 0, 0)) {
+  if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
     perror("kevent");
     close(file->kq_fd);
     file->kq_fd = -1;
@@ -240,7 +238,7 @@ static void stop_watching_file(w_root_t *root, struct watchman_file *file)
 
   memset(&k, 0, sizeof(k));
   EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_DELETE, 0, 0, file);
-  kevent(root->kq_files, &k, 1, NULL, 0, 0);
+  kevent(root->kq_fd, &k, 1, NULL, 0, 0);
   close(file->kq_fd);
   file->kq_fd = -1;
 #else
@@ -342,7 +340,7 @@ static void stop_watching_dir(w_root_t *root,
     EV_SET(&k, dir->wd, EVFILT_VNODE, EV_DELETE,
         0, 0, dir);
 
-    if (kevent(root->kq_dirs, &k, 1, NULL, 0, 0)) {
+    if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
       perror("kevent");
     }
 
@@ -498,10 +496,13 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       memset(&k, 0, sizeof(k));
       EV_SET(&k, dir->wd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
         NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME,
-        0, dir);
+        0,
+        // See consume_kqueue for commentary on this
+        // bit setting
+        (void*)(((intptr_t)dir) | 0x1));
       w_set_cloexec(dir->wd);
 
-      if (kevent(root->kq_dirs, &k, 1, NULL, 0, 0)) {
+      if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
         perror("kevent");
         close(dir->wd);
         dir->wd = -1;
@@ -712,79 +713,98 @@ static void *stat_thread(void *arg)
 }
 
 #if HAVE_KQUEUE
-static void *kqueue_dir_thread(void *arg)
+
+static int consume_kqueue(w_root_t *root, w_ht_t *batch,
+    bool timeout)
+{
+  struct kevent k[32];
+  int n;
+  int i;
+  struct timespec ts = { 0, 200000 };
+
+  errno = 0;
+
+  printf("kqueue(%s) timeout=%d\n",
+      root->root_path->buf, timeout);
+  n = kevent(root->kq_fd, NULL, 0,
+        k, sizeof(k) / sizeof(k[0]),
+        timeout ? &ts : NULL);
+  printf("consume_kqueue: %s timeout=%d n=%d err=%s\n",
+      root->root_path->buf, timeout, n, strerror(errno));
+
+  for (i = 0; n > 0 && i < n; i++) {
+    /* We leverage the fact that our aligned pointers
+     * will never set the LSB of a pointer value.
+     * We can use the LSB to indicate whether kqueue
+     * entries are dirs or files */
+    intptr_t p = (intptr_t)k[i].udata;
+
+    if (p & 0x1) {
+      struct watchman_dir *dir = (void*)(p & ~0x1);
+
+      printf(" KQ dir %s\n", dir->path->buf);
+      w_ht_set(batch, (w_ht_val_t)dir->path, (w_ht_val_t)dir);
+    } else {
+      struct watchman_file *file = (void*)p;
+      w_string_t *name;
+
+      name = w_string_path_cat(file->parent->path, file->name);
+      w_ht_set(batch, (w_ht_val_t)name, (w_ht_val_t)file);
+      printf(" KQ file %s\n", name->buf);
+      w_string_delref(name);
+    }
+  }
+
+  return n;
+}
+
+static void *kqueue_thread(void *arg)
 {
   w_root_t *root = arg;
+  w_ht_t *batch = NULL;
 
   for (;;) {
-    struct kevent k[32];
-    struct watchman_dir *dir, *last;
-    int n;
-    int i;
     time_t now;
+    int n;
 
-    n = kevent(root->kq_dirs, NULL, 0, k, sizeof(k) / sizeof(k[0]), NULL);
-
-    w_root_lock(root);
-    root->ticks++;
-    time(&now);
-    last = NULL;
-    for (i = 0; n > 0 && i < n; i++) {
-      // Which dir just changed?
-      dir = k[i].udata;
-
-      if (dir == last) {
-        // We just looked, no point looking again right now
-        continue;
-      }
-
-      last = dir;
-      // We know *something* changed in the dir, but we don't know
-      // what it was, so crawl it.
-      printf("notify on dir %.*s\n", dir->path->len, dir->path->buf);
-      w_root_add_pending(root, dir->path, true, now);
+    if (!batch) {
+      batch = w_ht_new(2, &w_ht_string_funcs);
     }
-    w_root_unlock(root);
+
+    printf("Blocking until we get kqueue activity %s\n", root->root_path->buf);
+
+    /* get a batch of events, and allow a little bit of
+     * time for them to arrive (I've seen several events
+     * for the same item delivered one at a time */
+    n = consume_kqueue(root, batch, false);
+    while (n > 0) {
+      n = consume_kqueue(root, batch, true);
+    }
+
+    printf("Have %d events in %s\n", w_ht_size(batch), root->root_path->buf);
+    if (w_ht_size(batch)) {
+      w_ht_iter_t iter;
+
+      w_root_lock(root);
+      root->ticks++;
+      time(&now);
+      if (w_ht_first(batch, &iter)) do {
+        w_string_t *name = (w_string_t*)iter.key;
+
+        printf("kq -> %s\n", name->buf);
+        w_root_add_pending(root, name, true, now);
+
+      } while (w_ht_next(batch, &iter));
+
+      w_root_unlock(root);
+
+      w_ht_free(batch);
+      batch = NULL;
+    }
   }
   return NULL;
 }
 
-static void *kqueue_file_thread(void *arg)
-{
-  w_root_t *root = arg;
-
-  for (;;) {
-    struct kevent k[32];
-    struct watchman_file *file, *last;
-    int n;
-    int i;
-    time_t now;
-
-    n = kevent(root->kq_files, NULL, 0, k, sizeof(k) / sizeof(k[0]), NULL);
-
-    w_root_lock(root);
-    root->ticks++;
-    time(&now);
-    last = NULL;
-    for (i = 0; n > 0 && i < n; i++) {
-      // Which dir just changed?
-      file = k[i].udata;
-
-      if (file == last) {
-        // We just looked, no point looking again right now
-        continue;
-      }
-
-      last = file;
-      printf("notify on file %.*s/%.*s\n",
-          file->parent->path->len, file->parent->path->buf,
-          file->name->len, file->name->buf);
-      w_root_add_pending_rel(root, file->parent, file->name->buf, true, now);
-    }
-    w_root_unlock(root);
-  }
-  return NULL;
-}
 #endif
 
 #if HAVE_INOTIFY_INIT
@@ -918,8 +938,7 @@ w_root_t *w_root_resolve(const char *filename, bool auto_watch)
   pthread_create(&thr, NULL, inotify_thread, root);
 #endif
 #if HAVE_KQUEUE
-  pthread_create(&thr, NULL, kqueue_dir_thread, root);
-  pthread_create(&thr, NULL, kqueue_file_thread, root);
+  pthread_create(&thr, NULL, kqueue_thread, root);
 #endif
   pthread_create(&thr, NULL, stat_thread, root);
 

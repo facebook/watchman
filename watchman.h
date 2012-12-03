@@ -73,7 +73,7 @@ static inline bool w_refcnt_del(int *refcnt)
 
 static inline void w_set_cloexec(int fd)
 {
-  fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | FD_CLOEXEC);
+  fcntl(fd, F_SETFD, FD_CLOEXEC);
 }
 
 static inline void w_set_nonblock(int fd)
@@ -175,10 +175,7 @@ struct watchman_root {
   w_ht_t *wd_to_dir;
 #endif
 #if HAVE_KQUEUE
-  /* to avoid needing magic markers in our structs,
-   * we use one kqueue for dirs and another for files */
-  int kq_dirs;
-  int kq_files;
+  int kq_fd;
 #endif
 
   /* path to root */

@@ -61,7 +61,7 @@ class basicTestCase extends WatchmanTestCase {
       if (count($update['files'])) {
         break;
       }
-      usleep(2000);
+      usleep(30000);
     }
     $this->assertEqual('one',
       $update['files'][0]['name'], 'saw file change');
