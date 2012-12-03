@@ -17,8 +17,8 @@
 #include "watchman.h"
 #include <poll.h>
 
-static char sock_name[WATCHMAN_NAME_MAX];
-static char log_name[WATCHMAN_NAME_MAX];
+static char *sock_name = NULL;
+static char *log_name = NULL;
 static struct sockaddr_un un;
 
 static void daemonize(void)
@@ -92,12 +92,21 @@ static void setup_sock_name(void)
     abort();
   }
 
-  snprintf(sock_name, sizeof(sock_name),
-      "%s/.watchman.%s",
-      tmp, user);
-  snprintf(log_name, sizeof(log_name),
-      "%s/.watchman.%s.log",
-      tmp, user);
+  if (!sock_name) {
+    asprintf(&sock_name, "%s/.watchman.%s", tmp, user);
+  }
+  if (!sock_name || sock_name[0] != '/') {
+    fprintf(stderr, "invalid or missing sockname!\n");
+    abort();
+  }
+
+  if (!log_name) {
+    asprintf(&log_name, "%s/.watchman.%s.log", tmp, user);
+  }
+  if (!log_name) {
+    fprintf(stderr, "out of memory while processing log name\n");
+    abort();
+  }
 
   un.sun_family = PF_LOCAL;
   strcpy(un.sun_path, sock_name);
@@ -170,7 +179,7 @@ static bool try_command(int argc, char **argv, int timeout)
 
   // Send command
   j = json_array();
-  for (i = 1; i < argc; i++) {
+  for (i = 0; i < argc; i++) {
     json_array_append_new(j, json_string(argv[i]));
   }
   json_dump_callback(j, cmd_write, (void*)(intptr_t)fd, JSON_COMPACT);
@@ -195,12 +204,26 @@ static bool try_command(int argc, char **argv, int timeout)
   return true;
 }
 
+static struct watchman_getopt opts[] = {
+  { "sockname", 'U', "Specify alternate sockname",
+    REQ_STRING, &sock_name, "PATH" },
+  { "logfile", 'o', "Specify path to logfile",
+    REQ_STRING, &log_name, "PATH" },
+  { 0, 0, 0, 0, 0, 0 }
+};
+
+static void parse_cmdline(int *argcp, char ***argvp)
+{
+  w_getopt(opts, argcp, argvp);
+
+  setup_sock_name();
+}
 
 int main(int argc, char **argv)
 {
   bool ran;
 
-  setup_sock_name();
+  parse_cmdline(&argc, &argv);
 
   ran = try_command(argc, argv, 0);
   if (!ran && should_start(errno)) {

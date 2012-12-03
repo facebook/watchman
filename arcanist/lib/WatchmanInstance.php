@@ -21,6 +21,8 @@
 // Ensures that it is terminated when it is destroyed.
 class WatchmanInstance {
   private $dir;
+  private $logfile;
+  private $sockname;
   private $invocations = 0;
   private $debug = false;
   private $sock;
@@ -35,6 +37,8 @@ class WatchmanInstance {
 
   function __construct() {
     $this->dir = realpath(dirname(__FILE__) . '/../../tests/integration');
+    $this->logfile = $this->dir . "/.watchman.log";
+    $this->sockname = $this->dir . "/.watchman.sock";
   }
 
   function setDebug($enable) {
@@ -44,9 +48,12 @@ class WatchmanInstance {
   function command() {
     $args = func_get_args();
 
-    $fmt = "TMPDIR=" . $this->dir . " ./watchman " .
-             trim(str_repeat('%s ', count($args)));
-    array_unshift($args, $fmt);
+    $args = array(
+      "./watchman --sockname=%s --logfile=%s %Ls",
+      $this->sockname,
+      $this->logfile,
+      $args);
+
     $this->invocations++;
 
     return newv('ExecFuture', $args);
@@ -63,9 +70,7 @@ class WatchmanInstance {
 
     // Use a socket instead
     if (!$this->sock) {
-      $this->sock = fsockopen('unix://' .
-        $this->dir . '/.watchman.' .
-        getenv('USER'));
+      $this->sock = fsockopen('unix://' . $this->sockname);
     }
 
     fwrite($this->sock, json_encode($args));

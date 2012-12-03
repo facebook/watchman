@@ -8,13 +8,6 @@ AC_PROG_RANLIB
 AM_PROG_CC_C_O
 AM_PROG_AS
 
-dnl could do some feature testing here to turn on a safe set
-dnl of warnings, and also add an option to turn on -Werror
-dnl for maintainers.
-if test -n "$GCC" ; then
-  CFLAGS="$CFLAGS -Wall -Wextra -Wdeclaration-after-statement"
-fi
-
 lenient=no
 AC_ARG_ENABLE(lenient, [
   --enable-lenient  Turn off more pedantic levels of warnings
@@ -22,14 +15,22 @@ AC_ARG_ENABLE(lenient, [
 ],[
    lenient=$enableval
 ])
-if test -n "$GCC" -a "$lenient" == "no" ; then
-   CFLAGS="$CFLAGS -Werror"
-fi
 
 AC_SEARCH_LIBS([pthread_create], [pthread])
 
 AC_CHECK_HEADERS(locale.h sys/inotify.h sys/event.h)
 AC_CHECK_FUNCS(kqueue inotify_init strtoll localeconv)
+
+
+# Do this after we've looked for functions
+if test -n "$GCC" ; then
+  CFLAGS="$CFLAGS -Wall -Wextra -Wdeclaration-after-statement"
+fi
+IRONMANCFLAGS=""
+if test -n "$GCC" -a "$lenient" == "no" ; then
+  IRONMANCFLAGS="-Werror"
+fi
+AC_SUBST(IRONMANCFLAGS)
 
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([Makefile thirdparty/jansson/jansson_config.h])

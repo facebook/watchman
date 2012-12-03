@@ -7,6 +7,7 @@ watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
 watchman_LDADD = $(JSON_LIB)
 watchman_SOURCES = \
 	argv.c       \
+	opt.c        \
 	hash.c       \
 	ht.c         \
 	listener.c   \

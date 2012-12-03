@@ -1,0 +1,219 @@
+/*
+ * Copyright 2012 Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "watchman.h"
+#include <getopt.h>
+
+#define IS_REQUIRED(x)  (x == REQ_STRING)
+
+/* One does not simply use getopt_long() */
+
+static void usage(struct watchman_getopt *opts)
+{
+  int i, len;
+  int longest = 0;
+  const char *label;
+
+  fprintf(stderr, "Usage: watchman [opts] command\n");
+
+  /* measure up option names so we can format nicely */
+  for (i = 0; opts[i].optname; i++) {
+    label = opts[i].arglabel ? opts[i].arglabel : "ARG";
+
+    len = strlen(opts[i].optname);
+    switch (opts[i].argtype) {
+      case OPT_STRING:
+        len += strlen(label) + strlen("[=]");
+        break;
+      case REQ_STRING:
+        len += strlen(label) + strlen("=");
+        break;
+      default:
+        ;
+    }
+
+    if (opts[i].shortopt) {
+      len += strlen("-X, ");
+    }
+
+    if (len > longest) {
+      longest = len;
+    }
+  }
+
+  /* space between option definition and help text */
+  longest += 3;
+
+  for (i = 0; opts[i].optname; i++) {
+    char buf[80];
+
+    label = opts[i].arglabel ? opts[i].arglabel : "ARG";
+
+    fprintf(stderr, "\n  ");
+    if (opts[i].shortopt) {
+      fprintf(stderr, "-%c, ", opts[i].shortopt);
+    }
+    switch (opts[i].argtype) {
+      case OPT_STRING:
+        snprintf(buf, sizeof(buf), "--%s[=%s]", opts[i].optname, label);
+        break;
+      case REQ_STRING:
+        snprintf(buf, sizeof(buf), "--%s=%s", opts[i].optname, label);
+        break;
+      default:
+        snprintf(buf, sizeof(buf), "--%s", opts[i].optname);
+        break;
+    }
+
+    fprintf(stderr, "%-*s ", longest, buf);
+
+    if (opts[i].helptext) {
+      fprintf(stderr, "%s", opts[i].helptext);
+    }
+    fprintf(stderr, "\n");
+  }
+
+  fprintf(stderr,
+"\n"
+"Watchman, by Wez Furlong.\n"
+"Copyright 2012 Facebook, Inc.\n"
+  );
+
+  exit(1);
+}
+
+bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp)
+{
+  int num_opts, i;
+  struct option *long_opts;
+  char *shortopts, *nextshort;
+  int argc = *argcp;
+  char **argv = *argvp;
+  int long_pos = -1;
+  int res;
+
+  /* first build up the getopt_long bits that we need */
+  for (num_opts = 0; opts[num_opts].optname; num_opts++) {
+    ;
+  }
+
+  /* something to hold the long options */
+  long_opts = calloc(num_opts + 1, sizeof(struct option));
+  if (!long_opts) {
+    perror("calloc struct option");
+    abort();
+  }
+
+  /* and the short options */
+  shortopts = malloc((1 + num_opts) * 2);
+  if (!shortopts) {
+    perror("malloc shortopts");
+    abort();
+  }
+  nextshort = shortopts;
+  nextshort[0] = ':';
+  nextshort++;
+
+  /* now transfer information into the space we made */
+  for (i = 0; i < num_opts; i++) {
+    long_opts[i].name = opts[i].optname;
+    long_opts[i].val = opts[i].shortopt;
+    switch (opts[i].argtype) {
+      case OPT_NONE:
+        long_opts[i].has_arg = no_argument;
+        break;
+      case OPT_STRING:
+        long_opts[i].has_arg = optional_argument;
+        break;
+      case REQ_STRING:
+        long_opts[i].has_arg = required_argument;
+        break;
+    }
+
+    if (opts[i].shortopt) {
+      nextshort[0] = opts[i].shortopt;
+      nextshort++;
+
+      if (long_opts[i].has_arg != no_argument) {
+        nextshort[0] = ':';
+        nextshort++;
+      }
+    }
+  }
+
+  nextshort[0] = 0;
+
+  while ((res = getopt_long(argc, argv, shortopts,
+        long_opts, &long_pos)) != -1) {
+    struct watchman_getopt *o;
+
+    switch (res) {
+      case ':':
+        /* missing option argument.
+         * Check to see if it was actually optional */
+        for (long_pos = 0; long_pos < num_opts; long_pos++) {
+          if (opts[long_pos].shortopt == optopt) {
+            if (IS_REQUIRED(opts[long_pos].argtype)) {
+              fprintf(stderr, "--%s (-%c) requires an argument",
+                  opts[long_pos].optname,
+                  opts[long_pos].shortopt);
+              return false;
+            }
+          }
+        }
+        break;
+
+      case '?':
+        /* unknown option */
+        fprintf(stderr, "Unknown or invalid option!\n");
+        usage(opts);
+        return false;
+
+      default:
+        if (res == 0) {
+          /* we got a long option */
+          o = &opts[long_pos];
+        } else {
+          /* map short option to the real thing */
+          o = NULL;
+          for (long_pos = 0; long_pos < num_opts; long_pos++) {
+            if (opts[long_pos].shortopt == res) {
+              o = &opts[long_pos];
+              break;
+            }
+          }
+        }
+
+        /* store the argument if we found one */
+        if (o->argtype != OPT_NONE && o->val && optarg) {
+          *o->val = strdup(optarg);
+        }
+    }
+
+    long_pos = -1;
+  }
+
+  free(long_opts);
+  free(shortopts);
+
+  *argcp = argc - optind;
+  *argvp = argv + optind;
+  return true;
+}
+
+/* vim:ts=2:sw=2:et:
+ */
+

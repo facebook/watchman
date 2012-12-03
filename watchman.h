@@ -303,9 +303,38 @@ static inline double time_diff(struct timeval start, struct timeval end)
   return e - s;
 }
 
-
 bool w_start_listener(const char *socket_path);
 char **w_argv_copy_from_json(json_t *arr, int skip);
+
+struct watchman_getopt {
+  /* name of long option: --optname */
+  const char *optname;
+  /* if non-zero, short option character */
+  int shortopt;
+  /* help text shown in the usage information */
+  const char *helptext;
+  /* whether we accept an argument */
+  enum {
+    OPT_NONE,
+    OPT_STRING,
+    REQ_STRING,
+  } argtype;
+  /* if an argument was provided, *val will be set to
+   * point to the option value.
+   * Because we only update the option if one was provided
+   * by the user, you can safely pre-initialize the val
+   * pointer to your choice of default.
+   * */
+  char **val;
+  /* if argtype != OPT_NONE, this is the label used to
+   * refer to the argument in the help text.  If left
+   * blank, we'll use the string "ARG" as a generic
+   * alternative */
+  const char *arglabel;
+};
+
+bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp);
+
 
 #ifdef __cplusplus
 }
