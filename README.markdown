@@ -71,9 +71,9 @@ all modified files are returned.
 For commands that query based on time, watchman offers a couple of different
 ways to measure time.
 
- * number of seconds since the unix epoch (unix time_t style)
- * clock id of the form "c:123:234"
- * a named cursor of the form "n:whatever"
+ * number of seconds since the unix epoch (unix `time_t` style)
+ * clock id of the form `c:123:234`
+ * a named cursor of the form `n:whatever`
 
 The first and most obvious is passing a unix timestamp.  Watchman records
 the observed time that files change and allows you to find file that have
@@ -110,12 +110,33 @@ can talk to this socket directly.  You can also do it yourself:
 
     nc -U /tmp/.watchman.$USER
 
+### Streaming JSON protocol
+
+Watchman uses a stream of JSON object or array values as its protocol.
+Each request is a JSON array followed by a newline.
+Each response is a JSON object followed by a newline.
+
+By default, the protocol is request-response based, but some commands
+can enable a mode wherein the server side can unilaterally decide to
+send JSON object responses that contain log or trigger information.
+
+Clients that enable these modes will need to be prepared to receive
+one or more of these unilateral responses at any time.  Note that
+the server will ensure that only complete JSON objects are sent; it
+will not emit one in the middle of another JSON object response.
+
+#### Request format
+
+Sending the `since` command is simply a matter of formatting it as JSON.  Note
+that the JSON text must be a single line (don't send a pretty printed version
+of it!) and be followed by a newline `\n` character:
+
+    ["since", "/path/to/src", "n:c_srcs", "*.c"]
+
 ## Future
 
  * persist the registered command triggers across process invocations
  * add a command to remove registered triggers
- * expose the internal clock value to allow clients to track changes
-   in a race-free manner
  * add a richer output mode for the `since` command that passes on
    file status information in addition to the filename.
  * add a hybrid of since and trigger that allows a connected client
@@ -123,9 +144,9 @@ can talk to this socket directly.  You can also do it yourself:
    connection as they happen.  Disconnecting the client will disable
    those particular notifications.
 
-## OpenSource
+## License
 
-This project is destined to be opened up, so any contributions need
-to be aware of that and should only pull in code with a compatible
-license (Apache).
+Watchman is made available under the terms of the Apache License 2.0.  See the
+LICENSE file that accompanies this distribution for the full text of the
+license.
 
