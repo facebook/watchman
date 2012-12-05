@@ -402,9 +402,7 @@ static void stat_path(w_root_t *root,
     if (!file) {
       file = w_root_resolve_file(root, dir, file_name);
     }
-    if (memcmp(&file->st, &st, sizeof(st))) {
-      w_root_mark_file_changed(root, file, now, confident);
-    }
+    w_root_mark_file_changed(root, file, now, confident);
     memcpy(&file->st, &st, sizeof(st));
   } else if (S_ISDIR(st.st_mode)) {
     if (!dir_ent) {

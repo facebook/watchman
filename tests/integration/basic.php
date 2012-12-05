@@ -29,16 +29,24 @@ class basicTestCase extends WatchmanTestCase {
     $this->assertEqual($root, $out['watch']);
 
     // Allow time for the files to be found
-    for ($tries = 0; $tries < 20; $tries++) {
-      $out = $this->watchmanCommand('find', $root, '*.c');
-      if (count($out['files'])) {
-        break;
+    $out = $this->waitForWatchman(
+      array('find', $root),
+      function ($out) {
+        return count($out['files']) == 2;
       }
-      usleep(2000);
-    }
+    );
 
-    $this->assertEqual('foo.c', $out['files'][0]['name']);
-    $this->assertEqual(1, count($out['files']), 'only one match');
+    asort($out['files']);
+    $this->assertEqual(array(
+      array(
+        'name' => 'bar.txt',
+        'exists' => true
+      ),
+      array(
+        'name' => 'foo.c',
+        'exists' => true
+      ),
+    ), $out['files']);
   }
 
   function testCursor() {
@@ -55,14 +63,13 @@ class basicTestCase extends WatchmanTestCase {
     touch($root . '/one');
 
     // Allow time for the change to be observed
-    for ($tries = 0; $tries < 20; $tries++) {
-      $update = $this->watchmanCommand('since', $root,
-        'n:testCursor');
-      if (count($update['files'])) {
-        break;
+    $update = $this->waitForWatchman(
+      array('since', $root, 'n:testCursor'),
+      function ($update) {
+        return count($update['files']);
       }
-      usleep(30000);
-    }
+    );
+
     $this->assertEqual('one',
       $update['files'][0]['name'], 'saw file change');
 

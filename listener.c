@@ -693,7 +693,6 @@ static void *client_thread(void *ptr)
   char buf[16];
   int n;
 
-  w_set_nonblock(client->ping[0]);
   w_set_nonblock(client->fd);
 
   while (true) {
@@ -709,7 +708,7 @@ static void *client_thread(void *ptr)
     pfd[1].events = POLLIN|POLLHUP|POLLERR;
     pfd[1].revents = 0;
 
-    n = poll(pfd, 2, -1);
+    n = poll(pfd, 2, 200);
 
     if (pfd[0].revents) {
       request = w_json_reader_next(&client->reader, client->fd, &jerr);
@@ -779,6 +778,8 @@ static void *client_thread(void *ptr)
         write(client->fd, "\n", 1);
         json_decref(resp->json);
         free(resp);
+
+        w_set_nonblock(client->fd);
 
       }
     }
@@ -885,7 +886,9 @@ bool w_start_listener(const char *path)
     }
     pipe(client->ping);
     w_set_cloexec(client->ping[0]);
+    w_set_nonblock(client->ping[0]);
     w_set_cloexec(client->ping[1]);
+    w_set_nonblock(client->ping[1]);
 
     pthread_mutex_lock(&client_lock);
     w_ht_set(clients, client->fd, (w_ht_val_t)client);

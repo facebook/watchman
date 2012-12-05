@@ -22,8 +22,9 @@ void w_log(int level, const char *fmt, ...)
   va_list ap;
   int len;
 
+  len = snprintf(buf, sizeof(buf), "%d: ", (int)time(NULL));
   va_start(ap, fmt);
-  len = vsnprintf(buf, sizeof(buf), fmt, ap);
+  len += vsnprintf(buf + len, sizeof(buf), fmt, ap);
   va_end(ap);
 
   write(STDERR_FILENO, buf, len);

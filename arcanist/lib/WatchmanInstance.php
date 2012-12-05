@@ -20,13 +20,12 @@
 // for integration tests.
 // Ensures that it is terminated when it is destroyed.
 class WatchmanInstance {
-  private $dir;
   private $logfile;
   private $sockname;
-  private $invocations = 0;
   private $debug = false;
   private $sock;
   static $singleton = null;
+  private $logdata = array();
 
   static function get() {
     if (!self::$singleton) {
@@ -36,75 +35,98 @@ class WatchmanInstance {
   }
 
   function __construct() {
-    $this->dir = realpath(dirname(__FILE__) . '/../../tests/integration');
-    $this->logfile = $this->dir . "/.watchman.log";
-    $this->sockname = $this->dir . "/.watchman.sock";
+    $this->logfile = new TempFile();
+    $this->sockname = new TempFile();
   }
 
   function setDebug($enable) {
     $this->debug = $enable;
   }
 
-  function command() {
-    $args = func_get_args();
+  protected function readResponses() {
+    do {
+      $data = fgets($this->sock);
+      if ($data === false) return;
+      $resp = json_decode($data, true);
+      if (!isset($resp['log'])) {
+        return $resp;
+      }
+      // Collect log information
+      $this->logdata[] = $resp['log'];
+    } while (true);
+  }
 
-    if (count($args)) {
-      $args = array(
-        "./watchman --sockname=%s --logfile=%s %Ls",
-        $this->sockname,
-        $this->logfile,
-        $args);
-    } else {
-      $args = array(
-        "./watchman --sockname=%s --logfile=%s",
-        $this->sockname,
-        $this->logfile);
+  function setLogLevel($level) {
+    return $this->request('log-level', $level);
+  }
+
+  function waitForLog($criteria, $timeout = 5) {
+    foreach ($this->logdata as $line) {
+      $matches = array();
+      if (preg_match($criteria, $line, $matches)) {
+        return array(true, $line, $matches);
+      }
     }
 
-    $this->invocations++;
+    $deadline = time() + $timeout;
+    while (time() < $deadline) {
+      stream_set_timeout($this->sock, $deadline - time());
+      $data = fgets($this->sock);
+      stream_set_timeout($this->sock, 60);
 
-    return newv('ExecFuture', $args);
+      if ($data === false) {
+        break;
+      }
+      $resp = json_decode($data, true);
+      if (!isset($resp['log'])) {
+        throw new Exception("expected a log response, got $data");
+      }
+      $this->logdata[] = $resp['log'];
+
+      if (preg_match($criteria, $resp['log'], $matches)) {
+        return array(true, $resp['log'], $matches);
+      }
+    }
+    return array(false, null, null);
+  }
+
+  function start() {
+    $f = new ExecFuture(
+        "./watchman --sockname=%s.sock --logfile=%s",
+        $this->sockname,
+        $this->logfile);
+    $f->resolve();
+
+    $this->sock = fsockopen('unix://' . $this->sockname . '.sock');
+    stream_set_timeout($this->sock, 60);
   }
 
   function request() {
     $args = func_get_args();
 
-    if (!$this->invocations) {
-      return call_user_func_array(
-        array($this, 'resolveCommand'),
-        $args);
-    }
-
-    // Use a socket instead
     if (!$this->sock) {
-      $this->sock = fsockopen('unix://' . $this->sockname);
+      $this->start();
     }
 
-    fwrite($this->sock, json_encode($args) . "\n");
-    $data = fgets($this->sock);
-    return json_decode($data, true);
-  }
+    if (!count($args)) {
+      // No command to send right now (we're just warming up)
+      return true;
+    }
 
-  function resolveCommand() {
-    $args = func_get_args();
-
-    $future = call_user_func_array(
-      array($this, 'command'),
-      $args);
-
+    $req = json_encode($args);
     if ($this->debug) {
-      echo "running: " . $future->getCommand() . "\n";
+      echo "Sending $req\n";
     }
-    if (count($args)) {
-      return $future->resolveJSON();
-    }
-    return $future->resolvex();
+    fwrite($this->sock, $req . "\n");
+    return $this->readResponses();
   }
 
   function __destruct() {
-    if ($this->invocations) {
-      $future = $this->command('shutdown-server');
-      $future->resolve();
+    if ($this->sock) {
+      $this->request('shutdown-server');
+      if ($this->debug) {
+        echo implode("", $this->logdata);
+      }
     }
   }
 

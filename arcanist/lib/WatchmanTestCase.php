@@ -47,6 +47,68 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     }
   }
 
+  function setLogLevel($level) {
+    $out = WatchmanInstance::get()->setLogLevel($level);
+    $this->assertEqual($level, $out['log_level'], "set log level to $level");
+  }
+
+  function waitForLog($criteria, $timeout = 5) {
+    // Can't use the generic waitFor routine here because
+    // we're delegating to a more efficient mechanism in
+    // the instance class.
+    return WatchmanInstance::get()->waitForLog($criteria, $timeout);
+  }
+
+  function assertWaitForLog($criteria, $timeout = 5) {
+    list($ok, $line, $matches) = $this->waitForLog($criteria, $timeout);
+    if (!$ok) {
+      $this->assertFailure(
+        "did not find $critiera in log output within $timeout seconds");
+    }
+    return array($ok, $line, $matches);
+  }
+
+  // Generic waiting assertion; continually invokes $callable
+  // until timeout is hit.  Returns the returned value from
+  // $callable if it is truthy.
+  // Asserts failure if no truthy value is encountered within
+  // the timeout
+  function waitFor($callable, $timeout = 10, $message = null) {
+    $deadline = time() + $timeout;
+    while (time() <= $deadline) {
+      $res = $callable();
+      if ($res) {
+        return $res;
+      }
+      usleep(30000);
+    }
+    if ($message === null) {
+      $message = "Condition [$callable] was not met in $timeout seconds";
+    }
+    $this->assertFailure($message);
+  }
+
+  // Wait for a watchman command to return output that matches
+  // some criteria.
+  // Returns the command output.
+  // $have_data is a callable that returns a boolean result
+  // to indicate that the criteria have been met.
+  // timeout is the timeout in seconds.
+  function waitForWatchman(array $command, $have_data, $timeout = 10) {
+    return $this->waitFor(
+      function () use ($command, $have_data) {
+        $out = call_user_func_array(
+          array(WatchmanInstance::get(), 'request'),
+          $command);
+        if ($have_data($out)) {
+          return $out;
+        }
+        return false;
+      },
+      $timeout,
+      "watchman $command didn't yield results within $timeout seconds"
+    );
+  }
 }
 
 
