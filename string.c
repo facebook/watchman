@@ -122,9 +122,9 @@ w_string_t *w_string_new(const char *str)
     }
     w_ht_set(intern, (w_ht_val_t)s, (w_ht_val_t)s);
     pthread_rwlock_unlock(&intern_lock);
-  //  printf("INTERN: %d entries\n", w_ht_size(intern));
+  //  w_log(W_LOG_DBG, "INTERN: %d entries\n", w_ht_size(intern));
   } else {
-    printf("INTERN: skipping string of len %d %s\n",
+    w_log(W_LOG_DBG, "INTERN: skipping string of len %d %s\n",
         len, s->buf);
   }
 #endif
@@ -170,7 +170,8 @@ void w_string_collect(void)
   } while (w_ht_next(intern, &iter));
   pthread_rwlock_unlock(&intern_lock);
 
-  printf("string collect: deleted=%d live=%d mem=%u min_ref=%d max_ref=%d %s\n",
+  w_log(W_LOG_DBG,
+      "string collect: deleted=%d live=%d mem=%u min_ref=%d max_ref=%d %s\n",
       deleted, count, mem, min_ref, max_ref, mstr->buf);
 #endif
 }

@@ -98,7 +98,9 @@ static void resize(w_ht_t *ht, uint32_t newsize)
     return;
   }
 
-  printf("resize ht=%p %d -> %d\n", ht, ht->table_size, newsize);
+  // Don't log from in here, as we may be called with
+  // the client lock held, and attempting to lock in
+  // here will deadlock with ourselves!
 
   for (slot = 0; slot < ht->table_size; slot++) {
     while (ht->table[slot]) {

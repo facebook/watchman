@@ -69,12 +69,40 @@ static int client_json_write(const char *buffer, size_t size, void *ptr)
   return (size_t)res == size ? 0 : -1;
 }
 
+/* must be called with the client_lock held */
+static bool enqueue_response(struct watchman_client *client,
+    json_t *json, bool ping)
+{
+  struct watchman_client_response *resp;
+
+  resp = calloc(1, sizeof(*resp));
+  if (!resp) {
+    return false;
+  }
+  resp->json = json;
+
+  if (client->tail) {
+    client->tail->next = resp;
+  } else {
+    client->head = resp;
+  }
+  client->tail = resp;
+
+  if (ping) {
+    write(client->ping[1], "a", 1);
+  }
+
+  return true;
+}
+
 static void send_and_dispose_response(struct watchman_client *client,
     json_t *response)
 {
-  json_dump_callback(response, client_json_write, client, JSON_COMPACT);
-  write(client->fd, "\n", 1);
-  json_decref(response);
+  pthread_mutex_lock(&client_lock);
+  if (!enqueue_response(client, response, false)) {
+    json_decref(response);
+  }
+  pthread_mutex_unlock(&client_lock);
 }
 
 static void send_error_response(struct watchman_client *client,
@@ -184,7 +212,7 @@ static bool parse_watch_params(int start, json_t *args,
     }
     prior = rule;
 
-    printf("made rule %s %s %s\n",
+    w_log(W_LOG_DBG, "made rule %s %s %s\n",
         rule->include ? "-I" : "-X",
         rule->negated ? "!" : "",
         rule->pattern);
@@ -338,7 +366,7 @@ static void run_rules(struct watchman_client *client,
   json_t *file_list = json_array();
 
   uniq = w_ht_new(8, &w_ht_string_funcs);
-  printf("running rules!\n");
+  w_log(W_LOG_DBG, "running rules!\n");
 
   w_root_lock(root);
   for (f = root->latest_file; f; f = f->next) {
@@ -356,7 +384,7 @@ static void run_rules(struct watchman_client *client,
   matches = w_rules_match(root, oldest, uniq, rules);
   w_root_unlock(root);
 
-  printf("rules were run, we have %" PRIu32 " matches\n", matches);
+  w_log(W_LOG_DBG, "rules were run, we have %" PRIu32 " matches\n", matches);
 
   if (w_ht_first(uniq, &iter)) do {
     struct watchman_file *file = (struct watchman_file*)iter.value;
@@ -555,6 +583,76 @@ static void cmd_watch(
   send_and_dispose_response(client, resp);
 }
 
+static int parse_log_level(const char *str)
+{
+  if (!strcmp(str, "debug")) {
+    return W_LOG_DBG;
+  } else if (!strcmp(str, "error")) {
+    return W_LOG_ERR;
+  } else if (!strcmp(str, "off")) {
+    return W_LOG_OFF;
+  }
+  return -1;
+}
+
+// log-level "debug"
+// log-level "error"
+// log-level "off"
+static void cmd_loglevel(
+    struct watchman_client *client,
+    json_t *args)
+{
+  const char *cmd, *str;
+  json_t *resp;
+  int level;
+
+  if (json_unpack(args, "[ss]", &cmd, &str)) {
+    send_error_response(client, "expected a debug level argument");
+    return;
+  }
+
+  level = parse_log_level(str);
+  if (level == -1) {
+    send_error_response(client, "invalid debug level %s", str);
+    return;
+  }
+
+  client->log_level = level;
+
+  resp = make_response();
+  json_object_set_new(resp, "log_level", json_string(str));
+
+  send_and_dispose_response(client, resp);
+}
+
+// log "debug" "text to log"
+static void cmd_log(
+    struct watchman_client *client,
+    json_t *args)
+{
+  const char *cmd, *str, *text;
+  json_t *resp;
+  int level;
+
+  if (json_unpack(args, "[sss]", &cmd, &str, &text)) {
+    send_error_response(client, "expected a string to log");
+    return;
+  }
+
+  level = parse_log_level(str);
+  if (level == -1) {
+    send_error_response(client, "invalid debug level %s", str);
+    return;
+  }
+
+  w_log(level, "%s\n", text);
+
+  resp = make_response();
+  json_object_set_new(resp, "logged", json_true());
+  send_and_dispose_response(client, resp);
+}
+
+
 static void cmd_shutdown(
     struct watchman_client *client,
     json_t *args)
@@ -573,16 +671,11 @@ static struct {
   { "watch", cmd_watch },
   { "trigger", cmd_trigger },
   { "shutdown-server", cmd_shutdown },
+  { "log-level", cmd_loglevel },
+  { "log", cmd_log },
   { NULL, NULL }
 };
 
-
-static size_t client_read_json(void *buffer, size_t buflen, void *ptr)
-{
-  struct watchman_client *client = ptr;
-
-  return read(client->fd, buffer, buflen);
-}
 
 // The client thread reads and decodes json packets,
 // then dispatches the commands that it finds
@@ -594,50 +687,131 @@ static void *client_thread(void *ptr)
   watchman_command_func func;
   const char *cmd_name;
   w_string_t *cmd;
+  struct pollfd pfd[2];
   json_t *request;
   json_error_t jerr;
+  char buf[16];
+  int n;
+
+  w_set_nonblock(client->ping[0]);
+  w_set_nonblock(client->fd);
 
   while (true) {
-    memset(&jerr, 0, sizeof(jerr));
-    request = json_load_callback(client_read_json, client,
-        JSON_DISABLE_EOF_CHECK, &jerr);
+    // Wait for input from either the client socket or
+    // via the ping pipe, which signals that some other
+    // thread wants to unilaterally send data to the client
 
-    if (!request) {
-      send_error_response(client, "invalid json at position %d: %s",
-          jerr.position, jerr.text);
+    pfd[0].fd = client->fd;
+    pfd[0].events = POLLIN|POLLHUP|POLLERR;
+    pfd[0].revents = 0;
 
+    pfd[1].fd = client->ping[0];
+    pfd[1].events = POLLIN|POLLHUP|POLLERR;
+    pfd[1].revents = 0;
+
+    n = poll(pfd, 2, -1);
+
+    if (pfd[0].revents) {
+      request = w_json_reader_next(&client->reader, client->fd, &jerr);
+
+      if (!request && errno == EAGAIN) {
+        // That's fine
+      } else if (!request) {
+        // Not so cool
+        send_error_response(client, "invalid json at position %d: %s",
+            jerr.position, jerr.text);
+
+        pthread_mutex_lock(&client_lock);
+        w_ht_del(clients, client->fd);
+        pthread_mutex_unlock(&client_lock);
+        break;
+      } else if (request) {
+        if (!json_array_size(request)) {
+          send_error_response(client,
+              "invalid command (expected an array with some elements!)");
+          continue;
+        }
+
+        cmd_name = json_string_value(json_array_get(request, 0));
+        if (!cmd_name) {
+          send_error_response(client,
+              "invalid command: expected element 0 to be the command name");
+          continue;
+        }
+        cmd = w_string_new(cmd_name);
+        func = (watchman_command_func)w_ht_get(command_funcs, (w_ht_val_t)cmd);
+        w_string_delref(cmd);
+
+        if (func) {
+          func(client, request);
+        } else {
+          send_error_response(client, "unknown command %s", cmd_name);
+        }
+
+        json_decref(request);
+      }
+    }
+
+    if (pfd[1].revents) {
+      read(client->ping[0], buf, sizeof(buf));
+    }
+
+    /* now send our response(s) */
+    while (client->head) {
+      struct watchman_client_response *resp;
+
+      /* de-queue the first response */
       pthread_mutex_lock(&client_lock);
-      w_ht_del(clients, client->fd);
+      resp = client->head;
+      if (resp) {
+        client->head = resp->next;
+        if (client->tail == resp) {
+          client->tail = NULL;
+        }
+      }
       pthread_mutex_unlock(&client_lock);
-      break;
-    }
 
-    if (!json_array_size(request)) {
-      send_error_response(client,
-          "invalid command (expected an array with some elements!)");
-      continue;
-    }
+      if (resp) {
+        w_clear_nonblock(client->fd);
 
-    cmd_name = json_string_value(json_array_get(request, 0));
-    if (!cmd_name) {
-      send_error_response(client,
-          "invalid command: expected element 0 to be the command name");
-      continue;
-    }
-    cmd = w_string_new(cmd_name);
-    func = (watchman_command_func)w_ht_get(command_funcs, (w_ht_val_t)cmd);
-    w_string_delref(cmd);
+        json_dump_callback(resp->json, client_json_write,
+            client, JSON_COMPACT);
+        write(client->fd, "\n", 1);
+        json_decref(resp->json);
+        free(resp);
 
-    if (func) {
-      func(client, request);
-    } else {
-      send_error_response(client, "unknown command %s", cmd_name);
+      }
     }
-
-    json_decref(request);
   }
 
   return NULL;
+}
+
+void w_log_to_clients(int level, const char *buf)
+{
+  json_t *json = NULL;
+  w_ht_iter_t iter;
+
+  if (!clients) {
+    return;
+  }
+
+  pthread_mutex_lock(&client_lock);
+  if (w_ht_first(clients, &iter)) do {
+    struct watchman_client *client = (void*)iter.value;
+
+    if (client->log_level != W_LOG_OFF && client->log_level >= level) {
+      json = make_response();
+      if (json) {
+        json_object_set_new(json, "log", json_string(buf));
+        if (!enqueue_response(client, json, true)) {
+          json_decref(json);
+        }
+      }
+    }
+
+  } while (w_ht_next(clients, &iter));
+  pthread_mutex_unlock(&client_lock);
 }
 
 bool w_start_listener(const char *path)
@@ -647,7 +821,7 @@ bool w_start_listener(const char *path)
   struct sockaddr_un un;
 
   if (strlen(path) >= sizeof(un.sun_path) - 1) {
-    fprintf(stderr, "%s: path is too long\n",
+    w_log(W_LOG_ERR, "%s: path is too long\n",
         path);
     return false;
   }
@@ -664,14 +838,14 @@ bool w_start_listener(const char *path)
   strcpy(un.sun_path, path);
 
   if (bind(fd, (struct sockaddr*)&un, sizeof(un)) != 0) {
-    fprintf(stderr, "bind(%s): %s\n",
+    w_log(W_LOG_ERR, "bind(%s): %s\n",
       path, strerror(errno));
     close(fd);
     return false;
   }
 
   if (listen(fd, 200) != 0) {
-    fprintf(stderr, "listen(%s): %s\n",
+    w_log(W_LOG_ERR, "listen(%s): %s\n",
         path, strerror(errno));
     close(fd);
     return false;
@@ -706,6 +880,12 @@ bool w_start_listener(const char *path)
 
     client = calloc(1, sizeof(*client));
     client->fd = client_fd;
+    if (!w_json_reader_init(&client->reader)) {
+      // FIXME: error handling
+    }
+    pipe(client->ping);
+    w_set_cloexec(client->ping[0]);
+    w_set_cloexec(client->ping[1]);
 
     pthread_mutex_lock(&client_lock);
     w_ht_set(clients, client->fd, (w_ht_val_t)client);

@@ -39,7 +39,7 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
 
     // Take the startup cost of the binary out of the
     // individual test case costs
-    WatchmanInstance::get()->request('');
+    WatchmanInstance::get()->request();
 
     // Find all the test cases that were declared
     $results = array();

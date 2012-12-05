@@ -19,6 +19,7 @@
 
 static char *sock_name = NULL;
 static char *log_name = NULL;
+static int persistent = 0;
 static struct sockaddr_un un;
 
 static void daemonize(void)
@@ -88,7 +89,7 @@ static void setup_sock_name(void)
   const char *user = get_env_with_fallback("USER", "LOGNAME", NULL);
 
   if (!user) {
-    fprintf(stderr, "watchman requires that you set $USER in your env\n");
+    w_log(W_LOG_ERR, "watchman requires that you set $USER in your env\n");
     abort();
   }
 
@@ -96,7 +97,7 @@ static void setup_sock_name(void)
     asprintf(&sock_name, "%s/.watchman.%s", tmp, user);
   }
   if (!sock_name || sock_name[0] != '/') {
-    fprintf(stderr, "invalid or missing sockname!\n");
+    w_log(W_LOG_ERR, "invalid or missing sockname!\n");
     abort();
   }
 
@@ -104,7 +105,7 @@ static void setup_sock_name(void)
     asprintf(&log_name, "%s/.watchman.%s.log", tmp, user);
   }
   if (!log_name) {
-    fprintf(stderr, "out of memory while processing log name\n");
+    w_log(W_LOG_ERR, "out of memory while processing log name\n");
     abort();
   }
 
@@ -112,7 +113,7 @@ static void setup_sock_name(void)
   strcpy(un.sun_path, sock_name);
 
   if (strlen(sock_name) >= sizeof(un.sun_path) - 1) {
-    fprintf(stderr, "%s: path is too long\n",
+    w_log(W_LOG_ERR, "%s: path is too long\n",
         sock_name);
     abort();
   }
@@ -136,11 +137,26 @@ static int cmd_write(const char *buffer, size_t size, void *ptr)
   return (size_t)write(fd, buffer, size) == size ? 0 : -1;
 }
 
-static size_t cmd_read(void *buffer, size_t buflen, void *ptr)
+static bool read_response(w_jreader_t *reader, int fd)
 {
-  int fd = (intptr_t)ptr;
+  json_t *j;
+  json_error_t jerr;
 
-  return read(fd, buffer, buflen);
+  j = w_json_reader_next(reader, fd, &jerr);
+
+  if (!j) {
+    w_log(W_LOG_ERR, "failed to parse response: %s\n",
+        jerr.text);
+    return false;
+  }
+
+  // Let's just pretty print the JSON response
+  json_dumpf(j, stdout, JSON_INDENT(4));
+  printf("\n");
+
+  json_decref(j);
+
+  return true;
 }
 
 static bool try_command(int argc, char **argv, int timeout)
@@ -150,7 +166,7 @@ static bool try_command(int argc, char **argv, int timeout)
   int tries;
   int i;
   json_t *j;
-  json_error_t jerr;
+  w_jreader_t reader;
 
   fd = socket(PF_LOCAL, SOCK_STREAM, 0);
   if (fd == -1) {
@@ -177,6 +193,10 @@ static bool try_command(int argc, char **argv, int timeout)
     return false;
   }
 
+  if (argc == 0) {
+    return true;
+  }
+
   // Send command
   j = json_array();
   for (i = 0; i < argc; i++) {
@@ -184,22 +204,17 @@ static bool try_command(int argc, char **argv, int timeout)
   }
   json_dump_callback(j, cmd_write, (void*)(intptr_t)fd, JSON_COMPACT);
   json_decref(j);
+  write(fd, "\n", 1);
 
-  memset(&jerr, 0, sizeof(jerr));
-  j = json_load_callback(cmd_read, (void*)(intptr_t)fd,
-        JSON_DISABLE_EOF_CHECK, &jerr);
+  w_json_reader_init(&reader);
 
-  if (!j) {
-    fprintf(stderr, "failed to parse response: %s\n",
-        jerr.text);
-    return true;
-  }
-
-  // Let's just pretty print the JSON response
-  json_dumpf(j, stdout, JSON_INDENT(4));
-  printf("\n");
-
-  json_decref(j);
+  do {
+    if (!read_response(&reader, fd)) {
+      w_json_reader_free(&reader);
+      return false;
+    }
+  } while (persistent);
+  w_json_reader_free(&reader);
 
   return true;
 }
@@ -209,6 +224,8 @@ static struct watchman_getopt opts[] = {
     REQ_STRING, &sock_name, "PATH" },
   { "logfile", 'o', "Specify path to logfile",
     REQ_STRING, &log_name, "PATH" },
+  { "persistent", 'p', "Persist and wait for further responses",
+    OPT_NONE, &persistent, NULL },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -237,7 +254,7 @@ int main(int argc, char **argv)
     return 0;
   }
 
-  fprintf(stderr, "unable to talk to your watchman!\n");
+  w_log(W_LOG_ERR, "unable to talk to your watchman!\n");
   return 1;
 }
 

@@ -48,11 +48,18 @@ class WatchmanInstance {
   function command() {
     $args = func_get_args();
 
-    $args = array(
-      "./watchman --sockname=%s --logfile=%s %Ls",
-      $this->sockname,
-      $this->logfile,
-      $args);
+    if (count($args)) {
+      $args = array(
+        "./watchman --sockname=%s --logfile=%s %Ls",
+        $this->sockname,
+        $this->logfile,
+        $args);
+    } else {
+      $args = array(
+        "./watchman --sockname=%s --logfile=%s",
+        $this->sockname,
+        $this->logfile);
+    }
 
     $this->invocations++;
 
@@ -73,7 +80,7 @@ class WatchmanInstance {
       $this->sock = fsockopen('unix://' . $this->sockname);
     }
 
-    fwrite($this->sock, json_encode($args));
+    fwrite($this->sock, json_encode($args) . "\n");
     $data = fgets($this->sock);
     return json_decode($data, true);
   }
@@ -88,13 +95,16 @@ class WatchmanInstance {
     if ($this->debug) {
       echo "running: " . $future->getCommand() . "\n";
     }
-    return $future->resolveJSON();
+    if (count($args)) {
+      return $future->resolveJSON();
+    }
+    return $future->resolvex();
   }
 
   function __destruct() {
     if ($this->invocations) {
       $future = $this->command('shutdown-server');
-      $future->resolvex();
+      $future->resolve();
     }
   }
 

@@ -199,7 +199,10 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp)
 
         /* store the argument if we found one */
         if (o->argtype != OPT_NONE && o->val && optarg) {
-          *o->val = strdup(optarg);
+          *(char**)o->val = strdup(optarg);
+        }
+        if (o->argtype == OPT_NONE && o->val) {
+          *(int*)o->val = 1;
         }
     }
 

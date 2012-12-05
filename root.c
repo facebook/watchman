@@ -83,7 +83,7 @@ void w_root_lock(w_root_t *root)
 
   err = pthread_mutex_lock(&root->lock);
   if (err != 0) {
-    fprintf(stderr, "lock: %s\n",
+    w_log(W_LOG_ERR, "lock: %s\n",
         strerror(err));
   }
 }
@@ -94,7 +94,7 @@ void w_root_unlock(w_root_t *root)
 
   err = pthread_mutex_unlock(&root->lock);
   if (err != 0) {
-    fprintf(stderr, "lock: %s\n",
+    w_log(W_LOG_ERR, "lock: %s\n",
         strerror(err));
   }
 }
@@ -184,7 +184,7 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
   }
   assert(w_ht_set(parent->dirs, (w_ht_val_t)dir_name, (w_ht_val_t)dir));
   assert(w_ht_set(root->dirname_to_dir, (w_ht_val_t)dir_name, (w_ht_val_t)dir));
-//  printf("+DIR %s\n", dir_name->buf);
+//  w_log(W_LOG_DBG, "+DIR %s\n", dir_name->buf);
 
   return dir;
 }
@@ -205,7 +205,7 @@ static void watch_file(w_root_t *root, struct watchman_file *file)
 
   file->kq_fd = open(buf, O_EVTONLY);
   if (file->kq_fd == -1) {
-    printf("failed to open %s O_EVTONLY: %s\n",
+    w_log(W_LOG_DBG, "failed to open %s O_EVTONLY: %s\n",
         buf, strerror(errno));
     return;
   }
@@ -364,7 +364,7 @@ static void stat_path(w_root_t *root,
   w_string_t *file_name;
 
   if (full_path->len > sizeof(path)-1) {
-    fprintf(stderr, "path %.*s is too big\n", full_path->len, full_path->buf);
+    w_log(W_LOG_ERR, "path %.*s is too big\n", full_path->len, full_path->buf);
     abort();
   }
 
@@ -396,7 +396,7 @@ static void stat_path(w_root_t *root,
       w_root_mark_file_changed(root, file, now, confident);
     }
   } else if (res) {
-    fprintf(stderr, "lstat(%s) %d %s\n",
+    w_log(W_LOG_ERR, "lstat(%s) %d %s\n",
         path, errno, strerror(errno));
   } else if (!S_ISDIR(st.st_mode)) {
     if (!file) {
@@ -599,11 +599,11 @@ static void spawn_command(w_root_t *root,
   ret = posix_spawnp(&pid, argv[0], &actions,
       &attr, argv, environ);
 
-  printf("posix_spawnp: argc=%d\n", argc);
+  w_log(W_LOG_DBG, "posix_spawnp: argc=%d\n", argc);
   for (i = 0; i < argc; i++) {
-    printf("  [%d] %s\n", i, argv[i]);
+    w_log(W_LOG_DBG, "  [%d] %s\n", i, argv[i]);
   }
-  printf("pid=%d ret=%d\n", pid, ret);
+  w_log(W_LOG_DBG, "pid=%d ret=%d\n", pid, ret);
 
   chdir("/");
 
@@ -629,7 +629,7 @@ static void process_triggers(w_root_t *root)
     return;
   }
 
-  printf("last=%" PRIu32 "  pending=%" PRIu32 "\n",
+  w_log(W_LOG_DBG, "last=%" PRIu32 "  pending=%" PRIu32 "\n",
       root->last_trigger_tick,
       root->pending_trigger_tick);
 
@@ -642,7 +642,7 @@ static void process_triggers(w_root_t *root)
 
 #if 0
   for (f = oldest; f; f = f->prev) {
-    printf(
+    w_log(W_LOG_DBG,
         "M %.*s/%.*s exists=%s confident=%s t=%" PRIu32 " s=%" PRIu32 "\n",
         f->parent->path->len,
         f->parent->path->buf,
@@ -652,7 +652,7 @@ static void process_triggers(w_root_t *root)
         f->confident ? "true" : "false",
         f->otime.ticks,
         f->otime.seconds);
-    printf("f=%p f.n=%p f.p=%p\n", f, f->next, f->prev);
+    w_log(W_LOG_DBG, "f=%p f.n=%p f.p=%p\n", f, f->next, f->prev);
   }
 #endif
 
@@ -691,7 +691,7 @@ static void *stat_thread(void *arg)
     if (!root->pending) {
       if (!root->done_initial) {
         gettimeofday(&end, NULL);
-        printf("%s scanned in %.2f seconds\n", root->root_path->buf,
+        w_log(W_LOG_DBG, "%s scanned in %.2f seconds\n", root->root_path->buf,
             time_diff(start, end));
         root->done_initial = true;
         w_string_collect();
@@ -701,7 +701,7 @@ static void *stat_thread(void *arg)
 
       err = pthread_cond_wait(&root->cond, &root->lock);
       if (err != 0) {
-        fprintf(stderr, "pthread_cond_wait: %s\n",
+        w_log(W_LOG_ERR, "pthread_cond_wait: %s\n",
             strerror(err));
         w_root_lock(root);
       }
@@ -724,12 +724,12 @@ static int consume_kqueue(w_root_t *root, w_ht_t *batch,
 
   errno = 0;
 
-  printf("kqueue(%s) timeout=%d\n",
+  w_log(W_LOG_DBG, "kqueue(%s) timeout=%d\n",
       root->root_path->buf, timeout);
   n = kevent(root->kq_fd, NULL, 0,
         k, sizeof(k) / sizeof(k[0]),
         timeout ? &ts : NULL);
-  printf("consume_kqueue: %s timeout=%d n=%d err=%s\n",
+  w_log(W_LOG_DBG, "consume_kqueue: %s timeout=%d n=%d err=%s\n",
       root->root_path->buf, timeout, n, strerror(errno));
 
   for (i = 0; n > 0 && i < n; i++) {
@@ -742,7 +742,7 @@ static int consume_kqueue(w_root_t *root, w_ht_t *batch,
     if (p & 0x1) {
       struct watchman_dir *dir = (void*)(p & ~0x1);
 
-      printf(" KQ dir %s\n", dir->path->buf);
+      w_log(W_LOG_DBG, " KQ dir %s\n", dir->path->buf);
       w_ht_set(batch, (w_ht_val_t)dir->path, (w_ht_val_t)dir);
     } else {
       struct watchman_file *file = (void*)p;
@@ -750,7 +750,7 @@ static int consume_kqueue(w_root_t *root, w_ht_t *batch,
 
       name = w_string_path_cat(file->parent->path, file->name);
       w_ht_set(batch, (w_ht_val_t)name, (w_ht_val_t)file);
-      printf(" KQ file %s\n", name->buf);
+      w_log(W_LOG_DBG, " KQ file %s\n", name->buf);
       w_string_delref(name);
     }
   }
@@ -771,7 +771,8 @@ static void *kqueue_thread(void *arg)
       batch = w_ht_new(2, &w_ht_string_funcs);
     }
 
-    printf("Blocking until we get kqueue activity %s\n", root->root_path->buf);
+    w_log(W_LOG_DBG, "Blocking until we get kqueue activity %s\n",
+        root->root_path->buf);
 
     /* get a batch of events, and allow a little bit of
      * time for them to arrive (I've seen several events
@@ -781,7 +782,9 @@ static void *kqueue_thread(void *arg)
       n = consume_kqueue(root, batch, true);
     }
 
-    printf("Have %d events in %s\n", w_ht_size(batch), root->root_path->buf);
+    w_log(W_LOG_DBG, "Have %d events in %s\n",
+        w_ht_size(batch), root->root_path->buf);
+
     if (w_ht_size(batch)) {
       w_ht_iter_t iter;
 
@@ -791,7 +794,7 @@ static void *kqueue_thread(void *arg)
       if (w_ht_first(batch, &iter)) do {
         w_string_t *name = (w_string_t*)iter.key;
 
-        printf("kq -> %s\n", name->buf);
+        w_log(W_LOG_DBG, "kq -> %s\n", name->buf);
         w_root_add_pending(root, name, true, now);
 
       } while (w_ht_next(batch, &iter));
@@ -833,18 +836,18 @@ static void *inotify_thread(void *arg)
       if (errno == EINTR) {
         continue;
       }
-      fprintf(stderr, "read(%d, %lu): error %s\n",
+      w_log(W_LOG_ERR, "read(%d, %lu): error %s\n",
           root->infd, sizeof(ibuf), strerror(errno));
       abort();
     }
 
     if ((uint32_t)n < sizeof(ibuf.ine)) {
-      fprintf(stderr, "expected to read sizeof(ine) %lu, but got %d\n",
+      w_log(W_LOG_ERR, "expected to read sizeof(ine) %lu, but got %d\n",
           sizeof(ibuf.ine), n);
       continue;
     }
 
-    printf("notify: wd=%d mask=%x %s\n", ibuf.ine.wd, ibuf.ine.mask,
+    w_log(W_LOG_DBG, "notify: wd=%d mask=%x %s\n", ibuf.ine.wd, ibuf.ine.mask,
         ibuf.ine.len > 0 ? ibuf.ine.name : "");
 
     root->ticks++;
@@ -923,7 +926,7 @@ w_root_t *w_root_resolve(const char *filename, bool auto_watch)
     return root;
   }
 
-  printf("Want to watch %s -> %s\n", filename, watch_path);
+  w_log(W_LOG_DBG, "Want to watch %s -> %s\n", filename, watch_path);
 
   root = w_root_new(watch_path);
   if (!root) {

@@ -50,6 +50,7 @@ extern "C" {
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <fcntl.h>
+#include <sys/poll.h>
 
 #include "watchman_hash.h"
 
@@ -79,6 +80,11 @@ static inline void w_set_cloexec(int fd)
 static inline void w_set_nonblock(int fd)
 {
   fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+}
+
+static inline void w_clear_nonblock(int fd)
+{
+  fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & ~O_NONBLOCK);
 }
 
 /* we use interned strings to reduce memory bloat */
@@ -225,8 +231,30 @@ struct watchman_rule {
   struct watchman_rule *next;
 };
 
+struct watchman_json_reader {
+  char *buf;
+  uint32_t allocd;
+  uint32_t rpos, wpos;
+};
+typedef struct watchman_json_reader w_jreader_t;
+bool w_json_reader_init(w_jreader_t *jr);
+void w_json_reader_free(w_jreader_t *jr);
+json_t *w_json_reader_next(w_jreader_t *jr, int fd, json_error_t *jerr);
+
+struct watchman_client_response {
+  struct watchman_client_response *next, *prev;
+  json_t *json;
+};
+
 struct watchman_client {
   int fd;
+  int ping[2];
+  int log_level;
+  w_jreader_t reader;
+
+  struct watchman_client_response *head, *tail;
+
+  pthread_mutex_t lock;
 };
 
 struct watchman_trigger_command {
@@ -236,14 +264,18 @@ struct watchman_trigger_command {
   int argc;
 };
 
-int w_client_vprintf(struct watchman_client *client,
-    const char *fmt, va_list ap);
-int w_client_printf(struct watchman_client *client,
-    const char *fmt, ...)
+#define W_LOG_OFF 0
+#define W_LOG_ERR 1
+#define W_LOG_DBG 2
+
+void w_log(int level, const char *fmt, ...)
 #ifdef __GNUC__
   __attribute__((format(printf, 2, 3)))
 #endif
 ;
+
+void w_log_to_clients(int level, const char *buf);
+
 
 w_string_t *w_string_new(const char *str);
 w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len);
@@ -322,7 +354,8 @@ struct watchman_getopt {
    * by the user, you can safely pre-initialize the val
    * pointer to your choice of default.
    * */
-  char **val;
+  void *val;
+
   /* if argtype != OPT_NONE, this is the label used to
    * refer to the argument in the help text.  If left
    * blank, we'll use the string "ARG" as a generic
