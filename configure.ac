@@ -16,6 +16,14 @@ AC_ARG_ENABLE(lenient, [
    lenient=$enableval
 ])
 
+stack_protect=no
+AC_ARG_ENABLE(stack-protector, [
+  --enable-stack-protector  Enable stack protection in the same
+                            way that rpmbuild does on some systems.
+],[
+   stack_protect=$enableval
+])
+
 AC_SEARCH_LIBS([pthread_create], [pthread])
 
 AC_CHECK_HEADERS(locale.h sys/inotify.h sys/event.h)
@@ -25,6 +33,9 @@ AC_CHECK_FUNCS(kqueue inotify_init strtoll localeconv)
 # Do this after we've looked for functions
 if test -n "$GCC" ; then
   CFLAGS="$CFLAGS -Wall -Wextra -Wdeclaration-after-statement"
+fi
+if test -n "$GCC" -a "$stack_protect" == "yes" ; then
+  CFLAGS="$CFLAGS -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4"
 fi
 IRONMANCFLAGS=""
 if test -n "$GCC" -a "$lenient" == "no" ; then

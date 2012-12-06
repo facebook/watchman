@@ -59,7 +59,7 @@ extern "C" {
 /* sane, reasonably large filename size that we'll use
  * throughout; POSIX seems to define smallish buffers
  * that seem risky */
-#define WATCHMAN_NAME_MAX   1024
+#define WATCHMAN_NAME_MAX   4096
 
 static inline void w_refcnt_add(int *refcnt)
 {
@@ -273,6 +273,18 @@ void w_log(int level, const char *fmt, ...)
   __attribute__((format(printf, 2, 3)))
 #endif
 ;
+
+// rpmbuild may enable fortify which turns on
+// warn_unused_result on a number of system functions.
+// This gives us a reasonably clean way to suppress
+// these warnings when we're using stack protection.
+#if __USE_FORTIFY_LEVEL > 0
+# define ignore_result(x) \
+  do { __typeof__(x) _res = x; (void)_res; } while(0)
+#else
+# define ignore_result(x) x
+#endif
+
 
 void w_log_to_clients(int level, const char *buf);
 

@@ -592,7 +592,7 @@ static void spawn_command(w_root_t *root,
   posix_spawn_file_actions_init(&actions);
   // TODO: std{in,out,err} redirection by default?
 
-  chdir(root->root_path->buf);
+  ignore_result(chdir(root->root_path->buf));
 
   ret = posix_spawnp(&pid, argv[0], &actions,
       &attr, argv, environ);
@@ -603,7 +603,7 @@ static void spawn_command(w_root_t *root,
   }
   w_log(W_LOG_DBG, "pid=%d ret=%d\n", pid, ret);
 
-  chdir("/");
+  ignore_result(chdir("/"));
 
   for (i = cmd->argc; i < argc; i++) {
     free(argv[i]);
@@ -896,15 +896,53 @@ static void *inotify_thread(void *arg)
 }
 #endif
 
+/* This function always returns a buffer that needs to
+ * be released via free(3).  We use the native feature
+ * of the system libc if we know it is present, otherwise
+ * we need to malloc a buffer for ourselves.  This
+ * is made more fun because some systems have a dynamic
+ * buffer size obtained via sysconf().
+ */
+char *w_realpath(const char *filename)
+{
+#if defined(__GLIBC__) || defined(__APPLE__)
+  return realpath(filename, NULL);
+#else
+  char *buf = NULL;
+  char *retbuf;
+  int path_max = 0;
+
+#ifdef _SC_PATH_MAX
+  path_max = sysconf(path, _SC_PATH_MAX);
+#endif
+  if (path_max <= 0) {
+    path_max = WATCHMAN_NAME_MAX;
+  }
+  buf = malloc(path_max);
+  if (!buf) {
+    return NULL;
+  }
+
+  retbuf = realpath(filename, buf);
+
+  if (retbuf != buf) {
+    free(buf);
+    return NULL;
+  }
+
+  return retbuf;
+#endif
+}
+
 w_root_t *w_root_resolve(const char *filename, bool auto_watch)
 {
   pthread_t thr;
   struct watchman_root *root;
-  char true_path[WATCHMAN_NAME_MAX];
   char *watch_path;
   w_string_t *root_str;
 
-  watch_path = realpath(filename, true_path);
+  watch_path = w_realpath(filename);
+
   if (!watch_path) {
     perror(filename);
     return NULL;
@@ -915,18 +953,22 @@ w_root_t *w_root_resolve(const char *filename, bool auto_watch)
   }
 
   root_str = w_string_new(watch_path);
+
   pthread_mutex_lock(&root_lock);
   root = (w_root_t*)w_ht_get(watched_roots, (w_ht_val_t)root_str);
   pthread_mutex_unlock(&root_lock);
   w_string_delref(root_str);
 
   if (root || !auto_watch) {
+    free(watch_path);
     return root;
   }
 
   w_log(W_LOG_DBG, "Want to watch %s -> %s\n", filename, watch_path);
 
   root = w_root_new(watch_path);
+  free(watch_path);
+
   if (!root) {
     return NULL;
   }

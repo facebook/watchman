@@ -62,7 +62,7 @@ static void daemonize(void)
   }
 
   /* we are the child, let's set things up */
-  chdir("/");
+  ignore_result(chdir("/"));
   w_start_listener(sock_name);
   exit(1);
 }
@@ -204,7 +204,7 @@ static bool try_command(int argc, char **argv, int timeout)
   }
   json_dump_callback(j, cmd_write, (void*)(intptr_t)fd, JSON_COMPACT);
   json_decref(j);
-  write(fd, "\n", 1);
+  ignore_result(write(fd, "\n", 1));
 
   w_json_reader_init(&reader);
 

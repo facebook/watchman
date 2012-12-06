@@ -125,7 +125,11 @@ class WatchmanInstance {
     if ($this->sock) {
       $this->request('shutdown-server');
       if ($this->debug) {
-        echo implode("", $this->logdata);
+        if ($this->logdata) {
+          echo implode("", $this->logdata);
+        } else {
+          readfile($this->logfile);
+        }
       }
     }
   }

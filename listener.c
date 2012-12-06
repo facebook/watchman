@@ -89,7 +89,7 @@ static bool enqueue_response(struct watchman_client *client,
   client->tail = resp;
 
   if (ping) {
-    write(client->ping[1], "a", 1);
+    ignore_result(write(client->ping[1], "a", 1));
   }
 
   return true;
@@ -752,7 +752,7 @@ static void *client_thread(void *ptr)
     }
 
     if (pfd[1].revents) {
-      read(client->ping[0], buf, sizeof(buf));
+      ignore_result(read(client->ping[0], buf, sizeof(buf)));
     }
 
     /* now send our response(s) */
@@ -775,7 +775,7 @@ static void *client_thread(void *ptr)
 
         json_dump_callback(resp->json, client_json_write,
             client, JSON_COMPACT);
-        write(client->fd, "\n", 1);
+        ignore_result(write(client->fd, "\n", 1));
         json_decref(resp->json);
         free(resp);
 
@@ -884,7 +884,9 @@ bool w_start_listener(const char *path)
     if (!w_json_reader_init(&client->reader)) {
       // FIXME: error handling
     }
-    pipe(client->ping);
+    if (pipe(client->ping)) {
+      // FIXME: error handling
+    }
     w_set_cloexec(client->ping[0]);
     w_set_nonblock(client->ping[0]);
     w_set_cloexec(client->ping[1]);
