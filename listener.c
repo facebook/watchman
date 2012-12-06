@@ -815,6 +815,18 @@ void w_log_to_clients(int level, const char *buf)
   pthread_mutex_unlock(&client_lock);
 }
 
+static void child_handler(int signo)
+{
+  int st;
+
+  (void)signo;
+
+  /* reap as many children as we can find without blocking */
+  while (waitpid(-1, &st, WNOHANG) > 0) {
+    ;
+  }
+}
+
 bool w_start_listener(const char *path)
 {
   int fd;
@@ -828,6 +840,7 @@ bool w_start_listener(const char *path)
   }
 
   signal(SIGPIPE, SIG_IGN);
+  signal(SIGCHLD, child_handler);
 
   fd = socket(PF_LOCAL, SOCK_STREAM, 0);
   if (fd == -1) {

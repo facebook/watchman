@@ -51,6 +51,7 @@ extern "C" {
 #include <sys/un.h>
 #include <fcntl.h>
 #include <sys/poll.h>
+#include <sys/wait.h>
 
 #include "watchman_hash.h"
 
