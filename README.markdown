@@ -35,7 +35,7 @@ that match according the following rules:
 Requests that the specified dir is watched for changes.
 Watchman will track all files and dirs rooted at the specified path.
 
-### watchman trigger /path/to/dir [patterns] -- [cmd]
+### watchman -- trigger /path/to/dir [patterns] -- [cmd]
 
 Sets up a trigger such that if any files under the specified dir that match the
 specified set of patterns change, then the specified command will be run and
@@ -43,7 +43,7 @@ passed the list of matching files.
 
 For example:
 
-    $ watchman trigger ~/www '*.js' -- ls -l
+    $ watchman -- trigger ~/www '*.js' -- ls -l
 
 If, say, `~/www/scripts/foo.js` is changed, then watchman will chdir
 to `~/www` then invoke `ls -l scripts/foo.js`.
@@ -97,6 +97,16 @@ watchman since /path/to/src n:c_srcs *.c
 and when you run it a second time, it will show you only the "C" source files
 that changed since the last time that someone queried using "n:c_srcs" as the
 clock spec.
+
+## Build/Install
+
+You can use these steps to get watchman built:
+
+```shell
+./autogen.sh
+./configure
+make
+```
 
 ## Implementation details
 
