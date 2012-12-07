@@ -841,7 +841,7 @@ static void *kqueue_thread(void *arg)
   w_ht_t *batch = NULL;
 
   for (;;) {
-    time_t now;
+    struct timeval now;
     int n;
 
     if (!batch) {
@@ -867,12 +867,12 @@ static void *kqueue_thread(void *arg)
 
       w_root_lock(root);
       root->ticks++;
-      time(&now);
+      gettimeofday(&now, NULL);
       if (w_ht_first(batch, &iter)) do {
         w_string_t *name = (w_string_t*)iter.key;
 
         w_log(W_LOG_DBG, "kq -> %s\n", name->buf);
-        w_root_add_pending(root, name, true, now);
+        w_root_add_pending(root, name, true, now, true);
 
       } while (w_ht_next(batch, &iter));
 
