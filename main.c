@@ -17,6 +17,7 @@
 #include "watchman.h"
 #include <poll.h>
 
+int trigger_settle = 20;
 static char *sock_name = NULL;
 static char *log_name = NULL;
 static int persistent = 0;
@@ -226,6 +227,9 @@ static struct watchman_getopt opts[] = {
     REQ_STRING, &log_name, "PATH" },
   { "persistent", 'p', "Persist and wait for further responses",
     OPT_NONE, &persistent, NULL },
+  { "settle", 's',
+    "Number of milliseconds to wait for filesystem to settle",
+    REQ_INT, &trigger_settle, NULL },
   { 0, 0, 0, 0, 0, 0 }
 };
 

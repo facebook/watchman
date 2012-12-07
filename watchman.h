@@ -113,7 +113,7 @@ typedef struct watchman_root w_root_t;
 
 struct watchman_clock {
   uint32_t ticks;
-  uint32_t seconds;
+  struct timeval tv;
 };
 typedef struct watchman_clock w_clock_t;
 
@@ -121,7 +121,8 @@ struct watchman_pending_fs {
   struct watchman_pending_fs *next;
   w_string_t *path;
   bool confident;
-  time_t now;
+  struct timeval now;
+  bool via_notify;
 };
 
 struct watchman_dir {
@@ -305,17 +306,19 @@ void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
 w_root_t *w_root_new(const char *path);
 w_root_t *w_root_resolve(const char *path, bool auto_watch);
 void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
-    time_t now, bool confident, bool recursive);
+    struct timeval now, bool confident, bool recursive);
 
 struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd);
 void w_root_process_path(w_root_t *root, w_string_t *full_path,
-    time_t now, bool confident);
+    struct timeval now, bool confident);
 bool w_root_process_pending(w_root_t *root);
 
 bool w_root_add_pending(w_root_t *root, w_string_t *path,
-    bool confident, time_t now);
+    bool confident, struct timeval now, bool via_notify);
 bool w_root_add_pending_rel(w_root_t *root, struct watchman_dir *dir,
-    const char *name, bool confident, time_t now);
+    const char *name, bool confident,
+    struct timeval now, bool via_notify);
+bool w_root_wait_for_settle(w_root_t *root, int settlems);
 
 void w_root_lock(w_root_t *root);
 void w_root_unlock(w_root_t *root);
@@ -337,13 +340,68 @@ static inline uint32_t next_power_2(uint32_t n)
   return n + 1;
 }
 
-static inline double time_diff(struct timeval start, struct timeval end)
+/* compare two timevals and return -1 if a is < b, 0 if a == b,
+ * or 1 if b > a */
+static inline int w_timeval_compare(struct timeval a, struct timeval b)
 {
-  double s = start.tv_sec + ((double)start.tv_usec)/1000000;
-  double e = end.tv_sec + ((double)end.tv_usec)/1000000;
+  if (a.tv_sec < b.tv_sec) {
+    return -1;
+  }
+  if (a.tv_sec > b.tv_sec) {
+    return 1;
+  }
+  if (a.tv_usec < b.tv_usec) {
+    return -1;
+  }
+  if (a.tv_usec > b.tv_usec) {
+    return 1;
+  }
+  return 0;
+}
+
+#define WATCHMAN_USEC_IN_SEC 1000000
+#define WATCHMAN_NSEC_IN_USEC 1000
+
+static inline void w_timeval_add(const struct timeval a,
+    const struct timeval b, struct timeval *result)
+{
+  result->tv_sec = a.tv_sec + b.tv_sec;
+  result->tv_usec = a.tv_usec + b.tv_usec;
+
+  if (result->tv_usec > WATCHMAN_USEC_IN_SEC) {
+    result->tv_sec++;
+    result->tv_usec -= WATCHMAN_USEC_IN_SEC;
+  }
+}
+
+static inline void w_timeval_sub(const struct timeval a,
+    const struct timeval b, struct timeval *result)
+{
+  result->tv_sec = a.tv_sec - b.tv_sec;
+  result->tv_usec = a.tv_usec - b.tv_usec;
+
+  if (result->tv_usec < 0) {
+    result->tv_sec--;
+    result->tv_usec += WATCHMAN_USEC_IN_SEC;
+  }
+}
+
+static inline void w_timeval_to_timespec(
+    const struct timeval a, struct timespec *ts)
+{
+  ts->tv_sec = a.tv_sec;
+  ts->tv_nsec = a.tv_usec * WATCHMAN_NSEC_IN_USEC;
+}
+
+static inline double w_timeval_diff(struct timeval start, struct timeval end)
+{
+  double s = start.tv_sec + ((double)start.tv_usec)/WATCHMAN_USEC_IN_SEC;
+  double e = end.tv_sec + ((double)end.tv_usec)/WATCHMAN_USEC_IN_SEC;
 
   return e - s;
 }
+
+extern int trigger_settle;
 
 bool w_start_listener(const char *socket_path);
 char **w_argv_copy_from_json(json_t *arr, int skip);
@@ -360,6 +418,7 @@ struct watchman_getopt {
     OPT_NONE,
     OPT_STRING,
     REQ_STRING,
+    REQ_INT,
   } argtype;
   /* if an argument was provided, *val will be set to
    * point to the option value.

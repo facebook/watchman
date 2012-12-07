@@ -23,6 +23,7 @@ class WatchmanInstance {
   private $logfile;
   private $sockname;
   private $debug = false;
+  private $valgrind = false;
   private $sock;
   static $singleton = null;
   private $logdata = array();
@@ -46,7 +47,9 @@ class WatchmanInstance {
   protected function readResponses() {
     do {
       $data = fgets($this->sock);
-      if ($data === false) return;
+      if ($data === false) {
+        return false;
+      }
       $resp = json_decode($data, true);
       if (!isset($resp['log'])) {
         return $resp;
@@ -91,8 +94,12 @@ class WatchmanInstance {
   }
 
   function start() {
+    $cmd = "./watchman --sockname=%s.sock --logfile=%s";
+    if ($this->valgrind) {
+      $cmd = "valgrind --tool=memcheck --log-file=/tmp/wez.vg $cmd";
+    }
     $f = new ExecFuture(
-        "./watchman --sockname=%s.sock --logfile=%s",
+        $cmd,
         $this->sockname,
         $this->logfile);
     $f->resolve();

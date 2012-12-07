@@ -27,7 +27,7 @@ static pthread_mutex_t root_lock = PTHREAD_MUTEX_INITIALIZER;
 #define HINT_NUM_DIRS 16*1024
 
 static void crawler(w_root_t *root, w_string_t *dir_name,
-    time_t now, bool confident);
+    struct timeval now, bool confident);
 
 static void free_pending(struct watchman_pending_fs *p)
 {
@@ -100,7 +100,7 @@ void w_root_unlock(w_root_t *root)
 }
 
 bool w_root_add_pending(w_root_t *root, w_string_t *path,
-    bool confident, time_t now)
+    bool confident, struct timeval now, bool via_notify)
 {
   struct watchman_pending_fs *p = calloc(1, sizeof(*p));
 
@@ -110,6 +110,7 @@ bool w_root_add_pending(w_root_t *root, w_string_t *path,
 
   p->confident = confident;
   p->now = now;
+  p->via_notify = via_notify;
   p->path = path;
   w_string_addref(path);
 
@@ -121,7 +122,8 @@ bool w_root_add_pending(w_root_t *root, w_string_t *path,
 }
 
 bool w_root_add_pending_rel(w_root_t *root, struct watchman_dir *dir,
-    const char *name, bool confident, time_t now)
+    const char *name, bool confident,
+    struct timeval now, bool via_notify)
 {
   char path[WATCHMAN_NAME_MAX];
   w_string_t *path_str;
@@ -130,7 +132,7 @@ bool w_root_add_pending_rel(w_root_t *root, struct watchman_dir *dir,
   snprintf(path, sizeof(path), "%.*s/%s", dir->path->len, dir->path->buf, name);
   path_str = w_string_new(path);
 
-  res = w_root_add_pending(root, path_str, confident, now);
+  res = w_root_add_pending(root, path_str, confident, now, via_notify);
 
   w_string_delref(path_str);
 
@@ -140,6 +142,10 @@ bool w_root_add_pending_rel(w_root_t *root, struct watchman_dir *dir,
 bool w_root_process_pending(w_root_t *root)
 {
   struct watchman_pending_fs *pending, *p;
+
+  if (!root->pending) {
+    return false;
+  }
 
   pending = root->pending;
   root->pending = NULL;
@@ -248,7 +254,7 @@ static void stop_watching_file(w_root_t *root, struct watchman_file *file)
 }
 
 void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
-    time_t now, bool confident)
+    struct timeval now, bool confident)
 {
   if (file->exists) {
     watch_file(root, file);
@@ -257,7 +263,7 @@ void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
   }
 
   file->confident = confident;
-  file->otime.seconds = (uint32_t)now;
+  file->otime.tv = now;
   file->otime.ticks = root->ticks;
 
   if (root->latest_file != file) {
@@ -352,7 +358,7 @@ static void stop_watching_dir(w_root_t *root,
 
 
 static void stat_path(w_root_t *root,
-    w_string_t *full_path, time_t now, bool confident)
+    w_string_t *full_path, struct timeval now, bool confident)
 {
   struct stat st;
   int res;
@@ -417,7 +423,7 @@ static void stat_path(w_root_t *root,
 
 
 void w_root_process_path(w_root_t *root, w_string_t *full_path,
-    time_t now, bool confident)
+    struct timeval now, bool confident)
 {
   if (w_string_equal(full_path, root->root_path)) {
     crawler(root, full_path, now, confident);
@@ -428,7 +434,7 @@ void w_root_process_path(w_root_t *root, w_string_t *full_path,
 
 /* recursively mark the dir contents as deleted */
 void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
-    time_t now, bool confident, bool recursive)
+    struct timeval now, bool confident, bool recursive)
 {
   w_ht_iter_t i;
 
@@ -457,7 +463,7 @@ struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd)
 #endif
 
 static void crawler(w_root_t *root, w_string_t *dir_name,
-    time_t now, bool confident)
+    struct timeval now, bool confident)
 {
   struct watchman_dir *dir;
   struct watchman_file *file;
@@ -528,7 +534,8 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       file = NULL;
     }
     if (!file || !file->exists) {
-      w_root_add_pending_rel(root, dir, dirent->d_name, confident, now);
+      w_root_add_pending_rel(root, dir, dirent->d_name,
+          confident, now, false);
     }
     w_string_delref(name);
   }
@@ -538,7 +545,8 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   if (w_ht_first(dir->files, &i)) do {
     file = (struct watchman_file*)i.value;
     if (file->exists) {
-      w_root_add_pending_rel(root, dir, file->name->buf, confident, now);
+      w_root_add_pending_rel(root, dir, file->name->buf,
+          confident, now, false);
     }
   } while (w_ht_next(dir->files, &i));
 
@@ -546,7 +554,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   if (w_ht_first(dir->dirs, &i)) do {
     struct watchman_dir *child = (struct watchman_dir*)i.value;
 
-    w_root_add_pending(root, child->path, confident, now);
+    w_root_add_pending(root, child->path, confident, now, false);
   } while (w_ht_next(dir->dirs, &i));
 }
 
@@ -670,15 +678,65 @@ static void process_triggers(w_root_t *root)
   root->last_trigger_tick = root->pending_trigger_tick;
 }
 
+// For a client to wait for updates to settle out
+// Must be called with the root locked
+bool w_root_wait_for_settle(w_root_t *root, int settlems)
+{
+  struct timeval settle, now, target, diff;
+  struct timespec ts;
+  int res;
+
+  if (settlems == -1) {
+    settlems = trigger_settle;
+  }
+
+  settle.tv_sec = settlems / 1000;
+  settle.tv_usec = settlems - (settle.tv_sec * 1000);
+
+  while (true) {
+    gettimeofday(&now, NULL);
+    if (root->latest_file) {
+      w_timeval_add(root->latest_file->otime.tv, settle, &target);
+      if (w_timeval_compare(now, target) >= 0) {
+        // We're settled!
+        return true;
+      }
+
+      // Set the wait time to the difference
+      w_timeval_sub(target, now, &diff);
+      w_timeval_to_timespec(diff, &ts);
+
+    } else {
+      // we don't have any files, so let's wait one round of
+      // tick time
+      w_timeval_to_timespec(settle, &ts);
+    }
+
+    w_root_unlock(root);
+    res = nanosleep(&ts, NULL);
+    w_root_lock(root);
+
+    if (res == 0 && root->latest_file == NULL) {
+      return true;
+    }
+  }
+
+  return true;
+}
+
 static void *stat_thread(void *arg)
 {
   w_root_t *root = arg;
-  struct timeval start, end;
+  struct timeval start, end, now, target;
+  struct timeval settle;
+
+  settle.tv_sec = trigger_settle / 1000;
+  settle.tv_usec = trigger_settle - (settle.tv_sec * 1000);
 
   /* first order of business is to find all the files under our root */
   gettimeofday(&start, NULL);
   w_root_lock(root);
-  w_root_add_pending(root, root->root_path, false, start.tv_sec);
+  w_root_add_pending(root, root->root_path, false, start, false);
   w_root_unlock(root);
 
   /* now we just sit and wait for things to land in our pending list */
@@ -687,10 +745,30 @@ static void *stat_thread(void *arg)
 
     w_root_lock(root);
     if (!root->pending) {
+
+      // Throttle our trigger rate
+      gettimeofday(&now, NULL);
+      if (root->latest_file) {
+        w_timeval_add(root->latest_file->otime.tv, settle, &target);
+        if (w_timeval_compare(now, target) < 0) {
+          // Still have a bit of time to wait
+          struct timespec ts;
+
+          w_timeval_to_timespec(target, &ts);
+          err = pthread_cond_timedwait(&root->cond, &root->lock, &ts);
+
+          if (err != ETIMEDOUT) {
+            // We have more pending items to collect
+            goto have_pending;
+          }
+        }
+      }
+
       if (!root->done_initial) {
         gettimeofday(&end, NULL);
-        w_log(W_LOG_DBG, "%s scanned in %.2f seconds\n", root->root_path->buf,
-            time_diff(start, end));
+        w_log(W_LOG_DBG, "%s scanned in %.2f seconds\n",
+            root->root_path->buf,
+            w_timeval_diff(start, end));
         root->done_initial = true;
         w_string_collect();
       }
@@ -704,6 +782,7 @@ static void *stat_thread(void *arg)
         w_root_lock(root);
       }
     }
+have_pending:
     w_root_process_pending(root);
     w_root_unlock(root);
   }
@@ -822,10 +901,10 @@ static void *inotify_thread(void *arg)
   for (;;) {
     struct {
       struct inotify_event ine;
-      char namebuf[1024];
+      char namebuf[WATCHMAN_NAME_MAX];
     } ibuf;
     int n;
-    time_t now;
+    struct timeval now;
     struct watchman_dir *dir;
     w_string_t *name;
 
@@ -848,10 +927,11 @@ static void *inotify_thread(void *arg)
     w_log(W_LOG_DBG, "notify: wd=%d mask=%x %s\n", ibuf.ine.wd, ibuf.ine.mask,
         ibuf.ine.len > 0 ? ibuf.ine.name : "");
 
-    root->ticks++;
-    time(&now);
 
     w_root_lock(root);
+    root->ticks++;
+    gettimeofday(&now, NULL);
+
     if (ibuf.ine.wd == -1 && (ibuf.ine.mask & IN_Q_OVERFLOW)) {
       /* we missed something, will need to re-crawl */
 
@@ -862,7 +942,7 @@ static void *inotify_thread(void *arg)
           /*confident=*/false, /*recursive=*/true);
 
       /* any files we find now are obviously not deleted */
-      w_root_add_pending(root, root->root_path, false, now);
+      w_root_add_pending(root, root->root_path, false, now, true);
     } else if (ibuf.ine.wd != -1 && ibuf.ine.len) {
       char buf[WATCHMAN_NAME_MAX];
 
@@ -882,7 +962,7 @@ static void *inotify_thread(void *arg)
           /*confident=*/false, /*recursive=*/false);
       }
 
-      w_root_add_pending(root, name, true, now);
+      w_root_add_pending(root, name, true, now, true);
 
       w_string_delref(name);
     }

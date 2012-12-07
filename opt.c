@@ -139,6 +139,7 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp)
         long_opts[i].has_arg = optional_argument;
         break;
       case REQ_STRING:
+      case REQ_INT:
         long_opts[i].has_arg = required_argument;
         break;
     }
@@ -199,7 +200,17 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp)
 
         /* store the argument if we found one */
         if (o->argtype != OPT_NONE && o->val && optarg) {
-          *(char**)o->val = strdup(optarg);
+          switch (o->argtype) {
+            case REQ_INT:
+              *(int*)o->val = atoi(optarg);
+              break;
+            case REQ_STRING:
+            case OPT_STRING:
+              *(char**)o->val = strdup(optarg);
+              break;
+            case OPT_NONE:
+              ;
+          }
         }
         if (o->argtype == OPT_NONE && o->val) {
           *(int*)o->val = 1;

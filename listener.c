@@ -292,7 +292,7 @@ uint32_t w_rules_match(w_root_t *root,
 
 struct w_clockspec_query {
   bool is_timestamp;
-  time_t seconds;
+  struct timeval tv;
   uint32_t ticks;
 };
 
@@ -306,7 +306,8 @@ static bool parse_clockspec(w_root_t *root,
 
   if (json_is_integer(value)) {
     since->is_timestamp = true;
-    since->seconds = json_integer_value(value);
+    since->tv.tv_usec = 0;
+    since->tv.tv_sec = json_integer_value(value);
     return true;
   }
 
@@ -320,6 +321,8 @@ static bool parse_clockspec(w_root_t *root,
 
     since->is_timestamp = false;
     w_root_lock(root);
+    w_root_wait_for_settle(root, -1);
+
     // If we've never seen it before, ticks will be set to 0
     // which is exactly what we want here.
     since->ticks = (uint32_t)w_ht_get(root->cursors, (w_ht_val_t)name);
@@ -371,7 +374,8 @@ static void run_rules(struct watchman_client *client,
   w_root_lock(root);
   for (f = root->latest_file; f; f = f->next) {
     if (since) {
-      if (since->is_timestamp && f->otime.seconds < since->seconds) {
+      if (since->is_timestamp &&
+          w_timeval_compare(f->otime.tv, since->tv) < 0) {
         break;
       }
       if (!since->is_timestamp && f->otime.ticks < since->ticks) {
