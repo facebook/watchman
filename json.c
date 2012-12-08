@@ -16,7 +16,7 @@
 
 #include "watchman.h"
 
-bool w_json_reader_init(w_jreader_t *jr)
+bool w_json_buffer_init(w_jbuffer_t *jr)
 {
   memset(jr, 0, sizeof(*jr));
 
@@ -30,13 +30,13 @@ bool w_json_reader_init(w_jreader_t *jr)
   return true;
 }
 
-void w_json_reader_free(w_jreader_t *jr)
+void w_json_buffer_free(w_jbuffer_t *jr)
 {
   free(jr->buf);
   memset(jr, 0, sizeof(*jr));
 }
 
-json_t *w_json_reader_next(w_jreader_t *jr, int fd, json_error_t *jerr)
+json_t *w_json_buffer_next(w_jbuffer_t *jr, int fd, json_error_t *jerr)
 {
   char *nl;
   int r;
@@ -93,6 +93,80 @@ json_t *w_json_reader_next(w_jreader_t *jr, int fd, json_error_t *jerr)
   jr->rpos += r + 1;
 
   return res;
+}
+
+struct jbuffer_write_data {
+  int fd;
+  w_jbuffer_t *jr;
+};
+
+static bool jbuffer_flush(struct jbuffer_write_data *data)
+{
+  int x;
+
+  while (data->jr->wpos - data->jr->rpos) {
+    x = write(data->fd, data->jr->buf + data->jr->rpos,
+        data->jr->wpos - data->jr->rpos);
+
+    if (x <= 0) {
+      return false;
+    }
+
+    data->jr->rpos += x;
+  }
+
+  data->jr->rpos = data->jr->wpos = 0;
+  return true;
+}
+
+static int jbuffer_write(const char *buffer, size_t size, void *ptr)
+{
+  struct jbuffer_write_data *data = ptr;
+
+  while (size) {
+    // Accumulate in the buffer
+    size_t room = data->jr->allocd - data->jr->wpos;
+
+    // No room? send it over the wire
+    if (!room) {
+      if (!jbuffer_flush(data)) {
+        return -1;
+      }
+      room = data->jr->allocd - data->jr->wpos;
+    }
+
+    if (size < room) {
+      room = size;
+    }
+
+    // Stick it in the buffer
+    memcpy(data->jr->buf + data->jr->wpos,
+        buffer, room);
+
+    buffer += room;
+    size -= room;
+    data->jr->wpos += room;
+  }
+
+  return 0;
+}
+
+bool w_json_buffer_write(w_jbuffer_t *jr, int fd, json_t *json, int flags)
+{
+  struct jbuffer_write_data data = { fd, jr };
+  int res;
+
+  res = json_dump_callback(json, jbuffer_write, &data, flags);
+
+  if (res != 0) {
+    return false;
+  }
+
+  if (jbuffer_write("\n", 1, &data) != 0) {
+    return false;
+  }
+
+  return jbuffer_flush(&data);
 }
 
 

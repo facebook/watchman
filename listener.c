@@ -59,16 +59,6 @@ static void annotate_with_clock(w_root_t *root, json_t *resp)
   }
 }
 
-static int client_json_write(const char *buffer, size_t size, void *ptr)
-{
-  struct watchman_client *client = ptr;
-  int res;
-
-  res = write(client->fd, buffer, size);
-
-  return (size_t)res == size ? 0 : -1;
-}
-
 /* must be called with the client_lock held */
 static bool enqueue_response(struct watchman_client *client,
     json_t *json, bool ping)
@@ -716,7 +706,7 @@ static void *client_thread(void *ptr)
     n = poll(pfd, 2, 200);
 
     if (pfd[0].revents) {
-      request = w_json_reader_next(&client->reader, client->fd, &jerr);
+      request = w_json_buffer_next(&client->reader, client->fd, &jerr);
 
       if (!request && errno == EAGAIN) {
         // That's fine
@@ -778,14 +768,12 @@ static void *client_thread(void *ptr)
       if (resp) {
         w_clear_nonblock(client->fd);
 
-        json_dump_callback(resp->json, client_json_write,
-            client, JSON_COMPACT);
-        ignore_result(write(client->fd, "\n", 1));
+        w_json_buffer_write(&client->writer, client->fd,
+            resp->json, JSON_COMPACT);
         json_decref(resp->json);
         free(resp);
 
         w_set_nonblock(client->fd);
-
       }
     }
   }
@@ -899,7 +887,10 @@ bool w_start_listener(const char *path)
 
     client = calloc(1, sizeof(*client));
     client->fd = client_fd;
-    if (!w_json_reader_init(&client->reader)) {
+    if (!w_json_buffer_init(&client->reader)) {
+      // FIXME: error handling
+    }
+    if (!w_json_buffer_init(&client->writer)) {
       // FIXME: error handling
     }
     if (pipe(client->ping)) {

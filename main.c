@@ -136,19 +136,12 @@ static bool should_start(int err)
   return false;
 }
 
-static int cmd_write(const char *buffer, size_t size, void *ptr)
-{
-  int fd = (intptr_t)ptr;
-
-  return (size_t)write(fd, buffer, size) == size ? 0 : -1;
-}
-
-static bool read_response(w_jreader_t *reader, int fd)
+static bool read_response(w_jbuffer_t *reader, int fd)
 {
   json_t *j;
   json_error_t jerr;
 
-  j = w_json_reader_next(reader, fd, &jerr);
+  j = w_json_buffer_next(reader, fd, &jerr);
 
   if (!j) {
     w_log(W_LOG_ERR, "failed to parse response: %s\n",
@@ -172,7 +165,7 @@ static bool try_command(int argc, char **argv, int timeout)
   int tries;
   int i;
   json_t *j;
-  w_jreader_t reader;
+  w_jbuffer_t buffer;
 
   fd = socket(PF_LOCAL, SOCK_STREAM, 0);
   if (fd == -1) {
@@ -202,25 +195,24 @@ static bool try_command(int argc, char **argv, int timeout)
   if (argc == 0) {
     return true;
   }
+  
+  w_json_buffer_init(&buffer);
 
   // Send command
   j = json_array();
   for (i = 0; i < argc; i++) {
     json_array_append_new(j, json_string(argv[i]));
   }
-  json_dump_callback(j, cmd_write, (void*)(intptr_t)fd, JSON_COMPACT);
+  w_json_buffer_write(&buffer, fd, j, JSON_COMPACT);
   json_decref(j);
-  ignore_result(write(fd, "\n", 1));
-
-  w_json_reader_init(&reader);
 
   do {
-    if (!read_response(&reader, fd)) {
-      w_json_reader_free(&reader);
+    if (!read_response(&buffer, fd)) {
+      w_json_buffer_free(&buffer);
       return false;
     }
   } while (persistent);
-  w_json_reader_free(&reader);
+  w_json_buffer_free(&buffer);
 
   return true;
 }

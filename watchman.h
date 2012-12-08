@@ -233,15 +233,16 @@ struct watchman_rule {
   struct watchman_rule *next;
 };
 
-struct watchman_json_reader {
+struct watchman_json_buffer {
   char *buf;
   uint32_t allocd;
   uint32_t rpos, wpos;
 };
-typedef struct watchman_json_reader w_jreader_t;
-bool w_json_reader_init(w_jreader_t *jr);
-void w_json_reader_free(w_jreader_t *jr);
-json_t *w_json_reader_next(w_jreader_t *jr, int fd, json_error_t *jerr);
+typedef struct watchman_json_buffer w_jbuffer_t;
+bool w_json_buffer_init(w_jbuffer_t *jr);
+void w_json_buffer_free(w_jbuffer_t *jr);
+json_t *w_json_buffer_next(w_jbuffer_t *jr, int fd, json_error_t *jerr);
+bool w_json_buffer_write(w_jbuffer_t *jr, int fd, json_t *json, int flags);
 
 struct watchman_client_response {
   struct watchman_client_response *next, *prev;
@@ -252,7 +253,7 @@ struct watchman_client {
   int fd;
   int ping[2];
   int log_level;
-  w_jreader_t reader;
+  w_jbuffer_t reader, writer;
 
   struct watchman_client_response *head, *tail;
 

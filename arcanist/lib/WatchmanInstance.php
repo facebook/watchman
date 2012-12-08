@@ -181,7 +181,18 @@ class WatchmanInstance {
   }
 
   private function renderVGResult($err) {
-    $text = (string)$err->xwhat->text;
+    $text = "";
+    if (isset($err->xwhat)) {
+      $text .= (string)$err->xwhat->text;
+    }
+    if (isset($err->what)) {
+      if (strlen($text)) $text .= "\n";
+      $text .= (string)$err->what;
+    }
+    if (isset($err->auxwhat)) {
+      if (strlen($text)) $text .= "\n";
+      $text .= (string)$err->auxwhat;
+    }
     $text .= $this->renderVGStack($err->stack);
 
     return $text;
@@ -223,14 +234,6 @@ class WatchmanInstance {
     $results = array();
 
     $res = new ArcanistUnitTestResult();
-    $res->setName('valgrind leaks');
-    $res->setUserData(implode("\n\n", $definite_leaks));
-    $res->setResult(count($definite_leaks) ?
-      ArcanistUnitTestResult::RESULT_FAIL :
-      ArcanistUnitTestResult::RESULT_PASS);
-    $results[] = $res;
-
-    $res = new ArcanistUnitTestResult();
     $res->setName('valgrind possible leaks');
     $res->setUserData(implode("\n\n", $possible_leaks));
     $res->setResult(count($possible_leaks) ?
@@ -243,6 +246,22 @@ class WatchmanInstance {
     $res->setUserData(implode("\n\n", $descriptors));
     $res->setResult(count($descriptors) ?
       ArcanistUnitTestResult::RESULT_SKIP :
+      ArcanistUnitTestResult::RESULT_PASS);
+    $results[] = $res;
+
+    $res = new ArcanistUnitTestResult();
+    $res->setName('valgrind leaks');
+    $res->setUserData(implode("\n\n", $definite_leaks));
+    $res->setResult(count($definite_leaks) ?
+      ArcanistUnitTestResult::RESULT_FAIL :
+      ArcanistUnitTestResult::RESULT_PASS);
+    $results[] = $res;
+
+    $res = new ArcanistUnitTestResult();
+    $res->setName('valgrind errors');
+    $res->setUserData(implode("\n\n", $errors));
+    $res->setResult(count($errors) ?
+      ArcanistUnitTestResult::RESULT_FAIL :
       ArcanistUnitTestResult::RESULT_PASS);
     $results[] = $res;
 
