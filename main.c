@@ -21,12 +21,34 @@ int trigger_settle = 20;
 static char *sock_name = NULL;
 static char *log_name = NULL;
 static int persistent = 0;
+static int foreground = 0;
 static struct sockaddr_un un;
 
-static void daemonize(void)
+static void run_service(void)
 {
   int fd;
 
+  // redirect std{in,out,err}
+  fd = open("/dev/null", O_RDONLY);
+  if (fd != -1) {
+    dup2(fd, STDIN_FILENO);
+    close(fd);
+  }
+  fd = open(log_name, O_WRONLY|O_APPEND|O_CREAT, 0600);
+  if (fd != -1) {
+    dup2(fd, STDOUT_FILENO);
+    dup2(fd, STDERR_FILENO);
+    close(fd);
+  }
+
+  /* we are the child, let's set things up */
+  ignore_result(chdir("/"));
+  w_start_listener(sock_name);
+  exit(1);
+}
+
+static void daemonize(void)
+{
   // the double-fork-and-setsid trick establishes a
   // child process that runs in its own process group
   // with its own session and that won't get killed
@@ -48,24 +70,7 @@ static void daemonize(void)
   }
 
   // we are the child, let's set things up
-
-  // redirect std{in,out,err}
-  fd = open("/dev/null", O_RDONLY);
-  if (fd != -1) {
-    dup2(fd, STDIN_FILENO);
-    close(fd);
-  }
-  fd = open(log_name, O_WRONLY|O_APPEND|O_CREAT, 0600);
-  if (fd != -1) {
-    dup2(fd, STDOUT_FILENO);
-    dup2(fd, STDERR_FILENO);
-    close(fd);
-  }
-
-  /* we are the child, let's set things up */
-  ignore_result(chdir("/"));
-  w_start_listener(sock_name);
-  exit(1);
+  run_service();
 }
 
 static const char *get_env_with_fallback(const char *name1,
@@ -227,6 +232,8 @@ static struct watchman_getopt opts[] = {
     REQ_STRING, &log_name, "PATH" },
   { "persistent", 'p', "Persist and wait for further responses",
     OPT_NONE, &persistent, NULL },
+  { "foreground", 'f', "Run the service in the foreground",
+    OPT_NONE, &foreground, NULL },
   { "settle", 's',
     "Number of milliseconds to wait for filesystem to settle",
     REQ_INT, &trigger_settle, NULL },
@@ -245,6 +252,12 @@ int main(int argc, char **argv)
   bool ran;
 
   parse_cmdline(&argc, &argv);
+
+  if (foreground) {
+    unlink(sock_name);
+    run_service();
+    return 0;
+  }
 
   ran = try_command(argc, argv, 0);
   if (!ran && should_start(errno)) {

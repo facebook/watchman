@@ -663,6 +663,7 @@ static void cmd_shutdown(
 {
   (void)client;
   (void)args;
+  w_log(W_LOG_ERR, "shutdown-server was requested, exiting!\n");
   exit(0);
 }
 

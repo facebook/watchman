@@ -20,10 +20,12 @@
 // for integration tests.
 // Ensures that it is terminated when it is destroyed.
 class WatchmanInstance {
+  private $proc;
   private $logfile;
   private $sockname;
   private $debug = false;
   private $valgrind = false;
+  private $vg_log;
   private $sock;
   static $singleton = null;
   private $logdata = array();
@@ -38,6 +40,11 @@ class WatchmanInstance {
   function __construct() {
     $this->logfile = new TempFile();
     $this->sockname = new TempFile();
+
+    if (getenv("WATCHMAN_VALGRIND")) {
+      $this->valgrind = true;
+      $this->vg_log = new TempFile();
+    }
   }
 
   function setDebug($enable) {
@@ -94,17 +101,47 @@ class WatchmanInstance {
   }
 
   function start() {
-    $cmd = "./watchman --sockname=%s.sock --logfile=%s";
+    $cmd = "./watchman --foreground --sockname=%C.sock --logfile=%s";
     if ($this->valgrind) {
-      $cmd = "valgrind --tool=memcheck --log-file=/tmp/wez.vg $cmd";
+      $cmd = "valgrind --tool=memcheck " .
+        "--log-file=$this->vg_log " .
+        "--track-fds=yes " .
+        "--read-var-info=yes " .
+        "--track-origins=yes " .
+        "--leak-check=full " .
+        "--xml=yes " .
+        "--xml-file=$this->vg_log.xml " .
+        "-v " .
+        $cmd;
     }
-    $f = new ExecFuture(
-        $cmd,
-        $this->sockname,
-        $this->logfile);
-    $f->resolve();
 
-    $this->sock = fsockopen('unix://' . $this->sockname . '.sock');
+    $cmd = csprintf($cmd, $this->sockname, $this->logfile);
+
+    $pipes = array();
+    $this->proc = proc_open($cmd, array(
+      0 => array('file', '/dev/null', 'r'),
+      1 => array('file', $this->logfile, 'a'),
+      2 => array('file', $this->logfile, 'a'),
+    ), $pipes);
+
+    if (!$this->proc) {
+      throw new Exception("Failed to spawn $cmd");
+    }
+
+    $sockname = $this->sockname . '.sock';
+    $deadline = time() + 5;
+    do {
+      if (!file_exists($sockname)) {
+        usleep(30000);
+      }
+      $this->sock = fsockopen('unix://' . $sockname);
+      if ($this->sock) {
+        break;
+      }
+    } while (time() <= $deadline);
+    if (!$this->sock) {
+      throw new Exception("Failed to talk to watchman on $sockname");
+    }
     stream_set_timeout($this->sock, 60);
   }
 
@@ -128,17 +165,142 @@ class WatchmanInstance {
     return $this->readResponses();
   }
 
-  function __destruct() {
-    if ($this->sock) {
-      $this->request('shutdown-server');
-      if ($this->debug) {
-        if ($this->logdata) {
-          echo implode("", $this->logdata);
-        } else {
-          readfile($this->logfile);
-        }
+  private function renderVGStack($stack) {
+    $text = '';
+    foreach ($stack->frame as $frame) {
+      if ($frame->file) {
+        $origin = sprintf("%s:%d", $frame->file, $frame->line);
+      } else {
+        $origin = $frame->obj;
+      }
+      $text .= sprintf("\n  %40s   %s",
+        $origin,
+        $frame->fn);
+    }
+    return $text;
+  }
+
+  private function renderVGResult($err) {
+    $text = (string)$err->xwhat->text;
+    $text .= $this->renderVGStack($err->stack);
+
+    return $text;
+  }
+
+  function generateValgrindTestResults() {
+    $this->stopProcess();
+
+    if (!$this->valgrind) {
+      return array();
+    }
+
+    $definite_leaks = array();
+    $possible_leaks = array();
+    $errors = array();
+    $descriptors = array();
+
+    $vg = simplexml_load_file($this->vg_log . '.xml');
+    foreach ($vg->error as $err) {
+      $render = $this->renderVGResult($err);
+      switch ($err->kind) {
+        case 'Leak_DefinitelyLost':
+          $definite_leaks[] = $render;
+          break;
+        case 'Leak_PossiblyLost':
+          $possible_leaks[] = $render;
+          break;
+        default:
+          $errors[] = $render;
       }
     }
+
+    // These look like fd leak records, but they're not documented
+    // as such.  These go away if we turn off track-fds
+    foreach ($vg->stack as $stack) {
+      $descriptors[] = $this->renderVGStack($stack);
+    }
+
+    $results = array();
+
+    $res = new ArcanistUnitTestResult();
+    $res->setName('valgrind leaks');
+    $res->setUserData(implode("\n\n", $definite_leaks));
+    $res->setResult(count($definite_leaks) ?
+      ArcanistUnitTestResult::RESULT_FAIL :
+      ArcanistUnitTestResult::RESULT_PASS);
+    $results[] = $res;
+
+    $res = new ArcanistUnitTestResult();
+    $res->setName('valgrind possible leaks');
+    $res->setUserData(implode("\n\n", $possible_leaks));
+    $res->setResult(count($possible_leaks) ?
+      ArcanistUnitTestResult::RESULT_SKIP :
+      ArcanistUnitTestResult::RESULT_PASS);
+    $results[] = $res;
+
+    $res = new ArcanistUnitTestResult();
+    $res->setName('descriptor leaks');
+    $res->setUserData(implode("\n\n", $descriptors));
+    $res->setResult(count($descriptors) ?
+      ArcanistUnitTestResult::RESULT_SKIP :
+      ArcanistUnitTestResult::RESULT_PASS);
+    $results[] = $res;
+
+
+    return $results;
+  }
+
+  private function waitForStop($timeout) {
+    if (!$this->proc) {
+      return false;
+    }
+
+    $deadline = time() + $timeout;
+    do {
+      $st = proc_get_status($this->proc);
+      if (!$st['running']) {
+        return $st;
+      }
+      usleep(30000);
+    } while (time() <= $deadline);
+
+    return $st;
+  }
+
+  function stopProcess() {
+    if (!$this->proc) {
+      return;
+    }
+    if ($this->sock) {
+      $this->request('shutdown-server');
+      $st = $this->waitForStop(5);
+    } else {
+      $st = proc_get_status($this->proc);
+    }
+
+    if ($st['running']) {
+      echo "Didn't stop after 5 seconds, sending signal\n";
+      system("gstack " . $st['pid']);
+      proc_terminate($this->proc);
+      $st = $this->waitForStop(5);
+      if ($st['running']) {
+        echo "Still didn't stop, sending bigger signal\n";
+        proc_terminate($this->proc, 9);
+        $st = $this->waitForStop(5);
+      }
+    }
+    if ($st['running']) {
+      echo "Why won't you die!???\n";
+      var_dump($st);
+    }
+    $this->proc = null;
+    if ($this->debug) {
+      readfile($this->logfile);
+    }
+  }
+
+  function __destruct() {
+    $this->stopProcess();
   }
 
 }

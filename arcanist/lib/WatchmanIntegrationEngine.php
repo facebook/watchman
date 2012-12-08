@@ -56,6 +56,8 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
       $results[] = $test_case->run();
     }
 
+    $results[] = WatchmanInstance::get()->generateValgrindTestResults();
+
     $results = array_mergev($results);
     return $results;
   }
