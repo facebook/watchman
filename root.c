@@ -228,8 +228,8 @@ static void watch_file(w_root_t *root, struct watchman_file *file)
     file->kq_fd = -1;
   }
 #else
-  (void)root;
-  (void)file;
+  unused_parameter(root);
+  unused_parameter(file);
 #endif
 }
 
@@ -248,8 +248,8 @@ static void stop_watching_file(w_root_t *root, struct watchman_file *file)
   close(file->kq_fd);
   file->kq_fd = -1;
 #else
-  (void)root;
-  (void)file;
+  unused_parameter(root);
+  unused_parameter(file);
 #endif
 }
 

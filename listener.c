@@ -651,8 +651,9 @@ static void cmd_shutdown(
     struct watchman_client *client,
     json_t *args)
 {
-  (void)client;
-  (void)args;
+  unused_parameter(client);
+  unused_parameter(args);
+
   w_log(W_LOG_ERR, "shutdown-server was requested, exiting!\n");
   exit(0);
 }
@@ -812,7 +813,7 @@ static void child_handler(int signo)
 {
   int st;
 
-  (void)signo;
+  unused_parameter(signo);
 
   /* reap as many children as we can find without blocking */
   while (waitpid(-1, &st, WNOHANG) > 0) {

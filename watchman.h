@@ -288,6 +288,8 @@ void w_log(int level, const char *fmt, ...)
 # define ignore_result(x) x
 #endif
 
+// self-documenting hint to the compiler that we didn't use it
+#define unused_parameter(x)  (void)x
 
 void w_log_to_clients(int level, const char *buf);
 
