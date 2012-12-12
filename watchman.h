@@ -88,7 +88,6 @@ static inline void w_clear_nonblock(int fd)
   fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & ~O_NONBLOCK);
 }
 
-/* we use interned strings to reduce memory bloat */
 struct watchman_string;
 typedef struct watchman_string w_string_t;
 struct watchman_string {
@@ -301,7 +300,6 @@ void w_string_addref(w_string_t *str);
 void w_string_delref(w_string_t *str);
 int w_string_compare(const w_string_t *a, const w_string_t *b);
 bool w_string_equal(const w_string_t *a, const w_string_t *b);
-void w_string_collect(void);
 w_string_t *w_string_dirname(w_string_t *str);
 w_string_t *w_string_basename(w_string_t *str);
 w_string_t *w_string_path_cat(const w_string_t *parent, const w_string_t *rhs);

@@ -772,7 +772,6 @@ static void *stat_thread(void *arg)
             root->root_path->buf,
             w_timeval_diff(start, end));
         root->done_initial = true;
-        w_string_collect();
       }
 
       process_triggers(root);
