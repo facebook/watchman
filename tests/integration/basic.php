@@ -49,6 +49,90 @@ class basicTestCase extends WatchmanTestCase {
         'exists' => true
       ),
     ), $out['files']);
+
+    // Make sure we correctly observe deletions
+    unlink("$root/bar.txt");
+
+    $out = $this->waitForWatchman(
+      array('find', $root),
+      function ($out) {
+        foreach ($out['files'] as $ent) {
+          if ($ent['name'] == 'bar.txt' &&
+              $ent['exists'] === false) {
+            return true;
+          }
+        }
+        return false;
+      }
+    );
+
+    usort($out['files'], function ($a, $b) {
+      return strcmp($a['name'], $b['name']);
+    });
+    $this->assertEqual(array(
+      array(
+        'name' => 'bar.txt',
+        'exists' => false
+      ),
+      array(
+        'name' => 'foo.c',
+        'exists' => true
+      ),
+    ), $out['files']);
+
+    // A moderately more complex set of changes
+    mkdir("$root/adir");
+    mkdir("$root/adir/subdir");
+    touch("$root/adir/subdir/file");
+    rename("$root/adir/subdir", "$root/adir/overhere");
+
+    $this->watchmanCommand('log', "renamed adir/subdir to adir/overhere");
+
+    // Harder to do a direct comparison
+
+    $expect = array(
+      'adir/overhere/file',
+      'foo.c',
+    );
+    $out = $this->waitForWatchman(
+      array('find', $root),
+      function ($out) use ($this, $expect) {
+        return $this->sortedListOfExistingFiles($out['files']) == $expect;
+      }
+    );
+
+    $this->assertEqual(
+      $this->sortedListOfExistingFiles($out['files']),
+      $expect);
+
+    $this->watchmanCommand('log', 'renamed adir to bdir');
+    rename("$root/adir", "$root/bdir");
+
+    $expect = array(
+      'bdir/overhere/file',
+      'foo.c',
+    );
+    $out = $this->waitForWatchman(
+      array('find', $root),
+      function ($out) use ($this, $expect) {
+        return $this->sortedListOfExistingFiles($out['files']) == $expect;
+      }
+    );
+
+    $this->assertEqual(
+      $this->sortedListOfExistingFiles($out['files']),
+      $expect);
+  }
+
+  function sortedListOfExistingFiles($file_list) {
+    $files = array();
+    foreach ($file_list as $ent) {
+      if ($ent['exists']) {
+        $files[] = $ent['name'];
+      }
+    }
+    sort($files);
+    return $files;
   }
 
   function testCursor() {

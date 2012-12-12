@@ -335,8 +335,14 @@ static void stop_watching_dir(w_root_t *root,
 
   /* turn off watch */
 #if HAVE_INOTIFY_INIT
-  inotify_rm_watch(root->infd, dir->wd);
+  if (inotify_rm_watch(root->infd, dir->wd) != 0) {
+    w_log(W_LOG_ERR, "rm_watch: %d %.*s %s\n",
+        dir->wd, dir->path->len, dir->path->buf,
+        strerror(errno));
+  }
   w_ht_del(root->wd_to_dir, dir->wd);
+  w_log(W_LOG_DBG, "removing %d -> %.*s mapping\n",
+      dir->wd, dir->path->len, dir->path->buf);
 #endif
 #if HAVE_KQUEUE
   {
@@ -489,7 +495,9 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
         WATCHMAN_INOTIFY_MASK);
     /* record mapping */
     if (dir->wd != -1) {
-      w_ht_set(root->wd_to_dir, dir->wd, (w_ht_val_t)dir);
+      w_ht_replace(root->wd_to_dir, dir->wd, (w_ht_val_t)dir);
+      w_log(W_LOG_DBG, "adding %d -> %.*s mapping\n",
+          dir->wd, dir_name->len, dir_name->buf);
     }
 #endif
 #if HAVE_KQUEUE
@@ -928,7 +936,6 @@ static void *inotify_thread(void *arg)
     w_log(W_LOG_DBG, "notify: wd=%d mask=%x %s\n", ibuf.ine.wd, ibuf.ine.mask,
         ibuf.ine.len > 0 ? ibuf.ine.name : "");
 
-
     w_root_lock(root);
     root->ticks++;
     gettimeofday(&now, NULL);
@@ -944,29 +951,52 @@ static void *inotify_thread(void *arg)
 
       /* any files we find now are obviously not deleted */
       w_root_add_pending(root, root->root_path, false, now, true);
-    } else if (ibuf.ine.wd != -1 && ibuf.ine.len) {
+    } else if (ibuf.ine.wd != -1) {
       char buf[WATCHMAN_NAME_MAX];
 
+      // If we can't resolve the dir, it's because we already know
+      // that it has gone away; we've already marked its contents
+      // as deleted.
       dir = w_root_resolve_dir_by_wd(root, ibuf.ine.wd);
-
-      snprintf(buf, sizeof(buf), "%.*s/%s",
-          dir->path->len, dir->path->buf,
-          ibuf.ine.name);
-      name = w_string_new(buf);
-
-      dir = w_root_resolve_dir(root, name, false);
       if (dir) {
-        // If this is a directory, mark its contents
-        // deleted so that we'll find them again
-        // during crawl
-        w_root_mark_deleted(root, dir, now,
-          /*confident=*/false, /*recursive=*/false);
+
+        if ((ibuf.ine.mask & IN_ISDIR) == 0 && ibuf.ine.len) {
+          snprintf(buf, sizeof(buf), "%.*s/%s",
+              dir->path->len, dir->path->buf,
+              ibuf.ine.name);
+          name = w_string_new(buf);
+
+          dir = w_root_resolve_dir(root, name, false);
+          if (dir) {
+            // If this is a directory, mark its contents
+            // deleted so that we'll find them again
+            // during crawl
+            w_root_mark_deleted(root, dir, now,
+                /*confident=*/false, /*recursive=*/false);
+          }
+
+          w_log(W_LOG_DBG, "add_pending for inotify mask=%x %s\n",
+              ibuf.ine.mask, buf);
+          w_root_add_pending(root, name, true, now, true);
+
+          w_string_delref(name);
+        } else {
+          w_log(W_LOG_DBG, "add_pending for inotify mask=%x %s\n",
+              ibuf.ine.mask, dir->path->buf);
+          w_root_add_pending(root, dir->path, true, now, true);
+        }
+      } else {
+        w_log(W_LOG_DBG, "wanted dir %d, but not found\n", ibuf.ine.wd);
       }
-
-      w_root_add_pending(root, name, true, now, true);
-
-      w_string_delref(name);
     }
+
+    if (ibuf.ine.wd != -1 && (ibuf.ine.mask & IN_IGNORED) == IN_IGNORED) {
+      dir = w_root_resolve_dir_by_wd(root, ibuf.ine.wd);
+      if (dir) {
+        stop_watching_dir(root, dir);
+      }
+    }
+
     w_root_unlock(root);
 
     // TODO: handle IN_DELETE_SELF and/or IN_IGNORED and remove
