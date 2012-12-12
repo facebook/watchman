@@ -264,7 +264,7 @@ struct watchman_trigger_command {
   uint32_t triggerid;
   struct watchman_rule *rules;
   char **argv;
-  int argc;
+  uint32_t argc;
 };
 
 #define W_LOG_OFF 0
@@ -329,9 +329,16 @@ void w_root_unlock(w_root_t *root);
 /* Bob Jenkins' lookup3.c hash function */
 uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);
 
+struct watchman_rule_match {
+  w_string_t *relname;
+  struct watchman_file *file;
+};
+
+
 uint32_t w_rules_match(w_root_t *root,
     struct watchman_file *oldest_file,
-    w_ht_t *uniq, struct watchman_rule *head);
+    struct watchman_rule_match **results,
+    struct watchman_rule *head);
 
 static inline uint32_t next_power_2(uint32_t n)
 {

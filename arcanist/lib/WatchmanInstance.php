@@ -29,6 +29,7 @@ class WatchmanInstance {
   private $sock;
   static $singleton = null;
   private $logdata = array();
+  const TIMEOUT = 20;
 
   static function get() {
     if (!self::$singleton) {
@@ -82,7 +83,7 @@ class WatchmanInstance {
     while (time() < $deadline) {
       stream_set_timeout($this->sock, $deadline - time());
       $data = fgets($this->sock);
-      stream_set_timeout($this->sock, 60);
+      stream_set_timeout($this->sock, self::TIMEOUT);
 
       if ($data === false) {
         break;
@@ -134,7 +135,7 @@ class WatchmanInstance {
       if (!file_exists($sockname)) {
         usleep(30000);
       }
-      $this->sock = fsockopen('unix://' . $sockname);
+      $this->sock = @fsockopen('unix://' . $sockname);
       if ($this->sock) {
         break;
       }
@@ -142,7 +143,7 @@ class WatchmanInstance {
     if (!$this->sock) {
       throw new Exception("Failed to talk to watchman on $sockname");
     }
-    stream_set_timeout($this->sock, 60);
+    stream_set_timeout($this->sock, self::TIMEOUT);
   }
 
   function request() {
@@ -210,18 +211,29 @@ class WatchmanInstance {
     $errors = array();
     $descriptors = array();
 
-    $vg = simplexml_load_file($this->vg_log . '.xml');
-    foreach ($vg->error as $err) {
-      $render = $this->renderVGResult($err);
-      switch ($err->kind) {
-        case 'Leak_DefinitelyLost':
-          $definite_leaks[] = $render;
-          break;
-        case 'Leak_PossiblyLost':
-          $possible_leaks[] = $render;
-          break;
-        default:
-          $errors[] = $render;
+    // valgrind seems to use an interesting definition of valid XML.
+    // Tolerate having multiple documents in one file.
+    $xml_data = file_get_contents($this->vg_log . '.xml');
+    preg_match_all(',<valgrindoutput>.*</valgrindoutput>,Usm',
+      $xml_data, $matches);
+    foreach ($matches[0] as $data) {
+      $vg = simplexml_load_string($data);
+      if (is_object($vg)) {
+        foreach ($vg->error as $err) {
+          $render = $this->renderVGResult($err);
+          switch ($err->kind) {
+          case 'Leak_DefinitelyLost':
+            $definite_leaks[] = $render;
+            break;
+          case 'Leak_PossiblyLost':
+            $possible_leaks[] = $render;
+            break;
+          default:
+            $errors[] = $render;
+          }
+        }
+      } else {
+        var_dump($xml_data);
       }
     }
 

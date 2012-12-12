@@ -95,6 +95,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
   // to indicate that the criteria have been met.
   // timeout is the timeout in seconds.
   function waitForWatchman(array $command, $have_data, $timeout = 10) {
+    $cmd_text = implode(' ', $command);
     return $this->waitFor(
       function () use ($command, $have_data) {
         $out = call_user_func_array(
@@ -106,7 +107,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
         return false;
       },
       $timeout,
-      "watchman $command didn't yield results within $timeout seconds"
+      "watchman [$cmd_text] didn't yield results within $timeout seconds"
     );
   }
 }

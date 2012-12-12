@@ -100,7 +100,7 @@ static void setup_sock_name(void)
   }
 
   if (!sock_name) {
-    asprintf(&sock_name, "%s/.watchman.%s", tmp, user);
+    ignore_result(asprintf(&sock_name, "%s/.watchman.%s", tmp, user));
   }
   if (!sock_name || sock_name[0] != '/') {
     w_log(W_LOG_ERR, "invalid or missing sockname!\n");
@@ -108,7 +108,7 @@ static void setup_sock_name(void)
   }
 
   if (!log_name) {
-    asprintf(&log_name, "%s/.watchman.%s.log", tmp, user);
+    ignore_result(asprintf(&log_name, "%s/.watchman.%s.log", tmp, user));
   }
   if (!log_name) {
     w_log(W_LOG_ERR, "out of memory while processing log name\n");

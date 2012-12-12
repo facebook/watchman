@@ -560,19 +560,19 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
 
 static void spawn_command(w_root_t *root,
     struct watchman_trigger_command *cmd,
-    w_ht_t *filenames)
+    uint32_t num_matches,
+    struct watchman_rule_match *matches)
 {
   char **argv;
-  int argc;
-  int i;
+  uint32_t argc;
+  uint32_t i, j;
   int ret;
   pid_t pid;
-  w_ht_iter_t iter;
   posix_spawn_file_actions_t actions;
   posix_spawnattr_t attr;
   sigset_t mask;
 
-  argc = cmd->argc + w_ht_size(filenames);
+  argc = cmd->argc + num_matches;
   argv = calloc(argc + 1, sizeof(char*));
 
   /* copy in the base command */
@@ -581,12 +581,14 @@ static void spawn_command(w_root_t *root,
   }
 
   /* now fill out the file name args */
-  if (w_ht_first(filenames, &iter)) do {
-    w_string_t *relname = (w_string_t*)iter.key;
+  for (j = 0; j < num_matches; j++) {
+    w_string_t *relname = matches[j].relname;
 
     argv[i++] = w_string_dup_buf(relname);
 
-  } while (w_ht_next(filenames, &iter));
+    w_string_delref(relname);
+  }
+  free(matches);
 
   argv[i] = NULL;
 
@@ -628,7 +630,8 @@ static void spawn_command(w_root_t *root,
 static void process_triggers(w_root_t *root)
 {
   struct watchman_file *f, *oldest = NULL;
-  w_ht_t *matches;
+  struct watchman_rule_match *results = NULL;
+  uint32_t matches;
   w_ht_iter_t iter;
 
   if (root->last_trigger_tick == root->pending_trigger_tick) {
@@ -667,11 +670,10 @@ static void process_triggers(w_root_t *root)
     struct watchman_trigger_command *cmd;
 
     cmd = (struct watchman_trigger_command*)iter.value;
-    matches = w_ht_new(8, &w_ht_string_funcs);
-    if (w_rules_match(root, oldest, matches, cmd->rules)) {
-      spawn_command(root, cmd, matches);
+    matches = w_rules_match(root, oldest, &results, cmd->rules);
+    if (matches > 0) {
+      spawn_command(root, cmd, matches, results);
     }
-    w_ht_free(matches);
 
   } while (w_ht_next(root->commands, &iter));
 

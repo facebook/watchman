@@ -184,6 +184,7 @@ void w_string_addref(w_string_t *str)
 void w_string_delref(w_string_t *str)
 {
   if (!w_refcnt_del(&str->refcnt)) return;
+  if (str->slice) w_string_delref(str->slice);
   free(str);
 }
 

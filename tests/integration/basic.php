@@ -36,7 +36,9 @@ class basicTestCase extends WatchmanTestCase {
       }
     );
 
-    asort($out['files']);
+    usort($out['files'], function ($a, $b) {
+      return strcmp($a['name'], $b['name']);
+    });
     $this->assertEqual(array(
       array(
         'name' => 'bar.txt',

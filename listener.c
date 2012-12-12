@@ -221,7 +221,8 @@ static bool parse_watch_params(int start, json_t *args,
 // must be called with root locked
 uint32_t w_rules_match(w_root_t *root,
     struct watchman_file *oldest_file,
-    w_ht_t *uniq, struct watchman_rule *head)
+    struct watchman_rule_match **results,
+    struct watchman_rule *head)
 {
   struct watchman_file *file;
   struct watchman_rule *rule;
@@ -229,6 +230,8 @@ uint32_t w_rules_match(w_root_t *root,
   w_string_t *relname;
   uint32_t num_matches = 0;
   uint32_t name_start;
+  struct watchman_rule_match *res = NULL;
+  uint32_t num_allocd = 0;
 
   name_start = root->root_path->len + 1;
 
@@ -270,12 +273,29 @@ uint32_t w_rules_match(w_root_t *root,
 
     if (matched) {
 
-      w_ht_set(uniq, (w_ht_val_t)relname, (w_ht_val_t)file);
-      num_matches++;
-    }
+      if (num_matches + 1 > num_allocd) {
+        struct watchman_rule_match *new_res;
 
-    w_string_delref(relname);
+        num_allocd = num_allocd ? num_allocd * 2 : 64;
+        new_res = realloc(res, num_allocd * sizeof(struct watchman_rule_match));
+        if (!new_res) {
+          w_log(W_LOG_DBG, "out of memory while running rules!\n");
+          w_string_delref(relname);
+          free(res);
+          return 0;
+        }
+        res = new_res;
+      }
+
+      res[num_matches].relname = relname;
+      res[num_matches].file = file;
+      num_matches++;
+    } else {
+      w_string_delref(relname);
+    }
   }
+
+  *results = res;
 
   return num_matches;
 }
@@ -351,14 +371,12 @@ static void run_rules(struct watchman_client *client,
     struct w_clockspec_query *since,
     struct watchman_rule *rules)
 {
-  w_ht_iter_t iter;
-  uint32_t matches;
-  w_ht_t *uniq;
+  uint32_t matches, i;
+  struct watchman_rule_match *results = NULL;
   struct watchman_file *oldest = NULL, *f;
   json_t *response = make_response();
   json_t *file_list = json_array();
 
-  uniq = w_ht_new(8, &w_ht_string_funcs);
   w_log(W_LOG_DBG, "running rules!\n");
 
   w_root_lock(root);
@@ -375,14 +393,15 @@ static void run_rules(struct watchman_client *client,
     oldest = f;
   }
   annotate_with_clock(root, response);
-  matches = w_rules_match(root, oldest, uniq, rules);
+  matches = w_rules_match(root, oldest, &results, rules);
   w_root_unlock(root);
 
   w_log(W_LOG_DBG, "rules were run, we have %" PRIu32 " matches\n", matches);
 
-  if (w_ht_first(uniq, &iter)) do {
-    struct watchman_file *file = (struct watchman_file*)iter.value;
-    w_string_t *relname = (w_string_t*)iter.key;
+  for (i = 0; i < matches; i++) {
+    struct watchman_file *file = results[i].file;
+    w_string_t *relname = results[i].relname;
+
     json_t *record = json_object();
 
     json_object_set_new(record, "name", json_string(relname->buf));
@@ -390,9 +409,10 @@ static void run_rules(struct watchman_client *client,
 
     json_array_append_new(file_list, record);
 
-  } while (w_ht_next(uniq, &iter));
+    w_string_delref(relname);
+  }
 
-  w_ht_free(uniq);
+  free(results);
 
   json_object_set_new(response, "files", file_list);
 
@@ -687,7 +707,6 @@ static void *client_thread(void *ptr)
   json_t *request;
   json_error_t jerr;
   char buf[16];
-  int n;
 
   w_set_nonblock(client->fd);
 
@@ -704,7 +723,7 @@ static void *client_thread(void *ptr)
     pfd[1].events = POLLIN|POLLHUP|POLLERR;
     pfd[1].revents = 0;
 
-    n = poll(pfd, 2, 200);
+    ignore_result(poll(pfd, 2, 200));
 
     if (pfd[0].revents) {
       request = w_json_buffer_next(&client->reader, client->fd, &jerr);
