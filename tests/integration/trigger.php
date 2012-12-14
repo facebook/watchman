@@ -28,13 +28,7 @@ class triggerTestCase extends WatchmanTestCase {
     $out = $this->watchmanCommand('watch', $root);
     $this->assertEqual($root, $out['watch']);
 
-    $out = $this->waitForWatchman(
-      array('find', $root),
-      function ($out) {
-        return count($out['files']) == 2;
-      }
-    );
-    $this->assertEqual(2, count($out['files']), "got both files");
+    $this->assertFileList($root, array('bar.txt', 'foo.c'));
 
     $out = $this->watchmanCommand('trigger', $root,
       '*.c', '--', dirname(__FILE__) . '/trig.sh', "$root/trigger.log");

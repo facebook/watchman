@@ -28,111 +28,37 @@ class basicTestCase extends WatchmanTestCase {
     $out = $this->watchmanCommand('watch', $root);
     $this->assertEqual($root, $out['watch']);
 
-    // Allow time for the files to be found
-    $out = $this->waitForWatchman(
-      array('find', $root),
-      function ($out) {
-        return count($out['files']) == 2;
-      }
-    );
-
-    usort($out['files'], function ($a, $b) {
-      return strcmp($a['name'], $b['name']);
-    });
-    $this->assertEqual(array(
-      array(
-        'name' => 'bar.txt',
-        'exists' => true
-      ),
-      array(
-        'name' => 'foo.c',
-        'exists' => true
-      ),
-    ), $out['files']);
+    $this->assertFileList($root, array('bar.txt', 'foo.c'));
 
     // Make sure we correctly observe deletions
-    unlink("$root/bar.txt");
+    $this->assertEqual(true, unlink("$root/bar.txt"));
+    $this->assertFileList($root, array('foo.c'));
 
-    $out = $this->waitForWatchman(
-      array('find', $root),
-      function ($out) {
-        foreach ($out['files'] as $ent) {
-          if ($ent['name'] == 'bar.txt' &&
-              $ent['exists'] === false) {
-            return true;
-          }
-        }
-        return false;
-      }
-    );
+    // touch -> delete -> touch, should show up as exists
+    $this->assertEqual(true, touch("$root/bar.txt"));
+    $this->assertFileList($root, array('bar.txt', 'foo.c'));
 
-    usort($out['files'], function ($a, $b) {
-      return strcmp($a['name'], $b['name']);
-    });
-    $this->assertEqual(array(
-      array(
-        'name' => 'bar.txt',
-        'exists' => false
-      ),
-      array(
-        'name' => 'foo.c',
-        'exists' => true
-      ),
-    ), $out['files']);
+    $this->assertEqual(true, unlink("$root/bar.txt"));
 
     // A moderately more complex set of changes
-    mkdir("$root/adir");
-    mkdir("$root/adir/subdir");
-    touch("$root/adir/subdir/file");
-    rename("$root/adir/subdir", "$root/adir/overhere");
+    $this->assertEqual(true, mkdir("$root/adir"));
+    $this->assertEqual(true, mkdir("$root/adir/subdir"));
+    $this->assertEqual(true, touch("$root/adir/subdir/file"));
+    $this->assertEqual(true,
+      rename("$root/adir/subdir", "$root/adir/overhere"));
 
-    $this->watchmanCommand('log', "renamed adir/subdir to adir/overhere");
-
-    // Harder to do a direct comparison
-
-    $expect = array(
+    $this->assertFileList($root, array(
       'adir/overhere/file',
       'foo.c',
-    );
-    $out = $this->waitForWatchman(
-      array('find', $root),
-      function ($out) use ($this, $expect) {
-        return $this->sortedListOfExistingFiles($out['files']) == $expect;
-      }
-    );
+    ));
 
-    $this->assertEqual(
-      $this->sortedListOfExistingFiles($out['files']),
-      $expect);
+    $this->assertEqual(true,
+      rename("$root/adir", "$root/bdir"));
 
-    $this->watchmanCommand('log', 'renamed adir to bdir');
-    rename("$root/adir", "$root/bdir");
-
-    $expect = array(
+    $this->assertFileList($root, array(
       'bdir/overhere/file',
       'foo.c',
-    );
-    $out = $this->waitForWatchman(
-      array('find', $root),
-      function ($out) use ($this, $expect) {
-        return $this->sortedListOfExistingFiles($out['files']) == $expect;
-      }
-    );
-
-    $this->assertEqual(
-      $this->sortedListOfExistingFiles($out['files']),
-      $expect);
-  }
-
-  function sortedListOfExistingFiles($file_list) {
-    $files = array();
-    foreach ($file_list as $ent) {
-      if ($ent['exists']) {
-        $files[] = $ent['name'];
-      }
-    }
-    sort($files);
-    return $files;
+    ));
   }
 
   function testCursor() {
