@@ -157,24 +157,24 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     $this->assertFailure($message);
   }
 
-  function sortedListOfExistingFiles($file_list) {
-    $files = array();
-    foreach ($file_list as $ent) {
-      if ($ent['exists']) {
-        $files[] = $ent['name'];
-      }
-    }
-    sort($files);
-    return $files;
-  }
-
   function assertFileList($root, array $files, $timeout = 10, $message = null) {
     sort($files);
 
+    $sort_func = function ($list) {
+      $files = array();
+      foreach ($list as $ent) {
+        if ($ent['exists']) {
+          $files[] = $ent['name'];
+        }
+      }
+      sort($files);
+      return $files;
+    };
+
     list($ok, $out) = $this->waitForWatchmanNoThrow(
       array('find', $root),
-      function ($out) use ($this, $files) {
-        return $this->sortedListOfExistingFiles($out['files']) === $files;
+      function ($out) use ($sort_func, $files) {
+        return $sort_func(idx($out, 'files')) === $files;
       },
       $timeout
     );
@@ -183,7 +183,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
       return;
     }
 
-    $got = $this->sortedListOfExistingFiles(idx($out, 'files'));
+    $got = $sort_func(idx($out, 'files'));
 
     if ($message === null) {
       $where = debug_backtrace();
