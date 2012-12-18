@@ -848,6 +848,7 @@ static void *child_reaper(void *arg)
       w_mark_dead(pid);
     }
   }
+  return 0;
 }
 
 bool w_start_listener(const char *path)
