@@ -19,8 +19,11 @@
 // Not explicitly exported on Darwin, so we get to define it.
 extern char **environ;
 
+// Maps pid => root
+static w_ht_t *running_kids = NULL;
 static w_ht_t *watched_roots = NULL;
 static pthread_mutex_t root_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t spawn_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* small for testing, but should make this greater than the number of dirs we
  * have in our repos to avoid realloc */
@@ -580,7 +583,6 @@ static void spawn_command(w_root_t *root,
   uint32_t argc;
   uint32_t i, j;
   int ret;
-  pid_t pid;
   posix_spawn_file_actions_t actions;
   posix_spawnattr_t attr;
   sigset_t mask;
@@ -617,14 +619,22 @@ static void spawn_command(w_root_t *root,
 
   ignore_result(chdir(root->root_path->buf));
 
-  ret = posix_spawnp(&pid, argv[0], &actions,
+  pthread_mutex_lock(&spawn_lock);
+  cmd->dispatch_tick = root->ticks;
+  ret = posix_spawnp(&cmd->current_proc,
+      argv[0], &actions,
       &attr, argv, environ);
+  if (ret == 0) {
+    w_ht_set(running_kids, cmd->current_proc,
+        (w_ht_val_t)root);
+  }
+  pthread_mutex_unlock(&spawn_lock);
 
   w_log(W_LOG_DBG, "posix_spawnp: argc=%d\n", argc);
   for (i = 0; i < argc; i++) {
     w_log(W_LOG_DBG, "  [%d] %s\n", i, argv[i]);
   }
-  w_log(W_LOG_DBG, "pid=%d ret=%d\n", pid, ret);
+  w_log(W_LOG_DBG, "pid=%d ret=%d\n", cmd->current_proc, ret);
 
   ignore_result(chdir("/"));
 
@@ -637,6 +647,56 @@ static void spawn_command(w_root_t *root,
   posix_spawn_file_actions_destroy(&actions);
 }
 
+void w_mark_dead(pid_t pid)
+{
+  w_root_t *root;
+  w_ht_iter_t iter;
+
+  pthread_mutex_lock(&spawn_lock);
+  root = (w_root_t*)w_ht_get(running_kids, pid);
+  if (!root) {
+    pthread_mutex_unlock(&spawn_lock);
+    return;
+  }
+  w_ht_del(running_kids, pid);
+  pthread_mutex_unlock(&spawn_lock);
+
+  /* now walk the cmds and try to find our match */
+  w_root_lock(root);
+
+  /* walk the list of triggers, and run their rules */
+  if (w_ht_first(root->commands, &iter)) do {
+    struct watchman_trigger_command *cmd;
+    struct watchman_file *f, *oldest = NULL;
+    struct watchman_rule_match *results = NULL;
+    uint32_t matches;
+
+    cmd = (struct watchman_trigger_command*)iter.value;
+    if (cmd->current_proc != pid) {
+      continue;
+    }
+
+    /* first mark the process as dead */
+    cmd->current_proc = 0;
+
+    /* now we need to figure out if more updates came
+     * in while we were running */
+    for (f = root->latest_file;
+        f && f->otime.ticks > cmd->dispatch_tick;
+        f = f->next) {
+      oldest = f;
+    }
+
+    matches = w_rules_match(root, oldest, &results, cmd->rules);
+    if (matches > 0) {
+      spawn_command(root, cmd, matches, results);
+    }
+
+    break;
+  } while (w_ht_next(root->commands, &iter));
+
+  w_root_unlock(root);
+}
 /* process any pending triggers.
  * must be called with root locked
  */
@@ -683,6 +743,10 @@ static void process_triggers(w_root_t *root)
     struct watchman_trigger_command *cmd;
 
     cmd = (struct watchman_trigger_command*)iter.value;
+    if (cmd->current_proc) {
+      // Don't spawn if there's one already running
+      continue;
+    }
     matches = w_rules_match(root, oldest, &results, cmd->rules);
     if (matches > 0) {
       spawn_command(root, cmd, matches, results);
@@ -1096,6 +1160,9 @@ w_root_t *w_root_resolve(const char *filename, bool auto_watch)
 
   pthread_mutex_lock(&root_lock);
   w_ht_set(watched_roots, (w_ht_val_t)root->root_path, (w_ht_val_t)root);
+  if (!running_kids) {
+    running_kids = w_ht_new(2, NULL);
+  }
   pthread_mutex_unlock(&root_lock);
 
 #if HAVE_INOTIFY_INIT

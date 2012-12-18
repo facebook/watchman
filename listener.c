@@ -828,15 +828,25 @@ void w_log_to_clients(int level, const char *buf)
   pthread_mutex_unlock(&client_lock);
 }
 
-static void child_handler(int signo)
+static void *child_reaper(void *arg)
 {
   int st;
+  pid_t pid;
 
-  unused_parameter(signo);
+  unused_parameter(arg);
 
-  /* reap as many children as we can find without blocking */
-  while (waitpid(-1, &st, WNOHANG) > 0) {
-    ;
+  while (true) {
+    pid = waitpid(-1, &st, 0);
+
+    // Shame that we can't just tell the kernel
+    // to block us until we get a child...
+    if (pid == -1 && errno == ECHILD) {
+      usleep(20000);
+    }
+
+    if (pid > 0) {
+      w_mark_dead(pid);
+    }
   }
 }
 
@@ -845,6 +855,8 @@ bool w_start_listener(const char *path)
   int fd;
   int i;
   struct sockaddr_un un;
+  pthread_t thr;
+  pthread_attr_t attr;
 
   if (strlen(path) >= sizeof(un.sun_path) - 1) {
     w_log(W_LOG_ERR, "%s: path is too long\n",
@@ -853,7 +865,12 @@ bool w_start_listener(const char *path)
   }
 
   signal(SIGPIPE, SIG_IGN);
-  signal(SIGCHLD, child_handler);
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+  if (pthread_create(&thr, &attr, child_reaper, NULL)) {
+    perror("pthread_create(child_reaper)");
+    return false;
+  }
 
   fd = socket(PF_LOCAL, SOCK_STREAM, 0);
   if (fd == -1) {
@@ -896,8 +913,6 @@ bool w_start_listener(const char *path)
   while (true) {
     int client_fd;
     struct watchman_client *client;
-    pthread_t thr;
-    pthread_attr_t attr;
 
     client_fd = accept(fd, NULL, 0);
     if (client_fd == -1) {
@@ -930,17 +945,15 @@ bool w_start_listener(const char *path)
     // a low volume of concurrent clients and the json
     // parse/encode APIs are not easily used in a non-blocking
     // server architecture.
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
     if (pthread_create(&thr, &attr, client_thread, client)) {
       // It didn't work out, sorry!
       pthread_mutex_lock(&client_lock);
       w_ht_del(clients, client->fd);
       pthread_mutex_unlock(&client_lock);
     }
-    pthread_attr_destroy(&attr);
   }
 
+  pthread_attr_destroy(&attr);
   return true;
 }
 

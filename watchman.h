@@ -264,7 +264,16 @@ struct watchman_trigger_command {
   struct watchman_rule *rules;
   char **argv;
   uint32_t argc;
+
+  /* tick value when we were last assessed
+   * for triggers */
+  uint32_t dispatch_tick;
+  /* While we are running, this holds the pid
+   * of the running process */
+  pid_t current_proc;
 };
+
+void w_mark_dead(pid_t pid);
 
 #define W_LOG_OFF 0
 #define W_LOG_ERR 1
