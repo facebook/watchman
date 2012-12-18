@@ -68,6 +68,25 @@
   c ^= b; c -= rot(b,24); \
 }
 
+#if HAVE_VALGRIND_VALGRIND_H
+# include <valgrind/valgrind.h>
+# define VALGRIND 1
+
+static int under_valgrind = -1;
+
+static inline bool running_on_valgrind(void)
+{
+  if (under_valgrind == -1) {
+    under_valgrind = RUNNING_ON_VALGRIND;
+  }
+  return under_valgrind != 0;
+}
+
+
+#else
+# define running_on_valgrind() 0
+#endif
+
 
 uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval)
 {
@@ -80,9 +99,7 @@ uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval)
   u.ptr = key;
   if (HASH_LITTLE_ENDIAN && ((u.i & 0x3) == 0)) {
     const uint32_t *k = (const uint32_t *)key;         /* read 32-bit chunks */
-#ifdef VALGRIND
     const uint8_t  *k8;
-#endif
 
     /*------ all but last block: aligned reads and affect 32 bits of (a,b,c) */
     while (length > 12)
@@ -104,46 +121,47 @@ uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval)
      * still catch it and complain.  The masking trick does make the hash
      * noticably faster for short strings (like English words).
      */
-#ifndef VALGRIND
+    if (!running_on_valgrind()) {
 
-    switch(length)
-    {
-      case 12: c+=k[2]; b+=k[1]; a+=k[0]; break;
-      case 11: c+=k[2]&0xffffff; b+=k[1]; a+=k[0]; break;
-      case 10: c+=k[2]&0xffff; b+=k[1]; a+=k[0]; break;
-      case 9 : c+=k[2]&0xff; b+=k[1]; a+=k[0]; break;
-      case 8 : b+=k[1]; a+=k[0]; break;
-      case 7 : b+=k[1]&0xffffff; a+=k[0]; break;
-      case 6 : b+=k[1]&0xffff; a+=k[0]; break;
-      case 5 : b+=k[1]&0xff; a+=k[0]; break;
-      case 4 : a+=k[0]; break;
-      case 3 : a+=k[0]&0xffffff; break;
-      case 2 : a+=k[0]&0xffff; break;
-      case 1 : a+=k[0]&0xff; break;
-      case 0 : return c;          /* zero length strings require no mixing */
+      switch(length)
+      {
+        case 12: c+=k[2]; b+=k[1]; a+=k[0]; break;
+        case 11: c+=k[2]&0xffffff; b+=k[1]; a+=k[0]; break;
+        case 10: c+=k[2]&0xffff; b+=k[1]; a+=k[0]; break;
+        case 9 : c+=k[2]&0xff; b+=k[1]; a+=k[0]; break;
+        case 8 : b+=k[1]; a+=k[0]; break;
+        case 7 : b+=k[1]&0xffffff; a+=k[0]; break;
+        case 6 : b+=k[1]&0xffff; a+=k[0]; break;
+        case 5 : b+=k[1]&0xff; a+=k[0]; break;
+        case 4 : a+=k[0]; break;
+        case 3 : a+=k[0]&0xffffff; break;
+        case 2 : a+=k[0]&0xffff; break;
+        case 1 : a+=k[0]&0xff; break;
+        case 0 : return c;          /* zero length strings require no mixing */
+      }
+
+    } else {
+      /* make valgrind happy */
+
+      k8 = (const uint8_t *)k;
+      switch(length)
+      {
+        case 12: c+=k[2]; b+=k[1]; a+=k[0]; break;
+        case 11: c+=((uint32_t)k8[10])<<16;  /* fall through */
+        case 10: c+=((uint32_t)k8[9])<<8;    /* fall through */
+        case 9 : c+=k8[8];                   /* fall through */
+        case 8 : b+=k[1]; a+=k[0]; break;
+        case 7 : b+=((uint32_t)k8[6])<<16;   /* fall through */
+        case 6 : b+=((uint32_t)k8[5])<<8;    /* fall through */
+        case 5 : b+=k8[4];                   /* fall through */
+        case 4 : a+=k[0]; break;
+        case 3 : a+=((uint32_t)k8[2])<<16;   /* fall through */
+        case 2 : a+=((uint32_t)k8[1])<<8;    /* fall through */
+        case 1 : a+=k8[0]; break;
+        case 0 : return c;
+      }
+
     }
-
-#else /* make valgrind happy */
-
-    k8 = (const uint8_t *)k;
-    switch(length)
-    {
-      case 12: c+=k[2]; b+=k[1]; a+=k[0]; break;
-      case 11: c+=((uint32_t)k8[10])<<16;  /* fall through */
-      case 10: c+=((uint32_t)k8[9])<<8;    /* fall through */
-      case 9 : c+=k8[8];                   /* fall through */
-      case 8 : b+=k[1]; a+=k[0]; break;
-      case 7 : b+=((uint32_t)k8[6])<<16;   /* fall through */
-      case 6 : b+=((uint32_t)k8[5])<<8;    /* fall through */
-      case 5 : b+=k8[4];                   /* fall through */
-      case 4 : a+=k[0]; break;
-      case 3 : a+=((uint32_t)k8[2])<<16;   /* fall through */
-      case 2 : a+=((uint32_t)k8[1])<<8;    /* fall through */
-      case 1 : a+=k8[0]; break;
-      case 0 : return c;
-    }
-
-#endif /* !valgrind */
 
   } else if (HASH_LITTLE_ENDIAN && ((u.i & 0x1) == 0)) {
     const uint16_t *k = (const uint16_t *)key;         /* read 16-bit chunks */

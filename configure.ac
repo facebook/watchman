@@ -28,7 +28,7 @@ AC_SEARCH_LIBS([pthread_create], [pthread])
 
 AC_CHECK_HEADERS(locale.h sys/inotify.h sys/event.h)
 AC_CHECK_FUNCS(kqueue inotify_init strtoll localeconv)
-
+AC_CHECK_HEADERS(valgrind/valgrind.h)
 
 # Do this after we've looked for functions
 if test -n "$GCC" ; then
