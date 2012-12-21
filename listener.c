@@ -300,6 +300,17 @@ uint32_t w_rules_match(w_root_t *root,
   return num_matches;
 }
 
+void w_match_results_free(uint32_t num_matches,
+    struct watchman_rule_match *matches)
+{
+  uint32_t i;
+
+  for (i = 0; i < num_matches; i++) {
+    w_string_delref(matches[i].relname);
+  }
+  free(matches);
+}
+
 struct w_clockspec_query {
   bool is_timestamp;
   struct timeval tv;
@@ -366,16 +377,38 @@ static bool parse_clockspec(w_root_t *root,
   return false;
 }
 
+json_t *w_match_results_to_json(
+    uint32_t num_matches,
+    struct watchman_rule_match *matches)
+{
+  json_t *file_list = json_array();
+  uint32_t i;
+
+  for (i = 0; i < num_matches; i++) {
+    struct watchman_file *file = matches[i].file;
+    w_string_t *relname = matches[i].relname;
+
+    json_t *record = json_object();
+
+    json_object_set_new(record, "name", json_string(relname->buf));
+    json_object_set_new(record, "exists", json_boolean(file->exists));
+
+    json_array_append_new(file_list, record);
+  }
+
+  return file_list;
+}
+
 static void run_rules(struct watchman_client *client,
     w_root_t *root,
     struct w_clockspec_query *since,
     struct watchman_rule *rules)
 {
-  uint32_t matches, i;
+  uint32_t matches;
   struct watchman_rule_match *results = NULL;
   struct watchman_file *oldest = NULL, *f;
   json_t *response = make_response();
-  json_t *file_list = json_array();
+  json_t *file_list;
 
   w_log(W_LOG_DBG, "running rules!\n");
 
@@ -398,21 +431,8 @@ static void run_rules(struct watchman_client *client,
 
   w_log(W_LOG_DBG, "rules were run, we have %" PRIu32 " matches\n", matches);
 
-  for (i = 0; i < matches; i++) {
-    struct watchman_file *file = results[i].file;
-    w_string_t *relname = results[i].relname;
-
-    json_t *record = json_object();
-
-    json_object_set_new(record, "name", json_string(relname->buf));
-    json_object_set_new(record, "exists", json_boolean(file->exists));
-
-    json_array_append_new(file_list, record);
-
-    w_string_delref(relname);
-  }
-
-  free(results);
+  file_list = w_match_results_to_json(matches, results);
+  w_match_results_free(matches, results);
 
   json_object_set_new(response, "files", file_list);
 

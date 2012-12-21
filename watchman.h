@@ -347,6 +347,12 @@ uint32_t w_rules_match(w_root_t *root,
     struct watchman_rule_match **results,
     struct watchman_rule *head);
 
+json_t *w_match_results_to_json(
+    uint32_t num_matches,
+    struct watchman_rule_match *matches);
+void w_match_results_free(uint32_t num_matches,
+    struct watchman_rule_match *matches);
+
 static inline uint32_t next_power_2(uint32_t n)
 {
   n |= (n >> 16);
@@ -419,6 +425,7 @@ static inline double w_timeval_diff(struct timeval start, struct timeval end)
 }
 
 extern int trigger_settle;
+extern const char *watchman_tmp_dir;
 
 bool w_start_listener(const char *socket_path);
 char **w_argv_copy_from_json(json_t *arr, int skip);

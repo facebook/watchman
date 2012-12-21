@@ -1,0 +1,9 @@
+#!/bin/sh
+# $1 = name of a log file
+# the rest of the args are names of files that were modified
+log="$1"
+shift
+
+# Copy json from stdin to the log file
+cat - >>$log
+

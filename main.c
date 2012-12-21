@@ -20,6 +20,7 @@
 int trigger_settle = 20;
 static char *sock_name = NULL;
 static char *log_name = NULL;
+const char *watchman_tmp_dir = NULL;
 static int persistent = 0;
 static int foreground = 0;
 static struct sockaddr_un un;
@@ -91,8 +92,9 @@ static const char *get_env_with_fallback(const char *name1,
 
 static void setup_sock_name(void)
 {
-  const char *tmp = get_env_with_fallback("TMPDIR", "TMP", "/tmp");
   const char *user = get_env_with_fallback("USER", "LOGNAME", NULL);
+
+  watchman_tmp_dir = get_env_with_fallback("TMPDIR", "TMP", "/tmp");
 
   if (!user) {
     w_log(W_LOG_ERR, "watchman requires that you set $USER in your env\n");
@@ -100,7 +102,8 @@ static void setup_sock_name(void)
   }
 
   if (!sock_name) {
-    ignore_result(asprintf(&sock_name, "%s/.watchman.%s", tmp, user));
+    ignore_result(asprintf(&sock_name, "%s/.watchman.%s",
+          watchman_tmp_dir, user));
   }
   if (!sock_name || sock_name[0] != '/') {
     w_log(W_LOG_ERR, "invalid or missing sockname!\n");
@@ -108,7 +111,8 @@ static void setup_sock_name(void)
   }
 
   if (!log_name) {
-    ignore_result(asprintf(&log_name, "%s/.watchman.%s.log", tmp, user));
+    ignore_result(asprintf(&log_name, "%s/.watchman.%s.log",
+          watchman_tmp_dir, user));
   }
   if (!log_name) {
     w_log(W_LOG_ERR, "out of memory while processing log name\n");

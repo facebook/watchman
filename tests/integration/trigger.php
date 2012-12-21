@@ -34,6 +34,10 @@ class triggerTestCase extends WatchmanTestCase {
       '*.c', '--', dirname(__FILE__) . '/trig.sh', "$root/trigger.log");
     $this->assertRegex('/^\d+$/', $out['triggerid']);
 
+    $out = $this->watchmanCommand('trigger', $root,
+      '*.c', '--', dirname(__FILE__) . '/trigjson', "$root/trigger.json");
+    $this->assertRegex('/^\d+$/', $out['triggerid']);
+
     $this->setLogLevel('debug');
 
     touch("$root/foo.c");
@@ -49,6 +53,22 @@ class triggerTestCase extends WatchmanTestCase {
     $this->assertRegex('/^foo.c$/m',
       file_get_contents("$root/trigger.log"),
       "got the right filename in the log");
+
+    // Validate that the json input is properly formatted
+    $lines = 0;
+    foreach (file("$root/trigger.json") as $line) {
+      $lines++;
+      $list = json_decode($line, true);
+      $this->assertEqual(array(
+        array(
+          'name' => 'foo.c',
+          'exists' => true
+        )
+      ), $list);
+    }
+    if ($lines == 0) {
+      $this->assertFailure("No json lines seen");
+    }
   }
 
 }

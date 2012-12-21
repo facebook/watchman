@@ -579,32 +579,81 @@ static void spawn_command(w_root_t *root,
     uint32_t num_matches,
     struct watchman_rule_match *matches)
 {
-  char **argv;
-  uint32_t argc;
-  uint32_t i, j;
+  char **argv = NULL;
+  uint32_t argc = 0;
+  uint32_t i = 0, j;
+  long len, argmax;
   int ret;
+  int json_fd = -1;
+  char json_file_name[WATCHMAN_NAME_MAX];
+  json_t *file_list = NULL;
   posix_spawn_file_actions_t actions;
   posix_spawnattr_t attr;
+  w_jbuffer_t buffer;
   sigset_t mask;
+
+  file_list = w_match_results_to_json(num_matches, matches);
+  if (!file_list) {
+    w_log(W_LOG_ERR, "unable to render matches to json: %s\n",
+        strerror(errno));
+    goto out;
+  }
+
+  /* prepare the json input stream for the child process */
+  snprintf(json_file_name, sizeof(json_file_name), "%s/wmanXXXXXX",
+      watchman_tmp_dir);
+  json_fd = mkstemp(json_file_name);
+  if (json_fd == -1) {
+    /* failed to make the stream :-/ */
+
+    w_log(W_LOG_ERR, "unable to create a temporary file: %s\n",
+        strerror(errno));
+
+    goto out;
+  }
+
+  /* unlink the file, we don't need it in the filesystem;
+   * we'll pass the fd on to the child as stdin */
+  unlink(json_file_name);
+  if (!w_json_buffer_init(&buffer)) {
+    w_log(W_LOG_ERR, "failed to init json buffer\n");
+    goto out;
+  }
+  w_json_buffer_write(&buffer, json_fd, file_list, 0);
+  w_json_buffer_free(&buffer);
+  lseek(json_fd, 0, SEEK_SET);
+
+  /* if we make the command line too long, things blow up.
+   * We use a little less than the max in case the shell
+   * needs some of that space */
+  argmax = sysconf(_SC_ARG_MAX) - 24;
 
   argc = cmd->argc + num_matches;
   argv = calloc(argc + 1, sizeof(char*));
-
-  /* copy in the base command */
-  for (i = 0; i < cmd->argc; i++) {
-    argv[i] = cmd->argv[i];
+  if (!argv) {
+    w_log(W_LOG_ERR, "out of memory\n");
+    goto out;
   }
 
-  /* now fill out the file name args */
+  /* copy in the base command */
+  len = 0;
+  for (i = 0; i < cmd->argc; i++) {
+    argv[i] = cmd->argv[i];
+    len += 1 + strlen(argv[i]);
+  }
+
+  /* now fill out the file name args.
+   * We stop adding when the command line is too big.
+   */
   for (j = 0; j < num_matches; j++) {
     w_string_t *relname = matches[j].relname;
 
+    if (relname->len + 1 + len >= argmax) {
+      break;
+    }
     argv[i++] = w_string_dup_buf(relname);
-
-    w_string_delref(relname);
+    len += relname->len + 1;
   }
-  free(matches);
-
   argv[i] = NULL;
 
   posix_spawnattr_init(&attr);
@@ -615,6 +664,7 @@ static void spawn_command(w_root_t *root,
       POSIX_SPAWN_SETPGROUP);
 
   posix_spawn_file_actions_init(&actions);
+  posix_spawn_file_actions_adddup2(&actions, json_fd, STDIN_FILENO);
   // TODO: std{in,out,err} redirection by default?
 
   ignore_result(chdir(root->root_path->buf));
@@ -638,13 +688,26 @@ static void spawn_command(w_root_t *root,
 
   ignore_result(chdir("/"));
 
-  for (i = cmd->argc; i < argc; i++) {
-    free(argv[i]);
-  }
-  free(argv);
-
   posix_spawnattr_destroy(&attr);
   posix_spawn_file_actions_destroy(&actions);
+
+out:
+  w_match_results_free(num_matches, matches);
+
+  if (argv) {
+    for (i = cmd->argc; i < argc; i++) {
+      free(argv[i]);
+    }
+    free(argv);
+  }
+
+  if (json_fd != -1) {
+    close(json_fd);
+  }
+
+  if (file_list) {
+    json_decref(file_list);
+  }
 }
 
 void w_mark_dead(pid_t pid)
