@@ -102,7 +102,8 @@ class WatchmanInstance {
   }
 
   function start() {
-    $cmd = "./watchman --foreground --sockname=%C.sock --logfile=%s";
+    $cmd = "./watchman --foreground --sockname=%C.sock --logfile=%s " .
+            "--statefile=%s.state";
     if ($this->valgrind) {
       $cmd = "valgrind --tool=memcheck " .
         "--log-file=$this->vg_log " .
@@ -116,7 +117,7 @@ class WatchmanInstance {
         $cmd;
     }
 
-    $cmd = csprintf($cmd, $this->sockname, $this->logfile);
+    $cmd = csprintf($cmd, $this->sockname, $this->logfile, $this->logfile);
 
     $pipes = array();
     $this->proc = proc_open($cmd, array(

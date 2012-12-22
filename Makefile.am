@@ -15,6 +15,7 @@ watchman_SOURCES = \
 	listener.c   \
 	main.c       \
 	root.c       \
+	state.c      \
 	string.c
 
 noinst_HEADERS =   \

@@ -15,7 +15,6 @@
  */
 
 #include "watchman.h"
-#include <fnmatch.h>
 
 static pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
 static w_ht_t *clients = NULL;
@@ -561,7 +560,6 @@ static void cmd_trigger_list(
     json_t *args)
 {
   w_root_t *root;
-  w_ht_iter_t iter;
   json_t *resp;
   json_t *arr;
 
@@ -571,36 +569,8 @@ static void cmd_trigger_list(
   }
 
   resp = make_response();
-  arr = json_array();
   w_root_lock(root);
-  if (w_ht_first(root->commands, &iter)) do {
-    struct watchman_trigger_command *cmd = (void*)iter.value;
-    struct watchman_rule *rule;
-    json_t *obj = json_object();
-    json_t *args = json_array();
-    json_t *rules = json_array();
-    uint32_t i;
-
-    json_object_set_new(obj, "name", json_string(cmd->triggername->buf));
-    for (i = 0; i < cmd->argc; i++) {
-      json_array_append_new(args, json_string(cmd->argv[i]));
-    }
-    json_object_set_new(obj, "command", args);
-
-    for (rule = cmd->rules; rule; rule = rule->next) {
-      json_t *robj = json_object();
-
-      json_object_set_new(robj, "pattern", json_string(rule->pattern));
-      json_object_set_new(robj, "include", json_boolean(rule->include));
-      json_object_set_new(robj, "negated", json_boolean(rule->negated));
-
-      json_array_append_new(rules, robj);
-    }
-    json_object_set_new(obj, "rules", rules);
-
-    json_array_append_new(arr, obj);
-
-  } while (w_ht_next(root->commands, &iter));
+  arr = w_root_trigger_list_to_json(root);
   w_root_unlock(root);
 
   json_object_set_new(resp, "triggers", arr);
@@ -665,6 +635,8 @@ static void cmd_trigger(
   w_root_lock(root);
   w_ht_replace(root->commands, (w_ht_val_t)cmd->triggername, (w_ht_val_t)cmd);
   w_root_unlock(root);
+
+  w_state_save();
 
   resp = make_response();
   json_object_set_new(resp, "triggerid", json_string(name));
@@ -958,6 +930,47 @@ bool w_start_listener(const char *path)
   pthread_t thr;
   pthread_attr_t attr;
 
+#ifdef HAVE_KQUEUE
+#include <sys/sysctl.h>
+#include <sys/syslimits.h>
+  {
+    struct rlimit limit;
+    int mib[2] = { CTL_KERN, KERN_MAXFILESPERPROC };
+    int maxperproc;
+    size_t len;
+
+    len = sizeof(maxperproc);
+    sysctl(mib, 2, &maxperproc, &len, NULL, 0);
+
+    getrlimit(RLIMIT_NOFILE, &limit);
+    w_log(W_LOG_ERR, "file limit is %" PRIu64
+        " kern.maxfilesperproc=%i\n",
+        limit.rlim_cur, maxperproc);
+
+    if (limit.rlim_cur < (uint64_t)maxperproc) {
+      limit.rlim_cur = maxperproc;
+
+      if (setrlimit(RLIMIT_NOFILE, &limit)) {
+        w_log(W_LOG_ERR,
+          "failed to raise limit to %" PRIu64 " (%s).\n",
+          limit.rlim_cur,
+          strerror(errno));
+      } else {
+        w_log(W_LOG_ERR,
+            "raised file limit to %" PRIu64 "\n",
+            limit.rlim_cur);
+      }
+    }
+
+    if (limit.rlim_cur < 10240) {
+      w_log(W_LOG_ERR,
+          "Your file descriptor limit is very low (%" PRIu64 "), "
+          "please consult the watchman docs on raising the limits\n",
+          limit.rlim_cur);
+    }
+  }
+#endif
+
   if (strlen(path) >= sizeof(un.sun_path) - 1) {
     w_log(W_LOG_ERR, "%s: path is too long\n",
         path);
@@ -1008,6 +1021,8 @@ bool w_start_listener(const char *path)
         (w_ht_val_t)w_string_new(commands[i].name),
         (w_ht_val_t)commands[i].func);
   }
+
+  w_state_load();
 
   // Now run the dispatch
   while (true) {

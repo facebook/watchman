@@ -52,6 +52,7 @@ extern "C" {
 #include <fcntl.h>
 #include <sys/poll.h>
 #include <sys/wait.h>
+#include <fnmatch.h>
 
 #include "watchman_hash.h"
 
@@ -427,6 +428,13 @@ static inline double w_timeval_diff(struct timeval start, struct timeval end)
 
 extern int trigger_settle;
 extern const char *watchman_tmp_dir;
+extern char *watchman_state_file;
+extern int dont_save_state;
+bool w_state_save(void);
+bool w_state_load(void);
+bool w_root_save_state(json_t *state);
+bool w_root_load_state(json_t *state);
+json_t *w_root_trigger_list_to_json(w_root_t *root);
 
 bool w_start_listener(const char *socket_path);
 char **w_argv_copy_from_json(json_t *arr, int skip);

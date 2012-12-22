@@ -7,6 +7,15 @@ A file watching service.
 Watchman exists to watch files and record when they actually change.  It can
 also trigger actions (such as rebuilding assets) when matching files change.
 
+## Supported Systems
+
+Watchman was designed to run on Linux systems with inotify and BSDish systems
+that support the kqueue() facility (I've tested this on Max OS but not the other
+BSDs).
+
+We do not currently support Illumos or Solaris systems, but it should be pretty
+simple to port it.
+
 ## Usage
 
 Currently pretty simplistic; watchman understands the commands described below.
@@ -126,6 +135,33 @@ You can use these steps to get watchman built:
 ./configure
 make
 ```
+
+## System Specific Preparation
+
+### Max OS File Descriptor Limits
+
+The default per-process descriptor limit on current versions of OS X is
+extremely low (256!).  Since kqueue() requires an open descriptor for each
+watched file, you will very quickly run into resource limits if you do not
+raise them in your system configuration.
+
+Watchman will attempt to raise its descriptor limit to match
+`kern.maxfilesperproc` when it starts up, so you shouldn't need to mess
+with `ulimit`; just raising the sysctl should do the trick.
+
+The following will raise the limits to allow 10 million files total, with 1
+million files per process until your next reboot.
+
+    sudo sysctl -w kern.maxfiles=10485760
+    sudo sysctl -w kern.maxfilesperproc=1048576
+
+I'm led to believe that putting the following into a file named
+`/etc/sysctl.conf` on OS X will cause these values to persist across reboots.
+I haven't personally verified this (too lazy to reboot right now):
+
+    kern.maxfiles=10485760
+    kern.maxfilesperproc=1048576
+
 
 ## Implementation details
 

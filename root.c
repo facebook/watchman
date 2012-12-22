@@ -1204,13 +1204,14 @@ char *w_realpath(const char *filename)
 #endif
 }
 
-w_root_t *w_root_resolve(const char *filename, bool auto_watch)
+static w_root_t *root_resolve(const char *filename, bool auto_watch,
+    bool *created)
 {
-  pthread_t thr;
   struct watchman_root *root;
   char *watch_path;
   w_string_t *root_str;
 
+  *created = false;
   watch_path = w_realpath(filename);
 
   if (!watch_path) {
@@ -1218,13 +1219,11 @@ w_root_t *w_root_resolve(const char *filename, bool auto_watch)
     return NULL;
   }
 
+  root_str = w_string_new(watch_path);
+  pthread_mutex_lock(&root_lock);
   if (!watched_roots) {
     watched_roots = w_ht_new(4, &w_ht_string_funcs);
   }
-
-  root_str = w_string_new(watch_path);
-
-  pthread_mutex_lock(&root_lock);
   root = (w_root_t*)w_ht_get(watched_roots, (w_ht_val_t)root_str);
   pthread_mutex_unlock(&root_lock);
   w_string_delref(root_str);
@@ -1243,12 +1242,21 @@ w_root_t *w_root_resolve(const char *filename, bool auto_watch)
     return NULL;
   }
 
+  *created = true;
+
   pthread_mutex_lock(&root_lock);
   w_ht_set(watched_roots, (w_ht_val_t)root->root_path, (w_ht_val_t)root);
   if (!running_kids) {
     running_kids = w_ht_new(2, NULL);
   }
   pthread_mutex_unlock(&root_lock);
+
+  return root;
+}
+
+static bool root_start(w_root_t *root)
+{
+  pthread_t thr;
 
 #if HAVE_INOTIFY_INIT
   pthread_create(&thr, NULL, inotify_thread, root);
@@ -1259,6 +1267,182 @@ w_root_t *w_root_resolve(const char *filename, bool auto_watch)
   pthread_create(&thr, NULL, stat_thread, root);
 
   return root;
+}
+
+w_root_t *w_root_resolve(const char *filename, bool auto_watch)
+{
+  struct watchman_root *root;
+  bool created = false;
+
+  root = root_resolve(filename, auto_watch, &created);
+  if (created) {
+    root_start(root);
+
+    w_state_save();
+  }
+  return root;
+
+}
+
+// Caller must have locked root
+json_t *w_root_trigger_list_to_json(w_root_t *root)
+{
+  w_ht_iter_t iter;
+  json_t *arr;
+
+  arr = json_array();
+  if (w_ht_first(root->commands, &iter)) do {
+    struct watchman_trigger_command *cmd = (void*)iter.value;
+    struct watchman_rule *rule;
+    json_t *obj = json_object();
+    json_t *args = json_array();
+    json_t *rules = json_array();
+    uint32_t i;
+
+    json_object_set_new(obj, "name", json_string(cmd->triggername->buf));
+    for (i = 0; i < cmd->argc; i++) {
+      json_array_append_new(args, json_string(cmd->argv[i]));
+    }
+    json_object_set_new(obj, "command", args);
+
+    for (rule = cmd->rules; rule; rule = rule->next) {
+      json_t *robj = json_object();
+
+      json_object_set_new(robj, "pattern", json_string(rule->pattern));
+      json_object_set_new(robj, "include", json_boolean(rule->include));
+      json_object_set_new(robj, "negated", json_boolean(rule->negated));
+
+      json_array_append_new(rules, robj);
+    }
+    json_object_set_new(obj, "rules", rules);
+
+    json_array_append_new(arr, obj);
+
+  } while (w_ht_next(root->commands, &iter));
+
+  return arr;
+}
+
+bool w_root_load_state(json_t *state)
+{
+  json_t *watched;
+  size_t i;
+
+  watched = json_object_get(state, "watched");
+  if (!watched) {
+    return true;
+  }
+
+  if (!json_is_array(watched)) {
+    return false;
+  }
+
+  for (i = 0; i < json_array_size(watched); i++) {
+    json_t *obj = json_array_get(watched, i);
+    w_root_t *root;
+    bool created = false;
+    const char *filename;
+    json_t *triggers;
+    size_t j;
+
+    triggers = json_object_get(obj, "triggers");
+    filename = json_string_value(json_object_get(obj, "path"));
+    root = root_resolve(filename, true, &created);
+
+    if (!root) {
+      continue;
+    }
+
+    w_root_lock(root);
+
+    /* re-create the trigger configuration */
+    for (j = 0; j < json_array_size(triggers); j++) {
+      json_t *tobj = json_array_get(triggers, j);
+      json_t *cmdarray, *rarray;
+      json_t *robj;
+      struct watchman_trigger_command *cmd;
+      struct watchman_rule *rule, *prior = NULL;
+      size_t r;
+
+      cmdarray = json_object_get(tobj, "command");
+      cmd = calloc(1, sizeof(*cmd));
+      cmd->argc = json_array_size(cmdarray);
+      cmd->argv = w_argv_copy_from_json(cmdarray, 0);
+      cmd->triggername = w_string_new(json_string_value(
+                          json_object_get(tobj, "name")));
+
+      rarray = json_object_get(tobj, "rules");
+      for (r = 0; r < json_array_size(rarray); r++) {
+        int include = 1, negate = 0;
+        const char *pattern = NULL;
+
+        robj = json_array_get(rarray, r);
+
+        if (json_unpack(robj, "{s:s, s:b, s:b}",
+              "pattern", &pattern,
+              "include", &include,
+              "negated", &negate) == 0) {
+          rule = calloc(1, sizeof(*rule));
+          rule->include = include;
+          rule->negated = negate;
+          rule->pattern = strdup(pattern);
+          rule->flags = FNM_PERIOD;
+
+          if (!prior) {
+            cmd->rules = rule;
+          } else {
+            prior->next = rule;
+          }
+          prior = rule;
+        }
+      }
+
+      w_ht_replace(root->commands, (w_ht_val_t)cmd->triggername,
+          (w_ht_val_t)cmd);
+    }
+
+    w_root_unlock(root);
+
+    if (created) {
+      root_start(root);
+    }
+  }
+
+  return true;
+}
+
+bool w_root_save_state(json_t *state)
+{
+  w_ht_iter_t root_iter;
+  bool result = true;
+  json_t *watched_dirs;
+
+  watched_dirs = json_array();
+
+  pthread_mutex_lock(&root_lock);
+  if (w_ht_first(watched_roots, &root_iter)) do {
+    w_root_t *root = (void*)root_iter.value;
+    json_t *obj;
+    json_t *triggers;
+
+    obj = json_object();
+
+    json_object_set_new(obj, "path", json_string(root->root_path->buf));
+
+    w_root_lock(root);
+    triggers = w_root_trigger_list_to_json(root);
+    w_root_unlock(root);
+    json_object_set_new(obj, "triggers", triggers);
+
+    json_array_append_new(watched_dirs, obj);
+
+  } while (w_ht_next(watched_roots, &root_iter));
+
+  pthread_mutex_unlock(&root_lock);
+
+  json_object_set_new(state, "watched", watched_dirs);
+
+  return result;
 }
 
 

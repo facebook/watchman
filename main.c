@@ -20,8 +20,10 @@
 int trigger_settle = 20;
 static char *sock_name = NULL;
 static char *log_name = NULL;
+char *watchman_state_file = NULL;
 const char *watchman_tmp_dir = NULL;
 static int persistent = 0;
+int dont_save_state = 0;
 static int foreground = 0;
 static struct sockaddr_un un;
 
@@ -108,6 +110,12 @@ static void setup_sock_name(void)
   if (!sock_name || sock_name[0] != '/') {
     w_log(W_LOG_ERR, "invalid or missing sockname!\n");
     abort();
+  }
+
+  if (!watchman_state_file) {
+    ignore_result(asprintf(&watchman_state_file,
+          "%s/.watchman.%s.state",
+          watchman_tmp_dir, user));
   }
 
   if (!log_name) {
@@ -228,6 +236,10 @@ static struct watchman_getopt opts[] = {
     REQ_STRING, &log_name, "PATH" },
   { "persistent", 'p', "Persist and wait for further responses",
     OPT_NONE, &persistent, NULL },
+  { "no-save-state", 'n', "Don't save state between invocations",
+    OPT_NONE, &dont_save_state, NULL },
+  { "statefile", 0, "Specify path to file to hold watch and trigger state",
+    REQ_STRING, &watchman_state_file, "PATH" },
   { "foreground", 'f', "Run the service in the foreground",
     OPT_NONE, &foreground, NULL },
   { "settle", 's',
