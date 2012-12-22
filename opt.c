@@ -129,7 +129,7 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp)
 
   /* now transfer information into the space we made */
   for (i = 0; i < num_opts; i++) {
-    long_opts[i].name = opts[i].optname;
+    long_opts[i].name = (char*)opts[i].optname;
     long_opts[i].val = opts[i].shortopt;
     switch (opts[i].argtype) {
       case OPT_NONE:

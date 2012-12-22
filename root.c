@@ -29,6 +29,13 @@ static pthread_mutex_t spawn_lock = PTHREAD_MUTEX_INITIALIZER;
  * have in our repos to avoid realloc */
 #define HINT_NUM_DIRS 16*1024
 
+/* We leverage the fact that our aligned pointers will never set the LSB of a
+ * pointer value.  We can use the LSB to indicate whether kqueue entries are
+ * dirs or files */
+#define SET_DIR_BIT(dir)   ((void*)(((intptr_t)dir) | 0x1))
+#define IS_DIR_BIT_SET(dir) ((((intptr_t)dir) & 0x1) == 0x1)
+#define DECODE_DIR(dir)    ((void*)(((intptr_t)dir) & ~0x1))
+
 static void crawler(w_root_t *root, w_string_t *dir_name,
     struct timeval now, bool confident);
 
@@ -87,6 +94,10 @@ w_root_t *w_root_new(const char *path)
   root->kq_fd = kqueue();
   w_set_cloexec(root->kq_fd);
 #endif
+#if HAVE_PORT_CREATE
+  root->port_fd = port_create();
+  w_set_cloexec(root->port_fd);
+#endif
   root->dirname_to_dir = w_ht_new(HINT_NUM_DIRS, &w_ht_string_funcs);
   root->commands = w_ht_new(2, &trigger_hash_funcs);
   root->ticks = 1;
@@ -132,6 +143,8 @@ bool w_root_add_pending(w_root_t *root, w_string_t *path,
   if (!p) {
     return false;
   }
+
+  w_log(W_LOG_DBG, "add_pending: %s\n", path->buf);
 
   p->confident = confident;
   p->now = now;
@@ -222,39 +235,55 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
 
 static void watch_file(w_root_t *root, struct watchman_file *file)
 {
-#if HAVE_KQUEUE
-  struct kevent k;
+#if HAVE_INOTIFY_INIT
+  unused_parameter(root);
+  unused_parameter(file);
+#else
   char buf[WATCHMAN_NAME_MAX];
 
+#if HAVE_KQUEUE
   if (file->kq_fd != -1) {
     return;
   }
+#endif
 
   snprintf(buf, sizeof(buf), "%.*s/%.*s",
       file->parent->path->len, file->parent->path->buf,
       file->name->len, file->name->buf);
 
-  file->kq_fd = open(buf, O_EVTONLY);
-  if (file->kq_fd == -1) {
-    w_log(W_LOG_DBG, "failed to open %s O_EVTONLY: %s\n",
-        buf, strerror(errno));
-    return;
-  }
+#if HAVE_KQUEUE
+  {
+    struct kevent k;
+    file->kq_fd = open(buf, O_EVTONLY);
+    if (file->kq_fd == -1) {
+      w_log(W_LOG_DBG, "failed to open %s O_EVTONLY: %s\n",
+          buf, strerror(errno));
+      return;
+    }
 
-  memset(&k, 0, sizeof(k));
-  EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
-    NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME|NOTE_NONE|NOTE_ATTRIB,
-    0, file);
-  w_set_cloexec(file->kq_fd);
+    memset(&k, 0, sizeof(k));
+    EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
+        NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME|NOTE_NONE|NOTE_ATTRIB,
+        0, file);
+    w_set_cloexec(file->kq_fd);
 
-  if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
-    perror("kevent");
-    close(file->kq_fd);
-    file->kq_fd = -1;
+    if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
+      perror("kevent");
+      close(file->kq_fd);
+      file->kq_fd = -1;
+    }
   }
-#else
-  unused_parameter(root);
-  unused_parameter(file);
+#endif
+#if HAVE_PORT_CREATE
+  file->port_file.fo_atime = file->st.st_atim;
+  file->port_file.fo_mtime = file->st.st_mtim;
+  file->port_file.fo_ctime = file->st.st_ctim;
+  file->port_file.fo_name = buf;
+
+  port_associate(root->port_fd, PORT_SOURCE_FILE,
+      (uintptr_t)&file->port_file, WATCHMAN_PORT_EVENTS,
+      (void*)file);
+#endif
 #endif
 }
 
@@ -272,6 +301,10 @@ static void stop_watching_file(w_root_t *root, struct watchman_file *file)
   kevent(root->kq_fd, &k, 1, NULL, 0, 0);
   close(file->kq_fd);
   file->kq_fd = -1;
+#elif HAVE_PORT_CREATE
+
+  port_dissociate(root->port_fd, PORT_SOURCE_FILE,
+      (uintptr_t)&file->port_file);
 #else
   unused_parameter(root);
   unused_parameter(file);
@@ -353,6 +386,11 @@ static void stop_watching_dir(w_root_t *root,
 
     stop_watching_dir(root, child);
   } while (w_ht_next(dir->dirs, &i));
+
+#if HAVE_PORT_CREATE
+  port_dissociate(root->port_fd, PORT_SOURCE_FILE,
+      (uintptr_t)&dir->port_file);
+#endif
 
   if (dir->wd == -1) {
     return;
@@ -539,9 +577,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       EV_SET(&k, dir->wd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
         NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME,
         0,
-        // See consume_kqueue for commentary on this
-        // bit setting
-        (void*)(((intptr_t)dir) | 0x1));
+        SET_DIR_BIT(dir));
       w_set_cloexec(dir->wd);
 
       if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
@@ -549,6 +585,24 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
         close(dir->wd);
         dir->wd = -1;
       }
+    }
+#endif
+#if HAVE_PORT_CREATE
+    {
+      struct stat st;
+
+      lstat(dir_name->buf, &st);
+      dir->port_file.fo_atime = st.st_atim;
+      dir->port_file.fo_mtime = st.st_mtim;
+      dir->port_file.fo_ctime = st.st_ctim;
+      dir->port_file.fo_name = (char*)dir->path->buf;
+
+      errno = 0;
+      port_associate(root->port_fd, PORT_SOURCE_FILE,
+          (uintptr_t)&dir->port_file, WATCHMAN_PORT_EVENTS,
+          SET_DIR_BIT(dir));
+      w_log(W_LOG_ERR, "port_associate %s %s\n",
+        dir->port_file.fo_name, strerror(errno));
     }
 #endif
   }
@@ -973,14 +1027,10 @@ static int consume_kqueue(w_root_t *root, w_ht_t *batch,
       root->root_path->buf, timeout, n, strerror(errno));
 
   for (i = 0; n > 0 && i < n; i++) {
-    /* We leverage the fact that our aligned pointers
-     * will never set the LSB of a pointer value.
-     * We can use the LSB to indicate whether kqueue
-     * entries are dirs or files */
     intptr_t p = (intptr_t)k[i].udata;
 
-    if (p & 0x1) {
-      struct watchman_dir *dir = (void*)(p & ~0x1);
+    if (IS_DIR_BIT_SET(p)) {
+      struct watchman_dir *dir = DECODE_DIR(p);
 
       w_log(W_LOG_DBG, " KQ dir %s\n", dir->path->buf);
       w_ht_set(batch, (w_ht_val_t)dir->path, (w_ht_val_t)dir);
@@ -1048,6 +1098,61 @@ static void *kqueue_thread(void *arg)
   return NULL;
 }
 
+#endif
+
+#if HAVE_PORT_CREATE
+static void *portfs_thread(void *arg)
+{
+  w_root_t *root = arg;
+
+  for (;;) {
+    port_event_t events[128];
+    uint_t i, n;
+    struct timeval now;
+
+
+    n = 1;
+    if (port_getn(root->port_fd, events,
+          sizeof(events) / sizeof(events[0]), &n, NULL)) {
+      if (errno == EINTR) {
+        continue;
+      }
+      w_log(W_LOG_ERR, "port_getn: %s\n",
+          strerror(errno));
+      abort();
+    }
+
+    w_log(W_LOG_ERR, "port_getn: n=%u\n", n);
+
+    if (n == 0) {
+      continue;
+    }
+
+    w_root_lock(root);
+    root->ticks++;
+    gettimeofday(&now, NULL);
+
+    for (i = 0; i < n; i++) {
+      if (IS_DIR_BIT_SET(events[i].portev_user)) {
+        struct watchman_dir *dir = DECODE_DIR(events[i].portev_user);
+
+        w_root_add_pending(root, dir->path, true, now, true);
+
+      } else {
+        struct watchman_file *file = events[i].portev_user;
+        w_string_t *path;
+
+        path = w_string_path_cat(file->parent->path, file->name);
+        w_root_add_pending(root, path, true, now, true);
+
+        file->port_file.fo_name = (char*)path->buf;
+        w_string_delref(path);
+      }
+    }
+
+    w_root_unlock(root);
+  }
+}
 #endif
 
 #if HAVE_INOTIFY_INIT
@@ -1263,6 +1368,9 @@ static bool root_start(w_root_t *root)
 #endif
 #if HAVE_KQUEUE
   pthread_create(&thr, NULL, kqueue_thread, root);
+#endif
+#if HAVE_PORT_CREATE
+  pthread_create(&thr, NULL, portfs_thread, root);
 #endif
   pthread_create(&thr, NULL, stat_thread, root);
 

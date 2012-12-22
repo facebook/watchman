@@ -10,11 +10,17 @@ also trigger actions (such as rebuilding assets) when matching files change.
 ## Supported Systems
 
 Watchman was designed to run on Linux systems with inotify and BSDish systems
-that support the kqueue() facility (I've tested this on Max OS but not the other
-BSDs).
+that support the kqueue() facility (I've tested this on Max OS but not the
+other BSDs).
 
-We do not currently support Illumos or Solaris systems, but it should be pretty
-simple to port it.
+Watchman also runs and passes its unit test suite on the OmniOS Illumos
+distribution, so it should also operate on Solaris 10 and 11 systems, although
+it hasn't yet been tested on those systems.
+
+The word "Support" is used here to mean that the code compiles and operates in
+some form such that the software operates in a reasonably correct manner; per
+the LICENSE, it doesn't mean that the maintainers are obligated to make it work
+well on those systems! :-)
 
 ## Usage
 

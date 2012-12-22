@@ -18,7 +18,7 @@
 #include "utf.h"
 
 /* Work around nonstandard isnan() and isinf() implementations */
-#ifndef isnan
+#if !defined(isnan) && !defined(sun)
 static JSON_INLINE int isnan(double x) { return x != x; }
 #endif
 #ifndef isinf

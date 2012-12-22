@@ -1,5 +1,9 @@
 AC_INIT([watchman], [1.0], [], [watchman])
 AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects])
+
+dnl we really want you to be using 64 hardware and software
+CFLAGS="$CFLAGS -D_REENTRANT -m64"
+
 AC_PROG_CC
 AC_C_BIGENDIAN
 AC_C_INLINE
@@ -25,9 +29,10 @@ AC_ARG_ENABLE(stack-protector, [
 ])
 
 AC_SEARCH_LIBS([pthread_create], [pthread])
+AC_SEARCH_LIBS([socket], [socket])
 
-AC_CHECK_HEADERS(locale.h sys/inotify.h sys/event.h)
-AC_CHECK_FUNCS(kqueue inotify_init strtoll localeconv)
+AC_CHECK_HEADERS(locale.h port.h sys/inotify.h sys/event.h)
+AC_CHECK_FUNCS(kqueue port_create inotify_init strtoll localeconv)
 AC_CHECK_HEADERS(valgrind/valgrind.h)
 
 # Do this after we've looked for functions

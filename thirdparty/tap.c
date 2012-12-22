@@ -26,6 +26,7 @@
 
 #include "watchman.h"
 #include <ctype.h>
+#include <stdio.h>
 
 #include "tap.h"
 

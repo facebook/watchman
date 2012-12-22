@@ -16,7 +16,7 @@ arcanist/.phutil_module_cache
 *.swp
 compile
 stamp-h1
-config.h
+config.h*
 thirdparty/jansson/jansson_config.h
 compile
 tests/*.t

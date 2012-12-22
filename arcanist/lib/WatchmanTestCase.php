@@ -63,7 +63,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     list($ok, $line, $matches) = $this->waitForLog($criteria, $timeout);
     if (!$ok) {
       $this->assertFailure(
-        "did not find $critiera in log output within $timeout seconds");
+        "did not find $criteria in log output within $timeout seconds");
     }
     return array($ok, $line, $matches);
   }
@@ -150,7 +150,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
       $cmd_text = implode(' ', $command);
 
       $message = "watchman [$cmd_text] didn't yield expected results " .
-        "within $timeout seconds\n" . json_encode($last_output) . "\n" .
+        "within $timeout seconds\n" . json_encode($res) . "\n" .
         $where;
     }
 

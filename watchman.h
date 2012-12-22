@@ -34,6 +34,9 @@ extern "C" {
 #if HAVE_SYS_EVENT_H
 # include <sys/event.h>
 #endif
+#if HAVE_PORT_H
+# include <port.h>
+#endif
 #include <signal.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -104,6 +107,9 @@ struct watchman_string {
   IN_DELETE_SELF | IN_MODIFY | IN_MOVE_SELF | IN_MOVED_FROM | \
   IN_MOVED_TO | IN_DONT_FOLLOW | IN_ONLYDIR
 
+#define WATCHMAN_PORT_EVENTS \
+  FILE_MODIFIED | FILE_ATTRIB | FILE_NOFOLLOW
+
 struct watchman_file;
 struct watchman_dir;
 struct watchman_root;
@@ -135,6 +141,9 @@ struct watchman_dir {
 
   /* watch descriptor */
   int wd;
+#if HAVE_PORT_CREATE
+  file_obj_t port_file;
+#endif
 };
 
 struct watchman_file {
@@ -172,6 +181,9 @@ struct watchman_file {
    * kqueue will do that for us */
   int kq_fd;
 #endif
+#if HAVE_PORT_CREATE
+  file_obj_t port_file;
+#endif
 };
 
 struct watchman_root {
@@ -184,6 +196,9 @@ struct watchman_root {
 #endif
 #if HAVE_KQUEUE
   int kq_fd;
+#endif
+#if HAVE_PORT_CREATE
+  int port_fd;
 #endif
 
   /* path to root */
