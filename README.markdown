@@ -35,7 +35,7 @@ that match according the following rules:
 Requests that the specified dir is watched for changes.
 Watchman will track all files and dirs rooted at the specified path.
 
-### watchman -- trigger /path/to/dir [patterns] -- [cmd]
+### watchman -- trigger triggername /path/to/dir [patterns] -- [cmd]
 
 Sets up a trigger such that if any files under the specified dir that match the
 specified set of patterns change, then the specified command will be run and
@@ -43,7 +43,7 @@ passed the list of matching files.
 
 For example:
 
-    $ watchman -- trigger ~/www '*.js' -- ls -l
+    $ watchman -- trigger ~/www jsfiles '*.js' -- ls -l
 
 If, say, `~/www/scripts/foo.js` is changed, then watchman will chdir
 to `~/www` then invoke `ls -l scripts/foo.js`.
@@ -54,6 +54,25 @@ the registered command.
 
 Deleted files are counted as changed files and are passed the command in
 exactly the same way.
+
+Watchman will arrange for the standard input stream of the triggered
+process to read from a file that contains a JSON array of changed file
+information.  This is in the same format as the file list returned by
+the `since` command.
+
+Watchman will limit the length of the command line so that it does not
+exceed the system configured argument length limit (`getconf ARG_MAX`).
+If the length limit would be exceeded, watchman simply stops appending
+arguments.  Any that are not appended are discarded; *watchman will not
+queue up and execute a second instance of the trigger process*.  It
+cannot do this in a race-free manner.  If you are watching a large
+directory and there is a risk that you'll exceed the command line
+length limit, then you should use the JSON input stream instead, as
+this has no size limitation.
+
+### watchman trigger-list /root
+
+Returns the set of registered triggers associated with a root directory.
 
 ### watchman find /path/to/dir [patterns]
 

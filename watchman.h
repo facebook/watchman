@@ -231,6 +231,7 @@ struct watchman_rule {
   /* next rule in this chain */
   struct watchman_rule *next;
 };
+void w_free_rules(struct watchman_rule *head);
 
 struct watchman_json_buffer {
   char *buf;
@@ -260,7 +261,7 @@ struct watchman_client {
 };
 
 struct watchman_trigger_command {
-  uint32_t triggerid;
+  w_string_t *triggername;
   struct watchman_rule *rules;
   char **argv;
   uint32_t argc;

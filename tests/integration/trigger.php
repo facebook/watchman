@@ -31,12 +31,14 @@ class triggerTestCase extends WatchmanTestCase {
     $this->assertFileList($root, array('bar.txt', 'foo.c'));
 
     $out = $this->watchmanCommand('trigger', $root,
-      '*.c', '--', dirname(__FILE__) . '/trig.sh', "$root/trigger.log");
-    $this->assertRegex('/^\d+$/', $out['triggerid']);
+      'test', '*.c', '--', dirname(__FILE__) . '/trig.sh',
+      "$root/trigger.log");
+    $this->assertEqual('test', $out['triggerid']);
 
     $out = $this->watchmanCommand('trigger', $root,
-      '*.c', '--', dirname(__FILE__) . '/trigjson', "$root/trigger.json");
-    $this->assertRegex('/^\d+$/', $out['triggerid']);
+      'other', '*.c', '--', dirname(__FILE__) . '/trigjson',
+      "$root/trigger.json");
+    $this->assertEqual('other', $out['triggerid']);
 
     $this->setLogLevel('debug');
 
@@ -69,6 +71,47 @@ class triggerTestCase extends WatchmanTestCase {
     if ($lines == 0) {
       $this->assertFailure("No json lines seen");
     }
+
+    $trig_list = array(
+      array(
+        'name' => 'other',
+        'rules' => array(
+          array(
+            'pattern' => '*.c',
+            'include' => true,
+            'negated' => false
+          ),
+        ),
+        'command' => array(
+          dirname(__FILE__) . '/trigjson',
+          "$root/trigger.json"
+        ),
+      ),
+      array(
+        'name' => 'test',
+        'rules' => array(
+          array(
+            'pattern' => '*.c',
+            'include' => true,
+            'negated' => false
+          ),
+        ),
+        'command' => array(
+          dirname(__FILE__) . '/trig.sh',
+          "$root/trigger.log"
+        ),
+      ),
+    );
+    $triggers = $this->watchmanCommand('trigger-list', $root);
+    $triggers = $triggers['triggers'];
+    usort($triggers, function ($a, $b) {
+      return strcmp($a['name'], $b['name']);
+    });
+    $this->assertEqual($trig_list, $triggers);
+
+    $out = $this->watchmanCommand('trigger', $root,
+                  'other', '*.c', '--', 'true');
+    $this->assertEqual('other', $out['triggerid']);
   }
 
 }

@@ -128,6 +128,19 @@ static struct watchman_hash_funcs client_hash_funcs = {
   client_delete
 };
 
+void w_free_rules(struct watchman_rule *head)
+{
+  struct watchman_rule *r;
+
+  while (head) {
+    r = head;
+    head = r->next;
+
+    free((char*)r->pattern);
+    free(r);
+  }
+}
+
 /* Parses filename match rules.
  * By default, we want to include items that positively match
  * the set of fnmatch(3) patterns specified.
@@ -540,7 +553,61 @@ static void cmd_since(
   run_rules(client, root, &since, rules);
 }
 
-/* trigger /root [watch patterns] -- cmd to run
+/* trigger-list /root
+ * Displays a list of registered triggers for a given root
+ */
+static void cmd_trigger_list(
+    struct watchman_client *client,
+    json_t *args)
+{
+  w_root_t *root;
+  w_ht_iter_t iter;
+  json_t *resp;
+  json_t *arr;
+
+  root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
+    return;
+  }
+
+  resp = make_response();
+  arr = json_array();
+  w_root_lock(root);
+  if (w_ht_first(root->commands, &iter)) do {
+    struct watchman_trigger_command *cmd = (void*)iter.value;
+    struct watchman_rule *rule;
+    json_t *obj = json_object();
+    json_t *args = json_array();
+    json_t *rules = json_array();
+    uint32_t i;
+
+    json_object_set_new(obj, "name", json_string(cmd->triggername->buf));
+    for (i = 0; i < cmd->argc; i++) {
+      json_array_append_new(args, json_string(cmd->argv[i]));
+    }
+    json_object_set_new(obj, "command", args);
+
+    for (rule = cmd->rules; rule; rule = rule->next) {
+      json_t *robj = json_object();
+
+      json_object_set_new(robj, "pattern", json_string(rule->pattern));
+      json_object_set_new(robj, "include", json_boolean(rule->include));
+      json_object_set_new(robj, "negated", json_boolean(rule->negated));
+
+      json_array_append_new(rules, robj);
+    }
+    json_object_set_new(obj, "rules", rules);
+
+    json_array_append_new(arr, obj);
+
+  } while (w_ht_next(root->commands, &iter));
+  w_root_unlock(root);
+
+  json_object_set_new(resp, "triggers", arr);
+  send_and_dispose_response(client, resp);
+}
+
+/* trigger /root triggername [watch patterns] -- cmd to run
  * Sets up a trigger so that we can execute a command when a change
  * is detected */
 static void cmd_trigger(
@@ -552,13 +619,24 @@ static void cmd_trigger(
   uint32_t next_arg = 0;
   struct watchman_trigger_command *cmd;
   json_t *resp;
+  const char *name;
 
   root = resolve_root_or_err(client, args, 1, true);
   if (!root) {
     return;
   }
 
-  if (!parse_watch_params(2, args, &rules, &next_arg)) {
+  if (json_array_size(args) < 2) {
+    send_error_response(client, "not enough arguments");
+    return;
+  }
+  name = json_string_value(json_array_get(args, 2));
+  if (!name) {
+    send_error_response(client, "expected 2nd parameter to be trigger name");
+    return;
+  }
+
+  if (!parse_watch_params(3, args, &rules, &next_arg)) {
     send_error_response(client, "invalid rule spec: %s", strerror(errno));
     return;
   }
@@ -583,13 +661,13 @@ static void cmd_trigger(
     return;
   }
 
+  cmd->triggername = w_string_new(name);
   w_root_lock(root);
-  cmd->triggerid = ++root->next_cmd_id;
-  w_ht_set(root->commands, cmd->triggerid, (w_ht_val_t)cmd);
+  w_ht_replace(root->commands, (w_ht_val_t)cmd->triggername, (w_ht_val_t)cmd);
   w_root_unlock(root);
 
   resp = make_response();
-  json_object_set_new(resp, "triggerid", json_integer(cmd->triggerid));
+  json_object_set_new(resp, "triggerid", json_string(name));
   send_and_dispose_response(client, resp);
 }
 
@@ -706,6 +784,7 @@ static struct {
   { "since", cmd_since },
   { "watch", cmd_watch },
   { "trigger", cmd_trigger },
+  { "trigger-list", cmd_trigger_list },
   { "shutdown-server", cmd_shutdown },
   { "log-level", cmd_loglevel },
   { "log", cmd_log },

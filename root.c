@@ -38,6 +38,28 @@ static void free_pending(struct watchman_pending_fs *p)
   free(p);
 }
 
+static void delete_trigger(w_ht_val_t val)
+{
+  struct watchman_trigger_command *cmd;
+
+  cmd = (struct watchman_trigger_command*)val;
+
+  free(cmd->argv);
+  w_string_delref(cmd->triggername);
+  w_free_rules(cmd->rules);
+
+  free(cmd);
+}
+
+static const struct watchman_hash_funcs trigger_hash_funcs = {
+  w_ht_string_copy,
+  w_ht_string_del,
+  w_ht_string_equal,
+  w_ht_string_hash,
+  NULL,
+  delete_trigger
+};
+
 w_root_t *w_root_new(const char *path)
 {
   w_root_t *root = calloc(1, sizeof(*root));
@@ -66,7 +88,7 @@ w_root_t *w_root_new(const char *path)
   w_set_cloexec(root->kq_fd);
 #endif
   root->dirname_to_dir = w_ht_new(HINT_NUM_DIRS, &w_ht_string_funcs);
-  root->commands = w_ht_new(2, NULL);
+  root->commands = w_ht_new(2, &trigger_hash_funcs);
   root->ticks = 1;
 
   // "manually" populate the initial dir, as the dir resolver will
