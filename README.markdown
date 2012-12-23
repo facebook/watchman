@@ -206,7 +206,6 @@ of it!) and be followed by a newline `\n` character:
 
 ## Future
 
- * persist the registered command triggers across process invocations
  * add a command to remove registered triggers
  * add a richer output mode for the `since` command that passes on
    file status information in addition to the filename.
