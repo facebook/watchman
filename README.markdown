@@ -7,24 +7,92 @@ A file watching service.
 Watchman exists to watch files and record when they actually change.  It can
 also trigger actions (such as rebuilding assets) when matching files change.
 
-## Supported Systems
+## System Requirements
 
-Watchman was designed to run on Linux systems with inotify and BSDish systems
-that support the kqueue() facility (I've tested this on Max OS but not the
-other BSDs).
+Watchman is known to compile and pass its test suite on:
 
-Watchman also runs and passes its unit test suite on the OmniOS Illumos
-distribution, so it should also operate on Solaris 10 and 11 systems, although
-it hasn't yet been tested on those systems.
+ * Linux systems with `inotify`
+ * OS X and BSDish systems that have the `kqueue(2)` facility
+ * Illumos and Solaris style systems that have `port_create(3C)`
 
-The word "Support" is used here to mean that the code compiles and operates in
-some form such that the software operates in a reasonably correct manner; per
-the LICENSE, it doesn't mean that the maintainers are obligated to make it work
-well on those systems! :-)
+Watchman relies on the operating system facilities for file notification,
+which means that you will likely have very poor results using it on any
+kind of remote or distributed filesystem.
+
+## Concepts
+
+ * Watchman watches and reports on *files*.  It is aware of directories but
+   will only give you information about non-directory entries in the filesystem.
+ * Watchman does not follow symlinks.  It knows they exist, but they show up
+   the same as any other file in its reporting.
+ * Watchman encourages you to avoid race conditions by providing an abstract
+   clock notation, named cursors to aid in maintaining
+   proper state around polling operations and a command trigger facility.
+ * Watchman waits for a watched directory to settle down before it will start
+   to trigger notifications or command execution.
+ * Watchman is conservative, preferring to err on the side of caution, which
+   means that it considers the files to be freshly changed when you start to
+   watch them.
 
 ## Usage
 
-Currently pretty simplistic; watchman understands the commands described below.
+Watchman is provided as a single executable binary that acts as both the
+watchman service and a client of that service.  The simplest usage is entirely
+from the command line, but real world scenarios will typically be more complex
+and harness the streaming JSON protocol directly.
+
+## Command Line Options
+
+The following options are recognized if they are present on the command line
+before any non-option arguments.
+
+```
+ -U, --sockname=PATH      Specify alternate sockname
+
+ -o, --logfile=PATH       Specify path to logfile
+
+ -p, --persistent         Persist and wait for further responses
+
+ -n, --no-save-state      Don't save state between invocations
+
+ --statefile=PATH         Specify path to file to hold watch and trigger state
+
+ -f, --foreground         Run the service in the foreground
+
+ -s, --settle             Number of milliseconds to wait for filesystem to settle
+```
+
+ * See `log-level` for an example of when you might use the `persistent` flag
+ * The default `settle` period is 20 milliseconds
+
+## Environment and Files
+
+Watchman will use the `$USER` or `$LOGNAME` environmental variables to determine
+the current userid, and the `$TMPDIR` or `$TMP` environmental variables to
+determine a temporary directory, falling back to `/tmp` if neither are set.
+
+ * The default `sockname` is `$TMP/.watchman.$USER`
+ * The default `logfile` is `$TMP/.watchman.$USER.log`
+ * The default `statefile` is `$TMP/.watchman.$USER.state`.  You can turn off
+   the use of the state file via the `--no-save-state` option.  The statefile
+   is used to persist watches and triggers across process restarts.
+
+## Available Commands
+
+A summary of the watchman commands follows.  The commands can be executed
+either by the command line tool or via the JSON protocol.  When using the
+command line, be aware of shell quoting; you should make a point of quoting
+any filename patterns that you want watchman to process, otherwise the shell
+will expand the pattern and pass a literal list of the files that matched
+at the time you ran the command, which may be very different from the set
+of commands that match at the time a change is detected!
+
+A quick note on JSON: in this documentation we show JSON in a human readable
+pretty-printed form.  The watchman client executable itself will pretty-print
+its output too.  The actual JSON protocol uses newlines to separate JSON
+packets.  If you're implementing a JSON client, make sure you read the section
+on the JSON protocol carefully to make sure you get it right!
+
 Where you see `[patterns]` in the command syntax, we allow filename patterns
 that match according the following rules:
 
@@ -45,20 +113,69 @@ that match according the following rules:
    default.
  * A `--` indicates the end of the set of patterns.
 
-### watchman watch /path/to/dir
+### Command: watch
 
 Requests that the specified dir is watched for changes.
 Watchman will track all files and dirs rooted at the specified path.
 
-### watchman -- trigger triggername /path/to/dir [patterns] -- [cmd]
+From the command line:
+
+```shell
+watchman watch ~/www
+```
+
+Note that, when you're using the CLI, you can specify the root as `~/www`
+because the shell will resolve `~/www` to `/home/wez/www`, but when you use the
+JSON protocol, you are responsible for supplying an absolute path.
+
+JSON:
+```json
+["watch", "/home/wez/www"]
+```
+
+Watchman will `realpath(3)` the directory and start watching it if it isn't already.
+A newly watched directory is processed in a couple of stages:
+
+ * Establishes change notification for the directory with the kernel
+ * Queues up a request to crawl the directory
+ * As the directory contents are resolved, those are watched in a similar fashion
+ * All newly observed files are considered changed
+
+Unless `no-state-save` is in use, watches are saved and re-established across
+a process restart.
+
+### Command: trigger
 
 Sets up a trigger such that if any files under the specified dir that match the
 specified set of patterns change, then the specified command will be run and
 passed the list of matching files.
 
+From the command line:
+
+```shell
+watchman -- trigger /path/to/dir triggername [patterns] -- [cmd]
+```
+
+Note that the first `--` is to distinguish watchman CLI switches from the
+second `--`, which delimits patterns from the trigger command.  This is only
+needed when using the CLI, not when using the JSON protocol.
+
+JSON:
+```json
+["trigger", "/path/to/dir", "triggername", <patterns>, "--", <cmd>]
+```
+
 For example:
 
-    $ watchman -- trigger ~/www jsfiles '*.js' -- ls -l
+```shell
+watchman -- trigger ~/www jsfiles '*.js' -- ls -l
+```
+
+or in JSON:
+
+```json
+["trigger", "/home/wez/www", "jsfiles", "*.js", "--", "ls", "-l"]
+```
 
 If, say, `~/www/scripts/foo.js` is changed, then watchman will chdir
 to `~/www` then invoke `ls -l scripts/foo.js`.
@@ -76,38 +193,113 @@ information.  This is in the same format as the file list returned by
 the `since` command.
 
 Watchman will limit the length of the command line so that it does not
-exceed the system configured argument length limit (`getconf ARG_MAX`).
+exceed the system configured argument length limit, which you can see
+for yourself by running `getconf ARG_MAX`.
+
 If the length limit would be exceeded, watchman simply stops appending
-arguments.  Any that are not appended are discarded; *watchman will not
-queue up and execute a second instance of the trigger process*.  It
+arguments.  Any that are not appended are discarded; **watchman will not
+queue up and execute a second instance of the trigger process**.  It
 cannot do this in a race-free manner.  If you are watching a large
 directory and there is a risk that you'll exceed the command line
 length limit, then you should use the JSON input stream instead, as
 this has no size limitation.
 
-### watchman trigger-list /root
+Watchman will only run a single instance of the trigger process at a time.
+That avoids fork-bomb style behavior in cases where your trigger also modifies
+files.  When the process terminates, watchman will re-evaluate the trigger
+criteria based on the clock at the time the process was last spawned; if
+a file list is generated watchman will spawn a new child with the files
+that changed in the meantime.
+
+Unless `no-save-state` is in use, triggers are saved and re-established
+across a process restart.
+
+### Command: trigger-list
 
 Returns the set of registered triggers associated with a root directory.
 
-### watchman find /path/to/dir [patterns]
+```shell
+watchman trigger-list /root
+```
+
+### Command: find
 
 Finds all files that match the optional list of patterns under the
 specified dir.  If no patterns were specified, all files are returned.
 
-### watchman since /path/to/dir <clockspec> [patterns]
+```shell
+watchman find /path/to/dir [patterns]
+```
+
+### Command: since
+
+```shell
+watchman since /path/to/dir <clockspec> [patterns]
+```
 
 Finds all files that were modified since the specified clockspec that
 match the optional list of patterns.  If no patterns are specified,
 all modified files are returned.
 
-### Clockspec
+### Command: log-level
+
+Changes the log level of your connection to the watchman service.
+
+From the command line:
+
+```shell
+watchman --persistent log-level debug
+```
+
+JSON:
+
+```json
+["log-level", "debug"]
+```
+
+This command changes the log level of your client session.  Whenever watchman
+writes to its log, it walks the list of client sessions and also sends a log
+packet to any that have their log level set to match the current log event.
+
+Valid log levels are:
+
+ * `debug` - receive all log events
+ * `error` - receive only important log events
+ * `off`   - receive no log events
+
+Note that you cannot tap into the output of triggered processes using this
+mechanism.
+
+Log events are sent unilaterally by the server as they happen, and have
+the following structure:
+
+```json
+{
+  "version": "1.0",
+  "log": "log this please"
+}
+```
+
+### Command: log
+
+Generates a log line in the watchman log.
+
+```shell
+watchman log debug "log this please"
+```
+
+### Command: shutdown-server
+
+This command causes your watchman service to exit with a normal status code.
+
+## Clockspec
 
 For commands that query based on time, watchman offers a couple of different
 ways to measure time.
 
  * number of seconds since the unix epoch (unix `time_t` style)
  * clock id of the form `c:123:234`
- * a named cursor of the form `n:whatever`
+ * **recommended**: a named cursor of the form `n:whatever`
 
 The first and most obvious is passing a unix timestamp.  Watchman records
 the observed time that files change and allows you to find file that have
@@ -143,6 +335,35 @@ make
 ```
 
 ## System Specific Preparation
+
+### Linux inotify Limits
+
+The `inotify(7)` subsystem has three important tunings that impact watchman.
+
+ * `/proc/sys/fs/inotify/max_user_instances` impacts how many different
+   root dirs you can watch.
+ * `/proc/sys/fs/inotify/max_user_watches` impacts how many dirs you
+   can watch across all watched roots.
+ * `/proc/sys/fs/inotify/max_queued_events` impacts how likely it is that
+   your system will experience a notification overflow.
+
+You obviously need to ensure that `max_user_instances` and `max_user_watches` are
+set so that the system is capable of keeping track of your files.
+
+`max_queued_events` is important to size correctly; if it is too small, the kernel
+will drop events and watchman won't be able to report on them.  Making this value
+bigger reduces the risk of this happening.
+
+Watchman has two simple strategies for mitigating an overflow of `max_queued_events`:
+
+ * It uses a dedicated thread to consume kernel events as quickly as possible
+ * When the kernel reports an overflow, watchman will assume that all the files
+   have been modified and will re-crawl the directory tree as though it had just
+   started watching the dir.
+
+This means that if an overflow does occur, you won't miss a legitimate change
+notification, but instead will get spurious notifications for files that
+haven't actually changed.
 
 ### Max OS File Descriptor Limits
 
@@ -184,8 +405,9 @@ can talk to this socket directly.  You can also do it yourself:
 ### Streaming JSON protocol
 
 Watchman uses a stream of JSON object or array values as its protocol.
-Each request is a JSON array followed by a newline.
-Each response is a JSON object followed by a newline.
+
+ * Each request is a JSON array followed by a newline.
+ * Each response is a JSON object followed by a newline.
 
 By default, the protocol is request-response based, but some commands
 can enable a mode wherein the server side can unilaterally decide to
@@ -202,17 +424,17 @@ Sending the `since` command is simply a matter of formatting it as JSON.  Note
 that the JSON text must be a single line (don't send a pretty printed version
 of it!) and be followed by a newline `\n` character:
 
-    ["since", "/path/to/src", "n:c_srcs", "*.c"]
+    ["since", "/path/to/src", "n:c_srcs", "*.c"] <NEWLINE>
 
 ## Future
 
  * add a command to remove registered triggers
- * add a richer output mode for the `since` command that passes on
-   file status information in addition to the filename.
  * add a hybrid of since and trigger that allows a connected client
    to receive notifications of file changes over their unix socket
    connection as they happen.  Disconnecting the client will disable
    those particular notifications.
+ * Watchman does not currently follow symlinks.  It would be nice if it
+   did, but doing so will add some complexity.
 
 ## License
 
