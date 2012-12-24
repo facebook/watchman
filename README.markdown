@@ -382,9 +382,8 @@ million files per process until your next reboot.
     sudo sysctl -w kern.maxfiles=10485760
     sudo sysctl -w kern.maxfilesperproc=1048576
 
-I'm led to believe that putting the following into a file named
-`/etc/sysctl.conf` on OS X will cause these values to persist across reboots.
-I haven't personally verified this (too lazy to reboot right now):
+Putting the following into a file named `/etc/sysctl.conf` on OS X will cause
+these values to persist across reboots:
 
     kern.maxfiles=10485760
     kern.maxfilesperproc=1048576
