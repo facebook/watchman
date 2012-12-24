@@ -50,6 +50,7 @@ static void run_service(void)
   exit(1);
 }
 
+#ifndef USE_GIMLI
 static void daemonize(void)
 {
   // the double-fork-and-setsid trick establishes a
@@ -75,6 +76,35 @@ static void daemonize(void)
   // we are the child, let's set things up
   run_service();
 }
+#endif
+
+#ifdef USE_GIMLI
+static void spawn_via_gimli(void)
+{
+  char settlebuf[16];
+  char *argv[] = {
+    "monitor",
+    "watchman",
+    "--foreground",
+    "--sockname", sock_name,
+    "--logfile", log_name,
+    "--statefile", watchman_state_file,
+    "--settle", settlebuf,
+    NULL
+  };
+  posix_spawn_file_actions_t actions;
+  posix_spawnattr_t attr;
+  pid_t pid;
+
+  snprintf(settlebuf, sizeof(settlebuf), "%d", trigger_settle);
+
+  posix_spawnattr_init(&attr);
+  posix_spawn_file_actions_init(&actions);
+  posix_spawnp(&pid, argv[0], &actions, &attr, argv, environ);
+  posix_spawnattr_destroy(&attr);
+  posix_spawn_file_actions_destroy(&actions);
+}
+#endif
 
 static const char *get_env_with_fallback(const char *name1,
     const char *name2, const char *fallback)
@@ -270,7 +300,11 @@ int main(int argc, char **argv)
   ran = try_command(argc, argv, 0);
   if (!ran && should_start(errno)) {
     unlink(sock_name);
+#ifdef USE_GIMLI
+    spawn_via_gimli();
+#else
     daemonize();
+#endif
 
     ran = try_command(argc, argv, 10);
   }

@@ -12,6 +12,17 @@ AC_PROG_RANLIB
 AM_PROG_CC_C_O
 AM_PROG_AS
 
+gimli=no
+AC_ARG_ENABLE(gimli, [
+  --enable-gimli    Enable support for the gimli process monitor
+                    https://bitbucket.org/wez/gimli/
+],[
+   gimli=$enableval
+])
+if test "$gimli" = "yes" ; then
+  AC_DEFINE([USE_GIMLI], 1, [Use gimli])
+fi
+
 lenient=no
 AC_ARG_ENABLE(lenient, [
   --enable-lenient  Turn off more pedantic levels of warnings

@@ -15,9 +15,6 @@
  */
 
 #include "watchman.h"
-#include <spawn.h>
-// Not explicitly exported on Darwin, so we get to define it.
-extern char **environ;
 
 // Maps pid => root
 static w_ht_t *running_kids = NULL;

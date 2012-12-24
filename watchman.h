@@ -56,6 +56,9 @@ extern "C" {
 #include <sys/poll.h>
 #include <sys/wait.h>
 #include <fnmatch.h>
+#include <spawn.h>
+// Not explicitly exported on Darwin, so we get to define it.
+extern char **environ;
 
 #include "watchman_hash.h"
 
