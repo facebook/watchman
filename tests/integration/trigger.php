@@ -61,6 +61,13 @@ class triggerTestCase extends WatchmanTestCase {
     foreach (file("$root/trigger.json") as $line) {
       $lines++;
       $list = json_decode($line, true);
+      // Filter out the unpredictable data from lstat()
+      $list = array_map(function ($ent) {
+          return array(
+            'name' => $ent['name'],
+            'exists' => $ent['exists']
+          );
+        }, $list);
       $this->assertEqual(array(
         array(
           'name' => 'foo.c',
