@@ -1,10 +1,13 @@
 AC_INIT([watchman], [1.0], [], [watchman])
+AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects])
 
 dnl we really want you to be using 64 hardware and software
-CFLAGS="$CFLAGS -D_REENTRANT -m64"
+CPPFLAGS="$CPPFLAGS -D_REENTRANT"
+CFLAGS="$CFLAGS -m64"
 
 AC_PROG_CC
+AC_PROG_CPP
 AC_C_BIGENDIAN
 AC_C_INLINE
 AC_PROG_RANLIB
@@ -21,14 +24,47 @@ AC_ARG_ENABLE(statedir, [
 ])
 
 gimli=no
-AC_ARG_ENABLE(gimli, [
+AC_ARG_WITH(gimli, [
   --enable-gimli    Enable support for the gimli process monitor
                     https://bitbucket.org/wez/gimli/
 ],[
-   gimli=$enableval
+   gimli=$withval
 ])
-if test "$gimli" = "yes" ; then
+if test "x$gimli" != "xno" ; then
   AC_DEFINE([USE_GIMLI], 1, [Use gimli])
+
+  dnl deal with annoying lack of rpath and linux lib64
+  dirs="/usr/local/lib /usr/lib"
+  rpath="-R"
+  case $target_os-$target_cpu in
+    linux-*64)
+      dirs="/usr/local/lib64 $libs"
+      rpath="-Wl,-rpath="
+      ;;
+    linux*)
+      rpath="-Wl,-rpath="
+      ;;
+  esac
+  save_flags="$LDFLAGS"
+  save_libs="$LIBS"
+  gimli_dir=""
+  for dir in $dirs ; do
+    LDFLAGS="$save_flags $rpath$dir -L$dir"
+    LIBS="$save_libs -lgimli"
+    AC_TRY_LINK([
+#include <libgimli.h>
+],[gimli_heartbeat_attach();],
+      [gimli_dir=$dir]
+    )
+    if test -n "$gimli_dir" ; then
+      save_flags="$save_flags $rpath$dir -L$dir"
+      save_libs="$save_libs -lgimli"
+      break
+    fi
+  done
+  LDFLAGS="$save_flags"
+  LIBS="$save_libs"
+  AC_CHECK_HEADERS(libgimli.h)
 fi
 
 lenient=no
@@ -50,13 +86,13 @@ AC_ARG_ENABLE(stack-protector, [
 AC_SEARCH_LIBS([pthread_create], [pthread])
 AC_SEARCH_LIBS([socket], [socket])
 
-AC_CHECK_HEADERS(locale.h port.h sys/inotify.h sys/event.h)
+AC_CHECK_HEADERS(sys/types.h inttypes.h locale.h port.h sys/inotify.h sys/event.h)
 AC_CHECK_FUNCS(kqueue port_create inotify_init strtoll localeconv)
 AC_CHECK_HEADERS(valgrind/valgrind.h)
 
 # Do this after we've looked for functions
 if test -n "$GCC" ; then
-  CFLAGS="$CFLAGS -Wall -Wextra -Wdeclaration-after-statement"
+  CFLAGS="$CFLAGS -Wall -Wextra -Wdeclaration-after-statement -gdwarf-2 -fno-omit-frame-pointer"
 fi
 if test -n "$GCC" -a "$stack_protect" == "yes" ; then
   CFLAGS="$CFLAGS -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4"

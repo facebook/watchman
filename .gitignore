@@ -24,3 +24,5 @@ tests/*.t
 *.a
 tests/integration/.watchman.*
 *.rpm
+config.sub
+config.guess

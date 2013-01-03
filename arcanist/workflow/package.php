@@ -53,9 +53,16 @@ TXT
         'help' => 'Specify the package version, else look in configure.ac',
         'param' => 'version',
       ),
+      'prefix' => array(
+        'help' => 'Specify the installation prefix for configure',
+        'param' => 'prefix',
+      ),
       'statedir' => array(
         'help' => 'Specify the statedir configure option',
         'param' => 'path',
+      ),
+      'gimli' => array(
+        'help' => 'Configure to run under the gimli monitor',
       ),
       '*' => 'configureargs',
     );
@@ -88,19 +95,31 @@ TXT
 
     $files = '';
     $build = '';
+    $requires = '';
     $configureargs = implode(' ', $this->getArgument('configureargs'));
+
+    if ($this->getArgument('gimli')) {
+      $configureargs .= ' --with-gimli';
+      $requires = 'Requires: fb-gimli';
+    }
+
     $statedir = $this->getArgument('statedir');
     if ($statedir) {
       $configureargs .= ' --enable-statedir=' . $statedir;
       $files = "%dir %attr(777, root, root) $statedir";
-      $build = "mkdir -p $root/ROOT/$statedir";
+      $files .= "\n%dir %attr(777, root, root) $statedir/traces";
+      $build = "mkdir -p $root/ROOT/$statedir/traces";
     }
 
+    $prefix = $this->getArgument('prefix', '/usr/local');
+
     $spec = <<<TXT
-Name: watchman
+%define _prefix $prefix
+Name: fb-watchman
 Version: $version
 Release: 1
 Summary: Watch files, trigger stuff
+$requires
 
 #Autoprov: 0
 #Autoreq: 0
@@ -120,7 +139,7 @@ $build
 
 %files
 %defattr(-,root,root,-)
-/usr/bin/watchman
+$prefix/bin/watchman
 $files
 TXT;
 

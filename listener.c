@@ -15,6 +15,9 @@
  */
 
 #include "watchman.h"
+#ifdef HAVE_LIBGIMLI_H
+# include <libgimli.h>
+#endif
 
 static pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
 static w_ht_t *clients = NULL;
@@ -939,6 +942,13 @@ bool w_start_listener(const char *path)
   struct sockaddr_un un;
   pthread_t thr;
   pthread_attr_t attr;
+#ifdef HAVE_LIBGIMLI_H
+  volatile struct gimli_heartbeat *hb = NULL;
+#endif
+
+#ifdef HAVE_LIBGIMLI_H
+  hb = gimli_heartbeat_attach();
+#endif
 
 #ifdef HAVE_KQUEUE
 #include <sys/sysctl.h>
@@ -1034,10 +1044,27 @@ bool w_start_listener(const char *path)
 
   w_state_load();
 
+#ifdef HAVE_LIBGIMLI_H
+  if (hb) {
+    gimli_heartbeat_set(hb, GIMLI_HB_RUNNING);
+  }
+  w_set_nonblock(fd);
+#endif
+
   // Now run the dispatch
   while (true) {
     int client_fd;
     struct watchman_client *client;
+    struct pollfd pfd;
+
+#ifdef HAVE_LIBGIMLI_H
+    if (hb) {
+      gimli_heartbeat_set(hb, GIMLI_HB_RUNNING);
+    }
+#endif
+    pfd.events = POLLIN;
+    pfd.fd = fd;
+    poll(&pfd, 1, 10000);
 
     client_fd = accept(fd, NULL, 0);
     if (client_fd == -1) {

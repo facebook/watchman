@@ -20,6 +20,9 @@
 int trigger_settle = 20;
 static char *sock_name = NULL;
 static char *log_name = NULL;
+#ifdef USE_GIMLI
+static char *pid_file = NULL;
+#endif
 char *watchman_state_file = NULL;
 const char *watchman_tmp_dir = NULL;
 static int persistent = 0;
@@ -84,6 +87,10 @@ static void spawn_via_gimli(void)
   char settlebuf[16];
   char *argv[] = {
     "monitor",
+#ifdef WATCHMAN_STATE_DIR
+    "--trace-dir=" WATCHMAN_STATE_DIR "/traces",
+#endif
+    "--pidfile", pid_file,
     "watchman",
     "--foreground",
     "--sockname", sock_name,
@@ -100,6 +107,10 @@ static void spawn_via_gimli(void)
 
   posix_spawnattr_init(&attr);
   posix_spawn_file_actions_init(&actions);
+  posix_spawn_file_actions_addopen(&actions,
+      STDOUT_FILENO, log_name, O_WRONLY|O_CREAT|O_APPEND, 0600);
+  posix_spawn_file_actions_adddup2(&actions,
+      STDOUT_FILENO, STDERR_FILENO);
   posix_spawnp(&pid, argv[0], &actions, &attr, argv, environ);
   posix_spawnattr_destroy(&attr);
   posix_spawn_file_actions_destroy(&actions);
@@ -141,9 +152,10 @@ static void compute_file_name(char **strp,
           suffix[0] ? "." : "",
           suffix));
 #else
-    ignore_result(asprintf(&str, "%s/.watchman.%s%s",
+    ignore_result(asprintf(&str, "%s/.watchman.%s%s%s",
           watchman_tmp_dir,
           user,
+          suffix[0] ? "." : "",
           suffix));
 #endif
   }
@@ -174,10 +186,11 @@ static void setup_sock_name(void)
   }
 
   compute_file_name(&sock_name, user, "", "sockname");
-
   compute_file_name(&watchman_state_file, user, "state", "statefile");
-
   compute_file_name(&log_name, user, "log", "logname");
+#ifdef USE_GIMLI
+  compute_file_name(&pid_file, user, "pid", "pidfile");
+#endif
 
   un.sun_family = PF_LOCAL;
   strcpy(un.sun_path, sock_name);
@@ -253,10 +266,12 @@ static bool try_command(int argc, char **argv, int timeout)
   } while (++tries < timeout);
 
   if (res) {
+    close(fd);
     return false;
   }
 
   if (argc == 0) {
+    close(fd);
     return true;
   }
   
@@ -273,10 +288,12 @@ static bool try_command(int argc, char **argv, int timeout)
   do {
     if (!read_response(&buffer, fd)) {
       w_json_buffer_free(&buffer);
+      close(fd);
       return false;
     }
   } while (persistent);
   w_json_buffer_free(&buffer);
+  close(fd);
 
   return true;
 }
@@ -286,6 +303,10 @@ static struct watchman_getopt opts[] = {
     REQ_STRING, &sock_name, "PATH" },
   { "logfile", 'o', "Specify path to logfile",
     REQ_STRING, &log_name, "PATH" },
+#ifdef USE_GIMLI
+  { "pidfile", 0, "Specify path to gimli monitor pidfile",
+    REQ_STRING, &pid_file, "PATH" },
+#endif
   { "persistent", 'p', "Persist and wait for further responses",
     OPT_NONE, &persistent, NULL },
   { "no-save-state", 'n', "Don't save state between invocations",
