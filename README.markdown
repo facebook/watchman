@@ -71,6 +71,16 @@ Watchman will use the `$USER` or `$LOGNAME` environmental variables to determine
 the current userid, and the `$TMPDIR` or `$TMP` environmental variables to
 determine a temporary directory, falling back to `/tmp` if neither are set.
 
+If you configured watchman using the `--enable-statedir` option:
+
+ * The default `sockname` is `<STATEDIR>/$USER`
+ * The default `logfile` is `<STATEDIR>/$USER.log`
+ * The default `statefile` is `<STATEDIR>/$USER.state`.  You can turn off
+   the use of the state file via the `--no-save-state` option.  The statefile
+   is used to persist watches and triggers across process restarts.
+
+Otherwise:
+
  * The default `sockname` is `$TMP/.watchman.$USER`
  * The default `logfile` is `$TMP/.watchman.$USER.log`
  * The default `statefile` is `$TMP/.watchman.$USER.state`.  You can turn off
