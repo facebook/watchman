@@ -12,6 +12,14 @@ AC_PROG_RANLIB
 AM_PROG_CC_C_O
 AM_PROG_AS
 
+AC_ARG_ENABLE(statedir, [
+  --enable-statedir=PATH  Use PATH as the default for state, log files
+                          and sockets instead of using your system tempdir
+],[
+ AC_DEFINE_UNQUOTED(WATCHMAN_STATE_DIR, "$enableval",
+                    [default location for state])
+])
+
 gimli=no
 AC_ARG_ENABLE(gimli, [
   --enable-gimli    Enable support for the gimli process monitor

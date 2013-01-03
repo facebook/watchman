@@ -122,6 +122,46 @@ static const char *get_env_with_fallback(const char *name1,
   return val;
 }
 
+static void compute_file_name(char **strp,
+    const char *user,
+    const char *suffix,
+    const char *what)
+{
+  char *str = NULL;
+
+  str = *strp;
+
+  if (!str) {
+#ifdef WATCHMAN_STATE_DIR
+    /* avoid redundant naming if they picked something like
+     * "/var/watchman" */
+    ignore_result(asprintf(&str, "%s/%s%s%s",
+          WATCHMAN_STATE_DIR,
+          user,
+          suffix[0] ? "." : "",
+          suffix));
+#else
+    ignore_result(asprintf(&str, "%s/.watchman.%s%s",
+          watchman_tmp_dir,
+          user,
+          suffix));
+#endif
+  }
+
+  if (!str) {
+    w_log(W_LOG_ERR, "out of memory computing %s", what);
+    abort();
+  }
+
+  if (str[0] != '/') {
+    w_log(W_LOG_ERR, "invalid %s: %s", what, str);
+    abort();
+  }
+
+
+  *strp = str;
+}
+
 static void setup_sock_name(void)
 {
   const char *user = get_env_with_fallback("USER", "LOGNAME", NULL);
@@ -133,29 +173,11 @@ static void setup_sock_name(void)
     abort();
   }
 
-  if (!sock_name) {
-    ignore_result(asprintf(&sock_name, "%s/.watchman.%s",
-          watchman_tmp_dir, user));
-  }
-  if (!sock_name || sock_name[0] != '/') {
-    w_log(W_LOG_ERR, "invalid or missing sockname!\n");
-    abort();
-  }
+  compute_file_name(&sock_name, user, "", "sockname");
 
-  if (!watchman_state_file) {
-    ignore_result(asprintf(&watchman_state_file,
-          "%s/.watchman.%s.state",
-          watchman_tmp_dir, user));
-  }
+  compute_file_name(&watchman_state_file, user, "state", "statefile");
 
-  if (!log_name) {
-    ignore_result(asprintf(&log_name, "%s/.watchman.%s.log",
-          watchman_tmp_dir, user));
-  }
-  if (!log_name) {
-    w_log(W_LOG_ERR, "out of memory while processing log name\n");
-    abort();
-  }
+  compute_file_name(&log_name, user, "log", "logname");
 
   un.sun_family = PF_LOCAL;
   strcpy(un.sun_path, sock_name);

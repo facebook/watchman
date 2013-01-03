@@ -49,7 +49,15 @@ TXT
 
   public function getArguments() {
     return array(
-      '*' => 'version'
+      'version' => array(
+        'help' => 'Specify the package version, else look in configure.ac',
+        'param' => 'version',
+      ),
+      'statedir' => array(
+        'help' => 'Specify the statedir configure option',
+        'param' => 'path',
+      ),
+      '*' => 'configureargs',
     );
   }
 
@@ -58,7 +66,7 @@ TXT
 
     $version = $this->getArgument('version');
     if ($version) {
-      $version = $version[0];
+      $version = $version;
     } else {
       // Match out the version number from configure
       $ac = file_get_contents("$srcdir/configure.ac");
@@ -78,6 +86,16 @@ TXT
     echo "Copying src files\n";
     execx('cp -r %s %s', $srcdir, "$root/BUILD");
 
+    $files = '';
+    $build = '';
+    $configureargs = implode(' ', $this->getArgument('configureargs'));
+    $statedir = $this->getArgument('statedir');
+    if ($statedir) {
+      $configureargs .= ' --enable-statedir=' . $statedir;
+      $files = "%dir %attr(777, root, root) $statedir";
+      $build = "mkdir -p $root/ROOT/$statedir";
+    }
+
     $spec = <<<TXT
 Name: watchman
 Version: $version
@@ -96,17 +114,19 @@ Watch files, trigger stuff
 
 %build
 ./autogen.sh
-%configure
+%configure $configureargs
 %makeinstall
+$build
 
 %files
 %defattr(-,root,root,-)
 /usr/bin/watchman
+$files
 TXT;
 
     file_put_contents("$root/SPEC/watchman.spec", $spec);
 
-    echo "Building package\n";
+    echo "Building package $configureargs\n";
     execx('rpmbuild -bb --nodeps -vv --define "_topdir %C" %s',
       $root, "$root/SPEC/watchman.spec");
 
