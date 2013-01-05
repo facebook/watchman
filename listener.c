@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2012-2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -935,6 +935,16 @@ static void *child_reaper(void *arg)
   return 0;
 }
 
+#ifdef HAVE_KQUEUE
+#ifdef __OpenBSD__
+#include <sys/siginfo.h>
+#endif
+#include <sys/param.h>
+#include <sys/sysctl.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#endif
+
 bool w_start_listener(const char *path)
 {
   int fd;
@@ -951,12 +961,16 @@ bool w_start_listener(const char *path)
 #endif
 
 #ifdef HAVE_KQUEUE
-#include <sys/sysctl.h>
-#include <sys/syslimits.h>
   {
     struct rlimit limit;
-    int mib[2] = { CTL_KERN, KERN_MAXFILESPERPROC };
-    int maxperproc;
+    int mib[2] = { CTL_KERN,
+#ifdef KERN_MAXFILESPERPROC
+      KERN_MAXFILESPERPROC
+#else
+      KERN_MAXFILES
+#endif
+    };
+    rlim_t maxperproc;
     size_t len;
 
     len = sizeof(maxperproc);
@@ -965,9 +979,10 @@ bool w_start_listener(const char *path)
     getrlimit(RLIMIT_NOFILE, &limit);
     w_log(W_LOG_ERR, "file limit is %" PRIu64
         " kern.maxfilesperproc=%i\n",
-        limit.rlim_cur, maxperproc);
+        limit.rlim_cur, (int)maxperproc);
 
-    if (limit.rlim_cur < (uint64_t)maxperproc) {
+    if (limit.rlim_cur != RLIM_INFINITY &&
+        limit.rlim_cur < maxperproc) {
       limit.rlim_cur = maxperproc;
 
       if (setrlimit(RLIMIT_NOFILE, &limit)) {

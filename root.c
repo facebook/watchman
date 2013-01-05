@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Facebook, Inc.
+ * Copyright 2012-2013 Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,10 @@ static pthread_mutex_t spawn_lock = PTHREAD_MUTEX_INITIALIZER;
 #define SET_DIR_BIT(dir)   ((void*)(((intptr_t)dir) | 0x1))
 #define IS_DIR_BIT_SET(dir) ((((intptr_t)dir) & 0x1) == 0x1)
 #define DECODE_DIR(dir)    ((void*)(((intptr_t)dir) & ~0x1))
+
+#if defined(HAVE_KQUEUE) && !defined(O_EVTONLY)
+# define O_EVTONLY O_RDONLY
+#endif
 
 static void crawler(w_root_t *root, w_string_t *dir_name,
     struct timeval now, bool confident);
@@ -260,7 +264,7 @@ static void watch_file(w_root_t *root, struct watchman_file *file)
 
     memset(&k, 0, sizeof(k));
     EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
-        NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME|NOTE_NONE|NOTE_ATTRIB,
+        NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME|NOTE_ATTRIB,
         0, file);
     w_set_cloexec(file->kq_fd);
 

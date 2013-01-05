@@ -12,7 +12,8 @@ also trigger actions (such as rebuilding assets) when matching files change.
 Watchman is known to compile and pass its test suite on:
 
  * Linux systems with `inotify`
- * OS X and BSDish systems that have the `kqueue(2)` facility
+ * OS X and BSDish systems (FreeBSD 9.1, OpenBSD 5.2) that have the
+   `kqueue(2)` facility
  * Illumos and Solaris style systems that have `port_create(3C)`
 
 Watchman relies on the operating system facilities for file notification,
