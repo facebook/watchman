@@ -51,10 +51,22 @@ TAP_LIB = -ltap
 TESTS = tests/argv.t
 noinst_PROGRAMS = tests/argv.t
 
+if HAVE_ARC
+# if we have arc, lint when we run make.  We don't want to force
+# folks to have arc just to build it and install it, which should
+# be the much more common case than those developing it!
+all-local: lint
+
+# Run lint and output stuff suitable for feeding into ":make" in vim
+# quickfix mode.
+lint:
+	arc lint --output compiler --lintall
+endif
+
 # generate a rule that we can use to ensure that
 # the test programs are built
 build-tests: $(TESTS)
-.PHONY: build-tests integration
+.PHONY: lint build-tests integration
 # run integration AND unit tests
 integration:
 	arc unit --engine WatchmanIntegrationEngine

@@ -15,6 +15,12 @@ AC_PROG_RANLIB
 AM_PROG_CC_C_O
 AM_PROG_AS
 
+dnl Look for "arc" so that we can conditionally enable more pedantry
+dnl when building.  We prefer that contributors use "arc" but don't
+dnl require users to have it to build and use watchman
+AC_CHECK_PROG(HAVE_ARC, arc, yes, no)
+AM_CONDITIONAL(HAVE_ARC, test "x$HAVE_ARC" = xyes)
+
 AC_ARG_ENABLE(statedir, [
   --enable-statedir=PATH  Use PATH as the default for state, log files
                           and sockets instead of using your system tempdir
