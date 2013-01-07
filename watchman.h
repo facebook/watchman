@@ -69,6 +69,20 @@ extern char **environ;
  * that seem risky */
 #define WATCHMAN_NAME_MAX   4096
 
+// rpmbuild may enable fortify which turns on
+// warn_unused_result on a number of system functions.
+// This gives us a reasonably clean way to suppress
+// these warnings when we're using stack protection.
+#if __USE_FORTIFY_LEVEL > 0
+# define ignore_result(x) \
+  do { __typeof__(x) _res = x; (void)_res; } while(0)
+#else
+# define ignore_result(x) x
+#endif
+
+// self-documenting hint to the compiler that we didn't use it
+#define unused_parameter(x)  (void)x
+
 static inline void w_refcnt_add(int *refcnt)
 {
   (void)__sync_fetch_and_add(refcnt, 1);
@@ -82,17 +96,17 @@ static inline bool w_refcnt_del(int *refcnt)
 
 static inline void w_set_cloexec(int fd)
 {
-  fcntl(fd, F_SETFD, FD_CLOEXEC);
+  ignore_result(fcntl(fd, F_SETFD, FD_CLOEXEC));
 }
 
 static inline void w_set_nonblock(int fd)
 {
-  fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+  ignore_result(fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK));
 }
 
 static inline void w_clear_nonblock(int fd)
 {
-  fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & ~O_NONBLOCK);
+  ignore_result(fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & ~O_NONBLOCK));
 }
 
 struct watchman_string;
@@ -304,20 +318,6 @@ void w_log(int level, const char *fmt, ...)
   __attribute__((format(printf, 2, 3)))
 #endif
 ;
-
-// rpmbuild may enable fortify which turns on
-// warn_unused_result on a number of system functions.
-// This gives us a reasonably clean way to suppress
-// these warnings when we're using stack protection.
-#if __USE_FORTIFY_LEVEL > 0
-# define ignore_result(x) \
-  do { __typeof__(x) _res = x; (void)_res; } while(0)
-#else
-# define ignore_result(x) x
-#endif
-
-// self-documenting hint to the compiler that we didn't use it
-#define unused_parameter(x)  (void)x
 
 void w_log_to_clients(int level, const char *buf);
 
