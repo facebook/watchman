@@ -407,16 +407,21 @@ json_t *w_match_results_to_json(
 
     json_object_set_new(record, "name", json_string(relname->buf));
     json_object_set_new(record, "exists", json_boolean(file->exists));
-    // Note: our JSON library supports 64-bit integers, but this may
-    // pose a compatibility issue for others.  We'll see if anyone
-    // runs into an issue and deal with it then...
-    json_object_set_new(record, "size", json_integer(file->st.st_size));
-    json_object_set_new(record, "mode", json_integer(file->st.st_mode));
-    json_object_set_new(record, "uid", json_integer(file->st.st_uid));
-    json_object_set_new(record, "gid", json_integer(file->st.st_gid));
-    json_object_set_new(record, "atime", json_integer(file->st.st_atime));
-    json_object_set_new(record, "mtime", json_integer(file->st.st_mtime));
-    json_object_set_new(record, "ctime", json_integer(file->st.st_ctime));
+    // Only report stat data if we think this file exists.  If it doesn't,
+    // we probably have stale data cached in file->st which is useless to
+    // report on.
+    if (file->exists) {
+      // Note: our JSON library supports 64-bit integers, but this may
+      // pose a compatibility issue for others.  We'll see if anyone
+      // runs into an issue and deal with it then...
+      json_object_set_new(record, "size", json_integer(file->st.st_size));
+      json_object_set_new(record, "mode", json_integer(file->st.st_mode));
+      json_object_set_new(record, "uid", json_integer(file->st.st_uid));
+      json_object_set_new(record, "gid", json_integer(file->st.st_gid));
+      json_object_set_new(record, "atime", json_integer(file->st.st_atime));
+      json_object_set_new(record, "mtime", json_integer(file->st.st_mtime));
+      json_object_set_new(record, "ctime", json_integer(file->st.st_ctime));
+    }
 
     json_array_append_new(file_list, record);
   }

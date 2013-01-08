@@ -481,8 +481,8 @@ static void stat_path(w_root_t *root,
       file = w_root_resolve_file(root, dir, file_name);
     }
     file->exists = true;
-    w_root_mark_file_changed(root, file, now, confident);
     memcpy(&file->st, &st, sizeof(st));
+    w_root_mark_file_changed(root, file, now, confident);
   } else if (S_ISDIR(st.st_mode)) {
     if (!dir_ent) {
       /* we've never seen this dir before */
