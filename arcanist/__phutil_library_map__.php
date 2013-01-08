@@ -12,6 +12,7 @@ phutil_register_library_map(array(
   array(
     'WatchmanInstance' => 'lib/WatchmanInstance.php',
     'WatchmanIntegrationEngine' => 'lib/WatchmanIntegrationEngine.php',
+    'WatchmanLicenseLinter' => 'lib/WatchmanLicenseLinter.php',
     'WatchmanLintEngine' => 'lib/WatchmanLintEngine.php',
     'WatchmanPackageWorkflow' => 'workflow/package.php',
     'WatchmanTapEngine' => 'lib/WatchmanTapEngine.php',
@@ -23,6 +24,7 @@ phutil_register_library_map(array(
   'xmap' =>
   array(
     'WatchmanIntegrationEngine' => 'WatchmanTapEngine',
+    'WatchmanLicenseLinter' => 'ArcanistLinter',
     'WatchmanLintEngine' => 'ArcanistLintEngine',
     'WatchmanPackageWorkflow' => 'ArcanistBaseWorkflow',
     'WatchmanTapEngine' => 'ArcanistBaseUnitTestEngine',
