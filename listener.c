@@ -23,18 +23,23 @@ static json_t *make_response(void)
   return resp;
 }
 
-// Renders the current clock id string to the supplied buffer.
-// Must be called with the root locked.
-static bool current_clock_id_string(w_root_t *root,
-    char *buf, size_t bufsize)
+static inline bool clock_id_string(uint32_t ticks, char *buf, size_t bufsize)
 {
   int res = snprintf(buf, bufsize, "c:%d:%" PRIu32,
-              (int)getpid(), root->ticks);
+              (int)getpid(), ticks);
 
   if (res == -1) {
     return false;
   }
   return (size_t)res < bufsize;
+}
+
+// Renders the current clock id string to the supplied buffer.
+// Must be called with the root locked.
+static bool current_clock_id_string(w_root_t *root,
+    char *buf, size_t bufsize)
+{
+  return clock_id_string(root->ticks, buf, bufsize);
 }
 
 /* Add the current clock value to the response.
@@ -224,7 +229,8 @@ static bool parse_watch_params(int start, json_t *args,
 uint32_t w_rules_match(w_root_t *root,
     struct watchman_file *oldest_file,
     struct watchman_rule_match **results,
-    struct watchman_rule *head)
+    struct watchman_rule *head,
+    struct w_clockspec_query *since)
 {
   struct watchman_file *file;
   struct watchman_rule *rule;
@@ -291,6 +297,14 @@ uint32_t w_rules_match(w_root_t *root,
 
       res[num_matches].relname = relname;
       res[num_matches].file = file;
+      if (since && !since->is_timestamp) {
+        res[num_matches].is_new = file->ctime.ticks > since->ticks;
+      } else if (since) {
+        res[num_matches].is_new =
+          w_timeval_compare(since->tv, file->ctime.tv) > 0;
+      } else {
+        res[num_matches].is_new = false;
+      }
       num_matches++;
     } else {
       w_string_delref(relname);
@@ -312,12 +326,6 @@ void w_match_results_free(uint32_t num_matches,
   }
   free(matches);
 }
-
-struct w_clockspec_query {
-  bool is_timestamp;
-  struct timeval tv;
-  uint32_t ticks;
-};
 
 // may attempt to lock the root!
 static bool parse_clockspec(w_root_t *root,
@@ -389,6 +397,7 @@ json_t *w_match_results_to_json(
   for (i = 0; i < num_matches; i++) {
     struct watchman_file *file = matches[i].file;
     w_string_t *relname = matches[i].relname;
+    char buf[128];
 
     json_t *record = json_object();
 
@@ -408,6 +417,20 @@ json_t *w_match_results_to_json(
       json_object_set_new(record, "atime", json_integer(file->st.st_atime));
       json_object_set_new(record, "mtime", json_integer(file->st.st_mtime));
       json_object_set_new(record, "ctime", json_integer(file->st.st_ctime));
+      json_object_set_new(record, "ino", json_integer(file->st.st_ino));
+      json_object_set_new(record, "dev", json_integer(file->st.st_dev));
+      json_object_set_new(record, "nlink", json_integer(file->st.st_nlink));
+
+      if (matches[i].is_new) {
+        json_object_set_new(record, "new", json_true());
+      }
+
+      if (clock_id_string(file->ctime.ticks, buf, sizeof(buf))) {
+        json_object_set_new(record, "cclock", json_string(buf));
+      }
+    }
+    if (clock_id_string(file->otime.ticks, buf, sizeof(buf))) {
+      json_object_set_new(record, "oclock", json_string(buf));
     }
 
     json_array_append_new(file_list, record);
@@ -443,7 +466,7 @@ static void run_rules(struct watchman_client *client,
     oldest = f;
   }
   annotate_with_clock(root, response);
-  matches = w_rules_match(root, oldest, &results, rules);
+  matches = w_rules_match(root, oldest, &results, rules, since);
   w_root_unlock(root);
 
   w_log(W_LOG_DBG, "rules were run, we have %" PRIu32 " matches\n", matches);

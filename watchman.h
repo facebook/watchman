@@ -161,6 +161,9 @@ struct watchman_file {
 
   /* the time we last observed a change to this file */
   w_clock_t otime;
+  /* the time we first observed this file OR the time
+   * that this file switced from !exists to exists */
+  w_clock_t ctime;
 
   /* confidence indicator.  We set this if we believe
    * that the file was changed based on the kernel telling
@@ -345,14 +348,22 @@ uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);
 
 struct watchman_rule_match {
   w_string_t *relname;
+  bool is_new;
   struct watchman_file *file;
+};
+
+struct w_clockspec_query {
+  bool is_timestamp;
+  struct timeval tv;
+  uint32_t ticks;
 };
 
 
 uint32_t w_rules_match(w_root_t *root,
     struct watchman_file *oldest_file,
     struct watchman_rule_match **results,
-    struct watchman_rule *head);
+    struct watchman_rule *head,
+    struct w_clockspec_query *since);
 
 json_t *w_match_results_to_json(
     uint32_t num_matches,

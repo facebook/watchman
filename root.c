@@ -335,8 +335,9 @@ void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
 
 }
 
-struct watchman_file *w_root_resolve_file(w_root_t *root,
-    struct watchman_dir *dir, w_string_t *file_name)
+static struct watchman_file *w_root_resolve_file(w_root_t *root,
+    struct watchman_dir *dir, w_string_t *file_name,
+    struct timeval now)
 {
   struct watchman_file *file;
 
@@ -354,6 +355,8 @@ struct watchman_file *w_root_resolve_file(w_root_t *root,
   w_string_addref(file->name);
   file->parent = dir;
   file->exists = true;
+  file->ctime.ticks = root->ticks;
+  file->ctime.tv = now;
 #if HAVE_KQUEUE
   file->kq_fd = -1;
 #endif
@@ -465,7 +468,13 @@ static void stat_path(w_root_t *root,
         path, errno, strerror(errno));
   } else if (!S_ISDIR(st.st_mode)) {
     if (!file) {
-      file = w_root_resolve_file(root, dir, file_name);
+      file = w_root_resolve_file(root, dir, file_name, now);
+    }
+    if (!file->exists) {
+      /* we're transitioning from deleted to existing,
+       * so we're effectively new again */
+      file->ctime.ticks = root->ticks;
+      file->ctime.tv = now;
     }
     file->exists = true;
     memcpy(&file->st, &st, sizeof(st));
@@ -797,6 +806,7 @@ void w_mark_dead(pid_t pid)
     struct watchman_file *f, *oldest = NULL;
     struct watchman_rule_match *results = NULL;
     uint32_t matches;
+    struct w_clockspec_query since;
 
     cmd = (struct watchman_trigger_command*)iter.value;
     if (cmd->current_proc != pid) {
@@ -806,6 +816,9 @@ void w_mark_dead(pid_t pid)
     /* first mark the process as dead */
     cmd->current_proc = 0;
 
+    since.is_timestamp = false;
+    since.ticks = cmd->dispatch_tick;
+
     /* now we need to figure out if more updates came
      * in while we were running */
     for (f = root->latest_file;
@@ -814,7 +827,7 @@ void w_mark_dead(pid_t pid)
       oldest = f;
     }
 
-    matches = w_rules_match(root, oldest, &results, cmd->rules);
+    matches = w_rules_match(root, oldest, &results, cmd->rules, &since);
     if (matches > 0) {
       spawn_command(root, cmd, matches, results);
     }
@@ -833,6 +846,7 @@ static void process_triggers(w_root_t *root)
   struct watchman_rule_match *results = NULL;
   uint32_t matches;
   w_ht_iter_t iter;
+  struct w_clockspec_query since;
 
   if (root->last_trigger_tick == root->pending_trigger_tick) {
     return;
@@ -848,6 +862,9 @@ static void process_triggers(w_root_t *root)
 
     oldest = f;
   }
+
+  since.is_timestamp = false;
+  since.ticks = root->last_trigger_tick;
 
 #if 0
   for (f = oldest; f; f = f->prev) {
@@ -874,7 +891,7 @@ static void process_triggers(w_root_t *root)
       // Don't spawn if there's one already running
       continue;
     }
-    matches = w_rules_match(root, oldest, &results, cmd->rules);
+    matches = w_rules_match(root, oldest, &results, cmd->rules, &since);
     if (matches > 0) {
       spawn_command(root, cmd, matches, results);
     }

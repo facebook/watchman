@@ -48,19 +48,19 @@ The following options are recognized if they are present on the command line
 before any non-option arguments.
 
 ```bash
- -U, --sockname=PATH      Specify alternate sockname
+ -U, --sockname=PATH   Specify alternate sockname
 
- -o, --logfile=PATH       Specify path to logfile
+ -o, --logfile=PATH    Specify path to logfile
 
- -p, --persistent         Persist and wait for further responses
+ -p, --persistent      Persist and wait for further responses
 
- -n, --no-save-state      Don't save state between invocations
+ -n, --no-save-state   Don't save state between invocations
 
- --statefile=PATH         Specify path to file to hold watch and trigger state
+ --statefile=PATH      Specify path to file to hold watch and trigger state
 
- -f, --foreground         Run the service in the foreground
+ -f, --foreground      Run the service in the foreground
 
- -s, --settle             Number of milliseconds to wait for filesystem to settle
+ -s, --settle          Number of milliseconds to wait for filesystem to settle
 ```
 
  * See `log-level` for an example of when you might use the `persistent` flag
@@ -144,12 +144,13 @@ JSON:
 ["watch", "/home/wez/www"]
 ```
 
-Watchman will `realpath(3)` the directory and start watching it if it isn't already.
-A newly watched directory is processed in a couple of stages:
+Watchman will `realpath(3)` the directory and start watching it if it isn't
+already.  A newly watched directory is processed in a couple of stages:
 
  * Establishes change notification for the directory with the kernel
  * Queues up a request to crawl the directory
- * As the directory contents are resolved, those are watched in a similar fashion
+ * As the directory contents are resolved, those are watched in a similar
+   fashion
  * All newly observed files are considered changed
 
 Unless `no-state-save` is in use, watches are saved and re-established across
@@ -251,6 +252,51 @@ watchman since /path/to/dir <clockspec> [patterns]
 Finds all files that were modified since the specified clockspec that
 match the optional list of patterns.  If no patterns are specified,
 all modified files are returned.
+
+The response includes a `files` array, each element of which is an
+object with fields containing information about the file:
+
+```json
+{
+    "version": "1.1",
+    "clock": "c:80616:59",
+    "files": [
+        {
+            "atime": 1357797739,
+            "cclock": "c:80616:1",
+            "ctime": 1357617635,
+            "dev": 16777220,
+            "exists": true,
+            "gid": 100,
+            "ino": 20161390,
+            "mode": 33188,
+            "mtime": 1357617635,
+            "name": "argv.c",
+            "nlink": 1,
+            "oclock": "c:80616:39",
+            "size": 1340,
+            "uid": 100
+        }
+    ]
+}
+```
+
+The fields should be largely self-explanatory; they correspond to
+fields from the underlying `struct stat`, but a couple need special
+mention:
+
+ * **cclock** - The "created" clock; the clock value representing the time that
+this file was first observed, or the clock value where this file changed from
+deleted to non-deleted state.
+ * **oclock** - The "observed" clock; the clock value representing the time
+that this file was last observed to have changed.
+ * **exists** - whether we believe that the file exists on disk or not.  If
+this is false, most of the other fields will be omitted.
+ * **new** - this is only set in cases where the file results were generated as
+part of a time or clock based query, such as the `since` command.  If the
+`cclock` value for the file is newer than the time you specified then the file
+entry is marked as `new`.  This allows you to more easily determine if the file
+was newly created without having to maintain a lot of state.
 
 ### Command: log-level
 
@@ -358,14 +404,15 @@ The `inotify(7)` subsystem has three important tunings that impact watchman.
  * `/proc/sys/fs/inotify/max_queued_events` impacts how likely it is that
    your system will experience a notification overflow.
 
-You obviously need to ensure that `max_user_instances` and `max_user_watches` are
-set so that the system is capable of keeping track of your files.
+You obviously need to ensure that `max_user_instances` and `max_user_watches`
+are set so that the system is capable of keeping track of your files.
 
-`max_queued_events` is important to size correctly; if it is too small, the kernel
-will drop events and watchman won't be able to report on them.  Making this value
-bigger reduces the risk of this happening.
+`max_queued_events` is important to size correctly; if it is too small, the
+kernel will drop events and watchman won't be able to report on them.  Making
+this value bigger reduces the risk of this happening.
 
-Watchman has two simple strategies for mitigating an overflow of `max_queued_events`:
+Watchman has two simple strategies for mitigating an overflow of
+`max_queued_events`:
 
  * It uses a dedicated thread to consume kernel events as quickly as possible
  * When the kernel reports an overflow, watchman will assume that all the files
