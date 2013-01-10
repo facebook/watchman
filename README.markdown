@@ -47,7 +47,7 @@ and harness the streaming JSON protocol directly.
 The following options are recognized if they are present on the command line
 before any non-option arguments.
 
-```
+```bash
  -U, --sockname=PATH      Specify alternate sockname
 
  -o, --logfile=PATH       Specify path to logfile
@@ -131,7 +131,7 @@ Watchman will track all files and dirs rooted at the specified path.
 
 From the command line:
 
-```shell
+```bash
 watchman watch ~/www
 ```
 
@@ -163,7 +163,7 @@ passed the list of matching files.
 
 From the command line:
 
-```shell
+```bash
 watchman -- trigger /path/to/dir triggername [patterns] -- [cmd]
 ```
 
@@ -178,7 +178,7 @@ JSON:
 
 For example:
 
-```shell
+```bash
 watchman -- trigger ~/www jsfiles '*.js' -- ls -l
 ```
 
@@ -229,7 +229,7 @@ across a process restart.
 
 Returns the set of registered triggers associated with a root directory.
 
-```shell
+```bash
 watchman trigger-list /root
 ```
 
@@ -238,13 +238,13 @@ watchman trigger-list /root
 Finds all files that match the optional list of patterns under the
 specified dir.  If no patterns were specified, all files are returned.
 
-```shell
+```bash
 watchman find /path/to/dir [patterns]
 ```
 
 ### Command: since
 
-```shell
+```bash
 watchman since /path/to/dir <clockspec> [patterns]
 ```
 
@@ -258,7 +258,7 @@ Changes the log level of your connection to the watchman service.
 
 From the command line:
 
-```shell
+```bash
 watchman --persistent log-level debug
 ```
 
@@ -295,7 +295,7 @@ the following structure:
 
 Generates a log line in the watchman log.
 
-```shell
+```bash
 watchman log debug "log this please"
 ```
 
@@ -327,7 +327,7 @@ As a convenience, watchman can maintain the last observed clock for a client by
 associating it with a client defined cursor name.  For example, you could
 enumerate all the "C" source files on your first invocation of:
 
-```
+```bash
 watchman since /path/to/src n:c_srcs *.c
 ```
 
@@ -339,7 +339,7 @@ clock spec.
 
 You can use these steps to get watchman built:
 
-```shell
+```bash
 ./autogen.sh
 ./configure
 make
@@ -435,6 +435,42 @@ that the JSON text must be a single line (don't send a pretty printed version
 of it!) and be followed by a newline `\n` character:
 
     ["since", "/path/to/src", "n:c_srcs", "*.c"] <NEWLINE>
+
+## Contributing?
+
+If you're thinking of hacking on watchman we'd love to hear from you!
+Feel free to use the Github issue tracker and pull requests discuss and
+submit code changes.
+
+We use a tool called `arc` to run tests and perform lint checks.  `arc` is part
+of [Phabricator](http://www.phabricator.org) and can be installed by following
+these steps:
+
+```bash
+mkdir /somewhere
+cd /somewhere
+git clone git://github.com/facebook/libphutil.git
+git clone git://github.com/facebook/arcanist.git
+```
+
+Add `arc` to your path:
+
+```bash
+export PATH="$PATH:/somewhere/arcanist/bin/"
+```
+
+With `arc` in your path, re-running configure will detect it and adjust the
+makefile so that `arc lint` will be run as part of `make`, but you can run it
+yourself outside of make.
+
+You can run the unit tests using:
+
+    arc unit
+
+If you'd like to contribute a patch to watchman, we'll ask you to make sure
+that `arc unit` still passess successfully and we'd ideally like you to augment
+the test suite to cover the functionality that you're adding or changing.
+
 
 ## Future
 
