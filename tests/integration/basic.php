@@ -34,6 +34,8 @@ class basicTestCase extends WatchmanTestCase {
       rename("$root/adir/subdir", "$root/adir/overhere"));
 
     $this->assertFileList($root, array(
+      'adir',
+      'adir/overhere',
       'adir/overhere/file',
       'foo.c',
     ));
@@ -42,8 +44,34 @@ class basicTestCase extends WatchmanTestCase {
       rename("$root/adir", "$root/bdir"));
 
     $this->assertFileList($root, array(
+      'bdir',
+      'bdir/overhere',
       'bdir/overhere/file',
       'foo.c',
+    ));
+  }
+
+  function testTwoDeep() {
+    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $root = realpath($dir->getPath());
+    $watch = $this->watchmanCommand('watch', $root);
+
+    $this->assertFileList($root, array());
+
+    $this->assertEqual(true, mkdir("$root/foo"));
+    $this->assertEqual(true, mkdir("$root/foo/bar"));
+    $this->assertEqual(3, file_put_contents("$root/foo/bar/111", "111"));
+
+    $this->assertFileList($root, array(
+      "foo",
+      "foo/bar",
+      "foo/bar/111"
+    ));
+
+    execx('rm -rf %s', "$root/foo/bar");
+
+    $this->assertFileList($root, array(
+      "foo",
     ));
   }
 

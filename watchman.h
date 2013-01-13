@@ -162,7 +162,8 @@ struct watchman_file {
   /* the time we last observed a change to this file */
   w_clock_t otime;
   /* the time we first observed this file OR the time
-   * that this file switced from !exists to exists */
+   * that this file switched from !exists to exists.
+   * This is thus the "created time" */
   w_clock_t ctime;
 
   /* confidence indicator.  We set this if we believe

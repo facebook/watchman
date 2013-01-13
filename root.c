@@ -466,7 +466,7 @@ static void stat_path(w_root_t *root,
   } else if (res) {
     w_log(W_LOG_ERR, "lstat(%s) %d %s\n",
         path, errno, strerror(errno));
-  } else if (!S_ISDIR(st.st_mode)) {
+  } else {
     if (!file) {
       file = w_root_resolve_file(root, dir, file_name, now);
     }
@@ -479,10 +479,11 @@ static void stat_path(w_root_t *root,
     file->exists = true;
     memcpy(&file->st, &st, sizeof(st));
     w_root_mark_file_changed(root, file, now, confident);
-  } else if (S_ISDIR(st.st_mode)) {
-    if (!dir_ent) {
-      /* we've never seen this dir before */
-      crawler(root, full_path, now, confident);
+    if (S_ISDIR(st.st_mode)) {
+      if (!dir_ent) {
+        /* we've never seen this dir before */
+        crawler(root, full_path, now, confident);
+      }
     }
   }
 

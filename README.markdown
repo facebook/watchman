@@ -22,8 +22,6 @@ kind of remote or distributed filesystem.
 
 ## Concepts
 
- * Watchman watches and reports on *files*.  It is aware of directories but
-   will only give you information about non-directory entries in the filesystem.
  * Watchman does not follow symlinks.  It knows they exist, but they show up
    the same as any other file in its reporting.
  * Watchman encourages you to avoid race conditions by providing an abstract
