@@ -60,7 +60,7 @@ all-local: lint
 # Run lint and output stuff suitable for feeding into ":make" in vim
 # quickfix mode.
 lint:
-	arc lint --output compiler --lintall
+	-arc lint --output compiler --lintall
 endif
 
 # generate a rule that we can use to ensure that
