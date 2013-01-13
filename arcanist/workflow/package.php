@@ -50,6 +50,10 @@ TXT
       'gimli' => array(
         'help' => 'Configure to run under the gimli monitor',
       ),
+      'release' => array(
+        'help' => 'Override the default RPM release of 1',
+        'param' => 'release'
+      ),
       '*' => 'configureargs',
     );
   }
@@ -82,6 +86,10 @@ TXT
     $files = '';
     $build = '';
     $requires = '';
+    $release = $this->getArgument('release');
+    if (!$release) {
+      $release = 1;
+    }
     $configureargs = implode(' ', $this->getArgument('configureargs'));
 
     if ($this->getArgument('gimli')) {
@@ -103,7 +111,7 @@ TXT
 %define _prefix $prefix
 Name: fb-watchman
 Version: $version
-Release: 1
+Release: $release
 Summary: Watch files, trigger stuff
 $requires
 
