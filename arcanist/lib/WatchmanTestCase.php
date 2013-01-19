@@ -143,7 +143,16 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     $this->assertFailure($message);
   }
 
-  function assertFileList($root, array $files, $timeout = 10, $message = null) {
+  function assertFileListUsingSince($root, $cursor, array $files,
+      array $files_via_since = null, $timeout = 10, $message = null) {
+
+    if ($cursor) {
+      if ($files_via_since === null) {
+        $files_via_since = $files;
+      }
+      sort($files_via_since);
+    }
+
     sort($files);
 
     $sort_func = function ($list) {
@@ -166,10 +175,35 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     );
 
     if ($ok) {
-      return;
-    }
 
-    $got = $sort_func(idx($out, 'files'));
+      if (!$cursor) {
+        return;
+      }
+
+      $since = $this->watchmanCommand('since', $root, $cursor);
+
+      $since_files = $sort_func(idx($since, 'files'));
+      if ($since_files === $files_via_since) {
+        return;
+      }
+
+      if ($message === null) {
+        $where = debug_backtrace();
+        $where = array_shift($where);
+        $where = sprintf("at line %d in file %s",
+          idx($where, 'line'),
+          basename(idx($where, 'file')));
+
+        $message = "\nwatchman since vs. find result mismatch " .
+          json_encode($out) . "\n" .
+          json_encode($since) . "\n" .
+          $where;
+      }
+
+      $got = $since_files;
+    } else {
+      $got = $sort_func(idx($out, 'files'));
+    }
 
     if ($message === null) {
       $where = debug_backtrace();
@@ -184,6 +218,12 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     }
 
     $this->assertEqual($files, $got, $message);
+  }
+
+  function assertFileList($root, array $files, $timeout = 10,
+        $message = null) {
+    $this->assertFileListUsingSince($root, null, $files, null,
+        $timeout, $message);
   }
 }
 

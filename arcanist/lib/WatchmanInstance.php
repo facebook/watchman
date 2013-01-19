@@ -89,7 +89,7 @@ class WatchmanInstance {
 
   function start() {
     $cmd = "./watchman --foreground --sockname=%C.sock --logfile=%s " .
-            "--statefile=%s.state";
+            "--statefile=%s.state --log-level=2";
     if ($this->valgrind) {
       $cmd = "valgrind --tool=memcheck " .
         "--log-file=$this->vg_log " .
@@ -315,6 +315,7 @@ class WatchmanInstance {
     if ($this->debug) {
       readfile($this->logfile);
     }
+    copy($this->logfile, '/tmp/watchman-test.log');
   }
 
   function __destruct() {

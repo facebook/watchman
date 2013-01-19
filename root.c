@@ -1228,11 +1228,17 @@ static void *inotify_thread(void *arg)
         dir = w_root_resolve_dir_by_wd(root, ine->wd);
         if (dir) {
 
-          if ((ine->mask & IN_ISDIR) == 0 && ine->len) {
+          if (ine->len) {
             snprintf(buf, sizeof(buf), "%.*s/%s",
                 dir->path->len, dir->path->buf,
                 ine->name);
             name = w_string_new(buf);
+          } else {
+            name = dir->path;
+            w_string_addref(name);
+          }
+
+          if ((ine->mask & IN_ISDIR) == 0 && ine->len) {
 
             dir = w_root_resolve_dir(root, name, false);
             if (dir) {
@@ -1246,13 +1252,13 @@ static void *inotify_thread(void *arg)
             w_log(W_LOG_DBG, "add_pending for inotify mask=%x %s\n",
                 ine->mask, buf);
             w_root_add_pending(root, name, true, now, true);
-
-            w_string_delref(name);
           } else {
-            w_log(W_LOG_DBG, "add_pending for inotify mask=%x %s\n",
-                ine->mask, dir->path->buf);
-            w_root_add_pending(root, dir->path, true, now, true);
+            w_log(W_LOG_DBG, "ISDIR: add_pending for inotify mask=%x %s\n",
+                ine->mask, name->buf);
+            w_root_add_pending(root, name, true, now, true);
           }
+
+          w_string_delref(name);
         } else {
           w_log(W_LOG_DBG, "wanted dir %d, but not found\n", ine->wd);
         }
