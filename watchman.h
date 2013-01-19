@@ -304,6 +304,7 @@ void w_mark_dead(pid_t pid);
 #define W_LOG_ERR 1
 #define W_LOG_DBG 2
 
+extern int log_level;
 void w_log(int level, const char *fmt, ...)
 #ifdef __GNUC__
   __attribute__((format(printf, 2, 3)))

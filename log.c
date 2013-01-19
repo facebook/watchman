@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+int log_level = W_LOG_ERR;
+
 void w_log(int level, const char *fmt, ...)
 {
   char buf[4096];
@@ -14,7 +16,9 @@ void w_log(int level, const char *fmt, ...)
   len += vsnprintf(buf + len, sizeof(buf), fmt, ap);
   va_end(ap);
 
-  ignore_result(write(STDERR_FILENO, buf, len));
+  if (level <= log_level) {
+    ignore_result(write(STDERR_FILENO, buf, len));
+  }
 
   w_log_to_clients(level, buf);
 }

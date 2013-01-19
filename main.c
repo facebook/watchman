@@ -290,6 +290,8 @@ static struct watchman_getopt opts[] = {
     REQ_STRING, &sock_name, "PATH" },
   { "logfile", 'o', "Specify path to logfile",
     REQ_STRING, &log_name, "PATH" },
+  { "log-level", 0, "set the log level (0 = off, default is 1, verbose = 2)",
+    REQ_INT, &log_level, NULL },
 #ifdef USE_GIMLI
   { "pidfile", 0, "Specify path to gimli monitor pidfile",
     REQ_STRING, &pid_file, "PATH" },
