@@ -239,6 +239,8 @@ static void watch_file(w_root_t *root, struct watchman_file *file)
       file->parent->path->len, file->parent->path->buf,
       file->name->len, file->name->buf);
 
+  w_log(W_LOG_DBG, "watch_file(%s)\n", buf);
+
 #if HAVE_KQUEUE
   {
     struct kevent k;
@@ -372,6 +374,9 @@ static void stop_watching_dir(w_root_t *root,
 {
   w_ht_iter_t i;
 
+  w_log(W_LOG_DBG, "stop_watching_dir %.*s\n",
+      dir->path->len, dir->path->buf);
+
   if (w_ht_first(dir->dirs, &i)) do {
     struct watchman_dir *child = (struct watchman_dir*)i.value;
 
@@ -450,6 +455,7 @@ static void stat_path(w_root_t *root,
   }
 
   res = lstat(path, &st);
+  w_log(W_LOG_DBG, "lstat(%s) file=%p dir=%p\n", path, file, dir_ent);
 
   if (res && (errno == ENOENT || errno == ENOTDIR)) {
     /* it's not there, update our state */
@@ -480,8 +486,13 @@ static void stat_path(w_root_t *root,
     memcpy(&file->st, &st, sizeof(st));
     w_root_mark_file_changed(root, file, now, confident);
     if (S_ISDIR(st.st_mode)) {
-      if (!dir_ent) {
-        /* we've never seen this dir before */
+      /* On Linux systems we get told about change on the child, so we only
+       * need to crawl if we've never seen the dir before */
+      int recurse = dir_ent == NULL;
+#ifndef HAVE_INOTIFY_INIT
+      recurse = 1;
+#endif
+      if (recurse) {
         crawler(root, full_path, now, confident);
       }
     }
@@ -543,6 +554,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
 
   dir = w_root_resolve_dir(root, dir_name, true);
 
+  w_log(W_LOG_DBG, "opendir(%.*s)\n", dir_name->len, dir_name->buf);
   osdir = opendir(dir_name->buf);
   if (!osdir) {
     if (errno == ENOENT || errno == ENOTDIR) {
@@ -556,6 +568,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
 
   /* make sure we're watching this guy */
   if (dir->wd == -1) {
+    w_log(W_LOG_DBG, "watch_dir(%s)\n", dir_name->buf);
 #if HAVE_INOTIFY_INIT
     dir->wd = inotify_add_watch(root->infd, dir_name->buf,
         WATCHMAN_INOTIFY_MASK);
@@ -579,10 +592,14 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       w_set_cloexec(dir->wd);
 
       if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
-        perror("kevent");
+        w_log(W_LOG_DBG, "kevent EV_ADD dir %s failed: %s",
+            dir_name->buf, strerror(errno));
         close(dir->wd);
         dir->wd = -1;
       }
+    } else {
+      w_log(W_LOG_DBG, "couldn't open dir %s for watching: %s\n",
+          dir_name->buf, strerror(errno));
     }
 #endif
 #if HAVE_PORT_CREATE

@@ -81,9 +81,9 @@ class basicTestCase extends WatchmanTestCase {
     $watch = $this->watchmanCommand('watch', $root);
     $this->assertFileList($root, array());
 
-    $this->watchmanCommand('log', 'debug', 'mkdir foo');
+    $this->watchmanCommand('log', 'debug', 'XXX: mkdir foo');
     mkdir("$root/foo");
-    $this->watchmanCommand('log', 'debug', 'touch foo/111');
+    $this->watchmanCommand('log', 'debug', 'XXX: touch foo/111');
     touch("$root/foo/111");
 
     $this->assertFileListUsingSince($root, 'n:foo', array(
@@ -91,9 +91,9 @@ class basicTestCase extends WatchmanTestCase {
       'foo/111',
     ), null);
 
-    $this->watchmanCommand('log', 'debug', 'mkdir foo/bar');
+    $this->watchmanCommand('log', 'debug', 'XXX: mkdir foo/bar');
     mkdir("$root/foo/bar");
-    $this->watchmanCommand('log', 'debug', 'touch foo/bar/222');
+    $this->watchmanCommand('log', 'debug', 'XXX: touch foo/bar/222');
     touch("$root/foo/bar/222");
 
     $this->watchmanCommand('log', 'debug', 'XXX: wait to observe lists');
