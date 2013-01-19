@@ -1208,7 +1208,7 @@ static void *inotify_thread(void *arg)
       abort();
     }
 
-    w_log(W_LOG_ERR, "inotify read: returned %d.\n", n);
+    w_log(W_LOG_DBG, "inotify read: returned %d.\n", n);
 
     w_root_lock(root);
     root->ticks++;
