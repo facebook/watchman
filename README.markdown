@@ -487,6 +487,18 @@ If you're thinking of hacking on watchman we'd love to hear from you!
 Feel free to use the Github issue tracker and pull requests discuss and
 submit code changes.
 
+We (Facebook) occasionally have to ask for a "Contributor License Agreement"
+from someone who sends in a patch or code that we want to include in the
+codebase.  This is a legal requirement (a similar situation applies in other
+projects, such as Apache and other ASF projects or the Linux kernel). It
+doesn't apply in all cases, just for "big" patches.
+
+If we ask you to fill out a CLA we'll direct you to [our online CLA
+page](https://developers.facebook.com/opensource/cla) where you can complete it
+easily.  We use the same form as the Apache CLA so that friction is minimal.
+
+### Tools
+
 We use a tool called `arc` to run tests and perform lint checks.  `arc` is part
 of [Phabricator](http://www.phabricator.org) and can be installed by following
 these steps:
