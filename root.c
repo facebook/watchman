@@ -370,7 +370,7 @@ static struct watchman_file *w_root_resolve_file(w_root_t *root,
 }
 
 static void stop_watching_dir(w_root_t *root,
-    struct watchman_dir *dir)
+    struct watchman_dir *dir, bool do_close)
 {
   w_ht_iter_t i;
 
@@ -380,7 +380,7 @@ static void stop_watching_dir(w_root_t *root,
   if (w_ht_first(dir->dirs, &i)) do {
     struct watchman_dir *child = (struct watchman_dir*)i.value;
 
-    stop_watching_dir(root, child);
+    stop_watching_dir(root, child, do_close);
   } while (w_ht_next(dir->dirs, &i));
 
 #if HAVE_PORT_CREATE
@@ -394,7 +394,7 @@ static void stop_watching_dir(w_root_t *root,
 
   /* turn off watch */
 #if HAVE_INOTIFY_INIT
-  if (inotify_rm_watch(root->infd, dir->wd) != 0) {
+  if (do_close && inotify_rm_watch(root->infd, dir->wd) != 0) {
     w_log(W_LOG_ERR, "rm_watch: %d %.*s %s\n",
         dir->wd, dir->path->len, dir->path->buf,
         strerror(errno));
@@ -463,7 +463,7 @@ static void stat_path(w_root_t *root,
       w_root_mark_deleted(root, dir_ent, now, true, true);
       w_log(W_LOG_DBG, "lstat(%s) -> %s so stopping watch on %s\n",
           path, strerror(errno), dir_ent->path->buf);
-      stop_watching_dir(root, dir_ent);
+      stop_watching_dir(root, dir_ent, true);
     }
     if (file) {
       file->exists = false;
@@ -473,6 +473,8 @@ static void stat_path(w_root_t *root,
     w_log(W_LOG_ERR, "lstat(%s) %d %s\n",
         path, errno, strerror(errno));
   } else {
+    bool recurse = false;
+
     if (!file) {
       file = w_root_resolve_file(root, dir, file_name, now);
     }
@@ -481,6 +483,9 @@ static void stat_path(w_root_t *root,
        * so we're effectively new again */
       file->ctime.ticks = root->ticks;
       file->ctime.tv = now;
+      /* if a dir was deleted and now exists again, we want
+       * to crawl it again */
+      recurse = true;
     }
     file->exists = true;
     memcpy(&file->st, &st, sizeof(st));
@@ -488,9 +493,11 @@ static void stat_path(w_root_t *root,
     if (S_ISDIR(st.st_mode)) {
       /* On Linux systems we get told about change on the child, so we only
        * need to crawl if we've never seen the dir before */
-      int recurse = dir_ent == NULL;
+      if (dir_ent == NULL) {
+        recurse = true;
+      }
 #ifndef HAVE_INOTIFY_INIT
-      recurse = 1;
+      recurse = true;
 #endif
       if (recurse) {
         crawler(root, full_path, now, confident);
@@ -560,7 +567,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
     if (errno == ENOENT || errno == ENOTDIR) {
       w_log(W_LOG_DBG, "opendir(%s) -> %s so stopping watch\n",
           dir_name->buf, strerror(errno));
-      stop_watching_dir(root, dir);
+      stop_watching_dir(root, dir, true);
       w_root_mark_deleted(root, dir, now, true, true);
     }
     return;
@@ -1285,7 +1292,7 @@ static void *inotify_thread(void *arg)
         dir = w_root_resolve_dir_by_wd(root, ine->wd);
         if (dir) {
           w_log(W_LOG_DBG, "IN_IGNORED: remove %s\n", dir->path->buf);
-          stop_watching_dir(root, dir);
+          stop_watching_dir(root, dir, false);
         }
       }
     }
