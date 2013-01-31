@@ -824,6 +824,14 @@ static void *client_thread(void *ptr)
 
     ignore_result(poll(pfd, 2, 200));
 
+    if (pfd[0].revents & (POLLHUP|POLLERR)) {
+disconected:
+      pthread_mutex_lock(&client_lock);
+      w_ht_del(clients, client->fd);
+      pthread_mutex_unlock(&client_lock);
+      break;
+    }
+
     if (pfd[0].revents) {
       request = w_json_buffer_next(&client->reader, client->fd, &jerr);
 
@@ -834,10 +842,7 @@ static void *client_thread(void *ptr)
         send_error_response(client, "invalid json at position %d: %s",
             jerr.position, jerr.text);
 
-        pthread_mutex_lock(&client_lock);
-        w_ht_del(clients, client->fd);
-        pthread_mutex_unlock(&client_lock);
-        break;
+        goto disconected;
       } else if (request) {
         if (!json_array_size(request)) {
           send_error_response(client,
