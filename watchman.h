@@ -226,6 +226,10 @@ struct watchman_root {
 
   bool done_initial;
 
+  /* map of dir name => dirname
+   * if the map has an entry for a given dir, we're ignoring it */
+  w_ht_t *ignore_dirs;
+
   /* map of cursor name => last observed tick value */
   w_ht_t *cursors;
 

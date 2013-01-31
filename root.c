@@ -73,6 +73,26 @@ w_root_t *w_root_new(const char *path)
 
   root->cursors = w_ht_new(2, &w_ht_string_funcs);
 
+  root->ignore_dirs = w_ht_new(2, &w_ht_string_funcs);
+  // For now, ignore VCS control dirs.  We'll make this configurable
+  // later
+  {
+    static const char *ignores[] = {
+      ".git", ".svn", ".hg"
+    };
+    w_string_t *name;
+    w_string_t *fullname;
+    uint8_t i;
+
+    for (i = 0; i < sizeof(ignores) / sizeof(ignores[0]); i++) {
+      name = w_string_new(ignores[i]);
+      fullname = w_string_path_cat(root->root_path, name);
+      w_ht_set(root->ignore_dirs, (w_ht_val_t)fullname, (w_ht_val_t)fullname);
+      w_string_delref(fullname);
+      w_string_delref(name);
+    }
+  }
+
 #if HAVE_INOTIFY_INIT
   root->infd = inotify_init();
   w_set_cloexec(root->infd);
@@ -433,6 +453,11 @@ static void stat_path(w_root_t *root,
   struct watchman_file *file = NULL;
   w_string_t *dir_name;
   w_string_t *file_name;
+
+  if (w_ht_get(root->ignore_dirs, (w_ht_val_t)full_path)) {
+    w_log(W_LOG_DBG, "ignoring %s\n", full_path->buf);
+    return;
+  }
 
   if (full_path->len > sizeof(path)-1) {
     w_log(W_LOG_ERR, "path %.*s is too big\n", full_path->len, full_path->buf);
