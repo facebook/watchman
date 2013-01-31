@@ -1,4 +1,4 @@
-AC_INIT([watchman], [1.3], [], [watchman])
+AC_INIT([watchman], [1.4], [], [watchman])
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects])
 
