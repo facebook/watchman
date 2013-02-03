@@ -130,6 +130,14 @@ void w_free_rules(struct watchman_rule *head)
     r = head;
     head = r->next;
 
+#ifdef HAVE_PCRE_H
+    if (r->re) {
+      pcre_free(r->re);
+    }
+    if (r->re_extra) {
+      pcre_free(r->re_extra);
+    }
+#endif
     free((char*)r->pattern);
     free(r);
   }
@@ -144,16 +152,23 @@ void w_free_rules(struct watchman_rule *head)
  * -I to turn on include mode again after using -X.
  * If "!" is specified, the following pattern is negated.
  * We switch back out of negation mode after that pattern.
+ * If -p is specified, the following pattern is interpreted as a PCRE.
+ * If -P is specified, the following pattern is interpreted as a PCRE
+ * with the PCRE_CASELESS flag set.
  *
  * We stop processing args when we find "--" and update
  * *next_arg to the argv index after that argument.
  */
 static bool parse_watch_params(int start, json_t *args,
     struct watchman_rule **head_ptr,
-    uint32_t *next_arg)
+    uint32_t *next_arg,
+    char *errbuf, int errbuflen)
 {
   bool include = true;
   bool negated = false;
+#ifdef HAVE_PCRE_H
+  int is_pcre = 0;
+#endif
   struct watchman_rule *rule, *prior = NULL;
   uint32_t i;
 
@@ -166,7 +181,11 @@ static bool parse_watch_params(int start, json_t *args,
     const char *arg = json_string_value(json_array_get(args, i));
     if (!arg) {
       /* not a string value! */
-      return false; // FIXME: leak
+      w_free_rules(*head_ptr);
+      *head_ptr = NULL;
+      snprintf(errbuf, errbuflen,
+          "rule @ position %d is not a string value", i);
+      return false;
     }
 
     if (!strcmp(arg, "--")) {
@@ -185,10 +204,23 @@ static bool parse_watch_params(int start, json_t *args,
       negated = true;
       continue;
     }
+    if (!strcmp(arg, "-P") || !strcmp(arg, "-p")) {
+#ifdef HAVE_PCRE_H
+      is_pcre = arg[1];
+      continue;
+#else
+      snprintf(errbuf, errbuflen,
+          "this watchman was not built with pcre support");
+      return false;
+#endif
+    }
 
     rule = calloc(1, sizeof(*rule));
     if (!rule) {
-      return false; // FIXME: leak
+      w_free_rules(*head_ptr);
+      *head_ptr = NULL;
+      snprintf(errbuf, errbuflen, "out of memory");
+      return false;
     }
 
     rule->include = include;
@@ -199,8 +231,36 @@ static bool parse_watch_params(int start, json_t *args,
     // "C" source files, use "*.c".  To match all makefiles, use
     // "*/Makefile" + "Makefile" (include the latter if the Makefile might
     // be at the top level).
+    rule->rule_type = RT_FNMATCH;
     rule->pattern = strdup(arg);
     rule->flags = FNM_PERIOD;
+
+#ifdef HAVE_PCRE_H
+    if (is_pcre) {
+      const char *errptr = NULL;
+      int erroff = 0;
+      int errcode = 0;
+
+      rule->re = pcre_compile2(rule->pattern,
+          is_pcre == 'P' ? PCRE_CASELESS : 0,
+          &errcode, &errptr, &erroff, NULL);
+
+      if (!rule->re) {
+        snprintf(errbuf, errbuflen,
+          "invalid pcre: `%s' at offset %d: code %d %s",
+          rule->pattern, erroff, errcode, errptr);
+        w_free_rules(rule);
+        w_free_rules(*head_ptr);
+        *head_ptr = NULL;
+        return false;
+      }
+
+      if (rule->re) {
+        rule->re_extra = pcre_study(rule->re, 0, &errptr);
+      }
+      rule->rule_type = RT_PCRE;
+    }
+#endif
 
     if (!prior) {
       *head_ptr = rule;
@@ -209,13 +269,16 @@ static bool parse_watch_params(int start, json_t *args,
     }
     prior = rule;
 
-    w_log(W_LOG_DBG, "made rule %s %s %s\n",
+    w_log(W_LOG_DBG, "made rule %s %s %s %s\n",
         rule->include ? "-I" : "-X",
         rule->negated ? "!" : "",
+        rule->rule_type == RT_FNMATCH ? "fnmatch" :
+        (is_pcre == 'P' ? "pcre caseless" : "pcre" ),
         rule->pattern);
 
     // Reset negated flag
     negated = false;
+    is_pcre = 0;
   }
 
   if (next_arg) {
@@ -260,7 +323,26 @@ uint32_t w_rules_match(w_root_t *root,
       // the right spot if it was created as a slice.
       // In practice, we don't see those, but if we do, we should
       // probably make a copy of the string into a stack buffer :-/
-      matched = fnmatch(rule->pattern, relname->buf, rule->flags) == 0;
+
+      if (rule->rule_type == RT_FNMATCH) {
+        matched = fnmatch(rule->pattern, relname->buf, rule->flags) == 0;
+      }
+#ifdef HAVE_PCRE_H
+      else {
+        int rc = pcre_exec(rule->re, rule->re_extra, relname->buf,
+                  relname->len, 0, 0, NULL, 0);
+
+        if (rc == PCRE_ERROR_NOMATCH) {
+          matched = false;
+        } else if (rc >= 0) {
+          matched = true;
+        } else {
+          w_log(W_LOG_ERR, "pcre match %s against %s failed: %d\n",
+              rule->pattern, relname->buf, rc);
+          matched = false;
+        }
+      }
+#endif
 
       // If the rule is negated, we negate the sense of the
       // match result
@@ -520,6 +602,7 @@ static void cmd_find(
 {
   struct watchman_rule *rules = NULL;
   w_root_t *root;
+  char buf[128];
 
   /* resolve the root */
   if (json_array_size(args) < 2) {
@@ -533,13 +616,14 @@ static void cmd_find(
   }
 
   /* parse argv into a chain of watchman_rule */
-  if (!parse_watch_params(2, args, &rules, NULL)) {
-    send_error_response(client, "invalid rule spec: %s", strerror(errno));
+  if (!parse_watch_params(2, args, &rules, NULL, buf, sizeof(buf))) {
+    send_error_response(client, "invalid rule spec: %s", buf);
     return;
   }
 
   /* now find all matching files */
   run_rules(client, root, NULL, rules);
+  w_free_rules(rules);
 }
 
 /* since /root <timestamp> [patterns] */
@@ -551,6 +635,7 @@ static void cmd_since(
   w_root_t *root;
   json_t *clock_ele;
   struct w_clockspec_query since;
+  char buf[128];
 
   /* resolve the root */
   if (json_array_size(args) < 3) {
@@ -571,13 +656,14 @@ static void cmd_since(
   }
 
   /* parse argv into a chain of watchman_rule */
-  if (!parse_watch_params(3, args, &rules, NULL)) {
-    send_error_response(client, "invalid rule spec: %s", strerror(errno));
+  if (!parse_watch_params(3, args, &rules, NULL, buf, sizeof(buf))) {
+    send_error_response(client, "invalid rule spec: %s", buf);
     return;
   }
 
   /* now find all matching files */
   run_rules(client, root, &since, rules);
+  w_free_rules(rules);
 }
 
 /* trigger-list /root
@@ -618,6 +704,7 @@ static void cmd_trigger(
   struct watchman_trigger_command *cmd;
   json_t *resp;
   const char *name;
+  char buf[128];
 
   root = resolve_root_or_err(client, args, 1, true);
   if (!root) {
@@ -634,8 +721,8 @@ static void cmd_trigger(
     return;
   }
 
-  if (!parse_watch_params(3, args, &rules, &next_arg)) {
-    send_error_response(client, "invalid rule spec: %s", strerror(errno));
+  if (!parse_watch_params(3, args, &rules, &next_arg, buf, sizeof(buf))) {
+    send_error_response(client, "invalid rule spec: %s", buf);
     return;
   }
 

@@ -29,6 +29,26 @@ AC_ARG_ENABLE(statedir, [
                     [default location for state])
 ])
 
+AC_ARG_WITH(pcre, [
+  --with-pcre=PATH  Enable pcre support.  PATH is location of pcre-config
+],[
+  pcre_config=$withval
+  if test "x$withval" != "xno" ; then
+    if test "x$withval" == "xyes" ; then
+      pcre_config="pcre-config"
+    else
+      pcre_config="$withval"
+    fi
+
+    if $pcre_config --version >/dev/null ; then
+      LIBS="$LIBS `$pcre_config --libs`"
+      CFLAGS="$CFLAGS `$pcre_config --cflags`"
+      AC_CHECK_HEADERS(pcre.h)
+    fi
+  fi
+])
+
+
 gimli=no
 AC_ARG_WITH(gimli, [
   --enable-gimli    Enable support for the gimli process monitor

@@ -111,6 +111,15 @@ that match according the following rules:
  * A `!` followed by space followed by a pattern will negate the sense of the
    pattern match, so `! *.js` matches any file(s) that do not match the glob
    `*.js`.
+ * A `-p` indicates that the following pattern is a perl compatible regular
+   expression.  For example, `\.c$` matches files with a `.c` suffix.
+   You need to specify the `-p` switch for each pattern, although it is
+   recommended that you condense a series of patterns into an alternation
+   instead, as this is faster.  For example, strongly prefer a single
+   `(foo|bar)` pcre over two separate `foo` and `bar` patterns.
+ * A `-P` indicates that the following pattern is a perl compatible with
+   the PCRE_CASELESS flag set.  In other words, the pattern will be matched
+   case insensitively.
  * A `-X` switches the pattern parser into exclusion mode.  Exclusion mode
    remains enabled until it is turned off by `-I`.  Patterns that parsed
    in exclusion mode will cause matched files to be excluded from the set

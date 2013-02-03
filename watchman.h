@@ -43,6 +43,9 @@ extern "C" {
 #include <sys/poll.h>
 #include <sys/wait.h>
 #include <fnmatch.h>
+#ifdef HAVE_PCRE_H
+# include <pcre.h>
+#endif
 #include <spawn.h>
 // Not explicitly exported on Darwin, so we get to define it.
 extern char **environ;
@@ -251,10 +254,21 @@ struct watchman_rule {
   /* if true, this rule matches if the pattern doesn't match.
    * otherwise it matches if the pattern matches */
   bool negated;
+
+  enum {
+    RT_FNMATCH,
+    RT_PCRE
+  } rule_type;
+
   /* pattern passed to fnmatch(3) */
   const char *pattern;
   /* flags passed to fnmatch(3) */
   int flags;
+
+#ifdef HAVE_PCRE_H
+  pcre *re;
+  pcre_extra *re_extra;
+#endif
 
   /* next rule in this chain */
   struct watchman_rule *next;
