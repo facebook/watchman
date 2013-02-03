@@ -15,6 +15,7 @@ const char *watchman_tmp_dir = NULL;
 static int persistent = 0;
 int dont_save_state = 0;
 static int foreground = 0;
+static int no_pretty = 0;
 static struct sockaddr_un un;
 
 static void run_service(void)
@@ -214,7 +215,7 @@ static bool read_response(w_jbuffer_t *reader, int fd)
   }
 
   // Let's just pretty print the JSON response
-  json_dumpf(j, stdout, JSON_INDENT(4));
+  json_dumpf(j, stdout, no_pretty ? 0 : JSON_INDENT(4));
   printf("\n");
 
   json_decref(j);
@@ -304,6 +305,8 @@ static struct watchman_getopt opts[] = {
     REQ_STRING, &watchman_state_file, "PATH" },
   { "foreground", 'f', "Run the service in the foreground",
     OPT_NONE, &foreground, NULL },
+  { "no-pretty", 0, "Don't pretty print JSON",
+    OPT_NONE, &no_pretty, NULL },
   { "settle", 's',
     "Number of milliseconds to wait for filesystem to settle",
     REQ_INT, &trigger_settle, NULL },
