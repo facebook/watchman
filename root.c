@@ -72,6 +72,7 @@ w_root_t *w_root_new(const char *path)
   root->root_path = w_string_new(path);
 
   root->cursors = w_ht_new(2, &w_ht_string_funcs);
+  root->suffixes = w_ht_new(2, &w_ht_string_funcs);
 
   root->ignore_dirs = w_ht_new(2, &w_ht_string_funcs);
   // For now, ignore VCS control dirs.  We'll make this configurable
@@ -361,7 +362,8 @@ static struct watchman_file *w_root_resolve_file(w_root_t *root,
     struct watchman_dir *dir, w_string_t *file_name,
     struct timeval now)
 {
-  struct watchman_file *file;
+  struct watchman_file *file, *sufhead;
+  w_string_t *suffix;
 
   if (dir->files) {
     file = (struct watchman_file*)w_ht_get(dir->files, (w_ht_val_t)file_name);
@@ -382,6 +384,18 @@ static struct watchman_file *w_root_resolve_file(w_root_t *root,
 #if HAVE_KQUEUE
   file->kq_fd = -1;
 #endif
+
+  suffix = w_string_suffix(file_name);
+  if (suffix) {
+    sufhead = (struct watchman_file*)w_ht_get(
+        root->suffixes, (w_ht_val_t)suffix);
+    file->suffix_next = sufhead;
+    if (sufhead) {
+      sufhead->suffix_prev = file;
+    }
+    w_ht_replace(root->suffixes, (w_ht_val_t)suffix, (w_ht_val_t)file);
+    w_string_delref(suffix);
+  }
 
   w_ht_set(dir->files, (w_ht_val_t)file->name, (w_ht_val_t)file);
   watch_file(root, file);

@@ -13,6 +13,7 @@ extern "C" {
 
 #include <assert.h>
 #include <unistd.h>
+#include <ctype.h>
 #include <stdint.h>
 #include <sys/stat.h>
 #if HAVE_SYS_INOTIFY_H
@@ -162,6 +163,9 @@ struct watchman_file {
   /* linkage to files ordered by changed time */
   struct watchman_file *prev, *next;
 
+  /* linkage to files ordered by common suffix */
+  struct watchman_file *suffix_prev, *suffix_next;
+
   /* the time we last observed a change to this file */
   w_clock_t otime;
   /* the time we first observed this file OR the time
@@ -236,6 +240,10 @@ struct watchman_root {
   /* map of cursor name => last observed tick value */
   w_ht_t *cursors;
 
+  /* map of filename suffix => watchman_file at the head
+   * of the suffix index.  Linkage via suffix_next */
+  w_ht_t *suffixes;
+
   /* map of rule id => struct watchman_trigger_command */
   w_ht_t *commands;
   uint32_t next_cmd_id;
@@ -257,7 +265,8 @@ struct watchman_rule {
 
   enum {
     RT_FNMATCH,
-    RT_PCRE
+    RT_PCRE,
+    RT_SUFFIX
   } rule_type;
 
   /* pattern passed to fnmatch(3) */
@@ -269,6 +278,8 @@ struct watchman_rule {
   pcre *re;
   pcre_extra *re_extra;
 #endif
+
+  w_string_t *suffix;
 
   /* next rule in this chain */
   struct watchman_rule *next;
@@ -333,6 +344,8 @@ void w_log_to_clients(int level, const char *buf);
 
 
 w_string_t *w_string_new(const char *str);
+w_string_t *w_string_suffix(w_string_t *str);
+bool w_string_suffix_match(w_string_t *str, w_string_t *suffix);
 w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len);
 char *w_string_dup_buf(const w_string_t *str);
 void w_string_addref(w_string_t *str);

@@ -138,6 +138,9 @@ void w_free_rules(struct watchman_rule *head)
       pcre_free(r->re_extra);
     }
 #endif
+    if (r->suffix) {
+      w_string_delref(r->suffix);
+    }
     free((char*)r->pattern);
     free(r);
   }
@@ -155,6 +158,11 @@ void w_free_rules(struct watchman_rule *head)
  * If -p is specified, the following pattern is interpreted as a PCRE.
  * If -P is specified, the following pattern is interpreted as a PCRE
  * with the PCRE_CASELESS flag set.
+ * If -S is specified, the following pattern is interpreted as a
+ * suffix match.  eg: "-S", "php" will match any file whose name
+ * ends with ".php", case insensitively.  When used with `find`
+ * or with since and a zero clockspec, this uses a suffix index
+ * to locate the matching files.
  *
  * We stop processing args when we find "--" and update
  * *next_arg to the argv index after that argument.
@@ -169,6 +177,7 @@ static bool parse_watch_params(int start, json_t *args,
 #ifdef HAVE_PCRE_H
   int is_pcre = 0;
 #endif
+  bool is_suffix = false;
   struct watchman_rule *rule, *prior = NULL;
   uint32_t i;
 
@@ -214,6 +223,11 @@ static bool parse_watch_params(int start, json_t *args,
       return false;
 #endif
     }
+    if (!strcmp(arg, "-S")) {
+      is_suffix = true;
+      is_pcre = 0;
+      continue;
+    }
 
     rule = calloc(1, sizeof(*rule));
     if (!rule) {
@@ -231,9 +245,18 @@ static bool parse_watch_params(int start, json_t *args,
     // "C" source files, use "*.c".  To match all makefiles, use
     // "*/Makefile" + "Makefile" (include the latter if the Makefile might
     // be at the top level).
-    rule->rule_type = RT_FNMATCH;
+    rule->rule_type = is_suffix ? RT_SUFFIX : RT_FNMATCH;
     rule->pattern = strdup(arg);
     rule->flags = FNM_PERIOD;
+
+    if (is_suffix) {
+      unsigned int i;
+      for (i = 0; i < strlen(arg); i++) {
+        // yeah, I hate myself for this, but its safe
+        ((char*)rule->pattern)[i] = tolower(rule->pattern[i]);
+      }
+      rule->suffix = w_string_new(rule->pattern);
+    }
 
 #ifdef HAVE_PCRE_H
     if (is_pcre) {
@@ -288,6 +311,34 @@ static bool parse_watch_params(int start, json_t *args,
   return true;
 }
 
+static struct watchman_rule_match *add_match(
+    struct watchman_rule_match **results_ptr,
+    uint32_t *num_allocd_ptr,
+    uint32_t *num_matches_ptr)
+{
+  uint32_t num_allocd = *num_allocd_ptr;
+  uint32_t num_matches = *num_matches_ptr;
+  struct watchman_rule_match *results = *results_ptr;
+  struct watchman_rule_match *m;
+
+  if (num_matches + 1 > num_allocd) {
+    num_allocd = num_allocd ? num_allocd * 2 : 64;
+    results = realloc(results,
+        num_allocd * sizeof(struct watchman_rule_match));
+    if (!results) {
+      w_log(W_LOG_DBG, "out of memory while running rules!\n");
+      return false;
+    }
+    *results_ptr = results;
+    *num_allocd_ptr = num_allocd;
+  }
+
+  m = &results[num_matches++];
+  *num_matches_ptr = num_matches;
+
+  return m;
+}
+
 // must be called with root locked
 uint32_t w_rules_match(w_root_t *root,
     struct watchman_file *oldest_file,
@@ -324,25 +375,32 @@ uint32_t w_rules_match(w_root_t *root,
       // In practice, we don't see those, but if we do, we should
       // probably make a copy of the string into a stack buffer :-/
 
-      if (rule->rule_type == RT_FNMATCH) {
-        matched = fnmatch(rule->pattern, relname->buf, rule->flags) == 0;
-      }
+      switch (rule->rule_type) {
+        case RT_FNMATCH:
+          matched = fnmatch(rule->pattern, relname->buf, rule->flags) == 0;
+          break;
+        case RT_SUFFIX:
+          matched = w_string_suffix_match(relname, rule->suffix);
+          break;
 #ifdef HAVE_PCRE_H
-      else {
-        int rc = pcre_exec(rule->re, rule->re_extra, relname->buf,
-                  relname->len, 0, 0, NULL, 0);
+        case RT_PCRE:
+          {
+            int rc = pcre_exec(rule->re, rule->re_extra, relname->buf,
+                relname->len, 0, 0, NULL, 0);
 
-        if (rc == PCRE_ERROR_NOMATCH) {
-          matched = false;
-        } else if (rc >= 0) {
-          matched = true;
-        } else {
-          w_log(W_LOG_ERR, "pcre match %s against %s failed: %d\n",
-              rule->pattern, relname->buf, rc);
-          matched = false;
-        }
-      }
+            if (rc == PCRE_ERROR_NOMATCH) {
+              matched = false;
+            } else if (rc >= 0) {
+              matched = true;
+            } else {
+              w_log(W_LOG_ERR, "pcre match %s against %s failed: %d\n",
+                  rule->pattern, relname->buf, rc);
+              matched = false;
+            }
+          }
+          break;
 #endif
+      }
 
       // If the rule is negated, we negate the sense of the
       // match result
@@ -362,32 +420,26 @@ uint32_t w_rules_match(w_root_t *root,
     }
 
     if (matched) {
+      struct watchman_rule_match *m;
 
-      if (num_matches + 1 > num_allocd) {
-        struct watchman_rule_match *new_res;
+      m = add_match(&res, &num_allocd, &num_matches);
 
-        num_allocd = num_allocd ? num_allocd * 2 : 64;
-        new_res = realloc(res, num_allocd * sizeof(struct watchman_rule_match));
-        if (!new_res) {
-          w_log(W_LOG_DBG, "out of memory while running rules!\n");
-          w_string_delref(relname);
-          free(res);
-          return 0;
-        }
-        res = new_res;
+      if (!m) {
+        w_log(W_LOG_ERR, "out of memory while running rules!\n");
+        w_string_delref(relname);
+        free(res);
+        return 0;
       }
 
-      res[num_matches].relname = relname;
-      res[num_matches].file = file;
+      m->relname = relname;
+      m->file = file;
       if (since && !since->is_timestamp) {
-        res[num_matches].is_new = file->ctime.ticks > since->ticks;
+        m->is_new = file->ctime.ticks > since->ticks;
       } else if (since) {
-        res[num_matches].is_new =
-          w_timeval_compare(since->tv, file->ctime.tv) > 0;
+        m->is_new = w_timeval_compare(since->tv, file->ctime.tv) > 0;
       } else {
-        res[num_matches].is_new = false;
+        m->is_new = false;
       }
-      num_matches++;
     } else {
       w_string_delref(relname);
     }
@@ -521,6 +573,66 @@ json_t *w_match_results_to_json(
   return file_list;
 }
 
+static bool is_suffix_rule_only(struct watchman_rule *rules)
+{
+  if (!rules) {
+    return false;
+  }
+  while (rules) {
+    if (rules->rule_type != RT_SUFFIX) {
+      return false;
+    }
+    rules = rules->next;
+  }
+  return true;
+}
+
+static uint32_t run_suffix_rules_only(
+    w_root_t *root,
+    struct watchman_rule_match **results,
+    struct watchman_rule *rules)
+{
+  uint32_t matches = 0;
+  uint32_t allocd = 0;
+  w_string_t *full_name;
+  uint32_t name_start;
+
+  name_start = root->root_path->len + 1;
+
+  while (rules) {
+    struct watchman_file *file;
+
+    file = (struct watchman_file*)w_ht_get(
+        root->suffixes, (w_ht_val_t)rules->suffix);
+
+    while (file) {
+      struct watchman_rule_match *m;
+
+      m = add_match(results, &allocd, &matches);
+      if (!m) {
+        w_log(W_LOG_ERR, "out of memory while running rules!\n");
+        free(results);
+        return 0;
+      }
+
+      full_name = w_string_path_cat(file->parent->path, file->name);
+      // Record the name relative to the root
+      m->relname = w_string_slice(full_name, name_start,
+                full_name->len - name_start);
+      w_string_delref(full_name);
+
+      m->file = file;
+      m->is_new = false;
+
+      file = file->suffix_next;
+    }
+
+    rules = rules->next;
+  }
+
+  return matches;
+}
+
 static void run_rules(struct watchman_client *client,
     w_root_t *root,
     struct w_clockspec_query *since,
@@ -535,20 +647,32 @@ static void run_rules(struct watchman_client *client,
   w_log(W_LOG_DBG, "running rules!\n");
 
   w_root_lock(root);
-  for (f = root->latest_file; f; f = f->next) {
-    if (since) {
-      if (since->is_timestamp &&
-          w_timeval_compare(f->otime.tv, since->tv) < 0) {
-        break;
-      }
-      if (!since->is_timestamp && f->otime.ticks < since->ticks) {
-        break;
-      }
-    }
-    oldest = f;
-  }
   annotate_with_clock(root, response);
-  matches = w_rules_match(root, oldest, &results, rules, since);
+
+  /* some search space optimizations:
+   * if we're not doing a time based query, or that query is
+   * effectively the entire set of files, and if the rules
+   * are all suffix rules, instead of walking the entire file
+   * list we walk only the suffix lists */
+  if ((!since || (since->is_timestamp && since->tv.tv_sec == 0) ||
+      (!since->is_timestamp && since->ticks == 0)) &&
+      is_suffix_rule_only(rules)) {
+    matches = run_suffix_rules_only(root, &results, rules);
+  } else {
+    for (f = root->latest_file; f; f = f->next) {
+      if (since) {
+        if (since->is_timestamp &&
+            w_timeval_compare(f->otime.tv, since->tv) < 0) {
+          break;
+        }
+        if (!since->is_timestamp && f->otime.ticks < since->ticks) {
+          break;
+        }
+      }
+      oldest = f;
+    }
+    matches = w_rules_match(root, oldest, &results, rules, since);
+  }
   w_root_unlock(root);
 
   w_log(W_LOG_DBG, "rules were run, we have %" PRIu32 " matches\n", matches);

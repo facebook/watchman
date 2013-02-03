@@ -99,6 +99,66 @@ w_string_t *w_string_dirname(w_string_t *str)
   return NULL;
 }
 
+bool w_string_suffix_match(w_string_t *str, w_string_t *suffix)
+{
+  unsigned int base, i;
+
+  if (str->len < suffix->len + 1) {
+    return false;
+  }
+
+  base = str->len - suffix->len;
+
+  if (str->buf[base - 1] != '.') {
+    return false;
+  }
+
+  for (i = 0; i < suffix->len; i++) {
+    if (tolower(str->buf[base + i]) != suffix->buf[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// Return the normalized (lowercase) filename suffix
+w_string_t *w_string_suffix(w_string_t *str)
+{
+  int end;
+  char name_buf[128];
+  char *buf;
+
+  /* can't use libc strXXX functions because we may be operating
+   * on a slice */
+  for (end = str->len - 1; end >= 0; end--) {
+    if (str->buf[end] == '.') {
+      if (str->len - (end + 1) >= sizeof(name_buf) - 1) {
+        // Too long
+        return NULL;
+      }
+
+      buf = name_buf;
+      end++;
+      while ((unsigned)end < str->len) {
+        *buf = tolower(str->buf[end]);
+        end++;
+        buf++;
+      }
+      *buf = '\0';
+      return w_string_new(name_buf);
+    }
+
+    if (str->buf[end] == '/') {
+      // No suffix
+      return NULL;
+    }
+  }
+
+  // Has no suffix
+  return NULL;
+}
+
 w_string_t *w_string_basename(w_string_t *str)
 {
   int end;
