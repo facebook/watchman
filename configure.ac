@@ -51,8 +51,8 @@ AC_ARG_WITH(pcre, [
 
 gimli=no
 AC_ARG_WITH(gimli, [
-  --enable-gimli    Enable support for the gimli process monitor
-                    https://bitbucket.org/wez/gimli/
+  --with-gimli    Enable support for the gimli process monitor
+                  https://bitbucket.org/wez/gimli/
 ],[
    gimli=$withval
 ])
@@ -74,6 +74,7 @@ if test "x$gimli" != "xno" ; then
   save_flags="$LDFLAGS"
   save_libs="$LIBS"
   gimli_dir=""
+  MONITOR_PATH="monitor"
   for dir in $dirs ; do
     LDFLAGS="$save_flags $rpath$dir -L$dir"
     LIBS="$save_libs -lgimli"
@@ -85,9 +86,17 @@ if test "x$gimli" != "xno" ; then
     if test -n "$gimli_dir" ; then
       save_flags="$save_flags $rpath$dir -L$dir"
       save_libs="$save_libs -lgimli"
+      dnl resolve real path to bin dir
+      MONITOR_PATH="`cd $gimli_dir/../bin ; echo \$PWD`/monitor"
       break
     fi
   done
+  if test ! -x "$MONITOR_PATH" ; then
+    MONITOR_PATH="monitor"
+  fi
+  AC_DEFINE_UNQUOTED(GIMLI_MONITOR_PATH,
+                     "$MONITOR_PATH",
+                     [path to gimli monitor process])
   LDFLAGS="$save_flags"
   LIBS="$save_libs"
   AC_CHECK_HEADERS(libgimli.h)

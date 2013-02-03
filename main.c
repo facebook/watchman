@@ -74,7 +74,7 @@ static void spawn_via_gimli(void)
 {
   char settlebuf[16];
   char *argv[] = {
-    "monitor",
+    GIMLI_MONITOR_PATH,
 #ifdef WATCHMAN_STATE_DIR
     "--trace-dir=" WATCHMAN_STATE_DIR "/traces",
 #endif
