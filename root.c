@@ -11,7 +11,7 @@ static pthread_mutex_t spawn_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* small for testing, but should make this greater than the number of dirs we
  * have in our repos to avoid realloc */
-#define HINT_NUM_DIRS 16*1024
+#define HINT_NUM_DIRS 128*1024
 
 /* We leverage the fact that our aligned pointers will never set the LSB of a
  * pointer value.  We can use the LSB to indicate whether kqueue entries are

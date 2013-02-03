@@ -14,11 +14,17 @@ typedef void (*watchman_command_func)(
     json_t *args);
 static w_ht_t *command_funcs = NULL;
 
+// Helps write shorter lines
+static inline void set_prop(json_t *obj, const char *key, json_t *val)
+{
+  json_object_set_new_nocheck(obj, key, val);
+}
+
 static json_t *make_response(void)
 {
   json_t *resp = json_object();
 
-  json_object_set_new(resp, "version", json_string(PACKAGE_VERSION));
+  set_prop(resp, "version", json_string_nocheck(PACKAGE_VERSION));
 
   return resp;
 }
@@ -49,7 +55,7 @@ static void annotate_with_clock(w_root_t *root, json_t *resp)
   char buf[128];
 
   if (current_clock_id_string(root, buf, sizeof(buf))) {
-    json_object_set_new(resp, "clock", json_string(buf));
+    set_prop(resp, "clock", json_string_nocheck(buf));
   }
 }
 
@@ -100,7 +106,7 @@ static void send_error_response(struct watchman_client *client,
   vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
 
-  json_object_set_new(resp, "error", json_string(buf));
+  set_prop(resp, "error", json_string_nocheck(buf));
 
   send_and_dispose_response(client, resp);
 }
@@ -291,13 +297,6 @@ static bool parse_watch_params(int start, json_t *args,
       prior->next = rule;
     }
     prior = rule;
-
-    w_log(W_LOG_DBG, "made rule %s %s %s %s\n",
-        rule->include ? "-I" : "-X",
-        rule->negated ? "!" : "",
-        rule->rule_type == RT_FNMATCH ? "fnmatch" :
-        (is_pcre == 'P' ? "pcre caseless" : "pcre" ),
-        rule->pattern);
 
     // Reset negated flag
     negated = false;
@@ -535,8 +534,8 @@ json_t *w_match_results_to_json(
 
     json_t *record = json_object();
 
-    json_object_set_new(record, "name", json_string(relname->buf));
-    json_object_set_new(record, "exists", json_boolean(file->exists));
+    set_prop(record, "name", json_string_nocheck(relname->buf));
+    set_prop(record, "exists", json_boolean(file->exists));
     // Only report stat data if we think this file exists.  If it doesn't,
     // we probably have stale data cached in file->st which is useless to
     // report on.
@@ -544,27 +543,27 @@ json_t *w_match_results_to_json(
       // Note: our JSON library supports 64-bit integers, but this may
       // pose a compatibility issue for others.  We'll see if anyone
       // runs into an issue and deal with it then...
-      json_object_set_new(record, "size", json_integer(file->st.st_size));
-      json_object_set_new(record, "mode", json_integer(file->st.st_mode));
-      json_object_set_new(record, "uid", json_integer(file->st.st_uid));
-      json_object_set_new(record, "gid", json_integer(file->st.st_gid));
-      json_object_set_new(record, "atime", json_integer(file->st.st_atime));
-      json_object_set_new(record, "mtime", json_integer(file->st.st_mtime));
-      json_object_set_new(record, "ctime", json_integer(file->st.st_ctime));
-      json_object_set_new(record, "ino", json_integer(file->st.st_ino));
-      json_object_set_new(record, "dev", json_integer(file->st.st_dev));
-      json_object_set_new(record, "nlink", json_integer(file->st.st_nlink));
+      set_prop(record, "size", json_integer(file->st.st_size));
+      set_prop(record, "mode", json_integer(file->st.st_mode));
+      set_prop(record, "uid", json_integer(file->st.st_uid));
+      set_prop(record, "gid", json_integer(file->st.st_gid));
+      set_prop(record, "atime", json_integer(file->st.st_atime));
+      set_prop(record, "mtime", json_integer(file->st.st_mtime));
+      set_prop(record, "ctime", json_integer(file->st.st_ctime));
+      set_prop(record, "ino", json_integer(file->st.st_ino));
+      set_prop(record, "dev", json_integer(file->st.st_dev));
+      set_prop(record, "nlink", json_integer(file->st.st_nlink));
 
       if (matches[i].is_new) {
-        json_object_set_new(record, "new", json_true());
+        set_prop(record, "new", json_true());
       }
 
       if (clock_id_string(file->ctime.ticks, buf, sizeof(buf))) {
-        json_object_set_new(record, "cclock", json_string(buf));
+        set_prop(record, "cclock", json_string_nocheck(buf));
       }
     }
     if (clock_id_string(file->otime.ticks, buf, sizeof(buf))) {
-      json_object_set_new(record, "oclock", json_string(buf));
+      set_prop(record, "oclock", json_string_nocheck(buf));
     }
 
     json_array_append_new(file_list, record);
@@ -680,7 +679,7 @@ static void run_rules(struct watchman_client *client,
   file_list = w_match_results_to_json(matches, results);
   w_match_results_free(matches, results);
 
-  json_object_set_new(response, "files", file_list);
+  set_prop(response, "files", file_list);
 
   send_and_dispose_response(client, response);
 }
@@ -811,7 +810,7 @@ static void cmd_trigger_list(
   arr = w_root_trigger_list_to_json(root);
   w_root_unlock(root);
 
-  json_object_set_new(resp, "triggers", arr);
+  set_prop(resp, "triggers", arr);
   send_and_dispose_response(client, resp);
 }
 
@@ -878,7 +877,7 @@ static void cmd_trigger(
   w_state_save();
 
   resp = make_response();
-  json_object_set_new(resp, "triggerid", json_string(name));
+  set_prop(resp, "triggerid", json_string_nocheck(name));
   send_and_dispose_response(client, resp);
 }
 
@@ -902,7 +901,7 @@ static void cmd_watch(
   }
 
   resp = make_response();
-  json_object_set_new(resp, "watch", json_string(root->root_path->buf));
+  set_prop(resp, "watch", json_string_nocheck(root->root_path->buf));
   send_and_dispose_response(client, resp);
 }
 
@@ -943,7 +942,7 @@ static void cmd_loglevel(
   client->log_level = level;
 
   resp = make_response();
-  json_object_set_new(resp, "log_level", json_string(str));
+  set_prop(resp, "log_level", json_string_nocheck(str));
 
   send_and_dispose_response(client, resp);
 }
@@ -971,7 +970,7 @@ static void cmd_log(
   w_log(level, "%s\n", text);
 
   resp = make_response();
-  json_object_set_new(resp, "logged", json_true());
+  set_prop(resp, "logged", json_true());
   send_and_dispose_response(client, resp);
 }
 
@@ -1132,7 +1131,7 @@ void w_log_to_clients(int level, const char *buf)
     if (client->log_level != W_LOG_OFF && client->log_level >= level) {
       json = make_response();
       if (json) {
-        json_object_set_new(json, "log", json_string(buf));
+        set_prop(json, "log", json_string_nocheck(buf));
         if (!enqueue_response(client, json, true)) {
           json_decref(json);
         }

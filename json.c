@@ -68,8 +68,8 @@ json_t *w_json_buffer_next(w_jbuffer_t *jr, int fd, json_error_t *jerr)
 
     jr->wpos += r;
 
-    // Look again for a newline
-    nl = memchr(jr->buf + jr->rpos, '\n', jr->wpos - jr->rpos);
+    // Look for a newline in the data we just read
+    nl = memchr(jr->buf + jr->wpos - r, '\n', r);
   }
 
   // buflen
