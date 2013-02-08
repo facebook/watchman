@@ -115,6 +115,8 @@ static void client_delete(w_ht_val_t val)
 {
   struct watchman_client *client = (struct watchman_client*)val;
 
+  w_json_buffer_free(&client->reader);
+  w_json_buffer_free(&client->writer);
   close(client->ping[0]);
   close(client->ping[1]);
   close(client->fd);
@@ -985,6 +987,8 @@ static void cmd_shutdown(
   unused_parameter(args);
 
   w_log(W_LOG_ERR, "shutdown-server was requested, exiting!\n");
+  pthread_mutex_lock(&client_lock);
+  w_ht_del(clients, client->fd);
   exit(0);
 }
 
