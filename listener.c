@@ -115,6 +115,8 @@ static void client_delete(w_ht_val_t val)
 {
   struct watchman_client *client = (struct watchman_client*)val;
 
+  close(client->ping[0]);
+  close(client->ping[1]);
   close(client->fd);
   free(client);
 }
