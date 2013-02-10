@@ -250,6 +250,72 @@ specified dir.  If no patterns were specified, all files are returned.
 watchman find /path/to/dir [patterns]
 ```
 
+### Command: query (beta starting in v1.5)
+
+```bash
+watchman -j <<-EOT
+["query", "/path/to/root", {
+  "suffix": "php",
+  "expression": ["allof",
+    ["type", "f"],
+    ["not", "empty"],
+    ["ipcre", "test", "basename"]
+  ],
+  "fields": ["name"]
+}]
+EOT
+```
+
+Executes a query against the specified root. This example uses the `-j` flag to
+the watchman binary that tells it to read stdin and interpret it as the JSON
+request object to send to the watchman service.  This flag allows you to send
+in a pretty JSON object (as shown above), but if you're using the socket
+interface you must still format the object as a single line JSON request as
+documented in the protocol spec.
+
+The first argument to query is the path to the watched root.  The second
+argument holds a JSON object describing the query to be run.  The query object
+is processed by passing it to the query engine (see **File queries** below)
+which will generate a set of matching files.
+
+The query command will then consult the `fields` member of the query object;
+if it is not present it will default to:
+
+```json
+"fields": ["name", "exists", "new", "size", "mode"]
+```
+
+For each file in the result set, the query command will generate a JSON object
+value populated with the requested fields.  For example, the default set of
+fields will return a response something like:
+
+```json
+{
+    "version": "1.5",
+    "clock": "c:80616:59",
+    "files": [
+        {
+            "exists": true,
+            "mode": 33188,
+            "name": "argv.c",
+            "size": 1340,
+        }
+    ]
+}
+```
+
+If the `fields` member consists of a single entry, the files result will be a
+simple array of values; ```"fields": ["name"]``` produces:
+
+```json
+{
+    "version": "1.5",
+    "clock": "c:80616:59",
+    "files": ["argv.c", "foo.c"]
+}
+```
+
+
 ### Command: since
 
 ```bash
@@ -387,6 +453,209 @@ watchman since /path/to/src n:c_srcs *.c
 and when you run it a second time, it will show you only the "C" source files
 that changed since the last time that someone queried using "n:c_srcs" as the
 clock spec.
+
+## File queries
+
+This section documents the new file query engine and syntax that is present
+starting in version 1.5.
+
+Watchman file queries consist of 1 or more *generators* that feed files through
+the expression evaluator.
+
+### Generators
+
+Watchman provides 4 generators:
+
+ * **since**: generates a list of files that were modified since a specific
+   clockspec
+ * **suffix**: generates a list of files that have a particular suffix
+ * **path**: generates a list of files based on their path and depth
+ * **all**: generates a list of all known files
+
+Generators are analagous to the list of *paths* that you specify when using the
+`find(1)` utility, but are implemented in watchman with a bit of a twist
+because watchman doesn't need to crawl the filesystem in realtime and instead
+maintains a couple of indexes over the tree.
+
+A query may specify any number of generators; each generator will emit its list
+of files and this may mean that you see the same file output more than once if
+you specified the use of multiple generators that all produce the same file.
+
+### Expressions
+
+A watchman query expression consists of 0 or more expression terms.  If no
+terms are provided then each file evaluated is considered a match (equivalent
+to specifying a single `true` expression term).
+
+Otherwise, the expression is evaluated against the file and produces a boolean
+result.  If that result is true then the file is considered a match and is
+added to the output set.
+
+An expression term is caonically represented as a JSON array whose zeroth
+element is a string containing the term name.
+
+    ["termname", arg1, arg2]
+
+If the term accepts no arguments you may use a short form that consists of just
+the term name expressed as a string:
+
+    "true"
+
+Expressions that match against file names may match against either the
+*basename* or the *wholename* of the file.  The basename is the name of the
+file within its containing directory.  The wholename is the name of the file
+relative to the watched root.
+
+#### allof
+
+The `allof` expression term evaluates as true if all of the grouped expressions
+also evaluated as true.  For example, this expression matches only files whose
+name ends with `.txt` and that are not empty files:
+
+    ["allof", ["match", "*.txt"], ["not", "empty"]]
+
+Each array element after the term name is evaluated as an expression of its own:
+
+    ["allof", expr1, expr2, ... exprN]
+
+Evaluation of the subexpressions stops at the first one that returns false.
+
+#### anyof
+
+The `anyof` expression term evaluates as true if any of the grouped expressions
+also evaluated as true.  The following expression matches files whose name ends
+with either `.txt` or `.md`:
+
+    ["anyof", ["match", "*.txt"], ["match", "*.md"]]
+
+Each array element after the term name is evaluated as an expression of its own:
+
+    ["anyof", expr1, expr2, ... exprN]
+
+Evaluation of the subexpressions stops at the first one that returns true.
+
+#### not
+
+The `not` expression inverts the result of the subexpression argument:
+
+    ["not", "empty"]
+
+#### true
+
+The `true` expression always evaluates as true.
+
+    "true"
+    ["true"]
+
+#### false
+
+The `false` expression always evaluates as false.
+
+    "false"
+    ["false"]
+
+#### suffix
+
+The `suffix` expression evaluates true if the file suffix matches the second
+argument.  This matches files name `foo.php` and `foo.PHP` but not `foophp`:
+
+    ["suffix", "php"]
+
+Suffix expression matches are case insensitive.
+
+#### match and imatch
+
+The `match` expression performs an `fnmatch(3)` match against the basename of
+the file, evaluating true if the match is successful.
+
+    ["match", "*.txt"]
+
+You may optionally provide a third argument to change the scope of the match
+from the basename to the wholename of the file.
+
+    ["match", "*.txt", "basename"]
+    ["match", "dir/*.txt", "wholename"]
+
+`match` is case sensitive; for case insensitive matching use `imatch` instead;
+it behaves identically to `match` except that the match is performed ignoring
+case.
+
+#### pcre and ipcre
+
+The `pcre` expression performs a Perl Compatible Regular Expression match
+against the basename of the file.  This pattern matches `test_plan.php` but not
+`mytest_plan`:
+
+    ["pcre", "^test_"]
+
+You may optionally provide a third argument to change the scope of the match
+from the basename to the wholename of the file.
+
+    ["pcre", "txt", "basename"]
+    ["pcre", "txt", "wholename"]
+
+`pcre` is case sensitive; for case insensitive matching use `ipcre` instead;
+it behaves identically to `pcre` except that the match is performed ignoring
+case.
+
+To use this feature, you must configure watchman `--with-pcre`.
+
+#### name and iname
+
+The `name` expression performs exact matches against file names.  By default it
+is scoped to the basename of the file:
+
+    ["name", "Makefile"]
+
+You may specify multiple names to match against by setting the second argument
+to an array:
+
+    ["name", ["foo.txt", "Makefile"]]
+
+This second form can be accelerated and is preferred over an `anyof`
+construction.
+
+You may change the scope of the match via the optional third argument:
+
+    ["name", "path/to/file.txt", "wholename"]
+    ["name", ["path/to/one", "path/to/two"], "wholename"]
+
+Finally, you may specify case insensitive evaluation by using `iname` instead
+of `name`.
+
+##### type
+
+Evaluates as true if the type of the file matches that specified by the second
+argument; this matches regular files:
+
+    ["type", "f"]
+
+Possible types are:
+
+ * **b**: block special file
+ * **c**: character special file
+ * **d**: directory
+ * **f**: regular file
+ * **p**: named pipe (fifo)
+ * **l**: symbolic link
+ * **s**: socket
+ * **D**: Solaris Door
+
+##### empty
+
+Evaluates as true if the file exists, has size is 0 and is a regular file or
+directory.
+
+    "empty"
+    ["empty"]
+
+##### exists
+
+Evaluates as true if the file exists
+
+    "exists"
+    ["exists"]
+
 
 ## Build/Install
 

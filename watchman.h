@@ -344,6 +344,8 @@ void w_log_to_clients(int level, const char *buf);
 
 
 w_string_t *w_string_new(const char *str);
+w_string_t *w_string_new_lower(const char *str);
+w_string_t *w_string_dup_lower(w_string_t *str);
 w_string_t *w_string_suffix(w_string_t *str);
 bool w_string_suffix_match(w_string_t *str, w_string_t *suffix);
 w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len);
@@ -352,15 +354,18 @@ void w_string_addref(w_string_t *str);
 void w_string_delref(w_string_t *str);
 int w_string_compare(const w_string_t *a, const w_string_t *b);
 bool w_string_equal(const w_string_t *a, const w_string_t *b);
+bool w_string_equal_caseless(const w_string_t *a, const w_string_t *b);
 w_string_t *w_string_dirname(w_string_t *str);
 w_string_t *w_string_basename(w_string_t *str);
-w_string_t *w_string_path_cat(const w_string_t *parent, const w_string_t *rhs);
+w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
 void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
 w_root_t *w_root_new(const char *path);
 w_root_t *w_root_resolve(const char *path, bool auto_watch);
 void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, bool confident, bool recursive);
 
+struct watchman_dir *w_root_resolve_dir(w_root_t *root,
+    w_string_t *dir_name, bool create);
 struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd);
 void w_root_process_path(w_root_t *root, w_string_t *full_path,
     struct timeval now, bool confident);
@@ -519,10 +524,15 @@ struct watchman_getopt {
 
 bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp);
 
+bool w_parse_clockspec(w_root_t *root,
+    json_t *value,
+    struct w_clockspec_query *since);
 
 #ifdef __cplusplus
 }
 #endif
+
+#include "watchman_query.h"
 
 #endif
 

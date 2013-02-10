@@ -17,6 +17,7 @@ int dont_save_state = 0;
 static int foreground = 0;
 static int no_pretty = 0;
 static struct sockaddr_un un;
+static int json_input_arg = 0;
 
 static void run_service(void)
 {
@@ -223,13 +224,11 @@ static bool read_response(w_jbuffer_t *reader, int fd)
   return true;
 }
 
-static bool try_command(int argc, char **argv, int timeout)
+static bool try_command(json_t *cmd, int timeout)
 {
   int fd;
   int res;
   int tries;
-  int i;
-  json_t *j;
   w_jbuffer_t buffer;
 
   fd = socket(PF_LOCAL, SOCK_STREAM, 0);
@@ -258,7 +257,7 @@ static bool try_command(int argc, char **argv, int timeout)
     return false;
   }
 
-  if (argc == 0) {
+  if (!cmd) {
     close(fd);
     return true;
   }
@@ -266,12 +265,7 @@ static bool try_command(int argc, char **argv, int timeout)
   w_json_buffer_init(&buffer);
 
   // Send command
-  j = json_array();
-  for (i = 0; i < argc; i++) {
-    json_array_append_new(j, json_string(argv[i]));
-  }
-  w_json_buffer_write(&buffer, fd, j, JSON_COMPACT);
-  json_decref(j);
+  w_json_buffer_write(&buffer, fd, cmd, JSON_COMPACT);
 
   do {
     if (!read_response(&buffer, fd)) {
@@ -303,6 +297,9 @@ static struct watchman_getopt opts[] = {
     OPT_NONE, &dont_save_state, NULL },
   { "statefile", 0, "Specify path to file to hold watch and trigger state",
     REQ_STRING, &watchman_state_file, "PATH" },
+  { "json-command", 'j', "Instead of parsing CLI arguments, take a single "
+    "json object from stdin",
+    OPT_NONE, &json_input_arg, NULL },
   { "foreground", 'f', "Run the service in the foreground",
     OPT_NONE, &foreground, NULL },
   { "no-pretty", 0, "Don't pretty print JSON",
@@ -320,9 +317,43 @@ static void parse_cmdline(int *argcp, char ***argvp)
   setup_sock_name();
 }
 
+static json_t *build_command(int argc, char **argv)
+{
+  json_t *cmd;
+  int i;
+
+  // Read blob from stdin
+  if (json_input_arg) {
+    json_error_t err;
+
+    cmd = json_loadf(stdin, 0, &err);
+    if (cmd == NULL) {
+      fprintf(stderr, "failed to parse JSON from stdin: %s\n",
+          err.text);
+      exit(1);
+    }
+    return cmd;
+  }
+
+  // Special case: no arguments means that we just want
+  // to verify that the service is up, starting it if
+  // needed
+  if (argc == 0) {
+    return NULL;
+  }
+
+  cmd = json_array();
+  for (i = 0; i < argc; i++) {
+    json_array_append_new(cmd, json_string(argv[i]));
+  }
+
+  return cmd;
+}
+
 int main(int argc, char **argv)
 {
   bool ran;
+  json_t *cmd;
 
   parse_cmdline(&argc, &argv);
 
@@ -332,7 +363,9 @@ int main(int argc, char **argv)
     return 0;
   }
 
-  ran = try_command(argc, argv, 0);
+  cmd = build_command(argc, argv);
+
+  ran = try_command(cmd, 0);
   if (!ran && should_start(errno)) {
     unlink(sock_name);
 #ifdef USE_GIMLI
@@ -341,8 +374,10 @@ int main(int argc, char **argv)
     daemonize();
 #endif
 
-    ran = try_command(argc, argv, 10);
+    ran = try_command(cmd, 10);
   }
+
+  json_decref(cmd);
 
   if (ran) {
     return 0;

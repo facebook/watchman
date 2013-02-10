@@ -55,6 +55,76 @@ w_string_t *w_string_new(const char *str)
   return s;
 }
 
+/* return a reference to a lowercased version of a string */
+w_string_t *w_string_dup_lower(w_string_t *str)
+{
+  bool is_lower = true;
+  char *buf;
+  uint32_t i;
+  w_string_t *s;
+
+  for (i = 0; i < str->len; i++) {
+    if (tolower(str->buf[i]) != str->buf[i]) {
+      is_lower = false;
+      break;
+    }
+  }
+
+  if (is_lower) {
+    w_string_addref(str);
+    return str;
+  }
+
+  /* need to make a lowercase version */
+
+  s = malloc(sizeof(*s) + str->len + 1);
+  if (!s) {
+    perror("no memory available");
+    abort();
+  }
+
+  s->refcnt = 1;
+  s->len = str->len;
+  s->slice = NULL;
+  buf = (char*)(s + 1);
+  for (i = 0; i < str->len; i++) {
+    buf[i] = tolower(str->buf[i]);
+  }
+  buf[str->len] = 0;
+  s->buf = buf;
+  s->hval = w_hash_bytes(buf, str->len, 0);
+
+  return s;
+}
+
+/* make a lowercased copy of string */
+w_string_t *w_string_new_lower(const char *str)
+{
+  w_string_t *s;
+  uint32_t len = strlen(str);
+  char *buf;
+  uint32_t i;
+
+  s = malloc(sizeof(*s) + len + 1);
+  if (!s) {
+    perror("no memory available");
+    abort();
+  }
+
+  s->refcnt = 1;
+  s->len = len;
+  s->slice = NULL;
+  buf = (char*)(s + 1);
+  for (i = 0; i < len; i++) {
+    buf[i] = tolower(str[i]);
+  }
+  buf[len] = 0;
+  s->buf = buf;
+  s->hval = w_hash_bytes(buf, len, 0);
+
+  return s;
+}
+
 void w_string_addref(w_string_t *str)
 {
   w_refcnt_add(&str->refcnt);
@@ -81,6 +151,20 @@ bool w_string_equal(const w_string_t *a, const w_string_t *b)
   return memcmp(a->buf, b->buf, a->len) == 0 ? true : false;
 }
 
+bool w_string_equal_caseless(const w_string_t *a, const w_string_t *b)
+{
+  uint32_t i;
+  if (a == b) return true;
+  if (a->hval != b->hval) return false;
+  if (a->len != b->len) return false;
+  for (i = 0; i < a->len; i++) {
+    if (tolower(a->buf[i]) != tolower(b->buf[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 w_string_t *w_string_dirname(w_string_t *str)
 {
   int end;
@@ -93,8 +177,6 @@ w_string_t *w_string_dirname(w_string_t *str)
       return w_string_slice(str, 0, end);
     }
   }
-
-  abort();
 
   return NULL;
 }
@@ -172,14 +254,18 @@ w_string_t *w_string_basename(w_string_t *str)
     }
   }
 
-  abort();
-
-  return NULL;
+  w_string_addref(str);
+  return str;
 }
 
-w_string_t *w_string_path_cat(const w_string_t *parent, const w_string_t *rhs)
+w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
 {
   char name_buf[WATCHMAN_NAME_MAX];
+
+  if (rhs->len == 0) {
+    w_string_addref(parent);
+    return parent;
+  }
 
   snprintf(name_buf, sizeof(name_buf), "%.*s/%.*s",
       parent->len, parent->buf,

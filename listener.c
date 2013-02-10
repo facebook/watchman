@@ -466,7 +466,7 @@ void w_match_results_free(uint32_t num_matches,
 }
 
 // may attempt to lock the root!
-static bool parse_clockspec(w_root_t *root,
+bool w_parse_clockspec(w_root_t *root,
     json_t *value,
     struct w_clockspec_query *since)
 {
@@ -513,6 +513,14 @@ static bool parse_clockspec(w_root_t *root,
   if (sscanf(str, "c:%d:%" PRIu32, &pid, &since->ticks) == 2) {
     since->is_timestamp = false;
     if (pid == getpid()) {
+      if (since->ticks == root->ticks) {
+        /* Force ticks to increment.  This avoids returning and querying the
+         * same tick value over and over when no files have changed in the
+         * meantime */
+        w_root_lock(root);
+        root->ticks++;
+        w_root_unlock(root);
+      }
       return true;
     }
     // If the pid doesn't match, they asked a different
@@ -523,6 +531,157 @@ static bool parse_clockspec(w_root_t *root,
   }
 
   return false;
+}
+
+static json_t *make_name(struct watchman_rule_match *match)
+{
+  return json_string_nocheck(match->relname->buf);
+}
+
+static json_t *make_exists(struct watchman_rule_match *match)
+{
+  return json_boolean(match->file->exists);
+}
+
+static json_t *make_new(struct watchman_rule_match *match)
+{
+  if (match->is_new) {
+    return json_true();
+  }
+  return NULL;
+}
+
+#define MAKE_CLOCK_FIELD(name, member) \
+  static json_t *make_##name(struct watchman_rule_match *match) { \
+    char buf[128]; \
+    if (clock_id_string(match->file->member.ticks, buf, sizeof(buf))) { \
+      return json_string_nocheck(buf); \
+    } \
+    return NULL; \
+  }
+MAKE_CLOCK_FIELD(cclock, ctime)
+MAKE_CLOCK_FIELD(oclock, otime)
+
+// Note: our JSON library supports 64-bit integers, but this may
+// pose a compatibility issue for others.  We'll see if anyone
+// runs into an issue and deal with it then...
+#define MAKE_INT_FIELD(name, member) \
+  static json_t *make_##name(struct watchman_rule_match *match) { \
+    return json_integer(match->file->st.member); \
+  }
+
+MAKE_INT_FIELD(size, st_size)
+MAKE_INT_FIELD(mode, st_mode)
+MAKE_INT_FIELD(uid, st_uid)
+MAKE_INT_FIELD(gid, st_gid)
+MAKE_INT_FIELD(atime, st_atime)
+MAKE_INT_FIELD(mtime, st_mtime)
+MAKE_INT_FIELD(ctime, st_ctime)
+MAKE_INT_FIELD(ino, st_ino)
+MAKE_INT_FIELD(dev, st_dev)
+MAKE_INT_FIELD(nlink, st_nlink)
+
+static struct w_query_field_renderer {
+  const char *name;
+  json_t *(*make)(struct watchman_rule_match *match);
+} field_defs[] = {
+  { "name", make_name },
+  { "exists", make_exists },
+  { "size", make_size },
+  { "mode", make_mode },
+  { "uid", make_uid },
+  { "gid", make_gid },
+  { "atime", make_atime },
+  { "mtime", make_mtime },
+  { "ctime", make_ctime },
+  { "ino", make_ino },
+  { "dev", make_dev },
+  { "nlink", make_nlink },
+  { "new", make_new },
+  { "oclock", make_oclock },
+  { "cclock", make_cclock },
+  { NULL, NULL }
+};
+
+static bool parse_field_list(json_t *field_list,
+    struct w_query_field_list *selected,
+    char **errmsg)
+{
+  uint32_t i, f;
+
+  memset(selected, 0, sizeof(*selected));
+
+  if (field_list == NULL) {
+    // Use the default list
+    field_list = json_pack("[sssss]", "name", "exists", "new", "size", "mode");
+  } else {
+    // Add a ref so that we don't need complicated logic to deal with
+    // whether we defaulted or not; just unconditionally delref on return
+    json_incref(field_list);
+  }
+
+  if (!json_is_array(field_list)) {
+    *errmsg = strdup("field list must be an array of strings");
+    json_decref(field_list);
+    return false;
+  }
+
+  for (i = 0; i < json_array_size(field_list); i++) {
+    json_t *jname = json_array_get(field_list, i);
+    const char *name;
+    bool found = false;
+
+    if (!json_is_string(jname)) {
+      *errmsg = strdup("field list must be an array of strings");
+      json_decref(field_list);
+      return false;
+    }
+
+    name = json_string_value(jname);
+
+    for (f = 0; field_defs[f].name; f++) {
+      if (!strcmp(name, field_defs[f].name)) {
+        found = true;
+        selected->fields[selected->num_fields++] = &field_defs[f];
+        break;
+      }
+    }
+
+    if (!found) {
+      asprintf(errmsg, "unknown field name '%s'", name);
+      json_decref(field_list);
+      return false;
+    }
+  }
+
+  json_decref(field_list);
+  return true;
+}
+
+json_t *w_query_results_to_json(
+    struct w_query_field_list *field_list,
+    uint32_t num_results,
+    struct watchman_rule_match *results)
+{
+  json_t *file_list = json_array();
+  uint32_t i, f;
+
+  for (i = 0; i < num_results; i++) {
+    json_t *value, *ele;
+
+    if (field_list->num_fields == 1) {
+      value = field_list->fields[0]->make(&results[i]);
+    } else {
+      value = json_object();
+
+      for (f = 0; f < field_list->num_fields; f++) {
+        ele = field_list->fields[f]->make(&results[i]);
+        set_prop(value, field_list->fields[f]->name, ele);
+      }
+    }
+    json_array_append_new(file_list, value);
+  }
+  return file_list;
 }
 
 json_t *w_match_results_to_json(
@@ -723,6 +882,64 @@ static w_root_t *resolve_root_or_err(
   return root;
 }
 
+/* query /root {query} */
+static void cmd_query(
+    struct watchman_client *client,
+    json_t *args)
+{
+  w_root_t *root;
+  w_query *query;
+  json_t *query_spec;
+  char *errmsg = NULL;
+  uint32_t num_results = 0;
+  struct watchman_rule_match *results = NULL;
+  uint32_t ticks = 0;
+  json_t *response;
+  json_t *file_list, *jfield_list;
+  char clockbuf[128];
+  struct w_query_field_list field_list;
+
+  if (json_array_size(args) != 3) {
+    send_error_response(client, "wrong number of arguments for 'query'");
+    return;
+  }
+
+  root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
+    return;
+  }
+
+  query_spec = json_array_get(args, 2);
+
+  query = w_query_parse(query_spec, &errmsg);
+  if (!query) {
+    send_error_response(client, "failed to parse query: %s", errmsg);
+    free(errmsg);
+    return;
+  }
+
+  jfield_list = json_object_get(query_spec, "fields");
+  if (!parse_field_list(jfield_list, &field_list, &errmsg)) {
+    send_error_response(client, "invalid field list: %s", errmsg);
+    free(errmsg);
+    return;
+  }
+
+  num_results = w_query_execute(query, root, &ticks, &results);
+  w_query_delref(query);
+
+  file_list = w_query_results_to_json(&field_list, num_results, results);
+  w_match_results_free(num_results, results);
+
+  response = make_response();
+  if (clock_id_string(ticks, clockbuf, sizeof(clockbuf))) {
+    set_prop(response, "clock", json_string_nocheck(clockbuf));
+  }
+  set_prop(response, "files", file_list);
+
+  send_and_dispose_response(client, response);
+}
+
 /* find /root [patterns] */
 static void cmd_find(
     struct watchman_client *client,
@@ -777,7 +994,7 @@ static void cmd_since(
   }
 
   clock_ele = json_array_get(args, 2);
-  if (!parse_clockspec(root, clock_ele, &since)) {
+  if (!w_parse_clockspec(root, clock_ele, &since)) {
     send_error_response(client,
         "expected argument 2 to be a valid clockspec");
     return;
@@ -788,14 +1005,6 @@ static void cmd_since(
     send_error_response(client, "invalid rule spec: %s", buf);
     return;
   }
-
-  /* Force ticks to increment.
-   * This avoids returning and
-   * querying the same tick value over and over when no
-   * files have changed in the meantime */
-  w_root_lock(root);
-  root->ticks++;
-  w_root_unlock(root);
 
   /* now find all matching files */
   run_rules(client, root, &since, rules);
@@ -1013,6 +1222,7 @@ static struct {
 } commands[] = {
   { "find", cmd_find },
   { "since", cmd_since },
+  { "query", cmd_query },
   { "watch", cmd_watch },
   { "trigger", cmd_trigger },
   { "trigger-list", cmd_trigger_list },
@@ -1209,6 +1419,7 @@ bool w_start_listener(const char *path)
 #ifdef HAVE_LIBGIMLI_H
   hb = gimli_heartbeat_attach();
 #endif
+  w_query_init_all();
 
 #ifdef HAVE_KQUEUE
   {
