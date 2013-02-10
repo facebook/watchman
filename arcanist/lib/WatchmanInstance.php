@@ -244,7 +244,7 @@ class WatchmanInstance {
     $res->setName('descriptor leaks');
     $res->setUserData(implode("\n\n", $descriptors));
     $res->setResult(count($descriptors) ?
-      ArcanistUnitTestResult::RESULT_SKIP :
+      ArcanistUnitTestResult::RESULT_FAIL :
       ArcanistUnitTestResult::RESULT_PASS);
     $results[] = $res;
 

@@ -8,6 +8,7 @@
 
 static pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
 static w_ht_t *clients = NULL;
+static int listener_fd;
 
 typedef void (*watchman_command_func)(
     struct watchman_client *client,
@@ -995,8 +996,14 @@ static void cmd_shutdown(
   unused_parameter(args);
 
   w_log(W_LOG_ERR, "shutdown-server was requested, exiting!\n");
+
+  /* close out some resources to persuade valgrind to run clean */
   pthread_mutex_lock(&client_lock);
   w_ht_del(clients, client->fd);
+  close(listener_fd);
+  close(STDIN_FILENO);
+  close(STDOUT_FILENO);
+  close(STDERR_FILENO);
   exit(0);
 }
 
@@ -1191,7 +1198,6 @@ static void *child_reaper(void *arg)
 
 bool w_start_listener(const char *path)
 {
-  int fd;
   int i;
   struct sockaddr_un un;
   pthread_t thr;
@@ -1264,8 +1270,8 @@ bool w_start_listener(const char *path)
     return false;
   }
 
-  fd = socket(PF_LOCAL, SOCK_STREAM, 0);
-  if (fd == -1) {
+  listener_fd = socket(PF_LOCAL, SOCK_STREAM, 0);
+  if (listener_fd == -1) {
     perror("socket");
     return false;
   }
@@ -1273,21 +1279,21 @@ bool w_start_listener(const char *path)
   un.sun_family = PF_LOCAL;
   strcpy(un.sun_path, path);
 
-  if (bind(fd, (struct sockaddr*)&un, sizeof(un)) != 0) {
+  if (bind(listener_fd, (struct sockaddr*)&un, sizeof(un)) != 0) {
     w_log(W_LOG_ERR, "bind(%s): %s\n",
       path, strerror(errno));
-    close(fd);
+    close(listener_fd);
     return false;
   }
 
-  if (listen(fd, 200) != 0) {
+  if (listen(listener_fd, 200) != 0) {
     w_log(W_LOG_ERR, "listen(%s): %s\n",
         path, strerror(errno));
-    close(fd);
+    close(listener_fd);
     return false;
   }
 
-  w_set_cloexec(fd);
+  w_set_cloexec(listener_fd);
 
   if (!clients) {
     clients = w_ht_new(2, &client_hash_funcs);
@@ -1307,7 +1313,7 @@ bool w_start_listener(const char *path)
   if (hb) {
     gimli_heartbeat_set(hb, GIMLI_HB_RUNNING);
   }
-  w_set_nonblock(fd);
+  w_set_nonblock(listener_fd);
 #endif
 
   // Now run the dispatch
@@ -1322,10 +1328,10 @@ bool w_start_listener(const char *path)
     }
 #endif
     pfd.events = POLLIN;
-    pfd.fd = fd;
+    pfd.fd = listener_fd;
     poll(&pfd, 1, 10000);
 
-    client_fd = accept(fd, NULL, 0);
+    client_fd = accept(listener_fd, NULL, 0);
     if (client_fd == -1) {
       continue;
     }
