@@ -50,6 +50,9 @@ TXT
       'gimli' => array(
         'help' => 'Configure to run under the gimli monitor',
       ),
+      'pcre' => array(
+        'help' => 'Configure to use pcre',
+      ),
       'release' => array(
         'help' => 'Override the default RPM release of 1',
         'param' => 'release'
@@ -95,6 +98,11 @@ TXT
     if ($this->getArgument('gimli')) {
       $configureargs .= ' --with-gimli';
       $requires = 'Requires: fb-gimli';
+    }
+
+    if ($this->getArgument('pcre')) {
+      $configureargs .= ' --with-pcre';
+      $requires = 'Requires: pcre';
     }
 
     $statedir = $this->getArgument('statedir');

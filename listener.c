@@ -185,9 +185,7 @@ static bool parse_watch_params(int start, json_t *args,
 {
   bool include = true;
   bool negated = false;
-#ifdef HAVE_PCRE_H
   int is_pcre = 0;
-#endif
   bool is_suffix = false;
   struct watchman_rule *rule, *prior = NULL;
   uint32_t i;
@@ -386,8 +384,8 @@ uint32_t w_rules_match(w_root_t *root,
         case RT_SUFFIX:
           matched = w_string_suffix_match(relname, rule->suffix);
           break;
-#ifdef HAVE_PCRE_H
         case RT_PCRE:
+#ifdef HAVE_PCRE_H
           {
             int rc = pcre_exec(rule->re, rule->re_extra, relname->buf,
                 relname->len, 0, 0, NULL, 0);
@@ -402,8 +400,10 @@ uint32_t w_rules_match(w_root_t *root,
               matched = false;
             }
           }
-          break;
+#else
+          matched = false;
 #endif
+          break;
       }
 
       // If the rule is negated, we negate the sense of the

@@ -61,7 +61,7 @@ static void dispose_name(void *data)
 static w_query_expr *name_parser(w_query *query,
     json_t *term, bool caseless)
 {
-  const char *pattern, *scope = "basename";
+  const char *pattern = NULL, *scope = "basename";
   const char *which = caseless ? "iname" : "name";
   struct name_data *data;
   json_t *name;
