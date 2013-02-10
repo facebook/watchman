@@ -788,6 +788,14 @@ static void cmd_since(
     return;
   }
 
+  /* Force ticks to increment.
+   * This avoids returning and
+   * querying the same tick value over and over when no
+   * files have changed in the meantime */
+  w_root_lock(root);
+  root->ticks++;
+  w_root_unlock(root);
+
   /* now find all matching files */
   run_rules(client, root, &since, rules);
   w_free_rules(rules);
