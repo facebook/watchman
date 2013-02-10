@@ -1437,17 +1437,26 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
 static bool root_start(w_root_t *root)
 {
   pthread_t thr;
+  pthread_attr_t attr;
+
+  // TODO: when we make it so you can stop watching a root,
+  // we'll need a way to signal these guys that we're done
+  // before we can release resources
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
 #if HAVE_INOTIFY_INIT
-  pthread_create(&thr, NULL, inotify_thread, root);
+  pthread_create(&thr, &attr, inotify_thread, root);
 #endif
 #if HAVE_KQUEUE
-  pthread_create(&thr, NULL, kqueue_thread, root);
+  pthread_create(&thr, &attr, kqueue_thread, root);
 #endif
 #if HAVE_PORT_CREATE
-  pthread_create(&thr, NULL, portfs_thread, root);
+  pthread_create(&thr, &attr, portfs_thread, root);
 #endif
-  pthread_create(&thr, NULL, stat_thread, root);
+  pthread_create(&thr, &attr, stat_thread, root);
+
+  pthread_attr_destroy(&attr);
 
   return root;
 }
