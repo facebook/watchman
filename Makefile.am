@@ -12,6 +12,12 @@ watchman_SOURCES = \
 	json.c       \
 	hash.c       \
 	ht.c         \
+	cmds/find.c     \
+	cmds/log.c      \
+	cmds/query.c    \
+	cmds/since.c    \
+	cmds/trigger.c  \
+	cmds/watch.c    \
 	query/base.c       \
 	query/parse.c      \
 	query/init.c       \
@@ -21,9 +27,11 @@ watchman_SOURCES = \
 	query/match.c      \
 	query/pcre.c       \
 	query/name.c       \
+	query/fieldlist.c  \
 	listener.c   \
 	main.c       \
 	root.c       \
+	rules.c      \
 	state.c      \
 	string.c
 

@@ -266,7 +266,6 @@ struct watchman_rule {
   enum {
     RT_FNMATCH,
     RT_PCRE,
-    RT_SUFFIX
   } rule_type;
 
   /* pattern passed to fnmatch(3) */
@@ -278,8 +277,6 @@ struct watchman_rule {
   pcre *re;
   pcre_extra *re_extra;
 #endif
-
-  w_string_t *suffix;
 
   /* next rule in this chain */
   struct watchman_rule *next;
@@ -528,11 +525,19 @@ bool w_parse_clockspec(w_root_t *root,
     json_t *value,
     struct w_clockspec_query *since);
 
+// Helps write shorter lines
+static inline void set_prop(json_t *obj, const char *key, json_t *val)
+{
+  json_object_set_new_nocheck(obj, key, val);
+}
+
+
 #ifdef __cplusplus
 }
 #endif
 
 #include "watchman_query.h"
+#include "watchman_cmd.h"
 
 #endif
 

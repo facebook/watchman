@@ -126,6 +126,10 @@ json_t *w_query_results_to_json(
 
 void w_query_init_all(void);
 
+bool parse_field_list(json_t *field_list,
+    struct w_query_field_list *selected,
+    char **errmsg);
+
 w_query_expr *w_expr_true_parser(w_query *query, json_t *term);
 w_query_expr *w_expr_false_parser(w_query *query, json_t *term);
 w_query_expr *w_expr_anyof_parser(w_query *query, json_t *term);

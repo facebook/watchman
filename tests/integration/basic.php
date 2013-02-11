@@ -33,24 +33,6 @@ class basicTestCase extends WatchmanTestCase {
     $this->assertEqual('foo.c', $out['files'][0]['name']);
   }
 
-  function testSuffix() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
-
-    touch("$root/foo.c");
-    touch("$root/bar.txt");
-
-    $this->watchmanCommand('watch', $root);
-
-    $this->assertFileList($root, array('bar.txt', 'foo.c'));
-
-    $out = $this->watchmanCommand('find', $root, '-S', 'c');
-    $this->assertEqual('foo.c', $out['files'][0]['name']);
-
-    $out = $this->watchmanCommand('find', $root, '-S', 'txt');
-    $this->assertEqual('bar.txt', $out['files'][0]['name']);
-  }
-
   function testFind() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
