@@ -515,7 +515,7 @@ bool w_start_listener(const char *path)
       KERN_MAXFILES
 #endif
     };
-    rlim_t maxperproc;
+    int maxperproc;
     size_t len;
 
     len = sizeof(maxperproc);
@@ -524,10 +524,11 @@ bool w_start_listener(const char *path)
     getrlimit(RLIMIT_NOFILE, &limit);
     w_log(W_LOG_ERR, "file limit is %" PRIu64
         " kern.maxfilesperproc=%i\n",
-        limit.rlim_cur, (int)maxperproc);
+        limit.rlim_cur, maxperproc);
 
     if (limit.rlim_cur != RLIM_INFINITY &&
-        limit.rlim_cur < maxperproc) {
+        maxperproc > 0 &&
+        limit.rlim_cur < (rlim_t)maxperproc) {
       limit.rlim_cur = maxperproc;
 
       if (setrlimit(RLIMIT_NOFILE, &limit)) {
@@ -542,6 +543,7 @@ bool w_start_listener(const char *path)
       }
     }
 
+    getrlimit(RLIMIT_NOFILE, &limit);
     if (limit.rlim_cur < 10240) {
       w_log(W_LOG_ERR,
           "Your file descriptor limit is very low (%" PRIu64 "), "
