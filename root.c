@@ -25,7 +25,7 @@ static pthread_mutex_t spawn_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 static void crawler(w_root_t *root, w_string_t *dir_name,
-    struct timeval now, bool confident);
+    struct timeval now, bool recursive);
 
 static void free_pending(struct watchman_pending_fs *p)
 {
@@ -145,7 +145,7 @@ void w_root_unlock(w_root_t *root)
 }
 
 bool w_root_add_pending(w_root_t *root, w_string_t *path,
-    bool confident, struct timeval now, bool via_notify)
+    bool recursive, struct timeval now, bool via_notify)
 {
   struct watchman_pending_fs *p = calloc(1, sizeof(*p));
 
@@ -155,7 +155,7 @@ bool w_root_add_pending(w_root_t *root, w_string_t *path,
 
   w_log(W_LOG_DBG, "add_pending: %s\n", path->buf);
 
-  p->confident = confident;
+  p->recursive = recursive;
   p->now = now;
   p->via_notify = via_notify;
   p->path = path;
@@ -169,7 +169,7 @@ bool w_root_add_pending(w_root_t *root, w_string_t *path,
 }
 
 bool w_root_add_pending_rel(w_root_t *root, struct watchman_dir *dir,
-    const char *name, bool confident,
+    const char *name, bool recursive,
     struct timeval now, bool via_notify)
 {
   char path[WATCHMAN_NAME_MAX];
@@ -179,7 +179,7 @@ bool w_root_add_pending_rel(w_root_t *root, struct watchman_dir *dir,
   snprintf(path, sizeof(path), "%.*s/%s", dir->path->len, dir->path->buf, name);
   path_str = w_string_new(path);
 
-  res = w_root_add_pending(root, path_str, confident, now, via_notify);
+  res = w_root_add_pending(root, path_str, recursive, now, via_notify);
 
   w_string_delref(path_str);
 
@@ -201,7 +201,7 @@ bool w_root_process_pending(w_root_t *root)
     p = pending;
     pending = p->next;
 
-    w_root_process_path(root, p->path, p->now, p->confident);
+    w_root_process_path(root, p->path, p->now, p->recursive, p->via_notify);
 
     free_pending(p);
   }
@@ -323,7 +323,7 @@ static void stop_watching_file(w_root_t *root, struct watchman_file *file)
 }
 
 void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
-    struct timeval now, bool confident)
+    struct timeval now)
 {
   if (file->exists) {
     watch_file(root, file);
@@ -331,7 +331,6 @@ void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
     stop_watching_file(root, file);
   }
 
-  file->confident = confident;
   file->otime.tv = now;
   file->otime.ticks = root->ticks;
 
@@ -455,9 +454,44 @@ static void stop_watching_dir(w_root_t *root,
   dir->wd = -1;
 }
 
+static bool did_file_change(struct stat *saved, struct stat *fresh)
+{
+  /* we have to compare this way because the stat structure
+   * may contain fields that vary and that don't impact our
+   * understanding of the file */
+
+#define FIELD_CHG(name) \
+  if (memcmp(&saved->name, &fresh->name, sizeof(saved->name))) { \
+    return true; \
+  }
+  FIELD_CHG(st_mode);
+
+  if (!S_ISDIR(saved->st_mode)) {
+    FIELD_CHG(st_size);
+    FIELD_CHG(st_nlink);
+  }
+  FIELD_CHG(st_dev);
+  FIELD_CHG(st_ino);
+  FIELD_CHG(st_uid);
+  FIELD_CHG(st_gid);
+  FIELD_CHG(st_rdev);
+  FIELD_CHG(st_ctime);
+  FIELD_CHG(st_atime);
+  FIELD_CHG(st_mtime);
+  // Don't care about st_blocks
+  // Don't care about st_blksize
+
+#ifdef __APPLE__
+  FIELD_CHG(st_atimespec);
+  FIELD_CHG(st_mtimespec);
+  FIELD_CHG(st_ctimespec);
+#endif
+
+  return false;
+}
 
 static void stat_path(w_root_t *root,
-    w_string_t *full_path, struct timeval now, bool confident)
+    w_string_t *full_path, struct timeval now, bool recursive, bool via_notify)
 {
   struct stat st;
   int res;
@@ -499,21 +533,19 @@ static void stat_path(w_root_t *root,
   if (res && (errno == ENOENT || errno == ENOTDIR)) {
     /* it's not there, update our state */
     if (dir_ent) {
-      w_root_mark_deleted(root, dir_ent, now, true, true);
+      w_root_mark_deleted(root, dir_ent, now, true);
       w_log(W_LOG_DBG, "lstat(%s) -> %s so stopping watch on %s\n",
           path, strerror(errno), dir_ent->path->buf);
       stop_watching_dir(root, dir_ent, true);
     }
     if (file) {
       file->exists = false;
-      w_root_mark_file_changed(root, file, now, confident);
+      w_root_mark_file_changed(root, file, now);
     }
   } else if (res) {
     w_log(W_LOG_ERR, "lstat(%s) %d %s\n",
         path, errno, strerror(errno));
   } else {
-    bool recurse = false;
-
     if (!file) {
       file = w_root_resolve_file(root, dir, file_name, now);
     }
@@ -524,23 +556,29 @@ static void stat_path(w_root_t *root,
       file->ctime.tv = now;
       /* if a dir was deleted and now exists again, we want
        * to crawl it again */
-      recurse = true;
+      recursive = true;
     }
-    file->exists = true;
+    if (!file->exists || via_notify || did_file_change(&file->st, &st)) {
+      file->exists = true;
+      w_root_mark_file_changed(root, file, now);
+    }
     memcpy(&file->st, &st, sizeof(st));
-    w_root_mark_file_changed(root, file, now, confident);
     if (S_ISDIR(st.st_mode)) {
-      /* On Linux systems we get told about change on the child, so we only
-       * need to crawl if we've never seen the dir before */
       if (dir_ent == NULL) {
-        recurse = true;
+        recursive = true;
       }
 #ifndef HAVE_INOTIFY_INIT
-      recurse = true;
-#endif
-      if (recurse) {
-        crawler(root, full_path, now, confident);
+      /* On non-Linux systems, we always need to crawl, but may not
+       * need to be fully recursive */
+      crawler(root, full_path, now, recursive);
+#else
+      /* On Linux systems we get told about change on the child, so we only
+       * need to crawl if we've never seen the dir before */
+
+      if (recursive) {
+        crawler(root, full_path, now, recursive);
       }
+#endif
     }
   }
 
@@ -550,18 +588,18 @@ static void stat_path(w_root_t *root,
 
 
 void w_root_process_path(w_root_t *root, w_string_t *full_path,
-    struct timeval now, bool confident)
+    struct timeval now, bool recursive, bool via_notify)
 {
   if (w_string_equal(full_path, root->root_path)) {
-    crawler(root, full_path, now, confident);
+    crawler(root, full_path, now, recursive);
   } else {
-    stat_path(root, full_path, now, confident);
+    stat_path(root, full_path, now, recursive, via_notify);
   }
 }
 
 /* recursively mark the dir contents as deleted */
 void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
-    struct timeval now, bool confident, bool recursive)
+    struct timeval now, bool recursive)
 {
   w_ht_iter_t i;
 
@@ -570,7 +608,7 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
 
     if (file->exists) {
       file->exists = false;
-      w_root_mark_file_changed(root, file, now, confident);
+      w_root_mark_file_changed(root, file, now);
     }
 
   } while (w_ht_next(dir->files, &i));
@@ -578,7 +616,7 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
   if (recursive && w_ht_first(dir->dirs, &i)) do {
     struct watchman_dir *child = (struct watchman_dir*)i.value;
 
-    w_root_mark_deleted(root, child, now, confident, recursive);
+    w_root_mark_deleted(root, child, now, true);
   } while (w_ht_next(dir->dirs, &i));
 }
 
@@ -590,7 +628,7 @@ struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd)
 #endif
 
 static void crawler(w_root_t *root, w_string_t *dir_name,
-    struct timeval now, bool confident)
+    struct timeval now, bool recursive)
 {
   struct watchman_dir *dir;
   struct watchman_file *file;
@@ -600,14 +638,15 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
 
   dir = w_root_resolve_dir(root, dir_name, true);
 
-  w_log(W_LOG_DBG, "opendir(%.*s)\n", dir_name->len, dir_name->buf);
+  w_log(W_LOG_DBG, "opendir(%.*s) recursive=%s\n",
+      dir_name->len, dir_name->buf, recursive ? "true" : "false");
   osdir = opendir(dir_name->buf);
   if (!osdir) {
     if (errno == ENOENT || errno == ENOTDIR) {
       w_log(W_LOG_DBG, "opendir(%s) -> %s so stopping watch\n",
           dir_name->buf, strerror(errno));
       stop_watching_dir(root, dir, true);
-      w_root_mark_deleted(root, dir, now, true, true);
+      w_root_mark_deleted(root, dir, now, true);
     }
     return;
   }
@@ -668,6 +707,14 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
 #endif
   }
 
+  /* flag for delete detection */
+  if (w_ht_first(dir->files, &i)) do {
+    file = (struct watchman_file*)i.value;
+    if (file->exists) {
+      file->maybe_deleted = true;
+    }
+  } while (w_ht_next(dir->files, &i));
+
   while ((dirent = readdir(osdir)) != NULL) {
     w_string_t *name;
 
@@ -686,29 +733,26 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
     } else {
       file = NULL;
     }
+    if (file) {
+      file->maybe_deleted = false;
+    }
     if (!file || !file->exists) {
       w_root_add_pending_rel(root, dir, dirent->d_name,
-          confident, now, false);
+          true, now, false);
     }
     w_string_delref(name);
   }
   closedir(osdir);
 
-  // Re-examine all the files we think exist
+  // Anything still in maybe_deleted is actually deleted.
+  // Arrange to re-process it shortly
   if (w_ht_first(dir->files, &i)) do {
     file = (struct watchman_file*)i.value;
-    if (file->exists) {
+    if (file->exists && file->maybe_deleted) {
       w_root_add_pending_rel(root, dir, file->name->buf,
-          confident, now, false);
+          recursive, now, false);
     }
   } while (w_ht_next(dir->files, &i));
-
-  // if we have any child dirs, add those to the list too
-  if (w_ht_first(dir->dirs, &i)) do {
-    struct watchman_dir *child = (struct watchman_dir*)i.value;
-
-    w_root_add_pending(root, child->path, confident, now, false);
-  } while (w_ht_next(dir->dirs, &i));
 }
 
 static void spawn_command(w_root_t *root,
@@ -1102,13 +1146,13 @@ static int consume_kqueue(w_root_t *root, w_ht_t *batch,
       struct watchman_dir *dir = DECODE_DIR(p);
 
       w_log(W_LOG_DBG, " KQ dir %s\n", dir->path->buf);
-      w_ht_set(batch, (w_ht_val_t)dir->path, (w_ht_val_t)dir);
+      w_ht_set(batch, (w_ht_val_t)dir->path, (w_ht_val_t)p);
     } else {
       struct watchman_file *file = (void*)p;
       w_string_t *name;
 
       name = w_string_path_cat(file->parent->path, file->name);
-      w_ht_set(batch, (w_ht_val_t)name, (w_ht_val_t)file);
+      w_ht_set(batch, (w_ht_val_t)name, (w_ht_val_t)p);
       w_log(W_LOG_DBG, " KQ file %s\n", name->buf);
       w_string_delref(name);
     }
@@ -1152,9 +1196,17 @@ static void *kqueue_thread(void *arg)
       gettimeofday(&now, NULL);
       if (w_ht_first(batch, &iter)) do {
         w_string_t *name = (w_string_t*)iter.key;
+        intptr_t p = iter.value;
 
         w_log(W_LOG_DBG, "kq -> %s\n", name->buf);
-        w_root_add_pending(root, name, true, now, true);
+        /* we only want to set the via_notify flag to true if we're
+         * absolutely sure that something was changed.
+         * Since we get notified on dirs when their contents change,
+         * we can't be sure precisely what changed (we'll compare stat results
+         * to find out).  For files, we're absolute sure that they changed.
+         * Therefore, we set via_notify to true if this was a file notification,
+         * and false otherwise */
+        w_root_add_pending(root, name, false, now, !IS_DIR_BIT_SET(p));
 
       } while (w_ht_next(batch, &iter));
 
@@ -1277,8 +1329,7 @@ static void *inotify_thread(void *arg)
         /* assume that everything was deleted,
          * garbage collection style */
         dir = w_root_resolve_dir(root, root->root_path, false);
-        w_root_mark_deleted(root, dir, now,
-            /*confident=*/false, /*recursive=*/true);
+        w_root_mark_deleted(root, dir, now, true);
 
         /* any files we find now are obviously not deleted */
         w_root_add_pending(root, root->root_path, false, now, true);
@@ -1308,8 +1359,7 @@ static void *inotify_thread(void *arg)
               // If this is a directory, mark its contents
               // deleted so that we'll find them again
               // during crawl
-              w_root_mark_deleted(root, dir, now,
-                  /*confident=*/false, /*recursive=*/false);
+              w_root_mark_deleted(root, dir, now, false);
             }
 
             w_log(W_LOG_DBG, "add_pending for inotify mask=%x %s\n",

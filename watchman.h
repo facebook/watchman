@@ -134,7 +134,7 @@ typedef struct watchman_clock w_clock_t;
 struct watchman_pending_fs {
   struct watchman_pending_fs *next;
   w_string_t *path;
-  bool confident;
+  bool recursive;
   struct timeval now;
   bool via_notify;
 };
@@ -173,16 +173,10 @@ struct watchman_file {
    * This is thus the "created time" */
   w_clock_t ctime;
 
-  /* confidence indicator.  We set this if we believe
-   * that the file was changed based on the kernel telling
-   * us that it did so.  If we had to assume that the file
-   * changed (perhaps because of an overflow) then set this
-   * to false.  We can expose this data to clients and they
-   * can elect to perform more thorough change checks */
-  bool confident;
-
   /* whether we believe that this file still exists */
   bool exists;
+  /* whether we think this file might not exist */
+  bool maybe_deleted;
 
   /* cache stat results so we can tell if an entry
    * changed */
@@ -359,19 +353,19 @@ void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
 w_root_t *w_root_new(const char *path);
 w_root_t *w_root_resolve(const char *path, bool auto_watch);
 void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
-    struct timeval now, bool confident, bool recursive);
+    struct timeval now, bool recursive);
 
 struct watchman_dir *w_root_resolve_dir(w_root_t *root,
     w_string_t *dir_name, bool create);
 struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd);
 void w_root_process_path(w_root_t *root, w_string_t *full_path,
-    struct timeval now, bool confident);
+    struct timeval now, bool recursive, bool via_notify);
 bool w_root_process_pending(w_root_t *root);
 
 bool w_root_add_pending(w_root_t *root, w_string_t *path,
-    bool confident, struct timeval now, bool via_notify);
+    bool recursive, struct timeval now, bool via_notify);
 bool w_root_add_pending_rel(w_root_t *root, struct watchman_dir *dir,
-    const char *name, bool confident,
+    const char *name, bool recursive,
     struct timeval now, bool via_notify);
 bool w_root_wait_for_settle(w_root_t *root, int settlems);
 
