@@ -1289,7 +1289,9 @@ static void *inotify_thread(void *arg)
   /* now we can settle into the notification stuff */
   for (;;) {
     struct inotify_event *ine;
-    char ibuf[WATCHMAN_NAME_MAX];
+    // Make the buffer big enough for 16k entries, which
+    // happens to be the default fs.inotify.max_queued_events
+    char ibuf[16 * 1024 * (sizeof(*ine) + 256)];
     char *iptr;
     int n;
     struct timeval now;
@@ -1322,17 +1324,11 @@ static void *inotify_thread(void *arg)
       if (ine->wd == -1 && (ine->mask & IN_Q_OVERFLOW)) {
         /* we missed something, will need to re-crawl */
 
-        w_log(W_LOG_ERR, "inotify: IN_Q_OVERFLOW, re-crawling %.*s",
+        w_log(W_LOG_ERR, "inotify: IN_Q_OVERFLOW, re-crawling %.*s\n",
             root->root_path->len,
             root->root_path->buf);
 
-        /* assume that everything was deleted,
-         * garbage collection style */
-        dir = w_root_resolve_dir(root, root->root_path, false);
-        w_root_mark_deleted(root, dir, now, true);
-
-        /* any files we find now are obviously not deleted */
-        w_root_add_pending(root, root->root_path, false, now, true);
+        w_root_add_pending(root, root->root_path, true, now, false);
       } else if (ine->wd != -1) {
         char buf[WATCHMAN_NAME_MAX];
 
