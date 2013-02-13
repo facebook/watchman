@@ -13,7 +13,7 @@ void w_log(int level, const char *fmt, ...)
 
   len = snprintf(buf, sizeof(buf), "%d: ", (int)time(NULL));
   va_start(ap, fmt);
-  len += vsnprintf(buf + len, sizeof(buf), fmt, ap);
+  len += vsnprintf(buf + len, sizeof(buf) - len, fmt, ap);
   va_end(ap);
 
   if (level <= log_level) {

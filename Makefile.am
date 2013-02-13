@@ -65,8 +65,8 @@ libtap_a_SOURCES = thirdparty/tap.c
 TAP_LIB = -ltap
 
 # unit tests
-TESTS = tests/argv.t
-noinst_PROGRAMS = tests/argv.t
+TESTS = tests/argv.t tests/log.t
+noinst_PROGRAMS = tests/argv.t tests/log.t
 
 if HAVE_ARC
 # if we have arc, lint when we run make.  We don't want to force
@@ -93,3 +93,10 @@ tests_argv_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_argv_t_SOURCES = \
 	tests/argv.c \
 	argv.c
+
+tests_log_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_log_t_LDADD = $(JSON_LIB) $(TAP_LIB)
+tests_log_t_SOURCES = \
+	tests/log.c \
+	log.c
+
