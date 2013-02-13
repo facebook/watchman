@@ -38,6 +38,14 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     $this->assertEqual($level, $out['log_level'], "set log level to $level");
   }
 
+  function waitForSub($subname, $callable, $timeout = 5) {
+    return WatchmanInstance::get()->waitForSub($subname, $callable, $timeout);
+  }
+
+  function getSubData($subname) {
+    return WatchmanInstance::get()->getSubData($subname);
+  }
+
   function waitForLog($criteria, $timeout = 5) {
     // Can't use the generic waitFor routine here because
     // we're delegating to a more efficient mechanism in

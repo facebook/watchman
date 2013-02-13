@@ -64,8 +64,8 @@ w_root_t *w_root_new(const char *path)
   assert(root != NULL);
 
   pthread_mutexattr_init(&attr);
-  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
-  pthread_mutex_init(&root->lock, NULL);
+  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init(&root->lock, &attr);
   pthread_mutexattr_destroy(&attr);
 
   pthread_cond_init(&root->cond, NULL);
@@ -354,7 +354,7 @@ void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
 
   // Flag that we have pending trigger info
   root->pending_trigger_tick = root->ticks;
-
+  root->pending_sub_tick = root->ticks;
 }
 
 static struct watchman_file *w_root_resolve_file(w_root_t *root,
@@ -945,12 +945,68 @@ void w_mark_dead(pid_t pid)
 
   w_root_unlock(root);
 }
+
+static inline struct watchman_file *find_oldest_with_tick(
+    w_root_t *root, uint32_t tick)
+{
+  struct watchman_file *f, *oldest = NULL;
+
+  for (f = root->latest_file;
+      f && f->otime.ticks > tick;
+      f = f->next) {
+
+    oldest = f;
+  }
+
+  return oldest;
+}
+
+static void process_subscriptions(w_root_t *root)
+{
+  w_ht_iter_t iter;
+
+  if (root->last_sub_tick == root->pending_sub_tick) {
+    return;
+  }
+
+  w_log(W_LOG_DBG, "sub last=%" PRIu32 "  pending=%" PRIu32 "\n",
+      root->last_sub_tick,
+      root->pending_sub_tick);
+
+  /* now look for subscribers */
+  w_log(W_LOG_DBG, "looking for connected subscribers\n");
+  pthread_mutex_lock(&w_client_lock);
+  if (w_ht_first(clients, &iter)) do {
+    struct watchman_client *client = (void*)iter.value;
+    w_ht_iter_t citer;
+
+    w_log(W_LOG_DBG, "client=%p fd=%d\n", client, client->fd);
+
+    if (w_ht_first(client->subscriptions, &citer)) do {
+      struct watchman_client_subscription *sub = (void*)citer.value;
+
+      w_log(W_LOG_DBG, "sub=%p %s\n", sub, sub->name->buf);
+      if (sub->root != root) {
+        w_log(W_LOG_DBG, "root doesn't match, skipping\n");
+        continue;
+      }
+
+      w_run_subscription_rules(client, sub, root);
+
+    } while (w_ht_next(client->subscriptions, &citer));
+
+  } while (w_ht_next(clients, &iter));
+  pthread_mutex_unlock(&w_client_lock);
+
+  root->last_sub_tick = root->pending_sub_tick;
+}
+
 /* process any pending triggers.
  * must be called with root locked
  */
 static void process_triggers(w_root_t *root)
 {
-  struct watchman_file *f, *oldest = NULL;
+  struct watchman_file *oldest = NULL;
   struct watchman_rule_match *results = NULL;
   uint32_t matches;
   w_ht_iter_t iter;
@@ -964,31 +1020,10 @@ static void process_triggers(w_root_t *root)
       root->last_trigger_tick,
       root->pending_trigger_tick);
 
-  for (f = root->latest_file;
-      f && f->otime.ticks > root->last_trigger_tick;
-      f = f->next) {
-
-    oldest = f;
-  }
+  oldest = find_oldest_with_tick(root, root->last_trigger_tick);
 
   since.is_timestamp = false;
   since.ticks = root->last_trigger_tick;
-
-#if 0
-  for (f = oldest; f; f = f->prev) {
-    w_log(W_LOG_DBG,
-        "M %.*s/%.*s exists=%s confident=%s t=%" PRIu32 " s=%" PRIu32 "\n",
-        f->parent->path->len,
-        f->parent->path->buf,
-        f->name->len,
-        f->name->buf,
-        f->exists ? "true" : "false",
-        f->confident ? "true" : "false",
-        f->otime.ticks,
-        f->otime.seconds);
-    w_log(W_LOG_DBG, "f=%p f.n=%p f.p=%p\n", f, f->next, f->prev);
-  }
-#endif
 
   /* walk the list of triggers, and run their rules */
   if (w_ht_first(root->commands, &iter)) do {
@@ -1104,6 +1139,7 @@ static void *stat_thread(void *arg)
       }
 
       process_triggers(root);
+      process_subscriptions(root);
 
       err = pthread_cond_wait(&root->cond, &root->lock);
       if (err != 0) {

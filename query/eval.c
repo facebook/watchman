@@ -35,7 +35,7 @@ w_string_t *w_query_ctx_get_wholename(
   return ctx->wholename;
 }
 
-static bool process_file(
+bool w_query_process_file(
     w_query *query,
     struct w_query_ctx *ctx,
     struct watchman_file *file)
@@ -110,7 +110,7 @@ static bool time_generator(
       break;
     }
 
-    if (!process_file(query, ctx, f)) {
+    if (!w_query_process_file(query, ctx, f)) {
       return false;
     }
   }
@@ -132,7 +132,7 @@ static bool suffix_generator(
 
     // Walk and process
     while (f) {
-      if (!process_file(query, ctx, f)) {
+      if (!w_query_process_file(query, ctx, f)) {
         return false;
       }
       f = f->suffix_next;
@@ -149,7 +149,7 @@ static bool all_files_generator(
   struct watchman_file *f;
 
   for (f = root->latest_file; f; f = f->next) {
-    if (!process_file(query, ctx, f)) {
+    if (!w_query_process_file(query, ctx, f)) {
       return false;
     }
   }
@@ -168,7 +168,7 @@ static bool dir_generator(
   if (w_ht_first(dir->files, &i)) do {
     struct watchman_file *file = (struct watchman_file*)i.value;
 
-    if (!process_file(query, ctx, file)) {
+    if (!w_query_process_file(query, ctx, file)) {
       return false;
     }
   } while (w_ht_next(dir->files, &i));
@@ -233,7 +233,7 @@ static bool path_generator(
       // If it's a file (but not an existent dir)
       if (f && (!f->exists || !S_ISDIR(f->st.st_mode))) {
         w_string_delref(full_name);
-        if (!process_file(query, ctx, f)) {
+        if (!w_query_process_file(query, ctx, f)) {
           return false;
         }
         continue;
@@ -254,12 +254,52 @@ is_dir:
   return true;
 }
 
+static bool default_generators(
+    w_query *query,
+    w_root_t *root,
+    struct w_query_ctx *ctx,
+    void *gendata)
+{
+  unused_parameter(gendata);
+
+  // Time based query
+  if (query->since) {
+    if (!time_generator(query, root, ctx)) {
+      return false;
+    }
+  }
+
+  // Suffix
+  if (query->suffixes) {
+    if (!suffix_generator(query, root, ctx)) {
+      return false;
+    }
+  }
+
+  if (query->npaths) {
+    if (!path_generator(query, root, ctx)) {
+      return false;
+    }
+  }
+
+  // And finally, if there were no other generators, we walk all known
+  // files
+  if (query->all_files) {
+    if (!all_files_generator(query, root, ctx)) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 uint32_t w_query_execute(
     w_query *query,
     w_root_t *root,
     uint32_t *ticks,
-    struct watchman_rule_match **results)
+    struct watchman_rule_match **results,
+    w_query_generator generator,
+    void *gendata)
 {
   struct w_query_ctx ctx;
 
@@ -287,35 +327,12 @@ uint32_t w_query_execute(
   w_root_lock(root);
   *ticks = root->ticks;
 
-  // Time based query
-  if (query->since) {
-    if (!time_generator(query, root, &ctx)) {
-      goto done;
-    }
+  if (!generator) {
+    generator = default_generators;
   }
 
-  // Suffix
-  if (query->suffixes) {
-    if (!suffix_generator(query, root, &ctx)) {
-      goto done;
-    }
-  }
+  generator(query, root, &ctx, gendata);
 
-  if (query->npaths) {
-    if (!path_generator(query, root, &ctx)) {
-      goto done;
-    }
-  }
-
-  // And finally, if there were no other generators, we walk all known
-  // files
-  if (query->all_files) {
-    if (!all_files_generator(query, root, &ctx)) {
-      goto done;
-    }
-  }
-
-done:
   w_root_unlock(root);
 
   if (ctx.wholename) {

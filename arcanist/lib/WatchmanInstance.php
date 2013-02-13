@@ -15,6 +15,7 @@ class WatchmanInstance {
   private $sock;
   static $singleton = null;
   private $logdata = array();
+  private $subdata = array();
   const TIMEOUT = 20;
 
   static function get() {
@@ -45,16 +46,66 @@ class WatchmanInstance {
         return false;
       }
       $resp = json_decode($data, true);
-      if (!isset($resp['log'])) {
-        return $resp;
+      if (isset($resp['log'])) {
+        // Collect log information
+        $this->logdata[] = $resp['log'];
+        continue;
       }
-      // Collect log information
-      $this->logdata[] = $resp['log'];
+      if (isset($resp['subscription'])) {
+        // Collect subscription information
+        $name = $resp['subscription'];
+        if (!isset($this->subdata[$name])) {
+          $this->subdata[$name] = array();
+        }
+        $this->subdata[$name][] = $resp;
+        continue;
+      }
+
+      return $resp;
     } while (true);
   }
 
   function setLogLevel($level) {
     return $this->request('log-level', $level);
+  }
+
+  function waitForSub($subname, $callable, $timeout = 5) {
+    if (isset($this->subdata[$subname])) {
+      if ($callable($this->subdata[$subname])) {
+        return $this->subdata[$subname];
+      }
+    }
+
+    $deadline = time() + $timeout;
+    while (time() < $deadline) {
+      stream_set_timeout($this->sock, $deadline - time());
+      $data = fgets($this->sock);
+      stream_set_timeout($this->sock, self::TIMEOUT);
+
+      if ($data === false) {
+        break;
+      }
+      $resp = json_decode($data, true);
+      $name = idx($resp, 'subscription');
+      if (!$name) {
+        throw new Exception("expected a subscription response, got $data");
+      }
+      $this->subdata[$name][] = $resp;
+
+      if ($name == $subname) {
+        if ($callable($this->subdata[$subname])) {
+          return $this->subdata[$subname];
+        }
+      }
+    }
+    return array();
+  }
+
+  /** Get and clear data we collected for a subscription */
+  function getSubData($subname) {
+    $data = idx($this->subdata, $subname);
+    unset($this->subdata[$subname]);
+    return $data;
   }
 
   function waitForLog($criteria, $timeout = 5) {

@@ -6,8 +6,10 @@
 # include <libgimli.h>
 #endif
 
-static pthread_mutex_t client_lock = PTHREAD_MUTEX_INITIALIZER;
-static w_ht_t *clients = NULL;
+/* This needs to be recursive safe because we may log to clients
+ * while we are dispatching subscriptions to clients */
+pthread_mutex_t w_client_lock;
+w_ht_t *clients = NULL;
 static int listener_fd;
 
 typedef void (*watchman_command_func)(
@@ -54,8 +56,8 @@ void annotate_with_clock(w_root_t *root, json_t *resp)
   }
 }
 
-/* must be called with the client_lock held */
-static bool enqueue_response(struct watchman_client *client,
+/* must be called with the w_client_lock held */
+bool enqueue_response(struct watchman_client *client,
     json_t *json, bool ping)
 {
   struct watchman_client_response *resp;
@@ -83,11 +85,11 @@ static bool enqueue_response(struct watchman_client *client,
 void send_and_dispose_response(struct watchman_client *client,
     json_t *response)
 {
-  pthread_mutex_lock(&client_lock);
+  pthread_mutex_lock(&w_client_lock);
   if (!enqueue_response(client, response, false)) {
     json_decref(response);
   }
-  pthread_mutex_unlock(&client_lock);
+  pthread_mutex_unlock(&w_client_lock);
 }
 
 void send_error_response(struct watchman_client *client,
@@ -110,6 +112,9 @@ static void client_delete(w_ht_val_t val)
 {
   struct watchman_client *client = (struct watchman_client*)val;
 
+  /* cancel subscriptions */
+  w_ht_free(client->subscriptions);
+
   w_json_buffer_free(&client->reader);
   w_json_buffer_free(&client->writer);
   close(client->ping[0]);
@@ -125,6 +130,26 @@ static struct watchman_hash_funcs client_hash_funcs = {
   NULL, // hash_key
   NULL, // copy_val
   client_delete
+};
+
+static void delete_subscription(w_ht_val_t val)
+{
+  struct watchman_client_subscription *sub;
+
+  sub = (struct watchman_client_subscription*)val;
+
+  w_string_delref(sub->name);
+  w_query_delref(sub->query);
+  free(sub);
+}
+
+static const struct watchman_hash_funcs subscription_hash_funcs = {
+  w_ht_string_copy,
+  w_ht_string_del,
+  w_ht_string_equal,
+  w_ht_string_hash,
+  NULL,
+  delete_subscription
 };
 
 // may attempt to lock the root!
@@ -291,7 +316,7 @@ static void cmd_shutdown(
   w_log(W_LOG_ERR, "shutdown-server was requested, exiting!\n");
 
   /* close out some resources to persuade valgrind to run clean */
-  pthread_mutex_lock(&client_lock);
+  pthread_mutex_lock(&w_client_lock);
   w_ht_del(clients, client->fd);
   close(listener_fd);
   close(STDIN_FILENO);
@@ -310,6 +335,8 @@ static struct {
   { "watch", cmd_watch },
   { "trigger", cmd_trigger },
   { "trigger-list", cmd_trigger_list },
+  { "subscribe", cmd_subscribe },
+  { "unsubscribe", cmd_unsubscribe },
   { "shutdown-server", cmd_shutdown },
   { "log-level", cmd_loglevel },
   { "log", cmd_log },
@@ -351,9 +378,9 @@ static void *client_thread(void *ptr)
 
     if (pfd[0].revents & (POLLHUP|POLLERR)) {
 disconected:
-      pthread_mutex_lock(&client_lock);
+      pthread_mutex_lock(&w_client_lock);
       w_ht_del(clients, client->fd);
-      pthread_mutex_unlock(&client_lock);
+      pthread_mutex_unlock(&w_client_lock);
       break;
     }
 
@@ -404,7 +431,7 @@ disconected:
       struct watchman_client_response *resp;
 
       /* de-queue the first response */
-      pthread_mutex_lock(&client_lock);
+      pthread_mutex_lock(&w_client_lock);
       resp = client->head;
       if (resp) {
         client->head = resp->next;
@@ -412,7 +439,7 @@ disconected:
           client->tail = NULL;
         }
       }
-      pthread_mutex_unlock(&client_lock);
+      pthread_mutex_unlock(&w_client_lock);
 
       if (resp) {
         w_clear_nonblock(client->fd);
@@ -439,7 +466,7 @@ void w_log_to_clients(int level, const char *buf)
     return;
   }
 
-  pthread_mutex_lock(&client_lock);
+  pthread_mutex_lock(&w_client_lock);
   if (w_ht_first(clients, &iter)) do {
     struct watchman_client *client = (void*)iter.value;
 
@@ -454,7 +481,7 @@ void w_log_to_clients(int level, const char *buf)
     }
 
   } while (w_ht_next(clients, &iter));
-  pthread_mutex_unlock(&client_lock);
+  pthread_mutex_unlock(&w_client_lock);
 }
 
 static void *child_reaper(void *arg)
@@ -496,9 +523,15 @@ bool w_start_listener(const char *path)
   struct sockaddr_un un;
   pthread_t thr;
   pthread_attr_t attr;
+  pthread_mutexattr_t mattr;
 #ifdef HAVE_LIBGIMLI_H
   volatile struct gimli_heartbeat *hb = NULL;
 #endif
+
+  pthread_mutexattr_init(&mattr);
+  pthread_mutexattr_settype(&mattr, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init(&w_client_lock, &mattr);
+  pthread_mutexattr_destroy(&mattr);
 
 #ifdef HAVE_LIBGIMLI_H
   hb = gimli_heartbeat_attach();
@@ -645,14 +678,15 @@ bool w_start_listener(const char *path)
     if (pipe(client->ping)) {
       // FIXME: error handling
     }
+    client->subscriptions = w_ht_new(2, &subscription_hash_funcs);
     w_set_cloexec(client->ping[0]);
     w_set_nonblock(client->ping[0]);
     w_set_cloexec(client->ping[1]);
     w_set_nonblock(client->ping[1]);
 
-    pthread_mutex_lock(&client_lock);
+    pthread_mutex_lock(&w_client_lock);
     w_ht_set(clients, client->fd, (w_ht_val_t)client);
-    pthread_mutex_unlock(&client_lock);
+    pthread_mutex_unlock(&w_client_lock);
 
     // Start a thread for the client.
     // We used to use libevent for this, but we have
@@ -661,9 +695,9 @@ bool w_start_listener(const char *path)
     // server architecture.
     if (pthread_create(&thr, &attr, client_thread, client)) {
       // It didn't work out, sorry!
-      pthread_mutex_lock(&client_lock);
+      pthread_mutex_lock(&w_client_lock);
       w_ht_del(clients, client->fd);
-      pthread_mutex_unlock(&client_lock);
+      pthread_mutex_unlock(&w_client_lock);
     }
   }
 

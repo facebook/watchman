@@ -16,6 +16,7 @@ watchman_SOURCES = \
 	cmds/log.c      \
 	cmds/query.c    \
 	cmds/since.c    \
+	cmds/subscribe.c    \
 	cmds/trigger.c  \
 	cmds/watch.c    \
 	query/base.c       \

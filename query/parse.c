@@ -209,6 +209,7 @@ w_query *w_query_parse(json_t *query, char **errmsg)
     *errmsg = strdup("out of memory");
     goto error;
   }
+  res->refcnt = 1;
 
   /* Look for path generators */
   if (!parse_paths(res, query)) {

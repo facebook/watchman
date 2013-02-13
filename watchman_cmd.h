@@ -12,6 +12,8 @@ void send_error_response(struct watchman_client *client,
     const char *fmt, ...);
 void send_and_dispose_response(struct watchman_client *client,
     json_t *response);
+bool enqueue_response(struct watchman_client *client,
+    json_t *json, bool ping);
 
 w_root_t *resolve_root_or_err(
     struct watchman_client *client,
@@ -42,6 +44,8 @@ void cmd_trigger_list(struct watchman_client *client, json_t *args);
 void cmd_trigger(struct watchman_client *client, json_t *args);
 void cmd_watch(struct watchman_client *client, json_t *args);
 void cmd_query(struct watchman_client *client, json_t *args);
+void cmd_subscribe(struct watchman_client *client, json_t *args);
+void cmd_unsubscribe(struct watchman_client *client, json_t *args);
 
 #ifdef __cplusplus
 }

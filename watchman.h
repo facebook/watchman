@@ -243,6 +243,8 @@ struct watchman_root {
   uint32_t next_cmd_id;
   uint32_t last_trigger_tick;
   uint32_t pending_trigger_tick;
+  uint32_t last_sub_tick;
+  uint32_t pending_sub_tick;
 
   /* our locking granularity is per-root */
   pthread_mutex_t lock;
@@ -293,6 +295,8 @@ struct watchman_client_response {
   json_t *json;
 };
 
+struct watchman_client_subscription;
+
 struct watchman_client {
   int fd;
   int ping[2];
@@ -300,9 +304,13 @@ struct watchman_client {
   w_jbuffer_t reader, writer;
 
   struct watchman_client_response *head, *tail;
+  /* map of subscription name => struct watchman_client_subscription */
+  w_ht_t *subscriptions;
 
   pthread_mutex_t lock;
 };
+extern pthread_mutex_t w_client_lock;
+extern w_ht_t *clients;
 
 struct watchman_trigger_command {
   w_string_t *triggername;
@@ -393,6 +401,10 @@ uint32_t w_rules_match(w_root_t *root,
     struct watchman_rule_match **results,
     struct watchman_rule *head,
     struct w_clockspec_query *since);
+void w_run_subscription_rules(
+    struct watchman_client *client,
+    struct watchman_client_subscription *sub,
+    w_root_t *root);
 
 json_t *w_match_results_to_json(
     uint32_t num_matches,
@@ -525,13 +537,21 @@ static inline void set_prop(json_t *obj, const char *key, json_t *val)
   json_object_set_new_nocheck(obj, key, val);
 }
 
+#include "watchman_query.h"
+#include "watchman_cmd.h"
+struct watchman_client_subscription {
+  w_root_t *root;
+  w_string_t *name;
+  w_query *query;
+  struct w_clockspec_query since;
+  struct w_query_field_list field_list;
+};
+
 
 #ifdef __cplusplus
 }
 #endif
 
-#include "watchman_query.h"
-#include "watchman_cmd.h"
 
 #endif
 

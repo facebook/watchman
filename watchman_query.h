@@ -94,11 +94,30 @@ w_query_expr *w_query_expr_new(
     void *data
 );
 
+// Allows a generator to process a file node
+// through the query engine
+bool w_query_process_file(
+    w_query *query,
+    struct w_query_ctx *ctx,
+    struct watchman_file *file);
+
+// Generator callback, used to plug in an alternate
+// generator when used in triggers or subscriptions
+typedef bool (*w_query_generator)(
+    w_query *query,
+    w_root_t *root,
+    struct w_query_ctx *ctx,
+    void *gendata
+);
+
 uint32_t w_query_execute(
     w_query *query,
     w_root_t *root,
     uint32_t *ticks,
-    struct watchman_rule_match **results);
+    struct watchman_rule_match **results,
+    w_query_generator generator,
+    void *gendata
+);
 
 
 // Returns a shared reference to the wholename

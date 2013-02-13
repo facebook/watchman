@@ -32,12 +32,6 @@ void cmd_query(struct watchman_client *client, json_t *args)
   query_spec = json_array_get(args, 2);
 
   query = w_query_parse(query_spec, &errmsg);
-  if (!query) {
-    send_error_response(client, "failed to parse query: %s", errmsg);
-    free(errmsg);
-    return;
-  }
-
   jfield_list = json_object_get(query_spec, "fields");
   if (!parse_field_list(jfield_list, &field_list, &errmsg)) {
     send_error_response(client, "invalid field list: %s", errmsg);
@@ -45,7 +39,13 @@ void cmd_query(struct watchman_client *client, json_t *args)
     return;
   }
 
-  num_results = w_query_execute(query, root, &ticks, &results);
+  if (!query) {
+    send_error_response(client, "failed to parse query: %s", errmsg);
+    free(errmsg);
+    return;
+  }
+
+  num_results = w_query_execute(query, root, &ticks, &results, NULL, NULL);
   w_query_delref(query);
 
   file_list = w_query_results_to_json(&field_list, num_results, results);
