@@ -59,6 +59,8 @@ before any non-option arguments.
  -f, --foreground      Run the service in the foreground
 
  -s, --settle          Number of milliseconds to wait for filesystem to settle
+
+ --no-pretty           Don't pretty print the JSON response
 ```
 
  * See `log-level` for an example of when you might use the `persistent` flag

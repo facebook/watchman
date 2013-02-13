@@ -207,6 +207,23 @@ static bool read_response(w_jbuffer_t *reader, int fd)
   json_t *j;
   json_error_t jerr;
 
+  if (no_pretty) {
+    // Just pass through what we get from the server.
+    // We use the buffer space from reader.
+    int x;
+
+    while (true) {
+      x = read(fd, reader->buf, reader->allocd);
+      if (x <= 0) {
+        return true;
+      }
+      fwrite(reader->buf, 1, x, stdout);
+      if (memchr(reader->buf, '\n', x)) {
+        return true;
+      }
+    }
+  }
+
   j = w_json_buffer_next(reader, fd, &jerr);
 
   if (!j) {
@@ -216,7 +233,7 @@ static bool read_response(w_jbuffer_t *reader, int fd)
   }
 
   // Let's just pretty print the JSON response
-  json_dumpf(j, stdout, no_pretty ? 0 : JSON_INDENT(4));
+  json_dumpf(j, stdout, JSON_INDENT(4));
   printf("\n");
 
   json_decref(j);
