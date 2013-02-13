@@ -194,7 +194,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
           idx($where, 'line'),
           basename(idx($where, 'file')));
 
-        $message = "\nwatchman since vs. find result mismatch " .
+        $message = "\nwatchman since vs. find result mismatch\n" .
           json_encode($out) . "\n" .
           json_encode($since) . "\n" .
           $where;
