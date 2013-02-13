@@ -16,6 +16,7 @@ static int persistent = 0;
 int dont_save_state = 0;
 static int foreground = 0;
 static int no_pretty = 0;
+static int no_spawn = 0;
 static struct sockaddr_un un;
 static int json_input_arg = 0;
 
@@ -321,6 +322,8 @@ static struct watchman_getopt opts[] = {
     OPT_NONE, &foreground, NULL },
   { "no-pretty", 0, "Don't pretty print JSON",
     OPT_NONE, &no_pretty, NULL },
+  { "no-spawn", 0, "Don't try to start the service if it is not available",
+    OPT_NONE, &no_spawn, NULL },
   { "settle", 's',
     "Number of milliseconds to wait for filesystem to settle",
     REQ_INT, &trigger_settle, NULL },
@@ -384,14 +387,17 @@ int main(int argc, char **argv)
 
   ran = try_command(cmd, 0);
   if (!ran && should_start(errno)) {
-    unlink(sock_name);
+    if (no_spawn) {
+      ran = try_client_mode_command(cmd, !no_pretty);
+    } else {
+      unlink(sock_name);
 #ifdef USE_GIMLI
-    spawn_via_gimli();
+      spawn_via_gimli();
 #else
-    daemonize();
+      daemonize();
 #endif
-
-    ran = try_command(cmd, 10);
+      ran = try_command(cmd, 10);
+    }
   }
 
   json_decref(cmd);
@@ -400,7 +406,9 @@ int main(int argc, char **argv)
     return 0;
   }
 
-  w_log(W_LOG_ERR, "unable to talk to your watchman!\n");
+  if (!no_spawn) {
+    w_log(W_LOG_ERR, "unable to talk to your watchman!\n");
+  }
   return 1;
 }
 

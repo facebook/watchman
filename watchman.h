@@ -302,6 +302,7 @@ struct watchman_client {
   int ping[2];
   int log_level;
   w_jbuffer_t reader, writer;
+  bool client_mode;
 
   struct watchman_client_response *head, *tail;
   /* map of subscription name => struct watchman_client_subscription */
@@ -360,6 +361,7 @@ w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
 void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
 w_root_t *w_root_new(const char *path);
 w_root_t *w_root_resolve(const char *path, bool auto_watch);
+w_root_t *w_root_resolve_for_client_mode(const char *filename);
 void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, bool recursive);
 

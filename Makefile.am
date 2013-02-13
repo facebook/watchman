@@ -30,6 +30,7 @@ watchman_SOURCES = \
 	query/name.c       \
 	query/fieldlist.c  \
 	listener.c   \
+	clientmode.c \
 	main.c       \
 	root.c       \
 	rules.c      \

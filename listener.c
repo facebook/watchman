@@ -12,9 +12,6 @@ pthread_mutex_t w_client_lock;
 w_ht_t *clients = NULL;
 static int listener_fd;
 
-typedef void (*watchman_command_func)(
-    struct watchman_client *client,
-    json_t *args);
 static w_ht_t *command_funcs = NULL;
 
 json_t *make_response(void)
@@ -297,7 +294,12 @@ w_root_t *resolve_root_or_err(
     return NULL;
   }
 
-  root = w_root_resolve(root_name, create);
+  if (client->client_mode) {
+    root = w_root_resolve_for_client_mode(root_name);
+  } else {
+    root = w_root_resolve(root_name, create);
+  }
+
   if (!root) {
     send_error_response(client,
         "unable to resolve root %s",
@@ -325,10 +327,7 @@ static void cmd_shutdown(
   exit(0);
 }
 
-static struct {
-  const char *name;
-  watchman_command_func func;
-} commands[] = {
+static struct watchman_command_handler_def commands[] = {
   { "find", cmd_find },
   { "since", cmd_since },
   { "query", cmd_query },
@@ -343,6 +342,50 @@ static struct {
   { NULL, NULL }
 };
 
+void register_commands(struct watchman_command_handler_def *defs)
+{
+  int i;
+
+  command_funcs = w_ht_new(16, &w_ht_string_funcs);
+  for (i = 0; defs[i].name; i++) {
+    w_ht_set(command_funcs,
+        (w_ht_val_t)w_string_new(defs[i].name),
+        (w_ht_val_t)defs[i].func);
+  }
+
+  w_query_init_all();
+}
+
+bool dispatch_command(struct watchman_client *client, json_t *args)
+{
+  watchman_command_func func;
+  const char *cmd_name;
+  w_string_t *cmd;
+
+  if (!json_array_size(args)) {
+    send_error_response(client,
+        "invalid command (expected an array with some elements!)");
+    return false;
+  }
+
+  cmd_name = json_string_value(json_array_get(args, 0));
+  if (!cmd_name) {
+    send_error_response(client,
+        "invalid command: expected element 0 to be the command name");
+    return false;
+  }
+  cmd = w_string_new(cmd_name);
+  func = (watchman_command_func)w_ht_get(command_funcs, (w_ht_val_t)cmd);
+  w_string_delref(cmd);
+
+  if (func) {
+    func(client, args);
+    return true;
+  }
+  send_error_response(client, "unknown command %s", cmd_name);
+
+  return false;
+}
 
 // The client thread reads and decodes json packets,
 // then dispatches the commands that it finds
@@ -351,9 +394,6 @@ static struct {
 static void *client_thread(void *ptr)
 {
   struct watchman_client *client = ptr;
-  watchman_command_func func;
-  const char *cmd_name;
-  w_string_t *cmd;
   struct pollfd pfd[2];
   json_t *request;
   json_error_t jerr;
@@ -396,28 +436,7 @@ disconected:
 
         goto disconected;
       } else if (request) {
-        if (!json_array_size(request)) {
-          send_error_response(client,
-              "invalid command (expected an array with some elements!)");
-          continue;
-        }
-
-        cmd_name = json_string_value(json_array_get(request, 0));
-        if (!cmd_name) {
-          send_error_response(client,
-              "invalid command: expected element 0 to be the command name");
-          continue;
-        }
-        cmd = w_string_new(cmd_name);
-        func = (watchman_command_func)w_ht_get(command_funcs, (w_ht_val_t)cmd);
-        w_string_delref(cmd);
-
-        if (func) {
-          func(client, request);
-        } else {
-          send_error_response(client, "unknown command %s", cmd_name);
-        }
-
+        dispatch_command(client, request);
         json_decref(request);
       }
     }
@@ -519,7 +538,6 @@ static void *child_reaper(void *arg)
 
 bool w_start_listener(const char *path)
 {
-  int i;
   struct sockaddr_un un;
   pthread_t thr;
   pthread_attr_t attr;
@@ -536,7 +554,6 @@ bool w_start_listener(const char *path)
 #ifdef HAVE_LIBGIMLI_H
   hb = gimli_heartbeat_attach();
 #endif
-  w_query_init_all();
 
 #ifdef HAVE_KQUEUE
   {
@@ -630,12 +647,7 @@ bool w_start_listener(const char *path)
   }
 
   // Wire up the command handlers
-  command_funcs = w_ht_new(16, &w_ht_string_funcs);
-  for (i = 0; commands[i].name; i++) {
-    w_ht_set(command_funcs,
-        (w_ht_val_t)w_string_new(commands[i].name),
-        (w_ht_val_t)commands[i].func);
-  }
+  register_commands(commands);
 
   w_state_load();
 

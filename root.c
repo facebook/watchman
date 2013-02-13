@@ -1543,6 +1543,27 @@ static bool root_start(w_root_t *root)
   return root;
 }
 
+w_root_t *w_root_resolve_for_client_mode(const char *filename)
+{
+  struct watchman_root *root;
+  bool created = false;
+
+  root = root_resolve(filename, true, &created);
+  if (created) {
+    struct timeval start;
+
+    /* force a walk now */
+    gettimeofday(&start, NULL);
+    w_root_lock(root);
+    w_root_add_pending(root, root->root_path, true, start, false);
+    while (root->pending) {
+      w_root_process_pending(root);
+    }
+    w_root_unlock(root);
+  }
+  return root;
+}
+
 w_root_t *w_root_resolve(const char *filename, bool auto_watch)
 {
   struct watchman_root *root;

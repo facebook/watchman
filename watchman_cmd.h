@@ -8,6 +8,19 @@
 extern "C" {
 #endif
 
+typedef void (*watchman_command_func)(
+    struct watchman_client *client,
+    json_t *args);
+
+struct watchman_command_handler_def {
+  const char *name;
+  watchman_command_func func;
+};
+
+bool dispatch_command(struct watchman_client *client, json_t *args);
+bool try_client_mode_command(json_t *cmd, bool pretty);
+void register_commands(struct watchman_command_handler_def *defs);
+
 void send_error_response(struct watchman_client *client,
     const char *fmt, ...);
 void send_and_dispose_response(struct watchman_client *client,

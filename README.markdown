@@ -64,6 +64,9 @@ before any non-option arguments.
                        object from stdin
 
  --no-pretty           Don't pretty print the JSON response
+
+ --no-spawn            Don't spawn service if it is not already running.
+                       Will try running the command in client mode if possible.
 ```
 
  * See `log-level` for an example of when you might use the `persistent` flag
