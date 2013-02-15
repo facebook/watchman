@@ -390,8 +390,6 @@ bool dispatch_command(struct watchman_client *client, json_t *args)
 
 // The client thread reads and decodes json packets,
 // then dispatches the commands that it finds
-// TODO: want to allow notifications to be sent over
-// the socket as we notice them
 static void *client_thread(void *ptr)
 {
   struct watchman_client *client = ptr;
