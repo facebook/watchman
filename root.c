@@ -1384,24 +1384,9 @@ static void *inotify_thread(void *arg)
             w_string_addref(name);
           }
 
-          if ((ine->mask & IN_ISDIR) == 0 && ine->len) {
-
-            dir = w_root_resolve_dir(root, name, false);
-            if (dir) {
-              // If this is a directory, mark its contents
-              // deleted so that we'll find them again
-              // during crawl
-              w_root_mark_deleted(root, dir, now, false);
-            }
-
-            w_log(W_LOG_DBG, "add_pending for inotify mask=%x %s\n",
-                ine->mask, buf);
-            w_root_add_pending(root, name, true, now, true);
-          } else {
-            w_log(W_LOG_DBG, "ISDIR: add_pending for inotify mask=%x %s\n",
-                ine->mask, name->buf);
-            w_root_add_pending(root, name, true, now, true);
-          }
+          w_log(W_LOG_DBG, "add_pending for inotify mask=%x %s\n",
+              ine->mask, name->buf);
+          w_root_add_pending(root, name, true, now, true);
 
           w_string_delref(name);
         } else {
@@ -1416,12 +1401,11 @@ static void *inotify_thread(void *arg)
           stop_watching_dir(root, dir, false);
         }
       }
+
+      // TODO: handle IN_DELETE_SELF
     }
 
     w_root_unlock(root);
-
-    // TODO: handle IN_DELETE_SELF and/or IN_IGNORED and remove
-    // our wd
   }
 
   return 0;

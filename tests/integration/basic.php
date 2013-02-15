@@ -245,6 +245,43 @@ class basicTestCase extends WatchmanTestCase {
     );
   }
 
+  function testRemove() {
+    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $root = realpath($dir->getPath());
+
+    mkdir("$root/one");
+    touch("$root/one/onefile");
+    mkdir("$root/one/two");
+    touch("$root/one/two/twofile");
+    touch("$root/top");
+
+    $this->watchmanCommand('watch', $root);
+    $this->assertFileList($root, array(
+      'one',
+      'one/onefile',
+      'one/two',
+      'one/two/twofile',
+      'top'
+    ));
+
+    Filesystem::remove("$root/one");
+
+    $this->assertFileList($root, array(
+      'top'
+    ));
+
+    touch("$root/one");
+    $this->assertFileList($root, array(
+      'one',
+      'top'
+    ));
+
+    unlink("$root/one");
+    $this->assertFileList($root, array(
+      'top'
+    ));
+  }
+
   // Verify that we don't generate spurious change observations
   // when we delete files at the top level
   function testBSDishTopLevel() {
