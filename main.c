@@ -212,17 +212,32 @@ static bool read_response(w_jbuffer_t *reader, int fd)
     // Just pass through what we get from the server.
     // We use the buffer space from reader.
     int x;
+    size_t res;
+    char *buf;
+    bool is_done = false;
 
-    while (true) {
+    while (!is_done) {
       x = read(fd, reader->buf, reader->allocd);
       if (x <= 0) {
         return true;
       }
-      fwrite(reader->buf, 1, x, stdout);
+
       if (memchr(reader->buf, '\n', x)) {
-        return true;
+        is_done = true;
+      }
+
+      buf = reader->buf;
+      while (x > 0) {
+        res = fwrite(buf, 1, x, stdout);
+        if (res == 0) {
+          break;
+        }
+        buf += res;
+        x -= res;
       }
     }
+
+    return true;
   }
 
   j = w_json_buffer_next(reader, fd, &jerr);

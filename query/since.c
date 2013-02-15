@@ -21,7 +21,7 @@ static bool eval_since(struct w_query_ctx *ctx,
 {
   struct since_term *term = data;
   w_clock_t clock;
-  time_t tval;
+  time_t tval = 0;
 
   unused_parameter(ctx);
 
