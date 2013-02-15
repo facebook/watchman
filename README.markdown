@@ -258,7 +258,9 @@ specified dir.  If no patterns were specified, all files are returned.
 watchman find /path/to/dir [patterns]
 ```
 
-### Command: query (beta starting in v1.5)
+### Command: query
+
+Available starting in version 1.6
 
 ```bash
 watchman -j <<-EOT
@@ -295,7 +297,9 @@ if it is not present it will default to:
 
 For each file in the result set, the query command will generate a JSON object
 value populated with the requested fields.  For example, the default set of
-fields will return a response something like:
+fields will return a response something like this (`new` is only present if
+you are using the `since` generator and the is new wrt. the since value
+you specified in your query):
 
 ```json
 {
@@ -550,7 +554,7 @@ clock spec.
 ## File queries
 
 This section documents the new file query engine and syntax that is present
-starting in version 1.5.
+starting in version 1.6.
 
 Watchman file queries consist of 1 or more *generators* that feed files through
 the expression evaluator.
@@ -749,6 +753,39 @@ Evaluates as true if the file exists
     "exists"
     ["exists"]
 
+##### since
+
+Evaluates as true if the specified time property of the file is greater than
+the since value.  Note that this is not the same as the `since` generator; when
+used as an expression term we are performing a straight clockspec comparison.
+When used as a generator, candidate files are selected based on the `since`
+time index.  The end result is typically the same but the efficiency can vary
+based on the size and shape of the file tree that you are watching; it may be
+cheaper to generate the candidate set of files by suffix and then check the
+modification time if many files were changed since your last query.
+
+This will yield a true value if the observed change time is more recent than
+the specified clockspec (this is equivalent to specifying "oclock" as the third
+parameter):
+
+     ["since", "c:12345:234"]
+
+You may specify particular fields from the filesystem metadata.  In this case
+your clockspec should be a unix time value:
+
+     ["since", 12345668, "mtime"]
+     ["since", 12345668, "ctime"]
+     ["since", 12345668, "atime"]
+
+You may explicitly request the observed clock values too; in these cases we'll
+accept either a timestamp or a clock value.  The `oclock` is the last observed
+change clock value (observed clock) and the `cclock` is the clock value where
+we first observed the file come into existence (created clock):
+
+     ["since", 12345668, "oclock"]
+     ["since", "c:1234:123", "oclock"]
+     ["since", 12345668, "cclock"]
+     ["since", "c:1234:2342", "cclock"]
 
 ## Build/Install
 
@@ -858,11 +895,10 @@ If you're thinking of hacking on watchman we'd love to hear from you!
 Feel free to use the Github issue tracker and pull requests discuss and
 submit code changes.
 
-We (Facebook) occasionally have to ask for a "Contributor License Agreement"
-from someone who sends in a patch or code that we want to include in the
-codebase.  This is a legal requirement (a similar situation applies in other
-projects, such as Apache and other ASF projects or the Linux kernel). It
-doesn't apply in all cases, just for "big" patches.
+We (Facebook) have to ask for a "Contributor License Agreement" from someone
+who sends in a patch or code that we want to include in the codebase.  This is
+a legal requirement (a similar situation applies in other projects, such as
+Apache and other ASF projects or the Linux kernel).
 
 If we ask you to fill out a CLA we'll direct you to [our online CLA
 page](https://developers.facebook.com/opensource/cla) where you can complete it
@@ -903,10 +939,7 @@ the test suite to cover the functionality that you're adding or changing.
 ## Future
 
  * add a command to remove registered triggers
- * add a hybrid of since and trigger that allows a connected client
-   to receive notifications of file changes over their unix socket
-   connection as they happen.  Disconnecting the client will disable
-   those particular notifications.
+ * add a command to remove registered watches
  * Watchman does not currently follow symlinks.  It would be nice if it
    did, but doing so will add some complexity.
 

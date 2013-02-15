@@ -192,7 +192,7 @@ void cmd_subscribe(struct watchman_client *client, json_t *args)
 
   /* special 'since' handling */
   if (query->since) {
-    if (!w_parse_clockspec(root, query->since, &sub->since)) {
+    if (!w_parse_clockspec(root, query->since, &sub->since, true)) {
       memset(&sub->since, 0, sizeof(sub->since));
     }
   }

@@ -320,7 +320,7 @@ uint32_t w_query_execute(
 
   // Evaluate the cursor; this may establish a lock on root
   if (query->since) {
-    w_parse_clockspec(root, query->since, &ctx.since);
+    w_parse_clockspec(root, query->since, &ctx.since, true);
   }
 
   // Now we can lock the root and begin generation

@@ -24,7 +24,7 @@ void cmd_since(struct watchman_client *client, json_t *args)
   }
 
   clock_ele = json_array_get(args, 2);
-  if (!w_parse_clockspec(root, clock_ele, &since)) {
+  if (!w_parse_clockspec(root, clock_ele, &since, true)) {
     send_error_response(client,
         "expected argument 2 to be a valid clockspec");
     return;

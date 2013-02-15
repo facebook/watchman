@@ -162,6 +162,7 @@ w_query_expr *w_expr_pcre_parser(w_query *query, json_t *term);
 w_query_expr *w_expr_ipcre_parser(w_query *query, json_t *term);
 w_query_expr *w_expr_name_parser(w_query *query, json_t *term);
 w_query_expr *w_expr_iname_parser(w_query *query, json_t *term);
+w_query_expr *w_expr_since_parser(w_query *query, json_t *term);
 
 
 #ifdef __cplusplus

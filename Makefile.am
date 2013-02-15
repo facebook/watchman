@@ -29,6 +29,7 @@ watchman_SOURCES = \
 	query/pcre.c       \
 	query/name.c       \
 	query/fieldlist.c  \
+	query/since.c      \
 	listener.c   \
 	clientmode.c \
 	main.c       \

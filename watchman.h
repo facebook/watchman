@@ -531,7 +531,8 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp);
 
 bool w_parse_clockspec(w_root_t *root,
     json_t *value,
-    struct w_clockspec_query *since);
+    struct w_clockspec_query *since,
+    bool allow_cursor);
 
 // Helps write shorter lines
 static inline void set_prop(json_t *obj, const char *key, json_t *val)

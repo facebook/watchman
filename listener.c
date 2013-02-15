@@ -152,7 +152,8 @@ static const struct watchman_hash_funcs subscription_hash_funcs = {
 // may attempt to lock the root!
 bool w_parse_clockspec(w_root_t *root,
     json_t *value,
-    struct w_clockspec_query *since)
+    struct w_clockspec_query *since,
+    bool allow_cursor)
 {
   const char *str;
   int pid;
@@ -169,7 +170,7 @@ bool w_parse_clockspec(w_root_t *root,
     return false;
   }
 
-  if (str[0] == 'n' && str[1] == ':') {
+  if (allow_cursor && root && str[0] == 'n' && str[1] == ':') {
     w_string_t *name = w_string_new(str);
 
     since->is_timestamp = false;
@@ -197,7 +198,7 @@ bool w_parse_clockspec(w_root_t *root,
   if (sscanf(str, "c:%d:%" PRIu32, &pid, &since->ticks) == 2) {
     since->is_timestamp = false;
     if (pid == getpid()) {
-      if (since->ticks == root->ticks) {
+      if (root && since->ticks == root->ticks) {
         /* Force ticks to increment.  This avoids returning and querying the
          * same tick value over and over when no files have changed in the
          * meantime */
