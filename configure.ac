@@ -1,4 +1,4 @@
-AC_INIT([watchman], [1.5], [], [watchman])
+AC_INIT([watchman], [1.6], [], [watchman])
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects])
 
@@ -29,24 +29,27 @@ AC_ARG_ENABLE(statedir, [
                     [default location for state])
 ])
 
+pcre_config="yes"
 AC_ARG_WITH(pcre, [
-  --with-pcre=PATH  Enable pcre support.  PATH is location of pcre-config
+  --without-pcre       Don't enable pcre support.
+  --with-pcre=PATH     Enable pcre support.  PATH is location of pcre-config.
+                       Default is to enable and look for pcre-config in your
+                       $PATH
 ],[
-  pcre_config=$withval
-  if test "x$withval" != "xno" ; then
-    if test "x$withval" == "xyes" ; then
-      pcre_config="pcre-config"
-    else
-      pcre_config="$withval"
-    fi
-
-    if $pcre_config --version >/dev/null ; then
-      LIBS="$LIBS `$pcre_config --libs`"
-      CFLAGS="$CFLAGS `$pcre_config --cflags`"
-      AC_CHECK_HEADERS(pcre.h)
-    fi
-  fi
+  pcre_config="$withval"
 ])
+
+if test "$pcre_config" != "no" ; then
+  if test "$pcre_config" == "yes" ; then
+    pcre_config="pcre-config"
+  fi
+
+  if $pcre_config --version >/dev/null ; then
+    LIBS="$LIBS `$pcre_config --libs`"
+    CFLAGS="$CFLAGS `$pcre_config --cflags`"
+    AC_CHECK_HEADERS(pcre.h)
+  fi
+fi
 
 
 gimli=no
