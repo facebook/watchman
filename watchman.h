@@ -226,6 +226,9 @@ struct watchman_root {
   uint32_t ticks;
 
   bool done_initial;
+  /* if true, we've decided that we should re-crawl the root
+   * for the sake of ensuring consistency */
+  bool should_recrawl;
 
   /* map of dir name => dirname
    * if the map has an entry for a given dir, we're ignoring it */

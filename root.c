@@ -402,6 +402,15 @@ static struct watchman_file *w_root_resolve_file(w_root_t *root,
   return file;
 }
 
+static void schedule_recrawl(w_root_t *root)
+{
+  if (!root->should_recrawl) {
+    w_log(W_LOG_DBG, "%.*s: something fishy: scheduling a tree recrawl\n",
+        root->root_path->len, root->root_path->buf);
+  }
+  root->should_recrawl = true;
+}
+
 static void stop_watching_dir(w_root_t *root,
     struct watchman_dir *dir, bool do_close)
 {
@@ -431,6 +440,7 @@ static void stop_watching_dir(w_root_t *root,
     w_log(W_LOG_ERR, "rm_watch: %d %.*s %s\n",
         dir->wd, dir->path->len, dir->path->buf,
         strerror(errno));
+    schedule_recrawl(root);
   }
   w_ht_del(root->wd_to_dir, dir->wd);
   w_log(W_LOG_DBG, "removing %d -> %.*s mapping\n",
@@ -1090,6 +1100,17 @@ bool w_root_wait_for_settle(w_root_t *root, int settlems)
   return true;
 }
 
+static void handle_should_recrawl(w_root_t *root)
+{
+  if (root->should_recrawl) {
+    struct timeval now;
+
+    gettimeofday(&now, NULL);
+    root->should_recrawl = false;
+    w_root_add_pending(root, root->root_path, true, now, false);
+  }
+}
+
 static void *stat_thread(void *arg)
 {
   w_root_t *root = arg;
@@ -1110,6 +1131,8 @@ static void *stat_thread(void *arg)
     int err;
 
     w_root_lock(root);
+    handle_should_recrawl(root);
+
     if (!root->pending) {
 
       // Throttle our trigger rate
@@ -1363,16 +1386,20 @@ static void *inotify_thread(void *arg)
         w_log(W_LOG_ERR, "inotify: IN_Q_OVERFLOW, re-crawling %.*s\n",
             root->root_path->len,
             root->root_path->buf);
-
-        w_root_add_pending(root, root->root_path, true, now, false);
+        schedule_recrawl(root);
       } else if (ine->wd != -1) {
         char buf[WATCHMAN_NAME_MAX];
 
-        // If we can't resolve the dir, it's because we already know
-        // that it has gone away; we've already marked its contents
-        // as deleted.
         dir = w_root_resolve_dir_by_wd(root, ine->wd);
         if (dir) {
+          // The hint is that it has gone away, so stop watching it
+          // here.  We'll queue up a stat of that dir anyway, just
+          // in case, which can add back a watch if needed, but that
+          // has to happen /after/ we've removed this watch.
+          if ((ine->mask & IN_IGNORED) == IN_IGNORED) {
+            w_log(W_LOG_DBG, "IN_IGNORED: remove %s\n", dir->path->buf);
+            stop_watching_dir(root, dir, false);
+          }
 
           if (ine->len) {
             snprintf(buf, sizeof(buf), "%.*s/%s",
@@ -1389,22 +1416,21 @@ static void *inotify_thread(void *arg)
           w_root_add_pending(root, name, true, now, true);
 
           w_string_delref(name);
-        } else {
-          w_log(W_LOG_DBG, "wanted dir %d, but not found\n", ine->wd);
-        }
-      }
 
-      if (ine->wd != -1 && (ine->mask & IN_IGNORED) == IN_IGNORED) {
-        dir = w_root_resolve_dir_by_wd(root, ine->wd);
-        if (dir) {
-          w_log(W_LOG_DBG, "IN_IGNORED: remove %s\n", dir->path->buf);
-          stop_watching_dir(root, dir, false);
+        } else if ((ine->mask & IN_IGNORED) != IN_IGNORED) {
+          // If we can't resolve the dir, and this isn't notification
+          // that it has gone away, then we want to recrawl to fix
+          // up our state.
+          w_log(W_LOG_ERR, "wanted dir %d, but not found %.*s\n",
+              ine->wd, ine->len, ine->name);
+          schedule_recrawl(root);
         }
       }
 
       // TODO: handle IN_DELETE_SELF
     }
 
+    handle_should_recrawl(root);
     w_root_unlock(root);
   }
 
