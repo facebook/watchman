@@ -1,5 +1,8 @@
 bin_PROGRAMS = watchman
 
+doc_DATA = README.markdown
+docdir = ${prefix}/share/doc/watchman-$(VERSION)
+
 THIRDPARTY_CPPFLAGS = -Ithirdparty/jansson
 JSON_LIB = -L. -lwmanjson
 

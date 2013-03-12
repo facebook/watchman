@@ -142,14 +142,20 @@ $build
 %files
 %defattr(-,root,root,-)
 $prefix/bin/watchman
+$prefix/share/doc/watchman-*
 $files
 TXT;
 
     file_put_contents("$root/SPEC/watchman.spec", $spec);
 
     echo "Building package $configureargs\n";
-    execx('rpmbuild -bb --nodeps -vv --define "_topdir %C" %s',
+    list($err, $stdout, $stderr) = exec_manual(
+      'rpmbuild -bb --nodeps -vv --define "_topdir %C" %s',
       $root, "$root/SPEC/watchman.spec");
+    if ($err) {
+      echo "$stdout\n$stderr\n";
+      throw new Exception("failed to build");
+    }
 
     $rpms = id(new FileFinder("$root/RPMS"))
       ->withType('f')
