@@ -105,6 +105,20 @@ class triggerTestCase extends WatchmanTestCase {
     $out = $this->watchmanCommand('trigger', $root,
                   'other', '*.c', '--', 'true');
     $this->assertEqual('other', $out['triggerid']);
+
+    $res = $this->watchmanCommand('trigger-del', $root, 'test');
+    $this->assertEqual(true, $res['deleted']);
+    $this->assertEqual('test', $res['trigger']);
+
+    $triggers = $this->watchmanCommand('trigger-list', $root);
+    $this->assertEqual(1, count($triggers['triggers']));
+
+    $res = $this->watchmanCommand('trigger-del', $root, 'other');
+    $this->assertEqual(true, $res['deleted']);
+    $this->assertEqual('other', $res['trigger']);
+
+    $triggers = $this->watchmanCommand('trigger-list', $root);
+    $this->assertEqual(0, count($triggers['triggers']));
   }
 
 }

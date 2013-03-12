@@ -335,6 +335,7 @@ static struct watchman_command_handler_def commands[] = {
   { "watch", cmd_watch },
   { "trigger", cmd_trigger },
   { "trigger-list", cmd_trigger_list },
+  { "trigger-del", cmd_trigger_delete },
   { "subscribe", cmd_subscribe },
   { "unsubscribe", cmd_unsubscribe },
   { "shutdown-server", cmd_shutdown },

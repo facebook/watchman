@@ -3,6 +3,47 @@
 
 #include "watchman.h"
 
+/* trigger-del /root triggername
+ * Delete a trigger from a root
+ */
+void cmd_trigger_delete(struct watchman_client *client, json_t *args)
+{
+  w_root_t *root;
+  json_t *resp;
+  const char *name;
+  w_string_t *tname;
+  bool res;
+
+  root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
+    return;
+  }
+
+  if (json_array_size(args) != 3) {
+    send_error_response(client, "wrong number of arguments");
+    return;
+  }
+  name = json_string_value(json_array_get(args, 2));
+  if (!name) {
+    send_error_response(client, "expected 2nd parameter to be trigger name");
+    return;
+  }
+  tname = w_string_new(name);
+
+  w_root_lock(root);
+  res = w_ht_del(root->commands, (w_ht_val_t)tname);
+  w_root_unlock(root);
+
+  w_state_save();
+
+  w_string_delref(tname);
+
+  resp = make_response();
+  set_prop(resp, "deleted", json_boolean(res));
+  set_prop(resp, "trigger", json_string_nocheck(name));
+  send_and_dispose_response(client, resp);
+}
+
 /* trigger-list /root
  * Displays a list of registered triggers for a given root
  */

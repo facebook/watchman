@@ -54,6 +54,7 @@ void cmd_loglevel(struct watchman_client *client, json_t *args);
 void cmd_log(struct watchman_client *client, json_t *args);
 void cmd_since(struct watchman_client *client, json_t *args);
 void cmd_trigger_list(struct watchman_client *client, json_t *args);
+void cmd_trigger_delete(struct watchman_client *client, json_t *args);
 void cmd_trigger(struct watchman_client *client, json_t *args);
 void cmd_watch(struct watchman_client *client, json_t *args);
 void cmd_query(struct watchman_client *client, json_t *args);
