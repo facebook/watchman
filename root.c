@@ -405,7 +405,7 @@ static struct watchman_file *w_root_resolve_file(w_root_t *root,
 static void schedule_recrawl(w_root_t *root)
 {
   if (!root->should_recrawl) {
-    w_log(W_LOG_DBG, "%.*s: something fishy: scheduling a tree recrawl\n",
+    w_log(W_LOG_ERR, "%.*s: something fishy: scheduling a tree recrawl\n",
         root->root_path->len, root->root_path->buf);
   }
   root->should_recrawl = true;
@@ -455,7 +455,10 @@ static void stop_watching_dir(w_root_t *root,
         0, 0, dir);
 
     if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
-      perror("kevent");
+      w_log(W_LOG_ERR, "rm_watch: %d %.*s %s\n",
+          dir->wd, dir->path->len, dir->path->buf,
+          strerror(errno));
+      schedule_recrawl(root);
     }
 
     close(dir->wd);
