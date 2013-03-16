@@ -264,18 +264,21 @@ class basicTestCase extends WatchmanTestCase {
       'top'
     ));
 
+    $this->watchmanCommand('log', 'debug', 'XXX: remove dir one');
     Filesystem::remove("$root/one");
 
     $this->assertFileList($root, array(
       'top'
     ));
 
+    $this->watchmanCommand('log', 'debug', 'XXX: touch file one');
     touch("$root/one");
     $this->assertFileList($root, array(
       'one',
       'top'
     ));
 
+    $this->watchmanCommand('log', 'debug', 'XXX: unlink file one');
     unlink("$root/one");
     $this->assertFileList($root, array(
       'top'

@@ -71,9 +71,14 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     $deadline = time() + $timeout;
     $res = null;
     while (time() <= $deadline) {
-      $res = $callable();
-      if ($res) {
-        return array(true, $res);
+      try {
+        $res = $callable();
+        if ($res) {
+          return array(true, $res);
+        }
+      } catch (Exception $e) {
+        $res = $e->getMessage();
+        break;
       }
       usleep(30000);
     }
@@ -110,6 +115,11 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
         $out = call_user_func_array(
           array(WatchmanInstance::get(), 'request'),
           $command);
+        if ($out === false) {
+          // Connection terminated
+          $last_output = "watchman went away";
+          throw new Exception($last_output);
+        }
         $last_output = $out;
         if ($have_data($out)) {
           return $out;
@@ -209,8 +219,10 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
       }
 
       $got = $since_files;
-    } else {
+    } elseif (is_array($out)) {
       $got = $sort_func(idx($out, 'files'));
+    } else {
+      $got = $out;
     }
 
     if ($message === null) {

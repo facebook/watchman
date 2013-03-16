@@ -30,7 +30,18 @@ class WatchmanTapEngine extends ArcanistBaseUnitTestEngine {
     $test_dir = $root . "/tests/";
     $futures = array();
 
-    foreach (glob($test_dir . "*.t") as $test) {
+    if ($this->getRunAllTests()) {
+      $paths = glob($test_dir . "*.t");
+    } else {
+      $paths = array();
+      foreach ($this->getPaths() as $path) {
+        if (preg_match("/\.t$/", $path)) {
+          $paths[] = $path;
+        }
+      }
+    }
+
+    foreach ($paths as $test) {
       $relname = substr($test, strlen($test_dir));
       $futures[$relname] = new ExecFuture($test);
     }
@@ -59,6 +70,10 @@ class WatchmanTapEngine extends ArcanistBaseUnitTestEngine {
     }
 
     return $result;
+  }
+
+  protected function supportsRunAllTests() {
+    return true;
   }
 }
 

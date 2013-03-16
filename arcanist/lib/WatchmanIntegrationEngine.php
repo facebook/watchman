@@ -19,8 +19,16 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
     $root = $this->getProjectRoot();
     $test_dir = $root . "/tests/integration/";
 
-    foreach (glob($test_dir . "*.php") as $test) {
-      require_once $test;
+    if ($this->getRunAllTests()) {
+      $paths = glob($test_dir . "*.php");
+    } else {
+      $paths = $this->getPaths();
+    }
+
+    foreach ($paths as $path) {
+      if (preg_match("/\.php$/", $path)) {
+        require_once $path;
+      }
     }
 
     // Take the startup cost of the binary out of the
@@ -38,7 +46,7 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
       // Good enough; let's use it
       $test_case = newv($name, array());
       $test_case->setRoot($root);
-      $test_case->setPaths($this->getPaths());
+      $test_case->setPaths($paths);
       $results[] = $test_case->run();
     }
 

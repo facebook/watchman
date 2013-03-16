@@ -35,11 +35,18 @@ class triggerTestCase extends WatchmanTestCase {
     $this->setLogLevel('off');
 
     $this->waitFor(function () use ($root) {
-      return file_exists("$root/trigger.log");
+      if (file_exists("$root/trigger.log")) {
+        return preg_match(
+          '/foo.c/',
+          file_get_contents("$root/trigger.log")
+        );
+      }
+      return false;
     }, 5, "created trigger.log");
 
+    $logdata = file_get_contents("$root/trigger.log");
     $this->assertRegex('/^foo.c$/m',
-      file_get_contents("$root/trigger.log"),
+      $logdata,
       "got the right filename in the log");
 
     // Validate that the json input is properly formatted
