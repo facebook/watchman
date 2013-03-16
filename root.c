@@ -153,7 +153,7 @@ bool w_root_add_pending(w_root_t *root, w_string_t *path,
     return false;
   }
 
-  w_log(W_LOG_DBG, "add_pending: %s\n", path->buf);
+  w_log(W_LOG_DBG, "add_pending: %.*s\n", path->len, path->buf);
 
   p->recursive = recursive;
   p->now = now;
@@ -416,6 +416,11 @@ static void stop_watching_dir(w_root_t *root,
 {
   w_ht_iter_t i;
 
+#ifdef HAVE_INOTIFY_INIT
+  // Linux removes watches for us at the appropriate times
+  return;
+#endif
+
   w_log(W_LOG_DBG, "stop_watching_dir %.*s\n",
       dir->path->len, dir->path->buf);
 
@@ -552,6 +557,8 @@ static void stat_path(w_root_t *root,
       stop_watching_dir(root, dir_ent, true);
     }
     if (file) {
+      w_log(W_LOG_DBG, "lstat(%s) -> %s so marking %.*s deleted\n",
+          path, strerror(errno), file->name->len, file->name->buf);
       file->exists = false;
       w_root_mark_file_changed(root, file, now);
     }
@@ -620,6 +627,9 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
     struct watchman_file *file = (struct watchman_file*)i.value;
 
     if (file->exists) {
+      w_log(W_LOG_DBG, "mark_deleted: %.*s/%.*s\n",
+          dir->path->len, dir->path->buf,
+          file->name->len, file->name->buf);
       file->exists = false;
       w_root_mark_file_changed(root, file, now);
     }
@@ -648,16 +658,20 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   DIR *osdir;
   struct dirent *dirent;
   w_ht_iter_t i;
+  char path[WATCHMAN_NAME_MAX];
 
   dir = w_root_resolve_dir(root, dir_name, true);
 
-  w_log(W_LOG_DBG, "opendir(%.*s) recursive=%s\n",
-      dir_name->len, dir_name->buf, recursive ? "true" : "false");
-  osdir = opendir(dir_name->buf);
+  memcpy(path, dir_name->buf, dir_name->len);
+  path[dir_name->len] = 0;
+
+  w_log(W_LOG_DBG, "opendir(%s) recursive=%s\n",
+      path, recursive ? "true" : "false");
+  osdir = opendir(path);
   if (!osdir) {
     if (errno == ENOENT || errno == ENOTDIR) {
       w_log(W_LOG_DBG, "opendir(%s) -> %s so stopping watch\n",
-          dir_name->buf, strerror(errno));
+          path, strerror(errno));
       stop_watching_dir(root, dir, true);
       w_root_mark_deleted(root, dir, now, true);
     }
@@ -666,19 +680,18 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
 
   /* make sure we're watching this guy */
   if (dir->wd == -1) {
-    w_log(W_LOG_DBG, "watch_dir(%s)\n", dir_name->buf);
+    w_log(W_LOG_DBG, "watch_dir(%s)\n", path);
 #if HAVE_INOTIFY_INIT
-    dir->wd = inotify_add_watch(root->infd, dir_name->buf,
+    dir->wd = inotify_add_watch(root->infd, path,
         WATCHMAN_INOTIFY_MASK);
     /* record mapping */
     if (dir->wd != -1) {
       w_ht_replace(root->wd_to_dir, dir->wd, (w_ht_val_t)dir);
-      w_log(W_LOG_DBG, "adding %d -> %.*s mapping\n",
-          dir->wd, dir_name->len, dir_name->buf);
+      w_log(W_LOG_DBG, "adding %d -> %s mapping\n", dir->wd, path);
     }
 #endif
 #if HAVE_KQUEUE
-    dir->wd = open(dir_name->buf, O_EVTONLY);
+    dir->wd = open(path, O_EVTONLY);
     if (dir->wd != -1) {
       struct kevent k;
 
@@ -691,20 +704,20 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
 
       if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
         w_log(W_LOG_DBG, "kevent EV_ADD dir %s failed: %s",
-            dir_name->buf, strerror(errno));
+            path, strerror(errno));
         close(dir->wd);
         dir->wd = -1;
       }
     } else {
       w_log(W_LOG_DBG, "couldn't open dir %s for watching: %s\n",
-          dir_name->buf, strerror(errno));
+          path, strerror(errno));
     }
 #endif
 #if HAVE_PORT_CREATE
     {
       struct stat st;
 
-      lstat(dir_name->buf, &st);
+      lstat(path, &st);
       dir->port_file.fo_atime = st.st_atim;
       dir->port_file.fo_mtime = st.st_mtim;
       dir->port_file.fo_ctime = st.st_ctim;
@@ -1395,13 +1408,17 @@ static void *inotify_thread(void *arg)
 
         dir = w_root_resolve_dir_by_wd(root, ine->wd);
         if (dir) {
-          // The hint is that it has gone away, so stop watching it
-          // here.  We'll queue up a stat of that dir anyway, just
-          // in case, which can add back a watch if needed, but that
-          // has to happen /after/ we've removed this watch.
-          if ((ine->mask & IN_IGNORED) == IN_IGNORED) {
-            w_log(W_LOG_DBG, "IN_IGNORED: remove %s\n", dir->path->buf);
-            stop_watching_dir(root, dir, false);
+          // The hint is that it has gone away, so remove our wd mapping here.
+          // We'll queue up a stat of that dir anyway so that we really know
+          // the state of that path, but that has to happen /after/ we've
+          // removed this watch.
+          if ((ine->mask & IN_IGNORED) != 0) {
+            w_log(W_LOG_DBG, "mask=%x: remove watch %d %.*s\n", ine->mask,
+                dir->wd, dir->path->len, dir->path->buf);
+            if (dir->wd != -1) {
+              w_ht_del(root->wd_to_dir, dir->wd);
+              dir->wd = -1;
+            }
           }
 
           if (ine->len) {
@@ -1414,8 +1431,18 @@ static void *inotify_thread(void *arg)
             w_string_addref(name);
           }
 
-          w_log(W_LOG_DBG, "add_pending for inotify mask=%x %s\n",
-              ine->mask, name->buf);
+          if ((ine->mask & (IN_IGNORED|IN_DELETE_SELF|IN_MOVE_SELF)) != 0 &&
+              !w_string_equal(root->root_path, name)) {
+            // We need to examine the parent and crawl down
+            w_string_t *pname = w_string_dirname(name);
+            w_log(W_LOG_DBG, "mask=%x, focus on parent: %.*s\n",
+                ine->mask, pname->len, pname->buf);
+            w_string_delref(name);
+            name = pname;
+          }
+
+          w_log(W_LOG_DBG, "add_pending for inotify mask=%x %.*s\n",
+              ine->mask, name->len, name->buf);
           w_root_add_pending(root, name, true, now, true);
 
           w_string_delref(name);
