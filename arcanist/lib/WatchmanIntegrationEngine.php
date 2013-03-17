@@ -26,7 +26,7 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
     }
 
     foreach ($paths as $path) {
-      if (preg_match("/\.php$/", $path)) {
+      if (preg_match("/\.php$/", $path) && file_exists($path)) {
         require_once $path;
       }
     }

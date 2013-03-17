@@ -938,7 +938,7 @@ yourself outside of make.
 
 You can run the unit tests using:
 
-    arc unit
+    arc unit --everything
 
 If you'd like to contribute a patch to watchman, we'll ask you to make sure
 that `arc unit` still passess successfully and we'd ideally like you to augment

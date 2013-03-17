@@ -92,7 +92,7 @@ build-tests: $(TESTS)
 .PHONY: lint build-tests integration
 # run integration AND unit tests
 integration:
-	arc unit --engine WatchmanIntegrationEngine
+	arc unit --everything
 
 tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
 tests_argv_t_LDADD = $(JSON_LIB) $(TAP_LIB)

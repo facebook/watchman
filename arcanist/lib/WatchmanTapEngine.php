@@ -35,7 +35,7 @@ class WatchmanTapEngine extends ArcanistBaseUnitTestEngine {
     } else {
       $paths = array();
       foreach ($this->getPaths() as $path) {
-        if (preg_match("/\.t$/", $path)) {
+        if (preg_match("/\.t$/", $path) && file_exists($path)) {
           $paths[] = $path;
         }
       }
