@@ -994,8 +994,6 @@ the test suite to cover the functionality that you're adding or changing.
 
 ## Future
 
- * add a command to remove registered triggers
- * add a command to remove registered watches
  * Watchman does not currently follow symlinks.  It would be nice if it
    did, but doing so will add some complexity.
 
