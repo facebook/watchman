@@ -3,6 +3,11 @@
 
 #include "watchman.h"
 
+#ifndef FNM_CASEFOLD
+# define FNM_CASEFOLD 0
+# define NO_CASELESS_FNMATCH 1
+#endif
+
 struct match_data {
   char *pattern;
   bool caseless;
@@ -73,7 +78,14 @@ w_query_expr *w_expr_match_parser(w_query *query, json_t *term)
 
 w_query_expr *w_expr_imatch_parser(w_query *query, json_t *term)
 {
+#ifdef NO_CASELESS_FNMATCH
+  unused_parameter(term);
+  asprintf(&query->errmsg,
+      "imatch: Your system doesn't support FNM_CASEFOLD");
+  return NULL;
+#else
   return match_parser(query, term, true);
+#endif
 }
 
 /* vim:ts=2:sw=2:et:

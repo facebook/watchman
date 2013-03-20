@@ -25,16 +25,26 @@ class sinceTestCase extends WatchmanTestCase {
     touch("$root/foo/bar/222");
 
     $this->watchmanCommand('log', 'debug', 'XXX: wait to observe lists');
+
+
+    $since = array(
+      'foo/bar',
+      'foo/bar/222'
+    );
+    if (PHP_OS == 'SunOS') {
+      // This makes me sad, but Solaris reports the parent dir
+      // as changed when we mkdir within it
+      array_unshift($since, 'foo');
+    }
+
     $this->assertFileListUsingSince($root, 'n:foo',
       array(
         'foo',
         'foo/111',
         'foo/bar',
         'foo/bar/222'
-      ), array(
-        'foo/bar',
-        'foo/bar/222'
-      )
+      ),
+      $since
     );
     $this->watchmanCommand('log', 'debug', 'XXX: closing out');
 

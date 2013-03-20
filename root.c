@@ -430,6 +430,7 @@ static struct watchman_file *w_root_resolve_file(w_root_t *root,
   return file;
 }
 
+#ifndef HAVE_PORT_CREATE
 static void schedule_recrawl(w_root_t *root)
 {
   if (!root->should_recrawl) {
@@ -438,6 +439,7 @@ static void schedule_recrawl(w_root_t *root)
   }
   root->should_recrawl = true;
 }
+#endif
 
 static void stop_watching_dir(w_root_t *root,
     struct watchman_dir *dir, bool do_close)
@@ -540,7 +542,7 @@ static void stat_path(w_root_t *root,
     w_string_t *full_path, struct timeval now, bool recursive, bool via_notify)
 {
   struct stat st;
-  int res;
+  int res, err;
   char path[WATCHMAN_NAME_MAX];
   struct watchman_dir *dir;
   struct watchman_dir *dir_ent = NULL;
@@ -574,25 +576,26 @@ static void stat_path(w_root_t *root,
   }
 
   res = lstat(path, &st);
+  err = res == 0 ? 0 : errno;
   w_log(W_LOG_DBG, "lstat(%s) file=%p dir=%p\n", path, file, dir_ent);
 
-  if (res && (errno == ENOENT || errno == ENOTDIR)) {
+  if (res && (err == ENOENT || err == ENOTDIR)) {
     /* it's not there, update our state */
     if (dir_ent) {
       w_root_mark_deleted(root, dir_ent, now, true);
       w_log(W_LOG_DBG, "lstat(%s) -> %s so stopping watch on %s\n",
-          path, strerror(errno), dir_ent->path->buf);
+          path, strerror(err), dir_ent->path->buf);
       stop_watching_dir(root, dir_ent, true);
     }
     if (file) {
       w_log(W_LOG_DBG, "lstat(%s) -> %s so marking %.*s deleted\n",
-          path, strerror(errno), file->name->len, file->name->buf);
+          path, strerror(err), file->name->len, file->name->buf);
       file->exists = false;
       w_root_mark_file_changed(root, file, now);
     }
   } else if (res) {
     w_log(W_LOG_ERR, "lstat(%s) %d %s\n",
-        path, errno, strerror(errno));
+        path, err, strerror(err));
   } else {
     if (!file) {
       file = w_root_resolve_file(root, dir, file_name, now);
@@ -687,6 +690,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   struct dirent *dirent;
   w_ht_iter_t i;
   char path[WATCHMAN_NAME_MAX];
+  int err;
 
   dir = w_root_resolve_dir(root, dir_name, true);
 
@@ -697,17 +701,18 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       path, recursive ? "true" : "false");
   osdir = opendir(path);
   if (!osdir) {
-    if (errno == ENOENT || errno == ENOTDIR) {
+    err = errno;
+    if (err == ENOENT || err == ENOTDIR) {
       if (w_string_equal(dir_name, root->root_path)) {
         w_log(W_LOG_ERR,
             "opendir(%s) -> %s. Root was deleted; cancelling watch\n",
-            path, strerror(errno));
+            path, strerror(err));
         w_root_cancel(root);
         return;
       }
 
       w_log(W_LOG_DBG, "opendir(%s) -> %s so stopping watch\n",
-          path, strerror(errno));
+          path, strerror(err));
       stop_watching_dir(root, dir, true);
       w_root_mark_deleted(root, dir, now, true);
     }
@@ -1261,6 +1266,9 @@ static int consume_kqueue(w_root_t *root, w_ht_t *batch,
         timeout ? &ts : NULL);
   w_log(W_LOG_DBG, "consume_kqueue: %s timeout=%d n=%d err=%s\n",
       root->root_path->buf, timeout, n, strerror(errno));
+  if (root->cancelled) {
+    return 0;
+  }
 
   for (i = 0; n > 0 && i < n; i++) {
     intptr_t p = (intptr_t)k[i].udata;
@@ -1306,6 +1314,9 @@ static void kqueue_thread(w_root_t *root)
     while (n > 0) {
       n = consume_kqueue(root, batch, true);
     }
+    if (root->cancelled) {
+      break;
+    }
 
     w_log(W_LOG_DBG, "Have %d events in %s\n",
         w_ht_size(batch), root->root_path->buf);
@@ -1338,6 +1349,10 @@ static void kqueue_thread(w_root_t *root)
       batch = NULL;
     }
   }
+
+  if (batch) {
+    w_ht_free(batch);
+  }
 }
 
 #endif
@@ -1350,6 +1365,9 @@ static void portfs_thread(w_root_t *root)
     uint_t i, n;
     struct timeval now;
 
+    if (root->cancelled) {
+      break;
+    }
 
     n = 1;
     if (port_getn(root->port_fd, events,
@@ -1710,7 +1728,7 @@ static void *run_notify_thread(void *arg)
 #elif HAVE_PORT_CREATE
   portfs_thread(root);
 #else
-# error I don't support this system
+# error I dont support this system
 #endif
 
   w_log(W_LOG_DBG, "notify_thread: out of loop %s\n",

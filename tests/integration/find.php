@@ -49,10 +49,10 @@ class findTestCase extends WatchmanTestCase {
       'foo.c',
     ));
 
-    $roots = $this->watchmanCommand('watch-list')['roots'];
+    $list = $this->watchmanCommand('watch-list');
     $this->assertEqual(
       true,
-      in_array($root, $roots)
+      in_array($root, $list['roots'])
     );
 
     $del = $this->watchmanCommand('watch-del', $root);

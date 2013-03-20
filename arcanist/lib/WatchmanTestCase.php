@@ -216,6 +216,10 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
           json_encode($out) . "\n" .
           json_encode($since) . "\n" .
           $where;
+
+        $message .= "\nsince_files = " . json_encode($since_files) .
+                    "\ngot_files = " . json_encode($files) . "\n";
+
       }
 
       $got = $since_files;

@@ -32,15 +32,21 @@ class movereaddTestCase extends WatchmanTestCase {
 
     $this->watchmanCommand('log', 'debug', 'XXX: mkdir foo/bar');
     mkdir("$root/foo/bar");
+
+    $since = array('foo/bar');
+    if (PHP_OS == 'SunOS') {
+      // This makes me sad, but Solaris reports the parent dir
+      // as changed when we mkdir within it
+      array_unshift($since, 'foo');
+    }
+
     $this->assertFileListUsingSince($root, 'n:foo',
       array(
         'foo',
         'foo/222',
         'foo/bar',
       ),
-      array(
-        'foo/bar'
-      )
+      $since
     );
 
     $this->watchmanCommand('log', 'debug', 'XXX: rmdir foo/bar');
