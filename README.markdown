@@ -171,6 +171,53 @@ already.  A newly watched directory is processed in a couple of stages:
 Unless `no-state-save` is in use, watches are saved and re-established across
 a process restart.
 
+### Command: watch-list
+
+Returns a list of watched dirs.
+
+From the command line:
+
+```bash
+watchman watch-list
+```
+
+JSON:
+
+```json
+["watch-list"]
+```
+
+Result:
+
+```json
+{
+    "version": "1.9",
+    "roots": [
+        "/home/wez/watchman"
+    ]
+}
+```
+
+### Command: watch-del
+
+Removes a watch.
+
+From the command line:
+
+```bash
+watchman watch-del /path/to/dir
+```
+
+JSON:
+
+```json
+["watch-del", "/path/to/dir"]
+```
+
+Unless `no-state-save` is in use, the removed watch will also be removed
+from the state file and will not be automatically watched if/when watchman
+is restarted.
+
 ### Command: trigger
 
 Sets up a trigger such that if any files under the specified dir that match the

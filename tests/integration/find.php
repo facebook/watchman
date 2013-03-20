@@ -48,6 +48,22 @@ class findTestCase extends WatchmanTestCase {
       'bdir/overhere/file',
       'foo.c',
     ));
+
+    $roots = $this->watchmanCommand('watch-list')['roots'];
+    $this->assertEqual(
+      true,
+      in_array($root, $roots)
+    );
+
+    $del = $this->watchmanCommand('watch-del', $root);
+
+    $watches = $this->waitForWatchman(
+      array('watch-list'),
+      function ($list) {
+        return count($list['roots']) == 0;
+      }
+    );
+    $this->assertEqual(array(), $watches['roots']);
   }
 }
 

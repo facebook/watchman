@@ -21,11 +21,13 @@ void cmd_trigger_delete(struct watchman_client *client, json_t *args)
 
   if (json_array_size(args) != 3) {
     send_error_response(client, "wrong number of arguments");
+    w_root_delref(root);
     return;
   }
   name = json_string_value(json_array_get(args, 2));
   if (!name) {
     send_error_response(client, "expected 2nd parameter to be trigger name");
+    w_root_delref(root);
     return;
   }
   tname = w_string_new(name);
@@ -42,6 +44,7 @@ void cmd_trigger_delete(struct watchman_client *client, json_t *args)
   set_prop(resp, "deleted", json_boolean(res));
   set_prop(resp, "trigger", json_string_nocheck(name));
   send_and_dispose_response(client, resp);
+  w_root_delref(root);
 }
 
 /* trigger-list /root
@@ -65,6 +68,7 @@ void cmd_trigger_list(struct watchman_client *client, json_t *args)
 
   set_prop(resp, "triggers", arr);
   send_and_dispose_response(client, resp);
+  w_root_delref(root);
 }
 
 /* trigger /root triggername [watch patterns] -- cmd to run
@@ -87,28 +91,28 @@ void cmd_trigger(struct watchman_client *client, json_t *args)
 
   if (json_array_size(args) < 2) {
     send_error_response(client, "not enough arguments");
-    return;
+    goto done;
   }
   name = json_string_value(json_array_get(args, 2));
   if (!name) {
     send_error_response(client, "expected 2nd parameter to be trigger name");
-    return;
+    goto done;
   }
 
   if (!parse_watch_params(3, args, &rules, &next_arg, buf, sizeof(buf))) {
     send_error_response(client, "invalid rule spec: %s", buf);
-    return;
+    goto done;
   }
 
   if (next_arg >= json_array_size(args)) {
     send_error_response(client, "no command was specified");
-    return;
+    goto done;
   }
 
   cmd = calloc(1, sizeof(*cmd));
   if (!cmd) {
     send_error_response(client, "no memory!");
-    return;
+    goto done;
   }
 
   cmd->rules = rules;
@@ -117,7 +121,7 @@ void cmd_trigger(struct watchman_client *client, json_t *args)
   if (!cmd->argv) {
     free(cmd);
     send_error_response(client, "unable to build argv array");
-    return;
+    goto done;
   }
 
   cmd->triggername = w_string_new(name);
@@ -130,6 +134,8 @@ void cmd_trigger(struct watchman_client *client, json_t *args)
   resp = make_response();
   set_prop(resp, "triggerid", json_string_nocheck(name));
   send_and_dispose_response(client, resp);
+done:
+  w_root_delref(root);
 }
 
 

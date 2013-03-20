@@ -210,7 +210,7 @@ class WatchmanInstance {
       if ($frame->file) {
         $origin = sprintf("%s:%d", $frame->file, $frame->line);
       } else {
-        $origin = $frame->obj;
+        $origin = (string)$frame->obj;
       }
       $text .= sprintf("\n  %40s   %s",
         $origin,
@@ -221,18 +221,29 @@ class WatchmanInstance {
 
   private function renderVGResult($err) {
     $text = "";
-    if (isset($err->xwhat)) {
-      $text .= (string)$err->xwhat->text;
-    }
-    if (isset($err->what)) {
+    $want = array(
+      'stack' => true,
+      'xwhat' => true,
+      'what' => true,
+      'auxwhat' => true,
+    );
+    foreach ($err as $k => $elem) {
+      if (!isset($want[$k])) {
+        continue;
+      }
+      if ($k == 'stack') {
+        $v = $this->renderVGStack($elem);
+      } elseif ($k == 'xwhat') {
+        $v = (string)$elem->text;
+      } elseif ($k == 'what') {
+        $v = (string)$elem;
+      } elseif ($k == 'auxwhat') {
+        $v = (string)$elem;
+      }
+
       if (strlen($text)) $text .= "\n";
-      $text .= (string)$err->what;
+      $text .= $v;
     }
-    if (isset($err->auxwhat)) {
-      if (strlen($text)) $text .= "\n";
-      $text .= (string)$err->auxwhat;
-    }
-    $text .= $this->renderVGStack($err->stack);
 
     return $text;
   }
@@ -251,10 +262,27 @@ class WatchmanInstance {
 
     // valgrind seems to use an interesting definition of valid XML.
     // Tolerate having multiple documents in one file.
-    $xml_data = file_get_contents($this->vg_log . '.xml');
-    preg_match_all(',<valgrindoutput>.*</valgrindoutput>,Usm',
-      $xml_data, $matches);
-    foreach ($matches[0] as $data) {
+    // Confluence of weird bugs; hhvm has very low preg_match limits
+    // so we have to grovel around to make sure that we read this
+    // stuff in properly :-/
+    $documents = array();
+    $in_doc = false;
+    $doc = null;
+    foreach (file($this->vg_log . '.xml') as $line) {
+      if ($in_doc) {
+        $doc[] = $line;
+        if (preg_match(',</valgrindoutput>,', $line)) {
+          $documents[] = implode("\n", $doc);
+          $doc = null;
+        }
+      } else {
+        if (preg_match(',<valgrindoutput>,', $line)) {
+          $doc = array($line);
+          $in_doc = true;
+        }
+      }
+    }
+    foreach ($documents as $data) {
       $vg = simplexml_load_string($data);
       if (is_object($vg)) {
         foreach ($vg->error as $err) {
@@ -340,18 +368,19 @@ class WatchmanInstance {
     if (!$this->proc) {
       return;
     }
+    $timeout = $this->valgrind ? 20 : 5;
     if ($this->sock) {
       $this->request('shutdown-server');
-      $st = $this->waitForStop(5);
+      $st = $this->waitForStop($timeout);
     } else {
       $st = proc_get_status($this->proc);
     }
 
     if ($st['running']) {
-      echo "Didn't stop after 5 seconds, sending signal\n";
+      echo "Didn't stop after $timeout seconds, sending signal\n";
       system("gstack " . $st['pid']);
       proc_terminate($this->proc);
-      $st = $this->waitForStop(5);
+      $st = $this->waitForStop($timeout);
       if ($st['running']) {
         echo "Still didn't stop, sending bigger signal\n";
         proc_terminate($this->proc, 9);
@@ -367,6 +396,9 @@ class WatchmanInstance {
       readfile($this->logfile);
     }
     copy($this->logfile, '/tmp/watchman-test.log');
+    if (file_exists($this->vg_log.'.xml')) {
+      copy($this->vg_log.'.xml', "/tmp/watchman-valgrind.xml");
+    }
   }
 
   function __destruct() {

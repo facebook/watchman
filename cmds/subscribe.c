@@ -114,6 +114,7 @@ void cmd_unsubscribe(struct watchman_client *client, json_t *args)
   if (!name) {
     send_error_response(client,
         "expected 2nd parameter to be subscription name");
+    w_root_delref(root);
     return;
   }
 
@@ -130,6 +131,7 @@ void cmd_unsubscribe(struct watchman_client *client, json_t *args)
   set_prop(resp, "deleted", json_boolean(deleted));
 
   send_and_dispose_response(client, resp);
+  w_root_delref(root);
 }
 
 /* subscribe /root subname {query}
@@ -160,7 +162,7 @@ void cmd_subscribe(struct watchman_client *client, json_t *args)
   if (!name) {
     send_error_response(client,
         "expected 2nd parameter to be subscription name");
-    return;
+    goto done;
   }
 
   query_spec = json_array_get(args, 3);
@@ -169,20 +171,20 @@ void cmd_subscribe(struct watchman_client *client, json_t *args)
   if (!parse_field_list(jfield_list, &field_list, &errmsg)) {
     send_error_response(client, "invalid field list: %s", errmsg);
     free(errmsg);
-    return;
+    goto done;
   }
 
   query = w_query_parse(query_spec, &errmsg);
   if (!query) {
     send_error_response(client, "failed to parse query: %s", errmsg);
     free(errmsg);
-    return;
+    goto done;
   }
 
   sub = calloc(1, sizeof(*sub));
   if (!sub) {
     send_error_response(client, "no memory!");
-    return;
+    goto done;
   }
 
   sub->name = w_string_new(name);
@@ -210,6 +212,8 @@ void cmd_subscribe(struct watchman_client *client, json_t *args)
   if (resp) {
     send_and_dispose_response(client, resp);
   }
+done:
+  w_root_delref(root);
 }
 
 

@@ -209,6 +209,7 @@ struct watchman_root {
 #if HAVE_PORT_CREATE
   int port_fd;
 #endif
+  int refcnt;
 
   /* path to root */
   w_string_t *root_path;
@@ -229,6 +230,7 @@ struct watchman_root {
   /* if true, we've decided that we should re-crawl the root
    * for the sake of ensuring consistency */
   bool should_recrawl;
+  bool cancelled;
 
   /* map of dir name => dirname
    * if the map has an entry for a given dir, we're ignoring it */
@@ -252,6 +254,14 @@ struct watchman_root {
   /* our locking granularity is per-root */
   pthread_mutex_t lock;
   pthread_cond_t cond;
+
+  pthread_t stat_thread;
+  pthread_t notify_thread;
+#if HAVE_INOTIFY_INIT
+  // Make the buffer big enough for 16k entries, which
+  // happens to be the default fs.inotify.max_queued_events
+  char ibuf[(16 * 1024) * (sizeof(struct inotify_event) + 256)];
+#endif
 };
 
 struct watchman_rule {
@@ -362,11 +372,16 @@ w_string_t *w_string_dirname(w_string_t *str);
 w_string_t *w_string_basename(w_string_t *str);
 w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
 void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
-w_root_t *w_root_new(const char *path);
 w_root_t *w_root_resolve(const char *path, bool auto_watch);
 w_root_t *w_root_resolve_for_client_mode(const char *filename);
+void w_root_free_watched_roots(void);
+bool w_root_cancel(w_root_t *root);
+bool w_root_stop_watch(w_root_t *root);
 void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, bool recursive);
+void w_root_reap(void);
+void w_root_delref(w_root_t *root);
+void w_root_addref(w_root_t *root);
 
 struct watchman_dir *w_root_resolve_dir(w_root_t *root,
     w_string_t *dir_name, bool create);
@@ -497,6 +512,7 @@ bool w_state_load(void);
 bool w_root_save_state(json_t *state);
 bool w_root_load_state(json_t *state);
 json_t *w_root_trigger_list_to_json(w_root_t *root);
+json_t *w_root_watch_list_to_json(void);
 
 bool w_start_listener(const char *socket_path);
 char **w_argv_copy_from_json(json_t *arr, int skip);

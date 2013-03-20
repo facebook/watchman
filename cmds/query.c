@@ -36,12 +36,14 @@ void cmd_query(struct watchman_client *client, json_t *args)
   if (!parse_field_list(jfield_list, &field_list, &errmsg)) {
     send_error_response(client, "invalid field list: %s", errmsg);
     free(errmsg);
+    w_root_delref(root);
     return;
   }
 
   if (!query) {
     send_error_response(client, "failed to parse query: %s", errmsg);
     free(errmsg);
+    w_root_delref(root);
     return;
   }
 
@@ -58,6 +60,7 @@ void cmd_query(struct watchman_client *client, json_t *args)
   set_prop(response, "files", file_list);
 
   send_and_dispose_response(client, response);
+  w_root_delref(root);
 }
 
 

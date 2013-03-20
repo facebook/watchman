@@ -6,6 +6,7 @@
 // Maps pid => root
 static w_ht_t *running_kids = NULL;
 static w_ht_t *watched_roots = NULL;
+static int live_roots = 0;
 static pthread_mutex_t root_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t spawn_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -55,7 +56,32 @@ static const struct watchman_hash_funcs trigger_hash_funcs = {
   delete_trigger
 };
 
-w_root_t *w_root_new(const char *path)
+static void delete_dir(w_ht_val_t val)
+{
+  struct watchman_dir *dir;
+
+  dir = (struct watchman_dir*)val;
+
+  w_string_delref(dir->path);
+  if (dir->files) {
+    w_ht_free(dir->files);
+  }
+  if (dir->dirs) {
+    w_ht_free(dir->dirs);
+  }
+  free(dir);
+}
+
+static const struct watchman_hash_funcs dirname_hash_funcs = {
+  w_ht_string_copy,
+  w_ht_string_del,
+  w_ht_string_equal,
+  w_ht_string_hash,
+  NULL,
+  delete_dir
+};
+
+static w_root_t *w_root_new(const char *path)
 {
   w_root_t *root = calloc(1, sizeof(*root));
   struct watchman_dir *dir;
@@ -63,6 +89,8 @@ w_root_t *w_root_new(const char *path)
 
   assert(root != NULL);
 
+  root->refcnt = 1;
+  w_refcnt_add(&live_roots);
   pthread_mutexattr_init(&attr);
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
   pthread_mutex_init(&root->lock, &attr);
@@ -107,7 +135,7 @@ w_root_t *w_root_new(const char *path)
   root->port_fd = port_create();
   w_set_cloexec(root->port_fd);
 #endif
-  root->dirname_to_dir = w_ht_new(HINT_NUM_DIRS, &w_ht_string_funcs);
+  root->dirname_to_dir = w_ht_new(HINT_NUM_DIRS, &dirname_hash_funcs);
   root->commands = w_ht_new(2, &trigger_hash_funcs);
   root->ticks = 1;
 
@@ -670,6 +698,14 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   osdir = opendir(path);
   if (!osdir) {
     if (errno == ENOENT || errno == ENOTDIR) {
+      if (w_string_equal(dir_name, root->root_path)) {
+        w_log(W_LOG_ERR,
+            "opendir(%s) -> %s. Root was deleted; cancelling watch\n",
+            path, strerror(errno));
+        w_root_cancel(root);
+        return;
+      }
+
       w_log(W_LOG_DBG, "opendir(%s) -> %s so stopping watch\n",
           path, strerror(errno));
       stop_watching_dir(root, dir, true);
@@ -1147,6 +1183,10 @@ static void *stat_thread(void *arg)
     int err;
 
     w_root_lock(root);
+    if (root->cancelled) {
+      w_root_unlock(root);
+      break;
+    }
     handle_should_recrawl(root);
 
     if (!root->pending) {
@@ -1188,9 +1228,17 @@ static void *stat_thread(void *arg)
       }
     }
 have_pending:
+    if (root->cancelled) {
+      w_root_unlock(root);
+      break;
+    }
     w_root_process_pending(root);
     w_root_unlock(root);
   }
+  w_log(W_LOG_DBG, "stat_thread: out of loop %s\n",
+      root->root_path->buf);
+  w_root_delref(root);
+
   return 0;
 }
 
@@ -1236,9 +1284,8 @@ static int consume_kqueue(w_root_t *root, w_ht_t *batch,
   return n;
 }
 
-static void *kqueue_thread(void *arg)
+static void kqueue_thread(w_root_t *root)
 {
-  w_root_t *root = arg;
   w_ht_t *batch = NULL;
 
   for (;;) {
@@ -1291,16 +1338,13 @@ static void *kqueue_thread(void *arg)
       batch = NULL;
     }
   }
-  return NULL;
 }
 
 #endif
 
 #if HAVE_PORT_CREATE
-static void *portfs_thread(void *arg)
+static void portfs_thread(w_root_t *root)
 {
-  w_root_t *root = arg;
-
   for (;;) {
     port_event_t events[128];
     uint_t i, n;
@@ -1357,29 +1401,38 @@ static void *portfs_thread(void *arg)
 // so we do this as a blocking thread that reads the inotify
 // descriptor and then queues the filesystem IO work to the
 // stat_thread above.
-static void *inotify_thread(void *arg)
+static void inotify_thread(w_root_t *root)
 {
-  w_root_t *root = arg;
-
   /* now we can settle into the notification stuff */
   for (;;) {
     struct inotify_event *ine;
-    // Make the buffer big enough for 16k entries, which
-    // happens to be the default fs.inotify.max_queued_events
-    char ibuf[16 * 1024 * (sizeof(*ine) + 256)];
     char *iptr;
     int n;
     struct timeval now;
     struct watchman_dir *dir;
     w_string_t *name;
+    struct pollfd pfd;
 
-    n = read(root->infd, &ibuf, sizeof(ibuf));
+    pfd.fd = root->infd;
+    pfd.events = POLLIN;
+
+    n = poll(&pfd, 1, 100);
+
+    if (root->cancelled) {
+      break;
+    }
+
+    if (n != 1) {
+      continue;
+    }
+
+    n = read(root->infd, &root->ibuf, sizeof(root->ibuf));
     if (n == -1) {
       if (errno == EINTR) {
         continue;
       }
       w_log(W_LOG_ERR, "read(%d, %lu): error %s\n",
-          root->infd, sizeof(ibuf), strerror(errno));
+          root->infd, sizeof(root->ibuf), strerror(errno));
       abort();
     }
 
@@ -1389,7 +1442,8 @@ static void *inotify_thread(void *arg)
     root->ticks++;
     gettimeofday(&now, NULL);
 
-    for (iptr = ibuf; iptr < ibuf + n; iptr = iptr + sizeof(*ine) + ine->len) {
+    for (iptr = root->ibuf; iptr < root->ibuf + n;
+          iptr = iptr + sizeof(*ine) + ine->len) {
       ine = (struct inotify_event*)iptr;
 
       w_log(W_LOG_DBG, "notify: wd=%d mask=%x %s\n", ine->wd, ine->mask,
@@ -1421,10 +1475,10 @@ static void *inotify_thread(void *arg)
             }
           }
 
-          if (ine->len) {
-            snprintf(buf, sizeof(buf), "%.*s/%s",
+          if (ine->len > 0) {
+            snprintf(buf, sizeof(buf), "%.*s/%.*s",
                 dir->path->len, dir->path->buf,
-                ine->name);
+                ine->len, ine->name);
             name = w_string_new(buf);
           } else {
             name = dir->path;
@@ -1456,15 +1510,12 @@ static void *inotify_thread(void *arg)
           schedule_recrawl(root);
         }
       }
-
-      // TODO: handle IN_DELETE_SELF
     }
 
     handle_should_recrawl(root);
     w_root_unlock(root);
   }
 
-  return 0;
 }
 #endif
 
@@ -1506,10 +1557,95 @@ char *w_realpath(const char *filename)
 #endif
 }
 
+void w_root_addref(w_root_t *root)
+{
+  w_refcnt_add(&root->refcnt);
+}
+
+static void delete_file(struct watchman_file *file)
+{
+  w_string_delref(file->name);
+  free(file);
+}
+
+void w_root_delref(w_root_t *root)
+{
+  struct watchman_file *file;
+
+  if (!w_refcnt_del(&root->refcnt)) return;
+
+  w_log(W_LOG_DBG, "root: final ref on %s\n",
+      root->root_path->buf);
+
+  while (root->pending) {
+    struct watchman_pending_fs *p;
+
+    p = root->pending;
+    root->pending = p->next;
+    w_string_delref(p->path);
+    free(p);
+  }
+
+  pthread_mutex_destroy(&root->lock);
+  w_string_delref(root->root_path);
+  pthread_cond_destroy(&root->cond);
+  w_ht_free(root->cursors);
+  w_ht_free(root->suffixes);
+  w_ht_free(root->ignore_dirs);
+  w_ht_free(root->dirname_to_dir);
+  w_ht_free(root->commands);
+
+#ifdef HAVE_INOTIFY_INIT
+  close(root->infd);
+  w_ht_free(root->wd_to_dir);
+#endif
+#ifdef HAVE_KQUEUE
+  close(root->kq_fd);
+#endif
+#ifdef HAVE_PORT_CREATE
+  close(root->port_fd);
+#endif
+
+  while (root->latest_file) {
+    file = root->latest_file;
+    root->latest_file = file->next;
+    delete_file(file);
+  }
+
+  free(root);
+  w_refcnt_del(&live_roots);
+}
+
+static w_ht_val_t root_copy_val(w_ht_val_t val)
+{
+  w_root_t *root = (w_root_t*)val;
+
+  w_root_addref(root);
+
+  return val;
+}
+
+static void root_del_val(w_ht_val_t val)
+{
+  w_root_t *root = (w_root_t*)val;
+
+  w_root_delref(root);
+}
+
+static const struct watchman_hash_funcs root_funcs = {
+  w_ht_string_copy,
+  w_ht_string_del,
+  w_ht_string_equal,
+  w_ht_string_hash,
+  root_copy_val,
+  root_del_val
+};
+
 static w_root_t *root_resolve(const char *filename, bool auto_watch,
     bool *created)
 {
-  struct watchman_root *root;
+  struct watchman_root *root = NULL;
+  w_ht_val_t root_val;
   char *watch_path;
   w_string_t *root_str;
 
@@ -1517,26 +1653,31 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   watch_path = w_realpath(filename);
 
   if (!watch_path) {
-    perror(filename);
+    w_log(W_LOG_ERR, "resolve_root: %s: %s\n", filename, strerror(errno));
     return NULL;
   }
 
   root_str = w_string_new(watch_path);
   pthread_mutex_lock(&root_lock);
   if (!watched_roots) {
-    watched_roots = w_ht_new(4, &w_ht_string_funcs);
+    watched_roots = w_ht_new(4, &root_funcs);
   }
-  root = (w_root_t*)w_ht_get(watched_roots, (w_ht_val_t)root_str);
+  // This will addref if it returns root
+  if (w_ht_lookup(watched_roots, (w_ht_val_t)root_str, &root_val, true)) {
+    root = (w_root_t*)root_val;
+  }
   pthread_mutex_unlock(&root_lock);
   w_string_delref(root_str);
 
   if (root || !auto_watch) {
     free(watch_path);
+    // caller owns a ref
     return root;
   }
 
   w_log(W_LOG_DBG, "Want to watch %s -> %s\n", filename, watch_path);
 
+  // created with 1 ref
   root = w_root_new(watch_path);
   free(watch_path);
 
@@ -1547,36 +1688,56 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   *created = true;
 
   pthread_mutex_lock(&root_lock);
+  // adds 1 ref
   w_ht_set(watched_roots, (w_ht_val_t)root->root_path, (w_ht_val_t)root);
   if (!running_kids) {
     running_kids = w_ht_new(2, NULL);
   }
   pthread_mutex_unlock(&root_lock);
 
+  // caller owns 1 ref
   return root;
+}
+
+static void *run_notify_thread(void *arg)
+{
+  w_root_t *root = arg;
+
+#if HAVE_INOTIFY_INIT
+  inotify_thread(root);
+#elif HAVE_KQUEUE
+  kqueue_thread(root);
+#elif HAVE_PORT_CREATE
+  portfs_thread(root);
+#else
+# error I don't support this system
+#endif
+
+  w_log(W_LOG_DBG, "notify_thread: out of loop %s\n",
+      root->root_path->buf);
+
+  /* we'll remove it from watched roots if it isn't
+   * already out of there */
+  pthread_mutex_lock(&root_lock);
+  w_ht_del(watched_roots, (w_ht_val_t)root->root_path);
+  pthread_mutex_unlock(&root_lock);
+
+  w_root_delref(root);
+  return 0;
 }
 
 static bool root_start(w_root_t *root)
 {
-  pthread_t thr;
   pthread_attr_t attr;
 
-  // TODO: when we make it so you can stop watching a root,
-  // we'll need a way to signal these guys that we're done
-  // before we can release resources
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-#if HAVE_INOTIFY_INIT
-  pthread_create(&thr, &attr, inotify_thread, root);
-#endif
-#if HAVE_KQUEUE
-  pthread_create(&thr, &attr, kqueue_thread, root);
-#endif
-#if HAVE_PORT_CREATE
-  pthread_create(&thr, &attr, portfs_thread, root);
-#endif
-  pthread_create(&thr, &attr, stat_thread, root);
+  w_root_addref(root);
+  pthread_create(&root->notify_thread, &attr, run_notify_thread, root);
+
+  w_root_addref(root);
+  pthread_create(&root->stat_thread, &attr, stat_thread, root);
 
   pthread_attr_destroy(&attr);
 
@@ -1604,6 +1765,55 @@ w_root_t *w_root_resolve_for_client_mode(const char *filename)
   return root;
 }
 
+static void signal_root_threads(w_root_t *root)
+{
+  // Send SIGUSR1 to interrupt blocking syscalls on the
+  // worker threads.  They'll self-terminate.
+  if (!pthread_equal(root->notify_thread, pthread_self())) {
+    pthread_kill(root->notify_thread, SIGUSR1);
+  }
+  if (!pthread_equal(root->stat_thread, pthread_self())) {
+    pthread_cond_signal(&root->cond);
+    pthread_kill(root->stat_thread, SIGUSR1);
+  }
+}
+
+// Cancels a watch.
+// Caller must have locked root
+bool w_root_cancel(w_root_t *root)
+{
+  bool cancelled = false;
+
+  if (!root->cancelled) {
+    cancelled = true;
+
+    w_log(W_LOG_DBG, "marked %s cancelled\n",
+        root->root_path->buf);
+    root->cancelled = true;
+
+    signal_root_threads(root);
+  }
+
+  return cancelled;
+}
+
+bool w_root_stop_watch(w_root_t *root)
+{
+  bool stopped = false;
+
+  pthread_mutex_lock(&root_lock);
+  stopped = w_ht_del(watched_roots, (w_ht_val_t)root->root_path);
+  pthread_mutex_unlock(&root_lock);
+
+  if (stopped) {
+    w_root_cancel(root);
+    w_state_save();
+  }
+  signal_root_threads(root);
+
+  return stopped;
+}
+
 w_root_t *w_root_resolve(const char *filename, bool auto_watch)
 {
   struct watchman_root *root;
@@ -1612,11 +1822,9 @@ w_root_t *w_root_resolve(const char *filename, bool auto_watch)
   root = root_resolve(filename, auto_watch, &created);
   if (created) {
     root_start(root);
-
     w_state_save();
   }
   return root;
-
 }
 
 // Caller must have locked root
@@ -1654,6 +1862,23 @@ json_t *w_root_trigger_list_to_json(w_root_t *root)
     json_array_append_new(arr, obj);
 
   } while (w_ht_next(root->commands, &iter));
+
+  return arr;
+}
+
+json_t *w_root_watch_list_to_json(void)
+{
+  w_ht_iter_t iter;
+  json_t *arr;
+
+  arr = json_array();
+
+  pthread_mutex_lock(&root_lock);
+  if (w_ht_first(watched_roots, &iter)) do {
+    w_root_t *root = (void*)iter.value;
+    json_array_append_new(arr, json_string_nocheck(root->root_path->buf));
+  } while (w_ht_next(watched_roots, &iter));
+  pthread_mutex_unlock(&root_lock);
 
   return arr;
 }
@@ -1741,6 +1966,8 @@ bool w_root_load_state(json_t *state)
     if (created) {
       root_start(root);
     }
+
+    w_root_delref(root);
   }
 
   return true;
@@ -1778,6 +2005,37 @@ bool w_root_save_state(json_t *state)
   json_object_set_new(state, "watched", watched_dirs);
 
   return result;
+}
+
+void w_root_free_watched_roots(void)
+{
+  w_ht_iter_t root_iter;
+  int last;
+
+  pthread_mutex_lock(&root_lock);
+  if (w_ht_first(watched_roots, &root_iter)) do {
+    w_root_t *root = (void*)root_iter.value;
+    if (!w_root_cancel(root)) {
+      signal_root_threads(root);
+    }
+  } while (w_ht_next(watched_roots, &root_iter));
+  pthread_mutex_unlock(&root_lock);
+
+  last = live_roots;
+  w_log(W_LOG_DBG, "waiting for roots to cancel and go away %d\n", last);
+  for (;;) {
+    int current = __sync_fetch_and_add(&live_roots, 0);
+    if (current == 0) {
+      break;
+    }
+    if (current != last) {
+      w_log(W_LOG_DBG, "waiting: %d live\n", current);
+      last = current;
+    }
+    usleep(100);
+  }
+
+  w_log(W_LOG_DBG, "all roots are gone\n");
 }
 
 

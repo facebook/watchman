@@ -11,6 +11,7 @@
 pthread_mutex_t w_client_lock;
 w_ht_t *clients = NULL;
 static int listener_fd;
+static pthread_t reaper_thread;
 
 static w_ht_t *command_funcs = NULL;
 
@@ -313,15 +314,23 @@ static void cmd_shutdown(
     struct watchman_client *client,
     json_t *args)
 {
+  void *unused;
   unused_parameter(client);
   unused_parameter(args);
 
   w_log(W_LOG_ERR, "shutdown-server was requested, exiting!\n");
 
   /* close out some resources to persuade valgrind to run clean */
+  close(listener_fd);
+  listener_fd = -1;
+  w_root_free_watched_roots();
+
   pthread_mutex_lock(&w_client_lock);
   w_ht_del(clients, client->fd);
-  close(listener_fd);
+  pthread_mutex_unlock(&w_client_lock);
+
+  pthread_join(reaper_thread, &unused);
+
   close(STDIN_FILENO);
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
@@ -333,6 +342,8 @@ static struct watchman_command_handler_def commands[] = {
   { "since", cmd_since },
   { "query", cmd_query },
   { "watch", cmd_watch },
+  { "watch-list", cmd_watch_list },
+  { "watch-del", cmd_watch_delete },
   { "trigger", cmd_trigger },
   { "trigger-list", cmd_trigger_list },
   { "trigger-del", cmd_trigger_delete },
@@ -510,7 +521,7 @@ static void *child_reaper(void *arg)
 
   unused_parameter(arg);
 
-  while (true) {
+  while (listener_fd != -1) {
     pid = waitpid(-1, &st, 0);
 
     // Shame that we can't just tell the kernel
@@ -524,6 +535,15 @@ static void *child_reaper(void *arg)
     }
   }
   return 0;
+}
+
+// This is just a placeholder.
+// This catches SIGUSR1 so we don't terminate.
+// We use this to interrupt blocking syscalls
+// on the worker threads
+static void wakeme(int signo)
+{
+  unused_parameter(signo);
 }
 
 #ifdef HAVE_KQUEUE
@@ -542,6 +562,7 @@ bool w_start_listener(const char *path)
   pthread_t thr;
   pthread_attr_t attr;
   pthread_mutexattr_t mattr;
+  struct sigaction sa;
 #ifdef HAVE_LIBGIMLI_H
   volatile struct gimli_heartbeat *hb = NULL;
 #endif
@@ -610,16 +631,21 @@ bool w_start_listener(const char *path)
   }
 
   signal(SIGPIPE, SIG_IGN);
+
+  /* allow SIGUSR1 to wake up a blocked thread, without
+   * restarting syscalls */
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = wakeme;
+  sa.sa_flags = 0;
+  sigaction(SIGUSR1, &sa, NULL);
+
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-  if (pthread_create(&thr, &attr, child_reaper, NULL)) {
-    perror("pthread_create(child_reaper)");
-    return false;
-  }
 
   listener_fd = socket(PF_LOCAL, SOCK_STREAM, 0);
   if (listener_fd == -1) {
-    perror("socket");
+    w_log(W_LOG_ERR, "socket: %s\n",
+        strerror(errno));
     return false;
   }
 
@@ -641,6 +667,12 @@ bool w_start_listener(const char *path)
   }
 
   w_set_cloexec(listener_fd);
+
+  if (pthread_create(&reaper_thread, NULL, child_reaper, NULL)) {
+    w_log(W_LOG_ERR, "pthread_create(child_reaper): %s\n",
+        strerror(errno));
+    return false;
+  }
 
   if (!clients) {
     clients = w_ht_new(2, &client_hash_funcs);

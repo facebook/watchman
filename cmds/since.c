@@ -27,18 +27,21 @@ void cmd_since(struct watchman_client *client, json_t *args)
   if (!w_parse_clockspec(root, clock_ele, &since, true)) {
     send_error_response(client,
         "expected argument 2 to be a valid clockspec");
+    w_root_delref(root);
     return;
   }
 
   /* parse argv into a chain of watchman_rule */
   if (!parse_watch_params(3, args, &rules, NULL, buf, sizeof(buf))) {
     send_error_response(client, "invalid rule spec: %s", buf);
+    w_root_delref(root);
     return;
   }
 
   /* now find all matching files */
   run_rules(client, root, &since, rules);
   w_free_rules(rules);
+  w_root_delref(root);
 }
 
 

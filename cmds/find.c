@@ -24,12 +24,14 @@ void cmd_find(struct watchman_client *client, json_t *args)
   /* parse argv into a chain of watchman_rule */
   if (!parse_watch_params(2, args, &rules, NULL, buf, sizeof(buf))) {
     send_error_response(client, "invalid rule spec: %s", buf);
+    w_root_delref(root);
     return;
   }
 
   /* now find all matching files */
   run_rules(client, root, NULL, rules);
   w_free_rules(rules);
+  w_root_delref(root);
 }
 
 

@@ -187,7 +187,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     list($ok, $out) = $this->waitForWatchmanNoThrow(
       array('find', $root),
       function ($out) use ($sort_func, $files) {
-        return $sort_func(idx($out, 'files')) === $files;
+        return $sort_func(idx($out, 'files', array())) === $files;
       },
       $timeout
     );
