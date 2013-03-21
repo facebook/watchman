@@ -21,6 +21,21 @@ dnl require users to have it to build and use watchman
 AC_CHECK_PROG(HAVE_ARC, arc, yes, no)
 AM_CONDITIONAL(HAVE_ARC, test "x$HAVE_ARC" = xyes)
 
+dnl I don't care that this is supposed to be sysconfdir; autoconf doesn't
+dnl allow it to be evaluated sanely from configure, only via Makefile,
+dnl which I don't care about.  Just pass the right value to configure.
+conffile=/etc/watchman.json
+AC_ARG_ENABLE(conffile, [
+  --enable-conffile=PATH  Use PATH as the default configuration file name.
+                          Default is $conffile
+],[
+  conffile=$enableval
+])
+if test "$conffile" != "no" ; then
+  AC_DEFINE_UNQUOTED(WATCHMAN_CONFIG_FILE, "$conffile",
+                     [system configuration file path])
+fi
+
 AC_ARG_ENABLE(statedir, [
   --enable-statedir=PATH  Use PATH as the default for state, log files
                           and sockets instead of using your system tempdir

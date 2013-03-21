@@ -504,6 +504,7 @@ static inline double w_timeval_diff(struct timeval start, struct timeval end)
 }
 
 extern int trigger_settle;
+extern int recrawl_period;
 extern const char *watchman_tmp_dir;
 extern char *watchman_state_file;
 extern int dont_save_state;
@@ -544,9 +545,16 @@ struct watchman_getopt {
    * blank, we'll use the string "ARG" as a generic
    * alternative */
   const char *arglabel;
+
+  // Whether this option should be passed to the child
+  // when running under the gimli monitor
+  int is_daemon;
+#define IS_DAEMON 1
+#define NOT_DAEMON 0
 };
 
-bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp);
+bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
+    char ***daemon_argv);
 
 bool w_parse_clockspec(w_root_t *root,
     json_t *value,

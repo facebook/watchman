@@ -82,7 +82,8 @@ static void usage(struct watchman_getopt *opts)
   exit(1);
 }
 
-bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp)
+bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
+    char ***daemon_argvp)
 {
   int num_opts, i;
   struct option *long_opts;
@@ -91,11 +92,21 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp)
   char **argv = *argvp;
   int long_pos = -1;
   int res;
+  int num_daemon = 0;
+  char **daemon_argv;
 
   /* first build up the getopt_long bits that we need */
   for (num_opts = 0; opts[num_opts].optname; num_opts++) {
     ;
   }
+
+  /* to hold the args we pass to the daemon */
+  daemon_argv = calloc(num_opts + 1, sizeof(char*));
+  if (!daemon_argv) {
+    perror("calloc daemon opts");
+    abort();
+  }
+  *daemon_argvp = daemon_argv;
 
   /* something to hold the long options */
   long_opts = calloc(num_opts + 1, sizeof(struct option));
@@ -166,7 +177,7 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp)
 
       case '?':
         /* unknown option */
-        fprintf(stderr, "Unknown or invalid option!\n");
+        fprintf(stderr, "Unknown or invalid option! %s\n", argv[optind-1]);
         usage(opts);
         return false;
 
@@ -183,6 +194,12 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp)
               break;
             }
           }
+        }
+
+        if (o->is_daemon) {
+          char *val;
+          asprintf(&val, "--%s=%s", o->optname, optarg);
+          daemon_argv[num_daemon++] = val;
         }
 
         /* store the argument if we found one */

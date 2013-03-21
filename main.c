@@ -5,12 +5,14 @@
 #include <poll.h>
 
 int trigger_settle = 20;
+int recrawl_period = 1000;
 static char *sock_name = NULL;
 static char *log_name = NULL;
 #ifdef USE_GIMLI
 static char *pid_file = NULL;
 #endif
 char *watchman_state_file = NULL;
+static char **daemon_argv = NULL;
 const char *watchman_tmp_dir = NULL;
 static int persistent = 0;
 int dont_save_state = 0;
@@ -72,10 +74,26 @@ static void daemonize(void)
 #endif
 
 #ifdef USE_GIMLI
+
+#define MAX_DAEMON_ARGS 64
+static void append_argv(char **argv, char *item)
+{
+  int i;
+
+  for (i = 0; argv[i]; i++) {
+    ;
+  }
+  if (i + 1 >= MAX_DAEMON_ARGS) {
+    abort();
+  }
+
+  argv[i] = item;
+  argv[i+1] = NULL;
+}
+
 static void spawn_via_gimli(void)
 {
-  char settlebuf[16];
-  char *argv[] = {
+  char *argv[MAX_DAEMON_ARGS] = {
     GIMLI_MONITOR_PATH,
 #ifdef WATCHMAN_STATE_DIR
     "--trace-dir=" WATCHMAN_STATE_DIR "/traces",
@@ -83,17 +101,16 @@ static void spawn_via_gimli(void)
     "--pidfile", pid_file,
     "watchman",
     "--foreground",
-    "--sockname", sock_name,
-    "--logfile", log_name,
-    "--statefile", watchman_state_file,
-    "--settle", settlebuf,
     NULL
   };
   posix_spawn_file_actions_t actions;
   posix_spawnattr_t attr;
   pid_t pid;
+  int i;
 
-  snprintf(settlebuf, sizeof(settlebuf), "%d", trigger_settle);
+  for (i = 0; daemon_argv[i]; i++) {
+    append_argv(argv, daemon_argv[i]);
+  }
 
   posix_spawnattr_init(&attr);
   posix_spawn_file_actions_init(&actions);
@@ -315,40 +332,65 @@ static bool try_command(json_t *cmd, int timeout)
 
 static struct watchman_getopt opts[] = {
   { "sockname", 'U', "Specify alternate sockname",
-    REQ_STRING, &sock_name, "PATH" },
+    REQ_STRING, &sock_name, "PATH", IS_DAEMON },
   { "logfile", 'o', "Specify path to logfile",
-    REQ_STRING, &log_name, "PATH" },
+    REQ_STRING, &log_name, "PATH", IS_DAEMON },
   { "log-level", 0, "set the log level (0 = off, default is 1, verbose = 2)",
-    REQ_INT, &log_level, NULL },
+    REQ_INT, &log_level, NULL, IS_DAEMON },
 #ifdef USE_GIMLI
   { "pidfile", 0, "Specify path to gimli monitor pidfile",
-    REQ_STRING, &pid_file, "PATH" },
+    REQ_STRING, &pid_file, "PATH", NOT_DAEMON },
 #endif
   { "persistent", 'p', "Persist and wait for further responses",
-    OPT_NONE, &persistent, NULL },
+    OPT_NONE, &persistent, NULL, NOT_DAEMON },
   { "no-save-state", 'n', "Don't save state between invocations",
-    OPT_NONE, &dont_save_state, NULL },
+    OPT_NONE, &dont_save_state, NULL, IS_DAEMON },
   { "statefile", 0, "Specify path to file to hold watch and trigger state",
-    REQ_STRING, &watchman_state_file, "PATH" },
+    REQ_STRING, &watchman_state_file, "PATH", IS_DAEMON },
   { "json-command", 'j', "Instead of parsing CLI arguments, take a single "
     "json object from stdin",
-    OPT_NONE, &json_input_arg, NULL },
+    OPT_NONE, &json_input_arg, NULL, NOT_DAEMON },
   { "foreground", 'f', "Run the service in the foreground",
-    OPT_NONE, &foreground, NULL },
+    OPT_NONE, &foreground, NULL, NOT_DAEMON },
   { "no-pretty", 0, "Don't pretty print JSON",
-    OPT_NONE, &no_pretty, NULL },
+    OPT_NONE, &no_pretty, NULL, NOT_DAEMON },
   { "no-spawn", 0, "Don't try to start the service if it is not available",
-    OPT_NONE, &no_spawn, NULL },
+    OPT_NONE, &no_spawn, NULL, NOT_DAEMON },
   { "settle", 's',
     "Number of milliseconds to wait for filesystem to settle",
-    REQ_INT, &trigger_settle, NULL },
-  { 0, 0, 0, 0, 0, 0 }
+    REQ_INT, &trigger_settle, NULL, IS_DAEMON },
+  { "recrawl", 0,
+    "Number of milliseconds between tree polling crawl",
+    REQ_INT, &recrawl_period, NULL, IS_DAEMON },
+  { 0, 0, 0, 0, 0, 0, 0 }
 };
+
+static void load_config_file(void)
+{
+#ifdef WATCHMAN_CONFIG_FILE
+  json_t *config = NULL;
+  json_error_t err;
+
+  config = json_load_file(WATCHMAN_CONFIG_FILE, 0, &err);
+  if (!config) {
+    w_log(W_LOG_ERR, "failed to parse json from %s: %s\n",
+        WATCHMAN_CONFIG_FILE, err.text);
+    return;
+  }
+
+  json_unpack(config, "{s:i}", "settle", &trigger_settle);
+  json_unpack(config, "{s:i}", "recrawl", &recrawl_period);
+
+  // TODO: default ignore list parsed out here
+
+  json_decref(config);
+#endif
+}
 
 static void parse_cmdline(int *argcp, char ***argvp)
 {
-  w_getopt(opts, argcp, argvp);
-
+  load_config_file();
+  w_getopt(opts, argcp, argvp, &daemon_argv);
   setup_sock_name();
 }
 

@@ -1176,8 +1176,8 @@ static void *stat_thread(void *arg)
 
   settle.tv_sec = trigger_settle / 1000;
   settle.tv_usec = trigger_settle - (settle.tv_sec * 1000);
-  recrawl.tv_sec = 1;
-  recrawl.tv_usec = 0;
+  recrawl.tv_sec = recrawl_period / 1000;
+  recrawl.tv_usec = recrawl_period - (recrawl.tv_sec * 1000);
 
   /* first order of business is to find all the files under our root */
   gettimeofday(&start, NULL);
