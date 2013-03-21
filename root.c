@@ -815,7 +815,8 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   // Arrange to re-process it shortly
   if (w_ht_first(dir->files, &i)) do {
     file = (struct watchman_file*)i.value;
-    if (file->exists && file->maybe_deleted) {
+    if (file->exists && (file->maybe_deleted ||
+          (S_ISDIR(file->st.st_mode) && recursive))) {
       w_root_add_pending_rel(root, dir, file->name->buf,
           recursive, now, false);
     }
@@ -1227,18 +1228,22 @@ static void *stat_thread(void *arg)
       process_triggers(root);
       process_subscriptions(root);
 
-      gettimeofday(&now, NULL);
-      w_timeval_add(now, recrawl, &target);
-      w_timeval_to_timespec(target, &ts);
-      err = pthread_cond_timedwait(&root->cond, &root->lock, &ts);
-      if (err != 0 && err != ETIMEDOUT) {
-        w_log(W_LOG_ERR, "pthread_cond_wait: %s\n",
-            strerror(err));
-        w_root_lock(root);
-      }
-      if (err == ETIMEDOUT && !root->pending) {
-        // periodically scan the tree and fix it up
-        root->should_recrawl = true;
+      if (recrawl_period) {
+        gettimeofday(&now, NULL);
+        w_timeval_add(now, recrawl, &target);
+        w_timeval_to_timespec(target, &ts);
+        err = pthread_cond_timedwait(&root->cond, &root->lock, &ts);
+        if (err != 0 && err != ETIMEDOUT) {
+          w_log(W_LOG_ERR, "pthread_cond_wait: %s\n",
+              strerror(err));
+          w_root_lock(root);
+        }
+        if (err == ETIMEDOUT && !root->pending) {
+          // periodically scan the tree and fix it up
+          root->should_recrawl = true;
+        }
+      } else {
+        pthread_cond_wait(&root->cond, &root->lock);
       }
     }
 have_pending:

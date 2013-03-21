@@ -5,7 +5,7 @@
 #include <poll.h>
 
 int trigger_settle = 20;
-int recrawl_period = 1000;
+int recrawl_period = 0;
 static char *sock_name = NULL;
 static char *log_name = NULL;
 #ifdef USE_GIMLI
