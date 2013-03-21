@@ -1172,10 +1172,12 @@ static void *stat_thread(void *arg)
 {
   w_root_t *root = arg;
   struct timeval start, end, now, target;
-  struct timeval settle;
+  struct timeval settle, recrawl;
 
   settle.tv_sec = trigger_settle / 1000;
   settle.tv_usec = trigger_settle - (settle.tv_sec * 1000);
+  recrawl.tv_sec = 1;
+  recrawl.tv_usec = 0;
 
   /* first order of business is to find all the files under our root */
   gettimeofday(&start, NULL);
@@ -1186,6 +1188,7 @@ static void *stat_thread(void *arg)
   /* now we just sit and wait for things to land in our pending list */
   for (;;) {
     int err;
+    struct timespec ts;
 
     w_root_lock(root);
     if (root->cancelled) {
@@ -1202,7 +1205,6 @@ static void *stat_thread(void *arg)
         w_timeval_add(root->latest_file->otime.tv, settle, &target);
         if (w_timeval_compare(now, target) < 0) {
           // Still have a bit of time to wait
-          struct timespec ts;
 
           w_timeval_to_timespec(target, &ts);
           err = pthread_cond_timedwait(&root->cond, &root->lock, &ts);
@@ -1225,11 +1227,18 @@ static void *stat_thread(void *arg)
       process_triggers(root);
       process_subscriptions(root);
 
-      err = pthread_cond_wait(&root->cond, &root->lock);
-      if (err != 0) {
+      gettimeofday(&now, NULL);
+      w_timeval_add(now, recrawl, &target);
+      w_timeval_to_timespec(target, &ts);
+      err = pthread_cond_timedwait(&root->cond, &root->lock, &ts);
+      if (err != 0 && err != ETIMEDOUT) {
         w_log(W_LOG_ERR, "pthread_cond_wait: %s\n",
             strerror(err));
         w_root_lock(root);
+      }
+      if (err == ETIMEDOUT && !root->pending) {
+        // periodically scan the tree and fix it up
+        root->should_recrawl = true;
       }
     }
 have_pending:
