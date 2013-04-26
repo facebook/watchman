@@ -371,6 +371,10 @@ static void load_config_file(void)
   json_t *config = NULL;
   json_error_t err;
 
+  if (access(WATCHMAN_CONFIG_FILE, R_OK) != 0 && errno == ENOENT) {
+    return;
+  }
+
   config = json_load_file(WATCHMAN_CONFIG_FILE, 0, &err);
   if (!config) {
     w_log(W_LOG_ERR, "failed to parse json from %s: %s\n",
