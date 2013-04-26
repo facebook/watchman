@@ -441,6 +441,25 @@ static void schedule_recrawl(w_root_t *root)
 }
 #endif
 
+#ifdef HAVE_INOTIFY_INIT
+static void invalidate_watch_descriptors(w_root_t *root,
+    struct watchman_dir *dir)
+{
+  w_ht_iter_t i;
+
+  if (w_ht_first(dir->dirs, &i)) do {
+    struct watchman_dir *child = (struct watchman_dir*)i.value;
+
+    invalidate_watch_descriptors(root, child);
+  } while (w_ht_next(dir->dirs, &i));
+
+  if (dir->wd != -1) {
+    w_ht_del(root->wd_to_dir, dir->wd);
+    dir->wd = -1;
+  }
+}
+#endif
+
 static void stop_watching_dir(w_root_t *root,
     struct watchman_dir *dir, bool do_close)
 {
@@ -1442,6 +1461,7 @@ static void inotify_thread(w_root_t *root)
     int n;
     struct timeval now;
     struct watchman_dir *dir;
+    struct watchman_file *file = NULL;
     w_string_t *name;
     struct pollfd pfd;
 
@@ -1507,10 +1527,48 @@ static void inotify_thread(w_root_t *root)
             }
           }
 
-          if (ine->len > 0) {
-            snprintf(buf, sizeof(buf), "%.*s/%.*s",
+          // We need to ensure that the watch descriptor associations from
+          // the old location are no longer valid so that when we crawl
+          // the destination location we'll update the entries
+          if (ine->len > 0 && (ine->mask & IN_MOVED_FROM)) {
+            name = w_string_new(ine->name);
+            file = w_root_resolve_file(root, dir, name, now);
+            if (!file) {
+              w_log(W_LOG_ERR,
+                  "looking for file %.*s but it is missing in %.*s\n",
+                  ine->len, ine->name, dir->path->len, dir->path->buf);
+              schedule_recrawl(root);
+              w_string_delref(name);
+              continue;
+            }
+
+            // The file no longer exists in its old location
+            file->exists = false;
+            w_root_mark_file_changed(root, file, now);
+            w_string_delref(name);
+
+            // Was there a dir here too?
+            snprintf(buf, sizeof(buf), "%.*s/%s",
                 dir->path->len, dir->path->buf,
-                ine->len, ine->name);
+                ine->name);
+            name = w_string_new(buf);
+
+            dir = w_root_resolve_dir(root, name, false);
+            if (dir) {
+              // Ensure that the old tree is not associated
+              invalidate_watch_descriptors(root, dir);
+              // and marked deleted
+              w_root_mark_deleted(root, dir, now, true);
+            }
+            w_string_delref(name);
+            continue;
+          }
+
+
+          if (ine->len > 0) {
+            snprintf(buf, sizeof(buf), "%.*s/%s",
+                dir->path->len, dir->path->buf,
+                ine->name);
             name = w_string_new(buf);
           } else {
             name = dir->path;
@@ -1537,8 +1595,8 @@ static void inotify_thread(w_root_t *root)
           // If we can't resolve the dir, and this isn't notification
           // that it has gone away, then we want to recrawl to fix
           // up our state.
-          w_log(W_LOG_ERR, "wanted dir %d, but not found %.*s\n",
-              ine->wd, ine->len, ine->name);
+          w_log(W_LOG_ERR, "wanted dir %d, but not found %s\n",
+              ine->wd, ine->name);
           schedule_recrawl(root);
         }
       }

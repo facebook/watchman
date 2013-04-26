@@ -399,6 +399,9 @@ class WatchmanInstance {
     if (file_exists($this->vg_log.'.xml')) {
       copy($this->vg_log.'.xml', "/tmp/watchman-valgrind.xml");
     }
+    if (file_exists($this->vg_log)) {
+      copy($this->vg_log, "/tmp/watchman-valgrind.txt");
+    }
   }
 
   function __destruct() {
