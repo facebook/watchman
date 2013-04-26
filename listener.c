@@ -352,6 +352,7 @@ static struct watchman_command_handler_def commands[] = {
   { "shutdown-server", cmd_shutdown },
   { "log-level", cmd_loglevel },
   { "log", cmd_log },
+  { "version", cmd_version },
   { NULL, NULL }
 };
 

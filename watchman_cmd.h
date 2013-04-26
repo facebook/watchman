@@ -62,6 +62,7 @@ void cmd_watch_delete(struct watchman_client *client, json_t *args);
 void cmd_query(struct watchman_client *client, json_t *args);
 void cmd_subscribe(struct watchman_client *client, json_t *args);
 void cmd_unsubscribe(struct watchman_client *client, json_t *args);
+void cmd_version(struct watchman_client *client, json_t *args);
 
 #ifdef __cplusplus
 }
