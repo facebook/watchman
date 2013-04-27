@@ -115,7 +115,7 @@ TXT
 
     $prefix = $this->getArgument('prefix', '/usr/local');
 
-    $spec = <<<TXT
+    $spec = "
 %define _prefix $prefix
 Name: fb-watchman
 Version: $version
@@ -144,7 +144,7 @@ $build
 $prefix/bin/watchman
 $prefix/share/doc/watchman-*
 $files
-TXT;
+";
 
     file_put_contents("$root/SPEC/watchman.spec", $spec);
 
