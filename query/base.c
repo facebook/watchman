@@ -100,7 +100,9 @@ static void dispose_list(void *data)
   size_t i;
 
   for (i = 0; i < list->num; i++) {
-    w_query_expr_delref(list->exprs[i]);
+    if (list->exprs[i]) {
+      w_query_expr_delref(list->exprs[i]);
+    }
   }
 
   free(list->exprs);
