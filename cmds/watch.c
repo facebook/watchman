@@ -3,6 +3,34 @@
 
 #include "watchman.h"
 
+/* clock /root
+ * Returns the current clock value for a watched root
+ */
+void cmd_clock(struct watchman_client *client, json_t *args)
+{
+  w_root_t *root;
+  json_t *resp;
+
+  /* resolve the root */
+  if (json_array_size(args) != 2) {
+    send_error_response(client, "wrong number of arguments to 'clock'");
+    return;
+  }
+
+  root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
+    return;
+  }
+
+  resp = make_response();
+  w_root_lock(root);
+  annotate_with_clock(root, resp);
+  w_root_unlock(root);
+
+  send_and_dispose_response(client, resp);
+  w_root_delref(root);
+}
+
 /* watch-del /root
  * Stops watching the specified root */
 void cmd_watch_delete(struct watchman_client *client, json_t *args)

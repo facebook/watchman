@@ -218,6 +218,23 @@ Unless `no-state-save` is in use, the removed watch will also be removed
 from the state file and will not be automatically watched if/when watchman
 is restarted.
 
+### Command: clock
+
+Returns the current clock value for a watched root.
+
+Be careful how you interpret this value; it return the instantaneous value of
+the clock, and may have changed by the time you intend to act upon it.
+
+```bash
+watchman clock /path/to/dir
+```
+
+JSON:
+
+```json
+["clock", "/path/to/dir"]
+```
+
 ### Command: trigger
 
 Sets up a trigger such that if any files under the specified dir that match the
