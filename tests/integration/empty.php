@@ -25,8 +25,39 @@ class emptyExistsTestCase extends WatchmanTestCase {
       'expression' => 'exists'
     ));
 
+    $exists = array();
+    foreach ($results['files'] as $file) {
+      $exists[] = $file['name'];
+    }
+    sort($exists);
+
+    $this->assertEqual(
+      array('empty', 'notempty'),
+      $exists
+    );
+
+    unlink("$root/empty");
+
+    // Wait for change to be observed
+    $this->assertFileList($root, array(
+      'notempty'
+    ));
+
+    $results = $this->watchmanCommand('query', $root, array(
+      'expression' => 'exists'
+    ));
+
     $this->assertEqual(
       'notempty',
+      $results['files'][0]['name']
+    );
+
+    $results = $this->watchmanCommand('query', $root, array(
+      'expression' => array('not', 'exists')
+    ));
+
+    $this->assertEqual(
+      'empty',
       $results['files'][0]['name']
     );
   }
