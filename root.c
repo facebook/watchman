@@ -122,19 +122,6 @@ static w_root_t *w_root_new(const char *path)
     }
   }
 
-#if HAVE_INOTIFY_INIT
-  root->infd = inotify_init();
-  w_set_cloexec(root->infd);
-  root->wd_to_dir = w_ht_new(HINT_NUM_DIRS, NULL);
-#endif
-#if HAVE_KQUEUE
-  root->kq_fd = kqueue();
-  w_set_cloexec(root->kq_fd);
-#endif
-#if HAVE_PORT_CREATE
-  root->port_fd = port_create();
-  w_set_cloexec(root->port_fd);
-#endif
   root->dirname_to_dir = w_ht_new(HINT_NUM_DIRS, &dirname_hash_funcs);
   root->commands = w_ht_new(2, &trigger_hash_funcs);
   root->ticks = 1;
@@ -146,6 +133,38 @@ static w_root_t *w_root_new(const char *path)
   dir->wd = -1;
   w_string_addref(dir->path);
   w_ht_set(root->dirname_to_dir, (w_ht_val_t)dir->path, (w_ht_val_t)dir);
+
+#if HAVE_INOTIFY_INIT
+  root->wd_to_dir = w_ht_new(HINT_NUM_DIRS, NULL);
+  root->infd = inotify_init();
+  if (root->infd == -1) {
+    w_log(W_LOG_ERR, "watch(%s): inotify_init error: %s\n",
+        path, strerror(errno));
+    w_root_delref(root);
+    return NULL;
+  }
+  w_set_cloexec(root->infd);
+#endif
+#if HAVE_KQUEUE
+  root->kq_fd = kqueue();
+  if (root->kq_fd == -1) {
+    w_log(W_LOG_ERR, "watch(%s): kqueue() error: %s\n",
+        path, strerror(errno));
+    w_root_delref(root);
+    return NULL;
+  }
+  w_set_cloexec(root->kq_fd);
+#endif
+#if HAVE_PORT_CREATE
+  root->port_fd = port_create();
+  if (root->port_fd == -1) {
+    w_log(W_LOG_ERR, "watch(%s): port_create() error: %s\n",
+        path, strerror(errno));
+    w_root_delref(root);
+    return NULL;
+  }
+  w_set_cloexec(root->port_fd);
+#endif
 
   return root;
 }
