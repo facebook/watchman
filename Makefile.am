@@ -34,6 +34,7 @@ watchman_SOURCES = \
 	query/name.c       \
 	query/fieldlist.c  \
 	query/since.c      \
+	query/empty.c      \
 	listener.c   \
 	clientmode.c \
 	main.c       \

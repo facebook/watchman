@@ -26,6 +26,8 @@ void w_query_init_all(void)
   REG_PARSER(name);
   REG_PARSER(iname);
   REG_PARSER(since);
+  REG_PARSER(empty);
+  REG_PARSER(exists);
 }
 
 /* vim:ts=2:sw=2:et:
