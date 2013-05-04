@@ -588,11 +588,6 @@ static void stat_path(w_root_t *root,
   w_string_t *dir_name;
   w_string_t *file_name;
 
-  if (w_ht_get(root->ignore_dirs, (w_ht_val_t)full_path)) {
-    w_log(W_LOG_DBG, "ignoring %s\n", full_path->buf);
-    return;
-  }
-
   if (full_path->len > sizeof(path)-1) {
     w_log(W_LOG_ERR, "path %.*s is too big\n", full_path->len, full_path->buf);
     abort();
@@ -656,18 +651,22 @@ static void stat_path(w_root_t *root,
       if (dir_ent == NULL) {
         recursive = true;
       }
-#ifndef HAVE_INOTIFY_INIT
-      /* On non-Linux systems, we always need to crawl, but may not
-       * need to be fully recursive */
-      crawler(root, full_path, now, recursive);
-#else
-      /* On Linux systems we get told about change on the child, so we only
-       * need to crawl if we've never seen the dir before */
 
-      if (recursive) {
+      // Don't recurse if our parent is an ignore dir
+      if (!w_ht_get(root->ignore_dirs, (w_ht_val_t)dir_name)) {
+#ifndef HAVE_INOTIFY_INIT
+        /* On non-Linux systems, we always need to crawl, but may not
+         * need to be fully recursive */
         crawler(root, full_path, now, recursive);
-      }
+#else
+        /* On Linux systems we get told about change on the child, so we only
+         * need to crawl if we've never seen the dir before */
+
+        if (recursive) {
+          crawler(root, full_path, now, recursive);
+        }
 #endif
+      }
     }
   }
 

@@ -7,16 +7,25 @@ class ignoreTestCase extends WatchmanTestCase {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
     mkdir("$root/.git");
-    touch("$root/.git/lemon");
+    mkdir("$root/.git/objects");
+    mkdir("$root/.git/objects/pack");
     touch("$root/foo");
 
     $this->watchmanCommand('watch', $root);
-    // prove that we don't see lemon in .git as we crawl
-    $this->assertFileList($root, array('foo'));
+    // prove that we don't see pack in .git as we crawl
+    $this->assertFileList($root, array(
+      '.git',
+      '.git/objects',
+      'foo'
+    ));
 
-    // And prove that we aren't watching .git
-    touch("$root/.git/dontlookatme");
-    $this->assertFileList($root, array('foo'));
+    // And prove that we aren't watching deeply under .git
+    touch("$root/.git/objects/dontlookatme");
+    $this->assertFileList($root, array(
+      '.git',
+      '.git/objects',
+      'foo'
+    ));
   }
 }
 
