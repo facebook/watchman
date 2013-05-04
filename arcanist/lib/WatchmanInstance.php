@@ -108,6 +108,10 @@ class WatchmanInstance {
     return $data;
   }
 
+  function getLogData() {
+    return $this->logdata;
+  }
+
   function waitForLog($criteria, $timeout = 5) {
     foreach ($this->logdata as $line) {
       $matches = array();

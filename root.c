@@ -1610,7 +1610,7 @@ static void inotify_thread(w_root_t *root)
 
           w_string_delref(name);
 
-        } else if ((ine->mask & IN_IGNORED) != IN_IGNORED) {
+        } else if ((ine->mask & (IN_MOVE_SELF|IN_IGNORED)) == 0) {
           // If we can't resolve the dir, and this isn't notification
           // that it has gone away, then we want to recrawl to fix
           // up our state.
