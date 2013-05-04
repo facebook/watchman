@@ -110,10 +110,18 @@ struct watchman_string {
   const char *buf;
 };
 
+#ifndef IN_EXCL_UNLINK
+/* defined in <linux/inotify.h> but we can't include that without
+ * breaking userspace */
+# define WATCHMAN_IN_EXCL_UNLINK 0x04000000
+#else
+# define WATCHMAN_IN_EXCL_UNLINK IN_EXCL_UNLINK
+#endif
+
 #define WATCHMAN_INOTIFY_MASK \
   IN_ATTRIB | IN_CLOSE_WRITE | IN_CREATE | IN_DELETE | \
   IN_DELETE_SELF | IN_MODIFY | IN_MOVE_SELF | IN_MOVED_FROM | \
-  IN_MOVED_TO | IN_DONT_FOLLOW | IN_ONLYDIR
+  IN_MOVED_TO | IN_DONT_FOLLOW | IN_ONLYDIR | WATCHMAN_IN_EXCL_UNLINK
 
 #define WATCHMAN_PORT_EVENTS \
   FILE_MODIFIED | FILE_ATTRIB | FILE_NOFOLLOW
