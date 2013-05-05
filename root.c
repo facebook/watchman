@@ -1162,7 +1162,7 @@ bool w_root_wait_for_settle(w_root_t *root, int settlems)
   }
 
   settle.tv_sec = settlems / 1000;
-  settle.tv_usec = settlems - (settle.tv_sec * 1000);
+  settle.tv_usec = (settlems - (settle.tv_sec * 1000)) * 1000;
 
   while (true) {
     gettimeofday(&now, NULL);
@@ -1213,9 +1213,9 @@ static void *stat_thread(void *arg)
   struct timeval settle, recrawl;
 
   settle.tv_sec = trigger_settle / 1000;
-  settle.tv_usec = trigger_settle - (settle.tv_sec * 1000);
+  settle.tv_usec = (trigger_settle - (settle.tv_sec * 1000)) * 1000;
   recrawl.tv_sec = recrawl_period / 1000;
-  recrawl.tv_usec = recrawl_period - (recrawl.tv_sec * 1000);
+  recrawl.tv_usec = (recrawl_period - (recrawl.tv_sec * 1000)) * 1000;
 
   /* first order of business is to find all the files under our root */
   gettimeofday(&start, NULL);
