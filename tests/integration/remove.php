@@ -41,6 +41,14 @@ class removeTestCase extends WatchmanTestCase {
     $this->assertFileList($root, array(
       'top'
     ));
+
+    system("rm -rf $root ; mkdir -p $root/notme");
+
+    $this->assertEqual(
+      array(),
+      idx($this->watchmanCommand('watch-list'), 'roots'),
+      "don't believe that root/notme exists"
+    );
   }
 }
 

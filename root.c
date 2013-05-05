@@ -1470,7 +1470,7 @@ static void portfs_thread(w_root_t *root)
 static void inotify_thread(w_root_t *root)
 {
   /* now we can settle into the notification stuff */
-  for (;;) {
+  while (!root->cancelled) {
     struct inotify_event *ine;
     char *iptr;
     int n;
@@ -1590,10 +1590,19 @@ static void inotify_thread(w_root_t *root)
             w_string_addref(name);
           }
 
-          if ((ine->mask & (IN_IGNORED|IN_DELETE_SELF|IN_MOVE_SELF)) != 0 &&
-              !w_string_equal(root->root_path, name)) {
+          if ((ine->mask & (IN_IGNORED|IN_DELETE_SELF|IN_MOVE_SELF)) != 0) {
+            w_string_t *pname;
+
+            if (w_string_equal(root->root_path, name)) {
+              w_log(W_LOG_ERR,
+                  "root dir %s has been (re)moved, canceling watch\n",
+                  root->root_path->buf);
+              w_root_cancel(root);
+              break;
+            }
+
             // We need to examine the parent and crawl down
-            w_string_t *pname = w_string_dirname(name);
+            pname = w_string_dirname(name);
             w_log(W_LOG_DBG, "mask=%x, focus on parent: %.*s\n",
                 ine->mask, pname->len, pname->buf);
             w_string_delref(name);
