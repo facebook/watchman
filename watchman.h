@@ -471,6 +471,15 @@ static inline int w_timeval_compare(struct timeval a, struct timeval b)
 
 #define WATCHMAN_USEC_IN_SEC 1000000
 #define WATCHMAN_NSEC_IN_USEC 1000
+#define WATCHMAN_NSEC_IN_SEC (1000 * 1000 * 1000)
+
+#if defined(__APPLE__) || defined(__FreeBSD__)
+/* BSD-style subsecond timespec */
+#define WATCHMAN_ST_TIMESPEC(type) st_##type##timespec
+#else
+/* POSIX standard timespec */
+#define WATCHMAN_ST_TIMESPEC(type) st_##type##tim
+#endif
 
 static inline void w_timeval_add(const struct timeval a,
     const struct timeval b, struct timeval *result)

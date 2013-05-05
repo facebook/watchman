@@ -566,12 +566,9 @@ static bool did_file_change(struct stat *saved, struct stat *fresh)
   FIELD_CHG(st_mtime);
   // Don't care about st_blocks
   // Don't care about st_blksize
-
-#ifdef __APPLE__
-  FIELD_CHG(st_atimespec);
-  FIELD_CHG(st_mtimespec);
-  FIELD_CHG(st_ctimespec);
-#endif
+  FIELD_CHG(WATCHMAN_ST_TIMESPEC(a));
+  FIELD_CHG(WATCHMAN_ST_TIMESPEC(m));
+  FIELD_CHG(WATCHMAN_ST_TIMESPEC(c));
 
   return false;
 }

@@ -40,16 +40,51 @@ MAKE_CLOCK_FIELD(oclock, otime)
     return json_integer(match->file->st.member); \
   }
 
+#define MAKE_TIME_INT_FIELD(name, type, scale) \
+  static json_t *make_##name(struct watchman_rule_match *match) { \
+    struct timespec spec = match->file->st.WATCHMAN_ST_TIMESPEC(type); \
+    return json_integer(((int64_t) spec.tv_sec * scale) + \
+                        ((int64_t) spec.tv_nsec * scale / \
+                         WATCHMAN_NSEC_IN_SEC)); \
+  }
+
+#define MAKE_TIME_DOUBLE_FIELD(name, type) \
+  static json_t *make_##name(struct watchman_rule_match *match) { \
+    struct timespec spec = match->file->st.WATCHMAN_ST_TIMESPEC(type); \
+    return json_real(spec.tv_sec + 1e-9 * spec.tv_nsec); \
+  }
+
+/* For each type (e.g. "m"), define fields
+ * - mtime: mtime in seconds
+ * - mtime_ms: mtime in milliseconds
+ * - mtime_us: mtime in microseconds
+ * - mtime_ns: mtime in nanoseconds
+ * - mtime_f: mtime as a double
+ */
+#define MAKE_TIME_FIELDS(type) \
+  MAKE_INT_FIELD(type##time, st_##type##time) \
+  MAKE_TIME_INT_FIELD(type##time_ms, type, 1000) \
+  MAKE_TIME_INT_FIELD(type##time_us, type, 1000 * 1000) \
+  MAKE_TIME_INT_FIELD(type##time_ns, type, 1000 * 1000 * 1000) \
+  MAKE_TIME_DOUBLE_FIELD(type##time_f, type)
+
 MAKE_INT_FIELD(size, st_size)
 MAKE_INT_FIELD(mode, st_mode)
 MAKE_INT_FIELD(uid, st_uid)
 MAKE_INT_FIELD(gid, st_gid)
-MAKE_INT_FIELD(atime, st_atime)
-MAKE_INT_FIELD(mtime, st_mtime)
-MAKE_INT_FIELD(ctime, st_ctime)
+MAKE_TIME_FIELDS(a)
+MAKE_TIME_FIELDS(m)
+MAKE_TIME_FIELDS(c)
 MAKE_INT_FIELD(ino, st_ino)
 MAKE_INT_FIELD(dev, st_dev)
 MAKE_INT_FIELD(nlink, st_nlink)
+
+#define MAKE_TIME_FIELD_DEFS(type) \
+  { #type "time", make_##type##time }, \
+  { #type "time_ms", make_##type##time_ms }, \
+  { #type "time_us", make_##type##time_us }, \
+  { #type "time_ns", make_##type##time_ns }, \
+  { #type "time_f", make_##type##time_f }
 
 static struct w_query_field_renderer {
   const char *name;
@@ -61,9 +96,9 @@ static struct w_query_field_renderer {
   { "mode", make_mode },
   { "uid", make_uid },
   { "gid", make_gid },
-  { "atime", make_atime },
-  { "mtime", make_mtime },
-  { "ctime", make_ctime },
+  MAKE_TIME_FIELD_DEFS(a),
+  MAKE_TIME_FIELD_DEFS(m),
+  MAKE_TIME_FIELD_DEFS(c),
   { "ino", make_ino },
   { "dev", make_dev },
   { "nlink", make_nlink },
