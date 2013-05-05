@@ -48,14 +48,15 @@ w_query_expr *w_query_expr_parse(w_query *query, json_t *exp)
   }
 
   parser = (void*)w_ht_get(term_hash, (w_ht_val_t)name);
-  w_string_delref(name);
 
   if (!parser) {
     asprintf(&query->errmsg,
         "unknown expression term '%s'",
         name->buf);
+    w_string_delref(name);
     return NULL;
   }
+  w_string_delref(name);
   return parser(query, exp);
 }
 
