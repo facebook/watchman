@@ -16,6 +16,7 @@ class ignoreTestCase extends WatchmanTestCase {
     $this->assertFileList($root, array(
       '.git',
       '.git/objects',
+      '.git/watchman',
       'foo'
     ));
 
@@ -24,6 +25,7 @@ class ignoreTestCase extends WatchmanTestCase {
     $this->assertFileList($root, array(
       '.git',
       '.git/objects',
+      '.git/watchman',
       'foo'
     ));
   }

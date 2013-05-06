@@ -9,9 +9,8 @@ class clockTestCase extends WatchmanTestCase {
     $root = realpath($dir->getPath());
     $watch = $this->watchmanCommand('watch', $root);
     $clock = $this->watchmanCommand('clock', $root);
-    $find = $this->watchmanCommand('find', $root, '.');
 
-    $this->assertEqual($find['clock'], $clock['clock']);
+    $this->assertRegex('/^c:\d+:\d+$/', $clock['clock'], "looks clocky");
   }
 }
 

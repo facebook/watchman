@@ -199,6 +199,26 @@ static bool parse_query_expression(w_query *res, json_t *query)
   return true;
 }
 
+static bool parse_sync(w_query *res, json_t *query)
+{
+  json_t *timeout;
+  int value;
+
+  timeout = json_object_get(query, "sync_timeout");
+  if (!timeout) {
+    res->sync_timeout = 2000;
+    return true;
+  }
+
+  if (json_unpack(timeout, "i", &value) != 0 || value < 0) {
+    res->errmsg = strdup("sync_timeout must be an integer value >= 0");
+    return false;
+  }
+
+  res->sync_timeout = value;
+  return true;
+}
+
 w_query *w_query_parse(json_t *query, char **errmsg)
 {
   w_query *res;
@@ -211,6 +231,10 @@ w_query *w_query_parse(json_t *query, char **errmsg)
     goto error;
   }
   res->refcnt = 1;
+
+  if (!parse_sync(res, query)) {
+    goto error;
+  }
 
   /* Look for path generators */
   if (!parse_paths(res, query)) {

@@ -293,11 +293,18 @@ static bool default_generators(
   return true;
 }
 
-uint32_t w_query_execute(
+void w_query_result_free(w_query_res *res)
+{
+  free(res->errmsg);
+  res->errmsg = NULL;
+  w_match_results_free(res->num_results, res->results);
+  res->results = NULL;
+}
+
+bool w_query_execute(
     w_query *query,
     w_root_t *root,
-    uint32_t *ticks,
-    struct watchman_rule_match **results,
+    w_query_res *res,
     w_query_generator generator,
     void *gendata)
 {
@@ -306,6 +313,14 @@ uint32_t w_query_execute(
   memset(&ctx, 0, sizeof(ctx));
   ctx.query = query;
   ctx.root = root;
+
+  memset(res, 0, sizeof(*res));
+
+  if (query->sync_timeout && !w_root_sync_to_now(root, query->sync_timeout)) {
+    asprintf(&res->errmsg, "synchronization failed: %s\n",
+        strerror(errno));
+    return false;
+  }
 
   /* The first stage of execution is generation.
    * We generate a series of file inputs to pass to
@@ -325,7 +340,7 @@ uint32_t w_query_execute(
 
   // Now we can lock the root and begin generation
   w_root_lock(root);
-  *ticks = root->ticks;
+  res->ticks = root->ticks;
 
   if (!generator) {
     generator = default_generators;
@@ -338,9 +353,10 @@ uint32_t w_query_execute(
   if (ctx.wholename) {
     w_string_delref(ctx.wholename);
   }
-  *results = ctx.results;
+  res->results = ctx.results;
+  res->num_results = ctx.num_results;
 
-  return ctx.num_results;
+  return true;
 }
 
 

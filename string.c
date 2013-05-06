@@ -241,6 +241,29 @@ w_string_t *w_string_suffix(w_string_t *str)
   return NULL;
 }
 
+/* return true if the basename of string matches the
+ * WATCHMAN_COOKIE_PREFIX */
+bool w_string_is_cookie(w_string_t *str)
+{
+  int end;
+  uint32_t remain;
+
+  for (end = str->len - 1; end >= 0; end--) {
+    if (str->buf[end] == '/') {
+      remain = str->len - (end + 1);
+
+      if (remain <= sizeof(WATCHMAN_COOKIE_PREFIX)) {
+        return false;
+      }
+
+      return memcmp(str->buf + end + 1, WATCHMAN_COOKIE_PREFIX,
+          sizeof(WATCHMAN_COOKIE_PREFIX)-1) == 0;
+    }
+  }
+
+  return false;
+}
+
 w_string_t *w_string_basename(w_string_t *str)
 {
   int end;

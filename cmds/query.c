@@ -11,9 +11,7 @@ void cmd_query(struct watchman_client *client, json_t *args)
   w_query *query;
   json_t *query_spec;
   char *errmsg = NULL;
-  uint32_t num_results = 0;
-  struct watchman_rule_match *results = NULL;
-  uint32_t ticks = 0;
+  w_query_res res;
   json_t *response;
   json_t *file_list, *jfield_list;
   char clockbuf[128];
@@ -47,14 +45,22 @@ void cmd_query(struct watchman_client *client, json_t *args)
     return;
   }
 
-  num_results = w_query_execute(query, root, &ticks, &results, NULL, NULL);
+  if (!w_query_execute(query, root, &res, NULL, NULL)) {
+    send_error_response(client, "query failed: %s", res.errmsg);
+    w_query_result_free(&res);
+    w_root_delref(root);
+    w_query_delref(query);
+    return;
+  }
+
   w_query_delref(query);
 
-  file_list = w_query_results_to_json(&field_list, num_results, results);
-  w_match_results_free(num_results, results);
+  file_list = w_query_results_to_json(&field_list,
+                res.num_results, res.results);
+  w_query_result_free(&res);
 
   response = make_response();
-  if (clock_id_string(ticks, clockbuf, sizeof(clockbuf))) {
+  if (clock_id_string(res.ticks, clockbuf, sizeof(clockbuf))) {
     set_prop(response, "clock", json_string_nocheck(clockbuf));
   }
   set_prop(response, "files", file_list);

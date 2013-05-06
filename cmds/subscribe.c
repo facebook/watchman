@@ -38,8 +38,7 @@ static json_t *build_subscription_results(
     struct watchman_client_subscription *sub,
     w_root_t *root)
 {
-  uint32_t num_results, ticks;
-  struct watchman_rule_match *results = NULL;
+  w_query_res res;
   json_t *response;
   json_t *file_list;
   char clockbuf[128];
@@ -47,15 +46,23 @@ static json_t *build_subscription_results(
   w_log(W_LOG_DBG, "running subscription rules! since %" PRIu32 "\n",
       sub->since.ticks);
 
-  num_results = w_query_execute(sub->query, root, &ticks, &results,
-      subscription_generator, sub);
+  // Subscriptions never need to sync explicitly; we are only dispatched
+  // at settle points which are by definition sync'd to the present time
+  sub->query->sync_timeout = 0;
+  if (!w_query_execute(sub->query, root, &res, subscription_generator, sub)) {
+    w_log(W_LOG_ERR, "error running subscription query: %s", res.errmsg);
+    w_query_result_free(&res);
+    return NULL;
+  }
 
-  w_log(W_LOG_DBG, "generated %" PRIu32 " results\n", num_results);
+  w_log(W_LOG_DBG, "subscription generated %" PRIu32 " results\n",
+      res.num_results);
 
-  file_list = w_query_results_to_json(&sub->field_list, num_results, results);
-  w_match_results_free(num_results, results);
+  file_list = w_query_results_to_json(&sub->field_list,
+      res.num_results, res.results);
+  w_query_result_free(&res);
 
-  if (num_results == 0) {
+  if (res.num_results == 0) {
     return NULL;
   }
 
@@ -64,11 +71,11 @@ static json_t *build_subscription_results(
   if (clock_id_string(sub->since.ticks, clockbuf, sizeof(clockbuf))) {
     set_prop(response, "since", json_string_nocheck(clockbuf));
   }
-  if (clock_id_string(ticks, clockbuf, sizeof(clockbuf))) {
+  if (clock_id_string(res.ticks, clockbuf, sizeof(clockbuf))) {
     set_prop(response, "clock", json_string_nocheck(clockbuf));
   }
   sub->since.is_timestamp = false;
-  sub->since.ticks = ticks;
+  sub->since.ticks = res.ticks;
 
   set_prop(response, "files", file_list);
   set_prop(response, "root", json_string(root->root_path->buf));

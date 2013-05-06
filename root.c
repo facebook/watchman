@@ -101,10 +101,10 @@ static w_root_t *w_root_new(const char *path)
 
   root->cursors = w_ht_new(2, &w_ht_string_funcs);
   root->suffixes = w_ht_new(2, &w_ht_string_funcs);
+  root->query_cookies = w_ht_new(2, &w_ht_string_funcs);
 
   root->ignore_dirs = w_ht_new(2, &w_ht_string_funcs);
-  // For now, ignore VCS control dirs.  We'll make this configurable
-  // later
+  // Special handling for VCS control dirs
   {
     static const char *ignores[] = {
       ".git", ".svn", ".hg"
@@ -112,12 +112,36 @@ static w_root_t *w_root_new(const char *path)
     w_string_t *name;
     w_string_t *fullname;
     uint8_t i;
+    struct stat st;
 
     for (i = 0; i < sizeof(ignores) / sizeof(ignores[0]); i++) {
       name = w_string_new(ignores[i]);
       fullname = w_string_path_cat(root->root_path, name);
       w_ht_set(root->ignore_dirs, (w_ht_val_t)fullname, (w_ht_val_t)fullname);
       w_string_delref(fullname);
+
+      // While we're at it, see if we can find out where to put our
+      // query cookie information
+      if (root->query_cookie_dir == NULL &&
+          lstat(fullname->buf, &st) == 0 && S_ISDIR(st.st_mode)) {
+        w_string_t *wman = w_string_new("watchman");
+        w_string_t *rel;
+
+        // {.hg,.git,.svn}/watchman
+        rel = w_string_path_cat(name, wman);
+        root->query_cookie_dir = w_string_path_cat(root->root_path, rel);
+        w_string_delref(rel);
+        w_string_delref(wman);
+
+        // Make sure it exists
+        if (mkdir(root->query_cookie_dir->buf, 0770) && errno != EEXIST) {
+          w_log(W_LOG_ERR, "mkdir(%s) failed: %s\n",
+              root->query_cookie_dir->buf, strerror(errno));
+          w_root_delref(root);
+          w_string_delref(name);
+          return NULL;
+        }
+      }
       w_string_delref(name);
     }
   }
@@ -189,6 +213,106 @@ void w_root_unlock(w_root_t *root)
     w_log(W_LOG_ERR, "lock: %s\n",
         strerror(err));
   }
+}
+
+/* Ensure that we're synchronized with the state of the
+ * filesystem at the current time.
+ * We do this by touching a cookie file and waiting to
+ * observe it via inotify.  When we see it we know that
+ * we've seen everything up to the point in time at which
+ * we're asking questions.
+ * Returns true if we observe the change within the requested
+ * time, false otherwise.
+ * Must be called with the root UNLOCKED.  This function
+ * will acquire and release the root lock.
+ */
+bool w_root_sync_to_now(w_root_t *root, int timeoutms)
+{
+  uint32_t tick;
+  struct watchman_query_cookie cookie;
+  char cookie_buf[WATCHMAN_NAME_MAX];
+  char hostname[64];
+  w_string_t *path_str, *cookie_base;
+  int fd;
+  int errcode = 0;
+  struct timespec deadline;
+  struct timeval now, delta, target;
+
+  if (pthread_cond_init(&cookie.cond, NULL)) {
+    errcode = errno;
+    w_log(W_LOG_ERR, "sync_to_now: cond_init failed: %s\n", strerror(errcode));
+    errno = errcode;
+    return false;
+  }
+  cookie.seen = false;
+
+  if (gethostname(hostname, sizeof(hostname))) {
+    hostname[sizeof(hostname)-1] = '\0';
+  }
+
+  /* Generate a cookie name.
+   * compose host-pid-id with the cookie dir */
+  w_root_lock(root);
+  tick = root->ticks++;
+  snprintf(cookie_buf, sizeof(cookie_buf),
+      WATCHMAN_COOKIE_PREFIX "%s-%d-%" PRIu32,
+      hostname, getpid(), tick);
+  cookie_base = w_string_new(cookie_buf);
+  if (root->query_cookie_dir) {
+    path_str = w_string_path_cat(root->query_cookie_dir, cookie_base);
+  } else {
+    path_str = w_string_path_cat(root->root_path, cookie_base);
+  }
+  w_string_delref(cookie_base);
+  cookie_base = NULL;
+
+  /* insert our cookie in the map */
+  w_ht_set(root->query_cookies, (w_ht_val_t)path_str, (w_ht_val_t)&cookie);
+
+  /* touch the file */
+  fd = open(path_str->buf, O_CREAT|O_TRUNC|O_WRONLY|O_CLOEXEC, 0700);
+  if (fd == -1) {
+    errcode = errno;
+    w_log(W_LOG_ERR, "sync_to_now: creat(%s) failed: %s\n",
+        path_str->buf, strerror(errcode));
+    goto out;
+  }
+  close(fd);
+
+  /* compute deadline */
+  gettimeofday(&now, NULL);
+  delta.tv_sec = timeoutms / 1000;
+  delta.tv_usec = (timeoutms - (delta.tv_sec * 1000)) * 1000;
+  w_timeval_add(now, delta, &target);
+  w_timeval_to_timespec(target, &deadline);
+
+  w_log(W_LOG_DBG, "sync_to_now [%s] waiting\n", path_str->buf);
+
+  /* timed cond wait (unlocks root lock, reacquires) */
+  errcode = pthread_cond_timedwait(&cookie.cond, &root->lock, &deadline);
+  if (errcode && !cookie.seen) {
+    w_log(W_LOG_ERR, "sync_to_now: %s timedwait failed: %s\n",
+        path_str->buf, strerror(errcode));
+  } else {
+    w_log(W_LOG_DBG, "sync_to_now [%s] done\n", path_str->buf);
+  }
+
+out:
+  // can't unlink the file until after the cookie has been observed because
+  // we don't know which file got changed until we look in the cookie dir
+  unlink(path_str->buf);
+  w_ht_del(root->query_cookies, (w_ht_val_t)path_str);
+  w_root_unlock(root);
+
+  w_string_delref(path_str);
+  pthread_cond_destroy(&cookie.cond);
+
+  if (!cookie.seen) {
+    errno = errcode;
+    return false;
+  }
+
+  return true;
 }
 
 bool w_root_add_pending(w_root_t *root, w_string_t *path,
@@ -650,7 +774,10 @@ static void stat_path(w_root_t *root,
       }
 
       // Don't recurse if our parent is an ignore dir
-      if (!w_ht_get(root->ignore_dirs, (w_ht_val_t)dir_name)) {
+      if (!w_ht_get(root->ignore_dirs, (w_ht_val_t)dir_name) ||
+          // but do if we're looking at the cookie dir
+          (root->query_cookie_dir &&
+          w_string_equal(full_path, root->query_cookie_dir))) {
 #ifndef HAVE_INOTIFY_INIT
         /* On non-Linux systems, we always need to crawl, but may not
          * need to be fully recursive */
@@ -675,6 +802,22 @@ static void stat_path(w_root_t *root,
 void w_root_process_path(w_root_t *root, w_string_t *full_path,
     struct timeval now, bool recursive, bool via_notify)
 {
+  if (w_string_is_cookie(full_path)) {
+    struct watchman_query_cookie *cookie;
+
+    cookie = (void*)w_ht_get(root->query_cookies, (w_ht_val_t)full_path);
+    w_log(W_LOG_DBG, "cookie! %.*s cookie=%p\n",
+        full_path->len, full_path->buf, cookie);
+
+    if (cookie) {
+      cookie->seen = true;
+      pthread_cond_signal(&cookie->cond);
+    }
+
+    // Never allow cookie files to show up in the tree
+    return;
+  }
+
   if (w_string_equal(full_path, root->root_path)) {
     crawler(root, full_path, now, recursive);
   } else {
@@ -1146,52 +1289,6 @@ static void process_triggers(w_root_t *root)
   root->last_trigger_tick = root->pending_trigger_tick;
 }
 
-// For a client to wait for updates to settle out
-// Must be called with the root locked
-bool w_root_wait_for_settle(w_root_t *root, int settlems)
-{
-  struct timeval settle, now, target, diff;
-  struct timespec ts;
-  int res;
-
-  if (settlems == -1) {
-    settlems = trigger_settle;
-  }
-
-  settle.tv_sec = settlems / 1000;
-  settle.tv_usec = (settlems - (settle.tv_sec * 1000)) * 1000;
-
-  while (true) {
-    gettimeofday(&now, NULL);
-    if (root->latest_file) {
-      w_timeval_add(root->latest_file->otime.tv, settle, &target);
-      if (w_timeval_compare(now, target) >= 0) {
-        // We're settled!
-        return true;
-      }
-
-      // Set the wait time to the difference
-      w_timeval_sub(target, now, &diff);
-      w_timeval_to_timespec(diff, &ts);
-
-    } else {
-      // we don't have any files, so let's wait one round of
-      // tick time
-      w_timeval_to_timespec(settle, &ts);
-    }
-
-    w_root_unlock(root);
-    res = nanosleep(&ts, NULL);
-    w_root_lock(root);
-
-    if (res == 0 && root->latest_file == NULL) {
-      return true;
-    }
-  }
-
-  return true;
-}
-
 static void handle_should_recrawl(w_root_t *root)
 {
   if (root->should_recrawl) {
@@ -1244,7 +1341,9 @@ static void *stat_thread(void *arg)
           w_timeval_to_timespec(target, &ts);
           err = pthread_cond_timedwait(&root->cond, &root->lock, &ts);
 
-          if (err != ETIMEDOUT) {
+          // The condwait unlocks root; we may have picked up some
+          // more pending items
+          if (err != ETIMEDOUT || root->pending) {
             // We have more pending items to collect
             goto have_pending;
           }
@@ -1261,6 +1360,13 @@ static void *stat_thread(void *arg)
 
       process_triggers(root);
       process_subscriptions(root);
+
+      /* We may have released the lock while processing items;
+       * we may have more work to do; make sure we don't fall
+       * asleep on the job */
+      if (root->pending) {
+        goto have_pending;
+      }
 
       if (recrawl_period) {
         gettimeofday(&now, NULL);
@@ -1708,6 +1814,7 @@ void w_root_delref(w_root_t *root)
   w_ht_free(root->ignore_dirs);
   w_ht_free(root->dirname_to_dir);
   w_ht_free(root->commands);
+  w_ht_free(root->query_cookies);
 
 #ifdef HAVE_INOTIFY_INIT
   close(root->infd);
@@ -1724,6 +1831,10 @@ void w_root_delref(w_root_t *root)
     file = root->latest_file;
     root->latest_file = file->next;
     delete_file(file);
+  }
+
+  if (root->query_cookie_dir) {
+    w_string_delref(root->query_cookie_dir);
   }
 
   free(root);

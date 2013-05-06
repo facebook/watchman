@@ -224,6 +224,10 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
 
       $got = $since_files;
     } elseif (is_array($out)) {
+      $error = idx($out, 'error');
+      if ($error) {
+        throw new Exception($error);
+      }
       $got = $sort_func(idx($out, 'files'));
     } else {
       $got = $out;

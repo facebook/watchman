@@ -10,8 +10,10 @@ void w_log(int level, const char *fmt, ...)
   char buf[4096];
   va_list ap;
   int len;
+  uint32_t tid = (uint32_t)(uintptr_t)pthread_self();
 
-  len = snprintf(buf, sizeof(buf), "%d: ", (int)time(NULL));
+  len = snprintf(buf, sizeof(buf),
+        "%d: tid=%" PRIu32 " ", (int)time(NULL), tid);
   va_start(ap, fmt);
   len += vsnprintf(buf + len, sizeof(buf) - len, fmt, ap);
   va_end(ap);

@@ -61,6 +61,8 @@ struct w_query {
   w_string_t **suffixes;
   uint32_t nsuffixes;
 
+  uint32_t sync_timeout;
+
   // We can't (and mustn't!) evaluate the clockspec
   // fully until we execute query, because we have
   // to evaluate named cursors at the time we execute
@@ -110,11 +112,20 @@ typedef bool (*w_query_generator)(
     void *gendata
 );
 
-uint32_t w_query_execute(
+struct w_query_result {
+  uint32_t num_results;
+  struct watchman_rule_match *results;
+  uint32_t ticks;
+  char *errmsg;
+};
+typedef struct w_query_result w_query_res;
+
+void w_query_result_free(w_query_res *res);
+
+bool w_query_execute(
     w_query *query,
     w_root_t *root,
-    uint32_t *ticks,
-    struct watchman_rule_match **results,
+    w_query_res *results,
     w_query_generator generator,
     void *gendata
 );

@@ -41,6 +41,12 @@ extern "C" {
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <fcntl.h>
+#if defined(__linux__) && !defined(O_CLOEXEC)
+# define O_CLOEXEC   02000000 /* set close_on_exec, from asm/fcntl.h */
+#endif
+#ifndef O_CLOEXEC
+# define O_CLOEXEC 0
+#endif
 #include <sys/poll.h>
 #include <sys/wait.h>
 #include <fnmatch.h>
@@ -203,6 +209,12 @@ struct watchman_file {
 #endif
 };
 
+#define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"
+struct watchman_query_cookie {
+  pthread_cond_t cond;
+  bool seen;
+};
+
 struct watchman_root {
 #if HAVE_INOTIFY_INIT
   /* we use one inotify instance per watched root dir */
@@ -239,6 +251,11 @@ struct watchman_root {
    * for the sake of ensuring consistency */
   bool should_recrawl;
   bool cancelled;
+
+  /* relative path to the query cookie dir.
+   * If NULL, we use the root itself */
+  w_string_t *query_cookie_dir;
+  w_ht_t *query_cookies;
 
   /* map of dir name => dirname
    * if the map has an entry for a given dir, we're ignoring it */
@@ -379,6 +396,7 @@ bool w_string_equal_caseless(const w_string_t *a, const w_string_t *b);
 w_string_t *w_string_dirname(w_string_t *str);
 w_string_t *w_string_basename(w_string_t *str);
 w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
+bool w_string_is_cookie(w_string_t *str);
 void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
 w_root_t *w_root_resolve(const char *path, bool auto_watch);
 w_root_t *w_root_resolve_for_client_mode(const char *filename);
@@ -403,7 +421,7 @@ bool w_root_add_pending(w_root_t *root, w_string_t *path,
 bool w_root_add_pending_rel(w_root_t *root, struct watchman_dir *dir,
     const char *name, bool recursive,
     struct timeval now, bool via_notify);
-bool w_root_wait_for_settle(w_root_t *root, int settlems);
+bool w_root_sync_to_now(w_root_t *root, int timeoutms);
 
 void w_root_lock(w_root_t *root);
 void w_root_unlock(w_root_t *root);

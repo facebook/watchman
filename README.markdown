@@ -371,7 +371,7 @@ if it is not present it will default to:
 For each file in the result set, the query command will generate a JSON object
 value populated with the requested fields.  For example, the default set of
 fields will return a response something like this (`new` is only present if
-you are using the `since` generator and the is new wrt. the since value
+you are using the `since` generator and the item is new wrt. the since value
 you specified in your query):
 
 ```json
@@ -400,6 +400,29 @@ simple array of values; ```"fields": ["name"]``` produces:
 }
 ```
 
+#### Synchronization timeout (since 2.1)
+
+By default a `query` will wait for up to 2 seconds for the view of the
+filesystem to become current.  Watchman decides that the view is current by
+creating a cookie file and waiting to observe the notification that it is
+present.  If the cookie is no observed within the sync_timeout period then the
+query invocation will error out with a sychronization error message.
+
+If your synchronization requirements differ from the default, you may pass in
+your desired timeout when you construct your query; it must be an integer value
+expressed in milliseconds:
+
+```json
+["query", "/path/to/root", {
+  "expression": ["exists"],
+  "fields": ["name"],
+  "sync_timeout": 2000
+}]
+```
+
+You may specify `0` as the value if you do not wish for the query to create
+a cookie and synchronize; the query will be evaluated over the present view
+of the tree, which may lag behind the present state of the filesystem.
 
 ### Command: since
 

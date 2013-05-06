@@ -176,7 +176,6 @@ bool w_parse_clockspec(w_root_t *root,
 
     since->is_timestamp = false;
     w_root_lock(root);
-    w_root_wait_for_settle(root, -1);
 
     // If we've never seen it before, ticks will be set to 0
     // which is exactly what we want here.

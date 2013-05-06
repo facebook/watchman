@@ -4,7 +4,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 class invalidExprTestCase extends WatchmanTestCase {
-  function testEmpty() {
+  function testInvalidExprTerm() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
 
@@ -27,6 +27,34 @@ class invalidExprTestCase extends WatchmanTestCase {
       "'dont-implement-this-term'",
       $results['error']
     );
+  }
+
+  function testInvalidSyncTimeout() {
+    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $root = realpath($dir->getPath());
+
+    $this->watchmanCommand('watch', $root);
+
+    $results = $this->watchmanCommand('query', $root, array(
+      'expression' => array(
+        'exists',
+      ),
+      'sync_timeout' => -1,
+    ));
+
+    $this->assertEqual(
+      "failed to parse query: sync_timeout must be an integer value >= 0",
+      $results['error']
+    );
+
+    $results = $this->watchmanCommand('query', $root, array(
+      'expression' => array(
+        'exists',
+      ),
+      'sync_timeout' => 200,
+    ));
+
+    $this->assertEqual(array(), $results['files'], "parsed sync_timeout");
   }
 
 }

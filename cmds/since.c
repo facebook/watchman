@@ -38,6 +38,15 @@ void cmd_since(struct watchman_client *client, json_t *args)
     return;
   }
 
+  if (!w_root_sync_to_now(root, trigger_settle)) {
+    send_error_response(client, "synchronization failure: %s",
+        strerror(errno));
+    w_free_rules(rules);
+    w_root_delref(root);
+    return;
+  }
+
+
   /* now find all matching files */
   run_rules(client, root, &since, rules);
   w_free_rules(rules);
