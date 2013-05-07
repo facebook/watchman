@@ -8,46 +8,27 @@ class cursorTestCase extends WatchmanTestCase {
     $root = realpath($dir->getPath());
     $watch = $this->watchmanCommand('watch', $root);
 
-    $initial = $this->watchmanCommand('since', $root,
-      'n:testCursor');
+    $this->watchmanCommand('log', 'debug', 'XXX 1st since testCursor');
+    $this->assertFileListUsingSince($root, 'n:testCursor', array());
 
-    $this->assertRegex('/^c:\d+:\d+$/', $initial['clock'],
-      "clock seemslegit");
-
+    $this->watchmanCommand('log', 'debug', 'XXX touch one');
     touch($root . '/one');
 
-    // Allow time for the change to be observed
-    $update = $this->waitForWatchman(
-      array('since', $root, 'n:testCursor'),
-      function ($update) {
-        return count($update['files']);
-      }
-    );
+    $this->watchmanCommand('log', 'debug', 'XXX 2nd since testCursor');
+    $since = $this->assertFileListUsingSince(
+                $root, 'n:testCursor', array('one'));
+    $this->assertEqual(true, $since['files'][0]['new']);
 
-    $this->assertEqual('one',
-      $update['files'][0]['name'], 'saw file change');
-    $this->assertEqual(true,
-      $update['files'][0]['new'], 'shows as new');
+    $this->watchmanCommand('log', 'debug', 'XXX 3rd since testCursor');
+    $this->assertFileListUsingSince(
+                $root, 'n:testCursor', array('one'), array());
 
-    $later = $this->watchmanCommand('since', $root,
-      'n:testCursor');
-    $this->assertEqual(array(), $later['files'], 'no changes');
-
+    $this->watchmanCommand('log', 'debug', 'XXX 2nd touch one');
     /* now to verify that the file doesn't show as new after this next
      * change */
-    touch($root . '/one');
-
-    // Allow time for the change to be observed
-    $update = $this->waitForWatchman(
-      array('since', $root, 'n:testCursor'),
-      function ($update) {
-        return count($update['files']);
-      }
-    );
-
-    $this->assertEqual('one',
-      $update['files'][0]['name'], 'saw file change');
-    $this->assertEqual(false,
-      isset($update['files'][0]['new']), 'not new');
+    touch($root . '/one', time()+1);
+    $since = $this->assertFileListUsingSince(
+                  $root, 'n:testCursor', array('one'));
+    $this->assertEqual(false, isset($since['files'][0]['new']));
   }
 }

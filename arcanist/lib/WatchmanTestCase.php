@@ -202,7 +202,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
 
       $since_files = $sort_func(idx($since, 'files'));
       if ($since_files === $files_via_since) {
-        return;
+        return $since;
       }
 
       if ($message === null) {

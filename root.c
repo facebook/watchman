@@ -984,6 +984,14 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       w_root_add_pending_rel(root, dir, dirent->d_name,
           true, now, false);
     }
+#ifdef HAVE_KQUEUE
+    else if (!S_ISDIR(file->st.st_mode)) {
+      // if we're BSDish we need to stat files here otherwise
+      // we'll miss things like files being touched
+      w_root_add_pending_rel(root, dir, dirent->d_name,
+          false, now, false);
+    }
+#endif
     w_string_delref(name);
   }
   closedir(osdir);
