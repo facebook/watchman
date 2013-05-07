@@ -45,6 +45,10 @@ void cmd_query(struct watchman_client *client, json_t *args)
     return;
   }
 
+  if (client->client_mode) {
+    query->sync_timeout = 0;
+  }
+
   if (!w_query_execute(query, root, &res, NULL, NULL)) {
     send_error_response(client, "query failed: %s", res.errmsg);
     w_query_result_free(&res);
