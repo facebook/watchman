@@ -1246,6 +1246,41 @@ static void process_subscriptions(w_root_t *root)
   root->last_sub_tick = root->pending_sub_tick;
 }
 
+static bool vcs_file_exists(w_root_t *root,
+    const char *dname, const char *fname)
+{
+  struct watchman_dir *dir;
+  struct watchman_file *file;
+  w_string_t *file_name;
+  w_string_t *dir_name;
+  w_string_t *rel_dir_name;
+
+  rel_dir_name = w_string_new(dname);
+  dir_name = w_string_path_cat(root->root_path, rel_dir_name);
+  w_string_delref(rel_dir_name);
+
+  dir = w_root_resolve_dir(root, dir_name, false);
+  w_string_delref(dir_name);
+
+  if (!dir) {
+    return false;
+  }
+
+  if (!dir->files) {
+    return false;
+  }
+
+  file_name = w_string_new(fname);
+  file = (struct watchman_file*)w_ht_get(dir->files, (w_ht_val_t)file_name);
+  w_string_delref(file_name);
+
+  if (!file) {
+    return false;
+  }
+
+  return file->exists;
+}
+
 /* process any pending triggers.
  * must be called with root locked
  */
@@ -1258,6 +1293,15 @@ static void process_triggers(w_root_t *root)
   struct w_clockspec_query since;
 
   if (root->last_trigger_tick == root->pending_trigger_tick) {
+    return;
+  }
+
+  // If it looks like we're in a repo undergoing a rebase or
+  // other similar operation, we want to defer triggers until
+  // things settle down
+  if (vcs_file_exists(root, ".hg", "wlock") ||
+      vcs_file_exists(root, ".git", "index.lock")) {
+    w_log(W_LOG_DBG, "deferring triggers until VCS operations complete\n");
     return;
   }
 
