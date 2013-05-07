@@ -405,7 +405,7 @@ simple array of values; ```"fields": ["name"]``` produces:
 By default a `query` will wait for up to 2 seconds for the view of the
 filesystem to become current.  Watchman decides that the view is current by
 creating a cookie file and waiting to observe the notification that it is
-present.  If the cookie is no observed within the sync_timeout period then the
+present.  If the cookie is not observed within the sync_timeout period then the
 query invocation will error out with a sychronization error message.
 
 If your synchronization requirements differ from the default, you may pass in
