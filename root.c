@@ -1138,11 +1138,15 @@ out:
 
 void w_mark_dead(pid_t pid)
 {
-  w_root_t *root;
+  w_root_t *root = NULL;
   w_ht_iter_t iter;
 
   pthread_mutex_lock(&spawn_lock);
-  root = (w_root_t*)w_ht_get(running_kids, pid);
+  // May be NULL when we're spinning up the child_reaper
+  // thread and forking a child to shut the kernel up.
+  if (running_kids) {
+    root = (w_root_t*)w_ht_get(running_kids, pid);
+  }
   if (!root) {
     pthread_mutex_unlock(&spawn_lock);
     return;
@@ -1959,10 +1963,13 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   pthread_mutex_lock(&root_lock);
   // adds 1 ref
   w_ht_set(watched_roots, (w_ht_val_t)root->root_path, (w_ht_val_t)root);
+  pthread_mutex_unlock(&root_lock);
+
+  pthread_mutex_lock(&spawn_lock);
   if (!running_kids) {
     running_kids = w_ht_new(2, NULL);
   }
-  pthread_mutex_unlock(&root_lock);
+  pthread_mutex_unlock(&spawn_lock);
 
   // caller owns 1 ref
   return root;
