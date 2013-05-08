@@ -124,23 +124,8 @@ static w_root_t *w_root_new(const char *path)
       // query cookie information
       if (root->query_cookie_dir == NULL &&
           lstat(fullname->buf, &st) == 0 && S_ISDIR(st.st_mode)) {
-        w_string_t *wman = w_string_new("watchman");
-        w_string_t *rel;
-
-        // {.hg,.git,.svn}/watchman
-        rel = w_string_path_cat(name, wman);
-        root->query_cookie_dir = w_string_path_cat(root->root_path, rel);
-        w_string_delref(rel);
-        w_string_delref(wman);
-
-        // Make sure it exists
-        if (mkdir(root->query_cookie_dir->buf, 0770) && errno != EEXIST) {
-          w_log(W_LOG_ERR, "mkdir(%s) failed: %s\n",
-              root->query_cookie_dir->buf, strerror(errno));
-          w_root_delref(root);
-          w_string_delref(name);
-          return NULL;
-        }
+        // root/{.hg,.git,.svn}
+        root->query_cookie_dir = w_string_path_cat(root->root_path, name);
       }
       w_string_delref(name);
     }
