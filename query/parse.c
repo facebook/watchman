@@ -157,15 +157,13 @@ static bool parse_paths(w_query *res, json_t *query)
   for (i = 0; i < json_array_size(paths); i++) {
     json_t *ele = json_array_get(paths, i);
     const char *name = NULL;
+    w_string_t *path;
 
     res->paths[i].depth = -1;
 
     if (json_is_string(ele)) {
-      res->paths[i].name = w_string_new(json_string_value(ele));
-      continue;
-    }
-
-    if (json_unpack(ele, "{s:s, s:i}",
+      name = json_string_value(ele);
+    } else if (json_unpack(ele, "{s:s, s:i}",
           "path", &name,
           "depth", &res->paths[i].depth
           ) != 0) {
@@ -175,7 +173,9 @@ static bool parse_paths(w_query *res, json_t *query)
       return false;
     }
 
-    res->paths[i].name = w_string_new(name);
+    path = w_string_new(name);
+    res->paths[i].name = w_string_canon_path(path);
+    w_string_delref(path);
   }
 
   return true;

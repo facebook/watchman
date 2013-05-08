@@ -264,6 +264,22 @@ bool w_string_is_cookie(w_string_t *str)
   return false;
 }
 
+w_string_t *w_string_canon_path(w_string_t *str)
+{
+  int end;
+  int trim = 0;
+
+  for (end = str->len - 1; end >= 0 && str->buf[end] == '/'; end--) {
+    trim++;
+  }
+  if (trim) {
+    return w_string_slice(str, 0, str->len - trim);
+  }
+  w_string_addref(str);
+  return str;
+}
+
+
 w_string_t *w_string_basename(w_string_t *str)
 {
   int end;
