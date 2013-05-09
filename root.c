@@ -96,7 +96,9 @@ static w_root_t *w_root_new(const char *path)
   pthread_mutex_init(&root->lock, &attr);
   pthread_mutexattr_destroy(&attr);
 
+#ifndef HAVE_INOTIFY_INIT
   pthread_cond_init(&root->cond, NULL);
+#endif
   root->root_path = w_string_new(path);
 
   root->cursors = w_ht_new(2, &w_ht_string_funcs);
@@ -319,7 +321,9 @@ bool w_root_add_pending(w_root_t *root, w_string_t *path,
 
   p->next = root->pending;
   root->pending = p;
+#ifndef HAVE_INOTIFY_INIT
   pthread_cond_signal(&root->cond);
+#endif
 
   return true;
 }
@@ -1341,6 +1345,7 @@ static void handle_should_recrawl(w_root_t *root)
   }
 }
 
+#ifndef HAVE_INOTIFY_INIT
 static void *stat_thread(void *arg)
 {
   w_root_t *root = arg;
@@ -1441,6 +1446,7 @@ have_pending:
 
   return 0;
 }
+#endif
 
 #if HAVE_KQUEUE
 
@@ -1609,171 +1615,230 @@ static void portfs_thread(w_root_t *root)
 #endif
 
 #if HAVE_INOTIFY_INIT
-// we want to consume inotify events as quickly as possible
-// to minimize the risk that the kernel event buffer overflows,
-// so we do this as a blocking thread that reads the inotify
-// descriptor and then queues the filesystem IO work to the
-// stat_thread above.
-static void inotify_thread(w_root_t *root)
+
+static void process_inotify_event(
+    w_root_t *root,
+    struct inotify_event *ine,
+    struct timeval now)
 {
-  /* now we can settle into the notification stuff */
-  while (!root->cancelled) {
-    struct inotify_event *ine;
-    char *iptr;
-    int n;
-    struct timeval now;
     struct watchman_dir *dir;
     struct watchman_file *file = NULL;
     w_string_t *name;
-    struct pollfd pfd;
 
-    pfd.fd = root->infd;
-    pfd.events = POLLIN;
+  w_log(W_LOG_DBG, "notify: wd=%d mask=%x %s\n", ine->wd, ine->mask,
+      ine->len > 0 ? ine->name : "");
 
-    n = poll(&pfd, 1, 100);
+  if (ine->wd == -1 && (ine->mask & IN_Q_OVERFLOW)) {
+    /* we missed something, will need to re-crawl */
+
+    w_log(W_LOG_ERR, "inotify: IN_Q_OVERFLOW, re-crawling %.*s\n",
+        root->root_path->len,
+        root->root_path->buf);
+    schedule_recrawl(root);
+  } else if (ine->wd != -1) {
+    char buf[WATCHMAN_NAME_MAX];
+
+    dir = w_root_resolve_dir_by_wd(root, ine->wd);
+    if (dir) {
+      // The hint is that it has gone away, so remove our wd mapping here.
+      // We'll queue up a stat of that dir anyway so that we really know
+      // the state of that path, but that has to happen /after/ we've
+      // removed this watch.
+      if ((ine->mask & IN_IGNORED) != 0) {
+        w_log(W_LOG_DBG, "mask=%x: remove watch %d %.*s\n", ine->mask,
+            dir->wd, dir->path->len, dir->path->buf);
+        if (dir->wd != -1) {
+          w_ht_del(root->wd_to_dir, dir->wd);
+          dir->wd = -1;
+        }
+      }
+
+      // We need to ensure that the watch descriptor associations from
+      // the old location are no longer valid so that when we crawl
+      // the destination location we'll update the entries
+      if (ine->len > 0 && (ine->mask & IN_MOVED_FROM)) {
+        name = w_string_new(ine->name);
+        file = w_root_resolve_file(root, dir, name, now);
+        if (!file) {
+          w_log(W_LOG_ERR,
+              "looking for file %.*s but it is missing in %.*s\n",
+              ine->len, ine->name, dir->path->len, dir->path->buf);
+          schedule_recrawl(root);
+          w_string_delref(name);
+          return;
+        }
+
+        // The file no longer exists in its old location
+        file->exists = false;
+        w_root_mark_file_changed(root, file, now);
+        w_string_delref(name);
+
+        // Was there a dir here too?
+        snprintf(buf, sizeof(buf), "%.*s/%s",
+            dir->path->len, dir->path->buf,
+            ine->name);
+        name = w_string_new(buf);
+
+        dir = w_root_resolve_dir(root, name, false);
+        if (dir) {
+          // Ensure that the old tree is not associated
+          invalidate_watch_descriptors(root, dir);
+          // and marked deleted
+          w_root_mark_deleted(root, dir, now, true);
+        }
+        w_string_delref(name);
+        return;
+      }
+
+      if (ine->len > 0) {
+        snprintf(buf, sizeof(buf), "%.*s/%s",
+            dir->path->len, dir->path->buf,
+            ine->name);
+        name = w_string_new(buf);
+      } else {
+        name = dir->path;
+        w_string_addref(name);
+      }
+
+      if ((ine->mask & (IN_IGNORED|IN_DELETE_SELF|IN_MOVE_SELF)) != 0) {
+        w_string_t *pname;
+
+        if (w_string_equal(root->root_path, name)) {
+          w_log(W_LOG_ERR,
+              "root dir %s has been (re)moved, canceling watch\n",
+              root->root_path->buf);
+          w_root_cancel(root);
+          return;
+        }
+
+        // We need to examine the parent and crawl down
+        pname = w_string_dirname(name);
+        w_log(W_LOG_DBG, "mask=%x, focus on parent: %.*s\n",
+            ine->mask, pname->len, pname->buf);
+        w_string_delref(name);
+        name = pname;
+      }
+
+      w_log(W_LOG_DBG, "add_pending for inotify mask=%x %.*s\n",
+          ine->mask, name->len, name->buf);
+      w_root_add_pending(root, name, true, now, true);
+
+      w_string_delref(name);
+
+    } else if ((ine->mask & (IN_MOVE_SELF|IN_IGNORED)) == 0) {
+      // If we can't resolve the dir, and this isn't notification
+      // that it has gone away, then we want to recrawl to fix
+      // up our state.
+      w_log(W_LOG_ERR, "wanted dir %d, but not found %s\n",
+          ine->wd, ine->name);
+      schedule_recrawl(root);
+    }
+  }
+}
+
+static bool wait_for_inotify(w_root_t *root, int timeoutms)
+{
+  int n;
+  struct pollfd pfd;
+
+  pfd.fd = root->infd;
+  pfd.events = POLLIN;
+
+  n = poll(&pfd, 1, timeoutms);
+
+  return n == 1;
+}
+
+static bool try_read_inotify(w_root_t *root, int timeoutms)
+{
+  struct inotify_event *ine;
+  char *iptr;
+  int n;
+  struct timeval now;
+
+  if (!wait_for_inotify(root, timeoutms)) {
+    return false;
+  }
+
+  if (root->cancelled) {
+    return false;
+  }
+
+  n = read(root->infd, &root->ibuf, sizeof(root->ibuf));
+  if (n == -1) {
+    if (errno == EINTR) {
+      return false;
+    }
+    w_log(W_LOG_ERR, "read(%d, %lu): error %s\n",
+        root->infd, sizeof(root->ibuf), strerror(errno));
+    abort();
+  }
+
+  w_log(W_LOG_DBG, "inotify read: returned %d.\n", n);
+  gettimeofday(&now, NULL);
+
+  for (iptr = root->ibuf; iptr < root->ibuf + n;
+      iptr = iptr + sizeof(*ine) + ine->len) {
+    ine = (struct inotify_event*)iptr;
+
+    process_inotify_event(root, ine, now);
 
     if (root->cancelled) {
-      break;
+      return false;
     }
+  }
 
-    if (n != 1) {
+  return true;
+}
+
+// we want to consume inotify events as quickly as possible
+// to minimize the risk that the kernel event buffer overflows,
+// so we do this as a blocking thread that reads the inotify
+// descriptor and then queues the filesystem IO work until after
+// we have drained the inotify descriptor
+static void inotify_thread(w_root_t *root)
+{
+  struct timeval start;
+
+  /* first order of business is to find all the files under our root */
+  w_root_lock(root);
+  gettimeofday(&start, NULL);
+  w_root_add_pending(root, root->root_path, false, start, false);
+  while (root->pending) {
+    w_root_process_pending(root);
+  }
+  root->done_initial = true;
+  w_root_unlock(root);
+
+  w_log(W_LOG_DBG, "inotify_thread[%s]: initial crawl complete\n",
+      root->root_path->buf);
+
+  /* now we can settle into the notification stuff */
+  while (!root->cancelled) {
+    int timeoutms = MAX(trigger_settle, 100);
+
+    if (!wait_for_inotify(root, timeoutms)) {
+      // Do triggers
+      w_log(W_LOG_DBG, "inotify_thread[%s] assessing triggers\n",
+          root->root_path->buf);
+      process_subscriptions(root);
+      process_triggers(root);
       continue;
     }
 
-    n = read(root->infd, &root->ibuf, sizeof(root->ibuf));
-    if (n == -1) {
-      if (errno == EINTR) {
-        continue;
-      }
-      w_log(W_LOG_ERR, "read(%d, %lu): error %s\n",
-          root->infd, sizeof(root->ibuf), strerror(errno));
-      abort();
-    }
-
-    w_log(W_LOG_DBG, "inotify read: returned %d.\n", n);
-
+    // Otherwise we have stuff to do
     w_root_lock(root);
     root->ticks++;
-    gettimeofday(&now, NULL);
 
-    for (iptr = root->ibuf; iptr < root->ibuf + n;
-          iptr = iptr + sizeof(*ine) + ine->len) {
-      ine = (struct inotify_event*)iptr;
+    // Consume as much as we can without blocking on inotify,
+    // because we hold a lock.
+    try_read_inotify(root, 0);
 
-      w_log(W_LOG_DBG, "notify: wd=%d mask=%x %s\n", ine->wd, ine->mask,
-          ine->len > 0 ? ine->name : "");
-
-
-      if (ine->wd == -1 && (ine->mask & IN_Q_OVERFLOW)) {
-        /* we missed something, will need to re-crawl */
-
-        w_log(W_LOG_ERR, "inotify: IN_Q_OVERFLOW, re-crawling %.*s\n",
-            root->root_path->len,
-            root->root_path->buf);
-        schedule_recrawl(root);
-      } else if (ine->wd != -1) {
-        char buf[WATCHMAN_NAME_MAX];
-
-        dir = w_root_resolve_dir_by_wd(root, ine->wd);
-        if (dir) {
-          // The hint is that it has gone away, so remove our wd mapping here.
-          // We'll queue up a stat of that dir anyway so that we really know
-          // the state of that path, but that has to happen /after/ we've
-          // removed this watch.
-          if ((ine->mask & IN_IGNORED) != 0) {
-            w_log(W_LOG_DBG, "mask=%x: remove watch %d %.*s\n", ine->mask,
-                dir->wd, dir->path->len, dir->path->buf);
-            if (dir->wd != -1) {
-              w_ht_del(root->wd_to_dir, dir->wd);
-              dir->wd = -1;
-            }
-          }
-
-          // We need to ensure that the watch descriptor associations from
-          // the old location are no longer valid so that when we crawl
-          // the destination location we'll update the entries
-          if (ine->len > 0 && (ine->mask & IN_MOVED_FROM)) {
-            name = w_string_new(ine->name);
-            file = w_root_resolve_file(root, dir, name, now);
-            if (!file) {
-              w_log(W_LOG_ERR,
-                  "looking for file %.*s but it is missing in %.*s\n",
-                  ine->len, ine->name, dir->path->len, dir->path->buf);
-              schedule_recrawl(root);
-              w_string_delref(name);
-              continue;
-            }
-
-            // The file no longer exists in its old location
-            file->exists = false;
-            w_root_mark_file_changed(root, file, now);
-            w_string_delref(name);
-
-            // Was there a dir here too?
-            snprintf(buf, sizeof(buf), "%.*s/%s",
-                dir->path->len, dir->path->buf,
-                ine->name);
-            name = w_string_new(buf);
-
-            dir = w_root_resolve_dir(root, name, false);
-            if (dir) {
-              // Ensure that the old tree is not associated
-              invalidate_watch_descriptors(root, dir);
-              // and marked deleted
-              w_root_mark_deleted(root, dir, now, true);
-            }
-            w_string_delref(name);
-            continue;
-          }
-
-
-          if (ine->len > 0) {
-            snprintf(buf, sizeof(buf), "%.*s/%s",
-                dir->path->len, dir->path->buf,
-                ine->name);
-            name = w_string_new(buf);
-          } else {
-            name = dir->path;
-            w_string_addref(name);
-          }
-
-          if ((ine->mask & (IN_IGNORED|IN_DELETE_SELF|IN_MOVE_SELF)) != 0) {
-            w_string_t *pname;
-
-            if (w_string_equal(root->root_path, name)) {
-              w_log(W_LOG_ERR,
-                  "root dir %s has been (re)moved, canceling watch\n",
-                  root->root_path->buf);
-              w_root_cancel(root);
-              break;
-            }
-
-            // We need to examine the parent and crawl down
-            pname = w_string_dirname(name);
-            w_log(W_LOG_DBG, "mask=%x, focus on parent: %.*s\n",
-                ine->mask, pname->len, pname->buf);
-            w_string_delref(name);
-            name = pname;
-          }
-
-          w_log(W_LOG_DBG, "add_pending for inotify mask=%x %.*s\n",
-              ine->mask, name->len, name->buf);
-          w_root_add_pending(root, name, true, now, true);
-
-          w_string_delref(name);
-
-        } else if ((ine->mask & (IN_MOVE_SELF|IN_IGNORED)) == 0) {
-          // If we can't resolve the dir, and this isn't notification
-          // that it has gone away, then we want to recrawl to fix
-          // up our state.
-          w_log(W_LOG_ERR, "wanted dir %d, but not found %s\n",
-              ine->wd, ine->name);
-          schedule_recrawl(root);
-        }
-      }
-    }
-
+    // then do our IO
     handle_should_recrawl(root);
+    while (root->pending) {
+      w_root_process_pending(root);
+    }
     w_root_unlock(root);
   }
 
@@ -1849,7 +1914,9 @@ void w_root_delref(w_root_t *root)
 
   pthread_mutex_destroy(&root->lock);
   w_string_delref(root->root_path);
+#ifndef HAVE_INOTIFY_INIT
   pthread_cond_destroy(&root->cond);
+#endif
   w_ht_free(root->cursors);
   w_ht_free(root->suffixes);
   w_ht_free(root->ignore_dirs);
@@ -2005,8 +2072,10 @@ static bool root_start(w_root_t *root)
   w_root_addref(root);
   pthread_create(&root->notify_thread, &attr, run_notify_thread, root);
 
+#ifndef HAVE_INOTIFY_INIT
   w_root_addref(root);
   pthread_create(&root->stat_thread, &attr, stat_thread, root);
+#endif
 
   pthread_attr_destroy(&attr);
 
@@ -2041,10 +2110,12 @@ static void signal_root_threads(w_root_t *root)
   if (!pthread_equal(root->notify_thread, pthread_self())) {
     pthread_kill(root->notify_thread, SIGUSR1);
   }
+#ifndef HAVE_INOTIFY_INIT
   if (!pthread_equal(root->stat_thread, pthread_self())) {
     pthread_cond_signal(&root->cond);
     pthread_kill(root->stat_thread, SIGUSR1);
   }
+#endif
 }
 
 // Cancels a watch.

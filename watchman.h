@@ -278,9 +278,10 @@ struct watchman_root {
 
   /* our locking granularity is per-root */
   pthread_mutex_t lock;
+#ifndef HAVE_INOTIFY_INIT
   pthread_cond_t cond;
-
   pthread_t stat_thread;
+#endif
   pthread_t notify_thread;
 #if HAVE_INOTIFY_INIT
   // Make the buffer big enough for 16k entries, which
@@ -588,6 +589,13 @@ struct watchman_getopt {
 #define IS_DAEMON 1
 #define NOT_DAEMON 0
 };
+
+#ifndef MIN
+# define MIN(a, b)  (a) < (b) ? (a) : (b)
+#endif
+#ifndef MAX
+# define MAX(a, b)  (a) > (b) ? (a) : (b)
+#endif
 
 bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
     char ***daemon_argv);
