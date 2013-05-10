@@ -278,10 +278,6 @@ struct watchman_root {
 
   /* our locking granularity is per-root */
   pthread_mutex_t lock;
-#ifndef HAVE_INOTIFY_INIT
-  pthread_cond_t cond;
-  pthread_t stat_thread;
-#endif
   pthread_t notify_thread;
 #if HAVE_INOTIFY_INIT
   // Make the buffer big enough for 16k entries, which
@@ -492,6 +488,7 @@ static inline int w_timeval_compare(struct timeval a, struct timeval b)
 #define WATCHMAN_USEC_IN_SEC 1000000
 #define WATCHMAN_NSEC_IN_USEC 1000
 #define WATCHMAN_NSEC_IN_SEC (1000 * 1000 * 1000)
+#define WATCHMAN_NSEC_IN_MSEC 1000000
 
 #if defined(__APPLE__) || defined(__FreeBSD__)
 /* BSD-style subsecond timespec */

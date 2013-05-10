@@ -527,7 +527,7 @@ static void *child_reaper(void *arg)
   // any children.  Let's give it one to think about.
   pid = fork();
   if (pid == 0) {
-    execl("/bin/true", "true", NULL);
+    execl("/bin/true", "true", (char*)0);
     _exit(0);
   }
 

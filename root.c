@@ -96,9 +96,6 @@ static w_root_t *w_root_new(const char *path)
   pthread_mutex_init(&root->lock, &attr);
   pthread_mutexattr_destroy(&attr);
 
-#ifndef HAVE_INOTIFY_INIT
-  pthread_cond_init(&root->cond, NULL);
-#endif
   root->root_path = w_string_new(path);
 
   root->cursors = w_ht_new(2, &w_ht_string_funcs);
@@ -321,9 +318,6 @@ bool w_root_add_pending(w_root_t *root, w_string_t *path,
 
   p->next = root->pending;
   root->pending = p;
-#ifndef HAVE_INOTIFY_INIT
-  pthread_cond_signal(&root->cond);
-#endif
 
   return true;
 }
@@ -1345,128 +1339,49 @@ static void handle_should_recrawl(w_root_t *root)
   }
 }
 
-#ifndef HAVE_INOTIFY_INIT
-static void *stat_thread(void *arg)
+static bool wait_for_notify(w_root_t *root, int timeoutms)
 {
-  w_root_t *root = arg;
-  struct timeval start, end, now, target;
-  struct timeval settle, recrawl;
+  int n;
+  struct pollfd pfd;
 
-  settle.tv_sec = trigger_settle / 1000;
-  settle.tv_usec = (trigger_settle - (settle.tv_sec * 1000)) * 1000;
-  recrawl.tv_sec = recrawl_period / 1000;
-  recrawl.tv_usec = (recrawl_period - (recrawl.tv_sec * 1000)) * 1000;
-
-  /* first order of business is to find all the files under our root */
-  gettimeofday(&start, NULL);
-  w_root_lock(root);
-  w_root_add_pending(root, root->root_path, false, start, false);
-  w_root_unlock(root);
-
-  /* now we just sit and wait for things to land in our pending list */
-  for (;;) {
-    int err;
-    struct timespec ts;
-
-    w_root_lock(root);
-    if (root->cancelled) {
-      w_root_unlock(root);
-      break;
-    }
-    handle_should_recrawl(root);
-
-    if (!root->pending) {
-
-      // Throttle our trigger rate
-      gettimeofday(&now, NULL);
-      if (root->latest_file) {
-        w_timeval_add(root->latest_file->otime.tv, settle, &target);
-        if (w_timeval_compare(now, target) < 0) {
-          // Still have a bit of time to wait
-
-          w_timeval_to_timespec(target, &ts);
-          err = pthread_cond_timedwait(&root->cond, &root->lock, &ts);
-
-          // The condwait unlocks root; we may have picked up some
-          // more pending items
-          if (err != ETIMEDOUT || root->pending) {
-            // We have more pending items to collect
-            goto have_pending;
-          }
-        }
-      }
-
-      if (!root->done_initial) {
-        gettimeofday(&end, NULL);
-        w_log(W_LOG_DBG, "%s scanned in %.2f seconds\n",
-            root->root_path->buf,
-            w_timeval_diff(start, end));
-        root->done_initial = true;
-      }
-
-      process_triggers(root);
-      process_subscriptions(root);
-
-      /* We may have released the lock while processing items;
-       * we may have more work to do; make sure we don't fall
-       * asleep on the job */
-      if (root->pending) {
-        goto have_pending;
-      }
-
-      if (recrawl_period) {
-        gettimeofday(&now, NULL);
-        w_timeval_add(now, recrawl, &target);
-        w_timeval_to_timespec(target, &ts);
-        err = pthread_cond_timedwait(&root->cond, &root->lock, &ts);
-        if (err != 0 && err != ETIMEDOUT) {
-          w_log(W_LOG_ERR, "pthread_cond_wait: %s\n",
-              strerror(err));
-          w_root_lock(root);
-        }
-        if (err == ETIMEDOUT && !root->pending) {
-          // periodically scan the tree and fix it up
-          root->should_recrawl = true;
-        }
-      } else {
-        pthread_cond_wait(&root->cond, &root->lock);
-      }
-    }
-have_pending:
-    if (root->cancelled) {
-      w_root_unlock(root);
-      break;
-    }
-    w_root_process_pending(root);
-    w_root_unlock(root);
-  }
-  w_log(W_LOG_DBG, "stat_thread: out of loop %s\n",
-      root->root_path->buf);
-  w_root_delref(root);
-
-  return 0;
-}
+#ifdef HAVE_INOTIFY_INIT
+  pfd.fd = root->infd;
+#elif defined(HAVE_PORT_CREATE)
+  pfd.fd = root->port_fd;
+#elif defined(HAVE_KQUEUE)
+  pfd.fd = root->kq_fd;
+#else
+# error wat
 #endif
+  pfd.events = POLLIN;
+
+  n = poll(&pfd, 1, timeoutms);
+
+  return n == 1;
+}
 
 #if HAVE_KQUEUE
 
 static int consume_kqueue(w_root_t *root, w_ht_t *batch,
-    bool timeout)
+    int timeoutms)
 {
   struct kevent k[32];
   int n;
   int i;
-  struct timespec ts = { 0, 200000 };
+  struct timespec ts = { 0, 0 };
+
+  ts.tv_sec = timeoutms / 1000;
+  ts.tv_nsec = (timeoutms - (ts.tv_sec * 1000)) * WATCHMAN_NSEC_IN_MSEC;
 
   errno = 0;
 
   w_log(W_LOG_DBG, "kqueue(%s) timeout=%d\n",
-      root->root_path->buf, timeout);
+      root->root_path->buf, timeoutms);
   n = kevent(root->kq_fd, NULL, 0,
         k, sizeof(k) / sizeof(k[0]),
-        timeout ? &ts : NULL);
+        &ts);
   w_log(W_LOG_DBG, "consume_kqueue: %s timeout=%d n=%d err=%s\n",
-      root->root_path->buf, timeout, n, strerror(errno));
+      root->root_path->buf, timeoutms, n, strerror(errno));
   if (root->cancelled) {
     return 0;
   }
@@ -1493,125 +1408,99 @@ static int consume_kqueue(w_root_t *root, w_ht_t *batch,
   return n;
 }
 
-static void kqueue_thread(w_root_t *root)
+static void try_read_kqueue(w_root_t *root)
 {
-  w_ht_t *batch = NULL;
+  w_ht_t *batch = w_ht_new(2, &w_ht_string_funcs);
+  w_ht_iter_t iter;
+  struct timeval now;
 
-  for (;;) {
-    struct timeval now;
-    int n;
-
-    if (!batch) {
-      batch = w_ht_new(2, &w_ht_string_funcs);
-    }
-
-    w_log(W_LOG_DBG, "Blocking until we get kqueue activity %s\n",
-        root->root_path->buf);
-
-    /* get a batch of events, and allow a little bit of
-     * time for them to arrive (I've seen several events
-     * for the same item delivered one at a time */
-    n = consume_kqueue(root, batch, false);
-    while (n > 0) {
-      n = consume_kqueue(root, batch, true);
-    }
-    if (root->cancelled) {
-      break;
-    }
-
-    w_log(W_LOG_DBG, "Have %d events in %s\n",
-        w_ht_size(batch), root->root_path->buf);
-
-    if (w_ht_size(batch)) {
-      w_ht_iter_t iter;
-
-      w_root_lock(root);
-      root->ticks++;
-      gettimeofday(&now, NULL);
-      if (w_ht_first(batch, &iter)) do {
-        w_string_t *name = (w_string_t*)iter.key;
-        intptr_t p = iter.value;
-
-        w_log(W_LOG_DBG, "kq -> %s\n", name->buf);
-        /* we only want to set the via_notify flag to true if we're
-         * absolutely sure that something was changed.
-         * Since we get notified on dirs when their contents change,
-         * we can't be sure precisely what changed (we'll compare stat results
-         * to find out).  For files, we're absolute sure that they changed.
-         * Therefore, we set via_notify to true if this was a file notification,
-         * and false otherwise */
-        w_root_add_pending(root, name, false, now, !IS_DIR_BIT_SET(p));
-
-      } while (w_ht_next(batch, &iter));
-
-      w_root_unlock(root);
-
-      w_ht_free(batch);
-      batch = NULL;
-    }
+  /* get a batch of events, and allow a little bit of
+   * time for them to arrive (I've seen several events
+   * for the same item delivered one at a time) */
+  while (!root->cancelled && consume_kqueue(root, batch, 0) > 0) {
+    ;
   }
 
-  if (batch) {
-    w_ht_free(batch);
-  }
+  w_log(W_LOG_DBG, "Have %d events in %s\n",
+      w_ht_size(batch), root->root_path->buf);
+
+  gettimeofday(&now, NULL);
+  if (w_ht_first(batch, &iter)) do {
+    w_string_t *name = (w_string_t*)iter.key;
+    intptr_t p = iter.value;
+
+    w_log(W_LOG_DBG, "kq -> %s\n", name->buf);
+    /* we only want to set the via_notify flag to true if we're
+     * absolutely sure that something was changed.
+     * Since we get notified on dirs when their contents change,
+     * we can't be sure precisely what changed (we'll compare stat results
+     * to find out).  For files, we're absolute sure that they changed.
+     * Therefore, we set via_notify to true if this was a file notification,
+     * and false otherwise */
+    w_root_add_pending(root, name, false, now, !IS_DIR_BIT_SET(p));
+
+  } while (w_ht_next(batch, &iter));
+
+  w_ht_free(batch);
 }
 
 #endif
 
 #if HAVE_PORT_CREATE
-static void portfs_thread(w_root_t *root)
+
+static bool consume_portfs(w_root_t *root, int timeoutms)
 {
-  for (;;) {
-    port_event_t events[128];
-    uint_t i, n;
-    struct timeval now;
+  port_event_t events[128];
+  uint_t i, n;
+  struct timeval now;
 
-    if (root->cancelled) {
-      break;
+  struct timespec ts = { 0, 0 };
+
+  ts.tv_sec = timeoutms / 1000;
+  ts.tv_nsec = (timeoutms - (ts.tv_sec * 1000)) * WATCHMAN_NSEC_IN_MSEC;
+
+  errno = 0;
+
+  n = 1;
+  if (port_getn(root->port_fd, events,
+        sizeof(events) / sizeof(events[0]), &n, NULL)) {
+    if (errno == EINTR) {
+      return false;
     }
-
-    n = 1;
-    if (port_getn(root->port_fd, events,
-          sizeof(events) / sizeof(events[0]), &n, NULL)) {
-      if (errno == EINTR) {
-        continue;
-      }
-      w_log(W_LOG_ERR, "port_getn: %s\n",
-          strerror(errno));
-      abort();
-    }
-
-    w_log(W_LOG_ERR, "port_getn: n=%u\n", n);
-
-    if (n == 0) {
-      continue;
-    }
-
-    w_root_lock(root);
-    root->ticks++;
-    gettimeofday(&now, NULL);
-
-    for (i = 0; i < n; i++) {
-      if (IS_DIR_BIT_SET(events[i].portev_user)) {
-        struct watchman_dir *dir = DECODE_DIR(events[i].portev_user);
-
-        w_root_add_pending(root, dir->path, true, now, true);
-
-      } else {
-        struct watchman_file *file = events[i].portev_user;
-        w_string_t *path;
-
-        path = w_string_path_cat(file->parent->path, file->name);
-        w_root_add_pending(root, path, true, now, true);
-
-        file->port_file.fo_name = (char*)path->buf;
-        w_string_delref(path);
-      }
-    }
-
-    w_root_unlock(root);
+    w_log(W_LOG_ERR, "port_getn: %s\n",
+        strerror(errno));
+    abort();
   }
+
+  w_log(W_LOG_DBG, "port_getn: n=%u\n", n);
+
+  if (n == 0) {
+    return false;
+  }
+
+  for (i = 0; i < n; i++) {
+    if (IS_DIR_BIT_SET(events[i].portev_user)) {
+      struct watchman_dir *dir = DECODE_DIR(events[i].portev_user);
+
+      w_log(W_LOG_DBG, "port: dir %.*s\n", dir->path->len, dir->path->buf);
+      w_root_add_pending(root, dir->path, false, now, true);
+
+    } else {
+      struct watchman_file *file = events[i].portev_user;
+      w_string_t *path;
+
+      path = w_string_path_cat(file->parent->path, file->name);
+      w_root_add_pending(root, path, true, now, true);
+      w_log(W_LOG_DBG, "port: file %.*s\n", path->len, path->buf);
+
+      file->port_file.fo_name = (char*)path->buf;
+      w_string_delref(path);
+    }
+  }
+
+  return true;
 }
+
 #endif
 
 #if HAVE_INOTIFY_INIT
@@ -1736,19 +1625,6 @@ static void process_inotify_event(
   }
 }
 
-static bool wait_for_inotify(w_root_t *root, int timeoutms)
-{
-  int n;
-  struct pollfd pfd;
-
-  pfd.fd = root->infd;
-  pfd.events = POLLIN;
-
-  n = poll(&pfd, 1, timeoutms);
-
-  return n == 1;
-}
-
 static bool try_read_inotify(w_root_t *root, int timeoutms)
 {
   struct inotify_event *ine;
@@ -1756,7 +1632,7 @@ static bool try_read_inotify(w_root_t *root, int timeoutms)
   int n;
   struct timeval now;
 
-  if (!wait_for_inotify(root, timeoutms)) {
+  if (!wait_for_notify(root, timeoutms)) {
     return false;
   }
 
@@ -1791,35 +1667,22 @@ static bool try_read_inotify(w_root_t *root, int timeoutms)
   return true;
 }
 
+#endif
+
 // we want to consume inotify events as quickly as possible
 // to minimize the risk that the kernel event buffer overflows,
 // so we do this as a blocking thread that reads the inotify
 // descriptor and then queues the filesystem IO work until after
 // we have drained the inotify descriptor
-static void inotify_thread(w_root_t *root)
+static void notify_thread(w_root_t *root)
 {
-  struct timeval start;
-
-  /* first order of business is to find all the files under our root */
-  w_root_lock(root);
-  gettimeofday(&start, NULL);
-  w_root_add_pending(root, root->root_path, false, start, false);
-  while (root->pending) {
-    w_root_process_pending(root);
-  }
-  root->done_initial = true;
-  w_root_unlock(root);
-
-  w_log(W_LOG_DBG, "inotify_thread[%s]: initial crawl complete\n",
-      root->root_path->buf);
-
   /* now we can settle into the notification stuff */
   while (!root->cancelled) {
     int timeoutms = MAX(trigger_settle, 100);
 
-    if (!wait_for_inotify(root, timeoutms)) {
+    if (!wait_for_notify(root, timeoutms)) {
       // Do triggers
-      w_log(W_LOG_DBG, "inotify_thread[%s] assessing triggers\n",
+      w_log(W_LOG_DBG, "notify_thread[%s] assessing triggers\n",
           root->root_path->buf);
       process_subscriptions(root);
       process_triggers(root);
@@ -1832,7 +1695,15 @@ static void inotify_thread(w_root_t *root)
 
     // Consume as much as we can without blocking on inotify,
     // because we hold a lock.
+#if HAVE_INOTIFY_INIT
     try_read_inotify(root, 0);
+#elif HAVE_KQUEUE
+    try_read_kqueue(root);
+#elif HAVE_PORT_CREATE
+    consume_portfs(root, 0);
+#else
+# error I dont support this system
+#endif
 
     // then do our IO
     handle_should_recrawl(root);
@@ -1843,7 +1714,6 @@ static void inotify_thread(w_root_t *root)
   }
 
 }
-#endif
 
 /* This function always returns a buffer that needs to
  * be released via free(3).  We use the native feature
@@ -1914,9 +1784,6 @@ void w_root_delref(w_root_t *root)
 
   pthread_mutex_destroy(&root->lock);
   w_string_delref(root->root_path);
-#ifndef HAVE_INOTIFY_INIT
-  pthread_cond_destroy(&root->cond);
-#endif
   w_ht_free(root->cursors);
   w_ht_free(root->suffixes);
   w_ht_free(root->ignore_dirs);
@@ -2038,16 +1905,22 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
 static void *run_notify_thread(void *arg)
 {
   w_root_t *root = arg;
+  struct timeval start;
 
-#if HAVE_INOTIFY_INIT
-  inotify_thread(root);
-#elif HAVE_KQUEUE
-  kqueue_thread(root);
-#elif HAVE_PORT_CREATE
-  portfs_thread(root);
-#else
-# error I dont support this system
-#endif
+  /* first order of business is to find all the files under our root */
+  w_root_lock(root);
+  gettimeofday(&start, NULL);
+  w_root_add_pending(root, root->root_path, false, start, false);
+  while (root->pending) {
+    w_root_process_pending(root);
+  }
+  root->done_initial = true;
+  w_root_unlock(root);
+
+  w_log(W_LOG_DBG, "notify_thread[%s]: initial crawl complete\n",
+      root->root_path->buf);
+
+  notify_thread(root);
 
   w_log(W_LOG_DBG, "notify_thread: out of loop %s\n",
       root->root_path->buf);
@@ -2071,11 +1944,6 @@ static bool root_start(w_root_t *root)
 
   w_root_addref(root);
   pthread_create(&root->notify_thread, &attr, run_notify_thread, root);
-
-#ifndef HAVE_INOTIFY_INIT
-  w_root_addref(root);
-  pthread_create(&root->stat_thread, &attr, stat_thread, root);
-#endif
 
   pthread_attr_destroy(&attr);
 
@@ -2110,12 +1978,6 @@ static void signal_root_threads(w_root_t *root)
   if (!pthread_equal(root->notify_thread, pthread_self())) {
     pthread_kill(root->notify_thread, SIGUSR1);
   }
-#ifndef HAVE_INOTIFY_INIT
-  if (!pthread_equal(root->stat_thread, pthread_self())) {
-    pthread_cond_signal(&root->cond);
-    pthread_kill(root->stat_thread, SIGUSR1);
-  }
-#endif
 }
 
 // Cancels a watch.
