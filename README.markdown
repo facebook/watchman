@@ -22,12 +22,12 @@ kind of remote or distributed filesystem.
 
 ## Concepts
 
+ * Watchman can watch one or more directory trees.
+ * Each watched tree is referred to as a "root"
+ * A root is watched recursively
  * Watchman does not follow symlinks.  It knows they exist, but they show up
    the same as any other file in its reporting.
- * Watchman encourages you to avoid race conditions by providing an abstract
-   clock notation, named cursors to aid in maintaining
-   proper state around polling operations and a command trigger facility.
- * Watchman waits for a watched directory to settle down before it will start
+ * Watchman waits for a watched root to settle down before it will start
    to trigger notifications or command execution.
  * Watchman is conservative, preferring to err on the side of caution, which
    means that it considers the files to be freshly changed when you start to
