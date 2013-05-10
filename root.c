@@ -557,11 +557,11 @@ static struct watchman_file *w_root_resolve_file(w_root_t *root,
 }
 
 #ifndef HAVE_PORT_CREATE
-static void schedule_recrawl(w_root_t *root)
+static void schedule_recrawl(w_root_t *root, const char *why)
 {
   if (!root->should_recrawl) {
-    w_log(W_LOG_ERR, "%.*s: something fishy: scheduling a tree recrawl\n",
-        root->root_path->len, root->root_path->buf);
+    w_log(W_LOG_ERR, "%.*s: %s: scheduling a tree recrawl\n",
+        root->root_path->len, root->root_path->buf, why);
   }
   root->should_recrawl = true;
 }
@@ -620,7 +620,7 @@ static void stop_watching_dir(w_root_t *root,
     w_log(W_LOG_ERR, "rm_watch: %d %.*s %s\n",
         dir->wd, dir->path->len, dir->path->buf,
         strerror(errno));
-    schedule_recrawl(root);
+    schedule_recrawl(root, "rm_watch failed");
   }
   w_ht_del(root->wd_to_dir, dir->wd);
   w_log(W_LOG_DBG, "removing %d -> %.*s mapping\n",
@@ -638,7 +638,7 @@ static void stop_watching_dir(w_root_t *root,
       w_log(W_LOG_ERR, "rm_watch: %d %.*s %s\n",
           dir->wd, dir->path->len, dir->path->buf,
           strerror(errno));
-      schedule_recrawl(root);
+      schedule_recrawl(root, "rm_watch failed");
     }
 
     close(dir->wd);
@@ -1519,11 +1519,7 @@ static void process_inotify_event(
 
   if (ine->wd == -1 && (ine->mask & IN_Q_OVERFLOW)) {
     /* we missed something, will need to re-crawl */
-
-    w_log(W_LOG_ERR, "inotify: IN_Q_OVERFLOW, re-crawling %.*s\n",
-        root->root_path->len,
-        root->root_path->buf);
-    schedule_recrawl(root);
+    schedule_recrawl(root, "IN_Q_OVERFLOW");
   } else if (ine->wd != -1) {
     char buf[WATCHMAN_NAME_MAX];
 
@@ -1552,7 +1548,7 @@ static void process_inotify_event(
           w_log(W_LOG_ERR,
               "looking for file %.*s but it is missing in %.*s\n",
               ine->len, ine->name, dir->path->len, dir->path->buf);
-          schedule_recrawl(root);
+          schedule_recrawl(root, "file missing from internal state");
           w_string_delref(name);
           return;
         }
@@ -1620,7 +1616,7 @@ static void process_inotify_event(
       // up our state.
       w_log(W_LOG_ERR, "wanted dir %d, but not found %s\n",
           ine->wd, ine->name);
-      schedule_recrawl(root);
+      schedule_recrawl(root, "dir missing from internal state");
     }
   }
 }
