@@ -20,11 +20,15 @@ class rmrootTestCase extends WatchmanTestCase {
 
     $watches = $this->waitForWatchman(
       array('watch-list'),
-      function ($list) {
-        return count($list['roots']) == 0;
+      function ($list) use ($root) {
+        return !in_array($root, $list['roots']);
       }
     );
-    $this->assertEqual(array(), $watches['roots']);
+    $this->assertEqual(
+      false,
+      in_array($root, $watches['roots']),
+      "watch deleted"
+    );
 
     mkdir($root);
     touch("$root/hello");

@@ -44,10 +44,16 @@ class removeTestCase extends WatchmanTestCase {
 
     system("rm -rf $root ; mkdir -p $root/notme");
 
+    $watches = $this->waitForWatchman(
+      array('watch-list'),
+      function ($list) use ($root) {
+        return !in_array($root, $list['roots']);
+      }
+    );
     $this->assertEqual(
-      array(),
-      idx($this->watchmanCommand('watch-list'), 'roots'),
-      "don't believe that root/notme exists"
+      false,
+      in_array($root, $watches['roots']),
+      "watch deleted"
     );
   }
 }

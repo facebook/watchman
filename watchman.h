@@ -412,7 +412,7 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
 struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd);
 void w_root_process_path(w_root_t *root, w_string_t *full_path,
     struct timeval now, bool recursive, bool via_notify);
-bool w_root_process_pending(w_root_t *root);
+bool w_root_process_pending(w_root_t *root, bool drain);
 
 bool w_root_add_pending(w_root_t *root, w_string_t *path,
     bool recursive, struct timeval now, bool via_notify);

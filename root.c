@@ -340,7 +340,7 @@ bool w_root_add_pending_rel(w_root_t *root, struct watchman_dir *dir,
   return res;
 }
 
-bool w_root_process_pending(w_root_t *root)
+bool w_root_process_pending(w_root_t *root, bool drain)
 {
   struct watchman_pending_fs *pending, *p;
 
@@ -355,7 +355,9 @@ bool w_root_process_pending(w_root_t *root)
     p = pending;
     pending = p->next;
 
-    w_root_process_path(root, p->path, p->now, p->recursive, p->via_notify);
+    if (!drain && !root->cancelled) {
+      w_root_process_path(root, p->path, p->now, p->recursive, p->via_notify);
+    }
 
     free_pending(p);
   }
@@ -1330,8 +1332,12 @@ static void process_triggers(w_root_t *root)
 
 static void handle_should_recrawl(w_root_t *root)
 {
-  if (root->should_recrawl) {
+  if (root->should_recrawl && !root->cancelled) {
     struct timeval now;
+
+    // Drain any pending data, it's probably all wrong and
+    // we'll just waste time dealing with it
+    w_root_process_pending(root, true);
 
     gettimeofday(&now, NULL);
     root->should_recrawl = false;
@@ -1392,7 +1398,15 @@ static int consume_kqueue(w_root_t *root, w_ht_t *batch,
     if (IS_DIR_BIT_SET(p)) {
       struct watchman_dir *dir = DECODE_DIR(p);
 
-      w_log(W_LOG_DBG, " KQ dir %s\n", dir->path->buf);
+      w_log(W_LOG_DBG, " KQ dir %s [0x%x]\n", dir->path->buf, k[i].fflags);
+      if ((k[i].fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE)) &&
+          w_string_equal(dir->path, root->root_path)) {
+        w_log(W_LOG_ERR,
+            "root dir %s has been (re)moved [code 0x%x], canceling watch\n",
+            root->root_path->buf, k[i].fflags);
+        w_root_cancel(root);
+        return 0;
+      }
       w_ht_set(batch, (w_ht_val_t)dir->path, (w_ht_val_t)p);
     } else {
       struct watchman_file *file = (void*)p;
@@ -1481,8 +1495,21 @@ static bool consume_portfs(w_root_t *root, int timeoutms)
   for (i = 0; i < n; i++) {
     if (IS_DIR_BIT_SET(events[i].portev_user)) {
       struct watchman_dir *dir = DECODE_DIR(events[i].portev_user);
+      uint32_t pe = events[i].portev_events;
 
-      w_log(W_LOG_DBG, "port: dir %.*s\n", dir->path->len, dir->path->buf);
+      w_log(W_LOG_DBG, "port: dir %.*s [0x%x]\n",
+          dir->path->len, dir->path->buf, pe);
+
+      if ((pe & (FILE_RENAME_FROM|UNMOUNTED|MOUNTEDOVER|FILE_DELETE))
+          && w_string_equal(dir->path, root->root_path)) {
+
+        w_log(W_LOG_ERR,
+          "root dir %s has been (re)moved (code 0x%x), canceling watch\n",
+          root->root_path->buf, pe);
+
+        w_root_cancel(root);
+        return false;
+      }
       w_root_add_pending(root, dir->path, false, now, true);
 
     } else {
@@ -1585,7 +1612,7 @@ static void process_inotify_event(
         w_string_addref(name);
       }
 
-      if ((ine->mask & (IN_IGNORED|IN_DELETE_SELF|IN_MOVE_SELF)) != 0) {
+      if ((ine->mask & (IN_UNMOUNT|IN_IGNORED|IN_DELETE_SELF|IN_MOVE_SELF))) {
         w_string_t *pname;
 
         if (w_string_equal(root->root_path, name)) {
@@ -1704,7 +1731,7 @@ static void notify_thread(w_root_t *root)
     // then do our IO
     handle_should_recrawl(root);
     while (root->pending) {
-      w_root_process_pending(root);
+      w_root_process_pending(root, false);
     }
     w_root_unlock(root);
   }
@@ -1908,7 +1935,7 @@ static void *run_notify_thread(void *arg)
   gettimeofday(&start, NULL);
   w_root_add_pending(root, root->root_path, false, start, false);
   while (root->pending) {
-    w_root_process_pending(root);
+    w_root_process_pending(root, false);
   }
   root->done_initial = true;
   w_root_unlock(root);
@@ -1960,7 +1987,7 @@ w_root_t *w_root_resolve_for_client_mode(const char *filename)
     w_root_lock(root);
     w_root_add_pending(root, root->root_path, true, start, false);
     while (root->pending) {
-      w_root_process_pending(root);
+      w_root_process_pending(root, false);
     }
     w_root_unlock(root);
   }
