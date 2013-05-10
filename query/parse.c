@@ -206,7 +206,7 @@ static bool parse_sync(w_query *res, json_t *query)
 
   timeout = json_object_get(query, "sync_timeout");
   if (!timeout) {
-    res->sync_timeout = 2000;
+    res->sync_timeout = 60000;
     return true;
   }
 
