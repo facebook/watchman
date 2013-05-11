@@ -101,6 +101,7 @@ static w_root_t *w_root_new(const char *path)
   root->cursors = w_ht_new(2, &w_ht_string_funcs);
   root->suffixes = w_ht_new(2, &w_ht_string_funcs);
   root->query_cookies = w_ht_new(2, &w_ht_string_funcs);
+  root->pending_uniq = w_ht_new(WATCHMAN_BATCH_LIMIT, &w_ht_string_funcs);
 
   root->ignore_dirs = w_ht_new(2, &w_ht_string_funcs);
   // Special handling for VCS control dirs
@@ -302,8 +303,17 @@ out:
 bool w_root_add_pending(w_root_t *root, w_string_t *path,
     bool recursive, struct timeval now, bool via_notify)
 {
-  struct watchman_pending_fs *p = calloc(1, sizeof(*p));
+  struct watchman_pending_fs *p;
 
+  p = (void*)w_ht_get(root->pending_uniq, (w_ht_val_t)path);
+  if (p) {
+    if (!p->recursive && recursive) {
+      p->recursive = true;
+    }
+    return true;
+  }
+
+  p = calloc(1, sizeof(*p));
   if (!p) {
     return false;
   }
@@ -318,6 +328,7 @@ bool w_root_add_pending(w_root_t *root, w_string_t *path,
 
   p->next = root->pending;
   root->pending = p;
+  w_ht_set(root->pending_uniq, (w_ht_val_t)path, (w_ht_val_t)p);
 
   return true;
 }
@@ -347,6 +358,10 @@ bool w_root_process_pending(w_root_t *root, bool drain)
   if (!root->pending) {
     return false;
   }
+
+  w_log(W_LOG_DBG, "processing %d events in %s\n",
+      w_ht_size(root->pending_uniq), root->root_path->buf);
+  w_ht_free_entries(root->pending_uniq);
 
   pending = root->pending;
   root->pending = NULL;
@@ -445,7 +460,9 @@ static void watch_file(w_root_t *root, struct watchman_file *file)
   file->port_file.fo_atime = file->st.st_atim;
   file->port_file.fo_mtime = file->st.st_mtim;
   file->port_file.fo_ctime = file->st.st_ctim;
-  file->port_file.fo_name = buf;
+  if (!file->port_file.fo_name) {
+    file->port_file.fo_name = strdup(buf);
+  }
 
   port_associate(root->port_fd, PORT_SOURCE_FILE,
       (uintptr_t)&file->port_file, WATCHMAN_PORT_EVENTS,
@@ -1368,13 +1385,12 @@ static bool wait_for_notify(w_root_t *root, int timeoutms)
 
 #if HAVE_KQUEUE
 
-static int consume_kqueue(w_root_t *root, w_ht_t *batch,
-    int timeoutms)
+static int consume_kqueue(w_root_t *root, int timeoutms)
 {
-  struct kevent k[32];
   int n;
   int i;
   struct timespec ts = { 0, 0 };
+  struct timeval now;
 
   ts.tv_sec = timeoutms / 1000;
   ts.tv_nsec = (timeoutms - (ts.tv_sec * 1000)) * WATCHMAN_NSEC_IN_MSEC;
@@ -1384,87 +1400,58 @@ static int consume_kqueue(w_root_t *root, w_ht_t *batch,
   w_log(W_LOG_DBG, "kqueue(%s) timeout=%d\n",
       root->root_path->buf, timeoutms);
   n = kevent(root->kq_fd, NULL, 0,
-        k, sizeof(k) / sizeof(k[0]),
-        &ts);
+      root->keventbuf, sizeof(root->keventbuf) / sizeof(root->keventbuf[0]),
+      &ts);
   w_log(W_LOG_DBG, "consume_kqueue: %s timeout=%d n=%d err=%s\n",
       root->root_path->buf, timeoutms, n, strerror(errno));
   if (root->cancelled) {
     return 0;
   }
 
+  gettimeofday(&now, NULL);
   for (i = 0; n > 0 && i < n; i++) {
-    intptr_t p = (intptr_t)k[i].udata;
+    intptr_t p = (intptr_t)root->keventbuf[i].udata;
+    uint32_t fflags = root->keventbuf[i].fflags;
 
     if (IS_DIR_BIT_SET(p)) {
       struct watchman_dir *dir = DECODE_DIR(p);
 
-      w_log(W_LOG_DBG, " KQ dir %s [0x%x]\n", dir->path->buf, k[i].fflags);
-      if ((k[i].fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE)) &&
+      w_log(W_LOG_DBG, " KQ dir %s [0x%x]\n", dir->path->buf, fflags);
+      if ((fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE)) &&
           w_string_equal(dir->path, root->root_path)) {
         w_log(W_LOG_ERR,
             "root dir %s has been (re)moved [code 0x%x], canceling watch\n",
-            root->root_path->buf, k[i].fflags);
+            root->root_path->buf, fflags);
         w_root_cancel(root);
         return 0;
       }
-      w_ht_set(batch, (w_ht_val_t)dir->path, (w_ht_val_t)p);
+      w_root_add_pending(root, dir->path, false, now, false);
     } else {
       struct watchman_file *file = (void*)p;
       w_string_t *name;
 
       name = w_string_path_cat(file->parent->path, file->name);
-      w_ht_set(batch, (w_ht_val_t)name, (w_ht_val_t)p);
-      w_log(W_LOG_DBG, " KQ file %s\n", name->buf);
+      /* we only want to set the via_notify flag to true if we're
+       * absolutely sure that something was changed.
+       * Since we get notified on dirs when their contents change,
+       * we can't be sure precisely what changed (we'll compare stat results
+       * to find out).  For files, we're absolute sure that they changed.
+       * Therefore, we set via_notify to true if this was a file notification,
+       * and false otherwise */
+
+      w_root_add_pending(root, name, false, now, true);
       w_string_delref(name);
     }
   }
 
   return n;
 }
-
-static void try_read_kqueue(w_root_t *root)
-{
-  w_ht_t *batch = w_ht_new(2, &w_ht_string_funcs);
-  w_ht_iter_t iter;
-  struct timeval now;
-
-  /* get a batch of events, and allow a little bit of
-   * time for them to arrive (I've seen several events
-   * for the same item delivered one at a time) */
-  while (!root->cancelled && consume_kqueue(root, batch, 0) > 0) {
-    ;
-  }
-
-  w_log(W_LOG_DBG, "Have %d events in %s\n",
-      w_ht_size(batch), root->root_path->buf);
-
-  gettimeofday(&now, NULL);
-  if (w_ht_first(batch, &iter)) do {
-    w_string_t *name = (w_string_t*)iter.key;
-    intptr_t p = iter.value;
-
-    w_log(W_LOG_DBG, "kq -> %s\n", name->buf);
-    /* we only want to set the via_notify flag to true if we're
-     * absolutely sure that something was changed.
-     * Since we get notified on dirs when their contents change,
-     * we can't be sure precisely what changed (we'll compare stat results
-     * to find out).  For files, we're absolute sure that they changed.
-     * Therefore, we set via_notify to true if this was a file notification,
-     * and false otherwise */
-    w_root_add_pending(root, name, false, now, !IS_DIR_BIT_SET(p));
-
-  } while (w_ht_next(batch, &iter));
-
-  w_ht_free(batch);
-}
-
 #endif
 
 #if HAVE_PORT_CREATE
 
 static bool consume_portfs(w_root_t *root, int timeoutms)
 {
-  port_event_t events[128];
   uint_t i, n;
   struct timeval now;
 
@@ -1475,9 +1462,12 @@ static bool consume_portfs(w_root_t *root, int timeoutms)
 
   errno = 0;
 
+  w_log(W_LOG_DBG,
+      "enter port_getn: sec=%" PRIu64 " nsec=%" PRIu64 " msec=%d\n",
+      (uint64_t)ts.tv_sec, (uint64_t)ts.tv_nsec, timeoutms);
   n = 1;
-  if (port_getn(root->port_fd, events,
-        sizeof(events) / sizeof(events[0]), &n, NULL)) {
+  if (port_getn(root->port_fd, root->portevents,
+        sizeof(root->portevents) / sizeof(root->portevents[0]), &n, NULL)) {
     if (errno == EINTR) {
       return false;
     }
@@ -1493,9 +1483,9 @@ static bool consume_portfs(w_root_t *root, int timeoutms)
   }
 
   for (i = 0; i < n; i++) {
-    if (IS_DIR_BIT_SET(events[i].portev_user)) {
-      struct watchman_dir *dir = DECODE_DIR(events[i].portev_user);
-      uint32_t pe = events[i].portev_events;
+    if (IS_DIR_BIT_SET(root->portevents[i].portev_user)) {
+      struct watchman_dir *dir = DECODE_DIR(root->portevents[i].portev_user);
+      uint32_t pe = root->portevents[i].portev_events;
 
       w_log(W_LOG_DBG, "port: dir %.*s [0x%x]\n",
           dir->path->len, dir->path->buf, pe);
@@ -1513,14 +1503,12 @@ static bool consume_portfs(w_root_t *root, int timeoutms)
       w_root_add_pending(root, dir->path, false, now, true);
 
     } else {
-      struct watchman_file *file = events[i].portev_user;
+      struct watchman_file *file = root->portevents[i].portev_user;
       w_string_t *path;
 
       path = w_string_path_cat(file->parent->path, file->name);
       w_root_add_pending(root, path, true, now, true);
       w_log(W_LOG_DBG, "port: file %.*s\n", path->len, path->buf);
-
-      file->port_file.fo_name = (char*)path->buf;
       w_string_delref(path);
     }
   }
@@ -1648,20 +1636,12 @@ static void process_inotify_event(
   }
 }
 
-static bool try_read_inotify(w_root_t *root, int timeoutms)
+static bool try_read_inotify(w_root_t *root)
 {
   struct inotify_event *ine;
   char *iptr;
   int n;
   struct timeval now;
-
-  if (!wait_for_notify(root, timeoutms)) {
-    return false;
-  }
-
-  if (root->cancelled) {
-    return false;
-  }
 
   n = read(root->infd, &root->ibuf, sizeof(root->ibuf));
   if (n == -1) {
@@ -1692,6 +1672,19 @@ static bool try_read_inotify(w_root_t *root, int timeoutms)
 
 #endif
 
+static bool consume_notify(w_root_t *root)
+{
+#if HAVE_INOTIFY_INIT
+  return try_read_inotify(root);
+#elif HAVE_KQUEUE
+  return consume_kqueue(root, 0);
+#elif HAVE_PORT_CREATE
+  return consume_portfs(root, 0);
+#else
+# error I dont support this system
+#endif
+}
+
 // we want to consume inotify events as quickly as possible
 // to minimize the risk that the kernel event buffer overflows,
 // so we do this as a blocking thread that reads the inotify
@@ -1718,15 +1711,12 @@ static void notify_thread(w_root_t *root)
 
     // Consume as much as we can without blocking on inotify,
     // because we hold a lock.
-#if HAVE_INOTIFY_INIT
-    try_read_inotify(root, 0);
-#elif HAVE_KQUEUE
-    try_read_kqueue(root);
-#elif HAVE_PORT_CREATE
-    consume_portfs(root, 0);
-#else
-# error I dont support this system
-#endif
+    while (!root->cancelled &&
+        w_ht_size(root->pending_uniq) < WATCHMAN_BATCH_LIMIT &&
+        consume_notify(root) &&
+        wait_for_notify(root, 0)) {
+      ;
+    }
 
     // then do our IO
     handle_should_recrawl(root);
@@ -1813,6 +1803,7 @@ void w_root_delref(w_root_t *root)
   w_ht_free(root->dirname_to_dir);
   w_ht_free(root->commands);
   w_ht_free(root->query_cookies);
+  w_ht_free(root->pending_uniq);
 
 #ifdef HAVE_INOTIFY_INIT
   close(root->infd);

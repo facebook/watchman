@@ -36,6 +36,27 @@ w_ht_t *w_ht_new(uint32_t size_hint, const struct watchman_hash_funcs *funcs)
   return ht;
 }
 
+void w_ht_free_entries(w_ht_t *ht)
+{
+  struct watchman_hash_bucket *b;
+  uint32_t slot;
+
+  for (slot = 0; slot < ht->table_size; slot++) {
+    while (ht->table[slot]) {
+      b = ht->table[slot];
+      ht->table[slot] = b->next;
+
+      if (ht->funcs && ht->funcs->del_val) {
+        ht->funcs->del_val(b->value);
+      }
+      if (ht->funcs && ht->funcs->del_key) {
+        ht->funcs->del_key(b->key);
+      }
+      free(b);
+    }
+  }
+}
+
 void w_ht_free(w_ht_t *ht)
 {
   struct watchman_hash_bucket *b;

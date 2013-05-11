@@ -49,6 +49,9 @@ w_ht_t *w_ht_new(uint32_t size_hint, const struct watchman_hash_funcs *funcs);
 /* Destroy a hash table and free all associated resources */
 void w_ht_free(w_ht_t *ht);
 
+/* free all the entries but preserve the table size */
+void w_ht_free_entries(w_ht_t *ht);
+
 /* equivalent to calling w_ht_insert with replace=false */
 bool w_ht_set(w_ht_t *ht, w_ht_val_t key, w_ht_val_t value);
 

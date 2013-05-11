@@ -215,6 +215,8 @@ struct watchman_query_cookie {
   bool seen;
 };
 
+#define WATCHMAN_BATCH_LIMIT (16*1024)
+
 struct watchman_root {
 #if HAVE_INOTIFY_INIT
   /* we use one inotify instance per watched root dir */
@@ -239,6 +241,7 @@ struct watchman_root {
 
   /* queue of items that we need to stat/process */
   struct watchman_pending_fs *pending;
+  w_ht_t *pending_uniq;
 
   /* the most recently changed file */
   struct watchman_file *latest_file;
@@ -282,7 +285,13 @@ struct watchman_root {
 #if HAVE_INOTIFY_INIT
   // Make the buffer big enough for 16k entries, which
   // happens to be the default fs.inotify.max_queued_events
-  char ibuf[(16 * 1024) * (sizeof(struct inotify_event) + 256)];
+  char ibuf[WATCHMAN_BATCH_LIMIT * (sizeof(struct inotify_event) + 256)];
+#endif
+#if HAVE_KQUEUE
+  struct kevent keventbuf[WATCHMAN_BATCH_LIMIT];
+#endif
+#if HAVE_PORT_CREATE
+  port_event_t portevents[WATCHMAN_BATCH_LIMIT];
 #endif
 };
 
