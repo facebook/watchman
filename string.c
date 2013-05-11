@@ -14,7 +14,10 @@ w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
 
   if (start >= str->len || start + len > str->len) {
     errno = EINVAL;
-    abort();
+    w_log(W_LOG_FATAL,
+        "illegal string slice start=%" PRIu32 " len=%" PRIu32
+        " but str->len=%" PRIu32 "\n",
+        start, len, str->len);
     return NULL;
   }
 

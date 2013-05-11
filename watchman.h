@@ -53,6 +53,9 @@ extern "C" {
 #ifdef HAVE_PCRE_H
 # include <pcre.h>
 #endif
+#ifdef HAVE_EXECINFO_H
+# include <execinfo.h>
+#endif
 #include <spawn.h>
 // Not explicitly exported on Darwin, so we get to define it.
 extern char **environ;
@@ -376,6 +379,7 @@ void w_mark_dead(pid_t pid);
 #define W_LOG_OFF 0
 #define W_LOG_ERR 1
 #define W_LOG_DBG 2
+#define W_LOG_FATAL 3
 
 extern int log_level;
 void w_log(int level, const char *fmt, ...)

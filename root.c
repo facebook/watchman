@@ -184,8 +184,11 @@ void w_root_lock(w_root_t *root)
 
   err = pthread_mutex_lock(&root->lock);
   if (err != 0) {
-    w_log(W_LOG_ERR, "lock: %s\n",
-        strerror(err));
+    w_log(W_LOG_FATAL, "lock [%.*s]: %s\n",
+        root->root_path->len,
+        root->root_path->buf,
+        strerror(err)
+    );
   }
 }
 
@@ -195,8 +198,11 @@ void w_root_unlock(w_root_t *root)
 
   err = pthread_mutex_unlock(&root->lock);
   if (err != 0) {
-    w_log(W_LOG_ERR, "lock: %s\n",
-        strerror(err));
+    w_log(W_LOG_FATAL, "lock: [%.*s] %s\n",
+        root->root_path->len,
+        root->root_path->buf,
+        strerror(err)
+    );
   }
 }
 
@@ -712,8 +718,8 @@ static void stat_path(w_root_t *root,
   w_string_t *file_name;
 
   if (full_path->len > sizeof(path)-1) {
-    w_log(W_LOG_ERR, "path %.*s is too big\n", full_path->len, full_path->buf);
-    abort();
+    w_log(W_LOG_FATAL, "path %.*s is too big\n",
+        full_path->len, full_path->buf);
   }
 
   memcpy(path, full_path->buf, full_path->len);
@@ -1111,6 +1117,7 @@ static void spawn_command(w_root_t *root,
       argv[0], &actions,
       &attr, argv, environ);
   if (ret == 0) {
+    w_root_addref(root);
     w_ht_set(running_kids, cmd->current_proc,
         (w_ht_val_t)root);
   }
@@ -1203,6 +1210,7 @@ void w_mark_dead(pid_t pid)
   } while (w_ht_next(root->commands, &iter));
 
   w_root_unlock(root);
+  w_root_delref(root);
 }
 
 static inline struct watchman_file *find_oldest_with_tick(
@@ -1471,9 +1479,8 @@ static bool consume_portfs(w_root_t *root, int timeoutms)
     if (errno == EINTR) {
       return false;
     }
-    w_log(W_LOG_ERR, "port_getn: %s\n",
+    w_log(W_LOG_FATAL, "port_getn: %s\n",
         strerror(errno));
-    abort();
   }
 
   w_log(W_LOG_DBG, "port_getn: n=%u\n", n);
@@ -1648,9 +1655,8 @@ static bool try_read_inotify(w_root_t *root)
     if (errno == EINTR) {
       return false;
     }
-    w_log(W_LOG_ERR, "read(%d, %lu): error %s\n",
+    w_log(W_LOG_FATAL, "read(%d, %lu): error %s\n",
         root->infd, sizeof(root->ibuf), strerror(errno));
-    abort();
   }
 
   w_log(W_LOG_DBG, "inotify read: returned %d.\n", n);
@@ -1698,10 +1704,12 @@ static void notify_thread(w_root_t *root)
 
     if (!wait_for_notify(root, timeoutms)) {
       // Do triggers
+      w_root_lock(root);
       w_log(W_LOG_DBG, "notify_thread[%s] assessing triggers\n",
           root->root_path->buf);
       process_subscriptions(root);
       process_triggers(root);
+      w_root_unlock(root);
       continue;
     }
 
@@ -2196,6 +2204,8 @@ bool w_root_save_state(json_t *state)
   json_t *watched_dirs;
 
   watched_dirs = json_array();
+
+  w_log(W_LOG_DBG, "saving state\n");
 
   pthread_mutex_lock(&root_lock);
   if (w_ht_first(watched_roots, &root_iter)) do {

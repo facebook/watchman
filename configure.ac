@@ -142,10 +142,12 @@ AC_SEARCH_LIBS([socket], [socket])
 AC_CHECK_HEADERS(sys/types.h inttypes.h locale.h port.h sys/inotify.h sys/event.h)
 AC_CHECK_FUNCS(kqueue port_create inotify_init strtoll localeconv)
 AC_CHECK_HEADERS(valgrind/valgrind.h)
+AC_CHECK_HEADERS(execinfo.h)
+AC_CHECK_FUNCS(backtrace backtrace_symbols)
 
 # Do this after we've looked for functions
 if test -n "$GCC" ; then
-  CFLAGS="$CFLAGS -Wall -Wextra -Wdeclaration-after-statement -gdwarf-2 -fno-omit-frame-pointer"
+  CFLAGS="$CFLAGS -Wall -Wextra -Wdeclaration-after-statement -g -gdwarf-2 -fno-omit-frame-pointer"
 fi
 if test -n "$GCC" -a "$stack_protect" == "yes" ; then
   CFLAGS="$CFLAGS -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4"
