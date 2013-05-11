@@ -1159,11 +1159,7 @@ void w_mark_dead(pid_t pid)
   w_ht_iter_t iter;
 
   pthread_mutex_lock(&spawn_lock);
-  // May be NULL when we're spinning up the child_reaper
-  // thread and forking a child to shut the kernel up.
-  if (running_kids) {
-    root = (w_root_t*)w_ht_get(running_kids, pid);
-  }
+  root = (w_root_t*)w_ht_get(running_kids, pid);
   if (!root) {
     pthread_mutex_unlock(&spawn_lock);
     return;
@@ -1175,7 +1171,7 @@ void w_mark_dead(pid_t pid)
   w_root_lock(root);
 
   /* walk the list of triggers, and run their rules */
-  if (w_ht_first(root->commands, &iter)) do {
+  if (!root->cancelled && w_ht_first(root->commands, &iter)) do {
     struct watchman_trigger_command *cmd;
     struct watchman_file *f, *oldest = NULL;
     struct watchman_rule_match *results = NULL;
@@ -2237,6 +2233,20 @@ void w_root_free_watched_roots(void)
 {
   w_ht_iter_t root_iter;
   int last;
+  int st;
+  pid_t pid;
+
+  // Reap any children so that we can release their
+  // references on the root
+  do {
+    pid = waitpid(-1, &st, 0);
+    if (pid == -1 && errno == ECHILD) {
+      break;
+    }
+    if (pid > 0) {
+      w_mark_dead(pid);
+    }
+  } while (1);
 
   pthread_mutex_lock(&root_lock);
   if (w_ht_first(watched_roots, &root_iter)) do {

@@ -523,15 +523,6 @@ static void *child_reaper(void *arg)
 
   unused_parameter(arg);
 
-  // Well this is annoying.  waitpid() on linux will
-  // return immediately with ECHILD if we've never had
-  // any children.  Let's give it one to think about.
-  pid = fork();
-  if (pid == 0) {
-    execl("/bin/true", "true", (char*)0);
-    _exit(0);
-  }
-
   while (listener_fd != -1) {
     pid = waitpid(-1, &st, 0);
 
