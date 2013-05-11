@@ -538,7 +538,7 @@ static void *child_reaper(void *arg)
     // Shame that we can't just tell the kernel
     // to block us until we get a child...
     if (pid == -1 && errno == ECHILD) {
-      usleep(20000);
+      usleep(200000);
     }
 
     if (pid > 0) {

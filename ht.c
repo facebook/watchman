@@ -55,6 +55,7 @@ void w_ht_free_entries(w_ht_t *ht)
       free(b);
     }
   }
+  ht->nelems = 0;
 }
 
 void w_ht_free(w_ht_t *ht)
