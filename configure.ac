@@ -36,6 +36,13 @@ if test "$conffile" != "no" ; then
                      [system configuration file path])
 fi
 
+AC_ARG_WITH(buildinfo, [
+  --with-buildinfo=TEXT   Include some extra build information that will
+                          be reported in the version command output
+],[
+ AC_DEFINE_UNQUOTED(WATCHMAN_BUILD_INFO, "$withval", [build info])
+])
+
 AC_ARG_ENABLE(statedir, [
   --enable-statedir=PATH  Use PATH as the default for state, log files
                           and sockets instead of using your system tempdir

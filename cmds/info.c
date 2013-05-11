@@ -10,6 +10,10 @@ void cmd_version(struct watchman_client *client, json_t *args)
 
   unused_parameter(args);
 
+#ifdef WATCHMAN_BUILD_INFO
+  set_prop(resp, "buildinfo", json_string(WATCHMAN_BUILD_INFO));
+#endif
+
   send_and_dispose_response(client, resp);
 }
 

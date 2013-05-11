@@ -26,7 +26,7 @@ TXT
   }
 
   public function requiresRepositoryAPI() {
-    return false;
+    return true;
   }
 
   public function requiresAuthentication() {
@@ -112,6 +112,10 @@ TXT
       $files .= "\n%dir %attr(777, root, root) $statedir/traces";
       $build = "mkdir -p $root/ROOT/$statedir/traces";
     }
+
+    $api = $this->getRepositoryAPI();
+    $commit = $api->getWorkingCopyRevision();
+    $configureargs .= " --with-buildinfo=" . escapeshellarg($commit);
 
     $prefix = $this->getArgument('prefix', '/usr/local');
 
