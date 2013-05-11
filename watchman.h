@@ -199,14 +199,6 @@ struct watchman_file {
    * changed */
   struct stat st;
 
-#if HAVE_KQUEUE
-  /* open descriptor on the file so we can monitor it.
-   * It sucks that we need one descriptor per filesystem
-   * entry, but on the plus side, we don't need to
-   * maintain a mapping of descriptor to structs as
-   * kqueue will do that for us */
-  int kq_fd;
-#endif
 #if HAVE_PORT_CREATE
   file_obj_t port_file;
 #endif

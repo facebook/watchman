@@ -421,17 +421,8 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
 
 static void watch_file(w_root_t *root, struct watchman_file *file)
 {
-#if HAVE_INOTIFY_INIT
-  unused_parameter(root);
-  unused_parameter(file);
-#else
+#if HAVE_PORT_CREATE
   char buf[WATCHMAN_NAME_MAX];
-
-#if HAVE_KQUEUE
-  if (file->kq_fd != -1) {
-    return;
-  }
-#endif
 
   snprintf(buf, sizeof(buf), "%.*s/%.*s",
       file->parent->path->len, file->parent->path->buf,
@@ -439,30 +430,6 @@ static void watch_file(w_root_t *root, struct watchman_file *file)
 
   w_log(W_LOG_DBG, "watch_file(%s)\n", buf);
 
-#if HAVE_KQUEUE
-  {
-    struct kevent k;
-    file->kq_fd = open(buf, O_EVTONLY);
-    if (file->kq_fd == -1) {
-      w_log(W_LOG_DBG, "failed to open %s O_EVTONLY: %s\n",
-          buf, strerror(errno));
-      return;
-    }
-
-    memset(&k, 0, sizeof(k));
-    EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
-        NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME|NOTE_ATTRIB,
-        0, file);
-    w_set_cloexec(file->kq_fd);
-
-    if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
-      perror("kevent");
-      close(file->kq_fd);
-      file->kq_fd = -1;
-    }
-  }
-#endif
-#if HAVE_PORT_CREATE
   file->port_file.fo_atime = file->st.st_atim;
   file->port_file.fo_mtime = file->st.st_mtim;
   file->port_file.fo_ctime = file->st.st_ctim;
@@ -473,26 +440,15 @@ static void watch_file(w_root_t *root, struct watchman_file *file)
   port_associate(root->port_fd, PORT_SOURCE_FILE,
       (uintptr_t)&file->port_file, WATCHMAN_PORT_EVENTS,
       (void*)file);
-#endif
+#else
+  unused_parameter(root);
+  unused_parameter(file);
 #endif
 }
 
 static void stop_watching_file(w_root_t *root, struct watchman_file *file)
 {
-#if HAVE_KQUEUE
-  struct kevent k;
-
-  if (file->kq_fd == -1) {
-    return;
-  }
-
-  memset(&k, 0, sizeof(k));
-  EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_DELETE, 0, 0, file);
-  kevent(root->kq_fd, &k, 1, NULL, 0, 0);
-  close(file->kq_fd);
-  file->kq_fd = -1;
-#elif HAVE_PORT_CREATE
-
+#if HAVE_PORT_CREATE
   port_dissociate(root->port_fd, PORT_SOURCE_FILE,
       (uintptr_t)&file->port_file);
 #else
@@ -559,9 +515,6 @@ static struct watchman_file *w_root_resolve_file(w_root_t *root,
   file->exists = true;
   file->ctime.ticks = root->ticks;
   file->ctime.tv = now;
-#if HAVE_KQUEUE
-  file->kq_fd = -1;
-#endif
 
   suffix = w_string_suffix(file_name);
   if (suffix) {
@@ -925,7 +878,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       EV_SET(&k, dir->wd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
         NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME,
         0,
-        SET_DIR_BIT(dir));
+        dir);
       w_set_cloexec(dir->wd);
 
       if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
@@ -1414,38 +1367,19 @@ static int consume_kqueue(w_root_t *root, int timeoutms)
 
   gettimeofday(&now, NULL);
   for (i = 0; n > 0 && i < n; i++) {
-    intptr_t p = (intptr_t)root->keventbuf[i].udata;
     uint32_t fflags = root->keventbuf[i].fflags;
+    struct watchman_dir *dir = root->keventbuf[i].udata;
 
-    if (IS_DIR_BIT_SET(p)) {
-      struct watchman_dir *dir = DECODE_DIR(p);
-
-      w_log(W_LOG_DBG, " KQ dir %s [0x%x]\n", dir->path->buf, fflags);
-      if ((fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE)) &&
-          w_string_equal(dir->path, root->root_path)) {
-        w_log(W_LOG_ERR,
-            "root dir %s has been (re)moved [code 0x%x], canceling watch\n",
-            root->root_path->buf, fflags);
-        w_root_cancel(root);
-        return 0;
-      }
-      w_root_add_pending(root, dir->path, false, now, false);
-    } else {
-      struct watchman_file *file = (void*)p;
-      w_string_t *name;
-
-      name = w_string_path_cat(file->parent->path, file->name);
-      /* we only want to set the via_notify flag to true if we're
-       * absolutely sure that something was changed.
-       * Since we get notified on dirs when their contents change,
-       * we can't be sure precisely what changed (we'll compare stat results
-       * to find out).  For files, we're absolute sure that they changed.
-       * Therefore, we set via_notify to true if this was a file notification,
-       * and false otherwise */
-
-      w_root_add_pending(root, name, false, now, true);
-      w_string_delref(name);
+    w_log(W_LOG_DBG, " KQ dir %s [0x%x]\n", dir->path->buf, fflags);
+    if ((fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE)) &&
+        w_string_equal(dir->path, root->root_path)) {
+      w_log(W_LOG_ERR,
+          "root dir %s has been (re)moved [code 0x%x], canceling watch\n",
+          root->root_path->buf, fflags);
+      w_root_cancel(root);
+      return 0;
     }
+    w_root_add_pending(root, dir->path, false, now, false);
   }
 
   return n;
