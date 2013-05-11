@@ -451,6 +451,10 @@ static void stop_watching_file(w_root_t *root, struct watchman_file *file)
 #if HAVE_PORT_CREATE
   port_dissociate(root->port_fd, PORT_SOURCE_FILE,
       (uintptr_t)&file->port_file);
+  if (file->port_file.fo_name) {
+    free(file->port_file.fo_name);
+    file->port_file.fo_name = NULL;
+  }
 #else
   unused_parameter(root);
   unused_parameter(file);
@@ -632,9 +636,20 @@ static bool did_file_change(struct stat *saved, struct stat *fresh)
    * understanding of the file */
 
 #define FIELD_CHG(name) \
-  if (memcmp(&saved->name, &fresh->name, sizeof(saved->name))) { \
+  if (saved->name != fresh->name) { \
     return true; \
   }
+
+  // Can't compare with memcmp due to padding and garbage in the struct
+  // on OpenBSD, which has a 32-bit tv_sec + 64-bit tv_nsec
+#define TIMESPEC_FIELD_CHG(wat) { \
+  struct timespec a = saved->WATCHMAN_ST_TIMESPEC(wat); \
+  struct timespec b = fresh->WATCHMAN_ST_TIMESPEC(wat); \
+  if (a.tv_sec != b.tv_sec || a.tv_nsec != b.tv_nsec) { \
+    return true; \
+  } \
+}
+
   FIELD_CHG(st_mode);
 
   if (!S_ISDIR(saved->st_mode)) {
@@ -651,9 +666,9 @@ static bool did_file_change(struct stat *saved, struct stat *fresh)
   FIELD_CHG(st_mtime);
   // Don't care about st_blocks
   // Don't care about st_blksize
-  FIELD_CHG(WATCHMAN_ST_TIMESPEC(a));
-  FIELD_CHG(WATCHMAN_ST_TIMESPEC(m));
-  FIELD_CHG(WATCHMAN_ST_TIMESPEC(c));
+  TIMESPEC_FIELD_CHG(a);
+  TIMESPEC_FIELD_CHG(m);
+  TIMESPEC_FIELD_CHG(c);
 
   return false;
 }
@@ -725,6 +740,13 @@ static void stat_path(w_root_t *root,
       recursive = true;
     }
     if (!file->exists || via_notify || did_file_change(&file->st, &st)) {
+      w_log(W_LOG_DBG,
+          "file changed exists=%d via_notify=%d stat-changed=%d %s\n",
+          (int)file->exists,
+          (int)via_notify,
+          (int)(file->exists && !via_notify),
+          path
+      );
       file->exists = true;
       w_root_mark_file_changed(root, file, now);
     }
@@ -870,7 +892,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
     }
 #endif
 #if HAVE_KQUEUE
-    dir->wd = open(path, O_EVTONLY);
+    dir->wd = open(path, O_EVTONLY|O_CLOEXEC);
     if (dir->wd != -1) {
       struct kevent k;
 
@@ -879,7 +901,6 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
         NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME,
         0,
         dir);
-      w_set_cloexec(dir->wd);
 
       if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
         w_log(W_LOG_DBG, "kevent EV_ADD dir %s failed: %s",
@@ -1712,6 +1733,11 @@ void w_root_addref(w_root_t *root)
 static void delete_file(struct watchman_file *file)
 {
   w_string_delref(file->name);
+#if HAVE_PORT_CREATE
+  if (file->port_file.fo_name) {
+    free(file->port_file.fo_name);
+  }
+#endif
   free(file);
 }
 

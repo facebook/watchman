@@ -189,6 +189,9 @@ bool w_parse_clockspec(w_root_t *root,
     // until something subsequently changes
     w_ht_replace(root->cursors, (w_ht_val_t)name, ++root->ticks);
 
+    w_log(W_LOG_DBG, "resolved cursor %s -> %" PRIu32 "\n",
+        str, since->ticks);
+
     w_string_delref(name);
 
     w_root_unlock(root);
