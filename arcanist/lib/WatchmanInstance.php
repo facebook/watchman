@@ -142,6 +142,10 @@ class WatchmanInstance {
     return array(false, null, null);
   }
 
+  function getFullSockName() {
+    return $this->sockname . '.sock';
+  }
+
   function start() {
     $cmd = "./watchman --foreground --sockname=%C.sock --logfile=%s " .
             "--statefile=%s.state --log-level=2";
@@ -171,7 +175,7 @@ class WatchmanInstance {
       throw new Exception("Failed to spawn $cmd");
     }
 
-    $sockname = $this->sockname . '.sock';
+    $sockname = $this->getFullSockName();
     $deadline = time() + 5;
     do {
       if (!file_exists($sockname)) {

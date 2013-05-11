@@ -611,6 +611,8 @@ bool w_parse_clockspec(w_root_t *root,
     struct w_clockspec_query *since,
     bool allow_cursor);
 
+const char *get_sock_name(void);
+
 // Helps write shorter lines
 static inline void set_prop(json_t *obj, const char *key, json_t *val)
 {

@@ -16,13 +16,13 @@ watchman_SOURCES = \
 	hash.c       \
 	ht.c         \
 	cmds/find.c     \
+	cmds/info.c     \
 	cmds/log.c      \
 	cmds/query.c    \
 	cmds/since.c    \
 	cmds/subscribe.c    \
 	cmds/trigger.c  \
 	cmds/watch.c    \
-	cmds/version.c    \
 	query/base.c       \
 	query/parse.c      \
 	query/init.c       \

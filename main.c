@@ -431,6 +431,11 @@ static json_t *build_command(int argc, char **argv)
   return cmd;
 }
 
+const char *get_sock_name(void)
+{
+  return sock_name;
+}
+
 int main(int argc, char **argv)
 {
   bool ran;
