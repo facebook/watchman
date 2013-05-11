@@ -367,6 +367,7 @@ struct watchman_trigger_command {
 };
 
 void w_mark_dead(pid_t pid);
+bool w_reap_children(bool block);
 
 #define W_LOG_OFF 0
 #define W_LOG_ERR 1

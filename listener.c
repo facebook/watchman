@@ -11,7 +11,6 @@
 pthread_mutex_t w_client_lock;
 w_ht_t *clients = NULL;
 static int listener_fd;
-static pthread_t reaper_thread;
 
 static w_ht_t *command_funcs = NULL;
 
@@ -316,7 +315,6 @@ static void cmd_shutdown(
     struct watchman_client *client,
     json_t *args)
 {
-  void *unused;
   unused_parameter(client);
   unused_parameter(args);
 
@@ -330,8 +328,6 @@ static void cmd_shutdown(
   pthread_mutex_lock(&w_client_lock);
   w_ht_del(clients, client->fd);
   pthread_mutex_unlock(&w_client_lock);
-
-  pthread_join(reaper_thread, &unused);
 
   close(STDIN_FILENO);
   close(STDOUT_FILENO);
@@ -519,29 +515,6 @@ void w_log_to_clients(int level, const char *buf)
   pthread_mutex_unlock(&w_client_lock);
 }
 
-static void *child_reaper(void *arg)
-{
-  int st;
-  pid_t pid;
-
-  unused_parameter(arg);
-
-  while (listener_fd != -1) {
-    pid = waitpid(-1, &st, 0);
-
-    // Shame that we can't just tell the kernel
-    // to block us until we get a child...
-    if (pid == -1 && errno == ECHILD) {
-      usleep(200000);
-    }
-
-    if (pid > 0) {
-      w_mark_dead(pid);
-    }
-  }
-  return 0;
-}
-
 // This is just a placeholder.
 // This catches SIGUSR1 so we don't terminate.
 // We use this to interrupt blocking syscalls
@@ -568,6 +541,7 @@ bool w_start_listener(const char *path)
   pthread_attr_t attr;
   pthread_mutexattr_t mattr;
   struct sigaction sa;
+  sigset_t sigset;
 #ifdef HAVE_LIBGIMLI_H
   volatile struct gimli_heartbeat *hb = NULL;
 #endif
@@ -637,12 +611,21 @@ bool w_start_listener(const char *path)
 
   signal(SIGPIPE, SIG_IGN);
 
-  /* allow SIGUSR1 to wake up a blocked thread, without
-   * restarting syscalls */
+  /* allow SIGUSR1 and SIGCHLD to wake up a blocked thread, without restarting
+   * syscalls */
   memset(&sa, 0, sizeof(sa));
   sa.sa_handler = wakeme;
   sa.sa_flags = 0;
   sigaction(SIGUSR1, &sa, NULL);
+  sigaction(SIGCHLD, &sa, NULL);
+
+  // Block SIGCHLD everywhere
+  sigemptyset(&sigset);
+  sigaddset(&sigset, SIGCHLD);
+  sigprocmask(SIG_BLOCK, &sigset, NULL);
+
+  // Unblock it only in this thread
+  pthread_sigmask(SIG_UNBLOCK, &sigset, NULL);
 
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
@@ -673,12 +656,6 @@ bool w_start_listener(const char *path)
 
   w_set_cloexec(listener_fd);
 
-  if (pthread_create(&reaper_thread, NULL, child_reaper, NULL)) {
-    w_log(W_LOG_ERR, "pthread_create(child_reaper): %s\n",
-        strerror(errno));
-    return false;
-  }
-
   if (!clients) {
     clients = w_ht_new(2, &client_hash_funcs);
   }
@@ -706,6 +683,8 @@ bool w_start_listener(const char *path)
       gimli_heartbeat_set(hb, GIMLI_HB_RUNNING);
     }
 #endif
+    w_reap_children(false);
+
     pfd.events = POLLIN;
     pfd.fd = listener_fd;
     poll(&pfd, 1, 10000);

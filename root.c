@@ -1141,11 +1141,14 @@ void w_mark_dead(pid_t pid)
   w_ht_del(running_kids, pid);
   pthread_mutex_unlock(&spawn_lock);
 
+  w_log(W_LOG_DBG, "mark_dead: %.*s child pid %d\n",
+      root->root_path->len, root->root_path->buf, pid);
+
   /* now walk the cmds and try to find our match */
   w_root_lock(root);
 
   /* walk the list of triggers, and run their rules */
-  if (!root->cancelled && w_ht_first(root->commands, &iter)) do {
+  if (w_ht_first(root->commands, &iter)) do {
     struct watchman_trigger_command *cmd;
     struct watchman_file *f, *oldest = NULL;
     struct watchman_rule_match *results = NULL;
@@ -1159,6 +1162,9 @@ void w_mark_dead(pid_t pid)
 
     /* first mark the process as dead */
     cmd->current_proc = 0;
+    if (root->cancelled) {
+      break;
+    }
 
     since.is_timestamp = false;
     since.ticks = cmd->dispatch_tick;
@@ -2189,24 +2195,34 @@ bool w_root_save_state(json_t *state)
   return result;
 }
 
-void w_root_free_watched_roots(void)
+bool w_reap_children(bool block)
 {
-  w_ht_iter_t root_iter;
-  int last;
   int st;
   pid_t pid;
+  int reaped = 0;
 
   // Reap any children so that we can release their
   // references on the root
   do {
-    pid = waitpid(-1, &st, 0);
-    if (pid == -1 && errno == ECHILD) {
+    pid = waitpid(-1, &st, block ? 0 : WNOHANG);
+    if (pid == -1) {
       break;
     }
-    if (pid > 0) {
-      w_mark_dead(pid);
-    }
+    w_mark_dead(pid);
+    reaped++;
   } while (1);
+
+  return reaped != 0;
+}
+
+void w_root_free_watched_roots(void)
+{
+  w_ht_iter_t root_iter;
+  int last;
+
+  // Reap any children so that we can release their
+  // references on the root
+  w_reap_children(true);
 
   pthread_mutex_lock(&root_lock);
   if (w_ht_first(watched_roots, &root_iter)) do {
