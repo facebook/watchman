@@ -74,8 +74,9 @@ before any non-option arguments.
 
 ## Environment and Files
 
-Watchman will use the `$USER` or `$LOGNAME` environmental variables to determine
-the current userid, and the `$TMPDIR` or `$TMP` environmental variables to
+Watchman will use the `$USER` or `$LOGNAME` environmental variables to
+determine the current userid, falling back to the information it resolves via
+`getpwuid(getuid())`, and the `$TMPDIR` or `$TMP` environmental variables to
 determine a temporary directory, falling back to `/tmp` if neither are set.
 
 If you configured watchman using the `--enable-statedir` option:

@@ -188,8 +188,22 @@ static void setup_sock_name(void)
   watchman_tmp_dir = get_env_with_fallback("TMPDIR", "TMP", "/tmp");
 
   if (!user) {
-    w_log(W_LOG_ERR, "watchman requires that you set $USER in your env\n");
-    abort();
+    uid_t uid = getuid();
+    struct passwd *pw;
+
+    pw = getpwuid(uid);
+    if (!pw) {
+      w_log(W_LOG_ERR, "getpwuid(%d) failed: %s. I don't know who you are\n",
+          uid, strerror(errno));
+      abort();
+    }
+
+    user = pw->pw_name;
+
+    if (!user) {
+      w_log(W_LOG_ERR, "watchman requires that you set $USER in your env\n");
+      abort();
+    }
   }
 
   compute_file_name(&sock_name, user, "", "sockname");

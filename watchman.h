@@ -56,6 +56,7 @@ extern "C" {
 #ifdef HAVE_EXECINFO_H
 # include <execinfo.h>
 #endif
+#include <pwd.h>
 #include <spawn.h>
 // Not explicitly exported on Darwin, so we get to define it.
 extern char **environ;
