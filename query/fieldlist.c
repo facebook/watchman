@@ -113,7 +113,7 @@ json_t *w_query_results_to_json(
     uint32_t num_results,
     struct watchman_rule_match *results)
 {
-  json_t *file_list = json_array();
+  json_t *file_list = json_array_of_size(num_results);
   uint32_t i, f;
 
   for (i = 0; i < num_results; i++) {

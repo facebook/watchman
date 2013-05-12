@@ -310,7 +310,7 @@ static json_t *json_object_deep_copy(json_t *object)
 
 /*** array ***/
 
-json_t *json_array(void)
+json_t *json_array_of_size(size_t nelems)
 {
     json_array_t *array = jsonp_malloc(sizeof(json_array_t));
     if(!array)
@@ -318,7 +318,7 @@ json_t *json_array(void)
     json_init(&array->json, JSON_ARRAY);
 
     array->entries = 0;
-    array->size = 8;
+    array->size = max(nelems, 8);
 
     array->table = jsonp_malloc(array->size * sizeof(json_t *));
     if(!array->table) {
@@ -329,6 +329,11 @@ json_t *json_array(void)
     array->visited = 0;
 
     return &array->json;
+}
+
+json_t *json_array(void)
+{
+    return json_array_of_size(8);
 }
 
 static void json_delete_array(json_array_t *array)

@@ -80,6 +80,7 @@ typedef long json_int_t;
 
 json_t *json_object(void);
 json_t *json_array(void);
+json_t *json_array_of_size(size_t nelems);
 json_t *json_string(const char *value);
 json_t *json_string_nocheck(const char *value);
 json_t *json_integer(json_int_t value);

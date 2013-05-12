@@ -224,7 +224,7 @@ json_t *w_match_results_to_json(
     uint32_t num_matches,
     struct watchman_rule_match *matches)
 {
-  json_t *file_list = json_array();
+  json_t *file_list = json_array_of_size(num_matches);
   uint32_t i;
 
   for (i = 0; i < num_matches; i++) {
