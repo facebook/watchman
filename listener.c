@@ -11,6 +11,7 @@
 pthread_mutex_t w_client_lock;
 w_ht_t *clients = NULL;
 static int listener_fd;
+static pthread_t reaper_thread;
 
 static w_ht_t *command_funcs = NULL;
 
@@ -315,6 +316,7 @@ static void cmd_shutdown(
     struct watchman_client *client,
     json_t *args)
 {
+  void *ignored;
   unused_parameter(client);
   unused_parameter(args);
 
@@ -328,6 +330,7 @@ static void cmd_shutdown(
   pthread_mutex_lock(&w_client_lock);
   w_ht_del(clients, client->fd);
   pthread_mutex_unlock(&w_client_lock);
+  pthread_join(reaper_thread, &ignored);
 
   close(STDIN_FILENO);
   close(STDOUT_FILENO);
@@ -515,6 +518,24 @@ void w_log_to_clients(int level, const char *buf)
   pthread_mutex_unlock(&w_client_lock);
 }
 
+static void *child_reaper(void *arg)
+{
+  sigset_t sigset;
+  unused_parameter(arg);
+
+  // Unblock SIGCHLD only in this thread
+  sigemptyset(&sigset);
+  sigaddset(&sigset, SIGCHLD);
+  pthread_sigmask(SIG_UNBLOCK, &sigset, NULL);
+
+  while (listener_fd != -1) {
+    usleep(200000);
+    w_reap_children(true);
+  }
+
+  return 0;
+}
+
 // This is just a placeholder.
 // This catches SIGUSR1 so we don't terminate.
 // We use this to interrupt blocking syscalls
@@ -624,9 +645,6 @@ bool w_start_listener(const char *path)
   sigaddset(&sigset, SIGCHLD);
   sigprocmask(SIG_BLOCK, &sigset, NULL);
 
-  // Unblock it only in this thread
-  pthread_sigmask(SIG_UNBLOCK, &sigset, NULL);
-
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
@@ -656,6 +674,12 @@ bool w_start_listener(const char *path)
 
   w_set_cloexec(listener_fd);
 
+  if (pthread_create(&reaper_thread, NULL, child_reaper, NULL)) {
+    w_log(W_LOG_FATAL, "pthread_create(reaper): %s\n",
+        strerror(errno));
+    return false;
+  }
+
   if (!clients) {
     clients = w_ht_new(2, &client_hash_funcs);
   }
@@ -683,7 +707,6 @@ bool w_start_listener(const char *path)
       gimli_heartbeat_set(hb, GIMLI_HB_RUNNING);
     }
 #endif
-    w_reap_children(false);
 
     pfd.events = POLLIN;
     pfd.fd = listener_fd;
