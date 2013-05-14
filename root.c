@@ -1832,13 +1832,14 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   w_ht_val_t root_val;
   char *watch_path;
   w_string_t *root_str;
+  int realpath_err;
 
   *created = false;
   watch_path = w_realpath(filename);
+  realpath_err = errno;
 
   if (!watch_path) {
-    w_log(W_LOG_ERR, "resolve_root: %s: %s\n", filename, strerror(errno));
-    return NULL;
+    watch_path = (char*)filename;
   }
 
   root_str = w_string_new(watch_path);
@@ -1853,8 +1854,17 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   pthread_mutex_unlock(&root_lock);
   w_string_delref(root_str);
 
+  if (!root && watch_path == filename) {
+    // Path didn't resolve and neither did the name they passed in
+    w_log(W_LOG_ERR, "resolve_root: %s: %s\n",
+        filename, strerror(realpath_err));
+    return NULL;
+  }
+
   if (root || !auto_watch) {
-    free(watch_path);
+    if (watch_path != filename) {
+      free(watch_path);
+    }
     // caller owns a ref
     return root;
   }
@@ -1863,7 +1873,10 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
 
   // created with 1 ref
   root = w_root_new(watch_path);
-  free(watch_path);
+
+  if (watch_path != filename) {
+    free(watch_path);
+  }
 
   if (!root) {
     return NULL;
