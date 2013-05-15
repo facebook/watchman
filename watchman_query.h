@@ -149,6 +149,11 @@ struct w_query_field_list {
   struct w_query_field_renderer *fields[32];
 };
 
+// parse the old style since and find queries
+w_query *w_query_parse_legacy(json_t *args, char **errmsg,
+    int start, uint32_t *next_arg, const char *clockspec);
+bool w_query_legacy_field_list(struct w_query_field_list *flist);
+
 json_t *w_query_results_to_json(
     struct w_query_field_list *field_list,
     uint32_t num_results,

@@ -24,7 +24,7 @@ class pcreTestCase extends WatchmanTestCase {
     // Cleanup for invalid pcre
     $out = $this->watchmanCommand('find', $root, '-p', '(');
     $this->assertEqual(
-      "invalid rule spec: invalid pcre: `(' at offset 1: code 14 missing )",
+      "invalid pcre: `(' at offset 1: code 14 missing )",
       $out['error']
     );
 

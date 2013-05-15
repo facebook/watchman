@@ -6,9 +6,14 @@
 /* find /root [patterns] */
 void cmd_find(struct watchman_client *client, json_t *args)
 {
-  struct watchman_rule *rules = NULL;
   w_root_t *root;
-  char buf[128];
+  w_query *query;
+  char *errmsg = NULL;
+  struct w_query_field_list field_list;
+  w_query_res res;
+  json_t *response;
+  json_t *file_list;
+  char clockbuf[128];
 
   /* resolve the root */
   if (json_array_size(args) < 2) {
@@ -21,25 +26,44 @@ void cmd_find(struct watchman_client *client, json_t *args)
     return;
   }
 
-  /* parse argv into a chain of watchman_rule */
-  if (!parse_watch_params(2, args, &rules, NULL, buf, sizeof(buf))) {
-    send_error_response(client, "invalid rule spec: %s", buf);
+  query = w_query_parse_legacy(args, &errmsg, 2, NULL, NULL);
+  if (errmsg) {
+    send_error_response(client, "%s", errmsg);
+    free(errmsg);
     w_root_delref(root);
     return;
   }
 
-  if (!w_root_sync_to_now(root, trigger_settle)) {
-    send_error_response(client, "synchronization failure: %s",
-        strerror(errno));
-    w_free_rules(rules);
+  w_query_legacy_field_list(&field_list);
+
+  if (client->client_mode) {
+    query->sync_timeout = 0;
+  }
+
+  if (!w_query_execute(query, root, &res, NULL, NULL)) {
+    send_error_response(client, "query failed: %s", res.errmsg);
+    w_query_result_free(&res);
     w_root_delref(root);
+    w_query_delref(query);
     return;
   }
 
-  /* now find all matching files */
-  run_rules(client, root, NULL, rules);
-  w_free_rules(rules);
+  w_query_delref(query);
+
+  file_list = w_query_results_to_json(&field_list,
+                res.num_results, res.results);
+  w_query_result_free(&res);
+
+  response = make_response();
+  if (clock_id_string(res.ticks, clockbuf, sizeof(clockbuf))) {
+    set_prop(response, "clock", json_string_nocheck(clockbuf));
+  }
+  set_prop(response, "files", file_list);
+
+  send_and_dispose_response(client, response);
   w_root_delref(root);
+
+
 }
 
 

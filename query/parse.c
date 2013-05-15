@@ -274,6 +274,154 @@ error:
   return NULL;
 }
 
+bool w_query_legacy_field_list(struct w_query_field_list *flist)
+{
+  static const char *names[] = {
+    "name", "exists", "size", "mode", "uid", "gid", "atime",
+    "mtime", "ctime", "ino", "dev", "nlink", "new", "cclock",
+    "oclock"
+  };
+  uint8_t i;
+  json_t *list = json_array();
+  bool res;
+  char *errmsg = NULL;
+
+  for (i = 0; i < sizeof(names)/sizeof(names[0]); i++) {
+    json_array_append_new(list, json_string_nocheck(names[i]));
+  }
+
+  res = parse_field_list(list, flist, &errmsg);
+
+  json_decref(list);
+
+  if (errmsg) {
+    w_log(W_LOG_FATAL, "should never happen: %s\n", errmsg);
+  }
+
+  return res;
+}
+
+// Translate from the legacy array into the new style, then
+// delegate to the main parser.
+// We build a big anyof expression
+w_query *w_query_parse_legacy(json_t *args, char **errmsg,
+    int start, uint32_t *next_arg,
+    const char *clockspec)
+{
+  bool include = true;
+  bool negated = false;
+  uint32_t i;
+  const char *term_name = "match";
+  json_t *query_array;
+  json_t *included = NULL, *excluded = NULL;
+  json_t *term;
+  json_t *container;
+  json_t *query_obj = json_object();
+  w_query *query;
+
+  if (!json_is_array(args)) {
+    *errmsg = strdup("Expected an array");
+    return NULL;
+  }
+
+  for (i = start; i < json_array_size(args); i++) {
+    const char *arg = json_string_value(json_array_get(args, i));
+    if (!arg) {
+      /* not a string value! */
+      asprintf(errmsg,
+          "rule @ position %d is not a string value", i);
+      return NULL;
+    }
+  }
+
+  for (i = start; i < json_array_size(args); i++) {
+    const char *arg = json_string_value(json_array_get(args, i));
+    if (!strcmp(arg, "--")) {
+      i++;
+      break;
+    }
+    if (!strcmp(arg, "-X")) {
+      include = false;
+      continue;
+    }
+    if (!strcmp(arg, "-I")) {
+      include = true;
+      continue;
+    }
+    if (!strcmp(arg, "!")) {
+      negated = true;
+      continue;
+    }
+    if (!strcmp(arg, "-P")) {
+      term_name = "ipcre";
+      continue;
+    }
+    if (!strcmp(arg, "-p")) {
+      term_name = "pcre";
+      continue;
+    }
+
+    // Which group are we going to file it into
+    if (include) {
+      if (!included) {
+        included = json_pack("[s]", "anyof");
+      }
+      container = included;
+    } else {
+      if (!excluded) {
+        excluded = json_pack("[s]", "anyof");
+      }
+      container = excluded;
+    }
+
+    term = json_pack("[sss]", term_name, arg, "wholename");
+    if (negated) {
+      term = json_pack("[so]", "not", term);
+    }
+    json_array_append_new(container, term);
+
+    // Reset negated flag
+    negated = false;
+    term_name = "match";
+  }
+
+  if (excluded) {
+    term = json_pack("[so]", "not", excluded);
+    excluded = term;
+  }
+
+  if (included && excluded) {
+    query_array = json_pack("[soo]", "allof", excluded, included);
+  } else if (included) {
+    query_array = included;
+  } else {
+    query_array = excluded;
+  }
+
+  // query_array may be NULL, which means find me all files.
+  // Otherwise, it is the expression we want to use.
+  if (query_array) {
+    json_object_set_new_nocheck(query_obj, "expression", query_array);
+  }
+
+  // For trigger
+  if (next_arg) {
+    *next_arg = i;
+  }
+
+  if (clockspec) {
+    json_object_set_new_nocheck(query_obj,
+        "since", json_string_nocheck(clockspec));
+  }
+
+  /* compose the query with the field list */
+  query = w_query_parse(query_obj, errmsg);
+
+  json_decref(query_obj);
+
+  return query;
+}
+
 void w_query_delref(w_query *query)
 {
   uint32_t i;
