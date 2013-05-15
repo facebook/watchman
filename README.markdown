@@ -111,10 +111,10 @@ its output too.  The actual JSON protocol uses newlines to separate JSON
 packets.  If you're implementing a JSON client, make sure you read the section
 on the JSON protocol carefully to make sure you get it right!
 
-Where you see `[patterns]` in the command syntax, we allow filename patterns
-that match according the following rules:
+### Legacy Pattern syntax
 
-### Pattern syntax
+Where you see `[patterns]` in the command syntax for the `find` and `since`
+commands, we allow filename patterns that match according the following rules:
 
  * We support `fnmatch(3)` glob style pattern matches.
  * A `!` followed by space followed by a pattern will negate the sense of the
