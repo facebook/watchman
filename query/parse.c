@@ -325,6 +325,10 @@ void w_query_expr_delref(w_query_expr *expr)
   if (!w_refcnt_del(&expr->refcnt)) {
     return;
   }
+  if (expr->dispose) {
+    expr->dispose(expr->data);
+  }
+  free(expr);
 }
 
 
