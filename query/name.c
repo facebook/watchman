@@ -5,7 +5,6 @@
 
 struct name_data {
   w_string_t *name;
-  // TODO: allow map syntax to work
   w_ht_t *map;
   bool caseless;
   bool wholename;
@@ -54,7 +53,12 @@ static void dispose_name(void *data)
 {
   struct name_data *name = data;
 
-  w_string_delref(name->name);
+  if (name->map) {
+    w_ht_free(name->map);
+  }
+  if (name->name) {
+    w_string_delref(name->name);
+  }
   free(name);
 }
 

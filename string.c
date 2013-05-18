@@ -158,7 +158,6 @@ bool w_string_equal_caseless(const w_string_t *a, const w_string_t *b)
 {
   uint32_t i;
   if (a == b) return true;
-  if (a->hval != b->hval) return false;
   if (a->len != b->len) return false;
   for (i = 0; i < a->len; i++) {
     if (tolower(a->buf[i]) != tolower(b->buf[i])) {
