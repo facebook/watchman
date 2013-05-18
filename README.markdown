@@ -913,6 +913,7 @@ before any non-option arguments.
  -f, --foreground      Run the service in the foreground
 
  -s, --settle          Number of milliseconds to wait for filesystem to settle
+                       (Deprecated: use .watchmanconfig instead)
 
  -j, --json-command    Instead of parsing CLI arguments, take a single json
                        object from stdin
@@ -924,7 +925,6 @@ before any non-option arguments.
 ```
 
  * See `log-level` for an example of when you might use the `persistent` flag
- * The default `settle` period is 20 milliseconds
 
 ## Environment and Files
 
@@ -948,6 +948,30 @@ Otherwise:
  * The default `statefile` is `$TMP/.watchman.$USER.state`.  You can turn off
    the use of the state file via the `--no-save-state` option.  The statefile
    is used to persist watches and triggers across process restarts.
+
+## Configuration Files
+
+When watching a root, if a valid JSON file named `.watchmanconfig` is present
+in the root, watchman will load and associate the file with the root.
+
+Watchman will try to resolve certain configuration parameters using the
+following logic:
+
+ * If there is a .watchmanconfig and the option is present there, use that
+   value.
+ * If the option was specified on the command line, use that value
+ * If watchman was configured using `--enable-conffile` and that file is
+   a valid JSON file, and contains the option, use that value
+ * Otherwise use an appropriate default for that option.
+
+### Configuration Parameters
+
+The following parameters are accepted in the .watchmanconfig and global
+configuration files:
+
+ * `settle` - specifies the settle period in *milliseconds*.  This controls
+   how long the filesystem should be idle before dispatching triggers.
+   The default value is 20 milliseconds.
 
 ## Build/Install
 

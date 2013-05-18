@@ -11,6 +11,7 @@ watchman_LDADD = $(JSON_LIB)
 watchman_SOURCES = \
 	argv.c       \
 	opt.c        \
+	cfg.c        \
 	log.c        \
 	json.c       \
 	hash.c       \

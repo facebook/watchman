@@ -4,7 +4,7 @@
 #include "watchman.h"
 #include <poll.h>
 
-int trigger_settle = 20;
+int trigger_settle = DEFAULT_SETTLE_PERIOD;
 int recrawl_period = 0;
 static char *sock_name = NULL;
 static char *log_name = NULL;
@@ -379,35 +379,9 @@ static struct watchman_getopt opts[] = {
   { 0, 0, 0, 0, 0, 0, 0 }
 };
 
-static void load_config_file(void)
-{
-#ifdef WATCHMAN_CONFIG_FILE
-  json_t *config = NULL;
-  json_error_t err;
-
-  if (access(WATCHMAN_CONFIG_FILE, R_OK) != 0 && errno == ENOENT) {
-    return;
-  }
-
-  config = json_load_file(WATCHMAN_CONFIG_FILE, 0, &err);
-  if (!config) {
-    w_log(W_LOG_ERR, "failed to parse json from %s: %s\n",
-        WATCHMAN_CONFIG_FILE, err.text);
-    return;
-  }
-
-  json_unpack(config, "{s:i}", "settle", &trigger_settle);
-  json_unpack(config, "{s:i}", "recrawl", &recrawl_period);
-
-  // TODO: default ignore list parsed out here
-
-  json_decref(config);
-#endif
-}
-
 static void parse_cmdline(int *argcp, char ***argvp)
 {
-  load_config_file();
+  cfg_load_global_config_file();
   w_getopt(opts, argcp, argvp, &daemon_argv);
   setup_sock_name();
 }

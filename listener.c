@@ -331,6 +331,7 @@ static void cmd_shutdown(
   w_ht_del(clients, client->fd);
   pthread_mutex_unlock(&w_client_lock);
   pthread_join(reaper_thread, &ignored);
+  cfg_shutdown();
 
   close(STDIN_FILENO);
   close(STDOUT_FILENO);

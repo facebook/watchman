@@ -212,6 +212,7 @@ struct watchman_query_cookie {
 };
 
 #define WATCHMAN_BATCH_LIMIT (16*1024)
+#define DEFAULT_SETTLE_PERIOD 20
 
 struct watchman_root {
 #if HAVE_INOTIFY_INIT
@@ -245,6 +246,8 @@ struct watchman_root {
   /* current tick */
   uint32_t ticks;
 
+  int trigger_settle;
+
   bool done_initial;
   /* if true, we've decided that we should re-crawl the root
    * for the sake of ensuring consistency */
@@ -274,6 +277,9 @@ struct watchman_root {
   uint32_t pending_trigger_tick;
   uint32_t last_sub_tick;
   uint32_t pending_sub_tick;
+
+  /* config options loaded via json file */
+  json_t *config_file;
 
   /* our locking granularity is per-root */
   pthread_mutex_t lock;
@@ -616,6 +622,14 @@ static inline void set_prop(json_t *obj, const char *key, json_t *val)
 {
   json_object_set_new_nocheck(obj, key, val);
 }
+
+void cfg_shutdown(void);
+void cfg_set_arg(const char *name, json_t *val);
+void cfg_load_global_config_file(void);
+const char *cfg_get_string(w_root_t *root, const char *name,
+    const char *defval);
+json_int_t cfg_get_int(w_root_t *root, const char *name,
+    json_int_t defval);
 
 #include "watchman_query.h"
 #include "watchman_cmd.h"

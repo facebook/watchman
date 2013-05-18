@@ -81,6 +81,29 @@ static const struct watchman_hash_funcs dirname_hash_funcs = {
   delete_dir
 };
 
+static void load_root_config(w_root_t *root, const char *path)
+{
+  char cfgfilename[WATCHMAN_NAME_MAX];
+  json_error_t err;
+
+  snprintf(cfgfilename, sizeof(cfgfilename), "%s/.watchmanconfig", path);
+
+  if (access(cfgfilename, R_OK) != 0) {
+    if (errno == ENOENT) {
+      return;
+    }
+    w_log(W_LOG_ERR, "%s is not accessible: %s\n",
+        cfgfilename, strerror(errno));
+    return;
+  }
+
+  root->config_file = json_load_file(cfgfilename, 0, &err);
+  if (!root->config_file) {
+    w_log(W_LOG_ERR, "failed to parse json from %s: %s\n",
+        cfgfilename, err.text);
+  }
+}
+
 static w_root_t *w_root_new(const char *path)
 {
   w_root_t *root = calloc(1, sizeof(*root));
@@ -174,6 +197,9 @@ static w_root_t *w_root_new(const char *path)
   }
   w_set_cloexec(root->port_fd);
 #endif
+
+  load_root_config(root, path);
+  root->trigger_settle = cfg_get_int(root, "settle", DEFAULT_SETTLE_PERIOD);
 
   return root;
 }
@@ -1657,7 +1683,7 @@ static void notify_thread(w_root_t *root)
 {
   /* now we can settle into the notification stuff */
   while (!root->cancelled) {
-    int timeoutms = MAX(trigger_settle, 100);
+    int timeoutms = MAX(root->trigger_settle, 100);
 
     if (!wait_for_notify(root, timeoutms)) {
       // Do triggers
@@ -1774,6 +1800,9 @@ void w_root_delref(w_root_t *root)
   w_ht_free(root->commands);
   w_ht_free(root->query_cookies);
   w_ht_free(root->pending_uniq);
+  if (root->config_file) {
+    json_decref(root->config_file);
+  }
 
 #ifdef HAVE_INOTIFY_INIT
   close(root->infd);
