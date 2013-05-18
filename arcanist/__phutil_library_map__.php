@@ -10,6 +10,9 @@ phutil_register_library_map(array(
   '__library_version__' => 2,
   'class' =>
   array(
+    'CallgrindFile' => 'lib/cov/CallgrindFile.php',
+    'DwarfLineInfo' => 'lib/cov/DwarfLineInfo.php',
+    'WatchmanCoverWorkflow' => 'workflow/cover.php',
     'WatchmanInstance' => 'lib/WatchmanInstance.php',
     'WatchmanIntegrationEngine' => 'lib/WatchmanIntegrationEngine.php',
     'WatchmanLicenseLinter' => 'lib/WatchmanLicenseLinter.php',
@@ -23,6 +26,7 @@ phutil_register_library_map(array(
   ),
   'xmap' =>
   array(
+    'WatchmanCoverWorkflow' => 'ArcanistBaseWorkflow',
     'WatchmanIntegrationEngine' => 'WatchmanTapEngine',
     'WatchmanLicenseLinter' => 'ArcanistLinter',
     'WatchmanLintEngine' => 'ArcanistLintEngine',

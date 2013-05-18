@@ -11,8 +11,11 @@ class WatchmanInstance {
   private $sockname;
   private $debug = false;
   private $valgrind = false;
+  private $coverage = false;
   private $vg_log;
+  private $cg_file;
   private $sock;
+  private $repo_root;
   static $singleton = null;
   private $logdata = array();
   private $subdata = array();
@@ -20,18 +23,29 @@ class WatchmanInstance {
 
   static function get() {
     if (!self::$singleton) {
-      self::$singleton = new WatchmanInstance;
+      throw new Exception("should have called setup");
     }
     return self::$singleton;
   }
 
-  function __construct() {
+  static function setup($repo_root, $coverage) {
+    $instance = new WatchmanInstance($repo_root, $coverage);
+    self::$singleton = $instance;
+
+    $instance->request();
+  }
+
+  function __construct($repo_root, $coverage) {
+    $this->repo_root = $repo_root;
     $this->logfile = new TempFile();
     $this->sockname = new TempFile();
 
     if (getenv("WATCHMAN_VALGRIND")) {
       $this->valgrind = true;
       $this->vg_log = new TempFile();
+    } elseif ($coverage) {
+      $this->coverage = true;
+      $this->cg_file = new TempFile();
     }
   }
 
@@ -160,6 +174,10 @@ class WatchmanInstance {
         "--xml-file=$this->vg_log.xml " .
         "-v " .
         $cmd;
+    } else if ($this->coverage) {
+      $cmd = "valgrind --tool=callgrind --collect-jumps=yes " .
+        "--separate-recs=16 --callgrind-out-file=$this->cg_file " .
+        $cmd;
     }
 
     $cmd = csprintf($cmd, $this->sockname, $this->logfile, $this->logfile);
@@ -256,8 +274,65 @@ class WatchmanInstance {
     return $text;
   }
 
+  function generateCoverageResults() {
+    // Find all executables, not just the test executables.
+    // We need to do this because the test executables may not
+    // include all of the possible code (linker decides to omit
+    // it from the image) so we see a skewed representation of
+    // the source lines.
+
+    $fp = popen(
+      "find $this->repo_root -type f -name watchman -o " .
+      "-name \*.a -o -name \*.so -o -name \*.dylib", "r");
+    while (true) {
+      $line = fgets($fp);
+      if ($line === false) break;
+      $obj_files[] = trim($line);
+    }
+
+    // Parse line information from the objects
+    foreach ($obj_files as $object) {
+      DwarfLineInfo::loadObject($object);
+    }
+
+    $CG = new CallgrindFile((string)$this->cg_file);
+    $CG->parse();
+
+    $source_files = array();
+    foreach ($CG->getSourceFiles() as $filename) {
+      if (Filesystem::isDescendant($filename, $this->repo_root) &&
+        !preg_match("/(thirdparty|tests)/", $filename)) {
+          $source_files[$filename] = $filename;
+        }
+    }
+
+    $cov = array();
+    foreach ($source_files as $filename) {
+      $relsrc = substr($filename, strlen($this->repo_root) + 1);
+      $cov[$relsrc] = CallgrindFile::mergeSourceLineData(
+        $filename, array($CG));
+    }
+
+    $res = new ArcanistUnitTestResult();
+    $res->setName('coverage');
+    $res->setUserData("Collected");
+    $res->setResult(ArcanistUnitTestResult::RESULT_PASS);
+    $res->setCoverage($cov);
+
+    // Stash it for review with our `arc cov` command
+    $wc = ArcanistWorkingCopyIdentity::newFromPath($this->repo_root);
+    $api = ArcanistRepositoryAPI::newAPIFromWorkingCopyIdentity($wc);
+    $api->writeScratchFile('wman-cov.json', json_encode($cov));
+
+    return array($res);
+  }
+
   function generateValgrindTestResults() {
     $this->stopProcess();
+
+    if ($this->coverage) {
+      return $this->generateCoverageResults();
+    }
 
     if (!$this->valgrind) {
       return array();
@@ -409,6 +484,9 @@ class WatchmanInstance {
     }
     if (file_exists($this->vg_log)) {
       copy($this->vg_log, "/tmp/watchman-valgrind.txt");
+    }
+    if (file_exists($this->cg_file)) {
+      copy($this->cg_file, "/tmp/watchman-callgrind.txt");
     }
   }
 
