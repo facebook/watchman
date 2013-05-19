@@ -182,6 +182,8 @@ class WatchmanInstance {
 
     $cmd = csprintf($cmd, $this->sockname, $this->logfile, $this->logfile);
 
+    WatchmanQueryFuture::setSocketPath("$this->sockname.sock");
+
     $pipes = array();
     $this->proc = proc_open($cmd, array(
       0 => array('file', '/dev/null', 'r'),

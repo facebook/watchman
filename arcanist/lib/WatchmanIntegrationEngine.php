@@ -47,6 +47,15 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
       $test_case->setRoot($root);
       $test_case->setPaths($paths);
       $results[] = $test_case->run();
+
+      if (!$test_case->needsLiveConnection()) {
+        $test_case->useCLI();
+        $cli_results = $test_case->run();
+        foreach ($cli_results as $res) {
+          $res->setName($res->getName() . ' [CLI]');
+        }
+        $results[] = $cli_results;
+      }
     }
 
     $results[] = WatchmanInstance::get()->generateValgrindTestResults();

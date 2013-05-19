@@ -4,6 +4,17 @@
 
 class WatchmanTestCase extends ArcanistPhutilTestCase {
   protected $root;
+  private $use_cli = false;
+
+  // If this returns false, we can run this test case using
+  // the CLI instead of via a unix socket
+  function needsLiveConnection() {
+    return false;
+  }
+
+  function useCLI() {
+    $this->use_cli = true;
+  }
 
   // because setProjectRoot is final and $this->projectRoot
   // is private...
@@ -19,6 +30,11 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
   function watchmanCommand() {
     $args = func_get_args();
 
+    if ($this->use_cli) {
+      $future = new WatchmanQueryFuture($this->root, $args);
+      return $future->resolve();
+    }
+
     return call_user_func_array(
       array(WatchmanInstance::get(), 'request'),
       $args);
@@ -33,7 +49,16 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     }
   }
 
+  function assertLiveConnection() {
+    if (!$this->needsLiveConnection()) {
+      throw new Exception(
+        "you must override needsLiveConnection and make it return true"
+      );
+    }
+  }
+
   function setLogLevel($level) {
+    $this->assertLiveConnection();
     $out = WatchmanInstance::get()->setLogLevel($level);
     $this->assertEqual($level, $out['log_level'], "set log level to $level");
   }
@@ -47,6 +72,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
   }
 
   function waitForLog($criteria, $timeout = 5) {
+    $this->assertLiveConnection();
     // Can't use the generic waitFor routine here because
     // we're delegating to a more efficient mechanism in
     // the instance class.

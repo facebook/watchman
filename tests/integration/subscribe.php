@@ -3,6 +3,10 @@
  * Licensed under the Apache License, Version 2.0 */
 
 class subscribeTestCase extends WatchmanTestCase {
+  function needsLiveConnection() {
+    return true;
+  }
+
   function testSubscribe() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());

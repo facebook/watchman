@@ -4,6 +4,9 @@
  * Licensed under the Apache License, Version 2.0 */
 
 class fishyTestCase extends WatchmanTestCase {
+  function needsLiveConnection() {
+    return true;
+  }
 
   function testFishy() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();

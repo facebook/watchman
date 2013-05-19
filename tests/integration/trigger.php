@@ -3,6 +3,9 @@
  * Licensed under the Apache License, Version 2.0 */
 
 class triggerTestCase extends WatchmanTestCase {
+  function needsLiveConnection() {
+    return true;
+  }
 
   function testTrigger() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
