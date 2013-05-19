@@ -30,13 +30,20 @@ class bigPCRETestCase extends WatchmanTestCase {
       )
     );
 
-    $this->assertEqual(1,
-      preg_match('/^failed to parse query: invalid pcre: code 20 '.
-        'regular expression is too large at offset \d+/',
-        $res['error']
-      ),
-      'got useful error message'
+    $possible = array(
+      'code 50 repeated subpattern is too long',
+      'code 20 regular expression is too large',
     );
+    $matched = false;
+    foreach ($possible as $frag) {
+      if (preg_match("/^failed to parse query: invalid pcre: ".
+          "$frag at offset \d+/", $res['error'])) {
+        $matched = true;
+      }
+    }
+
+    $this->assertEqual(true, $matched, "got useful message: ".
+      substr($res['error'], 0, 128));
   }
 }
 
