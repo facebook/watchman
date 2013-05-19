@@ -35,6 +35,9 @@ TXT
 
   public function getArguments() {
     return array(
+      'summary' => array(
+        'help' => 'Summarize coverage',
+      ),
       '*' => 'files',
     );
   }
@@ -60,6 +63,20 @@ TXT
       $cov_score[$filename] = $c / ($u + $c);
     }
     arsort($cov_score);
+
+    if ($this->getArgument('summary')) {
+      $longest = 0;
+      foreach ($cov_score as $filename => $score) {
+        $longest = max($longest, strlen($filename));
+      }
+
+      foreach ($cov_score as $filename => $score) {
+        printf("%s    %.2f%%\n",
+          str_pad($filename, $longest),
+          $score * 100);
+      }
+      return;
+    }
 
     $files = $this->getArgument('files');
     if (!$files) {
