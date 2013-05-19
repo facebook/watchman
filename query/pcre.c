@@ -80,8 +80,8 @@ static w_query_expr *pcre_parser(w_query *query,
         &errcode, &errptr, &erroff, NULL);
   if (!re) {
     asprintf(&query->errmsg,
-      "invalid %s: `%s' at offset %d: code %d %s",
-      which, pattern, erroff, errcode, errptr);
+      "invalid %s: code %d %s at offset %d in %s",
+      which, errcode, errptr, erroff, pattern);
     return NULL;
   }
 
