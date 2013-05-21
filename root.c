@@ -578,25 +578,6 @@ static void schedule_recrawl(w_root_t *root, const char *why)
 }
 #endif
 
-#ifdef HAVE_INOTIFY_INIT
-static void invalidate_watch_descriptors(w_root_t *root,
-    struct watchman_dir *dir)
-{
-  w_ht_iter_t i;
-
-  if (w_ht_first(dir->dirs, &i)) do {
-    struct watchman_dir *child = (struct watchman_dir*)i.value;
-
-    invalidate_watch_descriptors(root, child);
-  } while (w_ht_next(dir->dirs, &i));
-
-  if (dir->wd != -1) {
-    w_ht_del(root->wd_to_dir, dir->wd);
-    dir->wd = -1;
-  }
-}
-#endif
-
 static void stop_watching_dir(w_root_t *root,
     struct watchman_dir *dir, bool do_close)
 {
@@ -657,6 +638,28 @@ static void stop_watching_dir(w_root_t *root,
 #endif
   dir->wd = -1;
 }
+
+static void invalidate_watch_descriptors(w_root_t *root,
+    struct watchman_dir *dir)
+{
+#ifdef HAVE_INOTIFY_INIT
+  w_ht_iter_t i;
+
+  if (w_ht_first(dir->dirs, &i)) do {
+    struct watchman_dir *child = (struct watchman_dir*)i.value;
+
+    invalidate_watch_descriptors(root, child);
+  } while (w_ht_next(dir->dirs, &i));
+
+  if (dir->wd != -1) {
+    w_ht_del(root->wd_to_dir, dir->wd);
+    dir->wd = -1;
+  }
+#else
+  stop_watching_dir(root, dir, true);
+#endif
+}
+
 
 static bool did_file_change(struct stat *saved, struct stat *fresh)
 {
@@ -1364,12 +1367,24 @@ static void handle_should_recrawl(w_root_t *root)
 {
   if (root->should_recrawl && !root->cancelled) {
     struct timeval now;
+    struct watchman_dir *dir;
+
+    gettimeofday(&now, NULL);
+
+    dir = w_root_resolve_dir(root, root->root_path, false);
+    if (!dir) {
+      w_log(W_LOG_FATAL, "unable to lookup my own root dir %.*s",
+          root->root_path->len, root->root_path->buf);
+    }
+    // Ensure that the old tree is not associated
+    invalidate_watch_descriptors(root, dir);
+    // and marked deleted
+    w_root_mark_deleted(root, dir, now, true);
 
     // Drain any pending data, it's probably all wrong and
     // we'll just waste time dealing with it
     w_root_process_pending(root, true);
 
-    gettimeofday(&now, NULL);
     root->should_recrawl = false;
     w_root_add_pending(root, root->root_path, true, now, false);
   }
