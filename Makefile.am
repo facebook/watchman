@@ -90,10 +90,23 @@ lint:
 	-arc lint --output compiler --lintall
 endif
 
+if HAVE_PYTHON
+all-local:
+	cd python/bser && $(PYTHON) ./setup.py build
+
+# This is invoked via WatchmanIntegrationEngine
+py-tests:
+	time $(PYTHON) $(TESTNAME)
+
+clean-local:
+	cd python/bser && $(PYTHON) ./setup.py clean
+	rm -rf python/bser/build
+endif
+
 # generate a rule that we can use to ensure that
 # the test programs are built
 build-tests: $(TESTS)
-.PHONY: lint build-tests integration
+.PHONY: lint build-tests integration py-tests
 # run integration AND unit tests
 integration:
 	arc unit --everything

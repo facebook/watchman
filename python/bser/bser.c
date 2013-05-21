@@ -50,7 +50,7 @@ struct bser_buffer {
 };
 typedef struct bser_buffer bser_t;
 
-static int bser_append(bser_t *bser, const char *data, int len)
+static int bser_append(bser_t *bser, const char *data, uint32_t len)
 {
   int newlen = next_power_2(bser->wpos + len);
   if (newlen > bser->allocd) {
@@ -150,7 +150,13 @@ static int bser_string(bser_t *bser, PyObject *sval)
     goto out;
   }
 
-  res = bser_append(bser, buf, len);
+  if (len > UINT32_MAX) {
+    PyErr_Format(PyExc_ValueError, "string too big");
+    res = 0;
+    goto out;
+  }
+
+  res = bser_append(bser, buf, (uint32_t)len);
 
 out:
   if (utf) {
@@ -237,7 +243,7 @@ static int bser_recursive(bser_t *bser, PyObject *val)
   }
 
   if (PyMapping_Check(val)) {
-    int len = PyMapping_Length(val);
+    Py_ssize_t len = PyMapping_Length(val);
     Py_ssize_t pos = 0;
     PyObject *key, *ele;
 
@@ -296,7 +302,7 @@ static PyObject *bser_dumps(PyObject *self, PyObject *args)
   return res;
 }
 
-int bunser_int(const char **ptr, const char *end, long *val)
+int bunser_int(const char **ptr, const char *end, int64_t *val)
 {
   int needed;
   const char *buf = *ptr;
@@ -343,7 +349,7 @@ int bunser_int(const char **ptr, const char *end, long *val)
 }
 
 static int bunser_string(const char **ptr, const char *end,
-    const char **start, long *len)
+    const char **start, int64_t *len)
 {
   const char *buf = *ptr;
 
@@ -366,7 +372,7 @@ static int bunser_string(const char **ptr, const char *end,
 static PyObject *bunser_array(const char **ptr, const char *end)
 {
   const char *buf = *ptr;
-  long nitems, i;
+  int64_t nitems, i;
   PyObject *res;
 
   // skip array header
@@ -376,7 +382,12 @@ static PyObject *bunser_array(const char **ptr, const char *end)
   }
   *ptr = buf;
 
-  res = PyList_New(nitems);
+  if (nitems > LONG_MAX) {
+    PyErr_Format(PyExc_ValueError, "too many items for python array");
+    return NULL;
+  }
+
+  res = PyList_New((Py_ssize_t)nitems);
 
   for (i = 0; i < nitems; i++) {
     PyObject *ele = bser_loads_recursive(ptr, end);
@@ -396,7 +407,7 @@ static PyObject *bunser_array(const char **ptr, const char *end)
 static PyObject *bunser_object(const char **ptr, const char *end)
 {
   const char *buf = *ptr;
-  long nitems, i;
+  int64_t nitems, i;
   PyObject *res;
 
   // skip array header
@@ -410,7 +421,7 @@ static PyObject *bunser_object(const char **ptr, const char *end)
 
   for (i = 0; i < nitems; i++) {
     const char *keystr;
-    long keylen;
+    int64_t keylen;
     PyObject *key;
     PyObject *ele;
 
@@ -419,7 +430,13 @@ static PyObject *bunser_object(const char **ptr, const char *end)
       return NULL;
     }
 
-    key = PyString_FromStringAndSize(keystr, keylen);
+    if (keylen > LONG_MAX) {
+      PyErr_Format(PyExc_ValueError, "string too big for python");
+      Py_DECREF(res);
+      return NULL;
+    }
+
+    key = PyString_FromStringAndSize(keystr, (Py_ssize_t)keylen);
     if (!key) {
       Py_DECREF(res);
       return NULL;
@@ -444,7 +461,7 @@ static PyObject *bunser_object(const char **ptr, const char *end)
 static PyObject *bunser_template(const char **ptr, const char *end)
 {
   const char *buf = *ptr;
-  long nitems, i;
+  int64_t nitems, i;
   PyObject *arrval;
   PyObject *keys;
   Py_ssize_t numkeys, keyidx;
@@ -472,7 +489,13 @@ static PyObject *bunser_template(const char **ptr, const char *end)
     return 0;
   }
 
-  arrval = PyList_New(nitems);
+  if (nitems > LONG_MAX) {
+    PyErr_Format(PyExc_ValueError, "Too many items for python");
+    Py_DECREF(keys);
+    return NULL;
+  }
+
+  arrval = PyList_New((Py_ssize_t)nitems);
   if (!arrval) {
     Py_DECREF(keys);
     return NULL;
@@ -528,11 +551,14 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end)
     case BSER_INT32:
     case BSER_INT64:
       {
-        long ival;
+        int64_t ival;
         if (!bunser_int(ptr, end, &ival)) {
           return NULL;
         }
-        return PyInt_FromLong(ival);
+        if (ival > LONG_MAX) {
+          return PyLong_FromLongLong(ival);
+        }
+        return PyInt_FromLong((long)ival);
       }
 
     case BSER_REAL:
@@ -560,13 +586,18 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end)
     case BSER_STRING:
       {
         const char *start;
-        long len;
+        int64_t len;
 
         if (!bunser_string(ptr, end, &start, &len)) {
           return NULL;
         }
 
-        return PyString_FromStringAndSize(start, len);
+        if (len > LONG_MAX) {
+          PyErr_Format(PyExc_ValueError, "string too long for python");
+          return NULL;
+        }
+
+        return PyString_FromStringAndSize(start, (long)len);
       }
 
     case BSER_ARRAY:
@@ -597,7 +628,7 @@ static PyObject *bser_pdu_len(PyObject *self, PyObject *args)
   const char *data = NULL;
   int datalen = 0;
   const char *end;
-  long expected_len;
+  int64_t expected_len, total_len;
 
   if (!PyArg_ParseTuple(args, "s#", &start, &datalen)) {
     return NULL;
@@ -619,7 +650,11 @@ static PyObject *bser_pdu_len(PyObject *self, PyObject *args)
     return NULL;
   }
 
-  return PyInt_FromLong(expected_len + (data - start));
+  total_len = expected_len + (data - start);
+  if (total_len > LONG_MAX) {
+    return PyLong_FromLongLong(total_len);
+  }
+  return PyInt_FromLong((long)total_len);
 }
 
 static PyObject *bser_loads(PyObject *self, PyObject *args)
@@ -627,7 +662,7 @@ static PyObject *bser_loads(PyObject *self, PyObject *args)
   const char *data = NULL;
   int datalen = 0;
   const char *end;
-  long expected_len;
+  int64_t expected_len;
 
   if (!PyArg_ParseTuple(args, "s#", &data, &datalen)) {
     return NULL;

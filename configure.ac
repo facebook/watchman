@@ -51,6 +51,17 @@ AC_ARG_ENABLE(statedir, [
                     [default location for state])
 ])
 
+want_python=no
+AC_ARG_WITH(python, [
+  --with-python        Enable python bser module
+],[
+   want_python="$withval"
+])
+if test "x$want_python" = "xyes" ; then
+  AM_PATH_PYTHON(,,[:])
+fi
+AM_CONDITIONAL(HAVE_PYTHON, [test "$PYTHON" != : -a "x$want_python" = "xyes"])
+
 pcre_config="yes"
 AC_ARG_WITH(pcre, [
   --without-pcre       Don't enable pcre support.

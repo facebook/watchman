@@ -12,7 +12,10 @@ class TestBSERDump(unittest.TestCase):
 
     def munged(self, val, munged):
         enc = bser.dumps(val)
-        print "# %s  -->  %s" % (val, enc.encode('hex'))
+        if isinstance(val, unicode):
+            print "# %s  -->  %s" % (val.encode('utf-8'), enc.encode('hex'))
+        else:
+            print "# %s  -->  %s" % (val, enc.encode('hex'))
         dec = bser.loads(enc)
         self.assertEquals(munged, dec)
 

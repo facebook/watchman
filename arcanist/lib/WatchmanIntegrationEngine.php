@@ -21,6 +21,11 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
 
     if ($this->getRunAllTests()) {
       $paths = glob($test_dir . "*.php");
+      if (is_dir("python/bser/build")) {
+        foreach (glob('python/bser/*.py') as $file) {
+          $paths[] = $file;
+        }
+      }
     } else {
       $paths = $this->getPaths();
     }
@@ -67,6 +72,34 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
     }
 
     $results[] = WatchmanInstance::get()->generateValgrindTestResults();
+
+    // Also run the python tests if we built them
+    foreach ($paths as $path) {
+      if (!preg_match('/test.*\.py$/', $path)) {
+        continue;
+      }
+
+      // build dir varies by platform, so just glob for it
+      $pypath = implode(':', glob("python/bser/build/*"));
+
+      // makefile contains the detected python, so just run the
+      // rule from the makefile, but pass in our PYTHONPATH
+      $start = microtime(true);
+      $future = new ExecFuture(
+        "PYTHONPATH=$pypath TESTNAME=$path make py-tests"
+      );
+      list($status, $out, $err) = $future->resolve();
+      $end = microtime(true);
+      $res = new ArcanistUnitTestResult();
+      $res->setName($path);
+      $res->setUserData($out.$err);
+      $res->setDuration($end - $start);
+      $res->setResult($status == 0 ?
+        ArcanistUnitTestResult::RESULT_PASS :
+        ArcanistUnitTestResult::RESULT_FAIL
+      );
+      $results[] = array($res);
+    }
 
     $results = array_mergev($results);
     return $results;
