@@ -27,3 +27,4 @@ tests/integration/.watchman.*
 config.sub
 config.guess
 configure.lineno
+python/bser/build

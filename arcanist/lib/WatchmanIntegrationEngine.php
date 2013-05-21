@@ -34,6 +34,12 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
     $coverage = $this->getEnableCoverage();
     WatchmanInstance::setup($root, $coverage);
 
+    // Exercise the different serialization combinations
+    $cli_matrix = array(
+      'bser/json' => '--server-encoding=bser --output-encoding=json',
+      'json/json' => '--server-encoding=json --output-encoding=json',
+    );
+
     // Find all the test cases that were declared
     $results = array();
     foreach (get_declared_classes() as $name) {
@@ -49,12 +55,14 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
       $results[] = $test_case->run();
 
       if (!$test_case->needsLiveConnection()) {
-        $test_case->useCLI();
-        $cli_results = $test_case->run();
-        foreach ($cli_results as $res) {
-          $res->setName($res->getName() . ' [CLI]');
+        foreach ($cli_matrix as $mname => $args) {
+          $test_case->useCLI($args);
+          $cli_results = $test_case->run();
+          foreach ($cli_results as $res) {
+            $res->setName($res->getName() . " [CLI: $mname]");
+          }
+          $results[] = $cli_results;
         }
-        $results[] = $cli_results;
       }
     }
 

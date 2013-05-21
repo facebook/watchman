@@ -14,6 +14,7 @@ watchman_SOURCES = \
 	cfg.c        \
 	log.c        \
 	json.c       \
+	bser.c       \
 	hash.c       \
 	ht.c         \
 	cmds/find.c     \
@@ -74,8 +75,8 @@ libtap_a_SOURCES = thirdparty/tap.c
 TAP_LIB = -ltap
 
 # unit tests
-TESTS = tests/argv.t tests/log.t
-noinst_PROGRAMS = tests/argv.t tests/log.t
+TESTS = tests/argv.t tests/log.t tests/bser.t
+noinst_PROGRAMS = tests/argv.t tests/log.t tests/bser.t
 
 if HAVE_ARC
 # if we have arc, lint when we run make.  We don't want to force
@@ -108,4 +109,10 @@ tests_log_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_log_t_SOURCES = \
 	tests/log.c \
 	log.c
+
+tests_bser_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_bser_t_LDADD = $(JSON_LIB) $(TAP_LIB)
+tests_bser_t_SOURCES = \
+	tests/bser.c \
+	bser.c
 

@@ -6,6 +6,10 @@
 
 int trigger_settle = DEFAULT_SETTLE_PERIOD;
 int recrawl_period = 0;
+static enum w_pdu_type server_pdu = is_bser;
+static enum w_pdu_type output_pdu = is_json_pretty;
+static char *server_encoding = NULL;
+static char *output_encoding = NULL;
 static char *sock_name = NULL;
 static char *log_name = NULL;
 #ifdef USE_GIMLI
@@ -124,6 +128,23 @@ static void spawn_via_gimli(void)
 }
 #endif
 
+static void parse_encoding(const char *enc, enum w_pdu_type *pdu)
+{
+  if (!enc) {
+    return;
+  }
+  if (!strcmp(enc, "json")) {
+    *pdu = is_json_compact;
+    return;
+  }
+  if (!strcmp(enc, "bser")) {
+    *pdu = is_bser;
+    return;
+  }
+  w_log(W_LOG_ERR, "Invalid encoding '%s', use one of json or bser\n", enc);
+  exit(EX_USAGE);
+}
+
 static const char *get_env_with_fallback(const char *name1,
     const char *name2, const char *fallback)
 {
@@ -234,65 +255,12 @@ static bool should_start(int err)
   return false;
 }
 
-static bool read_response(w_jbuffer_t *reader, int fd)
-{
-  json_t *j;
-  json_error_t jerr;
-
-  if (no_pretty) {
-    // Just pass through what we get from the server.
-    // We use the buffer space from reader.
-    int x;
-    size_t res;
-    char *buf;
-    bool is_done = false;
-
-    while (!is_done) {
-      x = read(fd, reader->buf, reader->allocd);
-      if (x <= 0) {
-        return true;
-      }
-
-      if (memchr(reader->buf, '\n', x)) {
-        is_done = true;
-      }
-
-      buf = reader->buf;
-      while (x > 0) {
-        res = fwrite(buf, 1, x, stdout);
-        if (res == 0) {
-          break;
-        }
-        buf += res;
-        x -= res;
-      }
-    }
-
-    return true;
-  }
-
-  j = w_json_buffer_next(reader, fd, &jerr);
-
-  if (!j) {
-    w_log(W_LOG_ERR, "failed to parse response: %s\n",
-        jerr.text);
-    return false;
-  }
-
-  // Let's just pretty print the JSON response
-  json_dumpf(j, stdout, JSON_INDENT(4));
-  printf("\n");
-
-  json_decref(j);
-
-  return true;
-}
-
 static bool try_command(json_t *cmd, int timeout)
 {
   int fd;
   int res;
   int tries;
+  int bufsize;
   w_jbuffer_t buffer;
 
   fd = socket(PF_LOCAL, SOCK_STREAM, 0);
@@ -326,13 +294,23 @@ static bool try_command(json_t *cmd, int timeout)
     return true;
   }
 
+  bufsize = WATCHMAN_IO_BUF_SIZE;
+  setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(bufsize));
+
   w_json_buffer_init(&buffer);
 
   // Send command
-  w_json_buffer_write(&buffer, fd, cmd, JSON_COMPACT);
+  if (!w_ser_write_pdu(server_pdu, &buffer, fd, cmd)) {
+    w_log(W_LOG_ERR, "error sending PDU to server\n");
+    w_json_buffer_free(&buffer);
+    close(fd);
+    return false;
+  }
+
+  w_json_buffer_reset(&buffer);
 
   do {
-    if (!read_response(&buffer, fd)) {
+    if (!w_json_buffer_passthru(&buffer, output_pdu, fd)) {
       w_json_buffer_free(&buffer);
       close(fd);
       return false;
@@ -364,6 +342,10 @@ static struct watchman_getopt opts[] = {
   { "json-command", 'j', "Instead of parsing CLI arguments, take a single "
     "json object from stdin",
     OPT_NONE, &json_input_arg, NULL, NOT_DAEMON },
+  { "output-encoding", 0, "CLI output encoding. json (default) or bser",
+    REQ_STRING, &output_encoding, NULL, NOT_DAEMON },
+  { "server-encoding", 0, "CLI<->server encoding. bser (default) or json",
+    REQ_STRING, &server_encoding, NULL, NOT_DAEMON },
   { "foreground", 'f', "Run the service in the foreground",
     OPT_NONE, &foreground, NULL, NOT_DAEMON },
   { "no-pretty", 0, "Don't pretty print JSON",
@@ -384,6 +366,11 @@ static void parse_cmdline(int *argcp, char ***argvp)
   cfg_load_global_config_file();
   w_getopt(opts, argcp, argvp, &daemon_argv);
   setup_sock_name();
+  parse_encoding(server_encoding, &server_pdu);
+  parse_encoding(output_encoding, &output_pdu);
+  if (!output_encoding) {
+    output_pdu = no_pretty ? is_json_compact : is_json_pretty;
+  }
 }
 
 static json_t *build_command(int argc, char **argv)

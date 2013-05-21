@@ -21,10 +21,10 @@ class WatchmanQueryFuture extends FutureProxy {
     self::$socketPath = $path;
   }
 
-  public function __construct($repo_root, array $command) {
+  public function __construct($repo_root, $args, array $command) {
     $this->command = json_encode($command);
     $future = new ExecFuture(
-      '%s/watchman -U %s %s %s %s',
+      "%s/watchman $args -U %s %s %s %s",
       $repo_root,
       self::$socketPath,
       '--no-pretty',

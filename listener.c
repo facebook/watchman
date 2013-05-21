@@ -228,12 +228,28 @@ json_t *w_match_results_to_json(
   json_t *file_list = json_array_of_size(num_matches);
   uint32_t i;
 
+  if (num_matches) {
+    // Build a template for the serializer
+    json_t *templ = json_array_of_size(15);
+    static const char *field_list[] = {
+      "name", "exists", "size", "mode", "uid", "gid",
+      "atime", "mtime", "ctime", "ino", "dev", "nlink",
+      "new", "oclock", "cclock",
+    };
+
+    for (i = 0; i < sizeof(field_list)/sizeof(field_list[0]); i++) {
+      json_array_append_new(templ, json_string_nocheck(field_list[i]));
+    }
+
+    json_array_set_template_new(file_list, templ);
+  }
+
   for (i = 0; i < num_matches; i++) {
     struct watchman_file *file = matches[i].file;
     w_string_t *relname = matches[i].relname;
     char buf[128];
 
-    json_t *record = json_object();
+    json_t *record = json_object_of_size(15);
 
     set_prop(record, "name", json_string_nocheck(relname->buf));
     set_prop(record, "exists", json_boolean(file->exists));
@@ -451,9 +467,11 @@ disconected:
         // Not so cool
         send_error_response(client, "invalid json at position %d: %s",
             jerr.position, jerr.text);
+        w_log(W_LOG_ERR, "invalid data from client: %s\n", jerr.text);
 
         goto disconected;
       } else if (request) {
+        client->pdu_type = client->reader.pdu_type;
         dispatch_command(client, request);
         json_decref(request);
       }
@@ -481,8 +499,10 @@ disconected:
       if (resp) {
         w_clear_nonblock(client->fd);
 
-        w_json_buffer_write(&client->writer, client->fd,
-            resp->json, JSON_COMPACT);
+        /* Return the data in the same format that was used to ask for it */
+        w_ser_write_pdu(client->pdu_type, &client->writer,
+            client->fd, resp->json);
+
         json_decref(resp->json);
         free(resp);
 
@@ -704,6 +724,7 @@ bool w_start_listener(const char *path)
     int client_fd;
     struct watchman_client *client;
     struct pollfd pfd;
+    int bufsize;
 
 #ifdef HAVE_LIBGIMLI_H
     if (hb) {
@@ -720,6 +741,8 @@ bool w_start_listener(const char *path)
       continue;
     }
     w_set_cloexec(client_fd);
+    bufsize = WATCHMAN_IO_BUF_SIZE;
+    setsockopt(client_fd, SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize));
 
     client = calloc(1, sizeof(*client));
     client->fd = client_fd;

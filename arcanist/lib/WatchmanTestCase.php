@@ -5,6 +5,7 @@
 class WatchmanTestCase extends ArcanistPhutilTestCase {
   protected $root;
   private $use_cli = false;
+  private $cli_args = null;
 
   // If this returns false, we can run this test case using
   // the CLI instead of via a unix socket
@@ -12,8 +13,9 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     return false;
   }
 
-  function useCLI() {
+  function useCLI($args) {
     $this->use_cli = true;
+    $this->cli_args = $args;
   }
 
   // because setProjectRoot is final and $this->projectRoot
@@ -31,7 +33,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     $args = func_get_args();
 
     if ($this->use_cli) {
-      $future = new WatchmanQueryFuture($this->root, $args);
+      $future = new WatchmanQueryFuture($this->root, $this->cli_args, $args);
       return $future->resolve();
     }
 

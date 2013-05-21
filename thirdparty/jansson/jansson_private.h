@@ -44,6 +44,7 @@ typedef struct {
     size_t entries;
     json_t **table;
     int visited;
+    json_t *templ;
 } json_array_t;
 
 typedef struct {

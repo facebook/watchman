@@ -34,14 +34,14 @@ static JSON_INLINE void json_init(json_t *json, json_type type)
 
 /*** object ***/
 
-json_t *json_object(void)
+json_t *json_object_of_size(size_t size)
 {
     json_object_t *object = jsonp_malloc(sizeof(json_object_t));
     if(!object)
         return NULL;
     json_init(&object->json, JSON_OBJECT);
 
-    if(hashtable_init(&object->hashtable))
+    if(hashtable_init(&object->hashtable, size))
     {
         jsonp_free(object);
         return NULL;
@@ -51,6 +51,11 @@ json_t *json_object(void)
     object->visited = 0;
 
     return &object->json;
+}
+
+json_t *json_object(void)
+{
+    return json_object_of_size(0);
 }
 
 static void json_delete_object(json_object_t *object)
@@ -319,6 +324,7 @@ json_t *json_array_of_size(size_t nelems)
 
     array->entries = 0;
     array->size = max(nelems, 8);
+    array->templ = NULL;
 
     array->table = jsonp_malloc(array->size * sizeof(json_t *));
     if(!array->table) {
@@ -343,8 +349,42 @@ static void json_delete_array(json_array_t *array)
     for(i = 0; i < array->entries; i++)
         json_decref(array->table[i]);
 
+    if (array->templ) {
+      json_decref(array->templ);
+    }
     jsonp_free(array->table);
     jsonp_free(array);
+}
+
+int json_array_set_template(json_t *json, json_t *templ)
+{
+  if (json_array_set_template_new(json, templ)) {
+    if (templ) {
+      json_incref(templ);
+    }
+    return 1;
+  }
+  return 0;
+}
+
+int json_array_set_template_new(json_t *json, json_t *templ)
+{
+    json_array_t *array;
+    if(!json_is_array(json))
+        return 0;
+    array = json_to_array(json);
+    if (array->templ) {
+      json_decref(array->templ);
+    }
+    array->templ = templ;
+    return 1;
+}
+
+json_t *json_array_get_template(const json_t *array)
+{
+    if(!json_is_array(array))
+        return 0;
+    return json_to_array(array)->templ;
 }
 
 size_t json_array_size(const json_t *json)
@@ -611,6 +651,30 @@ static json_t *json_array_deep_copy(json_t *array)
 }
 
 /*** string ***/
+
+json_t *json_string_binary(const char *value, json_int_t len)
+{
+    json_string_t *string;
+
+    if(!value)
+        return NULL;
+
+    string = jsonp_malloc(sizeof(json_string_t));
+    if(!string)
+        return NULL;
+    json_init(&string->json, JSON_STRING);
+
+    string->value = jsonp_malloc(len + 1);
+    if(!string->value) {
+        jsonp_free(string);
+        return NULL;
+    }
+
+    memcpy(string->value, value, len);
+    string->value[len] = '\0';
+
+    return &string->json;
+}
 
 json_t *json_string_nocheck(const char *value)
 {

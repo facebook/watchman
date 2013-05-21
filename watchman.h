@@ -57,6 +57,7 @@ extern "C" {
 # include <execinfo.h>
 #endif
 #include <pwd.h>
+#include <sysexits.h>
 #include <spawn.h>
 // Not explicitly exported on Darwin, so we get to define it.
 extern char **environ;
@@ -211,6 +212,7 @@ struct watchman_query_cookie {
   bool seen;
 };
 
+#define WATCHMAN_IO_BUF_SIZE 1048576
 #define WATCHMAN_BATCH_LIMIT (16*1024)
 #define DEFAULT_SETTLE_PERIOD 20
 
@@ -325,16 +327,38 @@ struct watchman_rule {
 };
 void w_free_rules(struct watchman_rule *head);
 
+enum w_pdu_type {
+  need_data,
+  is_json_compact,
+  is_json_pretty,
+  is_bser
+};
+
 struct watchman_json_buffer {
   char *buf;
   uint32_t allocd;
   uint32_t rpos, wpos;
+  enum w_pdu_type pdu_type;
 };
 typedef struct watchman_json_buffer w_jbuffer_t;
 bool w_json_buffer_init(w_jbuffer_t *jr);
+void w_json_buffer_reset(w_jbuffer_t *jr);
 void w_json_buffer_free(w_jbuffer_t *jr);
 json_t *w_json_buffer_next(w_jbuffer_t *jr, int fd, json_error_t *jerr);
+bool w_json_buffer_passthru(w_jbuffer_t *jr,
+    enum w_pdu_type output_pdu,
+    int fd);
 bool w_json_buffer_write(w_jbuffer_t *jr, int fd, json_t *json, int flags);
+bool w_json_buffer_write_bser(w_jbuffer_t *jr, int fd, json_t *json);
+bool w_ser_write_pdu(enum w_pdu_type pdu_type,
+    w_jbuffer_t *jr, int fd, json_t *json);
+
+#define BSER_MAGIC "\x00\x01"
+int w_bser_write_pdu(json_t *json, json_dump_callback_t dump, void *data);
+int w_bser_dump(json_t *json, json_dump_callback_t dump, void *data);
+bool bunser_int(const char *buf, int avail, int *needed, json_int_t *val);
+json_t *bunser(const char *buf, const char *end,
+    int *needed, json_error_t *jerr);
 
 struct watchman_client_response {
   struct watchman_client_response *next, *prev;
@@ -349,6 +373,7 @@ struct watchman_client {
   int log_level;
   w_jbuffer_t reader, writer;
   bool client_mode;
+  enum w_pdu_type pdu_type;
 
   struct watchman_client_response *head, *tail;
   /* map of subscription name => struct watchman_client_subscription */

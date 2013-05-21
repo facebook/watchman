@@ -79,10 +79,12 @@ typedef long json_int_t;
 /* construction, destruction, reference counting */
 
 json_t *json_object(void);
+json_t *json_object_of_size(size_t nelems);
 json_t *json_array(void);
 json_t *json_array_of_size(size_t nelems);
 json_t *json_string(const char *value);
 json_t *json_string_nocheck(const char *value);
+json_t *json_string_binary(const char *value, json_int_t len);
 json_t *json_integer(json_int_t value);
 json_t *json_real(double value);
 json_t *json_true(void);
@@ -173,6 +175,9 @@ int json_array_insert_new(json_t *array, size_t index, json_t *value);
 int json_array_remove(json_t *array, size_t index);
 int json_array_clear(json_t *array);
 int json_array_extend(json_t *array, json_t *other);
+int json_array_set_template(json_t *array, json_t *templ);
+int json_array_set_template_new(json_t *json, json_t *templ);
+json_t *json_array_get_template(const json_t *array);
 
 static JSON_INLINE
 int json_array_set(json_t *array, size_t index, json_t *value)

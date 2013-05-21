@@ -116,13 +116,25 @@ json_t *w_query_results_to_json(
   json_t *file_list = json_array_of_size(num_results);
   uint32_t i, f;
 
+  // build a template for the serializer
+  if (num_results && field_list->num_fields > 1) {
+    json_t *templ = json_array_of_size(field_list->num_fields);
+
+    for (f = 0; f < field_list->num_fields; f++) {
+      json_array_append_new(templ,
+          json_string_nocheck(field_list->fields[f]->name));
+    }
+
+    json_array_set_template_new(file_list, templ);
+  }
+
   for (i = 0; i < num_results; i++) {
     json_t *value, *ele;
 
     if (field_list->num_fields == 1) {
       value = field_list->fields[0]->make(&results[i]);
     } else {
-      value = json_object();
+      value = json_object_of_size(field_list->num_fields);
 
       for (f = 0; f < field_list->num_fields; f++) {
         ele = field_list->fields[f]->make(&results[i]);

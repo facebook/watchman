@@ -194,12 +194,15 @@ static int hashtable_do_rehash(hashtable_t *hashtable)
 }
 
 
-int hashtable_init(hashtable_t *hashtable)
+int hashtable_init(hashtable_t *hashtable, size_t initsize)
 {
     size_t i;
 
     hashtable->size = 0;
     hashtable->num_buckets = 0;  /* index to primes[] */
+    while (initsize >= num_buckets(hashtable)) {
+      hashtable->num_buckets++;
+    }
     hashtable->buckets = jsonp_malloc(num_buckets(hashtable) * sizeof(bucket_t));
     if(!hashtable->buckets)
         return -1;

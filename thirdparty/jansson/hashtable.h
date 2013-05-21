@@ -50,7 +50,7 @@ typedef struct hashtable {
  *
  * Returns 0 on success, -1 on error (out of memory).
  */
-int hashtable_init(hashtable_t *hashtable);
+int hashtable_init(hashtable_t *hashtable, size_t initsize);
 
 /**
  * hashtable_close - Release all resources used by a hashtable object
