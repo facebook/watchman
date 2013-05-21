@@ -150,6 +150,8 @@ static json_t *read_bser_pdu(w_jbuffer_t *jr, int fd, json_error_t *jerr)
 
   jr->rpos += 2;
 
+  // We don't handle EAGAIN cleanly in here
+  w_clear_nonblock(fd);
   if (!w_bser_decode_pdu_len(jr, fd, &val, jerr)) {
     return NULL;
   }
@@ -193,6 +195,7 @@ static json_t *read_bser_pdu(w_jbuffer_t *jr, int fd, json_error_t *jerr)
   // Ensure that we move the read position to the wpos; we consumed it all
   jr->rpos = jr->wpos;
 
+  w_set_nonblock(fd);
   return obj;
 }
 
