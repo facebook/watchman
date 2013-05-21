@@ -281,6 +281,7 @@ w_root_t *resolve_root_or_err(
 {
   w_root_t *root;
   const char *root_name;
+  char *errmsg = NULL;
   json_t *ele;
 
   ele = json_array_get(args, root_index);
@@ -299,15 +300,16 @@ w_root_t *resolve_root_or_err(
   }
 
   if (client->client_mode) {
-    root = w_root_resolve_for_client_mode(root_name);
+    root = w_root_resolve_for_client_mode(root_name, &errmsg);
   } else {
-    root = w_root_resolve(root_name, create);
+    root = w_root_resolve(root_name, create, &errmsg);
   }
 
   if (!root) {
     send_error_response(client,
-        "unable to resolve root %s",
-        root_name);
+        "unable to resolve root %s: %s",
+        root_name, errmsg);
+    free(errmsg);
   }
   return root;
 }

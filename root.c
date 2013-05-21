@@ -104,7 +104,7 @@ static void load_root_config(w_root_t *root, const char *path)
   }
 }
 
-static w_root_t *w_root_new(const char *path)
+static w_root_t *w_root_new(const char *path, char **errmsg)
 {
   w_root_t *root = calloc(1, sizeof(*root));
   struct watchman_dir *dir;
@@ -170,8 +170,9 @@ static w_root_t *w_root_new(const char *path)
   root->wd_to_dir = w_ht_new(HINT_NUM_DIRS, NULL);
   root->infd = inotify_init();
   if (root->infd == -1) {
-    w_log(W_LOG_ERR, "watch(%s): inotify_init error: %s\n",
+    asprintf(errmsg, "watch(%s): inotify_init error: %s",
         path, strerror(errno));
+    w_log(W_LOG_ERR, "%s\n", *errmsg);
     w_root_delref(root);
     return NULL;
   }
@@ -180,8 +181,9 @@ static w_root_t *w_root_new(const char *path)
 #if HAVE_KQUEUE
   root->kq_fd = kqueue();
   if (root->kq_fd == -1) {
-    w_log(W_LOG_ERR, "watch(%s): kqueue() error: %s\n",
+    asprintf(errmsg, "watch(%s): kqueue() error: %s",
         path, strerror(errno));
+    w_log(W_LOG_ERR, "%s\n", *errmsg);
     w_root_delref(root);
     return NULL;
   }
@@ -190,8 +192,9 @@ static w_root_t *w_root_new(const char *path)
 #if HAVE_PORT_CREATE
   root->port_fd = port_create();
   if (root->port_fd == -1) {
-    w_log(W_LOG_ERR, "watch(%s): port_create() error: %s\n",
+    asprintf(errmsg, "watch(%s): port_create() error: %s",
         path, strerror(errno));
+    w_log(W_LOG_ERR, "%s\n", *errmsg);
     w_root_delref(root);
     return NULL;
   }
@@ -1855,7 +1858,7 @@ static const struct watchman_hash_funcs root_funcs = {
 };
 
 static w_root_t *root_resolve(const char *filename, bool auto_watch,
-    bool *created)
+    bool *created, char **errmsg)
 {
   struct watchman_root *root = NULL;
   w_ht_val_t root_val;
@@ -1885,8 +1888,8 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
 
   if (!root && watch_path == filename) {
     // Path didn't resolve and neither did the name they passed in
-    w_log(W_LOG_ERR, "resolve_root: %s: %s\n",
-        filename, strerror(realpath_err));
+    asprintf(errmsg, "realpath(%s) -> %s", filename, strerror(realpath_err));
+    w_log(W_LOG_ERR, "resolve_root: %s\n", *errmsg);
     return NULL;
   }
 
@@ -1901,7 +1904,7 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   w_log(W_LOG_DBG, "Want to watch %s -> %s\n", filename, watch_path);
 
   // created with 1 ref
-  root = w_root_new(watch_path);
+  root = w_root_new(watch_path, errmsg);
 
   if (watch_path != filename) {
     free(watch_path);
@@ -1976,12 +1979,12 @@ static bool root_start(w_root_t *root)
   return root;
 }
 
-w_root_t *w_root_resolve_for_client_mode(const char *filename)
+w_root_t *w_root_resolve_for_client_mode(const char *filename, char **errmsg)
 {
   struct watchman_root *root;
   bool created = false;
 
-  root = root_resolve(filename, true, &created);
+  root = root_resolve(filename, true, &created, errmsg);
   if (created) {
     struct timeval start;
 
@@ -2042,12 +2045,12 @@ bool w_root_stop_watch(w_root_t *root)
   return stopped;
 }
 
-w_root_t *w_root_resolve(const char *filename, bool auto_watch)
+w_root_t *w_root_resolve(const char *filename, bool auto_watch, char **errmsg)
 {
   struct watchman_root *root;
   bool created = false;
 
-  root = root_resolve(filename, auto_watch, &created);
+  root = root_resolve(filename, auto_watch, &created, errmsg);
   if (created) {
     root_start(root);
     w_state_save();
@@ -2132,12 +2135,14 @@ bool w_root_load_state(json_t *state)
     const char *filename;
     json_t *triggers;
     size_t j;
+    char *errmsg = NULL;
 
     triggers = json_object_get(obj, "triggers");
     filename = json_string_value(json_object_get(obj, "path"));
-    root = root_resolve(filename, true, &created);
+    root = root_resolve(filename, true, &created, &errmsg);
 
     if (!root) {
+      free(errmsg);
       continue;
     }
 
