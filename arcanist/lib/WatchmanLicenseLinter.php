@@ -26,6 +26,9 @@ class WatchmanLicenseLinter extends ArcanistLinter {
   }
 
   public function lintPath($path) {
+    if ($path == 'python/bser/bser.c') {
+      return;
+    }
     $source = $this->getData($path);
 
     $template = <<<TXT
