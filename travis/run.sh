@@ -3,9 +3,11 @@ set -x
 uname -a
 set -e
 PATH=$PWD:$PATH
-TMPDIR=$PWD/tmp
-TMP=$PWD/tmp
-export TMPDIR TMP
+if [ -d /var/ramfs ] ; then
+  TMPDIR=/var/ramfs
+  TMP=/var/ramfs
+  export TMPDIR TMP
+fi
 ./autogen.sh
 ./configure --with-pcre
 make

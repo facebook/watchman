@@ -26,7 +26,4 @@ if [ ! -d arcanist ] ; then
 fi
 cd ..
 ln -sf ./a/arcanist/bin/arc arc
-if [ -! -d tmp ] ; then
-  mkdir tmp
-fi
 
