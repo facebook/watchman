@@ -192,7 +192,7 @@ bool parse_field_list(json_t *field_list,
     }
 
     if (!found) {
-      asprintf(errmsg, "unknown field name '%s'", name);
+      ignore_result(asprintf(errmsg, "unknown field name '%s'", name));
       json_decref(field_list);
       return false;
     }

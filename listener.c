@@ -108,7 +108,7 @@ void send_error_response(struct watchman_client *client,
 
 static void client_delete(w_ht_val_t val)
 {
-  struct watchman_client *client = (struct watchman_client*)val;
+  struct watchman_client *client = w_ht_val_ptr(val);
 
   /* cancel subscriptions */
   w_ht_free(client->subscriptions);
@@ -132,9 +132,7 @@ static struct watchman_hash_funcs client_hash_funcs = {
 
 static void delete_subscription(w_ht_val_t val)
 {
-  struct watchman_client_subscription *sub;
-
-  sub = (struct watchman_client_subscription*)val;
+  struct watchman_client_subscription *sub = w_ht_val_ptr(val);
 
   w_string_delref(sub->name);
   w_query_delref(sub->query);
@@ -179,7 +177,7 @@ bool w_parse_clockspec(w_root_t *root,
 
     // If we've never seen it before, ticks will be set to 0
     // which is exactly what we want here.
-    since->ticks = (uint32_t)w_ht_get(root->cursors, (w_ht_val_t)name);
+    since->ticks = (uint32_t)w_ht_get(root->cursors, w_ht_ptr_val(name));
 
     // Bump the tick value and record it against the cursor.
     // We need to bump the tick value so that repeated queries
@@ -187,7 +185,7 @@ bool w_parse_clockspec(w_root_t *root,
     // to return the same set of files; we only want the first
     // of these to return the files and the rest to return nothing
     // until something subsequently changes
-    w_ht_replace(root->cursors, (w_ht_val_t)name, ++root->ticks);
+    w_ht_replace(root->cursors, w_ht_ptr_val(name), ++root->ticks);
 
     w_log(W_LOG_DBG, "resolved cursor %s -> %" PRIu32 "\n",
         str, since->ticks);
@@ -385,8 +383,8 @@ void register_commands(struct watchman_command_handler_def *defs)
   command_funcs = w_ht_new(16, &w_ht_string_funcs);
   for (i = 0; defs[i].name; i++) {
     w_ht_set(command_funcs,
-        (w_ht_val_t)w_string_new(defs[i].name),
-        (w_ht_val_t)defs[i].func);
+        w_ht_ptr_val(w_string_new(defs[i].name)),
+        w_ht_ptr_val(defs[i].func));
   }
 
   w_query_init_all();
@@ -411,7 +409,7 @@ bool dispatch_command(struct watchman_client *client, json_t *args)
     return false;
   }
   cmd = w_string_new(cmd_name);
-  func = (watchman_command_func)w_ht_get(command_funcs, (w_ht_val_t)cmd);
+  func = w_ht_val_ptr(w_ht_get(command_funcs, w_ht_ptr_val(cmd)));
   w_string_delref(cmd);
 
   if (func) {
@@ -525,7 +523,7 @@ void w_log_to_clients(int level, const char *buf)
 
   pthread_mutex_lock(&w_client_lock);
   if (w_ht_first(clients, &iter)) do {
-    struct watchman_client *client = (void*)iter.value;
+    struct watchman_client *client = w_ht_val_ptr(iter.value);
 
     if (client->log_level != W_LOG_OFF && client->log_level >= level) {
       json = make_response();
@@ -762,7 +760,7 @@ bool w_start_listener(const char *path)
     w_set_nonblock(client->ping[1]);
 
     pthread_mutex_lock(&w_client_lock);
-    w_ht_set(clients, client->fd, (w_ht_val_t)client);
+    w_ht_set(clients, client->fd, w_ht_ptr_val(client));
     pthread_mutex_unlock(&w_client_lock);
 
     // Start a thread for the client.

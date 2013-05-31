@@ -63,25 +63,25 @@ static w_query_expr *pcre_parser(w_query *query,
 
   if (json_unpack(term, "[s,s,s]", &ignore, &pattern, &scope) != 0 &&
       json_unpack(term, "[s,s]", &ignore, &pattern) != 0) {
-    asprintf(&query->errmsg,
+    ignore_result(asprintf(&query->errmsg,
         "Expected [\"%s\", \"pattern\", \"scope\"?]",
-        which);
+        which));
     return NULL;
   }
 
   if (strcmp(scope, "basename") && strcmp(scope, "wholename")) {
-    asprintf(&query->errmsg,
+    ignore_result(asprintf(&query->errmsg,
         "Invalid scope '%s' for %s expression",
-        scope, which);
+        scope, which));
     return NULL;
   }
 
   re = pcre_compile2(pattern, caseless ? PCRE_CASELESS : 0,
         &errcode, &errptr, &erroff, NULL);
   if (!re) {
-    asprintf(&query->errmsg,
+    ignore_result(asprintf(&query->errmsg,
       "invalid %s: code %d %s at offset %d in %s",
-      which, errcode, errptr, erroff, pattern);
+      which, errcode, errptr, erroff, pattern));
     return NULL;
   }
 

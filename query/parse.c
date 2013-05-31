@@ -19,7 +19,7 @@ bool w_query_register_expression_parser(
     term_hash = w_ht_new(32, &w_ht_string_funcs);
   }
 
-  return w_ht_set(term_hash, (w_ht_val_t)name, (w_ht_val_t)parser);
+  return w_ht_set(term_hash, w_ht_ptr_val(name), w_ht_ptr_val(parser));
 }
 
 /* parse an expression term. It can be one of:
@@ -47,12 +47,12 @@ w_query_expr *w_query_expr_parse(w_query *query, json_t *exp)
     return NULL;
   }
 
-  parser = (void*)w_ht_get(term_hash, (w_ht_val_t)name);
+  parser = w_ht_val_ptr(w_ht_get(term_hash, w_ht_ptr_val(name)));
 
   if (!parser) {
-    asprintf(&query->errmsg,
+    ignore_result(asprintf(&query->errmsg,
         "unknown expression term '%s'",
-        name->buf);
+        name->buf));
     w_string_delref(name);
     return NULL;
   }
@@ -328,8 +328,8 @@ w_query *w_query_parse_legacy(json_t *args, char **errmsg,
     const char *arg = json_string_value(json_array_get(args, i));
     if (!arg) {
       /* not a string value! */
-      asprintf(errmsg,
-          "rule @ position %d is not a string value", i);
+      ignore_result(asprintf(errmsg,
+          "rule @ position %d is not a string value", i));
       return NULL;
     }
   }

@@ -128,7 +128,7 @@ void cmd_unsubscribe(struct watchman_client *client, json_t *args)
   sname = w_string_new(name);
 
   pthread_mutex_lock(&w_client_lock);
-  deleted = w_ht_del(client->subscriptions, (w_ht_val_t)sname);
+  deleted = w_ht_del(client->subscriptions, w_ht_ptr_val(sname));
   pthread_mutex_unlock(&w_client_lock);
 
   w_string_delref(sname);
@@ -207,7 +207,8 @@ void cmd_subscribe(struct watchman_client *client, json_t *args)
   }
 
   pthread_mutex_lock(&w_client_lock);
-  w_ht_replace(client->subscriptions, (w_ht_val_t)sub->name, (w_ht_val_t)sub);
+  w_ht_replace(client->subscriptions, w_ht_ptr_val(sub->name),
+      w_ht_ptr_val(sub));
   pthread_mutex_unlock(&w_client_lock);
 
   resp = make_response();

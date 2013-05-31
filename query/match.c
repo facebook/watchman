@@ -50,16 +50,16 @@ static w_query_expr *match_parser(w_query *query,
 
   if (json_unpack(term, "[s,s,s]", &ignore, &pattern, &scope) != 0 &&
       json_unpack(term, "[s,s]", &ignore, &pattern) != 0) {
-    asprintf(&query->errmsg,
+    ignore_result(asprintf(&query->errmsg,
         "Expected [\"%s\", \"pattern\", \"scope\"?]",
-        which);
+        which));
     return NULL;
   }
 
   if (strcmp(scope, "basename") && strcmp(scope, "wholename")) {
-    asprintf(&query->errmsg,
+    ignore_result(asprintf(&query->errmsg,
         "Invalid scope '%s' for %s expression",
-        scope, which);
+        scope, which));
     return NULL;
   }
 

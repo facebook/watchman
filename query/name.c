@@ -34,7 +34,7 @@ static bool eval_name(struct w_query_ctx *ctx,
       }
     }
 
-    matched = w_ht_lookup(name->map, (w_ht_val_t)str, &val, false);
+    matched = w_ht_lookup(name->map, w_ht_ptr_val(str), &val, false);
 
     if (name->caseless) {
       w_string_delref(str);
@@ -72,14 +72,15 @@ static w_query_expr *name_parser(w_query *query,
   w_ht_t *map = NULL;
 
   if (!json_is_array(term)) {
-    asprintf(&query->errmsg, "Expected array for '%s' term",
-        which);
+    ignore_result(asprintf(&query->errmsg, "Expected array for '%s' term",
+        which));
     return NULL;
   }
 
   if (json_array_size(term) > 3) {
-    asprintf(&query->errmsg, "Invalid number of arguments for '%s' term",
-        which);
+    ignore_result(asprintf(&query->errmsg,
+        "Invalid number of arguments for '%s' term",
+        which));
     return NULL;
   }
 
@@ -88,18 +89,18 @@ static w_query_expr *name_parser(w_query *query,
 
     jscope = json_array_get(term, 2);
     if (!json_is_string(jscope)) {
-      asprintf(&query->errmsg,
+      ignore_result(asprintf(&query->errmsg,
           "Argument 3 to '%s' must be a string",
-          which);
+          which));
       return NULL;
     }
 
     scope = json_string_value(jscope);
 
     if (strcmp(scope, "basename") && strcmp(scope, "wholename")) {
-      asprintf(&query->errmsg,
+      ignore_result(asprintf(&query->errmsg,
           "Invalid scope '%s' for %s expression",
-          scope, which);
+          scope, which));
       return NULL;
     }
   }
@@ -111,9 +112,9 @@ static w_query_expr *name_parser(w_query *query,
 
     for (i = 0; i < json_array_size(name); i++) {
       if (!json_is_string(json_array_get(name, i))) {
-        asprintf(&query->errmsg,
+        ignore_result(asprintf(&query->errmsg,
           "Argument 2 to '%s' must be either a string or an array of string",
-          which);
+          which));
         return NULL;
       }
     }
@@ -130,16 +131,16 @@ static w_query_expr *name_parser(w_query *query,
         element = w_string_new(ele);
       }
 
-      w_ht_set(map, (w_ht_val_t)element, 1);
+      w_ht_set(map, w_ht_ptr_val(element), 1);
       w_string_delref(element);
     }
 
   } else if (json_is_string(name)) {
     pattern = json_string_value(name);
   } else {
-    asprintf(&query->errmsg,
+    ignore_result(asprintf(&query->errmsg,
         "Argument 2 to '%s' must be either a string or an array of string",
-        which);
+        which));
     return NULL;
   }
 

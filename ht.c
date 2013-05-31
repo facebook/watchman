@@ -367,23 +367,23 @@ bool w_ht_iter_del(w_ht_t *ht, w_ht_iter_t *iter)
 
 w_ht_val_t w_ht_string_copy(w_ht_val_t key)
 {
-  w_string_addref((w_string_t*)key);
+  w_string_addref(w_ht_val_ptr(key));
   return key;
 }
 
 void w_ht_string_del(w_ht_val_t key)
 {
-  w_string_delref((w_string_t*)key);
+  w_string_delref(w_ht_val_ptr(key));
 }
 
 bool w_ht_string_equal(w_ht_val_t a, w_ht_val_t b)
 {
-  return w_string_equal((w_string_t*)a, (w_string_t*)b);
+  return w_string_equal(w_ht_val_ptr(a), w_ht_val_ptr(b));
 }
 
 uint32_t w_ht_string_hash(w_ht_val_t key)
 {
-  return ((w_string_t*)key)->hval;
+  return ((w_string_t*)w_ht_val_ptr(key))->hval;
 }
 
 const struct watchman_hash_funcs w_ht_string_funcs = {

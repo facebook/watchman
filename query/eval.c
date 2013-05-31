@@ -128,7 +128,9 @@ static bool suffix_generator(
 
   for (i = 0; i < query->nsuffixes; i++) {
     // Head of suffix index for this suffix
-    f = (void*)w_ht_get(root->suffixes, (w_ht_val_t)query->suffixes[i]);
+    f = w_ht_val_ptr(w_ht_get(root->suffixes,
+          w_ht_ptr_val(query->suffixes[i])));
+
 
     // Walk and process
     while (f) {
@@ -166,7 +168,7 @@ static bool dir_generator(
   w_ht_iter_t i;
 
   if (w_ht_first(dir->files, &i)) do {
-    struct watchman_file *file = (struct watchman_file*)i.value;
+    struct watchman_file *file = w_ht_val_ptr(i.value);
 
     if (!w_query_process_file(query, ctx, file)) {
       return false;
@@ -174,7 +176,7 @@ static bool dir_generator(
   } while (w_ht_next(dir->files, &i));
 
   if (depth > 0 && w_ht_first(dir->dirs, &i)) do {
-    struct watchman_dir *child = (struct watchman_dir*)i.value;
+    struct watchman_dir *child = w_ht_val_ptr(i.value);
 
     if (!dir_generator(query, root, ctx, child, depth - 1)) {
       return false;
@@ -227,7 +229,7 @@ static bool path_generator(
 
     if (dir->files) {
       file_name = w_string_basename(query->paths[i].name);
-      f = (struct watchman_file*)w_ht_get(dir->files, (w_ht_val_t)file_name);
+      f = w_ht_val_ptr(w_ht_get(dir->files, w_ht_ptr_val(file_name)));
       w_string_delref(file_name);
 
       // If it's a file (but not an existent dir)
@@ -241,8 +243,7 @@ static bool path_generator(
     }
 
     // Is it a dir?
-    dir = (struct watchman_dir*)w_ht_get(dir->dirs,
-            (w_ht_val_t)full_name);
+    dir = w_ht_val_ptr(w_ht_get(dir->dirs, w_ht_ptr_val(full_name)));
     w_string_delref(full_name);
 is_dir:
     // We got a dir; process recursively to specified depth
@@ -317,8 +318,8 @@ bool w_query_execute(
   memset(res, 0, sizeof(*res));
 
   if (query->sync_timeout && !w_root_sync_to_now(root, query->sync_timeout)) {
-    asprintf(&res->errmsg, "synchronization failed: %s\n",
-        strerror(errno));
+    ignore_result(asprintf(&res->errmsg, "synchronization failed: %s\n",
+        strerror(errno)));
     return false;
   }
 

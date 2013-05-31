@@ -110,8 +110,9 @@ w_query_expr *w_expr_since_parser(w_query *query, json_t *term)
     }
 
     if (!valid) {
-      asprintf(&query->errmsg, "invalid field name \"%s\" for \"since\" term",
-          fieldname);
+      ignore_result(asprintf(&query->errmsg,
+          "invalid field name \"%s\" for \"since\" term",
+          fieldname));
       return NULL;
     }
   }
@@ -121,10 +122,10 @@ w_query_expr *w_expr_since_parser(w_query *query, json_t *term)
     case SINCE_CTIME:
     case SINCE_MTIME:
       if (!since.is_timestamp) {
-        asprintf(&query->errmsg,
+        ignore_result(asprintf(&query->errmsg,
             "field \"%s\" requires a timestamp value "
             "for comparison in \"since\" term",
-            fieldname);
+            fieldname));
         return NULL;
       }
       break;

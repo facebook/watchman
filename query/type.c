@@ -52,8 +52,8 @@ w_query_expr *w_expr_type_parser(w_query *query, json_t *term)
 
   found = strpbrk(typestr, "bcdfplsD");
   if (!found || strlen(typestr) > 1) {
-    asprintf(&query->errmsg, "invalid type string '%s'",
-        typestr);
+    ignore_result(asprintf(&query->errmsg, "invalid type string '%s'",
+        typestr));
     return NULL;
   }
 

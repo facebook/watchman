@@ -36,9 +36,7 @@ static void free_pending(struct watchman_pending_fs *p)
 
 static void delete_trigger(w_ht_val_t val)
 {
-  struct watchman_trigger_command *cmd;
-
-  cmd = (struct watchman_trigger_command*)val;
+  struct watchman_trigger_command *cmd = w_ht_val_ptr(val);
 
   free(cmd->argv);
   w_string_delref(cmd->triggername);
@@ -58,9 +56,7 @@ static const struct watchman_hash_funcs trigger_hash_funcs = {
 
 static void delete_dir(w_ht_val_t val)
 {
-  struct watchman_dir *dir;
-
-  dir = (struct watchman_dir*)val;
+  struct watchman_dir *dir = w_ht_val_ptr(val);
 
   w_string_delref(dir->path);
   if (dir->files) {
@@ -140,7 +136,8 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
     for (i = 0; i < sizeof(ignores) / sizeof(ignores[0]); i++) {
       name = w_string_new(ignores[i]);
       fullname = w_string_path_cat(root->root_path, name);
-      w_ht_set(root->ignore_dirs, (w_ht_val_t)fullname, (w_ht_val_t)fullname);
+      w_ht_set(root->ignore_dirs, w_ht_ptr_val(fullname),
+          w_ht_ptr_val(fullname));
       w_string_delref(fullname);
 
       // While we're at it, see if we can find out where to put our
@@ -164,14 +161,14 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   dir->path = root->root_path;
   dir->wd = -1;
   w_string_addref(dir->path);
-  w_ht_set(root->dirname_to_dir, (w_ht_val_t)dir->path, (w_ht_val_t)dir);
+  w_ht_set(root->dirname_to_dir, w_ht_ptr_val(dir->path), w_ht_ptr_val(dir));
 
 #if HAVE_INOTIFY_INIT
   root->wd_to_dir = w_ht_new(HINT_NUM_DIRS, NULL);
   root->infd = inotify_init();
   if (root->infd == -1) {
-    asprintf(errmsg, "watch(%s): inotify_init error: %s",
-        path, strerror(errno));
+    ignore_result(asprintf(errmsg, "watch(%s): inotify_init error: %s",
+        path, strerror(errno)));
     w_log(W_LOG_ERR, "%s\n", *errmsg);
     w_root_delref(root);
     return NULL;
@@ -181,8 +178,8 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
 #if HAVE_KQUEUE
   root->kq_fd = kqueue();
   if (root->kq_fd == -1) {
-    asprintf(errmsg, "watch(%s): kqueue() error: %s",
-        path, strerror(errno));
+    ignore_result(asprintf(errmsg, "watch(%s): kqueue() error: %s",
+        path, strerror(errno)));
     w_log(W_LOG_ERR, "%s\n", *errmsg);
     w_root_delref(root);
     return NULL;
@@ -192,8 +189,8 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
 #if HAVE_PORT_CREATE
   root->port_fd = port_create();
   if (root->port_fd == -1) {
-    asprintf(errmsg, "watch(%s): port_create() error: %s",
-        path, strerror(errno));
+    ignore_result(asprintf(errmsg, "watch(%s): port_create() error: %s",
+        path, strerror(errno)));
     w_log(W_LOG_ERR, "%s\n", *errmsg);
     w_root_delref(root);
     return NULL;
@@ -276,7 +273,7 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
   tick = root->ticks++;
   snprintf(cookie_buf, sizeof(cookie_buf),
       WATCHMAN_COOKIE_PREFIX "%s-%d-%" PRIu32,
-      hostname, getpid(), tick);
+      hostname, (int)getpid(), tick);
   cookie_base = w_string_new(cookie_buf);
   if (root->query_cookie_dir) {
     path_str = w_string_path_cat(root->query_cookie_dir, cookie_base);
@@ -287,7 +284,8 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
   cookie_base = NULL;
 
   /* insert our cookie in the map */
-  w_ht_set(root->query_cookies, (w_ht_val_t)path_str, (w_ht_val_t)&cookie);
+  w_ht_set(root->query_cookies, w_ht_ptr_val(path_str),
+      w_ht_ptr_val(&cookie));
 
   /* touch the file */
   fd = open(path_str->buf, O_CREAT|O_TRUNC|O_WRONLY|O_CLOEXEC, 0700);
@@ -321,7 +319,7 @@ out:
   // can't unlink the file until after the cookie has been observed because
   // we don't know which file got changed until we look in the cookie dir
   unlink(path_str->buf);
-  w_ht_del(root->query_cookies, (w_ht_val_t)path_str);
+  w_ht_del(root->query_cookies, w_ht_ptr_val(path_str));
   w_root_unlock(root);
 
   w_string_delref(path_str);
@@ -340,7 +338,7 @@ bool w_root_add_pending(w_root_t *root, w_string_t *path,
 {
   struct watchman_pending_fs *p;
 
-  p = (void*)w_ht_get(root->pending_uniq, (w_ht_val_t)path);
+  p = w_ht_val_ptr(w_ht_get(root->pending_uniq, w_ht_ptr_val(path)));
   if (p) {
     if (!p->recursive && recursive) {
       p->recursive = true;
@@ -363,7 +361,7 @@ bool w_root_add_pending(w_root_t *root, w_string_t *path,
 
   p->next = root->pending;
   root->pending = p;
-  w_ht_set(root->pending_uniq, (w_ht_val_t)path, (w_ht_val_t)p);
+  w_ht_set(root->pending_uniq, w_ht_ptr_val(path), w_ht_ptr_val(p));
 
   return true;
 }
@@ -421,8 +419,7 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
   struct watchman_dir *dir, *parent;
   w_string_t *parent_name;
 
-  dir = (struct watchman_dir*)w_ht_get(root->dirname_to_dir,
-          (w_ht_val_t)dir_name);
+  dir = w_ht_val_ptr(w_ht_get(root->dirname_to_dir, w_ht_ptr_val(dir_name)));
   if (dir || !create) {
     return dir;
   }
@@ -441,8 +438,9 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
   if (!parent->dirs) {
     parent->dirs = w_ht_new(2, &w_ht_string_funcs);
   }
-  assert(w_ht_set(parent->dirs, (w_ht_val_t)dir_name, (w_ht_val_t)dir));
-  assert(w_ht_set(root->dirname_to_dir, (w_ht_val_t)dir_name, (w_ht_val_t)dir));
+  assert(w_ht_set(parent->dirs, w_ht_ptr_val(dir_name), w_ht_ptr_val(dir)));
+  assert(w_ht_set(root->dirname_to_dir,
+        w_ht_ptr_val(dir_name), w_ht_ptr_val(dir)));
 //  w_log(W_LOG_DBG, "+DIR %s\n", dir_name->buf);
 
   return dir;
@@ -533,7 +531,7 @@ static struct watchman_file *w_root_resolve_file(w_root_t *root,
   w_string_t *suffix;
 
   if (dir->files) {
-    file = (struct watchman_file*)w_ht_get(dir->files, (w_ht_val_t)file_name);
+    file = w_ht_val_ptr(w_ht_get(dir->files, w_ht_ptr_val(file_name)));
     if (file) {
       return file;
     }
@@ -551,17 +549,16 @@ static struct watchman_file *w_root_resolve_file(w_root_t *root,
 
   suffix = w_string_suffix(file_name);
   if (suffix) {
-    sufhead = (struct watchman_file*)w_ht_get(
-        root->suffixes, (w_ht_val_t)suffix);
+    sufhead = w_ht_val_ptr(w_ht_get(root->suffixes, w_ht_ptr_val(suffix)));
     file->suffix_next = sufhead;
     if (sufhead) {
       sufhead->suffix_prev = file;
     }
-    w_ht_replace(root->suffixes, (w_ht_val_t)suffix, (w_ht_val_t)file);
+    w_ht_replace(root->suffixes, w_ht_ptr_val(suffix), w_ht_ptr_val(file));
     w_string_delref(suffix);
   }
 
-  w_ht_set(dir->files, (w_ht_val_t)file->name, (w_ht_val_t)file);
+  w_ht_set(dir->files, w_ht_ptr_val(file->name), w_ht_ptr_val(file));
   watch_file(root, file);
 
   return file;
@@ -592,7 +589,7 @@ static void stop_watching_dir(w_root_t *root,
       dir->path->len, dir->path->buf);
 
   if (w_ht_first(dir->dirs, &i)) do {
-    struct watchman_dir *child = (struct watchman_dir*)i.value;
+    struct watchman_dir *child = w_ht_val_ptr(i.value);
 
     stop_watching_dir(root, child, do_close);
   } while (w_ht_next(dir->dirs, &i));
@@ -730,11 +727,11 @@ static void stat_path(w_root_t *root,
   dir = w_root_resolve_dir(root, dir_name, true);
 
   if (dir->files) {
-    file = (struct watchman_file*)w_ht_get(dir->files, (w_ht_val_t)file_name);
+    file = w_ht_val_ptr(w_ht_get(dir->files, w_ht_ptr_val(file_name)));
   }
 
   if (dir->dirs) {
-    dir_ent = (struct watchman_dir*)w_ht_get(dir->dirs, (w_ht_val_t)full_path);
+    dir_ent = w_ht_val_ptr(w_ht_get(dir->dirs, w_ht_ptr_val(full_path)));
   }
 
   res = lstat(path, &st);
@@ -789,7 +786,7 @@ static void stat_path(w_root_t *root,
       }
 
       // Don't recurse if our parent is an ignore dir
-      if (!w_ht_get(root->ignore_dirs, (w_ht_val_t)dir_name) ||
+      if (!w_ht_get(root->ignore_dirs, w_ht_ptr_val(dir_name)) ||
           // but do if we're looking at the cookie dir
           (root->query_cookie_dir &&
           w_string_equal(full_path, root->query_cookie_dir))) {
@@ -820,7 +817,8 @@ void w_root_process_path(w_root_t *root, w_string_t *full_path,
   if (w_string_is_cookie(full_path)) {
     struct watchman_query_cookie *cookie;
 
-    cookie = (void*)w_ht_get(root->query_cookies, (w_ht_val_t)full_path);
+    cookie = w_ht_val_ptr(w_ht_get(root->query_cookies,
+              w_ht_ptr_val(full_path)));
     w_log(W_LOG_DBG, "cookie! %.*s cookie=%p\n",
         full_path->len, full_path->buf, cookie);
 
@@ -847,7 +845,7 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
   w_ht_iter_t i;
 
   if (w_ht_first(dir->files, &i)) do {
-    struct watchman_file *file = (struct watchman_file*)i.value;
+    struct watchman_file *file = w_ht_val_ptr(i.value);
 
     if (file->exists) {
       w_log(W_LOG_DBG, "mark_deleted: %.*s/%.*s\n",
@@ -860,7 +858,7 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
   } while (w_ht_next(dir->files, &i));
 
   if (recursive && w_ht_first(dir->dirs, &i)) do {
-    struct watchman_dir *child = (struct watchman_dir*)i.value;
+    struct watchman_dir *child = w_ht_val_ptr(i.value);
 
     w_root_mark_deleted(root, child, now, true);
   } while (w_ht_next(dir->dirs, &i));
@@ -967,7 +965,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
 
   /* flag for delete detection */
   if (w_ht_first(dir->files, &i)) do {
-    file = (struct watchman_file*)i.value;
+    file = w_ht_val_ptr(i.value);
     if (file->exists) {
       file->maybe_deleted = true;
     }
@@ -987,7 +985,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
     // Queue it up for analysis if the file is newly existing
     name = w_string_new(dirent->d_name);
     if (dir->files) {
-      file = (struct watchman_file*)w_ht_get(dir->files, (w_ht_val_t)name);
+      file = w_ht_val_ptr(w_ht_get(dir->files, w_ht_ptr_val(name)));
     } else {
       file = NULL;
     }
@@ -1013,7 +1011,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   // Anything still in maybe_deleted is actually deleted.
   // Arrange to re-process it shortly
   if (w_ht_first(dir->files, &i)) do {
-    file = (struct watchman_file*)i.value;
+    file = w_ht_val_ptr(i.value);
     if (file->exists && (file->maybe_deleted ||
           (S_ISDIR(file->st.st_mode) && recursive))) {
       w_root_add_pending_rel(root, dir, file->name->buf,
@@ -1096,7 +1094,7 @@ static void spawn_command(w_root_t *root,
   for (j = 0; j < num_matches; j++) {
     w_string_t *relname = matches[j].relname;
 
-    if (relname->len + 1 + len >= argmax) {
+    if ((long)relname->len + 1 + len >= argmax) {
       break;
     }
     argv[i++] = w_string_dup_buf(relname);
@@ -1124,8 +1122,7 @@ static void spawn_command(w_root_t *root,
       &attr, argv, environ);
   if (ret == 0) {
     w_root_addref(root);
-    w_ht_set(running_kids, cmd->current_proc,
-        (w_ht_val_t)root);
+    w_ht_set(running_kids, cmd->current_proc, w_ht_ptr_val(root));
   }
   pthread_mutex_unlock(&spawn_lock);
 
@@ -1133,7 +1130,7 @@ static void spawn_command(w_root_t *root,
   for (i = 0; i < argc; i++) {
     w_log(W_LOG_DBG, "  [%d] %s\n", i, argv[i]);
   }
-  w_log(W_LOG_DBG, "pid=%d ret=%d\n", cmd->current_proc, ret);
+  w_log(W_LOG_DBG, "pid=%d ret=%d\n", (int)cmd->current_proc, ret);
 
   ignore_result(chdir("/"));
 
@@ -1165,7 +1162,7 @@ void w_mark_dead(pid_t pid)
   w_ht_iter_t iter;
 
   pthread_mutex_lock(&spawn_lock);
-  root = (w_root_t*)w_ht_get(running_kids, pid);
+  root = w_ht_val_ptr(w_ht_get(running_kids, pid));
   if (!root) {
     pthread_mutex_unlock(&spawn_lock);
     return;
@@ -1174,7 +1171,7 @@ void w_mark_dead(pid_t pid)
   pthread_mutex_unlock(&spawn_lock);
 
   w_log(W_LOG_DBG, "mark_dead: %.*s child pid %d\n",
-      root->root_path->len, root->root_path->buf, pid);
+      root->root_path->len, root->root_path->buf, (int)pid);
 
   /* now walk the cmds and try to find our match */
   w_root_lock(root);
@@ -1187,7 +1184,7 @@ void w_mark_dead(pid_t pid)
     uint32_t matches;
     struct w_clockspec_query since;
 
-    cmd = (struct watchman_trigger_command*)iter.value;
+    cmd = w_ht_val_ptr(iter.value);
     if (cmd->current_proc != pid) {
       continue;
     }
@@ -1252,13 +1249,13 @@ static void process_subscriptions(w_root_t *root)
   w_log(W_LOG_DBG, "looking for connected subscribers\n");
   pthread_mutex_lock(&w_client_lock);
   if (w_ht_first(clients, &iter)) do {
-    struct watchman_client *client = (void*)iter.value;
+    struct watchman_client *client = w_ht_val_ptr(iter.value);
     w_ht_iter_t citer;
 
     w_log(W_LOG_DBG, "client=%p fd=%d\n", client, client->fd);
 
     if (w_ht_first(client->subscriptions, &citer)) do {
-      struct watchman_client_subscription *sub = (void*)citer.value;
+      struct watchman_client_subscription *sub = w_ht_val_ptr(citer.value);
 
       w_log(W_LOG_DBG, "sub=%p %s\n", sub, sub->name->buf);
       if (sub->root != root) {
@@ -1301,7 +1298,7 @@ static bool vcs_file_exists(w_root_t *root,
   }
 
   file_name = w_string_new(fname);
-  file = (struct watchman_file*)w_ht_get(dir->files, (w_ht_val_t)file_name);
+  file = w_ht_val_ptr(w_ht_get(dir->files, w_ht_ptr_val(file_name)));
   w_string_delref(file_name);
 
   if (!file) {
@@ -1346,9 +1343,7 @@ static void process_triggers(w_root_t *root)
 
   /* walk the list of triggers, and run their rules */
   if (w_ht_first(root->commands, &iter)) do {
-    struct watchman_trigger_command *cmd;
-
-    cmd = (struct watchman_trigger_command*)iter.value;
+    struct watchman_trigger_command *cmd = w_ht_val_ptr(iter.value);
     if (cmd->current_proc) {
       // Don't spawn if there's one already running
       continue;
@@ -1849,7 +1844,7 @@ void w_root_delref(w_root_t *root)
 
 static w_ht_val_t root_copy_val(w_ht_val_t val)
 {
-  w_root_t *root = (w_root_t*)val;
+  w_root_t *root = w_ht_val_ptr(val);
 
   w_root_addref(root);
 
@@ -1858,7 +1853,7 @@ static w_ht_val_t root_copy_val(w_ht_val_t val)
 
 static void root_del_val(w_ht_val_t val)
 {
-  w_root_t *root = (w_root_t*)val;
+  w_root_t *root = w_ht_val_ptr(val);
 
   w_root_delref(root);
 }
@@ -1895,15 +1890,16 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
     watched_roots = w_ht_new(4, &root_funcs);
   }
   // This will addref if it returns root
-  if (w_ht_lookup(watched_roots, (w_ht_val_t)root_str, &root_val, true)) {
-    root = (w_root_t*)root_val;
+  if (w_ht_lookup(watched_roots, w_ht_ptr_val(root_str), &root_val, true)) {
+    root = w_ht_val_ptr(root_val);
   }
   pthread_mutex_unlock(&root_lock);
   w_string_delref(root_str);
 
   if (!root && watch_path == filename) {
     // Path didn't resolve and neither did the name they passed in
-    asprintf(errmsg, "realpath(%s) -> %s", filename, strerror(realpath_err));
+    ignore_result(asprintf(errmsg,
+          "realpath(%s) -> %s", filename, strerror(realpath_err)));
     w_log(W_LOG_ERR, "resolve_root: %s\n", *errmsg);
     return NULL;
   }
@@ -1933,7 +1929,7 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
 
   pthread_mutex_lock(&root_lock);
   // adds 1 ref
-  w_ht_set(watched_roots, (w_ht_val_t)root->root_path, (w_ht_val_t)root);
+  w_ht_set(watched_roots, w_ht_ptr_val(root->root_path), w_ht_ptr_val(root));
   pthread_mutex_unlock(&root_lock);
 
   pthread_mutex_lock(&spawn_lock);
@@ -1972,7 +1968,7 @@ static void *run_notify_thread(void *arg)
   /* we'll remove it from watched roots if it isn't
    * already out of there */
   pthread_mutex_lock(&root_lock);
-  w_ht_del(watched_roots, (w_ht_val_t)root->root_path);
+  w_ht_del(watched_roots, w_ht_ptr_val(root->root_path));
   pthread_mutex_unlock(&root_lock);
 
   w_root_delref(root);
@@ -2048,7 +2044,7 @@ bool w_root_stop_watch(w_root_t *root)
   bool stopped = false;
 
   pthread_mutex_lock(&root_lock);
-  stopped = w_ht_del(watched_roots, (w_ht_val_t)root->root_path);
+  stopped = w_ht_del(watched_roots, w_ht_ptr_val(root->root_path));
   pthread_mutex_unlock(&root_lock);
 
   if (stopped) {
@@ -2081,7 +2077,7 @@ json_t *w_root_trigger_list_to_json(w_root_t *root)
 
   arr = json_array();
   if (w_ht_first(root->commands, &iter)) do {
-    struct watchman_trigger_command *cmd = (void*)iter.value;
+    struct watchman_trigger_command *cmd = w_ht_val_ptr(iter.value);
     struct watchman_rule *rule;
     json_t *obj = json_object();
     json_t *args = json_array();
@@ -2121,7 +2117,7 @@ json_t *w_root_watch_list_to_json(void)
 
   pthread_mutex_lock(&root_lock);
   if (w_ht_first(watched_roots, &iter)) do {
-    w_root_t *root = (void*)iter.value;
+    w_root_t *root = w_ht_val_ptr(iter.value);
     json_array_append_new(arr, json_string_nocheck(root->root_path->buf));
   } while (w_ht_next(watched_roots, &iter));
   pthread_mutex_unlock(&root_lock);
@@ -2205,8 +2201,8 @@ bool w_root_load_state(json_t *state)
         }
       }
 
-      w_ht_replace(root->commands, (w_ht_val_t)cmd->triggername,
-          (w_ht_val_t)cmd);
+      w_ht_replace(root->commands, w_ht_ptr_val(cmd->triggername),
+          w_ht_ptr_val(cmd));
     }
 
     w_root_unlock(root);
@@ -2233,7 +2229,7 @@ bool w_root_save_state(json_t *state)
 
   pthread_mutex_lock(&root_lock);
   if (w_ht_first(watched_roots, &root_iter)) do {
-    w_root_t *root = (void*)root_iter.value;
+    w_root_t *root = w_ht_val_ptr(root_iter.value);
     json_t *obj;
     json_t *triggers;
 
@@ -2288,7 +2284,7 @@ void w_root_free_watched_roots(void)
 
   pthread_mutex_lock(&root_lock);
   if (w_ht_first(watched_roots, &root_iter)) do {
-    w_root_t *root = (void*)root_iter.value;
+    w_root_t *root = w_ht_val_ptr(root_iter.value);
     if (!w_root_cancel(root)) {
       signal_root_threads(root);
     }

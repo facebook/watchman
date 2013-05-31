@@ -15,6 +15,18 @@ typedef struct watchman_hash_table w_ht_t;
  * or a 64-bit value */
 typedef int64_t w_ht_val_t;
 
+/* safely represent a pointer value as a value stored in the
+ * hash table for both 32- and 64-bit systems */
+static inline w_ht_val_t w_ht_ptr_val(const void *ptr) {
+  return (w_ht_val_t)(intptr_t)ptr;
+}
+
+/* safely represent a hash table value as a pointer value
+ * for both 32- and 64-bit systems */
+static inline void *w_ht_val_ptr(w_ht_val_t val) {
+  return (void*)(intptr_t)val;
+}
+
 /* copies a key.  If NULL, simply does a bit copy, but you
  * can provide an implementation that manages a refcount */
 typedef w_ht_val_t (*w_hash_table_copy_t)(w_ht_val_t key);

@@ -198,7 +198,7 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
 
         if (o->is_daemon) {
           char *val;
-          asprintf(&val, "--%s=%s", o->optname, optarg);
+          ignore_result(asprintf(&val, "--%s=%s", o->optname, optarg));
           daemon_argv[num_daemon++] = val;
         }
 

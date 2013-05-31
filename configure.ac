@@ -2,9 +2,9 @@ AC_INIT([watchman], [2.5], [], [watchman])
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects])
 
-dnl we really want you to be using 64 hardware and software
 CPPFLAGS="$CPPFLAGS -D_REENTRANT"
-CFLAGS="$CFLAGS -m64"
+dnl we really want you to be using 64 hardware and software
+dnl CFLAGS="$CFLAGS -m64"
 
 AC_PROG_CC
 AC_PROG_CPP
