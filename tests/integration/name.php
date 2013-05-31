@@ -12,7 +12,7 @@ class nameExprTestCase extends WatchmanTestCase {
     mkdir("$root/subdir");
     touch("$root/subdir/bar.txt");
 
-    $this->watchmanCommand('watch', $root);
+    $this->watch($root);
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array('iname', 'FOO.c'),

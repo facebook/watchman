@@ -13,7 +13,7 @@ class fishyTestCase extends WatchmanTestCase {
     $root = realpath($dir->getPath());
     mkdir("$root/foo");
     touch("$root/foo/a");
-    $watch = $this->watchmanCommand('watch', $root);
+    $watch = $this->watch($root);
 
     $base = $this->watchmanCommand('find', $root, '.');
     // This is "c:PID:1" because nothing has changed in $root yet

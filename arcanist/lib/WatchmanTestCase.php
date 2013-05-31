@@ -6,6 +6,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
   protected $root;
   private $use_cli = false;
   private $cli_args = null;
+  private $watches = array();
 
   // If this returns false, we can run this test case using
   // the CLI instead of via a unix socket
@@ -27,6 +28,23 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
 
   function getRoot() {
     return $this->root;
+  }
+
+  function watch($root) {
+    $res = $this->watchmanCommand('watch', $root);
+    $this->watches[$root] = $res;
+    return $res;
+  }
+
+  function didRunTests() {
+    foreach ($this->watches as $root => $status) {
+      try {
+        $this->watchmanCommand('watch-del', $root);
+      } catch (Exception $e) {
+        // Swallow
+      }
+    }
+    $this->watches = array();
   }
 
   function watchmanCommand() {

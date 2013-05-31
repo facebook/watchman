@@ -7,7 +7,7 @@ class moremovesTestCase extends WatchmanTestCase {
   function testMoreMoves() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
-    $watch = $this->watchmanCommand('watch', $root);
+    $watch = $this->watch($root);
     $base = $this->watchmanCommand('find', $root, '.');
     // This is "c:PID:1" because nothing has changed in $root yet
     $clock = $base['clock'];
@@ -29,7 +29,7 @@ class moremovesTestCase extends WatchmanTestCase {
   function testEvenMoreMoves() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
-    $watch = $this->watchmanCommand('watch', $root);
+    $watch = $this->watch($root);
     $base = $this->watchmanCommand('find', $root, '.');
     // This is "c:PID:1" because nothing has changed in $root yet
     $clock = $base['clock'];

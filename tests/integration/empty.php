@@ -11,7 +11,7 @@ class emptyExistsTestCase extends WatchmanTestCase {
     touch("$root/empty");
     file_put_contents("$root/notempty", "foo");
 
-    $this->watchmanCommand('watch', $root);
+    $this->watch($root);
     $results = $this->watchmanCommand('query', $root, array(
       'expression' => 'empty'
     ));

@@ -6,7 +6,7 @@ class twodeepTestCase extends WatchmanTestCase {
   function testTwoDeep() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
-    $watch = $this->watchmanCommand('watch', $root);
+    $watch = $this->watch($root);
 
     $this->assertFileList($root, array());
 

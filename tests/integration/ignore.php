@@ -11,7 +11,7 @@ class ignoreTestCase extends WatchmanTestCase {
     mkdir("$root/.git/objects/pack");
     touch("$root/foo");
 
-    $this->watchmanCommand('watch', $root);
+    $this->watch($root);
     // prove that we don't see pack in .git as we crawl
     $this->assertFileList($root, array(
       '.git',

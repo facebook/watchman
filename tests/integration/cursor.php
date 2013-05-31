@@ -6,7 +6,7 @@ class cursorTestCase extends WatchmanTestCase {
   function testCursor() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
-    $watch = $this->watchmanCommand('watch', $root);
+    $watch = $this->watch($root);
 
     $this->watchmanCommand('log', 'debug', 'XXX 1st since testCursor');
     $this->assertFileListUsingSince($root, 'n:testCursor', array());

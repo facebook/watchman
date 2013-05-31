@@ -10,7 +10,7 @@ class movereaddTestCase extends WatchmanTestCase {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
     mkdir("$root/foo");
-    $watch = $this->watchmanCommand('watch', $root);
+    $watch = $this->watch($root);
 
     $this->assertFileListUsingSince($root, 'n:foo',
       array(

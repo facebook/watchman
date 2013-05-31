@@ -8,7 +8,7 @@ class invalidExprTestCase extends WatchmanTestCase {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
 
-    $this->watchmanCommand('watch', $root);
+    $this->watch($root);
     $results = $this->watchmanCommand('query', $root, array(
       'expression' => array(
         'allof',
@@ -33,7 +33,7 @@ class invalidExprTestCase extends WatchmanTestCase {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
 
-    $this->watchmanCommand('watch', $root);
+    $this->watch($root);
 
     $results = $this->watchmanCommand('query', $root, array(
       'expression' => array(

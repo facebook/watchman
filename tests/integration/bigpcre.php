@@ -11,7 +11,7 @@ class bigPCRETestCase extends WatchmanTestCase {
     touch("$root/foo.c");
     touch("$root/bar.txt");
 
-    $this->watchmanCommand('watch', $root);
+    $this->watch($root);
 
     $fill = str_repeat('lemon\\.php', 3600);
     $pcre = '^(' . chunk_split($fill, 100, '|') . 'sss)';

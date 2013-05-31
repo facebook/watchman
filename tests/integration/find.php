@@ -10,7 +10,7 @@ class findTestCase extends WatchmanTestCase {
     touch("$root/foo.c");
     touch("$root/bar.txt");
 
-    $out = $this->watchmanCommand('watch', $root);
+    $out = $this->watch($root);
     $this->assertEqual($root, $out['watch']);
 
     $this->assertFileList($root, array('bar.txt', 'foo.c'));

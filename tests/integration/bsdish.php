@@ -13,7 +13,7 @@ class bsdishTestCase extends WatchmanTestCase {
     touch("$root/lower/file");
     touch("$root/top");
 
-    $this->watchmanCommand('watch', $root);
+    $this->watch($root);
 
     $this->assertFileList($root, array(
       'lower',

@@ -18,7 +18,7 @@ class fieldsTestCase extends WatchmanTestCase {
   function testFields() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
-    $watch = $this->watchmanCommand('watch', $root);
+    $watch = $this->watch($root);
     $this->assertFileList($root, array());
 
     $this->watchmanCommand('log', 'debug', 'XXX: touch a');

@@ -13,7 +13,7 @@ class removeTestCase extends WatchmanTestCase {
     touch("$root/one/two/twofile");
     touch("$root/top");
 
-    $this->watchmanCommand('watch', $root);
+    $this->watch($root);
     $this->assertFileList($root, array(
       'one',
       'one/onefile',

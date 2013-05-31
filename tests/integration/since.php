@@ -6,7 +6,7 @@ class sinceTestCase extends WatchmanTestCase {
   function testSinceIssue2() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
-    $watch = $this->watchmanCommand('watch', $root);
+    $watch = $this->watch($root);
     $this->assertFileList($root, array());
 
     $this->watchmanCommand('log', 'debug', 'XXX: mkdir foo');
@@ -57,7 +57,7 @@ class sinceTestCase extends WatchmanTestCase {
     touch("$root/111");
     touch("$root/222");
 
-    $watch = $this->watchmanCommand('watch', $root);
+    $watch = $this->watch($root);
     $this->assertFileList($root, array(
       '111',
       '222'

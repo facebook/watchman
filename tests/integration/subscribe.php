@@ -14,7 +14,7 @@ class subscribeTestCase extends WatchmanTestCase {
     touch("$root/a/lemon");
     touch("$root/b");
 
-    $this->watchmanCommand('watch', $root);
+    $this->watch($root);
 
     $this->assertFileList($root, array(
       'a',

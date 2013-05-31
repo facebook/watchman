@@ -11,7 +11,7 @@ class pcreTestCase extends WatchmanTestCase {
     touch("$root/foo.c");
     touch("$root/bar.txt");
 
-    $this->watchmanCommand('watch', $root);
+    $this->watch($root);
 
     $this->assertFileList($root, array('bar.txt', 'foo.c'));
 

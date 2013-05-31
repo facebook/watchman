@@ -7,7 +7,7 @@ class clockTestCase extends WatchmanTestCase {
   function testClock() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
-    $watch = $this->watchmanCommand('watch', $root);
+    $watch = $this->watch($root);
     $clock = $this->watchmanCommand('clock', $root);
 
     $this->assertRegex('/^c:\d+:\d+$/', $clock['clock'], "looks clocky");

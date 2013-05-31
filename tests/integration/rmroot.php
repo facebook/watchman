@@ -14,7 +14,7 @@ class rmrootTestCase extends WatchmanTestCase {
     mkdir($root);
     touch("$root/hello");
 
-    $this->watchmanCommand('watch', $root);
+    $this->watch($root);
     $this->assertFileList($root, array('hello'));
 
     Filesystem::remove($root);

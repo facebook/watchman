@@ -12,7 +12,7 @@ class SinceExprTestCase extends WatchmanTestCase {
     mkdir("$root/subdir");
     touch("$root/subdir/bar.txt");
 
-    $this->watchmanCommand('watch', $root);
+    $this->watch($root);
 
     $foo_data = $this->watchmanCommand('find', $root, 'foo.c');
     $first_clock = $foo_data['clock'];
