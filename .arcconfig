@@ -4,5 +4,6 @@
   "unit_engine" : "WatchmanIntegrationEngine",
   "load"        : ["arcanist"],
   "copyright_holder" : "Facebook, Inc.",
+  "git.default-relative-commit" : "origin/master",
   "conduit_uri" : "https://phabricator.fb.com/api/"
 }
