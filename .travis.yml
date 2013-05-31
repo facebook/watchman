@@ -15,7 +15,6 @@ php:
 # for the bser module
 python:
   - "2.7"
-  - "2.6"
   - "3.2"
 
 # try some different compiler options
