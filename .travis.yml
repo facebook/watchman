@@ -1,0 +1,10 @@
+language:
+  - php
+  - c
+compiler:
+  - gcc
+  - clang
+php:
+  - 5.4
+before_script: ./travis/deps.sh
+script: ./travis/run.sh
