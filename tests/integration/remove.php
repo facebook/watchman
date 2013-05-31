@@ -44,6 +44,9 @@ class removeTestCase extends WatchmanTestCase {
 
     system("rm -rf $root ; mkdir -p $root/notme");
 
+    if (PHP_OS == 'Linux' && getenv('TRAVIS')) {
+      $this->assertSkipped('openvz and inotify unlinks == bad time');
+    }
     $watches = $this->waitForWatchman(
       array('watch-list'),
       function ($list) use ($root) {
