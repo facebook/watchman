@@ -370,7 +370,7 @@ static void parse_cmdline(int *argcp, char ***argvp)
   cfg_load_global_config_file();
   w_getopt(opts, argcp, argvp, &daemon_argv);
   if (show_help) {
-    usage(opts);
+    usage(opts, stdout);
   }
   setup_sock_name();
   parse_encoding(server_encoding, &server_pdu);

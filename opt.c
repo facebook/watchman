@@ -8,13 +8,13 @@
 
 /* One does not simply use getopt_long() */
 
-void usage(struct watchman_getopt *opts)
+void usage(struct watchman_getopt *opts, FILE *where)
 {
   int i, len;
   int longest = 0;
   const char *label;
 
-  fprintf(stderr, "Usage: watchman [opts] command\n");
+  fprintf(where, "Usage: watchman [opts] command\n");
 
   /* measure up option names so we can format nicely */
   for (i = 0; opts[i].optname; i++) {
@@ -49,11 +49,11 @@ void usage(struct watchman_getopt *opts)
 
     label = opts[i].arglabel ? opts[i].arglabel : "ARG";
 
-    fprintf(stderr, "\n ");
+    fprintf(where, "\n ");
     if (opts[i].shortopt) {
-      fprintf(stderr, "-%c, ", opts[i].shortopt);
+      fprintf(where, "-%c, ", opts[i].shortopt);
     } else {
-      fprintf(stderr, "    ");
+      fprintf(where, "    ");
     }
     switch (opts[i].argtype) {
       case OPT_STRING:
@@ -67,15 +67,15 @@ void usage(struct watchman_getopt *opts)
         break;
     }
 
-    fprintf(stderr, "%-*s ", longest, buf);
+    fprintf(where, "%-*s ", longest, buf);
 
     if (opts[i].helptext) {
-      fprintf(stderr, "%s", opts[i].helptext);
+      fprintf(where, "%s", opts[i].helptext);
     }
-    fprintf(stderr, "\n");
+    fprintf(where, "\n");
   }
 
-  fprintf(stderr,
+  fprintf(where,
 "\n"
 "Watchman, by Wez Furlong.\n"
 "Copyright 2012-2013 Facebook, Inc.\n"
@@ -180,7 +180,7 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
       case '?':
         /* unknown option */
         fprintf(stderr, "Unknown or invalid option! %s\n", argv[optind-1]);
-        usage(opts);
+        usage(opts, stderr);
         return false;
 
       default:
