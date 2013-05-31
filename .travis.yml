@@ -1,6 +1,7 @@
 language:
   - php
   - c
+  - objective-c
 
 # try some different compilers
 compiler:

@@ -7,6 +7,10 @@ case `uname` in
     sudo apt-get install -y valgrind -q
     mount
     ;;
+  Darwin)
+    brew update
+    brew install valgrind
+    ;;
 esac
 set -e
 if [ ! -d a ] ; then
