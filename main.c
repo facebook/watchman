@@ -327,7 +327,7 @@ static bool try_command(json_t *cmd, int timeout)
 static struct watchman_getopt opts[] = {
   { "help",     'h', "Show this help",
     OPT_NONE,   &show_help, NULL, NOT_DAEMON },
-  { "version",  0, "Show version number",
+  { "version",  'v', "Show version number",
     OPT_NONE,   &show_version, NULL, NOT_DAEMON },
   { "sockname", 'U', "Specify alternate sockname",
     REQ_STRING, &sock_name, "PATH", IS_DAEMON },
