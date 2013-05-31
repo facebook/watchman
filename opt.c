@@ -8,7 +8,7 @@
 
 /* One does not simply use getopt_long() */
 
-static void usage(struct watchman_getopt *opts)
+void usage(struct watchman_getopt *opts)
 {
   int i, len;
   int longest = 0;
@@ -49,9 +49,11 @@ static void usage(struct watchman_getopt *opts)
 
     label = opts[i].arglabel ? opts[i].arglabel : "ARG";
 
-    fprintf(stderr, "\n  ");
+    fprintf(stderr, "\n ");
     if (opts[i].shortopt) {
       fprintf(stderr, "-%c, ", opts[i].shortopt);
+    } else {
+      fprintf(stderr, "    ");
     }
     switch (opts[i].argtype) {
       case OPT_STRING:

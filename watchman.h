@@ -634,6 +634,7 @@ struct watchman_getopt {
 
 bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
     char ***daemon_argv);
+void usage(struct watchman_getopt *opts);
 
 bool w_parse_clockspec(w_root_t *root,
     json_t *value,
