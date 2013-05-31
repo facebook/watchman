@@ -109,9 +109,17 @@ void send_error_response(struct watchman_client *client,
 static void client_delete(w_ht_val_t val)
 {
   struct watchman_client *client = w_ht_val_ptr(val);
+  struct watchman_client_response *resp;
 
   /* cancel subscriptions */
   w_ht_free(client->subscriptions);
+
+  while (client->head) {
+    resp = client->head;
+    client->head = resp->next;
+    json_decref(resp->json);
+    free(resp);
+  }
 
   w_json_buffer_free(&client->reader);
   w_json_buffer_free(&client->writer);
