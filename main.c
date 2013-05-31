@@ -7,6 +7,7 @@
 int trigger_settle = DEFAULT_SETTLE_PERIOD;
 int recrawl_period = 0;
 static int show_help = 0;
+static int show_version = 0;
 static enum w_pdu_type server_pdu = is_bser;
 static enum w_pdu_type output_pdu = is_json_pretty;
 static char *server_encoding = NULL;
@@ -326,6 +327,8 @@ static bool try_command(json_t *cmd, int timeout)
 static struct watchman_getopt opts[] = {
   { "help",     'h', "Show this help",
     OPT_NONE,   &show_help, NULL, NOT_DAEMON },
+  { "version",  0, "Show version number",
+    OPT_NONE,   &show_version, NULL, NOT_DAEMON },
   { "sockname", 'U', "Specify alternate sockname",
     REQ_STRING, &sock_name, "PATH", IS_DAEMON },
   { "logfile", 'o', "Specify path to logfile",
@@ -371,6 +374,10 @@ static void parse_cmdline(int *argcp, char ***argvp)
   w_getopt(opts, argcp, argvp, &daemon_argv);
   if (show_help) {
     usage(opts, stdout);
+  }
+  if (show_version) {
+    printf("%s\n", PACKAGE_VERSION);
+    exit(0);
   }
   setup_sock_name();
   parse_encoding(server_encoding, &server_pdu);
