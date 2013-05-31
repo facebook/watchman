@@ -1022,7 +1022,7 @@ haven't actually changed.
 The default per-process descriptor limit on current versions of OS X is
 extremely low (256!).  Since kqueue() requires an open descriptor for each
 watched directory, you will very quickly run into resource limits if your trees
-are large if you do not raise the limits in your system configuration.
+are large or if you do not raise the limits in your system configuration.
 
 Watchman will attempt to raise its descriptor limit to match
 `kern.maxfilesperproc` when it starts up, so you shouldn't need to mess
@@ -1120,7 +1120,7 @@ You can run the unit tests using:
     arc unit --everything
 
 If you'd like to contribute a patch to watchman, we'll ask you to make sure
-that `arc unit` still passess successfully and we'd ideally like you to augment
+that `arc unit` still passes successfully and we'd ideally like you to augment
 the test suite to cover the functionality that you're adding or changing.
 
 
