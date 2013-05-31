@@ -1610,6 +1610,7 @@ static void process_inotify_event(
           w_log(W_LOG_ERR,
               "root dir %s has been (re)moved, canceling watch\n",
               root->root_path->buf);
+          w_string_delref(name);
           w_root_cancel(root);
           return;
         }

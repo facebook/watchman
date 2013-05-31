@@ -207,9 +207,11 @@ static bool read_and_detect_pdu(w_jbuffer_t *jr, int fd, json_error_t *jerr)
   pdu = detect_pdu(jr);
   if (pdu == need_data) {
     if (!fill_buffer(jr, fd)) {
-      snprintf(jerr->text, sizeof(jerr->text),
+      if (errno != EAGAIN) {
+        snprintf(jerr->text, sizeof(jerr->text),
           "fill_buffer: %s",
           strerror(errno));
+      }
       return false;
     }
     pdu = detect_pdu(jr);
@@ -382,6 +384,7 @@ bool w_json_buffer_passthru(w_jbuffer_t *jr,
 
 json_t *w_json_buffer_next(w_jbuffer_t *jr, int fd, json_error_t *jerr)
 {
+  memset(jerr, 0, sizeof(*jerr));
   if (!read_and_detect_pdu(jr, fd, jerr)) {
     return NULL;
   }
