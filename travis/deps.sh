@@ -1,5 +1,13 @@
 #!/bin/sh
-set -ex
+set -x
+case `uname` in
+  Linux)
+    sudo sysctl -w fs.inotify.max_user_instances=1024
+    sudo sysctl -w fs.inotify.max_user_watches=1000000
+    sudo sysctl -w fs.inotify.max_queued_events=16384
+    ;;
+esac
+set -e
 if [ ! -d a ] ; then
   mkdir a
 fi
@@ -19,10 +27,3 @@ if [ ! -d arcanist ] ; then
 fi
 cd ..
 ln -sf ./a/arcanist/bin/arc arc
-case `uname` in
-  Linux)
-    sudo sysctl -w fs.inotify.max_user_instances=1024
-    sudo sysctl -w fs.inotify.max_user_watches=1000000
-    sudo sysctl -w fs.inotify.max_queued_events=16384
-    ;;
-esac
