@@ -2,6 +2,7 @@
 set -x
 case `uname` in
   Linux)
+    sudo sysctl -A | grep inotify
     sudo sysctl -w fs.inotify.max_user_instances=1024
     sudo sysctl -w fs.inotify.max_user_watches=1000000
     sudo sysctl -w fs.inotify.max_queued_events=16384
