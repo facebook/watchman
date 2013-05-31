@@ -4,6 +4,9 @@
 
 class movereaddTestCase extends WatchmanTestCase {
   function testMoveReAdd() {
+    if (PHP_OS == 'Linux' && getenv('TRAVIS')) {
+      $this->assertSkipped('openvz and inotify unlinks == bad time');
+    }
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
     mkdir("$root/foo");

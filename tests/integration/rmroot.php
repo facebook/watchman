@@ -4,6 +4,9 @@
 class rmrootTestCase extends WatchmanTestCase {
 
   function testRemoveRoot() {
+    if (PHP_OS == 'Linux' && getenv('TRAVIS')) {
+      $this->assertSkipped('openvz and inotify unlinks == bad time');
+    }
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $top = realpath($dir->getPath());
 
