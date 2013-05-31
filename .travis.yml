@@ -6,7 +6,6 @@ language:
 compiler:
   - gcc
   - clang
-  - python
 
 # need php to run arcanist and the tests
 php:
