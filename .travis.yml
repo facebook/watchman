@@ -1,10 +1,28 @@
 language:
   - php
   - c
+
+# try some different compilers
 compiler:
   - gcc
   - clang
+  - python
+
+# need php to run arcanist and the tests
 php:
   - 5.4
+
+# for the bser module
+python:
+  - "2.7"
+  - "2.6"
+  - "3.2"
+
+# try some different compiler options
+env:
+  - CONFIGARGS=""
+  - CONFIGARGS="--enable-stack-protector"
+  - CONFIGARGS="" WATCHMAN_VALGRIND=1
+
 before_script: ./travis/deps.sh
 script: ./travis/run.sh

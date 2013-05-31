@@ -4,7 +4,7 @@ uname -a
 set -e
 PATH=$PWD:$PATH
 ./autogen.sh
-./configure --with-pcre
+./configure --with-pcre $CONFIGARGS
 make
 set +e
 if ! arc unit --everything ; then
