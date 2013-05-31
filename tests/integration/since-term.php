@@ -4,7 +4,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 class SinceExprTestCase extends WatchmanTestCase {
-  function testSInceExpr() {
+  function testSinceExpr() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
 
@@ -57,7 +57,7 @@ class SinceExprTestCase extends WatchmanTestCase {
     $this->assertEqual(array('foo.c'), $res['files']);
 
     $res = $this->watchmanCommand('query', $root, array(
-      'expression' => array('since', $base, 'ctime'),
+      'expression' => array('since', $foo_data['ctime'], 'ctime'),
       'fields' => array('name'),
     ));
     $this->assertEqual(array(), $res['files']);
