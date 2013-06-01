@@ -649,6 +649,37 @@ simple array of values; ```"fields": ["name"]``` produces:
 }
 ```
 
+#### Available fields
+
+ * `name` - string: the filename, relative to the watched root
+ * `exists` - bool: true if the file exists, false if it has been deleted
+ * `cclock` - string: the "created clock"; the clock value when we first
+            observed the file, or the clock value when it last switched
+            from !exists to exists.
+ * `oclock` - string: the "observed clock"; the clock value where we last
+            observed some change in this file or its metadata.
+ * `atime`, `atime_ms`, `atime_us`, `atime_ns`, `atime_f`
+            - access time measured in integer seconds, milliseconds,
+              microseconds, nanoseconds or floating point seconds
+              respectively.
+ * `ctime`, `ctime_ms`, `ctime_us`, `ctime_ns`, `ctime_f`
+            - creation time measured in integer seconds, milliseconds,
+              microseconds, nanoseconds or floating point seconds
+              respectively.
+ * `mtime`, `mtime_ms`, `mtime_us`, `mtime_ns`, `mtime_f`
+            - modified time measured in integer seconds, milliseconds,
+              microseconds, nanoseconds or floating point seconds
+              respectively.
+ * `size` - integer: file size in bytes
+ * `mode` - integer: file (or directory) mode expressed as a decimal integer
+ * `uid` - integer: the owning uid
+ * `gid` - integer: the owning gid
+ * `ino` - integer: the inode number
+ * `dev` - integer: the device number
+ * `nlink` - integer: number of hard links
+ * `new` - bool: whether this entry is newer than the `since` generator
+           criteria
+
 #### Synchronization timeout (since 2.1)
 
 By default a `query` will wait for up to 2 seconds for the view of the
@@ -862,6 +893,23 @@ will no longer generate subscription packets for the specified subscription.
 
 ```json
 ["unsubscribe", "/path/to/root", "mysubscriptionname"]
+```
+
+### Command: get-sockname
+
+If you're integrating against watchman using the unix socket and either the
+JSON or BSER protocol, you may need to discover the correct socket path.
+Rather than hard-coding the path or replicating the logic discussed in the
+**Environment and Files** section, you can simply execute the CLI to determine
+the path.  This has the side effect of spawning the service for your user if it
+was not already running--bonus!
+
+```bash
+$ watchman get-sockname
+{
+  "version": "2.5",
+  "sockname": "/tmp/.watchman.wez"
+}
 ```
 
 ## Clockspec
@@ -1085,8 +1133,8 @@ submit code changes.
 
 We (Facebook) have to ask for a "Contributor License Agreement" from someone
 who sends in a patch or code that we want to include in the codebase.  This is
-a legal requirement (a similar situation applies in other projects, such as
-Apache and other ASF projects or the Linux kernel).
+a legal requirement; a similar situation applies to Apache and other ASF
+projects.
 
 If we ask you to fill out a CLA we'll direct you to [our online CLA
 page](https://developers.facebook.com/opensource/cla) where you can complete it
