@@ -3,7 +3,7 @@ bin_PROGRAMS = watchman
 doc_DATA = README.markdown
 docdir = ${prefix}/share/doc/watchman-$(VERSION)
 
-THIRDPARTY_CPPFLAGS = -Ithirdparty/jansson
+THIRDPARTY_CPPFLAGS = -I$(top_srcdir)/thirdparty/jansson -I$(top_builddir)/thirdparty/jansson
 JSON_LIB = -L. -lwmanjson
 
 watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
