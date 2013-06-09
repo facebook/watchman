@@ -4,7 +4,7 @@ doc_DATA = README.markdown
 docdir = ${prefix}/share/doc/watchman-$(VERSION)
 
 THIRDPARTY_CPPFLAGS = -I$(top_srcdir)/thirdparty/jansson -I$(top_builddir)/thirdparty/jansson
-JSON_LIB = -L. -lwmanjson
+JSON_LIB = -L. libwmanjson.a
 
 watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 watchman_LDADD = $(JSON_LIB)
@@ -72,7 +72,7 @@ libwmanjson_a_SOURCES = \
 # bundled testing library
 libtap_a_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
 libtap_a_SOURCES = thirdparty/tap.c
-TAP_LIB = -ltap
+TAP_LIB = libtap.a
 
 # unit tests
 TESTS = tests/argv.t tests/log.t tests/bser.t
