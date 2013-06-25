@@ -433,7 +433,6 @@ int main(int argc, char **argv)
   parse_cmdline(&argc, &argv);
 
   if (foreground) {
-    unlink(sock_name);
     run_service();
     return 0;
   }
@@ -445,7 +444,6 @@ int main(int argc, char **argv)
     if (no_spawn) {
       ran = try_client_mode_command(cmd, !no_pretty);
     } else {
-      unlink(sock_name);
 #ifdef USE_GIMLI
       spawn_via_gimli();
 #else

@@ -686,6 +686,7 @@ bool w_start_listener(const char *path)
 
   un.sun_family = PF_LOCAL;
   strcpy(un.sun_path, path);
+  unlink(path);
 
   if (bind(listener_fd, (struct sockaddr*)&un, sizeof(un)) != 0) {
     w_log(W_LOG_ERR, "bind(%s): %s\n",
