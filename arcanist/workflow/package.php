@@ -114,7 +114,8 @@ TXT
     }
 
     $api = $this->getRepositoryAPI();
-    $commit = $api->getWorkingCopyRevision();
+    $commit = $api->getSourceControlSystemName() . ':';
+    $commit .= $api->getCanonicalRevisionName($api->getWorkingCopyRevision());
     $configureargs .= " --with-buildinfo=" . escapeshellarg($commit);
 
     $prefix = $this->getArgument('prefix', '/usr/local');
