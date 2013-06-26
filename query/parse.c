@@ -219,6 +219,26 @@ static bool parse_sync(w_query *res, json_t *query)
   return true;
 }
 
+static bool parse_empty_on_fresh_instance(w_query *res, json_t *query)
+{
+  json_t *do_empty;
+  int value;
+
+  do_empty = json_object_get(query, "empty_on_fresh_instance");
+  if (!do_empty) {
+    res->empty_on_fresh_instance = false;
+    return true;
+  }
+
+  if (json_unpack(do_empty, "b", &value) != 0) {
+    res->errmsg = strdup("empty_on_fresh_instance must be a boolean");
+    return false;
+  }
+
+  res->empty_on_fresh_instance = (bool) value;
+  return true;
+}
+
 w_query *w_query_parse(json_t *query, char **errmsg)
 {
   w_query *res;
@@ -233,6 +253,10 @@ w_query *w_query_parse(json_t *query, char **errmsg)
   res->refcnt = 1;
 
   if (!parse_sync(res, query)) {
+    goto error;
+  }
+
+  if (!parse_empty_on_fresh_instance(res, query)) {
     goto error;
   }
 

@@ -473,6 +473,7 @@ struct watchman_rule_match {
 
 struct w_clockspec_query {
   bool is_timestamp;
+  bool is_fresh_instance;
   struct timeval tv;
   uint32_t ticks;
 };

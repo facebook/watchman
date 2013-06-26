@@ -179,13 +179,18 @@ bool w_parse_clockspec(w_root_t *root,
 
   if (allow_cursor && root && str[0] == 'n' && str[1] == ':') {
     w_string_t *name = w_string_new(str);
+    w_ht_val_t ticks_val;
 
     since->is_timestamp = false;
     w_root_lock(root);
 
-    // If we've never seen it before, ticks will be set to 0
-    // which is exactly what we want here.
-    since->ticks = (uint32_t)w_ht_get(root->cursors, w_ht_ptr_val(name));
+    since->is_fresh_instance = !w_ht_lookup(root->cursors, w_ht_ptr_val(name),
+                                            &ticks_val, false);
+    if (since->is_fresh_instance) {
+      since->ticks = 0;
+    } else {
+      since->ticks = (uint32_t)ticks_val;
+    }
 
     // Bump the tick value and record it against the cursor.
     // We need to bump the tick value so that repeated queries
@@ -220,6 +225,7 @@ bool w_parse_clockspec(w_root_t *root,
     // If the pid doesn't match, they asked a different
     // incarnation of the server, so we treat them as having
     // never spoken to us before
+    since->is_fresh_instance = true;
     since->ticks = 0;
     return true;
   }

@@ -63,6 +63,8 @@ struct w_query {
 
   uint32_t sync_timeout;
 
+  bool empty_on_fresh_instance;
+
   // We can't (and mustn't!) evaluate the clockspec
   // fully until we execute query, because we have
   // to evaluate named cursors at the time we execute
@@ -113,6 +115,7 @@ typedef bool (*w_query_generator)(
 );
 
 struct w_query_result {
+  bool is_fresh_instance;
   uint32_t num_results;
   struct watchman_rule_match *results;
   uint32_t ticks;

@@ -30,5 +30,22 @@ class cursorTestCase extends WatchmanTestCase {
     $since = $this->assertFileListUsingSince(
                   $root, 'n:testCursor', array('one'));
     $this->assertEqual(false, isset($since['files'][0]['new']));
+
+    // Deleted files shouldn't show up in fresh cursors
+    touch("$root/two");
+    unlink("$root/one");
+    $res = $this->watchmanCommand('since', $root, 'n:testCursor2');
+    $this->assertEqual(true, $res['is_fresh_instance']);
+    $this->assertEqual(1, count($res['files']));
+    $this->assertEqual('two', $res['files'][0]['name']);
+    $this->assertEqual(true, $res['files'][0]['exists']);
+
+    // ... but they should show up afterwards
+    unlink("$root/two");
+    $res = $this->watchmanCommand('since', $root, 'n:testCursor2');
+    $this->assertEqual(false, $res['is_fresh_instance']);
+    $this->assertEqual(1, count($res['files']));
+    $this->assertEqual('two', $res['files'][0]['name']);
+    $this->assertEqual(false, $res['files'][0]['exists']);
   }
 }

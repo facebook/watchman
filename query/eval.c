@@ -48,6 +48,11 @@ bool w_query_process_file(
   }
   ctx->file = file;
 
+  // For fresh instances, only return files that currently exist.
+  if (ctx->since.is_fresh_instance && !file->exists) {
+    return true;
+  }
+
   // We produce an output for this file if there is no expression,
   // or if the expression matched.
   if (query->expr && !w_query_expr_evaluate(query->expr, ctx, file)) {
@@ -343,11 +348,17 @@ bool w_query_execute(
   w_root_lock(root);
   res->ticks = root->ticks;
 
-  if (!generator) {
-    generator = default_generators;
+  if (ctx.since.is_fresh_instance) {
+    res->is_fresh_instance = true;
   }
 
-  generator(query, root, &ctx, gendata);
+  if (!(ctx.since.is_fresh_instance && query->empty_on_fresh_instance)) {
+    if (!generator) {
+      generator = default_generators;
+    }
+
+    generator(query, root, &ctx, gendata);
+  }
 
   w_root_unlock(root);
 

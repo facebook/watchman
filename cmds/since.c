@@ -64,6 +64,8 @@ void cmd_since(struct watchman_client *client, json_t *args)
   if (clock_id_string(res.ticks, clockbuf, sizeof(clockbuf))) {
     set_prop(response, "clock", json_string_nocheck(clockbuf));
   }
+  set_prop(response, "is_fresh_instance",
+           json_pack("b", res.is_fresh_instance));
   set_prop(response, "files", file_list);
 
   send_and_dispose_response(client, response);

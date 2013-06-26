@@ -625,8 +625,9 @@ you specified in your query):
 
 ```json
 {
-    "version": "1.5",
+    "version": "2.7",
     "clock": "c:80616:59",
+    "is_fresh_instance": false,
     "files": [
         {
             "exists": true,
@@ -637,6 +638,12 @@ you specified in your query):
     ]
 }
 ```
+
+The `is_fresh_instance` member is true if the particular clock value indicates
+that it was returned by a different instance of watchman, or a named cursor
+hasn't been seen before. In that case, only files that currently exist will be
+returned. Advanced users may set the input parameter `empty_on_fresh_instance`
+to true, in which case no files will be returned for fresh instances.
 
 If the `fields` member consists of a single entry, the files result will be a
 simple array of values; ```"fields": ["name"]``` produces:
@@ -719,7 +726,8 @@ object with fields containing information about the file:
 
 ```json
 {
-    "version": "1.1",
+    "version": "2.7",
+    "is_fresh_instance": true,
     "clock": "c:80616:59",
     "files": [
         {
