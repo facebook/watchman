@@ -804,6 +804,12 @@ static void stat_path(w_root_t *root,
 #endif
       }
     }
+#ifdef HAVE_INOTIFY_INIT
+    if (!S_ISDIR(st.st_mode) && !w_string_equal(dir_name, root->root_path)) {
+      /* Make sure we update the mtime on the parent directory. */
+      stat_path(root, dir_name, now, false, via_notify);
+    }
+#endif
   }
 
   w_string_delref(dir_name);
