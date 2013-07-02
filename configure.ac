@@ -2,9 +2,15 @@ AC_INIT([watchman], [2.7], [], [watchman])
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects])
 
-CPPFLAGS="$CPPFLAGS -D_REENTRANT"
-dnl we really want you to be using 64 hardware and software
-dnl CFLAGS="$CFLAGS -m64"
+CPPFLAGS="$CPPFLAGS -D_REENTRANT -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE"
+case $target_os in
+  *solaris*)
+    dnl we really want you to be using 64 hardware and software.
+    dnl if we don't build 64-bit, our test suite fails when comparing the
+    dnl results of a 64-bit dev_t from PHP's stat info
+    CFLAGS="$CFLAGS -m64"
+    ;;
+esac
 
 AC_PROG_CC
 AC_PROG_CPP
