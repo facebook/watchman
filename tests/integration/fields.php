@@ -27,7 +27,6 @@ class fieldsTestCase extends WatchmanTestCase {
 
     $query = $this->watchmanCommand('query', $root, array(
       'fields' => array('name', 'exists', 'new', 'size', 'mode', 'uid', 'gid',
-                        'atime', 'atime_ms', 'atime_us', 'atime_ns', 'atime_f',
                         'mtime', 'mtime_ms', 'mtime_us', 'mtime_ns', 'mtime_f',
                         'ctime', 'ctime_ms', 'ctime_us', 'ctime_ns', 'ctime_f',
                         'ino', 'dev', 'nlink', 'oclock', 'cclock'),
@@ -48,7 +47,7 @@ class fieldsTestCase extends WatchmanTestCase {
         $this->assertEqual($stat[$field], $file[$field], $field);
     }
 
-    $time_fields = array('atime', 'mtime', 'ctime');
+    $time_fields = array('mtime', 'ctime');
     foreach ($time_fields as $field) {
         $this->assertTimeEqual($stat[$field], $file[$field],
                                $file[$field . '_ms'], $file[$field . '_us'],

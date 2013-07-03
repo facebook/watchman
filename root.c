@@ -690,12 +690,12 @@ static bool did_file_change(struct stat *saved, struct stat *fresh)
   FIELD_CHG(st_uid);
   FIELD_CHG(st_gid);
   FIELD_CHG(st_rdev);
+  // Don't care about st_atime
   FIELD_CHG(st_ctime);
-  FIELD_CHG(st_atime);
   FIELD_CHG(st_mtime);
   // Don't care about st_blocks
   // Don't care about st_blksize
-  TIMESPEC_FIELD_CHG(a);
+  // Don't care about st_atimespec
   TIMESPEC_FIELD_CHG(m);
   TIMESPEC_FIELD_CHG(c);
 
@@ -954,7 +954,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       struct stat st;
 
       lstat(path, &st);
-      dir->port_file.fo_atime = st.st_atim;
+      dir->port_file.fo_mtime = st.st_atim;
       dir->port_file.fo_mtime = st.st_mtim;
       dir->port_file.fo_ctime = st.st_ctim;
       dir->port_file.fo_name = (char*)dir->path->buf;

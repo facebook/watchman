@@ -301,9 +301,8 @@ error:
 bool w_query_legacy_field_list(struct w_query_field_list *flist)
 {
   static const char *names[] = {
-    "name", "exists", "size", "mode", "uid", "gid", "atime",
-    "mtime", "ctime", "ino", "dev", "nlink", "new", "cclock",
-    "oclock"
+    "name", "exists", "size", "mode", "uid", "gid", "mtime",
+    "ctime", "ino", "dev", "nlink", "new", "cclock", "oclock"
   };
   uint8_t i;
   json_t *list = json_array();

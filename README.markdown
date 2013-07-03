@@ -358,7 +358,6 @@ your clockspec should be a unix time value:
 
      ["since", 12345668, "mtime"]
      ["since", 12345668, "ctime"]
-     ["since", 12345668, "atime"]
 
 You may explicitly request the observed clock values too; in these cases we'll
 accept either a timestamp or a clock value.  The `oclock` is the last observed
@@ -665,10 +664,6 @@ simple array of values; ```"fields": ["name"]``` produces:
             from !exists to exists.
  * `oclock` - string: the "observed clock"; the clock value where we last
             observed some change in this file or its metadata.
- * `atime`, `atime_ms`, `atime_us`, `atime_ns`, `atime_f`
-            - access time measured in integer seconds, milliseconds,
-              microseconds, nanoseconds or floating point seconds
-              respectively.
  * `ctime`, `ctime_ms`, `ctime_us`, `ctime_ns`, `ctime_f`
             - creation time measured in integer seconds, milliseconds,
               microseconds, nanoseconds or floating point seconds
@@ -731,7 +726,6 @@ object with fields containing information about the file:
     "clock": "c:80616:59",
     "files": [
         {
-            "atime": 1357797739,
             "cclock": "c:80616:1",
             "ctime": 1357617635,
             "dev": 16777220,

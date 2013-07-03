@@ -8,7 +8,6 @@ struct since_term {
   enum {
     SINCE_OCLOCK,
     SINCE_CCLOCK,
-    SINCE_ATIME,
     SINCE_MTIME,
     SINCE_CTIME
   } field;
@@ -33,9 +32,6 @@ static bool eval_since(struct w_query_ctx *ctx,
         return w_timeval_compare(term->spec.tv, clock.tv) > 0;
       }
       return clock.ticks > term->spec.ticks;
-    case SINCE_ATIME:
-      tval = file->st.st_atime;
-      break;
     case SINCE_MTIME:
       tval = file->st.st_mtime;
       break;
@@ -58,7 +54,6 @@ static struct {
 } allowed_fields[] = {
   { SINCE_OCLOCK, "oclock" },
   { SINCE_CCLOCK, "cclock" },
-  { SINCE_ATIME,  "atime" },
   { SINCE_MTIME,  "mtime" },
   { SINCE_CTIME,  "ctime" },
   { 0, NULL }
@@ -118,7 +113,6 @@ w_query_expr *w_expr_since_parser(w_query *query, json_t *term)
   }
 
   switch (selected_field) {
-    case SINCE_ATIME:
     case SINCE_CTIME:
     case SINCE_MTIME:
       if (!since.is_timestamp) {

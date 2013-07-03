@@ -245,8 +245,8 @@ json_t *w_match_results_to_json(
     json_t *templ = json_array_of_size(15);
     static const char *field_list[] = {
       "name", "exists", "size", "mode", "uid", "gid",
-      "atime", "mtime", "ctime", "ino", "dev", "nlink",
-      "new", "oclock", "cclock",
+      "mtime", "ctime", "ino", "dev", "nlink", "new",
+      "oclock", "cclock",
     };
 
     for (i = 0; i < sizeof(field_list)/sizeof(field_list[0]); i++) {
@@ -276,7 +276,6 @@ json_t *w_match_results_to_json(
       set_prop(record, "mode", json_integer(file->st.st_mode));
       set_prop(record, "uid", json_integer(file->st.st_uid));
       set_prop(record, "gid", json_integer(file->st.st_gid));
-      set_prop(record, "atime", json_integer(file->st.st_atime));
       set_prop(record, "mtime", json_integer(file->st.st_mtime));
       set_prop(record, "ctime", json_integer(file->st.st_ctime));
       set_prop(record, "ino", json_integer(file->st.st_ino));
