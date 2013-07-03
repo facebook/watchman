@@ -665,7 +665,7 @@ simple array of values; ```"fields": ["name"]``` produces:
  * `oclock` - string: the "observed clock"; the clock value where we last
             observed some change in this file or its metadata.
  * `ctime`, `ctime_ms`, `ctime_us`, `ctime_ns`, `ctime_f`
-            - creation time measured in integer seconds, milliseconds,
+            - last inode change time measured in integer seconds, milliseconds,
               microseconds, nanoseconds or floating point seconds
               respectively.
  * `mtime`, `mtime_ms`, `mtime_us`, `mtime_ns`, `mtime_f`
