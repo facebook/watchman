@@ -417,6 +417,7 @@ void w_log_to_clients(int level, const char *buf);
 
 
 w_string_t *w_string_new(const char *str);
+w_string_t *w_string_make_printf(const char *format, ...);
 w_string_t *w_string_new_lower(const char *str);
 w_string_t *w_string_dup_lower(w_string_t *str);
 w_string_t *w_string_suffix(w_string_t *str);
@@ -432,6 +433,7 @@ w_string_t *w_string_dirname(w_string_t *str);
 w_string_t *w_string_basename(w_string_t *str);
 w_string_t *w_string_canon_path(w_string_t *str);
 w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
+bool w_string_startswith(w_string_t *str, w_string_t *prefix);
 bool w_string_is_cookie(w_string_t *str);
 void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
 w_root_t *w_root_resolve(const char *path, bool auto_watch, char **errmsg);

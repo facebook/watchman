@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <stdarg.h>
 
 w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
 {
@@ -54,6 +55,37 @@ w_string_t *w_string_new(const char *str)
   memcpy(buf, str, len);
   buf[len] = 0;
   s->buf = buf;
+
+  return s;
+}
+
+w_string_t *w_string_make_printf(const char *format, ...)
+{
+  w_string_t *s;
+  int len;
+  char *buf;
+  va_list args;
+
+  va_start(args, format);
+  // Get the length needed
+  len = vsnprintf(NULL, 0, format, args);
+  va_end(args);
+
+  s = malloc(sizeof(*s) + len + 1);
+  if (!s) {
+    perror("no memory available");
+    abort();
+  }
+
+  s->refcnt = 1;
+  s->len = len;
+  s->slice = NULL;
+  buf = (char*)(s + 1);
+  va_start(args, format);
+  vsnprintf(buf, len + 1, format, args);
+  va_end(args);
+  s->buf = buf;
+  s->hval = w_hash_bytes(buf, len, 0);
 
   return s;
 }
@@ -241,6 +273,14 @@ w_string_t *w_string_suffix(w_string_t *str)
 
   // Has no suffix
   return NULL;
+}
+
+bool w_string_startswith(w_string_t *str, w_string_t *prefix)
+{
+  if (prefix->len > str->len) {
+    return false;
+  }
+  return memcmp(str->buf, prefix->buf, prefix->len) == 0;
 }
 
 /* return true if the basename of string matches the
