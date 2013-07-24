@@ -1883,6 +1883,47 @@ static const struct watchman_hash_funcs root_funcs = {
   root_del_val
 };
 
+/* Returns true if the global config root_restrict_files is not defined or if
+ * one of the files in root_restrict_files exists, false otherwise. */
+static bool root_check_restrict(const char *watch_path)
+{
+  json_t *root_restrict_files = NULL;
+  uint32_t i;
+
+  root_restrict_files = cfg_get_json(NULL, "root_restrict_files");
+  if (!root_restrict_files) {
+    return true;
+  }
+
+  if (!json_is_array(root_restrict_files)) {
+    w_log(W_LOG_ERR,
+          "resolve_root: global config root_restrict_files is not an array\n");
+    return true;
+  }
+
+  for (i = 0; i < json_array_size(root_restrict_files); i++) {
+    json_t *obj = json_array_get(root_restrict_files, i);
+    const char *restrict_file = json_string_value(obj);
+    char *restrict_path;
+    int rv;
+
+    if (!restrict_file) {
+      w_log(W_LOG_ERR, "resolve_root: global config root_restrict_files "
+            "element %" PRIu32 " should be a string\n", i);
+      continue;
+    }
+
+    ignore_result(asprintf(&restrict_path, "%s/%s", watch_path,
+                           restrict_file));
+    rv = access(restrict_path, F_OK);
+    free(restrict_path);
+    if (rv == 0)
+      return true;
+  }
+
+  return false;
+}
+
 static w_root_t *root_resolve(const char *filename, bool auto_watch,
     bool *created, char **errmsg)
 {
@@ -1929,6 +1970,14 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   }
 
   w_log(W_LOG_DBG, "Want to watch %s -> %s\n", filename, watch_path);
+
+  if (!root_check_restrict(watch_path)) {
+    ignore_result(asprintf(errmsg,
+          "none of the files listed in global config root_restrict_files are "
+          "present"));
+    w_log(W_LOG_ERR, "resolve_root: %s\n", *errmsg);
+    return NULL;
+  }
 
   // created with 1 ref
   root = w_root_new(watch_path, errmsg);

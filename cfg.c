@@ -84,7 +84,7 @@ static json_t *cfg_get_raw(const char *name, json_t **optr)
   return val;
 }
 
-static json_t *cfg_get_root(w_root_t *root, const char *name)
+json_t *cfg_get_json(w_root_t *root, const char *name)
 {
   json_t *val = NULL;
 
@@ -106,7 +106,7 @@ static json_t *cfg_get_root(w_root_t *root, const char *name)
 const char *cfg_get_string(w_root_t *root, const char *name,
     const char *defval)
 {
-  json_t *val = cfg_get_root(root, name);
+  json_t *val = cfg_get_json(root, name);
 
   if (val) {
     if (!json_is_string(val)) {
@@ -121,7 +121,7 @@ const char *cfg_get_string(w_root_t *root, const char *name,
 json_int_t cfg_get_int(w_root_t *root, const char *name,
     json_int_t defval)
 {
-  json_t *val = cfg_get_root(root, name);
+  json_t *val = cfg_get_json(root, name);
 
   if (val) {
     if (!json_is_integer(val)) {

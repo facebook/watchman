@@ -655,6 +655,7 @@ static inline void set_prop(json_t *obj, const char *key, json_t *val)
 void cfg_shutdown(void);
 void cfg_set_arg(const char *name, json_t *val);
 void cfg_load_global_config_file(void);
+json_t *cfg_get_json(w_root_t *root, const char *name);
 const char *cfg_get_string(w_root_t *root, const char *name,
     const char *defval);
 json_int_t cfg_get_int(w_root_t *root, const char *name,
