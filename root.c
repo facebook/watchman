@@ -130,6 +130,7 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
     };
     w_string_t *name;
     w_string_t *fullname;
+    char hostname[256];
     uint8_t i;
     struct stat st;
 
@@ -149,6 +150,16 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
       }
       w_string_delref(name);
     }
+
+    if (root->query_cookie_dir == NULL) {
+      w_string_addref(root->root_path);
+      root->query_cookie_dir = root->root_path;
+    }
+    gethostname(hostname, sizeof(hostname));
+    hostname[sizeof(hostname) - 1] = '\0';
+
+    root->query_cookie_prefix = w_string_make_printf(
+      "%s/" WATCHMAN_COOKIE_PREFIX "%s-%d-", path, hostname, (int)getpid());
   }
 
   root->dirname_to_dir = w_ht_new(HINT_NUM_DIRS, &dirname_hash_funcs);
@@ -247,9 +258,7 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
 {
   uint32_t tick;
   struct watchman_query_cookie cookie;
-  char cookie_buf[WATCHMAN_NAME_MAX];
-  char hostname[64];
-  w_string_t *path_str, *cookie_base;
+  w_string_t *path_str;
   int fd;
   int errcode = 0;
   struct timespec deadline;
@@ -263,26 +272,13 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
   }
   cookie.seen = false;
 
-  if (gethostname(hostname, sizeof(hostname))) {
-    hostname[sizeof(hostname)-1] = '\0';
-  }
-
-  /* Generate a cookie name.
-   * compose host-pid-id with the cookie dir */
+  /* generate a cookie name: cookie prefix + id */
   w_root_lock(root);
   tick = root->ticks++;
-  snprintf(cookie_buf, sizeof(cookie_buf),
-      WATCHMAN_COOKIE_PREFIX "%s-%d-%" PRIu32,
-      hostname, (int)getpid(), tick);
-  cookie_base = w_string_new(cookie_buf);
-  if (root->query_cookie_dir) {
-    path_str = w_string_path_cat(root->query_cookie_dir, cookie_base);
-  } else {
-    path_str = w_string_path_cat(root->root_path, cookie_base);
-  }
-  w_string_delref(cookie_base);
-  cookie_base = NULL;
-
+  path_str = w_string_make_printf("%.*s%" PRIu32,
+                                  root->query_cookie_prefix->len,
+                                  root->query_cookie_prefix->buf,
+                                  tick);
   /* insert our cookie in the map */
   w_ht_set(root->query_cookies, w_ht_ptr_val(path_str),
       w_ht_ptr_val(&cookie));
@@ -787,9 +783,9 @@ static void stat_path(w_root_t *root,
 
       // Don't recurse if our parent is an ignore dir
       if (!w_ht_get(root->ignore_dirs, w_ht_ptr_val(dir_name)) ||
-          // but do if we're looking at the cookie dir
-          (root->query_cookie_dir &&
-          w_string_equal(full_path, root->query_cookie_dir))) {
+          // but do if we're looking at the cookie dir (stat_path is never
+          // called for the root itself)
+          w_string_equal(full_path, root->query_cookie_dir)) {
 #ifndef HAVE_INOTIFY_INIT
         /* On non-Linux systems, we always need to crawl, but may not
          * need to be fully recursive */
@@ -820,7 +816,21 @@ static void stat_path(w_root_t *root,
 void w_root_process_path(w_root_t *root, w_string_t *full_path,
     struct timeval now, bool recursive, bool via_notify)
 {
-  if (w_string_is_cookie(full_path)) {
+  /* From a particular query's point of view, there are four sorts of cookies we
+   * can observe:
+   * 1. Cookies that this query has created. This marks the end of this query's
+   *    sync_to_now, so we hide it from the results.
+   * 2. Cookies that another query on the same watch by the same process has
+   *    created. This marks the end of that other query's sync_to_now, so from
+   *    the point of view of this query we turn a blind eye to it.
+   * 3. Cookies created by another process on the same watch. We're independent
+   *    of other processes, so we report these.
+   * 4. Cookies created by a nested watch by the same or a different process.
+   *    We're independent of other watches, so we report these.
+   *
+   * The below condition is true for cases 1 and 2 and false for 3 and 4.
+   */
+  if (w_string_startswith(full_path, root->query_cookie_prefix)) {
     struct watchman_query_cookie *cookie;
 
     cookie = w_ht_val_ptr(w_ht_get(root->query_cookies,
@@ -1841,9 +1851,8 @@ void w_root_delref(w_root_t *root)
     delete_file(file);
   }
 
-  if (root->query_cookie_dir) {
-    w_string_delref(root->query_cookie_dir);
-  }
+  w_string_delref(root->query_cookie_dir);
+  w_string_delref(root->query_cookie_prefix);
 
   free(root);
   w_refcnt_del(&live_roots);

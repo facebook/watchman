@@ -259,6 +259,7 @@ struct watchman_root {
   /* relative path to the query cookie dir.
    * If NULL, we use the root itself */
   w_string_t *query_cookie_dir;
+  w_string_t *query_cookie_prefix;
   w_ht_t *query_cookies;
 
   /* map of dir name => dirname
@@ -434,7 +435,6 @@ w_string_t *w_string_basename(w_string_t *str);
 w_string_t *w_string_canon_path(w_string_t *str);
 w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
 bool w_string_startswith(w_string_t *str, w_string_t *prefix);
-bool w_string_is_cookie(w_string_t *str);
 void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
 w_root_t *w_root_resolve(const char *path, bool auto_watch, char **errmsg);
 w_root_t *w_root_resolve_for_client_mode(const char *filename, char **errmsg);

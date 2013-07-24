@@ -115,6 +115,14 @@ class WatchmanInstance {
     return array();
   }
 
+  function getProcessID() {
+    if (!$this->proc) {
+      $this->start();
+    }
+    $st = proc_get_status($this->proc);
+    return $st['pid'];
+  }
+
   /** Get and clear data we collected for a subscription */
   function getSubData($subname) {
     $data = idx($this->subdata, $subname);
