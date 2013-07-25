@@ -37,7 +37,7 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
     }
 
     $coverage = $this->getEnableCoverage();
-    WatchmanInstance::setup($root, $coverage);
+    $instances = array(new WatchmanInstance($root, $coverage));
 
     // Exercise the different serialization combinations
     $cli_matrix = array(
@@ -55,6 +55,14 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
 
       // Good enough; let's use it
       $test_case = newv($name, array());
+      $config = $test_case->getGlobalConfig();
+      if ($config) {
+        $fresh_instance = new WatchmanInstance($root, $coverage, $config);
+        $instances[] = $fresh_instance;
+        $test_case->setWatchmanInstance($fresh_instance);
+      } else {
+        $test_case->setWatchmanInstance($instances[0]);
+      }
       $test_case->setRoot($root);
       $test_case->setPaths($paths);
       $results[] = $test_case->run();
@@ -71,7 +79,9 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
       }
     }
 
-    $results[] = WatchmanInstance::get()->generateValgrindTestResults();
+    foreach ($instances as $instance) {
+      $results[] = $instance->generateValgrindTestResults();
+    }
 
     // Also run the python tests if we built them
     foreach ($paths as $path) {

@@ -4,6 +4,7 @@
 
 class WatchmanTestCase extends ArcanistPhutilTestCase {
   protected $root;
+  protected $watchman_instance;
   private $use_cli = false;
   private $cli_args = null;
   private $watches = array();
@@ -30,6 +31,15 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     return $this->root;
   }
 
+  // This can be overridden if your test requires specific global config options
+  function getGlobalConfig() {
+    return array();
+  }
+
+  function setWatchmanInstance($instance) {
+    $this->watchman_instance = $instance;
+  }
+
   function watch($root) {
     $res = $this->watchmanCommand('watch', $root);
     $this->watches[$root] = $res;
@@ -51,12 +61,17 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     $args = func_get_args();
 
     if ($this->use_cli) {
-      $future = new WatchmanQueryFuture($this->root, $this->cli_args, $args);
+      $future = new WatchmanQueryFuture(
+        $this->watchman_instance->getFullSockName(),
+        $this->root,
+        $this->cli_args,
+        $args
+      );
       return $future->resolve();
     }
 
     return call_user_func_array(
-      array(WatchmanInstance::get(), 'request'),
+      array($this->watchman_instance, 'request'),
       $args);
   }
 
@@ -79,16 +94,16 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
 
   function setLogLevel($level) {
     $this->assertLiveConnection();
-    $out = WatchmanInstance::get()->setLogLevel($level);
+    $out = $this->watchman_instance->setLogLevel($level);
     $this->assertEqual($level, $out['log_level'], "set log level to $level");
   }
 
   function waitForSub($subname, $callable, $timeout = 5) {
-    return WatchmanInstance::get()->waitForSub($subname, $callable, $timeout);
+    return $this->watchman_instance->waitForSub($subname, $callable, $timeout);
   }
 
   function getSubData($subname) {
-    return WatchmanInstance::get()->getSubData($subname);
+    return $this->watchman_instance->getSubData($subname);
   }
 
   function waitForLog($criteria, $timeout = 5) {
@@ -96,7 +111,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     // Can't use the generic waitFor routine here because
     // we're delegating to a more efficient mechanism in
     // the instance class.
-    return WatchmanInstance::get()->waitForLog($criteria, $timeout);
+    return $this->watchman_instance->waitForLog($criteria, $timeout);
   }
 
   function assertWaitForLog($criteria, $timeout = 5) {
@@ -159,7 +174,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     list($ok, $res) = $this->waitForNoThrow(
       function () use ($command, $have_data, &$last_output) {
         $out = call_user_func_array(
-          array(WatchmanInstance::get(), 'request'),
+          array($this->watchman_instance, 'request'),
           $command);
         if ($out === false) {
           // Connection terminated

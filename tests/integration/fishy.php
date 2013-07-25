@@ -41,7 +41,7 @@ class fishyTestCase extends WatchmanTestCase {
     $this->setLogLevel('off');
     $on = false;
     $log = array();
-    foreach (WatchmanInstance::get()->getLogData() as $item) {
+    foreach ($this->watchman_instance->getLogData() as $item) {
       if (preg_match('/testFishy:START/', $item)) {
         $on = true;
       } else if (preg_match('/testFishy:END/', $item)) {

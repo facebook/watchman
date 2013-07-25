@@ -8,7 +8,7 @@ class otherCookiesTestCase extends WatchmanTestCase {
     $root = realpath($dir->getPath());
     $watch = $this->watch($root);
     $host = gethostname();
-    $pid = WatchmanInstance::get()->getProcessID();
+    $pid = $this->watchman_instance->getProcessID();
 
     $this->assertFileList($root, array());
 

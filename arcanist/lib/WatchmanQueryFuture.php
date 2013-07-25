@@ -13,20 +13,12 @@
 class WatchmanQueryFuture extends FutureProxy {
   private $command;
 
-  // If we're running in short-lived mode, this identifies
-  // the socket path we're using to talk to the instance
-  static $socketPath = null;
-
-  public static function setSocketPath($path) {
-    self::$socketPath = $path;
-  }
-
-  public function __construct($repo_root, $args, array $command) {
+  public function __construct($sockname, $repo_root, $args, array $command) {
     $this->command = json_encode($command);
     $future = new ExecFuture(
       "%s/watchman $args -U %s %s %s %s",
       $repo_root,
-      self::$socketPath,
+      $sockname,
       '--no-pretty',
       '--no-spawn',
       '-j'

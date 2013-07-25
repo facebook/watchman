@@ -9,6 +9,7 @@ class WatchmanInstance {
   private $proc;
   private $logfile;
   private $sockname;
+  private $config_file;
   private $debug = false;
   private $valgrind = false;
   private $coverage = false;
@@ -16,29 +17,23 @@ class WatchmanInstance {
   private $cg_file;
   private $sock;
   private $repo_root;
-  static $singleton = null;
   private $logdata = array();
   private $subdata = array();
   const TIMEOUT = 20;
 
-  static function get() {
-    if (!self::$singleton) {
-      throw new Exception("should have called setup");
-    }
-    return self::$singleton;
-  }
-
-  static function setup($repo_root, $coverage) {
-    $instance = new WatchmanInstance($repo_root, $coverage);
-    self::$singleton = $instance;
-
-    $instance->request();
-  }
-
-  function __construct($repo_root, $coverage) {
+  function __construct($repo_root, $coverage, $config = array()) {
     $this->repo_root = $repo_root;
     $this->logfile = new TempFile();
     $this->sockname = new TempFile();
+    $this->config_file = new TempFile();
+    // PHP is incredibly stupid: there's no direct way to turn array() into '{}'
+    // and array('foo' => array('bar', 'baz')) into '{"foo": ["bar", "baz"]}'.
+    if ($config === array()) {
+      $config_json = '{}';
+    } else {
+      $config_json = json_encode($config);
+    }
+    file_put_contents($this->config_file, $config_json);
 
     if (getenv("WATCHMAN_VALGRIND")) {
       $this->valgrind = true;
@@ -47,6 +42,8 @@ class WatchmanInstance {
       $this->coverage = true;
       $this->cg_file = new TempFile();
     }
+
+    $this->request();
   }
 
   function setDebug($enable) {
@@ -184,10 +181,10 @@ class WatchmanInstance {
         "--separate-recs=16 --callgrind-out-file=$this->cg_file " .
         $cmd;
     }
+    $cmd = "WATCHMAN_CONFIG_FILE=%s " . $cmd;
 
-    $cmd = csprintf($cmd, $this->sockname, $this->logfile, $this->logfile);
-
-    WatchmanQueryFuture::setSocketPath("$this->sockname.sock");
+    $cmd = csprintf($cmd, $this->config_file, $this->sockname, $this->logfile,
+                    $this->logfile);
 
     $pipes = array();
     $this->proc = proc_open($cmd, array(

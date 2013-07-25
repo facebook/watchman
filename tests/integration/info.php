@@ -8,6 +8,6 @@ class infoTestCase extends WatchmanTestCase {
   function testSockName() {
     $resp = $this->watchmanCommand('get-sockname');
     $this->assertEqual($resp['sockname'],
-                       WatchmanInstance::get()->getFullSockName());
+                       $this->watchman_instance->getFullSockName());
   }
 }
