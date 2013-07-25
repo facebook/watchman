@@ -21,23 +21,31 @@ void cfg_shutdown(void)
 
 void cfg_load_global_config_file(void)
 {
-#ifdef WATCHMAN_CONFIG_FILE
   json_t *config = NULL;
   json_error_t err;
 
-  if (access(WATCHMAN_CONFIG_FILE, R_OK) != 0 && errno == ENOENT) {
+  const char *cfg_file = getenv("WATCHMAN_CONFIG_FILE");
+#ifdef WATCHMAN_CONFIG_FILE
+  if (!cfg_file) {
+    cfg_file = WATCHMAN_CONFIG_FILE;
+  }
+#endif
+  if (!cfg_file || cfg_file[0] == '\0') {
     return;
   }
 
-  config = json_load_file(WATCHMAN_CONFIG_FILE, 0, &err);
+  if (access(cfg_file, R_OK) != 0 && errno == ENOENT) {
+    return;
+  }
+
+  config = json_load_file(cfg_file, 0, &err);
   if (!config) {
     w_log(W_LOG_ERR, "failed to parse json from %s: %s\n",
-        WATCHMAN_CONFIG_FILE, err.text);
+          cfg_file, err.text);
     return;
   }
 
   global_cfg = config;
-#endif
 }
 
 void cfg_set_arg(const char *name, json_t *val)
