@@ -47,6 +47,13 @@ TXT
         'help' => 'Specify the statedir configure option',
         'param' => 'path',
       ),
+      'config-file' => array(
+        'help' => 'Specify a local file that contains the configuration that ' .
+                  'you want to install to /etc/watchman.json. The contents ' .
+                  'of this file will be copied to /etc/watchman.json when ' .
+                  'the RPM is installed',
+        'param' => 'path',
+      ),
       'gimli' => array(
         'help' => 'Configure to run under the gimli monitor',
       ),
@@ -108,9 +115,17 @@ TXT
     $statedir = $this->getArgument('statedir');
     if ($statedir) {
       $configureargs .= ' --enable-statedir=' . $statedir;
-      $files = "%dir %attr(777, root, root) $statedir";
-      $files .= "\n%dir %attr(777, root, root) $statedir/traces";
-      $build = "mkdir -p $root/ROOT/$statedir/traces";
+      $files .= "%dir %attr(777, root, root) $statedir\n";
+      $files .= "%dir %attr(777, root, root) $statedir/traces\n";
+      $build .= "mkdir -p $root/ROOT/$statedir/traces\n";
+    }
+
+    $config_file = $this->getArgument('config-file');
+    if ($config_file) {
+      $config_file = realpath($config_file);
+      $files .= "%config /etc/watchman.json\n";
+      $build .= "mkdir -p $root/ROOT/etc\n";
+      $build .= "cp $config_file $root/ROOT/etc/watchman.json\n";
     }
 
     $api = $this->getRepositoryAPI();
