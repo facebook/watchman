@@ -29,6 +29,19 @@ void cmd_get_sockname(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, resp);
 }
 
+/* get-pid */
+void cmd_get_pid(struct watchman_client *client, json_t *args)
+{
+  json_t *resp = make_response();
+
+  unused_parameter(args);
+
+  set_prop(resp, "pid", json_integer(getpid()));
+
+  send_and_dispose_response(client, resp);
+}
+
+
 /* vim:ts=2:sw=2:et:
  */
 

@@ -65,6 +65,7 @@ void cmd_unsubscribe(struct watchman_client *client, json_t *args);
 void cmd_version(struct watchman_client *client, json_t *args);
 void cmd_clock(struct watchman_client *client, json_t *args);
 void cmd_get_sockname(struct watchman_client *client, json_t *args);
+void cmd_get_pid(struct watchman_client *client, json_t *args);
 
 #ifdef __cplusplus
 }
