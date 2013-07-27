@@ -1976,6 +1976,9 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
           "none of the files listed in global config root_restrict_files are "
           "present"));
     w_log(W_LOG_ERR, "resolve_root: %s\n", *errmsg);
+    if (watch_path != filename) {
+      free(watch_path);
+    }
     return NULL;
   }
 
