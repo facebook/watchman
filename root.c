@@ -890,10 +890,30 @@ struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd)
 }
 #endif
 
-static void handle_enoent_enotdir(w_root_t *root, struct watchman_dir *dir,
+/* Opens a directory making sure it's not a symlink */
+static DIR *opendir_nofollow(const char *path)
+{
+  int fd = open(path, O_NOFOLLOW | O_CLOEXEC);
+  if (fd == -1) {
+    return NULL;
+  }
+  // errno should be set appropriately if this is not a directory
+  return fdopendir(fd);
+}
+
+// POSIX says open with O_NOFOLLOW should set errno to ELOOP if the path is a
+// symlink. However, FreeBSD (which ironically originated O_NOFOLLOW) sets it to
+// EMLINK.
+#ifdef __FreeBSD__
+#define ENOFOLLOWSYMLINK EMLINK
+#else
+#define ENOFOLLOWSYMLINK ELOOP
+#endif
+
+static void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, const char *syscall, int err)
 {
-  if (err == ENOENT || err == ENOTDIR) {
+  if (err == ENOENT || err == ENOTDIR || err == ENOFOLLOWSYMLINK) {
     w_string_t *dir_name = dir->path;
     if (w_string_equal(dir_name, root->root_path)) {
       w_log(W_LOG_ERR,
@@ -932,7 +952,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
     // occasionally, so call this unconditionally
     int newwd = inotify_add_watch(root->infd, path, WATCHMAN_INOTIFY_MASK);
     if (newwd == -1) {
-      handle_enoent_enotdir(root, dir, now, "inotify_add_watch", errno);
+      handle_open_errno(root, dir, now, "inotify_add_watch", errno);
       return;
     } else if (dir->wd != -1 && dir->wd != newwd) {
       // stale watch descriptor
@@ -954,9 +974,9 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   // events between the two
   w_log(W_LOG_DBG, "opendir(%s) recursive=%s\n",
       path, recursive ? "true" : "false");
-  osdir = opendir(path);
+  osdir = opendir_nofollow(path);
   if (!osdir) {
-    handle_enoent_enotdir(root, dir, now, "opendir", errno);
+    handle_open_errno(root, dir, now, "opendir", errno);
     return;
   }
 
@@ -972,7 +992,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
 
       if (newwd == -1) {
         // directory got deleted between opendir and open
-        handle_enoent_enotdir(root, dir, now, "open", errno);
+        handle_open_errno(root, dir, now, "open", errno);
         closedir(osdir);
         return;
       }
@@ -989,7 +1009,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       if (st.st_dev != osdirst.st_dev || st.st_ino != osdirst.st_ino) {
         // directory got replaced between opendir and open -- at this point its
         // parent's being watched, so we let filesystem events take care of it
-        handle_enoent_enotdir(root, dir, now, "open", ENOTDIR);
+        handle_open_errno(root, dir, now, "open", ENOTDIR);
         close(newwd);
         closedir(osdir);
         return;
