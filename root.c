@@ -582,8 +582,7 @@ static void schedule_recrawl(w_root_t *root, const char *why)
 }
 #endif
 
-static void stop_watching_dir(w_root_t *root,
-    struct watchman_dir *dir, bool do_close)
+static void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
 {
   w_ht_iter_t i;
 
@@ -593,7 +592,7 @@ static void stop_watching_dir(w_root_t *root,
   if (w_ht_first(dir->dirs, &i)) do {
     struct watchman_dir *child = w_ht_val_ptr(i.value);
 
-    stop_watching_dir(root, child, do_close);
+    stop_watching_dir(root, child);
   } while (w_ht_next(dir->dirs, &i));
 
 #if HAVE_PORT_CREATE
@@ -653,7 +652,7 @@ static void invalidate_watch_descriptors(w_root_t *root,
     dir->wd = -1;
   }
 #else
-  stop_watching_dir(root, dir, true);
+  stop_watching_dir(root, dir);
 #endif
 }
 
@@ -744,7 +743,7 @@ static void stat_path(w_root_t *root,
       w_root_mark_deleted(root, dir_ent, now, true);
       w_log(W_LOG_DBG, "lstat(%s) -> %s so stopping watch on %s\n",
           path, strerror(err), dir_ent->path->buf);
-      stop_watching_dir(root, dir_ent, true);
+      stop_watching_dir(root, dir_ent);
     }
     if (file) {
       w_log(W_LOG_DBG, "lstat(%s) -> %s so marking %.*s deleted\n",
@@ -906,7 +905,7 @@ static void handle_enoent_enotdir(w_root_t *root, struct watchman_dir *dir,
 
     w_log(W_LOG_DBG, "%s(%.*s) -> %s so invalidating descriptors\n",
           syscall, dir_name->len, dir_name->buf, strerror(err));
-    stop_watching_dir(root, dir, true);
+    stop_watching_dir(root, dir);
     w_root_mark_deleted(root, dir, now, true);
   }
 }
