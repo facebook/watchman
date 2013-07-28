@@ -10,6 +10,17 @@ static int live_roots = 0;
 static pthread_mutex_t root_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t spawn_lock = PTHREAD_MUTEX_INITIALIZER;
 
+#if HAVE_INOTIFY_INIT
+/* Linux-specific: stored in the wd_to_dir map to indicate that we've detected
+ * that this directory has disappeared, but that we might not yet have processed
+ * all the events leading to its disappearance.
+ *
+ * Any directory that was replaced in the wd_to_dir map with dir_pending_ignored
+ * will have its wd set to -1. This means that if another directory with the
+ * same wd shows up, it's OK to replace this with that. */
+static struct watchman_dir dir_pending_ignored;
+#endif
+
 /* small for testing, but should make this greater than the number of dirs we
  * have in our repos to avoid realloc */
 #define HINT_NUM_DIRS 128*1024
@@ -576,11 +587,6 @@ static void stop_watching_dir(w_root_t *root,
 {
   w_ht_iter_t i;
 
-#ifdef HAVE_INOTIFY_INIT
-  // Linux removes watches for us at the appropriate times
-  return;
-#endif
-
   w_log(W_LOG_DBG, "stop_watching_dir %.*s\n",
       dir->path->len, dir->path->buf);
 
@@ -601,16 +607,14 @@ static void stop_watching_dir(w_root_t *root,
 
   /* turn off watch */
 #if HAVE_INOTIFY_INIT
-  if (do_close && inotify_rm_watch(root->infd, dir->wd) != 0) {
-    w_log(W_LOG_ERR, "rm_watch: %d %.*s %s\n",
-        dir->wd, dir->path->len, dir->path->buf,
-        strerror(errno));
-    schedule_recrawl(root, "rm_watch failed");
-  }
-  w_ht_del(root->wd_to_dir, dir->wd);
-  w_log(W_LOG_DBG, "removing %d -> %.*s mapping\n",
+  // Linux removes watches for us at the appropriate times, so just mark the
+  // directory pending_ignored. At this point, dir->wd != -1 so a real directory
+  // exists in the wd_to_dir map.
+  w_ht_replace(root->wd_to_dir, dir->wd, w_ht_ptr_val(&dir_pending_ignored));
+  w_log(W_LOG_DBG, "marking %d -> %.*s as pending ignored\n",
       dir->wd, dir->path->len, dir->path->buf);
 #endif
+
 #if HAVE_KQUEUE
   {
     struct kevent k;
@@ -887,6 +891,26 @@ struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd)
 }
 #endif
 
+static void handle_enoent_enotdir(w_root_t *root, struct watchman_dir *dir,
+    struct timeval now, const char *syscall, int err)
+{
+  if (err == ENOENT || err == ENOTDIR) {
+    w_string_t *dir_name = dir->path;
+    if (w_string_equal(dir_name, root->root_path)) {
+      w_log(W_LOG_ERR,
+            "%s(%.*s) -> %s. Root was deleted; cancelling watch\n",
+            syscall, dir_name->len, dir_name->buf, strerror(err));
+      w_root_cancel(root);
+      return;
+    }
+
+    w_log(W_LOG_DBG, "%s(%.*s) -> %s so invalidating descriptors\n",
+          syscall, dir_name->len, dir_name->buf, strerror(err));
+    stop_watching_dir(root, dir, true);
+    w_root_mark_deleted(root, dir, now, true);
+  }
+}
+
 static void crawler(w_root_t *root, w_string_t *dir_name,
     struct timeval now, bool recursive)
 {
@@ -896,51 +920,81 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   struct dirent *dirent;
   w_ht_iter_t i;
   char path[WATCHMAN_NAME_MAX];
-  int err;
 
   dir = w_root_resolve_dir(root, dir_name, true);
 
   memcpy(path, dir_name->buf, dir_name->len);
   path[dir_name->len] = 0;
 
+  /* make sure we're watching this guy */
+#if HAVE_INOTIFY_INIT
+  {
+    // We've found that directories have had stale file descriptors
+    // occasionally, so call this unconditionally
+    int newwd = inotify_add_watch(root->infd, path, WATCHMAN_INOTIFY_MASK);
+    if (newwd == -1) {
+      handle_enoent_enotdir(root, dir, now, "inotify_add_watch", errno);
+      return;
+    } else if (dir->wd != -1 && dir->wd != newwd) {
+      // stale watch descriptor
+      w_log(W_LOG_ERR, "watch descriptor for %s should have been %d, is %d\n",
+          path, dir->wd, newwd);
+      schedule_recrawl(root, "stale watch descriptor found");
+      return;
+    } else if (dir->wd == -1) {
+      w_log(W_LOG_DBG, "watch_dir(%s)\n", path);
+      dir->wd = newwd;
+      // record mapping
+      w_ht_replace(root->wd_to_dir, dir->wd, w_ht_ptr_val(dir));
+      w_log(W_LOG_DBG, "adding %d -> %s mapping\n", dir->wd, path);
+    }
+  }
+#endif // HAVE_INOTIFY_INIT
+
+  // For linux, opendir should be after inotify_add_watch so that we don't miss
+  // events between the two
   w_log(W_LOG_DBG, "opendir(%s) recursive=%s\n",
       path, recursive ? "true" : "false");
   osdir = opendir(path);
   if (!osdir) {
-    err = errno;
-    if (err == ENOENT || err == ENOTDIR) {
-      if (w_string_equal(dir_name, root->root_path)) {
-        w_log(W_LOG_ERR,
-            "opendir(%s) -> %s. Root was deleted; cancelling watch\n",
-            path, strerror(err));
-        w_root_cancel(root);
-        return;
-      }
-
-      w_log(W_LOG_DBG, "opendir(%s) -> %s so stopping watch\n",
-          path, strerror(err));
-      stop_watching_dir(root, dir, true);
-      w_root_mark_deleted(root, dir, now, true);
-    }
+    handle_enoent_enotdir(root, dir, now, "opendir", errno);
     return;
   }
 
-  /* make sure we're watching this guy */
+#if !HAVE_INOTIFY_INIT
   if (dir->wd == -1) {
+    int newwd;
     w_log(W_LOG_DBG, "watch_dir(%s)\n", path);
-#if HAVE_INOTIFY_INIT
-    dir->wd = inotify_add_watch(root->infd, path,
-        WATCHMAN_INOTIFY_MASK);
-    /* record mapping */
-    if (dir->wd != -1) {
-      w_ht_replace(root->wd_to_dir, dir->wd, (w_ht_val_t)dir);
-      w_log(W_LOG_DBG, "adding %d -> %s mapping\n", dir->wd, path);
-    }
-#endif
+
 #if HAVE_KQUEUE
-    dir->wd = open(path, O_EVTONLY|O_CLOEXEC);
-    if (dir->wd != -1) {
-      struct kevent k;
+    {
+      struct stat st, osdirst;
+      newwd = open(path, O_NOFOLLOW|O_EVTONLY|O_CLOEXEC);
+
+      if (newwd == -1) {
+        // directory got deleted between opendir and open
+        handle_enoent_enotdir(root, dir, now, "open", errno);
+        closedir(osdir);
+        return;
+      }
+      if (fstat(newwd, &st) == -1 || fstat(dirfd(osdir), &osdirst) == -1) {
+        // whaaa?
+        w_log(W_LOG_ERR, "fstat on opened dir %s failed: %s\n", path,
+            strerror(errno));
+        schedule_recrawl(root, "fstat failed");
+        close(newwd);
+        closedir(osdir);
+        return;
+      }
+
+      if (st.st_dev != osdirst.st_dev || st.st_ino != osdirst.st_ino) {
+        // directory got replaced between opendir and open -- at this point its
+        // parent's being watched, so we let filesystem events take care of it
+        handle_enoent_enotdir(root, dir, now, "open", ENOTDIR);
+        close(newwd);
+        closedir(osdir);
+        return;
+      }
 
       memset(&k, 0, sizeof(k));
       EV_SET(&k, dir->wd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
@@ -950,20 +1004,23 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
 
       if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
         w_log(W_LOG_DBG, "kevent EV_ADD dir %s failed: %s",
-            path, strerror(errno));
+              path, strerror(errno));
         close(dir->wd);
         dir->wd = -1;
-      }
-    } else {
-      w_log(W_LOG_DBG, "couldn't open dir %s for watching: %s\n",
-          path, strerror(errno));
     }
-#endif
+#endif // HAVE_KQUEUE
 #if HAVE_PORT_CREATE
     {
       struct stat st;
+      if (fstat(dirfd(osdir), &st) == -1) {
+        // whaaa?
+        w_log(W_LOG_ERR, "fstat on opened dir %s failed: %s\n", path,
+            strerror(errno));
+        schedule_recrawl(root, "fstat failed");
+        closedir(osdir);
+        return;
+      }
 
-      lstat(path, &st);
       dir->port_file.fo_mtime = st.st_atim;
       dir->port_file.fo_mtime = st.st_mtim;
       dir->port_file.fo_ctime = st.st_ctim;
@@ -976,8 +1033,9 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       w_log(W_LOG_ERR, "port_associate %s %s\n",
         dir->port_file.fo_name, strerror(errno));
     }
-#endif
+#endif // HAVE_PORT_CREATE
   }
+#endif // !HAVE_INOTIFY_INIT
 
   /* flag for delete detection */
   if (w_ht_first(dir->files, &i)) do {
@@ -1558,7 +1616,16 @@ static void process_inotify_event(
     char buf[WATCHMAN_NAME_MAX];
 
     dir = w_root_resolve_dir_by_wd(root, ine->wd);
-    if (dir) {
+    if (dir == &dir_pending_ignored) {
+      if ((ine->mask & IN_IGNORED) != 0) {
+        w_log(W_LOG_DBG, "mask=%x: remove watch %d (pending ignored dir)\n",
+            ine->mask, ine->wd);
+        w_ht_del(root->wd_to_dir, ine->wd);
+      } else {
+        w_log(W_LOG_DBG, "mask=%x: pending ignored watch %d, name %.*s",
+            ine->mask, ine->wd, ine->len, ine->name);
+      }
+    } else if (dir) {
       // The hint is that it has gone away, so remove our wd mapping here.
       // We'll queue up a stat of that dir anyway so that we really know
       // the state of that path, but that has to happen /after/ we've
@@ -1649,8 +1716,8 @@ static void process_inotify_event(
       // If we can't resolve the dir, and this isn't notification
       // that it has gone away, then we want to recrawl to fix
       // up our state.
-      w_log(W_LOG_ERR, "wanted dir %d, but not found %s\n",
-          ine->wd, ine->name);
+      w_log(W_LOG_ERR, "wanted dir %d for mask %x but not found %.*s\n",
+          ine->wd, ine->mask, ine->len, ine->name);
       schedule_recrawl(root, "dir missing from internal state");
     }
   }
