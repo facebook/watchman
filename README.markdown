@@ -920,8 +920,8 @@ For commands that query based on time, watchman offers a couple of different
 ways to measure time.
 
  * number of seconds since the unix epoch (unix `time_t` style)
- * clock id of the form `c:123:234`
- * **recommended**: a named cursor of the form `n:whatever`
+ * **recommended for most users**: a named cursor of the form `n:whatever`
+ * **recommended for advanced users**: a clock id of the form `c:123:234`
 
 The first and most obvious is passing a unix timestamp.  Watchman records
 the observed time that files change and allows you to find file that have
@@ -944,7 +944,8 @@ watchman since /path/to/src n:c_srcs *.c
 
 and when you run it a second time, it will show you only the "C" source files
 that changed since the last time that someone queried using "n:c_srcs" as the
-clock spec.
+clock spec. However, it's not possible to "roll back" a named cursor, so
+advanced users desiring such functionality should use clock ids instead.
 
 ## Command Line Options
 
@@ -1012,8 +1013,10 @@ following logic:
  * If there is a .watchmanconfig and the option is present there, use that
    value.
  * If the option was specified on the command line, use that value
- * If watchman was configured using `--enable-conffile` and that file is
-   a valid JSON file, and contains the option, use that value
+ * Look at the global configuration file. By default, this is at the location
+   configured using `--enable-conffile` (default `/etc/watchman.json`), but this
+   can be overridden by setting the environment variable `WATCHMAN_CONFIG_FILE`.
+   If this file is a valid JSON file, and contains the option, use that value
  * Otherwise use an appropriate default for that option.
 
 ### Configuration Parameters
@@ -1024,6 +1027,23 @@ configuration files:
  * `settle` - specifies the settle period in *milliseconds*.  This controls
    how long the filesystem should be idle before dispatching triggers.
    The default value is 20 milliseconds.
+
+The following parameters are accepted in the global configuration file only:
+
+ * `root_restrict_files` - specifies a list of files, at least one of which
+   should be present in a directory for watchman to add it as a root. By default
+   there are no restrictions.
+
+   For example,
+
+   ```json
+   {
+     "root_restrict_files": [".git", ".hg"]
+   }
+   ```
+
+   will allow watches only in the top level of Git or Mercurial repositories.
+
 
 ## Build/Install
 
