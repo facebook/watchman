@@ -170,7 +170,8 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
     hostname[sizeof(hostname) - 1] = '\0';
 
     root->query_cookie_prefix = w_string_make_printf(
-      "%s/" WATCHMAN_COOKIE_PREFIX "%s-%d-", path, hostname, (int)getpid());
+      "%.*s/" WATCHMAN_COOKIE_PREFIX "%s-%d-", root->query_cookie_dir->len,
+      root->query_cookie_dir->buf, hostname, (int)getpid());
   }
 
   root->dirname_to_dir = w_ht_new(HINT_NUM_DIRS, &dirname_hash_funcs);
