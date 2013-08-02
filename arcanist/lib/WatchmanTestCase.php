@@ -171,10 +171,11 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
   function waitForWatchmanNoThrow(array $command, $have_data, $timeout = 10) {
     $last_output = null;
 
+    $instance = $this->watchman_instance;
     list($ok, $res) = $this->waitForNoThrow(
-      function () use ($command, $have_data, &$last_output) {
+      function () use ($instance, $command, $have_data, &$last_output) {
         $out = call_user_func_array(
-          array($this->watchman_instance, 'request'),
+          array($instance, 'request'),
           $command);
         if ($out === false) {
           // Connection terminated

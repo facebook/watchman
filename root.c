@@ -898,8 +898,13 @@ static DIR *opendir_nofollow(const char *path)
   if (fd == -1) {
     return NULL;
   }
+#ifdef __APPLE__
+  close(fd);
+  return opendir(path);
+#else
   // errno should be set appropriately if this is not a directory
   return fdopendir(fd);
+#endif
 }
 
 // POSIX says open with O_NOFOLLOW should set errno to ELOOP if the path is a
@@ -989,6 +994,8 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
 #if HAVE_KQUEUE
     {
       struct stat st, osdirst;
+      struct kevent k;
+
       newwd = open(path, O_NOFOLLOW|O_EVTONLY|O_CLOEXEC);
 
       if (newwd == -1) {
@@ -1016,6 +1023,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
         return;
       }
 
+      dir->wd = newwd;
       memset(&k, 0, sizeof(k));
       EV_SET(&k, dir->wd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
         NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME,
@@ -1027,6 +1035,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
               path, strerror(errno));
         close(dir->wd);
         dir->wd = -1;
+      }
     }
 #endif // HAVE_KQUEUE
 #if HAVE_PORT_CREATE
