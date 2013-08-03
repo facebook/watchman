@@ -114,6 +114,7 @@ struct w_query_result {
   bool is_fresh_instance;
   uint32_t num_results;
   struct watchman_rule_match *results;
+  uint32_t root_number;
   uint32_t ticks;
   char *errmsg;
 };

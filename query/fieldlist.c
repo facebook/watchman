@@ -21,7 +21,8 @@ static json_t *make_new(struct watchman_rule_match *match)
 #define MAKE_CLOCK_FIELD(name, member) \
   static json_t *make_##name(struct watchman_rule_match *match) { \
     char buf[128]; \
-    if (clock_id_string(match->file->member.ticks, buf, sizeof(buf))) { \
+    if (clock_id_string(match->root_number, match->file->member.ticks, buf, \
+                        sizeof(buf))) { \
       return json_string_nocheck(buf); \
     } \
     return NULL; \

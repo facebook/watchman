@@ -37,7 +37,8 @@ w_root_t *resolve_root_or_err(
 json_t *make_response(void);
 void annotate_with_clock(w_root_t *root, json_t *resp);
 
-bool clock_id_string(uint32_t ticks, char *buf, size_t bufsize);
+bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
+    size_t bufsize);
 
 bool parse_watch_params(int start, json_t *args,
     struct watchman_rule **head_ptr,

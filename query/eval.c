@@ -78,6 +78,7 @@ bool w_query_process_file(
 
   m = &ctx->results[ctx->num_results++];
 
+  m->root_number = ctx->root->number;
   m->relname = w_query_ctx_get_wholename(ctx);
   if (!m->relname) {
     w_log(W_LOG_ERR, "out of memory while capturing matches!\n");
@@ -346,6 +347,7 @@ bool w_query_execute(
 
   // Lock the root and begin generation
   w_root_lock(root);
+  res->root_number = root->number;
   res->ticks = root->ticks;
 
   // Evaluate the cursor for this root

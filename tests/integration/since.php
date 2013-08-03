@@ -83,6 +83,20 @@ class sinceTestCase extends WatchmanTestCase {
     );
   }
 
+  function assertFreshInstanceForSince($root, $since, $empty) {
+    $res = $this->watchmanCommand('query', $root, array(
+      'since' => $since,
+      'fields' => array('name'),
+      'empty_on_fresh_instance' => $empty,
+    ));
+    $this->assertEqual(true, $res['is_fresh_instance']);
+    if ($empty) {
+      $this->assertEqual(array(), $res['files']);
+    } else {
+      $this->assertEqual(array('111'), $res['files']);
+    }
+  }
+
   function testSinceFreshInstance() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
@@ -97,26 +111,32 @@ class sinceTestCase extends WatchmanTestCase {
     $this->assertEqual(true, $res['is_fresh_instance']);
     $this->assertEqual(array('111'), $res['files']);
 
-    // relative clock value with non-matching pid
-    $res = $this->watchmanCommand('query', $root, array(
-      'since' => 'c:1:1',
-      'fields' => array('name')
-    ));
-    $this->assertEqual(true, $res['is_fresh_instance']);
-    $this->assertEqual(array('111'), $res['files']);
+    // relative clock value, fresh instance
+    $this->assertFreshInstanceForSince($root, 'c:0:1:0:1', false);
 
-    // empty_on_fresh_instance, fresh instance
-    $res = $this->watchmanCommand('query', $root, array(
-      'since' => 'c:1:1',
-      'fields' => array('name'),
-      'empty_on_fresh_instance' => true,
-    ));
-    $this->assertEqual(true, $res['is_fresh_instance']);
-    $this->assertEqual(array(), $res['files']);
+    // old-style clock value (implies fresh instance, even if the pid is the
+    // same)
+    $pid = $this->watchman_instance->getProcessID();
+    $this->assertFreshInstanceForSince($root, "c:$pid:1", false);
+
+    // -- decompose clock and replace elements one by one
+    $clock = $this->watchmanCommand('clock', $root);
+    $clock = $clock['clock'];
+    $p = explode(':', $clock);
+    // 'c', $start_time, $pid, $root_number, $ticks
+    $this->assertEqual(5, count($p));
+
+    // replace start time
+    $this->assertFreshInstanceForSince($root, "c:0:$p[2]:$p[3]:$p[4]", false);
+
+    // replace pid
+    $this->assertFreshInstanceForSince($root, "c:$p[1]:1:$p[3]:$p[4]", false);
+
+    // replace root number (also try empty_on_fresh_instance)
+    $this->assertFreshInstanceForSince($root, "c:$p[1]:$p[2]:0:$p[4]", true);
 
     // empty_on_fresh_instance, not a fresh instance
     touch("$root/222");
-    $clock = $res['clock'];
 
     $res = $this->watchmanCommand('query', $root, array(
       'since' => $clock,
@@ -129,7 +149,35 @@ class sinceTestCase extends WatchmanTestCase {
     // fresh instance results should omit deleted files
     unlink("$root/111");
     $res = $this->watchmanCommand('query', $root, array(
-      'since' => 'c:1:1',
+      'since' => 'c:0:1:0:1',
+      'fields' => array('name')
+    ));
+    $this->assertEqual(true, $res['is_fresh_instance']);
+    $this->assertEqual(array('222'), $res['files']);
+  }
+
+  function testReaddWatchFreshInstance() {
+    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $root = realpath($dir->getPath());
+    $watch = $this->watch($root);
+    $this->assertFileList($root, array());
+    touch("$root/111");
+
+    $res = $this->watchmanCommand('query', $root, array(
+      'fields' => array('name')
+    ));
+    $this->assertEqual(true, $res['is_fresh_instance']);
+    $this->assertEqual(array('111'), $res['files']);
+
+    $clock = $res['clock'];
+    unlink("$root/111");
+    $this->watchmanCommand('watch-del', $root);
+    $res = $this->watchmanCommand('watch', $root);
+    $this->assertEqual(NULL, idx($res, 'error'));
+    touch("$root/222");
+
+    $res = $this->watchmanCommand('query', $root, array(
+      'since' => $clock,
       'fields' => array('name')
     ));
     $this->assertEqual(true, $res['is_fresh_instance']);

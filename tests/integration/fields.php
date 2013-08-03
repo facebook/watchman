@@ -54,8 +54,10 @@ class fieldsTestCase extends WatchmanTestCase {
                                $file[$field . '_ns'], $file[$field . '_f']);
     }
 
-    $this->assertRegex('/^c:\d+:\d+$/', $file['cclock'], "cclock looks clocky");
-    $this->assertRegex('/^c:\d+:\d+$/', $file['oclock'], "oclock looks clocky");
+    $this->assertRegex('/^c:\d+:\d+:\d+:\d+$/', $file['cclock'],
+                       "cclock looks clocky");
+    $this->assertRegex('/^c:\d+:\d+:\d+:\d+$/', $file['oclock'],
+                       "oclock looks clocky");
   }
 }
 

@@ -10,6 +10,10 @@ static int live_roots = 0;
 static pthread_mutex_t root_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t spawn_lock = PTHREAD_MUTEX_INITIALIZER;
 
+// Each root gets a number that uniquely identifies it within the process. This
+// helps avoid confusion if a root is removed and then added again.
+static uint32_t next_root_number = 1;
+
 #if HAVE_INOTIFY_INIT
 /* Linux-specific: stored in the wd_to_dir map to indicate that we've detected
  * that this directory has disappeared, but that we might not yet have processed
@@ -120,6 +124,7 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   assert(root != NULL);
 
   root->refcnt = 1;
+  root->number = __sync_fetch_and_add(&next_root_number, 1);
   w_refcnt_add(&live_roots);
   pthread_mutexattr_init(&attr);
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);

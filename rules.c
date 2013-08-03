@@ -147,6 +147,7 @@ uint32_t w_rules_match(w_root_t *root,
         return 0;
       }
 
+      m->root_number = root->number;
       m->relname = relname;
       m->file = file;
       if (since->is_timestamp) {

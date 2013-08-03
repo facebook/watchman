@@ -232,6 +232,9 @@ struct watchman_root {
 #endif
   int refcnt;
 
+  /* root number */
+  uint32_t number;
+
   /* path to root */
   w_string_t *root_path;
 
@@ -468,6 +471,7 @@ void w_root_unlock(w_root_t *root);
 uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);
 
 struct watchman_rule_match {
+  uint32_t root_number;
   w_string_t *relname;
   bool is_new;
   struct watchman_file *file;
@@ -484,7 +488,9 @@ struct w_clockspec {
   union {
     struct timeval timestamp;
     struct {
+      uint64_t start_time;
       int pid;
+      uint32_t root_number;
       uint32_t ticks;
     } clock;
     struct {
@@ -664,7 +670,7 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
 void usage(struct watchman_getopt *opts, FILE *where);
 
 void w_query_since_init(struct w_query_since *since, uint32_t ticks);
-struct w_clockspec *w_clockspec_new_clock(uint32_t ticks);
+struct w_clockspec *w_clockspec_new_clock(uint32_t root_number, uint32_t ticks);
 struct w_clockspec *w_clockspec_parse(json_t *value);
 void w_clockspec_eval(w_root_t *root,
     const struct w_clockspec *spec,

@@ -10,7 +10,8 @@ class clockTestCase extends WatchmanTestCase {
     $watch = $this->watch($root);
     $clock = $this->watchmanCommand('clock', $root);
 
-    $this->assertRegex('/^c:\d+:\d+$/', $clock['clock'], "looks clocky");
+    $this->assertRegex('/^c:\d+:\d+:\d+:\d+$/', $clock['clock'],
+                       "looks clocky");
   }
 }
 

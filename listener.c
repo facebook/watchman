@@ -25,10 +25,13 @@ json_t *make_response(void)
 }
 
 static int proc_pid;
+static uint64_t proc_start_time;
 
-bool clock_id_string(uint32_t ticks, char *buf, size_t bufsize)
+bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
+    size_t bufsize)
 {
-  int res = snprintf(buf, bufsize, "c:%d:%" PRIu32, proc_pid, ticks);
+  int res = snprintf(buf, bufsize, "c:%" PRIu64 ":%" PRIu32 ":%d:%" PRIu32,
+                     proc_start_time, proc_pid, root_number, ticks);
 
   if (res == -1) {
     return false;
@@ -41,7 +44,7 @@ bool clock_id_string(uint32_t ticks, char *buf, size_t bufsize)
 static bool current_clock_id_string(w_root_t *root,
     char *buf, size_t bufsize)
 {
-  return clock_id_string(root->ticks, buf, bufsize);
+  return clock_id_string(root->number, root->ticks, buf, bufsize);
 }
 
 /* Add the current clock value to the response.
@@ -165,7 +168,7 @@ void w_query_since_init(struct w_query_since *since, uint32_t ticks)
   since->clock.ticks = ticks;
 }
 
-struct w_clockspec *w_clockspec_new_clock(uint32_t ticks)
+struct w_clockspec *w_clockspec_new_clock(uint32_t root_number, uint32_t ticks)
 {
   struct w_clockspec *spec;
   spec = calloc(1, sizeof(*spec));
@@ -173,7 +176,9 @@ struct w_clockspec *w_clockspec_new_clock(uint32_t ticks)
     return NULL;
   }
   spec->tag = w_cs_clock;
+  spec->clock.start_time = proc_start_time;
   spec->clock.pid = proc_pid;
+  spec->clock.root_number = root_number;
   spec->clock.ticks = ticks;
   return spec;
 }
@@ -181,7 +186,9 @@ struct w_clockspec *w_clockspec_new_clock(uint32_t ticks)
 struct w_clockspec *w_clockspec_parse(json_t *value)
 {
   const char *str;
+  uint64_t start_time;
   int pid;
+  uint32_t root_number;
   uint32_t ticks;
 
   struct w_clockspec *spec;
@@ -211,9 +218,23 @@ struct w_clockspec *w_clockspec_parse(json_t *value)
     return spec;
   }
 
-  if (sscanf(str, "c:%d:%" PRIu32, &pid, &ticks) == 2) {
+  if (sscanf(str, "c:%" PRIu64 ":%" PRIu32 ":%d:%" PRIu32,
+             &start_time, &pid, &root_number, &ticks) == 4) {
     spec->tag = w_cs_clock;
+    spec->clock.start_time = start_time;
     spec->clock.pid = pid;
+    spec->clock.root_number = root_number;
+    spec->clock.ticks = ticks;
+    return spec;
+  }
+
+  if (sscanf(str, "c:%d:%" PRIu32, &pid, &ticks) == 2) {
+    // old-style clock value (<= 2.8.2) -- by setting clock time and root number
+    // to 0 we guarantee that this is treated as a fresh instance
+    spec->tag = w_cs_clock;
+    spec->clock.start_time = 0;
+    spec->clock.pid = pid;
+    spec->clock.root_number = root_number;
     spec->clock.ticks = ticks;
     return spec;
   }
@@ -270,7 +291,9 @@ void w_clockspec_eval(w_root_t *root,
   }
 
   // spec->tag == w_cs_clock
-  if (spec->clock.pid == proc_pid) {
+  if (spec->clock.start_time == proc_start_time &&
+      spec->clock.pid == proc_pid &&
+      spec->clock.root_number == root->number) {
     since->clock.is_fresh_instance = false;
     since->clock.ticks = spec->clock.ticks;
     if (spec->clock.ticks == root->ticks) {
@@ -282,9 +305,9 @@ void w_clockspec_eval(w_root_t *root,
     return;
   }
 
-  // If the pid doesn't match, they asked a different
-  // incarnation of the server, so we treat them as having
-  // never spoken to us before
+  // If the pid, start time or root number don't match, they asked a different
+  // incarnation of the server or a different instance of this root, so we treat
+  // them as having never spoken to us before
   since->clock.is_fresh_instance = true;
   since->clock.ticks = 0;
 }
@@ -347,11 +370,13 @@ json_t *w_match_results_to_json(
       set_prop(record, "nlink", json_integer(file->st.st_nlink));
       set_prop(record, "new", json_boolean(matches[i].is_new));
 
-      if (clock_id_string(file->ctime.ticks, buf, sizeof(buf))) {
+      if (clock_id_string(matches[i].root_number, file->ctime.ticks, buf,
+                          sizeof(buf))) {
         set_prop(record, "cclock", json_string_nocheck(buf));
       }
     }
-    if (clock_id_string(file->otime.ticks, buf, sizeof(buf))) {
+    if (clock_id_string(matches[i].root_number, file->otime.ticks, buf,
+                        sizeof(buf))) {
       set_prop(record, "oclock", json_string_nocheck(buf));
     }
 
@@ -662,6 +687,7 @@ bool w_start_listener(const char *path)
 #ifdef HAVE_LIBGIMLI_H
   volatile struct gimli_heartbeat *hb = NULL;
 #endif
+  struct timeval tv;
 
   pthread_mutexattr_init(&mattr);
   pthread_mutexattr_settype(&mattr, PTHREAD_MUTEX_RECURSIVE);
@@ -721,6 +747,11 @@ bool w_start_listener(const char *path)
 #endif
 
   proc_pid = (int)getpid();
+  if (gettimeofday(&tv, NULL) == -1) {
+    w_log(W_LOG_ERR, "gettimeofday failed: %s\n", strerror(errno));
+    return false;
+  }
+  proc_start_time = (uint64_t)tv.tv_sec;
 
   if (strlen(path) >= sizeof(un.sun_path) - 1) {
     w_log(W_LOG_ERR, "%s: path is too long\n",

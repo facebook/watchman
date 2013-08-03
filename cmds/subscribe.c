@@ -77,10 +77,11 @@ static json_t *build_subscription_results(
   // not a relative clock spec, and it's only going to happen on the first run
   // anyway, so just skip doing that entirely.
   if (since_spec && since_spec->tag == w_cs_clock &&
-      clock_id_string(since_spec->clock.ticks, clockbuf, sizeof(clockbuf))) {
+      clock_id_string(since_spec->clock.root_number, since_spec->clock.ticks,
+                      clockbuf, sizeof(clockbuf))) {
     set_prop(response, "since", json_string_nocheck(clockbuf));
   }
-  if (clock_id_string(res.ticks, clockbuf, sizeof(clockbuf))) {
+  if (clock_id_string(res.root_number, res.ticks, clockbuf, sizeof(clockbuf))) {
     set_prop(response, "clock", json_string_nocheck(clockbuf));
   }
   // create a new spec that will be used the next time
@@ -88,7 +89,7 @@ static json_t *build_subscription_results(
     w_clockspec_free(since_spec);
     since_spec = NULL;
   }
-  sub->query->since_spec = w_clockspec_new_clock(res.ticks);
+  sub->query->since_spec = w_clockspec_new_clock(res.root_number, res.ticks);
 
   set_prop(response, "files", file_list);
   set_prop(response, "root", json_string(root->root_path->buf));
