@@ -86,15 +86,12 @@ bool w_query_process_file(
   w_string_addref(m->relname);
 
   m->file = file;
-  m->is_new = false;
-  if (query->since_spec) {
-    if (ctx->since.is_timestamp) {
-      m->is_new = w_timeval_compare(ctx->since.timestamp, file->ctime.tv) > 0;
-    } else if (ctx->since.clock.is_fresh_instance) {
-      m->is_new = true;
-    } else {
-      m->is_new = file->ctime.ticks > ctx->since.clock.ticks;
-    }
+  if (ctx->since.is_timestamp) {
+    m->is_new = w_timeval_compare(ctx->since.timestamp, file->ctime.tv) > 0;
+  } else if (ctx->since.clock.is_fresh_instance) {
+    m->is_new = true;
+  } else {
+    m->is_new = file->ctime.ticks > ctx->since.clock.ticks;
   }
 
   return true;
@@ -269,13 +266,16 @@ static bool default_generators(
     struct w_query_ctx *ctx,
     void *gendata)
 {
+  bool generated = false;
+
   unused_parameter(gendata);
 
   // Time based query
-  if (query->since_spec) {
+  if (ctx->since.is_timestamp || !ctx->since.clock.is_fresh_instance) {
     if (!time_generator(query, root, ctx)) {
       return false;
     }
+    generated = true;
   }
 
   // Suffix
@@ -283,17 +283,19 @@ static bool default_generators(
     if (!suffix_generator(query, root, ctx)) {
       return false;
     }
+    generated = true;
   }
 
   if (query->npaths) {
     if (!path_generator(query, root, ctx)) {
       return false;
     }
+    generated = true;
   }
 
   // And finally, if there were no other generators, we walk all known
   // files
-  if (query->all_files) {
+  if (!generated) {
     if (!all_files_generator(query, root, ctx)) {
       return false;
     }
@@ -346,10 +348,8 @@ bool w_query_execute(
   w_root_lock(root);
   res->ticks = root->ticks;
 
-  if (query->since_spec) {
-    // Evaluate the cursor for this root
-    w_clockspec_eval(root, query->since_spec, &ctx.since);
-  }
+  // Evaluate the cursor for this root
+  w_clockspec_eval(root, query->since_spec, &ctx.since);
 
   if (!ctx.since.is_timestamp && ctx.since.clock.is_fresh_instance) {
     res->is_fresh_instance = true;

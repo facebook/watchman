@@ -50,11 +50,6 @@ struct w_query_expr {
 struct w_query {
   int refcnt;
 
-  // Indicates that we generate for all files.
-  // This is only set iff there are no other
-  // generators
-  bool all_files;
-
   struct w_query_path *paths;
   uint32_t npaths;
 

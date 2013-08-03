@@ -149,15 +149,12 @@ uint32_t w_rules_match(w_root_t *root,
 
       m->relname = relname;
       m->file = file;
-      m->is_new = false;
-      if (since) {
-        if (since->is_timestamp) {
-          m->is_new = w_timeval_compare(since->timestamp, file->ctime.tv) > 0;
-        } else if (since->clock.is_fresh_instance) {
-          m->is_new = true;
-        } else {
-          m->is_new = file->ctime.ticks > since->clock.ticks;
-        }
+      if (since->is_timestamp) {
+        m->is_new = w_timeval_compare(since->timestamp, file->ctime.tv) > 0;
+      } else if (since->clock.is_fresh_instance) {
+        m->is_new = true;
+      } else {
+        m->is_new = file->ctime.ticks > since->clock.ticks;
       }
     } else {
       w_string_delref(relname);

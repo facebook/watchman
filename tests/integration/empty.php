@@ -36,6 +36,7 @@ class emptyExistsTestCase extends WatchmanTestCase {
       $exists
     );
 
+    $clock = $results['clock'];
     unlink("$root/empty");
 
     // Wait for change to be observed
@@ -52,7 +53,9 @@ class emptyExistsTestCase extends WatchmanTestCase {
       $results['files'][0]['name']
     );
 
+    // "files that don't exist" without a since term is absurd, so pass that in
     $results = $this->watchmanCommand('query', $root, array(
+      'since' => $clock,
       'expression' => array('not', 'exists')
     ));
 

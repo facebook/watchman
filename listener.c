@@ -223,10 +223,18 @@ struct w_clockspec *w_clockspec_parse(json_t *value)
 }
 
 // must be called with the root locked
+// spec can be null, in which case a fresh instance is assumed
 void w_clockspec_eval(w_root_t *root,
     const struct w_clockspec *spec,
     struct w_query_since *since)
 {
+  if (spec == NULL) {
+    since->is_timestamp = false;
+    since->clock.is_fresh_instance = true;
+    since->clock.ticks = 0;
+    return;
+  }
+
   if (spec->tag == w_cs_timestamp) {
     // just copy the values over
     since->is_timestamp = true;

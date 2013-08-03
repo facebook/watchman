@@ -147,7 +147,8 @@ the expression evaluator.
 Watchman provides 4 generators:
 
  * **since**: generates a list of files that were modified since a specific
-   clockspec
+   clockspec. If this is not specified, this will be treated the same as if a
+   clockspec from a different instance of watchman was passed in.
  * **suffix**: generates a list of files that have a particular suffix
  * **path**: generates a list of files based on their path and depth
  * **all**: generates a list of all known files
@@ -342,7 +343,9 @@ Evaluates as true if the specified time property of the file is greater than
 the since value.  Note that this is not the same as the `since` generator; when
 used as an expression term we are performing a straight clockspec comparison.
 When used as a generator, candidate files are selected based on the `since`
-time index.  The end result is typically the same but the efficiency can vary
+time index.  The end result might or might not be the same --- in particular, if
+the `since` time index is not passed in, it will be treated the same as a fresh
+instance, and only files that exist will be returned. The efficiency can vary
 based on the size and shape of the file tree that you are watching; it may be
 cheaper to generate the candidate set of files by suffix and then check the
 modification time if many files were changed since your last query.

@@ -90,6 +90,13 @@ class sinceTestCase extends WatchmanTestCase {
     $this->assertFileList($root, array());
     touch("$root/111");
 
+    // no 'since' automatically means fresh instance
+    $res = $this->watchmanCommand('query', $root, array(
+      'fields' => array('name'),
+    ));
+    $this->assertEqual(true, $res['is_fresh_instance']);
+    $this->assertEqual(array('111'), $res['files']);
+
     // relative clock value with non-matching pid
     $res = $this->watchmanCommand('query', $root, array(
       'since' => 'c:1:1',

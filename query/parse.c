@@ -280,11 +280,6 @@ w_query *w_query_parse(json_t *query, char **errmsg)
     goto error;
   }
 
-  if (res->npaths + res->nsuffixes == 0 && !res->since_spec) {
-    // No generators specified, so we'll visist all files
-    res->all_files = true;
-  }
-
   return res;
 error:
   if (res) {
