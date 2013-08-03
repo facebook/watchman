@@ -1284,7 +1284,7 @@ void w_mark_dead(pid_t pid)
     struct watchman_file *f, *oldest = NULL;
     struct watchman_rule_match *results = NULL;
     uint32_t matches;
-    struct w_clockspec_query since;
+    struct w_query_since since;
 
     cmd = w_ht_val_ptr(iter.value);
     if (cmd->current_proc != pid) {
@@ -1297,8 +1297,7 @@ void w_mark_dead(pid_t pid)
       break;
     }
 
-    since.is_timestamp = false;
-    since.ticks = cmd->dispatch_tick;
+    w_query_since_init(&since, cmd->dispatch_tick);
 
     /* now we need to figure out if more updates came
      * in while we were running */
@@ -1419,7 +1418,7 @@ static void process_triggers(w_root_t *root)
   struct watchman_rule_match *results = NULL;
   uint32_t matches;
   w_ht_iter_t iter;
-  struct w_clockspec_query since;
+  struct w_query_since since;
 
   if (root->last_trigger_tick == root->pending_trigger_tick) {
     return;
@@ -1439,9 +1438,7 @@ static void process_triggers(w_root_t *root)
       root->pending_trigger_tick);
 
   oldest = find_oldest_with_tick(root, root->last_trigger_tick);
-
-  since.is_timestamp = false;
-  since.ticks = root->last_trigger_tick;
+  w_query_since_init(&since, root->last_trigger_tick);
 
   /* walk the list of triggers, and run their rules */
   if (w_ht_first(root->commands, &iter)) do {

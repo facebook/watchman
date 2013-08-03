@@ -61,7 +61,7 @@ uint32_t w_rules_match(w_root_t *root,
     struct watchman_file *oldest_file,
     struct watchman_rule_match **results,
     struct watchman_rule *head,
-    struct w_clockspec_query *since)
+    struct w_query_since *since)
 {
   struct watchman_file *file;
   struct watchman_rule *rule;
@@ -150,9 +150,9 @@ uint32_t w_rules_match(w_root_t *root,
       m->relname = relname;
       m->file = file;
       if (since && !since->is_timestamp) {
-        m->is_new = file->ctime.ticks > since->ticks;
+        m->is_new = file->ctime.ticks > since->clock.ticks;
       } else if (since) {
-        m->is_new = w_timeval_compare(since->tv, file->ctime.tv) > 0;
+        m->is_new = w_timeval_compare(since->timestamp, file->ctime.tv) > 0;
       } else {
         m->is_new = false;
       }
@@ -179,7 +179,7 @@ void w_match_results_free(uint32_t num_matches,
 
 void run_rules(struct watchman_client *client,
     w_root_t *root,
-    struct w_clockspec_query *since,
+    struct w_query_since *since,
     struct watchman_rule *rules)
 {
   uint32_t matches;
@@ -196,10 +196,10 @@ void run_rules(struct watchman_client *client,
   for (f = root->latest_file; f; f = f->next) {
     if (since) {
       if (since->is_timestamp &&
-          w_timeval_compare(f->otime.tv, since->tv) < 0) {
+          w_timeval_compare(f->otime.tv, since->timestamp) < 0) {
         break;
       }
-      if (!since->is_timestamp && f->otime.ticks < since->ticks) {
+      if (!since->is_timestamp && f->otime.ticks < since->clock.ticks) {
         break;
       }
     }

@@ -63,16 +63,17 @@ w_query_expr *w_query_expr_parse(w_query *query, json_t *exp)
 static bool parse_since(w_query *res, json_t *query)
 {
   json_t *since;
+  struct w_clockspec *spec;
 
   since = json_object_get(query, "since");
   if (!since) {
     return true;
   }
 
-  if (json_is_integer(since) || json_is_string(since)) {
-    /* copy the reference; we'll evaluate it at execution time */
-    res->since = since;
-    json_incref(since);
+  spec = w_clockspec_parse(since);
+  if (spec) {
+    // res owns the ref to spec
+    res->since_spec = spec;
     return true;
   }
 
@@ -279,7 +280,7 @@ w_query *w_query_parse(json_t *query, char **errmsg)
     goto error;
   }
 
-  if (res->npaths + res->nsuffixes == 0 && !res->since) {
+  if (res->npaths + res->nsuffixes == 0 && !res->since_spec) {
     // No generators specified, so we'll visist all files
     res->all_files = true;
   }
@@ -460,8 +461,8 @@ void w_query_delref(w_query *query)
   }
   free(query->paths);
 
-  if (query->since) {
-    json_decref(query->since);
+  if (query->since_spec) {
+    w_clockspec_free(query->since_spec);
   }
 
   if (query->expr) {

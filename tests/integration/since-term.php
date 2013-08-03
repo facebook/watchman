@@ -71,6 +71,17 @@ class SinceExprTestCase extends WatchmanTestCase {
       'fields' => array('name'),
     ));
     $this->assertEqual(array('foo.c'), $res['files']);
+
+    // try with a fresh clock instance -- make sure that this only returns
+    // files that exist
+    unlink("$root/subdir/bar.txt");
+    $res = $this->watchmanCommand('query', $root, array(
+      'expression' => array('since', 'c:1:1'),
+      'fields' => array('name')
+    ));
+    $files = $res['files'];
+    sort($files);
+    $this->assertEqual(array('foo.c', 'subdir'), $files);
   }
 }
 

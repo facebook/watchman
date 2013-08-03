@@ -473,11 +473,35 @@ struct watchman_rule_match {
   struct watchman_file *file;
 };
 
-struct w_clockspec_query {
+enum w_clockspec_tag {
+  w_cs_timestamp,
+  w_cs_clock,
+  w_cs_named_cursor
+};
+
+struct w_clockspec {
+  enum w_clockspec_tag tag;
+  union {
+    struct timeval timestamp;
+    struct {
+      int pid;
+      uint32_t ticks;
+    } clock;
+    struct {
+      w_string_t *cursor;
+    } named_cursor;
+  };
+};
+
+struct w_query_since {
   bool is_timestamp;
-  bool is_fresh_instance;
-  struct timeval tv;
-  uint32_t ticks;
+  union {
+    struct timeval timestamp;
+    struct {
+      bool is_fresh_instance;
+      uint32_t ticks;
+    } clock;
+  };
 };
 
 
@@ -485,7 +509,7 @@ uint32_t w_rules_match(w_root_t *root,
     struct watchman_file *oldest_file,
     struct watchman_rule_match **results,
     struct watchman_rule *head,
-    struct w_clockspec_query *since);
+    struct w_query_since *since);
 void w_run_subscription_rules(
     struct watchman_client *client,
     struct watchman_client_subscription *sub,
@@ -639,10 +663,13 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
     char ***daemon_argv);
 void usage(struct watchman_getopt *opts, FILE *where);
 
-bool w_parse_clockspec(w_root_t *root,
-    json_t *value,
-    struct w_clockspec_query *since,
-    bool allow_cursor);
+void w_query_since_init(struct w_query_since *since, uint32_t ticks);
+struct w_clockspec *w_clockspec_new_clock(uint32_t ticks);
+struct w_clockspec *w_clockspec_parse(json_t *value);
+void w_clockspec_eval(w_root_t *root,
+    const struct w_clockspec *spec,
+    struct w_query_since *since);
+void w_clockspec_free(struct w_clockspec *spec);
 
 const char *get_sock_name(void);
 
@@ -667,7 +694,6 @@ struct watchman_client_subscription {
   w_root_t *root;
   w_string_t *name;
   w_query *query;
-  struct w_clockspec_query since;
   struct w_query_field_list field_list;
 };
 

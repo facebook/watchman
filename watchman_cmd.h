@@ -45,7 +45,7 @@ bool parse_watch_params(int start, json_t *args,
     char *errbuf, int errbuflen);
 void run_rules(struct watchman_client *client,
     w_root_t *root,
-    struct w_clockspec_query *since,
+    struct w_query_since *since,
     struct watchman_rule *rules);
 
 

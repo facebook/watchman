@@ -49,7 +49,8 @@ bool w_query_process_file(
   ctx->file = file;
 
   // For fresh instances, only return files that currently exist.
-  if (ctx->since.is_fresh_instance && !file->exists) {
+  if (!ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance &&
+      !file->exists) {
     return true;
   }
 
@@ -86,11 +87,11 @@ bool w_query_process_file(
 
   m->file = file;
   m->is_new = false;
-  if (query->since) {
+  if (query->since_spec) {
     if (!ctx->since.is_timestamp) {
-      m->is_new = file->ctime.ticks > ctx->since.ticks;
+      m->is_new = file->ctime.ticks > ctx->since.clock.ticks;
     } else {
-      m->is_new = w_timeval_compare(ctx->since.tv, file->ctime.tv) > 0;
+      m->is_new = w_timeval_compare(ctx->since.timestamp, file->ctime.tv) > 0;
     }
   }
 
@@ -107,11 +108,11 @@ static bool time_generator(
   // Walk back in time until we hit the boundary
   for (f = root->latest_file; f; f = f->next) {
     if (ctx->since.is_timestamp &&
-        w_timeval_compare(f->otime.tv, ctx->since.tv) < 0) {
+        w_timeval_compare(f->otime.tv, ctx->since.timestamp) < 0) {
       break;
     }
     if (!ctx->since.is_timestamp &&
-        f->otime.ticks < ctx->since.ticks) {
+        f->otime.ticks < ctx->since.clock.ticks) {
       break;
     }
 
@@ -269,7 +270,7 @@ static bool default_generators(
   unused_parameter(gendata);
 
   // Time based query
-  if (query->since) {
+  if (query->since_spec) {
     if (!time_generator(query, root, ctx)) {
       return false;
     }
@@ -339,20 +340,20 @@ bool w_query_execute(
    * both emit the same file.
    */
 
-  // Evaluate the cursor; this may establish a lock on root
-  if (query->since) {
-    w_parse_clockspec(root, query->since, &ctx.since, true);
-  }
-
-  // Now we can lock the root and begin generation
+  // Lock the root and begin generation
   w_root_lock(root);
   res->ticks = root->ticks;
 
-  if (ctx.since.is_fresh_instance) {
+  if (query->since_spec) {
+    // Evaluate the cursor for this root
+    w_clockspec_eval(root, query->since_spec, &ctx.since);
+  }
+
+  if (!ctx.since.is_timestamp && ctx.since.clock.is_fresh_instance) {
     res->is_fresh_instance = true;
   }
 
-  if (!(ctx.since.is_fresh_instance && query->empty_on_fresh_instance)) {
+  if (!(res->is_fresh_instance && query->empty_on_fresh_instance)) {
     if (!generator) {
       generator = default_generators;
     }

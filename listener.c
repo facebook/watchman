@@ -24,10 +24,11 @@ json_t *make_response(void)
   return resp;
 }
 
+static int proc_pid;
+
 bool clock_id_string(uint32_t ticks, char *buf, size_t bufsize)
 {
-  int res = snprintf(buf, bufsize, "c:%d:%" PRIu32,
-              (int)getpid(), ticks);
+  int res = snprintf(buf, bufsize, "c:%d:%" PRIu32, proc_pid, ticks);
 
   if (res == -1) {
     return false;
@@ -156,40 +157,95 @@ static const struct watchman_hash_funcs subscription_hash_funcs = {
   delete_subscription
 };
 
-// may attempt to lock the root!
-bool w_parse_clockspec(w_root_t *root,
-    json_t *value,
-    struct w_clockspec_query *since,
-    bool allow_cursor)
+// Assumes that this is not a fresh instance
+void w_query_since_init(struct w_query_since *since, uint32_t ticks)
+{
+  since->is_timestamp = false;
+  since->clock.is_fresh_instance = false;
+  since->clock.ticks = ticks;
+}
+
+struct w_clockspec *w_clockspec_new_clock(uint32_t ticks)
+{
+  struct w_clockspec *spec;
+  spec = calloc(1, sizeof(*spec));
+  if (!spec) {
+    return NULL;
+  }
+  spec->tag = w_cs_clock;
+  spec->clock.pid = proc_pid;
+  spec->clock.ticks = ticks;
+  return spec;
+}
+
+struct w_clockspec *w_clockspec_parse(json_t *value)
 {
   const char *str;
   int pid;
+  uint32_t ticks;
+
+  struct w_clockspec *spec;
+
+  spec = calloc(1, sizeof(*spec));
+  if (!spec) {
+    return NULL;
+  }
 
   if (json_is_integer(value)) {
-    since->is_timestamp = true;
-    since->tv.tv_usec = 0;
-    since->tv.tv_sec = json_integer_value(value);
-    return true;
+    spec->tag = w_cs_timestamp;
+    spec->timestamp.tv_usec = 0;
+    spec->timestamp.tv_sec = json_integer_value(value);
+    return spec;
   }
 
   str = json_string_value(value);
   if (!str) {
-    return false;
+    free(spec);
+    return NULL;
   }
 
-  if (allow_cursor && root && str[0] == 'n' && str[1] == ':') {
-    w_string_t *name = w_string_new(str);
+  if (str[0] == 'n' && str[1] == ':') {
+    spec->tag = w_cs_named_cursor;
+    // spec owns the ref to the string
+    spec->named_cursor.cursor = w_string_new(str);
+    return spec;
+  }
+
+  if (sscanf(str, "c:%d:%" PRIu32, &pid, &ticks) == 2) {
+    spec->tag = w_cs_clock;
+    spec->clock.pid = pid;
+    spec->clock.ticks = ticks;
+    return spec;
+  }
+
+  free(spec);
+  return NULL;
+}
+
+// must be called with the root locked
+void w_clockspec_eval(w_root_t *root,
+    const struct w_clockspec *spec,
+    struct w_query_since *since)
+{
+  if (spec->tag == w_cs_timestamp) {
+    // just copy the values over
+    since->is_timestamp = true;
+    since->timestamp = spec->timestamp;
+    return;
+  }
+
+  since->is_timestamp = false;
+
+  if (spec->tag == w_cs_named_cursor) {
     w_ht_val_t ticks_val;
-
-    since->is_timestamp = false;
-    w_root_lock(root);
-
-    since->is_fresh_instance = !w_ht_lookup(root->cursors, w_ht_ptr_val(name),
-                                            &ticks_val, false);
-    if (since->is_fresh_instance) {
-      since->ticks = 0;
+    w_string_t *cursor = spec->named_cursor.cursor;
+    since->clock.is_fresh_instance = !w_ht_lookup(root->cursors,
+                                                  w_ht_ptr_val(cursor),
+                                                  &ticks_val, false);
+    if (since->clock.is_fresh_instance) {
+      since->clock.ticks = 0;
     } else {
-      since->ticks = (uint32_t)ticks_val;
+      since->clock.ticks = (uint32_t)ticks_val;
     }
 
     // Bump the tick value and record it against the cursor.
@@ -198,39 +254,39 @@ bool w_parse_clockspec(w_root_t *root,
     // to return the same set of files; we only want the first
     // of these to return the files and the rest to return nothing
     // until something subsequently changes
-    w_ht_replace(root->cursors, w_ht_ptr_val(name), ++root->ticks);
+    w_ht_replace(root->cursors, w_ht_ptr_val(cursor), ++root->ticks);
 
-    w_log(W_LOG_DBG, "resolved cursor %s -> %" PRIu32 "\n",
-        str, since->ticks);
-
-    w_string_delref(name);
-
-    w_root_unlock(root);
-    return true;
+    w_log(W_LOG_DBG, "resolved cursor %.*s -> %" PRIu32 "\n",
+        cursor->len, cursor->buf, since->clock.ticks);
+    return;
   }
 
-  if (sscanf(str, "c:%d:%" PRIu32, &pid, &since->ticks) == 2) {
-    since->is_timestamp = false;
-    if (pid == getpid()) {
-      if (root && since->ticks == root->ticks) {
-        /* Force ticks to increment.  This avoids returning and querying the
-         * same tick value over and over when no files have changed in the
-         * meantime */
-        w_root_lock(root);
-        root->ticks++;
-        w_root_unlock(root);
-      }
-      return true;
+  // spec->tag == w_cs_clock
+  if (spec->clock.pid == proc_pid) {
+    since->clock.is_fresh_instance = false;
+    since->clock.ticks = spec->clock.ticks;
+    if (spec->clock.ticks == root->ticks) {
+      /* Force ticks to increment.  This avoids returning and querying the
+       * same tick value over and over when no files have changed in the
+       * meantime */
+      root->ticks++;
     }
-    // If the pid doesn't match, they asked a different
-    // incarnation of the server, so we treat them as having
-    // never spoken to us before
-    since->is_fresh_instance = true;
-    since->ticks = 0;
-    return true;
+    return;
   }
 
-  return false;
+  // If the pid doesn't match, they asked a different
+  // incarnation of the server, so we treat them as having
+  // never spoken to us before
+  since->clock.is_fresh_instance = true;
+  since->clock.ticks = 0;
+}
+
+void w_clockspec_free(struct w_clockspec *spec)
+{
+  if (spec->tag == w_cs_named_cursor) {
+    w_string_delref(spec->named_cursor.cursor);
+  }
+  free(spec);
 }
 
 json_t *w_match_results_to_json(
@@ -658,6 +714,8 @@ bool w_start_listener(const char *path)
     }
   }
 #endif
+
+  proc_pid = (int)getpid();
 
   if (strlen(path) >= sizeof(un.sun_path) - 1) {
     w_log(W_LOG_ERR, "%s: path is too long\n",

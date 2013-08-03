@@ -20,7 +20,7 @@ struct w_query_ctx {
   w_root_t *root;
   struct watchman_file *file;
   w_string_t *wholename;
-  struct w_clockspec_query since;
+  struct w_query_since since;
 
   struct watchman_rule_match *results;
   uint32_t num_results;
@@ -67,8 +67,9 @@ struct w_query {
 
   // We can't (and mustn't!) evaluate the clockspec
   // fully until we execute query, because we have
-  // to evaluate named cursors at the time we execute
-  json_t *since;
+  // to evaluate named cursors and determine fresh
+  // instance at the time we execute
+  struct w_clockspec *since_spec;
 
   w_query_expr *expr;
 

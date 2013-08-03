@@ -17,12 +17,12 @@ static bool subscription_generator(
 
   // Walk back in time until we hit the boundary
   for (f = root->latest_file; f; f = f->next) {
-    if (sub->since.is_timestamp &&
-        w_timeval_compare(f->otime.tv, sub->since.tv) < 0) {
+    if (ctx->since.is_timestamp &&
+        w_timeval_compare(f->otime.tv, ctx->since.timestamp) < 0) {
       break;
     }
-    if (!sub->since.is_timestamp &&
-        f->otime.ticks <= sub->since.ticks) {
+    if (!ctx->since.is_timestamp &&
+        f->otime.ticks <= ctx->since.clock.ticks) {
       break;
     }
 
@@ -42,9 +42,14 @@ static json_t *build_subscription_results(
   json_t *response;
   json_t *file_list;
   char clockbuf[128];
+  struct w_clockspec *since_spec = sub->query->since_spec;
 
-  w_log(W_LOG_DBG, "running subscription rules! since %" PRIu32 "\n",
-      sub->since.ticks);
+  if (since_spec && since_spec->tag == w_cs_clock) {
+    w_log(W_LOG_DBG, "running subscription rules! since %" PRIu32 "\n",
+        since_spec->clock.ticks);
+  } else {
+    w_log(W_LOG_DBG, "running subscription rules!\n");
+  }
 
   // Subscriptions never need to sync explicitly; we are only dispatched
   // at settle points which are by definition sync'd to the present time
@@ -68,14 +73,22 @@ static json_t *build_subscription_results(
 
   response = make_response();
 
-  if (clock_id_string(sub->since.ticks, clockbuf, sizeof(clockbuf))) {
+  // It is way too much of a hassle to try to recreate the clock value if it's
+  // not a relative clock spec, and it's only going to happen on the first run
+  // anyway, so just skip doing that entirely.
+  if (since_spec && since_spec->tag == w_cs_clock &&
+      clock_id_string(since_spec->clock.ticks, clockbuf, sizeof(clockbuf))) {
     set_prop(response, "since", json_string_nocheck(clockbuf));
   }
   if (clock_id_string(res.ticks, clockbuf, sizeof(clockbuf))) {
     set_prop(response, "clock", json_string_nocheck(clockbuf));
   }
-  sub->since.is_timestamp = false;
-  sub->since.ticks = res.ticks;
+  // create a new spec that will be used the next time
+  if (since_spec) {
+    w_clockspec_free(since_spec);
+    since_spec = NULL;
+  }
+  sub->query->since_spec = w_clockspec_new_clock(res.ticks);
 
   set_prop(response, "files", file_list);
   set_prop(response, "root", json_string(root->root_path->buf));
@@ -198,13 +211,6 @@ void cmd_subscribe(struct watchman_client *client, json_t *args)
   sub->query = query;
   memcpy(&sub->field_list, &field_list, sizeof(field_list));
   sub->root = root;
-
-  /* special 'since' handling */
-  if (query->since) {
-    if (!w_parse_clockspec(root, query->since, &sub->since, true)) {
-      memset(&sub->since, 0, sizeof(sub->since));
-    }
-  }
 
   pthread_mutex_lock(&w_client_lock);
   w_ht_replace(client->subscriptions, w_ht_ptr_val(sub->name),

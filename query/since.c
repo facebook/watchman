@@ -4,7 +4,7 @@
 #include "watchman.h"
 
 struct since_term {
-  struct w_clockspec_query spec;
+  struct w_clockspec *spec;
   enum {
     SINCE_OCLOCK,
     SINCE_CCLOCK,
@@ -20,18 +20,22 @@ static bool eval_since(struct w_query_ctx *ctx,
 {
   struct since_term *term = data;
   w_clock_t clock;
+  struct w_query_since since;
   time_t tval = 0;
 
-  unused_parameter(ctx);
+  w_clockspec_eval(ctx->root, term->spec, &since);
 
   switch (term->field) {
     case SINCE_OCLOCK:
     case SINCE_CCLOCK:
       clock = (term->field == SINCE_OCLOCK) ? file->otime : file->ctime;
-      if (term->spec.is_timestamp) {
-        return w_timeval_compare(term->spec.tv, clock.tv) > 0;
+      if (since.is_timestamp) {
+        return w_timeval_compare(since.timestamp, clock.tv) > 0;
       }
-      return clock.ticks > term->spec.ticks;
+      if (since.clock.is_fresh_instance) {
+        return file->exists;
+      }
+      return clock.ticks > since.clock.ticks;
     case SINCE_MTIME:
       tval = file->st.st_mtime;
       break;
@@ -40,11 +44,14 @@ static bool eval_since(struct w_query_ctx *ctx,
       break;
   }
 
-  return tval > term->spec.tv.tv_sec;
+  assert(since.is_timestamp);
+  return tval > since.timestamp.tv_sec;
 }
 
 static void dispose_since(void *data)
 {
+  struct since_term *term = data;
+  w_clockspec_free(term->spec);
   free(data);
 }
 
@@ -62,7 +69,8 @@ static struct {
 w_query_expr *w_expr_since_parser(w_query *query, json_t *term)
 {
   json_t *jval;
-  struct w_clockspec_query since;
+
+  struct w_clockspec *spec;
   struct since_term *sterm;
   int selected_field = SINCE_OCLOCK;
   const char *fieldname = "oclock";
@@ -78,11 +86,14 @@ w_query_expr *w_expr_since_parser(w_query *query, json_t *term)
   }
 
   jval = json_array_get(term, 1);
-  if (!w_parse_clockspec(NULL, jval, &since, false)) {
-    query->errmsg = strdup(
-        "invalid clockspec for \"since\" term (cursors are not allowed)"
-    );
+  spec = w_clockspec_parse(jval);
+  if (!spec) {
+    query->errmsg = strdup("invalid clockspec for \"since\" term");
     return NULL;
+  }
+  if (spec->tag == w_cs_named_cursor) {
+    query->errmsg = strdup("named cursors are not allowed in \"since\" terms");
+    goto fail;
   }
 
   jval = json_array_get(term, 2);
@@ -93,7 +104,7 @@ w_query_expr *w_expr_since_parser(w_query *query, json_t *term)
     fieldname = json_string_value(jval);
     if (!fieldname) {
       query->errmsg = strdup("field name for \"since\" term must be a string");
-      return NULL;
+      goto fail;
     }
 
     for (i = 0; allowed_fields[i].label; i++) {
@@ -108,19 +119,19 @@ w_query_expr *w_expr_since_parser(w_query *query, json_t *term)
       ignore_result(asprintf(&query->errmsg,
           "invalid field name \"%s\" for \"since\" term",
           fieldname));
-      return NULL;
+      goto fail;
     }
   }
 
   switch (selected_field) {
     case SINCE_CTIME:
     case SINCE_MTIME:
-      if (!since.is_timestamp) {
+      if (spec->tag != w_cs_timestamp) {
         ignore_result(asprintf(&query->errmsg,
             "field \"%s\" requires a timestamp value "
             "for comparison in \"since\" term",
             fieldname));
-        return NULL;
+        goto fail;
       }
       break;
     case SINCE_OCLOCK:
@@ -132,13 +143,17 @@ w_query_expr *w_expr_since_parser(w_query *query, json_t *term)
   sterm = calloc(1, sizeof(*sterm));
   if (!sterm) {
     query->errmsg = strdup("out of memory");
-    return NULL;
+    goto fail;
   }
 
-  sterm->spec = since;
+  sterm->spec = spec;
   sterm->field = selected_field;
 
   return w_query_expr_new(eval_since, dispose_since, sterm);
+
+fail:
+  w_clockspec_free(spec);
+  return NULL;
 }
 
 
