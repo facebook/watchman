@@ -337,10 +337,7 @@ json_t *w_match_results_to_json(
       set_prop(record, "ino", json_integer(file->st.st_ino));
       set_prop(record, "dev", json_integer(file->st.st_dev));
       set_prop(record, "nlink", json_integer(file->st.st_nlink));
-
-      if (matches[i].is_new) {
-        set_prop(record, "new", json_true());
-      }
+      set_prop(record, "new", json_boolean(matches[i].is_new));
 
       if (clock_id_string(file->ctime.ticks, buf, sizeof(buf))) {
         set_prop(record, "cclock", json_string_nocheck(buf));

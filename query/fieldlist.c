@@ -15,10 +15,7 @@ static json_t *make_exists(struct watchman_rule_match *match)
 
 static json_t *make_new(struct watchman_rule_match *match)
 {
-  if (match->is_new) {
-    return json_true();
-  }
-  return NULL;
+  return json_boolean(match->is_new);
 }
 
 #define MAKE_CLOCK_FIELD(name, member) \

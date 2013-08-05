@@ -88,10 +88,12 @@ bool w_query_process_file(
   m->file = file;
   m->is_new = false;
   if (query->since_spec) {
-    if (!ctx->since.is_timestamp) {
-      m->is_new = file->ctime.ticks > ctx->since.clock.ticks;
-    } else {
+    if (ctx->since.is_timestamp) {
       m->is_new = w_timeval_compare(ctx->since.timestamp, file->ctime.tv) > 0;
+    } else if (ctx->since.clock.is_fresh_instance) {
+      m->is_new = true;
+    } else {
+      m->is_new = file->ctime.ticks > ctx->since.clock.ticks;
     }
   }
 

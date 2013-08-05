@@ -29,7 +29,7 @@ class cursorTestCase extends WatchmanTestCase {
     touch($root . '/one', time()+1);
     $since = $this->assertFileListUsingSince(
                   $root, 'n:testCursor', array('one'));
-    $this->assertEqual(false, isset($since['files'][0]['new']));
+    $this->assertEqual(false, $since['files'][0]['new']);
 
     // Deleted files shouldn't show up in fresh cursors
     touch("$root/two");

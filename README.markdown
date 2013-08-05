@@ -618,19 +618,18 @@ if it is not present it will default to:
 
 For each file in the result set, the query command will generate a JSON object
 value populated with the requested fields.  For example, the default set of
-fields will return a response something like this (`new` is only present if
-you are using the `since` generator and the item is new wrt. the since value
-you specified in your query):
+fields will return a response something like this:
 
 ```json
 {
-    "version": "2.7",
+    "version": "2.9",
     "clock": "c:80616:59",
     "is_fresh_instance": false,
     "files": [
         {
             "exists": true,
             "mode": 33188,
+            "new": false,
             "name": "argv.c",
             "size": 1340,
         }
@@ -641,8 +640,9 @@ you specified in your query):
 The `is_fresh_instance` member is true if the particular clock value indicates
 that it was returned by a different instance of watchman, or a named cursor
 hasn't been seen before. In that case, only files that currently exist will be
-returned. Advanced users may set the input parameter `empty_on_fresh_instance`
-to true, in which case no files will be returned for fresh instances.
+returned, and all files will have `new` set to `true`. Advanced users may set
+the input parameter `empty_on_fresh_instance` to true, in which case no files
+will be returned for fresh instances.
 
 If the `fields` member consists of a single entry, the files result will be a
 simple array of values; ```"fields": ["name"]``` produces:
