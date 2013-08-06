@@ -353,9 +353,8 @@ bool w_query_execute(
   // Evaluate the cursor for this root
   w_clockspec_eval(root, query->since_spec, &ctx.since);
 
-  if (!ctx.since.is_timestamp && ctx.since.clock.is_fresh_instance) {
-    res->is_fresh_instance = true;
-  }
+  res->is_fresh_instance = !ctx.since.is_timestamp &&
+    ctx.since.clock.is_fresh_instance;
 
   if (!(res->is_fresh_instance && query->empty_on_fresh_instance)) {
     if (!generator) {
