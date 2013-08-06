@@ -180,47 +180,6 @@ void w_match_results_free(uint32_t num_matches,
   free(matches);
 }
 
-void run_rules(struct watchman_client *client,
-    w_root_t *root,
-    struct w_query_since *since,
-    struct watchman_rule *rules)
-{
-  uint32_t matches;
-  struct watchman_rule_match *results = NULL;
-  struct watchman_file *oldest = NULL, *f;
-  json_t *response = make_response();
-  json_t *file_list;
-
-  w_log(W_LOG_DBG, "running rules!\n");
-
-  w_root_lock(root);
-  annotate_with_clock(root, response);
-
-  for (f = root->latest_file; f; f = f->next) {
-    if (since) {
-      if (since->is_timestamp &&
-          w_timeval_compare(f->otime.tv, since->timestamp) < 0) {
-        break;
-      }
-      if (!since->is_timestamp && f->otime.ticks < since->clock.ticks) {
-        break;
-      }
-    }
-    oldest = f;
-  }
-  matches = w_rules_match(root, oldest, &results, rules, since);
-  w_root_unlock(root);
-
-  w_log(W_LOG_DBG, "rules were run, we have %" PRIu32 " matches\n", matches);
-
-  file_list = w_match_results_to_json(matches, results);
-  w_match_results_free(matches, results);
-
-  set_prop(response, "files", file_list);
-
-  send_and_dispose_response(client, response);
-}
-
 /* Parses filename match rules.
  * By default, we want to include items that positively match
  * the set of fnmatch(3) patterns specified.

@@ -43,10 +43,6 @@ bool parse_watch_params(int start, json_t *args,
     struct watchman_rule **head_ptr,
     uint32_t *next_arg,
     char *errbuf, int errbuflen);
-void run_rules(struct watchman_client *client,
-    w_root_t *root,
-    struct w_query_since *since,
-    struct watchman_rule *rules);
 
 
 void cmd_find(struct watchman_client *client, json_t *args);
