@@ -91,6 +91,7 @@ static json_t *build_subscription_results(
   }
   sub->query->since_spec = w_clockspec_new_clock(res.root_number, res.ticks);
 
+  set_prop(response, "is_fresh_instance", json_boolean(res.is_fresh_instance));
   set_prop(response, "files", file_list);
   set_prop(response, "root", json_string(root->root_path->buf));
   set_prop(response, "subscription", json_string(sub->name->buf));

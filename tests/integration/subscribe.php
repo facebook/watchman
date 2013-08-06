@@ -27,13 +27,25 @@ class subscribeTestCase extends WatchmanTestCase {
         'fields' => array('name'),
       ));
 
-      list($sub) = $this->waitForSub('myname', function ($data) {
+      $this->waitForSub('myname', function ($data) {
         return true;
       });
+      list($sub) = $this->getSubData('myname');
 
+      $this->assertEqual(true, $sub['is_fresh_instance']);
       $files = $sub['files'];
       sort($files);
       $this->assertEqual(array('a', 'a/lemon', 'b'), $files);
+
+      // delete a file and see that subscribe tells us about it
+      unlink("$root/a/lemon");
+      $this->waitForSub('myname', function ($data) {
+        return true;
+      });
+      list($sub) = $this->getSubData('myname');
+
+      $this->assertEqual(false, $sub['is_fresh_instance']);
+      $this->assertEqual(array('a/lemon'), $sub['files']);
 
       $this->watchmanCommand('unsubscribe', $root, 'myname');
     } catch (Exception $e) {
