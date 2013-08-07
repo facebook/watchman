@@ -129,9 +129,10 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
   // Asserts failure if no truthy value is encountered within
   // the timeout
   function waitForNoThrow($callable, $timeout = 10) {
-    $deadline = time() + $timeout;
+    $current_time = time();
+    $deadline = $current_time + $timeout;
     $res = null;
-    while (time() <= $deadline) {
+    do {
       try {
         $res = $callable();
         if ($res) {
@@ -142,7 +143,8 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
         break;
       }
       usleep(30000);
-    }
+      $current_time = time();
+    } while ($current_time < $deadline);
     return array(false, $res);
   }
 
@@ -224,7 +226,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
   }
 
   function assertFileListUsingSince($root, $cursor, array $files,
-      array $files_via_since = null, $timeout = 10, $message = null) {
+      array $files_via_since = null, $message = null) {
 
     if ($cursor) {
       if ($files_via_since === null) {
@@ -251,7 +253,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
       function ($out) use ($sort_func, $files) {
         return $sort_func(idx($out, 'files', array())) === $files;
       },
-      $timeout
+      0 // timeout
     );
 
     if ($ok) {
@@ -303,17 +305,14 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
         basename(idx($where, 'file')));
 
       $message = "\nwatchman didn't yield expected file list " .
-        "within $timeout seconds\n" . json_encode($out) . "\n" .
-        $where;
+        json_encode($out) . "\n" . $where;
     }
 
     $this->assertEqual($files, $got, $message);
   }
 
-  function assertFileList($root, array $files, $timeout = 10,
-        $message = null) {
-    $this->assertFileListUsingSince($root, null, $files, null,
-        $timeout, $message);
+  function assertFileList($root, array $files, $message = null) {
+    $this->assertFileListUsingSince($root, null, $files, null, $message);
   }
 }
 
