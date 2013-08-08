@@ -465,6 +465,7 @@ static struct watchman_command_handler_def commands[] = {
   { "clock", cmd_clock },
   { "get-sockname", cmd_get_sockname },
   { "get-pid", cmd_get_pid },
+  { "debug-recrawl", cmd_debug_recrawl },
   { NULL, NULL }
 };
 

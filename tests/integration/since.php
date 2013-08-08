@@ -183,4 +183,31 @@ class sinceTestCase extends WatchmanTestCase {
     $this->assertEqual(true, $res['is_fresh_instance']);
     $this->assertEqual(array('222'), $res['files']);
   }
+
+  function testRecrawlFreshInstance() {
+    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $root = realpath($dir->getPath());
+    $watch = $this->watch($root);
+    $this->assertFileList($root, array());
+    touch("$root/111");
+
+    $res = $this->watchmanCommand('query', $root, array(
+      'fields' => array('name')
+    ));
+    $this->assertEqual(true, $res['is_fresh_instance']);
+    $this->assertEqual(array('111'), $res['files']);
+
+    $clock = $res['clock'];
+    unlink("$root/111");
+    $this->watchmanCommand('debug-recrawl', $root);
+    $this->assertEqual(NULL, idx($res, 'error'));
+    touch("$root/222");
+
+    $res = $this->watchmanCommand('query', $root, array(
+      'since' => $clock,
+      'fields' => array('name')
+    ));
+    $this->assertEqual(true, $res['is_fresh_instance']);
+    $this->assertEqual(array('222'), $res['files']);
+  }
 }

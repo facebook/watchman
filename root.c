@@ -592,15 +592,6 @@ static struct watchman_file *w_root_resolve_file(w_root_t *root,
   return file;
 }
 
-static void schedule_recrawl(w_root_t *root, const char *why)
-{
-  if (!root->should_recrawl) {
-    w_log(W_LOG_ERR, "%.*s: %s: scheduling a tree recrawl\n",
-        root->root_path->len, root->root_path->buf, why);
-  }
-  root->should_recrawl = true;
-}
-
 static void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
 {
   w_ht_iter_t i;
@@ -645,7 +636,7 @@ static void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
       w_log(W_LOG_ERR, "rm_watch: %d %.*s %s\n",
           dir->wd, dir->path->len, dir->path->buf,
           strerror(errno));
-      schedule_recrawl(root, "rm_watch failed");
+      w_root_schedule_recrawl(root, "rm_watch failed");
     }
 
     close(dir->wd);
@@ -982,7 +973,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       // stale watch descriptor
       w_log(W_LOG_ERR, "watch descriptor for %s should have been %d, is %d\n",
           path, dir->wd, newwd);
-      schedule_recrawl(root, "stale watch descriptor found");
+      w_root_schedule_recrawl(root, "stale watch descriptor found");
       return;
     } else if (dir->wd == -1) {
       w_log(W_LOG_DBG, "watch_dir(%s)\n", path);
@@ -1026,7 +1017,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
         // whaaa?
         w_log(W_LOG_ERR, "fstat on opened dir %s failed: %s\n", path,
             strerror(errno));
-        schedule_recrawl(root, "fstat failed");
+        w_root_schedule_recrawl(root, "fstat failed");
         close(newwd);
         closedir(osdir);
         return;
@@ -1064,7 +1055,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
         // whaaa?
         w_log(W_LOG_ERR, "fstat on opened dir %s failed: %s\n", path,
             strerror(errno));
-        schedule_recrawl(root, "fstat failed");
+        w_root_schedule_recrawl(root, "fstat failed");
         closedir(osdir);
         return;
       }
@@ -1664,7 +1655,7 @@ static void process_inotify_event(
 
   if (ine->wd == -1 && (ine->mask & IN_Q_OVERFLOW)) {
     /* we missed something, will need to re-crawl */
-    schedule_recrawl(root, "IN_Q_OVERFLOW");
+    w_root_schedule_recrawl(root, "IN_Q_OVERFLOW");
   } else if (ine->wd != -1) {
     char buf[WATCHMAN_NAME_MAX];
 
@@ -1702,7 +1693,7 @@ static void process_inotify_event(
           w_log(W_LOG_ERR,
               "looking for file %.*s but it is missing in %.*s\n",
               ine->len, ine->name, dir->path->len, dir->path->buf);
-          schedule_recrawl(root, "file missing from internal state");
+          w_root_schedule_recrawl(root, "file missing from internal state");
           w_string_delref(name);
           return;
         }
@@ -1771,7 +1762,7 @@ static void process_inotify_event(
       // up our state.
       w_log(W_LOG_ERR, "wanted dir %d for mask %x but not found %.*s\n",
           ine->wd, ine->mask, ine->len, ine->name);
-      schedule_recrawl(root, "dir missing from internal state");
+      w_root_schedule_recrawl(root, "dir missing from internal state");
     }
   }
 }
@@ -1854,6 +1845,10 @@ static void notify_thread(w_root_t *root)
     if (!wait_for_notify(root, timeoutms)) {
       // Do triggers
       w_root_lock(root);
+      if (handle_should_recrawl(root)) {
+        goto unlock;
+      }
+
       w_log(W_LOG_DBG, "notify_thread[%s] assessing triggers\n",
           root->root_path->buf);
       process_subscriptions(root);
@@ -2256,6 +2251,16 @@ static void signal_root_threads(w_root_t *root)
   if (!pthread_equal(root->notify_thread, pthread_self())) {
     pthread_kill(root->notify_thread, SIGUSR1);
   }
+}
+
+void w_root_schedule_recrawl(w_root_t *root, const char *why)
+{
+  if (!root->should_recrawl) {
+    w_log(W_LOG_ERR, "%.*s: %s: scheduling a tree recrawl\n",
+        root->root_path->len, root->root_path->buf, why);
+  }
+  root->should_recrawl = true;
+  signal_root_threads(root);
 }
 
 // Cancels a watch.

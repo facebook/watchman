@@ -448,6 +448,7 @@ void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
 w_root_t *w_root_resolve(const char *path, bool auto_watch, char **errmsg);
 w_root_t *w_root_resolve_for_client_mode(const char *filename, char **errmsg);
 void w_root_free_watched_roots(void);
+void w_root_schedule_recrawl(w_root_t *root, const char *why);
 bool w_root_cancel(w_root_t *root);
 bool w_root_stop_watch(w_root_t *root);
 void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
