@@ -115,16 +115,76 @@ static void load_root_config(w_root_t *root, const char *path)
   }
 }
 
+static size_t root_init_offset = offsetof(w_root_t, _init_sentinel_);
+
+// internal initialization for root
+static bool w_root_init(w_root_t *root, char **errmsg)
+{
+  struct watchman_dir *dir;
+
+  memset((char *)root + root_init_offset, 0,
+         sizeof(w_root_t) - root_init_offset);
+
+#if HAVE_INOTIFY_INIT
+  root->infd = inotify_init();
+  if (root->infd == -1) {
+    ignore_result(asprintf(errmsg, "watch(%.*s): inotify_init error: %s",
+        root->root_path->len, root->root_path->buf, strerror(errno)));
+    w_log(W_LOG_ERR, "%s\n", *errmsg);
+    return false;
+  }
+  w_set_cloexec(root->infd);
+  root->wd_to_dir = w_ht_new(HINT_NUM_DIRS, NULL);
+#endif
+#if HAVE_KQUEUE
+  root->kq_fd = kqueue();
+  if (root->kq_fd == -1) {
+    ignore_result(asprintf(errmsg, "watch(%.*s): kqueue() error: %s",
+        root->root_path->len, root->root_path->buf, strerror(errno)));
+    w_log(W_LOG_ERR, "%s\n", *errmsg);
+    return false;
+  }
+  w_set_cloexec(root->kq_fd);
+#endif
+#if HAVE_PORT_CREATE
+  root->port_fd = port_create();
+  if (root->port_fd == -1) {
+    ignore_result(asprintf(errmsg, "watch(%.*s): port_create() error: %s",
+        root->root_path->len, root->root_path->buf, strerror(errno)));
+    w_log(W_LOG_ERR, "%s\n", *errmsg);
+    return false;
+  }
+  w_set_cloexec(root->port_fd);
+#endif
+
+  root->number = __sync_fetch_and_add(&next_root_number, 1);
+
+  root->cursors = w_ht_new(2, &w_ht_string_funcs);
+  root->suffixes = w_ht_new(2, &w_ht_string_funcs);
+  root->pending_uniq = w_ht_new(WATCHMAN_BATCH_LIMIT, &w_ht_string_funcs);
+
+  root->dirname_to_dir = w_ht_new(HINT_NUM_DIRS, &dirname_hash_funcs);
+  root->ticks = 1;
+
+  // "manually" populate the initial dir, as the dir resolver will
+  // try to find its parent and we don't want it to for the root
+  dir = calloc(1, sizeof(*dir));
+  dir->path = root->root_path;
+  dir->wd = -1;
+  w_string_addref(dir->path);
+  w_ht_set(root->dirname_to_dir, w_ht_ptr_val(dir->path), w_ht_ptr_val(dir));
+
+  return root;
+}
+
 static w_root_t *w_root_new(const char *path, char **errmsg)
 {
   w_root_t *root = calloc(1, sizeof(*root));
-  struct watchman_dir *dir;
   pthread_mutexattr_t attr;
 
   assert(root != NULL);
 
   root->refcnt = 1;
-  root->number = __sync_fetch_and_add(&next_root_number, 1);
   w_refcnt_add(&live_roots);
   pthread_mutexattr_init(&attr);
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
@@ -132,12 +192,8 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   pthread_mutexattr_destroy(&attr);
 
   root->root_path = w_string_new(path);
-
-  root->cursors = w_ht_new(2, &w_ht_string_funcs);
-  root->suffixes = w_ht_new(2, &w_ht_string_funcs);
+  root->commands = w_ht_new(2, &trigger_hash_funcs);
   root->query_cookies = w_ht_new(2, &w_ht_string_funcs);
-  root->pending_uniq = w_ht_new(WATCHMAN_BATCH_LIMIT, &w_ht_string_funcs);
-
   root->ignore_dirs = w_ht_new(2, &w_ht_string_funcs);
   // Special handling for VCS control dirs
   {
@@ -179,56 +235,13 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
       root->query_cookie_dir->buf, hostname, (int)getpid());
   }
 
-  root->dirname_to_dir = w_ht_new(HINT_NUM_DIRS, &dirname_hash_funcs);
-  root->commands = w_ht_new(2, &trigger_hash_funcs);
-  root->ticks = 1;
-
-  // "manually" populate the initial dir, as the dir resolver will
-  // try to find its parent and we don't want it to for the root
-  dir = calloc(1, sizeof(*dir));
-  dir->path = root->root_path;
-  dir->wd = -1;
-  w_string_addref(dir->path);
-  w_ht_set(root->dirname_to_dir, w_ht_ptr_val(dir->path), w_ht_ptr_val(dir));
-
-#if HAVE_INOTIFY_INIT
-  root->wd_to_dir = w_ht_new(HINT_NUM_DIRS, NULL);
-  root->infd = inotify_init();
-  if (root->infd == -1) {
-    ignore_result(asprintf(errmsg, "watch(%s): inotify_init error: %s",
-        path, strerror(errno)));
-    w_log(W_LOG_ERR, "%s\n", *errmsg);
-    w_root_delref(root);
-    return NULL;
-  }
-  w_set_cloexec(root->infd);
-#endif
-#if HAVE_KQUEUE
-  root->kq_fd = kqueue();
-  if (root->kq_fd == -1) {
-    ignore_result(asprintf(errmsg, "watch(%s): kqueue() error: %s",
-        path, strerror(errno)));
-    w_log(W_LOG_ERR, "%s\n", *errmsg);
-    w_root_delref(root);
-    return NULL;
-  }
-  w_set_cloexec(root->kq_fd);
-#endif
-#if HAVE_PORT_CREATE
-  root->port_fd = port_create();
-  if (root->port_fd == -1) {
-    ignore_result(asprintf(errmsg, "watch(%s): port_create() error: %s",
-        path, strerror(errno)));
-    w_log(W_LOG_ERR, "%s\n", *errmsg);
-    w_root_delref(root);
-    return NULL;
-  }
-  w_set_cloexec(root->port_fd);
-#endif
-
   load_root_config(root, path);
   root->trigger_settle = cfg_get_int(root, "settle", DEFAULT_SETTLE_PERIOD);
 
+  if (!w_root_init(root, errmsg)) {
+    w_root_delref(root);
+    return NULL;
+  }
   return root;
 }
 
@@ -1919,14 +1932,35 @@ static void delete_file(struct watchman_file *file)
   free(file);
 }
 
-void w_root_delref(w_root_t *root)
+static void w_root_teardown(w_root_t *root)
 {
   struct watchman_file *file;
 
-  if (!w_refcnt_del(&root->refcnt)) return;
+#ifdef HAVE_INOTIFY_INIT
+  close(root->infd);
+  root->infd = -1;
+  if (root->wd_to_dir) {
+    w_ht_free(root->wd_to_dir);
+    root->wd_to_dir = NULL;
+  }
+#endif
+#ifdef HAVE_KQUEUE
+  close(root->kq_fd);
+  root->kq_fd = -1;
+#endif
+#ifdef HAVE_PORT_CREATE
+  close(root->port_fd);
+  root->port_fd = -1;
+#endif
 
-  w_log(W_LOG_DBG, "root: final ref on %s\n",
-      root->root_path->buf);
+  if (root->dirname_to_dir) {
+    w_ht_free(root->dirname_to_dir);
+    root->dirname_to_dir = NULL;
+  }
+  if (root->pending_uniq) {
+    w_ht_free(root->pending_uniq);
+    root->pending_uniq = NULL;
+  }
 
   while (root->pending) {
     struct watchman_pending_fs *p;
@@ -1937,34 +1971,38 @@ void w_root_delref(w_root_t *root)
     free(p);
   }
 
-  pthread_mutex_destroy(&root->lock);
-  w_string_delref(root->root_path);
-  w_ht_free(root->cursors);
-  w_ht_free(root->suffixes);
-  w_ht_free(root->ignore_dirs);
-  w_ht_free(root->dirname_to_dir);
-  w_ht_free(root->commands);
-  w_ht_free(root->query_cookies);
-  w_ht_free(root->pending_uniq);
-  if (root->config_file) {
-    json_decref(root->config_file);
-  }
-
-#ifdef HAVE_INOTIFY_INIT
-  close(root->infd);
-  w_ht_free(root->wd_to_dir);
-#endif
-#ifdef HAVE_KQUEUE
-  close(root->kq_fd);
-#endif
-#ifdef HAVE_PORT_CREATE
-  close(root->port_fd);
-#endif
-
   while (root->latest_file) {
     file = root->latest_file;
     root->latest_file = file->next;
     delete_file(file);
+  }
+
+  if (root->cursors) {
+    w_ht_free(root->cursors);
+    root->cursors = NULL;
+  }
+  if (root->suffixes) {
+    w_ht_free(root->suffixes);
+    root->suffixes = NULL;
+  }
+}
+
+void w_root_delref(w_root_t *root)
+{
+  if (!w_refcnt_del(&root->refcnt)) return;
+
+  w_log(W_LOG_DBG, "root: final ref on %s\n",
+      root->root_path->buf);
+
+  w_root_teardown(root);
+
+  pthread_mutex_destroy(&root->lock);
+  w_string_delref(root->root_path);
+  w_ht_free(root->ignore_dirs);
+  w_ht_free(root->commands);
+  w_ht_free(root->query_cookies);
+  if (root->config_file) {
+    json_decref(root->config_file);
   }
 
   w_string_delref(root->query_cookie_dir);

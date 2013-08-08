@@ -59,6 +59,7 @@ extern "C" {
 #include <pwd.h>
 #include <sysexits.h>
 #include <spawn.h>
+#include <stddef.h>
 // Not explicitly exported on Darwin, so we get to define it.
 extern char **environ;
 
@@ -217,6 +218,38 @@ struct watchman_query_cookie {
 #define DEFAULT_SETTLE_PERIOD 20
 
 struct watchman_root {
+  int refcnt;
+
+  /* path to root */
+  w_string_t *root_path;
+
+  /* our locking granularity is per-root */
+  pthread_mutex_t lock;
+  pthread_t notify_thread;
+
+  /* map of rule id => struct watchman_trigger_command */
+  w_ht_t *commands;
+
+  /* path to the query cookie dir */
+  w_string_t *query_cookie_dir;
+  w_string_t *query_cookie_prefix;
+  w_ht_t *query_cookies;
+
+  /* map of dir name => dirname
+   * if the map has an entry for a given dir, we're ignoring it */
+  w_ht_t *ignore_dirs;
+
+  int trigger_settle;
+
+  /* config options loaded via json file */
+  json_t *config_file;
+
+  /* --- everything below this point will be reset on w_root_init --- */
+  bool _init_sentinel_;
+
+  /* root number */
+  uint32_t number;
+
 #if HAVE_INOTIFY_INIT
   /* we use one inotify instance per watched root dir */
   int infd;
@@ -230,14 +263,6 @@ struct watchman_root {
 #if HAVE_PORT_CREATE
   int port_fd;
 #endif
-  int refcnt;
-
-  /* root number */
-  uint32_t number;
-
-  /* path to root */
-  w_string_t *root_path;
-
   /* map of dir name to a dir */
   w_ht_t *dirname_to_dir;
 
@@ -251,23 +276,11 @@ struct watchman_root {
   /* current tick */
   uint32_t ticks;
 
-  int trigger_settle;
-
   bool done_initial;
   /* if true, we've decided that we should re-crawl the root
    * for the sake of ensuring consistency */
   bool should_recrawl;
   bool cancelled;
-
-  /* relative path to the query cookie dir.
-   * If NULL, we use the root itself */
-  w_string_t *query_cookie_dir;
-  w_string_t *query_cookie_prefix;
-  w_ht_t *query_cookies;
-
-  /* map of dir name => dirname
-   * if the map has an entry for a given dir, we're ignoring it */
-  w_ht_t *ignore_dirs;
 
   /* map of cursor name => last observed tick value */
   w_ht_t *cursors;
@@ -276,20 +289,12 @@ struct watchman_root {
    * of the suffix index.  Linkage via suffix_next */
   w_ht_t *suffixes;
 
-  /* map of rule id => struct watchman_trigger_command */
-  w_ht_t *commands;
   uint32_t next_cmd_id;
   uint32_t last_trigger_tick;
   uint32_t pending_trigger_tick;
   uint32_t last_sub_tick;
   uint32_t pending_sub_tick;
 
-  /* config options loaded via json file */
-  json_t *config_file;
-
-  /* our locking granularity is per-root */
-  pthread_mutex_t lock;
-  pthread_t notify_thread;
 #if HAVE_INOTIFY_INIT
   // Make the buffer big enough for 16k entries, which
   // happens to be the default fs.inotify.max_queued_events
