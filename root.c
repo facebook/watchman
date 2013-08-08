@@ -43,6 +43,8 @@ static struct watchman_dir dir_pending_ignored;
 static void crawler(w_root_t *root, w_string_t *dir_name,
     struct timeval now, bool recursive);
 
+static void w_root_teardown(w_root_t *root);
+
 static void free_pending(struct watchman_pending_fs *p)
 {
   w_string_delref(p->path);
@@ -1494,31 +1496,20 @@ static void process_triggers(w_root_t *root)
   root->last_trigger_tick = root->pending_trigger_tick;
 }
 
-static void handle_should_recrawl(w_root_t *root)
+static bool handle_should_recrawl(w_root_t *root)
 {
   if (root->should_recrawl && !root->cancelled) {
-    struct timeval now;
-    struct watchman_dir *dir;
-
-    gettimeofday(&now, NULL);
-
-    dir = w_root_resolve_dir(root, root->root_path, false);
-    if (!dir) {
-      w_log(W_LOG_FATAL, "unable to lookup my own root dir %.*s",
-          root->root_path->len, root->root_path->buf);
+    char *errmsg;
+    // be careful, this is a bit of a switcheroo
+    w_root_teardown(root);
+    if (!w_root_init(root, &errmsg)) {
+      w_log(W_LOG_ERR, "failed to init root, cancelling watch: %s\n", errmsg);
+      // this should cause us to exit from the notify loop
+      w_root_cancel(root);
     }
-    // Ensure that the old tree is not associated
-    invalidate_watch_descriptors(root, dir);
-    // and marked deleted
-    w_root_mark_deleted(root, dir, now, true);
-
-    // Drain any pending data, it's probably all wrong and
-    // we'll just waste time dealing with it
-    w_root_process_pending(root, true);
-
-    root->should_recrawl = false;
-    w_root_add_pending(root, root->root_path, true, now, false);
+    return true;
   }
+  return false;
 }
 
 static bool wait_for_notify(w_root_t *root, int timeoutms)
@@ -1844,6 +1835,22 @@ static void notify_thread(w_root_t *root)
   while (!root->cancelled) {
     int timeoutms = MAX(root->trigger_settle, 100);
 
+    if (!root->done_initial) {
+      struct timeval start;
+      /* first order of business is to find all the files under our root */
+      w_root_lock(root);
+      gettimeofday(&start, NULL);
+      w_root_add_pending(root, root->root_path, false, start, false);
+      while (root->pending) {
+        w_root_process_pending(root, false);
+      }
+      root->done_initial = true;
+      w_root_unlock(root);
+
+      w_log(W_LOG_DBG, "notify_thread[%s]: initial crawl complete\n",
+            root->root_path->buf);
+    }
+
     if (!wait_for_notify(root, timeoutms)) {
       // Do triggers
       w_root_lock(root);
@@ -1869,10 +1876,15 @@ static void notify_thread(w_root_t *root)
     }
 
     // then do our IO
-    handle_should_recrawl(root);
+    if (handle_should_recrawl(root)) {
+      goto unlock;
+    }
     while (root->pending) {
       w_root_process_pending(root, false);
     }
+
+    handle_should_recrawl(root);
+unlock:
     w_root_unlock(root);
   }
 
@@ -2187,20 +2199,6 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
 static void *run_notify_thread(void *arg)
 {
   w_root_t *root = arg;
-  struct timeval start;
-
-  /* first order of business is to find all the files under our root */
-  w_root_lock(root);
-  gettimeofday(&start, NULL);
-  w_root_add_pending(root, root->root_path, false, start, false);
-  while (root->pending) {
-    w_root_process_pending(root, false);
-  }
-  root->done_initial = true;
-  w_root_unlock(root);
-
-  w_log(W_LOG_DBG, "notify_thread[%s]: initial crawl complete\n",
-      root->root_path->buf);
 
   notify_thread(root);
 
