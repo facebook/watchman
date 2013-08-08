@@ -845,9 +845,22 @@ void w_root_process_path(w_root_t *root, w_string_t *full_path,
    */
   if (w_string_startswith(full_path, root->query_cookie_prefix)) {
     struct watchman_query_cookie *cookie;
+    // XXX Only Linux tells us about filenames, so via_notify will only work
+    // there. Need to figure out a different solution for other platforms.
+    bool consider_cookie =
+#if HAVE_INOTIFY_INIT
+      via_notify || !root->done_initial;
+#else
+      true;
+#endif
+
+    if (!consider_cookie) {
+      // Never allow cookie files to show up in the tree
+      return;
+    }
 
     cookie = w_ht_val_ptr(w_ht_get(root->query_cookies,
-              w_ht_ptr_val(full_path)));
+                                   w_ht_ptr_val(full_path)));
     w_log(W_LOG_DBG, "cookie! %.*s cookie=%p\n",
         full_path->len, full_path->buf, cookie);
 
