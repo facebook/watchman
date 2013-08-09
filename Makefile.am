@@ -101,6 +101,8 @@ py-tests:
 clean-local:
 	cd python/bser && $(PYTHON) ./setup.py clean
 	rm -rf python/bser/build
+else
+py-tests:
 endif
 
 # generate a rule that we can use to ensure that
