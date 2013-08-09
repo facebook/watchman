@@ -572,7 +572,6 @@ static struct watchman_file *w_root_resolve_file(w_root_t *root,
   return file;
 }
 
-#ifndef HAVE_PORT_CREATE
 static void schedule_recrawl(w_root_t *root, const char *why)
 {
   if (!root->should_recrawl) {
@@ -581,7 +580,6 @@ static void schedule_recrawl(w_root_t *root, const char *why)
   }
   root->should_recrawl = true;
 }
-#endif
 
 static void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
 {
@@ -1039,6 +1037,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
     }
 #endif // HAVE_KQUEUE
 #if HAVE_PORT_CREATE
+    unused_parameter(newwd);
     {
       struct stat st;
       if (fstat(dirfd(osdir), &st) == -1) {
