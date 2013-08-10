@@ -1980,6 +1980,21 @@ static const struct watchman_hash_funcs root_funcs = {
   root_del_val
 };
 
+static bool remove_root_from_watched(w_root_t *root)
+{
+  bool removed = false;
+  pthread_mutex_lock(&root_lock);
+  // it's possible that the root has already been removed and replaced with
+  // another, so make sure we're removing the right object
+  if (w_ht_val_ptr(w_ht_get(watched_roots, w_ht_ptr_val(root->root_path))) ==
+      root) {
+    w_ht_del(watched_roots, w_ht_ptr_val(root->root_path));
+    removed = true;
+  }
+  pthread_mutex_unlock(&root_lock);
+  return removed;
+}
+
 /* Returns true if the global config root_restrict_files is not defined or if
  * one of the files in root_restrict_files exists, false otherwise. */
 static bool root_check_restrict(const char *watch_path)
@@ -2137,9 +2152,7 @@ static void *run_notify_thread(void *arg)
 
   /* we'll remove it from watched roots if it isn't
    * already out of there */
-  pthread_mutex_lock(&root_lock);
-  w_ht_del(watched_roots, w_ht_ptr_val(root->root_path));
-  pthread_mutex_unlock(&root_lock);
+  remove_root_from_watched(root);
 
   w_root_delref(root);
   return 0;
@@ -2211,11 +2224,7 @@ bool w_root_cancel(w_root_t *root)
 
 bool w_root_stop_watch(w_root_t *root)
 {
-  bool stopped = false;
-
-  pthread_mutex_lock(&root_lock);
-  stopped = w_ht_del(watched_roots, w_ht_ptr_val(root->root_path));
-  pthread_mutex_unlock(&root_lock);
+  bool stopped = remove_root_from_watched(root);
 
   if (stopped) {
     w_root_cancel(root);
