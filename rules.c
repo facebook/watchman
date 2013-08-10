@@ -61,7 +61,7 @@ uint32_t w_rules_match(w_root_t *root,
     struct watchman_file *oldest_file,
     struct watchman_rule_match **results,
     struct watchman_rule *head,
-    struct w_query_since *since)
+    struct w_clockspec *spec)
 {
   struct watchman_file *file;
   struct watchman_rule *rule;
@@ -71,6 +71,9 @@ uint32_t w_rules_match(w_root_t *root,
   uint32_t name_start;
   struct watchman_rule_match *res = NULL;
   uint32_t num_allocd = 0;
+  struct w_query_since since;
+
+  w_clockspec_eval(root, spec, &since);
 
   name_start = root->root_path->len + 1;
 
@@ -150,12 +153,12 @@ uint32_t w_rules_match(w_root_t *root,
       m->root_number = root->number;
       m->relname = relname;
       m->file = file;
-      if (since->is_timestamp) {
-        m->is_new = w_timeval_compare(since->timestamp, file->ctime.tv) > 0;
-      } else if (since->clock.is_fresh_instance) {
+      if (since.is_timestamp) {
+        m->is_new = w_timeval_compare(since.timestamp, file->ctime.tv) > 0;
+      } else if (since.clock.is_fresh_instance) {
         m->is_new = true;
       } else {
-        m->is_new = file->ctime.ticks > since->clock.ticks;
+        m->is_new = file->ctime.ticks > since.clock.ticks;
       }
     } else {
       w_string_delref(relname);

@@ -1223,6 +1223,7 @@ static void spawn_command(w_root_t *root,
   ignore_result(chdir(root->root_path->buf));
 
   pthread_mutex_lock(&spawn_lock);
+  cmd->dispatch_root_number = root->number;
   cmd->dispatch_tick = root->ticks;
   ret = posix_spawnp(&cmd->current_proc,
       argv[0], &actions,
@@ -1289,7 +1290,7 @@ void w_mark_dead(pid_t pid)
     struct watchman_file *f, *oldest = NULL;
     struct watchman_rule_match *results = NULL;
     uint32_t matches;
-    struct w_query_since since;
+    struct w_clockspec *spec;
 
     cmd = w_ht_val_ptr(iter.value);
     if (cmd->current_proc != pid) {
@@ -1302,7 +1303,12 @@ void w_mark_dead(pid_t pid)
       break;
     }
 
-    w_query_since_init(&since, cmd->dispatch_tick);
+    spec = w_clockspec_new_clock(cmd->dispatch_root_number, cmd->dispatch_tick);
+    if (!spec) {
+      w_log(W_LOG_ERR, "mark_dead: %.*s unable to create new clockspec\n",
+            root->root_path->len, root->root_path->buf);
+      break;
+    }
 
     /* now we need to figure out if more updates came
      * in while we were running */
@@ -1312,11 +1318,12 @@ void w_mark_dead(pid_t pid)
       oldest = f;
     }
 
-    matches = w_rules_match(root, oldest, &results, cmd->rules, &since);
+    matches = w_rules_match(root, oldest, &results, cmd->rules, spec);
     if (matches > 0) {
       spawn_command(root, cmd, matches, results);
     }
 
+    w_clockspec_free(spec);
     break;
   } while (w_ht_next(root->commands, &iter));
 
@@ -1423,7 +1430,7 @@ static void process_triggers(w_root_t *root)
   struct watchman_rule_match *results = NULL;
   uint32_t matches;
   w_ht_iter_t iter;
-  struct w_query_since since;
+  struct w_clockspec *spec;
 
   if (root->last_trigger_tick == root->pending_trigger_tick) {
     return;
@@ -1443,7 +1450,6 @@ static void process_triggers(w_root_t *root)
       root->pending_trigger_tick);
 
   oldest = find_oldest_with_tick(root, root->last_trigger_tick);
-  w_query_since_init(&since, root->last_trigger_tick);
 
   /* walk the list of triggers, and run their rules */
   if (w_ht_first(root->commands, &iter)) do {
@@ -1452,10 +1458,23 @@ static void process_triggers(w_root_t *root)
       // Don't spawn if there's one already running
       continue;
     }
-    matches = w_rules_match(root, oldest, &results, cmd->rules, &since);
+    // Normally it wouldn't be OK to use root->number here since we'd like to be
+    // able to determine fresh instances by comparing against the last root
+    // number used. In this case it is OK, because (a) on init,
+    // last_trigger_tick is set to 0, meaning that every file in the set is
+    // going to be returned, and (b) triggers don't return fresh instance
+    // information.
+    spec = w_clockspec_new_clock(root->number, root->last_trigger_tick);
+    if (!spec) {
+      w_log(W_LOG_ERR, "process_triggers: %.*s unable to create clockspec\n",
+          root->root_path->len, root->root_path->buf);
+      return;
+    }
+    matches = w_rules_match(root, oldest, &results, cmd->rules, spec);
     if (matches > 0) {
       spawn_command(root, cmd, matches, results);
     }
+    w_clockspec_free(spec);
 
   } while (w_ht_next(root->commands, &iter));
 

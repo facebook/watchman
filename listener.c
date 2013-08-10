@@ -160,14 +160,6 @@ static const struct watchman_hash_funcs subscription_hash_funcs = {
   delete_subscription
 };
 
-// Assumes that this is not a fresh instance
-void w_query_since_init(struct w_query_since *since, uint32_t ticks)
-{
-  since->is_timestamp = false;
-  since->clock.is_fresh_instance = false;
-  since->clock.ticks = ticks;
-}
-
 struct w_clockspec *w_clockspec_new_clock(uint32_t root_number, uint32_t ticks)
 {
   struct w_clockspec *spec;

@@ -396,6 +396,7 @@ struct watchman_trigger_command {
 
   /* tick value when we were last assessed
    * for triggers */
+  uint32_t dispatch_root_number;
   uint32_t dispatch_tick;
   /* While we are running, this holds the pid
    * of the running process */
@@ -515,7 +516,7 @@ uint32_t w_rules_match(w_root_t *root,
     struct watchman_file *oldest_file,
     struct watchman_rule_match **results,
     struct watchman_rule *head,
-    struct w_query_since *since);
+    struct w_clockspec *spec);
 void w_run_subscription_rules(
     struct watchman_client *client,
     struct watchman_client_subscription *sub,
@@ -669,7 +670,6 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
     char ***daemon_argv);
 void usage(struct watchman_getopt *opts, FILE *where);
 
-void w_query_since_init(struct w_query_since *since, uint32_t ticks);
 struct w_clockspec *w_clockspec_new_clock(uint32_t root_number, uint32_t ticks);
 struct w_clockspec *w_clockspec_parse(json_t *value);
 void w_clockspec_eval(w_root_t *root,
