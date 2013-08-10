@@ -2059,6 +2059,11 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   }
 
   if (root || !auto_watch) {
+    if (!root) {
+      ignore_result(asprintf(errmsg,
+            "directory %s is not watched", watch_path));
+      w_log(W_LOG_DBG, "resolve_root: %s\n", *errmsg);
+    }
     if (watch_path != filename) {
       free(watch_path);
     }
