@@ -29,13 +29,13 @@ class triggerTestCase extends WatchmanTestCase {
       "$root/trigger.json");
     $this->assertEqual('other', $out['triggerid']);
 
-    $this->setLogLevel('debug');
+    $this->startLogging('debug');
 
     touch("$root/foo.c");
 
     $this->assertWaitForLog('/posix_spawnp/', 60);
 
-    $this->setLogLevel('off');
+    $this->stopLogging();
 
     $this->waitFor(function () use ($root) {
       if (file_exists("$root/trigger.log")) {

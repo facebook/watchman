@@ -76,8 +76,13 @@ class WatchmanInstance {
     } while (true);
   }
 
-  function setLogLevel($level) {
+  function startLogging($level) {
+    $this->logdata = array();
     return $this->request('log-level', $level);
+  }
+
+  function stopLogging() {
+    return $this->request('log-level', 'off');
   }
 
   function waitForSub($subname, $callable, $timeout = 5) {

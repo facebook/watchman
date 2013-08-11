@@ -46,6 +46,12 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     return $res;
   }
 
+  function didRunOneTest($test_method_name) {
+    if (!$this->use_cli) {
+      $this->watchman_instance->stopLogging();
+    }
+  }
+
   function didRunTests() {
     foreach ($this->watches as $root => $status) {
       try {
@@ -92,10 +98,16 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     }
   }
 
-  function setLogLevel($level) {
+  function startLogging($level) {
     $this->assertLiveConnection();
-    $out = $this->watchman_instance->setLogLevel($level);
+    $out = $this->watchman_instance->startLogging($level);
     $this->assertEqual($level, $out['log_level'], "set log level to $level");
+  }
+
+  function stopLogging() {
+    $this->assertLiveConnection();
+    $out = $this->watchman_instance->stopLogging();
+    $this->assertEqual('off', $out['log_level'], "set log level to 'off'");
   }
 
   function waitForSub($subname, $callable, $timeout = 5) {
