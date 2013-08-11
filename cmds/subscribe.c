@@ -63,13 +63,14 @@ static json_t *build_subscription_results(
   w_log(W_LOG_DBG, "subscription generated %" PRIu32 " results\n",
       res.num_results);
 
+  if (res.num_results == 0) {
+    w_query_result_free(&res);
+    return NULL;
+  }
+
   file_list = w_query_results_to_json(&sub->field_list,
       res.num_results, res.results);
   w_query_result_free(&res);
-
-  if (res.num_results == 0) {
-    return NULL;
-  }
 
   response = make_response();
 
