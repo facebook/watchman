@@ -45,7 +45,13 @@ class subscribeTestCase extends WatchmanTestCase {
       list($sub) = $this->getSubData('myname');
 
       $this->assertEqual(false, $sub['is_fresh_instance']);
-      $this->assertEqual(array('a/lemon'), $sub['files']);
+      $expect = array('a/lemon');
+      if (PHP_OS == 'SunOS') {
+        // This makes me sad, but Solaris reports the parent dir
+        // as changed, too
+        array_unshift($expect, 'a');
+      }
+      $this->assertEqual($expect, $sub['files']);
 
       $this->watchmanCommand('unsubscribe', $root, 'myname');
     } catch (Exception $e) {
