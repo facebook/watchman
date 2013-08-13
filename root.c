@@ -645,10 +645,10 @@ static void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
   dir->wd = -1;
 }
 
+#ifdef HAVE_INOTIFY_INIT
 static void invalidate_watch_descriptors(w_root_t *root,
     struct watchman_dir *dir)
 {
-#ifdef HAVE_INOTIFY_INIT
   w_ht_iter_t i;
 
   if (w_ht_first(dir->dirs, &i)) do {
@@ -661,10 +661,8 @@ static void invalidate_watch_descriptors(w_root_t *root,
     w_ht_del(root->wd_to_dir, dir->wd);
     dir->wd = -1;
   }
-#else
-  stop_watching_dir(root, dir);
-#endif
 }
+#endif
 
 
 static bool did_file_change(struct stat *saved, struct stat *fresh)
