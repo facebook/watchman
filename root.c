@@ -1311,12 +1311,16 @@ void w_mark_dead(pid_t pid)
 
     cmd = w_ht_val_ptr(iter.value);
     if (cmd->current_proc != pid) {
+      w_log(W_LOG_DBG, "mark_dead: is [%.*s] %d == %d\n",
+          cmd->triggername->len, cmd->triggername->buf,
+          (int)cmd->current_proc, (int)pid);
       continue;
     }
 
     /* first mark the process as dead */
     cmd->current_proc = 0;
     if (root->cancelled) {
+      w_log(W_LOG_DBG, "mark_dead: root was cancelled\n");
       break;
     }
 
@@ -1326,13 +1330,22 @@ void w_mark_dead(pid_t pid)
             root->root_path->len, root->root_path->buf);
       break;
     }
+    w_log(W_LOG_DBG, "mark_dead: %.*s: spec root=%" PRIu32 " tick=%" PRIu32"\n",
+        cmd->triggername->len, cmd->triggername->buf,
+        cmd->dispatch_root_number, cmd->dispatch_tick);
 
     /* now we need to figure out if more updates came
      * in while we were running */
-    for (f = root->latest_file;
-        f && f->otime.ticks > cmd->dispatch_tick;
-        f = f->next) {
-      oldest = f;
+    if (cmd->dispatch_root_number != root->number) {
+      for (f = root->latest_file; f; f = f->next) {
+        oldest = f;
+      }
+    } else {
+      for (f = root->latest_file;
+          f && f->otime.ticks > cmd->dispatch_tick;
+          f = f->next) {
+        oldest = f;
+      }
     }
 
     matches = w_rules_match(root, oldest, &results, cmd->rules, spec);
@@ -1473,6 +1486,8 @@ static void process_triggers(w_root_t *root)
     struct watchman_trigger_command *cmd = w_ht_val_ptr(iter.value);
     if (cmd->current_proc) {
       // Don't spawn if there's one already running
+      w_log(W_LOG_DBG, "process_triggers: %.*s is already running\n",
+          cmd->triggername->len, cmd->triggername->buf);
       continue;
     }
     // Normally it wouldn't be OK to use root->number here since we'd like to be
