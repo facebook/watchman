@@ -1805,7 +1805,7 @@ static bool try_read_inotify(w_root_t *root)
     if (errno == EINTR) {
       return false;
     }
-    w_log(W_LOG_FATAL, "read(%d, %lu): error %s\n",
+    w_log(W_LOG_FATAL, "read(%d, %zu): error %s\n",
         root->infd, sizeof(root->ibuf), strerror(errno));
   }
 
