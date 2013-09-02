@@ -652,7 +652,7 @@ static void invalidate_watch_descriptors(w_root_t *root,
   w_ht_iter_t i;
 
   if (w_ht_first(dir->dirs, &i)) do {
-    struct watchman_dir *child = (struct watchman_dir*)i.value;
+    struct watchman_dir *child = (struct watchman_dir*)w_ht_val_ptr(i.value);
 
     invalidate_watch_descriptors(root, child);
   } while (w_ht_next(dir->dirs, &i));
@@ -907,7 +907,7 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
 #if HAVE_INOTIFY_INIT
 struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd)
 {
-  return (struct watchman_dir*)w_ht_get(root->wd_to_dir, wd);
+  return (struct watchman_dir*)w_ht_val_ptr(w_ht_get(root->wd_to_dir, wd));
 }
 #endif
 
