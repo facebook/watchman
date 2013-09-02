@@ -204,7 +204,9 @@ bool parse_watch_params(int start, json_t *args,
 {
   bool include = true;
   bool negated = false;
+#ifdef HAVE_PCRE_H
   int is_pcre = 0;
+#endif
   struct watchman_rule *rule, *prior = NULL;
   uint32_t i;
 
@@ -307,7 +309,9 @@ bool parse_watch_params(int start, json_t *args,
 
     // Reset negated flag
     negated = false;
+#ifdef HAVE_PCRE_H
     is_pcre = 0;
+#endif
   }
 
   if (next_arg) {
