@@ -163,12 +163,12 @@ $build
 # -9 will cause monitor to respawn them for users, so we'll restart
 # and recrawl at upgrade time and not defer it until our users ask
 # questions of the server
-pkill -9 watchman
+pkill -9 watchman || /bin/true
 
 %preun
 # We want it to go away; this normal termination will cause monitor
 # to exit and we're done.
-pkill watchman
+pkill watchman || /bin/true
 
 %files
 %defattr(-,root,root,-)
