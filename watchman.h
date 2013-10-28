@@ -205,6 +205,9 @@ struct watchman_file {
 #if HAVE_PORT_CREATE
   file_obj_t port_file;
 #endif
+#if HAVE_KQUEUE
+  int kq_fd;
+#endif
 };
 
 #define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"

@@ -15,7 +15,11 @@ class modifyTest extends WatchmanTestCase {
     touch("$root/foo/111");
     $watch = $this->watch($root);
     $this->watchmanCommand('subscribe', $root, 'test',
-      array('fields' => array('name')));
+      array(
+        'fields' => array('name'),
+        'expression' => array('type', 'f'),
+      )
+    );
     $this->waitForSub('test', function($data) { return true; });
     $this->getSubData('test');
 

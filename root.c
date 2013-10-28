@@ -495,6 +495,34 @@ static void watch_file(w_root_t *root, struct watchman_file *file)
   port_associate(root->port_fd, PORT_SOURCE_FILE,
       (uintptr_t)&file->port_file, WATCHMAN_PORT_EVENTS,
       (void*)file);
+#elif HAVE_KQUEUE
+  struct kevent k;
+  char buf[WATCHMAN_NAME_MAX];
+
+  snprintf(buf, sizeof(buf), "%.*s/%.*s",
+      file->parent->path->len, file->parent->path->buf,
+      file->name->len, file->name->buf);
+
+  w_log(W_LOG_DBG, "watch_file(%s)\n", buf);
+
+  file->kq_fd = open(buf, O_EVTONLY|O_CLOEXEC);
+  if (file->kq_fd == -1) {
+    w_log(W_LOG_ERR, "failed to open %s O_EVTONLY: %s\n",
+        buf, strerror(errno));
+    return;
+  }
+
+  memset(&k, 0, sizeof(k));
+  EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
+      NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME|NOTE_ATTRIB,
+      0, file);
+
+  if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
+    w_log(W_LOG_DBG, "kevent EV_ADD file %s failed: %s",
+        buf, strerror(errno));
+    close(file->kq_fd);
+    file->kq_fd = -1;
+  }
 #else
   unused_parameter(root);
   unused_parameter(file);
@@ -510,6 +538,19 @@ static void stop_watching_file(w_root_t *root, struct watchman_file *file)
     free(file->port_file.fo_name);
     file->port_file.fo_name = NULL;
   }
+#elif HAVE_KQUEUE
+  struct kevent k;
+
+  if (file->kq_fd == -1) {
+    return;
+  }
+
+  memset(&k, 0, sizeof(k));
+  EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_DELETE, 0, 0, file);
+  kevent(root->kq_fd, &k, 1, NULL, 0, 0);
+  close(file->kq_fd);
+  file->kq_fd = -1;
+
 #else
   unused_parameter(root);
   unused_parameter(file);
@@ -630,7 +671,7 @@ static void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
 
     memset(&k, 0, sizeof(k));
     EV_SET(&k, dir->wd, EVFILT_VNODE, EV_DELETE,
-        0, 0, dir);
+        0, 0, SET_DIR_BIT(dir));
 
     if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
       w_log(W_LOG_ERR, "rm_watch: %d %.*s %s\n",
@@ -1047,8 +1088,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       memset(&k, 0, sizeof(k));
       EV_SET(&k, dir->wd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
         NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME,
-        0,
-        dir);
+        0, SET_DIR_BIT(dir));
 
       if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
         w_log(W_LOG_DBG, "kevent EV_ADD dir %s failed: %s",
@@ -1120,14 +1160,6 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       w_root_add_pending_rel(root, dir, dirent->d_name,
           true, now, false);
     }
-#ifdef HAVE_KQUEUE
-    else if (!S_ISDIR(file->st.st_mode)) {
-      // if we're BSDish we need to stat files here otherwise
-      // we'll miss things like files being touched
-      w_root_add_pending_rel(root, dir, dirent->d_name,
-          false, now, false);
-    }
-#endif
     w_string_delref(name);
   }
   closedir(osdir);
@@ -1578,18 +1610,30 @@ static int consume_kqueue(w_root_t *root, int timeoutms)
   gettimeofday(&now, NULL);
   for (i = 0; n > 0 && i < n; i++) {
     uint32_t fflags = root->keventbuf[i].fflags;
-    struct watchman_dir *dir = root->keventbuf[i].udata;
 
-    w_log(W_LOG_DBG, " KQ dir %s [0x%x]\n", dir->path->buf, fflags);
-    if ((fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE)) &&
-        w_string_equal(dir->path, root->root_path)) {
-      w_log(W_LOG_ERR,
-          "root dir %s has been (re)moved [code 0x%x], canceling watch\n",
-          root->root_path->buf, fflags);
-      w_root_cancel(root);
-      return 0;
+    if (IS_DIR_BIT_SET(root->keventbuf[i].udata)) {
+      struct watchman_dir *dir = DECODE_DIR(root->keventbuf[i].udata);
+
+      w_log(W_LOG_DBG, " KQ dir %s [0x%x]\n", dir->path->buf, fflags);
+      if ((fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE)) &&
+          w_string_equal(dir->path, root->root_path)) {
+        w_log(W_LOG_ERR,
+            "root dir %s has been (re)moved [code 0x%x], canceling watch\n",
+            root->root_path->buf, fflags);
+        w_root_cancel(root);
+        return 0;
+      }
+      w_root_add_pending(root, dir->path, false, now, false);
+    } else {
+      struct watchman_file *file = root->keventbuf[i].udata;
+
+      w_string_t *path;
+
+      path = w_string_path_cat(file->parent->path, file->name);
+      w_root_add_pending(root, path, true, now, true);
+      w_log(W_LOG_DBG, " KQ file %.*s [0x%x]\n", path->len, path->buf, fflags);
+      w_string_delref(path);
     }
-    w_root_add_pending(root, dir->path, false, now, false);
   }
 
   return n;
