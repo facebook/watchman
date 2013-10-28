@@ -30,3 +30,6 @@ config.sub
 config.guess
 configure.lineno
 python/bser/build
+test-suite.log
+tests/*.log
+tests/*.trs
