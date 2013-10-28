@@ -1,5 +1,6 @@
 # If you make a change to this file, make sure to also make it to .hgignore.
 Makefile.in
+test-driver
 aclocal.m4
 autom4te.cache/
 configure
