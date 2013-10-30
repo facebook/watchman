@@ -1,4 +1,4 @@
-AC_INIT([watchman], [2.9.1], [], [watchman])
+AC_INIT([watchman], [2.9.2], [], [watchman])
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects])
 
@@ -167,6 +167,9 @@ AC_CHECK_HEADERS(sys/types.h inttypes.h locale.h port.h sys/inotify.h sys/event.
 AC_CHECK_FUNCS(kqueue port_create inotify_init strtoll localeconv)
 AC_CHECK_HEADERS(valgrind/valgrind.h)
 AC_CHECK_HEADERS(execinfo.h)
+AC_CHECK_HEADERS(CoreServices/CoreServices.h, [
+  LIBS="$LIBS -framework CoreServices"
+])
 AC_CHECK_FUNCS(backtrace backtrace_symbols)
 
 # Do this after we've looked for functions

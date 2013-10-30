@@ -67,6 +67,13 @@ extern char **environ;
 
 #include "jansson.h"
 
+#ifdef HAVE_CORESERVICES_CORESERVICES_H
+# include <CoreServices/CoreServices.h>
+# define HAVE_FSEVENTS 1
+# undef HAVE_KQUEUE
+#endif
+
+
 /* sane, reasonably large filename size that we'll use
  * throughout; POSIX seems to define smallish buffers
  * that seem risky */
@@ -137,6 +144,14 @@ struct watchman_string {
 
 #define WATCHMAN_PORT_EVENTS \
   FILE_MODIFIED | FILE_ATTRIB | FILE_NOFOLLOW
+
+#if HAVE_FSEVENTS
+struct watchman_fsevent {
+  struct watchman_fsevent *next;
+  w_string_t *path;
+  FSEventStreamEventFlags flags;
+};
+#endif
 
 struct watchman_file;
 struct watchman_dir;
@@ -265,6 +280,16 @@ struct watchman_root {
 #endif
 #if HAVE_PORT_CREATE
   int port_fd;
+#endif
+#if HAVE_FSEVENTS
+  int fse_pipe[2];
+  bool fse_started;
+
+  pthread_mutex_t fse_mtx;
+  pthread_cond_t fse_cond;
+  pthread_t fse_thread;
+
+  struct watchman_fsevent *fse_head, *fse_tail;
 #endif
   /* map of dir name to a dir */
   w_ht_t *dirname_to_dir;

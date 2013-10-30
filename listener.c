@@ -659,7 +659,7 @@ static void wakeme(int signo)
   unused_parameter(signo);
 }
 
-#ifdef HAVE_KQUEUE
+#if defined(HAVE_KQUEUE) || defined(HAVE_FSEVENTS)
 #ifdef __OpenBSD__
 #include <sys/siginfo.h>
 #endif
@@ -691,7 +691,7 @@ bool w_start_listener(const char *path)
   hb = gimli_heartbeat_attach();
 #endif
 
-#ifdef HAVE_KQUEUE
+#if defined(HAVE_KQUEUE) || defined(HAVE_FSEVENTS)
   {
     struct rlimit limit;
     int mib[2] = { CTL_KERN,
@@ -730,12 +730,14 @@ bool w_start_listener(const char *path)
     }
 
     getrlimit(RLIMIT_NOFILE, &limit);
+#ifndef HAVE_FSEVENTS
     if (limit.rlim_cur < 10240) {
       w_log(W_LOG_ERR,
           "Your file descriptor limit is very low (%" PRIu64 "), "
           "please consult the watchman docs on raising the limits\n",
           limit.rlim_cur);
     }
+#endif
   }
 #endif
 

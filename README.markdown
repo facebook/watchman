@@ -12,7 +12,8 @@ also trigger actions (such as rebuilding assets) when matching files change.
 Watchman is known to compile and pass its test suite on:
 
  * Linux systems with `inotify`
- * OS X and BSDish systems (FreeBSD 9.1, OpenBSD 5.2) that have the
+ * OS X (uses FSEvents)
+ * BSDish systems (FreeBSD 9.1, OpenBSD 5.2) that have the
    `kqueue(2)` facility
  * Illumos and Solaris style systems that have `port_create(3C)`
 
@@ -1093,9 +1094,8 @@ haven't actually changed.
 ### Max OS File Descriptor Limits
 
 The default per-process descriptor limit on current versions of OS X is
-extremely low (256!).  Since kqueue() requires an open descriptor for each
-watched directory, you will very quickly run into resource limits if your trees
-are large or if you do not raise the limits in your system configuration.
+extremely low (256!).  More recent versions of watchman (2.9.2 and later)
+use FSEvents and are not so sensitive to descriptor limits.
 
 Watchman will attempt to raise its descriptor limit to match
 `kern.maxfilesperproc` when it starts up, so you shouldn't need to mess

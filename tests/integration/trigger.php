@@ -24,6 +24,15 @@ class triggerTestCase extends WatchmanTestCase {
       $logdata,
       "got the right filename in the log");
 
+    $this->waitFor(function () use ($root) {
+      if (file_exists("$root/trigger.json")) {
+        return json_decode(
+          file_get_contents("$root/trigger.json")
+        );
+      }
+      return false;
+    }, 5, "created trigger.json");
+
     // Validate that the json input is properly formatted
     $lines = 0;
     foreach (file("$root/trigger.json") as $line) {
@@ -83,7 +92,8 @@ class triggerTestCase extends WatchmanTestCase {
 
     touch("$root/foo.c");
 
-    $this->assertWaitForLog('/posix_spawnp/', 60);
+    $this->watchmanCommand('log', 'debug', 'waiting for spawnp ' . __LINE__);
+    $this->assertWaitForLog('/posix_spawnp/', 5);
 
     $this->stopLogging();
 
@@ -131,7 +141,8 @@ class triggerTestCase extends WatchmanTestCase {
     // make sure the triggers didn't get deleted
     $this->assertTriggerList($root, $trig_list);
 
-    $this->assertWaitForLog('/posix_spawnp/', 60);
+    $this->watchmanCommand('log', 'debug', 'waiting for spawnp ' . __LINE__);
+    $this->assertWaitForLog('/posix_spawnp/', 5);
     $this->stopLogging();
 
     // and that the right data was seen
