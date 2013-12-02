@@ -154,7 +154,7 @@ Watchman provides 4 generators:
  * **path**: generates a list of files based on their path and depth
  * **all**: generates a list of all known files
 
-Generators are analagous to the list of *paths* that you specify when using the
+Generators are analogous to the list of *paths* that you specify when using the
 `find(1)` utility, but are implemented in watchman with a bit of a twist
 because watchman doesn't need to crawl the filesystem in realtime and instead
 maintains a couple of indexes over the tree.
@@ -325,7 +325,7 @@ Possible types are:
 
 ##### empty
 
-Evaluates as true if the file exists, has size is 0 and is a regular file or
+Evaluates as true if the file exists, has size 0 and is a regular file or
 directory.
 
     "empty"
@@ -474,7 +474,7 @@ is restarted.
 
 Returns the current clock value for a watched root.
 
-Be careful how you interpret this value; it return the instantaneous value of
+Be careful how you interpret this value; it returns the instantaneous value of
 the clock, and may have changed by the time you intend to act upon it.
 
 ```bash
@@ -692,7 +692,7 @@ By default a `query` will wait for up to 2 seconds for the view of the
 filesystem to become current.  Watchman decides that the view is current by
 creating a cookie file and waiting to observe the notification that it is
 present.  If the cookie is not observed within the sync_timeout period then the
-query invocation will error out with a sychronization error message.
+query invocation will error out with a synchronization error message.
 
 If your synchronization requirements differ from the default, you may pass in
 your desired timeout when you construct your query; it must be an integer value
@@ -928,7 +928,7 @@ ways to measure time.
  * **recommended for advanced users**: a clock id of the form `c:123:234`
 
 The first and most obvious is passing a unix timestamp.  Watchman records
-the observed time that files change and allows you to find file that have
+the observed time that files change and allows you to find files that have
 changed since that time.  Using a timestamp is prone to race conditions
 in understanding the complete state of the file tree.
 
