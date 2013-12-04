@@ -255,6 +255,7 @@ struct watchman_root {
 
   /* map of dir name => dirname
    * if the map has an entry for a given dir, we're ignoring it */
+  w_ht_t *ignore_vcs;
   w_ht_t *ignore_dirs;
 
   int trigger_settle;

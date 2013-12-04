@@ -208,6 +208,102 @@ static bool w_root_init(w_root_t *root, char **errmsg)
   return root;
 }
 
+static void apply_ignore_vcs_configuration(w_root_t *root)
+{
+  w_string_t *name;
+  w_string_t *fullname;
+  uint8_t i;
+  json_t *ignores;
+  char hostname[256];
+  struct stat st;
+
+  ignores = cfg_get_json(root, "ignore_vcs");
+  if (ignores && !json_is_array(ignores)) {
+    w_log(W_LOG_ERR, "ignore_vcs must be an array of strings\n");
+    ignores = NULL;
+  }
+  if (ignores) {
+    // incref so we can more simply dispose of the default ignore
+    // set that we create in the else branch of this
+    json_incref(ignores);
+  } else {
+    // default to a well-known set of vcs's
+    ignores = json_pack("[sss]", ".git", ".svn", ".hg");
+  }
+
+  for (i = 0; i < json_array_size(ignores); i++) {
+    const char *ignore = json_string_value(json_array_get(ignores, i));
+
+    if (!ignore) {
+      w_log(W_LOG_ERR, "ignore_vcs must be an array of strings\n");
+      continue;
+    }
+
+    name = w_string_new(ignore);
+    fullname = w_string_path_cat(root->root_path, name);
+    w_ht_set(root->ignore_vcs, w_ht_ptr_val(fullname),
+        w_ht_ptr_val(fullname));
+
+    // While we're at it, see if we can find out where to put our
+    // query cookie information
+    if (root->query_cookie_dir == NULL &&
+        lstat(fullname->buf, &st) == 0 && S_ISDIR(st.st_mode)) {
+      // root/{.hg,.git,.svn}
+      root->query_cookie_dir = w_string_path_cat(root->root_path, name);
+    }
+    w_string_delref(name);
+    w_string_delref(fullname);
+  }
+
+  json_decref(ignores);
+
+  if (root->query_cookie_dir == NULL) {
+    w_string_addref(root->root_path);
+    root->query_cookie_dir = root->root_path;
+  }
+  gethostname(hostname, sizeof(hostname));
+  hostname[sizeof(hostname) - 1] = '\0';
+
+  root->query_cookie_prefix = w_string_make_printf(
+      "%.*s/" WATCHMAN_COOKIE_PREFIX "%s-%d-", root->query_cookie_dir->len,
+      root->query_cookie_dir->buf, hostname, (int)getpid());
+}
+
+static void apply_ignore_configuration(w_root_t *root)
+{
+  w_string_t *name;
+  w_string_t *fullname;
+  uint8_t i;
+  json_t *ignores;
+
+  ignores = cfg_get_json(root, "ignore_dirs");
+  if (!ignores) {
+    return;
+  }
+  if (!json_is_array(ignores)) {
+    w_log(W_LOG_ERR, "ignore_dirs must be an array of strings\n");
+    return;
+  }
+
+  for (i = 0; i < json_array_size(ignores); i++) {
+    const char *ignore = json_string_value(json_array_get(ignores, i));
+
+    if (!ignore) {
+      w_log(W_LOG_ERR, "ignore_dirs must be an array of strings\n");
+      continue;
+    }
+
+    name = w_string_new(ignore);
+    fullname = w_string_path_cat(root->root_path, name);
+    w_ht_set(root->ignore_dirs, w_ht_ptr_val(fullname),
+        w_ht_ptr_val(fullname));
+    w_log(W_LOG_DBG, "ignoring %.*s recursively\n",
+        fullname->len, fullname->buf);
+    w_string_delref(fullname);
+    w_string_delref(name);
+  }
+}
+
 static w_root_t *w_root_new(const char *path, char **errmsg)
 {
   w_root_t *root = calloc(1, sizeof(*root));
@@ -225,49 +321,13 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   root->root_path = w_string_new(path);
   root->commands = w_ht_new(2, &trigger_hash_funcs);
   root->query_cookies = w_ht_new(2, &w_ht_string_funcs);
+  root->ignore_vcs = w_ht_new(2, &w_ht_string_funcs);
   root->ignore_dirs = w_ht_new(2, &w_ht_string_funcs);
-  // Special handling for VCS control dirs
-  {
-    static const char *ignores[] = {
-      ".git", ".svn", ".hg"
-    };
-    w_string_t *name;
-    w_string_t *fullname;
-    char hostname[256];
-    uint8_t i;
-    struct stat st;
-
-    for (i = 0; i < sizeof(ignores) / sizeof(ignores[0]); i++) {
-      name = w_string_new(ignores[i]);
-      fullname = w_string_path_cat(root->root_path, name);
-      w_ht_set(root->ignore_dirs, w_ht_ptr_val(fullname),
-          w_ht_ptr_val(fullname));
-      w_string_delref(fullname);
-
-      // While we're at it, see if we can find out where to put our
-      // query cookie information
-      if (root->query_cookie_dir == NULL &&
-          lstat(fullname->buf, &st) == 0 && S_ISDIR(st.st_mode)) {
-        // root/{.hg,.git,.svn}
-        root->query_cookie_dir = w_string_path_cat(root->root_path, name);
-      }
-      w_string_delref(name);
-    }
-
-    if (root->query_cookie_dir == NULL) {
-      w_string_addref(root->root_path);
-      root->query_cookie_dir = root->root_path;
-    }
-    gethostname(hostname, sizeof(hostname));
-    hostname[sizeof(hostname) - 1] = '\0';
-
-    root->query_cookie_prefix = w_string_make_printf(
-      "%.*s/" WATCHMAN_COOKIE_PREFIX "%s-%d-", root->query_cookie_dir->len,
-      root->query_cookie_dir->buf, hostname, (int)getpid());
-  }
 
   load_root_config(root, path);
   root->trigger_settle = cfg_get_int(root, "settle", DEFAULT_SETTLE_PERIOD);
+  apply_ignore_vcs_configuration(root);
+  apply_ignore_configuration(root);
 
   if (!w_root_init(root, errmsg)) {
     w_root_delref(root);
@@ -791,6 +851,12 @@ static void stat_path(w_root_t *root,
   w_string_t *dir_name;
   w_string_t *file_name;
 
+  if (w_ht_get(root->ignore_dirs, w_ht_ptr_val(full_path))) {
+    w_log(W_LOG_DBG, "%.*s matches ignore_dir rules\n",
+        full_path->len, full_path->buf);
+    return;
+  }
+
   if (full_path->len > sizeof(path)-1) {
     w_log(W_LOG_FATAL, "path %.*s is too big\n",
         full_path->len, full_path->buf);
@@ -864,7 +930,7 @@ static void stat_path(w_root_t *root,
       }
 
       // Don't recurse if our parent is an ignore dir
-      if (!w_ht_get(root->ignore_dirs, w_ht_ptr_val(dir_name)) ||
+      if (!w_ht_get(root->ignore_vcs, w_ht_ptr_val(dir_name)) ||
           // but do if we're looking at the cookie dir (stat_path is never
           // called for the root itself)
           w_string_equal(full_path, root->query_cookie_dir)) {
@@ -1651,6 +1717,27 @@ static bool is_ignored(w_root_t *root, const char *path, uint32_t pathlen)
   if (w_ht_first(root->ignore_dirs, &i)) do {
     w_string_t *ign = w_ht_val_ptr(i.value);
 
+    if (pathlen < ign->len) {
+      continue;
+    }
+
+    if (memcmp(ign->buf, path, ign->len) == 0) {
+      if (ign->len == pathlen) {
+        // Exact match
+        return true;
+      }
+
+      if (path[ign->len] == '/') {
+        // prefix match
+        return true;
+      }
+    }
+
+  } while (w_ht_next(root->ignore_dirs, &i));
+
+  if (w_ht_first(root->ignore_vcs, &i)) do {
+    w_string_t *ign = w_ht_val_ptr(i.value);
+
     if (pathlen <= ign->len) {
       continue;
     }
@@ -1670,7 +1757,7 @@ static bool is_ignored(w_root_t *root, const char *path, uint32_t pathlen)
       }
     }
 
-  } while (w_ht_next(root->ignore_dirs, &i));
+  } while (w_ht_next(root->ignore_vcs, &i));
 
   return false;
 }
@@ -2413,7 +2500,7 @@ void w_root_delref(w_root_t *root)
 
   pthread_mutex_destroy(&root->lock);
   w_string_delref(root->root_path);
-  w_ht_free(root->ignore_dirs);
+  w_ht_free(root->ignore_vcs);
   w_ht_free(root->commands);
   w_ht_free(root->query_cookies);
   if (root->config_file) {

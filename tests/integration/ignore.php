@@ -27,5 +27,46 @@ class ignoreTestCase extends WatchmanTestCase {
       'foo'
     ));
   }
+
+  function testIgnoreGeneric() {
+    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $root = realpath($dir->getPath());
+
+    $cfg = array(
+      'ignore_dirs' => array('build')
+    );
+    file_put_contents("$root/.watchmanconfig", json_encode($cfg));
+
+    mkdir("$root/build");
+    mkdir("$root/build/lower");
+    mkdir("$root/builda");
+    touch("$root/foo");
+    touch("$root/build/bar");
+    touch("$root/buildfile");
+    touch("$root/build/lower/baz");
+    touch("$root/builda/hello");
+
+    $this->watch($root);
+    $this->assertFileList($root, array(
+      '.watchmanconfig',
+      'builda',
+      'builda/hello',
+      'buildfile',
+      'foo',
+    ));
+
+    touch("$root/build/lower/dontlookatme");
+    touch("$root/build/orme");
+    touch("$root/buil");
+    $this->assertFileList($root, array(
+      '.watchmanconfig',
+      'buil',
+      'builda',
+      'builda/hello',
+      'buildfile',
+      'foo',
+    ));
+
+  }
 }
 

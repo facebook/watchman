@@ -1048,6 +1048,31 @@ The following parameters are accepted in the global configuration file only:
 
    will allow watches only in the top level of Git or Mercurial repositories.
 
+The following parameters are accepted in the .watchmanconfig file only:
+
+ * `ignore_vcs` - apply special VCS ignore logic to the set of named dirs.
+   This option has a default value of `[".git", ".hg", ".svn"]`.  Dirs that
+   match this option are observed and watched using special shallow logic.
+   The shallow watch allows watchman to mildly abuse the version control
+   directories to store its query cookie files and to observe VCS locking
+   activity without having to watch the entire set of VCS data for large trees.
+
+ * `ignore_dirs` - dirs that match are completely ignored by watchman.
+   This is useful to ignore a directory that contains only build products and
+   where file change notifications are unwanted because of the sheer volume of
+   files.
+
+   For example,
+
+   ```json
+   {
+     "ignore_dirs": ["build"]
+   }
+   ```
+
+   would ignore the `build` directory at the top level of the watched tree,
+   and everything below it.  It will never appear in the watchman query
+   results for the tree.
 
 ## Build/Install
 
