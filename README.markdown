@@ -1048,7 +1048,8 @@ The following parameters are accepted in the global configuration file only:
 
    will allow watches only in the top level of Git or Mercurial repositories.
 
-The following parameters are accepted in the .watchmanconfig file only:
+The following parameters are accepted in the .watchmanconfig file only,
+since version 2.9.3:
 
  * `ignore_vcs` - apply special VCS ignore logic to the set of named dirs.
    This option has a default value of `[".git", ".hg", ".svn"]`.  Dirs that
