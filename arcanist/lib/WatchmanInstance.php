@@ -391,7 +391,7 @@ class WatchmanInstance {
           }
         }
       } else {
-        var_dump($xml_data);
+        var_dump($vg);
       }
     }
 

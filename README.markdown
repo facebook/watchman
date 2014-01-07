@@ -1179,7 +1179,7 @@ of it!) and be followed by a newline `\n` character:
 ## Contributing?
 
 If you're thinking of hacking on watchman we'd love to hear from you!
-Feel free to use the Github issue tracker and pull requests discuss and
+Feel free to use the GitHub issue tracker and pull requests discuss and
 submit code changes.
 
 We (Facebook) have to ask for a "Contributor License Agreement" from someone
