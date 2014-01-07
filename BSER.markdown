@@ -63,7 +63,7 @@ A real number is indicated by a `0x07` byte followed by 8 bytes of double value.
 `0x0b` indicates a compact array of objects follows.  Some of the bigger
 datastructures returned by watchman are tabular data expressed as an array
 of objects.  This serialization type factors out the repeated object keys
-into a header array listing the keys, followed by an array continaing
+into a header array listing the keys, followed by an array containing
 all the values of the objects.
 
 To represent missing keys in templated arrays, the `0x0c` encoding value may
