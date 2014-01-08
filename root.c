@@ -2501,6 +2501,7 @@ void w_root_delref(w_root_t *root)
   pthread_mutex_destroy(&root->lock);
   w_string_delref(root->root_path);
   w_ht_free(root->ignore_vcs);
+  w_ht_free(root->ignore_dirs);
   w_ht_free(root->commands);
   w_ht_free(root->query_cookies);
   if (root->config_file) {
