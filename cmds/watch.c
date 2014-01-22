@@ -40,7 +40,7 @@ void cmd_watch_delete(struct watchman_client *client, json_t *args)
 
   /* resolve the root */
   if (json_array_size(args) != 2) {
-    send_error_response(client, "wrong number of arguments to 'watch'");
+    send_error_response(client, "wrong number of arguments to 'watch-del'");
     return;
   }
 
