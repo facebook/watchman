@@ -82,6 +82,18 @@ static bool parse_since(w_query *res, json_t *query)
   return false;
 }
 
+static bool set_suffix(w_query *res, json_t *ele, w_string_t **suffix)
+{
+  if (!json_is_string(ele)) {
+    res->errmsg = strdup("'suffix' must be a string or an array of strings");
+    return false;
+  }
+
+  *suffix = w_string_new_lower(json_string_value(ele));
+
+  return true;
+}
+
 static bool parse_suffixes(w_query *res, json_t *query)
 {
   json_t *suffixes;
@@ -92,8 +104,15 @@ static bool parse_suffixes(w_query *res, json_t *query)
     return true;
   }
 
+  if (json_is_string(suffixes)) {
+    json_t *ele = suffixes;
+    res->nsuffixes = 1;
+    res->suffixes = calloc(res->nsuffixes, sizeof(w_string_t*));
+    return set_suffix(res, ele, res->suffixes);
+  }
+
   if (!json_is_array(suffixes)) {
-    res->errmsg = strdup("'suffix' must be an array of strings");
+    res->errmsg = strdup("'suffix' must be a string or an array of strings");
     return false;
   }
 
@@ -106,27 +125,15 @@ static bool parse_suffixes(w_query *res, json_t *query)
 
   for (i = 0; i < json_array_size(suffixes); i++) {
     json_t *ele = json_array_get(suffixes, i);
-    char *low;
-    int j;
 
     if (!json_is_string(ele)) {
-      res->errmsg = strdup("'suffix' must be an array of strings");
+      res->errmsg = strdup("'suffix' must be a string or an array of strings");
       return false;
     }
 
-    low = strdup(json_string_value(ele));
-    if (!low) {
-      res->errmsg = strdup("out of memory");
+    if (!set_suffix(res, ele, res->suffixes + i)) {
       return false;
     }
-
-    for (j = 0; low[j]; j++) {
-      low[j] = tolower(low[j]);
-    }
-
-    res->suffixes[i] = w_string_new(low);
-
-    free(low);
   }
 
   return true;
