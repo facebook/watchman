@@ -150,7 +150,8 @@ Watchman provides 4 generators:
  * **since**: generates a list of files that were modified since a specific
    clockspec. If this is not specified, this will be treated the same as if a
    clockspec from a different instance of watchman was passed in.
- * **suffix**: generates a list of files that have a particular suffix
+ * **suffix**: generates a list of files that have a particular suffix or set
+   of suffixes.  The value can be either a string or an array of strings.
  * **path**: generates a list of files based on their path and depth
  * **all**: generates a list of all known files
 
