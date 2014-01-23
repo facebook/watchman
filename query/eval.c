@@ -249,6 +249,11 @@ static bool path_generator(
     }
 
     // Is it a dir?
+    if (!dir->dirs) {
+      w_string_delref(full_name);
+      continue;
+    }
+
     dir = w_ht_val_ptr(w_ht_get(dir->dirs, w_ht_ptr_val(full_name)));
     w_string_delref(full_name);
 is_dir:
