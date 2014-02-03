@@ -149,9 +149,19 @@ Watchman provides 4 generators:
 
  * **since**: generates a list of files that were modified since a specific
    clockspec. If this is not specified, this will be treated the same as if a
-   clockspec from a different instance of watchman was passed in.
- * **suffix**: generates a list of files that have a particular suffix
- * **path**: generates a list of files based on their path and depth
+   clockspec from a different instance of watchman was passed in. You can
+   use either a string oclock value, or a integer number of epoch seconds.
+ * **suffix**: generates a list of files that have a particular suffix or set
+   of suffixes.  The value can be either a string or an array of strings.
+ * **path**: generates a list of files based on their path and depth. Depth
+   controls how far watchman will search down the directory tree for files.
+   Depth = 0 means only files and directories which are contained in this
+   path.  The value of path can be either an array, a string, or an object.
+   If it is a string, it is treated as a path, and depth is infinite.  If
+   an object, the fields path (a string) and depth (an integer) must be
+   supplied.  An array can contain either strings or objects, each with the
+   same meaning as single strings or objects.  Paths are relative to
+   the root, so if watchman is watching /foo/, path "bar" refers to /foo/bar.
  * **all**: generates a list of all known files
 
 Generators are analogous to the list of *paths* that you specify when using the
@@ -641,12 +651,13 @@ fields will return a response something like this:
 }
 ```
 
-The `is_fresh_instance` member is true if the particular clock value indicates
-that it was returned by a different instance of watchman, or a named cursor
-hasn't been seen before. In that case, only files that currently exist will be
-returned, and all files will have `new` set to `true`. Advanced users may set
-the input parameter `empty_on_fresh_instance` to true, in which case no files
-will be returned for fresh instances.
+For queries using the `since` generator, the `is_fresh_instance` member is true
+if the particular clock value indicates that it was returned by a different
+instance of watchman, or a named cursor hasn't been seen before. In that case,
+only files that currently exist will be returned, and all files will have `new`
+set to `true`. For all other queries, is_fresh_instance will always be true.
+Advanced users may set the input parameter `empty_on_fresh_instance` to true,
+in which case no files will be returned for fresh instances.
 
 If the `fields` member consists of a single entry, the files result will be a
 simple array of values; ```"fields": ["name"]``` produces:
