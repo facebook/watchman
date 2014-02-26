@@ -471,6 +471,15 @@ void w_query_delref(w_query *query)
     w_query_expr_delref(query->expr);
   }
 
+  if (query->suffixes) {
+    for (i = 0; i < query->nsuffixes; i++) {
+      if (query->suffixes[i]) {
+        w_string_delref(query->suffixes[i]);
+      }
+    }
+    free(query->suffixes);
+  }
+
   free(query);
 }
 
