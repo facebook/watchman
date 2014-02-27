@@ -117,15 +117,15 @@ TXT
       $configureargs .= ' --enable-statedir=' . $statedir;
       $files .= "%dir %attr(777, root, root) $statedir\n";
       $files .= "%dir %attr(777, root, root) $statedir/traces\n";
-      $build .= "mkdir -p $root/ROOT/$statedir/traces\n";
+      $build .= "mkdir -p %{buildroot}/$statedir/traces\n";
     }
 
     $config_file = $this->getArgument('config-file');
     if ($config_file) {
       $config_file = realpath($config_file);
       $files .= "%config /etc/watchman.json\n";
-      $build .= "mkdir -p $root/ROOT/etc\n";
-      $build .= "cp $config_file $root/ROOT/etc/watchman.json\n";
+      $build .= "mkdir -p %{buildroot}/etc\n";
+      $build .= "cp $config_file %{buildroot}/etc/watchman.json\n";
     }
 
     $api = $this->getRepositoryAPI();
