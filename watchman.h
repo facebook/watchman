@@ -235,6 +235,10 @@ struct watchman_query_cookie {
 #define WATCHMAN_BATCH_LIMIT (16*1024)
 #define DEFAULT_SETTLE_PERIOD 20
 
+/* Prune out nodes that were deleted roughly 12-36 hours ago */
+#define DEFAULT_GC_AGE (86400/2)
+#define DEFAULT_GC_INTERVAL 86400
+
 struct watchman_root {
   int refcnt;
 
@@ -259,6 +263,8 @@ struct watchman_root {
   w_ht_t *ignore_dirs;
 
   int trigger_settle;
+  int gc_interval;
+  int gc_age;
 
   /* config options loaded via json file */
   json_t *config_file;
@@ -323,6 +329,8 @@ struct watchman_root {
   uint32_t pending_trigger_tick;
   uint32_t last_sub_tick;
   uint32_t pending_sub_tick;
+  uint32_t last_age_out_tick;
+  time_t last_age_out_timestamp;
 
 #if HAVE_INOTIFY_INIT
   // Make the buffer big enough for 16k entries, which
@@ -476,6 +484,7 @@ bool w_string_startswith(w_string_t *str, w_string_t *prefix);
 void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
 w_root_t *w_root_resolve(const char *path, bool auto_watch, char **errmsg);
 w_root_t *w_root_resolve_for_client_mode(const char *filename, char **errmsg);
+void w_root_perform_age_out(w_root_t *root, int min_age);
 void w_root_free_watched_roots(void);
 void w_root_schedule_recrawl(w_root_t *root, const char *why);
 bool w_root_cancel(w_root_t *root);

@@ -326,6 +326,9 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
 
   load_root_config(root, path);
   root->trigger_settle = cfg_get_int(root, "settle", DEFAULT_SETTLE_PERIOD);
+  root->gc_age = cfg_get_int(root, "gc_age_seconds", DEFAULT_GC_AGE);
+  root->gc_interval = cfg_get_int(root, "gc_interval_seconds",
+      DEFAULT_GC_INTERVAL);
   apply_ignore_vcs_configuration(root);
   apply_ignore_configuration(root);
 
@@ -646,6 +649,46 @@ static void stop_watching_file(w_root_t *root, struct watchman_file *file)
 #endif
 }
 
+static void remove_from_file_list(w_root_t *root, struct watchman_file *file)
+{
+  if (root->latest_file == file) {
+    root->latest_file = file->next;
+  }
+  if (file->next) {
+    file->next->prev = file->prev;
+  }
+  if (file->prev) {
+    file->prev->next = file->next;
+  }
+}
+
+static void remove_from_suffix_list(w_root_t *root, struct watchman_file *file)
+{
+  w_string_t *suffix = w_string_suffix(file->name);
+  struct watchman_file *sufhead;
+
+  if (!suffix) {
+    return;
+  }
+
+  sufhead = w_ht_val_ptr(w_ht_get(root->suffixes, w_ht_ptr_val(suffix)));
+  if (sufhead) {
+    if (file->suffix_prev) {
+      file->suffix_prev->suffix_next = file->suffix_next;
+    }
+    if (file->suffix_next) {
+      file->suffix_next->suffix_prev = file->suffix_prev;
+    }
+    if (sufhead == file) {
+      sufhead = file->suffix_next;
+      w_ht_replace(root->suffixes, w_ht_ptr_val(suffix),
+          w_ht_ptr_val(sufhead));
+    }
+  }
+
+  w_string_delref(suffix);
+}
+
 void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
     struct timeval now)
 {
@@ -660,12 +703,7 @@ void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
 
   if (root->latest_file != file) {
     // unlink from list
-    if (file->next) {
-      file->next->prev = file->prev;
-    }
-    if (file->prev) {
-      file->prev->next = file->next;
-    }
+    remove_from_file_list(root, file);
 
     // and move to the head
     file->next = root->latest_file;
@@ -2286,6 +2324,132 @@ static bool consume_notify(w_root_t *root)
 #endif
 }
 
+static void free_file_node(struct watchman_file *file)
+{
+  w_string_delref(file->name);
+#if HAVE_PORT_CREATE
+  if (file->port_file.fo_name) {
+    free(file->port_file.fo_name);
+  }
+#endif
+  free(file);
+}
+
+static void age_out_file(w_root_t *root, struct watchman_file *file);
+
+static void age_out_dir(w_root_t *root, struct watchman_dir *dir)
+{
+  w_ht_iter_t i;
+
+  if (dir->files && w_ht_first(dir->files, &i)) do {
+    struct watchman_file *file = w_ht_val_ptr(i.value);
+
+    assert(!file->exists);
+    age_out_file(root, file);
+  } while (w_ht_next(dir->files, &i));
+
+  if (dir->dirs && w_ht_first(dir->dirs, &i)) do {
+    struct watchman_dir *child = w_ht_val_ptr(i.value);
+
+    age_out_dir(root, child);
+  } while (w_ht_next(dir->dirs, &i));
+
+  // This will implicitly call delete_dir() which will tear down
+  // the files and dirs hashes
+  w_ht_del(root->dirname_to_dir, w_ht_ptr_val(dir->path));
+}
+
+static void age_out_file(w_root_t *root, struct watchman_file *file)
+{
+  struct watchman_dir *dir;
+  w_string_t *full_name;
+
+  // Revise tick for fresh instance reporting
+  root->last_age_out_tick = MAX(root->last_age_out_tick, file->otime.ticks);
+
+  // And remove from the overall file list
+  remove_from_file_list(root, file);
+  remove_from_suffix_list(root, file);
+
+  full_name = w_string_path_cat(file->parent->path, file->name);
+
+  if (file->parent->files) {
+    // Remove the entry from the containing file hash
+    w_ht_del(file->parent->files, w_ht_ptr_val(file->name));
+  }
+
+  // resolve the dir of the same name and recursively clean its
+  // contents
+  dir = w_root_resolve_dir(root, full_name, false);
+  if (dir) {
+    age_out_dir(root, dir);
+  }
+
+  // And free it.  We don't need to stop watching it, because we already
+  // stopped watching it when we marked it as !exists
+  free_file_node(file);
+
+  w_string_delref(full_name);
+}
+
+// Find deleted nodes older than the gc_age setting.
+// This is particularly useful in cases where your tree observes a
+// large number of creates and deletes for many unique filenames in
+// a given dir (eg: temporary/randomized filenames generated as part
+// of build tooling or atomic renames)
+void w_root_perform_age_out(w_root_t *root, int min_age)
+{
+  struct watchman_file *file, *tmp;
+  time_t now;
+
+  time(&now);
+  root->last_age_out_timestamp = now;
+
+  file = root->latest_file;
+  while (file) {
+    if (file->exists || file->otime.tv.tv_sec + min_age > now) {
+      file = file->next;
+      continue;
+    }
+
+    // We look backwards for the next iteration, as forwards may
+    // be a file node that will also be deleted by age_out_file()
+    // below because it is a child node of the the current value
+    // of file.
+    tmp = file->prev;
+
+    w_log(W_LOG_DBG, "age_out file=%.*s/%.*s\n",
+        file->parent->path->len, file->parent->path->buf,
+        file->name->len, file->name->buf);
+
+    age_out_file(root, file);
+
+    if (tmp) {
+      file = tmp;
+    } else {
+      file = root->latest_file;
+    }
+  }
+}
+
+static void consider_age_out(w_root_t *root)
+{
+  time_t now;
+
+  if (root->gc_interval == 0) {
+    return;
+  }
+
+  time(&now);
+
+  if (now <= root->last_age_out_timestamp + root->gc_interval) {
+    // Don't check too often
+    return;
+  }
+
+  w_root_perform_age_out(root, root->gc_age);
+}
+
 // we want to consume inotify events as quickly as possible
 // to minimize the risk that the kernel event buffer overflows,
 // so we do this as a blocking thread that reads the inotify
@@ -2328,12 +2492,16 @@ static void notify_thread(w_root_t *root)
           root->root_path->buf);
       process_subscriptions(root);
       process_triggers(root);
+      consider_age_out(root);
       w_root_unlock(root);
       continue;
     }
 
     // Otherwise we have stuff to do
     w_root_lock(root);
+    // If we're not settled, we need an opportunity to age out
+    // dead file nodes.  This happens in the test harness.
+    consider_age_out(root);
     root->ticks++;
 
     // Consume as much as we can without blocking on inotify,
@@ -2403,17 +2571,6 @@ void w_root_addref(w_root_t *root)
   w_refcnt_add(&root->refcnt);
 }
 
-static void delete_file(struct watchman_file *file)
-{
-  w_string_delref(file->name);
-#if HAVE_PORT_CREATE
-  if (file->port_file.fo_name) {
-    free(file->port_file.fo_name);
-  }
-#endif
-  free(file);
-}
-
 static void w_root_teardown(w_root_t *root)
 {
   struct watchman_file *file;
@@ -2476,7 +2633,7 @@ static void w_root_teardown(w_root_t *root)
   while (root->latest_file) {
     file = root->latest_file;
     root->latest_file = file->next;
-    delete_file(file);
+    free_file_node(file);
   }
 
   if (root->cursors) {

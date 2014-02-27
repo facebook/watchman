@@ -33,6 +33,39 @@ void cmd_debug_recrawl(struct watchman_client *client, json_t *args)
   w_root_delref(root);
 }
 
+/* debug-ageout */
+void cmd_debug_ageout(struct watchman_client *client, json_t *args)
+{
+  w_root_t *root;
+  json_t *resp;
+  int min_age;
+
+  /* resolve the root */
+  if (json_array_size(args) != 3) {
+    send_error_response(client,
+                        "wrong number of arguments for 'debug-ageout'");
+    return;
+  }
+
+  root = resolve_root_or_err(client, args, 1, false);
+
+  if (!root) {
+    return;
+  }
+
+  min_age = json_integer_value(json_array_get(args, 2));
+
+  resp = make_response();
+
+  w_root_lock(root);
+  w_root_perform_age_out(root, min_age);
+  w_root_unlock(root);
+
+  set_prop(resp, "ageout", json_true());
+  send_and_dispose_response(client, resp);
+  w_root_delref(root);
+}
+
 /* vim:ts=2:sw=2:et:
  */
 

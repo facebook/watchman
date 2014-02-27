@@ -227,7 +227,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
         idx($where, 'line'),
         basename(idx($where, 'file')));
 
-      $cmd_text = implode(' ', $command);
+      $cmd_text = json_encode($command);
 
       $message = "watchman [$cmd_text] didn't yield expected results " .
         "within $timeout seconds\n" . json_encode($res) . "\n" .

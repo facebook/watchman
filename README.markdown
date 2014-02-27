@@ -1086,6 +1086,25 @@ since version 2.9.3:
    and everything below it.  It will never appear in the watchman query
    results for the tree.
 
+The following parameters are accepted in the .watchmanconfig file since
+version 2.9.4:
+
+ * `gc_age_seconds` - Deleted files (and dirs) older than this are
+   periodically pruned from the internal view of the filesystem.  Until
+   they are pruned, they will be visible to queries but will have their
+   `exists` field set to `false`.   Once they are pruned, watchman will
+   remember the most recent clock value of the pruned nodes.  Any since
+   queries based on a clock prior to the last prune clock will be treated
+   as a fresh instance query.  This allows a client to detect and choose
+   how to handle the case where they have missed changes.
+   See `is_fresh_instance` elsewhere in this document for more information.
+   The default for this is `43200` (12 hours).
+
+ * `gc_interval_seconds` - how often to check for, and prune out, deleted
+   nodes per the `gc_age_seconds` option description above.
+   The default for this is `86400` (24 hours).  Set this to `0` to disable
+   the periodic pruning operation.
+
 ## Build/Install
 
 You can use these steps to get watchman built:

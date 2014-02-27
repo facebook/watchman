@@ -66,6 +66,7 @@ void cmd_get_pid(struct watchman_client *client, json_t *args);
 
 // debug commands
 void cmd_debug_recrawl(struct watchman_client *client, json_t *args);
+void cmd_debug_ageout(struct watchman_client *client, json_t *args);
 
 #ifdef __cplusplus
 }

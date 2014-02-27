@@ -263,6 +263,9 @@ void w_clockspec_eval(w_root_t *root,
     since->clock.is_fresh_instance = !w_ht_lookup(root->cursors,
                                                   w_ht_ptr_val(cursor),
                                                   &ticks_val, false);
+    if (!since->clock.is_fresh_instance) {
+      since->clock.is_fresh_instance = ticks_val < root->last_age_out_tick;
+    }
     if (since->clock.is_fresh_instance) {
       since->clock.ticks = 0;
     } else {
@@ -286,8 +289,14 @@ void w_clockspec_eval(w_root_t *root,
   if (spec->clock.start_time == proc_start_time &&
       spec->clock.pid == proc_pid &&
       spec->clock.root_number == root->number) {
-    since->clock.is_fresh_instance = false;
-    since->clock.ticks = spec->clock.ticks;
+
+    since->clock.is_fresh_instance =
+      spec->clock.ticks < root->last_age_out_tick;
+    if (since->clock.is_fresh_instance) {
+      since->clock.ticks = 0;
+    } else {
+      since->clock.ticks = spec->clock.ticks;
+    }
     if (spec->clock.ticks == root->ticks) {
       /* Force ticks to increment.  This avoids returning and querying the
        * same tick value over and over when no files have changed in the
@@ -466,6 +475,7 @@ static struct watchman_command_handler_def commands[] = {
   { "get-sockname", cmd_get_sockname },
   { "get-pid", cmd_get_pid },
   { "debug-recrawl", cmd_debug_recrawl },
+  { "debug-ageout", cmd_debug_ageout },
   { NULL, NULL }
 };
 
