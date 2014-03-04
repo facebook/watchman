@@ -2,6 +2,10 @@ language:
   - php
   - c
 
+branches:
+  only:
+    - master
+
 # try some different compilers
 compiler:
   - gcc
