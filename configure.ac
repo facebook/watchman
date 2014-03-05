@@ -190,5 +190,17 @@ AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([Makefile thirdparty/jansson/jansson_config.h])
 AC_OUTPUT
 
+cat << EOF
+
+Your build configuration:
+
+        CPPFLAGS = $CPPFLAGS
+        CFLAGS = $CFLAGS
+        LDFLAGS = $LDFLAGS
+        prefix: $prefix
+        version: $VERSION
+
+EOF
+
 dnl vim:ts=2:sw=2:
 
