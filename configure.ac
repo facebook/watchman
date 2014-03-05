@@ -1,6 +1,7 @@
 AC_INIT([watchman], [2.9.5], [], [watchman])
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects])
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES(yes)])
 
 CPPFLAGS="$CPPFLAGS -D_REENTRANT -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE"
 case $target_os in
