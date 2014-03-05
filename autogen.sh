@@ -8,5 +8,5 @@ if test -d config.status ; then
 fi
 aclocal
 autoheader
-automake --add-missing --foreign
+automake --add-missing
 autoconf

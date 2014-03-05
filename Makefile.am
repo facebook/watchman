@@ -1,3 +1,5 @@
+AUTOMAKE_OPTIONS = foreign
+
 bin_PROGRAMS = watchman
 
 doc_DATA = README.markdown
