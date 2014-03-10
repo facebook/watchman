@@ -82,20 +82,17 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
   }
 
   function assertRegex($pattern, $subject, $message = null) {
-    if (!preg_match($pattern, $subject)) {
-      if (!$message) {
-        $message = "Failed to assert that $subject matches $pattern";
-      }
-      $this->assertFailure($message);
+    if (!$message) {
+      $message = "Failed to assert that $subject matches $pattern";
     }
+    $this->assertTrue(preg_match($pattern, $subject) === 1, $message);
   }
 
   function assertLiveConnection() {
-    if (!$this->needsLiveConnection()) {
-      throw new Exception(
-        "you must override needsLiveConnection and make it return true"
-      );
-    }
+    $this->assertTrue(
+      $this->needsLiveConnection(),
+      "you must override needsLiveConnection and make it return true"
+    );
   }
 
   function startLogging($level) {
@@ -271,6 +268,8 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     if ($ok) {
 
       if (!$cursor) {
+        // we've already gotten all the files we care about
+        $this->assertTrue(true);
         return;
       }
 
@@ -278,6 +277,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
 
       $since_files = $sort_func(idx($since, 'files'));
       if ($since_files === $files_via_since) {
+        $this->assertTrue(true);
         return $since;
       }
 
