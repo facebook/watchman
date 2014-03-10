@@ -17,11 +17,20 @@ Watchman is known to compile and pass its test suite on:
    `kqueue(2)` facility
  * Illumos and Solaris style systems that have `port_create(3C)`
 
-[![Build Status](https://travis-ci.org/facebook/watchman.png)](https://travis-ci.org/facebook/watchman)
-
 Watchman relies on the operating system facilities for file notification,
 which means that you will likely have very poor results using it on any
 kind of remote or distributed filesystem.
+
+## Build/Install
+
+You can use these steps to get watchman built:
+
+```bash
+./autogen.sh
+./configure
+make
+```
+[![Build Status](https://travis-ci.org/facebook/watchman.png)](https://travis-ci.org/facebook/watchman)
 
 ## Concepts
 
@@ -1104,16 +1113,6 @@ version 2.9.4:
    nodes per the `gc_age_seconds` option description above.
    The default for this is `86400` (24 hours).  Set this to `0` to disable
    the periodic pruning operation.
-
-## Build/Install
-
-You can use these steps to get watchman built:
-
-```bash
-./autogen.sh
-./configure
-make
-```
 
 ## System Specific Preparation
 
