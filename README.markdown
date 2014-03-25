@@ -1252,10 +1252,13 @@ that `arc unit` still passes successfully and we'd ideally like you to augment
 the test suite to cover the functionality that you're adding or changing.
 
 
-## Future
+## Known Issues
 
- * Watchman does not currently follow symlinks.  It would be nice if it
-   did, but doing so will add some complexity.
+ * Watchman does not follow symlinks. This is by design and is very unlikely to
+   change.
+ * Watchman has no notion of case-insensitivity, as seen on HFS+ on OS X. This
+   document on [case-folding](docs/casefolding.markdown) explains
+   if you should care about it.
 
 ## License
 
