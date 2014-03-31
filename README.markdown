@@ -792,7 +792,7 @@ Changes the log level of your connection to the watchman service.
 From the command line:
 
 ```bash
-watchman --persistent log-level debug
+watchman --server-encoding=json --persistent log-level debug
 ```
 
 JSON:
@@ -850,7 +850,7 @@ interface, but you may also subscribe via the command line tool if you're
 interested in observing the changes for yourself:
 
 ```bash
-watchman -j -p <<-EOT
+watchman -j --server-encoding=json -p <<-EOT
 ["subscribe", "/path/to/root", "mysubscriptionname", {
   "expression": ["allof",
     ["type", "f"],
@@ -981,7 +981,8 @@ before any non-option arguments.
 
  -o, --logfile=PATH    Specify path to logfile
 
- -p, --persistent      Persist and wait for further responses
+ -p, --persistent      Persist and wait for further responses.
+                       You should probably also use --server-encoding=json
 
  -n, --no-save-state   Don't save state between invocations
 
