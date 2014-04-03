@@ -439,7 +439,7 @@ class WatchmanInstance {
     return $results;
   }
 
-  private function waitForTerminate($$timeout) {
+  private function waitForTerminate($timeout) {
     if (!$this->proc) {
       return false;
     }
