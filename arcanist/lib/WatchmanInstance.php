@@ -337,7 +337,7 @@ class WatchmanInstance {
   }
 
   function generateValgrindTestResults() {
-    $this->stopProcess();
+    $this->terminateProcess();
 
     if ($this->coverage) {
       return $this->generateCoverageResults();
@@ -439,7 +439,7 @@ class WatchmanInstance {
     return $results;
   }
 
-  private function waitForStop($timeout) {
+  private function waitForTerminate($$timeout) {
     if (!$this->proc) {
       return false;
     }
@@ -456,14 +456,14 @@ class WatchmanInstance {
     return $st;
   }
 
-  function stopProcess() {
+  function terminateProcess() {
     if (!$this->proc) {
       return;
     }
     $timeout = $this->valgrind ? 20 : 5;
     if ($this->sock) {
       $this->request('shutdown-server');
-      $st = $this->waitForStop($timeout);
+      $st = $this->waitForTerminate($timeout);
     } else {
       $st = proc_get_status($this->proc);
     }
@@ -472,11 +472,11 @@ class WatchmanInstance {
       echo "Didn't stop after $timeout seconds, sending signal\n";
       system("gstack " . $st['pid']);
       proc_terminate($this->proc);
-      $st = $this->waitForStop($timeout);
+      $st = $this->waitForTerminate($timeout);
       if ($st['running']) {
         echo "Still didn't stop, sending bigger signal\n";
         proc_terminate($this->proc, 9);
-        $st = $this->waitForStop(5);
+        $st = $this->waitForTerminate(5);
       }
     }
     if ($st['running']) {
@@ -500,7 +500,7 @@ class WatchmanInstance {
   }
 
   function __destruct() {
-    $this->stopProcess();
+    $this->terminateProcess();
   }
 
 }
