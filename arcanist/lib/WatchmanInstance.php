@@ -456,6 +456,47 @@ class WatchmanInstance {
     return $st;
   }
 
+  private function waitForSuspendedState($suspended, $timeout) {
+    $st = proc_get_status($this->proc);
+    $pid = $st['pid'];
+    // The response to proc_get_status has a 'stopped' value, which is
+    // ostensibly set to a truthy value if the process is stopped and falsy if
+    // it isn't. Why don't we use it, you ask? Well, let me ask you a question
+    // in response. What do you expect the following code to print out?
+    //
+    // $st = proc_get_status($this->proc);
+    // posix_kill($st['pid'], SIGSTOP);
+    // -- wait for a while so that the process is stopped --
+    // $st = proc_get_status($this->proc);
+    // print ((bool)$st['stopped']).', ';
+    // $st = proc_get_status($this->proc);
+    // print (bool)$st['stopped'];
+    //
+    // If you said 'true, true', congratulations! You're a reasonable
+    // person. However, PHP is well known to not be reasonable, and in reality
+    // 'true, false' will be printed out. That is because proc_get_status only
+    // returns a truthy value for 'stopped' the first time it is called after
+    // the process is stopped. Subsequent calls return a falsy value for it.
+    //
+    // To solve this, we resort to good old ps. This will hopefully be portable
+    // enough.
+    $deadline = time() + $timeout;
+    do {
+      list($stdout, $_) = execx('ps -o state -p %s | tail -n 1', $pid);
+      $stdout = trim($stdout);
+      if ($stdout === '') {
+        throw new Exception('ps returned nothing -- did watchman go away?');
+      }
+      // Linux returns 'T', but OS X can return 'T+' etc.
+      $is_stopped = (bool)preg_match('/T/', $stdout);
+      if ($suspended === $is_stopped) {
+        return true;
+      }
+      usleep(30000);
+    } while (time() <= $deadline);
+    return false;
+  }
+
   function terminateProcess() {
     if (!$this->proc) {
       return;
@@ -499,6 +540,38 @@ class WatchmanInstance {
     }
   }
 
+  public function suspendProcess() {
+    if (!$this->proc) {
+      throw new Exception("watchman process isn't running");
+    }
+    $timeout = $this->valgrind ? 20 : 5;
+    $st = proc_get_status($this->proc);
+    if (!$st['running']) {
+      throw new Exception('watchman process terminated');
+    }
+    // SIGSTOP isn't defined on the default PHP shipped with OS X, so use kill
+    execx('kill -STOP %s', $st['pid']);
+    if (!$this->waitForSuspendedState(true, $timeout)) {
+      throw new Exception("watchman process didn't stop in $timeout seconds");
+    }
+  }
+
+  public function resumeProcess() {
+    if (!$this->proc) {
+      throw new Exception("watchman process isn't running");
+    }
+    $timeout = $this->valgrind ? 20 : 5;
+    $st = proc_get_status($this->proc);
+    if (!$st['running']) {
+      throw new Exception('watchman process terminated');
+    }
+    // SIGCONT isn't defined on the default PHP shipped with OS X, so use kill
+    execx('kill -CONT %s', $st['pid']);
+    if (!$this->waitForSuspendedState(false, $timeout)) {
+      throw new Exception("watchman process didn't resume in $timeout seconds");
+    }
+  }
+
   function __destruct() {
     $this->terminateProcess();
   }
@@ -506,4 +579,3 @@ class WatchmanInstance {
 }
 
 // vim:ts=2:sw=2:et:
-

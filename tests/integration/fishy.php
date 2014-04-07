@@ -22,11 +22,13 @@ class fishyTestCase extends WatchmanTestCase {
     $this->startLogging('debug');
     $this->watchmanCommand('log', 'debug', 'testFishy:START');
 
+    $this->suspendWatchman();
     system(
       "cd $root; ".
       "mv foo bar; ".
       "ln -s bar foo"
     );
+    $this->resumeWatchman();
 
     $this->assertFileListUsingSince($root, $clock,
       array(
@@ -55,4 +57,3 @@ class fishyTestCase extends WatchmanTestCase {
     $this->assertEqual(array(), $log, 'nothing fishy');
   }
 }
-

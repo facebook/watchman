@@ -88,6 +88,24 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     $this->assertTrue(preg_match($pattern, $subject) === 1, $message);
   }
 
+  /**
+   * Suspends the watchman process.
+   *
+   * This is useful when testing to try to force batching or coalescing in the
+   * kernel notification layer.  You must have a matching resumeProcess() call.
+   */
+  function suspendWatchman() {
+    $this->watchman_instance->suspendProcess();
+  }
+
+  /**
+   * Resumes the watchman process. This is meant to be called while the watchman
+   * process is suspended.
+   */
+  function resumeWatchman() {
+    $this->watchman_instance->resumeProcess();
+  }
+
   function assertLiveConnection() {
     $this->assertTrue(
       $this->needsLiveConnection(),
@@ -330,4 +348,3 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
 
 
 // vim:ts=2:sw=2:et:
-

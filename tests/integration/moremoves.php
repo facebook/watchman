@@ -12,10 +12,12 @@ class moremovesTestCase extends WatchmanTestCase {
     // This is "c:PID:1" because nothing has changed in $root yet
     $clock = $base['clock'];
 
+    $this->suspendWatchman();
     system(
       "cd $root; touch a; mkdir d1 d2 ; ".
       "mv d1 d2 ; mv d2/d1 . ; mv a d1"
     );
+    $this->resumeWatchman();
 
     $this->assertFileListUsingSince($root, $clock,
       array(
@@ -34,6 +36,7 @@ class moremovesTestCase extends WatchmanTestCase {
     // This is "c:PID:1" because nothing has changed in $root yet
     $clock = $base['clock'];
 
+    $this->suspendWatchman();
     system(
       "cd $root; ".
       "mkdir d1 d2; ".
@@ -45,6 +48,7 @@ class moremovesTestCase extends WatchmanTestCase {
       "mv d3/* .; ".
       "mv d1/a d2; "
     );
+    $this->resumeWatchman();
 
     $this->assertFileListUsingSince($root, $clock,
       array(
