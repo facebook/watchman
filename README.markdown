@@ -21,6 +21,9 @@ Watchman relies on the operating system facilities for file notification,
 which means that you will likely have very poor results using it on any
 kind of remote or distributed filesystem.
 
+Watchman does not currently support Windows or any other operating system
+not covered by the list above.
+
 ## Build/Install
 
 You can use these steps to get watchman built:
