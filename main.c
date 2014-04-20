@@ -8,7 +8,7 @@ int trigger_settle = DEFAULT_SETTLE_PERIOD;
 int recrawl_period = 0;
 static int show_help = 0;
 static int show_version = 0;
-static enum w_pdu_type server_pdu = is_bser;
+static enum w_pdu_type server_pdu = is_json_compact;
 static enum w_pdu_type output_pdu = is_json_pretty;
 static char *server_encoding = NULL;
 static char *output_encoding = NULL;
@@ -467,4 +467,3 @@ int main(int argc, char **argv)
 
 /* vim:ts=2:sw=2:et:
  */
-
