@@ -122,31 +122,46 @@ static void bser_dtor(bser_t *bser)
 
 static int bser_long(bser_t *bser, long val)
 {
-  char intbuf[9];
+  int8_t i8;
+  int16_t i16;
+  int32_t i32;
+  int64_t i64;
+  char sz;
   int size = INT_SIZE(val);
+  char *iptr;
 
   switch (size) {
     case 1:
-      intbuf[0] = BSER_INT8;
-      *(int8_t*)(intbuf+1) = (int8_t)val;
-      return bser_append(bser, intbuf, size + 1);
+      sz = BSER_INT8;
+      i8 = (int8_t)val;
+      iptr = (char*)&i8;
+      break;
     case 2:
-      intbuf[0] = BSER_INT16;
-      *(int16_t*)(intbuf+1) = (int16_t)val;
-      return bser_append(bser, intbuf, size + 1);
+      sz = BSER_INT16;
+      i16 = (int16_t)val;
+      iptr = (char*)&i16;
+      break;
     case 4:
-      intbuf[0] = BSER_INT32;
-      *(int32_t*)(intbuf+1) = (int32_t)val;
-      return bser_append(bser, intbuf, size + 1);
+      sz = BSER_INT32;
+      i32 = (int32_t)val;
+      iptr = (char*)&i32;
+      break;
     case 8:
-      intbuf[0] = BSER_INT64;
-      *(int64_t*)(intbuf+1) = (int64_t)val;
-      return bser_append(bser, intbuf, size + 1);
+      sz = BSER_INT64;
+      i64 = (int64_t)val;
+      iptr = (char*)&i64;
+      break;
     default:
       PyErr_SetString(PyExc_RuntimeError,
           "Cannot represent this long value!?");
       return 0;
   }
+
+  if (!bser_append(bser, &sz, sizeof(sz))) {
+    return 0;
+  }
+
+  return bser_append(bser, iptr, size);
 }
 
 static int bser_string(bser_t *bser, PyObject *sval)
@@ -217,12 +232,13 @@ static int bser_recursive(bser_t *bser, PyObject *val)
 
   if (PyFloat_Check(val)) {
     double dval = PyFloat_AS_DOUBLE(val);
-    char rbuf[9];
+    char sz = BSER_REAL;
 
-    rbuf[0] = BSER_REAL;
-    *(double*)(rbuf + 1) = dval;
+    if (!bser_append(bser, &sz, sizeof(sz))) {
+      return 0;
+    }
 
-    return bser_append(bser, rbuf, sizeof(rbuf));
+    return bser_append(bser, (char*)&dval, sizeof(dval));
   }
 
   if (PyList_Check(val)) {
@@ -302,6 +318,7 @@ static PyObject *bser_dumps(PyObject *self, PyObject *args)
 {
   PyObject *val = NULL, *res;
   bser_t bser;
+  uint32_t len;
 
   if (!PyArg_ParseTuple(args, "O", &val)) {
     return NULL;
@@ -321,7 +338,8 @@ static PyObject *bser_dumps(PyObject *self, PyObject *args)
   }
 
   // Now fill in the overall length
-  *(uint32_t*)(bser.buf + 3) = bser.wpos - (sizeof(EMPTY_HEADER) - 1);
+  len = bser.wpos - (sizeof(EMPTY_HEADER) - 1);
+  memcpy(bser.buf + 3, &len, sizeof(len));
 
   res = PyString_FromStringAndSize(bser.buf, bser.wpos);
   bser_dtor(&bser);
@@ -333,6 +351,10 @@ int bunser_int(const char **ptr, const char *end, int64_t *val)
 {
   int needed;
   const char *buf = *ptr;
+  int8_t i8;
+  int16_t i16;
+  int32_t i32;
+  int64_t i64;
 
   switch (buf[0]) {
     case BSER_INT8:
@@ -359,16 +381,20 @@ int bunser_int(const char **ptr, const char *end, int64_t *val)
   *ptr = buf + needed;
   switch (buf[0]) {
     case BSER_INT8:
-      *val = *(int8_t*)(buf+1);
+      memcpy(&i8, buf + 1, sizeof(i8));
+      *val = i8;
       return 1;
     case BSER_INT16:
-      *val = *(int16_t*)(buf+1);
+      memcpy(&i16, buf + 1, sizeof(i16));
+      *val = i16;
       return 1;
     case BSER_INT32:
-      *val = *(int32_t*)(buf+1);
+      memcpy(&i32, buf + 1, sizeof(i32));
+      *val = i32;
       return 1;
     case BSER_INT64:
-      *val = *(int64_t*)(buf+1);
+      memcpy(&i64, buf + 1, sizeof(i64));
+      *val = i64;
       return 1;
     default:
       return 0;
@@ -590,7 +616,8 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end)
 
     case BSER_REAL:
       {
-        double dval = *(double*)(buf+1);
+        double dval;
+        memcpy(&dval, buf + 1, sizeof(dval));
         *ptr = buf + 1 + sizeof(double);
         return PyFloat_FromDouble(dval);
       }
@@ -733,4 +760,3 @@ PyMODINIT_FUNC initbser(void)
 
 /* vim:ts=2:sw=2:et:
  */
-
