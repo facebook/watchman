@@ -41,10 +41,11 @@ static const char bser_skip = BSER_SKIP;
 
 static int bser_real(double val, json_dump_callback_t dump, void *data)
 {
-  char rbuf[9];
-  rbuf[0] = BSER_REAL;
-  *(double*)(rbuf + 1) = val;
-  return dump(rbuf, sizeof(rbuf), data);
+  char sz = BSER_REAL;
+  if (dump(&sz, sizeof(sz), data)) {
+    return -1;
+  }
+  return dump((char*)&val, sizeof(val), data);
 }
 
 bool bunser_string(const char *buf, int avail, int *needed,
@@ -75,6 +76,11 @@ bool bunser_string(const char *buf, int avail, int *needed,
 // decode the integer value
 bool bunser_int(const char *buf, int avail, int *needed, json_int_t *val)
 {
+  int8_t i8;
+  int16_t i16;
+  int32_t i32;
+  int64_t i64;
+
   switch (buf[0]) {
     case BSER_INT8:
       *needed = 2;
@@ -95,18 +101,23 @@ bool bunser_int(const char *buf, int avail, int *needed, json_int_t *val)
   if (avail < *needed) {
     return false;
   }
+
   switch (buf[0]) {
     case BSER_INT8:
-      *val = *(int8_t*)(buf+1);
+      memcpy(&i8, buf + 1, sizeof(i8));
+      *val = i8;
       return true;
     case BSER_INT16:
-      *val = *(int16_t*)(buf+1);
+      memcpy(&i16, buf + 1, sizeof(i16));
+      *val = i16;
       return true;
     case BSER_INT32:
-      *val = *(int32_t*)(buf+1);
+      memcpy(&i32, buf + 1, sizeof(i32));
+      *val = i32;
       return true;
     case BSER_INT64:
-      *val = *(int64_t*)(buf+1);
+      memcpy(&i64, buf + 1, sizeof(i64));
+      *val = i64;
       return true;
     default:
       return false;
@@ -115,29 +126,44 @@ bool bunser_int(const char *buf, int avail, int *needed, json_int_t *val)
 
 static int bser_int(json_int_t val, json_dump_callback_t dump, void *data)
 {
-  char intbuf[9];
+  int8_t i8;
+  int16_t i16;
+  int32_t i32;
+  int64_t i64;
+  char sz;
   int size = INT_SIZE(val);
+  char *iptr;
 
   switch (size) {
     case 1:
-      intbuf[0] = BSER_INT8;
-      *(int8_t*)(intbuf+1) = (int8_t)val;
-      return dump(intbuf, size + 1, data);
+      sz = BSER_INT8;
+      i8 = (int8_t)val;
+      iptr = (char*)&i8;
+      break;
     case 2:
-      intbuf[0] = BSER_INT16;
-      *(int16_t*)(intbuf+1) = (int16_t)val;
-      return dump(intbuf, size + 1, data);
+      sz = BSER_INT16;
+      i16 = (int16_t)val;
+      iptr = (char*)&i16;
+      break;
     case 4:
-      intbuf[0] = BSER_INT32;
-      *(int32_t*)(intbuf+1) = (int32_t)val;
-      return dump(intbuf, size + 1, data);
+      sz = BSER_INT32;
+      i32 = (int32_t)val;
+      iptr = (char*)&i32;
+      break;
     case 8:
-      intbuf[0] = BSER_INT64;
-      *(int64_t*)(intbuf+1) = (int64_t)val;
-      return dump(intbuf, size + 1, data);
+      sz = BSER_INT64;
+      i64 = (int64_t)val;
+      iptr = (char*)&i64;
+      break;
     default:
       return -1;
   }
+
+  if (dump(&sz, sizeof(sz), data)) {
+    return -1;
+  }
+
+  return dump(iptr, size, data);
 }
 
 static int bser_string(const char *str, json_dump_callback_t dump, void *data)
@@ -578,8 +604,13 @@ json_t *bunser(const char *buf, const char *end, int *needed,
     }
 
     case BSER_REAL:
+    {
+      double dval;
       *needed = sizeof(double) + 1;
-      return json_real(*(double*)(buf+1));
+      memcpy(&dval, buf + 1, sizeof(dval));
+      return json_real(dval);
+    }
+
     case BSER_TRUE:
       *needed = 1;
       return json_true();
@@ -604,7 +635,5 @@ json_t *bunser(const char *buf, const char *end, int *needed,
   return NULL;
 }
 
-
 /* vim:ts=2:sw=2:et:
  */
-
