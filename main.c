@@ -4,7 +4,6 @@
 #include "watchman.h"
 #include <poll.h>
 
-int trigger_settle = DEFAULT_SETTLE_PERIOD;
 int recrawl_period = 0;
 static int show_help = 0;
 static int show_version = 0;
@@ -358,10 +357,6 @@ static struct watchman_getopt opts[] = {
     OPT_NONE, &no_pretty, NULL, NOT_DAEMON },
   { "no-spawn", 0, "Don't try to start the service if it is not available",
     OPT_NONE, &no_spawn, NULL, NOT_DAEMON },
-  { "settle", 's',
-    "Number of milliseconds to wait for filesystem to settle "
-      "(deprecated: use .watchmanconfig instead)",
-    REQ_INT, &trigger_settle, NULL, IS_DAEMON },
   { "recrawl", 0,
     "Number of milliseconds between tree polling crawl",
     REQ_INT, &recrawl_period, NULL, IS_DAEMON },

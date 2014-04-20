@@ -993,9 +993,6 @@ before any non-option arguments.
 
  -f, --foreground      Run the service in the foreground
 
- -s, --settle          Number of milliseconds to wait for filesystem to settle
-                       (Deprecated: use .watchmanconfig instead)
-
  -j, --json-command    Instead of parsing CLI arguments, take a single json
                        object from stdin
 

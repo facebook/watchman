@@ -653,7 +653,6 @@ static inline double w_timeval_diff(struct timeval start, struct timeval end)
   return e - s;
 }
 
-extern int trigger_settle;
 extern int recrawl_period;
 extern const char *watchman_tmp_dir;
 extern char *watchman_state_file;
