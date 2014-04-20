@@ -479,6 +479,16 @@ static struct watchman_command_handler_def commands[] = {
   { NULL, NULL }
 };
 
+void print_command_list_for_help(FILE *where)
+{
+  int i;
+
+  fprintf(where, "\n\nAvailable commands:\n\n");
+  for (i = 0; commands[i].name; i++) {
+    fprintf(where, "      %s\n", commands[i].name);
+  }
+}
+
 void register_commands(struct watchman_command_handler_def *defs)
 {
   int i;
@@ -896,4 +906,3 @@ bool w_start_listener(const char *path)
 
 /* vim:ts=2:sw=2:et:
  */
-

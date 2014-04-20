@@ -75,10 +75,14 @@ void usage(struct watchman_getopt *opts, FILE *where)
     fprintf(where, "\n");
   }
 
+  print_command_list_for_help(where);
+
   fprintf(where,
 "\n"
+"See https://github.com/facebook/watchman#watchman for more help\n"
+"\n"
 "Watchman, by Wez Furlong.\n"
-"Copyright 2012-2013 Facebook, Inc.\n"
+"Copyright 2012-2014 Facebook, Inc.\n"
   );
 
   exit(1);
@@ -249,4 +253,3 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
 
 /* vim:ts=2:sw=2:et:
  */
-

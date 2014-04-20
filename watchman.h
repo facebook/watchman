@@ -713,6 +713,7 @@ struct watchman_getopt {
 bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
     char ***daemon_argv);
 void usage(struct watchman_getopt *opts, FILE *where);
+void print_command_list_for_help(FILE *where);
 
 struct w_clockspec *w_clockspec_new_clock(uint32_t root_number, uint32_t ticks);
 struct w_clockspec *w_clockspec_parse(json_t *value);
@@ -757,4 +758,3 @@ struct watchman_client_subscription {
 
 /* vim:ts=2:sw=2:et:
  */
-
