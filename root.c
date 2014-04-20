@@ -2763,6 +2763,20 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   int realpath_err;
 
   *created = false;
+
+  // Sanity check that the path is absolute
+  if (filename[0] != '/') {
+    ignore_result(asprintf(errmsg, "path \"%s\" must be absolute", filename));
+    w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
+    return NULL;
+  }
+
+  if (!strcmp(filename, "/")) {
+    ignore_result(asprintf(errmsg, "cannot watch \"/\""));
+    w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
+    return NULL;
+  }
+
   watch_path = w_realpath(filename);
   realpath_err = errno;
 
@@ -3206,4 +3220,3 @@ void w_root_free_watched_roots(void)
 
 /* vim:ts=2:sw=2:et:
  */
-
