@@ -150,6 +150,22 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     return array($ok, $line, $matches);
   }
 
+  function waitForLogOutput($criteria, $timeout = 5) {
+    // Can't use the generic waitFor routine here because
+    // we're delegating to a more efficient mechanism in
+    // the instance class.
+    return $this->watchman_instance->waitForLogOutput($criteria, $timeout);
+  }
+
+  function assertWaitForLogOutput($criteria, $timeout = 5) {
+    list($ok, $line, $matches) = $this->waitForLogOutput($criteria, $timeout);
+    if (!$ok) {
+      $this->assertFailure(
+        "did not find $criteria in log file within $timeout seconds");
+    }
+    return array($ok, $line, $matches);
+  }
+
   // Generic waiting assertion; continually invokes $callable
   // until timeout is hit.  Returns the returned value from
   // $callable if it is truthy.
@@ -187,6 +203,9 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     }
     if (is_callable($message)) {
       $message = $message();
+    }
+    if (is_string($res)) {
+      $message .= " $res";
     }
     $this->assertFailure($message);
   }
@@ -266,6 +285,9 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
 
     $sort_func = function ($list) {
       $files = array();
+      if (!is_array($list)) {
+        return $files;
+      }
       foreach ($list as $ent) {
         if ($ent['exists']) {
           $files[] = $ent['name'];
@@ -344,7 +366,86 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
   function assertFileList($root, array $files, $message = null) {
     $this->assertFileListUsingSince($root, null, $files, null, $message);
   }
-}
 
+  private function secondLevelSort(array $objs) {
+    $ret = array();
+
+    foreach ($objs as $obj) {
+      ksort($obj);
+      $ret[] = $obj;
+    }
+
+    return $ret;
+  }
+
+  function assertTriggerList($root, $trig_list) {
+    $triggers = $this->watchmanCommand('trigger-list', $root);
+
+    $triggers = $triggers['triggers'];
+    usort($triggers, function ($a, $b) {
+      return strcmp($a['name'], $b['name']);
+    });
+    $this->assertEqual(
+      $this->secondLevelSort($trig_list),
+      $this->secondLevelSort($triggers)
+    );
+  }
+
+  function waitForFileContents($filename, $content, $timeout = 5) {
+    $this->waitFor(
+      function () use ($filename, $content) {
+        $got = @file_get_contents($filename);
+        return $got === $content;
+      },
+      $timeout,
+      function () use ($filename, $content) {
+        $got = @file_get_contents($filename);
+        return "wait for $filename to hold $content, got $got";
+      }
+    );
+    return @file_get_contents($filename);
+  }
+
+  function assertFileContents($filename, $content, $timeout = 5) {
+    $got = $this->waitForFileContents($filename, $content, $timeout);
+    $this->assertEqual($got, $content);
+  }
+
+  function waitForFileToHaveNLines($filename, $nlines, $timeout = 5) {
+    $this->waitFor(
+      function () use ($filename, $nlines) {
+        return count(@file($filename)) == $nlines;
+      },
+      $timeout,
+      function () use ($filename, $nlines) {
+        $lines = count(@file($filename));
+        return "wait for $filename to hold $nlines lines, got $lines";
+      }
+    );
+    return @file($filename, FILE_IGNORE_NEW_LINES);
+  }
+
+  function waitForJsonInput($log, $timeout = 5) {
+    $this->waitFor(
+      function () use ($log) {
+        $data = @file_get_contents($log);
+        if (!strlen($data)) {
+          return false;
+        }
+        $obj = @json_decode($data, true);
+        return is_array($obj);
+      },
+      $timeout,
+      "waiting for $log to hold a JSON object"
+    );
+
+    $obj = json_decode(file_get_contents($log), true);
+    $this->assertTrue(is_array($obj), "got JSON object in $log");
+
+    return $obj;
+  }
+
+
+}
 
 // vim:ts=2:sw=2:et:

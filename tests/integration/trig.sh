@@ -10,3 +10,6 @@ while test -n "$1" ; do
   shift
 done
 
+# We use this to prove that our output stream goes to the right place
+echo "WOOT from trig.sh"
+

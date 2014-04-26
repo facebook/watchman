@@ -38,6 +38,7 @@ extern "C" {
 #include <time.h>
 #include <libgen.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <fcntl.h>
@@ -56,6 +57,7 @@ extern "C" {
 #ifdef HAVE_EXECINFO_H
 # include <execinfo.h>
 #endif
+#include <sys/uio.h>
 #include <pwd.h>
 #include <sysexits.h>
 #include <spawn.h>
@@ -345,34 +347,6 @@ struct watchman_root {
 #endif
 };
 
-struct watchman_rule {
-  /* if true, include matches in the set of signalled paths,
-   * else exclude it */
-  bool include;
-  /* if true, this rule matches if the pattern doesn't match.
-   * otherwise it matches if the pattern matches */
-  bool negated;
-
-  enum {
-    RT_FNMATCH,
-    RT_PCRE,
-  } rule_type;
-
-  /* pattern passed to fnmatch(3) */
-  const char *pattern;
-  /* flags passed to fnmatch(3) */
-  int flags;
-
-#ifdef HAVE_PCRE_H
-  pcre *re;
-  pcre_extra *re_extra;
-#endif
-
-  /* next rule in this chain */
-  struct watchman_rule *next;
-};
-void w_free_rules(struct watchman_rule *head);
-
 enum w_pdu_type {
   need_data,
   is_json_compact,
@@ -430,21 +404,6 @@ struct watchman_client {
 extern pthread_mutex_t w_client_lock;
 extern w_ht_t *clients;
 
-struct watchman_trigger_command {
-  w_string_t *triggername;
-  struct watchman_rule *rules;
-  char **argv;
-  uint32_t argc;
-
-  /* tick value when we were last assessed
-   * for triggers */
-  uint32_t dispatch_root_number;
-  uint32_t dispatch_tick;
-  /* While we are running, this holds the pid
-   * of the running process */
-  pid_t current_proc;
-};
-
 void w_mark_dead(pid_t pid);
 bool w_reap_children(bool block);
 
@@ -481,6 +440,9 @@ w_string_t *w_string_basename(w_string_t *str);
 w_string_t *w_string_canon_path(w_string_t *str);
 w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
 bool w_string_startswith(w_string_t *str, w_string_t *prefix);
+w_string_t *w_string_shell_escape(const w_string_t *str);
+w_string_t *w_string_implode(json_t *arr, const char *delim);
+
 void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
 w_root_t *w_root_resolve(const char *path, bool auto_watch, char **errmsg);
 w_root_t *w_root_resolve_for_client_mode(const char *filename, char **errmsg);
@@ -555,12 +517,6 @@ struct w_query_since {
   };
 };
 
-
-uint32_t w_rules_match(w_root_t *root,
-    struct watchman_file *oldest_file,
-    struct watchman_rule_match **results,
-    struct watchman_rule *head,
-    struct w_clockspec *spec);
 void w_run_subscription_rules(
     struct watchman_client *client,
     struct watchman_client_subscription *sub,
@@ -667,6 +623,14 @@ json_t *w_root_watch_list_to_json(void);
 bool w_start_listener(const char *socket_path);
 char **w_argv_copy_from_json(json_t *arr, int skip);
 
+w_ht_t *w_envp_make_ht(void);
+char **w_envp_make_from_ht(w_ht_t *ht, uint32_t *env_size);
+void w_envp_set_cstring(w_ht_t *envht, const char *key, const char *val);
+void w_envp_set(w_ht_t *envht, const char *key, w_string_t *val);
+void w_envp_set_list(w_ht_t *envht, const char *key, json_t *arr);
+void w_envp_set_bool(w_ht_t *envht, const char *key, bool val);
+void w_envp_unset(w_ht_t *envht, const char *key);
+
 struct watchman_getopt {
   /* name of long option: --optname */
   const char *optname;
@@ -747,6 +711,36 @@ struct watchman_client_subscription {
   struct w_query_field_list field_list;
 };
 
+struct watchman_trigger_command {
+  w_string_t *triggername;
+  w_query *query;
+  json_t *definition;
+  json_t *command;
+  w_ht_t *envht;
+
+  struct w_query_field_list field_list;
+  int append_files;
+  enum {
+    input_dev_null,
+    input_json,
+    input_name_list
+  } stdin_style;
+  uint32_t max_files_stdin;
+
+  int stdout_flags;
+  int stderr_flags;
+  const char *stdout_name;
+  const char *stderr_name;
+
+  /* While we are running, this holds the pid
+   * of the running process */
+  pid_t current_proc;
+};
+
+void w_trigger_command_free(struct watchman_trigger_command *cmd);
+void w_assess_trigger(w_root_t *root, struct watchman_trigger_command *cmd);
+struct watchman_trigger_command *w_build_trigger_from_def(
+  w_root_t *root, json_t *trig, char **errmsg);
 
 #ifdef __cplusplus
 }

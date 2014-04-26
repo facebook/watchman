@@ -122,6 +122,21 @@ class WatchmanInstance {
     return $resp['pid'];
   }
 
+  // Looks in the log file for the matching term.
+  // This is useful for checking stdout/stderr from triggers
+  function waitForLogOutput($criteria, $timeout = 5) {
+    $deadline = time() + $timeout;
+    while (time() < $deadline) {
+      foreach (file($this->logfile) as $line) {
+        if (preg_match($criteria, $line, $matches)) {
+          return array(true, $line, $matches);
+        }
+      }
+      usleep(200);
+    }
+    return array(false, null, null);
+  }
+
   /** Get and clear data we collected for a subscription */
   function getSubData($subname) {
     $data = idx($this->subdata, $subname);
@@ -133,6 +148,7 @@ class WatchmanInstance {
     return $this->logdata;
   }
 
+  // Looks in json stream for logging output
   function waitForLog($criteria, $timeout = 5) {
     foreach ($this->logdata as $line) {
       $matches = array();

@@ -26,7 +26,7 @@ void cmd_find(struct watchman_client *client, json_t *args)
     return;
   }
 
-  query = w_query_parse_legacy(args, &errmsg, 2, NULL, NULL);
+  query = w_query_parse_legacy(args, &errmsg, 2, NULL, NULL, NULL);
   if (errmsg) {
     send_error_response(client, "%s", errmsg);
     free(errmsg);
@@ -62,11 +62,7 @@ void cmd_find(struct watchman_client *client, json_t *args)
 
   send_and_dispose_response(client, response);
   w_root_delref(root);
-
-
 }
-
 
 /* vim:ts=2:sw=2:et:
  */
-

@@ -347,6 +347,112 @@ char *w_string_dup_buf(const w_string_t *str)
   return buf;
 }
 
+// Given a json array, concat the elements using a delimiter
+w_string_t *w_string_implode(json_t *arr, const char *delim)
+{
+  uint32_t delim_len = strlen(delim);
+  uint32_t len = 0;
+  uint32_t i;
+  w_string_t *s;
+  char *buf;
+
+  if (json_array_size(arr) == 0) {
+    return w_string_new("");
+  }
+
+  if (json_array_size(arr) == 1) {
+    return w_string_new(json_string_value(json_array_get(arr, 0)));
+  }
+
+  len = (json_array_size(arr) - 1) * delim_len;
+
+  for (i = 0; i < json_array_size(arr); i++) {
+    const char *str;
+
+    str = json_string_value(json_array_get(arr, i));
+    len += strlen(str);
+  }
+
+  s = malloc(sizeof(*s) + len + 1);
+  if (!s) {
+    perror("no memory available");
+    abort();
+  }
+
+  s->refcnt = 1;
+  s->slice = NULL;
+  buf = (char*)(s + 1);
+  s->buf = buf;
+
+  for (i = 0; i < json_array_size(arr); i++) {
+    const char *str;
+    uint32_t l;
+
+    str = json_string_value(json_array_get(arr, i));
+    l = strlen(str);
+
+    memcpy(buf, str, l);
+
+    // Final string doesn't want delimiter after it
+    if (i == json_array_size(arr) - 1) {
+      buf += l;
+      break;
+    }
+
+    memcpy(buf + l, delim, delim_len);
+    buf += l + delim_len;
+  }
+  *buf = '\0';
+
+  s->len = buf - s->buf;
+  s->hval = w_hash_bytes(s->buf, s->len, 0);
+
+  return s;
+}
+
+// Given a string, return a shell-escaped copy
+w_string_t *w_string_shell_escape(const w_string_t *str)
+{
+  // Worst case expansion for a char is 4x, plus quoting either end
+  uint32_t len = 2 + (str->len * 4);
+  w_string_t *s;
+  char *buf;
+  const char *src, *end;
+
+  s = malloc(sizeof(*s) + len + 1);
+  if (!s) {
+    perror("no memory available");
+    abort();
+  }
+
+  s->refcnt = 1;
+  s->slice = NULL;
+  buf = (char*)(s + 1);
+  s->buf = buf;
+
+  src = str->buf;
+  end = src + str->len;
+
+  *buf = '\'';
+  buf++;
+  while (src < end) {
+    if (*src == '\'') {
+      memcpy(buf, "'\\''", 4);
+      buf += 4;
+    } else {
+      *buf = *src;
+      buf++;
+    }
+    src++;
+  }
+  *buf = '\'';
+  buf++;
+  *buf = 0;
+  s->len = buf - s->buf;
+  s->hval = w_hash_bytes(s->buf, s->len, 0);
+
+  return s;
+}
+
 /* vim:ts=2:sw=2:et:
  */
-

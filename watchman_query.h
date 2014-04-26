@@ -151,7 +151,7 @@ struct w_query_field_list {
 
 // parse the old style since and find queries
 w_query *w_query_parse_legacy(json_t *args, char **errmsg,
-    int start, uint32_t *next_arg, const char *clockspec);
+    int start, uint32_t *next_arg, const char *clockspec, json_t **expr_p);
 bool w_query_legacy_field_list(struct w_query_field_list *flist);
 
 json_t *w_query_results_to_json(
@@ -190,4 +190,3 @@ w_query_expr *w_expr_exists_parser(w_query *query, json_t *term);
 
 /* vim:ts=2:sw=2:et:
  */
-

@@ -98,6 +98,17 @@ bool w_query_process_file(
   return true;
 }
 
+void w_match_results_free(uint32_t num_matches,
+    struct watchman_rule_match *matches)
+{
+  uint32_t i;
+
+  for (i = 0; i < num_matches; i++) {
+    w_string_delref(matches[i].relname);
+  }
+  free(matches);
+}
+
 static bool time_generator(
     w_query *query,
     w_root_t *root,
@@ -380,8 +391,5 @@ bool w_query_execute(
   return true;
 }
 
-
-
 /* vim:ts=2:sw=2:et:
  */
-

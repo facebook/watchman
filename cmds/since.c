@@ -36,7 +36,7 @@ void cmd_since(struct watchman_client *client, json_t *args)
     return;
   }
 
-  query = w_query_parse_legacy(args, &errmsg, 3, NULL, clockspec);
+  query = w_query_parse_legacy(args, &errmsg, 3, NULL, clockspec, NULL);
   if (errmsg) {
     send_error_response(client, "%s", errmsg);
     free(errmsg);
@@ -72,7 +72,5 @@ void cmd_since(struct watchman_client *client, json_t *args)
   w_root_delref(root);
 }
 
-
 /* vim:ts=2:sw=2:et:
  */
-

@@ -332,7 +332,7 @@ bool w_query_legacy_field_list(struct w_query_field_list *flist)
 // We build a big anyof expression
 w_query *w_query_parse_legacy(json_t *args, char **errmsg,
     int start, uint32_t *next_arg,
-    const char *clockspec)
+    const char *clockspec, json_t **expr_p)
 {
   bool include = true;
   bool negated = false;
@@ -443,7 +443,11 @@ w_query *w_query_parse_legacy(json_t *args, char **errmsg,
   /* compose the query with the field list */
   query = w_query_parse(query_obj, errmsg);
 
-  json_decref(query_obj);
+  if (expr_p) {
+    *expr_p = query_obj;
+  } else {
+    json_decref(query_obj);
+  }
 
   return query;
 }
@@ -514,7 +518,5 @@ void w_query_expr_delref(w_query_expr *expr)
   free(expr);
 }
 
-
 /* vim:ts=2:sw=2:et:
  */
-

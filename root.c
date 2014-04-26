@@ -3,12 +3,9 @@
 
 #include "watchman.h"
 
-// Maps pid => root
-static w_ht_t *running_kids = NULL;
 static w_ht_t *watched_roots = NULL;
 static int live_roots = 0;
 static pthread_mutex_t root_lock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t spawn_lock = PTHREAD_MUTEX_INITIALIZER;
 
 // Each root gets a number that uniquely identifies it within the process. This
 // helps avoid confusion if a root is removed and then added again.
@@ -72,11 +69,7 @@ static void delete_trigger(w_ht_val_t val)
 {
   struct watchman_trigger_command *cmd = w_ht_val_ptr(val);
 
-  free(cmd->argv);
-  w_string_delref(cmd->triggername);
-  w_free_rules(cmd->rules);
-
-  free(cmd);
+  w_trigger_command_free(cmd);
 }
 
 static const struct watchman_hash_funcs trigger_hash_funcs = {
@@ -1313,238 +1306,6 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   } while (w_ht_next(dir->files, &i));
 }
 
-static void spawn_command(w_root_t *root,
-    struct watchman_trigger_command *cmd,
-    uint32_t num_matches,
-    struct watchman_rule_match *matches)
-{
-  char **argv = NULL;
-  uint32_t argc = 0;
-  uint32_t i = 0, j;
-  long len, argmax;
-  int ret;
-  int json_fd = -1;
-  char json_file_name[WATCHMAN_NAME_MAX];
-  json_t *file_list = NULL;
-  posix_spawn_file_actions_t actions;
-  posix_spawnattr_t attr;
-  w_jbuffer_t buffer;
-  sigset_t mask;
-
-  file_list = w_match_results_to_json(num_matches, matches);
-  if (!file_list) {
-    w_log(W_LOG_ERR, "unable to render matches to json: %s\n",
-        strerror(errno));
-    goto out;
-  }
-
-  /* prepare the json input stream for the child process */
-  snprintf(json_file_name, sizeof(json_file_name), "%s/wmanXXXXXX",
-      watchman_tmp_dir);
-  json_fd = mkstemp(json_file_name);
-  if (json_fd == -1) {
-    /* failed to make the stream :-/ */
-
-    w_log(W_LOG_ERR, "unable to create a temporary file: %s\n",
-        strerror(errno));
-
-    goto out;
-  }
-
-  /* unlink the file, we don't need it in the filesystem;
-   * we'll pass the fd on to the child as stdin */
-  unlink(json_file_name);
-  if (!w_json_buffer_init(&buffer)) {
-    w_log(W_LOG_ERR, "failed to init json buffer\n");
-    goto out;
-  }
-  w_json_buffer_write(&buffer, json_fd, file_list, 0);
-  w_json_buffer_free(&buffer);
-  lseek(json_fd, 0, SEEK_SET);
-
-  /* if we make the command line too long, things blow up.
-   * We use a little less than the max in case the shell
-   * needs some of that space */
-  argmax = sysconf(_SC_ARG_MAX) - 24;
-
-  argc = cmd->argc + num_matches;
-  argv = calloc(argc + 1, sizeof(char*));
-  if (!argv) {
-    w_log(W_LOG_ERR, "out of memory\n");
-    goto out;
-  }
-
-  /* copy in the base command */
-  len = 0;
-  for (i = 0; i < cmd->argc; i++) {
-    argv[i] = cmd->argv[i];
-    len += 1 + strlen(argv[i]);
-  }
-
-  /* now fill out the file name args.
-   * We stop adding when the command line is too big.
-   */
-  for (j = 0; j < num_matches; j++) {
-    w_string_t *relname = matches[j].relname;
-
-    if ((long)relname->len + 1 + len >= argmax) {
-      break;
-    }
-    argv[i++] = w_string_dup_buf(relname);
-    len += relname->len + 1;
-  }
-  argv[i] = NULL;
-
-  posix_spawnattr_init(&attr);
-  sigemptyset(&mask);
-  posix_spawnattr_setsigmask(&attr, &mask);
-  posix_spawnattr_setflags(&attr,
-      POSIX_SPAWN_SETSIGMASK|
-      POSIX_SPAWN_SETPGROUP);
-
-  posix_spawn_file_actions_init(&actions);
-  posix_spawn_file_actions_adddup2(&actions, json_fd, STDIN_FILENO);
-  // TODO: std{in,out,err} redirection by default?
-
-  ignore_result(chdir(root->root_path->buf));
-
-  pthread_mutex_lock(&spawn_lock);
-  cmd->dispatch_root_number = root->number;
-  cmd->dispatch_tick = root->ticks;
-  ret = posix_spawnp(&cmd->current_proc,
-      argv[0], &actions,
-      &attr, argv, environ);
-  if (ret == 0) {
-    w_root_addref(root);
-    w_ht_set(running_kids, cmd->current_proc, w_ht_ptr_val(root));
-  }
-  pthread_mutex_unlock(&spawn_lock);
-
-  w_log(W_LOG_DBG, "posix_spawnp: argc=%d\n", argc);
-  for (i = 0; i < argc; i++) {
-    w_log(W_LOG_DBG, "  [%d] %s\n", i, argv[i]);
-  }
-  w_log(W_LOG_DBG, "pid=%d ret=%d\n", (int)cmd->current_proc, ret);
-
-  ignore_result(chdir("/"));
-
-  posix_spawnattr_destroy(&attr);
-  posix_spawn_file_actions_destroy(&actions);
-
-out:
-  w_match_results_free(num_matches, matches);
-
-  if (argv) {
-    for (i = cmd->argc; i < argc; i++) {
-      free(argv[i]);
-    }
-    free(argv);
-  }
-
-  if (json_fd != -1) {
-    close(json_fd);
-  }
-
-  if (file_list) {
-    json_decref(file_list);
-  }
-}
-
-void w_mark_dead(pid_t pid)
-{
-  w_root_t *root = NULL;
-  w_ht_iter_t iter;
-
-  pthread_mutex_lock(&spawn_lock);
-  root = w_ht_val_ptr(w_ht_get(running_kids, pid));
-  if (!root) {
-    pthread_mutex_unlock(&spawn_lock);
-    return;
-  }
-  w_ht_del(running_kids, pid);
-  pthread_mutex_unlock(&spawn_lock);
-
-  w_log(W_LOG_DBG, "mark_dead: %.*s child pid %d\n",
-      root->root_path->len, root->root_path->buf, (int)pid);
-
-  /* now walk the cmds and try to find our match */
-  w_root_lock(root);
-
-  /* walk the list of triggers, and run their rules */
-  if (w_ht_first(root->commands, &iter)) do {
-    struct watchman_trigger_command *cmd;
-    struct watchman_file *f, *oldest = NULL;
-    struct watchman_rule_match *results = NULL;
-    uint32_t matches;
-    struct w_clockspec *spec;
-
-    cmd = w_ht_val_ptr(iter.value);
-    if (cmd->current_proc != pid) {
-      w_log(W_LOG_DBG, "mark_dead: is [%.*s] %d == %d\n",
-          cmd->triggername->len, cmd->triggername->buf,
-          (int)cmd->current_proc, (int)pid);
-      continue;
-    }
-
-    /* first mark the process as dead */
-    cmd->current_proc = 0;
-    if (root->cancelled) {
-      w_log(W_LOG_DBG, "mark_dead: root was cancelled\n");
-      break;
-    }
-
-    spec = w_clockspec_new_clock(cmd->dispatch_root_number, cmd->dispatch_tick);
-    if (!spec) {
-      w_log(W_LOG_ERR, "mark_dead: %.*s unable to create new clockspec\n",
-            root->root_path->len, root->root_path->buf);
-      break;
-    }
-    w_log(W_LOG_DBG, "mark_dead: %.*s: spec root=%" PRIu32 " tick=%" PRIu32"\n",
-        cmd->triggername->len, cmd->triggername->buf,
-        cmd->dispatch_root_number, cmd->dispatch_tick);
-
-    /* now we need to figure out if more updates came
-     * in while we were running */
-    if (cmd->dispatch_root_number != root->number) {
-      for (f = root->latest_file; f; f = f->next) {
-        oldest = f;
-      }
-    } else {
-      for (f = root->latest_file;
-          f && f->otime.ticks > cmd->dispatch_tick;
-          f = f->next) {
-        oldest = f;
-      }
-    }
-
-    matches = w_rules_match(root, oldest, &results, cmd->rules, spec);
-    if (matches > 0) {
-      spawn_command(root, cmd, matches, results);
-    }
-
-    w_clockspec_free(spec);
-    break;
-  } while (w_ht_next(root->commands, &iter));
-
-  w_root_unlock(root);
-  w_root_delref(root);
-}
-
-static inline struct watchman_file *find_oldest_with_tick(
-    w_root_t *root, uint32_t tick)
-{
-  struct watchman_file *f, *oldest = NULL;
-
-  for (f = root->latest_file;
-      f && f->otime.ticks > tick;
-      f = f->next) {
-
-    oldest = f;
-  }
-
-  return oldest;
-}
-
 static void process_subscriptions(w_root_t *root)
 {
   w_ht_iter_t iter;
@@ -1625,11 +1386,7 @@ static bool vcs_file_exists(w_root_t *root,
  */
 static void process_triggers(w_root_t *root)
 {
-  struct watchman_file *oldest = NULL;
-  struct watchman_rule_match *results = NULL;
-  uint32_t matches;
   w_ht_iter_t iter;
-  struct w_clockspec *spec;
 
   if (root->last_trigger_tick == root->pending_trigger_tick) {
     return;
@@ -1648,34 +1405,18 @@ static void process_triggers(w_root_t *root)
       root->last_trigger_tick,
       root->pending_trigger_tick);
 
-  oldest = find_oldest_with_tick(root, root->last_trigger_tick);
-
   /* walk the list of triggers, and run their rules */
   if (w_ht_first(root->commands, &iter)) do {
     struct watchman_trigger_command *cmd = w_ht_val_ptr(iter.value);
+
     if (cmd->current_proc) {
       // Don't spawn if there's one already running
       w_log(W_LOG_DBG, "process_triggers: %.*s is already running\n",
           cmd->triggername->len, cmd->triggername->buf);
       continue;
     }
-    // Normally it wouldn't be OK to use root->number here since we'd like to be
-    // able to determine fresh instances by comparing against the last root
-    // number used. In this case it is OK, because (a) on init,
-    // last_trigger_tick is set to 0, meaning that every file in the set is
-    // going to be returned, and (b) triggers don't return fresh instance
-    // information.
-    spec = w_clockspec_new_clock(root->number, root->last_trigger_tick);
-    if (!spec) {
-      w_log(W_LOG_ERR, "process_triggers: %.*s unable to create clockspec\n",
-          root->root_path->len, root->root_path->buf);
-      return;
-    }
-    matches = w_rules_match(root, oldest, &results, cmd->rules, spec);
-    if (matches > 0) {
-      spawn_command(root, cmd, matches, results);
-    }
-    w_clockspec_free(spec);
+
+    w_assess_trigger(root, cmd);
 
   } while (w_ht_next(root->commands, &iter));
 
@@ -2848,12 +2589,6 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   w_ht_set(watched_roots, w_ht_ptr_val(root->root_path), w_ht_ptr_val(root));
   pthread_mutex_unlock(&root_lock);
 
-  pthread_mutex_lock(&spawn_lock);
-  if (!running_kids) {
-    running_kids = w_ht_new(2, NULL);
-  }
-  pthread_mutex_unlock(&spawn_lock);
-
   // caller owns 1 ref
   return root;
 }
@@ -2987,31 +2722,8 @@ json_t *w_root_trigger_list_to_json(w_root_t *root)
   arr = json_array();
   if (w_ht_first(root->commands, &iter)) do {
     struct watchman_trigger_command *cmd = w_ht_val_ptr(iter.value);
-    struct watchman_rule *rule;
-    json_t *obj = json_object();
-    json_t *args = json_array();
-    json_t *rules = json_array();
-    uint32_t i;
 
-    json_object_set_new(obj, "name", json_string(cmd->triggername->buf));
-    for (i = 0; i < cmd->argc; i++) {
-      json_array_append_new(args, json_string(cmd->argv[i]));
-    }
-    json_object_set_new(obj, "command", args);
-
-    for (rule = cmd->rules; rule; rule = rule->next) {
-      json_t *robj = json_object();
-
-      json_object_set_new(robj, "pattern", json_string(rule->pattern));
-      json_object_set_new(robj, "include", json_boolean(rule->include));
-      json_object_set_new(robj, "negated", json_boolean(rule->negated));
-
-      json_array_append_new(rules, robj);
-    }
-    json_object_set_new(obj, "rules", rules);
-
-    json_array_append_new(arr, obj);
-
+    json_array_append(arr, cmd->definition);
   } while (w_ht_next(root->commands, &iter));
 
   return arr;
@@ -3071,43 +2783,22 @@ bool w_root_load_state(json_t *state)
     /* re-create the trigger configuration */
     for (j = 0; j < json_array_size(triggers); j++) {
       json_t *tobj = json_array_get(triggers, j);
-      json_t *cmdarray, *rarray;
-      json_t *robj;
+      json_t *rarray;
       struct watchman_trigger_command *cmd;
-      struct watchman_rule *rule, *prior = NULL;
-      size_t r;
+      char *errmsg = NULL;
 
-      cmdarray = json_object_get(tobj, "command");
-      cmd = calloc(1, sizeof(*cmd));
-      cmd->argc = json_array_size(cmdarray);
-      cmd->argv = w_argv_copy_from_json(cmdarray, 0);
-      cmd->triggername = w_string_new(json_string_value(
-                          json_object_get(tobj, "name")));
-
+      // Legacy rules format
       rarray = json_object_get(tobj, "rules");
-      for (r = 0; r < json_array_size(rarray); r++) {
-        int include = 1, negate = 0;
-        const char *pattern = NULL;
+      if (rarray) {
+        continue;
+      }
 
-        robj = json_array_get(rarray, r);
-
-        if (json_unpack(robj, "{s:s, s:b, s:b}",
-              "pattern", &pattern,
-              "include", &include,
-              "negated", &negate) == 0) {
-          rule = calloc(1, sizeof(*rule));
-          rule->include = include;
-          rule->negated = negate;
-          rule->pattern = strdup(pattern);
-          rule->flags = FNM_PERIOD;
-
-          if (!prior) {
-            cmd->rules = rule;
-          } else {
-            prior->next = rule;
-          }
-          prior = rule;
-        }
+      cmd = w_build_trigger_from_def(root, tobj, &errmsg);
+      if (!cmd) {
+        w_log(W_LOG_ERR, "loading trigger for %s: %s\n",
+            root->root_path->buf, errmsg);
+        free(errmsg);
+        continue;
       }
 
       w_ht_replace(root->commands, w_ht_ptr_val(cmd->triggername),

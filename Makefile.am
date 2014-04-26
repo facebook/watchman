@@ -10,6 +10,8 @@ watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 watchman_LDADD = $(JSON_LIB)
 watchman_SOURCES = \
 	argv.c       \
+	envp.c       \
+	spawn.c       \
 	opt.c        \
 	cfg.c        \
 	log.c        \
@@ -42,7 +44,6 @@ watchman_SOURCES = \
 	clientmode.c \
 	main.c       \
 	root.c       \
-	rules.c      \
 	state.c      \
 	string.c
 

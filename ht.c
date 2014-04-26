@@ -395,5 +395,14 @@ const struct watchman_hash_funcs w_ht_string_funcs = {
   NULL
 };
 
+const struct watchman_hash_funcs w_ht_dict_funcs = {
+  w_ht_string_copy,
+  w_ht_string_del,
+  w_ht_string_equal,
+  w_ht_string_hash,
+  w_ht_string_copy,
+  w_ht_string_del
+};
+
 /* vim:ts=2:sw=2:et:
  */

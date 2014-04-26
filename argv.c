@@ -5,7 +5,7 @@
 
 /* Constructs an argv array by copying elements from a json
  * array.  The returned argv array occupies a single contiguous
- * block of memory such that it can be release by a single call
+ * block of memory such that it can be released by a single call
  * to free(3).
  * The last element of the returned argv is set to NULL for
  * compatibility with posix_spawn() */

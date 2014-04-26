@@ -40,12 +40,6 @@ void annotate_with_clock(w_root_t *root, json_t *resp);
 bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
     size_t bufsize);
 
-bool parse_watch_params(int start, json_t *args,
-    struct watchman_rule **head_ptr,
-    uint32_t *next_arg,
-    char *errbuf, int errbuflen);
-
-
 void cmd_find(struct watchman_client *client, json_t *args);
 void cmd_loglevel(struct watchman_client *client, json_t *args);
 void cmd_log(struct watchman_client *client, json_t *args);
@@ -76,4 +70,3 @@ void cmd_debug_ageout(struct watchman_client *client, json_t *args);
 
 /* vim:ts=2:sw=2:et:
  */
-
