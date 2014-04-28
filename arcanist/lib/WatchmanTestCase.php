@@ -142,6 +142,12 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
       return $future->resolve();
     }
 
+    $console = PhutilConsole::getConsole();
+    $console->writeLog(
+      "sock query: %s\n",
+      json_encode($args)
+    );
+
     return call_user_func_array(
       array($this->watchman_instance, 'request'),
       $args);

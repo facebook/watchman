@@ -15,6 +15,11 @@ class WatchmanQueryFuture extends FutureProxy {
 
   public function __construct($sockname, $repo_root, $args, array $command) {
     $this->command = json_encode($command);
+    $console = PhutilConsole::getConsole();
+    $console->writeLog(
+      "cli query: %s\n",
+      $this->command
+    );
     $future = new ExecFuture(
       "%s/watchman $args -U %s %s %s %s %s",
       $repo_root,
