@@ -44,7 +44,12 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     $res = $this->watchmanCommand('watch', $root);
     $this->watches[$root] = $res;
     if ($assert) {
-      $this->assertEqual($root, idx($res, 'error', idx($res, 'watch')));
+      if (!is_array($res)) {
+        $err = $res;
+      } else {
+        $err = idx($res, 'error', idx($res, 'watch'));
+      }
+      $this->assertEqual($root, $err);
     }
     return $res;
   }
