@@ -271,7 +271,7 @@ class WatchmanInstance {
     $buf = $req . "\n";
     $why = $this->fwrite_all($this->sock, $buf);
     if ($why !== true) {
-      echo "Failed to send $buf\n";
+      echo "Failed to send $buf$why\n";
       throw new Exception($why);
     }
     return $this->readResponses();
@@ -541,7 +541,11 @@ class WatchmanInstance {
     }
     $timeout = $this->valgrind ? 20 : 5;
     if ($this->sock) {
-      $this->request('shutdown-server');
+      try {
+        $this->request('shutdown-server');
+      } catch (Exception $e) {
+        printf("shutdown-server: %s\n", $e->getMessage());
+      }
       $st = $this->waitForTerminate($timeout);
     } else {
       $st = proc_get_status($this->proc);
