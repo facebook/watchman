@@ -439,7 +439,10 @@ class WatchmanInstance {
         // These look like fd leak records, but they're not documented
         // as such.  These go away if we turn off track-fds
         foreach ($vg->stack as $stack) {
-          $descriptors[] = $this->renderVGStack($stack);
+          // Suppressing this for now: posix_spawn seems to confuse
+          // some valgrind's, particularly the version we run on travis,
+          // as it records open descriptors from the exec'ing child
+          // $descriptors[] = $this->renderVGStack($stack);
         }
 
       } else {
@@ -612,7 +615,11 @@ class WatchmanInstance {
       '/tmp/watchman-test.log'
     );
     if (file_exists($this->vg_log.'.xml')) {
-      copy($this->vg_log.'.xml', "/tmp/watchman-valgrind.xml");
+      $this->appendLogFile(
+        'valgrind',
+        $this->vg_log.'.xml',
+        "/tmp/watchman-valgrind.xml"
+      );
     }
     if (file_exists($this->vg_log)) {
       $this->appendLogFile(
