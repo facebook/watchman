@@ -24,6 +24,7 @@ int dont_save_state = 0;
 static int foreground = 0;
 static int no_pretty = 0;
 static int no_spawn = 0;
+static int no_local = 0;
 static struct sockaddr_un un;
 static int json_input_arg = 0;
 
@@ -357,6 +358,9 @@ static struct watchman_getopt opts[] = {
     OPT_NONE, &no_pretty, NULL, NOT_DAEMON },
   { "no-spawn", 0, "Don't try to start the service if it is not available",
     OPT_NONE, &no_spawn, NULL, NOT_DAEMON },
+  { "no-local", 0, "When no-spawn is enabled, don't try to handle request"
+    " in client mode if service is unavailable",
+    OPT_NONE, &no_local, NULL, NOT_DAEMON },
   { "recrawl", 0,
     "Number of milliseconds between tree polling crawl",
     REQ_INT, &recrawl_period, NULL, IS_DAEMON },
@@ -437,7 +441,9 @@ int main(int argc, char **argv)
   ran = try_command(cmd, 0);
   if (!ran && should_start(errno)) {
     if (no_spawn) {
-      ran = try_client_mode_command(cmd, !no_pretty);
+      if (!no_local) {
+        ran = try_client_mode_command(cmd, !no_pretty);
+      }
     } else {
 #ifdef USE_GIMLI
       spawn_via_gimli();

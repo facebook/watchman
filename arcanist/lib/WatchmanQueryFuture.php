@@ -16,11 +16,12 @@ class WatchmanQueryFuture extends FutureProxy {
   public function __construct($sockname, $repo_root, $args, array $command) {
     $this->command = json_encode($command);
     $future = new ExecFuture(
-      "%s/watchman $args -U %s %s %s %s",
+      "%s/watchman $args -U %s %s %s %s %s",
       $repo_root,
       $sockname,
       '--no-pretty',
       '--no-spawn',
+      '--no-local',
       '-j'
     );
     $future->write($this->command . "\n");
