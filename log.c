@@ -41,8 +41,13 @@ void w_log(int level, const char *fmt, ...)
   len = snprintf(buf, sizeof(buf),
         "%d: tid=%" PRIu32 " ", (int)time(NULL), tid);
   va_start(ap, fmt);
-  len += vsnprintf(buf + len, sizeof(buf) - len, fmt, ap);
+  vsnprintf(buf + len, sizeof(buf) - len, fmt, ap);
   va_end(ap);
+
+  len = strlen(buf);
+  if (buf[len - 1] != '\n') {
+    buf[len - 1] = '\n';
+  }
 
   if (level <= log_level) {
     ignore_result(write(STDERR_FILENO, buf, len));
@@ -58,4 +63,3 @@ void w_log(int level, const char *fmt, ...)
 
 /* vim:ts=2:sw=2:et:
  */
-
