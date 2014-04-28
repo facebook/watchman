@@ -535,6 +535,16 @@ class WatchmanInstance {
     return false;
   }
 
+  private function appendLogFile($label, $srcname, $destname) {
+    $fp = fopen($srcname, 'r');
+    $dest = fopen($destname, 'a');
+    fprintf($dest, "\n=== $label from $srcname ===\n");
+    stream_copy_to_stream($fp, $dest);
+    fprintf($dest, "\n");
+    fclose($fp);
+    fclose($dest);
+  }
+
   function terminateProcess() {
     if (!$this->proc) {
       return;
@@ -570,12 +580,16 @@ class WatchmanInstance {
     if ($this->debug) {
       readfile($this->logfile);
     }
-    copy($this->logfile, '/tmp/watchman-test.log');
+    $this->appendLogFile('output', $this->logfile, '/tmp/watchman-test.log');
     if (file_exists($this->vg_log.'.xml')) {
       copy($this->vg_log.'.xml', "/tmp/watchman-valgrind.xml");
     }
     if (file_exists($this->vg_log)) {
-      copy($this->vg_log, "/tmp/watchman-valgrind.txt");
+      $this->appendLogFile(
+        'valgrind',
+        $this->vg_log,
+        '/tmp/watchman-valgrind.log'
+      );
     }
     if (file_exists($this->cg_file)) {
       copy($this->cg_file, "/tmp/watchman-callgrind.txt");

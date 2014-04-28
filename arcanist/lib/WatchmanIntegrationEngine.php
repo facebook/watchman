@@ -30,6 +30,15 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
       $paths = $this->getPaths();
     }
 
+    foreach (array(
+      '/tmp/watchman-test.log',
+      '/tmp/watchman-valgrind.log',
+      '/tmp/watchman-valgrind.xml',
+      '/tmp/watchman-callgrind.txt',
+    ) as $log) {
+      @unlink($log);
+    }
+
     foreach ($paths as $path) {
       if (preg_match("/\.php$/", $path) && file_exists($path)) {
         require_once $path;
@@ -118,4 +127,3 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
 }
 
 // vim:ts=2:sw=2:et:
-
