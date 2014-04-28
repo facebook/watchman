@@ -46,7 +46,13 @@ void w_log(int level, const char *fmt, ...)
 
   len = strlen(buf);
   if (buf[len - 1] != '\n') {
-    buf[len - 1] = '\n';
+    if (len < (int)sizeof(buf) - 1) {
+      buf[len] = '\n';
+      buf[len + 1] = 0;
+      len++;
+    } else {
+      buf[len - 1] = '\n';
+    }
   }
 
   if (level <= log_level) {
