@@ -55,7 +55,11 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
       $id = $args[2]['name'];
     }
     $out = call_user_func_array(array($this, 'watchmanCommand'), $args);
-    $err = idx($out, 'error', idx($out, 'triggerid'), 'unpossible');
+    if (!is_array($out)) {
+      $err = $out;
+    } else {
+      $err = idx($out, 'error', idx($out, 'triggerid'), 'unpossible');
+    }
     $this->assertEqual($id, $err);
     return $out;
   }
