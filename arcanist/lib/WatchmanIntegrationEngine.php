@@ -78,7 +78,7 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
         $res->setName('dead');
         $res->setUserData('died before test start');
         $res->setResult(ArcanistUnitTestResult::RESULT_FAIL);
-        $results[] = $res;
+        $results[] = array($res);
         break;
       }
 
