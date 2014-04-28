@@ -75,10 +75,29 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     return $out;
   }
 
+  private function computeWatchmanTestCaseName($test_method_name) {
+    return get_class($this).'::'.$test_method_name;
+  }
+
   function didRunOneTest($test_method_name) {
     if (!$this->use_cli) {
       $this->watchman_instance->stopLogging();
     }
+    $name = $this->computeWatchmanTestCaseName($test_method_name);
+    $this->watchmanCommand(
+      'log',
+      'debug',
+      "TEST: end $name\n\n"
+    );
+  }
+
+  function willRunOneTest($test_method_name) {
+    $name = $this->computeWatchmanTestCaseName($test_method_name);
+    $this->watchmanCommand(
+      'log',
+      'debug',
+      "TEST: begin $name\n\n"
+    );
   }
 
   function didRunTests() {
