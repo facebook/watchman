@@ -45,6 +45,9 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
       }
     }
 
+    // We test for this in a test case
+    putenv("WATCHMAN_EMPTY_ENV_VAR=");
+
     $coverage = $this->getEnableCoverage();
     $instances = array(new WatchmanInstance($root, $coverage));
 

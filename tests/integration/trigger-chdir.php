@@ -33,6 +33,8 @@ class triggerChdirTestCase extends WatchmanTestCase {
     $obj = $this->waitForJsonInput($log);
     $this->assertEqual(1, count($obj));
 
-    $this->assertRegex(",PWD=$root/sub,", file_get_contents($env));
+    $envdata = file_get_contents($env);
+    $this->assertRegex(",PWD=$root/sub,", $envdata);
+    $this->assertRegex("/WATCHMAN_EMPTY_ENV_VAR=$/m", $envdata);
   }
 }
