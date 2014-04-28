@@ -38,6 +38,25 @@ out:
   return result;
 }
 
+int w_mkstemp(char *templ)
+{
+  int fd;
+
+#ifdef HAVE_MKOSTEMP
+  fd = mkostemp(templ, O_CLOEXEC);
+#else
+  fd = mkstemp(templ);
+#endif
+
+  if (fd == -1) {
+    return -1;
+  }
+
+  w_set_cloexec(fd);
+
+  return fd;
+}
+
 bool w_state_save(void)
 {
   json_t *state;
@@ -61,7 +80,7 @@ bool w_state_save(void)
 
   snprintf(tmpname, sizeof(tmpname), "%sXXXXXX",
       watchman_state_file);
-  fd = mkstemp(tmpname);
+  fd = w_mkstemp(tmpname);
   if (fd == -1) {
     w_log(W_LOG_ERR, "save_state: unable to create temporary file: %s\n",
         strerror(errno));
@@ -101,4 +120,3 @@ out:
 
 /* vim:ts=2:sw=2:et:
  */
-

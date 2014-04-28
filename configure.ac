@@ -165,7 +165,7 @@ AC_SEARCH_LIBS([pthread_create], [pthread])
 AC_SEARCH_LIBS([socket], [socket])
 
 AC_CHECK_HEADERS(sys/types.h inttypes.h locale.h port.h sys/inotify.h sys/event.h)
-AC_CHECK_FUNCS(kqueue port_create inotify_init strtoll localeconv)
+AC_CHECK_FUNCS(mkostemp kqueue port_create inotify_init strtoll localeconv)
 AC_CHECK_HEADERS(valgrind/valgrind.h)
 AC_CHECK_HEADERS(execinfo.h)
 AC_CHECK_HEADERS(CoreServices/CoreServices.h, [

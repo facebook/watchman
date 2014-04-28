@@ -108,7 +108,7 @@ static int prepare_stdin(
   /* prepare the input stream for the child process */
   snprintf(stdin_file_name, sizeof(stdin_file_name), "%s/wmanXXXXXX",
       watchman_tmp_dir);
-  stdin_fd = mkstemp(stdin_file_name);
+  stdin_fd = w_mkstemp(stdin_file_name);
   if (stdin_fd == -1) {
     w_log(W_LOG_ERR, "unable to create a temporary file: %s\n",
         strerror(errno));

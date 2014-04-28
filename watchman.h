@@ -121,6 +121,10 @@ static inline void w_clear_nonblock(int fd)
   ignore_result(fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & ~O_NONBLOCK));
 }
 
+// Make a temporary file name and open it.
+// Marks the file as CLOEXEC
+int w_mkstemp(char *templ);
+
 struct watchman_string;
 typedef struct watchman_string w_string_t;
 struct watchman_string {
