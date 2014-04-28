@@ -185,6 +185,7 @@ struct watchman_trigger_command *w_build_trigger_from_def(
   struct watchman_trigger_command *cmd;
   json_t *ele, *query;
   json_int_t jint;
+  const char *name = NULL;
 
   cmd = calloc(1, sizeof(*cmd));
   if (!cmd) {
@@ -205,9 +206,14 @@ struct watchman_trigger_command *w_build_trigger_from_def(
     return NULL;
   }
 
-  cmd->triggername = w_string_new(json_string_value(
-    json_object_get(trig, "name")));
+  json_unpack(trig, "{s:s}", "name", &name);
+  if (!name) {
+    *errmsg = strdup("invalid or missing name");
+    w_trigger_command_free(cmd);
+    return NULL;
+  }
 
+  cmd->triggername = w_string_new(name);
   cmd->command = json_object_get(trig, "command");
   if (cmd->command) {
     json_incref(cmd->command);
@@ -256,10 +262,8 @@ struct watchman_trigger_command *w_build_trigger_from_def(
   }
   cmd->max_files_stdin = jint;
 
-  json_unpack(trig, "{s:s, s:s}",
-    "stdout", &cmd->stdout_name,
-    "stderr", &cmd->stderr_name
-  );
+  json_unpack(trig, "{s:s}", "stdout", &cmd->stdout_name);
+  json_unpack(trig, "{s:s}", "stderr", &cmd->stderr_name);
 
   if (!parse_redirection(&cmd->stdout_name, &cmd->stdout_flags,
         "stdout", errmsg)) {
@@ -301,7 +305,7 @@ void cmd_trigger(struct watchman_client *client, json_t *args)
     return;
   }
 
-  if (json_array_size(args) < 2) {
+  if (json_array_size(args) < 3) {
     send_error_response(client, "not enough arguments");
     goto done;
   }
