@@ -87,15 +87,13 @@ class triggerTestCase extends WatchmanTestCase {
 
     $this->assertFileList($root, array('b ar.c', 'bar.txt', 'foo.c'));
 
-    $out = $this->watchmanCommand('trigger', $root,
+    $out = $this->trigger($root,
       'test', '*.c', '--', dirname(__FILE__) . '/trig.sh',
       "$root/trigger.log");
-    $this->assertEqual('test', $out['triggerid']);
 
-    $out = $this->watchmanCommand('trigger', $root,
+    $out = $this->trigger($root,
       'other', '*.c', '--', dirname(__FILE__) . '/trigjson',
       "$root/trigger.json");
-    $this->assertEqual('other', $out['triggerid']);
 
     $trig_list = array(
       array(
@@ -167,9 +165,8 @@ class triggerTestCase extends WatchmanTestCase {
     // and that the right data was seen
     $this->validateTriggerOutput($root, array('foo.c', 'b ar.c'));
 
-    $out = $this->watchmanCommand('trigger', $root,
+    $out = $this->trigger($root,
                   'other', '*.c', '--', 'true');
-    $this->assertEqual('other', $out['triggerid']);
 
     $res = $this->watchmanCommand('trigger-del', $root, 'test');
     $this->assertEqual(true, $res['deleted']);

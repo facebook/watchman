@@ -14,7 +14,7 @@ class triggerChdirTestCase extends WatchmanTestCase {
 
     $this->watch($root);
 
-    $out = $this->watchmanCommand('trigger', $root,
+    $out = $this->trigger($root,
       array(
         'name' => 'cap',
         'command' => array(
@@ -27,7 +27,6 @@ class triggerChdirTestCase extends WatchmanTestCase {
         'chdir' => 'sub',
       )
     );
-    $this->assertEqual('cap', $out['triggerid']);
 
     touch("$root/A.txt");
 

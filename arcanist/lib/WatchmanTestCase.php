@@ -46,6 +46,20 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     return $res;
   }
 
+  function trigger() {
+    $args = func_get_args();
+    array_unshift($args, 'trigger');
+    if (is_string($args[2])) {
+      $id = $args[2];
+    } else {
+      $id = $args[2]['name'];
+    }
+    $out = call_user_func_array(array($this, 'watchmanCommand'), $args);
+    $err = idx($out, 'error', idx($out, 'triggerid'), 'unpossible');
+    $this->assertEqual($id, $err);
+    return $out;
+  }
+
   function didRunOneTest($test_method_name) {
     if (!$this->use_cli) {
       $this->watchman_instance->stopLogging();

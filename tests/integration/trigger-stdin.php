@@ -12,7 +12,7 @@ class triggerStdinTestCase extends WatchmanTestCase {
 
     $this->watch($root);
 
-    $out = $this->watchmanCommand('trigger', $root,
+    $out = $this->trigger($root,
       array(
         'name' => 'cat',
         'command' => array('cat'),
@@ -21,7 +21,6 @@ class triggerStdinTestCase extends WatchmanTestCase {
         'stdout' => ">$log"
       )
     );
-    $this->assertEqual('cat', $out['triggerid']);
 
     touch("$root/A.txt");
     $this->assertFileContents($log, "A.txt\n");
@@ -43,7 +42,7 @@ class triggerStdinTestCase extends WatchmanTestCase {
 
     $this->watch($root);
 
-    $out = $this->watchmanCommand('trigger', $root,
+    $out = $this->trigger($root,
       array(
         'name' => 'cat',
         'command' => array('cat'),
@@ -52,7 +51,6 @@ class triggerStdinTestCase extends WatchmanTestCase {
         'stdout' => ">>$log"
       )
     );
-    $this->assertEqual('cat', $out['triggerid']);
 
     touch("$root/A.txt");
     $this->assertFileContents($log, "A.txt\n");
@@ -72,7 +70,7 @@ class triggerStdinTestCase extends WatchmanTestCase {
 
     $this->watch($root);
 
-    $out = $this->watchmanCommand('trigger', $root,
+    $out = $this->trigger($root,
       array(
         'name' => 'cat',
         'command' => array('cat'),
@@ -81,7 +79,6 @@ class triggerStdinTestCase extends WatchmanTestCase {
         'stdout' => ">$log"
       )
     );
-    $this->assertEqual('cat', $out['triggerid']);
 
     touch("$root/A.txt");
     $this->assertFileContents($log, "[\"A.txt\"]\n");
@@ -96,7 +93,7 @@ class triggerStdinTestCase extends WatchmanTestCase {
 
     $this->watch($root);
 
-    $out = $this->watchmanCommand('trigger', $root,
+    $out = $this->trigger($root,
       array(
         'name' => 'cat',
         'command' => array('cat'),
@@ -105,7 +102,6 @@ class triggerStdinTestCase extends WatchmanTestCase {
         'stdout' => ">$log"
       )
     );
-    $this->assertEqual('cat', $out['triggerid']);
 
     touch("$root/A.txt");
     $this->assertFileContents($log, '[{"name": "A.txt", "size": 0}]'."\n");
