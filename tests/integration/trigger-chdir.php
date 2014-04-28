@@ -27,11 +27,19 @@ class triggerChdirTestCase extends WatchmanTestCase {
         'chdir' => 'sub',
       )
     );
-
     touch("$root/A.txt");
 
     $obj = $this->waitForJsonInput($log);
     $this->assertEqual(1, count($obj));
+
+    $this->waitFor(
+      function () use ($env, $root) {
+        $envdata = file_get_contents($env);
+        return preg_match(",PWD=$root/sub,", $envdata) == 1;
+      },
+      10,
+      "waiting for PWD to show in $env log file"
+    );
 
     $envdata = file_get_contents($env);
     $this->assertRegex(",PWD=$root/sub,", $envdata);
