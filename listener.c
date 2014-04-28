@@ -450,6 +450,8 @@ static void cmd_shutdown(
   pthread_join(reaper_thread, &ignored);
   cfg_shutdown();
 
+  json_decref(args);
+
   close(STDIN_FILENO);
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
