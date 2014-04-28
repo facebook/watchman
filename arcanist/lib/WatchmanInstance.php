@@ -118,8 +118,13 @@ class WatchmanInstance {
   }
 
   function getProcessID() {
-    $resp = $this->request('get-pid');
-    return $resp['pid'];
+    try {
+      $resp = $this->request('get-pid');
+      return idx($resp, 'pid');
+    } catch (Exception $e) {
+      printf("get-pid: %s\n", $e->getMessage());
+      return null;
+    }
   }
 
   // Looks in the log file for the matching term.
@@ -580,7 +585,16 @@ class WatchmanInstance {
     if ($this->debug) {
       readfile($this->logfile);
     }
-    $this->appendLogFile('output', $this->logfile, '/tmp/watchman-test.log');
+    $this->appendLogFile(
+      'config',
+      $this->config_file,
+      '/tmp/watchman-test.log'
+    );
+    $this->appendLogFile(
+      'output',
+      $this->logfile,
+      '/tmp/watchman-test.log'
+    );
     if (file_exists($this->vg_log.'.xml')) {
       copy($this->vg_log.'.xml', "/tmp/watchman-valgrind.xml");
     }

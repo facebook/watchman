@@ -66,12 +66,22 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
       $test_case = newv($name, array());
       $config = $test_case->getGlobalConfig();
       if ($config) {
-        $fresh_instance = new WatchmanInstance($root, $coverage, $config);
-        $instances[] = $fresh_instance;
-        $test_case->setWatchmanInstance($fresh_instance);
+        $instance = new WatchmanInstance($root, $coverage, $config);
+        $instances[] = $instance;
       } else {
-        $test_case->setWatchmanInstance($instances[0]);
+        $instance = $instances[0];
       }
+      $test_case->setWatchmanInstance($instance);
+
+      if (!$instance->getProcessID()) {
+        $res = new ArcanistUnitTestResult();
+        $res->setName('dead');
+        $res->setUserData('died before test start');
+        $res->setResult(ArcanistUnitTestResult::RESULT_FAIL);
+        $results[] = $res;
+        break;
+      }
+
       $test_case->setRoot($root);
       $test_case->setPaths($paths);
       $results[] = $test_case->run();
