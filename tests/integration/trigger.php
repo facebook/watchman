@@ -20,7 +20,13 @@ class triggerTestCase extends WatchmanTestCase {
         return $n == count($files);
       }
       return false;
-    }, 5, "created trigger.log");
+    }, 5, function () use ($root, $files) {
+      return sprintf(
+        "trigger.log should contain %s, has %s",
+        json_encode($files),
+        file_get_contents("$root/trigger.log")
+      );
+    });
 
     $logdata = file_get_contents("$root/trigger.log");
     foreach ($files as $file) {
@@ -129,8 +135,10 @@ class triggerTestCase extends WatchmanTestCase {
 
     $this->startLogging('debug');
 
+    $this->suspendWatchman();
     touch("$root/foo.c");
     touch("$root/b ar.c");
+    $this->resumeWatchman();
 
     $this->watchmanCommand('log', 'debug', 'waiting for spawnp ' . __LINE__);
     $this->assertWaitForLog('/posix_spawnp/');
