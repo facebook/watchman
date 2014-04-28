@@ -347,6 +347,7 @@ w_query *w_query_parse_legacy(json_t *args, char **errmsg,
 
   if (!json_is_array(args)) {
     *errmsg = strdup("Expected an array");
+    json_decref(query_obj);
     return NULL;
   }
 
@@ -356,6 +357,7 @@ w_query *w_query_parse_legacy(json_t *args, char **errmsg,
       /* not a string value! */
       ignore_result(asprintf(errmsg,
           "rule @ position %d is not a string value", i));
+      json_decref(query_obj);
       return NULL;
     }
   }
