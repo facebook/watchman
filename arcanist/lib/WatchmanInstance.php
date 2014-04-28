@@ -271,6 +271,7 @@ class WatchmanInstance {
     $buf = $req . "\n";
     $why = $this->fwrite_all($this->sock, $buf);
     if ($why !== true) {
+      echo "Failed to send $buf\n";
       throw new Exception($why);
     }
     return $this->readResponses();
