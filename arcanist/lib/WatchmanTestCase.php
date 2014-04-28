@@ -75,32 +75,50 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     return $out;
   }
 
-  private function computeWatchmanTestCaseName($test_method_name) {
-    return get_class($this).'::'.$test_method_name;
+  private function computeWatchmanTestCaseName($test_method_name = '') {
+    $cls = get_class($this);
+    if ($test_method_name) {
+      $cls .= "::$test_method_name";
+    }
+    return $cls;
+  }
+
+  private function logTestInfo($msg, $test_method_name = '') {
+    try {
+      $name = $this->computeWatchmanTestCaseName($test_method_name);
+      $this->watchmanCommand(
+        'log',
+        'debug',
+        "TEST: $msg $name\n\n"
+      );
+    } catch (Exception $e) {
+      printf(
+        "logTestInfo %s %s failed: %s\n",
+        $msg,
+        $name,
+        $e->getMessage()
+      );
+    }
   }
 
   function didRunOneTest($test_method_name) {
     if (!$this->use_cli) {
       $this->watchman_instance->stopLogging();
     }
-    $name = $this->computeWatchmanTestCaseName($test_method_name);
-    $this->watchmanCommand(
-      'log',
-      'debug',
-      "TEST: end $name\n\n"
-    );
+    $this->logTestInfo('end', $test_method_name);
   }
 
   function willRunOneTest($test_method_name) {
-    $name = $this->computeWatchmanTestCaseName($test_method_name);
-    $this->watchmanCommand(
-      'log',
-      'debug',
-      "TEST: begin $name\n\n"
-    );
+    $this->logTestInfo('begin', $test_method_name);
+  }
+
+  function willRunTests() {
+    $this->logTestInfo('willRun');
   }
 
   function didRunTests() {
+    $this->logTestInfo('didRun');
+
     foreach ($this->watches as $root => $status) {
       try {
         $this->watchmanCommand('watch-del', $root);
