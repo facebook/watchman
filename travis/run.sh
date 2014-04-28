@@ -8,6 +8,8 @@ PATH=$PWD:$PATH
 make
 set +e
 rm -f /tmp/watchman*
+echo Environment is
+env
 if ! arc unit --everything --trace; then
   cat /tmp/watchman*
   exit 1
