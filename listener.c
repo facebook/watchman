@@ -563,6 +563,8 @@ static void *client_thread(void *ptr)
     ignore_result(poll(pfd, 2, 200));
 
     if (pfd[0].revents & (POLLHUP|POLLERR)) {
+      w_log(W_LOG_DBG, "got HUP|ERR on client fd=%d, disconnecting\n",
+          client->fd);
 disconected:
       pthread_mutex_lock(&w_client_lock);
       w_ht_del(clients, client->fd);
