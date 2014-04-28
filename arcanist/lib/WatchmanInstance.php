@@ -235,6 +235,23 @@ class WatchmanInstance {
     stream_set_timeout($this->sock, self::TIMEOUT);
   }
 
+  private function fwrite_all($sock, $buf) {
+    $wrote = 0;
+    for ($total = 0; $total < strlen($buf); $total += $wrote) {
+      $wrote = @fwrite($sock, substr($buf, $total));
+      if ($wrote === false || $wrote < 1) {
+        $err = error_get_last();
+        if (is_array($err)) {
+          $reason = idx($err, 'message', false);
+        }  else {
+          $reason = '';
+        }
+        return sprintf("wrote %d/%d. %s", $total, strlen($buf), $reason);
+      }
+    }
+    return true;
+  }
+
   function request() {
     $args = func_get_args();
 
@@ -251,7 +268,11 @@ class WatchmanInstance {
     if ($this->debug) {
       echo "Sending $req\n";
     }
-    fwrite($this->sock, $req . "\n");
+    $buf = $req . "\n";
+    $why = $this->fwrite_all($this->sock, $buf);
+    if ($why !== true) {
+      throw new Exception($why);
+    }
     return $this->readResponses();
   }
 
