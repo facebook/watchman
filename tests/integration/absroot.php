@@ -4,7 +4,7 @@
 
 class absoluteRootTestCase extends WatchmanTestCase {
   function testDot() {
-    $res = $this->watch('.');
+    $res = $this->watch('.', false);
     $this->assertEqual(
       'unable to resolve root .: path "." must be absolute',
       idx($res, 'error')
@@ -12,7 +12,7 @@ class absoluteRootTestCase extends WatchmanTestCase {
   }
 
   function testSlash() {
-    $res = $this->watch('/');
+    $res = $this->watch('/', false);
     $this->assertEqual(
       'unable to resolve root /: cannot watch "/"',
       idx($res, 'error')

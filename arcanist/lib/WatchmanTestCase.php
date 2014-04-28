@@ -40,9 +40,12 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     $this->watchman_instance = $instance;
   }
 
-  function watch($root) {
+  function watch($root, $assert = true) {
     $res = $this->watchmanCommand('watch', $root);
     $this->watches[$root] = $res;
+    if ($assert) {
+      $this->assertEqual($root, idx($res, 'error', idx($res, 'watch')));
+    }
     return $res;
   }
 

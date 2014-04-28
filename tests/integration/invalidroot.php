@@ -7,7 +7,7 @@ class InvalidRootTestCase extends WatchmanTestCase {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
 
-    $res = $this->watch("$root/invalid");
+    $res = $this->watch("$root/invalid", false);
     $this->assertEqual(
       "unable to resolve root $root/invalid: ".
       "realpath($root/invalid) -> No such file or directory",

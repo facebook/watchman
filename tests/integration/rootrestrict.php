@@ -33,7 +33,6 @@ class rootRestrictTestCase extends WatchmanTestCase {
         touch("$root/$p[1]");
       }
       $res = $this->watch($root);
-      $this->assertEqual(NULL, idx($res, 'error'));
 
       // Make sure the watch actually happened
       touch("$root/f");
@@ -55,7 +54,7 @@ class rootRestrictTestCase extends WatchmanTestCase {
         }
       }
 
-      $res = $this->watch($root);
+      $res = $this->watch($root, false);
       $this->assertEqual("unable to resolve root $root: none of the files " .
                          "listed in global config root_restrict_files are " .
                          "present",
