@@ -63,7 +63,10 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     } else {
       $err = idx($out, 'error', idx($out, 'triggerid'), 'unpossible');
     }
-    $this->assertEqual($id, $err);
+    $def = json_encode($args);
+    $out = json_encode($out);
+    $message = "trigger definition: $def, output was $out";
+    $this->assertEqual($id, $err, $message);
     return $out;
   }
 
