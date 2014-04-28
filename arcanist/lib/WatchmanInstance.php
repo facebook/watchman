@@ -417,8 +417,10 @@ class WatchmanInstance {
         }
       }
     }
+    libxml_use_internal_errors(true);
     foreach ($documents as $data) {
-      $vg = simplexml_load_string($data);
+      libxml_clear_errors();
+      $vg = @simplexml_load_string($data);
       if (is_object($vg)) {
         foreach ($vg->error as $err) {
           $render = $this->renderVGResult($err);
@@ -433,15 +435,29 @@ class WatchmanInstance {
             $errors[] = $render;
           }
         }
-      } else {
-        var_dump($vg);
-      }
-    }
 
-    // These look like fd leak records, but they're not documented
-    // as such.  These go away if we turn off track-fds
-    foreach ($vg->stack as $stack) {
-      $descriptors[] = $this->renderVGStack($stack);
+        // These look like fd leak records, but they're not documented
+        // as such.  These go away if we turn off track-fds
+        foreach ($vg->stack as $stack) {
+          $descriptors[] = $this->renderVGStack($stack);
+        }
+
+      } else {
+        $why = 'failed to parse xml';
+        $lines = explode("\n", $data);
+        foreach (libxml_get_errors() as $err) {
+          $slice = array_slice($lines, $err->line - 3, 6);
+          $slice = implode("\n", $slice);
+          $why .= sprintf(
+            "\n%s (line %d col %d) %s",
+            $err->message,
+            $err->line,
+            $err->column,
+            $slice
+          );
+        }
+        printf("parsing valgrind output: %s\n", $why);
+      }
     }
 
     $results = array();
