@@ -7,45 +7,7 @@ class triggerTestCase extends WatchmanTestCase {
     return true;
   }
 
-  function validateTriggerOutput($root, array $files) {
-    $this->waitFor(function () use ($root, $files) {
-      if (file_exists("$root/trigger.log")) {
-        $dat = file_get_contents("$root/trigger.log");
-        $n = 0;
-        foreach ($files as $file) {
-          if (strpos($dat, $file) !== false) {
-            $n++;
-          }
-        }
-        return $n == count($files);
-      }
-      return false;
-    }, 5, function () use ($root, $files) {
-      return sprintf(
-        "trigger.log should contain %s, has %s",
-        json_encode($files),
-        file_get_contents("$root/trigger.log")
-      );
-    });
-
-    $logdata = file_get_contents("$root/trigger.log");
-    foreach ($files as $file) {
-      $this->assertRegex(
-        "/$file/m",
-        $logdata,
-        "got the right filename in the log"
-      );
-    }
-
-    $this->waitFor(function () use ($root) {
-      if (file_exists("$root/trigger.json")) {
-        return json_decode(
-          file_get_contents("$root/trigger.json")
-        );
-      }
-      return false;
-    }, 5, "created trigger.json");
-
+  function doesTriggerDataMatchFileList($root, array $files) {
     // Validate that the json input is properly formatted
     $expect = array();
     foreach ($files as $file) {
@@ -59,6 +21,7 @@ class triggerTestCase extends WatchmanTestCase {
     });
 
     $lines = 0;
+    $got = array();
     foreach (file("$root/trigger.json") as $line) {
       $lines++;
       $list = json_decode($line, true);
@@ -73,11 +36,55 @@ class triggerTestCase extends WatchmanTestCase {
       usort($list, function ($a, $b) {
         return strcmp($a['name'], $b['name']);
       });
-      $this->assertEqual($expect, $list);
+
+      foreach ($list as $ele) {
+        $got[] = $ele;
+      }
     }
-    if ($lines == 0) {
-      $this->assertFailure("No json lines seen");
+
+    return $expect === $got;
+  }
+
+  function validateTriggerOutput($root, array $files, $context) {
+    $this->waitFor(function () use ($root, $files) {
+      if (file_exists("$root/trigger.log")) {
+        $dat = file_get_contents("$root/trigger.log");
+        $n = 0;
+        foreach ($files as $file) {
+          if (strpos($dat, $file) !== false) {
+            $n++;
+          }
+        }
+        return $n == count($files);
+      }
+      return false;
+    }, 5, function () use ($root, $files, $context) {
+      return sprintf(
+        "[$context] trigger.log should contain %s, has %s",
+        json_encode($files),
+        file_get_contents("$root/trigger.log")
+      );
+    });
+
+    $logdata = file_get_contents("$root/trigger.log");
+    foreach ($files as $file) {
+      $this->assertRegex(
+        "/$file/m",
+        $logdata,
+        "[$context] got the right filename in the log"
+      );
     }
+
+    $self = $this;
+    $this->waitFor(function () use ($root, $files, $self) {
+      return $self->doesTriggerDataMatchFileList($root, $files);
+    }, 5, function () use ($root, $files, $context) {
+      return sprintf(
+        "[$context] trigger.json holds valid json for %s, got %s",
+        json_encode($files),
+        file_get_contents("$root/trigger.json")
+      );
+    });
   }
 
   function testLegacyTrigger() {
@@ -89,15 +96,14 @@ class triggerTestCase extends WatchmanTestCase {
     touch("$root/bar.txt");
 
     $out = $this->watch($root);
-    $this->assertEqual($root, $out['watch']);
 
     $this->assertFileList($root, array('b ar.c', 'bar.txt', 'foo.c'));
 
-    $out = $this->trigger($root,
+    $this->trigger($root,
       'test', '*.c', '--', dirname(__FILE__) . '/trig.sh',
       "$root/trigger.log");
 
-    $out = $this->trigger($root,
+    $this->trigger($root,
       'other', '*.c', '--', dirname(__FILE__) . '/trigjson',
       "$root/trigger.json");
 
@@ -146,15 +152,17 @@ class triggerTestCase extends WatchmanTestCase {
 
     $this->stopLogging();
 
-    $this->validateTriggerOutput($root, array('foo.c', 'b ar.c'));
+    $this->validateTriggerOutput($root, array('foo.c', 'b ar.c'), 'initial');
 
     foreach (array('foo.c', 'b ar.c') as $file) {
       // Validate that we observe the updates correctly
       // (that we're handling the since portion of the query)
+      $this->suspendWatchman();
       unlink("$root/trigger.log");
       unlink("$root/trigger.json");
       touch("$root/$file");
-      $this->validateTriggerOutput($root, array($file));
+      $this->resumeWatchman();
+      $this->validateTriggerOutput($root, array($file), "single $file");
     }
 
     // trigger a recrawl
@@ -171,7 +179,8 @@ class triggerTestCase extends WatchmanTestCase {
     $this->stopLogging();
 
     // and that the right data was seen
-    $this->validateTriggerOutput($root, array('foo.c', 'b ar.c'));
+    $this->validateTriggerOutput($root,
+      array('foo.c', 'b ar.c'), 'after recrawl');
 
     $out = $this->trigger($root,
                   'other', '*.c', '--', 'true');
