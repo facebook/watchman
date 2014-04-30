@@ -22,7 +22,7 @@ class triggerTestCase extends WatchmanTestCase {
 
     $lines = 0;
     $got = array();
-    foreach (file("$root/trigger.json") as $line) {
+    foreach (@file("$root/trigger.json") as $line) {
       $lines++;
       $list = json_decode($line, true);
       // Filter out the unpredictable data from lstat()
