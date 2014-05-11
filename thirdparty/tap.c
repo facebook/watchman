@@ -66,7 +66,7 @@ static void _cleanup(void);
  * test_comment -- a comment to print afterwards, may be NULL
  */
 unsigned int
-_gen_result(int ok, const char *func, char *file, unsigned int line, 
+_gen_result(int ok, const char *func, char *file, unsigned int line,
 	    char *test_name, ...)
 {
 	va_list ap;
@@ -82,7 +82,7 @@ _gen_result(int ok, const char *func, char *file, unsigned int line,
 	   expansions on it */
 	if(test_name != NULL) {
 		va_start(ap, test_name);
-		vasprintf(&local_test_name, test_name, ap);
+		ignore_result(vasprintf(&local_test_name, test_name, ap));
 		va_end(ap);
 
 		/* Make sure the test name contains more than digits
@@ -148,7 +148,7 @@ _gen_result(int ok, const char *func, char *file, unsigned int line,
 		if(getenv("HARNESS_ACTIVE") != NULL)
 			fputs("\n", stderr);
 
-		diag("    Failed %stest (%s:%s() at line %d)", 
+		diag("    Failed %stest (%s:%s() at line %d)",
 		     todo ? "(TODO) " : "", file, func, line);
 	}
 	free(local_test_name);
@@ -173,7 +173,7 @@ _tap_init(void)
 		atexit(_cleanup);
 
 		/* stdout needs to be unbuffered so that the output appears
-		   in the same place relative to stderr output as it does 
+		   in the same place relative to stderr output as it does
 		   with Test::Harness */
 		setbuf(stdout, 0);
 		run_once = 1;
@@ -299,13 +299,13 @@ skip(unsigned int n, char *fmt, ...)
 	LOCK;
 
 	va_start(ap, fmt);
-	asprintf(&skip_msg, fmt, ap);
+	ignore_result(asprintf(&skip_msg, fmt, ap));
 	va_end(ap);
 
 	while(n-- > 0) {
 		test_count++;
-		printf("ok %d # skip %s\n", test_count, 
-		       skip_msg != NULL ? 
+		printf("ok %d # skip %s\n", test_count,
+		       skip_msg != NULL ?
 		       skip_msg : "libtap():malloc() failed");
 	}
 
@@ -324,7 +324,7 @@ todo_start(char *fmt, ...)
 	LOCK;
 
 	va_start(ap, fmt);
-	vasprintf(&todo_msg, fmt, ap);
+	ignore_result(vasprintf(&todo_msg, fmt, ap));
 	va_end(ap);
 
 	todo = 1;
@@ -365,7 +365,7 @@ exit_status(void)
 		return r;
 	}
 
-	/* Return the number of tests that failed + the number of tests 
+	/* Return the number of tests that failed + the number of tests
 	   that weren't run */
 	r = failures + e_tests - test_count;
 	UNLOCK;
@@ -430,7 +430,7 @@ _cleanup(void)
 	}
 
 	if(failures)
-		diag("Looks like you failed %d %s of %d.", 
+		diag("Looks like you failed %d %s of %d.",
 		     failures, failures == 1 ? "test" : "tests", test_count);
 
 	diag("ELAPSED: %" PRIu64 "ms\n", ms);
