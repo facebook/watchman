@@ -32,4 +32,3 @@ if [ ! -d arcanist ] ; then
 fi
 cd ..
 ln -sf ./a/arcanist/bin/arc arc
-find /tmp -ls
