@@ -6,7 +6,9 @@ class absoluteRootTestCase extends WatchmanTestCase {
   function testDot() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
-    chdir($root);
+
+    $this->assertEqual(true, chdir($root), "failed to chdir $root");
+    $this->assertEqual($root, getcwd(), "chdir/getcwd are consistent");
 
     $is_cli = $this->isUsingCLI();
     $res = $this->watch('.', false);
