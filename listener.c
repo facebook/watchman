@@ -455,7 +455,7 @@ static void cmd_shutdown(
   close(STDERR_FILENO);
   exit(0);
 }
-W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON)
+W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON, NULL)
 
 // The client thread reads and decodes json packets,
 // then dispatches the commands that it finds

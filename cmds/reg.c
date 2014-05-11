@@ -44,22 +44,23 @@ void w_register_command(struct watchman_command_handler_def *defs)
       w_ht_ptr_val(defs));
 }
 
-bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
+static struct watchman_command_handler_def *lookup(
+    json_t *args, char **errmsg, int mode)
 {
   struct watchman_command_handler_def *def;
   const char *cmd_name;
   w_string_t *cmd;
 
   if (!json_array_size(args)) {
-    send_error_response(client,
-        "invalid command (expected an array with some elements!)");
+    ignore_result(asprintf(errmsg,
+        "invalid command (expected an array with some elements!)"));
     return false;
   }
 
   cmd_name = json_string_value(json_array_get(args, 0));
   if (!cmd_name) {
-    send_error_response(client,
-        "invalid command: expected element 0 to be the command name");
+    ignore_result(asprintf(errmsg,
+        "invalid command: expected element 0 to be the command name"));
     return false;
   }
   cmd = w_string_new(cmd_name);
@@ -67,17 +68,73 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
   w_string_delref(cmd);
 
   if (def) {
-    if ((def->flags & mode) == 0) {
-      send_error_response(client,
-          "command %s not available in this mode", cmd_name);
-      return false;
+    if (mode && ((def->flags & mode) == 0)) {
+      ignore_result(asprintf(errmsg,
+          "command %s not available in this mode", cmd_name));
+      return NULL;
     }
-    def->func(client, args);
-    return true;
+    return def;
   }
-  send_error_response(client, "unknown command %s", cmd_name);
 
-  return false;
+  if (mode) {
+    ignore_result(asprintf(errmsg, "unknown command %s", cmd_name));
+  }
+
+  return NULL;
+}
+
+void preprocess_command(json_t *args, enum w_pdu_type output_pdu)
+{
+  char *errmsg = NULL;
+  struct watchman_command_handler_def *def;
+
+  def = lookup(args, &errmsg, 0);
+
+  if (!def && !errmsg) {
+    // Nothing known about it, pass the command on anyway for forwards
+    // compatibility
+    return;
+  }
+
+  if (!errmsg && def->cli_validate) {
+    def->cli_validate(args, &errmsg);
+  }
+
+  if (errmsg) {
+    w_jbuffer_t jr;
+
+    json_t *err = json_pack(
+      "{s:s, s:s, s:b}",
+      "error", errmsg,
+      "version", PACKAGE_VERSION,
+      "cli_validated", true
+    );
+
+    w_json_buffer_init(&jr);
+    w_ser_write_pdu(output_pdu, &jr, STDOUT_FILENO, err);
+    json_decref(err);
+    w_json_buffer_free(&jr);
+
+    free(errmsg);
+    exit(1);
+  }
+}
+
+bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
+{
+  struct watchman_command_handler_def *def;
+  char *errmsg = NULL;
+
+  def = lookup(args, &errmsg, mode);
+
+  if (!def) {
+    send_error_response(client, "%s", errmsg);
+    free(errmsg);
+    return false;
+  }
+
+  def->func(client, args);
+  return true;
 }
 
 /* vim:ts=2:sw=2:et:

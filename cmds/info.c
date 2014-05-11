@@ -16,7 +16,7 @@ static void cmd_version(struct watchman_client *client, json_t *args)
 
   send_and_dispose_response(client, resp);
 }
-W_CMD_REG("version", cmd_version, CMD_DAEMON)
+W_CMD_REG("version", cmd_version, CMD_DAEMON, NULL)
 
 /* get-sockname */
 static void cmd_get_sockname(struct watchman_client *client, json_t *args)
@@ -29,7 +29,7 @@ static void cmd_get_sockname(struct watchman_client *client, json_t *args)
 
   send_and_dispose_response(client, resp);
 }
-W_CMD_REG("get-sockname", cmd_get_sockname, CMD_DAEMON)
+W_CMD_REG("get-sockname", cmd_get_sockname, CMD_DAEMON, NULL)
 
 /* get-pid */
 static void cmd_get_pid(struct watchman_client *client, json_t *args)
@@ -42,7 +42,7 @@ static void cmd_get_pid(struct watchman_client *client, json_t *args)
 
   send_and_dispose_response(client, resp);
 }
-W_CMD_REG("get-pid", cmd_get_pid, CMD_DAEMON)
+W_CMD_REG("get-pid", cmd_get_pid, CMD_DAEMON, NULL)
 
 /* vim:ts=2:sw=2:et:
  */

@@ -42,7 +42,7 @@ static void cmd_loglevel(struct watchman_client *client, json_t *args)
 
   send_and_dispose_response(client, resp);
 }
-W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON)
+W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON, NULL)
 
 // log "debug" "text to log"
 static void cmd_log(struct watchman_client *client, json_t *args)
@@ -68,7 +68,7 @@ static void cmd_log(struct watchman_client *client, json_t *args)
   set_prop(resp, "logged", json_true());
   send_and_dispose_response(client, resp);
 }
-W_CMD_REG("log", cmd_log, CMD_DAEMON)
+W_CMD_REG("log", cmd_log, CMD_DAEMON, NULL)
 
 /* vim:ts=2:sw=2:et:
  */

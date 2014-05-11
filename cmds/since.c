@@ -71,7 +71,7 @@ static void cmd_since(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, response);
   w_root_delref(root);
 }
-W_CMD_REG("since", cmd_since, CMD_DAEMON)
+W_CMD_REG("since", cmd_since, CMD_DAEMON, w_cmd_realpath_root)
 
 /* vim:ts=2:sw=2:et:
  */

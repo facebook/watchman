@@ -437,6 +437,7 @@ int main(int argc, char **argv)
   }
 
   cmd = build_command(argc, argv);
+  preprocess_command(cmd, output_pdu);
 
   ran = try_command(cmd, 0);
   if (!ran && should_start(errno)) {

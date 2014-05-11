@@ -15,6 +15,10 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     return false;
   }
 
+  function isUsingCLI() {
+    return $this->use_cli;
+  }
+
   function useCLI($args) {
     $this->use_cli = true;
     $this->cli_args = $args;

@@ -3,6 +3,30 @@
 
 #include "watchman.h"
 
+bool w_cmd_realpath_root(json_t *args, char **errmsg)
+{
+  const char *path;
+  char *resolved;
+
+  if (json_array_size(args) < 2) {
+    ignore_result(asprintf(errmsg, "wrong number of arguments"));
+    return false;
+  }
+
+  path = json_string_value(json_array_get(args, 1));
+  if (!path) {
+    ignore_result(asprintf(errmsg, "second argument must be a string"));
+    return false;
+  }
+
+  resolved = w_realpath(path);
+  if (resolved) {
+    json_array_set_new(args, 1, json_string_nocheck(resolved));
+  }
+
+  return true;
+}
+
 /* clock /root
  * Returns the current clock value for a watched root
  */
@@ -30,7 +54,7 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
-W_CMD_REG("clock", cmd_clock, CMD_DAEMON)
+W_CMD_REG("clock", cmd_clock, CMD_DAEMON, w_cmd_realpath_root)
 
 /* watch-del /root
  * Stops watching the specified root */
@@ -56,7 +80,7 @@ static void cmd_watch_delete(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
-W_CMD_REG("watch-del", cmd_watch_delete, CMD_DAEMON)
+W_CMD_REG("watch-del", cmd_watch_delete, CMD_DAEMON, w_cmd_realpath_root)
 
 /* watch-list
  * Returns a list of watched roots */
@@ -71,7 +95,7 @@ static void cmd_watch_list(struct watchman_client *client, json_t *args)
   set_prop(resp, "roots", root_paths);
   send_and_dispose_response(client, resp);
 }
-W_CMD_REG("watch-list", cmd_watch_list, CMD_DAEMON)
+W_CMD_REG("watch-list", cmd_watch_list, CMD_DAEMON, NULL)
 
 /* watch /root */
 static void cmd_watch(struct watchman_client *client, json_t *args)
@@ -95,7 +119,7 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
-W_CMD_REG("watch", cmd_watch, CMD_DAEMON)
+W_CMD_REG("watch", cmd_watch, CMD_DAEMON, w_cmd_realpath_root)
 
 /* vim:ts=2:sw=2:et:
  */

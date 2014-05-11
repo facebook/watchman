@@ -31,7 +31,7 @@ static void cmd_debug_recrawl(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
-W_CMD_REG("debug-recrawl", cmd_debug_recrawl, CMD_DAEMON)
+W_CMD_REG("debug-recrawl", cmd_debug_recrawl, CMD_DAEMON, w_cmd_realpath_root)
 
 /* debug-ageout */
 static void cmd_debug_ageout(struct watchman_client *client, json_t *args)
@@ -65,7 +65,7 @@ static void cmd_debug_ageout(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
-W_CMD_REG("debug-ageout", cmd_debug_ageout, CMD_DAEMON)
+W_CMD_REG("debug-ageout", cmd_debug_ageout, CMD_DAEMON, w_cmd_realpath_root)
 
 /* vim:ts=2:sw=2:et:
  */

@@ -46,7 +46,7 @@ static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
-W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON)
+W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root)
 
 /* trigger-list /root
  * Displays a list of registered triggers for a given root
@@ -71,7 +71,7 @@ static void cmd_trigger_list(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
-W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON)
+W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root)
 
 static json_t *build_legacy_trigger(
   struct watchman_client *client,
@@ -348,7 +348,7 @@ done:
   }
   w_root_delref(root);
 }
-W_CMD_REG("trigger", cmd_trigger, CMD_DAEMON)
+W_CMD_REG("trigger", cmd_trigger, CMD_DAEMON, w_cmd_realpath_root)
 
 /* vim:ts=2:sw=2:et:
  */

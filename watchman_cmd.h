@@ -12,22 +12,32 @@ typedef void (*watchman_command_func)(
     struct watchman_client *client,
     json_t *args);
 
+typedef bool (*watchman_cli_cmd_validate_func)(
+    json_t *args, char **errmsg);
+
 #define CMD_DAEMON 1
 #define CMD_CLIENT 2
 struct watchman_command_handler_def {
   const char *name;
   watchman_command_func func;
   int flags;
+  watchman_cli_cmd_validate_func cli_validate;
 };
 
+// For commands that take the root dir as the second parameter,
+// realpath's that parameter on the client side and updates the
+// argument list
+bool w_cmd_realpath_root(json_t *args, char **errmsg);
+
+void preprocess_command(json_t *args, enum w_pdu_type output_pdu);
 bool dispatch_command(struct watchman_client *client, json_t *args, int mode);
 bool try_client_mode_command(json_t *cmd, bool pretty);
 void w_register_command(struct watchman_command_handler_def *defs);
-#define W_CMD_REG(name, func, flags) \
+#define W_CMD_REG(name, func, flags, clivalidate) \
   static __attribute__((constructor)) \
   void w_gen_symbol(w_cmd_register_)(void) { \
     static struct watchman_command_handler_def d = { \
-      name, func, flags                              \
+      name, func, flags, clivalidate                 \
     };                                               \
     w_register_command(&d);                          \
   }
