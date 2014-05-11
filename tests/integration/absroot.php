@@ -23,6 +23,7 @@ class absoluteRootTestCase extends WatchmanTestCase {
         idx($res, 'watch')
       );
     }
+    chdir($this->getRoot());
   }
 
   function testSlash() {

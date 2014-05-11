@@ -29,6 +29,12 @@ class WatchmanQueryFuture extends FutureProxy {
       '--no-local',
       '-j'
     );
+
+    $cwd = getcwd();
+    if (!$cwd) {
+      throw new Exception("can't figure out my cwd!?");
+    }
+    $future->setCWD($cwd);
     $future->write($this->command . "\n");
     parent::__construct($future);
   }
