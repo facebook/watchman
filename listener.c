@@ -575,6 +575,18 @@ disconected:
     }
 
     if (pfd[0].revents) {
+      // Solaris: we may not detect POLLHUP until we try to read, so
+      // let's peek ahead and characterize it correctly.  This is only
+      // needed if we have no data buffered
+      if (client->reader.wpos == client->reader.rpos) {
+        char peek;
+        if (recv(client->fd, &peek, sizeof(peek), MSG_PEEK) == 0) {
+          w_log(W_LOG_DBG, "got HUP|ERR on client fd=%d, disconnecting\n",
+            client->fd);
+          goto disconected;
+        }
+      }
+
       request = w_json_buffer_next(&client->reader, client->fd, &jerr);
 
       if (!request && errno == EAGAIN) {
@@ -863,7 +875,11 @@ bool w_start_listener(const char *path)
     pfd.fd = listener_fd;
     poll(&pfd, 1, 10000);
 
+#ifdef HAVE_ACCEPT4
+    client_fd = accept4(listener_fd, NULL, 0, SOCK_CLOEXEC);
+#else
     client_fd = accept(listener_fd, NULL, 0);
+#endif
     if (client_fd == -1) {
       continue;
     }

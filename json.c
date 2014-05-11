@@ -210,7 +210,7 @@ static bool read_and_detect_pdu(w_jbuffer_t *jr, int fd, json_error_t *jerr)
       if (errno != EAGAIN) {
         snprintf(jerr->text, sizeof(jerr->text),
           "fill_buffer: %s",
-          strerror(errno));
+          errno ? strerror(errno) : "EOF");
       }
       return false;
     }
@@ -495,7 +495,5 @@ bool w_ser_write_pdu(enum w_pdu_type pdu_type,
   }
 }
 
-
 /* vim:ts=2:sw=2:et:
  */
-

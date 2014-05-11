@@ -38,6 +38,11 @@ out:
   return result;
 }
 
+#if defined(HAVE_MKOSTEMP) && defined(sun)
+// Not guaranteed to be defined in stdlib.h
+extern int mkostemp(char *, int);
+#endif
+
 int w_mkstemp(char *templ)
 {
   int fd;

@@ -1247,11 +1247,12 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       dir->port_file.fo_name = (char*)dir->path->buf;
 
       errno = 0;
-      port_associate(root->port_fd, PORT_SOURCE_FILE,
+      if (port_associate(root->port_fd, PORT_SOURCE_FILE,
           (uintptr_t)&dir->port_file, WATCHMAN_PORT_EVENTS,
-          SET_DIR_BIT(dir));
-      w_log(W_LOG_ERR, "port_associate %s %s\n",
-        dir->port_file.fo_name, strerror(errno));
+          SET_DIR_BIT(dir))) {
+        w_log(W_LOG_ERR, "port_associate %s %s\n",
+          dir->port_file.fo_name, strerror(errno));
+      }
     }
 #endif // HAVE_PORT_CREATE
   }

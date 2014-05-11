@@ -549,8 +549,9 @@ class WatchmanInstance {
     // To solve this, we resort to good old ps. This will hopefully be portable
     // enough.
     $deadline = time() + $timeout;
+    $state = (PHP_OS == 'SunOS') ? 's' : 'state';
     do {
-      list($stdout, $_) = execx('ps -o state -p %s | tail -n 1', $pid);
+      list($stdout, $_) = execx('ps -o %s -p %s | tail -n 1', $state, $pid);
       $stdout = trim($stdout);
       if ($stdout === '') {
         throw new Exception('ps returned nothing -- did watchman go away?');
