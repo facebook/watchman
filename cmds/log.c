@@ -18,7 +18,7 @@ static int parse_log_level(const char *str)
 // log-level "debug"
 // log-level "error"
 // log-level "off"
-void cmd_loglevel(struct watchman_client *client, json_t *args)
+static void cmd_loglevel(struct watchman_client *client, json_t *args)
 {
   const char *cmd, *str;
   json_t *resp;
@@ -42,9 +42,10 @@ void cmd_loglevel(struct watchman_client *client, json_t *args)
 
   send_and_dispose_response(client, resp);
 }
+W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON)
 
 // log "debug" "text to log"
-void cmd_log(struct watchman_client *client, json_t *args)
+static void cmd_log(struct watchman_client *client, json_t *args)
 {
   const char *cmd, *str, *text;
   json_t *resp;
@@ -67,8 +68,7 @@ void cmd_log(struct watchman_client *client, json_t *args)
   set_prop(resp, "logged", json_true());
   send_and_dispose_response(client, resp);
 }
-
+W_CMD_REG("log", cmd_log, CMD_DAEMON)
 
 /* vim:ts=2:sw=2:et:
  */
-

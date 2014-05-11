@@ -3,9 +3,8 @@
 
 #include "watchman.h"
 
-
 /* query /root {query} */
-void cmd_query(struct watchman_client *client, json_t *args)
+static void cmd_query(struct watchman_client *client, json_t *args)
 {
   w_root_t *root;
   w_query *query;
@@ -74,8 +73,7 @@ void cmd_query(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, response);
   w_root_delref(root);
 }
-
+W_CMD_REG("query", cmd_query, CMD_DAEMON|CMD_CLIENT)
 
 /* vim:ts=2:sw=2:et:
  */
-

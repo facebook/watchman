@@ -62,7 +62,7 @@ static void dispose_name(void *data)
   free(name);
 }
 
-static w_query_expr *name_parser(w_query *query,
+static w_query_expr *name_parser_inner(w_query *query,
     json_t *term, bool caseless)
 {
   const char *pattern = NULL, *scope = "basename";
@@ -156,16 +156,17 @@ static w_query_expr *name_parser(w_query *query,
   return w_query_expr_new(eval_name, dispose_name, data);
 }
 
-w_query_expr *w_expr_name_parser(w_query *query, json_t *term)
+static w_query_expr *name_parser(w_query *query, json_t *term)
 {
-  return name_parser(query, term, false);
+  return name_parser_inner(query, term, false);
 }
+W_TERM_PARSER("name", name_parser)
 
-w_query_expr *w_expr_iname_parser(w_query *query, json_t *term)
+static w_query_expr *iname_parser(w_query *query, json_t *term)
 {
-  return name_parser(query, term, true);
+  return name_parser_inner(query, term, true);
 }
+W_TERM_PARSER("iname", iname_parser)
 
 /* vim:ts=2:sw=2:et:
  */
-

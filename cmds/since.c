@@ -4,7 +4,7 @@
 #include "watchman.h"
 
 /* since /root <timestamp> [patterns] */
-void cmd_since(struct watchman_client *client, json_t *args)
+static void cmd_since(struct watchman_client *client, json_t *args)
 {
   const char *clockspec;
   w_root_t *root;
@@ -71,6 +71,7 @@ void cmd_since(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, response);
   w_root_delref(root);
 }
+W_CMD_REG("since", cmd_since, CMD_DAEMON)
 
 /* vim:ts=2:sw=2:et:
  */

@@ -21,7 +21,7 @@ static void dispose_suffix(void *data)
   w_string_delref(suffix);
 }
 
-w_query_expr *w_expr_suffix_parser(w_query *query, json_t *term)
+static w_query_expr *suffix_parser(w_query *query, json_t *term)
 {
   const char *ignore, *suffix;
   char *arg;
@@ -53,7 +53,7 @@ w_query_expr *w_expr_suffix_parser(w_query *query, json_t *term)
 
   return w_query_expr_new(eval_suffix, dispose_suffix, str);
 }
+W_TERM_PARSER("suffix", suffix_parser)
 
 /* vim:ts=2:sw=2:et:
  */
-

@@ -3,8 +3,7 @@
 
 #include "watchman.h"
 
-/* debug-recrawl */
-void cmd_debug_recrawl(struct watchman_client *client, json_t *args)
+static void cmd_debug_recrawl(struct watchman_client *client, json_t *args)
 {
   w_root_t *root;
   json_t *resp;
@@ -32,9 +31,10 @@ void cmd_debug_recrawl(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
+W_CMD_REG("debug-recrawl", cmd_debug_recrawl, CMD_DAEMON)
 
 /* debug-ageout */
-void cmd_debug_ageout(struct watchman_client *client, json_t *args)
+static void cmd_debug_ageout(struct watchman_client *client, json_t *args)
 {
   w_root_t *root;
   json_t *resp;
@@ -65,7 +65,7 @@ void cmd_debug_ageout(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
+W_CMD_REG("debug-ageout", cmd_debug_ageout, CMD_DAEMON)
 
 /* vim:ts=2:sw=2:et:
  */
-

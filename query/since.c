@@ -66,7 +66,7 @@ static struct {
   { 0, NULL }
 };
 
-w_query_expr *w_expr_since_parser(w_query *query, json_t *term)
+static w_query_expr *since_parser(w_query *query, json_t *term)
 {
   json_t *jval;
 
@@ -155,8 +155,7 @@ fail:
   w_clockspec_free(spec);
   return NULL;
 }
-
+W_TERM_PARSER("since", since_parser)
 
 /* vim:ts=2:sw=2:et:
  */
-

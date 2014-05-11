@@ -457,58 +457,50 @@ static void cmd_shutdown(
   close(STDERR_FILENO);
   exit(0);
 }
+W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON)
 
-static struct watchman_command_handler_def commands[] = {
-  { "find", cmd_find },
-  { "since", cmd_since },
-  { "query", cmd_query },
-  { "watch", cmd_watch },
-  { "watch-list", cmd_watch_list },
-  { "watch-del", cmd_watch_delete },
-  { "trigger", cmd_trigger },
-  { "trigger-list", cmd_trigger_list },
-  { "trigger-del", cmd_trigger_delete },
-  { "subscribe", cmd_subscribe },
-  { "unsubscribe", cmd_unsubscribe },
-  { "shutdown-server", cmd_shutdown },
-  { "log-level", cmd_loglevel },
-  { "log", cmd_log },
-  { "version", cmd_version },
-  { "clock", cmd_clock },
-  { "get-sockname", cmd_get_sockname },
-  { "get-pid", cmd_get_pid },
-  { "debug-recrawl", cmd_debug_recrawl },
-  { "debug-ageout", cmd_debug_ageout },
-  { NULL, NULL }
-};
+static int compare_def(const void *A, const void *B)
+{
+  struct watchman_command_handler_def *a =
+    *(struct watchman_command_handler_def**)A;
+  struct watchman_command_handler_def *b =
+    *(struct watchman_command_handler_def**)B;
+
+  return strcmp(a->name, b->name);
+}
 
 void print_command_list_for_help(FILE *where)
 {
-  int i;
+  uint32_t i = 0, n = w_ht_size(command_funcs);
+  struct watchman_command_handler_def **defs;
+  w_ht_iter_t iter;
+
+  defs = calloc(n, sizeof(*defs));
+  if (w_ht_first(command_funcs, &iter)) do {
+    defs[i++] = w_ht_val_ptr(iter.value);
+  } while (w_ht_next(command_funcs, &iter));
+
+  qsort(defs, n, sizeof(*defs), compare_def);
 
   fprintf(where, "\n\nAvailable commands:\n\n");
-  for (i = 0; commands[i].name; i++) {
-    fprintf(where, "      %s\n", commands[i].name);
+  for (i = 0; i < n; i++) {
+    fprintf(where, "      %s\n", defs[i]->name);
   }
 }
 
-void register_commands(struct watchman_command_handler_def *defs)
+void w_register_command(struct watchman_command_handler_def *defs)
 {
-  int i;
-
-  command_funcs = w_ht_new(16, &w_ht_string_funcs);
-  for (i = 0; defs[i].name; i++) {
-    w_ht_set(command_funcs,
-        w_ht_ptr_val(w_string_new(defs[i].name)),
-        w_ht_ptr_val(defs[i].func));
+  if (!command_funcs) {
+    command_funcs = w_ht_new(16, &w_ht_string_funcs);
   }
-
-  w_query_init_all();
+  w_ht_set(command_funcs,
+      w_ht_ptr_val(w_string_new(defs->name)),
+      w_ht_ptr_val(defs));
 }
 
-bool dispatch_command(struct watchman_client *client, json_t *args)
+bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
 {
-  watchman_command_func func;
+  struct watchman_command_handler_def *def;
   const char *cmd_name;
   w_string_t *cmd;
 
@@ -525,11 +517,16 @@ bool dispatch_command(struct watchman_client *client, json_t *args)
     return false;
   }
   cmd = w_string_new(cmd_name);
-  func = w_ht_val_ptr(w_ht_get(command_funcs, w_ht_ptr_val(cmd)));
+  def = w_ht_val_ptr(w_ht_get(command_funcs, w_ht_ptr_val(cmd)));
   w_string_delref(cmd);
 
-  if (func) {
-    func(client, args);
+  if (def) {
+    if ((def->flags & mode) == 0) {
+      send_error_response(client,
+          "command %s not available in this mode", cmd_name);
+      return false;
+    }
+    def->func(client, args);
     return true;
   }
   send_error_response(client, "unknown command %s", cmd_name);
@@ -600,7 +597,7 @@ disconected:
         goto disconected;
       } else if (request) {
         client->pdu_type = client->reader.pdu_type;
-        dispatch_command(client, request);
+        dispatch_command(client, request, CMD_DAEMON);
         json_decref(request);
       }
     }
@@ -845,9 +842,6 @@ bool w_start_listener(const char *path)
   if (!clients) {
     clients = w_ht_new(2, &client_hash_funcs);
   }
-
-  // Wire up the command handlers
-  register_commands(commands);
 
   w_state_load();
 

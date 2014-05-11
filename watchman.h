@@ -75,6 +75,10 @@ extern char **environ;
 # undef HAVE_KQUEUE
 #endif
 
+// Helpers for pasting __LINE__ for symbol generation
+#define w_paste2(pre, post)  pre ## post
+#define w_paste1(pre, post)  w_paste2(pre, post)
+#define w_gen_symbol(pre)    w_paste1(pre, __LINE__)
 
 /* sane, reasonably large filename size that we'll use
  * throughout; POSIX seems to define smallish buffers

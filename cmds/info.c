@@ -4,7 +4,7 @@
 #include "watchman.h"
 
 /* version */
-void cmd_version(struct watchman_client *client, json_t *args)
+static void cmd_version(struct watchman_client *client, json_t *args)
 {
   json_t *resp = make_response();
 
@@ -16,9 +16,10 @@ void cmd_version(struct watchman_client *client, json_t *args)
 
   send_and_dispose_response(client, resp);
 }
+W_CMD_REG("version", cmd_version, CMD_DAEMON)
 
 /* get-sockname */
-void cmd_get_sockname(struct watchman_client *client, json_t *args)
+static void cmd_get_sockname(struct watchman_client *client, json_t *args)
 {
   json_t *resp = make_response();
 
@@ -28,9 +29,10 @@ void cmd_get_sockname(struct watchman_client *client, json_t *args)
 
   send_and_dispose_response(client, resp);
 }
+W_CMD_REG("get-sockname", cmd_get_sockname, CMD_DAEMON)
 
 /* get-pid */
-void cmd_get_pid(struct watchman_client *client, json_t *args)
+static void cmd_get_pid(struct watchman_client *client, json_t *args)
 {
   json_t *resp = make_response();
 
@@ -40,8 +42,7 @@ void cmd_get_pid(struct watchman_client *client, json_t *args)
 
   send_and_dispose_response(client, resp);
 }
-
+W_CMD_REG("get-pid", cmd_get_pid, CMD_DAEMON)
 
 /* vim:ts=2:sw=2:et:
  */
-

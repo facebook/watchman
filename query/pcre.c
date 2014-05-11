@@ -50,7 +50,7 @@ static void dispose_pcre(void *data)
   free(match);
 }
 
-static w_query_expr *pcre_parser(w_query *query,
+static w_query_expr *pcre_parser_inner(w_query *query,
     json_t *term, bool caseless)
 {
   const char *ignore, *pattern, *scope = "basename";
@@ -93,18 +93,19 @@ static w_query_expr *pcre_parser(w_query *query,
   return w_query_expr_new(eval_pcre, dispose_pcre, data);
 }
 
-w_query_expr *w_expr_pcre_parser(w_query *query, json_t *term)
+static w_query_expr *pcre_parser(w_query *query, json_t *term)
 {
-  return pcre_parser(query, term, false);
+  return pcre_parser_inner(query, term, false);
 }
+W_TERM_PARSER("pcre", pcre_parser)
 
-w_query_expr *w_expr_ipcre_parser(w_query *query, json_t *term)
+static w_query_expr *ipcre_parser(w_query *query, json_t *term)
 {
-  return pcre_parser(query, term, true);
+  return pcre_parser_inner(query, term, true);
 }
+W_TERM_PARSER("ipcre", ipcre_parser)
 
 #endif
 
 /* vim:ts=2:sw=2:et:
  */
-

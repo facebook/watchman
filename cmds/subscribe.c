@@ -120,7 +120,7 @@ void w_run_subscription_rules(
 
 /* unsubscribe /root subname
  * Cancels a subscription */
-void cmd_unsubscribe(struct watchman_client *client, json_t *args)
+static void cmd_unsubscribe(struct watchman_client *client, json_t *args)
 {
   w_root_t *root;
   const char *name;
@@ -156,10 +156,11 @@ void cmd_unsubscribe(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
+W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON)
 
 /* subscribe /root subname {query}
  * Subscribes the client connection to the specified root. */
-void cmd_subscribe(struct watchman_client *client, json_t *args)
+static void cmd_subscribe(struct watchman_client *client, json_t *args)
 {
   w_root_t *root;
   struct watchman_client_subscription *sub;
@@ -232,7 +233,7 @@ void cmd_subscribe(struct watchman_client *client, json_t *args)
 done:
   w_root_delref(root);
 }
-
+W_CMD_REG("subscribe", cmd_subscribe, CMD_DAEMON)
 
 /* vim:ts=2:sw=2:et:
  */

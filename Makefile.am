@@ -30,7 +30,6 @@ watchman_SOURCES = \
 	cmds/debug.c    \
 	query/base.c       \
 	query/parse.c      \
-	query/init.c       \
 	query/eval.c       \
 	query/type.c       \
 	query/suffix.c     \

@@ -41,7 +41,7 @@ static void dispose_match(void *data)
   free(match);
 }
 
-static w_query_expr *match_parser(w_query *query,
+static w_query_expr *match_parser_inner(w_query *query,
     json_t *term, bool caseless)
 {
   const char *ignore, *pattern, *scope = "basename";
@@ -71,12 +71,13 @@ static w_query_expr *match_parser(w_query *query,
   return w_query_expr_new(eval_match, dispose_match, data);
 }
 
-w_query_expr *w_expr_match_parser(w_query *query, json_t *term)
+static w_query_expr *match_parser(w_query *query, json_t *term)
 {
-  return match_parser(query, term, false);
+  return match_parser_inner(query, term, false);
 }
+W_TERM_PARSER("match", match_parser)
 
-w_query_expr *w_expr_imatch_parser(w_query *query, json_t *term)
+static w_query_expr *imatch_parser(w_query *query, json_t *term)
 {
 #ifdef NO_CASELESS_FNMATCH
   unused_parameter(term);
@@ -84,10 +85,10 @@ w_query_expr *w_expr_imatch_parser(w_query *query, json_t *term)
       "imatch: Your system doesn't support FNM_CASEFOLD");
   return NULL;
 #else
-  return match_parser(query, term, true);
+  return match_parser_inner(query, term, true);
 #endif
 }
+W_TERM_PARSER("imatch", imatch_parser)
 
 /* vim:ts=2:sw=2:et:
  */
-

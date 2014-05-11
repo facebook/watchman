@@ -12,14 +12,26 @@ typedef void (*watchman_command_func)(
     struct watchman_client *client,
     json_t *args);
 
+#define CMD_DAEMON 1
+#define CMD_CLIENT 2
 struct watchman_command_handler_def {
   const char *name;
   watchman_command_func func;
+  int flags;
 };
 
-bool dispatch_command(struct watchman_client *client, json_t *args);
+bool dispatch_command(struct watchman_client *client, json_t *args, int mode);
 bool try_client_mode_command(json_t *cmd, bool pretty);
-void register_commands(struct watchman_command_handler_def *defs);
+void w_register_command(struct watchman_command_handler_def *defs);
+#define W_CMD_REG(name, func, flags) \
+  static __attribute__((constructor)) \
+  void w_gen_symbol(w_cmd_register_)(void) { \
+    static struct watchman_command_handler_def d = { \
+      name, func, flags                              \
+    };                                               \
+    w_register_command(&d);                          \
+  }
+
 
 void send_error_response(struct watchman_client *client,
     const char *fmt, ...);
@@ -39,28 +51,6 @@ void annotate_with_clock(w_root_t *root, json_t *resp);
 
 bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
     size_t bufsize);
-
-void cmd_find(struct watchman_client *client, json_t *args);
-void cmd_loglevel(struct watchman_client *client, json_t *args);
-void cmd_log(struct watchman_client *client, json_t *args);
-void cmd_since(struct watchman_client *client, json_t *args);
-void cmd_trigger_list(struct watchman_client *client, json_t *args);
-void cmd_trigger_delete(struct watchman_client *client, json_t *args);
-void cmd_trigger(struct watchman_client *client, json_t *args);
-void cmd_watch(struct watchman_client *client, json_t *args);
-void cmd_watch_list(struct watchman_client *client, json_t *args);
-void cmd_watch_delete(struct watchman_client *client, json_t *args);
-void cmd_query(struct watchman_client *client, json_t *args);
-void cmd_subscribe(struct watchman_client *client, json_t *args);
-void cmd_unsubscribe(struct watchman_client *client, json_t *args);
-void cmd_version(struct watchman_client *client, json_t *args);
-void cmd_clock(struct watchman_client *client, json_t *args);
-void cmd_get_sockname(struct watchman_client *client, json_t *args);
-void cmd_get_pid(struct watchman_client *client, json_t *args);
-
-// debug commands
-void cmd_debug_recrawl(struct watchman_client *client, json_t *args);
-void cmd_debug_ageout(struct watchman_client *client, json_t *args);
 
 #ifdef __cplusplus
 }

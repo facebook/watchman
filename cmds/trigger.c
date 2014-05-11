@@ -6,7 +6,7 @@
 /* trigger-del /root triggername
  * Delete a trigger from a root
  */
-void cmd_trigger_delete(struct watchman_client *client, json_t *args)
+static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
 {
   w_root_t *root;
   json_t *resp;
@@ -46,11 +46,12 @@ void cmd_trigger_delete(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
+W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON)
 
 /* trigger-list /root
  * Displays a list of registered triggers for a given root
  */
-void cmd_trigger_list(struct watchman_client *client, json_t *args)
+static void cmd_trigger_list(struct watchman_client *client, json_t *args)
 {
   w_root_t *root;
   json_t *resp;
@@ -70,6 +71,7 @@ void cmd_trigger_list(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
+W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON)
 
 static json_t *build_legacy_trigger(
   struct watchman_client *client,
@@ -288,11 +290,10 @@ struct watchman_trigger_command *w_build_trigger_from_def(
   return cmd;
 }
 
-
 /* trigger /root triggername [watch patterns] -- cmd to run
  * Sets up a trigger so that we can execute a command when a change
  * is detected */
-void cmd_trigger(struct watchman_client *client, json_t *args)
+static void cmd_trigger(struct watchman_client *client, json_t *args)
 {
   w_root_t *root;
   struct watchman_trigger_command *cmd;
@@ -347,6 +348,7 @@ done:
   }
   w_root_delref(root);
 }
+W_CMD_REG("trigger", cmd_trigger, CMD_DAEMON)
 
 /* vim:ts=2:sw=2:et:
  */

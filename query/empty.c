@@ -13,12 +13,13 @@ static bool eval_exists(struct w_query_ctx *ctx,
   return file->exists;
 }
 
-w_query_expr *w_expr_exists_parser(w_query *query, json_t *term)
+static w_query_expr *exists_parser(w_query *query, json_t *term)
 {
   unused_parameter(query);
   unused_parameter(term);
   return w_query_expr_new(eval_exists, NULL, NULL);
 }
+W_TERM_PARSER("exists", exists_parser)
 
 static bool eval_empty(struct w_query_ctx *ctx,
     struct watchman_file *file,
@@ -38,14 +39,13 @@ static bool eval_empty(struct w_query_ctx *ctx,
   return false;
 }
 
-w_query_expr *w_expr_empty_parser(w_query *query, json_t *term)
+static w_query_expr *empty_parser(w_query *query, json_t *term)
 {
   unused_parameter(query);
   unused_parameter(term);
   return w_query_expr_new(eval_empty, NULL, NULL);
 }
-
+W_TERM_PARSER("empty", empty_parser)
 
 /* vim:ts=2:sw=2:et:
  */
-

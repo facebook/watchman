@@ -40,7 +40,7 @@ static void dispose_type(void *data)
   unused_parameter(data);
 }
 
-w_query_expr *w_expr_type_parser(w_query *query, json_t *term)
+static w_query_expr *type_parser(w_query *query, json_t *term)
 {
   const char *ignore, *typestr, *found;
   intptr_t arg;
@@ -61,8 +61,7 @@ w_query_expr *w_expr_type_parser(w_query *query, json_t *term)
 
   return w_query_expr_new(eval_type, dispose_type, (void*)arg);
 }
-
+W_TERM_PARSER("type", type_parser)
 
 /* vim:ts=2:sw=2:et:
  */
-

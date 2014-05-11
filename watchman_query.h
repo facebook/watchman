@@ -165,22 +165,11 @@ bool parse_field_list(json_t *field_list,
     struct w_query_field_list *selected,
     char **errmsg);
 
-w_query_expr *w_expr_true_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_false_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_anyof_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_allof_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_not_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_type_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_suffix_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_match_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_imatch_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_pcre_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_ipcre_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_name_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_iname_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_since_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_empty_parser(w_query *query, json_t *term);
-w_query_expr *w_expr_exists_parser(w_query *query, json_t *term);
+#define W_TERM_PARSER(name, func) \
+  static __attribute__((constructor)) \
+  void w_gen_symbol(w_term_register_)(void) { \
+    w_query_register_expression_parser(name, func); \
+  }
 
 #ifdef __cplusplus
 }
