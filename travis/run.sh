@@ -7,7 +7,7 @@ PATH=$PWD:$PATH
 ./configure --with-pcre --with-python $CONFIGARGS
 make
 cd ruby/ruby-watchman
-bundle exec rake
+bundle install && bundle exec rake
 cd ../..
 set +e
 rm -f /tmp/watchman*
