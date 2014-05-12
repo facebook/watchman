@@ -178,6 +178,13 @@ int w_string_compare(const w_string_t *a, const w_string_t *b)
   return strcmp(a->buf, b->buf);
 }
 
+bool w_string_equal_cstring(const w_string_t *a, const char *b)
+{
+  uint32_t blen = strlen(b);
+  if (a->len != blen) return false;
+  return memcmp(a->buf, b, a->len) == 0 ? true : false;
+}
+
 bool w_string_equal(const w_string_t *a, const w_string_t *b)
 {
   if (a == b) return true;

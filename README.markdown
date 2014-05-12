@@ -1232,6 +1232,30 @@ The following parameters are accepted in the global configuration file only:
 
    will allow watches only in the top level of Git or Mercurial repositories.
 
+ * `illegal_fstypes` (since version 2.9.8) - specifies a list of filesystem
+   types that watchman is prohibited to attempt to watch.  Watchman will
+   determine the filesystem type of the root of a watch; if the typename is
+   present in the `illegal_fstypes` list, the watch will be prohibited.  You
+   may also specify `illegal_fstypes_advice` as a string with additional advice
+   to your user.  The purpose of this configuration option is largely to
+   prevent the use of Watchman on network mounted filesystems.  On Linux
+   systems, Watchman may not be able to determine the precise type name of a
+   mounted filesystem.  If the filesystem type is not known to watchman, it
+   will be reported as `unknown`.
+
+   For example,
+
+   ```json
+   {
+     "illegal_fstypes": ["nfs", "cifs", "smb"],
+     "illegal_fstypes_advice": "use a local directory"
+   }
+   ```
+
+   will prevent watching dirs mounted on network filesystems and provide the
+   advice to use a local directory.  You may omit the `illegal_fstypes_advice`
+   setting to use a default suggestion to relocate the directory to local disk.
+
 The following parameters are accepted in the .watchmanconfig file only,
 since version 2.9.3:
 

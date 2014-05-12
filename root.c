@@ -2495,6 +2495,65 @@ static bool root_check_restrict(const char *watch_path)
   return false;
 }
 
+static bool check_allowed_fs(const char *filename, char **errmsg)
+{
+  w_string_t *fs_type = w_fstype(filename);
+  json_t *illegal_fstypes = NULL;
+  json_t *advice_string;
+  uint32_t i;
+  const char *advice = NULL;
+
+  // Report this to the log always, as it is helpful in understanding
+  // problem reports
+  w_log(W_LOG_ERR, "path %s is on filesystem type %.*s\n",
+      filename, fs_type->len, fs_type->buf);
+
+  illegal_fstypes = cfg_get_json(NULL, "illegal_fstypes");
+  if (!illegal_fstypes) {
+    return true;
+  }
+
+  advice_string = cfg_get_json(NULL, "illegal_fstypes_advice");
+  if (advice_string) {
+    advice = json_string_value(advice_string);
+  }
+  if (!advice) {
+    advice = "relocate the dir to an allowed filesystem type";
+  }
+
+  if (!json_is_array(illegal_fstypes)) {
+    w_log(W_LOG_ERR,
+          "resolve_root: global config illegal_fstypes is not an array\n");
+    return true;
+  }
+
+  for (i = 0; i < json_array_size(illegal_fstypes); i++) {
+    json_t *obj = json_array_get(illegal_fstypes, i);
+    const char *name = json_string_value(obj);
+
+    if (!name) {
+      w_log(W_LOG_ERR, "resolve_root: global config illegal_fstypes "
+            "element %" PRIu32 " should be a string\n", i);
+      continue;
+    }
+
+    if (!w_string_equal_cstring(fs_type, name)) {
+      continue;
+    }
+
+    ignore_result(asprintf(errmsg,
+      "path uses the \"%.*s\" filesystem "
+      "and is disallowed by global config illegal_fstypes: %s",
+      fs_type->len, fs_type->buf, advice));
+
+    w_string_delref(fs_type);
+    return false;
+  }
+
+  w_string_delref(fs_type);
+  return true;
+}
+
 static w_root_t *root_resolve(const char *filename, bool auto_watch,
     bool *created, char **errmsg)
 {
@@ -2560,6 +2619,14 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   }
 
   w_log(W_LOG_DBG, "Want to watch %s -> %s\n", filename, watch_path);
+
+  if (!check_allowed_fs(watch_path, errmsg)) {
+    w_log(W_LOG_ERR, "resolve_root: %s\n", *errmsg);
+    if (watch_path != filename) {
+      free(watch_path);
+    }
+    return NULL;
+  }
 
   if (!root_check_restrict(watch_path)) {
     ignore_result(asprintf(errmsg,

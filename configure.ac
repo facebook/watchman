@@ -1,4 +1,4 @@
-AC_INIT([watchman], [2.9.7], [], [watchman])
+AC_INIT([watchman], [2.9.8], [], [watchman])
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES(yes)])
@@ -165,8 +165,9 @@ AC_SEARCH_LIBS([pthread_create], [pthread])
 AC_SEARCH_LIBS([socket], [socket])
 
 AC_CHECK_HEADERS(sys/types.h inttypes.h locale.h port.h sys/inotify.h sys/event.h)
-AC_CHECK_FUNCS(mkostemp kqueue port_create inotify_init strtoll localeconv)
+AC_CHECK_FUNCS(mkostemp kqueue port_create inotify_init strtoll localeconv statfs)
 AC_CHECK_FUNCS(accept4)
+AC_CHECK_HEADERS(sys/vfs.h sys/mount.h sys/param.h sys/statfs.h sys/statvfs.h)
 AC_CHECK_HEADERS(valgrind/valgrind.h)
 AC_CHECK_HEADERS(execinfo.h)
 AC_CHECK_HEADERS(CoreServices/CoreServices.h, [

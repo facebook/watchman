@@ -14,6 +14,7 @@ watchman_SOURCES = \
 	spawn.c       \
 	opt.c        \
 	cfg.c        \
+	fstype.c     \
 	log.c        \
 	json.c       \
 	bser.c       \

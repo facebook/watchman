@@ -443,6 +443,7 @@ void w_string_addref(w_string_t *str);
 void w_string_delref(w_string_t *str);
 int w_string_compare(const w_string_t *a, const w_string_t *b);
 bool w_string_equal(const w_string_t *a, const w_string_t *b);
+bool w_string_equal_cstring(const w_string_t *a, const char *b);
 bool w_string_equal_caseless(const w_string_t *a, const w_string_t *b);
 w_string_t *w_string_dirname(w_string_t *str);
 w_string_t *w_string_basename(w_string_t *str);
@@ -451,6 +452,9 @@ w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
 bool w_string_startswith(w_string_t *str, w_string_t *prefix);
 w_string_t *w_string_shell_escape(const w_string_t *str);
 w_string_t *w_string_implode(json_t *arr, const char *delim);
+
+// Returns the name of the filesystem for the specified path
+w_string_t *w_fstype(const char *path);
 
 void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
 w_root_t *w_root_resolve(const char *path, bool auto_watch, char **errmsg);
