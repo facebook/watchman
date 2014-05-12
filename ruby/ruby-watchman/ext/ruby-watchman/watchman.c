@@ -1,4 +1,32 @@
-// Copyright (c) 2014-present Facebook. All Rights Reserved.
+/*
+Copyright (c) 2014, Facebook, Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+ * Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+ * Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+ * Neither the name Facebook nor the names of its contributors may be used to
+   endorse or promote products derived from this software without specific
+   prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 #include "watchman.h"
 
@@ -247,7 +275,11 @@ int64_t watchman_load_int(char **ptr, char *end) {
             *ptr = val_ptr + sizeof(int64_t);
             break;
         default:
-            rb_raise(rb_eArgError, "bad integer marker 0x%02x", (unsigned int)*ptr[0]);
+            rb_raise(
+                rb_eArgError,
+                "bad integer marker 0x%02x",
+                (unsigned int)*ptr[0]
+            );
             break;
     }
 
@@ -468,7 +500,9 @@ VALUE RubyWatchman_load(VALUE self, VALUE serialized) {
         rb_raise(rb_eArgError, "undersized header");
     }
 
-    if (memcmp(ptr, WATCHMAN_BINARY_MARKER, sizeof(WATCHMAN_BINARY_MARKER) - 1)) {
+    int mismatched =
+        memcmp(ptr, WATCHMAN_BINARY_MARKER, sizeof(WATCHMAN_BINARY_MARKER) - 1);
+    if (mismatched) {
         rb_raise(rb_eArgError, "missing binary marker");
     }
 
@@ -516,7 +550,8 @@ VALUE RubyWatchman_dump(VALUE self, VALUE serializable) {
     watchman_dump(w, serializable);
 
     // update header with final length information
-    uint64_t *len = (uint64_t *)(w->data + sizeof(WATCHMAN_HEADER) - sizeof(uint64_t) - 1);
+    uint64_t *len =
+        (uint64_t *)(w->data + sizeof(WATCHMAN_HEADER) - sizeof(uint64_t) - 1);
     *len = w->len - sizeof(WATCHMAN_HEADER) + 1;
 
     // prepare final return value
@@ -526,17 +561,9 @@ VALUE RubyWatchman_dump(VALUE self, VALUE serializable) {
     return serialized;
 }
 
-/**
- * Helper method for raising a SystemCallError wrapping a lower-level error code
- * coming from the `errno` global variable.
- */
-void watchman_raise_system_call_error(int number) {
-    VALUE error = INT2FIX(number);
-    rb_exc_raise(rb_class_new_instance(1, &error, rb_eSystemCallError));
-}
-
 // How far we have to look to figure out the size of the PDU header
-#define WATCHMAN_SNIFF_BUFFER_SIZE sizeof(WATCHMAN_BINARY_MARKER) - 1 + sizeof(int8_t)
+#define WATCHMAN_SNIFF_BUFFER_SIZE \
+    sizeof(WATCHMAN_BINARY_MARKER) - 1 + sizeof(int8_t)
 
 // How far we have to peek, at most, to figure out the size of the PDU itself
 #define WATCHMAN_PEEK_BUFFER_SIZE \
@@ -552,12 +579,20 @@ void watchman_raise_system_call_error(int number) {
  * returns the result.
  */
 VALUE RubyWatchman_query(VALUE self, VALUE query, VALUE socket) {
+    VALUE error = Qnil;
+    VALUE errorClass = Qnil;
+    VALUE loaded = Qnil;
+    void *buffer = NULL;
     int fileno = NUM2INT(rb_funcall(socket, rb_intern("fileno"), 0));
 
     // do blocking I/O to simplify the following logic
     int flags = fcntl(fileno, F_GETFL);
-    if (fcntl(fileno, F_SETFL, flags & ~O_NONBLOCK) == -1) {
-        rb_raise(rb_eRuntimeError, "unable to clear O_NONBLOCK flag");
+    if (
+        !(flags & O_NONBLOCK) &&
+        fcntl(fileno, F_SETFL, flags & ~O_NONBLOCK) == -1
+    ) {
+        error = rb_str_new2("unable to clear O_NONBLOCK flag");
+        goto cleanup;
     }
 
     // send the message
@@ -565,51 +600,91 @@ VALUE RubyWatchman_query(VALUE self, VALUE query, VALUE socket) {
     long query_len = RSTRING_LEN(serialized);
     ssize_t sent = send(fileno, RSTRING_PTR(serialized), query_len, 0);
     if (sent == -1) {
-        watchman_raise_system_call_error(errno);
+        goto system_call_fail;
     } else if (sent != query_len) {
-        rb_raise(rb_eRuntimeError, "expected to send %ld bytes but sent %ld",
-            query_len, sent);
+        error = rb_str_new2("sent byte count mismatch");
+        goto cleanup;
     }
 
     // sniff to see how large the header is
     int8_t peek[WATCHMAN_PEEK_BUFFER_SIZE];
-    ssize_t received = recv(fileno, peek, WATCHMAN_SNIFF_BUFFER_SIZE, MSG_PEEK | MSG_WAITALL);
+    ssize_t received =
+        recv(fileno, peek, WATCHMAN_SNIFF_BUFFER_SIZE, MSG_PEEK | MSG_WAITALL);
     if (received == -1) {
-        watchman_raise_system_call_error(errno);
+        goto system_call_fail;
     } else if (received != WATCHMAN_SNIFF_BUFFER_SIZE) {
-        rb_raise(rb_eRuntimeError, "failed to sniff PDU header");
+        error = rb_str_new2("failed to sniff PDU header");
+        goto cleanup;
     }
 
     // peek at size of PDU
     int8_t sizes[] = { 0, 0, 0, 1, 2, 4, 8 };
+    int8_t sizes_idx = peek[sizeof(WATCHMAN_BINARY_MARKER) - 1];
+    if (sizes_idx < WATCHMAN_INT8_MARKER || sizes_idx > WATCHMAN_INT64_MARKER) {
+        error = rb_str_new2("bad PDU size marker");
+        goto cleanup;
+    }
     ssize_t peek_size = sizeof(WATCHMAN_BINARY_MARKER) - 1 + sizeof(int8_t) +
-        sizes[peek[sizeof(WATCHMAN_BINARY_MARKER) - 1]];
+        sizes[sizes_idx];
 
     received = recv(fileno, peek, peek_size, MSG_PEEK);
     if (received == -1) {
-        watchman_raise_system_call_error(errno);
+        goto system_call_fail;
     } else if (received != peek_size) {
-        rb_raise(rb_eRuntimeError, "failed to peek at PDU header");
+        error = rb_str_new2("failed to peek at PDU header");
+        goto cleanup;
     }
-    int8_t *pdu_size_ptr = peek + sizeof(WATCHMAN_BINARY_MARKER) - sizeof(int8_t);
+    int8_t *pdu_size_ptr =
+        peek + sizeof(WATCHMAN_BINARY_MARKER) - sizeof(int8_t);
     int64_t payload_size =
         peek_size +
         watchman_load_int((char **)&pdu_size_ptr, (char *)peek + peek_size);
 
     // actually read the PDU
-    void *buffer = xmalloc(payload_size);
+    buffer = xmalloc(payload_size);
     if (!buffer) {
-        rb_raise(rb_eNoMemError, "failed to allocate %lld bytes", payload_size);
+        errorClass = rb_eNoMemError;
+        error = rb_str_new2("failed to allocate");
+        goto cleanup;
     }
     received = recv(fileno, buffer, payload_size, MSG_WAITALL);
     if (received == -1) {
-        watchman_raise_system_call_error(errno);
+        goto system_call_fail;
     } else if (received != payload_size) {
-        rb_raise(rb_eRuntimeError, "failed to load PDU");
+        error = rb_str_new2("failed to load PDU");
+        goto cleanup;
     }
+
+    if (!(flags & O_NONBLOCK) && fcntl(fileno, F_SETFL, flags) == -1) {
+        error = rb_str_new2("unable to restore fnctl flags");
+        goto cleanup;
+    }
+
     char *payload = buffer + peek_size;
-    VALUE loaded = watchman_load(&payload, payload + payload_size);
-    free(buffer);
+    loaded = watchman_load(&payload, payload + payload_size);
+    goto cleanup;
+
+system_call_fail:
+    errorClass = rb_eSystemCallError;
+    error = INT2FIX(errno);
+
+cleanup:
+    if (buffer) {
+        xfree(buffer);
+    }
+
+    if (!(flags & O_NONBLOCK) && fcntl(fileno, F_SETFL, flags) == -1) {
+        rb_raise(rb_eRuntimeError, "unable to restore fnctl flags");
+    }
+
+    if (NIL_P(errorClass)) {
+        errorClass = rb_eRuntimeError;
+    }
+
+    if (!NIL_P(error)) {
+        rb_exc_raise(rb_class_new_instance(1, &error, errorClass));
+    }
+
     return loaded;
 }
 
