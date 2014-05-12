@@ -1,6 +1,7 @@
 language:
-  - php
   - c
+  - php
+  - ruby
 
 branches:
   only:
@@ -19,6 +20,11 @@ php:
 python:
   - "2.7"
   - "3.2"
+
+# for the ruby-watchman gem
+gemfile: ruby/ruby-watchman/Gemfile
+rvm:
+  - "2.0.0"
 
 # try some different compiler options
 env:

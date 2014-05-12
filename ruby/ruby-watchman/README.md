@@ -29,7 +29,8 @@ This example shows:
 2. Checking with Watchman whether a given path (in this case the current working
    directory) is being watched
 3. Adding the path to the watch list if necessary
-4. Asking Watchman for the names of all files in the watch, then printing them
+4. Asking Watchman for the names of all files in the watch (files which exist,
+   or have existed since watching started), then printing them
 
 ```ruby
 require 'ruby-watchman'
