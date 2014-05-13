@@ -7,8 +7,6 @@ permalink: docs/casefolding.html
 next: cookies
 ---
 
-# Case-Insensitivity, Watchman, and You
-
 Watchman is currently completely unaware of case-insensitivity in file systems,
 and does not attempt to do any case-folding of file names. On a case-insensitive
 file system like Mac OS X's [HFS+](https://en.wikipedia.org/wiki/HFS_Plus), this
