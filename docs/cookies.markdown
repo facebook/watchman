@@ -3,7 +3,7 @@ id: cookies
 title: Query Synchronization
 layout: docs
 category: Internals
-permalink: cookies.html
+permalink: docs/cookies.html
 ---
 
 # Query Synchronization: Cookies
