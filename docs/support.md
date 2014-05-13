@@ -2,7 +2,7 @@
 id: support
 title: Support
 layout: page
-permalink: docs/support.html
+permalink: support.html
 section: support
 ---
 
