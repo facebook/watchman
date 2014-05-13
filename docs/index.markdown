@@ -4,12 +4,6 @@ layout: index
 permalink: index.html
 ---
 
-# Watchman
-
-A file watching service.
-
-## Purpose
-
 Watchman exists to watch files and record when they actually change.  It can
 also trigger actions (such as rebuilding assets) when matching files change.
 
