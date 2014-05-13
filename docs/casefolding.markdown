@@ -3,7 +3,7 @@ id: casefolding
 title: Case-Insensitivity, Watchman, and You
 layout: docs
 category: Internals
-permalink: casefolding.html
+permalink: docs/casefolding.html
 next: cookies
 ---
 
