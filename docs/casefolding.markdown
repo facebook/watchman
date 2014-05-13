@@ -1,11 +1,11 @@
---
+---
 id: casefolding
 title: Case-Insensitivity, Watchman, and You
 layout: docs
 category: Internals
 permalink: casefolding.html
 next: cookies
---
+---
 
 # Case-Insensitivity, Watchman, and You
 

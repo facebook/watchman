@@ -1,10 +1,10 @@
---
+---
 id: cookies
 title: Query Synchronization
 layout: docs
 category: Internals
 permalink: cookies.html
---
+---
 
 # Query Synchronization: Cookies
 
