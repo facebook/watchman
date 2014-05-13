@@ -6,8 +6,6 @@ category: Internals
 permalink: docs/cookies.html
 ---
 
-# Query Synchronization: Cookies
-
 A file system monitor needs to make sure that queries see up-to-date
 views. Watchman ensures that by creating a unique *cookie* for each query made
 to it.
