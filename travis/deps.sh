@@ -4,7 +4,7 @@ case `uname` in
   Linux)
     sudo sysctl -A | grep inotify
     sudo apt-get update -y -q
-    sudo apt-get install -y valgrind -q
+    sudo apt-get install -y ruby valgrind -q
     mount
     ;;
   Darwin)
@@ -13,6 +13,7 @@ case `uname` in
     ;;
 esac
 set -e
+sudo gem install bundler
 if [ ! -d a ] ; then
   mkdir a
 fi
