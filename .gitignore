@@ -33,3 +33,4 @@ python/bser/build
 test-suite.log
 tests/*.log
 tests/*.trs
+website

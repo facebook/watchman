@@ -1,6 +1,6 @@
 ---
 id: casefolding
-title: Case-Insensitivity, Watchman, and You
+title: Case-Insensitivity
 layout: docs
 category: Internals
 permalink: docs/casefolding.html
@@ -20,7 +20,7 @@ can manifest itself in different ways:
 
 In general, both `foo.txt` and `FOO.txt` can be reported, sometimes with
 different stat data, sometimes with the same stat data.
-  
+
 ## Why doesn't Watchman support case-folding properly?
 
 One problem is that 'properly' is hard to pin down. There are at least four

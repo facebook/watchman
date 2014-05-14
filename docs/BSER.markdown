@@ -1,4 +1,10 @@
-# Binary Protocol
+---
+id: bser
+title: BSER Binary Protocol
+layout: docs
+category: Internals
+permalink: docs/bser.html
+---
 
 The basic JSON protocol in watchman allows quick and easy integration.
 Applications with higher performance requirements may want to consider the
@@ -116,4 +122,3 @@ The precise sequence is:
 0c          skip      -- object 3, prop 1, not set
 0319        int, 0x19 -- object 3, prop 2 age=25
 ```
-
