@@ -1,7 +1,4 @@
-language:
-  - c
-  - php
-  - ruby
+language: php
 
 branches:
   only:
