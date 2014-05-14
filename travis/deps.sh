@@ -4,7 +4,7 @@ case `uname` in
   Linux)
     sudo sysctl -A | grep inotify
     sudo apt-get update -y -q
-    sudo apt-get install -y ruby valgrind -q
+    sudo apt-get install -y ruby rubygems valgrind -q
     mount
     ;;
   Darwin)
