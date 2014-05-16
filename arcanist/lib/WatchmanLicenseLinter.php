@@ -26,7 +26,7 @@ class WatchmanLicenseLinter extends ArcanistLinter {
   }
 
   public function lintPath($path) {
-    if (preg_match('/^python/', $path)) {
+    if (preg_match('/^(python|ruby)/', $path)) {
       return;
     }
     $source = $this->getData($path);
