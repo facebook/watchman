@@ -6,112 +6,141 @@ category: Invocation
 permalink: docs/config.html
 ---
 
+Watchman looks for configuration files in two places:
+
+ * The global configuration file `/etc/watchman.json`
+ * The root specific configuration file `.watchmanconfig`
+
 When watching a root, if a valid JSON file named `.watchmanconfig` is present
-in the root, watchman will load and associate the file with the root.
+in the root directory, watchman will load it and use it as a source of
+configuration information specific to that root.
 
-Watchman will try to resolve certain configuration parameters using the
-following logic:
+The global configuration path can be changed by passing the
+`--enable-conffile` option to configure when you build watchman.  This
+documentation refers to it as `/etc/watchman.json` throughout, just be aware
+that your particular installation may locate it elsewhere.   In addition,
+the environmental variable `$WATCHMAN_CONFIG_FILE` will override the the
+default location.
 
- * If there is a .watchmanconfig and the option is present there, use that
-   value.
- * If the option was specified on the command line, use that value
- * Look at the global configuration file. By default, this is at the location
-   configured using `--enable-conffile` (default `/etc/watchman.json`), but this
-   can be overridden by setting the environment variable `WATCHMAN_CONFIG_FILE`.
-   If this file is a valid JSON file, and contains the option, use that value
- * Otherwise use an appropriate default for that option.
+Changes to the `.watchmanconfig` or `/etc/watchman.json` files are not picked
+up automatically; you will need to remove and re-add the watch (for
+`.watchmanconfig`) or restart watchman (for `/etc/watchman.json`) for those
+changes to take effect.
 
-### Configuration Parameters
+### Resolution / Scoping
 
-The following parameters are accepted in the .watchmanconfig and global
-configuration files:
+There are three configuration scopes:
 
- * `settle` - specifies the settle period in *milliseconds*.  This controls
-   how long the filesystem should be idle before dispatching triggers.
-   The default value is 20 milliseconds.
+ * **local** - the option value is read from the `.watchmanconfig` file in the
+   associated root.
+ * **global** - the option value is read from the `/etc/watchman.json` file
+ * **fallback** - the option value is read from the `.watchmanconfig` file.
+   If the option was not present in the `.watchmanconfig` file, then read
+   it from the `/etc/watchman.json` file.
 
-The following parameters are accepted in the global configuration file only:
+This table shows the scoping and availability of the various options:
 
- * `root_restrict_files` - specifies a list of files, at least one of which
-   should be present in a directory for watchman to add it as a root. By default
-   there are no restrictions.
+Option | Scope | Since version
+-------|-------|--------------
+`settle` | local |
+`root_restrict_files` | global
+`illegal_fstypes` | global | 2.9.8
+`illegal_fstypes_advice` | global | 2.9.8
+`ignore_vcs` | local | 2.9.3
+`ignore_dirs` | local | 2.9.3
+`gc_age_seconds` | local | 2.9.4
+`gc_interval_seconds` | local | 2.9.4
 
-   For example,
+### Configuration Options
 
-   ```json
-   {
-     "root_restrict_files": [".git", ".hg"]
-   }
-   ```
+#### settle
 
-   will allow watches only in the top level of Git or Mercurial repositories.
+Specifies the settle period in *milliseconds*.  This controls how long the
+filesystem should be idle before dispatching triggers.  The default value is 20
+milliseconds.
 
- * `illegal_fstypes` (since version 2.9.8) - specifies a list of filesystem
-   types that watchman is prohibited to attempt to watch.  Watchman will
-   determine the filesystem type of the root of a watch; if the typename is
-   present in the `illegal_fstypes` list, the watch will be prohibited.  You
-   may also specify `illegal_fstypes_advice` as a string with additional advice
-   to your user.  The purpose of this configuration option is largely to
-   prevent the use of Watchman on network mounted filesystems.  On Linux
-   systems, Watchman may not be able to determine the precise type name of a
-   mounted filesystem.  If the filesystem type is not known to watchman, it
-   will be reported as `unknown`.
+#### root_restrict_files
 
-   For example,
+Specifies a list of files, at least one of which should be present in a
+directory for watchman to add it as a root. By default there are no
+restrictions.
 
-   ```json
-   {
-     "illegal_fstypes": ["nfs", "cifs", "smb"],
-     "illegal_fstypes_advice": "use a local directory"
-   }
-   ```
+For example,
 
-   will prevent watching dirs mounted on network filesystems and provide the
-   advice to use a local directory.  You may omit the `illegal_fstypes_advice`
-   setting to use a default suggestion to relocate the directory to local disk.
+```json
+{
+  "root_restrict_files": [".git", ".hg"]
+}
+```
 
-The following parameters are accepted in the .watchmanconfig file only,
-since version 2.9.3:
+will allow watches only in the top level of Git or Mercurial repositories.
 
- * `ignore_vcs` - apply special VCS ignore logic to the set of named dirs.
-   This option has a default value of `[".git", ".hg", ".svn"]`.  Dirs that
-   match this option are observed and watched using special shallow logic.
-   The shallow watch allows watchman to mildly abuse the version control
-   directories to store its query cookie files and to observe VCS locking
-   activity without having to watch the entire set of VCS data for large trees.
+#### illegal_fstypes
 
- * `ignore_dirs` - dirs that match are completely ignored by watchman.
-   This is useful to ignore a directory that contains only build products and
-   where file change notifications are unwanted because of the sheer volume of
-   files.
+Specifies a list of filesystem types that watchman is prohibited to attempt to
+watch.  Watchman will determine the filesystem type of the root of a watch; if
+the typename is present in the `illegal_fstypes` list, the watch will be
+prohibited.  You may also specify `illegal_fstypes_advice` as a string with
+additional advice to your user.  The purpose of this configuration option is
+largely to prevent the use of Watchman on network mounted filesystems.  On
+Linux systems, Watchman may not be able to determine the precise type name of a
+mounted filesystem.  If the filesystem type is not known to watchman, it will
+be reported as `unknown`.
 
-   For example,
+For example,
 
-   ```json
-   {
-     "ignore_dirs": ["build"]
-   }
-   ```
+```json
+{
+  "illegal_fstypes": ["nfs", "cifs", "smb"],
+  "illegal_fstypes_advice": "use a local directory"
+}
+```
 
-   would ignore the `build` directory at the top level of the watched tree,
-   and everything below it.  It will never appear in the watchman query
-   results for the tree.
+will prevent watching dirs mounted on network filesystems and provide the
+advice to use a local directory.  You may omit the `illegal_fstypes_advice`
+setting to use a default suggestion to relocate the directory to local disk.
 
-The following parameters are accepted in the .watchmanconfig file since
-version 2.9.4:
+#### ignore_vcs
 
- * `gc_age_seconds` - Deleted files (and dirs) older than this are
-   periodically pruned from the internal view of the filesystem.  Until
-   they are pruned, they will be visible to queries but will have their
-   `exists` field set to `false`.   Once they are pruned, watchman will
-   remember the most recent clock value of the pruned nodes.  Any since
-   queries based on a clock prior to the last prune clock will be treated
-   as a fresh instance query.  This allows a client to detect and choose
-   how to handle the case where they have missed changes.
-   See `is_fresh_instance` elsewhere in this document for more information.
-   The default for this is `43200` (12 hours).
+Apply special VCS ignore logic to the set of named dirs.  This option has a
+default value of `[".git", ".hg", ".svn"]`.  Dirs that match this option are
+observed and watched using special shallow logic.  The shallow watch allows
+watchman to mildly abuse the version control directories to store its query
+cookie files and to observe VCS locking activity without having to watch the
+entire set of VCS data for large trees.
 
- * `gc_interval_seconds` - how often to check for, and prune out, deleted
-   nodes per the `gc_age_seconds` option description above.
-   The default for this is `86400` (24 hours).  Set this to `0` to disable
-   the periodic pruning operation.
+#### ignore_dirs
+
+Dirs that match are completely ignored by watchman.  This is useful to ignore a
+directory that contains only build products and where file change notifications
+are unwanted because of the sheer volume of files.
+
+For example,
+
+```json
+{
+  "ignore_dirs": ["build"]
+}
+```
+
+would ignore the `build` directory at the top level of the watched tree, and
+everything below it.  It will never appear in the watchman query results for
+the tree.
+
+#### gc_age_seconds
+
+Deleted files (and dirs) older than this are periodically pruned from the
+internal view of the filesystem.  Until they are pruned, they will be visible
+to queries but will have their `exists` field set to `false`.   Once they are
+pruned, watchman will remember the most recent clock value of the pruned nodes.
+Any since queries based on a clock prior to the last prune clock will be
+treated as a fresh instance query.  This allows a client to detect and choose
+how to handle the case where they have missed changes.  See `is_fresh_instance`
+elsewhere in this document for more information.  The default for this is
+`43200` (12 hours).
+
+#### gc_interval_seconds
+
+How often to check for, and prune out, deleted nodes per the `gc_age_seconds`
+option description above.  The default for this is `86400` (24 hours).  Set
+this to `0` to disable the periodic pruning operation.

@@ -48,3 +48,6 @@ data types as JSON, but in a more compact form and not be limited to UTF-8
 representation of strings.
 
 When you make a request using BSER, the server will respond in BSER encoding.
+
+You can [read more about BSER in the BSER specification](
+/watchman/docs/bser.html).

@@ -26,16 +26,16 @@ of [Phabricator](http://www.phabricator.org) and can be installed by following
 these steps:
 
 ```bash
-mkdir /somewhere
-cd /somewhere
-git clone git://github.com/facebook/libphutil.git
-git clone git://github.com/facebook/arcanist.git
+$ mkdir /somewhere
+$ cd /somewhere
+$ git clone git://github.com/facebook/libphutil.git
+$ git clone git://github.com/facebook/arcanist.git
 ```
 
 Add `arc` to your path:
 
 ```bash
-export PATH="$PATH:/somewhere/arcanist/bin/"
+$ export PATH="$PATH:/somewhere/arcanist/bin/"
 ```
 
 With `arc` in your path, re-running configure will detect it and adjust the
@@ -44,7 +44,7 @@ yourself outside of make.
 
 You can run the unit tests using:
 
-    make integration
+    $ make integration
 
 If you'd like to contribute a patch to watchman, we'll ask you to make sure
 that `arc unit` still passes successfully and we'd ideally like you to augment

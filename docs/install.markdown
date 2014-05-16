@@ -25,12 +25,35 @@ not covered by the list above.
 
 ## Build/Install
 
-You can use these steps to get watchman built:
+### Installing on OS/X via Homebrew
+
+To build the most recent release currently tracked by
+[Homebrew](http://brew.sh/):
 
 ```bash
-./autogen.sh
-./configure
-make
+$ brew install watchman
+```
+
+To install the latest build from github:
+
+```bash
+$ brew install --HEAD watchman
+```
+
+### Installing from source
+
+You can use these steps below to get watchman built.  You will need `autoconf`
+and `automake`.  You may optionally build watchman with `pcre` and `python`
+support.  Consult the output of `configure --help` for more information on
+building.
+
+```bash
+$ git clone https://github.com/facebook/watchman.git
+$ cd watchman
+$ ./autogen.sh
+$ ./configure
+$ make
+$ sudo make install
 ```
 
 [![Build Status](https://travis-ci.org/facebook/watchman.png)](
@@ -81,8 +104,8 @@ with `ulimit`; just raising the sysctl should do the trick.
 The following will raise the limits to allow 10 million files total, with 1
 million files per process until your next reboot.
 
-    sudo sysctl -w kern.maxfiles=10485760
-    sudo sysctl -w kern.maxfilesperproc=1048576
+    $ sudo sysctl -w kern.maxfiles=10485760
+    $ sudo sysctl -w kern.maxfilesperproc=1048576
 
 Putting the following into a file named `/etc/sysctl.conf` on OS X will cause
 these values to persist across reboots:

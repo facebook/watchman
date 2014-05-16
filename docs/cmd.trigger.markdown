@@ -36,10 +36,11 @@ across a Watchman process restart.  If you had triggeres saved prior to
 upgrading to Watchman 2.9.7, those triggers will be forgotten as you upgrade
 past version 2.9.7; you will need to re-register them.
 
-There are two syntaxes for registering triggers; a legacy syntax that allows
-very simple trigger configuration with some reasonable defaults.  The second is
-the extended trigger syntax which is available since Watchman version 2.9.7.
-The legacy syntax is implemented in terms of the extended syntax and is
+There are two syntaxes for registering triggers; a simple syntax that allows
+very simple trigger configuration with some reasonable defaults, and a second
+extended syntax which is available since Watchman version 2.9.7.
+
+The simple syntax is implemented in terms of the extended syntax and is
 preserved for backwards compatibility with older clients.
 
 #### Extended syntax
@@ -61,7 +62,7 @@ Here's an example trigger specified via the CLI that will cause `make` to
 be run whenever assets or sources are changed:
 
 ```bash
-watchman -j <<-EOT
+$ watchman -j <<-EOT
 ["trigger", "/path/to/root", {
   "name": "assets",
   "expression": ["pcre", "\.(js|css|c|cpp)$"],
@@ -161,16 +162,17 @@ The possible trigger object properties are:
   will *always* be relative to the watched root.  The path to the root can
   be found in the `$WATCHMAN_ROOT` environmental variable.
 
-#### Legacy syntax
+#### Simple syntax
 
-The legacy syntax is easier to execute from the CLI than the JSON based
+The simple syntax is easier to execute from the CLI than the JSON based
 extended syntax, but doesn't allow all of the trigger options to be set.
-In addition, it only supports the **Legacy Pattern Syntax** for queries.
+In only supports the [Simple Pattern Syntax](
+/watchman/docs/simple-query.html) for queries.
 
 From the command line:
 
 ```bash
-watchman -- trigger /path/to/dir triggername [patterns] -- [cmd]
+$ watchman -- trigger /path/to/dir triggername [patterns] -- [cmd]
 ```
 
 Note that the first `--` is to distinguish watchman CLI switches from the
@@ -185,7 +187,7 @@ JSON:
 For example:
 
 ```bash
-watchman -- trigger ~/www jsfiles '*.js' -- ls -l
+$ watchman -- trigger ~/www jsfiles '*.js' -- ls -l
 ```
 
 Note the single quotes around the `*.js`; if you omit them, your shell
@@ -199,19 +201,19 @@ or in JSON:
 ["trigger", "/home/wez/www", "jsfiles", "*.js", "--", "ls", "-l"]
 ```
 
-The legacy syntax is interpreted as a trigger object with the following
+The simple syntax is interpreted as a trigger object with the following
 settings:
 
 * `name` is set to the `triggername`
 * `command` is set to the `<cmd>` list
 * `expression` is generated from the `<patterns>` list using the rules laid
-  out in **Legacy Pattern Syntax** elsewhere in this document.
+  out in [Simple Pattern Syntax](/watchman/docs/simple-query.html)
 * `append_files` is set to `true`
 * `stdin` is set to `["name", "exists", "new", "size", "mode"]`
 * `stdout` and `stderr` will be set to output to the Watchman log file
 * `max_files_stdin` will be left unset
 
-For this legacy example, if `~/www/scripts/foo.js` is changed,
+For this simple example, if `~/www/scripts/foo.js` is changed,
 watchman will chdir to `~/www` then invoke `ls -l scripts/foo.js`.  Note that
 the output will show up in the Watchman log file, not in your terminal.
 
