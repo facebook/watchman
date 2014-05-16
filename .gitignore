@@ -29,7 +29,9 @@ tests/integration/.watchman.*
 config.sub
 config.guess
 configure.lineno
-python/bser/build
+python/build
+*.pyc
+*.so
 test-suite.log
 tests/*.log
 tests/*.trs

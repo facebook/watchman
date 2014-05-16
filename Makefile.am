@@ -1,4 +1,6 @@
 bin_PROGRAMS = watchman
+# ensure that we have a reasonable default for the python install
+DESTDIR ?= ${prefix}
 
 doc_DATA = README.markdown
 docdir = ${prefix}/share/doc/watchman-$(VERSION)
@@ -82,31 +84,42 @@ TESTS = tests/argv.t tests/log.t tests/bser.t
 noinst_PROGRAMS = tests/argv.t tests/log.t tests/bser.t
 
 if HAVE_ARC
-# if we have arc, lint when we run make.  We don't want to force
-# folks to have arc just to build it and install it, which should
-# be the much more common case than those developing it!
-all-local: lint
-
 # Run lint and output stuff suitable for feeding into ":make" in vim
 # quickfix mode.
 lint:
 	-arc lint --output compiler --lintall
+else
+lint:
 endif
 
 if HAVE_PYTHON
-all-local:
-	cd python/bser && $(PYTHON) ./setup.py build
+py-build:
+	cd python && $(PYTHON) ./setup.py clean build_py -c -d . build_ext -i
+
+py-install:
+	cd python && $(PYTHON) ./setup.py install --prefix ${prefix} --root $(DESTDIR)
 
 # This is invoked via WatchmanIntegrationEngine
 py-tests:
 	time $(PYTHON) $(TESTNAME)
 
-clean-local:
-	cd python/bser && $(PYTHON) ./setup.py clean
-	rm -rf python/bser/build
+py-clean:
+	-cd python && $(PYTHON) ./setup.py clean --all
+
 else
+py-build:
 py-tests:
+py-clean:
+py-install:
 endif
+
+all-local: py-build lint
+
+install-exec-local: py-install
+
+clean-local: py-clean
+	-find python \( -name '*.py[cdo]' -o -name '*.so' \) -exec rm -f '{}' ';'
+	-rm -rf python/build
 
 # generate a rule that we can use to ensure that
 # the test programs are built

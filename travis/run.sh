@@ -16,6 +16,7 @@ fi
 INST_TEST=/tmp/install-test
 test -d $INST_TEST && rm -rf $INST_TEST
 make DESTDIR=$INST_TEST install
+find $INST_TEST
 
 exit 0
 

@@ -26,7 +26,7 @@ class WatchmanLicenseLinter extends ArcanistLinter {
   }
 
   public function lintPath($path) {
-    if ($path == 'python/bser/bser.c') {
+    if (preg_match('/^python/', $path)) {
       return;
     }
     $source = $this->getData($path);
@@ -90,4 +90,3 @@ TXT;
 }
 
 // vim:ts=2:sw=2:et:
-

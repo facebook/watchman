@@ -21,10 +21,8 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
 
     if ($this->getRunAllTests()) {
       $paths = glob($test_dir . "*.php");
-      if (is_dir("python/bser/build")) {
-        foreach (glob('python/bser/*.py') as $file) {
-          $paths[] = $file;
-        }
+      foreach (glob('python/tests/*.py') as $file) {
+        $paths[] = $file;
       }
     } else {
       $paths = $this->getPaths();
@@ -49,7 +47,12 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
     putenv("WATCHMAN_EMPTY_ENV_VAR=");
 
     $coverage = $this->getEnableCoverage();
-    $instances = array(new WatchmanInstance($root, $coverage));
+
+    $first_inst = new WatchmanInstance($root, $coverage);
+    $instances = array($first_inst);
+
+    // Helper for python or other language tests
+    putenv("WATCHMAN_SOCK=".$first_inst->getFullSockName());
 
     // Exercise the different serialization combinations
     $cli_matrix = array(
@@ -72,7 +75,7 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
         $instance = new WatchmanInstance($root, $coverage, $config);
         $instances[] = $instance;
       } else {
-        $instance = $instances[0];
+        $instance = $first_inst;
       }
       $test_case->setWatchmanInstance($instance);
 
@@ -101,25 +104,40 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
       }
     }
 
-    foreach ($instances as $instance) {
-      $results[] = $instance->generateValgrindTestResults();
-    }
-
     // Also run the python tests if we built them
     foreach ($paths as $path) {
       if (!preg_match('/test.*\.py$/', $path)) {
         continue;
       }
+      if (!file_exists($path)) {
+        // Was deleted in this (pending) rev
+        continue;
+      }
+      if (!file_exists("python/pywatchman/bser.so")) {
+        // Not enabled by the build
+        continue;
+      }
 
-      // build dir varies by platform, so just glob for it
-      $pypath = implode(':', glob("python/bser/build/*"));
+      // Note that this implicitly starts the instance if we haven't
+      // yet done so.  This is important if the only test paths are
+      // python paths
+      if (!$first_inst->getProcessID()) {
+        $res = new ArcanistUnitTestResult();
+        $res->setName('dead');
+        $res->setUserData('died before test start');
+        $res->setResult(ArcanistUnitTestResult::RESULT_FAIL);
+        $results[] = array($res);
+        break;
+      }
 
-      // makefile contains the detected python, so just run the
-      // rule from the makefile, but pass in our PYTHONPATH
+      // our Makefile contains the detected python, so just run the
+      // rule from the makefile to pick it up
       $start = microtime(true);
       $future = new ExecFuture(
-        "PYTHONPATH=$pypath TESTNAME=$path make py-tests"
+        "PATH=\"$root:\$PATH\" PYTHONPATH=$root/python ".
+        "TESTNAME=$path make py-tests"
       );
+      $future->setTimeout(10);
       list($status, $out, $err) = $future->resolve();
       $end = microtime(true);
       $res = new ArcanistUnitTestResult();
@@ -131,6 +149,10 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
         ArcanistUnitTestResult::RESULT_FAIL
       );
       $results[] = array($res);
+    }
+
+    foreach ($instances as $instance) {
+      $results[] = $instance->generateValgrindTestResults();
     }
 
     $results = array_mergev($results);
