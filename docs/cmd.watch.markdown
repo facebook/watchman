@@ -12,7 +12,7 @@ Watchman will track all files and dirs rooted at the specified path.
 From the command line:
 
 ```bash
-watchman watch ~/www
+$ watchman watch ~/www
 ```
 
 Note that, when you're using the CLI, you can specify the root as `~/www`

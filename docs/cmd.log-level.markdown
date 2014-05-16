@@ -11,7 +11,7 @@ Changes the log level of your connection to the watchman service.
 From the command line:
 
 ```bash
-watchman --server-encoding=json --persistent log-level debug
+$ watchman --server-encoding=json --persistent log-level debug
 ```
 
 JSON:

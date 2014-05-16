@@ -9,7 +9,7 @@ permalink: docs/cmd/trigger-list.html
 Returns the set of registered triggers associated with a root directory.
 
 ```bash
-watchman trigger-list /root
+$ watchman trigger-list /root
 ```
 
 Note that the format of the output from `trigger-list` changed in Watchman

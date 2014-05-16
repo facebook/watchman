@@ -9,7 +9,7 @@ permalink: docs/cmd/query.html
 Available starting in version 1.6
 
 ```bash
-watchman -j <<-EOT
+$ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "suffix": "php",
   "expression": ["allof",

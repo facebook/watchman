@@ -11,7 +11,7 @@ Removes a watch.
 From the command line:
 
 ```bash
-watchman watch-del /path/to/dir
+$ watchman watch-del /path/to/dir
 ```
 
 JSON:

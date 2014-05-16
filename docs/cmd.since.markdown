@@ -7,7 +7,7 @@ permalink: docs/cmd/since.html
 ---
 
 ```bash
-watchman since /path/to/dir <clockspec> [patterns]
+$ watchman since /path/to/dir <clockspec> [patterns]
 ```
 
 Finds all files that were modified since the specified clockspec that

@@ -12,7 +12,7 @@ Be careful how you interpret this value; it returns the instantaneous value of
 the clock, and may have changed by the time you intend to act upon it.
 
 ```bash
-watchman clock /path/to/dir
+$ watchman clock /path/to/dir
 ```
 
 JSON:

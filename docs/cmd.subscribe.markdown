@@ -18,7 +18,7 @@ interface, but you may also subscribe via the command line tool if you're
 interested in observing the changes for yourself:
 
 ```bash
-watchman -j --server-encoding=json -p <<-EOT
+$ watchman -j --server-encoding=json -p <<-EOT
 ["subscribe", "/path/to/root", "mysubscriptionname", {
   "expression": ["allof",
     ["type", "f"],
