@@ -165,10 +165,21 @@ class triggerTestCase extends WatchmanTestCase {
       $this->validateTriggerOutput($root, array($file), "single $file");
     }
 
-    // trigger a recrawl
     unlink("$root/trigger.log");
     unlink("$root/trigger.json");
+
+    // When running under valgrind, there may be pending events.
+    // Let's give things a chance to finish dispatching before proceeding
+    $this->waitForNoThrow(function () use ($root) {
+      return file_exists("$root/trigger.log");
+    }, 1);
+
+    @unlink("$root/trigger.log");
+    @unlink("$root/trigger.json");
+
     $this->startLogging('debug');
+
+    // trigger a recrawl
     $this->watchmanCommand('debug-recrawl', $root);
 
     // make sure the triggers didn't get deleted

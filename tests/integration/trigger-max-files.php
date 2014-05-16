@@ -36,9 +36,16 @@ class triggerMaxFilesCase extends WatchmanTestCase {
     $obj = $this->waitForJsonInput($log);
     $this->assertEqual(1, count($obj));
 
+    $this->waitForNoThrow(function () use ($env) {
+      return file_exists($env) && filesize($env) > 0;
+    });
+
+    $this->assertEqual(true, file_exists($env));
+    $data = file_get_contents($env);
+    $this->assertEqual(true, strlen($data) > 0);
     $this->assertEqual(
       0,
-      preg_match('/WATCHMAN_FILES_OVERFLOW/', file_get_contents($env)),
+      preg_match('/WATCHMAN_FILES_OVERFLOW/', $data),
       "WATCHMAN_FILES_OVERFLOW should not be in $env"
     );
 
@@ -46,8 +53,8 @@ class triggerMaxFilesCase extends WatchmanTestCase {
 
     $deadline = time() + 5;
     while (time() < $deadline) {
-      unlink($log);
-      unlink($env);
+      @unlink($log);
+      @unlink($env);
 
       touch("$root/B.txt");
       touch("$root/A.txt");
@@ -57,7 +64,7 @@ class triggerMaxFilesCase extends WatchmanTestCase {
       $obj = $this->waitForJsonInput($log);
       $this->assertEqual(2, count($obj));
 
-      $envdata = file_get_contents($env);
+      $envdata = @file_get_contents($env);
       if (preg_match('/WATCHMAN_FILES_OVERFLOW/', $envdata)) {
         $observed = true;
         break;
