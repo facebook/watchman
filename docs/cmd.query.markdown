@@ -86,18 +86,16 @@ simple array of values; ```"fields": ["name"]``` produces:
  * `name` - string: the filename, relative to the watched root
  * `exists` - bool: true if the file exists, false if it has been deleted
  * `cclock` - string: the "created clock"; the clock value when we first
-            observed the file, or the clock value when it last switched
-            from !exists to exists.
+observed the file, or the clock value when it last switched from
+!exists to exists.
  * `oclock` - string: the "observed clock"; the clock value where we last
-            observed some change in this file or its metadata.
- * `ctime`, `ctime_ms`, `ctime_us`, `ctime_ns`, `ctime_f`
-            - last inode change time measured in integer seconds, milliseconds,
-              microseconds, nanoseconds or floating point seconds
-              respectively.
- * `mtime`, `mtime_ms`, `mtime_us`, `mtime_ns`, `mtime_f`
-            - modified time measured in integer seconds, milliseconds,
-              microseconds, nanoseconds or floating point seconds
-              respectively.
+observed some change in this file or its metadata.
+ * `ctime`, `ctime_ms`, `ctime_us`, `ctime_ns`, `ctime_f` -
+last inode change time measured in integer seconds, milliseconds,
+microseconds, nanoseconds or floating point seconds respectively.
+ * `mtime`, `mtime_ms`, `mtime_us`, `mtime_ns`, `mtime_f` -
+modified time measured in integer seconds, milliseconds,
+microseconds, nanoseconds or floating point seconds respectively.
  * `size` - integer: file size in bytes
  * `mode` - integer: file (or directory) mode expressed as a decimal integer
  * `uid` - integer: the owning uid
@@ -105,8 +103,7 @@ simple array of values; ```"fields": ["name"]``` produces:
  * `ino` - integer: the inode number
  * `dev` - integer: the device number
  * `nlink` - integer: number of hard links
- * `new` - bool: whether this entry is newer than the `since` generator
-           criteria
+ * `new` - bool: whether this entry is newer than the `since` generator criteria
 
 #### Synchronization timeout (since 2.1)
 
