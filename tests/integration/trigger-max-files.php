@@ -11,6 +11,10 @@ class triggerMaxFilesCase extends WatchmanTestCase {
 
     mkdir($root);
 
+    file_put_contents("$root/.watchmanconfig", json_encode(
+      array('settle' => 200)
+    ));
+
     $this->watch($root);
 
     $out = $this->trigger($root,
