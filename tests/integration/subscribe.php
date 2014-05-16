@@ -55,15 +55,21 @@ class subscribeTestCase extends WatchmanTestCase {
 
       // trigger a recrawl, make sure the subscription isn't lost
       $this->watchmanCommand('debug-recrawl', $root);
-      $this->waitForSub('myname', function ($data) {
-        return true;
+      $subs = $this->waitForSub('myname', function ($data) {
+        foreach ($data as $ent) {
+          if (!idx($ent, 'is_fresh_instance')) {
+            continue;
+          }
+          $files = $ent['files'];
+          sort($files);
+          if ($files === array('a', 'b')) {
+            return true;
+          }
+        }
+        return false;;
       });
-      list($sub) = $this->getSubData('myname');
 
-      $this->assertEqual(true, $sub['is_fresh_instance']);
-      $files = $sub['files'];
-      sort($files);
-      $this->assertEqual(array('a', 'b'), $files);
+      $this->assertEqual(true, count($subs) > 0, 'got fresh instance response');
 
       $this->watchmanCommand('unsubscribe', $root, 'myname');
     } catch (Exception $e) {
