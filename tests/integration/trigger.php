@@ -8,6 +8,10 @@ class triggerTestCase extends WatchmanTestCase {
   }
 
   function doesTriggerDataMatchFileList($root, array $files) {
+    if (!file_exists("$root/trigger.json")) {
+      return false;
+    }
+
     // Validate that the json input is properly formatted
     $expect = array();
     foreach ($files as $file) {
@@ -95,9 +99,15 @@ class triggerTestCase extends WatchmanTestCase {
     touch("$root/b ar.c");
     touch("$root/bar.txt");
 
+    file_put_contents("$root/.watchmanconfig", json_encode(
+      array('settle' => 200)
+    ));
+
     $out = $this->watch($root);
 
-    $this->assertFileList($root, array('b ar.c', 'bar.txt', 'foo.c'));
+    $this->assertFileList($root, array(
+      '.watchmanconfig', 'b ar.c', 'bar.txt', 'foo.c'
+    ));
 
     $this->trigger($root,
       'test', '*.c', '--', dirname(__FILE__) . '/trig.sh',
