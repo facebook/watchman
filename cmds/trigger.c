@@ -334,6 +334,9 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
   w_root_lock(root);
   w_ht_replace(root->commands, w_ht_ptr_val(cmd->triggername),
       w_ht_ptr_val(cmd));
+  // Force the trigger to be eligible to run now
+  root->ticks++;
+  root->pending_trigger_tick = root->ticks;
   w_root_unlock(root);
 
   w_state_save();
