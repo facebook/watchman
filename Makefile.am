@@ -113,11 +113,26 @@ py-clean:
 py-install:
 endif
 
-all-local: py-build lint
+if HAVE_RUBY
+rb-build:
+	cd ruby/ruby-watchman && bundle install && bundle exec rake make
+
+rb-tests:
+	cd ruby/ruby-watchman && bundle exec rake spec
+
+rb-clean:
+	cd ruby/ruby-watchman && bundle exec rake clean
+else
+rb-build:
+rb-tests:
+rb-clean:
+endif
+
+all-local: py-build rb-build lint
 
 install-exec-local: py-install
 
-clean-local: py-clean
+clean-local: py-clean rb-clean
 	-find python \( -name '*.py[cdo]' -o -name '*.so' \) -exec rm -f '{}' ';'
 	-rm -rf python/build
 

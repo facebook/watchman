@@ -4,11 +4,8 @@ uname -a
 set -e
 PATH=$PWD:$PATH
 ./autogen.sh
-./configure --with-pcre --with-python $CONFIGARGS
+./configure --with-pcre --with-python --with-ruby $CONFIGARGS
 make
-cd ruby/ruby-watchman
-bundle install && bundle exec rake
-cd ../..
 set +e
 rm -f /tmp/watchman*
 if ! arc unit --everything ; then

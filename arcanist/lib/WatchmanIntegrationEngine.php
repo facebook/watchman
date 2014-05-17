@@ -24,6 +24,7 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
       foreach (glob('python/tests/*.py') as $file) {
         $paths[] = $file;
       }
+      $paths[] = 'ruby/ruby-watchman/spec/ruby_watchman_spec.rb';
     } else {
       $paths = $this->getPaths();
     }
@@ -136,6 +137,32 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
       $future = new ExecFuture(
         "PATH=\"$root:\$PATH\" PYTHONPATH=$root/python ".
         "TESTNAME=$path make py-tests"
+      );
+      $future->setTimeout(10);
+      list($status, $out, $err) = $future->resolve();
+      $end = microtime(true);
+      $res = new ArcanistUnitTestResult();
+      $res->setName($path);
+      $res->setUserData($out.$err);
+      $res->setDuration($end - $start);
+      $res->setResult($status == 0 ?
+        ArcanistUnitTestResult::RESULT_PASS :
+        ArcanistUnitTestResult::RESULT_FAIL
+      );
+      $results[] = array($res);
+    }
+
+    foreach ($paths as $path) {
+      if (!preg_match('/\.rb$/', $path)) {
+        continue;
+      }
+      if (!file_exists($path)) {
+        // Was deleted in this (pending) rev
+        continue;
+      }
+      $start = microtime(true);
+      $future = new ExecFuture(
+        "PATH=\"$root:\$PATH\" make rb-tests"
       );
       $future->setTimeout(10);
       list($status, $out, $err) = $future->resolve();

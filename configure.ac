@@ -69,6 +69,14 @@ if test "x$want_python" = "xyes" ; then
 fi
 AM_CONDITIONAL(HAVE_PYTHON, [test "$PYTHON" != : -a "x$want_python" = "xyes"])
 
+want_ruby=no
+AC_ARG_WITH(ruby, [
+  --with-ruby          Enable ruby bindings (requires ruby, gem, bundler)
+],[
+   want_ruby="$withval"
+])
+AM_CONDITIONAL(HAVE_RUBY, [test "x$want_ruby" = "xyes"])
+
 pcre_config="yes"
 AC_ARG_WITH(pcre, [
   --without-pcre       Don't enable pcre support.
