@@ -1,7 +1,7 @@
 [
   {"category": "Installation"},
   {"category": "Invocation"},
-  {"category": "Commands", "first": "commands"},
+  {"category": "Commands"},
   {"category": "Queries"},
   {"category": "Internals"}
 ]

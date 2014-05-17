@@ -44,8 +44,8 @@ $ brew install --HEAD watchman
 
 You can use these steps below to get watchman built.  You will need `autoconf`
 and `automake`.  You may optionally build watchman with `pcre` and `python`
-support.  Consult the output of `configure --help` for more information on
-building.
+support.  See below for some more information on options to configure your
+build.
 
 ```bash
 $ git clone https://github.com/facebook/watchman.git
@@ -55,6 +55,46 @@ $ ./configure
 $ make
 $ sudo make install
 ```
+
+### Compile Time Configuration Options
+
+Our configure script accepts all the standard options, but there are a couple
+that are specific to watchman that might be relevant to your needs:
+
+```
+--enable-conffile=PATH  Use PATH as the default configuration file name.
+                        Default is /etc/watchman.json
+
+--enable-statedir=PATH  Use PATH as the default for state, log files
+                        and sockets instead of using your system tempdir
+
+--enable-lenient  Turn off more pedantic levels of warnings
+                  and compilation checks
+
+--enable-stack-protector  Enable stack protection in the same
+                          way that rpmbuild does on some systems.
+
+--with-buildinfo=TEXT   Include some extra build information that will
+                        be reported in the version command output
+
+--with-python        Enable python bindings
+
+--without-pcre       Don't enable pcre support.
+--with-pcre=PATH     Enable pcre support.  PATH is location of pcre-config.
+                     Default is to enable and look for pcre-config in your
+                     $PATH
+
+--with-gimli    Enable support for the gimli process monitor
+                https://bitbucket.org/wez/gimli/
+```
+
+(Run `./configure --help` to get the list for the version you checked out)
+
+### Travis CI
+
+We use Travis Continuous Integration to build out every revision and
+pull-request to make sure that it we don't accidentally break things.  The
+current build status is:
 
 [![Build Status](https://travis-ci.org/facebook/watchman.png)](
 https://travis-ci.org/facebook/watchman)

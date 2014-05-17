@@ -19,7 +19,7 @@ The global configuration path can be changed by passing the
 `--enable-conffile` option to configure when you build watchman.  This
 documentation refers to it as `/etc/watchman.json` throughout, just be aware
 that your particular installation may locate it elsewhere.   In addition,
-the environmental variable `$WATCHMAN_CONFIG_FILE` will override the the
+the environmental variable `$WATCHMAN_CONFIG_FILE` will override the
 default location.
 
 Changes to the `.watchmanconfig` or `/etc/watchman.json` files are not picked

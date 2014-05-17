@@ -4,7 +4,6 @@
 #include "watchman.h"
 #include <poll.h>
 
-int recrawl_period = 0;
 static int show_help = 0;
 static int show_version = 0;
 static enum w_pdu_type server_pdu = is_json_compact;
@@ -361,9 +360,6 @@ static struct watchman_getopt opts[] = {
   { "no-local", 0, "When no-spawn is enabled, don't try to handle request"
     " in client mode if service is unavailable",
     OPT_NONE, &no_local, NULL, NOT_DAEMON },
-  { "recrawl", 0,
-    "Number of milliseconds between tree polling crawl",
-    REQ_INT, &recrawl_period, NULL, IS_DAEMON },
   { 0, 0, 0, 0, 0, 0, 0 }
 };
 

@@ -31,8 +31,8 @@ documented in the protocol spec.
 
 The first argument to query is the path to the watched root.  The second
 argument holds a JSON object describing the query to be run.  The query object
-is processed by passing it to the query engine (see **File Queries** above)
-which will generate a set of matching files.
+is processed by passing it to the query engine (see [File Queries](
+/watchman/docs/file-query.html)) which will generate a set of matching files.
 
 The query command will then consult the `fields` member of the query object;
 if it is not present it will default to:

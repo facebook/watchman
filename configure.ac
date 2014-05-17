@@ -34,7 +34,7 @@ dnl which I don't care about.  Just pass the right value to configure.
 conffile=/etc/watchman.json
 AC_ARG_ENABLE(conffile, [
   --enable-conffile=PATH  Use PATH as the default configuration file name.
-                          Default is $conffile
+                          Default is /etc/watchman.json
 ],[
   conffile=$enableval
 ])
@@ -60,7 +60,7 @@ AC_ARG_ENABLE(statedir, [
 
 want_python=no
 AC_ARG_WITH(python, [
-  --with-python        Enable python bser module
+  --with-python        Enable python bindings
 ],[
    want_python="$withval"
 ])
