@@ -46,7 +46,9 @@ static void run_service(void)
 
   /* we are the child, let's set things up */
   ignore_result(chdir("/"));
-  w_start_listener(sock_name);
+  if (w_start_listener(sock_name)) {
+    exit(0);
+  }
   exit(1);
 }
 

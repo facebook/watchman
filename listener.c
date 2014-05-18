@@ -12,6 +12,8 @@ pthread_mutex_t w_client_lock;
 w_ht_t *clients = NULL;
 static int listener_fd;
 static pthread_t reaper_thread;
+static pthread_t listener_thread;
+static volatile bool stopping = false;
 
 json_t *make_response(void)
 {
@@ -431,29 +433,17 @@ static void cmd_shutdown(
     struct watchman_client *client,
     json_t *args)
 {
-  void *ignored;
-  unused_parameter(client);
+  json_t *resp = make_response();
   unused_parameter(args);
 
   w_log(W_LOG_ERR, "shutdown-server was requested, exiting!\n");
+  stopping = true;
 
-  /* close out some resources to persuade valgrind to run clean */
-  close(listener_fd);
-  listener_fd = -1;
-  w_root_free_watched_roots();
+  // Knock listener thread out of poll/accept
+  pthread_kill(listener_thread, SIGUSR1);
 
-  pthread_mutex_lock(&w_client_lock);
-  w_ht_del(clients, client->fd);
-  pthread_mutex_unlock(&w_client_lock);
-  pthread_join(reaper_thread, &ignored);
-  cfg_shutdown();
-
-  json_decref(args);
-
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
-  exit(0);
+  set_prop(resp, "shutdown-server", json_true());
+  send_and_dispose_response(client, resp);
 }
 W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON, NULL)
 
@@ -469,7 +459,7 @@ static void *client_thread(void *ptr)
 
   w_set_nonblock(client->fd);
 
-  while (true) {
+  while (!stopping) {
     // Wait for input from either the client socket or
     // via the ping pipe, which signals that some other
     // thread wants to unilaterally send data to the client
@@ -599,7 +589,7 @@ static void *child_reaper(void *arg)
   sigaddset(&sigset, SIGCHLD);
   pthread_sigmask(SIG_UNBLOCK, &sigset, NULL);
 
-  while (listener_fd != -1) {
+  while (!stopping) {
     usleep(200000);
     w_reap_children(true);
   }
@@ -638,6 +628,9 @@ bool w_start_listener(const char *path)
   volatile struct gimli_heartbeat *hb = NULL;
 #endif
   struct timeval tv;
+  void *ignored;
+
+  listener_thread = pthread_self();
 
   pthread_mutexattr_init(&mattr);
   pthread_mutexattr_settype(&mattr, PTHREAD_MUTEX_RECURSIVE);
@@ -772,11 +765,11 @@ bool w_start_listener(const char *path)
   if (hb) {
     gimli_heartbeat_set(hb, GIMLI_HB_RUNNING);
   }
-  w_set_nonblock(listener_fd);
 #endif
+  w_set_nonblock(listener_fd);
 
   // Now run the dispatch
-  while (true) {
+  while (!stopping) {
     int client_fd;
     struct watchman_client *client;
     struct pollfd pfd;
@@ -790,7 +783,9 @@ bool w_start_listener(const char *path)
 
     pfd.events = POLLIN;
     pfd.fd = listener_fd;
-    poll(&pfd, 1, 10000);
+    if (poll(&pfd, 1, 10000) < 1 || (pfd.revents & POLLIN) == 0) {
+      continue;
+    }
 
 #ifdef HAVE_ACCEPT4
     client_fd = accept4(listener_fd, NULL, 0, SOCK_CLOEXEC);
@@ -839,6 +834,15 @@ bool w_start_listener(const char *path)
   }
 
   pthread_attr_destroy(&attr);
+
+  /* close out some resources to persuade valgrind to run clean */
+  close(listener_fd);
+  listener_fd = -1;
+  w_root_free_watched_roots();
+
+  pthread_join(reaper_thread, &ignored);
+  cfg_shutdown();
+
   return true;
 }
 
