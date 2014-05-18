@@ -109,9 +109,10 @@ class triggerTestCase extends WatchmanTestCase {
       '.watchmanconfig', 'b ar.c', 'bar.txt', 'foo.c'
     ));
 
-    $this->trigger($root,
+    $res = $this->trigger($root,
       'test', '*.c', '--', dirname(__FILE__) . '/trig.sh',
       "$root/trigger.log");
+    $this->assertEqual('created', idx($res, 'disposition'));
 
     $this->trigger($root,
       'other', '*.c', '--', dirname(__FILE__) . '/trigjson',
@@ -203,8 +204,11 @@ class triggerTestCase extends WatchmanTestCase {
     $this->validateTriggerOutput($root,
       array('foo.c', 'b ar.c'), 'after recrawl');
 
-    $out = $this->trigger($root,
-                  'other', '*.c', '--', 'true');
+    $res = $this->trigger($root, 'other', '*.c', '--', 'true');
+    $this->assertEqual('replaced', idx($res, 'disposition'));
+
+    $res = $this->trigger($root, 'other', '*.c', '--', 'true');
+    $this->assertEqual('already_defined', idx($res, 'disposition'));
 
     $res = $this->watchmanCommand('trigger-del', $root, 'test');
     $this->assertEqual(true, $res['deleted']);

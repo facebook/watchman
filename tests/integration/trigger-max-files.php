@@ -17,7 +17,7 @@ class triggerMaxFilesCase extends WatchmanTestCase {
 
     $this->watch($root);
 
-    $out = $this->trigger($root,
+    $this->trigger($root,
       array(
         'name' => 'cap',
         'command' => array(

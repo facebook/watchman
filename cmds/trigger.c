@@ -36,7 +36,9 @@ static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
   res = w_ht_del(root->commands, w_ht_ptr_val(tname));
   w_root_unlock(root);
 
-  w_state_save();
+  if (res) {
+    w_state_save();
+  }
 
   w_string_delref(tname);
 
@@ -296,10 +298,11 @@ struct watchman_trigger_command *w_build_trigger_from_def(
 static void cmd_trigger(struct watchman_client *client, json_t *args)
 {
   w_root_t *root;
-  struct watchman_trigger_command *cmd;
+  struct watchman_trigger_command *cmd, *old;
   json_t *resp;
   json_t *trig;
   char *errmsg = NULL;
+  bool need_save = true;
 
   root = resolve_root_or_err(client, args, 1, true);
   if (!root) {
@@ -331,18 +334,36 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
     goto done;
   }
 
-  w_root_lock(root);
-  w_ht_replace(root->commands, w_ht_ptr_val(cmd->triggername),
-      w_ht_ptr_val(cmd));
-  // Force the trigger to be eligible to run now
-  root->ticks++;
-  root->pending_trigger_tick = root->ticks;
-  w_root_unlock(root);
-
-  w_state_save();
-
   resp = make_response();
   set_prop(resp, "triggerid", json_string_nocheck(cmd->triggername->buf));
+
+  w_root_lock(root);
+
+  old = w_ht_val_ptr(w_ht_get(root->commands,
+          w_ht_ptr_val(cmd->triggername)));
+  if (old && json_equal(cmd->definition, old->definition)) {
+    // Same definition: we don't and shouldn't touch things, so that we
+    // preserve the associated trigger clock and don't cause the trigger
+    // to re-run immediately
+    set_prop(resp, "disposition", json_string_nocheck("already_defined"));
+    w_trigger_command_free(cmd);
+    cmd = NULL;
+    need_save = false;
+  } else {
+    set_prop(resp, "disposition", json_string_nocheck(
+          old ? "replaced" : "created"));
+    w_ht_replace(root->commands, w_ht_ptr_val(cmd->triggername),
+        w_ht_ptr_val(cmd));
+    // Force the trigger to be eligible to run now
+    root->ticks++;
+    root->pending_trigger_tick = root->ticks;
+  }
+  w_root_unlock(root);
+
+  if (need_save) {
+    w_state_save();
+  }
+
   send_and_dispose_response(client, resp);
 
 done:

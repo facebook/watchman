@@ -12,7 +12,7 @@ A trigger is a saved incremental query over a watched root.  When files
 change that match the query expression, Watchman will spawn a process and
 pass information about the changed files to it.
 
-Triggered processes are run by the Watchman server process that runs in
+Triggered processes are spawned by the Watchman server process that runs in
 the background; they do not have access to your terminal and their
 output is redirected (by default) to the Watchman log file.
 

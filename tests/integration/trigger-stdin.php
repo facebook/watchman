@@ -12,7 +12,7 @@ class triggerStdinTestCase extends WatchmanTestCase {
 
     $this->watch($root);
 
-    $out = $this->trigger($root,
+    $this->trigger($root,
       array(
         'name' => 'cat',
         'command' => array('cat'),
@@ -42,7 +42,7 @@ class triggerStdinTestCase extends WatchmanTestCase {
 
     $this->watch($root);
 
-    $out = $this->trigger($root,
+    $this->trigger($root,
       array(
         'name' => 'cat',
         'command' => array('cat'),
@@ -70,7 +70,7 @@ class triggerStdinTestCase extends WatchmanTestCase {
 
     $this->watch($root);
 
-    $out = $this->trigger($root,
+    $this->trigger($root,
       array(
         'name' => 'cat',
         'command' => array('cat'),
@@ -93,7 +93,7 @@ class triggerStdinTestCase extends WatchmanTestCase {
 
     $this->watch($root);
 
-    $out = $this->trigger($root,
+    $this->trigger($root,
       array(
         'name' => 'cat',
         'command' => array('cat'),
