@@ -2510,6 +2510,7 @@ static bool check_allowed_fs(const char *filename, char **errmsg)
 
   illegal_fstypes = cfg_get_json(NULL, "illegal_fstypes");
   if (!illegal_fstypes) {
+    w_string_delref(fs_type);
     return true;
   }
 
@@ -2524,6 +2525,7 @@ static bool check_allowed_fs(const char *filename, char **errmsg)
   if (!json_is_array(illegal_fstypes)) {
     w_log(W_LOG_ERR,
           "resolve_root: global config illegal_fstypes is not an array\n");
+    w_string_delref(fs_type);
     return true;
   }
 
