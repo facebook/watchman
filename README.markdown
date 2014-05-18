@@ -13,7 +13,7 @@ Head on over to https://facebook.github.io/watchman/
 
 ## Build Status
 
-[![Build Status](https://travis-ci.org/facebook/watchman.png)
+[![Build Status](https://travis-ci.org/facebook/watchman.svg?branch=master)
 ](https://travis-ci.org/facebook/watchman)
 
 ## License

@@ -96,7 +96,7 @@ We use Travis Continuous Integration to build out every revision and
 pull-request to make sure that it we don't accidentally break things.  The
 current build status is:
 
-[![Build Status](https://travis-ci.org/facebook/watchman.png)](
+[![Build Status](https://travis-ci.org/facebook/watchman.svg?branch=master)](
 https://travis-ci.org/facebook/watchman)
 
 ## System Specific Preparation
