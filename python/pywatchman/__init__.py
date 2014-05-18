@@ -29,6 +29,9 @@
 import os, errno, socket, subprocess
 import bser
 
+# 2 bytes marker, 1 byte int size, 8 bytes int64 value
+sniff_len = 13
+
 class Unavailable(Exception):
     pass
 
@@ -91,7 +94,7 @@ class client(object):
 
         try:
             sock.sendall(cmd)
-            buf = [sock.recv(8192)]
+            buf = [sock.recv(sniff_len)]
             if not buf[0]:
                 raise Unavailable('empty watchman response')
 
