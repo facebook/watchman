@@ -201,7 +201,24 @@ static bool w_root_init(w_root_t *root, char **errmsg)
   return root;
 }
 
-static void apply_ignore_vcs_configuration(w_root_t *root)
+static json_t *config_get_ignore_vcs(w_root_t *root)
+{
+  json_t *ignores = cfg_get_json(root, "ignore_vcs");
+  if (ignores && !json_is_array(ignores)) {
+    return NULL;
+  }
+
+  if (ignores) {
+    // incref so that the caller can simply decref whatever we return
+    json_incref(ignores);
+  } else {
+    // default to a well-known set of vcs's
+    ignores = json_pack("[sss]", ".git", ".svn", ".hg");
+  }
+  return ignores;
+}
+
+static bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg)
 {
   w_string_t *name;
   w_string_t *fullname;
@@ -210,26 +227,20 @@ static void apply_ignore_vcs_configuration(w_root_t *root)
   char hostname[256];
   struct stat st;
 
-  ignores = cfg_get_json(root, "ignore_vcs");
-  if (ignores && !json_is_array(ignores)) {
-    w_log(W_LOG_ERR, "ignore_vcs must be an array of strings\n");
-    ignores = NULL;
-  }
-  if (ignores) {
-    // incref so we can more simply dispose of the default ignore
-    // set that we create in the else branch of this
-    json_incref(ignores);
-  } else {
-    // default to a well-known set of vcs's
-    ignores = json_pack("[sss]", ".git", ".svn", ".hg");
+  ignores = config_get_ignore_vcs(root);
+  if (!ignores) {
+    ignore_result(asprintf(errmsg, "ignore_vcs must be an array of strings"));
+    return false;
   }
 
   for (i = 0; i < json_array_size(ignores); i++) {
     const char *ignore = json_string_value(json_array_get(ignores, i));
 
     if (!ignore) {
-      w_log(W_LOG_ERR, "ignore_vcs must be an array of strings\n");
-      continue;
+      ignore_result(asprintf(errmsg,
+          "ignore_vcs must be an array of strings"));
+      json_decref(ignores);
+      return false;
     }
 
     name = w_string_new(ignore);
@@ -260,6 +271,7 @@ static void apply_ignore_vcs_configuration(w_root_t *root)
   root->query_cookie_prefix = w_string_make_printf(
       "%.*s/" WATCHMAN_COOKIE_PREFIX "%s-%d-", root->query_cookie_dir->len,
       root->query_cookie_dir->buf, hostname, (int)getpid());
+  return true;
 }
 
 static void apply_ignore_configuration(w_root_t *root)
@@ -305,6 +317,19 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   assert(root != NULL);
 
   root->refcnt = 1;
+#ifdef HAVE_INOTIFY_INIT
+  root->infd = -1;
+#endif
+#ifdef HAVE_KQUEUE
+  root->kq_fd = -1;
+#endif
+#ifdef HAVE_PORT_CREATE
+  root->port_fd = -1;
+#endif
+#ifdef HAVE_FSEVENTS
+  root->fse_pipe[0] = -1;
+  root->fse_pipe[1] = -1;
+#endif
   w_refcnt_add(&live_roots);
   pthread_mutexattr_init(&attr);
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
@@ -322,7 +347,12 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   root->gc_age = cfg_get_int(root, "gc_age_seconds", DEFAULT_GC_AGE);
   root->gc_interval = cfg_get_int(root, "gc_interval_seconds",
       DEFAULT_GC_INTERVAL);
-  apply_ignore_vcs_configuration(root);
+
+  if (!apply_ignore_vcs_configuration(root, errmsg)) {
+    w_root_delref(root);
+    return NULL;
+  }
+
   apply_ignore_configuration(root);
 
   if (!w_root_init(root, errmsg)) {
@@ -2407,8 +2437,12 @@ void w_root_delref(w_root_t *root)
     json_decref(root->config_file);
   }
 
-  w_string_delref(root->query_cookie_dir);
-  w_string_delref(root->query_cookie_prefix);
+  if (root->query_cookie_dir) {
+    w_string_delref(root->query_cookie_dir);
+  }
+  if (root->query_cookie_prefix) {
+    w_string_delref(root->query_cookie_prefix);
+  }
 
   free(root);
   w_refcnt_del(&live_roots);

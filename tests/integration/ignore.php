@@ -28,6 +28,26 @@ class ignoreTestCase extends WatchmanTestCase {
     ));
   }
 
+  function testInvalidIgnore() {
+    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $root = realpath($dir->getPath());
+
+    $bad = array(
+      array('ignore_vcs' => 'lemon'),
+      array('ignore_vcs' => array('foo', 123))
+    );
+
+    foreach ($bad as $cfg) {
+      file_put_contents("$root/.watchmanconfig", json_encode($cfg));
+      $res = $this->watch($root, false);
+
+      $this->assertEqual(
+        "unable to resolve root $root: ignore_vcs must be an array of strings",
+        idx($res, 'error')
+      );
+    }
+  }
+
   function testIgnoreGeneric() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
@@ -69,4 +89,3 @@ class ignoreTestCase extends WatchmanTestCase {
 
   }
 }
-
