@@ -116,6 +116,8 @@ static void client_delete(w_ht_val_t val)
   struct watchman_client *client = w_ht_val_ptr(val);
   struct watchman_client_response *resp;
 
+  w_log(W_LOG_DBG, "client_delete %p fd=%d\n", client, client->fd);
+
   /* cancel subscriptions */
   w_ht_free(client->subscriptions);
 
@@ -474,13 +476,13 @@ static void *client_thread(void *ptr)
 
     ignore_result(poll(pfd, 2, 200));
 
+    if (stopping) {
+      break;
+    }
+
     if (pfd[0].revents & (POLLHUP|POLLERR)) {
-      w_log(W_LOG_DBG, "got HUP|ERR on client fd=%d, disconnecting\n",
-          client->fd);
-disconected:
-      pthread_mutex_lock(&w_client_lock);
-      w_ht_del(clients, client->fd);
-      pthread_mutex_unlock(&w_client_lock);
+      w_log(W_LOG_DBG, "got HUP|ERR on client %p fd=%d, disconnecting\n",
+          client, client->fd);
       break;
     }
 
@@ -548,6 +550,11 @@ disconected:
       }
     }
   }
+
+disconected:
+  pthread_mutex_lock(&w_client_lock);
+  w_ht_del(clients, client->fd);
+  pthread_mutex_unlock(&w_client_lock);
 
   return NULL;
 }
@@ -629,6 +636,7 @@ bool w_start_listener(const char *path)
 #endif
   struct timeval tv;
   void *ignored;
+  int n_clients = 0;
 
   listener_thread = pthread_self();
 
@@ -801,6 +809,8 @@ bool w_start_listener(const char *path)
 
     client = calloc(1, sizeof(*client));
     client->fd = client_fd;
+    w_log(W_LOG_DBG, "accepted client %p fd=%d\n", client, client_fd);
+
     if (!w_json_buffer_init(&client->reader)) {
       // FIXME: error handling
     }
@@ -838,6 +848,25 @@ bool w_start_listener(const char *path)
   /* close out some resources to persuade valgrind to run clean */
   close(listener_fd);
   listener_fd = -1;
+
+  // Wait for clients, waking any sleeping clients up in the process
+  do {
+    w_ht_iter_t iter;
+
+    pthread_mutex_lock(&w_client_lock);
+    n_clients = w_ht_size(clients);
+
+    if (w_ht_first(clients, &iter)) do {
+      struct watchman_client *client = w_ht_val_ptr(iter.value);
+      ignore_result(write(client->ping[1], "a", 1));
+    } while (w_ht_next(clients, &iter));
+
+    pthread_mutex_unlock(&w_client_lock);
+
+    w_log(W_LOG_ERR, "waiting for %d clients to terminate\n", n_clients);
+    usleep(2000);
+  } while (n_clients > 0);
+
   w_root_free_watched_roots();
 
   pthread_join(reaper_thread, &ignored);
