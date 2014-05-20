@@ -1,6 +1,6 @@
 bin_PROGRAMS = watchman
 # ensure that we have a reasonable default for the python install
-DESTDIR ?= ${prefix}
+DESTDIR ?= /
 
 doc_DATA = README.markdown
 docdir = ${prefix}/share/doc/watchman-$(VERSION)
