@@ -21,4 +21,4 @@ have_header('st.h')      # 1.8; sets HAVE_ST_H
 
 RbConfig::MAKEFILE_CONFIG['CC'] = ENV['CC'] if ENV['CC']
 
-create_makefile('ext')
+create_makefile('ruby-watchman/ext')
