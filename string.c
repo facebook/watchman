@@ -17,8 +17,8 @@ w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
     errno = EINVAL;
     w_log(W_LOG_FATAL,
         "illegal string slice start=%" PRIu32 " len=%" PRIu32
-        " but str->len=%" PRIu32 "\n",
-        start, len, str->len);
+        " but str->len=%" PRIu32 "\nstring={%.*s}\n",
+        start, len, str->len, str->len, str->buf);
     return NULL;
   }
 
@@ -150,6 +150,7 @@ w_string_t *w_string_new_lower(const char *str)
   s->len = len;
   s->slice = NULL;
   buf = (char*)(s + 1);
+  // TODO: optionally use ICU
   for (i = 0; i < len; i++) {
     buf[i] = tolower(str[i]);
   }

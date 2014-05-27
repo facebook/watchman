@@ -247,7 +247,7 @@ static bool parse_empty_on_fresh_instance(w_query *res, json_t *query)
   return true;
 }
 
-w_query *w_query_parse(json_t *query, char **errmsg)
+w_query *w_query_parse(w_root_t *root, json_t *query, char **errmsg)
 {
   w_query *res;
 
@@ -259,6 +259,7 @@ w_query *w_query_parse(json_t *query, char **errmsg)
     goto error;
   }
   res->refcnt = 1;
+  res->case_sensitive = root->case_sensitive;
 
   if (!parse_sync(res, query)) {
     goto error;
@@ -330,7 +331,7 @@ bool w_query_legacy_field_list(struct w_query_field_list *flist)
 // Translate from the legacy array into the new style, then
 // delegate to the main parser.
 // We build a big anyof expression
-w_query *w_query_parse_legacy(json_t *args, char **errmsg,
+w_query *w_query_parse_legacy(w_root_t *root, json_t *args, char **errmsg,
     int start, uint32_t *next_arg,
     const char *clockspec, json_t **expr_p)
 {
@@ -443,7 +444,7 @@ w_query *w_query_parse_legacy(json_t *args, char **errmsg,
   }
 
   /* compose the query with the field list */
-  query = w_query_parse(query_obj, errmsg);
+  query = w_query_parse(root, query_obj, errmsg);
 
   if (expr_p) {
     *expr_p = query_obj;

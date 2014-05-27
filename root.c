@@ -2,6 +2,9 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#ifdef __APPLE__
+# include <sys/attr.h>
+#endif
 
 static w_ht_t *watched_roots = NULL;
 static int live_roots = 0;
@@ -88,6 +91,9 @@ static void delete_dir(w_ht_val_t val)
   w_string_delref(dir->path);
   if (dir->files) {
     w_ht_free(dir->files);
+  }
+  if (dir->lc_files) {
+    w_ht_free(dir->lc_files);
   }
   if (dir->dirs) {
     w_ht_free(dir->dirs);
@@ -336,6 +342,12 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   pthread_mutex_init(&root->lock, &attr);
   pthread_mutexattr_destroy(&attr);
 
+#ifdef __APPLE__
+  root->case_sensitive = pathconf(path, _PC_CASE_SENSITIVE);
+#else
+  root->case_sensitive = true;
+#endif
+
   root->root_path = w_string_new(path);
   root->commands = w_ht_new(2, &trigger_hash_funcs);
   root->query_cookies = w_ht_new(2, &w_ht_string_funcs);
@@ -581,10 +593,10 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
   if (!parent->dirs) {
     parent->dirs = w_ht_new(2, &w_ht_string_funcs);
   }
+
   assert(w_ht_set(parent->dirs, w_ht_ptr_val(dir_name), w_ht_ptr_val(dir)));
   assert(w_ht_set(root->dirname_to_dir,
         w_ht_ptr_val(dir_name), w_ht_ptr_val(dir)));
-//  w_log(W_LOG_DBG, "+DIR %s\n", dir_name->buf);
 
   return dir;
 }
@@ -900,6 +912,32 @@ static bool did_file_change(struct stat *saved, struct stat *fresh)
   return false;
 }
 
+#ifdef __APPLE__
+static w_string_t *w_resolve_filesystem_canonical_name(const char *path)
+{
+  struct attrlist attrlist;
+  struct {
+    uint32_t len;
+    attrreference_t ref;
+    char canonical_name[WATCHMAN_NAME_MAX];
+  } vomit;
+  char *name;
+
+  memset(&attrlist, 0, sizeof(attrlist));
+  attrlist.bitmapcount = ATTR_BIT_MAP_COUNT;
+  attrlist.commonattr = ATTR_CMN_NAME;
+
+  if (getattrlist(path, &attrlist, &vomit,
+        sizeof(vomit), FSOPT_NOFOLLOW) == -1) {
+    w_log(W_LOG_FATAL, "getattrlist(CMN_NAME: %s): fail %s\n",
+        path, strerror(errno));
+  }
+
+  name = ((char*)&vomit.ref) + vomit.ref.attr_dataoffset;
+  return w_string_new(name);
+}
+#endif
+
 static void stat_path(w_root_t *root,
     w_string_t *full_path, struct timeval now, bool recursive, bool via_notify)
 {
@@ -963,6 +1001,102 @@ static void stat_path(w_root_t *root,
     if (!file) {
       file = w_root_resolve_file(root, dir, file_name, now);
     }
+
+#ifdef __APPLE__
+    if (!root->case_sensitive) {
+      // Determine canonical case from filesystem
+      w_string_t *canon_name;
+      w_string_t *lc_file_name;
+      struct watchman_file *lc_file = NULL;
+
+      canon_name = w_resolve_filesystem_canonical_name(path);
+
+      if (!w_string_equal(file_name, canon_name)) {
+        // Revise `path` to use the canonical name
+        // We do this by walking back file_name->len, then adding
+        // canon_name on the end.  We can't assume that canon_name
+        // and file_name have the same byte length because the case
+        // folded representation may potentially have differing
+        // byte lengths.  Since the length can change, we need to
+        // re-check the resultant length for overflow.
+        if (full_path->len - file_name->len + canon_name->len > sizeof(path)-1)
+        {
+          w_log(W_LOG_FATAL, "canon path %.*s%.*s is too big\n",
+            full_path->len - file_name->len, full_path->buf,
+            canon_name->len, canon_name->buf);
+        }
+
+        snprintf(path, sizeof(path), "%.*s%.*s",
+          full_path->len - file_name->len, full_path->buf,
+          canon_name->len, canon_name->buf);
+
+        w_log(W_LOG_DBG, "canon -> %s\n", path);
+
+        // file refers to a node that doesn't exist any longer
+        file->exists = false;
+        w_root_mark_file_changed(root, file, now);
+
+        // Create or resurrect a file node from this canonical name
+        file = w_root_resolve_file(root, dir, canon_name, now);
+      }
+
+      if (dir_ent) {
+        w_string_t *dir_basename = w_string_basename(dir_ent->path);
+
+        if (!w_string_equal(dir_basename, canon_name)) {
+          // If the case changed, we logically deleted that part of
+          // the tree.  Our clients will expect to see deletes for
+          // the tree, followed by notifications of the files at their
+          // new canonical path name
+          w_log(W_LOG_DBG, "canon(%s) changed on dir, so marking deleted\n",
+              path);
+
+          stop_watching_dir(root, dir_ent);
+          w_root_mark_deleted(root, dir_ent, now, true);
+
+          // Ensure we recurse and build out the new tree
+          recursive = true;
+          dir_ent = NULL;
+        }
+        w_string_delref(dir_basename);
+      }
+
+      lc_file_name = w_string_dup_lower(file_name);
+
+      if (!dir->lc_files) {
+        dir->lc_files = w_ht_new(2, &w_ht_string_funcs);
+      } else {
+        lc_file = w_ht_val_ptr(w_ht_get(dir->lc_files,
+                      w_ht_ptr_val(lc_file_name)));
+        if (lc_file && !w_string_equal(lc_file->name, file->name)) {
+          // lc_file is no longer the canonical item, it must have
+          // been deleted
+          lc_file->exists = false;
+          w_root_mark_file_changed(root, lc_file, now);
+        }
+      }
+
+      // Revise lc_files to reference the latest version of this
+      w_ht_replace(dir->lc_files, w_ht_ptr_val(lc_file_name),
+                   w_ht_ptr_val(file));
+      w_string_delref(lc_file_name);
+      lc_file_name = NULL;
+
+      if (!w_string_equal(file_name, canon_name)) {
+        // Ensure that we use the canonical name for the remainder
+        // of this function call
+        w_string_delref(file_name);
+        file_name = canon_name;
+        canon_name = NULL;
+
+        // We don't delref full_path here, it's owned by the caller
+        full_path = w_string_path_cat(dir_name, file_name);
+      } else {
+        w_string_delref(canon_name);
+      }
+    }
+#endif
+
     if (!file->exists) {
       /* we're transitioning from deleted to existing,
        * so we're effectively new again */
@@ -3011,7 +3145,6 @@ void w_root_free_watched_roots(void)
 
   w_log(W_LOG_DBG, "all roots are gone\n");
 }
-
 
 /* vim:ts=2:sw=2:et:
  */

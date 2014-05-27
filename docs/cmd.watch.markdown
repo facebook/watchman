@@ -35,3 +35,23 @@ already.  A newly watched directory is processed in a couple of stages:
 
 Unless `no-state-save` is in use, watches are saved and re-established across
 a process restart.
+
+## Case-Insensitivity
+
+Watchman has the following level of support for case-insensitive filesystems,
+starting in version 2.9.9 on OS X only:
+
+ * each watched root is queried to determine if it is case-insensitive.
+   This is the common default for most Mac systems running HFS+.
+ * When in case-insensitive mode, Watchman will attempt to resolve the true
+   canonical name of a file on the filesystem when it observes changes.
+ * If the case of a filename changes, Watchman will report a delete of the
+   old name and a change for the new name.
+ * Query expressions that match names will default to case-insensitive when
+   the root is on a case-insensitive filesystem.
+ * Watchman's case folding is ASCII case-folding.
+   Note that the `match` and `pcre` query expression terms request case folding
+   support from the containing library, and that their case folding behavior is
+   not controlled by Watchman beyond being enabled when the root is
+   case-insensitive.
+ * The `path` generator is always case sensitive.

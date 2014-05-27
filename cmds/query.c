@@ -36,7 +36,7 @@ static void cmd_query(struct watchman_client *client, json_t *args)
     return;
   }
 
-  query = w_query_parse(query_spec, &errmsg);
+  query = w_query_parse(root, query_spec, &errmsg);
   if (!query) {
     send_error_response(client, "failed to parse query: %s", errmsg);
     free(errmsg);

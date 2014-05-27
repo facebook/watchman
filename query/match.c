@@ -48,6 +48,14 @@ static w_query_expr *match_parser_inner(w_query *query,
   const char *which = caseless ? "imatch" : "match";
   struct match_data *data;
 
+#ifdef NO_CASELESS_FNMATCH
+  if (caseless) {
+    asprintf(&query->errmsg,
+        "imatch: Your system doesn't support FNM_CASEFOLD");
+    return NULL;
+  }
+#endif
+
   if (json_unpack(term, "[s,s,s]", &ignore, &pattern, &scope) != 0 &&
       json_unpack(term, "[s,s]", &ignore, &pattern) != 0) {
     ignore_result(asprintf(&query->errmsg,
@@ -73,20 +81,13 @@ static w_query_expr *match_parser_inner(w_query *query,
 
 static w_query_expr *match_parser(w_query *query, json_t *term)
 {
-  return match_parser_inner(query, term, false);
+  return match_parser_inner(query, term, !query->case_sensitive);
 }
 W_TERM_PARSER("match", match_parser)
 
 static w_query_expr *imatch_parser(w_query *query, json_t *term)
 {
-#ifdef NO_CASELESS_FNMATCH
-  unused_parameter(term);
-  asprintf(&query->errmsg,
-      "imatch: Your system doesn't support FNM_CASEFOLD");
-  return NULL;
-#else
   return match_parser_inner(query, term, true);
-#endif
 }
 W_TERM_PARSER("imatch", imatch_parser)
 

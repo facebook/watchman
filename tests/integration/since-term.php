@@ -26,6 +26,7 @@ class SinceExprTestCase extends WatchmanTestCase {
       'fields' => array('name'),
     ));
     $this->assertEqual(array(), $res['files']);
+
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array(
         'allof',
@@ -35,6 +36,18 @@ class SinceExprTestCase extends WatchmanTestCase {
       'fields' => array('name'),
     ));
     $this->assertEqual(array('foo.c'), $res['files']);
+
+    if ($this->isCaseInsensitive()) {
+      $res = $this->watchmanCommand('query', $root, array(
+        'expression' => array(
+          'allof',
+          array('since', $base - 1, 'mtime'),
+          array('name', 'FOO.C'),
+        ),
+        'fields' => array('name'),
+      ));
+      $this->assertEqual(array('foo.c'), $res['files']);
+    }
 
     // try with a clock
     $res = $this->watchmanCommand('query', $root, array(

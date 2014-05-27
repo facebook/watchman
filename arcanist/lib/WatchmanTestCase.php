@@ -523,7 +523,16 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     return $obj;
   }
 
-
+  function isCaseInsensitive() {
+    static $insensitive = null;
+    if ($insensitive === null) {
+      $dir = PhutilDirectoryFixture::newEmptyFixture();
+      $path = $dir->getPath();
+      touch("$path/a");
+      $insensitive = file_exists("$path/A");
+    }
+    return $insensitive;
+  }
 }
 
 // vim:ts=2:sw=2:et:

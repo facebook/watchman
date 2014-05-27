@@ -95,7 +95,7 @@ static w_query_expr *pcre_parser_inner(w_query *query,
 
 static w_query_expr *pcre_parser(w_query *query, json_t *term)
 {
-  return pcre_parser_inner(query, term, false);
+  return pcre_parser_inner(query, term, !query->case_sensitive);
 }
 W_TERM_PARSER("pcre", pcre_parser)
 

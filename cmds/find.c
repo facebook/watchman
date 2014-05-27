@@ -26,7 +26,7 @@ static void cmd_find(struct watchman_client *client, json_t *args)
     return;
   }
 
-  query = w_query_parse_legacy(args, &errmsg, 2, NULL, NULL, NULL);
+  query = w_query_parse_legacy(root, args, &errmsg, 2, NULL, NULL, NULL);
   if (errmsg) {
     send_error_response(client, "%s", errmsg);
     free(errmsg);

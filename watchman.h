@@ -190,6 +190,8 @@ struct watchman_dir {
   w_string_t *path;
   /* files contained in this dir (keyed by file->name) */
   w_ht_t *files;
+  /* files contained in this dir (keyed by lc(file->name)) */
+  w_ht_t *lc_files;
   /* child dirs contained in this dir (keyed by dir->path) */
   w_ht_t *dirs;
 
@@ -255,6 +257,7 @@ struct watchman_root {
 
   /* path to root */
   w_string_t *root_path;
+  bool case_sensitive;
 
   /* our locking granularity is per-root */
   pthread_mutex_t lock;

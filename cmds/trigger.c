@@ -76,6 +76,7 @@ static void cmd_trigger_list(struct watchman_client *client, json_t *args)
 W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root)
 
 static json_t *build_legacy_trigger(
+  w_root_t *root,
   struct watchman_client *client,
   json_t *args)
 {
@@ -95,7 +96,7 @@ static json_t *build_legacy_trigger(
       // ]
   );
 
-  query = w_query_parse_legacy(args, &errmsg, 3, &next_arg, NULL, &expr);
+  query = w_query_parse_legacy(root, args, &errmsg, 3, &next_arg, NULL, &expr);
   if (!query) {
     send_error_response(client, "invalid rule spec: %s", errmsg);
     free(errmsg);
@@ -202,7 +203,7 @@ struct watchman_trigger_command *w_build_trigger_from_def(
 
   query = json_pack("{s:O}", "expression",
       json_object_get(cmd->definition, "expression"));
-  cmd->query = w_query_parse(query, errmsg);
+  cmd->query = w_query_parse(root, query, errmsg);
   json_decref(query);
 
   if (!cmd->query) {
@@ -316,7 +317,7 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
 
   trig = json_array_get(args, 2);
   if (json_is_string(trig)) {
-    trig = build_legacy_trigger(client, args);
+    trig = build_legacy_trigger(root, client, args);
     if (!trig) {
       goto done;
     }

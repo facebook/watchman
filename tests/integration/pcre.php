@@ -23,10 +23,16 @@ class pcreTestCase extends WatchmanTestCase {
 
     // Cleanup for invalid pcre
     $out = $this->watchmanCommand('find', $root, '-p', '(');
-    $this->assertEqual(
-      "invalid pcre: code 14 missing ) at offset 1 in (",
+    $this->assertRegex(
+      "/invalid i?pcre: code 14 missing \) at offset 1 in \(/",
       $out['error']
     );
+
+    if ($this->isCaseInsensitive()) {
+      // -p matches case sensitivity of filesystem
+      $out = $this->watchmanCommand('find', $root, '-p', '.*C$');
+      $this->assertEqual('foo.c', $out['files'][0]['name']);
+    }
 
     // Test case insensitive mode
     $out = $this->watchmanCommand('find', $root, '-P', '.*C$');
@@ -34,4 +40,3 @@ class pcreTestCase extends WatchmanTestCase {
   }
 
 }
-

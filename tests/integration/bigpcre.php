@@ -38,7 +38,7 @@ class bigPCRETestCase extends WatchmanTestCase {
       );
       $matched = false;
       foreach ($possible as $frag) {
-        if (preg_match("/^failed to parse query: invalid pcre: ".
+        if (preg_match("/^failed to parse query: invalid i?pcre: ".
           "$frag at offset \d+/", $res['error'])) {
             $matched = true;
           }

@@ -50,6 +50,7 @@ struct w_query_expr {
 struct w_query {
   int refcnt;
 
+  bool case_sensitive;
   struct w_query_path *paths;
   uint32_t npaths;
 
@@ -81,7 +82,7 @@ bool w_query_register_expression_parser(
     const char *term,
     w_query_expr_parser parser);
 
-w_query *w_query_parse(json_t *query, char **errmsg);
+w_query *w_query_parse(w_root_t *root, json_t *query, char **errmsg);
 void w_query_delref(w_query *query);
 
 w_query_expr *w_query_expr_parse(w_query *query, json_t *term);
@@ -150,7 +151,7 @@ struct w_query_field_list {
 };
 
 // parse the old style since and find queries
-w_query *w_query_parse_legacy(json_t *args, char **errmsg,
+w_query *w_query_parse_legacy(w_root_t *root, json_t *args, char **errmsg,
     int start, uint32_t *next_arg, const char *clockspec, json_t **expr_p);
 bool w_query_legacy_field_list(struct w_query_field_list *flist);
 

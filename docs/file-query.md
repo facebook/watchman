@@ -139,6 +139,10 @@ from the basename to the wholename of the file.
 it behaves identically to `match` except that the match is performed ignoring
 case.
 
+Starting in version 2.9.9, on OS X systems where the watched root is a case
+insensitive filesystem (this is the common case for OS X), `match` is equivalent
+to `imatch`.
+
 #### pcre and ipcre
 
 The `pcre` expression performs a Perl Compatible Regular Expression match
@@ -158,6 +162,10 @@ it behaves identically to `pcre` except that the match is performed ignoring
 case.
 
 To use this feature, you must configure watchman `--with-pcre`.
+
+Starting in version 2.9.9, on OS X systems where the watched root is a case
+insensitive filesystem (this is the common case for OS X), `pcre` is equivalent
+to `ipcre`.
 
 #### name and iname
 
@@ -181,6 +189,10 @@ You may change the scope of the match via the optional third argument:
 
 Finally, you may specify case insensitive evaluation by using `iname` instead
 of `name`.
+
+Starting in version 2.9.9, on OS X systems where the watched root is a case
+insensitive filesystem (this is the common case for OS X), `name` is equivalent
+to `iname`.
 
 ##### type
 

@@ -36,7 +36,7 @@ static void cmd_since(struct watchman_client *client, json_t *args)
     return;
   }
 
-  query = w_query_parse_legacy(args, &errmsg, 3, NULL, clockspec, NULL);
+  query = w_query_parse_legacy(root, args, &errmsg, 3, NULL, clockspec, NULL);
   if (errmsg) {
     send_error_response(client, "%s", errmsg);
     free(errmsg);
