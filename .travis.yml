@@ -1,5 +1,9 @@
 language: php
 
+os:
+  - osx
+  - linux
+
 branches:
   only:
     - master
