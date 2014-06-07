@@ -33,5 +33,8 @@ env:
   - CONFIGARGS="--enable-stack-protector"
   - CONFIGARGS="" WATCHMAN_VALGRIND=1
 
+before_install:
+  - composer self-update
+
 before_script: ./travis/deps.sh
 script: ./travis/run.sh
