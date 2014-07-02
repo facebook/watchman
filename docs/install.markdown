@@ -25,7 +25,7 @@ not covered by the list above.
 
 ## Build/Install
 
-### Installing on OS/X via Homebrew
+### Installing on OS X via Homebrew
 
 To build the most recent release currently tracked by
 [Homebrew](http://brew.sh/):
