@@ -929,6 +929,10 @@ static w_string_t *w_resolve_filesystem_canonical_name(const char *path)
 
   if (getattrlist(path, &attrlist, &vomit,
         sizeof(vomit), FSOPT_NOFOLLOW) == -1) {
+    if (errno == ENOENT) {
+      return w_string_new(path);
+    }
+
     w_log(W_LOG_FATAL, "getattrlist(CMN_NAME: %s): fail %s\n",
         path, strerror(errno));
   }
