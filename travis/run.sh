@@ -5,6 +5,7 @@ set -e
 PATH=$PWD:$PATH
 ./autogen.sh
 ./configure --with-pcre --with-python --with-ruby $CONFIGARGS
+make clean
 make
 set +e
 rm -f /tmp/watchman*
