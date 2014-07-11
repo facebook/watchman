@@ -115,13 +115,13 @@ endif
 
 if HAVE_RUBY
 rb-build:
-	cd ruby/ruby-watchman && bundle install && bundle exec rake make
+	cd ruby/ruby-watchman && bundle && bundle exec rake make
 
 rb-tests:
-	cd ruby/ruby-watchman && bundle exec rake spec
+	cd ruby/ruby-watchman && bundle && bundle exec rake spec
 
 rb-clean:
-	cd ruby/ruby-watchman && bundle exec rake clean
+	cd ruby/ruby-watchman && bundle && bundle exec rake clean
 else
 rb-build:
 rb-tests:

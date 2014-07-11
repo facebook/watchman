@@ -69,11 +69,11 @@ describe RubyWatchman do
   end
 
   it 'roundtrips `true` booleans' do
-    expect(roundtrip(true)).to be_true
+    expect(roundtrip(true)).to eq(true)
   end
 
   it 'roundtrips `false` booleans' do
-    expect(roundtrip(false)).to be_false
+    expect(roundtrip(false)).to eq(false)
   end
 
   it 'roundtrips nil' do
@@ -276,12 +276,12 @@ describe RubyWatchman do
 
     it 'loads boolean `true` values' do
       input = binary("\x00\x01\x03\x01\x08")
-      expect(described_class.load(input)).to be_true
+      expect(described_class.load(input)).to eq(true)
     end
 
     it 'loads boolean `false` values' do
       input = binary("\x00\x01\x03\x01\x09")
-      expect(described_class.load(input)).to be_false
+      expect(described_class.load(input)).to eq(false)
     end
 
     it 'loads nil' do

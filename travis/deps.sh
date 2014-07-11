@@ -14,6 +14,9 @@ case `uname` in
 esac
 set -e
 sudo gem install bundler
+cd ruby/ruby-watchman
+bundle
+cd ../..
 if [ ! -d a ] ; then
   mkdir a
 fi
