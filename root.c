@@ -929,7 +929,7 @@ static w_string_t *w_resolve_filesystem_canonical_name(const char *path)
 
   if (getattrlist(path, &attrlist, &vomit,
         sizeof(vomit), FSOPT_NOFOLLOW) == -1) {
-    if (errno == ENOENT) {
+    if (errno == ENOENT || errno == ENOTDIR) {
       return w_string_new(path);
     }
 
