@@ -24,8 +24,7 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
       foreach (glob('python/tests/*.py') as $file) {
         $paths[] = $file;
       }
-      // Disable ruby tests temporarily (github issue #41)
-      // $paths[] = 'ruby/ruby-watchman/spec/ruby_watchman_spec.rb';
+      $paths[] = 'ruby/ruby-watchman/spec/ruby_watchman_spec.rb';
     } else {
       $paths = $this->getPaths();
     }
