@@ -33,6 +33,13 @@ class ageOutTestCase extends WatchmanTestCase {
     ));
     $this->assertEqual(array('a/file.txt', 'b.txt'), $res['files']);
 
+    // Let's track a named cursor; we need to validate that it is
+    // correctly aged out
+    $this->watchmanCommand('since', $root, 'n:foo');
+
+    $cursors = $this->watchmanCommand('debug-show-cursors', $root);
+    $this->assertTrue(array_key_exists('n:foo', $cursors['cursors']));
+
     unlink("$root/a/file.txt");
     rmdir("$root/a");
 
@@ -55,6 +62,10 @@ class ageOutTestCase extends WatchmanTestCase {
     // Verify that the file list is what we expect
     $this->assertFileListUsingSince($root, $clock, array('b.txt'));
 
+    // Our cursor should have been collected
+    $cursors = $this->watchmanCommand('debug-show-cursors', $root);
+    $this->assertFalse(array_key_exists('n:foo', $cursors['cursors']));
+
     // Add a new file to the suffix list; this will insert at the head
     touch("$root/c.txt");
 
@@ -69,4 +80,3 @@ class ageOutTestCase extends WatchmanTestCase {
 }
 
 // vim:ts=2:sw=2:et:
-

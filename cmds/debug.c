@@ -33,6 +33,42 @@ static void cmd_debug_recrawl(struct watchman_client *client, json_t *args)
 }
 W_CMD_REG("debug-recrawl", cmd_debug_recrawl, CMD_DAEMON, w_cmd_realpath_root)
 
+static void cmd_debug_show_cursors(struct watchman_client *client, json_t *args)
+{
+  w_root_t *root;
+  json_t *resp, *cursors;
+  w_ht_iter_t i;
+
+  /* resolve the root */
+  if (json_array_size(args) != 2) {
+    send_error_response(client,
+                        "wrong number of arguments for 'debug-show-cursors'");
+    return;
+  }
+
+  root = resolve_root_or_err(client, args, 1, false);
+
+  if (!root) {
+    return;
+  }
+
+  resp = make_response();
+
+  w_root_lock(root);
+  cursors = json_object_of_size(w_ht_size(root->cursors));
+  if (w_ht_first(root->cursors, &i)) do {
+    w_string_t *name = w_ht_val_ptr(i.key);
+    set_prop(cursors, name->buf, json_integer(i.value));
+  } while (w_ht_next(root->cursors, &i));
+  w_root_unlock(root);
+
+  set_prop(resp, "cursors", cursors);
+  send_and_dispose_response(client, resp);
+  w_root_delref(root);
+}
+W_CMD_REG("debug-show-cursors", cmd_debug_show_cursors,
+    CMD_DAEMON, w_cmd_realpath_root)
+
 /* debug-ageout */
 static void cmd_debug_ageout(struct watchman_client *client, json_t *args)
 {

@@ -2311,6 +2311,7 @@ void w_root_perform_age_out(w_root_t *root, int min_age)
 {
   struct watchman_file *file, *tmp;
   time_t now;
+  w_ht_iter_t i;
 
   time(&now);
   root->last_age_out_timestamp = now;
@@ -2340,6 +2341,13 @@ void w_root_perform_age_out(w_root_t *root, int min_age)
       file = root->latest_file;
     }
   }
+
+  // Age out cursors too.
+  if (w_ht_first(root->cursors, &i)) do {
+    if (i.value < root->last_age_out_tick) {
+      w_ht_iter_del(root->cursors, &i);
+    }
+  } while (w_ht_next(root->cursors, &i));
 }
 
 static void consider_age_out(w_root_t *root)
