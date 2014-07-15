@@ -92,6 +92,7 @@ else
 lint:
 endif
 
+export ARCHFLAGS=@ARCHFLAGS@
 if HAVE_PYTHON
 py-build:
 	cd python && $(PYTHON) ./setup.py clean build_py -c -d . build_ext -i

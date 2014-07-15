@@ -1,4 +1,4 @@
-language: php
+language: c
 
 os:
   - osx
@@ -11,16 +11,16 @@ branches:
 # try some different compilers
 compiler:
   - gcc
-  - clang
+#  - clang
 
 # need php to run arcanist and the tests
-php:
-  - 5.4
+#php:
+#  - 5.4
 
 # for the bser module
 python:
   - "2.7"
-  - "3.2"
+#  - "3.2"
 
 # for the ruby-watchman gem
 gemfile: ruby/ruby-watchman/Gemfile
@@ -30,11 +30,8 @@ rvm:
 # try some different compiler options
 env:
   - CONFIGARGS=""
-  - CONFIGARGS="--enable-stack-protector"
-  - CONFIGARGS="" WATCHMAN_VALGRIND=1
-
-before_install:
-  - composer self-update
+#  - CONFIGARGS="--enable-stack-protector"
+#  - CONFIGARGS="" WATCHMAN_VALGRIND=1
 
 before_script: ./travis/deps.sh
 script: ./travis/run.sh

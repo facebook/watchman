@@ -11,6 +11,11 @@ case $target_os in
     dnl results of a 64-bit dev_t from PHP's stat info
     CFLAGS="$CFLAGS -m64"
     ;;
+  *darwin*)
+    dnl avoid compilation failure on OS X when building with python
+    ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future
+    AC_SUBST(ARCHFLAGS)
+    ;;
 esac
 
 AC_PROG_CC

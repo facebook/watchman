@@ -933,8 +933,8 @@ static w_string_t *w_resolve_filesystem_canonical_name(const char *path)
       return w_string_new(path);
     }
 
-    w_log(W_LOG_FATAL, "getattrlist(CMN_NAME: %s): fail %s\n",
-        path, strerror(errno));
+    w_log(W_LOG_FATAL, "getattrlist(CMN_NAME: %s): fail errno=%d %s\n",
+        path, errno, strerror(errno));
   }
 
   name = ((char*)&vomit.ref) + vomit.ref.attr_dataoffset;
