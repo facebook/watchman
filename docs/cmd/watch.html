@@ -3,8 +3,18 @@ Watchman will track all files and dirs rooted at the specified path.</p><p>From 
 because the shell will resolve <code>~&#x2f;www</code> to <code>&#x2f;home&#x2f;wez&#x2f;www</code>, but when you use the
 JSON protocol, you are responsible for supplying an absolute path.</p><p>JSON:</p><div class="prism language-javascript"><span class="token punctuation">[</span><span class="token string">&quot;watch&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;&#x2f;home&#x2f;wez&#x2f;www&quot;</span><span class="token punctuation">]</span></div><p>Watchman will <code>realpath(3)</code> the directory and start watching it if it isn&#x27;t
 already.  A newly watched directory is processed in a couple of stages:</p><ul><li>Establishes change notification for the directory with the kernel</li><li>Queues up a request to crawl the directory</li><li>As the directory contents are resolved, those are watched in a similar
-fashion</li><li>All newly observed files are considered changed</li></ul><p>Unless <code>no-state-save</code> is in use, watches are saved and re-established across
-a process restart.</p></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2014 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
+fashion</li><li>All newly observed files are considered changed</li></ul><p>Unless the <code>--no-state-save</code> server option was used to start the watchman
+service, watches and their associated triggers are saved and re-established
+across a process restart.</p><h2><a class="anchor" name="case-insensitivity"></a>Case-Insensitivity <a class="hash-link" href="#case-insensitivity">#</a></h2><p>Watchman has the following level of support for case-insensitive filesystems,
+starting in version 2.9.9 on OS X only:</p><ul><li>each watched root is queried to determine if it is case-insensitive.
+This is the common default for most Mac systems running HFS+.</li><li>When in case-insensitive mode, Watchman will attempt to resolve the true
+canonical name of a file on the filesystem when it observes changes.</li><li>If the case of a filename changes, Watchman will report a delete of the
+old name and a change for the new name.</li><li>Query expressions that match names will default to case-insensitive when
+the root is on a case-insensitive filesystem.</li><li>Watchman&#x27;s case folding is ASCII case-folding.
+Note that the <code>match</code> and <code>pcre</code> query expression terms request case folding
+support from the containing library, and that their case folding behavior is
+not controlled by Watchman beyond being enabled when the root is
+case-insensitive.</li><li>The <code>path</code> generator is always case sensitive.</li></ul></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2014 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
             (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
             (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
             m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
