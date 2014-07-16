@@ -4,7 +4,7 @@ uname -a
 set -e
 PATH=$PWD:$PATH
 ./autogen.sh
-./configure --with-pcre --with-python --without-ruby $CONFIGARGS
+./configure --with-pcre --with-python --with-ruby $CONFIGARGS
 make clean
 make
 set +e
