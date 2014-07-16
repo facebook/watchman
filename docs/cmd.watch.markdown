@@ -33,8 +33,9 @@ already.  A newly watched directory is processed in a couple of stages:
    fashion
  * All newly observed files are considered changed
 
-Unless `no-state-save` is in use, watches are saved and re-established across
-a process restart.
+Unless the `--no-state-save` server option was used to start the watchman
+service, watches and their associated triggers are saved and re-established
+across a process restart.
 
 ## Case-Insensitivity
 
