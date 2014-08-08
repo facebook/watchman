@@ -48,6 +48,22 @@ class ignoreTestCase extends WatchmanTestCase {
     }
   }
 
+  function testIgnoreOverlapVCSIgnore() {
+    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $root = realpath($dir->getPath());
+
+    $cfg = array(
+      'ignore_dirs' => array('.hg'),
+    );
+    file_put_contents("$root/.watchmanconfig", json_encode($cfg));
+    mkdir("$root/.hg");
+
+    $this->watch($root);
+    $this->assertFileList($root, array('.watchmanconfig'));
+    touch("$root/foo");
+    $this->assertFileList($root, array('.watchmanconfig', 'foo'));
+  }
+
   function testIgnoreGeneric() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());

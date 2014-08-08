@@ -251,6 +251,15 @@ static bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg)
 
     name = w_string_new(ignore);
     fullname = w_string_path_cat(root->root_path, name);
+
+    // if we are completely ignoring this dir, we have nothing more to
+    // do here
+    if (w_ht_get(root->ignore_dirs, w_ht_ptr_val(fullname))) {
+      w_string_delref(fullname);
+      w_string_delref(name);
+      continue;
+    }
+
     w_ht_set(root->ignore_vcs, w_ht_ptr_val(fullname),
         w_ht_ptr_val(fullname));
 
@@ -360,12 +369,12 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   root->gc_interval = cfg_get_int(root, "gc_interval_seconds",
       DEFAULT_GC_INTERVAL);
 
+  apply_ignore_configuration(root);
+
   if (!apply_ignore_vcs_configuration(root, errmsg)) {
     w_root_delref(root);
     return NULL;
   }
-
-  apply_ignore_configuration(root);
 
   if (!w_root_init(root, errmsg)) {
     w_root_delref(root);

@@ -127,6 +127,12 @@ would ignore the `build` directory at the top level of the watched tree, and
 everything below it.  It will never appear in the watchman query results for
 the tree.
 
+Since version 2.9.9, if you list a dir in `ignore_dirs` that is also listed in
+`ignore_vcs`, the `ignore_dirs` placement will take precedence.  This may not
+sound like a big deal, but since `ignore_vcs` is used as a hint to for the
+placement of [cookie files](/watchman/docs/cookies.html), having these two
+options overlap in earlier versions would break watchman queries.
+
 #### gc_age_seconds
 
 Deleted files (and dirs) older than this are periodically pruned from the
