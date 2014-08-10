@@ -31,7 +31,7 @@ static void hexdump(char *start, char *end)
     }
     printf("   ");
     for (i = 0; i < limit; i++) {
-      printf("%c", isprint(start[i]) ? start[i] : '.');
+      printf("%c", isprint((unsigned char)start[i]) ? start[i] : '.');
     }
     printf("\n");
     start += limit;
