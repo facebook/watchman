@@ -112,6 +112,8 @@ void w_run_subscription_rules(
     return;
   }
 
+  add_root_warnings_to_response(response, root);
+
   if (!enqueue_response(client, response, true)) {
     w_log(W_LOG_DBG, "failed to queue sub response\n");
     json_decref(response);
@@ -224,6 +226,7 @@ static void cmd_subscribe(struct watchman_client *client, json_t *args)
   resp = make_response();
   annotate_with_clock(root, resp);
   set_prop(resp, "subscribe", json_string(name));
+  add_root_warnings_to_response(resp, root);
   send_and_dispose_response(client, resp);
 
   resp = build_subscription_results(sub, root);

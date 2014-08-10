@@ -58,6 +58,7 @@ w_root_t *resolve_root_or_err(
 
 json_t *make_response(void);
 void annotate_with_clock(w_root_t *root, json_t *resp);
+void add_root_warnings_to_response(json_t *response, w_root_t *root);
 
 bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
     size_t bufsize);

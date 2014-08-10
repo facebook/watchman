@@ -283,6 +283,10 @@ struct watchman_root {
   /* config options loaded via json file */
   json_t *config_file;
 
+  /* how many times we've had to recrawl */
+  int recrawl_count;
+  w_string_t *last_recrawl_reason;
+
   /* --- everything below this point will be reset on w_root_init --- */
   bool _init_sentinel_;
 

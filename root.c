@@ -1615,6 +1615,7 @@ static bool handle_should_recrawl(w_root_t *root)
       // this should cause us to exit from the notify loop
       w_root_cancel(root);
     }
+    root->recrawl_count++;
 #if HAVE_FSEVENTS
     start_fsevents_thread(root);
 #endif
@@ -2924,6 +2925,14 @@ static void signal_root_threads(w_root_t *root)
 void w_root_schedule_recrawl(w_root_t *root, const char *why)
 {
   if (!root->should_recrawl) {
+    if (root->last_recrawl_reason) {
+      w_string_delref(root->last_recrawl_reason);
+    }
+
+    root->last_recrawl_reason = w_string_make_printf(
+        "%.*s: %s",
+        root->root_path->len, root->root_path->buf, why);
+
     w_log(W_LOG_ERR, "%.*s: %s: scheduling a tree recrawl\n",
         root->root_path->len, root->root_path->buf, why);
   }

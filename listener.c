@@ -390,6 +390,30 @@ json_t *w_match_results_to_json(
   return file_list;
 }
 
+void add_root_warnings_to_response(json_t *response, w_root_t *root) {
+  char *str = NULL;
+
+  if (!root->last_recrawl_reason) {
+    return;
+  }
+
+  ignore_result(asprintf(&str,
+    "Recrawled this watch %d times, most recently because:\n"
+    "%.*s\n"
+    "To resolve, please review the information on\n"
+    "https://facebook.github.io/watchman/troubleshooting.html#recrawl",
+    root->recrawl_count,
+    root->last_recrawl_reason->len,
+    root->last_recrawl_reason->buf));
+
+  if (!str) {
+    return;
+  }
+
+  set_prop(response, "warning", json_string_nocheck(str));
+  free(str);
+}
+
 w_root_t *resolve_root_or_err(
     struct watchman_client *client,
     json_t *args,

@@ -71,6 +71,17 @@ class subscribeTestCase extends WatchmanTestCase {
 
       $this->assertEqual(true, count($subs) > 0, 'got fresh instance response');
 
+      // Ensure that we can pick up the recrawl warning in the subscription
+      // stream.  We can't guarantee which element it will be, so loop.
+      $warn = null;
+      foreach ($subs as $sub) {
+        if (isset($sub['warning'])) {
+          $warn = $sub['warning'];
+          break;
+        }
+      }
+      $this->assertRegex('/Recrawled this watch/', $warn);
+
       $this->watchmanCommand('unsubscribe', $root, 'myname');
     } catch (Exception $e) {
       $this->watchmanCommand('unsubscribe', $root, 'myname');

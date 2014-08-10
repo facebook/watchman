@@ -69,6 +69,7 @@ static void cmd_query(struct watchman_client *client, json_t *args)
   set_prop(response, "is_fresh_instance",
            json_pack("b", res.is_fresh_instance));
   set_prop(response, "files", file_list);
+  add_root_warnings_to_response(response, root);
 
   send_and_dispose_response(client, response);
   w_root_delref(root);

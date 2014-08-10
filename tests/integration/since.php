@@ -209,5 +209,6 @@ class sinceTestCase extends WatchmanTestCase {
     ));
     $this->assertEqual(true, $res['is_fresh_instance']);
     $this->assertEqual(array('222'), $res['files']);
+    $this->assertRegex('/Recrawled this watch/', $res['warning']);
   }
 }
