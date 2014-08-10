@@ -1984,7 +1984,8 @@ static int consume_kqueue(w_root_t *root, int timeoutms)
       }
       w_root_add_pending(root, dir->path, false, now, false);
     } else {
-      struct watchman_file *file = (struct watchman_file *)root->keventbuf[i].udata;
+      // NetBSD defines udata as intptr type, so the cast is necessary
+      struct watchman_file *file = (void *)root->keventbuf[i].udata;
 
       w_string_t *path;
 
