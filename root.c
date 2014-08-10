@@ -1322,19 +1322,22 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   /* make sure we're watching this guy */
 #if HAVE_INOTIFY_INIT
   {
-    // We've found that directories have had stale file descriptors
-    // occasionally, so call this unconditionally
+    // The directory might be different since the last time we looked at it, so
+    // call inotify_add_watch unconditionally.
     int newwd = inotify_add_watch(root->infd, path, WATCHMAN_INOTIFY_MASK);
     if (newwd == -1) {
       handle_open_errno(root, dir, now, "inotify_add_watch", errno);
       return;
     } else if (dir->wd != -1 && dir->wd != newwd) {
-      // stale watch descriptor
-      w_log(W_LOG_ERR, "watch descriptor for %s should have been %d, is %d\n",
-          path, dir->wd, newwd);
-      w_root_schedule_recrawl(root, "stale watch descriptor found");
-      return;
-    } else if (dir->wd == -1) {
+      // This can happen when a directory is deleted and then recreated very
+      // soon afterwards. e.g. dir->wd is 100, but newwd is 200. We'll still
+      // expect old events to come in for the directory or its children, so
+      // blackhole those. stop_watching_dir will mark dir->wd as -1, so the
+      // condition right below will be true.
+      stop_watching_dir(root, dir);
+    }
+
+    if (dir->wd == -1) {
       w_log(W_LOG_DBG, "watch_dir(%s)\n", path);
       dir->wd = newwd;
       // record mapping
