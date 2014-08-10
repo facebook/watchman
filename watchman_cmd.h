@@ -17,6 +17,7 @@ typedef bool (*watchman_cli_cmd_validate_func)(
 
 #define CMD_DAEMON 1
 #define CMD_CLIENT 2
+#define CMD_POISON_IMMUNE 4
 struct watchman_command_handler_def {
   const char *name;
   watchman_command_func func;

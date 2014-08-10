@@ -56,3 +56,46 @@ This location is overridden by the `--logfile` [Server Option](
 [Quick note on default locations](
 /watchman/docs/cli-options.html#quick-note-on-default-locations) explains what
 we mean by `<TMPDIR>`, `<USER>` and so on.
+
+## Poison: inotify_add_watch
+
+```
+A non-recoverable condition has triggered.  Watchman needs your help!
+The triggering condition was at timestamp=1407695600: inotify-add-watch(/my/path) -> Cannot allocate memory
+All requests will continue to fail with this message until you resolve
+the underlying problem.  You will find more information on fixing this at
+https://facebook.github.io/watchman/troubleshooting.html#poison-inotify-add-watch
+```
+
+If you've encountered this state it means that your *kernel* was unable to
+watch a dir in one or more of the roots you've asked it to watch.  This
+particular condition is considered non-recoverable by Watchman on the basis
+that nothing that the Watchman service can do can guarantee that the root cause
+is resolved, and while the system is in this state, Watchman cannot guarantee
+that it can respond with the correct results that its clients depend upon.  We
+consider ourselves poisoned and will fail all requests for all watches (not
+just the watch that it triggered on) until the process is restarted.
+
+There are two primary reasons that this can trigger:
+
+* The user limit on the total number of inotify watches was reached or the
+  kernel failed to allocate a needed resource
+* Insufficient kernel memory was available
+
+The resolution for the former is to revisit
+[System Specific Preparation Documentation](
+/watchman/docs/install.html#system-specific-preparation) and raise your limits
+accordingly.
+
+The latter condition implies that your workload is exceeding the available RAM
+on the machine.  It is difficult to give specific advice to resolve this
+condition here; you may be able to tune down other system limits to free up
+some resources, or you may just need to install more RAM in the system.
+
+### I've changed my limits, how can I clear the error?
+
+The error will stick until you restart the watchman process.  The simplest
+resolution is to run `watchman shutdown-server`.
+
+If you have not actually resolved the root cause you may continue to trigger
+and experience this state each time the system trips over these limits.

@@ -103,5 +103,30 @@ static void cmd_debug_ageout(struct watchman_client *client, json_t *args)
 }
 W_CMD_REG("debug-ageout", cmd_debug_ageout, CMD_DAEMON, w_cmd_realpath_root)
 
+static void cmd_debug_poison(struct watchman_client *client, json_t *args)
+{
+  w_root_t *root;
+  struct timeval now;
+  struct watchman_dir *dir;
+  json_t *resp;
+
+  root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
+    return;
+  }
+
+  dir = w_root_resolve_dir(root, root->root_path, false);
+
+  gettimeofday(&now, NULL);
+
+  set_poison_state(root, dir, now, "debug-poison", ENOMEM);
+
+  resp = make_response();
+  set_prop(resp, "poison", json_string_nocheck(poisoned_reason));
+  send_and_dispose_response(client, resp);
+  w_root_delref(root);
+}
+W_CMD_REG("debug-poison", cmd_debug_poison, CMD_DAEMON, w_cmd_realpath_root)
+
 /* vim:ts=2:sw=2:et:
  */

@@ -65,6 +65,8 @@ extern "C" {
 // Not explicitly exported on Darwin, so we get to define it.
 extern char **environ;
 
+extern char *poisoned_reason;
+
 #include "watchman_hash.h"
 
 #include "jansson.h"
@@ -760,6 +762,9 @@ void w_trigger_command_free(struct watchman_trigger_command *cmd);
 void w_assess_trigger(w_root_t *root, struct watchman_trigger_command *cmd);
 struct watchman_trigger_command *w_build_trigger_from_def(
   w_root_t *root, json_t *trig, char **errmsg);
+
+void set_poison_state(w_root_t *root, struct watchman_dir *dir,
+    struct timeval now, const char *syscall, int err);
 
 #ifdef __cplusplus
 }

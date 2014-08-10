@@ -133,6 +133,11 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
     return false;
   }
 
+  if (poisoned_reason && (def->flags & CMD_POISON_IMMUNE) == 0) {
+    send_error_response(client, "%s", poisoned_reason);
+    return false;
+  }
+
   def->func(client, args);
   return true;
 }

@@ -14,6 +14,12 @@ static pthread_mutex_t root_lock = PTHREAD_MUTEX_INITIALIZER;
 // helps avoid confusion if a root is removed and then added again.
 static uint32_t next_root_number = 1;
 
+/* Some error conditions will put us into a non-recoverable state where we
+ * can't guarantee that we will be operating correctly.  Rather than suffering
+ * in silence and misleading our clients, we'll poison ourselves and advertise
+ * that we have done so and provide some advice on how the user can cure us. */
+char *poisoned_reason = NULL;
+
 #if HAVE_INOTIFY_INIT
 /* Linux-specific: stored in the wd_to_dir map to indicate that we've detected
  * that this directory has disappeared, but that we might not yet have processed
@@ -1304,6 +1310,39 @@ static void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
   }
 }
 
+void set_poison_state(w_root_t *root, struct watchman_dir *dir,
+    struct timeval now, const char *syscall, int err)
+{
+  char *why = NULL;
+
+  unused_parameter(root);
+
+  if (poisoned_reason) {
+    return;
+  }
+
+  ignore_result(asprintf(&why,
+"A non-recoverable condition has triggered.  Watchman needs your help!\n"
+"The triggering condition was at timestamp=%ld: %s(%.*s) -> %s\n"
+"All requests will continue to fail with this message until you resolve\n"
+"the underlying problem.  You will find more information on fixing this at\n"
+"https://facebook.github.io/watchman/troubleshooting.html#poison-%s\n",
+    now.tv_sec,
+    syscall,
+    dir->path->len,
+    dir->path->buf,
+    strerror(err),
+    syscall
+  ));
+
+  w_log(W_LOG_ERR, "%s", why);
+
+  // This assignment can race for store with other threads.  We don't
+  // care about that; we consider ourselves broken and the worst case
+  // is that we leak a handful of strings around the race
+  poisoned_reason = why;
+}
+
 static void crawler(w_root_t *root, w_string_t *dir_name,
     struct timeval now, bool recursive)
 {
@@ -1326,7 +1365,13 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
     // call inotify_add_watch unconditionally.
     int newwd = inotify_add_watch(root->infd, path, WATCHMAN_INOTIFY_MASK);
     if (newwd == -1) {
-      handle_open_errno(root, dir, now, "inotify_add_watch", errno);
+      if (errno == ENOENT) {
+        // Likely removed out from under us
+        handle_open_errno(root, dir, now, "inotify_add_watch", errno);
+      } else {
+        // Limits exceeded, no recovery from our perspective
+        set_poison_state(root, dir, now, "inotify-add-watch", errno);
+      }
       return;
     } else if (dir->wd != -1 && dir->wd != newwd) {
       // This can happen when a directory is deleted and then recreated very

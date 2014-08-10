@@ -471,7 +471,7 @@ static void cmd_shutdown(
   set_prop(resp, "shutdown-server", json_true());
   send_and_dispose_response(client, resp);
 }
-W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON, NULL)
+W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON|CMD_POISON_IMMUNE, NULL)
 
 // The client thread reads and decodes json packets,
 // then dispatches the commands that it finds
