@@ -93,7 +93,7 @@ AC_ARG_WITH(pcre, [
 ])
 
 if test "$pcre_config" != "no" ; then
-  if test "$pcre_config" == "yes" ; then
+  if test "$pcre_config" = "yes" ; then
     pcre_config="pcre-config"
   fi
 
@@ -192,11 +192,11 @@ AC_CHECK_FUNCS(backtrace backtrace_symbols)
 if test -n "$GCC" ; then
   CFLAGS="$CFLAGS -Wall -Wextra -Wdeclaration-after-statement -g -gdwarf-2 -fno-omit-frame-pointer"
 fi
-if test -n "$GCC" -a "$stack_protect" == "yes" ; then
+if test -n "$GCC" -a "$stack_protect" = "yes" ; then
   CFLAGS="$CFLAGS -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4"
 fi
 IRONMANCFLAGS=""
-if test -n "$GCC" -a "$lenient" == "no" ; then
+if test -n "$GCC" -a "$lenient" = "no" ; then
   IRONMANCFLAGS="-Werror"
 fi
 AC_SUBST(IRONMANCFLAGS)
