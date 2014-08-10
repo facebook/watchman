@@ -200,7 +200,7 @@ bool w_string_equal_caseless(const w_string_t *a, const w_string_t *b)
   if (a == b) return true;
   if (a->len != b->len) return false;
   for (i = 0; i < a->len; i++) {
-    if (tolower((unsigned char)a->buf[i]) != tolower((unsigned char)b->buf[i])) {
+    if (tolower((uint8_t)a->buf[i]) != tolower((uint8_t)b->buf[i])) {
       return false;
     }
   }
