@@ -1984,7 +1984,7 @@ static int consume_kqueue(w_root_t *root, int timeoutms)
       }
       w_root_add_pending(root, dir->path, false, now, false);
     } else {
-      struct watchman_file *file = root->keventbuf[i].udata;
+      struct watchman_file *file = (struct watchman_file *)root->keventbuf[i].udata;
 
       w_string_t *path;
 
