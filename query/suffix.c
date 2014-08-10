@@ -41,7 +41,7 @@ static w_query_expr *suffix_parser(w_query *query, json_t *term)
 
   l = strlen(arg);
   for (i = 0; i < l; i++) {
-    arg[i] = tolower(arg[i]);
+    arg[i] = tolower((unsigned char)arg[i]);
   }
 
   str = w_string_new(arg);

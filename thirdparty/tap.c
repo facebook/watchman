@@ -91,7 +91,7 @@ _gen_result(int ok, const char *func, char *file, unsigned int line,
 		if(local_test_name) {
 			name_is_digits = 1;
 			for(c = local_test_name; *c != '\0'; c++) {
-				if(!isdigit(*c) && !isspace(*c)) {
+				if(!isdigit((unsigned char)*c) && !isspace((unsigned char)*c)) {
 					name_is_digits = 0;
 					break;
 				}

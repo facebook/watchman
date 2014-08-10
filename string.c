@@ -99,7 +99,7 @@ w_string_t *w_string_dup_lower(w_string_t *str)
   w_string_t *s;
 
   for (i = 0; i < str->len; i++) {
-    if (tolower(str->buf[i]) != str->buf[i]) {
+    if (tolower((unsigned char)str->buf[i]) != str->buf[i]) {
       is_lower = false;
       break;
     }
@@ -123,7 +123,7 @@ w_string_t *w_string_dup_lower(w_string_t *str)
   s->slice = NULL;
   buf = (char*)(s + 1);
   for (i = 0; i < str->len; i++) {
-    buf[i] = tolower(str->buf[i]);
+    buf[i] = tolower((unsigned char)str->buf[i]);
   }
   buf[str->len] = 0;
   s->buf = buf;
@@ -152,7 +152,7 @@ w_string_t *w_string_new_lower(const char *str)
   buf = (char*)(s + 1);
   // TODO: optionally use ICU
   for (i = 0; i < len; i++) {
-    buf[i] = tolower(str[i]);
+    buf[i] = tolower((unsigned char)str[i]);
   }
   buf[len] = 0;
   s->buf = buf;
@@ -200,7 +200,7 @@ bool w_string_equal_caseless(const w_string_t *a, const w_string_t *b)
   if (a == b) return true;
   if (a->len != b->len) return false;
   for (i = 0; i < a->len; i++) {
-    if (tolower(a->buf[i]) != tolower(b->buf[i])) {
+    if (tolower((unsigned char)a->buf[i]) != tolower((unsigned char)b->buf[i])) {
       return false;
     }
   }
@@ -238,7 +238,7 @@ bool w_string_suffix_match(w_string_t *str, w_string_t *suffix)
   }
 
   for (i = 0; i < suffix->len; i++) {
-    if (tolower(str->buf[base + i]) != suffix->buf[i]) {
+    if (tolower((unsigned char)str->buf[base + i]) != suffix->buf[i]) {
       return false;
     }
   }
@@ -265,7 +265,7 @@ w_string_t *w_string_suffix(w_string_t *str)
       buf = name_buf;
       end++;
       while ((unsigned)end < str->len) {
-        *buf = tolower(str->buf[end]);
+        *buf = tolower((unsigned char)str->buf[end]);
         end++;
         buf++;
       }
