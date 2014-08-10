@@ -582,7 +582,7 @@ VALUE RubyWatchman_query(VALUE self, VALUE query, VALUE socket) {
     VALUE error = Qnil;
     VALUE errorClass = Qnil;
     VALUE loaded = Qnil;
-    void *buffer = NULL;
+    char *buffer = NULL;
     int fileno = NUM2INT(rb_funcall(socket, rb_intern("fileno"), 0));
 
     // do blocking I/O to simplify the following logic
