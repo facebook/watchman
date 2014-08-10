@@ -1331,9 +1331,9 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
     } else if (dir->wd != -1 && dir->wd != newwd) {
       // This can happen when a directory is deleted and then recreated very
       // soon afterwards. e.g. dir->wd is 100, but newwd is 200. We'll still
-      // expect old events to come in for the directory or its children, so
-      // blackhole those. stop_watching_dir will mark dir->wd as -1, so the
-      // condition right below will be true.
+      // expect old events to come in for wd 100, so blackhole
+      // those. stop_watching_dir will mark dir->wd as -1, so the condition
+      // right below will be true.
       stop_watching_dir(root, dir);
     }
 
