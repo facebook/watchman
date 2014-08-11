@@ -44,5 +44,46 @@ static void cmd_get_pid(struct watchman_client *client, json_t *args)
 }
 W_CMD_REG("get-pid", cmd_get_pid, CMD_DAEMON, NULL)
 
+static void cmd_get_config(struct watchman_client *client, json_t *args)
+{
+  w_root_t *root;
+  json_t *resp;
+  json_t *config;
+
+  if (json_array_size(args) != 2) {
+    send_error_response(client, "wrong number of arguments for 'get-config'");
+    return;
+  }
+
+  root = resolve_root_or_err(client, args, 1, false);
+
+  if (!root) {
+    return;
+  }
+
+  resp = make_response();
+
+  w_root_lock(root);
+  {
+    config = root->config_file;
+    if (config) {
+      // set_prop will claim this ref
+      json_incref(config);
+    }
+  }
+  w_root_unlock(root);
+
+  if (!config) {
+    // set_prop will own this
+    config = json_object();
+  }
+
+  json_incref(root->config_file);
+  set_prop(resp, "config", config);
+  send_and_dispose_response(client, resp);
+  w_root_delref(root);
+}
+W_CMD_REG("get-config", cmd_get_config, CMD_DAEMON, w_cmd_realpath_root)
+
 /* vim:ts=2:sw=2:et:
  */
