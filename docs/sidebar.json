@@ -3,5 +3,6 @@
   {"category": "Invocation"},
   {"category": "Commands"},
   {"category": "Queries"},
-  {"category": "Internals"}
+  {"category": "Internals"},
+  {"category": "Troubleshooting"}
 ]
