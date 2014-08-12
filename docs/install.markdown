@@ -131,24 +131,3 @@ This means that if an overflow does occur, you won't miss a legitimate change
 notification, but instead will get spurious notifications for files that
 haven't actually changed.
 
-### Max OS File Descriptor Limits
-
-The default per-process descriptor limit on current versions of OS X is
-extremely low (256!).  More recent versions of watchman (2.9.2 and later)
-use FSEvents and are not so sensitive to descriptor limits.
-
-Watchman will attempt to raise its descriptor limit to match
-`kern.maxfilesperproc` when it starts up, so you shouldn't need to mess
-with `ulimit`; just raising the sysctl should do the trick.
-
-The following will raise the limits to allow 10 million files total, with 1
-million files per process until your next reboot.
-
-    $ sudo sysctl -w kern.maxfiles=10485760
-    $ sudo sysctl -w kern.maxfilesperproc=1048576
-
-Putting the following into a file named `/etc/sysctl.conf` on OS X will cause
-these values to persist across reboots:
-
-    kern.maxfiles=10485760
-    kern.maxfilesperproc=1048576
