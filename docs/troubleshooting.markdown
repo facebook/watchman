@@ -64,7 +64,7 @@ A non-recoverable condition has triggered.  Watchman needs your help!
 The triggering condition was at timestamp=1407695600: inotify-add-watch(/my/path) -> Cannot allocate memory
 All requests will continue to fail with this message until you resolve
 the underlying problem.  You will find more information on fixing this at
-https://facebook.github.io/watchman/troubleshooting.html#poison-inotify-add-watch
+https://facebook.github.io/watchman/docs/troubleshooting.html#poison-inotify-add-watch
 ```
 
 If you've encountered this state it means that your *kernel* was unable to

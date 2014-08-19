@@ -1326,7 +1326,7 @@ void set_poison_state(w_root_t *root, struct watchman_dir *dir,
 "The triggering condition was at timestamp=%ld: %s(%.*s) -> %s\n"
 "All requests will continue to fail with this message until you resolve\n"
 "the underlying problem.  You will find more information on fixing this at\n"
-"https://facebook.github.io/watchman/troubleshooting.html#poison-%s\n",
+"https://facebook.github.io/watchman/docs/troubleshooting.html#poison-%s\n",
     now.tv_sec,
     syscall,
     dir->path->len,
