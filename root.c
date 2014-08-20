@@ -1365,8 +1365,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
     // call inotify_add_watch unconditionally.
     int newwd = inotify_add_watch(root->infd, path, WATCHMAN_INOTIFY_MASK);
     if (newwd == -1) {
-      if (errno == ENOENT) {
-        // Likely removed out from under us
+      if (errno == ENOENT || errno == EACCES) {
         handle_open_errno(root, dir, now, "inotify_add_watch", errno);
       } else {
         // Limits exceeded, no recovery from our perspective
