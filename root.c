@@ -1293,8 +1293,8 @@ static DIR *opendir_nofollow(const char *path)
 static void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, const char *syscall, int err)
 {
+  w_string_t *dir_name = dir->path;
   if (err == ENOENT || err == ENOTDIR || err == ENOFOLLOWSYMLINK) {
-    w_string_t *dir_name = dir->path;
     if (w_string_equal(dir_name, root->root_path)) {
       w_log(W_LOG_ERR,
             "%s(%.*s) -> %s. Root was deleted; cancelling watch\n",
@@ -1308,6 +1308,8 @@ static void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     stop_watching_dir(root, dir);
     w_root_mark_deleted(root, dir, now, true);
   }
+  w_log(W_LOG_ERR, "%s(%.*s) -> %s. We don't know how to handle this.",
+        syscall, dir_name->len, dir_name->buf, strerror(err));
 }
 
 void set_poison_state(w_root_t *root, struct watchman_dir *dir,
@@ -1365,11 +1367,11 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
     // call inotify_add_watch unconditionally.
     int newwd = inotify_add_watch(root->infd, path, WATCHMAN_INOTIFY_MASK);
     if (newwd == -1) {
-      if (errno == ENOENT || errno == EACCES) {
-        handle_open_errno(root, dir, now, "inotify_add_watch", errno);
-      } else {
+      if (errno == ENOSPC || errno == ENOMEM) {
         // Limits exceeded, no recovery from our perspective
         set_poison_state(root, dir, now, "inotify-add-watch", errno);
+      } else {
+        handle_open_errno(root, dir, now, "inotify_add_watch", errno);
       }
       return;
     } else if (dir->wd != -1 && dir->wd != newwd) {
