@@ -587,7 +587,8 @@ static inline int w_timeval_compare(struct timeval a, struct timeval b)
 #define WATCHMAN_NSEC_IN_SEC (1000 * 1000 * 1000)
 #define WATCHMAN_NSEC_IN_MSEC 1000000
 
-#if defined(__APPLE__) || defined(__FreeBSD__) || (defined(__NetBSD__) && (__NetBSD_Version__ < 6099000000))
+#if defined(__APPLE__) || defined(__FreeBSD__) \
+ || (defined(__NetBSD__) && (__NetBSD_Version__ < 6099000000))
 /* BSD-style subsecond timespec */
 #define WATCHMAN_ST_TIMESPEC(type) st_##type##timespec
 #else
