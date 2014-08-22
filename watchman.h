@@ -62,6 +62,9 @@ extern "C" {
 #include <sysexits.h>
 #include <spawn.h>
 #include <stddef.h>
+#ifdef HAVE_SYS_PARAM_H
+# include <sys/param.h>
+#endif
 // Not explicitly exported on Darwin, so we get to define it.
 extern char **environ;
 
@@ -631,7 +634,8 @@ static inline int w_timeval_compare(struct timeval a, struct timeval b)
 #define WATCHMAN_NSEC_IN_SEC (1000 * 1000 * 1000)
 #define WATCHMAN_NSEC_IN_MSEC 1000000
 
-#if defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__APPLE__) || defined(__FreeBSD__) \
+ || (defined(__NetBSD__) && (__NetBSD_Version__ < 6099000000))
 /* BSD-style subsecond timespec */
 #define WATCHMAN_ST_TIMESPEC(type) st_##type##timespec
 #else
