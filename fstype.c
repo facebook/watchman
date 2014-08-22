@@ -53,13 +53,7 @@ w_string_t *w_fstype(const char *path)
   }
 
   return w_string_new(name);
-#elif HAVE_STATFS
-  struct statfs sfs;
-
-  if (statfs(path, &sfs) == 0) {
-    return w_string_new(sfs.f_fstypename);
-  }
-#elif HAVE_SYS_STATVFS_H
+#elif HAVE_SYS_STATVFS_H && !defined(__APPLE__)
   struct statvfs sfs;
 
   if (statvfs(path, &sfs) == 0) {
@@ -69,7 +63,12 @@ w_string_t *w_fstype(const char *path)
     return w_string_new(sfs.f_basetype);
 #endif
   }
+#elif HAVE_STATFS
+  struct statfs sfs;
 
+  if (statfs(path, &sfs) == 0) {
+    return w_string_new(sfs.f_fstypename);
+  }
 #endif
   return w_string_new("unknown");
 }
