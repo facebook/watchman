@@ -62,7 +62,7 @@ extern "C" {
 #include <sysexits.h>
 #include <spawn.h>
 #include <stddef.h>
-#ifdef HAVE_SYSPARAM_H
+#ifdef HAVE_SYS_PARAM_H
 # include <sys/param.h>
 #endif
 // Not explicitly exported on Darwin, so we get to define it.
