@@ -188,6 +188,12 @@ AC_CHECK_HEADERS(CoreServices/CoreServices.h, [
 ])
 AC_CHECK_FUNCS(backtrace backtrace_symbols)
 
+if test -n "$ac_cv_header_sys_statvfs_h"; then
+AC_CHECK_MEMBERS([struct statvfs.f_fstypename,struct statvfs.f_basetype],
+  [AC_DEFINE([STATVFS_HAS_FSTYPE_AS_STRING], [1],[if statvfs holds fstype as string])],[],[[#include <sys/statvfs.h>]])
+fi
+
+
 # Do this after we've looked for functions
 if test -n "$GCC" ; then
   CFLAGS="$CFLAGS -Wall -Wextra -Wdeclaration-after-statement -g -gdwarf-2 -fno-omit-frame-pointer"
