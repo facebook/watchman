@@ -53,13 +53,14 @@ w_string_t *w_fstype(const char *path)
   }
 
   return w_string_new(name);
-#elif HAVE_SYS_STATVFS_H && !defined(__APPLE__) && !defined(__FreeBSD__)
+#elif STATVFS_HAS_FSTYPE_AS_STRING
   struct statvfs sfs;
 
   if (statvfs(path, &sfs) == 0) {
-#ifdef __NetBSD__
+#ifdef HAVE_STRUCT_STATVFS_F_FSTYPENAME
     return w_string_new(sfs.f_fstypename);
-#else
+#endif
+#ifdef HAVE_STRUCT_STATVFS_F_BASETYPE
     return w_string_new(sfs.f_basetype);
 #endif
   }
