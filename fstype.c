@@ -8,11 +8,11 @@
 #ifdef HAVE_SYS_STATVFS_H
 # include <sys/statvfs.h>
 #endif
-#ifdef HAVE_SYS_MOUNT_H
-# include <sys/mount.h>
-#endif
 #ifdef HAVE_SYS_PARAM_H
 # include <sys/param.h>
+#endif
+#ifdef HAVE_SYS_MOUNT_H
+# include <sys/mount.h>
 #endif
 #ifdef __linux__
 #include <linux/magic.h>
@@ -53,7 +53,7 @@ w_string_t *w_fstype(const char *path)
   }
 
   return w_string_new(name);
-#elif HAVE_SYS_STATVFS_H && !defined(__APPLE__)
+#elif HAVE_SYS_STATVFS_H && !defined(__APPLE__) && !defined(__OpenBSD__)
   struct statvfs sfs;
 
   if (statvfs(path, &sfs) == 0) {
