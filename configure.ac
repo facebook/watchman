@@ -180,7 +180,11 @@ AC_SEARCH_LIBS([socket], [socket])
 AC_CHECK_HEADERS(sys/types.h inttypes.h locale.h port.h sys/inotify.h sys/event.h)
 AC_CHECK_FUNCS(mkostemp kqueue port_create inotify_init strtoll localeconv statfs)
 AC_CHECK_FUNCS(accept4)
-AC_CHECK_HEADERS(sys/vfs.h sys/mount.h sys/param.h sys/statfs.h sys/statvfs.h)
+AC_CHECK_HEADERS(sys/vfs.h sys/param.h sys/mount.h sys/statfs.h sys/statvfs.h, [], [],
+[[#ifdef __OpenBSD__
+# include <sys/param.h>
+#endif
+]])
 AC_CHECK_HEADERS(valgrind/valgrind.h)
 AC_CHECK_HEADERS(execinfo.h)
 AC_CHECK_HEADERS(CoreServices/CoreServices.h, [
