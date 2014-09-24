@@ -1307,6 +1307,7 @@ static void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
           syscall, dir_name->len, dir_name->buf, strerror(err));
     stop_watching_dir(root, dir);
     w_root_mark_deleted(root, dir, now, true);
+    return;
   }
   w_log(W_LOG_ERR, "%s(%.*s) -> %s. We don't know how to handle this.",
         syscall, dir_name->len, dir_name->buf, strerror(err));
