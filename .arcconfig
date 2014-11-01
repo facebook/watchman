@@ -7,5 +7,5 @@
   "git.default-relative-commit" : "origin/master",
   "base" : "git:merge-base(origin/master), hg:gca(master)",
   "arc.feature.start.default" : "origin/master",
-  "conduit_uri" : "https://phabricator.fb.com/api/"
+  "conduit_uri" : "https://reviews.facebook.net/api/"
 }
