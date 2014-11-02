@@ -53,7 +53,7 @@ w_string_t *w_fstype(const char *path)
   }
 
   return w_string_new(name);
-#elif HAVE_SYS_STATVFS_H && !defined(__APPLE__)
+#elif HAVE_SYS_STATVFS_H && !defined(__APPLE__) && !defined(__FreeBSD__)
   struct statvfs sfs;
 
   if (statvfs(path, &sfs) == 0) {

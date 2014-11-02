@@ -14,6 +14,7 @@ class illegalFSTypeTestCase extends WatchmanTestCase {
         'hfs',
         'nfs',
         'smb',
+        'ufs',
         'unknown',
         'zfs',
       ),

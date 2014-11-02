@@ -13,7 +13,7 @@ class WatchmanTapEngine extends ArcanistBaseUnitTestEngine {
   }
 
   protected function make($target) {
-    return execx("cd %s && make %s",
+    return execx("cd %s && \${MAKE:-make} %s",
       $this->getProjectRoot(), $target);
   }
 

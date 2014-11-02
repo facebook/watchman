@@ -30,6 +30,7 @@ static int json_input_arg = 0;
 static void run_service(void)
 {
   int fd;
+  bool res;
 
   // redirect std{in,out,err}
   fd = open("/dev/null", O_RDONLY);
@@ -46,7 +47,12 @@ static void run_service(void)
 
   /* we are the child, let's set things up */
   ignore_result(chdir("/"));
-  if (w_start_listener(sock_name)) {
+
+  watchman_watcher_init();
+  res = w_start_listener(sock_name);
+  watchman_watcher_dtor();
+
+  if (res) {
     exit(0);
   }
   exit(1);
