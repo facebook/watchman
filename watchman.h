@@ -364,6 +364,9 @@ struct watchman_root {
   int recrawl_count;
   w_string_t *last_recrawl_reason;
 
+  // Why we failed to watch
+  w_string_t *failure_reason;
+
   /* --- everything below this point will be reset on w_root_init --- */
   bool _init_sentinel_;
 

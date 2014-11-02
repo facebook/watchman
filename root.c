@@ -1307,12 +1307,16 @@ static bool handle_should_recrawl(w_root_t *root)
     // be careful, this is a bit of a switcheroo
     w_root_teardown(root);
     if (!w_root_init(root, &errmsg)) {
-      w_log(W_LOG_ERR, "failed to init root, cancelling watch: %s\n", errmsg);
+      w_log(W_LOG_ERR, "failed to init root %.*s, cancelling watch: %s\n",
+          root->root_path->len, root->root_path->buf, errmsg);
       // this should cause us to exit from the notify loop
       w_root_cancel(root);
     }
     root->recrawl_count++;
     if (!watcher_ops->root_start(watcher, root)) {
+      w_log(W_LOG_ERR, "failed to start root %.*s, cancelling watch: %.*s\n",
+          root->root_path->len, root->root_path->buf,
+          root->failure_reason->len, root->failure_reason->buf);
       w_root_cancel(root);
     }
     return true;
@@ -1468,6 +1472,9 @@ static void consider_age_out(w_root_t *root)
 static void notify_thread(w_root_t *root)
 {
   if (!watcher_ops->root_start(watcher, root)) {
+    w_log(W_LOG_ERR, "failed to start root %.*s, cancelling watch: %.*s\n",
+        root->root_path->len, root->root_path->buf,
+        root->failure_reason->len, root->failure_reason->buf);
     w_root_cancel(root);
     return;
   }
@@ -1639,6 +1646,13 @@ void w_root_delref(w_root_t *root)
   w_ht_free(root->query_cookies);
   if (root->config_file) {
     json_decref(root->config_file);
+  }
+
+  if (root->last_recrawl_reason) {
+    w_string_delref(root->last_recrawl_reason);
+  }
+  if (root->failure_reason) {
+    w_string_delref(root->failure_reason);
   }
 
   if (root->query_cookie_dir) {

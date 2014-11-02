@@ -163,10 +163,13 @@ static void *fsevents_thread(void *arg)
   FSEventStreamContext ctx;
   CFMutableArrayRef parray;
   CFStringRef cpath;
-  FSEventStreamRef fs_stream;
+  FSEventStreamRef fs_stream = NULL;
   CFFileDescriptorContext fdctx;
   CFFileDescriptorRef fdref;
   struct fsevents_root_state *state = root->watch;
+
+  // Block until fsevents_root_start is waiting for our initialization
+  pthread_mutex_lock(&state->fse_mtx);
 
   memset(&ctx, 0, sizeof(ctx));
   ctx.info = root;
@@ -181,14 +184,18 @@ static void *fsevents_thread(void *arg)
     CFRunLoopSourceRef fdsrc;
 
     fdsrc = CFFileDescriptorCreateRunLoopSource(NULL, fdref, 0);
+    if (!fdsrc) {
+      root->failure_reason = w_string_new(
+          "CFFileDescriptorCreateRunLoopSource failed");
+      goto done;
+    }
     CFRunLoopAddSource(CFRunLoopGetCurrent(), fdsrc, kCFRunLoopDefaultMode);
     CFRelease(fdsrc);
   }
 
   parray = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
   if (!parray) {
-    w_log(W_LOG_ERR, "watch(%.*s): CFArrayCreateMutable failed\n",
-          root->root_path->len, root->root_path->buf);
+    root->failure_reason = w_string_new("CFArrayCreateMutable failed");
     goto done;
   }
 
@@ -196,9 +203,7 @@ static void *fsevents_thread(void *arg)
       root->root_path->len, kCFStringEncodingUTF8,
       false);
   if (!cpath) {
-    w_log(W_LOG_ERR,
-        "watch(%.*s): CFStringCreateWithBytes failed\n",
-        root->root_path->len, root->root_path->buf);
+    root->failure_reason = w_string_new("CFStringCreateWithBytes failed");
     goto done;
   }
 
@@ -213,23 +218,45 @@ static void *fsevents_thread(void *arg)
       kFSEventStreamCreateFlagFileEvents);
 
   if (!fs_stream) {
-    w_log(W_LOG_ERR, "watch(%.*s): FSEventStreamCreate failed\n",
-          root->root_path->len, root->root_path->buf);
+    root->failure_reason = w_string_new("FSEventStreamCreate failed");
     goto done;
   }
 
   FSEventStreamScheduleWithRunLoop(fs_stream,
       CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-  FSEventStreamStart(fs_stream);
+  if (!FSEventStreamStart(fs_stream)) {
+    root->failure_reason = w_string_new("FSEventStreamStart failed");
+    goto done;
+  }
 
+  // Signal to fsevents_root_start that we're done initializing
+  pthread_cond_signal(&state->fse_cond);
+  pthread_mutex_unlock(&state->fse_mtx);
+
+  // Process the events stream until we get signalled to quit
   CFRunLoopRun();
 
-  FSEventStreamStop(fs_stream);
-  FSEventStreamInvalidate(fs_stream);
-  FSEventStreamRelease(fs_stream);
-  CFRelease(fdref);
-
+  // Since the goto's above hold fse_mtx, we should grab it here
+  pthread_mutex_lock(&state->fse_mtx);
 done:
+  if (fs_stream) {
+    FSEventStreamStop(fs_stream);
+    FSEventStreamInvalidate(fs_stream);
+    FSEventStreamRelease(fs_stream);
+  }
+  if (fdref) {
+    CFRelease(fdref);
+  }
+
+  // Signal to fsevents_root_start that we're done initializing in
+  // the failure path.  We'll also do this after we've completed
+  // the run loop in the success path; it's a spurious wakeup but
+  // harmless and saves us from adding and setting a control flag
+  // in each of the failure `goto` statements. fsevents_root_dtor
+  // will `pthread_join` us before `state` is freed.
+  pthread_cond_signal(&state->fse_cond);
+  pthread_mutex_unlock(&state->fse_mtx);
+
   w_log(W_LOG_DBG, "fse_thread[%.*s] done\n",
       root->root_path->len, root->root_path->buf);
   w_root_delref(root);
@@ -380,12 +407,25 @@ static bool fsevents_root_start(watchman_global_watcher_t watcher,
 
   // Spin up the fsevents processing thread; it owns a ref on the root
   w_root_addref(root);
-  err = pthread_create(&state->fse_thread, NULL, fsevents_thread, root);
 
+  // Acquire the mutex so thread initialization waits until we release it
+  pthread_mutex_lock(&state->fse_mtx);
+
+  err = pthread_create(&state->fse_thread, NULL, fsevents_thread, root);
   if (err == 0) {
+    // Allow thread init to proceed; wait for its signal
+    pthread_cond_wait(&state->fse_cond, &state->fse_mtx);
+    pthread_mutex_unlock(&state->fse_mtx);
+
+    if (root->failure_reason) {
+      w_log(W_LOG_ERR, "failed to start fsevents thread: %.*s\n",
+          root->failure_reason->len, root->failure_reason->buf);
+      return false;
+    }
     return true;
   }
 
+  pthread_mutex_unlock(&state->fse_mtx);
   w_log(W_LOG_ERR, "failed to start fsevents thread: %s\n", strerror(err));
   return false;
 }
