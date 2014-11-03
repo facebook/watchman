@@ -33,3 +33,4 @@ configure.lineno
 python/bser/build
 a
 arc
+node/node_modules
