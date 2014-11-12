@@ -85,16 +85,11 @@ class client(object):
         except socket.error, e:
             raise Unavailable('unable to connect to %s: %s' % (self.sockpath, e))
 
-    def query(self, *args):
-        cmd = bser.dumps(args)
+    def receive(self):
         response = None
-        result = None
-
-        sock = self._connect()
 
         try:
-            sock.sendall(cmd)
-            buf = [sock.recv(sniff_len)]
+            buf = [self.sock.recv(sniff_len)]
             if not buf[0]:
                 raise Unavailable('empty watchman response')
 
@@ -102,12 +97,14 @@ class client(object):
             rlen = len(buf[0])
 
             while elen > rlen:
-                buf.append(sock.recv(elen - rlen))
+                buf.append(self.sock.recv(elen - rlen))
                 rlen += len(buf[-1])
 
             response = ''.join(buf)
         except socket.timeout:
             raise Unavailable('timed out waiting for response')
+
+        result = None
 
         try:
             result = bser.loads(response)
@@ -119,3 +116,11 @@ class client(object):
 
         return result
 
+    def query(self, *args):
+        cmd = bser.dumps(args)
+        sock = self._connect()
+        try:
+            sock.sendall(cmd)
+        except socket.timeout:
+            raise Unavailable('timed out sending query command')
+        return self.receive()
