@@ -27,9 +27,18 @@ static int no_local = 0;
 static struct sockaddr_un un;
 static int json_input_arg = 0;
 
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
+
+#if defined(USE_GIMLI) || defined(__APPLE__)
+# define SPAWN_VIA_LAUNCHER 1
+#endif
+
 static void run_service(void)
 {
   int fd;
+  bool res;
 
   // redirect std{in,out,err}
   fd = open("/dev/null", O_RDONLY);
@@ -46,7 +55,12 @@ static void run_service(void)
 
   /* we are the child, let's set things up */
   ignore_result(chdir("/"));
-  if (w_start_listener(sock_name)) {
+
+  watchman_watcher_init();
+  res = w_start_listener(sock_name);
+  watchman_watcher_dtor();
+
+  if (res) {
     exit(0);
   }
   exit(1);
@@ -80,8 +94,7 @@ static void daemonize(void)
 }
 #endif
 
-#ifdef USE_GIMLI
-
+#ifdef SPAWN_VIA_LAUNCHER
 #define MAX_DAEMON_ARGS 64
 static void append_argv(char **argv, char *item)
 {
@@ -98,6 +111,7 @@ static void append_argv(char **argv, char *item)
   argv[i+1] = NULL;
 }
 
+#ifdef USE_GIMLI
 static void spawn_via_gimli(void)
 {
   char *argv[MAX_DAEMON_ARGS] = {
@@ -130,6 +144,127 @@ static void spawn_via_gimli(void)
   posix_spawn_file_actions_destroy(&actions);
 }
 #endif
+
+#ifdef __APPLE__
+static void spawn_via_launchd(void)
+{
+  char watchman_path[WATCHMAN_NAME_MAX];
+  uint32_t size = sizeof(watchman_path);
+  char plist_path[WATCHMAN_NAME_MAX];
+  FILE *fp;
+  struct passwd *pw;
+  uid_t uid;
+  char *argv[MAX_DAEMON_ARGS] = {
+    "/bin/launchctl",
+    "load",
+    "-F",
+    NULL
+  };
+  posix_spawnattr_t attr;
+  pid_t pid;
+  int res;
+
+  if (_NSGetExecutablePath(watchman_path, &size) == -1) {
+    w_log(W_LOG_ERR, "_NSGetExecutablePath: path too long; size %u\n", size);
+    abort();
+  }
+
+  uid = getuid();
+  pw = getpwuid(uid);
+  if (!pw) {
+    w_log(W_LOG_ERR, "getpwuid(%d) failed: %s.  I don't know who you are\n",
+        uid, strerror(errno));
+    abort();
+  }
+
+  snprintf(plist_path, sizeof(plist_path),
+      "%s/Library/LaunchAgents", pw->pw_dir);
+  // Best effort attempt to ensure that the agents dir exists.  We'll detect
+  // and report the failure in the fopen call below.
+  mkdir(plist_path, 0755);
+  snprintf(plist_path, sizeof(plist_path),
+      "%s/Library/LaunchAgents/com.github.facebook.watchman.plist", pw->pw_dir);
+
+  fp = fopen(plist_path, "w");
+  if (!fp) {
+    w_log(W_LOG_ERR, "Failed to open %s for write: %s\n",
+        plist_path, strerror(errno));
+    abort();
+  }
+
+  fprintf(fp,
+"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+"<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
+"\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
+"<plist version=\"1.0\">\n"
+"<dict>\n"
+"    <key>Label</key>\n"
+"    <string>com.github.facebook.watchman</string>\n"
+"    <key>Disabled</key>\n"
+"    <false/>\n"
+"    <key>ProgramArguments</key>\n"
+"    <array>\n"
+"        <string>%s</string>\n"
+"        <string>--foreground</string>\n"
+"        <string>--logfile=%s</string>\n"
+"        <string>--sockname=%s</string>\n"
+"        <string>--statefile=%s</string>\n"
+"    </array>\n"
+"    <key>Sockets</key>\n"
+"    <dict>\n"
+"        <key>sock</key>\n" // coupled with get_listener_socket_from_launchd
+"        <dict>\n"
+"            <key>SockPathName</key>\n"
+"            <string>%s</string>\n"
+"        </dict>\n"
+"    </dict>\n"
+"    <key>KeepAlive</key>\n"
+"    <dict>\n"
+"        <key>Crashed</key>\n"
+"        <true/>\n"
+"    </dict>\n"
+"    <key>RunAtLoad</key>\n"
+"    <false/>\n"
+"</dict>\n"
+"</plist>\n",
+    watchman_path, log_name, sock_name, watchman_state_file, sock_name);
+  fclose(fp);
+
+  append_argv(argv, plist_path);
+
+  errno = posix_spawnattr_init(&attr);
+  if (errno != 0) {
+    w_log(W_LOG_FATAL, "posix_spawnattr_init: %s\n", strerror(errno));
+  }
+
+  res = posix_spawnp(&pid, argv[0], NULL, &attr, argv, environ);
+  if (res) {
+    w_log(W_LOG_FATAL, "Failed to spawn watchman via launchd: %s\n",
+        strerror(errno));
+  }
+  posix_spawnattr_destroy(&attr);
+
+  if (waitpid(pid, &res, 0) == -1) {
+    w_log(W_LOG_FATAL, "Failed waiting for launchctl load: %s\n",
+        strerror(errno));
+  }
+
+  if (WIFEXITED(res) && WEXITSTATUS(res) == 0) {
+    return;
+  }
+
+  // Most likely cause is "headless" operation with no GUI context
+  if (WIFEXITED(res)) {
+    w_log(W_LOG_ERR, "launchctl: exited with status %d\n", WEXITSTATUS(res));
+  } else if (WIFSIGNALED(res)) {
+    w_log(W_LOG_ERR, "launchctl: signalled with %d\n", WTERMSIG(res));
+  }
+  w_log(W_LOG_ERR, "Falling back to daemonize\n");
+  daemonize();
+}
+#endif
+
+#endif // SPAWN_VIA_LAUNCHER
 
 static void parse_encoding(const char *enc, enum w_pdu_type *pdu)
 {
@@ -446,6 +581,8 @@ int main(int argc, char **argv)
     } else {
 #ifdef USE_GIMLI
       spawn_via_gimli();
+#elif defined(__APPLE__)
+      spawn_via_launchd();
 #else
       daemonize();
 #endif

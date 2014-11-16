@@ -43,6 +43,10 @@ watchman_SOURCES = \
 	query/fieldlist.c  \
 	query/since.c      \
 	query/empty.c      \
+	watcher/fsevents.c \
+	watcher/inotify.c  \
+	watcher/kqueue.c   \
+	watcher/portfs.c   \
 	listener.c   \
 	clientmode.c \
 	main.c       \

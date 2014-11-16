@@ -6,6 +6,8 @@
 # include <sys/attr.h>
 #endif
 
+static struct watchman_ops *watcher_ops = NULL;
+static watchman_global_watcher_t watcher = NULL;
 static w_ht_t *watched_roots = NULL;
 static int live_roots = 0;
 static pthread_mutex_t root_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -20,53 +22,10 @@ static uint32_t next_root_number = 1;
  * that we have done so and provide some advice on how the user can cure us. */
 char *poisoned_reason = NULL;
 
-#if HAVE_INOTIFY_INIT
-/* Linux-specific: stored in the wd_to_dir map to indicate that we've detected
- * that this directory has disappeared, but that we might not yet have processed
- * all the events leading to its disappearance.
- *
- * Any directory that was replaced in the wd_to_dir map with dir_pending_ignored
- * will have its wd set to -1. This means that if another directory with the
- * same wd shows up, it's OK to replace this with that. */
-static struct watchman_dir dir_pending_ignored;
-#define HAVE_PER_FILE_NOTIFICATIONS 1
-#endif
-
-
-/* small for testing, but should make this greater than the number of dirs we
- * have in our repos to avoid realloc */
-#define HINT_NUM_DIRS 128*1024
-
-/* We leverage the fact that our aligned pointers will never set the LSB of a
- * pointer value.  We can use the LSB to indicate whether kqueue entries are
- * dirs or files */
-#define SET_DIR_BIT(dir)   ((void*)(((intptr_t)dir) | 0x1))
-#define IS_DIR_BIT_SET(dir) ((((intptr_t)dir) & 0x1) == 0x1)
-#define DECODE_DIR(dir)    ((void*)(((intptr_t)dir) & ~0x1))
-
-#if defined(HAVE_KQUEUE) && !defined(O_EVTONLY)
-# define O_EVTONLY O_RDONLY
-#endif
-
 static void crawler(w_root_t *root, w_string_t *dir_name,
     struct timeval now, bool recursive);
 
 static void w_root_teardown(w_root_t *root);
-
-#if HAVE_FSEVENTS
-static void *fsevents_thread(void *arg);
-static void start_fsevents_thread(w_root_t *root)
-{
-  if (root->fse_started) {
-    return;
-  }
-  root->fse_started = true;
-  // Spin up the fsevents processing thread; it owns a ref on the root
-  w_root_addref(root);
-  pthread_create(&root->fse_thread, NULL, fsevents_thread, root);
-}
-#define HAVE_PER_FILE_NOTIFICATIONS 1
-#endif
 
 static void free_pending(struct watchman_pending_fs *p)
 {
@@ -149,49 +108,9 @@ static bool w_root_init(w_root_t *root, char **errmsg)
   memset((char *)root + root_init_offset, 0,
          sizeof(w_root_t) - root_init_offset);
 
-#if HAVE_INOTIFY_INIT
-  root->infd = inotify_init();
-  if (root->infd == -1) {
-    ignore_result(asprintf(errmsg, "watch(%.*s): inotify_init error: %s",
-        root->root_path->len, root->root_path->buf, strerror(errno)));
-    w_log(W_LOG_ERR, "%s\n", *errmsg);
+  if (!watcher_ops->root_init(watcher, root, errmsg)) {
     return false;
   }
-  w_set_cloexec(root->infd);
-  root->wd_to_dir = w_ht_new(HINT_NUM_DIRS, NULL);
-#endif
-#if HAVE_FSEVENTS
-  if (pipe(root->fse_pipe)) {
-    ignore_result(asprintf(errmsg, "watch(%.*s): pipe error: %s",
-        root->root_path->len, root->root_path->buf, strerror(errno)));
-    w_log(W_LOG_ERR, "%s\n", *errmsg);
-    return false;
-  }
-  w_set_cloexec(root->fse_pipe[0]);
-  w_set_cloexec(root->fse_pipe[1]);
-  pthread_mutex_init(&root->fse_mtx, NULL);
-  pthread_cond_init(&root->fse_cond, NULL);
-#endif
-#if HAVE_KQUEUE
-  root->kq_fd = kqueue();
-  if (root->kq_fd == -1) {
-    ignore_result(asprintf(errmsg, "watch(%.*s): kqueue() error: %s",
-        root->root_path->len, root->root_path->buf, strerror(errno)));
-    w_log(W_LOG_ERR, "%s\n", *errmsg);
-    return false;
-  }
-  w_set_cloexec(root->kq_fd);
-#endif
-#if HAVE_PORT_CREATE
-  root->port_fd = port_create();
-  if (root->port_fd == -1) {
-    ignore_result(asprintf(errmsg, "watch(%.*s): port_create() error: %s",
-        root->root_path->len, root->root_path->buf, strerror(errno)));
-    w_log(W_LOG_ERR, "%s\n", *errmsg);
-    return false;
-  }
-  w_set_cloexec(root->port_fd);
-#endif
 
   root->number = __sync_fetch_and_add(&next_root_number, 1);
 
@@ -338,19 +257,6 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   assert(root != NULL);
 
   root->refcnt = 1;
-#ifdef HAVE_INOTIFY_INIT
-  root->infd = -1;
-#endif
-#ifdef HAVE_KQUEUE
-  root->kq_fd = -1;
-#endif
-#ifdef HAVE_PORT_CREATE
-  root->port_fd = -1;
-#endif
-#ifdef HAVE_FSEVENTS
-  root->fse_pipe[0] = -1;
-  root->fse_pipe[1] = -1;
-#endif
   w_refcnt_add(&live_roots);
   pthread_mutexattr_init(&attr);
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
@@ -618,85 +524,12 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
 
 static void watch_file(w_root_t *root, struct watchman_file *file)
 {
-#if HAVE_PORT_CREATE
-  char buf[WATCHMAN_NAME_MAX];
-
-  snprintf(buf, sizeof(buf), "%.*s/%.*s",
-      file->parent->path->len, file->parent->path->buf,
-      file->name->len, file->name->buf);
-
-  w_log(W_LOG_DBG, "watch_file(%s)\n", buf);
-
-  file->port_file.fo_atime = file->st.st_atim;
-  file->port_file.fo_mtime = file->st.st_mtim;
-  file->port_file.fo_ctime = file->st.st_ctim;
-  if (!file->port_file.fo_name) {
-    file->port_file.fo_name = strdup(buf);
-  }
-
-  port_associate(root->port_fd, PORT_SOURCE_FILE,
-      (uintptr_t)&file->port_file, WATCHMAN_PORT_EVENTS,
-      (void*)file);
-#elif HAVE_KQUEUE
-  struct kevent k;
-  char buf[WATCHMAN_NAME_MAX];
-
-  snprintf(buf, sizeof(buf), "%.*s/%.*s",
-      file->parent->path->len, file->parent->path->buf,
-      file->name->len, file->name->buf);
-
-  w_log(W_LOG_DBG, "watch_file(%s)\n", buf);
-
-  file->kq_fd = open(buf, O_EVTONLY|O_CLOEXEC);
-  if (file->kq_fd == -1) {
-    w_log(W_LOG_ERR, "failed to open %s O_EVTONLY: %s\n",
-        buf, strerror(errno));
-    return;
-  }
-
-  memset(&k, 0, sizeof(k));
-  EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
-      NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME|NOTE_ATTRIB,
-      0, file);
-
-  if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
-    w_log(W_LOG_DBG, "kevent EV_ADD file %s failed: %s",
-        buf, strerror(errno));
-    close(file->kq_fd);
-    file->kq_fd = -1;
-  }
-#else
-  unused_parameter(root);
-  unused_parameter(file);
-#endif
+  watcher_ops->root_start_watch_file(watcher, root, file);
 }
 
 static void stop_watching_file(w_root_t *root, struct watchman_file *file)
 {
-#if HAVE_PORT_CREATE
-  port_dissociate(root->port_fd, PORT_SOURCE_FILE,
-      (uintptr_t)&file->port_file);
-  if (file->port_file.fo_name) {
-    free(file->port_file.fo_name);
-    file->port_file.fo_name = NULL;
-  }
-#elif HAVE_KQUEUE
-  struct kevent k;
-
-  if (file->kq_fd == -1) {
-    return;
-  }
-
-  memset(&k, 0, sizeof(k));
-  EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_DELETE, 0, 0, file);
-  kevent(root->kq_fd, &k, 1, NULL, 0, 0);
-  close(file->kq_fd);
-  file->kq_fd = -1;
-
-#else
-  unused_parameter(root);
-  unused_parameter(file);
-#endif
+  watcher_ops->root_stop_watch_file(watcher, root, file);
 }
 
 static void remove_from_file_list(w_root_t *root, struct watchman_file *file)
@@ -769,7 +602,7 @@ void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
   root->pending_sub_tick = root->ticks;
 }
 
-static struct watchman_file *w_root_resolve_file(w_root_t *root,
+struct watchman_file *w_root_resolve_file(w_root_t *root,
     struct watchman_dir *dir, w_string_t *file_name,
     struct timeval now)
 {
@@ -810,7 +643,7 @@ static struct watchman_file *w_root_resolve_file(w_root_t *root,
   return file;
 }
 
-static void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
+void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
 {
   w_ht_iter_t i;
 
@@ -823,65 +656,8 @@ static void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
     stop_watching_dir(root, child);
   } while (w_ht_next(dir->dirs, &i));
 
-#if HAVE_PORT_CREATE
-  port_dissociate(root->port_fd, PORT_SOURCE_FILE,
-      (uintptr_t)&dir->port_file);
-#endif
-
-  if (dir->wd == -1) {
-    return;
-  }
-
-  /* turn off watch */
-#if HAVE_INOTIFY_INIT
-  // Linux removes watches for us at the appropriate times, so just mark the
-  // directory pending_ignored. At this point, dir->wd != -1 so a real directory
-  // exists in the wd_to_dir map.
-  w_ht_replace(root->wd_to_dir, dir->wd, w_ht_ptr_val(&dir_pending_ignored));
-  w_log(W_LOG_DBG, "marking %d -> %.*s as pending ignored\n",
-      dir->wd, dir->path->len, dir->path->buf);
-#endif
-
-#if HAVE_KQUEUE
-  {
-    struct kevent k;
-
-    memset(&k, 0, sizeof(k));
-    EV_SET(&k, dir->wd, EVFILT_VNODE, EV_DELETE,
-        0, 0, SET_DIR_BIT(dir));
-
-    if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
-      w_log(W_LOG_ERR, "rm_watch: %d %.*s %s\n",
-          dir->wd, dir->path->len, dir->path->buf,
-          strerror(errno));
-      w_root_schedule_recrawl(root, "rm_watch failed");
-    }
-
-    close(dir->wd);
-  }
-#endif
-  dir->wd = -1;
+  watcher_ops->root_stop_watch_dir(watcher, root, dir);
 }
-
-#ifdef HAVE_INOTIFY_INIT
-static void invalidate_watch_descriptors(w_root_t *root,
-    struct watchman_dir *dir)
-{
-  w_ht_iter_t i;
-
-  if (w_ht_first(dir->dirs, &i)) do {
-    struct watchman_dir *child = (struct watchman_dir*)w_ht_val_ptr(i.value);
-
-    invalidate_watch_descriptors(root, child);
-  } while (w_ht_next(dir->dirs, &i));
-
-  if (dir->wd != -1) {
-    w_ht_del(root->wd_to_dir, dir->wd);
-    dir->wd = -1;
-  }
-}
-#endif
-
 
 static bool did_file_change(struct stat *saved, struct stat *fresh)
 {
@@ -1148,29 +924,28 @@ static void stat_path(w_root_t *root,
           // but do if we're looking at the cookie dir (stat_path is never
           // called for the root itself)
           w_string_equal(full_path, root->query_cookie_dir)) {
-#ifndef HAVE_PER_FILE_NOTIFICATIONS
-        /* we always need to crawl, but may not need to be fully recursive */
-        crawler(root, full_path, now, recursive);
-#else
-        /* we get told about changes on the child, so we only
-         * need to crawl if we've never seen the dir before */
 
-        if (recursive) {
+        if (!watcher_ops->has_per_file_notifications) {
+          /* we always need to crawl, but may not need to be fully recursive */
           crawler(root, full_path, now, recursive);
+        } else {
+          /* we get told about changes on the child, so we only
+           * need to crawl if we've never seen the dir before */
+          if (recursive) {
+            crawler(root, full_path, now, recursive);
+          }
         }
-#endif
       }
     } else if (dir_ent) {
       // We transitioned from dir to file (see fishy.php), so we should prune
       // our former tree here
       w_root_mark_deleted(root, dir_ent, now, true);
     }
-#ifdef HAVE_PER_FILE_NOTIFICATIONS
-    if (!S_ISDIR(st.st_mode) && !w_string_equal(dir_name, root->root_path)) {
+    if (watcher_ops->has_per_file_notifications && !S_ISDIR(st.st_mode) &&
+        !w_string_equal(dir_name, root->root_path)) {
       /* Make sure we update the mtime on the parent directory. */
       stat_path(root, dir_name, now, false, via_notify);
     }
-#endif
   }
 
   w_string_delref(dir_name);
@@ -1197,14 +972,8 @@ void w_root_process_path(w_root_t *root, w_string_t *full_path,
    */
   if (w_string_startswith(full_path, root->query_cookie_prefix)) {
     struct watchman_query_cookie *cookie;
-    // XXX Only Linux tells us about filenames, so via_notify will only work
-    // there. Need to figure out a different solution for other platforms.
-    bool consider_cookie =
-#ifdef HAVE_PER_FILE_NOTIFICATIONS
-      via_notify || !root->done_initial;
-#else
-      true;
-#endif
+    bool consider_cookie = watcher_ops->has_per_file_notifications ?
+      (via_notify || !root->done_initial) : true;
 
     if (!consider_cookie) {
       // Never allow cookie files to show up in the tree
@@ -1258,15 +1027,8 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
   } while (w_ht_next(dir->dirs, &i));
 }
 
-#if HAVE_INOTIFY_INIT
-struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd)
-{
-  return (struct watchman_dir*)w_ht_val_ptr(w_ht_get(root->wd_to_dir, wd));
-}
-#endif
-
 /* Opens a directory making sure it's not a symlink */
-static DIR *opendir_nofollow(const char *path)
+DIR *opendir_nofollow(const char *path)
 {
   int fd = open(path, O_NOFOLLOW | O_CLOEXEC);
   if (fd == -1) {
@@ -1290,7 +1052,7 @@ static DIR *opendir_nofollow(const char *path)
 #define ENOFOLLOWSYMLINK ELOOP
 #endif
 
-static void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
+void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, const char *syscall, int err)
 {
   w_string_t *dir_name = dir->path;
@@ -1307,6 +1069,7 @@ static void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
           syscall, dir_name->len, dir_name->buf, strerror(err));
     stop_watching_dir(root, dir);
     w_root_mark_deleted(root, dir, now, true);
+    return;
   }
   w_log(W_LOG_ERR, "%s(%.*s) -> %s. We don't know how to handle this.",
         syscall, dir_name->len, dir_name->buf, strerror(err));
@@ -1360,129 +1123,16 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   memcpy(path, dir_name->buf, dir_name->len);
   path[dir_name->len] = 0;
 
-  /* make sure we're watching this guy */
-#if HAVE_INOTIFY_INIT
-  {
-    // The directory might be different since the last time we looked at it, so
-    // call inotify_add_watch unconditionally.
-    int newwd = inotify_add_watch(root->infd, path, WATCHMAN_INOTIFY_MASK);
-    if (newwd == -1) {
-      if (errno == ENOSPC || errno == ENOMEM) {
-        // Limits exceeded, no recovery from our perspective
-        set_poison_state(root, dir, now, "inotify-add-watch", errno);
-      } else {
-        handle_open_errno(root, dir, now, "inotify_add_watch", errno);
-      }
-      return;
-    } else if (dir->wd != -1 && dir->wd != newwd) {
-      // This can happen when a directory is deleted and then recreated very
-      // soon afterwards. e.g. dir->wd is 100, but newwd is 200. We'll still
-      // expect old events to come in for wd 100, so blackhole
-      // those. stop_watching_dir will mark dir->wd as -1, so the condition
-      // right below will be true.
-      stop_watching_dir(root, dir);
-    }
-
-    if (dir->wd == -1) {
-      w_log(W_LOG_DBG, "watch_dir(%s)\n", path);
-      dir->wd = newwd;
-      // record mapping
-      w_ht_replace(root->wd_to_dir, dir->wd, w_ht_ptr_val(dir));
-      w_log(W_LOG_DBG, "adding %d -> %s mapping\n", dir->wd, path);
-    }
-  }
-#endif // HAVE_INOTIFY_INIT
-
-  // For linux, opendir should be after inotify_add_watch so that we don't miss
-  // events between the two
   w_log(W_LOG_DBG, "opendir(%s) recursive=%s\n",
       path, recursive ? "true" : "false");
-  osdir = opendir_nofollow(path);
+
+  /* Start watching and open the dir for crawling.
+   * Whether we open the dir prior to watching or after is watcher specific,
+   * so the operations are rolled together in our abstraction */
+  osdir = watcher_ops->root_start_watch_dir(watcher, root, dir, now, path);
   if (!osdir) {
-    handle_open_errno(root, dir, now, "opendir", errno);
     return;
   }
-
-#if !HAVE_PER_FILE_NOTIFICATIONS
-  if (dir->wd == -1) {
-    int newwd;
-    w_log(W_LOG_DBG, "watch_dir(%s)\n", path);
-
-#if HAVE_KQUEUE
-    {
-      struct stat st, osdirst;
-      struct kevent k;
-
-      newwd = open(path, O_NOFOLLOW|O_EVTONLY|O_CLOEXEC);
-
-      if (newwd == -1) {
-        // directory got deleted between opendir and open
-        handle_open_errno(root, dir, now, "open", errno);
-        closedir(osdir);
-        return;
-      }
-      if (fstat(newwd, &st) == -1 || fstat(dirfd(osdir), &osdirst) == -1) {
-        // whaaa?
-        w_log(W_LOG_ERR, "fstat on opened dir %s failed: %s\n", path,
-            strerror(errno));
-        w_root_schedule_recrawl(root, "fstat failed");
-        close(newwd);
-        closedir(osdir);
-        return;
-      }
-
-      if (st.st_dev != osdirst.st_dev || st.st_ino != osdirst.st_ino) {
-        // directory got replaced between opendir and open -- at this point its
-        // parent's being watched, so we let filesystem events take care of it
-        handle_open_errno(root, dir, now, "open", ENOTDIR);
-        close(newwd);
-        closedir(osdir);
-        return;
-      }
-
-      dir->wd = newwd;
-      memset(&k, 0, sizeof(k));
-      EV_SET(&k, dir->wd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
-        NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME,
-        0, SET_DIR_BIT(dir));
-
-      if (kevent(root->kq_fd, &k, 1, NULL, 0, 0)) {
-        w_log(W_LOG_DBG, "kevent EV_ADD dir %s failed: %s",
-              path, strerror(errno));
-        close(dir->wd);
-        dir->wd = -1;
-      }
-    }
-#endif // HAVE_KQUEUE
-#if HAVE_PORT_CREATE
-    unused_parameter(newwd);
-    {
-      struct stat st;
-      if (fstat(dirfd(osdir), &st) == -1) {
-        // whaaa?
-        w_log(W_LOG_ERR, "fstat on opened dir %s failed: %s\n", path,
-            strerror(errno));
-        w_root_schedule_recrawl(root, "fstat failed");
-        closedir(osdir);
-        return;
-      }
-
-      dir->port_file.fo_mtime = st.st_atim;
-      dir->port_file.fo_mtime = st.st_mtim;
-      dir->port_file.fo_ctime = st.st_ctim;
-      dir->port_file.fo_name = (char*)dir->path->buf;
-
-      errno = 0;
-      if (port_associate(root->port_fd, PORT_SOURCE_FILE,
-          (uintptr_t)&dir->port_file, WATCHMAN_PORT_EVENTS,
-          SET_DIR_BIT(dir))) {
-        w_log(W_LOG_ERR, "port_associate %s %s\n",
-          dir->port_file.fo_name, strerror(errno));
-      }
-    }
-#endif // HAVE_PORT_CREATE
-  }
-#endif // !HAVE_PER_FILE_NOTIFICATIONS
 
   /* flag for delete detection */
   if (w_ht_first(dir->files, &i)) do {
@@ -1657,14 +1307,18 @@ static bool handle_should_recrawl(w_root_t *root)
     // be careful, this is a bit of a switcheroo
     w_root_teardown(root);
     if (!w_root_init(root, &errmsg)) {
-      w_log(W_LOG_ERR, "failed to init root, cancelling watch: %s\n", errmsg);
+      w_log(W_LOG_ERR, "failed to init root %.*s, cancelling watch: %s\n",
+          root->root_path->len, root->root_path->buf, errmsg);
       // this should cause us to exit from the notify loop
       w_root_cancel(root);
     }
     root->recrawl_count++;
-#if HAVE_FSEVENTS
-    start_fsevents_thread(root);
-#endif
+    if (!watcher_ops->root_start(watcher, root)) {
+      w_log(W_LOG_ERR, "failed to start root %.*s, cancelling watch: %.*s\n",
+          root->root_path->len, root->root_path->buf,
+          root->failure_reason->len, root->failure_reason->buf);
+      w_root_cancel(root);
+    }
     return true;
   }
   return false;
@@ -1672,636 +1326,18 @@ static bool handle_should_recrawl(w_root_t *root)
 
 static bool wait_for_notify(w_root_t *root, int timeoutms)
 {
-#if HAVE_FSEVENTS
-  struct timeval now, delta, target;
-  struct timespec ts;
-
-  if (timeoutms == 0 || root->fse_head) {
-    return root->fse_head ? true : false;
-  }
-
-  // Add timeout to current time, convert to absolute timespec
-  gettimeofday(&now, NULL);
-  delta.tv_sec = timeoutms / 1000;
-  delta.tv_usec = (timeoutms - (delta.tv_sec * 1000)) * 1000;
-  w_timeval_add(now, delta, &target);
-  w_timeval_to_timespec(target, &ts);
-
-  pthread_mutex_lock(&root->fse_mtx);
-  pthread_cond_timedwait(&root->fse_cond, &root->fse_mtx, &ts);
-  pthread_mutex_unlock(&root->fse_mtx);
-  return root->fse_head ? true : false;
-#else
-  int n;
-  struct pollfd pfd;
-
-#ifdef HAVE_INOTIFY_INIT
-  pfd.fd = root->infd;
-#elif defined(HAVE_PORT_CREATE)
-  pfd.fd = root->port_fd;
-#elif defined(HAVE_KQUEUE)
-  pfd.fd = root->kq_fd;
-#else
-# error wat
-#endif
-  pfd.events = POLLIN;
-
-  n = poll(&pfd, 1, timeoutms);
-
-  return n == 1;
-#endif
+  return watcher_ops->root_wait_notify(watcher, root, timeoutms);
 }
-
-#if HAVE_FSEVENTS
-
-// The ignore logic is to stop recursion of grandchildren or later
-// generations than an ignored dir.  We allow the direct children
-// of an ignored dir, but no further down.
-static bool is_ignored(w_root_t *root, const char *path, uint32_t pathlen)
-{
-  w_ht_iter_t i;
-
-  if (w_ht_first(root->ignore_dirs, &i)) do {
-    w_string_t *ign = w_ht_val_ptr(i.value);
-
-    if (pathlen < ign->len) {
-      continue;
-    }
-
-    if (memcmp(ign->buf, path, ign->len) == 0) {
-      if (ign->len == pathlen) {
-        // Exact match
-        return true;
-      }
-
-      if (path[ign->len] == '/') {
-        // prefix match
-        return true;
-      }
-    }
-
-  } while (w_ht_next(root->ignore_dirs, &i));
-
-  if (w_ht_first(root->ignore_vcs, &i)) do {
-    w_string_t *ign = w_ht_val_ptr(i.value);
-
-    if (pathlen <= ign->len) {
-      continue;
-    }
-
-    if (memcmp(ign->buf, path, ign->len) == 0) {
-      // prefix matches, but it isn't a parent
-      if (path[ign->len] != '/') {
-        continue;
-      }
-
-      // If we find any '/' in the remainder of the path, then we should
-      // ignore it.  Otherwise we allow it.
-      path += ign->len + 1;
-      pathlen -= ign->len + 1;
-      if (memchr(path, '/', pathlen)) {
-        return true;
-      }
-    }
-
-  } while (w_ht_next(root->ignore_vcs, &i));
-
-  return false;
-}
-
-static void fse_callback(ConstFSEventStreamRef streamRef,
-   void *clientCallBackInfo,
-   size_t numEvents,
-   void *eventPaths,
-   const FSEventStreamEventFlags eventFlags[],
-   const FSEventStreamEventId eventIds[])
-{
-  size_t i;
-  char **paths = eventPaths;
-  w_root_t *root = clientCallBackInfo;
-  char pathbuf[WATCHMAN_NAME_MAX];
-  struct watchman_fsevent *head = NULL, *tail = NULL, *evt;
-
-  unused_parameter(streamRef);
-  unused_parameter(eventIds);
-  unused_parameter(eventFlags);
-
-  for (i = 0; i < numEvents; i++) {
-    uint32_t len;
-
-    len = strlen(paths[i]);
-    if (len >= sizeof(pathbuf)-1) {
-      w_log(W_LOG_DBG, "FSEvents: %s name is too big :-(\n", paths[i]);
-      w_root_cancel(root);
-      break;
-    }
-
-    strcpy(pathbuf, paths[i]);
-    while (pathbuf[len-1] == '/') {
-      pathbuf[len-1] = '\0';
-      len--;
-    }
-
-    if (is_ignored(root, paths[i], len)) {
-      continue;
-    }
-
-    evt = calloc(1, sizeof(*evt));
-    if (!evt) {
-      w_log(W_LOG_DBG, "FSEvents: OOM!");
-      w_root_cancel(root);
-      break;
-    }
-
-    evt->path = w_string_new(pathbuf);
-    evt->flags = eventFlags[i];
-    if (tail) {
-      tail->next = evt;
-    } else {
-      head = evt;
-    }
-    tail = evt;
-
-    w_log(W_LOG_DBG, "fse_thread: add %s %" PRIx32 "\n", pathbuf, evt->flags);
-  }
-
-  pthread_mutex_lock(&root->fse_mtx);
-  if (root->fse_tail) {
-    root->fse_tail->next = head;
-  } else {
-    root->fse_head = head;
-  }
-  root->fse_tail = tail;
-  pthread_mutex_unlock(&root->fse_mtx);
-  pthread_cond_signal(&root->fse_cond);
-}
-
-static void fse_pipe_callback(CFFileDescriptorRef fdref,
-      CFOptionFlags callBackTypes, void *info)
-{
-  w_root_t *root = info;
-
-  unused_parameter(fdref);
-  unused_parameter(callBackTypes);
-
-  w_log(W_LOG_DBG, "fse_thread[%.*s]: pipe signalled\n",
-      root->root_path->len, root->root_path->buf);
-  CFRunLoopStop(CFRunLoopGetCurrent());
-}
-
-static void *fsevents_thread(void *arg)
-{
-  w_root_t *root = arg;
-  FSEventStreamContext ctx;
-  CFMutableArrayRef parray;
-  CFStringRef cpath;
-  FSEventStreamRef fs_stream;
-  CFFileDescriptorContext fdctx;
-  CFFileDescriptorRef fdref;
-
-  memset(&ctx, 0, sizeof(ctx));
-  ctx.info = root;
-
-  memset(&fdctx, 0, sizeof(fdctx));
-  fdctx.info = root;
-
-  fdref = CFFileDescriptorCreate(NULL, root->fse_pipe[0], true,
-      fse_pipe_callback, &fdctx);
-  CFFileDescriptorEnableCallBacks(fdref, kCFFileDescriptorReadCallBack);
-  {
-    CFRunLoopSourceRef fdsrc;
-
-    fdsrc = CFFileDescriptorCreateRunLoopSource(NULL, fdref, 0);
-    CFRunLoopAddSource(CFRunLoopGetCurrent(), fdsrc, kCFRunLoopDefaultMode);
-    CFRelease(fdsrc);
-  }
-
-  parray = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
-  if (!parray) {
-    w_log(W_LOG_ERR, "watch(%.*s): CFArrayCreateMutable failed\n",
-          root->root_path->len, root->root_path->buf);
-    goto done;
-  }
-
-  cpath = CFStringCreateWithBytes(NULL, (const UInt8*)root->root_path->buf,
-      root->root_path->len, kCFStringEncodingUTF8,
-      false);
-  if (!cpath) {
-    w_log(W_LOG_ERR,
-        "watch(%.*s): CFStringCreateWithBytes failed\n",
-        root->root_path->len, root->root_path->buf);
-    goto done;
-  }
-
-  CFArrayAppendValue(parray, cpath);
-  CFRelease(cpath);
-
-  fs_stream = FSEventStreamCreate(NULL, fse_callback,
-      &ctx, parray, kFSEventStreamEventIdSinceNow,
-      0.0001,
-      kFSEventStreamCreateFlagNoDefer|
-      kFSEventStreamCreateFlagWatchRoot|
-      kFSEventStreamCreateFlagFileEvents);
-
-  if (!fs_stream) {
-    w_log(W_LOG_ERR, "watch(%.*s): FSEventStreamCreate failed\n",
-          root->root_path->len, root->root_path->buf);
-    goto done;
-  }
-
-  FSEventStreamScheduleWithRunLoop(fs_stream,
-      CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-  FSEventStreamStart(fs_stream);
-
-  CFRunLoopRun();
-
-  FSEventStreamStop(fs_stream);
-  FSEventStreamInvalidate(fs_stream);
-  FSEventStreamRelease(fs_stream);
-  CFRelease(fdref);
-
-done:
-  w_log(W_LOG_DBG, "fse_thread[%.*s] done\n",
-      root->root_path->len, root->root_path->buf);
-  w_root_delref(root);
-  return NULL;
-}
-
-static int consume_fsevents(w_root_t *root)
-{
-  struct watchman_fsevent *head, *evt;
-  int n = 0;
-  struct timeval now;
-  bool recurse;
-
-  pthread_mutex_lock(&root->fse_mtx);
-  head = root->fse_head;
-  root->fse_head = NULL;
-  root->fse_tail = NULL;
-  pthread_mutex_unlock(&root->fse_mtx);
-
-  gettimeofday(&now, 0);
-
-  while (head) {
-    evt = head;
-    head = head->next;
-    n++;
-
-    if (evt->flags & kFSEventStreamEventFlagUserDropped) {
-      w_root_schedule_recrawl(root, "kFSEventStreamEventFlagUserDropped");
-break_out:
-      w_string_delref(evt->path);
-      free(evt);
-      break;
-    }
-
-    if (evt->flags & kFSEventStreamEventFlagKernelDropped) {
-      w_root_schedule_recrawl(root, "kFSEventStreamEventFlagKernelDropped");
-      goto break_out;
-    }
-
-    if (evt->flags & kFSEventStreamEventFlagUnmount) {
-      w_log(W_LOG_ERR, "kFSEventStreamEventFlagUnmount %.*s, cancel watch\n",
-        evt->path->len, evt->path->buf);
-      w_root_cancel(root);
-      goto break_out;
-    }
-
-    if (evt->flags & kFSEventStreamEventFlagRootChanged) {
-      w_log(W_LOG_ERR,
-        "kFSEventStreamEventFlagRootChanged %.*s, cancel watch\n",
-        evt->path->len, evt->path->buf);
-      w_root_cancel(root);
-      goto break_out;
-    }
-
-    recurse = (evt->flags & kFSEventStreamEventFlagMustScanSubDirs)
-              ? true : false;
-
-    w_root_add_pending(root, evt->path, recurse, now, true);
-
-    w_string_delref(evt->path);
-    free(evt);
-  }
-
-  return n;
-}
-#endif
-
-#if HAVE_KQUEUE
-
-static int consume_kqueue(w_root_t *root, int timeoutms)
-{
-  int n;
-  int i;
-  struct timespec ts = { 0, 0 };
-  struct timeval now;
-
-  ts.tv_sec = timeoutms / 1000;
-  ts.tv_nsec = (timeoutms - (ts.tv_sec * 1000)) * WATCHMAN_NSEC_IN_MSEC;
-
-  errno = 0;
-
-  w_log(W_LOG_DBG, "kqueue(%s) timeout=%d\n",
-      root->root_path->buf, timeoutms);
-  n = kevent(root->kq_fd, NULL, 0,
-      root->keventbuf, sizeof(root->keventbuf) / sizeof(root->keventbuf[0]),
-      &ts);
-  w_log(W_LOG_DBG, "consume_kqueue: %s timeout=%d n=%d err=%s\n",
-      root->root_path->buf, timeoutms, n, strerror(errno));
-  if (root->cancelled) {
-    return 0;
-  }
-
-  gettimeofday(&now, NULL);
-  for (i = 0; n > 0 && i < n; i++) {
-    uint32_t fflags = root->keventbuf[i].fflags;
-
-    if (IS_DIR_BIT_SET(root->keventbuf[i].udata)) {
-      struct watchman_dir *dir = DECODE_DIR(root->keventbuf[i].udata);
-
-      w_log(W_LOG_DBG, " KQ dir %s [0x%x]\n", dir->path->buf, fflags);
-      if ((fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE)) &&
-          w_string_equal(dir->path, root->root_path)) {
-        w_log(W_LOG_ERR,
-            "root dir %s has been (re)moved [code 0x%x], canceling watch\n",
-            root->root_path->buf, fflags);
-        w_root_cancel(root);
-        return 0;
-      }
-      w_root_add_pending(root, dir->path, false, now, false);
-    } else {
-      // NetBSD defines udata as intptr type, so the cast is necessary
-      struct watchman_file *file = (void *)root->keventbuf[i].udata;
-
-      w_string_t *path;
-
-      path = w_string_path_cat(file->parent->path, file->name);
-      w_root_add_pending(root, path, true, now, true);
-      w_log(W_LOG_DBG, " KQ file %.*s [0x%x]\n", path->len, path->buf, fflags);
-      w_string_delref(path);
-    }
-  }
-
-  return n;
-}
-#endif
-
-#if HAVE_PORT_CREATE
-
-static bool consume_portfs(w_root_t *root, int timeoutms)
-{
-  uint_t i, n;
-  struct timeval now;
-
-  struct timespec ts = { 0, 0 };
-
-  ts.tv_sec = timeoutms / 1000;
-  ts.tv_nsec = (timeoutms - (ts.tv_sec * 1000)) * WATCHMAN_NSEC_IN_MSEC;
-
-  errno = 0;
-
-  w_log(W_LOG_DBG,
-      "enter port_getn: sec=%" PRIu64 " nsec=%" PRIu64 " msec=%d\n",
-      (uint64_t)ts.tv_sec, (uint64_t)ts.tv_nsec, timeoutms);
-  n = 1;
-  if (port_getn(root->port_fd, root->portevents,
-        sizeof(root->portevents) / sizeof(root->portevents[0]), &n, NULL)) {
-    if (errno == EINTR) {
-      return false;
-    }
-    w_log(W_LOG_FATAL, "port_getn: %s\n",
-        strerror(errno));
-  }
-
-  w_log(W_LOG_DBG, "port_getn: n=%u\n", n);
-
-  if (n == 0) {
-    return false;
-  }
-
-  for (i = 0; i < n; i++) {
-    if (IS_DIR_BIT_SET(root->portevents[i].portev_user)) {
-      struct watchman_dir *dir = DECODE_DIR(root->portevents[i].portev_user);
-      uint32_t pe = root->portevents[i].portev_events;
-
-      w_log(W_LOG_DBG, "port: dir %.*s [0x%x]\n",
-          dir->path->len, dir->path->buf, pe);
-
-      if ((pe & (FILE_RENAME_FROM|UNMOUNTED|MOUNTEDOVER|FILE_DELETE))
-          && w_string_equal(dir->path, root->root_path)) {
-
-        w_log(W_LOG_ERR,
-          "root dir %s has been (re)moved (code 0x%x), canceling watch\n",
-          root->root_path->buf, pe);
-
-        w_root_cancel(root);
-        return false;
-      }
-      w_root_add_pending(root, dir->path, false, now, true);
-
-    } else {
-      struct watchman_file *file = root->portevents[i].portev_user;
-      w_string_t *path;
-
-      path = w_string_path_cat(file->parent->path, file->name);
-      w_root_add_pending(root, path, true, now, true);
-      w_log(W_LOG_DBG, "port: file %.*s\n", path->len, path->buf);
-      w_string_delref(path);
-    }
-  }
-
-  return true;
-}
-
-#endif
-
-#if HAVE_INOTIFY_INIT
-
-static void process_inotify_event(
-    w_root_t *root,
-    struct inotify_event *ine,
-    struct timeval now)
-{
-    struct watchman_dir *dir;
-    struct watchman_file *file = NULL;
-    w_string_t *name;
-
-  w_log(W_LOG_DBG, "notify: wd=%d mask=%x %s\n", ine->wd, ine->mask,
-      ine->len > 0 ? ine->name : "");
-
-  if (ine->wd == -1 && (ine->mask & IN_Q_OVERFLOW)) {
-    /* we missed something, will need to re-crawl */
-    w_root_schedule_recrawl(root, "IN_Q_OVERFLOW");
-  } else if (ine->wd != -1) {
-    char buf[WATCHMAN_NAME_MAX];
-
-    dir = w_root_resolve_dir_by_wd(root, ine->wd);
-    if (dir == &dir_pending_ignored) {
-      if ((ine->mask & IN_IGNORED) != 0) {
-        w_log(W_LOG_DBG, "mask=%x: remove watch %d (pending ignored dir)\n",
-            ine->mask, ine->wd);
-        w_ht_del(root->wd_to_dir, ine->wd);
-      } else {
-        w_log(W_LOG_DBG, "mask=%x: pending ignored watch %d, name %.*s",
-            ine->mask, ine->wd, ine->len, ine->name);
-      }
-    } else if (dir) {
-      // The hint is that it has gone away, so remove our wd mapping here.
-      // We'll queue up a stat of that dir anyway so that we really know
-      // the state of that path, but that has to happen /after/ we've
-      // removed this watch.
-      if ((ine->mask & IN_IGNORED) != 0) {
-        w_log(W_LOG_DBG, "mask=%x: remove watch %d %.*s\n", ine->mask,
-            dir->wd, dir->path->len, dir->path->buf);
-        if (dir->wd != -1) {
-          w_ht_del(root->wd_to_dir, dir->wd);
-          dir->wd = -1;
-        }
-      }
-
-      // We need to ensure that the watch descriptor associations from
-      // the old location are no longer valid so that when we crawl
-      // the destination location we'll update the entries
-      if (ine->len > 0 && (ine->mask & IN_MOVED_FROM)) {
-        name = w_string_new(ine->name);
-        file = w_root_resolve_file(root, dir, name, now);
-        if (!file) {
-          w_log(W_LOG_ERR,
-              "looking for file %.*s but it is missing in %.*s\n",
-              ine->len, ine->name, dir->path->len, dir->path->buf);
-          w_root_schedule_recrawl(root, "file missing from internal state");
-          w_string_delref(name);
-          return;
-        }
-
-        // The file no longer exists in its old location
-        file->exists = false;
-        w_root_mark_file_changed(root, file, now);
-        w_string_delref(name);
-
-        // Was there a dir here too?
-        snprintf(buf, sizeof(buf), "%.*s/%s",
-            dir->path->len, dir->path->buf,
-            ine->name);
-        name = w_string_new(buf);
-
-        dir = w_root_resolve_dir(root, name, false);
-        if (dir) {
-          // Ensure that the old tree is not associated
-          invalidate_watch_descriptors(root, dir);
-          // and marked deleted
-          w_root_mark_deleted(root, dir, now, true);
-        }
-        w_string_delref(name);
-        return;
-      }
-
-      if (ine->len > 0) {
-        snprintf(buf, sizeof(buf), "%.*s/%s",
-            dir->path->len, dir->path->buf,
-            ine->name);
-        name = w_string_new(buf);
-      } else {
-        name = dir->path;
-        w_string_addref(name);
-      }
-
-      if ((ine->mask & (IN_UNMOUNT|IN_IGNORED|IN_DELETE_SELF|IN_MOVE_SELF))) {
-        w_string_t *pname;
-
-        if (w_string_equal(root->root_path, name)) {
-          w_log(W_LOG_ERR,
-              "root dir %s has been (re)moved, canceling watch\n",
-              root->root_path->buf);
-          w_string_delref(name);
-          w_root_cancel(root);
-          return;
-        }
-
-        // We need to examine the parent and crawl down
-        pname = w_string_dirname(name);
-        w_log(W_LOG_DBG, "mask=%x, focus on parent: %.*s\n",
-            ine->mask, pname->len, pname->buf);
-        w_string_delref(name);
-        name = pname;
-      }
-
-      w_log(W_LOG_DBG, "add_pending for inotify mask=%x %.*s\n",
-          ine->mask, name->len, name->buf);
-      w_root_add_pending(root, name, true, now, true);
-
-      w_string_delref(name);
-
-    } else if ((ine->mask & (IN_MOVE_SELF|IN_IGNORED)) == 0) {
-      // If we can't resolve the dir, and this isn't notification
-      // that it has gone away, then we want to recrawl to fix
-      // up our state.
-      w_log(W_LOG_ERR, "wanted dir %d for mask %x but not found %.*s\n",
-          ine->wd, ine->mask, ine->len, ine->name);
-      w_root_schedule_recrawl(root, "dir missing from internal state");
-    }
-  }
-}
-
-static bool try_read_inotify(w_root_t *root)
-{
-  struct inotify_event *ine;
-  char *iptr;
-  int n;
-  struct timeval now;
-
-  n = read(root->infd, &root->ibuf, sizeof(root->ibuf));
-  if (n == -1) {
-    if (errno == EINTR) {
-      return false;
-    }
-    w_log(W_LOG_FATAL, "read(%d, %zu): error %s\n",
-        root->infd, sizeof(root->ibuf), strerror(errno));
-  }
-
-  w_log(W_LOG_DBG, "inotify read: returned %d.\n", n);
-  gettimeofday(&now, NULL);
-
-  for (iptr = root->ibuf; iptr < root->ibuf + n;
-      iptr = iptr + sizeof(*ine) + ine->len) {
-    ine = (struct inotify_event*)iptr;
-
-    process_inotify_event(root, ine, now);
-
-    if (root->cancelled) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-#endif
 
 static bool consume_notify(w_root_t *root)
 {
-#if HAVE_INOTIFY_INIT
-  return try_read_inotify(root);
-#elif HAVE_FSEVENTS
-  return consume_fsevents(root);
-#elif HAVE_KQUEUE
-  return consume_kqueue(root, 0);
-#elif HAVE_PORT_CREATE
-  return consume_portfs(root, 0);
-#else
-# error I dont support this system
-#endif
+  return watcher_ops->root_consume_notify(watcher, root);
 }
 
 static void free_file_node(struct watchman_file *file)
 {
+  watcher_ops->file_free(watcher, file);
   w_string_delref(file->name);
-#if HAVE_PORT_CREATE
-  if (file->port_file.fo_name) {
-    free(file->port_file.fo_name);
-  }
-#endif
   free(file);
 }
 
@@ -2435,9 +1471,13 @@ static void consider_age_out(w_root_t *root)
 // we have drained the inotify descriptor
 static void notify_thread(w_root_t *root)
 {
-#if HAVE_FSEVENTS
-  start_fsevents_thread(root);
-#endif
+  if (!watcher_ops->root_start(watcher, root)) {
+    w_log(W_LOG_ERR, "failed to start root %.*s, cancelling watch: %.*s\n",
+        root->root_path->len, root->root_path->buf,
+        root->failure_reason->len, root->failure_reason->buf);
+    w_root_cancel(root);
+    return;
+  }
 
   /* now we can settle into the notification stuff */
   while (!root->cancelled) {
@@ -2553,42 +1593,7 @@ static void w_root_teardown(w_root_t *root)
 {
   struct watchman_file *file;
 
-#ifdef HAVE_INOTIFY_INIT
-  close(root->infd);
-  root->infd = -1;
-  if (root->wd_to_dir) {
-    w_ht_free(root->wd_to_dir);
-    root->wd_to_dir = NULL;
-  }
-#endif
-#ifdef HAVE_KQUEUE
-  close(root->kq_fd);
-  root->kq_fd = -1;
-#endif
-#ifdef HAVE_PORT_CREATE
-  close(root->port_fd);
-  root->port_fd = -1;
-#endif
-#ifdef HAVE_FSEVENTS
-  // wait for fsevents thread to quit
-  if (!pthread_equal(root->fse_thread, pthread_self())) {
-    void *ignore;
-    pthread_join(root->fse_thread, &ignore);
-  }
-
-  pthread_cond_destroy(&root->fse_cond);
-  pthread_mutex_destroy(&root->fse_mtx);
-  close(root->fse_pipe[0]);
-  close(root->fse_pipe[1]);
-
-  while (root->fse_head) {
-    struct watchman_fsevent *evt = root->fse_head;
-    root->fse_head = evt->next;
-
-    w_string_delref(evt->path);
-    free(evt);
-  }
-#endif
+  watcher_ops->root_dtor(watcher, root);
 
   if (root->dirname_to_dir) {
     w_ht_free(root->dirname_to_dir);
@@ -2643,6 +1648,13 @@ void w_root_delref(w_root_t *root)
     json_decref(root->config_file);
   }
 
+  if (root->last_recrawl_reason) {
+    w_string_delref(root->last_recrawl_reason);
+  }
+  if (root->failure_reason) {
+    w_string_delref(root->failure_reason);
+  }
+
   if (root->query_cookie_dir) {
     w_string_delref(root->query_cookie_dir);
   }
@@ -2678,6 +1690,31 @@ static const struct watchman_hash_funcs root_funcs = {
   root_copy_val,
   root_del_val
 };
+
+void watchman_watcher_init(void) {
+  watched_roots = w_ht_new(4, &root_funcs);
+
+#if HAVE_FSEVENTS
+  watcher_ops = &fsevents_watcher;
+#elif defined(HAVE_INOTIFY_INIT)
+  watcher_ops = &inotify_watcher;
+#elif defined(HAVE_PORT_CREATE)
+  watcher_ops = &portfs_watcher;
+#elif defined(HAVE_KQUEUE)
+  watcher_ops = &kqueue_watcher;
+#else
+# error you need to assign watcher_ops for this system
+#endif
+
+  watcher = watcher_ops->global_init();
+
+  w_log(W_LOG_ERR, "Using watcher mechanism %s\n", watcher_ops->name);
+}
+
+void watchman_watcher_dtor(void) {
+  watcher_ops->global_dtor(watcher);
+}
+
 
 static bool remove_root_from_watched(w_root_t *root)
 {
@@ -2829,9 +1866,6 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
 
   root_str = w_string_new(watch_path);
   pthread_mutex_lock(&root_lock);
-  if (!watched_roots) {
-    watched_roots = w_ht_new(4, &root_funcs);
-  }
   // This will addref if it returns root
   if (w_ht_lookup(watched_roots, w_ht_ptr_val(root_str), &root_val, true)) {
     root = w_ht_val_ptr(root_val);
@@ -2920,19 +1954,25 @@ static void *run_notify_thread(void *arg)
   return 0;
 }
 
-static bool root_start(w_root_t *root)
+static bool root_start(w_root_t *root, char **errmsg)
 {
   pthread_attr_t attr;
+  int err;
 
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
   w_root_addref(root);
-  pthread_create(&root->notify_thread, &attr, run_notify_thread, root);
-
+  err = pthread_create(&root->notify_thread, &attr, run_notify_thread, root);
   pthread_attr_destroy(&attr);
 
-  return root;
+  if (err == 0) {
+    return true;
+  }
+
+  ignore_result(asprintf(errmsg,
+        "failed to pthread_create notify_thread: %s\n", strerror(err)));
+  return false;
 }
 
 w_root_t *w_root_resolve_for_client_mode(const char *filename, char **errmsg)
@@ -2963,9 +2003,7 @@ static void signal_root_threads(w_root_t *root)
   if (!pthread_equal(root->notify_thread, pthread_self())) {
     pthread_kill(root->notify_thread, SIGUSR1);
   }
-#if HAVE_FSEVENTS
-  write(root->fse_pipe[1], "X", 1);
-#endif
+  watcher_ops->root_signal_threads(watcher, root);
 }
 
 void w_root_schedule_recrawl(w_root_t *root, const char *why)
@@ -3025,7 +2063,11 @@ w_root_t *w_root_resolve(const char *filename, bool auto_watch, char **errmsg)
 
   root = root_resolve(filename, auto_watch, &created, errmsg);
   if (created) {
-    root_start(root);
+    if (!root_start(root, errmsg)) {
+      w_root_cancel(root);
+      w_root_delref(root);
+      return NULL;
+    }
     w_state_save();
   }
   return root;
@@ -3126,7 +2168,12 @@ bool w_root_load_state(json_t *state)
     w_root_unlock(root);
 
     if (created) {
-      root_start(root);
+      if (!root_start(root, &errmsg)) {
+        w_log(W_LOG_ERR, "root_start(%s) failed: %s\n",
+            root->root_path->buf, errmsg);
+        free(errmsg);
+        w_root_cancel(root);
+      }
     }
 
     w_root_delref(root);

@@ -115,8 +115,17 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
   }
 
   resp = make_response();
-  set_prop(resp, "watch", json_string_nocheck(root->root_path->buf));
+
+  w_root_lock(root);
+  if (root->failure_reason) {
+    set_prop(resp, "error", json_string_nocheck(root->failure_reason->buf));
+  } else if (root->cancelled) {
+    set_prop(resp, "error", json_string_nocheck("root was cancelled"));
+  } else {
+    set_prop(resp, "watch", json_string_nocheck(root->root_path->buf));
+  }
   send_and_dispose_response(client, resp);
+  w_root_unlock(root);
   w_root_delref(root);
 }
 W_CMD_REG("watch", cmd_watch, CMD_DAEMON, w_cmd_realpath_root)

@@ -136,7 +136,7 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
       $start = microtime(true);
       $future = new ExecFuture(
         "PATH=\"$root:\$PATH\" PYTHONPATH=$root/python ".
-        "TESTNAME=$path make py-tests"
+        "TESTNAME=$path \${MAKE:-make} py-tests"
       );
       $future->setTimeout(10);
       list($status, $out, $err) = $future->resolve();
@@ -162,7 +162,7 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
       }
       $start = microtime(true);
       $future = new ExecFuture(
-        "PATH=\"$root:\$PATH\" make rb-tests"
+        "PATH=\"$root:\$PATH\" \${MAKE:-make} rb-tests"
       );
       $future->setTimeout(10);
       list($status, $out, $err) = $future->resolve();

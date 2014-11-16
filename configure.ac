@@ -1,4 +1,4 @@
-AC_INIT([watchman], [2.9.9], [], [watchman])
+AC_INIT([watchman], [3.0.0], [], [watchman])
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES(yes)])
@@ -191,6 +191,12 @@ AC_CHECK_HEADERS(CoreServices/CoreServices.h, [
   LIBS="$LIBS -framework CoreServices"
 ])
 AC_CHECK_FUNCS(backtrace backtrace_symbols)
+
+if test -n "$ac_cv_header_sys_statvfs_h"; then
+AC_CHECK_MEMBERS([struct statvfs.f_fstypename,struct statvfs.f_basetype],
+  [AC_DEFINE([STATVFS_HAS_FSTYPE_AS_STRING], [1],[if statvfs holds fstype as string])],[],[[#include <sys/statvfs.h>]])
+fi
+
 
 # Do this after we've looked for functions
 if test -n "$GCC" ; then

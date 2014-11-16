@@ -16,7 +16,7 @@ a legal requirement; a similar situation applies to Apache and other ASF
 projects.
 
 If we ask you to fill out a CLA we'll direct you to [our online CLA
-page](https://developers.facebook.com/opensource/cla) where you can complete it
+page](https://code.facebook.com/cla) where you can complete it
 easily.  We use the same form as the Apache CLA so that friction is minimal.
 
 ### Tools

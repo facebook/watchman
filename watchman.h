@@ -62,6 +62,9 @@ extern "C" {
 #include <sysexits.h>
 #include <spawn.h>
 #include <stddef.h>
+#ifdef HAVE_SYS_PARAM_H
+# include <sys/param.h>
+#endif
 // Not explicitly exported on Darwin, so we get to define it.
 extern char **environ;
 
@@ -74,7 +77,6 @@ extern char *poisoned_reason;
 #ifdef HAVE_CORESERVICES_CORESERVICES_H
 # include <CoreServices/CoreServices.h>
 # define HAVE_FSEVENTS 1
-# undef HAVE_KQUEUE
 #endif
 
 // Helpers for pasting __LINE__ for symbol generation
@@ -158,13 +160,16 @@ struct watchman_string {
 #define WATCHMAN_PORT_EVENTS \
   FILE_MODIFIED | FILE_ATTRIB | FILE_NOFOLLOW
 
-#if HAVE_FSEVENTS
-struct watchman_fsevent {
-  struct watchman_fsevent *next;
-  w_string_t *path;
-  FSEventStreamEventFlags flags;
-};
-#endif
+/* small for testing, but should make this greater than the number of dirs we
+ * have in our repos to avoid realloc */
+#define HINT_NUM_DIRS 128*1024
+
+/* We leverage the fact that our aligned pointers will never set the LSB of a
+ * pointer value.  We can use the LSB to indicate whether kqueue entries are
+ * dirs or files */
+#define SET_DIR_BIT(dir)   ((void*)(((intptr_t)dir) | 0x1))
+#define IS_DIR_BIT_SET(dir) ((((intptr_t)dir) & 0x1) == 0x1)
+#define DECODE_DIR(dir)    ((void*)(((intptr_t)dir) & ~0x1))
 
 struct watchman_file;
 struct watchman_dir;
@@ -172,6 +177,11 @@ struct watchman_root;
 struct watchman_pending_fs;
 struct watchman_trigger_command;
 typedef struct watchman_root w_root_t;
+
+// Process global state for the selected watcher
+typedef void *watchman_global_watcher_t;
+// Per-watch state for the selected watcher
+typedef void *watchman_watcher_t;
 
 struct watchman_clock {
   uint32_t ticks;
@@ -202,6 +212,71 @@ struct watchman_dir {
 #if HAVE_PORT_CREATE
   file_obj_t port_file;
 #endif
+};
+
+struct watchman_ops {
+  // What's it called??
+  const char *name;
+
+  // true if this watcher notifies for individual files,
+  // false if it only notifies for dirs
+  bool has_per_file_notifications;
+
+  // Perform any global initialization needed for the watcher mechanism
+  // and return a context pointer that will be passed to all other ops
+  watchman_global_watcher_t (*global_init)(void);
+
+  // Perform global shutdown of the watcher at process shutdown time.
+  // We're not guaranteed that this will be called, depending on how
+  // the process is shutdown
+  void (*global_dtor)(watchman_global_watcher_t watcher);
+
+  // Perform watcher-specific initialization for a watched root.
+  // Do not start threads here
+  bool (*root_init)(watchman_global_watcher_t watcher, w_root_t *root,
+      char **errmsg);
+
+  // Start up threads or similar.  Called in the context of the
+  // notify thread
+  bool (*root_start)(watchman_global_watcher_t watcher, w_root_t *root);
+
+  // Perform watcher-specific cleanup for a watched root when it is freed
+  void (*root_dtor)(watchman_global_watcher_t watcher, w_root_t *root);
+
+  // Initiate an OS-level watch on the provided file
+  bool (*root_start_watch_file)(watchman_global_watcher_t watcher,
+      w_root_t *root, struct watchman_file *file);
+
+  // Cancel an OS-level watch on the provided file
+  void (*root_stop_watch_file)(watchman_global_watcher_t watcher,
+      w_root_t *root, struct watchman_file *file);
+
+  // Initiate an OS-level watch on the provided dir, return a DIR
+  // handle, or NULL on error
+  DIR *(*root_start_watch_dir)(watchman_global_watcher_t watcher,
+      w_root_t *root, struct watchman_dir *dir, struct timeval now,
+      const char *path);
+
+  // Cancel an OS-level watch on the provided dir
+  void (*root_stop_watch_dir)(watchman_global_watcher_t watcher,
+      w_root_t *root, struct watchman_dir *dir);
+
+  // Signal any threads to terminate.  Do not join them here.
+  void (*root_signal_threads)(watchman_global_watcher_t watcher,
+      w_root_t *root);
+
+  // Consume any available notifications.  If there are none pending,
+  // does not block.
+  bool (*root_consume_notify)(watchman_global_watcher_t watcher,
+      w_root_t *root);
+
+  // Wait for an inotify event to become available
+  bool (*root_wait_notify)(watchman_global_watcher_t watcher,
+      w_root_t *root, int timeoutms);
+
+  // Called when freeing a file node
+  void (*file_free)(watchman_global_watcher_t watcher,
+      struct watchman_file *file);
 };
 
 struct watchman_file {
@@ -289,35 +364,18 @@ struct watchman_root {
   int recrawl_count;
   w_string_t *last_recrawl_reason;
 
+  // Why we failed to watch
+  w_string_t *failure_reason;
+
   /* --- everything below this point will be reset on w_root_init --- */
   bool _init_sentinel_;
 
   /* root number */
   uint32_t number;
 
-#if HAVE_INOTIFY_INIT
-  /* we use one inotify instance per watched root dir */
-  int infd;
+  // Watcher specific state
+  watchman_watcher_t watch;
 
-  /* map of active watch descriptor to a dir */
-  w_ht_t *wd_to_dir;
-#endif
-#if HAVE_KQUEUE
-  int kq_fd;
-#endif
-#if HAVE_PORT_CREATE
-  int port_fd;
-#endif
-#if HAVE_FSEVENTS
-  int fse_pipe[2];
-  bool fse_started;
-
-  pthread_mutex_t fse_mtx;
-  pthread_cond_t fse_cond;
-  pthread_t fse_thread;
-
-  struct watchman_fsevent *fse_head, *fse_tail;
-#endif
   /* map of dir name to a dir */
   w_ht_t *dirname_to_dir;
 
@@ -351,18 +409,6 @@ struct watchman_root {
   uint32_t pending_sub_tick;
   uint32_t last_age_out_tick;
   time_t last_age_out_timestamp;
-
-#if HAVE_INOTIFY_INIT
-  // Make the buffer big enough for 16k entries, which
-  // happens to be the default fs.inotify.max_queued_events
-  char ibuf[WATCHMAN_BATCH_LIMIT * (sizeof(struct inotify_event) + 256)];
-#endif
-#if HAVE_KQUEUE
-  struct kevent keventbuf[WATCHMAN_BATCH_LIMIT];
-#endif
-#if HAVE_PORT_CREATE
-  port_event_t portevents[WATCHMAN_BATCH_LIMIT];
-#endif
 };
 
 enum w_pdu_type {
@@ -468,6 +514,10 @@ w_string_t *w_fstype(const char *path);
 void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
 w_root_t *w_root_resolve(const char *path, bool auto_watch, char **errmsg);
 w_root_t *w_root_resolve_for_client_mode(const char *filename, char **errmsg);
+struct watchman_file *w_root_resolve_file(w_root_t *root,
+    struct watchman_dir *dir, w_string_t *file_name,
+    struct timeval now);
+
 void w_root_perform_age_out(w_root_t *root, int min_age);
 void w_root_free_watched_roots(void);
 void w_root_schedule_recrawl(w_root_t *root, const char *why);
@@ -485,6 +535,9 @@ struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd);
 void w_root_process_path(w_root_t *root, w_string_t *full_path,
     struct timeval now, bool recursive, bool via_notify);
 bool w_root_process_pending(w_root_t *root, bool drain);
+
+void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
+    struct timeval now);
 
 bool w_root_add_pending(w_root_t *root, w_string_t *path,
     bool recursive, struct timeval now, bool via_notify);
@@ -584,7 +637,8 @@ static inline int w_timeval_compare(struct timeval a, struct timeval b)
 #define WATCHMAN_NSEC_IN_SEC (1000 * 1000 * 1000)
 #define WATCHMAN_NSEC_IN_MSEC 1000000
 
-#if defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__APPLE__) || defined(__FreeBSD__) \
+ || (defined(__NetBSD__) && (__NetBSD_Version__ < 6099000000))
 /* BSD-style subsecond timespec */
 #define WATCHMAN_ST_TIMESPEC(type) st_##type##timespec
 #else
@@ -765,6 +819,18 @@ struct watchman_trigger_command *w_build_trigger_from_def(
 
 void set_poison_state(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, const char *syscall, int err);
+
+void watchman_watcher_init(void);
+void watchman_watcher_dtor(void);
+void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
+    struct timeval now, const char *syscall, int err);
+void stop_watching_dir(w_root_t *root, struct watchman_dir *dir);
+DIR *opendir_nofollow(const char *path);
+
+extern struct watchman_ops fsevents_watcher;
+extern struct watchman_ops kqueue_watcher;
+extern struct watchman_ops inotify_watcher;
+extern struct watchman_ops portfs_watcher;
 
 #ifdef __cplusplus
 }
