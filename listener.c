@@ -783,23 +783,33 @@ bool w_start_listener(const char *path)
 #if defined(HAVE_KQUEUE) || defined(HAVE_FSEVENTS)
   {
     struct rlimit limit;
+# ifndef __OpenBSD__
     int mib[2] = { CTL_KERN,
-#ifdef KERN_MAXFILESPERPROC
+#  ifdef KERN_MAXFILESPERPROC
       KERN_MAXFILESPERPROC
-#else
+#  else
       KERN_MAXFILES
-#endif
+#  endif
     };
+# endif
     int maxperproc;
+
+    getrlimit(RLIMIT_NOFILE, &limit);
+
+# ifndef __OpenBSD__
     size_t len;
 
     len = sizeof(maxperproc);
     sysctl(mib, 2, &maxperproc, &len, NULL, 0);
-
-    getrlimit(RLIMIT_NOFILE, &limit);
     w_log(W_LOG_ERR, "file limit is %" PRIu64
         " kern.maxfilesperproc=%i\n",
         limit.rlim_cur, maxperproc);
+# else
+    maxperproc = limit.rlim_max;
+    w_log(W_LOG_ERR, "openfiles-cur is %" PRIu64
+        " openfiles-max=%i\n",
+        limit.rlim_cur, maxperproc);
+# endif
 
     if (limit.rlim_cur != RLIM_INFINITY &&
         maxperproc > 0 &&
