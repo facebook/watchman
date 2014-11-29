@@ -100,8 +100,8 @@ static json_t *build_subscription_results(
 
   set_prop(response, "is_fresh_instance", json_boolean(res.is_fresh_instance));
   set_prop(response, "files", file_list);
-  set_prop(response, "root", json_string(root->root_path->buf));
-  set_prop(response, "subscription", json_string(sub->name->buf));
+  set_prop(response, "root", w_string_to_json(root->root_path));
+  set_prop(response, "subscription", w_string_to_json(sub->name));
 
   return response;
 }

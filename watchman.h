@@ -612,6 +612,7 @@ void w_log_to_clients(int level, const char *buf);
 bool w_is_ignored(w_root_t *root, const char *path, uint32_t pathlen);
 void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec *deadline);
 
+json_t *w_string_to_json(w_string_t *str);
 w_string_t *w_string_new(const char *str);
 #ifdef _WIN32
 w_string_t *w_string_new_wchar(WCHAR *str, int len);

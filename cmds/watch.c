@@ -95,7 +95,7 @@ static void cmd_watch_delete(struct watchman_client *client, json_t *args)
 
   resp = make_response();
   set_prop(resp, "watch-del", json_boolean(w_root_stop_watch(root)));
-  set_prop(resp, "root", json_string_nocheck(root->root_path->buf));
+  set_prop(resp, "root", w_string_to_json(root->root_path));
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
@@ -309,11 +309,11 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
 
   w_root_lock(root);
   if (root->failure_reason) {
-    set_prop(resp, "error", json_string_nocheck(root->failure_reason->buf));
+    set_prop(resp, "error", w_string_to_json(root->failure_reason));
   } else if (root->cancelled) {
     set_prop(resp, "error", json_string_nocheck("root was cancelled"));
   } else {
-    set_prop(resp, "watch", json_string_nocheck(root->root_path->buf));
+    set_prop(resp, "watch", w_string_to_json(root->root_path));
   }
   add_root_warnings_to_response(resp, root);
   send_and_dispose_response(client, resp);
@@ -356,11 +356,11 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
 
   w_root_lock(root);
   if (root->failure_reason) {
-    set_prop(resp, "error", json_string_nocheck(root->failure_reason->buf));
+    set_prop(resp, "error", w_string_to_json(root->failure_reason));
   } else if (root->cancelled) {
     set_prop(resp, "error", json_string_nocheck("root was cancelled"));
   } else {
-    set_prop(resp, "watch", json_string_nocheck(root->root_path->buf));
+    set_prop(resp, "watch", w_string_to_json(root->root_path));
   }
   add_root_warnings_to_response(resp, root);
   if (rel_path_from_watch) {

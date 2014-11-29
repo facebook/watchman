@@ -5,7 +5,7 @@
 
 static json_t *make_name(struct watchman_rule_match *match)
 {
-  return json_string_nocheck(match->relname->buf);
+  return w_string_to_json(match->relname);
 }
 
 static json_t *make_exists(struct watchman_rule_match *match)
@@ -242,7 +242,6 @@ bool parse_field_list(json_t *field_list,
   json_decref(field_list);
   return true;
 }
-
 
 /* vim:ts=2:sw=2:et:
  */

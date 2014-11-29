@@ -280,7 +280,7 @@ static void spawn_command(w_root_t *root,
 
       json_array_append_new(
         args,
-        json_string_nocheck(res->results[i].relname->buf)
+        w_string_to_json(res->results[i].relname)
       );
     }
   }

@@ -4,6 +4,10 @@
 #include "watchman.h"
 #include <stdarg.h>
 
+json_t *w_string_to_json(w_string_t *str) {
+  return json_stringn_nocheck(str->buf, str->len);
+}
+
 w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
 {
   w_string_t *slice;

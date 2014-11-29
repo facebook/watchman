@@ -2590,7 +2590,7 @@ json_t *w_root_stop_watch_all(void)
     w_string_t *path = root->root_path;
     if (w_ht_del(watched_roots, w_ht_ptr_val(path))) {
       w_root_cancel(root);
-      json_array_append_new(stopped, json_string_binary(path->buf, path->len));
+      json_array_append_new(stopped, w_string_to_json(path));
     }
     w_root_delref(root);
   }
@@ -2645,7 +2645,7 @@ json_t *w_root_watch_list_to_json(void)
   pthread_mutex_lock(&root_lock);
   if (w_ht_first(watched_roots, &iter)) do {
     w_root_t *root = w_ht_val_ptr(iter.value);
-    json_array_append_new(arr, json_string_nocheck(root->root_path->buf));
+    json_array_append_new(arr, w_string_to_json(root->root_path));
   } while (w_ht_next(watched_roots, &iter));
   pthread_mutex_unlock(&root_lock);
 
@@ -2745,7 +2745,7 @@ bool w_root_save_state(json_t *state)
 
     obj = json_object();
 
-    json_object_set_new(obj, "path", json_string(root->root_path->buf));
+    json_object_set_new(obj, "path", w_string_to_json(root->root_path));
 
     w_root_lock(root);
     triggers = w_root_trigger_list_to_json(root);

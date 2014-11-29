@@ -348,7 +348,7 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
   }
 
   resp = make_response();
-  set_prop(resp, "triggerid", json_string_nocheck(cmd->triggername->buf));
+  set_prop(resp, "triggerid", w_string_to_json(cmd->triggername));
 
   w_root_lock(root);
 

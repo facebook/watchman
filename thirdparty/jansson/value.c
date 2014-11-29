@@ -652,7 +652,7 @@ static json_t *json_array_deep_copy(json_t *array)
 
 /*** string ***/
 
-json_t *json_string_binary(const char *value, json_int_t len)
+json_t *json_stringn_nocheck(const char *value, size_t len)
 {
     json_string_t *string;
 

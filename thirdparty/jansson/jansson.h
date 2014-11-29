@@ -84,7 +84,7 @@ json_t *json_array(void);
 json_t *json_array_of_size(size_t nelems);
 json_t *json_string(const char *value);
 json_t *json_string_nocheck(const char *value);
-json_t *json_string_binary(const char *value, json_int_t len);
+json_t *json_stringn_nocheck(const char *value, size_t len);
 json_t *json_integer(json_int_t value);
 json_t *json_real(double value);
 json_t *json_true(void);

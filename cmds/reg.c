@@ -177,7 +177,7 @@ json_t *w_capability_get_list(void) {
   w_ht_first(capabilities, &iter);
   do {
     w_string_t *name = w_ht_val_ptr(iter.key);
-    json_array_append(arr, json_string_nocheck(name->buf));
+    json_array_append(arr, w_string_to_json(name));
   } while (w_ht_next(capabilities, &iter));
 
   return arr;
