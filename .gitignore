@@ -32,6 +32,10 @@ configure.lineno
 python/build
 *.pyc
 *.so
+*.obj
+*.exe
+*.dll
+*.pdb
 test-suite.log
 tests/*.log
 tests/*.trs
@@ -44,3 +48,14 @@ website/src/watchman/docs
 website/src/watchman/*.js
 website/core/metadata.js
 npm-debug.log
+Debug
+.deps
+*.dep
+*.nativecodeanalysis.xml
+watchman-test.log
+Watchman.vcxproj.*
+Watchman.vcxproj
+*.opensdf
+*.sdf
+*.sln
+*.suo
