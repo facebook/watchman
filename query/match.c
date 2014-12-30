@@ -18,6 +18,7 @@ static bool eval_wildmatch(struct w_query_ctx *ctx,
 {
   struct wildmatch_data *match = data;
   w_string_t *str;
+  bool res;
 
   if (match->wholename) {
     str = w_query_ctx_get_wholename(ctx);
@@ -25,7 +26,12 @@ static bool eval_wildmatch(struct w_query_ctx *ctx,
     str = file->name;
   }
 
-  return wildmatch(
+#ifdef _WIN32
+  // Translate to unix style slashes for wildmatch
+  str = w_string_normalize_separators(str, '/');
+#endif
+
+  res = wildmatch(
     match->pattern,
     str->buf,
     (match->includedotfiles ? 0 : WM_PERIOD) |
@@ -33,6 +39,12 @@ static bool eval_wildmatch(struct w_query_ctx *ctx,
     (match->wholename ? WM_PATHNAME : 0) |
     (match->caseless ? WM_CASEFOLD : 0),
     0) == WM_MATCH;
+
+#ifdef _WIN32
+  w_string_delref(str);
+#endif
+
+  return res;
 }
 
 static void dispose_match(void *data)
