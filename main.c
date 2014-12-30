@@ -441,67 +441,41 @@ static bool should_start(int err)
 
 static bool try_command(json_t *cmd, int timeout)
 {
-  int fd;
-  int res;
-  int tries;
-  int bufsize;
+  w_stm_t client = NULL;
   w_jbuffer_t buffer;
 
-  fd = socket(PF_LOCAL, SOCK_STREAM, 0);
-  if (fd == -1) {
-    perror("socket");
-    return false;
-  }
+  client = w_stm_connect(sock_name, timeout * 1000);
 
-  tries = 0;
-  do {
-    res = connect(fd, (struct sockaddr*)&un, sizeof(un));
-    if (res == 0) {
-      break;
-    }
-
-    if (timeout && tries < timeout && should_start(errno)) {
-      // Wait for socket to come up
-      sleep(1);
-      continue;
-    }
-
-  } while (++tries < timeout);
-
-  if (res) {
-    close(fd);
+  if (client == NULL) {
     return false;
   }
 
   if (!cmd) {
-    close(fd);
+    w_stm_close(client);
     return true;
   }
-
-  bufsize = WATCHMAN_IO_BUF_SIZE;
-  setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &bufsize, sizeof(bufsize));
 
   w_json_buffer_init(&buffer);
 
   // Send command
-  if (!w_ser_write_pdu(server_pdu, &buffer, fd, cmd)) {
+  if (!w_ser_write_pdu(server_pdu, &buffer, client, cmd)) {
     w_log(W_LOG_ERR, "error sending PDU to server\n");
     w_json_buffer_free(&buffer);
-    close(fd);
+    w_stm_close(client);
     return false;
   }
 
   w_json_buffer_reset(&buffer);
 
   do {
-    if (!w_json_buffer_passthru(&buffer, output_pdu, fd)) {
+    if (!w_json_buffer_passthru(&buffer, output_pdu, client)) {
       w_json_buffer_free(&buffer);
-      close(fd);
+      w_stm_close(client);
       return false;
     }
   } while (persistent);
   w_json_buffer_free(&buffer);
-  close(fd);
+  w_stm_close(client);
 
   return true;
 }

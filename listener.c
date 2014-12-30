@@ -16,6 +16,9 @@ w_ht_t *clients = NULL;
 static int listener_fd;
 static pthread_t reaper_thread;
 static pthread_t listener_thread;
+#ifdef _WIN32
+static HANDLE listener_thread_event;
+#endif
 static volatile bool stopping = false;
 
 json_t *make_response(void)
@@ -81,7 +84,7 @@ bool enqueue_response(struct watchman_client *client,
   client->tail = resp;
 
   if (ping) {
-    ignore_result(write(client->ping[1], "a", 1));
+    w_event_set(client->ping);
   }
 
   return true;
@@ -108,7 +111,7 @@ void send_error_response(struct watchman_client *client,
   vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
 
-  w_log(W_LOG_ERR, "send_error_response: fd=%d %s\n", client->fd, buf);
+  w_log(W_LOG_ERR, "send_error_response: %s\n", buf);
   set_prop(resp, "error", json_string_nocheck(buf));
 
   send_and_dispose_response(client, resp);
@@ -119,7 +122,7 @@ static void client_delete(w_ht_val_t val)
   struct watchman_client *client = w_ht_val_ptr(val);
   struct watchman_client_response *resp;
 
-  w_log(W_LOG_DBG, "client_delete %p fd=%d\n", client, client->fd);
+  w_log(W_LOG_DBG, "client_delete %p\n", client);
 
   /* cancel subscriptions */
   w_ht_free(client->subscriptions);
@@ -133,9 +136,8 @@ static void client_delete(w_ht_val_t val)
 
   w_json_buffer_free(&client->reader);
   w_json_buffer_free(&client->writer);
-  close(client->ping[0]);
-  close(client->ping[1]);
-  close(client->fd);
+  w_event_destroy(client->ping);
+  w_stm_close(client->stm);
   free(client);
 }
 
@@ -404,7 +406,11 @@ static void cmd_shutdown(
   stopping = true;
 
   // Knock listener thread out of poll/accept
+#ifndef _WIN32
   pthread_kill(listener_thread, SIGUSR1);
+#else
+  SetEvent(listener_thread_event);
+#endif
 
   set_prop(resp, "shutdown-server", json_true());
   send_and_dispose_response(client, resp);
@@ -416,58 +422,39 @@ W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON|CMD_POISON_IMMUNE, NULL)
 static void *client_thread(void *ptr)
 {
   struct watchman_client *client = ptr;
-  struct pollfd pfd[2];
+  struct watchman_event_poll pfd[2];
   json_t *request;
   json_error_t jerr;
-  char buf[16];
 
-  w_set_nonblock(client->fd);
-  w_set_thread_name("client:fd=%d", client->fd);
+  w_stm_set_nonblock(client->stm, true);
+  w_set_thread_name("client:stm=%p", client->stm);
+
+  w_stm_get_events(client->stm, &pfd[0].evt);
+  pfd[1].evt = client->ping;
 
   while (!stopping) {
     // Wait for input from either the client socket or
     // via the ping pipe, which signals that some other
     // thread wants to unilaterally send data to the client
 
-    pfd[0].fd = client->fd;
-    pfd[0].events = POLLIN|POLLHUP|POLLERR;
-    pfd[0].revents = 0;
-
-    pfd[1].fd = client->ping[0];
-    pfd[1].events = POLLIN|POLLHUP|POLLERR;
-    pfd[1].revents = 0;
-
-    ignore_result(poll(pfd, 2, 200));
+    ignore_result(w_poll_events(pfd, 2, 2000));
 
     if (stopping) {
       break;
     }
 
-    if (pfd[0].revents & (POLLHUP|POLLERR)) {
-      w_log(W_LOG_DBG, "got HUP|ERR on client %p fd=%d, disconnecting\n",
-          client, client->fd);
-      break;
-    }
-
-    if (pfd[0].revents) {
-      // Solaris: we may not detect POLLHUP until we try to read, so
-      // let's peek ahead and characterize it correctly.  This is only
-      // needed if we have no data buffered
-      if (client->reader.wpos == client->reader.rpos) {
-        char peek;
-        if (recv(client->fd, &peek, sizeof(peek), MSG_PEEK) == 0) {
-          w_log(W_LOG_DBG, "got HUP|ERR on client fd=%d, disconnecting\n",
-            client->fd);
-          goto disconected;
-        }
-      }
-
-      request = w_json_buffer_next(&client->reader, client->fd, &jerr);
+    if (pfd[0].ready) {
+      request = w_json_buffer_next(&client->reader, client->stm, &jerr);
 
       if (!request && errno == EAGAIN) {
         // That's fine
       } else if (!request) {
         // Not so cool
+        if (client->reader.wpos == client->reader.rpos) {
+          // If they disconnected in between PDUs, no need to log
+          // any error
+          goto disconected;
+        }
         send_error_response(client, "invalid json at position %d: %s",
             jerr.position, jerr.text);
         w_log(W_LOG_ERR, "invalid data from client: %s\n", jerr.text);
@@ -480,8 +467,8 @@ static void *client_thread(void *ptr)
       }
     }
 
-    if (pfd[1].revents) {
-      ignore_result(read(client->ping[0], buf, sizeof(buf)));
+    if (pfd[1].ready) {
+      w_event_test_and_clear(client->ping);
     }
 
     /* now send our response(s) */
@@ -500,23 +487,29 @@ static void *client_thread(void *ptr)
       pthread_mutex_unlock(&w_client_lock);
 
       if (resp) {
-        w_clear_nonblock(client->fd);
+        bool ok;
+
+        w_stm_set_nonblock(client->stm, false);
 
         /* Return the data in the same format that was used to ask for it */
-        w_ser_write_pdu(client->pdu_type, &client->writer,
-            client->fd, resp->json);
+        ok = w_ser_write_pdu(client->pdu_type, &client->writer,
+            client->stm, resp->json);
 
         json_decref(resp->json);
         free(resp);
 
-        w_set_nonblock(client->fd);
+        w_stm_set_nonblock(client->stm, true);
+
+        if (!ok) {
+          break;
+        }
       }
     }
   }
 
 disconected:
   pthread_mutex_lock(&w_client_lock);
-  w_ht_del(clients, client->fd);
+  w_ht_del(clients, w_ht_ptr_val(client));
   pthread_mutex_unlock(&w_client_lock);
 
   return NULL;
@@ -671,6 +664,7 @@ static int get_listener_socket_from_launchd(void)
 }
 #endif
 
+#ifndef _WIN32
 static int get_listener_socket(const char *path)
 {
   struct sockaddr_un un;
@@ -716,11 +710,187 @@ static int get_listener_socket(const char *path)
 
   return listener_fd;
 }
+#endif
+
+static struct watchman_client *make_new_client(w_stm_t stm) {
+  struct watchman_client *client;
+  pthread_attr_t attr;
+  pthread_t thr;
+
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+  client = calloc(1, sizeof(*client));
+  client->stm = stm;
+  w_log(W_LOG_DBG, "accepted client:stm=%p\n", client->stm);
+
+  if (!w_json_buffer_init(&client->reader)) {
+    // FIXME: error handling
+  }
+  if (!w_json_buffer_init(&client->writer)) {
+    // FIXME: error handling
+  }
+  client->ping = w_event_make();
+  if (!client->ping) {
+    // FIXME: error handling
+  }
+  client->subscriptions = w_ht_new(2, &subscription_hash_funcs);
+
+  pthread_mutex_lock(&w_client_lock);
+  w_ht_set(clients, w_ht_ptr_val(client), w_ht_ptr_val(client));
+  pthread_mutex_unlock(&w_client_lock);
+
+  // Start a thread for the client.
+  // We used to use libevent for this, but we have
+  // a low volume of concurrent clients and the json
+  // parse/encode APIs are not easily used in a non-blocking
+  // server architecture.
+  if (pthread_create(&thr, &attr, client_thread, client)) {
+    // It didn't work out, sorry!
+    pthread_mutex_lock(&w_client_lock);
+    w_ht_del(clients, w_ht_ptr_val(client));
+    pthread_mutex_unlock(&w_client_lock);
+  }
+
+  pthread_attr_destroy(&attr);
+
+  return client;
+}
+
+#ifdef _WIN32
+static void named_pipe_accept_loop(const char *path) {
+  HANDLE handles[2];
+  OVERLAPPED olap;
+  HANDLE connected_event = CreateEvent(NULL, FALSE, TRUE, NULL);
+
+  if (!connected_event) {
+    w_log(W_LOG_ERR, "named_pipe_accept_loop: CreateEvent failed: %s\n",
+        win32_strerror(GetLastError()));
+    return;
+  }
+
+  listener_thread_event = CreateEvent(NULL, FALSE, TRUE, NULL);
+
+  handles[0] = connected_event;
+  handles[1] = listener_thread_event;
+  memset(&olap, 0, sizeof(olap));
+  olap.hEvent = connected_event;
+
+  w_log(W_LOG_ERR, "waiting for pipe clients on %s\n", path);
+  while (!stopping) {
+    w_stm_t stm;
+    HANDLE client_fd;
+    DWORD res;
+
+    client_fd = CreateNamedPipe(
+        path,
+        PIPE_ACCESS_DUPLEX|FILE_FLAG_OVERLAPPED,
+        PIPE_TYPE_BYTE|PIPE_READMODE_BYTE|
+        PIPE_REJECT_REMOTE_CLIENTS,
+        PIPE_UNLIMITED_INSTANCES,
+        WATCHMAN_IO_BUF_SIZE,
+        512, 0, NULL);
+
+    if (client_fd == INVALID_HANDLE_VALUE) {
+      w_log(W_LOG_ERR, "CreateNamedPipe(%s) failed: %s\n",
+          path, win32_strerror(GetLastError()));
+      continue;
+    }
+
+    ResetEvent(connected_event);
+    if (!ConnectNamedPipe(client_fd, &olap)) {
+      res = GetLastError();
+
+      if (res == ERROR_PIPE_CONNECTED) {
+        goto good_client;
+      }
+
+      if (res != ERROR_IO_PENDING) {
+        w_log(W_LOG_ERR, "ConnectNamedPipe: %s\n",
+            win32_strerror(GetLastError()));
+        CloseHandle(client_fd);
+        continue;
+      }
+
+      res = WaitForMultipleObjectsEx(2, handles, false, INFINITE, true);
+      if (res == WAIT_OBJECT_0 + 1) {
+        // Signalled to stop
+        CancelIoEx(client_fd, &olap);
+        CloseHandle(client_fd);
+        continue;
+      }
+
+      if (res == WAIT_OBJECT_0) {
+        goto good_client;
+      }
+
+      w_log(W_LOG_ERR, "WaitForMultipleObjectsEx: ConnectNamedPipe: "
+          "unexpected status %u\n", res);
+      CancelIoEx(client_fd, &olap);
+      CloseHandle(client_fd);
+    } else {
+good_client:
+      stm = w_stm_handleopen(client_fd);
+      if (!stm) {
+        w_log(W_LOG_ERR, "Failed to allocate stm for pipe handle: %s\n",
+            strerror(errno));
+        CloseHandle(client_fd);
+        continue;
+      }
+
+      make_new_client(stm);
+    }
+  }
+}
+#endif
+
+#ifndef _WIN32
+static void accept_loop() {
+  while (!stopping) {
+    int client_fd;
+    struct pollfd pfd;
+    int bufsize;
+    w_stm_t stm;
+
+#ifdef HAVE_LIBGIMLI_H
+    if (hb) {
+      gimli_heartbeat_set(hb, GIMLI_HB_RUNNING);
+    }
+#endif
+
+    pfd.events = POLLIN;
+    pfd.fd = listener_fd;
+    if (poll(&pfd, 1, 10000) < 1 || (pfd.revents & POLLIN) == 0) {
+      continue;
+    }
+
+#ifdef HAVE_ACCEPT4
+    client_fd = accept4(listener_fd, NULL, 0, SOCK_CLOEXEC);
+#else
+    client_fd = accept(listener_fd, NULL, 0);
+#endif
+    if (client_fd == -1) {
+      continue;
+    }
+    w_set_cloexec(client_fd);
+    bufsize = WATCHMAN_IO_BUF_SIZE;
+    setsockopt(client_fd, SOL_SOCKET, SO_SNDBUF,
+        (void*)&bufsize, sizeof(bufsize));
+
+    stm = w_stm_fdopen(client_fd);
+    if (!stm) {
+      w_log(W_LOG_ERR, "Failed to allocate stm for fd: %s\n",
+          strerror(errno));
+      close(client_fd);
+      continue;
+    }
+    make_new_client(stm);
+  }
+}
+#endif
 
 bool w_start_listener(const char *path)
 {
-  pthread_t thr;
-  pthread_attr_t attr;
   pthread_mutexattr_t mattr;
   struct sigaction sa;
   sigset_t sigset;
@@ -824,9 +994,6 @@ bool w_start_listener(const char *path)
   sigaddset(&sigset, SIGCHLD);
   sigprocmask(SIG_BLOCK, &sigset, NULL);
 
-  pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
   listener_fd = get_listener_socket(path);
   if (listener_fd == -1) {
     return false;
@@ -857,77 +1024,17 @@ bool w_start_listener(const char *path)
   w_set_nonblock(listener_fd);
 
   // Now run the dispatch
-  while (!stopping) {
-    int client_fd;
-    struct watchman_client *client;
-    struct pollfd pfd;
-    int bufsize;
-
-#ifdef HAVE_LIBGIMLI_H
-    if (hb) {
-      gimli_heartbeat_set(hb, GIMLI_HB_RUNNING);
-    }
-#endif
-
-    pfd.events = POLLIN;
-    pfd.fd = listener_fd;
-    if (poll(&pfd, 1, 10000) < 1 || (pfd.revents & POLLIN) == 0) {
-      continue;
-    }
-
-#ifdef HAVE_ACCEPT4
-    client_fd = accept4(listener_fd, NULL, 0, SOCK_CLOEXEC);
+#ifndef _WIN32
+  accept_loop();
 #else
-    client_fd = accept(listener_fd, NULL, 0);
+  named_pipe_accept_loop(path);
 #endif
-    if (client_fd == -1) {
-      continue;
-    }
-    w_set_cloexec(client_fd);
-    bufsize = WATCHMAN_IO_BUF_SIZE;
-    setsockopt(client_fd, SOL_SOCKET, SO_SNDBUF, &bufsize, sizeof(bufsize));
 
-    client = calloc(1, sizeof(*client));
-    client->fd = client_fd;
-    w_log(W_LOG_DBG, "accepted client %p fd=%d\n", client, client_fd);
-
-    if (!w_json_buffer_init(&client->reader)) {
-      // FIXME: error handling
-    }
-    if (!w_json_buffer_init(&client->writer)) {
-      // FIXME: error handling
-    }
-    if (pipe(client->ping)) {
-      // FIXME: error handling
-    }
-    client->subscriptions = w_ht_new(2, &subscription_hash_funcs);
-    w_set_cloexec(client->ping[0]);
-    w_set_nonblock(client->ping[0]);
-    w_set_cloexec(client->ping[1]);
-    w_set_nonblock(client->ping[1]);
-
-    pthread_mutex_lock(&w_client_lock);
-    w_ht_set(clients, client->fd, w_ht_ptr_val(client));
-    pthread_mutex_unlock(&w_client_lock);
-
-    // Start a thread for the client.
-    // We used to use libevent for this, but we have
-    // a low volume of concurrent clients and the json
-    // parse/encode APIs are not easily used in a non-blocking
-    // server architecture.
-    if (pthread_create(&thr, &attr, client_thread, client)) {
-      // It didn't work out, sorry!
-      pthread_mutex_lock(&w_client_lock);
-      w_ht_del(clients, client->fd);
-      pthread_mutex_unlock(&w_client_lock);
-    }
-  }
-
-  pthread_attr_destroy(&attr);
-
+#ifndef _WIN32
   /* close out some resources to persuade valgrind to run clean */
   close(listener_fd);
   listener_fd = -1;
+#endif
 
   // Wait for clients, waking any sleeping clients up in the process
   do {
@@ -938,7 +1045,7 @@ bool w_start_listener(const char *path)
 
     if (w_ht_first(clients, &iter)) do {
       struct watchman_client *client = w_ht_val_ptr(iter.value);
-      ignore_result(write(client->ping[1], "a", 1));
+      w_event_set(client->ping);
     } while (w_ht_next(clients, &iter));
 
     pthread_mutex_unlock(&w_client_lock);

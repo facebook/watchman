@@ -1298,9 +1298,9 @@ static void process_subscriptions(w_root_t *root)
         w_log(W_LOG_DBG, "root doesn't match, skipping\n");
         continue;
       }
-      w_log(W_LOG_DBG, "client->fd=%d sub=%p %s, last=%" PRIu32
+      w_log(W_LOG_DBG, "client->stm=%p sub=%p %s, last=%" PRIu32
           " pending=%" PRIu32 "\n",
-          client->fd, sub, sub->name->buf, sub->last_sub_tick,
+          client->stm, sub, sub->name->buf, sub->last_sub_tick,
           root->pending_sub_tick);
 
       if (sub->last_sub_tick == root->pending_sub_tick) {

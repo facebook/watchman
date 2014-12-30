@@ -43,30 +43,39 @@ out:
 extern int mkostemp(char *, int);
 #endif
 
-int w_mkstemp(char *templ)
+w_stm_t w_mkstemp(char *templ)
 {
-  int fd;
-
-#ifdef HAVE_MKOSTEMP
-  fd = mkostemp(templ, O_CLOEXEC);
+#if defined(_WIN32)
+  char *name = _mktemp(templ);
+  if (!name) {
+    return NULL;
+  }
+  return w_stm_open(name, O_RDWR|O_CLOEXEC|O_CREAT|O_TRUNC);
 #else
+  w_stm_t file;
+  int fd;
+# ifdef HAVE_MKOSTEMP
+  fd = mkostemp(templ, O_CLOEXEC);
+# else
   fd = mkstemp(templ);
-#endif
-
-  if (fd == -1) {
-    return -1;
+# endif
+  if (fd != -1) {
+    w_set_cloexec(fd);
   }
 
-  w_set_cloexec(fd);
-
-  return fd;
+  file = w_stm_fdopen(fd);
+  if (!file) {
+    close(fd);
+  }
+  return file;
+#endif
 }
 
 bool w_state_save(void)
 {
   json_t *state;
   w_jbuffer_t buffer;
-  int fd = -1;
+  w_stm_t file = NULL;
   char tmpname[WATCHMAN_NAME_MAX];
   bool result = false;
 
@@ -85,8 +94,8 @@ bool w_state_save(void)
 
   snprintf(tmpname, sizeof(tmpname), "%sXXXXXX",
       watchman_state_file);
-  fd = w_mkstemp(tmpname);
-  if (fd == -1) {
+  file = w_mkstemp(tmpname);
+  if (!file) {
     w_log(W_LOG_ERR, "save_state: unable to create temporary file: %s\n",
         strerror(errno));
     goto out;
@@ -100,22 +109,28 @@ bool w_state_save(void)
   }
 
   /* we've prepared what we're going to save, so write it out */
-  w_json_buffer_write(&buffer, fd, state, JSON_INDENT(4));
+  w_json_buffer_write(&buffer, file, state, JSON_INDENT(4));
+  w_stm_close(file);
+  file = NULL;
 
   /* atomically replace the old contents */
   result = rename(tmpname, watchman_state_file) == 0;
+  if (!result) {
+    w_log(W_LOG_ERR, "save_state: failed to rename %s -> %s: %d %s\n",
+      tmpname, watchman_state_file, result, strerror(errno));
+  }
 
 out:
   if (state) {
     json_decref(state);
   }
   w_json_buffer_free(&buffer);
-  if (fd != -1) {
+  if (file) {
     if (!result) {
       // If we didn't succeed, remove our temporary file
       unlink(tmpname);
     }
-    close(fd);
+    w_stm_close(file);
   }
 
   pthread_mutex_unlock(&state_lock);

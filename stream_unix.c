@@ -127,7 +127,7 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
   }
 
   for (i = 0; i < n; i++) {
-    pfds[i].fd = (intptr_t)p[i].evt;
+    pfds[i].fd = p[i].evt->fd[0];
     pfds[i].events = POLLIN|POLLHUP|POLLERR;
     pfds[i].revents = 0;
   }

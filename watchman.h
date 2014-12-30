@@ -166,7 +166,7 @@ static inline void w_clear_nonblock(int fd)
 
 // Make a temporary file name and open it.
 // Marks the file as CLOEXEC
-int w_mkstemp(char *templ);
+w_stm_t w_mkstemp(char *templ);
 char *w_realpath(const char *filename);
 
 struct watchman_string;
@@ -468,14 +468,14 @@ typedef struct watchman_json_buffer w_jbuffer_t;
 bool w_json_buffer_init(w_jbuffer_t *jr);
 void w_json_buffer_reset(w_jbuffer_t *jr);
 void w_json_buffer_free(w_jbuffer_t *jr);
-json_t *w_json_buffer_next(w_jbuffer_t *jr, int fd, json_error_t *jerr);
+json_t *w_json_buffer_next(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr);
 bool w_json_buffer_passthru(w_jbuffer_t *jr,
     enum w_pdu_type output_pdu,
-    int fd);
-bool w_json_buffer_write(w_jbuffer_t *jr, int fd, json_t *json, int flags);
-bool w_json_buffer_write_bser(w_jbuffer_t *jr, int fd, json_t *json);
+    w_stm_t stm);
+bool w_json_buffer_write(w_jbuffer_t *jr, w_stm_t stm, json_t *json, int flags);
+bool w_json_buffer_write_bser(w_jbuffer_t *jr, w_stm_t stm, json_t *json);
 bool w_ser_write_pdu(enum w_pdu_type pdu_type,
-    w_jbuffer_t *jr, int fd, json_t *json);
+    w_jbuffer_t *jr, w_stm_t stm, json_t *json);
 
 #define BSER_MAGIC "\x00\x01"
 int w_bser_write_pdu(json_t *json, json_dump_callback_t dump, void *data);
@@ -492,8 +492,8 @@ struct watchman_client_response {
 struct watchman_client_subscription;
 
 struct watchman_client {
-  int fd;
-  int ping[2];
+  w_stm_t stm;
+  w_evt_t ping;
   int log_level;
   w_jbuffer_t reader, writer;
   bool client_mode;

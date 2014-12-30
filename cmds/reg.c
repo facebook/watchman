@@ -111,7 +111,7 @@ void preprocess_command(json_t *args, enum w_pdu_type output_pdu)
     );
 
     w_json_buffer_init(&jr);
-    w_ser_write_pdu(output_pdu, &jr, STDOUT_FILENO, err);
+    w_ser_write_pdu(output_pdu, &jr, w_stm_stdout(), err);
     json_decref(err);
     w_json_buffer_free(&jr);
 
