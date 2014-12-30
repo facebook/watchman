@@ -26,6 +26,7 @@ static void log_stack_trace(void)
 int log_level = W_LOG_ERR;
 static pthread_key_t thread_name_key;
 
+#ifndef _WIN32
 static void crash_handler(int signo, siginfo_t *si, void *ucontext) {
   const char *reason = "";
   unused_parameter(ucontext);
@@ -75,8 +76,10 @@ static void crash_handler(int signo, siginfo_t *si, void *ucontext) {
   w_log(W_LOG_FATAL, "Terminating due to signal %d %s. %s (%p)\n",
       signo, strsignal(signo), reason, si ? si->si_value.sival_ptr : NULL);
 }
+#endif
 
 void w_setup_signal_handlers(void) {
+#ifndef _WIN32
   struct sigaction sa;
 
   memset(&sa, 0, sizeof(sa));
@@ -89,13 +92,13 @@ void w_setup_signal_handlers(void) {
 #endif
   sigaction(SIGFPE, &sa, NULL);
   sigaction(SIGILL, &sa, NULL);
+#endif
 }
 
-
-static __attribute__((constructor))
-void register_thread_name(void) {
+static w_ctor_fn_type(register_thread_name) {
   pthread_key_create(&thread_name_key, free);
 }
+w_ctor_fn_reg(register_thread_name);
 
 const char *w_get_thread_name(void) {
   const char *name = pthread_getspecific(thread_name_key);
@@ -140,7 +143,11 @@ void w_log(int level, const char *fmt, ...)
   }
 
   gettimeofday(&tv, NULL);
+#ifdef _WIN32
+  tm = *localtime(&tv.tv_sec);
+#else
   localtime_r(&tv.tv_sec, &tm);
+#endif
   strftime(timebuf, sizeof(timebuf), "%Y-%m-%dT%H:%M:%S", &tm);
 
   len = snprintf(buf, sizeof(buf), "%s,%03d: [%s] ",

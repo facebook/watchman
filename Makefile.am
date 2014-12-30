@@ -50,6 +50,7 @@ watchman_SOURCES = \
 	query/since.c      \
 	query/empty.c      \
 	watcher/fsevents.c \
+	watcher/helper.c   \
 	watcher/inotify.c  \
 	watcher/kqueue.c   \
 	watcher/portfs.c   \

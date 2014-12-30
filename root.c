@@ -1852,6 +1852,8 @@ void watchman_watcher_init(void) {
   watcher_ops = &inotify_watcher;
 #elif defined(HAVE_KQUEUE)
   watcher_ops = &kqueue_watcher;
+#elif defined(_WIN32)
+  watcher_ops = &win32_watcher;
 #else
 # error you need to assign watcher_ops for this system
 #endif

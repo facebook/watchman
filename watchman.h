@@ -530,6 +530,7 @@ void w_log(int level, const char *fmt, ...)
 bool w_should_log_to_clients(int level);
 void w_log_to_clients(int level, const char *buf);
 
+bool w_is_ignored(w_root_t *root, const char *path, uint32_t pathlen);
 
 w_string_t *w_string_new(const char *str);
 w_string_t *w_string_make_printf(const char *format, ...);
@@ -884,6 +885,7 @@ extern struct watchman_ops fsevents_watcher;
 extern struct watchman_ops kqueue_watcher;
 extern struct watchman_ops inotify_watcher;
 extern struct watchman_ops portfs_watcher;
+extern struct watchman_ops win32_watcher;
 
 void w_ioprio_set_low(void);
 void w_ioprio_set_normal(void);
@@ -891,7 +893,6 @@ void w_ioprio_set_normal(void);
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif
 
