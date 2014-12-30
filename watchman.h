@@ -93,6 +93,7 @@ extern char **environ;
 extern char *poisoned_reason;
 
 #include "watchman_hash.h"
+#include "watchman_stream.h"
 
 #include "jansson.h"
 

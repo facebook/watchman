@@ -23,6 +23,9 @@ watchman_SOURCES = \
 	hash.c       \
 	ht.c         \
 	ioprio.c        \
+	stream.c        \
+	stream_stdout.c \
+	stream_unix.c   \
 	cmds/find.c     \
 	cmds/info.c     \
 	cmds/log.c      \
