@@ -4,10 +4,10 @@
 
 class triggerChdirTestCase extends WatchmanTestCase {
   function testChdir() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $log = $dir->getPath() . "log";
-    $env = $dir->getPath() . "env";
-    $root = realpath($dir->getPath()) . "/dir";
+    $dir = new WatchmanDirectoryFixture();
+    $log = $dir->getPath("log");
+    $env = $dir->getPath("env");
+    $root = $dir->getPath("dir");
 
     mkdir($root);
     mkdir("$root/sub");
@@ -18,7 +18,11 @@ class triggerChdirTestCase extends WatchmanTestCase {
       array(
         'name' => 'cap',
         'command' => array(
-          dirname(__FILE__) . '/capture.sh',
+          PHP_BINARY,
+          // Ubuntu disables 'E' by default, breaking this script
+          '-d variables_order=EGPCS',
+          '-d register_argc_argv=1',
+          dirname(__FILE__) . DIRECTORY_SEPARATOR . '_capture.php',
           $log,
           $env
         ),
@@ -31,18 +35,19 @@ class triggerChdirTestCase extends WatchmanTestCase {
 
     $obj = $this->waitForJsonInput($log);
     $this->assertEqual(1, count($obj));
+    $root_pat = preg_quote($root . DIRECTORY_SEPARATOR . 'sub');
 
     $this->waitFor(
-      function () use ($env, $root) {
-        $envdata = @file_get_contents($env);
-        return preg_match(",PWD=$root/sub,", $envdata) == 1;
+      function () use ($env, $root, $root_pat) {
+        $envdata = file_get_contents($env);
+        return preg_match(",PWD=$root_pat,", $envdata) > 0;
       },
       10,
-      "waiting for PWD to show in $env log file"
+      "waiting for PWD to show in $env log file ($root_pat)"
     );
 
     $envdata = file_get_contents($env);
-    $this->assertRegex(",PWD=$root/sub,", $envdata);
+    $this->assertRegex(",PWD=$root_pat,", $envdata);
     $this->assertRegex("/WATCHMAN_EMPTY_ENV_VAR=$/m", $envdata);
   }
 
@@ -62,7 +67,11 @@ class triggerChdirTestCase extends WatchmanTestCase {
       array(
         'name' => 'cap',
         'command' => array(
-          dirname(__FILE__) . '/capture.sh',
+          PHP_BINARY,
+          // Ubuntu disables 'E' by default, breaking this script
+          '-d variables_order=EGPCS',
+          '-d register_argc_argv=1',
+          dirname(__FILE__) . DIRECTORY_SEPARATOR . '_capture.php',
           $log,
           $env
         ),

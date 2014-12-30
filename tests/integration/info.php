@@ -11,16 +11,16 @@ class infoTestCase extends WatchmanTestCase {
   }
 
   function testGetConfigEmpty() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     $this->watch($root);
     $res = $this->watchmanCommand('get-config', $root);
     $this->assertEqual(array(), $res['config']);
   }
 
   function testGetConfig() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     $cfg = array(
       'test-key' => 'test-value',
     );

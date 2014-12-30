@@ -100,8 +100,8 @@ class triggerTestCase extends WatchmanTestCase {
   }
 
   function testLegacyTrigger() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     touch("$root/foo.c");
     touch("$root/b ar.c");

@@ -6,8 +6,8 @@ class bsdishTestCase extends WatchmanTestCase {
   // Verify that we don't generate spurious change observations
   // when we delete files at the top level
   function testBSDishTopLevel() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     mkdir("$root/lower");
     touch("$root/lower/file");
@@ -46,4 +46,3 @@ class bsdishTestCase extends WatchmanTestCase {
     $this->assertEqual(false, $now['files'][0]['exists']);
   }
 }
-

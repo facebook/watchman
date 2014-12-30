@@ -5,8 +5,8 @@
 
 class invalidExprTestCase extends WatchmanTestCase {
   function testInvalidExprTerm() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     $this->watch($root);
     $results = $this->watchmanCommand('query', $root, array(
@@ -30,8 +30,8 @@ class invalidExprTestCase extends WatchmanTestCase {
   }
 
   function testInvalidSyncTimeout() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     $this->watch($root);
 
@@ -58,5 +58,3 @@ class invalidExprTestCase extends WatchmanTestCase {
   }
 
 }
-
-

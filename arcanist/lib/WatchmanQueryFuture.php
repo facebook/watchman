@@ -21,8 +21,8 @@ class WatchmanQueryFuture extends FutureProxy {
       $this->command
     );
     $future = new ExecFuture(
-      "%s/watchman $args -U %s %s %s %s %s",
-      $repo_root,
+      "%C $args -U %s %s %s %s %s",
+      "$repo_root/watchman",
       $sockname,
       '--no-pretty',
       '--no-spawn',
@@ -85,6 +85,4 @@ class WatchmanQueryFuture extends FutureProxy {
   public function setTimeout($timeout) {
     $this->getProxiedFuture()->setTimeout($timeout);
   }
-
 }
-

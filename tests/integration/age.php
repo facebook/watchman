@@ -4,8 +4,8 @@
 
 class ageOutTestCase extends WatchmanTestCase {
   function testAge1() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     mkdir("$root/a");
     touch("$root/a/file.txt");
@@ -31,7 +31,7 @@ class ageOutTestCase extends WatchmanTestCase {
       'expression' => array('suffix', 'txt'),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array('a/file.txt', 'b.txt'), $res['files']);
+    $this->assertEqualFileList(array('a/file.txt', 'b.txt'), $res['files']);
 
     // Let's track a named cursor; we need to validate that it is
     // correctly aged out

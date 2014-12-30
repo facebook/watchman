@@ -4,10 +4,10 @@
 
 class triggerMaxFilesCase extends WatchmanTestCase {
   function testMaxFiles() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $log = $dir->getPath() . "log";
-    $env = $dir->getPath() . "env";
-    $root = realpath($dir->getPath()) . "/dir";
+    $dir = new WatchmanDirectoryFixture();
+    $log = $dir->getPath('log');
+    $env = $dir->getPath('env');
+    $root = $dir->getPath('dir');
 
     mkdir($root);
 
@@ -21,7 +21,11 @@ class triggerMaxFilesCase extends WatchmanTestCase {
       array(
         'name' => 'cap',
         'command' => array(
-          dirname(__FILE__) . '/capture.sh',
+          PHP_BINARY,
+          // Ubuntu disables 'E' by default, breaking this script
+          '-d variables_order=EGPCS',
+          '-d register_argc_argv=1',
+          dirname(__FILE__) . DIRECTORY_SEPARATOR . '_capture.php',
           $log,
           $env
         ),

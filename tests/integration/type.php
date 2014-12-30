@@ -4,8 +4,8 @@
 
 class TypeExprTestCase extends WatchmanTestCase {
   function testTypeExpr() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     touch("$root/foo.c");
     mkdir("$root/subdir");
@@ -20,7 +20,7 @@ class TypeExprTestCase extends WatchmanTestCase {
 
     $files = $res['files'];
     sort($files);
-    $this->assertEqual(array('foo.c', 'subdir/bar.txt'), $files);
+    $this->assertEqualFileList(array('foo.c', 'subdir/bar.txt'), $files);
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array('type', 'd'),

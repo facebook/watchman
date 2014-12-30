@@ -4,8 +4,8 @@
 
 class otherCookiesTestCase extends WatchmanTestCase {
   function testOtherCookies() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     mkdir("$root/.git");
     $watch = $this->watch($root);
     $host = gethostname();

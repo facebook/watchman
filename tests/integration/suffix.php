@@ -4,8 +4,8 @@
 
 class SuffixExprTestCase extends WatchmanTestCase {
   function testSuffixExpr() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     touch("$root/foo.c");
     mkdir("$root/subdir");
@@ -32,4 +32,3 @@ class SuffixExprTestCase extends WatchmanTestCase {
 }
 
 // vim:ts=2:sw=2:et:
-

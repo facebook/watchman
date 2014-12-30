@@ -4,29 +4,49 @@
 
 class absoluteRootTestCase extends WatchmanTestCase {
   function testDot() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
-    $this->assertEqual(true, chdir($root), "failed to chdir $root");
-    $this->assertEqual($root, getcwd(), "chdir/getcwd are consistent");
+    try {
+      $this->assertEqual(true, chdir($root), "failed to chdir $root");
+      $this->assertEqual($root, getcwd(), "chdir/getcwd are consistent");
 
-    $is_cli = $this->isUsingCLI();
-    $res = $this->watch('.', false);
-    if (!$this->isUsingCLI()) {
-      $this->assertEqual(
-        'unable to resolve root .: path "." must be absolute',
-        idx($res, 'error')
-      );
-    } else {
-      $this->assertEqual(
-        $root,
-        idx($res, 'watch')
-      );
+      $is_cli = $this->isUsingCLI();
+
+      if (phutil_is_windows()) {
+        $dot = '';
+        $err = 'unable to resolve root : path "" must be absolute';
+      } else {
+        $dot = '.';
+        $err = 'unable to resolve root .: path "." must be absolute';
+      }
+
+      $res = $this->watch($dot, false);
+      if (!$this->isUsingCLI()) {
+        $this->assertEqual(
+          $err,
+          idx($res, 'error')
+        );
+      } else {
+        $this->assertEqual(
+          null,
+          idx($res, 'error')
+        );
+        $this->assertEqual(
+          $root,
+          idx($res, 'watch')
+        );
+      }
+    } catch (Exception $e) {
+      chdir($this->getRoot());
+      throw $e;
     }
-    chdir($this->getRoot());
   }
 
   function testSlash() {
+    if (phutil_is_windows()) {
+      $this->assertSkipped("N/A for Windows");
+    }
     $res = $this->watch('/', false);
     $this->assertEqual(
       'unable to resolve root /: cannot watch "/"',

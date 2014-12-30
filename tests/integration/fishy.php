@@ -9,8 +9,11 @@ class fishyTestCase extends WatchmanTestCase {
   }
 
   function testFishy() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    if (phutil_is_windows()) {
+      $this->assertSkipped("simple ln -s without admin on windows");
+    }
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     mkdir("$root/foo");
     touch("$root/foo/a");
     $watch = $this->watch($root);

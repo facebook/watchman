@@ -4,8 +4,8 @@
 
 class caseInsensitivityTestCase extends WatchmanTestCase {
   function testChangeCase() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     mkdir("$root/foo");
     $watch = $this->watch($root);
 

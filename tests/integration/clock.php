@@ -5,8 +5,8 @@
 
 class clockTestCase extends WatchmanTestCase {
   function testClock() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     $watch = $this->watch($root);
     $clock = $this->watchmanCommand('clock', $root);
 
@@ -14,5 +14,3 @@ class clockTestCase extends WatchmanTestCase {
                        "looks clocky");
   }
 }
-
-

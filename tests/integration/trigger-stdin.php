@@ -3,10 +3,21 @@
  * Licensed under the Apache License, Version 2.0 */
 
 class triggerStdinTestCase extends WatchmanTestCase {
+  function catCommand() {
+    if (!phutil_is_windows()) {
+      return array('cat');
+    }
+    return array(
+      PHP_BINARY,
+      '-d register_argc_argv=1',
+      dirname(__FILE__) . DIRECTORY_SEPARATOR . '_cat.php'
+    );
+  }
+
   function testNameListTrigger() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $log = $dir->getPath() . "log";
-    $root = realpath($dir->getPath()) . "/dir";
+    $dir = new WatchmanDirectoryFixture();
+    $log = $dir->getPath("log");
+    $root = $dir->getPath("dir");
 
     mkdir($root);
 
@@ -15,7 +26,7 @@ class triggerStdinTestCase extends WatchmanTestCase {
     $this->trigger($root,
       array(
         'name' => 'cat',
-        'command' => array('cat'),
+        'command' => $this->catCommand(),
         'expression' => array('suffix', 'txt'),
         'stdin' => 'NAME_PER_LINE',
         'stdout' => ">$log"
@@ -34,9 +45,9 @@ class triggerStdinTestCase extends WatchmanTestCase {
   }
 
   function testAppendTrigger() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $log = $dir->getPath() . "log";
-    $root = realpath($dir->getPath()) . "/dir";
+    $dir = new WatchmanDirectoryFixture();
+    $log = $dir->getPath("log");
+    $root = $dir->getPath("dir");
 
     mkdir($root);
 
@@ -45,7 +56,7 @@ class triggerStdinTestCase extends WatchmanTestCase {
     $this->trigger($root,
       array(
         'name' => 'cat',
-        'command' => array('cat'),
+        'command' => $this->catCommand(),
         'expression' => array('suffix', 'txt'),
         'stdin' => 'NAME_PER_LINE',
         'stdout' => ">>$log"
@@ -95,9 +106,9 @@ class triggerStdinTestCase extends WatchmanTestCase {
   }
 
   function testJsonNameOnly() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $log = $dir->getPath() . "log";
-    $root = realpath($dir->getPath()) . "/dir";
+    $dir = new WatchmanDirectoryFixture();
+    $log = $dir->getPath("log");
+    $root = $dir->getPath("dir");
 
     mkdir($root);
 
@@ -106,7 +117,7 @@ class triggerStdinTestCase extends WatchmanTestCase {
     $this->trigger($root,
       array(
         'name' => 'cat',
-        'command' => array('cat'),
+        'command' => $this->catCommand(),
         'expression' => array('suffix', 'txt'),
         'stdin' => array('name'),
         'stdout' => ">$log"
@@ -118,9 +129,9 @@ class triggerStdinTestCase extends WatchmanTestCase {
   }
 
   function testJsonNameAndSize() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $log = $dir->getPath() . "log";
-    $root = realpath($dir->getPath()) . "/dir";
+    $dir = new WatchmanDirectoryFixture();
+    $log = $dir->getPath("log");
+    $root = $dir->getPath("dir");
 
     mkdir($root);
 
@@ -129,7 +140,7 @@ class triggerStdinTestCase extends WatchmanTestCase {
     $this->trigger($root,
       array(
         'name' => 'cat',
-        'command' => array('cat'),
+        'command' => $this->catCommand(),
         'expression' => array('suffix', 'txt'),
         'stdin' => array('name', 'size'),
         'stdout' => ">$log"

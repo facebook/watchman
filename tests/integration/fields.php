@@ -2,22 +2,43 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+// intval of a large double overflows 32-bit ints on win32 php
+function stringy_intval($val) {
+  if (gettype($val) == 'double') {
+    $val = floor($val);
+  }
+  $val = (string)$val;
+  return preg_replace("/\..*$/", '', $val);
+}
+
 class fieldsTestCase extends WatchmanTestCase {
+  // We can't divide by 1000 here because that involves converting to float
+  // which might lose too much precision.
+  // On some systems, the json representation already converted to double,
+  // so we have to handle that case too
+  private function divideTimeBy1000($value) {
+    if (gettype($value) == 'double') {
+      $value /= 1000;
+      return (string)floor($value);
+    }
+    return substr("$value", 0, -3);
+  }
+
   function assertTimeEqual($expected, $actual, $actual_ms, $actual_us,
                            $actual_ns, $actual_f) {
     $this->assertEqual($expected, $actual, "seconds");
-    // We can't divide by 1000 here because that involves converting to float
-    // which might lose too much precision
-    $this->assertEqual("$actual", substr("$actual_ms", 0, -3), "ms");
-    $this->assertEqual("$actual_ms", substr("$actual_us", 0, -3), "us");
-    $this->assertEqual("$actual_us", substr("$actual_ns", 0, -3), "ns");
 
-    $this->assertEqual($actual_ms, (int) ($actual_f * 1000), "float");
+    $this->assertEqual("$actual", $this->divideTimeBy1000($actual_ms), "ms");
+    $this->assertEqual("$actual_ms", $this->divideTimeBy1000($actual_us), "us");
+    $this->assertEqual("$actual_us", $this->divideTimeBy1000($actual_ns), "ns");
+
+    // Can't (int) cast because that yields bogus results on win32 php
+    $this->assertEqual("$actual_ms", stringy_intval($actual_f * 1000), "float");
   }
 
   function testFields() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     $watch = $this->watch($root);
     $this->assertFileList($root, array());
 
@@ -41,8 +62,12 @@ class fieldsTestCase extends WatchmanTestCase {
 
     $stat = stat("$root/a");
 
-    $compare_fields = array('size', 'mode', 'uid', 'gid', 'ino', 'dev',
-                            'nlink');
+    $compare_fields = array('size', 'mode', 'uid', 'gid', 'nlink');
+    if (!phutil_is_windows()) {
+      // These are meaningless in msvcrt, so no sense in comparing them
+      $compare_fields[] = 'dev';
+      $compare_fields[] = 'ino';
+    }
     foreach ($compare_fields as $field) {
         $this->assertEqual($stat[$field], $file[$field], $field);
     }
@@ -60,4 +85,3 @@ class fieldsTestCase extends WatchmanTestCase {
                        "oclock looks clocky");
   }
 }
-

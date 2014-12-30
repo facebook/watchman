@@ -4,8 +4,8 @@
 
 class removeTestCase extends WatchmanTestCase {
   function testRemove() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     mkdir("$root/one");
     touch("$root/one/onefile");
@@ -42,7 +42,25 @@ class removeTestCase extends WatchmanTestCase {
       'top'
     ));
 
-    system("rm -rf $root ; mkdir -p $root/notme");
+    if (phutil_is_windows()) {
+      // This looks so fugly
+      system("rd /s /q $root");
+      for ($i = 0; $i < 10; $i++) {
+        if (!is_dir($root)) {
+          break;
+        }
+        usleep(20000);
+      }
+      for ($i = 0; $i < 10; $i++) {
+        if (@mkdir("$root")) {
+          break;
+        }
+        usleep(20000);
+      }
+      @mkdir("$root/notme");
+    } else {
+      system("rm -rf $root ; mkdir -p $root/notme");
+    }
 
     if (PHP_OS == 'Linux' && getenv('TRAVIS')) {
       $this->assertSkipped('openvz and inotify unlinks == bad time');

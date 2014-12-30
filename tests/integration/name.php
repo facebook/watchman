@@ -4,8 +4,8 @@
 
 class nameExprTestCase extends WatchmanTestCase {
   function testNameExpr() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     touch("$root/foo.c");
     mkdir("$root/subdir");
@@ -17,52 +17,52 @@ class nameExprTestCase extends WatchmanTestCase {
       'expression' => array('iname', 'FOO.c'),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array('foo.c'), $res['files']);
+    $this->assertEqualFileList(array('foo.c'), $res['files']);
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array('iname', array('FOO.c', 'INVALID.txt')),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array('foo.c'), $res['files']);
+    $this->assertEqualFileList(array('foo.c'), $res['files']);
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array('name', 'foo.c'),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array('foo.c'), $res['files']);
+    $this->assertEqualFileList(array('foo.c'), $res['files']);
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array('name', array('foo.c', 'invalid')),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array('foo.c'), $res['files']);
+    $this->assertEqualFileList(array('foo.c'), $res['files']);
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array('name', 'foo.c', 'wholename'),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array('foo.c'), $res['files']);
+    $this->assertEqualFileList(array('foo.c'), $res['files']);
 
     if ($this->isCaseInsensitive()) {
       $res = $this->watchmanCommand('query', $root, array(
         'expression' => array('name', 'Foo.c', 'wholename'),
         'fields' => array('name'),
       ));
-      $this->assertEqual(array('foo.c'), $res['files']);
+      $this->assertEqualFileList(array('foo.c'), $res['files']);
     }
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array('name', 'bar.txt', 'wholename'),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array(), $res['files']);
+    $this->assertEqualFileList(array(), $res['files']);
 
     $res = $this->watchmanCommand('query', $root, array(
       'relative_root' => 'subdir',
       'expression' => array('name', 'bar.txt', 'wholename'),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array('bar.txt'), $res['files']);
+    $this->assertEqualFileList(array('bar.txt'), $res['files']);
 
     // foo.c is not in subdir directory so this shouldn't match
     $res = $this->watchmanCommand('query', $root, array(

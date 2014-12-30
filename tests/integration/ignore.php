@@ -4,8 +4,8 @@
 
 class ignoreTestCase extends WatchmanTestCase {
   function testIgnoreGit() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     mkdir("$root/.git");
     mkdir("$root/.git/objects");
     mkdir("$root/.git/objects/pack");
@@ -29,8 +29,8 @@ class ignoreTestCase extends WatchmanTestCase {
   }
 
   function testInvalidIgnore() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     $bad = array(
       array('ignore_vcs' => 'lemon'),
@@ -49,8 +49,8 @@ class ignoreTestCase extends WatchmanTestCase {
   }
 
   function testIgnoreOverlapVCSIgnore() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     $cfg = array(
       'ignore_dirs' => array('.hg'),
@@ -65,8 +65,8 @@ class ignoreTestCase extends WatchmanTestCase {
   }
 
   function testIgnoreGeneric() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     $cfg = array(
       'ignore_dirs' => array('build')

@@ -2,6 +2,24 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+function w_normalize_filename($a) {
+  return str_replace('/', DIRECTORY_SEPARATOR, $a);
+}
+
+function w_is_same_filename($a, $b) {
+  return w_normalize_filename($a) == w_normalize_filename($b);
+}
+
+function w_normalize_file_list($a) {
+  return array_map('w_normalize_filename', $a);
+}
+
+function w_is_same_file_list($a, $b) {
+  $a = w_normalize_file_list($a);
+  $b = w_normalize_file_list($b);
+  return $a == $b;
+}
+
 class WatchmanTestCase extends ArcanistPhutilTestCase {
   protected $root;
   protected $watchman_instance;
@@ -59,6 +77,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
   }
 
   function watch($root, $assert = true) {
+    $root = w_normalize_filename($root);
     $res = $this->watchmanCommand('watch', $root);
     $this->watches[$root] = $res;
     if ($assert) {
@@ -391,7 +410,8 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     list($ok, $out) = $this->waitForWatchmanNoThrow(
       array('find', $root),
       function ($out) use ($sort_func, $files) {
-        return $sort_func(idx($out, 'files', array())) === $files;
+        return w_is_same_file_list(
+          $sort_func(idx($out, 'files', array())), $files);
       },
       0 // timeout
     );
@@ -407,7 +427,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
       $since = $this->watchmanCommand('since', $root, $cursor);
 
       $since_files = $sort_func(idx($since, 'files'));
-      if ($since_files === $files_via_since) {
+      if (w_is_same_file_list($since_files, $files_via_since)) {
         $this->assertTrue(true);
         return $since;
       }
@@ -451,7 +471,21 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
         json_encode($out) . "\n" . $where;
     }
 
-    $this->assertEqual($files, $got, $message);
+    $this->assertEqualFileList($files, $got, $message);
+  }
+
+  function assertEqualFileList($a, $b, $message = null) {
+    if ($message === null) {
+      $where = debug_backtrace();
+      $where = array_shift($where);
+      $where = sprintf("at line %d in file %s",
+        idx($where, 'line'),
+        basename(idx($where, 'file')));
+
+      $message = "\nfile lists are not equal $where";
+    }
+    $this->assertEqual(w_normalize_file_list($a),
+      w_normalize_file_list($b), $message);
   }
 
   function assertFileList($root, array $files, $message = null) {

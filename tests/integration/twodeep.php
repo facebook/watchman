@@ -4,8 +4,8 @@
 
 class twodeepTestCase extends WatchmanTestCase {
   function testTwoDeep() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     $watch = $this->watch($root);
 
     $this->assertFileList($root, array());
@@ -46,13 +46,10 @@ class twodeepTestCase extends WatchmanTestCase {
     }
 
     $this->watchmanCommand('log', 'debug', 'XXX: remove it all');
-    execx('rm -rf %s', "$root/foo/bar");
+    Filesystem::remove("$root/foo/bar");
 
     $this->assertFileList($root, array(
       "foo",
     ));
   }
 }
-
-
-

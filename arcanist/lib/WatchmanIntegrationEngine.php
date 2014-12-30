@@ -36,7 +36,8 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
     }
 
     foreach ($paths as $path) {
-      if (preg_match("/\.php$/", $path) && file_exists($path)) {
+      if (preg_match("/\.php$/", $path) && file_exists($path)
+          && basename($path)[0] != '_') {
         require_once $path;
       }
     }
@@ -57,8 +58,8 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
 
     // Exercise the different serialization combinations
     $cli_matrix = array(
-      'bser/json' => '--server-encoding=bser --output-encoding=json',
-      'json/json' => '--server-encoding=json --output-encoding=json',
+#      'bser/json' => '--server-encoding=bser --output-encoding=json',
+#      'json/json' => '--server-encoding=json --output-encoding=json',
     );
 
     // Find all the test cases that were declared

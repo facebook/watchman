@@ -72,8 +72,8 @@ class subscribeTestCase extends WatchmanTestCase {
   }
 
   function testSubscribe() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     mkdir("$root/a");
     touch("$root/a/lemon");
     touch("$root/b");
@@ -105,7 +105,7 @@ class subscribeTestCase extends WatchmanTestCase {
       $this->assertEqual(true, $sub['is_fresh_instance']);
       $files = $sub['files'];
       sort($files);
-      $this->assertEqual(array('a', 'a/lemon', 'b'), $files);
+      $this->assertEqualFileList(array('a', 'a/lemon', 'b'), $files);
 
       $this->waitForSub('relative', function ($data) {
         return true;
@@ -130,7 +130,7 @@ class subscribeTestCase extends WatchmanTestCase {
         // as changed, too
         array_unshift($expect, 'a');
       }
-      $this->assertEqual($expect, $sub['files']);
+      $this->assertEqualFileList($expect, $sub['files']);
 
       $this->waitForSub('relative', function ($data) {
         return true;

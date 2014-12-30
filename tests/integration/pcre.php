@@ -5,8 +5,8 @@
 class pcreTestCase extends WatchmanTestCase {
 
   function testPCRE() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     touch("$root/foo.c");
     touch("$root/bar.txt");

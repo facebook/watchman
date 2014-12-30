@@ -5,8 +5,8 @@
 
 class emptyExistsTestCase extends WatchmanTestCase {
   function testEmpty() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     touch("$root/empty");
     file_put_contents("$root/notempty", "foo");
@@ -66,4 +66,3 @@ class emptyExistsTestCase extends WatchmanTestCase {
   }
 
 }
-

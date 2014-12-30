@@ -24,8 +24,8 @@ class rootRestrictTestCase extends WatchmanTestCase {
     );
 
     foreach ($passes as $p) {
-      $dir = PhutilDirectoryFixture::newEmptyFixture();
-      $root = realpath($dir->getPath());
+      $dir = new WatchmanDirectoryFixture();
+      $root = $dir->getPath();
 
       if ($p[0] === "directory") {
         mkdir("$root/$p[1]");
@@ -43,8 +43,8 @@ class rootRestrictTestCase extends WatchmanTestCase {
     }
 
     foreach ($fails as $f) {
-      $dir = PhutilDirectoryFixture::newEmptyFixture();
-      $root = realpath($dir->getPath());
+      $dir = new WatchmanDirectoryFixture();
+      $root = $dir->getPath();
 
       if ($f) {
         if ($f[0] === "directory") {

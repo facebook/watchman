@@ -4,8 +4,8 @@
 
 class sinceTestCase extends WatchmanTestCase {
   function testSinceIssue2() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     $watch = $this->watch($root);
     $this->assertFileList($root, array());
 
@@ -51,8 +51,8 @@ class sinceTestCase extends WatchmanTestCase {
   }
 
   function testSinceIssue1() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     touch("$root/111");
     touch("$root/222");
@@ -157,8 +157,8 @@ class sinceTestCase extends WatchmanTestCase {
   }
 
   function testSinceFreshInstance() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     $watch = $this->watch($root);
     $this->assertFileList($root, array());
     touch("$root/111");
@@ -216,8 +216,8 @@ class sinceTestCase extends WatchmanTestCase {
   }
 
   function testReaddWatchFreshInstance() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     $watch = $this->watch($root);
     $this->assertFileList($root, array());
     touch("$root/111");
@@ -244,8 +244,8 @@ class sinceTestCase extends WatchmanTestCase {
   }
 
   function testRecrawlFreshInstance() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     $watch = $this->watch($root);
     $this->assertFileList($root, array());
     touch("$root/111");

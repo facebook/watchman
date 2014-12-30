@@ -4,8 +4,8 @@
 
 class cursorTestCase extends WatchmanTestCase {
   function testCursor() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     $watch = $this->watch($root);
 
     $this->watchmanCommand('log', 'debug', 'XXX 1st since testCursor');

@@ -11,8 +11,8 @@ class triggerErrorsTestCase extends WatchmanTestCase {
   }
 
   function testBadArgs() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     $this->watch($root);
 
     $this->assertTriggerRegError('wrong number of arguments', 'trigger');

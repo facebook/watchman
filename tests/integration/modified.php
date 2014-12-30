@@ -8,8 +8,8 @@ class modifyTest extends WatchmanTestCase {
   }
 
   function testModify() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     mkdir("$root/foo");
     touch("$root/foo/111");
@@ -28,7 +28,7 @@ class modifyTest extends WatchmanTestCase {
 
     $this->waitForSub('test', function($data) { return true; });
     list($sub) = $this->getSubData('test');
-    $this->assertEqual(array("foo/111"), $sub['files']);
+    $this->assertEqualFileList(array("foo/111"), $sub['files']);
 
     $this->watchmanCommand('unsubscribe', $root, 'test');
   }

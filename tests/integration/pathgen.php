@@ -4,8 +4,8 @@
 
 class pathGeneratorTestCase extends WatchmanTestCase {
   function testPathGeneratorDot() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     $this->watch($root);
     $results = $this->watchmanCommand('query', $root, array(
@@ -25,8 +25,8 @@ class pathGeneratorTestCase extends WatchmanTestCase {
   }
 
   function testPathGeneratorCase() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     mkdir("$root/foo");
     touch("$root/foo/bar");
@@ -37,7 +37,7 @@ class pathGeneratorTestCase extends WatchmanTestCase {
       'fields' => array('name'),
     ));
 
-    $this->assertEqual(array('foo/bar'), $results['files']);
+    $this->assertEqualFileList(array('foo/bar'), $results['files']);
 
     if ($this->isCaseInsensitive()) {
       rename("$root/foo", "$root/Foo");

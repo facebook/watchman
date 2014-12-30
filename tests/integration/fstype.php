@@ -10,6 +10,7 @@ class illegalFSTypeTestCase extends WatchmanTestCase {
         // your platform, look in /tmp/watchman-test.log for a line like:
         // "path /var/tmp/a3osdzvzqnco0sok is on filesystem type zfs"
         // then add the type name to this list, in sorted order
+        'NTFS',
         'cifs',
         'hfs',
         'nfs',
@@ -23,8 +24,8 @@ class illegalFSTypeTestCase extends WatchmanTestCase {
   }
 
   function testIllegal() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
 
     $res = $this->watch($root, false);
     if (idx($res, 'error')) {

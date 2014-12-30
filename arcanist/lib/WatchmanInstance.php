@@ -24,7 +24,11 @@ class WatchmanInstance {
   function __construct($repo_root, $coverage, $config = array()) {
     $this->repo_root = $repo_root;
     $this->logfile = new TempFile();
-    $this->sockname = new TempFile();
+    if (phutil_is_windows()) {
+      $this->sockname = "\\\\.\\pipe\\watchman-test-" . uniqid();
+    } else {
+      $this->sockname = new TempFile();
+    }
     $this->config_file = new TempFile();
     // PHP is incredibly stupid: there's no direct way to turn array() into '{}'
     // and array('foo' => array('bar', 'baz')) into '{"foo": ["bar", "baz"]}'.
@@ -185,11 +189,14 @@ class WatchmanInstance {
   }
 
   function getFullSockName() {
+    if (phutil_is_windows()) {
+      return $this->sockname;
+    }
     return $this->sockname . '.sock';
   }
 
   function start() {
-    $cmd = "./watchman --foreground --sockname=%C.sock --logfile=%s " .
+    $cmd = "%C --foreground --sockname=%C --logfile=%s " .
             "--statefile=%s.state --log-level=2";
     if ($this->valgrind) {
       $cmd = "valgrind --tool=memcheck " .
@@ -207,17 +214,19 @@ class WatchmanInstance {
         "--separate-recs=16 --callgrind-out-file=$this->cg_file " .
         $cmd;
     }
-    $cmd = "WATCHMAN_CONFIG_FILE=%s " . $cmd;
 
-    $cmd = csprintf($cmd, $this->config_file, $this->sockname, $this->logfile,
+    putenv("WATCHMAN_CONFIG_FILE=".$this->config_file);
+
+    $cmd = csprintf($cmd, $this->repo_root . '/watchman',
+      $this->getFullSockName(), $this->logfile,
                     $this->logfile);
 
     $pipes = array();
     $this->proc = proc_open($cmd, array(
-      0 => array('file', '/dev/null', 'r'),
+      0 => array('file', phutil_is_windows() ? 'NUL:' : '/dev/null', 'r'),
       1 => array('file', $this->logfile, 'a'),
       2 => array('file', $this->logfile, 'a'),
-    ), $pipes);
+    ), $pipes, $this->repo_root);
 
     if (!$this->proc) {
       throw new Exception("Failed to spawn $cmd");
@@ -238,10 +247,18 @@ class WatchmanInstance {
     $sockname = $this->getFullSockName();
     $deadline = time() + 5;
     do {
-      if (!file_exists($sockname)) {
-        usleep(30000);
+      if (phutil_is_windows()) {
+        $this->sock = @fopen($this->sockname, 'r+');
+        if (!$this->sock) {
+          usleep(30000);
+        }
+      } else {
+        if (!file_exists($sockname)) {
+          usleep(30000);
+        }
+
+        $this->sock = @fsockopen('unix://' . $sockname);
       }
-      $this->sock = @fsockopen('unix://' . $sockname);
       if ($this->sock) {
         break;
       }
@@ -625,32 +642,33 @@ class WatchmanInstance {
     if ($this->debug) {
       readfile($this->logfile);
     }
+    $TMP = phutil_is_windows() ? '' : '/tmp/';
     $this->appendLogFile(
       'config',
       $this->config_file,
-      '/tmp/watchman-test.log'
+      $TMP . 'watchman-test.log'
     );
     $this->appendLogFile(
       'output',
       $this->logfile,
-      '/tmp/watchman-test.log'
+      $TMP . 'watchman-test.log'
     );
     if (file_exists($this->vg_log.'.xml')) {
       $this->appendLogFile(
         'valgrind',
         $this->vg_log.'.xml',
-        "/tmp/watchman-valgrind.xml"
+        $TMP . "watchman-valgrind.xml"
       );
     }
     if (file_exists($this->vg_log)) {
       $this->appendLogFile(
         'valgrind',
         $this->vg_log,
-        '/tmp/watchman-valgrind.log'
+        $TMP . 'watchman-valgrind.log'
       );
     }
     if (file_exists($this->cg_file)) {
-      copy($this->cg_file, "/tmp/watchman-callgrind.txt");
+      copy($this->cg_file, $TMP . "/watchman-callgrind.txt");
     }
   }
 

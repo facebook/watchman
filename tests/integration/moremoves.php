@@ -5,8 +5,11 @@
 
 class moremovesTestCase extends WatchmanTestCase {
   function testMoreMoves() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    if (phutil_is_windows()) {
+      $this->assertSkipped("no unix userland on windows");
+    }
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     $watch = $this->watch($root);
     $base = $this->watchmanCommand('find', $root, '.');
     // This is "c:PID:1" because nothing has changed in $root yet
@@ -29,8 +32,11 @@ class moremovesTestCase extends WatchmanTestCase {
   }
 
   function testEvenMoreMoves() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
-    $root = realpath($dir->getPath());
+    if (phutil_is_windows()) {
+      $this->assertSkipped("no unix userland on windows");
+    }
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
     $watch = $this->watch($root);
     $base = $this->watchmanCommand('find', $root, '.');
     // This is "c:PID:1" because nothing has changed in $root yet

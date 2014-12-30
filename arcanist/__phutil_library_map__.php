@@ -14,6 +14,7 @@ phutil_register_library_map(array(
     'DwarfLineInfo' => 'lib/cov/DwarfLineInfo.php',
     'PythonProvidedWatchmanInstance' => 'lib/WatchmanInstance.php',
     'WatchmanCoverWorkflow' => 'workflow/cover.php',
+    'WatchmanDirectoryFixture' => 'lib/WatchmanDirectoryFixture.php',
     'WatchmanInstance' => 'lib/WatchmanInstance.php',
     'WatchmanIntegrationEngine' => 'lib/WatchmanIntegrationEngine.php',
     'WatchmanLicenseLinter' => 'lib/WatchmanLicenseLinter.php',
@@ -27,6 +28,11 @@ phutil_register_library_map(array(
   ),
   'function' =>
   array(
+    'w_is_same_file_list' => 'lib/WatchmanTestCase.php',
+    'w_is_same_filename' => 'lib/WatchmanTestCase.php',
+    'w_normalize_file_list' => 'lib/WatchmanTestCase.php',
+    'w_normalize_filename' => 'lib/WatchmanTestCase.php',
+    'w_rmdir_recursive' => 'lib/WatchmanDirectoryFixture.php',
   ),
   'xmap' =>
   array(
