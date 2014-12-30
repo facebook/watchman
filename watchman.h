@@ -762,7 +762,6 @@ struct watchman_getopt {
   /* whether we accept an argument */
   enum {
     OPT_NONE,
-    OPT_STRING,
     REQ_STRING,
     REQ_INT,
   } argtype;

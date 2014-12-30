@@ -22,9 +22,6 @@ void usage(struct watchman_getopt *opts, FILE *where)
 
     len = strlen(opts[i].optname);
     switch (opts[i].argtype) {
-      case OPT_STRING:
-        len += strlen(label) + strlen("[=]");
-        break;
       case REQ_STRING:
         len += strlen(label) + strlen("=");
         break;
@@ -56,9 +53,6 @@ void usage(struct watchman_getopt *opts, FILE *where)
       fprintf(where, "    ");
     }
     switch (opts[i].argtype) {
-      case OPT_STRING:
-        snprintf(buf, sizeof(buf), "--%s[=%s]", opts[i].optname, label);
-        break;
       case REQ_STRING:
         snprintf(buf, sizeof(buf), "--%s=%s", opts[i].optname, label);
         break;
@@ -139,9 +133,6 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
       case OPT_NONE:
         long_opts[i].has_arg = no_argument;
         break;
-      case OPT_STRING:
-        long_opts[i].has_arg = optional_argument;
-        break;
       case REQ_STRING:
       case REQ_INT:
         long_opts[i].has_arg = required_argument;
@@ -220,7 +211,6 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
               break;
             }
             case REQ_STRING:
-            case OPT_STRING:
             {
               json_t *sval = json_string(optarg);
               *(char**)o->val = strdup(optarg);
