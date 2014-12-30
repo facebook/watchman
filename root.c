@@ -1082,16 +1082,20 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
 /* Opens a directory making sure it's not a symlink */
 DIR *opendir_nofollow(const char *path)
 {
+#ifdef _WIN32
+  return win_opendir(path, 1 /* no follow */);
+#else
   int fd = open(path, O_NOFOLLOW | O_CLOEXEC);
   if (fd == -1) {
     return NULL;
   }
-#ifdef __APPLE__
+#if defined(__APPLE__)
   close(fd);
   return opendir(path);
 #else
   // errno should be set appropriately if this is not a directory
   return fdopendir(fd);
+#endif
 #endif
 }
 
