@@ -30,6 +30,11 @@
 
 #include "tap.h"
 
+#ifdef _WIN32
+# define flockfile(a) 0
+# define funlockfile(a) 0
+#endif
+
 static int no_plan = 0;
 static int skip_all = 0;
 static int have_plan = 0;
