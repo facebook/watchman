@@ -1705,7 +1705,7 @@ unlock:
  */
 char *w_realpath(const char *filename)
 {
-#if defined(__GLIBC__) || defined(__APPLE__)
+#if defined(__GLIBC__) || defined(__APPLE__) || defined(_WIN32)
   return realpath(filename, NULL);
 #else
   char *buf = NULL;
