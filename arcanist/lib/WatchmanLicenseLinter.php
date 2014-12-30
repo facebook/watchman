@@ -76,13 +76,6 @@ TXT;
             $suggest);
           break;
         }
-
-        $this->raiseLintAtOffset(
-          0,
-          self::LINT_WRONG_LICENSE_HEADER,
-          'This file has an invalid license header.',
-          $M[0],
-          $suggest);
         break;
       }
     }
