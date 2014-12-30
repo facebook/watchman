@@ -2498,17 +2498,23 @@ bool w_root_save_state(json_t *state)
 
 bool w_reap_children(bool block)
 {
-  int st;
   pid_t pid;
   int reaped = 0;
 
   // Reap any children so that we can release their
   // references on the root
   do {
+#ifndef _WIN32
+    int st;
     pid = waitpid(-1, &st, block ? 0 : WNOHANG);
     if (pid == -1) {
       break;
     }
+#else
+    if (!w_wait_for_any_child(block ? INFINITE : 0, &pid)) {
+      break;
+    }
+#endif
     w_mark_dead(pid);
     reaped++;
   } while (1);

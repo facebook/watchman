@@ -168,6 +168,7 @@ static inline void w_clear_nonblock(int fd)
 // Marks the file as CLOEXEC
 w_stm_t w_mkstemp(char *templ);
 char *w_realpath(const char *filename);
+bool w_is_path_absolute(const char *path);
 
 struct watchman_string;
 typedef struct watchman_string w_string_t;

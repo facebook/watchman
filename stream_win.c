@@ -560,9 +560,10 @@ HANDLE w_handle_open(const char *path, int flags) {
     return INVALID_HANDLE_VALUE;
   }
 
-  if (flags & O_WRONLY) {
+  if (flags & (O_WRONLY|O_RDWR)) {
     access |= GENERIC_WRITE;
-  } else {
+  }
+  if ((flags & O_WRONLY) == 0) {
     access |= GENERIC_READ;
   }
 

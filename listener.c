@@ -568,8 +568,8 @@ void w_log_to_clients(int level, const char *buf)
 
 static void *child_reaper(void *arg)
 {
+#ifndef _WIN32
   sigset_t sigset;
-  unused_parameter(arg);
 
   w_set_thread_name("child_reaper");
 
@@ -577,6 +577,8 @@ static void *child_reaper(void *arg)
   sigemptyset(&sigset);
   sigaddset(&sigset, SIGCHLD);
   pthread_sigmask(SIG_UNBLOCK, &sigset, NULL);
+#endif
+  unused_parameter(arg);
 
   while (!stopping) {
     usleep(200000);
@@ -892,13 +894,15 @@ static void accept_loop() {
 bool w_start_listener(const char *path)
 {
   pthread_mutexattr_t mattr;
+#ifndef _WIN32
   struct sigaction sa;
   sigset_t sigset;
+#endif
+  void *ignored;
 #ifdef HAVE_LIBGIMLI_H
   volatile struct gimli_heartbeat *hb = NULL;
 #endif
   struct timeval tv;
-  void *ignored;
   int n_clients = 0;
 
   listener_thread = pthread_self();
@@ -979,6 +983,7 @@ bool w_start_listener(const char *path)
   }
   proc_start_time = (uint64_t)tv.tv_sec;
 
+#ifndef _WIN32
   signal(SIGPIPE, SIG_IGN);
 
   /* allow SIGUSR1 and SIGCHLD to wake up a blocked thread, without restarting
@@ -999,6 +1004,7 @@ bool w_start_listener(const char *path)
     return false;
   }
   w_set_cloexec(listener_fd);
+#endif
 
   if (pthread_create(&reaper_thread, NULL, child_reaper, NULL)) {
     w_log(W_LOG_FATAL, "pthread_create(reaper): %s\n",
