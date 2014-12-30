@@ -1,0 +1,42 @@
+/* Copyright 2012-present Facebook, Inc.
+ * Licensed under the Apache License, Version 2.0 */
+
+#include "watchman.h"
+
+const char *win32_strerror(DWORD err) {
+  static __declspec(thread) char msgbuf[1024];
+
+  FormatMessageA(
+      FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+      NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+      msgbuf, sizeof(msgbuf)-1, NULL);
+
+  return msgbuf;
+}
+
+int map_win32_err(DWORD err) {
+  switch (err) {
+    case ERROR_SUCCESS: return 0;
+    case ERROR_INVALID_FUNCTION: return ENOSYS;
+    case ERROR_PATH_NOT_FOUND: return ENOTDIR;
+    case ERROR_FILE_NOT_FOUND: return ENOENT;
+    case ERROR_TOO_MANY_OPEN_FILES: return EMFILE;
+    case ERROR_ACCESS_DENIED: return EACCES;
+    case ERROR_INVALID_HANDLE: return EBADF;
+    case ERROR_NOT_ENOUGH_MEMORY: return ENOMEM;
+    case ERROR_INVALID_ACCESS: return EACCES;
+    case ERROR_INVALID_DATA: return EINVAL;
+    case ERROR_NO_MORE_FILES: return EMFILE;
+    case ERROR_WRITE_PROTECT: return EPERM;
+    case ERROR_NOT_SUPPORTED: return ENOSYS;
+    case ERROR_DEV_NOT_EXIST: return ENOENT;
+    case ERROR_FILE_EXISTS: return EEXIST;
+    case ERROR_INVALID_PARAMETER: return EINVAL;
+    case ERROR_NO_PROC_SLOTS: return EAGAIN;
+    case ERROR_BROKEN_PIPE: return EPIPE;
+    case ERROR_DISK_FULL: return ENOSPC;
+    case ERROR_IO_INCOMPLETE: return EAGAIN;
+    case ERROR_IO_PENDING: return EAGAIN;
+    default: return EINVAL;
+  }
+}
