@@ -131,6 +131,8 @@ static w_query_expr *name_parser_inner(w_query *query,
         element = w_string_new(ele);
       }
 
+      w_string_in_place_normalize_separators(&element, WATCHMAN_DIR_SEP);
+
       w_ht_set(map, w_ht_ptr_val(element), 1);
       w_string_delref(element);
     }
@@ -148,6 +150,7 @@ static w_query_expr *name_parser_inner(w_query *query,
   data = calloc(1, sizeof(*data));
   if (pattern) {
     data->name = w_string_new(pattern);
+    w_string_in_place_normalize_separators(&data->name, WATCHMAN_DIR_SEP);
   }
   data->map = map;
   data->caseless = caseless;

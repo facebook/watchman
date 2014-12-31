@@ -165,7 +165,6 @@ static bool parse_paths(w_query *res, json_t *query)
   for (i = 0; i < json_array_size(paths); i++) {
     json_t *ele = json_array_get(paths, i);
     const char *name = NULL;
-    w_string_t *path;
 
     res->paths[i].depth = -1;
 
@@ -181,9 +180,9 @@ static bool parse_paths(w_query *res, json_t *query)
       return false;
     }
 
-    path = w_string_new(name);
-    res->paths[i].name = w_string_canon_path(path);
-    w_string_delref(path);
+    res->paths[i].name = w_string_new(name);
+    w_string_in_place_normalize_separators(
+        &res->paths[i].name, WATCHMAN_DIR_SEP);
   }
 
   return true;

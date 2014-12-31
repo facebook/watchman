@@ -69,6 +69,32 @@ w_string_t *w_string_new(const char *str)
   return s;
 }
 
+#ifdef _WIN32
+w_string_t *w_string_new_wchar(WCHAR *str, int len) {
+  char buf[WATCHMAN_NAME_MAX];
+  int res;
+
+  if (len == 0) {
+    return w_string_new("");
+  }
+
+  res = WideCharToMultiByte(CP_UTF8, 0, str, len, buf, sizeof(buf), NULL, NULL);
+  if (res == 0) {
+    char msgbuf[1024];
+    DWORD err = GetLastError();
+    FormatMessageA(
+      FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+      NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+      msgbuf, sizeof(msgbuf)-1, NULL);
+    w_log(W_LOG_ERR, "WideCharToMultiByte failed: 0x%x %s\n", err, msgbuf);
+    return NULL;
+  }
+
+  buf[res] = 0;
+  return w_string_new(buf);
+}
+#endif
+
 w_string_t *w_string_make_printf(const char *format, ...)
 {
   w_string_t *s;
@@ -224,7 +250,7 @@ w_string_t *w_string_dirname(w_string_t *str)
   /* can't use libc strXXX functions because we may be operating
    * on a slice */
   for (end = str->len - 1; end >= 0; end--) {
-    if (str->buf[end] == '/') {
+    if (str->buf[end] == WATCHMAN_DIR_SEP) {
       /* found the end of the parent dir */
       return w_string_slice(str, 0, end);
     }
@@ -283,7 +309,7 @@ w_string_t *w_string_suffix(w_string_t *str)
       return w_string_new(name_buf);
     }
 
-    if (str->buf[end] == '/') {
+    if (str->buf[end] == WATCHMAN_DIR_SEP) {
       // No suffix
       return NULL;
     }
@@ -321,7 +347,8 @@ w_string_t *w_string_canon_path(w_string_t *str)
   int end;
   int trim = 0;
 
-  for (end = str->len - 1; end >= 0 && str->buf[end] == '/'; end--) {
+  for (end = str->len - 1;
+      end >= 0 && str->buf[end] == WATCHMAN_DIR_SEP; end--) {
     trim++;
   }
   if (trim) {
@@ -331,6 +358,78 @@ w_string_t *w_string_canon_path(w_string_t *str)
   return str;
 }
 
+#ifdef _WIN32
+#define WRONG_SEP '/'
+#else
+#define WRONG_SEP '\\'
+#endif
+
+// Normalize directory separators to match the platform.
+// Also trims any trailing directory separators
+w_string_t *w_string_normalize_separators(w_string_t *str, char target_sep) {
+  w_string_t *s;
+  char *buf;
+  uint32_t i, len;
+
+  len = str->len;
+
+  if (len == 0) {
+    w_string_addref(str);
+    return str;
+  }
+
+  // This doesn't do any special UNC or path len escape prefix handling
+  // on windows.  We don't currently use it in a way that would require it.
+
+  // Trim any trailing dir seps
+  while (len > 0) {
+    if (str->buf[len-1] == '/' || str->buf[len-1] == '\\') {
+      --len;
+    } else {
+      break;
+    }
+  }
+
+  s = malloc(sizeof(*s) + len + 1);
+  if (!s) {
+    perror("no memory available");
+    abort();
+  }
+
+  s->refcnt = 1;
+  s->len = len;
+  s->slice = NULL;
+  buf = (char*)(s + 1);
+
+  for (i = 0; i < len; i++) {
+    if (str->buf[i] == '/' || str->buf[i] == '\\') {
+      buf[i] = target_sep;
+    } else {
+      buf[i] = str->buf[i];
+    }
+  }
+  buf[len] = 0;
+  s->buf = buf;
+  s->hval = w_hash_bytes(buf, len, 0);
+
+  return s;
+}
+
+void w_string_in_place_normalize_separators(w_string_t **str, char target_sep) {
+  w_string_t *norm = w_string_normalize_separators(*str, target_sep);
+  w_string_delref(*str);
+  *str = norm;
+}
+
+// Compute the basename of path, return that as a string
+w_string_t *w_string_new_basename(const char *path) {
+  const char *base;
+  base = path + strlen(path);
+  while (base > path && base[-1] != WATCHMAN_DIR_SEP) {
+    base--;
+  }
+  return w_string_new(base);
+}
 
 w_string_t *w_string_basename(w_string_t *str)
 {
@@ -339,7 +438,7 @@ w_string_t *w_string_basename(w_string_t *str)
   /* can't use libc strXXX functions because we may be operating
    * on a slice */
   for (end = str->len - 1; end >= 0; end--) {
-    if (str->buf[end] == '/') {
+    if (str->buf[end] == WATCHMAN_DIR_SEP) {
       /* found the end of the parent dir */
       return w_string_slice(str, end + 1, str->len - (end + 1));
     }
