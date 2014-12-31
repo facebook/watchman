@@ -191,11 +191,14 @@ bool parse_field_list(json_t *field_list,
     struct w_query_field_list *selected,
     char **errmsg);
 
-#define W_TERM_PARSER(name, func) \
-  static __attribute__((constructor)) \
-  void w_gen_symbol(w_term_register_)(void) { \
+#define W_TERM_PARSER1(symbol, name, func) \
+  static w_ctor_fn_type(symbol) {                   \
     w_query_register_expression_parser(name, func); \
-  }
+  }                                                 \
+  w_ctor_fn_reg(symbol)
+
+#define W_TERM_PARSER(name, func) \
+  W_TERM_PARSER1(w_gen_symbol(w_term_register_), name, func)
 
 #ifdef __cplusplus
 }

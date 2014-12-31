@@ -34,14 +34,19 @@ void preprocess_command(json_t *args, enum w_pdu_type output_pdu);
 bool dispatch_command(struct watchman_client *client, json_t *args, int mode);
 bool try_client_mode_command(json_t *cmd, bool pretty);
 void w_register_command(struct watchman_command_handler_def *defs);
-#define W_CMD_REG(name, func, flags, clivalidate) \
-  static __attribute__((constructor)) \
-  void w_gen_symbol(w_cmd_register_)(void) { \
+
+#define W_CMD_REG_1(symbol, name, func, flags, clivalidate) \
+  static w_ctor_fn_type(symbol) {                    \
     static struct watchman_command_handler_def d = { \
       name, func, flags, clivalidate                 \
     };                                               \
     w_register_command(&d);                          \
-  }
+  }                                                  \
+  w_ctor_fn_reg(symbol)
+
+#define W_CMD_REG(name, func, flags, clivalidate) \
+  W_CMD_REG_1(w_gen_symbol(w_cmd_register_), \
+      name, func, flags, clivalidate)
 
 
 void send_error_response(struct watchman_client *client,

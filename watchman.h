@@ -113,6 +113,22 @@ extern char *poisoned_reason;
 #define w_paste1(pre, post)  w_paste2(pre, post)
 #define w_gen_symbol(pre)    w_paste1(pre, __LINE__)
 
+// We make use of constructors to glue together modules
+// without maintaining static lists of things in the build
+// configuration.  These are helpers to make this work
+// more portably
+#ifdef _WIN32
+#pragma section(".CRT$XCU", read)
+# define w_ctor_fn_type(sym) void __cdecl sym(void)
+# define w_ctor_fn_reg(sym) \
+  static __declspec(allocate(".CRT$XCU")) \
+    void (__cdecl * w_paste1(sym, _reg))(void) = sym;
+#else
+# define w_ctor_fn_type(sym) \
+  __attribute__((constructor)) void sym(void)
+# define w_ctor_fn_reg(sym) /* not needed */
+#endif
+
 /* sane, reasonably large filename size that we'll use
  * throughout; POSIX seems to define smallish buffers
  * that seem risky */
