@@ -259,6 +259,18 @@ static void apply_ignore_configuration(w_root_t *root)
   }
 }
 
+static bool is_case_sensitive_filesystem(const char *path) {
+#ifdef __APPLE__
+  return pathconf(path, _PC_CASE_SENSITIVE);
+#elif defined(_WIN32)
+  unused_parameter(path);
+  return false;
+#else
+  unused_parameter(path);
+  return true;
+#endif
+}
+
 static w_root_t *w_root_new(const char *path, char **errmsg)
 {
   w_root_t *root = calloc(1, sizeof(*root));
@@ -273,11 +285,7 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   pthread_mutex_init(&root->lock, &attr);
   pthread_mutexattr_destroy(&attr);
 
-#ifdef __APPLE__
-  root->case_sensitive = pathconf(path, _PC_CASE_SENSITIVE);
-#else
-  root->case_sensitive = true;
-#endif
+  root->case_sensitive = is_case_sensitive_filesystem(path);
 
   root->root_path = w_string_new(path);
   root->commands = w_ht_new(2, &trigger_hash_funcs);
@@ -725,9 +733,10 @@ static bool did_file_change(struct stat *saved, struct stat *fresh)
 #define ENOFOLLOWSYMLINK ELOOP
 #endif
 
-#ifdef __APPLE__
+// Returns just the canonical basename of a file
 static w_string_t *w_resolve_filesystem_canonical_name(const char *path)
 {
+#ifdef __APPLE__
   struct attrlist attrlist;
   struct {
     uint32_t len;
@@ -749,8 +758,41 @@ static w_string_t *w_resolve_filesystem_canonical_name(const char *path)
 
   name = ((char*)&vomit.ref) + vomit.ref.attr_dataoffset;
   return w_string_new(name);
-}
+#elif defined(_WIN32)
+  WCHAR long_buf[WATCHMAN_NAME_MAX];
+  WCHAR *base;
+  WCHAR *wpath = w_utf8_to_win_unc(path, -1);
+  DWORD err;
+
+  DWORD long_len = GetLongPathNameW(wpath, long_buf,
+                      sizeof(long_buf)/sizeof(long_buf[0]));
+  err = GetLastError();
+  free(wpath);
+
+  if (long_len == 0 && err == ERROR_FILE_NOT_FOUND) {
+    // signal to caller that the file has disappeared -- the caller will read
+    // errno and do error handling
+    return NULL;
+  }
+
+  if (long_len == 0) {
+    w_log(W_LOG_ERR, "Failed to canon(%s): %s\n", path, win32_strerror(err));
+    return w_string_new_basename(path);
+  }
+
+  if (long_len > sizeof(long_buf)-1) {
+    w_log(W_LOG_FATAL, "GetLongPathNameW needs %lu chars\n", long_len);
+  }
+  long_buf[long_len] = 0;
+  base = long_buf + long_len - 1;
+  while (base > long_buf && base[-1] != WATCHMAN_DIR_SEP) {
+    base--;
+  }
+  return w_string_new_wchar(base, -1);
+#else
+  return w_string_new_basename(path);
 #endif
+}
 
 static void stat_path(w_root_t *root,
     w_string_t *full_path, struct timeval now, bool recursive, bool via_notify)
@@ -824,7 +866,6 @@ static void stat_path(w_root_t *root,
       file = w_root_resolve_file(root, dir, file_name, now);
     }
 
-#ifdef __APPLE__
     if (!root->case_sensitive) {
       // Determine canonical case from filesystem
       w_string_t *canon_name;
@@ -874,7 +915,11 @@ static void stat_path(w_root_t *root,
           full_path->len - file_name->len, full_path->buf,
           canon_name->len, canon_name->buf);
 
-        w_log(W_LOG_DBG, "canon -> %s\n", path);
+        w_log(W_LOG_DBG,
+            "did canon -> %s full={%.*s} file={%.*s} canon={%.*s}\n", path,
+            full_path->len, full_path->buf,
+            file_name->len, file_name->buf,
+            canon_name->len, canon_name->buf);
 
         // file refers to a node that doesn't exist any longer
         file->exists = false;
@@ -939,7 +984,6 @@ static void stat_path(w_root_t *root,
         w_string_delref(canon_name);
       }
     }
-#endif
 
     if (!file->exists) {
       /* we're transitioning from deleted to existing,
