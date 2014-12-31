@@ -12,7 +12,9 @@ extern "C" {
 #include "config.h"
 
 #include <assert.h>
+#if HAVE_UNISTD_H
 #include <unistd.h>
+#endif
 #include <ctype.h>
 #include <stdint.h>
 #include <sys/stat.h>
@@ -36,11 +38,15 @@ extern "C" {
 #include <stdbool.h>
 #include <sys/time.h>
 #include <time.h>
+#ifndef _WIN32
 #include <libgen.h>
+#endif
 #include <inttypes.h>
 #include <limits.h>
+#ifndef _WIN32
 #include <sys/socket.h>
 #include <sys/un.h>
+#endif
 #include <fcntl.h>
 #if defined(__linux__) && !defined(O_CLOEXEC)
 # define O_CLOEXEC   02000000 /* set close_on_exec, from asm/fcntl.h */
@@ -48,24 +54,41 @@ extern "C" {
 #ifndef O_CLOEXEC
 # define O_CLOEXEC 0
 #endif
+#ifndef _WIN32
 #include <sys/poll.h>
 #include <sys/wait.h>
+#endif
 #ifdef HAVE_PCRE_H
 # include <pcre.h>
 #endif
 #ifdef HAVE_EXECINFO_H
 # include <execinfo.h>
 #endif
+#ifndef _WIN32
 #include <sys/uio.h>
 #include <pwd.h>
 #include <sysexits.h>
+#endif
 #include <spawn.h>
 #include <stddef.h>
 #ifdef HAVE_SYS_PARAM_H
 # include <sys/param.h>
 #endif
+#ifndef _WIN32
 // Not explicitly exported on Darwin, so we get to define it.
 extern char **environ;
+#endif
+
+#ifdef _WIN32
+# define PRIsize_t "Iu"
+#else
+# define PRIsize_t "zu"
+#endif
+
+#ifndef WATCHMAN_DIR_SEP
+# define WATCHMAN_DIR_SEP '/'
+# define WATCHMAN_DIR_DOT '.'
+#endif
 
 extern char *poisoned_reason;
 
@@ -115,17 +138,29 @@ static inline bool w_refcnt_del(int *refcnt)
 
 static inline void w_set_cloexec(int fd)
 {
+#ifndef _WIN32
   ignore_result(fcntl(fd, F_SETFD, FD_CLOEXEC));
+#else
+  unused_parameter(fd);
+#endif
 }
 
 static inline void w_set_nonblock(int fd)
 {
+#ifndef _WIN32
   ignore_result(fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK));
+#else
+  unused_parameter(fd);
+#endif
 }
 
 static inline void w_clear_nonblock(int fd)
 {
+#ifndef _WIN32
   ignore_result(fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & ~O_NONBLOCK));
+#else
+  unused_parameter(fd);
+#endif
 }
 
 // Make a temporary file name and open it.
