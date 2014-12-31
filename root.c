@@ -2028,6 +2028,43 @@ char *w_find_enclosing_root(const char *filename, char **relpath) {
   return prefix;
 }
 
+static inline bool is_slash(char c) {
+  return (c == '/') || (c == '\\');
+}
+
+bool w_is_path_absolute(const char *path) {
+#ifdef _WIN32
+  char drive_letter;
+  size_t len = strlen(path);
+
+  if (len <= 2) {
+    return false;
+  }
+
+  // "\something"
+  if (is_slash(path[0])) {
+    // "\\something" is absolute, "\something" is relative to the current
+    // dir of the current drive, whatever that may be, for a given process
+    return is_slash(path[1]);
+  }
+
+  drive_letter = (char)tolower(path[0]);
+  // "C:something"
+  if (drive_letter >= 'a' && drive_letter <= 'z' && path[1] == ':') {
+    // "C:\something" is absolute, but "C:something" is relative to
+    // the current dir on the C drive(!)
+    return is_slash(path[2]);
+  }
+  // we could check for things like NUL:, COM: and so on here.
+  // While those are technically absolute names, we can't watch them, so
+  // we don't consider them absolute for the purposes of checking whether
+  // the path is a valid watchable root
+  return false;
+#else
+  return path[0] == '/';
+#endif
+}
+
 static w_root_t *root_resolve(const char *filename, bool auto_watch,
     bool *created, char **errmsg)
 {
@@ -2040,7 +2077,7 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   *created = false;
 
   // Sanity check that the path is absolute
-  if (filename[0] != '/') {
+  if (!w_is_path_absolute(filename)) {
     ignore_result(asprintf(errmsg, "path \"%s\" must be absolute", filename));
     w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
     return NULL;
