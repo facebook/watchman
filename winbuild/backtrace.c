@@ -46,11 +46,11 @@ char **backtrace_symbols(void **array, size_t n_frames) {
     SymFromAddr(proc, addr, 0, &sym.info);
 
     if (SymGetLineFromAddr64(proc, addr, &displacement, &line)) {
-      snprintf(str, sizeof(str), "#%u %p %s %s:%u", i,
+      snprintf(str, sizeof(str), "#%" PRIsize_t " %p %s %s:%u", i,
         array[i], sym.info.Name, line.FileName, line.LineNumber);
 
     } else {
-      snprintf(str, sizeof(str), "#%u %p %s", i,
+      snprintf(str, sizeof(str), "#%" PRIsize_t " %p %s", i,
         array[i], sym.info.Name);
     }
 

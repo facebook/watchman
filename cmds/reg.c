@@ -22,11 +22,16 @@ void print_command_list_for_help(FILE *where)
   w_ht_iter_t iter;
 
   defs = calloc(n, sizeof(*defs));
+  if (!defs) {
+    abort();
+  }
   if (w_ht_first(command_funcs, &iter)) do {
     defs[i++] = w_ht_val_ptr(iter.value);
   } while (w_ht_next(command_funcs, &iter));
 
-  qsort(defs, n, sizeof(*defs), compare_def);
+  if (n > 0) {
+    qsort(defs, n, sizeof(*defs), compare_def);
+  }
 
   fprintf(where, "\n\nAvailable commands:\n\n");
   for (i = 0; i < n; i++) {

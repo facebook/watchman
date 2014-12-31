@@ -17,7 +17,7 @@ static void hexdump(char *start, char *end)
   int maxbytes = 24;
 
   while (start < end) {
-    int limit = end - start;
+    ptrdiff_t limit = end - start;
     if (limit > maxbytes) {
       limit = maxbytes;
     }
@@ -85,7 +85,7 @@ static bool check_roundtrip(const char *input, const char *template_text,
   char *jdump;
   json_t *expected, *decoded, *templ = NULL;
   json_error_t jerr;
-  int needed;
+  json_int_t needed;
 
   expected = json_loads(input, 0, &jerr);
   ok(expected != NULL, "loaded %s: %s", input, jerr.text);
@@ -149,4 +149,3 @@ int main(int argc, char **argv)
 
 /* vim:ts=2:sw=2:et:
  */
-

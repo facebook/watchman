@@ -302,7 +302,7 @@ bool w_ht_first(w_ht_t *ht, w_ht_iter_t *iter)
   if (!ht) return false;
   if (!ht->nelems) return false;
 
-  iter->slot = -1;
+  iter->slot = (uint32_t)-1;
   iter->ptr = NULL;
 
   return w_ht_next(ht, iter);

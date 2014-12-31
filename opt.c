@@ -10,8 +10,9 @@
 
 void usage(struct watchman_getopt *opts, FILE *where)
 {
-  int i, len;
-  int longest = 0;
+  int i;
+  size_t len;
+  size_t longest = 0;
   const char *label;
 
   fprintf(where, "Usage: watchman [opts] command\n");
@@ -61,7 +62,7 @@ void usage(struct watchman_getopt *opts, FILE *where)
         break;
     }
 
-    fprintf(where, "%-*s ", longest, buf);
+    fprintf(where, "%-*s ", (unsigned int)longest, buf);
 
     if (opts[i].helptext) {
       fprintf(where, "%s", opts[i].helptext);
@@ -140,7 +141,7 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
     }
 
     if (opts[i].shortopt) {
-      nextshort[0] = opts[i].shortopt;
+      nextshort[0] = (char)opts[i].shortopt;
       nextshort++;
 
       if (long_opts[i].has_arg != no_argument) {

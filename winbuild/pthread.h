@@ -256,7 +256,8 @@ int pthread_barrierattr_init(void **attr);
 int pthread_barrierattr_destroy(void **attr);
 int pthread_barrierattr_setpshared(void **attr, int s);
 int pthread_barrierattr_getpshared(void **attr, int *s);
-int pthread_key_create(pthread_key_t *key, void (* dest)(void *));
+typedef void (*_pthread_tls_dtor_t)(void*);
+int pthread_key_create(pthread_key_t *key, _pthread_tls_dtor_t dest);
 int pthread_key_delete(pthread_key_t key);
 
 void *pthread_getspecific(pthread_key_t key);

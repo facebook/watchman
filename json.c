@@ -119,7 +119,7 @@ static json_t *read_json_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
 bool w_bser_decode_pdu_len(w_jbuffer_t *jr, w_stm_t stm,
     json_int_t *len, json_error_t *jerr)
 {
-  int needed;
+  json_int_t needed;
 
   while (!bunser_int(jr->buf + jr->rpos, jr->wpos - jr->rpos,
         &needed, len)) {
@@ -134,17 +134,17 @@ bool w_bser_decode_pdu_len(w_jbuffer_t *jr, w_stm_t stm,
       return false;
     }
   }
-  jr->rpos += needed;
+  jr->rpos += (uint32_t)needed;
 
   return true;
 }
 
 static json_t *read_bser_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
 {
-  int needed;
+  json_int_t needed;
   json_int_t val;
   uint32_t ideal;
-  int need;
+  json_int_t need;
   int r;
   json_t *obj;
 
@@ -227,7 +227,7 @@ static bool output_bytes(const char *buf, int x)
   int res;
 
   while (x > 0) {
-    res = fwrite(buf, 1, x, stdout);
+    res = (int)fwrite(buf, 1, x, stdout);
     if (res == 0) {
       return false;
     }
@@ -247,7 +247,7 @@ static bool stream_until_newline(w_jbuffer_t *reader, w_stm_t stm)
     buf = reader->buf + reader->rpos;
     nl = memchr(buf, '\n', reader->wpos - reader->rpos);
     if (nl) {
-      x = 1 + (nl - buf);
+      x = 1 + (int)(nl - buf);
       is_done = true;
     } else {
       x = reader->wpos - reader->rpos;
@@ -424,7 +424,7 @@ static int jbuffer_write(const char *buffer, size_t size, void *ptr)
 
   while (size) {
     // Accumulate in the buffer
-    size_t room = data->jr->allocd - data->jr->wpos;
+    int room = data->jr->allocd - data->jr->wpos;
 
     // No room? send it over the wire
     if (!room) {
@@ -434,8 +434,8 @@ static int jbuffer_write(const char *buffer, size_t size, void *ptr)
       room = data->jr->allocd - data->jr->wpos;
     }
 
-    if (size < room) {
-      room = size;
+    if ((int)size < room) {
+      room = (int)size;
     }
 
     // Stick it in the buffer

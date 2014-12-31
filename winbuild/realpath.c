@@ -52,7 +52,7 @@ char *realpath(const char *filename, char *target) {
         if (final_bufptr == NULL) {
           len = 0;
         } else {
-          len = GetFinalPathNameByHandleW(h, final_buf, len + 1,
+          len = GetFinalPathNameByHandleW(h, final_buf, len,
             FILE_NAME_NORMALIZED|VOLUME_NAME_DOS);
           err = GetLastError();
         }

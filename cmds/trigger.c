@@ -84,7 +84,8 @@ static json_t *build_legacy_trigger(
   json_t *command;
   char *errmsg;
   uint32_t next_arg = 0;
-  uint32_t i, n;
+  uint32_t i;
+  size_t n;
   w_query *query;
 
   trig = json_pack("{s:O, s:b, s:[s, s, s, s, s]}",
@@ -270,7 +271,7 @@ struct watchman_trigger_command *w_build_trigger_from_def(
     w_trigger_command_free(cmd);
     return NULL;
   }
-  cmd->max_files_stdin = jint;
+  cmd->max_files_stdin = (uint32_t)jint;
 
   json_unpack(trig, "{s:s}", "stdout", &cmd->stdout_name);
   json_unpack(trig, "{s:s}", "stderr", &cmd->stderr_name);

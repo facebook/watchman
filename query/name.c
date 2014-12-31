@@ -119,7 +119,7 @@ static w_query_expr *name_parser_inner(w_query *query,
       }
     }
 
-    map = w_ht_new(json_array_size(name), &w_ht_string_funcs);
+    map = w_ht_new((uint32_t)json_array_size(name), &w_ht_string_funcs);
     for (i = 0; i < json_array_size(name); i++) {
       w_string_t *element;
       const char *ele;

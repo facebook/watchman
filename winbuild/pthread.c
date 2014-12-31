@@ -62,7 +62,7 @@ static DWORD _pthread_tls;
 static pthread_rwlock_t _pthread_key_lock;
 static pthread_key_t _pthread_key_max;
 static pthread_key_t _pthread_key_sch;
-static void (**_pthread_key_dest)(void *);
+static _pthread_tls_dtor_t *_pthread_key_dest;
 
 static void _pthread_once_cleanup(pthread_once_t *o)
 {
@@ -244,32 +244,27 @@ void _pthread_cleanup_dest(pthread_t t)
 
 pthread_t pthread_self(void)
 {
-  pthread_t t;
+  struct _pthread_v *t = NULL;
 
   _pthread_once_raw(&_pthread_tls_once, pthread_tls_init);
 
   t = TlsGetValue(_pthread_tls);
-
   /* Main thread? */
-  if (!t)
-  {
-    t = malloc(sizeof(struct _pthread_v));
+  if (t == NULL) {
+    t = calloc(1, sizeof(*t));
 
     // If cannot initialize main thread, then the only thing we can do is abort
-    if (!t) abort();
+    if (!t) {
+      abort();
+    }
 
-    t->ret_arg = NULL;
-    t->func = NULL;
-    t->clean = NULL;
-    t->cancelled = 0;
     t->p_state = PTHREAD_DEFAULT_ATTR;
-    t->keymax = 0;
-    t->keyval = NULL;
     t->h = GetCurrentThread();
 
     /* Save for later */
     TlsSetValue(_pthread_tls, t);
 
+#if 0
     if (setjmp(t->jb))
     {
       /* Make sure we free ourselves if we are detached */
@@ -278,6 +273,7 @@ pthread_t pthread_self(void)
       /* Time to die */
       _endthreadex(0);
     }
+#endif
   }
 
   return t;

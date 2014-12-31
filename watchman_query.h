@@ -57,10 +57,10 @@ struct w_query {
   w_string_t *relative_root_slash;
 
   struct w_query_path *paths;
-  uint32_t npaths;
+  size_t npaths;
 
   w_string_t **suffixes;
-  uint32_t nsuffixes;
+  size_t nsuffixes;
 
   uint32_t sync_timeout;
 

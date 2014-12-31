@@ -89,7 +89,7 @@ static void cmd_debug_ageout(struct watchman_client *client, json_t *args)
     return;
   }
 
-  min_age = json_integer_value(json_array_get(args, 2));
+  min_age = (int)json_integer_value(json_array_get(args, 2));
 
   resp = make_response();
 

@@ -36,7 +36,7 @@ static uint64_t proc_start_time;
 bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
     size_t bufsize)
 {
-  int res = snprintf(buf, bufsize, "c:%" PRIu64 ":%" PRIu32 ":%d:%" PRIu32,
+  int res = snprintf(buf, bufsize, "c:%" PRIu64 ":%d:%u:%" PRIu32,
                      proc_start_time, proc_pid, root_number, ticks);
 
   if (res == -1) {
@@ -201,7 +201,7 @@ struct w_clockspec *w_clockspec_parse(json_t *value)
   if (json_is_integer(value)) {
     spec->tag = w_cs_timestamp;
     spec->timestamp.tv_usec = 0;
-    spec->timestamp.tv_sec = json_integer_value(value);
+    spec->timestamp.tv_sec = (time_t)json_integer_value(value);
     return spec;
   }
 
@@ -218,7 +218,7 @@ struct w_clockspec *w_clockspec_parse(json_t *value)
     return spec;
   }
 
-  if (sscanf(str, "c:%" PRIu64 ":%" PRIu32 ":%d:%" PRIu32,
+  if (sscanf(str, "c:%" PRIu64 ":%d:%" PRIu32 ":%" PRIu32,
              &start_time, &pid, &root_number, &ticks) == 4) {
     spec->tag = w_cs_clock;
     spec->clock.start_time = start_time;
@@ -723,6 +723,10 @@ static struct watchman_client *make_new_client(w_stm_t stm) {
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
   client = calloc(1, sizeof(*client));
+  if (!client) {
+    pthread_attr_destroy(&attr);
+    return NULL;
+  }
   client->stm = stm;
   w_log(W_LOG_DBG, "accepted client:stm=%p\n", client->stm);
 

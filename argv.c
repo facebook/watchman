@@ -11,8 +11,8 @@
  * compatibility with posix_spawn() */
 char **w_argv_copy_from_json(json_t *arr, int skip)
 {
-  int argc = json_array_size(arr) - skip;
-  int len = (1 + argc) * sizeof(char*);
+  size_t argc = json_array_size(arr) - skip;
+  size_t len = (1 + argc) * sizeof(char*);
   uint32_t i;
   char **dup_argv;
   char *buf;

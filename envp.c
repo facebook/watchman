@@ -27,8 +27,9 @@ w_ht_t *w_envp_make_ht(void)
 
     // slice name=value into a key and a value string
     str = w_string_new(ent);
-    key = w_string_slice(str, 0, eq - ent);
-    val = w_string_slice(str, 1 + (eq - ent), str->len - (key->len + 1));
+    key = w_string_slice(str, 0, (uint32_t)(eq - ent));
+    val = w_string_slice(str, 1 + (uint32_t)(eq - ent),
+            (uint32_t)(str->len - (key->len + 1)));
 
     // Replace rather than set, just in case we somehow have duplicate
     // keys in our environment array.

@@ -33,14 +33,24 @@ w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
   return slice;
 }
 
+uint32_t u32_strlen(const char *str) {
+  size_t slen = strlen(str);
+  if (slen > UINT32_MAX) {
+    w_log(W_LOG_FATAL, "string of length %" PRIsize_t " is too damned long\n",
+        slen);
+  }
+
+  return (uint32_t)slen;
+}
 
 w_string_t *w_string_new(const char *str)
 {
   w_string_t *s;
-  uint32_t len = strlen(str);
-  uint32_t hval = w_hash_bytes(str, len, 0);
+  uint32_t len = u32_strlen(str);
+  uint32_t hval;
   char *buf;
 
+  hval = w_hash_bytes(str, len, 0);
   s = malloc(sizeof(*s) + len + 1);
   if (!s) {
     perror("no memory available");
@@ -123,7 +133,7 @@ w_string_t *w_string_dup_lower(w_string_t *str)
   s->slice = NULL;
   buf = (char*)(s + 1);
   for (i = 0; i < str->len; i++) {
-    buf[i] = tolower((uint8_t)str->buf[i]);
+    buf[i] = (char)tolower((uint8_t)str->buf[i]);
   }
   buf[str->len] = 0;
   s->buf = buf;
@@ -136,7 +146,7 @@ w_string_t *w_string_dup_lower(w_string_t *str)
 w_string_t *w_string_new_lower(const char *str)
 {
   w_string_t *s;
-  uint32_t len = strlen(str);
+  uint32_t len = u32_strlen(str);
   char *buf;
   uint32_t i;
 
@@ -152,7 +162,7 @@ w_string_t *w_string_new_lower(const char *str)
   buf = (char*)(s + 1);
   // TODO: optionally use ICU
   for (i = 0; i < len; i++) {
-    buf[i] = tolower((uint8_t)str[i]);
+    buf[i] = (char)tolower((uint8_t)str[i]);
   }
   buf[len] = 0;
   s->buf = buf;
@@ -181,7 +191,7 @@ int w_string_compare(const w_string_t *a, const w_string_t *b)
 
 bool w_string_equal_cstring(const w_string_t *a, const char *b)
 {
-  uint32_t blen = strlen(b);
+  uint32_t blen = u32_strlen(b);
   if (a->len != blen) return false;
   return memcmp(a->buf, b, a->len) == 0 ? true : false;
 }
@@ -265,7 +275,7 @@ w_string_t *w_string_suffix(w_string_t *str)
       buf = name_buf;
       end++;
       while ((unsigned)end < str->len) {
-        *buf = tolower((uint8_t)str->buf[end]);
+        *buf = (char)tolower((uint8_t)str->buf[end]);
         end++;
         buf++;
       }
@@ -363,7 +373,7 @@ w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
   s->slice = NULL;
   buf = (char*)(s + 1);
   memcpy(buf, parent->buf, parent->len);
-  buf[parent->len] = '/';
+  buf[parent->len] = WATCHMAN_DIR_SEP;
   memcpy(buf + parent->len + 1, rhs->buf, rhs->len);
   buf[parent->len + 1 + rhs->len] = '\0';
   s->buf = buf;
@@ -390,7 +400,7 @@ char *w_string_dup_buf(const w_string_t *str)
 // Given a json array, concat the elements using a delimiter
 w_string_t *w_string_implode(json_t *arr, const char *delim)
 {
-  uint32_t delim_len = strlen(delim);
+  uint32_t delim_len = u32_strlen(delim);
   uint32_t len = 0;
   uint32_t i;
   w_string_t *s;
@@ -404,13 +414,13 @@ w_string_t *w_string_implode(json_t *arr, const char *delim)
     return w_string_new(json_string_value(json_array_get(arr, 0)));
   }
 
-  len = (json_array_size(arr) - 1) * delim_len;
+  len = ((uint32_t)json_array_size(arr) - 1) * delim_len;
 
   for (i = 0; i < json_array_size(arr); i++) {
     const char *str;
 
     str = json_string_value(json_array_get(arr, i));
-    len += strlen(str);
+    len += u32_strlen(str);
   }
 
   s = malloc(sizeof(*s) + len + 1);
@@ -429,7 +439,7 @@ w_string_t *w_string_implode(json_t *arr, const char *delim)
     uint32_t l;
 
     str = json_string_value(json_array_get(arr, i));
-    l = strlen(str);
+    l = u32_strlen(str);
 
     memcpy(buf, str, l);
 
@@ -444,7 +454,7 @@ w_string_t *w_string_implode(json_t *arr, const char *delim)
   }
   *buf = '\0';
 
-  s->len = buf - s->buf;
+  s->len = (uint32_t)(buf - s->buf);
   s->hval = w_hash_bytes(s->buf, s->len, 0);
 
   return s;
@@ -488,7 +498,7 @@ w_string_t *w_string_shell_escape(const w_string_t *str)
   *buf = '\'';
   buf++;
   *buf = 0;
-  s->len = buf - s->buf;
+  s->len = (uint32_t)(buf - s->buf);
   s->hval = w_hash_bytes(s->buf, s->len, 0);
 
   return s;

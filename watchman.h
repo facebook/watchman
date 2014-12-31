@@ -90,6 +90,12 @@ extern char **environ;
 # define WATCHMAN_DIR_DOT '.'
 #endif
 
+#ifdef _WIN32
+# define PRIsize_t "Iu"
+#else
+# define PRIsize_t "zu"
+#endif
+
 extern char *poisoned_reason;
 
 #include "watchman_hash.h"
@@ -119,6 +125,9 @@ extern char *poisoned_reason;
 #if __USE_FORTIFY_LEVEL > 0
 # define ignore_result(x) \
   do { __typeof__(x) _res = x; (void)_res; } while(0)
+#elif _MSC_VER >= 1400
+# define ignore_result(x) \
+  do { int _res = (int)x; (void)_res; } while(0)
 #else
 # define ignore_result(x) x
 #endif
@@ -489,9 +498,10 @@ bool w_ser_write_pdu(enum w_pdu_type pdu_type,
 #define BSER_MAGIC "\x00\x01"
 int w_bser_write_pdu(json_t *json, json_dump_callback_t dump, void *data);
 int w_bser_dump(json_t *json, json_dump_callback_t dump, void *data);
-bool bunser_int(const char *buf, int avail, int *needed, json_int_t *val);
+bool bunser_int(const char *buf, json_int_t avail,
+    json_int_t *needed, json_int_t *val);
 json_t *bunser(const char *buf, const char *end,
-    int *needed, json_error_t *jerr);
+    json_int_t *needed, json_error_t *jerr);
 
 struct watchman_client_response {
   struct watchman_client_response *next, *prev;
@@ -525,12 +535,16 @@ bool w_reap_children(bool block);
 #define W_LOG_DBG 2
 #define W_LOG_FATAL 3
 
+#ifndef WATCHMAN_FMT_STRING
+# define WATCHMAN_FMT_STRING(x) x
+#endif
+
 extern int log_level;
 extern char *log_name;
 const char *w_set_thread_name(const char *fmt, ...);
 const char *w_get_thread_name(void);
 void w_setup_signal_handlers(void);
-void w_log(int level, const char *fmt, ...)
+void w_log(int level, WATCHMAN_FMT_STRING(const char *fmt), ...)
 #ifdef __GNUC__
   __attribute__((format(printf, 2, 3)))
 #endif
@@ -888,6 +902,7 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     const char *reason);
 void stop_watching_dir(w_root_t *root, struct watchman_dir *dir);
 DIR *opendir_nofollow(const char *path);
+uint32_t u32_strlen(const char *str);
 
 extern struct watchman_ops fsevents_watcher;
 extern struct watchman_ops kqueue_watcher;

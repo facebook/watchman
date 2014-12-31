@@ -7,7 +7,7 @@
 
 struct w_expr_list {
   bool allof;
-  uint32_t num;
+  size_t num;
   w_query_expr **exprs;
 };
 

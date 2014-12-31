@@ -5,7 +5,7 @@
 
 // Poor-mans asprintf
 
-int vasprintf(char **out, const char *fmt, va_list ap) {
+int vasprintf(char **out, WATCHMAN_FMT_STRING(const char *fmt), va_list ap) {
   char stack[512];
   char *buf = stack;
   char *newbuf;
@@ -40,7 +40,7 @@ int vasprintf(char **out, const char *fmt, va_list ap) {
   }
 }
 
-int asprintf(char **out, const char *fmt, ...) {
+int asprintf(char **out, WATCHMAN_FMT_STRING(const char *fmt), ...) {
   va_list ap;
   int len;
 

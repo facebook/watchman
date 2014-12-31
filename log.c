@@ -119,11 +119,11 @@ const char *w_set_thread_name(const char *fmt, ...) {
   return name;
 }
 
-void w_log(int level, const char *fmt, ...)
+void w_log(int level, WATCHMAN_FMT_STRING(const char *fmt), ...)
 {
   char buf[4096];
   va_list ap;
-  int len;
+  int len, len2;
   bool fatal = false;
   struct timeval tv;
   char timebuf[64];
@@ -153,10 +153,16 @@ void w_log(int level, const char *fmt, ...)
   len = snprintf(buf, sizeof(buf), "%s,%03d: [%s] ",
          timebuf, (int)tv.tv_usec / 1000, w_get_thread_name());
   va_start(ap, fmt);
-  vsnprintf(buf + len, sizeof(buf) - len, fmt, ap);
+  len2 = vsnprintf(buf + len, sizeof(buf) - len, fmt, ap);
   va_end(ap);
 
+  if (len2 == -1) {
+    // Truncated.  Ensure that we have a NUL terminator
+    buf[sizeof(buf)-1] = 0;
+  }
+
   len = strlen(buf);
+
   if (buf[len - 1] != '\n') {
     if (len < (int)sizeof(buf) - 1) {
       buf[len] = '\n';
@@ -168,7 +174,7 @@ void w_log(int level, const char *fmt, ...)
   }
 
   if (should_log_to_stderr) {
-    ignore_result(write(STDERR_FILENO, buf, len));
+    ignore_result(write(STDERR_FILENO, buf, (unsigned int)len));
   }
 
   if (should_log_to_clients) {

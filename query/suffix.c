@@ -39,9 +39,9 @@ static w_query_expr *suffix_parser(w_query *query, json_t *term)
     return NULL;
   }
 
-  l = strlen(arg);
+  l = u32_strlen(arg);
   for (i = 0; i < l; i++) {
-    arg[i] = tolower((uint8_t)arg[i]);
+    arg[i] = (char)tolower((uint8_t)arg[i]);
   }
 
   str = w_string_new(arg);

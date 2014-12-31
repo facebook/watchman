@@ -4,10 +4,27 @@
 
 #define _CRT_SECURE_NO_WARNINGS 1
 #pragma once
+
+#ifndef WATCHMAN_SUPER_PEDANTIC
+// Each of these is something that we should address :-/
+
+// Buffer overrun; false positives unless we use functions like strcpy_s
+#pragma warning(disable: 6386)
+// NULL pointer deref
+#pragma warning(disable: 6011)
+
+// sign mismatch in printf args
+#pragma warning(disable: 6340)
+
+// String might not be zero terminated (false positives)
+#pragma warning(disable: 6054)
+
+#endif
+
 #define inline __inline
 #define WIN32_LEAN_AND_MEAN
 #define EX_USAGE 1
-#include <Shlwapi.h>
+#include <windows.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -31,9 +48,18 @@ WCHAR *w_utf8_to_win_unc(const char *path, int pathlen);
 int map_win32_err(DWORD err);
 int map_winsock_err(void);
 
+#if _MSC_VER >= 1400
+# include <sal.h>
+# if _MSC_VER > 1400
+#  define WATCHMAN_FMT_STRING(x) _Printf_format_string_ x
+# else
+#  define WATCHMAN_FMT_STRING(x) __format_string x
+# endif
+#endif
+
 #define snprintf _snprintf
-int asprintf(char **out, const char *fmt, ...);
-int vasprintf(char **out, const char *fmt, va_list ap);
+int asprintf(char **out, WATCHMAN_FMT_STRING(const char *fmt), ...);
+int vasprintf(char **out, WATCHMAN_FMT_STRING(const char *fmt), va_list ap);
 
 #define STDIN_FILENO  0
 #define STDOUT_FILENO 1

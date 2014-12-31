@@ -48,10 +48,10 @@ static int bser_real(double val, json_dump_callback_t dump, void *data)
   return dump((char*)&val, sizeof(val), data);
 }
 
-bool bunser_string(const char *buf, int avail, int *needed,
+bool bunser_string(const char *buf, json_int_t avail, json_int_t *needed,
     const char **start, json_int_t *len)
 {
-  int ineed;
+  json_int_t ineed;
 
   if (!bunser_int(buf + 1, avail - 1, &ineed, len)) {
     *needed = ineed;
@@ -74,7 +74,8 @@ bool bunser_string(const char *buf, int avail, int *needed,
 // Returns bool if successful, and populates *val with the value.
 // Otherwise populates *needed with the size required to successfully
 // decode the integer value
-bool bunser_int(const char *buf, int avail, int *needed, json_int_t *val)
+bool bunser_int(const char *buf, json_int_t avail,
+    json_int_t *needed, json_int_t *val)
 {
   int8_t i8;
   int16_t i16;
@@ -168,7 +169,7 @@ static int bser_int(json_int_t val, json_dump_callback_t dump, void *data)
 
 static int bser_string(const char *str, json_dump_callback_t dump, void *data)
 {
-  int len = strlen(str);
+  size_t len = strlen(str);
 
   if (dump(&bser_string_hdr, sizeof(bser_string_hdr), data)) {
     return -1;
@@ -191,8 +192,8 @@ static int bser_array(const json_t *array,
 static int bser_template(const json_t *array,
     const json_t *templ, json_dump_callback_t dump, void *data)
 {
-  int n = json_array_size(array);
-  int i, pn;
+  size_t n = json_array_size(array);
+  size_t i, pn;
 
   if (dump(&bser_template_hdr, sizeof(bser_template_hdr), data)) {
     return -1;
@@ -214,7 +215,7 @@ static int bser_template(const json_t *array,
   // For each object
   for (i = 0; i < n; i++) {
     json_t *obj = json_array_get(array, i);
-    int pi;
+    size_t pi;
 
     // For each factored key
     for (pi = 0; pi < pn; pi++) {
@@ -244,8 +245,8 @@ static int bser_template(const json_t *array,
 static int bser_array(const json_t *array,
     json_dump_callback_t dump, void *data)
 {
-  int n = json_array_size(array);
-  int i;
+  size_t n = json_array_size(array);
+  size_t i;
   json_t *templ;
 
   templ = json_array_get_template(array);
@@ -335,7 +336,7 @@ int w_bser_dump(json_t *json, json_dump_callback_t dump, void *data)
 
 static int measure(const char *buffer, size_t size, void *ptr)
 {
-  uint32_t *tot = ptr;
+  json_int_t *tot = ptr;
   *tot += size;
   unused_parameter(buffer);
   return 0;
@@ -343,7 +344,7 @@ static int measure(const char *buffer, size_t size, void *ptr)
 
 int w_bser_write_pdu(json_t *json, json_dump_callback_t dump, void *data)
 {
-  uint32_t m_size = 0;
+  json_int_t m_size = 0;
 
   if (w_bser_dump(json, measure, &m_size)) {
     return -1;
@@ -365,10 +366,10 @@ int w_bser_write_pdu(json_t *json, json_dump_callback_t dump, void *data)
 }
 
 static json_t *bunser_array(const char *buf, const char *end,
-    int *used, json_error_t *jerr)
+    json_int_t *used, json_error_t *jerr)
 {
-  int needed;
-  int total = 0;
+  json_int_t needed;
+  json_int_t total = 0;
   json_int_t i, nelems;
   json_t *arrval;
 
@@ -385,7 +386,7 @@ static json_t *bunser_array(const char *buf, const char *end,
     *used = needed + total;
     snprintf(jerr->text, sizeof(jerr->text),
         "invalid array length encoding 0x%02x (needed %d but have %d)",
-        (int)buf[0], needed, (int)(end - buf));
+        (int)buf[0], (int)needed, (int)(end - buf));
     return NULL;
   }
 
@@ -422,10 +423,10 @@ static json_t *bunser_array(const char *buf, const char *end,
 }
 
 static json_t *bunser_template(const char *buf, const char *end,
-    int *used, json_error_t *jerr)
+    json_int_t *used, json_error_t *jerr)
 {
-  int needed = 0;
-  int total = 0;
+  json_int_t needed = 0;
+  json_int_t total = 0;
   json_int_t i, nelems;
   json_int_t ip, np;
   json_t *templ, *arrval;
@@ -455,7 +456,7 @@ static json_t *bunser_template(const char *buf, const char *end,
     *used = needed + total;
     snprintf(jerr->text, sizeof(jerr->text),
         "invalid object number encoding (needed %d but have %d)",
-        needed, (int)(end - buf));
+        (int)needed, (int)(end - buf));
     return NULL;
   }
   total += needed;
@@ -464,11 +465,11 @@ static json_t *bunser_template(const char *buf, const char *end,
   np = json_array_size(templ);
 
   // Now load up the array with object values
-  arrval = json_array_of_size(nelems);
+  arrval = json_array_of_size((size_t)nelems);
   for (i = 0; i < nelems; i++) {
     json_t *item, *val;
 
-    item = json_object_of_size(np);
+    item = json_object_of_size((size_t)np);
     for (ip = 0; ip < np; ip++) {
       if (*buf == BSER_SKIP) {
         buf++;
@@ -486,7 +487,7 @@ static json_t *bunser_template(const char *buf, const char *end,
       total += needed;
 
       json_object_set_new_nocheck(item,
-          json_string_value(json_array_get(templ, ip)),
+          json_string_value(json_array_get(templ, (size_t)ip)),
           val);
     }
 
@@ -498,10 +499,10 @@ static json_t *bunser_template(const char *buf, const char *end,
 }
 
 static json_t *bunser_object(const char *buf, const char *end,
-    int *used, json_error_t *jerr)
+    json_int_t *used, json_error_t *jerr)
 {
-  int needed;
-  int total = 0;
+  json_int_t needed;
+  json_int_t total = 0;
   json_int_t i, nelems;
   json_t *objval;
   char keybuf[128];
@@ -544,7 +545,7 @@ static json_t *bunser_object(const char *buf, const char *end,
           "object key is too long");
       return NULL;
     }
-    memcpy(keybuf, start, slen);
+    memcpy(keybuf, start, (size_t)slen);
     keybuf[slen] = '\0';
 
     // Read value
@@ -572,7 +573,7 @@ static json_t *bunser_object(const char *buf, const char *end,
   return objval;
 }
 
-json_t *bunser(const char *buf, const char *end, int *needed,
+json_t *bunser(const char *buf, const char *end, json_int_t *needed,
     json_error_t *jerr)
 {
   json_int_t ival;
@@ -632,7 +633,9 @@ json_t *bunser(const char *buf, const char *end, int *needed,
       return NULL;
   }
 
+#ifndef _WIN32 // It knows this is unreachable
   return NULL;
+#endif
 }
 
 /* vim:ts=2:sw=2:et:

@@ -286,9 +286,10 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   root->ignore_dirs = w_ht_new(2, &w_ht_string_funcs);
 
   load_root_config(root, path);
-  root->trigger_settle = cfg_get_int(root, "settle", DEFAULT_SETTLE_PERIOD);
-  root->gc_age = cfg_get_int(root, "gc_age_seconds", DEFAULT_GC_AGE);
-  root->gc_interval = cfg_get_int(root, "gc_interval_seconds",
+  root->trigger_settle = (int)cfg_get_int(
+      root, "settle", DEFAULT_SETTLE_PERIOD);
+  root->gc_age = (int)cfg_get_int(root, "gc_age_seconds", DEFAULT_GC_AGE);
+  root->gc_interval = (int)cfg_get_int(root, "gc_interval_seconds",
       DEFAULT_GC_INTERVAL);
   root->idle_reap_age = cfg_get_int(root, "idle_reap_age_seconds",
       DEFAULT_REAP_AGE);
@@ -2434,7 +2435,6 @@ bool w_root_load_state(json_t *state)
       json_t *tobj = json_array_get(triggers, j);
       json_t *rarray;
       struct watchman_trigger_command *cmd;
-      char *errmsg = NULL;
 
       // Legacy rules format
       rarray = json_object_get(tobj, "rules");

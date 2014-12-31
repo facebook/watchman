@@ -51,6 +51,9 @@ void usleep(int64_t usec) {
   ft.QuadPart = -(10*usec);
 
   timer = CreateWaitableTimer(NULL, TRUE, NULL);
+  if (!timer) {
+    return;
+  }
   SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
   // Use an alertable wait to play well with our stream implementation
   WaitForSingleObjectEx(timer, INFINITE, true);
