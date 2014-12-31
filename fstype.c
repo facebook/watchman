@@ -71,7 +71,31 @@ w_string_t *w_fstype(const char *path)
     return w_string_new(sfs.f_fstypename);
   }
 #endif
+#ifdef _WIN32
+  WCHAR *wpath = w_utf8_to_win_unc(path, -1);
+  w_string_t *fstype_name = NULL;
+  if (wpath) {
+    WCHAR fstype[MAX_PATH+1];
+    HANDLE h = CreateFileW(wpath, GENERIC_READ,
+        FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
+        NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+    if (h) {
+      if (GetVolumeInformationByHandleW(h, NULL, 0, 0, 0, 0, fstype,
+            MAX_PATH+1)) {
+        fstype_name = w_string_new_wchar(fstype, -1);
+      }
+      CloseHandle(h);
+    }
+    free(wpath);
+  }
+  if (fstype_name) {
+    return fstype_name;
+  }
   return w_string_new("unknown");
+#else
+  unused_parameter(path);
+  return w_string_new("unknown");
+#endif
 }
 
 /* vim:ts=2:sw=2:et:
