@@ -76,7 +76,6 @@ bool w_state_save(void)
   json_t *state;
   w_jbuffer_t buffer;
   w_stm_t file = NULL;
-  char tmpname[WATCHMAN_NAME_MAX];
   bool result = false;
 
   if (dont_save_state) {
@@ -92,11 +91,10 @@ bool w_state_save(void)
     goto out;
   }
 
-  snprintf(tmpname, sizeof(tmpname), "%sXXXXXX",
-      watchman_state_file);
-  file = w_mkstemp(tmpname);
+  file = w_stm_open(watchman_state_file, O_WRONLY|O_TRUNC|O_CREAT, 0600);
   if (!file) {
-    w_log(W_LOG_ERR, "save_state: unable to create temporary file: %s\n",
+    w_log(W_LOG_ERR, "save_state: unable to open %s for write: %s\n",
+        watchman_state_file,
         strerror(errno));
     goto out;
   }
@@ -112,26 +110,16 @@ bool w_state_save(void)
   w_json_buffer_write(&buffer, file, state, JSON_INDENT(4));
   w_stm_close(file);
   file = NULL;
-
-  /* atomically replace the old contents */
-  result = rename(tmpname, watchman_state_file) == 0;
-  if (!result) {
-    w_log(W_LOG_ERR, "save_state: failed to rename %s -> %s: %d %s\n",
-      tmpname, watchman_state_file, result, strerror(errno));
-  }
+  result = true;
 
 out:
+  if (file) {
+    w_stm_close(file);
+  }
   if (state) {
     json_decref(state);
   }
   w_json_buffer_free(&buffer);
-  if (file) {
-    if (!result) {
-      // If we didn't succeed, remove our temporary file
-      unlink(tmpname);
-    }
-    w_stm_close(file);
-  }
 
   pthread_mutex_unlock(&state_lock);
 
