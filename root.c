@@ -9,12 +9,12 @@
 static struct watchman_ops *watcher_ops = NULL;
 static watchman_global_watcher_t watcher = NULL;
 static w_ht_t *watched_roots = NULL;
-static int live_roots = 0;
+static long live_roots = 0;
 static pthread_mutex_t root_lock = PTHREAD_MUTEX_INITIALIZER;
 
 // Each root gets a number that uniquely identifies it within the process. This
 // helps avoid confusion if a root is removed and then added again.
-static uint32_t next_root_number = 1;
+static long next_root_number = 1;
 
 /* Some error conditions will put us into a non-recoverable state where we
  * can't guarantee that we will be operating correctly.  Rather than suffering

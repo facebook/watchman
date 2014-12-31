@@ -41,14 +41,14 @@ typedef void (*w_query_expr_dispose_func)(
     void *data
 );
 struct w_query_expr {
-  int refcnt;
+  long refcnt;
   w_query_expr_eval_func    evaluate;
   w_query_expr_dispose_func dispose;
   void *data;
 };
 
 struct w_query {
-  int refcnt;
+  long refcnt;
 
   bool case_sensitive;
 
