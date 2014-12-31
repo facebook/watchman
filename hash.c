@@ -7,7 +7,9 @@
 // code any way you wish, private, educational, or commercial.  It's free.
 // Origin: http://www.burtleburtle.net/bob/c/lookup3.c
 
+#if HAVE_SYS_PARAM_H
 #include <sys/param.h>  /* attempt to define endianness */
+#endif
 #ifdef __linux__
 # include <endian.h>    /* attempt to define endianness */
 #endif
