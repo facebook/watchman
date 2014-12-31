@@ -219,8 +219,8 @@ static bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg)
   hostname[sizeof(hostname) - 1] = '\0';
 
   root->query_cookie_prefix = w_string_make_printf(
-      "%.*s/" WATCHMAN_COOKIE_PREFIX "%s-%d-", root->query_cookie_dir->len,
-      root->query_cookie_dir->buf, hostname, (int)getpid());
+      "%.*s%c" WATCHMAN_COOKIE_PREFIX "%s-%d-", root->query_cookie_dir->len,
+      root->query_cookie_dir->buf, WATCHMAN_DIR_SEP, hostname, (int)getpid());
   return true;
 }
 
@@ -471,7 +471,8 @@ bool w_root_add_pending_rel(w_root_t *root, struct watchman_dir *dir,
   w_string_t *path_str;
   bool res;
 
-  snprintf(path, sizeof(path), "%.*s/%s", dir->path->len, dir->path->buf, name);
+  snprintf(path, sizeof(path), "%.*s%c%s", dir->path->len,
+      dir->path->buf, WATCHMAN_DIR_SEP, name);
   path_str = w_string_new(path);
 
   res = w_root_add_pending(root, path_str, recursive, now, via_notify);
@@ -1109,8 +1110,9 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
     struct watchman_file *file = w_ht_val_ptr(i.value);
 
     if (file->exists) {
-      w_log(W_LOG_DBG, "mark_deleted: %.*s/%.*s\n",
+      w_log(W_LOG_DBG, "mark_deleted: %.*s%c%.*s\n",
           dir->path->len, dir->path->buf,
+          WATCHMAN_DIR_SEP,
           file->name->len, file->name->buf);
       file->exists = false;
       w_root_mark_file_changed(root, file, now);
@@ -1561,8 +1563,9 @@ void w_root_perform_age_out(w_root_t *root, int min_age)
     // Get the next file before we remove the current one
     tmp = file->next;
 
-    w_log(W_LOG_DBG, "age_out file=%.*s/%.*s\n",
+    w_log(W_LOG_DBG, "age_out file=%.*s%c%.*s\n",
         file->parent->path->len, file->parent->path->buf,
+        WATCHMAN_DIR_SEP,
         file->name->len, file->name->buf);
 
     age_out_file(root, aged_dir_names, file);
