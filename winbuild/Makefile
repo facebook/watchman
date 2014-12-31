@@ -146,12 +146,16 @@ COLLECTDEPS=$(CC) $(CFLAGS) /Zs /showIncludes /EHsc $< | cscript /nologo //E:jsc
 	$(CC) $(CFLAGS) /Fo:thirdparty\ /c $<
 	$(COLLECTDEPS) thirdparty
 
-all: watchman.exe build-tests depend
+all: watchman.exe build-tests depend susres.exe
 
 check: $(TESTS)
 	@cscript /nologo //E:jscript winbuild\runtests.js $(TESTS)
 
-integration: $(TESTS)
+# helper for suspending/resuming a target process
+susres.exe: winbuild\susres.c
+	$(CC) /Fesusres.exe winbuild\susres.c
+
+integration: check susres.exe
 	arc unit --everything
 
 build-tests: $(TESTS)

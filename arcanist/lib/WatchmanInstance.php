@@ -554,6 +554,9 @@ class WatchmanInstance {
   }
 
   protected function waitForSuspendedState($suspended, $timeout, $pid = null) {
+    if (phutil_is_windows()) {
+      return true;
+    }
     if ($pid === null) {
       $st = proc_get_status($this->proc);
       $pid = $st['pid'];
@@ -611,6 +614,7 @@ class WatchmanInstance {
     if (!$this->proc) {
       return;
     }
+    $this->resumeProcess();
     $timeout = $this->valgrind ? 20 : 5;
     if ($this->sock) {
       try {
@@ -681,8 +685,12 @@ class WatchmanInstance {
     if (!$st['running']) {
       throw new Exception('watchman process terminated');
     }
-    // SIGSTOP isn't defined on the default PHP shipped with OS X, so use kill
-    execx('kill -STOP %s', $st['pid']);
+    if (phutil_is_windows()) {
+      execx('susres.exe suspend %d', $st['pid']);
+    } else {
+      // SIGSTOP isn't defined on the default PHP shipped with OS X, so use kill
+      execx('kill -STOP %s', $st['pid']);
+    }
     if (!$this->waitForSuspendedState(true, $timeout)) {
       throw new Exception("watchman process didn't stop in $timeout seconds");
     }
@@ -697,8 +705,12 @@ class WatchmanInstance {
     if (!$st['running']) {
       throw new Exception('watchman process terminated');
     }
-    // SIGCONT isn't defined on the default PHP shipped with OS X, so use kill
-    execx('kill -CONT %s', $st['pid']);
+    if (phutil_is_windows()) {
+      execx('susres.exe resume %d', $st['pid']);
+    } else {
+      // SIGCONT isn't defined on the default PHP shipped with OS X, so use kill
+      execx('kill -CONT %s', $st['pid']);
+    }
     if (!$this->waitForSuspendedState(false, $timeout)) {
       throw new Exception("watchman process didn't resume in $timeout seconds");
     }

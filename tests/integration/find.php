@@ -39,8 +39,9 @@ class findTestCase extends WatchmanTestCase {
       'foo.c',
     ));
 
-    $this->assertEqual(true,
-      rename("$root/adir", "$root/bdir"));
+    $this->assertEqual(true, rename(
+          $root . DIRECTORY_SEPARATOR . 'adir',
+          $root . DIRECTORY_SEPARATOR . 'bdir'));
 
     $this->assertFileList($root, array(
       'bdir',
@@ -70,6 +71,3 @@ class findTestCase extends WatchmanTestCase {
     );
   }
 }
-
-
-
