@@ -360,7 +360,7 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
   uint32_t tick;
   struct watchman_query_cookie cookie;
   w_string_t *path_str;
-  int fd;
+  w_stm_t file;
   int errcode = 0;
   struct timespec deadline;
   struct timeval now, delta, target;
@@ -385,14 +385,14 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
       w_ht_ptr_val(&cookie));
 
   /* touch the file */
-  fd = open(path_str->buf, O_CREAT|O_TRUNC|O_WRONLY|O_CLOEXEC, 0700);
-  if (fd == -1) {
+  file = w_stm_open(path_str->buf, O_CREAT|O_TRUNC|O_WRONLY|O_CLOEXEC, 0700);
+  if (!file) {
     errcode = errno;
     w_log(W_LOG_ERR, "sync_to_now: creat(%s) failed: %s\n",
         path_str->buf, strerror(errcode));
     goto out;
   }
-  close(fd);
+  w_stm_close(file);
 
   /* compute deadline */
   gettimeofday(&now, NULL);
