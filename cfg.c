@@ -34,7 +34,7 @@ void cfg_load_global_config_file(void)
     return;
   }
 
-  if (access(cfg_file, R_OK) != 0 && errno == ENOENT) {
+  if (!w_path_exists(cfg_file) && errno == ENOENT) {
     return;
   }
 

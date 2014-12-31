@@ -69,6 +69,24 @@ char *w_win_unc_to_utf8(WCHAR *wpath, int pathlen) {
   return buf;
 }
 
+bool w_path_exists(const char *path) {
+  WCHAR *wpath = w_utf8_to_win_unc(path, -1);
+  WIN32_FILE_ATTRIBUTE_DATA data;
+  DWORD err;
+
+  if (!wpath) {
+    return false;
+  }
+  if (!GetFileAttributesExW(wpath, GetFileExInfoStandard, &data)) {
+    err = GetLastError();
+    free(wpath);
+    errno = map_win32_err(err);
+    return false;
+  }
+  free(wpath);
+  return true;
+}
+
 WCHAR *w_utf8_to_win_unc(const char *path, int pathlen) {
   WCHAR *buf, *target;
   int len, res, i, prefix_len;

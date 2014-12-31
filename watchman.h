@@ -170,6 +170,14 @@ w_stm_t w_mkstemp(char *templ);
 char *w_realpath(const char *filename);
 bool w_is_path_absolute(const char *path);
 
+#ifndef _WIN32
+static inline bool w_path_exists(const char *path) {
+  return access(path, F_OK) == 0;
+}
+#else
+bool w_path_exists(const char *path);
+#endif
+
 struct watchman_string;
 typedef struct watchman_string w_string_t;
 struct watchman_string {

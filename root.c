@@ -87,9 +87,10 @@ static void load_root_config(w_root_t *root, const char *path)
   char cfgfilename[WATCHMAN_NAME_MAX];
   json_error_t err;
 
-  snprintf(cfgfilename, sizeof(cfgfilename), "%s/.watchmanconfig", path);
+  snprintf(cfgfilename, sizeof(cfgfilename), "%s%c.watchmanconfig",
+      path, WATCHMAN_DIR_SEP);
 
-  if (access(cfgfilename, R_OK) != 0) {
+  if (!w_path_exists(cfgfilename)) {
     if (errno == ENOENT) {
       return;
     }
@@ -1908,13 +1909,19 @@ static bool root_check_restrict(const char *watch_path)
     json_t *obj = json_array_get(root_restrict_files, i);
     const char *restrict_file = json_string_value(obj);
     char *restrict_path;
-    int rv;
+    bool rv;
 
-    ignore_result(asprintf(&restrict_path, "%s/%s", watch_path,
-                           restrict_file));
-    rv = access(restrict_path, F_OK);
+    if (!restrict_file) {
+      w_log(W_LOG_ERR, "resolve_root: global config root_restrict_files "
+            "element %" PRIu32 " should be a string\n", i);
+      continue;
+    }
+
+    ignore_result(asprintf(&restrict_path, "%s%c%s", watch_path,
+          WATCHMAN_DIR_SEP, restrict_file));
+    rv = w_path_exists(restrict_path);
     free(restrict_path);
-    if (rv == 0)
+    if (rv)
       return true;
   }
 

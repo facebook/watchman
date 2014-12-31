@@ -130,10 +130,10 @@ static bool find_file_in_dir_tree(const char *root_file, char *candidate_dir,
     int rv;
 
     ignore_result(asprintf(&proj_path, "%s/%s", candidate_dir, root_file));
-    rv = access(proj_path, F_OK);
+    rv = w_path_exists(proj_path);
     free(proj_path);
 
-    if (rv == 0) {
+    if (rv) {
       // Got a match
       if (restore_slash) {
         *relpath = restore_slash + 1;
