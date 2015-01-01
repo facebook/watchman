@@ -48,7 +48,7 @@ class WatchmanTapEngine extends ArcanistBaseUnitTestEngine {
     }
 
     $results = array();
-    foreach (Futures($futures)->limit(4) as $test => $future) {
+    foreach ((new FutureIterator($futures))->limit(4) as $test => $future) {
       list($err, $stdout, $stderr) = $future->resolve();
 
       $results[] = $this->parseTestResults(
