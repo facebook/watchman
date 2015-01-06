@@ -311,6 +311,12 @@ static void spawn_command(w_root_t *root,
   if (ret == 0) {
     w_root_addref(root);
     insert_running_pid(cmd->current_proc, root);
+  } else {
+    // On Darwin (at least), posix_spawn can fail but will still populate the
+    // pid.  Since we use the pid to gate future spawns, we need to ensure
+    // that we clear out the pid on failure, otherwise the trigger would be
+    // effectively disabled for the rest of the watch lifetime
+    cmd->current_proc = 0;
   }
   ignore_result(chdir("/"));
   pthread_mutex_unlock(&spawn_lock);
