@@ -25,6 +25,10 @@ not covered by the list above.
 
 ## Build/Install
 
+Currently Watchman can be installed either through: 
+1. Homebrew for OS X
+2. Source for other systems
+
 ### Installing on OS X via Homebrew
 
 To build the most recent release currently tracked by
@@ -56,7 +60,7 @@ $ make
 $ sudo make install
 ```
 
-### Compile Time Configuration Options
+#### Compile Time Configuration Options
 
 Our configure script accepts all the standard options, but there are a couple
 that are specific to watchman that might be relevant to your needs:
