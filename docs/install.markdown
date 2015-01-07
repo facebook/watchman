@@ -56,7 +56,7 @@ $ make
 $ sudo make install
 ```
 
-### Compile Time Configuration Options
+#### Compile Time Configuration Options
 
 Our configure script accepts all the standard options, but there are a couple
 that are specific to watchman that might be relevant to your needs:
