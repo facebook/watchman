@@ -136,6 +136,7 @@ endif
 all-local: py-build rb-build lint
 
 install-exec-local: py-install
+	${INSTALL} -d -m 777 ${WATCHMAN_STATE_DIR}
 
 clean-local: py-clean rb-clean
 	-find python \( -name '*.py[cdo]' -o -name '*.so' \) -exec rm -f '{}' ';'

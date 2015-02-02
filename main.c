@@ -185,6 +185,27 @@ static void spawn_via_launchd(void)
   snprintf(plist_path, sizeof(plist_path),
       "%s/Library/LaunchAgents/com.github.facebook.watchman.plist", pw->pw_dir);
 
+  if (access(plist_path, R_OK) == 0) {
+    // Unload any that may already exist, as it is likely wrong
+    char *unload_argv[MAX_DAEMON_ARGS] = {
+      "/bin/launchctl",
+      "unload",
+      NULL
+    };
+    append_argv(unload_argv, plist_path);
+
+    errno = posix_spawnattr_init(&attr);
+    if (errno != 0) {
+      w_log(W_LOG_FATAL, "posix_spawnattr_init: %s\n", strerror(errno));
+    }
+
+    res = posix_spawnp(&pid, unload_argv[0], NULL, &attr, unload_argv, environ);
+    if (res == 0) {
+      waitpid(pid, &res, 0);
+    }
+    posix_spawnattr_destroy(&attr);
+  }
+
   fp = fopen(plist_path, "w");
   if (!fp) {
     w_log(W_LOG_ERR, "Failed to open %s for write: %s\n",
@@ -597,7 +618,7 @@ int main(int argc, char **argv)
   }
 
   if (!no_spawn) {
-    w_log(W_LOG_ERR, "unable to talk to your watchman!\n");
+    w_log(W_LOG_ERR, "unable to talk to your watchman on %s!\n", sock_name);
   }
   return 1;
 }
