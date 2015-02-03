@@ -55,15 +55,14 @@ AC_ARG_WITH(buildinfo, [
  AC_DEFINE_UNQUOTED(WATCHMAN_BUILD_INFO, "$withval", [build info])
 ])
 
-WATCHMAN_STATE_DIR="$prefix/var/run/watchman"
+
+WATCHMAN_STATE_DIR="\$(prefix)/var/run/watchman"
 AC_ARG_ENABLE(statedir, [
   --enable-statedir=PATH  Use PATH as the default for state, log files
                           and sockets instead of using your system tempdir
 ],[
  WATCHMAN_STATE_DIR="$enableval"
 ])
-AC_DEFINE_UNQUOTED(WATCHMAN_STATE_DIR, "$WATCHMAN_STATE_DIR",
-                  [default location for state])
 AC_SUBST(WATCHMAN_STATE_DIR)
 
 want_python=no

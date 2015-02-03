@@ -8,7 +8,7 @@ docdir = ${prefix}/share/doc/watchman-$(VERSION)
 THIRDPARTY_CPPFLAGS = -I$(top_srcdir)/thirdparty/jansson -I$(top_builddir)/thirdparty/jansson
 JSON_LIB = -L. libwmanjson.a
 
-watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
+watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@ -DWATCHMAN_STATE_DIR='"@WATCHMAN_STATE_DIR@"'
 watchman_LDADD = $(JSON_LIB)
 watchman_SOURCES = \
 	argv.c       \
