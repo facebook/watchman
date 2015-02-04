@@ -703,6 +703,15 @@ static bool did_file_change(struct stat *saved, struct stat *fresh)
   return false;
 }
 
+// POSIX says open with O_NOFOLLOW should set errno to ELOOP if the path is a
+// symlink. However, FreeBSD (which ironically originated O_NOFOLLOW) sets it to
+// EMLINK.
+#ifdef __FreeBSD__
+#define ENOFOLLOWSYMLINK EMLINK
+#else
+#define ENOFOLLOWSYMLINK ELOOP
+#endif
+
 #ifdef __APPLE__
 static w_string_t *w_resolve_filesystem_canonical_name(const char *path)
 {
@@ -720,12 +729,9 @@ static w_string_t *w_resolve_filesystem_canonical_name(const char *path)
 
   if (getattrlist(path, &attrlist, &vomit,
         sizeof(vomit), FSOPT_NOFOLLOW) == -1) {
-    if (errno == ENOENT || errno == ENOTDIR) {
-      return w_string_new(path);
-    }
-
-    w_log(W_LOG_FATAL, "getattrlist(CMN_NAME: %s): fail %s\n",
-        path, strerror(errno));
+    // signal to caller that the file has disappeared -- the caller will read
+    // errno and do error handling
+    return NULL;
   }
 
   name = ((char*)&vomit.ref) + vomit.ref.attr_dataoffset;
@@ -805,6 +811,28 @@ static void stat_path(w_root_t *root,
       struct watchman_file *lc_file = NULL;
 
       canon_name = w_resolve_filesystem_canonical_name(path);
+
+      if (canon_name == NULL) {
+        // TOCTOU race: file disappeared (deleted? ran out of memory?) in
+        // between the lstat above and w_resolve_filesystem_canonical_name. Now
+        // that it's deleted, update our state to reflect that.
+        if (errno == ENOENT || errno == ENOTDIR || errno == ENOFOLLOWSYMLINK) {
+          if (dir_ent) {
+            handle_open_errno(root, dir_ent, now, "getattrlist", errno);
+          }
+          if (file) {
+            w_log(W_LOG_DBG, "getattrlist(%s) -> %s so marking %.*s deleted\n",
+                  path, strerror(err), file->name->len, file->name->buf);
+            file->exists = false;
+            w_root_mark_file_changed(root, file, now);
+          }
+
+          goto out;
+        }
+
+        w_log(W_LOG_FATAL, "getattrlist(CMN_NAME: %s): fail %s\n",
+              path, strerror(errno));
+      }
 
       if (!w_string_equal(file_name, canon_name)) {
         // Revise `path` to use the canonical name
@@ -948,6 +976,7 @@ static void stat_path(w_root_t *root,
     }
   }
 
+out:
   w_string_delref(dir_name);
   w_string_delref(file_name);
 }
@@ -1042,15 +1071,6 @@ DIR *opendir_nofollow(const char *path)
   return fdopendir(fd);
 #endif
 }
-
-// POSIX says open with O_NOFOLLOW should set errno to ELOOP if the path is a
-// symlink. However, FreeBSD (which ironically originated O_NOFOLLOW) sets it to
-// EMLINK.
-#ifdef __FreeBSD__
-#define ENOFOLLOWSYMLINK EMLINK
-#else
-#define ENOFOLLOWSYMLINK ELOOP
-#endif
 
 void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, const char *syscall, int err)
