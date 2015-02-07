@@ -976,6 +976,10 @@ static void stat_path(w_root_t *root,
     }
   }
 
+  // out is only used on some platforms, so on others compilers will complain
+  // about it being unused
+  goto out;
+
 out:
   w_string_delref(dir_name);
   w_string_delref(file_name);
