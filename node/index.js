@@ -11,10 +11,20 @@ var childProcess = require('child_process');
 // We'll emit the responses to these when they get sent down to us
 var unilateralTags = ['subscription', 'log'];
 
-function Client() {
+/**
+ * @param options An object with the following optional keys:
+ *   * 'watchmanBinaryPath' (string) Absolute path to the watchman binary.
+ *     If not provided, the Client locates the binary using the PATH specified
+ *     by the node child_process's default env.
+ */
+function Client(options) {
   var self = this;
   EE.call(this);
 
+  this.watchmanBinaryPath = 'watchman';
+  if (options && options.watchmanBinaryPath) {
+    this.watchmanBinaryPath = options.watchmanBinaryPath.trim();
+  };
   this.commands = [];
 }
 util.inherits(Client, EE);
@@ -124,7 +134,8 @@ Client.prototype.connect = function() {
   // We need to ask the client binary where to find it.
   // This will cause the service to start for us if it isn't
   // already running.
-  childProcess.exec('watchman get-sockname',
+  var watchmanCommand = this.watchmanBinaryPath + ' get-sockname';
+  childProcess.exec(watchmanCommand,
       function(error, stdout, stderr) {
     if (error) {
       self.emit('error', error);
