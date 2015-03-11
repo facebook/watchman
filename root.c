@@ -1720,10 +1720,14 @@ void watchman_watcher_init(void) {
 
 #if HAVE_FSEVENTS
   watcher_ops = &fsevents_watcher;
+#elif defined(HAVE_PORT_CREATE)
+  // We prefer portfs if you have both portfs and inotify on the assumption
+  // that this is an Illumos based system with both and that the native
+  // mechanism will yield more correct behavior.
+  // https://github.com/facebook/watchman/issues/84
+  watcher_ops = &portfs_watcher;
 #elif defined(HAVE_INOTIFY_INIT)
   watcher_ops = &inotify_watcher;
-#elif defined(HAVE_PORT_CREATE)
-  watcher_ops = &portfs_watcher;
 #elif defined(HAVE_KQUEUE)
   watcher_ops = &kqueue_watcher;
 #else
