@@ -38,7 +38,12 @@ representation on the <code>stdin</code> stream.  These invocations are all equi
 EOT</div><div class="prism language-javascript">$ echo <span class="token string">&#x27;[&quot;watch&quot;, &quot;&#x2f;path&#x2f;to&#x2f;dir&quot;]&#x27;</span> <span class="token operator">|</span> watchman <span class="token operator">-</span>j</div><div class="prism language-javascript">$ echo <span class="token string">&#x27;[&quot;watch&quot;, &quot;&#x2f;path&#x2f;to&#x2f;dir&quot;]&#x27;</span> <span class="token operator">&gt;</span> cmd<span class="token punctuation">.</span>json
 $ watchman <span class="token operator">-</span>j &lt; cmd<span class="token punctuation">.</span>json</div><div class="prism language-javascript">$ watchman <span class="token operator">--</span>json<span class="token operator">-</span>command &lt;&lt;<span class="token operator">-</span>EOT
 <span class="token punctuation">[</span><span class="token string">&quot;watch&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;&#x2f;path&#x2f;to&#x2f;dir&quot;</span><span class="token punctuation">]</span>
-EOT</div><h2><a class="anchor" name="server-options"></a>Server Options <a class="hash-link" href="#server-options">#</a></h2><p>These options are used when starting the server.  They are recognized by the
+EOT</div><h2><a class="anchor" name="exit-status"></a>Exit Status <a class="hash-link" href="#exit-status">#</a></h2><p>The <code>watchman</code> binary will exit with a return code of 0 in most cases; this
+indicates that the output it generated should be valid JSON.  To determine if
+your command was successful, you need to parse the JSON and look for the
+<code>error</code> field as described above.</p><p><code>watchman</code> will exit with a non-zero exit status in cases where something
+low-level went wrong, such as protocol level errors (eg: connection was
+terminated).</p><h2><a class="anchor" name="server-options"></a>Server Options <a class="hash-link" href="#server-options">#</a></h2><p>These options are used when starting the server.  They are recognized by the
 client and affect how it will start the server, but have no effect if the
 server is already running.  To change the effective values of these options
 for a running server, you will need to restart it (you can stop it by running

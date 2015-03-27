@@ -39,7 +39,31 @@ on the machine.  It is difficult to give specific advice to resolve this
 condition here; you may be able to tune down other system limits to free up
 some resources, or you may just need to install more RAM in the system.</p><h3><a class="anchor" name="i-ve-changed-my-limits-how-can-i-clear-the-error"></a>I&#x27;ve changed my limits, how can I clear the error? <a class="hash-link" href="#i-ve-changed-my-limits-how-can-i-clear-the-error">#</a></h3><p>The error will stick until you restart the watchman process.  The simplest
 resolution is to run <code>watchman shutdown-server</code>.</p><p>If you have not actually resolved the root cause you may continue to trigger
-and experience this state each time the system trips over these limits.</p></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2014 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
+and experience this state each time the system trips over these limits.</p><h2><a class="anchor" name="fsevents"></a>FSEvents <a class="hash-link" href="#fsevents">#</a></h2><p>FSEvents is the file watching facility on OS X.  There are few diagnostics
+that can help diagnose issues with FSEvents; the API itself gives little
+feedback on a number of error cases and instead emits rather cryptic error
+messages to the log file.</p><p>If you got here because an error message told you to read this section,
+it will have also asked you to look at your log file.  If you are using an
+older version of watchman and encounter the error message
+<code>FSEventStreamStart failed</code>, then you should locate your log file (see
+<a href="#where-are-the-logs" target="">Where are the logs?</a> above) and look for lines
+that mention FSEvents and then consult the information below.</p><h3><a class="anchor" name="fseventstreamstart-register-with-server-error-f2d-register-rpc-null-21"></a>FSEventStreamStart: register_with_server: ERROR: f2d_register_rpc() =&gt; (null) (-21) <a class="hash-link" href="#fseventstreamstart-register-with-server-error-f2d-register-rpc-null-21">#</a></h3><p>Nobody outside of Apple is sure what precisely this means, but it indicates
+that the fsevents service has gotten in a bad state.  Possible reasons for
+this may include:</p><ul><li>There are too many event stream clients</li><li>One or more event stream clients has gotten in a bad state and is somehow
+impacting the fsevents service</li></ul><p>To resolve this issue, you may wish to try the following, which are
+progressively more invasive:</p><ul><li>Avoid establishing multiple overlapping watches within the same filesystem
+tree, especially for large trees.  We recommend watching only the root of a
+project or repo and not watching sub-trees within that tree.  Organizations
+with large trees may wish to deploy the
+<a href="config.html#root-restrict-files" target="_blank">root_restrict_files</a> configuration option
+so that watchman will only allow watching project roots.</li><li>Close or restart other applications that are using fsevents.
+Some examples are:<ul><li>editors such as Sublime Text and TextMate.</li><li>Many nodejs packages and Grunt style workflows make use of fsevents.
+Make sure that you upgrade nodejs to at least version <code>v0.11.14</code>.  If
+possible, configure your nodejs packages to use either
+<a href="https:&#x2f;&#x2f;www.npmjs.com&#x2f;package&#x2f;sane" target="_blank">sane</a> or
+<a href="https:&#x2f;&#x2f;www.npmjs.com&#x2f;package&#x2f;fb-watchman" target="_blank">fb-watchman</a> for file watching
+as this will consolidate the number of fsevents watches down to just the
+set maintained by watchman.</li></ul></li><li>Restart the fsevents service: <code>sudo pkill -9 -x fseventsd</code></li><li>Restart your computer</li></ul></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2014 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
             (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
             (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
             m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
