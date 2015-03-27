@@ -477,6 +477,7 @@ bool w_reap_children(bool block);
 #define W_LOG_FATAL 3
 
 extern int log_level;
+extern char *log_name;
 void w_log(int level, const char *fmt, ...)
 #ifdef __GNUC__
   __attribute__((format(printf, 2, 3)))

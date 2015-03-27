@@ -99,3 +99,49 @@ resolution is to run `watchman shutdown-server`.
 
 If you have not actually resolved the root cause you may continue to trigger
 and experience this state each time the system trips over these limits.
+
+## FSEvents
+
+FSEvents is the file watching facility on OS X.  There are few diagnostics
+that can help diagnose issues with FSEvents; the API itself gives little
+feedback on a number of error cases and instead emits rather cryptic error
+messages to the log file.
+
+If you got here because an error message told you to read this section,
+it will have also asked you to look at your log file.  If you are using an
+older version of watchman and encounter the error message
+`FSEventStreamStart failed`, then you should locate your log file (see
+[Where are the logs?](#where-are-the-logs) above) and look for lines
+that mention FSEvents and then consult the information below.
+
+### FSEventStreamStart: register_with_server: ERROR: f2d_register_rpc() => (null) (-21)
+
+Nobody outside of Apple is sure what precisely this means, but it indicates
+that the fsevents service has gotten in a bad state.  Possible reasons for
+this may include:
+
+* There are too many event stream clients
+* One or more event stream clients has gotten in a bad state and is somehow
+  impacting the fsevents service
+
+To resolve this issue, you may wish to try the following, which are
+progressively more invasive:
+
+* Avoid establishing multiple overlapping watches within the same filesystem
+  tree, especially for large trees.  We recommend watching only the root of a
+  project or repo and not watching sub-trees within that tree.  Organizations
+  with large trees may wish to deploy the
+  [root_restrict_files](config.html#root-restrict-files) configuration option
+  so that watchman will only allow watching project roots.
+* Close or restart other applications that are using fsevents.
+  Some examples are:
+ * editors such as Sublime Text and TextMate.
+ * Many nodejs packages and Grunt style workflows make use of fsevents.
+   Make sure that you upgrade nodejs to at least version `v0.11.14`.  If
+   possible, configure your nodejs packages to use either
+   [sane](https://www.npmjs.com/package/sane) or
+   [fb-watchman](https://www.npmjs.com/package/fb-watchman) for file watching
+   as this will consolidate the number of fsevents watches down to just the
+   set maintained by watchman.
+* Restart the fsevents service: `sudo pkill -9 -x fseventsd`
+* Restart your computer

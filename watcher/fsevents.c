@@ -225,7 +225,11 @@ static void *fsevents_thread(void *arg)
   FSEventStreamScheduleWithRunLoop(fs_stream,
       CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
   if (!FSEventStreamStart(fs_stream)) {
-    root->failure_reason = w_string_new("FSEventStreamStart failed");
+    root->failure_reason = w_string_make_printf(
+        "FSEventStreamStart failed, look at your log file %s for "
+        "lines mentioning FSEvents and see "
+        "https://facebook.github.io/watchman/docs/troubleshooting.html#"
+        "fsevents for more information\n", log_name);
     goto done;
   }
 

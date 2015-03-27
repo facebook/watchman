@@ -11,7 +11,7 @@ static enum w_pdu_type output_pdu = is_json_pretty;
 static char *server_encoding = NULL;
 static char *output_encoding = NULL;
 static char *sock_name = NULL;
-static char *log_name = NULL;
+char *log_name = NULL;
 #ifdef USE_GIMLI
 static char *pid_file = NULL;
 #endif
