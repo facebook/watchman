@@ -3,7 +3,7 @@ Watchman will track all files and dirs rooted at the specified path.</p><p>From 
 because the shell will resolve <code>~&#x2f;www</code> to <code>&#x2f;home&#x2f;wez&#x2f;www</code>, but when you use the
 JSON protocol, you are responsible for supplying an absolute path.</p><p>JSON:</p><div class="prism language-javascript"><span class="token punctuation">[</span><span class="token string">&quot;watch&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;&#x2f;home&#x2f;wez&#x2f;www&quot;</span><span class="token punctuation">]</span></div><p>Watchman will <code>realpath(3)</code> the directory and start watching it if it isn&#x27;t
 already.  A newly watched directory is processed in a couple of stages:</p><ul><li>Establishes change notification for the directory with the kernel</li><li>Queues up a request to crawl the directory</li><li>As the directory contents are resolved, those are watched in a similar
-fashion</li><li>All newly observed files are considered changed</li></ul><p>Unless the <code>--no-state-save</code> server option was used to start the watchman
+fashion</li><li>All newly observed files are considered changed</li></ul><p>Unless the <code>--no-save-state</code> server option was used to start the watchman
 service, watches and their associated triggers are saved and re-established
 across a process restart.</p><h2><a class="anchor" name="case-insensitivity"></a>Case-Insensitivity <a class="hash-link" href="#case-insensitivity">#</a></h2><p>Watchman has the following level of support for case-insensitive filesystems,
 starting in version 2.9.9 on OS X only:</p><ul><li>each watched root is queried to determine if it is case-insensitive.
