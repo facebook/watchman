@@ -120,7 +120,7 @@ static DIR *portfs_root_start_watch_dir(watchman_global_watcher_t watcher,
 
   osdir = opendir_nofollow(path);
   if (!osdir) {
-    handle_open_errno(root, dir, now, "opendir", errno);
+    handle_open_errno(root, dir, now, "opendir", errno, NULL);
     return NULL;
   }
 

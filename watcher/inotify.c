@@ -40,6 +40,25 @@ void inot_global_dtor(watchman_global_watcher_t watcher) {
   unused_parameter(watcher);
 }
 
+static const char *inot_strerror(int err) {
+  switch (err) {
+    case EMFILE:
+      return "The user limit on the total number of inotify "
+        "instances has been reached; increase the "
+        "fs.inotify.max_user_instances sysctl";
+    case ENFILE:
+      return "The system limit on the total number of file descriptors "
+        "has been reached";
+    case ENOMEM:
+      return "Insufficient kernel memory is available";
+    case ENOSPC:
+      return "The user limit on the total number of inotify watches "
+        "was reached; increase the fs.inotify.max_user_watches sysctl";
+    default:
+      return strerror(err);
+  }
+}
+
 bool inot_root_init(watchman_global_watcher_t watcher, w_root_t *root,
     char **errmsg) {
   struct inot_root_state *state;
@@ -55,7 +74,7 @@ bool inot_root_init(watchman_global_watcher_t watcher, w_root_t *root,
   state->infd = inotify_init();
   if (state->infd == -1) {
     ignore_result(asprintf(errmsg, "watch(%.*s): inotify_init error: %s",
-        root->root_path->len, root->root_path->buf, strerror(errno)));
+        root->root_path->len, root->root_path->buf, inot_strerror(errno)));
     w_log(W_LOG_ERR, "%s\n", *errmsg);
     return false;
   }
@@ -126,9 +145,11 @@ static DIR *inot_root_start_watch_dir(watchman_global_watcher_t watcher,
   if (newwd == -1) {
     if (errno == ENOSPC || errno == ENOMEM) {
       // Limits exceeded, no recovery from our perspective
-      set_poison_state(root, dir, now, "inotify-add-watch", errno);
+      set_poison_state(root, dir, now, "inotify-add-watch", errno,
+          inot_strerror(errno));
     } else {
-      handle_open_errno(root, dir, now, "inotify_add_watch", errno);
+      handle_open_errno(root, dir, now, "inotify_add_watch", errno,
+          inot_strerror(errno));
     }
     return NULL;
   } else if (dir->wd != -1 && dir->wd != newwd) {
@@ -150,7 +171,7 @@ static DIR *inot_root_start_watch_dir(watchman_global_watcher_t watcher,
 
   osdir = opendir_nofollow(path);
   if (!osdir) {
-    handle_open_errno(root, dir, now, "opendir", errno);
+    handle_open_errno(root, dir, now, "opendir", errno, NULL);
     return NULL;
   }
 

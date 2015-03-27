@@ -818,12 +818,14 @@ struct watchman_trigger_command *w_build_trigger_from_def(
   w_root_t *root, json_t *trig, char **errmsg);
 
 void set_poison_state(w_root_t *root, struct watchman_dir *dir,
-    struct timeval now, const char *syscall, int err);
+    struct timeval now, const char *syscall, int err,
+    const char *reason);
 
 void watchman_watcher_init(void);
 void watchman_watcher_dtor(void);
 void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
-    struct timeval now, const char *syscall, int err);
+    struct timeval now, const char *syscall, int err,
+    const char *reason);
 void stop_watching_dir(w_root_t *root, struct watchman_dir *dir);
 DIR *opendir_nofollow(const char *path);
 

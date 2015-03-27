@@ -138,7 +138,7 @@ static DIR *kqueue_root_start_watch_dir(watchman_global_watcher_t watcher,
 
   osdir = opendir_nofollow(path);
   if (!osdir) {
-    handle_open_errno(root, dir, now, "opendir", errno);
+    handle_open_errno(root, dir, now, "opendir", errno, NULL);
     return NULL;
   }
 
@@ -146,7 +146,7 @@ static DIR *kqueue_root_start_watch_dir(watchman_global_watcher_t watcher,
 
   if (newwd == -1) {
     // directory got deleted between opendir and open
-    handle_open_errno(root, dir, now, "open", errno);
+    handle_open_errno(root, dir, now, "open", errno, NULL);
     closedir(osdir);
     return NULL;
   }
@@ -163,7 +163,7 @@ static DIR *kqueue_root_start_watch_dir(watchman_global_watcher_t watcher,
   if (st.st_dev != osdirst.st_dev || st.st_ino != osdirst.st_ino) {
     // directory got replaced between opendir and open -- at this point its
     // parent's being watched, so we let filesystem events take care of it
-    handle_open_errno(root, dir, now, "open", ENOTDIR);
+    handle_open_errno(root, dir, now, "open", ENOTDIR, NULL);
     close(newwd);
     closedir(osdir);
     return NULL;

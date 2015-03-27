@@ -119,7 +119,7 @@ static void cmd_debug_poison(struct watchman_client *client, json_t *args)
 
   gettimeofday(&now, NULL);
 
-  set_poison_state(root, dir, now, "debug-poison", ENOMEM);
+  set_poison_state(root, dir, now, "debug-poison", ENOMEM, NULL);
 
   resp = make_response();
   set_prop(resp, "poison", json_string_nocheck(poisoned_reason));

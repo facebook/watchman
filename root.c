@@ -818,7 +818,7 @@ static void stat_path(w_root_t *root,
         // that it's deleted, update our state to reflect that.
         if (errno == ENOENT || errno == ENOTDIR || errno == ENOFOLLOWSYMLINK) {
           if (dir_ent) {
-            handle_open_errno(root, dir_ent, now, "getattrlist", errno);
+            handle_open_errno(root, dir_ent, now, "getattrlist", errno, NULL);
           }
           if (file) {
             w_log(W_LOG_DBG, "getattrlist(%s) -> %s so marking %.*s deleted\n",
@@ -1077,30 +1077,33 @@ DIR *opendir_nofollow(const char *path)
 }
 
 void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
-    struct timeval now, const char *syscall, int err)
+    struct timeval now, const char *syscall, int err, const char *reason)
 {
   w_string_t *dir_name = dir->path;
   if (err == ENOENT || err == ENOTDIR || err == ENOFOLLOWSYMLINK) {
     if (w_string_equal(dir_name, root->root_path)) {
       w_log(W_LOG_ERR,
             "%s(%.*s) -> %s. Root was deleted; cancelling watch\n",
-            syscall, dir_name->len, dir_name->buf, strerror(err));
+            syscall, dir_name->len, dir_name->buf,
+            reason ? reason : strerror(err));
       w_root_cancel(root);
       return;
     }
 
     w_log(W_LOG_DBG, "%s(%.*s) -> %s so invalidating descriptors\n",
-          syscall, dir_name->len, dir_name->buf, strerror(err));
+          syscall, dir_name->len, dir_name->buf,
+          reason ? reason : strerror(err));
     stop_watching_dir(root, dir);
     w_root_mark_deleted(root, dir, now, true);
     return;
   }
   w_log(W_LOG_ERR, "%s(%.*s) -> %s. We don't know how to handle this.",
-        syscall, dir_name->len, dir_name->buf, strerror(err));
+        syscall, dir_name->len, dir_name->buf,
+        reason ? reason : strerror(err));
 }
 
 void set_poison_state(w_root_t *root, struct watchman_dir *dir,
-    struct timeval now, const char *syscall, int err)
+    struct timeval now, const char *syscall, int err, const char *reason)
 {
   char *why = NULL;
 
@@ -1120,7 +1123,7 @@ void set_poison_state(w_root_t *root, struct watchman_dir *dir,
     syscall,
     dir->path->len,
     dir->path->buf,
-    strerror(err),
+    reason ? reason : strerror(err),
     syscall
   ));
 
