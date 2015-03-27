@@ -137,6 +137,17 @@ $ watchman --json-command <<-EOT
 EOT
 ```
 
+## Exit Status
+
+The `watchman` binary will exit with a return code of 0 in most cases; this
+indicates that the output it generated should be valid JSON.  To determine if
+your command was successful, you need to parse the JSON and look for the
+`error` field as described above.
+
+`watchman` will exit with a non-zero exit status in cases where something
+low-level went wrong, such as protocol level errors (eg: connection was
+terminated).
+
 ## Server Options
 
 These options are used when starting the server.  They are recognized by the
