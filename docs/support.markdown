@@ -15,7 +15,7 @@ try reaching out to the maintainers in one of the following ways:
 
 We'd like to encourage discussing and answering Watchman related questions on
 Stack Overflow.  [Ask your question on Stack Overflow](
-http://stackoverflow.com/questions/ask)
+http://stackoverflow.com/questions/ask?tags=watchman)
 
 ## IRC
 

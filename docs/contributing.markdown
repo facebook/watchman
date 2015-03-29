@@ -49,3 +49,11 @@ You can run the unit tests using:
 If you'd like to contribute a patch to watchman, we'll ask you to make sure
 that `arc unit` still passes successfully and we'd ideally like you to augment
 the test suite to cover the functionality that you're adding or changing.
+
+Once you've installed `arc`, you can ask it to submit a diff for code review:
+
+    $ arc diff
+
+and it will run the tests and linters for you.  You will need to register on
+our [Open Source Phabricator Instance](https://reviews.facebook.net); you
+can sign in using either your Facebook or Gighub identity.
