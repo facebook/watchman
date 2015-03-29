@@ -1373,19 +1373,22 @@ static void age_out_file(w_root_t *root, struct watchman_file *file);
 static void age_out_dir(w_root_t *root, struct watchman_dir *dir)
 {
   w_ht_iter_t i;
-
-  if (dir->files && w_ht_first(dir->files, &i)) do {
+  // Since age_out_file deletes itself from dir->files, it will
+  // invalidate the iterator, so we have to restart our iteration each time.
+  while (dir->files && w_ht_first(dir->files, &i)) {
     struct watchman_file *file = w_ht_val_ptr(i.value);
 
     assert(!file->exists);
     age_out_file(root, file);
-  } while (w_ht_next(dir->files, &i));
+  }
 
-  if (dir->dirs && w_ht_first(dir->dirs, &i)) do {
+  // Since age_out_dir deletes itself from dir->dirs, it will
+  // invalidate the iterator, so we have to restart our iteration each time.
+  while (dir->dirs && w_ht_first(dir->dirs, &i)) {
     struct watchman_dir *child = w_ht_val_ptr(i.value);
 
     age_out_dir(root, child);
-  } while (w_ht_next(dir->dirs, &i));
+  }
 
   // This will implicitly call delete_dir() which will tear down
   // the files and dirs hashes
