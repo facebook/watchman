@@ -13,6 +13,11 @@ class SinceExprTestCase extends WatchmanTestCase {
     touch("$root/subdir/bar.txt");
 
     $this->watch($root);
+    $this->assertFileList($root, array(
+      'foo.c',
+      'subdir',
+      'subdir/bar.txt'
+    ));
 
     $foo_data = $this->watchmanCommand('find', $root, 'foo.c');
     $first_clock = $foo_data['clock'];

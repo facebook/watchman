@@ -47,10 +47,6 @@ class removeTestCase extends WatchmanTestCase {
     if (PHP_OS == 'Linux' && getenv('TRAVIS')) {
       $this->assertSkipped('openvz and inotify unlinks == bad time');
     }
-    if (PHP_OS == 'Darwin') {
-      $this->assertSkipped(
-        "fseventsd doesn't signal kFSEventStreamEventFlagRootChanged");
-    }
     $watches = $this->waitForWatchman(
       array('watch-list'),
       function ($list) use ($root) {
@@ -64,6 +60,3 @@ class removeTestCase extends WatchmanTestCase {
     );
   }
 }
-
-
-
