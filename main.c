@@ -251,7 +251,7 @@ static void spawn_via_launchd(void)
     watchman_path, log_name, sock_name, watchman_state_file, sock_name);
   fclose(fp);
   // Don't rely on umask, ensure we have the correct perms
-  chmod(watchman_path, 0644);
+  chmod(plist_path, 0644);
 
   append_argv(argv, plist_path);
 
