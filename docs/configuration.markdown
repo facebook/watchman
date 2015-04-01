@@ -43,7 +43,9 @@ This table shows the scoping and availability of the various options:
 Option | Scope | Since version
 -------|-------|--------------
 `settle` | local |
-`root_restrict_files` | global
+`root_restrict_files` | global | deprecated in 3.1
+`root_files` | global | 3.1
+`enforce_root_files` | global | 3.1
 `illegal_fstypes` | global | 2.9.8
 `illegal_fstypes_advice` | global | 2.9.8
 `ignore_vcs` | local | 2.9.3
@@ -59,7 +61,58 @@ Specifies the settle period in *milliseconds*.  This controls how long the
 filesystem should be idle before dispatching triggers.  The default value is 20
 milliseconds.
 
+#### root_files
+
+Available starting in version 3.1
+
+Specifies a list of files that, if present in a directory, identify that
+directory as the root of a project.
+
+If left unspecified, to aid in transitioning between versions, watchman will
+use the value of the now deprecated
+[root_restrict_files](#root_restrict_files) configuration setting.
+
+If neither `root_files` nor `root_restrict_files` is specified in the
+configuration, watchman will use a default value consisting of:
+
+* `.git`
+* `.hg`
+* `.svn`
+* `.watchmanconfig`
+
+Watchman will add `.watchmanconfig` to whatever value is specified for
+this configuration value if it is not present.
+
+This example causes only `.watchmanconfig` to be considered as a project
+root file:
+
+```json
+{
+  "root_files": [".watchmanconfig"]
+}
+```
+
+See the [watch-project](cmd/watch-project.html) command for more information.
+
+#### enforce_root_files
+
+Available starting in version 3.1
+
+This is a boolean option that defaults to `false`.  If it is set to `true`
+then the [watch](cmd/watch.html) command will only succeed if the requested
+directory contains one of the files listed by the [root_files](#root_files)
+configuration option, and the [watch-project](cmd/watch-project.html) command
+will only succeed if a valid project root is found.
+
+If left unspecified, to aid in transitioning between versions, watchman will
+check to see if the now deprecated [root_restrict_files](#root_restrict_files)
+configuration setting is present.  If it is found then the effective value of
+`enforce_root_files` is set to `true`.
+
 #### root_restrict_files
+
+Deprecated starting in version 3.1; use [root_files](#root_files) and
+[enforce_root_files](#enforce_root_files) to effect the same behavior.
 
 Specifies a list of files, at least one of which should be present in a
 directory for watchman to add it as a root. By default there are no

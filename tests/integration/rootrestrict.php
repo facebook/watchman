@@ -56,8 +56,8 @@ class rootRestrictTestCase extends WatchmanTestCase {
 
       $res = $this->watch($root, false);
       $this->assertEqual("unable to resolve root $root: none of the files " .
-                         "listed in global config root_restrict_files are " .
-                         "present",
+                         "listed in global config root_files are " .
+                         "present and enforce_root_files is set to true",
                          $res['error']);
     }
   }

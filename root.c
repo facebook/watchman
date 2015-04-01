@@ -1771,15 +1771,14 @@ static bool root_check_restrict(const char *watch_path)
 {
   json_t *root_restrict_files = NULL;
   uint32_t i;
+  bool enforcing;
 
-  root_restrict_files = cfg_get_json(NULL, "root_restrict_files");
+  root_restrict_files = cfg_compute_root_files(&enforcing);
   if (!root_restrict_files) {
     return true;
   }
-
-  if (!json_is_array(root_restrict_files)) {
-    w_log(W_LOG_ERR,
-          "resolve_root: global config root_restrict_files is not an array\n");
+  if (!enforcing) {
+    json_decref(root_restrict_files);
     return true;
   }
 
@@ -1788,12 +1787,6 @@ static bool root_check_restrict(const char *watch_path)
     const char *restrict_file = json_string_value(obj);
     char *restrict_path;
     int rv;
-
-    if (!restrict_file) {
-      w_log(W_LOG_ERR, "resolve_root: global config root_restrict_files "
-            "element %" PRIu32 " should be a string\n", i);
-      continue;
-    }
 
     ignore_result(asprintf(&restrict_path, "%s/%s", watch_path,
                            restrict_file));
@@ -1940,8 +1933,8 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
 
   if (!root_check_restrict(watch_path)) {
     ignore_result(asprintf(errmsg,
-          "none of the files listed in global config root_restrict_files are "
-          "present"));
+          "none of the files listed in global config root_files are "
+          "present and enforce_root_files is set to true"));
     w_log(W_LOG_ERR, "resolve_root: %s\n", *errmsg);
     if (watch_path != filename) {
       free(watch_path);

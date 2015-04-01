@@ -118,6 +118,95 @@ const char *cfg_get_string(w_root_t *root, const char *name,
   return defval;
 }
 
+// Return true if the json ref is an array of string values
+static bool is_array_of_strings(json_t *ref) {
+  uint32_t i;
+
+  if (!json_is_array(ref)) {
+    return false;
+  }
+
+  for (i = 0; i < json_array_size(ref); i++) {
+    if (!json_is_string(json_array_get(ref, i))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Given an array of string values, if that array does not contain
+// a ".watchmanconfig" entry, prepend it
+static void prepend_watchmanconfig_to_array(json_t *ref) {
+  const char *val;
+
+  if (json_array_size(ref) == 0) {
+    // json_array_insert_new at index can fail when the array is empty,
+    // so just append in this case.
+    json_array_append_new(ref, json_string_nocheck(".watchmanconfig"));
+    return;
+  }
+
+  val = json_string_value(json_array_get(ref, 0));
+  if (!strcmp(val, ".watchmanconfig")) {
+    return;
+  }
+  json_array_insert_new(ref, 0, json_string_nocheck(".watchmanconfig"));
+}
+
+// Compute the effective value of the root_files configuration and
+// return a json reference.  The caller must decref the ref when done
+// (we may synthesize this value).   Sets enforcing to indicate whether
+// we will only allow watches on the root_files.
+// The array returned by this function (if not NULL) is guaranteed to
+// list .watchmanconfig as its zeroth element.
+json_t *cfg_compute_root_files(bool *enforcing) {
+  json_t *ref;
+
+  *enforcing = false;
+
+  ref = cfg_get_json(NULL, "enforce_root_files");
+  if (ref) {
+    if (!json_is_boolean(ref)) {
+      w_log(W_LOG_FATAL,
+          "Expected config value enforce_root_files to be boolean\n");
+    }
+    *enforcing = json_is_true(ref);
+  }
+
+  ref = cfg_get_json(NULL, "root_files");
+  if (ref) {
+    if (!is_array_of_strings(ref)) {
+      w_log(W_LOG_FATAL,
+          "global config root_files must be an array of strings\n");
+      *enforcing = false;
+      return NULL;
+    }
+    prepend_watchmanconfig_to_array(ref);
+
+    json_incref(ref);
+    return ref;
+  }
+
+  // Try legacy root_restrict_files configuration
+  ref = cfg_get_json(NULL, "root_restrict_files");
+  if (ref) {
+    if (!is_array_of_strings(ref)) {
+      w_log(W_LOG_FATAL, "deprecated global config root_restrict_files "
+          "must be an array of strings\n");
+      *enforcing = false;
+      return NULL;
+    }
+    prepend_watchmanconfig_to_array(ref);
+    json_incref(ref);
+    *enforcing = true;
+    return ref;
+  }
+
+  // Synthesize our conservative default value.
+  // .watchmanconfig MUST be first
+  return json_pack("[ssss]", ".watchmanconfig", ".hg", ".git", ".svn");
+}
+
 json_int_t cfg_get_int(w_root_t *root, const char *name,
     json_int_t defval)
 {
@@ -135,4 +224,3 @@ json_int_t cfg_get_int(w_root_t *root, const char *name,
 
 /* vim:ts=2:sw=2:et:
  */
-
