@@ -246,9 +246,15 @@ static void spawn_via_launchd(void)
 "    </dict>\n"
 "    <key>RunAtLoad</key>\n"
 "    <false/>\n"
+"    <key>EnvironmentVariables</key>\n"
+"    <dict>\n"
+"        <key>PATH</key>\n"
+"        <string><![CDATA[%s]]></string>\n"
+"    </dict>\n"
 "</dict>\n"
 "</plist>\n",
-    watchman_path, log_name, sock_name, watchman_state_file, sock_name);
+    watchman_path, log_name, sock_name, watchman_state_file, sock_name,
+    getenv("PATH"));
   fclose(fp);
   // Don't rely on umask, ensure we have the correct perms
   chmod(plist_path, 0644);
