@@ -84,6 +84,37 @@ MAKE_INT_FIELD(nlink, st_nlink)
   { #type "time_ns", make_##type##time_ns }, \
   { #type "time_f", make_##type##time_f }
 
+static json_t *make_type_field(struct watchman_rule_match *match) {
+  // Bias towards the more common file types first
+  if (S_ISREG(match->file->st.st_mode)) {
+    return json_string_nocheck("f");
+  }
+  if (S_ISDIR(match->file->st.st_mode)) {
+    return json_string_nocheck("d");
+  }
+  if (S_ISLNK(match->file->st.st_mode)) {
+    return json_string_nocheck("l");
+  }
+  if (S_ISBLK(match->file->st.st_mode)) {
+    return json_string_nocheck("b");
+  }
+  if (S_ISCHR(match->file->st.st_mode)) {
+    return json_string_nocheck("c");
+  }
+  if (S_ISFIFO(match->file->st.st_mode)) {
+    return json_string_nocheck("p");
+  }
+  if (S_ISSOCK(match->file->st.st_mode)) {
+    return json_string_nocheck("s");
+  }
+#ifdef S_ISDOOR
+  if (S_ISDOOR(match->file->st.st_mode)) {
+    return json_string_nocheck("D");
+  }
+#endif
+  return json_string_nocheck("?");
+}
+
 static struct w_query_field_renderer {
   const char *name;
   json_t *(*make)(struct watchman_rule_match *match);
@@ -103,6 +134,7 @@ static struct w_query_field_renderer {
   { "new", make_new },
   { "oclock", make_oclock },
   { "cclock", make_cclock },
+  { "type", make_type_field },
   { NULL, NULL }
 };
 
@@ -203,4 +235,3 @@ bool parse_field_list(json_t *field_list,
 
 /* vim:ts=2:sw=2:et:
  */
-

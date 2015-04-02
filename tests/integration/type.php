@@ -24,10 +24,25 @@ class TypeExprTestCase extends WatchmanTestCase {
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array('type', 'd'),
-      'fields' => array('name'),
+      'fields' => array('name', 'type'),
     ));
 
-    $this->assertEqual(array('subdir'), $res['files']);
+    $this->assertEqual(array(
+        array('name' => 'subdir', 'type' => 'd')
+      ), $res['files']);
+
+    $res = $this->watchmanCommand('query', $root, array(
+      'expression' => array('type', 'f'),
+      'fields' => array('name', 'type'),
+    ));
+
+    usort($res['files'], function ($a, $b) {
+      return strcmp($a['name'], $b['name']);
+    });
+    $this->assertEqual(array(
+        array('name' => 'foo.c', 'type' => 'f'),
+        array('name' => 'subdir/bar.txt', 'type' => 'f')
+      ), $res['files']);
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array('type', 'x'),
