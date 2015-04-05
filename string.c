@@ -291,6 +291,21 @@ bool w_string_startswith(w_string_t *str, w_string_t *prefix)
   return memcmp(str->buf, prefix->buf, prefix->len) == 0;
 }
 
+bool w_string_startswith_caseless(w_string_t *str, w_string_t *prefix)
+{
+  size_t i;
+
+  if (prefix->len > str->len) {
+    return false;
+  }
+  for (i = 0; i < prefix->len; i++) {
+    if (tolower((uint8_t)str->buf[i]) != tolower((uint8_t)prefix->buf[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 w_string_t *w_string_canon_path(w_string_t *str)
 {
   int end;

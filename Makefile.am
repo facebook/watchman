@@ -33,6 +33,7 @@ watchman_SOURCES = \
 	cmds/watch.c    \
 	cmds/debug.c    \
 	query/base.c       \
+	query/dirname.c    \
 	query/parse.c      \
 	query/eval.c       \
 	query/intcompare.c \
