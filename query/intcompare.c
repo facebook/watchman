@@ -74,6 +74,9 @@ bool eval_int_compare(json_int_t ival, struct w_query_int_compare *comp) {
       return ival < comp->operand;
     case W_QUERY_ICMP_LE:
       return ival <= comp->operand;
+    default:
+      // Not possible to get here, but some compilers don't realize
+      return false;
   }
 }
 
