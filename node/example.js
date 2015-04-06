@@ -52,14 +52,17 @@ client.command(['watch-project', process.cwd()], function(error, resp) {
   var path_prefix = '';
   var root = resp['watch'];
   if ('relative_path' in resp) {
-    path_prefix = resp['relative_path'] + '/';
+    path_prefix = resp['relative_path'];
     console.log('(re)using project watch at ', root, ', our dir is relative: ',
         path_prefix);
   }
 
   function get_relative_name(proj_rel) {
+    if (path_prefix.length == 0) {
+      return proj_rel;
+    }
     if (proj_rel.substr(0, path_prefix.length) == path_prefix) {
-      return proj_rel.substr(path_prefix.length);
+      return proj_rel.substr(path_prefix.length + 1);
     }
     return null;
   }
@@ -74,7 +77,7 @@ client.command(['watch-project', process.cwd()], function(error, resp) {
           ["match", "*.js"],
           // focus on the relative path from the project to the path
           // of interest
-          ['pcre', '^' + path_prefix, 'wholename']
+          ['dirname', path_prefix]
       ],
       // Which fields we're interested in
       fields: ["name", "size", "exists", "type"]
@@ -141,7 +144,7 @@ client.command(['watch-project', process.cwd()], function(error, resp) {
           ["match", "*.js"],
           // focus on the relative path from the project to the path
           // of interest
-          ['pcre', '^' + path_prefix, 'wholename']
+          ['dirname', path_prefix]
         ],
         // Note: since we only request a single field, the `sincesub` subscription
         // response will just set files to an array of filenames, not an array of
