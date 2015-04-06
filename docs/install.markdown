@@ -40,6 +40,14 @@ To install the latest build from github:
 $ brew install --HEAD watchman
 ```
 
+### Installing on OS X via macports
+
+To install the package maintained by [MacPorts](https://www.macports.org):
+
+```bash
+$ sudo port install watchman
+```
+
 ### Installing from source
 
 You can use these steps below to get watchman built.  You will need `autoconf`
