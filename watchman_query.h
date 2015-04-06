@@ -162,6 +162,22 @@ json_t *w_query_results_to_json(
 
 void w_query_init_all(void);
 
+enum w_query_icmp_op {
+  W_QUERY_ICMP_EQ,
+  W_QUERY_ICMP_NE,
+  W_QUERY_ICMP_GT,
+  W_QUERY_ICMP_GE,
+  W_QUERY_ICMP_LT,
+  W_QUERY_ICMP_LE,
+};
+struct w_query_int_compare {
+  enum w_query_icmp_op op;
+  json_int_t operand;
+};
+bool parse_int_compare(json_t *term, struct w_query_int_compare *comp,
+    char **errmsg);
+bool eval_int_compare(json_int_t ival, struct w_query_int_compare *comp);
+
 bool parse_field_list(json_t *field_list,
     struct w_query_field_list *selected,
     char **errmsg);

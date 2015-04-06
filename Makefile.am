@@ -35,6 +35,7 @@ watchman_SOURCES = \
 	query/base.c       \
 	query/parse.c      \
 	query/eval.c       \
+	query/intcompare.c \
 	query/type.c       \
 	query/suffix.c     \
 	query/match.c      \
