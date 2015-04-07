@@ -139,13 +139,12 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
   function didRunTests() {
     $this->logTestInfo('didRun');
 
-    foreach ($this->watches as $root => $status) {
-      try {
-        $this->watchmanCommand('watch-del', $root);
-      } catch (Exception $e) {
-        // Swallow
-      }
+    try {
+      $this->watchmanCommand('watch-del-all');
+    } catch (Exception $e) {
+      // Swallow
     }
+
     $this->watches = array();
   }
 

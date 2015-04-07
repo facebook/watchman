@@ -82,6 +82,21 @@ static void cmd_watch_delete(struct watchman_client *client, json_t *args)
 }
 W_CMD_REG("watch-del", cmd_watch_delete, CMD_DAEMON, w_cmd_realpath_root)
 
+/* watch-del-all
+ * Stops watching all roots */
+static void cmd_watch_del_all(struct watchman_client *client, json_t *args)
+{
+  json_t *resp;
+  json_t *roots;
+  unused_parameter(args);
+
+  resp = make_response();
+  roots = w_root_stop_watch_all();
+  set_prop(resp, "roots", roots);
+  send_and_dispose_response(client, resp);
+}
+W_CMD_REG("watch-del-all", cmd_watch_del_all, CMD_DAEMON, NULL)
+
 /* watch-list
  * Returns a list of watched roots */
 static void cmd_watch_list(struct watchman_client *client, json_t *args)

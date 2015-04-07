@@ -525,6 +525,7 @@ void w_root_free_watched_roots(void);
 void w_root_schedule_recrawl(w_root_t *root, const char *why);
 bool w_root_cancel(w_root_t *root);
 bool w_root_stop_watch(w_root_t *root);
+json_t *w_root_stop_watch_all(void);
 void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, bool recursive);
 void w_root_reap(void);
