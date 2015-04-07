@@ -97,8 +97,8 @@ static void cmd_watch_list(struct watchman_client *client, json_t *args)
 }
 W_CMD_REG("watch-list", cmd_watch_list, CMD_DAEMON, NULL)
 
-/* watch-list
- * Returns a list of watched roots */
+/* watch-purge
+ * Stops watching all roots */
 static void cmd_watch_purge(struct watchman_client *client, json_t *args)
 {
   json_t *resp;
