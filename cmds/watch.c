@@ -82,24 +82,9 @@ static void cmd_watch_delete(struct watchman_client *client, json_t *args)
 }
 W_CMD_REG("watch-del", cmd_watch_delete, CMD_DAEMON, w_cmd_realpath_root)
 
-/* watch-list
- * Returns a list of watched roots */
-static void cmd_watch_list(struct watchman_client *client, json_t *args)
-{
-  json_t *resp;
-  json_t *root_paths;
-  unused_parameter(args);
-
-  resp = make_response();
-  root_paths = w_root_watch_list_to_json();
-  set_prop(resp, "roots", root_paths);
-  send_and_dispose_response(client, resp);
-}
-W_CMD_REG("watch-list", cmd_watch_list, CMD_DAEMON, NULL)
-
-/* watch-purge
+/* watch-del-all
  * Stops watching all roots */
-static void cmd_watch_purge(struct watchman_client *client, json_t *args)
+static void cmd_watch_del_all(struct watchman_client *client, json_t *args)
 {
   json_t *resp;
   json_t *purged;
@@ -126,7 +111,22 @@ static void cmd_watch_purge(struct watchman_client *client, json_t *args)
   set_prop(resp, "purged", purged);
   send_and_dispose_response(client, resp);
 }
-W_CMD_REG("watch-purge", cmd_watch_purge, CMD_DAEMON, NULL)
+W_CMD_REG("watch-del-all", cmd_watch_del_all, CMD_DAEMON, NULL)
+
+/* watch-list
+ * Returns a list of watched roots */
+static void cmd_watch_list(struct watchman_client *client, json_t *args)
+{
+  json_t *resp;
+  json_t *root_paths;
+  unused_parameter(args);
+
+  resp = make_response();
+  root_paths = w_root_watch_list_to_json();
+  set_prop(resp, "roots", root_paths);
+  send_and_dispose_response(client, resp);
+}
+W_CMD_REG("watch-list", cmd_watch_list, CMD_DAEMON, NULL)
 
 // For each directory component in candidate_dir to the root of the filesystem,
 // look for root_file.  If root_file is present, update relpath to reflect the
