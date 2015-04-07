@@ -97,6 +97,37 @@ static void cmd_watch_list(struct watchman_client *client, json_t *args)
 }
 W_CMD_REG("watch-list", cmd_watch_list, CMD_DAEMON, NULL)
 
+/* watch-list
+ * Returns a list of watched roots */
+static void cmd_watch_purge(struct watchman_client *client, json_t *args)
+{
+  json_t *resp;
+  json_t *purged;
+  json_t *root_paths;
+  size_t  root_paths_size, i;
+  unused_parameter(args);
+
+  root_paths = w_root_watch_list_to_json();
+  root_paths_size = json_array_size(root_paths);
+
+  purged = json_array();
+
+  for (i = 0; i < root_paths_size; i++) {
+    w_root_t *root = resolve_root_or_err(client, root_paths, i, false);
+
+    if (root && w_root_stop_watch(root)) {
+      json_array_append_new(purged, json_string_nocheck(root->root_path->buf));
+    }
+  }
+
+  json_decref(root_paths);
+
+  resp = make_response();
+  set_prop(resp, "purged", purged);
+  send_and_dispose_response(client, resp);
+}
+W_CMD_REG("watch-purge", cmd_watch_purge, CMD_DAEMON, NULL)
+
 // For each directory component in candidate_dir to the root of the filesystem,
 // look for root_file.  If root_file is present, update relpath to reflect the
 // relative path to the original value of candidate_dir and return true.  If
