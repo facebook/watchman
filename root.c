@@ -2098,6 +2098,7 @@ json_t *w_root_stop_watch_all(void)
 
   if (!roots) {
     json_decref(stopped);
+    pthread_mutex_unlock(&root_lock);
     return NULL;
   }
 
