@@ -2083,6 +2083,41 @@ bool w_root_stop_watch(w_root_t *root)
   return stopped;
 }
 
+json_t *w_root_stop_watch_all(void) 
+{
+  w_ht_iter_t iter;
+  json_t *stopped;
+  w_root_t **roots;
+  uint32_t roots_count, i;
+
+  stopped = json_array();
+
+  pthread_mutex_lock(&root_lock);
+  roots_count = w_ht_size(watched_roots);
+  roots = calloc(roots_count, sizeof(*roots));
+
+  if (!roots) {
+    json_decref(stopped);
+    return NULL;
+  }
+
+  i = 0;
+  if (w_ht_first(watched_roots, &iter)) do {
+    roots[i++] = w_ht_val_ptr(iter.value);
+  } while (w_ht_next(watched_roots, &iter));
+
+  for (i = 0; i < roots_count; i++) {
+    w_root_t *root = roots[i];
+    if (w_root_stop_watch(root)) {
+      w_string_t *path = root->root_path;
+      json_array_append_new(stopped, json_string_binary(path->buf, path->len));
+    }
+  }
+  pthread_mutex_unlock(&root_lock);
+
+  return stopped;
+}
+
 w_root_t *w_root_resolve(const char *filename, bool auto_watch, char **errmsg)
 {
   struct watchman_root *root;
