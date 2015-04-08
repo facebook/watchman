@@ -90,12 +90,8 @@ static void cmd_watch_del_all(struct watchman_client *client, json_t *args)
   json_t *roots;
   unused_parameter(args);
 
-  roots = w_root_stop_watch_all();
-  if (!roots) {
-    return;
-  }
-
   resp = make_response();
+  roots = w_root_stop_watch_all();
   set_prop(resp, "roots", roots);
   send_and_dispose_response(client, resp);
 }
