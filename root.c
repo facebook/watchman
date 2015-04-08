@@ -2083,38 +2083,28 @@ bool w_root_stop_watch(w_root_t *root)
   return stopped;
 }
 
-json_t *w_root_stop_watch_all(void) 
+json_t *w_root_stop_watch_all(void)
 {
   w_ht_iter_t iter;
-  json_t *stopped;
-  w_root_t **roots;
-  uint32_t roots_count, i;
-
-  stopped = json_array();
+  json_t *stopped = json_array();
 
   pthread_mutex_lock(&root_lock);
-  roots_count = w_ht_size(watched_roots);
-  roots = calloc(roots_count, sizeof(*roots));
-
-  if (!roots) {
-    json_decref(stopped);
-    pthread_mutex_unlock(&root_lock);
-    return NULL;
-  }
-
-  i = 0;
   if (w_ht_first(watched_roots, &iter)) do {
-    roots[i++] = w_ht_val_ptr(iter.value);
-  } while (w_ht_next(watched_roots, &iter));
+    w_root_t *root = w_ht_val_ptr(iter.value);
+    w_string_t *path = root->root_path;
+    json_t *json_root = json_string_binary(path->buf, path->len);
 
-  for (i = 0; i < roots_count; i++) {
-    w_root_t *root = roots[i];
-    if (w_root_stop_watch(root)) {
-      w_string_t *path = root->root_path;
-      json_array_append_new(stopped, json_string_binary(path->buf, path->len));
+    if (w_ht_iter_del(watched_roots, &iter)) {
+      w_root_cancel(root);
+      json_array_append_new(stopped, json_root);
     }
-  }
+    else {
+      json_decref(json_root);
+    }
+  } while (w_ht_next(watched_roots, &iter));
   pthread_mutex_unlock(&root_lock);
+
+  w_state_save();
 
   return stopped;
 }
