@@ -2083,7 +2083,7 @@ bool w_root_stop_watch(w_root_t *root)
   return stopped;
 }
 
-json_t *w_root_stop_watch_all(void) 
+json_t *w_root_stop_watch_all(void)
 {
   w_ht_iter_t iter;
   json_t *stopped;
