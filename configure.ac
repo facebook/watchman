@@ -56,7 +56,7 @@ AC_ARG_WITH(buildinfo, [
 ])
 
 
-WATCHMAN_STATE_DIR="\$(prefix)/var/run/watchman"
+WATCHMAN_STATE_DIR="/var/run/watchman"
 AC_ARG_ENABLE(statedir, [
   --enable-statedir=PATH  Use PATH as the default for state, log files
                           and sockets instead of using your system tempdir
