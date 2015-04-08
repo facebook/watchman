@@ -2109,12 +2109,15 @@ json_t *w_root_stop_watch_all(void)
 
   for (i = 0; i < roots_count; i++) {
     w_root_t *root = roots[i];
-    if (w_root_stop_watch(root)) {
-      w_string_t *path = root->root_path;
+    w_string_t *path = root->root_path;
+    if (w_ht_del(watched_roots, w_ht_ptr_val(path))) {
+      w_root_cancel(root);
       json_array_append_new(stopped, json_string_binary(path->buf, path->len));
     }
   }
   pthread_mutex_unlock(&root_lock);
+
+  w_state_save();
 
   return stopped;
 }
