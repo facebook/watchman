@@ -2091,16 +2091,13 @@ json_t *w_root_stop_watch_all(void)
   pthread_mutex_lock(&root_lock);
   if (w_ht_first(watched_roots, &iter)) do {
     w_root_t *root = w_ht_val_ptr(iter.value);
-    w_string_t *path = root->root_path;
-    json_t *json_root = json_string_binary(path->buf, path->len);
-
+    w_root_addref(root);
     if (w_ht_iter_del(watched_roots, &iter)) {
+      w_string_t *path = root->root_path;
+      json_array_append_new(stopped, json_string_binary(path->buf, path->len));
       w_root_cancel(root);
-      json_array_append_new(stopped, json_root);
     }
-    else {
-      json_decref(json_root);
-    }
+    w_root_delref(root);
   } while (w_ht_next(watched_roots, &iter));
   pthread_mutex_unlock(&root_lock);
 
