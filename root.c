@@ -2111,6 +2111,7 @@ json_t *w_root_stop_watch_all(void)
     }
     w_root_delref(root);
   }
+  free(roots);
   pthread_mutex_unlock(&root_lock);
 
   w_state_save();
