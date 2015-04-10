@@ -11,7 +11,7 @@ class watchDelAllTestCase extends WatchmanTestCase {
     $dirs = array_map(
       function ($file) use($root) {
         return "$root/$file";
-      }, 
+      },
       $files
     );
 
@@ -23,7 +23,7 @@ class watchDelAllTestCase extends WatchmanTestCase {
       }
 
       $this->watch($d);
-      $this->assertFileList($d, $files); 
+      $this->assertFileList($d, $files);
     }
 
     $resp = $this->watchmanCommand('watch-list');
