@@ -32,13 +32,14 @@ class watchDelAllTestCase extends WatchmanTestCase {
 
     $this->assertEqual($dirs, $watched);
 
-    $this->watchmanCommand('watch-del-all');
+    $resp = $this->watchmanCommand('watch-del-all');
+    $watched = $resp['roots'];
+    sort($watched);
 
-    $this->waitForWatchman(
-      array('watch-list'),
-      function ($resp) {
-        return 0 == count($resp['roots']);
-      }
-    );
+    $this->assertEqual($dirs, $watched);
+
+    $resp = $this->watchmanCommand('watch-list');
+
+    $this->assertEqual(0, count($resp['roots']));
   }
 }
