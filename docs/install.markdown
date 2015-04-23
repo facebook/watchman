@@ -31,6 +31,7 @@ To build the most recent release currently tracked by
 [Homebrew](http://brew.sh/):
 
 ```bash
+$ brew update
 $ brew install watchman
 ```
 

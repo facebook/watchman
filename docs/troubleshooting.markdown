@@ -6,9 +6,26 @@ category: Troubleshooting
 permalink: docs/troubleshooting.html
 ---
 
-If you've been directed to this page due to an error or warning output from
-Watchman, it typically means that there is some system tuning that you need to
-perform.
+We try to give directed advice in Watchman error diagnostics, which means that
+we will show a link to a section on this page with some context and advice where
+we have enough information to do so.  Some operating systems provide richer
+diagnostic information than others, so we have to resort to more generic
+advice in some cases.
+
+The most common cause of problems is hitting system resource limits.  There are
+finite resources available for filesystem watching, and when they are exceeded
+it can impact performance in the best case or prohibit correct operation in the
+worst case.
+
+## Ensure that you are on the best available version
+
+It is generally a good idea to make sure that you are using the latest
+version of the software, so that you avoid any known issues.
+
+If you are running a pre-built binary provided by your operating system
+distribution system, there is a chance that you'll need to build the
+latest version from source.  You can find instructions for this in
+[the installation section](/watchman/docs/install.html).
 
 ## Recrawl
 
@@ -37,6 +54,9 @@ system administrator should review the workload for your system and the
 [System Specific Preparation Documentation](
 /watchman/docs/install.html#system-specific-preparation) and raise your limits
 accordingly.
+
+OS X has a similar internal limit and behavior when that limit is exceeded.
+Unfortunately this limit is not tunable on OS X.
 
 ### I've changed my limits, how can I clear the warning?
 
@@ -145,3 +165,18 @@ progressively more invasive:
    set maintained by watchman.
 * Restart the fsevents service: `sudo pkill -9 -x fseventsd`
 * Restart your computer
+
+## ReactNative: Watcher took too long to load
+
+There was an issue that was the result of umask affecting the permissions of
+the launchd plist file that Watchman uses to set up your watchman service on OS X.
+This issue was resolved in Watchman version 3.1.
+
+To update:
+
+```
+watchman shutdown-server
+brew update
+brew reinstall watchman
+```
+
