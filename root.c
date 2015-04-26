@@ -1217,46 +1217,6 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   } while (w_ht_next(dir->files, &i));
 }
 
-static void process_subscriptions(w_root_t *root)
-{
-  w_ht_iter_t iter;
-
-  if (root->last_sub_tick == root->pending_sub_tick) {
-    return;
-  }
-
-  w_log(W_LOG_DBG, "sub last=%" PRIu32 "  pending=%" PRIu32 "\n",
-      root->last_sub_tick,
-      root->pending_sub_tick);
-
-  /* now look for subscribers */
-  w_log(W_LOG_DBG, "looking for connected subscribers\n");
-  pthread_mutex_lock(&w_client_lock);
-  if (w_ht_first(clients, &iter)) do {
-    struct watchman_client *client = w_ht_val_ptr(iter.value);
-    w_ht_iter_t citer;
-
-    w_log(W_LOG_DBG, "client=%p fd=%d\n", client, client->fd);
-
-    if (w_ht_first(client->subscriptions, &citer)) do {
-      struct watchman_client_subscription *sub = w_ht_val_ptr(citer.value);
-
-      w_log(W_LOG_DBG, "sub=%p %s\n", sub, sub->name->buf);
-      if (sub->root != root) {
-        w_log(W_LOG_DBG, "root doesn't match, skipping\n");
-        continue;
-      }
-
-      w_run_subscription_rules(client, sub, root);
-
-    } while (w_ht_next(client->subscriptions, &citer));
-
-  } while (w_ht_next(clients, &iter));
-  pthread_mutex_unlock(&w_client_lock);
-
-  root->last_sub_tick = root->pending_sub_tick;
-}
-
 static bool vcs_file_exists(w_root_t *root,
     const char *dname, const char *fname)
 {
@@ -1292,6 +1252,60 @@ static bool vcs_file_exists(w_root_t *root,
   return file->exists;
 }
 
+static bool is_vcs_op_in_progress(w_root_t *root) {
+  return vcs_file_exists(root, ".hg", "wlock") ||
+         vcs_file_exists(root, ".git", "index.lock");
+}
+
+static void process_subscriptions(w_root_t *root)
+{
+  w_ht_iter_t iter;
+
+  if (root->last_sub_tick == root->pending_sub_tick) {
+    return;
+  }
+
+  // If it looks like we're in a repo undergoing a rebase or
+  // other similar operation, we want to defer subscription
+  // notifications until things settle down
+  if (is_vcs_op_in_progress(root)) {
+    w_log(W_LOG_DBG, "deferring subscription notifications "
+        "until VCS operations complete\n");
+    return;
+  }
+
+  w_log(W_LOG_DBG, "sub last=%" PRIu32 "  pending=%" PRIu32 "\n",
+      root->last_sub_tick,
+      root->pending_sub_tick);
+
+  /* now look for subscribers */
+  w_log(W_LOG_DBG, "looking for connected subscribers\n");
+  pthread_mutex_lock(&w_client_lock);
+  if (w_ht_first(clients, &iter)) do {
+    struct watchman_client *client = w_ht_val_ptr(iter.value);
+    w_ht_iter_t citer;
+
+    w_log(W_LOG_DBG, "client=%p fd=%d\n", client, client->fd);
+
+    if (w_ht_first(client->subscriptions, &citer)) do {
+      struct watchman_client_subscription *sub = w_ht_val_ptr(citer.value);
+
+      w_log(W_LOG_DBG, "sub=%p %s\n", sub, sub->name->buf);
+      if (sub->root != root) {
+        w_log(W_LOG_DBG, "root doesn't match, skipping\n");
+        continue;
+      }
+
+      w_run_subscription_rules(client, sub, root);
+
+    } while (w_ht_next(client->subscriptions, &citer));
+
+  } while (w_ht_next(clients, &iter));
+  pthread_mutex_unlock(&w_client_lock);
+
+  root->last_sub_tick = root->pending_sub_tick;
+}
+
 /* process any pending triggers.
  * must be called with root locked
  */
@@ -1306,8 +1320,7 @@ static void process_triggers(w_root_t *root)
   // If it looks like we're in a repo undergoing a rebase or
   // other similar operation, we want to defer triggers until
   // things settle down
-  if (vcs_file_exists(root, ".hg", "wlock") ||
-      vcs_file_exists(root, ".git", "index.lock")) {
+  if (is_vcs_op_in_progress(root)) {
     w_log(W_LOG_DBG, "deferring triggers until VCS operations complete\n");
     return;
   }
