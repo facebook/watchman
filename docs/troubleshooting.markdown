@@ -166,6 +166,26 @@ progressively more invasive:
 * Restart the fsevents service: `sudo pkill -9 -x fseventsd`
 * Restart your computer
 
+## Triggers/Subscriptions don't fire on OS X
+
+There is a rare fsevents bug that can prevent any notifications from working
+in directories where the case of the name of a directory in the kernel has
+an inconsistency.
+
+You can test whether this is happening to you by following [the instructions
+for the find-fsevents-bugs tool](
+https://github.com/andreyvit/find-fsevents-bugs).
+
+If it is happening to you, the resolution is to rename the directories
+highlighted by the tool.
+
+You can read more about this issue in the following resources:
+
+* [Knowledge base article for LiveReload](
+http://feedback.livereload.com/knowledgebase/articles/86239-os-x-fsevents-bug-may-prevent-monitoring-of-certai)
+* [issue for the Ruby fsevents module](https://github.com/thibaudgg/rb-fsevent/issues/10)
+* [Open Radar bug report](http://openradar.appspot.com/10207999)
+
 ## ReactNative: Watcher took too long to load
 
 There was an issue that was the result of umask affecting the permissions of
