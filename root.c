@@ -53,15 +53,22 @@ static void delete_dir(w_ht_val_t val)
 {
   struct watchman_dir *dir = w_ht_val_ptr(val);
 
+  w_log(W_LOG_DBG, "delete_dir(%.*s)\n", dir->path->len, dir->path->buf);
+
   w_string_delref(dir->path);
+  dir->path = NULL;
+
   if (dir->files) {
     w_ht_free(dir->files);
+    dir->files = NULL;
   }
   if (dir->lc_files) {
     w_ht_free(dir->lc_files);
+    dir->lc_files = NULL;
   }
   if (dir->dirs) {
     w_ht_free(dir->dirs);
+    dir->dirs = NULL;
   }
   free(dir);
 }
@@ -1368,34 +1375,26 @@ static void free_file_node(struct watchman_file *file)
   free(file);
 }
 
-static void age_out_file(w_root_t *root, struct watchman_file *file);
-
-static void age_out_dir(w_root_t *root, struct watchman_dir *dir)
+static void record_aged_out_dir(w_root_t *root, w_ht_t *aged_dir_names,
+    struct watchman_dir *dir)
 {
   w_ht_iter_t i;
-  // Since age_out_file deletes itself from dir->files, it will
-  // invalidate the iterator, so we have to restart our iteration each time.
-  while (dir->files && w_ht_first(dir->files, &i)) {
-    struct watchman_file *file = w_ht_val_ptr(i.value);
 
-    assert(!file->exists);
-    age_out_file(root, file);
-  }
+  w_log(W_LOG_DBG, "age_out: remember dir %.*s\n",
+      dir->path->len, dir->path->buf);
+  w_ht_insert(aged_dir_names, w_ht_ptr_val(dir->path),
+        w_ht_ptr_val(dir), false);
 
-  // Since age_out_dir deletes itself from dir->dirs, it will
-  // invalidate the iterator, so we have to restart our iteration each time.
-  while (dir->dirs && w_ht_first(dir->dirs, &i)) {
+  if (dir->dirs && w_ht_first(dir->dirs, &i)) do {
     struct watchman_dir *child = w_ht_val_ptr(i.value);
 
-    age_out_dir(root, child);
-  }
-
-  // This will implicitly call delete_dir() which will tear down
-  // the files and dirs hashes
-  w_ht_del(root->dirname_to_dir, w_ht_ptr_val(dir->path));
+    record_aged_out_dir(root, aged_dir_names, child);
+    w_ht_iter_del(dir->dirs, &i);
+  } while (w_ht_next(dir->dirs, &i));
 }
 
-static void age_out_file(w_root_t *root, struct watchman_file *file)
+static void age_out_file(w_root_t *root, w_ht_t *aged_dir_names,
+    struct watchman_file *file)
 {
   struct watchman_dir *dir;
   w_string_t *full_name;
@@ -1413,12 +1412,16 @@ static void age_out_file(w_root_t *root, struct watchman_file *file)
     // Remove the entry from the containing file hash
     w_ht_del(file->parent->files, w_ht_ptr_val(file->name));
   }
+  if (file->parent->dirs) {
+    // Remove the entry from the containing dir hash
+    w_ht_del(file->parent->dirs, w_ht_ptr_val(full_name));
+  }
 
-  // resolve the dir of the same name and recursively clean its
-  // contents
+  // resolve the dir of the same name and mark it for later removal
+  // from our internal datastructures
   dir = w_root_resolve_dir(root, full_name, false);
   if (dir) {
-    age_out_dir(root, dir);
+    record_aged_out_dir(root, aged_dir_names, dir);
   }
 
   // And free it.  We don't need to stop watching it, because we already
@@ -1426,6 +1429,18 @@ static void age_out_file(w_root_t *root, struct watchman_file *file)
   free_file_node(file);
 
   w_string_delref(full_name);
+}
+
+static void age_out_dir(w_root_t *root, struct watchman_dir *dir)
+{
+  w_log(W_LOG_DBG, "age_out: ht_del dir %.*s\n",
+      dir->path->len, dir->path->buf);
+
+  assert(!dir->files || w_ht_size(dir->files) == 0);
+
+  // This will implicitly call delete_dir() which will tear down
+  // the files and dirs hashes
+  w_ht_del(root->dirname_to_dir, w_ht_ptr_val(dir->path));
 }
 
 // Find deleted nodes older than the gc_age setting.
@@ -1438,9 +1453,11 @@ void w_root_perform_age_out(w_root_t *root, int min_age)
   struct watchman_file *file, *tmp;
   time_t now;
   w_ht_iter_t i;
+  w_ht_t *aged_dir_names;
 
   time(&now);
   root->last_age_out_timestamp = now;
+  aged_dir_names = w_ht_new(2, &w_ht_string_funcs);
 
   file = root->latest_file;
   while (file) {
@@ -1449,24 +1466,26 @@ void w_root_perform_age_out(w_root_t *root, int min_age)
       continue;
     }
 
-    // We look backwards for the next iteration, as forwards may
-    // be a file node that will also be deleted by age_out_file()
-    // below because it is a child node of the the current value
-    // of file.
-    tmp = file->prev;
+    // Get the next file before we remove the current one
+    tmp = file->next;
 
     w_log(W_LOG_DBG, "age_out file=%.*s/%.*s\n",
         file->parent->path->len, file->parent->path->buf,
         file->name->len, file->name->buf);
 
-    age_out_file(root, file);
+    age_out_file(root, aged_dir_names, file);
 
-    if (tmp) {
-      file = tmp;
-    } else {
-      file = root->latest_file;
-    }
+    file = tmp;
   }
+
+  // For each dir that matched a pruned file node, delete from
+  // our internal structures
+  if (w_ht_first(aged_dir_names, &i)) do {
+    struct watchman_dir *dir = w_ht_val_ptr(i.value);
+
+    age_out_dir(root, dir);
+  } while (w_ht_next(aged_dir_names, &i));
+  w_ht_free(aged_dir_names);
 
   // Age out cursors too.
   if (w_ht_first(root->cursors, &i)) do {

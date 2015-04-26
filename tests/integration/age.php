@@ -77,20 +77,22 @@ class ageOutTestCase extends WatchmanTestCase {
     sort($res['files']);
     $this->assertEqual(array('b.txt', 'c.txt'), $res['files']);
 
-    // Let's stress it a bit
-    mkdir("$root/dir");
-    for ($i = 0; $i < 100; $i++) {
-      touch("$root/stress-$i");
-      touch("$root/dir/$i");
+    for ($attempts = 0; $attempts < 3; $attempts++) {
+      // Let's stress it a bit
+      mkdir("$root/dir");
+      for ($i = 0; $i < 100; $i++) {
+        touch("$root/stress-$i");
+        touch("$root/dir/$i");
+      }
+      for ($i = 0; $i < 100; $i++) {
+        unlink("$root/stress-$i");
+        unlink("$root/dir/$i");
+      }
+      rmdir("$root/dir");
+      $this->assertFileList($root, array('b.txt', 'c.txt'));
+      $this->watchmanCommand('debug-ageout', $root, 0);
+      $this->assertFileList($root, array('b.txt', 'c.txt'));
     }
-    for ($i = 0; $i < 100; $i++) {
-      unlink("$root/stress-$i");
-      unlink("$root/dir/$i");
-    }
-    rmdir("$root/dir");
-    $this->assertFileList($root, array('b.txt', 'c.txt'));
-    $this->watchmanCommand('debug-ageout', $root, 0);
-    $this->assertFileList($root, array('b.txt', 'c.txt'));
   }
 }
 
