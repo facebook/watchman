@@ -1416,6 +1416,17 @@ static void age_out_file(w_root_t *root, w_ht_t *aged_dir_names,
     // Remove the entry from the containing dir hash
     w_ht_del(file->parent->dirs, w_ht_ptr_val(full_name));
   }
+  if (file->parent->lc_files) {
+    // Remove the entry from the containing lower case files hash,
+    // but only it it matches us (it may point to a different file
+    // node with a differently-cased name)
+    w_string_t *lc_name = w_string_dup_lower(file->name);
+    if (w_ht_get(file->parent->lc_files, w_ht_ptr_val(lc_name))
+        == w_ht_ptr_val(file)) {
+      w_ht_del(file->parent->lc_files, w_ht_ptr_val(lc_name));
+    }
+    w_string_delref(lc_name);
+  }
 
   // resolve the dir of the same name and mark it for later removal
   // from our internal datastructures
