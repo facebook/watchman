@@ -600,9 +600,6 @@ void w_run_subscription_rules(
     struct watchman_client_subscription *sub,
     w_root_t *root);
 
-json_t *w_match_results_to_json(
-    uint32_t num_matches,
-    struct watchman_rule_match *matches);
 void w_match_results_free(uint32_t num_matches,
     struct watchman_rule_match *matches);
 
