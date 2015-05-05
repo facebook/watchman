@@ -1,6 +1,7 @@
 [
   {"category": "Installation"},
   {"category": "Invocation"},
+  {"category": "Compatibility"},
   {"category": "Commands"},
   {"category": "Queries"},
   {"category": "Internals"},
