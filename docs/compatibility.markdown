@@ -2,7 +2,7 @@
 id: compatibility
 title: Compatibility Rules
 layout: docs
-category: Compabitility
+category: Compatibility
 permalink: docs/compatibility.html
 ---
 
