@@ -167,6 +167,7 @@ static void *fsevents_thread(void *arg)
   CFFileDescriptorContext fdctx;
   CFFileDescriptorRef fdref;
   struct fsevents_root_state *state = root->watch;
+  double latency;
 
   // Block until fsevents_root_start is waiting for our initialization
   pthread_mutex_lock(&state->fse_mtx);
@@ -210,9 +211,16 @@ static void *fsevents_thread(void *arg)
   CFArrayAppendValue(parray, cpath);
   CFRelease(cpath);
 
+  latency = cfg_get_double(root, "fsevents_latency", 0.01),
+  w_log(W_LOG_DBG,
+      "FSEventStreamCreate for path %.*s with latency %f seconds\n",
+      root->root_path->len,
+      root->root_path->buf,
+      latency);
+
   fs_stream = FSEventStreamCreate(NULL, fse_callback,
       &ctx, parray, kFSEventStreamEventIdSinceNow,
-      0.0001,
+      latency,
       kFSEventStreamCreateFlagNoDefer|
       kFSEventStreamCreateFlagWatchRoot|
       kFSEventStreamCreateFlagFileEvents);

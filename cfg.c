@@ -222,5 +222,18 @@ json_int_t cfg_get_int(w_root_t *root, const char *name,
   return defval;
 }
 
+double cfg_get_double(w_root_t *root, const char *name, double defval) {
+  json_t *val = cfg_get_json(root, name);
+
+  if (val) {
+    if (!json_is_number(val)) {
+      w_log(W_LOG_FATAL, "Expected config value %s to be a number\n", name);
+    }
+    return json_real_value(val);
+  }
+
+  return defval;
+}
+
 /* vim:ts=2:sw=2:et:
  */

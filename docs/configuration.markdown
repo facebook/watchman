@@ -52,6 +52,7 @@ Option | Scope | Since version
 `ignore_dirs` | local | 2.9.3
 `gc_age_seconds` | local | 2.9.4
 `gc_interval_seconds` | local | 2.9.4
+`fsevents_latency` | fallback | 3.2
 
 ### Configuration Options
 
@@ -203,3 +204,15 @@ elsewhere in this document for more information.  The default for this is
 How often to check for, and prune out, deleted nodes per the `gc_age_seconds`
 option description above.  The default for this is `86400` (24 hours).  Set
 this to `0` to disable the periodic pruning operation.
+
+#### fsevents_latency
+
+Controls the latency parameter that is passed to `FSEventStreamCreate` on OS X.
+The value is measured in seconds.  The fixed value of this parameter prior to
+version 3.2 of watchman was `0.0001` seconds.  Starting in version 3.2 of
+watchman, the default is now `0.01` seconds and can be controlled on a
+per-root basis.
+
+If you observe problems with `kFSEventStreamEventFlagUserDropped` increasing
+the latency parameter will allow the system to batch more change notifications
+together and operate more efficiently.
