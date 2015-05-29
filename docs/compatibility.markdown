@@ -23,5 +23,7 @@ documented in release notes.
 * Since its public APIs never make incompatible changes, MAJOR versions are
   moot.
 * While in the past we've released versions with three components (x.y.z),
-starting version 3.1 the version number will only have two components (x.y).
-* The version after 3.9 is expected to be 4.0.
+  starting version 3.1 the version number will only have two components that
+  are meaningful (x.y), with the third component always zero.
+* The version after 3.9 is expected to be 4.0.  The version number string
+  reported by these versions will be 3.9.0 and 4.0.0 respectively.
