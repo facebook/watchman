@@ -5,7 +5,9 @@ but they will still continue to work forever.</li><li>Whenever a command or opti
 alternative.</li><li>Bugfixes might cause minor behavior changes -- these changes will usually be
 documented in release notes.</li></ul><p><code>watchman</code> does not follow <a href="http:&#x2f;&#x2f;semver.org" target="_blank">semantic versioning</a>!</p><ul><li>Since its public APIs never make incompatible changes, MAJOR versions are
 moot.</li><li>While in the past we&#x27;ve released versions with three components (x.y.z),
-starting version 3.1 the version number will only have two components (x.y).</li><li>The version after 3.9 is expected to be 4.0.</li></ul></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2015 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
+starting version 3.1 the version number will only have two components that
+are meaningful (x.y), with the third component always zero.</li><li>The version after 3.9 is expected to be 4.0.  The version number string
+reported by these versions will be 3.9.0 and 4.0.0 respectively.</li></ul></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2015 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
             (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
             (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
             m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
