@@ -799,9 +799,17 @@ static void stat_path(w_root_t *root,
     if (file) {
       w_log(W_LOG_DBG, "lstat(%s) -> %s so marking %.*s deleted\n",
           path, strerror(err), file->name->len, file->name->buf);
-      file->exists = false;
-      w_root_mark_file_changed(root, file, now);
+    } else {
+      // It was created and removed before we could ever observe it
+      // in the filesystem.  We need to generate a deleted file
+      // representation of it now, so that subscription clients can
+      // be notified of this event
+      file = w_root_resolve_file(root, dir, file_name, now);
+      w_log(W_LOG_DBG, "lstat(%s) -> %s and file node was NULL. "
+          "Generating a deleted node.\n", path, strerror(err));
     }
+    file->exists = false;
+    w_root_mark_file_changed(root, file, now);
   } else if (res) {
     w_log(W_LOG_ERR, "lstat(%s) %d %s\n",
         path, err, strerror(err));
