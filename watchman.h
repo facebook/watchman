@@ -477,6 +477,8 @@ bool w_reap_children(bool block);
 
 extern int log_level;
 extern char *log_name;
+const char *w_set_thread_name(const char *fmt, ...);
+const char *w_get_thread_name(void);
 void w_log(int level, const char *fmt, ...)
 #ifdef __GNUC__
   __attribute__((format(printf, 2, 3)))

@@ -56,6 +56,7 @@ static void run_service(void)
   /* we are the child, let's set things up */
   ignore_result(chdir("/"));
 
+  w_set_thread_name("listener");
   watchman_watcher_init();
   res = w_start_listener(sock_name);
   watchman_watcher_dtor();
@@ -228,6 +229,7 @@ static void spawn_via_launchd(void)
 "        <string>%s</string>\n"
 "        <string>--foreground</string>\n"
 "        <string>--logfile=%s</string>\n"
+"        <string>--log-level=%d</string>\n"
 "        <string>--sockname=%s</string>\n"
 "        <string>--statefile=%s</string>\n"
 "    </array>\n"
@@ -253,7 +255,8 @@ static void spawn_via_launchd(void)
 "    </dict>\n"
 "</dict>\n"
 "</plist>\n",
-    watchman_path, log_name, sock_name, watchman_state_file, sock_name,
+    watchman_path, log_name, log_level, sock_name,
+    watchman_state_file, sock_name,
     getenv("PATH"));
   fclose(fp);
   // Don't rely on umask, ensure we have the correct perms
@@ -598,6 +601,7 @@ int main(int argc, char **argv)
     return 0;
   }
 
+  w_set_thread_name("cli");
   cmd = build_command(argc, argv);
   preprocess_command(cmd, output_pdu);
 

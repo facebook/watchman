@@ -1278,8 +1278,6 @@ static void process_subscriptions(w_root_t *root)
     struct watchman_client *client = w_ht_val_ptr(iter.value);
     w_ht_iter_t citer;
 
-    w_log(W_LOG_DBG, "client=%p fd=%d\n", client, client->fd);
-
     if (w_ht_first(client->subscriptions, &citer)) do {
       struct watchman_client_subscription *sub = w_ht_val_ptr(citer.value);
 
@@ -1287,8 +1285,10 @@ static void process_subscriptions(w_root_t *root)
         w_log(W_LOG_DBG, "root doesn't match, skipping\n");
         continue;
       }
-      w_log(W_LOG_DBG, "sub=%p %s, last=%" PRIu32 " pending=%" PRIu32 "\n",
-          sub, sub->name->buf, sub->last_sub_tick, root->pending_sub_tick);
+      w_log(W_LOG_DBG, "client->fd=%d sub=%p %s, last=%" PRIu32
+          " pending=%" PRIu32 "\n",
+          client->fd, sub, sub->name->buf, sub->last_sub_tick,
+          root->pending_sub_tick);
 
       if (sub->last_sub_tick == root->pending_sub_tick) {
         continue;
@@ -1572,8 +1572,7 @@ static void notify_thread(w_root_t *root)
       root->done_initial = true;
       w_root_unlock(root);
 
-      w_log(W_LOG_DBG, "notify_thread[%s]: initial crawl complete\n",
-            root->root_path->buf);
+      w_log(W_LOG_DBG, "initial crawl complete\n");
     }
 
     if (!wait_for_notify(root, timeoutms)) {
@@ -1583,8 +1582,6 @@ static void notify_thread(w_root_t *root)
         goto unlock;
       }
 
-      w_log(W_LOG_DBG, "notify_thread[%s] assessing triggers\n",
-          root->root_path->buf);
       process_subscriptions(root);
       process_triggers(root);
       consider_age_out(root);
@@ -2015,10 +2012,10 @@ static void *run_notify_thread(void *arg)
 {
   w_root_t *root = arg;
 
+  w_set_thread_name("notify %.*s", root->root_path->len, root->root_path->buf);
   notify_thread(root);
 
-  w_log(W_LOG_DBG, "notify_thread: out of loop %s\n",
-      root->root_path->buf);
+  w_log(W_LOG_DBG, "out of loop\n");
 
   /* we'll remove it from watched roots if it isn't
    * already out of there */

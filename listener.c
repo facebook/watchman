@@ -421,6 +421,7 @@ static void *client_thread(void *ptr)
   char buf[16];
 
   w_set_nonblock(client->fd);
+  w_set_thread_name("client:fd=%d", client->fd);
 
   while (!stopping) {
     // Wait for input from either the client socket or
@@ -551,6 +552,8 @@ static void *child_reaper(void *arg)
 {
   sigset_t sigset;
   unused_parameter(arg);
+
+  w_set_thread_name("child_reaper");
 
   // Unblock SIGCHLD only in this thread
   sigemptyset(&sigset);

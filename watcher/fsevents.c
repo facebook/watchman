@@ -151,9 +151,9 @@ static void fse_pipe_callback(CFFileDescriptorRef fdref,
 
   unused_parameter(fdref);
   unused_parameter(callBackTypes);
+  unused_parameter(root);
 
-  w_log(W_LOG_DBG, "fse_thread[%.*s]: pipe signalled\n",
-      root->root_path->len, root->root_path->buf);
+  w_log(W_LOG_DBG, "pipe signalled\n");
   CFRunLoopStop(CFRunLoopGetCurrent());
 }
 
@@ -168,6 +168,9 @@ static void *fsevents_thread(void *arg)
   CFFileDescriptorRef fdref;
   struct fsevents_root_state *state = root->watch;
   double latency;
+
+  w_set_thread_name("fsevents %.*s", root->root_path->len,
+      root->root_path->buf);
 
   // Block until fsevents_root_start is waiting for our initialization
   pthread_mutex_lock(&state->fse_mtx);
@@ -269,8 +272,7 @@ done:
   pthread_cond_signal(&state->fse_cond);
   pthread_mutex_unlock(&state->fse_mtx);
 
-  w_log(W_LOG_DBG, "fse_thread[%.*s] done\n",
-      root->root_path->len, root->root_path->buf);
+  w_log(W_LOG_DBG, "fse_thread done\n");
   w_root_delref(root);
   return NULL;
 }
