@@ -1260,28 +1260,21 @@ static bool is_vcs_op_in_progress(w_root_t *root) {
 static void process_subscriptions(w_root_t *root)
 {
   w_ht_iter_t iter;
+  bool vcs_in_progress;
 
-  if (root->last_sub_tick == root->pending_sub_tick) {
-    return;
+  pthread_mutex_lock(&w_client_lock);
+
+  if (!w_ht_first(clients, &iter)) {
+    // No subscribers
+    goto done;
   }
 
   // If it looks like we're in a repo undergoing a rebase or
   // other similar operation, we want to defer subscription
   // notifications until things settle down
-  if (is_vcs_op_in_progress(root)) {
-    w_log(W_LOG_DBG, "deferring subscription notifications "
-        "until VCS operations complete\n");
-    return;
-  }
+  vcs_in_progress = is_vcs_op_in_progress(root);
 
-  w_log(W_LOG_DBG, "sub last=%" PRIu32 "  pending=%" PRIu32 "\n",
-      root->last_sub_tick,
-      root->pending_sub_tick);
-
-  /* now look for subscribers */
-  w_log(W_LOG_DBG, "looking for connected subscribers\n");
-  pthread_mutex_lock(&w_client_lock);
-  if (w_ht_first(clients, &iter)) do {
+  do {
     struct watchman_client *client = w_ht_val_ptr(iter.value);
     w_ht_iter_t citer;
 
@@ -1290,20 +1283,31 @@ static void process_subscriptions(w_root_t *root)
     if (w_ht_first(client->subscriptions, &citer)) do {
       struct watchman_client_subscription *sub = w_ht_val_ptr(citer.value);
 
-      w_log(W_LOG_DBG, "sub=%p %s\n", sub, sub->name->buf);
       if (sub->root != root) {
         w_log(W_LOG_DBG, "root doesn't match, skipping\n");
         continue;
       }
+      w_log(W_LOG_DBG, "sub=%p %s, last=%" PRIu32 " pending=%" PRIu32 "\n",
+          sub, sub->name->buf, sub->last_sub_tick, root->pending_sub_tick);
+
+      if (sub->last_sub_tick == root->pending_sub_tick) {
+        continue;
+      }
+
+      if (sub->vcs_defer && vcs_in_progress) {
+        w_log(W_LOG_DBG, "deferring subscription notifications for %s "
+          "until VCS operations complete\n", sub->name->buf);
+        continue;
+      }
 
       w_run_subscription_rules(client, sub, root);
+      sub->last_sub_tick = root->pending_sub_tick;
 
     } while (w_ht_next(client->subscriptions, &citer));
 
   } while (w_ht_next(clients, &iter));
+done:
   pthread_mutex_unlock(&w_client_lock);
-
-  root->last_sub_tick = root->pending_sub_tick;
 }
 
 /* process any pending triggers.

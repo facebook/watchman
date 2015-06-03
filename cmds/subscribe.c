@@ -173,6 +173,7 @@ static void cmd_subscribe(struct watchman_client *client, json_t *args)
   json_t *query_spec;
   struct w_query_field_list field_list;
   char *errmsg;
+  int defer = true; /* can't use bool because json_unpack requires int */
 
   if (json_array_size(args) != 4) {
     send_error_response(client, "wrong number of arguments for subscribe");
@@ -215,6 +216,10 @@ static void cmd_subscribe(struct watchman_client *client, json_t *args)
 
   sub->name = w_string_new(name);
   sub->query = query;
+
+  json_unpack(query_spec, "{s?:b}", "defer_vcs", &defer);
+  sub->vcs_defer = defer;
+
   memcpy(&sub->field_list, &field_list, sizeof(field_list));
   sub->root = root;
 

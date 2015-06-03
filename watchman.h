@@ -405,7 +405,6 @@ struct watchman_root {
   uint32_t next_cmd_id;
   uint32_t last_trigger_tick;
   uint32_t pending_trigger_tick;
-  uint32_t last_sub_tick;
   uint32_t pending_sub_tick;
   uint32_t last_age_out_tick;
   time_t last_age_out_timestamp;
@@ -785,6 +784,8 @@ struct watchman_client_subscription {
   w_root_t *root;
   w_string_t *name;
   w_query *query;
+  bool vcs_defer;
+  uint32_t last_sub_tick;
   struct w_query_field_list field_list;
 };
 

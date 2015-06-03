@@ -7,6 +7,70 @@ class subscribeTestCase extends WatchmanTestCase {
     return true;
   }
 
+  function testImmediateSubscribe() {
+    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $root = realpath($dir->getPath());
+    mkdir("$root/.hg");
+
+    $this->watch($root);
+    $this->assertFileList($root, array('.hg'));
+    try {
+      $sub = $this->watchmanCommand('subscribe', $root, 'nodefer', array(
+        'fields' => array('name', 'exists'),
+        'defer_vcs' => false,
+      ));
+
+      $this->waitForSub('nodefer', function ($data) {
+        return true;
+      });
+      list($sub) = $this->getSubData('nodefer');
+
+      $this->assertEqual(true, $sub['is_fresh_instance']);
+      $files = $sub['files'];
+      $this->assertEqual(
+        array(
+          array('name' => '.hg', 'exists' => true)
+        ), $files);
+
+      touch("$root/.hg/wlock");
+      $this->waitForSub('nodefer', function ($data) {
+        return true;
+      });
+      $sub = $this->tail($this->getSubData('nodefer'));
+      $wlock = null;
+      foreach ($sub['files'] as $ent) {
+        if ($ent['name'] == '.hg/wlock') {
+          $wlock = $ent;
+        }
+      }
+      $this->assertEqual(array('name' => '.hg/wlock', 'exists' => true), $ent);
+
+      unlink("$root/.hg/wlock");
+
+      $this->waitForSub('nodefer', function ($data) {
+        return true;
+      });
+      $sub = $this->tail($this->getSubData('nodefer'));
+
+      $wlock = null;
+      foreach ($sub['files'] as $ent) {
+        if ($ent['name'] == '.hg/wlock') {
+          $wlock = $ent;
+        }
+      }
+      $this->assertEqual(array('name' => '.hg/wlock', 'exists' => false), $ent);
+
+      $this->watchmanCommand('unsubscribe', $root, 'nodefer');
+    } catch (Exception $e) {
+      $this->watchmanCommand('unsubscribe', $root, 'nodefer');
+      throw $e;
+    }
+  }
+
+  function tail(array $array) {
+    return end($array);
+  }
+
   function testSubscribe() {
     $dir = PhutilDirectoryFixture::newEmptyFixture();
     $root = realpath($dir->getPath());
@@ -42,7 +106,7 @@ class subscribeTestCase extends WatchmanTestCase {
       $this->waitForSub('myname', function ($data) {
         return true;
       });
-      list($sub) = $this->getSubData('myname');
+      $sub = $this->tail($this->getSubData('myname'));
 
       $this->assertEqual(false, $sub['is_fresh_instance']);
       $expect = array('a/lemon');

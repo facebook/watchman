@@ -77,3 +77,35 @@ the `query` command with the `since` generator.
 The suggested mode of operation is for the client process to maintain its own
 local copy of the last "clock" value and use that to establish the subscription
 when it first connects.
+
+## Filesystem Settling
+
+Prior to watchman version 3.2, the settling behavior was to hold subscription
+notifications until the kernel notification stream was complete.
+
+Starting in watchman version 3.2, after the notification stream is complete, if
+the root appears to be a version control directory, subscription notifications
+will be held until an outstanding version control operation is complete (at the
+time of writing, this is based on the presence of either `.hg/wlock` or
+`.git/index.lock`).  This behavior matches triggers and helps to avoid
+performing transient work in response to files changing, for example, during a
+rebase operation.
+
+In some circumstances it is desirable for a client to observe the creation of
+the control files at the start of a version control operation.  You may specify
+that you want this behavior by passing the `defer_vcs` flag to your subscription
+command invocation:
+
+```bash
+$ watchman -j -p <<-EOT
+["subscribe", "/path/to/root", "mysubscriptionname", {
+  "expression": ["allof",
+    ["type", "f"],
+    ["not", "empty"],
+    ["suffix", "php"]
+  ],
+  "defer_vcs": false,
+  "fields": ["name"]
+}]
+EOT
+```
