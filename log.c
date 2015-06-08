@@ -44,7 +44,7 @@ const char *w_set_thread_name(const char *fmt, ...) {
   va_list ap;
   free(pthread_getspecific(thread_name_key));
   va_start(ap, fmt);
-  vasprintf(&name, fmt, ap);
+  ignore_result(vasprintf(&name, fmt, ap));
   va_end(ap);
   pthread_setspecific(thread_name_key, name);
   return name;
