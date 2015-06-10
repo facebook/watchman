@@ -36,7 +36,27 @@ the <code>query</code> command with the <code>since</code> generator.</p><div cl
   <span class="token string">&quot;fields&quot;</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">&quot;name&quot;</span><span class="token punctuation">]</span>
 <span class="token punctuation">}</span><span class="token punctuation">]</span></div><p>The suggested mode of operation is for the client process to maintain its own
 local copy of the last &quot;clock&quot; value and use that to establish the subscription
-when it first connects.</p></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2015 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
+when it first connects.</p><h2><a class="anchor" name="filesystem-settling"></a>Filesystem Settling <a class="hash-link" href="#filesystem-settling">#</a></h2><p>Prior to watchman version 3.2, the settling behavior was to hold subscription
+notifications until the kernel notification stream was complete.</p><p>Starting in watchman version 3.2, after the notification stream is complete, if
+the root appears to be a version control directory, subscription notifications
+will be held until an outstanding version control operation is complete (at the
+time of writing, this is based on the presence of either <code>.hg&#x2f;wlock</code> or
+<code>.git&#x2f;index.lock</code>).  This behavior matches triggers and helps to avoid
+performing transient work in response to files changing, for example, during a
+rebase operation.</p><p>In some circumstances it is desirable for a client to observe the creation of
+the control files at the start of a version control operation.  You may specify
+that you want this behavior by passing the <code>defer_vcs</code> flag to your subscription
+command invocation:</p><div class="prism language-javascript">$ watchman <span class="token operator">-</span>j <span class="token operator">-</span>p &lt;&lt;<span class="token operator">-</span>EOT
+<span class="token punctuation">[</span><span class="token string">&quot;subscribe&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;&#x2f;path&#x2f;to&#x2f;root&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;mysubscriptionname&quot;</span><span class="token punctuation">,</span> <span class="token punctuation">{</span>
+  <span class="token string">&quot;expression&quot;</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">&quot;allof&quot;</span><span class="token punctuation">,</span>
+    <span class="token punctuation">[</span><span class="token string">&quot;type&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;f&quot;</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+    <span class="token punctuation">[</span><span class="token string">&quot;not&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;empty&quot;</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+    <span class="token punctuation">[</span><span class="token string">&quot;suffix&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;php&quot;</span><span class="token punctuation">]</span>
+  <span class="token punctuation">]</span><span class="token punctuation">,</span>
+  <span class="token string">&quot;defer_vcs&quot;</span><span class="token punctuation">:</span> <span class="token boolean">false</span><span class="token punctuation">,</span>
+  <span class="token string">&quot;fields&quot;</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">&quot;name&quot;</span><span class="token punctuation">]</span>
+<span class="token punctuation">}</span><span class="token punctuation">]</span>
+EOT</div></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2015 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
             (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
             (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
             m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
