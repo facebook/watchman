@@ -26,6 +26,72 @@ static void log_stack_trace(void)
 int log_level = W_LOG_ERR;
 static pthread_key_t thread_name_key;
 
+static void crash_handler(int signo, siginfo_t *si, void *ucontext) {
+  const char *reason = "";
+  unused_parameter(ucontext);
+  if (si) {
+    switch (si->si_signo) {
+      case SIGILL:
+        switch (si->si_code) {
+          case ILL_ILLOPC: reason = "illegal opcode"; break;
+          case ILL_ILLOPN: reason = "illegal operand"; break;
+          case ILL_ILLADR: reason = "illegal addressing mode"; break;
+          case ILL_ILLTRP: reason = "illegal trap"; break;
+          case ILL_PRVOPC: reason = "privileged opcode"; break;
+          case ILL_PRVREG: reason = "privileged register"; break;
+          case ILL_COPROC: reason = "co-processor error"; break;
+          case ILL_BADSTK: reason = "internal stack error"; break;
+        }
+        break;
+      case SIGFPE:
+        switch (si->si_code) {
+          case FPE_INTDIV: reason = "integer divide by zero"; break;
+          case FPE_INTOVF: reason = "integer overflow"; break;
+          case FPE_FLTDIV: reason = "floating point divide by zero"; break;
+          case FPE_FLTOVF: reason = "floating point overflow"; break;
+          case FPE_FLTUND: reason = "floating point underflow"; break;
+          case FPE_FLTRES: reason = "floating point inexact result"; break;
+          case FPE_FLTINV: reason = "invalid floating point operation"; break;
+          case FPE_FLTSUB: reason = "subscript out of range"; break;
+        }
+        break;
+      case SIGSEGV:
+        switch (si->si_code) {
+          case SEGV_MAPERR: reason = "address not mapped to object"; break;
+          case SEGV_ACCERR: reason = "invalid permissions for mapped object";
+                            break;
+        }
+        break;
+#ifdef SIGBUS
+      case SIGBUS:
+        switch (si->si_code) {
+          case BUS_ADRALN: reason = "invalid address alignment"; break;
+          case BUS_ADRERR: reason = "non-existent physical address"; break;
+        }
+        break;
+#endif
+    }
+  }
+  w_log(W_LOG_FATAL, "Terminating due to signal %d %s. %s (%p)\n",
+      signo, strsignal(signo), reason, si ? si->si_value.sival_ptr : NULL);
+}
+
+void w_setup_signal_handlers(void) {
+  struct sigaction sa;
+
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_sigaction = crash_handler;
+  sa.sa_flags = SA_SIGINFO;
+
+  sigaction(SIGSEGV, &sa, NULL);
+#ifdef SIGBUS
+  sigaction(SIGBUS, &sa, NULL);
+#endif
+  sigaction(SIGFPE, &sa, NULL);
+  sigaction(SIGILL, &sa, NULL);
+}
+
+
 static __attribute__((constructor))
 void register_thread_name(void) {
   pthread_key_create(&thread_name_key, free);

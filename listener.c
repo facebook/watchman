@@ -823,7 +823,11 @@ bool w_start_listener(const char *path)
 #ifdef HAVE_LIBGIMLI_H
   if (hb) {
     gimli_heartbeat_set(hb, GIMLI_HB_RUNNING);
+  } else {
+    w_setup_signal_handlers();
   }
+#else
+  w_setup_signal_handlers();
 #endif
   w_set_nonblock(listener_fd);
 
