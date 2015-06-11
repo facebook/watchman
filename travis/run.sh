@@ -9,7 +9,7 @@ make clean
 make
 set +e
 rm -rf /tmp/watchman*
-if ! arc unit --everything ; then
+if ! arc test ; then
   cat /tmp/watchman*
   exit 1
 fi

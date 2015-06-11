@@ -34,7 +34,7 @@ phutil_register_library_map(array(
     'WatchmanLintEngine' => 'ArcanistLintEngine',
     'WatchmanPackageWorkflow' => 'ArcanistBaseWorkflow',
     'WatchmanQueryFuture' => 'FutureProxy',
-    'WatchmanTestCase' => 'ArcanistPhutilTestCase',
+    'WatchmanTestCase' => 'PhutilTestCase',
     'WatchmanTestWorkflow' => 'ArcanistBaseWorkflow',
   ),
 ));

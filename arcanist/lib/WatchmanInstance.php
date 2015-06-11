@@ -240,7 +240,7 @@ class WatchmanInstance {
     stream_set_timeout($this->sock, self::TIMEOUT);
 
     // If you're debugging and want to attach a debugger, then:
-    // `WATCHMAN_DEBUG_WAIT=1 arc unit tests/integration/age.php`
+    // `WATCHMAN_DEBUG_WAIT=1 arc test tests/integration/age.php`
     // then gdb -p or lldb -p with the PID it prints out
     if (getenv("WATCHMAN_DEBUG_WAIT")) {
       printf("PID: %d\n", $this->getProcessID());

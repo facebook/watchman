@@ -47,8 +47,9 @@ You can run the unit tests using:
     $ make integration
 
 If you'd like to contribute a patch to watchman, we'll ask you to make sure
-that `arc unit` still passes successfully and we'd ideally like you to augment
-the test suite to cover the functionality that you're adding or changing.
+that `make integration` still passes successfully and we'd ideally like you to
+augment the test suite to cover the functionality that you're adding or
+changing.
 
 Once you've installed `arc`, you can ask it to submit a diff for code review:
 
