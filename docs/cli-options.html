@@ -11,9 +11,15 @@ will look it up from the system using <code>getpwuid(getuid())</code>.  When we 
 Watchman will resolve this temporary location by looking at the <code>$TMPDIR</code>
 environmental variable, or <code>$TMP</code> if <code>$TMPDIR</code> was not set.  If neither are set
 watchman will use <code>&#x2f;tmp</code>.  When we refer to <code>&lt;TMPDIR&gt;</code> in this documentation we
-mean the result of this resolution.</p><h2><a class="anchor" name="locating-the-service"></a>Locating the service <a class="hash-link" href="#locating-the-service">#</a></h2><div class="prism language-javascript"> <span class="token operator">-</span>U<span class="token punctuation">,</span> <span class="token operator">--</span>sockname<span class="token operator">=</span>PATH   Specify alternate sockname</div><p>If you configured watchman using <code>--enable-statedir=&lt;STATEDIR&gt;</code> the
-default location for sockname will be <code>&lt;STATEDIR&gt;&#x2f;&lt;USER&gt;</code>, otherwise it will be
-<code>&lt;TMPDIR&gt;&#x2f;.watchman.&lt;USER&gt;</code>.</p><p>If you are building a client to access the service programmatically, we
+mean the result of this resolution.</p><p>Watchman tracks its persistent state in a location that we refer to as the
+<code>&lt;STATEDIR&gt;</code> in this documentation.  Since Watchman version 3.1 the <code>STATEDIR</code>
+has defaulted to <code>&lt;PREFIX&gt;&#x2f;var&#x2f;run&#x2f;watchman</code>.  You can change this default when
+you build watchman by using the configure option <code>--enable-statedir</code>.</p><p>Earlier versions of Watchman didn&#x27;t have a default statedir and would instead
+use the <code>&lt;TMPDIR&gt;</code> for this state.  We switched away from that because some
+environments randomize the <code>&lt;TMPDIR&gt;</code> location and this made it difficult for
+clients to locate the Watchman service.</p><h2><a class="anchor" name="locating-the-service"></a>Locating the service <a class="hash-link" href="#locating-the-service">#</a></h2><div class="prism language-javascript"> <span class="token operator">-</span>U<span class="token punctuation">,</span> <span class="token operator">--</span>sockname<span class="token operator">=</span>PATH   Specify alternate sockname</div><p>The default location for sockname will be <code>&lt;STATEDIR&gt;&#x2f;&lt;USER&gt;</code>.  Older versions
+of Watchman would default to <code>&lt;TMPDIR&gt;&#x2f;.watchman.&lt;USER&gt;</code>, depending on how
+it was configured.</p><p>If you are building a client to access the service programmatically, we
 recommend that you invoke <a href="&#x2f;watchman&#x2f;docs&#x2f;cmd&#x2f;get-sockname.html" target="">watchman get-sockname</a> to discover the path that the client and
 server would use.  This has the side effect of spawning the service for you if
 it isn&#x27;t already running.</p><h2><a class="anchor" name="client-options"></a>Client Options <a class="hash-link" href="#client-options">#</a></h2><p>The <code>watchman</code> executable will attempt to start the service if there is no
@@ -50,12 +56,12 @@ for a running server, you will need to restart it (you can stop it by running
 <a href="&#x2f;watchman&#x2f;docs&#x2f;cmd&#x2f;shutdown-server.html" target="">watchman shutdown-server</a>).</p><p>By default, watchman will remember all watches and associated triggers and
 reinstate them if the process is restarted.  This state is stored in the
 <em>statefile</em>:</p><div class="prism language-javascript"> <span class="token operator">--</span>statefile<span class="token operator">=</span>PATH      Specify path to file to hold watch and trigger state
- <span class="token operator">-</span>n<span class="token punctuation">,</span> <span class="token operator">--</span>no<span class="token operator">-</span>save<span class="token operator">-</span>state   Don&#x27;t save state between invocations</div><p>If you configured watchman using <code>--enable-statedir=&lt;STATEDIR&gt;</code> the
-default location for statefile will be <code>&lt;STATEDIR&gt;&#x2f;&lt;USER&gt;.state</code>, otherwise it
-will be <code>&lt;TMPDIR&gt;&#x2f;.watchman.&lt;USER&gt;.state</code>.</p><div class="prism language-javascript"><span class="token operator">-</span>o<span class="token punctuation">,</span> <span class="token operator">--</span>logfile<span class="token operator">=</span>PATH   Specify path to logfile
-    <span class="token operator">--</span>log<span class="token operator">-</span>level      <span class="token keyword">set</span> log verbosity <span class="token punctuation">(</span><span class="token number">0</span> <span class="token operator">=</span> off<span class="token punctuation">,</span> default is <span class="token number">1</span><span class="token punctuation">,</span> verbose <span class="token operator">=</span> <span class="token number">2</span><span class="token punctuation">)</span></div><p>If you configured watchman using <code>--enable-statedir=&lt;STATEDIR&gt;</code> the
-default location for logfile will be <code>&lt;STATEDIR&gt;&#x2f;&lt;USER&gt;.log</code>, otherwise it
-will be <code>&lt;TMPDIR&gt;&#x2f;.watchman.&lt;USER&gt;.log</code>.</p><p>In some relatively uncommon circumstances, such as in test harnesses, you may
+ <span class="token operator">-</span>n<span class="token punctuation">,</span> <span class="token operator">--</span>no<span class="token operator">-</span>save<span class="token operator">-</span>state   Don&#x27;t save state between invocations</div><p>The default location for statefile will be <code>&lt;STATEDIR&gt;&#x2f;&lt;USER&gt;.state</code>.  Older
+versions of watchman may store the state in <code>&lt;TMPDIR&gt;&#x2f;.watchman.&lt;USER&gt;.state</code>,
+depending on how they were configured.</p><div class="prism language-javascript"><span class="token operator">-</span>o<span class="token punctuation">,</span> <span class="token operator">--</span>logfile<span class="token operator">=</span>PATH   Specify path to logfile
+    <span class="token operator">--</span>log<span class="token operator">-</span>level      <span class="token keyword">set</span> log verbosity <span class="token punctuation">(</span><span class="token number">0</span> <span class="token operator">=</span> off<span class="token punctuation">,</span> default is <span class="token number">1</span><span class="token punctuation">,</span> verbose <span class="token operator">=</span> <span class="token number">2</span><span class="token punctuation">)</span></div><p>The default location for logfile will be <code>&lt;STATEDIR&gt;&#x2f;&lt;USER&gt;.log</code>.  Older
+versions of watchman may store the logs in <code>&lt;TMPDIR&gt;&#x2f;.watchman.&lt;USER&gt;.log</code>,
+depending on how they were configured.</p><p>In some relatively uncommon circumstances, such as in test harnesses, you may
 need to directly run the service without it putting itself into the background:</p><div class="prism language-javascript"> <span class="token operator">-</span>f<span class="token punctuation">,</span> <span class="token operator">--</span>foreground      Run the service <span class="token keyword">in</span> the foreground</div></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2015 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
             (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
             (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
