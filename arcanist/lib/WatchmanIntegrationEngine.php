@@ -5,28 +5,28 @@
 // Runs both the integration and the unit tests
 class WatchmanIntegrationEngine extends WatchmanTapEngine {
 
-  public function run() {
-    $unit = $this->runUnitTests();
-    $integ = $this->runIntegrationTests();
+  public function run($tests) {
+    $unit = $this->runUnitTests($tests);
+    $integ = $this->runIntegrationTests($tests);
 
     return array_merge($unit, $integ);
   }
 
-  public function runIntegrationTests() {
+  public function runIntegrationTests($tests) {
     $this->make('all');
 
     // Now find all the test programs
     $root = $this->getProjectRoot();
     $test_dir = $root . "/tests/integration/";
 
-    if ($this->getRunAllTests()) {
+    if (!$tests) {
       $paths = glob($test_dir . "*.php");
       foreach (glob('python/tests/*.py') as $file) {
         $paths[] = $file;
       }
       $paths[] = 'ruby/ruby-watchman/spec/ruby_watchman_spec.rb';
     } else {
-      $paths = $this->getPaths();
+      $paths = $tests;
     }
 
     foreach (array(

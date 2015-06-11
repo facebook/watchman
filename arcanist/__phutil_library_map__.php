@@ -21,6 +21,7 @@ phutil_register_library_map(array(
     'WatchmanQueryFuture' => 'lib/WatchmanQueryFuture.php',
     'WatchmanTapEngine' => 'lib/WatchmanTapEngine.php',
     'WatchmanTestCase' => 'lib/WatchmanTestCase.php',
+    'WatchmanTestWorkflow' => 'workflow/test.php',
   ),
   'function' =>
   array(
@@ -33,7 +34,7 @@ phutil_register_library_map(array(
     'WatchmanLintEngine' => 'ArcanistLintEngine',
     'WatchmanPackageWorkflow' => 'ArcanistBaseWorkflow',
     'WatchmanQueryFuture' => 'FutureProxy',
-    'WatchmanTapEngine' => 'ArcanistBaseUnitTestEngine',
     'WatchmanTestCase' => 'ArcanistPhutilTestCase',
+    'WatchmanTestWorkflow' => 'ArcanistBaseWorkflow',
   ),
 ));
