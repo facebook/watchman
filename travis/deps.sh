@@ -23,19 +23,19 @@ if [ ! -d a ] ; then
   mkdir a
 fi
 cd a
-rm -f master.zip
 if [ ! -d libphutil ] ; then
-  wget https://github.com/facebook/libphutil/archive/master.zip
-  unzip master.zip
-  mv libphutil-master libphutil
-  rm master.zip
+  wget https://github.com/facebook/libphutil/archive/92882eb9404da16ba2ea498c1182cd3c1278877f.zip
+  unzip 92882eb9404da16ba2ea498c1182cd3c1278877f.zip
+  mv libphutil-92882eb9404da16ba2ea498c1182cd3c1278877f libphutil
+  rm 92882eb9404da16ba2ea498c1182cd3c1278877f.zip
 fi
 if [ ! -d arcanist ] ; then
-  wget https://github.com/facebook/arcanist/archive/master.zip
-  unzip master.zip
-  mv arcanist-master arcanist
-  rm master.zip
+  wget https://github.com/facebook/arcanist/archive/e1a051a033b8b190383b1081b086a737621b8682.zip
+  unzip e1a051a033b8b190383b1081b086a737621b8682.zip
+  mv arcanist-e1a051a033b8b190383b1081b086a737621b8682 arcanist
+  rm e1a051a033b8b190383b1081b086a737621b8682.zip
 fi
+if false ; then
 if [ ! -d hg ] ; then
   hg clone -u stable http://selenic.com/hg
   cd hg
@@ -47,6 +47,7 @@ if [ ! -d hgwatchman ] ; then
   cd hgwatchman
   make local
   cd ..
+fi
 fi
 cd ..
 ln -sf ./a/arcanist/bin/arc arc

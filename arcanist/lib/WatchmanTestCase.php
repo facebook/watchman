@@ -2,7 +2,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-class WatchmanTestCase extends PhutilTestCase {
+class WatchmanTestCase extends ArcanistPhutilTestCase {
   protected $root;
   protected $watchman_instance;
   private $use_cli = false;
