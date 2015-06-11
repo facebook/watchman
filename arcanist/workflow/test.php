@@ -36,28 +36,32 @@ class WatchmanTestWorkflow extends ArcanistBaseWorkflow {
     $engine->setProjectRoot($srcdir);
     $paths = $this->getArgument('args');
     $results = $engine->run($paths);
-    $ok = 0;
+    $failed = 0;
+    $colors = array(
+      'pass' => '<fg:green>OK</fg>  ',
+      'fail' => '<fg:red>FAIL</fg>',
+      'skip' => '<fg:yellow>SKIP</fg>',
+    );
     foreach ($results as $result) {
-      $pass = $result->getResult() == 'pass';
-      $status = $pass ? '<fg:green>OK</fg>  ' : '<fg:red>FAIL</fg>';
+      $res = $result->getResult();
+      $status = idx($colors, $res, $res);
       echo phutil_console_format("$status %s (%.2fs)\n",
         $result->getName(),
         $result->getDuration());
-      if ($pass) {
-        $ok++;
-      } else {
-        echo $result->getUserData() . "\n";
+      if ($res == 'pass' || $res == 'skip') {
+        continue;
       }
+      echo $result->getUserData() . "\n";
+      $failed++;
     }
-    $success = $ok == count($results);
-    if ($success) {
-      echo phutil_console_format("\nAll %d tests passed :successkid:\n",
+    if (!$failed) {
+      echo phutil_console_format("\nAll %d tests passed/skipped :successkid:\n",
         count($results));
     } else {
       echo phutil_console_format("\n%d of %d tests failed\n",
-        count($results) - $ok, count($results));
+        $failed, count($results));
     }
-    return $success ? 0 : 1;
+    return $failed ? 1 : 0;
   }
 }
 // vim:ts=2:sw=2:et:
