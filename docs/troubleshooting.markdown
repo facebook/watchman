@@ -66,16 +66,24 @@ shutdown-server` and re-establish your watch on your next watchman query.
 
 ## Where are the logs?
 
-If you configured watchman using `--enable-statedir=<STATEDIR>` the
-default location for logfile will be `<STATEDIR>/<USER>.log`, otherwise it
-will be `<TMPDIR>/.watchman.<USER>.log`.
+Watchman places logs in a file named `<STATEDIR>/<USER>.log`, where `STATEDIR`
+is set at the time that you built watchman.
 
-This location is overridden by the `--logfile` [Server Option](
+If you used the `--enable-statedir=<STATEDIR>` configure option, that will
+be the location that holds your logs.  If not, the default for `STATEDIR`
+will be `<PREFIX>/var/run/watchman`, or for older versions of watchman,
+the logs may be placed in `<TMPDIR>/.watchman.<USER>.log`.
+
+If you're running a `homebrew` build of watchman, you'll find the logs in a
+path named something like
+`/usr/local/Cellar/watchman/3.2.0/var/run/watchman/<USER>.log`.
+
+The default log location may be overridden by the `--logfile` [Server Option](
 /watchman/docs/cli-options.html#server-options).
 
 [Quick note on default locations](
 /watchman/docs/cli-options.html#quick-note-on-default-locations) explains what
-we mean by `<TMPDIR>`, `<USER>` and so on.
+we mean by `<STATEDIR>`, `<TMPDIR>`, `<USER>` and so on.
 
 ## Poison: inotify_add_watch
 
@@ -189,8 +197,8 @@ http://feedback.livereload.com/knowledgebase/articles/86239-os-x-fsevents-bug-ma
 ## ReactNative: Watcher took too long to load
 
 There was an issue that was the result of umask affecting the permissions of
-the launchd plist file that Watchman uses to set up your watchman service on OS X.
-This issue was resolved in Watchman version 3.1.
+the launchd plist file that Watchman uses to set up your watchman service on OS
+X.  This issue was resolved in Watchman version 3.1.
 
 To update:
 
@@ -199,4 +207,3 @@ watchman shutdown-server
 brew update
 brew reinstall watchman
 ```
-

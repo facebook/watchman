@@ -31,15 +31,26 @@ environmental variable, or `$TMP` if `$TMPDIR` was not set.  If neither are set
 watchman will use `/tmp`.  When we refer to `<TMPDIR>` in this documentation we
 mean the result of this resolution.
 
+Watchman tracks its persistent state in a location that we refer to as the
+`<STATEDIR>` in this documentation.  Since Watchman version 3.1 the `STATEDIR`
+has defaulted to `<PREFIX>/var/run/watchman`.  You can change this default when
+you build watchman by using the configure option `--enable-statedir`.
+
+Earlier versions of Watchman didn't have a default statedir and would instead
+use the `<TMPDIR>` for this state.  We switched away from that because some
+environments randomize the `<TMPDIR>` location and this made it difficult for
+clients to locate the Watchman service.
+
+
 ## Locating the service
 
 ```
  -U, --sockname=PATH   Specify alternate sockname
 ```
 
-If you configured watchman using `--enable-statedir=<STATEDIR>` the
-default location for sockname will be `<STATEDIR>/<USER>`, otherwise it will be
-`<TMPDIR>/.watchman.<USER>`.
+The default location for sockname will be `<STATEDIR>/<USER>`.  Older versions
+of Watchman would default to `<TMPDIR>/.watchman.<USER>`, depending on how
+it was configured.
 
 If you are building a client to access the service programmatically, we
 recommend that you invoke [watchman get-sockname](
@@ -165,18 +176,18 @@ reinstate them if the process is restarted.  This state is stored in the
  -n, --no-save-state   Don't save state between invocations
 ```
 
-If you configured watchman using `--enable-statedir=<STATEDIR>` the
-default location for statefile will be `<STATEDIR>/<USER>.state`, otherwise it
-will be `<TMPDIR>/.watchman.<USER>.state`.
+The default location for statefile will be `<STATEDIR>/<USER>.state`.  Older
+versions of watchman may store the state in `<TMPDIR>/.watchman.<USER>.state`,
+depending on how they were configured.
 
 ```
 -o, --logfile=PATH   Specify path to logfile
     --log-level      set log verbosity (0 = off, default is 1, verbose = 2)
 ```
 
-If you configured watchman using `--enable-statedir=<STATEDIR>` the
-default location for logfile will be `<STATEDIR>/<USER>.log`, otherwise it
-will be `<TMPDIR>/.watchman.<USER>.log`.
+The default location for logfile will be `<STATEDIR>/<USER>.log`.  Older
+versions of watchman may store the logs in `<TMPDIR>/.watchman.<USER>.log`,
+depending on how they were configured.
 
 In some relatively uncommon circumstances, such as in test harnesses, you may
 need to directly run the service without it putting itself into the background:
