@@ -83,6 +83,65 @@ class sinceTestCase extends WatchmanTestCase {
     );
   }
 
+  function testSinceRelativeRoot() {
+    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $root = realpath($dir->getPath());
+
+    $watch = $this->watch($root);
+
+    $clock = $this->watchmanCommand('clock', $root);
+    $clock = $clock['clock'];
+
+    touch("$root/a");
+    mkdir("$root/subdir");
+    touch("$root/subdir/foo");
+
+    $this->assertFileList($root, array(
+      'a',
+      'subdir',
+      'subdir/foo',
+    ));
+
+    $res = $this->watchmanCommand('query', $root, array(
+      'since' => $clock,
+      'relative_root' => 'subdir',
+      'fields' => array('name'),
+    ));
+    $this->assertEqual(array('foo'), $res['files']);
+    $clock = $res['clock'];
+
+    // touch a file outside the relative root
+    touch("$root/b");
+    $res = $this->watchmanCommand('query', $root, array(
+      'since' => $clock,
+      'relative_root' => 'subdir',
+      'fields' => array('name'),
+    ));
+    $this->assertEqual(array(), $res['files']);
+    $clock = $res['clock'];
+
+    // touching just the subdir shouldn't cause anything to show up
+    touch("$root/subdir");
+    $res = $this->watchmanCommand('query', $root, array(
+      'since' => $clock,
+      'relative_root' => 'subdir',
+      'fields' => array('name'),
+    ));
+    $this->assertEqual(array(), $res['files']);
+    $clock = $res['clock'];
+
+    // touching a new file inside the subdir should cause it to show up
+    mkdir("$root/subdir/dir2");
+    touch("$root/subdir/dir2/bar");
+    $res = $this->watchmanCommand('query', $root, array(
+      'since' => $clock,
+      'relative_root' => 'subdir',
+      'fields' => array('name'),
+    ));
+    sort($res['files']);
+    $this->assertEqual(array('dir2', 'dir2/bar'), $res['files']);
+  }
+
   function assertFreshInstanceForSince($root, $since, $empty) {
     $res = $this->watchmanCommand('query', $root, array(
       'since' => $since,

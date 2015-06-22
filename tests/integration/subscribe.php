@@ -91,6 +91,13 @@ class subscribeTestCase extends WatchmanTestCase {
         'fields' => array('name'),
       ));
 
+      $relative_sub = $this->watchmanCommand('subscribe', $root, 'relative',
+        array(
+          'fields' => array('name'),
+          'relative_root' => 'a',
+        ),
+      );
+
       $this->waitForSub('myname', function ($data) {
         return true;
       });
@@ -100,6 +107,15 @@ class subscribeTestCase extends WatchmanTestCase {
       $files = $sub['files'];
       sort($files);
       $this->assertEqual(array('a', 'a/lemon', 'b'), $files);
+
+      $this->waitForSub('relative', function ($data) {
+        return true;
+      });
+      list($sub) = $this->getSubData('relative');
+
+      $this->assertEqual(true, $sub['is_fresh_instance']);
+      $files = $sub['files'];
+      $this->assertEqual(array('lemon'), $files);
 
       // delete a file and see that subscribe tells us about it
       unlink("$root/a/lemon");
@@ -116,6 +132,14 @@ class subscribeTestCase extends WatchmanTestCase {
         array_unshift($expect, 'a');
       }
       $this->assertEqual($expect, $sub['files']);
+
+      $this->waitForSub('relative', function ($data) {
+        return true;
+      });
+      $sub = $this->tail($this->getSubData('relative'));
+
+      $this->assertEqual(false, $sub['is_fresh_instance']);
+      $this->assertEqual(array('lemon'), $sub['files']);
 
       // trigger a recrawl, make sure the subscription isn't lost
       $this->watchmanCommand('debug-recrawl', $root);
@@ -147,8 +171,10 @@ class subscribeTestCase extends WatchmanTestCase {
       $this->assertRegex('/Recrawled this watch/', $warn);
 
       $this->watchmanCommand('unsubscribe', $root, 'myname');
+      $this->watchmanCommand('unsubscribe', $root, 'relative');
     } catch (Exception $e) {
       $this->watchmanCommand('unsubscribe', $root, 'myname');
+      $this->watchmanCommand('unsubscribe', $root, 'relative');
       throw $e;
     }
   }

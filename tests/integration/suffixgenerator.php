@@ -28,6 +28,13 @@ class SuffixGeneratorTestCase extends WatchmanTestCase {
     sort($res['files']);
     $this->assertEqual(array('foo.c', 'subdir/bar.txt'), $res['files']);
 
+    $res = $this->watchmanCommand('query', $root, array(
+      'expression' => array('true'),
+      'fields' => array('name'),
+      'suffix' => array('c', 'txt'),
+      'relative_root' => 'subdir/',
+    ));
+    $this->assertEqual(array('bar.txt'), $res['files']);
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array('true'),
@@ -44,4 +51,3 @@ class SuffixGeneratorTestCase extends WatchmanTestCase {
 }
 
 // vim:ts=2:sw=2:et:
-

@@ -189,6 +189,32 @@ static bool parse_paths(w_query *res, json_t *query)
   return true;
 }
 
+static bool parse_relative_root(w_root_t *root, w_query *res, json_t *query)
+{
+  json_t *relative_root;
+  w_string_t *path, *canon_path;
+
+  relative_root = json_object_get(query, "relative_root");
+  if (!relative_root) {
+    return true;
+  }
+
+  if (!json_is_string(relative_root)) {
+    res->errmsg = strdup("'relative_root' must be a string");
+    return false;
+  }
+
+  path = w_string_new(json_string_value(relative_root));
+  canon_path = w_string_canon_path(path);
+  res->relative_root = w_string_path_cat(root->root_path, canon_path);
+  res->relative_root_slash = w_string_make_printf("%.*s/",
+        res->relative_root->len, res->relative_root->buf);
+  w_string_delref(path);
+  w_string_delref(canon_path);
+
+  return true;
+}
+
 static bool parse_query_expression(w_query *res, json_t *query)
 {
   json_t *exp;
@@ -262,6 +288,10 @@ w_query *w_query_parse(w_root_t *root, json_t *query, char **errmsg)
   res->case_sensitive = root->case_sensitive;
 
   if (!parse_sync(res, query)) {
+    goto error;
+  }
+
+  if (!parse_relative_root(root, res, query)) {
     goto error;
   }
 
@@ -461,6 +491,14 @@ void w_query_delref(w_query *query)
 
   if (!w_refcnt_del(&query->refcnt)) {
     return;
+  }
+
+  if (query->relative_root) {
+    w_string_delref(query->relative_root);
+  }
+
+  if (query->relative_root_slash) {
+    w_string_delref(query->relative_root_slash);
   }
 
   for (i = 0; i < query->npaths; i++) {

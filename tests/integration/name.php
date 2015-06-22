@@ -58,10 +58,19 @@ class nameExprTestCase extends WatchmanTestCase {
     $this->assertEqual(array(), $res['files']);
 
     $res = $this->watchmanCommand('query', $root, array(
-      'expression' => array('name', 'subdir/bar.txt', 'wholename'),
+      'relative_root' => 'subdir',
+      'expression' => array('name', 'bar.txt', 'wholename'),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array('subdir/bar.txt'), $res['files']);
+    $this->assertEqual(array('bar.txt'), $res['files']);
+
+    // foo.c is not in subdir directory so this shouldn't match
+    $res = $this->watchmanCommand('query', $root, array(
+      'relative_root' => 'subdir',
+      'expression' => array('name', 'foo.c', 'wholename'),
+      'fields' => array('name'),
+    ));
+    $this->assertEqual(array(), $res['files']);
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => 'name',

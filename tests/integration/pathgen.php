@@ -14,6 +14,14 @@ class pathGeneratorTestCase extends WatchmanTestCase {
 
     // Assert that we didn't crash
     $this->assertEqual(array(), $results['files']);
+
+    $results = $this->watchmanCommand('query', $root, array(
+      'relative_root' => '.',
+      'path' => array('.'),
+    ));
+
+    // Assert that we didn't crash
+    $this->assertEqual(array(), $results['files']);
   }
 
   function testPathGeneratorCase() {
@@ -41,6 +49,38 @@ class pathGeneratorTestCase extends WatchmanTestCase {
 
       // Note: no matches.  We don't currently support case insensitive
       // matching in the path generator
+      $this->assertEqual(array(), $results['files']);
+    }
+  }
+
+  function testPathGeneratorRelativeRoot() {
+    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $root = realpath($dir->getPath());
+
+    touch("$root/a");
+    mkdir("$root/foo");
+    touch("$root/foo/bar");
+    $this->watch($root);
+
+    $results = $this->watchmanCommand('query', $root, array(
+      'relative_root' => 'foo',
+      'path' => array('bar'),
+      'fields' => array('name'),
+    ));
+
+    $this->assertEqual(array('bar'), $results['files']);
+
+    if ($this->isCaseInsensitive()) {
+      rename("$root/foo", "$root/Foo");
+
+      $results = $this->watchmanCommand('query', $root, array(
+        'relative_root' => 'foo',
+        'path' => array('bar'),
+        'fields' => array('name'),
+      ));
+
+      // Note: no matches.  We don't currently support case insensitive matching
+      // for relative_root
       $this->assertEqual(array(), $results['files']);
     }
   }

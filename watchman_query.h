@@ -51,6 +51,11 @@ struct w_query {
   int refcnt;
 
   bool case_sensitive;
+
+  /* optional full path to relative root, without and with trailing slash */
+  w_string_t *relative_root;
+  w_string_t *relative_root_slash;
+
   struct w_query_path *paths;
   uint32_t npaths;
 
@@ -94,6 +99,10 @@ w_query_expr *w_query_expr_new(
     w_query_expr_dispose_func dispose,
     void *data
 );
+
+bool w_query_file_matches_relative_root(
+    struct w_query_ctx *ctx,
+    struct watchman_file *file);
 
 // Allows a generator to process a file node
 // through the query engine

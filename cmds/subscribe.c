@@ -26,6 +26,10 @@ static bool subscription_generator(
       break;
     }
 
+    if (!w_query_file_matches_relative_root(ctx, f)) {
+      continue;
+    }
+
     if (!w_query_process_file(query, ctx, f)) {
       return false;
     }

@@ -24,7 +24,13 @@ w_string_t *w_query_ctx_get_wholename(
     return ctx->wholename;
   }
 
-  name_start = ctx->root->root_path->len + 1;
+  if (ctx->query->relative_root != NULL) {
+    // At this point every path should start with the relative root, so this is
+    // legal
+    name_start = ctx->query->relative_root->len + 1;
+  } else {
+    name_start = ctx->root->root_path->len + 1;
+  }
 
   full_name = w_string_path_cat(ctx->file->parent->path, ctx->file->name);
   // Record the name relative to the root
@@ -109,6 +115,22 @@ void w_match_results_free(uint32_t num_matches,
   free(matches);
 }
 
+bool w_query_file_matches_relative_root(
+    struct w_query_ctx *ctx,
+    struct watchman_file *f)
+{
+  w_string_t *parent_path;
+  if (ctx->query->relative_root == NULL) {
+    return true;
+  }
+
+  parent_path = f->parent->path;
+  // "in relative root" here does not mean exactly the relative root, so compare
+  // against the relative root's parent.
+  return w_string_equal(parent_path, ctx->query->relative_root)
+    || w_string_startswith(parent_path, ctx->query->relative_root_slash);
+}
+
 static bool time_generator(
     w_query *query,
     w_root_t *root,
@@ -125,6 +147,10 @@ static bool time_generator(
     if (!ctx->since.is_timestamp &&
         f->otime.ticks < ctx->since.clock.ticks) {
       break;
+    }
+
+    if (!w_query_file_matches_relative_root(ctx, f)) {
+      continue;
     }
 
     if (!w_query_process_file(query, ctx, f)) {
@@ -150,11 +176,14 @@ static bool suffix_generator(
 
 
     // Walk and process
-    while (f) {
+    for (; f; f = f->suffix_next) {
+      if (!w_query_file_matches_relative_root(ctx, f)) {
+        continue;
+      }
+
       if (!w_query_process_file(query, ctx, f)) {
         return false;
       }
-      f = f->suffix_next;
     }
   }
   return true;
@@ -168,6 +197,10 @@ static bool all_files_generator(
   struct watchman_file *f;
 
   for (f = root->latest_file; f; f = f->next) {
+    if (!w_query_file_matches_relative_root(ctx, f)) {
+      continue;
+    }
+
     if (!w_query_process_file(query, ctx, f)) {
       return false;
     }
@@ -208,15 +241,22 @@ static bool path_generator(
     w_root_t *root,
     struct w_query_ctx *ctx)
 {
+  w_string_t *relative_root;
   struct watchman_file *f;
   uint32_t i;
+
+  if (query->relative_root != NULL) {
+    relative_root = query->relative_root;
+  } else {
+    relative_root = root->root_path;
+  }
 
   for (i = 0; i < query->npaths; i++) {
     struct watchman_dir *dir;
     w_string_t *dir_name, *file_name, *full_name;
 
     // Compose path with root
-    full_name = w_string_path_cat(root->root_path, query->paths[i].name);
+    full_name = w_string_path_cat(relative_root, query->paths[i].name);
 
     // special case of root dir itself
     if (w_string_equal(root->root_path, full_name)) {
@@ -274,6 +314,7 @@ is_dir:
       return false;
     }
   }
+
   return true;
 }
 
