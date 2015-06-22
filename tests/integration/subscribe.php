@@ -95,8 +95,7 @@ class subscribeTestCase extends WatchmanTestCase {
         array(
           'fields' => array('name'),
           'relative_root' => 'a',
-        ),
-      );
+        ));
 
       $this->waitForSub('myname', function ($data) {
         return true;
