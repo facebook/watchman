@@ -324,3 +324,33 @@ If you wanted to match only files that were in a grand-child or deeper:
 
 `idirname` is the case insensitive version of `dirname`.  If the watched root
 is detected as a case insensitive fileystem, `dirname` is equivalent to `idirname`.
+
+### Relative Roots (since 3.3)
+
+Watchman (since 3.3) supports optionally evaluating queries with respect to a
+path within a watched root. This is used with the `relative_root` parameter:
+
+```json
+["query", "/path/to/watched/root", {
+  "relative_root": "project1",
+}]
+```
+
+Setting a relative root results in the following modifications to queries:
+
+* The `path` generator is evaluated with respect to the relative root. In the
+  above example, `"path": ["dir"]` will return all files inside
+  `/path/to/watched/root/project1/dir`.
+* The input expression is evaluated with respect to the relative root. In the
+  above example, `"expression": ["match", "dir/*.txt", "wholename"]` will return
+  all files inside `/path/to/watched/root/project1/dir/` that match the glob
+  `*.txt`.
+* Paths inside the relative root are returned with the relative root stripped
+  off. For example, a path `project1/dir/file.txt` would be returned as
+  `dir/file.txt`.
+* Paths outside the relative root are not returned.
+
+Relative roots behave similarly to a separate Watchman watch on the
+subdirectory, without any of the system overhead that that imposes. This is
+useful for large repositories, where your script or tool is only interested in a
+particular directory inside the repository.
