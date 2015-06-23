@@ -35,7 +35,11 @@ python/build
 test-suite.log
 tests/*.log
 tests/*.trs
-website
 a
 arc
 node/node_modules
+website/node_modules
+website/build
+website/src/watchman/docs
+website/src/watchman/*.js
+website/core/metadata.js
