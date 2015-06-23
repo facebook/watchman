@@ -1,12 +1,11 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-var nextback = require('nextback');
 var net = require('net');
 var EE = require('events').EventEmitter;
 var util = require('util');
-var JSONStream = require('json-stream');
 var childProcess = require('child_process');
+var bser = require('./bser');
 
 // We'll emit the responses to these when they get sent down to us
 var unilateralTags = ['subscription', 'log'];
@@ -44,7 +43,7 @@ Client.prototype.sendNextCommand = function() {
     return;
   }
 
-  this.socket.write(JSON.stringify(this.currentCommand.cmd) + '\n');
+  this.socket.write(bser.dumpToBuffer(this.currentCommand.cmd));
 }
 
 Client.prototype.cancelCommands = function(why) {
@@ -70,10 +69,10 @@ Client.prototype.connect = function() {
   var self = this;
 
   function makeSock(sockname) {
-    // jstream will decode the JSON line protocol for us
-    self.jstream = new JSONStream();
+    // bunser will decode the watchman BSER protocol for us
+    self.bunser = new bser.BunserBuf();
     // For each decoded line:
-    self.jstream.on('data', function(obj) {
+    self.bunser.on('value', function(obj) {
       // Figure out if this is a unliteral response or if it is the
       // response portion of a request-response sequence.  At the time
       // of writing, there are only two possible unilateral responses.
@@ -102,6 +101,9 @@ Client.prototype.connect = function() {
       // See if we can dispatch the next queued command, if any
       self.sendNextCommand();
     });
+    self.bunser.on('error', function(err) {
+      self.emit('error', err);
+    });
 
     self.socket = net.createConnection(sockname);
     self.socket.on('connect', function() {
@@ -113,10 +115,12 @@ Client.prototype.connect = function() {
       self.connecting = false;
       self.emit('error', err);
     });
-    self.socket.pipe(self.jstream);
+    self.socket.on('data', function(buf) {
+      self.bunser.append(buf);
+    });
     self.socket.on('end', function() {
       self.socket = null;
-      self.jstream = null;
+      self.bunser = null;
       self.cancelCommands('The watchman connection was closed');
       self.emit('end');
     });
@@ -183,5 +187,5 @@ Client.prototype.end = function() {
     this.socket.end();
     this.socket = null;
   }
-  this.jstream = null;
+  this.bunser = null;
 }

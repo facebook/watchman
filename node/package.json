@@ -1,18 +1,16 @@
 {
   "name": "fb-watchman",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Bindings for the Watchman file watching service",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test/bser.js"
   },
   "repository": {
     "type": "git",
     "url": "git@github.com:facebook/watchman.git"
   },
   "dependencies": {
-    "json-stream": "0.2.2",
-    "nextback": "~0.1.0"
   },
   "keywords": [
     "facebook",
@@ -34,6 +32,7 @@
   },
   "homepage": "https://facebook.github.io/watchman/",
   "files": [
-    "index.js"
+    "index.js",
+    "bser.js"
   ]
 }
