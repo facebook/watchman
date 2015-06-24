@@ -1916,6 +1916,50 @@ static bool check_allowed_fs(const char *filename, char **errmsg)
   return true;
 }
 
+// Given a filename, walk the current set of watches.
+// If a watch is a prefix match for filename then we consider it to
+// be an enclosing watch and we'll return the root path and the relative
+// path to filename.
+// Returns NULL if there were no matches.
+// If multiple watches have the same prefix, it is undefined which one will
+// match.
+char *w_find_enclosing_root(const char *filename, char **relpath) {
+  w_ht_iter_t i;
+  w_root_t *root = NULL;
+  w_string_t *name = w_string_new(filename);
+  char *prefix;
+
+  pthread_mutex_lock(&root_lock);
+  if (w_ht_first(watched_roots, &i)) do {
+    w_string_t *root_name = w_ht_val_ptr(i.key);
+    if (w_string_startswith(name, root_name) && (
+          name->len == root_name->len /* exact match */ ||
+          name->buf[root_name->len] == '/' /* dir container matches */)) {
+      root = w_ht_val_ptr(i.value);
+      w_root_addref(root);
+      break;
+    }
+  } while (w_ht_next(watched_roots, &i));
+  pthread_mutex_unlock(&root_lock);
+
+  if (!root) {
+    w_string_delref(name);
+    return NULL;
+  }
+
+  // extract the path portions
+  prefix = strndup(filename, root->root_path->len);
+  if (root->root_path->len == name->len) {
+    *relpath = NULL;
+  } else {
+    *relpath = strdup(filename + root->root_path->len + 1);
+  }
+  w_root_delref(root);
+  w_string_delref(name);
+
+  return prefix;
+}
+
 static w_root_t *root_resolve(const char *filename, bool auto_watch,
     bool *created, char **errmsg)
 {

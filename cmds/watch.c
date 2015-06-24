@@ -181,6 +181,7 @@ static char *resolve_projpath(json_t *args, char **errmsg, char **relpath)
   json_t *root_files;
   uint32_t i;
   bool enforcing;
+  char *enclosing = NULL;
 
   *relpath = NULL;
 
@@ -208,6 +209,16 @@ static char *resolve_projpath(json_t *args, char **errmsg, char **relpath)
           "resolve_projpath: error computing root_files configuration value, "
           "consult your log file at %s for more details", log_name));
     return false;
+  }
+
+  // See if we're requesting something in a pre-existing watch
+  enclosing = w_find_enclosing_root(resolved, relpath);
+  if (enclosing) {
+    free(resolved);
+    resolved = enclosing;
+    json_array_set_new(args, 1, json_string_nocheck(resolved));
+    res = true;
+    goto done;
   }
 
   // Note: cfg_compute_root_files ensures that .watchmanconfig is first

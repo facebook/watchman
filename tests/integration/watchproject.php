@@ -76,6 +76,22 @@ class watchProjectTestCase extends watchProjectTestCaseHelper {
       array("a/baz", NULL, "a/b/c", true),
     ), true);
   }
+
+  function testReuseNestedWatch() {
+    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $root = realpath($dir->getPath());
+    mkdir("$root/a/b/c", 0777, true);
+    touch("$root/a/b/c/.watchmanconfig");
+
+    $res = $this->watchProject($root);
+    $this->assertEqual($root, idx($res, 'watch'));
+
+    $res = $this->watchProject("$root/a/b/c");
+    $this->assertEqual($root, idx($res, 'watch'), 'watch other root');
+    $this->assertEqual('a/b/c', idx($res, 'relative_path'),
+      'should re-use other watch');
+
+  }
 }
 
 class watchProjectEnforcingTestCase extends watchProjectTestCaseHelper {
