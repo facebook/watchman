@@ -188,7 +188,7 @@ struct watchman_trigger_command *w_build_trigger_from_def(
   w_root_t *root, json_t *trig, char **errmsg)
 {
   struct watchman_trigger_command *cmd;
-  json_t *ele, *query;
+  json_t *ele, *query, *relative_root;
   json_int_t jint;
   const char *name = NULL;
 
@@ -203,6 +203,11 @@ struct watchman_trigger_command *w_build_trigger_from_def(
 
   query = json_pack("{s:O}", "expression",
       json_object_get(cmd->definition, "expression"));
+  relative_root = json_object_get(cmd->definition, "relative_root");
+  if (relative_root) {
+    json_object_set_nocheck(query, "relative_root", relative_root);
+  }
+
   cmd->query = w_query_parse(root, query, errmsg);
   json_decref(query);
 

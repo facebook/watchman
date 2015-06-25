@@ -229,6 +229,12 @@ static void spawn_command(w_root_t *root,
     w_envp_unset(cmd->envht, "WATCHMAN_CLOCK");
   }
 
+  if (cmd->query->relative_root) {
+    w_envp_set(cmd->envht, "WATCHMAN_RELATIVE_ROOT", cmd->query->relative_root);
+  } else {
+    w_envp_unset(cmd->envht, "WATCHMAN_RELATIVE_ROOT");
+  }
+
   // Compute args
   args = json_deep_copy(cmd->command);
 
@@ -300,7 +306,11 @@ static void spawn_command(w_root_t *root,
   }
 
   pthread_mutex_lock(&spawn_lock);
-  ignore_result(chdir(root->root_path->buf));
+  if (cmd->query->relative_root) {
+    ignore_result(chdir(cmd->query->relative_root->buf));
+  } else {
+    ignore_result(chdir(root->root_path->buf));
+  }
 
   json_unpack(cmd->definition, "{s:s}", "chdir", &cwd);
   if (cwd) {
@@ -369,6 +379,10 @@ static bool trigger_generator(
     if (!ctx->since.is_timestamp &&
         f->otime.ticks <= ctx->since.clock.ticks) {
       break;
+    }
+
+    if (!w_query_file_matches_relative_root(ctx, f)) {
+      continue;
     }
 
     if (!w_query_process_file(query, ctx, f)) {
