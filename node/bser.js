@@ -5,6 +5,7 @@ var EE = require('events').EventEmitter;
 var util = require('util');
 var os = require('os');
 var assert = require('assert');
+var Int64 = require('node-int64');
 
 // BSER uses the local endianness to reduce byte swapping overheads
 // (the protocol is expressly local IPC only).  We need to tell node
@@ -105,7 +106,13 @@ Accumulator.prototype.peekInt = function(size) {
         this.buf.readInt32BE(this.readOffset, size) :
         this.buf.readInt32LE(this.readOffset, size);
     case 8:
-      throw new Error("cannot represent 64 bit numbers in node");
+        var big = this.buf.slice(this.readOffset, this.readOffset + 8);
+        if (isBigEndian) {
+          // On a big endian system we can simply pass the buffer directly
+          return new Int64(big);
+        }
+        // Otherwise we need to byteswap
+        return new Int64(byteswap64(big));
     default:
       throw new Error("invalid integer size " + size);
   }
@@ -146,15 +153,30 @@ Accumulator.prototype.writeByte = function(value) {
   ++this.writeOffset;
 }
 
-Accumulator.prototype.writeInt = function(value) {
-  // For simplicity, we always write 32-bit integers
-  this.reserve(4);
-  if (isBigEndian) {
-    this.buf.writeInt32BE(value, this.writeOffset);
-  } else {
-    this.buf.writeInt32LE(value, this.writeOffset);
+Accumulator.prototype.writeInt = function(value, size) {
+  this.reserve(size);
+  switch (size) {
+    case 1:
+      this.buf.writeInt8(value, this.writeOffset);
+      break;
+    case 2:
+      if (isBigEndian) {
+        this.buf.writeInt16BE(value, this.writeOffset);
+      } else {
+        this.buf.writeInt16LE(value, this.writeOffset);
+      }
+      break;
+    case 4:
+      if (isBigEndian) {
+        this.buf.writeInt32BE(value, this.writeOffset);
+      } else {
+        this.buf.writeInt32LE(value, this.writeOffset);
+      }
+      break;
+    default:
+      throw new Error("unsupported integer size " + size);
   }
-  this.writeOffset += 4;
+  this.writeOffset += size;
 }
 
 Accumulator.prototype.writeDouble = function(value) {
@@ -183,6 +205,10 @@ var BSER_SKIP      = 0x0c;
 
 var ST_NEED_PDU = 0; // Need to read and decode PDU length
 var ST_FILL_PDU = 1; // Know the length, need to read whole content
+
+var MAX_INT8 = 127;
+var MAX_INT16 = 32768;
+var MAX_INT32 = 2147483648;
 
 function BunserBuf() {
   EE.call(this);
@@ -418,6 +444,49 @@ function loadFromBuffer(input) {
 }
 exports.loadFromBuffer = loadFromBuffer
 
+// Byteswap an arbitrary buffer, flipping from one endian
+// to the other, returning a new buffer with the resultant data
+function byteswap64(buf) {
+  var swap = new Buffer(buf.length);
+  for (var i = 0; i < buf.length; i++) {
+    swap[i] = buf[buf.length -1 - i];
+  }
+  return swap;
+}
+
+function dump_int64(buf, val) {
+  // Get the raw bytes.  The Int64 buffer is big endian
+  var be = val.toBuffer();
+
+  if (isBigEndian) {
+    // We're a big endian system, so the buffer is exactly how we
+    // want it to be
+    buf.writeByte(BSER_INT64);
+    buf.append(be);
+    return;
+  }
+  // We need to byte swap to get the correct representation
+  var le = byteswap64(be);
+  buf.writeByte(BSER_INT64);
+  buf.append(le);
+}
+
+function dump_int(buf, val) {
+  var abs = Math.abs(val);
+  if (abs <= MAX_INT8) {
+    buf.writeByte(BSER_INT8);
+    buf.writeInt(val, 1);
+  } else if (abs <= MAX_INT16) {
+    buf.writeByte(BSER_INT16);
+    buf.writeInt(val, 2);
+  } else if (abs <= MAX_INT32) {
+    buf.writeByte(BSER_INT32);
+    buf.writeInt(val, 4);
+  } else {
+    dump_int64(buf, new Int64(val));
+  }
+}
+
 function dump_any(buf, val) {
   switch (typeof(val)) {
     case 'number':
@@ -426,8 +495,7 @@ function dump_any(buf, val) {
       return;
     case 'string':
       buf.writeByte(BSER_STRING);
-      buf.writeByte(BSER_INT32);
-      buf.writeInt(Buffer.byteLength(val));
+      dump_int(buf, Buffer.byteLength(val));
       buf.append(val);
       return;
     case 'boolean':
@@ -438,10 +506,13 @@ function dump_any(buf, val) {
         buf.writeByte(BSER_NULL);
         return;
       }
+      if (val instanceof Int64) {
+        dump_int64(buf, val);
+        return;
+      }
       if (Array.isArray(val)) {
         buf.writeByte(BSER_ARRAY);
-        buf.writeByte(BSER_INT32);
-        buf.writeInt(val.length);
+        dump_int(buf, val.length);
         for (var i = 0; i < val.length; ++i) {
           dump_any(buf, val[i]);
         }
@@ -449,8 +520,7 @@ function dump_any(buf, val) {
       }
       buf.writeByte(BSER_OBJECT);
       var keys = Object.keys(val);
-      buf.writeByte(BSER_INT32);
-      buf.writeInt(keys.length);
+      dump_int(buf, keys.length);
       for (var i = 0; i < keys.length; ++i) {
         var key = keys[i];
         dump_any(buf, key);
@@ -469,8 +539,9 @@ function dumpToBuffer(val) {
   // Build out the header
   buf.writeByte(0);
   buf.writeByte(1);
+  // Reserve room for an int32 to hold our PDU length
   buf.writeByte(BSER_INT32);
-  buf.writeInt(0); // We'll come back and fill this in at the end
+  buf.writeInt(0, 4); // We'll come back and fill this in at the end
 
   dump_any(buf, val);
 
@@ -478,7 +549,7 @@ function dumpToBuffer(val) {
   var off = buf.writeOffset;
   var len = off - 7 /* the header length */;
   buf.writeOffset = 3; // The length value to fill in
-  buf.writeInt(len);
+  buf.writeInt(len, 4); // write the length in the space we reserved
   buf.writeOffset = off;
 
   return buf.buf.slice(0, off);

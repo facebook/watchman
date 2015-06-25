@@ -1,5 +1,6 @@
 var assert = require('assert');
 var bser = require('../bser');
+var Int64 = require('node-int64');
 
 // This is a hard-coded template representation from the C test suite
 var template =  "\x00\x01\x03\x28" +
@@ -27,6 +28,19 @@ var values_to_test = [
   1.5,
   false,
   true,
+  new Int64('0x0123456789'),
+  127,
+  128,
+  129,
+  32767,
+  32768,
+  32769,
+  65534,
+  65536,
+  65537,
+  2147483647,
+  2147483648,
+  2147483649,
   null,
   [1, 2, 3],
   {foo: "bar"},

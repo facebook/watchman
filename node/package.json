@@ -1,6 +1,6 @@
 {
   "name": "fb-watchman",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Bindings for the Watchman file watching service",
   "main": "index.js",
   "scripts": {
@@ -11,6 +11,7 @@
     "url": "git@github.com:facebook/watchman.git"
   },
   "dependencies": {
+    "node-int64": "0.4.0"
   },
   "keywords": [
     "facebook",
