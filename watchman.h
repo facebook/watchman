@@ -778,6 +778,7 @@ const char *cfg_get_string(w_root_t *root, const char *name,
     const char *defval);
 json_int_t cfg_get_int(w_root_t *root, const char *name,
     json_int_t defval);
+bool cfg_get_bool(w_root_t *root, const char *name, bool defval);
 double cfg_get_double(w_root_t *root, const char *name, double defval);
 json_t *cfg_compute_root_files(bool *enforcing);
 

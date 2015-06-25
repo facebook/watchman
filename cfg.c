@@ -162,6 +162,11 @@ static void prepend_watchmanconfig_to_array(json_t *ref) {
 json_t *cfg_compute_root_files(bool *enforcing) {
   json_t *ref;
 
+  // This is completely undocumented and will go away soon. Do not document or
+  // use!
+  bool ignore_watchmanconfig = cfg_get_bool(NULL, "_ignore_watchmanconfig",
+                                            false);
+
   *enforcing = false;
 
   ref = cfg_get_json(NULL, "enforce_root_files");
@@ -196,7 +201,9 @@ json_t *cfg_compute_root_files(bool *enforcing) {
       *enforcing = false;
       return NULL;
     }
-    prepend_watchmanconfig_to_array(ref);
+    if (!ignore_watchmanconfig) {
+      prepend_watchmanconfig_to_array(ref);
+    }
     json_incref(ref);
     *enforcing = true;
     return ref;
@@ -204,7 +211,11 @@ json_t *cfg_compute_root_files(bool *enforcing) {
 
   // Synthesize our conservative default value.
   // .watchmanconfig MUST be first
-  return json_pack("[ssss]", ".watchmanconfig", ".hg", ".git", ".svn");
+  if (!ignore_watchmanconfig) {
+    return json_pack("[ssss]", ".watchmanconfig", ".hg", ".git", ".svn");
+  } else {
+    return json_pack("[sss]", ".hg", ".git", ".svn");
+  }
 }
 
 json_int_t cfg_get_int(w_root_t *root, const char *name,
@@ -217,6 +228,20 @@ json_int_t cfg_get_int(w_root_t *root, const char *name,
       w_log(W_LOG_FATAL, "Expected config value %s to be an integer\n", name);
     }
     return json_integer_value(val);
+  }
+
+  return defval;
+}
+
+bool cfg_get_bool(w_root_t *root, const char *name, bool defval)
+{
+  json_t *val = cfg_get_json(root, name);
+
+  if (val) {
+    if (!json_is_boolean(val)) {
+      w_log(W_LOG_FATAL, "Expected config value %s to be a boolean\n", name);
+    }
+    return json_is_true(val);
   }
 
   return defval;
