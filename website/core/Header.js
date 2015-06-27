@@ -41,11 +41,21 @@ var Header = React.createClass({
     var h = React.DOM['h' + this.props.level];
 
     return this.transferPropsTo(
-      <h>
-        <a className="anchor" name={slug}></a>
-        {this.props.children}
-        {' '}<a className="hash-link" href={'#' + slug}>#</a>
-      </h>
+      React.createElement('h' + this.props.level, {},
+        React.createElement('a', {
+            className: 'anchor',
+            name: slug
+          }
+        ),
+        this.props.children,
+        ' ',
+        React.createElement('a', {
+            className:"hash-link",
+            href:'#' + slug
+          },
+          '#'
+        )
+      )
     );
   }
 });
