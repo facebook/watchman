@@ -8,12 +8,12 @@ the environmental variable <code>$WATCHMAN_CONFIG_FILE</code> will override the
 default location.</p><p>Changes to the <code>.watchmanconfig</code> or <code>/etc/watchman.json</code> files are not picked
 up automatically; you will need to remove and re-add the watch (for
 <code>.watchmanconfig</code>) or restart watchman (for <code>/etc/watchman.json</code>) for those
-changes to take effect.</p><h><a class="anchor" name="resolution-scoping"></a>Resolution / Scoping <a class="hash-link" href="#resolution-scoping">#</a></h><p>There are three configuration scopes:</p><ul><li><strong>local</strong> - the option value is read from the <code>.watchmanconfig</code> file in the
+changes to take effect.</p><h3><a class="anchor" name="resolution-scoping"></a>Resolution / Scoping <a class="hash-link" href="#resolution-scoping">#</a></h3><p>There are three configuration scopes:</p><ul><li><strong>local</strong> - the option value is read from the <code>.watchmanconfig</code> file in the
 associated root.</li><li><strong>global</strong> - the option value is read from the <code>/etc/watchman.json</code> file</li><li><strong>fallback</strong> - the option value is read from the <code>.watchmanconfig</code> file.
 If the option was not present in the <code>.watchmanconfig</code> file, then read
-it from the <code>/etc/watchman.json</code> file.</li></ul><p>This table shows the scoping and availability of the various options:</p><table><thead><tr><th>Option</th><th>Scope</th><th>Since version</th></tr></thead><thead><tr><td><code>settle</code></td><td>local</td><td></td></tr><tr><td><code>root_restrict_files</code></td><td>global</td><td>deprecated in 3.1</td></tr><tr><td><code>root_files</code></td><td>global</td><td>3.1</td></tr><tr><td><code>enforce_root_files</code></td><td>global</td><td>3.1</td></tr><tr><td><code>illegal_fstypes</code></td><td>global</td><td>2.9.8</td></tr><tr><td><code>illegal_fstypes_advice</code></td><td>global</td><td>2.9.8</td></tr><tr><td><code>ignore_vcs</code></td><td>local</td><td>2.9.3</td></tr><tr><td><code>ignore_dirs</code></td><td>local</td><td>2.9.3</td></tr><tr><td><code>gc_age_seconds</code></td><td>local</td><td>2.9.4</td></tr><tr><td><code>gc_interval_seconds</code></td><td>local</td><td>2.9.4</td></tr><tr><td><code>fsevents_latency</code></td><td>fallback</td><td>3.2</td></tr></thead></table><h><a class="anchor" name="configuration-options"></a>Configuration Options <a class="hash-link" href="#configuration-options">#</a></h><h><a class="anchor" name="settle"></a>settle <a class="hash-link" href="#settle">#</a></h><p>Specifies the settle period in <em>milliseconds</em>.  This controls how long the
+it from the <code>/etc/watchman.json</code> file.</li></ul><p>This table shows the scoping and availability of the various options:</p><table><thead><tr><th>Option</th><th>Scope</th><th>Since version</th></tr></thead><thead><tr><td><code>settle</code></td><td>local</td><td></td></tr><tr><td><code>root_restrict_files</code></td><td>global</td><td>deprecated in 3.1</td></tr><tr><td><code>root_files</code></td><td>global</td><td>3.1</td></tr><tr><td><code>enforce_root_files</code></td><td>global</td><td>3.1</td></tr><tr><td><code>illegal_fstypes</code></td><td>global</td><td>2.9.8</td></tr><tr><td><code>illegal_fstypes_advice</code></td><td>global</td><td>2.9.8</td></tr><tr><td><code>ignore_vcs</code></td><td>local</td><td>2.9.3</td></tr><tr><td><code>ignore_dirs</code></td><td>local</td><td>2.9.3</td></tr><tr><td><code>gc_age_seconds</code></td><td>local</td><td>2.9.4</td></tr><tr><td><code>gc_interval_seconds</code></td><td>local</td><td>2.9.4</td></tr><tr><td><code>fsevents_latency</code></td><td>fallback</td><td>3.2</td></tr></thead></table><h3><a class="anchor" name="configuration-options"></a>Configuration Options <a class="hash-link" href="#configuration-options">#</a></h3><h4><a class="anchor" name="settle"></a>settle <a class="hash-link" href="#settle">#</a></h4><p>Specifies the settle period in <em>milliseconds</em>.  This controls how long the
 filesystem should be idle before dispatching triggers.  The default value is 20
-milliseconds.</p><h><a class="anchor" name="root-files"></a>root_files <a class="hash-link" href="#root-files">#</a></h><p>Available starting in version 3.1</p><p>Specifies a list of files that, if present in a directory, identify that
+milliseconds.</p><h4><a class="anchor" name="root-files"></a>root_files <a class="hash-link" href="#root-files">#</a></h4><p>Available starting in version 3.1</p><p>Specifies a list of files that, if present in a directory, identify that
 directory as the root of a project.</p><p>If left unspecified, to aid in transitioning between versions, watchman will
 use the value of the now deprecated
 <a href="#root_restrict_files" target="">root_restrict_files</a> configuration setting.</p><p>If neither <code>root_files</code> nor <code>root_restrict_files</code> is specified in the
@@ -21,19 +21,19 @@ configuration, watchman will use a default value consisting of:</p><ul><li><code
 this configuration value if it is not present.</p><p>This example causes only <code>.watchmanconfig</code> to be considered as a project
 root file:</p><div class="prism language-javascript"><span class="token punctuation">{</span>
   <span class="token string">&quot;root_files&quot;</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">&quot;.watchmanconfig&quot;</span><span class="token punctuation">]</span>
-<span class="token punctuation">}</span></div><p>See the <a href="cmd/watch-project.html" target="_blank">watch-project</a> command for more information.</p><h><a class="anchor" name="enforce-root-files"></a>enforce_root_files <a class="hash-link" href="#enforce-root-files">#</a></h><p>Available starting in version 3.1</p><p>This is a boolean option that defaults to <code>false</code>.  If it is set to <code>true</code>
+<span class="token punctuation">}</span></div><p>See the <a href="cmd/watch-project.html" target="_blank">watch-project</a> command for more information.</p><h4><a class="anchor" name="enforce-root-files"></a>enforce_root_files <a class="hash-link" href="#enforce-root-files">#</a></h4><p>Available starting in version 3.1</p><p>This is a boolean option that defaults to <code>false</code>.  If it is set to <code>true</code>
 then the <a href="cmd/watch.html" target="_blank">watch</a> command will only succeed if the requested
 directory contains one of the files listed by the <a href="#root_files" target="">root_files</a>
 configuration option, and the <a href="cmd/watch-project.html" target="_blank">watch-project</a> command
 will only succeed if a valid project root is found.</p><p>If left unspecified, to aid in transitioning between versions, watchman will
 check to see if the now deprecated <a href="#root_restrict_files" target="">root_restrict_files</a>
 configuration setting is present.  If it is found then the effective value of
-<code>enforce_root_files</code> is set to <code>true</code>.</p><h><a class="anchor" name="root-restrict-files"></a>root_restrict_files <a class="hash-link" href="#root-restrict-files">#</a></h><p>Deprecated starting in version 3.1; use <a href="#root_files" target="">root_files</a> and
+<code>enforce_root_files</code> is set to <code>true</code>.</p><h4><a class="anchor" name="root-restrict-files"></a>root_restrict_files <a class="hash-link" href="#root-restrict-files">#</a></h4><p>Deprecated starting in version 3.1; use <a href="#root_files" target="">root_files</a> and
 <a href="#enforce_root_files" target="">enforce_root_files</a> to effect the same behavior.</p><p>Specifies a list of files, at least one of which should be present in a
 directory for watchman to add it as a root. By default there are no
 restrictions.</p><p>For example,</p><div class="prism language-javascript"><span class="token punctuation">{</span>
   <span class="token string">&quot;root_restrict_files&quot;</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">&quot;.git&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;.hg&quot;</span><span class="token punctuation">]</span>
-<span class="token punctuation">}</span></div><p>will allow watches only in the top level of Git or Mercurial repositories.</p><h><a class="anchor" name="illegal-fstypes"></a>illegal_fstypes <a class="hash-link" href="#illegal-fstypes">#</a></h><p>Specifies a list of filesystem types that watchman is prohibited to attempt to
+<span class="token punctuation">}</span></div><p>will allow watches only in the top level of Git or Mercurial repositories.</p><h4><a class="anchor" name="illegal-fstypes"></a>illegal_fstypes <a class="hash-link" href="#illegal-fstypes">#</a></h4><p>Specifies a list of filesystem types that watchman is prohibited to attempt to
 watch.  Watchman will determine the filesystem type of the root of a watch; if
 the typename is present in the <code>illegal_fstypes</code> list, the watch will be
 prohibited.  You may also specify <code>illegal_fstypes_advice</code> as a string with
@@ -46,12 +46,12 @@ be reported as <code>unknown</code>.</p><p>For example,</p><div class="prism lan
   <span class="token string">&quot;illegal_fstypes_advice&quot;</span><span class="token punctuation">:</span> <span class="token string">&quot;use a local directory&quot;</span>
 <span class="token punctuation">}</span></div><p>will prevent watching dirs mounted on network filesystems and provide the
 advice to use a local directory.  You may omit the <code>illegal_fstypes_advice</code>
-setting to use a default suggestion to relocate the directory to local disk.</p><h><a class="anchor" name="ignore-vcs"></a>ignore_vcs <a class="hash-link" href="#ignore-vcs">#</a></h><p>Apply special VCS ignore logic to the set of named dirs.  This option has a
+setting to use a default suggestion to relocate the directory to local disk.</p><h4><a class="anchor" name="ignore-vcs"></a>ignore_vcs <a class="hash-link" href="#ignore-vcs">#</a></h4><p>Apply special VCS ignore logic to the set of named dirs.  This option has a
 default value of <code>[&quot;.git&quot;, &quot;.hg&quot;, &quot;.svn&quot;]</code>.  Dirs that match this option are
 observed and watched using special shallow logic.  The shallow watch allows
 watchman to mildly abuse the version control directories to store its query
 cookie files and to observe VCS locking activity without having to watch the
-entire set of VCS data for large trees.</p><h><a class="anchor" name="ignore-dirs"></a>ignore_dirs <a class="hash-link" href="#ignore-dirs">#</a></h><p>Dirs that match are completely ignored by watchman.  This is useful to ignore a
+entire set of VCS data for large trees.</p><h4><a class="anchor" name="ignore-dirs"></a>ignore_dirs <a class="hash-link" href="#ignore-dirs">#</a></h4><p>Dirs that match are completely ignored by watchman.  This is useful to ignore a
 directory that contains only build products and where file change notifications
 are unwanted because of the sheer volume of files.</p><p>For example,</p><div class="prism language-javascript"><span class="token punctuation">{</span>
   <span class="token string">&quot;ignore_dirs&quot;</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">&quot;build&quot;</span><span class="token punctuation">]</span>
@@ -61,7 +61,7 @@ the tree.</p><p>Since version 2.9.9, if you list a dir in <code>ignore_dirs</cod
 <code>ignore_vcs</code>, the <code>ignore_dirs</code> placement will take precedence.  This may not
 sound like a big deal, but since <code>ignore_vcs</code> is used as a hint to for the
 placement of <a href="/watchman/docs/cookies.html" target="">cookie files</a>, having these two
-options overlap in earlier versions would break watchman queries.</p><h><a class="anchor" name="gc-age-seconds"></a>gc_age_seconds <a class="hash-link" href="#gc-age-seconds">#</a></h><p>Deleted files (and dirs) older than this are periodically pruned from the
+options overlap in earlier versions would break watchman queries.</p><h4><a class="anchor" name="gc-age-seconds"></a>gc_age_seconds <a class="hash-link" href="#gc-age-seconds">#</a></h4><p>Deleted files (and dirs) older than this are periodically pruned from the
 internal view of the filesystem.  Until they are pruned, they will be visible
 to queries but will have their <code>exists</code> field set to <code>false</code>.   Once they are
 pruned, watchman will remember the most recent clock value of the pruned nodes.
@@ -69,9 +69,9 @@ Any since queries based on a clock prior to the last prune clock will be
 treated as a fresh instance query.  This allows a client to detect and choose
 how to handle the case where they have missed changes.  See <code>is_fresh_instance</code>
 elsewhere in this document for more information.  The default for this is
-<code>43200</code> (12 hours).</p><h><a class="anchor" name="gc-interval-seconds"></a>gc_interval_seconds <a class="hash-link" href="#gc-interval-seconds">#</a></h><p>How often to check for, and prune out, deleted nodes per the <code>gc_age_seconds</code>
+<code>43200</code> (12 hours).</p><h4><a class="anchor" name="gc-interval-seconds"></a>gc_interval_seconds <a class="hash-link" href="#gc-interval-seconds">#</a></h4><p>How often to check for, and prune out, deleted nodes per the <code>gc_age_seconds</code>
 option description above.  The default for this is <code>86400</code> (24 hours).  Set
-this to <code>0</code> to disable the periodic pruning operation.</p><h><a class="anchor" name="fsevents-latency"></a>fsevents_latency <a class="hash-link" href="#fsevents-latency">#</a></h><p>Controls the latency parameter that is passed to <code>FSEventStreamCreate</code> on OS X.
+this to <code>0</code> to disable the periodic pruning operation.</p><h4><a class="anchor" name="fsevents-latency"></a>fsevents_latency <a class="hash-link" href="#fsevents-latency">#</a></h4><p>Controls the latency parameter that is passed to <code>FSEventStreamCreate</code> on OS X.
 The value is measured in seconds.  The fixed value of this parameter prior to
 version 3.2 of watchman was <code>0.0001</code> seconds.  Starting in version 3.2 of
 watchman, the default is now <code>0.01</code> seconds and can be controlled on a

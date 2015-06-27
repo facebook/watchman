@@ -6,7 +6,7 @@ JSON protocol, you are responsible for supplying an absolute path.</p><p>JSON:</
 already.  A newly watched directory is processed in a couple of stages:</p><ul><li>Establishes change notification for the directory with the kernel</li><li>Queues up a request to crawl the directory</li><li>As the directory contents are resolved, those are watched in a similar
 fashion</li><li>All newly observed files are considered changed</li></ul><p>Unless the <code>--no-save-state</code> server option was used to start the watchman
 service, watches and their associated triggers are saved and re-established
-across a process restart.</p><h><a class="anchor" name="case-insensitivity"></a>Case-Insensitivity <a class="hash-link" href="#case-insensitivity">#</a></h><p>Watchman has the following level of support for case-insensitive filesystems,
+across a process restart.</p><h2><a class="anchor" name="case-insensitivity"></a>Case-Insensitivity <a class="hash-link" href="#case-insensitivity">#</a></h2><p>Watchman has the following level of support for case-insensitive filesystems,
 starting in version 2.9.9 on OS X only:</p><ul><li>each watched root is queried to determine if it is case-insensitive.
 This is the common default for most Mac systems running HFS+.</li><li>When in case-insensitive mode, Watchman will attempt to resolve the true
 canonical name of a file on the filesystem when it observes changes.</li><li>If the case of a filename changes, Watchman will report a delete of the
