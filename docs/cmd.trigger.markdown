@@ -233,3 +233,36 @@ syntax:
 * `WATCHMAN_TRIGGER` is set to the name of the trigger
 * `WATCHMAN_SOCK` is set to the path to the Watchman socket, so that you
   can figure out how to connect back to Watchman.
+
+### Relative roots
+
+*Since 3.4.*
+
+Watchman supports optionally evaluating triggers with respect to a path within a
+watched root. This is used with the `relative_root` parameter:
+
+```json
+["trigger", "/path/to/watched/root", {
+  "name": "relative-assets",
+  "expression": ["pcre", "\.(js|css|c|cpp)$"],
+  "command": ["make"],
+  "relative_root": "project1"
+}]
+```
+
+Setting a relative root results in the following modifications to triggers:
+
+* Queries are evaluated with respect to the relative root. See
+  [File Queries](/watchman/docs/file-query.html) for more.
+* The current directory for triggered processes is set to the relative root,
+  unless it is changed with `chdir`. If `chdir` is a relative path then it will
+  be evaluated with respect to the relative root. So, for the example trigger
+  above, if `chdir` is `"subdir2"`, the current directory for triggered `make`
+  invocations is `/path/to/watched/root/project1/subdir2`.
+* In the environment, `WATCHMAN_ROOT` is still set to the actual root.
+* `WATCHMAN_RELATIVE_ROOT` is set to the full path of the relative root.
+
+Relative roots behave similarly to a separate Watchman watch on the
+subdirectory, without any of the system overhead that that imposes. This is
+useful for large repositories, where your script or tool is only interested in a
+particular directory inside the repository.

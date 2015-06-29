@@ -325,10 +325,12 @@ If you wanted to match only files that were in a grand-child or deeper:
 `idirname` is the case insensitive version of `dirname`.  If the watched root
 is detected as a case insensitive fileystem, `dirname` is equivalent to `idirname`.
 
-### Relative Roots (since 3.3)
+### Relative roots
 
-Watchman (since 3.3) supports optionally evaluating queries with respect to a
-path within a watched root. This is used with the `relative_root` parameter:
+*Since 3.3.*
+
+Watchman supports optionally evaluating queries with respect to a path within a
+watched root. This is used with the `relative_root` parameter:
 
 ```json
 ["query", "/path/to/watched/root", {
