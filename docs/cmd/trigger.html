@@ -107,7 +107,21 @@ syntax:</p><ul><li><code>WATCHMAN_FILES_OVERFLOW</code> is set to <code>true</co
 either the <code>max_files_stdin</code> limit or the system argument size limit.</li><li><code>WATCHMAN_CLOCK</code> is set to the current clock at the time of the trigger
 invocation</li><li><code>WATCHMAN_SINCE</code> is set to the clock value of the prior trigger invocation,
 or unset if this is the first trigger invocation.</li><li><code>WATCHMAN_ROOT</code> is set to the path to the watched root</li><li><code>WATCHMAN_TRIGGER</code> is set to the name of the trigger</li><li><code>WATCHMAN_SOCK</code> is set to the path to the Watchman socket, so that you
-can figure out how to connect back to Watchman.</li></ul></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2015 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
+can figure out how to connect back to Watchman.</li></ul><h3><a class="anchor" name="relative-roots"></a>Relative roots <a class="hash-link" href="#relative-roots">#</a></h3><p><em>Since 3.4.</em></p><p>Watchman supports optionally evaluating triggers with respect to a path within a
+watched root. This is used with the <code>relative_root</code> parameter:</p><div class="prism language-javascript"><span class="token punctuation">[</span><span class="token string">&quot;trigger&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;/path/to/watched/root&quot;</span><span class="token punctuation">,</span> <span class="token punctuation">{</span>
+  <span class="token string">&quot;name&quot;</span><span class="token punctuation">:</span> <span class="token string">&quot;relative-assets&quot;</span><span class="token punctuation">,</span>
+  <span class="token string">&quot;expression&quot;</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">&quot;pcre&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;\.(js|css|c|cpp)$&quot;</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+  <span class="token string">&quot;command&quot;</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">&quot;make&quot;</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+  <span class="token string">&quot;relative_root&quot;</span><span class="token punctuation">:</span> <span class="token string">&quot;project1&quot;</span>
+<span class="token punctuation">}</span><span class="token punctuation">]</span></div><p>Setting a relative root results in the following modifications to triggers:</p><ul><li>Queries are evaluated with respect to the relative root. See
+<a href="/watchman/docs/file-query.html" target="">File Queries</a> for more.</li><li>The current directory for triggered processes is set to the relative root,
+unless it is changed with <code>chdir</code>. If <code>chdir</code> is a relative path then it will
+be evaluated with respect to the relative root. So, for the example trigger
+above, if <code>chdir</code> is <code>&quot;subdir2&quot;</code>, the current directory for triggered <code>make</code>
+invocations is <code>/path/to/watched/root/project1/subdir2</code>.</li><li>In the environment, <code>WATCHMAN_ROOT</code> is still set to the actual root.</li><li><code>WATCHMAN_RELATIVE_ROOT</code> is set to the full path of the relative root.</li></ul><p>Relative roots behave similarly to a separate Watchman watch on the
+subdirectory, without any of the system overhead that that imposes. This is
+useful for large repositories, where your script or tool is only interested in a
+particular directory inside the repository.</p></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2015 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
             (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
             (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
             m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
