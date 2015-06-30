@@ -55,8 +55,20 @@ system administrator should review the workload for your system and the
 /watchman/docs/install.html#system-specific-preparation) and raise your limits
 accordingly.
 
+### kFSEventStreamEventFlagUserDropped
+
 OS X has a similar internal limit and behavior when that limit is exceeded.
-Unfortunately this limit is not tunable on OS X.
+If you're encountering a message like:
+
+```
+Recrawled this watch 1 times, most recently because:
+/some/path: kFSEventStreamEventFlagUserDropped
+```
+
+then you are hitting the limits of your system.  There is no direct control
+over the limit, but starting in Watchman 3.2 you may increase the
+[fsevents_latency](/watchman/docs/config.html#fsevents-latency)
+parameter in your `.watchmanconfig` file.
 
 ### I've changed my limits, how can I clear the warning?
 
