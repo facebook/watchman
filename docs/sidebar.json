@@ -4,6 +4,7 @@
   {"category": "Compatibility"},
   {"category": "Commands"},
   {"category": "Queries"},
+  {"category": "Expression Terms"},
   {"category": "Internals"},
   {"category": "Troubleshooting"}
 ]
