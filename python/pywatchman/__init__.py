@@ -36,6 +36,10 @@ class WatchmanError(Exception):
     pass
 
 class CommandError(WatchmanError):
+    """error returned by watchman
+
+    self.msg is the message returned by watchman.
+    """
     def __init__(self, msg):
         self.msg = msg
         super(CommandError, self).__init__('watchman command error: %s' % msg)
