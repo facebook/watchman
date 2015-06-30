@@ -6,6 +6,10 @@ category: Installation
 permalink: docs/release-notes.html
 ---
 
+### Watchman 3.5.0 (2015-06-29)
+
+* Fix the version number reported by watchman.
+
 ### Watchman 3.4.0 (2015-06-29)
 
 * `trigger` now supports an optional `relative_root` argument. The trigger is
