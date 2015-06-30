@@ -24,8 +24,12 @@ falsely) changed state of the majority of files.</p><h3><a class="anchor" name="
 comes at the cost of kernel memory to maintain the buffers.  You and/or your
 system administrator should review the workload for your system and the
 <a href="/watchman/docs/install.html#system-specific-preparation" target="">System Specific Preparation Documentation</a> and raise your limits
-accordingly.</p><p>OS X has a similar internal limit and behavior when that limit is exceeded.
-Unfortunately this limit is not tunable on OS X.</p><h3><a class="anchor" name="i-ve-changed-my-limits-how-can-i-clear-the-warning"></a>I&#x27;ve changed my limits, how can I clear the warning? <a class="hash-link" href="#i-ve-changed-my-limits-how-can-i-clear-the-warning">#</a></h3><p>The warning will stick until you cancel the watch and reinstate it, or restart
+accordingly.</p><h3><a class="anchor" name="kfseventstreameventflaguserdropped"></a>kFSEventStreamEventFlagUserDropped <a class="hash-link" href="#kfseventstreameventflaguserdropped">#</a></h3><p>OS X has a similar internal limit and behavior when that limit is exceeded.
+If you&#x27;re encountering a message like:</p><div class="prism language-javascript">Recrawled <span class="token keyword">this</span> watch <span class="token number">1</span> times<span class="token punctuation">,</span> most recently because<span class="token punctuation">:</span>
+<span class="token operator">/</span>some<span class="token operator">/</span>path<span class="token punctuation">:</span> kFSEventStreamEventFlagUserDropped</div><p>then you are hitting the limits of your system.  There is no direct control
+over the limit, but starting in Watchman 3.2 you may increase the
+<a href="/watchman/docs/config.html#fsevents-latency" target="">fsevents_latency</a>
+parameter in your <code>.watchmanconfig</code> file.</p><h3><a class="anchor" name="i-ve-changed-my-limits-how-can-i-clear-the-warning"></a>I&#x27;ve changed my limits, how can I clear the warning? <a class="hash-link" href="#i-ve-changed-my-limits-how-can-i-clear-the-warning">#</a></h3><p>The warning will stick until you cancel the watch and reinstate it, or restart
 the watchman process.  The simplest resolution is to run <code>watchman
 shutdown-server</code> and re-establish your watch on your next watchman query.</p><h2><a class="anchor" name="where-are-the-logs"></a>Where are the logs? <a class="hash-link" href="#where-are-the-logs">#</a></h2><p>Watchman places logs in a file named <code>&lt;STATEDIR&gt;/&lt;USER&gt;.log</code>, where <code>STATEDIR</code>
 is set at the time that you built watchman.</p><p>If you used the <code>--enable-statedir=&lt;STATEDIR&gt;</code> configure option, that will
