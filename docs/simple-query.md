@@ -4,7 +4,6 @@ title: Simple Pattern Syntax
 layout: docs
 category: Queries
 permalink: docs/simple-query.html
-next: casefolding
 ---
 
 Simple patterns follow a more traditional UNIX command line approach of

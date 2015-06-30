@@ -6,7 +6,7 @@ category: Commands
 permalink: docs/cmd/query.html
 ---
 
-Available starting in version 1.6
+*Since 1.6*
 
 ```bash
 $ watchman -j <<-EOT

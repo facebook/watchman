@@ -4,7 +4,6 @@ title: Case-Insensitivity
 layout: docs
 category: Internals
 permalink: docs/casefolding.html
-next: cookies
 ---
 
 Watchman is currently completely unaware of case-insensitivity in file systems,
