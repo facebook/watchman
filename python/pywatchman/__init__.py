@@ -32,8 +32,13 @@ import bser
 # 2 bytes marker, 1 byte int size, 8 bytes int64 value
 sniff_len = 13
 
-class Unavailable(Exception):
+class WatchmanError(Exception):
     pass
+
+class CommandError(WatchmanError):
+    def __init__(self, msg):
+        self.msg = msg
+        super(CommandError, self).__init__('watchman command error: %s' % msg)
 
 class client(object):
     sock = None
@@ -55,17 +60,17 @@ class client(object):
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE, close_fds=True)
         except OSError:
-            raise Unavailable('"watchman" executable not in PATH')
+            raise WatchmanError('"watchman" executable not in PATH')
 
         stdout, stderr = p.communicate()
         exitcode = p.poll()
 
         if exitcode:
-            raise Unavailable("watchman exited with code %d" % exitcode)
+            raise WatchmanError("watchman exited with code %d" % exitcode)
 
         result = bser.loads(stdout)
         if 'error' in result:
-            raise Unavailable('get-sockname error: %s' % result['error'])
+            raise WatchmanError('get-sockname error: %s' % result['error'])
 
         return result['sockname']
 
@@ -83,7 +88,7 @@ class client(object):
             self.sock = sock
             return sock
         except socket.error, e:
-            raise Unavailable('unable to connect to %s: %s' % (self.sockpath, e))
+            raise WatchmanError('unable to connect to %s: %s' % (self.sockpath, e))
 
     def receive(self):
         response = None
@@ -91,7 +96,7 @@ class client(object):
         try:
             buf = [self.sock.recv(sniff_len)]
             if not buf[0]:
-                raise Unavailable('empty watchman response')
+                raise WatchmanError('empty watchman response')
 
             elen = bser.pdu_len(buf[0])
             rlen = len(buf[0])
@@ -102,17 +107,17 @@ class client(object):
 
             response = ''.join(buf)
         except socket.timeout:
-            raise Unavailable('timed out waiting for response')
+            raise WatchmanError('timed out waiting for response')
 
         result = None
 
         try:
             result = bser.loads(response)
         except ValueError, e:
-            raise Unavailable('watchman response decode error: %s' % e)
+            raise WatchmanError('watchman response decode error: %s' % e)
 
         if 'error' in result:
-            raise Unavailable('watchman command error: %s' % result['error'])
+            raise CommandError(result['error'])
 
         return result
 
@@ -122,5 +127,5 @@ class client(object):
         try:
             sock.sendall(cmd)
         except socket.timeout:
-            raise Unavailable('timed out sending query command')
+            raise WatchmanError('timed out sending query command')
         return self.receive()
