@@ -520,11 +520,32 @@ function dump_any(buf, val) {
       }
       buf.writeByte(BSER_OBJECT);
       var keys = Object.keys(val);
-      dump_int(buf, keys.length);
+
+      // First pass to compute number of defined keys
+      var num_keys = keys.length;
       for (var i = 0; i < keys.length; ++i) {
         var key = keys[i];
+        var v = val[key];
+        if (typeof(v) == 'undefined') {
+          num_keys--;
+        }
+      }
+      dump_int(buf, num_keys);
+      for (var i = 0; i < keys.length; ++i) {
+        var key = keys[i];
+        var v = val[key];
+        if (typeof(v) == 'undefined') {
+          // Don't include it
+          continue;
+        }
         dump_any(buf, key);
-        dump_any(buf, val[key]);
+        try {
+          dump_any(buf, v);
+        } catch (e) {
+          throw new Error(
+            e.message + ' (while serializing object property with name `' +
+              key + "')");
+        }
       }
       return;
 

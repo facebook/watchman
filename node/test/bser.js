@@ -69,3 +69,7 @@ assert.equal(acc.readAvail(), 2, 'still have 2 available to read');
 assert.equal(acc.writeAvail(), 6, '2 left to read out of 8 total space');
 assert.equal(acc.peekString(2), 'lo', 'have the correct remainder');
 
+// Don't include keys that have undefined values
+var res = bser.dumpToBuffer({expression: undefined});
+assert.deepEqual(bser.loadFromBuffer(res), {});
+
