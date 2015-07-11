@@ -10,6 +10,12 @@ We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on GitHub](
 https://github.com/facebook/watchman/commits/master).
 
+### fb-watchman 1.2.0 for node (2015-07-11)
+
+* Updated the node client to more gracefully handle `undefined` values in
+  objects when serializing them; we now omit keys whose values are `undefined`
+  rather than throw an exception.
+
 ### Watchman 3.5.0 (2015-06-29)
 
 * Fix the version number reported by watchman.
