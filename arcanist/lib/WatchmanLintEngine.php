@@ -4,6 +4,10 @@
 
 class WatchmanLintEngine extends ArcanistLintEngine {
 
+  private static $IGNORED_PATH_PATTERNS = array(
+    '%^thirdparty/%',
+  );
+
   public function buildLinters() {
     $linters = array();
     $paths = $this->getPaths();
@@ -13,6 +17,13 @@ class WatchmanLintEngine extends ArcanistLintEngine {
     foreach ($paths as $key => $path) {
       if (!Filesystem::pathExists($this->getFilePathOnDisk($path))) {
         unset($paths[$key]);
+      } else {
+        foreach (static::$IGNORED_PATH_PATTERNS as $pattern) {
+          if (preg_match($pattern, $path)) {
+            unset($paths[$key]);
+            break;
+          }
+        }
       }
     }
 
