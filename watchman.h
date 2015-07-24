@@ -486,6 +486,7 @@ void w_log(int level, const char *fmt, ...)
 #endif
 ;
 
+bool w_should_log_to_clients(int level);
 void w_log_to_clients(int level, const char *buf);
 
 

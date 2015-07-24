@@ -126,6 +126,14 @@ void w_log(int level, const char *fmt, ...)
   char timebuf[64];
   struct tm tm;
 
+  bool should_log_to_stderr = level <= log_level;
+  bool should_log_to_clients = w_should_log_to_clients(level);
+
+  if (!(should_log_to_stderr || should_log_to_clients)) {
+    // Don't bother formatting the log message if nobody's listening.
+    return;
+  }
+
   if (level == W_LOG_FATAL) {
     level = W_LOG_ERR;
     fatal = true;
@@ -152,11 +160,13 @@ void w_log(int level, const char *fmt, ...)
     }
   }
 
-  if (level <= log_level) {
+  if (should_log_to_stderr) {
     ignore_result(write(STDERR_FILENO, buf, len));
   }
 
-  w_log_to_clients(level, buf);
+  if (should_log_to_clients) {
+    w_log_to_clients(level, buf);
+  }
 
   if (fatal) {
     log_stack_trace();

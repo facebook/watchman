@@ -521,6 +521,30 @@ disconected:
   return NULL;
 }
 
+bool w_should_log_to_clients(int level)
+{
+  w_ht_iter_t iter;
+
+  if (!clients) {
+    return false;
+  }
+
+  pthread_mutex_lock(&w_client_lock);
+  bool result = false;
+  if (w_ht_first(clients, &iter)) do {
+    struct watchman_client *client = w_ht_val_ptr(iter.value);
+
+    if (client->log_level != W_LOG_OFF && client->log_level >= level) {
+      result = true;
+      break;
+    }
+
+  } while (w_ht_next(clients, &iter));
+  pthread_mutex_unlock(&w_client_lock);
+
+  return result;
+}
+
 void w_log_to_clients(int level, const char *buf)
 {
   json_t *json = NULL;

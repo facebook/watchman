@@ -4,6 +4,12 @@
 #include "watchman.h"
 #include "thirdparty/tap.h"
 
+bool w_should_log_to_clients(int level)
+{
+  unused_parameter(level);
+  return true;
+}
+
 void w_log_to_clients(int level, const char *buf)
 {
   unused_parameter(level);
