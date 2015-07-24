@@ -341,18 +341,38 @@ w_string_t *w_string_basename(w_string_t *str)
 
 w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
 {
-  char name_buf[WATCHMAN_NAME_MAX];
+  w_string_t *s;
+  int len;
+  char *buf;
 
   if (rhs->len == 0) {
     w_string_addref(parent);
     return parent;
+  } else if (parent->len == 0) {
+    w_string_addref(rhs);
+    return rhs;
   }
 
-  snprintf(name_buf, sizeof(name_buf), "%.*s/%.*s",
-      parent->len, parent->buf,
-      rhs->len, rhs->buf);
+  len = parent->len + rhs->len + 1;
 
-  return w_string_new(name_buf);
+  s = malloc(sizeof(*s) + len + 1);
+  if (!s) {
+    perror("no memory available");
+    abort();
+  }
+
+  s->refcnt = 1;
+  s->len = len;
+  s->slice = NULL;
+  buf = (char*)(s + 1);
+  memcpy(buf, parent->buf, parent->len);
+  buf[parent->len] = '/';
+  memcpy(buf + parent->len + 1, rhs->buf, rhs->len);
+  buf[parent->len + 1 + rhs->len] = '\0';
+  s->buf = buf;
+  s->hval = w_hash_bytes(buf, len, 0);
+
+  return s;
 }
 
 char *w_string_dup_buf(const w_string_t *str)
