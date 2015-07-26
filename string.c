@@ -348,9 +348,6 @@ w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
   if (rhs->len == 0) {
     w_string_addref(parent);
     return parent;
-  } else if (parent->len == 0) {
-    w_string_addref(rhs);
-    return rhs;
   }
 
   len = parent->len + rhs->len + 1;
