@@ -108,7 +108,10 @@ py-install:
 
 # This is invoked via WatchmanIntegrationEngine
 py-tests:
-	time $(PYTHON) $(TESTNAME)
+	$(PYTHON) $(TESTNAME)
+
+py-integration:
+	$(PYTHON) runtests.py
 
 py-clean:
 	-cd python && $(PYTHON) ./setup.py clean --all
@@ -118,6 +121,7 @@ py-build:
 py-tests:
 py-clean:
 py-install:
+py-integration:
 endif
 
 if HAVE_RUBY
@@ -150,7 +154,7 @@ clean-local: py-clean rb-clean
 build-tests: $(TESTS)
 .PHONY: lint build-tests integration py-tests
 # run integration AND unit tests
-integration:
+integration: py-integration
 	arc test
 
 tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
