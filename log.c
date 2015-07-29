@@ -161,7 +161,7 @@ void w_log(int level, WATCHMAN_FMT_STRING(const char *fmt), ...)
     buf[sizeof(buf)-1] = 0;
   }
 
-  len = strlen(buf);
+  len = (int)strlen(buf);
 
   if (buf[len - 1] != '\n') {
     if (len < (int)sizeof(buf) - 1) {

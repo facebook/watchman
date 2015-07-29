@@ -28,7 +28,10 @@ class Instance(object):
         self.base_dir = tempfile.mkdtemp(prefix='inst')
         self.cfg_file = os.path.join(self.base_dir, "config.json")
         self.log_file_name = os.path.join(self.base_dir, "log")
-        self.sock_file = os.path.join(self.base_dir, "sock")
+        if os.name == 'nt':
+            self.sock_file = '\\\\.\\pipe\\watchman-test-%s' % int(time.time())
+        else:
+            self.sock_file = os.path.join(self.base_dir, "sock")
         self.state_file = os.path.join(self.base_dir, "state")
         with open(self.cfg_file, "w") as f:
             f.write(json.dumps(config))
@@ -49,7 +52,7 @@ class Instance(object):
 
     def start(self):
         args = [
-            './watchman',
+            'watchman',
             '--foreground',
             '--sockname={}'.format(self.sock_file),
             '--logfile={}'.format(self.log_file_name),

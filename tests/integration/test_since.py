@@ -52,9 +52,11 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
             'foo/bar/222'])
 
         # now check the delta for the since
-        self.assertFileList(root, cursor='n:foo', files=[
-            'foo/bar',
-            'foo/bar/222'])
+        expected = ['foo/bar', 'foo/bar/222']
+        if os.name == 'nt' or os.uname()[0] == 'SunOS':
+            # These systems also show the containing dir as modified
+            expected.append('foo')
+        self.assertFileList(root, cursor='n:foo', files=expected)
 
     def test_sinceRelativeRoot(self):
         root = self.mkdtemp()
@@ -102,7 +104,8 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
             'since': res['clock'],
             'relative_root': 'subdir',
             'fields': ['name']})
-        self.assertEqual(self.normFileList(res['files']), ['dir2', 'dir2/bar'])
+        self.assertEqual(self.normFileList(res['files']),
+                         self.normFileList(['dir2', 'dir2/bar']))
 
     def assertFreshInstanceForSince(self, root, cursor, empty=False):
         res = self.watchmanCommand('query', root, {

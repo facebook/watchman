@@ -146,8 +146,13 @@ class WatchmanTestCase(unittest.TestCase):
     def assertFileList(self, root, files=[], cursor=None,
                        relativeRoot=None, message=None):
         expected_files = self.normFileList(files)
-        st, res = self.waitFor(
-            lambda: self.getFileList(root, cursor=cursor,
-                                     relativeRoot=relativeRoot
-                                     ) == expected_files)
+        if (cursor is not None) and cursor[0:2] == 'n:':
+            # it doesn't make sense to repeat named cursor queries, as
+            # the cursor moves each time
+            self.getFileList(root, cursor=cursor, relativeRoot=relativeRoot)
+        else:
+            st, res = self.waitFor(
+                lambda: self.getFileList(root, cursor=cursor,
+                                         relativeRoot=relativeRoot
+                                         ) == expected_files)
         self.assertEqual(self.last_file_list, expected_files, message)

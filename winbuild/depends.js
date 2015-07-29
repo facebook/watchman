@@ -11,7 +11,7 @@ shell = WScript.CreateObject("WScript.Shell");
 cwd = shell.CurrentDirectory.toLowerCase() + '\\';
 fs = WScript.CreateObject("Scripting.FileSystemObject");
 
-INC_FILE = '.deps';
+INC_FILE = '.windeps';
 // Force dependencies on the make tooling, so that objects are regenerated
 // when the build environment is changed
 EXTRA_DEPS = [];//'winbuild\\Makefile', 'winbuild\\depends.js'];

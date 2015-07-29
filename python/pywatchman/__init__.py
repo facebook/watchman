@@ -55,6 +55,10 @@ class Transport(object):
     """ communication transport to the watchman server """
     buf = None
 
+    def close(self):
+        """ tear it down """
+        raise NotImplementedError()
+
     def readBytes(self, size):
         """ read size bytes """
         raise NotImplementedError()
@@ -119,6 +123,10 @@ class UnixSocketTransport(Transport):
             raise WatchmanError('unable to connect to %s: %s' %
                                 (self.sockpath, e))
 
+    def close(self):
+        self.sock.close()
+        self.sock = None
+
     def readBytes(self, size):
         try:
             buf = [self.sock.recv(size)]
@@ -133,6 +141,25 @@ class UnixSocketTransport(Transport):
             self.sock.sendall(data)
         except socket.timeout:
             raise WatchmanError('timed out sending query command')
+
+
+class WindowsNamedPipeTransport(Transport):
+    """ connect to a named pipe """
+
+    def __init__(self, sockpath, timeout):
+        self.sockpath = sockpath
+        self.timeout = timeout
+        self.pipe = os.open(sockpath, os.O_RDWR | os.O_BINARY)
+
+    def close(self):
+        os.close(self.pipe)
+        self.pipe = None
+
+    def readBytes(self, size):
+        return os.read(self.pipe, size)
+
+    def write(self, data):
+        return os.write(self.pipe, data)
 
 
 class CLIProcessTransport(Transport):
@@ -160,6 +187,11 @@ class CLIProcessTransport(Transport):
     def __init__(self, sockpath, timeout):
         self.sockpath = sockpath
         self.timeout = timeout
+
+    def close(self):
+        if self.proc:
+            self.proc.kill()
+            self.proc = None
 
     def _connect(self):
         if self.proc:
@@ -199,21 +231,21 @@ class BserCodec(Codec):
     """ use the BSER encoding.  This is the default, preferred codec """
 
     def receive(self):
-
         buf = [self.transport.readBytes(sniff_len)]
         if not buf[0]:
             raise WatchmanError('empty watchman response')
 
         elen = bser.pdu_len(buf[0])
-        rlen = len(buf[0])
 
+        rlen = len(buf[0])
         while elen > rlen:
             buf.append(self.transport.readBytes(elen - rlen))
             rlen += len(buf[-1])
 
         response = ''.join(buf)
         try:
-            return bser.loads(response)
+            res = bser.loads(response)
+            return res
         except ValueError as e:
             raise WatchmanError('watchman response decode error: %s' % e)
 
@@ -256,6 +288,7 @@ class client(object):
     subs = {}  # Keyed by subscription name
     logs = []  # When log level is raised
     unilateral = ['log', 'subscription']
+    tport = None
 
     def __init__(self, sockpath=None, timeout=1.0, transport=None,
                  sendEncoding=None, recvEncoding=None):
@@ -263,7 +296,9 @@ class client(object):
         self.timeout = timeout
 
         transport = transport or os.getenv('WATCHMAN_TRANSPORT') or 'local'
-        if transport == 'local':
+        if transport == 'local' and os.name == 'nt':
+            self.transport = WindowsNamedPipeTransport
+        elif transport == 'local':
             self.transport = UnixSocketTransport
         elif transport == 'cli':
             self.transport = CLIProcessTransport
@@ -323,9 +358,19 @@ class client(object):
         if self.sockpath is None:
             self.sockpath = self._resolvesockname()
 
-        transport = self.transport(self.sockpath, self.timeout)
-        self.sendConn = self.sendCodec(transport)
-        self.recvConn = self.recvCodec(transport)
+        self.tport = self.transport(self.sockpath, self.timeout)
+        self.sendConn = self.sendCodec(self.tport)
+        self.recvConn = self.recvCodec(self.tport)
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        if self.tport:
+            self.tport.close()
+            self.tport = None
+            self.recvConn = None
+            self.sendConn = None
 
     def receive(self):
         """ receive the next PDU from the watchman service

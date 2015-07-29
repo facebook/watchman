@@ -206,8 +206,9 @@ static bool parse_relative_root(w_root_t *root, w_query *res, json_t *query)
   path = w_string_new(json_string_value(relative_root));
   canon_path = w_string_canon_path(path);
   res->relative_root = w_string_path_cat(root->root_path, canon_path);
-  res->relative_root_slash = w_string_make_printf("%.*s/",
-        res->relative_root->len, res->relative_root->buf);
+  res->relative_root_slash = w_string_make_printf("%.*s%c",
+        res->relative_root->len, res->relative_root->buf,
+        WATCHMAN_DIR_SEP);
   w_string_delref(path);
   w_string_delref(canon_path);
 

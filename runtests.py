@@ -61,14 +61,12 @@ args = parser.parse_args()
 # We test for this in a test case
 os.environ['WATCHMAN_EMPTY_ENV_VAR'] = ''
 
+# Ensure that we find the watchman we built in the tests
+os.environ['PATH'] = '.' + os.pathsep + os.environ['PATH']
+
 # We'll put all our temporary stuff under one dir so that we
 # can clean it all up at the end
 temp_dir = os.path.realpath(tempfile.mkdtemp(prefix='watchmantest'))
-if args.keep:
-    atexit.register(sys.stdout.write,
-                    'Preserving output in %s\n' % temp_dir)
-else:
-    atexit.register(shutil.rmtree, temp_dir)
 # Redirect all temporary files to that location
 tempfile.tempdir = temp_dir
 
@@ -76,6 +74,24 @@ tempfile.tempdir = temp_dir
 def interrupt_handler(signo, frame):
     Interrupt.setInterrupted()
 signal.signal(signal.SIGINT, interrupt_handler)
+
+def retry_rmtree(top):
+    # Keep trying to remove it; on Windows it may take a few moments
+    # for any outstanding locks/handles to be released
+    for i in xrange(1, 10):
+        shutil.rmtree(top, ignore_errors=True)
+        if not os.path.isdir(top):
+            return
+        time.sleep(0.2)
+    sys.stdout.write('Failed to completely remove ' + top)
+
+def cleanup():
+    if args.keep:
+        sys.stdout.write('Preserving output in %s\n' % temp_dir)
+        return
+    retry_rmtree(temp_dir)
+
+atexit.register(cleanup)
 
 
 class Result(unittest.TestResult):

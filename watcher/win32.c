@@ -113,7 +113,10 @@ static void *readchanges_thread(void *arg) {
   DWORD err, filter;
   OVERLAPPED olap;
   BOOL initiate_read = true;
+  bool did_signal_init = false;
   HANDLE handles[2] = { state->olap, state->ping };
+
+  w_set_thread_name("readchange %.*s", root->root_path->len, root->root_path->buf);
 
   // Block until winmatch_root_st is waiting for our initialization
   pthread_mutex_lock(&state->mtx);
@@ -131,9 +134,7 @@ static void *readchanges_thread(void *arg) {
     goto out;
   }
 
-  // Signal that we are done with init
-  pthread_cond_signal(&state->cond);
-  pthread_mutex_unlock(&state->mtx);
+  w_log(W_LOG_DBG, "ReadDirectoryChangesW signalling as init done");
 
   while (!root->cancelled) {
     DWORD bytes;
@@ -154,6 +155,17 @@ static void *readchanges_thread(void *arg) {
       }
     }
 
+    if (!did_signal_init) {
+      // Signal that we are done with init.  We MUST do this after our first
+      // successful ReadDirectoryChangesW, otherwise there is a race condition
+      // where we'll miss observing the cookie for a query that comes in
+      // after we've crawled but before the watch is established.
+      pthread_cond_signal(&state->cond);
+      pthread_mutex_unlock(&state->mtx);
+      did_signal_init = true;
+    }
+
+    w_log(W_LOG_DBG, "waiting for change notifications");
     DWORD status = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
 
     if (status == WAIT_OBJECT_0) {

@@ -310,9 +310,6 @@ static int posix_spawn_common(
       ret = map_win32_err(err);
       goto done;
     }
-
-    w_log(W_LOG_ERR, "duplicated handle %p -> handle %p for fd=%d\n",
-        dup->local_handle, *target, dup->target_fd);
   }
 
   // Process any file opening actions
@@ -351,8 +348,6 @@ static int posix_spawn_common(
       CloseHandle(*target);
     }
     *target = h;
-    w_log(W_LOG_ERR, "opened file %s as handle %p fd=%d\n",
-        op->name, h, op->target_fd);
   }
 
   if (!sinfo.hStdInput) {

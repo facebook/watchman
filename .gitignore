@@ -9,6 +9,7 @@ install-sh
 missing
 config.log
 .deps/
+.windeps
 *.in
 Makefile
 *.o
@@ -31,6 +32,7 @@ config.guess
 configure.lineno
 python/build
 *.pyc
+*.pyd
 *.so
 *.obj
 *.exe
