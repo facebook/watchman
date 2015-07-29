@@ -773,6 +773,7 @@ static w_string_t *w_resolve_filesystem_canonical_name(const char *path)
   if (long_len == 0 && err == ERROR_FILE_NOT_FOUND) {
     // signal to caller that the file has disappeared -- the caller will read
     // errno and do error handling
+    errno = map_win32_err(err);
     return NULL;
   }
 

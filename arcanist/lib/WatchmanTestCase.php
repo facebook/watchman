@@ -3,6 +3,9 @@
  * Licensed under the Apache License, Version 2.0 */
 
 function w_normalize_filename($a) {
+  if ($a === null) {
+    return null;
+  }
   return str_replace('/', DIRECTORY_SEPARATOR, $a);
 }
 

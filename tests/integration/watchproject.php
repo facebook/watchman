@@ -6,7 +6,7 @@ class watchProjectTestCaseHelper extends WatchmanTestCase {
   function runProjectTests($tests, $touch_watchmanconfig = false) {
     foreach ($tests as $info) {
       list($touch, $expected_watch, $expect_rel, $expected_pass) = $info;
-      $dir = PhutilDirectoryFixture::newEmptyFixture();
+      $dir = new WatchmanDirectoryFixture();
       $root = realpath($dir->getPath());
 
       mkdir("$root/a/b/c", 0777, true);
@@ -30,8 +30,10 @@ class watchProjectTestCaseHelper extends WatchmanTestCase {
         if ($err) {
           $this->assertFailure("failed to watch-project: $err");
         }
-        $this->assertEqual($full_watch, idx($res, 'watch'), $label);
-        $this->assertEqual($expect_rel, idx($res, 'relative_path'), $label);
+        $this->assertEqual(w_normalize_filename($full_watch),
+            idx($res, 'watch'), $label);
+        $this->assertEqual(w_normalize_filename($expect_rel),
+            idx($res, 'relative_path'), $label);
       } else {
         if ($err) {
           $this->assertEqual(

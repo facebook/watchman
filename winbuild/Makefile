@@ -19,6 +19,7 @@ JSON_SRCS=\
 
 SRCS=\
 	$(JSON_SRCS) \
+	winbuild\abort.c \
 	winbuild\errmap.c \
 	winbuild\pathmap.c \
 	winbuild\stat.c \
@@ -58,6 +59,7 @@ SRCS=\
 	cmds\debug.c    \
 	query\base.c       \
 	query\parse.c      \
+	query\dirname.c    \
 	query\eval.c       \
 	query\type.c       \
 	query\suffix.c     \
@@ -65,6 +67,7 @@ SRCS=\
 	query\pcre.c       \
 	query\name.c       \
 	query\fieldlist.c  \
+	query\intcompare.c  \
 	query\since.c      \
 	query\empty.c      \
 	watcher\win32.c \
@@ -82,6 +85,7 @@ TEST_SRCS=\
 	winbuild\time.c \
 	winbuild\pthread.c \
 	winbuild\backtrace.c \
+	winbuild\abort.c \
 	argv.c \
 	$(JSON_SRCS)
 

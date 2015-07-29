@@ -89,6 +89,7 @@ class triggerChdirTestCase extends WatchmanTestCase {
     $this->waitFor(
       function () use ($env, $root) {
         $envdata = @file_get_contents($env);
+        $root = preg_quote($root);
         return preg_match(",PWD=$root/sub,", $envdata) == 1;
       },
       10,

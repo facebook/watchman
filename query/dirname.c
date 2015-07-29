@@ -18,6 +18,10 @@ static void dispose_dirname(void *ptr) {
   free(data);
 }
 
+static inline bool is_dir_sep(int c) {
+  return c == '/' || c == '\\';
+}
+
 static bool eval_dirname(struct w_query_ctx *ctx,
     struct watchman_file *file, void *ptr) {
   struct dirname_data *data = ptr;
@@ -39,7 +43,8 @@ static bool eval_dirname(struct w_query_ctx *ctx,
   // Want to make sure that wholename is a child of dirname, so
   // check for a dir separator.  Special case for dirname == '' (the root),
   // which won't have a slash in position 0.
-  if (data->dirname->len > 0 && str->buf[data->dirname->len] != '/') {
+  if (data->dirname->len > 0 &&
+      !is_dir_sep(str->buf[data->dirname->len])) {
     // may have a common prefix with, but is not a child of dirname
     return false;
   }
@@ -51,7 +56,7 @@ static bool eval_dirname(struct w_query_ctx *ctx,
   // Now compute the depth of file from dirname.  We do this by
   // counting dir separators, not including the one we saw above.
   for (i = data->dirname->len + 1; i < str->len; i++) {
-    if (str->buf[i] == '/') {
+    if (is_dir_sep(str->buf[i])) {
       depth++;
     }
   }

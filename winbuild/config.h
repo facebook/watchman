@@ -33,6 +33,10 @@
 #include <io.h>
 #include <sys/types.h>
 
+// Use our own abort implementation
+#define abort() w_abort()
+extern void w_abort(void);
+
 typedef ptrdiff_t ssize_t;
 
 #define WATCHMAN_DIR_SEP '\\'
