@@ -56,27 +56,38 @@ class Result(unittest.TestResult):
     # Make it easier to spot success/failure by coloring the status
     # green for pass, red for fail and yellow for skip.
     # also print the elapsed time per test
+    transport = None
+    encoding = None
 
     def startTest(self, test):
         self.startTime = time.time()
         super(Result, self).startTest(test)
 
+    def setFlavour(self, transport, encoding):
+        self.transport = transport
+        self.encoding = encoding
+
+    def flavour(self, test):
+        if self.transport:
+            return '%s [%s, %s]' % (test.id(), self.transport, self.encoding)
+        return test.id()
+
     def addSuccess(self, test):
         elapsed = time.time() - self.startTime
         super(Result, self).addSuccess(test)
-        print('\033[32mPASS\033[0m %s (%.3fs)' % (test.id(), elapsed))
+        print('\033[32mPASS\033[0m %s (%.3fs)' % (self.flavour(test), elapsed))
 
     def addSkip(self, test, reason):
         elapsed = time.time() - self.startTime
         super(Result, self).addSkip(test, reason)
         print('\033[33mSKIP\033[0m %s (%.3fs) %s' %
-              (test.id(), elapsed, reason))
+              (self.flavour(test), elapsed, reason))
 
     def __printFail(self, test, err):
         elapsed = time.time() - self.startTime
         t, val, trace = err
         print('\033[31mFAIL\033[0m %s (%.3fs)\n%s' % (
-            test.id(),
+            self.flavour(test),
             elapsed,
             ''.join(traceback.format_exception(t, val, trace))))
 
@@ -87,7 +98,6 @@ class Result(unittest.TestResult):
     def addError(self, test, err):
         self.__printFail(test, err)
         super(Result, self).addError(test, err)
-
 
 loader = unittest.TestLoader()
 suite = unittest.TestSuite()

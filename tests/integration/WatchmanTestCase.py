@@ -25,18 +25,33 @@ class WatchmanTestCase(unittest.TestCase):
             except Exception as e:
                 pass
 
-    def run(self, result=None):
+    def runConfiguration(self, result, transport, encoding):
         # Arrange for any temporary stuff we create to go under
         # our global tempdir and put it in a dir named for the test
         saved_root = tempfile.tempdir
+        id = '%s.%s.%s' % (self.id(), transport, encoding)
+        os.environ['WATCHMAN_TRANSPORT'] = transport
+        os.environ['WATCHMAN_ENCODING'] = encoding
         try:
-            tempfile.tempdir = os.path.join(saved_root, self.id())
+            tempfile.tempdir = os.path.join(saved_root, id)
             os.mkdir(tempfile.tempdir)
-            self.__logTestInfo(self.id(), 'BEGIN')
-            return super(WatchmanTestCase, self).run(result)
+            self.__logTestInfo(id, 'BEGIN')
+            result.setFlavour(transport, encoding)
+            super(WatchmanTestCase, self).run(result)
         finally:
             tempfile.tempdir = saved_root
-            self.__logTestInfo(self.id(), 'END')
+            self.__logTestInfo(id, 'END')
+            self.__clearWatches()
+
+    def run(self, result):
+        if result is None:
+            raise Exception('MUST be a runtests.py:Result instance')
+
+        for transport, encoding in [('local', 'bser'),
+                                    ('local', 'json'),
+                                    ('cli', 'json')]:
+            self.runConfiguration(result, transport, encoding)
+        return result
 
     def touch(self, fname, times=None):
         try:
@@ -52,12 +67,15 @@ class WatchmanTestCase(unittest.TestCase):
         fname = os.path.join(base, *fname)
         self.touch(fname, None)
 
-    def __del__(self):
+    def __clearWatches(self):
         if hasattr(self, 'client'):
             try:
                 self.watchmanCommand('watch-del-all')
             except Exception as e:
                 pass
+
+    def __del__(self):
+        self.__clearWatches()
 
     def watchmanCommand(self, *args):
         return self.getClient().query(*args)
