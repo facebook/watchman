@@ -524,13 +524,13 @@ disconected:
 bool w_should_log_to_clients(int level)
 {
   w_ht_iter_t iter;
+  bool result = false;
 
   if (!clients) {
     return false;
   }
 
   pthread_mutex_lock(&w_client_lock);
-  bool result = false;
   if (w_ht_first(clients, &iter)) do {
     struct watchman_client *client = w_ht_val_ptr(iter.value);
 
