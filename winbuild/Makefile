@@ -149,7 +149,7 @@ COLLECTDEPS=$(CC) $(CFLAGS) /Zs /showIncludes /EHsc $< | cscript /nologo //E:jsc
 all: remove-config-h watchman.exe build-tests depend susres.exe
 
 remove-config-h:
-	-del config.h
+	-del config.h watchman
 
 # problems with vcvarsall.bat? http://stackoverflow.com/a/10558328/149111
 py-build:

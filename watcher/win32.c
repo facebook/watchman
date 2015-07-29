@@ -35,6 +35,7 @@ bool winwatch_root_init(watchman_global_watcher_t watcher, w_root_t *root,
     char **errmsg) {
   struct winwatch_root_state *state;
   WCHAR *wpath;
+  int err;
   unused_parameter(watcher);
 
   state = calloc(1, sizeof(*state));
@@ -75,8 +76,18 @@ bool winwatch_root_init(watchman_global_watcher_t watcher, w_root_t *root,
         win32_strerror(GetLastError()));
     return false;
   }
-  pthread_mutex_init(&state->mtx, NULL);
-  pthread_cond_init(&state->cond, NULL);
+  err = pthread_mutex_init(&state->mtx, NULL);
+  if (err) {
+    asprintf(errmsg, "failed to init mutex: %s",
+        strerror(err));
+    return false;
+  }
+  err = pthread_cond_init(&state->cond, NULL);
+  if (err) {
+    asprintf(errmsg, "failed to init cond: %s",
+        strerror(err));
+    return false;
+  }
 
   return true;
 }
@@ -87,6 +98,12 @@ void winwatch_root_dtor(watchman_global_watcher_t watcher, w_root_t *root) {
 
   if (!state) {
     return;
+  }
+
+  // wait for readchanges_thread to quit before we tear down state
+  if (!pthread_equal(state->thread, pthread_self())) {
+    void *ignore;
+    pthread_join(state->thread, &ignore);
   }
 
   CloseHandle(state->ping);
@@ -264,7 +281,7 @@ out:
   // the failure path.  We'll also do this after we've completed
   // the run loop in the success path; it's a spurious wakeup but
   // harmless and saves us from adding and setting a control flag
-  // in each of the failure `goto` statements. fsevents_root_dtor
+  // in each of the failure `goto` statements. winwatch_root_dtor
   // will `pthread_join` us before `state` is freed.
   pthread_cond_signal(&state->cond);
   pthread_mutex_unlock(&state->mtx);
