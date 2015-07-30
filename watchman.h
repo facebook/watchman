@@ -50,7 +50,6 @@ extern "C" {
 #endif
 #include <sys/poll.h>
 #include <sys/wait.h>
-#include <fnmatch.h>
 #ifdef HAVE_PCRE_H
 # include <pcre.h>
 #endif

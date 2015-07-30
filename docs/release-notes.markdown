@@ -10,6 +10,16 @@ We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on GitHub](
 https://github.com/facebook/watchman/commits/master).
 
+### Watchman 3.6.0 (????-??-??)
+
+* Fixed bug where `query match` on `foo*.java` with `wholename` scope
+  would incorrectly match `foo/bar/baz.java`.
+* Added `src/**/*.java` recursive glob pattern support to `query match`.
+* Added options dictionary to `query`'s `match` operator.
+* Added `includedotfiles` option to `query match` to include files
+  whose names start with `.`.
+* Added `noescape` option to `query match` to make `\` match literal `\`.
+
 ### fb-watchman 1.2.0 for node (2015-07-11)
 
 * Updated the node client to more gracefully handle `undefined` values in

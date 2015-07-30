@@ -9,7 +9,7 @@ THIRDPARTY_CPPFLAGS = -I$(top_srcdir)/thirdparty/jansson -I$(top_builddir)/third
 JSON_LIB = -L. libwmanjson.a
 
 watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@ -DWATCHMAN_STATE_DIR='"@WATCHMAN_STATE_DIR@"'
-watchman_LDADD = $(JSON_LIB)
+watchman_LDADD = $(JSON_LIB) libwildmatch.a
 watchman_SOURCES = \
 	argv.c       \
 	envp.c       \
@@ -60,7 +60,7 @@ noinst_HEADERS =   \
 	watchman.h       \
 	watchman_hash.h
 
-noinst_LIBRARIES = libwmanjson.a libtap.a
+noinst_LIBRARIES = libwmanjson.a libtap.a libwildmatch.a
 
 # bundled json library
 libwmanjson_a_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
@@ -85,9 +85,13 @@ libtap_a_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
 libtap_a_SOURCES = thirdparty/tap.c
 TAP_LIB = libtap.a
 
+# pattern matching library
+libwildmatch_a_SOURCES = thirdparty/wildmatch/wildmatch.c
+WILDMATCH_LIB = libwildmatch.a
+
 # unit tests
-TESTS = tests/argv.t tests/log.t tests/bser.t
-noinst_PROGRAMS = tests/argv.t tests/log.t tests/bser.t
+TESTS = tests/argv.t tests/log.t tests/bser.t tests/wildmatch.t
+noinst_PROGRAMS = tests/argv.t tests/log.t tests/bser.t tests/wildmatch.t
 
 if HAVE_ARC
 # Run lint and output stuff suitable for feeding into ":make" in vim
@@ -175,3 +179,7 @@ tests_bser_t_SOURCES = \
 	tests/bser.c \
 	bser.c
 
+tests_wildmatch_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) -DWILDMATCH_TEST_JSON_FILE=\"$(srcdir)/tests/wildmatch_test.json\"
+tests_wildmatch_t_LDADD = $(JSON_LIB) $(TAP_LIB) $(WILDMATCH_LIB)
+tests_wildmatch_t_SOURCES = \
+	tests/wildmatch_test.c
