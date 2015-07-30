@@ -38,6 +38,70 @@ struct win_handle {
   bool blocking;
 };
 
+typedef BOOL (WINAPI *get_overlapped_result_ex_func)(
+    HANDLE file,
+    LPOVERLAPPED olap,
+    LPDWORD bytes,
+    DWORD millis,
+    BOOL alertable);
+static get_overlapped_result_ex_func get_overlapped_result_ex;
+
+static BOOL win7_get_overlapped_result_ex(
+    HANDLE file,
+    LPOVERLAPPED olap,
+    LPDWORD bytes,
+    DWORD millis,
+    BOOL alertable) {
+
+  while (true) {
+    if (GetOverlappedResult(file, olap, bytes, FALSE)) {
+      // Result is available
+      return TRUE;
+    }
+
+    ULONGLONG start = GetTickCount64();
+    if (SleepEx(millis, alertable) == WAIT_IO_COMPLETION) {
+      SetLastError(WAIT_IO_COMPLETION);
+      return FALSE;
+    }
+    ULONGLONG end = GetTickCount64();
+
+    if (millis != INFINITE) {
+      millis = (DWORD)((ULONGLONG)millis - (end - start));
+      if (millis <= 0) {
+        // Out of time
+        SetLastError(WAIT_TIMEOUT);
+        return FALSE;
+      }
+    }
+  }
+}
+
+static BOOL probe_get_overlapped_result_ex(
+    HANDLE file,
+    LPOVERLAPPED olap,
+    LPDWORD bytes,
+    DWORD millis,
+    BOOL alertable) {
+  get_overlapped_result_ex_func func;
+
+  func = (get_overlapped_result_ex_func)GetProcAddress(
+      GetModuleHandle("kernel32.dll"),
+      "GetOverlappedResultEx");
+
+  if (!func) {
+    func = win7_get_overlapped_result_ex;
+  }
+
+  get_overlapped_result_ex = func;
+
+  return func(file, olap, bytes, millis, alertable);
+}
+
+static get_overlapped_result_ex_func get_overlapped_result_ex =
+  probe_get_overlapped_result_ex;
+
+
 #if 1
 #define stream_debug(x, ...) 0
 #else
@@ -126,7 +190,7 @@ static bool win_read_handle_completion(struct win_handle *h) {
 
   // Don't hold the mutex while we're blocked
   LeaveCriticalSection(&h->mtx);
-  olap_res = GetOverlappedResultEx(h->h, &h->read_pending->olap, &bytes,
+  olap_res = get_overlapped_result_ex(h->h, &h->read_pending->olap, &bytes,
       h->blocking ? INFINITE : 0, true);
   err = GetLastError();
   EnterCriticalSection(&h->mtx);
