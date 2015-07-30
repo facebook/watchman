@@ -333,7 +333,8 @@ class client(object):
         cmd = ['watchman', '--output-encoding=bser', 'get-sockname']
         try:
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, close_fds=True)
+                                 stderr=subprocess.PIPE,
+                                 close_fds=os.name != 'nt')
         except OSError as e:
             raise WatchmanError('"watchman" executable not in PATH (%s)', e)
 
