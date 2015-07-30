@@ -23,6 +23,21 @@ function w_is_same_file_list($a, $b) {
   return $a == $b;
 }
 
+function w_find_subdata_containing_file($subdata, $filename) {
+  if (!is_array($subdata)) {
+    return null;
+  }
+  $filename = w_normalize_filename($filename);
+  foreach ($subdata as $sub) {
+    if (in_array($filename, $sub['files'])) {
+      return $sub;
+    }
+  }
+  return null;
+}
+
+
+
 class WatchmanTestCase extends ArcanistPhutilTestCase {
   protected $root;
   protected $watchman_instance;
@@ -487,8 +502,11 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
 
       $message = "\nfile lists are not equal $where";
     }
-    $this->assertEqual(w_normalize_file_list($a),
-      w_normalize_file_list($b), $message);
+    $a = w_normalize_file_list($a);
+    sort($a);
+    $b = w_normalize_file_list($b);
+    sort($b);
+    $this->assertEqual($a, $b, $message);
   }
 
   function assertFileList($root, array $files, $message = null) {

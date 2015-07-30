@@ -4,7 +4,7 @@
 
 class queryDirNameTestCase extends WatchmanTestCase {
   function testDirName() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $dir = new WatchmanDirectoryFixture();
     $root = realpath($dir->getPath());
     for ($i = 0; $i < 5; $i++) {
       mkdir("$root/$i/$i/$i/$i/$i", 0777, true);
@@ -125,8 +125,7 @@ class queryDirNameTestCase extends WatchmanTestCase {
         $this->assertFailure($results['error'] . ' ' . $label);
       }
       $files = $results['files'];
-      sort($files);
-      $this->assertEqual($expect, $files, $label);
+      $this->assertEqualFileList($expect, $files, $label);
     }
   }
 }

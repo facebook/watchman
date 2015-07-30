@@ -73,7 +73,7 @@ class triggerStdinTestCase extends WatchmanTestCase {
   }
 
   function testAppendTriggerRelativeRoot() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $dir = new WatchmanDirectoryFixture();
     $log = $dir->getPath() . "log";
     $root = realpath($dir->getPath()) . "/dir";
 

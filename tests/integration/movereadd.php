@@ -37,7 +37,7 @@ class movereaddTestCase extends WatchmanTestCase {
     mkdir("$root/foo/bar");
 
     $since = array('foo/bar');
-    if (PHP_OS == 'SunOS') {
+    if (PHP_OS == 'SunOS' || phutil_is_windows()) {
       // This makes me sad, but Solaris reports the parent dir
       // as changed when we mkdir within it
       array_unshift($since, 'foo');

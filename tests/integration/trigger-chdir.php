@@ -52,7 +52,7 @@ class triggerChdirTestCase extends WatchmanTestCase {
   }
 
   function testChdirRelativeRoot() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $dir = new WatchmanDirectoryFixture();
     $log = $dir->getPath() . "log";
     $env = $dir->getPath() . "env";
     $root = realpath($dir->getPath()) . "/dir";

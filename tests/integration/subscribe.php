@@ -8,7 +8,7 @@ class subscribeTestCase extends WatchmanTestCase {
   }
 
   function testImmediateSubscribe() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $dir = new WatchmanDirectoryFixture();
     $root = realpath($dir->getPath());
     mkdir("$root/.hg");
 
@@ -43,7 +43,8 @@ class subscribeTestCase extends WatchmanTestCase {
           $wlock = $ent;
         }
       }
-      $this->assertEqual(array('name' => '.hg/wlock', 'exists' => true), $ent);
+      $this->assertEqual(array('name' => w_normalize_filename('.hg/wlock'),
+          'exists' => true), $ent);
 
       unlink("$root/.hg/wlock");
 
@@ -58,7 +59,8 @@ class subscribeTestCase extends WatchmanTestCase {
           $wlock = $ent;
         }
       }
-      $this->assertEqual(array('name' => '.hg/wlock', 'exists' => false), $ent);
+      $this->assertEqual(array('name' => w_normalize_filename('.hg/wlock'),
+            'exists' => false), $ent);
 
       $this->watchmanCommand('unsubscribe', $root, 'nodefer');
     } catch (Exception $e) {
@@ -116,21 +118,15 @@ class subscribeTestCase extends WatchmanTestCase {
       $files = $sub['files'];
       $this->assertEqual(array('lemon'), $files);
 
-      // delete a file and see that subscribe tells us about it
+      // delete a file and see that subscribe tells us about it.
       unlink("$root/a/lemon");
       $this->waitForSub('myname', function ($data) {
-        return true;
+        return w_find_subdata_containing_file($data, 'a/lemon') !== null;
       });
-      $sub = $this->tail($this->getSubData('myname'));
-
+      $sub = w_find_subdata_containing_file(
+          $this->getSubData('myname'), 'a/lemon');
+      $this->assertTrue(is_array($sub), 'missing `myname` subscription data');
       $this->assertEqual(false, $sub['is_fresh_instance']);
-      $expect = array('a/lemon');
-      if (PHP_OS == 'SunOS') {
-        // This makes me sad, but Solaris reports the parent dir
-        // as changed, too
-        array_unshift($expect, 'a');
-      }
-      $this->assertEqualFileList($expect, $sub['files']);
 
       $this->waitForSub('relative', function ($data) {
         return true;

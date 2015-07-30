@@ -4,7 +4,7 @@
 
 class watchDelAllTestCase extends WatchmanTestCase {
   function testWatchDelAll() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $dir = new WatchmanDirectoryFixture();
     $root = realpath($dir->getPath());
 
     $files = array('a', 'b', 'c', 'd', 'e');
@@ -28,15 +28,11 @@ class watchDelAllTestCase extends WatchmanTestCase {
 
     $resp = $this->watchmanCommand('watch-list');
     $watched = $resp['roots'];
-    sort($watched);
-
-    $this->assertEqual($dirs, $watched);
+    $this->assertEqualFileList($dirs, $watched);
 
     $resp = $this->watchmanCommand('watch-del-all');
     $watched = $resp['roots'];
-    sort($watched);
-
-    $this->assertEqual($dirs, $watched);
+    $this->assertEqualFileList($dirs, $watched);
 
     $resp = $this->watchmanCommand('watch-list');
 

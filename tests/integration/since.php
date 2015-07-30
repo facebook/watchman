@@ -31,7 +31,7 @@ class sinceTestCase extends WatchmanTestCase {
       'foo/bar',
       'foo/bar/222'
     );
-    if (PHP_OS == 'SunOS') {
+    if (PHP_OS == 'SunOS' || phutil_is_windows()) {
       // This makes me sad, but Solaris reports the parent dir
       // as changed when we mkdir within it
       array_unshift($since, 'foo');
@@ -84,7 +84,7 @@ class sinceTestCase extends WatchmanTestCase {
   }
 
   function testSinceRelativeRoot() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $dir = new WatchmanDirectoryFixture();
     $root = realpath($dir->getPath());
 
     $watch = $this->watch($root);
@@ -117,7 +117,7 @@ class sinceTestCase extends WatchmanTestCase {
       'relative_root' => 'subdir',
       'fields' => array('name'),
     ));
-    $this->assertEqual(array(), $res['files']);
+    $this->assertEqualFileList(array(), $res['files']);
     $clock = $res['clock'];
 
     // touching just the subdir shouldn't cause anything to show up
@@ -127,7 +127,7 @@ class sinceTestCase extends WatchmanTestCase {
       'relative_root' => 'subdir',
       'fields' => array('name'),
     ));
-    $this->assertEqual(array(), $res['files']);
+    $this->assertEqualFileList(array(), $res['files']);
     $clock = $res['clock'];
 
     // touching a new file inside the subdir should cause it to show up
@@ -139,7 +139,7 @@ class sinceTestCase extends WatchmanTestCase {
       'fields' => array('name'),
     ));
     sort($res['files']);
-    $this->assertEqual(array('dir2', 'dir2/bar'), $res['files']);
+    $this->assertEqualFileList(array('dir2', 'dir2/bar'), $res['files']);
   }
 
   function assertFreshInstanceForSince($root, $since, $empty) {
@@ -150,9 +150,9 @@ class sinceTestCase extends WatchmanTestCase {
     ));
     $this->assertEqual(true, $res['is_fresh_instance']);
     if ($empty) {
-      $this->assertEqual(array(), $res['files']);
+      $this->assertEqualFileList(array(), $res['files']);
     } else {
-      $this->assertEqual(array('111'), $res['files']);
+      $this->assertEqualFileList(array('111'), $res['files']);
     }
   }
 

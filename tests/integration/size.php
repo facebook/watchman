@@ -4,7 +4,7 @@
 
 class sizeCompareTestCase extends WatchmanTestCase {
   function testSize() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $dir = new WatchmanDirectoryFixture();
     $root = realpath($dir->getPath());
 
     touch("$root/empty");

@@ -54,7 +54,7 @@ class pathGeneratorTestCase extends WatchmanTestCase {
   }
 
   function testPathGeneratorRelativeRoot() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $dir = new WatchmanDirectoryFixture();
     $root = realpath($dir->getPath());
 
     touch("$root/a");

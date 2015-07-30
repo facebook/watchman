@@ -32,6 +32,11 @@ class bigPCRETestCase extends WatchmanTestCase {
 
     // Some libraries will happily parse this big pcre
     if (isset($res['error'])) {
+      if ($res['error'] ==
+          "failed to parse query: unknown expression term 'pcre'") {
+        $this->assertSkipped('no PCRE support');
+      }
+
       $possible = array(
         'code 50 repeated subpattern is too long',
         'code 20 regular expression is too large',

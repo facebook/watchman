@@ -16,6 +16,9 @@ class pcreTestCase extends WatchmanTestCase {
     $this->assertFileList($root, array('bar.txt', 'foo.c'));
 
     $out = $this->watchmanCommand('find', $root, '-p', '.*c$');
+    if (idx($out, 'error', '') == "unknown expression term 'pcre'") {
+      $this->assertSkipped('no PCRE support');
+    }
     $this->assertEqual('foo.c', $out['files'][0]['name']);
 
     $out = $this->watchmanCommand('find', $root, '-p', '.*txt$');

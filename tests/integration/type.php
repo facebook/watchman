@@ -41,7 +41,7 @@ class TypeExprTestCase extends WatchmanTestCase {
     });
     $this->assertEqual(array(
         array('name' => 'foo.c', 'type' => 'f'),
-        array('name' => 'subdir/bar.txt', 'type' => 'f')
+        array('name' => w_normalize_filename('subdir/bar.txt'), 'type' => 'f')
       ), $res['files']);
 
     $res = $this->watchmanCommand('query', $root, array(
