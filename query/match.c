@@ -54,7 +54,7 @@ static w_query_expr *wildmatch_parser_inner(w_query *query,
 
   if (json_unpack(
         term,
-        "[s,s,s,{s?b,s?b,s?b}]",
+        "[s,s,s,{s?b,s?b}]",
         &ignore,
         &pattern,
         &scope,
