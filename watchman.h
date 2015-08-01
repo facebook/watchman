@@ -841,6 +841,9 @@ extern struct watchman_ops kqueue_watcher;
 extern struct watchman_ops inotify_watcher;
 extern struct watchman_ops portfs_watcher;
 
+void w_ioprio_set_low(void);
+void w_ioprio_set_normal(void);
+
 #ifdef __cplusplus
 }
 #endif

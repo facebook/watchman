@@ -1378,6 +1378,7 @@ static bool handle_should_recrawl(w_root_t *root)
           root->failure_reason->len, root->failure_reason->buf);
       w_root_cancel(root);
     }
+    w_ioprio_set_low();
     return true;
   }
   return false;
@@ -1564,6 +1565,8 @@ static void notify_thread(w_root_t *root)
     return;
   }
 
+  w_ioprio_set_low();
+
   /* now we can settle into the notification stuff */
   while (!root->cancelled) {
     int timeoutms = MAX(root->trigger_settle, 100);
@@ -1579,6 +1582,7 @@ static void notify_thread(w_root_t *root)
       }
       root->done_initial = true;
       w_root_unlock(root);
+      w_ioprio_set_normal();
 
       w_log(W_LOG_DBG, "initial crawl complete\n");
     }

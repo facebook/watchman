@@ -22,6 +22,7 @@ watchman_SOURCES = \
 	bser.c       \
 	hash.c       \
 	ht.c         \
+	ioprio.c        \
 	cmds/find.c     \
 	cmds/info.c     \
 	cmds/log.c      \
