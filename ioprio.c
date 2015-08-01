@@ -36,6 +36,11 @@ static void adjust_ioprio(bool low) {
       low ? IOPRIO_PRIO_VALUE(IOPRIO_CLASS_IDLE, 0)
           : IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 4));
 #endif
+#ifdef _WIN32
+  SetThreadPriority(GetCurrentThread(),
+      low ? THREAD_MODE_BACKGROUND_BEGIN
+          : THREAD_MODE_BACKGROUND_END);
+#endif
 }
 
 void w_ioprio_set_low(void) {
