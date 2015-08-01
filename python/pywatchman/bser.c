@@ -29,6 +29,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <Python.h>
+#ifdef _MSC_VER
+#define inline __inline
+#include <stdint.h>
+#endif
 
 /* Return the smallest size int that can store the value */
 #define INT_SIZE(x) (((x) == ((int8_t)x))  ? 1 :    \
@@ -120,7 +124,7 @@ static void bser_dtor(bser_t *bser)
   bser->buf = NULL;
 }
 
-static int bser_long(bser_t *bser, long val)
+static int bser_long(bser_t *bser, int64_t val)
 {
   int8_t i8;
   int16_t i16;
@@ -223,6 +227,10 @@ static int bser_recursive(bser_t *bser, PyObject *val)
 
   if (PyInt_Check(val)) {
     return bser_long(bser, PyInt_AS_LONG(val));
+  }
+
+  if (PyLong_Check(val)) {
+    return bser_long(bser, PyLong_AsLongLong(val));
   }
 
   if (PyString_Check(val) || PyUnicode_Check(val)) {

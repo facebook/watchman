@@ -158,7 +158,7 @@ clean-local: py-clean rb-clean
 build-tests: $(TESTS)
 .PHONY: lint build-tests integration py-tests
 # run integration AND unit tests
-integration: py-integration
+integration: py-build py-integration
 	arc test
 
 tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
