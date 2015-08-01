@@ -33,7 +33,7 @@ unittest.installHandler()
 
 # We'll put all our temporary stuff under one dir so that we
 # can clean it all up at the end
-temp_dir = tempfile.mkdtemp(prefix='watchmantest')
+temp_dir = os.path.realpath(tempfile.mkdtemp(prefix='watchmantest'))
 if args.keep:
     atexit.register(sys.stdout.write,
                     'Preserving output in %s\n' % temp_dir)

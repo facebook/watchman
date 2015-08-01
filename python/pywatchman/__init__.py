@@ -242,6 +242,9 @@ class client(object):
     recvCodec = None
     sendConn = None
     recvConn = None
+    subs = {}  # Keyed by subscription name
+    logs = []  # When log level is raised
+    unilateral = ['log', 'subscription']
 
     def __init__(self, sockpath=None, timeout=1.0, transport=None,
                  sendEncoding=None, recvEncoding=None):
@@ -314,14 +317,83 @@ class client(object):
         self.recvConn = self.recvCodec(transport)
 
     def receive(self):
+        """ receive the next PDU from the watchman service
+
+        If the client has activated subscriptions or logs then
+        this PDU may be a unilateral PDU sent by the service to
+        inform the client of a log event or subscription change.
+
+        It may also simply be the response portion of a request
+        initiated by query.
+
+        There are clients in production that subscribe and call
+        this in a loop to retrieve all subscription responses,
+        so care should be taken when making changes here.
+        """
+
         self._connect()
         result = self.recvConn.receive()
         if 'error' in result:
             raise CommandError(result['error'])
 
+        if 'log' in result:
+            self.logs.append(result['log'])
+
+        if 'subscription' in result:
+            sub = result['subscription']
+            if not (sub in self.subs):
+                self.subs[sub] = []
+            self.subs[sub].append(result)
+
         return result
 
+    def isUnilateralResponse(self, res):
+        for k in self.unilateral:
+            if k in res:
+                return True
+        return False
+
+    def getLog(remove=True):
+        """ Retrieve buffered log data
+
+        If remove is true the data will be removed from the buffer.
+        Otherwise it will be left in the buffer
+        """
+        res = self.logs
+        if remove:
+            self.logs = []
+        return res
+
+    def getSubscription(name, remove=True):
+        """ Retrieve the data associated with a named subscription
+
+        If remove is True (the default), the subscription data is removed
+        from the buffer.  Otherwise the data is returned but left in
+        the buffer.
+
+        Returns None if there is no data associated with `name`
+        """
+
+        if not (name in self.subs):
+            return None
+        sub = self.subs[name]
+        if remove:
+            del self.subs[name]
+        return sub
+
     def query(self, *args):
+        """ Send a query to the watchman service and return the response
+
+        This call will block until the response is returned.
+        If any unilateral responses are sent by the service in between
+        the request-response they will be buffered up in the client object
+        and NOT returned via this method.
+        """
+
         self._connect()
         self.sendConn.send(args)
-        return self.receive()
+
+        res = self.receive()
+        while self.isUnilateralResponse(res):
+            res = self.receive()
+        return res
