@@ -9,6 +9,7 @@ import tempfile
 import os.path
 import os
 import WatchmanInstance
+import copy
 
 
 class WatchmanTestCase(unittest.TestCase):
@@ -16,6 +17,9 @@ class WatchmanTestCase(unittest.TestCase):
     def getClient(self):
         if not hasattr(self, 'client'):
             self.client = pywatchman.client(
+                transport=self.transport,
+                sendEncoding=self.encoding,
+                recvEncoding=self.encoding,
                 sockpath=WatchmanInstance.getSharedInstance().getSockPath())
         return self.client
 
@@ -27,33 +31,40 @@ class WatchmanTestCase(unittest.TestCase):
             except Exception as e:
                 pass
 
-    def runConfiguration(self, result, transport, encoding):
+    def run(self, result):
+        if result is None:
+            raise Exception('MUST be a runtests.py:Result instance')
         # Arrange for any temporary stuff we create to go under
         # our global tempdir and put it in a dir named for the test
         saved_root = tempfile.tempdir
-        id = '%s.%s.%s' % (self.id(), transport, encoding)
-        os.environ['WATCHMAN_TRANSPORT'] = transport
-        os.environ['WATCHMAN_ENCODING'] = encoding
+        id = '%s.%s.%s' % (self.id(), self.transport, self.encoding)
         try:
             tempfile.tempdir = os.path.join(saved_root, id)
             os.mkdir(tempfile.tempdir)
             self.__logTestInfo(id, 'BEGIN')
-            result.setFlavour(transport, encoding)
+            result.setFlavour(self.transport, self.encoding)
             super(WatchmanTestCase, self).run(result)
         finally:
             tempfile.tempdir = saved_root
             self.__logTestInfo(id, 'END')
             self.__clearWatches()
 
-    def run(self, result):
-        if result is None:
-            raise Exception('MUST be a runtests.py:Result instance')
+        return result
 
+    def expandConfigurations(self):
+        tests = []
         for transport, encoding in [('local', 'bser'),
                                     ('local', 'json'),
                                     ('cli', 'json')]:
-            self.runConfiguration(result, transport, encoding)
-        return result
+            test = copy.copy(self)
+            test.setConfiguration(transport, encoding)
+            tests.append(test)
+        return tests
+
+    def setConfiguration(self, transport, encoding):
+        self.transport = transport
+        self.encoding = encoding
+
 
     def touch(self, fname, times=None):
         try:

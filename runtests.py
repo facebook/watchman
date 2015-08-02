@@ -16,6 +16,7 @@ import argparse
 import atexit
 import WatchmanTapTests
 import WatchmanInstance
+import WatchmanTestCase
 import glob
 import threading
 import multiprocessing
@@ -286,6 +287,9 @@ def expand_suite(suite, target=None):
     for i, test in enumerate(suite):
         if isinstance(test, unittest.TestSuite):
             expand_suite(test, target)
+        elif isinstance(test, WatchmanTestCase.WatchmanTestCase):
+            for cfg in test.expandConfigurations():
+                target.append(cfg)
         else:
             target.append(test)
 
@@ -295,12 +299,15 @@ def expand_suite(suite, target=None):
     random.shuffle(target)
     return target
 
-def queue_jobs(suite):
-    """ expands a test suite and queues it to the runners """
-    for test in expand_suite(suite):
+def queue_jobs(tests):
+    for test in tests:
         tests_queue.put(test)
 
-queue_jobs(suite)
+all_tests = expand_suite(suite)
+if len(all_tests) < args.concurrency:
+    args.concurrency = len(all_tests)
+queue_jobs(all_tests)
+
 for i in range(args.concurrency):
     t = threading.Thread(target=runner)
     t.daemon = True
@@ -321,8 +328,8 @@ while not results_queue.empty():
     tests_failed = tests_failed + len(res.errors) + len(res.failures)
     tests_skipped = tests_skipped + len(res.skipped)
 
-print('Ran %d, failed %d, skipped %d' % (
-    tests_run, tests_failed, tests_skipped))
+print('Ran %d, failed %d, skipped %d, concurrency %d' % (
+    tests_run, tests_failed, tests_skipped, args.concurrency))
 
 if tests_failed:
     sys.exit(1)

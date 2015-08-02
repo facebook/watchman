@@ -71,6 +71,13 @@ class Transport(object):
         if self.buf is None:
             self.buf = []
 
+        # Buffer may already have a line if we've received unilateral
+        # response(s) from the server
+        if len(self.buf) == 1 and "\n" in self.buf[0]:
+            (line, b) = self.buf[0].split("\n", 1)
+            self.buf = [b]
+            return line
+
         while True:
             b = self.readBytes(4096)
             if "\n" in b:
@@ -227,7 +234,11 @@ class JsonCodec(Codec):
 
     def receive(self):
         line = self.transport.readLine()
-        return self.json.loads(line)
+        try:
+            return self.json.loads(line)
+        except Exception as e:
+            print(e, line)
+            raise
 
     def send(self, *args):
         cmd = self.json.dumps(*args)
