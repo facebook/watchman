@@ -31,21 +31,22 @@ class WatchmanTestCase(unittest.TestCase):
             except Exception as e:
                 pass
 
+    def mkdtemp(self):
+        return tempfile.mkdtemp(dir=self.tempdir)
+
     def run(self, result):
         if result is None:
             raise Exception('MUST be a runtests.py:Result instance')
         # Arrange for any temporary stuff we create to go under
         # our global tempdir and put it in a dir named for the test
-        saved_root = tempfile.tempdir
         id = '%s.%s.%s' % (self.id(), self.transport, self.encoding)
         try:
-            tempfile.tempdir = os.path.join(saved_root, id)
-            os.mkdir(tempfile.tempdir)
+            self.tempdir = os.path.join(tempfile.tempdir, id)
+            os.mkdir(self.tempdir)
             self.__logTestInfo(id, 'BEGIN')
             result.setFlavour(self.transport, self.encoding)
             super(WatchmanTestCase, self).run(result)
         finally:
-            tempfile.tempdir = saved_root
             self.__logTestInfo(id, 'END')
             self.__clearWatches()
 

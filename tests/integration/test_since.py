@@ -10,7 +10,7 @@ import os.path
 class TestSince(WatchmanTestCase.WatchmanTestCase):
 
     def test_sinceIssue1(self):
-        root = tempfile.mkdtemp()
+        root = self.mkdtemp()
         self.touchRelative(root, '111')
         self.touchRelative(root, '222')
 
@@ -28,7 +28,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         self.assertFileList(root, cursor='n:foo', files=['bar', 'bar/333'])
 
     def test_sinceIssue2(self):
-        root = tempfile.mkdtemp()
+        root = self.mkdtemp()
         self.watchmanCommand('watch', root)
         self.assertFileList(root, files=[])
 
@@ -55,7 +55,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
             'foo/bar/222'])
 
     def test_sinceRelativeRoot(self):
-        root = tempfile.mkdtemp()
+        root = self.mkdtemp()
         self.watchmanCommand('watch', root)
         clock = self.watchmanCommand('clock', root)['clock']
 
@@ -111,7 +111,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
             self.assertEqual(res['files'], ['111'])
 
     def test_sinceFreshInstance(self):
-        root = tempfile.mkdtemp()
+        root = self.mkdtemp()
         self.watchmanCommand('watch', root)
         self.assertFileList(root, [])
         self.touchRelative(root, '111')
@@ -171,7 +171,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         self.assertEqual(self.normFileList(res['files']), ['222'])
 
     def test_reAddWatchFreshInstance(self):
-        root = tempfile.mkdtemp()
+        root = self.mkdtemp()
         self.watchmanCommand('watch', root)
         self.assertFileList(root, [])
         self.touchRelative(root, '111')
@@ -199,7 +199,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         self.assertEqual(res['files'], ['222'])
 
     def test_recrawlFreshInstance(self):
-        root = tempfile.mkdtemp()
+        root = self.mkdtemp()
         self.watchmanCommand('watch', root)
         self.touchRelative(root, '111')
         self.assertFileList(root, ['111'])
