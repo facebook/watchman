@@ -99,9 +99,11 @@ class PhutilTestCase(TapExeTestCase):
         return ['arc', 'tap', self.phpfile]
 
 
-def discover(path):
+def discover(filematcher, path):
     suite = unittest.TestSuite()
     for exe in glob.glob(path):
+        if not filematcher(exe):
+            continue
         if exe.endswith('.php'):
             suite.addTest(PhutilTestCase(exe))
         else:
