@@ -12,6 +12,7 @@ phutil_register_library_map(array(
   array(
     'CallgrindFile' => 'lib/cov/CallgrindFile.php',
     'DwarfLineInfo' => 'lib/cov/DwarfLineInfo.php',
+    'PythonProvidedWatchmanInstance' => 'lib/WatchmanInstance.php',
     'WatchmanCoverWorkflow' => 'workflow/cover.php',
     'WatchmanInstance' => 'lib/WatchmanInstance.php',
     'WatchmanIntegrationEngine' => 'lib/WatchmanIntegrationEngine.php',
@@ -20,6 +21,7 @@ phutil_register_library_map(array(
     'WatchmanPackageWorkflow' => 'workflow/package.php',
     'WatchmanQueryFuture' => 'lib/WatchmanQueryFuture.php',
     'WatchmanTapEngine' => 'lib/WatchmanTapEngine.php',
+    'WatchmanTapWorkflow' => 'workflow/tap.php',
     'WatchmanTestCase' => 'lib/WatchmanTestCase.php',
     'WatchmanTestWorkflow' => 'workflow/test.php',
   ),
@@ -28,12 +30,14 @@ phutil_register_library_map(array(
   ),
   'xmap' =>
   array(
+    'PythonProvidedWatchmanInstance' => 'WatchmanInstance',
     'WatchmanCoverWorkflow' => 'ArcanistBaseWorkflow',
     'WatchmanIntegrationEngine' => 'WatchmanTapEngine',
     'WatchmanLicenseLinter' => 'ArcanistLinter',
     'WatchmanLintEngine' => 'ArcanistLintEngine',
     'WatchmanPackageWorkflow' => 'ArcanistBaseWorkflow',
     'WatchmanQueryFuture' => 'FutureProxy',
+    'WatchmanTapWorkflow' => 'ArcanistBaseWorkflow',
     'WatchmanTestCase' => 'ArcanistPhutilTestCase',
     'WatchmanTestWorkflow' => 'ArcanistBaseWorkflow',
   ),

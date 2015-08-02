@@ -103,6 +103,7 @@ suite = unittest.TestSuite()
 for d in ['python/tests', 'tests/integration']:
     suite.addTests(loader.discover(d, top_level_dir=d))
 suite.addTests(WatchmanTapTests.discover('tests/*.t'))
+suite.addTests(WatchmanTapTests.discover('tests/integration/*.php'))
 
 unittest.TextTestRunner(
     resultclass=Result,

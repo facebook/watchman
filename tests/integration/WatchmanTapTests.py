@@ -15,6 +15,9 @@ class TapExeTestCase(unittest.TestCase):
     def id(self):
         return self.executable
 
+    def getCommandArgs(self):
+        return [self.executable]
+
     def run(self, result=None):
         if result is not None:
             result.setFlavour(None, None)
@@ -22,7 +25,7 @@ class TapExeTestCase(unittest.TestCase):
 
     def runTest(self):
         proc = subprocess.Popen(
-            [self.executable],
+            self.getCommandArgs(),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         (stdout, stderr) = proc.communicate()
@@ -38,7 +41,11 @@ class TapExeTestCase(unittest.TestCase):
         # Now parse the TAP output
         lines = stdout.split('\n')
         # first line is the plan
-        plan = int(lines.pop(0).split('..')[1])
+        try:
+            plan = int(lines.pop(0).split('..')[1])
+        except Exception as e:
+            self.fail(stdout + '\n' + stderr)
+            return
         last_test = 0
         diags = None
         for line in lines:
@@ -46,6 +53,7 @@ class TapExeTestCase(unittest.TestCase):
             if res:
                 this_test = int(res.group(2))
                 if this_test != last_test + 1:
+                    print(stdout, stderr)
                     self.fail('Expected test number %d, got %d' % (
                         last_test + 1,
                         this_test))
@@ -70,17 +78,34 @@ class TapExeTestCase(unittest.TestCase):
 
             if line != '':
                 print('Invalid tap output from %s: %s' %
-                      (self.executable, line))
+                      (self.id(), line))
 
         self.assertEqual(last_test, plan,
                          '%s planned %d but executed %d tests' % (
-                             self.executable,
+                             self.id(),
                              plan,
                              last_test))
+
+
+class PhutilTestCase(TapExeTestCase):
+    def __init__(self, phpfile):
+        super(TapExeTestCase, self).__init__()
+        self.phpfile = phpfile
+
+    def id(self):
+        return self.phpfile
+
+    def getCommandArgs(self):
+        return ['arc', 'tap', self.phpfile]
 
 
 def discover(path):
     suite = unittest.TestSuite()
     for exe in glob.glob(path):
-        suite.addTest(TapExeTestCase(exe))
+        if exe.endswith('.php'):
+            suite.addTest(PhutilTestCase(exe))
+        else:
+            suite.addTest(TapExeTestCase(exe))
     return suite
+
+

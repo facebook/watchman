@@ -7,6 +7,14 @@ class triggerTestCase extends WatchmanTestCase {
     return true;
   }
 
+  function getGlobalConfig() {
+    return array(
+      // We need to run our own instance so that we can look in
+      // the log file
+      'dummy' => true
+    );
+  }
+
   function doesTriggerDataMatchFileList($root, array $files) {
     if (!file_exists("$root/trigger.json")) {
       return false;

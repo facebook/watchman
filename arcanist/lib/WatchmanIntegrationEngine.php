@@ -4,26 +4,23 @@
 
 // Runs both the integration and the unit tests
 class WatchmanIntegrationEngine extends WatchmanTapEngine {
+  var $first_inst;
+
+  public function setWatchmanInstance($inst) {
+    $this->first_inst = $inst;
+  }
 
   public function run($tests) {
-    $unit = $this->runUnitTests($tests);
-    $integ = $this->runIntegrationTests($tests);
-
-    return array_merge($unit, $integ);
+    return $this->runIntegrationTests($tests);
   }
 
   public function runIntegrationTests($tests) {
-    $this->make('all');
-
     // Now find all the test programs
     $root = $this->getProjectRoot();
     $test_dir = $root . "/tests/integration/";
 
     if (!$tests) {
       $paths = glob($test_dir . "*.php");
-      foreach (glob('python/tests/*.py') as $file) {
-        $paths[] = $file;
-      }
       $paths[] = 'ruby/ruby-watchman/spec/ruby_watchman_spec.rb';
     } else {
       $paths = $tests;
@@ -49,7 +46,10 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
 
     $coverage = $this->getEnableCoverage();
 
-    $first_inst = new WatchmanInstance($root, $coverage);
+    if (!$this->first_inst) {
+      $this->first_inst = new WatchmanInstance($root, $coverage);
+    }
+    $first_inst = $this->first_inst;
     $instances = array($first_inst);
 
     // Helper for python or other language tests
@@ -103,53 +103,6 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
           $results[] = $cli_results;
         }
       }
-    }
-
-    // Also run the python tests if we built them
-    foreach ($paths as $path) {
-      if (!preg_match('/test.*\.py$/', $path)) {
-        continue;
-      }
-      if (!file_exists($path)) {
-        // Was deleted in this (pending) rev
-        continue;
-      }
-      if (!file_exists("python/pywatchman/bser.so")) {
-        // Not enabled by the build
-        continue;
-      }
-
-      // Note that this implicitly starts the instance if we haven't
-      // yet done so.  This is important if the only test paths are
-      // python paths
-      if (!$first_inst->getProcessID()) {
-        $res = new ArcanistUnitTestResult();
-        $res->setName('dead');
-        $res->setUserData('died before test start');
-        $res->setResult(ArcanistUnitTestResult::RESULT_FAIL);
-        $results[] = array($res);
-        break;
-      }
-
-      // our Makefile contains the detected python, so just run the
-      // rule from the makefile to pick it up
-      $start = microtime(true);
-      $future = new ExecFuture(
-        "PATH=\"$root:\$PATH\" PYTHONPATH=$root/python ".
-        "TESTNAME=$path \${MAKE:-make} py-tests"
-      );
-      $future->setTimeout(10);
-      list($status, $out, $err) = $future->resolve();
-      $end = microtime(true);
-      $res = new ArcanistUnitTestResult();
-      $res->setName($path);
-      $res->setUserData($out.$err);
-      $res->setDuration($end - $start);
-      $res->setResult($status == 0 ?
-        ArcanistUnitTestResult::RESULT_PASS :
-        ArcanistUnitTestResult::RESULT_FAIL
-      );
-      $results[] = array($res);
     }
 
     foreach ($paths as $path) {

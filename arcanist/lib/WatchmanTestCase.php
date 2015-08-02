@@ -123,8 +123,8 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     if (!$this->use_cli) {
       $this->watchman_instance->stopLogging();
     }
-    $this->logTestInfo('end', $test_method_name);
     chdir($this->root);
+    $this->logTestInfo('end', $test_method_name);
   }
 
   function willRunOneTest($test_method_name) {

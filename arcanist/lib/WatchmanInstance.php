@@ -6,19 +6,19 @@
 // for integration tests.
 // Ensures that it is terminated when it is destroyed.
 class WatchmanInstance {
-  private $proc;
-  private $logfile;
-  private $sockname;
-  private $config_file;
-  private $debug = false;
-  private $valgrind = false;
-  private $coverage = false;
-  private $vg_log;
-  private $cg_file;
-  private $sock;
-  private $repo_root;
-  private $logdata = array();
-  private $subdata = array();
+  protected $proc;
+  protected $logfile;
+  protected $sockname;
+  protected $config_file;
+  protected $debug = false;
+  protected $valgrind = false;
+  protected $coverage = false;
+  protected $vg_log;
+  protected $cg_file;
+  protected $sock;
+  protected $repo_root;
+  protected $logdata = array();
+  protected $subdata = array();
   const TIMEOUT = 20;
 
   function __construct($repo_root, $coverage, $config = array()) {
@@ -223,6 +223,18 @@ class WatchmanInstance {
       throw new Exception("Failed to spawn $cmd");
     }
 
+    $this->openSock();
+
+    // If you're debugging and want to attach a debugger, then:
+    // `WATCHMAN_DEBUG_WAIT=1 arc test tests/integration/age.php`
+    // then gdb -p or lldb -p with the PID it prints out
+    if (getenv("WATCHMAN_DEBUG_WAIT")) {
+      printf("PID: %d\n", $this->getProcessID());
+      sleep(10);
+    }
+  }
+
+  function openSock() {
     $sockname = $this->getFullSockName();
     $deadline = time() + 5;
     do {
@@ -238,14 +250,6 @@ class WatchmanInstance {
       throw new Exception("Failed to talk to watchman on $sockname");
     }
     stream_set_timeout($this->sock, self::TIMEOUT);
-
-    // If you're debugging and want to attach a debugger, then:
-    // `WATCHMAN_DEBUG_WAIT=1 arc test tests/integration/age.php`
-    // then gdb -p or lldb -p with the PID it prints out
-    if (getenv("WATCHMAN_DEBUG_WAIT")) {
-      printf("PID: %d\n", $this->getProcessID());
-      sleep(10);
-    }
   }
 
   private function fwrite_all($sock, $buf) {
@@ -532,9 +536,11 @@ class WatchmanInstance {
     return $st;
   }
 
-  private function waitForSuspendedState($suspended, $timeout) {
-    $st = proc_get_status($this->proc);
-    $pid = $st['pid'];
+  protected function waitForSuspendedState($suspended, $timeout, $pid = null) {
+    if ($pid === null) {
+      $st = proc_get_status($this->proc);
+      $pid = $st['pid'];
+    }
     // The response to proc_get_status has a 'stopped' value, which is
     // ostensibly set to a truthy value if the process is stopped and falsy if
     // it isn't. Why don't we use it, you ask? Well, let me ask you a question
@@ -685,5 +691,51 @@ class WatchmanInstance {
   }
 
 }
+
+// This is a helper to avoid having to spawn a new watchman
+// process for every php test that we launch via the python
+// harness
+class PythonProvidedWatchmanInstance extends WatchmanInstance {
+  public function suspendProcess() {
+    $timeout = 5;
+    // SIGSTOP isn't defined on the default PHP shipped with OS X, so use kill
+    execx('kill -STOP %s', $this->pid);
+    if (!$this->waitForSuspendedState(true, $timeout, $this->pid)) {
+      throw new Exception("watchman process didn't stop in $timeout seconds");
+    }
+  }
+
+  public function resumeProcess() {
+    $timeout = 5;
+    // SIGCONT isn't defined on the default PHP shipped with OS X, so use kill
+    execx('kill -CONT %s', $this->pid);
+    if (!$this->waitForSuspendedState(false, $timeout, $this->pid)) {
+      throw new Exception("watchman process didn't resume in $timeout seconds");
+    }
+  }
+
+  function waitForLogOutput($criteria, $timeout = 5) {
+    // We can't find the log file for the python test instance from here,
+    // so the test should run its own instance
+    throw new Exception('you must return a non-empty array from getGlobalConfig');
+  }
+
+  function __construct() {
+    $this->sockname = getenv('WATCHMAN_SOCK');
+  }
+
+  function getFullSockName() {
+    return $this->sockname;
+  }
+
+  function start() {
+    $this->openSock();
+    $this->pid = $this->getProcessID();
+  }
+
+  function terminateProcess() {
+  }
+}
+
 
 // vim:ts=2:sw=2:et:

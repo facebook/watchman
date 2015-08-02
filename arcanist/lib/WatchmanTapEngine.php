@@ -13,11 +13,6 @@ class WatchmanTapEngine {
     return $this->projectRoot;
   }
 
-  protected function make($target) {
-    return execx("cd %s && \${MAKE:-make} %s",
-      $this->getProjectRoot(), $target);
-  }
-
   public function run($tests) {
     return $this->runUnitTests($tests);
   }
@@ -27,9 +22,6 @@ class WatchmanTapEngine {
   }
 
   public function runUnitTests($tests) {
-    // Build any unit tests
-    $this->make('build-tests');
-
     // Now find all the test programs
     $root = $this->getProjectRoot();
     $test_dir = $root . "/tests/";

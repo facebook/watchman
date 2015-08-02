@@ -127,6 +127,7 @@ py-tests:
 py-clean:
 py-install:
 py-integration:
+	arc test
 endif
 
 if HAVE_RUBY
@@ -160,7 +161,6 @@ build-tests: $(TESTS)
 .PHONY: lint build-tests integration py-tests
 # run integration AND unit tests
 integration: py-build py-integration
-	arc test
 
 tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
 tests_argv_t_LDADD = $(JSON_LIB) $(TAP_LIB)
