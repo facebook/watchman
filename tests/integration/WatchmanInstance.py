@@ -7,7 +7,17 @@ import os.path
 import subprocess
 import pywatchman
 import time
+import threading
 
+tls = threading.local()
+
+def setSharedInstance(inst):
+    global tls
+    tls.instance = inst
+
+def getSharedInstance():
+    global tls
+    return tls.instance
 
 class Instance(object):
     # Tracks a running watchman instance.  It is created with an
@@ -34,6 +44,7 @@ class Instance(object):
         if self.proc:
             self.proc.kill()
             self.proc.wait()
+            self.proc = None
         self.log_file.close()
 
     def start(self):

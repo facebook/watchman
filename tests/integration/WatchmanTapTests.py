@@ -4,7 +4,9 @@ import os.path
 import subprocess
 import glob
 import re
-
+import WatchmanInstance
+import signal
+import Interrupt
 
 class TapExeTestCase(unittest.TestCase):
 
@@ -24,6 +26,8 @@ class TapExeTestCase(unittest.TestCase):
         return super(TapExeTestCase, self).run(result)
 
     def runTest(self):
+        env = os.environ.copy()
+        env['WATCHMAN_SOCK'] = WatchmanInstance.getSharedInstance().getSockPath()
         proc = subprocess.Popen(
             self.getCommandArgs(),
             stdout=subprocess.PIPE,
@@ -31,8 +35,13 @@ class TapExeTestCase(unittest.TestCase):
         (stdout, stderr) = proc.communicate()
         status = proc.poll()
 
+        if status == -signal.SIGINT:
+            Interrupt.setInterrupted()
+            self.fail('Interrupted by SIGINT')
+            return
+
         if status != 0:
-            self.fail(stdout + '\n' + stderr)
+            self.fail("Exit status %d\n%s\n%s\n" % (status, stdout, stderr))
             return
 
         res_pat = re.compile('^(not )?ok (\d+) (.*)$')

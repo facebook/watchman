@@ -80,15 +80,6 @@ class TestBSERDump(unittest.TestCase):
         enc = bser.dumps([1, 2, 3, "hello there, much larger"])
         self.assertEquals(len(enc), bser.pdu_len(enc[0:7]))
 
-    def test_client(self):
-        # verify that we can talk to the instance set up by the harness
-        # we're just verifying that the socket set in the environment works
-        # and that we can understand the result
-        sock = os.getenv('WATCHMAN_SOCK')
-        c = pywatchman.client()
-        res = c.query('get-sockname')
-        self.assertEquals(sock, res['sockname'])
-
 if __name__ == '__main__':
     unittest.main()
 

@@ -17,6 +17,18 @@ import atexit
 import WatchmanTapTests
 import WatchmanInstance
 import glob
+import threading
+import multiprocessing
+import math
+import signal
+import Interrupt
+import random
+
+try:
+    import queue
+except Exception:
+    import Queue
+    queue = Queue
 
 parser = argparse.ArgumentParser(
     description="Run the watchman unit and integration tests")
@@ -37,12 +49,16 @@ parser.add_argument(
     action='append',
     help='specify which python test method names to run')
 
+parser.add_argument(
+    '--concurrency',
+    default=int(math.ceil(1.5 * multiprocessing.cpu_count())),
+    type=int,
+    help='How many tests to run at once')
+
 args = parser.parse_args()
 
 # We test for this in a test case
 os.environ['WATCHMAN_EMPTY_ENV_VAR'] = ''
-
-unittest.installHandler()
 
 # We'll put all our temporary stuff under one dir so that we
 # can clean it all up at the end
@@ -55,12 +71,10 @@ else:
 # Redirect all temporary files to that location
 tempfile.tempdir = temp_dir
 
-# Start up a shared watchman instance for the tests.
-inst = WatchmanInstance.Instance()
-inst.start()
 
-# Allow tests to locate our instance by default
-os.environ['WATCHMAN_SOCK'] = inst.getSockPath()
+def interrupt_handler(signo, frame):
+    Interrupt.setInterrupted()
+signal.signal(signal.SIGINT, interrupt_handler)
 
 
 class Result(unittest.TestResult):
@@ -69,6 +83,11 @@ class Result(unittest.TestResult):
     # also print the elapsed time per test
     transport = None
     encoding = None
+
+    def shouldStop(self):
+        if Interrupt.wasInterrupted():
+            return True
+        return super(Result, self).shouldStop()
 
     def startTest(self, test):
         self.startTime = time.time()
@@ -184,7 +203,126 @@ suite.addTests(WatchmanTapTests.discover(
 suite.addTests(WatchmanTapTests.discover(
     shouldIncludeTestFile, 'tests/integration/*.php'))
 
-unittest.TextTestRunner(
-    resultclass=Result,
-    verbosity=args.verbosity
-).run(suite)
+# Manage printing from concurrent threads
+# http://stackoverflow.com/a/3030755/149111
+class ThreadSafeFile(object):
+    def __init__(self, f):
+        self.f = f
+        self.lock = threading.RLock()
+        self.nesting = 0
+
+    def _getlock(self):
+        self.lock.acquire()
+        self.nesting += 1
+
+    def _droplock(self):
+        nesting = self.nesting
+        self.nesting = 0
+        for i in range(nesting):
+            self.lock.release()
+
+    def __getattr__(self, name):
+        if name == 'softspace':
+            return tls.softspace
+        else:
+            raise AttributeError(name)
+
+    def __setattr__(self, name, value):
+        if name == 'softspace':
+            tls.softspace = value
+        else:
+            return object.__setattr__(self, name, value)
+
+    def write(self, data):
+        self._getlock()
+        self.f.write(data)
+        if data == '\n':
+            self._droplock()
+
+sys.stdout = ThreadSafeFile(sys.stdout)
+
+tests_queue = queue.Queue()
+results_queue = queue.Queue()
+
+def runner():
+    global results_queue
+    global tests_queue
+
+    try:
+        # Start up a shared watchman instance for the tests.
+        inst = WatchmanInstance.Instance()
+        inst.start()
+        # Allow tests to locate this default instance
+        WatchmanInstance.setSharedInstance(inst)
+    except Exception as e:
+        print('This is going to suck:', e)
+        return
+
+    while True:
+        test = tests_queue.get()
+        try:
+            if test == 'terminate':
+                break
+
+            if Interrupt.wasInterrupted():
+                continue
+
+            try:
+                result = Result()
+                test.run(result)
+                results_queue.put(result)
+            except Exception as e:
+                print(e)
+
+        finally:
+            tests_queue.task_done()
+
+    inst.stop()
+
+def expand_suite(suite, target=None):
+    """ recursively expand a TestSuite into a list of TestCase """
+    if target is None:
+        target = []
+    for i, test in enumerate(suite):
+        if isinstance(test, unittest.TestSuite):
+            expand_suite(test, target)
+        else:
+            target.append(test)
+
+    # randomize both because we don't want tests to have relatively
+    # dependency ordering and also because this can help avoid clumping
+    # longer running tests together
+    random.shuffle(target)
+    return target
+
+def queue_jobs(suite):
+    """ expands a test suite and queues it to the runners """
+    for test in expand_suite(suite):
+        tests_queue.put(test)
+
+queue_jobs(suite)
+for i in range(args.concurrency):
+    t = threading.Thread(target=runner)
+    t.daemon = True
+    t.start()
+    # also send a termination sentinel
+    tests_queue.put('terminate')
+
+# Wait for all tests to have been dispatched
+tests_queue.join()
+
+# Now pull out and aggregate the results
+tests_run = 0
+tests_failed = 0
+tests_skipped = 0
+while not results_queue.empty():
+    res = results_queue.get()
+    tests_run = tests_run + res.testsRun
+    tests_failed = tests_failed + len(res.errors) + len(res.failures)
+    tests_skipped = tests_skipped + len(res.skipped)
+
+print('Ran %d, failed %d, skipped %d' % (
+    tests_run, tests_failed, tests_skipped))
+
+if tests_failed:
+    sys.exit(1)

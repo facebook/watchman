@@ -8,13 +8,15 @@ import time
 import tempfile
 import os.path
 import os
+import WatchmanInstance
 
 
 class WatchmanTestCase(unittest.TestCase):
 
     def getClient(self):
         if not hasattr(self, 'client'):
-            self.client = pywatchman.client()
+            self.client = pywatchman.client(
+                sockpath=WatchmanInstance.getSharedInstance().getSockPath())
         return self.client
 
     def __logTestInfo(self, test, msg):
