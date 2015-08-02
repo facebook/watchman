@@ -1949,7 +1949,13 @@ char *w_find_enclosing_root(const char *filename, char **relpath) {
   }
 
   // extract the path portions
-  prefix = strndup(filename, root->root_path->len);
+  prefix = malloc(root->root_path->len + 1);
+  if (!prefix) {
+    return NULL;
+  }
+  memcpy(prefix, filename, root->root_path->len);
+  prefix[root->root_path->len] = '\0';
+
   if (root->root_path->len == name->len) {
     *relpath = NULL;
   } else {
