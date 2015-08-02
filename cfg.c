@@ -260,5 +260,10 @@ double cfg_get_double(w_root_t *root, const char *name, double defval) {
   return defval;
 }
 
+const char *cfg_get_trouble_url(void) {
+  return cfg_get_string(NULL, "troubleshooting_url",
+    "https://facebook.github.io/watchman/docs/troubleshooting.html");
+}
+
 /* vim:ts=2:sw=2:et:
  */

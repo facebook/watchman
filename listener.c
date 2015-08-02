@@ -338,10 +338,11 @@ void add_root_warnings_to_response(json_t *response, w_root_t *root) {
     "Recrawled this watch %d times, most recently because:\n"
     "%.*s\n"
     "To resolve, please review the information on\n"
-    "https://facebook.github.io/watchman/docs/troubleshooting.html#recrawl",
+    "%s#recrawl",
     root->recrawl_count,
     root->last_recrawl_reason->len,
-    root->last_recrawl_reason->buf));
+    root->last_recrawl_reason->buf,
+    cfg_get_trouble_url()));
 
   if (!str) {
     return;
