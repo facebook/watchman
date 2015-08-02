@@ -82,6 +82,7 @@ SRCS=\
 
 TEST_SRCS=\
 	thirdparty\tap.c \
+	thirdparty\wildmatch\wildmatch.c \
 	winbuild\asprintf.c \
 	winbuild\time.c \
 	winbuild\pthread.c \
@@ -99,7 +100,7 @@ OBJS=$(SRCS:.c=.obj)
 TEST_OBJS=$(TEST_SRCS:.c=.obj)
 TEST_DIR_OBJS=$(TEST_DIR_SRCS:.c=.obj)
 DEPS=$(SRCS:.c=.dep) $(TEST_SRCS:.c=.dep) $(TEST_DIR_SRCS:.c=.dep)
-TESTS=tests\argv.exe tests\log.exe tests\bser.exe
+TESTS=tests\argv.exe tests\log.exe tests\bser.exe tests\wildmatch_test.exe
 COLLECTDEPS=$(CC) $(CFLAGS) /Zs /showIncludes /EHsc $< | cscript /nologo //E:jscript winbuild\depends.js --stdin
 
 .c.dep:
@@ -160,7 +161,7 @@ remove-config-h:
 py-build:
 	cd python && python ./setup.py clean build_py -c -d . build_ext -i
 
-py-integration:
+py-integration: py-build
 	python runtests.py
 
 check: $(TESTS)
@@ -170,8 +171,7 @@ check: $(TESTS)
 susres.exe: winbuild\susres.c
 	$(CC) /Fesusres.exe winbuild\susres.c
 
-integration: check susres.exe
-	arc test
+integration: build-tests susres.exe py-integration
 
 build-tests: $(TESTS)
 
@@ -188,6 +188,10 @@ tests\bser.exe: tests\bser.obj bser.obj $(TEST_OBJS)
 	$(LINKER) $** $(LIBS)
 
 tests\log.exe: tests\log.obj log.obj $(TEST_OBJS)
+	@echo LINK $@
+	$(LINKER) $** $(LIBS)
+
+tests\wildmatch_test.exe: tests\wildmatch_test.obj $(TEST_OBJS)
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 

@@ -8,6 +8,7 @@ import subprocess
 import pywatchman
 import time
 import threading
+import uuid
 
 tls = threading.local()
 
@@ -29,7 +30,7 @@ class Instance(object):
         self.cfg_file = os.path.join(self.base_dir, "config.json")
         self.log_file_name = os.path.join(self.base_dir, "log")
         if os.name == 'nt':
-            self.sock_file = '\\\\.\\pipe\\watchman-test-%s' % int(time.time())
+            self.sock_file = '\\\\.\\pipe\\watchman-test-%s' % uuid.uuid4().hex
         else:
             self.sock_file = os.path.join(self.base_dir, "sock")
         self.state_file = os.path.join(self.base_dir, "state")

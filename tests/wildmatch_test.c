@@ -1,7 +1,7 @@
 /* Copyright 2015-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include <sys/errno.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,6 +9,8 @@
 #include "thirdparty/tap.h"
 #include "thirdparty/jansson/jansson.h"
 #include "thirdparty/wildmatch/wildmatch.h"
+
+#define WILDMATCH_TEST_JSON_FILE "tests/wildmatch_test.json"
 
 static void run_test(json_t *test_case_data)
 {
@@ -91,7 +93,7 @@ int main(int argc, char **argv)
     abort();
   }
   num_tests = json_array_size(test_cases);
-  plan_tests(num_tests);
+  plan_tests((unsigned int)num_tests);
   for (index = 0; index < num_tests; index++) {
     json_t *test_case_data = json_array_get(test_cases, index);
     run_test(test_case_data);

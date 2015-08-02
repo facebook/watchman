@@ -46,6 +46,9 @@ class WatchmanDirectoryFixture {
   }
 
   public function __destruct() {
+    if (getenv('IN_PYTHON_HARNESS')) {
+      return;
+    }
     for ($i = 0; $i < 10; $i++) {
       if (w_rmdir_recursive($this->path)) {
         return;

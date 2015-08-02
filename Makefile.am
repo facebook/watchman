@@ -184,7 +184,7 @@ tests_bser_t_SOURCES = \
 	tests/bser.c \
 	bser.c
 
-tests_wildmatch_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) -DWILDMATCH_TEST_JSON_FILE=\"$(srcdir)/tests/wildmatch_test.json\"
+tests_wildmatch_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
 tests_wildmatch_t_LDADD = $(JSON_LIB) $(TAP_LIB) $(WILDMATCH_LIB)
 tests_wildmatch_t_SOURCES = \
 	tests/wildmatch_test.c

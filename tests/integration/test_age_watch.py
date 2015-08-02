@@ -12,7 +12,7 @@ import json
 class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
 
     def test_watchReap(self):
-        root = tempfile.mkdtemp()
+        root = self.mkdtemp()
         with open(os.path.join(root, '.watchmanconfig'), 'w') as f:
             f.write(json.dumps({
                 'idle_reap_age_seconds': 1
@@ -28,7 +28,7 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
         time.sleep(2)
 
         watch_list = self.watchmanCommand('watch-list')
-        self.assertEqual(watch_list['roots'], [root])
+        self.assertEqual(self.normFileList(watch_list['roots']), [root])
 
         self.watchmanCommand('trigger-del', root, 't')
 
@@ -44,7 +44,7 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
             # subscription won't stick in cli mode
             self.assertEqual(watch_list['roots'], [])
         else:
-            self.assertEqual(watch_list['roots'], [root])
+            self.assertEqual(self.normFileList(watch_list['roots']), [root])
             self.watchmanCommand('unsubscribe', root, 's')
 
         # and now we should be ready to reap

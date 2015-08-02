@@ -11,6 +11,8 @@ import os
 import WatchmanInstance
 import copy
 
+def norm_path(name):
+    return os.path.normcase(os.path.normpath(name))
 
 class WatchmanTestCase(unittest.TestCase):
 
@@ -31,8 +33,11 @@ class WatchmanTestCase(unittest.TestCase):
             except Exception as e:
                 pass
 
+    def normPath(self, name):
+        return norm_path(name)
+
     def mkdtemp(self):
-        return tempfile.mkdtemp(dir=self.tempdir)
+        return self.normPath(tempfile.mkdtemp(dir=self.tempdir))
 
     def run(self, result):
         if result is None:
@@ -140,7 +145,7 @@ class WatchmanTestCase(unittest.TestCase):
             'fields': ['name']})
 
     def normFileList(self, files):
-        return sorted(map(os.path.normpath, files))
+        return sorted(map(norm_path, files))
 
     # Wait for the file list to match the input set
     def assertFileList(self, root, files=[], cursor=None,

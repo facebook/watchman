@@ -21,15 +21,23 @@ class WatchmanInstance {
   protected $subdata = array();
   const TIMEOUT = 20;
 
+  private function tempfile() {
+    $temp = new TempFile();
+    if (getenv('IN_PYTHON_HARNESS')) {
+      $temp->setPreserveFile(true);
+    }
+    return $temp;
+  }
+
   function __construct($repo_root, $coverage, $config = array()) {
     $this->repo_root = $repo_root;
-    $this->logfile = new TempFile();
+    $this->logfile = $this->tempfile();
     if (phutil_is_windows()) {
       $this->sockname = "\\\\.\\pipe\\watchman-test-" . uniqid();
     } else {
-      $this->sockname = new TempFile();
+      $this->sockname = $this->tempfile();
     }
-    $this->config_file = new TempFile();
+    $this->config_file = $this->tempfile();
     // PHP is incredibly stupid: there's no direct way to turn array() into '{}'
     // and array('foo' => array('bar', 'baz')) into '{"foo": ["bar", "baz"]}'.
     if ($config === array()) {
@@ -41,10 +49,10 @@ class WatchmanInstance {
 
     if (getenv("WATCHMAN_VALGRIND")) {
       $this->valgrind = true;
-      $this->vg_log = new TempFile();
+      $this->vg_log = $this->tempfile();
     } elseif ($coverage) {
       $this->coverage = true;
-      $this->cg_file = new TempFile();
+      $this->cg_file = $this->tempfile();
     }
 
     $this->request();

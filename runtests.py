@@ -155,9 +155,9 @@ def expandFilesList(files):
             for dirname, dirs, files in os.walk(g):
                 for f in files:
                     if not f.startswith('.'):
-                        res.append(os.path.join(dirname, f))
+                        res.append(os.path.normpath(os.path.join(dirname, f)))
         else:
-            res.append(g)
+            res.append(os.path.normpath(g))
     return res
 
 if args.files:
@@ -215,8 +215,14 @@ loader = Loader()
 suite = unittest.TestSuite()
 for d in ['python/tests', 'tests/integration']:
     suite.addTests(loader.discover(d, top_level_dir=d))
+
+if os.name == 'nt':
+    t_globs = 'tests/*.exe'
+else:
+    t_globs = 'tests/*.t'
+
 suite.addTests(WatchmanTapTests.discover(
-    shouldIncludeTestFile, 'tests/*.t'))
+    shouldIncludeTestFile, t_globs))
 suite.addTests(WatchmanTapTests.discover(
     shouldIncludeTestFile, 'tests/integration/*.php'))
 

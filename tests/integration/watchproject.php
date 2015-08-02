@@ -90,8 +90,8 @@ class watchProjectTestCase extends watchProjectTestCaseHelper {
 
     $res = $this->watchProject("$root/a/b/c");
     $this->assertEqual($root, idx($res, 'watch'), 'watch other root');
-    $this->assertEqual('a/b/c', idx($res, 'relative_path'),
-      'should re-use other watch');
+    $this->assertEqual(w_normalize_filename('a/b/c'),
+        idx($res, 'relative_path'), 'should re-use other watch');
 
   }
 }

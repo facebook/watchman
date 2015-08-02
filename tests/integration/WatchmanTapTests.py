@@ -7,6 +7,7 @@ import re
 import WatchmanInstance
 import signal
 import Interrupt
+import tempfile
 
 class TapExeTestCase(unittest.TestCase):
 
@@ -28,8 +29,16 @@ class TapExeTestCase(unittest.TestCase):
     def runTest(self):
         env = os.environ.copy()
         env['WATCHMAN_SOCK'] = WatchmanInstance.getSharedInstance().getSockPath()
+        dotted = os.path.normpath(self.id()).replace(os.sep, '.').replace(
+            'tests.integration.', '')
+        env['TMPDIR'] = os.path.join(tempfile.tempdir, dotted)
+        if os.name != 'nt' and len(env['TMPDIR']) > 64:
+            self.fail('temp dir name is too long for unix domain sockets')
+        os.mkdir(env['TMPDIR'])
+        env['IN_PYTHON_HARNESS'] = '1'
         proc = subprocess.Popen(
             self.getCommandArgs(),
+            env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         (stdout, stderr) = proc.communicate()
@@ -105,7 +114,11 @@ class PhutilTestCase(TapExeTestCase):
         return self.phpfile
 
     def getCommandArgs(self):
-        return ['arc', 'tap', self.phpfile]
+        if os.name == 'nt':
+            arc = 'arc.bat'
+        else:
+            arc = 'arc'
+        return [arc, 'tap', self.phpfile]
 
 
 def discover(filematcher, path):

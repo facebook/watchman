@@ -299,7 +299,7 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   root->gc_age = (int)cfg_get_int(root, "gc_age_seconds", DEFAULT_GC_AGE);
   root->gc_interval = (int)cfg_get_int(root, "gc_interval_seconds",
       DEFAULT_GC_INTERVAL);
-  root->idle_reap_age = cfg_get_int(root, "idle_reap_age_seconds",
+  root->idle_reap_age = (int)cfg_get_int(root, "idle_reap_age_seconds",
       DEFAULT_REAP_AGE);
 
   apply_ignore_configuration(root);
@@ -2038,6 +2038,10 @@ static bool check_allowed_fs(const char *filename, char **errmsg)
   return true;
 }
 
+static inline bool is_slash(char c) {
+  return (c == '/') || (c == '\\');
+}
+
 // Given a filename, walk the current set of watches.
 // If a watch is a prefix match for filename then we consider it to
 // be an enclosing watch and we'll return the root path and the relative
@@ -2056,7 +2060,7 @@ char *w_find_enclosing_root(const char *filename, char **relpath) {
     w_string_t *root_name = w_ht_val_ptr(i.key);
     if (w_string_startswith(name, root_name) && (
           name->len == root_name->len /* exact match */ ||
-          name->buf[root_name->len] == '/' /* dir container matches */)) {
+          is_slash(name->buf[root_name->len]) /* dir container matches */)) {
       root = w_ht_val_ptr(i.value);
       w_root_addref(root);
       break;
@@ -2086,10 +2090,6 @@ char *w_find_enclosing_root(const char *filename, char **relpath) {
   w_string_delref(name);
 
   return prefix;
-}
-
-static inline bool is_slash(char c) {
-  return (c == '/') || (c == '\\');
 }
 
 bool w_is_path_absolute(const char *path) {

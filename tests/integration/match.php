@@ -29,8 +29,7 @@ class matchTestCase extends WatchmanTestCase {
           '*.c'),
       'fields' => array('name'),
       ));
-    sort($res['files']);
-    $this->assertEqual(array('foo.c', 'foo/baz.c'), $res['files']);
+    $this->assertEqualFileList(array('foo.c', 'foo/baz.c'), $res['files']);
 
     $res = $this->watchmanCommand(
       'query',
@@ -42,8 +41,7 @@ class matchTestCase extends WatchmanTestCase {
           'wholename'),
       'fields' => array('name'),
       ));
-    sort($res['files']);
-    $this->assertEqual(array('foo.c'), $res['files']);
+    $this->assertEqualFileList(array('foo.c'), $res['files']);
 
     $res = $this->watchmanCommand(
       'query',
@@ -55,8 +53,7 @@ class matchTestCase extends WatchmanTestCase {
           'wholename'),
       'fields' => array('name'),
       ));
-    sort($res['files']);
-    $this->assertEqual(array('foo/baz.c'), $res['files']);
+    $this->assertEqualFileList(array('foo/baz.c'), $res['files']);
 
     $res = $this->watchmanCommand(
       'query',
@@ -68,8 +65,7 @@ class matchTestCase extends WatchmanTestCase {
           'wholename'),
         'fields' => array('name'),
       ));
-    sort($res['files']);
-    $this->assertEqual(array('foo.c', 'foo/baz.c'), $res['files']);
+    $this->assertEqualFileList(array('foo.c', 'foo/baz.c'), $res['files']);
 
     $res = $this->watchmanCommand(
       'query',
@@ -82,8 +78,7 @@ class matchTestCase extends WatchmanTestCase {
           array('includedotfiles' => true)),
         'fields' => array('name'),
       ));
-    sort($res['files']);
-    $this->assertEqual(
+    $this->assertEqualFileList(
       array('foo.c', 'foo/.bar.c', 'foo/baz.c'),
       $res['files']);
 
@@ -97,8 +92,7 @@ class matchTestCase extends WatchmanTestCase {
           'wholename'),
         'fields' => array('name'),
       ));
-    sort($res['files']);
-    $this->assertEqual(
+    $this->assertEqualFileList(
       array('foo/baz.c'),
       $res['files']);
   }

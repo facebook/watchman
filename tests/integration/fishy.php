@@ -22,9 +22,6 @@ class fishyTestCase extends WatchmanTestCase {
     // This is "c:PID:1" because nothing has changed in $root yet
     $clock = $base['clock'];
 
-    $this->startLogging('debug');
-    $this->watchmanCommand('log', 'debug', 'testFishy:START');
-
     $this->suspendWatchman();
     system(
       "cd $root; ".
@@ -41,22 +38,5 @@ class fishyTestCase extends WatchmanTestCase {
       )
     );
 
-    $this->watchmanCommand('log', 'debug', 'testFishy:END');
-    $this->assertWaitForLog('/testFishy:END/');
-    $this->stopLogging();
-    $on = false;
-    $log = array();
-    foreach ($this->watchman_instance->getLogData() as $item) {
-      if (preg_match('/testFishy:START/', $item)) {
-        $on = true;
-      } else if (preg_match('/testFishy:END/', $item)) {
-        break;
-      }
-      if ($on && preg_match('/fishy/', $item)) {
-        $log[] = $item;
-      }
-    }
-
-    $this->assertEqual(array(), $log, 'nothing fishy');
   }
 }
