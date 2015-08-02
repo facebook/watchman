@@ -65,9 +65,9 @@ AC_ARG_ENABLE(statedir, [
 ])
 AC_SUBST(WATCHMAN_STATE_DIR)
 
-want_python=no
+want_python=yes
 AC_ARG_WITH(python, [
-  --with-python        Enable python bindings
+  --without-python        Disable python bindings
 ],[
    want_python="$withval"
 ])

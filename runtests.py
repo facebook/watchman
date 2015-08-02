@@ -4,6 +4,9 @@ import unittest
 import os
 import os.path
 import sys
+# Ensure that we can find pywatchman
+sys.path.append(os.path.join(os.getcwd(), 'python'))
+sys.path.append(os.path.join(os.getcwd(), 'tests', 'integration'))
 import tempfile
 import shutil
 import subprocess
@@ -11,6 +14,8 @@ import traceback
 import time
 import argparse
 import atexit
+import WatchmanTapTests
+import WatchmanInstance
 
 parser = argparse.ArgumentParser(
     description="Run the watchman unit and integration tests")
@@ -21,10 +26,6 @@ parser.add_argument(
     action='store_true',
     help="preserve all temporary files created during test execution")
 args = parser.parse_args()
-
-# Ensure that we can find pywatchman
-sys.path.append(os.path.join(os.getcwd(), 'python'))
-sys.path.append(os.path.join(os.getcwd(), 'tests/integration'))
 
 # We test for this in a test case
 os.environ['WATCHMAN_EMPTY_ENV_VAR'] = ''
@@ -43,8 +44,6 @@ else:
 tempfile.tempdir = temp_dir
 
 # Start up a shared watchman instance for the tests.
-# We defer the import until after we've modified the python path
-import WatchmanInstance
 inst = WatchmanInstance.Instance()
 inst.start()
 
@@ -103,6 +102,7 @@ loader = unittest.TestLoader()
 suite = unittest.TestSuite()
 for d in ['python/tests', 'tests/integration']:
     suite.addTests(loader.discover(d, top_level_dir=d))
+suite.addTests(WatchmanTapTests.discover('tests/*.t'))
 
 unittest.TextTestRunner(
     resultclass=Result,
