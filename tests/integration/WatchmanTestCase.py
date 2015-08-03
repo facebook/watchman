@@ -130,6 +130,15 @@ class WatchmanTestCase(unittest.TestCase):
         self.last_file_list = files
         return files
 
+    def waitForSync(self, root):
+        """ ensure that watchman has observed any pending file changes
+            This is most useful after mutating the filesystem and before
+            attempting to perform a since query
+        """
+        self.watchmanCommand('query', root, {
+            'expression': ['name', '_bogus_'],
+            'fields': ['name']})
+
     def normFileList(self, files):
         return sorted(map(os.path.normpath, files))
 

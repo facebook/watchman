@@ -23,6 +23,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         bar_dir = os.path.join(root, 'bar')
         os.mkdir(bar_dir)
         self.touchRelative(bar_dir, '333')
+        self.waitForSync(root)
 
         # We should not observe 111 or 222
         self.assertFileList(root, cursor='n:foo', files=['bar', 'bar/333'])
@@ -35,6 +36,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         foo_dir = os.path.join(root, 'foo')
         os.mkdir(foo_dir)
         self.touchRelative(foo_dir, '111')
+        self.waitForSync(root)
 
         self.assertFileList(root, cursor='n:foo', files=['foo', 'foo/111'])
 
@@ -75,6 +77,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
 
         # touch a file outside the relative root
         self.touchRelative(root, 'b')
+        self.waitForSync(root)
         res = self.watchmanCommand('query', root, {
             'since': res['clock'],
             'relative_root': 'subdir',
@@ -83,6 +86,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
 
         # touching just the subdir shouldn't cause anything to show up
         self.touchRelative(root, 'subdir')
+        self.waitForSync(root)
         res = self.watchmanCommand('query', root, {
             'since': res['clock'],
             'relative_root': 'subdir',
@@ -93,6 +97,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         dir2 = os.path.join(root, 'subdir', 'dir2')
         os.mkdir(dir2)
         self.touchRelative(dir2, 'bar')
+        self.waitForSync(root)
         res = self.watchmanCommand('query', root, {
             'since': res['clock'],
             'relative_root': 'subdir',
