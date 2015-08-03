@@ -145,3 +145,14 @@ directory, then watchman will:
 Unless the `--no-save-state` server option was used to start the watchman
 service, watches and their associated triggers are saved and re-established
 across a process restart.
+
+*Since 3.7*
+
+The watchman service may decide to reap watches that have been idle for an
+extended period of time.  A watch is considered to be idle if no watchman
+queries have been issued against the watch.  If a watch is idle, and has no
+triggers registered or active subscriptions then it is a candidate for reaping.
+
+The [idle_reap_age_seconds](../config.html#idle-reap-age-seconds) configuration
+parameter controls the idle timeout for a watch.  The default is 5 days.
+A reaped watch is cancelled and removed from the state file.

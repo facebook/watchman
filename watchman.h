@@ -328,6 +328,9 @@ struct watchman_query_cookie {
 #define DEFAULT_GC_AGE (86400/2)
 #define DEFAULT_GC_INTERVAL 86400
 
+/* Idle out watches that haven't had activity in several days */
+#define DEFAULT_REAP_AGE (86400*5)
+
 struct watchman_root {
   int refcnt;
 
@@ -355,6 +358,7 @@ struct watchman_root {
   int trigger_settle;
   int gc_interval;
   int gc_age;
+  int idle_reap_age;
 
   /* config options loaded via json file */
   json_t *config_file;
@@ -407,6 +411,8 @@ struct watchman_root {
   uint32_t pending_sub_tick;
   uint32_t last_age_out_tick;
   time_t last_age_out_timestamp;
+  time_t last_cmd_timestamp;
+  time_t last_reap_timestamp;
 };
 
 enum w_pdu_type {

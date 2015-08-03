@@ -53,6 +53,7 @@ Option | Scope | Since version
 `gc_age_seconds` | local | 2.9.4
 `gc_interval_seconds` | local | 2.9.4
 `fsevents_latency` | fallback | 3.2
+`idle_reap_age_seconds` local | 3.7
 
 ### Configuration Options
 
@@ -216,3 +217,16 @@ per-root basis.
 If you observe problems with `kFSEventStreamEventFlagUserDropped` increasing
 the latency parameter will allow the system to batch more change notifications
 together and operate more efficiently.
+
+#### idle_reap_age_seconds
+
+*Since 3.7*
+
+How many seconds a watch can remain idle before becoming a candidate for
+reaping, measured in seconds.  The default for this is `432000` (5 days).  Set
+this to `0` to prevent reaping.
+
+A watch is considered to be idle when it has had no commands that operate on it
+for `idle_reap_age_seconds`.   If an idle watch has no triggers and no
+subscriptions then it will be cancelled, releasing the associated operating
+system resources, and removed from the state file.

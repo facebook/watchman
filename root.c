@@ -136,6 +136,8 @@ static bool w_root_init(w_root_t *root, char **errmsg)
   w_string_addref(dir->path);
   w_ht_set(root->dirname_to_dir, w_ht_ptr_val(dir->path), w_ht_ptr_val(dir));
 
+  time(&root->last_cmd_timestamp);
+
   return root;
 }
 
@@ -287,6 +289,8 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   root->gc_age = cfg_get_int(root, "gc_age_seconds", DEFAULT_GC_AGE);
   root->gc_interval = cfg_get_int(root, "gc_interval_seconds",
       DEFAULT_GC_INTERVAL);
+  root->idle_reap_age = cfg_get_int(root, "idle_reap_age_seconds",
+      DEFAULT_REAP_AGE);
 
   apply_ignore_configuration(root);
 
@@ -1533,6 +1537,29 @@ void w_root_perform_age_out(w_root_t *root, int min_age)
   } while (w_ht_next(root->cursors, &i));
 }
 
+static bool root_has_subscriptions(w_root_t *root) {
+  bool has_subscribers = false;
+  w_ht_iter_t iter;
+
+  pthread_mutex_lock(&w_client_lock);
+  if (w_ht_first(clients, &iter)) do {
+    struct watchman_client *client = w_ht_val_ptr(iter.value);
+    w_ht_iter_t citer;
+
+    if (w_ht_first(client->subscriptions, &citer)) do {
+      struct watchman_client_subscription *sub = w_ht_val_ptr(citer.value);
+
+      if (sub->root == root) {
+        has_subscribers = true;
+        break;
+      }
+
+    } while (w_ht_next(client->subscriptions, &citer));
+  } while (!has_subscribers && w_ht_next(clients, &iter));
+  pthread_mutex_unlock(&w_client_lock);
+  return has_subscribers;
+}
+
 static void consider_age_out(w_root_t *root)
 {
   time_t now;
@@ -1549,6 +1576,35 @@ static void consider_age_out(w_root_t *root)
   }
 
   w_root_perform_age_out(root, root->gc_age);
+}
+
+static bool consider_reap(w_root_t *root) {
+  time_t now;
+
+  if (root->idle_reap_age == 0) {
+    return false;
+  }
+
+  time(&now);
+
+  if (now > root->last_cmd_timestamp + root->idle_reap_age &&
+      (root->commands == NULL || w_ht_size(root->commands) == 0) &&
+      (now > root->last_reap_timestamp) &&
+      !root_has_subscriptions(root)) {
+    // We haven't had any activity in a while, and there are no registered
+    // triggers or subscriptions against this watch.
+    w_log(W_LOG_ERR, "root %.*s has had no activity in %d seconds and has "
+        "no triggers or subscriptions, cancelling watch.  "
+        "Set idle_reap_age_seconds in your .watchmanconfig to control "
+        "this behavior\n",
+        root->root_path->len, root->root_path->buf, root->idle_reap_age);
+    w_root_stop_watch(root);
+    return true;
+  }
+
+  root->last_reap_timestamp = now;
+
+  return false;
 }
 
 // we want to consume inotify events as quickly as possible
@@ -1597,13 +1653,16 @@ static void notify_thread(w_root_t *root)
 
       process_subscriptions(root);
       process_triggers(root);
-      consider_age_out(root);
+      if (!consider_reap(root)) {
+        consider_age_out(root);
+      }
       w_root_unlock(root);
       continue;
     }
 
     // Otherwise we have stuff to do
     w_root_lock(root);
+
     // If we're not settled, we need an opportunity to age out
     // dead file nodes.  This happens in the test harness.
     consider_age_out(root);
@@ -2024,6 +2083,16 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
     if (watch_path != filename) {
       free(watch_path);
     }
+
+    // Treat this as new activity for aging purposes; this roughly maps
+    // to a client querying something about the root and should extend
+    // the lifetime of the root
+    if (root) {
+      w_root_lock(root);
+      time(&root->last_cmd_timestamp);
+      w_root_unlock(root);
+    }
+
     // caller owns a ref
     return root;
   }
