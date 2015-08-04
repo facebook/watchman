@@ -57,6 +57,20 @@ static void run_service(void)
   ignore_result(chdir("/"));
 
   w_set_thread_name("listener");
+  {
+    char hostname[256];
+    gethostname(hostname, sizeof(hostname));
+    hostname[sizeof(hostname) - 1] = '\0';
+    w_log(W_LOG_ERR, "Watchman %s %s starting up on %s\n",
+        PACKAGE_VERSION,
+#ifdef WATCHMAN_BUILD_INFO
+        WATCHMAN_BUILD_INFO,
+#else
+        "<no build info set>",
+#endif
+        hostname);
+  }
+
   watchman_watcher_init();
   res = w_start_listener(sock_name);
   watchman_watcher_dtor();

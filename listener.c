@@ -108,7 +108,7 @@ void send_error_response(struct watchman_client *client,
   vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
 
-  w_log(W_LOG_DBG, "send_error_response: fd=%d %s\n", client->fd, buf);
+  w_log(W_LOG_ERR, "send_error_response: fd=%d %s\n", client->fd, buf);
   set_prop(resp, "error", json_string_nocheck(buf));
 
   send_and_dispose_response(client, resp);
