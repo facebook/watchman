@@ -64,7 +64,12 @@ responsible for supplying an absolute path.</p><p>JSON:</p><div class="prism lan
 directory, then watchman will:</p><ul><li>Establish change notification for the directory with the kernel</li><li>Queues up a request to crawl the directory</li><li>As the directory contents are resolved, those are watched in a similar
 fashion</li><li>All newly observed files are considered changed</li></ul><h4><a class="anchor" name="persistence"></a>Persistence <a class="hash-link" href="#persistence">#</a></h4><p>Unless the <code>--no-save-state</code> server option was used to start the watchman
 service, watches and their associated triggers are saved and re-established
-across a process restart.</p></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2015 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
+across a process restart.</p><p><em>Since 3.7</em></p><p>The watchman service may decide to reap watches that have been idle for an
+extended period of time.  A watch is considered to be idle if no watchman
+queries have been issued against the watch.  If a watch is idle, and has no
+triggers registered or active subscriptions then it is a candidate for reaping.</p><p>The <a href="../config.html#idle-reap-age-seconds" target="_blank">idle_reap_age_seconds</a> configuration
+parameter controls the idle timeout for a watch.  The default is 5 days.
+A reaped watch is cancelled and removed from the state file.</p></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2015 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
             (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
             (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
             m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
