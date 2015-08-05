@@ -10,7 +10,9 @@ We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on GitHub](
 https://github.com/facebook/watchman/commits/master).
 
-### Watchman 3.6.0 (????-??-??)
+### Watchman 3.7.0 (2015-08-05)
+
+(Watchman 3.6.0 wasn't formally released)
 
 * Fixed bug where `query match` on `foo*.java` with `wholename` scope
   would incorrectly match `foo/bar/baz.java`.
@@ -19,6 +21,12 @@ https://github.com/facebook/watchman/commits/master).
 * Added `includedotfiles` option to `query match` to include files
   whose names start with `.`.
 * Added `noescape` option to `query match` to make `\` match literal `\`.
+* We'll now automatically age out and stop watches. See [idle_reap_age_seconds](
+/watchman/docs/config.html#idle_reap_age_seconds) for more information.
+* `watch-project` will now try harder to re-use an existing watch and avoid
+  creating an overlapping watch.
+* Reduce I/O priority during crawling on systems that support this
+* Fixed issue with the `long long` data type in the python BSER module
 
 ### fb-watchman 1.2.0 for node (2015-07-11)
 
