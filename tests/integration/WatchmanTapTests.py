@@ -30,9 +30,9 @@ class TapExeTestCase(unittest.TestCase):
         env = os.environ.copy()
         env['WATCHMAN_SOCK'] = WatchmanInstance.getSharedInstance().getSockPath()
         dotted = os.path.normpath(self.id()).replace(os.sep, '.').replace(
-            'tests.integration.', '')
+            'tests.integration.', '').replace('.php', '')
         env['TMPDIR'] = os.path.join(tempfile.tempdir, dotted)
-        if os.name != 'nt' and len(env['TMPDIR']) > 74:
+        if os.name != 'nt' and len(env['TMPDIR']) > 94:
             self.fail('temp dir name %s is too long for unix domain sockets' %
                 env['TMPDIR'])
         os.mkdir(env['TMPDIR'])
