@@ -36,11 +36,13 @@ class WatchmanIntegrationEngine extends WatchmanTapEngine {
     }
 
     foreach ($paths as $path) {
-      if (preg_match("/\.php$/", $path) &&
-          // Don't pull in files starting with "_"; we're using
-          // those as helpers for triggers
-          file_exists($path) && basename($path)[0] != '_') {
-        require_once $path;
+      if (preg_match("/\.php$/", $path) && file_exists($path)) {
+        // Don't pull in files starting with "_"; we're using
+        // those as helpers for triggers
+        $base = basename($path);
+        if ($base[0] != '_') {
+          require_once $path;
+        }
       }
     }
 
