@@ -133,17 +133,20 @@ char **backtrace_symbols(void **array, size_t n_frames);
 /* Define to the full name of this package. */
 #define PACKAGE_NAME "watchman"
 
+/* Define to the version of this package. */
+#define PACKAGE_VERSION "3.7.0"
+
+/* Version number of package */
+#define VERSION PACKAGE_VERSION
+
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "watchman 3.0.0"
+#define PACKAGE_STRING "watchman " PACKAGE_VERSION
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "watchman"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL ""
-
-/* Define to the version of this package. */
-#define PACKAGE_VERSION "3.0.0"
 
 /* if statvfs holds fstype as string */
 /* #undef STATVFS_HAS_FSTYPE_AS_STRING */
@@ -153,9 +156,6 @@ char **backtrace_symbols(void **array, size_t n_frames);
 
 /* Use gimli */
 /* #undef USE_GIMLI */
-
-/* Version number of package */
-#define VERSION "3.0.0"
 
 /* build info */
 /* #undef WATCHMAN_BUILD_INFO */
