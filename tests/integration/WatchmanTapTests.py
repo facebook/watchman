@@ -32,8 +32,9 @@ class TapExeTestCase(unittest.TestCase):
         dotted = os.path.normpath(self.id()).replace(os.sep, '.').replace(
             'tests.integration.', '')
         env['TMPDIR'] = os.path.join(tempfile.tempdir, dotted)
-        if os.name != 'nt' and len(env['TMPDIR']) > 64:
-            self.fail('temp dir name is too long for unix domain sockets')
+        if os.name != 'nt' and len(env['TMPDIR']) > 74:
+            self.fail('temp dir name %s is too long for unix domain sockets' %
+                env['TMPDIR'])
         os.mkdir(env['TMPDIR'])
         env['IN_PYTHON_HARNESS'] = '1'
         proc = subprocess.Popen(
