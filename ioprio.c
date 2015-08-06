@@ -28,6 +28,12 @@ enum {
 
 static void adjust_ioprio(bool low) {
 #ifdef __APPLE__
+
+#ifndef IOPOL_STANDARD
+// Mountain Lion compatibility
+# define IOPOL_STANDARD IOPOL_APPLICATION
+#endif
+
   setiopolicy_np(IOPOL_TYPE_DISK, IOPOL_SCOPE_THREAD,
       low ? IOPOL_THROTTLE : IOPOL_STANDARD);
 #endif
