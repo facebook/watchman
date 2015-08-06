@@ -1,0 +1,81 @@
+<?php
+/* Copyright 2012-present Facebook, Inc.
+ * Licensed under the Apache License, Version 2.0 */
+
+require_once 'arcanist/lib/WatchmanTestCase.php';
+require_once 'arcanist/lib/WatchmanInstance.php';
+require_once 'arcanist/lib/WatchmanDirectoryFixture.php';
+
+function phutil_is_windows() {
+  return DIRECTORY_SEPARATOR != '/';
+}
+
+/**
+ * Access an array index, retrieving the value stored there if it exists or
+ * a default if it does not. This function allows you to concisely access an
+ * index which may or may not exist without raising a warning.
+ *
+ * @param   array   Array to access.
+ * @param   scalar  Index to access in the array.
+ * @param   wild    Default value to return if the key is not present in the
+ *                  array.
+ * @return  wild    If $array[$key] exists, that value is returned. If not,
+ *                  $default is returned without raising a warning.
+ */
+function idx(array $array, $key, $default = null) {
+  // isset() is a micro-optimization - it is fast but fails for null values.
+  if (isset($array[$key])) {
+    return $array[$key];
+  }
+
+  // Comparing $default is also a micro-optimization.
+  if ($default === null || array_key_exists($key, $array)) {
+    return null;
+  }
+
+  return $default;
+}
+
+$first_inst = new PythonProvidedWatchmanInstance();
+$root = realpath(dirname(__FILE__).'/../../');
+
+$tests = $argv;
+array_shift($tests);  # skip my own script name
+foreach ($tests as $testfile) {
+  require_once $testfile;
+}
+
+foreach (get_declared_classes() as $name) {
+  $ref = new ReflectionClass($name);
+  if (!$ref->isSubclassOf('WatchmanTestCase')) {
+    continue;
+  }
+
+  // Good enough; let's use it
+  $test_case = new $name();
+  $test_case->setRoot($root);
+
+  $config = $test_case->getGlobalConfig();
+  if ($config) {
+    $instance = new WatchmanInstance($root, $coverage, $config);
+    $instances[] = $instance;
+  } else {
+    $instance = $first_inst;
+  }
+  $test_case->setWatchmanInstance($instance);
+
+  if (!$instance->getProcessID()) {
+    try {
+      $test_case->fail('watchman instance died before test started');
+    } catch (Exception $e) {
+    }
+    break;
+  }
+
+  $test_case->setRoot($root);
+  $test_case->run();
+}
+printf("1..%d\n", WatchmanTestCase::$test_number - 1);
+exit(0);
+
+// vim:ts=2:sw=2:et:ft=php:

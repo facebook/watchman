@@ -40,14 +40,15 @@ function w_find_subdata_containing_file($subdata, $filename) {
   return null;
 }
 
+class TestSkipException extends Exception {}
 
-
-class WatchmanTestCase extends ArcanistPhutilTestCase {
+class WatchmanTestCase {
   protected $root;
   protected $watchman_instance;
   private $use_cli = false;
   private $cli_args = null;
   private $watches = array();
+  static $test_number = 1;
 
   // If this returns false, we can run this test case using
   // the CLI instead of via a unix socket
@@ -64,10 +65,7 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
     $this->cli_args = $args;
   }
 
-  // because setProjectRoot is final and $this->projectRoot
-  // is private...
   function setRoot($root) {
-    $this->setProjectRoot($root);
     $this->root = $root;
   }
 
@@ -201,12 +199,6 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
       );
       return $future->resolve();
     }
-
-    $console = PhutilConsole::getConsole();
-    $console->writeLog(
-      "sock query: %s\n",
-      json_encode($args)
-    );
 
     return call_user_func_array(
       array($this->watchman_instance, 'request'),
@@ -598,12 +590,142 @@ class WatchmanTestCase extends ArcanistPhutilTestCase {
   function isCaseInsensitive() {
     static $insensitive = null;
     if ($insensitive === null) {
-      $dir = PhutilDirectoryFixture::newEmptyFixture();
+      $dir = new WatchmanDirectoryFixture();
       $path = $dir->getPath();
       touch("$path/a");
       $insensitive = file_exists("$path/A");
     }
     return $insensitive;
+  }
+
+  function run() {
+    $ref = new ReflectionClass($this);
+    $methods = $ref->getMethods();
+    shuffle($methods);
+    $this->willRunTests();
+    foreach ($methods as $method) {
+      $name = $method->getName();
+      if (!preg_match('/^test/', $name)) {
+        continue;
+      }
+
+      try {
+        $this->willRunOneTest($name);
+
+        call_user_func(array($this, $name));
+
+        try {
+          $this->didRunOneTest($name);
+        } catch (Exception $e) {
+          $this->failException($e);
+        }
+
+      } catch (TestSkipException $e) {
+        // Continue with next
+      } catch (Exception $e) {
+        $this->failException($e);
+      }
+    }
+    $this->didRunTests();
+  }
+
+  function failException($e) {
+    $this->fail(sprintf("%s: %s\n%s",
+      get_class($e),
+      $e->getMessage(),
+      $e->getTraceAsString()));
+  }
+
+  function printStatus($ok, $message) {
+    $lines = explode("\n", $message);
+    if (count($lines) > 1) {
+      echo '# ' . implode("\n# ", $lines) . "\n";
+    }
+    $last_line = array_pop($lines);
+    printf("%s %d - %s\n",
+      $ok ? 'ok' : 'not ok',
+      self::$test_number++,
+      $last_line);
+  }
+
+  function fail($message) {
+    $this->printStatus(false, $message);
+    throw new TestSkipException();
+  }
+
+  function ok($message) {
+    $this->printStatus(true, $message);
+  }
+
+
+  /**
+   * Returns info about the caller function.
+   *
+   * @return map
+   */
+  private static final function getCallerInfo() {
+    $callee = array();
+    $caller = array();
+    $seen = false;
+
+    foreach (array_slice(debug_backtrace(), 1) as $location) {
+      $function = idx($location, 'function');
+
+      if (!$seen && preg_match('/^assert[A-Z]/', $function)) {
+        $seen = true;
+        $caller = $location;
+      } else if ($seen && !preg_match('/^assert[A-Z]/', $function)) {
+        $callee = $location;
+        break;
+      }
+    }
+
+    return array(
+      'file' => basename(idx($caller, 'file')),
+      'line' => idx($caller, 'line'),
+      'function' => idx($callee, 'function'),
+      'class' => idx($callee, 'class'),
+      'object' => idx($caller, 'object'),
+      'type' => idx($callee, 'type'),
+      'args' => idx($caller, 'args'),
+    );
+  }
+
+  static function printable($value) {
+    return json_encode($value);
+  }
+
+  function assertEqual($expected, $actual, $message = null) {
+    if (!$message) {
+      $message = sprintf("Expected %s to equal %s",
+        self::printable($actual),
+        self::printable($expected));
+    }
+    $caller = self::getCallerInfo();
+    $message = sprintf("%s:%d: %s", $caller['file'], $caller['line'], $message);
+
+    if ($expected === $actual) {
+      $this->ok($message);
+    } else {
+      $this->fail($message);
+    }
+  }
+
+  function assertTrue($actual, $message = null) {
+    $this->assertEqual(true, $actual, $message);
+  }
+
+  function assertFalse($actual, $message = null) {
+    $this->assertEqual(false, $actual, $message);
+  }
+
+  function assertFailure($message) {
+    return $this->fail($message);
+  }
+
+  function assertSkipped($message) {
+    $this->ok("skip: $message");
+    throw new TestSkipException();
   }
 }
 

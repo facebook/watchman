@@ -24,17 +24,20 @@ function w_rmdir_recursive($path) {
   return !file_exists($path);
 }
 
-// Create a temporary dir that cleans up after itself when it is
-// destroyed.  The cleanup will not throw; it will make a best effort
-// to wipe everything out, which is important on Windows where removes
-// are queued and take some time to take effect; this can cause rmdir
-// to error out if we try it immediately after removing the directory
-// contents, only to succeed a fraction of a second later
+// Create a temporary dir in the test harness temp tree
 class WatchmanDirectoryFixture {
   protected $path;
 
   public function __construct() {
-    $this->path = realpath(Filesystem::createTemporaryDirectory());
+    $temp_dir = sys_get_temp_dir();
+    for ($i = 0; $i < 100; $i++) {
+      $name = $temp_dir . DIRECTORY_SEPARATOR . mt_rand();
+      if (@mkdir($name)) {
+        $this->path = $name;
+        return;
+      }
+    }
+    throw new Exception("failed to make a temporary dir");
   }
 
   public function getPath($to_file = null) {
@@ -43,17 +46,5 @@ class WatchmanDirectoryFixture {
         ltrim(w_normalize_filename($to_file, "\\/"));
     }
     return $this->path;
-  }
-
-  public function __destruct() {
-    if (getenv('IN_PYTHON_HARNESS')) {
-      return;
-    }
-    for ($i = 0; $i < 10; $i++) {
-      if (w_rmdir_recursive($this->path)) {
-        return;
-      }
-      usleep(200);
-    }
   }
 }

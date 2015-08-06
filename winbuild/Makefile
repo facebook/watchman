@@ -164,9 +164,6 @@ py-build:
 py-integration: py-build
 	python runtests.py
 
-check: $(TESTS)
-	@cscript /nologo //E:jscript winbuild\runtests.js $(TESTS)
-
 # helper for suspending/resuming a target process
 susres.exe: winbuild\susres.c
 	$(CC) /Fesusres.exe winbuild\susres.c

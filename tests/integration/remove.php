@@ -23,7 +23,7 @@ class removeTestCase extends WatchmanTestCase {
     ));
 
     $this->watchmanCommand('log', 'debug', 'XXX: remove dir one');
-    Filesystem::remove("$root/one");
+    w_rmdir_recursive("$root/one");
 
     $this->assertFileList($root, array(
       'top'

@@ -22,10 +22,7 @@ class WatchmanInstance {
   const TIMEOUT = 20;
 
   private function tempfile() {
-    $temp = new TempFile();
-    if (getenv('IN_PYTHON_HARNESS')) {
-      $temp->setPreserveFile(true);
-    }
+    $temp = tempnam(sys_get_temp_dir(), 'wat');
     return $temp;
   }
 
@@ -204,7 +201,7 @@ class WatchmanInstance {
   }
 
   function start() {
-    $cmd = "%C --foreground --sockname=%C --logfile=%s " .
+    $cmd = "%s --foreground --sockname=%s --logfile=%s " .
             "--statefile=%s.state --log-level=2";
     if ($this->valgrind) {
       $cmd = "valgrind --tool=memcheck " .
@@ -225,7 +222,7 @@ class WatchmanInstance {
 
     putenv("WATCHMAN_CONFIG_FILE=".$this->config_file);
 
-    $cmd = csprintf($cmd, $this->repo_root . '/watchman',
+    $cmd = sprintf($cmd, $this->repo_root . '/watchman',
       $this->getFullSockName(), $this->logfile,
                     $this->logfile);
 
@@ -728,6 +725,21 @@ class WatchmanInstance {
     $this->terminateProcess();
   }
 
+}
+
+function execx() {
+  $args = func_get_args();
+  printf("# execx: %s\n", json_encode($args));
+  if (count($args) > 1) {
+    $cmd = call_user_func_array('sprintf', $args);
+  } else {
+    $cmd = $args[0];
+  }
+  exec($cmd, $output, $status);
+  if ($status != 0) {
+    throw new Exception("$cmd failed with status $status $output");
+  }
+  return $output;
 }
 
 // This is a helper to avoid having to spawn a new watchman

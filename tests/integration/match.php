@@ -5,7 +5,7 @@
 class matchTestCase extends WatchmanTestCase {
 
   function testMatch() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $dir = new WatchmanDirectoryFixture();
     $root = realpath($dir->getPath());
 
     touch("$root/foo.c");

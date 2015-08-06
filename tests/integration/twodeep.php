@@ -46,7 +46,7 @@ class twodeepTestCase extends WatchmanTestCase {
     }
 
     $this->watchmanCommand('log', 'debug', 'XXX: remove it all');
-    Filesystem::remove("$root/foo/bar");
+    w_rmdir_recursive("$root/foo/bar");
 
     $this->assertFileList($root, array(
       "foo",

@@ -17,7 +17,7 @@ class rmrootTestCase extends WatchmanTestCase {
     $this->watch($root);
     $this->assertFileList($root, array('hello'));
 
-    Filesystem::remove($root);
+    w_rmdir_recursive($root);
 
     $this->assertFileList($root, array());
 

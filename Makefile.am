@@ -131,7 +131,8 @@ py-tests:
 py-clean:
 py-install:
 py-integration:
-	arc test
+	@echo You need python to run the tests
+	false
 endif
 
 if HAVE_RUBY

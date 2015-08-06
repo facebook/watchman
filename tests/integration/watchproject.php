@@ -80,7 +80,7 @@ class watchProjectTestCase extends watchProjectTestCaseHelper {
   }
 
   function testReuseNestedWatch() {
-    $dir = PhutilDirectoryFixture::newEmptyFixture();
+    $dir = new WatchmanDirectoryFixture();
     $root = realpath($dir->getPath());
     mkdir("$root/a/b/c", 0777, true);
     touch("$root/a/b/c/.watchmanconfig");

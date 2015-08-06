@@ -56,18 +56,18 @@ class TapExeTestCase(unittest.TestCase):
 
         res_pat = re.compile('^(not )?ok (\d+) (.*)$')
         diag_pat = re.compile('^# (.*)$')
+        plan_pat = re.compile('^1\.\.(\d+)$')
 
         # Now parse the TAP output
         lines = stdout.split('\n')
-        # first line is the plan
-        try:
-            plan = int(lines.pop(0).split('..')[1])
-        except Exception as e:
-            self.fail(stdout + '\n' + stderr)
-            return
         last_test = 0
         diags = None
         for line in lines:
+            res = plan_pat.match(line)
+            if res:
+              plan = int(res.group(1))
+              continue
+
             res = res_pat.match(line)
             if res:
                 this_test = int(res.group(2))
@@ -106,7 +106,7 @@ class TapExeTestCase(unittest.TestCase):
                              last_test))
 
 
-class PhutilTestCase(TapExeTestCase):
+class PhpTestCase(TapExeTestCase):
     def __init__(self, phpfile):
         super(TapExeTestCase, self).__init__()
         self.phpfile = phpfile
@@ -115,11 +115,7 @@ class PhutilTestCase(TapExeTestCase):
         return self.phpfile
 
     def getCommandArgs(self):
-        if os.name == 'nt':
-            arc = 'arc.bat'
-        else:
-            arc = 'arc'
-        return [arc, 'tap', self.phpfile]
+        return ['php', 'tests/integration/phprunner', self.phpfile]
 
 
 def discover(filematcher, path):
@@ -127,8 +123,11 @@ def discover(filematcher, path):
     for exe in glob.glob(path):
         if not filematcher(exe):
             continue
+        base = os.path.basename(exe)
+        if base.startswith('.') or base.startswith('_'):
+            continue
         if exe.endswith('.php'):
-            suite.addTest(PhutilTestCase(exe))
+            suite.addTest(PhpTestCase(exe))
         else:
             suite.addTest(TapExeTestCase(exe))
     return suite
