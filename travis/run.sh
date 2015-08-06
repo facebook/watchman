@@ -9,7 +9,7 @@ make clean
 make
 set +e
 rm -rf /tmp/watchman*
-if ! arc test ; then
+if ! make integration ; then
   cat /tmp/watchman*
   exit 1
 fi

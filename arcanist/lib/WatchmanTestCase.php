@@ -2,6 +2,10 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+if (!defined('PHP_BINARY')) {
+  define('PHP_BINARY', 'php');
+}
+
 function w_normalize_filename($a) {
   if ($a === null) {
     return null;
