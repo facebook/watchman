@@ -9,6 +9,9 @@ make clean
 make
 set +e
 rm -rf /tmp/watchman*
+TMPDIR=/var/tmp
+TMP=/var/tmp
+export TMPDIR TMP
 if ! make integration ; then
   cat /tmp/watchman*
   exit 1
