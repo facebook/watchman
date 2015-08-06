@@ -62,6 +62,8 @@ class TapExeTestCase(unittest.TestCase):
         lines = stdout.split('\n')
         last_test = 0
         diags = None
+        plan = None
+
         for line in lines:
             res = plan_pat.match(line)
             if res:
@@ -100,7 +102,7 @@ class TapExeTestCase(unittest.TestCase):
                       (self.id(), line))
 
         self.assertEqual(last_test, plan,
-                         '%s planned %d but executed %d tests' % (
+                         '%s planned %d but executed %s tests' % (
                              self.id(),
                              plan,
                              last_test))
