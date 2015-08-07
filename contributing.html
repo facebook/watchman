@@ -5,19 +5,20 @@ who sends in a patch or code that we want to include in the codebase.  This is
 a legal requirement; a similar situation applies to Apache and other ASF
 projects.</p><p>If we ask you to fill out a CLA we&#x27;ll direct you to <a href="https://code.facebook.com/cla" target="_blank">our online CLA
 page</a> where you can complete it
-easily.  We use the same form as the Apache CLA so that friction is minimal.</p><h3><a class="anchor" name="tools"></a>Tools <a class="hash-link" href="#tools">#</a></h3><p>We use a tool called <code>arc</code> to run tests and perform lint checks.  <code>arc</code> is part
-of <a href="http://www.phabricator.org" target="_blank">Phabricator</a> and can be installed by following
-these steps:</p><div class="prism language-javascript">$ mkdir <span class="token operator">/</span>somewhere
-$ cd <span class="token operator">/</span>somewhere
-$ git clone git<span class="token punctuation">:</span><span class="token operator">/</span><span class="token operator">/</span>github<span class="token punctuation">.</span>com<span class="token operator">/</span>facebook<span class="token operator">/</span>libphutil<span class="token punctuation">.</span>git
-$ git clone git<span class="token punctuation">:</span><span class="token operator">/</span><span class="token operator">/</span>github<span class="token punctuation">.</span>com<span class="token operator">/</span>facebook<span class="token operator">/</span>arcanist<span class="token punctuation">.</span>git</div><p>Add <code>arc</code> to your path:</p><div class="prism language-javascript">$ export PATH<span class="token operator">=</span><span class="token string">&quot;$PATH:/somewhere/arcanist/bin/&quot;</span></div><p>With <code>arc</code> in your path, re-running configure will detect it and adjust the
-makefile so that <code>arc lint</code> will be run as part of <code>make</code>, but you can run it
-yourself outside of make.</p><p>You can run the unit tests using:</p><div class="prism language-javascript">$ make integration</div><p>If you&#x27;d like to contribute a patch to watchman, we&#x27;ll ask you to make sure
-that <code>make integration</code> still passes successfully and we&#x27;d ideally like you to
-augment the test suite to cover the functionality that you&#x27;re adding or
-changing.</p><p>Once you&#x27;ve installed <code>arc</code>, you can ask it to submit a diff for code review:</p><div class="prism language-javascript">$ arc diff</div><p>and it will run the tests and linters for you.  You will need to register on
-our <a href="https://reviews.facebook.net" target="_blank">Open Source Phabricator Instance</a>; you
-can sign in using either your Facebook or Gighub identity.</p></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2015 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
+easily.  We use the same form as the Apache CLA so that friction is minimal.</p><h3><a class="anchor" name="getting-started"></a>Getting Started <a class="hash-link" href="#getting-started">#</a></h3><p>You need to be able to build watchman from source and run its test suite.
+You will need:</p><ul><li>python</li><li>automake</li><li>autoconf</li><li>libpcre</li><li>nodejs (for the docs and for fb-watchman)</li></ul><div class="prism language-javascript">$ git clone https<span class="token punctuation">:</span><span class="token operator">/</span><span class="token operator">/</span>github<span class="token punctuation">.</span>com<span class="token operator">/</span>facebook<span class="token operator">/</span>watchman<span class="token punctuation">.</span>git
+$ cd watchman
+$ <span class="token punctuation">.</span><span class="token operator">/</span>autogen<span class="token punctuation">.</span>sh
+$ <span class="token punctuation">.</span><span class="token operator">/</span>configure
+$ make</div><p>After making a change, run the integration tests to make sure that things
+are still working well before you submit your pull request:</p><div class="prism language-javascript">$ make integration</div><p>We&#x27;ll probably ask you to augment the test suite to cover the functionality
+that you&#x27;re adding or changing.</p><p>Please keep in mind that our versioning philosophy in Watchman is to provide
+an <em>append only</em> API.  If you&#x27;re changing functionality, we&#x27;ll ask you to do
+so in such a way that it won&#x27;t break older clients of Watchman.</p><h3><a class="anchor" name="don-t-forget-the-docs"></a>Don&#x27;t forget the docs <a class="hash-link" href="#don-t-forget-the-docs">#</a></h3><p>If you&#x27;re changing or adding new functionality, we&#x27;ll ask you to also update
+the documentation.   You will need <code>nodejs</code> to preview the documentation:</p><div class="prism language-javascript">$ cd website
+$ npm install
+$ npm start</div><p>This will print out a URL that you can open in your browser to preview your
+documentation changes.</p><p>The source for the documentation is in the <code>docs</code> dir in markdown format.</p></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2015 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
             (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
             (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
             m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
