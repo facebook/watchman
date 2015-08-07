@@ -1,12 +1,20 @@
-version: {build}
+version: b{build}
+
+branches:
+  except:
+    - gh-pages
+
 install:
-- cinst python2 php
+  - cinst python2 php
+
 build_script:
-- make.bat
+  - make.bat
+
 test_script:
-- PATH=C:\tools\php;%PATH%
-- make integration
+  - PATH=C:\tools\php;%PATH%
+  - make integration
+
 artifacts:
-- path: watchman.exe
-  name: watchman
-  type: zip
+  - path: watchman.exe
+    name: watchman
+    type: zip
