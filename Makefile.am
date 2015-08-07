@@ -165,7 +165,7 @@ clean-local: py-clean rb-clean
 build-tests: $(TESTS)
 .PHONY: lint build-tests integration py-tests
 # run integration AND unit tests
-integration: py-build py-integration
+integration: all py-integration
 
 tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
 tests_argv_t_LDADD = $(JSON_LIB) $(TAP_LIB)
