@@ -210,8 +210,8 @@ class triggerTestCase extends WatchmanTestCase {
       return file_exists("$root/trigger.log");
     }, 1);
 
-    w_unlink("$root/trigger.log");
-    w_unlink("$root/trigger.json");
+    @w_unlink("$root/trigger.log");
+    @w_unlink("$root/trigger.json");
 
     $this->startLogging('debug');
 

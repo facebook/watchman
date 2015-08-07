@@ -62,7 +62,10 @@ args = parser.parse_args()
 os.environ['WATCHMAN_EMPTY_ENV_VAR'] = ''
 
 # Ensure that we find the watchman we built in the tests
-os.environ['PATH'] = '.' + os.pathsep + os.environ['PATH']
+os.environ['PATH'] = '%s%s%s' % (
+        os.path.abspath(os.path.dirname(__file__)),
+        os.pathsep,
+        os.environ['PATH'])
 
 # We'll put all our temporary stuff under one dir so that we
 # can clean it all up at the end
