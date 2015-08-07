@@ -9,7 +9,7 @@ also trigger actions (such as rebuilding assets) when matching files change.
 
 ## Documentation
 
-Head on over to https://facebook.github.io/watchman/
+Head on over to https://facebook.github.io/watchman
 
 ## Build Status
 
