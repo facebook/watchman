@@ -16,9 +16,8 @@ Head on over to https://facebook.github.io/watchman/
 [![Build Status](https://travis-ci.org/facebook/watchman.svg?branch=master)
 ](https://travis-ci.org/facebook/watchman)
 
-[![Build status](https://ci.appveyor.com/api/projects/status/y72uxua25nre54jl/branch/master?svg=true)
+[![Build status](https://ci.appveyor.com/api/projects/status/uvafoyc550kg438h/branch/master?svg=true)
 ](https://ci.appveyor.com/project/wez/watchman/branch/master)
-
 
 ## License
 
