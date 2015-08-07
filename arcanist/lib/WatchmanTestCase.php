@@ -6,15 +6,36 @@ if (!defined('PHP_BINARY')) {
   define('PHP_BINARY', 'php');
 }
 
+function w_unlink($name) {
+  if (phutil_is_windows()) {
+    for ($i = 0; $i < 10; $i++) {
+      $x = @unlink($name);
+      if ($x) return true;
+      usleep(200000);
+    }
+  }
+  return unlink($name);
+}
+
 function w_normalize_filename($a) {
   if ($a === null) {
     return null;
   }
-  return str_replace('/', DIRECTORY_SEPARATOR, $a);
+  $a = str_replace('/', DIRECTORY_SEPARATOR, $a);
+  if (DIRECTORY_SEPARATOR == '\\') {
+    return strtolower($a);
+  }
+  return $a;
 }
 
 function w_is_same_filename($a, $b) {
   return w_normalize_filename($a) == w_normalize_filename($b);
+}
+
+function w_is_file_in_file_list($filename, $list) {
+  $list = w_normalize_file_list($list);
+  $filename = w_normalize_filename($filename);
+  return in_array($filename, $list);
 }
 
 function w_normalize_file_list($a) {
@@ -104,9 +125,9 @@ class WatchmanTestCase {
       if (!is_array($res)) {
         $err = $res;
       } else {
-        $err = idx($res, 'error', idx($res, 'watch'));
+        $err = idx($res, 'error', w_normalize_filename(idx($res, 'watch')));
       }
-      $this->assertEqual($root, $err);
+      $this->assertEqual(w_normalize_filename($root), $err);
     }
     return $res;
   }
@@ -326,7 +347,7 @@ class WatchmanTestCase {
       $message = "Condition [$callable] was not met in $timeout seconds";
     }
     if (is_callable($message)) {
-      $message = $message();
+      $message = call_user_func($message);
     }
     if (is_string($res)) {
       $message .= " $res";
@@ -542,7 +563,8 @@ class WatchmanTestCase {
       $timeout,
       function () use ($filename, $content) {
         $got = @file_get_contents($filename);
-        return "wait for $filename to hold $content, got $got";
+        return "Wanted: $content\nGot:    $got\n".
+               "wait for $filename to hold a certain content";
       }
     );
     return @file_get_contents($filename);
@@ -550,7 +572,8 @@ class WatchmanTestCase {
 
   function assertFileContents($filename, $content, $timeout = 5) {
     $got = $this->waitForFileContents($filename, $content, $timeout);
-    $this->assertEqual($got, $content);
+    $this->assertEqual($got, $content,
+        "waiting for $filename to have a certain content");
   }
 
   function waitForFileToHaveNLines($filename, $nlines, $timeout = 5) {
@@ -642,9 +665,13 @@ class WatchmanTestCase {
       echo '# ' . implode("\n# ", $lines) . "\n";
     }
     $last_line = array_pop($lines);
-    printf("%s %d - %s\n",
+    $caller = self::getCallerInfo();
+
+    printf("%s %d - %s:%d: %s\n",
       $ok ? 'ok' : 'not ok',
       self::$test_number++,
+      $caller['file'],
+      $caller['line'],
       $last_line);
   }
 
@@ -664,30 +691,21 @@ class WatchmanTestCase {
    * @return map
    */
   private static final function getCallerInfo() {
-    $callee = array();
     $caller = array();
-    $seen = false;
 
     foreach (array_slice(debug_backtrace(), 1) as $location) {
       $function = idx($location, 'function');
 
-      if (!$seen && preg_match('/^assert[A-Z]/', $function)) {
-        $seen = true;
-        $caller = $location;
-      } else if ($seen && !preg_match('/^assert[A-Z]/', $function)) {
-        $callee = $location;
-        break;
+      if (idx($location, 'file') == __FILE__) {
+        continue;
       }
+      $caller = $location;
+      break;
     }
 
     return array(
       'file' => basename(idx($caller, 'file')),
       'line' => idx($caller, 'line'),
-      'function' => idx($callee, 'function'),
-      'class' => idx($callee, 'class'),
-      'object' => idx($caller, 'object'),
-      'type' => idx($callee, 'type'),
-      'args' => idx($caller, 'args'),
     );
   }
 
@@ -696,14 +714,11 @@ class WatchmanTestCase {
   }
 
   function assertEqual($expected, $actual, $message = null) {
-    if (!$message) {
+    if ($message === null) {
       $message = sprintf("Expected %s to equal %s",
         self::printable($actual),
         self::printable($expected));
     }
-    $caller = self::getCallerInfo();
-    $message = sprintf("%s:%d: %s", $caller['file'], $caller['line'], $message);
-
     if ($expected === $actual) {
       $this->ok($message);
     } else {

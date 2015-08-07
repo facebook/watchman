@@ -571,14 +571,13 @@ static void *child_reaper(void *arg)
 #ifndef _WIN32
   sigset_t sigset;
 
-  w_set_thread_name("child_reaper");
-
   // Unblock SIGCHLD only in this thread
   sigemptyset(&sigset);
   sigaddset(&sigset, SIGCHLD);
   pthread_sigmask(SIG_UNBLOCK, &sigset, NULL);
 #endif
   unused_parameter(arg);
+  w_set_thread_name("child_reaper");
 
   while (!stopping) {
     usleep(200000);

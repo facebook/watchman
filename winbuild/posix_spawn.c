@@ -336,7 +336,7 @@ static int posix_spawn_common(
       goto done;
     }
 
-    h = w_handle_open(op->name, op->flags);
+    h = w_handle_open(op->name, op->flags & ~O_CLOEXEC);
     if (h == INVALID_HANDLE_VALUE) {
       ret = errno;
       w_log(W_LOG_ERR, "posix_spawn: failed to open %s:\n",

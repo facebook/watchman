@@ -40,14 +40,14 @@ class triggerChdirTestCase extends WatchmanTestCase {
     $this->waitFor(
       function () use ($env, $root, $root_pat) {
         $envdata = file_get_contents($env);
-        return preg_match(",PWD=$root_pat,", $envdata) > 0;
+        return preg_match(",PWD=$root_pat,i", $envdata) > 0;
       },
       10,
       "waiting for PWD to show in $env log file ($root_pat)"
     );
 
     $envdata = file_get_contents($env);
-    $this->assertRegex(",PWD=$root_pat,", $envdata);
+    $this->assertRegex(",PWD=$root_pat,i", $envdata);
     $this->assertRegex("/WATCHMAN_EMPTY_ENV_VAR=$/m", $envdata);
   }
 
@@ -86,20 +86,29 @@ class triggerChdirTestCase extends WatchmanTestCase {
     $obj = $this->waitForJsonInput($log);
     $this->assertEqual(1, count($obj));
 
+    $root_pat = preg_quote(w_normalize_filename($root) .
+                           DIRECTORY_SEPARATOR . 'sub1' .
+                           DIRECTORY_SEPARATOR . 'sub2');
     $this->waitFor(
-      function () use ($env, $root) {
+      function () use ($env, $root, $root_pat) {
         $envdata = @file_get_contents($env);
         $root = preg_quote($root);
-        return preg_match(",PWD=$root/sub,", $envdata) == 1;
+        return preg_match(",PWD=$root_pat,i", $envdata) == 1;
       },
       10,
-      "waiting for PWD to show in $env log file"
+      function () use ($env, $root, $root_pat) {
+        $envdata = @file_get_contents($env);
+        return "$envdata\nwaiting for PWD to show in $env log file ".
+          "(pat: $root_pat)";
+      }
     );
 
     $envdata = file_get_contents($env);
-    $this->assertRegex(",PWD=$root/sub1/sub2,", $envdata);
+    $sub1_pat = preg_quote(w_normalize_filename("$root/sub1"));
+    $root_pat = preg_quote(w_normalize_filename($root));
+    $this->assertRegex(",PWD=$root_pat,i", $envdata);
     $this->assertRegex("/WATCHMAN_EMPTY_ENV_VAR=$/m", $envdata);
-    $this->assertRegex(",^WATCHMAN_ROOT=$root$,m", $envdata);
-    $this->assertRegex(",^WATCHMAN_RELATIVE_ROOT=$root/sub1$,m", $envdata);
+    $this->assertRegex(",^WATCHMAN_ROOT=$root_pat$,mi", $envdata);
+    $this->assertRegex(",^WATCHMAN_RELATIVE_ROOT=$sub1_pat$,mi", $envdata);
   }
 }

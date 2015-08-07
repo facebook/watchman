@@ -79,12 +79,20 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
 
         # touch a file outside the relative root
         self.touchRelative(root, 'b')
-        self.waitForSync(root)
+        self.assertFileList(root, files=[
+            'a',
+            'b',
+            'subdir',
+            'subdir/foo'])
         res = self.watchmanCommand('query', root, {
             'since': res['clock'],
             'relative_root': 'subdir',
             'fields': ['name']})
-        self.assertEqual(self.normFileList(res['files']), [])
+        expect = []
+        # Filter out 'foo' as some operating systems may report
+        # it and others may not.  We're not interested in it here.
+        self.assertEqual(self.normFileList(
+            filter(lambda x: x != 'foo', res['files'])), expect)
 
         # touching just the subdir shouldn't cause anything to show up
         self.touchRelative(root, 'subdir')

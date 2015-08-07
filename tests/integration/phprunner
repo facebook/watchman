@@ -57,7 +57,7 @@ foreach (get_declared_classes() as $name) {
 
   $config = $test_case->getGlobalConfig();
   if ($config) {
-    $instance = new WatchmanInstance($root, $coverage, $config);
+    $instance = new WatchmanInstance($root, false, $config);
     $instances[] = $instance;
   } else {
     $instance = $first_inst;

@@ -36,6 +36,8 @@ class TapExeTestCase(unittest.TestCase):
             self.fail('temp dir name %s is too long for unix domain sockets' %
                 env['TMPDIR'])
         os.mkdir(env['TMPDIR'])
+        env['TMP'] = env['TMPDIR']
+        env['TEMP'] = env['TMPDIR']
         env['IN_PYTHON_HARNESS'] = '1'
         proc = subprocess.Popen(
             self.getCommandArgs(),
@@ -59,7 +61,7 @@ class TapExeTestCase(unittest.TestCase):
         plan_pat = re.compile('^1\.\.(\d+)$')
 
         # Now parse the TAP output
-        lines = stdout.split('\n')
+        lines = stdout.replace('\r\n', '\n').split('\n')
         last_test = 0
         diags = None
         plan = None
@@ -83,7 +85,7 @@ class TapExeTestCase(unittest.TestCase):
                     # Failed
                     msg = line
                     if diags is not None:
-                        msg = msg + '\n'.join(diags)
+                        msg = msg + '\n' + '\n'.join(diags)
                     self.fail(msg)
                     failed
 
@@ -101,7 +103,10 @@ class TapExeTestCase(unittest.TestCase):
                 print('Invalid tap output from %s: %s' %
                       (self.id(), line))
 
-        self.assertEqual(last_test, plan,
+        if plan is None:
+            self.fail('no plan was observed')
+        else:
+            self.assertEqual(last_test, plan,
                          '%s planned %d but executed %s tests' % (
                              self.id(),
                              plan,
@@ -117,7 +122,8 @@ class PhpTestCase(TapExeTestCase):
         return self.phpfile
 
     def getCommandArgs(self):
-        return ['php', 'tests/integration/phprunner', self.phpfile]
+        return ['php', '-d register_argc_argv=1',
+                'tests/integration/phprunner', self.phpfile]
 
 
 def discover(filematcher, path):

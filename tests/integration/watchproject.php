@@ -31,7 +31,7 @@ class watchProjectTestCaseHelper extends WatchmanTestCase {
           $this->assertFailure("failed to watch-project: $err");
         }
         $this->assertEqual(w_normalize_filename($full_watch),
-            idx($res, 'watch'), $label);
+            w_normalize_filename(idx($res, 'watch')), $label);
         $this->assertEqual(w_normalize_filename($expect_rel),
             idx($res, 'relative_path'), $label);
       } else {

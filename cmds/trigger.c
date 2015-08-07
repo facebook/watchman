@@ -150,8 +150,14 @@ static bool parse_redirection(const char **name_p, int *flags,
   *flags = O_CREAT|O_CLOEXEC|O_WRONLY;
 
   if (name[1] == '>') {
+#ifdef _WIN32
+    ignore_result(asprintf(errmsg,
+      "Windows does not support O_APPEND"));
+    return false;
+#else
     *flags |= O_APPEND;
     *name_p = name + 2;
+#endif
   } else {
     *flags |= O_TRUNC;
     *name_p = name + 1;
