@@ -18,7 +18,7 @@ var Site = React.createClass({
           <meta property="og:title" content="watchman | A file watching service" />
           <meta property="og:type" content="website" />
           <meta property="og:url" content="http://facebook.github.io/watchman/index.html" />
-          <meta property="og:image" content="http://facebook.github.io/watchman/favicon.png" />
+          <meta property="og:image" content="http://facebook.github.io/watchman/img/favicon.png" />
           <meta property="og:description" content="A file watching service" />
 
           <link rel="shortcut icon" href="/watchman/img/favicon.png" />
