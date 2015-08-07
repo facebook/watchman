@@ -5,7 +5,7 @@ from setuptools import setup, Extension
 
 setup(
     name = 'pywatchman',
-    version = '0.1.1',
+    version = '1.0.0',
     description = 'Watchman client for python',
     author = 'Wez Furlong, Siddharth Agarwal',
     author_email = 'wez@fb.com',

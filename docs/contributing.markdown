@@ -28,6 +28,7 @@ You will need:
 * automake
 * autoconf
 * libpcre
+* nodejs (for the docs and for fb-watchman)
 
 ```
 $ git clone https://github.com/facebook/watchman.git
@@ -47,3 +48,22 @@ $ make integration
 We'll probably ask you to augment the test suite to cover the functionality
 that you're adding or changing.
 
+Please keep in mind that our versioning philosophy in Watchman is to provide
+an *append only* API.  If you're changing functionality, we'll ask you to do
+so in such a way that it won't break older clients of Watchman.
+
+### Don't forget the docs
+
+If you're changing or adding new functionality, we'll ask you to also update
+the documentation.   You will need `nodejs` to preview the documentation:
+
+```
+$ cd website
+$ npm install
+$ npm start
+```
+
+This will print out a URL that you can open in your browser to preview your
+documentation changes.
+
+The source for the documentation is in the `docs` dir in markdown format.

@@ -31,6 +31,8 @@ config.sub
 config.guess
 configure.lineno
 python/build
+python/dist/
+python/pywatchman.egg-info/
 *.pyc
 *.pyd
 *.so
