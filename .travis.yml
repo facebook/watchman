@@ -1,5 +1,17 @@
 language: c
 
+# use container infra for linux
+sudo: false
+
+addons:
+  apt:
+    packages:
+      - php5-cli
+      - python2.7
+#      - ruby
+#      - rubygems
+#      - valgrind
+
 os:
   - osx
   - linux
@@ -13,15 +25,10 @@ compiler:
   - gcc
 #  - clang
 
-# for the bser module
-python:
-  - "2.7"
-#  - "3.2"
-
 # for the ruby-watchman gem
-gemfile: ruby/ruby-watchman/Gemfile
-rvm:
-  - "2.0.0"
+#gemfile: ruby/ruby-watchman/Gemfile
+#rvm:
+#  - "2.0.0"
 
 # try some different compiler options
 env:
