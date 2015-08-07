@@ -29,7 +29,7 @@ $ npm install fb-watchman
 
 ## Usage
 
-```
+```js
 var watchman = require('fb-watchman');
 var client = new watchman.Client();
 
@@ -212,7 +212,7 @@ The `done` parameter is a callback that will be passed (error, result) when the
 command completes.  You may omit it if you are not interested in the result of
 the command.
 
-```
+```js
 client.command(['watch-project', process.cwd()], function(error, resp) {
   if (error) {
     console.log('watch failed: ', error);
@@ -269,7 +269,7 @@ Emitted when the socket to the watchman service is closed
 Emitted in response to a unilateral `log` PDU from the watchman service.
 To enable these, you need to send a `log-level` command to the service:
 
-```
+```js
 // This is very verbose, you probably don't want to do this
 client.command(['log-level', 'debug']);
 client.on('log', function(info) {
@@ -282,7 +282,7 @@ client.on('log', function(info) {
 Emitted in response to a unilateral `subscription` PDU from the watchman
 service.  To enable these, you need to send a `subscribe` command to the service:
 
-```
+```js
   // Subscribe to notifications about .js files
   client.command(['subscribe', process.cwd(), 'mysubscription', {
       expression: ["match", "*.js"]
@@ -309,7 +309,7 @@ service.  To enable these, you need to send a `subscribe` command to the service
 To cancel a subscription, use the `unsubscribe` command and pass in the name of
 the subscription you want to cancel:
 
-```
+```js
   client.command(['unsubscribe', process.cwd(), 'mysubscription']);
 ```
 
