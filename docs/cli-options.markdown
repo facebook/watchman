@@ -134,6 +134,10 @@ EOT
 ```
 
 ```bash
+$ watchman -j <<< '["watch", "/path/to/dir"]'
+```
+
+```bash
 $ echo '["watch", "/path/to/dir"]' | watchman -j
 ```
 
@@ -147,6 +151,12 @@ $ watchman --json-command <<-EOT
 ["watch", "/path/to/dir"]
 EOT
 ```
+
+*Since 3.8*
+
+The CLI now also recognizes BSER as a valid input stream when using the `-j`
+option.  This will implicitly set `--server-encoding=bser` and
+`--output-encoding=bser` if those options have not been set to something else.
 
 ## Exit Status
 

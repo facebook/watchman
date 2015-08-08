@@ -7,7 +7,7 @@
 
 static int show_help = 0;
 static int show_version = 0;
-static enum w_pdu_type server_pdu = is_json_compact;
+static enum w_pdu_type server_pdu = is_bser;
 static enum w_pdu_type output_pdu = is_json_pretty;
 static char *server_encoding = NULL;
 static char *output_encoding = NULL;
@@ -614,10 +614,27 @@ static json_t *build_command(int argc, char **argv)
   // Read blob from stdin
   if (json_input_arg) {
     json_error_t err;
+    w_jbuffer_t buf;
 
-    cmd = json_loadf(stdin, 0, &err);
+    memset(&err, 0, sizeof(err));
+    w_json_buffer_init(&buf);
+    cmd = w_json_buffer_next(&buf, w_stm_stdin(), &err);
+
+    if (buf.pdu_type == is_bser) {
+      // If they used bser for the input, select bser for output
+      // unless they explicitly requested something else
+      if (!server_encoding) {
+        server_pdu = is_bser;
+      }
+      if (!output_encoding) {
+        output_pdu = is_bser;
+      }
+    }
+
+    w_json_buffer_free(&buf);
+
     if (cmd == NULL) {
-      fprintf(stderr, "failed to parse JSON from stdin: %s\n",
+      fprintf(stderr, "failed to parse command from stdin: %s\n",
           err.text);
       exit(1);
     }

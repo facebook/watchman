@@ -138,7 +138,7 @@ char **backtrace_symbols(void **array, size_t n_frames);
 #define PACKAGE_NAME "watchman"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "3.7.0"
+#define PACKAGE_VERSION "3.8.0"
 
 /* Version number of package */
 #define VERSION PACKAGE_VERSION

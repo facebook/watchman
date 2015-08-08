@@ -60,6 +60,7 @@ bool w_stm_rewind(w_stm_t stm);
 bool w_stm_shutdown(w_stm_t stm);
 
 w_stm_t w_stm_stdout(void);
+w_stm_t w_stm_stdin(void);
 #ifndef _WIN32
 w_stm_t w_stm_connect_unix(const char *path, int timeoutms);
 w_stm_t w_stm_fdopen(int fd);

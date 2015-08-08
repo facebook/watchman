@@ -10,6 +10,10 @@ We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on GitHub](
 https://github.com/facebook/watchman/commits/master).
 
+### Watchman 3.8.0 (Not yet released)
+
+* `-j` CLI option now accepts either JSON or BSER encoded command on stdin
+
 ### pywatchman 1.0.0 (2015-08-06)
 
 * First official pypi release, thanks to [@kwlzn](https://github.com/kwlzn)
