@@ -410,7 +410,7 @@ class client(object):
                 return True
         return False
 
-    def getLog(remove=True):
+    def getLog(self, remove=True):
         """ Retrieve buffered log data
 
         If remove is true the data will be removed from the buffer.
@@ -421,7 +421,7 @@ class client(object):
             self.logs = []
         return res
 
-    def getSubscription(name, remove=True):
+    def getSubscription(self, name, remove=True):
         """ Retrieve the data associated with a named subscription
 
         If remove is True (the default), the subscription data is removed
