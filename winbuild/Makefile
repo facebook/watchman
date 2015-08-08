@@ -202,6 +202,8 @@ dist:
 	-mkdir Watchman
 	copy watchman.exe Watchman
 	copy watchman.pdb Watchman
+	copy LICENSE Watchman\LICENSE.txt
+	copy README.markdown Watchman
 
 clean:
 	-del $(OBJS) $(TEST_OBJS) $(TEST_DIR_OBJS) *.exe
