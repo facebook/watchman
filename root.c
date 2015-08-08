@@ -9,7 +9,7 @@
 static struct watchman_ops *watcher_ops = NULL;
 static watchman_global_watcher_t watcher = NULL;
 static w_ht_t *watched_roots = NULL;
-static long live_roots = 0;
+static volatile long live_roots = 0;
 static pthread_mutex_t root_lock = PTHREAD_MUTEX_INITIALIZER;
 
 // Each root gets a number that uniquely identifies it within the process. This
@@ -404,13 +404,15 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
   w_log(W_LOG_DBG, "sync_to_now [%s] waiting\n", path_str->buf);
 
   /* timed cond wait (unlocks root lock, reacquires) */
-  errcode = pthread_cond_timedwait(&cookie.cond, &root->lock, &deadline);
-  if (errcode && !cookie.seen) {
-    w_log(W_LOG_ERR, "sync_to_now: %s timedwait failed: %s\n",
-        path_str->buf, strerror(errcode));
-  } else {
-    w_log(W_LOG_DBG, "sync_to_now [%s] done\n", path_str->buf);
+  while (!cookie.seen) {
+    errcode = pthread_cond_timedwait(&cookie.cond, &root->lock, &deadline);
+    if (errcode && !cookie.seen) {
+      w_log(W_LOG_ERR, "sync_to_now: %s timedwait failed: %d: istimeout=%d %s\n",
+          path_str->buf, errcode, errcode == ETIMEDOUT, strerror(errcode));
+      goto out;
+    }
   }
+  w_log(W_LOG_DBG, "sync_to_now [%s] done\n", path_str->buf);
 
 out:
   // can't unlink the file until after the cookie has been observed because
@@ -2053,7 +2055,7 @@ char *w_find_enclosing_root(const char *filename, char **relpath) {
   w_ht_iter_t i;
   w_root_t *root = NULL;
   w_string_t *name = w_string_new(filename);
-  char *prefix;
+  char *prefix = NULL;
 
   pthread_mutex_lock(&root_lock);
   if (w_ht_first(watched_roots, &i)) do {
@@ -2069,14 +2071,13 @@ char *w_find_enclosing_root(const char *filename, char **relpath) {
   pthread_mutex_unlock(&root_lock);
 
   if (!root) {
-    w_string_delref(name);
-    return NULL;
+    goto out;
   }
 
   // extract the path portions
   prefix = malloc(root->root_path->len + 1);
   if (!prefix) {
-    return NULL;
+    goto out;
   }
   memcpy(prefix, filename, root->root_path->len);
   prefix[root->root_path->len] = '\0';
@@ -2086,7 +2087,11 @@ char *w_find_enclosing_root(const char *filename, char **relpath) {
   } else {
     *relpath = strdup(filename + root->root_path->len + 1);
   }
-  w_root_delref(root);
+
+out:
+  if (root) {
+    w_root_delref(root);
+  }
   w_string_delref(name);
 
   return prefix;

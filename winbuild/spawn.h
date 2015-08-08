@@ -19,23 +19,27 @@ int posix_spawnattr_destroy(posix_spawnattr_t *attrp);
 int posix_spawnattr_setcwd_np(posix_spawnattr_t *attrp, const char *path);
 
 // File actions
-
-struct _posix_spawn_file_dup {
-  HANDLE local_handle;
+struct _posix_spawn_file_action {
+  enum {
+    open_file,
+    dup_fd,
+    dup_handle
+  } action;
   int target_fd;
-};
-struct _posix_spawn_file_open {
-  int target_fd;
-  char *name;
-  int flags;
-  int mode;
+  union {
+    HANDLE dup_local_handle;
+    int source_fd;
+    struct {
+      char *name;
+      int flags;
+      int mode;
+    } open_info;
+  } u;
 };
 
 typedef struct _posix_spawn_file_actions {
-  struct _posix_spawn_file_dup *dups;
-  int ndups;
-  struct _posix_spawn_file_open *opens;
-  int nopens;
+  struct _posix_spawn_file_action *acts;
+  int nacts;
 } posix_spawn_file_actions_t;
 
 int posix_spawn_file_actions_init(posix_spawn_file_actions_t *actions);

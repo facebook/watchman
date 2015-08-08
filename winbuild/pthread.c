@@ -1154,7 +1154,9 @@ int pthread_cond_timedwait(pthread_cond_t *c, pthread_mutex_t *m,
 
   pthread_testcancel();
 
-  if (!SleepConditionVariableCS(c, m, (DWORD)tm)) return ETIMEDOUT;
+  if (!SleepConditionVariableCS(c, m, (DWORD)tm)) {
+    return map_win32_err(GetLastError());
+  }
 
   /* We can have a spurious wakeup after the timeout */
   if (!_pthread_rel_time_in_ms(t)) return ETIMEDOUT;

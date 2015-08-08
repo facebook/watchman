@@ -138,15 +138,40 @@ Client.prototype.connect = function() {
   // We need to ask the client binary where to find it.
   // This will cause the service to start for us if it isn't
   // already running.
-  var watchmanCommand = this.watchmanBinaryPath + ' get-sockname';
-  childProcess.exec(watchmanCommand,
-      function(error, stdout, stderr) {
-    if (error) {
-      self.emit('error', error);
+  var args = ['--no-pretty', 'get-sockname'];
+
+  // We use the more elaborate spawn rather than exec because there
+  // are some error cases on Windows where process spawning can hang.
+  // It is desirable to pipe stderr directly to stderr live so that
+  // we can discover the problem.
+  proc = childProcess.spawn(this.watchmanBinaryPath, args, {
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  var stdout = [];
+  var stderr = [];
+  proc.stdout.on('data', function(data) {
+    stdout.push(data);
+  });
+  proc.stderr.on('data', function(data) {
+    data = data.toString('utf8');
+    stderr.push(data);
+    console.log(data);
+  });
+
+  proc.on('close', function (code) {
+    proc.stderr.end();
+    proc.stdout.end();
+    if (code !== 0) {
+      var why = this.watchmanBinaryPath + args.join(' ') +
+                ' returned with exit code ' + code + ' ' +
+                stderr.join('');
+      console.log(why);
+      self.emit('error', why);
       return;
     }
     try {
-      var obj = JSON.parse(stdout);
+      var obj = JSON.parse(stdout.join(''));
       if ('error' in obj) {
         error = new Error(obj.error);
         error.watchmanResponse = obj;

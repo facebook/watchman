@@ -151,23 +151,15 @@ extern char *poisoned_reason;
 // self-documenting hint to the compiler that we didn't use it
 #define unused_parameter(x)  (void)x
 
-static inline void w_refcnt_add(long *refcnt)
+static inline void w_refcnt_add(volatile long *refcnt)
 {
-#ifdef _WIN32
-  _InterlockedIncrement(refcnt);
-#else
   (void)__sync_fetch_and_add(refcnt, 1);
-#endif
 }
 
 /* returns true if we deleted the last ref */
-static inline bool w_refcnt_del(long *refcnt)
+static inline bool w_refcnt_del(volatile long *refcnt)
 {
-#ifdef _WIN32
-  return _InterlockedDecrement(refcnt) == 0;
-#else
   return __sync_add_and_fetch(refcnt, -1) == 0;
-#endif
 }
 
 static inline void w_set_cloexec(int fd)

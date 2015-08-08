@@ -36,13 +36,19 @@ static bool stdout_rewind(w_stm_t stm) {
   return false;
 }
 
+static bool stdout_shutdown(w_stm_t stm) {
+  unused_parameter(stm);
+  return false;
+}
+
 static struct watchman_stream_ops stdout_ops = {
   stdout_close,
   stdout_read,
   stdout_write,
   stdout_get_events,
   stdout_set_nonb,
-  stdout_rewind
+  stdout_rewind,
+  stdout_shutdown
 };
 
 static struct watchman_stream stm_stdout = {

@@ -65,3 +65,11 @@ bool w_stm_rewind(w_stm_t stm) {
   }
   return stm->ops->op_rewind(stm);
 }
+
+bool w_stm_shutdown(w_stm_t stm) {
+  if (!stm || stm->handle == NULL || stm->ops == NULL) {
+    errno = EBADF;
+    return false;
+  }
+  return stm->ops->op_shutdown(stm);
+}

@@ -88,6 +88,7 @@ TEST_SRCS=\
 	winbuild\pthread.c \
 	winbuild\backtrace.c \
 	winbuild\abort.c \
+	winbuild\errmap.c \
 	argv.c \
 	$(JSON_SRCS)
 

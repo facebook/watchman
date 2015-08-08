@@ -42,8 +42,12 @@ typedef ptrdiff_t ssize_t;
 #define WATCHMAN_DIR_SEP '\\'
 #define WATCHMAN_DIR_DOT '.'
 
-static inline long __sync_fetch_and_add(long *target, long add) {
+static inline long __sync_fetch_and_add(volatile long *target, long add) {
   return _InterlockedExchangeAdd(target, add);
+}
+
+static inline long __sync_add_and_fetch(volatile long *target, long add) {
+  return _InterlockedAdd(target, add);
 }
 
 const char *win32_strerror(DWORD err);

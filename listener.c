@@ -117,9 +117,8 @@ void send_error_response(struct watchman_client *client,
   send_and_dispose_response(client, resp);
 }
 
-static void client_delete(w_ht_val_t val)
+static void client_delete(struct watchman_client *client)
 {
-  struct watchman_client *client = w_ht_val_ptr(val);
   struct watchman_client_response *resp;
 
   w_log(W_LOG_DBG, "client_delete %p\n", client);
@@ -137,18 +136,10 @@ static void client_delete(w_ht_val_t val)
   w_json_buffer_free(&client->reader);
   w_json_buffer_free(&client->writer);
   w_event_destroy(client->ping);
+  w_stm_shutdown(client->stm);
   w_stm_close(client->stm);
   free(client);
 }
-
-static struct watchman_hash_funcs client_hash_funcs = {
-  NULL, // copy_key
-  NULL, // del_key
-  NULL, // equal_key
-  NULL, // hash_key
-  NULL, // copy_val
-  client_delete
-};
 
 static void delete_subscription(w_ht_val_t val)
 {
@@ -508,9 +499,14 @@ static void *client_thread(void *ptr)
   }
 
 disconected:
+  // Remove the client from the map before we tear it down, as this makes
+  // it easier to flush out pending writes on windows without worrying
+  // about w_log_to_clients contending for the write buffers
   pthread_mutex_lock(&w_client_lock);
   w_ht_del(clients, w_ht_ptr_val(client));
   pthread_mutex_unlock(&w_client_lock);
+
+  client_delete(client);
 
   return NULL;
 }
@@ -755,6 +751,7 @@ static struct watchman_client *make_new_client(w_stm_t stm) {
     pthread_mutex_lock(&w_client_lock);
     w_ht_del(clients, w_ht_ptr_val(client));
     pthread_mutex_unlock(&w_client_lock);
+    client_delete(client);
   }
 
   pthread_attr_destroy(&attr);
@@ -1016,7 +1013,7 @@ bool w_start_listener(const char *path)
   }
 
   if (!clients) {
-    clients = w_ht_new(2, &client_hash_funcs);
+    clients = w_ht_new(2, NULL);
   }
 
   w_state_load();

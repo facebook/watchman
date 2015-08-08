@@ -150,6 +150,7 @@ static void spawn_win32(void) {
   }
 
   posix_spawnattr_init(&attr);
+  posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETPGROUP);
   posix_spawn_file_actions_init(&actions);
   posix_spawn_file_actions_addopen(&actions,
       STDIN_FILENO, "/dev/null", O_RDONLY, 0);
@@ -505,9 +506,9 @@ static bool try_command(json_t *cmd, int timeout)
 {
   w_stm_t client = NULL;
   w_jbuffer_t buffer;
+  int err;
 
   client = w_stm_connect(sock_name, timeout * 1000);
-
   if (client == NULL) {
     return false;
   }
@@ -521,9 +522,11 @@ static bool try_command(json_t *cmd, int timeout)
 
   // Send command
   if (!w_ser_write_pdu(server_pdu, &buffer, client, cmd)) {
+    err = errno;
     w_log(W_LOG_ERR, "error sending PDU to server\n");
     w_json_buffer_free(&buffer);
     w_stm_close(client);
+    errno = err;
     return false;
   }
 
@@ -531,8 +534,10 @@ static bool try_command(json_t *cmd, int timeout)
 
   do {
     if (!w_json_buffer_passthru(&buffer, output_pdu, client)) {
+      err = errno;
       w_json_buffer_free(&buffer);
       w_stm_close(client);
+      errno = err;
       return false;
     }
   } while (persistent);
@@ -682,7 +687,8 @@ int main(int argc, char **argv)
   }
 
   if (!no_spawn) {
-    w_log(W_LOG_ERR, "unable to talk to your watchman on %s!\n", sock_name);
+    w_log(W_LOG_ERR, "unable to talk to your watchman on %s! (%s)\n",
+        sock_name, strerror(errno));
   }
   return 1;
 }

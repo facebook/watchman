@@ -17,6 +17,7 @@ import atexit
 import WatchmanTapTests
 import WatchmanInstance
 import WatchmanTestCase
+import NodeTests
 import glob
 import threading
 import multiprocessing
@@ -39,6 +40,10 @@ parser.add_argument(
     "--keep",
     action='store_true',
     help="preserve all temporary files created during test execution")
+parser.add_argument(
+    "--keep-if-fail",
+    action='store_true',
+    help="preserve all temporary files created during test execution if failed")
 
 parser.add_argument(
     "files",
@@ -229,6 +234,11 @@ suite.addTests(WatchmanTapTests.discover(
 suite.addTests(WatchmanTapTests.discover(
     shouldIncludeTestFile, 'tests/integration/*.php'))
 
+suite.addTests(NodeTests.discover(
+    shouldIncludeTestFile, 'node/test/*.js'))
+suite.addTests(NodeTests.discover(
+    shouldIncludeTestFile, 'tests/integration/*.js'))
+
 # Manage printing from concurrent threads
 # http://stackoverflow.com/a/3030755/149111
 class ThreadSafeFile(object):
@@ -357,4 +367,6 @@ print('Ran %d, failed %d, skipped %d, concurrency %d' % (
     tests_run, tests_failed, tests_skipped, args.concurrency))
 
 if tests_failed:
+    if args.keep_if_fail:
+        args.keep = True
     sys.exit(1)

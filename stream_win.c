@@ -467,13 +467,30 @@ static bool win_rewind(w_stm_t stm) {
   return res;
 }
 
+// Ensure that any data buffered for write are sent prior to setting
+// ourselves up to close
+static bool win_shutdown(w_stm_t stm) {
+  struct win_handle *h = stm->handle;
+  BOOL olap_res;
+  DWORD bytes;
+
+  h->blocking = true;
+  while (h->write_pending) {
+    olap_res = get_overlapped_result_ex(h->h, &h->write_pending->olap,
+        &bytes, INFINITE, true);
+  }
+
+  return true;
+}
+
 static struct watchman_stream_ops win_ops = {
   win_close,
   win_read,
   win_write,
   win_get_events,
   win_set_nonb,
-  win_rewind
+  win_rewind,
+  win_shutdown
 };
 
 w_evt_t w_event_make(void) {
@@ -556,18 +573,27 @@ retry_connect:
   }
 
   err = GetLastError();
-
-  if (timeoutms == 0 || GetTickCount64() >= deadline ||
-      (err != ERROR_PIPE_BUSY && err != ERROR_FILE_NOT_FOUND)) {
-    // Retrying won't help with this error
+  if (timeoutms > 0) {
+    timeoutms -= (DWORD)(GetTickCount64() - deadline);
+  }
+  if (timeoutms <= 0 || (err != ERROR_PIPE_BUSY &&
+        err != ERROR_FILE_NOT_FOUND)) {
+    // either we're out of time, or retrying won't help with this error
     errno = map_win32_err(err);
     return NULL;
   }
 
   // We can retry
-  if (!WaitNamedPipe(path, timeoutms) &&
-      GetLastError() == ERROR_FILE_NOT_FOUND) {
-    SleepEx(10, true);
+  if (!WaitNamedPipe(path, timeoutms)) {
+    err = GetLastError();
+    if (err == ERROR_SEM_TIMEOUT) {
+      errno = map_win32_err(err);
+      return NULL;
+    }
+    if (err == ERROR_FILE_NOT_FOUND) {
+      // Grace to allow it to be created
+      SleepEx(10, true);
+    }
   }
 
   goto retry_connect;

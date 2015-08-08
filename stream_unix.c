@@ -56,13 +56,19 @@ static bool unix_rewind(w_stm_t stm) {
   return lseek(h->fd, 0, SEEK_SET) == 0;
 }
 
+static bool unix_shutdown(w_stm_t stm) {
+  struct unix_handle *h = stm->handle;
+  return shutdown(h->fd, SHUT_RDWR);
+}
+
 static struct watchman_stream_ops unix_ops = {
   unix_close,
   unix_read,
   unix_write,
   unix_get_events,
   unix_set_nonb,
-  unix_rewind
+  unix_rewind,
+  unix_shutdown
 };
 
 w_evt_t w_event_make(void) {

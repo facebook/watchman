@@ -89,57 +89,70 @@ int posix_spawn_file_actions_init(posix_spawn_file_actions_t *actions) {
 
 int posix_spawn_file_actions_adddup2(posix_spawn_file_actions_t *actions,
     int fd, int target_fd) {
-  struct _posix_spawn_file_dup *dups;
-  dups = realloc(actions->dups, (actions->ndups + 1) * sizeof(*dups));
-  if (!dups) {
+  struct _posix_spawn_file_action *acts, *act;
+  acts = realloc(actions->acts, (actions->nacts + 1) * sizeof(*acts));
+  if (!acts) {
     return ENOMEM;
   }
-  dups[actions->ndups].local_handle = (HANDLE)_get_osfhandle(fd);
-  dups[actions->ndups].target_fd = target_fd;
-  actions->dups = dups;
-  actions->ndups++;
+  act = &acts[actions->nacts];
+  act->action = dup_fd;
+  act->u.source_fd = fd;
+  act->target_fd = target_fd;
+  actions->acts = acts;
+  actions->nacts++;
   return 0;
 }
 
 int posix_spawn_file_actions_adddup2_handle_np(
     posix_spawn_file_actions_t *actions,
     HANDLE handle, int target_fd) {
-  struct _posix_spawn_file_dup *dups;
-  dups = realloc(actions->dups, (actions->ndups + 1) * sizeof(*dups));
-  if (!dups) {
+  struct _posix_spawn_file_action *acts, *act;
+  acts = realloc(actions->acts, (actions->nacts + 1) * sizeof(*acts));
+  if (!acts) {
     return ENOMEM;
   }
-  dups[actions->ndups].local_handle = handle,
-  dups[actions->ndups].target_fd = target_fd;
-  actions->dups = dups;
-  actions->ndups++;
+  act = &acts[actions->nacts];
+  act->action = dup_handle;
+  act->u.dup_local_handle = handle;
+  act->target_fd = target_fd;
+  actions->acts = acts;
+  actions->nacts++;
   return 0;
 }
 
 int posix_spawn_file_actions_addopen(posix_spawn_file_actions_t *actions,
     int target_fd, const char *name, int flags, int mode) {
-  struct _posix_spawn_file_open *opens;
+  struct _posix_spawn_file_action *acts, *act;
   char *name_dup = strdup(name);
   if (!name_dup) {
     return ENOMEM;
   }
-  opens = realloc(actions->opens, (actions->nopens + 1) * sizeof(*opens));
-  if (!opens) {
+  acts = realloc(actions->acts, (actions->nacts + 1) * sizeof(*acts));
+  if (!acts) {
     free(name_dup);
     return ENOMEM;
   }
-  opens[actions->nopens].target_fd = target_fd;
-  opens[actions->nopens].name = name_dup;
-  opens[actions->nopens].flags = flags;
-  opens[actions->nopens].mode = mode;
-  actions->opens = opens;
-  actions->nopens++;
+  act = &acts[actions->nacts];
+  act->action = open_file;
+  act->target_fd = target_fd;
+  act->u.open_info.name = name_dup;
+  act->u.open_info.flags = flags;
+  act->u.open_info.mode = mode;
+
+  actions->acts = acts;
+  actions->nacts++;
   return 0;
 }
 
 int posix_spawn_file_actions_destroy(posix_spawn_file_actions_t *actions) {
-  free(actions->dups);
-  free(actions->opens);
+  int i;
+  for (i = 0; i < actions->nacts; i++) {
+    if (actions->acts[i].action != open_file) {
+      continue;
+    }
+    free(actions->acts[i].u.open_info.name);
+  }
+  free(actions->acts);
   return 0;
 }
 
@@ -236,15 +249,15 @@ static int posix_spawn_common(
     const posix_spawn_file_actions_t *file_actions,
     const posix_spawnattr_t *attrp,
     char *const argv[], char *const envp[]) {
-  STARTUPINFO sinfo;
+  STARTUPINFOEX sinfo;
   SECURITY_ATTRIBUTES sec;
   PROCESS_INFORMATION pinfo;
   char *cmdbuf;
   char *env_block;
-  DWORD create_flags = CREATE_NO_WINDOW;
+  DWORD create_flags = CREATE_NO_WINDOW|EXTENDED_STARTUPINFO_PRESENT;
   int ret;
   int i;
-  unused_parameter(envp); // FIXME
+  HANDLE inherited_handles[3] = {0, 0, 0};
 
   cmdbuf = build_command_line(argv);
   if (!cmdbuf) {
@@ -258,9 +271,9 @@ static int posix_spawn_common(
   }
 
   memset(&sinfo, 0, sizeof(sinfo));
-  sinfo.cb = sizeof(sinfo);
-  sinfo.dwFlags = STARTF_USESTDHANDLES|STARTF_USESHOWWINDOW;
-  sinfo.wShowWindow = SW_HIDE;
+  sinfo.StartupInfo.cb = sizeof(sinfo);
+  sinfo.StartupInfo.dwFlags = STARTF_USESTDHANDLES|STARTF_USESHOWWINDOW;
+  sinfo.StartupInfo.wShowWindow = SW_HIDE;
 
   memset(&sec, 0, sizeof(sec));
   sec.nLength = sizeof(sec);
@@ -272,21 +285,19 @@ static int posix_spawn_common(
     create_flags |= CREATE_NEW_PROCESS_GROUP;
   }
 
-  // Process any dup(2) actions
-  for (i = 0; i < file_actions->ndups; i++) {
-    struct _posix_spawn_file_dup *dup = &file_actions->dups[i];
+  for (i = 0; i < file_actions->nacts; i++) {
+    struct _posix_spawn_file_action *act = &file_actions->acts[i];
     HANDLE *target = NULL;
-    DWORD err;
 
-    switch (dup->target_fd) {
+    switch (act->target_fd) {
       case 0:
-        target = &sinfo.hStdInput;
+        target = &sinfo.StartupInfo.hStdInput;
         break;
       case 1:
-        target = &sinfo.hStdOutput;
+        target = &sinfo.StartupInfo.hStdOutput;
         break;
       case 2:
-        target = &sinfo.hStdError;
+        target = &sinfo.StartupInfo.hStdError;
         break;
     }
 
@@ -296,73 +307,94 @@ static int posix_spawn_common(
       goto done;
     }
 
-    if (*target) {
-      CloseHandle(*target);
-      *target = INVALID_HANDLE_VALUE;
-    }
+    if (act->action != open_file) {
+      // Process a dup(2) action
+      DWORD err;
 
-    if (!DuplicateHandle(GetCurrentProcess(), dup->local_handle,
-          GetCurrentProcess(), target, 0,
-          TRUE, DUPLICATE_SAME_ACCESS)) {
-      err = GetLastError();
-      w_log(W_LOG_ERR, "posix_spawn: failed to duplicate handle: %s\n",
-          win32_strerror(err));
-      ret = map_win32_err(err);
-      goto done;
+      if (*target) {
+        CloseHandle(*target);
+        *target = INVALID_HANDLE_VALUE;
+      }
+
+      if (act->action == dup_fd) {
+        HANDLE src = NULL;
+        switch (act->u.source_fd) {
+          case 0:
+            src = sinfo.StartupInfo.hStdInput;
+            break;
+          case 1:
+            src = sinfo.StartupInfo.hStdOutput;
+            break;
+          case 2:
+            src = sinfo.StartupInfo.hStdError;
+            break;
+        }
+        if (!src) {
+          src = (HANDLE)_get_osfhandle(act->u.source_fd);
+        }
+        act->u.dup_local_handle = src;
+      }
+
+      if (!DuplicateHandle(GetCurrentProcess(), act->u.dup_local_handle,
+            GetCurrentProcess(), target, 0,
+            TRUE, DUPLICATE_SAME_ACCESS)) {
+        err = GetLastError();
+        w_log(W_LOG_ERR, "posix_spawn: failed to duplicate handle: %s\n",
+            win32_strerror(err));
+        ret = map_win32_err(err);
+        goto done;
+      }
+    } else {
+      // Process an open(2) action
+      HANDLE h;
+
+      h = w_handle_open(act->u.open_info.name,
+              act->u.open_info.flags & ~O_CLOEXEC);
+      if (h == INVALID_HANDLE_VALUE) {
+        ret = errno;
+        w_log(W_LOG_ERR, "posix_spawn: failed to open %s:\n",
+            act->u.open_info.name);
+        goto done;
+      }
+
+      if (*target) {
+        CloseHandle(*target);
+      }
+      *target = h;
     }
   }
 
-  // Process any file opening actions
-  for (i = 0; i < file_actions->nopens; i++) {
-    struct _posix_spawn_file_open *op = &file_actions->opens[i];
-    HANDLE h;
-    HANDLE *target = NULL;
-
-    switch (op->target_fd) {
-      case 0:
-        target = &sinfo.hStdInput;
-        break;
-      case 1:
-        target = &sinfo.hStdOutput;
-        break;
-      case 2:
-        target = &sinfo.hStdError;
-        break;
-    }
-
-    if (!target) {
-      w_log(W_LOG_ERR, "posix_spawn: can't target fd outside range [0-2]\n");
-      ret = ENOSYS;
-      goto done;
-    }
-
-    h = w_handle_open(op->name, op->flags & ~O_CLOEXEC);
-    if (h == INVALID_HANDLE_VALUE) {
-      ret = errno;
-      w_log(W_LOG_ERR, "posix_spawn: failed to open %s:\n",
-          op->name);
-      goto done;
-    }
-
-    if (*target) {
-      CloseHandle(*target);
-    }
-    *target = h;
+  if (!sinfo.StartupInfo.hStdInput) {
+    sinfo.StartupInfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+  }
+  if (!sinfo.StartupInfo.hStdOutput) {
+    sinfo.StartupInfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+  }
+  if (!sinfo.StartupInfo.hStdError) {
+    sinfo.StartupInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
   }
 
-  if (!sinfo.hStdInput) {
-    sinfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-  }
-  if (!sinfo.hStdOutput) {
-    sinfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-  }
-  if (!sinfo.hStdError) {
-    sinfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+  // Ensure that we only pass the stdio handles to the child.
+  {
+    SIZE_T size = 0;
+
+    inherited_handles[0] = sinfo.StartupInfo.hStdInput;
+    inherited_handles[1] = sinfo.StartupInfo.hStdOutput;
+    inherited_handles[2] = sinfo.StartupInfo.hStdError;
+    sinfo.lpAttributeList = NULL;
+
+    InitializeProcThreadAttributeList(NULL, 1, 0, &size);
+    sinfo.lpAttributeList = malloc(size);
+    InitializeProcThreadAttributeList(sinfo.lpAttributeList, 1, 0, &size);
+    UpdateProcThreadAttribute(sinfo.lpAttributeList, 0,
+        PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+        inherited_handles, 3 * sizeof(HANDLE),
+        NULL, NULL);
   }
 
   if (!CreateProcess(search_path ? NULL : path,
         cmdbuf, &sec, &sec, TRUE, create_flags, env_block,
-        attrp->working_dir, &sinfo, &pinfo)) {
+        attrp->working_dir, &sinfo.StartupInfo, &pinfo)) {
     w_log(W_LOG_ERR, "CreateProcess: `%s`: (cwd=%s) %s\n", cmdbuf,
         attrp->working_dir ? attrp->working_dir : "<process cwd>",
         win32_strerror(GetLastError()));
@@ -382,19 +414,21 @@ static int posix_spawn_common(
     ret = 0;
   }
 
+  free(sinfo.lpAttributeList);
+
 done:
   free(cmdbuf);
   free(env_block);
 
   // If we manufactured any handles, close them out now
-  if (sinfo.hStdInput != GetStdHandle(STD_INPUT_HANDLE)) {
-    CloseHandle(sinfo.hStdInput);
+  if (sinfo.StartupInfo.hStdInput != GetStdHandle(STD_INPUT_HANDLE)) {
+    CloseHandle(sinfo.StartupInfo.hStdInput);
   }
-  if (sinfo.hStdOutput != GetStdHandle(STD_OUTPUT_HANDLE)) {
-    CloseHandle(sinfo.hStdOutput);
+  if (sinfo.StartupInfo.hStdOutput != GetStdHandle(STD_OUTPUT_HANDLE)) {
+    CloseHandle(sinfo.StartupInfo.hStdOutput);
   }
-  if (sinfo.hStdError != GetStdHandle(STD_ERROR_HANDLE)) {
-    CloseHandle(sinfo.hStdError);
+  if (sinfo.StartupInfo.hStdError != GetStdHandle(STD_ERROR_HANDLE)) {
+    CloseHandle(sinfo.StartupInfo.hStdError);
   }
 
   return ret;

@@ -130,8 +130,8 @@ static void *readchanges_thread(void *arg) {
   DWORD err, filter;
   OVERLAPPED olap;
   BOOL initiate_read = true;
-  bool did_signal_init = false;
   HANDLE handles[2] = { state->olap, state->ping };
+  DWORD bytes;
 
   w_set_thread_name("readchange %.*s", root->root_path->len, root->root_path->buf);
 
@@ -151,18 +151,35 @@ static void *readchanges_thread(void *arg) {
     goto out;
   }
 
+  if (!ReadDirectoryChangesW(state->dir_handle, buf, size,
+        TRUE, filter, NULL, &olap, NULL)) {
+    err = GetLastError();
+    w_log(W_LOG_ERR,
+        "ReadDirectoryChangesW: failed, cancel watch. %s\n",
+        win32_strerror(err));
+    w_root_lock(root);
+    w_root_cancel(root);
+    w_root_unlock(root);
+    goto out;
+  }
+  // Signal that we are done with init.  We MUST do this AFTER our first
+  // successful ReadDirectoryChangesW, otherwise there is a race condition
+  // where we'll miss observing the cookie for a query that comes in
+  // after we've crawled but before the watch is established.
   w_log(W_LOG_DBG, "ReadDirectoryChangesW signalling as init done");
+  pthread_cond_signal(&state->cond);
+  pthread_mutex_unlock(&state->mtx);
+  initiate_read = false;
 
+  // The state->mutex must not be held when we enter the loop
   while (!root->cancelled) {
-    DWORD bytes;
-
     if (initiate_read) {
       if (!ReadDirectoryChangesW(state->dir_handle,
             buf, size, TRUE, filter, NULL, &olap, NULL)) {
         err = GetLastError();
         w_log(W_LOG_ERR,
-            "ReadDirectoryChangesW(%s): failed, cancel watch. %s\n",
-            root->root_path->buf, win32_strerror(err));
+            "ReadDirectoryChangesW: failed, cancel watch. %s\n",
+            win32_strerror(err));
         w_root_lock(root);
         w_root_cancel(root);
         w_root_unlock(root);
@@ -170,16 +187,6 @@ static void *readchanges_thread(void *arg) {
       } else {
         initiate_read = false;
       }
-    }
-
-    if (!did_signal_init) {
-      // Signal that we are done with init.  We MUST do this after our first
-      // successful ReadDirectoryChangesW, otherwise there is a race condition
-      // where we'll miss observing the cookie for a query that comes in
-      // after we've crawled but before the watch is established.
-      pthread_cond_signal(&state->cond);
-      pthread_mutex_unlock(&state->mtx);
-      did_signal_init = true;
     }
 
     w_log(W_LOG_DBG, "waiting for change notifications");
@@ -266,10 +273,10 @@ static void *readchanges_thread(void *arg) {
         initiate_read = true;
       }
     } else if (status == WAIT_OBJECT_0 + 1) {
-      w_log(W_LOG_ERR, "readchanges_thread: signalled\n");
+      w_log(W_LOG_ERR, "signalled\n");
       break;
     } else {
-      w_log(W_LOG_ERR, "readchanges_thread: impossible wait status=%d\n",
+      w_log(W_LOG_ERR, "impossible wait status=%d\n",
           status);
       break;
     }
@@ -289,8 +296,7 @@ out:
   if (buf) {
     free(buf);
   }
-  w_log(W_LOG_DBG, "readchanges_thread[%.*s] done\n",
-      root->root_path->len, root->root_path->buf);
+  w_log(W_LOG_DBG, "done\n");
   w_root_delref(root);
   return NULL;
 }
@@ -323,6 +329,7 @@ static bool winwatch_root_start(watchman_global_watcher_t watcher,
   }
 
   pthread_mutex_unlock(&state->mtx);
+  w_root_delref(root);
   w_log(W_LOG_ERR, "failed to start readchanges thread: %s\n", strerror(err));
   return false;
 }

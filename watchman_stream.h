@@ -23,6 +23,7 @@ struct watchman_stream_ops {
   void (*op_get_events)(w_stm_t stm, w_evt_t *readable);
   void (*op_set_nonblock)(w_stm_t stm, bool nonb);
   bool (*op_rewind)(w_stm_t stm);
+  bool (*op_shutdown)(w_stm_t stm);
 };
 
 struct watchman_stream {
@@ -56,6 +57,7 @@ int w_stm_write(w_stm_t stm, const void *buf, int size);
 void w_stm_get_events(w_stm_t stm, w_evt_t *readable);
 void w_stm_set_nonblock(w_stm_t stm, bool nonb);
 bool w_stm_rewind(w_stm_t stm);
+bool w_stm_shutdown(w_stm_t stm);
 
 w_stm_t w_stm_stdout(void);
 #ifndef _WIN32
