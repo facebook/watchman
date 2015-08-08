@@ -1,6 +1,12 @@
 #!/bin/sh
 set -x
 uname -a
+
+# Speculatively fulfil any node deps before we turn on hard errors
+cd node
+npm install
+cd ..
+
 set -e
 PATH=$PWD:$PATH
 ./autogen.sh
