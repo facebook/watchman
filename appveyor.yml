@@ -5,13 +5,14 @@ branches:
     - gh-pages
 
 install:
-  - cinst python2 php
+  - cinst php
 
 build_script:
   - make.bat
 
 test_script:
   - PATH=C:\tools\php;%PATH%
+  - "cd node && npm install"
   - make integration
 
 artifacts:
