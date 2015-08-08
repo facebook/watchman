@@ -198,6 +198,11 @@ tests\wildmatch_test.exe: tests\wildmatch_test.obj $(TEST_OBJS)
 
 depend: .windeps
 
+dist:
+	-mkdir Watchman
+	copy watchman.exe Watchman
+	copy watchman.pdb Watchman
+
 clean:
 	-del $(OBJS) $(TEST_OBJS) $(TEST_DIR_OBJS) *.exe
 

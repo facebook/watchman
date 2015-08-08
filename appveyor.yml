@@ -8,7 +8,10 @@ install:
   - cinst php
 
 build_script:
-  - make.bat
+  - make
+
+after_build:
+  - make dist
 
 test_script:
   - PATH=C:\tools\php;%PATH%
@@ -16,6 +19,6 @@ test_script:
   - make integration
 
 artifacts:
-  - path: watchman.exe
+  - path: Watchman
     name: watchman
     type: zip
