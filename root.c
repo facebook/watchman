@@ -1697,7 +1697,7 @@ static void notify_thread(w_root_t *root)
       w_root_unlock(root);
       w_ioprio_set_normal();
 
-      w_log(W_LOG_DBG, "initial crawl complete\n");
+      w_log(W_LOG_ERR, "(re)crawl complete\n");
     }
 
     if (!wait_for_notify(root, timeoutms)) {

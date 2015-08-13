@@ -183,9 +183,8 @@ static void *fsevents_thread(void *arg)
   if (!FSEventStreamStart(fs_stream)) {
     root->failure_reason = w_string_make_printf(
         "FSEventStreamStart failed, look at your log file %s for "
-        "lines mentioning FSEvents and see "
-        "https://facebook.github.io/watchman/docs/troubleshooting.html#"
-        "fsevents for more information\n", log_name);
+        "lines mentioning FSEvents and see %s#fsevents for more information\n",
+        log_name, cfg_get_trouble_url());
     goto done;
   }
 
@@ -385,6 +384,7 @@ static bool fsevents_root_start(watchman_global_watcher_t watcher,
   }
 
   pthread_mutex_unlock(&state->fse_mtx);
+  w_root_delref(root);
   w_log(W_LOG_ERR, "failed to start fsevents thread: %s\n", strerror(err));
   return false;
 }
