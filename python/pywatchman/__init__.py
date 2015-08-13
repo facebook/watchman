@@ -40,6 +40,16 @@ class WatchmanError(Exception):
     pass
 
 
+class SocketTimeout(WatchmanError):
+    """A specialized exception raised for socket timeouts during communication to/from watchman.
+       This makes it easier to implement non-blocking loops as callers can easily distinguish
+       between a routine timeout and an actual error condition.
+
+       Note that catching WatchmanError will also catch this as it is a super-class, so backwards
+       compatibility in exception handling is preserved.
+    """
+
+
 class CommandError(WatchmanError):
     """error returned by watchman
 
@@ -134,13 +144,13 @@ class UnixSocketTransport(Transport):
                 raise WatchmanError('empty watchman response')
             return buf[0]
         except socket.timeout:
-            raise WatchmanError('timed out waiting for response')
+            raise SocketTimeout('timed out waiting for response')
 
     def write(self, data):
         try:
             self.sock.sendall(data)
         except socket.timeout:
-            raise WatchmanError('timed out sending query command')
+            raise SocketTimeout('timed out sending query command')
 
 
 class WindowsNamedPipeTransport(Transport):
