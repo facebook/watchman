@@ -28,7 +28,7 @@ static bool eval_type(struct w_query_ctx *ctx,
       return S_ISSOCK(file->st.st_mode);
 #ifdef S_ISDOOR
     case 'D':
-      return S_ISDIR(file->st.st_mode);
+      return S_ISDOOR(file->st.st_mode);
 #endif
     default:
       return false;
