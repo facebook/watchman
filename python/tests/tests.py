@@ -3,7 +3,16 @@
 import unittest
 import pywatchman
 import os
-from pywatchman import bser
+from pywatchman import bser, SocketTimeout, WatchmanError
+
+
+class TestSocketTimeout(unittest.TestCase):
+    def test_exception_handling(self):
+        try:
+            raise SocketTimeout('should not raise')
+        except WatchmanError:
+            pass
+
 
 class TestBSERDump(unittest.TestCase):
     def roundtrip(self, val):
