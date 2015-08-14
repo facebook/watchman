@@ -101,6 +101,13 @@ static json_t *read_json_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
   // buffer
   while (!nl) {
     if (!fill_buffer(jr, stm)) {
+      if (errno == 0 && stm == w_stm_stdin()) {
+        // Ugly-ish hack to support the -j CLI option.  This allows
+        // us to consume a JSON input that doesn't end with a newline.
+        // We only allow this on EOF when reading from stdin
+        nl = jr->buf + jr->wpos;
+        break;
+      }
       return NULL;
     }
     nl = memchr(jr->buf + jr->rpos, '\n', jr->wpos - jr->rpos);

@@ -17,9 +17,12 @@ class TestDashJCliOption(unittest.TestCase):
     def getSockPath(self):
         return WatchmanInstance.getSharedInstance().getSockPath()
 
-    def test_jsonInput(self):
+    def doJson(self, addNewLine):
         sockname = self.getSockPath()
-        watchman_cmd = json.dumps(['get-sockname']) + "\n"
+        watchman_cmd = json.dumps(['get-sockname'])
+        if addNewLine:
+            watchman_cmd = watchman_cmd + "\n"
+
         cli_cmd = [
             'watchman',
             '--sockname={}'.format(sockname),
@@ -37,6 +40,12 @@ class TestDashJCliOption(unittest.TestCase):
         # the response should be json because that is the default
         result = json.loads(stdout)
         self.assertEqual(result['sockname'], sockname)
+
+    def test_jsonInputNoNewLine(self):
+        self.doJson(False)
+
+    def test_jsonInputNewLine(self):
+        self.doJson(True)
 
     def test_bserInput(self):
         sockname = self.getSockPath()
