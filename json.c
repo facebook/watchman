@@ -66,6 +66,7 @@ static bool fill_buffer(w_jbuffer_t *jr, w_stm_t stm)
     avail = jr->allocd - jr->wpos;
   }
 
+  errno = 0;
   r = w_stm_read(stm, jr->buf + jr->wpos, avail);
   if (r <= 0) {
     return false;
