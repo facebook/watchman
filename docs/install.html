@@ -20,7 +20,7 @@
   
   <base href="/watchman/" />
   
-  <script src="http://fb.me/react-with-addons-0.13.1.js"></script>
+  <script src="//fb.me/react-with-addons-0.13.1.js"></script>
   <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
 
   <title>Installation</title>
@@ -5332,13 +5332,14 @@
 <p>Watchman is known to compile and pass its test suite on:</p>
 
 <ul>
-<li>Linux systems with <code>inotify</code></li>
-<li>OS X (uses FSEvents)</li>
+<li><i class="fa fa-linux"></i> Linux systems with <code>inotify</code></li>
+<li><i class="fa fa-apple"></i> OS X (uses FSEvents)</li>
+<li><i class="fa fa-windows"></i> Windows x64 on Windows Server 2012 R2 and
+later is currently in <strong>alpha</strong> status.  <a href="https://github.com/facebook/watchman/issues/19">More details on alpha testing this
+here</a></li>
 <li>BSDish systems (FreeBSD 9.1, OpenBSD 5.2) that have the
 <code>kqueue(2)</code> facility</li>
 <li>Illumos and Solaris style systems that have <code>port_create(3C)</code></li>
-<li>Windows x64 on Windows Server 2012 R2 and later is currently in <strong>alpha</strong>
-status.  <a href="https://github.com/facebook/watchman/issues/19">More details on alpha testing this here</a></li>
 </ul>
 
 <p>Watchman relies on the operating system facilities for file notification,
