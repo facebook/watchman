@@ -2,7 +2,7 @@
   var anchorForId = function (id) {
     var anchor = document.createElement("a");
     anchor.className = "header-link";
-    anchor.href      = "#" + id;
+    anchor.href      = window.location.href.replace(window.location.hash, '') + "#" + id;
     anchor.innerHTML = "<i class=\"fa fa-link\"></i>";
     anchor.title = "Permalink";
     return anchor;
