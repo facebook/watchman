@@ -5,9 +5,9 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   
-	<meta property="og:url" content="/watchman/docs/cookies.html" />
+	<meta property="og:url" content="/watchman/docs/cmd/list-capabilities.html" />
 	<meta property="og:site_name" content="Watchman"/>
-	<meta property="og:title" content="Query Synchronization" />
+	<meta property="og:title" content="list-capabilities" />
 	<meta property="og:image" content="/watchman/static/og_image.png" />
 	<meta property="og:description" content="" />
 
@@ -23,10 +23,10 @@
   <script src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
 
-  <title>Query Synchronization</title>
+  <title>list-capabilities</title>
   <meta name="description" content="">
 
-  <link rel="canonical" href="/watchman/docs/cookies.html">
+  <link rel="canonical" href="/watchman/docs/cmd/list-capabilities.html">
   <link rel="alternate" type="application/rss+xml" title="Watchman" href="/watchman/feed.xml" />
 </head>
 
@@ -5665,7 +5665,7 @@
     },
     getDefaultProps: function() {
       return {
-        currentDoc: "Query Synchronization",
+        currentDoc: "list-capabilities",
         currentGroup: "",
         data: docnavData,
       }
@@ -5732,100 +5732,30 @@
 </script>
     <div class="post">
   <header class="post-header">
-    <h1 class="post-title">Query Synchronization</h1>
+    <h1 class="post-title">list-capabilities</h1>
   </header>
 
   <article class="post-content">
    
-      <p>A file system monitor needs to make sure that queries see up-to-date
-views. Watchman ensures that by creating a unique <em>cookie</em> for each query made
-to it.</p>
+      <p><em>Since 3.8.</em></p>
 
-<h2 id="background">Background</h2>
+<p>This command returns the full list of supported <a href="/watchman/docs/capabilities.html">capabilities</a> offered by the watchman server.  The
+intention is that client applications will use the
+<a href="/watchman/docs/cmd/version.html">expanded version command</a> to check
+compatibility rather than interrogating the full list.</p>
 
-<p>Consider a directory tree traversal to gather file status, such as the one
-performed by <code>hg status</code> or <code>git status</code>. The traversal will race with any
-operations happening concurrently, and this is impossible to fix. However, we
-do get some weaker guarantees:</p>
-
-<ol>
-<li>Every file operation that happens before the traversal is started will be
-observed.</li>
-<li>File operations that happen after the traversal is started may or may not be
-observed.</li>
-</ol>
-
-<p>For watchman, cookies enable us to provide similar guarantees. For a given
-watchman query:</p>
-
-<ol>
-<li>Every file operation that happens before the query is started will be
-observed.</li>
-<li>File operations that happen after the query is started may or may not be
-observed.</li>
-</ol>
-
-<h2 id="how-cookies-work">How cookies work</h2>
-
-<p>A <em>cookie</em> is a temporary file that is created inside a directory observed by
-watchman. The cookie is created in a directory that is expected not to go
-away. The obvious location is the root itself, but we&#39;d like cookies not to show
-up in VCS operations. So if a VCS directory (<code>.git</code>, <code>.hg</code> or <code>.svn</code>) is found,
-that&#39;s where cookies are created instead.</p>
-
-<p>The cookie is created while the root is locked, so watchman won&#39;t find the
-cookie by accident while processing events from a prior run.</p>
-
-<p>Once the cookie is created, the calling thread waits on a condition variable
-guarded by the root&#39;s lock. This causes the lock to be released, and the root&#39;s
-notify thread can now read events as usual.</p>
-
-<p>When the notify thread finds that it is processing a cookie, it will signal its
-respective condition variable. Importantly, this does not wake the calling
-thread up immediately: since the notify thread still holds the root lock, the
-calling thread will only be able to proceed once the notify thread releases the
-lock.</p>
-
-<p><em>What do cookies get us?</em></p>
-
-<p>File monitoring systems like <code>inotify</code> typically provide an ordering guarantee:
-notifications arrive in the order they happen. Any events happening before the
-cookie is created will appear before the event for the cookie does, which means
-they will be processed by the time the query is answered.</p>
-
-<p><em>How well do cookies work?</em></p>
-
-<p>The Mercurial test suite has proved to be a good stress test for
-watchman. Before cookies were implemented, if 16 or more tests from the suite
-were run in parallel, watchman would start falling behind and often produce
-outdated answers. Cookies have successfully eradicated that.</p>
-
-<p><em>Can watchman find a cookie even if not all events leading to its appearance
- have been processed?</em></p>
-
-<p>Consider this situation when cookies are created inside <code>.hg</code>:</p>
-
-<ol>
-<li>Event A happens that would cause <code>.hg</code> to be read recursively</li>
-<li>Event B happens that touches a file <code>subdir/foo</code></li>
-<li>A cookie is created inside <code>.hg</code>, causing event C</li>
-<li>Event A is read from the OS file notification system but not events B and C</li>
-<li>The cookie is found but <code>subdir/foo</code> is never read.</li>
-</ol>
-
-<p>On Linux, to prevent this from happening, watchman will only consider a cookie
-to be found if it is directly returned via OS notifications. The only exception
-to this is during the initial crawl or a recrawl, when the cookie directory
-isn&#39;t being watched yet.</p>
-
-<p>On other platforms, this becomes more complicated because the respective
-monitoring system only tells us that something inside a directory was created,
-not what was created. This is currently an unresolved issue.</p>
-
-<h2 id="credits">Credits</h2>
-
-<p>The idea was originally proposed by Matt Mackall <a href="mailto:mpm@selenic.com">mpm@selenic.com</a>.</p>
-
+<p>Here&#39;s some example output.  The actual capabilities list is in unspecified
+order and is much longer than is reproduced here:</p>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman list-capabilities
+<span class="o">{</span>
+    <span class="s2">&quot;version&quot;</span>: <span class="s2">&quot;3.8.0&quot;</span>,
+    <span class="s2">&quot;capabilities&quot;</span>: <span class="o">[</span>
+        <span class="s2">&quot;field-mode&quot;</span>,
+        <span class="s2">&quot;term-allof&quot;</span>,
+        <span class="s2">&quot;cmd-trigger&quot;</span>
+    <span class="o">]</span>
+<span class="o">}</span>
+</code></pre></div>
     
   </article>
 </div>
