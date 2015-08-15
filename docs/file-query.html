@@ -1,85 +1,5558 @@
-<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"><title>watchman | A file watching service</title><meta name="viewport" content="width=device-width"><meta property="og:title" content="watchman | A file watching service"><meta property="og:type" content="website"><meta property="og:url" content="http://facebook.github.io/watchman/index.html"><meta property="og:image" content="http://facebook.github.io/watchman/img/favicon.png"><meta property="og:description" content="A file watching service"><link rel="shortcut icon" href="/watchman/img/favicon.png"><link rel="stylesheet" href="/watchman/css/watchman.css"><script type="text/javascript" src="//use.typekit.net/vqa1hcx.js"></script><script type="text/javascript">try{Typekit.load();}catch(e){}</script></head><body><div class="container"><div class="nav-main"><div class="wrap"><a class="nav-home" href="/watchman/">watchman</a><ul class="nav-site"><li><a href="/watchman/docs/install.html" class="active">docs</a></li><li><a href="/watchman/support.html" class="">support</a></li><li><a href="http://github.com/facebook/watchman" class="">github</a></li></ul></div></div><section class="content wrap documentationContent"><div class="nav-docs"><div class="nav-docs-section"><h3>Installation</h3><ul><li><a style="margin-left:0;" class="" href="/watchman/docs/install.html">Installation</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/release-notes.html">Release Notes</a></li></ul></div><div class="nav-docs-section"><h3>Invocation</h3><ul><li><a style="margin-left:0;" class="" href="/watchman/docs/cli-options.html">Command Line</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/config.html">Configuration Files</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/socket-interface.html">Socket Interface</a></li></ul></div><div class="nav-docs-section"><h3>Compatibility</h3><ul><li><a style="margin-left:0;" class="" href="/watchman/docs/compatibility.html">Compatibility Rules</a></li></ul></div><div class="nav-docs-section"><h3>Commands</h3><ul><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/clock.html">clock</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/find.html">find</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/get-config.html">get-config</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/get-sockname.html">get-sockname</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/log.html">log</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/log-level.html">log-level</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/query.html">query</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/shutdown-server.html">shutdown-server</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/since.html">since</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/subscribe.html">subscribe</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/trigger.html">trigger</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/trigger-del.html">trigger-del</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/trigger-list.html">trigger-list</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/unsubscribe.html">unsubscribe</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/version.html">version</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/watch.html">watch</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/watch-del.html">watch-del</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/watch-del-all.html">watch-del-all</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/watch-list.html">watch-list</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cmd/watch-project.html">watch-project</a></li></ul></div><div class="nav-docs-section"><h3>Queries</h3><ul><li><a style="margin-left:0;" class="" href="/watchman/docs/clockspec.html">Clockspec</a></li><li><a style="margin-left:0;" class="active" href="/watchman/docs/file-query.html">File Queries</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/simple-query.html">Simple Pattern Syntax</a></li></ul></div><div class="nav-docs-section"><h3>Expression Terms</h3><ul><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/allof.html">allof</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/anyof.html">anyof</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/dirname.html">dirname &amp; idirname</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/empty.html">empty</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/exists.html">exists</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/false.html"></a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/match.html">match &amp; imatch</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/name.html">name &amp; iname</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/not.html">not</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/pcre.html">pcre &amp; ipcre</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/since.html">since</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/size.html">size</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/suffix.html">suffix</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/true.html"></a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/expr/type.html">type</a></li></ul></div><div class="nav-docs-section"><h3>Internals</h3><ul><li><a style="margin-left:0;" class="" href="/watchman/docs/bser.html">BSER Binary Protocol</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/casefolding.html">Case-Insensitivity</a></li><li><a style="margin-left:0;" class="" href="/watchman/contributing.html">Contributing</a></li><li><a style="margin-left:0;" class="" href="/watchman/docs/cookies.html">Query Synchronization</a></li></ul></div><div class="nav-docs-section"><h3>Troubleshooting</h3><ul><li><a style="margin-left:0;" class="" href="/watchman/docs/troubleshooting.html">Troubleshooting</a></li></ul></div></div><div class="inner-content"><h1>File Queries</h1><div><p>Watchman file queries consist of 1 or more <em>generators</em> that feed files through
-the <em>expression evaluator</em>.</p><h3><a class="anchor" name="generators"></a>Generators <a class="hash-link" href="#generators">#</a></h3><p>Generators are analogous to the list of <em>paths</em> that you specify when using the
+<!DOCTYPE html>
+<html>
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+	<meta property="og:url" content="/watchman/docs/file-query.html" />
+	<meta property="og:site_name" content="Watchman"/>
+	<meta property="og:title" content="File Queries" />
+	<meta property="og:image" content="/watchman/static/og_image.png" />
+	<meta property="og:description" content="" />
+
+  <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
+	<link rel="stylesheet" type="text/css" href="//cloud.typography.com/7491092/701726/css/fonts.css" />
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/styles/default.min.css">
+  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+  
+  <link rel="icon" href="static/favicon.png" type="image/x-icon">
+  
+  <base href="/watchman/" />
+  
+  <script src="http://fb.me/react-with-addons-0.13.1.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
+
+  <title>File Queries</title>
+  <meta name="description" content="">
+
+  <link rel="canonical" href="/watchman/docs/file-query.html">
+  <link rel="alternate" type="application/rss+xml" title="Watchman" href="/watchman/feed.xml" />
+</head>
+
+  <body>    
+    <div id="fixed_header" class="fixedHeaderContainer visible">
+  <header>
+    <a href="/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <div class="navigationWrapper navigationFull" id="flat_nav">
+      <nav class="navigation">
+        <ul>
+          
+          <li class="navItem navItemActive">
+            <a href=docs/install.html>Docs</a>
+          </li>
+          
+          <li class="navItem ">
+            <a href=support.html>Support</a>
+          </li>
+          
+          <li class="navItem ">
+            <a href=http://github.com/facebook/watchman>GitHub</a>
+          </li>
+          
+        </ul>
+      </nav>
+    </div>
+    <div class="navigationWrapper navigationSlider" id="navigation_wrap"></div>
+  </header>
+  <script>
+    var event = document.createEvent('Event');
+    event.initEvent('slide', true, true);
+    document.addEventListener('slide', function (e) {
+      document.body.classList.toggle('sliderActive');
+    }, false);
+    var navData = [
+      
+      {
+        href       : "docs/install.html",
+        text       : "Docs",
+      },
+      
+      {
+        href       : "support.html",
+        text       : "Support",
+      },
+      
+      {
+        href       : "http://github.com/facebook/watchman",
+        text       : "GitHub",
+      },
+      
+    ];
+  </script>
+  <script type="text/javascript">  
+    var Nav = React.createClass({displayName: "Nav",
+      getInitialState: function() {
+        return {
+          currentPath: window.location.pathname,
+          slideoutActive: false,
+        };
+      },
+      getDefaultProps: function() {
+        return {
+          data: navData,
+        }
+      },
+      handleClick: function(id) {
+        this.setState({
+          slideoutActive: false,
+        });
+        document.dispatchEvent(event);
+      },
+      handleSlide: function(id) {
+        this.setState({
+          slideoutActive: !this.state.slideoutActive,
+        });
+        document.dispatchEvent(event);
+      },
+      render: function() {
+        var classes = React.addons.classSet({
+          'navSlideout': true,
+          'navSlideoutActive': this.state.slideoutActive,
+        });
+        var navClasses = React.addons.classSet({
+          'slidingNav': true,
+          'slidingNavActive': this.state.slideoutActive,
+        });
+        return (
+          React.createElement("div", null, 
+            React.createElement("div", {className: classes, onClick: this.handleSlide}, 
+              React.createElement("i", {className: "fa fa-bars"})
+            ), 
+            React.createElement("nav", {className: navClasses}, 
+              React.createElement("ul", null, 
+                this.props.data.map(this.renderNavItems)
+              )
+            )
+          )
+        );
+      },
+      renderNavItems: function(child, index) {
+        var classes = React.addons.classSet({
+          'navItem': true,
+          'navItemActive': this.state.currentPath === child.href,
+        });
+        return (
+          React.createElement("li", {key: index, className: classes}, 
+            React.createElement("a", {onClick: this.handleClick, href: child.href}, child.text)
+          )
+        );
+      },
+    });
+
+    function render(navData) {
+      React.render(
+        React.createElement(Nav, {data: navData}),
+        document.getElementById('navigation_wrap')
+      );
+    }
+    render(navData);
+  </script>
+</div>
+
+    <div class="navPusher">
+      <div class="mainContainer blogContainer postContainer">
+  <div id="main_wrap" class="wrapper mainWrapper">
+    <div>
+</div>
+<nav class='toc' id="doc_nav"></nav>
+<script>
+  var docnavData = [
+    
+    {
+      group     : "Installation",
+      items     : [
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/install.html",
+          title : "Installation",
+          url : "/watchman/docs/install.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/release-notes.html",
+          title : "Release Notes",
+          url : "/watchman/docs/release-notes.html",
+        }
+        
+      ],
+    },
+    
+    {
+      group     : "Invocation",
+      items     : [
+        
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cli-options.html",
+          title : "Command Line",
+          url : "/watchman/docs/cli-options.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/config.html",
+          title : "Configuration Files",
+          url : "/watchman/docs/config.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/socket-interface.html",
+          title : "Socket Interface",
+          url : "/watchman/docs/socket-interface.html",
+        }
+        
+      ],
+    },
+    
+    {
+      group     : "Compatibility",
+      items     : [
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/compatibility.html",
+          title : "Compatibility Rules",
+          url : "/watchman/docs/compatibility.html",
+        }
+        
+      ],
+    },
+    
+    {
+      group     : "Commands",
+      items     : [
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/clock.html",
+          title : "clock",
+          url : "/watchman/docs/cmd/clock.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/find.html",
+          title : "find",
+          url : "/watchman/docs/cmd/find.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/get-config.html",
+          title : "get-config",
+          url : "/watchman/docs/cmd/get-config.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/get-sockname.html",
+          title : "get-sockname",
+          url : "/watchman/docs/cmd/get-sockname.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/log.html",
+          title : "log",
+          url : "/watchman/docs/cmd/log.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/log-level.html",
+          title : "log-level",
+          url : "/watchman/docs/cmd/log-level.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/query.html",
+          title : "query",
+          url : "/watchman/docs/cmd/query.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/shutdown-server.html",
+          title : "shutdown-server",
+          url : "/watchman/docs/cmd/shutdown-server.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/since.html",
+          title : "since",
+          url : "/watchman/docs/cmd/since.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/subscribe.html",
+          title : "subscribe",
+          url : "/watchman/docs/cmd/subscribe.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/trigger.html",
+          title : "trigger",
+          url : "/watchman/docs/cmd/trigger.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/trigger-del.html",
+          title : "trigger-del",
+          url : "/watchman/docs/cmd/trigger-del.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/trigger-list.html",
+          title : "trigger-list",
+          url : "/watchman/docs/cmd/trigger-list.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/unsubscribe.html",
+          title : "unsubscribe",
+          url : "/watchman/docs/cmd/unsubscribe.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/version.html",
+          title : "version",
+          url : "/watchman/docs/cmd/version.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/watch.html",
+          title : "watch",
+          url : "/watchman/docs/cmd/watch.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/watch-del.html",
+          title : "watch-del",
+          url : "/watchman/docs/cmd/watch-del.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/watch-del-all.html",
+          title : "watch-del-all",
+          url : "/watchman/docs/cmd/watch-del-all.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/watch-list.html",
+          title : "watch-list",
+          url : "/watchman/docs/cmd/watch-list.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cmd/watch-project.html",
+          title : "watch-project",
+          url : "/watchman/docs/cmd/watch-project.html",
+        }
+        
+      ],
+    },
+    
+    {
+      group     : "Queries",
+      items     : [
+        
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/clockspec.html",
+          title : "Clockspec",
+          url : "/watchman/docs/clockspec.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/file-query.html",
+          title : "File Queries",
+          url : "/watchman/docs/file-query.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/simple-query.html",
+          title : "Simple Pattern Syntax",
+          url : "/watchman/docs/simple-query.html",
+        }
+        
+      ],
+    },
+    
+    {
+      group     : "Expression Terms",
+      items     : [
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/expr/allof.html",
+          title : "allof",
+          url : "/watchman/docs/expr/allof.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/expr/anyof.html",
+          title : "anyof",
+          url : "/watchman/docs/expr/anyof.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/expr/dirname.html",
+          title : "dirname & idirname",
+          url : "/watchman/docs/expr/dirname.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/expr/empty.html",
+          title : "empty",
+          url : "/watchman/docs/expr/empty.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/expr/exists.html",
+          title : "exists",
+          url : "/watchman/docs/expr/exists.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/expr/match.html",
+          title : "match & imatch",
+          url : "/watchman/docs/expr/match.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/expr/name.html",
+          title : "name & iname",
+          url : "/watchman/docs/expr/name.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/expr/not.html",
+          title : "not",
+          url : "/watchman/docs/expr/not.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/expr/pcre.html",
+          title : "pcre & ipcre",
+          url : "/watchman/docs/expr/pcre.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/expr/since.html",
+          title : "since",
+          url : "/watchman/docs/expr/since.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/expr/size.html",
+          title : "size",
+          url : "/watchman/docs/expr/size.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/expr/suffix.html",
+          title : "suffix",
+          url : "/watchman/docs/expr/suffix.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/expr/type.html",
+          title : "type",
+          url : "/watchman/docs/expr/type.html",
+        }
+        
+      ],
+    },
+    
+    {
+      group     : "Internals",
+      items     : [
+        
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/bser.html",
+          title : "BSER Binary Protocol",
+          url : "/watchman/docs/bser.html",
+        },
+        
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/casefolding.html",
+          title : "Case-Insensitivity",
+          url : "/watchman/docs/casefolding.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/contributing.html",
+          title : "Contributing",
+          url : "/watchman/contributing.html",
+        },
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+        {
+          key : "/watchman/docs/cookies.html",
+          title : "Query Synchronization",
+          url : "/watchman/docs/cookies.html",
+        }
+        
+      ],
+    },
+    
+    {
+      group     : "Troubleshooting",
+      items     : [
+        
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+            
+          
+        
+        {
+          key : "/watchman/docs/troubleshooting.html",
+          title : "Troubleshooting",
+          url : "/watchman/docs/troubleshooting.html",
+        }
+        
+      ],
+    },
+    
+  ];
+</script>
+<script type="text/javascript">  
+  var DocNav = React.createClass({displayName: "DocNav",
+    getInitialState: function() {
+      return {
+        toggleActive: false,
+      };
+    },
+    getDefaultProps: function() {
+      return {
+        currentDoc: "File Queries",
+        currentGroup: "Queries",
+        data: docnavData,
+      }
+    },
+    handleSlide: function(id) {
+      this.setState({
+        toggleActive: !this.state.toggleActive,
+      });
+    },
+    render: function() {
+      var classes = React.addons.classSet({
+        'navToggle': true,
+        'navToggleActive': this.state.toggleActive,
+      });
+      var navClasses = React.addons.classSet({
+        'toggleNav': true,
+        'toggleNavActive': this.state.toggleActive,
+      });
+      return (
+        React.createElement("div", {className: navClasses}, 
+          React.createElement("section", null, 
+            this.props.data.map(this.renderNavGroups)
+          ), 
+          React.createElement("div", {className: classes, onClick: this.handleSlide}, React.createElement("i", {className: "fa fa-chevron-circle-down"}))
+        )
+      );
+    },
+    renderNavGroups: function(child, index) {
+      var classes = React.addons.classSet({
+        'navGroup': true,
+        'navGroupActive': this.props.currentGroup === child.group,
+      });
+      return (
+        React.createElement("div", {className: classes, key: index}, 
+          React.createElement("h3", null, child.group), 
+          React.createElement("ul", null, 
+            child.items.map(this.renderNavItems)
+          )
+        )
+      );
+    },
+    renderNavItems: function(child, index) {
+      var itemClasses = React.addons.classSet({
+        'navListItem': true,
+        'navListItemActive': this.props.currentDoc === child.title,
+      });
+      var classes = React.addons.classSet({
+        'navItem': true,
+        'navItemActive': this.props.currentDoc === child.title,
+      });
+      return (
+        React.createElement("li", {className: itemClasses, key: index}, React.createElement("a", {className: classes, href: child.url},  child.title))
+      );
+    },
+  });
+
+  function docNavRender(docnavData) {
+    React.render(
+      React.createElement(DocNav, {data: docnavData}),
+      document.getElementById('doc_nav')
+    );
+  }
+  docNavRender(docnavData);
+</script>
+    <div class="post">
+  <header class="post-header">
+    <h1 class="post-title">File Queries</h1>
+  </header>
+
+  <article class="post-content">
+   
+      <p>Watchman file queries consist of 1 or more <em>generators</em> that feed files through
+the <em>expression evaluator</em>.</p>
+
+<h3 id="generators">Generators</h3>
+
+<p>Generators are analogous to the list of <em>paths</em> that you specify when using the
 <code>find(1)</code> utility, but are implemented in watchman with a bit of a twist
-because watchman doesn&#x27;t need to crawl the filesystem in realtime and instead
-maintains a couple of indexes over the tree.</p><p>A query may specify any number of generators; each generator will emit its list
+because watchman doesn&#39;t need to crawl the filesystem in realtime and instead
+maintains a couple of indexes over the tree.</p>
+
+<p>A query may specify any number of generators; each generator will emit its list
 of files and this may mean that you see the same file output more than once if
-you specified the use of multiple generators that all produce the same file.</p><p>Watchman provides 4 generators:</p><ul><li><strong>since</strong>: produces a list of files that were modified since a specific
-clockspec.</li><li><strong>suffix</strong>: produces a list of files that have a particular suffix.</li><li><strong>path</strong>: produces a list of files based on their path and depth.</li><li><strong>all</strong>: produces a list of all known files</li></ul><h4><a class="anchor" name="since-generator"></a>Since Generator <a class="hash-link" href="#since-generator">#</a></h4><p>The <code>since</code> generator produces a list of files that were modified since a
-specific <a href="../docs/clockspec.html" target="_blank">clockspec</a>.</p><p>The following query will consider the set of files changed since the last
+you specified the use of multiple generators that all produce the same file.</p>
+
+<p>Watchman provides 4 generators:</p>
+
+<ul>
+<li><strong>since</strong>: produces a list of files that were modified since a specific
+clockspec.</li>
+<li><strong>suffix</strong>: produces a list of files that have a particular suffix.</li>
+<li><strong>path</strong>: produces a list of files based on their path and depth.</li>
+<li><strong>all</strong>: produces a list of all known files</li>
+</ul>
+
+<h3 id="since-generator">Since Generator</h3>
+
+<p>The <code>since</code> generator produces a list of files that were modified since a
+specific <a href="../docs/clockspec.html">clockspec</a>.</p>
+
+<p>The following query will consider the set of files changed since the last
 query using the named cursor <code>mycursor</code> and then pass them to the expression
-evaluator to be filtered to just those that are files:</p><div class="prism language-javascript">$ watchman <span class="token operator">-</span>j &lt;&lt;<span class="token operator">-</span>EOT
-<span class="token punctuation">[</span><span class="token string">&quot;query&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;/path/to/root&quot;</span><span class="token punctuation">,</span> <span class="token punctuation">{</span>
-  <span class="token string">&quot;since&quot;</span><span class="token punctuation">:</span> <span class="token string">&quot;n:mycursor&quot;</span><span class="token punctuation">,</span>
-  <span class="token string">&quot;expression&quot;</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">&quot;type&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;f&quot;</span><span class="token punctuation">]</span>
-<span class="token punctuation">}</span><span class="token punctuation">]</span>
-EOT</div><p>If the <code>since</code> parameter value is blank, was produced by a different watchman
+evaluator to be filtered to just those that are files:</p>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman -j <span class="s">&lt;&lt;-EOT</span>
+<span class="s">[&quot;query&quot;, &quot;/path/to/root&quot;, {</span>
+<span class="s">  &quot;since&quot;: &quot;n:mycursor&quot;,</span>
+<span class="s">  &quot;expression&quot;: [&quot;type&quot;, &quot;f&quot;]</span>
+<span class="s">}]</span>
+<span class="s">EOT</span>
+</code></pre></div>
+<p>If the <code>since</code> parameter value is blank, was produced by a different watchman
 process (in other words, the watchman process was restarted between the time
 that the value was obtained and the time the query was issued) or is a named
 cursor that has not yet been used in a query, the <code>since</code> generator will
-consider the state to be a <em>fresh instance</em> and its behavior is modified:</p><p>A <em>fresh instance</em> result set will only include files that currently exist
-and will generate file nodes that are always considered to be <code>new</code>.</p><p>If the query was configured with the <code>empty_on_fresh_instance</code> property set to
+consider the state to be a <em>fresh instance</em> and its behavior is modified:</p>
+
+<p>A <em>fresh instance</em> result set will only include files that currently exist
+and will generate file nodes that are always considered to be <code>new</code>.</p>
+
+<p>If the query was configured with the <code>empty_on_fresh_instance</code> property set to
 <code>true</code> then the result set will be empty and the <code>is_fresh_instance</code> property
-will be set to <code>true</code> in the result object.</p><h4><a class="anchor" name="suffix-generator"></a>Suffix Generator <a class="hash-link" href="#suffix-generator">#</a></h4><p>The <code>suffix</code> generator produces a list of files that have a particular suffix
-or set of suffixes.  The value can be either a string or an array of strings.</p><div class="prism language-javascript">$ watchman <span class="token operator">-</span>j &lt;&lt;<span class="token operator">-</span>EOT
-<span class="token punctuation">[</span><span class="token string">&quot;query&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;/path/to/root&quot;</span><span class="token punctuation">,</span> <span class="token punctuation">{</span>
-  <span class="token string">&quot;suffix&quot;</span><span class="token punctuation">:</span> <span class="token string">&quot;js&quot;</span>
-<span class="token punctuation">}</span><span class="token punctuation">]</span>
-EOT</div><div class="prism language-javascript">$ watchman <span class="token operator">-</span>j &lt;&lt;<span class="token operator">-</span>EOT
-<span class="token punctuation">[</span><span class="token string">&quot;query&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;/path/to/root&quot;</span><span class="token punctuation">,</span> <span class="token punctuation">{</span>
-  <span class="token string">&quot;suffix&quot;</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">&quot;js&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;css&quot;</span><span class="token punctuation">]</span>
-<span class="token punctuation">}</span><span class="token punctuation">]</span>
-EOT</div><h4><a class="anchor" name="path-generator"></a>Path Generator <a class="hash-link" href="#path-generator">#</a></h4><p>The <code>path</code> generator produces a list of files based on their path and depth.
-Depth controls how far watchman will search down the directory tree for files.</p><p>The <code>path</code> generator expects an array of path specifiers.  Each path specifier
-can be either a string or an object and each will produce a set of files.</p><p>If it is a string then it is treated as the value for <code>path</code> with <code>depth</code> set
+will be set to <code>true</code> in the result object.</p>
+
+<h3 id="suffix-generator">Suffix Generator</h3>
+
+<p>The <code>suffix</code> generator produces a list of files that have a particular suffix
+or set of suffixes.  The value can be either a string or an array of strings.</p>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman -j <span class="s">&lt;&lt;-EOT</span>
+<span class="s">[&quot;query&quot;, &quot;/path/to/root&quot;, {</span>
+<span class="s">  &quot;suffix&quot;: &quot;js&quot;</span>
+<span class="s">}]</span>
+<span class="s">EOT</span>
+</code></pre></div><div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman -j <span class="s">&lt;&lt;-EOT</span>
+<span class="s">[&quot;query&quot;, &quot;/path/to/root&quot;, {</span>
+<span class="s">  &quot;suffix&quot;: [&quot;js&quot;, &quot;css&quot;]</span>
+<span class="s">}]</span>
+<span class="s">EOT</span>
+</code></pre></div>
+<h3 id="path-generator">Path Generator</h3>
+
+<p>The <code>path</code> generator produces a list of files based on their path and depth.
+Depth controls how far watchman will search down the directory tree for files.</p>
+
+<p>The <code>path</code> generator expects an array of path specifiers.  Each path specifier
+can be either a string or an object and each will produce a set of files.</p>
+
+<p>If it is a string then it is treated as the value for <code>path</code> with <code>depth</code> set
 to infinite.  If an object, the fields <code>path</code> (a string) and <code>depth</code> (an
-integer) must be supplied.</p><p>Paths are relative to the root, so if watchman is watching <code>/foo/</code>, path <code>bar</code>
-refers to <code>/foo/bar</code>.</p><p>A <code>depth</code> value of <code>0</code> means only files and directories which are contained in
-this path.  A <code>depth</code> value of <code>-1</code> means no limit on the depth.</p><p>The following <code>path</code> generators are equivalent:</p><div class="prism language-javascript">$ watchman <span class="token operator">-</span>j &lt;&lt;<span class="token operator">-</span>EOT
-<span class="token punctuation">[</span><span class="token string">&quot;query&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;/path/to/root&quot;</span><span class="token punctuation">,</span> <span class="token punctuation">{</span>
-  <span class="token string">&quot;path&quot;</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token string">&quot;bar&quot;</span><span class="token punctuation">]</span>
-<span class="token punctuation">}</span><span class="token punctuation">]</span>
-EOT</div><div class="prism language-javascript">$ watchman <span class="token operator">-</span>j &lt;&lt;<span class="token operator">-</span>EOT
-<span class="token punctuation">[</span><span class="token string">&quot;query&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;/path/to/root&quot;</span><span class="token punctuation">,</span> <span class="token punctuation">{</span>
-  <span class="token string">&quot;path&quot;</span><span class="token punctuation">:</span> <span class="token punctuation">[</span><span class="token punctuation">{</span><span class="token string">&quot;path&quot;</span><span class="token punctuation">:</span> <span class="token string">&quot;bar&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;depth&quot;</span><span class="token punctuation">:</span> <span class="token operator">-</span><span class="token number">1</span><span class="token punctuation">}</span><span class="token punctuation">]</span>
-<span class="token punctuation">}</span><span class="token punctuation">]</span>
-EOT</div><h4><a class="anchor" name="all-generator"></a>All Generator <a class="hash-link" href="#all-generator">#</a></h4><p>The <code>all</code> generator produces a list of all file nodes.  It is the default
+integer) must be supplied.</p>
+
+<p>Paths are relative to the root, so if watchman is watching <code>/foo/</code>, path <code>bar</code>
+refers to <code>/foo/bar</code>.</p>
+
+<p>A <code>depth</code> value of <code>0</code> means only files and directories which are contained in
+this path.  A <code>depth</code> value of <code>-1</code> means no limit on the depth.</p>
+
+<p>The following <code>path</code> generators are equivalent:</p>
+<div class="highlight"><pre><code class="language-text" data-lang="text">$ watchman -j &lt;&lt;-EOT
+[&quot;query&quot;, &quot;/path/to/root&quot;, {
+  &quot;path&quot;: [&quot;bar&quot;]
+}]
+EOT
+</code></pre></div><div class="highlight"><pre><code class="language-text" data-lang="text">$ watchman -j &lt;&lt;-EOT
+[&quot;query&quot;, &quot;/path/to/root&quot;, {
+  &quot;path&quot;: [{&quot;path&quot;: &quot;bar&quot;, &quot;depth&quot;: -1}]
+}]
+EOT
+</code></pre></div>
+<h3 id="all-generator">All Generator</h3>
+
+<p>The <code>all</code> generator produces a list of all file nodes.  It is the default
 generator and is used in the case where no other generators were explicitly
-specified.</p><div class="prism language-javascript">$ watchman <span class="token operator">-</span>j &lt;&lt;<span class="token operator">-</span>EOT
-<span class="token punctuation">[</span><span class="token string">&quot;query&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;/path/to/root&quot;</span><span class="token punctuation">,</span> <span class="token punctuation">{</span>
-<span class="token punctuation">}</span><span class="token punctuation">]</span>
-EOT</div><h3><a class="anchor" name="expressions"></a>Expressions <a class="hash-link" href="#expressions">#</a></h3><p>A watchman query expression consists of 0 or more expression terms.  If no
+specified.</p>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman -j <span class="s">&lt;&lt;-EOT</span>
+<span class="s">[&quot;query&quot;, &quot;/path/to/root&quot;, {</span>
+<span class="s">}]</span>
+<span class="s">EOT</span>
+</code></pre></div>
+<h3 id="expressions">Expressions</h3>
+
+<p>A watchman query expression consists of 0 or more expression terms.  If no
 terms are provided then each file evaluated is considered a match (equivalent
-to specifying a single <code>true</code> expression term).</p><p>Otherwise, the expression is evaluated against the file and produces a boolean
+to specifying a single <code>true</code> expression term).</p>
+
+<p>Otherwise, the expression is evaluated against the file and produces a boolean
 result.  If that result is true then the file is considered a match and is
-added to the output set.</p><p>An expression term is canonically represented as a JSON array whose zeroth
-element is a string containing the term name.</p><div class="prism language-javascript"><span class="token punctuation">[</span><span class="token string">&quot;termname&quot;</span><span class="token punctuation">,</span> arg1<span class="token punctuation">,</span> arg2<span class="token punctuation">]</span></div><p>If the term accepts no arguments you may use a short form that consists of just
-the term name expressed as a string:</p><div class="prism language-javascript"><span class="token string">&quot;true&quot;</span></div><p>Expressions that match against file names may match against either the
+added to the output set.</p>
+
+<p>An expression term is canonically represented as a JSON array whose zeroth
+element is a string containing the term name.</p>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">[</span><span class="s2">&quot;termname&quot;</span><span class="p">,</span> <span class="err">arg</span><span class="mi">1</span><span class="p">,</span> <span class="err">arg</span><span class="mi">2</span><span class="p">]</span>
+</code></pre></div>
+<p>If the term accepts no arguments you may use a short form that consists of just
+the term name expressed as a string:</p>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="s2">&quot;true&quot;</span>
+</code></pre></div>
+<p>Expressions that match against file names may match against either the
 <em>basename</em> or the <em>wholename</em> of the file.  The basename is the name of the
 file within its containing directory.  The wholename is the name of the file
-relative to the watched root.</p><p>You can find a list of all possible expression terms in the sidebar on the left
-of this page.</p><h3><a class="anchor" name="relative-roots"></a>Relative roots <a class="hash-link" href="#relative-roots">#</a></h3><p><em>Since 3.3.</em></p><p>Watchman supports optionally evaluating queries with respect to a path within a
-watched root. This is used with the <code>relative_root</code> parameter:</p><div class="prism language-javascript"><span class="token punctuation">[</span><span class="token string">&quot;query&quot;</span><span class="token punctuation">,</span> <span class="token string">&quot;/path/to/watched/root&quot;</span><span class="token punctuation">,</span> <span class="token punctuation">{</span>
-  <span class="token string">&quot;relative_root&quot;</span><span class="token punctuation">:</span> <span class="token string">&quot;project1&quot;</span><span class="token punctuation">,</span>
-<span class="token punctuation">}</span><span class="token punctuation">]</span></div><p>Setting a relative root results in the following modifications to queries:</p><ul><li>The <code>path</code> generator is evaluated with respect to the relative root. In the
+relative to the watched root.</p>
+
+<p>You can find a list of all possible expression terms in the sidebar on the left
+of this page.</p>
+
+<h3 id="relative-roots">Relative roots</h3>
+
+<p><em>Since 3.3.</em></p>
+
+<p>Watchman supports optionally evaluating queries with respect to a path within a
+watched root. This is used with the <code>relative_root</code> parameter:</p>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">[</span><span class="s2">&quot;query&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/watched/root&quot;</span><span class="p">,</span> <span class="p">{</span>
+  <span class="nt">&quot;relative_root&quot;</span><span class="p">:</span> <span class="s2">&quot;project1&quot;</span><span class="p">,</span>
+<span class="p">}]</span>
+</code></pre></div>
+<p>Setting a relative root results in the following modifications to queries:</p>
+
+<ul>
+<li>The <code>path</code> generator is evaluated with respect to the relative root. In the
 above example, <code>&quot;path&quot;: [&quot;dir&quot;]</code> will return all files inside
-<code>/path/to/watched/root/project1/dir</code>.</li><li>The input expression is evaluated with respect to the relative root. In the
+<code>/path/to/watched/root/project1/dir</code>.</li>
+<li>The input expression is evaluated with respect to the relative root. In the
 above example, <code>&quot;expression&quot;: [&quot;match&quot;, &quot;dir/*.txt&quot;, &quot;wholename&quot;]</code> will return
 all files inside <code>/path/to/watched/root/project1/dir/</code> that match the glob
-<code>*.txt</code>.</li><li>Paths inside the relative root are returned with the relative root stripped
+<code>*.txt</code>.</li>
+<li>Paths inside the relative root are returned with the relative root stripped
 off. For example, a path <code>project1/dir/file.txt</code> would be returned as
-<code>dir/file.txt</code>.</li><li>Paths outside the relative root are not returned.</li></ul><p>Relative roots behave similarly to a separate Watchman watch on the
+<code>dir/file.txt</code>.</li>
+<li>Paths outside the relative root are not returned.</li>
+</ul>
+
+<p>Relative roots behave similarly to a separate Watchman watch on the
 subdirectory, without any of the system overhead that that imposes. This is
 useful for large repositories, where your script or tool is only interested in a
-particular directory inside the repository.</p></div><div class="docs-prevnext"></div></div></section><footer class="wrap"><div class="right">© 2012-2015 Facebook Inc.</div></footer></div><div id="fb-root"></div><script>
-            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-            (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-            m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-            })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-            ga('create', 'UA-387204-10', 'facebook.github.io');
-            ga('send', 'pageview');
+particular directory inside the repository.</p>
 
-            !function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)
-            ){js=d.createElement(s);js.id=id;js.src="https://platform.twitter.com/widgets.js";
-            fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");
-          </script></body></html>
+    
+  </article>
+</div>
+
+  </div>
+</div>
+
+
+      <div class="footerContainer">
+  <div id="footer_wrap" class="wrapper footerWrapper">
+    <section id="fb_oss" class="fbOpenSourceFooter">
+      <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
+    </section>
+    <script>hljs.initHighlightingOnLoad();</script>
+  </div>
+</div>
+<script>
+  var anchorForId = function (id) {
+    var anchor = document.createElement("a");
+    anchor.className = "header-link";
+    anchor.href      = "#" + id;
+    anchor.innerHTML = "<i class=\"fa fa-link\"></i>";
+    anchor.title = "Permalink";
+    return anchor;
+  };
+
+  var linkifyAnchors = function (level, containingElement) {
+    var headers = containingElement.getElementsByTagName("h" + level);
+    for (var h = 0; h < headers.length; h++) {
+      var header = headers[h];
+
+      if (typeof header.id !== "undefined" && header.id !== "") {
+        header.appendChild(anchorForId(header.id));
+      }
+    }
+  };
+
+  document.onreadystatechange = function () {
+    if (this.readyState === "complete") {
+      var contentBlock = document.getElementsByClassName("post")[0] || document.getElementsByClassName("news")[0];
+      if (!contentBlock) {
+        return;
+      }
+      for (var level = 1; level <= 6; level++) {
+        linkifyAnchors(level, contentBlock);
+      }
+    }
+  };
+</script>
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-44373548-7', 'auto');
+  ga('send', 'pageview');
+</script>
+
+
+    </div>
+  </body>
+
+</html>

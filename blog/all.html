@@ -5,9 +5,9 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   
-	<meta property="og:url" content="/watchman/support.html" />
+	<meta property="og:url" content="/watchman/blog/all.html" />
 	<meta property="og:site_name" content="Watchman"/>
-	<meta property="og:title" content="Need help?" />
+	<meta property="og:title" content="Watchman" />
 	<meta property="og:image" content="/watchman/static/og_image.png" />
 	<meta property="og:description" content="" />
 
@@ -23,10 +23,10 @@
   <script src="http://fb.me/react-with-addons-0.13.1.js"></script>
   <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
 
-  <title>Need help?</title>
+  <title>Watchman</title>
   <meta name="description" content="">
 
-  <link rel="canonical" href="/watchman/support.html">
+  <link rel="canonical" href="/watchman/blog/all.html">
   <link rel="alternate" type="application/rss+xml" title="Watchman" href="/watchman/feed.xml" />
 </head>
 
@@ -42,7 +42,7 @@
             <a href=docs/install.html>Docs</a>
           </li>
           
-          <li class="navItem navItemActive">
+          <li class="navItem ">
             <a href=support.html>Support</a>
           </li>
           
@@ -153,28 +153,83 @@
     <div class="navPusher">
       <div class="mainContainer blogContainer postContainer">
   <div id="main_wrap" class="wrapper mainWrapper">
-    <h2 id="need-help">Need help?</h2>
+    <nav class='toc' id="blog_nav"></nav>
+<script>
+  
+  var blognavData = [
+    
+  ];
+</script>
+<script type="text/javascript">  
+var BlogNav = React.createClass({displayName: "BlogNav",
+  getInitialState: function() {
+    return {
+      toggleActive: false,
+    };
+  },
+  getDefaultProps: function() {
+    return {
+      currentDoc: "",
+      data: blognavData,
+    }
+  },
+  handleSlide: function(id) {
+    this.setState({
+      toggleActive: !this.state.toggleActive,
+    });
+  },
+  render: function() {
+    var classes = React.addons.classSet({
+      'navToggle': true,
+      'navToggleActive': this.state.toggleActive,
+    });
+    var navClasses = React.addons.classSet({
+      'toggleNav': true,
+      'toggleNavActive': this.state.toggleActive,
+    });
+    return (
+      React.createElement("div", {className: navClasses}, 
+        React.createElement("section", null, 
+          React.createElement("h3", null, "Recent Posts"), 
+          React.createElement("ul", null, 
+            this.props.data.map(this.renderNavItems), 
+            React.createElement("li", null, React.createElement("a", {href: "/blog/all.html"}, "All posts"))
+          )
+        ), 
+        React.createElement("div", {className: classes, onClick: this.handleSlide}, React.createElement("i", {className: "fa fa-chevron-circle-down"}))
+      )
+    );
+  },
+  renderNavItems: function(child, index) {
+    var itemClasses = React.addons.classSet({
+      'navListItem': true,
+      'navListItemActive': this.props.currentDoc === child.title,
+    });
+    var classes = React.addons.classSet({
+      'navItem': true,
+      'navItemActive': this.props.currentDoc === child.title,
+    });
+    return (
+      React.createElement("li", {className: itemClasses, key: index}, React.createElement("a", {className: classes, href: child.url},  child.title))
+    );
+  },
+});
 
-<p>If you&#39;re having trouble or otherwise have questions about Watchman, and
-<a href="/watchman/docs/troubleshooting.html">the troubleshooting guide</a> didn&#39;t resolve
-your issue, you can try reaching out to the maintainers in one of the following
-ways:</p>
+function blogNavRender(blognavData) {
+  React.render(
+    React.createElement(BlogNav, {data: blognavData}),
+    document.getElementById('blog_nav')
+  );
+}
+// blogNavRender(blognavData); FIXME: uncomment when we have blog posts
+</script>
 
-<h3 id="stack-overflow">Stack Overflow</h3>
-
-<p>We&#39;d like to encourage discussing and answering Watchman related questions on
-Stack Overflow.  <a href="http://stackoverflow.com/questions/tagged/watchman?sort=newest">Look at the recent Watchman questions on Stack Overflow</a> and if you
-can&#39;t find what you&#39;re looking for, <a href="http://stackoverflow.com/questions/ask?tags=watchman">ask your question on Stack Overflow</a></p>
-
-<h3 id="irc">IRC</h3>
-
-<p>Developers and users idle on Freenode.net&#39;s IRC network in
-<a href="irc://chat.freenode.net/watchman">#watchman on freenode</a></p>
-
-<h3 id="bugs">Bugs?</h3>
-
-<p>If you&#39;ve found a bug, or haven&#39;t had any success in reaching out through the
-channels above, please <a href="https://github.com/facebook/watchman/issues/new">file an issue in our tracker</a></p>
+    <div class="posts">
+  <div class="post">
+    <h1>All Posts</h1>
+    
+  </div>
+</div>
 
   </div>
 </div>
