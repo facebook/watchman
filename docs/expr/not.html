@@ -12,7 +12,7 @@
 	<meta property="og:description" content="" />
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-	<link rel="stylesheet" type="text/css" href="//cloud.typography.com/7491092/701726/css/fonts.css" />
+  <link rel="stylesheet" type="text/css" href="//nuclide.io/static/fonts/332720/BC699FA675F9356E3.css">
   <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/styles/default.min.css">
   <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
   
@@ -5350,7 +5350,7 @@
   var anchorForId = function (id) {
     var anchor = document.createElement("a");
     anchor.className = "header-link";
-    anchor.href      = "#" + id;
+    anchor.href      = window.location.href.replace(window.location.hash, '') + "#" + id;
     anchor.innerHTML = "<i class=\"fa fa-link\"></i>";
     anchor.title = "Permalink";
     return anchor;
