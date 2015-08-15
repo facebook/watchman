@@ -51,6 +51,8 @@ website/build
 website/src/watchman/docs
 website/src/watchman/*.js
 website/core/metadata.js
+website/.sass-cache
+website/_site
 npm-debug.log
 Debug
 .deps

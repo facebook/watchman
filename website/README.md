@@ -1,36 +1,30 @@
-# Run the server
+# How to run the website locally
 
-The first time, get all the dependencies loaded via
+First time setup:
 
-```
-npm install
-```
+* You'll need ruby 2 or higher (available by default on Mac)
 
-Then, run the server via
+Then:
 
-```
-npm start
-Open http://localhost:8080/watchman/index.html
-```
-
-Anytime you change the a, just refresh the page and it's going to be updated
-
-# Publish the website
-
-First setup your environment by having two folders, one `watchman` and one `watchman-gh-pages`. The publish script expect those exact names.
-
-```
-cd ../../
-git clone git@github.com:facebook/watchman.git watchman-gh-pages
-cd watchman-gh-pages
-git checkout origin/gh-pages
-git checkout -b gh-pages
-git push --set-upstream origin gh-pages
-cd ../watchman/website
+```bash
+sudo gem install bundler
+cd watchman/website
+sudo bundle install
 ```
 
-Then, after you've done changes, just run the command and it'll automatically build the static version of the site and publish it to gh-pages.
+## After performing the setup
+
+To build the docs and start a webserver to browse them, and auto-rebuild
+as you change content files:
 
 ```
-./publish.sh
+jekyll serve -w -t
 ```
+
+If you've already got a built version of the site, you can save some time
+by skipping the initial build.  It will rebuild files when things change:
+
+```
+jekyll serve -w -t --skip-initial-build
+```
+
