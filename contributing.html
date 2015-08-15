@@ -5350,7 +5350,7 @@ You will need:</p>
 <li>automake</li>
 <li>autoconf</li>
 <li>libpcre</li>
-<li>nodejs (for the docs and for fb-watchman)</li>
+<li>nodejs (for fb-watchman)</li>
 </ul>
 <div class="highlight"><pre><code class="language-text" data-lang="text">$ git clone https://github.com/facebook/watchman.git
 $ cd watchman
@@ -5372,15 +5372,22 @@ so in such a way that it won&#39;t break older clients of Watchman.</p>
 <h3 id="don-39-t-forget-the-docs">Don&#39;t forget the docs</h3>
 
 <p>If you&#39;re changing or adding new functionality, we&#39;ll ask you to also update
-the documentation.   You will need <code>nodejs</code> to preview the documentation:</p>
-<div class="highlight"><pre><code class="language-text" data-lang="text">$ cd website
-$ npm install
-$ npm start
+the documentation.   You will need <code>ruby</code> 2.0.0 or later to preview the
+documentation.</p>
+
+<p>One time setup:</p>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span><span class="nb">cd </span>website
+<span class="nv">$ </span>sudo gem install bundler
+<span class="nv">$ </span>sudo bundler install
+</code></pre></div>
+<p>Then:</p>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>jekyll serve -w -t
 </code></pre></div>
 <p>This will print out a URL that you can open in your browser to preview your
 documentation changes.</p>
 
-<p>The source for the documentation is in the <code>docs</code> dir in markdown format.</p>
+<p>The source for the documentation is in the <code>website/_docs</code> dir in markdown
+format.</p>
 
     
   </article>
