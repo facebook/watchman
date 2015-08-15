@@ -10,12 +10,14 @@
 - title: Compatibility
   items:
   - id: compatibility
+  - id: capabilities
 - title: Commands
   items:
   - id: cmd.clock
   - id: cmd.find
   - id: cmd.get-config
   - id: cmd.get-sockname
+  - id: cmd.list-capabilities
   - id: cmd.log
   - id: cmd.log-level
   - id: cmd.query

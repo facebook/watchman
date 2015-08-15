@@ -48,6 +48,18 @@ void w_register_command(struct watchman_command_handler_def *defs);
   W_CMD_REG_1(w_gen_symbol(w_cmd_register_), \
       name, func, flags, clivalidate)
 
+#define W_CAP_REG1(symbol, name)  \
+  static w_ctor_fn_type(symbol) { \
+    w_capability_register(name);  \
+  }                               \
+  w_ctor_fn_reg(symbol)
+
+#define W_CAP_REG(name) \
+  W_CAP_REG1(w_gen_symbol(w_cap_reg_), name)
+
+void w_capability_register(const char *name);
+bool w_capability_supported(const char *name);
+json_t *w_capability_get_list(void);
 
 void send_error_response(struct watchman_client *client,
     const char *fmt, ...);

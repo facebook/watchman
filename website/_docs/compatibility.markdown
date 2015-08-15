@@ -27,3 +27,10 @@ documented in release notes.
   are meaningful (x.y), with the third component always zero.
 * The version after 3.9 is expected to be 4.0.  The version number string
   reported by these versions will be 3.9.0 and 4.0.0 respectively.
+
+*Since 3.8.*
+
+`watchman` introduces [capabilities](capabilities.html) to describe new
+or optional features.  You can use the [expanded version command](
+/watchman/docs/cmd/version.html) to query capabilities and avoid building
+knowledge of version numbers in your client application(s).

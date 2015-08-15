@@ -138,6 +138,17 @@ static struct w_query_field_renderer {
   { NULL, NULL }
 };
 
+static w_ctor_fn_type(register_field_capabilities) {
+  int f;
+
+  for (f = 0; field_defs[f].name; f++) {
+    char capname[128];
+    snprintf(capname, sizeof(capname), "field-%s", field_defs[f].name);
+    w_capability_register(capname);
+  }
+}
+w_ctor_fn_reg(register_field_capabilities)
+
 json_t *w_query_results_to_json(
     struct w_query_field_list *field_list,
     uint32_t num_results,

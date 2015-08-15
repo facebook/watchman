@@ -205,6 +205,80 @@ Client.prototype.command = function(args, done) {
   this.sendNextCommand();
 }
 
+cap_versions = {
+    "cmd-watch-del-all": "3.1.1",
+    "cmd-watch-project": "3.1",
+    "relative_root": "3.3",
+    "term-dirname": "3.1",
+    "term-idirname": "3.1",
+    "wildmatch": "3.7",
+}
+
+// Compares a vs b, returns < 0 if a < b, > 0 if b > b, 0 if a == b
+function vers_compare(a, b) {
+  a = a.split('.');
+  b = b.split('.');
+  for (i = 0; i < 3; i++) {
+    d = parseInt(a[i] || '0') - parseInt(b[i] || '0');
+    if (d != 0) {
+      return d;
+    }
+  }
+  return 0; // Equal
+}
+
+function have_cap(vers, name) {
+  if (name in cap_versions) {
+    return vers_compare(vers, cap_versions[name]) >= 0;
+  }
+  return false;
+}
+
+// This is a helper that we expose for testing purposes
+Client.prototype._synthesizeCapabilityCheck = function(
+    resp, optional, required) {
+  resp.capabilities = {}
+  version = resp.version;
+  optional.forEach(function (name) {
+    resp.capabilities[name] = have_cap(version, name);
+  });
+  required.forEach(function (name) {
+    var have = have_cap(version, name);
+    resp.capabilities[name] = have;
+    if (!have) {
+      resp.error = 'client required capability `' + name +
+                   '` is not supported by this server';
+    }
+  });
+  return resp;
+}
+
+Client.prototype.capabilityCheck = function(caps, done) {
+  var optional = caps.optional || [];
+  var required = caps.required || [];
+  this.command(['version', {
+      optional: optional,
+      required: required
+  }], function (error, resp) {
+    if (error) {
+      done(error);
+      return;
+    }
+    if (!('capabilities' in resp)) {
+      // Server doesn't support capabilities, so we need to
+      // synthesize the results based on the version
+      resp = self._synthesizeCapabilityCheck(resp, optional, required);
+      if (resp.error) {
+        error = new Error(resp.error);
+        error.watchmanResponse = resp;
+        done(error);
+        return;
+      }
+    }
+    done(null, resp);
+  });
+}
+
 // Close the connection to the service
 Client.prototype.end = function() {
   this.cancelCommands('The client was ended');

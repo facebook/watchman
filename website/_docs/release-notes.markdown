@@ -13,6 +13,9 @@ GitHub](https://github.com/facebook/watchman/commits/master).
 ### Watchman 3.8.0 (Not yet released)
 
 * `-j` CLI option now accepts either JSON or BSER encoded command on stdin
+* Added [capabilities](/watchman/docs/capabilities.html) to the server,
+  and added the [capabilityCheck](/watchman/docs/cmd/version.html#capabilityCheck)
+  method to the python and node clients.
 
 ### pywatchman 1.0.0 (2015-08-06)
 

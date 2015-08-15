@@ -4,6 +4,7 @@
 #include "watchman.h"
 
 static w_ht_t *command_funcs = NULL;
+static w_ht_t *capabilities = NULL;
 
 static int compare_def(const void *A, const void *B)
 {
@@ -41,12 +42,17 @@ void print_command_list_for_help(FILE *where)
 
 void w_register_command(struct watchman_command_handler_def *defs)
 {
+  char capname[128];
+
   if (!command_funcs) {
     command_funcs = w_ht_new(16, &w_ht_string_funcs);
   }
   w_ht_set(command_funcs,
       w_ht_ptr_val(w_string_new(defs->name)),
       w_ht_ptr_val(defs));
+
+  snprintf(capname, sizeof(capname), "cmd-%s", defs->name);
+  w_capability_register(capname);
 }
 
 static struct watchman_command_handler_def *lookup(
@@ -145,6 +151,36 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
 
   def->func(client, args);
   return true;
+}
+
+void w_capability_register(const char *name) {
+  if (!capabilities) {
+    capabilities = w_ht_new(128, &w_ht_string_funcs);
+  }
+  w_ht_set(capabilities,
+      w_ht_ptr_val(w_string_new(name)),
+      true);
+}
+
+bool w_capability_supported(const char *name) {
+  bool res;
+  w_string_t *namestr = w_string_new(name);
+  res = w_ht_get(capabilities, w_ht_ptr_val(namestr));
+  w_string_delref(namestr);
+  return res;
+}
+
+json_t *w_capability_get_list(void) {
+  json_t *arr = json_array_of_size(w_ht_size(capabilities));
+  w_ht_iter_t iter;
+
+  w_ht_first(capabilities, &iter);
+  do {
+    w_string_t *name = w_ht_val_ptr(iter.key);
+    json_array_append(arr, json_string_nocheck(name->buf));
+  } while (w_ht_next(capabilities, &iter));
+
+  return arr;
 }
 
 /* vim:ts=2:sw=2:et:

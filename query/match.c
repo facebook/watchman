@@ -12,6 +12,8 @@ struct wildmatch_data {
   bool includedotfiles;
 };
 
+W_CAP_REG("wildmatch")
+
 static bool eval_wildmatch(struct w_query_ctx *ctx,
     struct watchman_file *file,
     void *data)

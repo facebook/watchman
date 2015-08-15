@@ -31,6 +31,7 @@ import errno
 import socket
 import subprocess
 import bser
+import capabilities
 
 # 2 bytes marker, 1 byte int size, 8 bytes int64 value
 sniff_len = 13
@@ -453,4 +454,19 @@ class client(object):
         res = self.receive()
         while self.isUnilateralResponse(res):
             res = self.receive()
+        return res
+
+    def capabilityCheck(self, optional=None, required=None):
+        """ Perform a server capability check """
+        res = self.query('version', {
+            'optional': optional or [],
+            'required': required or []})
+
+        if not 'capabilities' in res:
+            # Server doesn't support capabilities, so we need to
+            # synthesize the results based on the version
+            capabilities.synthesize(res, opts)
+            if 'error' in res:
+                raise CommandError(res['error'])
+
         return res

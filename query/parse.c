@@ -9,11 +9,15 @@ bool w_query_register_expression_parser(
     const char *term,
     w_query_expr_parser parser)
 {
+  char capname[128];
   w_string_t *name = w_string_new(term);
 
   if (!name) {
     return false;
   }
+
+  snprintf(capname, sizeof(capname), "term-%s", term);
+  w_capability_register(capname);
 
   if (!term_hash) {
     term_hash = w_ht_new(32, &w_ht_string_funcs);
@@ -187,6 +191,8 @@ static bool parse_paths(w_query *res, json_t *query)
 
   return true;
 }
+
+W_CAP_REG("relative_root")
 
 static bool parse_relative_root(w_root_t *root, w_query *res, json_t *query)
 {
