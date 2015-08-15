@@ -105,7 +105,11 @@ extern char *poisoned_reason;
 
 #ifdef HAVE_CORESERVICES_CORESERVICES_H
 # include <CoreServices/CoreServices.h>
-# define HAVE_FSEVENTS 1
+# if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ < 1070
+#  define HAVE_FSEVENTS 0
+# else
+#  define HAVE_FSEVENTS 1
+# endif
 #endif
 
 // Helpers for pasting __LINE__ for symbol generation

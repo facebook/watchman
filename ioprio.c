@@ -41,6 +41,7 @@ static void adjust_ioprio(bool low) {
       low ? THREAD_MODE_BACKGROUND_BEGIN
           : THREAD_MODE_BACKGROUND_END);
 #endif
+  unused_parameter(low);
 }
 
 void w_ioprio_set_low(void) {
