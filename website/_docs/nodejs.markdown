@@ -52,9 +52,9 @@ client.capabilityCheck({optional:[], required:['relative_root']},
 
 ## Initiating a watch
 
-Almost every operation in watchman revoles around watching a directory tree.
-You can repeatedly ask to watch the same directory without error; watchman
-will re-use an existing watch.
+Almost every operation in watchman revolves around watching a directory tree.
+You can repeatedly ask to watch the same directory without error; watchman will
+re-use an existing watch.
 
 ```js
 var watchman = require('fb-watchman');
