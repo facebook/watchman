@@ -5,6 +5,7 @@
 - title: Invocation
   items:
   - id: cli-options
+  - id: nodejs
   - id: config
   - id: socket-interface
 - title: Compatibility

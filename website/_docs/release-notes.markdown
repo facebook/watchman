@@ -17,6 +17,10 @@ GitHub](https://github.com/facebook/watchman/commits/master).
   and added the [capabilityCheck](/watchman/docs/cmd/version.html#capabilityCheck)
   method to the python and node clients.
 
+### fb-watchman 1.3.0 for node (2015-08-15)
+
+* Added the [capabilityCheck](/watchman/docs/nodejs.html#checking-for-watchman-availability) method.
+
 ### pywatchman 1.0.0 (2015-08-06)
 
 * First official pypi release, thanks to [@kwlzn](https://github.com/kwlzn)

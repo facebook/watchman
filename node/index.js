@@ -256,6 +256,7 @@ Client.prototype._synthesizeCapabilityCheck = function(
 Client.prototype.capabilityCheck = function(caps, done) {
   var optional = caps.optional || [];
   var required = caps.required || [];
+  var self = this;
   this.command(['version', {
       optional: optional,
       required: required

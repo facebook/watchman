@@ -10,9 +10,9 @@ client.on('error', function(error) {
   console.error('Error while talking to watchman: ', error);
 });
 
-client.command(['version'], function(error, resp) {
+client.capabilityCheck({required:['relative_root']}, function (error, resp) {
   if (error) {
-    console.error('Error getting version:', error);
+    console.error('Error checking capabilities:', error);
     return;
   }
   console.log('Talking to watchman version', resp.version);
@@ -50,21 +50,11 @@ client.command(['watch-project', process.cwd()], function(error, resp) {
   // filesystem.  It will tell us the relative path to the directory that
   // we expressed interest in, so we need to adjust for it in our results
   var path_prefix = '';
-  var root = resp['watch'];
+  var root = resp.watch;
   if ('relative_path' in resp) {
-    path_prefix = resp['relative_path'];
+    path_prefix = resp.relative_path;
     console.log('(re)using project watch at ', root, ', our dir is relative: ',
         path_prefix);
-  }
-
-  function get_relative_name(proj_rel) {
-    if (path_prefix.length == 0) {
-      return proj_rel;
-    }
-    if (proj_rel.substr(0, path_prefix.length) == path_prefix) {
-      return proj_rel.substr(path_prefix.length + 1);
-    }
-    return null;
   }
 
   // Subscribe to notifications about .js files
@@ -75,10 +65,10 @@ client.command(['watch-project', process.cwd()], function(error, resp) {
       // Has more on the supported expression syntax
       expression: ["allof",
           ["match", "*.js"],
-          // focus on the relative path from the project to the path
-          // of interest
-          ['dirname', path_prefix]
       ],
+      // focus on the relative path from the project to the path
+      // of interest
+      relative_root: path_prefix,
       // Which fields we're interested in
       fields: ["name", "size", "exists", "type"]
     }],
@@ -119,14 +109,6 @@ client.command(['watch-project', process.cwd()], function(error, resp) {
     console.log(resp.root, resp.subscription);
     for (var i in resp.files) {
       var f = resp.files[i];
-      // Fixup name for watch-project offset
-      if (resp.subscription == 'mysubscription') {
-        // we requested a set of fields in this subscription
-        f.name = get_relative_name(f.name);
-      } else {
-        // the other subscription we set up returns only the name
-        f = get_relative_name(f);
-      }
       console.log(f);
     }
   });
@@ -140,12 +122,10 @@ client.command(['watch-project', process.cwd()], function(error, resp) {
     }
 
     client.command(['subscribe', root, 'sincesub', {
-        expression: ['allof',
-          ["match", "*.js"],
-          // focus on the relative path from the project to the path
-          // of interest
-          ['dirname', path_prefix]
-        ],
+        expression: ['allof', ["match", "*.js"]],
+        // focus on the relative path from the project to the path
+        // of interest
+        relative_root: path_prefix,
         // Note: since we only request a single field, the `sincesub` subscription
         // response will just set files to an array of filenames, not an array of
         // objects with name properties

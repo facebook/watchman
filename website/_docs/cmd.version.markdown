@@ -40,14 +40,14 @@ were introduced.
 You can read more about the [available capability names](
 /watchman/docs/capabilities.html).
 
-To check whether the `relative_roots` capability is supported:
+To check whether the `relative_root` capability is supported:
 
 ```bash
-$ watchman -j <<< '["version", {"optional":["relative_roots"]}]'
+$ watchman -j <<< '["version", {"optional":["relative_root"]}]'
 {
     "version": "3.8.0",
     "capabilities": {
-        "relative_roots": true
+        "relative_root": true
     }
 }
 ```
