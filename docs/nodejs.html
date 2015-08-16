@@ -5,9 +5,9 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   
-	<meta property="og:url" content="/watchman/docs/cmd/get-sockname.html" />
+	<meta property="og:url" content="/watchman/docs/nodejs.html" />
 	<meta property="og:site_name" content="Watchman"/>
-	<meta property="og:title" content="get-sockname" />
+	<meta property="og:title" content="NodeJS" />
 	<meta property="og:image" content="/watchman/static/og_image.png" />
 	<meta property="og:description" content="" />
 
@@ -23,10 +23,10 @@
   <script src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
 
-  <title>get-sockname</title>
+  <title>NodeJS</title>
   <meta name="description" content="">
 
-  <link rel="canonical" href="/watchman/docs/cmd/get-sockname.html">
+  <link rel="canonical" href="/watchman/docs/nodejs.html">
   <link rel="alternate" type="application/rss+xml" title="Watchman" href="/watchman/feed.xml" />
 </head>
 
@@ -5876,8 +5876,8 @@
     },
     getDefaultProps: function() {
       return {
-        currentDoc: "get-sockname",
-        currentGroup: "Commands",
+        currentDoc: "NodeJS",
+        currentGroup: "Invocation",
         data: docnavData,
       }
     },
@@ -5943,23 +5943,332 @@
 </script>
     <div class="post">
   <header class="post-header">
-    <h1 class="post-title">get-sockname</h1>
+    <h1 class="post-title">NodeJS</h1>
   </header>
 
   <article class="post-content">
    
-      <p>If you&#39;re integrating against watchman using the unix socket and either the
-JSON or BSER protocol, you may need to discover the correct socket path.
-Rather than hard-coding the path or replicating the logic discussed in
-<a href="/watchman/docs/cli-options.html">Command Line</a>, you can simply execute the
-CLI to determine the path.  This has the side effect of spawning the service
-for your user if it was not already running--bonus!</p>
-<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman get-sockname
-<span class="o">{</span>
-  <span class="s2">&quot;version&quot;</span>: <span class="s2">&quot;2.5&quot;</span>,
-  <span class="s2">&quot;sockname&quot;</span>: <span class="s2">&quot;/tmp/.watchman.wez&quot;</span>
-<span class="o">}</span>
+      <p>To install the nodejs client:</p>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>npm install fb-watchman
 </code></pre></div>
+<p>and to import it and create a client instance:</p>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="kd">var</span> <span class="nx">watchman</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;fb-watchman&#39;</span><span class="p">);</span>
+<span class="kd">var</span> <span class="nx">client</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">watchman</span><span class="p">.</span><span class="nx">Client</span><span class="p">();</span>
+</code></pre></div>
+<p>This documentation assumes that you are using the latest available version
+of the <code>fb-watchman</code> package published to the npm repository.</p>
+
+<h2 id="checking-for-watchman-availability">Checking for watchman availability</h2>
+
+<p>The client can be installed without requiring that the service is installed.
+It is important to handle lack of availability and also to test whether
+the installed service supports the <a href="/watchman/docs/capabilities.html">capabilities</a>
+required by your application.</p>
+
+<p>The <code>capabilityCheck</code> method issues a <a href="/watchman/docs/cmds/version.html">version</a> command to query the capabilities of the
+server.</p>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="kd">var</span> <span class="nx">watchman</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;fb-watchman&#39;</span><span class="p">);</span>
+<span class="kd">var</span> <span class="nx">client</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">watchman</span><span class="p">.</span><span class="nx">Client</span><span class="p">();</span>
+<span class="nx">client</span><span class="p">.</span><span class="nx">capabilityCheck</span><span class="p">({</span><span class="nx">optional</span><span class="o">:</span><span class="p">[],</span> <span class="nx">required</span><span class="o">:</span><span class="p">[</span><span class="s1">&#39;relative_root&#39;</span><span class="p">]},</span>
+  <span class="kd">function</span> <span class="p">(</span><span class="nx">error</span><span class="p">,</span> <span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// error will be an Error object if the watchman service is not</span>
+      <span class="c1">// installed, or if any of the names listed in the `required`</span>
+      <span class="c1">// array are not supported by the server</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="nx">error</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="c1">// resp will be an extended version response:</span>
+    <span class="c1">// {&#39;version&#39;: &#39;3.8.0&#39;, &#39;capabilities&#39;: {&#39;relative_roots&#39;: true}}</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">resp</span><span class="p">);</span>
+  <span class="p">});</span>
+</code></pre></div>
+<h2 id="initiating-a-watch">Initiating a watch</h2>
+
+<p>Almost every operation in watchman revoles around watching a directory tree.
+You can repeatedly ask to watch the same directory without error; watchman
+will re-use an existing watch.</p>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="kd">var</span> <span class="nx">watchman</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;fb-watchman&#39;</span><span class="p">);</span>
+<span class="kd">var</span> <span class="nx">client</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">watchman</span><span class="p">.</span><span class="nx">Client</span><span class="p">();</span>
+
+<span class="kd">var</span> <span class="nx">dir_of_interest</span> <span class="o">=</span> <span class="s2">&quot;/some/path&quot;</span><span class="p">;</span>
+
+<span class="nx">client</span><span class="p">.</span><span class="nx">capabilityCheck</span><span class="p">({</span><span class="nx">optional</span><span class="o">:</span><span class="p">[],</span> <span class="nx">required</span><span class="o">:</span><span class="p">[</span><span class="s1">&#39;relative_root&#39;</span><span class="p">]},</span>
+  <span class="kd">function</span> <span class="p">(</span><span class="nx">error</span><span class="p">,</span> <span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">error</span><span class="p">);</span>
+      <span class="nx">client</span><span class="p">.</span><span class="nx">end</span><span class="p">();</span>
+      <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="c1">// Initiate the watch</span>
+    <span class="nx">client</span><span class="p">.</span><span class="nx">command</span><span class="p">([</span><span class="s1">&#39;watch-project&#39;</span><span class="p">,</span> <span class="nx">dir_of_interest</span><span class="p">],</span>
+      <span class="kd">function</span> <span class="p">(</span><span class="nx">error</span><span class="p">,</span> <span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+          <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s1">&#39;Error initiating watch:&#39;</span><span class="p">,</span> <span class="nx">error</span><span class="p">);</span>
+          <span class="k">return</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="c1">// It is considered to be best practice to show any &#39;warning&#39; or</span>
+        <span class="c1">// &#39;error&#39; information to the user, as it may suggest steps</span>
+        <span class="c1">// for remediation</span>
+        <span class="k">if</span> <span class="p">(</span><span class="s1">&#39;warning&#39;</span> <span class="k">in</span> <span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
+          <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;warning: &#39;</span><span class="p">,</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">warning</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="c1">// `watch-project` can consolidate the watch for your</span>
+        <span class="c1">// dir_of_interest with another watch at a higher level in the</span>
+        <span class="c1">// tree, so it is very important to record the `relative_path`</span>
+        <span class="c1">// returned in resp</span>
+
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;watch established on &#39;</span><span class="p">,</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">watch</span><span class="p">,</span>
+                    <span class="s1">&#39; relative_path&#39;</span><span class="p">,</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">relative_path</span><span class="p">);</span>
+      <span class="p">});</span>
+  <span class="p">});</span>
+</code></pre></div>
+<h2 id="subscribing-to-changes">Subscribing to changes</h2>
+
+<p>Most node applications are interested in subscribing to live file
+change notifications.  In watchman these are configured by issuing
+a <a href="/watchman/docs/cmd/subscribe.html">subscribe</a> command.  A subscription
+is valid for the duration of your client connection, or until you cancel
+the subscription using the <a href="/watchman/docs/cmd/unsubscribe.html">unsubscribe</a>
+command.</p>
+
+<p>The following will generate subscription results for all files in the
+tree that match the query expression and then generate subscription
+results as files change:</p>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="c1">// `watch` is obtained from `resp.watch` in the `watch-project` response.</span>
+<span class="c1">// `relative_path` is obtained from `resp.relative_path` in the</span>
+<span class="c1">// `watch-project` response.</span>
+<span class="kd">function</span> <span class="nx">make_subscription</span><span class="p">(</span><span class="nx">client</span><span class="p">,</span> <span class="nx">watch</span><span class="p">,</span> <span class="nx">relative_path</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">sub</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="c1">// Match any `.js` file in the dir_of_interest</span>
+    <span class="nx">expression</span><span class="o">:</span> <span class="p">[</span><span class="s2">&quot;allof&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;match&quot;</span><span class="p">,</span> <span class="s2">&quot;*.js&quot;</span><span class="p">]],</span>
+    <span class="c1">// Which fields we&#39;re interested in</span>
+    <span class="nx">fields</span><span class="o">:</span> <span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;size&quot;</span><span class="p">,</span> <span class="s2">&quot;exists&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">]</span>
+  <span class="p">};</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">relative_path</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">sub</span><span class="p">.</span><span class="nx">relative_root</span> <span class="o">=</span> <span class="nx">relative_path</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="nx">client</span><span class="p">.</span><span class="nx">command</span><span class="p">([</span><span class="s1">&#39;subscribe&#39;</span><span class="p">,</span> <span class="nx">watch</span><span class="p">,</span> <span class="s1">&#39;mysubscription&#39;</span><span class="p">,</span> <span class="nx">sub</span><span class="p">],</span>
+    <span class="kd">function</span> <span class="p">(</span><span class="nx">error</span><span class="p">,</span> <span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Probably an error in the subscription criteria</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s1">&#39;failed to subscribe: &#39;</span><span class="p">,</span> <span class="nx">error</span><span class="p">);</span>
+        <span class="k">return</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;subscription &#39;</span> <span class="o">+</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">subscribe</span> <span class="o">+</span> <span class="s1">&#39; established&#39;</span><span class="p">);</span>
+    <span class="p">});</span>
+
+  <span class="c1">// Subscription results are emitted via the subscription event.</span>
+  <span class="c1">// Note that this emits for all subscriptions.  If you have</span>
+  <span class="c1">// subscriptions with different `fields` you will need to check</span>
+  <span class="c1">// the subscription name and handle the differing data accordingly.</span>
+  <span class="c1">// `resp`  looks like this in practice:</span>
+  <span class="c1">//</span>
+  <span class="c1">// { root: &#39;/private/tmp/foo&#39;,</span>
+  <span class="c1">//   subscription: &#39;mysubscription&#39;,</span>
+  <span class="c1">//   files: [ { name: &#39;node_modules/fb-watchman/index.js&#39;,</span>
+  <span class="c1">//       size: 4768,</span>
+  <span class="c1">//       exists: true,</span>
+  <span class="c1">//       type: &#39;f&#39; } ] }</span>
+  <span class="nx">client</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;subscription&#39;</span><span class="p">,</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="k">in</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">files</span><span class="p">)</span> <span class="p">{</span>
+      <span class="kd">var</span> <span class="nx">f</span> <span class="o">=</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">files</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">subscription</span> <span class="o">==</span> <span class="s1">&#39;mysubscription&#39;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;file changed: &#39;</span> <span class="o">+</span> <span class="nx">f</span><span class="p">.</span><span class="nx">name</span><span class="p">);</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">});</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="subscribing-only-to-changed-files">Subscribing only to changed files</h3>
+
+<p>The example above will generate results for existing (and deleted!) files at
+the time that the subscription is established.  In some applications this can
+be undesirable.  The following example shows how to add a logical time constraint.</p>
+
+<p>watchman tracks changes using an <a href="/watchman/docs/clockspec.html">abstract clock</a>.  We&#39;ll determine the current clock at the time
+that we initiate the watch and then add that as a constraint in our subscription.</p>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="kd">function</span> <span class="nx">make_time_constrained_subscription</span><span class="p">(</span><span class="nx">client</span><span class="p">,</span> <span class="nx">watch</span><span class="p">,</span> <span class="nx">relative_path</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">client</span><span class="p">.</span><span class="nx">command</span><span class="p">([</span><span class="s1">&#39;clock&#39;</span><span class="p">,</span> <span class="nx">watch</span><span class="p">],</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">error</span><span class="p">,</span> <span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s1">&#39;Failed to query clock:&#39;</span><span class="p">,</span> <span class="nx">error</span><span class="p">);</span>
+      <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="nx">sub</span> <span class="o">=</span> <span class="p">{</span>
+      <span class="c1">// Match any `.js` file in the dir_of_interest</span>
+      <span class="nx">expression</span><span class="o">:</span> <span class="p">[</span><span class="s2">&quot;allof&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;match&quot;</span><span class="p">,</span> <span class="s2">&quot;*.js&quot;</span><span class="p">]],</span>
+      <span class="c1">// Which fields we&#39;re interested in</span>
+      <span class="nx">fields</span><span class="o">:</span> <span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;size&quot;</span><span class="p">,</span> <span class="s2">&quot;exists&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">],</span>
+      <span class="c1">// add our time constraint</span>
+      <span class="nx">since</span><span class="o">:</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">clock</span>
+    <span class="p">};</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="nx">relative_path</span><span class="p">)</span> <span class="p">{</span>
+      <span class="nx">sub</span><span class="p">.</span><span class="nx">relative_root</span> <span class="o">=</span> <span class="nx">relative_path</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="nx">client</span><span class="p">.</span><span class="nx">command</span><span class="p">([</span><span class="s1">&#39;subscribe&#39;</span><span class="p">,</span> <span class="nx">watch</span><span class="p">,</span> <span class="s1">&#39;mysubscription&#39;</span><span class="p">,</span> <span class="nx">sub</span><span class="p">],</span>
+      <span class="kd">function</span> <span class="p">(</span><span class="nx">error</span><span class="p">,</span> <span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// handle the result here</span>
+      <span class="p">});</span>
+  <span class="p">});</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="nodejs-api-reference">NodeJS API Reference</h2>
+
+<h2 id="methods">Methods</h2>
+
+<h3 id="client-capabilitycheck-options-done">client.capabilityCheck(options, done)</h3>
+
+<p>The <code>capabilityCheck</code> method issues a <a href="/watchman/docs/cmds/version.html">version</a> command to query the capabilities of the
+server.</p>
+
+<p>If the server doesn&#39;t support capabilities, <code>capabilityCheck</code> will emulate
+the capability response for a handful of significant capabilities based
+on the version reported by the server.</p>
+
+<p>The <code>options</code> argument may contain the following properties:</p>
+
+<ul>
+<li><code>optional</code> an array listing optional capability names</li>
+<li><code>required</code> an array listing required capability names</li>
+</ul>
+
+<p>The properties are passed through to the underlying <code>version</code> command.</p>
+
+<p>The <code>done</code> parameter is a callback that will be passed (error, result) when the
+command completes.  It doesn&#39;t make sense to issue a <code>capabilityCheck</code> call and
+not provide the <code>done</code> callback.</p>
+
+<p>The response object will contain a <code>capabilities</code> object property whose keys
+will be the union of the <code>optional</code> and <code>required</code> capability names and whose
+values will be either <code>true</code> or <code>false</code> depending on the availability of the
+capability name.</p>
+
+<p>If any of the <code>required</code> capabilities are not supported by the server, the
+<code>error</code> parameter in the <code>done</code> callback will be set and will contain a
+meaningful error message.</p>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="nx">client</span><span class="p">.</span><span class="nx">capabilityCheck</span><span class="p">({</span><span class="nx">optional</span><span class="o">:</span><span class="p">[],</span> <span class="nx">required</span><span class="o">:</span><span class="p">[</span><span class="s1">&#39;relative_roots&#39;</span><span class="p">]},</span>
+  <span class="kd">function</span> <span class="p">(</span><span class="nx">error</span><span class="p">,</span> <span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// error will be an Error object if the watchman service is not</span>
+      <span class="c1">// installed, or if any of the names listed in the `required`</span>
+      <span class="c1">// array are not supported by the server</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="nx">error</span><span class="p">);</span>
+    <span class="p">}</span>
+    <span class="c1">// resp will be an extended version response:</span>
+    <span class="c1">// {&#39;version&#39;: &#39;3.8.0&#39;, &#39;capabilities&#39;: {&#39;relative_roots&#39;: true}}</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">resp</span><span class="p">);</span>
+  <span class="p">});</span>
+</code></pre></div>
+<h3 id="client-command-args-done">client.command(args [, done])</h3>
+
+<p>Sends a command to the watchman service.  <code>args</code> is an array that specifies
+the command name and any optional arguments.  The command is queued and
+dispatched asynchronously.  You may queue multiple commands to the service;
+they will be dispatched in FIFO order once the client connection is established.</p>
+
+<p>The <code>done</code> parameter is a callback that will be passed (error, result) when the
+command completes.  You may omit it if you are not interested in the result of
+the command.</p>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="nx">client</span><span class="p">.</span><span class="nx">command</span><span class="p">([</span><span class="s1">&#39;watch-project&#39;</span><span class="p">,</span> <span class="nx">process</span><span class="p">.</span><span class="nx">cwd</span><span class="p">()],</span> <span class="kd">function</span><span class="p">(</span><span class="nx">error</span><span class="p">,</span> <span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;watch failed: &#39;</span><span class="p">,</span> <span class="nx">error</span><span class="p">);</span>
+    <span class="k">return</span><span class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">if</span> <span class="p">(</span><span class="s1">&#39;warning&#39;</span> <span class="k">in</span> <span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;warning: &#39;</span><span class="p">,</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">warning</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="k">if</span> <span class="p">(</span><span class="s1">&#39;relative_path&#39;</span> <span class="k">in</span> <span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// We will need to remember and adjust for relative_path</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;watching project &#39;</span><span class="p">,</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">watch</span><span class="p">,</span> <span class="s1">&#39; relative path to cwd is &#39;</span><span class="p">,</span>
+      <span class="nx">resp</span><span class="p">.</span><span class="nx">relative_path</span><span class="p">);</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;watching &#39;</span><span class="p">,</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">watch</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">});</span>
+</code></pre></div>
+<p>If a field named <code>warning</code> is present in <code>resp</code>, the watchman service is trying
+to communicate an issue that the user should see and address.  For example, if
+the system watch resources need adjustment, watchman will provide information
+about this and how to remediate the issue.  It is suggested that tools that
+build on top of this library bubble the warning message up to the user.</p>
+
+<h3 id="client-end">client.end()</h3>
+
+<p>Terminates the connection to the watchman service.  Does not wait
+for any queued commands to send.</p>
+
+<h2 id="events">Events</h2>
+
+<p>The following events are emitted by the watchman client object:</p>
+
+<h3 id="event-39-connect-39">Event: &#39;connect&#39;</h3>
+
+<p>Emitted when the client successfully connects to the watchman service</p>
+
+<h3 id="event-39-error-39">Event: &#39;error&#39;</h3>
+
+<p>Emitted when the socket to the watchman service encounters an error.</p>
+
+<p>It may also be emitted prior to establishing a connection if we are unable
+to successfully execute the watchman CLI binary to determine how to talk
+to the server process.</p>
+
+<p>It is passed a variable that encapsulates the error.</p>
+
+<h3 id="event-39-end-39">Event: &#39;end&#39;</h3>
+
+<p>Emitted when the socket to the watchman service is closed</p>
+
+<h3 id="event-39-log-39">Event: &#39;log&#39;</h3>
+
+<p>Emitted in response to a unilateral <code>log</code> PDU from the watchman service.
+To enable these, you need to send a <code>log-level</code> command to the service:</p>
+<div class="highlight"><pre><code class="language-js" data-lang="js"><span class="c1">// This is very verbose, you probably don&#39;t want to do this</span>
+<span class="nx">client</span><span class="p">.</span><span class="nx">command</span><span class="p">([</span><span class="s1">&#39;log-level&#39;</span><span class="p">,</span> <span class="s1">&#39;debug&#39;</span><span class="p">]);</span>
+<span class="nx">client</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">info</span><span class="p">)</span> <span class="p">{</span>
+  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">info</span><span class="p">);</span>
+<span class="p">});</span>
+</code></pre></div>
+<h3 id="event-39-subscription-39">Event: &#39;subscription&#39;</h3>
+
+<p>Emitted in response to a unilateral <code>subscription</code> PDU from the watchman
+service.  To enable these, you need to send a <code>subscribe</code> command to the service:</p>
+<div class="highlight"><pre><code class="language-js" data-lang="js">  <span class="c1">// Subscribe to notifications about .js files</span>
+  <span class="nx">client</span><span class="p">.</span><span class="nx">command</span><span class="p">([</span><span class="s1">&#39;subscribe&#39;</span><span class="p">,</span> <span class="nx">process</span><span class="p">.</span><span class="nx">cwd</span><span class="p">(),</span> <span class="s1">&#39;mysubscription&#39;</span><span class="p">,</span> <span class="p">{</span>
+      <span class="nx">expression</span><span class="o">:</span> <span class="p">[</span><span class="s2">&quot;match&quot;</span><span class="p">,</span> <span class="s2">&quot;*.js&quot;</span><span class="p">]</span>
+    <span class="p">}],</span>
+    <span class="kd">function</span><span class="p">(</span><span class="nx">error</span><span class="p">,</span> <span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Probably an error in the subscription criteria</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;failed to subscribe: &#39;</span><span class="p">,</span> <span class="nx">error</span><span class="p">);</span>
+        <span class="k">return</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;subscription &#39;</span> <span class="o">+</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">subscribe</span> <span class="o">+</span> <span class="s1">&#39; established&#39;</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">);</span>
+
+  <span class="c1">// Subscription results are emitted via the subscription event.</span>
+  <span class="c1">// Note that watchman will deliver a list of all current files</span>
+  <span class="c1">// when you first subscribe, so you don&#39;t need to walk the tree</span>
+  <span class="c1">// for yourself on startup</span>
+  <span class="nx">client</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;subscription&#39;</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">root</span><span class="p">,</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">subscription</span><span class="p">,</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">files</span><span class="p">);</span>
+  <span class="p">});</span>
+</code></pre></div>
+<p>To cancel a subscription, use the <code>unsubscribe</code> command and pass in the name of
+the subscription you want to cancel:</p>
+<div class="highlight"><pre><code class="language-js" data-lang="js">  <span class="nx">client</span><span class="p">.</span><span class="nx">command</span><span class="p">([</span><span class="s1">&#39;unsubscribe&#39;</span><span class="p">,</span> <span class="nx">process</span><span class="p">.</span><span class="nx">cwd</span><span class="p">(),</span> <span class="s1">&#39;mysubscription&#39;</span><span class="p">]);</span>
+</code></pre></div>
+<p>Note that subscriptions names are scoped to your connection to the watchman
+service; multiple different clients can use the same subscription name without
+fear of colliding.</p>
+
     
   </article>
 </div>
