@@ -5743,7 +5743,8 @@
 
 <ul>
 <li><i class="fa fa-linux"></i> Linux systems with <code>inotify</code></li>
-<li><i class="fa fa-apple"></i> OS X (uses FSEvents)</li>
+<li><i class="fa fa-apple"></i> OS X (uses <code>FSEvents</code> on 10.7+,
+<code>kqueue(2)</code> on earlier versions)</li>
 <li><i class="fa fa-windows"></i> Windows x64 on Windows Server 2012 R2 and
 later is currently in <strong>alpha</strong> status.  <a href="https://github.com/facebook/watchman/issues/19">More details on alpha testing this
 here</a></li>
@@ -5867,6 +5868,26 @@ started watching the dir.</li>
 notification, but instead will get spurious notifications for files that
 haven&#39;t actually changed.</p>
 
+<h3 id="max-os-file-descriptor-limits">Max OS File Descriptor Limits</h3>
+
+<p><em>Only applicable on OS X 10.6 and earlier</em></p>
+
+<p>The default per-process descriptor limit on OS X is extremely low (256!).</p>
+
+<p>Watchman will attempt to raise its descriptor limit to match
+<code>kern.maxfilesperproc</code> when it starts up, so you shouldn&#39;t need to mess with
+<code>ulimit</code>; just raising the sysctl should do the trick.</p>
+
+<p>The following will raise the limits to allow 10 million files total, with 1
+million files per process until your next reboot.</p>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>sudo sysctl -w kern.maxfiles<span class="o">=</span>10485760
+<span class="nv">$ </span>sudo sysctl -w kern.maxfilesperproc<span class="o">=</span>1048576
+</code></pre></div>
+<p>Putting the following into a file named <code>/etc/sysctl.conf</code> on OS X will cause
+these values to persist across reboots:</p>
+<div class="highlight"><pre><code class="language-text" data-lang="text">kern.maxfiles=10485760
+kern.maxfilesperproc=1048576
+</code></pre></div>
     
   </article>
 </div>
