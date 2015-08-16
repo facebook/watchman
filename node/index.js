@@ -144,9 +144,36 @@ Client.prototype.connect = function() {
   // are some error cases on Windows where process spawning can hang.
   // It is desirable to pipe stderr directly to stderr live so that
   // we can discover the problem.
-  proc = childProcess.spawn(this.watchmanBinaryPath, args, {
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
+  var proc = null;
+  var spawnFailed = false;
+
+  function spawnError(error) {
+    if (spawnFailed) {
+      // For ENOENT, proc 'close' will also trigger with a negative code,
+      // let's suppress that second error.
+      return;
+    }
+    spawnFailed = true;
+    if (error.errno === 'EACCES') {
+      error.message = 'The Watchman CLI is installed but cannot ' +
+                      'be spawned because of a permission problem';
+    } else if (error.errno === 'ENOENT') {
+      error.message = 'Watchman was not found in PATH.  See ' +
+          'https://facebook.github.io/watchman/docs/install.html ' +
+          'for installation instructions';
+    }
+    console.log('Watchman: ', error.message);
+    self.emit('error', error);
+  }
+
+  try {
+    proc = childProcess.spawn(this.watchmanBinaryPath, args, {
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+  } catch (error) {
+    spawnError(error);
+    return;
+  }
 
   var stdout = [];
   var stderr = [];
@@ -158,14 +185,15 @@ Client.prototype.connect = function() {
     stderr.push(data);
     console.log(data);
   });
+  proc.on('error', function(error) {
+    spawnError(error);
+  });
 
   proc.on('close', function (code) {
     if (code !== 0) {
-      var why = this.watchmanBinaryPath + args.join(' ') +
-                ' returned with exit code ' + code + ' ' +
-                stderr.join('');
-      console.log(why);
-      self.emit('error', why);
+      spawnError(new Error(
+          self.watchmanBinaryPath + args.join(' ') +
+          ' returned with exit code ' + code + ' ' + stderr.join('')));
       return;
     }
     try {
