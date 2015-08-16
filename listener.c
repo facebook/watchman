@@ -933,13 +933,15 @@ bool w_start_listener(const char *path)
     getrlimit(RLIMIT_NOFILE, &limit);
 
 # ifndef __OpenBSD__
-    size_t len;
+    {
+      size_t len;
 
-    len = sizeof(maxperproc);
-    sysctl(mib, 2, &maxperproc, &len, NULL, 0);
-    w_log(W_LOG_ERR, "file limit is %" PRIu64
-        " kern.maxfilesperproc=%i\n",
-        limit.rlim_cur, maxperproc);
+      len = sizeof(maxperproc);
+      sysctl(mib, 2, &maxperproc, &len, NULL, 0);
+      w_log(W_LOG_ERR, "file limit is %" PRIu64
+          " kern.maxfilesperproc=%i\n",
+          limit.rlim_cur, maxperproc);
+    }
 # else
     maxperproc = limit.rlim_max;
     w_log(W_LOG_ERR, "openfiles-cur is %" PRIu64
