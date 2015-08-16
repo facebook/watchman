@@ -17,6 +17,12 @@ GitHub](https://github.com/facebook/watchman/commits/master).
   and added the [capabilityCheck](/watchman/docs/cmd/version.html#capabilityCheck)
   method to the python and node clients.
 
+### pywatchman 1.2.0 (2015-08-15)
+
+* Added the `capabilityCheck` method
+* Added `SocketTimeout` exception to distinguish timeouts from protocol level
+  exceptions
+
 ### fb-watchman 1.3.0 for node (2015-08-15)
 
 * Added the [capabilityCheck](/watchman/docs/nodejs.html#checking-for-watchman-availability) method.
