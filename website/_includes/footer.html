@@ -3,7 +3,6 @@
     <section id="fb_oss" class="fbOpenSourceFooter">
       <a href="https://code.facebook.com/projects/" target="_blank"><img src="{{ site.baseurl }}/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
     </section>
-    <script>hljs.initHighlightingOnLoad();</script>
   </div>
 </div>
 {% include anchor_links.html %}
@@ -16,4 +15,20 @@
   ga('create', '{{ site.gacode }}', 'auto');
   ga('send', 'pageview');
 </script>
+<script>
+  window.addEventListener('load', function() {
+    hljs.initHighlightingOnLoad();
 
+    // Async load some styles
+    function loadStyle(href) {
+      var s = document.createElement('link');
+      s.setAttribute('rel', 'stylesheet');
+      s.setAttribute('href', href);
+      s.setAttribute('type', 'text/css');
+      document.getElementsByTagName('head')[0].appendChild(s);
+    }
+    loadStyle("//nuclide.io/static/fonts/332720/BC699FA675F9356E3.css");
+    loadStyle("//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/styles/default.min.css");
+    loadStyle("//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css");
+  });
+</script>

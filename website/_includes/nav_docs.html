@@ -8,11 +8,7 @@
       group     : "{{ group.title }}",
       items     : [
         {% for item in group.items %}
-        {% for docitem in site.docs %}
-          {% if docitem.id == item.id %}
-            {% assign doc = docitem %}
-          {% endif %}
-        {% endfor %}
+        {% for docitem in site.docs %}{% if docitem.id == item.id %}{% assign doc = docitem %}{% break %}{% endif %}{% endfor %}
         {
           key : "{{ site.baseurl }}{{ doc.url }}",
           title : "{{ doc.title }}",
@@ -25,6 +21,7 @@
   ];
 </script>
 <script type="text/javascript">  
+window.addEventListener('load', function() {
   var DocNav = React.createClass({displayName: "DocNav",
     getInitialState: function() {
       return {
@@ -97,4 +94,5 @@
     );
   }
   docNavRender(docnavData);
+});
 </script>
