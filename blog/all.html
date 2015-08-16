@@ -12,16 +12,13 @@
 	<meta property="og:description" content="" />
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  <link rel="stylesheet" type="text/css" href="//nuclide.io/static/fonts/332720/BC699FA675F9356E3.css">
-  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/styles/default.min.css">
-  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
   
   <link rel="icon" href="static/favicon.png" type="image/x-icon">
   
   <base href="/watchman/" />
   
-  <script src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
-  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
+  <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
+  <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
 
   <title>Watchman</title>
   <meta name="description" content="">
@@ -81,6 +78,7 @@
     ];
   </script>
   <script type="text/javascript">  
+  window.addEventListener('load', function() {
     var Nav = React.createClass({displayName: "Nav",
       getInitialState: function() {
         return {
@@ -147,6 +145,7 @@
       );
     }
     render(navData);
+  });
   </script>
 </div>
 
@@ -240,7 +239,6 @@ function blogNavRender(blognavData) {
     <section id="fb_oss" class="fbOpenSourceFooter">
       <a href="https://code.facebook.com/projects/" target="_blank"><img src="/watchman/static/oss_logo.png" alt="Facebook Open Source" title="Facebook Open Source" /></a>
     </section>
-    <script>hljs.initHighlightingOnLoad();</script>
   </div>
 </div>
 <script>
@@ -264,17 +262,20 @@ function blogNavRender(blognavData) {
     }
   };
 
-  document.onreadystatechange = function () {
-    if (this.readyState === "complete") {
-      var contentBlock = document.getElementsByClassName("post")[0] || document.getElementsByClassName("news")[0];
-      if (!contentBlock) {
-        return;
-      }
-      for (var level = 1; level <= 6; level++) {
-        linkifyAnchors(level, contentBlock);
-      }
+  var scanForPosts = function() {
+    var contentBlock = document.getElementsByClassName("post")[0] || document.getElementsByClassName("news")[0];
+    if (!contentBlock) {
+      return;
     }
-  };
+    for (var level = 1; level <= 6; level++) {
+      linkifyAnchors(level, contentBlock);
+    }
+  }
+  document.addEventListener('onreadystatechange', function () {
+    if (this.readyState === "complete") {
+      scanForPosts();
+    }
+  });
 </script>
 
 <script>
@@ -285,6 +286,23 @@ function blogNavRender(blognavData) {
 
   ga('create', 'UA-44373548-7', 'auto');
   ga('send', 'pageview');
+</script>
+<script>
+  window.addEventListener('load', function() {
+    hljs.initHighlightingOnLoad();
+
+    // Async load some styles
+    function loadStyle(href) {
+      var s = document.createElement('link');
+      s.setAttribute('rel', 'stylesheet');
+      s.setAttribute('href', href);
+      s.setAttribute('type', 'text/css');
+      document.getElementsByTagName('head')[0].appendChild(s);
+    }
+    loadStyle("//nuclide.io/static/fonts/332720/BC699FA675F9356E3.css");
+    loadStyle("//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/styles/default.min.css");
+    loadStyle("//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css");
+  });
 </script>
 
 
