@@ -160,8 +160,6 @@ Client.prototype.connect = function() {
   });
 
   proc.on('close', function (code) {
-    proc.stderr.end();
-    proc.stdout.end();
     if (code !== 0) {
       var why = this.watchmanBinaryPath + args.join(' ') +
                 ' returned with exit code ' + code + ' ' +
