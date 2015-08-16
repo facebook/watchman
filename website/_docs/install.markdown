@@ -11,7 +11,8 @@ permalink: docs/install.html
 Watchman is known to compile and pass its test suite on:
 
  * <i class="fa fa-linux"></i> Linux systems with `inotify`
- * <i class="fa fa-apple"></i> OS X (uses FSEvents)
+ * <i class="fa fa-apple"></i> OS X (uses `FSEvents` on 10.7+,
+   `kqueue(2)` on earlier versions)
  * <i class="fa fa-windows"></i> Windows x64 on Windows Server 2012 R2 and
    later is currently in **alpha** status.  [More details on alpha testing this
    here](https://github.com/facebook/watchman/issues/19)
@@ -147,3 +148,28 @@ This means that if an overflow does occur, you won't miss a legitimate change
 notification, but instead will get spurious notifications for files that
 haven't actually changed.
 
+### Max OS File Descriptor Limits
+
+*Only applicable on OS X 10.6 and earlier*
+
+The default per-process descriptor limit on OS X is extremely low (256!).
+
+Watchman will attempt to raise its descriptor limit to match
+`kern.maxfilesperproc` when it starts up, so you shouldn't need to mess with
+`ulimit`; just raising the sysctl should do the trick.
+
+The following will raise the limits to allow 10 million files total, with 1
+million files per process until your next reboot.
+
+```bash
+$ sudo sysctl -w kern.maxfiles=10485760
+$ sudo sysctl -w kern.maxfilesperproc=1048576
+```
+
+Putting the following into a file named `/etc/sysctl.conf` on OS X will cause
+these values to persist across reboots:
+
+```
+kern.maxfiles=10485760
+kern.maxfilesperproc=1048576
+```
