@@ -27,6 +27,39 @@ bool w_cmd_realpath_root(json_t *args, char **errmsg)
   return true;
 }
 
+/* sync /root
+ * Syncs any pending events and returns the clock value for the current time.
+ * Like cmd_clock but blocks and ensures that the clock value is current.
+ */
+static void cmd_sync(struct watchman_client *client, json_t *args)
+{
+  w_root_t *root;
+  json_t *resp;
+
+  /* resolve the root */
+  if (json_array_size(args) != 2) {
+    send_error_response(client, "wrong number of arguments to 'sync'");
+    return;
+  }
+
+  root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
+    return;
+  }
+
+  w_root_sync_to_now(root, 100);
+  root->ticks++;
+
+  resp = make_response();
+  w_root_lock(root);
+  annotate_with_clock(root, resp);
+  w_root_unlock(root);
+
+  send_and_dispose_response(client, resp);
+  w_root_delref(root);
+}
+W_CMD_REG("sync", cmd_sync, CMD_DAEMON, w_cmd_realpath_root)
+
 /* clock /root
  * Returns the current clock value for a watched root
  */
