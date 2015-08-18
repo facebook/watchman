@@ -1674,6 +1674,9 @@ static void consider_age_out(w_root_t *root)
   w_root_perform_age_out(root, root->gc_age);
 }
 
+// This is a little tricky.  We have to be called with root->lock
+// held, but we must not call w_root_stop_watch with the lock held,
+// so we return true if the caller should do that
 static bool consider_reap(w_root_t *root) {
   time_t now;
 
@@ -1694,7 +1697,6 @@ static bool consider_reap(w_root_t *root) {
         "Set idle_reap_age_seconds in your .watchmanconfig to control "
         "this behavior\n",
         root->root_path->len, root->root_path->buf, root->idle_reap_age);
-    w_root_stop_watch(root);
     return true;
   }
 
@@ -1795,9 +1797,12 @@ static void io_thread(w_root_t *root)
       w_root_lock(root);
       process_subscriptions(root);
       process_triggers(root);
-      if (!consider_reap(root)) {
-        consider_age_out(root);
+      if (consider_reap(root)) {
+        w_root_unlock(root);
+        w_root_stop_watch(root);
+        break;
       }
+      consider_age_out(root);
       w_root_unlock(root);
 
       timeoutms = MIN(biggest_timeout, timeoutms * 2);
@@ -2006,7 +2011,7 @@ void watchman_watcher_dtor(void) {
   watcher_ops->global_dtor(watcher);
 }
 
-
+// Must not be called with root->lock held :-/
 static bool remove_root_from_watched(w_root_t *root)
 {
   bool removed = false;
