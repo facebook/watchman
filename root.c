@@ -2631,7 +2631,8 @@ bool w_reap_children(bool block)
 void w_root_free_watched_roots(void)
 {
   w_ht_iter_t root_iter;
-  int last;
+  int last, interval;
+  time_t started;
 
   // Reap any children so that we can release their
   // references on the root
@@ -2647,17 +2648,24 @@ void w_root_free_watched_roots(void)
   pthread_mutex_unlock(&root_lock);
 
   last = live_roots;
+  time(&started);
   w_log(W_LOG_DBG, "waiting for roots to cancel and go away %d\n", last);
+  interval = 100;
   for (;;) {
     int current = __sync_fetch_and_add(&live_roots, 0);
     if (current == 0) {
+      break;
+    }
+    if (time(NULL) > started + 3) {
+      w_log(W_LOG_ERR, "%d roots were still live at exit\n", current);
       break;
     }
     if (current != last) {
       w_log(W_LOG_DBG, "waiting: %d live\n", current);
       last = current;
     }
-    usleep(100);
+    usleep(interval);
+    interval = MIN(interval * 2, 1000000);
   }
 
   w_log(W_LOG_DBG, "all roots are gone\n");

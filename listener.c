@@ -919,7 +919,6 @@ bool w_start_listener(const char *path)
   volatile struct gimli_heartbeat *hb = NULL;
 #endif
   struct timeval tv;
-  int n_clients = 0;
 
   listener_thread = pthread_self();
 
@@ -1061,22 +1060,30 @@ bool w_start_listener(const char *path)
 #endif
 
   // Wait for clients, waking any sleeping clients up in the process
-  do {
-    w_ht_iter_t iter;
+  {
+    int interval = 2000;
+    int last_count = 0, n_clients = 0;
 
-    pthread_mutex_lock(&w_client_lock);
-    n_clients = w_ht_size(clients);
+    do {
+      w_ht_iter_t iter;
 
-    if (w_ht_first(clients, &iter)) do {
-      struct watchman_client *client = w_ht_val_ptr(iter.value);
-      w_event_set(client->ping);
-    } while (w_ht_next(clients, &iter));
+      pthread_mutex_lock(&w_client_lock);
+      n_clients = w_ht_size(clients);
 
-    pthread_mutex_unlock(&w_client_lock);
+      if (w_ht_first(clients, &iter)) do {
+        struct watchman_client *client = w_ht_val_ptr(iter.value);
+        w_event_set(client->ping);
+      } while (w_ht_next(clients, &iter));
 
-    w_log(W_LOG_ERR, "waiting for %d clients to terminate\n", n_clients);
-    usleep(2000);
-  } while (n_clients > 0);
+      pthread_mutex_unlock(&w_client_lock);
+
+      if (n_clients != last_count) {
+        w_log(W_LOG_ERR, "waiting for %d clients to terminate\n", n_clients);
+      }
+      usleep(interval);
+      interval = MIN(interval * 2, 1000000);
+    } while (n_clients > 0);
+  }
 
   w_root_free_watched_roots();
 
