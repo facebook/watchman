@@ -28,8 +28,11 @@ enum {
 
 static void adjust_ioprio(bool low) {
 #if defined(__APPLE__) && defined(IOPOL_STANDARD)
+  /* disabled for now because even IOPOL_UTILITY is
+   * too aggressive
   setiopolicy_np(IOPOL_TYPE_DISK, IOPOL_SCOPE_THREAD,
       low ? IOPOL_THROTTLE : IOPOL_STANDARD);
+   */
 #endif
 #ifdef __linux__
   syscall(SYS_ioprio_set, IOPRIO_WHO_PROCESS, 0,
