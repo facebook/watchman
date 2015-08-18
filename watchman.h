@@ -444,6 +444,9 @@ struct watchman_root {
   // Why we failed to watch
   w_string_t *failure_reason;
 
+  // Last ad-hoc warning message
+  w_string_t *warning;
+
   /* --- everything below this point will be reset on w_root_init --- */
   bool _init_sentinel_;
 
@@ -626,6 +629,7 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
 void w_root_reap(void);
 void w_root_delref(w_root_t *root);
 void w_root_addref(w_root_t *root);
+void w_root_set_warning(w_root_t *root, w_string_t *str);
 
 struct watchman_dir *w_root_resolve_dir(w_root_t *root,
     w_string_t *dir_name, bool create);

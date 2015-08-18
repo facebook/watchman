@@ -296,6 +296,7 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
   } else {
     set_prop(resp, "watch", json_string_nocheck(root->root_path->buf));
   }
+  add_root_warnings_to_response(resp, root);
   send_and_dispose_response(client, resp);
   w_root_unlock(root);
   w_root_delref(root);
@@ -342,6 +343,7 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
   } else {
     set_prop(resp, "watch", json_string_nocheck(root->root_path->buf));
   }
+  add_root_warnings_to_response(resp, root);
   if (rel_path_from_watch) {
     set_prop(resp, "relative_path",
         json_string_nocheck(rel_path_from_watch));

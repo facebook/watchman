@@ -322,27 +322,43 @@ void w_clockspec_free(struct w_clockspec *spec)
 
 void add_root_warnings_to_response(json_t *response, w_root_t *root) {
   char *str = NULL;
+  char *full = NULL;
 
-  if (!root->last_recrawl_reason) {
+  if (!root->last_recrawl_reason && !root->warning) {
     return;
   }
 
-  ignore_result(asprintf(&str,
-    "Recrawled this watch %d times, most recently because:\n"
-    "%.*s\n"
-    "To resolve, please review the information on\n"
-    "%s#recrawl",
-    root->recrawl_count,
-    root->last_recrawl_reason->len,
-    root->last_recrawl_reason->buf,
-    cfg_get_trouble_url()));
-
-  if (!str) {
-    return;
+  if (root->last_recrawl_reason) {
+    ignore_result(asprintf(&str,
+          "Recrawled this watch %d times, most recently because:\n"
+          "%.*s\n"
+          "To resolve, please review the information on\n"
+          "%s#recrawl",
+          root->recrawl_count,
+          root->last_recrawl_reason->len,
+          root->last_recrawl_reason->buf,
+          cfg_get_trouble_url()));
   }
 
-  set_prop(response, "warning", json_string_nocheck(str));
+  ignore_result(asprintf(&full,
+      "%.*s%s"   // root->warning
+      "%s\n"     // str (last recrawl reason)
+      "To clear this warning, run:\n"
+      "`watchman watch-del %.*s ; watchman watch-project %.*s`\n",
+      root->warning ? root->warning->len : 0,
+      root->warning ? root->warning->buf : "",
+      root->warning && str ? "\n" : "", // newline if we have both strings
+      str ? str : "",
+      root->root_path->len,
+      root->root_path->buf,
+      root->root_path->len,
+      root->root_path->buf));
+
+  if (full) {
+    set_prop(response, "warning", json_string_nocheck(full));
+  }
   free(str);
+  free(full);
 }
 
 w_root_t *resolve_root_or_err(

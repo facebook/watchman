@@ -112,9 +112,19 @@ static size_t root_init_offset = offsetof(w_root_t, _init_sentinel_);
 static bool w_root_init(w_root_t *root, char **errmsg)
 {
   struct watchman_dir *dir;
+  DIR *osdir = NULL;
 
   memset((char *)root + root_init_offset, 0,
          sizeof(w_root_t) - root_init_offset);
+
+  osdir = opendir_nofollow(root->root_path->buf);
+  if (!osdir) {
+    ignore_result(asprintf(errmsg, "failed to opendir(%s): %s",
+          root->root_path->buf,
+          strerror(errno)));
+    return false;
+  }
+  closedir(osdir);
 
   if (!watcher_ops->root_init(watcher, root, errmsg)) {
     return false;
@@ -1154,8 +1164,23 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, const char *syscall, int err, const char *reason)
 {
   w_string_t *dir_name = dir->path;
+  w_string_t *warn = NULL;
+  bool log_warning = true;
+  bool transient = false;
+
   if (err == ENOENT || err == ENOTDIR || err == ENOFOLLOWSYMLINK) {
-    if (w_string_equal(dir_name, root->root_path)) {
+    log_warning = false;
+    transient = false;
+  } else if (err == EACCES || err == EPERM) {
+    log_warning = true;
+    transient = false;
+  } else {
+    log_warning = true;
+    transient = true;
+  }
+
+  if (w_string_equal(dir_name, root->root_path)) {
+    if (!transient) {
       w_log(W_LOG_ERR,
             "%s(%.*s) -> %s. Root was deleted; cancelling watch\n",
             syscall, dir_name->len, dir_name->buf,
@@ -1163,17 +1188,31 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
       w_root_cancel(root);
       return;
     }
-
-    w_log(W_LOG_DBG, "%s(%.*s) -> %s so invalidating descriptors\n",
-          syscall, dir_name->len, dir_name->buf,
-          reason ? reason : strerror(err));
-    stop_watching_dir(root, dir);
-    w_root_mark_deleted(root, dir, now, true);
-    return;
   }
-  w_log(W_LOG_ERR, "%s(%.*s) -> %s. We don't know how to handle this.",
-        syscall, dir_name->len, dir_name->buf,
-        reason ? reason : strerror(err));
+
+  warn = w_string_make_printf(
+      "%s(%.*s) -> %s. Marking this portion of the tree deleted\n",
+      syscall, dir_name->len, dir_name->buf,
+      reason ? reason : strerror(err));
+
+  w_log(W_LOG_ERR, "%.*s\n", warn->len, warn->buf);
+  if (log_warning) {
+    w_root_set_warning(root, warn);
+  }
+  w_string_delref(warn);
+
+  stop_watching_dir(root, dir);
+  w_root_mark_deleted(root, dir, now, true);
+}
+
+void w_root_set_warning(w_root_t *root, w_string_t *str) {
+  if (root->warning) {
+    w_string_delref(root->warning);
+  }
+  root->warning = str;
+  if (root->warning) {
+    w_string_addref(root->warning);
+  }
 }
 
 void set_poison_state(w_root_t *root, struct watchman_dir *dir,
@@ -1855,6 +1894,9 @@ void w_root_delref(w_root_t *root)
   }
   if (root->failure_reason) {
     w_string_delref(root->failure_reason);
+  }
+  if (root->warning) {
+    w_string_delref(root->warning);
   }
 
   if (root->query_cookie_dir) {
