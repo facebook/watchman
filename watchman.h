@@ -415,6 +415,8 @@ struct watchman_root {
   /* our locking granularity is per-root */
   pthread_mutex_t lock;
   pthread_t notify_thread;
+  pthread_t io_thread;
+  w_evt_t have_pending_evt;
 
   /* map of rule id => struct watchman_trigger_command */
   w_ht_t *commands;

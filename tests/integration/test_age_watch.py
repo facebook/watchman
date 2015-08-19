@@ -36,15 +36,19 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
         res = self.watchmanCommand('subscribe', root, 's', {
             'fields': ['name']})
 
-        # Wait long enough for the reap to be considered
-        time.sleep(2)
-
-        watch_list = self.watchmanCommand('watch-list')
         if self.transport == 'cli':
             # subscription won't stick in cli mode
-            self.assertEqual(watch_list['roots'], [])
+            expected = []
         else:
-            self.assertEqual(self.normFileList(watch_list['roots']), [root])
+            expected = self.normFileList([root])
+
+        self.waitFor(lambda: self.normFileList(
+            self.watchmanCommand('watch-list')['roots']) == expected)
+
+        watch_list = self.watchmanCommand('watch-list')
+        self.assertEqual(self.normFileList(watch_list['roots']), expected)
+
+        if self.transport != 'cli':
             self.watchmanCommand('unsubscribe', root, 's')
 
         # and now we should be ready to reap

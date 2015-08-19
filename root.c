@@ -297,6 +297,7 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
 
   root->case_sensitive = is_case_sensitive_filesystem(path);
 
+  root->have_pending_evt = w_event_make();
   root->root_path = w_string_new(path);
   root->commands = w_ht_new(2, &trigger_hash_funcs);
   root->query_cookies = w_ht_new(2, &w_ht_string_funcs);
@@ -1477,7 +1478,7 @@ static bool handle_should_recrawl(w_root_t *root)
           root->failure_reason->len, root->failure_reason->buf);
       w_root_cancel(root);
     }
-    w_ioprio_set_low();
+    w_event_set(root->have_pending_evt);
     return true;
   }
   return false;
@@ -1717,15 +1718,55 @@ static void notify_thread(w_root_t *root)
     return;
   }
 
-  w_ioprio_set_low();
+  // signal that we're done here, so that we can start the
+  // io thread after this point
+  w_event_set(root->have_pending_evt);
 
-  /* now we can settle into the notification stuff */
   while (!root->cancelled) {
-    int timeoutms = MAX(root->trigger_settle, 100);
+    // big number because not all watchers can deal with
+    // -1 meaning infinite wait at the moment
+    bool got_some = wait_for_notify(root, 86400);
+    w_root_lock(root);
+    if (got_some) {
+      root->ticks++;
+      while (consume_notify(root)) {
+        if (w_ht_size(root->pending_uniq) >= WATCHMAN_BATCH_LIMIT) {
+          break;
+        }
+      }
+      w_event_set(root->have_pending_evt);
+    }
+    handle_should_recrawl(root);
+    w_root_unlock(root);
+  }
+}
 
+static void io_thread(w_root_t *root)
+{
+  struct watchman_event_poll pevt;
+  int timeoutms, biggest_timeout;
+
+  pevt.evt = root->have_pending_evt;
+  timeoutms = root->trigger_settle;
+
+  // Upper bound on sleep delay.  These options are measured in seconds.
+  biggest_timeout = root->gc_interval;
+  if (biggest_timeout == 0 ||
+      (root->idle_reap_age != 0 && root->idle_reap_age < biggest_timeout)) {
+    biggest_timeout = root->idle_reap_age;
+  }
+  if (biggest_timeout == 0) {
+    biggest_timeout = 86400;
+  }
+  // And convert to milliseconds
+  biggest_timeout *= 1000;
+
+  while (!root->cancelled) {
     if (!root->done_initial) {
       struct timeval start;
+
       /* first order of business is to find all the files under our root */
+      w_ioprio_set_low();
       w_root_lock(root);
       gettimeofday(&start, NULL);
       w_root_add_pending(root, root->root_path, false, start, false);
@@ -1739,52 +1780,42 @@ static void notify_thread(w_root_t *root)
       w_log(W_LOG_ERR, "(re)crawl complete\n");
     }
 
-    if (!wait_for_notify(root, timeoutms)) {
-      // Do triggers
-      w_root_lock(root);
-      if (handle_should_recrawl(root)) {
-        goto unlock;
-      }
+    // Wait for the notify thread to give us pending items, or for
+    // the settle period to expire
+    w_poll_events(&pevt, 1, timeoutms);
+    if (!w_event_test_and_clear(root->have_pending_evt)) {
+      // No new pending items were given to us, so consider that
+      // we may not be settled.
 
+      w_root_lock(root);
       process_subscriptions(root);
       process_triggers(root);
       if (!consider_reap(root)) {
         consider_age_out(root);
       }
       w_root_unlock(root);
+
+      timeoutms = MIN(biggest_timeout, timeoutms * 2);
       continue;
     }
 
-    // Otherwise we have stuff to do
-    w_root_lock(root);
+    // Otherwise we have pending items to stat and crawl
 
+    // We are now, by definition, unsettled, so reduce sleep timeout
+    // to the settle duration ready for the next loop through
+    timeoutms = root->trigger_settle;
+
+    w_root_lock(root);
     // If we're not settled, we need an opportunity to age out
     // dead file nodes.  This happens in the test harness.
     consider_age_out(root);
-    root->ticks++;
 
-    // Consume as much as we can without blocking on inotify,
-    // because we hold a lock.
-    while (!root->cancelled &&
-        w_ht_size(root->pending_uniq) < WATCHMAN_BATCH_LIMIT &&
-        consume_notify(root) &&
-        wait_for_notify(root, 0)) {
-      ;
-    }
-
-    // then do our IO
-    if (handle_should_recrawl(root)) {
-      goto unlock;
-    }
     while (root->pending) {
       w_root_process_pending(root, false);
     }
 
-    handle_should_recrawl(root);
-unlock:
     w_root_unlock(root);
   }
-
 }
 
 /* This function always returns a buffer that needs to
@@ -1885,6 +1916,11 @@ void w_root_delref(w_root_t *root)
   w_ht_free(root->ignore_dirs);
   w_ht_free(root->commands);
   w_ht_free(root->query_cookies);
+
+  if (root->have_pending_evt) {
+    w_event_destroy(root->have_pending_evt);
+  }
+
   if (root->config_file) {
     json_decref(root->config_file);
   }
@@ -2303,8 +2339,20 @@ static void *run_notify_thread(void *arg)
   return 0;
 }
 
-static bool root_start(w_root_t *root, char **errmsg)
+static void *run_io_thread(void *arg)
 {
+  w_root_t *root = arg;
+
+  w_set_thread_name("io %.*s", root->root_path->len, root->root_path->buf);
+  io_thread(root);
+  w_log(W_LOG_DBG, "out of loop\n");
+
+  w_root_delref(root);
+  return 0;
+}
+
+static bool start_detached_root_thread(w_root_t *root, char **errmsg,
+    void*(*func)(void*), pthread_t *thr) {
   pthread_attr_t attr;
   int err;
 
@@ -2312,7 +2360,7 @@ static bool root_start(w_root_t *root, char **errmsg)
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
   w_root_addref(root);
-  err = pthread_create(&root->notify_thread, &attr, run_notify_thread, root);
+  err = pthread_create(thr, &attr, func, root);
   pthread_attr_destroy(&attr);
 
   if (err == 0) {
@@ -2320,8 +2368,31 @@ static bool root_start(w_root_t *root, char **errmsg)
   }
 
   ignore_result(asprintf(errmsg,
-        "failed to pthread_create notify_thread: %s\n", strerror(err)));
+        "failed to pthread_create: %s\n", strerror(err)));
+  w_root_delref(root);
   return false;
+}
+
+static bool root_start(w_root_t *root, char **errmsg)
+{
+  struct watchman_event_poll pevt;
+
+  if (!start_detached_root_thread(root, errmsg,
+        run_notify_thread, &root->notify_thread)) {
+    return false;
+  }
+
+  // Wait for it to signal that the watcher has been initialized
+  pevt.evt = root->have_pending_evt;
+  w_poll_events(&pevt, 1, -1 /* poll(2) infinite timeout */);
+  w_event_test_and_clear(root->have_pending_evt);
+
+  if (!start_detached_root_thread(root, errmsg,
+        run_io_thread, &root->io_thread)) {
+    w_root_cancel(root);
+    return false;
+  }
+  return true;
 }
 
 w_root_t *w_root_resolve_for_client_mode(const char *filename, char **errmsg)
@@ -2351,6 +2422,9 @@ static void signal_root_threads(w_root_t *root)
   // worker threads.  They'll self-terminate.
   if (!pthread_equal(root->notify_thread, pthread_self())) {
     pthread_kill(root->notify_thread, SIGUSR1);
+  }
+  if (root->have_pending_evt) {
+    w_event_set(root->have_pending_evt);
   }
   watcher_ops->root_signal_threads(watcher, root);
 }

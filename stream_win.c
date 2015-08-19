@@ -615,7 +615,8 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
     p[i].ready = false;
   }
 
-  res = WaitForMultipleObjectsEx(n, handles, false, timeoutms, true);
+  res = WaitForMultipleObjectsEx(n, handles, false,
+          timeoutms == -1 ? INFINITE : timeoutms, true);
 
   if (res == WAIT_FAILED) {
     errno = map_win32_err(GetLastError());
