@@ -27,56 +27,41 @@ bool w_cmd_realpath_root(json_t *args, char **errmsg)
   return true;
 }
 
-/* sync /root
- * Syncs any pending events and returns the clock value for the current time.
- * Like cmd_clock but blocks and ensures that the clock value is current.
- */
-static void cmd_sync(struct watchman_client *client, json_t *args)
-{
-  w_root_t *root;
-  json_t *resp;
-
-  /* resolve the root */
-  if (json_array_size(args) != 2) {
-    send_error_response(client, "wrong number of arguments to 'sync'");
-    return;
-  }
-
-  root = resolve_root_or_err(client, args, 1, false);
-  if (!root) {
-    return;
-  }
-
-  w_root_sync_to_now(root, 100);
-  root->ticks++;
-
-  resp = make_response();
-  w_root_lock(root);
-  annotate_with_clock(root, resp);
-  w_root_unlock(root);
-
-  send_and_dispose_response(client, resp);
-  w_root_delref(root);
-}
-W_CMD_REG("sync", cmd_sync, CMD_DAEMON, w_cmd_realpath_root)
-
-/* clock /root
+/* clock /root [options]
  * Returns the current clock value for a watched root
+ * If the options contain a sync_timeout, we ensure that the repo
+ * is synced up-to-date and the returned clock represents the
+ * latest state.
  */
 static void cmd_clock(struct watchman_client *client, json_t *args)
 {
   w_root_t *root;
   json_t *resp;
+  unsigned int sync_timeout = 0;
 
-  /* resolve the root */
-  if (json_array_size(args) != 2) {
+  if (json_array_size(args) == 3) {
+    json_t *options = json_array_get(args, 3);
+    if (options) {
+      json_t *st_json = json_object_get(options, "sync_timeout");
+      if (st_json) {
+        sync_timeout = json_integer_value(st_json);
+      }
+    }
+  }
+  else if (json_array_size(args != 2)) {
     send_error_response(client, "wrong number of arguments to 'clock'");
     return;
   }
 
+  /* resolve the root */
   root = resolve_root_or_err(client, args, 1, false);
   if (!root) {
     return;
+  }
+
+  if (sync_timeout) {
+    w_root_sync_to_now(root, sync_timeout);
+    root->ticks++;
   }
 
   resp = make_response();
