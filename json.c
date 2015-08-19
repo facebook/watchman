@@ -356,6 +356,7 @@ static json_t *read_pdu_into_json(w_jbuffer_t *jr, w_stm_t stm,
 
 bool w_json_buffer_passthru(w_jbuffer_t *jr,
     enum w_pdu_type output_pdu,
+    w_jbuffer_t *output_pdu_buf,
     w_stm_t stm)
 {
   json_t *j;
@@ -385,9 +386,9 @@ bool w_json_buffer_passthru(w_jbuffer_t *jr,
     return false;
   }
 
-  w_json_buffer_reset(jr);
+  w_json_buffer_reset(output_pdu_buf);
 
-  res = w_ser_write_pdu(output_pdu, jr, w_stm_stdout(), j);
+  res = w_ser_write_pdu(output_pdu, output_pdu_buf, w_stm_stdout(), j);
 
   json_decref(j);
   return res;
