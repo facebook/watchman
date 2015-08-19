@@ -924,7 +924,6 @@ static void accept_loop() {
 
 bool w_start_listener(const char *path)
 {
-  pthread_mutexattr_t mattr;
 #ifndef _WIN32
   struct sigaction sa;
   sigset_t sigset;
@@ -936,11 +935,6 @@ bool w_start_listener(const char *path)
   struct timeval tv;
 
   listener_thread = pthread_self();
-
-  pthread_mutexattr_init(&mattr);
-  pthread_mutexattr_settype(&mattr, PTHREAD_MUTEX_RECURSIVE);
-  pthread_mutex_init(&w_client_lock, &mattr);
-  pthread_mutexattr_destroy(&mattr);
 
 #ifdef HAVE_LIBGIMLI_H
   hb = gimli_heartbeat_attach();

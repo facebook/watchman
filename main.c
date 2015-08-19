@@ -671,6 +671,12 @@ int main(int argc, char **argv)
 {
   bool ran;
   json_t *cmd;
+  pthread_mutexattr_t mattr;
+
+  pthread_mutexattr_init(&mattr);
+  pthread_mutexattr_settype(&mattr, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init(&w_client_lock, &mattr);
+  pthread_mutexattr_destroy(&mattr);
 
   parse_cmdline(&argc, &argv);
 
