@@ -415,6 +415,7 @@ static void cmd_shutdown(
   // Knock listener thread out of poll/accept
 #ifndef _WIN32
   pthread_kill(listener_thread, SIGUSR1);
+  pthread_kill(reaper_thread, SIGUSR1);
 #else
   SetEvent(listener_thread_event);
 #endif
@@ -583,18 +584,34 @@ static void *child_reaper(void *arg)
 #ifndef _WIN32
   sigset_t sigset;
 
-  // Unblock SIGCHLD only in this thread
+  // By default, keep both SIGCHLD and SIGUSR1 blocked
   sigemptyset(&sigset);
+  sigaddset(&sigset, SIGUSR1);
   sigaddset(&sigset, SIGCHLD);
-  pthread_sigmask(SIG_UNBLOCK, &sigset, NULL);
+  pthread_sigmask(SIG_BLOCK, &sigset, NULL);
+
+  // SIGCHLD is ordinarily blocked, so we listen for it only in
+  // sigsuspend, when we're also listening for the SIGUSR1 that tells
+  // us to exit.
+  pthread_sigmask(SIG_BLOCK, NULL, &sigset);
+  sigdelset(&sigset, SIGCHLD);
+  sigdelset(&sigset, SIGUSR1);
+
 #endif
   unused_parameter(arg);
   w_set_thread_name("child_reaper");
 
+#ifdef _WIN32
   while (!stopping) {
     usleep(200000);
     w_reap_children(true);
   }
+#else
+  while (!stopping) {
+    w_reap_children(false);
+    sigsuspend(&sigset);
+  }
+#endif
 
   return 0;
 }
