@@ -431,8 +431,10 @@ static void *client_thread(void *ptr)
 {
   struct watchman_client *client = ptr;
   struct watchman_event_poll pfd[2];
+  struct watchman_client_response *queued_responses_to_send;
   json_t *request;
   json_error_t jerr;
+  bool send_ok = true;
 
   w_stm_set_nonblock(client->stm, true);
   w_set_thread_name("client:stm=%p", client->stm);
@@ -479,39 +481,33 @@ static void *client_thread(void *ptr)
       w_event_test_and_clear(client->ping);
     }
 
+    /* de-queue the pending responses under the lock */
+    pthread_mutex_lock(&w_client_lock);
+    queued_responses_to_send = client->head;
+    client->head = NULL;
+    client->tail = NULL;
+    pthread_mutex_unlock(&w_client_lock);
+
     /* now send our response(s) */
-    while (client->head) {
-      struct watchman_client_response *resp;
+    while (queued_responses_to_send) {
+      struct watchman_client_response *response_to_send =
+        queued_responses_to_send;
 
-      /* de-queue the first response */
-      pthread_mutex_lock(&w_client_lock);
-      resp = client->head;
-      if (resp) {
-        client->head = resp->next;
-        if (client->tail == resp) {
-          client->tail = NULL;
-        }
-      }
-      pthread_mutex_unlock(&w_client_lock);
-
-      if (resp) {
-        bool ok;
-
+      if (send_ok) {
         w_stm_set_nonblock(client->stm, false);
-
-        /* Return the data in the same format that was used to ask for it */
-        ok = w_ser_write_pdu(client->pdu_type, &client->writer,
-            client->stm, resp->json);
-
-        json_decref(resp->json);
-        free(resp);
-
+        /* Return the data in the same format that was used to ask for it.
+         * Don't bother sending any more messages if the client disconnects,
+         * but still free their memory.
+         */
+        send_ok = w_ser_write_pdu(client->pdu_type, &client->writer,
+                                  client->stm, response_to_send->json);
         w_stm_set_nonblock(client->stm, true);
-
-        if (!ok) {
-          break;
-        }
       }
+
+      queued_responses_to_send = response_to_send->next;
+
+      json_decref(response_to_send->json);
+      free(response_to_send);
     }
   }
 
@@ -533,11 +529,13 @@ bool w_should_log_to_clients(int level)
   w_ht_iter_t iter;
   bool result = false;
 
+  pthread_mutex_lock(&w_client_lock);
+
   if (!clients) {
+    pthread_mutex_unlock(&w_client_lock);
     return false;
   }
 
-  pthread_mutex_lock(&w_client_lock);
   if (w_ht_first(clients, &iter)) do {
     struct watchman_client *client = w_ht_val_ptr(iter.value);
 

@@ -528,7 +528,7 @@ json_t *bunser(const char *buf, const char *end,
     json_int_t *needed, json_error_t *jerr);
 
 struct watchman_client_response {
-  struct watchman_client_response *next, *prev;
+  struct watchman_client_response *next;
   json_t *json;
 };
 
@@ -545,8 +545,6 @@ struct watchman_client {
   struct watchman_client_response *head, *tail;
   /* map of subscription name => struct watchman_client_subscription */
   w_ht_t *subscriptions;
-
-  pthread_mutex_t lock;
 };
 extern pthread_mutex_t w_client_lock;
 extern w_ht_t *clients;
