@@ -40,7 +40,7 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
   unsigned int sync_timeout = 0;
 
   if (json_array_size(args) == 3) {
-    json_t *options = json_array_get(args, 3);
+    json_t *options = json_array_get(args, 2);
     if (options) {
       json_t *st_json = json_object_get(options, "sync_timeout");
       if (st_json) {
