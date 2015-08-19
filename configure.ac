@@ -55,15 +55,25 @@ AC_ARG_WITH(buildinfo, [
  AC_DEFINE_UNQUOTED(WATCHMAN_BUILD_INFO, "$withval", [build info])
 ])
 
+xprefix=$prefix
+if test "$xprefix" = "NONE"; then
+  xprefix=$ac_default_prefix
+fi
 
-WATCHMAN_STATE_DIR="\$(prefix)/var/run/watchman"
+WATCHMAN_STATE_DIR="$xprefix/var/run/watchman"
 AC_ARG_ENABLE(statedir, [
   --enable-statedir=PATH  Use PATH as the default for state, log files
                           and sockets instead of using your system tempdir
 ],[
  WATCHMAN_STATE_DIR="$enableval"
 ])
-AC_SUBST(WATCHMAN_STATE_DIR)
+
+if test "$WATCHMAN_STATE_DIR" != "no"; then
+  AC_DEFINE_UNQUOTED(WATCHMAN_STATE_DIR,
+    ["$WATCHMAN_STATE_DIR"],
+    [watchman state directory])
+fi
+AM_CONDITIONAL(WATCHMAN_STATE_DIR, [test "$WATCHMAN_STATE_DIR" != "no"])
 
 want_python=yes
 AC_ARG_WITH(python, [
@@ -217,6 +227,12 @@ AC_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([Makefile thirdparty/jansson/jansson_config.h])
 AC_OUTPUT
 
+if test "$WATCHMAN_STATE_DIR" != "no"; then
+  reported_state_directory="$WATCHMAN_STATE_DIR"
+else
+  reported_state_directory="System temporary directory"
+fi
+
 cat << EOF
 
 Your build configuration:
@@ -226,6 +242,7 @@ Your build configuration:
         LDFLAGS = $LDFLAGS
         prefix: $prefix
         version: $VERSION
+        state directory: $reported_state_directory
 
 EOF
 
