@@ -44,11 +44,11 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
     if (options) {
       json_t *st_json = json_object_get(options, "sync_timeout");
       if (st_json) {
-        sync_timeout = json_integer_value(st_json);
+        sync_timeout = (unsigned int)json_integer_value(st_json);
       }
     }
   }
-  else if (json_array_size(args != 2)) {
+  else if (json_array_size(args) != 2) {
     send_error_response(client, "wrong number of arguments to 'clock'");
     return;
   }
