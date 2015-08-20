@@ -506,7 +506,7 @@ void w_event_destroy(w_evt_t evt) {
 }
 
 bool w_event_test_and_clear(w_evt_t evt) {
-  bool was_set = WaitForSingleObject(evt, 0);
+  bool was_set = WaitForSingleObject(evt, 0) == WAIT_OBJECT_0;
   ResetEvent(evt);
   return was_set;
 }

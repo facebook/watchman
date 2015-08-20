@@ -1733,6 +1733,9 @@ static void notify_thread(w_root_t *root)
         if (w_ht_size(root->pending_uniq) >= WATCHMAN_BATCH_LIMIT) {
           break;
         }
+        if (!wait_for_notify(root, 0)) {
+          break;
+        }
       }
       w_event_set(root->have_pending_evt);
     }
@@ -1782,7 +1785,9 @@ static void io_thread(w_root_t *root)
 
     // Wait for the notify thread to give us pending items, or for
     // the settle period to expire
+    w_log(W_LOG_DBG, "poll_events timeout=%dms\n", timeoutms);
     w_poll_events(&pevt, 1, timeoutms);
+    w_log(W_LOG_DBG, " ... wake up\n");
     if (!w_event_test_and_clear(root->have_pending_evt)) {
       // No new pending items were given to us, so consider that
       // we may not be settled.
