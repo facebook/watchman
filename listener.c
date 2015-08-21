@@ -20,6 +20,9 @@ static pthread_t listener_thread;
 static HANDLE listener_thread_event;
 #endif
 static volatile bool stopping = false;
+#ifdef HAVE_LIBGIMLI_H
+static volatile struct gimli_heartbeat *hb = NULL;
+#endif
 
 json_t *make_response(void)
 {
@@ -929,9 +932,6 @@ bool w_start_listener(const char *path)
   sigset_t sigset;
 #endif
   void *ignored;
-#ifdef HAVE_LIBGIMLI_H
-  volatile struct gimli_heartbeat *hb = NULL;
-#endif
   struct timeval tv;
 
   listener_thread = pthread_self();
