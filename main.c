@@ -257,6 +257,11 @@ static void spawn_via_launchd(void)
       waitpid(pid, &res, 0);
     }
     posix_spawnattr_destroy(&attr);
+
+    // Forcibly remove the plist.  In some cases it may have some attributes
+    // set that prevent launchd from loading it.  This can happen where
+    // the system was re-imaged or restored from a backup
+    unlink(plist_path);
   }
 
   fp = fopen(plist_path, "w");
@@ -291,6 +296,8 @@ static void spawn_via_launchd(void)
 "        <dict>\n"
 "            <key>SockPathName</key>\n"
 "            <string>%s</string>\n"
+"            <key>SockPathMode</key>\n"
+"            <integer>%d</integer>\n"
 "        </dict>\n"
 "    </dict>\n"
 "    <key>KeepAlive</key>\n"
@@ -308,7 +315,7 @@ static void spawn_via_launchd(void)
 "</dict>\n"
 "</plist>\n",
     watchman_path, log_name, log_level, sock_name,
-    watchman_state_file, sock_name,
+    watchman_state_file, sock_name, 0600,
     getenv("PATH"));
   fclose(fp);
   // Don't rely on umask, ensure we have the correct perms
@@ -393,29 +400,70 @@ static void compute_file_name(char **strp,
   str = *strp;
 
   if (!str) {
+    /* We'll put our various artifacts in a user specific dir
+     * within the state dir location */
+    char *state_dir = NULL;
+    const char *state_parent =
 #ifdef WATCHMAN_STATE_DIR
-    /* avoid redundant naming if they picked something like
-     * "/var/watchman" */
-    ignore_result(asprintf(&str, "%s%c%s%s%s",
-          WATCHMAN_STATE_DIR,
-          WATCHMAN_DIR_SEP,
-          user,
-          suffix[0] ? "." : "",
-          suffix));
+          WATCHMAN_STATE_DIR
 #else
-    ignore_result(asprintf(&str, "%s%c%cwatchman.%s%s%s",
-          watchman_tmp_dir,
-          WATCHMAN_DIR_SEP,
-          WATCHMAN_DIR_DOT,
-          user,
-          suffix[0] ? "." : "",
-          suffix));
+          watchman_tmp_dir
 #endif
-  }
+          ;
 
-  if (!str) {
-    w_log(W_LOG_ERR, "out of memory computing %s", what);
-    abort();
+    ignore_result(asprintf(&state_dir, "%s%c%s-state",
+          state_parent,
+          WATCHMAN_DIR_SEP,
+          user));
+
+    if (!state_dir) {
+      w_log(W_LOG_ERR, "out of memory computing %s\n", what);
+      exit(1);
+    }
+
+    if (mkdir(state_dir, 0700) == 0) {
+      // We created it, therefore we own it
+    } else if (errno == EEXIST) {
+#ifndef _WIN32
+      // Already present, verify ownership
+      struct stat st;
+      uid_t euid = geteuid();
+
+      if (stat(state_dir, &st) != 0) {
+        w_log(W_LOG_ERR, "stat(%s): %s\n", state_dir, strerror(errno));
+        exit(1);
+      }
+      if (euid != st.st_uid) {
+        w_log(W_LOG_ERR,
+            "the owner of %s is uid %d and doesn't match your euid %d\n",
+            state_dir, st.st_uid, euid);
+        exit(1);
+      }
+      if (st.st_mode & 0022) {
+        w_log(W_LOG_ERR,
+            "the permissions on %s allow others to write to it. "
+            "Verify that you own the contents and then fix its "
+            "permissions by running `chmod 0700 %s`\n",
+            state_dir,
+            state_dir);
+        exit(1);
+      }
+#endif
+    } else {
+      w_log(W_LOG_ERR, "failed to create %s: %s\n",
+          state_dir, strerror(errno));
+      exit(1);
+    }
+
+    ignore_result(asprintf(&str, "%s%c%s",
+          state_dir, WATCHMAN_DIR_SEP, suffix));
+
+    if (!str) {
+      w_log(W_LOG_ERR, "out of memory computing %s", what);
+      abort();
+    }
+
+    free(state_dir);
   }
 
 #ifndef _WIN32
@@ -471,7 +519,7 @@ static void setup_sock_name(void)
     asprintf(&sock_name, "\\\\.\\pipe\\watchman-%s", user);
   }
 #else
-  compute_file_name(&sock_name, user, "", "sockname");
+  compute_file_name(&sock_name, user, "sock", "sockname");
 #endif
   compute_file_name(&watchman_state_file, user, "state", "statefile");
   compute_file_name(&log_name, user, "log", "logname");

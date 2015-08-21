@@ -90,6 +90,11 @@ If you're running a `homebrew` build of watchman, you'll find the logs in a
 path named something like
 `/usr/local/Cellar/watchman/3.2.0/var/run/watchman/<USER>.log`.
 
+*Since 3.8.*
+
+Watchman places the logs in a file named `<STATEDIR>/log`, which will
+typically be a location like `<PREFIX>/var/run/watchman/<USER>-state/log`.
+
 The default log location may be overridden by the `--logfile` [Server Option](
 /watchman/docs/cli-options.html#server-options).
 

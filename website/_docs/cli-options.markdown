@@ -32,14 +32,32 @@ watchman will use `/tmp`.  When we refer to `<TMPDIR>` in this documentation we
 mean the result of this resolution.
 
 Watchman tracks its persistent state in a location that we refer to as the
-`<STATEDIR>` in this documentation.  Since Watchman version 3.1 the `STATEDIR`
-has defaulted to `<PREFIX>/var/run/watchman`.  You can change this default when
-you build watchman by using the configure option `--enable-statedir`.
+`<STATEDIR>` in this documentation.
+
+*Since 3.1.*
+
+The `STATEDIR` defaulted to `<PREFIX>/var/run/watchman`.  You can change this
+default when you build watchman by using the configure option
+`--enable-statedir`.
 
 Earlier versions of Watchman didn't have a default statedir and would instead
 use the `<TMPDIR>` for this state.  We switched away from that because some
 environments randomize the `<TMPDIR>` location and this made it difficult for
 clients to locate the Watchman service.
+
+*Since 3.8.*
+
+The `STATEDIR` defaults to `<PREFIX>/var/run/watchman/<USER>-state`.  You can
+change this default when you build watchman by using the configure option
+`--enable-statedir`; the configure option replaces the
+`<PREFIX>/var/run/watchman` portion of this string.  If you specify
+`--disable-statedir` then that portion of the string will be computed from the
+`<TMPDIR>` location.
+
+Watchman will create the `<USER>-state` portion if it does not exist, and will
+perform some permission and ownership checks to reduce the risk of untrusted
+users placing files in this location.  If those checks are not satisfied,
+watchman will refuse to start.
 
 
 ## Locating the service

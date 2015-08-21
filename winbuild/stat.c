@@ -3,6 +3,28 @@
 
 #include "watchman.h"
 
+int mkdir(const char *path, int mode) {
+  WCHAR *wpath = w_utf8_to_win_unc(path, -1);
+  DWORD err;
+  BOOL res;
+
+  unused_parameter(mode);
+
+  if (!wpath) {
+    return -1;
+  }
+
+  res = CreateDirectoryW(wpath, NULL);
+  err = GetLastError();
+  free(wpath);
+
+  if (res) {
+    return 0;
+  }
+  errno = map_win32_err(err);
+  return -1;
+}
+
 int lstat(const char *path, struct stat *st) {
   FILE_BASIC_INFO binfo;
   FILE_STANDARD_INFO sinfo;
