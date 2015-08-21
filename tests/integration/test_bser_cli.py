@@ -26,6 +26,8 @@ class TestDashJCliOption(unittest.TestCase):
         cli_cmd = [
             'watchman',
             '--sockname={}'.format(sockname),
+            '--logfile=/BOGUS',
+            '--statefile=/BOGUS',
             '--no-spawn',
             '--no-local',
             '-j',
@@ -53,6 +55,8 @@ class TestDashJCliOption(unittest.TestCase):
         cli_cmd = [
             'watchman',
             '--sockname={}'.format(sockname),
+            '--logfile=/BOGUS',
+            '--statefile=/BOGUS',
             '--no-spawn',
             '--no-local',
             '-j',

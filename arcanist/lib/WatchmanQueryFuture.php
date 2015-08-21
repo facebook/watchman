@@ -24,6 +24,8 @@ class WatchmanQueryFuture extends FutureProxy {
       "%C $args -U %s %s %s %s %s",
       "$repo_root/watchman",
       $sockname,
+      '--logfile=/BOGUS',
+      '--statefile=/BOGUS',
       '--no-pretty',
       '--no-spawn',
       '--no-local',
