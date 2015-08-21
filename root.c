@@ -1771,7 +1771,9 @@ static void io_thread(w_root_t *root)
       struct timeval start;
 
       /* first order of business is to find all the files under our root */
-      w_ioprio_set_low();
+      if (cfg_get_bool(root, "iothrottle", false)) {
+        w_ioprio_set_low();
+      }
       w_root_lock(root);
       gettimeofday(&start, NULL);
       w_root_add_pending(root, root->root_path, false, start, false);
@@ -1780,7 +1782,9 @@ static void io_thread(w_root_t *root)
       }
       root->done_initial = true;
       w_root_unlock(root);
-      w_ioprio_set_normal();
+      if (cfg_get_bool(root, "iothrottle", false)) {
+        w_ioprio_set_normal();
+      }
 
       w_log(W_LOG_ERR, "(re)crawl complete\n");
     }
