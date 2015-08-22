@@ -1259,9 +1259,6 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
   struct dirent *dirent;
   w_ht_iter_t i;
   char path[WATCHMAN_NAME_MAX];
-#if HAVE_READDIR_R
-  char direntbuf[WATCHMAN_NAME_MAX + sizeof(struct dirent)];
-#endif
 
   dir = w_root_resolve_dir(root, dir_name, true);
 
@@ -1287,14 +1284,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
     }
   } while (w_ht_next(dir->files, &i));
 
-  while (
-#if HAVE_READDIR_R
-      readdir_r(osdir, (struct dirent*)direntbuf, &dirent) == 0 &&
-      dirent != NULL
-#else
-      (dirent = readdir(osdir)) != NULL
-#endif
-      ) {
+  while ((dirent = readdir(osdir)) != NULL) {
     w_string_t *name;
 
     // Don't follow parent/self links
