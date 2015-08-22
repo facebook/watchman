@@ -372,7 +372,7 @@ static void winwatch_root_stop_watch_dir(watchman_global_watcher_t watcher,
 }
 
 static bool winwatch_root_consume_notify(watchman_global_watcher_t watcher,
-    w_root_t *root)
+    w_root_t *root, struct watchman_pending_collection *coll)
 {
   struct winwatch_root_state *state = root->watch;
   struct winwatch_changed_item *head, *item;
@@ -395,7 +395,7 @@ static bool winwatch_root_consume_notify(watchman_global_watcher_t watcher,
 
     w_log(W_LOG_DBG, "readchanges: add pending %.*s\n",
         item->name->len, item->name->buf);
-    w_root_add_pending(root, item->name, false, now, true);
+    w_pending_coll_add(coll, item->name, false, now, true);
 
     w_string_delref(item->name);
     free(item);

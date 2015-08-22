@@ -163,7 +163,7 @@ static void portfs_root_stop_watch_dir(watchman_global_watcher_t watcher,
 }
 
 static bool portfs_root_consume_notify(watchman_global_watcher_t watcher,
-    w_root_t *root)
+    w_root_t *root, struct watchman_pending_collection *coll)
 {
   struct portfs_root_state *state = root->watch;
   uint_t i, n;
@@ -206,14 +206,14 @@ static bool portfs_root_consume_notify(watchman_global_watcher_t watcher,
         w_root_cancel(root);
         return false;
       }
-      w_root_add_pending(root, dir->path, false, now, true);
+      w_pending_coll_add(coll, dir->path, false, now, true);
 
     } else {
       struct watchman_file *file = state->portevents[i].portev_user;
       w_string_t *path;
 
       path = w_string_path_cat(file->parent->path, file->name);
-      w_root_add_pending(root, path, true, now, true);
+      w_pending_coll_add(coll, path, true, now, true);
       w_log(W_LOG_DBG, "port: file %.*s\n", path->len, path->buf);
       w_string_delref(path);
     }

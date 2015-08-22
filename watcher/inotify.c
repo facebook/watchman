@@ -231,6 +231,7 @@ static void invalidate_watch_descriptors(w_root_t *root,
 
 static void process_inotify_event(
     w_root_t *root,
+    struct watchman_pending_collection *coll,
     struct inotify_event *ine,
     struct timeval now)
 {
@@ -341,7 +342,7 @@ static void process_inotify_event(
 
       w_log(W_LOG_DBG, "add_pending for inotify mask=%x %.*s\n",
           ine->mask, name->len, name->buf);
-      w_root_add_pending(root, name, true, now, true);
+      w_pending_coll_add(coll, name, true, now, true);
 
       w_string_delref(name);
 
@@ -357,7 +358,7 @@ static void process_inotify_event(
 }
 
 static bool inot_root_consume_notify(watchman_global_watcher_t watcher,
-    w_root_t *root)
+    w_root_t *root, struct watchman_pending_collection *coll)
 {
   struct inot_root_state *state = root->watch;
   struct inotify_event *ine;
@@ -382,7 +383,7 @@ static bool inot_root_consume_notify(watchman_global_watcher_t watcher,
       iptr = iptr + sizeof(*ine) + ine->len) {
     ine = (struct inotify_event*)iptr;
 
-    process_inotify_event(root, ine, now);
+    process_inotify_event(root, coll, ine, now);
 
     if (root->cancelled) {
       return false;

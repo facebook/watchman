@@ -222,7 +222,7 @@ done:
 }
 
 static bool fsevents_root_consume_notify(watchman_global_watcher_t watcher,
-    w_root_t *root)
+    w_root_t *root, struct watchman_pending_collection *coll)
 {
   struct watchman_fsevent *head, *evt;
   int n = 0;
@@ -275,7 +275,7 @@ break_out:
     recurse = (evt->flags & kFSEventStreamEventFlagMustScanSubDirs)
               ? true : false;
 
-    w_root_add_pending(root, evt->path, recurse, now, true);
+    w_pending_coll_add(coll, evt->path, recurse, now, true);
 
     w_string_delref(evt->path);
     free(evt);
