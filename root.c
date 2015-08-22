@@ -22,16 +22,10 @@ static long next_root_number = 1;
  * that we have done so and provide some advice on how the user can cure us. */
 char *poisoned_reason = NULL;
 
-static void crawler(w_root_t *root, w_string_t *dir_name,
-    struct timeval now, bool recursive);
+static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
+    w_string_t *dir_name, struct timeval now, bool recursive);
 
 static void w_root_teardown(w_root_t *root);
-
-static void free_pending(struct watchman_pending_fs *p)
-{
-  w_string_delref(p->path);
-  free(p);
-}
 
 static void delete_trigger(w_ht_val_t val)
 {
@@ -134,7 +128,6 @@ static bool w_root_init(w_root_t *root, char **errmsg)
 
   root->cursors = w_ht_new(2, &w_ht_string_funcs);
   root->suffixes = w_ht_new(2, &w_ht_string_funcs);
-  root->pending_uniq = w_ht_new(WATCHMAN_BATCH_LIMIT, &w_ht_string_funcs);
 
   root->dirname_to_dir = w_ht_new(HINT_NUM_DIRS, &dirname_hash_funcs);
   root->ticks = 1;
@@ -297,7 +290,7 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
 
   root->case_sensitive = is_case_sensitive_filesystem(path);
 
-  root->have_pending_evt = w_event_make();
+  w_pending_coll_init(&root->pending);
   root->root_path = w_string_new(path);
   root->commands = w_ht_new(2, &trigger_hash_funcs);
   root->query_cookies = w_ht_new(2, &w_ht_string_funcs);
@@ -355,6 +348,17 @@ void w_root_unlock(w_root_t *root)
   }
 }
 
+void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec *deadline) {
+  struct timeval now, delta, target;
+
+  /* compute deadline */
+  gettimeofday(&now, NULL);
+  delta.tv_sec = timeoutms / 1000;
+  delta.tv_usec = (timeoutms - (delta.tv_sec * 1000)) * 1000;
+  w_timeval_add(now, delta, &target);
+  w_timeval_to_timespec(target, deadline);
+}
+
 /* Ensure that we're synchronized with the state of the
  * filesystem at the current time.
  * We do this by touching a cookie file and waiting to
@@ -374,7 +378,6 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
   w_stm_t file;
   int errcode = 0;
   struct timespec deadline;
-  struct timeval now, delta, target;
 
   if (pthread_cond_init(&cookie.cond, NULL)) {
     errcode = errno;
@@ -406,11 +409,7 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
   w_stm_close(file);
 
   /* compute deadline */
-  gettimeofday(&now, NULL);
-  delta.tv_sec = timeoutms / 1000;
-  delta.tv_usec = (timeoutms - (delta.tv_sec * 1000)) * 1000;
-  w_timeval_add(now, delta, &target);
-  w_timeval_to_timespec(target, &deadline);
+  w_timeoutms_to_abs_timespec(timeoutms, &deadline);
 
   w_log(W_LOG_DBG, "sync_to_now [%s] waiting\n", path_str->buf);
 
@@ -443,82 +442,39 @@ out:
   return true;
 }
 
-bool w_root_add_pending(w_root_t *root, w_string_t *path,
-    bool recursive, struct timeval now, bool via_notify)
+bool w_root_process_pending(w_root_t *root,
+    struct watchman_pending_collection *coll,
+    bool pull_from_root)
 {
-  struct watchman_pending_fs *p;
+  struct watchman_pending_fs *p, *pending;
 
-  p = w_ht_val_ptr(w_ht_get(root->pending_uniq, w_ht_ptr_val(path)));
-  if (p) {
-    if (!p->recursive && recursive) {
-      p->recursive = true;
-    }
-    return true;
+  if (pull_from_root) {
+    // You MUST own root->pending lock for this
+    w_pending_coll_append(coll, &root->pending);
   }
 
-  p = calloc(1, sizeof(*p));
-  if (!p) {
-    return false;
-  }
-
-  w_log(W_LOG_DBG, "add_pending: %.*s\n", path->len, path->buf);
-
-  p->recursive = recursive;
-  p->now = now;
-  p->via_notify = via_notify;
-  p->path = path;
-  w_string_addref(path);
-
-  p->next = root->pending;
-  root->pending = p;
-  w_ht_set(root->pending_uniq, w_ht_ptr_val(path), w_ht_ptr_val(p));
-
-  return true;
-}
-
-bool w_root_add_pending_rel(w_root_t *root, struct watchman_dir *dir,
-    const char *name, bool recursive,
-    struct timeval now, bool via_notify)
-{
-  char path[WATCHMAN_NAME_MAX];
-  w_string_t *path_str;
-  bool res;
-
-  snprintf(path, sizeof(path), "%.*s%c%s", dir->path->len,
-      dir->path->buf, WATCHMAN_DIR_SEP, name);
-  path_str = w_string_new(path);
-
-  res = w_root_add_pending(root, path_str, recursive, now, via_notify);
-
-  w_string_delref(path_str);
-
-  return res;
-}
-
-bool w_root_process_pending(w_root_t *root, bool drain)
-{
-  struct watchman_pending_fs *pending, *p;
-
-  if (!root->pending) {
+  if (!coll->pending) {
     return false;
   }
 
   w_log(W_LOG_DBG, "processing %d events in %s\n",
-      w_ht_size(root->pending_uniq), root->root_path->buf);
-  w_ht_free_entries(root->pending_uniq);
+      w_ht_size(coll->pending_uniq), root->root_path->buf);
 
-  pending = root->pending;
-  root->pending = NULL;
+  // Steal the contents
+  pending = coll->pending;
+  coll->pending = NULL;
+  w_ht_free_entries(coll->pending_uniq);
 
   while (pending) {
     p = pending;
     pending = p->next;
 
-    if (!drain && !root->cancelled) {
-      w_root_process_path(root, p->path, p->now, p->recursive, p->via_notify);
+    if (!root->cancelled) {
+      w_root_process_path(root, coll, p->path, p->now,
+          p->recursive, p->via_notify);
     }
 
-    free_pending(p);
+    w_pending_fs_free(p);
   }
 
   return true;
@@ -810,7 +766,8 @@ static w_string_t *w_resolve_filesystem_canonical_name(const char *path)
 }
 
 static void stat_path(w_root_t *root,
-    w_string_t *full_path, struct timeval now, bool recursive, bool via_notify)
+    struct watchman_pending_collection *coll, w_string_t *full_path,
+    struct timeval now, bool recursive, bool via_notify)
 {
   struct stat st;
   int res, err;
@@ -1035,12 +992,12 @@ static void stat_path(w_root_t *root,
 
         if (!watcher_ops->has_per_file_notifications) {
           /* we always need to crawl, but may not need to be fully recursive */
-          crawler(root, full_path, now, recursive);
+          crawler(root, coll, full_path, now, recursive);
         } else {
           /* we get told about changes on the child, so we only
            * need to crawl if we've never seen the dir before */
           if (recursive) {
-            crawler(root, full_path, now, recursive);
+            crawler(root, coll, full_path, now, recursive);
           }
         }
       }
@@ -1052,7 +1009,7 @@ static void stat_path(w_root_t *root,
     if (watcher_ops->has_per_file_notifications && !S_ISDIR(st.st_mode) &&
         !w_string_equal(dir_name, root->root_path)) {
       /* Make sure we update the mtime on the parent directory. */
-      stat_path(root, dir_name, now, false, via_notify);
+      stat_path(root, coll, dir_name, now, false, via_notify);
     }
   }
 
@@ -1066,7 +1023,8 @@ out:
 }
 
 
-void w_root_process_path(w_root_t *root, w_string_t *full_path,
+void w_root_process_path(w_root_t *root,
+    struct watchman_pending_collection *coll, w_string_t *full_path,
     struct timeval now, bool recursive, bool via_notify)
 {
   /* From a particular query's point of view, there are four sorts of cookies we
@@ -1108,9 +1066,9 @@ void w_root_process_path(w_root_t *root, w_string_t *full_path,
   }
 
   if (w_string_equal(full_path, root->root_path)) {
-    crawler(root, full_path, now, recursive);
+    crawler(root, coll, full_path, now, recursive);
   } else {
-    stat_path(root, full_path, now, recursive, via_notify);
+    stat_path(root, coll, full_path, now, recursive, via_notify);
   }
 }
 
@@ -1250,8 +1208,8 @@ void set_poison_state(w_root_t *root, struct watchman_dir *dir,
   poisoned_reason = why;
 }
 
-static void crawler(w_root_t *root, w_string_t *dir_name,
-    struct timeval now, bool recursive)
+static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
+    w_string_t *dir_name, struct timeval now, bool recursive)
 {
   struct watchman_dir *dir;
   struct watchman_file *file;
@@ -1306,7 +1264,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
       file->maybe_deleted = false;
     }
     if (!file || !file->exists) {
-      w_root_add_pending_rel(root, dir, dirent->d_name,
+      w_pending_coll_add_rel(coll, dir, dirent->d_name,
           true, now, false);
     }
     w_string_delref(name);
@@ -1319,7 +1277,7 @@ static void crawler(w_root_t *root, w_string_t *dir_name,
     file = w_ht_val_ptr(i.value);
     if (file->exists && (file->maybe_deleted ||
           (S_ISDIR(file->st.st_mode) && recursive))) {
-      w_root_add_pending_rel(root, dir, file->name->buf,
+      w_pending_coll_add_rel(coll, dir, file->name->buf,
           recursive, now, false);
     }
   } while (w_ht_next(dir->files, &i));
@@ -1478,7 +1436,7 @@ static bool handle_should_recrawl(w_root_t *root)
           root->failure_reason->len, root->failure_reason->buf);
       w_root_cancel(root);
     }
-    w_event_set(root->have_pending_evt);
+    w_pending_coll_ping(&root->pending);
     return true;
   }
   return false;
@@ -1489,9 +1447,10 @@ static bool wait_for_notify(w_root_t *root, int timeoutms)
   return watcher_ops->root_wait_notify(watcher, root, timeoutms);
 }
 
-static bool consume_notify(w_root_t *root)
+static bool consume_notify(w_root_t *root,
+    struct watchman_pending_collection *coll)
 {
-  return watcher_ops->root_consume_notify(watcher, root);
+  return watcher_ops->root_consume_notify(watcher, root, coll);
 }
 
 static void free_file_node(struct watchman_file *file)
@@ -1712,46 +1671,59 @@ static bool consider_reap(w_root_t *root) {
 // we have drained the inotify descriptor
 static void notify_thread(w_root_t *root)
 {
+  struct watchman_pending_collection pending;
+
+  if (!w_pending_coll_init(&pending)) {
+    w_root_cancel(root);
+    return;
+  }
+
   if (!watcher_ops->root_start(watcher, root)) {
     w_log(W_LOG_ERR, "failed to start root %.*s, cancelling watch: %.*s\n",
         root->root_path->len, root->root_path->buf,
         root->failure_reason->len, root->failure_reason->buf);
     w_root_cancel(root);
+    w_pending_coll_destroy(&pending);
     return;
   }
 
   // signal that we're done here, so that we can start the
   // io thread after this point
-  w_event_set(root->have_pending_evt);
+  w_pending_coll_ping(&root->pending);
 
   while (!root->cancelled) {
     // big number because not all watchers can deal with
     // -1 meaning infinite wait at the moment
-    bool got_some = wait_for_notify(root, 86400);
-    w_root_lock(root);
-    if (got_some) {
-      root->ticks++;
-      while (consume_notify(root)) {
-        if (w_ht_size(root->pending_uniq) >= WATCHMAN_BATCH_LIMIT) {
+    if (wait_for_notify(root, 86400)) {
+      while (consume_notify(root, &pending)) {
+        if (w_pending_coll_size(&pending) >= WATCHMAN_BATCH_LIMIT) {
           break;
         }
         if (!wait_for_notify(root, 0)) {
           break;
         }
       }
-      w_event_set(root->have_pending_evt);
+      if (w_pending_coll_size(&pending) > 0) {
+        w_pending_coll_lock(&root->pending);
+        w_pending_coll_append(&root->pending, &pending);
+        w_pending_coll_ping(&root->pending);
+        w_pending_coll_unlock(&root->pending);
+      }
     }
+
+    w_root_lock(root);
     handle_should_recrawl(root);
     w_root_unlock(root);
   }
+
+  w_pending_coll_destroy(&pending);
 }
 
 static void io_thread(w_root_t *root)
 {
-  struct watchman_event_poll pevt;
   int timeoutms, biggest_timeout;
+  struct watchman_pending_collection pending;
 
-  pevt.evt = root->have_pending_evt;
   timeoutms = root->trigger_settle;
 
   // Upper bound on sleep delay.  These options are measured in seconds.
@@ -1766,6 +1738,8 @@ static void io_thread(w_root_t *root)
   // And convert to milliseconds
   biggest_timeout *= 1000;
 
+  w_pending_coll_init(&pending);
+
   while (!root->cancelled) {
     if (!root->done_initial) {
       struct timeval start;
@@ -1776,9 +1750,10 @@ static void io_thread(w_root_t *root)
       }
       w_root_lock(root);
       gettimeofday(&start, NULL);
-      w_root_add_pending(root, root->root_path, false, start, false);
-      while (root->pending) {
-        w_root_process_pending(root, false);
+      w_pending_coll_add(&root->pending, root->root_path,
+          false, start, false);
+      while (w_root_process_pending(root, &pending, true)) {
+        ;
       }
       root->done_initial = true;
       w_root_unlock(root);
@@ -1786,19 +1761,29 @@ static void io_thread(w_root_t *root)
         w_ioprio_set_normal();
       }
 
-      w_log(W_LOG_ERR, "(re)crawl complete\n");
+      w_log(W_LOG_ERR, "%scrawl complete\n", root->recrawl_count ? "re" : "");
+      timeoutms = root->trigger_settle;
     }
 
     // Wait for the notify thread to give us pending items, or for
     // the settle period to expire
     w_log(W_LOG_DBG, "poll_events timeout=%dms\n", timeoutms);
-    w_poll_events(&pevt, 1, timeoutms);
+    w_pending_coll_lock_and_wait(&root->pending, timeoutms);
     w_log(W_LOG_DBG, " ... wake up\n");
-    if (!w_event_test_and_clear(root->have_pending_evt)) {
+    w_pending_coll_append(&pending, &root->pending);
+    w_pending_coll_unlock(&root->pending);
+
+    if (w_pending_coll_size(&pending) == 0) {
       // No new pending items were given to us, so consider that
       // we may not be settled.
 
       w_root_lock(root);
+      if (!root->done_initial) {
+        // we need to recrawl, stop what we're doing here
+        w_root_unlock(root);
+        continue;
+      }
+
       process_subscriptions(root);
       process_triggers(root);
       if (consider_reap(root)) {
@@ -1820,16 +1805,26 @@ static void io_thread(w_root_t *root)
     timeoutms = root->trigger_settle;
 
     w_root_lock(root);
+    if (!root->done_initial) {
+      // we need to recrawl.  Discard these notifications
+      w_pending_coll_drain(&pending);
+      w_root_unlock(root);
+      continue;
+    }
+
+    root->ticks++;
     // If we're not settled, we need an opportunity to age out
     // dead file nodes.  This happens in the test harness.
     consider_age_out(root);
 
-    while (root->pending) {
-      w_root_process_pending(root, false);
+    while (w_root_process_pending(root, &pending, false)) {
+      ;
     }
 
     w_root_unlock(root);
   }
+
+  w_pending_coll_destroy(&pending);
 }
 
 /* This function always returns a buffer that needs to
@@ -1885,19 +1880,7 @@ static void w_root_teardown(w_root_t *root)
     w_ht_free(root->dirname_to_dir);
     root->dirname_to_dir = NULL;
   }
-  if (root->pending_uniq) {
-    w_ht_free(root->pending_uniq);
-    root->pending_uniq = NULL;
-  }
-
-  while (root->pending) {
-    struct watchman_pending_fs *p;
-
-    p = root->pending;
-    root->pending = p->next;
-    w_string_delref(p->path);
-    free(p);
-  }
+  w_pending_coll_drain(&root->pending);
 
   while (root->latest_file) {
     file = root->latest_file;
@@ -1931,10 +1914,6 @@ void w_root_delref(w_root_t *root)
   w_ht_free(root->commands);
   w_ht_free(root->query_cookies);
 
-  if (root->have_pending_evt) {
-    w_event_destroy(root->have_pending_evt);
-  }
-
   if (root->config_file) {
     json_decref(root->config_file);
   }
@@ -1955,6 +1934,7 @@ void w_root_delref(w_root_t *root)
   if (root->query_cookie_prefix) {
     w_string_delref(root->query_cookie_prefix);
   }
+  w_pending_coll_destroy(&root->pending);
 
   free(root);
   w_refcnt_del(&live_roots);
@@ -2389,17 +2369,14 @@ static bool start_detached_root_thread(w_root_t *root, char **errmsg,
 
 static bool root_start(w_root_t *root, char **errmsg)
 {
-  struct watchman_event_poll pevt;
-
   if (!start_detached_root_thread(root, errmsg,
         run_notify_thread, &root->notify_thread)) {
     return false;
   }
 
   // Wait for it to signal that the watcher has been initialized
-  pevt.evt = root->have_pending_evt;
-  w_poll_events(&pevt, 1, -1 /* poll(2) infinite timeout */);
-  w_event_test_and_clear(root->have_pending_evt);
+  w_pending_coll_lock_and_wait(&root->pending, -1 /* infinite */);
+  w_pending_coll_unlock(&root->pending);
 
   if (!start_detached_root_thread(root, errmsg,
         run_io_thread, &root->io_thread)) {
@@ -2417,15 +2394,21 @@ w_root_t *w_root_resolve_for_client_mode(const char *filename, char **errmsg)
   root = root_resolve(filename, true, &created, errmsg);
   if (created) {
     struct timeval start;
+    struct watchman_pending_collection pending;
+
+    w_pending_coll_init(&pending);
 
     /* force a walk now */
     gettimeofday(&start, NULL);
     w_root_lock(root);
-    w_root_add_pending(root, root->root_path, true, start, false);
-    while (root->pending) {
-      w_root_process_pending(root, false);
+    w_pending_coll_add(&root->pending, root->root_path,
+        true, start, false);
+    while (w_root_process_pending(root, &pending, true)) {
+      ;
     }
     w_root_unlock(root);
+
+    w_pending_coll_destroy(&pending);
   }
   return root;
 }
@@ -2437,9 +2420,7 @@ static void signal_root_threads(w_root_t *root)
   if (!pthread_equal(root->notify_thread, pthread_self())) {
     pthread_kill(root->notify_thread, SIGUSR1);
   }
-  if (root->have_pending_evt) {
-    w_event_set(root->have_pending_evt);
-  }
+  w_pending_coll_ping(&root->pending);
   watcher_ops->root_signal_threads(watcher, root);
 }
 

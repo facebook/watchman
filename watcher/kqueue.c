@@ -211,7 +211,7 @@ static void kqueue_root_stop_watch_dir(watchman_global_watcher_t watcher,
 }
 
 static bool kqueue_root_consume_notify(watchman_global_watcher_t watcher,
-    w_root_t *root)
+    w_root_t *root, struct watchman_pending_collection *coll)
 {
   struct kqueue_root_state *state = root->watch;
   int n;
@@ -248,7 +248,7 @@ static bool kqueue_root_consume_notify(watchman_global_watcher_t watcher,
         w_root_cancel(root);
         return 0;
       }
-      w_root_add_pending(root, dir->path, false, now, false);
+      w_pending_coll_add(coll, dir->path, false, now, false);
     } else {
       // NetBSD defines udata as intptr type, so the cast is necessary
       struct watchman_file *file = (void *)state->keventbuf[i].udata;
@@ -256,7 +256,7 @@ static bool kqueue_root_consume_notify(watchman_global_watcher_t watcher,
       w_string_t *path;
 
       path = w_string_path_cat(file->parent->path, file->name);
-      w_root_add_pending(root, path, true, now, true);
+      w_pending_coll_add(coll, path, true, now, true);
       w_log(W_LOG_DBG, " KQ file %.*s [0x%x]\n", path->len, path->buf, fflags);
       w_string_delref(path);
     }

@@ -44,6 +44,7 @@ SRCS=\
 	bser.c       \
 	hash.c       \
 	ioprio.c     \
+	pending.c    \
 	stream.c     \
 	stream_win.c \
 	stream_stdout.c \
