@@ -5,6 +5,10 @@
 
 #ifdef HAVE_PORT_CREATE
 
+#define WATCHMAN_PORT_EVENTS \
+  FILE_MODIFIED | FILE_ATTRIB | FILE_NOFOLLOW
+
+
 struct portfs_root_state {
   int port_fd;
   port_event_t portevents[WATCHMAN_BATCH_LIMIT];

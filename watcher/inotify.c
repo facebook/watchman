@@ -5,6 +5,20 @@
 
 #ifdef HAVE_INOTIFY_INIT
 
+#ifndef IN_EXCL_UNLINK
+/* defined in <linux/inotify.h> but we can't include that without
+ * breaking userspace */
+# define WATCHMAN_IN_EXCL_UNLINK 0x04000000
+#else
+# define WATCHMAN_IN_EXCL_UNLINK IN_EXCL_UNLINK
+#endif
+
+#define WATCHMAN_INOTIFY_MASK \
+  IN_ATTRIB | IN_CLOSE_WRITE | IN_CREATE | IN_DELETE | \
+  IN_DELETE_SELF | IN_MODIFY | IN_MOVE_SELF | IN_MOVED_FROM | \
+  IN_MOVED_TO | IN_DONT_FOLLOW | IN_ONLYDIR | WATCHMAN_IN_EXCL_UNLINK
+
+
 struct inot_root_state {
   /* we use one inotify instance per watched root dir */
   int infd;
