@@ -5,7 +5,7 @@ var net = require('net');
 var EE = require('events').EventEmitter;
 var util = require('util');
 var childProcess = require('child_process');
-var bser = require('./bser');
+var bser = require('bser');
 
 // We'll emit the responses to these when they get sent down to us
 var unilateralTags = ['subscription', 'log'];

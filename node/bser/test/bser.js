@@ -1,5 +1,5 @@
 var assert = require('assert');
-var bser = require('../bser');
+var bser = require('../');
 var Int64 = require('node-int64');
 
 // This is a hard-coded template representation from the C test suite
@@ -72,4 +72,3 @@ assert.equal(acc.peekString(2), 'lo', 'have the correct remainder');
 // Don't include keys that have undefined values
 var res = bser.dumpToBuffer({expression: undefined});
 assert.deepEqual(bser.loadFromBuffer(res), {});
-
