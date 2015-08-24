@@ -46,6 +46,7 @@ tests/*.trs
 a
 arc
 node/node_modules
+node/bser/node_modules
 website/node_modules
 website/build
 website/src/watchman/docs
