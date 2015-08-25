@@ -40,12 +40,12 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
   unsigned int sync_timeout = 0;
 
   if (json_array_size(args) == 3) {
-    json_t *options = json_array_get(args, 2);
-    if (options) {
-      json_t *st_json = json_object_get(options, "sync_timeout");
-      if (st_json) {
-        sync_timeout = (unsigned int)json_integer_value(st_json);
-      }
+    const char *ignored;
+    if (0 != json_unpack(args, "[s, s, {s?:d}]",
+                         &ignored, &ignored,
+                         "sync_timeout", sync_timeout)) {
+      send_error_response(client, "malformated argument list for 'clock'");
+      return;
     }
   }
   else if (json_array_size(args) != 2) {
@@ -61,11 +61,11 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
 
   if (sync_timeout) {
     w_root_sync_to_now(root, sync_timeout);
-    root->ticks++;
   }
 
   resp = make_response();
   w_root_lock(root);
+  root->ticks++;
   annotate_with_clock(root, resp);
   w_root_unlock(root);
 
