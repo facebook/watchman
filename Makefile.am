@@ -156,6 +156,7 @@ all-local: py-build rb-build lint
 install-exec-local: py-install
 if WATCHMAN_STATE_DIR
 	${INSTALL} -d -m 777 ${DESTDIR}${WATCHMAN_STATE_DIR}
+	chmod g+s ${DESTDIR}${WATCHMAN_STATE_DIR}
 	touch ${DESTDIR}${WATCHMAN_STATE_DIR}/.not-empty
 endif
 

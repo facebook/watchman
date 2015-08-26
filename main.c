@@ -421,11 +421,9 @@ static void compute_file_name(char **strp,
       exit(1);
     }
 
-    if (mkdir(state_dir, 0700) == 0) {
-      // We created it, therefore we own it
-    } else if (errno == EEXIST) {
+    if (mkdir(state_dir, 0700) == 0 || errno == EEXIST) {
 #ifndef _WIN32
-      // Already present, verify ownership
+      // verify ownership
       struct stat st;
       uid_t euid = geteuid();
 
