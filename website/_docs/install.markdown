@@ -57,12 +57,15 @@ $ sudo port install watchman
 
 You can use these steps below to get watchman built.  You will need `autoconf`
 and `automake`.  You may optionally build watchman with `pcre` and `python`
-support.  See below for some more information on options to configure your
-build.
+support.  For python support, you will also need `setuptools` and may need to
+install a `python-dev` or `python-devel` package.
+
+See below for some more information on options to configure your build.
 
 ```bash
 $ git clone https://github.com/facebook/watchman.git
 $ cd watchman
+$ git checkout {{ site.data.current_release.tag }}  # the latest stable release
 $ ./autogen.sh
 $ ./configure
 $ make
