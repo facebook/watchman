@@ -72,6 +72,7 @@ if test "$WATCHMAN_STATE_DIR" != "no"; then
   AC_DEFINE_UNQUOTED(WATCHMAN_STATE_DIR,
     ["$WATCHMAN_STATE_DIR"],
     [watchman state directory])
+  AC_SUBST(WATCHMAN_STATE_DIR)
 fi
 AM_CONDITIONAL(WATCHMAN_STATE_DIR, [test "$WATCHMAN_STATE_DIR" != "no"])
 
