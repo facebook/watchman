@@ -730,6 +730,11 @@ the logs may be placed in <code>&lt;TMPDIR&gt;/.watchman.&lt;USER&gt;.log</code>
 path named something like
 <code>/usr/local/Cellar/watchman/3.2.0/var/run/watchman/&lt;USER&gt;.log</code>.</p>
 
+<p><em>Since 3.8.</em></p>
+
+<p>Watchman places the logs in a file named <code>&lt;STATEDIR&gt;/log</code>, which will
+typically be a location like <code>&lt;PREFIX&gt;/var/run/watchman/&lt;USER&gt;-state/log</code>.</p>
+
 <p>The default log location may be overridden by the <code>--logfile</code> <a href="/watchman/docs/cli-options.html#server-options">Server Option</a>.</p>
 
 <p><a href="/watchman/docs/cli-options.html#quick-note-on-default-locations">Quick note on default locations</a> explains what

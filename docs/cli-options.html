@@ -676,14 +676,32 @@ watchman will use <code>/tmp</code>.  When we refer to <code>&lt;TMPDIR&gt;</cod
 mean the result of this resolution.</p>
 
 <p>Watchman tracks its persistent state in a location that we refer to as the
-<code>&lt;STATEDIR&gt;</code> in this documentation.  Since Watchman version 3.1 the <code>STATEDIR</code>
-has defaulted to <code>&lt;PREFIX&gt;/var/run/watchman</code>.  You can change this default when
-you build watchman by using the configure option <code>--enable-statedir</code>.</p>
+<code>&lt;STATEDIR&gt;</code> in this documentation.</p>
+
+<p><em>Since 3.1.</em></p>
+
+<p>The <code>STATEDIR</code> defaulted to <code>&lt;PREFIX&gt;/var/run/watchman</code>.  You can change this
+default when you build watchman by using the configure option
+<code>--enable-statedir</code>.</p>
 
 <p>Earlier versions of Watchman didn&#39;t have a default statedir and would instead
 use the <code>&lt;TMPDIR&gt;</code> for this state.  We switched away from that because some
 environments randomize the <code>&lt;TMPDIR&gt;</code> location and this made it difficult for
 clients to locate the Watchman service.</p>
+
+<p><em>Since 3.8.</em></p>
+
+<p>The <code>STATEDIR</code> defaults to <code>&lt;PREFIX&gt;/var/run/watchman/&lt;USER&gt;-state</code>.  You can
+change this default when you build watchman by using the configure option
+<code>--enable-statedir</code>; the configure option replaces the
+<code>&lt;PREFIX&gt;/var/run/watchman</code> portion of this string.  If you specify
+<code>--disable-statedir</code> then that portion of the string will be computed from the
+<code>&lt;TMPDIR&gt;</code> location.</p>
+
+<p>Watchman will create the <code>&lt;USER&gt;-state</code> portion if it does not exist, and will
+perform some permission and ownership checks to reduce the risk of untrusted
+users placing files in this location.  If those checks are not satisfied,
+watchman will refuse to start.</p>
 
 <h2 id="locating-the-service">Locating the service</h2>
 <div class="highlight"><pre><code class="language-text" data-lang="text"> -U, --sockname=PATH   Specify alternate sockname

@@ -694,10 +694,13 @@ the list above.</p>
 
 <p>You can use these steps below to get watchman built.  You will need <code>autoconf</code>
 and <code>automake</code>.  You may optionally build watchman with <code>pcre</code> and <code>python</code>
-support.  See below for some more information on options to configure your
-build.</p>
+support.  For python support, you will also need <code>setuptools</code> and may need to
+install a <code>python-dev</code> or <code>python-devel</code> package.</p>
+
+<p>See below for some more information on options to configure your build.</p>
 <div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>git clone https://github.com/facebook/watchman.git
 <span class="nv">$ </span><span class="nb">cd </span>watchman
+<span class="nv">$ </span>git checkout v3.7.0  <span class="c"># the latest stable release</span>
 <span class="nv">$ </span>./autogen.sh
 <span class="nv">$ </span>./configure
 <span class="nv">$ </span>make
