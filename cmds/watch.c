@@ -26,6 +26,7 @@ bool w_cmd_realpath_root(json_t *args, char **errmsg)
 
   return true;
 }
+W_CAP_REG("clock-sync-timeout")
 
 /* clock /root [options]
  * Returns the current clock value for a watched root
