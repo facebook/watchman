@@ -10,6 +10,7 @@ import os.path
 import os
 import WatchmanInstance
 import copy
+import sys
 
 def norm_path(name):
     return os.path.normcase(os.path.normpath(name))
@@ -39,6 +40,11 @@ class WatchmanTestCase(unittest.TestCase):
     def mkdtemp(self):
         return self.normPath(tempfile.mkdtemp(dir=self.tempdir))
 
+    def mktemp(self, prefix=''):
+        f, name = tempfile.mkstemp(prefix=prefix, dir=self.tempdir)
+        os.close(f)
+        return name
+
     def run(self, result):
         if result is None:
             raise Exception('MUST be a runtests.py:Result instance')
@@ -52,6 +58,11 @@ class WatchmanTestCase(unittest.TestCase):
             result.setFlavour(self.transport, self.encoding)
             super(WatchmanTestCase, self).run(result)
         finally:
+            try:
+                self.watchmanCommand('log-level', 'off')
+                self.getClient().getLog(remove=True)
+            except:
+                pass
             self.__logTestInfo(id, 'END')
             self.__clearWatches()
 
