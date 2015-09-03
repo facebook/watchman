@@ -20,6 +20,7 @@ watchman_SOURCES = \
 	log.c        \
 	json.c       \
 	bser.c       \
+	expflags.c   \
 	hash.c       \
 	ht.c         \
 	ioprio.c        \
