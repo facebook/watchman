@@ -291,11 +291,6 @@ struct watchman_dir {
   w_ht_t *lc_files;
   /* child dirs contained in this dir (keyed by dir->path) */
   w_ht_t *dirs;
-
-  /* watch descriptor */
-#if HAVE_PORT_CREATE
-  file_obj_t port_file;
-#endif
 };
 
 struct watchman_ops {
@@ -390,10 +385,6 @@ struct watchman_file {
   /* cache stat results so we can tell if an entry
    * changed */
   struct stat st;
-
-#if HAVE_PORT_CREATE
-  file_obj_t port_file;
-#endif
 };
 
 #define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"
