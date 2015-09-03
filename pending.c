@@ -12,6 +12,7 @@ void w_pending_fs_free(struct watchman_pending_fs *p) {
 /* initialize a pending_coll */
 bool w_pending_coll_init(struct watchman_pending_collection *coll) {
   coll->pending = NULL;
+  coll->pinged = false;
   coll->pending_uniq = w_ht_new(WATCHMAN_BATCH_LIMIT, &w_ht_string_funcs);
   if (!coll->pending_uniq) {
     return false;
@@ -56,7 +57,8 @@ bool w_pending_coll_lock_and_wait(struct watchman_pending_collection *coll,
     w_timeoutms_to_abs_timespec(timeoutms, &deadline);
   }
   w_pending_coll_lock(coll);
-  if (coll->pending) {
+  if (coll->pending || coll->pinged) {
+    coll->pinged = false;
     return true;
   }
   if (timeoutms == -1) {
@@ -69,6 +71,7 @@ bool w_pending_coll_lock_and_wait(struct watchman_pending_collection *coll,
 }
 
 void w_pending_coll_ping(struct watchman_pending_collection *coll) {
+  coll->pinged = true;
   pthread_cond_broadcast(&coll->cond);
 }
 

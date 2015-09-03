@@ -18,33 +18,51 @@
   IN_DELETE_SELF | IN_MODIFY | IN_MOVE_SELF | IN_MOVED_FROM | \
   IN_MOVED_TO | IN_DONT_FOLLOW | IN_ONLYDIR | WATCHMAN_IN_EXCL_UNLINK
 
+struct pending_move {
+  time_t created;
+  w_string_t *name;
+};
 
 struct inot_root_state {
   /* we use one inotify instance per watched root dir */
   int infd;
 
-  /* map of active watch descriptor to a dir */
-  w_ht_t *wd_to_dir;
+  /* map of active watch descriptor to name of the corresponding dir */
+  w_ht_t *wd_to_name;
+  /* map of inotify cookie to corresponding name */
+  w_ht_t *move_map;
+  /* lock to protect both of the maps above */
+  pthread_mutex_t lock;
 
   // Make the buffer big enough for 16k entries, which
   // happens to be the default fs.inotify.max_queued_events
   char ibuf[WATCHMAN_BATCH_LIMIT * (sizeof(struct inotify_event) + 256)];
 };
 
-/* stored in the wd_to_dir map to indicate that we've detected that this
- * directory has disappeared, but that we might not yet have processed all the
- * events leading to its disappearance.
- *
- * Any directory that was replaced in the wd_to_dir map with
- * dir_pending_ignored will have its wd set to -1. This means that if another
- * directory with the same wd shows up, it's OK to replace this with that. */
-static struct watchman_dir dir_pending_ignored;
-
-struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd)
-{
-  struct inot_root_state *state = root->watch;
-  return (struct watchman_dir*)w_ht_val_ptr(w_ht_get(state->wd_to_dir, wd));
+static w_ht_val_t copy_pending(w_ht_val_t key) {
+  struct pending_move *src = w_ht_val_ptr(key);
+  struct pending_move *dest = malloc(sizeof(*dest));
+  dest->created = src->created;
+  dest->name = src->name;
+  w_string_addref(src->name);
+  return w_ht_ptr_val(dest);
 }
+
+static void del_pending(w_ht_val_t key) {
+  struct pending_move *p = w_ht_val_ptr(key);
+
+  w_string_delref(p->name);
+  free(p);
+}
+
+static const struct watchman_hash_funcs move_hash_funcs = {
+  NULL, // copy_key
+  NULL, // del_key
+  NULL, // equal_key
+  NULL, // hash_key
+  copy_pending, // copy_val
+  del_pending   // del_val
+};
 
 watchman_global_watcher_t inot_global_init(void) {
   return NULL;
@@ -84,6 +102,7 @@ bool inot_root_init(watchman_global_watcher_t watcher, w_root_t *root,
     return false;
   }
   root->watch = state;
+  pthread_mutex_init(&state->lock, NULL);
 
   state->infd = inotify_init();
   if (state->infd == -1) {
@@ -93,7 +112,8 @@ bool inot_root_init(watchman_global_watcher_t watcher, w_root_t *root,
     return false;
   }
   w_set_cloexec(state->infd);
-  state->wd_to_dir = w_ht_new(HINT_NUM_DIRS, NULL);
+  state->wd_to_name = w_ht_new(HINT_NUM_DIRS, &w_ht_string_val_funcs);
+  state->move_map = w_ht_new(2, &move_hash_funcs);
 
   return true;
 }
@@ -106,11 +126,17 @@ void inot_root_dtor(watchman_global_watcher_t watcher, w_root_t *root) {
     return;
   }
 
+  pthread_mutex_destroy(&state->lock);
+
   close(state->infd);
   state->infd = -1;
-  if (state->wd_to_dir) {
-    w_ht_free(state->wd_to_dir);
-    state->wd_to_dir = NULL;
+  if (state->wd_to_name) {
+    w_ht_free(state->wd_to_name);
+    state->wd_to_name = NULL;
+  }
+  if (state->move_map) {
+    w_ht_free(state->move_map);
+    state->move_map = NULL;
   }
 
   free(state);
@@ -149,7 +175,7 @@ static DIR *inot_root_start_watch_dir(watchman_global_watcher_t watcher,
     w_root_t *root, struct watchman_dir *dir, struct timeval now,
     const char *path) {
   struct inot_root_state *state = root->watch;
-  DIR *osdir;
+  DIR *osdir = NULL;
   int newwd;
   unused_parameter(watcher);
 
@@ -159,29 +185,20 @@ static DIR *inot_root_start_watch_dir(watchman_global_watcher_t watcher,
   if (newwd == -1) {
     if (errno == ENOSPC || errno == ENOMEM) {
       // Limits exceeded, no recovery from our perspective
-      set_poison_state(root, dir, now, "inotify-add-watch", errno,
+      set_poison_state(root, dir->path, now, "inotify-add-watch", errno,
           inot_strerror(errno));
     } else {
       handle_open_errno(root, dir, now, "inotify_add_watch", errno,
           inot_strerror(errno));
     }
     return NULL;
-  } else if (dir->wd != -1 && dir->wd != newwd) {
-    // This can happen when a directory is deleted and then recreated very
-    // soon afterwards. e.g. dir->wd is 100, but newwd is 200. We'll still
-    // expect old events to come in for wd 100, so blackhole
-    // those. stop_watching_dir will mark dir->wd as -1, so the condition
-    // right below will be true.
-    stop_watching_dir(root, dir);
   }
 
-  if (dir->wd == -1) {
-    w_log(W_LOG_DBG, "watch_dir(%s)\n", path);
-    dir->wd = newwd;
-    // record mapping
-    w_ht_replace(state->wd_to_dir, dir->wd, w_ht_ptr_val(dir));
-    w_log(W_LOG_DBG, "adding %d -> %s mapping\n", dir->wd, path);
-  }
+  // record mapping
+  pthread_mutex_lock(&state->lock);
+  w_ht_replace(state->wd_to_name, newwd, w_ht_ptr_val(dir->path));
+  pthread_mutex_unlock(&state->lock);
+  w_log(W_LOG_DBG, "adding %d -> %s mapping\n", newwd, path);
 
   osdir = opendir_nofollow(path);
   if (!osdir) {
@@ -196,37 +213,12 @@ static void inot_root_stop_watch_dir(watchman_global_watcher_t watcher,
       w_root_t *root, struct watchman_dir *dir) {
   struct inot_root_state *state = root->watch;
   unused_parameter(watcher);
+  unused_parameter(state);
+  unused_parameter(root);
+  unused_parameter(dir);
 
-  if (dir->wd == -1) {
-    return;
-  }
-
-  // Linux removes watches for us at the appropriate times, so just mark the
-  // directory pending_ignored. At this point, dir->wd != -1 so a real directory
-  // exists in the wd_to_dir map.
-  w_ht_replace(state->wd_to_dir, dir->wd, w_ht_ptr_val(&dir_pending_ignored));
-  w_log(W_LOG_DBG, "marking %d -> %.*s as pending ignored\n",
-      dir->wd, dir->path->len, dir->path->buf);
-
-  dir->wd = -1;
-}
-
-static void invalidate_watch_descriptors(w_root_t *root,
-    struct watchman_dir *dir)
-{
-  w_ht_iter_t i;
-  struct inot_root_state *state = root->watch;
-
-  if (w_ht_first(dir->dirs, &i)) do {
-    struct watchman_dir *child = (struct watchman_dir*)w_ht_val_ptr(i.value);
-
-    invalidate_watch_descriptors(root, child);
-  } while (w_ht_next(dir->dirs, &i));
-
-  if (dir->wd != -1) {
-    w_ht_del(state->wd_to_dir, dir->wd);
-    dir->wd = -1;
-  }
+  // Linux removes watches for us at the appropriate times,
+  // and tells us about it via inotify, so we have nothing to do here
 }
 
 static void process_inotify_event(
@@ -235,9 +227,6 @@ static void process_inotify_event(
     struct inotify_event *ine,
     struct timeval now)
 {
-  struct watchman_dir *dir;
-  struct watchman_file *file = NULL;
-  w_string_t *name;
   struct inot_root_state *state = root->watch;
 
   w_log(W_LOG_DBG, "notify: wd=%d mask=%x %s\n", ine->wd, ine->mask,
@@ -247,79 +236,78 @@ static void process_inotify_event(
     /* we missed something, will need to re-crawl */
     w_root_schedule_recrawl(root, "IN_Q_OVERFLOW");
   } else if (ine->wd != -1) {
+    w_string_t *dir_name = NULL;
+    w_string_t *name = NULL;
     char buf[WATCHMAN_NAME_MAX];
 
-    dir = w_root_resolve_dir_by_wd(root, ine->wd);
-    if (dir == &dir_pending_ignored) {
-      if ((ine->mask & IN_IGNORED) != 0) {
-        w_log(W_LOG_DBG, "mask=%x: remove watch %d (pending ignored dir)\n",
-            ine->mask, ine->wd);
-        w_ht_del(state->wd_to_dir, ine->wd);
-      } else {
-        w_log(W_LOG_DBG, "mask=%x: pending ignored watch %d, name %.*s",
-            ine->mask, ine->wd, ine->len, ine->name);
-      }
-    } else if (dir) {
-      // The hint is that it has gone away, so remove our wd mapping here.
-      // We'll queue up a stat of that dir anyway so that we really know
-      // the state of that path, but that has to happen /after/ we've
-      // removed this watch.
-      if ((ine->mask & IN_IGNORED) != 0) {
-        w_log(W_LOG_DBG, "mask=%x: remove watch %d %.*s\n", ine->mask,
-            dir->wd, dir->path->len, dir->path->buf);
-        if (dir->wd != -1) {
-          w_ht_del(state->wd_to_dir, dir->wd);
-          dir->wd = -1;
-        }
-      }
+    pthread_mutex_lock(&state->lock);
+    dir_name = w_ht_val_ptr(w_ht_get(state->wd_to_name, ine->wd));
+    if (dir_name) {
+      w_string_addref(dir_name);
+    }
+    pthread_mutex_unlock(&state->lock);
 
-      // We need to ensure that the watch descriptor associations from
-      // the old location are no longer valid so that when we crawl
-      // the destination location we'll update the entries
-      if (ine->len > 0 && (ine->mask & IN_MOVED_FROM)) {
-        name = w_string_new(ine->name);
-        file = w_root_resolve_file(root, dir, name, now);
-        if (!file) {
-          w_log(W_LOG_ERR,
-              "looking for file %.*s but it is missing in %.*s\n",
-              ine->len, ine->name, dir->path->len, dir->path->buf);
-          w_root_schedule_recrawl(root, "file missing from internal state");
-          w_string_delref(name);
-          return;
-        }
-
-        // The file no longer exists in its old location
-        file->exists = false;
-        w_root_mark_file_changed(root, file, now);
-        w_string_delref(name);
-
-        // Was there a dir here too?
-        snprintf(buf, sizeof(buf), "%.*s/%s",
-            dir->path->len, dir->path->buf,
-            ine->name);
-        name = w_string_new(buf);
-
-        dir = w_root_resolve_dir(root, name, false);
-        if (dir) {
-          // Ensure that the old tree is not associated
-          invalidate_watch_descriptors(root, dir);
-          // and marked deleted
-          w_root_mark_deleted(root, dir, now, true);
-        }
-        w_string_delref(name);
-        return;
-      }
-
+    if (dir_name) {
       if (ine->len > 0) {
         snprintf(buf, sizeof(buf), "%.*s/%s",
-            dir->path->len, dir->path->buf,
+            dir_name->len, dir_name->buf,
             ine->name);
         name = w_string_new(buf);
       } else {
-        name = dir->path;
+        name = dir_name;
         w_string_addref(name);
       }
+    }
 
+    if (ine->len > 0 && (ine->mask & IN_MOVED_FROM)) {
+      struct pending_move mv;
+
+      // record this as a pending move, so that we can automatically
+      // watch the target when we get the other side of it.
+      mv.created = now.tv_sec;
+      mv.name = name;
+
+      pthread_mutex_lock(&state->lock);
+      if (!w_ht_replace(state->move_map, ine->cookie, w_ht_ptr_val(&mv))) {
+        w_log(W_LOG_FATAL,
+            "failed to store %" PRIx32 " -> %s in move map\n",
+            ine->cookie, name->buf);
+      }
+      pthread_mutex_unlock(&state->lock);
+
+      w_log(W_LOG_DBG,
+          "recording move_from %" PRIx32 " %s\n", ine->cookie,
+          name->buf);
+    }
+
+    if (ine->len > 0 && (ine->mask & IN_MOVED_TO)) {
+      struct pending_move *old;
+
+      pthread_mutex_lock(&state->lock);
+      old = w_ht_val_ptr(w_ht_get(state->move_map, ine->cookie));
+      if (old) {
+        int wd = inotify_add_watch(state->infd, name->buf, WATCHMAN_INOTIFY_MASK);
+        if (wd == -1) {
+          if (errno == ENOSPC || errno == ENOMEM) {
+            // Limits exceeded, no recovery from our perspective
+            set_poison_state(root, name, now, "inotify-add-watch", errno,
+                inot_strerror(errno));
+          } else {
+            w_log(W_LOG_DBG, "add_watch: %s %s\n",
+                name->buf, inot_strerror(errno));
+          }
+        } else {
+          w_log(W_LOG_DBG, "moved %s -> %s\n", old->name->buf, name->buf);
+          w_ht_replace(state->wd_to_name, wd, w_ht_ptr_val(name));
+        }
+      } else {
+        w_log(W_LOG_DBG, "move: cookie=%" PRIx32 " not found in move map %s\n",
+            ine->cookie, name->buf);
+      }
+      pthread_mutex_unlock(&state->lock);
+    }
+
+    if (dir_name) {
       if ((ine->mask & (IN_UNMOUNT|IN_IGNORED|IN_DELETE_SELF|IN_MOVE_SELF))) {
         w_string_t *pname;
 
@@ -328,6 +316,7 @@ static void process_inotify_event(
               "root dir %s has been (re)moved, canceling watch\n",
               root->root_path->buf);
           w_string_delref(name);
+          w_string_delref(dir_name);
           w_root_cancel(root);
           return;
         }
@@ -345,6 +334,20 @@ static void process_inotify_event(
       w_pending_coll_add(coll, name, true, now, true);
 
       w_string_delref(name);
+
+      // The hint is that it has gone away, so remove our wd mapping here.
+      // We'll queue up a stat of that dir anyway so that we really know
+      // the state of that path, but that has to happen /after/ we've
+      // removed this watch.
+      if ((ine->mask & IN_IGNORED) != 0) {
+        w_log(W_LOG_DBG, "mask=%x: remove watch %d %.*s\n", ine->mask,
+            ine->wd, dir_name->len, dir_name->buf);
+        pthread_mutex_lock(&state->lock);
+        w_ht_del(state->wd_to_name, ine->wd);
+        pthread_mutex_unlock(&state->lock);
+      }
+
+      w_string_delref(dir_name);
 
     } else if ((ine->mask & (IN_MOVE_SELF|IN_IGNORED)) == 0) {
       // If we can't resolve the dir, and this isn't notification
