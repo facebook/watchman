@@ -259,6 +259,7 @@ struct watchman_pending_collection {
   w_ht_t *pending_uniq;
   pthread_mutex_t lock;
   pthread_cond_t cond;
+  bool pinged;
 };
 
 bool w_pending_coll_init(struct watchman_pending_collection *coll);
@@ -292,7 +293,6 @@ struct watchman_dir {
   w_ht_t *dirs;
 
   /* watch descriptor */
-  int wd;
 #if HAVE_PORT_CREATE
   file_obj_t port_file;
 #endif
@@ -393,9 +393,6 @@ struct watchman_file {
 
 #if HAVE_PORT_CREATE
   file_obj_t port_file;
-#endif
-#if HAVE_KQUEUE
-  int kq_fd;
 #endif
 };
 
@@ -644,7 +641,6 @@ void w_root_set_warning(w_root_t *root, w_string_t *str);
 
 struct watchman_dir *w_root_resolve_dir(w_root_t *root,
     w_string_t *dir_name, bool create);
-struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd);
 void w_root_process_path(w_root_t *root,
     struct watchman_pending_collection *coll, w_string_t *full_path,
     struct timeval now, bool recursive, bool via_notify);
@@ -930,7 +926,7 @@ void w_assess_trigger(w_root_t *root, struct watchman_trigger_command *cmd);
 struct watchman_trigger_command *w_build_trigger_from_def(
   w_root_t *root, json_t *trig, char **errmsg);
 
-void set_poison_state(w_root_t *root, struct watchman_dir *dir,
+void set_poison_state(w_root_t *root, w_string_t *dir,
     struct timeval now, const char *syscall, int err,
     const char *reason);
 

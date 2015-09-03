@@ -395,6 +395,15 @@ const struct watchman_hash_funcs w_ht_string_funcs = {
   NULL
 };
 
+const struct watchman_hash_funcs w_ht_string_val_funcs = {
+  NULL, // copy_key
+  NULL, // del_key
+  NULL, // equal_key
+  NULL, // hash_key
+  w_ht_string_copy, // copy_val
+  w_ht_string_del   // del_val
+};
+
 const struct watchman_hash_funcs w_ht_dict_funcs = {
   w_ht_string_copy,
   w_ht_string_del,
