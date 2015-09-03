@@ -18,6 +18,17 @@ struct kqueue_root_state {
   struct kevent keventbuf[WATCHMAN_BATCH_LIMIT];
 };
 
+static const struct flag_map kflags[] = {
+  {NOTE_DELETE, "NOTE_DELETE"},
+  {NOTE_WRITE, "NOTE_WRITE"},
+  {NOTE_EXTEND, "NOTE_EXTEND"},
+  {NOTE_ATTRIB, "NOTE_ATTRIB"},
+  {NOTE_LINK, "NOTE_LINK"},
+  {NOTE_RENAME, "NOTE_RENAME"},
+  {NOTE_REVOKE, "NOTE_REVOKE"},
+  {0, NULL},
+};
+
 static void kqueue_del_key(w_ht_val_t key) {
   w_log(W_LOG_DBG, "KQ close fd=%d\n", (int)key);
   close(key);
@@ -293,17 +304,20 @@ static bool kqueue_root_consume_notify(watchman_global_watcher_t watcher,
     uint32_t fflags = state->keventbuf[i].fflags;
     bool is_dir = IS_DIR_BIT_SET(state->keventbuf[i].udata);
     w_string_t *path;
+    char flags_label[128];
 
+    w_expand_flags(kflags, fflags, flags_label, sizeof(flags_label));
     path = w_ht_val_ptr(w_ht_get(state->fd_to_name, state->keventbuf[i].ident));
     if (!path) {
       // Was likely a buffered notification for something that we decided
       // to stop watching
-      w_log(W_LOG_DBG, " KQ notif for fd=%d; no ref for it in fd_to_name\n",
-          (int)state->keventbuf[i].ident);
+      w_log(W_LOG_DBG,
+          " KQ notif for fd=%d; flags=0x%x %s no ref for it in fd_to_name\n",
+          (int)state->keventbuf[i].ident, fflags, flags_label);
       continue;
     }
 
-    w_log(W_LOG_DBG, " KQ path %s [0x%x]\n", path->buf, fflags);
+    w_log(W_LOG_DBG, " KQ path %s [0x%x %s]\n", path->buf, fflags, flags_label);
     if ((fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE)) &&
         w_string_equal(path, root->root_path)) {
       w_log(W_LOG_ERR,

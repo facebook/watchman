@@ -18,6 +18,26 @@
   IN_DELETE_SELF | IN_MODIFY | IN_MOVE_SELF | IN_MOVED_FROM | \
   IN_MOVED_TO | IN_DONT_FOLLOW | IN_ONLYDIR | WATCHMAN_IN_EXCL_UNLINK
 
+static const struct flag_map inflags[] = {
+  {IN_ACCESS, "IN_ACCESS"},
+  {IN_MODIFY, "IN_MODIFY"},
+  {IN_ATTRIB, "IN_ATTRIB"},
+  {IN_CLOSE_WRITE, "IN_CLOSE_WRITE"},
+  {IN_CLOSE_NOWRITE, "IN_CLOSE_NOWRITE"},
+  {IN_OPEN, "IN_OPEN"},
+  {IN_MOVED_FROM, "IN_MOVED_FROM"},
+  {IN_MOVED_TO, "IN_MOVED_TO"},
+  {IN_CREATE, "IN_CREATE"},
+  {IN_DELETE, "IN_DELETE"},
+  {IN_DELETE_SELF, "IN_DELETE_SELF"},
+  {IN_MOVE_SELF, "IN_MOVE_SELF"},
+  {IN_UNMOUNT, "IN_UNMOUNT"},
+  {IN_Q_OVERFLOW, "IN_Q_OVERFLOW"},
+  {IN_IGNORED, "IN_IGNORED"},
+  {IN_ISDIR, "IN_ISDIR"},
+  {0, NULL},
+};
+
 struct pending_move {
   time_t created;
   w_string_t *name;
@@ -228,9 +248,11 @@ static void process_inotify_event(
     struct timeval now)
 {
   struct inot_root_state *state = root->watch;
+  char flags_label[128];
 
-  w_log(W_LOG_DBG, "notify: wd=%d mask=%x %s\n", ine->wd, ine->mask,
-      ine->len > 0 ? ine->name : "");
+  w_expand_flags(inflags, ine->mask, flags_label, sizeof(flags_label));
+  w_log(W_LOG_DBG, "notify: wd=%d mask=0x%x %s %s\n", ine->wd, ine->mask,
+      flags_label, ine->len > 0 ? ine->name : "");
 
   if (ine->wd == -1 && (ine->mask & IN_Q_OVERFLOW)) {
     /* we missed something, will need to re-crawl */

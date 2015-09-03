@@ -14,6 +14,18 @@ struct portfs_root_state {
   port_event_t portevents[WATCHMAN_BATCH_LIMIT];
 };
 
+static const struct flag_map pflags[] = {
+  {FILE_ACCESS, "FILE_ACCESS"},
+  {FILE_MODIFIED, "FILE_MODIFIED"},
+  {FILE_ATTRIB, "FILE_ATTRIB"},
+  {FILE_DELETE, "FILE_DELETE"},
+  {FILE_RENAME_TO, "FILE_RENAME_TO"},
+  {FILE_RENAME_FROM, "FILE_RENAME_FROM"},
+  {UNMOUNTED, "UNMOUNTED"},
+  {MOUNTEDOVER, "MOUNTEDOVER"},
+  {0, NULL},
+};
+
 watchman_global_watcher_t portfs_global_init(void) {
   return NULL;
 }
@@ -192,16 +204,18 @@ static bool portfs_root_consume_notify(watchman_global_watcher_t watcher,
     if (IS_DIR_BIT_SET(state->portevents[i].portev_user)) {
       struct watchman_dir *dir = DECODE_DIR(state->portevents[i].portev_user);
       uint32_t pe = state->portevents[i].portev_events;
+      char flags_label[128];
 
-      w_log(W_LOG_DBG, "port: dir %.*s [0x%x]\n",
-          dir->path->len, dir->path->buf, pe);
+      w_expand_flags(pflags, pe, flags_label, sizeof(flags_label));
+      w_log(W_LOG_DBG, "port: dir %.*s [0x%x %s]\n",
+          dir->path->len, dir->path->buf, pe, flags_label);
 
       if ((pe & (FILE_RENAME_FROM|UNMOUNTED|MOUNTEDOVER|FILE_DELETE))
           && w_string_equal(dir->path, root->root_path)) {
 
         w_log(W_LOG_ERR,
-          "root dir %s has been (re)moved (code 0x%x), canceling watch\n",
-          root->root_path->buf, pe);
+          "root dir %s has been (re)moved (code 0x%x %s), canceling watch\n",
+          root->root_path->buf, pe, flags_label);
 
         w_root_cancel(root);
         return false;
