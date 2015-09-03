@@ -166,23 +166,9 @@ static bool kqueue_root_start_watch_file(watchman_global_watcher_t watcher,
 
 static void kqueue_root_stop_watch_file(watchman_global_watcher_t watcher,
     w_root_t *root, struct watchman_file *file) {
-  struct kqueue_root_state *state = root->watch;
-  struct kevent k;
-  w_ht_val_t fd;
-  w_string_t *full_name;
   unused_parameter(watcher);
-
-  full_name = w_string_path_cat(file->parent->path, file->name);
-  pthread_mutex_lock(&state->lock);
-  if (w_ht_lookup(state->name_to_fd, w_ht_ptr_val(full_name), &fd, false)) {
-    memset(&k, 0, sizeof(k));
-    EV_SET(&k, (int)fd, EVFILT_VNODE, EV_DELETE, 0, 0, NULL);
-    kevent(state->kq_fd, &k, 1, NULL, 0, 0);
-    w_ht_del(state->name_to_fd, w_ht_ptr_val(full_name));
-    w_ht_del(state->fd_to_name, fd);
-  }
-  pthread_mutex_unlock(&state->lock);
-  w_string_delref(full_name);
+  unused_parameter(root);
+  unused_parameter(file);
 }
 
 static DIR *kqueue_root_start_watch_dir(watchman_global_watcher_t watcher,
@@ -258,25 +244,9 @@ static DIR *kqueue_root_start_watch_dir(watchman_global_watcher_t watcher,
 
 static void kqueue_root_stop_watch_dir(watchman_global_watcher_t watcher,
     w_root_t *root, struct watchman_dir *dir) {
-  struct kqueue_root_state *state = root->watch;
-  struct kevent k;
-  w_ht_val_t fd;
   unused_parameter(watcher);
-
-  pthread_mutex_lock(&state->lock);
-  if (w_ht_lookup(state->name_to_fd, w_ht_ptr_val(dir->path), &fd, false)) {
-    memset(&k, 0, sizeof(k));
-    EV_SET(&k, (int)fd, EVFILT_VNODE, EV_DELETE, 0, 0, NULL);
-    if (kevent(state->kq_fd, &k, 1, NULL, 0, 0)) {
-      w_log(W_LOG_ERR, "rm_watch: %d %.*s %s\n",
-          (int)fd, dir->path->len, dir->path->buf,
-          strerror(errno));
-      w_root_schedule_recrawl(root, "rm_watch failed");
-    }
-    w_ht_del(state->name_to_fd, w_ht_ptr_val(dir->path));
-    w_ht_del(state->fd_to_name, fd);
-  }
-  pthread_mutex_unlock(&state->lock);
+  unused_parameter(root);
+  unused_parameter(dir);
 }
 
 static bool kqueue_root_consume_notify(watchman_global_watcher_t watcher,
@@ -305,28 +275,47 @@ static bool kqueue_root_consume_notify(watchman_global_watcher_t watcher,
     bool is_dir = IS_DIR_BIT_SET(state->keventbuf[i].udata);
     w_string_t *path;
     char flags_label[128];
+    int fd = state->keventbuf[i].ident;
 
     w_expand_flags(kflags, fflags, flags_label, sizeof(flags_label));
-    path = w_ht_val_ptr(w_ht_get(state->fd_to_name, state->keventbuf[i].ident));
+    pthread_mutex_lock(&state->lock);
+    path = w_ht_val_ptr(w_ht_get(state->fd_to_name, fd));
     if (!path) {
       // Was likely a buffered notification for something that we decided
       // to stop watching
       w_log(W_LOG_DBG,
           " KQ notif for fd=%d; flags=0x%x %s no ref for it in fd_to_name\n",
-          (int)state->keventbuf[i].ident, fflags, flags_label);
+          fd, fflags, flags_label);
+      pthread_mutex_unlock(&state->lock);
       continue;
     }
+    w_string_addref(path);
 
-    w_log(W_LOG_DBG, " KQ path %s [0x%x %s]\n", path->buf, fflags, flags_label);
-    if ((fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE)) &&
-        w_string_equal(path, root->root_path)) {
-      w_log(W_LOG_ERR,
-          "root dir %s has been (re)moved [code 0x%x], canceling watch\n",
-          root->root_path->buf, fflags);
-      w_root_cancel(root);
-      return 0;
+    w_log(W_LOG_DBG, " KQ fd=%d path %s [0x%x %s]\n",
+        fd, path->buf, fflags, flags_label);
+    if ((fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE))) {
+      struct kevent k;
+
+      if (w_string_equal(path, root->root_path)) {
+        w_log(W_LOG_ERR,
+            "root dir %s has been (re)moved [code 0x%x], canceling watch\n",
+            root->root_path->buf, fflags);
+        w_root_cancel(root);
+        pthread_mutex_unlock(&state->lock);
+        return 0;
+      }
+
+      // Remove our watch bits
+      memset(&k, 0, sizeof(k));
+      EV_SET(&k, fd, EVFILT_VNODE, EV_DELETE, 0, 0, NULL);
+      kevent(state->kq_fd, &k, 1, NULL, 0, 0);
+      w_ht_del(state->name_to_fd, w_ht_ptr_val(path));
+      w_ht_del(state->fd_to_name, fd);
     }
+
+    pthread_mutex_unlock(&state->lock);
     w_pending_coll_add(coll, path, !is_dir, now, !is_dir);
+    w_string_delref(path);
   }
 
   return n > 0;
