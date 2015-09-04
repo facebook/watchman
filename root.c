@@ -1742,6 +1742,8 @@ static void io_thread(w_root_t *root)
   w_pending_coll_init(&pending);
 
   while (!root->cancelled) {
+    bool pinged;
+
     if (!root->done_initial) {
       struct timeval start;
 
@@ -1769,12 +1771,12 @@ static void io_thread(w_root_t *root)
     // Wait for the notify thread to give us pending items, or for
     // the settle period to expire
     w_log(W_LOG_DBG, "poll_events timeout=%dms\n", timeoutms);
-    w_pending_coll_lock_and_wait(&root->pending, timeoutms);
-    w_log(W_LOG_DBG, " ... wake up\n");
+    pinged = w_pending_coll_lock_and_wait(&root->pending, timeoutms);
+    w_log(W_LOG_DBG, " ... wake up (pinged=%s)\n", pinged ? "true" : "false");
     w_pending_coll_append(&pending, &root->pending);
     w_pending_coll_unlock(&root->pending);
 
-    if (w_pending_coll_size(&pending) == 0) {
+    if (!pinged && w_pending_coll_size(&pending) == 0) {
       // No new pending items were given to us, so consider that
       // we may not be settled.
 
