@@ -34,33 +34,51 @@ class subscribeTestCase extends WatchmanTestCase {
 
       touch("$root/.hg/wlock");
       $this->waitForSub('nodefer', function ($data) {
-        return true;
+        foreach ($data as $item) {
+          foreach ($item['files'] as $ent) {
+            if ($ent['name'] == w_normalize_filename('.hg/wlock') && $ent['exists']) {
+              return true;
+            }
+          }
+        }
+        return false;
       });
-      $sub = $this->tail($this->getSubData('nodefer'));
+      $subs = $this->getSubData('nodefer');
       $wlock = null;
-      foreach ($sub['files'] as $ent) {
-        if ($ent['name'] == '.hg/wlock') {
-          $wlock = $ent;
+      foreach ($subs as $sub) {
+        foreach ($sub['files'] as $ent) {
+          if ($ent['name'] == w_normalize_filename('.hg/wlock') && $ent['exists']) {
+            $wlock = $ent;
+          }
         }
       }
       $this->assertEqual(array('name' => w_normalize_filename('.hg/wlock'),
-          'exists' => true), $ent);
+          'exists' => true), $wlock, json_encode($subs));
 
       unlink("$root/.hg/wlock");
 
       $this->waitForSub('nodefer', function ($data) {
-        return true;
+        foreach ($data as $item) {
+          foreach ($item['files'] as $ent) {
+            if ($ent['name'] == w_normalize_filename('.hg/wlock') && !$ent['exists']) {
+              return true;
+            }
+          }
+        }
+        return false;
       });
-      $sub = $this->tail($this->getSubData('nodefer'));
 
+      $subs = $this->getSubData('nodefer');
       $wlock = null;
-      foreach ($sub['files'] as $ent) {
-        if ($ent['name'] == '.hg/wlock') {
-          $wlock = $ent;
+      foreach ($subs as $sub) {
+        foreach ($sub['files'] as $ent) {
+          if ($ent['name'] == w_normalize_filename('.hg/wlock') && !$ent['exists']) {
+            $wlock = $ent;
+          }
         }
       }
       $this->assertEqual(array('name' => w_normalize_filename('.hg/wlock'),
-            'exists' => false), $ent);
+            'exists' => false), $wlock, json_encode($subs));
 
       $this->watchmanCommand('unsubscribe', $root, 'nodefer');
     } catch (Exception $e) {

@@ -25,7 +25,15 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-from pkg_resources import parse_version
+
+import re
+
+def parse_version(vstr):
+    res = 0
+    for n in vstr.split('.'):
+        res = res * 1000
+        res = res + int(n)
+    return res
 
 cap_versions = {
     "cmd-watch-del-all": "3.1.1",

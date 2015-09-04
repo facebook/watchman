@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # vim:ts=4:sw=4:et:
 
-from setuptools import setup, Extension
+try:
+    from setuptools import setup, Extension
+except:
+    from distutils.core import setup, Extension
 
 setup(
     name = 'pywatchman',

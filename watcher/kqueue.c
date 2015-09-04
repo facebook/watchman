@@ -10,7 +10,37 @@
 
 struct kqueue_root_state {
   int kq_fd;
+  /* map of active watch descriptor to name of the corresponding item */
+  w_ht_t *name_to_fd;
+  w_ht_t *fd_to_name;
+  /* lock to protect the map above */
+  pthread_mutex_t lock;
   struct kevent keventbuf[WATCHMAN_BATCH_LIMIT];
+};
+
+static const struct flag_map kflags[] = {
+  {NOTE_DELETE, "NOTE_DELETE"},
+  {NOTE_WRITE, "NOTE_WRITE"},
+  {NOTE_EXTEND, "NOTE_EXTEND"},
+  {NOTE_ATTRIB, "NOTE_ATTRIB"},
+  {NOTE_LINK, "NOTE_LINK"},
+  {NOTE_RENAME, "NOTE_RENAME"},
+  {NOTE_REVOKE, "NOTE_REVOKE"},
+  {0, NULL},
+};
+
+static void kqueue_del_key(w_ht_val_t key) {
+  w_log(W_LOG_DBG, "KQ close fd=%d\n", (int)key);
+  close(key);
+}
+
+const struct watchman_hash_funcs name_to_fd_funcs = {
+  w_ht_string_copy,
+  w_ht_string_del,
+  w_ht_string_equal,
+  w_ht_string_hash,
+  NULL, // copy_val
+  kqueue_del_key,
 };
 
 watchman_global_watcher_t kqueue_global_init(void) {
@@ -32,6 +62,9 @@ bool kqueue_root_init(watchman_global_watcher_t watcher, w_root_t *root,
     return false;
   }
   root->watch = state;
+  pthread_mutex_init(&state->lock, NULL);
+  state->name_to_fd = w_ht_new(HINT_NUM_DIRS, &name_to_fd_funcs);
+  state->fd_to_name = w_ht_new(HINT_NUM_DIRS, &w_ht_string_val_funcs);
 
   state->kq_fd = kqueue();
   if (state->kq_fd == -1) {
@@ -53,8 +86,11 @@ void kqueue_root_dtor(watchman_global_watcher_t watcher, w_root_t *root) {
     return;
   }
 
+  pthread_mutex_destroy(&state->lock);
   close(state->kq_fd);
   state->kq_fd = -1;
+  w_ht_free(state->name_to_fd);
+  w_ht_free(state->fd_to_name);
 
   free(state);
   root->watch = NULL;
@@ -78,52 +114,61 @@ static bool kqueue_root_start_watch_file(watchman_global_watcher_t watcher,
       w_root_t *root, struct watchman_file *file) {
   struct kqueue_root_state *state = root->watch;
   struct kevent k;
-  char buf[WATCHMAN_NAME_MAX];
+  w_ht_val_t fdval;
+  int fd;
+  w_string_t *full_name;
   unused_parameter(watcher);
 
-  snprintf(buf, sizeof(buf), "%.*s/%.*s",
-      file->parent->path->len, file->parent->path->buf,
-      file->name->len, file->name->buf);
+  full_name = w_string_path_cat(file->parent->path, file->name);
+  pthread_mutex_lock(&state->lock);
+  if (w_ht_lookup(state->name_to_fd, w_ht_ptr_val(full_name), &fdval, false)) {
+    // Already watching it
+    pthread_mutex_unlock(&state->lock);
+    return true;
+  }
+  pthread_mutex_unlock(&state->lock);
 
-  w_log(W_LOG_DBG, "watch_file(%s)\n", buf);
+  w_log(W_LOG_DBG, "watch_file(%s)\n", full_name->buf);
 
-  file->kq_fd = open(buf, O_EVTONLY|O_CLOEXEC);
-  if (file->kq_fd == -1) {
+  fd = open(full_name->buf, O_EVTONLY|O_CLOEXEC);
+  if (fd == -1) {
     w_log(W_LOG_ERR, "failed to open %s O_EVTONLY: %s\n",
-        buf, strerror(errno));
+        full_name->buf, strerror(errno));
+    w_string_delref(full_name);
     return false;
   }
 
   memset(&k, 0, sizeof(k));
-  EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
+  EV_SET(&k, fd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
       NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME|NOTE_ATTRIB,
-      0, file);
+      0, full_name);
+
+  pthread_mutex_lock(&state->lock);
+  w_ht_replace(state->name_to_fd, w_ht_ptr_val(full_name), fd);
+  w_ht_replace(state->fd_to_name, fd, w_ht_ptr_val(full_name));
+  pthread_mutex_unlock(&state->lock);
 
   if (kevent(state->kq_fd, &k, 1, NULL, 0, 0)) {
     w_log(W_LOG_DBG, "kevent EV_ADD file %s failed: %s",
-        buf, strerror(errno));
-    close(file->kq_fd);
-    file->kq_fd = -1;
+        full_name->buf, strerror(errno));
+    close(fd);
+    pthread_mutex_lock(&state->lock);
+    w_ht_del(state->name_to_fd, w_ht_ptr_val(full_name));
+    w_ht_del(state->fd_to_name, fd);
+    pthread_mutex_unlock(&state->lock);
+  } else {
+    w_log(W_LOG_DBG, "kevent file %s -> %d\n", full_name->buf, fd);
   }
+  w_string_delref(full_name);
 
   return true;
 }
 
 static void kqueue_root_stop_watch_file(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_file *file) {
-  struct kqueue_root_state *state = root->watch;
-  struct kevent k;
+    w_root_t *root, struct watchman_file *file) {
   unused_parameter(watcher);
-
-  if (file->kq_fd == -1) {
-    return;
-  }
-
-  memset(&k, 0, sizeof(k));
-  EV_SET(&k, file->kq_fd, EVFILT_VNODE, EV_DELETE, 0, 0, file);
-  kevent(state->kq_fd, &k, 1, NULL, 0, 0);
-  close(file->kq_fd);
-  file->kq_fd = -1;
+  unused_parameter(root);
+  unused_parameter(file);
 }
 
 static DIR *kqueue_root_start_watch_dir(watchman_global_watcher_t watcher,
@@ -169,17 +214,29 @@ static DIR *kqueue_root_start_watch_dir(watchman_global_watcher_t watcher,
     return NULL;
   }
 
-  dir->wd = newwd;
   memset(&k, 0, sizeof(k));
-  EV_SET(&k, dir->wd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
+  EV_SET(&k, newwd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
       NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME,
-      0, SET_DIR_BIT(dir));
+      0, SET_DIR_BIT(dir->path));
+
+  // Our mapping needs to be visible before we add it to the queue,
+  // otherwise we can get a wakeup and not know what it is
+  pthread_mutex_lock(&state->lock);
+  w_ht_replace(state->name_to_fd, w_ht_ptr_val(dir->path), newwd);
+  w_ht_replace(state->fd_to_name, newwd, w_ht_ptr_val(dir->path));
+  pthread_mutex_unlock(&state->lock);
 
   if (kevent(state->kq_fd, &k, 1, NULL, 0, 0)) {
     w_log(W_LOG_DBG, "kevent EV_ADD dir %s failed: %s",
         path, strerror(errno));
-    close(dir->wd);
-    dir->wd = -1;
+    close(newwd);
+
+    pthread_mutex_lock(&state->lock);
+    w_ht_del(state->name_to_fd, w_ht_ptr_val(dir->path));
+    w_ht_del(state->fd_to_name, newwd);
+    pthread_mutex_unlock(&state->lock);
+  } else {
+    w_log(W_LOG_DBG, "kevent dir %s -> %d\n", dir->path->buf, newwd);
   }
 
   return osdir;
@@ -187,27 +244,9 @@ static DIR *kqueue_root_start_watch_dir(watchman_global_watcher_t watcher,
 
 static void kqueue_root_stop_watch_dir(watchman_global_watcher_t watcher,
     w_root_t *root, struct watchman_dir *dir) {
-  struct kqueue_root_state *state = root->watch;
-  struct kevent k;
   unused_parameter(watcher);
-
-  if (dir->wd == -1) {
-    return;
-  }
-
-  memset(&k, 0, sizeof(k));
-  EV_SET(&k, dir->wd, EVFILT_VNODE, EV_DELETE,
-      0, 0, SET_DIR_BIT(dir));
-
-  if (kevent(state->kq_fd, &k, 1, NULL, 0, 0)) {
-    w_log(W_LOG_ERR, "rm_watch: %d %.*s %s\n",
-        dir->wd, dir->path->len, dir->path->buf,
-        strerror(errno));
-    w_root_schedule_recrawl(root, "rm_watch failed");
-  }
-
-  close(dir->wd);
-  dir->wd = -1;
+  unused_parameter(root);
+  unused_parameter(dir);
 }
 
 static bool kqueue_root_consume_notify(watchman_global_watcher_t watcher,
@@ -221,8 +260,6 @@ static bool kqueue_root_consume_notify(watchman_global_watcher_t watcher,
   unused_parameter(watcher);
 
   errno = 0;
-
-  w_log(W_LOG_DBG, "kqueue(%s)\n", root->root_path->buf);
   n = kevent(state->kq_fd, NULL, 0,
       state->keventbuf, sizeof(state->keventbuf) / sizeof(state->keventbuf[0]),
       &ts);
@@ -235,31 +272,50 @@ static bool kqueue_root_consume_notify(watchman_global_watcher_t watcher,
   gettimeofday(&now, NULL);
   for (i = 0; n > 0 && i < n; i++) {
     uint32_t fflags = state->keventbuf[i].fflags;
+    bool is_dir = IS_DIR_BIT_SET(state->keventbuf[i].udata);
+    w_string_t *path;
+    char flags_label[128];
+    int fd = state->keventbuf[i].ident;
 
-    if (IS_DIR_BIT_SET(state->keventbuf[i].udata)) {
-      struct watchman_dir *dir = DECODE_DIR(state->keventbuf[i].udata);
+    w_expand_flags(kflags, fflags, flags_label, sizeof(flags_label));
+    pthread_mutex_lock(&state->lock);
+    path = w_ht_val_ptr(w_ht_get(state->fd_to_name, fd));
+    if (!path) {
+      // Was likely a buffered notification for something that we decided
+      // to stop watching
+      w_log(W_LOG_DBG,
+          " KQ notif for fd=%d; flags=0x%x %s no ref for it in fd_to_name\n",
+          fd, fflags, flags_label);
+      pthread_mutex_unlock(&state->lock);
+      continue;
+    }
+    w_string_addref(path);
 
-      w_log(W_LOG_DBG, " KQ dir %s [0x%x]\n", dir->path->buf, fflags);
-      if ((fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE)) &&
-          w_string_equal(dir->path, root->root_path)) {
+    w_log(W_LOG_DBG, " KQ fd=%d path %s [0x%x %s]\n",
+        fd, path->buf, fflags, flags_label);
+    if ((fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE))) {
+      struct kevent k;
+
+      if (w_string_equal(path, root->root_path)) {
         w_log(W_LOG_ERR,
             "root dir %s has been (re)moved [code 0x%x], canceling watch\n",
             root->root_path->buf, fflags);
         w_root_cancel(root);
+        pthread_mutex_unlock(&state->lock);
         return 0;
       }
-      w_pending_coll_add(coll, dir->path, false, now, false);
-    } else {
-      // NetBSD defines udata as intptr type, so the cast is necessary
-      struct watchman_file *file = (void *)state->keventbuf[i].udata;
 
-      w_string_t *path;
-
-      path = w_string_path_cat(file->parent->path, file->name);
-      w_pending_coll_add(coll, path, true, now, true);
-      w_log(W_LOG_DBG, " KQ file %.*s [0x%x]\n", path->len, path->buf, fflags);
-      w_string_delref(path);
+      // Remove our watch bits
+      memset(&k, 0, sizeof(k));
+      EV_SET(&k, fd, EVFILT_VNODE, EV_DELETE, 0, 0, NULL);
+      kevent(state->kq_fd, &k, 1, NULL, 0, 0);
+      w_ht_del(state->name_to_fd, w_ht_ptr_val(path));
+      w_ht_del(state->fd_to_name, fd);
     }
+
+    pthread_mutex_unlock(&state->lock);
+    w_pending_coll_add(coll, path, !is_dir, now, !is_dir);
+    w_string_delref(path);
   }
 
   return n > 0;

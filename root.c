@@ -136,7 +136,6 @@ static bool w_root_init(w_root_t *root, char **errmsg)
   // try to find its parent and we don't want it to for the root
   dir = calloc(1, sizeof(*dir));
   dir->path = root->root_path;
-  dir->wd = -1;
   w_string_addref(dir->path);
   w_ht_set(root->dirname_to_dir, w_ht_ptr_val(dir->path), w_ht_ptr_val(dir));
 
@@ -499,7 +498,6 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
 
   dir = calloc(1, sizeof(*dir));
   dir->path = dir_name;
-  dir->wd = -1;
   w_string_addref(dir->path);
 
   if (!parent->dirs) {
@@ -1174,7 +1172,7 @@ void w_root_set_warning(w_root_t *root, w_string_t *str) {
   }
 }
 
-void set_poison_state(w_root_t *root, struct watchman_dir *dir,
+void set_poison_state(w_root_t *root, w_string_t *dir,
     struct timeval now, const char *syscall, int err, const char *reason)
 {
   char *why = NULL;
@@ -1193,8 +1191,8 @@ void set_poison_state(w_root_t *root, struct watchman_dir *dir,
 "%s#poison-%s\n",
     (long)now.tv_sec,
     syscall,
-    dir->path->len,
-    dir->path->buf,
+    dir->len,
+    dir->buf,
     reason ? reason : strerror(err),
     cfg_get_trouble_url(),
     syscall
@@ -1689,7 +1687,10 @@ static void notify_thread(w_root_t *root)
 
   // signal that we're done here, so that we can start the
   // io thread after this point
+  w_pending_coll_lock(&root->pending);
+  root->pending.pinged = true;
   w_pending_coll_ping(&root->pending);
+  w_pending_coll_unlock(&root->pending);
 
   while (!root->cancelled) {
     // big number because not all watchers can deal with
@@ -1741,6 +1742,8 @@ static void io_thread(w_root_t *root)
   w_pending_coll_init(&pending);
 
   while (!root->cancelled) {
+    bool pinged;
+
     if (!root->done_initial) {
       struct timeval start;
 
@@ -1768,12 +1771,12 @@ static void io_thread(w_root_t *root)
     // Wait for the notify thread to give us pending items, or for
     // the settle period to expire
     w_log(W_LOG_DBG, "poll_events timeout=%dms\n", timeoutms);
-    w_pending_coll_lock_and_wait(&root->pending, timeoutms);
-    w_log(W_LOG_DBG, " ... wake up\n");
+    pinged = w_pending_coll_lock_and_wait(&root->pending, timeoutms);
+    w_log(W_LOG_DBG, " ... wake up (pinged=%s)\n", pinged ? "true" : "false");
     w_pending_coll_append(&pending, &root->pending);
     w_pending_coll_unlock(&root->pending);
 
-    if (w_pending_coll_size(&pending) == 0) {
+    if (!pinged && w_pending_coll_size(&pending) == 0) {
       // No new pending items were given to us, so consider that
       // we may not be settled.
 

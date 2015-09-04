@@ -42,6 +42,7 @@ SRCS=\
 	log.c        \
 	json.c       \
 	bser.c       \
+	expflags.c   \
 	hash.c       \
 	ioprio.c     \
 	pending.c    \

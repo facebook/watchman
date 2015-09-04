@@ -11,7 +11,64 @@
 
 struct portfs_root_state {
   int port_fd;
+  /* map of file name to watchman_port_file */
+  w_ht_t *port_files;
+  /* protects port_files */
+  pthread_mutex_t lock;
   port_event_t portevents[WATCHMAN_BATCH_LIMIT];
+};
+
+struct watchman_port_file {
+  file_obj_t port_file;
+  w_string_t *name;
+};
+
+static const struct flag_map pflags[] = {
+  {FILE_ACCESS, "FILE_ACCESS"},
+  {FILE_MODIFIED, "FILE_MODIFIED"},
+  {FILE_ATTRIB, "FILE_ATTRIB"},
+  {FILE_DELETE, "FILE_DELETE"},
+  {FILE_RENAME_TO, "FILE_RENAME_TO"},
+  {FILE_RENAME_FROM, "FILE_RENAME_FROM"},
+  {UNMOUNTED, "UNMOUNTED"},
+  {MOUNTEDOVER, "MOUNTEDOVER"},
+  {0, NULL},
+};
+
+static struct watchman_port_file *make_port_file(w_string_t *name,
+    struct stat *st) {
+  struct watchman_port_file *f;
+
+  f = calloc(1, sizeof(*f));
+  if (!f) {
+    return NULL;
+  }
+  f->name = name;
+  w_string_addref(name);
+  f->port_file.fo_name = (char*)name->buf;
+  f->port_file.fo_atime = st->st_atim;
+  f->port_file.fo_mtime = st->st_mtim;
+  f->port_file.fo_ctime = st->st_ctim;
+
+  return f;
+}
+
+static void free_port_file(struct watchman_port_file *f) {
+  w_string_delref(f->name);
+  free(f);
+}
+
+static void portfs_del_port_file(w_ht_val_t key) {
+  free_port_file(w_ht_val_ptr(key));
+}
+
+const struct watchman_hash_funcs port_file_funcs = {
+  w_ht_string_copy,
+  w_ht_string_del,
+  w_ht_string_equal,
+  w_ht_string_hash,
+  NULL, // copy_val
+  portfs_del_port_file,
 };
 
 watchman_global_watcher_t portfs_global_init(void) {
@@ -33,6 +90,9 @@ bool portfs_root_init(watchman_global_watcher_t watcher, w_root_t *root,
     return false;
   }
   root->watch = state;
+
+  pthread_mutex_init(&state->lock, NULL);
+  state->port_files = w_ht_new(HINT_NUM_DIRS, &port_file_funcs);
 
   state->port_fd = port_create();
   if (state->port_fd == -1) {
@@ -56,6 +116,8 @@ void portfs_root_dtor(watchman_global_watcher_t watcher, w_root_t *root) {
 
   close(state->port_fd);
   state->port_fd = -1;
+  w_ht_free(state->port_files);
+  pthread_mutex_destroy(&state->lock);
 
   free(state);
   root->watch = NULL;
@@ -75,43 +137,69 @@ static bool portfs_root_start(watchman_global_watcher_t watcher,
   return true;
 }
 
-static bool portfs_root_start_watch_file(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_file *file) {
-  struct portfs_root_state *state = root->watch;
-  char buf[WATCHMAN_NAME_MAX];
-  unused_parameter(watcher);
+static bool do_watch(struct portfs_root_state *state, w_string_t *name,
+    struct stat *st) {
+  struct watchman_port_file *f;
+  bool success = false;
 
-  snprintf(buf, sizeof(buf), "%.*s/%.*s",
-      file->parent->path->len, file->parent->path->buf,
-      file->name->len, file->name->buf);
-
-  w_log(W_LOG_DBG, "watch_file(%s)\n", buf);
-
-  file->port_file.fo_atime = file->st.st_atim;
-  file->port_file.fo_mtime = file->st.st_mtim;
-  file->port_file.fo_ctime = file->st.st_ctim;
-  if (!file->port_file.fo_name) {
-    file->port_file.fo_name = strdup(buf);
+  pthread_mutex_lock(&state->lock);
+  if (w_ht_get(state->port_files, w_ht_ptr_val(name))) {
+    // Already watching it
+    success = true;
+    goto out;
   }
 
-  port_associate(state->port_fd, PORT_SOURCE_FILE,
-      (uintptr_t)&file->port_file, WATCHMAN_PORT_EVENTS,
-      (void*)file);
+  f = make_port_file(name, st);
+  if (!f) {
+    goto out;
+  }
 
-  return true;
+  if (!w_ht_set(state->port_files, w_ht_ptr_val(name), w_ht_ptr_val(f))) {
+    free_port_file(f);
+    goto out;
+  }
+
+  w_log(W_LOG_DBG, "watching %s\n", name->buf);
+  errno = 0;
+  if (port_associate(state->port_fd, PORT_SOURCE_FILE,
+        (uintptr_t)&f->port_file, WATCHMAN_PORT_EVENTS,
+        (void*)f)) {
+    w_log(W_LOG_ERR, "port_associate %s %s\n",
+        f->port_file.fo_name, strerror(errno));
+    w_ht_del(state->port_files, w_ht_ptr_val(name));
+    goto out;
+  }
+
+  success = true;
+
+out:
+  pthread_mutex_unlock(&state->lock);
+  return success;
+}
+
+static bool portfs_root_start_watch_file(watchman_global_watcher_t watcher,
+    w_root_t *root, struct watchman_file *file) {
+  struct portfs_root_state *state = root->watch;
+  w_string_t *name;
+  bool success = false;
+
+  unused_parameter(watcher);
+
+  name = w_string_path_cat(file->parent->path, file->name);
+  if (!name) {
+    return false;
+  }
+  success = do_watch(state, name, &file->st);
+  w_string_delref(name);
+
+  return success;
 }
 
 static void portfs_root_stop_watch_file(watchman_global_watcher_t watcher,
       w_root_t *root, struct watchman_file *file) {
-  struct portfs_root_state *state = root->watch;
   unused_parameter(watcher);
-
-  port_dissociate(state->port_fd, PORT_SOURCE_FILE,
-      (uintptr_t)&file->port_file);
-  if (file->port_file.fo_name) {
-    free(file->port_file.fo_name);
-    file->port_file.fo_name = NULL;
-  }
+  unused_parameter(root);
+  unused_parameter(file);
 }
 
 static DIR *portfs_root_start_watch_dir(watchman_global_watcher_t watcher,
@@ -137,17 +225,9 @@ static DIR *portfs_root_start_watch_dir(watchman_global_watcher_t watcher,
     return NULL;
   }
 
-  dir->port_file.fo_mtime = st.st_atim;
-  dir->port_file.fo_mtime = st.st_mtim;
-  dir->port_file.fo_ctime = st.st_ctim;
-  dir->port_file.fo_name = (char*)dir->path->buf;
-
-  errno = 0;
-  if (port_associate(state->port_fd, PORT_SOURCE_FILE,
-        (uintptr_t)&dir->port_file, WATCHMAN_PORT_EVENTS,
-        SET_DIR_BIT(dir))) {
-    w_log(W_LOG_ERR, "port_associate %s %s\n",
-        dir->port_file.fo_name, strerror(errno));
+  if (!do_watch(state, dir->path, &st)) {
+    closedir(osdir);
+    return NULL;
   }
 
   return osdir;
@@ -155,11 +235,9 @@ static DIR *portfs_root_start_watch_dir(watchman_global_watcher_t watcher,
 
 static void portfs_root_stop_watch_dir(watchman_global_watcher_t watcher,
       w_root_t *root, struct watchman_dir *dir) {
-  struct portfs_root_state *state = root->watch;
   unused_parameter(watcher);
-
-  port_dissociate(state->port_fd, PORT_SOURCE_FILE,
-      (uintptr_t)&dir->port_file);
+  unused_parameter(root);
+  unused_parameter(dir);
 }
 
 static bool portfs_root_consume_notify(watchman_global_watcher_t watcher,
@@ -188,36 +266,37 @@ static bool portfs_root_consume_notify(watchman_global_watcher_t watcher,
     return false;
   }
 
+  pthread_mutex_lock(&state->lock);
+
   for (i = 0; i < n; i++) {
-    if (IS_DIR_BIT_SET(state->portevents[i].portev_user)) {
-      struct watchman_dir *dir = DECODE_DIR(state->portevents[i].portev_user);
-      uint32_t pe = state->portevents[i].portev_events;
+    struct watchman_port_file *f;
+    uint32_t pe = state->portevents[i].portev_events;
+    char flags_label[128];
 
-      w_log(W_LOG_DBG, "port: dir %.*s [0x%x]\n",
-          dir->path->len, dir->path->buf, pe);
+    f = (struct watchman_port_file*)state->portevents[i].portev_user;
+    w_expand_flags(pflags, pe, flags_label, sizeof(flags_label));
+    w_log(W_LOG_DBG, "port: %s [0x%x %s]\n",
+        f->port_file.fo_name,
+        pe, flags_label);
 
-      if ((pe & (FILE_RENAME_FROM|UNMOUNTED|MOUNTEDOVER|FILE_DELETE))
-          && w_string_equal(dir->path, root->root_path)) {
+    if ((pe & (FILE_RENAME_FROM|UNMOUNTED|MOUNTEDOVER|FILE_DELETE))
+        && w_string_equal(f->name, root->root_path)) {
 
-        w_log(W_LOG_ERR,
-          "root dir %s has been (re)moved (code 0x%x), canceling watch\n",
-          root->root_path->buf, pe);
+      w_log(W_LOG_ERR,
+        "root dir %s has been (re)moved (code 0x%x %s), canceling watch\n",
+        root->root_path->buf, pe, flags_label);
 
-        w_root_cancel(root);
-        return false;
-      }
-      w_pending_coll_add(coll, dir->path, false, now, true);
-
-    } else {
-      struct watchman_file *file = state->portevents[i].portev_user;
-      w_string_t *path;
-
-      path = w_string_path_cat(file->parent->path, file->name);
-      w_pending_coll_add(coll, path, true, now, true);
-      w_log(W_LOG_DBG, "port: file %.*s\n", path->len, path->buf);
-      w_string_delref(path);
+      w_root_cancel(root);
+      pthread_mutex_unlock(&state->lock);
+      return false;
     }
+    w_pending_coll_add(coll, f->name, true, now, true);
+
+    // It was port_dissociate'd implicitly.  We'll re-establish a
+    // watch later when portfs_root_start_watch_(file|dir) are called again
+    w_ht_del(state->port_files, w_ht_ptr_val(f->name));
   }
+  pthread_mutex_unlock(&state->lock);
 
   return true;
 }
@@ -240,10 +319,7 @@ static bool portfs_root_wait_notify(watchman_global_watcher_t watcher,
 static void portfs_file_free(watchman_global_watcher_t watcher,
     struct watchman_file *file) {
   unused_parameter(watcher);
-
-  if (file->port_file.fo_name) {
-    free(file->port_file.fo_name);
-  }
+  unused_parameter(file);
 }
 
 struct watchman_ops portfs_watcher = {

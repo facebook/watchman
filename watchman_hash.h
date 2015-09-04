@@ -173,6 +173,12 @@ uint32_t w_ht_string_hash(w_ht_val_t val);
  */
 extern const struct watchman_hash_funcs w_ht_string_funcs;
 
+/* if you're building a hash table that uses w_string_t as values,
+ * then you can use w_ht_string_val_funcs as the second parameter
+ * to w_ht_new to safely reference the values as the table is updated.
+ */
+extern const struct watchman_hash_funcs w_ht_string_val_funcs;
+
 /* if you're building a dictionary of string => string,
  * then you can use w_ht_dict_funcs as the second parameter
  * to w_ht_new to safely reference the keys and values as the

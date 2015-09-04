@@ -259,6 +259,7 @@ struct watchman_pending_collection {
   w_ht_t *pending_uniq;
   pthread_mutex_t lock;
   pthread_cond_t cond;
+  bool pinged;
 };
 
 bool w_pending_coll_init(struct watchman_pending_collection *coll);
@@ -290,12 +291,6 @@ struct watchman_dir {
   w_ht_t *lc_files;
   /* child dirs contained in this dir (keyed by dir->path) */
   w_ht_t *dirs;
-
-  /* watch descriptor */
-  int wd;
-#if HAVE_PORT_CREATE
-  file_obj_t port_file;
-#endif
 };
 
 struct watchman_ops {
@@ -390,13 +385,6 @@ struct watchman_file {
   /* cache stat results so we can tell if an entry
    * changed */
   struct stat st;
-
-#if HAVE_PORT_CREATE
-  file_obj_t port_file;
-#endif
-#if HAVE_KQUEUE
-  int kq_fd;
-#endif
 };
 
 #define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"
@@ -644,7 +632,6 @@ void w_root_set_warning(w_root_t *root, w_string_t *str);
 
 struct watchman_dir *w_root_resolve_dir(w_root_t *root,
     w_string_t *dir_name, bool create);
-struct watchman_dir *w_root_resolve_dir_by_wd(w_root_t *root, int wd);
 void w_root_process_path(w_root_t *root,
     struct watchman_pending_collection *coll, w_string_t *full_path,
     struct timeval now, bool recursive, bool via_notify);
@@ -930,7 +917,7 @@ void w_assess_trigger(w_root_t *root, struct watchman_trigger_command *cmd);
 struct watchman_trigger_command *w_build_trigger_from_def(
   w_root_t *root, json_t *trig, char **errmsg);
 
-void set_poison_state(w_root_t *root, struct watchman_dir *dir,
+void set_poison_state(w_root_t *root, w_string_t *dir,
     struct timeval now, const char *syscall, int err,
     const char *reason);
 
@@ -951,6 +938,13 @@ extern struct watchman_ops win32_watcher;
 
 void w_ioprio_set_low(void);
 void w_ioprio_set_normal(void);
+
+struct flag_map {
+  uint32_t value;
+  const char *label;
+};
+void w_expand_flags(const struct flag_map *fmap, uint32_t flags,
+    char *buf, size_t len);
 
 #ifdef __cplusplus
 }

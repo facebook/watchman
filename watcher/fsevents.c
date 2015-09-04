@@ -21,6 +21,29 @@ struct fsevents_root_state {
   struct watchman_fsevent *fse_head, *fse_tail;
 };
 
+static const struct flag_map kflags[] = {
+  {kFSEventStreamEventFlagMustScanSubDirs, "MustScanSubDirs"},
+  {kFSEventStreamEventFlagUserDropped, "UserDropped"},
+  {kFSEventStreamEventFlagKernelDropped, "KernelDropped"},
+  {kFSEventStreamEventFlagEventIdsWrapped, "EventIdsWrapped"},
+  {kFSEventStreamEventFlagHistoryDone, "HistoryDone"},
+  {kFSEventStreamEventFlagRootChanged, "RootChanged"},
+  {kFSEventStreamEventFlagMount, "Mount"},
+  {kFSEventStreamEventFlagUnmount, "Unmount"},
+  {kFSEventStreamEventFlagItemCreated, "ItemCreated"},
+  {kFSEventStreamEventFlagItemRemoved, "ItemRemoved"},
+  {kFSEventStreamEventFlagItemInodeMetaMod, "InodeMetaMod"},
+  {kFSEventStreamEventFlagItemRenamed, "ItemRenamed"},
+  {kFSEventStreamEventFlagItemModified, "ItemModified"},
+  {kFSEventStreamEventFlagItemFinderInfoMod, "FinderInfoMod"},
+  {kFSEventStreamEventFlagItemChangeOwner, "ItemChangeOwner"},
+  {kFSEventStreamEventFlagItemXattrMod, "ItemXattrMod"},
+  {kFSEventStreamEventFlagItemIsFile, "ItemIsFile"},
+  {kFSEventStreamEventFlagItemIsDir, "ItemIsDir"},
+  {kFSEventStreamEventFlagItemIsSymlink, "ItemIsSymlink"},
+  {0, NULL},
+};
+
 static void fse_callback(ConstFSEventStreamRef streamRef,
    void *clientCallBackInfo,
    size_t numEvents,
@@ -32,6 +55,7 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
   char **paths = eventPaths;
   w_root_t *root = clientCallBackInfo;
   char pathbuf[WATCHMAN_NAME_MAX];
+  char flags_label[128];
   struct watchman_fsevent *head = NULL, *tail = NULL, *evt;
   struct fsevents_root_state *state = root->watch;
 
@@ -75,7 +99,9 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
     }
     tail = evt;
 
-    w_log(W_LOG_DBG, "fse_thread: add %s %" PRIx32 "\n", pathbuf, evt->flags);
+    w_expand_flags(kflags, evt->flags, flags_label, sizeof(flags_label));
+    w_log(W_LOG_DBG, "fse_thread: add %s 0x%" PRIx32 " %s\n", pathbuf,
+      evt->flags, flags_label);
   }
 
   pthread_mutex_lock(&state->fse_mtx);
