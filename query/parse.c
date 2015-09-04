@@ -241,16 +241,15 @@ static bool parse_query_expression(w_query *res, json_t *query)
 
 static bool parse_sync(w_query *res, json_t *query)
 {
-  json_t *timeout;
-  int value;
+  int value = 60000;
 
-  timeout = json_object_get(query, "sync_timeout");
-  if (!timeout) {
-    res->sync_timeout = 60000;
-    return true;
+  if (query &&
+      json_unpack(query, "{s?:i*}", "sync_timeout", &value) != 0) {
+    res->errmsg = strdup("sync_timeout must be an integer value >= 0");
+    return false;
   }
 
-  if (json_unpack(timeout, "i", &value) != 0 || value < 0) {
+  if (value < 0) {
     res->errmsg = strdup("sync_timeout must be an integer value >= 0");
     return false;
   }
@@ -261,16 +260,10 @@ static bool parse_sync(w_query *res, json_t *query)
 
 static bool parse_empty_on_fresh_instance(w_query *res, json_t *query)
 {
-  json_t *do_empty;
-  int value;
+  int value = 0;
 
-  do_empty = json_object_get(query, "empty_on_fresh_instance");
-  if (!do_empty) {
-    res->empty_on_fresh_instance = false;
-    return true;
-  }
-
-  if (json_unpack(do_empty, "b", &value) != 0) {
+  if (query &&
+      json_unpack(query, "{s?:b*}", "empty_on_fresh_instance", &value) != 0) {
     res->errmsg = strdup("empty_on_fresh_instance must be a boolean");
     return false;
   }
