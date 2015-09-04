@@ -390,7 +390,7 @@ static void spawn_command(w_root_t *root,
   // If failed, we want to make sure we log enough info to figure out why
   result_log_level = res == 0 ? W_LOG_DBG : W_LOG_ERR;
 
-  w_log(result_log_level, "posix_spawnp:\n");
+  w_log(result_log_level, "posix_spawnp: %s\n", cmd->triggername->buf);
   for (i = 0; argv[i]; i++) {
     w_log(result_log_level, "argv[%d] %s\n", i, argv[i]);
   }
@@ -449,32 +449,39 @@ static bool trigger_generator(
   return true;
 }
 
+/* must be called with root locked */
 void w_assess_trigger(w_root_t *root, struct watchman_trigger_command *cmd)
 {
   w_query_res res;
   struct w_clockspec *since_spec = cmd->query->since_spec;
 
   if (since_spec && since_spec->tag == w_cs_clock) {
-    w_log(W_LOG_DBG, "running trigger rules! since %" PRIu32 "\n",
+    w_log(W_LOG_DBG, "running trigger \"%s\" rules! since %" PRIu32 "\n",
+        cmd->triggername->buf,
         since_spec->clock.ticks);
   } else {
-    w_log(W_LOG_DBG, "running trigger rules!\n");
+    w_log(W_LOG_DBG, "running trigger \"%s\" rules!\n",
+        cmd->triggername->buf);
   }
 
   // Triggers never need to sync explicitly; we are only dispatched
   // at settle points which are by definition sync'd to the present time
   cmd->query->sync_timeout = 0;
   if (!w_query_execute(cmd->query, root, &res, trigger_generator, cmd)) {
-    w_log(W_LOG_ERR, "error running trigger query: %s", res.errmsg);
+    w_log(W_LOG_ERR, "error running trigger \"%s\" query: %s",
+        cmd->triggername->buf, res.errmsg);
     w_query_result_free(&res);
     return;
   }
 
-  w_log(W_LOG_DBG, "trigger generated %" PRIu32 " results\n",
-      res.num_results);
+  w_log(W_LOG_DBG, "trigger \"%s\" generated %" PRIu32 " results\n",
+      cmd->triggername->buf, res.num_results);
 
   // create a new spec that will be used the next time
   cmd->query->since_spec = w_clockspec_new_clock(res.root_number, res.ticks);
+
+  w_log(W_LOG_DBG, "updating trigger \"%s\" use %" PRIu32 " ticks next time\n",
+      cmd->triggername->buf, res.ticks);
 
   if (res.num_results) {
     spawn_command(root, cmd, &res, since_spec);

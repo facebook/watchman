@@ -183,7 +183,8 @@ class triggerTestCase extends WatchmanTestCase {
     $this->resumeWatchman();
 
     $this->watchmanCommand('log', 'debug', 'waiting for spawnp ' . __LINE__);
-    $this->assertWaitForLog('/posix_spawnp/');
+    $this->assertWaitForLog('/posix_spawnp: test/');
+    $this->assertWaitForLog('/posix_spawnp: other/');
     $this->assertWaitForLogOutput('/WOOT from trig/');
 
     $this->stopLogging();
