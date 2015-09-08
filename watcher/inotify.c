@@ -413,6 +413,28 @@ static bool inot_root_consume_notify(watchman_global_watcher_t watcher,
     }
   }
 
+  // It is possible that we can accumulate a set of pending_move
+  // structs in move_map.  This happens when a directory is moved
+  // outside of the watched tree; we get the MOVE_FROM but never
+  // get the MOVE_TO with the same cookie.  To avoid leaking these,
+  // we'll age out the move_map after processing a full set of
+  // inotify events.   We age out rather than delete all because
+  // the MOVE_TO may yet be waiting to read in another go around.
+  // We allow a somewhat arbitrary but practical grace period to
+  // observe the corresponding MOVE_TO.
+  if (w_ht_size(state->move_map) > 0) {
+    w_ht_iter_t iter;
+    if (w_ht_first(state->move_map, &iter)) do {
+      struct pending_move *pending = w_ht_val_ptr(iter.value);
+      if (now.tv_sec - pending->created > 5 /* seconds */) {
+        w_log(W_LOG_DBG,
+            "deleting pending move %s (moved outside of watch?)\n",
+            pending->name->buf);
+        w_ht_iter_del(state->move_map, &iter);
+      }
+    } while (w_ht_next(state->move_map, &iter));
+  }
+
   return true;
 }
 
