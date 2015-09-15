@@ -17,9 +17,12 @@ class TestDashJCliOption(unittest.TestCase):
     def getSockPath(self):
         return WatchmanInstance.getSharedInstance().getSockPath()
 
-    def doJson(self, addNewLine):
+    def doJson(self, addNewLine, pretty=False):
         sockname = self.getSockPath()
-        watchman_cmd = json.dumps(['get-sockname'])
+        if pretty:
+            watchman_cmd = "[\n\"get-sockname\"\n]"
+        else:
+            watchman_cmd = json.dumps(['get-sockname'])
         if addNewLine:
             watchman_cmd = watchman_cmd + "\n"
 
@@ -48,6 +51,9 @@ class TestDashJCliOption(unittest.TestCase):
 
     def test_jsonInputNewLine(self):
         self.doJson(True)
+
+    def test_jsonInputPretty(self):
+        self.doJson(True, True)
 
     def test_bserInput(self):
         sockname = self.getSockPath()

@@ -88,6 +88,35 @@ static inline enum w_pdu_type detect_pdu(w_jbuffer_t *jr)
   return is_json_compact;
 }
 
+static json_t *read_json_pretty_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
+{
+  char *nl;
+  int r;
+  json_t *res;
+
+  // Assume newline is at the end of what we have
+  nl = jr->buf + jr->wpos;
+  r = (int)(nl - (jr->buf + jr->rpos));
+  res = json_loadb(jr->buf + jr->rpos, r, 0, jerr);
+  if (!res) {
+    // Maybe we can fill more data into the buffer and retry?
+    if (!fill_buffer(jr, stm)) {
+      // No, then error is terminal
+      return NULL;
+    }
+    // Recompute end of buffer
+    nl = jr->buf + jr->wpos;
+    r = (int)(nl - (jr->buf + jr->rpos));
+    // And try parsing this
+    res = json_loadb(jr->buf + jr->rpos, r, 0, jerr);
+  }
+
+  // update read pos to look beyond this point
+  jr->rpos += r + 1;
+
+  return res;
+}
+
 static json_t *read_json_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
 {
   char *nl;
@@ -226,6 +255,12 @@ static bool read_and_detect_pdu(w_jbuffer_t *jr, w_stm_t stm,
     pdu = detect_pdu(jr);
   }
 
+  if (pdu == is_json_compact && stm == w_stm_stdin()) {
+    // Minor hack for the `-j` option for reading pretty printed
+    // json from stdin
+    pdu = is_json_pretty;
+  }
+
   jr->pdu_type = pdu;
   return true;
 }
@@ -348,10 +383,14 @@ static bool stream_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
 static json_t *read_pdu_into_json(w_jbuffer_t *jr, w_stm_t stm,
     json_error_t *jerr)
 {
-  if (jr->pdu_type == is_json_compact) {
-    return read_json_pdu(jr, stm, jerr);
+  switch (jr->pdu_type) {
+    case is_json_compact:
+      return read_json_pdu(jr, stm, jerr);
+    case is_json_pretty:
+      return read_json_pretty_pdu(jr, stm, jerr);
+    default:
+      return read_bser_pdu(jr, stm, jerr);
   }
-  return read_bser_pdu(jr, stm, jerr);
 }
 
 bool w_json_buffer_passthru(w_jbuffer_t *jr,
