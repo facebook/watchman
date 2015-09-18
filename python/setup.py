@@ -30,5 +30,6 @@ setup(
         'Topic :: System :: Filesystems',
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent'
-    ]
+    ],
+    zip_safe = True
 )
