@@ -30,7 +30,14 @@ import os
 import errno
 import socket
 import subprocess
-import bser
+
+# Sometimes it's really hard to get Python extensions to compile,
+# so fall back to a pure Python implementation.
+try:
+    import bser
+except ImportError, e:
+    import pybser as bser
+
 import capabilities
 
 # 2 bytes marker, 1 byte int size, 8 bytes int64 value
