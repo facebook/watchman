@@ -764,6 +764,26 @@ int main(int argc, char **argv)
   if (!no_spawn) {
     w_log(W_LOG_ERR, "unable to talk to your watchman on %s! (%s)\n",
         sock_name, strerror(errno));
+#ifdef __APPLE__
+    if (getenv("TMUX")) {
+      w_log(W_LOG_ERR, "\n"
+"You may be hitting a tmux related session issue.\n"
+"An immediate workaround is to run:\n"
+"\n"
+"    watchman version\n"
+"\n"
+"just once, from *outside* your tmux session, to allow the launchd\n"
+"registration to be setup.  Once done, you can continue to access\n"
+"watchman from inside your tmux sessions as usual.\n"
+"\n"
+"Longer term, you may wish to install this tool:\n"
+"\n"
+"    https://github.com/ChrisJohnsen/tmux-MacOSX-pasteboard\n"
+"\n"
+"and configure tmux to use `reattach-to-user-namespace`\n"
+"when it launches your shell.\n");
+    }
+#endif
   }
   return 1;
 }
