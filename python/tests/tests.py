@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # vim:ts=4:sw=4:et:
+import inspect
 import unittest
-import pywatchman
 import os
-from pywatchman import bser, SocketTimeout, WatchmanError
+from pywatchman import bser, pybser, SocketTimeout, WatchmanError
 
 
 class TestSocketTimeout(unittest.TestCase):
@@ -15,19 +15,42 @@ class TestSocketTimeout(unittest.TestCase):
 
 
 class TestBSERDump(unittest.TestCase):
+    # bser_mod will be None during discovery
+    def __init__(self, method_name, bser_mod=None):
+        super(TestBSERDump, self).__init__(method_name)
+        if bser_mod:
+            self._test_name = '%s.%s [%s]' % (
+                self.__class__.__name__, method_name, bser_mod.__name__)
+        else:
+            self._test_name = None
+        self.bser_mod = bser_mod
+
+    @staticmethod
+    def parameterize(loader, bser_mod):
+        suite = unittest.TestSuite()
+        for method_name in loader.getTestCaseNames(TestBSERDump):
+            suite.addTest(TestBSERDump(method_name, bser_mod))
+        return suite
+
+    def id(self):
+        if self._test_name:
+            return self._test_name
+        else:
+            return super(TestBSERDump, self).id()
+
     def roundtrip(self, val):
-        enc = bser.dumps(val)
+        enc = self.bser_mod.dumps(val)
         print "# %s  -->  %s" % (val, enc.encode('hex'))
-        dec = bser.loads(enc)
+        dec = self.bser_mod.loads(enc)
         self.assertEquals(val, dec)
 
     def munged(self, val, munged):
-        enc = bser.dumps(val)
+        enc = self.bser_mod.dumps(val)
         if isinstance(val, unicode):
             print "# %s  -->  %s" % (val.encode('utf-8'), enc.encode('hex'))
         else:
             print "# %s  -->  %s" % (val, enc.encode('hex'))
-        dec = bser.loads(enc)
+        dec = self.bser_mod.loads(enc)
         self.assertEquals(munged, dec)
 
     def test_int(self):
@@ -71,7 +94,7 @@ class TestBSERDump(unittest.TestCase):
                 "\x03\x03\x61\x67\x65\x03\x03\x02\x03\x04\x66\x72" + \
                 "\x65\x64\x03\x14\x02\x03\x04\x70\x65\x74\x65\x03" + \
                 "\x1e\x0c\x03\x19"
-        dec = bser.loads(templ)
+        dec = self.bser_mod.loads(templ)
         exp = [
             {"name": "fred", "age": 20},
             {"name": "pete", "age": 30},
@@ -80,15 +103,22 @@ class TestBSERDump(unittest.TestCase):
         self.assertEquals(exp, dec)
 
     def test_pdu_len(self):
-        enc = bser.dumps(1)
-        self.assertEquals(len(enc), bser.pdu_len(enc))
+        enc = self.bser_mod.dumps(1)
+        self.assertEquals(len(enc), self.bser_mod.pdu_len(enc))
 
         # try a bigger one; prove that we get the correct length
         # even though we receive just a portion of the complete
         # data
-        enc = bser.dumps([1, 2, 3, "hello there, much larger"])
-        self.assertEquals(len(enc), bser.pdu_len(enc[0:7]))
+        enc = self.bser_mod.dumps([1, 2, 3, "hello there, much larger"])
+        self.assertEquals(len(enc), self.bser_mod.pdu_len(enc[0:7]))
+
+def load_tests(loader, test_methods=None, pattern=None):
+    suite = unittest.TestSuite()
+    suite.addTests(loader.loadTestsFromTestCase(TestSocketTimeout))
+    for bser_mod in (bser, pybser):
+        suite.addTest(TestBSERDump.parameterize(loader, bser_mod))
+    return suite
 
 if __name__ == '__main__':
-    unittest.main()
-
+    suite = load_tests(unittest.TestLoader())
+    unittest.TextTestRunner().run(suite)
