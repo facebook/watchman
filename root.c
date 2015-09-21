@@ -2208,7 +2208,7 @@ bool w_is_path_absolute(const char *path) {
 static w_root_t *root_resolve(const char *filename, bool auto_watch,
     bool *created, char **errmsg)
 {
-  struct watchman_root *root = NULL;
+  struct watchman_root *root = NULL, *existing = NULL;
   w_ht_val_t root_val;
   char *watch_path;
   w_string_t *root_str;
@@ -2308,11 +2308,20 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
     return NULL;
   }
 
-  *created = true;
-
   pthread_mutex_lock(&root_lock);
-  // adds 1 ref
-  w_ht_set(watched_roots, w_ht_ptr_val(root->root_path), w_ht_ptr_val(root));
+  existing = w_ht_val_ptr(w_ht_get(watched_roots,
+                w_ht_ptr_val(root->root_path)));
+  if (existing) {
+    // Someone beat us in this race
+    w_root_addref(existing);
+    w_root_delref(root);
+    root = existing;
+    *created = false;
+  } else {
+    // adds 1 ref
+    w_ht_set(watched_roots, w_ht_ptr_val(root->root_path), w_ht_ptr_val(root));
+    *created = true;
+  }
   pthread_mutex_unlock(&root_lock);
 
   // caller owns 1 ref
