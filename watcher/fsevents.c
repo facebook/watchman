@@ -298,7 +298,9 @@ break_out:
       goto break_out;
     }
 
-    recurse = (evt->flags & kFSEventStreamEventFlagMustScanSubDirs)
+    recurse = (evt->flags &
+                (kFSEventStreamEventFlagMustScanSubDirs|
+                 kFSEventStreamEventFlagItemRenamed))
               ? true : false;
 
     w_pending_coll_add(coll, evt->path, recurse, now, true);
@@ -484,7 +486,8 @@ static void fsevents_file_free(watchman_global_watcher_t watcher,
 
 struct watchman_ops fsevents_watcher = {
   "fsevents",
-  true, // per_file_notifications
+  WATCHER_HAS_PER_FILE_NOTIFICATIONS|
+    WATCHER_COALESCED_RENAME,
   fsevents_global_init,
   fsevents_global_dtor,
   fsevents_root_init,

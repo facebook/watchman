@@ -436,7 +436,7 @@ static void winwatch_file_free(watchman_global_watcher_t watcher,
 
 struct watchman_ops win32_watcher = {
   "win32",
-  true, // per_file_notifications
+  WATCHER_HAS_PER_FILE_NOTIFICATIONS,
   winwatch_global_init,
   winwatch_global_dtor,
   winwatch_root_init,

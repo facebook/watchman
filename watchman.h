@@ -297,9 +297,13 @@ struct watchman_ops {
   // What's it called??
   const char *name;
 
-  // true if this watcher notifies for individual files,
-  // false if it only notifies for dirs
-  bool has_per_file_notifications;
+  // if this watcher notifies for individual files contained within
+  // a watched dir, false if it only notifies for dirs
+#define WATCHER_HAS_PER_FILE_NOTIFICATIONS 1
+  // if renames do not reliably report the individual
+  // files renamed in the hierarchy
+#define WATCHER_COALESCED_RENAME 2
+  unsigned flags;
 
   // Perform any global initialization needed for the watcher mechanism
   // and return a context pointer that will be passed to all other ops

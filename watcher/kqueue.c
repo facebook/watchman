@@ -344,7 +344,7 @@ static void kqueue_file_free(watchman_global_watcher_t watcher,
 
 struct watchman_ops kqueue_watcher = {
   "kqueue",
-  false, // per_file_notifications
+  0,
   kqueue_global_init,
   kqueue_global_dtor,
   kqueue_root_init,
