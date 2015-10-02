@@ -324,7 +324,7 @@ static void portfs_file_free(watchman_global_watcher_t watcher,
 
 struct watchman_ops portfs_watcher = {
   "portfs",
-  false, // per_file_notifications
+  0,
   portfs_global_init,
   portfs_global_dtor,
   portfs_root_init,

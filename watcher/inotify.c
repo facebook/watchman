@@ -461,7 +461,7 @@ static void inot_file_free(watchman_global_watcher_t watcher,
 
 struct watchman_ops inotify_watcher = {
   "inotify",
-  true, // per_file_notifications
+  WATCHER_HAS_PER_FILE_NOTIFICATIONS,
   inot_global_init,
   inot_global_dtor,
   inot_root_init,
