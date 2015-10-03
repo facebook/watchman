@@ -13,4 +13,18 @@ class clockTestCase extends WatchmanTestCase {
     $this->assertRegex('/^c:\d+:\d+:\d+:\d+$/', $clock['clock'],
                        "looks clocky");
   }
+
+  function testClockSync() {
+    $dir = new WatchmanDirectoryFixture();
+    $root = $dir->getPath();
+    $watch = $this->watch($root);
+    $clock1 = $this->watchmanCommand('clock', $root, array('sync_timeout' => 100));
+    $this->assertRegex('/^c:\d+:\d+:\d+:\d+$/', $clock1['clock'],
+                       "looks clocky");
+    $clock2 = $this->watchmanCommand('clock', $root, array('sync_timeout' => 100));
+    $this->assertRegex('/^c:\d+:\d+:\d+:\d+$/', $clock2['clock'],
+                       "looks clocky");
+
+    $this->assertFalse($clock1 === $clock2);
+  }
 }

@@ -26,28 +26,47 @@ bool w_cmd_realpath_root(json_t *args, char **errmsg)
 
   return true;
 }
+W_CAP_REG("clock-sync-timeout")
 
-/* clock /root
+/* clock /root [options]
  * Returns the current clock value for a watched root
+ * If the options contain a sync_timeout, we ensure that the repo
+ * is synced up-to-date and the returned clock represents the
+ * latest state.
  */
 static void cmd_clock(struct watchman_client *client, json_t *args)
 {
   w_root_t *root;
   json_t *resp;
+  unsigned int sync_timeout = 0;
 
-  /* resolve the root */
-  if (json_array_size(args) != 2) {
+  if (json_array_size(args) == 3) {
+    const char *ignored;
+    if (0 != json_unpack(args, "[s, s, {s?:d}]",
+                         &ignored, &ignored,
+                         "sync_timeout", sync_timeout)) {
+      send_error_response(client, "malformated argument list for 'clock'");
+      return;
+    }
+  }
+  else if (json_array_size(args) != 2) {
     send_error_response(client, "wrong number of arguments to 'clock'");
     return;
   }
 
+  /* resolve the root */
   root = resolve_root_or_err(client, args, 1, false);
   if (!root) {
     return;
   }
 
+  if (sync_timeout) {
+    w_root_sync_to_now(root, sync_timeout);
+  }
+
   resp = make_response();
   w_root_lock(root);
+  root->ticks++;
   annotate_with_clock(root, resp);
   w_root_unlock(root);
 
