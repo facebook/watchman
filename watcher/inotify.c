@@ -124,7 +124,11 @@ bool inot_root_init(watchman_global_watcher_t watcher, w_root_t *root,
   root->watch = state;
   pthread_mutex_init(&state->lock, NULL);
 
+#ifdef HAVE_INOTIFY_INIT1
+  state->infd = inotify_init1(IN_CLOEXEC);
+#else
   state->infd = inotify_init();
+#endif
   if (state->infd == -1) {
     ignore_result(asprintf(errmsg, "watch(%.*s): inotify_init error: %s",
         root->root_path->len, root->root_path->buf, inot_strerror(errno)));
