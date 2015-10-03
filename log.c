@@ -130,7 +130,12 @@ void w_log(int level, WATCHMAN_FMT_STRING(const char *fmt), ...)
   struct tm tm;
 
   bool should_log_to_stderr = level <= log_level;
-  bool should_log_to_clients = w_should_log_to_clients(level);
+  // If we're logging a FATAL it is probable that we're crashing.
+  // We've seen this get stuck in w_should_log_to_clients in a couple
+  // of crash scenarios on OS X, so we simply skip that check.
+  bool should_log_to_clients = level == W_LOG_FATAL ?
+                               false :
+                               w_should_log_to_clients(level);
 
   if (!(should_log_to_stderr || should_log_to_clients)) {
     // Don't bother formatting the log message if nobody's listening.
