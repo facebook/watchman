@@ -481,6 +481,40 @@ w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
   return s;
 }
 
+w_string_t *w_string_path_cat_cstr(w_string_t *parent, const char *rhs)
+{
+  w_string_t *s;
+  int len;
+  char *buf;
+  uint32_t rhs_len = u32_strlen(rhs);
+
+  if (rhs_len == 0) {
+    w_string_addref(parent);
+    return parent;
+  }
+
+  len = parent->len + rhs_len + 1;
+
+  s = malloc(sizeof(*s) + len + 1);
+  if (!s) {
+    perror("no memory available");
+    abort();
+  }
+
+  s->refcnt = 1;
+  s->len = len;
+  s->slice = NULL;
+  buf = (char*)(s + 1);
+  memcpy(buf, parent->buf, parent->len);
+  buf[parent->len] = WATCHMAN_DIR_SEP;
+  memcpy(buf + parent->len + 1, rhs, rhs_len);
+  buf[parent->len + 1 + rhs_len] = '\0';
+  s->buf = buf;
+  s->hval = w_hash_bytes(buf, len, 0);
+
+  return s;
+}
+
 char *w_string_dup_buf(const w_string_t *str)
 {
   char *buf;

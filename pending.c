@@ -133,16 +133,14 @@ bool w_pending_coll_add_rel(struct watchman_pending_collection *coll,
     struct watchman_dir *dir, const char *name, bool recursive,
     struct timeval now, bool via_notify)
 {
-  char path[WATCHMAN_NAME_MAX];
   w_string_t *path_str;
   bool res;
 
-  snprintf(path, sizeof(path), "%.*s%c%s", dir->path->len,
-      dir->path->buf, WATCHMAN_DIR_SEP, name);
-  path_str = w_string_new(path);
-
+  path_str = w_string_path_cat_cstr(dir->path, name);
+  if (!path_str) {
+    return false;
+  }
   res = w_pending_coll_add(coll, path_str, recursive, now, via_notify);
-
   w_string_delref(path_str);
 
   return res;

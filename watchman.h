@@ -605,6 +605,7 @@ w_string_t *w_string_canon_path(w_string_t *str);
 void w_string_in_place_normalize_separators(w_string_t **str, char target_sep);
 w_string_t *w_string_normalize_separators(w_string_t *str, char target_sep);
 w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
+w_string_t *w_string_path_cat_cstr(w_string_t *parent, const char *rhs);
 bool w_string_startswith(w_string_t *str, w_string_t *prefix);
 bool w_string_startswith_caseless(w_string_t *str, w_string_t *prefix);
 w_string_t *w_string_shell_escape(const w_string_t *str);
