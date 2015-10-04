@@ -10,8 +10,34 @@ We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on
 GitHub](https://github.com/facebook/watchman/commits/master).
 
-### Watchman 3.8.0 (Not yet released)
+### Watchman 3.9.0 (Not yet released)
 
+* Fixed an issue where dir renames on OS X could cause us to lose track of
+  the files inside the renamed dir
+* Add optional `sync_timeout` to the `clock` command
+* Avoid accidentally passing descriptors other than the stdio streams
+  when we spawn the watchman service.
+* Fixed a race condition where we could start two sets of watcher threads
+  for the same dir if two clients issue a `watch` or `watch-project` at
+  the same time
+* Added a helpful error for a tmux + launchd issue on OS X
+
+### Watchman 3.8.0 (2015-09-14)
+
+* Improved latency of processing kernel notifications. It should now be far
+  less likely to run into an notification queue overflow.
+* Improved idle behavior. There were a couple of places where watchman would
+  wake up more often than was strictly needed and these have now been fixed.
+  This is mostly of interest to laptop users on battery power.
+* Improved inotify move tracking.  Some move operations could cause watchman
+  to become confused and trigger a recrawl.  This has now been resolved.
+* Hardened statedir and permissions. There was a possibility of a symlink
+  attack and this has now been mitigated by re-structuring the statedir layout.
+* Fixed a possible deadlock in the idle watch reaper
+* Fixed an issue where the watchman -p log-level debug could drop log
+  notifications in the CLI
+* Disabled the IO-throttling-during-crawl that we added in 3.7. It proved to
+  be more harmful than beneficial.
 * `-j` CLI option now accepts either JSON or BSER encoded command on stdin
 * Added [capabilities](/watchman/docs/capabilities.html) to the server,
   and added the [capabilityCheck](/watchman/docs/cmd/version.html#capabilityCheck)

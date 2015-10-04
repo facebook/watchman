@@ -1,4 +1,4 @@
-AC_INIT([watchman], [3.8.0], [], [watchman])
+AC_INIT([watchman], [3.9.0], [], [watchman])
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES(yes)])
