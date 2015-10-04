@@ -652,12 +652,27 @@ window.addEventListener('load', function() {
    
       <p>Returns the current clock value for a watched root.</p>
 
-<p>Be careful how you interpret this value; it returns the instantaneous value of
-the clock, and may have changed by the time you intend to act upon it.</p>
+<p><em>Since 3.9.</em></p>
+
+<p><em>The <a href="/watchman/docs/capabilities.html">capability</a> name associated with this
+enhanced functionality is <code>clock-sync-timeout</code>.</em></p>
+
+<p><code>sync_timeout</code> specifies the number of milliseconds that you want to
+wait to observe a synchronization cookie.  The synchronization cookie
+is created at the start of your clock call and, once the cookie is
+observed, means that the clock value returned by this command is at
+least as current as the time of your clock call.</p>
+
+<p>If no <code>sync_timeout</code> is specified, the returned clock value is the
+instantaneous value of the clock associated with the watched root, and
+may be almost immediately invalidated if there are any filesystem
+notifications that are yet to be processed.</p>
 <div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman clock /path/to/dir
 </code></pre></div>
 <p>JSON:</p>
-<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">[</span><span class="s2">&quot;clock&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/dir&quot;</span><span class="p">]</span>
+
+<p>Note the third options argument is optional.</p>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">[</span><span class="s2">&quot;clock&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/dir&quot;</span><span class="p">,</span> <span class="p">{</span><span class="nt">&quot;sync_timeout&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">}]</span>
 </code></pre></div>
     
   </article>

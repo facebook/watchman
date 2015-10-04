@@ -654,9 +654,37 @@ window.addEventListener('load', function() {
 that includes all of the gory details, please see <a href="https://github.com/facebook/watchman/commits/master">the commit history on
 GitHub</a>.</p>
 
-<h3 id="watchman-3-8-0-not-yet-released">Watchman 3.8.0 (Not yet released)</h3>
+<h3 id="watchman-3-9-0-not-yet-released">Watchman 3.9.0 (Not yet released)</h3>
 
 <ul>
+<li>Fixed an issue where dir renames on OS X could cause us to lose track of
+the files inside the renamed dir</li>
+<li>Add optional <code>sync_timeout</code> to the <code>clock</code> command</li>
+<li>Avoid accidentally passing descriptors other than the stdio streams
+when we spawn the watchman service.</li>
+<li>Fixed a race condition where we could start two sets of watcher threads
+for the same dir if two clients issue a <code>watch</code> or <code>watch-project</code> at
+the same time</li>
+<li>Added a helpful error for a tmux + launchd issue on OS X</li>
+</ul>
+
+<h3 id="watchman-3-8-0-2015-09-14">Watchman 3.8.0 (2015-09-14)</h3>
+
+<ul>
+<li>Improved latency of processing kernel notifications. It should now be far
+less likely to run into an notification queue overflow.</li>
+<li>Improved idle behavior. There were a couple of places where watchman would
+wake up more often than was strictly needed and these have now been fixed.
+This is mostly of interest to laptop users on battery power.</li>
+<li>Improved inotify move tracking.  Some move operations could cause watchman
+to become confused and trigger a recrawl.  This has now been resolved.</li>
+<li>Hardened statedir and permissions. There was a possibility of a symlink
+attack and this has now been mitigated by re-structuring the statedir layout.</li>
+<li>Fixed a possible deadlock in the idle watch reaper</li>
+<li>Fixed an issue where the watchman -p log-level debug could drop log
+notifications in the CLI</li>
+<li>Disabled the IO-throttling-during-crawl that we added in 3.7. It proved to
+be more harmful than beneficial.</li>
 <li><code>-j</code> CLI option now accepts either JSON or BSER encoded command on stdin</li>
 <li>Added <a href="/watchman/docs/capabilities.html">capabilities</a> to the server,
 and added the <a href="/watchman/docs/cmd/version.html#capabilityCheck">capabilityCheck</a>
