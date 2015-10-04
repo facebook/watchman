@@ -229,7 +229,7 @@ AC_CHECK_HEADERS(execinfo.h)
 AC_CHECK_HEADERS(CoreServices/CoreServices.h, [
   LIBS="$LIBS -framework CoreServices"
 ])
-AC_CHECK_FUNCS(backtrace backtrace_symbols)
+AC_CHECK_FUNCS(backtrace backtrace_symbols backtrace_symbols_fd)
 
 if test -n "$ac_cv_header_sys_statvfs_h"; then
 AC_CHECK_MEMBERS([struct statvfs.f_fstypename,struct statvfs.f_basetype],
