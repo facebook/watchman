@@ -285,7 +285,8 @@ static void process_inotify_event(
       }
     }
 
-    if (ine->len > 0 && (ine->mask & IN_MOVED_FROM)) {
+    if (ine->len > 0 && (ine->mask & (IN_MOVED_FROM|IN_ISDIR))
+        == (IN_MOVED_FROM|IN_ISDIR)) {
       struct pending_move mv;
 
       // record this as a pending move, so that we can automatically
@@ -306,13 +307,15 @@ static void process_inotify_event(
           name->buf);
     }
 
-    if (ine->len > 0 && (ine->mask & IN_MOVED_TO)) {
+    if (ine->len > 0 && (ine->mask & (IN_MOVED_TO|IN_ISDIR))
+        == (IN_MOVED_FROM|IN_ISDIR)) {
       struct pending_move *old;
 
       pthread_mutex_lock(&state->lock);
       old = w_ht_val_ptr(w_ht_get(state->move_map, ine->cookie));
       if (old) {
-        int wd = inotify_add_watch(state->infd, name->buf, WATCHMAN_INOTIFY_MASK);
+        int wd = inotify_add_watch(state->infd, name->buf,
+                    WATCHMAN_INOTIFY_MASK);
         if (wd == -1) {
           if (errno == ENOSPC || errno == ENOMEM) {
             // Limits exceeded, no recovery from our perspective
