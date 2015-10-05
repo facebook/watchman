@@ -416,7 +416,8 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
   while (!cookie.seen) {
     errcode = pthread_cond_timedwait(&cookie.cond, &root->lock, &deadline);
     if (errcode && !cookie.seen) {
-      w_log(W_LOG_ERR, "sync_to_now: %s timedwait failed: %d: istimeout=%d %s\n",
+      w_log(W_LOG_ERR,
+          "sync_to_now: %s timedwait failed: %d: istimeout=%d %s\n",
           path_str->buf, errcode, errcode == ETIMEDOUT, strerror(errcode));
       goto out;
     }
@@ -1277,7 +1278,7 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
     if (file) {
       file->maybe_deleted = false;
     }
-    if (!file || !file->exists || (stat_all && recursive)) {
+    if (!file || !file->exists || stat_all || recursive) {
       w_pending_coll_add_rel(coll, dir, dirent->d_name,
           true, now, false);
     }
