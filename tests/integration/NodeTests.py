@@ -11,7 +11,7 @@ import tempfile
 import distutils.spawn
 
 node_bin = distutils.spawn.find_executable('node')
-
+npm_bin = distutils.spawn.find_executable('npm')
 
 class NodeTestCase(unittest.TestCase):
 
@@ -26,7 +26,7 @@ class NodeTestCase(unittest.TestCase):
         global node_bin
         return [node_bin, self.jsfile]
 
-    @unittest.skipIf(node_bin is None, 'node not installed')
+    @unittest.skipIf(node_bin is None or npm_bin is None, 'node not installed')
     def runTest(self):
         env = os.environ.copy()
         env['WATCHMAN_SOCK'] = WatchmanInstance.getSharedInstance().getSockPath()

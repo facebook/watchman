@@ -15,7 +15,7 @@ fclose($out_fp);
 printf("_capture.php: opening $env and sending env to it\n");
 $env_fp = fopen($env, 'w');
 foreach ($_ENV as $k => $v) {
-  printf("$k=$v\n");
-  fprintf($env_fp, "$k=$v\n");
+  printf("%s", "$k=$v\n");
+  fprintf($env_fp, "%s", "$k=$v\n");
 }
 fclose($env_fp);
