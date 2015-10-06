@@ -512,6 +512,22 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
   return dir;
 }
 
+static void apply_dir_size_hint(w_root_t *root, struct watchman_dir *dir,
+    uint32_t ndirs, uint32_t nfiles) {
+  if (nfiles > 0) {
+    if (!dir->files) {
+      dir->files = w_ht_new(nfiles, &w_ht_string_funcs);
+    }
+    // Only need lc_files if we're case insensitive
+    if (!root->case_sensitive && !dir->lc_files) {
+      dir->lc_files = w_ht_new(nfiles, &w_ht_string_funcs);
+    }
+  }
+  if (!dir->dirs && ndirs > 0) {
+    dir->dirs = w_ht_new(ndirs, &w_ht_string_funcs);
+  }
+}
+
 static void watch_file(w_root_t *root, struct watchman_file *file)
 {
   watcher_ops->root_start_watch_file(watcher, root, file);
@@ -1247,6 +1263,25 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
   osdir = watcher_ops->root_start_watch_dir(watcher, root, dir, now, path);
   if (!osdir) {
     return;
+  }
+
+  if (!dir->files) {
+    // Pre-size our hash(es) if we can, so that we can avoid collisions
+    // and re-hashing during initial crawl
+    uint32_t num_dirs = 0;
+#ifndef _WIN32
+    struct stat st;
+    int dfd = dirfd(osdir);
+    if (dfd != -1 && fstat(dfd, &st) == 0) {
+      num_dirs = (uint32_t)st.st_nlink;
+    }
+#endif
+    // st.st_nlink is usually number of dirs + 2 (., ..).
+    // If it is less than 2 then it doesn't follow that convention.
+    // We just pass it through for the dir size hint and the hash
+    // table implementation will round that up to the next power of 2
+    apply_dir_size_hint(root, dir, num_dirs,
+        (uint32_t)cfg_get_int(root, "hint_num_files_per_dir", 64));
   }
 
   /* flag for delete detection */

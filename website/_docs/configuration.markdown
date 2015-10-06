@@ -54,6 +54,7 @@ Option | Scope | Since version
 `gc_interval_seconds` | local | 2.9.4
 `fsevents_latency` | fallback | 3.2
 `idle_reap_age_seconds` | local | 3.7
+`hint_num_files_per_dir` | fallback | 3.9
 
 ### Configuration Options
 
@@ -230,3 +231,30 @@ A watch is considered to be idle when it has had no commands that operate on it
 for `idle_reap_age_seconds`.   If an idle watch has no triggers and no
 subscriptions then it will be cancelled, releasing the associated operating
 system resources, and removed from the state file.
+
+### hint_num_files_per_dir
+
+*Since 3.9.*
+
+Used to pre-size hash tables used to track files per directory.  This
+is most impactful during the initial crawl of the filesystem.  Setting
+this too small will increase the chance of a hash insert having a collision
+and drive up the cost of the insert and subsequent gets.
+
+Prior to version 3.9 of watchman this value was fixed at `2`.  Starting
+in version 3.9 the default value is `64` and can be configured via this
+setting in the `.watchmanconfig` or the global `/etc/watchman.json`
+configuration file.
+
+Setting this value very large increases the memory overhead per directory in
+the tree; the value is rounded up to the next power of two and pre-allocated
+in an array of pointers.  On a 64-bit system multiply that number by 8 to
+arrive at the number of bytes of overhead (halve this on a 32-bit system).
+The overhead is doubled when using a case insensitive filesystem.
+
+The ideal size from a time complexity perspective is the number of files in
+your largest directory.  From a space complexity perspective, the ideal size
+is 1; you would pay the cost of the collisions during the initial crawl and
+have a more optimal memory usage.  Since watchman is primarily employed as an
+accelerator, we'd recommend biasing towards using more memory and taking less
+time to run.
