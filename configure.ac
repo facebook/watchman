@@ -225,7 +225,7 @@ AC_CHECK_HEADERS(sys/vfs.h sys/param.h sys/mount.h sys/statfs.h sys/statvfs.h, [
 #endif
 ]])
 AC_CHECK_HEADERS(valgrind/valgrind.h)
-AC_CHECK_HEADERS(execinfo.h)
+AC_CHECK_HEADERS(execinfo.h sys/resource.h)
 AC_CHECK_HEADERS(CoreServices/CoreServices.h, [
   LIBS="$LIBS -framework CoreServices"
 ])

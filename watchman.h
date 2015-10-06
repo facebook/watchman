@@ -74,6 +74,9 @@ extern "C" {
 #ifdef HAVE_SYS_PARAM_H
 # include <sys/param.h>
 #endif
+#ifdef HAVE_SYS_RESOURCE_H
+# include <sys/resource.h>
+#endif
 #ifndef _WIN32
 // Not explicitly exported on Darwin, so we get to define it.
 extern char **environ;
