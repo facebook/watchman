@@ -10,13 +10,23 @@
 extern "C" {
 #endif
 
+typedef int mode_t;
+typedef int uid_t;
+typedef int gid_t;
+typedef int nlink_t;
+
 // FIXME: don't do this, define our own layer
 struct stat {
   uint64_t st_size;
-  int st_mode;
+  mode_t st_mode;
   struct timespec st_atim, st_mtim, st_ctim;
   time_t st_atime, st_mtime, st_ctime;
-  int st_uid, st_gid, st_ino, st_dev, st_nlink, st_rdev;
+  uid_t st_uid;
+  gid_t st_gid;
+  ino_t st_ino;
+  dev_t st_dev;
+  nlink_t st_nlink;
+  dev_t st_rdev;
 };
 
 int lstat(const char *path, struct stat *st);

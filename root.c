@@ -665,41 +665,38 @@ void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
   watcher_ops->root_stop_watch_dir(watcher, root, dir);
 }
 
-static bool did_file_change(struct stat *saved, struct stat *fresh)
+static bool did_file_change(struct watchman_stat *saved,
+    struct stat *fresh)
 {
   /* we have to compare this way because the stat structure
    * may contain fields that vary and that don't impact our
    * understanding of the file */
 
 #define FIELD_CHG(name) \
-  if (saved->name != fresh->name) { \
+  if (saved->name != fresh->st_##name) { \
     return true; \
   }
 
   // Can't compare with memcmp due to padding and garbage in the struct
   // on OpenBSD, which has a 32-bit tv_sec + 64-bit tv_nsec
 #define TIMESPEC_FIELD_CHG(wat) { \
-  struct timespec a = saved->WATCHMAN_ST_TIMESPEC(wat); \
+  struct timespec a = saved->wat##time; \
   struct timespec b = fresh->WATCHMAN_ST_TIMESPEC(wat); \
   if (a.tv_sec != b.tv_sec || a.tv_nsec != b.tv_nsec) { \
     return true; \
   } \
 }
 
-  FIELD_CHG(st_mode);
+  FIELD_CHG(mode);
 
-  if (!S_ISDIR(saved->st_mode)) {
-    FIELD_CHG(st_size);
-    FIELD_CHG(st_nlink);
+  if (!S_ISDIR(saved->mode)) {
+    FIELD_CHG(size);
+    FIELD_CHG(nlink);
   }
-  FIELD_CHG(st_dev);
-  FIELD_CHG(st_ino);
-  FIELD_CHG(st_uid);
-  FIELD_CHG(st_gid);
-  FIELD_CHG(st_rdev);
-  // Don't care about st_atime
-  FIELD_CHG(st_ctime);
-  FIELD_CHG(st_mtime);
+  FIELD_CHG(dev);
+  FIELD_CHG(ino);
+  FIELD_CHG(uid);
+  FIELD_CHG(gid);
   // Don't care about st_blocks
   // Don't care about st_blksize
   // Don't care about st_atimespec
@@ -981,7 +978,7 @@ static void stat_path(w_root_t *root,
        * to crawl it again */
       recursive = true;
     }
-    if (!file->exists || via_notify || did_file_change(&file->st, &st)) {
+    if (!file->exists || via_notify || did_file_change(&file->stat, &st)) {
       w_log(W_LOG_DBG,
           "file changed exists=%d via_notify=%d stat-changed=%d isdir=%d %s\n",
           (int)file->exists,
@@ -993,7 +990,21 @@ static void stat_path(w_root_t *root,
       file->exists = true;
       w_root_mark_file_changed(root, file, now);
     }
-    memcpy(&file->st, &st, sizeof(st));
+
+    file->stat.size = st.st_size;
+    file->stat.mode = st.st_mode;
+    file->stat.uid = st.st_uid;
+    file->stat.gid = st.st_gid;
+    file->stat.ino = st.st_ino;
+    file->stat.dev = st.st_dev;
+    file->stat.nlink = st.st_nlink;
+    memcpy(&file->stat.atime, &st.WATCHMAN_ST_TIMESPEC(a),
+        sizeof(file->stat.atime));
+    memcpy(&file->stat.mtime, &st.WATCHMAN_ST_TIMESPEC(m),
+        sizeof(file->stat.mtime));
+    memcpy(&file->stat.ctime, &st.WATCHMAN_ST_TIMESPEC(c),
+        sizeof(file->stat.ctime));
+
     if (S_ISDIR(st.st_mode)) {
       if (dir_ent == NULL) {
         recursive = true;
@@ -1326,7 +1337,7 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
   if (w_ht_first(dir->files, &i)) do {
     file = w_ht_val_ptr(i.value);
     if (file->exists && (file->maybe_deleted ||
-          (S_ISDIR(file->st.st_mode) && recursive))) {
+          (S_ISDIR(file->stat.mode) && recursive))) {
       w_pending_coll_add_rel(coll, dir, file->name->buf,
           recursive, now, false);
     }

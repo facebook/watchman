@@ -32,8 +32,8 @@ static bool eval_empty(struct w_query_ctx *ctx,
     return false;
   }
 
-  if (S_ISDIR(file->st.st_mode) || S_ISREG(file->st.st_mode)) {
-    return file->st.st_size == 0;
+  if (S_ISDIR(file->stat.mode) || S_ISREG(file->stat.mode)) {
+    return file->stat.size == 0;
   }
 
   return false;

@@ -290,7 +290,7 @@ static bool path_generator(
       w_string_delref(file_name);
 
       // If it's a file (but not an existent dir)
-      if (f && (!f->exists || !S_ISDIR(f->st.st_mode))) {
+      if (f && (!f->exists || !S_ISDIR(f->stat.mode))) {
         w_string_delref(full_name);
         if (!w_query_process_file(query, ctx, f)) {
           return false;

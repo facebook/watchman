@@ -35,12 +35,12 @@ MAKE_CLOCK_FIELD(oclock, otime)
 // runs into an issue and deal with it then...
 #define MAKE_INT_FIELD(name, member) \
   static json_t *make_##name(struct watchman_rule_match *match) { \
-    return json_integer(match->file->st.member); \
+    return json_integer(match->file->stat.member); \
   }
 
 #define MAKE_TIME_INT_FIELD(name, type, scale) \
   static json_t *make_##name(struct watchman_rule_match *match) { \
-    struct timespec spec = match->file->st.WATCHMAN_ST_TIMESPEC(type); \
+    struct timespec spec = match->file->stat.type##time; \
     return json_integer(((int64_t) spec.tv_sec * scale) + \
                         ((int64_t) spec.tv_nsec * scale / \
                          WATCHMAN_NSEC_IN_SEC)); \
@@ -48,7 +48,7 @@ MAKE_CLOCK_FIELD(oclock, otime)
 
 #define MAKE_TIME_DOUBLE_FIELD(name, type) \
   static json_t *make_##name(struct watchman_rule_match *match) { \
-    struct timespec spec = match->file->st.WATCHMAN_ST_TIMESPEC(type); \
+    struct timespec spec = match->file->stat.type##time; \
     return json_real(spec.tv_sec + 1e-9 * spec.tv_nsec); \
   }
 
@@ -60,22 +60,22 @@ MAKE_CLOCK_FIELD(oclock, otime)
  * - mtime_f: mtime as a double
  */
 #define MAKE_TIME_FIELDS(type) \
-  MAKE_INT_FIELD(type##time, st_##type##time) \
+  MAKE_INT_FIELD(type##time, type##time.tv_sec) \
   MAKE_TIME_INT_FIELD(type##time_ms, type, 1000) \
   MAKE_TIME_INT_FIELD(type##time_us, type, 1000 * 1000) \
   MAKE_TIME_INT_FIELD(type##time_ns, type, 1000 * 1000 * 1000) \
   MAKE_TIME_DOUBLE_FIELD(type##time_f, type)
 
-MAKE_INT_FIELD(size, st_size)
-MAKE_INT_FIELD(mode, st_mode)
-MAKE_INT_FIELD(uid, st_uid)
-MAKE_INT_FIELD(gid, st_gid)
+MAKE_INT_FIELD(size, size)
+MAKE_INT_FIELD(mode, mode)
+MAKE_INT_FIELD(uid, uid)
+MAKE_INT_FIELD(gid, gid)
 MAKE_TIME_FIELDS(a)
 MAKE_TIME_FIELDS(m)
 MAKE_TIME_FIELDS(c)
-MAKE_INT_FIELD(ino, st_ino)
-MAKE_INT_FIELD(dev, st_dev)
-MAKE_INT_FIELD(nlink, st_nlink)
+MAKE_INT_FIELD(ino, ino)
+MAKE_INT_FIELD(dev, dev)
+MAKE_INT_FIELD(nlink, nlink)
 
 #define MAKE_TIME_FIELD_DEFS(type) \
   { #type "time", make_##type##time }, \
@@ -86,29 +86,29 @@ MAKE_INT_FIELD(nlink, st_nlink)
 
 static json_t *make_type_field(struct watchman_rule_match *match) {
   // Bias towards the more common file types first
-  if (S_ISREG(match->file->st.st_mode)) {
+  if (S_ISREG(match->file->stat.mode)) {
     return json_string_nocheck("f");
   }
-  if (S_ISDIR(match->file->st.st_mode)) {
+  if (S_ISDIR(match->file->stat.mode)) {
     return json_string_nocheck("d");
   }
-  if (S_ISLNK(match->file->st.st_mode)) {
+  if (S_ISLNK(match->file->stat.mode)) {
     return json_string_nocheck("l");
   }
-  if (S_ISBLK(match->file->st.st_mode)) {
+  if (S_ISBLK(match->file->stat.mode)) {
     return json_string_nocheck("b");
   }
-  if (S_ISCHR(match->file->st.st_mode)) {
+  if (S_ISCHR(match->file->stat.mode)) {
     return json_string_nocheck("c");
   }
-  if (S_ISFIFO(match->file->st.st_mode)) {
+  if (S_ISFIFO(match->file->stat.mode)) {
     return json_string_nocheck("p");
   }
-  if (S_ISSOCK(match->file->st.st_mode)) {
+  if (S_ISSOCK(match->file->stat.mode)) {
     return json_string_nocheck("s");
   }
 #ifdef S_ISDOOR
-  if (S_ISDOOR(match->file->st.st_mode)) {
+  if (S_ISDOOR(match->file->stat.mode)) {
     return json_string_nocheck("D");
   }
 #endif

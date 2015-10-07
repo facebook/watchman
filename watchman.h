@@ -365,6 +365,17 @@ struct watchman_ops {
       struct watchman_file *file);
 };
 
+struct watchman_stat {
+  struct timespec atime, mtime, ctime;
+  off_t size;
+  mode_t mode;
+  uid_t uid;
+  gid_t gid;
+  ino_t ino;
+  dev_t dev;
+  nlink_t nlink;
+};
+
 struct watchman_file {
   /* our name within the parent dir */
   w_string_t *name;
@@ -391,7 +402,7 @@ struct watchman_file {
 
   /* cache stat results so we can tell if an entry
    * changed */
-  struct stat st;
+  struct watchman_stat stat;
 };
 
 #define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"

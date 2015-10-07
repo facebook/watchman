@@ -91,7 +91,7 @@ static bool eval_size(struct w_query_ctx *ctx, struct watchman_file *file,
     return false;
   }
 
-  return eval_int_compare(file->st.st_size, comp);
+  return eval_int_compare(file->stat.size, comp);
 }
 
 static w_query_expr *size_parser(w_query *query, json_t *term) {

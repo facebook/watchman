@@ -37,10 +37,10 @@ static bool eval_since(struct w_query_ctx *ctx,
       }
       return clock.ticks > since.clock.ticks;
     case SINCE_MTIME:
-      tval = file->st.st_mtime;
+      tval = file->stat.mtime.tv_sec;
       break;
     case SINCE_CTIME:
-      tval = file->st.st_ctime;
+      tval = file->stat.ctime.tv_sec;
       break;
   }
 

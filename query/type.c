@@ -13,22 +13,22 @@ static bool eval_type(struct w_query_ctx *ctx,
 
   switch (arg) {
     case 'b':
-      return S_ISBLK(file->st.st_mode);
+      return S_ISBLK(file->stat.mode);
     case 'c':
-      return S_ISCHR(file->st.st_mode);
+      return S_ISCHR(file->stat.mode);
     case 'd':
-      return S_ISDIR(file->st.st_mode);
+      return S_ISDIR(file->stat.mode);
     case 'f':
-      return S_ISREG(file->st.st_mode);
+      return S_ISREG(file->stat.mode);
     case 'p':
-      return S_ISFIFO(file->st.st_mode);
+      return S_ISFIFO(file->stat.mode);
     case 'l':
-      return S_ISLNK(file->st.st_mode);
+      return S_ISLNK(file->stat.mode);
     case 's':
-      return S_ISSOCK(file->st.st_mode);
+      return S_ISSOCK(file->stat.mode);
 #ifdef S_ISDOOR
     case 'D':
-      return S_ISDOOR(file->st.st_mode);
+      return S_ISDOOR(file->stat.mode);
 #endif
     default:
       return false;
