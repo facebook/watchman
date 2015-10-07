@@ -303,7 +303,8 @@ break_out:
                  kFSEventStreamEventFlagItemRenamed))
               ? true : false;
 
-    w_pending_coll_add(coll, evt->path, recurse, now, true);
+    w_pending_coll_add(coll, evt->path, now,
+        W_PENDING_VIA_NOTIFY | (recurse ? W_PENDING_RECURSIVE : 0));
 
     w_string_delref(evt->path);
     free(evt);

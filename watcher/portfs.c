@@ -291,7 +291,8 @@ static bool portfs_root_consume_notify(watchman_global_watcher_t watcher,
       pthread_mutex_unlock(&state->lock);
       return false;
     }
-    w_pending_coll_add(coll, f->name, true, now, true);
+    w_pending_coll_add(coll, f->name, now,
+        W_PENDING_RECURSIVE|W_PENDING_VIA_NOTIFY);
 
     // It was port_dissociate'd implicitly.  We'll re-establish a
     // watch later when portfs_root_start_watch_(file|dir) are called again

@@ -315,7 +315,8 @@ static bool kqueue_root_consume_notify(watchman_global_watcher_t watcher,
     }
 
     pthread_mutex_unlock(&state->lock);
-    w_pending_coll_add(coll, path, !is_dir, now, !is_dir);
+    w_pending_coll_add(coll, path, now,
+        is_dir ? 0 : (W_PENDING_RECURSIVE|W_PENDING_VIA_NOTIFY));
     w_string_delref(path);
   }
 

@@ -361,7 +361,8 @@ static void process_inotify_event(
 
       w_log(W_LOG_DBG, "add_pending for inotify mask=%x %.*s\n",
           ine->mask, name->len, name->buf);
-      w_pending_coll_add(coll, name, true, now, true);
+      w_pending_coll_add(coll, name, now,
+          W_PENDING_RECURSIVE|W_PENDING_VIA_NOTIFY);
 
       w_string_delref(name);
 

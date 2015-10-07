@@ -133,7 +133,8 @@ static void *readchanges_thread(void *arg) {
   HANDLE handles[2] = { state->olap, state->ping };
   DWORD bytes;
 
-  w_set_thread_name("readchange %.*s", root->root_path->len, root->root_path->buf);
+  w_set_thread_name("readchange %.*s",
+      root->root_path->len, root->root_path->buf);
 
   // Block until winmatch_root_st is waiting for our initialization
   pthread_mutex_lock(&state->mtx);
@@ -396,7 +397,7 @@ static bool winwatch_root_consume_notify(watchman_global_watcher_t watcher,
 
     w_log(W_LOG_DBG, "readchanges: add pending %.*s\n",
         item->name->len, item->name->buf);
-    w_pending_coll_add(coll, item->name, false, now, true);
+    w_pending_coll_add(coll, item->name, now, W_PENDING_VIA_NOTIFY);
 
     w_string_delref(item->name);
     free(item);

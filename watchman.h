@@ -249,12 +249,14 @@ struct watchman_clock {
 };
 typedef struct watchman_clock w_clock_t;
 
+#define W_PENDING_RECURSIVE   1
+#define W_PENDING_VIA_NOTIFY 2
+#define W_PENDING_CRAWL_ONLY  4
 struct watchman_pending_fs {
   struct watchman_pending_fs *next;
   w_string_t *path;
-  bool recursive;
   struct timeval now;
-  bool via_notify;
+  int flags;
 };
 
 struct watchman_pending_collection {
@@ -271,10 +273,10 @@ void w_pending_coll_drain(struct watchman_pending_collection *coll);
 void w_pending_coll_lock(struct watchman_pending_collection *coll);
 void w_pending_coll_unlock(struct watchman_pending_collection *coll);
 bool w_pending_coll_add(struct watchman_pending_collection *coll,
-    w_string_t *path, bool recursive, struct timeval now, bool via_notify);
+    w_string_t *path, struct timeval now, int flags);
 bool w_pending_coll_add_rel(struct watchman_pending_collection *coll,
-    struct watchman_dir *dir, const char *name, bool recursive,
-    struct timeval now, bool via_notify);
+    struct watchman_dir *dir, const char *name,
+    struct timeval now, int flags);
 void w_pending_coll_append(struct watchman_pending_collection *target,
     struct watchman_pending_collection *src);
 struct watchman_pending_fs *w_pending_coll_pop(
@@ -668,7 +670,8 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
     w_string_t *dir_name, bool create);
 void w_root_process_path(w_root_t *root,
     struct watchman_pending_collection *coll, w_string_t *full_path,
-    struct timeval now, bool recursive, bool via_notify);
+    struct timeval now, int flags,
+    struct watchman_dir_ent *pre_stat);
 bool w_root_process_pending(w_root_t *root,
     struct watchman_pending_collection *coll,
     bool pull_from_root);

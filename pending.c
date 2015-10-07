@@ -91,20 +91,27 @@ void w_pending_coll_unlock(struct watchman_pending_collection *coll) {
   }
 }
 
+static inline void consolidate_item(struct watchman_pending_fs *p,
+    int flags) {
+  // Increase the strength of the pending item if either of these
+  // flags are set.
+  // We upgrade crawl-only as well as recursive; it indicates that
+  // we've recently just performed the stat and we want to avoid
+  // infinitely trying to stat-and-crawl
+  p->flags |= flags & (W_PENDING_CRAWL_ONLY|W_PENDING_RECURSIVE);
+}
+
 /* add a pending entry.  Will consolidate an existing entry with the
  * same name.  Returns false if an allocation fails.
  * The caller must own the collection lock. */
 bool w_pending_coll_add(struct watchman_pending_collection *coll,
-    w_string_t *path, bool recursive, struct timeval now, bool via_notify) {
+    w_string_t *path, struct timeval now, int flags) {
   struct watchman_pending_fs *p;
 
   p = w_ht_val_ptr(w_ht_get(coll->pending_uniq, w_ht_ptr_val(path)));
   if (p) {
     /* Entry already exists: consolidate */
-    if (!p->recursive && recursive) {
-      /* Upgrade to recursive */
-      p->recursive = true;
-    }
+    consolidate_item(p, flags);
     /* all done */
     return true;
   }
@@ -116,9 +123,8 @@ bool w_pending_coll_add(struct watchman_pending_collection *coll,
 
   w_log(W_LOG_DBG, "add_pending: %.*s\n", path->len, path->buf);
 
-  p->recursive = recursive;
+  p->flags = flags;
   p->now = now;
-  p->via_notify = via_notify;
   p->path = path;
   w_string_addref(path);
 
@@ -130,8 +136,8 @@ bool w_pending_coll_add(struct watchman_pending_collection *coll,
 }
 
 bool w_pending_coll_add_rel(struct watchman_pending_collection *coll,
-    struct watchman_dir *dir, const char *name, bool recursive,
-    struct timeval now, bool via_notify)
+    struct watchman_dir *dir, const char *name,
+    struct timeval now, int flags)
 {
   w_string_t *path_str;
   bool res;
@@ -140,7 +146,7 @@ bool w_pending_coll_add_rel(struct watchman_pending_collection *coll,
   if (!path_str) {
     return false;
   }
-  res = w_pending_coll_add(coll, path_str, recursive, now, via_notify);
+  res = w_pending_coll_add(coll, path_str, now, flags);
   w_string_delref(path_str);
 
   return res;
@@ -158,10 +164,7 @@ void w_pending_coll_append(struct watchman_pending_collection *target,
                             w_ht_ptr_val(p->path)));
     if (target_p) {
       /* Entry already exists: consolidate */
-      if (!target_p->recursive && p->recursive) {
-        /* Upgrade to recursive */
-        target_p->recursive = true;
-      }
+      consolidate_item(target_p, p->flags);
       w_pending_fs_free(p);
       continue;
     }

@@ -470,8 +470,7 @@ bool w_root_process_pending(w_root_t *root,
     pending = p->next;
 
     if (!root->cancelled) {
-      w_root_process_path(root, coll, p->path, p->now,
-          p->recursive, p->via_notify);
+      w_root_process_path(root, coll, p->path, p->now, p->flags, NULL);
     }
 
     w_pending_fs_free(p);
@@ -666,14 +665,14 @@ void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
 }
 
 static bool did_file_change(struct watchman_stat *saved,
-    struct stat *fresh)
+    struct watchman_stat *fresh)
 {
   /* we have to compare this way because the stat structure
    * may contain fields that vary and that don't impact our
    * understanding of the file */
 
 #define FIELD_CHG(name) \
-  if (saved->name != fresh->st_##name) { \
+  if (saved->name != fresh->name) { \
     return true; \
   }
 
@@ -681,7 +680,7 @@ static bool did_file_change(struct watchman_stat *saved,
   // on OpenBSD, which has a 32-bit tv_sec + 64-bit tv_nsec
 #define TIMESPEC_FIELD_CHG(wat) { \
   struct timespec a = saved->wat##time; \
-  struct timespec b = fresh->WATCHMAN_ST_TIMESPEC(wat); \
+  struct timespec b = fresh->wat##time; \
   if (a.tv_sec != b.tv_sec || a.tv_nsec != b.tv_nsec) { \
     return true; \
   } \
@@ -777,11 +776,29 @@ static w_string_t *w_resolve_filesystem_canonical_name(const char *path)
 #endif
 }
 
+static void struct_stat_to_watchman_stat(const struct stat *st,
+    struct watchman_stat *target) {
+  target->size = (off_t)st->st_size;
+  target->mode = st->st_mode;
+  target->uid = st->st_uid;
+  target->gid = st->st_gid;
+  target->ino = st->st_ino;
+  target->dev = st->st_dev;
+  target->nlink = st->st_nlink;
+  memcpy(&target->atime, &st->WATCHMAN_ST_TIMESPEC(a),
+      sizeof(target->atime));
+  memcpy(&target->mtime, &st->WATCHMAN_ST_TIMESPEC(m),
+      sizeof(target->mtime));
+  memcpy(&target->ctime, &st->WATCHMAN_ST_TIMESPEC(c),
+      sizeof(target->ctime));
+}
+
 static void stat_path(w_root_t *root,
     struct watchman_pending_collection *coll, w_string_t *full_path,
-    struct timeval now, bool recursive, bool via_notify)
+    struct timeval now, bool recursive, bool via_notify,
+    struct watchman_dir_ent *pre_stat)
 {
-  struct stat st;
+  struct watchman_stat st;
   int res, err;
   char path[WATCHMAN_NAME_MAX];
   struct watchman_dir *dir;
@@ -816,9 +833,22 @@ static void stat_path(w_root_t *root,
     dir_ent = w_ht_val_ptr(w_ht_get(dir->dirs, w_ht_ptr_val(full_path)));
   }
 
-  res = lstat(path, &st);
-  err = res == 0 ? 0 : errno;
-  w_log(W_LOG_DBG, "lstat(%s) file=%p dir=%p\n", path, file, dir_ent);
+  if (pre_stat && pre_stat->has_stat) {
+    memcpy(&st, &pre_stat->stat, sizeof(st));
+    res = 0;
+    err = 0;
+  } else {
+    struct stat struct_stat;
+    res = lstat(path, &struct_stat);
+    err = res == 0 ? 0 : errno;
+    w_log(W_LOG_DBG, "lstat(%s) file=%p dir=%p\n", path, file, dir_ent);
+    if (err == 0) {
+      struct_stat_to_watchman_stat(&struct_stat, &st);
+    } else {
+      // To suppress warning on win32
+      memset(&st, 0, sizeof(st));
+    }
+  }
 
   if (res && (err == ENOENT || err == ENOTDIR)) {
     /* it's not there, update our state */
@@ -856,7 +886,14 @@ static void stat_path(w_root_t *root,
       w_string_t *lc_file_name;
       struct watchman_file *lc_file = NULL;
 
-      canon_name = w_resolve_filesystem_canonical_name(path);
+      if (pre_stat) {
+        // Optimization: if we're reading the dir, we assume that the
+        // name we were given is the canonical name
+        canon_name = file_name;
+        w_string_addref(canon_name);
+      } else {
+        canon_name = w_resolve_filesystem_canonical_name(path);
+      }
 
       if (canon_name == NULL) {
         // TOCTOU race: file disappeared (deleted? ran out of memory?) in
@@ -984,28 +1021,16 @@ static void stat_path(w_root_t *root,
           (int)file->exists,
           (int)via_notify,
           (int)(file->exists && !via_notify),
-          S_ISDIR(st.st_mode),
+          S_ISDIR(st.mode),
           path
       );
       file->exists = true;
       w_root_mark_file_changed(root, file, now);
     }
 
-    file->stat.size = st.st_size;
-    file->stat.mode = st.st_mode;
-    file->stat.uid = st.st_uid;
-    file->stat.gid = st.st_gid;
-    file->stat.ino = st.st_ino;
-    file->stat.dev = st.st_dev;
-    file->stat.nlink = st.st_nlink;
-    memcpy(&file->stat.atime, &st.WATCHMAN_ST_TIMESPEC(a),
-        sizeof(file->stat.atime));
-    memcpy(&file->stat.mtime, &st.WATCHMAN_ST_TIMESPEC(m),
-        sizeof(file->stat.mtime));
-    memcpy(&file->stat.ctime, &st.WATCHMAN_ST_TIMESPEC(c),
-        sizeof(file->stat.ctime));
+    memcpy(&file->stat, &st, sizeof(file->stat));
 
-    if (S_ISDIR(st.st_mode)) {
+    if (S_ISDIR(st.mode)) {
       if (dir_ent == NULL) {
         recursive = true;
       }
@@ -1018,7 +1043,8 @@ static void stat_path(w_root_t *root,
 
         if (!watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
           /* we always need to crawl, but may not need to be fully recursive */
-          crawler(root, coll, full_path, now, recursive);
+          w_pending_coll_add(coll, full_path, now,
+              W_PENDING_CRAWL_ONLY | (recursive ? W_PENDING_RECURSIVE : 0));
         } else {
           /* we get told about changes on the child, so we only
            * need to crawl if we've never seen the dir before.
@@ -1026,7 +1052,8 @@ static void stat_path(w_root_t *root,
            * of a dir rename and not a rename event for all of its
            * children. */
           if (recursive) {
-            crawler(root, coll, full_path, now, recursive);
+            w_pending_coll_add(coll, full_path, now,
+                W_PENDING_RECURSIVE|W_PENDING_CRAWL_ONLY);
           }
         }
       }
@@ -1036,10 +1063,10 @@ static void stat_path(w_root_t *root,
       w_root_mark_deleted(root, dir_ent, now, true);
     }
     if ((watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
-        !S_ISDIR(st.st_mode) &&
+        !S_ISDIR(st.mode) &&
         !w_string_equal(dir_name, root->root_path)) {
       /* Make sure we update the mtime on the parent directory. */
-      stat_path(root, coll, dir_name, now, false, via_notify);
+      stat_path(root, coll, dir_name, now, false, via_notify, NULL);
     }
   }
 
@@ -1055,7 +1082,8 @@ out:
 
 void w_root_process_path(w_root_t *root,
     struct watchman_pending_collection *coll, w_string_t *full_path,
-    struct timeval now, bool recursive, bool via_notify)
+    struct timeval now, int flags,
+    struct watchman_dir_ent *pre_stat)
 {
   /* From a particular query's point of view, there are four sorts of cookies we
    * can observe:
@@ -1075,7 +1103,7 @@ void w_root_process_path(w_root_t *root,
     struct watchman_query_cookie *cookie;
     bool consider_cookie =
       (watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) ?
-      (via_notify || !root->done_initial) : true;
+      ((flags & W_PENDING_VIA_NOTIFY) || !root->done_initial) : true;
 
     if (!consider_cookie) {
       // Never allow cookie files to show up in the tree
@@ -1096,10 +1124,12 @@ void w_root_process_path(w_root_t *root,
     return;
   }
 
-  if (w_string_equal(full_path, root->root_path)) {
-    crawler(root, coll, full_path, now, recursive);
+  if (w_string_equal(full_path, root->root_path)
+      || flags & W_PENDING_CRAWL_ONLY) {
+    crawler(root, coll, full_path, now, flags & W_PENDING_RECURSIVE);
   } else {
-    stat_path(root, coll, full_path, now, recursive, via_notify);
+    stat_path(root, coll, full_path, now, flags & W_PENDING_RECURSIVE,
+        flags & W_PENDING_VIA_NOTIFY, pre_stat);
   }
 }
 
@@ -1305,8 +1335,15 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
       file->maybe_deleted = false;
     }
     if (!file || !file->exists || stat_all || recursive) {
-      w_pending_coll_add_rel(coll, dir, dirent->d_name,
-          true, now, false);
+      w_string_t *full_path = w_string_path_cat_cstr(dir->path,
+                                dirent->d_name);
+      if (full_path) {
+        w_root_process_path(root, coll, full_path, now,
+            W_PENDING_RECURSIVE, dirent);
+        w_string_delref(full_path);
+      } else {
+        w_log(W_LOG_ERR, "OOM during crawl\n");
+      }
     }
     w_string_delref(name);
   }
@@ -1319,7 +1356,7 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
     if (file->exists && (file->maybe_deleted ||
           (S_ISDIR(file->stat.mode) && recursive))) {
       w_pending_coll_add_rel(coll, dir, file->name->buf,
-          recursive, now, false);
+          now, recursive ? W_PENDING_RECURSIVE : 0);
     }
   } while (w_ht_next(dir->files, &i));
 }
@@ -1796,8 +1833,7 @@ static void io_thread(w_root_t *root)
       }
       w_root_lock(root);
       gettimeofday(&start, NULL);
-      w_pending_coll_add(&root->pending, root->root_path,
-          false, start, false);
+      w_pending_coll_add(&root->pending, root->root_path, start, 0);
       while (w_root_process_pending(root, &pending, true)) {
         ;
       }
@@ -2457,7 +2493,7 @@ w_root_t *w_root_resolve_for_client_mode(const char *filename, char **errmsg)
     gettimeofday(&start, NULL);
     w_root_lock(root);
     w_pending_coll_add(&root->pending, root->root_path,
-        true, start, false);
+        start, W_PENDING_RECURSIVE);
     while (w_root_process_pending(root, &pending, true)) {
       ;
     }
