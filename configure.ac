@@ -218,7 +218,7 @@ AC_SEARCH_LIBS([socket], [socket])
 
 AC_CHECK_HEADERS(sys/types.h inttypes.h locale.h port.h sys/inotify.h sys/event.h)
 AC_CHECK_FUNCS(mkostemp kqueue port_create inotify_init strtoll localeconv statfs)
-AC_CHECK_FUNCS(accept4 inotify_init1)
+AC_CHECK_FUNCS(accept4 inotify_init1 getattrlistbulk)
 AC_CHECK_HEADERS(sys/vfs.h sys/param.h sys/mount.h sys/statfs.h sys/statvfs.h, [], [],
 [[#ifdef __OpenBSD__
 # include <sys/param.h>
