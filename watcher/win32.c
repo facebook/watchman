@@ -349,13 +349,14 @@ static void winwatch_root_stop_watch_file(watchman_global_watcher_t watcher,
   unused_parameter(watcher);
 }
 
-static DIR *winwatch_root_start_watch_dir(watchman_global_watcher_t watcher,
+static struct watchman_dir_handle *winwatch_root_start_watch_dir(
+    watchman_global_watcher_t watcher,
     w_root_t *root, struct watchman_dir *dir, struct timeval now,
     const char *path) {
-  DIR *osdir;
+  struct watchman_dir_handle *osdir;
   unused_parameter(watcher);
 
-  osdir = opendir(path);
+  osdir = w_dir_open(path);
   if (!osdir) {
     handle_open_errno(root, dir, now, "opendir", errno, strerror(errno));
     return NULL;

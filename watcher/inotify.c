@@ -195,11 +195,12 @@ static void inot_root_stop_watch_file(watchman_global_watcher_t watcher,
   unused_parameter(file);
 }
 
-static DIR *inot_root_start_watch_dir(watchman_global_watcher_t watcher,
+static struct watchman_dir_handle *inot_root_start_watch_dir(
+    watchman_global_watcher_t watcher,
     w_root_t *root, struct watchman_dir *dir, struct timeval now,
     const char *path) {
   struct inot_root_state *state = root->watch;
-  DIR *osdir = NULL;
+  struct watchman_dir_handle *osdir = NULL;
   int newwd;
   unused_parameter(watcher);
 
@@ -224,7 +225,7 @@ static DIR *inot_root_start_watch_dir(watchman_global_watcher_t watcher,
   pthread_mutex_unlock(&state->lock);
   w_log(W_LOG_DBG, "adding %d -> %s mapping\n", newwd, path);
 
-  osdir = opendir_nofollow(path);
+  osdir = w_dir_open(path);
   if (!osdir) {
     handle_open_errno(root, dir, now, "opendir", errno, NULL);
     return NULL;

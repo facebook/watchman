@@ -24,6 +24,7 @@ watchman_SOURCES = \
 	hash.c       \
 	ht.c         \
 	ioprio.c        \
+	opendir.c       \
 	pending.c       \
 	stream.c        \
 	stream_stdout.c \

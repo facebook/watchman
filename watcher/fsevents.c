@@ -456,13 +456,14 @@ static void fsevents_root_stop_watch_file(watchman_global_watcher_t watcher,
   unused_parameter(file);
 }
 
-static DIR *fsevents_root_start_watch_dir(watchman_global_watcher_t watcher,
+static struct watchman_dir_handle *fsevents_root_start_watch_dir(
+      watchman_global_watcher_t watcher,
       w_root_t *root, struct watchman_dir *dir, struct timeval now,
       const char *path) {
-  DIR *osdir;
+  struct watchman_dir_handle *osdir;
   unused_parameter(watcher);
 
-  osdir = opendir_nofollow(path);
+  osdir = w_dir_open(path);
   if (!osdir) {
     handle_open_errno(root, dir, now, "opendir", errno, NULL);
     return NULL;

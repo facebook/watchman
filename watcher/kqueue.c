@@ -171,17 +171,18 @@ static void kqueue_root_stop_watch_file(watchman_global_watcher_t watcher,
   unused_parameter(file);
 }
 
-static DIR *kqueue_root_start_watch_dir(watchman_global_watcher_t watcher,
+static struct watchman_dir_handle *kqueue_root_start_watch_dir(
+    watchman_global_watcher_t watcher,
     w_root_t *root, struct watchman_dir *dir, struct timeval now,
     const char *path) {
   struct kqueue_root_state *state = root->watch;
-  DIR *osdir;
+  struct watchman_dir_handle *osdir;
   struct stat st, osdirst;
   struct kevent k;
   int newwd;
   unused_parameter(watcher);
 
-  osdir = opendir_nofollow(path);
+  osdir = w_dir_open(path);
   if (!osdir) {
     handle_open_errno(root, dir, now, "opendir", errno, NULL);
     return NULL;
@@ -192,16 +193,16 @@ static DIR *kqueue_root_start_watch_dir(watchman_global_watcher_t watcher,
   if (newwd == -1) {
     // directory got deleted between opendir and open
     handle_open_errno(root, dir, now, "open", errno, NULL);
-    closedir(osdir);
+    w_dir_close(osdir);
     return NULL;
   }
-  if (fstat(newwd, &st) == -1 || fstat(dirfd(osdir), &osdirst) == -1) {
+  if (fstat(newwd, &st) == -1 || fstat(w_dir_fd(osdir), &osdirst) == -1) {
     // whaaa?
     w_log(W_LOG_ERR, "fstat on opened dir %s failed: %s\n", path,
         strerror(errno));
     w_root_schedule_recrawl(root, "fstat failed");
     close(newwd);
-    closedir(osdir);
+    w_dir_close(osdir);
     return NULL;
   }
 
@@ -210,7 +211,7 @@ static DIR *kqueue_root_start_watch_dir(watchman_global_watcher_t watcher,
     // parent's being watched, so we let filesystem events take care of it
     handle_open_errno(root, dir, now, "open", ENOTDIR, NULL);
     close(newwd);
-    closedir(osdir);
+    w_dir_close(osdir);
     return NULL;
   }
 

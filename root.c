@@ -106,19 +106,19 @@ static size_t root_init_offset = offsetof(w_root_t, _init_sentinel_);
 static bool w_root_init(w_root_t *root, char **errmsg)
 {
   struct watchman_dir *dir;
-  DIR *osdir = NULL;
+  struct watchman_dir_handle *osdir;
 
   memset((char *)root + root_init_offset, 0,
          sizeof(w_root_t) - root_init_offset);
 
-  osdir = opendir_nofollow(root->root_path->buf);
+  osdir = w_dir_open(root->root_path->buf);
   if (!osdir) {
     ignore_result(asprintf(errmsg, "failed to opendir(%s): %s",
           root->root_path->buf,
           strerror(errno)));
     return false;
   }
-  closedir(osdir);
+  w_dir_close(osdir);
 
   if (!watcher_ops->root_init(watcher, root, errmsg)) {
     return false;
@@ -1130,26 +1130,6 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
   } while (w_ht_next(dir->dirs, &i));
 }
 
-/* Opens a directory making sure it's not a symlink */
-DIR *opendir_nofollow(const char *path)
-{
-#ifdef _WIN32
-  return win_opendir(path, 1 /* no follow */);
-#else
-  int fd = open(path, O_NOFOLLOW | O_CLOEXEC);
-  if (fd == -1) {
-    return NULL;
-  }
-#if defined(__APPLE__)
-  close(fd);
-  return opendir(path);
-#else
-  // errno should be set appropriately if this is not a directory
-  return fdopendir(fd);
-#endif
-#endif
-}
-
 void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, const char *syscall, int err, const char *reason)
 {
@@ -1244,8 +1224,8 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
 {
   struct watchman_dir *dir;
   struct watchman_file *file;
-  DIR *osdir;
-  struct dirent *dirent;
+  struct watchman_dir_handle *osdir;
+  struct watchman_dir_ent *dirent;
   w_ht_iter_t i;
   char path[WATCHMAN_NAME_MAX];
   bool stat_all = false;
@@ -1282,7 +1262,7 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
     uint32_t num_dirs = 0;
 #ifndef _WIN32
     struct stat st;
-    int dfd = dirfd(osdir);
+    int dfd = w_dir_fd(osdir);
     if (dfd != -1 && fstat(dfd, &st) == 0) {
       num_dirs = (uint32_t)st.st_nlink;
     }
@@ -1303,7 +1283,7 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
     }
   } while (w_ht_next(dir->files, &i));
 
-  while ((dirent = readdir(osdir)) != NULL) {
+  while ((dirent = w_dir_read(osdir)) != NULL) {
     w_string_t *name;
 
     // Don't follow parent/self links
@@ -1330,7 +1310,7 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
     }
     w_string_delref(name);
   }
-  closedir(osdir);
+  w_dir_close(osdir);
 
   // Anything still in maybe_deleted is actually deleted.
   // Arrange to re-process it shortly

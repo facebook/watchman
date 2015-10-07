@@ -339,7 +339,8 @@ struct watchman_ops {
 
   // Initiate an OS-level watch on the provided dir, return a DIR
   // handle, or NULL on error
-  DIR *(*root_start_watch_dir)(watchman_global_watcher_t watcher,
+  struct watchman_dir_handle *(*root_start_watch_dir)(
+      watchman_global_watcher_t watcher,
       w_root_t *root, struct watchman_dir *dir, struct timeval now,
       const char *path);
 
@@ -375,6 +376,20 @@ struct watchman_stat {
   dev_t dev;
   nlink_t nlink;
 };
+
+/* opaque (system dependent) type for walking dir contents */
+struct watchman_dir_handle;
+
+struct watchman_dir_ent {
+  bool has_stat;
+  char *d_name;
+  struct watchman_stat stat;
+};
+
+struct watchman_dir_handle *w_dir_open(const char *path);
+struct watchman_dir_ent *w_dir_read(struct watchman_dir_handle *dir);
+void w_dir_close(struct watchman_dir_handle *dir);
+int w_dir_fd(struct watchman_dir_handle *dir);
 
 struct watchman_file {
   /* our name within the parent dir */
