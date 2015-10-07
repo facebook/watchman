@@ -886,9 +886,10 @@ static void stat_path(w_root_t *root,
       w_string_t *lc_file_name;
       struct watchman_file *lc_file = NULL;
 
-      if (pre_stat) {
-        // Optimization: if we're reading the dir, we assume that the
-        // name we were given is the canonical name
+      if (pre_stat || !via_notify) {
+        // Optimization: if we're reading the dir, or were passed this path
+        // as part of a recursive walk, then we assume that the name we were
+        // given is already the canonical name
         canon_name = file_name;
         w_string_addref(canon_name);
       } else {
