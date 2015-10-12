@@ -42,9 +42,8 @@ struct watchman_dir_handle {
   int retcount;
   char buf[64 * (sizeof(bulk_attr_item) + NAME_MAX * 3 + 1)];
   char *cursor;
-#else
-  DIR *d;
 #endif
+  DIR *d;
   struct watchman_dir_ent ent;
 };
 
@@ -76,31 +75,39 @@ struct watchman_dir_handle *w_dir_open(const char *path) {
     return NULL;
   }
 #ifdef HAVE_GETATTRLISTBULK
-  dir->fd = open(path, O_NOFOLLOW | O_CLOEXEC | O_RDONLY);
-  if (dir->fd == -1) {
-    err = errno;
-    free(dir);
-    errno = err;
-    return NULL;
-  }
+  // This option is here temporarily in case we discover problems with
+  // bulkstat and need to disable it.  We will remove this option in
+  // a future release of watchman
+  if (cfg_get_bool(NULL, "_use_bulkstat", true)) {
+    dir->fd = open(path, O_NOFOLLOW | O_CLOEXEC | O_RDONLY);
+    if (dir->fd == -1) {
+      err = errno;
+      free(dir);
+      errno = err;
+      return NULL;
+    }
 
-  dir->attrlist.bitmapcount = ATTR_BIT_MAP_COUNT;
-  dir->attrlist.commonattr = ATTR_CMN_RETURNED_ATTRS |
-                             ATTR_CMN_ERROR |
-                             ATTR_CMN_NAME |
-                             ATTR_CMN_DEVID |
-                             ATTR_CMN_OBJTYPE |
-                             ATTR_CMN_MODTIME |
-                             ATTR_CMN_CHGTIME |
-                             ATTR_CMN_ACCTIME |
-                             ATTR_CMN_OWNERID |
-                             ATTR_CMN_GRPID |
-                             ATTR_CMN_ACCESSMASK |
-                             ATTR_CMN_FILEID;
-  dir->attrlist.dirattr = ATTR_DIR_LINKCOUNT;
-  dir->attrlist.fileattr = ATTR_FILE_TOTALSIZE |
-                           ATTR_FILE_LINKCOUNT;
-#else
+    dir->attrlist.bitmapcount = ATTR_BIT_MAP_COUNT;
+    dir->attrlist.commonattr = ATTR_CMN_RETURNED_ATTRS |
+      ATTR_CMN_ERROR |
+      ATTR_CMN_NAME |
+      ATTR_CMN_DEVID |
+      ATTR_CMN_OBJTYPE |
+      ATTR_CMN_MODTIME |
+      ATTR_CMN_CHGTIME |
+      ATTR_CMN_ACCTIME |
+      ATTR_CMN_OWNERID |
+      ATTR_CMN_GRPID |
+      ATTR_CMN_ACCESSMASK |
+      ATTR_CMN_FILEID;
+    dir->attrlist.dirattr = ATTR_DIR_LINKCOUNT;
+    dir->attrlist.fileattr = ATTR_FILE_TOTALSIZE |
+      ATTR_FILE_LINKCOUNT;
+    return dir;
+  }
+  dir->fd = -1;
+#endif
+  w_log(W_LOG_ERR, "Using opendir\n");
   dir->d = opendir_nofollow(path);
 
   if (!dir->d) {
@@ -109,92 +116,94 @@ struct watchman_dir_handle *w_dir_open(const char *path) {
     errno = err;
     return NULL;
   }
-#endif
 
   return dir;
 }
 
 struct watchman_dir_ent *w_dir_read(struct watchman_dir_handle *dir) {
+  struct dirent *ent;
 #ifdef HAVE_GETATTRLISTBULK
-  bulk_attr_item *item;
+  if (dir->fd != -1) {
+    bulk_attr_item *item;
 
-  if (!dir->cursor) {
-    // Read the next batch of results
-    int retcount;
+    if (!dir->cursor) {
+      // Read the next batch of results
+      int retcount;
 
-    retcount = getattrlistbulk(dir->fd, &dir->attrlist,
-                dir->buf, sizeof(dir->buf), FSOPT_PACK_INVAL_ATTRS);
-    if (retcount == -1) {
-      w_log(W_LOG_ERR, "getattrlistbulk: error %d %s\n",
-          errno, strerror(errno));
-      return NULL;
+      retcount = getattrlistbulk(dir->fd, &dir->attrlist,
+          dir->buf, sizeof(dir->buf), FSOPT_PACK_INVAL_ATTRS);
+      if (retcount == -1) {
+        w_log(W_LOG_ERR, "getattrlistbulk: error %d %s\n",
+            errno, strerror(errno));
+        return NULL;
+      }
+      if (retcount == 0) {
+        // End of the stream
+        errno = 0;
+        return NULL;
+      }
+
+      dir->retcount = retcount;
+      dir->cursor = dir->buf;
     }
-    if (retcount == 0) {
-      // End of the stream
-      errno = 0;
-      return NULL;
+
+    // Decode the next item
+    item = (bulk_attr_item*)dir->cursor;
+    dir->cursor += item->len;
+    if (--dir->retcount == 0) {
+      dir->cursor = NULL;
     }
 
-    dir->retcount = retcount;
-    dir->cursor = dir->buf;
-  }
+    dir->ent.d_name = ((char*)&item->name) + item->name.attr_dataoffset;
+    if (item->err) {
+      w_log(W_LOG_ERR, "item error %s: %d %s\n", dir->ent.d_name,
+          item->err, strerror(item->err));
+      // We got the name, so we can return something useful
+      dir->ent.has_stat = false;
+      return &dir->ent;
+    }
 
-  // Decode the next item
-  item = (bulk_attr_item*)dir->cursor;
-  dir->cursor += item->len;
-  if (--dir->retcount == 0) {
-    dir->cursor = NULL;
-  }
+    memset(&dir->ent.stat, 0, sizeof(dir->ent.stat));
 
-  dir->ent.d_name = ((char*)&item->name) + item->name.attr_dataoffset;
-  if (item->err) {
-    w_log(W_LOG_ERR, "item error %s: %d %s\n", dir->ent.d_name,
-        item->err, strerror(item->err));
-    // We got the name, so we can return something useful
-    dir->ent.has_stat = false;
+    dir->ent.stat.dev = item->dev;
+    memcpy(&dir->ent.stat.mtime, &item->mtime, sizeof(item->mtime));
+    memcpy(&dir->ent.stat.ctime, &item->ctime, sizeof(item->ctime));
+    memcpy(&dir->ent.stat.atime, &item->atime, sizeof(item->atime));
+    dir->ent.stat.uid = item->uid;
+    dir->ent.stat.gid = item->gid;
+    dir->ent.stat.mode = item->mode & ~S_IFMT;
+    dir->ent.stat.ino = item->ino;
+
+    switch (item->objtype) {
+      case VREG:
+        dir->ent.stat.mode |= S_IFREG;
+        dir->ent.stat.size = item->file_size;
+        dir->ent.stat.nlink = item->link;
+        break;
+      case VDIR:
+        dir->ent.stat.mode |= S_IFDIR;
+        dir->ent.stat.nlink = item->link;
+        break;
+      case VLNK:
+        dir->ent.stat.mode |= S_IFLNK;
+        break;
+      case VBLK:
+        dir->ent.stat.mode |= S_IFBLK;
+        break;
+      case VCHR:
+        dir->ent.stat.mode |= S_IFCHR;
+        break;
+      case VFIFO:
+        dir->ent.stat.mode |= S_IFIFO;
+        break;
+      case VSOCK:
+        dir->ent.stat.mode |= S_IFSOCK;
+        break;
+    }
+    dir->ent.has_stat = true;
     return &dir->ent;
   }
-
-  memset(&dir->ent.stat, 0, sizeof(dir->ent.stat));
-
-  dir->ent.stat.dev = item->dev;
-  memcpy(&dir->ent.stat.mtime, &item->mtime, sizeof(item->mtime));
-  memcpy(&dir->ent.stat.ctime, &item->ctime, sizeof(item->ctime));
-  memcpy(&dir->ent.stat.atime, &item->atime, sizeof(item->atime));
-  dir->ent.stat.uid = item->uid;
-  dir->ent.stat.gid = item->gid;
-  dir->ent.stat.mode = item->mode & ~S_IFMT;
-  dir->ent.stat.ino = item->ino;
-
-  switch (item->objtype) {
-    case VREG:
-      dir->ent.stat.mode |= S_IFREG;
-      dir->ent.stat.size = item->file_size;
-      dir->ent.stat.nlink = item->link;
-      break;
-    case VDIR:
-      dir->ent.stat.mode |= S_IFDIR;
-      dir->ent.stat.nlink = item->link;
-      break;
-    case VLNK:
-      dir->ent.stat.mode |= S_IFLNK;
-      break;
-    case VBLK:
-      dir->ent.stat.mode |= S_IFBLK;
-      break;
-    case VCHR:
-      dir->ent.stat.mode |= S_IFCHR;
-      break;
-    case VFIFO:
-      dir->ent.stat.mode |= S_IFIFO;
-      break;
-    case VSOCK:
-      dir->ent.stat.mode |= S_IFSOCK;
-      break;
-  }
-  dir->ent.has_stat = true;
-#else
-  struct dirent *ent;
+#endif
 
   if (!dir->d) {
     return NULL;
@@ -206,16 +215,19 @@ struct watchman_dir_ent *w_dir_read(struct watchman_dir_handle *dir) {
 
   dir->ent.d_name = ent->d_name;
   dir->ent.has_stat = false;
-#endif
   return &dir->ent;
 }
 
 void w_dir_close(struct watchman_dir_handle *dir) {
 #ifdef HAVE_GETATTRLISTBULK
-  close(dir->fd);
-#else
-  closedir(dir->d);
+  if (dir->fd != -1) {
+    close(dir->fd);
+  }
 #endif
+  if (dir->d) {
+    closedir(dir->d);
+    dir->d = NULL;
+  }
   free(dir);
 }
 
