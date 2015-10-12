@@ -10,10 +10,21 @@ We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on
 GitHub](https://github.com/facebook/watchman/commits/master).
 
-### Watchman 3.9.0 (Not yet released)
+### Watchman 3.9.0 (2015-10-12)
 
 * Fixed an issue where dir renames on OS X could cause us to lose track of
   the files inside the renamed dir
+* Fixed an issue where dir deletes and replacements on Linux could cause us
+  to lose track of the files inside the replaced dir (similar to the OS X issue
+  above in manifestation, but a different root cause).
+* Improved (re)crawl speed for dirs with more than a couple of entries on average
+  (improvement can be up to 5x for dirs with up to 64 entries on average).
+  You may now tune the `hint_num_files_per_dir` setting in your
+  `.watchmanconfig` to better match your tree.  [More details](
+  /watchman/docs/config.html#hint_num_files_per_dir)
+* Improved (re)crawl speed on OS X 10.10 and later by using `getattrlistbulk`.
+  This allows us to improve the data:syscall ratio during crawling and can
+  improve throughput by up to 40% for larger trees.
 * Add optional `sync_timeout` to the `clock` command
 * Avoid accidentally passing descriptors other than the stdio streams
   when we spawn the watchman service.
