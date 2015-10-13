@@ -755,6 +755,11 @@ it from the <code>/etc/watchman.json</code> file.</li>
 <td>local</td>
 <td>3.7</td>
 </tr>
+<tr>
+<td><code>hint_num_files_per_dir</code></td>
+<td>fallback</td>
+<td>3.9</td>
+</tr>
 </tbody></table>
 
 <h3 id="configuration-options">Configuration Options</h3>
@@ -922,6 +927,33 @@ this to <code>0</code> to prevent reaping.</p>
 for <code>idle_reap_age_seconds</code>.   If an idle watch has no triggers and no
 subscriptions then it will be cancelled, releasing the associated operating
 system resources, and removed from the state file.</p>
+
+<h3 id="hint_num_files_per_dir">hint_num_files_per_dir</h3>
+
+<p><em>Since 3.9.</em></p>
+
+<p>Used to pre-size hash tables used to track files per directory.  This
+is most impactful during the initial crawl of the filesystem.  Setting
+this too small will increase the chance of a hash insert having a collision
+and drive up the cost of the insert and subsequent gets.</p>
+
+<p>Prior to version 3.9 of watchman this value was fixed at <code>2</code>.  Starting
+in version 3.9 the default value is <code>64</code> and can be configured via this
+setting in the <code>.watchmanconfig</code> or the global <code>/etc/watchman.json</code>
+configuration file.</p>
+
+<p>Setting this value very large increases the memory overhead per directory in
+the tree; the value is rounded up to the next power of two and pre-allocated
+in an array of pointers.  On a 64-bit system multiply that number by 8 to
+arrive at the number of bytes of overhead (halve this on a 32-bit system).
+The overhead is doubled when using a case insensitive filesystem.</p>
+
+<p>The ideal size from a time complexity perspective is the number of files in
+your largest directory.  From a space complexity perspective, the ideal size
+is 1; you would pay the cost of the collisions during the initial crawl and
+have a more optimal memory usage.  Since watchman is primarily employed as an
+accelerator, we&#39;d recommend biasing towards using more memory and taking less
+time to run.</p>
 
     
   </article>
