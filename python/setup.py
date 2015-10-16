@@ -31,5 +31,6 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent'
     ],
-    zip_safe = True
+    zip_safe = True,
+    scripts=['bin/watchman-wait', 'bin/watchman-make']
 )
