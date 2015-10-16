@@ -47,23 +47,113 @@ struct watchman_dir_handle {
   struct watchman_dir_ent ent;
 };
 
+/* Opens a directory, strictly prohibiting opening any symlinks
+ * in any component of the path on systems that make this
+ * reasonable and easy to do.
+ * We do this by opening / and then walking down the tree one
+ * directory component at a time.
+ * We prefer to do this rather than using realpath() and comparing
+ * names for two reasons:
+ * 1. We should be slightly less prone to TOCTOU issues if an element
+ *    of the path is changed to a symlink in the middle of our examination
+ * 2. We can terminate as soon as we discover a symlink this way, whereas
+ *    realpath() would walk all the way down before it could come back to
+ *    us and allow us to detect the issue.
+ */
+static int open_dir_as_fd_no_symlinks(const char *path, int flags) {
+#ifdef HAVE_OPENAT
+  char *pathcopy;
+  int fd = -1;
+  int err;
+  char *elem, *next;
+
+  if (path[0] != '/') {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (strlen(path) == 1) {
+    // They want to open "/"
+    return open(path, O_NOFOLLOW | flags);
+  }
+
+  pathcopy = strdup(path);
+  if (!pathcopy) {
+    return -1;
+  }
+
+  // "/" really shouldn't be a symlink, so we shouldn't need to use NOFOLLOW
+  // here, but we do so anyway for consistency with how we open the
+  // intermediate descriptors in the loop below.
+  fd = open("/", O_NOFOLLOW | O_CLOEXEC);
+  if (fd == -1) {
+    err = errno;
+    free(pathcopy);
+    errno = err;
+    return -1;
+  }
+
+  // "/foo/bar" means that elem -> "foo/bar"
+  elem = pathcopy + 1;
+  while (elem) {
+    int next_fd;
+
+    // if elem -> "foo/bar" we want:
+    // elem -> "foo", next -> "bar"
+    // if there is no slash, say if elem -> "bar":
+    // elem -> "bar", next -> NULL
+    next = strchr(elem, '/');
+    if (next) {
+      *next = 0;
+      next++;
+    }
+
+    // Ensure that we're CLOEXEC on all intermediate components of
+    // path, but use the flags the caller passed to us when we reach
+    // the leaf of the tree
+    next_fd = openat(fd, elem, (next ? O_CLOEXEC : flags)|O_NOFOLLOW);
+    if (next_fd == -1) {
+      err = errno;
+      close(fd);
+      free(pathcopy);
+      errno = err;
+      return -1;
+    }
+
+    // walk down to next level
+    elem = next;
+    close(fd);
+    fd = next_fd;
+  }
+
+  // This was the final component in the path
+  free(pathcopy);
+  return fd;
+#else
+  return open(path, flags);
+#endif
+}
+
 /* Opens a directory making sure it's not a symlink */
 DIR *opendir_nofollow(const char *path)
 {
 #ifdef _WIN32
   return win_opendir(path, 1 /* no follow */);
 #else
-  int fd = open(path, O_NOFOLLOW | O_CLOEXEC);
+  int fd = open_dir_as_fd_no_symlinks(path, O_NOFOLLOW | O_CLOEXEC);
   if (fd == -1) {
     return NULL;
   }
-#if defined(__APPLE__)
+# if !defined(HAVE_FDOPENDIR) || defined(__APPLE__)
+  /* fdopendir doesn't work on earlier versions OS X, and we don't
+   * use this function since 10.10, as we prefer to use getattrlistbulk
+   * in that case */
   close(fd);
   return opendir(path);
-#else
+# else
   // errno should be set appropriately if this is not a directory
   return fdopendir(fd);
-#endif
+# endif
 #endif
 }
 
@@ -79,7 +169,8 @@ struct watchman_dir_handle *w_dir_open(const char *path) {
   // bulkstat and need to disable it.  We will remove this option in
   // a future release of watchman
   if (cfg_get_bool(NULL, "_use_bulkstat", true)) {
-    dir->fd = open(path, O_NOFOLLOW | O_CLOEXEC | O_RDONLY);
+    dir->fd = open_dir_as_fd_no_symlinks(path,
+                  O_NOFOLLOW | O_CLOEXEC | O_RDONLY);
     if (dir->fd == -1) {
       err = errno;
       free(dir);
@@ -107,7 +198,6 @@ struct watchman_dir_handle *w_dir_open(const char *path) {
   }
   dir->fd = -1;
 #endif
-  w_log(W_LOG_ERR, "Using opendir\n");
   dir->d = opendir_nofollow(path);
 
   if (!dir->d) {
