@@ -1192,7 +1192,7 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
   }
 
   warn = w_string_make_printf(
-      "%s(%.*s) -> %s. Marking this portion of the tree deleted\n",
+      "%s(%.*s) -> %s. Marking this portion of the tree deleted",
       syscall, dir_name->len, dir_name->buf,
       reason ? reason : strerror(err));
 
