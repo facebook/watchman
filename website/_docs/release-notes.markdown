@@ -10,6 +10,14 @@ We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on
 GitHub](https://github.com/facebook/watchman/commits/master).
 
+### Watchman 4.0.0 (2015-10-19)
+
+* Fixed an issue where a directory that was replaced by a symlink would
+  cause a symlink traversal instead of correctly updating the type of the
+  node and marking the children removed.
+* Fixed a debugging log line that was emitted at the wrong log level on
+  every directory traversal.
+
 ### Watchman 3.9.0 (2015-10-12)
 
 * Fixed an issue where dir renames on OS X could cause us to lose track of
