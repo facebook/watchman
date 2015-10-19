@@ -64,9 +64,18 @@ class CommandError(WatchmanError):
     self.msg is the message returned by watchman.
     """
 
-    def __init__(self, msg):
+    def __init__(self, msg, cmd=None):
         self.msg = msg
+        self.cmd = cmd
         super(CommandError, self).__init__('watchman command error: %s' % msg)
+
+    def setCommand(self, cmd):
+        self.cmd = cmd
+
+    def __str__(self):
+        if self.cmd:
+            return '%s, while executing %s' % (self.msg, self.cmd)
+        return self.msg
 
 
 class Transport(object):
@@ -84,6 +93,9 @@ class Transport(object):
     def write(self, buf):
         """ write some data """
         raise NotImplementedError()
+
+    def setTimeout(self, value):
+        pass
 
     def readLine(self):
         """ read a line
@@ -123,6 +135,8 @@ class Codec(object):
     def send(self, *args):
         raise NotImplementedError()
 
+    def setTimeout(self, value):
+        self.transport.setTimeout(value)
 
 class UnixSocketTransport(Transport):
     """ local unix domain socket transport """
@@ -144,6 +158,10 @@ class UnixSocketTransport(Transport):
     def close(self):
         self.sock.close()
         self.sock = None
+
+    def setTimeout(self, value):
+        self.timeout = value
+        self.sock.settimeout(self.timeout)
 
     def readBytes(self, size):
         try:
@@ -468,12 +486,16 @@ class client(object):
         """
 
         self._connect()
-        self.sendConn.send(args)
+        try:
+            self.sendConn.send(args)
 
-        res = self.receive()
-        while self.isUnilateralResponse(res):
             res = self.receive()
-        return res
+            while self.isUnilateralResponse(res):
+                res = self.receive()
+            return res
+        except CommandError as ex:
+            ex.setCommand(args)
+            raise ex
 
     def capabilityCheck(self, optional=None, required=None):
         """ Perform a server capability check """
@@ -489,3 +511,7 @@ class client(object):
                 raise CommandError(res['error'])
 
         return res
+
+    def setTimeout(self, value):
+        self.recvConn.setTimeout(value)
+        self.sendConn.setTimeout(value)

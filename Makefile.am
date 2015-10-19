@@ -195,3 +195,8 @@ tests_wildmatch_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
 tests_wildmatch_t_LDADD = $(JSON_LIB) $(TAP_LIB) $(WILDMATCH_LIB)
 tests_wildmatch_t_SOURCES = \
 	tests/wildmatch_test.c
+
+watch:
+	PYTHONPATH=python python/bin/watchman-make \
+			-p '*.[ch]' 'Makefile*' 'tests/**/*.py' 'tests/**/*.php' \
+			-t integration
