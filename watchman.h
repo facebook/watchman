@@ -589,7 +589,7 @@ bool w_reap_children(bool block);
 #define W_LOG_OFF 0
 #define W_LOG_ERR 1
 #define W_LOG_DBG 2
-#define W_LOG_FATAL 3
+#define W_LOG_FATAL -1
 
 #ifndef WATCHMAN_FMT_STRING
 # define WATCHMAN_FMT_STRING(x) x
@@ -828,6 +828,7 @@ json_t *w_root_trigger_list_to_json(w_root_t *root);
 json_t *w_root_watch_list_to_json(void);
 
 bool w_start_listener(const char *socket_path);
+void w_check_my_sock(void);
 char **w_argv_copy_from_json(json_t *arr, int skip);
 
 w_ht_t *w_envp_make_ht(void);
