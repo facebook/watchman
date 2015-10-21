@@ -276,6 +276,7 @@ struct watchman_dir_ent *w_dir_read(struct watchman_dir_handle *dir) {
         break;
       case VLNK:
         dir->ent.stat.mode |= S_IFLNK;
+        dir->ent.stat.size = item->file_size;
         break;
       case VBLK:
         dir->ent.stat.mode |= S_IFBLK;
