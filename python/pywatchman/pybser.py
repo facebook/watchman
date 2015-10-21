@@ -213,108 +213,45 @@ def _bunser_string(buf, pos):
     return (str_val, pos + str_len)
 
 
-def _bunser_array(buf, pos, mutable=True):
+def _bunser_array(buf, pos):
     arr_len, pos = _bunser_int(buf, pos + 1)
     arr = []
     for i in range(arr_len):
-        arr_item, pos = _bser_loads_recursive(buf, pos, mutable)
+        arr_item, pos = _bser_loads_recursive(buf, pos)
         arr.append(arr_item)
-
-    if not mutable:
-      arr = tuple(arr)
-
     return arr, pos
 
 
-# This is a quack-alike with the bserObjectType in bser.c
-# It offers the mapping protocol via the dict base class and
-# provides sequence style access via integer index as well
-# as getattr
-class _BunserDict(object):
-    __slots__ = ('_keys', '_values')
-
-    def __init__(self, keys, values):
-        self._keys = keys
-        self._values = values
-
-    def __getattr__(self, name):
-        try:
-            return self._values[self._keys.index(name)]
-        except ValueError as ex:
-            raise AttributeError('_BunserDict has no attribute %s' % name)
-
-    def __getitem__(self, key):
-        if isinstance(key, (int, long)):
-            return self._values[key]
-        elif key.startswith('st_'):
-            # hack^Wfeature to allow mercurial to use "st_size" to
-            # reference "size"
-            key = key[3:]
-        try:
-            return self._values[self._keys.index(key)]
-        except ValueError as ex:
-            raise KeyError('_BunserDict has no key %s' % key)
-
-    def __len__(self):
-        print('doing len, have `%s` `%s`' % (self._keys, self._values))
-        return len(self._keys)
-
-def _bunser_object(buf, pos, mutable=True):
+def _bunser_object(buf, pos):
     obj_len, pos = _bunser_int(buf, pos + 1)
-    if mutable:
-        obj = {}
-    else:
-        keys = []
-        vals = []
-
+    obj = {}
     for i in range(obj_len):
         key, pos = _bunser_string(buf, pos)
-        val, pos = _bser_loads_recursive(buf, pos, mutable)
-        if mutable:
-            obj[key] = val
-        else:
-            keys.append(key)
-            vals.append(val)
-
-    if not mutable:
-        obj = _BunserDict(keys, vals)
-
+        val, pos = _bser_loads_recursive(buf, pos)
+        obj[key] = val
     return obj, pos
 
 
-def _bunser_template(buf, pos, mutable=True):
+def _bunser_template(buf, pos):
     if buf[pos + 1] != BSER_ARRAY:
         raise RuntimeError('Expect ARRAY to follow TEMPLATE')
     keys, pos = _bunser_array(buf, pos + 1)
     nitems, pos = _bunser_int(buf, pos)
     arr = []
     for i in range(nitems):
-        if mutable:
-            obj = {}
-        else:
-            vals = []
-
+        obj = {}
         for keyidx in range(len(keys)):
             if buf[pos] == BSER_SKIP:
                 pos += 1
-                ele = None
-            else:
-                ele, pos = _bser_loads_recursive(buf, pos, mutable)
-
-            if mutable:
-                key = keys[keyidx]
-                obj[key] = ele
-            else:
-                vals.append(ele)
-
-        if not mutable:
-            obj = _BunserDict(keys, vals)
-
+                continue
+            key = keys[keyidx]
+            ele, pos = _bser_loads_recursive(buf, pos)
+            obj[key] = ele
         arr.append(obj)
     return arr, pos
 
 
-def _bser_loads_recursive(buf, pos, mutable=True):
+def _bser_loads_recursive(buf, pos):
     val_type = buf[pos]
     if (val_type == BSER_INT8 or val_type == BSER_INT16 or
         val_type == BSER_INT32 or val_type == BSER_INT64):
@@ -331,11 +268,11 @@ def _bser_loads_recursive(buf, pos, mutable=True):
     elif val_type == BSER_STRING:
         return _bunser_string(buf, pos)
     elif val_type == BSER_ARRAY:
-        return _bunser_array(buf, pos, mutable)
+        return _bunser_array(buf, pos)
     elif val_type == BSER_OBJECT:
-        return _bunser_object(buf, pos, mutable)
+        return _bunser_object(buf, pos)
     elif val_type == BSER_TEMPLATE:
-        return _bunser_template(buf, pos, mutable)
+        return _bunser_template(buf, pos)
     else:
         raise RuntimeError('unhandled bser opcode 0x%02x' % (val_type,))
 
@@ -347,10 +284,10 @@ def pdu_len(buf):
     return expected_len + pos
 
 
-def loads(buf, mutable=True):
+def loads(buf):
     if buf[0:2] != EMPTY_HEADER[0:2]:
         raise RuntimeError('Invalid BSER header')
     expected_len, pos = _bunser_int(buf, 2)
     if len(buf) != expected_len + pos:
         raise RuntimeError('bser data len != header len')
-    return _bser_loads_recursive(buf, pos, mutable)[0]
+    return _bser_loads_recursive(buf, pos)[0]

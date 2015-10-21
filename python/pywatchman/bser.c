@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2013-2015, Facebook, Inc.
+Copyright (c) 2013, Facebook, Inc.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -53,139 +53,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define BSER_TEMPLATE  0x0b
 #define BSER_SKIP      0x0c
 
-// An immutable object representation of BSER_OBJECT.
-// Rather than build a hash table, key -> value are obtained
-// by walking the list of keys to determine the offset into
-// the values array.  The assumption is that the number of
-// array elements will be typically small (~6 for the top
-// level query result and typically 3 for the file entries)
-// so that the time overhead for this is small compared to
-// using a proper hash table.
-typedef struct {
-  PyObject_HEAD
-  PyObject *keys;   // tuple of field names
-  PyObject *values; // tuple of values
-} bserObject;
-
-static Py_ssize_t bserobj_tuple_length(PyObject *o) {
-  bserObject *obj = (bserObject*)o;
-
-  return PySequence_Length(obj->keys);
-}
-
-static PyObject *bserobj_tuple_item(PyObject *o, Py_ssize_t i) {
-  bserObject *obj = (bserObject*)o;
-
-  return PySequence_GetItem(obj->values, i);
-}
-
-static PySequenceMethods bserobj_sq = {
-  bserobj_tuple_length,      /* sq_length */
-  0,                         /* sq_concat */
-  0,                         /* sq_repeat */
-  bserobj_tuple_item,        /* sq_item */
-  0,                         /* sq_ass_item */
-  0,                         /* sq_contains */
-  0,                         /* sq_inplace_concat */
-  0                          /* sq_inplace_repeat */
-};
-
-static void bserobj_dealloc(PyObject *o) {
-  bserObject *obj = (bserObject*)o;
-
-  Py_CLEAR(obj->keys);
-  Py_CLEAR(obj->values);
-  PyObject_Del(o);
-}
-
-static PyObject *bserobj_getattrro(PyObject *o, PyObject *name) {
-  bserObject *obj = (bserObject*)o;
-  Py_ssize_t i, n;
-  const char *namestr;
-
-  if (PyIndex_Check(name)) {
-    i = PyNumber_AsSsize_t(name, PyExc_IndexError);
-    if (i == -1 && PyErr_Occurred()) {
-      return NULL;
-    }
-    return PySequence_GetItem(obj->values, i);
-  }
-
-  // hack^Wfeature to allow mercurial to use "st_size" to reference "size"
-  namestr = PyString_AsString(name);
-  if (!strncmp(namestr, "st_", 3)) {
-    namestr += 3;
-  }
-
-  n = PyTuple_GET_SIZE(obj->keys);
-  for (i = 0; i < n; i++) {
-    const char *item_name = NULL;
-
-    PyObject *key = PyTuple_GetItem(obj->keys, i);
-    if (!key) {
-      return NULL;
-    }
-
-    item_name = PyString_AsString(key);
-    if (!strcmp(item_name, namestr)) {
-      return PySequence_GetItem(obj->values, i);
-    }
-  }
-  PyErr_Format(PyExc_AttributeError,
-              "bserobject has no attribute '%.400s'", namestr);
-  return NULL;
-}
-
-static PyMappingMethods bserobj_map = {
-  bserobj_tuple_length,     /* mp_length */
-  bserobj_getattrro,        /* mp_subscript */
-  0                         /* mp_ass_subscript */
-};
-
-PyTypeObject bserObjectType = {
-  PyVarObject_HEAD_INIT(NULL, 0)
-  "bserobj_tuple",           /* tp_name */
-  sizeof(bserObject),        /* tp_basicsize */
-  0,                         /* tp_itemsize */
-  bserobj_dealloc,           /* tp_dealloc */
-  0,                         /* tp_print */
-  0,                         /* tp_getattr */
-  0,                         /* tp_setattr */
-  0,                         /* tp_compare */
-  0,                         /* tp_repr */
-  0,                         /* tp_as_number */
-  &bserobj_sq,               /* tp_as_sequence */
-  &bserobj_map,              /* tp_as_mapping */
-  0,                         /* tp_hash  */
-  0,                         /* tp_call */
-  0,                         /* tp_str */
-  bserobj_getattrro,         /* tp_getattro */
-  0,                         /* tp_setattro */
-  0,                         /* tp_as_buffer */
-  Py_TPFLAGS_DEFAULT,        /* tp_flags */
-  "bserobj tuple",           /* tp_doc */
-  0,                         /* tp_traverse */
-  0,                         /* tp_clear */
-  0,                         /* tp_richcompare */
-  0,                         /* tp_weaklistoffset */
-  0,                         /* tp_iter */
-  0,                         /* tp_iternext */
-  0,                         /* tp_methods */
-  0,                         /* tp_members */
-  0,                         /* tp_getset */
-  0,                         /* tp_base */
-  0,                         /* tp_dict */
-  0,                         /* tp_descr_get */
-  0,                         /* tp_descr_set */
-  0,                         /* tp_dictoffset */
-  0,                         /* tp_init */
-  0,                         /* tp_alloc */
-  0,                         /* tp_new */
-};
-
-
-static PyObject *bser_loads_recursive(const char **ptr, const char *end,
-    int mutable);
+static PyObject *bser_loads_recursive(const char **ptr, const char *end);
 
 static const char bser_true = BSER_TRUE;
 static const char bser_false = BSER_FALSE;
@@ -193,6 +61,8 @@ static const char bser_null = BSER_NULL;
 static const char bser_string_hdr = BSER_STRING;
 static const char bser_array_hdr = BSER_ARRAY;
 static const char bser_object_hdr = BSER_OBJECT;
+static const char bser_template_hdr = BSER_TEMPLATE;
+static const char bser_skip = BSER_SKIP;
 
 static inline uint32_t next_power_2(uint32_t n)
 {
@@ -560,7 +430,7 @@ static int bunser_string(const char **ptr, const char *end,
   return 1;
 }
 
-static PyObject *bunser_array(const char **ptr, const char *end, int mutable)
+static PyObject *bunser_array(const char **ptr, const char *end)
 {
   const char *buf = *ptr;
   int64_t nitems, i;
@@ -578,38 +448,28 @@ static PyObject *bunser_array(const char **ptr, const char *end, int mutable)
     return NULL;
   }
 
-  if (mutable) {
-    res = PyList_New((Py_ssize_t)nitems);
-  } else {
-    res = PyTuple_New((Py_ssize_t)nitems);
-  }
+  res = PyList_New((Py_ssize_t)nitems);
 
   for (i = 0; i < nitems; i++) {
-    PyObject *ele = bser_loads_recursive(ptr, end, mutable);
+    PyObject *ele = bser_loads_recursive(ptr, end);
 
     if (!ele) {
       Py_DECREF(res);
       return NULL;
     }
 
-    if (mutable) {
-      PyList_SET_ITEM(res, i, ele);
-    } else {
-      PyTuple_SET_ITEM(res, i, ele);
-    }
+    PyList_SET_ITEM(res, i, ele);
     // DECREF(ele) not required as SET_ITEM steals the ref
   }
 
   return res;
 }
 
-static PyObject *bunser_object(const char **ptr, const char *end,
-    int mutable)
+static PyObject *bunser_object(const char **ptr, const char *end)
 {
   const char *buf = *ptr;
   int64_t nitems, i;
   PyObject *res;
-  bserObject *obj;
 
   // skip array header
   buf++;
@@ -618,14 +478,7 @@ static PyObject *bunser_object(const char **ptr, const char *end,
   }
   *ptr = buf;
 
-  if (mutable) {
-    res = PyDict_New();
-  } else {
-    obj = PyObject_New(bserObject, &bserObjectType);
-    obj->keys = PyTuple_New((Py_ssize_t)nitems);
-    obj->values = PyTuple_New((Py_ssize_t)nitems);
-    res = (PyObject*)obj;
-  }
+  res = PyDict_New();
 
   for (i = 0; i < nitems; i++) {
     const char *keystr;
@@ -650,7 +503,7 @@ static PyObject *bunser_object(const char **ptr, const char *end,
       return NULL;
     }
 
-    ele = bser_loads_recursive(ptr, end, mutable);
+    ele = bser_loads_recursive(ptr, end);
 
     if (!ele) {
       Py_DECREF(key);
@@ -658,22 +511,15 @@ static PyObject *bunser_object(const char **ptr, const char *end,
       return NULL;
     }
 
-    if (mutable) {
-      PyDict_SetItem(res, key, ele);
-      Py_DECREF(key);
-      Py_DECREF(ele);
-    } else {
-      /* PyTuple_SET_ITEM steals ele, key */
-      PyTuple_SET_ITEM(obj->values, i, ele);
-      PyTuple_SET_ITEM(obj->keys, i, key);
-    }
+    PyDict_SetItem(res, key, ele);
+    Py_DECREF(key);
+    Py_DECREF(ele);
   }
 
   return res;
 }
 
-static PyObject *bunser_template(const char **ptr, const char *end,
-    int mutable)
+static PyObject *bunser_template(const char **ptr, const char *end)
 {
   const char *buf = *ptr;
   int64_t nitems, i;
@@ -691,12 +537,12 @@ static PyObject *bunser_template(const char **ptr, const char *end,
   *ptr = buf;
 
   // Load template keys
-  keys = bunser_array(ptr, end, mutable);
+  keys = bunser_array(ptr, end);
   if (!keys) {
     return NULL;
   }
 
-  numkeys = PySequence_Length(keys);
+  numkeys = PyList_GET_SIZE(keys);
 
   // Load number of array elements
   if (!bunser_int(ptr, end, &nitems)) {
@@ -717,21 +563,10 @@ static PyObject *bunser_template(const char **ptr, const char *end,
   }
 
   for (i = 0; i < nitems; i++) {
-    PyObject *dict = NULL;
-    bserObject *obj = NULL;
+    PyObject *obj;
 
-    if (mutable) {
-      dict = PyDict_New();
-    } else {
-      obj = PyObject_New(bserObject, &bserObjectType);
-      if (obj) {
-        obj->keys = keys;
-        Py_INCREF(obj->keys);
-        obj->values = PyTuple_New(numkeys);
-      }
-      dict = (PyObject*)obj;
-    }
-    if (!dict) {
+    obj = PyDict_New();
+    if (!obj) {
 fail:
       Py_DECREF(keys);
       Py_DECREF(arrval);
@@ -744,27 +579,21 @@ fail:
 
       if (**ptr == BSER_SKIP) {
         *ptr = *ptr + 1;
-        ele = Py_None;
-        Py_INCREF(ele);
-      } else {
-        ele = bser_loads_recursive(ptr, end, mutable);
+        continue;
       }
+
+      key = PyList_GET_ITEM(keys, keyidx);
+      ele = bser_loads_recursive(ptr, end);
 
       if (!ele) {
         goto fail;
       }
 
-      if (mutable) {
-        key = PyList_GET_ITEM(keys, keyidx);
-        PyDict_SetItem(dict, key, ele);
-        Py_DECREF(ele);
-      } else {
-        PyTuple_SET_ITEM(obj->values, keyidx, ele);
-        // DECREF(ele) not required as SET_ITEM steals the ref
-      }
+      PyDict_SetItem(obj, key, ele);
+      Py_DECREF(ele);
     }
 
-    PyList_SET_ITEM(arrval, i, dict);
+    PyList_SET_ITEM(arrval, i, obj);
     // DECREF(obj) not required as SET_ITEM steals the ref
   }
 
@@ -773,8 +602,7 @@ fail:
   return arrval;
 }
 
-static PyObject *bser_loads_recursive(const char **ptr, const char *end,
-    int mutable)
+static PyObject *bser_loads_recursive(const char **ptr, const char *end)
 {
   const char *buf = *ptr;
 
@@ -835,13 +663,13 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end,
       }
 
     case BSER_ARRAY:
-      return bunser_array(ptr, end, mutable);
+      return bunser_array(ptr, end);
 
     case BSER_OBJECT:
-      return bunser_object(ptr, end, mutable);
+      return bunser_object(ptr, end);
 
     case BSER_TEMPLATE:
-      return bunser_template(ptr, end, mutable);
+      return bunser_template(ptr, end);
 
     default:
       PyErr_Format(PyExc_ValueError, "unhandled bser opcode 0x%02x", buf[0]);
@@ -897,16 +725,10 @@ static PyObject *bser_loads(PyObject *self, PyObject *args)
   int datalen = 0;
   const char *end;
   int64_t expected_len;
-  int mutable = 1;
-  PyObject *mutable_obj = NULL;
 
-  if (!PyArg_ParseTuple(args, "s#|O:loads", &data, &datalen, &mutable_obj)) {
+  if (!PyArg_ParseTuple(args, "s#", &data, &datalen)) {
     return NULL;
   }
-  if (mutable_obj) {
-    mutable = PyObject_IsTrue(mutable_obj) > 0 ? 1 : 0;
-  }
-
   end = data + datalen;
 
   // Validate the header and length
@@ -929,7 +751,7 @@ static PyObject *bser_loads(PyObject *self, PyObject *args)
     return NULL;
   }
 
-  return bser_loads_recursive(&data, end, mutable);
+  return bser_loads_recursive(&data, end);
 }
 
 static PyMethodDef bser_methods[] = {
@@ -942,7 +764,6 @@ static PyMethodDef bser_methods[] = {
 PyMODINIT_FUNC initbser(void)
 {
   (void)Py_InitModule("bser", bser_methods);
-  PyType_Ready(&bserObjectType);
 }
 
 /* vim:ts=2:sw=2:et:

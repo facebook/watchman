@@ -38,10 +38,10 @@ class TestBSERDump(unittest.TestCase):
         else:
             return super(TestBSERDump, self).id()
 
-    def roundtrip(self, val, mutable=True):
+    def roundtrip(self, val):
         enc = self.bser_mod.dumps(val)
         print "# %s  -->  %s" % (val, enc.encode('hex'))
-        dec = self.bser_mod.loads(enc, mutable)
+        dec = self.bser_mod.loads(enc)
         self.assertEquals(val, dec)
 
     def munged(self, val, munged):
@@ -82,22 +82,9 @@ class TestBSERDump(unittest.TestCase):
 
     def test_tuple(self):
         self.munged((1, 2, 3), [1, 2, 3])
-        self.roundtrip((1, 2, 3), mutable=False)
 
     def test_dict(self):
         self.roundtrip({"hello": "there"})
-        obj = self.bser_mod.loads(self.bser_mod.dumps({"hello": "there"}), False)
-        self.assertEquals(1, len(obj))
-        self.assertEquals('there', obj.hello)
-        self.assertEquals('there', obj['hello'])
-        self.assertEquals('there', obj[0])
-        hello, = obj  # sequence/list assignment
-        self.assertEquals('there', hello)
-
-    def assertItemAttributes(self, dictish, attrish):
-        self.assertEquals(len(dictish), len(attrish))
-        for k, v in dictish.iteritems():
-            self.assertEquals(v, getattr(attrish, k))
 
     def test_template(self):
         # since we can't generate the template bser output, here's a
@@ -111,13 +98,9 @@ class TestBSERDump(unittest.TestCase):
         exp = [
             {"name": "fred", "age": 20},
             {"name": "pete", "age": 30},
-            {"name": None, "age": 25}
+            {"age": 25}
         ]
         self.assertEquals(exp, dec)
-        res = self.bser_mod.loads(templ, False)
-
-        for i in range(0, len(exp)):
-            self.assertItemAttributes(exp[i], res[i])
 
     def test_pdu_len(self):
         enc = self.bser_mod.dumps(1)

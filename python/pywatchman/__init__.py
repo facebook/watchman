@@ -268,9 +268,6 @@ class CLIProcessTransport(Transport):
 class BserCodec(Codec):
     """ use the BSER encoding.  This is the default, preferred codec """
 
-    def _loads(self, response):
-        return bser.loads(response)
-
     def receive(self):
         buf = [self.transport.readBytes(sniff_len)]
         if not buf[0]:
@@ -285,7 +282,7 @@ class BserCodec(Codec):
 
         response = ''.join(buf)
         try:
-            res = self._loads(response)
+            res = bser.loads(response)
             return res
         except ValueError as e:
             raise WatchmanError('watchman response decode error: %s' % e)
@@ -293,13 +290,6 @@ class BserCodec(Codec):
     def send(self, *args):
         cmd = bser.dumps(*args)
         self.transport.write(cmd)
-
-class ImmutableBserCodec(BserCodec):
-    """ use the BSER encoding, decoding values using the newer
-        immutable object support """
-
-    def _loads(self, response):
-        return bser.loads(response, False)
 
 
 class JsonCodec(Codec):
@@ -337,13 +327,11 @@ class client(object):
     logs = []  # When log level is raised
     unilateral = ['log', 'subscription']
     tport = None
-    useImmutableBser = None
 
     def __init__(self, sockpath=None, timeout=1.0, transport=None,
-                 sendEncoding=None, recvEncoding=None, useImmutableBser=False):
+                 sendEncoding=None, recvEncoding=None):
         self.sockpath = sockpath
         self.timeout = timeout
-        self.useImmutableBser = useImmutableBser
 
         transport = transport or os.getenv('WATCHMAN_TRANSPORT') or 'local'
         if transport == 'local' and os.name == 'nt':
@@ -367,8 +355,6 @@ class client(object):
 
     def _parseEncoding(self, enc):
         if enc == 'bser':
-            if self.useImmutableBser:
-                return ImmutableBserCodec
             return BserCodec
         elif enc == 'json':
             return JsonCodec
