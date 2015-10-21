@@ -78,7 +78,6 @@ static void run_service(void)
 
   watchman_watcher_init();
   res = w_start_listener(sock_name);
-  watchman_watcher_dtor();
 
   if (res) {
     exit(0);

@@ -238,8 +238,6 @@ struct watchman_pending_fs;
 struct watchman_trigger_command;
 typedef struct watchman_root w_root_t;
 
-// Process global state for the selected watcher
-typedef void *watchman_global_watcher_t;
 // Per-watch state for the selected watcher
 typedef void *watchman_watcher_t;
 
@@ -308,63 +306,48 @@ struct watchman_ops {
 #define WATCHER_COALESCED_RENAME 2
   unsigned flags;
 
-  // Perform any global initialization needed for the watcher mechanism
-  // and return a context pointer that will be passed to all other ops
-  watchman_global_watcher_t (*global_init)(void);
-
-  // Perform global shutdown of the watcher at process shutdown time.
-  // We're not guaranteed that this will be called, depending on how
-  // the process is shutdown
-  void (*global_dtor)(watchman_global_watcher_t watcher);
-
   // Perform watcher-specific initialization for a watched root.
   // Do not start threads here
-  bool (*root_init)(watchman_global_watcher_t watcher, w_root_t *root,
-      char **errmsg);
+  bool (*root_init)(w_root_t *root, char **errmsg);
 
   // Start up threads or similar.  Called in the context of the
   // notify thread
-  bool (*root_start)(watchman_global_watcher_t watcher, w_root_t *root);
+  bool (*root_start)(w_root_t *root);
 
   // Perform watcher-specific cleanup for a watched root when it is freed
-  void (*root_dtor)(watchman_global_watcher_t watcher, w_root_t *root);
+  void (*root_dtor)(w_root_t *root);
 
   // Initiate an OS-level watch on the provided file
-  bool (*root_start_watch_file)(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_file *file);
+  bool (*root_start_watch_file)(w_root_t *root, struct watchman_file *file);
 
   // Cancel an OS-level watch on the provided file
-  void (*root_stop_watch_file)(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_file *file);
+  void (*root_stop_watch_file)(w_root_t *root, struct watchman_file *file);
 
   // Initiate an OS-level watch on the provided dir, return a DIR
   // handle, or NULL on error
   struct watchman_dir_handle *(*root_start_watch_dir)(
-      watchman_global_watcher_t watcher,
       w_root_t *root, struct watchman_dir *dir, struct timeval now,
       const char *path);
 
   // Cancel an OS-level watch on the provided dir
-  void (*root_stop_watch_dir)(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_dir *dir);
+  void (*root_stop_watch_dir)(w_root_t *root, struct watchman_dir *dir);
 
   // Signal any threads to terminate.  Do not join them here.
-  void (*root_signal_threads)(watchman_global_watcher_t watcher,
-      w_root_t *root);
+  void (*root_signal_threads)(w_root_t *root);
 
   // Consume any available notifications.  If there are none pending,
   // does not block.
-  bool (*root_consume_notify)(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_pending_collection *coll);
+  bool (*root_consume_notify)(w_root_t *root,
+      struct watchman_pending_collection *coll);
 
   // Wait for an inotify event to become available
-  bool (*root_wait_notify)(watchman_global_watcher_t watcher,
-      w_root_t *root, int timeoutms);
+  bool (*root_wait_notify)(w_root_t *root, int timeoutms);
 
   // Called when freeing a file node
-  void (*file_free)(watchman_global_watcher_t watcher,
-      struct watchman_file *file);
+  void (*file_free)(struct watchman_file *file);
 };
+
+bool w_watcher_init(w_root_t *root, char **errmsg);
 
 struct watchman_stat {
   struct timespec atime, mtime, ctime;
@@ -487,6 +470,9 @@ struct watchman_root {
   // map of state name => watchman_client_state_assertion for
   // asserted states
   w_ht_t *asserted_states;
+
+  /* the watcher that we're using for this root */
+  struct watchman_ops *watcher_ops;
 
   /* --- everything below this point will be reset on w_root_init --- */
   bool _init_sentinel_;
@@ -981,7 +967,6 @@ void set_poison_state(w_root_t *root, w_string_t *dir,
     const char *reason);
 
 void watchman_watcher_init(void);
-void watchman_watcher_dtor(void);
 void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, const char *syscall, int err,
     const char *reason);

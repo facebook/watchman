@@ -76,6 +76,7 @@ SRCS=\
 	query\intcompare.c  \
 	query\since.c      \
 	query\empty.c      \
+	watcher\auto.c \
 	watcher\win32.c \
 	watcher\helper.c \
 	listener.c   \

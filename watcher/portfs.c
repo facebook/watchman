@@ -71,18 +71,9 @@ const struct watchman_hash_funcs port_file_funcs = {
   portfs_del_port_file,
 };
 
-watchman_global_watcher_t portfs_global_init(void) {
-  return NULL;
-}
-
-void portfs_global_dtor(watchman_global_watcher_t watcher) {
-  unused_parameter(watcher);
-}
-
-bool portfs_root_init(watchman_global_watcher_t watcher, w_root_t *root,
-    char **errmsg) {
+bool portfs_root_init(w_root_t *root, char **errmsg) {
   struct portfs_root_state *state;
-  unused_parameter(watcher);
+
 
   state = calloc(1, sizeof(*state));
   if (!state) {
@@ -106,9 +97,8 @@ bool portfs_root_init(watchman_global_watcher_t watcher, w_root_t *root,
   return true;
 }
 
-void portfs_root_dtor(watchman_global_watcher_t watcher, w_root_t *root) {
+void portfs_root_dtor(w_root_t *root) {
   struct portfs_root_state *state = root->watch;
-  unused_parameter(watcher);
 
   if (!state) {
     return;
@@ -123,15 +113,11 @@ void portfs_root_dtor(watchman_global_watcher_t watcher, w_root_t *root) {
   root->watch = NULL;
 }
 
-static void portfs_root_signal_threads(watchman_global_watcher_t watcher,
-    w_root_t *root) {
-  unused_parameter(watcher);
+static void portfs_root_signal_threads(w_root_t *root) {
   unused_parameter(root);
 }
 
-static bool portfs_root_start(watchman_global_watcher_t watcher,
-    w_root_t *root) {
-  unused_parameter(watcher);
+static bool portfs_root_start(w_root_t *root) {
   unused_parameter(root);
 
   return true;
@@ -177,13 +163,11 @@ out:
   return success;
 }
 
-static bool portfs_root_start_watch_file(watchman_global_watcher_t watcher,
-    w_root_t *root, struct watchman_file *file) {
+static bool portfs_root_start_watch_file(w_root_t *root,
+    struct watchman_file *file) {
   struct portfs_root_state *state = root->watch;
   w_string_t *name;
   bool success = false;
-
-  unused_parameter(watcher);
 
   name = w_string_path_cat(file->parent->path, file->name);
   if (!name) {
@@ -195,21 +179,18 @@ static bool portfs_root_start_watch_file(watchman_global_watcher_t watcher,
   return success;
 }
 
-static void portfs_root_stop_watch_file(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_file *file) {
-  unused_parameter(watcher);
+static void portfs_root_stop_watch_file(w_root_t *root,
+    struct watchman_file *file) {
   unused_parameter(root);
   unused_parameter(file);
 }
 
 static struct watchman_dir_handle *portfs_root_start_watch_dir(
-    watchman_global_watcher_t watcher,
     w_root_t *root, struct watchman_dir *dir, struct timeval now,
     const char *path) {
   struct portfs_root_state *state = root->watch;
   struct watchman_dir_handle *osdir;
   struct stat st;
-  unused_parameter(watcher);
 
   osdir = w_dir_open(path);
   if (!osdir) {
@@ -234,20 +215,18 @@ static struct watchman_dir_handle *portfs_root_start_watch_dir(
   return osdir;
 }
 
-static void portfs_root_stop_watch_dir(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_dir *dir) {
-  unused_parameter(watcher);
+static void portfs_root_stop_watch_dir(w_root_t *root,
+    struct watchman_dir *dir) {
   unused_parameter(root);
   unused_parameter(dir);
 }
 
-static bool portfs_root_consume_notify(watchman_global_watcher_t watcher,
-    w_root_t *root, struct watchman_pending_collection *coll)
+static bool portfs_root_consume_notify(w_root_t *root,
+    struct watchman_pending_collection *coll)
 {
   struct portfs_root_state *state = root->watch;
   uint_t i, n;
   struct timeval now;
-  unused_parameter(watcher);
 
   errno = 0;
 
@@ -303,12 +282,10 @@ static bool portfs_root_consume_notify(watchman_global_watcher_t watcher,
   return true;
 }
 
-static bool portfs_root_wait_notify(watchman_global_watcher_t watcher,
-    w_root_t *root, int timeoutms) {
+static bool portfs_root_wait_notify(w_root_t *root, int timeoutms) {
   struct portfs_root_state *state = root->watch;
   int n;
   struct pollfd pfd;
-  unused_parameter(watcher);
 
   pfd.fd = state->port_fd;
   pfd.events = POLLIN;
@@ -318,17 +295,13 @@ static bool portfs_root_wait_notify(watchman_global_watcher_t watcher,
   return n == 1;
 }
 
-static void portfs_file_free(watchman_global_watcher_t watcher,
-    struct watchman_file *file) {
-  unused_parameter(watcher);
+static void portfs_file_free(struct watchman_file *file) {
   unused_parameter(file);
 }
 
 struct watchman_ops portfs_watcher = {
   "portfs",
   0,
-  portfs_global_init,
-  portfs_global_dtor,
   portfs_root_init,
   portfs_root_start,
   portfs_root_dtor,

@@ -43,18 +43,8 @@ const struct watchman_hash_funcs name_to_fd_funcs = {
   kqueue_del_key,
 };
 
-watchman_global_watcher_t kqueue_global_init(void) {
-  return NULL;
-}
-
-void kqueue_global_dtor(watchman_global_watcher_t watcher) {
-  unused_parameter(watcher);
-}
-
-bool kqueue_root_init(watchman_global_watcher_t watcher, w_root_t *root,
-    char **errmsg) {
+bool kqueue_root_init(w_root_t *root, char **errmsg) {
   struct kqueue_root_state *state;
-  unused_parameter(watcher);
 
   state = calloc(1, sizeof(*state));
   if (!state) {
@@ -78,9 +68,8 @@ bool kqueue_root_init(watchman_global_watcher_t watcher, w_root_t *root,
   return true;
 }
 
-void kqueue_root_dtor(watchman_global_watcher_t watcher, w_root_t *root) {
+void kqueue_root_dtor(w_root_t *root) {
   struct kqueue_root_state *state = root->watch;
-  unused_parameter(watcher);
 
   if (!state) {
     return;
@@ -96,28 +85,23 @@ void kqueue_root_dtor(watchman_global_watcher_t watcher, w_root_t *root) {
   root->watch = NULL;
 }
 
-static void kqueue_root_signal_threads(watchman_global_watcher_t watcher,
-    w_root_t *root) {
-  unused_parameter(watcher);
+static void kqueue_root_signal_threads(w_root_t *root) {
   unused_parameter(root);
 }
 
-static bool kqueue_root_start(watchman_global_watcher_t watcher,
-    w_root_t *root) {
-  unused_parameter(watcher);
+static bool kqueue_root_start(w_root_t *root) {
   unused_parameter(root);
 
   return true;
 }
 
-static bool kqueue_root_start_watch_file(watchman_global_watcher_t watcher,
+static bool kqueue_root_start_watch_file(
       w_root_t *root, struct watchman_file *file) {
   struct kqueue_root_state *state = root->watch;
   struct kevent k;
   w_ht_val_t fdval;
   int fd;
   w_string_t *full_name;
-  unused_parameter(watcher);
 
   full_name = w_string_path_cat(file->parent->path, file->name);
   pthread_mutex_lock(&state->lock);
@@ -164,15 +148,13 @@ static bool kqueue_root_start_watch_file(watchman_global_watcher_t watcher,
   return true;
 }
 
-static void kqueue_root_stop_watch_file(watchman_global_watcher_t watcher,
+static void kqueue_root_stop_watch_file(
     w_root_t *root, struct watchman_file *file) {
-  unused_parameter(watcher);
   unused_parameter(root);
   unused_parameter(file);
 }
 
 static struct watchman_dir_handle *kqueue_root_start_watch_dir(
-    watchman_global_watcher_t watcher,
     w_root_t *root, struct watchman_dir *dir, struct timeval now,
     const char *path) {
   struct kqueue_root_state *state = root->watch;
@@ -180,7 +162,6 @@ static struct watchman_dir_handle *kqueue_root_start_watch_dir(
   struct stat st, osdirst;
   struct kevent k;
   int newwd;
-  unused_parameter(watcher);
 
   osdir = w_dir_open(path);
   if (!osdir) {
@@ -243,14 +224,13 @@ static struct watchman_dir_handle *kqueue_root_start_watch_dir(
   return osdir;
 }
 
-static void kqueue_root_stop_watch_dir(watchman_global_watcher_t watcher,
+static void kqueue_root_stop_watch_dir(
     w_root_t *root, struct watchman_dir *dir) {
-  unused_parameter(watcher);
   unused_parameter(root);
   unused_parameter(dir);
 }
 
-static bool kqueue_root_consume_notify(watchman_global_watcher_t watcher,
+static bool kqueue_root_consume_notify(
     w_root_t *root, struct watchman_pending_collection *coll)
 {
   struct kqueue_root_state *state = root->watch;
@@ -258,7 +238,6 @@ static bool kqueue_root_consume_notify(watchman_global_watcher_t watcher,
   int i;
   struct timespec ts = { 0, 0 };
   struct timeval now;
-  unused_parameter(watcher);
 
   errno = 0;
   n = kevent(state->kq_fd, NULL, 0,
@@ -323,12 +302,11 @@ static bool kqueue_root_consume_notify(watchman_global_watcher_t watcher,
   return n > 0;
 }
 
-static bool kqueue_root_wait_notify(watchman_global_watcher_t watcher,
+static bool kqueue_root_wait_notify(
     w_root_t *root, int timeoutms) {
   struct kqueue_root_state *state = root->watch;
   int n;
   struct pollfd pfd;
-  unused_parameter(watcher);
 
   pfd.fd = state->kq_fd;
   pfd.events = POLLIN;
@@ -338,17 +316,13 @@ static bool kqueue_root_wait_notify(watchman_global_watcher_t watcher,
   return n == 1;
 }
 
-static void kqueue_file_free(watchman_global_watcher_t watcher,
-    struct watchman_file *file) {
-  unused_parameter(watcher);
+static void kqueue_file_free(struct watchman_file *file) {
   unused_parameter(file);
 }
 
 struct watchman_ops kqueue_watcher = {
   "kqueue",
   0,
-  kqueue_global_init,
-  kqueue_global_dtor,
   kqueue_root_init,
   kqueue_root_start,
   kqueue_root_dtor,

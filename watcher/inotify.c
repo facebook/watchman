@@ -84,14 +84,6 @@ static const struct watchman_hash_funcs move_hash_funcs = {
   del_pending   // del_val
 };
 
-watchman_global_watcher_t inot_global_init(void) {
-  return NULL;
-}
-
-void inot_global_dtor(watchman_global_watcher_t watcher) {
-  unused_parameter(watcher);
-}
-
 static const char *inot_strerror(int err) {
   switch (err) {
     case EMFILE:
@@ -111,10 +103,9 @@ static const char *inot_strerror(int err) {
   }
 }
 
-bool inot_root_init(watchman_global_watcher_t watcher, w_root_t *root,
-    char **errmsg) {
+bool inot_root_init(w_root_t *root, char **errmsg) {
   struct inot_root_state *state;
-  unused_parameter(watcher);
+
 
   state = calloc(1, sizeof(*state));
   if (!state) {
@@ -142,9 +133,9 @@ bool inot_root_init(watchman_global_watcher_t watcher, w_root_t *root,
   return true;
 }
 
-void inot_root_dtor(watchman_global_watcher_t watcher, w_root_t *root) {
+void inot_root_dtor(w_root_t *root) {
   struct inot_root_state *state = root->watch;
-  unused_parameter(watcher);
+
 
   if (!state) {
     return;
@@ -167,42 +158,35 @@ void inot_root_dtor(watchman_global_watcher_t watcher, w_root_t *root) {
   root->watch = NULL;
 }
 
-static void inot_root_signal_threads(watchman_global_watcher_t watcher,
-    w_root_t *root) {
-  unused_parameter(watcher);
+static void inot_root_signal_threads(w_root_t *root) {
   unused_parameter(root);
 }
 
-static bool inot_root_start(watchman_global_watcher_t watcher, w_root_t *root) {
-  unused_parameter(watcher);
+static bool inot_root_start(w_root_t *root) {
   unused_parameter(root);
 
   return true;
 }
 
-static bool inot_root_start_watch_file(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_file *file) {
-  unused_parameter(watcher);
+static bool inot_root_start_watch_file(w_root_t *root,
+    struct watchman_file *file) {
   unused_parameter(root);
   unused_parameter(file);
   return true;
 }
 
-static void inot_root_stop_watch_file(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_file *file) {
-  unused_parameter(watcher);
+static void inot_root_stop_watch_file(w_root_t *root,
+    struct watchman_file *file) {
   unused_parameter(root);
   unused_parameter(file);
 }
 
 static struct watchman_dir_handle *inot_root_start_watch_dir(
-    watchman_global_watcher_t watcher,
     w_root_t *root, struct watchman_dir *dir, struct timeval now,
     const char *path) {
   struct inot_root_state *state = root->watch;
   struct watchman_dir_handle *osdir = NULL;
   int newwd, err;
-  unused_parameter(watcher);
 
   // Carry out our very strict opendir first to ensure that we're not
   // traversing symlinks in the context of this root
@@ -239,10 +223,9 @@ static struct watchman_dir_handle *inot_root_start_watch_dir(
   return osdir;
 }
 
-static void inot_root_stop_watch_dir(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_dir *dir) {
+static void inot_root_stop_watch_dir(w_root_t *root,
+    struct watchman_dir *dir) {
   struct inot_root_state *state = root->watch;
-  unused_parameter(watcher);
   unused_parameter(state);
   unused_parameter(root);
   unused_parameter(dir);
@@ -399,15 +382,14 @@ static void process_inotify_event(
   }
 }
 
-static bool inot_root_consume_notify(watchman_global_watcher_t watcher,
-    w_root_t *root, struct watchman_pending_collection *coll)
+static bool inot_root_consume_notify(w_root_t *root,
+    struct watchman_pending_collection *coll)
 {
   struct inot_root_state *state = root->watch;
   struct inotify_event *ine;
   char *iptr;
   int n;
   struct timeval now;
-  unused_parameter(watcher);
 
   n = read(state->infd, &state->ibuf, sizeof(state->ibuf));
   if (n == -1) {
@@ -457,12 +439,10 @@ static bool inot_root_consume_notify(watchman_global_watcher_t watcher,
   return true;
 }
 
-static bool inot_root_wait_notify(watchman_global_watcher_t watcher,
-    w_root_t *root, int timeoutms) {
+static bool inot_root_wait_notify(w_root_t *root, int timeoutms) {
   struct inot_root_state *state = root->watch;
   int n;
   struct pollfd pfd;
-  unused_parameter(watcher);
 
   pfd.fd = state->infd;
   pfd.events = POLLIN;
@@ -472,17 +452,13 @@ static bool inot_root_wait_notify(watchman_global_watcher_t watcher,
   return n == 1;
 }
 
-static void inot_file_free(watchman_global_watcher_t watcher,
-    struct watchman_file *file) {
-  unused_parameter(watcher);
+static void inot_file_free(struct watchman_file *file) {
   unused_parameter(file);
 }
 
 struct watchman_ops inotify_watcher = {
   "inotify",
   WATCHER_HAS_PER_FILE_NOTIFICATIONS,
-  inot_global_init,
-  inot_global_dtor,
   inot_root_init,
   inot_root_start,
   inot_root_dtor,

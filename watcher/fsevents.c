@@ -247,15 +247,14 @@ done:
   return NULL;
 }
 
-static bool fsevents_root_consume_notify(watchman_global_watcher_t watcher,
-    w_root_t *root, struct watchman_pending_collection *coll)
+static bool fsevents_root_consume_notify(w_root_t *root,
+    struct watchman_pending_collection *coll)
 {
   struct watchman_fsevent *head, *evt;
   int n = 0;
   struct timeval now;
   bool recurse;
   struct fsevents_root_state *state = root->watch;
-  unused_parameter(watcher);
 
   pthread_mutex_lock(&state->fse_mtx);
   head = state->fse_head;
@@ -313,18 +312,8 @@ break_out:
   return n > 0;
 }
 
-watchman_global_watcher_t fsevents_global_init(void) {
-  return NULL;
-}
-
-void fsevents_global_dtor(watchman_global_watcher_t watcher) {
-  unused_parameter(watcher);
-}
-
-bool fsevents_root_init(watchman_global_watcher_t watcher, w_root_t *root,
-    char **errmsg) {
+bool fsevents_root_init(w_root_t *root, char **errmsg) {
   struct fsevents_root_state *state;
-  unused_parameter(watcher);
 
   state = calloc(1, sizeof(*state));
   if (!state) {
@@ -347,9 +336,8 @@ bool fsevents_root_init(watchman_global_watcher_t watcher, w_root_t *root,
   return true;
 }
 
-void fsevents_root_dtor(watchman_global_watcher_t watcher, w_root_t *root) {
+void fsevents_root_dtor(w_root_t *root) {
   struct fsevents_root_state *state = root->watch;
-  unused_parameter(watcher);
 
   if (!state) {
     return;
@@ -378,19 +366,15 @@ void fsevents_root_dtor(watchman_global_watcher_t watcher, w_root_t *root) {
   root->watch = NULL;
 }
 
-static void fsevents_root_signal_threads(watchman_global_watcher_t watcher,
-    w_root_t *root) {
+static void fsevents_root_signal_threads(w_root_t *root) {
   struct fsevents_root_state *state = root->watch;
-  unused_parameter(watcher);
 
   write(state->fse_pipe[1], "X", 1);
 }
 
-static bool fsevents_root_start(watchman_global_watcher_t watcher,
-    w_root_t *root) {
+static bool fsevents_root_start(w_root_t *root) {
   int err;
   struct fsevents_root_state *state = root->watch;
-  unused_parameter(watcher);
 
   // Spin up the fsevents processing thread; it owns a ref on the root
   w_root_addref(root);
@@ -418,12 +402,10 @@ static bool fsevents_root_start(watchman_global_watcher_t watcher,
   return false;
 }
 
-static bool fsevents_root_wait_notify(watchman_global_watcher_t watcher,
-    w_root_t *root, int timeoutms) {
+static bool fsevents_root_wait_notify(w_root_t *root, int timeoutms) {
   struct fsevents_root_state *state = root->watch;
   struct timeval now, delta, target;
   struct timespec ts;
-  unused_parameter(watcher);
 
   if (timeoutms == 0 || state->fse_head) {
     return state->fse_head ? true : false;
@@ -442,27 +424,23 @@ static bool fsevents_root_wait_notify(watchman_global_watcher_t watcher,
   return state->fse_head ? true : false;
 }
 
-static bool fsevents_root_start_watch_file(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_file *file) {
-  unused_parameter(watcher);
+static bool fsevents_root_start_watch_file(w_root_t *root,
+    struct watchman_file *file) {
   unused_parameter(root);
   unused_parameter(file);
   return true;
 }
 
-static void fsevents_root_stop_watch_file(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_file *file) {
-  unused_parameter(watcher);
+static void fsevents_root_stop_watch_file(w_root_t *root,
+    struct watchman_file *file) {
   unused_parameter(root);
   unused_parameter(file);
 }
 
 static struct watchman_dir_handle *fsevents_root_start_watch_dir(
-      watchman_global_watcher_t watcher,
       w_root_t *root, struct watchman_dir *dir, struct timeval now,
       const char *path) {
   struct watchman_dir_handle *osdir;
-  unused_parameter(watcher);
 
   osdir = w_dir_open(path);
   if (!osdir) {
@@ -473,16 +451,13 @@ static struct watchman_dir_handle *fsevents_root_start_watch_dir(
   return osdir;
 }
 
-static void fsevents_root_stop_watch_dir(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_dir *dir) {
-  unused_parameter(watcher);
+static void fsevents_root_stop_watch_dir(w_root_t *root,
+    struct watchman_dir *dir) {
   unused_parameter(root);
   unused_parameter(dir);
 }
 
-static void fsevents_file_free(watchman_global_watcher_t watcher,
-    struct watchman_file *file) {
-  unused_parameter(watcher);
+static void fsevents_file_free(struct watchman_file *file) {
   unused_parameter(file);
 }
 
@@ -490,8 +465,6 @@ struct watchman_ops fsevents_watcher = {
   "fsevents",
   WATCHER_HAS_PER_FILE_NOTIFICATIONS|
     WATCHER_COALESCED_RENAME,
-  fsevents_global_init,
-  fsevents_global_dtor,
   fsevents_root_init,
   fsevents_root_start,
   fsevents_root_dtor,

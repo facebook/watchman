@@ -54,6 +54,7 @@ watchman_SOURCES = \
 	query/fieldlist.c  \
 	query/since.c      \
 	query/empty.c      \
+	watcher/auto.c     \
 	watcher/fsevents.c \
 	watcher/helper.c   \
 	watcher/inotify.c  \

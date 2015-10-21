@@ -6,8 +6,6 @@
 # include <sys/attr.h>
 #endif
 
-static struct watchman_ops *watcher_ops = NULL;
-static watchman_global_watcher_t watcher = NULL;
 static w_ht_t *watched_roots = NULL;
 static volatile long live_roots = 0;
 static pthread_mutex_t root_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -116,7 +114,7 @@ static bool w_root_init(w_root_t *root, char **errmsg)
   }
   w_dir_close(osdir);
 
-  if (!watcher_ops->root_init(watcher, root, errmsg)) {
+  if (!w_watcher_init(root, errmsg)) {
     return false;
   }
 
@@ -523,12 +521,12 @@ static void apply_dir_size_hint(struct watchman_dir *dir,
 
 static void watch_file(w_root_t *root, struct watchman_file *file)
 {
-  watcher_ops->root_start_watch_file(watcher, root, file);
+  root->watcher_ops->root_start_watch_file(root, file);
 }
 
 static void stop_watching_file(w_root_t *root, struct watchman_file *file)
 {
-  watcher_ops->root_stop_watch_file(watcher, root, file);
+  root->watcher_ops->root_stop_watch_file(root, file);
 }
 
 static void remove_from_file_list(w_root_t *root, struct watchman_file *file)
@@ -655,7 +653,7 @@ void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
     stop_watching_dir(root, child);
   } while (w_ht_next(dir->dirs, &i));
 
-  watcher_ops->root_stop_watch_dir(watcher, root, dir);
+  root->watcher_ops->root_stop_watch_dir(root, dir);
 }
 
 static bool did_file_change(struct watchman_stat *saved,
@@ -867,7 +865,7 @@ static void stat_path(w_root_t *root,
           // called for the root itself)
           w_string_equal(full_path, root->query_cookie_dir)) {
 
-        if (!watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
+        if (!root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
           /* we always need to crawl, but may not need to be fully recursive */
           w_pending_coll_add(coll, full_path, now,
               W_PENDING_CRAWL_ONLY | (recursive ? W_PENDING_RECURSIVE : 0));
@@ -888,7 +886,7 @@ static void stat_path(w_root_t *root,
       // our former tree here
       w_root_mark_deleted(root, dir_ent, now, true);
     }
-    if ((watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
+    if ((root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
         !S_ISDIR(st.mode) &&
         !w_string_equal(dir_name, root->root_path)) {
       /* Make sure we update the mtime on the parent directory. */
@@ -928,7 +926,7 @@ void w_root_process_path(w_root_t *root,
   if (w_string_startswith(full_path, root->query_cookie_prefix)) {
     struct watchman_query_cookie *cookie;
     bool consider_cookie =
-      (watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) ?
+      (root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) ?
       ((flags & W_PENDING_VIA_NOTIFY) || !root->done_initial) : true;
 
     if (!consider_cookie) {
@@ -1086,8 +1084,8 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
   char path[WATCHMAN_NAME_MAX];
   bool stat_all = false;
 
-  if (watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
-    stat_all = watcher_ops->flags & WATCHER_COALESCED_RENAME;
+  if (root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
+    stat_all = root->watcher_ops->flags & WATCHER_COALESCED_RENAME;
   } else {
     // If the watcher doesn't give us per-file notifications for
     // watched dirs, then we'll end up explicitly tracking them
@@ -1107,7 +1105,7 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
   /* Start watching and open the dir for crawling.
    * Whether we open the dir prior to watching or after is watcher specific,
    * so the operations are rolled together in our abstraction */
-  osdir = watcher_ops->root_start_watch_dir(watcher, root, dir, now, path);
+  osdir = root->watcher_ops->root_start_watch_dir(root, dir, now, path);
   if (!osdir) {
     return;
   }
@@ -1488,7 +1486,7 @@ static bool handle_should_recrawl(w_root_t *root)
       w_root_cancel(root);
     }
     root->recrawl_count++;
-    if (!watcher_ops->root_start(watcher, root)) {
+    if (!root->watcher_ops->root_start(root)) {
       w_log(W_LOG_ERR, "failed to start root %.*s, cancelling watch: %.*s\n",
           root->root_path->len, root->root_path->buf,
           root->failure_reason->len, root->failure_reason->buf);
@@ -1502,18 +1500,18 @@ static bool handle_should_recrawl(w_root_t *root)
 
 static bool wait_for_notify(w_root_t *root, int timeoutms)
 {
-  return watcher_ops->root_wait_notify(watcher, root, timeoutms);
+  return root->watcher_ops->root_wait_notify(root, timeoutms);
 }
 
 static bool consume_notify(w_root_t *root,
     struct watchman_pending_collection *coll)
 {
-  return watcher_ops->root_consume_notify(watcher, root, coll);
+  return root->watcher_ops->root_consume_notify(root, coll);
 }
 
-static void free_file_node(struct watchman_file *file)
+static void free_file_node(w_root_t *root, struct watchman_file *file)
 {
-  watcher_ops->file_free(watcher, file);
+  root->watcher_ops->file_free(file);
   w_string_delref(file->name);
   free(file);
 }
@@ -1569,7 +1567,7 @@ static void age_out_file(w_root_t *root, w_ht_t *aged_dir_names,
 
   // And free it.  We don't need to stop watching it, because we already
   // stopped watching it when we marked it as !exists
-  free_file_node(file);
+  free_file_node(root, file);
 
   w_string_delref(full_name);
 }
@@ -1725,7 +1723,7 @@ static void notify_thread(w_root_t *root)
     return;
   }
 
-  if (!watcher_ops->root_start(watcher, root)) {
+  if (!root->watcher_ops->root_start(root)) {
     w_log(W_LOG_ERR, "failed to start root %.*s, cancelling watch: %.*s\n",
         root->root_path->len, root->root_path->buf,
         root->failure_reason->len, root->failure_reason->buf);
@@ -1944,7 +1942,9 @@ static void w_root_teardown(w_root_t *root)
 {
   struct watchman_file *file;
 
-  watcher_ops->root_dtor(watcher, root);
+  if (root->watcher_ops) {
+    root->watcher_ops->root_dtor(root);
+  }
 
   if (root->dirname_to_dir) {
     w_ht_free(root->dirname_to_dir);
@@ -1955,7 +1955,7 @@ static void w_root_teardown(w_root_t *root)
   while (root->latest_file) {
     file = root->latest_file;
     root->latest_file = file->next;
-    free_file_node(file);
+    free_file_node(root, file);
   }
 
   if (root->cursors) {
@@ -2038,32 +2038,6 @@ static const struct watchman_hash_funcs root_funcs = {
 
 void watchman_watcher_init(void) {
   watched_roots = w_ht_new(4, &root_funcs);
-
-#if HAVE_FSEVENTS
-  watcher_ops = &fsevents_watcher;
-#elif defined(HAVE_PORT_CREATE)
-  // We prefer portfs if you have both portfs and inotify on the assumption
-  // that this is an Illumos based system with both and that the native
-  // mechanism will yield more correct behavior.
-  // https://github.com/facebook/watchman/issues/84
-  watcher_ops = &portfs_watcher;
-#elif defined(HAVE_INOTIFY_INIT)
-  watcher_ops = &inotify_watcher;
-#elif defined(HAVE_KQUEUE)
-  watcher_ops = &kqueue_watcher;
-#elif defined(_WIN32)
-  watcher_ops = &win32_watcher;
-#else
-# error you need to assign watcher_ops for this system
-#endif
-
-  watcher = watcher_ops->global_init();
-
-  w_log(W_LOG_ERR, "Using watcher mechanism %s\n", watcher_ops->name);
-}
-
-void watchman_watcher_dtor(void) {
-  watcher_ops->global_dtor(watcher);
 }
 
 // Must not be called with root->lock held :-/
@@ -2501,7 +2475,7 @@ static void signal_root_threads(w_root_t *root)
     pthread_kill(root->notify_thread, SIGUSR1);
   }
   w_pending_coll_ping(&root->pending);
-  watcher_ops->root_signal_threads(watcher, root);
+  root->watcher_ops->root_signal_threads(root);
 }
 
 void w_root_schedule_recrawl(w_root_t *root, const char *why)

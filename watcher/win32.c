@@ -23,20 +23,11 @@ struct winwatch_root_state {
   struct winwatch_changed_item *head, *tail;
 };
 
-watchman_global_watcher_t winwatch_global_init(void) {
-  return NULL;
-}
-
-void winwatch_global_dtor(watchman_global_watcher_t watcher) {
-  unused_parameter(watcher);
-}
-
-bool winwatch_root_init(watchman_global_watcher_t watcher, w_root_t *root,
-    char **errmsg) {
+bool winwatch_root_init(w_root_t *root, char **errmsg) {
   struct winwatch_root_state *state;
   WCHAR *wpath;
   int err;
-  unused_parameter(watcher);
+
 
   state = calloc(1, sizeof(*state));
   if (!state) {
@@ -92,9 +83,8 @@ bool winwatch_root_init(watchman_global_watcher_t watcher, w_root_t *root,
   return true;
 }
 
-void winwatch_root_dtor(watchman_global_watcher_t watcher, w_root_t *root) {
+void winwatch_root_dtor(w_root_t *root) {
   struct winwatch_root_state *state = root->watch;
-  unused_parameter(watcher);
 
   if (!state) {
     return;
@@ -114,10 +104,8 @@ void winwatch_root_dtor(watchman_global_watcher_t watcher, w_root_t *root) {
   root->watch = NULL;
 }
 
-static void winwatch_root_signal_threads(watchman_global_watcher_t watcher,
-    w_root_t *root) {
+static void winwatch_root_signal_threads(w_root_t *root) {
   struct winwatch_root_state *state = root->watch;
-  unused_parameter(watcher);
 
   SetEvent(state->ping);
 }
@@ -302,11 +290,9 @@ out:
   return NULL;
 }
 
-static bool winwatch_root_start(watchman_global_watcher_t watcher,
-    w_root_t *root) {
+static bool winwatch_root_start(w_root_t *root) {
   struct winwatch_root_state *state = root->watch;
   int err;
-  unused_parameter(watcher);
   unused_parameter(root);
 
   // Spin up the changes reading thread; it owns a ref on the root
@@ -335,27 +321,23 @@ static bool winwatch_root_start(watchman_global_watcher_t watcher,
   return false;
 }
 
-static bool winwatch_root_start_watch_file(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_file *file) {
+static bool winwatch_root_start_watch_file(w_root_t *root,
+    struct watchman_file *file) {
   unused_parameter(file);
   unused_parameter(root);
-  unused_parameter(watcher);
   return true;
 }
 
-static void winwatch_root_stop_watch_file(watchman_global_watcher_t watcher,
-      w_root_t *root, struct watchman_file *file) {
+static void winwatch_root_stop_watch_file(w_root_t *root,
+    struct watchman_file *file) {
   unused_parameter(file);
   unused_parameter(root);
-  unused_parameter(watcher);
 }
 
 static struct watchman_dir_handle *winwatch_root_start_watch_dir(
-    watchman_global_watcher_t watcher,
     w_root_t *root, struct watchman_dir *dir, struct timeval now,
     const char *path) {
   struct watchman_dir_handle *osdir;
-  unused_parameter(watcher);
 
   osdir = w_dir_open(path);
   if (!osdir) {
@@ -366,21 +348,19 @@ static struct watchman_dir_handle *winwatch_root_start_watch_dir(
   return osdir;
 }
 
-static void winwatch_root_stop_watch_dir(watchman_global_watcher_t watcher,
-    w_root_t *root, struct watchman_dir *dir) {
+static void winwatch_root_stop_watch_dir(w_root_t *root,
+    struct watchman_dir *dir) {
   unused_parameter(dir);
   unused_parameter(root);
-  unused_parameter(watcher);
 }
 
-static bool winwatch_root_consume_notify(watchman_global_watcher_t watcher,
-    w_root_t *root, struct watchman_pending_collection *coll)
+static bool winwatch_root_consume_notify(w_root_t *root,
+    struct watchman_pending_collection *coll)
 {
   struct winwatch_root_state *state = root->watch;
   struct winwatch_changed_item *head, *item;
   struct timeval now;
   int n = 0;
-  unused_parameter(watcher);
 
   pthread_mutex_lock(&state->mtx);
   head = state->head;
@@ -406,12 +386,10 @@ static bool winwatch_root_consume_notify(watchman_global_watcher_t watcher,
   return n > 0;
 }
 
-static bool winwatch_root_wait_notify(watchman_global_watcher_t watcher,
-    w_root_t *root, int timeoutms) {
+static bool winwatch_root_wait_notify(w_root_t *root, int timeoutms) {
   struct winwatch_root_state *state = root->watch;
   struct timeval now, delta, target;
   struct timespec ts;
-  unused_parameter(watcher);
 
   if (timeoutms == 0 || state->head) {
     return state->head ? true : false;
@@ -430,17 +408,13 @@ static bool winwatch_root_wait_notify(watchman_global_watcher_t watcher,
   return state->head ? true : false;
 }
 
-static void winwatch_file_free(watchman_global_watcher_t watcher,
-    struct watchman_file *file) {
-  unused_parameter(watcher);
+static void winwatch_file_free(struct watchman_file *file) {
   unused_parameter(file);
 }
 
 struct watchman_ops win32_watcher = {
   "win32",
   WATCHER_HAS_PER_FILE_NOTIFICATIONS,
-  winwatch_global_init,
-  winwatch_global_dtor,
   winwatch_root_init,
   winwatch_root_start,
   winwatch_root_dtor,
