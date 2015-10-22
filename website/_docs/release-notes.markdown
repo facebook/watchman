@@ -10,6 +10,16 @@ We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on
 GitHub](https://github.com/facebook/watchman/commits/master).
 
+### pywatchman 1.3.0 (2015-10-22)
+
+* Added `watchman-make` and `watchman-wait` commands
+* Added pure python implementation of BSER
+
+### Watchman 4.1.0 (2015-10-20)
+
+* Fixed an issue where symlink size was always reported as 0 on OS X
+  using the new bulkstat functionality
+
 ### Watchman 4.0.0 (2015-10-19)
 
 * Fixed an issue where a directory that was replaced by a symlink would
