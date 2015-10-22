@@ -192,6 +192,20 @@
         
         
         {
+          key : "/watchman/docs/watchman-make.html",
+          title : "watchman-make",
+          url : "/watchman/docs/watchman-make.html",
+        },
+        
+        
+        {
+          key : "/watchman/docs/watchman-wait.html",
+          title : "watchman-wait",
+          url : "/watchman/docs/watchman-wait.html",
+        },
+        
+        
+        {
           key : "/watchman/docs/nodejs.html",
           title : "NodeJS",
           url : "/watchman/docs/nodejs.html",
@@ -653,6 +667,30 @@ window.addEventListener('load', function() {
       <p>We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see <a href="https://github.com/facebook/watchman/commits/master">the commit history on
 GitHub</a>.</p>
+
+<h3 id="pywatchman-1-3-0-2015-10-22">pywatchman 1.3.0 (2015-10-22)</h3>
+
+<ul>
+<li>Added <code>watchman-make</code> and <code>watchman-wait</code> commands</li>
+<li>Added pure python implementation of BSER</li>
+</ul>
+
+<h3 id="watchman-4-1-0-2015-10-20">Watchman 4.1.0 (2015-10-20)</h3>
+
+<ul>
+<li>Fixed an issue where symlink size was always reported as 0 on OS X
+using the new bulkstat functionality</li>
+</ul>
+
+<h3 id="watchman-4-0-0-2015-10-19">Watchman 4.0.0 (2015-10-19)</h3>
+
+<ul>
+<li>Fixed an issue where a directory that was replaced by a symlink would
+cause a symlink traversal instead of correctly updating the type of the
+node and marking the children removed.</li>
+<li>Fixed a debugging log line that was emitted at the wrong log level on
+every directory traversal.</li>
+</ul>
 
 <h3 id="watchman-3-9-0-2015-10-12">Watchman 3.9.0 (2015-10-12)</h3>
 

@@ -5,9 +5,9 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   
-	<meta property="og:url" content="/watchman/docs/cmd/unsubscribe.html" />
+	<meta property="og:url" content="/watchman/docs/watchman-wait.html" />
 	<meta property="og:site_name" content="Watchman"/>
-	<meta property="og:title" content="unsubscribe" />
+	<meta property="og:title" content="watchman-wait" />
 	<meta property="og:image" content="/watchman/static/og_image.png" />
 	<meta property="og:description" content="" />
 
@@ -20,10 +20,10 @@
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
 
-  <title>unsubscribe</title>
+  <title>watchman-wait</title>
   <meta name="description" content="">
 
-  <link rel="canonical" href="/watchman/docs/cmd/unsubscribe.html">
+  <link rel="canonical" href="/watchman/docs/watchman-wait.html">
   <link rel="alternate" type="application/rss+xml" title="Watchman" href="/watchman/feed.xml" />
 </head>
 
@@ -590,8 +590,8 @@ window.addEventListener('load', function() {
     },
     getDefaultProps: function() {
       return {
-        currentDoc: "unsubscribe",
-        currentGroup: "Commands",
+        currentDoc: "watchman-wait",
+        currentGroup: "",
         data: docnavData,
       }
     },
@@ -659,17 +659,108 @@ window.addEventListener('load', function() {
 
     <div class="post">
   <header class="post-header">
-    <h1 class="post-title">unsubscribe</h1>
+    <h1 class="post-title">watchman-wait</h1>
   </header>
 
   <article class="post-content">
    
-      <p>Available starting in version 1.6</p>
+      <p><code>watchman-wait</code> waits for changes to files.  It uses the watchman service to
+efficiently and recursively watch your specified list of paths.</p>
 
-<p>Cancels a named subscription against the specified root.  The server side
-will no longer generate subscription packets for the specified subscription.</p>
-<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">[</span><span class="s2">&quot;unsubscribe&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/root&quot;</span><span class="p">,</span> <span class="s2">&quot;mysubscriptionname&quot;</span><span class="p">]</span>
+<p>It is suitable for waiting for changes to files from shell scripts.  It has
+some similarity to <code>inotifywait</code> except that it uses the watchman service to
+watch files and thus can be used on any of the operating systems supported by
+watchman, not just Linux.</p>
+
+<p>It can stop after a configurable number of events are observed.  The default
+is a single event.  You may also remove the limit and allow it to execute
+continuously.</p>
+
+<p><code>watchman-wait</code> will print one event per line.  The event information includes
+your specified list of fields, with each field separated by a space (or your
+choice of <code>--separator</code>).</p>
+
+<p>Events are consolidated and settled by the watchman server before they are
+dispatched to <code>watchman-wait</code> so that your script won&#39;t start executing
+until after the files have stopped changing.</p>
+
+<p><code>watchman-wait</code> requires <code>pywatchman</code> (and thus requires <code>python</code>) as well as
+<code>watchman</code>.</p>
+
+<h3 id="paths-and-patterns">Paths and Patterns</h3>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman-wait path <span class="o">[</span>path ...<span class="o">]</span>
 </code></pre></div>
+<p>The primary unit of watching is a path.  You must specify a list of one or more
+paths that you&#39;d like to wait for.  Paths can be files or directories.  Each of
+the paths in your list must exist at the time that you invoke <code>watchman-wait</code>
+or an error will be reported and <code>watchman-wait</code> will exit.</p>
+
+<p>If you&#39;d like to wait for a file to be created you can watch the directory in
+which it will be created.  You may further refine your watch by limiting it to
+a set of patterns.</p>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman-wait . -p <span class="s1">&#39;*.so&#39;</span>
+</code></pre></div><div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman-wait -p <span class="s1">&#39;*.so&#39;</span> -- .
+</code></pre></div>
+<p>Both of the above will wait for a shared object file to be changed in any path
+under the current working directory.  Since both the <code>-p</code> option and the list
+of paths accept one or more parameters, the second form shows how to
+disambiguate between the list of patterns and the list of paths using the <code>--</code>
+separator.</p>
+
+<p>Patterns are wildmatch style globs that support recursive matching via the <code>**</code>
+placeholder.</p>
+
+<p>You should always quote your pattern parameters so that they are not evaluated
+by your shell.</p>
+
+<h3 id="controlling-lifetime">Controlling lifetime</h3>
+
+<p>There are two primary controls for how long <code>watchman-wait</code> will run:</p>
+
+<ul>
+<li><code>-t</code> or <code>--timeout</code> places a time limit on execution</li>
+<li><code>-m</code> or <code>--max-events</code> places a limit on the number of events to process</li>
+</ul>
+
+<p><code>watchman-wait</code> will terminate when either the timeout is hit or the max events
+limit is hit.</p>
+
+<p>By default there is no time limit, but there is a default limit of a single event.</p>
+
+<p>You may specify <code>--max-events 0</code> to disable the event limit.</p>
+
+<h3 id="controlling-output">Controlling output</h3>
+
+<p><code>watchman-wait</code> will output one line per event.  The following options influence
+the output:</p>
+
+<ul>
+<li><code>--fields NAME,NAME</code> - specifies the list of fields to be printed for each
+event.  The default is <code>--fields name</code> which will print just the <code>name</code> of the
+file that was changed.  You may use any of the available fields listed in
+<a href="/watchman/docs/cmd/query.html#available-fields">available fields</a>.
+The fields will be printed in the order you list them.</li>
+<li><code>--relative DIR</code> - the <code>name</code> field will be adjusted to be relative to <code>DIR</code>
+before it is printed out.  The default for <code>DIR</code> is the current working directory
+when <code>watchman-wait</code> is started.</li>
+<li><code>--separator STRING</code> - if you specified multiple fields, the separator string
+will be used when printing them.  The default is <code>--separator &quot; &quot;</code> which will
+print the fields with spaces between them.</li>
+</ul>
+
+<h3 id="exit-status">Exit Status</h3>
+
+<p>The following exit status codes can be used to determine what caused
+<code>watchman-wait</code> to exit:</p>
+
+<ul>
+<li><code>0</code> is returned after successfully waiting for event(s)</li>
+<li><code>1</code> in case of a runtime error of some kind</li>
+<li><code>2</code> the <code>-t</code>/<code>--timeout</code> option was used and that amount of time passed
+before an event was received</li>
+<li><code>3</code> if execution was interrupted (Ctrl-C)</li>
+</ul>
+
     
   </article>
 </div>

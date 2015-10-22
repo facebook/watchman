@@ -5,9 +5,9 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   
-	<meta property="og:url" content="/watchman/docs/cmd/unsubscribe.html" />
+	<meta property="og:url" content="/watchman/docs/watchman-make.html" />
 	<meta property="og:site_name" content="Watchman"/>
-	<meta property="og:title" content="unsubscribe" />
+	<meta property="og:title" content="watchman-make" />
 	<meta property="og:image" content="/watchman/static/og_image.png" />
 	<meta property="og:description" content="" />
 
@@ -20,10 +20,10 @@
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
 
-  <title>unsubscribe</title>
+  <title>watchman-make</title>
   <meta name="description" content="">
 
-  <link rel="canonical" href="/watchman/docs/cmd/unsubscribe.html">
+  <link rel="canonical" href="/watchman/docs/watchman-make.html">
   <link rel="alternate" type="application/rss+xml" title="Watchman" href="/watchman/feed.xml" />
 </head>
 
@@ -590,8 +590,8 @@ window.addEventListener('load', function() {
     },
     getDefaultProps: function() {
       return {
-        currentDoc: "unsubscribe",
-        currentGroup: "Commands",
+        currentDoc: "watchman-make",
+        currentGroup: "",
         data: docnavData,
       }
     },
@@ -659,17 +659,82 @@ window.addEventListener('load', function() {
 
     <div class="post">
   <header class="post-header">
-    <h1 class="post-title">unsubscribe</h1>
+    <h1 class="post-title">watchman-make</h1>
   </header>
 
   <article class="post-content">
    
-      <p>Available starting in version 1.6</p>
+      <p><code>watchman-make</code> is a convenience tool to help automatically invoke your build
+tool in response to files changing.  It is useful to automate building assets
+or running tests as you save files during development.</p>
 
-<p>Cancels a named subscription against the specified root.  The server side
-will no longer generate subscription packets for the specified subscription.</p>
-<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">[</span><span class="s2">&quot;unsubscribe&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/root&quot;</span><span class="p">,</span> <span class="s2">&quot;mysubscriptionname&quot;</span><span class="p">]</span>
+<p><code>watchman-make</code> will establish a watch on the files you specify and remain
+running in the foreground, waiting for changes to occur.  When a change is
+triggered, your build tool will be run in the foreground with its output being
+passed through to your terminal session (or wherever you may have redirected
+it).</p>
+
+<p>Events are consolidated and settled before they are dispatched to your build
+tool so that it won&#39;t start executing until after the files have stopped
+changing.  The <code>--settle</code> argument controls the settle duration.</p>
+
+<p><code>watchman-make</code> requires <code>pywatchman</code> (and thus requires <code>python</code>) as well as
+<code>watchman</code>.</p>
+
+<h3 id="example">Example</h3>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman-make -p <span class="s1">&#39;**/*.c&#39;</span> <span class="s1">&#39;**/*.h&#39;</span> <span class="s1">&#39;Makefile*&#39;</span> -t all -p <span class="s1">&#39;tests/**/*.py&#39;</span> <span class="s1">&#39;tests/**/*.c&#39;</span> -t integration
+<span class="c"># Relative to /Users/wez/fb/watchman</span>
+<span class="c"># Changes to files matching **/*.c **/*.h Makefile* will execute `make all`</span>
+<span class="c"># Changes to files matching tests/**/*.py tests/**/*.c will execute `make integration`</span>
+<span class="c"># waiting for changes</span>
 </code></pre></div>
+<h3 id="targets">Targets</h3>
+
+<p><code>watchman-make</code> is target-centric; you tell it about one or more build targets
+and their dependencies, and it will then trigger the build for those targets as
+changes are detected.</p>
+
+<p>The example above defines two targets using the <code>-t</code> argument; <code>all</code> and
+<code>integration</code>.  These correspond to targets with the same names in the watchman
+<code>Makefile</code>.  Each target will pick up the list of patterns defined by the <code>-p</code>
+argument that precedes it.</p>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman-make -p <span class="s1">&#39;**/*.c&#39;</span> <span class="s1">&#39;**/*.h&#39;</span> -t all
+</code></pre></div>
+<p>The above defines a target named <code>all</code> that will be triggered whenever any
+combination of files are changed that have filenames that match either of the
+patterns <code>*.c</code> or <code>*.h</code> at any level in the directory tree (that&#39;s what the
+<code>**</code> portion means).   When it triggers, <code>watchman-make</code> will execute <code>make
+all</code>.</p>
+
+<p>If you don&#39;t use <code>make</code>, you can use the <code>--make</code> option to tell <code>watchman-make</code>
+to use your builder of choice.  When a target is triggered, <code>watchman-make</code> will
+concatenate the value of <code>--make</code> with the name of the target and execute that
+command using the shell.</p>
+
+<p>The target name has no special meaning to <code>watchman-make</code>, it is used only to
+construct the command to invoke.  There is no special logic or support that is
+specific to Makefiles or make.</p>
+
+<h3 id="multiple-targets">Multiple Targets</h3>
+
+<p>There are two different ways to specify multiple targets.  The first is shown
+in the main example at the top of this page and is repeated here:</p>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman-make -p <span class="s1">&#39;*.c&#39;</span> <span class="s1">&#39;*.h&#39;</span> <span class="s1">&#39;Makefile*&#39;</span> -t all -p <span class="s1">&#39;tests/**/*.py&#39;</span> <span class="s1">&#39;tests/**/*.c&#39;</span> -t integration
+</code></pre></div>
+<p>This defines two independent targets, <code>all</code> and <code>integration</code> that each have a
+list of patterns defined as their triggers.  Each time you specify a target
+using the <code>-t</code> option, the value of the <code>-p</code> option is cleared.</p>
+
+<p>The above will cause <code>make all</code> to be run if you change a file that matches
+<code>.*c</code> (at the top level of the tree), and will cause <code>make integration</code> to run
+if you change a source file under the tests directory.</p>
+
+<p>An alternative is to list multiple target names with your <code>-t</code> option:</p>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman-make -p <span class="s1">&#39;*.c&#39;</span> <span class="s1">&#39;*.h&#39;</span> <span class="s1">&#39;Makefile*&#39;</span> <span class="s1">&#39;tests/**/*.py&#39;</span> <span class="s1">&#39;tests/**/*.c&#39;</span> -t all integration
+</code></pre></div>
+<p>this will execute <code>make all integration</code> if you change any top level <code>*.c</code> file
+<em>or</em> test source file.</p>
+
     
   </article>
 </div>
