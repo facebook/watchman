@@ -30,7 +30,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
 
     def test_sinceIssue2(self):
         root = self.mkdtemp()
-        self.watchmanCommand('watch', root)
+        watch = self.watchmanCommand('watch', root)
         self.assertFileList(root, files=[])
 
         foo_dir = os.path.join(root, 'foo')
@@ -53,7 +53,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
 
         # now check the delta for the since
         expected = ['foo/bar', 'foo/bar/222']
-        if os.name == 'nt' or os.uname()[0] == 'SunOS':
+        if watch['watcher'] in ('win32', 'portfs', 'kqueue'):
             # These systems also show the containing dir as modified
             expected.append('foo')
         self.assertFileList(root, cursor='n:foo', files=expected)

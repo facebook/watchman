@@ -314,6 +314,7 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
     set_prop(resp, "error", json_string_nocheck("root was cancelled"));
   } else {
     set_prop(resp, "watch", w_string_to_json(root->root_path));
+    set_prop(resp, "watcher", json_string_nocheck(root->watcher_ops->name));
   }
   add_root_warnings_to_response(resp, root);
   send_and_dispose_response(client, resp);
@@ -361,6 +362,7 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
     set_prop(resp, "error", json_string_nocheck("root was cancelled"));
   } else {
     set_prop(resp, "watch", w_string_to_json(root->root_path));
+    set_prop(resp, "watcher", json_string_nocheck(root->watcher_ops->name));
   }
   add_root_warnings_to_response(resp, root);
   if (rel_path_from_watch) {
