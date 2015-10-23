@@ -84,8 +84,19 @@ AC_ARG_WITH(python, [
 ])
 if test "x$want_python" = "xyes" ; then
   AM_PATH_PYTHON(,,[:])
+
+  if test "$PYTHON" != : ; then
+    PY_PREFIX=`$PYTHON -c 'import sys ; print sys.prefix'`
+    PYTHON_INCLUDE_DIR="$PY_PREFIX/include/python$PYTHON_VERSION"
+
+    AC_CHECK_HEADERS($PYTHON_INCLUDE_DIR/Python.h, [
+        python_header_found="yes"
+    ], [
+        AC_MSG_FAILURE([Python.h could not be found])
+    ])
+  fi
 fi
-AM_CONDITIONAL(HAVE_PYTHON, [test "$PYTHON" != : -a "x$want_python" = "xyes"])
+AM_CONDITIONAL(HAVE_PYTHON, [test "$PYTHON" != : -a "x$want_python" = "xyes" -a "x$python_header_found" = "xyes"])
 
 want_ruby=no
 AC_ARG_WITH(ruby, [
