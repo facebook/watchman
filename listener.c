@@ -897,6 +897,9 @@ static void accept_loop() {
     pfd.events = POLLIN;
     pfd.fd = listener_fd;
     if (poll(&pfd, 1, 60000) < 1 || (pfd.revents & POLLIN) == 0) {
+      if (stopping) {
+        break;
+      }
       // Timed out, or error.
       // Arrange to sanity check that we're working
       w_check_my_sock();
