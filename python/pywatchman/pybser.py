@@ -52,14 +52,13 @@ EMPTY_HEADER = "\x00\x01\x05\x00\x00\x00\x00"
 
 def _int_size(x):
     """Return the smallest size int that can store the value"""
-    abs_x = abs(x)
-    if abs_x <= 0x7F:
+    if -0x80 <= x <= 0x7F:
         return 1
-    elif abs_x <= 0x7FFF:
+    elif -0x8000 <= x <= 0x7FFF:
         return 2
-    elif abs_x <= 0x7FFFFFFF:
+    elif -0x80000000 <= x <= 0x7FFFFFFF:
         return 4
-    elif abs_x <= 0x7FFFFFFFFFFFFFFFL:
+    elif -0x8000000000000000L <= x <= 0x7FFFFFFFFFFFFFFFL:
         return 8
     else:
         raise RuntimeException('Cannot represent value: ' + str(x))
