@@ -122,6 +122,9 @@ class TestBSERDump(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.bser_mod.loads("\x00\x01\n")
 
+        with self.assertRaises(ValueError):
+            self.bser_mod.loads('\x00\x01\x04\x01\x00\x02')
+
 def load_tests(loader, test_methods=None, pattern=None):
     suite = unittest.TestSuite()
     suite.addTests(loader.loadTestsFromTestCase(TestSocketTimeout))

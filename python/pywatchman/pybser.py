@@ -187,7 +187,10 @@ def dumps(obj):
 
 
 def _bunser_int(buf, pos):
-    int_type = buf[pos]
+    try:
+        int_type = buf[pos]
+    except IndexError:
+        raise ValueError('Invalid bser int encoding, pos out of range')
     if int_type == BSER_INT8:
         needed = 2
         fmt = '=b'
