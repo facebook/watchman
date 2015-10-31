@@ -201,7 +201,7 @@ def _bunser_int(buf, pos):
         needed = 9
         fmt = '=q'
     else:
-        raise RuntimeError('Invalid bser int encoding 0x%02x' % (int_type,))
+        raise ValueError('Invalid bser int encoding 0x%02x' % int(int_type))
     int_val = struct.unpack_from(fmt, buf, pos + 1)[0]
     return (int_val, pos + needed)
 
