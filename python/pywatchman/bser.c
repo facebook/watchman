@@ -616,10 +616,12 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end)
         if (!bunser_int(ptr, end, &ival)) {
           return NULL;
         }
-        if (ival > LONG_MAX) {
+        if (ival < LONG_MIN || ival > LONG_MAX) {
+          // LLP64 systems: eg: Win64.  Py_ssize_t is 32-bit on these systems,
+          // which feels like a partial failure of PEP-0353
           return PyLong_FromLongLong(ival);
         }
-        return PyInt_FromLong((long)ival);
+        return PyInt_FromSsize_t(Py_SAFE_DOWNCAST(ival, int64_t, Py_ssize_t));
       }
 
     case BSER_REAL:

@@ -60,6 +60,12 @@ class TestBSERDump(unittest.TestCase):
         self.roundtrip(0x10000000)
         self.roundtrip(0x1000000000)
 
+    def test_negative_int(self):
+        self.roundtrip(-0x80)
+        self.roundtrip(-0x8000)
+        self.roundtrip(-0x80000000)
+        self.roundtrip(-0x8000000000000000L)
+
     def test_float(self):
         self.roundtrip(1.5)
 
