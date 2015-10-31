@@ -61,7 +61,7 @@ def _int_size(x):
     elif -0x8000000000000000L <= x <= 0x7FFFFFFFFFFFFFFFL:
         return 8
     else:
-        raise RuntimeException('Cannot represent value: ' + str(x))
+        raise RuntimeError('Cannot represent value: ' + str(x))
 
 
 class _bser_buffer(object):
