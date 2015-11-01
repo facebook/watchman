@@ -22,7 +22,11 @@ setup(
     license = 'Apache License (2.0)',
     packages = ['pywatchman'],
     ext_modules = [
-        Extension('pywatchman.bser', sources = ['pywatchman/bser.c'])
+        Extension('pywatchman.bser', sources = ['pywatchman/bser.c']
+        #    ,
+        #    extra_compile_args=['-O0', '-g'],
+        #    extra_link_args=['-g']
+        )
     ],
     platforms = 'Platform Independent',
     classifiers = [
