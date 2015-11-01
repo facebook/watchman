@@ -375,6 +375,11 @@ class client(object):
         else:
             raise WatchmanError('invalid encoding %s' % enc)
 
+    def _hasprop(self, result, name):
+        if self.useImmutableBser:
+            return hasattr(result, name)
+        return name in result
+
     def _resolvesockname(self):
         # if invoked via a trigger, watchman will set this env var; we
         # should use it unless explicitly set otherwise
@@ -442,13 +447,13 @@ class client(object):
 
         self._connect()
         result = self.recvConn.receive()
-        if 'error' in result:
+        if self._hasprop(result, 'error'):
             raise CommandError(result['error'])
 
-        if 'log' in result:
+        if self._hasprop(result, 'log'):
             self.logs.append(result['log'])
 
-        if 'subscription' in result:
+        if self._hasprop(result, 'subscription'):
             sub = result['subscription']
             if not (sub in self.subs):
                 self.subs[sub] = []
@@ -517,7 +522,7 @@ class client(object):
             'optional': optional or [],
             'required': required or []})
 
-        if not 'capabilities' in res:
+        if not self._hasprop(res, 'capabilities'):
             # Server doesn't support capabilities, so we need to
             # synthesize the results based on the version
             capabilities.synthesize(res, opts)
