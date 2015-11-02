@@ -26,6 +26,8 @@
   - id: cmd.query
   - id: cmd.shutdown-server
   - id: cmd.since
+  - id: cmd.state-enter
+  - id: cmd.state-leave
   - id: cmd.subscribe
   - id: cmd.trigger
   - id: cmd.trigger-del
