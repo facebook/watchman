@@ -109,7 +109,7 @@ microseconds, nanoseconds or floating point seconds respectively.
 
 ### Synchronization timeout (since 2.1)
 
-By default a `query` will wait for up to 2 seconds for the view of the
+By default a `query` will wait for up to 60 seconds for the view of the
 filesystem to become current.  Watchman decides that the view is current by
 creating a cookie file and waiting to observe the notification that it is
 present.  If the cookie is not observed within the sync_timeout period then the
@@ -123,7 +123,7 @@ expressed in milliseconds:
 ["query", "/path/to/root", {
   "expression": ["exists"],
   "fields": ["name"],
-  "sync_timeout": 2000
+  "sync_timeout": 60000
 }]
 ```
 
