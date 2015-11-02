@@ -334,6 +334,7 @@ class client(object):
     sendConn = None
     recvConn = None
     subs = {}  # Keyed by subscription name
+    sub_by_root = {} # Keyed by root, then by subscription name
     logs = []  # When log level is raised
     unilateral = ['log', 'subscription']
     tport = None
@@ -459,6 +460,14 @@ class client(object):
                 self.subs[sub] = []
             self.subs[sub].append(result)
 
+            # also accumulate in {root,sub} keyed store
+            root = result['root']
+            if not root in self.sub_by_root:
+                self.sub_by_root[root] = {}
+            if not sub in self.sub_by_root[root]:
+                self.sub_by_root[root][sub] = []
+            self.sub_by_root[root][sub].append(result)
+
         return result
 
     def isUnilateralResponse(self, res):
@@ -478,7 +487,7 @@ class client(object):
             self.logs = []
         return res
 
-    def getSubscription(self, name, remove=True):
+    def getSubscription(self, name, remove=True, root=None):
         """ Retrieve the data associated with a named subscription
 
         If remove is True (the default), the subscription data is removed
@@ -486,7 +495,25 @@ class client(object):
         the buffer.
 
         Returns None if there is no data associated with `name`
+
+        If root is not None, then only return the subscription
+        data that matches both root and name.  When used in this way,
+        remove processing impacts both the unscoped and scoped stores
+        for the subscription data.
         """
+
+        if root is not None:
+            if not root in self.sub_by_root:
+                return None
+            if not name in self.sub_by_root[root]:
+                return None
+            sub = self.sub_by_root[root][name]
+            if remove:
+                del self.sub_by_root[root][name]
+                # don't let this grow unbounded
+                if name in self.subs:
+                    del self.subs[name]
+            return sub
 
         if not (name in self.subs):
             return None
