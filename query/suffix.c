@@ -11,7 +11,7 @@ static bool eval_suffix(struct w_query_ctx *ctx,
 
   unused_parameter(ctx);
 
-  return w_string_suffix_match(file->name, suffix);
+  return w_string_suffix_match(w_file_get_name(file), suffix);
 }
 
 static void dispose_suffix(void *data)

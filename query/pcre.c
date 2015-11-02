@@ -21,7 +21,7 @@ static bool eval_pcre(struct w_query_ctx *ctx,
   if (match->wholename) {
     str = w_query_ctx_get_wholename(ctx);
   } else {
-    str = file->name;
+    str = w_file_get_name(file);
   }
 
   rc = pcre_exec(match->re, match->extra,

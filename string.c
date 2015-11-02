@@ -44,6 +44,27 @@ uint32_t strlen_uint32(const char *str) {
   return (uint32_t)slen;
 }
 
+// Returns the memory size required to embed str into some other struct
+uint32_t w_string_embedded_size(w_string_t *str) {
+  return sizeof(*str) + str->len + 1;
+}
+
+// Copies src -> dest.  dest is assumed to be some memory of at least
+// w_string_embedded_size().
+void w_string_embedded_copy(w_string_t *dest, w_string_t *src) {
+  char *buf;
+  dest->refcnt = 1;
+  dest->hval = src->hval;
+  dest->len = src->len;
+  dest->slice = NULL;
+
+  buf = (char*)(dest + 1);
+  memcpy(buf, src->buf, src->len);
+  buf[dest->len] = 0;
+
+  dest->buf = buf;
+}
+
 w_string_t *w_string_new_len_with_refcnt_typed(const char* str,
     uint32_t len, long refcnt, w_string_type_t type) {
 

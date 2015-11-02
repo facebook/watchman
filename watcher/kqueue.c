@@ -105,7 +105,7 @@ static bool kqueue_root_start_watch_file(
   int fd;
   w_string_t *full_name;
 
-  full_name = w_string_path_cat(file->parent->path, file->name);
+  full_name = w_string_path_cat(file->parent->path, w_file_get_name(file));
   pthread_mutex_lock(&state->lock);
   if (w_ht_lookup(state->name_to_fd, w_ht_ptr_val(full_name), &fdval, false)) {
     // Already watching it
