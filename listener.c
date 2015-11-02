@@ -150,6 +150,9 @@ static void delete_subscription(w_ht_val_t val)
 
   w_string_delref(sub->name);
   w_query_delref(sub->query);
+  if (sub->drop_or_defer) {
+    w_ht_free(sub->drop_or_defer);
+  }
   free(sub);
 }
 

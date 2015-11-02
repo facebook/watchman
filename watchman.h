@@ -940,6 +940,8 @@ struct watchman_client_subscription {
   bool vcs_defer;
   uint32_t last_sub_tick;
   struct w_query_field_list field_list;
+  // map of statename => bool.  If true, policy is drop, else defer
+  w_ht_t *drop_or_defer;
 };
 
 struct watchman_trigger_command {
