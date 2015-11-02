@@ -429,6 +429,7 @@ struct watchman_query_cookie {
 #define WATCHMAN_IO_BUF_SIZE 1048576
 #define WATCHMAN_BATCH_LIMIT (16*1024)
 #define DEFAULT_SETTLE_PERIOD 20
+#define DEFAULT_QUERY_SYNC_MS 60000
 
 /* Prune out nodes that were deleted roughly 12-36 hours ago */
 #define DEFAULT_GC_AGE (86400/2)
@@ -482,6 +483,10 @@ struct watchman_root {
 
   /* queue of items that we need to stat/process */
   struct watchman_pending_collection pending;
+
+  // map of state name => watchman_client_state_assertion for
+  // asserted states
+  w_ht_t *asserted_states;
 
   /* --- everything below this point will be reset on w_root_init --- */
   bool _init_sentinel_;
@@ -567,6 +572,12 @@ struct watchman_client_response {
 
 struct watchman_client_subscription;
 
+struct watchman_client_state_assertion {
+  w_root_t *root; // Holds a ref on the root
+  w_string_t *name;
+  long id;
+};
+
 struct watchman_client {
   w_stm_t stm;
   w_evt_t ping;
@@ -578,9 +589,15 @@ struct watchman_client {
   struct watchman_client_response *head, *tail;
   /* map of subscription name => struct watchman_client_subscription */
   w_ht_t *subscriptions;
+
+  /* map of unique id => watchman_client_state_assertion */
+  w_ht_t *states;
+  long next_state_id;
 };
 extern pthread_mutex_t w_client_lock;
 extern w_ht_t *clients;
+
+void w_client_vacate_states(struct watchman_client *client);
 
 void w_mark_dead(pid_t pid);
 bool w_reap_children(bool block);

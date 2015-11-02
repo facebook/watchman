@@ -241,7 +241,7 @@ static bool parse_query_expression(w_query *res, json_t *query)
 
 static bool parse_sync(w_query *res, json_t *query)
 {
-  int value = 60000;
+  int value = DEFAULT_QUERY_SYNC_MS;
 
   if (query &&
       json_unpack(query, "{s?:i*}", "sync_timeout", &value) != 0) {
