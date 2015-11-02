@@ -527,6 +527,7 @@ disconected:
   w_ht_del(clients, w_ht_ptr_val(client));
   pthread_mutex_unlock(&w_client_lock);
 
+  w_client_vacate_states(client);
   client_delete(client);
 
   return NULL;
