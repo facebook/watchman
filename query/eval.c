@@ -32,7 +32,8 @@ w_string_t *w_query_ctx_get_wholename(
     name_start = ctx->root->root_path->len + 1;
   }
 
-  full_name = w_string_path_cat(ctx->file->parent->path, ctx->file->name);
+  full_name =
+      w_string_path_cat(ctx->file->parent->path, w_file_get_name(ctx->file));
   // Record the name relative to the root
   ctx->wholename = w_string_slice(full_name, name_start,
       full_name->len - name_start);

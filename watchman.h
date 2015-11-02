@@ -379,8 +379,6 @@ void w_dir_close(struct watchman_dir_handle *dir);
 int w_dir_fd(struct watchman_dir_handle *dir);
 
 struct watchman_file {
-  /* our name within the parent dir */
-  w_string_t *name;
   /* the parent dir */
   struct watchman_dir *parent;
 
@@ -410,6 +408,10 @@ struct watchman_file {
    * Can be NULL if not a symlink, or we failed to read the target */
   w_string_t *symlink_target;
 };
+
+static inline w_string_t *w_file_get_name(struct watchman_file *file) {
+  return (w_string_t*)(file + 1);
+}
 
 #define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"
 struct watchman_query_cookie {

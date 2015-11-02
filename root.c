@@ -589,7 +589,7 @@ static void remove_from_file_list(w_root_t *root, struct watchman_file *file)
 
 static void remove_from_suffix_list(w_root_t *root, struct watchman_file *file)
 {
-  w_string_t *suffix = w_string_suffix(file->name);
+  w_string_t *suffix = w_string_suffix(w_file_get_name(file));
   struct watchman_file *sufhead;
 
   if (!suffix) {
@@ -650,6 +650,7 @@ struct watchman_file *w_root_resolve_file(w_root_t *root,
 {
   struct watchman_file *file, *sufhead;
   w_string_t *suffix;
+  w_string_t *name;
 
   if (dir->files) {
     file = w_ht_val_ptr(w_ht_get(dir->files, w_ht_ptr_val(file_name)));
@@ -660,9 +661,19 @@ struct watchman_file *w_root_resolve_file(w_root_t *root,
     dir->files = w_ht_new(2, &w_ht_string_funcs);
   }
 
-  file = calloc(1, sizeof(*file));
-  file->name = file_name;
-  w_string_addref(file->name);
+  /* We embed our name string in the tail end of the struct that we're
+   * allocating here.  This turns out to be more memory efficient due
+   * to the way that the allocator bins sizeof(watchman_file); there's
+   * a bit of unusable space after the end of the structure that happens
+   * to be about the right size to fit a typical filename.
+   * Embedding the name in the end allows us to make the most of this
+   * memory and free up the separate heap allocation for file_name.
+   */
+  file = calloc(1, sizeof(*file) + w_string_embedded_size(file_name));
+  name = w_file_get_name(file);
+  w_string_embedded_copy(name, file_name);
+  w_string_addref(name);
+
   file->parent = dir;
   file->exists = true;
   file->ctime.ticks = root->ticks;
@@ -679,7 +690,7 @@ struct watchman_file *w_root_resolve_file(w_root_t *root,
     w_string_delref(suffix);
   }
 
-  w_ht_set(dir->files, w_ht_ptr_val(file->name), w_ht_ptr_val(file));
+  w_ht_set(dir->files, w_ht_ptr_val(name), w_ht_ptr_val(file));
   watch_file(root, file);
 
   return file;
@@ -839,8 +850,9 @@ static void stat_path(w_root_t *root,
     }
     if (file) {
       if (file->exists) {
-        w_log(W_LOG_DBG, "w_lstat(%s) -> %s so marking %.*s deleted\n",
-            path, strerror(err), file->name->len, file->name->buf);
+        w_log(W_LOG_DBG, "w_lstat(%s) -> %s so marking %.*s deleted\n", path,
+              strerror(err), w_file_get_name(file)->len,
+              w_file_get_name(file)->buf);
         file->exists = false;
         w_root_mark_file_changed(root, file, now);
       }
@@ -1046,7 +1058,7 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
       w_log(W_LOG_DBG, "mark_deleted: %.*s%c%.*s\n",
           dir->path->len, dir->path->buf,
           WATCHMAN_DIR_SEP,
-          file->name->len, file->name->buf);
+          w_file_get_name(file)->len, w_file_get_name(file)->buf);
       file->exists = false;
       w_root_mark_file_changed(root, file, now);
     }
@@ -1265,7 +1277,7 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
     file = w_ht_val_ptr(i.value);
     if (file->exists && (file->maybe_deleted ||
           (S_ISDIR(file->stat.mode) && recursive))) {
-      w_pending_coll_add_rel(coll, dir, file->name->buf,
+      w_pending_coll_add_rel(coll, dir, w_file_get_name(file)->buf,
           now, recursive ? W_PENDING_RECURSIVE : 0);
     }
   } while (w_ht_next(dir->files, &i));
@@ -1493,7 +1505,6 @@ static bool consume_notify(w_root_t *root,
 static void free_file_node(w_root_t *root, struct watchman_file *file)
 {
   root->watcher_ops->file_free(file);
-  w_string_delref(file->name);
   if (file->symlink_target) {
     w_string_delref(file->symlink_target);
   }
@@ -1531,11 +1542,11 @@ static void age_out_file(w_root_t *root, w_ht_t *aged_dir_names,
   remove_from_file_list(root, file);
   remove_from_suffix_list(root, file);
 
-  full_name = w_string_path_cat(file->parent->path, file->name);
+  full_name = w_string_path_cat(file->parent->path, w_file_get_name(file));
 
   if (file->parent->files) {
     // Remove the entry from the containing file hash
-    w_ht_del(file->parent->files, w_ht_ptr_val(file->name));
+    w_ht_del(file->parent->files, w_ht_ptr_val(w_file_get_name(file)));
   }
   if (file->parent->dirs) {
     // Remove the entry from the containing dir hash
@@ -1597,7 +1608,7 @@ void w_root_perform_age_out(w_root_t *root, int min_age)
     w_log(W_LOG_DBG, "age_out file=%.*s%c%.*s\n",
         file->parent->path->len, file->parent->path->buf,
         WATCHMAN_DIR_SEP,
-        file->name->len, file->name->buf);
+        w_file_get_name(file)->len, w_file_get_name(file)->buf);
 
     age_out_file(root, aged_dir_names, file);
 
