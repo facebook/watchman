@@ -223,10 +223,11 @@ class WatchmanTestCase(unittest.TestCase):
             return item
 
         def norm_sub(sub):
-            files = []
-            for item in sub['files']:
-                files.append(norm_sub_item(item))
-            sub['files'] = files
+            if 'files' in sub:
+                files = []
+                for item in sub['files']:
+                    files.append(norm_sub_item(item))
+                sub['files'] = files
             return sub
 
         return map(norm_sub, data)
@@ -234,6 +235,6 @@ class WatchmanTestCase(unittest.TestCase):
     def findSubscriptionContainingFile(self, subdata, filename):
         filename = norm_path(filename)
         for dat in subdata:
-            if filename in dat['files']:
+            if 'files' in dat and filename in dat['files']:
                 return dat
         return None

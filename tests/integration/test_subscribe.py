@@ -23,6 +23,106 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
                     return True
         return False
 
+    def matchStateSubscription(self, subdata, mode):
+        for sub in subdata:
+            if mode in sub:
+                return sub
+        return None
+
+    def test_defer_state(self):
+        root = self.mkdtemp()
+        self.watchmanCommand('watch', root)
+
+        self.watchmanCommand('subscribe', root, 'defer', {
+            'fields': ['name'],
+            'defer': ['foo']})
+
+        self.touchRelative(root, 'a')
+        self.assertNotEqual(None, self.waitForSub('defer', root=root))
+
+        self.watchmanCommand('state-enter', root, 'foo')
+        begin = self.waitForSub('defer', root)[0]
+        self.assertEqual(begin['state-enter'], 'foo')
+
+        self.touchRelative(root, 'in-foo')
+        # We expect this to timeout because state=foo is asserted
+        with self.assertRaises(pywatchman.SocketTimeout):
+            self.waitForSub('defer', root, timeout=1)
+
+        self.watchmanCommand('state-leave', root, 'foo')
+
+        self.assertNotEqual(None,
+            self.waitForSub('defer', root,
+            accept=lambda x: self.matchStateSubscription(x, 'state-leave')))
+
+        # and now we should observe the file change
+        self.assertNotEqual(None,
+            self.waitForSub('defer', root))
+
+        # and again, but this time passing metadata
+        self.watchmanCommand('state-enter', root, {
+          'name': 'foo',
+          'metadata': 'meta!'})
+        begin = self.waitForSub('defer', root)[0]
+        self.assertEqual(begin['state-enter'], 'foo')
+        self.assertEqual(begin['metadata'], 'meta!')
+
+        self.touchRelative(root, 'in-foo-2')
+        # We expect this to timeout because state=foo is asserted
+        with self.assertRaises(pywatchman.SocketTimeout):
+            self.waitForSub('defer', root, timeout=1)
+
+        self.watchmanCommand('state-leave', root, {
+          'name': 'foo',
+          'metadata': 'leavemeta'})
+
+        end = self.waitForSub('defer', root,
+                accept=lambda x: self.matchStateSubscription(
+                    x, 'state-leave'))[0]
+        self.assertEqual(end['metadata'], 'leavemeta')
+
+        # and now we should observe the file change
+        self.assertNotEqual(None,
+            self.waitForSub('defer', root))
+
+    def test_drop_state(self):
+        root = self.mkdtemp()
+        self.watchmanCommand('watch', root)
+
+        self.watchmanCommand('subscribe', root, 'drop', {
+            'fields': ['name'],
+            'drop': ['foo']})
+
+        self.touchRelative(root, 'a')
+        self.assertNotEqual(None, self.waitForSub('drop', root=root))
+
+        self.watchmanCommand('state-enter', root, 'foo')
+        begin = self.waitForSub('drop', root)[0]
+        self.assertEqual(begin['state-enter'], 'foo')
+
+        self.touchRelative(root, 'in-foo')
+        # We expect this to timeout because state=foo is asserted
+        with self.assertRaises(pywatchman.SocketTimeout):
+            self.waitForSub('drop', root, timeout=1)
+
+        self.watchmanCommand('state-leave', root, 'foo')
+
+        self.assertNotEqual(None,
+            self.waitForSub('drop', root,
+            accept=lambda x: self.matchStateSubscription(x, 'state-leave')))
+
+        # There should be no more subscription data to observe
+        # because we requested that it be dropped
+        with self.assertRaises(pywatchman.SocketTimeout):
+            self.waitForSub('drop', root, timeout=1)
+
+        # let's make sure that we can observe new changes
+        self.touchRelative(root, 'out-foo')
+
+        self.assertFileList(root, files=['a', 'in-foo', 'out-foo'])
+        self.assertNotEqual(None,
+            self.waitForSub('drop', root))
+
     def test_defer_vcs(self):
         root = self.mkdtemp()
         # fake an hg control dir
@@ -43,7 +143,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
         # We expect this to timeout because the wlock file exists
         with self.assertRaises(pywatchman.SocketTimeout):
-            dat = self.waitForSub('defer', root,
+            self.waitForSub('defer', root,
                                   accept=lambda x: self.wlockExists(x, True),
                                   timeout=2)
 
