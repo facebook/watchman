@@ -359,6 +359,10 @@ static void spawn_via_launchd(void)
 "        <key>PATH</key>\n"
 "        <string><![CDATA[%s]]></string>\n"
 "    </dict>\n"
+"    <key>ProcessType</key>\n"
+"    <string>Interactive</string>\n"
+"    <key>Nice</key>\n"
+"    <integer>-5</integer>\n"
 "</dict>\n"
 "</plist>\n",
     watchman_path, log_name, log_level, sock_name,
