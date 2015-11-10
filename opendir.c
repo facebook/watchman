@@ -134,6 +134,46 @@ static int open_dir_as_fd_no_symlinks(const char *path, int flags) {
 #endif
 }
 
+// Like lstat, but strict about symlinks in any path component
+int w_lstat(const char *path, struct stat *st) {
+#ifdef HAVE_OPENAT
+  char *pathcopy = strdup(path);
+  char *slash;
+  int dir_fd, res, err;
+
+  if (!pathcopy) {
+    return -1;
+  }
+
+  slash = strrchr(pathcopy, '/');
+  if (!slash) {
+    free(pathcopy);
+    errno = EINVAL;
+    return -1;
+  }
+
+  *slash = '\0';
+  dir_fd = open_dir_as_fd_no_symlinks(pathcopy, O_NOFOLLOW|O_CLOEXEC);
+  if (dir_fd == -1) {
+    free(pathcopy);
+    errno = ENOTDIR;
+    return -1;
+  }
+
+  errno = 0;
+  res = fstatat(dir_fd, slash + 1, st, AT_SYMLINK_NOFOLLOW);
+  err = errno;
+
+  free(pathcopy);
+  close(dir_fd);
+
+  errno = err;
+  return res;
+#else
+  return lstat(path, st);  // tadaa!
+#endif
+}
+
 /* Opens a directory making sure it's not a symlink */
 DIR *opendir_nofollow(const char *path)
 {
@@ -169,12 +209,29 @@ struct watchman_dir_handle *w_dir_open(const char *path) {
   // bulkstat and need to disable it.  We will remove this option in
   // a future release of watchman
   if (cfg_get_bool(NULL, "_use_bulkstat", true)) {
+    struct stat st;
+
     dir->fd = open_dir_as_fd_no_symlinks(path,
                   O_NOFOLLOW | O_CLOEXEC | O_RDONLY);
     if (dir->fd == -1) {
       err = errno;
       free(dir);
       errno = err;
+      return NULL;
+    }
+
+    if (fstat(dir->fd, &st)) {
+      err = errno;
+      close(dir->fd);
+      free(dir);
+      errno = err;
+      return NULL;
+    }
+
+    if (!S_ISDIR(st.st_mode)) {
+      close(dir->fd);
+      free(dir);
+      errno = ENOTDIR;
       return NULL;
     }
 
@@ -223,8 +280,10 @@ struct watchman_dir_ent *w_dir_read(struct watchman_dir_handle *dir) {
       retcount = getattrlistbulk(dir->fd, &dir->attrlist,
           dir->buf, sizeof(dir->buf), FSOPT_PACK_INVAL_ATTRS);
       if (retcount == -1) {
+        int err = errno;
         w_log(W_LOG_ERR, "getattrlistbulk: error %d %s\n",
-            errno, strerror(errno));
+            errno, strerror(err));
+        errno = err;
         return NULL;
       }
       if (retcount == 0) {

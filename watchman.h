@@ -521,6 +521,7 @@ struct watchman_root {
   uint32_t pending_trigger_tick;
   uint32_t pending_sub_tick;
   uint32_t last_age_out_tick;
+  uint32_t last_recheck_tick;
   time_t last_age_out_timestamp;
   time_t last_cmd_timestamp;
   time_t last_reap_timestamp;
@@ -969,6 +970,7 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
 void stop_watching_dir(w_root_t *root, struct watchman_dir *dir);
 DIR *opendir_nofollow(const char *path);
 uint32_t u32_strlen(const char *str);
+int w_lstat(const char *path, struct stat *st);
 
 extern struct watchman_ops fsevents_watcher;
 extern struct watchman_ops kqueue_watcher;
