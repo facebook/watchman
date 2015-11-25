@@ -605,6 +605,7 @@ void w_log(int level, WATCHMAN_FMT_STRING(const char *fmt), ...)
   __attribute__((format(printf, 2, 3)))
 #endif
 ;
+void w_request_shutdown(void);
 
 bool w_should_log_to_clients(int level);
 void w_log_to_clients(int level, const char *buf);

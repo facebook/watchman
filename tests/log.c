@@ -4,6 +4,8 @@
 #include "watchman.h"
 #include "thirdparty/tap.h"
 
+void w_request_shutdown(void) {}
+
 bool w_should_log_to_clients(int level)
 {
   unused_parameter(level);
@@ -38,4 +40,3 @@ int main(int argc, char **argv)
 
 /* vim:ts=2:sw=2:et:
  */
-

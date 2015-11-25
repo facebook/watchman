@@ -405,6 +405,17 @@ w_root_t *resolve_root_or_err(
   return root;
 }
 
+void w_request_shutdown(void) {
+  stopping = true;
+  // Knock listener thread out of poll/accept
+#ifndef _WIN32
+  pthread_kill(listener_thread, SIGUSR1);
+  pthread_kill(reaper_thread, SIGUSR1);
+#else
+  SetEvent(listener_thread_event);
+#endif
+}
+
 static void cmd_shutdown(
     struct watchman_client *client,
     json_t *args)
@@ -415,13 +426,7 @@ static void cmd_shutdown(
   w_log(W_LOG_ERR, "shutdown-server was requested, exiting!\n");
   stopping = true;
 
-  // Knock listener thread out of poll/accept
-#ifndef _WIN32
-  pthread_kill(listener_thread, SIGUSR1);
-  pthread_kill(reaper_thread, SIGUSR1);
-#else
-  SetEvent(listener_thread_event);
-#endif
+  w_request_shutdown();
 
   set_prop(resp, "shutdown-server", json_true());
   send_and_dispose_response(client, resp);
