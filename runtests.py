@@ -5,8 +5,8 @@ import os
 import os.path
 import sys
 # Ensure that we can find pywatchman
-sys.path.append(os.path.join(os.getcwd(), 'python'))
-sys.path.append(os.path.join(os.getcwd(), 'tests', 'integration'))
+sys.path.insert(0, os.path.join(os.getcwd(), 'python'))
+sys.path.insert(0, os.path.join(os.getcwd(), 'tests', 'integration'))
 import tempfile
 import shutil
 import subprocess
