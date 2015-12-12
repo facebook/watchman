@@ -1,6 +1,8 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+'use strict';
+
 var net = require('net');
 var EE = require('events').EventEmitter;
 var util = require('util');
@@ -231,7 +233,7 @@ Client.prototype.command = function(args, done) {
   this.sendNextCommand();
 }
 
-cap_versions = {
+var cap_versions = {
     "cmd-watch-del-all": "3.1.1",
     "cmd-watch-project": "3.1",
     "relative_root": "3.3",
@@ -244,8 +246,8 @@ cap_versions = {
 function vers_compare(a, b) {
   a = a.split('.');
   b = b.split('.');
-  for (i = 0; i < 3; i++) {
-    d = parseInt(a[i] || '0') - parseInt(b[i] || '0');
+  for (var i = 0; i < 3; i++) {
+    var d = parseInt(a[i] || '0') - parseInt(b[i] || '0');
     if (d != 0) {
       return d;
     }
@@ -264,7 +266,7 @@ function have_cap(vers, name) {
 Client.prototype._synthesizeCapabilityCheck = function(
     resp, optional, required) {
   resp.capabilities = {}
-  version = resp.version;
+  var version = resp.version;
   optional.forEach(function (name) {
     resp.capabilities[name] = have_cap(version, name);
   });
