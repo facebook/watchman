@@ -56,10 +56,6 @@ static void delete_dir(w_ht_val_t val)
     w_ht_free(dir->files);
     dir->files = NULL;
   }
-  if (dir->lc_files) {
-    w_ht_free(dir->lc_files);
-    dir->lc_files = NULL;
-  }
   if (dir->dirs) {
     w_ht_free(dir->dirs);
     dir->dirs = NULL;
@@ -203,7 +199,8 @@ static bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg)
     // While we're at it, see if we can find out where to put our
     // query cookie information
     if (root->query_cookie_dir == NULL &&
-        w_lstat(fullname->buf, &st) == 0 && S_ISDIR(st.st_mode)) {
+        w_lstat(fullname->buf, &st, root->case_sensitive) == 0 &&
+        S_ISDIR(st.st_mode)) {
       // root/{.hg,.git,.svn}
       root->query_cookie_dir = w_string_path_cat(root->root_path, name);
     }
@@ -511,15 +508,12 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
   return dir;
 }
 
-static void apply_dir_size_hint(w_root_t *root, struct watchman_dir *dir,
+static void apply_dir_size_hint(struct watchman_dir *dir,
     uint32_t ndirs, uint32_t nfiles) {
+
   if (nfiles > 0) {
     if (!dir->files) {
       dir->files = w_ht_new(nfiles, &w_ht_string_funcs);
-    }
-    // Only need lc_files if we're case insensitive
-    if (!root->case_sensitive && !dir->lc_files) {
-      dir->lc_files = w_ht_new(nfiles, &w_ht_string_funcs);
     }
   }
   if (!dir->dirs && ndirs > 0) {
@@ -714,68 +708,6 @@ static bool did_file_change(struct watchman_stat *saved,
 #define ENOFOLLOWSYMLINK ELOOP
 #endif
 
-// Returns just the canonical basename of a file
-static w_string_t *w_resolve_filesystem_canonical_name(const char *path)
-{
-#ifdef __APPLE__
-  struct attrlist attrlist;
-  struct {
-    uint32_t len;
-    attrreference_t ref;
-    char canonical_name[WATCHMAN_NAME_MAX];
-  } vomit;
-  char *name;
-
-  memset(&attrlist, 0, sizeof(attrlist));
-  attrlist.bitmapcount = ATTR_BIT_MAP_COUNT;
-  attrlist.commonattr = ATTR_CMN_NAME;
-
-  if (getattrlist(path, &attrlist, &vomit,
-        sizeof(vomit), FSOPT_NOFOLLOW) == -1) {
-    // signal to caller that the file has disappeared -- the caller will read
-    // errno and do error handling
-    return NULL;
-  }
-
-  name = ((char*)&vomit.ref) + vomit.ref.attr_dataoffset;
-  return w_string_new(name);
-#elif defined(_WIN32)
-  WCHAR long_buf[WATCHMAN_NAME_MAX];
-  WCHAR *base;
-  WCHAR *wpath = w_utf8_to_win_unc(path, -1);
-  DWORD err;
-
-  DWORD long_len = GetLongPathNameW(wpath, long_buf,
-                      sizeof(long_buf)/sizeof(long_buf[0]));
-  err = GetLastError();
-  free(wpath);
-
-  if (long_len == 0 && err == ERROR_FILE_NOT_FOUND) {
-    // signal to caller that the file has disappeared -- the caller will read
-    // errno and do error handling
-    errno = map_win32_err(err);
-    return NULL;
-  }
-
-  if (long_len == 0) {
-    w_log(W_LOG_ERR, "Failed to canon(%s): %s\n", path, win32_strerror(err));
-    return w_string_new_basename(path);
-  }
-
-  if (long_len > sizeof(long_buf)-1) {
-    w_log(W_LOG_FATAL, "GetLongPathNameW needs %lu chars\n", long_len);
-  }
-  long_buf[long_len] = 0;
-  base = long_buf + long_len - 1;
-  while (base > long_buf && base[-1] != WATCHMAN_DIR_SEP) {
-    base--;
-  }
-  return w_string_new_wchar(base, -1);
-#else
-  return w_string_new_basename(path);
-#endif
-}
-
 static void struct_stat_to_watchman_stat(const struct stat *st,
     struct watchman_stat *target) {
   target->size = (off_t)st->st_size;
@@ -795,7 +727,8 @@ static void struct_stat_to_watchman_stat(const struct stat *st,
 
 static void stat_path(w_root_t *root,
     struct watchman_pending_collection *coll, w_string_t *full_path,
-    struct timeval now, bool recursive, bool via_notify,
+    struct timeval now,
+    int flags,
     struct watchman_dir_ent *pre_stat)
 {
   struct watchman_stat st;
@@ -806,6 +739,8 @@ static void stat_path(w_root_t *root,
   struct watchman_file *file = NULL;
   w_string_t *dir_name;
   w_string_t *file_name;
+  bool recursive = flags & W_PENDING_RECURSIVE;
+  bool via_notify = flags & W_PENDING_VIA_NOTIFY;
 
   if (w_ht_get(root->ignore_dirs, w_ht_ptr_val(full_path))) {
     w_log(W_LOG_DBG, "%.*s matches ignore_dir rules\n",
@@ -839,9 +774,10 @@ static void stat_path(w_root_t *root,
     err = 0;
   } else {
     struct stat struct_stat;
-    res = w_lstat(path, &struct_stat);
+    res = w_lstat(path, &struct_stat, root->case_sensitive);
     err = res == 0 ? 0 : errno;
-    w_log(W_LOG_DBG, "lstat(%s) file=%p dir=%p\n", path, file, dir_ent);
+    w_log(W_LOG_DBG, "w_lstat(%s) file=%p dir=%p res=%d %s\n",
+        path, file, dir_ent, res, strerror(err));
     if (err == 0) {
       struct_stat_to_watchman_stat(&struct_stat, &st);
     } else {
@@ -854,13 +790,13 @@ static void stat_path(w_root_t *root,
     /* it's not there, update our state */
     if (dir_ent) {
       w_root_mark_deleted(root, dir_ent, now, true);
-      w_log(W_LOG_DBG, "lstat(%s) -> %s so stopping watch on %s\n",
-          path, strerror(err), dir_ent->path->buf);
+      w_log(W_LOG_DBG, "w_lstat(%s) -> %s so stopping watch on %.*s\n", path,
+            strerror(err), dir_ent->path->len, dir_ent->path->buf);
       stop_watching_dir(root, dir_ent);
     }
     if (file) {
       if (file->exists) {
-        w_log(W_LOG_DBG, "lstat(%s) -> %s so marking %.*s deleted\n",
+        w_log(W_LOG_DBG, "w_lstat(%s) -> %s so marking %.*s deleted\n",
             path, strerror(err), file->name->len, file->name->buf);
         file->exists = false;
         w_root_mark_file_changed(root, file, now);
@@ -871,144 +807,29 @@ static void stat_path(w_root_t *root,
       // representation of it now, so that subscription clients can
       // be notified of this event
       file = w_root_resolve_file(root, dir, file_name, now);
-      w_log(W_LOG_DBG, "lstat(%s) -> %s and file node was NULL. "
+      w_log(W_LOG_DBG, "w_lstat(%s) -> %s and file node was NULL. "
           "Generating a deleted node.\n", path, strerror(err));
       file->exists = false;
       w_root_mark_file_changed(root, file, now);
     }
+
+    if (!root->case_sensitive &&
+        !w_string_equal(dir_name, root->root_path)) {
+      /* If we rejected the name because it wasn't canonical,
+       * we need to ensure that we look in the parent dir to discover
+       * the new item(s) */
+      w_log(W_LOG_DBG, "we're case insensitive, and %s is ENOENT, "
+                       "speculatively look at parent dir %.*s\n",
+            path, dir_name->len, dir_name->buf);
+      stat_path(root, coll, dir_name, now, 0, NULL);
+    }
+
   } else if (res) {
-    w_log(W_LOG_ERR, "lstat(%s) %d %s\n",
+    w_log(W_LOG_ERR, "w_lstat(%s) %d %s\n",
         path, err, strerror(err));
   } else {
     if (!file) {
       file = w_root_resolve_file(root, dir, file_name, now);
-    }
-
-    if (!root->case_sensitive) {
-      // Determine canonical case from filesystem
-      w_string_t *canon_name;
-      w_string_t *lc_file_name;
-      struct watchman_file *lc_file = NULL;
-
-      if (pre_stat || !via_notify) {
-        // Optimization: if we're reading the dir, or were passed this path
-        // as part of a recursive walk, then we assume that the name we were
-        // given is already the canonical name
-        canon_name = file_name;
-        w_string_addref(canon_name);
-      } else {
-        canon_name = w_resolve_filesystem_canonical_name(path);
-      }
-
-      if (canon_name == NULL) {
-        // TOCTOU race: file disappeared (deleted? ran out of memory?) in
-        // between the lstat above and w_resolve_filesystem_canonical_name. Now
-        // that it's deleted, update our state to reflect that.
-        if (errno == ENOENT || errno == ENOTDIR || errno == ENOFOLLOWSYMLINK) {
-          if (dir_ent) {
-            handle_open_errno(root, dir_ent, now, "getattrlist", errno, NULL);
-          }
-          if (file) {
-            w_log(W_LOG_DBG, "getattrlist(%s) -> %s so marking %.*s deleted\n",
-                  path, strerror(err), file->name->len, file->name->buf);
-            file->exists = false;
-            w_root_mark_file_changed(root, file, now);
-          }
-
-          goto out;
-        }
-
-        w_log(W_LOG_FATAL, "getattrlist(CMN_NAME: %s): fail %s\n",
-              path, strerror(errno));
-      }
-
-      if (!w_string_equal(file_name, canon_name)) {
-        // Revise `path` to use the canonical name
-        // We do this by walking back file_name->len, then adding
-        // canon_name on the end.  We can't assume that canon_name
-        // and file_name have the same byte length because the case
-        // folded representation may potentially have differing
-        // byte lengths.  Since the length can change, we need to
-        // re-check the resultant length for overflow.
-        if (full_path->len - file_name->len + canon_name->len > sizeof(path)-1)
-        {
-          w_log(W_LOG_FATAL, "canon path %.*s%.*s is too big\n",
-            full_path->len - file_name->len, full_path->buf,
-            canon_name->len, canon_name->buf);
-        }
-
-        snprintf(path, sizeof(path), "%.*s%.*s",
-          full_path->len - file_name->len, full_path->buf,
-          canon_name->len, canon_name->buf);
-
-        w_log(W_LOG_DBG,
-            "did canon -> %s full={%.*s} file={%.*s} canon={%.*s}\n", path,
-            full_path->len, full_path->buf,
-            file_name->len, file_name->buf,
-            canon_name->len, canon_name->buf);
-
-        // file refers to a node that doesn't exist any longer
-        file->exists = false;
-        w_root_mark_file_changed(root, file, now);
-
-        // Create or resurrect a file node from this canonical name
-        file = w_root_resolve_file(root, dir, canon_name, now);
-      }
-
-      if (dir_ent) {
-        w_string_t *dir_basename = w_string_basename(dir_ent->path);
-
-        if (!w_string_equal(dir_basename, canon_name)) {
-          // If the case changed, we logically deleted that part of
-          // the tree.  Our clients will expect to see deletes for
-          // the tree, followed by notifications of the files at their
-          // new canonical path name
-          w_log(W_LOG_DBG, "canon(%s) changed on dir, so marking deleted\n",
-              path);
-
-          stop_watching_dir(root, dir_ent);
-          w_root_mark_deleted(root, dir_ent, now, true);
-
-          // Ensure we recurse and build out the new tree
-          recursive = true;
-          dir_ent = NULL;
-        }
-        w_string_delref(dir_basename);
-      }
-
-      lc_file_name = w_string_dup_lower(file_name);
-
-      if (!dir->lc_files) {
-        dir->lc_files = w_ht_new(2, &w_ht_string_funcs);
-      } else {
-        lc_file = w_ht_val_ptr(w_ht_get(dir->lc_files,
-                      w_ht_ptr_val(lc_file_name)));
-        if (lc_file && !w_string_equal(lc_file->name, file->name)) {
-          // lc_file is no longer the canonical item, it must have
-          // been deleted
-          lc_file->exists = false;
-          w_root_mark_file_changed(root, lc_file, now);
-        }
-      }
-
-      // Revise lc_files to reference the latest version of this
-      w_ht_replace(dir->lc_files, w_ht_ptr_val(lc_file_name),
-                   w_ht_ptr_val(file));
-      w_string_delref(lc_file_name);
-      lc_file_name = NULL;
-
-      if (!w_string_equal(file_name, canon_name)) {
-        // Ensure that we use the canonical name for the remainder
-        // of this function call
-        w_string_delref(file_name);
-        file_name = canon_name;
-        canon_name = NULL;
-
-        // We don't delref full_path here, it's owned by the caller
-        full_path = w_string_path_cat(dir_name, file_name);
-      } else {
-        w_string_delref(canon_name);
-      }
     }
 
     if (!file->exists) {
@@ -1071,7 +892,7 @@ static void stat_path(w_root_t *root,
         !S_ISDIR(st.mode) &&
         !w_string_equal(dir_name, root->root_path)) {
       /* Make sure we update the mtime on the parent directory. */
-      stat_path(root, coll, dir_name, now, false, via_notify, NULL);
+      stat_path(root, coll, dir_name, now, flags & W_PENDING_VIA_NOTIFY, NULL);
     }
   }
 
@@ -1134,9 +955,7 @@ void w_root_process_path(w_root_t *root,
     crawler(root, coll, full_path, now,
         (flags & W_PENDING_RECURSIVE) == W_PENDING_RECURSIVE);
   } else {
-    stat_path(root, coll, full_path, now,
-        (flags & W_PENDING_RECURSIVE) == W_PENDING_RECURSIVE,
-        (flags & W_PENDING_VIA_NOTIFY) == W_PENDING_VIA_NOTIFY, pre_stat);
+    stat_path(root, coll, full_path, now, flags, pre_stat);
   }
 }
 
@@ -1308,8 +1127,8 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
     // If it is less than 2 then it doesn't follow that convention.
     // We just pass it through for the dir size hint and the hash
     // table implementation will round that up to the next power of 2
-    apply_dir_size_hint(root, dir, num_dirs,
-        (uint32_t)cfg_get_int(root, "hint_num_files_per_dir", 64));
+    apply_dir_size_hint(dir, num_dirs, (uint32_t)cfg_get_int(
+                                           root, "hint_num_files_per_dir", 64));
   }
 
   /* flag for delete detection */
@@ -1349,8 +1168,10 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
             dir->path->len, dir->path->buf,
             full_path->len, full_path->buf);
         w_root_process_path(root, coll, full_path, now,
-            (recursive || !file || !file->exists) ?
-                W_PENDING_RECURSIVE : 0, dirent);
+                                ((recursive || !file || !file->exists)
+                                     ? W_PENDING_RECURSIVE
+                                     : 0),
+                            dirent);
         w_string_delref(full_path);
       } else {
         w_log(W_LOG_ERR, "OOM during crawl\n");
@@ -1689,17 +1510,6 @@ static void age_out_file(w_root_t *root, w_ht_t *aged_dir_names,
     // Remove the entry from the containing dir hash
     w_ht_del(file->parent->dirs, w_ht_ptr_val(full_name));
   }
-  if (file->parent->lc_files) {
-    // Remove the entry from the containing lower case files hash,
-    // but only it it matches us (it may point to a different file
-    // node with a differently-cased name)
-    w_string_t *lc_name = w_string_dup_lower(file->name);
-    if (w_ht_get(file->parent->lc_files, w_ht_ptr_val(lc_name))
-        == w_ht_ptr_val(file)) {
-      w_ht_del(file->parent->lc_files, w_ht_ptr_val(lc_name));
-    }
-    w_string_delref(lc_name);
-  }
 
   // resolve the dir of the same name and mark it for later removal
   // from our internal datastructures
@@ -1929,17 +1739,7 @@ static void io_thread(w_root_t *root)
   // And convert to milliseconds
   biggest_timeout *= 1000;
 
-  recheck_timeout = (int)cfg_get_int(root, "recheck_dirs_interval_ms",
-#ifdef __APPLE__
-      // default to "on" for mac because of fsevents bugs.  We pick the settle
-      // period as the default so that we check just before we dispatch the
-      // first round of notifications; this gives us a chance to detect
-      // dangling symlink changes before we tell folks about them.
-      root->trigger_settle
-#else
-      0
-#endif
-  );
+  recheck_timeout = (int)cfg_get_int(root, "recheck_dirs_interval_ms", 0);
   recheck_timeout = MIN(recheck_timeout, biggest_timeout);
 
   w_pending_coll_init(&pending);

@@ -292,8 +292,6 @@ struct watchman_dir {
   w_string_t *path;
   /* files contained in this dir (keyed by file->name) */
   w_ht_t *files;
-  /* files contained in this dir (keyed by lc(file->name)) */
-  w_ht_t *lc_files;
   /* child dirs contained in this dir (keyed by dir->path) */
   w_ht_t *dirs;
 };
@@ -968,9 +966,8 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, const char *syscall, int err,
     const char *reason);
 void stop_watching_dir(w_root_t *root, struct watchman_dir *dir);
-DIR *opendir_nofollow(const char *path);
 uint32_t u32_strlen(const char *str);
-int w_lstat(const char *path, struct stat *st);
+int w_lstat(const char *path, struct stat *st, bool case_sensitive);
 
 extern struct watchman_ops fsevents_watcher;
 extern struct watchman_ops kqueue_watcher;

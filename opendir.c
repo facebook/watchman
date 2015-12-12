@@ -47,143 +47,293 @@ struct watchman_dir_handle {
   struct watchman_dir_ent ent;
 };
 
-/* Opens a directory, strictly prohibiting opening any symlinks
- * in any component of the path on systems that make this
- * reasonable and easy to do.
- * We do this by opening / and then walking down the tree one
- * directory component at a time.
- * We prefer to do this rather than using realpath() and comparing
- * names for two reasons:
- * 1. We should be slightly less prone to TOCTOU issues if an element
- *    of the path is changed to a symlink in the middle of our examination
- * 2. We can terminate as soon as we discover a symlink this way, whereas
- *    realpath() would walk all the way down before it could come back to
- *    us and allow us to detect the issue.
+#ifdef _WIN32
+static const char *w_basename(const char *path) {
+  const char *last = path + strlen(path) - 1;
+  while (last >= path) {
+    if (*last == '/' || *last == '\\') {
+      return last + 1;
+    }
+    --last;
+  }
+  return NULL;
+}
+#endif
+
+static bool is_basename_canonical_case(const char *path) {
+#ifdef __APPLE__
+  struct attrlist attrlist;
+  struct {
+    uint32_t len;
+    attrreference_t ref;
+    char canonical_name[WATCHMAN_NAME_MAX];
+  } vomit;
+  char *name;
+  const char *base = strrchr(path, '/') + 1;
+
+  memset(&attrlist, 0, sizeof(attrlist));
+  attrlist.bitmapcount = ATTR_BIT_MAP_COUNT;
+  attrlist.commonattr = ATTR_CMN_NAME;
+
+  if (getattrlist(path, &attrlist, &vomit,
+        sizeof(vomit), FSOPT_NOFOLLOW) == -1) {
+    w_log(W_LOG_ERR, "getattrlist(%s) failed: %s\n",
+        path, strerror(errno));
+    return false;
+  }
+
+  name = ((char*)&vomit.ref) + vomit.ref.attr_dataoffset;
+  return strcmp(name, base) == 0;
+#elif defined(_WIN32)
+  WCHAR long_buf[WATCHMAN_NAME_MAX];
+  WCHAR *wpath = w_utf8_to_win_unc(path, -1);
+  DWORD err;
+  char *canon;
+  bool result;
+  const char *path_base;
+  const char *canon_base;
+
+  DWORD long_len = GetLongPathNameW(wpath, long_buf,
+                      sizeof(long_buf)/sizeof(long_buf[0]));
+  err = GetLastError();
+  free(wpath);
+
+  if (long_len == 0 && err == ERROR_FILE_NOT_FOUND) {
+    // signal to caller that the file has disappeared -- the caller will read
+    // errno and do error handling
+    errno = map_win32_err(err);
+    return false;
+  }
+
+  if (long_len == 0) {
+    w_log(W_LOG_ERR, "Failed to canon(%s): %s\n", path, win32_strerror(err));
+    return false;
+  }
+
+  if (long_len > sizeof(long_buf)-1) {
+    w_log(W_LOG_FATAL, "GetLongPathNameW needs %lu chars\n", long_len);
+  }
+
+  canon = w_win_unc_to_utf8(long_buf, long_len, NULL);
+  if (!canon) {
+    return false;
+  }
+
+  path_base = w_basename(path);
+  canon_base = w_basename(canon);
+  if (!path_base || !canon_base) {
+    result = false;
+  } else {
+    result = strcmp(path_base, canon_base) == 0;
+    if (!result) {
+      w_log(W_LOG_ERR,
+            "is_basename_canonical_case(%s): basename=%s != canonical "
+            "%s basename of %s\n",
+            path, path_base, canon, canon_base);
+    }
+  }
+  free(canon);
+
+  return result;
+#else
+  unused_parameter(path);
+  return true;
+#endif
+}
+
+/* Extract the canonical path of an open file descriptor and store
+ * it into the provided buffer.
+ * Unlike w_realpath, which will return an allocated buffer of the correct
+ * size, this will indicate EOVERFLOW if the buffer is too small.
+ * For our purposes this is fine: if the canonical name is larger than
+ * the input buffer it means that it does not match the path that we
+ * wanted to open; we don't care what the actual canonical path really is.
  */
-static int open_dir_as_fd_no_symlinks(const char *path, int flags) {
-#ifdef HAVE_OPENAT
-  char *pathcopy;
-  int fd = -1;
-  int err;
-  char *elem, *next;
+static int realpath_fd(int fd, char *canon, size_t canon_size) {
+#if defined(F_GETPATH)
+  unused_parameter(canon_size);
+  return fcntl(fd, F_GETPATH, canon);
+#elif defined(__linux__)
+  char procpath[1024];
+  int len;
 
-  if (path[0] != '/') {
-    errno = EINVAL;
+  snprintf(procpath, sizeof(procpath), "/proc/%d/fd/%d", getpid(), fd);
+  len = readlink(procpath, canon, canon_size);
+  if (len > 0) {
+    canon[len] = 0;
+    return 0;
+  }
+  if (errno == ENOENT) {
+    // procfs is likely not mounted, let caller fall back to realpath()
+    errno = ENOSYS;
+  }
+  return -1;
+#elif defined(_WIN32)
+  HANDLE h = (HANDLE)_get_osfhandle(fd);
+  WCHAR final_buf[WATCHMAN_NAME_MAX];
+  DWORD len, err;
+  DWORD nchars = sizeof(final_buf) / sizeof(WCHAR);
+
+  if (h == INVALID_HANDLE_VALUE) {
     return -1;
   }
 
-  if (strlen(path) == 1) {
-    // They want to open "/"
-    return open(path, O_NOFOLLOW | flags);
+  len = GetFinalPathNameByHandleW(h, final_buf, nchars, FILE_NAME_NORMALIZED);
+  err = GetLastError();
+  if (len >= nchars) {
+    errno = EOVERFLOW;
+    return -1;
+  }
+  if (len > 0) {
+    uint32_t utf_len;
+    char *utf8 = w_win_unc_to_utf8(final_buf, len, &utf_len);
+    if (!utf8) {
+      return -1;
+    }
+
+    if (utf_len + 1 > canon_size) {
+      free(utf8);
+      errno = EOVERFLOW;
+      return -1;
+    }
+
+    memcpy(canon, utf8, utf_len + 1);
+    free(utf8);
+    return 0;
   }
 
-  pathcopy = strdup(path);
-  if (!pathcopy) {
+  errno = map_win32_err(err);
+  return -1;
+#else
+  unused_parameter(canon);
+  unused_parameter(canon_size);
+  errno = ENOSYS;
+  return -1;
+#endif
+}
+
+/* Opens a file or directory, strictly prohibiting opening any symlinks
+ * in any component of the path, and strictly matching the canonical
+ * case of the file for case insensitive filesystems.
+ */
+static int open_strict(const char *path, int flags) {
+  int fd;
+  char canon[WATCHMAN_NAME_MAX];
+  int err = 0;
+  char *pathcopy = NULL;
+
+  if (strlen(path) >= sizeof(canon)) {
+    w_log(W_LOG_ERR, "open_strict(%s): path is larger than WATCHMAN_NAME_MAX\n",
+          path);
+    errno = EOVERFLOW;
     return -1;
   }
 
-  // "/" really shouldn't be a symlink, so we shouldn't need to use NOFOLLOW
-  // here, but we do so anyway for consistency with how we open the
-  // intermediate descriptors in the loop below.
-  fd = open("/", O_NOFOLLOW | O_CLOEXEC);
+  fd = open(path, flags);
   if (fd == -1) {
+    return -1;
+  }
+
+  if (realpath_fd(fd, canon, sizeof(canon)) == 0) {
+    if (strcmp(canon, path) == 0) {
+      return fd;
+    }
+
+    w_log(W_LOG_DBG, "open_strict(%s): doesn't match canon path %s\n",
+        path, canon);
+    close(fd);
+    errno = ENOENT;
+    return -1;
+  }
+
+  if (errno != ENOSYS) {
     err = errno;
-    free(pathcopy);
+    w_log(W_LOG_ERR, "open_strict(%s): realpath_fd failed: %s\n", path,
+          strerror(err));
+    close(fd);
     errno = err;
     return -1;
   }
 
-  // "/foo/bar" means that elem -> "foo/bar"
-  elem = pathcopy + 1;
-  while (elem) {
-    int next_fd;
-
-    // if elem -> "foo/bar" we want:
-    // elem -> "foo", next -> "bar"
-    // if there is no slash, say if elem -> "bar":
-    // elem -> "bar", next -> NULL
-    next = strchr(elem, '/');
-    if (next) {
-      *next = 0;
-      next++;
-    }
-
-    // Ensure that we're CLOEXEC on all intermediate components of
-    // path, but use the flags the caller passed to us when we reach
-    // the leaf of the tree
-    next_fd = openat(fd, elem, (next ? O_CLOEXEC : flags)|O_NOFOLLOW);
-    if (next_fd == -1) {
-      err = errno;
-      close(fd);
-      free(pathcopy);
-      errno = err;
-      return -1;
-    }
-
-    // walk down to next level
-    elem = next;
+  // Fall back to realpath
+  pathcopy = w_realpath(path);
+  if (!pathcopy) {
+    err = errno;
+    w_log(W_LOG_ERR, "open_strict(%s): realpath failed: %s\n", path,
+          strerror(err));
     close(fd);
-    fd = next_fd;
+    errno = err;
+    return -1;
   }
 
-  // This was the final component in the path
+  if (strcmp(pathcopy, path)) {
+    // Doesn't match canonical case or the path we were expecting
+    w_log(W_LOG_ERR, "open_strict(%s): canonical path is %s\n",
+        path, pathcopy);
+    free(pathcopy);
+    close(fd);
+    errno = ENOENT;
+    return -1;
+  }
   free(pathcopy);
   return fd;
-#else
-  return open(path, flags);
-#endif
 }
 
 // Like lstat, but strict about symlinks in any path component
-int w_lstat(const char *path, struct stat *st) {
-#ifdef HAVE_OPENAT
-  char *pathcopy = strdup(path);
-  char *slash;
-  int dir_fd, res, err;
+int w_lstat(const char *path, struct stat *st, bool case_sensitive) {
+  char *parent, *slash;
+  int fd = -1;
+  int err, res = -1;
 
-  if (!pathcopy) {
+  parent = strdup(path);
+  if (!parent) {
     return -1;
   }
 
-  slash = strrchr(pathcopy, '/');
-  if (!slash) {
-    free(pathcopy);
-    errno = EINVAL;
-    return -1;
+  slash = strrchr(parent, '/');
+  if (slash) {
+    *slash = '\0';
   }
-
-  *slash = '\0';
-  dir_fd = open_dir_as_fd_no_symlinks(pathcopy, O_NOFOLLOW|O_CLOEXEC);
-  if (dir_fd == -1) {
-    free(pathcopy);
-    errno = ENOTDIR;
-    return -1;
+  fd = open_strict(parent, O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC );
+  if (fd == -1) {
+    err = errno;
+    goto out;
   }
 
   errno = 0;
-  res = fstatat(dir_fd, slash + 1, st, AT_SYMLINK_NOFOLLOW);
+#ifdef HAVE_OPENAT
+  res = fstatat(fd, slash + 1, st, AT_SYMLINK_NOFOLLOW);
   err = errno;
+#else
+  res = lstat(path, st);
+  err = errno;
+#endif
 
-  free(pathcopy);
-  close(dir_fd);
+  if (res == 0 && !case_sensitive && !is_basename_canonical_case(path)) {
+    res = -1;
+    err = ENOENT;
+  }
 
+out:
+  if (fd != -1) {
+    close(fd);
+  }
+  free(parent);
   errno = err;
   return res;
-#else
-  return lstat(path, st);  // tadaa!
-#endif
 }
 
 /* Opens a directory making sure it's not a symlink */
-DIR *opendir_nofollow(const char *path)
+static DIR *opendir_nofollow(const char *path)
 {
-#ifdef _WIN32
-  return win_opendir(path, 1 /* no follow */);
-#else
-  int fd = open_dir_as_fd_no_symlinks(path, O_NOFOLLOW | O_CLOEXEC);
+  int fd = open_strict(path, O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
   if (fd == -1) {
     return NULL;
   }
+#ifdef _WIN32
+  close(fd);
+  return win_opendir(path, 1 /* no follow */);
+#else
 # if !defined(HAVE_FDOPENDIR) || defined(__APPLE__)
   /* fdopendir doesn't work on earlier versions OS X, and we don't
    * use this function since 10.10, as we prefer to use getattrlistbulk
@@ -211,8 +361,7 @@ struct watchman_dir_handle *w_dir_open(const char *path) {
   if (cfg_get_bool(NULL, "_use_bulkstat", true)) {
     struct stat st;
 
-    dir->fd = open_dir_as_fd_no_symlinks(path,
-                  O_NOFOLLOW | O_CLOEXEC | O_RDONLY);
+    dir->fd = open_strict(path, O_NOFOLLOW | O_CLOEXEC | O_RDONLY);
     if (dir->fd == -1) {
       err = errno;
       free(dir);

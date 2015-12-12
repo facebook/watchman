@@ -16,7 +16,7 @@
 #define UNC_PREFIX L"UNC"
 #define UNC_PREFIX_LEN 3
 
-char *w_win_unc_to_utf8(WCHAR *wpath, int pathlen) {
+char *w_win_unc_to_utf8(WCHAR *wpath, int pathlen, uint32_t *outlen) {
   int len, res;
   char *buf;
   bool is_unc = false;
@@ -66,6 +66,9 @@ char *w_win_unc_to_utf8(WCHAR *wpath, int pathlen) {
   }
 
   buf[res] = 0;
+  if (outlen) {
+    *outlen = res;
+  }
   return buf;
 }
 

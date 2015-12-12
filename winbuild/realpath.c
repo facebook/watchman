@@ -74,7 +74,7 @@ char *realpath(const char *filename, char *target) {
     return NULL;
   }
 
-  utf8 = w_win_unc_to_utf8(final_bufptr, len);
+  utf8 = w_win_unc_to_utf8(final_bufptr, len, NULL);
   if (final_bufptr != final_buf) {
     free(final_bufptr);
   }
