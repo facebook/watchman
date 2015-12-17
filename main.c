@@ -353,7 +353,7 @@ static void spawn_via_launchd(void)
 "        <true/>\n"
 "    </dict>\n"
 "    <key>RunAtLoad</key>\n"
-"    <false/>\n"
+"    <true/>\n"
 "    <key>EnvironmentVariables</key>\n"
 "    <dict>\n"
 "        <key>PATH</key>\n"
