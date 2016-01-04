@@ -239,10 +239,7 @@ class _BunserDict(object):
         self._values = values
 
     def __getattr__(self, name):
-        try:
-            return self._values[self._keys.index(name)]
-        except ValueError as ex:
-            raise AttributeError('_BunserDict has no attribute %s' % name)
+        return self.__getitem__(name)
 
     def __getitem__(self, key):
         if isinstance(key, (int, long)):
