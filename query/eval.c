@@ -145,7 +145,7 @@ static bool time_generator(
       break;
     }
     if (!ctx->since.is_timestamp &&
-        f->otime.ticks < ctx->since.clock.ticks) {
+        f->otime.ticks <= ctx->since.clock.ticks) {
       break;
     }
 
