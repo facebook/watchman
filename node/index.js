@@ -118,7 +118,9 @@ Client.prototype.connect = function() {
       self.emit('error', err);
     });
     self.socket.on('data', function(buf) {
-      self.bunser.append(buf);
+      if (self.bunser) {
+        self.bunser.append(buf);
+      }
     });
     self.socket.on('end', function() {
       self.socket = null;
