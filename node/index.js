@@ -203,7 +203,7 @@ Client.prototype.connect = function() {
     try {
       var obj = JSON.parse(stdout.join(''));
       if ('error' in obj) {
-        error = new Error(obj.error);
+        var error = new Error(obj.error);
         error.watchmanResponse = obj;
         self.emit('error', error);
         return;
