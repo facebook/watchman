@@ -12,5 +12,11 @@ if %need_setup% == 1 call "c:\Program Files (x86)\Microsoft Visual Studio 12.0\V
 @rem http://stackoverflow.com/questions/2817869/error-unable-to-find-vcvarsall-bat
 SET VS90COMNTOOLS=%VS120COMNTOOLS%
 
+where python.exe 2> NUL
+if %ERRORLEVEL% GTR 0 set PATH=c:\Python27;%PATH%
+
+where php.exe 2> NUL
+if %ERRORLEVEL% GTR 0 set PATH=c:\php;%PATH%
+
 @rem finally, run make
 nmake /nologo /s /f winbuild\Makefile %1
