@@ -19,6 +19,8 @@ int map_win32_err(DWORD err) {
     case ERROR_SUCCESS: return 0;
     case ERROR_ALREADY_EXISTS: return EEXIST;
     case ERROR_TIMEOUT: return ETIMEDOUT;
+    case WAIT_TIMEOUT: return ETIMEDOUT;
+    case WAIT_IO_COMPLETION: return EINTR;
     case ERROR_INVALID_FUNCTION: return ENOSYS;
     case ERROR_PATH_NOT_FOUND: return ENOTDIR;
     case ERROR_FILE_NOT_FOUND: return ENOENT;

@@ -46,7 +46,7 @@ typedef BOOL (WINAPI *get_overlapped_result_ex_func)(
     BOOL alertable);
 static get_overlapped_result_ex_func get_overlapped_result_ex;
 
-static BOOL win7_get_overlapped_result_ex(
+static BOOL WINAPI win7_get_overlapped_result_ex(
     HANDLE file,
     LPOVERLAPPED olap,
     LPDWORD bytes,
@@ -77,7 +77,7 @@ static BOOL win7_get_overlapped_result_ex(
   }
 }
 
-static BOOL probe_get_overlapped_result_ex(
+static BOOL WINAPI probe_get_overlapped_result_ex(
     HANDLE file,
     LPOVERLAPPED olap,
     LPDWORD bytes,
@@ -105,7 +105,18 @@ static get_overlapped_result_ex_func get_overlapped_result_ex =
 #if 1
 #define stream_debug(x, ...) 0
 #else
-#define stream_debug(x, ...) printf(x, __VA_ARGS__)
+#define stream_debug(x, ...)                                                   \
+  do {                                                                         \
+    time_t now;                                                                \
+    char timebuf[64];                                                          \
+    struct tm tm;                                                              \
+    time(&now);                                                                \
+    localtime_s(&tm, &now);                                                    \
+    strftime(timebuf, sizeof(timebuf), "%Y-%m-%dT%H:%M:%S", &tm);              \
+    fprintf(stderr, "%s    : ", timebuf);                                      \
+    fprintf(stderr, x, __VA_ARGS__);                                           \
+    fflush(stderr);                                                            \
+  } while (0)
 #endif
 
 static int win_close(w_stm_t stm) {
@@ -180,6 +191,8 @@ static bool win_read_handle_completion(struct win_handle *h) {
   BOOL olap_res;
   DWORD bytes, err;
 
+again:
+
   EnterCriticalSection(&h->mtx);
   if (!h->read_pending) {
     LeaveCriticalSection(&h->mtx);
@@ -187,6 +200,7 @@ static bool win_read_handle_completion(struct win_handle *h) {
   }
 
   stream_debug("have read_pending, checking status\n");
+  ResetEvent(h->waitable);
 
   // Don't hold the mutex while we're blocked
   LeaveCriticalSection(&h->mtx);
@@ -202,6 +216,12 @@ static bool win_read_handle_completion(struct win_handle *h) {
     free(h->read_pending);
     h->read_pending = NULL;
   } else {
+    if (err == WAIT_IO_COMPLETION) {
+      // Some other async thing completed and our wait was interrupted.
+      // This is similar to EINTR
+      LeaveCriticalSection(&h->mtx);
+      goto again;
+    }
     stream_debug("pending read failed: %s\n", win32_strerror(err));
     if (err != ERROR_IO_INCOMPLETE) {
       // Failed
@@ -210,6 +230,8 @@ static bool win_read_handle_completion(struct win_handle *h) {
 
       h->errcode = err;
       h->error_pending = true;
+      stream_debug("marking read as failed\n");
+      SetEvent(h->waitable);
     }
   }
   LeaveCriticalSection(&h->mtx);
@@ -266,12 +288,13 @@ static int win_read_non_blocking(struct win_handle *h, char *buf, int size) {
   // Create a unique olap for each request
   h->read_pending = calloc(1, sizeof(*h->read_pending));
   if (h->read_avail == 0) {
+    stream_debug("ResetEvent because there is no read_avail right now\n");
     ResetEvent(h->waitable);
   }
   h->read_pending->olap.hEvent = h->waitable;
   h->read_pending->h = h;
 
-  if (!ReadFile(h->h, target, target_space, &bytes, &h->read_pending->olap)) {
+  if (!ReadFile(h->h, target, target_space, NULL, &h->read_pending->olap)) {
     DWORD err = GetLastError();
 
     if (err != ERROR_IO_PENDING) {
@@ -280,20 +303,21 @@ static int win_read_non_blocking(struct win_handle *h, char *buf, int size) {
 
       stream_debug("olap read failed immediately: %s\n",
           win32_strerror(err));
+      SetEvent(h->waitable);
     } else {
       stream_debug("olap read queued ok\n");
     }
-
-    stream_debug("returning %d\n", total_read == 0 ? -1 : total_read);
 
     errno = map_win32_err(err);
     return total_read == 0 ? -1 : total_read;
   }
 
-  stream_debug("olap read succeeded immediately!? bytes=%d\n", (int)bytes);
+  // Note: we obtain the bytes via GetOverlappedResult because the docs for
+  // ReadFile warn against passing the pointer to the ReadFile parameter for
+  // asynchronouse reads
+  GetOverlappedResult(h->h, &h->read_pending->olap, &bytes, FALSE);
+  stream_debug("olap read succeeded immediately bytes=%d\n", (int)bytes);
 
-  // We don't expect this to succeed in the overlapped case,
-  // but we can handle the result anyway
   h->read_avail += bytes;
   free(h->read_pending);
   h->read_pending = NULL;
@@ -301,6 +325,7 @@ static int win_read_non_blocking(struct win_handle *h, char *buf, int size) {
   move_from_read_buffer(h, &total_read, &buf, &size);
 
   stream_debug("read returning %d\n", total_read);
+  SetEvent(h->waitable);
   return total_read;
 }
 
@@ -314,6 +339,9 @@ static int win_read(w_stm_t stm, void *buf, int size) {
 
   // Report a prior failure
   if (h->error_pending) {
+    stream_debug("win_read: reporting prior failure err=%d errno=%d %s\n",
+                 h->errcode, map_win32_err(h->errcode),
+                 win32_strerror(h->errcode));
     errno = map_win32_err(h->errcode);
     h->error_pending = false;
     return -1;
@@ -351,16 +379,25 @@ static void CALLBACK write_completed(DWORD err, DWORD bytes,
       // Consumed this buffer
       free(wbuf);
     } else {
-      w_log(W_LOG_FATAL, "WriteFileEx: short write: %d written, %d remain\n",
-          bytes, wbuf->len);
+      stream_debug("WriteFileEx: short write: %d written, %d remain\n",
+              bytes, wbuf->len);
+      // the initiate_write call will send the remainder
+      // but we need to re-insert this wbuf in the write queue
+      wbuf->next = h->write_head;
+      h->write_head = wbuf;
+      if (!h->write_tail) {
+        h->write_tail = wbuf;
+      }
     }
   } else {
     stream_debug("WriteFilex: completion: failed: %s\n",
         win32_strerror(err));
     h->errcode = err;
     h->error_pending = true;
-    SetEvent(h->waitable);
   }
+
+  stream_debug("SetEvent because WriteFileEx completed\n");
+  SetEvent(h->waitable);
 
   // Send whatever else we have waiting to go
   initiate_write(h);
@@ -368,7 +405,7 @@ static void CALLBACK write_completed(DWORD err, DWORD bytes,
   LeaveCriticalSection(&h->mtx);
 
   // Free the prior struct after possibly initiating another write
-  // to minimize the change of the same address being reused and
+  // to minimize the chance of the same address being reused and
   // confusing the completion status
   free(op);
 }
@@ -389,6 +426,9 @@ static void initiate_write(struct win_handle *h) {
   h->write_pending->h = h;
   h->write_pending->wbuf = wbuf;
 
+  stream_debug(
+      "Calling WriteFileEx with wbuf=%p wbuf->cursor=%p len=%d olap=%p\n", wbuf,
+      wbuf->cursor, wbuf->len, &h->write_pending->olap);
   if (!WriteFileEx(h->h, wbuf->cursor, wbuf->len, &h->write_pending->olap,
         write_completed)) {
     stream_debug("WriteFileEx: failed %s\n",
@@ -410,11 +450,13 @@ static int win_write(w_stm_t stm, const void *buf, int size) {
     stream_debug("blocking write of %d\n", size);
     if (WriteFile(h->h, buf, size, &bytes, NULL)) {
       LeaveCriticalSection(&h->mtx);
+      stream_debug("blocking write wrote %d bytes of %d\n", bytes, size);
       return bytes;
     }
     h->errcode = GetLastError();
     h->error_pending = true;
     errno = map_win32_err(h->errcode);
+    stream_debug("SetEvent because blocking write completed (failed)\n");
     SetEvent(h->waitable);
     stream_debug("write failed: %s\n", win32_strerror(h->errcode));
     LeaveCriticalSection(&h->mtx);
@@ -436,6 +478,8 @@ static int win_write(w_stm_t stm, const void *buf, int size) {
     h->write_head = wbuf;
   }
   h->write_tail = wbuf;
+
+  stream_debug("queue write of %d bytes to write_tail\n", size);
 
   if (!h->write_pending) {
     initiate_write(h);
@@ -620,6 +664,10 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
 
   if (res == WAIT_FAILED) {
     errno = map_win32_err(GetLastError());
+    return -1;
+  }
+  if (res == WAIT_IO_COMPLETION) {
+    errno = EINTR;
     return -1;
   }
   // Note: WAIT_OBJECT_0 == 0

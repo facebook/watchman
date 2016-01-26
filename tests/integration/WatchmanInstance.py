@@ -9,6 +9,8 @@ import pywatchman
 import time
 import threading
 import uuid
+import traceback
+import sys
 
 tls = threading.local()
 
@@ -29,6 +31,7 @@ class Instance(object):
         self.base_dir = tempfile.mkdtemp(prefix='inst')
         self.cfg_file = os.path.join(self.base_dir, "config.json")
         self.log_file_name = os.path.join(self.base_dir, "log")
+        self.pid = None
         if os.name == 'nt':
             self.sock_file = '\\\\.\\pipe\\watchman-test-%s' % uuid.uuid4().hex
         else:
@@ -76,8 +79,9 @@ class Instance(object):
                 self.pid = client.query('get-pid')['pid']
                 break
             except Exception as e:
-                last_err = e
+                t, val, tb = sys.exc_info()
+                last_err = ''.join(traceback.format_exception(t, val, tb))
                 time.sleep(0.1)
 
-        if not self.pid:
-            raise last_err
+        if self.pid is None:
+            raise Exception(last_err)

@@ -1,4 +1,4 @@
-# Copyright 2014 Facebook, Inc.
+# Copyright 2014-present Facebook, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,8 +28,10 @@
 
 import os
 import errno
+import math
 import socket
 import subprocess
+import time
 
 # Sometimes it's really hard to get Python extensions to compile,
 # so fall back to a pure Python implementation.
@@ -40,8 +42,94 @@ except ImportError, e:
 
 import capabilities
 
+if os.name == 'nt':
+    import ctypes
+    import ctypes.wintypes
+
+    wintypes = ctypes.wintypes
+    GENERIC_READ = 0x80000000
+    GENERIC_WRITE = 0x40000000
+    FILE_FLAG_OVERLAPPED = 0x40000000
+    OPEN_EXISTING = 3
+    INVALID_HANDLE_VALUE = -1
+    FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
+    FORMAT_MESSAGE_ALLOCATE_BUFFER = 0x00000100
+    FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200
+    WAIT_TIMEOUT = 0x00000102
+    WAIT_OBJECT_0 = 0x00000000
+    ERROR_IO_PENDING = 997
+
+    class OVERLAPPED(ctypes.Structure):
+        _fields_ = [
+            ("Internal", wintypes.ULONG), ("InternalHigh", wintypes.ULONG),
+            ("Offset", wintypes.DWORD), ("OffsetHigh", wintypes.DWORD),
+            ("hEvent", wintypes.HANDLE)
+        ]
+
+        def __init__(self):
+            self.Offset = 0
+            self.OffsetHigh = 0
+            self.hEvent = 0
+
+    LPDWORD = ctypes.POINTER(wintypes.DWORD)
+
+    CreateFile = ctypes.windll.kernel32.CreateFileA
+    CreateFile.argtypes = [wintypes.LPSTR, wintypes.DWORD, wintypes.DWORD,
+                           wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD,
+                           wintypes.HANDLE]
+    CreateFile.restype = wintypes.HANDLE
+
+    CloseHandle = ctypes.windll.kernel32.CloseHandle
+    CloseHandle.argtypes = [wintypes.HANDLE]
+    CloseHandle.restype = wintypes.BOOL
+
+    ReadFile = ctypes.windll.kernel32.ReadFile
+    ReadFile.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD,
+                         LPDWORD, ctypes.POINTER(OVERLAPPED)]
+    ReadFile.restype = wintypes.BOOL
+
+    WriteFile = ctypes.windll.kernel32.WriteFile
+    WriteFile.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD,
+                          LPDWORD, ctypes.POINTER(OVERLAPPED)]
+    WriteFile.restype = wintypes.BOOL
+
+    GetLastError = ctypes.windll.kernel32.GetLastError
+    GetLastError.argtypes = []
+    GetLastError.restype = wintypes.DWORD
+
+    FormatMessage = ctypes.windll.kernel32.FormatMessageA
+    FormatMessage.argtypes = [wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD,
+                              wintypes.DWORD, ctypes.POINTER(wintypes.LPSTR),
+                              wintypes.DWORD, wintypes.LPVOID]
+    FormatMessage.restype = wintypes.DWORD
+
+    LocalFree = ctypes.windll.kernel32.LocalFree
+
+    GetOverlappedResultEx = ctypes.windll.kernel32.GetOverlappedResultEx
+    GetOverlappedResultEx.argtypes = [wintypes.HANDLE,
+                                      ctypes.POINTER(OVERLAPPED), LPDWORD,
+                                      wintypes.DWORD, wintypes.BOOL]
+    GetOverlappedResultEx.restype = wintypes.BOOL
+
+    CancelIoEx = ctypes.windll.kernel32.CancelIoEx
+    CancelIoEx.argtypes = [wintypes.HANDLE, ctypes.POINTER(OVERLAPPED)]
+    CancelIoEx.restype = wintypes.BOOL
+
 # 2 bytes marker, 1 byte int size, 8 bytes int64 value
 sniff_len = 13
+
+# This is a helper for debugging the client.
+_debugging = False
+if _debugging:
+
+    def log(fmt, *args):
+        print('[%s] %s' %
+              (time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime()),
+               fmt % args[:]))
+else:
+
+    def log(fmt, *args):
+        pass
 
 
 class WatchmanError(Exception):
@@ -138,6 +226,7 @@ class Codec(object):
     def setTimeout(self, value):
         self.transport.setTimeout(value)
 
+
 class UnixSocketTransport(Transport):
     """ local unix domain socket transport """
     sock = None
@@ -184,18 +273,133 @@ class WindowsNamedPipeTransport(Transport):
 
     def __init__(self, sockpath, timeout):
         self.sockpath = sockpath
-        self.timeout = timeout
-        self.pipe = os.open(sockpath, os.O_RDWR | os.O_BINARY)
+        self.timeout = int(math.ceil(timeout * 1000))
+        self._iobuf = None
+
+        self.pipe = CreateFile(sockpath, GENERIC_READ | GENERIC_WRITE, 0, None,
+                               OPEN_EXISTING, FILE_FLAG_OVERLAPPED, None)
+
+        if self.pipe == INVALID_HANDLE_VALUE:
+            self.pipe = None
+            self._raise_win_err('failed to open pipe %s' % sockpath,
+                                GetLastError())
+
+    def _win32_strerror(self, err):
+        """ expand a win32 error code into a human readable message """
+
+        # FormatMessage will allocate memory and assign it here
+        buf = ctypes.c_char_p()
+        FormatMessage(
+            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER
+            | FORMAT_MESSAGE_IGNORE_INSERTS, None, err, 0, buf, 0, None)
+        try:
+            return buf.value
+        finally:
+            LocalFree(buf)
+
+    def _raise_win_err(self, msg, err):
+        raise IOError('%s win32 error code: %d %s' %
+                      (msg, err, self._win32_strerror(err)))
 
     def close(self):
-        os.close(self.pipe)
+        if self.pipe:
+            CloseHandle(self.pipe)
         self.pipe = None
 
     def readBytes(self, size):
-        return os.read(self.pipe, size)
+        """ A read can block for an unbounded amount of time, even if the
+            kernel reports that the pipe handle is signalled, so we need to
+            always perform our reads asynchronously
+        """
+
+        # try to satisfy the read from any buffered data
+        if self._iobuf:
+            if size >= len(self._iobuf):
+                res = self._iobuf
+                self.buf = None
+                return res
+            res = self._iobuf[:size]
+            self._iobuf = self._iobuf[size:]
+            return res
+
+        # We need to initiate a read
+        buf = ctypes.create_string_buffer(size)
+        olap = OVERLAPPED()
+
+        log('made read buff of size %d', size)
+
+        # ReadFile docs warn against sending in the nread parameter for async
+        # operations, so we always collect it via GetOverlappedResultEx
+        immediate = ReadFile(self.pipe, buf, size, None, olap)
+
+        if not immediate:
+            err = GetLastError()
+            if err != ERROR_IO_PENDING:
+                self._raise_win_err('failed to read %d bytes' % size,
+                                    GetLastError())
+
+        nread = wintypes.DWORD()
+        if not GetOverlappedResultEx(self.pipe, olap, nread,
+                                     0 if immediate else self.timeout, True):
+            err = GetLastError()
+            CancelIoEx(self.pipe, olap)
+
+            if err == WAIT_TIMEOUT:
+                log('GetOverlappedResultEx timedout')
+                raise SocketTimeout('timed out after waiting %dms for read' %
+                                    self.timeout)
+
+            log('GetOverlappedResultEx reports error %d', err)
+            self._raise_win_err('error while waiting for read', err)
+
+        nread = nread.value
+        if nread == 0:
+            # Docs say that named pipes return 0 byte when the other end did
+            # a zero byte write.  Since we don't ever do that, the only
+            # other way this shows up is if the client has gotten in a weird
+            # state, so let's bail out
+            CancelIoEx(self.pipe, olap)
+            raise IOError('Async read yielded 0 bytes; unpossible!')
+
+        # Holds precisely the bytes that we read from the prior request
+        buf = buf[:nread]
+
+        returned_size = min(nread, size)
+        if returned_size == nread:
+            return buf
+
+        # keep any left-overs around for a later read to consume
+        self._iobuf = buf[returned_size:]
+        return buf[:returned_size]
 
     def write(self, data):
-        return os.write(self.pipe, data)
+        olap = OVERLAPPED()
+        immediate = WriteFile(self.pipe, ctypes.c_char_p(data), len(data),
+                              None, olap)
+
+        if not immediate:
+            err = GetLastError()
+            if err != ERROR_IO_PENDING:
+                self._raise_win_err('failed to write %d bytes' % len(data),
+                                    GetLastError())
+
+        # Obtain results, waiting if needed
+        nwrote = wintypes.DWORD()
+        if GetOverlappedResultEx(self.pipe, olap, nwrote, 0 if immediate else
+                                 self.timeout, True):
+            return nwrote.value
+
+        err = GetLastError()
+
+        # It's potentially unsafe to allow the write to continue after
+        # we unwind, so let's make a best effort to avoid that happening
+        CancelIoEx(self.pipe, olap)
+
+        if err == WAIT_TIMEOUT:
+            raise SocketTimeout('timed out after waiting %dms for write' %
+                                self.timeout)
+        self._raise_win_err('error while waiting for write of %d bytes' %
+                            len(data), err)
 
 
 class CLIProcessTransport(Transport):
@@ -294,6 +498,7 @@ class BserCodec(Codec):
         cmd = bser.dumps(*args)
         self.transport.write(cmd)
 
+
 class ImmutableBserCodec(BserCodec):
     """ use the BSER encoding, decoding values using the newer
         immutable object support """
@@ -334,14 +539,19 @@ class client(object):
     sendConn = None
     recvConn = None
     subs = {}  # Keyed by subscription name
-    sub_by_root = {} # Keyed by root, then by subscription name
+    sub_by_root = {}  # Keyed by root, then by subscription name
     logs = []  # When log level is raised
     unilateral = ['log', 'subscription']
     tport = None
     useImmutableBser = None
 
-    def __init__(self, sockpath=None, timeout=1.0, transport=None,
-                 sendEncoding=None, recvEncoding=None, useImmutableBser=False):
+    def __init__(self,
+                 sockpath=None,
+                 timeout=1.0,
+                 transport=None,
+                 sendEncoding=None,
+                 recvEncoding=None,
+                 useImmutableBser=False):
         self.sockpath = sockpath
         self.timeout = timeout
         self.useImmutableBser = useImmutableBser
@@ -390,7 +600,8 @@ class client(object):
 
         cmd = ['watchman', '--output-encoding=bser', 'get-sockname']
         try:
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+            p = subprocess.Popen(cmd,
+                                 stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
                                  close_fds=os.name != 'nt')
         except OSError as e:
@@ -461,7 +672,7 @@ class client(object):
             self.subs[sub].append(result)
 
             # also accumulate in {root,sub} keyed store
-            root = result['root']
+            root = os.path.normcase(result['root'])
             if not root in self.sub_by_root:
                 self.sub_by_root[root] = {}
             if not sub in self.sub_by_root[root]:
@@ -531,6 +742,7 @@ class client(object):
         and NOT returned via this method.
         """
 
+        log('calling client.query')
         self._connect()
         try:
             self.sendConn.send(args)
@@ -538,6 +750,7 @@ class client(object):
             res = self.receive()
             while self.isUnilateralResponse(res):
                 res = self.receive()
+
             return res
         except CommandError as ex:
             ex.setCommand(args)
@@ -547,7 +760,8 @@ class client(object):
         """ Perform a server capability check """
         res = self.query('version', {
             'optional': optional or [],
-            'required': required or []})
+            'required': required or []
+        })
 
         if not self._hasprop(res, 'capabilities'):
             # Server doesn't support capabilities, so we need to

@@ -284,6 +284,7 @@ def runner():
     global results_queue
     global tests_queue
 
+    broken = False
     try:
         # Start up a shared watchman instance for the tests.
         inst = WatchmanInstance.Instance()
@@ -291,8 +292,8 @@ def runner():
         # Allow tests to locate this default instance
         WatchmanInstance.setSharedInstance(inst)
     except Exception as e:
-        print('This is going to suck:', e)
-        return
+        print('while starting watchman: %s' % str(e))
+        broken = True
 
     while True:
         test = tests_queue.get()
@@ -300,7 +301,7 @@ def runner():
             if test == 'terminate':
                 break
 
-            if Interrupt.wasInterrupted():
+            if Interrupt.wasInterrupted() or broken:
                 continue
 
             try:
@@ -313,7 +314,8 @@ def runner():
         finally:
             tests_queue.task_done()
 
-    inst.stop()
+    if not broken:
+        inst.stop()
 
 def expand_suite(suite, target=None):
     """ recursively expand a TestSuite into a list of TestCase """
@@ -366,7 +368,7 @@ while not results_queue.empty():
 print('Ran %d, failed %d, skipped %d, concurrency %d' % (
     tests_run, tests_failed, tests_skipped, args.concurrency))
 
-if tests_failed:
+if tests_failed or (tests_run == 0):
     if args.keep_if_fail:
         args.keep = True
     sys.exit(1)
