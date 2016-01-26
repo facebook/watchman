@@ -38,6 +38,15 @@ static bool subscription_generator(
   return true;
 }
 
+static void update_subscription_ticks(struct watchman_client_subscription *sub,
+    w_query_res *res) {
+  // create a new spec that will be used the next time
+  if (sub->query->since_spec) {
+    w_clockspec_free(sub->query->since_spec);
+  }
+  sub->query->since_spec = w_clockspec_new_clock(res->root_number, res->ticks);
+}
+
 static json_t *build_subscription_results(
     struct watchman_client_subscription *sub,
     w_root_t *root)
@@ -70,6 +79,7 @@ static json_t *build_subscription_results(
       sub->name->buf, res.num_results);
 
   if (res.num_results == 0) {
+    update_subscription_ticks(sub, &res);
     w_query_result_free(&res);
     return NULL;
   }
@@ -91,12 +101,7 @@ static json_t *build_subscription_results(
   if (clock_id_string(res.root_number, res.ticks, clockbuf, sizeof(clockbuf))) {
     set_prop(response, "clock", json_string_nocheck(clockbuf));
   }
-  // create a new spec that will be used the next time
-  if (since_spec) {
-    w_clockspec_free(since_spec);
-    since_spec = NULL;
-  }
-  sub->query->since_spec = w_clockspec_new_clock(res.root_number, res.ticks);
+  update_subscription_ticks(sub, &res);
 
   set_prop(response, "is_fresh_instance", json_boolean(res.is_fresh_instance));
   set_prop(response, "files", file_list);
