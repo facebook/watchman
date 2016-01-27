@@ -112,7 +112,7 @@ EOT
 
 ## Advanced Settling
 
-*Since 4.2*
+*Since 4.4*
 
 In more complex integrations it is desirable to be able to have a watchman
 aware application signal the beginning and end of some work that will

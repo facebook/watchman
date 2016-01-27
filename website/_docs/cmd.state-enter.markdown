@@ -6,7 +6,7 @@ section: Commands
 permalink: docs/cmd/state-enter.html
 ---
 
-*Since 4.2*
+*Since 4.4*
 
 The `state-enter` command works in conjunction with
 [state-leave](/watchman/docs/cmd/state-leave.html) to facilitate [advanced
