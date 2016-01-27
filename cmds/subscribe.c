@@ -185,6 +185,8 @@ static void cmd_subscribe(struct watchman_client *client, json_t *args)
   struct w_query_field_list field_list;
   char *errmsg;
   int defer = true; /* can't use bool because json_unpack requires int */
+  json_t *defer_list = NULL;
+  json_t *drop_list = NULL;
 
   if (json_array_size(args) != 4) {
     send_error_response(client, "wrong number of arguments for subscribe");
@@ -219,6 +221,17 @@ static void cmd_subscribe(struct watchman_client *client, json_t *args)
     goto done;
   }
 
+  json_unpack(query_spec, "{s?:o}", "defer", &defer_list);
+  if (defer_list && !json_is_array(defer_list)) {
+    send_error_response(client, "defer field must be an array of strings");
+    goto done;
+  }
+  json_unpack(query_spec, "{s?:o}", "drop", &drop_list);
+  if (drop_list && !json_is_array(drop_list)) {
+    send_error_response(client, "drop field must be an array of strings");
+    goto done;
+  }
+
   sub = calloc(1, sizeof(*sub));
   if (!sub) {
     send_error_response(client, "no memory!");
@@ -230,6 +243,26 @@ static void cmd_subscribe(struct watchman_client *client, json_t *args)
 
   json_unpack(query_spec, "{s?:b}", "defer_vcs", &defer);
   sub->vcs_defer = defer;
+
+  if (drop_list || defer_list) {
+    size_t i;
+
+    sub->drop_or_defer = w_ht_new(2, &w_ht_string_funcs);
+    if (defer_list) {
+      for (i = 0; i < json_array_size(defer_list); i++) {
+        w_ht_replace(sub->drop_or_defer,
+            w_ht_ptr_val(w_string_new(json_string_value(
+                  json_array_get(defer_list, i)))), false);
+      }
+    }
+    if (drop_list) {
+      for (i = 0; i < json_array_size(drop_list); i++) {
+        w_ht_replace(sub->drop_or_defer,
+            w_ht_ptr_val(w_string_new(json_string_value(
+                  json_array_get(drop_list, i)))), true);
+      }
+    }
+  }
 
   memcpy(&sub->field_list, &field_list, sizeof(field_list));
   sub->root = root;

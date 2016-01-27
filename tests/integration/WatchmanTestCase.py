@@ -17,6 +17,16 @@ def norm_path(name):
 
 class WatchmanTestCase(unittest.TestCase):
 
+    def requiresPersistentSession(self):
+        return False
+
+    def checkPersistentSession(self):
+        if self.requiresPersistentSession() and self.transport == 'cli':
+            self.skipTest('need persistent session')
+
+    def setUp(self):
+        self.checkPersistentSession()
+
     def getClient(self):
         if not hasattr(self, 'client'):
             self.client = pywatchman.client(
@@ -100,6 +110,8 @@ class WatchmanTestCase(unittest.TestCase):
     def __clearWatches(self):
         if hasattr(self, 'client'):
             try:
+                self.client.subs = {}
+                self.client.sub_by_root = {}
                 self.watchmanCommand('watch-del-all')
             except Exception as e:
                 pass
@@ -158,6 +170,9 @@ class WatchmanTestCase(unittest.TestCase):
     def normFileList(self, files):
         return sorted(map(norm_path, files))
 
+    def assertEqualFileList(self, a, b):
+        return self.assertEqual(self.normFileList(a), self.normFileList(b))
+
     # Wait for the file list to match the input set
     def assertFileList(self, root, files=[], cursor=None,
                        relativeRoot=None, message=None):
@@ -172,3 +187,54 @@ class WatchmanTestCase(unittest.TestCase):
                                          relativeRoot=relativeRoot
                                          ) == expected_files)
         self.assertEqual(self.last_file_list, expected_files, message)
+
+    def waitForSub(self, name, root, accept=None, timeout=10, remove=True):
+        client = self.getClient()
+
+        def default_accept(dat):
+            return True
+
+        if accept is None:
+            accept = default_accept
+
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            sub = self.getSubscription(name, root=root, remove=False)
+            if sub is not None:
+                res = accept(sub)
+                if res:
+                    return self.getSubscription(name, root=root, remove=remove)
+            # wait for more data
+            client.setTimeout(deadline - time.time())
+            client.receive()
+
+        return None
+
+    def getSubscription(self, name, root, remove=True, normalize=True):
+        data = self.getClient().getSubscription(name, root=root, remove=remove)
+
+        if data is None or not normalize:
+            return data
+
+        def norm_sub_item(item):
+            if isinstance(item, (str, unicode)):
+                return norm_path(item)
+            item['name'] = norm_path(item['name'])
+            return item
+
+        def norm_sub(sub):
+            if 'files' in sub:
+                files = []
+                for item in sub['files']:
+                    files.append(norm_sub_item(item))
+                sub['files'] = files
+            return sub
+
+        return map(norm_sub, data)
+
+    def findSubscriptionContainingFile(self, subdata, filename):
+        filename = norm_path(filename)
+        for dat in subdata:
+            if 'files' in dat and filename in dat['files']:
+                return dat
+        return None

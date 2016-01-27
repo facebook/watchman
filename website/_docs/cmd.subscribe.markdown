@@ -109,3 +109,94 @@ $ watchman -j -p <<-EOT
 }]
 EOT
 ```
+
+## Advanced Settling
+
+*Since 4.2*
+
+In more complex integrations it is desirable to be able to have a watchman
+aware application signal the beginning and end of some work that will
+generate a lot of change notifications.  For example, Mercurial or Git could
+communicate with watchman before and after updating the working copy.
+
+Some applications will want to know that the update is in progress and
+continue to process notifications.  Others may want to defer processing
+the notifications until the update completes, and some may wish to drop
+any notifications produced while the update was in progress.
+
+Watchman subscriptions provide the mechanism for each of these use cases and
+expose it via two new fields in the subscription object; `defer` and `drop` are
+described below.
+
+It can be difficult to mix `defer` and `drop` with multiple overlapping states
+in the context of a given subscription stream as there is a single cursor to
+track the subscription position.
+
+If your application uses multiple overlapping states and wants to `defer` some
+results and `drop` others, it is recommended that you use `drop` for all of
+the states and then issues queries with `since` terms bounded by the `clock`
+fields from the subscription state PDUs to ensure that it observes all of the
+results of interest.
+
+### defer
+
+```json
+["subscribe", "/path/to/root", "mysubscriptionname", {
+  "defer": ["mystatename"],
+  "fields": ["name"]
+}]
+```
+
+The `defer` field specifies a list of state names for which the subscriber
+wishes to defer the notification stream.  When a watchman client signals that
+a state has been entered via the
+[state-enter](/watchman/docs/cmd/state-enter.html) command, if the state name
+matches any in the `defer` list then the subscription will emit a unilateral
+subscription PDU like this:
+
+```json
+{
+  "subscription":  "mysubscriptionname",
+  "root":          "/path/to/root",
+  "state-enter":   "mystatename",
+  "clock":         "<clock>",
+  "metadata":      <metadata from the state-enter command>
+}
+```
+
+Watchman will then defer sending any subscription PDUs with `files` payloads
+until the state is vacated either by a
+[state-leave](/watchman/docs/cmd/state-leave.html) command or by the client
+that entered the state disconnecting from the watchman service.
+
+Once the state is vacated, watchman will emit a unilateral subscription PDU
+like this:
+
+```json
+{
+  "subscription":  "mysubscriptionname",
+  "root":          "/path/to/root",
+  "state-leave":   "mystatename",
+  "clock":         "<clock>",
+  "metadata":      <metadata from the exit-state command>
+}
+```
+
+The subscription stream will then be re-enabled and notifications received
+since the corresponding `state-enter` will be delivered to clients.
+
+### drop
+
+```json
+["subscribe", "/path/to/root", "mysubscriptionname", {
+  "drop": ["mystatename"],
+  "fields": ["name"]
+}]
+```
+
+The `drop` field specifies a list of state names for which the subscriber
+wishes to discard the notification stream.  It works very much like `defer` as
+described above, but when a state is vacated, the pending notification stream
+is fast-forwarded to the clock of the `state-leave` command, effectively
+suppressing any notifications that were generated between the `state-enter`
+and the `state-leave` commands.

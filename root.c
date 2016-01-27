@@ -1256,6 +1256,8 @@ static void process_subscriptions(w_root_t *root)
 
     if (w_ht_first(client->subscriptions, &citer)) do {
       struct watchman_client_subscription *sub = w_ht_val_ptr(citer.value);
+      bool defer = false;
+      bool drop = false;
 
       if (sub->root != root) {
         w_log(W_LOG_DBG, "root doesn't match, skipping\n");
@@ -1268,6 +1270,53 @@ static void process_subscriptions(w_root_t *root)
 
       if (sub->last_sub_tick == root->pending_sub_tick) {
         continue;
+      }
+
+      if (root->asserted_states && w_ht_size(root->asserted_states) > 0
+          && sub->drop_or_defer) {
+        w_ht_iter_t policy_iter;
+        w_string_t *policy_name = NULL;
+
+        // There are 1 or more states asserted and this subscription
+        // has some policy for states.  Figure out what we should do.
+        if (w_ht_first(sub->drop_or_defer, &policy_iter)) do {
+          w_string_t *name = w_ht_val_ptr(policy_iter.key);
+          bool policy_is_drop = policy_iter.value;
+
+          if (!w_ht_get(root->asserted_states, policy_iter.key)) {
+            continue;
+          }
+
+          if (!defer) {
+            // This policy is active
+            defer = true;
+            policy_name = name;
+          }
+
+          if (policy_is_drop) {
+            drop = true;
+
+            // If we're dropping, we don't need to look at any
+            // other policies
+            policy_name = name;
+            break;
+          }
+          // Otherwise keep looking until we find a drop
+        } while (w_ht_next(sub->drop_or_defer, &policy_iter));
+
+        if (drop) {
+          // fast-forward over any notifications while in the drop state
+          sub->last_sub_tick = root->pending_sub_tick;
+          w_log(W_LOG_DBG, "dropping subscription notifications for %s "
+              "until state %s is vacated\n", sub->name->buf, policy_name->buf);
+          continue;
+        }
+
+        if (defer) {
+          w_log(W_LOG_DBG, "deferring subscription notifications for %s "
+              "until state %s is vacated\n", sub->name->buf, policy_name->buf);
+          continue;
+        }
       }
 
       if (sub->vcs_defer && vcs_in_progress) {

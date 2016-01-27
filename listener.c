@@ -150,6 +150,9 @@ static void delete_subscription(w_ht_val_t val)
 
   w_string_delref(sub->name);
   w_query_delref(sub->query);
+  if (sub->drop_or_defer) {
+    w_ht_free(sub->drop_or_defer);
+  }
   free(sub);
 }
 
@@ -527,6 +530,7 @@ disconected:
   w_ht_del(clients, w_ht_ptr_val(client));
   pthread_mutex_unlock(&w_client_lock);
 
+  w_client_vacate_states(client);
   client_delete(client);
 
   return NULL;
