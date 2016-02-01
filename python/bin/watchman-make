@@ -45,7 +45,7 @@ class Target(object):
         }
         watch = client.query('watch-project', root)
         if 'warning' in watch:
-            warning(watch['warning'])
+            print('WARNING: ', watch['warning'], file=sys.stderr)
         root_dir = watch['watch']
         if 'relative_path' in watch:
             query['relative_root'] = watch['relative_path']
