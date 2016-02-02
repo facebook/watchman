@@ -193,11 +193,12 @@ Client.prototype.connect = function() {
     spawnError(error);
   });
 
-  proc.on('close', function (code) {
+  proc.on('close', function (code, signal) {
     if (code !== 0) {
       spawnError(new Error(
-          self.watchmanBinaryPath + args.join(' ') +
-          ' returned with exit code ' + code + ' ' + stderr.join('')));
+          self.watchmanBinaryPath + ' ' + args.join(' ') +
+          ' returned with exit code=' + code + ', signal=' +
+          signal + ', stderr= ' + stderr.join('')));
       return;
     }
     try {
