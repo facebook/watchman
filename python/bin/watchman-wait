@@ -110,7 +110,7 @@ Perhaps you should use the --pattern option?""" % (path, self.path), file=sys.st
     def start(self, client):
         dir_to_watch = self.path
         if args.pattern:
-            expr = ['allof']
+            expr = ['anyof']
             for p in args.pattern:
                 expr.append(['match', p, 'wholename', {
                     'includedotfiles': True}])
