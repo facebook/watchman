@@ -125,7 +125,7 @@ py-tests:
 	$(PYTHON) $(TESTNAME)
 
 py-integration:
-	$(PYTHON) runtests.py
+	$(PYTHON) runtests.py --keep-if-fail
 
 py-clean:
 	-cd python && $(PYTHON) ./setup.py clean --all
