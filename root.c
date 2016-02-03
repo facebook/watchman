@@ -1805,6 +1805,7 @@ static void io_thread(w_root_t *root)
       }
       w_root_lock(root);
       gettimeofday(&start, NULL);
+      root->ticks++;
       w_pending_coll_add(&root->pending, root->root_path, start, 0);
       while (w_root_process_pending(root, &pending, true)) {
         ;

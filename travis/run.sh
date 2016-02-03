@@ -15,11 +15,12 @@ make clean
 make
 set +e
 rm -rf /tmp/watchman*
+rm -rf /var/tmp/watchmantest*
 TMPDIR=/var/tmp
 TMP=/var/tmp
 export TMPDIR TMP
 if ! make integration ; then
-  cat /tmp/watchman*
+  find /var/tmp/watchmantest* -name log | xargs cat
   exit 1
 fi
 
