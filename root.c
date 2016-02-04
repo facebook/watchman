@@ -1804,6 +1804,10 @@ static void io_thread(w_root_t *root)
         w_ioprio_set_low();
       }
       w_root_lock(root);
+      // Ensure that we observe these files with a new, distinct clock,
+      // otherwise a fresh subscription established immediately after a watch
+      // can get stuck with an empty view until another change is observed
+      root->ticks++;
       gettimeofday(&start, NULL);
       w_pending_coll_add(&root->pending, root->root_path, start, 0);
       while (w_root_process_pending(root, &pending, true)) {
