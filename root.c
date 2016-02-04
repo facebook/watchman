@@ -1809,6 +1809,7 @@ static void io_thread(w_root_t *root)
       // can get stuck with an empty view until another change is observed
       root->ticks++;
       gettimeofday(&start, NULL);
+      root->ticks++;
       w_pending_coll_add(&root->pending, root->root_path, start, 0);
       while (w_root_process_pending(root, &pending, true)) {
         ;
