@@ -325,6 +325,20 @@
         
         
         {
+          key : "/watchman/docs/cmd/state-enter.html",
+          title : "state-enter",
+          url : "/watchman/docs/cmd/state-enter.html",
+        },
+        
+        
+        {
+          key : "/watchman/docs/cmd/state-leave.html",
+          title : "state-leave",
+          url : "/watchman/docs/cmd/state-leave.html",
+        },
+        
+        
+        {
           key : "/watchman/docs/cmd/subscribe.html",
           title : "subscribe",
           url : "/watchman/docs/cmd/subscribe.html",
@@ -756,7 +770,7 @@ the values listed in <a href="../expr/type.html">the type query expression</a></
 
 <h3 id="synchronization-timeout-since-2-1">Synchronization timeout (since 2.1)</h3>
 
-<p>By default a <code>query</code> will wait for up to 2 seconds for the view of the
+<p>By default a <code>query</code> will wait for up to 60 seconds for the view of the
 filesystem to become current.  Watchman decides that the view is current by
 creating a cookie file and waiting to observe the notification that it is
 present.  If the cookie is not observed within the sync_timeout period then the
@@ -768,7 +782,7 @@ expressed in milliseconds:</p>
 <div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">[</span><span class="s2">&quot;query&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/root&quot;</span><span class="p">,</span> <span class="p">{</span>
   <span class="nt">&quot;expression&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;exists&quot;</span><span class="p">],</span>
   <span class="nt">&quot;fields&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
-  <span class="nt">&quot;sync_timeout&quot;</span><span class="p">:</span> <span class="mi">2000</span>
+  <span class="nt">&quot;sync_timeout&quot;</span><span class="p">:</span> <span class="mi">60000</span>
 <span class="p">}]</span>
 </code></pre></div>
 <p>You may specify <code>0</code> as the value if you do not wish for the query to create

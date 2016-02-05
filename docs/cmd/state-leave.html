@@ -5,9 +5,9 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   
-	<meta property="og:url" content="/watchman/docs/bser.html" />
+	<meta property="og:url" content="/watchman/docs/cmd/state-leave.html" />
 	<meta property="og:site_name" content="Watchman"/>
-	<meta property="og:title" content="BSER Binary Protocol" />
+	<meta property="og:title" content="state-leave" />
 	<meta property="og:image" content="/watchman/static/og_image.png" />
 	<meta property="og:description" content="" />
 
@@ -20,10 +20,10 @@
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
 
-  <title>BSER Binary Protocol</title>
+  <title>state-leave</title>
   <meta name="description" content="">
 
-  <link rel="canonical" href="/watchman/docs/bser.html">
+  <link rel="canonical" href="/watchman/docs/cmd/state-leave.html">
   <link rel="alternate" type="application/rss+xml" title="Watchman" href="/watchman/feed.xml" />
 </head>
 
@@ -604,8 +604,8 @@ window.addEventListener('load', function() {
     },
     getDefaultProps: function() {
       return {
-        currentDoc: "BSER Binary Protocol",
-        currentGroup: "Internals",
+        currentDoc: "state-leave",
+        currentGroup: "Commands",
         data: docnavData,
       }
     },
@@ -673,123 +673,110 @@ window.addEventListener('load', function() {
 
     <div class="post">
   <header class="post-header">
-    <h1 class="post-title">BSER Binary Protocol</h1>
+    <h1 class="post-title">state-leave</h1>
   </header>
 
   <article class="post-content">
    
-      <p>The basic JSON protocol in watchman allows quick and easy integration.
-Applications with higher performance requirements may want to consider the
-binary protocol instead.</p>
+      <p><em>Since 4.4</em></p>
 
-<p>The binary protocol is enabled by the client sending the byte sequence
-&quot;\x00x\x01&quot;.</p>
+<p>The <code>state-leave</code> command works in conjunction with
+<a href="/watchman/docs/cmd/state-enter.html">state-enter</a> to facilitate <a href="/watchman/docs/cmd/subscribe.html#advanced-settling">advanced
+settling in subscriptions</a>.</p>
 
-<h2 id="pdu">PDU</h2>
+<p><code>state-leave</code> causes a watch to no longer be marked as being in a particular
+named state.</p>
 
-<p>A PDU is prefixed by its length expressed as an encoded integer.  This allows
-the peer to determine how much storage is required to read and decode it.</p>
+<h3 id="examples">Examples</h3>
 
-<h2 id="arrays">Arrays</h2>
-
-<p>Arrays are indicated by a <code>0x00</code> byte value followed by an integer value to
-indicate how many items follow.  Then each item is encoded one after the other.</p>
-
-<h2 id="objects">Objects</h2>
-
-<p>Objects are indicated by a <code>0x01</code> byte value followed by an integer value to
-indicate the number of properties in the object.  Then each key/value pair is
-encoded one after the other.</p>
-
-<h2 id="strings">Strings</h2>
-
-<p>Strings are indicated by a <code>0x02</code> byte value followed by an integer value to
-indicate the number of bytes in the string, followed by the bytes of the
-string.</p>
-
-<p>Unlike JSON, strings are not defined as having any particular encoding; they
-are transmitted as binary strings.  This is because the underlying filesystem
-APIs don&#39;t define any particular encoding for names.</p>
-
-<p>Keys in objects that are defined by watchman commands are always ASCII.</p>
-
-<h2 id="integers">Integers</h2>
-
-<p>All integers are signed and transmitted in the host byte order of the system
-running the watchman daemon.</p>
-
-<ul>
-<li><code>0x03</code> indicates an int8_t.  It is followed by the int8_t value.</li>
-<li><code>0x04</code> indicates an int16_t. It is followed by the int16_t value.</li>
-<li><code>0x05</code> indicates an int32_t. It is followed by the int32_t value.</li>
-<li><code>0x06</code> indicates an int64_t. It is followed by the int64_t value.</li>
-</ul>
-
-<h2 id="real">Real</h2>
-
-<p>A real number is indicated by a <code>0x07</code> byte followed by 8 bytes of double value.</p>
-
-<h2 id="boolean">Boolean</h2>
-
-<ul>
-<li><code>0x08</code> indicates boolean true</li>
-<li><code>0x09</code> indicates boolean false</li>
-</ul>
-
-<h2 id="null">Null</h2>
-
-<p><code>0x0a</code> indicates the null value</p>
-
-<h2 id="array-of-templated-objects">Array of Templated Objects</h2>
-
-<p><code>0x0b</code> indicates a compact array of objects follows.  Some of the bigger
-datastructures returned by watchman are tabular data expressed as an array
-of objects.  This serialization type factors out the repeated object keys
-into a header array listing the keys, followed by an array containing
-all the values of the objects.</p>
-
-<p>To represent missing keys in templated arrays, the <code>0x0c</code> encoding value may
-be present.  If encountered it is interpreted as meaning that there is no value
-for the key that would have been decoded in this position.  This is distinct
-from the null value.</p>
-
-<p>For example:</p>
-<div class="highlight"><pre><code class="language-text" data-lang="text">[
-   {&quot;name&quot;: &quot;fred&quot;, &quot;age&quot;: 20},
-   {&quot;name&quot;: &quot;pete&quot;, &quot;age&quot;: 30},
-   {&quot;age&quot;: 25 },
-]
+<p>This is the simplest example, vacating a state named <code>mystate</code>:</p>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">[</span><span class="s2">&quot;state-leave&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/root&quot;</span><span class="p">,</span> <span class="s2">&quot;mystate&quot;</span><span class="p">]</span>
 </code></pre></div>
-<p>is represented similar to:</p>
-<div class="highlight"><pre><code class="language-text" data-lang="text">[&quot;name&quot;, &quot;age&quot;],
-[
-  &quot;fred&quot;, 20,
-  &quot;pete&quot;, 30,
-  0x0c,   25
-]
+<p>It will cause any subscribers to receive a unilateral subscription PDU from the
+watchman server:</p>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">{</span>
+  <span class="nt">&quot;subscription&quot;</span><span class="p">:</span>  <span class="s2">&quot;mysubscriptionname&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;root&quot;</span><span class="p">:</span>          <span class="s2">&quot;/path/to/root&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;state-leave&quot;</span><span class="p">:</span>   <span class="s2">&quot;mystate&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;clock&quot;</span><span class="p">:</span>         <span class="s2">&quot;c:1446410081:18462:7:135&quot;</span>
+<span class="p">}</span>
 </code></pre></div>
-<p>The precise sequence is:</p>
-<div class="highlight"><pre><code class="language-text" data-lang="text">0b          template
-00          array     -- start prop names
-0302        int, 2    -- two prop names
-02          string    -- first prop &quot;name&quot;
-0304        int, 4
-6e616d65    &quot;name&quot;
-02          string    -- 2nd prop &quot;age&quot;
-0303        int, 3
-616765      &quot;age&quot;
-0303        int, 3    -- there are 3 objects
-02          string    -- object 1, prop 1 name=fred
-0304        int, 4
-66726564    &quot;fred&quot;
-0314        int 0x14  -- object 1, prop 2 age=20
-02          string    -- object 2, prop 1 name=pete
-0304        int 4
-70657465    &quot;pete&quot;
-031e        int, 0x1e -- object 2, prop 2 age=30
-0c          skip      -- object 3, prop 1, not set
-0319        int, 0x19 -- object 3, prop 2 age=25
+<p>The <code>clock</code> field in the response is the (synchronized; see below) clock at the
+time that the state was entered and can be used in subsequent queries, in
+combination with the corresponding <code>state-enter</code> subscription PDU clock, to
+locate things that changed while the state was asserted.</p>
+
+<p>A more complex example demonstrates passing metadata to any subscribers.  The
+<code>metadata</code> field is propagated through to the subscribers and is not
+interpreted by the watchman server.  It can be any JSON value.</p>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">[</span><span class="s2">&quot;state-leave&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/root&quot;</span><span class="p">,</span> <span class="p">{</span>
+  <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;mystate&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="nt">&quot;foo&quot;</span><span class="p">:</span> <span class="s2">&quot;bar&quot;</span>
+  <span class="p">}</span>
+<span class="p">}]</span>
 </code></pre></div>
+<p>This will emit the following unilateral subscription PDU to all subscribers:</p>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">{</span>
+  <span class="nt">&quot;subscription&quot;</span><span class="p">:</span>  <span class="s2">&quot;mysubscriptionname&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;root&quot;</span><span class="p">:</span>          <span class="s2">&quot;/path/to/root&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;state-leave&quot;</span><span class="p">:</span>   <span class="s2">&quot;mystate&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;clock&quot;</span><span class="p">:</span>         <span class="s2">&quot;c:1446410081:18462:7:137&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="nt">&quot;foo&quot;</span><span class="p">:</span> <span class="s2">&quot;bar&quot;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="abandoned-state">Abandoned State</h3>
+
+<p>A state is implicitly vacated when the watchman client session that asserted it
+disconnects.  This helps to avoid breaking subscribers (since the typical
+action is to defer or drop notifications) if the tooling that initiated the
+state terminates unexpectedly.</p>
+
+<p>An abandoned state is reported to any subscribers via a unilateral subscription
+PDU with the <code>abandoned</code> field set to <code>true</code>:</p>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">{</span>
+  <span class="nt">&quot;subscription&quot;</span><span class="p">:</span>  <span class="s2">&quot;mysubscriptionname&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;root&quot;</span><span class="p">:</span>          <span class="s2">&quot;/path/to/root&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;state-leave&quot;</span><span class="p">:</span>   <span class="s2">&quot;mystate&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;clock&quot;</span><span class="p">:</span>         <span class="s2">&quot;c:1446410081:18462:7:137&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;abandoned&quot;</span><span class="p">:</span>     <span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>This allows the subscriber to take an appropriate action.</p>
+
+<h3 id="synchronization">Synchronization</h3>
+
+<p>States are synchronized with the state of the filesystem so that it is
+possible for subscribers to reason about when files changed with respect to
+the state.</p>
+
+<p>This means that issuing a <code>state-leave</code> command will <a href="/watchman/docs/cookies.html#how-cookies-work">perform query
+synchronization</a> to ensure that
+things are in sync.</p>
+
+<p>The <code>state-leave</code> command will use a default <code>sync_timeout</code> of 60 seconds.
+If the synchronization cookie is not observed within the configured
+<code>sync_timeout</code>, an error will be returned and <em>the state will not be entered</em>.</p>
+
+<p>In some cases, perhaps during the initial crawl of a very large tree, You may
+specify an alternative value for the timeout; the value is expressed in
+<em>milliseconds</em>:</p>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">[</span><span class="s2">&quot;state-leave&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/root&quot;</span><span class="p">,</span> <span class="p">{</span>
+  <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;mystate&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;sync_timeout&quot;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span>
+  <span class="nt">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="nt">&quot;foo&quot;</span><span class="p">:</span> <span class="s2">&quot;bar&quot;</span>
+  <span class="p">}</span>
+<span class="p">}]</span>
+</code></pre></div>
+<p>You may also specify <code>0</code> for the timeout to disable synchronization for this
+particular command.   This may cause the state to appear to clients to have
+been vacated logically before it actually did in the case that there are
+buffered notifications that have not yet been processed by watchman at the time
+that the state was vacated.</p>
+
     
   </article>
 </div>

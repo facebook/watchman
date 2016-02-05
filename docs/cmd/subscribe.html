@@ -325,6 +325,20 @@
         
         
         {
+          key : "/watchman/docs/cmd/state-enter.html",
+          title : "state-enter",
+          url : "/watchman/docs/cmd/state-enter.html",
+        },
+        
+        
+        {
+          key : "/watchman/docs/cmd/state-leave.html",
+          title : "state-leave",
+          url : "/watchman/docs/cmd/state-leave.html",
+        },
+        
+        
+        {
           key : "/watchman/docs/cmd/subscribe.html",
           title : "subscribe",
           url : "/watchman/docs/cmd/subscribe.html",
@@ -753,6 +767,85 @@ command invocation:</p>
 <span class="s">}]</span>
 <span class="s">EOT</span>
 </code></pre></div>
+<h2 id="advanced-settling">Advanced Settling</h2>
+
+<p><em>Since 4.4</em></p>
+
+<p>In more complex integrations it is desirable to be able to have a watchman
+aware application signal the beginning and end of some work that will
+generate a lot of change notifications.  For example, Mercurial or Git could
+communicate with watchman before and after updating the working copy.</p>
+
+<p>Some applications will want to know that the update is in progress and
+continue to process notifications.  Others may want to defer processing
+the notifications until the update completes, and some may wish to drop
+any notifications produced while the update was in progress.</p>
+
+<p>Watchman subscriptions provide the mechanism for each of these use cases and
+expose it via two new fields in the subscription object; <code>defer</code> and <code>drop</code> are
+described below.</p>
+
+<p>It can be difficult to mix <code>defer</code> and <code>drop</code> with multiple overlapping states
+in the context of a given subscription stream as there is a single cursor to
+track the subscription position.</p>
+
+<p>If your application uses multiple overlapping states and wants to <code>defer</code> some
+results and <code>drop</code> others, it is recommended that you use <code>drop</code> for all of
+the states and then issues queries with <code>since</code> terms bounded by the <code>clock</code>
+fields from the subscription state PDUs to ensure that it observes all of the
+results of interest.</p>
+
+<h3 id="defer">defer</h3>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">[</span><span class="s2">&quot;subscribe&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/root&quot;</span><span class="p">,</span> <span class="s2">&quot;mysubscriptionname&quot;</span><span class="p">,</span> <span class="p">{</span>
+  <span class="nt">&quot;defer&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;mystatename&quot;</span><span class="p">],</span>
+  <span class="nt">&quot;fields&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+<span class="p">}]</span>
+</code></pre></div>
+<p>The <code>defer</code> field specifies a list of state names for which the subscriber
+wishes to defer the notification stream.  When a watchman client signals that
+a state has been entered via the
+<a href="/watchman/docs/cmd/state-enter.html">state-enter</a> command, if the state name
+matches any in the <code>defer</code> list then the subscription will emit a unilateral
+subscription PDU like this:</p>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">{</span>
+  <span class="nt">&quot;subscription&quot;</span><span class="p">:</span>  <span class="s2">&quot;mysubscriptionname&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;root&quot;</span><span class="p">:</span>          <span class="s2">&quot;/path/to/root&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;state-enter&quot;</span><span class="p">:</span>   <span class="s2">&quot;mystatename&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;clock&quot;</span><span class="p">:</span>         <span class="s2">&quot;&lt;clock&gt;&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;metadata&quot;</span><span class="p">:</span>      <span class="err">&lt;metadata</span> <span class="err">from</span> <span class="err">the</span> <span class="err">state-enter</span> <span class="err">command&gt;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Watchman will then defer sending any subscription PDUs with <code>files</code> payloads
+until the state is vacated either by a
+<a href="/watchman/docs/cmd/state-leave.html">state-leave</a> command or by the client
+that entered the state disconnecting from the watchman service.</p>
+
+<p>Once the state is vacated, watchman will emit a unilateral subscription PDU
+like this:</p>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">{</span>
+  <span class="nt">&quot;subscription&quot;</span><span class="p">:</span>  <span class="s2">&quot;mysubscriptionname&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;root&quot;</span><span class="p">:</span>          <span class="s2">&quot;/path/to/root&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;state-leave&quot;</span><span class="p">:</span>   <span class="s2">&quot;mystatename&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;clock&quot;</span><span class="p">:</span>         <span class="s2">&quot;&lt;clock&gt;&quot;</span><span class="p">,</span>
+  <span class="nt">&quot;metadata&quot;</span><span class="p">:</span>      <span class="err">&lt;metadata</span> <span class="err">from</span> <span class="err">the</span> <span class="err">exit-state</span> <span class="err">command&gt;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The subscription stream will then be re-enabled and notifications received
+since the corresponding <code>state-enter</code> will be delivered to clients.</p>
+
+<h3 id="drop">drop</h3>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">[</span><span class="s2">&quot;subscribe&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/root&quot;</span><span class="p">,</span> <span class="s2">&quot;mysubscriptionname&quot;</span><span class="p">,</span> <span class="p">{</span>
+  <span class="nt">&quot;drop&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;mystatename&quot;</span><span class="p">],</span>
+  <span class="nt">&quot;fields&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+<span class="p">}]</span>
+</code></pre></div>
+<p>The <code>drop</code> field specifies a list of state names for which the subscriber
+wishes to discard the notification stream.  It works very much like <code>defer</code> as
+described above, but when a state is vacated, the pending notification stream
+is fast-forwarded to the clock of the <code>state-leave</code> command, effectively
+suppressing any notifications that were generated between the <code>state-enter</code>
+and the <code>state-leave</code> commands.</p>
+
     
   </article>
 </div>
