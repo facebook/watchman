@@ -271,6 +271,7 @@ static void process_inotify_event(
     w_string_t *dir_name = NULL;
     w_string_t *name = NULL;
     char buf[WATCHMAN_NAME_MAX];
+    int pending_flags = W_PENDING_VIA_NOTIFY;
 
     pthread_mutex_lock(&state->lock);
     dir_name = w_ht_val_ptr(w_ht_get(state->wd_to_name, ine->wd));
@@ -362,11 +363,16 @@ static void process_inotify_event(
             ine->mask, pname->len, pname->buf);
         w_string_delref(name);
         name = pname;
+        pending_flags |= W_PENDING_RECURSIVE;
+      }
+
+      if (ine->mask & (IN_CREATE|IN_DELETE)) {
+        pending_flags |= W_PENDING_RECURSIVE;
       }
 
       w_log(W_LOG_DBG, "add_pending for inotify mask=%x %.*s\n",
           ine->mask, name->len, name->buf);
-      w_pending_coll_add(coll, name, now, W_PENDING_VIA_NOTIFY);
+      w_pending_coll_add(coll, name, now, pending_flags);
 
       w_string_delref(name);
 
