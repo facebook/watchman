@@ -636,8 +636,6 @@ bool w_start_listener(const char *path)
   }
 #endif
 
-  w_clockspec_init();
-
 #ifndef _WIN32
   signal(SIGPIPE, SIG_IGN);
 
@@ -664,8 +662,6 @@ bool w_start_listener(const char *path)
   if (!clients) {
     clients = w_ht_new(2, NULL);
   }
-
-  w_state_load();
 
 #ifdef HAVE_LIBGIMLI_H
   if (hb) {
@@ -716,8 +712,6 @@ bool w_start_listener(const char *path)
       interval = MIN(interval * 2, 1000000);
     } while (n_clients > 0);
   }
-
-  w_root_free_watched_roots();
 
   pthread_join(reaper_thread, &ignored);
   cfg_shutdown();

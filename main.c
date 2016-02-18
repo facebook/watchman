@@ -77,8 +77,11 @@ static void run_service(void)
   }
 
   watchman_watcher_init();
+  w_clockspec_init();
+  w_state_load();
   w_start_reaper();
   res = w_start_listener(sock_name);
+  w_root_free_watched_roots();
 
   if (res) {
     exit(0);
