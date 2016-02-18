@@ -589,6 +589,9 @@ void w_client_vacate_states(struct watchman_client *client);
 
 void w_mark_dead(pid_t pid);
 bool w_reap_children(bool block);
+void w_start_reaper(void);
+bool w_is_stopping(void);
+extern pthread_t reaper_thread;
 
 #define W_LOG_OFF 0
 #define W_LOG_ERR 1

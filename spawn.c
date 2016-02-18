@@ -496,5 +496,75 @@ void w_assess_trigger(w_root_t *root, struct watchman_trigger_command *cmd)
   w_query_result_free(&res);
 }
 
+bool w_reap_children(bool block) {
+  pid_t pid;
+  int reaped = 0;
+
+  // Reap any children so that we can release their
+  // references on the root
+  do {
+#ifndef _WIN32
+    int st;
+    pid = waitpid(-1, &st, block ? 0 : WNOHANG);
+    if (pid == -1) {
+      break;
+    }
+#else
+    if (!w_wait_for_any_child(block ? INFINITE : 0, &pid)) {
+      break;
+    }
+#endif
+    w_mark_dead(pid);
+    reaped++;
+  } while (1);
+
+  return reaped != 0;
+}
+
+static void *child_reaper(void *arg)
+{
+#ifndef _WIN32
+  sigset_t sigset;
+
+  // By default, keep both SIGCHLD and SIGUSR1 blocked
+  sigemptyset(&sigset);
+  sigaddset(&sigset, SIGUSR1);
+  sigaddset(&sigset, SIGCHLD);
+  pthread_sigmask(SIG_BLOCK, &sigset, NULL);
+
+  // SIGCHLD is ordinarily blocked, so we listen for it only in
+  // sigsuspend, when we're also listening for the SIGUSR1 that tells
+  // us to exit.
+  pthread_sigmask(SIG_BLOCK, NULL, &sigset);
+  sigdelset(&sigset, SIGCHLD);
+  sigdelset(&sigset, SIGUSR1);
+
+#endif
+  unused_parameter(arg);
+  w_set_thread_name("child_reaper");
+
+#ifdef _WIN32
+  while (!w_is_stopping()) {
+    usleep(200000);
+    w_reap_children(true);
+  }
+#else
+  while (!w_is_stopping()) {
+    w_reap_children(false);
+    sigsuspend(&sigset);
+  }
+#endif
+
+  return 0;
+}
+
+void w_start_reaper(void) {
+  if (pthread_create(&reaper_thread, NULL, child_reaper, NULL)) {
+    w_log(W_LOG_FATAL, "pthread_create(reaper): %s\n",
+        strerror(errno));
+  }
+}
+
+
 /* vim:ts=2:sw=2:et:
  */

@@ -11,7 +11,7 @@
 pthread_mutex_t w_client_lock;
 w_ht_t *clients = NULL;
 static int listener_fd;
-static pthread_t reaper_thread;
+pthread_t reaper_thread;
 static pthread_t listener_thread;
 #ifdef _WIN32
 static HANDLE listener_thread_event;
@@ -20,6 +20,10 @@ static volatile bool stopping = false;
 #ifdef HAVE_LIBGIMLI_H
 static volatile struct gimli_heartbeat *hb = NULL;
 #endif
+
+bool w_is_stopping(void) {
+  return stopping;
+}
 
 void w_client_lock_init(void) {
   pthread_mutexattr_t mattr;
@@ -299,43 +303,6 @@ void w_log_to_clients(int level, const char *buf)
 
   } while (w_ht_next(clients, &iter));
   pthread_mutex_unlock(&w_client_lock);
-}
-
-static void *child_reaper(void *arg)
-{
-#ifndef _WIN32
-  sigset_t sigset;
-
-  // By default, keep both SIGCHLD and SIGUSR1 blocked
-  sigemptyset(&sigset);
-  sigaddset(&sigset, SIGUSR1);
-  sigaddset(&sigset, SIGCHLD);
-  pthread_sigmask(SIG_BLOCK, &sigset, NULL);
-
-  // SIGCHLD is ordinarily blocked, so we listen for it only in
-  // sigsuspend, when we're also listening for the SIGUSR1 that tells
-  // us to exit.
-  pthread_sigmask(SIG_BLOCK, NULL, &sigset);
-  sigdelset(&sigset, SIGCHLD);
-  sigdelset(&sigset, SIGUSR1);
-
-#endif
-  unused_parameter(arg);
-  w_set_thread_name("child_reaper");
-
-#ifdef _WIN32
-  while (!stopping) {
-    usleep(200000);
-    w_reap_children(true);
-  }
-#else
-  while (!stopping) {
-    w_reap_children(false);
-    sigsuspend(&sigset);
-  }
-#endif
-
-  return 0;
 }
 
 // This is just a placeholder.
@@ -693,12 +660,6 @@ bool w_start_listener(const char *path)
   }
   w_set_cloexec(listener_fd);
 #endif
-
-  if (pthread_create(&reaper_thread, NULL, child_reaper, NULL)) {
-    w_log(W_LOG_FATAL, "pthread_create(reaper): %s\n",
-        strerror(errno));
-    return false;
-  }
 
   if (!clients) {
     clients = w_ht_new(2, NULL);

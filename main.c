@@ -77,6 +77,7 @@ static void run_service(void)
   }
 
   watchman_watcher_init();
+  w_start_reaper();
   res = w_start_listener(sock_name);
 
   if (res) {

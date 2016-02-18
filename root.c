@@ -2720,32 +2720,6 @@ bool w_root_save_state(json_t *state)
   return result;
 }
 
-bool w_reap_children(bool block)
-{
-  pid_t pid;
-  int reaped = 0;
-
-  // Reap any children so that we can release their
-  // references on the root
-  do {
-#ifndef _WIN32
-    int st;
-    pid = waitpid(-1, &st, block ? 0 : WNOHANG);
-    if (pid == -1) {
-      break;
-    }
-#else
-    if (!w_wait_for_any_child(block ? INFINITE : 0, &pid)) {
-      break;
-    }
-#endif
-    w_mark_dead(pid);
-    reaped++;
-  } while (1);
-
-  return reaped != 0;
-}
-
 void w_root_free_watched_roots(void)
 {
   w_ht_iter_t root_iter;
