@@ -55,6 +55,25 @@ AC_ARG_WITH(buildinfo, [
  AC_DEFINE_UNQUOTED(WATCHMAN_BUILD_INFO, "$withval", [build info])
 ])
 
+build_dev_fsevents=no
+AC_ARG_WITH(fsevents-header, [
+  --with-fsevents-header=/path/to/xnu/bsd/sys/fsevents.h
+                          Specify the path to the fsevents.h header file
+                          on your system.  This is an optional dependency
+                          for the experimental devfsevents watcher.
+],[
+  fsevents_header="$withval"
+  AC_MSG_CHECKING([that $fsevents_header is a file])
+  if test -f "$fsevents_header" ; then
+    AC_DEFINE_UNQUOTED(SYS_FSEVENTS_PATH, ["$fsevents_header"],[sys/fsevents.h location])
+    AC_MSG_RESULT(yes)
+    build_dev_fsevents=yes
+  else
+    AC_MSG_FAILURE([--with-fsevents-header was given but the value $fsevents_header was not a file])
+  fi
+])
+AM_CONDITIONAL(DEV_FSEVENTS, [test "$build_dev_fsevents" != "no"])
+
 xprefix=$prefix
 if test "$xprefix" = "NONE"; then
   xprefix=$ac_default_prefix
