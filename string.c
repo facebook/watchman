@@ -47,10 +47,12 @@ uint32_t strlen_uint32(const char *str) {
   return (uint32_t)slen;
 }
 
-w_string_t *w_string_new(const char *str)
-{
+w_string_t *w_string_new(const char *str) {
+  return w_string_new_len(str, strlen_uint32(str));
+}
+
+w_string_t *w_string_new_len(const char *str, uint32_t len) {
   w_string_t *s;
-  uint32_t len = strlen_uint32(str);
   uint32_t hval;
   char *buf;
 
@@ -485,12 +487,15 @@ w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
   return s;
 }
 
-w_string_t *w_string_path_cat_cstr(w_string_t *parent, const char *rhs)
-{
+w_string_t *w_string_path_cat_cstr(w_string_t *parent, const char *rhs) {
+  return w_string_path_cat_cstr_len(parent, rhs, strlen_uint32(rhs));
+}
+
+w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
+                                       uint32_t rhs_len) {
   w_string_t *s;
   int len;
   char *buf;
-  uint32_t rhs_len = strlen_uint32(rhs);
 
   if (rhs_len == 0) {
     w_string_addref(parent);

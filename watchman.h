@@ -618,6 +618,7 @@ void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec *deadline);
 
 json_t *w_string_to_json(w_string_t *str);
 w_string_t *w_string_new(const char *str);
+w_string_t *w_string_new_len(const char *str, uint32_t len);
 #ifdef _WIN32
 w_string_t *w_string_new_wchar(WCHAR *str, int len);
 #endif
@@ -642,6 +643,8 @@ void w_string_in_place_normalize_separators(w_string_t **str, char target_sep);
 w_string_t *w_string_normalize_separators(w_string_t *str, char target_sep);
 w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
 w_string_t *w_string_path_cat_cstr(w_string_t *parent, const char *rhs);
+w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
+                                       uint32_t rhs_len);
 bool w_string_startswith(w_string_t *str, w_string_t *prefix);
 bool w_string_startswith_caseless(w_string_t *str, w_string_t *prefix);
 w_string_t *w_string_shell_escape(const w_string_t *str);
