@@ -911,6 +911,7 @@ void w_clockspec_eval(w_root_t *root,
     const struct w_clockspec *spec,
     struct w_query_since *since);
 void w_clockspec_free(struct w_clockspec *spec);
+void w_clockspec_init(void);
 
 const char *get_sock_name(void);
 
