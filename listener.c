@@ -21,6 +21,15 @@ static volatile bool stopping = false;
 static volatile struct gimli_heartbeat *hb = NULL;
 #endif
 
+void w_client_lock_init(void) {
+  pthread_mutexattr_t mattr;
+
+  pthread_mutexattr_init(&mattr);
+  pthread_mutexattr_settype(&mattr, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init(&w_client_lock, &mattr);
+  pthread_mutexattr_destroy(&mattr);
+}
+
 json_t *make_response(void)
 {
   json_t *resp = json_object();

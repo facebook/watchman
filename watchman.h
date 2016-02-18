@@ -583,6 +583,7 @@ struct watchman_client {
 };
 extern pthread_mutex_t w_client_lock;
 extern w_ht_t *clients;
+void w_client_lock_init(void);
 
 void w_client_vacate_states(struct watchman_client *client);
 
