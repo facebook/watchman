@@ -4,7 +4,7 @@
 #include "watchman.h"
 #include <getopt.h>
 
-#define IS_REQUIRED(x)  (x == REQ_STRING)
+#define IS_REQUIRED(x)  (x) == REQ_STRING
 
 /* One does not simply use getopt_long() */
 
