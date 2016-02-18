@@ -141,6 +141,43 @@ static bool is_basename_canonical_case(const char *path) {
 #endif
 }
 
+/* This function always returns a buffer that needs to
+ * be released via free(3).  We use the native feature
+ * of the system libc if we know it is present, otherwise
+ * we need to malloc a buffer for ourselves.  This
+ * is made more fun because some systems have a dynamic
+ * buffer size obtained via sysconf().
+ */
+char *w_realpath(const char *filename) {
+#if defined(__GLIBC__) || defined(__APPLE__) || defined(_WIN32)
+  return realpath(filename, NULL);
+#else
+  char *buf = NULL;
+  char *retbuf;
+  int path_max = 0;
+
+#ifdef _SC_PATH_MAX
+  path_max = sysconf(path, _SC_PATH_MAX);
+#endif
+  if (path_max <= 0) {
+    path_max = WATCHMAN_NAME_MAX;
+  }
+  buf = malloc(path_max);
+  if (!buf) {
+    return NULL;
+  }
+
+  retbuf = realpath(filename, buf);
+
+  if (retbuf != buf) {
+    free(buf);
+    return NULL;
+  }
+
+  return retbuf;
+#endif
+}
+
 /* Extract the canonical path of an open file descriptor and store
  * it into the provided buffer.
  * Unlike w_realpath, which will return an allocated buffer of the correct
