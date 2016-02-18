@@ -14,12 +14,6 @@ static pthread_mutex_t root_lock = PTHREAD_MUTEX_INITIALIZER;
 // helps avoid confusion if a root is removed and then added again.
 static long next_root_number = 1;
 
-/* Some error conditions will put us into a non-recoverable state where we
- * can't guarantee that we will be operating correctly.  Rather than suffering
- * in silence and misleading our clients, we'll poison ourselves and advertise
- * that we have done so and provide some advice on how the user can cure us. */
-char *poisoned_reason = NULL;
-
 static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
     w_string_t *dir_name, struct timeval now, bool recursive);
 
