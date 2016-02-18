@@ -61,6 +61,7 @@ watchman_SOURCES = \
 	watcher/inotify.c  \
 	watcher/kqueue.c   \
 	watcher/portfs.c   \
+	launchd.c    \
 	listener.c   \
 	clientmode.c \
 	main.c       \
