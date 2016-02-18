@@ -101,9 +101,7 @@ static void client_delete(struct watchman_client *client)
   struct watchman_client_response *resp;
 
   w_log(W_LOG_DBG, "client_delete %p\n", client);
-
-  /* cancel subscriptions */
-  w_ht_free(client->subscriptions);
+  derived_client_dtor(client);
 
   while (client->head) {
     resp = client->head;
@@ -119,27 +117,6 @@ static void client_delete(struct watchman_client *client)
   w_stm_close(client->stm);
   free(client);
 }
-
-static void delete_subscription(w_ht_val_t val)
-{
-  struct watchman_client_subscription *sub = w_ht_val_ptr(val);
-
-  w_string_delref(sub->name);
-  w_query_delref(sub->query);
-  if (sub->drop_or_defer) {
-    w_ht_free(sub->drop_or_defer);
-  }
-  free(sub);
-}
-
-static const struct watchman_hash_funcs subscription_hash_funcs = {
-  w_ht_string_copy,
-  w_ht_string_del,
-  w_ht_string_equal,
-  w_ht_string_hash,
-  NULL,
-  delete_subscription
-};
 
 void w_request_shutdown(void) {
   stopping = true;
@@ -246,7 +223,6 @@ disconected:
   w_ht_del(clients, w_ht_ptr_val(client));
   pthread_mutex_unlock(&w_client_lock);
 
-  w_client_vacate_states(client);
   client_delete(client);
 
   return NULL;
@@ -380,7 +356,7 @@ static struct watchman_client *make_new_client(w_stm_t stm) {
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-  client = calloc(1, sizeof(*client));
+  client = calloc(1, derived_client_size);
   if (!client) {
     pthread_attr_destroy(&attr);
     return NULL;
@@ -398,7 +374,8 @@ static struct watchman_client *make_new_client(w_stm_t stm) {
   if (!client->ping) {
     // FIXME: error handling
   }
-  client->subscriptions = w_ht_new(2, &subscription_hash_funcs);
+
+  derived_client_ctor(client);
 
   pthread_mutex_lock(&w_client_lock);
   w_ht_set(clients, w_ht_ptr_val(client), w_ht_ptr_val(client));

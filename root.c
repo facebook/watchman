@@ -1276,7 +1276,7 @@ static void process_subscriptions(w_root_t *root)
   vcs_in_progress = is_vcs_op_in_progress(root);
 
   do {
-    struct watchman_client *client = w_ht_val_ptr(iter.value);
+    struct watchman_user_client *client = w_ht_val_ptr(iter.value);
     w_ht_iter_t citer;
 
     if (w_ht_first(client->subscriptions, &citer)) do {
@@ -1290,7 +1290,7 @@ static void process_subscriptions(w_root_t *root)
       }
       w_log(W_LOG_DBG, "client->stm=%p sub=%p %s, last=%" PRIu32
           " pending=%" PRIu32 "\n",
-          client->stm, sub, sub->name->buf, sub->last_sub_tick,
+          client->client.stm, sub, sub->name->buf, sub->last_sub_tick,
           root->pending_sub_tick);
 
       if (sub->last_sub_tick == root->pending_sub_tick) {
@@ -1670,7 +1670,7 @@ static bool root_has_subscriptions(w_root_t *root) {
 
   pthread_mutex_lock(&w_client_lock);
   if (w_ht_first(clients, &iter)) do {
-    struct watchman_client *client = w_ht_val_ptr(iter.value);
+    struct watchman_user_client *client = w_ht_val_ptr(iter.value);
     w_ht_iter_t citer;
 
     if (w_ht_first(client->subscriptions, &citer)) do {

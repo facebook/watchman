@@ -574,6 +574,18 @@ struct watchman_client {
   enum w_pdu_type pdu_type;
 
   struct watchman_client_response *head, *tail;
+};
+
+// These are approximations for managing derived client "classes"
+extern void derived_client_dtor(struct watchman_client *client);
+extern void derived_client_ctor(struct watchman_client *client);
+extern const uint32_t derived_client_size;
+
+// Represents the server side session maintained for a client of
+// the watchman per-user process
+struct watchman_user_client {
+  struct watchman_client client;
+
   /* map of subscription name => struct watchman_client_subscription */
   w_ht_t *subscriptions;
 
@@ -581,11 +593,12 @@ struct watchman_client {
   w_ht_t *states;
   long next_state_id;
 };
+
 extern pthread_mutex_t w_client_lock;
 extern w_ht_t *clients;
 void w_client_lock_init(void);
 
-void w_client_vacate_states(struct watchman_client *client);
+void w_client_vacate_states(struct watchman_user_client *client);
 
 void w_mark_dead(pid_t pid);
 bool w_reap_children(bool block);
@@ -742,7 +755,7 @@ struct w_query_since {
 };
 
 void w_run_subscription_rules(
-    struct watchman_client *client,
+    struct watchman_user_client *client,
     struct watchman_client_subscription *sub,
     w_root_t *root);
 void w_cancel_subscriptions_for_root(w_root_t *root);

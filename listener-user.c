@@ -89,5 +89,41 @@ w_root_t *resolve_root_or_err(struct watchman_client *client, json_t *args,
   return root;
 }
 
+static void delete_subscription(w_ht_val_t val)
+{
+  struct watchman_client_subscription *sub = w_ht_val_ptr(val);
+
+  w_string_delref(sub->name);
+  w_query_delref(sub->query);
+  if (sub->drop_or_defer) {
+    w_ht_free(sub->drop_or_defer);
+  }
+  free(sub);
+}
+
+static const struct watchman_hash_funcs subscription_hash_funcs = {
+    w_ht_string_copy,
+    w_ht_string_del,
+    w_ht_string_equal,
+    w_ht_string_hash,
+    NULL,
+    delete_subscription};
+
+void derived_client_ctor(struct watchman_client *ptr) {
+  struct watchman_user_client *client = (struct watchman_user_client *)ptr;
+
+  client->subscriptions = w_ht_new(2, &subscription_hash_funcs);
+}
+
+void derived_client_dtor(struct watchman_client *ptr) {
+  struct watchman_user_client *client = (struct watchman_user_client *)ptr;
+
+  /* cancel subscriptions */
+  w_ht_free(client->subscriptions);
+
+  w_client_vacate_states(client);
+}
+const uint32_t derived_client_size = sizeof(struct watchman_user_client);
+
 /* vim:ts=2:sw=2:et:
  */
