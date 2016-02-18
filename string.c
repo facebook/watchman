@@ -37,7 +37,7 @@ w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
   return slice;
 }
 
-uint32_t u32_strlen(const char *str) {
+uint32_t strlen_uint32(const char *str) {
   size_t slen = strlen(str);
   if (slen > UINT32_MAX) {
     w_log(W_LOG_FATAL, "string of length %" PRIsize_t " is too damned long\n",
@@ -50,7 +50,7 @@ uint32_t u32_strlen(const char *str) {
 w_string_t *w_string_new(const char *str)
 {
   w_string_t *s;
-  uint32_t len = u32_strlen(str);
+  uint32_t len = strlen_uint32(str);
   uint32_t hval;
   char *buf;
 
@@ -176,7 +176,7 @@ w_string_t *w_string_dup_lower(w_string_t *str)
 w_string_t *w_string_new_lower(const char *str)
 {
   w_string_t *s;
-  uint32_t len = u32_strlen(str);
+  uint32_t len = strlen_uint32(str);
   char *buf;
   uint32_t i;
 
@@ -221,7 +221,7 @@ int w_string_compare(const w_string_t *a, const w_string_t *b)
 
 bool w_string_equal_cstring(const w_string_t *a, const char *b)
 {
-  uint32_t blen = u32_strlen(b);
+  uint32_t blen = strlen_uint32(b);
   if (a->len != blen) return false;
   return memcmp(a->buf, b, a->len) == 0 ? true : false;
 }
@@ -490,7 +490,7 @@ w_string_t *w_string_path_cat_cstr(w_string_t *parent, const char *rhs)
   w_string_t *s;
   int len;
   char *buf;
-  uint32_t rhs_len = u32_strlen(rhs);
+  uint32_t rhs_len = strlen_uint32(rhs);
 
   if (rhs_len == 0) {
     w_string_addref(parent);
@@ -537,7 +537,7 @@ char *w_string_dup_buf(const w_string_t *str)
 // Given a json array, concat the elements using a delimiter
 w_string_t *w_string_implode(json_t *arr, const char *delim)
 {
-  uint32_t delim_len = u32_strlen(delim);
+  uint32_t delim_len = strlen_uint32(delim);
   uint32_t len = 0;
   uint32_t i;
   w_string_t *s;
@@ -557,7 +557,7 @@ w_string_t *w_string_implode(json_t *arr, const char *delim)
     const char *str;
 
     str = json_string_value(json_array_get(arr, i));
-    len += u32_strlen(str);
+    len += strlen_uint32(str);
   }
 
   s = malloc(sizeof(*s) + len + 1);
@@ -576,7 +576,7 @@ w_string_t *w_string_implode(json_t *arr, const char *delim)
     uint32_t l;
 
     str = json_string_value(json_array_get(arr, i));
-    l = u32_strlen(str);
+    l = strlen_uint32(str);
 
     memcpy(buf, str, l);
 

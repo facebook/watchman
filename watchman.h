@@ -983,7 +983,7 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, const char *syscall, int err,
     const char *reason);
 void stop_watching_dir(w_root_t *root, struct watchman_dir *dir);
-uint32_t u32_strlen(const char *str);
+uint32_t strlen_uint32(const char *str);
 int w_lstat(const char *path, struct stat *st, bool case_sensitive);
 
 extern struct watchman_ops fsevents_watcher;
