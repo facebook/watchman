@@ -552,7 +552,7 @@ class client(object):
         if not self._hasprop(res, 'capabilities'):
             # Server doesn't support capabilities, so we need to
             # synthesize the results based on the version
-            capabilities.synthesize(res, opts)
+            capabilities.synthesize(res, optional)
             if 'error' in res:
                 raise CommandError(res['error'])
 
