@@ -386,17 +386,6 @@ void w_root_unlock(w_root_t *root)
   }
 }
 
-void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec *deadline) {
-  struct timeval now, delta, target;
-
-  /* compute deadline */
-  gettimeofday(&now, NULL);
-  delta.tv_sec = timeoutms / 1000;
-  delta.tv_usec = (timeoutms - (delta.tv_sec * 1000)) * 1000;
-  w_timeval_add(now, delta, &target);
-  w_timeval_to_timespec(target, deadline);
-}
-
 /* Ensure that we're synchronized with the state of the
  * filesystem at the current time.
  * We do this by touching a cookie file and waiting to

@@ -84,7 +84,8 @@ SRCS=\
 	main.c       \
 	root.c       \
 	state.c      \
-	string.c
+	string.c     \
+	time.c
 
 TEST_SRCS=\
 	thirdparty\tap.c \

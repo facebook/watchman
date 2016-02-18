@@ -67,7 +67,8 @@ watchman_SOURCES = \
 	main.c       \
 	root.c       \
 	state.c      \
-	string.c
+	string.c     \
+	time.c
 
 noinst_HEADERS =   \
 	watchman.h       \
