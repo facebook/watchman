@@ -80,6 +80,7 @@ noinst_HEADERS =   \
 
 noinst_LIBRARIES = \
 	libart.a \
+	libcritbit.a \
 	libtap.a \
 	libwildmatch.a \
 	libwmanjson.a
@@ -115,12 +116,17 @@ WILDMATCH_LIB = libwildmatch.a
 libart_a_SOURCES = thirdparty/libart/src/art.c
 ART_LIB = libart.a
 
+# critbit tree library
+libcritbit_a_SOURCES = thirdparty/critbit.c
+CRITBIT_LIB = libcritbit.a
+
 # unit tests
 TESTS = \
 		tests/art.t \
 		tests/argv.t \
 		tests/bser.t \
 		tests/ignore.t \
+		tests/critbit.t \
 		tests/log.t \
 		tests/wildmatch.t
 noinst_PROGRAMS = $(TESTS)
@@ -235,6 +241,11 @@ tests_wildmatch_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
 tests_wildmatch_t_LDADD = $(JSON_LIB) $(TAP_LIB) $(WILDMATCH_LIB)
 tests_wildmatch_t_SOURCES = \
 	tests/wildmatch_test.c
+
+tests_critbit_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_critbit_t_LDADD = $(TAP_LIB) $(CRITBIT_LIB)
+tests_critbit_t_SOURCES = \
+	tests/critbit_test.c
 
 watch:
 	PYTHONPATH=python python/bin/watchman-make \
