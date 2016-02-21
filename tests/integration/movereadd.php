@@ -53,11 +53,11 @@ class movereaddTestCase extends WatchmanTestCase {
     );
 
     $this->watchmanCommand('log', 'debug', 'XXX: rmdir foo/bar');
-    rmdir("$root/foo/bar");
+    w_rmdir_recursive("$root/foo/bar");
     $this->watchmanCommand('log', 'debug', 'XXX: unlink foo/222');
     unlink("$root/foo/222");
     $this->watchmanCommand('log', 'debug', 'XXX: rmdir foo');
-    rmdir("$root/foo");
+    w_rmdir_recursive("$root/foo");
 
     $this->assertFileListUsingSince($root, 'n:foo',
       array(

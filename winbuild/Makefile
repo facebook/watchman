@@ -168,7 +168,7 @@ py-build:
 	cd python && python ./setup.py clean build_py -c -d . build_ext -i
 
 py-integration: py-build
-	python runtests.py
+	python -u runtests.py
 
 # helper for suspending/resuming a target process
 susres.exe: winbuild\susres.c

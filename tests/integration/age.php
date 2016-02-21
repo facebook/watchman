@@ -41,7 +41,7 @@ class ageOutTestCase extends WatchmanTestCase {
     $this->assertTrue(array_key_exists('n:foo', $cursors['cursors']));
 
     unlink("$root/a/file.txt");
-    rmdir("$root/a");
+    w_rmdir_recursive("$root/a");
 
     $this->assertFileList($root, array('b.txt'));
 
@@ -85,10 +85,9 @@ class ageOutTestCase extends WatchmanTestCase {
         touch("$root/dir/$i");
       }
       for ($i = 0; $i < 100; $i++) {
-        unlink("$root/stress-$i");
-        unlink("$root/dir/$i");
+        w_rmdir_recursive("$root/stress-$i");
       }
-      rmdir("$root/dir");
+      w_rmdir_recursive("$root/dir");
       $this->assertFileList($root, array('b.txt', 'c.txt'));
       $this->watchmanCommand('debug-ageout', $root, 0);
       $this->assertFileList($root, array('b.txt', 'c.txt'));

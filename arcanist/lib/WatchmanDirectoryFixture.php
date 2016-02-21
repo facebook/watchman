@@ -2,9 +2,15 @@
 /* Copyright 2015-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-function w_rmdir_recursive($path) {
+function w_rmdir_recursive_inner($path) {
+  # avoid opening a handle on the dir in case that impacts
+  # delete latency on windows
+  if (@rmdir($path) || @unlink($path)) {
+    return true;
+  }
   clearstatcache();
   if (is_dir($path)) {
+    # most likely failure reason is that the dir is not empty
     $kids = @scandir($path);
     if (is_array($kids)) {
       foreach ($kids as $kid) {
@@ -22,6 +28,16 @@ function w_rmdir_recursive($path) {
     return unlink($path);
   }
   return !file_exists($path);
+}
+
+function w_rmdir_recursive($path, $limit=15)
+{
+  while (file_exists($path) && $limit-- > 0) {
+    if (w_rmdir_recursive_inner($path)) {
+      return;
+    }
+    usleep(10000);
+  }
 }
 
 // Create a temporary dir in the test harness temp tree

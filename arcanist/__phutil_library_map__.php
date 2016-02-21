@@ -27,11 +27,14 @@ phutil_register_library_map(array(
   array(
     'execx' => 'lib/WatchmanInstance.php',
     'w_find_subdata_containing_file' => 'lib/WatchmanTestCase.php',
+    'w_is_file_in_file_list' => 'lib/WatchmanTestCase.php',
     'w_is_same_file_list' => 'lib/WatchmanTestCase.php',
     'w_is_same_filename' => 'lib/WatchmanTestCase.php',
     'w_normalize_file_list' => 'lib/WatchmanTestCase.php',
     'w_normalize_filename' => 'lib/WatchmanTestCase.php',
     'w_rmdir_recursive' => 'lib/WatchmanDirectoryFixture.php',
+    'w_rmdir_recursive_inner' => 'lib/WatchmanDirectoryFixture.php',
+    'w_unlink' => 'lib/WatchmanTestCase.php',
   ),
   'xmap' =>
   array(
