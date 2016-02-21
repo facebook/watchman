@@ -131,6 +131,44 @@ void w_run_subscription_rules(
   }
 }
 
+void w_cancel_subscriptions_for_root(w_root_t *root) {
+  w_ht_iter_t iter;
+  pthread_mutex_lock(&w_client_lock);
+  if (w_ht_first(clients, &iter)) {
+    do {
+      struct watchman_client *client = w_ht_val_ptr(iter.value);
+      w_ht_iter_t citer;
+
+      if (w_ht_first(client->subscriptions, &citer)) {
+        do {
+          struct watchman_client_subscription *sub = w_ht_val_ptr(citer.value);
+
+          if (sub->root == root) {
+            json_t *response = make_response();
+
+            w_log(W_LOG_ERR,
+                  "Cancel subscription %.*s for client:stm=%p due to "
+                  "root cancellation\n",
+                  sub->name->len, sub->name->buf, client->stm);
+
+            set_prop(response, "root", w_string_to_json(root->root_path));
+            set_prop(response, "subscription", w_string_to_json(sub->name));
+            set_prop(response, "canceled", json_true());
+
+            if (!enqueue_response(client, response, true)) {
+              w_log(W_LOG_DBG, "failed to queue sub cancellation\n");
+              json_decref(response);
+            }
+
+            w_ht_iter_del(client->subscriptions, &citer);
+          }
+        } while (w_ht_next(client->subscriptions, &citer));
+      }
+    } while (w_ht_next(clients, &iter));
+  }
+  pthread_mutex_unlock(&w_client_lock);
+}
+
 /* unsubscribe /root subname
  * Cancels a subscription */
 static void cmd_unsubscribe(struct watchman_client *client, json_t *args)

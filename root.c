@@ -1974,6 +1974,7 @@ void w_root_delref(w_root_t *root)
 
   w_log(W_LOG_DBG, "root: final ref on %s\n",
       root->root_path->buf);
+  w_cancel_subscriptions_for_root(root);
 
   w_root_teardown(root);
 

@@ -749,6 +749,7 @@ void w_run_subscription_rules(
     struct watchman_client *client,
     struct watchman_client_subscription *sub,
     w_root_t *root);
+void w_cancel_subscriptions_for_root(w_root_t *root);
 
 void w_match_results_free(uint32_t num_matches,
     struct watchman_rule_match *matches);
