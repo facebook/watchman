@@ -368,6 +368,11 @@ while not results_queue.empty():
 print('Ran %d, failed %d, skipped %d, concurrency %d' % (
     tests_run, tests_failed, tests_skipped, args.concurrency))
 
+if 'APPVEYOR' in os.environ:
+    shutil.copytree(temp_dir, 'logs')
+    subprocess.call(['7z', 'a', 'logs.zip', 'logs'])
+    subprocess.call(['appveyor', 'PushArtifact', 'logs.zip'])
+
 if tests_failed or (tests_run == 0):
     if args.keep_if_fail:
         args.keep = True
