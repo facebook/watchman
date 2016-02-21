@@ -15,8 +15,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "critbit.h"
+#include "tap.h"
 
 typedef struct cb_node_t {
   // Index into _nodes of the 0/1 children
@@ -483,6 +485,76 @@ int cb_tree_has_prefix_key(cb_tree_t *tree, const void *prefix_key) {
 int cb_tree_has_prefix_str(cb_tree_t *tree, const char *prefix_str,
                            ssize_t prefix_size) {
   return (_find_prefix(tree, prefix_str, prefix_size) != INVALID_NODE);
+}
+
+ssize_t cb_tree_longest_match(cb_tree_t *tree, const char *str, ssize_t ulen,
+                              void **v) {
+  const cb_node_kv_pair_t *nodes = tree->_nodes;
+  uint8_t *ubytes, *key;
+  cb_node_idx_t p = tree->root;
+  cb_node_idx_t pairindex, alt;
+  ssize_t key_size;
+
+  if (str == NULL) {
+    return 0;
+  }
+  if (p == INVALID_NODE) {
+    return 0;
+  }
+
+  ubytes = (uint8_t *)str;
+
+  alt = p;
+resolve_alternate:
+  while (1 & p) {
+    cb_node_idx_t q = p >> 1;
+    uint8_t c = 0;
+    int direction;
+
+    if (nodes[q].i.byte > ulen) {
+      // This one is too long, let's back track and chase the other path.
+      if (p == alt) {
+        // We already tried the alternate, we have nowhere else to go,
+        // let's terminate the search.
+        break;
+      }
+      // Re-evaluate on the alternate node.
+      p = alt;
+      continue;
+    }
+
+    if (nodes[q].i.byte < ulen) {
+      c = ubytes[nodes[q].i.byte];
+    }
+    direction = (1 + (nodes[q].i.otherbits | c)) >> 8;
+
+    // In case we chase an external node that is longer than
+    // the input at the child node, remember the alternate direction
+    // so that we can backtrack and resolve a shorter alternate external node.
+    alt = nodes[q].i.child[1 - direction];
+    p = nodes[q].i.child[direction];
+  }
+
+  pairindex = p >> 1;
+  key_size = tree->key_size(nodes[pairindex].e.k);
+  if (key_size > ulen && p != alt) {
+    // The selected node is too long, but we can backtrack to an alternate
+    p = alt;
+    goto resolve_alternate;
+  }
+
+  if (key_size > ulen) {
+    // Key is longer than input, can't be a prefix match
+    return 0;
+  }
+
+  /* This needs to be unsigned because it's compared against ubytes */
+  key = (uint8_t *)tree->key_getter(nodes[pairindex].e.k);
+  if (memcmp(key, ubytes, key_size) == 0) {
+    *v = nodes[pairindex].e.v;
+    return key_size;
+  }
+  return 0;
 }
 
 cb_iter_t cb_tree_iter(cb_tree_t *tree) {

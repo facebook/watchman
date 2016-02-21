@@ -62,6 +62,7 @@
 
 #include <stddef.h>
 #include <sys/types.h>
+#include <stdbool.h>
 
 #ifdef _MSC_VER /* MSVC */
 typedef unsigned __int8 uint8_t;
@@ -170,6 +171,13 @@ extern cb_iter_t cb_tree_iter_prefix_key(cb_tree_t *tree,
                                          const void *prefix_key);
 
 extern int cb_tree_iter_next(cb_iter_t *iter, void **k, void **v);
+
+/* If (str, len) has an exactly matching entry, return it.
+ * Otherwise find the closest leaf.
+ * Returns the length of the common prefix if found, populating k and v
+ * (if non null).  If there is no common prefix, returns 0 */
+extern ssize_t cb_tree_longest_match(cb_tree_t *tree, const char *str,
+                                     ssize_t len, void **v);
 
 #ifdef __cplusplus
 }

@@ -148,15 +148,72 @@ static void test_basic_iter(void) {
   cb_tree_clear(&tree);
 }
 
+static void test_longest_prefix(void) {
+  cb_tree_t tree = cb_tree_make();
+  struct {
+    const char *path;
+    const char *value;
+  } defaults[] = {
+      {"/Users/wez/src", "t"},
+      {"/Users/wez/srd", "a"},
+      {"/Users/wez/src/buck-out", "f"},
+      {"/Users/wez/src/buck-outa", "a"},
+      {"/Users/wez/src/buck-outb", "b"},
+      {"/Users/wez/src/buck-out/lemona", "x"},
+  };
+
+  struct {
+    const char *input_path;
+    int expected_result;
+    const char *expected_value;
+  } expected[] = {
+      {"/Users/wez/src", 14, "t"},
+      {"/Users/wez/src/foo.c", 14, "t"},
+      {"/", 0, NULL},
+      {"", 0, NULL},
+      {"/Users/wez/src/buck-out", 23, "f"},
+      {"/Users/wez/src/buck-out/lemon", 23, "f"},
+      {"/Users/wez/srce", 14, "t"},
+      {"/Users/wez/srd", 14, "a"},
+      {"/Users/wez/srb", 0, NULL},
+  };
+  uint32_t i;
+
+  for (i = 0; i < sizeof(defaults)/sizeof(defaults[0]); i++) {
+    ok(cb_tree_setitem(&tree, (void *)defaults[i].path,
+                       (void *)defaults[i].value, NULL) == 0,
+       "inserted");
+  }
+
+  for (i = 0; i < sizeof(expected)/sizeof(expected[0]); i++) {
+    int inlen = strlen(expected[i].input_path);
+    const char *value = NULL;
+    ssize_t ret = cb_tree_longest_match(&tree, expected[i].input_path, inlen,
+                                        (void **)&value);
+
+    ok(ret == expected[i].expected_result, "input %s ret %d == expected %d",
+       expected[i].input_path, ret, expected[i].expected_result);
+
+    if (expected[i].expected_value) {
+      ok(!strcmp(expected[i].expected_value, value),
+         "input %s value %s == expected %s", expected[i].input_path, value,
+         expected[i].expected_value);
+    }
+  }
+
+  cb_tree_clear(&tree);
+}
+
 int main(int argc, char **argv) {
   (void)argc;
   (void)argv;
 
-  plan_tests(71);
+  plan_tests(92);
   test_basic_simple();
   test_basic_popitem();
   test_basic_has_prefix();
   test_basic_iter();
+  test_longest_prefix();
 
   return exit_status();
 }
