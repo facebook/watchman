@@ -149,7 +149,9 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
     return false;
   }
 
+  w_log(W_LOG_DBG, "dispatch_command: %s\n", def->name);
   def->func(client, args);
+  w_log(W_LOG_DBG, "dispatch_command: %s (completed)\n", def->name);
   return true;
 }
 
