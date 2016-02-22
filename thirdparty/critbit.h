@@ -79,37 +79,44 @@ typedef _W64 signed int intptr_t;
 extern "C" {
 #endif
 
-typedef const char *(*cb_key_getter_func)(const void *);
-typedef ssize_t (*cb_key_size_func)(const void *);
-typedef int (*cb_tree_visit_func)(const void *, const void *, void *);
-typedef void (*cb_kv_hook_func)(void *, void *);
+// The key getter translates from a void* to the start of the
+// key string memory
+typedef const char *(*cb_key_getter_func)(const void *key);
 
-/*! Key-value pair */
-typedef struct {
-  void *k;
-  void *v;
-} cb_kv_pair_t;
+// The key size func translates from a void* to the size of the
+// corresponding key string memory returned by the key_getter
+typedef ssize_t (*cb_key_size_func)(const void *key);
+
+// The hook func receives the key, value pointers of an item.
+// the on_clear and on_copy hooks have this signature
+typedef void (*cb_kv_hook_func)(void *key, void *value);
 
 struct cb_node_t;
-
 struct cb_node_kv_pair_t;
+typedef uint32_t cb_node_idx_t;
 
 /*! Main data structure */
 typedef struct {
-  uint32_t root;
+  // Index into _nodes of the root of the tree
+  cb_node_idx_t root;
+  // Number of stored items
   size_t count;
   cb_key_getter_func key_getter;
   cb_key_size_func key_size;
   cb_kv_hook_func on_clear;
   cb_kv_hook_func on_copy;
+  // Internal tracking for bulk loading of sorted items
   const uint8_t *_last_sorted;
+  // Storage for the nodes
   struct cb_node_kv_pair_t *_nodes;
-  int32_t _node_size;
-  int32_t _next_node;
+  // How many elements are allocated to _nodes
+  cb_node_idx_t _node_size;
+  // The next available node index in _nodes
+  cb_node_idx_t _next_node;
 } cb_tree_t;
 
 typedef struct cb_iter_stack {
-  uint32_t node;
+  cb_node_idx_t node;
   struct cb_iter_stack *next;
 } cb_iter_stack;
 

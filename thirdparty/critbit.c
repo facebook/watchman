@@ -19,17 +19,28 @@
 #include "critbit.h"
 
 typedef struct cb_node_t {
-  uint32_t child[2];
+  // Index into _nodes of the 0/1 children
+  cb_node_idx_t child[2];
+  // The byte offset into the string
   uint32_t byte;
   uint8_t otherbits;
 } cb_node_t;
 
+/* Key-value pair */
+typedef struct {
+  void *k;
+  void *v;
+} cb_kv_pair_t;
+
+// This is the storage for each element of the _nodes array
 typedef struct cb_node_kv_pair_t {
+  // Internal node
   cb_node_t i;
+  // External node
   cb_kv_pair_t e;
 } cb_node_kv_pair_t;
 
-#define INVALID_NODE (uint32_t) - 1
+#define INVALID_NODE (cb_node_idx_t) - 1
 
 static void *realloc_and_zero(void *ptr, size_t oldsize, size_t newsize) {
   ptr = realloc(ptr, newsize);
@@ -37,9 +48,9 @@ static void *realloc_and_zero(void *ptr, size_t oldsize, size_t newsize) {
   return ptr;
 }
 
-static int32_t new_node(cb_tree_t *tree) {
+static cb_node_idx_t new_node(cb_tree_t *tree) {
   if (tree->_next_node >= tree->_node_size) {
-    int32_t newsize = tree->_node_size * 2;
+    cb_node_idx_t newsize = tree->_node_size * 2;
     tree->_nodes = realloc_and_zero(tree->_nodes, tree->_node_size *
                                                       sizeof(cb_node_kv_pair_t),
                                     newsize * sizeof(cb_node_kv_pair_t));
@@ -48,19 +59,21 @@ static int32_t new_node(cb_tree_t *tree) {
   return tree->_next_node++;
 }
 
-static void free_inode(cb_tree_t *tree, int32_t node) {
+static void free_inode(cb_tree_t *tree, cb_node_idx_t node) {
   /* This does nothing for now. */
   (void)tree; /* prevent compiler warnings */
   (void)node;
 }
 
-static void free_enode(cb_tree_t *tree, int32_t node) {
+static void free_enode(cb_tree_t *tree, cb_node_idx_t node) {
   tree->_nodes[node].e.k = NULL;
   tree->_nodes[node].e.v = NULL;
 }
 
+// The default key type is assumed to be a C-string,
+// so the getter and size functions return the pointer and compute
+// the length, respectively
 static const char *key_getter_std(const void *k) { return (const char *)k; }
-
 static ssize_t key_size_std(const void *k) { return strlen((const char *)k); }
 
 static void kv_hook_func_std(void *k, void *v) {
@@ -94,15 +107,15 @@ void *cb_tree_getitem(cb_tree_t *tree, const void *k) {
   const char *str = tree->key_getter(k);
   const uint8_t *ubytes = (void *)str;
   const ssize_t ulen = tree->key_size(k);
-  uint32_t p = tree->root;
-  uint32_t pairindex;
+  cb_node_idx_t p = tree->root;
+  cb_node_idx_t pairindex;
 
   if (p == INVALID_NODE) {
     return NULL;
   }
 
   while (1 & p) {
-    uint32_t q = p >> 1;
+    cb_node_idx_t q = p >> 1;
     uint8_t c = 0;
     int direction;
 
@@ -132,15 +145,15 @@ static int _setitem(cb_tree_t *tree, void *k, void *v, int replace,
   const char *str = tree->key_getter(k);
   const uint8_t *const ubytes = (void *)str;
   const ssize_t ulen = tree->key_size(k);
-  uint32_t p = tree->root;
-  uint32_t pairindex;
+  cb_node_idx_t p = tree->root;
+  cb_node_idx_t pairindex;
   const uint8_t *pairkeystr;
   uint8_t c;
   uint32_t newbyte;
   uint32_t newotherbits;
   int direction, newdirection;
-  uint32_t newnodeindex;
-  uint32_t *wherep;
+  cb_node_idx_t newnodeindex;
+  cb_node_idx_t *wherep;
 
   if (p == INVALID_NODE) {
     pairindex = new_node(tree);
@@ -165,7 +178,7 @@ longest_common_prefix_search:
     pairindex = tree->count - 1;
   } else {
     while (1 & p) {
-      uint32_t q = p >> 1;
+      cb_node_idx_t q = p >> 1;
       c = 0;
       if (nodes[q].i.byte < ulen) {
         c = ubytes[nodes[q].i.byte];
@@ -235,7 +248,7 @@ different_byte_found:
   /* Insert into tree */
   wherep = &tree->root;
   for (;;) {
-    uint32_t q;
+    cb_node_idx_t q;
     p = *wherep;
     if (!(1 & p)) {
       break;
@@ -260,8 +273,9 @@ different_byte_found:
   nodes[newnodeindex].i.child[newdirection] = *wherep;
   *wherep = (newnodeindex << 1) + 1;
   tree->count++;
-  if (tree->_last_sorted)
+  if (tree->_last_sorted) {
     tree->_last_sorted = ubytes;
+  }
   return 0;
 }
 
@@ -280,10 +294,10 @@ int cb_tree_delete(cb_tree_t *tree, const void *k, const void **oldk,
   const char *str = tree->key_getter(k);
   const uint8_t *ubytes = (void *)str;
   const ssize_t ulen = tree->key_size(k);
-  uint32_t p = tree->root;
-  uint32_t *wherep = 0, *whereq = 0;
-  uint32_t pairindex;
-  uint32_t q /*= -1*/;
+  cb_node_idx_t p = tree->root;
+  cb_node_idx_t *wherep = 0, *whereq = 0;
+  cb_node_idx_t pairindex;
+  cb_node_idx_t q /*= -1*/;
   int direction = 0;
 
   if (p == INVALID_NODE) {
@@ -334,13 +348,14 @@ int cb_tree_delete(cb_tree_t *tree, const void *k, const void **oldk,
 
 int cb_tree_popitem(cb_tree_t *tree, const void **k, const void **v) {
   cb_node_kv_pair_t *nodes = tree->_nodes;
-  uint32_t p = tree->root;
-  uint32_t *wherep = 0, *whereq = 0;
-  uint32_t pairindex;
+  cb_node_idx_t p = tree->root;
+  cb_node_idx_t *wherep = 0, *whereq = 0;
+  cb_node_idx_t pairindex;
 
-  uint32_t q /* = -1*/;
-  if (p == INVALID_NODE)
+  cb_node_idx_t q /* = -1*/;
+  if (p == INVALID_NODE) {
     return 1;
+  }
 
   wherep = &tree->root;
 
@@ -364,7 +379,7 @@ int cb_tree_popitem(cb_tree_t *tree, const void **k, const void **v) {
   lexicographically first element is removed... */
 
   if (!whereq) {
-    tree->root = -1;
+    tree->root = INVALID_NODE;
     /* ...unless there's just one element, of course */
     tree->_last_sorted = NULL;
     return 0;
@@ -377,13 +392,14 @@ int cb_tree_popitem(cb_tree_t *tree, const void **k, const void **v) {
 
 void cb_tree_clear(cb_tree_t *tree) {
   cb_node_kv_pair_t *nodes = tree->_nodes;
-  int32_t i;
-  int32_t size = tree->_node_size;
+  cb_node_idx_t i;
+  cb_node_idx_t size = tree->_node_size;
   cb_kv_hook_func onclear = tree->on_clear;
 
   for (i = 0; i < size; i++) {
-    if (nodes[i].e.k)
+    if (nodes[i].e.k) {
       onclear(nodes[i].e.k, nodes[i].e.v);
+    }
   }
   free(nodes);
   _init(tree);
@@ -391,7 +407,7 @@ void cb_tree_clear(cb_tree_t *tree) {
 
 cb_tree_t cb_tree_copy(cb_tree_t *tree) {
   cb_tree_t newtree;
-  int32_t i;
+  cb_node_idx_t i;
   size_t size = tree->_node_size * sizeof(cb_node_kv_pair_t);
   newtree.root = tree->root;
   newtree.count = tree->count;
@@ -405,30 +421,33 @@ cb_tree_t cb_tree_copy(cb_tree_t *tree) {
   newtree._node_size = tree->_node_size;
   newtree._next_node = tree->_next_node;
   for (i = 0; i < newtree._node_size; i++) {
-    if (newtree._nodes[i].e.k)
+    if (newtree._nodes[i].e.k) {
       newtree.on_copy(newtree._nodes[i].e.k, newtree._nodes[i].e.v);
+    }
   }
   return newtree;
 }
 
 /* Returns the part of the tree containing this prefix, or NULL if not found */
-static uint32_t _find_prefix(cb_tree_t *tree, const char *prefix_str,
+static cb_node_idx_t _find_prefix(cb_tree_t *tree, const char *prefix_str,
                              ssize_t ulen) {
   const cb_node_kv_pair_t *nodes = tree->_nodes;
   uint8_t *ubytes;
-  uint32_t p = tree->root;
-  uint32_t top = p;
+  cb_node_idx_t p = tree->root;
+  cb_node_idx_t top = p;
   const char *str;
 
-  if (prefix_str == NULL)
+  if (prefix_str == NULL) {
     return p;
-  if (top == INVALID_NODE)
-    return -1;
+  }
+  if (top == INVALID_NODE) {
+    return INVALID_NODE;
+  }
 
   ubytes = (void *)prefix_str;
 
   while (1 & p) {
-    uint32_t q = p >> 1;
+    cb_node_idx_t q = p >> 1;
     uint8_t c = 0;
     int direction;
 
@@ -445,10 +464,10 @@ static uint32_t _find_prefix(cb_tree_t *tree, const char *prefix_str,
   /* Check that what we found is actually the prefix */
   str = tree->key_getter(nodes[p >> 1].e.k);
   if (tree->key_size(nodes[p >> 1].e.k) >= ulen &&
-      memcmp(str, prefix_str, ulen) == 0)
+      memcmp(str, prefix_str, ulen) == 0) {
     return top;
-  else
-    return -1;
+  }
+  return INVALID_NODE;
 }
 
 int cb_tree_has_prefix_key(cb_tree_t *tree, const void *prefix_key) {
@@ -484,7 +503,7 @@ cb_iter_t cb_tree_iter_prefix_str(cb_tree_t *tree, const char *prefix_str,
                                   ssize_t prefix_size) {
   cb_iter_t rv = {tree, NULL};
 
-  uint32_t top = _find_prefix(tree, prefix_str, prefix_size);
+  cb_node_idx_t top = _find_prefix(tree, prefix_str, prefix_size);
   if (top != INVALID_NODE) {
     rv.tree = tree;
     rv.head = malloc(sizeof(cb_iter_stack));
@@ -516,7 +535,7 @@ int cb_tree_iter_next(cb_iter_t *iter, void **k, void **v) {
   newhead = iter->head->next;
   free(iter->head);
   while (1 & currnode) {
-    uint32_t q = currnode >> 1;
+    cb_node_idx_t q = currnode >> 1;
     cb_iter_stack *newnode = malloc(sizeof(cb_iter_stack));
     if (newnode == NULL) {
       iter->head = NULL;
