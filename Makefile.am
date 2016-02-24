@@ -71,7 +71,10 @@ noinst_HEADERS =   \
 	watchman.h       \
 	watchman_hash.h
 
-noinst_LIBRARIES = libwmanjson.a libtap.a libwildmatch.a
+noinst_LIBRARIES = \
+	libtap.a \
+	libwildmatch.a \
+	libwmanjson.a
 
 # bundled json library
 libwmanjson_a_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
@@ -101,8 +104,12 @@ libwildmatch_a_SOURCES = thirdparty/wildmatch/wildmatch.c
 WILDMATCH_LIB = libwildmatch.a
 
 # unit tests
-TESTS = tests/argv.t tests/log.t tests/bser.t tests/wildmatch.t
-noinst_PROGRAMS = tests/argv.t tests/log.t tests/bser.t tests/wildmatch.t
+TESTS = \
+		tests/argv.t \
+		tests/bser.t \
+		tests/log.t \
+		tests/wildmatch.t
+noinst_PROGRAMS = $(TESTS)
 
 if HAVE_ARC
 # Run lint and output stuff suitable for feeding into ":make" in vim
