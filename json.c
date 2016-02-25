@@ -402,6 +402,7 @@ bool w_json_buffer_passthru(w_jbuffer_t *jr,
   json_error_t jerr;
   bool res;
 
+  w_stm_set_nonblock(stm, false);
   if (!read_and_detect_pdu(jr, stm, &jerr)) {
     w_log(W_LOG_ERR, "failed to identify PDU: %s\n",
         jerr.text);
