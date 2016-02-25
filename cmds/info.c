@@ -106,19 +106,6 @@ static void cmd_get_sockname(struct watchman_client *client, json_t *args)
 }
 W_CMD_REG("get-sockname", cmd_get_sockname, CMD_DAEMON|CMD_CLIENT, NULL)
 
-/* get-pid */
-static void cmd_get_pid(struct watchman_client *client, json_t *args)
-{
-  json_t *resp = make_response();
-
-  unused_parameter(args);
-
-  set_prop(resp, "pid", json_integer(getpid()));
-
-  send_and_dispose_response(client, resp);
-}
-W_CMD_REG("get-pid", cmd_get_pid, CMD_DAEMON, NULL)
-
 static void cmd_get_config(struct watchman_client *client, json_t *args)
 {
   w_root_t *root;

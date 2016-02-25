@@ -764,5 +764,19 @@ bool w_start_listener(const char *path)
   return true;
 }
 
+/* get-pid */
+static void cmd_get_pid(struct watchman_client *client, json_t *args)
+{
+  json_t *resp = make_response();
+
+  unused_parameter(args);
+
+  set_prop(resp, "pid", json_integer(getpid()));
+
+  send_and_dispose_response(client, resp);
+}
+W_CMD_REG("get-pid", cmd_get_pid, CMD_DAEMON, NULL)
+
+
 /* vim:ts=2:sw=2:et:
  */
