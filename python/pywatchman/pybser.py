@@ -29,6 +29,7 @@
 import collections
 import ctypes
 import struct
+import sys
 
 BSER_ARRAY = '\x00'
 BSER_OBJECT = '\x01'
@@ -49,6 +50,9 @@ BSER_SKIP = '\x0c'
 # int32 for the header
 EMPTY_HEADER = "\x00\x01\x05\x00\x00\x00\x00"
 
+# Python 3 conditional for supporting Python 2's int/long types
+if sys.version_info > (3,):
+    long = int
 
 def _int_size(x):
     """Return the smallest size int that can store the value"""
@@ -58,7 +62,7 @@ def _int_size(x):
         return 2
     elif -0x80000000 <= x <= 0x7FFFFFFF:
         return 4
-    elif -0x8000000000000000L <= x <= 0x7FFFFFFFFFFFFFFFL:
+    elif long(-0x8000000000000000) <= x <= long(0x7FFFFFFFFFFFFFFF):
         return 8
     else:
         raise RuntimeError('Cannot represent value: ' + str(x))
