@@ -37,7 +37,7 @@ import time
 # so fall back to a pure Python implementation.
 try:
     import bser
-except ImportError, e:
+except ImportError:
     import pybser as bser
 
 import capabilities
