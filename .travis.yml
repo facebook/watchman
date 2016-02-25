@@ -8,7 +8,6 @@ addons:
     packages:
       - php5-cli
       - python2.7
-      - python3.4
 #      - ruby
 #      - rubygems
 #      - valgrind
