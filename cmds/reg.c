@@ -140,6 +140,8 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
 {
   struct watchman_command_handler_def *def;
   char *errmsg = NULL;
+  struct timeval start, end;
+  double elapsed;
 
   def = lookup(args, &errmsg, mode);
 
@@ -155,8 +157,20 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
   }
 
   w_log(W_LOG_DBG, "dispatch_command: %s\n", def->name);
+
+  gettimeofday(&start, NULL);
   def->func(client, args);
-  w_log(W_LOG_DBG, "dispatch_command: %s (completed)\n", def->name);
+  gettimeofday(&end, NULL);
+
+  elapsed = w_timeval_diff(start, end);
+  if (log_level >= W_LOG_DBG ||
+      elapsed >
+          cfg_get_double(NULL, "slow_command_log_threshold_seconds", 1.0)) {
+    char *command = json_dumps(args, 0);
+    w_log(W_LOG_ERR, "dispatch_command: %s completed in %.3fs\n", command,
+          elapsed);
+    free(command);
+  }
   return true;
 }
 
