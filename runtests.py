@@ -61,6 +61,12 @@ parser.add_argument(
     type=int,
     help='How many tests to run at once')
 
+parser.add_argument(
+    '--watcher',
+    action='store',
+    default='auto',
+    help='Specify which watcher should be used to run the tests')
+
 args = parser.parse_args()
 
 # We test for this in a test case
@@ -287,7 +293,9 @@ def runner():
     broken = False
     try:
         # Start up a shared watchman instance for the tests.
-        inst = WatchmanInstance.Instance()
+        inst = WatchmanInstance.Instance({
+            "watcher": args.watcher
+        })
         inst.start()
         # Allow tests to locate this default instance
         WatchmanInstance.setSharedInstance(inst)
