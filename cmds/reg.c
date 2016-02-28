@@ -142,22 +142,28 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
   char *errmsg = NULL;
   struct timeval start, end;
   double elapsed;
+  bool result = false;
+
+  // Stash a reference to the current command to make it easier to log
+  // the command context in some of the error paths
+  client->current_command = args;
+  json_incref(client->current_command);
 
   def = lookup(args, &errmsg, mode);
 
   if (!def) {
     send_error_response(client, "%s", errmsg);
-    free(errmsg);
-    return false;
+    goto done;
   }
 
   if (poisoned_reason && (def->flags & CMD_POISON_IMMUNE) == 0) {
     send_error_response(client, "%s", poisoned_reason);
-    return false;
+    goto done;
   }
 
   w_log(W_LOG_DBG, "dispatch_command: %s\n", def->name);
 
+  result = true;
   gettimeofday(&start, NULL);
   def->func(client, args);
   gettimeofday(&end, NULL);
@@ -171,7 +177,12 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
           elapsed);
     free(command);
   }
-  return true;
+
+done:
+  free(errmsg);
+  json_decref(client->current_command);
+  client->current_command = NULL;
+  return result;
 }
 
 void w_capability_register(const char *name) {

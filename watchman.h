@@ -573,6 +573,9 @@ struct watchman_client {
   bool client_mode;
   enum w_pdu_type pdu_type;
 
+  // The command currently being processed by dispatch_command
+  json_t *current_command;
+
   struct watchman_client_response *head, *tail;
 };
 

@@ -90,8 +90,17 @@ void send_error_response(struct watchman_client *client,
   vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
 
-  w_log(W_LOG_ERR, "send_error_response: %s\n", buf);
   set_prop(resp, "error", json_string_nocheck(buf));
+
+  if (client->current_command) {
+    char *command = NULL;
+    command = json_dumps(client->current_command, 0);
+    w_log(W_LOG_ERR, "send_error_response: %s failed: %s\n",
+        command, buf);
+    free(command);
+  } else {
+    w_log(W_LOG_ERR, "send_error_response: %s\n", buf);
+  }
 
   send_and_dispose_response(client, resp);
 }
