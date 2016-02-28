@@ -3,6 +3,13 @@
 
 #include "watchman.h"
 
+static const struct flag_map kflags[] = {
+  {W_PENDING_CRAWL_ONLY, "CRAWL_ONLY"},
+  {W_PENDING_RECURSIVE, "RECURSIVE"},
+  {W_PENDING_VIA_NOTIFY, "VIA_NOTIFY"},
+  {0, NULL},
+};
+
 /* Free a pending_fs node */
 void w_pending_fs_free(struct watchman_pending_fs *p) {
   w_string_delref(p->path);
@@ -107,6 +114,7 @@ static inline void consolidate_item(struct watchman_pending_fs *p,
 bool w_pending_coll_add(struct watchman_pending_collection *coll,
     w_string_t *path, struct timeval now, int flags) {
   struct watchman_pending_fs *p;
+  char flags_label[128];
 
   p = w_ht_val_ptr(w_ht_get(coll->pending_uniq, w_ht_ptr_val(path)));
   if (p) {
@@ -121,7 +129,8 @@ bool w_pending_coll_add(struct watchman_pending_collection *coll,
     return false;
   }
 
-  w_log(W_LOG_DBG, "add_pending: %.*s\n", path->len, path->buf);
+  w_expand_flags(kflags, flags, flags_label, sizeof(flags_label));
+  w_log(W_LOG_DBG, "add_pending: %.*s %s\n", path->len, path->buf, flags_label);
 
   p->flags = flags;
   p->now = now;
