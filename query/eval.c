@@ -403,7 +403,7 @@ bool w_query_execute(
    */
 
   // Lock the root and begin generation
-  w_root_lock(root);
+  w_root_lock(root, "w_query_execute");
   res->root_number = root->number;
   res->ticks = root->ticks;
 

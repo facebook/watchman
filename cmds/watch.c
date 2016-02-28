@@ -66,7 +66,7 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
   }
 
   resp = make_response();
-  w_root_lock(root);
+  w_root_lock(root, "clock");
   annotate_with_clock(root, resp);
   w_root_unlock(root);
 
@@ -307,7 +307,7 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
 
   resp = make_response();
 
-  w_root_lock(root);
+  w_root_lock(root, "watch");
   if (root->failure_reason) {
     set_prop(resp, "error", w_string_to_json(root->failure_reason));
   } else if (root->cancelled) {
@@ -355,7 +355,7 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
 
   resp = make_response();
 
-  w_root_lock(root);
+  w_root_lock(root, "watch-project");
   if (root->failure_reason) {
     set_prop(resp, "error", w_string_to_json(root->failure_reason));
   } else if (root->cancelled) {

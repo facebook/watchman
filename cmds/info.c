@@ -138,7 +138,7 @@ static void cmd_get_config(struct watchman_client *client, json_t *args)
 
   resp = make_response();
 
-  w_root_lock(root);
+  w_root_lock(root, "cmd_get_config");
   {
     config = root->config_file;
     if (config) {
