@@ -430,6 +430,7 @@ struct watchman_root {
 
   /* our locking granularity is per-root */
   pthread_mutex_t lock;
+  const char *lock_reason;
   pthread_t notify_thread;
   pthread_t io_thread;
 
@@ -685,7 +686,7 @@ void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
 
 bool w_root_sync_to_now(w_root_t *root, int timeoutms);
 
-void w_root_lock(w_root_t *root);
+void w_root_lock(w_root_t *root, const char *purpose);
 void w_root_unlock(w_root_t *root);
 
 /* Bob Jenkins' lookup3.c hash function */

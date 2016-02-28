@@ -58,7 +58,7 @@ void w_mark_dead(pid_t pid)
       root->root_path->len, root->root_path->buf, (int)pid);
 
   /* now walk the cmds and try to find our match */
-  w_root_lock(root);
+  w_root_lock(root, "mark_dead");
 
   /* walk the list of triggers, and run their rules */
   if (w_ht_first(root->commands, &iter)) do {
@@ -359,7 +359,8 @@ static void spawn_command(w_root_t *root,
       }
     }
 
-    w_log(W_LOG_DBG, "using %.*s for working dir\n", working_dir->len, working_dir->buf);
+    w_log(W_LOG_DBG, "using %.*s for working dir\n", working_dir->len,
+          working_dir->buf);
   }
 
   pthread_mutex_lock(&spawn_lock);

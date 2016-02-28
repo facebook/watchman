@@ -314,24 +314,27 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   return root;
 }
 
-void w_root_lock(w_root_t *root)
+void w_root_lock(w_root_t *root, const char *purpose)
 {
   int err;
 
   err = pthread_mutex_lock(&root->lock);
   if (err != 0) {
-    w_log(W_LOG_FATAL, "lock [%.*s]: %s\n",
+    w_log(W_LOG_FATAL, "lock (%s) [%.*s]: %s\n",
+        purpose,
         root->root_path->len,
         root->root_path->buf,
         strerror(err)
     );
   }
+  root->lock_reason = purpose;
 }
 
 void w_root_unlock(w_root_t *root)
 {
   int err;
 
+  root->lock_reason = NULL;
   err = pthread_mutex_unlock(&root->lock);
   if (err != 0) {
     w_log(W_LOG_FATAL, "lock: [%.*s] %s\n",
@@ -382,7 +385,7 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
   cookie.seen = false;
 
   /* generate a cookie name: cookie prefix + id */
-  w_root_lock(root);
+  w_root_lock(root, "w_root_sync_to_now");
   tick = root->ticks++;
   path_str = w_string_make_printf("%.*s%" PRIu32 "-%" PRIu32,
                                   root->query_cookie_prefix->len,
@@ -1759,7 +1762,7 @@ static void notify_thread(w_root_t *root)
       }
     }
 
-    w_root_lock(root);
+    w_root_lock(root, "notify_thread: handle_should_recrawl");
     handle_should_recrawl(root);
     w_root_unlock(root);
   }
@@ -1801,7 +1804,7 @@ static void io_thread(w_root_t *root)
       if (cfg_get_bool(root, "iothrottle", false)) {
         w_ioprio_set_low();
       }
-      w_root_lock(root);
+      w_root_lock(root, "io_thread: bump ticks");
       // Ensure that we observe these files with a new, distinct clock,
       // otherwise a fresh subscription established immediately after a watch
       // can get stuck with an empty view until another change is observed
@@ -1835,7 +1838,7 @@ static void io_thread(w_root_t *root)
       // No new pending items were given to us, so consider that
       // we may now be settled.
 
-      w_root_lock(root);
+      w_root_lock(root, "io_thread: settle out");
       if (!root->done_initial) {
         // we need to recrawl, stop what we're doing here
         w_root_unlock(root);
@@ -1872,7 +1875,7 @@ static void io_thread(w_root_t *root)
     // to the settle duration ready for the next loop through
     timeoutms = root->trigger_settle;
 
-    w_root_lock(root);
+    w_root_lock(root, "io_thread: process notifications");
     if (!root->done_initial) {
       // we need to recrawl.  Discard these notifications
       w_pending_coll_drain(&pending);
@@ -2309,7 +2312,7 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
     // to a client querying something about the root and should extend
     // the lifetime of the root
     if (root) {
-      w_root_lock(root);
+      w_root_lock(root, "root_resolve: last_cmd_timestamp");
       time(&root->last_cmd_timestamp);
       w_root_unlock(root);
     }
@@ -2454,7 +2457,7 @@ w_root_t *w_root_resolve_for_client_mode(const char *filename, char **errmsg)
 
     /* force a walk now */
     gettimeofday(&start, NULL);
-    w_root_lock(root);
+    w_root_lock(root, "w_root_resolve_for_client_mode");
     w_pending_coll_add(&root->pending, root->root_path,
         start, W_PENDING_RECURSIVE);
     while (w_root_process_pending(root, &pending, true)) {
@@ -2646,7 +2649,7 @@ bool w_root_load_state(json_t *state)
       continue;
     }
 
-    w_root_lock(root);
+    w_root_lock(root, "w_root_load_state");
 
     /* re-create the trigger configuration */
     for (j = 0; j < json_array_size(triggers); j++) {
@@ -2709,7 +2712,7 @@ bool w_root_save_state(json_t *state)
 
     json_object_set_new(obj, "path", w_string_to_json(root->root_path));
 
-    w_root_lock(root);
+    w_root_lock(root, "w_root_save_state");
     triggers = w_root_trigger_list_to_json(root);
     w_root_unlock(root);
     json_object_set_new(obj, "triggers", triggers);

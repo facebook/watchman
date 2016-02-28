@@ -101,7 +101,7 @@ static void cmd_state_enter(struct watchman_client *client, json_t *args) {
   w_root_addref(assertion->root);
   w_string_addref(assertion->name);
 
-  w_root_lock(root);
+  w_root_lock(root, "state-enter");
   {
     // If the state is already asserted, we can't re-assert it
     if (!root->asserted_states) {
@@ -194,7 +194,7 @@ static void leave_state(struct watchman_client *client,
   w_root_t *root = assertion->root;
 
   if (!clockbuf) {
-    w_root_lock(root);
+    w_root_lock(root, "state-leave");
     clock_id_string(root->number, root->ticks, buf, sizeof(buf));
     w_root_unlock(root);
 
@@ -237,7 +237,7 @@ static void leave_state(struct watchman_client *client,
   pthread_mutex_unlock(&w_client_lock);
 
   // Now remove the state
-  w_root_lock(root);
+  w_root_lock(root, "state-leave");
   w_ht_del(root->asserted_states, w_ht_ptr_val(assertion->name));
   w_root_unlock(root);
 
@@ -294,7 +294,7 @@ static void cmd_state_leave(struct watchman_client *client, json_t *args) {
   }
 
   // Confirm that this client owns this state
-  w_root_lock(root);
+  w_root_lock(root, "state-leave");
   {
     assertion = root->asserted_states ?
           w_ht_val_ptr(w_ht_get(root->asserted_states,
