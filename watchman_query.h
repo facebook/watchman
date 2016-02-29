@@ -63,6 +63,7 @@ struct w_query {
   size_t nsuffixes;
 
   uint32_t sync_timeout;
+  uint32_t lock_timeout;
 
   bool empty_on_fresh_instance;
 

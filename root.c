@@ -330,6 +330,47 @@ void w_root_lock(w_root_t *root, const char *purpose)
   root->lock_reason = purpose;
 }
 
+bool w_root_lock_with_timeout(w_root_t *root, const char *purpose,
+                              int timeoutms) {
+  struct timespec ts;
+  struct timeval delta, now, target;
+  int err;
+
+  if (timeoutms <= 0) {
+    // Special case an immediate check, because the implementation of
+    // pthread_mutex_timedlock may return immediately if we are already
+    // past-due.
+    err = pthread_mutex_trylock(&root->lock);
+  } else {
+    // Add timeout to current time, convert to absolute timespec
+    gettimeofday(&now, NULL);
+    delta.tv_sec = timeoutms / 1000;
+    delta.tv_usec = (timeoutms - (delta.tv_sec * 1000)) * 1000;
+    w_timeval_add(now, delta, &target);
+    w_timeval_to_timespec(target, &ts);
+
+    err = pthread_mutex_timedlock(&root->lock, &ts);
+  }
+  if (err == ETIMEDOUT || err == EBUSY) {
+    w_log(W_LOG_ERR,
+          "lock (%s) [%.*s] failed after %dms, current lock purpose: %s\n",
+          purpose, root->root_path->len, root->root_path->buf, timeoutms,
+          root->lock_reason);
+    errno = ETIMEDOUT;
+    return false;
+  }
+  if (err != 0) {
+    w_log(W_LOG_FATAL, "lock (%s) [%.*s]: %s\n",
+        purpose,
+        root->root_path->len,
+        root->root_path->buf,
+        strerror(err)
+    );
+  }
+  root->lock_reason = purpose;
+  return true;
+}
+
 void w_root_unlock(w_root_t *root)
 {
   int err;

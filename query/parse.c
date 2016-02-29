@@ -258,6 +258,26 @@ static bool parse_sync(w_query *res, json_t *query)
   return true;
 }
 
+static bool parse_lock_timeout(w_query *res, json_t *query)
+{
+  int value = DEFAULT_QUERY_SYNC_MS;
+
+  if (query &&
+      json_unpack(query, "{s?:i*}", "lock_timeout", &value) != 0) {
+    res->errmsg = strdup("lock_timeout must be an integer value >= 0");
+    return false;
+  }
+
+  if (value < 0) {
+    res->errmsg = strdup("lock_timeout must be an integer value >= 0");
+    return false;
+  }
+
+  res->lock_timeout = value;
+  return true;
+}
+
+
 static bool parse_empty_on_fresh_instance(w_query *res, json_t *query)
 {
   int value = 0;
@@ -287,6 +307,10 @@ w_query *w_query_parse(w_root_t *root, json_t *query, char **errmsg)
   res->case_sensitive = root->case_sensitive;
 
   if (!parse_sync(res, query)) {
+    goto error;
+  }
+
+  if (!parse_lock_timeout(res, query)) {
     goto error;
   }
 

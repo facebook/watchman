@@ -687,6 +687,7 @@ void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
 bool w_root_sync_to_now(w_root_t *root, int timeoutms);
 
 void w_root_lock(w_root_t *root, const char *purpose);
+bool w_root_lock_with_timeout(w_root_t *root, const char *purpose, int timeoutms);
 void w_root_unlock(w_root_t *root);
 
 /* Bob Jenkins' lookup3.c hash function */
