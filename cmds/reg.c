@@ -140,9 +140,8 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
 {
   struct watchman_command_handler_def *def;
   char *errmsg = NULL;
-  struct timeval start, end;
-  double elapsed;
   bool result = false;
+  char sample_name[128];
 
   // Stash a reference to the current command to make it easier to log
   // the command context in some of the error paths
@@ -162,26 +161,28 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
   }
 
   w_log(W_LOG_DBG, "dispatch_command: %s\n", def->name);
+  snprintf(sample_name, sizeof(sample_name), "dispatch_command:%s", def->name);
+  w_perf_start(&client->perf_sample, sample_name);
+  w_perf_set_wall_time_thresh(
+      &client->perf_sample,
+      cfg_get_double(NULL, "slow_command_log_threshold_seconds", 1.0));
 
   result = true;
-  gettimeofday(&start, NULL);
   def->func(client, args);
-  gettimeofday(&end, NULL);
 
-  elapsed = w_timeval_diff(start, end);
-  if (log_level >= W_LOG_DBG ||
-      elapsed >
-          cfg_get_double(NULL, "slow_command_log_threshold_seconds", 1.0)) {
-    char *command = json_dumps(args, 0);
-    w_log(W_LOG_ERR, "dispatch_command: %s completed in %.3fs\n", command,
-          elapsed);
-    free(command);
+  if (w_perf_finish(&client->perf_sample)) {
+    json_incref(args);
+    w_perf_add_meta(&client->perf_sample, "args", args);
+    w_perf_log(&client->perf_sample);
+  } else {
+    w_log(W_LOG_DBG, "dispatch_command: %s (completed)\n", def->name);
   }
 
 done:
   free(errmsg);
   json_decref(client->current_command);
   client->current_command = NULL;
+  w_perf_destroy(&client->perf_sample);
   return result;
 }
 

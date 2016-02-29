@@ -25,6 +25,7 @@ SRCS=\
 	winbuild\stat.c \
 	winbuild\realpath.c \
 	winbuild\dir.c \
+	winbuild\dirname.c \
 	winbuild\asprintf.c \
 	winbuild\hostname.c \
 	thirdparty\wildmatch\wildmatch.c \
@@ -49,6 +50,7 @@ SRCS=\
 	ioprio.c     \
 	opendir.c    \
 	pending.c    \
+	perf.c       \
 	stream.c     \
 	stream_win.c \
 	stream_stdout.c \

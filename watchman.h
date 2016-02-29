@@ -565,6 +565,8 @@ struct watchman_client_state_assertion {
   long id;
 };
 
+#include "watchman_perf.h"
+
 struct watchman_client {
   w_stm_t stm;
   w_evt_t ping;
@@ -575,6 +577,7 @@ struct watchman_client {
 
   // The command currently being processed by dispatch_command
   json_t *current_command;
+  w_perf_t perf_sample;
 
   struct watchman_client_response *head, *tail;
 };
@@ -844,6 +847,13 @@ static inline void w_timespec_to_timeval(
     const struct timespec ts, struct timeval *tv) {
   tv->tv_sec = ts.tv_sec;
   tv->tv_usec = ts.tv_nsec / WATCHMAN_NSEC_IN_USEC;
+}
+
+// Convert a timeval to a double that holds the fractional number of seconds
+static inline double w_timeval_abs_seconds(struct timeval tv){
+  double val = (double)tv.tv_sec;
+  val += ((double)tv.tv_usec)/WATCHMAN_USEC_IN_SEC;
+  return val;
 }
 
 static inline double w_timeval_diff(struct timeval start, struct timeval end)

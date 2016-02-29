@@ -85,12 +85,17 @@ void send_error_response(struct watchman_client *client,
   char buf[WATCHMAN_NAME_MAX];
   va_list ap;
   json_t *resp = make_response();
+  json_t *errstr;
 
   va_start(ap, fmt);
   vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
 
-  set_prop(resp, "error", json_string_nocheck(buf));
+  errstr = json_string_nocheck(buf);
+  set_prop(resp, "error", errstr);
+
+  json_incref(errstr);
+  w_perf_add_meta(&client->perf_sample, "error", errstr);
 
   if (client->current_command) {
     char *command = NULL;
@@ -129,7 +134,7 @@ static void client_delete(struct watchman_client *client)
 
 void w_request_shutdown(void) {
   stopping = true;
-  // Knock listener thread out of poll/accept
+// Knock listener thread out of poll/accept
 #ifndef _WIN32
   pthread_kill(listener_thread, SIGUSR1);
   pthread_kill(reaper_thread, SIGUSR1);
