@@ -85,7 +85,10 @@ w_root_t *resolve_root_or_err(struct watchman_client *client, json_t *args,
     send_error_response(client, "unable to resolve root %s: %s", root_name,
                         errmsg);
     free(errmsg);
+  } else {
+    w_perf_add_root_meta(&client->perf_sample, root);
   }
+
   return root;
 }
 

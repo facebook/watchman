@@ -28,6 +28,7 @@ watchman_SOURCES = \
 	ioprio.c        \
 	opendir.c       \
 	pending.c       \
+	perf.c          \
 	stream.c        \
 	stream_stdout.c \
 	stream_unix.c   \

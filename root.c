@@ -1823,6 +1823,9 @@ static void io_thread(w_root_t *root)
 
     if (!root->done_initial) {
       struct timeval start;
+      w_perf_t sample;
+
+      w_perf_start(&sample, "full-crawl");
 
       /* first order of business is to find all the files under our root */
       if (cfg_get_bool(root, "iothrottle", false)) {
@@ -1841,10 +1844,17 @@ static void io_thread(w_root_t *root)
       root->done_initial = true;
       // We just crawled everything, no need to recheck right now
       root->last_recheck_tick = root->ticks + 1;
+      w_perf_add_root_meta(&sample, root);
       w_root_unlock(root);
+
       if (cfg_get_bool(root, "iothrottle", false)) {
         w_ioprio_set_normal();
       }
+
+      w_perf_finish(&sample);
+      w_perf_force_log(&sample);
+      w_perf_log(&sample);
+      w_perf_destroy(&sample);
 
       w_log(W_LOG_ERR, "%scrawl complete\n", root->recrawl_count ? "re" : "");
       timeoutms = root->trigger_settle;
