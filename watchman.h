@@ -815,6 +815,12 @@ static inline void w_timeval_to_timespec(
   ts->tv_nsec = a.tv_usec * WATCHMAN_NSEC_IN_USEC;
 }
 
+static inline void w_timespec_to_timeval(
+    const struct timespec ts, struct timeval *tv) {
+  tv->tv_sec = ts.tv_sec;
+  tv->tv_usec = ts.tv_nsec / WATCHMAN_NSEC_IN_USEC;
+}
+
 static inline double w_timeval_diff(struct timeval start, struct timeval end)
 {
   double s = start.tv_sec + ((double)start.tv_usec)/WATCHMAN_USEC_IN_SEC;
@@ -990,6 +996,10 @@ struct flag_map {
 };
 void w_expand_flags(const struct flag_map *fmap, uint32_t flags,
     char *buf, size_t len);
+
+#ifdef __APPLE__
+int pthread_mutex_timedlock(pthread_mutex_t *m, const struct timespec *ts);
+#endif
 
 #ifdef __cplusplus
 }
