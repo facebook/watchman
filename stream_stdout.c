@@ -53,7 +53,8 @@ static struct watchman_stream_ops stdio_ops = {
   stdio_get_events,
   stdio_set_nonb,
   stdio_rewind,
-  stdio_shutdown
+  stdio_shutdown,
+  NULL
 };
 
 static struct watchman_stream stm_stdout = {

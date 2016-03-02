@@ -73,3 +73,14 @@ bool w_stm_shutdown(w_stm_t stm) {
   }
   return stm->ops->op_shutdown(stm);
 }
+
+bool w_stm_peer_is_owner(w_stm_t stm) {
+  if (!stm || stm->handle == NULL || stm->ops == NULL) {
+    errno = EBADF;
+    return false;
+  }
+  if (!stm->ops->op_peer_is_owner) {
+    return false;
+  }
+  return stm->ops->op_peer_is_owner(stm);
+}

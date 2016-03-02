@@ -154,6 +154,12 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
     return false;
   }
 
+  if (!client->client_is_owner && (def->flags & CMD_ALLOW_ANY_USER) == 0) {
+    send_error_response(client, "you must be the process owner to execute '%s'",
+                        def->name);
+    return false;
+  }
+
   w_log(W_LOG_DBG, "dispatch_command: %s\n", def->name);
   def->func(client, args);
   w_log(W_LOG_DBG, "dispatch_command: %s (completed)\n", def->name);

@@ -2,6 +2,12 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#ifdef HAVE_SYS_UCRED_H
+#include <sys/ucred.h>
+#endif
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
 
 struct watchman_event {
   int fd[2];
@@ -61,6 +67,32 @@ static bool unix_shutdown(w_stm_t stm) {
   return shutdown(h->fd, SHUT_RDWR);
 }
 
+static bool unix_peer_is_owner(w_stm_t stm) {
+  struct unix_handle *h = stm->handle;
+
+#ifdef SO_PEERCRED
+  struct ucred cred;
+  socklen_t len = sizeof(cred);
+
+  if (getsockopt(h->fd, SOL_SOCKET, SO_PEERCRED, &cred, &len) == 0) {
+    if (cred.uid == getuid()) {
+      return true;
+    }
+  }
+#elif defined(LOCAL_PEERCRED)
+  struct xucred cred;
+  socklen_t len = sizeof(cred);
+
+  if (getsockopt(h->fd, SOL_LOCAL, LOCAL_PEERCRED, &cred, &len) == 0) {
+    if (cred.cr_uid == getuid()) {
+      return true;
+    }
+  }
+#endif
+
+  return false;
+}
+
 static struct watchman_stream_ops unix_ops = {
   unix_close,
   unix_read,
@@ -68,7 +100,8 @@ static struct watchman_stream_ops unix_ops = {
   unix_get_events,
   unix_set_nonb,
   unix_rewind,
-  unix_shutdown
+  unix_shutdown,
+  unix_peer_is_owner,
 };
 
 w_evt_t w_event_make(void) {

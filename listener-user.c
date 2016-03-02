@@ -78,12 +78,22 @@ w_root_t *resolve_root_or_err(struct watchman_client *client, json_t *args,
   if (client->client_mode) {
     root = w_root_resolve_for_client_mode(root_name, &errmsg);
   } else {
+    if (!client->client_is_owner) {
+      // Only the owner is allowed to create watches
+      create = false;
+    }
     root = w_root_resolve(root_name, create, &errmsg);
   }
 
   if (!root) {
-    send_error_response(client, "unable to resolve root %s: %s", root_name,
-                        errmsg);
+    if (!client->client_is_owner) {
+      send_error_response(client, "unable to resolve root %s: %s (this may be "
+                                  "because you are not the process owner)",
+                          root_name, errmsg);
+    } else {
+      send_error_response(client, "unable to resolve root %s: %s", root_name,
+                          errmsg);
+    }
     free(errmsg);
   }
   return root;

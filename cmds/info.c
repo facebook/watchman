@@ -79,7 +79,8 @@ static void cmd_version(struct watchman_client *client, json_t *args)
 
   send_and_dispose_response(client, resp);
 }
-W_CMD_REG("version", cmd_version, CMD_DAEMON|CMD_CLIENT, NULL)
+W_CMD_REG("version", cmd_version, CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
+          NULL)
 
 /* list-capabilities */
 static void cmd_list_capabilities(struct watchman_client *client,
@@ -91,7 +92,7 @@ static void cmd_list_capabilities(struct watchman_client *client,
   send_and_dispose_response(client, resp);
 }
 W_CMD_REG("list-capabilities", cmd_list_capabilities,
-    CMD_DAEMON|CMD_CLIENT, NULL)
+          CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER, NULL)
 
 /* get-sockname */
 static void cmd_get_sockname(struct watchman_client *client, json_t *args)
@@ -104,7 +105,8 @@ static void cmd_get_sockname(struct watchman_client *client, json_t *args)
 
   send_and_dispose_response(client, resp);
 }
-W_CMD_REG("get-sockname", cmd_get_sockname, CMD_DAEMON|CMD_CLIENT, NULL)
+W_CMD_REG("get-sockname", cmd_get_sockname,
+          CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER, NULL)
 
 static void cmd_get_config(struct watchman_client *client, json_t *args)
 {

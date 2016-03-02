@@ -120,7 +120,7 @@ static void client_delete(struct watchman_client *client)
 
 void w_request_shutdown(void) {
   stopping = true;
-  // Knock listener thread out of poll/accept
+// Knock listener thread out of poll/accept
 #ifndef _WIN32
   pthread_kill(listener_thread, SIGUSR1);
   pthread_kill(reaper_thread, SIGUSR1);
@@ -142,6 +142,8 @@ static void *client_thread(void *ptr)
 
   w_stm_set_nonblock(client->stm, true);
   w_set_thread_name("client:stm=%p", client->stm);
+
+  client->client_is_owner = w_stm_peer_is_owner(client->stm);
 
   w_stm_get_events(client->stm, &pfd[0].evt);
   pfd[1].evt = client->ping;

@@ -128,5 +128,18 @@ static void cmd_debug_poison(struct watchman_client *client, json_t *args)
 }
 W_CMD_REG("debug-poison", cmd_debug_poison, CMD_DAEMON, w_cmd_realpath_root)
 
+static void cmd_debug_drop_privs(struct watchman_client *client, json_t *args)
+{
+  json_t *resp;
+
+  unused_parameter(args);
+  client->client_is_owner = false;
+
+  resp = make_response();
+  set_prop(resp, "owner", json_boolean(client->client_is_owner));
+  send_and_dispose_response(client, resp);
+}
+W_CMD_REG("debug-drop-privs", cmd_debug_drop_privs, CMD_DAEMON, NULL);
+
 /* vim:ts=2:sw=2:et:
  */

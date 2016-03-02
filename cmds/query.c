@@ -74,7 +74,8 @@ static void cmd_query(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, response);
   w_root_delref(root);
 }
-W_CMD_REG("query", cmd_query, CMD_DAEMON|CMD_CLIENT, w_cmd_realpath_root)
+W_CMD_REG("query", cmd_query, CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
+          w_cmd_realpath_root)
 
 /* vim:ts=2:sw=2:et:
  */
