@@ -573,6 +573,7 @@ struct watchman_client {
   int log_level;
   w_jbuffer_t reader, writer;
   bool client_mode;
+  bool client_is_owner;
   enum w_pdu_type pdu_type;
 
   // The command currently being processed by dispatch_command

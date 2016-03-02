@@ -527,6 +527,12 @@ static bool win_shutdown(w_stm_t stm) {
   return true;
 }
 
+static bool win_peer_is_owner(w_stm_t stm) {
+  unused_parameter(stm);
+  // TODO: implement this for Windows
+  return true;
+}
+
 static struct watchman_stream_ops win_ops = {
   win_close,
   win_read,
@@ -534,7 +540,8 @@ static struct watchman_stream_ops win_ops = {
   win_get_events,
   win_set_nonb,
   win_rewind,
-  win_shutdown
+  win_shutdown,
+  win_peer_is_owner
 };
 
 w_evt_t w_event_make(void) {

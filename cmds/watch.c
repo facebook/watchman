@@ -73,7 +73,8 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
-W_CMD_REG("clock", cmd_clock, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("clock", cmd_clock, CMD_DAEMON | CMD_ALLOW_ANY_USER,
+          w_cmd_realpath_root)
 
 /* watch-del /root
  * Stops watching the specified root */
@@ -129,7 +130,7 @@ static void cmd_watch_list(struct watchman_client *client, json_t *args)
   set_prop(resp, "roots", root_paths);
   send_and_dispose_response(client, resp);
 }
-W_CMD_REG("watch-list", cmd_watch_list, CMD_DAEMON, NULL)
+W_CMD_REG("watch-list", cmd_watch_list, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL)
 
 // For each directory component in candidate_dir to the root of the filesystem,
 // look for root_file.  If root_file is present, update relpath to reflect the
@@ -321,7 +322,8 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
   w_root_unlock(root);
   w_root_delref(root);
 }
-W_CMD_REG("watch", cmd_watch, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("watch", cmd_watch, CMD_DAEMON | CMD_ALLOW_ANY_USER,
+          w_cmd_realpath_root)
 
 static void cmd_watch_project(struct watchman_client *client, json_t *args)
 {
@@ -374,7 +376,8 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
   w_root_delref(root);
   free(dir_to_watch);
 }
-W_CMD_REG("watch-project", cmd_watch_project, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("watch-project", cmd_watch_project, CMD_DAEMON | CMD_ALLOW_ANY_USER,
+          w_cmd_realpath_root)
 
 /* vim:ts=2:sw=2:et:
  */

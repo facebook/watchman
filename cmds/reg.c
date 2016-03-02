@@ -160,6 +160,12 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
     goto done;
   }
 
+  if (!client->client_is_owner && (def->flags & CMD_ALLOW_ANY_USER) == 0) {
+    send_error_response(client, "you must be the process owner to execute '%s'",
+                        def->name);
+    return false;
+  }
+
   w_log(W_LOG_DBG, "dispatch_command: %s\n", def->name);
   snprintf(sample_name, sizeof(sample_name), "dispatch_command:%s", def->name);
   w_perf_start(&client->perf_sample, sample_name);

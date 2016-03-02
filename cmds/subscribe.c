@@ -214,7 +214,8 @@ static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
   send_and_dispose_response(&client->client, resp);
   w_root_delref(root);
 }
-W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
+          w_cmd_realpath_root)
 
 /* subscribe /root subname {query}
  * Subscribes the client connection to the specified root. */
@@ -335,7 +336,8 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
 done:
   w_root_delref(root);
 }
-W_CMD_REG("subscribe", cmd_subscribe, CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG("subscribe", cmd_subscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
+          w_cmd_realpath_root)
 
 /* vim:ts=2:sw=2:et:
  */
