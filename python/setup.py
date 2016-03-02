@@ -19,7 +19,7 @@ setup(
     keywords = (
         'watchman inotify fsevents kevent kqueue portfs filesystem watcher'
     ),
-    license = 'Apache License (2.0)',
+    license = 'BSD',
     packages = ['pywatchman'],
     ext_modules = [
         Extension('pywatchman.bser', sources = ['pywatchman/bser.c'])
@@ -28,7 +28,7 @@ setup(
     classifiers = [
         'Development Status :: 5 - Production/Stable',
         'Topic :: System :: Filesystems',
-        'License :: OSI Approved :: Apache Software License',
+        'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent'
     ],
     zip_safe = True,
