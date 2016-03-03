@@ -399,6 +399,9 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
   w_stm_t file;
   int errcode = 0;
   struct timespec deadline;
+  w_perf_t sample;
+
+  w_perf_start(&sample, "sync_to_now");
 
   if (pthread_cond_init(&cookie.cond, NULL)) {
     errcode = errno;
@@ -453,8 +456,26 @@ out:
   w_ht_del(root->query_cookies, w_ht_ptr_val(path_str));
   w_root_unlock(root);
 
+  // We want to know about all timeouts
+  if (!cookie.seen) {
+    w_perf_force_log(&sample);
+  }
+
+  if (w_perf_finish(&sample)) {
+    w_perf_add_root_meta(&sample, root);
+    w_perf_add_meta(&sample, "sync_to_now",
+                    json_pack("{s:b, s:i, s:i}",      //
+                              "success", cookie.seen, //
+                              "timeoutms", timeoutms, //
+                              "errcode", errcode      //
+                              ));
+    w_perf_log(&sample);
+  }
+
   w_string_delref(path_str);
   pthread_cond_destroy(&cookie.cond);
+
+  w_perf_destroy(&sample);
 
   if (!cookie.seen) {
     errno = errcode;
