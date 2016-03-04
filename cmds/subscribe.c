@@ -72,7 +72,7 @@ static json_t *build_subscription_results(
   // could be legitimately blocked by something else.  That means that we
   // can use a short lock_timeout
   sub->query->lock_timeout =
-      cfg_get_int(root, "subscription_lock_timeout_ms", 100);
+      (uint32_t)cfg_get_int(root, "subscription_lock_timeout_ms", 100);
   if (!w_query_execute(sub->query, root, &res, subscription_generator, sub)) {
     w_log(W_LOG_ERR, "error running subscription %s query: %s",
         sub->name->buf, res.errmsg);
