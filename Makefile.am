@@ -30,6 +30,7 @@ watchman_SOURCES = \
 	stream.c        \
 	stream_stdout.c \
 	stream_unix.c   \
+	timedlock.c     \
 	cmds/find.c     \
 	cmds/info.c     \
 	cmds/log.c      \

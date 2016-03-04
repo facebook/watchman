@@ -58,7 +58,7 @@ void w_mark_dead(pid_t pid)
       root->root_path->len, root->root_path->buf, (int)pid);
 
   /* now walk the cmds and try to find our match */
-  w_root_lock(root);
+  w_root_lock(root, "mark_dead");
 
   /* walk the list of triggers, and run their rules */
   if (w_ht_first(root->commands, &iter)) do {

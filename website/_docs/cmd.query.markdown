@@ -130,3 +130,27 @@ expressed in milliseconds:
 You may specify `0` as the value if you do not wish for the query to create
 a cookie and synchronize; the query will be evaluated over the present view
 of the tree, which may lag behind the present state of the filesystem.
+
+### Lock timeout
+
+*Since 4.6.*
+
+By default queries will wait for up to 60 seconds to acquire a lock to inspect
+the view of the filesystem tree.  In practice, this timeout should never be hit
+(it is indicative of an environmental or load related issue).  However, in some
+situations it is important to ensure that the query attempt times out sooner
+than this.  You may use the `lock_timeout` field to control this behavior.
+`lock_timeout` must be an integer value expressed in milliseconds:
+
+```json
+["query", "/path/to/root", {
+  "expression": ["exists"],
+  "fields": ["name"],
+  "lock_timeout": 60000,
+  "sync_timeout": 60000
+}]
+```
+
+Prior to version 4.6, the `lock_timeout` could not be configured and had an
+effective value of infinity.
+

@@ -23,7 +23,7 @@ static void cmd_debug_recrawl(struct watchman_client *client, json_t *args)
 
   resp = make_response();
 
-  w_root_lock(root);
+  w_root_lock(root, "debug-recrawl");
   w_root_schedule_recrawl(root, "debug-recrawl");
   w_root_unlock(root);
 
@@ -54,7 +54,7 @@ static void cmd_debug_show_cursors(struct watchman_client *client, json_t *args)
 
   resp = make_response();
 
-  w_root_lock(root);
+  w_root_lock(root, "debug-show-cursors");
   cursors = json_object_of_size(w_ht_size(root->cursors));
   if (w_ht_first(root->cursors, &i)) do {
     w_string_t *name = w_ht_val_ptr(i.key);
@@ -93,7 +93,7 @@ static void cmd_debug_ageout(struct watchman_client *client, json_t *args)
 
   resp = make_response();
 
-  w_root_lock(root);
+  w_root_lock(root, "debug-ageout");
   w_root_perform_age_out(root, min_age);
   w_root_unlock(root);
 

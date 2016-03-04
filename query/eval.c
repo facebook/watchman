@@ -403,7 +403,13 @@ bool w_query_execute(
    */
 
   // Lock the root and begin generation
-  w_root_lock(root);
+  if (!w_root_lock_with_timeout(root, "w_query_execute", query->lock_timeout)) {
+    ignore_result(asprintf(&res->errmsg, "couldn't acquire root lock within "
+                                         "lock_timeout of %dms. root is "
+                                         "currently busy (%s)\n",
+                           query->lock_timeout, root->lock_reason));
+    return false;
+  }
   res->root_number = root->number;
   res->ticks = root->ticks;
 

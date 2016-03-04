@@ -430,6 +430,7 @@ struct watchman_root {
 
   /* our locking granularity is per-root */
   pthread_mutex_t lock;
+  const char *lock_reason;
   pthread_t notify_thread;
   pthread_t io_thread;
 
@@ -685,7 +686,8 @@ void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
 
 bool w_root_sync_to_now(w_root_t *root, int timeoutms);
 
-void w_root_lock(w_root_t *root);
+void w_root_lock(w_root_t *root, const char *purpose);
+bool w_root_lock_with_timeout(w_root_t *root, const char *purpose, int timeoutms);
 void w_root_unlock(w_root_t *root);
 
 /* Bob Jenkins' lookup3.c hash function */
@@ -812,6 +814,12 @@ static inline void w_timeval_to_timespec(
 {
   ts->tv_sec = a.tv_sec;
   ts->tv_nsec = a.tv_usec * WATCHMAN_NSEC_IN_USEC;
+}
+
+static inline void w_timespec_to_timeval(
+    const struct timespec ts, struct timeval *tv) {
+  tv->tv_sec = ts.tv_sec;
+  tv->tv_usec = ts.tv_nsec / WATCHMAN_NSEC_IN_USEC;
 }
 
 static inline double w_timeval_diff(struct timeval start, struct timeval end)
@@ -989,6 +997,10 @@ struct flag_map {
 };
 void w_expand_flags(const struct flag_map *fmap, uint32_t flags,
     char *buf, size_t len);
+
+#ifdef __APPLE__
+int pthread_mutex_timedlock(pthread_mutex_t *m, const struct timespec *ts);
+#endif
 
 #ifdef __cplusplus
 }

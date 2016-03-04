@@ -146,7 +146,7 @@ static void *readchanges_thread(void *arg) {
     w_log(W_LOG_ERR,
         "ReadDirectoryChangesW: failed, cancel watch. %s\n",
         win32_strerror(err));
-    w_root_lock(root);
+    w_root_lock(root, "w_root_cancel");
     w_root_cancel(root);
     w_root_unlock(root);
     goto out;
@@ -169,7 +169,7 @@ static void *readchanges_thread(void *arg) {
         w_log(W_LOG_ERR,
             "ReadDirectoryChangesW: failed, cancel watch. %s\n",
             win32_strerror(err));
-        w_root_lock(root);
+        w_root_lock(root, "w_root_cancel");
         w_root_cancel(root);
         w_root_unlock(root);
         break;
@@ -206,7 +206,7 @@ static void *readchanges_thread(void *arg) {
         } else {
           w_log(W_LOG_ERR, "Cancelling watch for %s\n",
               root->root_path->buf);
-          w_root_lock(root);
+          w_root_lock(root, "w_root_cancel");
           w_root_cancel(root);
           w_root_unlock(root);
           break;
