@@ -62,7 +62,13 @@ bool w_perf_finish(w_perf_t *perf) {
 #endif
 
   if (!perf->will_log) {
-    // TODO: check description against a policy configuration
+    if (perf->wall_time_elapsed_thresh == 0) {
+      json_t *thresh = cfg_get_json(NULL, "perf_sampling_thresh");
+      if (thresh) {
+        json_unpack(thresh, "{s:f}", perf->description,
+                    &perf->wall_time_elapsed_thresh);
+      }
+    }
 
     if (perf->wall_time_elapsed_thresh > 0 &&
         w_timeval_diff(perf->time_begin, perf->time_end) >
