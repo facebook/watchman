@@ -373,6 +373,10 @@ if 'APPVEYOR' in os.environ:
     subprocess.call(['7z', 'a', 'logs.zip', 'logs'])
     subprocess.call(['appveyor', 'PushArtifact', 'logs.zip'])
 
+if 'CIRCLE_ARTIFACTS' in os.environ:
+    shutil.copytree(temp_dir, os.path.join(os.environ['CIRCLE_ARTIFACTS'],
+                                           'logs'))
+
 if tests_failed or (tests_run == 0):
     if args.keep_if_fail:
         args.keep = True
