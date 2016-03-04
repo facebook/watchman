@@ -16,10 +16,17 @@ make
 set +e
 rm -rf /tmp/watchman*
 rm -rf /var/tmp/watchmantest*
-TMPDIR=/var/tmp
 TMP=/var/tmp
+if test "$CIRCLECI" == "true" ; then
+  TMP=$CIRCLE_ARTIFACTS
+fi
+TMPDIR=$TMP
 export TMPDIR TMP
 if ! make integration ; then
+  if test "$CIRCLECI" == "true" ; then
+    # runtests.py already copied the logs to the artifact store
+    exit 1
+  fi
   find /var/tmp/watchmantest* -name log | xargs cat
   exit 1
 fi

@@ -739,7 +739,7 @@ function execx() {
   if ($status != 0) {
     throw new Exception("$cmd failed with status $status $output");
   }
-  return $output;
+  return array(implode("\n", $output), null);
 }
 
 // This is a helper to avoid having to spawn a new watchman
