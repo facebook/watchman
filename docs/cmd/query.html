@@ -789,6 +789,26 @@ expressed in milliseconds:</p>
 a cookie and synchronize; the query will be evaluated over the present view
 of the tree, which may lag behind the present state of the filesystem.</p>
 
+<h3 id="lock-timeout">Lock timeout</h3>
+
+<p><em>Since 4.6.</em></p>
+
+<p>By default queries will wait for up to 60 seconds to acquire a lock to inspect
+the view of the filesystem tree.  In practice, this timeout should never be hit
+(it is indicative of an environmental or load related issue).  However, in some
+situations it is important to ensure that the query attempt times out sooner
+than this.  You may use the <code>lock_timeout</code> field to control this behavior.
+<code>lock_timeout</code> must be an integer value expressed in milliseconds:</p>
+<div class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">[</span><span class="s2">&quot;query&quot;</span><span class="p">,</span> <span class="s2">&quot;/path/to/root&quot;</span><span class="p">,</span> <span class="p">{</span>
+  <span class="nt">&quot;expression&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;exists&quot;</span><span class="p">],</span>
+  <span class="nt">&quot;fields&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
+  <span class="nt">&quot;lock_timeout&quot;</span><span class="p">:</span> <span class="mi">60000</span><span class="p">,</span>
+  <span class="nt">&quot;sync_timeout&quot;</span><span class="p">:</span> <span class="mi">60000</span>
+<span class="p">}]</span>
+</code></pre></div>
+<p>Prior to version 4.6, the <code>lock_timeout</code> could not be configured and had an
+effective value of infinity.</p>
+
     
   </article>
 </div>
@@ -842,7 +862,7 @@ of the tree, which may lag behind the present state of the filesystem.</p>
   m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
   })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
-  ga('create', 'UA-44373548-7', 'auto');
+  ga('create', 'UA-44373548-13', 'auto');
   ga('send', 'pageview');
 </script>
 <script>
