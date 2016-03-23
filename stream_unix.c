@@ -70,12 +70,16 @@ static bool unix_shutdown(w_stm_t stm) {
 static bool unix_peer_is_owner(w_stm_t stm) {
   struct unix_handle *h = stm->handle;
 
+  // For these PEERCRED things, the uid reported is the effective uid of
+  // the process, which may have been altered due to setuid or similar
+  // mechanisms.  We'll treat the other process as an owner if their
+  // effective UID matches ours, or if they are root.
 #ifdef SO_PEERCRED
   struct ucred cred;
   socklen_t len = sizeof(cred);
 
   if (getsockopt(h->fd, SOL_SOCKET, SO_PEERCRED, &cred, &len) == 0) {
-    if (cred.uid == getuid()) {
+    if (cred.uid == getuid() || cred.uid == 0) {
       return true;
     }
   }
@@ -84,7 +88,7 @@ static bool unix_peer_is_owner(w_stm_t stm) {
   socklen_t len = sizeof(cred);
 
   if (getsockopt(h->fd, SOL_LOCAL, LOCAL_PEERCRED, &cred, &len) == 0) {
-    if (cred.cr_uid == getuid()) {
+    if (cred.cr_uid == getuid() || cred.cr_uid == 0) {
       return true;
     }
   }
