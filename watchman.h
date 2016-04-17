@@ -931,6 +931,12 @@ struct watchman_getopt {
 # define MAX(a, b)  (a) > (b) ? (a) : (b)
 #endif
 
+#ifdef HAVE_SYS_SIGLIST
+# define w_strsignal(val) sys_siglist[(val)]
+#else
+# define w_strsignal(val) strsignal((val))
+#endif
+
 bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
     char ***daemon_argv);
 void usage(struct watchman_getopt *opts, FILE *where);
