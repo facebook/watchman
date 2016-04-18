@@ -55,7 +55,7 @@ extern "C" {
 # define O_CLOEXEC 0
 #endif
 #ifndef _WIN32
-#include <sys/poll.h>
+#include <poll.h>
 #include <sys/wait.h>
 #endif
 #ifdef HAVE_PCRE_H
