@@ -26,6 +26,11 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import os
 import errno
 import math
@@ -36,11 +41,13 @@ import time
 # Sometimes it's really hard to get Python extensions to compile,
 # so fall back to a pure Python implementation.
 try:
-    import bser
+    from . import bser
 except ImportError:
-    import pybser as bser
+    from . import pybser as bser
 
-import capabilities
+from . import (
+    capabilities,
+)
 
 if os.name == 'nt':
     import ctypes
@@ -195,16 +202,16 @@ class Transport(object):
 
         # Buffer may already have a line if we've received unilateral
         # response(s) from the server
-        if len(self.buf) == 1 and "\n" in self.buf[0]:
-            (line, b) = self.buf[0].split("\n", 1)
+        if len(self.buf) == 1 and b"\n" in self.buf[0]:
+            (line, b) = self.buf[0].split(b"\n", 1)
             self.buf = [b]
             return line
 
         while True:
             b = self.readBytes(4096)
-            if "\n" in b:
-                result = ''.join(self.buf)
-                (line, b) = b.split("\n", 1)
+            if b"\n" in b:
+                result = b''.join(self.buf)
+                (line, b) = b.split(b"\n", 1)
                 self.buf = [b]
                 return result + line
             self.buf.append(b)
@@ -487,7 +494,7 @@ class BserCodec(Codec):
             buf.append(self.transport.readBytes(elen - rlen))
             rlen += len(buf[-1])
 
-        response = ''.join(buf)
+        response = b''.join(buf)
         try:
             res = self._loads(response)
             return res
@@ -570,8 +577,10 @@ class client(object):
         else:
             raise WatchmanError('invalid transport %s' % transport)
 
-        sendEncoding = sendEncoding or os.getenv('WATCHMAN_ENCODING') or 'bser'
-        recvEncoding = recvEncoding or os.getenv('WATCHMAN_ENCODING') or 'bser'
+        sendEncoding = str(sendEncoding or os.getenv('WATCHMAN_ENCODING') or
+                           'bser')
+        recvEncoding = str(recvEncoding or os.getenv('WATCHMAN_ENCODING') or
+                           'bser')
 
         self.recvCodec = self._parseEncoding(recvEncoding)
         self.sendCodec = self._parseEncoding(sendEncoding)
@@ -614,10 +623,10 @@ class client(object):
             raise WatchmanError("watchman exited with code %d" % exitcode)
 
         result = bser.loads(stdout)
-        if 'error' in result:
+        if b'error' in result:
             raise WatchmanError('get-sockname error: %s' % result['error'])
 
-        return result['sockname']
+        return result[b'sockname']
 
     def _connect(self):
         """ establish transport connection """
@@ -659,20 +668,20 @@ class client(object):
 
         self._connect()
         result = self.recvConn.receive()
-        if self._hasprop(result, 'error'):
-            raise CommandError(result['error'])
+        if self._hasprop(result, b'error'):
+            raise CommandError(result[b'error'])
 
-        if self._hasprop(result, 'log'):
-            self.logs.append(result['log'])
+        if self._hasprop(result, b'log'):
+            self.logs.append(result[b'log'])
 
-        if self._hasprop(result, 'subscription'):
-            sub = result['subscription']
+        if self._hasprop(result, b'subscription'):
+            sub = result[b'subscription']
             if not (sub in self.subs):
                 self.subs[sub] = []
             self.subs[sub].append(result)
 
             # also accumulate in {root,sub} keyed store
-            root = os.path.normcase(result['root'])
+            root = os.path.normcase(result[b'root'])
             if not root in self.sub_by_root:
                 self.sub_by_root[root] = {}
             if not sub in self.sub_by_root[root]:
@@ -763,12 +772,12 @@ class client(object):
             'required': required or []
         })
 
-        if not self._hasprop(res, 'capabilities'):
+        if not self._hasprop(res, b'capabilities'):
             # Server doesn't support capabilities, so we need to
             # synthesize the results based on the version
             capabilities.synthesize(res, optional)
-            if 'error' in res:
-                raise CommandError(res['error'])
+            if b'error' in res:
+                raise CommandError(res[b'error'])
 
         return res
 
