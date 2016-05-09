@@ -42,7 +42,7 @@ class TestBSERDump(unittest.TestCase):
         enc = self.bser_mod.dumps(val)
         print "# %s  -->  %s" % (val, enc.encode('hex'))
         dec = self.bser_mod.loads(enc, mutable)
-        self.assertEquals(val, dec)
+        self.assertEqual(val, dec)
 
     def munged(self, val, munged):
         enc = self.bser_mod.dumps(val)
@@ -51,7 +51,7 @@ class TestBSERDump(unittest.TestCase):
         else:
             print "# %s  -->  %s" % (val, enc.encode('hex'))
         dec = self.bser_mod.loads(enc)
-        self.assertEquals(munged, dec)
+        self.assertEqual(munged, dec)
 
     def test_int(self):
         self.roundtrip(1)
@@ -93,17 +93,17 @@ class TestBSERDump(unittest.TestCase):
     def test_dict(self):
         self.roundtrip({"hello": "there"})
         obj = self.bser_mod.loads(self.bser_mod.dumps({"hello": "there"}), False)
-        self.assertEquals(1, len(obj))
-        self.assertEquals('there', obj.hello)
-        self.assertEquals('there', obj['hello'])
-        self.assertEquals('there', obj[0])
+        self.assertEqual(1, len(obj))
+        self.assertEqual('there', obj.hello)
+        self.assertEqual('there', obj['hello'])
+        self.assertEqual('there', obj[0])
         hello, = obj  # sequence/list assignment
-        self.assertEquals('there', hello)
+        self.assertEqual('there', hello)
 
     def assertItemAttributes(self, dictish, attrish):
-        self.assertEquals(len(dictish), len(attrish))
+        self.assertEqual(len(dictish), len(attrish))
         for k, v in dictish.iteritems():
-            self.assertEquals(v, getattr(attrish, k))
+            self.assertEqual(v, getattr(attrish, k))
 
     def test_template(self):
         # since we can't generate the template bser output, here's a
@@ -119,7 +119,7 @@ class TestBSERDump(unittest.TestCase):
             {"name": "pete", "age": 30},
             {"name": None, "age": 25}
         ]
-        self.assertEquals(exp, dec)
+        self.assertEqual(exp, dec)
         res = self.bser_mod.loads(templ, False)
 
         for i in range(0, len(exp)):
@@ -127,13 +127,13 @@ class TestBSERDump(unittest.TestCase):
 
     def test_pdu_len(self):
         enc = self.bser_mod.dumps(1)
-        self.assertEquals(len(enc), self.bser_mod.pdu_len(enc))
+        self.assertEqual(len(enc), self.bser_mod.pdu_len(enc))
 
         # try a bigger one; prove that we get the correct length
         # even though we receive just a portion of the complete
         # data
         enc = self.bser_mod.dumps([1, 2, 3, "hello there, much larger"])
-        self.assertEquals(len(enc), self.bser_mod.pdu_len(enc[0:7]))
+        self.assertEqual(len(enc), self.bser_mod.pdu_len(enc[0:7]))
 
     def test_garbage(self):
         # can't use the with form here because Python 2.6
