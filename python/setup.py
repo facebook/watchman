@@ -32,5 +32,6 @@ setup(
         'Operating System :: OS Independent'
     ],
     zip_safe = True,
-    scripts=['bin/watchman-wait', 'bin/watchman-make']
+    scripts=['bin/watchman-wait', 'bin/watchman-make'],
+    test_suite = 'tests',
 )
