@@ -183,9 +183,12 @@ PyTypeObject bserObjectType = {
   0,                         /* tp_new */
 };
 
+typedef struct loads_ctx {
+  int mutable;
+} unser_ctx_t;
 
 static PyObject *bser_loads_recursive(const char **ptr, const char *end,
-    int mutable);
+    const unser_ctx_t *ctx);
 
 static const char bser_true = BSER_TRUE;
 static const char bser_false = BSER_FALSE;
@@ -193,6 +196,7 @@ static const char bser_null = BSER_NULL;
 static const char bser_string_hdr = BSER_STRING;
 static const char bser_array_hdr = BSER_ARRAY;
 static const char bser_object_hdr = BSER_OBJECT;
+
 
 static inline uint32_t next_power_2(uint32_t n)
 {
@@ -563,10 +567,12 @@ static int bunser_string(const char **ptr, const char *end,
   return 1;
 }
 
-static PyObject *bunser_array(const char **ptr, const char *end, int mutable)
+static PyObject *bunser_array(const char **ptr, const char *end,
+                              const unser_ctx_t *ctx)
 {
   const char *buf = *ptr;
   int64_t nitems, i;
+  int mutable = ctx->mutable;
   PyObject *res;
 
   // skip array header
@@ -588,7 +594,7 @@ static PyObject *bunser_array(const char **ptr, const char *end, int mutable)
   }
 
   for (i = 0; i < nitems; i++) {
-    PyObject *ele = bser_loads_recursive(ptr, end, mutable);
+    PyObject *ele = bser_loads_recursive(ptr, end, ctx);
 
     if (!ele) {
       Py_DECREF(res);
@@ -607,10 +613,11 @@ static PyObject *bunser_array(const char **ptr, const char *end, int mutable)
 }
 
 static PyObject *bunser_object(const char **ptr, const char *end,
-    int mutable)
+    const unser_ctx_t *ctx)
 {
   const char *buf = *ptr;
   int64_t nitems, i;
+  int mutable = ctx->mutable;
   PyObject *res;
   bserObject *obj;
 
@@ -653,7 +660,7 @@ static PyObject *bunser_object(const char **ptr, const char *end,
       return NULL;
     }
 
-    ele = bser_loads_recursive(ptr, end, mutable);
+    ele = bser_loads_recursive(ptr, end, ctx);
 
     if (!ele) {
       Py_DECREF(key);
@@ -676,10 +683,11 @@ static PyObject *bunser_object(const char **ptr, const char *end,
 }
 
 static PyObject *bunser_template(const char **ptr, const char *end,
-    int mutable)
+    const unser_ctx_t *ctx)
 {
   const char *buf = *ptr;
   int64_t nitems, i;
+  int mutable = ctx->mutable;
   PyObject *arrval;
   PyObject *keys;
   Py_ssize_t numkeys, keyidx;
@@ -694,7 +702,7 @@ static PyObject *bunser_template(const char **ptr, const char *end,
   *ptr = buf;
 
   // Load template keys
-  keys = bunser_array(ptr, end, mutable);
+  keys = bunser_array(ptr, end, ctx);
   if (!keys) {
     return NULL;
   }
@@ -750,7 +758,7 @@ fail:
         ele = Py_None;
         Py_INCREF(ele);
       } else {
-        ele = bser_loads_recursive(ptr, end, mutable);
+        ele = bser_loads_recursive(ptr, end, ctx);
       }
 
       if (!ele) {
@@ -777,7 +785,7 @@ fail:
 }
 
 static PyObject *bser_loads_recursive(const char **ptr, const char *end,
-    int mutable)
+    const unser_ctx_t *ctx)
 {
   const char *buf = *ptr;
 
@@ -843,13 +851,13 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end,
       }
 
     case BSER_ARRAY:
-      return bunser_array(ptr, end, mutable);
+      return bunser_array(ptr, end, ctx);
 
     case BSER_OBJECT:
-      return bunser_object(ptr, end, mutable);
+      return bunser_object(ptr, end, ctx);
 
     case BSER_TEMPLATE:
-      return bunser_template(ptr, end, mutable);
+      return bunser_template(ptr, end, ctx);
 
     default:
       PyErr_Format(PyExc_ValueError, "unhandled bser opcode 0x%02x", buf[0]);
@@ -910,14 +918,14 @@ static PyObject *bser_loads(PyObject *self, PyObject *args)
   int datalen = 0;
   const char *end;
   int64_t expected_len;
-  int mutable = 1;
   PyObject *mutable_obj = NULL;
+  unser_ctx_t ctx = {1};
 
   if (!PyArg_ParseTuple(args, "s#|O:loads", &data, &datalen, &mutable_obj)) {
     return NULL;
   }
   if (mutable_obj) {
-    mutable = PyObject_IsTrue(mutable_obj) > 0 ? 1 : 0;
+    ctx.mutable = PyObject_IsTrue(mutable_obj) > 0 ? 1 : 0;
   }
 
   end = data + datalen;
@@ -942,7 +950,7 @@ static PyObject *bser_loads(PyObject *self, PyObject *args)
     return NULL;
   }
 
-  return bser_loads_recursive(&data, end, mutable);
+  return bser_loads_recursive(&data, end, &ctx);
 }
 
 static PyMethodDef bser_methods[] = {
