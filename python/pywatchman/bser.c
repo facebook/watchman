@@ -29,6 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <Python.h>
+#include <bytesobject.h>
 #ifdef _MSC_VER
 #define inline __inline
 #include <stdint.h>
@@ -115,7 +116,7 @@ static PyObject *bserobj_getattrro(PyObject *o, PyObject *name) {
   }
 
   // hack^Wfeature to allow mercurial to use "st_size" to reference "size"
-  namestr = PyString_AsString(name);
+  namestr = PyBytes_AsString(name);
   if (!strncmp(namestr, "st_", 3)) {
     namestr += 3;
   }
@@ -125,7 +126,7 @@ static PyObject *bserobj_getattrro(PyObject *o, PyObject *name) {
     const char *item_name = NULL;
     PyObject *key = PyTuple_GET_ITEM(obj->keys, i);
 
-    item_name = PyString_AsString(key);
+    item_name = PyBytes_AsString(key);
     if (!strcmp(item_name, namestr)) {
       return PySequence_GetItem(obj->values, i);
     }
@@ -309,7 +310,7 @@ static int bser_string(bser_t *bser, PyObject *sval)
     sval = utf;
   }
 
-  res = PyString_AsStringAndSize(sval, &buf, &len);
+  res = PyBytes_AsStringAndSize(sval, &buf, &len);
   if (res == -1) {
     res = 0;
     goto out;
@@ -362,7 +363,7 @@ static int bser_recursive(bser_t *bser, PyObject *val)
     return bser_long(bser, PyLong_AsLongLong(val));
   }
 
-  if (PyString_Check(val) || PyUnicode_Check(val)) {
+  if (PyBytes_Check(val) || PyUnicode_Check(val)) {
     return bser_string(bser, val);
   }
 
@@ -478,7 +479,7 @@ static PyObject *bser_dumps(PyObject *self, PyObject *args)
   len = bser.wpos - (sizeof(EMPTY_HEADER) - 1);
   memcpy(bser.buf + 3, &len, sizeof(len));
 
-  res = PyString_FromStringAndSize(bser.buf, bser.wpos);
+  res = PyBytes_FromStringAndSize(bser.buf, bser.wpos);
   bser_dtor(&bser);
 
   return res;
@@ -643,7 +644,7 @@ static PyObject *bunser_object(const char **ptr, const char *end,
       return NULL;
     }
 
-    key = PyString_FromStringAndSize(keystr, (Py_ssize_t)keylen);
+    key = PyBytes_FromStringAndSize(keystr, (Py_ssize_t)keylen);
     if (!key) {
       Py_DECREF(res);
       return NULL;
@@ -830,7 +831,7 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end,
           return NULL;
         }
 
-        return PyString_FromStringAndSize(start, (long)len);
+        return PyBytes_FromStringAndSize(start, (long)len);
       }
 
     case BSER_ARRAY:
