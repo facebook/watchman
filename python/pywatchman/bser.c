@@ -355,9 +355,12 @@ static int bser_recursive(bser_t *bser, PyObject *val)
     return bser_append(bser, &bser_null, sizeof(bser_null));
   }
 
+  // Python 3 has one integer type.
+#if PY_MAJOR_VERSION < 3
   if (PyInt_Check(val)) {
     return bser_long(bser, PyInt_AS_LONG(val));
   }
+#endif // PY_MAJOR_VERSION < 3
 
   if (PyLong_Check(val)) {
     return bser_long(bser, PyLong_AsLongLong(val));
@@ -788,10 +791,15 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end,
         if (!bunser_int(ptr, end, &ival)) {
           return NULL;
         }
+        // Python 3 has one integer type.
+#if PY_MAJOR_VERSION >= 3
+        return PyLong_FromLongLong(ival);
+#else
         if (ival < LONG_MIN || ival > LONG_MAX) {
           return PyLong_FromLongLong(ival);
         }
         return PyInt_FromSsize_t(Py_SAFE_DOWNCAST(ival, int64_t, Py_ssize_t));
+#endif // PY_MAJOR_VERSION >= 3
       }
 
     case BSER_REAL:
@@ -885,10 +893,15 @@ static PyObject *bser_pdu_len(PyObject *self, PyObject *args)
   }
 
   total_len = expected_len + (data - start);
+  // Python 3 has one integer type.
+#if PY_MAJOR_VERSION >= 3
+  return PyLong_FromLongLong(total_len);
+#else
   if (total_len > LONG_MAX) {
     return PyLong_FromLongLong(total_len);
   }
   return PyInt_FromLong((long)total_len);
+#endif // PY_MAJOR_VERSION >= 3
 }
 
 static PyObject *bser_loads(PyObject *self, PyObject *args)
