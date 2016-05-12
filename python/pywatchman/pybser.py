@@ -37,6 +37,10 @@ import ctypes
 import struct
 import sys
 
+from . import (
+    compat,
+)
+
 BSER_ARRAY = b'\x00'
 BSER_OBJECT = b'\x01'
 BSER_STRING = b'\x02'
@@ -51,8 +55,7 @@ BSER_NULL = b'\x0a'
 BSER_TEMPLATE = b'\x0b'
 BSER_SKIP = b'\x0c'
 
-PYTHON3 = sys.version_info >= (3, 0)
-if PYTHON3:
+if compat.PYTHON3:
     STRING_TYPES = (str, bytes)
     unicode = str
     def tobytes(i):
@@ -84,7 +87,7 @@ def _buf_pos(buf, pos):
     ret = buf[pos]
     # In Python 2, buf is a str array so buf[pos] is a string. In Python 3, buf
     # is a bytes array and buf[pos] is an integer.
-    if PYTHON3:
+    if compat.PYTHON3:
         ret = bytes((ret,))
     return ret
 
@@ -177,7 +180,7 @@ class _bser_buffer(object):
             else:
                 raise RuntimeError('Cannot represent this mapping value')
             self.wpos += needed
-            if PYTHON3:
+            if compat.PYTHON3:
                 iteritems = val.items()
             else:
                 iteritems = val.iteritems()
