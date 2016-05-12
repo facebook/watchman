@@ -6,6 +6,8 @@ import unittest
 import os
 from pywatchman import bser, pybser, SocketTimeout, WatchmanError
 
+PILE_OF_POO = u"\U0001F4A9"
+NON_UTF8_STRING = b'\xff\xff\xff'
 
 class TestSocketTimeout(unittest.TestCase):
     def test_exception_handling(self):
@@ -39,16 +41,19 @@ class TestBSERDump(unittest.TestCase):
         else:
             return super(TestBSERDump, self).id()
 
-    def roundtrip(self, val, mutable=True):
+    def roundtrip(self, val, mutable=True, value_encoding=None,
+                  value_errors=None):
         enc = self.bser_mod.dumps(val)
         print "# %s  -->  %s" % (repr(val), enc.encode('hex'))
-        dec = self.bser_mod.loads(enc, mutable)
+        dec = self.bser_mod.loads(enc, mutable, value_encoding=value_encoding,
+                                  value_errors=value_errors)
         self.assertEqual(val, dec)
 
-    def munged(self, val, munged):
+    def munged(self, val, munged, value_encoding=None, value_errors=None):
         enc = self.bser_mod.dumps(val)
         print "# %s  -->  %s" % (repr(val), enc.encode('hex'))
-        dec = self.bser_mod.loads(enc)
+        dec = self.bser_mod.loads(enc, value_encoding=value_encoding,
+                                  value_errors=value_errors)
         self.assertEqual(munged, dec)
 
     def test_int(self):
@@ -77,6 +82,22 @@ class TestBSERDump(unittest.TestCase):
     def test_string(self):
         self.roundtrip("hello")
         self.roundtrip(u'Hello')
+        self.roundtrip(u'Hello', value_encoding='utf8')
+        self.roundtrip(u'Hello', value_encoding='ascii')
+        self.roundtrip(u'Hello' + PILE_OF_POO, value_encoding='utf8')
+
+        # can't use the with form here because Python 2.6
+        self.assertRaises(UnicodeDecodeError, self.roundtrip,
+                          u'Hello' + PILE_OF_POO, value_encoding='ascii')
+        self.munged(u'Hello' + PILE_OF_POO, u'Hello', value_encoding='ascii',
+                    value_errors='ignore')
+        self.roundtrip(b'hello' + NON_UTF8_STRING)
+        self.assertRaises(UnicodeDecodeError, self.roundtrip,
+                          b'hello' + NON_UTF8_STRING, value_encoding='utf8')
+        self.munged(b'hello' + NON_UTF8_STRING, u'hello', value_encoding='utf8',
+                    value_errors='ignore')
+        # TODO: test non-UTF8 strings with surrogateescape in Python 3
+
         ustr = u'\xe4\xf6\xfc'
         self.munged(ustr, ustr.encode('utf-8'))
 
@@ -89,7 +110,27 @@ class TestBSERDump(unittest.TestCase):
         self.roundtrip((1, 2, 3), mutable=False)
 
     def test_dict(self):
-        self.roundtrip({"hello": "there"})
+        self.roundtrip({b"hello": b"there"})
+        self.roundtrip({b"hello": u"there"}, value_encoding='utf8')
+        self.roundtrip({b"hello": u"there"}, value_encoding='ascii')
+        self.roundtrip({b"hello": u"there" + PILE_OF_POO},
+                       value_encoding='utf8')
+
+        # can't use the with form here because Python 2.6
+        self.assertRaises(UnicodeDecodeError, self.roundtrip,
+                          {b"hello": u"there" + PILE_OF_POO},
+                          value_encoding='ascii')
+        self.munged({b'Hello': u'there' + PILE_OF_POO},
+                    {b'Hello': u'there'}, value_encoding='ascii',
+                    value_errors='ignore')
+        self.roundtrip({b'Hello': b'there' + NON_UTF8_STRING})
+        self.assertRaises(UnicodeDecodeError, self.roundtrip,
+                          {b"hello": b"there" + NON_UTF8_STRING},
+                          value_encoding='utf8')
+        self.munged({b'Hello': b'there' + NON_UTF8_STRING},
+                    {b'Hello': u'there'}, value_encoding='utf8',
+                    value_errors='ignore')
+
         obj = self.bser_mod.loads(self.bser_mod.dumps({"hello": "there"}), False)
         self.assertEqual(1, len(obj))
         self.assertEqual('there', obj.hello)

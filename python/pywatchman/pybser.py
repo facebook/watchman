@@ -218,8 +218,16 @@ class _BunserDict(object):
         return len(self._keys)
 
 class Bunser(object):
-    def __init__(self, mutable=True):
+    def __init__(self, mutable=True, value_encoding=None, value_errors=None):
         self.mutable = mutable
+        self.value_encoding = value_encoding
+
+        if value_encoding is None:
+            self.value_errors = None
+        elif value_errors is None:
+            self.value_errors = 'strict'
+        else:
+            self.value_errors = value_errors
 
     @staticmethod
     def unser_int(buf, pos):
@@ -244,9 +252,19 @@ class Bunser(object):
         int_val = struct.unpack_from(fmt, buf, pos + 1)[0]
         return (int_val, pos + needed)
 
+    def unser_ascii_string(self, buf, pos):
+        str_len, pos = self.unser_int(buf, pos + 1)
+        str_val = struct.unpack_from(str(str_len) + 's', buf, pos)[0]
+        # don't do any decoding for now -- with Python 3 we'll probably need to
+        # do some decoding here
+        return (str_val, pos + str_len)
+
     def unser_string(self, buf, pos):
         str_len, pos = self.unser_int(buf, pos + 1)
         str_val = struct.unpack_from(str(str_len) + 's', buf, pos)[0]
+        if self.value_encoding is not None:
+            str_val = str_val.decode(self.value_encoding, self.value_errors)
+            # str_len stays the same because that's the length in bytes
         return (str_val, pos + str_len)
 
     def unser_array(self, buf, pos):
@@ -270,7 +288,7 @@ class Bunser(object):
             vals = []
 
         for i in range(obj_len):
-            key, pos = self.unser_string(buf, pos)
+            key, pos = self.unser_ascii_string(buf, pos)
             val, pos = self.loads_recursive(buf, pos)
             if self.mutable:
                 obj[key] = val
@@ -286,7 +304,9 @@ class Bunser(object):
     def unser_template(self, buf, pos):
         if buf[pos + 1] != BSER_ARRAY:
             raise RuntimeError('Expect ARRAY to follow TEMPLATE')
-        keys, pos = self.unser_array(buf, pos + 1)
+        # for keys we don't want to do any decoding right now
+        keys_bunser = Bunser(mutable=self.mutable)
+        keys, pos = keys_bunser.unser_array(buf, pos + 1)
         nitems, pos = self.unser_int(buf, pos)
         arr = []
         for i in range(nitems):
@@ -347,11 +367,29 @@ def pdu_len(buf):
     return expected_len + pos
 
 
-def loads(buf, mutable=True):
+def loads(buf, mutable=True, value_encoding=None, value_errors=None):
+    """Deserialize a BSER-encoded blob.
+
+    @param buf: The buffer to deserialize.
+    @type buf: bytes
+
+    @param mutable: Whether to return mutable results.
+    @type mutable: bool
+
+    @param value_encoding: Optional codec to use to decode values. If unspecified
+                           or None, return values as bytestrings.
+    @type value_encoding: str
+
+    @param value_errors: Optional error handler for codec. 'strict' by default.
+                         The other most common argument is 'surrogateescape' on
+                         Python 3. If value_encoding is None, this is ignored.
+    @type value_errors: str
+    """
     if buf[0:2] != EMPTY_HEADER[0:2]:
         raise RuntimeError('Invalid BSER header')
     expected_len, pos = Bunser.unser_int(buf, 2)
     if len(buf) != expected_len + pos:
         raise RuntimeError('bser data len != header len')
-    bunser = Bunser(mutable=mutable)
+    bunser = Bunser(mutable=mutable, value_encoding=value_encoding,
+                    value_errors=value_errors)
     return bunser.loads_recursive(buf, pos)[0]

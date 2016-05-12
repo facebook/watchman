@@ -185,6 +185,8 @@ PyTypeObject bserObjectType = {
 
 typedef struct loads_ctx {
   int mutable;
+  const char *value_encoding;
+  const char *value_errors;
 } unser_ctx_t;
 
 static PyObject *bser_loads_recursive(const char **ptr, const char *end,
@@ -691,6 +693,10 @@ static PyObject *bunser_template(const char **ptr, const char *end,
   PyObject *arrval;
   PyObject *keys;
   Py_ssize_t numkeys, keyidx;
+  unser_ctx_t keys_ctx = {0};
+  if (mutable) {
+    keys_ctx.mutable = 1;
+  }
 
   if (buf[1] != BSER_ARRAY) {
     PyErr_Format(PyExc_ValueError, "Expect ARRAY to follow TEMPLATE");
@@ -701,8 +707,9 @@ static PyObject *bunser_template(const char **ptr, const char *end,
   buf++;
   *ptr = buf;
 
-  // Load template keys
-  keys = bunser_array(ptr, end, ctx);
+  // Load template keys.
+  // For keys we don't want to do any decoding right now.
+  keys = bunser_array(ptr, end, &keys_ctx);
   if (!keys) {
     return NULL;
   }
@@ -847,7 +854,12 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end,
           return NULL;
         }
 
-        return PyBytes_FromStringAndSize(start, (long)len);
+        if (ctx->value_encoding != NULL) {
+          return PyUnicode_Decode(start, (long)len, ctx->value_encoding,
+                                  ctx->value_errors);
+        } else {
+          return PyBytes_FromStringAndSize(start, (long)len);
+        }
       }
 
     case BSER_ARRAY:
@@ -912,20 +924,35 @@ static PyObject *bser_pdu_len(PyObject *self, PyObject *args)
 #endif // PY_MAJOR_VERSION >= 3
 }
 
-static PyObject *bser_loads(PyObject *self, PyObject *args)
+static PyObject *bser_loads(PyObject *self, PyObject *args, PyObject *kw)
 {
   const char *data = NULL;
   int datalen = 0;
   const char *end;
   int64_t expected_len;
   PyObject *mutable_obj = NULL;
-  unser_ctx_t ctx = {1};
+  const char *value_encoding = NULL;
+  const char *value_errors = NULL;
+  unser_ctx_t ctx = {1, 0};
 
-  if (!PyArg_ParseTuple(args, "s#|O:loads", &data, &datalen, &mutable_obj)) {
+  static char *kw_list[] = {"buf", "mutable", "value_encoding", "value_errors",
+                            NULL};
+
+  if (!PyArg_ParseTupleAndKeywords(args, kw, "s#|Ozz:loads", kw_list, &data,
+                                   &datalen, &mutable_obj, &value_encoding,
+                                   &value_errors)) {
     return NULL;
   }
   if (mutable_obj) {
     ctx.mutable = PyObject_IsTrue(mutable_obj) > 0 ? 1 : 0;
+  }
+  ctx.value_encoding = value_encoding;
+  if (value_encoding == NULL) {
+    ctx.value_errors = NULL;
+  } else if (value_errors == NULL) {
+    ctx.value_errors = "strict";
+  } else {
+    ctx.value_errors = value_errors;
   }
 
   end = data + datalen;
@@ -954,7 +981,8 @@ static PyObject *bser_loads(PyObject *self, PyObject *args)
 }
 
 static PyMethodDef bser_methods[] = {
-  {"loads",  bser_loads, METH_VARARGS, "Deserialize string."},
+  {"loads", (PyCFunction)bser_loads, METH_VARARGS | METH_KEYWORDS,
+   "Deserialize string."},
   {"pdu_len", bser_pdu_len, METH_VARARGS, "Extract PDU length."},
   {"dumps",  bser_dumps, METH_VARARGS, "Serialize string."},
   {NULL, NULL, 0, NULL}
