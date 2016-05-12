@@ -69,7 +69,7 @@ class TestBSERDump(unittest.TestCase):
         self.roundtrip(-0x80)
         self.roundtrip(-0x8000)
         self.roundtrip(-0x80000000)
-        self.roundtrip(-0x8000000000000000L)
+        self.roundtrip(-0x8000000000000000)
 
     def test_float(self):
         self.roundtrip(1.5)
