@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # vim:ts=4:sw=4:et:
+import codecs
 import inspect
 import unittest
 import os
@@ -40,16 +41,13 @@ class TestBSERDump(unittest.TestCase):
 
     def roundtrip(self, val, mutable=True):
         enc = self.bser_mod.dumps(val)
-        print "# %s  -->  %s" % (val, enc.encode('hex'))
+        print "# %s  -->  %s" % (repr(val), enc.encode('hex'))
         dec = self.bser_mod.loads(enc, mutable)
         self.assertEqual(val, dec)
 
     def munged(self, val, munged):
         enc = self.bser_mod.dumps(val)
-        if isinstance(val, unicode):
-            print "# %s  -->  %s" % (val.encode('utf-8'), enc.encode('hex'))
-        else:
-            print "# %s  -->  %s" % (val, enc.encode('hex'))
+        print "# %s  -->  %s" % (repr(val), enc.encode('hex'))
         dec = self.bser_mod.loads(enc)
         self.assertEqual(munged, dec)
 
