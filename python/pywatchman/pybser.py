@@ -51,14 +51,21 @@ BSER_NULL = b'\x0a'
 BSER_TEMPLATE = b'\x0b'
 BSER_SKIP = b'\x0c'
 
+PYTHON3 = sys.version_info >= (3, 0)
+if PYTHON3:
+    STRING_TYPES = (str, bytes)
+    unicode = str
+    def tobytes(i):
+        return str(i).encode('ascii')
+    long = int
+else:
+    STRING_TYPES = (unicode, str)
+    tobytes = bytes
+
 # Leave room for the serialization header, which includes
 # our overall length.  To make things simpler, we'll use an
 # int32 for the header
 EMPTY_HEADER = b"\x00\x01\x05\x00\x00\x00\x00"
-
-# Python 3 conditional for supporting Python 2's int/long types
-if sys.version_info > (3,):
-    long = int
 
 def _int_size(x):
     """Return the smallest size int that can store the value"""
@@ -78,7 +85,7 @@ class _bser_buffer(object):
 
     def __init__(self):
         self.buf = ctypes.create_string_buffer(8192)
-        struct.pack_into(str(len(EMPTY_HEADER)) + b's', self.buf, 0,
+        struct.pack_into(tobytes(len(EMPTY_HEADER)) + b's', self.buf, 0,
                          EMPTY_HEADER)
         self.wpos = len(EMPTY_HEADER)
 
@@ -111,13 +118,13 @@ class _bser_buffer(object):
         to_write = 2 + size + s_len
         self.ensure_size(to_write)
         if size == 1:
-            struct.pack_into(b'=ccb' + str(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT8, s_len, s)
+            struct.pack_into(b'=ccb' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT8, s_len, s)
         elif size == 2:
-            struct.pack_into(b'=cch' + str(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT16, s_len, s)
+            struct.pack_into(b'=cch' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT16, s_len, s)
         elif size == 4:
-            struct.pack_into(b'=cci' + str(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT32, s_len, s)
+            struct.pack_into(b'=cci' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT32, s_len, s)
         elif size == 8:
-            struct.pack_into(b'=ccq' + str(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT64, s_len, s)
+            struct.pack_into(b'=ccq' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT64, s_len, s)
         else:
             raise RuntimeError('Cannot represent this string value')
         self.wpos += to_write
@@ -140,7 +147,7 @@ class _bser_buffer(object):
             self.wpos += needed
         elif isinstance(val, (int, long)):
             self.append_long(val)
-        elif isinstance(val, (str, unicode)):
+        elif isinstance(val, STRING_TYPES):
             self.append_string(val)
         elif isinstance(val, float):
             needed = 9
@@ -163,7 +170,11 @@ class _bser_buffer(object):
             else:
                 raise RuntimeError('Cannot represent this mapping value')
             self.wpos += needed
-            for k, v in val.iteritems():
+            if PYTHON3:
+                iteritems = val.items()
+            else:
+                iteritems = val.iteritems()
+            for k, v in iteritems:
                 self.append_string(k)
                 self.append_recursive(v)
         elif isinstance(val, collections.Iterable) and isinstance(val, collections.Sized):
@@ -262,12 +273,12 @@ class Bunser(object):
 
     def unser_utf8_string(self, buf, pos):
         str_len, pos = self.unser_int(buf, pos + 1)
-        str_val = struct.unpack_from(str(str_len) + b's', buf, pos)[0]
+        str_val = struct.unpack_from(tobytes(str_len) + b's', buf, pos)[0]
         return (str_val.decode('utf-8'), pos + str_len)
 
     def unser_string(self, buf, pos):
         str_len, pos = self.unser_int(buf, pos + 1)
-        str_val = struct.unpack_from(str(str_len) + b's', buf, pos)[0]
+        str_val = struct.unpack_from(tobytes(str_len) + b's', buf, pos)[0]
         if self.value_encoding is not None:
             str_val = str_val.decode(self.value_encoding, self.value_errors)
             # str_len stays the same because that's the length in bytes
