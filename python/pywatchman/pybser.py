@@ -80,6 +80,13 @@ def _int_size(x):
     else:
         raise RuntimeError('Cannot represent value: ' + str(x))
 
+def _buf_pos(buf, pos):
+    ret = buf[pos]
+    # In Python 2, buf is a str array so buf[pos] is a string. In Python 3, buf
+    # is a bytes array and buf[pos] is an integer.
+    if PYTHON3:
+        ret = bytes((ret,))
+    return ret
 
 class _bser_buffer(object):
 
@@ -250,7 +257,7 @@ class Bunser(object):
     @staticmethod
     def unser_int(buf, pos):
         try:
-            int_type = buf[pos]
+            int_type = _buf_pos(buf, pos)
         except IndexError:
             raise ValueError('Invalid bser int encoding, pos out of range')
         if int_type == BSER_INT8:
@@ -319,7 +326,8 @@ class Bunser(object):
         return obj, pos
 
     def unser_template(self, buf, pos):
-        if buf[pos + 1] != BSER_ARRAY:
+        val_type = _buf_pos(buf, pos + 1)
+        if val_type != BSER_ARRAY:
             raise RuntimeError('Expect ARRAY to follow TEMPLATE')
         # force UTF-8 on keys
         keys_bunser = Bunser(mutable=self.mutable, value_encoding='utf-8')
@@ -333,7 +341,7 @@ class Bunser(object):
                 vals = []
 
             for keyidx in range(len(keys)):
-                if buf[pos] == BSER_SKIP:
+                if _buf_pos(buf, pos) == BSER_SKIP:
                     pos += 1
                     ele = None
                 else:
@@ -352,7 +360,7 @@ class Bunser(object):
         return arr, pos
 
     def loads_recursive(self, buf, pos):
-        val_type = buf[pos]
+        val_type = _buf_pos(buf, pos)
         if (val_type == BSER_INT8 or val_type == BSER_INT16 or
             val_type == BSER_INT32 or val_type == BSER_INT64):
             return self.unser_int(buf, pos)
@@ -377,13 +385,11 @@ class Bunser(object):
             raise ValueError('unhandled bser opcode 0x%s' %
                              binascii.hexlify(val_type).decode('ascii'))
 
-
 def pdu_len(buf):
     if buf[0:2] != EMPTY_HEADER[0:2]:
         raise ValueError('Invalid BSER header')
     expected_len, pos = Bunser.unser_int(buf, 2)
     return expected_len + pos
-
 
 def loads(buf, mutable=True, value_encoding=None, value_errors=None):
     """Deserialize a BSER-encoded blob.
