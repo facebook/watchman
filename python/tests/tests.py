@@ -1,10 +1,19 @@
 #!/usr/bin/env python
 # vim:ts=4:sw=4:et:
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import binascii
 import inspect
 import unittest
 import os
+import sys
+
 from pywatchman import bser, pybser, SocketTimeout, WatchmanError
+
+PYTHON3 = sys.version_info >= (3, 0)
 
 PILE_OF_POO = u"\U0001F4A9"
 NON_UTF8_STRING = b'\xff\xff\xff'
@@ -82,8 +91,12 @@ class TestBSERDump(unittest.TestCase):
         self.roundtrip(None)
 
     def test_string(self):
-        self.roundtrip("hello")
-        self.roundtrip(u'Hello')
+        self.roundtrip(b"hello")
+
+        # For Python 3, here we can only check that a Unicode string goes in,
+        # not that a Unicode string comes out.
+        self.munged(u'Hello', b'Hello')
+
         self.roundtrip(u'Hello', value_encoding='utf8')
         self.roundtrip(u'Hello', value_encoding='ascii')
         self.roundtrip(u'Hello' + PILE_OF_POO, value_encoding='utf8')
@@ -105,62 +118,66 @@ class TestBSERDump(unittest.TestCase):
 
     def test_list(self):
         self.roundtrip([1, 2, 3])
-        self.roundtrip([1, "helo", 2.5, False, None, True, 3])
+        self.roundtrip([1, b"helo", 2.5, False, None, True, 3])
 
     def test_tuple(self):
         self.munged((1, 2, 3), [1, 2, 3])
         self.roundtrip((1, 2, 3), mutable=False)
 
     def test_dict(self):
-        self.roundtrip({b"hello": b"there"})
-        self.roundtrip({b"hello": u"there"}, value_encoding='utf8')
-        self.roundtrip({b"hello": u"there"}, value_encoding='ascii')
-        self.roundtrip({b"hello": u"there" + PILE_OF_POO},
+        self.roundtrip({"hello": b"there"})
+        self.roundtrip({"hello": u"there"}, value_encoding='utf8')
+        self.roundtrip({"hello": u"there"}, value_encoding='ascii')
+        self.roundtrip({"hello": u"there" + PILE_OF_POO},
                        value_encoding='utf8')
 
         # can't use the with form here because Python 2.6
         self.assertRaises(UnicodeDecodeError, self.roundtrip,
-                          {b"hello": u"there" + PILE_OF_POO},
+                          {"hello": u"there" + PILE_OF_POO},
                           value_encoding='ascii')
-        self.munged({b'Hello': u'there' + PILE_OF_POO},
-                    {b'Hello': u'there'}, value_encoding='ascii',
+        self.munged({'Hello': u'there' + PILE_OF_POO},
+                    {'Hello': u'there'}, value_encoding='ascii',
                     value_errors='ignore')
-        self.roundtrip({b'Hello': b'there' + NON_UTF8_STRING})
+        self.roundtrip({'Hello': b'there' + NON_UTF8_STRING})
         self.assertRaises(UnicodeDecodeError, self.roundtrip,
-                          {b"hello": b"there" + NON_UTF8_STRING},
+                          {"hello": b"there" + NON_UTF8_STRING},
                           value_encoding='utf8')
-        self.munged({b'Hello': b'there' + NON_UTF8_STRING},
-                    {b'Hello': u'there'}, value_encoding='utf8',
+        self.munged({'Hello': b'there' + NON_UTF8_STRING},
+                    {'Hello': u'there'}, value_encoding='utf8',
                     value_errors='ignore')
 
-        obj = self.bser_mod.loads(self.bser_mod.dumps({"hello": "there"}), False)
+        obj = self.bser_mod.loads(self.bser_mod.dumps({"hello": b"there"}),
+                                  False)
         self.assertEqual(1, len(obj))
-        self.assertEqual('there', obj.hello)
-        self.assertEqual('there', obj[u'hello'])
-        self.assertEqual('there', obj[b'hello'])
+        self.assertEqual(b'there', obj.hello)
+        self.assertEqual(b'there', obj[u'hello'])
+        if not PYTHON3:
+            self.assertEqual(b'there', obj[b'hello'])
+        self.assertEqual(b'there', obj[0])
         # make sure this doesn't crash
         self.assertRaises(Exception, lambda: obj[45.25])
-        self.assertEqual('there', obj[0])
+
         hello, = obj  # sequence/list assignment
-        self.assertEqual('there', hello)
+        self.assertEqual(b'there', hello)
 
     def assertItemAttributes(self, dictish, attrish):
         self.assertEqual(len(dictish), len(attrish))
-        for k, v in dictish.iteritems():
+        # Use items for compatibility across Python 2 and 3.
+        for k, v in dictish.items():
             self.assertEqual(v, getattr(attrish, k))
 
     def test_template(self):
         # since we can't generate the template bser output, here's a
         # a blob from the C test suite in watchman
-        templ = "\x00\x01\x03\x28" + \
-                "\x0b\x00\x03\x02\x02\x03\x04\x6e\x61\x6d\x65\x02" + \
-                "\x03\x03\x61\x67\x65\x03\x03\x02\x03\x04\x66\x72" + \
-                "\x65\x64\x03\x14\x02\x03\x04\x70\x65\x74\x65\x03" + \
-                "\x1e\x0c\x03\x19"
+        templ = b"\x00\x01\x03\x28" + \
+                b"\x0b\x00\x03\x02\x02\x03\x04\x6e\x61\x6d\x65\x02" + \
+                b"\x03\x03\x61\x67\x65\x03\x03\x02\x03\x04\x66\x72" + \
+                b"\x65\x64\x03\x14\x02\x03\x04\x70\x65\x74\x65\x03" + \
+                b"\x1e\x0c\x03\x19"
         dec = self.bser_mod.loads(templ)
         exp = [
-            {"name": "fred", "age": 20},
-            {"name": "pete", "age": 30},
+            {"name": b"fred", "age": 20},
+            {"name": b"pete", "age": 30},
             {"name": None, "age": 25}
         ]
         self.assertEqual(exp, dec)
@@ -181,14 +198,14 @@ class TestBSERDump(unittest.TestCase):
 
     def test_garbage(self):
         # can't use the with form here because Python 2.6
-        self.assertRaises(ValueError, self.bser_mod.loads, "\x00\x01\n")
+        self.assertRaises(ValueError, self.bser_mod.loads, b"\x00\x01\n")
         self.assertRaises(ValueError, self.bser_mod.loads,
-                          '\x00\x01\x04\x01\x00\x02')
-        self.assertRaises(ValueError, self.bser_mod.loads, '\x00\x01\x07')
+                          b'\x00\x01\x04\x01\x00\x02')
+        self.assertRaises(ValueError, self.bser_mod.loads, b'\x00\x01\x07')
         self.assertRaises(ValueError, self.bser_mod.loads,
-                          '\x00\x01\x03\x01\xff')
+                          b'\x00\x01\x03\x01\xff')
 
-        self.assertRaises(ValueError, self.bser_mod.pdu_len, '\x00\x02')
+        self.assertRaises(ValueError, self.bser_mod.pdu_len, b'\x00\x02')
 
 def load_tests(loader, test_methods=None, pattern=None):
     suite = unittest.TestSuite()
