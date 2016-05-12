@@ -26,6 +26,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import binascii
 import collections
 import ctypes
 import struct
@@ -248,7 +249,8 @@ class Bunser(object):
             needed = 9
             fmt = '=q'
         else:
-            raise ValueError('Invalid bser int encoding 0x%02x' % int(int_type))
+            raise ValueError('Invalid bser int encoding 0x%s' %
+                             binascii.hexlify(int_type).decode('ascii'))
         int_val = struct.unpack_from(fmt, buf, pos + 1)[0]
         return (int_val, pos + needed)
 
@@ -355,12 +357,13 @@ class Bunser(object):
         elif val_type == BSER_TEMPLATE:
             return self.unser_template(buf, pos)
         else:
-            raise RuntimeError('unhandled bser opcode 0x%02x' % (val_type,))
+            raise ValueError('unhandled bser opcode 0x%s' %
+                             binascii.hexlify(val_type).decode('ascii'))
 
 
 def pdu_len(buf):
     if buf[0:2] != EMPTY_HEADER[0:2]:
-        raise RuntimeError('Invalid BSER header')
+        raise ValueError('Invalid BSER header')
     expected_len, pos = Bunser.unser_int(buf, 2)
     return expected_len + pos
 
@@ -384,10 +387,10 @@ def loads(buf, mutable=True, value_encoding=None, value_errors=None):
     @type value_errors: str
     """
     if buf[0:2] != EMPTY_HEADER[0:2]:
-        raise RuntimeError('Invalid BSER header')
+        raise ValueError('Invalid BSER header')
     expected_len, pos = Bunser.unser_int(buf, 2)
     if len(buf) != expected_len + pos:
-        raise RuntimeError('bser data len != header len')
+        raise ValueError('bser data len != header len')
     bunser = Bunser(mutable=mutable, value_encoding=value_encoding,
                     value_errors=value_errors)
     return bunser.loads_recursive(buf, pos)[0]

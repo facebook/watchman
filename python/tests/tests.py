@@ -182,6 +182,11 @@ class TestBSERDump(unittest.TestCase):
         self.assertRaises(ValueError, self.bser_mod.loads, "\x00\x01\n")
         self.assertRaises(ValueError, self.bser_mod.loads,
                           '\x00\x01\x04\x01\x00\x02')
+        self.assertRaises(ValueError, self.bser_mod.loads, '\x00\x01\x07')
+        self.assertRaises(ValueError, self.bser_mod.loads,
+                          '\x00\x01\x03\x01\xff')
+
+        self.assertRaises(ValueError, self.bser_mod.pdu_len, '\x00\x02')
 
 def load_tests(loader, test_methods=None, pattern=None):
     suite = unittest.TestSuite()
