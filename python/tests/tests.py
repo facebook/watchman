@@ -11,9 +11,13 @@ import unittest
 import os
 import sys
 
-from pywatchman import bser, pybser, SocketTimeout, WatchmanError
-
-PYTHON3 = sys.version_info >= (3, 0)
+from pywatchman import (
+    bser,
+    compat,
+    pybser,
+    SocketTimeout,
+    WatchmanError,
+)
 
 PILE_OF_POO = u"\U0001F4A9"
 NON_UTF8_STRING = b'\xff\xff\xff'
@@ -151,7 +155,7 @@ class TestBSERDump(unittest.TestCase):
         self.assertEqual(1, len(obj))
         self.assertEqual(b'there', obj.hello)
         self.assertEqual(b'there', obj[u'hello'])
-        if not PYTHON3:
+        if not compat.PYTHON3:
             self.assertEqual(b'there', obj[b'hello'])
         self.assertEqual(b'there', obj[0])
         # make sure this doesn't crash
