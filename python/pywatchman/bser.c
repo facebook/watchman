@@ -105,18 +105,35 @@ static void bserobj_dealloc(PyObject *o) {
 static PyObject *bserobj_getattrro(PyObject *o, PyObject *name) {
   bserObject *obj = (bserObject*)o;
   Py_ssize_t i, n;
+  PyObject *name_bytes = NULL;
+  PyObject *ret = NULL;
   const char *namestr;
 
   if (PyIndex_Check(name)) {
     i = PyNumber_AsSsize_t(name, PyExc_IndexError);
     if (i == -1 && PyErr_Occurred()) {
-      return NULL;
+      goto bail;
     }
-    return PySequence_GetItem(obj->values, i);
+    ret = PySequence_GetItem(obj->values, i);
+    goto bail;
   }
 
+  // We can be passed in Unicode objects here -- we don't support anything other
+  // than UTF-8 for keys.
+  if (PyUnicode_Check(name)) {
+    name_bytes = PyUnicode_AsUTF8String(name);
+    if (name_bytes == NULL) {
+      goto bail;
+    }
+    namestr = PyBytes_AsString(name_bytes);
+  } else {
+    namestr = PyBytes_AsString(name);
+  }
+
+  if (namestr == NULL) {
+    goto bail;
+  }
   // hack^Wfeature to allow mercurial to use "st_size" to reference "size"
-  namestr = PyBytes_AsString(name);
   if (!strncmp(namestr, "st_", 3)) {
     namestr += 3;
   }
@@ -128,12 +145,16 @@ static PyObject *bserobj_getattrro(PyObject *o, PyObject *name) {
 
     item_name = PyBytes_AsString(key);
     if (!strcmp(item_name, namestr)) {
-      return PySequence_GetItem(obj->values, i);
+      ret = PySequence_GetItem(obj->values, i);
+      goto bail;
     }
   }
+
   PyErr_Format(PyExc_AttributeError,
               "bserobject has no attribute '%.400s'", namestr);
-  return NULL;
+ bail:
+  Py_XDECREF(name_bytes);
+  return ret;
 }
 
 static PyMappingMethods bserobj_map = {
@@ -656,7 +677,18 @@ static PyObject *bunser_object(const char **ptr, const char *end,
       return NULL;
     }
 
-    key = PyBytes_FromStringAndSize(keystr, (Py_ssize_t)keylen);
+    if (mutable) {
+      // This will interpret the key as UTF-8.
+      key = PyUnicode_FromStringAndSize(keystr, (Py_ssize_t)keylen);
+    } else {
+      // For immutable objects we'll manage key lookups, so we can avoid going
+      // through the Unicode APIs. This avoids a potentially expensive and
+      // definitely unnecessary conversion to UTF-16 and back for Python 2.
+      // TODO: On Python 3 the Unicode APIs are smarter: we might be able to use
+      // Unicode keys there without an appreciable performance loss.
+      key = PyBytes_FromStringAndSize(keystr, (Py_ssize_t)keylen);
+    }
+
     if (!key) {
       Py_DECREF(res);
       return NULL;
@@ -696,6 +728,12 @@ static PyObject *bunser_template(const char **ptr, const char *end,
   unser_ctx_t keys_ctx = {0};
   if (mutable) {
     keys_ctx.mutable = 1;
+    // Decode keys as UTF-8 in this case.
+    keys_ctx.value_encoding = "utf-8";
+    keys_ctx.value_errors = "strict";
+  } else {
+    // Treat keys as bytestrings in this case -- we'll do Unicode conversions at
+    // lookup time.
   }
 
   if (buf[1] != BSER_ARRAY) {

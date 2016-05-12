@@ -134,7 +134,10 @@ class TestBSERDump(unittest.TestCase):
         obj = self.bser_mod.loads(self.bser_mod.dumps({"hello": "there"}), False)
         self.assertEqual(1, len(obj))
         self.assertEqual('there', obj.hello)
-        self.assertEqual('there', obj['hello'])
+        self.assertEqual('there', obj[u'hello'])
+        self.assertEqual('there', obj[b'hello'])
+        # make sure this doesn't crash
+        self.assertRaises(Exception, lambda: obj[45.25])
         self.assertEqual('there', obj[0])
         hello, = obj  # sequence/list assignment
         self.assertEqual('there', hello)

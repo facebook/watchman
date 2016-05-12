@@ -252,12 +252,10 @@ class Bunser(object):
         int_val = struct.unpack_from(fmt, buf, pos + 1)[0]
         return (int_val, pos + needed)
 
-    def unser_ascii_string(self, buf, pos):
+    def unser_utf8_string(self, buf, pos):
         str_len, pos = self.unser_int(buf, pos + 1)
         str_val = struct.unpack_from(str(str_len) + 's', buf, pos)[0]
-        # don't do any decoding for now -- with Python 3 we'll probably need to
-        # do some decoding here
-        return (str_val, pos + str_len)
+        return (str_val.decode('utf-8'), pos + str_len)
 
     def unser_string(self, buf, pos):
         str_len, pos = self.unser_int(buf, pos + 1)
@@ -288,7 +286,7 @@ class Bunser(object):
             vals = []
 
         for i in range(obj_len):
-            key, pos = self.unser_ascii_string(buf, pos)
+            key, pos = self.unser_utf8_string(buf, pos)
             val, pos = self.loads_recursive(buf, pos)
             if self.mutable:
                 obj[key] = val
@@ -304,8 +302,8 @@ class Bunser(object):
     def unser_template(self, buf, pos):
         if buf[pos + 1] != BSER_ARRAY:
             raise RuntimeError('Expect ARRAY to follow TEMPLATE')
-        # for keys we don't want to do any decoding right now
-        keys_bunser = Bunser(mutable=self.mutable)
+        # force UTF-8 on keys
+        keys_bunser = Bunser(mutable=self.mutable, value_encoding='utf-8')
         keys, pos = keys_bunser.unser_array(buf, pos + 1)
         nitems, pos = self.unser_int(buf, pos)
         arr = []
