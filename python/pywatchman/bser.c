@@ -1026,11 +1026,32 @@ static PyMethodDef bser_methods[] = {
   {NULL, NULL, 0, NULL}
 };
 
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef bser_module = {
+  PyModuleDef_HEAD_INIT,
+  "bser",
+  "Efficient encoding and decoding of BSER.",
+  -1,
+  bser_methods
+};
+
+PyMODINIT_FUNC PyInit_bser(void)
+{
+  PyObject *mod;
+
+  mod = PyModule_Create(&bser_module);
+  PyType_Ready(&bserObjectType);
+
+  return mod;
+}
+#else
+
 PyMODINIT_FUNC initbser(void)
 {
   (void)Py_InitModule("bser", bser_methods);
   PyType_Ready(&bserObjectType);
 }
+#endif // PY_MAJOR_VERSION >= 3
 
 /* vim:ts=2:sw=2:et:
  */
