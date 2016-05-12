@@ -35,11 +35,19 @@ Strings are indicated by a `0x02` byte value followed by an integer value to
 indicate the number of bytes in the string, followed by the bytes of the
 string.
 
+### Encoding
+
 Unlike JSON, strings are not defined as having any particular encoding; they
 are transmitted as binary strings.  This is because the underlying filesystem
 APIs don't define any particular encoding for names.
 
-Keys in objects that are defined by watchman commands are always ASCII.
+*Exception:* Keys in objects that are defined by watchman commands are always
+ASCII. In general, keys in objects are always UTF-8.
+
+*Rationale:* Several programming languages like Python 3 expect all text to be
+in a particular encoding and make it inconvenient to pass in bytestrings or
+other encodings. Also, the primary purpose of not defining an encoding is that
+filenames don't always have one, and filenames are unlikely to show up as keys.
 
 ## Integers
 
