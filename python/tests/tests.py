@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # vim:ts=4:sw=4:et:
-import codecs
+import binascii
 import inspect
 import unittest
 import os
@@ -44,14 +44,16 @@ class TestBSERDump(unittest.TestCase):
     def roundtrip(self, val, mutable=True, value_encoding=None,
                   value_errors=None):
         enc = self.bser_mod.dumps(val)
-        print "# %s  -->  %s" % (repr(val), enc.encode('hex'))
+        print("# %s  -->  %s" % (repr(val),
+                                 binascii.hexlify(enc).decode('ascii')))
         dec = self.bser_mod.loads(enc, mutable, value_encoding=value_encoding,
                                   value_errors=value_errors)
         self.assertEqual(val, dec)
 
     def munged(self, val, munged, value_encoding=None, value_errors=None):
         enc = self.bser_mod.dumps(val)
-        print "# %s  -->  %s" % (repr(val), enc.encode('hex'))
+        print("# %s  -->  %s" % (repr(val),
+                                 binascii.hexlify(enc).decode('ascii')))
         dec = self.bser_mod.loads(enc, value_encoding=value_encoding,
                                   value_errors=value_errors)
         self.assertEqual(munged, dec)
