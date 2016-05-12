@@ -26,30 +26,35 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import binascii
 import collections
 import ctypes
 import struct
 import sys
 
-BSER_ARRAY = '\x00'
-BSER_OBJECT = '\x01'
-BSER_STRING = '\x02'
-BSER_INT8 = '\x03'
-BSER_INT16 = '\x04'
-BSER_INT32 = '\x05'
-BSER_INT64 = '\x06'
-BSER_REAL = '\x07'
-BSER_TRUE = '\x08'
-BSER_FALSE = '\x09'
-BSER_NULL = '\x0a'
-BSER_TEMPLATE = '\x0b'
-BSER_SKIP = '\x0c'
+BSER_ARRAY = b'\x00'
+BSER_OBJECT = b'\x01'
+BSER_STRING = b'\x02'
+BSER_INT8 = b'\x03'
+BSER_INT16 = b'\x04'
+BSER_INT32 = b'\x05'
+BSER_INT64 = b'\x06'
+BSER_REAL = b'\x07'
+BSER_TRUE = b'\x08'
+BSER_FALSE = b'\x09'
+BSER_NULL = b'\x0a'
+BSER_TEMPLATE = b'\x0b'
+BSER_SKIP = b'\x0c'
 
 # Leave room for the serialization header, which includes
 # our overall length.  To make things simpler, we'll use an
 # int32 for the header
-EMPTY_HEADER = "\x00\x01\x05\x00\x00\x00\x00"
+EMPTY_HEADER = b"\x00\x01\x05\x00\x00\x00\x00"
 
 # Python 3 conditional for supporting Python 2's int/long types
 if sys.version_info > (3,):
@@ -73,7 +78,8 @@ class _bser_buffer(object):
 
     def __init__(self):
         self.buf = ctypes.create_string_buffer(8192)
-        struct.pack_into(str(len(EMPTY_HEADER)) + 's', self.buf, 0, EMPTY_HEADER)
+        struct.pack_into(str(len(EMPTY_HEADER)) + b's', self.buf, 0,
+                         EMPTY_HEADER)
         self.wpos = len(EMPTY_HEADER)
 
     def ensure_size(self, size):
@@ -85,13 +91,13 @@ class _bser_buffer(object):
         to_write = size + 1
         self.ensure_size(to_write)
         if size == 1:
-            struct.pack_into('=cb', self.buf, self.wpos, BSER_INT8, val)
+            struct.pack_into(b'=cb', self.buf, self.wpos, BSER_INT8, val)
         elif size == 2:
-            struct.pack_into('=ch', self.buf, self.wpos, BSER_INT16, val)
+            struct.pack_into(b'=ch', self.buf, self.wpos, BSER_INT16, val)
         elif size == 4:
-            struct.pack_into('=ci', self.buf, self.wpos, BSER_INT32, val)
+            struct.pack_into(b'=ci', self.buf, self.wpos, BSER_INT32, val)
         elif size == 8:
-            struct.pack_into('=cq', self.buf, self.wpos, BSER_INT64, val)
+            struct.pack_into(b'=cq', self.buf, self.wpos, BSER_INT64, val)
         else:
             raise RuntimeError('Cannot represent this long value')
         self.wpos += to_write
@@ -105,13 +111,13 @@ class _bser_buffer(object):
         to_write = 2 + size + s_len
         self.ensure_size(to_write)
         if size == 1:
-            struct.pack_into('=ccb' + str(s_len) + 's', self.buf, self.wpos, BSER_STRING, BSER_INT8, s_len, s)
+            struct.pack_into(b'=ccb' + str(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT8, s_len, s)
         elif size == 2:
-            struct.pack_into('=cch' + str(s_len) + 's', self.buf, self.wpos, BSER_STRING, BSER_INT16, s_len, s)
+            struct.pack_into(b'=cch' + str(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT16, s_len, s)
         elif size == 4:
-            struct.pack_into('=cci' + str(s_len) + 's', self.buf, self.wpos, BSER_STRING, BSER_INT32, s_len, s)
+            struct.pack_into(b'=cci' + str(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT32, s_len, s)
         elif size == 8:
-            struct.pack_into('=ccq' + str(s_len) + 's', self.buf, self.wpos, BSER_STRING, BSER_INT64, s_len, s)
+            struct.pack_into(b'=ccq' + str(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT64, s_len, s)
         else:
             raise RuntimeError('Cannot represent this string value')
         self.wpos += to_write
@@ -125,12 +131,12 @@ class _bser_buffer(object):
                 to_encode = BSER_TRUE
             else:
                 to_encode = BSER_FALSE
-            struct.pack_into('=c', self.buf, self.wpos, to_encode)
+            struct.pack_into(b'=c', self.buf, self.wpos, to_encode)
             self.wpos += needed
         elif val is None:
             needed = 1
             self.ensure_size(needed)
-            struct.pack_into('=c', self.buf, self.wpos, BSER_NULL)
+            struct.pack_into(b'=c', self.buf, self.wpos, BSER_NULL)
             self.wpos += needed
         elif isinstance(val, (int, long)):
             self.append_long(val)
@@ -139,7 +145,7 @@ class _bser_buffer(object):
         elif isinstance(val, float):
             needed = 9
             self.ensure_size(needed)
-            struct.pack_into('=cd', self.buf, self.wpos, BSER_REAL, val)
+            struct.pack_into(b'=cd', self.buf, self.wpos, BSER_REAL, val)
             self.wpos += needed
         elif isinstance(val, collections.Mapping) and isinstance(val, collections.Sized):
             val_len = len(val)
@@ -147,13 +153,13 @@ class _bser_buffer(object):
             needed = 2 + size
             self.ensure_size(needed)
             if size == 1:
-                struct.pack_into('=ccb', self.buf, self.wpos, BSER_OBJECT, BSER_INT8, val_len)
+                struct.pack_into(b'=ccb', self.buf, self.wpos, BSER_OBJECT, BSER_INT8, val_len)
             elif size == 2:
-                struct.pack_into('=cch', self.buf, self.wpos, BSER_OBJECT, BSER_INT16, val_len)
+                struct.pack_into(b'=cch', self.buf, self.wpos, BSER_OBJECT, BSER_INT16, val_len)
             elif size == 4:
-                struct.pack_into('=cci', self.buf, self.wpos, BSER_OBJECT, BSER_INT32, val_len)
+                struct.pack_into(b'=cci', self.buf, self.wpos, BSER_OBJECT, BSER_INT32, val_len)
             elif size == 8:
-                struct.pack_into('=ccq', self.buf, self.wpos, BSER_OBJECT, BSER_INT64, val_len)
+                struct.pack_into(b'=ccq', self.buf, self.wpos, BSER_OBJECT, BSER_INT64, val_len)
             else:
                 raise RuntimeError('Cannot represent this mapping value')
             self.wpos += needed
@@ -166,13 +172,13 @@ class _bser_buffer(object):
             needed = 2 + size
             self.ensure_size(needed)
             if size == 1:
-                struct.pack_into('=ccb', self.buf, self.wpos, BSER_ARRAY, BSER_INT8, val_len)
+                struct.pack_into(b'=ccb', self.buf, self.wpos, BSER_ARRAY, BSER_INT8, val_len)
             elif size == 2:
-                struct.pack_into('=cch', self.buf, self.wpos, BSER_ARRAY, BSER_INT16, val_len)
+                struct.pack_into(b'=cch', self.buf, self.wpos, BSER_ARRAY, BSER_INT16, val_len)
             elif size == 4:
-                struct.pack_into('=cci', self.buf, self.wpos, BSER_ARRAY, BSER_INT32, val_len)
+                struct.pack_into(b'=cci', self.buf, self.wpos, BSER_ARRAY, BSER_INT32, val_len)
             elif size == 8:
-                struct.pack_into('=ccq', self.buf, self.wpos, BSER_ARRAY, BSER_INT64, val_len)
+                struct.pack_into(b'=ccq', self.buf, self.wpos, BSER_ARRAY, BSER_INT64, val_len)
             else:
                 raise RuntimeError('Cannot represent this sequence value')
             self.wpos += needed
@@ -187,7 +193,7 @@ def dumps(obj):
     bser_buf.append_recursive(obj)
     # Now fill in the overall length
     obj_len = bser_buf.wpos - len(EMPTY_HEADER)
-    struct.pack_into('=i', bser_buf.buf, 3, obj_len)
+    struct.pack_into(b'=i', bser_buf.buf, 3, obj_len)
     return bser_buf.buf.raw[:bser_buf.wpos]
 
 # This is a quack-alike with the bserObjectType in bser.c
@@ -238,16 +244,16 @@ class Bunser(object):
             raise ValueError('Invalid bser int encoding, pos out of range')
         if int_type == BSER_INT8:
             needed = 2
-            fmt = '=b'
+            fmt = b'=b'
         elif int_type == BSER_INT16:
             needed = 3
-            fmt = '=h'
+            fmt = b'=h'
         elif int_type == BSER_INT32:
             needed = 5
-            fmt = '=i'
+            fmt = b'=i'
         elif int_type == BSER_INT64:
             needed = 9
-            fmt = '=q'
+            fmt = b'=q'
         else:
             raise ValueError('Invalid bser int encoding 0x%s' %
                              binascii.hexlify(int_type).decode('ascii'))
@@ -256,12 +262,12 @@ class Bunser(object):
 
     def unser_utf8_string(self, buf, pos):
         str_len, pos = self.unser_int(buf, pos + 1)
-        str_val = struct.unpack_from(str(str_len) + 's', buf, pos)[0]
+        str_val = struct.unpack_from(str(str_len) + b's', buf, pos)[0]
         return (str_val.decode('utf-8'), pos + str_len)
 
     def unser_string(self, buf, pos):
         str_len, pos = self.unser_int(buf, pos + 1)
-        str_val = struct.unpack_from(str(str_len) + 's', buf, pos)[0]
+        str_val = struct.unpack_from(str(str_len) + b's', buf, pos)[0]
         if self.value_encoding is not None:
             str_val = str_val.decode(self.value_encoding, self.value_errors)
             # str_len stays the same because that's the length in bytes
@@ -340,7 +346,7 @@ class Bunser(object):
             val_type == BSER_INT32 or val_type == BSER_INT64):
             return self.unser_int(buf, pos)
         elif val_type == BSER_REAL:
-            val = struct.unpack_from('=d', buf, pos + 1)[0]
+            val = struct.unpack_from(b'=d', buf, pos + 1)[0]
             return (val, pos + 9)
         elif val_type == BSER_TRUE:
             return (True, pos + 1)
