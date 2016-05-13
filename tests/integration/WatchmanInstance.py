@@ -1,6 +1,12 @@
 # vim:ts=4:sw=4:et:
 # Copyright 2012-present Facebook, Inc.
 # Licensed under the Apache License, Version 2.0
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+# no unicode literals
+
 import tempfile
 import json
 import os.path
@@ -74,7 +80,7 @@ class Instance(object):
 
         # wait for it to come up
         last_err = None
-        for i in xrange(1, 10):
+        for i in range(1, 10):
             try:
                 client = pywatchman.client(sockpath=self.sock_file)
                 self.pid = client.query('get-pid')['pid']
