@@ -26,14 +26,14 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
         return root
 
     def listContains(self, superset, subset):
-        superset = self.normFileList(superset)
+        superset = self.normWatchmanFileList(superset)
         for x in self.normFileList(subset):
             if x not in superset:
                 return False
         return True
 
     def listNotContains(self, superset, subset):
-        superset = self.normFileList(superset)
+        superset = self.normWatchmanFileList(superset)
         for x in self.normFileList(subset):
             if x in superset:
                 return False
