@@ -211,12 +211,14 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         # prove initial results come through
         dat = self.waitForSub('myname', root=root)[0]
         self.assertEqual(True, dat['is_fresh_instance'])
-        self.assertEqualFileList(dat['files'], ['a', 'a/lemon', 'b'])
+        self.assertEqual(self.normWatchmanFileList(dat['files']),
+                         self.normFileList(['a', 'a/lemon', 'b']))
 
         # and that relative_root adapts the path name
         dat = self.waitForSub('relative', root=root)[0]
         self.assertEqual(True, dat['is_fresh_instance'])
-        self.assertEqualFileList(dat['files'], ['lemon'])
+        self.assertEqual(self.normWatchmanFileList(dat['files']),
+                         self.normFileList(['lemon']))
 
         # check that deletes show up in the subscription results
         os.unlink(os.path.join(root, 'a', 'lemon'))
