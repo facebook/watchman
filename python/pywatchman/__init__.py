@@ -47,6 +47,7 @@ except ImportError:
 
 from . import (
     capabilities,
+    compat,
 )
 
 if os.name == 'nt':
@@ -528,6 +529,13 @@ class JsonCodec(Codec):
     def receive(self):
         line = self.transport.readLine()
         try:
+            # In Python 3, json.loads is a transformation from Unicode string to
+            # objects possibly containing Unicode strings. We typically expect
+            # the JSON blob to be ASCII-only with non-ASCII characters escaped,
+            # but it's possible we might get non-ASCII bytes that are valid
+            # UTF-8.
+            if compat.PYTHON3:
+                line = line.decode('utf-8')
             return self.json.loads(line)
         except Exception as e:
             print(e, line)
@@ -535,7 +543,12 @@ class JsonCodec(Codec):
 
     def send(self, *args):
         cmd = self.json.dumps(*args)
-        self.transport.write(cmd + "\n")
+        # In Python 3, json.dumps is a transformation from objects possibly
+        # containing Unicode strings to Unicode string. Even with (the default)
+        # ensure_ascii=True, dumps returns a Unicode string.
+        if compat.PYTHON3:
+            cmd = cmd.encode('ascii')
+        self.transport.write(cmd + b"\n")
 
 
 class client(object):
