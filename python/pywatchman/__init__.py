@@ -682,20 +682,20 @@ class client(object):
 
         self._connect()
         result = self.recvConn.receive()
-        if self._hasprop(result, b'error'):
-            raise CommandError(result[b'error'])
+        if self._hasprop(result, 'error'):
+            raise CommandError(result['error'])
 
-        if self._hasprop(result, b'log'):
-            self.logs.append(result[b'log'])
+        if self._hasprop(result, 'log'):
+            self.logs.append(result['log'])
 
-        if self._hasprop(result, b'subscription'):
-            sub = result[b'subscription']
+        if self._hasprop(result, 'subscription'):
+            sub = result['subscription']
             if not (sub in self.subs):
                 self.subs[sub] = []
             self.subs[sub].append(result)
 
             # also accumulate in {root,sub} keyed store
-            root = os.path.normcase(result[b'root'])
+            root = os.path.normcase(result['root'])
             if not root in self.sub_by_root:
                 self.sub_by_root[root] = {}
             if not sub in self.sub_by_root[root]:
@@ -786,12 +786,12 @@ class client(object):
             'required': required or []
         })
 
-        if not self._hasprop(res, b'capabilities'):
+        if not self._hasprop(res, 'capabilities'):
             # Server doesn't support capabilities, so we need to
             # synthesize the results based on the version
             capabilities.synthesize(res, optional)
-            if b'error' in res:
-                raise CommandError(res[b'error'])
+            if 'error' in res:
+                raise CommandError(res['error'])
 
         return res
 
