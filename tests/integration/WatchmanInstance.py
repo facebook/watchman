@@ -31,6 +31,7 @@ class Instance(object):
         self.base_dir = tempfile.mkdtemp(prefix='inst')
         self.cfg_file = os.path.join(self.base_dir, "config.json")
         self.log_file_name = os.path.join(self.base_dir, "log")
+        self.proc = None
         self.pid = None
         if os.name == 'nt':
             self.sock_file = '\\\\.\\pipe\\watchman-test-%s' % uuid.uuid4().hex
