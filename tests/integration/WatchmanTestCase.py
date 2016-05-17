@@ -75,6 +75,9 @@ class WatchmanTestCase(unittest.TestCase):
                 pass
             self.__logTestInfo(id, 'END')
             self.__clearWatches()
+            if hasattr(self, 'client'):
+                self.client.close()
+                delattr(self, 'client')
 
         return result
 

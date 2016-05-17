@@ -83,6 +83,8 @@ class Instance(object):
                 t, val, tb = sys.exc_info()
                 last_err = ''.join(traceback.format_exception(t, val, tb))
                 time.sleep(0.1)
+            finally:
+                client.close()
 
         if self.pid is None:
             raise Exception(last_err)
