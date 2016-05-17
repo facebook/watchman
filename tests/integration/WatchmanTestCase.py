@@ -131,6 +131,20 @@ class WatchmanTestCase(unittest.TestCase):
     def watchmanCommand(self, *args):
         return self.getClient().query(*args)
 
+    def decodeBSERUTF8(self, s, surrogateescape=False):
+        if pywatchman.compat.PYTHON3 and self.encoding == 'bser':
+            if surrogateescape:
+                errors = 'surrogateescape'
+            else:
+                errors = 'strict'
+            return s.decode('utf-8', errors)
+        return s
+
+    def assertEqualUTF8Strings(self, expected, actual, surrogateescape=False):
+        '''assert that actual (possibly a UTF-8 encoded byte string) is equal
+        to expected (a Unicode string in Python 3)'''
+        self.assertEqual(expected, self.decodeBSERUTF8(actual))
+
     # Continually invoke `cond` until it returns true or timeout
     # is reached.  Returns a tuple of [bool, result] where the
     # first element of the tuple indicates success/failure and
