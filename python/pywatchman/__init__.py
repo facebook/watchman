@@ -437,7 +437,8 @@ class CLIProcessTransport(Transport):
 
     def close(self):
         if self.proc:
-            self.proc.kill()
+            if self.proc.pid is not None:
+                self.proc.kill()
             self.proc = None
 
     def _connect(self):
