@@ -262,7 +262,7 @@ class WatchmanTestCase(unittest.TestCase):
                 sub['files'] = files
             return sub
 
-        return map(norm_sub, data)
+        return list(map(norm_sub, data))
 
     def findSubscriptionContainingFile(self, subdata, filename):
         filename = norm_path(filename)
