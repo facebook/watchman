@@ -226,10 +226,10 @@ class Loader(unittest.TestLoader):
         names = super(Loader, self).getTestCaseNames(testCaseClass)
         return filter(lambda name: shouldIncludeTestName(name), names)
 
-    def loadTestsFromModule(self, module):
+    def loadTestsFromModule(self, module, *args, **kw):
         if not shouldIncludeTestFile(module.__file__):
             return unittest.TestSuite()
-        return super(Loader, self).loadTestsFromModule(module)
+        return super(Loader, self).loadTestsFromModule(module, *args, **kw)
 
 loader = Loader()
 suite = unittest.TestSuite()
