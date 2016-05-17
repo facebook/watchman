@@ -205,9 +205,6 @@ class WatchmanTestCase(unittest.TestCase):
     def normFileList(self, files):
         return sorted(map(norm_path, files))
 
-    def assertEqualFileList(self, a, b):
-        return self.assertEqual(self.normFileList(a), self.normFileList(b))
-
     # Wait for the file list to match the input set
     def assertFileList(self, root, files=[], cursor=None,
                        relativeRoot=None, message=None):
