@@ -195,6 +195,13 @@ class WatchmanTestCase(unittest.TestCase):
             'expression': ['name', '_bogus_'],
             'fields': ['name']})
 
+    def normWatchmanFileList(self, files):
+        # The BSER interface currently returns bytestrings on Python 3 -- decode
+        # it into local strings.
+        if pywatchman.compat.PYTHON3 and self.encoding == 'bser':
+            files = [pywatchman.encoding.decode_local(f) for f in files]
+        return sorted(map(norm_path, files))
+
     def normFileList(self, files):
         return sorted(map(norm_path, files))
 
