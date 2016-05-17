@@ -234,6 +234,10 @@ class Loader(unittest.TestLoader):
 loader = Loader()
 suite = unittest.TestSuite()
 for d in ['python/tests', 'tests/integration']:
+    # On Python 3 we need to pass in a Unicode string, and on Python 2 a
+    # bytestring.
+    if sys.version_info < (3, 0):
+        d = d.encode('ascii')
     suite.addTests(loader.discover(d, top_level_dir=d))
 
 if os.name == 'nt':
