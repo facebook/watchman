@@ -18,6 +18,11 @@ import WatchmanInstance
 import copy
 import sys
 
+if pywatchman.compat.PYTHON3:
+    STRING_TYPES = (str, bytes)
+else:
+    STRING_TYPES = (str, unicode)
+
 def norm_path(name):
     return os.path.normcase(os.path.normpath(name))
 
@@ -240,7 +245,7 @@ class WatchmanTestCase(unittest.TestCase):
             return data
 
         def norm_sub_item(item):
-            if isinstance(item, (str, unicode)):
+            if isinstance(item, STRING_TYPES):
                 return norm_path(item)
             item['name'] = norm_path(item['name'])
             return item
