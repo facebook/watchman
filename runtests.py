@@ -291,6 +291,11 @@ class ThreadSafeFile(object):
         if data == '\n':
             self._droplock()
 
+    def flush(self):
+        self._getlock()
+        self.f.flush()
+        self._droplock()
+
 sys.stdout = ThreadSafeFile(sys.stdout)
 
 tests_queue = queue.Queue()
