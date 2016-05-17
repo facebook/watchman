@@ -55,11 +55,11 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
 
         res = self.watchmanCommand('trigger', root, 'first', '*.js', '--',
                                    sys.executable, touch, first_log)
-        self.assertEqual(res['triggerid'], 'first')
+        self.assertEqual(self.decodeBSERUTF8(res['triggerid']), 'first')
 
         res = self.watchmanCommand('trigger', root, 'second', '*.js', '--',
                                    sys.executable, touch, second_log)
-        self.assertEqual(res['triggerid'], 'second')
+        self.assertEqual(self.decodeBSERUTF8(res['triggerid']), 'second')
 
         self.assertWaitFor(lambda: os.path.exists(first_log) and
                            os.path.exists(second_log),
