@@ -48,6 +48,7 @@ except ImportError:
 from . import (
     capabilities,
     compat,
+    encoding,
 )
 
 if os.name == 'nt':
@@ -683,10 +684,16 @@ class client(object):
         self._connect()
         result = self.recvConn.receive()
         if self._hasprop(result, 'error'):
-            raise CommandError(result['error'])
+            error = result['error']
+            if compat.PYTHON3 and isinstance(self.recvConn, BserCodec):
+                error = result['error'].decode('utf-8', 'surrogateescape')
+            raise CommandError(error)
 
         if self._hasprop(result, 'log'):
-            self.logs.append(result['log'])
+            log = result['log']
+            if compat.PYTHON3 and isinstance(self.recvConn, BserCodec):
+                log = log.decode('utf-8', 'surrogateescape')
+            self.logs.append(log)
 
         if self._hasprop(result, 'subscription'):
             sub = result['subscription']
@@ -735,6 +742,13 @@ class client(object):
         remove processing impacts both the unscoped and scoped stores
         for the subscription data.
         """
+        if compat.PYTHON3 and issubclass(self.recvCodec, BserCodec):
+            # People may pass in Unicode strings here -- but currently BSER only
+            # returns bytestrings. Deal with that.
+            if isinstance(root, str):
+                root = encoding.encode_local(root)
+            if isinstance(name, str):
+                name = name.encode('utf-8')
 
         if root is not None:
             if not root in self.sub_by_root:
