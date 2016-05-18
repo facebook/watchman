@@ -8,7 +8,10 @@ from __future__ import print_function
 # no unicode literals
 
 import errno
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import pywatchman
 import time
 import tempfile

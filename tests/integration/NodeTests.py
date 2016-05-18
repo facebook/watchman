@@ -3,7 +3,10 @@ from __future__ import division
 from __future__ import print_function
 # no unicode literals
 
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import os
 import os.path
 import subprocess
