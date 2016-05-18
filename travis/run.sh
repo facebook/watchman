@@ -9,8 +9,13 @@ cd ..
 
 set -e
 PATH=$PWD:$PATH
+
+if [ "$(uname)" = "Darwin" ]; then
+  eval "$(pyenv init -)"
+fi
+
 ./autogen.sh
-./configure --with-pcre --with-python --without-ruby $CONFIGARGS
+./configure --with-pcre --with-python="$TRAVIS_PYTHON" --without-ruby $CONFIGARGS
 make clean
 make
 set +e
@@ -22,6 +27,7 @@ if test "$CIRCLECI" == "true" ; then
 fi
 TMPDIR=$TMP
 export TMPDIR TMP
+
 if ! make integration ; then
   if test "$CIRCLECI" == "true" ; then
     # runtests.py already copied the logs to the artifact store

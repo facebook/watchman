@@ -5,9 +5,14 @@ sudo: false
 
 addons:
   apt:
+    sources:
+      - deadsnakes
     packages:
       - php5-cli
       - python2.7
+      - python2.7-dev
+      - python3.5
+      - python3.5-dev
 #      - ruby
 #      - rubygems
 #      - valgrind
@@ -32,7 +37,8 @@ compiler:
 
 # try some different compiler options
 env:
-  - CONFIGARGS=""
+  - TRAVIS_PYTHON=python2.7
+  - TRAVIS_PYTHON=python3.5
 #  - CONFIGARGS="--enable-stack-protector"
 #  - CONFIGARGS="" WATCHMAN_VALGRIND=1
 
