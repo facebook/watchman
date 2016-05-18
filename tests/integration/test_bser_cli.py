@@ -36,7 +36,7 @@ class TestDashJCliOption(unittest.TestCase):
 
         cli_cmd = [
             'watchman',
-            '--sockname={}'.format(sockname),
+            '--sockname={0}'.format(sockname),
             '--logfile=/BOGUS',
             '--statefile=/BOGUS',
             '--no-spawn',
@@ -68,7 +68,7 @@ class TestDashJCliOption(unittest.TestCase):
         watchman_cmd = bser.dumps(['get-sockname'])
         cli_cmd = [
             'watchman',
-            '--sockname={}'.format(sockname),
+            '--sockname={0}'.format(sockname),
             '--logfile=/BOGUS',
             '--statefile=/BOGUS',
             '--no-spawn',

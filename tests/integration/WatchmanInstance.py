@@ -65,9 +65,9 @@ class Instance(object):
         args = [
             'watchman',
             '--foreground',
-            '--sockname={}'.format(self.sock_file),
-            '--logfile={}'.format(self.log_file_name),
-            '--statefile={}'.format(self.state_file),
+            '--sockname={0}'.format(self.sock_file),
+            '--logfile={0}'.format(self.log_file_name),
+            '--statefile={0}'.format(self.state_file),
             '--log-level=2',
         ]
         env = os.environ.copy()

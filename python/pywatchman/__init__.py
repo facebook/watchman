@@ -448,7 +448,7 @@ class CLIProcessTransport(Transport):
             return self.proc
         args = [
             'watchman',
-            '--sockname={}'.format(self.sockpath),
+            '--sockname={0}'.format(self.sockpath),
             '--logfile=/BOGUS',
             '--statefile=/BOGUS',
             '--no-spawn',
