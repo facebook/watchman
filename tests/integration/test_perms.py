@@ -11,9 +11,12 @@ import WatchmanTestCase
 import tempfile
 import os
 import os.path
-import unittest
-import pywatchman
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
+import pywatchman
 
 class TestPerms(WatchmanTestCase.WatchmanTestCase):
 
