@@ -1,4 +1,12 @@
-import unittest
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+# no unicode literals
+
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import os
 import os.path
 import subprocess
@@ -51,7 +59,8 @@ class NodeTestCase(unittest.TestCase):
             return
 
         if status != 0:
-            self.fail("Exit status %d\n%s\n%s\n" % (status, stdout, stderr))
+            self.fail("Exit status %d\n%s\n%s\n" %
+                      (status, stdout.decode('utf-8'), stderr.decode('utf-8')))
             return
         self.assertTrue(True, self.jsfile)
 

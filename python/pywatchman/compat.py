@@ -1,4 +1,4 @@
-# Copyright 2015 Facebook, Inc.
+# Copyright 2014-present Facebook, Inc.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,42 +31,8 @@ from __future__ import division
 from __future__ import print_function
 # no unicode literals
 
-import re
+'''Compatibility module across Python 2 and 3.'''
 
-def parse_version(vstr):
-    res = 0
-    for n in vstr.split('.'):
-        res = res * 1000
-        res = res + int(n)
-    return res
+import sys
 
-cap_versions = {
-    "cmd-watch-del-all": "3.1.1",
-    "cmd-watch-project": "3.1",
-    "relative_root": "3.3",
-    "term-dirname": "3.1",
-    "term-idirname": "3.1",
-    "wildmatch": "3.7",
-}
-
-def check(version, name):
-    if name in cap_versions:
-        return version >= parse_version(cap_versions[name])
-    return False
-
-def synthesize(vers, opts):
-    """ Synthesize a capability enabled version response
-        This is a very limited emulation for relatively recent feature sets
-    """
-    parsed_version = parse_version(vers['version'])
-    vers['capabilities'] = {}
-    for name in opts['optional']:
-        vers['capabilities'][name] = check(parsed_version, name)
-    failed = False
-    for name in opts['required']:
-        have = check(parsed_version, name)
-        vers['capabilities'][name] = have
-        if not have:
-            vers['error'] = 'client required capability `' + name + \
-                            '` is not supported by this server'
-    return vers
+PYTHON3 = sys.version_info >= (3, 0)

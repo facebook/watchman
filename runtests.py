@@ -1,6 +1,15 @@
 #!/usr/bin/env python
 # vim:ts=4:sw=4:et:
-import unittest
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+# no unicode literals
+
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import os
 import os.path
 import sys
@@ -92,7 +101,7 @@ signal.signal(signal.SIGINT, interrupt_handler)
 def retry_rmtree(top):
     # Keep trying to remove it; on Windows it may take a few moments
     # for any outstanding locks/handles to be released
-    for i in xrange(1, 10):
+    for i in range(1, 10):
         shutil.rmtree(top, ignore_errors=True)
         if not os.path.isdir(top):
             return
@@ -220,14 +229,18 @@ class Loader(unittest.TestLoader):
         names = super(Loader, self).getTestCaseNames(testCaseClass)
         return filter(lambda name: shouldIncludeTestName(name), names)
 
-    def loadTestsFromModule(self, module):
+    def loadTestsFromModule(self, module, *args, **kw):
         if not shouldIncludeTestFile(module.__file__):
             return unittest.TestSuite()
-        return super(Loader, self).loadTestsFromModule(module)
+        return super(Loader, self).loadTestsFromModule(module, *args, **kw)
 
 loader = Loader()
 suite = unittest.TestSuite()
 for d in ['python/tests', 'tests/integration']:
+    # On Python 3 we need to pass in a Unicode string, and on Python 2 a
+    # bytestring.
+    if sys.version_info < (3, 0):
+        d = d.encode('ascii')
     suite.addTests(loader.discover(d, top_level_dir=d))
 
 if os.name == 'nt':
@@ -280,6 +293,11 @@ class ThreadSafeFile(object):
         self.f.write(data)
         if data == '\n':
             self._droplock()
+
+    def flush(self):
+        self._getlock()
+        self.f.flush()
+        self._droplock()
 
 sys.stdout = ThreadSafeFile(sys.stdout)
 

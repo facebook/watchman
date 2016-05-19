@@ -1,6 +1,12 @@
 # vim:ts=4:sw=4:et:
 # Copyright 2012-present Facebook, Inc.
 # Licensed under the Apache License, Version 2.0
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+# no unicode literals
+
 import WatchmanTestCase
 import tempfile
 import os
@@ -20,14 +26,14 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
         return root
 
     def listContains(self, superset, subset):
-        superset = self.normFileList(superset)
+        superset = self.normWatchmanFileList(superset)
         for x in self.normFileList(subset):
             if x not in superset:
                 return False
         return True
 
     def listNotContains(self, superset, subset):
-        superset = self.normFileList(superset)
+        superset = self.normWatchmanFileList(superset)
         for x in self.normFileList(subset):
             if x in superset:
                 return False

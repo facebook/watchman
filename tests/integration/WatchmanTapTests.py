@@ -1,3 +1,8 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+# no unicode literals
+
 import unittest
 import os
 import os.path
@@ -56,12 +61,12 @@ class TapExeTestCase(unittest.TestCase):
             self.fail("Exit status %d\n%s\n%s\n" % (status, stdout, stderr))
             return
 
-        res_pat = re.compile('^(not )?ok (\d+) (.*)$')
-        diag_pat = re.compile('^# (.*)$')
-        plan_pat = re.compile('^1\.\.(\d+)$')
+        res_pat = re.compile(b'^(not )?ok (\d+) (.*)$')
+        diag_pat = re.compile(b'^# (.*)$')
+        plan_pat = re.compile(b'^1\.\.(\d+)$')
 
         # Now parse the TAP output
-        lines = stdout.replace('\r\n', '\n').split('\n')
+        lines = stdout.replace(b'\r\n', b'\n').split(b'\n')
         last_test = 0
         diags = None
         plan = None
@@ -81,12 +86,12 @@ class TapExeTestCase(unittest.TestCase):
                         last_test + 1,
                         this_test))
                 last_test = this_test
-                if res.group(1) == 'not ':
+                if res.group(1) == b'not ':
                     # Failed
                     msg = line
                     if diags is not None:
-                        msg = msg + '\n' + '\n'.join(diags)
-                    self.fail(msg)
+                        msg = msg + b'\n' + b'\n'.join(diags)
+                    self.fail(msg.decode('utf-8'))
                     failed
 
                 diags = None
@@ -99,7 +104,7 @@ class TapExeTestCase(unittest.TestCase):
                 diags.append(res.group(1))
                 continue
 
-            if line != '':
+            if line != b'':
                 print('Invalid tap output from %s: %s' %
                       (self.id(), line))
 

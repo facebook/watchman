@@ -1,8 +1,17 @@
 # vim:ts=4:sw=4:et:
 # Copyright 2012-present Facebook, Inc.
 # Licensed under the Apache License, Version 2.0
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+# no unicode literals
+
 import errno
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import pywatchman
 import time
 import tempfile
@@ -11,6 +20,11 @@ import os
 import WatchmanInstance
 import copy
 import sys
+
+if pywatchman.compat.PYTHON3:
+    STRING_TYPES = (str, bytes)
+else:
+    STRING_TYPES = (str, unicode)
 
 def norm_path(name):
     return os.path.normcase(os.path.normpath(name))
@@ -75,6 +89,9 @@ class WatchmanTestCase(unittest.TestCase):
                 pass
             self.__logTestInfo(id, 'END')
             self.__clearWatches()
+            if hasattr(self, 'client'):
+                self.client.close()
+                delattr(self, 'client')
 
         return result
 
@@ -122,6 +139,20 @@ class WatchmanTestCase(unittest.TestCase):
     def watchmanCommand(self, *args):
         return self.getClient().query(*args)
 
+    def decodeBSERUTF8(self, s, surrogateescape=False):
+        if pywatchman.compat.PYTHON3 and self.encoding == 'bser':
+            if surrogateescape:
+                errors = 'surrogateescape'
+            else:
+                errors = 'strict'
+            return s.decode('utf-8', errors)
+        return s
+
+    def assertEqualUTF8Strings(self, expected, actual, surrogateescape=False):
+        '''assert that actual (possibly a UTF-8 encoded byte string) is equal
+        to expected (a Unicode string in Python 3)'''
+        self.assertEqual(expected, self.decodeBSERUTF8(actual))
+
     # Continually invoke `cond` until it returns true or timeout
     # is reached.  Returns a tuple of [bool, result] where the
     # first element of the tuple indicates success/failure and
@@ -154,7 +185,7 @@ class WatchmanTestCase(unittest.TestCase):
         if relativeRoot:
             expr['relative_root'] = relativeRoot
         res = self.watchmanCommand('query', root, expr)
-        files = sorted(res['files'])
+        files = self.normWatchmanFileList(res['files'])
         self.last_file_list = files
         return files
 
@@ -167,11 +198,15 @@ class WatchmanTestCase(unittest.TestCase):
             'expression': ['name', '_bogus_'],
             'fields': ['name']})
 
-    def normFileList(self, files):
+    def normWatchmanFileList(self, files):
+        # The BSER interface currently returns bytestrings on Python 3 -- decode
+        # it into local strings.
+        if pywatchman.compat.PYTHON3 and self.encoding == 'bser':
+            files = [pywatchman.encoding.decode_local(f) for f in files]
         return sorted(map(norm_path, files))
 
-    def assertEqualFileList(self, a, b):
-        return self.assertEqual(self.normFileList(a), self.normFileList(b))
+    def normFileList(self, files):
+        return sorted(map(norm_path, files))
 
     # Wait for the file list to match the input set
     def assertFileList(self, root, files=[], cursor=None,
@@ -217,7 +252,7 @@ class WatchmanTestCase(unittest.TestCase):
             return data
 
         def norm_sub_item(item):
-            if isinstance(item, (str, unicode)):
+            if isinstance(item, STRING_TYPES):
                 return norm_path(item)
             item['name'] = norm_path(item['name'])
             return item
@@ -230,11 +265,12 @@ class WatchmanTestCase(unittest.TestCase):
                 sub['files'] = files
             return sub
 
-        return map(norm_sub, data)
+        return list(map(norm_sub, data))
 
     def findSubscriptionContainingFile(self, subdata, filename):
         filename = norm_path(filename)
         for dat in subdata:
-            if 'files' in dat and filename in dat['files']:
+            if ('files' in dat and
+                filename in self.normWatchmanFileList(dat['files'])):
                 return dat
         return None

@@ -1,13 +1,22 @@
 # vim:ts=4:sw=4:et:
 # Copyright 2015-present Facebook, Inc.
 # Licensed under the Apache License, Version 2.0
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+# no unicode literals
+
 import WatchmanTestCase
 import tempfile
 import os
 import os.path
-import unittest
-import pywatchman
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
+import pywatchman
 
 class TestPerms(WatchmanTestCase.WatchmanTestCase):
 
@@ -21,7 +30,8 @@ class TestPerms(WatchmanTestCase.WatchmanTestCase):
         res = self.watchmanCommand('query', root, {
             'expression': ['exists'],
             'fields': ['name']})
-        self.assertRegexpMatches(res['warning'],
+        warning = self.decodeBSERUTF8(res['warning'])
+        self.assertRegexpMatches(warning,
                                  'Marking this portion of the tree deleted')
 
     @unittest.skipIf(os.name == 'nt' or os.geteuid() == 0, "win or root")

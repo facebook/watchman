@@ -1,6 +1,12 @@
 # vim:ts=4:sw=4:et:
 # Copyright 2012-present Facebook, Inc.
 # Licensed under the Apache License, Version 2.0
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+# no unicode literals
+
 import WatchmanTestCase
 import os
 import os.path
@@ -49,11 +55,11 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
 
         res = self.watchmanCommand('trigger', root, 'first', '*.js', '--',
                                    sys.executable, touch, first_log)
-        self.assertEqual(res['triggerid'], 'first')
+        self.assertEqual(self.decodeBSERUTF8(res['triggerid']), 'first')
 
         res = self.watchmanCommand('trigger', root, 'second', '*.js', '--',
                                    sys.executable, touch, second_log)
-        self.assertEqual(res['triggerid'], 'second')
+        self.assertEqual(self.decodeBSERUTF8(res['triggerid']), 'second')
 
         self.assertWaitFor(lambda: os.path.exists(first_log) and
                            os.path.exists(second_log),

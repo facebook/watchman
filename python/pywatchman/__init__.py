@@ -29,7 +29,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from __future__ import unicode_literals
+# no unicode literals
 
 import os
 import errno
@@ -47,6 +47,8 @@ except ImportError:
 
 from . import (
     capabilities,
+    compat,
+    encoding,
 )
 
 if os.name == 'nt':
@@ -437,7 +439,8 @@ class CLIProcessTransport(Transport):
 
     def close(self):
         if self.proc:
-            self.proc.kill()
+            if self.proc.pid is not None:
+                self.proc.kill()
             self.proc = None
 
     def _connect(self):
@@ -445,7 +448,7 @@ class CLIProcessTransport(Transport):
             return self.proc
         args = [
             'watchman',
-            '--sockname={}'.format(self.sockpath),
+            '--sockname={0}'.format(self.sockpath),
             '--logfile=/BOGUS',
             '--statefile=/BOGUS',
             '--no-spawn',
@@ -527,6 +530,13 @@ class JsonCodec(Codec):
     def receive(self):
         line = self.transport.readLine()
         try:
+            # In Python 3, json.loads is a transformation from Unicode string to
+            # objects possibly containing Unicode strings. We typically expect
+            # the JSON blob to be ASCII-only with non-ASCII characters escaped,
+            # but it's possible we might get non-ASCII bytes that are valid
+            # UTF-8.
+            if compat.PYTHON3:
+                line = line.decode('utf-8')
             return self.json.loads(line)
         except Exception as e:
             print(e, line)
@@ -534,7 +544,12 @@ class JsonCodec(Codec):
 
     def send(self, *args):
         cmd = self.json.dumps(*args)
-        self.transport.write(cmd + "\n")
+        # In Python 3, json.dumps is a transformation from objects possibly
+        # containing Unicode strings to Unicode string. Even with (the default)
+        # ensure_ascii=True, dumps returns a Unicode string.
+        if compat.PYTHON3:
+            cmd = cmd.encode('ascii')
+        self.transport.write(cmd + b"\n")
 
 
 class client(object):
@@ -668,20 +683,26 @@ class client(object):
 
         self._connect()
         result = self.recvConn.receive()
-        if self._hasprop(result, b'error'):
-            raise CommandError(result[b'error'])
+        if self._hasprop(result, 'error'):
+            error = result['error']
+            if compat.PYTHON3 and isinstance(self.recvConn, BserCodec):
+                error = result['error'].decode('utf-8', 'surrogateescape')
+            raise CommandError(error)
 
-        if self._hasprop(result, b'log'):
-            self.logs.append(result[b'log'])
+        if self._hasprop(result, 'log'):
+            log = result['log']
+            if compat.PYTHON3 and isinstance(self.recvConn, BserCodec):
+                log = log.decode('utf-8', 'surrogateescape')
+            self.logs.append(log)
 
-        if self._hasprop(result, b'subscription'):
-            sub = result[b'subscription']
+        if self._hasprop(result, 'subscription'):
+            sub = result['subscription']
             if not (sub in self.subs):
                 self.subs[sub] = []
             self.subs[sub].append(result)
 
             # also accumulate in {root,sub} keyed store
-            root = os.path.normcase(result[b'root'])
+            root = os.path.normcase(result['root'])
             if not root in self.sub_by_root:
                 self.sub_by_root[root] = {}
             if not sub in self.sub_by_root[root]:
@@ -721,6 +742,13 @@ class client(object):
         remove processing impacts both the unscoped and scoped stores
         for the subscription data.
         """
+        if compat.PYTHON3 and issubclass(self.recvCodec, BserCodec):
+            # People may pass in Unicode strings here -- but currently BSER only
+            # returns bytestrings. Deal with that.
+            if isinstance(root, str):
+                root = encoding.encode_local(root)
+            if isinstance(name, str):
+                name = name.encode('utf-8')
 
         if root is not None:
             if not root in self.sub_by_root:
@@ -772,12 +800,12 @@ class client(object):
             'required': required or []
         })
 
-        if not self._hasprop(res, b'capabilities'):
+        if not self._hasprop(res, 'capabilities'):
             # Server doesn't support capabilities, so we need to
             # synthesize the results based on the version
             capabilities.synthesize(res, optional)
-            if b'error' in res:
-                raise CommandError(res[b'error'])
+            if 'error' in res:
+                raise CommandError(res['error'])
 
         return res
 
