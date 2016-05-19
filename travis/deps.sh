@@ -11,6 +11,13 @@ case `uname` in
     CFLAGS="$CFLAGS $ARCHFLAGS"
     export ARCHFLAGS CFLAGS
     case "$TRAVIS_PYTHON" in
+      python2.6)
+        pyenv install 2.6.9
+        eval "$(pyenv init -)"
+        pyenv global 2.6.9
+        # install some other required dependencies
+        pip2.6 install unittest2==1.1.0 argparse
+        ;;
       python2.7)
         pyenv install 2.7.11
         pyenv global 2.7.11
