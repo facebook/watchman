@@ -97,14 +97,19 @@ AM_CONDITIONAL(WATCHMAN_STATE_DIR, [test "$WATCHMAN_STATE_DIR" != "no"])
 
 want_python=yes
 AC_ARG_WITH(python, [
+  --with-python=PATH      Enable Python bindings. PATH is location of python.
+                          Default is to look for python in your PATH
   --without-python        Disable python bindings
 ],[
    want_python="$withval"
 ])
-if test "x$want_python" = "xyes" ; then
+if test "x$want_python" != "xno" ; then
+  if test "$want_python" != "yes"; then
+    PYTHON="$want_python"
+  fi
   AM_PATH_PYTHON(,,[:])
 fi
-AM_CONDITIONAL(HAVE_PYTHON, [test "$PYTHON" != : -a "x$want_python" = "xyes"])
+AM_CONDITIONAL(HAVE_PYTHON, [test "$PYTHON" != : -a "x$want_python" != "xno"])
 
 want_ruby=no
 AC_ARG_WITH(ruby, [
