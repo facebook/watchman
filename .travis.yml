@@ -37,10 +37,21 @@ compiler:
 
 # try some different compiler options
 env:
+  - TRAVIS_PYTHON=python2.6
   - TRAVIS_PYTHON=python2.7
   - TRAVIS_PYTHON=python3.5
 #  - CONFIGARGS="--enable-stack-protector"
 #  - CONFIGARGS="" WATCHMAN_VALGRIND=1
+
+# TODO: On Linux we currently use system versions of Python. That makes it
+# somewhat annoying to get third-party dependencies in, since sudo isn't
+# available. We should figure out how to solve this for real, either with
+# virtualenv or with the pyenv mechanism Hypothesis uses:
+# http://www.drmaciver.com/2015/10/a-whirlwind-tour-of-the-hypothesis-build/
+matrix:
+  exclude:
+    - os: linux
+      env: TRAVIS_PYTHON=python2.6
 
 before_script: ./travis/deps.sh
 script: ./travis/run.sh
