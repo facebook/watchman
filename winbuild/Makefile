@@ -37,6 +37,7 @@ SRCS=\
 	winbuild\pthread.c \
 	argv.c \
 	envp.c \
+	ignore.c \
 	spawn.c \
 	opt.c \
 	cfg.c \
@@ -102,11 +103,6 @@ TEST_SRCS=\
 	winbuild\backtrace.c \
 	winbuild\abort.c \
 	winbuild\errmap.c \
-	watcher\helper.c \
-	hash.c \
-	ht.c \
-	string.c \
-	log.c \
 	argv.c \
 	$(JSON_SRCS)
 
@@ -211,7 +207,13 @@ tests\art.exe: tests\art_test.obj $(TEST_OBJS)
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 
-tests\ignore.exe: tests\ignore_test.obj $(TEST_OBJS)
+tests\ignore.exe: tests\ignore_test.obj $(TEST_OBJS) \
+		log.obj \
+		watcher\helper.obj \
+		hash.obj \
+		ht.obj \
+		ignore.obj \
+		string.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 

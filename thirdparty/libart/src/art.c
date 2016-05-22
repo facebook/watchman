@@ -263,6 +263,39 @@ void* art_search(const art_tree *t, const unsigned char *key, int key_len) {
     return NULL;
 }
 
+art_leaf* art_longest_match(const art_tree *t, const unsigned char *key, int key_len) {
+    art_node **child;
+    art_node *n = t->root;
+    int prefix_len, depth = 0;
+    while (n) {
+        // Might be a leaf
+        if (IS_LEAF(n)) {
+            art_leaf *leaf = LEAF_RAW(n);
+            // Check if the prefix matches
+            prefix_len = min(leaf->key_len, key_len);
+            if (prefix_len > 0 && memcmp(leaf->key, key, prefix_len) == 0) {
+                // Shares the same prefix
+                return leaf;
+            }
+            return NULL;
+        }
+
+        // Bail if the prefix does not match
+        if (n->partial_len) {
+            prefix_len = check_prefix(n, key, key_len, depth);
+            if (prefix_len != min(MAX_PREFIX_LEN, n->partial_len))
+                return NULL;
+            depth = depth + n->partial_len;
+        }
+
+        // Recursively search
+        child = find_child(n, key[depth]);
+        n = (child) ? *child : NULL;
+        depth++;
+    }
+    return NULL;
+}
+
 // Find the minimum leaf under a node
 static art_leaf* minimum(const art_node *n) {
     int idx;

@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #include "thirdparty/tap.h"
+#include "thirdparty/libart/src/art.h"
 
 // A list that looks similar to one used in one of our repos
 const char *ignore_dirs[] = {".buckd",
@@ -49,17 +50,12 @@ void w_log_to_clients(int level, const char *buf)
   unused_parameter(buf);
 }
 
-struct ignore_state {
-  w_ht_t *ignore_dirs;
-  w_ht_t *ignore_vcs;
-};
-
 struct test_case {
   const char *path;
   bool ignored;
 };
 
-bool check_ignores_iter(struct ignore_state *state, const char *path,
+bool check_ignores_iter(struct watchman_ignore *state, const char *path,
                         uint32_t pathlen) {
   if (w_check_ignores(state->ignore_dirs, path, pathlen)) {
     return true;
@@ -68,13 +64,10 @@ bool check_ignores_iter(struct ignore_state *state, const char *path,
   return w_check_vcs_ignores(state->ignore_vcs, path, pathlen);
 }
 
-// A follow-on diff will add an alternative checker function, hence
-// this implementation has parameterized the checker even though there
-// is only a single implementation right now.
-void run_correctness_test(struct ignore_state *state,
+void run_correctness_test(struct watchman_ignore *state,
                           const struct test_case *tests, uint32_t num_tests,
-                          bool (*checker)(struct ignore_state *, const char *,
-                                          uint32_t)) {
+                          bool (*checker)(struct watchman_ignore *,
+                                          const char *, uint32_t)) {
 
   uint32_t i;
 
@@ -85,28 +78,27 @@ void run_correctness_test(struct ignore_state *state,
   }
 }
 
-void add_strings(w_ht_t *ht, const char **strings, uint32_t num_strings) {
+void add_strings(struct watchman_ignore *ignore, const char **strings,
+                 uint32_t num_strings, bool is_vcs_ignore) {
   uint32_t i;
 
   for (i = 0; i < num_strings; i++) {
-    w_string_t *str = w_string_new(strings[i]);
-    w_ht_set(ht, w_ht_ptr_val(str), w_ht_ptr_val(str));
+    w_ignore_add(ignore, strings[i], strlen_uint32(strings[i]), is_vcs_ignore);
   }
 }
 
-void init_state(struct ignore_state *state) {
-  state->ignore_dirs = w_ht_new(2, &w_ht_string_funcs);
-  state->ignore_vcs = w_ht_new(2, &w_ht_string_funcs);
+void init_state(struct watchman_ignore *state) {
+  w_ignore_init(state);
 
-  add_strings(state->ignore_dirs, ignore_dirs,
-              sizeof(ignore_dirs) / sizeof(ignore_dirs[0]));
+  add_strings(state, ignore_dirs, sizeof(ignore_dirs) / sizeof(ignore_dirs[0]),
+              false);
 
-  add_strings(state->ignore_vcs, ignore_vcs,
-              sizeof(ignore_vcs) / sizeof(ignore_vcs[0]));
+  add_strings(state, ignore_vcs, sizeof(ignore_vcs) / sizeof(ignore_vcs[0]),
+              true);
 }
 
 void test_correctness(void) {
-  struct ignore_state state;
+  struct watchman_ignore state;
 
   init_state(&state);
 
@@ -132,6 +124,8 @@ void test_correctness(void) {
 
   run_correctness_test(&state, tests, sizeof(tests) / sizeof(tests[0]),
                        check_ignores_iter);
+  run_correctness_test(&state, tests, sizeof(tests) / sizeof(tests[0]),
+                       w_ignore_check);
 }
 
 // Load up the words data file and build a list of strings from that list.
@@ -165,10 +159,10 @@ w_string_t** build_list_with_prefix(const char *prefix, size_t limit) {
 static const size_t kWordLimit = 230000;
 
 void bench_list(const char *label, const char *prefix,
-                bool (*checker)(struct ignore_state *, const char *,
+                bool (*checker)(struct watchman_ignore *, const char *,
                                 uint32_t)) {
 
-  struct ignore_state state;
+  struct watchman_ignore state;
 
   init_state(&state);
   size_t i, n;
@@ -189,17 +183,19 @@ void bench_list(const char *label, const char *prefix,
 
 void bench_all_ignores(void) {
   bench_list("all_ignores_iter", "baz/buck-out/gen/", check_ignores_iter);
+  bench_list("all_ignores_tree", "baz/buck-out/gen/", w_ignore_check);
 }
 
 void bench_no_ignores(void) {
   bench_list("no_ignores_iter", "baz/some/path", check_ignores_iter);
+  bench_list("no_ignores_tree", "baz/some/path", w_ignore_check);
 }
 
 int main(int argc, char **argv) {
   (void)argc;
   (void)argv;
 
-  plan_tests(17);
+  plan_tests(34);
   test_correctness();
   bench_all_ignores();
   bench_no_ignores();
