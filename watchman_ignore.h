@@ -42,9 +42,6 @@ bool w_ignore_check(struct watchman_ignore *ignore, const char *path,
 // Releases ignore state
 void w_ignore_destroy(struct watchman_ignore *ignore);
 
-bool w_check_ignores(w_ht_t *ignores, const char *path, uint32_t pathlen);
-bool w_check_vcs_ignores(w_ht_t *ignores, const char *path, uint32_t pathlen);
-
 #ifdef __cplusplus
 }
 #endif
