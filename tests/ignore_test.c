@@ -55,15 +55,6 @@ struct test_case {
   bool ignored;
 };
 
-bool check_ignores_iter(struct watchman_ignore *state, const char *path,
-                        uint32_t pathlen) {
-  if (w_check_ignores(state->ignore_dirs, path, pathlen)) {
-    return true;
-  }
-
-  return w_check_vcs_ignores(state->ignore_vcs, path, pathlen);
-}
-
 void run_correctness_test(struct watchman_ignore *state,
                           const struct test_case *tests, uint32_t num_tests,
                           bool (*checker)(struct watchman_ignore *,
@@ -123,8 +114,6 @@ void test_correctness(void) {
   };
 
   run_correctness_test(&state, tests, sizeof(tests) / sizeof(tests[0]),
-                       check_ignores_iter);
-  run_correctness_test(&state, tests, sizeof(tests) / sizeof(tests[0]),
                        w_ignore_check);
 }
 
@@ -182,12 +171,10 @@ void bench_list(const char *label, const char *prefix,
 }
 
 void bench_all_ignores(void) {
-  bench_list("all_ignores_iter", "baz/buck-out/gen/", check_ignores_iter);
   bench_list("all_ignores_tree", "baz/buck-out/gen/", w_ignore_check);
 }
 
 void bench_no_ignores(void) {
-  bench_list("no_ignores_iter", "baz/some/path", check_ignores_iter);
   bench_list("no_ignores_tree", "baz/some/path", w_ignore_check);
 }
 
@@ -195,7 +182,7 @@ int main(int argc, char **argv) {
   (void)argc;
   (void)argv;
 
-  plan_tests(34);
+  plan_tests(17);
   test_correctness();
   bench_all_ignores();
   bench_no_ignores();
