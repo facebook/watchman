@@ -65,9 +65,9 @@ bool w_check_vcs_ignores(w_ht_t *ignores, const char *path, uint32_t pathlen) {
 
 bool w_is_ignored(w_root_t *root, const char *path, uint32_t pathlen)
 {
-  if (w_check_ignores(root->ignore_dirs, path, pathlen)) {
+  if (w_check_ignores(root->ignore.ignore_dirs, path, pathlen)) {
     return true;
   }
 
-  return w_check_vcs_ignores(root->ignore_vcs, path, pathlen);
+  return w_check_vcs_ignores(root->ignore.ignore_vcs, path, pathlen);
 }

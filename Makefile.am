@@ -9,7 +9,7 @@ THIRDPARTY_CPPFLAGS = -I$(top_srcdir)/thirdparty/jansson -I$(top_builddir)/third
 JSON_LIB = -L. libwmanjson.a
 
 watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-watchman_LDADD = $(JSON_LIB) libwildmatch.a
+watchman_LDADD = $(JSON_LIB) $(ART_LIB) libwildmatch.a
 watchman_SOURCES = \
 	argv.c       \
 	envp.c       \
@@ -20,6 +20,7 @@ watchman_SOURCES = \
 	checksock.c  \
 	fstype.c     \
 	log.c        \
+	ignore.c     \
 	json.c       \
 	bser.c       \
 	expflags.c   \
@@ -214,6 +215,7 @@ tests_ignore_t_SOURCES = \
 	watcher/helper.c \
 	hash.c \
 	ht.c \
+	ignore.c \
 	string.c \
 	log.c
 
