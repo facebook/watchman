@@ -29,6 +29,7 @@ SRCS=\
 	winbuild\asprintf.c \
 	winbuild\hostname.c \
 	thirdparty\wildmatch\wildmatch.c \
+	thirdparty\libart\src\art.c \
 	winbuild\time.c \
 	winbuild\backtrace.c \
 	winbuild\getopt_long.c \
@@ -94,25 +95,34 @@ SRCS=\
 TEST_SRCS=\
 	thirdparty\tap.c \
 	thirdparty\wildmatch\wildmatch.c \
+	thirdparty\libart\src\art.c \
 	winbuild\asprintf.c \
 	winbuild\time.c \
 	winbuild\pthread.c \
 	winbuild\backtrace.c \
 	winbuild\abort.c \
 	winbuild\errmap.c \
+	watcher\helper.c \
+	hash.c \
+	ht.c \
+	string.c \
+	log.c \
 	argv.c \
 	$(JSON_SRCS)
 
 TEST_DIR_SRCS=\
+	tests\art_test.c \
 	tests\argv.c \
 	tests\bser.c \
+	tests\ignore_test.c \
 	tests\log.c
 
 OBJS=$(SRCS:.c=.obj)
 TEST_OBJS=$(TEST_SRCS:.c=.obj)
 TEST_DIR_OBJS=$(TEST_DIR_SRCS:.c=.obj)
 DEPS=$(SRCS:.c=.dep) $(TEST_SRCS:.c=.dep) $(TEST_DIR_SRCS:.c=.dep)
-TESTS=tests\argv.exe tests\log.exe tests\bser.exe tests\wildmatch_test.exe
+TESTS=tests\argv.exe tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
+			tests\art.exe tests\ignore.exe
 COLLECTDEPS=$(CC) $(CFLAGS) /Zs /showIncludes /EHsc $< | cscript /nologo //E:jscript winbuild\depends.js --stdin
 
 .c.dep:
@@ -154,6 +164,11 @@ COLLECTDEPS=$(CC) $(CFLAGS) /Zs /showIncludes /EHsc $< | cscript /nologo //E:jsc
 	$(CC) $(CFLAGS) /Fo:thirdparty\wildmatch\ /c $<
 	$(COLLECTDEPS) thirdparty\wildmatch
 
+{thirdparty\libart\src}.c{thirdparty\libart\src}.obj::
+	@echo CC $<
+	$(CC) $(CFLAGS) /Fo:thirdparty\libart\src\ /c $<
+	$(COLLECTDEPS) thirdparty\libart\src
+
 {thirdparty\jansson}.c{thirdparty\jansson}.obj::
 	@echo CC $<
 	$(CC) $(CFLAGS) /Fo:thirdparty\jansson\ /c $<
@@ -189,6 +204,14 @@ watchman.exe: $(OBJS)
 	$(LINKER) $(OBJS) $(LIBS)
 
 tests\argv.exe: tests\argv.obj $(TEST_OBJS)
+	@echo LINK $@
+	$(LINKER) $** $(LIBS)
+
+tests\art.exe: tests\art_test.obj $(TEST_OBJS)
+	@echo LINK $@
+	$(LINKER) $** $(LIBS)
+
+tests\ignore.exe: tests\ignore_test.obj $(TEST_OBJS)
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 

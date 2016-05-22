@@ -638,6 +638,8 @@ bool w_should_log_to_clients(int level);
 void w_log_to_clients(int level, const char *buf);
 
 bool w_is_ignored(w_root_t *root, const char *path, uint32_t pathlen);
+bool w_check_ignores(w_ht_t *ignores, const char *path, uint32_t pathlen);
+bool w_check_vcs_ignores(w_ht_t *ignores, const char *path, uint32_t pathlen);
 void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec *deadline);
 
 json_t *w_string_to_json(w_string_t *str);
