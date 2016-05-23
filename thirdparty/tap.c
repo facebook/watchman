@@ -276,13 +276,13 @@ diag(char *fmt, ...)
 {
 	va_list ap;
 
-	fputs("# ", stderr);
+	fputs("# ", stdout);
 
 	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
+	vfprintf(stdout, fmt, ap);
 	va_end(ap);
 
-	fputs("\n", stderr);
+	fputs("\n", stdout);
 
 	return 0;
 }
