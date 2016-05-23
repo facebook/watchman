@@ -1,3 +1,4 @@
+#include "config.h"
 #include <stdint.h>
 #ifndef ART_H
 #define ART_H
@@ -80,7 +81,7 @@ typedef struct {
 typedef struct {
     void *value;
     uint32_t key_len;
-    unsigned char key[];
+    unsigned char key[1];
 } art_leaf;
 
 /**
@@ -123,7 +124,7 @@ int art_tree_destroy(art_tree *t);
 #ifdef BROKEN_GCC_C99_INLINE
 # define art_size(t) ((t)->size)
 #else
-inline uint64_t art_size(art_tree *t) {
+static inline uint64_t art_size(art_tree *t) {
     return t->size;
 }
 #endif
