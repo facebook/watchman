@@ -200,5 +200,6 @@ int main(int argc, char **argv) {
   bench_all_ignores();
   bench_no_ignores();
 
+  fail("just want to see the output");
   return exit_status();
 }
