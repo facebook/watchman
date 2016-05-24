@@ -9,7 +9,7 @@ THIRDPARTY_CPPFLAGS = -I$(top_srcdir)/thirdparty/jansson -I$(top_builddir)/third
 JSON_LIB = -L. libwmanjson.a
 
 watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-watchman_LDADD = $(JSON_LIB) libwildmatch.a
+watchman_LDADD = $(JSON_LIB) $(ART_LIB) libcritbit.a libwildmatch.a
 watchman_SOURCES = \
 	argv.c       \
 	envp.c       \
@@ -20,6 +20,7 @@ watchman_SOURCES = \
 	checksock.c  \
 	fstype.c     \
 	log.c        \
+	ignore.c     \
 	json.c       \
 	bser.c       \
 	expflags.c   \
@@ -78,6 +79,8 @@ noinst_HEADERS =   \
 	watchman_hash.h
 
 noinst_LIBRARIES = \
+	libart.a \
+	libcritbit.a \
 	libtap.a \
 	libwildmatch.a \
 	libwmanjson.a
@@ -109,10 +112,21 @@ TAP_LIB = libtap.a
 libwildmatch_a_SOURCES = thirdparty/wildmatch/wildmatch.c
 WILDMATCH_LIB = libwildmatch.a
 
+# adaptive radix tree library
+libart_a_SOURCES = thirdparty/libart/src/art.c
+ART_LIB = libart.a
+
+# critbit tree library
+libcritbit_a_SOURCES = thirdparty/critbit.c
+CRITBIT_LIB = libcritbit.a
+
 # unit tests
 TESTS = \
+		tests/art.t \
 		tests/argv.t \
 		tests/bser.t \
+		tests/ignore.t \
+		tests/critbit.t \
 		tests/log.t \
 		tests/wildmatch.t
 noinst_PROGRAMS = $(TESTS)
@@ -189,11 +203,27 @@ build-tests: $(TESTS)
 # run integration AND unit tests
 integration: all py-integration
 
+tests_art_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_art_t_LDADD = $(ART_LIB) $(TAP_LIB)
+tests_art_t_SOURCES = \
+	tests/art_test.c
+
 tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
 tests_argv_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_argv_t_SOURCES = \
 	tests/argv.c \
 	argv.c
+
+tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_ignore_t_LDADD = $(ART_LIB) libcritbit.a $(TAP_LIB) $(JSON_LIB)
+tests_ignore_t_SOURCES = \
+	tests/ignore_test.c \
+	watcher/helper.c \
+	hash.c \
+	ht.c \
+	ignore.c \
+	string.c \
+	log.c
 
 tests_log_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
 tests_log_t_LDADD = $(JSON_LIB) $(TAP_LIB)
@@ -211,6 +241,11 @@ tests_wildmatch_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
 tests_wildmatch_t_LDADD = $(JSON_LIB) $(TAP_LIB) $(WILDMATCH_LIB)
 tests_wildmatch_t_SOURCES = \
 	tests/wildmatch_test.c
+
+tests_critbit_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_critbit_t_LDADD = $(TAP_LIB) $(CRITBIT_LIB)
+tests_critbit_t_SOURCES = \
+	tests/critbit_test.c
 
 watch:
 	PYTHONPATH=python python/bin/watchman-make \

@@ -100,9 +100,12 @@ extern char **environ;
 #endif
 
 extern char *poisoned_reason;
+struct watchman_string;
+typedef struct watchman_string w_string_t;
 
 #include "watchman_hash.h"
 #include "watchman_stream.h"
+#include "watchman_ignore.h"
 
 #include "jansson.h"
 
@@ -210,8 +213,6 @@ static inline bool w_path_exists(const char *path) {
 bool w_path_exists(const char *path);
 #endif
 
-struct watchman_string;
-typedef struct watchman_string w_string_t;
 struct watchman_string {
   long refcnt;
   uint32_t hval;
@@ -442,10 +443,7 @@ struct watchman_root {
   w_string_t *query_cookie_prefix;
   w_ht_t *query_cookies;
 
-  /* map of dir name => dirname
-   * if the map has an entry for a given dir, we're ignoring it */
-  w_ht_t *ignore_vcs;
-  w_ht_t *ignore_dirs;
+  struct watchman_ignore ignore;
 
   int trigger_settle;
   int gc_interval;

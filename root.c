@@ -179,14 +179,13 @@ static bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg)
 
     // if we are completely ignoring this dir, we have nothing more to
     // do here
-    if (w_ht_get(root->ignore_dirs, w_ht_ptr_val(fullname))) {
+    if (w_ht_get(root->ignore.ignore_dirs, w_ht_ptr_val(fullname))) {
       w_string_delref(fullname);
       w_string_delref(name);
       continue;
     }
 
-    w_ht_set(root->ignore_vcs, w_ht_ptr_val(fullname),
-        w_ht_ptr_val(fullname));
+    w_ignore_addstr(&root->ignore, fullname, true);
 
     // While we're at it, see if we can find out where to put our
     // query cookie information
@@ -241,8 +240,7 @@ static void apply_ignore_configuration(w_root_t *root)
 
     name = w_string_new(ignore);
     fullname = w_string_path_cat(root->root_path, name);
-    w_ht_set(root->ignore_dirs, w_ht_ptr_val(fullname),
-        w_ht_ptr_val(fullname));
+    w_ignore_addstr(&root->ignore, fullname, false);
     w_log(W_LOG_DBG, "ignoring %.*s recursively\n",
         fullname->len, fullname->buf);
     w_string_delref(fullname);
@@ -282,8 +280,7 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   root->root_path = w_string_new(path);
   root->commands = w_ht_new(2, &trigger_hash_funcs);
   root->query_cookies = w_ht_new(2, &w_ht_string_funcs);
-  root->ignore_vcs = w_ht_new(2, &w_ht_string_funcs);
-  root->ignore_dirs = w_ht_new(2, &w_ht_string_funcs);
+  w_ignore_init(&root->ignore);
 
   load_root_config(root, path);
   root->trigger_settle = (int)cfg_get_int(
@@ -788,7 +785,7 @@ static void stat_path(w_root_t *root,
   bool recursive = flags & W_PENDING_RECURSIVE;
   bool via_notify = flags & W_PENDING_VIA_NOTIFY;
 
-  if (w_ht_get(root->ignore_dirs, w_ht_ptr_val(full_path))) {
+  if (w_ht_get(root->ignore.ignore_dirs, w_ht_ptr_val(full_path))) {
     w_log(W_LOG_DBG, "%.*s matches ignore_dir rules\n",
         full_path->len, full_path->buf);
     return;
@@ -908,7 +905,7 @@ static void stat_path(w_root_t *root,
       }
 
       // Don't recurse if our parent is an ignore dir
-      if (!w_ht_get(root->ignore_vcs, w_ht_ptr_val(dir_name)) ||
+      if (!w_ht_get(root->ignore.ignore_vcs, w_ht_ptr_val(dir_name)) ||
           // but do if we're looking at the cookie dir (stat_path is never
           // called for the root itself)
           w_string_equal(full_path, root->query_cookie_dir)) {
@@ -2000,8 +1997,7 @@ void w_root_delref(w_root_t *root)
 
   pthread_mutex_destroy(&root->lock);
   w_string_delref(root->root_path);
-  w_ht_free(root->ignore_vcs);
-  w_ht_free(root->ignore_dirs);
+  w_ignore_destroy(&root->ignore);
   w_ht_free(root->commands);
   w_ht_free(root->query_cookies);
 
