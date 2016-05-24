@@ -121,6 +121,7 @@ TESTS = \
 		tests/argv.t \
 		tests/bser.t \
 		tests/ignore.t \
+		tests/pending.t \
 		tests/log.t \
 		tests/wildmatch.t
 noinst_PROGRAMS = $(TESTS)
@@ -219,6 +220,23 @@ tests_ignore_t_SOURCES = \
 	hash.c \
 	ht.c \
 	ignore.c \
+	string.c \
+	log.c
+
+tests_pending_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_pending_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
+tests_pending_t_SOURCES = \
+	tests/pending_test.c \
+	tests/log_stub.c \
+	watcher/helper.c \
+	hash.c \
+	ht.c \
+	ignore.c \
+	pending.c \
+	expflags.c \
+	opendir.c \
+	cfg.c \
+	time.c \
 	string.c \
 	log.c
 

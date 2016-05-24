@@ -498,12 +498,12 @@ bool w_root_process_pending(w_root_t *root,
   }
 
   w_log(W_LOG_DBG, "processing %d events in %s\n",
-      w_ht_size(coll->pending_uniq), root->root_path->buf);
+      w_pending_coll_size(coll), root->root_path->buf);
 
   // Steal the contents
   pending = coll->pending;
   coll->pending = NULL;
-  w_ht_free_entries(coll->pending_uniq);
+  w_pending_coll_drain(coll);
 
   while (pending) {
     p = pending;

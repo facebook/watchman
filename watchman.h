@@ -248,7 +248,7 @@ typedef struct watchman_clock w_clock_t;
 #define W_PENDING_VIA_NOTIFY 2
 #define W_PENDING_CRAWL_ONLY  4
 struct watchman_pending_fs {
-  struct watchman_pending_fs *next;
+  struct watchman_pending_fs *next, *prev;
   w_string_t *path;
   struct timeval now;
   int flags;
@@ -256,10 +256,10 @@ struct watchman_pending_fs {
 
 struct watchman_pending_collection {
   struct watchman_pending_fs *pending;
-  w_ht_t *pending_uniq;
   pthread_mutex_t lock;
   pthread_cond_t cond;
   bool pinged;
+  art_tree tree;
 };
 
 bool w_pending_coll_init(struct watchman_pending_collection *coll);
@@ -650,6 +650,8 @@ w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
                                        uint32_t rhs_len);
 bool w_string_startswith(w_string_t *str, w_string_t *prefix);
 bool w_string_startswith_caseless(w_string_t *str, w_string_t *prefix);
+bool w_string_contains_cstr_len(w_string_t *str, const char *needle,
+                                uint32_t nlen);
 w_string_t *w_string_shell_escape(const w_string_t *str);
 w_string_t *w_string_implode(json_t *arr, const char *delim);
 

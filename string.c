@@ -348,6 +348,32 @@ bool w_string_startswith_caseless(w_string_t *str, w_string_t *prefix)
   return true;
 }
 
+bool w_string_contains_cstr_len(w_string_t *str, const char *needle,
+                                uint32_t nlen) {
+#if HAVE_MEMMEM
+  return memmem(str->buf, str->len, needle, nlen) != NULL;
+#else
+  // Most likely only for Windows.
+  // Inspired by http://stackoverflow.com/a/24000056/149111
+  const char *haystack = str->buf;
+  uint32_t hlen = str->len;
+  const char *limit;
+
+  if (nlen == 0 || hlen < nlen) {
+    return false;
+  }
+
+  limit = haystack + hlen - nlen + 1;
+  while ((haystack = memchr(haystack, needle[0], limit - haystack)) != NULL) {
+    if (memcmp(haystack, needle, nlen) == 0) {
+      return true;
+    }
+    haystack++;
+  }
+  return false;
+#endif
+}
+
 w_string_t *w_string_canon_path(w_string_t *str)
 {
   int end;
