@@ -9,7 +9,7 @@ THIRDPARTY_CPPFLAGS = -I$(top_srcdir)/thirdparty/jansson -I$(top_builddir)/third
 JSON_LIB = -L. libwmanjson.a
 
 watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-watchman_LDADD = $(JSON_LIB) $(ART_LIB) libwildmatch.a
+watchman_LDADD = $(JSON_LIB) $(ART_LIB) libcritbit.a libwildmatch.a
 watchman_SOURCES = \
 	argv.c       \
 	envp.c       \
@@ -215,7 +215,7 @@ tests_argv_t_SOURCES = \
 	argv.c
 
 tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
-tests_ignore_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
+tests_ignore_t_LDADD = $(ART_LIB) libcritbit.a $(TAP_LIB) $(JSON_LIB)
 tests_ignore_t_SOURCES = \
 	tests/ignore_test.c \
 	watcher/helper.c \

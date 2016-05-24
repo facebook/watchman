@@ -5,6 +5,7 @@
 #define WATCHMAN_IGNORE_H
 
 #include "thirdparty/libart/src/art.h"
+#include "thirdparty/critbit.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,6 +20,7 @@ struct watchman_ignore {
    * entries above.  This is used only on OS X and Windows because
    * we cannot exclude these dirs using the kernel watching APIs */
   art_tree tree;
+  cb_tree_t cbtree;
 };
 
 // Initialize ignore state
