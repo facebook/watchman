@@ -3,14 +3,10 @@
 
 #include "watchman.h"
 
-// The ignore logic is to stop recursion of grandchildren or later
-// generations than an ignored dir.  We allow the direct children
-// of an ignored dir, but no further down.
-bool w_is_ignored(w_root_t *root, const char *path, uint32_t pathlen)
-{
+bool w_check_ignores(w_ht_t *ignores, const char *path, uint32_t pathlen) {
   w_ht_iter_t i;
 
-  if (w_ht_first(root->ignore_dirs, &i)) do {
+  if (w_ht_first(ignores, &i)) do {
     w_string_t *ign = w_ht_val_ptr(i.value);
 
     if (pathlen < ign->len) {
@@ -29,12 +25,21 @@ bool w_is_ignored(w_root_t *root, const char *path, uint32_t pathlen)
       }
     }
 
-  } while (w_ht_next(root->ignore_dirs, &i));
+  } while (w_ht_next(ignores, &i));
 
-  if (w_ht_first(root->ignore_vcs, &i)) do {
+  return false;
+}
+
+// The ignore logic is to stop recursion of grandchildren or later
+// generations than an ignored dir.  We allow the direct children
+// of an ignored dir, but no further down.
+bool w_check_vcs_ignores(w_ht_t *ignores, const char *path, uint32_t pathlen) {
+  w_ht_iter_t i;
+
+  if (w_ht_first(ignores, &i)) do {
     w_string_t *ign = w_ht_val_ptr(i.value);
 
-    if (pathlen <= ign->len) {
+    if (pathlen < ign->len) {
       continue;
     }
 
@@ -53,7 +58,16 @@ bool w_is_ignored(w_root_t *root, const char *path, uint32_t pathlen)
       }
     }
 
-  } while (w_ht_next(root->ignore_vcs, &i));
+  } while (w_ht_next(ignores, &i));
 
   return false;
+}
+
+bool w_is_ignored(w_root_t *root, const char *path, uint32_t pathlen)
+{
+  if (w_check_ignores(root->ignore.ignore_dirs, path, pathlen)) {
+    return true;
+  }
+
+  return w_check_vcs_ignores(root->ignore.ignore_vcs, path, pathlen);
 }

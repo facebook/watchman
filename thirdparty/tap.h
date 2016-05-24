@@ -76,7 +76,8 @@
 
 #define skip_end() } while(0);
 
-unsigned int _gen_result(int, const char *, char *, unsigned int, char *, ...);
+unsigned int _gen_result(int, const char *, const char *, unsigned int,
+                         const char *, ...);
 
 int plan_no_plan(void);
 int plan_skip_all(char *);
