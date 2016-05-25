@@ -902,6 +902,7 @@ static void stat_path(w_root_t *root,
 
     memcpy(&file->stat, &st, sizeof(file->stat));
 
+#ifndef _WIN32
     // check for symbolic link
     if (S_ISLNK(st.mode)) {
       char link_target_path[WATCHMAN_NAME_MAX];
@@ -928,6 +929,7 @@ static void stat_path(w_root_t *root,
       w_string_delref(file->symlink_target);
       file->symlink_target = NULL;
     }
+#endif
 
     if (S_ISDIR(st.mode)) {
       if (dir_ent == NULL) {
