@@ -402,6 +402,10 @@ struct watchman_file {
   /* cache stat results so we can tell if an entry
    * changed */
   struct watchman_stat stat;
+
+  /* the symbolic link target of this file.
+   * Can be NULL if not a symlink, or we failed to read the target */
+  w_string_t *symlink_target;
 };
 
 #define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"

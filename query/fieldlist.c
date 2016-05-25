@@ -8,6 +8,12 @@ static json_t *make_name(struct watchman_rule_match *match)
   return w_string_to_json(match->relname);
 }
 
+static json_t *make_symlink(struct watchman_rule_match *match)
+{
+  return (match->file->symlink_target) ?
+    w_string_to_json(match->file->symlink_target) : json_null();
+}
+
 static json_t *make_exists(struct watchman_rule_match *match)
 {
   return json_boolean(match->file->exists);
@@ -120,6 +126,7 @@ static struct w_query_field_renderer {
   json_t *(*make)(struct watchman_rule_match *match);
 } field_defs[] = {
   { "name", make_name },
+  { "symlink_target", make_symlink },
   { "exists", make_exists },
   { "size", make_size },
   { "mode", make_mode },
