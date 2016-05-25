@@ -902,6 +902,33 @@ static void stat_path(w_root_t *root,
 
     memcpy(&file->stat, &st, sizeof(file->stat));
 
+    // check for symbolic link
+    if (S_ISLNK(st.mode)) {
+      char link_target_path[WATCHMAN_NAME_MAX];
+      ssize_t tlen = 0;
+
+      tlen = readlink(path, link_target_path, WATCHMAN_NAME_MAX);
+      if (tlen < 0 || tlen >= WATCHMAN_NAME_MAX) {
+        w_log(W_LOG_ERR,
+            "readlink(%s) errno=%d tlen=%d\n", path, errno, (int)tlen);
+
+        // not a proper symbolic link. NULL out symlink_target
+        if (file->symlink_target) {
+          w_string_delref(file->symlink_target);
+          file->symlink_target = NULL;
+        }
+      } else {
+        if (file->symlink_target) {
+          w_string_delref(file->symlink_target);
+        }
+
+        file->symlink_target = w_string_new_len(link_target_path, tlen);
+      }
+    } else if (file->symlink_target) {
+      w_string_delref(file->symlink_target);
+      file->symlink_target = NULL;
+    }
+
     if (S_ISDIR(st.mode)) {
       if (dir_ent == NULL) {
         recursive = true;
@@ -1561,6 +1588,9 @@ static void free_file_node(w_root_t *root, struct watchman_file *file)
 {
   root->watcher_ops->file_free(file);
   w_string_delref(file->name);
+  if (file->symlink_target) {
+    w_string_delref(file->symlink_target);
+  }
   free(file);
 }
 
