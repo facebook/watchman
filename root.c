@@ -538,6 +538,7 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
 
   dir = calloc(1, sizeof(*dir));
   dir->path = dir_name;
+  dir->exists = true;
   w_string_addref(dir->path);
 
   if (!parent->dirs) {
@@ -856,15 +857,15 @@ static void stat_path(w_root_t *root,
       w_root_mark_file_changed(root, file, now);
     }
 
-    if (!root->case_sensitive &&
-        !w_string_equal(dir_name, root->root_path)) {
+    if (!root->case_sensitive && !w_string_equal(dir_name, root->root_path) &&
+        dir->exists) {
       /* If we rejected the name because it wasn't canonical,
        * we need to ensure that we look in the parent dir to discover
        * the new item(s) */
       w_log(W_LOG_DBG, "we're case insensitive, and %s is ENOENT, "
                        "speculatively look at parent dir %.*s\n",
             path, dir_name->len, dir_name->buf);
-      stat_path(root, coll, dir_name, now, 0, NULL);
+      w_pending_coll_add(coll, dir_name, now, W_PENDING_CRAWL_ONLY);
     }
 
   } else if (res) {
@@ -923,6 +924,9 @@ static void stat_path(w_root_t *root,
     if (S_ISDIR(st.mode)) {
       if (dir_ent == NULL) {
         recursive = true;
+      } else {
+        // Ensure that we believe that this node exists
+        dir_ent->exists = true;
       }
 
       // Don't recurse if our parent is an ignore dir
@@ -953,10 +957,10 @@ static void stat_path(w_root_t *root,
       w_root_mark_deleted(root, dir_ent, now, true);
     }
     if ((root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
-        !S_ISDIR(st.mode) &&
-        !w_string_equal(dir_name, root->root_path)) {
+        !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&
+        dir->exists) {
       /* Make sure we update the mtime on the parent directory. */
-      stat_path(root, coll, dir_name, now, flags & W_PENDING_VIA_NOTIFY, NULL);
+      w_pending_coll_add(coll, dir_name, now, flags & W_PENDING_VIA_NOTIFY);
     }
   }
 
@@ -1029,6 +1033,12 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
 {
   w_ht_iter_t i;
 
+  if (!dir->exists) {
+    // If we know that it doesn't exist, return early
+    return;
+  }
+  dir->exists = false;
+
   if (w_ht_first(dir->files, &i)) do {
     struct watchman_file *file = w_ht_val_ptr(i.value);
 
@@ -1085,7 +1095,7 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
       syscall, dir_name->len, dir_name->buf,
       reason ? reason : strerror(err));
 
-  w_log(W_LOG_ERR, "%.*s\n", warn->len, warn->buf);
+  w_log(err == ENOENT ? W_LOG_DBG : W_LOG_ERR, "%.*s\n", warn->len, warn->buf);
   if (log_warning) {
     w_root_set_warning(root, warn);
   }

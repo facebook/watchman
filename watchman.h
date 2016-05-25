@@ -293,6 +293,9 @@ struct watchman_dir {
   w_ht_t *files;
   /* child dirs contained in this dir (keyed by dir->path) */
   w_ht_t *dirs;
+  // If we think this dir was deleted, we'll avoid recursing
+  // to its children when processing deletes
+  bool exists;
 };
 
 struct watchman_ops {
