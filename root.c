@@ -903,6 +903,11 @@ static void stat_path(w_root_t *root,
     memcpy(&file->stat, &st, sizeof(file->stat));
 
 #ifndef _WIN32
+    if (file->symlink_target) {
+      w_string_delref(file->symlink_target);
+      file->symlink_target = NULL;
+    }
+
     // check for symbolic link
     if (S_ISLNK(st.mode)) {
       char link_target_path[WATCHMAN_NAME_MAX];
@@ -912,22 +917,9 @@ static void stat_path(w_root_t *root,
       if (tlen < 0 || tlen >= WATCHMAN_NAME_MAX) {
         w_log(W_LOG_ERR,
             "readlink(%s) errno=%d tlen=%d\n", path, errno, (int)tlen);
-
-        // not a proper symbolic link. NULL out symlink_target
-        if (file->symlink_target) {
-          w_string_delref(file->symlink_target);
-          file->symlink_target = NULL;
-        }
       } else {
-        if (file->symlink_target) {
-          w_string_delref(file->symlink_target);
-        }
-
         file->symlink_target = w_string_new_len(link_target_path, tlen);
       }
-    } else if (file->symlink_target) {
-      w_string_delref(file->symlink_target);
-      file->symlink_target = NULL;
     }
 #endif
 
