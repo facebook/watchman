@@ -151,9 +151,9 @@ static art_node** find_child(art_node *n, unsigned char c) {
             }
             break;
 
-        {
-        __m128i cmp;
         case NODE16:
+        {
+            __m128i cmp;
             p.p2 = (art_node16*)n;
 
             // Compare the key to all 16 stored keys
@@ -960,3 +960,5 @@ int art_iter_prefix(art_tree *t, const unsigned char *key, int key_len, art_call
     }
     return 0;
 }
+
+// vim:ts=4:sw=4:
