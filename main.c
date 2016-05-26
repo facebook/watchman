@@ -479,17 +479,34 @@ static void compute_file_name(char **strp,
 #ifndef _WIN32
       // verify ownership
       struct stat st;
+      DIR *dirp;
+      int dir_fd;
+      int ret = 0;
       uid_t euid = geteuid();
 
-      if (stat(state_dir, &st) != 0) {
-        w_log(W_LOG_ERR, "stat(%s): %s\n", state_dir, strerror(errno));
+      dirp = opendir(state_dir);
+      if (!dirp) {
+        w_log(W_LOG_ERR, "opendir(%s): %s\n", state_dir, strerror(errno));
         exit(1);
+      }
+
+      dir_fd = dirfd(dirp);
+      if (dir_fd == -1) {
+        w_log(W_LOG_ERR, "dirfd(%s): %s\n", state_dir, strerror(errno));
+        goto bail;
+      }
+
+      if (fstat(dir_fd, &st) != 0) {
+        w_log(W_LOG_ERR, "fstat(%s): %s\n", state_dir, strerror(errno));
+        ret = 1;
+        goto bail;
       }
       if (euid != st.st_uid) {
         w_log(W_LOG_ERR,
             "the owner of %s is uid %d and doesn't match your euid %d\n",
             state_dir, st.st_uid, euid);
-        exit(1);
+        ret = 1;
+        goto bail;
       }
       if (st.st_mode & 0022) {
         w_log(W_LOG_ERR,
@@ -498,7 +515,14 @@ static void compute_file_name(char **strp,
             "permissions by running `chmod 0700 %s`\n",
             state_dir,
             state_dir);
-        exit(1);
+        ret = 1;
+        goto bail;
+      }
+
+    bail:
+      closedir(dirp);
+      if (ret) {
+        exit(ret);
       }
 #endif
     } else {
