@@ -74,19 +74,21 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand('watch', root)
         self.assertFileList(root, ['111', '222' ])
 
-        # Create a cursor for this state
-        self.watchmanCommand('since', root, 'n:foo')
+        # capture the clock so that we can use a since query,
+        # see the removed entry when we query later on.
+        clock  = self.watchmanCommand('clock', root)['clock']
 
         os.unlink(os.path.join(root, '111'))
 
         expr = {
-            "fields": ["name", "symlink_target"],
-            "since" : 'n:foo',
+            "expression" : [ "name", "111"],
+            "fields": ["name", "exists"],
+            "since" : clock
         }
 
         res = self.watchmanCommand('query', root, expr)
         self.assertEqualUTF8Strings('111', res['files'][0]['name'])
-        self.assertEqualUTF8Strings('222', os.path.basename(res['files'][0]['symlink_target']))
+        self.assertFalse(res['files'][0]['exists'])
 
     # test to see that when a symbolic link is changed to a file,
     # the symlink target is updated correctly
