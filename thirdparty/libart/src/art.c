@@ -121,6 +121,8 @@ static void destroy_node(art_node *n) {
  */
 int art_tree_destroy(art_tree *t) {
     destroy_node(t->root);
+    t->root = NULL;
+    t->size = 0;
     return 0;
 }
 
