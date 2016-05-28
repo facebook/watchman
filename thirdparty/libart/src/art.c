@@ -32,6 +32,24 @@ enum {
     NODE256
 };
 
+// Helper for dispatching to the correct node type
+union node_ptr {
+    art_node *n;
+    art_node4 *n4;
+    art_node16 *n16;
+    art_node48 *n48;
+    art_node256 *n256;
+};
+
+// const flavor of the above
+union cnode_ptr {
+    const art_node *n;
+    const art_node4 *n4;
+    const art_node16 *n16;
+    const art_node48 *n48;
+    const art_node256 *n256;
+};
+
 #ifdef _MSC_VER
 #include <intrin.h>
 static uint32_t __inline __builtin_ctz(uint32_t x) {
@@ -87,25 +105,25 @@ static inline unsigned char leaf_key_at(const art_leaf *l, int idx) {
  * initializes to zero and sets the type.
  */
 static art_node* alloc_node(uint8_t type) {
-    art_node* n;
+    union node_ptr p;
     switch (type) {
         case NODE4:
-            n = (art_node*)calloc(1, sizeof(art_node4));
+            p.n4 = calloc(1, sizeof(art_node4));
             break;
         case NODE16:
-            n = (art_node*)calloc(1, sizeof(art_node16));
+            p.n16 = calloc(1, sizeof(art_node16));
             break;
         case NODE48:
-            n = (art_node*)calloc(1, sizeof(art_node48));
+            p.n48 = calloc(1, sizeof(art_node48));
             break;
         case NODE256:
-            n = (art_node*)calloc(1, sizeof(art_node256));
+            p.n256 = calloc(1, sizeof(art_node256));
             break;
         default:
             abort();
     }
-    n->type = type;
-    return n;
+    p.n->type = type;
+    return p.n;
 }
 
 /**
@@ -121,12 +139,7 @@ int art_tree_init(art_tree *t) {
 // Recursively destroys the tree
 static void destroy_node(art_node *n) {
     int i;
-    union {
-        art_node4 *p1;
-        art_node16 *p2;
-        art_node48 *p3;
-        art_node256 *p4;
-    } p;
+    union node_ptr p = {n};
 
     // Break if null
     if (!n) return;
@@ -140,31 +153,28 @@ static void destroy_node(art_node *n) {
     // Handle each node type
     switch (n->type) {
         case NODE4:
-            p.p1 = (art_node4*)n;
             for (i=0;i<n->num_children;i++) {
-                destroy_node(p.p1->children[i]);
+                destroy_node(p.n4->children[i]);
             }
             break;
 
         case NODE16:
-            p.p2 = (art_node16*)n;
             for (i=0;i<n->num_children;i++) {
-                destroy_node(p.p2->children[i]);
+                destroy_node(p.n16->children[i]);
             }
             break;
 
         case NODE48:
-            p.p3 = (art_node48*)n;
             for (i=0;i<n->num_children;i++) {
-                destroy_node(p.p3->children[i]);
+                destroy_node(p.n48->children[i]);
             }
             break;
 
         case NODE256:
-            p.p4 = (art_node256*)n;
             for (i=0;i<256;i++) {
-                if (p.p4->children[i])
-                    destroy_node(p.p4->children[i]);
+                if (p.n256->children[i]) {
+                    destroy_node(p.n256->children[i]);
+                }
             }
             break;
 
@@ -197,29 +207,22 @@ extern inline uint64_t art_size(art_tree *t);
 
 static art_node** find_child(art_node *n, unsigned char c) {
     int i, mask, bitfield;
-    union {
-        art_node4 *p1;
-        art_node16 *p2;
-        art_node48 *p3;
-        art_node256 *p4;
-    } p;
+    union node_ptr p = {n};
     switch (n->type) {
         case NODE4:
-            p.p1 = (art_node4*)n;
             for (i=0;i < n->num_children; i++) {
-                if (p.p1->keys[i] == c)
-                    return &p.p1->children[i];
+                if (p.n4->keys[i] == c)
+                    return &p.n4->children[i];
             }
             break;
 
         case NODE16:
         {
             __m128i cmp;
-            p.p2 = (art_node16*)n;
 
             // Compare the key to all 16 stored keys
             cmp = _mm_cmpeq_epi8(_mm_set1_epi8(c),
-                    _mm_loadu_si128((__m128i*)p.p2->keys));
+                    _mm_loadu_si128((__m128i*)p.n16->keys));
 
             // Use a mask to ignore children that don't exist
             mask = (1 << n->num_children) - 1;
@@ -231,21 +234,19 @@ static art_node** find_child(art_node *n, unsigned char c) {
              * the index.
              */
             if (bitfield)
-                return &p.p2->children[__builtin_ctz(bitfield)];
+                return &p.n16->children[__builtin_ctz(bitfield)];
             break;
         }
 
         case NODE48:
-            p.p3 = (art_node48*)n;
-            i = p.p3->keys[c];
+            i = p.n48->keys[c];
             if (i)
-                return &p.p3->children[i-1];
+                return &p.n48->children[i-1];
             break;
 
         case NODE256:
-            p.p4 = (art_node256*)n;
-            if (p.p4->children[c])
-                return &p.p4->children[c];
+            if (p.n256->children[c])
+                return &p.n256->children[c];
             break;
 
         default:
@@ -372,6 +373,7 @@ art_leaf* art_longest_match(const art_tree *t, const unsigned char *key, int key
 // Find the minimum leaf under a node
 static art_leaf* minimum(const art_node *n) {
     int idx;
+    union cnode_ptr p = {n};
 
     // Handle base cases
     if (!n) return NULL;
@@ -379,18 +381,18 @@ static art_leaf* minimum(const art_node *n) {
 
     switch (n->type) {
         case NODE4:
-            return minimum(((art_node4*)n)->children[0]);
+            return minimum(p.n4->children[0]);
         case NODE16:
-            return minimum(((art_node16*)n)->children[0]);
+            return minimum(p.n16->children[0]);
         case NODE48:
             idx=0;
-            while (!((art_node48*)n)->keys[idx]) idx++;
-            idx = ((art_node48*)n)->keys[idx] - 1;
-            return minimum(((art_node48*)n)->children[idx]);
+            while (!p.n48->keys[idx]) idx++;
+            idx = p.n48->keys[idx] - 1;
+            return minimum(p.n48->children[idx]);
         case NODE256:
             idx=0;
-            while (!((art_node256*)n)->children[idx]) idx++;
-            return minimum(((art_node256*)n)->children[idx]);
+            while (!p.n256->children[idx]) idx++;
+            return minimum(p.n256->children[idx]);
         default:
             abort();
             return NULL;
@@ -400,6 +402,7 @@ static art_leaf* minimum(const art_node *n) {
 // Find the maximum leaf under a node
 static art_leaf* maximum(const art_node *n) {
     int idx;
+    union cnode_ptr p = {n};
 
     // Handle base cases
     if (!n) return NULL;
@@ -407,18 +410,18 @@ static art_leaf* maximum(const art_node *n) {
 
     switch (n->type) {
         case NODE4:
-            return maximum(((art_node4*)n)->children[n->num_children-1]);
+            return maximum(p.n4->children[n->num_children-1]);
         case NODE16:
-            return maximum(((art_node16*)n)->children[n->num_children-1]);
+            return maximum(p.n16->children[n->num_children-1]);
         case NODE48:
             idx=255;
-            while (!((art_node48*)n)->keys[idx]) idx--;
-            idx = ((art_node48*)n)->keys[idx] - 1;
-            return maximum(((art_node48*)n)->children[idx]);
+            while (!p.n48->keys[idx]) idx--;
+            idx = p.n48->keys[idx] - 1;
+            return maximum(p.n48->children[idx]);
         case NODE256:
             idx=255;
-            while (!((art_node256*)n)->children[idx]) idx--;
-            return maximum(((art_node256*)n)->children[idx]);
+            while (!p.n256->children[idx]) idx--;
+            return maximum(p.n256->children[idx]);
         default:
             abort();
             return NULL;
@@ -572,18 +575,20 @@ static void add_child4(art_node4 *n, art_node **ref, unsigned char c, void *chil
 }
 
 static void add_child(art_node *n, art_node **ref, unsigned char c, void *child) {
+    union node_ptr p = {n};
+
     switch (n->type) {
         case NODE4:
-            add_child4((art_node4*)n, ref, c, child);
+            add_child4(p.n4, ref, c, child);
             return;
         case NODE16:
-            add_child16((art_node16*)n, ref, c, child);
+            add_child16(p.n16, ref, c, child);
             return;
         case NODE48:
-            add_child48((art_node48*)n, ref, c, child);
+            add_child48(p.n48, ref, c, child);
             return;
         case NODE256:
-            add_child256((art_node256*)n, ref, c, child);
+            add_child256(p.n256, ref, c, child);
             return;
         default:
             abort();
@@ -825,18 +830,20 @@ static void remove_child4(art_node4 *n, art_node **ref, art_node **l) {
 }
 
 static void remove_child(art_node *n, art_node **ref, unsigned char c, art_node **l) {
+    union node_ptr p = {n};
+
     switch (n->type) {
         case NODE4:
-            remove_child4((art_node4*)n, ref, l);
+            remove_child4(p.n4, ref, l);
             return;
         case NODE16:
-            remove_child16((art_node16*)n, ref, l);
+            remove_child16(p.n16, ref, l);
             return;
         case NODE48:
-            remove_child48((art_node48*)n, ref, c);
+            remove_child48(p.n48, ref, c);
             return;
         case NODE256:
-            remove_child256((art_node256*)n, ref, c);
+            remove_child256(p.n256, ref, c);
             return;
         default:
             abort();
@@ -909,6 +916,7 @@ void* art_delete(art_tree *t, const unsigned char *key, int key_len) {
 // Recursively iterates over the tree
 static int recursive_iter(art_node *n, art_callback cb, void *data) {
     int i, idx, res;
+    union node_ptr p = {n};
 
     // Handle base cases
     if (!n) return 0;
@@ -920,32 +928,32 @@ static int recursive_iter(art_node *n, art_callback cb, void *data) {
     switch (n->type) {
         case NODE4:
             for (i=0; i < n->num_children; i++) {
-                res = recursive_iter(((art_node4*)n)->children[i], cb, data);
+                res = recursive_iter(p.n4->children[i], cb, data);
                 if (res) return res;
             }
             break;
 
         case NODE16:
             for (i=0; i < n->num_children; i++) {
-                res = recursive_iter(((art_node16*)n)->children[i], cb, data);
+                res = recursive_iter(p.n16->children[i], cb, data);
                 if (res) return res;
             }
             break;
 
         case NODE48:
             for (i=0; i < 256; i++) {
-                idx = ((art_node48*)n)->keys[i];
+                idx = p.n48->keys[i];
                 if (!idx) continue;
 
-                res = recursive_iter(((art_node48*)n)->children[idx-1], cb, data);
+                res = recursive_iter(p.n48->children[idx-1], cb, data);
                 if (res) return res;
             }
             break;
 
         case NODE256:
             for (i=0; i < 256; i++) {
-                if (!((art_node256*)n)->children[i]) continue;
-                res = recursive_iter(((art_node256*)n)->children[i], cb, data);
+                if (!p.n256->children[i]) continue;
+                res = recursive_iter(p.n256->children[i], cb, data);
                 if (res) return res;
             }
             break;
