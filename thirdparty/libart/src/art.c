@@ -24,6 +24,14 @@
 #define SET_LEAF(x) ((void*)((uintptr_t)x | 1))
 #define LEAF_RAW(x) ((art_leaf*)((void*)((uintptr_t)x & ~1)))
 
+// Valid values for art_node::type
+enum {
+    NODE4 = 1,
+    NODE16,
+    NODE48,
+    NODE256
+};
+
 #ifdef _MSC_VER
 #include <intrin.h>
 static uint32_t __inline __builtin_ctz(uint32_t x) {
@@ -257,7 +265,7 @@ static inline int min(int a, int b) {
  * the key and node.
  */
 static int check_prefix(const art_node *n, const unsigned char *key, int key_len, int depth) {
-    int max_cmp = min(min(n->partial_len, MAX_PREFIX_LEN), key_len - depth);
+    int max_cmp = min(min(n->partial_len, ART_MAX_PREFIX_LEN), key_len - depth);
     int idx;
     for (idx=0; idx < max_cmp; idx++) {
         if (n->partial[idx] != key[depth+idx])
@@ -305,7 +313,7 @@ void* art_search(const art_tree *t, const unsigned char *key, int key_len) {
         // Bail if the prefix does not match
         if (n->partial_len) {
             prefix_len = check_prefix(n, key, key_len, depth);
-            if (prefix_len != min(MAX_PREFIX_LEN, n->partial_len))
+            if (prefix_len != min(ART_MAX_PREFIX_LEN, n->partial_len))
                 return NULL;
             depth = depth + n->partial_len;
         }
@@ -343,7 +351,7 @@ art_leaf* art_longest_match(const art_tree *t, const unsigned char *key, int key
         // Bail if the prefix does not match
         if (n->partial_len) {
             prefix_len = check_prefix(n, key, key_len, depth);
-            if (prefix_len != min(MAX_PREFIX_LEN, n->partial_len))
+            if (prefix_len != min(ART_MAX_PREFIX_LEN, n->partial_len))
                 return NULL;
             depth = depth + n->partial_len;
         }
@@ -455,7 +463,8 @@ static int longest_common_prefix(art_leaf *l1, art_leaf *l2, int depth) {
 static void copy_header(art_node *dest, art_node *src) {
     dest->num_children = src->num_children;
     dest->partial_len = src->partial_len;
-    memcpy(dest->partial, src->partial, min(MAX_PREFIX_LEN, src->partial_len));
+    memcpy(dest->partial, src->partial,
+           min(ART_MAX_PREFIX_LEN, src->partial_len));
 }
 
 static void add_child256(art_node256 *n, art_node **ref, unsigned char c, void *child) {
@@ -585,7 +594,8 @@ static void add_child(art_node *n, art_node **ref, unsigned char c, void *child)
  * Calculates the index at which the prefixes mismatch
  */
 static int prefix_mismatch(const art_node *n, const unsigned char *key, int key_len, int depth) {
-    int max_cmp = min(min(MAX_PREFIX_LEN, n->partial_len), key_len - depth);
+    int max_cmp = min(min(ART_MAX_PREFIX_LEN, n->partial_len),
+                      key_len - depth);
     int idx;
     for (idx=0; idx < max_cmp; idx++) {
         if (n->partial[idx] != key[depth+idx])
@@ -593,7 +603,7 @@ static int prefix_mismatch(const art_node *n, const unsigned char *key, int key_
     }
 
     // If the prefix is short we can avoid finding a leaf
-    if (n->partial_len > MAX_PREFIX_LEN) {
+    if (n->partial_len > ART_MAX_PREFIX_LEN) {
         // Prefix is longer than what we've checked, find a leaf
         art_leaf *l = minimum(n);
         max_cmp = min(l->key_len, key_len)- depth;
@@ -641,7 +651,7 @@ static void *recursive_insert(art_node *n, art_node **ref,
         longest_prefix = longest_common_prefix(l, l2, depth);
         new_node->n.partial_len = longest_prefix;
         memcpy(new_node->n.partial, l2->key + depth,
-               min(MAX_PREFIX_LEN, longest_prefix));
+               min(ART_MAX_PREFIX_LEN, longest_prefix));
         // Add the leafs to the new node4
         *ref = (art_node*)new_node;
         add_child4(new_node, ref, leaf_key_at(l, depth + longest_prefix),
@@ -665,20 +675,20 @@ static void *recursive_insert(art_node *n, art_node **ref,
         new_node = (art_node4*)alloc_node(NODE4);
         *ref = (art_node*)new_node;
         new_node->n.partial_len = prefix_diff;
-        memcpy(new_node->n.partial, n->partial, min(MAX_PREFIX_LEN, prefix_diff));
+        memcpy(new_node->n.partial, n->partial, min(ART_MAX_PREFIX_LEN, prefix_diff));
 
         // Adjust the prefix of the old node
-        if (n->partial_len <= MAX_PREFIX_LEN) {
+        if (n->partial_len <= ART_MAX_PREFIX_LEN) {
             add_child4(new_node, ref, n->partial[prefix_diff], n);
             n->partial_len -= (prefix_diff+1);
             memmove(n->partial, n->partial+prefix_diff+1,
-                    min(MAX_PREFIX_LEN, n->partial_len));
+                    min(ART_MAX_PREFIX_LEN, n->partial_len));
         } else {
             n->partial_len -= (prefix_diff+1);
             l = minimum(n);
             add_child4(new_node, ref, leaf_key_at(l, depth + prefix_diff), n);
             memcpy(n->partial, l->key+depth+prefix_diff+1,
-                    min(MAX_PREFIX_LEN, n->partial_len));
+                    min(ART_MAX_PREFIX_LEN, n->partial_len));
         }
 
         // Insert the new leaf
@@ -795,18 +805,18 @@ static void remove_child4(art_node4 *n, art_node **ref, art_node **l) {
         if (!IS_LEAF(child)) {
             // Concatenate the prefixes
             int prefix = n->n.partial_len;
-            if (prefix < MAX_PREFIX_LEN) {
+            if (prefix < ART_MAX_PREFIX_LEN) {
                 n->n.partial[prefix] = n->keys[0];
                 prefix++;
             }
-            if (prefix < MAX_PREFIX_LEN) {
-                int sub_prefix = min(child->partial_len, MAX_PREFIX_LEN - prefix);
+            if (prefix < ART_MAX_PREFIX_LEN) {
+                int sub_prefix = min(child->partial_len, ART_MAX_PREFIX_LEN - prefix);
                 memcpy(n->n.partial+prefix, child->partial, sub_prefix);
                 prefix += sub_prefix;
             }
 
             // Store the prefix in the child
-            memcpy(child->partial, n->n.partial, min(prefix, MAX_PREFIX_LEN));
+            memcpy(child->partial, n->n.partial, min(prefix, ART_MAX_PREFIX_LEN));
             child->partial_len += n->n.partial_len + 1;
         }
         *ref = child;
@@ -852,7 +862,7 @@ static art_leaf* recursive_delete(art_node *n, art_node **ref, const unsigned ch
     // Bail if the prefix does not match
     if (n->partial_len) {
         int prefix_len = check_prefix(n, key, key_len, depth);
-        if (prefix_len != min(MAX_PREFIX_LEN, n->partial_len)) {
+        if (prefix_len != min(ART_MAX_PREFIX_LEN, n->partial_len)) {
             return NULL;
         }
         depth = depth + n->partial_len;

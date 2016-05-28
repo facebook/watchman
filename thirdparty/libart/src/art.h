@@ -7,12 +7,7 @@
 extern "C" {
 #endif
 
-#define NODE4   1
-#define NODE16  2
-#define NODE48  3
-#define NODE256 4
-
-#define MAX_PREFIX_LEN 10
+#define ART_MAX_PREFIX_LEN 10
 
 #if defined(__GNUC__) && !defined(__clang__)
 # if __STDC_VERSION__ >= 199901L && 402 == (__GNUC__ * 100 + __GNUC_MINOR__)
@@ -35,7 +30,7 @@ typedef struct {
     uint8_t type;
     uint8_t num_children;
     uint32_t partial_len;
-    unsigned char partial[MAX_PREFIX_LEN];
+    unsigned char partial[ART_MAX_PREFIX_LEN];
 } art_node;
 
 /**
@@ -99,24 +94,10 @@ typedef struct {
 int art_tree_init(art_tree *t);
 
 /**
- * DEPRECATED
- * Initializes an ART tree
- * @return 0 on success.
- */
-#define init_art_tree(...) art_tree_init(__VA_ARGS__)
-
-/**
  * Destroys an ART tree
  * @return 0 on success.
  */
 int art_tree_destroy(art_tree *t);
-
-/**
- * DEPRECATED
- * Initializes an ART tree
- * @return 0 on success.
- */
-#define destroy_art_tree(...) art_tree_destroy(__VA_ARGS__)
 
 /**
  * Returns the size of the ART tree.
