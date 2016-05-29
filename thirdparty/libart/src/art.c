@@ -371,32 +371,43 @@ art_leaf* art_longest_match(const art_tree *t, const unsigned char *key, int key
 }
 
 // Find the minimum leaf under a node
-static art_leaf* minimum(const art_node *n) {
+static art_leaf *minimum(const art_node *n) {
     int idx;
     union cnode_ptr p = {n};
 
-    // Handle base cases
-    if (!n) return NULL;
-    if (IS_LEAF(n)) return LEAF_RAW(n);
+    while (p.n) {
+        if (IS_LEAF(p.n)) {
+            return LEAF_RAW(p.n);
+        }
 
-    switch (n->type) {
-        case NODE4:
-            return minimum(p.n4->children[0]);
-        case NODE16:
-            return minimum(p.n16->children[0]);
-        case NODE48:
-            idx=0;
-            while (!p.n48->keys[idx]) idx++;
-            idx = p.n48->keys[idx] - 1;
-            return minimum(p.n48->children[idx]);
-        case NODE256:
-            idx=0;
-            while (!p.n256->children[idx]) idx++;
-            return minimum(p.n256->children[idx]);
-        default:
-            abort();
-            return NULL;
+        switch (p.n->type) {
+            case NODE4:
+                p.n = p.n4->children[0];
+                break;
+            case NODE16:
+                p.n = p.n16->children[0];
+                break;
+            case NODE48:
+                idx = 0;
+                while (!p.n48->keys[idx]) {
+                    idx++;
+                }
+                idx = p.n48->keys[idx] - 1;
+                p.n = p.n48->children[idx];
+                break;
+            case NODE256:
+                idx = 0;
+                while (!p.n256->children[idx]) {
+                    idx++;
+                }
+                p.n = p.n256->children[idx];
+                break;
+            default:
+                abort();
+                return NULL;
+        }
     }
+    return NULL;
 }
 
 // Find the maximum leaf under a node
@@ -404,28 +415,39 @@ static art_leaf* maximum(const art_node *n) {
     int idx;
     union cnode_ptr p = {n};
 
-    // Handle base cases
-    if (!n) return NULL;
-    if (IS_LEAF(n)) return LEAF_RAW(n);
+    while (p.n) {
+        if (IS_LEAF(p.n)) {
+            return LEAF_RAW(p.n);
+        }
 
-    switch (n->type) {
-        case NODE4:
-            return maximum(p.n4->children[n->num_children-1]);
-        case NODE16:
-            return maximum(p.n16->children[n->num_children-1]);
-        case NODE48:
-            idx=255;
-            while (!p.n48->keys[idx]) idx--;
-            idx = p.n48->keys[idx] - 1;
-            return maximum(p.n48->children[idx]);
-        case NODE256:
-            idx=255;
-            while (!p.n256->children[idx]) idx--;
-            return maximum(p.n256->children[idx]);
-        default:
-            abort();
-            return NULL;
+        switch (p.n->type) {
+            case NODE4:
+                p.n = p.n4->children[p.n->num_children - 1];
+                break;
+            case NODE16:
+                p.n = p.n16->children[p.n->num_children - 1];
+                break;
+            case NODE48:
+                idx = 255;
+                while (!p.n48->keys[idx]) {
+                    idx--;
+                }
+                idx = p.n48->keys[idx] - 1;
+                p.n = p.n48->children[idx];
+                break;
+            case NODE256:
+                idx = 255;
+                while (!p.n256->children[idx]) {
+                    idx--;
+                }
+                p.n = p.n256->children[idx];
+                break;
+            default:
+                abort();
+                return NULL;
+        }
     }
+    return NULL;
 }
 
 /**
