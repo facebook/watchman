@@ -28,22 +28,34 @@ def getSharedInstance():
     global tls
     return tls.instance
 
-class Instance(object):
+class InitWithFilesMixin(object):
+    def _init_state(self):
+        self.base_dir = tempfile.mkdtemp(prefix='inst')
+        self.cfg_file = os.path.join(self.base_dir, "config.json")
+        self.log_file_name = os.path.join(self.base_dir, "log")
+        if os.name == 'nt':
+            self.sock_file = '\\\\.\\pipe\\watchman-test-%s' % uuid.uuid4().hex
+        else:
+            self.sock_file = os.path.join(self.base_dir, "sock")
+        self.state_file = os.path.join(self.base_dir, "state")
+
+    def get_state_args(self):
+        return [
+            '--sockname={0}'.format(self.sock_file),
+            '--logfile={0}'.format(self.log_file_name),
+            '--statefile={0}'.format(self.state_file),
+        ]
+
+class _Instance(object):
     # Tracks a running watchman instance.  It is created with an
     # overridden global configuration file; you may pass that
     # in to the constructor
 
     def __init__(self, config={}):
         self.base_dir = tempfile.mkdtemp(prefix='inst')
-        self.cfg_file = os.path.join(self.base_dir, "config.json")
-        self.log_file_name = os.path.join(self.base_dir, "log")
+        self._init_state()
         self.proc = None
         self.pid = None
-        if os.name == 'nt':
-            self.sock_file = '\\\\.\\pipe\\watchman-test-%s' % uuid.uuid4().hex
-        else:
-            self.sock_file = os.path.join(self.base_dir, "sock")
-        self.state_file = os.path.join(self.base_dir, "state")
         with open(self.cfg_file, "w") as f:
             f.write(json.dumps(config))
         self.log_file = open(self.log_file_name, 'w+')
@@ -65,11 +77,9 @@ class Instance(object):
         args = [
             'watchman',
             '--foreground',
-            '--sockname={0}'.format(self.sock_file),
-            '--logfile={0}'.format(self.log_file_name),
-            '--statefile={0}'.format(self.state_file),
             '--log-level=2',
         ]
+        args.extend(self.get_state_args())
         env = os.environ.copy()
         env["WATCHMAN_CONFIG_FILE"] = self.cfg_file
         self.proc = subprocess.Popen(args,
@@ -92,3 +102,6 @@ class Instance(object):
 
         if self.pid is None:
             pywatchman.compat.reraise(t, val, tb)
+
+class Instance(_Instance, InitWithFilesMixin):
+    pass
