@@ -484,6 +484,9 @@ static void compute_file_name(char **strp,
       int dir_fd;
       int ret = 0;
       uid_t euid = geteuid();
+      // TODO: also allow a gid to be specified here
+      const char *sock_group_name = cfg_get_string(NULL, "sock_group", NULL);
+      // S_ISGID is set so that files inside this directory inherit permissions
       mode_t dir_perms = cfg_get_perms(NULL, "sock_access", true) | S_ISGID;
 
       dirp = opendir(state_dir);
@@ -519,6 +522,31 @@ static void compute_file_name(char **strp,
             state_dir);
         ret = 1;
         goto bail;
+      }
+
+      if (sock_group_name) {
+        struct group *sock_group;
+        // This explicit errno statement is necessary to distinguish between the
+        // group not existing and an error.
+        errno = 0;
+        sock_group = getgrnam(sock_group_name);
+        if (!sock_group) {
+          if (errno == 0) {
+            w_log(W_LOG_ERR, "group '%s' does not exist", sock_group_name);
+          } else {
+            w_log(W_LOG_ERR, "getting gid for '%s' failed: %s", sock_group_name,
+                  strerror(errno));
+          }
+          ret = 1;
+          goto bail;
+        }
+
+        if (fchown(dir_fd, -1, sock_group->gr_gid) == -1) {
+          w_log(W_LOG_ERR, "setting up group '%s' failed: %s", sock_group_name,
+                strerror(errno));
+          ret = 1;
+          goto bail;
+        }
       }
 
       // Depending on group and world accessibility, change permissions on the
