@@ -11,6 +11,7 @@ static enum w_pdu_type server_pdu = is_bser;
 static enum w_pdu_type output_pdu = is_json_pretty;
 static char *server_encoding = NULL;
 static char *output_encoding = NULL;
+static char *test_state_dir = NULL;
 static char *sock_name = NULL;
 char *log_name = NULL;
 #ifdef USE_GIMLI
@@ -457,7 +458,7 @@ static void compute_file_name(char **strp,
     /* We'll put our various artifacts in a user specific dir
      * within the state dir location */
     char *state_dir = NULL;
-    const char *state_parent =
+    const char *state_parent = test_state_dir ? test_state_dir :
 #ifdef WATCHMAN_STATE_DIR
           WATCHMAN_STATE_DIR
 #else
@@ -714,6 +715,9 @@ static struct watchman_getopt opts[] = {
   { "no-local", 0, "When no-spawn is enabled, don't try to handle request"
     " in client mode if service is unavailable",
     OPT_NONE, &no_local, NULL, NOT_DAEMON },
+  // test-state-dir is for testing only and should not be used in production:
+  // instead, use the compile-time WATCHMAN_STATE_DIR option
+  { "test-state-dir", 0, NULL, REQ_STRING, &test_state_dir, "DIR", NOT_DAEMON },
   { 0, 0, 0, 0, 0, 0, 0 }
 };
 
