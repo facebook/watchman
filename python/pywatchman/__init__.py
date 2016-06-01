@@ -145,6 +145,14 @@ class WatchmanError(Exception):
     pass
 
 
+class SocketConnectError(WatchmanError):
+    def __init__(self, sockpath, exc):
+        super(SocketConnectError, self).__init__(
+            'unable to connect to %s: %s' % (sockpath, exc))
+        self.sockpath = sockpath
+        self.exc = exc
+
+
 class SocketTimeout(WatchmanError):
     """A specialized exception raised for socket timeouts during communication to/from watchman.
        This makes it easier to implement non-blocking loops as callers can easily distinguish
@@ -250,8 +258,7 @@ class UnixSocketTransport(Transport):
             sock.connect(self.sockpath)
             self.sock = sock
         except socket.error as e:
-            raise WatchmanError('unable to connect to %s: %s' %
-                                (self.sockpath, e))
+            raise SocketConnectError(self.sockpath, e)
 
     def close(self):
         self.sock.close()
