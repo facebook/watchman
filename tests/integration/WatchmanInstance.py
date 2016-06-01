@@ -52,7 +52,8 @@ class _Instance(object):
     # overridden global configuration file; you may pass that
     # in to the constructor
 
-    def __init__(self, config={}):
+    def __init__(self, config={}, start_timeout=1.0):
+        self.start_timeout = start_timeout
         self.base_dir = tempfile.mkdtemp(prefix='inst')
         self._init_state()
         self.proc = None
@@ -91,7 +92,8 @@ class _Instance(object):
                                      stderr=self.cli_log_file)
 
         # wait for it to come up
-        for i in range(1, 10):
+        deadline = time.time() + self.start_timeout
+        while time.time() < deadline:
             try:
                 client = pywatchman.client(sockpath=self.sock_file)
                 self.pid = client.query('get-pid')['pid']
