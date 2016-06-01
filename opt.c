@@ -45,6 +45,11 @@ void usage(struct watchman_getopt *opts, FILE *where)
   for (i = 0; opts[i].optname; i++) {
     char buf[80];
 
+    if (!opts[i].helptext) {
+      // This is a signal that this option shouldn't be printed out.
+      continue;
+    }
+
     label = opts[i].arglabel ? opts[i].arglabel : "ARG";
 
     fprintf(where, "\n ");
@@ -64,9 +69,7 @@ void usage(struct watchman_getopt *opts, FILE *where)
 
     fprintf(where, "%-*s ", (unsigned int)longest, buf);
 
-    if (opts[i].helptext) {
-      fprintf(where, "%s", opts[i].helptext);
-    }
+    fprintf(where, "%s", opts[i].helptext);
     fprintf(where, "\n");
   }
 
