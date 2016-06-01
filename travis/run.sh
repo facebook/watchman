@@ -33,7 +33,7 @@ if ! make integration ; then
     # runtests.py already copied the logs to the artifact store
     exit 1
   fi
-  find /var/tmp/watchmantest* -name log | xargs cat
+  find /var/tmp/watchmantest* -name log | xargs tail -n 2000
   exit 1
 fi
 
