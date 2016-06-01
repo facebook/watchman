@@ -320,6 +320,7 @@ static void wakeme(int signo)
 static int get_listener_socket(const char *path)
 {
   struct sockaddr_un un;
+  mode_t perms = cfg_get_perms(NULL, "sock_access", false);
 
 #ifdef __APPLE__
   listener_fd = w_get_listener_socket_from_launchd();
@@ -349,6 +350,14 @@ static int get_listener_socket(const char *path)
   if (bind(listener_fd, (struct sockaddr*)&un, sizeof(un)) != 0) {
     w_log(W_LOG_ERR, "bind(%s): %s\n",
       path, strerror(errno));
+    close(listener_fd);
+    return -1;
+  }
+
+  // The permissions in the containing directory should be correct, so this
+  // should be correct as well. But set the permissions in any case.
+  if (chmod(path, perms) == -1) {
+    w_log(W_LOG_ERR, "chmod(%s, %#o): %s", path, perms, strerror(errno));
     close(listener_fd);
     return -1;
   }
