@@ -538,7 +538,7 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
 
   dir = calloc(1, sizeof(*dir));
   dir->path = dir_name;
-  dir->exists = true;
+  dir->last_check_existed = true;
   w_string_addref(dir->path);
 
   if (!parent->dirs) {
@@ -858,7 +858,7 @@ static void stat_path(w_root_t *root,
     }
 
     if (!root->case_sensitive && !w_string_equal(dir_name, root->root_path) &&
-        dir->exists) {
+        dir->last_check_existed) {
       /* If we rejected the name because it wasn't canonical,
        * we need to ensure that we look in the parent dir to discover
        * the new item(s) */
@@ -926,7 +926,7 @@ static void stat_path(w_root_t *root,
         recursive = true;
       } else {
         // Ensure that we believe that this node exists
-        dir_ent->exists = true;
+        dir_ent->last_check_existed = true;
       }
 
       // Don't recurse if our parent is an ignore dir
@@ -958,7 +958,7 @@ static void stat_path(w_root_t *root,
     }
     if ((root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
         !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&
-        dir->exists) {
+        dir->last_check_existed) {
       /* Make sure we update the mtime on the parent directory. */
       w_pending_coll_add(coll, dir_name, now, flags & W_PENDING_VIA_NOTIFY);
     }
@@ -1033,11 +1033,11 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
 {
   w_ht_iter_t i;
 
-  if (!dir->exists) {
+  if (!dir->last_check_existed) {
     // If we know that it doesn't exist, return early
     return;
   }
-  dir->exists = false;
+  dir->last_check_existed = false;
 
   if (w_ht_first(dir->files, &i)) do {
     struct watchman_file *file = w_ht_val_ptr(i.value);

@@ -295,7 +295,7 @@ struct watchman_dir {
   w_ht_t *dirs;
   // If we think this dir was deleted, we'll avoid recursing
   // to its children when processing deletes
-  bool exists;
+  bool last_check_existed;
 };
 
 struct watchman_ops {
