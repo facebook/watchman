@@ -79,7 +79,6 @@ class Instance(object):
                                      stderr=self.log_file)
 
         # wait for it to come up
-        last_err = None
         for i in range(1, 10):
             try:
                 client = pywatchman.client(sockpath=self.sock_file)
@@ -87,10 +86,9 @@ class Instance(object):
                 break
             except Exception as e:
                 t, val, tb = sys.exc_info()
-                last_err = ''.join(traceback.format_exception(t, val, tb))
                 time.sleep(0.1)
             finally:
                 client.close()
 
         if self.pid is None:
-            raise Exception(last_err)
+            pywatchman.compat.reraise(t, val, tb)
