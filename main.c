@@ -484,6 +484,7 @@ static void compute_file_name(char **strp,
       int dir_fd;
       int ret = 0;
       uid_t euid = geteuid();
+      mode_t dir_perms = cfg_get_perms(NULL, "sock_access", true) | S_ISGID;
 
       dirp = opendir(state_dir);
       if (!dirp) {
@@ -516,6 +517,19 @@ static void compute_file_name(char **strp,
             "permissions by running `chmod 0700 %s`\n",
             state_dir,
             state_dir);
+        ret = 1;
+        goto bail;
+      }
+
+      // Depending on group and world accessibility, change permissions on the
+      // directory. We can't leave the directory open and set permissions on the
+      // socket because not all POSIX systems respect permissions on UNIX domain
+      // sockets, but all POSIX systems respect permissions on the containing
+      // directory.
+      w_log(W_LOG_DBG, "Setting permissions on state dir to %#o", dir_perms);
+      if (fchmod(dir_fd, dir_perms) == -1) {
+        w_log(W_LOG_ERR, "fchmod(%s, %#o): %s\n", state_dir, dir_perms,
+              strerror(errno));
         ret = 1;
         goto bail;
       }
