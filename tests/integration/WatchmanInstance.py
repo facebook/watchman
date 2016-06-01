@@ -9,8 +9,13 @@ from __future__ import print_function
 
 import tempfile
 import json
-import os.path
+import os
 import subprocess
+try:
+    import pwd
+except ImportError:
+    # Windows
+    pass
 import pywatchman
 import time
 import threading
@@ -31,6 +36,8 @@ def getSharedInstance():
 class InitWithFilesMixin(object):
     def _init_state(self):
         self.base_dir = tempfile.mkdtemp(prefix='inst')
+        # no separate user directory here -- that's only in InitWithDirMixin
+        self.user_dir = None
         self.cfg_file = os.path.join(self.base_dir, "config.json")
         self.log_file_name = os.path.join(self.base_dir, "log")
         self.cli_log_file_name = os.path.join(self.base_dir, 'cli-log')
@@ -46,6 +53,29 @@ class InitWithFilesMixin(object):
             '--logfile={0}'.format(self.log_file_name),
             '--statefile={0}'.format(self.state_file),
         ]
+
+class InitWithDirMixin(object):
+    '''A mixin to allow setting up a state dir rather than a state file. This is
+    only meant to test state dir creation and permissions -- most operations are
+    unlikely to work.
+    '''
+    def _init_state(self):
+        self.base_dir = tempfile.mkdtemp(prefix='inst')
+        self.cfg_file = os.path.join(self.base_dir, 'config.json')
+        # This needs to be separate from the log_file_name because the
+        # log_file_name won't exist in the beginning, but the cli_log_file_name
+        # will.
+        self.cli_log_file_name = os.path.join(self.base_dir, 'cli-log')
+        # This doesn't work on Windows, but we don't expect to be hitting this
+        # codepath on Windows anyway
+        username = pwd.getpwuid(os.getuid())[0]
+        self.user_dir = os.path.join(self.base_dir, '%s-state' % username)
+        self.log_file_name = os.path.join(self.user_dir, 'log')
+        self.sock_file = os.path.join(self.user_dir, 'sock')
+        self.state_file = os.path.join(self.user_dir, 'state')
+
+    def get_state_args(self):
+        return ['--test-state-dir={0}'.format(self.base_dir)]
 
 class _Instance(object):
     # Tracks a running watchman instance.  It is created with an
@@ -108,4 +138,7 @@ class _Instance(object):
             pywatchman.compat.reraise(t, val, tb)
 
 class Instance(_Instance, InitWithFilesMixin):
+    pass
+
+class InstanceWithStateDir(_Instance, InitWithDirMixin):
     pass
