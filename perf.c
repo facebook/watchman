@@ -15,6 +15,7 @@ void w_perf_start(w_perf_t *perf, const char *description) {
   perf->description = description;
   perf->meta_data = NULL;
   perf->will_log = false;
+  perf->wall_time_elapsed_thresh = 0;
 
   gettimeofday(&perf->time_begin, NULL);
 #ifdef HAVE_SYS_RESOURCE_H
@@ -65,8 +66,12 @@ bool w_perf_finish(w_perf_t *perf) {
     if (perf->wall_time_elapsed_thresh == 0) {
       json_t *thresh = cfg_get_json(NULL, "perf_sampling_thresh");
       if (thresh) {
-        json_unpack(thresh, "{s:f}", perf->description,
+        if (json_is_number(thresh)) {
+          perf->wall_time_elapsed_thresh = json_number_value(thresh);
+        } else {
+          json_unpack(thresh, "{s:f}", perf->description,
                     &perf->wall_time_elapsed_thresh);
+        }
       }
     }
 
