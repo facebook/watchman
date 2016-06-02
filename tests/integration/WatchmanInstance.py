@@ -99,6 +99,10 @@ class _Instance(object):
     def getSockPath(self):
         return self.sock_file
 
+    def getCLILogContents(self):
+        with open(self.cli_log_file_name, 'r') as f:
+            return f.read()
+
     def stop(self):
         if self.proc:
             self.proc.kill()
