@@ -13,6 +13,7 @@
 
 #include "thirdparty/tap.h"
 #include "thirdparty/libart/src/art.h"
+#include "watchman.h"
 
 #define stringy2(line)  #line
 #define stringy(line)   stringy2(line)
@@ -430,6 +431,34 @@ void test_art_long_prefix(void) {
   fail_unless(res == 0);
 }
 
+static int dump_iter(void *data, const unsigned char *key, unsigned int key_len,
+                     void *value) {
+  diag("iter leaf: data=%p key_len=%d %.*s value=%p", data, (int)key_len,
+       (int)key_len, key, value);
+  return 0;
+}
+
+void test_art_prefix(void) {
+  art_tree t;
+  void *v;
+
+  art_tree_init(&t);
+
+  fail_unless(art_insert(&t, (const unsigned char*)"food", 4, "food") == NULL);
+  fail_unless(art_insert(&t, (const unsigned char*)"foo", 3, "foo") == NULL);
+  diag("size is now %d", art_size(&t));
+  fail_unless(art_size(&t) == 2);
+  fail_unless((v = art_search(&t, (const unsigned char*)"food", 4)) != NULL);
+  diag("food lookup yields %s", v);
+  fail_unless(v && strcmp((char*)v, "food") == 0);
+
+  art_iter(&t, dump_iter, NULL);
+
+  fail_unless((v = art_search(&t, (const unsigned char*)"foo", 3)) != NULL);
+  diag("foo lookup yields %s", v);
+  fail_unless(v && strcmp((char*)v, "foo") == 0);
+}
+
 void test_art_insert_search_uuid(void) {
   art_tree t;
   art_leaf *l;
@@ -486,7 +515,7 @@ int main(int argc, char **argv) {
   (void)argc;
   (void)argv;
 
-  plan_tests(109);
+  plan_tests(116);
   test_art_init_and_destroy();
   test_art_insert();
   test_art_insert_verylong();
@@ -496,6 +525,7 @@ int main(int argc, char **argv) {
   test_art_iter_prefix();
   test_art_long_prefix();
   test_art_insert_search_uuid();
+  test_art_prefix();
 
   return exit_status();
 }
