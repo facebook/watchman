@@ -3,7 +3,6 @@
 
 #include "watchman.h"
 #include "thirdparty/tap.h"
-#include "thirdparty/libart/src/art.h"
 
 // A list that looks similar to one used in one of our repos
 const char *ignore_dirs[] = {".buckd",
@@ -35,20 +34,6 @@ const char *ignore_dirs[] = {".buckd",
                              "baz/bar/bar/foo/foo"};
 
 const char *ignore_vcs[] = {".hg", ".svn", ".git"};
-
-void w_request_shutdown(void) {}
-
-bool w_should_log_to_clients(int level)
-{
-  unused_parameter(level);
-  return false;
-}
-
-void w_log_to_clients(int level, const char *buf)
-{
-  unused_parameter(level);
-  unused_parameter(buf);
-}
 
 struct test_case {
   const char *path;

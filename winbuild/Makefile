@@ -96,7 +96,6 @@ SRCS=\
 TEST_SRCS=\
 	thirdparty\tap.c \
 	thirdparty\wildmatch\wildmatch.c \
-	thirdparty\libart\src\art.c \
 	winbuild\asprintf.c \
 	winbuild\time.c \
 	winbuild\pthread.c \
@@ -111,6 +110,7 @@ TEST_DIR_SRCS=\
 	tests\argv.c \
 	tests\bser.c \
 	tests\ignore_test.c \
+	tests\log_stub.c \
 	tests\log.c
 
 OBJS=$(SRCS:.c=.obj)
@@ -118,7 +118,7 @@ TEST_OBJS=$(TEST_SRCS:.c=.obj)
 TEST_DIR_OBJS=$(TEST_DIR_SRCS:.c=.obj)
 DEPS=$(SRCS:.c=.dep) $(TEST_SRCS:.c=.dep) $(TEST_DIR_SRCS:.c=.dep)
 TESTS=tests\argv.exe tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
-			tests\art.exe tests\ignore.exe
+			tests\art.exe tests\ignore.exe tests\pending.exe
 COLLECTDEPS=$(CC) $(CFLAGS) /Zs /showIncludes /EHsc $< | cscript /nologo //E:jscript winbuild\depends.js --stdin
 
 .c.dep:
@@ -203,17 +203,40 @@ tests\argv.exe: tests\argv.obj $(TEST_OBJS)
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 
-tests\art.exe: tests\art_test.obj $(TEST_OBJS)
+tests\art.exe: tests\art_test.obj $(TEST_OBJS) log.obj tests\log_stub.obj thirdparty\libart\src\art.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 
 tests\ignore.exe: tests\ignore_test.obj $(TEST_OBJS) \
-		log.obj \
 		watcher\helper.obj \
 		hash.obj \
 		ht.obj \
 		ignore.obj \
-		string.obj
+		string.obj \
+		log.obj \
+		tests\log_stub.obj \
+		thirdparty\libart\src\art.obj
+	@echo LINK $@
+	$(LINKER) $** $(LIBS)
+
+tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
+		watcher\helper.obj \
+		hash.obj \
+		ht.obj \
+		ignore.obj \
+		pending.obj \
+		expflags.obj \
+		opendir.obj \
+		cfg.obj \
+		time.obj \
+		string.obj \
+		log.obj \
+		tests\log_stub.obj \
+		thirdparty\libart\src\art.obj \
+		winbuild\pathmap.obj \
+		winbuild\stat.obj \
+		winbuild\realpath.obj \
+		winbuild\dir.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 

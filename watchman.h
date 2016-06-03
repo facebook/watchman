@@ -106,6 +106,7 @@ typedef struct watchman_string w_string_t;
 #include "watchman_hash.h"
 #include "watchman_stream.h"
 #include "watchman_ignore.h"
+#include "watchman_log.h"
 
 #include "jansson.h"
 
@@ -117,11 +118,6 @@ typedef struct watchman_string w_string_t;
 #  define HAVE_FSEVENTS 1
 # endif
 #endif
-
-// Helpers for pasting __LINE__ for symbol generation
-#define w_paste2(pre, post)  pre ## post
-#define w_paste1(pre, post)  w_paste2(pre, post)
-#define w_gen_symbol(pre)    w_paste1(pre, __LINE__)
 
 // We make use of constructors to glue together modules
 // without maintaining static lists of things in the build
@@ -618,29 +614,7 @@ void w_start_reaper(void);
 bool w_is_stopping(void);
 extern pthread_t reaper_thread;
 
-#define W_LOG_OFF 0
-#define W_LOG_ERR 1
-#define W_LOG_DBG 2
-#define W_LOG_FATAL -1
-
-#ifndef WATCHMAN_FMT_STRING
-# define WATCHMAN_FMT_STRING(x) x
-#endif
-
-extern int log_level;
-extern char *log_name;
-const char *w_set_thread_name(const char *fmt, ...);
-const char *w_get_thread_name(void);
-void w_setup_signal_handlers(void);
-void w_log(int level, WATCHMAN_FMT_STRING(const char *fmt), ...)
-#ifdef __GNUC__
-  __attribute__((format(printf, 2, 3)))
-#endif
-;
 void w_request_shutdown(void);
-
-bool w_should_log_to_clients(int level);
-void w_log_to_clients(int level, const char *buf);
 
 bool w_is_ignored(w_root_t *root, const char *path, uint32_t pathlen);
 void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec *deadline);
