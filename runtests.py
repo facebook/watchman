@@ -95,6 +95,9 @@ if os.name != 'nt':
     # the user isn't a member of the directory's group. Set the group explicitly
     # to avoid this.
     os.chown(temp_dir, -1, os.getegid())
+    # Some environments have a weird umask that can leave state directories too
+    # open and break tests.
+    os.umask(0o022)
 # Redirect all temporary files to that location
 tempfile.tempdir = temp_dir
 
