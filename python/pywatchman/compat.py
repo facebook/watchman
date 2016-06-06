@@ -58,3 +58,8 @@ def reraise(tp, value, tb=None):
     finally:
         tb = None
 '''.strip())
+
+if PYTHON3:
+    UNICODE = str
+else:
+    UNICODE = unicode
