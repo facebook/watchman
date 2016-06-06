@@ -11,7 +11,10 @@ import WatchmanTestCase
 import tempfile
 import os
 import os.path
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import pywatchman
 
 
@@ -220,14 +223,14 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         # prove initial results come through
         dat = self.waitForSub('myname', root=root)[0]
         self.assertEqual(True, dat['is_fresh_instance'])
-        self.assertEqual(self.normWatchmanFileList(dat['files']),
+        self.assertFileListsEqual(self.normWatchmanFileList(dat['files']),
                          self.normFileList(['a', 'a/lemon', 'b']))
 
         # and that relative_root adapts the path name
         dat = self.waitForSub('relative', root=root)[0]
         self.assertEqual(True, dat['is_fresh_instance'])
-        self.assertEqual(self.normWatchmanFileList(dat['files']),
-                         self.normFileList(['lemon']))
+        self.assertFileListsEqual(self.normWatchmanFileList(dat['files']),
+                                  self.normFileList(['lemon']))
 
         # check that deletes show up in the subscription results
         os.unlink(os.path.join(root, 'a', 'lemon'))
@@ -251,7 +254,64 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
                 if not sub['is_fresh_instance']:
                     continue
                 files = self.normWatchmanFileList(sub['files'])
-                if files == ab:
+                if self.fileListsEqual(files, ab):
+                    return True
+            return False
+
+        dat = self.waitForSub('myname', root=root,
+                              accept=matchesRecrawledDir)
+        self.assertNotEqual(None, dat)
+
+        # Ensure that we observed the recrawl warning
+        warn = None
+        for item in dat:
+            if 'warning' in item:
+                warn = self.decodeBSERUTF8(item['warning'])
+                break
+        self.assertRegexpMatches(warn, r'Recrawled this watch')
+
+    # TODO: Assimilate this test into test_subscribe when Watchman gets
+    # unicode support.
+    # TODO: Correctly test subscribe with unicode on Windows.
+    @unittest.skipIf(os.name == 'nt', 'win')
+    def test_subscribe_unicode(self):
+        unicode_filename = u'\u263a'
+        root = self.mkdtemp()
+        a_dir = os.path.join(root, 'a')
+        os.mkdir(a_dir)
+        self.touchRelative(a_dir, 'lemon')
+        self.touchRelative(root, 'b')
+        self.touchRelative(root, unicode_filename)
+
+        self.watchmanCommand('watch', root)
+        self.assertFileList(root, files=['a', 'a/lemon', 'b', unicode_filename])
+
+        sub = self.watchmanCommand('subscribe', root, 'myname', {
+            'fields': ['name']})
+
+        rel_sub = self.watchmanCommand('subscribe', root, 'relative', {
+            'fields': ['name'],
+            'relative_root': 'a'})
+
+        # prove initial results come through
+        dat = self.waitForSub('myname', root=root)[0]
+        self.assertEqual(True, dat['is_fresh_instance'])
+        self.assertFileListsEqual(self.normWatchmanFileList(dat['files']),
+                         self.normFileList(['a', 'a/lemon', 'b', unicode_filename]))
+
+        os.unlink(os.path.join(root, 'a', 'lemon'))
+
+        # Trigger a recrawl and ensure that the subscription isn't lost
+        self.watchmanCommand('debug-recrawl', root)
+
+        abu = self.normFileList(['a', 'b', unicode_filename])
+
+        def matchesRecrawledDir(subdata):
+            for sub in subdata:
+                if not sub['is_fresh_instance']:
+                    continue
+                files = self.normWatchmanFileList(sub['files'])
+                if self.fileListsEqual(files, abu):
                     return True
             return False
 

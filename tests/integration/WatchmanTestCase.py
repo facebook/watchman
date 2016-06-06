@@ -29,6 +29,15 @@ else:
 def norm_path(name):
     return os.path.normcase(os.path.normpath(name))
 
+# TODO: This normalization will not be needed once we have full unicode support
+# in place as per
+# https://github.com/facebook/watchman/wiki/Better-Unicode-handling-plan
+def conv_path_to_bytes(path):
+    if isinstance(path, pywatchman.compat.UNICODE):
+        return path.encode('utf8')
+    else:
+        return path
+
 class WatchmanTestCase(unittest.TestCase):
 
     def requiresPersistentSession(self):
@@ -188,7 +197,6 @@ class WatchmanTestCase(unittest.TestCase):
         files = self.normWatchmanFileList(res['files'])
         self.last_file_list = files
         return files
-
     def waitForSync(self, root):
         """ ensure that watchman has observed any pending file changes
             This is most useful after mutating the filesystem and before
@@ -208,6 +216,16 @@ class WatchmanTestCase(unittest.TestCase):
     def normFileList(self, files):
         return sorted(map(norm_path, files))
 
+    def assertFileListsEqual(self, list1, list2, message=None):
+        list1 = [conv_path_to_bytes(f) for f in list1]
+        list2 = [conv_path_to_bytes(f) for f in list2]
+        self.assertEqual(list1, list2, message)
+
+    def fileListsEqual(self, list1, list2):
+        list1 = [conv_path_to_bytes(f) for f in list1]
+        list2 = [conv_path_to_bytes(f) for f in list2]
+        return list1 == list2
+
     # Wait for the file list to match the input set
     def assertFileList(self, root, files=[], cursor=None,
                        relativeRoot=None, message=None):
@@ -218,10 +236,10 @@ class WatchmanTestCase(unittest.TestCase):
             self.getFileList(root, cursor=cursor, relativeRoot=relativeRoot)
         else:
             st, res = self.waitFor(
-                lambda: self.getFileList(root, cursor=cursor,
-                                         relativeRoot=relativeRoot
-                                         ) == expected_files)
-        self.assertEqual(self.last_file_list, expected_files, message)
+                lambda: self.fileListsEqual(self.getFileList(root, cursor=cursor,
+                                            relativeRoot=relativeRoot
+                                            ), expected_files))
+        self.assertFileListsEqual(self.last_file_list, expected_files, message)
 
     def waitForSub(self, name, root, accept=None, timeout=10, remove=True):
         client = self.getClient()
