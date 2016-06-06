@@ -90,6 +90,11 @@ os.environ['PATH'] = '%s%s%s' % (
 # We'll put all our temporary stuff under one dir so that we
 # can clean it all up at the end
 temp_dir = os.path.realpath(tempfile.mkdtemp(prefix='watchmantest'))
+if os.name != 'nt':
+    # On some platforms, setting the setgid bit on a directory doesn't work if
+    # the user isn't a member of the directory's group. Set the group explicitly
+    # to avoid this.
+    os.chown(temp_dir, -1, os.getegid())
 # Redirect all temporary files to that location
 tempfile.tempdir = temp_dir
 
