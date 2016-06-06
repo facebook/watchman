@@ -27,5 +27,8 @@ case `uname` in
         pyenv global 3.5.1
         ;;
     esac
+    mkdir /tmp/install-test
+    chmod 2755 /tmp/install-test
+    stat /tmp/install-test
     ;;
 esac

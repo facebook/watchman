@@ -42,5 +42,8 @@ test -d $INST_TEST && rm -rf $INST_TEST
 make DESTDIR=$INST_TEST install
 find $INST_TEST
 
+chmod 2755 /tmp/install-test
+stat /tmp/install-test
+
 exit 0
 
