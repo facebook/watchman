@@ -131,14 +131,14 @@ class triggerTestCase extends WatchmanTestCase {
     ));
 
     $res = $this->trigger($root,
-      'test', '*.c', '--', PHP_BINARY,
-      dirname(__FILE__) . DIRECTORY_SEPARATOR . '_trig.php',
+      'test', '*.c', '--',
+      dirname(__FILE__) . DIRECTORY_SEPARATOR . 'trig.py',
       $root . DIRECTORY_SEPARATOR . "trigger.log");
     $this->assertEqual('created', idx($res, 'disposition'));
 
     $this->trigger($root,
-      'other', '*.c', '--', PHP_BINARY,
-      dirname(__FILE__) . DIRECTORY_SEPARATOR . '_trigjson.php',
+      'other', '*.c', '--',
+      dirname(__FILE__) . DIRECTORY_SEPARATOR . 'trigjson.py',
       $root . DIRECTORY_SEPARATOR . "trigger.json");
 
     $trig_list = array(
@@ -146,8 +146,7 @@ class triggerTestCase extends WatchmanTestCase {
         'append_files' => true,
         'name' => 'other',
         'command' => array(
-          PHP_BINARY,
-          dirname(__FILE__) . DIRECTORY_SEPARATOR . '_trigjson.php',
+          dirname(__FILE__) . DIRECTORY_SEPARATOR . 'trigjson.py',
           $root . DIRECTORY_SEPARATOR . "trigger.json"
         ),
         'expression' => array(
@@ -160,8 +159,7 @@ class triggerTestCase extends WatchmanTestCase {
         'append_files' => true,
         'name' => 'test',
         'command' => array(
-          PHP_BINARY,
-          dirname(__FILE__) . DIRECTORY_SEPARATOR . '_trig.php',
+          dirname(__FILE__) . DIRECTORY_SEPARATOR . 'trig.py',
           $root . DIRECTORY_SEPARATOR . "trigger.log"
         ),
         'expression' => array(
