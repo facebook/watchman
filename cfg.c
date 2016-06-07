@@ -162,11 +162,6 @@ static void prepend_watchmanconfig_to_array(json_t *ref) {
 json_t *cfg_compute_root_files(bool *enforcing) {
   json_t *ref;
 
-  // This is completely undocumented and will go away soon. Do not document or
-  // use!
-  bool ignore_watchmanconfig = cfg_get_bool(NULL, "_ignore_watchmanconfig",
-                                            false);
-
   *enforcing = false;
 
   ref = cfg_get_json(NULL, "enforce_root_files");
@@ -201,9 +196,7 @@ json_t *cfg_compute_root_files(bool *enforcing) {
       *enforcing = false;
       return NULL;
     }
-    if (!ignore_watchmanconfig) {
-      prepend_watchmanconfig_to_array(ref);
-    }
+    prepend_watchmanconfig_to_array(ref);
     json_incref(ref);
     *enforcing = true;
     return ref;
@@ -211,11 +204,7 @@ json_t *cfg_compute_root_files(bool *enforcing) {
 
   // Synthesize our conservative default value.
   // .watchmanconfig MUST be first
-  if (!ignore_watchmanconfig) {
-    return json_pack("[ssss]", ".watchmanconfig", ".hg", ".git", ".svn");
-  } else {
-    return json_pack("[sss]", ".hg", ".git", ".svn");
-  }
+  return json_pack("[ssss]", ".watchmanconfig", ".hg", ".git", ".svn");
 }
 
 json_int_t cfg_get_int(w_root_t *root, const char *name,
