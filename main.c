@@ -11,6 +11,7 @@ static enum w_pdu_type server_pdu = is_bser;
 static enum w_pdu_type output_pdu = is_json_pretty;
 static char *server_encoding = NULL;
 static char *output_encoding = NULL;
+static char *test_state_dir = NULL;
 static char *sock_name = NULL;
 char *log_name = NULL;
 #ifdef USE_GIMLI
@@ -457,7 +458,7 @@ static void compute_file_name(char **strp,
     /* We'll put our various artifacts in a user specific dir
      * within the state dir location */
     char *state_dir = NULL;
-    const char *state_parent =
+    const char *state_parent = test_state_dir ? test_state_dir :
 #ifdef WATCHMAN_STATE_DIR
           WATCHMAN_STATE_DIR
 #else
@@ -479,17 +480,37 @@ static void compute_file_name(char **strp,
 #ifndef _WIN32
       // verify ownership
       struct stat st;
+      DIR *dirp;
+      int dir_fd;
+      int ret = 0;
       uid_t euid = geteuid();
+      const char *sock_group_name = cfg_get_string(NULL, "sock_group", NULL);
+      // S_ISGID is set so that files inside this directory inherit permissions
+      mode_t dir_perms = cfg_get_perms(NULL, "sock_access", true) | S_ISGID;
 
-      if (stat(state_dir, &st) != 0) {
-        w_log(W_LOG_ERR, "stat(%s): %s\n", state_dir, strerror(errno));
+      dirp = opendir(state_dir);
+      if (!dirp) {
+        w_log(W_LOG_ERR, "opendir(%s): %s\n", state_dir, strerror(errno));
         exit(1);
+      }
+
+      dir_fd = dirfd(dirp);
+      if (dir_fd == -1) {
+        w_log(W_LOG_ERR, "dirfd(%s): %s\n", state_dir, strerror(errno));
+        goto bail;
+      }
+
+      if (fstat(dir_fd, &st) != 0) {
+        w_log(W_LOG_ERR, "fstat(%s): %s\n", state_dir, strerror(errno));
+        ret = 1;
+        goto bail;
       }
       if (euid != st.st_uid) {
         w_log(W_LOG_ERR,
             "the owner of %s is uid %d and doesn't match your euid %d\n",
             state_dir, st.st_uid, euid);
-        exit(1);
+        ret = 1;
+        goto bail;
       }
       if (st.st_mode & 0022) {
         w_log(W_LOG_ERR,
@@ -498,7 +519,52 @@ static void compute_file_name(char **strp,
             "permissions by running `chmod 0700 %s`\n",
             state_dir,
             state_dir);
-        exit(1);
+        ret = 1;
+        goto bail;
+      }
+
+      if (sock_group_name) {
+        struct group *sock_group;
+        // This explicit errno statement is necessary to distinguish between the
+        // group not existing and an error.
+        errno = 0;
+        sock_group = getgrnam(sock_group_name);
+        if (!sock_group) {
+          if (errno == 0) {
+            w_log(W_LOG_ERR, "group '%s' does not exist", sock_group_name);
+          } else {
+            w_log(W_LOG_ERR, "getting gid for '%s' failed: %s", sock_group_name,
+                  strerror(errno));
+          }
+          ret = 1;
+          goto bail;
+        }
+
+        if (fchown(dir_fd, -1, sock_group->gr_gid) == -1) {
+          w_log(W_LOG_ERR, "setting up group '%s' failed: %s", sock_group_name,
+                strerror(errno));
+          ret = 1;
+          goto bail;
+        }
+      }
+
+      // Depending on group and world accessibility, change permissions on the
+      // directory. We can't leave the directory open and set permissions on the
+      // socket because not all POSIX systems respect permissions on UNIX domain
+      // sockets, but all POSIX systems respect permissions on the containing
+      // directory.
+      w_log(W_LOG_DBG, "Setting permissions on state dir to %#o", dir_perms);
+      if (fchmod(dir_fd, dir_perms) == -1) {
+        w_log(W_LOG_ERR, "fchmod(%s, %#o): %s\n", state_dir, dir_perms,
+              strerror(errno));
+        ret = 1;
+        goto bail;
+      }
+
+    bail:
+      closedir(dirp);
+      if (ret) {
+        exit(ret);
       }
 #endif
     } else {
@@ -690,6 +756,9 @@ static struct watchman_getopt opts[] = {
   { "no-local", 0, "When no-spawn is enabled, don't try to handle request"
     " in client mode if service is unavailable",
     OPT_NONE, &no_local, NULL, NOT_DAEMON },
+  // test-state-dir is for testing only and should not be used in production:
+  // instead, use the compile-time WATCHMAN_STATE_DIR option
+  { "test-state-dir", 0, NULL, REQ_STRING, &test_state_dir, "DIR", NOT_DAEMON },
   { 0, 0, 0, 0, 0, 0, 0 }
 };
 

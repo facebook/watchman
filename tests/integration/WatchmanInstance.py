@@ -9,8 +9,13 @@ from __future__ import print_function
 
 import tempfile
 import json
-import os.path
+import os
 import subprocess
+try:
+    import pwd
+except ImportError:
+    # Windows
+    pass
 import pywatchman
 import time
 import threading
@@ -28,25 +33,65 @@ def getSharedInstance():
     global tls
     return tls.instance
 
-class Instance(object):
-    # Tracks a running watchman instance.  It is created with an
-    # overridden global configuration file; you may pass that
-    # in to the constructor
-
-    def __init__(self, config={}):
+class InitWithFilesMixin(object):
+    def _init_state(self):
         self.base_dir = tempfile.mkdtemp(prefix='inst')
+        # no separate user directory here -- that's only in InitWithDirMixin
+        self.user_dir = None
         self.cfg_file = os.path.join(self.base_dir, "config.json")
         self.log_file_name = os.path.join(self.base_dir, "log")
-        self.proc = None
-        self.pid = None
+        self.cli_log_file_name = os.path.join(self.base_dir, 'cli-log')
         if os.name == 'nt':
             self.sock_file = '\\\\.\\pipe\\watchman-test-%s' % uuid.uuid4().hex
         else:
             self.sock_file = os.path.join(self.base_dir, "sock")
         self.state_file = os.path.join(self.base_dir, "state")
+
+    def get_state_args(self):
+        return [
+            '--sockname={0}'.format(self.sock_file),
+            '--logfile={0}'.format(self.log_file_name),
+            '--statefile={0}'.format(self.state_file),
+        ]
+
+class InitWithDirMixin(object):
+    '''A mixin to allow setting up a state dir rather than a state file. This is
+    only meant to test state dir creation and permissions -- most operations are
+    unlikely to work.
+    '''
+    def _init_state(self):
+        self.base_dir = tempfile.mkdtemp(prefix='inst')
+        self.cfg_file = os.path.join(self.base_dir, 'config.json')
+        # This needs to be separate from the log_file_name because the
+        # log_file_name won't exist in the beginning, but the cli_log_file_name
+        # will.
+        self.cli_log_file_name = os.path.join(self.base_dir, 'cli-log')
+        # This doesn't work on Windows, but we don't expect to be hitting this
+        # codepath on Windows anyway
+        username = pwd.getpwuid(os.getuid())[0]
+        self.user_dir = os.path.join(self.base_dir, '%s-state' % username)
+        self.log_file_name = os.path.join(self.user_dir, 'log')
+        self.sock_file = os.path.join(self.user_dir, 'sock')
+        self.state_file = os.path.join(self.user_dir, 'state')
+
+    def get_state_args(self):
+        return ['--test-state-dir={0}'.format(self.base_dir)]
+
+class _Instance(object):
+    # Tracks a running watchman instance.  It is created with an
+    # overridden global configuration file; you may pass that
+    # in to the constructor
+
+    def __init__(self, config={}, start_timeout=1.0):
+        self.start_timeout = start_timeout
+        self.base_dir = tempfile.mkdtemp(prefix='inst')
+        self._init_state()
+        self.proc = None
+        self.pid = None
         with open(self.cfg_file, "w") as f:
             f.write(json.dumps(config))
-        self.log_file = open(self.log_file_name, 'w+')
+        # The log file doesn't exist right now, so we can't open it.
+        self.cli_log_file = open(self.cli_log_file_name, 'w+')
 
     def __del__(self):
         self.stop()
@@ -54,43 +99,50 @@ class Instance(object):
     def getSockPath(self):
         return self.sock_file
 
+    def getCLILogContents(self):
+        with open(self.cli_log_file_name, 'r') as f:
+            return f.read()
+
     def stop(self):
         if self.proc:
             self.proc.kill()
             self.proc.wait()
             self.proc = None
-        self.log_file.close()
+        self.cli_log_file.close()
 
     def start(self):
         args = [
             'watchman',
             '--foreground',
-            '--sockname={0}'.format(self.sock_file),
-            '--logfile={0}'.format(self.log_file_name),
-            '--statefile={0}'.format(self.state_file),
             '--log-level=2',
         ]
+        args.extend(self.get_state_args())
         env = os.environ.copy()
         env["WATCHMAN_CONFIG_FILE"] = self.cfg_file
         self.proc = subprocess.Popen(args,
                                      env=env,
                                      stdin=None,
-                                     stdout=self.log_file,
-                                     stderr=self.log_file)
+                                     stdout=self.cli_log_file,
+                                     stderr=self.cli_log_file)
 
         # wait for it to come up
-        last_err = None
-        for i in range(1, 10):
+        deadline = time.time() + self.start_timeout
+        while time.time() < deadline:
             try:
                 client = pywatchman.client(sockpath=self.sock_file)
                 self.pid = client.query('get-pid')['pid']
                 break
             except Exception as e:
                 t, val, tb = sys.exc_info()
-                last_err = ''.join(traceback.format_exception(t, val, tb))
                 time.sleep(0.1)
             finally:
                 client.close()
 
         if self.pid is None:
-            raise Exception(last_err)
+            pywatchman.compat.reraise(t, val, tb)
+
+class Instance(_Instance, InitWithFilesMixin):
+    pass
+
+class InstanceWithStateDir(_Instance, InitWithDirMixin):
+    pass
