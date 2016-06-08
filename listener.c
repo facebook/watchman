@@ -320,7 +320,9 @@ static void wakeme(int signo)
 static int get_listener_socket(const char *path)
 {
   struct sockaddr_un un;
-  mode_t perms = cfg_get_perms(NULL, "sock_access", false);
+  mode_t perms = cfg_get_perms(NULL, "sock_access",
+                               true /* write bits */,
+                               false /* execute bits */);
 
 #ifdef __APPLE__
   listener_fd = w_get_listener_socket_from_launchd();

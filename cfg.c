@@ -251,7 +251,7 @@ double cfg_get_double(w_root_t *root, const char *name, double defval) {
 
 #define MAKE_GET_PERM(PROP, SUFFIX) \
   static mode_t get_ ## PROP ## _perm(const char *name, json_t *val, \
-                                      bool execute_bits) { \
+                                      bool write_bits, bool execute_bits) { \
     mode_t ret = 0; \
     json_t *perm = json_object_get(val, #PROP); \
     if (perm) { \
@@ -261,6 +261,9 @@ double cfg_get_double(w_root_t *root, const char *name, double defval) {
       } \
       if (json_is_true(perm)) { \
         ret |= S_IR ## SUFFIX; \
+        if (write_bits) { \
+          ret |= S_IW ## SUFFIX; \
+        } \
         if (execute_bits) { \
           ret |= S_IX ## SUFFIX; \
         } \
@@ -276,7 +279,8 @@ MAKE_GET_PERM(others, OTH)
  * This function expects the config to be an object containing the keys 'group'
  * and 'others', each a bool.
  */
-mode_t cfg_get_perms(w_root_t *root, const char *name, bool execute_bits) {
+mode_t cfg_get_perms(w_root_t *root, const char *name, bool write_bits,
+                     bool execute_bits) {
   json_t *val = cfg_get_json(root, name);
   mode_t ret = S_IRUSR | S_IWUSR;
   if (execute_bits) {
@@ -288,8 +292,8 @@ mode_t cfg_get_perms(w_root_t *root, const char *name, bool execute_bits) {
       w_log(W_LOG_FATAL, "Expected config value %s to be an object\n", name);
     }
 
-    ret |= get_group_perm(name, val, execute_bits);
-    ret |= get_others_perm(name, val, execute_bits);
+    ret |= get_group_perm(name, val, write_bits, execute_bits);
+    ret |= get_others_perm(name, val, write_bits, execute_bits);
   }
 
   return ret;

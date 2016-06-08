@@ -127,7 +127,7 @@ class TestSockPerms(unittest.TestCase):
         instance.stop()
 
         self.assertFileMode(instance.user_dir, 0o750 | stat.S_ISGID)
-        self.assertFileMode(instance.sock_file, 0o640)
+        self.assertFileMode(instance.sock_file, 0o660)
 
     def test_custom_sock_access_others(self):
         instance = self._new_instance({'sock_access': {'group': True,
@@ -136,7 +136,7 @@ class TestSockPerms(unittest.TestCase):
         instance.stop()
 
         self.assertFileMode(instance.user_dir, 0o755 | stat.S_ISGID)
-        self.assertFileMode(instance.sock_file, 0o644)
+        self.assertFileMode(instance.sock_file, 0o666)
 
     def test_sock_access_upgrade(self):
         instance = self._new_instance({'sock_access': {'group': True,
@@ -147,7 +147,7 @@ class TestSockPerms(unittest.TestCase):
         instance.stop()
 
         self.assertFileMode(instance.user_dir, 0o755 | stat.S_ISGID)
-        self.assertFileMode(instance.sock_file, 0o644)
+        self.assertFileMode(instance.sock_file, 0o666)
 
     def test_sock_access_downgrade(self):
         instance = self._new_instance({'sock_access': {'group': True}})
@@ -157,7 +157,7 @@ class TestSockPerms(unittest.TestCase):
         instance.stop()
 
         self.assertFileMode(instance.user_dir, 0o750 | stat.S_ISGID)
-        self.assertFileMode(instance.sock_file, 0o640)
+        self.assertFileMode(instance.sock_file, 0o660)
 
     def test_sock_access_group_change(self):
         gid = self._get_custom_gid()

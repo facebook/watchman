@@ -486,8 +486,11 @@ static void compute_file_name(char **strp,
       uid_t euid = geteuid();
       // TODO: also allow a gid to be specified here
       const char *sock_group_name = cfg_get_string(NULL, "sock_group", NULL);
-      // S_ISGID is set so that files inside this directory inherit permissions
-      mode_t dir_perms = cfg_get_perms(NULL, "sock_access", true) | S_ISGID;
+      // S_ISGID is set so that files inside this directory inherit the group
+      // name
+      mode_t dir_perms = cfg_get_perms(NULL, "sock_access",
+                                       false /* write bits */,
+                                       true /* execute bits */) | S_ISGID;
 
       dirp = opendir(state_dir);
       if (!dirp) {
