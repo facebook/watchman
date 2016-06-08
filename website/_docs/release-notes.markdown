@@ -10,6 +10,42 @@ We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on
 GitHub](https://github.com/facebook/watchman/commits/master).
 
+### pywatchman 1.4.0 (????-??-??)
+
+(These changes have not yet been released to pypi)
+
+* Added immutable version of data results to bser.  This is cheaper to build
+  from a serialized bser representation than the mutable version and is
+  better suited to large result sets received from watchman.
+* Fixed a number of misc. portability issues
+* Added Python 3.x support
+
+### Watchman 4.5.0 (2016-02-18)
+
+* Fixed an inotify race condition for non-atomic directory replacements
+  that was introduced in Watchman 4.4.
+
+### Watchman 4.4.0 (2016-02-02)
+
+* Added state-enter and state-leave commands can allow subscribers to more
+  intelligently settle/coalesce events around hg update or builds.
+* Fixed an issue where subscriptions could double-notify for the same events.
+* Fixed an issue where subscriptions that never match any files add
+  O(all-observed-files) CPU cost to every subscription dispatch
+
+### Watchman 4.3.0 (2015-12-14)
+
+* Improved handling of case insensitive renames; halved the memory usage
+  and doubled crawl speed on OS X.
+
+### Watchman 4.2.0 (2015-12-08)
+
+* Increased strictness of checks for symlinks; rather than just checking
+  whether the leaf of a directory tree is a symlink, we now check each
+  component down from the root of the watch.  This improves detection
+  and processing for directory-to-symlink (and vice versa) transitions.
+* Increased priority of the watchman process on OS X.
+
 ### pywatchman 1.3.0 (2015-10-22)
 
 * Added `watchman-make` and `watchman-wait` commands
