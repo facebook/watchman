@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #ifdef __APPLE__
+# include <sys/utsname.h>
 # include <sys/attr.h>
 # include <sys/vnode.h>
 #endif
@@ -384,6 +385,32 @@ static DIR *opendir_nofollow(const char *path)
 #endif
 }
 
+#ifdef HAVE_GETATTRLISTBULK
+// I've seen bulkstat report incorrect sizes on kernel version 14.5.0.
+// Let's avoid it for major kernel versions < 15.
+// Using statics here to avoid querying the uname on every opendir.
+// There is opportunity for a data race the first time through, but the
+// worst case side effect is wasted compute early on.
+static bool use_bulkstat_by_default(void) {
+  static bool probed = false;
+  static bool safe = false;
+
+  if (!probed) {
+    struct utsname name;
+    if (uname(&name) == 0) {
+      int maj = 0, min = 0, patch = 0;
+      sscanf(name.release, "%d.%d.%d", &maj, &min, &patch);
+      if (maj >= 15) {
+        safe = true;
+      }
+    }
+    probed = true;
+  }
+
+  return safe;
+}
+#endif
+
 struct watchman_dir_handle *w_dir_open(const char *path) {
   struct watchman_dir_handle *dir = calloc(1, sizeof(*dir));
   int err;
@@ -392,10 +419,7 @@ struct watchman_dir_handle *w_dir_open(const char *path) {
     return NULL;
   }
 #ifdef HAVE_GETATTRLISTBULK
-  // This option is here temporarily in case we discover problems with
-  // bulkstat and need to disable it.  We will remove this option in
-  // a future release of watchman
-  if (cfg_get_bool(NULL, "_use_bulkstat", true)) {
+  if (cfg_get_bool(NULL, "_use_bulkstat", use_bulkstat_by_default())) {
     struct stat st;
 
     dir->fd = open_strict(path, O_NOFOLLOW | O_CLOEXEC | O_RDONLY);
