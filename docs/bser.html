@@ -707,11 +707,19 @@ encoded one after the other.</p>
 indicate the number of bytes in the string, followed by the bytes of the
 string.</p>
 
+<h3 id="encoding">Encoding</h3>
+
 <p>Unlike JSON, strings are not defined as having any particular encoding; they
 are transmitted as binary strings.  This is because the underlying filesystem
 APIs don&#39;t define any particular encoding for names.</p>
 
-<p>Keys in objects that are defined by watchman commands are always ASCII.</p>
+<p><em>Exception:</em> Keys in objects that are defined by watchman commands are always
+ASCII. In general, keys in objects are always UTF-8.</p>
+
+<p><em>Rationale:</em> Several programming languages like Python 3 expect all text to be
+in a particular encoding and make it inconvenient to pass in bytestrings or
+other encodings. Also, the primary purpose of not defining an encoding is that
+filenames don&#39;t always have one, and filenames are unlikely to show up as keys.</p>
 
 <h2 id="integers">Integers</h2>
 
