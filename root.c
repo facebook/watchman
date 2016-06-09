@@ -1890,8 +1890,19 @@ static void io_thread(w_root_t *root)
       root->ticks++;
       gettimeofday(&start, NULL);
       w_pending_coll_add(&root->pending, root->root_path, start, 0);
+      // There is the potential for a subtle race condition here.  The boolean
+      // parameter indicates whether we want to merge in the set of
+      // notifications pending from the watcher or not.  Since we now coalesce
+      // overlaps we must consume our outstanding set before we merge in any
+      // new kernel notification information or we risk missing out on
+      // observing changes that happen during the initial crawl.  This
+      // translates to a two level loop; the outer loop sweeps in data from
+      // inotify, then the inner loop processes it and any dirs that we pick up
+      // from recursive processing.
       while (w_root_process_pending(root, &pending, true)) {
-        ;
+        while (w_root_process_pending(root, &pending, false)) {
+          ;
+        }
       }
       root->done_initial = true;
       // We just crawled everything, no need to recheck right now
@@ -2508,6 +2519,9 @@ w_root_t *w_root_resolve_for_client_mode(const char *filename, char **errmsg)
     w_pending_coll_add(&root->pending, root->root_path,
         start, W_PENDING_RECURSIVE);
     while (w_root_process_pending(root, &pending, true)) {
+      // Note that we don't need a two-level loop (as we do in the main
+      // watcher-enabled mode) in client mode as we are not using a
+      // watcher in this situation.
       ;
     }
     w_root_unlock(root);
