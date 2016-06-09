@@ -100,6 +100,20 @@ extern char **environ;
 # define PRIsize_t "zu"
 #endif
 
+#if defined(__clang__)
+# if __has_feature(address_sanitizer)
+#  define WATCHMAN_ASAN 1
+# endif
+#elif defined (__GNUC__) && \
+      (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ >= 5)) && \
+      __SANITIZE_ADDRESS__
+# define WATCHMAN_ASAN 1
+#endif
+
+#ifndef WATCHMAN_ASAN
+# define WATCHMAN_ASAN 0
+#endif
+
 extern char *poisoned_reason;
 struct watchman_string;
 typedef struct watchman_string w_string_t;

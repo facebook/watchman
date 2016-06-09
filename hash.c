@@ -106,11 +106,11 @@ uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval)
      * then masks off the part it's not allowed to read.  Because the
      * string is aligned, the masked-off tail is in the same word as the
      * rest of the string.  Every machine with memory protection I've seen
-     * does it on word boundaries, so is OK with this.  But VALGRIND will
-     * still catch it and complain.  The masking trick does make the hash
+     * does it on word boundaries, so is OK with this.  But VALGRIND and ASAN
+     * will still catch it and complain.  The masking trick does make the hash
      * noticeably faster for short strings (like English words).
      */
-    if (!running_on_valgrind()) {
+    if (!WATCHMAN_ASAN && !running_on_valgrind()) {
 
       switch(length)
       {
@@ -130,7 +130,7 @@ uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval)
       }
 
     } else {
-      /* make valgrind happy */
+      /* make valgrind and ASAN happy */
 
       k8 = (const uint8_t *)k;
       switch(length)
