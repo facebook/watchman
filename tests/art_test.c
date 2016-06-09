@@ -122,6 +122,7 @@ void test_art_insert_search(void) {
   char buf[512];
   FILE *f = fopen("thirdparty/libart/tests/words.txt", "r");
   uintptr_t line = 1;
+  art_leaf *l;
 
   fail_unless(res == 0);
   while (fgets(buf, sizeof buf, f)) {
@@ -152,7 +153,7 @@ void test_art_insert_search(void) {
   }
 
   // Check the minimum
-  art_leaf *l = art_minimum(&t);
+  l = art_minimum(&t);
   fail_unless(l && strcmp((char *)l->key, "A") == 0);
 
   // Check the maximum
@@ -189,12 +190,13 @@ void test_art_insert_delete(void) {
   // Search for each line
   line = 1;
   while (fgets(buf, sizeof buf, f)) {
+    uintptr_t val;
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
 
     // Search first, ensure all entries still
     // visible
-    uintptr_t val = (uintptr_t)art_search(&t, (unsigned char *)buf, len);
+    val = (uintptr_t)art_search(&t, (unsigned char *)buf, len);
     if (line != val) {
       fail("Line: %d Val: %" PRIuPTR " Str: %s", line, val, buf);
     }

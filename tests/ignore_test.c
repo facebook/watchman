@@ -75,9 +75,6 @@ void init_state(struct watchman_ignore *state) {
 
 void test_correctness(void) {
   struct watchman_ignore state;
-
-  init_state(&state);
-
   static const struct test_case tests[] = {
     {"some/path", false},
     {"buck-out/gen/foo", true},
@@ -97,6 +94,8 @@ void test_correctness(void) {
     {"build/lower/baz", true},
     {"builda/hello", false},
   };
+
+  init_state(&state);
 
   run_correctness_test(&state, tests, sizeof(tests) / sizeof(tests[0]),
                        w_ignore_check);
@@ -137,19 +136,19 @@ void bench_list(const char *label, const char *prefix,
                                 uint32_t)) {
 
   struct watchman_ignore state;
+  size_t i, n;
+  w_string_t **strings;
+  struct timeval start, end;
 
   init_state(&state);
-  size_t i, n;
-  w_string_t **strings = build_list_with_prefix(prefix, kWordLimit);
+  strings = build_list_with_prefix(prefix, kWordLimit);
 
-  struct timeval start;
   gettimeofday(&start, NULL);
   for (n = 0; n < 100; n++) {
     for (i = 0; i < kWordLimit; i++) {
       checker(&state, strings[i]->buf, strings[i]->len);
     }
   }
-  struct timeval end;
   gettimeofday(&end, NULL);
 
   diag("%s: took %.3fs", label, w_timeval_diff(start, end));

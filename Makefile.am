@@ -85,7 +85,7 @@ noinst_LIBRARIES = \
 	libwmanjson.a
 
 # bundled json library
-libwmanjson_a_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+libwmanjson_a_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 libwmanjson_a_SOURCES = \
 	thirdparty/jansson/dump.c \
 	thirdparty/jansson/error.c \
@@ -103,7 +103,7 @@ libwmanjson_a_SOURCES = \
 	thirdparty/jansson/value.c
 
 # bundled testing library
-libtap_a_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+libtap_a_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 libtap_a_SOURCES = thirdparty/tap.c
 TAP_LIB = libtap.a
 
@@ -198,20 +198,20 @@ build-tests: $(TESTS)
 # run integration AND unit tests
 integration: all py-integration
 
-tests_art_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_art_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_art_t_LDADD = $(ART_LIB) $(TAP_LIB)
 tests_art_t_SOURCES = \
 	tests/art_test.c \
 	tests/log_stub.c \
 	log.c
 
-tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_argv_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_argv_t_SOURCES = \
 	tests/argv.c \
 	argv.c
 
-tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_ignore_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
 tests_ignore_t_SOURCES = \
 	tests/ignore_test.c \
@@ -223,7 +223,7 @@ tests_ignore_t_SOURCES = \
 	string.c \
 	log.c
 
-tests_pending_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_pending_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_pending_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
 tests_pending_t_SOURCES = \
 	tests/pending_test.c \
@@ -240,19 +240,19 @@ tests_pending_t_SOURCES = \
 	string.c \
 	log.c
 
-tests_log_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_log_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_log_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_log_t_SOURCES = \
 	tests/log.c \
 	log.c
 
-tests_bser_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_bser_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_bser_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_bser_t_SOURCES = \
 	tests/bser.c \
 	bser.c
 
-tests_wildmatch_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS)
+tests_wildmatch_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_wildmatch_t_LDADD = $(JSON_LIB) $(TAP_LIB) $(WILDMATCH_LIB)
 tests_wildmatch_t_SOURCES = \
 	tests/wildmatch_test.c

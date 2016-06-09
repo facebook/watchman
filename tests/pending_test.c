@@ -68,6 +68,7 @@ static void bench_pending(void) {
   w_string_t *root_name = w_string_new("/some/path");
   struct pending_list list;
   const size_t alloc_size = 280000;
+  struct timeval start, end;
 
   list.pending = calloc(alloc_size, sizeof(struct watchman_pending_fs));
   list.avail = list.pending;
@@ -78,7 +79,6 @@ static void bench_pending(void) {
   diag("built list with %u items", list.avail - list.pending);
 
   // Benchmark insertion in top-down order.
-  struct timeval start, end;
   {
     struct watchman_pending_collection coll;
     struct watchman_pending_fs *item;
