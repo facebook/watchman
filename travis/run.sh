@@ -10,8 +10,23 @@ cd ..
 set -e
 PATH=$PWD:$PATH
 
-if [ "$(uname)" = "Darwin" ]; then
-  eval "$(pyenv init -)"
+case $(uname) in
+  Darwin)
+    eval "$(pyenv init -)"
+    ;;
+  Linux)
+    if [ "$ENABLE_ASAN" -eq 1 ]; then
+      # Some versions of gcc-5 appear to have a bug where -fsanitize-address
+      # doesn't automatically enable the gold linker.
+      LDFLAGS="$LDFLAGS -fuse-ld=gold"
+      export LDFLAGS
+    fi
+    ;;
+esac
+
+if [ "$ENABLE_ASAN" -eq 1 ]; then
+  CONFIGARGS="--enable-asan --disable-opt"
+  export CONFIGARGS
 fi
 
 ./autogen.sh

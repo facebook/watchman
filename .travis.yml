@@ -7,12 +7,14 @@ addons:
   apt:
     sources:
       - deadsnakes
+      - ubuntu-toolchain-r-test
     packages:
       - php5-cli
       - python2.7
       - python2.7-dev
       - python3.5
       - python3.5-dev
+      - gcc-5
 #      - ruby
 #      - rubygems
 #      - valgrind
@@ -25,11 +27,6 @@ branches:
   only:
     - master
 
-# try some different compilers
-compiler:
-  - gcc
-#  - clang
-
 # for the ruby-watchman gem
 #gemfile: ruby/ruby-watchman/Gemfile
 #rvm:
@@ -40,8 +37,6 @@ env:
   - TRAVIS_PYTHON=python2.6
   - TRAVIS_PYTHON=python2.7
   - TRAVIS_PYTHON=python3.5
-#  - CONFIGARGS="--enable-stack-protector"
-#  - CONFIGARGS="" WATCHMAN_VALGRIND=1
 
 # TODO: On Linux we currently use system versions of Python. That makes it
 # somewhat annoying to get third-party dependencies in, since sudo isn't
@@ -52,6 +47,19 @@ matrix:
   exclude:
     - os: linux
       env: TRAVIS_PYTHON=python2.6
+  include:
+    - os: linux
+      env: TRAVIS_PYTHON=python2.7 ENABLE_ASAN=1
+      compiler: gcc-5
+    - os: linux
+      env: TRAVIS_PYTHON=python3.5 ENABLE_ASAN=1
+      compiler: gcc-5
+    - os: osx
+      osx_image: xcode7.3
+      env: TRAVIS_PYTHON=python2.7 ENABLE_ASAN=1
+    - os: osx
+      osx_image: xcode7.3
+      env: TRAVIS_PYTHON=python3.5 ENABLE_ASAN=1
 
 before_script: ./travis/deps.sh
 script: ./travis/run.sh
