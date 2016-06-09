@@ -95,6 +95,10 @@ if test "$WATCHMAN_STATE_DIR" != "no"; then
 fi
 AM_CONDITIONAL(WATCHMAN_STATE_DIR, [test "$WATCHMAN_STATE_DIR" != "no"])
 
+AC_ARG_ENABLE(asan, [
+  --enable-asan           Enable address sanitizer options
+])
+
 want_python=yes
 AC_ARG_WITH(python, [
   --with-python=PATH      Enable Python bindings. PATH is location of python.
@@ -267,6 +271,10 @@ fi
 # Do this after we've looked for functions
 if test -n "$GCC" ; then
   CFLAGS="$CFLAGS -Wall -Wextra -Wdeclaration-after-statement -g -gdwarf-2 -fno-omit-frame-pointer"
+fi
+if test -n "$GCC" -a "x$enable_asan" = "xyes" ; then
+  CFLAGS="$CFLAGS -fsanitize=address"
+  LDFLAGS="$LDFLAGS -fsanitize=address"
 fi
 if test -n "$GCC" -a "$stack_protect" = "yes" ; then
   CFLAGS="$CFLAGS -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4"
