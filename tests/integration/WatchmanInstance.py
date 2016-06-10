@@ -103,9 +103,10 @@ class _Instance(object):
         with open(self.cli_log_file_name, 'r') as f:
             return f.read()
 
-    def stop(self):
+    def stop(self, kill=True):
         if self.proc:
-            self.proc.kill()
+            if kill:
+                self.proc.kill()
             self.proc.wait()
             self.proc = None
         self.cli_log_file.close()
@@ -139,6 +140,8 @@ class _Instance(object):
                 client.close()
 
         if self.pid is None:
+            # self.proc didn't come up: wait for it to die
+            self.stop(kill=False)
             pywatchman.compat.reraise(t, val, tb)
 
 class Instance(_Instance, InitWithFilesMixin):
