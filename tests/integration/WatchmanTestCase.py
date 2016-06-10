@@ -53,6 +53,9 @@ class WatchmanTestCase(unittest.TestCase):
     def getClient(self):
         if not hasattr(self, 'client'):
             self.client = pywatchman.client(
+                # ASAN-enabled builds can be slower enough that we hit timeouts
+                # with the default of 1 second
+                timeout=3.0,
                 transport=self.transport,
                 sendEncoding=self.encoding,
                 recvEncoding=self.encoding,
