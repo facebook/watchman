@@ -15,7 +15,7 @@ case $(uname) in
     eval "$(pyenv init -)"
     ;;
   Linux)
-    if [ "$ENABLE_ASAN" -eq 1 ]; then
+    if [ "${ENABLE_ASAN-0}" -eq 1 ]; then
       # Some versions of gcc-5 appear to have a bug where -fsanitize-address
       # doesn't automatically enable the gold linker.
       LDFLAGS="$LDFLAGS -fuse-ld=gold"
@@ -24,7 +24,7 @@ case $(uname) in
     ;;
 esac
 
-if [ "$ENABLE_ASAN" -eq 1 ]; then
+if [ "${ENABLE_ASAN-0}" -eq 1 ]; then
   CONFIGARGS="--enable-asan --disable-opt"
   export CONFIGARGS
 fi
