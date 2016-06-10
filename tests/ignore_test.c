@@ -99,6 +99,8 @@ void test_correctness(void) {
 
   run_correctness_test(&state, tests, sizeof(tests) / sizeof(tests[0]),
                        w_ignore_check);
+
+  w_ignore_destroy(&state);
 }
 
 // Load up the words data file and build a list of strings from that list.
@@ -152,6 +154,14 @@ void bench_list(const char *label, const char *prefix,
   gettimeofday(&end, NULL);
 
   diag("%s: took %.3fs", label, w_timeval_diff(start, end));
+
+  i = 0;
+  while (i < kWordLimit && strings[i] != NULL) {
+    w_string_delref(strings[i++]);
+  }
+  free(strings);
+
+  w_ignore_destroy(&state);
 }
 
 void bench_all_ignores(void) {
