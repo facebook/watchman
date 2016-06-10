@@ -43,6 +43,7 @@ void print_command_list_for_help(FILE *where)
   for (i = 0; i < n; i++) {
     fprintf(where, "      %s\n", defs[i]->name);
   }
+  free(defs);
 }
 
 void w_register_command(struct watchman_command_handler_def *defs)
