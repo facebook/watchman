@@ -22,6 +22,7 @@ bool w_cmd_realpath_root(json_t *args, char **errmsg)
   resolved = w_realpath(path);
   if (resolved) {
     json_array_set_new(args, 1, json_string_nocheck(resolved));
+    free(resolved);
   }
 
   return true;
