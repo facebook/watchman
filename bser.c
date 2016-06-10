@@ -429,7 +429,7 @@ static json_t *bunser_template(const char *buf, const char *end,
   json_int_t total = 0;
   json_int_t i, nelems;
   json_int_t ip, np;
-  json_t *templ, *arrval;
+  json_t *templ = NULL, *arrval, *ret = NULL;
 
   buf++;
   total++;
@@ -445,7 +445,7 @@ static json_t *bunser_template(const char *buf, const char *end,
   templ = bunser_array(buf, end, &needed, jerr);
   if (!templ) {
     *used = needed + total;
-    return NULL;
+    goto bail;
   }
   total += needed;
   buf += needed;
@@ -457,7 +457,7 @@ static json_t *bunser_template(const char *buf, const char *end,
     snprintf(jerr->text, sizeof(jerr->text),
         "invalid object number encoding (needed %d but have %d)",
         (int)needed, (int)(end - buf));
-    return NULL;
+    goto bail;
   }
   total += needed;
   buf += needed;
@@ -481,7 +481,7 @@ static json_t *bunser_template(const char *buf, const char *end,
       val = bunser(buf, end, &needed, jerr);
       if (!val) {
         *used = needed + total;
-        return NULL;
+        goto bail;
       }
       buf += needed;
       total += needed;
@@ -495,7 +495,10 @@ static json_t *bunser_template(const char *buf, const char *end,
   }
 
   *used = total;
-  return arrval;
+  ret = arrval;
+ bail:
+  json_decref(templ);
+  return ret;
 }
 
 static json_t *bunser_object(const char *buf, const char *end,
