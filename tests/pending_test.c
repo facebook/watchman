@@ -95,6 +95,8 @@ static void bench_pending(void) {
     gettimeofday(&end, NULL);
     diag("took %.3fs to insert %u items into pending coll",
          w_timeval_diff(start, end), drained);
+
+    w_pending_coll_destroy(&coll);
   }
 
   // and now in reverse order; this is from the leaves of the filesystem
@@ -117,6 +119,17 @@ static void bench_pending(void) {
     gettimeofday(&end, NULL);
     diag("took %.3fs to reverse insert %u items into pending coll",
          w_timeval_diff(start, end), drained);
+
+    w_pending_coll_destroy(&coll);
+  }
+
+  {
+    struct watchman_pending_fs *item;
+    for (item = list.pending; item < list.avail; item++) {
+      w_string_delref(item->path);
+    }
+    free(list.pending);
+    w_string_delref(root_name);
   }
 }
 

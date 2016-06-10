@@ -31,9 +31,9 @@ int main(int argc, char **argv)
   ok(dupd[1] == NULL, "terminated");
   free(dupd);
 
+  json_decref(args);
   return exit_status();
 }
 
 /* vim:ts=2:sw=2:et:
  */
-

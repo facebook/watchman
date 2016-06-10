@@ -459,6 +459,8 @@ void test_art_prefix(void) {
   fail_unless((v = art_search(&t, (const unsigned char*)"foo", 3)) != NULL);
   diag("foo lookup yields %s", v);
   fail_unless(v && strcmp((char*)v, "foo") == 0);
+
+  art_tree_destroy(&t);
 }
 
 void test_art_insert_search_uuid(void) {

@@ -100,6 +100,7 @@ static bool check_roundtrip(const char *input, const char *template_text,
   dump_buf = bdumps(expected, &end);
   ok(dump_buf != NULL, "dumped something");
   if (!dump_buf) {
+    json_decref(templ);
     return false;;
   }
   hexdump(dump_buf, end);
@@ -114,6 +115,9 @@ static bool check_roundtrip(const char *input, const char *template_text,
   ok(json_equal(expected, decoded), "round-tripped json_equal");
   ok(!strcmp(jdump, input), "round-tripped strcmp");
 
+  free(jdump);
+  free(dump_buf);
+  json_decref(templ);
   *expect_p = expected;
   *got_p = decoded;
   return true;
@@ -135,13 +139,22 @@ int main(int argc, char **argv)
   );
 
   for (i = 0; i < num_json_inputs; i++) {
+    expected = NULL;
+    decoded = NULL;
     check_roundtrip(json_inputs[i], NULL, &expected, &decoded);
+    json_decref(expected);
+    json_decref(decoded);
   }
 
   for (i = 0; i < num_templ; i++) {
+    expected = NULL;
+    decoded = NULL;
     check_roundtrip(template_tests[i].json_text,
         template_tests[i].template_text,
         &expected, &decoded);
+    json_decref(expected);
+    json_decref(decoded);
+
   }
 
   return exit_status();
