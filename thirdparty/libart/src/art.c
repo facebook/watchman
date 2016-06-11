@@ -1015,6 +1015,41 @@ static bool leaf_prefix_matches(const art_leaf *n, const unsigned char *prefix,
 }
 
 /**
+ * Helper function for prefix iteration.
+ * In some cases, such as when the relative key is longer than
+ * ART_MAX_PREFIX_LEN, and especially after a series of inserts and deletes has
+ * churned things up, the iterator locates a potential for matching within a
+ * sub-tree that has shorter prefixes than desired (it calls minimum() to find
+ * the candidate).  We need to filter these before calling the user supplied
+ * iterator callback or else risk incorrect results.
+ */
+
+struct prefix_iterator_state {
+    const unsigned char *key;
+    uint32_t key_len;
+    art_callback cb;
+    void *data;
+};
+
+static int prefix_iterator_callback(void *data, const unsigned char *key,
+                                    uint32_t key_len, void *value) {
+    struct prefix_iterator_state *state = data;
+
+    if (key_len < state->key_len) {
+        // Can't match, keep iterating
+        return 0;
+    }
+
+    if (memcmp(key, state->key, state->key_len) != 0) {
+        // Prefix doesn't match, keep iterating
+        return 0;
+    }
+
+    // Prefix matches, it is valid to call the user iterator callback
+    return state->cb(state->data, key, key_len, value);
+}
+
+/**
  * Iterates through the entries pairs in the map,
  * invoking a callback for each that matches a given prefix.
  * The call back gets a key, value for each and returns an integer stop value.
@@ -1030,6 +1065,7 @@ int art_iter_prefix(art_tree *t, const unsigned char *key, int key_len, art_call
     art_node **child;
     art_node *n = t->root;
     int prefix_len, depth = 0;
+    struct prefix_iterator_state state = {key, key_len, cb, data};
     while (n) {
         // Might be a leaf
         if (IS_LEAF(n)) {
@@ -1045,8 +1081,9 @@ int art_iter_prefix(art_tree *t, const unsigned char *key, int key_len, art_call
         // If the depth matches the prefix, we need to handle this node
         if (depth == key_len) {
             art_leaf *l = minimum(n);
-            if (leaf_prefix_matches(l, key, key_len))
-               return recursive_iter(n, cb, data);
+            if (leaf_prefix_matches(l, key, key_len)) {
+                return recursive_iter(n, prefix_iterator_callback, &state);
+            }
             return 0;
         }
 
@@ -1060,7 +1097,7 @@ int art_iter_prefix(art_tree *t, const unsigned char *key, int key_len, art_call
 
             // If we've matched the prefix, iterate on this node
             else if (depth + prefix_len == key_len) {
-                return recursive_iter(n, cb, data);
+                return recursive_iter(n, prefix_iterator_callback, &state);
             }
 
             // if there is a full match, go deeper

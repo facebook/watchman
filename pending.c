@@ -15,14 +15,18 @@ static const struct flag_map kflags[] = {
 // with the key "foo/bard".  We use this function to test whether the string
 // exactly matches the input ("foo/bar") or whether it has a slash as the next
 // character after the common prefix ("foo/bar/" as a prefix).
-static bool is_path_prefix(const char *path, size_t path_len,
+static bool is_path_prefix(const char *path, size_t path_len, const char *other,
                            size_t common_prefix) {
-  if (common_prefix == path_len) {
-    return true;
-  }
-
   if (common_prefix > path_len) {
     return false;
+  }
+
+  w_assert(memcmp(path, other, common_prefix) == 0,
+           "is_path_prefix: %.*s vs %.*s should have %d common_prefix chars\n",
+           (int)path_len, path, (int)common_prefix, other, (int)common_prefix);
+
+  if (common_prefix == path_len) {
+    return true;
   }
 
   return path[common_prefix] == WATCHMAN_DIR_SEP
@@ -183,12 +187,20 @@ static int delete_kids(void *data, const unsigned char *key, uint32_t key_len,
   unused_parameter(value);
 
   if ((p->flags & W_PENDING_CRAWL_ONLY) == 0 && key_len > ctx->root->len &&
-      is_path_prefix((const char *)key, key_len, ctx->root->len) &&
+      is_path_prefix((const char *)key, key_len, ctx->root->buf,
+                     ctx->root->len) &&
       !is_possibly_a_cookie(p->path)) {
+
+    w_log(W_LOG_DBG,
+          "delete_kids: removing (%d) %.*s from pending because it is "
+          "obsoleted by (%d) %.*s\n",
+          p->path->len, p->path->len, p->path->buf, ctx->root->len,
+          ctx->root->len, ctx->root->buf);
+
     // Unlink the child from the pending index.
     unlink_item(ctx->coll, p);
-    // and completely free it.
 
+    // and completely free it.
     w_pending_fs_free(p);
 
     // Remove it from the art tree also.
@@ -210,13 +222,20 @@ maybe_prune_obsoleted_children(struct watchman_pending_collection *coll,
   if ((flags & (W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY)) ==
       W_PENDING_RECURSIVE) {
     struct kid_context ctx = {path, coll};
+    uint32_t pruned = 0;
     // Since deletion invalidates the iterator, we need to repeatedly
     // call this to prune out the nodes.  It will return 0 once no
     // matching prefixes are found and deleted.
     while (art_iter_prefix(&coll->tree, (const uint8_t *)path->buf, path->len,
                            delete_kids, &ctx)) {
       // OK; try again
-      ;
+      ++pruned;
+    }
+
+    if (pruned) {
+      w_log(W_LOG_DBG,
+            "maybe_prune_obsoleted_children: pruned %u nodes under (%d) %.*s\n",
+            pruned, path->len, path->len, path->buf);
     }
   }
 }
@@ -248,8 +267,8 @@ is_obsoleted_by_containing_dir(struct watchman_pending_collection *coll,
   }
   p = leaf->value;
 
-  if (p->flags & W_PENDING_RECURSIVE &&
-      is_path_prefix(path->buf, path->len, leaf->key_len)) {
+  if ((p->flags & W_PENDING_RECURSIVE) &&
+      is_path_prefix(path->buf, path->len, (const char*)leaf->key, leaf->key_len)) {
 
     if (is_possibly_a_cookie(path)) {
       return false;
@@ -257,6 +276,8 @@ is_obsoleted_by_containing_dir(struct watchman_pending_collection *coll,
 
     // Yes: the pre-existing entry higher up in the tree obsoletes this
     // one that we would add now.
+    w_log(W_LOG_DBG, "is_obsoleted: SKIP %.*s is obsoleted by %.*s\n",
+        path->len, path->buf, p->path->len, p->path->buf);
     return true;
   }
   return false;
