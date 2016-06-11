@@ -569,7 +569,7 @@ int bunser_int(const char **ptr, const char *end, int64_t *val)
   }
 }
 
-static int bunser_string(const char **ptr, const char *end,
+static int bunser_bytestring(const char **ptr, const char *end,
     const char **start, int64_t *len)
 {
   const char *buf = *ptr;
@@ -666,7 +666,7 @@ static PyObject *bunser_object(const char **ptr, const char *end,
     PyObject *key;
     PyObject *ele;
 
-    if (!bunser_string(ptr, end, &keystr, &keylen)) {
+    if (!bunser_bytestring(ptr, end, &keystr, &keylen)) {
       Py_DECREF(res);
       return NULL;
     }
@@ -883,7 +883,7 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end,
         const char *start;
         int64_t len;
 
-        if (!bunser_string(ptr, end, &start, &len)) {
+        if (!bunser_bytestring(ptr, end, &start, &len)) {
           return NULL;
         }
 

@@ -18,7 +18,7 @@
 
 #define BSER_ARRAY     0x00
 #define BSER_OBJECT    0x01
-#define BSER_STRING    0x02
+#define BSER_BYTESTRING 0x02
 #define BSER_INT8      0x03
 #define BSER_INT16     0x04
 #define BSER_INT32     0x05
@@ -33,7 +33,7 @@
 static const char bser_true = BSER_TRUE;
 static const char bser_false = BSER_FALSE;
 static const char bser_null = BSER_NULL;
-static const char bser_string_hdr = BSER_STRING;
+static const char bser_bytestring_hdr = BSER_BYTESTRING;
 static const char bser_array_hdr = BSER_ARRAY;
 static const char bser_object_hdr = BSER_OBJECT;
 static const char bser_template_hdr = BSER_TEMPLATE;
@@ -48,7 +48,7 @@ static int bser_real(double val, json_dump_callback_t dump, void *data)
   return dump((char*)&val, sizeof(val), data);
 }
 
-bool bunser_string(const char *buf, json_int_t avail, json_int_t *needed,
+bool bunser_bytestring(const char *buf, json_int_t avail, json_int_t *needed,
     const char **start, json_int_t *len)
 {
   json_int_t ineed;
@@ -167,11 +167,11 @@ static int bser_int(json_int_t val, json_dump_callback_t dump, void *data)
   return dump(iptr, size, data);
 }
 
-static int bser_string(const char *str, json_dump_callback_t dump, void *data)
+static int bser_bytestring(const char *str, json_dump_callback_t dump, void *data)
 {
   size_t len = strlen(str);
 
-  if (dump(&bser_string_hdr, sizeof(bser_string_hdr), data)) {
+  if (dump(&bser_bytestring_hdr, sizeof(bser_bytestring_hdr), data)) {
     return -1;
   }
 
@@ -295,7 +295,7 @@ static int bser_object(json_t *obj,
     key = json_object_iter_key(iter);
     val = json_object_iter_value(iter);
 
-    if (bser_string(key, dump, data)) {
+    if (bser_bytestring(key, dump, data)) {
       return -1;
     }
     if (w_bser_dump(val, dump, data)) {
@@ -324,7 +324,7 @@ int w_bser_dump(json_t *json, json_dump_callback_t dump, void *data)
     case JSON_INTEGER:
       return bser_int(json_integer_value(json), dump, data);
     case JSON_STRING:
-      return bser_string(json_string_value(json), dump, data);
+      return bser_bytestring(json_string_value(json), dump, data);
     case JSON_ARRAY:
       return bser_array(json, dump, data);
     case JSON_OBJECT:
@@ -530,11 +530,11 @@ static json_t *bunser_object(const char *buf, const char *end,
     json_t *item;
 
     // Read key
-    if (!bunser_string(buf, end - buf, &needed, &start, &slen)) {
+    if (!bunser_bytestring(buf, end - buf, &needed, &start, &slen)) {
       *used = total + needed;
       json_decref(objval);
       snprintf(jerr->text, sizeof(jerr->text),
-          "invalid string for object key");
+          "invalid bytestring for object key");
       return NULL;
     }
     total += needed;
@@ -593,14 +593,14 @@ json_t *bunser(const char *buf, const char *end, json_int_t *needed,
       }
       return json_integer(ival);
 
-    case BSER_STRING:
+    case BSER_BYTESTRING:
     {
       const char *start;
       json_int_t len;
 
-      if (!bunser_string(buf, end - buf, needed, &start, &len)) {
+      if (!bunser_bytestring(buf, end - buf, needed, &start, &len)) {
         snprintf(jerr->text, sizeof(jerr->text),
-            "invalid string encoding");
+            "invalid bytestring encoding");
         return NULL;
       }
 
