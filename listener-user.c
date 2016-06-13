@@ -133,6 +133,7 @@ void derived_client_dtor(struct watchman_client *ptr) {
 
   /* cancel subscriptions */
   w_ht_free(client->subscriptions);
+  client->subscriptions = NULL;
 
   w_client_vacate_states(client);
 }

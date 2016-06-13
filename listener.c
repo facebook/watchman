@@ -155,7 +155,7 @@ static void *client_thread(void *ptr)
   bool send_ok = true;
 
   w_stm_set_nonblock(client->stm, true);
-  w_set_thread_name("client:stm=%p", client->stm);
+  w_set_thread_name("client=%p:stm=%p", client, client->stm);
 
   client->client_is_owner = w_stm_peer_is_owner(client->stm);
 
@@ -232,6 +232,7 @@ static void *client_thread(void *ptr)
   }
 
 disconected:
+  w_set_thread_name("NOT_CONN:client=%p:stm=%p", client, client->stm);
   // Remove the client from the map before we tear it down, as this makes
   // it easier to flush out pending writes on windows without worrying
   // about w_log_to_clients contending for the write buffers

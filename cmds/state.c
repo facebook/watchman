@@ -209,32 +209,34 @@ static void leave_state(struct watchman_user_client *client,
     struct watchman_user_client *subclient = w_ht_val_ptr(iter.value);
     w_ht_iter_t citer;
 
-    if (w_ht_first(subclient->subscriptions, &citer)) do {
-      struct watchman_client_subscription *sub = w_ht_val_ptr(citer.value);
-      json_t *pdu;
+    if (subclient->subscriptions &&
+        w_ht_first(subclient->subscriptions, &citer))
+      do {
+        struct watchman_client_subscription *sub = w_ht_val_ptr(citer.value);
+        json_t *pdu;
 
-      if (sub->root != root) {
-        w_log(W_LOG_DBG, "root doesn't match, skipping\n");
-        continue;
-      }
+        if (sub->root != root) {
+          w_log(W_LOG_DBG, "root doesn't match, skipping\n");
+          continue;
+        }
 
-      pdu = make_response();
-      set_prop(pdu, "root", w_string_to_json(root->root_path));
-      set_prop(pdu, "subscription", w_string_to_json(sub->name));
-      set_prop(pdu, "clock", json_string_nocheck(clockbuf));
-      set_prop(pdu, "state-leave", w_string_to_json(assertion->name));
-      if (metadata) {
-        // set_prop would steal our ref, we don't want that
-        json_object_set_nocheck(pdu, "metadata", metadata);
-      }
-      if (abandoned) {
-        set_prop(pdu, "abandoned", json_true());
-      }
-      if (!enqueue_response(&subclient->client, pdu, true)) {
-        json_decref(pdu);
-      }
+        pdu = make_response();
+        set_prop(pdu, "root", w_string_to_json(root->root_path));
+        set_prop(pdu, "subscription", w_string_to_json(sub->name));
+        set_prop(pdu, "clock", json_string_nocheck(clockbuf));
+        set_prop(pdu, "state-leave", w_string_to_json(assertion->name));
+        if (metadata) {
+          // set_prop would steal our ref, we don't want that
+          json_object_set_nocheck(pdu, "metadata", metadata);
+        }
+        if (abandoned) {
+          set_prop(pdu, "abandoned", json_true());
+        }
+        if (!enqueue_response(&subclient->client, pdu, true)) {
+          json_decref(pdu);
+        }
 
-    } while (w_ht_next(subclient->subscriptions, &citer));
+      } while (w_ht_next(subclient->subscriptions, &citer));
   } while (w_ht_next(clients, &iter));
   pthread_mutex_unlock(&w_client_lock);
 
@@ -257,7 +259,7 @@ void w_client_vacate_states(struct watchman_user_client *client) {
     return;
   }
 
-  if (w_ht_first(client->states, &iter)) do {
+  while (w_ht_first(client->states, &iter)) {
     struct watchman_client_state_assertion *assertion;
     w_root_t *root;
 
@@ -269,8 +271,10 @@ void w_client_vacate_states(struct watchman_user_client *client) {
         assertion->name->buf,
         root->root_path->len, root->root_path->buf);
 
-    leave_state(NULL, assertion, true, NULL, NULL);
-  } while (w_ht_next(client->states, &iter));
+    // This will delete the state from client->states and invalidate
+    // the iterator.
+    leave_state(client, assertion, true, NULL, NULL);
+  }
 }
 
 static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
