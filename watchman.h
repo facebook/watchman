@@ -534,6 +534,13 @@ struct watchman_json_buffer {
   uint32_t rpos, wpos;
   enum w_pdu_type pdu_type;
 };
+
+typedef struct bser_ctx {
+  uint32_t bser_version;
+  uint32_t capabilities;
+  json_dump_callback_t dump;
+} bser_ctx_t;
+
 typedef struct watchman_json_buffer w_jbuffer_t;
 bool w_json_buffer_init(w_jbuffer_t *jr);
 void w_json_buffer_reset(w_jbuffer_t *jr);
@@ -549,8 +556,9 @@ bool w_ser_write_pdu(enum w_pdu_type pdu_type,
     w_jbuffer_t *jr, w_stm_t stm, json_t *json);
 
 #define BSER_MAGIC "\x00\x01"
-int w_bser_write_pdu(json_t *json, json_dump_callback_t dump, void *data);
-int w_bser_dump(json_t *json, json_dump_callback_t dump, void *data);
+int w_bser_write_pdu(const uint32_t bser_version, const uint32_t capabilities,
+    json_dump_callback_t dump, json_t *json, void *data);
+int w_bser_dump(const bser_ctx_t* ctx, json_t *json, void *data);
 bool bunser_int(const char *buf, json_int_t avail,
     json_int_t *needed, json_int_t *val);
 json_t *bunser(const char *buf, const char *end,

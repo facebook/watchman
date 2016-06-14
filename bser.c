@@ -39,13 +39,21 @@ static const char bser_object_hdr = BSER_OBJECT;
 static const char bser_template_hdr = BSER_TEMPLATE;
 static const char bser_skip = BSER_SKIP;
 
-static int bser_real(double val, json_dump_callback_t dump, void *data)
+static bool is_bser_version_supported(const bser_ctx_t *ctx) {
+  return ctx->bser_version == 1;
+}
+
+static int bser_real(const bser_ctx_t *ctx, double val, void *data)
 {
   char sz = BSER_REAL;
-  if (dump(&sz, sizeof(sz), data)) {
+  if (!is_bser_version_supported(ctx)) {
     return -1;
   }
-  return dump((char*)&val, sizeof(val), data);
+
+  if (ctx->dump(&sz, sizeof(sz), data)) {
+    return -1;
+  }
+  return ctx->dump((char*)&val, sizeof(val), data);
 }
 
 bool bunser_bytestring(const char *buf, json_int_t avail, json_int_t *needed,
@@ -125,7 +133,7 @@ bool bunser_int(const char *buf, json_int_t avail,
   }
 }
 
-static int bser_int(json_int_t val, json_dump_callback_t dump, void *data)
+static int bser_int(const bser_ctx_t *ctx, json_int_t val, void *data)
 {
   int8_t i8;
   int16_t i16;
@@ -134,6 +142,10 @@ static int bser_int(json_int_t val, json_dump_callback_t dump, void *data)
   char sz;
   int size = INT_SIZE(val);
   char *iptr;
+
+  if (!is_bser_version_supported(ctx)) {
+    return -1;
+  }
 
   switch (size) {
     case 1:
@@ -160,53 +172,60 @@ static int bser_int(json_int_t val, json_dump_callback_t dump, void *data)
       return -1;
   }
 
-  if (dump(&sz, sizeof(sz), data)) {
+  if (ctx->dump(&sz, sizeof(sz), data)) {
     return -1;
   }
 
-  return dump(iptr, size, data);
+  return ctx->dump(iptr, size, data);
 }
 
-static int bser_bytestring(const char *str, json_dump_callback_t dump, void *data)
+static int bser_bytestring(const bser_ctx_t *ctx, const char *str, void *data)
 {
   size_t len = strlen(str);
 
-  if (dump(&bser_bytestring_hdr, sizeof(bser_bytestring_hdr), data)) {
+  if (!is_bser_version_supported(ctx)) {
     return -1;
   }
 
-  if (bser_int(len, dump, data)) {
+  if (ctx->dump(&bser_bytestring_hdr, sizeof(bser_bytestring_hdr), data)) {
     return -1;
   }
 
-  if (dump(str, len, data)) {
+  if (bser_int(ctx, len, data)) {
+    return -1;
+  }
+
+  if (ctx->dump(str, len, data)) {
     return -1;
   }
 
   return 0;
 }
 
-static int bser_array(const json_t *array,
-    json_dump_callback_t dump, void *data);
+static int bser_array(const bser_ctx_t *ctx, const json_t *array, void *data);
 
-static int bser_template(const json_t *array,
-    const json_t *templ, json_dump_callback_t dump, void *data)
+static int bser_template(const bser_ctx_t *ctx, const json_t *array,
+    const json_t *templ, void *data)
 {
   size_t n = json_array_size(array);
   size_t i, pn;
 
-  if (dump(&bser_template_hdr, sizeof(bser_template_hdr), data)) {
+  if (!is_bser_version_supported(ctx)) {
+    return -1;
+  }
+
+  if (ctx->dump(&bser_template_hdr, sizeof(bser_template_hdr), data)) {
     return -1;
   }
 
   // The template goes next
-  if (bser_array(templ, dump, data)) {
+  if (bser_array(ctx, templ, data)) {
     return -1;
   }
 
   // Now the array of arrays of object values.
   // How many objects
-  if (bser_int(n, dump, data)) {
+  if (bser_int(ctx, n, data)) {
     return -1;
   }
 
@@ -226,14 +245,14 @@ static int bser_template(const json_t *array,
       val = json_object_get(obj, key);
       if (!val) {
         // property not set on this one; emit a skip
-        if (dump(&bser_skip, sizeof(bser_skip), data)) {
+        if (ctx->dump(&bser_skip, sizeof(bser_skip), data)) {
           return -1;
         }
         continue;
       }
 
       // Emit value
-      if (w_bser_dump(val, dump, data)) {
+      if (w_bser_dump(ctx, val, data)) {
         return -1;
       }
     }
@@ -242,30 +261,33 @@ static int bser_template(const json_t *array,
   return 0;
 }
 
-static int bser_array(const json_t *array,
-    json_dump_callback_t dump, void *data)
+static int bser_array(const bser_ctx_t *ctx, const json_t *array, void *data)
 {
   size_t n = json_array_size(array);
   size_t i;
   json_t *templ;
 
-  templ = json_array_get_template(array);
-  if (templ) {
-    return bser_template(array, templ, dump, data);
-  }
-
-  if (dump(&bser_array_hdr, sizeof(bser_array_hdr), data)) {
+  if (!is_bser_version_supported(ctx)) {
     return -1;
   }
 
-  if (bser_int(n, dump, data)) {
+  templ = json_array_get_template(array);
+  if (templ) {
+    return bser_template(ctx, array, templ, data);
+  }
+
+  if (ctx->dump(&bser_array_hdr, sizeof(bser_array_hdr), data)) {
+    return -1;
+  }
+
+  if (bser_int(ctx, n, data)) {
     return -1;
   }
 
   for (i = 0; i < n; i++) {
     json_t *val = json_array_get(array, i);
 
-    if (w_bser_dump(val, dump, data)) {
+    if (w_bser_dump(ctx, val, data)) {
       return -1;
     }
   }
@@ -273,20 +295,23 @@ static int bser_array(const json_t *array,
   return 0;
 }
 
-static int bser_object(json_t *obj,
-    json_dump_callback_t dump, void *data)
+static int bser_object(const bser_ctx_t *ctx, json_t *obj, void *data)
 {
   size_t n;
   json_t *val;
   const char *key;
   void *iter;
 
-  if (dump(&bser_object_hdr, sizeof(bser_object_hdr), data)) {
+  if (!is_bser_version_supported(ctx)) {
+    return -1;
+  }
+
+  if (ctx->dump(&bser_object_hdr, sizeof(bser_object_hdr), data)) {
     return -1;
   }
 
   n = json_object_size(obj);
-  if (bser_int(n, dump, data)) {
+  if (bser_int(ctx, n, data)) {
     return -1;
   }
 
@@ -295,10 +320,10 @@ static int bser_object(json_t *obj,
     key = json_object_iter_key(iter);
     val = json_object_iter_value(iter);
 
-    if (bser_bytestring(key, dump, data)) {
+    if (bser_bytestring(ctx, key, data)) {
       return -1;
     }
-    if (w_bser_dump(val, dump, data)) {
+    if (w_bser_dump(ctx, val, data)) {
       return -1;
     }
 
@@ -308,27 +333,31 @@ static int bser_object(json_t *obj,
   return 0;
 }
 
-int w_bser_dump(json_t *json, json_dump_callback_t dump, void *data)
+int w_bser_dump(const bser_ctx_t* ctx, json_t *json, void *data)
 {
   int type = json_typeof(json);
 
+  if (!is_bser_version_supported(ctx)) {
+    return -1;
+  }
+
   switch (type) {
     case JSON_NULL:
-      return dump(&bser_null, sizeof(bser_null), data);
+      return ctx->dump(&bser_null, sizeof(bser_null), data);
     case JSON_TRUE:
-      return dump(&bser_true, sizeof(bser_true), data);
+      return ctx->dump(&bser_true, sizeof(bser_true), data);
     case JSON_FALSE:
-      return dump(&bser_false, sizeof(bser_false), data);
+      return ctx->dump(&bser_false, sizeof(bser_false), data);
     case JSON_REAL:
-      return bser_real(json_real_value(json), dump, data);
+      return bser_real(ctx, json_real_value(json), data);
     case JSON_INTEGER:
-      return bser_int(json_integer_value(json), dump, data);
+      return bser_int(ctx, json_integer_value(json), data);
     case JSON_STRING:
-      return bser_bytestring(json_string_value(json), dump, data);
+      return bser_bytestring(ctx, json_string_value(json), data);
     case JSON_ARRAY:
-      return bser_array(json, dump, data);
+      return bser_array(ctx, json, data);
     case JSON_OBJECT:
-      return bser_object(json, dump, data);
+      return bser_object(ctx, json, data);
     default:
       return -1;
   }
@@ -342,23 +371,33 @@ static int measure(const char *buffer, size_t size, void *ptr)
   return 0;
 }
 
-int w_bser_write_pdu(json_t *json, json_dump_callback_t dump, void *data)
+int w_bser_write_pdu(const uint32_t bser_version, const uint32_t capabilities,
+    json_dump_callback_t dump, json_t *json, void *data)
 {
   json_int_t m_size = 0;
+  bser_ctx_t ctx = { .bser_version = bser_version, .capabilities = capabilities,
+    .dump = measure };
 
-  if (w_bser_dump(json, measure, &m_size)) {
+  if (!is_bser_version_supported(&ctx)) {
     return -1;
   }
+
+  if (w_bser_dump(&ctx, json, &m_size)) {
+    return -1;
+  }
+
+  // To actually write the contents
+  ctx.dump = dump;
 
   if (dump(BSER_MAGIC, 2, data)) {
     return -1;
   }
 
-  if (bser_int(m_size, dump, data)) {
+  if (bser_int(&ctx, m_size, data)) {
     return -1;
   }
 
-  if (w_bser_dump(json, dump, data)) {
+  if (w_bser_dump(&ctx, json, data)) {
     return -1;
   }
 

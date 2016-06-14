@@ -42,11 +42,14 @@ static char *bdumps(json_t *json, char **end)
 {
     strbuffer_t strbuff;
 
+    bser_ctx_t ctx = { .bser_version = 1, .capabilities = 0,
+      .dump = dump_to_strbuffer };
+
     if (strbuffer_init(&strbuff)) {
         return NULL;
     }
 
-    if (w_bser_dump(json, dump_to_strbuffer, &strbuff) == 0) {
+    if (w_bser_dump(&ctx, json, &strbuff) == 0) {
       *end = strbuff.value + strbuff.length;
       return strbuff.value;
     }
