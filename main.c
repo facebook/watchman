@@ -14,9 +14,7 @@ static char *output_encoding = NULL;
 static char *test_state_dir = NULL;
 static char *sock_name = NULL;
 char *log_name = NULL;
-#ifdef USE_GIMLI
 static char *pid_file = NULL;
-#endif
 char *watchman_state_file = NULL;
 static char **daemon_argv = NULL;
 const char *watchman_tmp_dir = NULL;
@@ -39,6 +37,71 @@ static int json_input_arg = 0;
 # define SPAWN_VIA_LAUNCHER 1
 #endif
 
+static const char *compute_user_name(void);
+static void compute_file_name(char **strp, const char *user, const char *suffix,
+                              const char *what);
+
+static bool lock_pidfile(void) {
+#if !defined(USE_GIMLI) && !defined(_WIN32)
+  struct flock lock;
+  pid_t mypid;
+  int fd;
+
+  // We defer computing this path until we're in the server context because
+  // eager evaluation can trigger integration test failures unless all clients
+  // are aware of both the pidfile and the sockpath being used in the tests.
+  compute_file_name(&pid_file, compute_user_name(), "pid", "pidfile");
+
+  mypid = getpid();
+  memset(&lock, 0, sizeof(lock));
+  lock.l_type = F_WRLCK;
+  lock.l_start = 0;
+  lock.l_whence = SEEK_SET;
+  lock.l_len = 0;
+
+  fd = open(pid_file, O_RDWR | O_CREAT, 0644);
+  if (fd == -1) {
+    w_log(W_LOG_ERR, "Failed to open pidfile %s for write: %s\n", pid_file,
+          strerror(errno));
+    return false;
+  }
+  // Ensure that no children inherit the locked pidfile descriptor
+  w_set_cloexec(fd);
+
+  if (fcntl(fd, F_SETLK, &lock) != 0) {
+    char pidstr[32];
+    int len;
+
+    len = read(fd, pidstr, sizeof(pidstr) - 1);
+    pidstr[len] = '\0';
+
+    w_log(W_LOG_ERR, "Failed to lock pidfile %s: process %s owns it: %s\n",
+          pid_file, pidstr, strerror(errno));
+    return false;
+  }
+
+  // Replace contents of the pidfile with our pid string
+  if (ftruncate(fd, 0)) {
+    w_log(W_LOG_ERR, "Failed to truncate pidfile %s: %s\n",
+        pid_file, strerror(errno));
+    return false;
+  }
+
+  dprintf(fd, "%d", mypid);
+  fsync(fd);
+
+  /* We are intentionally not closing the fd and intentionally not storing
+   * a reference to it anywhere: the intention is that it remain locked
+   * for the rest of the lifetime of our process.
+   * close(fd); // NOPE!
+   */
+  return true;
+#else
+  // ze-googles, they do nothing!!
+  return true;
+#endif
+}
+
 static void run_service(void)
 {
   int fd;
@@ -55,6 +118,10 @@ static void run_service(void)
     ignore_result(dup2(fd, STDOUT_FILENO));
     ignore_result(dup2(fd, STDERR_FILENO));
     close(fd);
+  }
+
+  if (!lock_pidfile()) {
+    return;
   }
 
 #ifndef _WIN32
@@ -340,6 +407,7 @@ static void spawn_via_launchd(void)
 "        <string>--log-level=%d</string>\n"
 "        <string>--sockname=%s</string>\n"
 "        <string>--statefile=%s</string>\n"
+"        <string>--pidfile=%s</string>\n"
 "    </array>\n"
 "    <key>Sockets</key>\n"
 "    <dict>\n"
@@ -370,7 +438,7 @@ static void spawn_via_launchd(void)
 "</dict>\n"
 "</plist>\n",
     watchman_path, log_name, log_level, sock_name,
-    watchman_state_file, sock_name, 0600,
+    watchman_state_file, pid_file, sock_name, 0600,
     getenv("PATH"));
   fclose(fp);
   // Don't rely on umask, ensure we have the correct perms
@@ -572,8 +640,8 @@ static void compute_file_name(char **strp,
       }
 #endif
     } else {
-      w_log(W_LOG_ERR, "failed to create %s: %s\n",
-          state_dir, strerror(errno));
+      w_log(W_LOG_ERR, "while computing %s: failed to create %s: %s\n", what,
+            state_dir, strerror(errno));
       exit(1);
     }
 
@@ -598,14 +666,11 @@ static void compute_file_name(char **strp,
   *strp = str;
 }
 
-static void setup_sock_name(void)
-{
+static const char *compute_user_name(void) {
   const char *user = get_env_with_fallback("USER", "LOGNAME", NULL);
 #ifdef _WIN32
-  char user_buf[256];
+  static char user_buf[256];
 #endif
-
-  watchman_tmp_dir = get_env_with_fallback("TMPDIR", "TMP", "/tmp");
 
   if (!user) {
 #ifdef _WIN32
@@ -635,6 +700,15 @@ static void setup_sock_name(void)
       abort();
     }
   }
+
+  return user;
+}
+
+static void setup_sock_name(void)
+{
+  const char *user = compute_user_name();
+
+  watchman_tmp_dir = get_env_with_fallback("TMPDIR", "TMP", "/tmp");
 
 #ifdef _WIN32
   if (!sock_name) {
@@ -737,6 +811,9 @@ static struct watchman_getopt opts[] = {
 #ifdef USE_GIMLI
   { "pidfile", 0, "Specify path to gimli monitor pidfile",
     REQ_STRING, &pid_file, "PATH", NOT_DAEMON },
+#else
+  { "pidfile", 0, "Specify path to pidfile",
+    REQ_STRING, &pid_file, "PATH", IS_DAEMON },
 #endif
   { "persistent", 'p', "Persist and wait for further responses",
     OPT_NONE, &persistent, NULL, NOT_DAEMON },

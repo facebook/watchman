@@ -202,7 +202,7 @@ class WatchmanInstance {
 
   function start() {
     $cmd = "%s --foreground --sockname=%s --logfile=%s " .
-            "--statefile=%s.state --log-level=2";
+            "--statefile=%s.state --log-level=2 --pidfile=%s.pid";
     if ($this->valgrind) {
       $cmd = "valgrind --tool=memcheck " .
         "--log-file=$this->vg_log " .
@@ -224,7 +224,7 @@ class WatchmanInstance {
 
     $cmd = sprintf($cmd, $this->repo_root . '/watchman',
       $this->getFullSockName(), $this->logfile,
-                    $this->logfile);
+      $this->logfile, $this->logfile);
 
     $pipes = array();
     $this->proc = proc_open($cmd, array(
