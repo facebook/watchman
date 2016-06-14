@@ -25,6 +25,7 @@ static int no_pretty = 0;
 static int no_spawn = 0;
 static int no_local = 0;
 #ifndef _WIN32
+static int inetd_style = 0;
 static struct sockaddr_un un;
 #endif
 static int json_input_arg = 0;
@@ -106,6 +107,16 @@ static void run_service(void)
 {
   int fd;
   bool res;
+
+#ifndef _WIN32
+  // Before we redirect stdin/stdout to the log files, move any inetd-provided
+  // socket to a different descriptor number.
+  if (inetd_style) {
+    if (!w_listener_prep_inetd()) {
+      return;
+    }
+  }
+#endif
 
   // redirect std{in,out,err}
   fd = open("/dev/null", O_RDONLY);
@@ -800,6 +811,10 @@ static bool try_command(json_t *cmd, int timeout)
 static struct watchman_getopt opts[] = {
   { "help",     'h', "Show this help",
     OPT_NONE,   &show_help, NULL, NOT_DAEMON },
+#ifndef _WIN32
+  { "inetd",    0,   "Spawning from an inetd style supervisor",
+    OPT_NONE,   &inetd_style, NULL, IS_DAEMON },
+#endif
   { "version",  'v', "Show version number",
     OPT_NONE,   &show_version, NULL, NOT_DAEMON },
   { "sockname", 'U', "Specify alternate sockname",

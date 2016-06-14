@@ -874,6 +874,7 @@ json_t *w_root_watch_list_to_json(void);
 #ifdef __APPLE__
 int w_get_listener_socket_from_launchd(void);
 #endif
+bool w_listener_prep_inetd(void);
 bool w_start_listener(const char *socket_path);
 void w_check_my_sock(void);
 char **w_argv_copy_from_json(json_t *arr, int skip);

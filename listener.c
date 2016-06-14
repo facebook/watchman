@@ -10,7 +10,7 @@
  * while we are dispatching subscriptions to clients */
 pthread_mutex_t w_client_lock;
 w_ht_t *clients = NULL;
-static int listener_fd;
+static int listener_fd = -1;
 pthread_t reaper_thread;
 static pthread_t listener_thread;
 #ifdef _WIN32
@@ -318,12 +318,40 @@ static void wakeme(int signo)
 #endif
 
 #ifndef _WIN32
+
+// If we are running under inetd-style supervision, call this function
+// to move the inetd provided socket descriptor(s) to a new descriptor
+// number and remember that we can just use these when we're starting
+// up the listener.
+bool w_listener_prep_inetd(void) {
+  if (listener_fd != -1) {
+    w_log(W_LOG_ERR,
+          "w_listener_prep_inetd: listener_fd is already assigned\n");
+    return false;
+  }
+
+  listener_fd = dup(STDIN_FILENO);
+  if (listener_fd == -1) {
+    w_log(W_LOG_ERR, "w_listener_prep_inetd: failed to dup stdin: %s\n",
+          strerror(errno));
+    return false;
+  }
+
+  return true;
+}
+
 static int get_listener_socket(const char *path)
 {
   struct sockaddr_un un;
   mode_t perms = cfg_get_perms(NULL, "sock_access",
                                true /* write bits */,
                                false /* execute bits */);
+
+  if (listener_fd != -1) {
+    // Assume that it was prepped by w_listener_prep_inetd()
+    w_log(W_LOG_ERR, "Using socket from inetd as listening socket\n");
+    return listener_fd;
+  }
 
 #ifdef __APPLE__
   listener_fd = w_get_listener_socket_from_launchd();
