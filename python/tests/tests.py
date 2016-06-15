@@ -6,6 +6,7 @@ from __future__ import print_function
 # no unicode literals
 
 import binascii
+import collections
 import inspect
 import unittest
 import os
@@ -54,6 +55,10 @@ class TestBSERDump(unittest.TestCase):
         else:
             return super(TestBSERDump, self).id()
 
+    def raw(self, structured_input, bser_output):
+        enc = self.bser_mod.dumps(structured_input)
+        self.assertEqual(enc, bser_output)
+
     def roundtrip(self, val, mutable=True, value_encoding=None,
                   value_errors=None):
         enc = self.bser_mod.dumps(val)
@@ -70,6 +75,23 @@ class TestBSERDump(unittest.TestCase):
         dec = self.bser_mod.loads(enc, value_encoding=value_encoding,
                                   value_errors=value_errors)
         self.assertEqual(munged, dec)
+
+    def test_raw(self):
+        # The order of serialization is undefined for dict keys, since Python
+        # dicts are unordered. Besides, bser and pybser do different things
+        # when they get an ordered dicts, so the following tests may be flaky.
+        self.raw({"name": "Tom", "age":24},
+            b"\x00\x01\x05\x18\x00\x00\x00\x01\x03\x02\x02\x03\x03age\x03"
+            b"\x18\x02\x03\x04name\x02\x03\x03Tom")
+        self.raw({"names": ["Tom", "Jerry"], "age": 24},
+            b"\x00\x01\x05$\x00\x00\x00\x01\x03\x02\x02\x03\x03age\x03\x18"
+            b"\x02\x03\x05names\x00\x03\x02\x02\x03\x03Tom\x02\x03\x05Jerry")
+        self.raw(["Tom", "Jerry"],
+            b"\x00\x01\x05\x11\x00\x00\x00\x00\x03\x02\x02\x03\x03Tom\x02"
+            b"\x03\x05Jerry")
+        self.raw([1, 123, 12345, 1234567, 12345678912345678],
+            b"\x00\x01\x05\x18\x00\x00\x00\x00\x03\x05\x03\x01\x03{\x0490"
+            b"\x05\x87\xd6\x12\x00\x06N\xd6\x14^T\xdc+\x00")
 
     def test_int(self):
         self.roundtrip(1)
