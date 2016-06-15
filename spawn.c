@@ -550,8 +550,30 @@ static void *child_reaper(void *arg)
   }
 #else
   while (!w_is_stopping()) {
+    int err;
+
+    // Poll for any finished child processes.
     w_reap_children(false);
-    sigsuspend(&sigset);
+    err = errno;
+
+    // If we got EINTR then it may be due to SIGCHLD
+    // or SIGUSR1.  The latter is our shutdown signal,
+    // so check our predicate for that first.
+    if (w_is_stopping()) {
+      break;
+    }
+
+    // If we ran out of children, wait for more to be
+    // ready for reaping.
+    if (err == ECHILD) {
+      sigsuspend(&sigset);
+    }
+
+    // If we didn't get ECHILD, then we were most likely
+    // spuriously woken up by something else; let's
+    // have another go around the loop and check for
+    // more children, and only allow ECHILD to send us into
+    // the sigsuspend.
   }
 #endif
 
