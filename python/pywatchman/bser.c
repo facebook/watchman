@@ -235,6 +235,8 @@ static inline uint32_t next_power_2(uint32_t n)
 struct bser_buffer {
   char *buf;
   int wpos, allocd;
+  uint32_t bser_version;
+  uint32_t capabilities;
 };
 typedef struct bser_buffer bser_t;
 
@@ -256,12 +258,13 @@ static int bser_append(bser_t *bser, const char *data, uint32_t len)
   return 1;
 }
 
-static int bser_init(bser_t *bser)
+static int bser_init(bser_t *bser, uint32_t version, uint32_t capabilities)
 {
   bser->allocd = 8192;
   bser->wpos = 0;
   bser->buf = malloc(bser->allocd);
-
+  bser->bser_version = version;
+  bser->capabilities = capabilities;
   if (!bser->buf) {
     return 0;
   }
@@ -492,7 +495,7 @@ static PyObject *bser_dumps(PyObject *self, PyObject *args)
     return NULL;
   }
 
-  if (!bser_init(&bser)) {
+  if (!bser_init(&bser, 1, 0)) {
     return PyErr_NoMemory();
   }
 
