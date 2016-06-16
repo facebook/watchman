@@ -34,10 +34,6 @@ static int json_input_arg = 0;
 #include <mach-o/dyld.h>
 #endif
 
-#if defined(USE_GIMLI) || defined(__APPLE__) || defined(_WIN32)
-# define SPAWN_VIA_LAUNCHER 1
-#endif
-
 static const char *compute_user_name(void);
 static void compute_file_name(char **strp, const char *user, const char *suffix,
                               const char *what);
@@ -239,7 +235,6 @@ static void daemonize(void)
 }
 #endif
 
-#ifdef SPAWN_VIA_LAUNCHER
 #define MAX_DAEMON_ARGS 64
 static void append_argv(char **argv, char *item)
 {
@@ -322,6 +317,63 @@ static void spawn_via_gimli(void)
   posix_spawnp(&pid, argv[0], &actions, &attr, argv, environ);
   posix_spawnattr_destroy(&attr);
   posix_spawn_file_actions_destroy(&actions);
+}
+#endif
+
+#ifndef _WIN32
+// Spawn watchman via a site-specific spawn helper program.
+// We'll pass along any daemon-appropriate arguments that
+// we noticed during argument parsing.
+static void spawn_site_specific(const char *spawner)
+{
+  char *argv[MAX_DAEMON_ARGS] = {
+    (char*)spawner,
+    NULL
+  };
+  posix_spawn_file_actions_t actions;
+  posix_spawnattr_t attr;
+  pid_t pid;
+  int i;
+  int res, err;
+
+  for (i = 0; daemon_argv[i]; i++) {
+    append_argv(argv, daemon_argv[i]);
+  }
+
+  close_random_fds();
+
+  posix_spawnattr_init(&attr);
+  posix_spawn_file_actions_init(&actions);
+  posix_spawn_file_actions_addopen(&actions,
+      STDOUT_FILENO, log_name, O_WRONLY|O_CREAT|O_APPEND, 0600);
+  posix_spawn_file_actions_adddup2(&actions,
+      STDOUT_FILENO, STDERR_FILENO);
+  res = posix_spawnp(&pid, argv[0], &actions, &attr, argv, environ);
+  err = errno;
+
+  posix_spawnattr_destroy(&attr);
+  posix_spawn_file_actions_destroy(&actions);
+
+  if (res) {
+    w_log(W_LOG_FATAL, "Failed to spawn watchman via `%s': %s\n", spawner,
+          strerror(err));
+  }
+
+  if (waitpid(pid, &res, 0) == -1) {
+    w_log(W_LOG_FATAL, "Failed waiting for %s: %s\n", spawner, strerror(errno));
+  }
+
+  if (WIFEXITED(res) && WEXITSTATUS(res) == 0) {
+    return;
+  }
+
+  if (WIFEXITED(res)) {
+    w_log(W_LOG_FATAL, "%s: exited with status %d\n", spawner,
+          WEXITSTATUS(res));
+  } else if (WIFSIGNALED(res)) {
+    w_log(W_LOG_FATAL, "%s: signaled with %d\n", spawner, WTERMSIG(res));
+  }
+  w_log(W_LOG_ERR, "%s: failed to start, exit status %d\n", spawner, res);
 }
 #endif
 
@@ -482,14 +534,12 @@ static void spawn_via_launchd(void)
   if (WIFEXITED(res)) {
     w_log(W_LOG_ERR, "launchctl: exited with status %d\n", WEXITSTATUS(res));
   } else if (WIFSIGNALED(res)) {
-    w_log(W_LOG_ERR, "launchctl: signalled with %d\n", WTERMSIG(res));
+    w_log(W_LOG_ERR, "launchctl: signaled with %d\n", WTERMSIG(res));
   }
   w_log(W_LOG_ERR, "Falling back to daemonize\n");
   daemonize();
 }
 #endif
-
-#endif // SPAWN_VIA_LAUNCHER
 
 static void parse_encoding(const char *enc, enum w_pdu_type *pdu)
 {
@@ -933,6 +983,17 @@ const char *get_sock_name(void)
 }
 
 static void spawn_watchman(void) {
+#ifndef _WIN32
+  // If we have a site-specific spawning requirement, then we'll
+  // invoke that spawner rather than using any of the built-in
+  // spawning functionality.
+  const char *site_spawn = cfg_get_string(NULL, "spawn_watchman_service", NULL);
+  if (site_spawn) {
+    spawn_site_specific(site_spawn);
+    return;
+  }
+#endif
+
 #ifdef USE_GIMLI
   spawn_via_gimli();
 #elif defined(__APPLE__)

@@ -113,6 +113,23 @@ class _Instance(object):
             self.proc = None
         self.cli_log_file.close()
 
+    def commandViaCLI(self, cmd):
+        '''a very bare bones helper to test the site spawner functionality'''
+        args = [
+            'watchman',
+            '--log-level=2',
+        ]
+        args.extend(self.get_state_args())
+        args.extend(cmd)
+        env = os.environ.copy()
+        env["WATCHMAN_CONFIG_FILE"] = self.cfg_file
+        proc = subprocess.Popen(args,
+                                     env=env,
+                                     stdin=None,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
+        return proc.communicate()
+
     def start(self):
         args = [
             'watchman',
