@@ -42,7 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define BSER_ARRAY     0x00
 #define BSER_OBJECT    0x01
-#define BSER_STRING    0x02
+#define BSER_BYTESTRING 0x02
 #define BSER_INT8      0x03
 #define BSER_INT16     0x04
 #define BSER_INT32     0x05
@@ -216,7 +216,7 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end,
 static const char bser_true = BSER_TRUE;
 static const char bser_false = BSER_FALSE;
 static const char bser_null = BSER_NULL;
-static const char bser_string_hdr = BSER_STRING;
+static const char bser_bytestring_hdr = BSER_BYTESTRING;
 static const char bser_array_hdr = BSER_ARRAY;
 static const char bser_object_hdr = BSER_OBJECT;
 
@@ -325,7 +325,7 @@ static int bser_long(bser_t *bser, int64_t val)
   return bser_append(bser, iptr, size);
 }
 
-static int bser_string(bser_t *bser, PyObject *sval)
+static int bser_bytestring(bser_t *bser, PyObject *sval)
 {
   char *buf = NULL;
   Py_ssize_t len;
@@ -343,7 +343,7 @@ static int bser_string(bser_t *bser, PyObject *sval)
     goto out;
   }
 
-  if (!bser_append(bser, &bser_string_hdr, sizeof(bser_string_hdr))) {
+  if (!bser_append(bser, &bser_bytestring_hdr, sizeof(bser_bytestring_hdr))) {
     res = 0;
     goto out;
   }
@@ -394,7 +394,7 @@ static int bser_recursive(bser_t *bser, PyObject *val)
   }
 
   if (PyBytes_Check(val) || PyUnicode_Check(val)) {
-    return bser_string(bser, val);
+    return bser_bytestring(bser, val);
   }
 
 
@@ -467,7 +467,7 @@ static int bser_recursive(bser_t *bser, PyObject *val)
     }
 
     while (PyDict_Next(val, &pos, &key, &ele)) {
-      if (!bser_string(bser, key)) {
+      if (!bser_bytestring(bser, key)) {
         return 0;
       }
       if (!bser_recursive(bser, ele)) {
@@ -878,7 +878,7 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end,
       Py_INCREF(Py_None);
       return Py_None;
 
-    case BSER_STRING:
+    case BSER_BYTESTRING:
       {
         const char *start;
         int64_t len;

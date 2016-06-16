@@ -43,7 +43,7 @@ from . import (
 
 BSER_ARRAY = b'\x00'
 BSER_OBJECT = b'\x01'
-BSER_STRING = b'\x02'
+BSER_BYTESTRING = b'\x02'
 BSER_INT8 = b'\x03'
 BSER_INT16 = b'\x04'
 BSER_INT32 = b'\x05'
@@ -128,13 +128,13 @@ class _bser_buffer(object):
         to_write = 2 + size + s_len
         self.ensure_size(to_write)
         if size == 1:
-            struct.pack_into(b'=ccb' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT8, s_len, s)
+            struct.pack_into(b'=ccb' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_BYTESTRING, BSER_INT8, s_len, s)
         elif size == 2:
-            struct.pack_into(b'=cch' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT16, s_len, s)
+            struct.pack_into(b'=cch' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_BYTESTRING, BSER_INT16, s_len, s)
         elif size == 4:
-            struct.pack_into(b'=cci' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT32, s_len, s)
+            struct.pack_into(b'=cci' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_BYTESTRING, BSER_INT32, s_len, s)
         elif size == 8:
-            struct.pack_into(b'=ccq' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_STRING, BSER_INT64, s_len, s)
+            struct.pack_into(b'=ccq' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_BYTESTRING, BSER_INT64, s_len, s)
         else:
             raise RuntimeError('Cannot represent this string value')
         self.wpos += to_write
@@ -376,7 +376,7 @@ class Bunser(object):
             return (False, pos + 1)
         elif val_type == BSER_NULL:
             return (None, pos + 1)
-        elif val_type == BSER_STRING:
+        elif val_type == BSER_BYTESTRING:
             return self.unser_string(buf, pos)
         elif val_type == BSER_ARRAY:
             return self.unser_array(buf, pos)
