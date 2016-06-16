@@ -282,6 +282,7 @@ void w_perf_log(w_perf_t *perf) {
   if (!perf_log_thread_started) {
     pthread_cond_init(&perf_log_cond, NULL);
     pthread_create(&perf_log_thr, NULL, perf_log_thread, NULL);
+    perf_log_thread_started = true;
   }
 
   if (!perf_log_samples) {
