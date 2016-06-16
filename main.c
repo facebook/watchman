@@ -932,6 +932,18 @@ const char *get_sock_name(void)
   return sock_name;
 }
 
+static void spawn_watchman(void) {
+#ifdef USE_GIMLI
+  spawn_via_gimli();
+#elif defined(__APPLE__)
+  spawn_via_launchd();
+#elif defined(_WIN32)
+  spawn_win32();
+#else
+  daemonize();
+#endif
+}
+
 int main(int argc, char **argv)
 {
   bool ran;
@@ -956,15 +968,7 @@ int main(int argc, char **argv)
         ran = try_client_mode_command(cmd, !no_pretty);
       }
     } else {
-#ifdef USE_GIMLI
-      spawn_via_gimli();
-#elif defined(__APPLE__)
-      spawn_via_launchd();
-#elif defined(_WIN32)
-      spawn_win32();
-#else
-      daemonize();
-#endif
+      spawn_watchman();
       ran = try_command(cmd, 10);
     }
   }
