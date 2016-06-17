@@ -58,8 +58,6 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
   size_t i;
   char **paths = eventPaths;
   w_root_t *root = clientCallBackInfo;
-  char pathbuf[WATCHMAN_NAME_MAX];
-  char flags_label[128];
   struct watchman_fsevent *head = NULL, *tail = NULL, *evt;
   struct fsevents_root_state *state = root->watch;
 
@@ -69,21 +67,14 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
 
   for (i = 0; i < numEvents; i++) {
     uint32_t len;
+    const char *path = paths[i];
 
-    len = strlen(paths[i]);
-    if (len >= sizeof(pathbuf)-1) {
-      w_log(W_LOG_DBG, "FSEvents: %s name is too big :-(\n", paths[i]);
-      w_root_cancel(root);
-      break;
-    }
-
-    strcpy(pathbuf, paths[i]);
-    while (pathbuf[len-1] == '/') {
-      pathbuf[len-1] = '\0';
+    len = strlen(path);
+    while (path[len-1] == '/') {
       len--;
     }
 
-    if (w_is_ignored(root, paths[i], len)) {
+    if (w_is_ignored(root, path, len)) {
       continue;
     }
 
@@ -94,7 +85,7 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
       break;
     }
 
-    evt->path = w_string_new(pathbuf);
+    evt->path = w_string_new_len(path, len);
     evt->flags = eventFlags[i];
     if (tail) {
       tail->next = evt;
@@ -102,10 +93,10 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
       head = evt;
     }
     tail = evt;
+  }
 
-    w_expand_flags(kflags, evt->flags, flags_label, sizeof(flags_label));
-    w_log(W_LOG_DBG, "fse_thread: add %s 0x%" PRIx32 " %s\n", pathbuf,
-      evt->flags, flags_label);
+  if (!head) {
+    return;
   }
 
   pthread_mutex_lock(&state->fse_mtx);
@@ -301,6 +292,7 @@ static bool fsevents_root_consume_notify(w_root_t *root,
   struct timeval now;
   bool recurse;
   struct fsevents_root_state *state = root->watch;
+  char flags_label[128];
 
   pthread_mutex_lock(&state->fse_mtx);
   head = state->fse_head;
@@ -314,6 +306,10 @@ static bool fsevents_root_consume_notify(w_root_t *root,
     evt = head;
     head = head->next;
     n++;
+
+    w_expand_flags(kflags, evt->flags, flags_label, sizeof(flags_label));
+    w_log(W_LOG_DBG, "fsevents: got %.*s 0x%" PRIx32 " %s\n", evt->path->len,
+          evt->path->buf, evt->flags, flags_label);
 
     if (evt->flags & kFSEventStreamEventFlagUserDropped) {
       w_root_schedule_recrawl(root, "kFSEventStreamEventFlagUserDropped");
