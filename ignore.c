@@ -11,6 +11,7 @@
 
 bool w_ignore_init(struct watchman_ignore *ignore) {
   ignore->ignore_vcs = w_ht_new(2, &w_ht_string_funcs);
+  ignore->dirs_vec = NULL;
   if (!ignore->ignore_vcs) {
     return false;
   }
@@ -38,6 +39,18 @@ void w_ignore_addstr(struct watchman_ignore *ignore, w_string_t *path,
 
   art_insert(&ignore->tree, (const unsigned char *)path->buf, path->len,
              is_vcs_ignore ? VCS_IGNORE : FULL_IGNORE);
+
+  if (!is_vcs_ignore) {
+    ignore->dirs_vec =
+        realloc(ignore->dirs_vec,
+                w_ht_size(ignore->ignore_dirs) * sizeof(w_string_t *));
+    if (!ignore->dirs_vec) {
+      w_log(W_LOG_FATAL, "OOM while recording ignore dirs");
+    }
+
+    // No need to add a ref, as that is tracked by the hash table
+    ignore->dirs_vec[w_ht_size(ignore->ignore_dirs)-1] = path;
+  }
 }
 
 bool w_ignore_check(struct watchman_ignore *ignore, const char *path,
@@ -122,6 +135,9 @@ void w_ignore_destroy(struct watchman_ignore *ignore) {
 
   w_ht_free(ignore->ignore_dirs);
   ignore->ignore_dirs = NULL;
+
+  free(ignore->dirs_vec);
+  ignore->dirs_vec = NULL;
 
   art_tree_destroy(&ignore->tree);
 }

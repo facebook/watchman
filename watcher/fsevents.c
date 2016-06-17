@@ -5,6 +5,10 @@
 
 #if HAVE_FSEVENTS
 
+// The FSEventStreamSetExclusionPaths API has a limit of 8 items.
+// If that limit is exceeded, it will fail.
+#define MAX_EXCLUSIONS 8
+
 struct watchman_fsevent {
   struct watchman_fsevent *next;
   w_string_t *path;
@@ -206,6 +210,46 @@ static void *fsevents_thread(void *arg)
 
   FSEventStreamScheduleWithRunLoop(fs_stream,
       CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+
+  if (w_ht_size(root->ignore.ignore_dirs) > 0 &&
+      cfg_get_bool(root, "_use_fsevents_exclusions", true)) {
+    CFMutableArrayRef ignarray;
+    size_t i, nitems = MIN(w_ht_size(root->ignore.ignore_dirs), MAX_EXCLUSIONS);
+
+    ignarray = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
+    if (!ignarray) {
+      root->failure_reason = w_string_new("CFArrayCreateMutable failed");
+      goto done;
+    }
+
+    for (i = 0; i < nitems; ++i) {
+      w_string_t *path = root->ignore.dirs_vec[i];
+      CFStringRef ignpath;
+
+      ignpath = CFStringCreateWithBytes(
+          NULL, (const UInt8 *)path->buf, path->len,
+          kCFStringEncodingUTF8, false);
+
+      if (!ignpath) {
+        root->failure_reason = w_string_new("CFStringCreateWithBytes failed");
+        CFRelease(ignarray);
+        goto done;
+      }
+
+      CFArrayAppendValue(ignarray, ignpath);
+      CFRelease(ignpath);
+    }
+
+    if (!FSEventStreamSetExclusionPaths(fs_stream, ignarray)) {
+      root->failure_reason =
+          w_string_new("FSEventStreamSetExclusionPaths failed");
+      CFRelease(ignarray);
+      goto done;
+    }
+
+    CFRelease(ignarray);
+  }
+
   if (!FSEventStreamStart(fs_stream)) {
     root->failure_reason = w_string_make_printf(
         "FSEventStreamStart failed, look at your log file %s for "
