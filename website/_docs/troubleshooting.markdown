@@ -145,6 +145,34 @@ resolution is to run `watchman shutdown-server`.
 If you have not actually resolved the root cause you may continue to trigger
 and experience this state each time the system trips over these limits.
 
+## Posion: opendir
+
+```
+A non-recoverable condition has triggered.  Watchman needs your help!
+The triggering condition was at timestamp=1407695600: opendir(/my/path) -> Too many open files in system
+All requests will continue to fail with this message until you resolve
+the underlying problem.  You will find more information on fixing this at
+https://facebook.github.io/watchman/docs/troubleshooting.html#opendir
+```
+
+If you've encountered this state it means that your entire system had too many
+open files, and that this prevented watchman from tracking the changes on your
+system.  In this case, the error isn't related to filesystem watching but to
+other (likely) misbehaving processes on your system; it's usually indicative of
+a runaway program or set of programs consuming resources, but in some cases it
+may just be that your system workload requires that you increase your system
+limits for the number of files.
+
+### How do I resolve this?
+
+```
+watchman shutdown-server
+```
+
+If the issue persists, consult your system administrator to identify what
+is consuming these resources and remediate it, or to increase your system
+limits.
+
 ## FSEvents
 
 FSEvents is the file watching facility on OS X.  There are few diagnostics

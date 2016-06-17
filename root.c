@@ -1074,6 +1074,10 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
   } else if (err == EACCES || err == EPERM) {
     log_warning = true;
     transient = false;
+  } else if (err == ENFILE || err == EMFILE) {
+    set_poison_state(root, dir->path, now, syscall, err,
+        strerror(err));
+    return;
   } else {
     log_warning = true;
     transient = true;
