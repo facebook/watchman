@@ -19,6 +19,10 @@ struct watchman_ignore {
    * entries above.  This is used only on OS X and Windows because
    * we cannot exclude these dirs using the kernel watching APIs */
   art_tree tree;
+  /* On OS X, we need to preserve the order of the ignore list so
+   * that we can exclude things deterministically and fit within
+   * system limits. */
+  w_string_t **dirs_vec;
 };
 
 // Initialize ignore state
