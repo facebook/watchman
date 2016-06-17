@@ -452,6 +452,8 @@ static void spawn_via_launchd(void)
     abort();
   }
 
+  compute_file_name(&pid_file, compute_user_name(), "pid", "pidfile");
+
   fprintf(fp,
 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
 "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
