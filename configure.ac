@@ -261,6 +261,7 @@ AC_CHECK_HEADERS(execinfo.h sys/resource.h)
 AC_CHECK_HEADERS(CoreServices/CoreServices.h, [
   LIBS="$LIBS -framework CoreServices"
 ])
+AC_CHECK_FUNCS(FSEventStreamSetExclusionPaths)
 AC_CHECK_FUNCS(backtrace backtrace_symbols backtrace_symbols_fd)
 AC_CHECK_FUNCS(sys_siglist)
 AC_CHECK_FUNCS(memmem)
