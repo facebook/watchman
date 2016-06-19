@@ -30,6 +30,7 @@ struct fsevents_root_state {
   pthread_t fse_thread;
 
   struct watchman_fsevent *fse_head, *fse_tail;
+  struct fse_stream *stream;
 };
 
 static const struct flag_map kflags[] = {
@@ -272,7 +273,6 @@ static void *fsevents_thread(void *arg)
   CFFileDescriptorRef fdref;
   CFFileDescriptorContext fdctx;
   struct fsevents_root_state *state = root->watch;
-  struct fse_stream *fse_stream = NULL;
 
   w_set_thread_name("fsevents %.*s", root->root_path->len,
       root->root_path->buf);
@@ -299,12 +299,12 @@ static void *fsevents_thread(void *arg)
     CFRelease(fdsrc);
   }
 
-  fse_stream = fse_stream_make(root, kFSEventStreamEventIdSinceNow);
-  if (!fse_stream) {
+  state->stream = fse_stream_make(root, kFSEventStreamEventIdSinceNow);
+  if (!state->stream) {
     goto done;
   }
 
-  if (!FSEventStreamStart(fse_stream->stream)) {
+  if (!FSEventStreamStart(state->stream->stream)) {
     root->failure_reason = w_string_make_printf(
         "FSEventStreamStart failed, look at your log file %s for "
         "lines mentioning FSEvents and see %s#fsevents for more information\n",
@@ -322,8 +322,8 @@ static void *fsevents_thread(void *arg)
   // Since the goto's above hold fse_mtx, we should grab it here
   pthread_mutex_lock(&state->fse_mtx);
 done:
-  if (fse_stream) {
-    fse_stream_free(fse_stream);
+  if (state->stream) {
+    fse_stream_free(state->stream);
   }
   if (fdref) {
     CFRelease(fdref);
