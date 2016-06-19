@@ -31,6 +31,7 @@ struct fsevents_root_state {
 
   struct watchman_fsevent *fse_head, *fse_tail;
   struct fse_stream *stream;
+  bool attempt_resync_on_user_drop;
 };
 
 static const struct flag_map kflags[] = {
@@ -279,6 +280,9 @@ static void *fsevents_thread(void *arg)
 
   // Block until fsevents_root_start is waiting for our initialization
   pthread_mutex_lock(&state->fse_mtx);
+
+  state->attempt_resync_on_user_drop =
+      cfg_get_bool(root, "fsevents_try_resync", false);
 
   memset(&fdctx, 0, sizeof(fdctx));
   fdctx.info = root;
