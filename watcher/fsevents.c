@@ -15,6 +15,11 @@ struct watchman_fsevent {
   FSEventStreamEventFlags flags;
 };
 
+struct fse_stream {
+  FSEventStreamRef stream;
+  w_root_t *root;
+};
+
 struct fsevents_root_state {
   int fse_pipe[2];
 
@@ -57,7 +62,8 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
 {
   size_t i;
   char **paths = eventPaths;
-  w_root_t *root = clientCallBackInfo;
+  struct fse_stream *stream = clientCallBackInfo;
+  w_root_t *root = stream->root;
   struct watchman_fsevent *head = NULL, *tail = NULL, *evt;
   struct fsevents_root_state *state = root->watch;
 
@@ -123,26 +129,139 @@ static void fse_pipe_callback(CFFileDescriptorRef fdref,
   CFRunLoopStop(CFRunLoopGetCurrent());
 }
 
+static void fse_stream_free(struct fse_stream *fse_stream) {
+  if (fse_stream->stream) {
+    FSEventStreamStop(fse_stream->stream);
+    FSEventStreamInvalidate(fse_stream->stream);
+    FSEventStreamRelease(fse_stream->stream);
+  }
+}
+
+static struct fse_stream *fse_stream_make(w_root_t *root) {
+  FSEventStreamContext ctx;
+  CFMutableArrayRef parray = NULL;
+  CFStringRef cpath = NULL;
+  double latency;
+  struct fse_stream *fse_stream = calloc(1, sizeof(*fse_stream));
+
+  if (!fse_stream) {
+    // Note that w_string_new will terminate the process on OOM
+    root->failure_reason = w_string_new("OOM");
+    goto fail;
+  }
+  fse_stream->root = root;
+
+  memset(&ctx, 0, sizeof(ctx));
+  ctx.info = fse_stream;
+
+  parray = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
+  if (!parray) {
+    root->failure_reason = w_string_new("CFArrayCreateMutable failed");
+    goto fail;
+  }
+
+  cpath = CFStringCreateWithBytes(NULL, (const UInt8 *)root->root_path->buf,
+                                  root->root_path->len, kCFStringEncodingUTF8,
+                                  false);
+  if (!cpath) {
+    root->failure_reason = w_string_new("CFStringCreateWithBytes failed");
+    goto fail;
+  }
+
+  CFArrayAppendValue(parray, cpath);
+
+  latency = cfg_get_double(root, "fsevents_latency", 0.01),
+  w_log(W_LOG_DBG,
+      "FSEventStreamCreate for path %.*s with latency %f seconds\n",
+      root->root_path->len,
+      root->root_path->buf,
+      latency);
+
+  fse_stream->stream = FSEventStreamCreate(NULL, fse_callback,
+      &ctx, parray, kFSEventStreamEventIdSinceNow,
+      latency,
+      kFSEventStreamCreateFlagNoDefer|
+      kFSEventStreamCreateFlagWatchRoot|
+      kFSEventStreamCreateFlagFileEvents);
+
+  if (!fse_stream->stream) {
+    root->failure_reason = w_string_new("FSEventStreamCreate failed");
+    goto fail;
+  }
+
+  FSEventStreamScheduleWithRunLoop(fse_stream->stream,
+      CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+
+#ifdef HAVE_FSEVENTSTREAMSETEXCLUSIONPATHS
+  if (w_ht_size(root->ignore.ignore_dirs) > 0 &&
+      cfg_get_bool(root, "_use_fsevents_exclusions", true)) {
+    CFMutableArrayRef ignarray;
+    size_t i, nitems = MIN(w_ht_size(root->ignore.ignore_dirs), MAX_EXCLUSIONS);
+
+    ignarray = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
+    if (!ignarray) {
+      root->failure_reason = w_string_new("CFArrayCreateMutable failed");
+      goto fail;
+    }
+
+    for (i = 0; i < nitems; ++i) {
+      w_string_t *path = root->ignore.dirs_vec[i];
+      CFStringRef ignpath;
+
+      ignpath = CFStringCreateWithBytes(
+          NULL, (const UInt8 *)path->buf, path->len,
+          kCFStringEncodingUTF8, false);
+
+      if (!ignpath) {
+        root->failure_reason = w_string_new("CFStringCreateWithBytes failed");
+        CFRelease(ignarray);
+        goto fail;
+      }
+
+      CFArrayAppendValue(ignarray, ignpath);
+      CFRelease(ignpath);
+    }
+
+    if (!FSEventStreamSetExclusionPaths(fse_stream->stream, ignarray)) {
+      root->failure_reason =
+          w_string_new("FSEventStreamSetExclusionPaths failed");
+      CFRelease(ignarray);
+      goto fail;
+    }
+
+    CFRelease(ignarray);
+  }
+#endif
+
+out:
+  if (parray) {
+    CFRelease(parray);
+  }
+  if (cpath) {
+    CFRelease(cpath);
+  }
+
+  return fse_stream;
+
+fail:
+  fse_stream_free(fse_stream);
+  fse_stream = NULL;
+  goto out;
+}
+
 static void *fsevents_thread(void *arg)
 {
   w_root_t *root = arg;
-  FSEventStreamContext ctx;
-  CFMutableArrayRef parray;
-  CFStringRef cpath;
-  FSEventStreamRef fs_stream = NULL;
-  CFFileDescriptorContext fdctx;
   CFFileDescriptorRef fdref;
+  CFFileDescriptorContext fdctx;
   struct fsevents_root_state *state = root->watch;
-  double latency;
+  struct fse_stream *fse_stream = NULL;
 
   w_set_thread_name("fsevents %.*s", root->root_path->len,
       root->root_path->buf);
 
   // Block until fsevents_root_start is waiting for our initialization
   pthread_mutex_lock(&state->fse_mtx);
-
-  memset(&ctx, 0, sizeof(ctx));
-  ctx.info = root;
 
   memset(&fdctx, 0, sizeof(fdctx));
   fdctx.info = root;
@@ -163,87 +282,12 @@ static void *fsevents_thread(void *arg)
     CFRelease(fdsrc);
   }
 
-  parray = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
-  if (!parray) {
-    root->failure_reason = w_string_new("CFArrayCreateMutable failed");
+  fse_stream = fse_stream_make(root);
+  if (!fse_stream) {
     goto done;
   }
 
-  cpath = CFStringCreateWithBytes(NULL, (const UInt8*)root->root_path->buf,
-      root->root_path->len, kCFStringEncodingUTF8,
-      false);
-  if (!cpath) {
-    root->failure_reason = w_string_new("CFStringCreateWithBytes failed");
-    goto done;
-  }
-
-  CFArrayAppendValue(parray, cpath);
-  CFRelease(cpath);
-
-  latency = cfg_get_double(root, "fsevents_latency", 0.01),
-  w_log(W_LOG_DBG,
-      "FSEventStreamCreate for path %.*s with latency %f seconds\n",
-      root->root_path->len,
-      root->root_path->buf,
-      latency);
-
-  fs_stream = FSEventStreamCreate(NULL, fse_callback,
-      &ctx, parray, kFSEventStreamEventIdSinceNow,
-      latency,
-      kFSEventStreamCreateFlagNoDefer|
-      kFSEventStreamCreateFlagWatchRoot|
-      kFSEventStreamCreateFlagFileEvents);
-
-  if (!fs_stream) {
-    root->failure_reason = w_string_new("FSEventStreamCreate failed");
-    goto done;
-  }
-
-  FSEventStreamScheduleWithRunLoop(fs_stream,
-      CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-
-#ifdef HAVE_FSEVENTSTREAMSETEXCLUSIONPATHS
-  if (w_ht_size(root->ignore.ignore_dirs) > 0 &&
-      cfg_get_bool(root, "_use_fsevents_exclusions", true)) {
-    CFMutableArrayRef ignarray;
-    size_t i, nitems = MIN(w_ht_size(root->ignore.ignore_dirs), MAX_EXCLUSIONS);
-
-    ignarray = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
-    if (!ignarray) {
-      root->failure_reason = w_string_new("CFArrayCreateMutable failed");
-      goto done;
-    }
-
-    for (i = 0; i < nitems; ++i) {
-      w_string_t *path = root->ignore.dirs_vec[i];
-      CFStringRef ignpath;
-
-      ignpath = CFStringCreateWithBytes(
-          NULL, (const UInt8 *)path->buf, path->len,
-          kCFStringEncodingUTF8, false);
-
-      if (!ignpath) {
-        root->failure_reason = w_string_new("CFStringCreateWithBytes failed");
-        CFRelease(ignarray);
-        goto done;
-      }
-
-      CFArrayAppendValue(ignarray, ignpath);
-      CFRelease(ignpath);
-    }
-
-    if (!FSEventStreamSetExclusionPaths(fs_stream, ignarray)) {
-      root->failure_reason =
-          w_string_new("FSEventStreamSetExclusionPaths failed");
-      CFRelease(ignarray);
-      goto done;
-    }
-
-    CFRelease(ignarray);
-  }
-#endif
-
-  if (!FSEventStreamStart(fs_stream)) {
+  if (!FSEventStreamStart(fse_stream->stream)) {
     root->failure_reason = w_string_make_printf(
         "FSEventStreamStart failed, look at your log file %s for "
         "lines mentioning FSEvents and see %s#fsevents for more information\n",
@@ -261,10 +305,8 @@ static void *fsevents_thread(void *arg)
   // Since the goto's above hold fse_mtx, we should grab it here
   pthread_mutex_lock(&state->fse_mtx);
 done:
-  if (fs_stream) {
-    FSEventStreamStop(fs_stream);
-    FSEventStreamInvalidate(fs_stream);
-    FSEventStreamRelease(fs_stream);
+  if (fse_stream) {
+    fse_stream_free(fse_stream);
   }
   if (fdref) {
     CFRelease(fdref);
