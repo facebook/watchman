@@ -58,7 +58,8 @@ static const struct flag_map kflags[] = {
 };
 
 static struct fse_stream *fse_stream_make(w_root_t *root,
-                                          FSEventStreamEventId since);
+                                          FSEventStreamEventId since,
+                                          w_string_t **failure_reason);
 static void fse_stream_free(struct fse_stream *fse_stream);
 
 static void fse_callback(ConstFSEventStreamRef streamRef,
@@ -103,13 +104,14 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
             // a recrawl.
             w_string_t *failure_reason = NULL;
             struct fse_stream *replacement =
-                fse_stream_make(root, stream->last_good);
+                fse_stream_make(root, stream->last_good, &failure_reason);
 
             if (!replacement) {
               w_log(W_LOG_ERR,
                     "Failed to rebuild fsevent stream (%.*s) while trying to "
                     "resync, falling back to a regular recrawl\n",
-                    root->failure_reason->len, root->failure_reason->buf);
+                    failure_reason->len, failure_reason->buf);
+              w_string_delref(failure_reason);
               // Allow the UserDropped event to propagate and trigger a recrawl
               goto propagate;
             }
@@ -214,7 +216,8 @@ static void fse_stream_free(struct fse_stream *fse_stream) {
 }
 
 static struct fse_stream *fse_stream_make(w_root_t *root,
-                                          FSEventStreamEventId since) {
+                                          FSEventStreamEventId since,
+                                          w_string_t **failure_reason) {
   FSEventStreamContext ctx;
   CFMutableArrayRef parray = NULL;
   CFStringRef cpath = NULL;
@@ -223,7 +226,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
 
   if (!fse_stream) {
     // Note that w_string_new will terminate the process on OOM
-    root->failure_reason = w_string_new("OOM");
+    *failure_reason = w_string_new("OOM");
     goto fail;
   }
   fse_stream->root = root;
@@ -233,7 +236,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
 
   parray = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
   if (!parray) {
-    root->failure_reason = w_string_new("CFArrayCreateMutable failed");
+    *failure_reason = w_string_new("CFArrayCreateMutable failed");
     goto fail;
   }
 
@@ -241,7 +244,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
                                   root->root_path->len, kCFStringEncodingUTF8,
                                   false);
   if (!cpath) {
-    root->failure_reason = w_string_new("CFStringCreateWithBytes failed");
+    *failure_reason = w_string_new("CFStringCreateWithBytes failed");
     goto fail;
   }
 
@@ -262,7 +265,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
       kFSEventStreamCreateFlagFileEvents);
 
   if (!fse_stream->stream) {
-    root->failure_reason = w_string_new("FSEventStreamCreate failed");
+    *failure_reason = w_string_new("FSEventStreamCreate failed");
     goto fail;
   }
 
@@ -277,7 +280,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
 
     ignarray = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
     if (!ignarray) {
-      root->failure_reason = w_string_new("CFArrayCreateMutable failed");
+      *failure_reason = w_string_new("CFArrayCreateMutable failed");
       goto fail;
     }
 
@@ -290,7 +293,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
           kCFStringEncodingUTF8, false);
 
       if (!ignpath) {
-        root->failure_reason = w_string_new("CFStringCreateWithBytes failed");
+        *failure_reason = w_string_new("CFStringCreateWithBytes failed");
         CFRelease(ignarray);
         goto fail;
       }
@@ -300,8 +303,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
     }
 
     if (!FSEventStreamSetExclusionPaths(fse_stream->stream, ignarray)) {
-      root->failure_reason =
-          w_string_new("FSEventStreamSetExclusionPaths failed");
+      *failure_reason = w_string_new("FSEventStreamSetExclusionPaths failed");
       CFRelease(ignarray);
       goto fail;
     }
@@ -361,7 +363,8 @@ static void *fsevents_thread(void *arg)
     CFRelease(fdsrc);
   }
 
-  state->stream = fse_stream_make(root, kFSEventStreamEventIdSinceNow);
+  state->stream = fse_stream_make(root, kFSEventStreamEventIdSinceNow,
+                                  &root->failure_reason);
   if (!state->stream) {
     goto done;
   }
