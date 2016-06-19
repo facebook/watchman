@@ -57,6 +57,10 @@ static const struct flag_map kflags[] = {
   {0, NULL},
 };
 
+static struct fse_stream *fse_stream_make(w_root_t *root,
+                                          FSEventStreamEventId since);
+static void fse_stream_free(struct fse_stream *fse_stream);
+
 static void fse_callback(ConstFSEventStreamRef streamRef,
    void *clientCallBackInfo,
    size_t numEvents,
@@ -81,10 +85,64 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
       if ((eventFlags[i] & (kFSEventStreamEventFlagUserDropped |
                             kFSEventStreamEventFlagKernelDropped)) != 0) {
         stream->lost_sync = true;
+
+        if (state->attempt_resync_on_user_drop &&
+            (eventFlags[i] & (kFSEventStreamEventFlagUserDropped |
+                              kFSEventStreamEventFlagKernelDropped)) ==
+                kFSEventStreamEventFlagUserDropped) {
+          // User-space dropped events.  fseventsd has a reliable journal so we
+          // can attempt to resync.
+
+          if (state->stream == stream) {
+            // We are the active stream for this watch which means that it
+            // is safe for us to proceed with changing state->stream.
+            // Attempt to set up a new stream to resync from the last-good
+            // event.  If successful, that will replace the current stream.
+            // If we fail, then we allow the UserDropped event to propagate
+            // to the consumer thread which has existing logic to schedule
+            // a recrawl.
+            w_string_t *failure_reason = NULL;
+            struct fse_stream *replacement =
+                fse_stream_make(root, stream->last_good);
+
+            if (!replacement) {
+              w_log(W_LOG_ERR,
+                    "Failed to rebuild fsevent stream (%.*s) while trying to "
+                    "resync, falling back to a regular recrawl\n",
+                    root->failure_reason->len, root->failure_reason->buf);
+              // Allow the UserDropped event to propagate and trigger a recrawl
+              goto propagate;
+            }
+
+            if (!FSEventStreamStart(replacement->stream)) {
+              w_log(W_LOG_ERR, "FSEventStreamStart failed while trying to "
+                               "resync, falling back to a regular recrawl\n");
+              // Allow the UserDropped event to propagate and trigger a recrawl
+              goto propagate;
+            }
+
+            // mark the replacement as the winner
+            state->stream = replacement;
+
+            // And tear ourselves down
+            fse_stream_free(stream);
+
+            // And we're done.
+            return;
+          }
+        }
         break;
       }
     }
+  } else if (state->attempt_resync_on_user_drop) {
+    // This stream has already lost sync and our policy is to resync
+    // for ourselves.  This is most likely a spurious callback triggered
+    // after we'd taken action above.  We just ignore further events
+    // on this particular stream and let the other stuff kick in.
+    return;
   }
+
+propagate:
 
   for (i = 0; i < numEvents; i++) {
     uint32_t len;
