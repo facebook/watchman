@@ -137,7 +137,8 @@ static void fse_stream_free(struct fse_stream *fse_stream) {
   }
 }
 
-static struct fse_stream *fse_stream_make(w_root_t *root) {
+static struct fse_stream *fse_stream_make(w_root_t *root,
+                                          FSEventStreamEventId since) {
   FSEventStreamContext ctx;
   CFMutableArrayRef parray = NULL;
   CFStringRef cpath = NULL;
@@ -178,7 +179,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root) {
       latency);
 
   fse_stream->stream = FSEventStreamCreate(NULL, fse_callback,
-      &ctx, parray, kFSEventStreamEventIdSinceNow,
+      &ctx, parray, since,
       latency,
       kFSEventStreamCreateFlagNoDefer|
       kFSEventStreamCreateFlagWatchRoot|
@@ -282,7 +283,7 @@ static void *fsevents_thread(void *arg)
     CFRelease(fdsrc);
   }
 
-  fse_stream = fse_stream_make(root);
+  fse_stream = fse_stream_make(root, kFSEventStreamEventIdSinceNow);
   if (!fse_stream) {
     goto done;
   }
