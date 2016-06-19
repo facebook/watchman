@@ -140,7 +140,21 @@ some resources, or you may just need to install more RAM in the system.
 ### I've changed my limits, how can I clear the error?
 
 The error will stick until you restart the watchman process.  The simplest
-resolution is to run `watchman shutdown-server`.
+resolution is:
+
+*Since 4.6*
+
+```
+$ watchman watch-del-all
+$ watchman shutdown-server
+```
+
+*Before 4.6*
+
+```
+$ rm <STATEDIR>/state       # see above for what STATEDIR means
+$ watchman --no-spawn --no-local shutdown-server
+```
 
 If you have not actually resolved the root cause you may continue to trigger
 and experience this state each time the system trips over these limits.
@@ -165,9 +179,8 @@ limits for the number of files.
 
 ### How do I resolve this?
 
-```
-watchman shutdown-server
-```
+[Follow these directions](
+/watchman/docs/troubleshooting.html#i-39-ve-changed-my-limits-how-can-i-clear-the-error)
 
 If the issue persists, consult your system administrator to identify what
 is consuming these resources and remediate it, or to increase your system

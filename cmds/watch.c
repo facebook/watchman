@@ -116,7 +116,8 @@ static void cmd_watch_del_all(struct watchman_client *client, json_t *args)
   set_prop(resp, "roots", roots);
   send_and_dispose_response(client, resp);
 }
-W_CMD_REG("watch-del-all", cmd_watch_del_all, CMD_DAEMON, NULL)
+W_CMD_REG("watch-del-all", cmd_watch_del_all, CMD_DAEMON | CMD_POISON_IMMUNE,
+          NULL)
 
 /* watch-list
  * Returns a list of watched roots */
