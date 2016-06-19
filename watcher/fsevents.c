@@ -20,6 +20,7 @@ struct fse_stream {
   w_root_t *root;
   FSEventStreamEventId last_good;
   bool lost_sync;
+  bool inject_drop;
 };
 
 struct fsevents_root_state {
@@ -79,12 +80,21 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
   unused_parameter(streamRef);
 
   if (!stream->lost_sync) {
+    // This is to facilitate testing via debug-fsevents-inject-drop.
+    if (stream->inject_drop) {
+      stream->lost_sync = true;
+      goto do_resync;
+    }
+
     // Pre-scan to test whether we lost sync.  The intent is to be able to skip
     // processing the events from the point at which we lost sync, so we have
     // to check this before we start allocating events for the consumer.
     for (i = 0; i < numEvents; i++) {
       if ((eventFlags[i] & (kFSEventStreamEventFlagUserDropped |
                             kFSEventStreamEventFlagKernelDropped)) != 0) {
+        // We don't ever need to clear lost_sync as the code below will either
+        // set up a new stream instance with it cleared, or will recrawl and
+        // set up a whole new state for the recrawled instance.
         stream->lost_sync = true;
 
         if (state->attempt_resync_on_user_drop &&
@@ -93,7 +103,7 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
                 kFSEventStreamEventFlagUserDropped) {
           // User-space dropped events.  fseventsd has a reliable journal so we
           // can attempt to resync.
-
+do_resync:
           if (state->stream == stream) {
             // We are the active stream for this watch which means that it
             // is safe for us to proceed with changing state->stream.
@@ -122,6 +132,9 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
               // Allow the UserDropped event to propagate and trigger a recrawl
               goto propagate;
             }
+
+            w_log(W_LOG_ERR, "Lost sync, so resync from last_good event %llu\n",
+                  stream->last_good);
 
             // mark the replacement as the winner
             state->stream = replacement;
@@ -341,6 +354,8 @@ static void *fsevents_thread(void *arg)
   // Block until fsevents_root_start is waiting for our initialization
   pthread_mutex_lock(&state->fse_mtx);
 
+  // We'll default this to off in the 4.6 release and review the default
+  // value for 4.7
   state->attempt_resync_on_user_drop =
       cfg_get_bool(root, "fsevents_try_resync", false);
 
@@ -643,6 +658,59 @@ struct watchman_ops fsevents_watcher = {
   fsevents_root_wait_notify,
   fsevents_file_free
 };
+
+// A helper command to facilitate testing that we can successfully
+// resync the stream.
+static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
+                                           json_t *args) {
+  w_root_t *root;
+  json_t *resp;
+  FSEventStreamEventId last_good;
+  struct fsevents_root_state *state;
+
+  /* resolve the root */
+  if (json_array_size(args) != 2) {
+    send_error_response(
+        client, "wrong number of arguments for 'debug-fsevents-inject-drop'");
+    return;
+  }
+
+  root = resolve_root_or_err(client, args, 1, false);
+
+  if (!root) {
+    return;
+  }
+
+  if (root->watcher_ops != &fsevents_watcher) {
+    send_error_response(client, "root is not using the fsevents watcher");
+    w_root_delref(root);
+    return;
+  }
+
+  w_root_lock(root, "debug-fsevents-inject-drop");
+  state = root->watch;
+
+  if (!state->attempt_resync_on_user_drop) {
+    w_root_unlock(root);
+    send_error_response(client, "fsevents_try_resync is not enabled");
+    w_root_delref(root);
+    return;
+  }
+
+  pthread_mutex_lock(&state->fse_mtx);
+  last_good = state->stream->last_good;
+  state->stream->inject_drop = true;
+  pthread_mutex_unlock(&state->fse_mtx);
+
+  w_root_unlock(root);
+
+  resp = make_response();
+  set_prop(resp, "last_good", json_integer(last_good));
+  send_and_dispose_response(client, resp);
+}
+W_CMD_REG("debug-fsevents-inject-drop", cmd_debug_fsevents_inject_drop,
+          CMD_DAEMON, w_cmd_realpath_root);
+
 #endif // HAVE_FSEVENTS
 
 /* vim:ts=2:sw=2:et:
