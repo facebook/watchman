@@ -18,6 +18,8 @@ struct watchman_fsevent {
 struct fse_stream {
   FSEventStreamRef stream;
   w_root_t *root;
+  FSEventStreamEventId last_good;
+  bool lost_sync;
 };
 
 struct fsevents_root_state {
@@ -68,8 +70,19 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
   struct fsevents_root_state *state = root->watch;
 
   unused_parameter(streamRef);
-  unused_parameter(eventIds);
-  unused_parameter(eventFlags);
+
+  if (!stream->lost_sync) {
+    // Pre-scan to test whether we lost sync.  The intent is to be able to skip
+    // processing the events from the point at which we lost sync, so we have
+    // to check this before we start allocating events for the consumer.
+    for (i = 0; i < numEvents; i++) {
+      if ((eventFlags[i] & (kFSEventStreamEventFlagUserDropped |
+                            kFSEventStreamEventFlagKernelDropped)) != 0) {
+        stream->lost_sync = true;
+        break;
+      }
+    }
+  }
 
   for (i = 0; i < numEvents; i++) {
     uint32_t len;
@@ -93,6 +106,9 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
 
     evt->path = w_string_new_len(path, len);
     evt->flags = eventFlags[i];
+    if (!stream->lost_sync) {
+      stream->last_good = eventIds[i];
+    }
     if (tail) {
       tail->next = evt;
     } else {
