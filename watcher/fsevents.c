@@ -21,6 +21,7 @@ struct fse_stream {
   FSEventStreamEventId last_good;
   bool lost_sync;
   bool inject_drop;
+  CFUUIDRef uuid;
 };
 
 struct fsevents_root_state {
@@ -226,6 +227,9 @@ static void fse_stream_free(struct fse_stream *fse_stream) {
     FSEventStreamInvalidate(fse_stream->stream);
     FSEventStreamRelease(fse_stream->stream);
   }
+  if (fse_stream->uuid) {
+    CFRelease(fse_stream->uuid);
+  }
 }
 
 static struct fse_stream *fse_stream_make(w_root_t *root,
@@ -236,6 +240,8 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
   CFStringRef cpath = NULL;
   double latency;
   struct fse_stream *fse_stream = calloc(1, sizeof(*fse_stream));
+  struct stat st;
+  struct fsevents_root_state *state = root->watch;
 
   if (!fse_stream) {
     // Note that w_string_new will terminate the process on OOM
@@ -243,6 +249,48 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
     goto fail;
   }
   fse_stream->root = root;
+
+  // Each device has an optional journal maintained by fseventsd that keeps
+  // track of the change events.  The journal may not be available if the
+  // filesystem was mounted read-only.  The journal has an associated UUID
+  // to track the version of the data.  In some cases the journal can become
+  // invalidated and it will have a new UUID generated.  This can happen
+  // if the EventId rolls over.
+  // We need to lookup up the UUID for the associated path and use that to
+  // help decide whether we can use a value of `since` other than SinceNow.
+  if (stat(root->root_path->buf, &st)) {
+    *failure_reason = w_string_make_printf(
+        "failed to stat(%s): %s\n", root->root_path->buf, strerror(errno));
+    goto fail;
+  }
+
+  // Obtain the UUID for the device associated with the root
+  fse_stream->uuid = FSEventsCopyUUIDForDevice(st.st_dev);
+  if (since != kFSEventStreamEventIdSinceNow) {
+    CFUUIDBytes a, b;
+
+    if (!fse_stream->uuid) {
+      // If there is no UUID available and we want to use an event offset,
+      // we fail: a NULL UUID means that the journal is not available.
+      *failure_reason = w_string_make_printf(
+          "fsevents journal is not available for dev_t=%lu\n", st.st_dev);
+      goto fail;
+    }
+    // Compare the UUID with that of the current stream
+    if (!state->stream->uuid) {
+      *failure_reason =
+          w_string_new("fsevents journal was not available for prior stream");
+      goto fail;
+    }
+
+    a = CFUUIDGetUUIDBytes(fse_stream->uuid);
+    b = CFUUIDGetUUIDBytes(state->stream->uuid);
+
+    if (memcmp(&a, &b, sizeof(a)) != 0) {
+      *failure_reason = w_string_new("fsevents journal UUID is different");
+      goto fail;
+    }
+  }
 
   memset(&ctx, 0, sizeof(ctx));
   ctx.info = fse_stream;
