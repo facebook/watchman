@@ -19,8 +19,10 @@ struct fse_stream {
   FSEventStreamRef stream;
   w_root_t *root;
   FSEventStreamEventId last_good;
+  FSEventStreamEventId since;
   bool lost_sync;
   bool inject_drop;
+  bool event_id_wrapped;
   CFUUIDRef uuid;
 };
 
@@ -105,6 +107,13 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
           // User-space dropped events.  fseventsd has a reliable journal so we
           // can attempt to resync.
 do_resync:
+          if (stream->event_id_wrapped) {
+            w_log(W_LOG_ERR, "fsevents lost sync and the event_ids wrapped, so "
+                             "we have no choice but to do a full recrawl\n");
+            // Allow the UserDropped event to propagate and trigger a recrawl
+            goto propagate;
+          }
+
           if (state->stream == stream) {
             // We are the active stream for this watch which means that it
             // is safe for us to proceed with changing state->stream.
@@ -163,6 +172,20 @@ propagate:
   for (i = 0; i < numEvents; i++) {
     uint32_t len;
     const char *path = paths[i];
+
+    if (eventFlags[i] & kFSEventStreamEventFlagHistoryDone) {
+      // The docs say to ignore this event; it's just a marker informing
+      // us that a resync completed.  Take this opportunity to log how
+      // many events were replayed to catch up.
+      w_log(W_LOG_ERR, "Historical resync completed at event id %llu (caught "
+                       "up on %llu events)\n",
+            eventIds[i], eventIds[i] - stream->since);
+      continue;
+    }
+
+    if (eventFlags[i] & kFSEventStreamEventFlagEventIdsWrapped) {
+      stream->event_id_wrapped = true;
+    }
 
     len = strlen(path);
     while (path[len-1] == '/') {
@@ -249,6 +272,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
     goto fail;
   }
   fse_stream->root = root;
+  fse_stream->since = since;
 
   // Each device has an optional journal maintained by fseventsd that keeps
   // track of the change events.  The journal may not be available if the
