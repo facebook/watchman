@@ -20,10 +20,11 @@ class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
         self.assertFalse('error' in res, 'version with no args still works')
 
         res = client.query('version', {
-            'optional': ['term-match', 'will-never-exist']})
+            'optional': ['term-match', 'will-never-exist', 'bser-v2']})
         self.assertDictEqual(res['capabilities'], {
             'term-match': True,
-            'will-never-exist': False})
+            'will-never-exist': False,
+            'bser-v2': True})
 
         res = client.query('version', {
             'required': ['term-match'],
