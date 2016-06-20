@@ -127,7 +127,9 @@ bool inot_root_init(w_root_t *root, char **errmsg) {
     return false;
   }
   w_set_cloexec(state->infd);
-  state->wd_to_name = w_ht_new(HINT_NUM_DIRS, &w_ht_string_val_funcs);
+  state->wd_to_name =
+      w_ht_new(cfg_get_int(root, CFG_HINT_NUM_DIRS, HINT_NUM_DIRS),
+               &w_ht_string_val_funcs);
   state->move_map = w_ht_new(2, &move_hash_funcs);
 
   return true;

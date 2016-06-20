@@ -117,7 +117,9 @@ static bool w_root_init(w_root_t *root, char **errmsg)
   root->cursors = w_ht_new(2, &w_ht_string_funcs);
   root->suffixes = w_ht_new(2, &w_ht_string_funcs);
 
-  root->dirname_to_dir = w_ht_new(HINT_NUM_DIRS, &dirname_hash_funcs);
+  root->dirname_to_dir =
+      w_ht_new((uint32_t)cfg_get_int(root, CFG_HINT_NUM_DIRS, HINT_NUM_DIRS),
+               &dirname_hash_funcs);
   root->ticks = 1;
 
   // "manually" populate the initial dir, as the dir resolver will

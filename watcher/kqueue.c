@@ -45,6 +45,8 @@ const struct watchman_hash_funcs name_to_fd_funcs = {
 
 bool kqueue_root_init(w_root_t *root, char **errmsg) {
   struct kqueue_root_state *state;
+  json_int_t hint_num_dirs =
+      cfg_get_int(root, CFG_HINT_NUM_DIRS, HINT_NUM_DIRS);
 
   state = calloc(1, sizeof(*state));
   if (!state) {
@@ -53,8 +55,8 @@ bool kqueue_root_init(w_root_t *root, char **errmsg) {
   }
   root->watch = state;
   pthread_mutex_init(&state->lock, NULL);
-  state->name_to_fd = w_ht_new(HINT_NUM_DIRS, &name_to_fd_funcs);
-  state->fd_to_name = w_ht_new(HINT_NUM_DIRS, &w_ht_string_val_funcs);
+  state->name_to_fd = w_ht_new(hint_num_dirs, &name_to_fd_funcs);
+  state->fd_to_name = w_ht_new(hint_num_dirs, &w_ht_string_val_funcs);
 
   state->kq_fd = kqueue();
   if (state->kq_fd == -1) {

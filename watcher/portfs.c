@@ -83,7 +83,8 @@ bool portfs_root_init(w_root_t *root, char **errmsg) {
   root->watch = state;
 
   pthread_mutex_init(&state->lock, NULL);
-  state->port_files = w_ht_new(HINT_NUM_DIRS, &port_file_funcs);
+  state->port_files = w_ht_new(
+      cfg_get_int(root, CFG_HINT_NUM_DIRS, HINT_NUM_DIRS), &port_file_funcs);
 
   state->port_fd = port_create();
   if (state->port_fd == -1) {
