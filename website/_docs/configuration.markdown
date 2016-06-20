@@ -55,6 +55,7 @@ Option | Scope | Since version
 `fsevents_latency` | fallback | 3.2
 `idle_reap_age_seconds` | local | 3.7
 `hint_num_files_per_dir` | fallback | 3.9
+`hint_num_dirs` | fallback | 4.6
 
 ### Configuration Options
 
@@ -258,3 +259,18 @@ is 1; you would pay the cost of the collisions during the initial crawl and
 have a more optimal memory usage.  Since watchman is primarily employed as an
 accelerator, we'd recommend biasing towards using more memory and taking less
 time to run.
+
+### hint_num_dirs
+
+*Since 4.6*
+
+Used to pre-size hash tables that are used to track the total set of files
+in the entire watched tree.  The default value for this is 131072.
+
+The optimal size is a power-of-two larger than the number of directories
+in your tree; running `find . -type d | wc -l` will tell you the number
+that you have.
+
+Making this number too large is potentially wasteful of memory.  Making this
+number too small results in increased latency during crawling while the
+hash tables are rebuilt.

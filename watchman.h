@@ -232,9 +232,8 @@ struct watchman_string {
   const char *buf;
 };
 
-/* small for testing, but should make this greater than the number of dirs we
- * have in our repos to avoid realloc */
 #define HINT_NUM_DIRS 128*1024
+#define CFG_HINT_NUM_DIRS "hint_num_dirs"
 
 /* We leverage the fact that our aligned pointers will never set the LSB of a
  * pointer value.  We can use the LSB to indicate whether kqueue entries are
