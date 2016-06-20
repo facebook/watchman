@@ -118,7 +118,8 @@ typedef bool (*w_query_generator)(
     w_query *query,
     w_root_t *root,
     struct w_query_ctx *ctx,
-    void *gendata
+    void *gendata,
+    int64_t *num_walked
 );
 
 struct w_query_result {

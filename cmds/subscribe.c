@@ -7,16 +7,20 @@ static bool subscription_generator(
     w_query *query,
     w_root_t *root,
     struct w_query_ctx *ctx,
-    void *gendata)
+    void *gendata,
+    int64_t *num_walked)
 {
   struct watchman_file *f;
   struct watchman_client_subscription *sub = gendata;
+  int64_t n = 0;
+  bool result = true;
 
   w_log(W_LOG_DBG, "running subscription %s %p\n",
       sub->name->buf, sub);
 
   // Walk back in time until we hit the boundary
   for (f = root->latest_file; f; f = f->next) {
+    ++n;
     if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
       break;
     }
@@ -30,11 +34,14 @@ static bool subscription_generator(
     }
 
     if (!w_query_process_file(query, ctx, f)) {
-      return false;
+      result = false;
+      goto done;
     }
   }
 
-  return true;
+done:
+  *num_walked = n;
+  return result;
 }
 
 static void update_subscription_ticks(struct watchman_client_subscription *sub,

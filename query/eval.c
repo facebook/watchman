@@ -139,12 +139,16 @@ bool w_query_file_matches_relative_root(
 static bool time_generator(
     w_query *query,
     w_root_t *root,
-    struct w_query_ctx *ctx)
+    struct w_query_ctx *ctx,
+    int64_t *num_walked)
 {
   struct watchman_file *f;
+  int64_t n = 0;
+  bool result = true;
 
   // Walk back in time until we hit the boundary
   for (f = root->latest_file; f; f = f->next) {
+    ++n;
     if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
       break;
     }
@@ -158,20 +162,26 @@ static bool time_generator(
     }
 
     if (!w_query_process_file(query, ctx, f)) {
-      return false;
+      result = false;
+      goto done;
     }
   }
 
-  return true;
+done:
+  *num_walked = n;
+  return result;
 }
 
 static bool suffix_generator(
     w_query *query,
     w_root_t *root,
-    struct w_query_ctx *ctx)
+    struct w_query_ctx *ctx,
+    int64_t *num_walked)
 {
   uint32_t i;
   struct watchman_file *f;
+  int64_t n = 0;
+  bool result = true;
 
   for (i = 0; i < query->nsuffixes; i++) {
     // Head of suffix index for this suffix
@@ -181,35 +191,48 @@ static bool suffix_generator(
 
     // Walk and process
     for (; f; f = f->suffix_next) {
+      ++n;
       if (!w_query_file_matches_relative_root(ctx, f)) {
         continue;
       }
 
       if (!w_query_process_file(query, ctx, f)) {
-        return false;
+        result = false;
+        goto done;
       }
     }
   }
-  return true;
+
+done:
+  *num_walked = n;
+  return result;
 }
 
 static bool all_files_generator(
     w_query *query,
     w_root_t *root,
-    struct w_query_ctx *ctx)
+    struct w_query_ctx *ctx,
+    int64_t *num_walked)
 {
   struct watchman_file *f;
+  int64_t n = 0;
+  bool result = true;
 
   for (f = root->latest_file; f; f = f->next) {
+    ++n;
     if (!w_query_file_matches_relative_root(ctx, f)) {
       continue;
     }
 
     if (!w_query_process_file(query, ctx, f)) {
-      return false;
+      result = false;
+      goto done;
     }
   }
-  return true;
+
+done:
+  *num_walked = n;
+  return result;
 }
 
 static bool dir_generator(
@@ -217,37 +240,50 @@ static bool dir_generator(
     w_root_t *root,
     struct w_query_ctx *ctx,
     struct watchman_dir *dir,
-    uint32_t depth)
+    uint32_t depth,
+    int64_t *num_walked)
 {
   w_ht_iter_t i;
+  int64_t n = 0;
+  bool result = true;
 
   if (w_ht_first(dir->files, &i)) do {
     struct watchman_file *file = w_ht_val_ptr(i.value);
+    ++n;
 
     if (!w_query_process_file(query, ctx, file)) {
-      return false;
+      result = false;
+      goto done;
     }
   } while (w_ht_next(dir->files, &i));
 
   if (depth > 0 && w_ht_first(dir->dirs, &i)) do {
     struct watchman_dir *child = w_ht_val_ptr(i.value);
+    int64_t child_walked = 0;
 
-    if (!dir_generator(query, root, ctx, child, depth - 1)) {
-      return false;
+    result = dir_generator(query, root, ctx, child, depth - 1, &child_walked);
+    n += child_walked;
+    if (!result) {
+      goto done;
     }
   } while (w_ht_next(dir->dirs, &i));
 
-  return true;
+done:
+  *num_walked = n;
+  return result;
 }
 
 static bool path_generator(
     w_query *query,
     w_root_t *root,
-    struct w_query_ctx *ctx)
+    struct w_query_ctx *ctx,
+    int64_t *num_walked)
 {
   w_string_t *relative_root;
   struct watchman_file *f;
   uint32_t i;
+  int64_t n = 0;
+  bool result = true;
 
   if (query->relative_root != NULL) {
     relative_root = query->relative_root;
@@ -295,9 +331,11 @@ static bool path_generator(
 
       // If it's a file (but not an existent dir)
       if (f && (!f->exists || !S_ISDIR(f->stat.mode))) {
+        ++n;
         w_string_delref(full_name);
         if (!w_query_process_file(query, ctx, f)) {
-          return false;
+          result = false;
+          goto done;
         }
         continue;
       }
@@ -315,44 +353,64 @@ static bool path_generator(
     w_string_delref(full_name);
 is_dir:
     // We got a dir; process recursively to specified depth
-    if (dir && !dir_generator(query, root, ctx, dir,
-          query->paths[i].depth)) {
-      return false;
+    if (dir) {
+      int64_t child_walked = 0;
+      result = dir_generator(query, root, ctx, dir, query->paths[i].depth,
+                             &child_walked);
+      n += child_walked;
+      if (!result) {
+        goto done;
+      }
     }
   }
 
-  return true;
+done:
+  *num_walked = n;
+  return result;
 }
 
 static bool default_generators(
     w_query *query,
     w_root_t *root,
     struct w_query_ctx *ctx,
-    void *gendata)
+    void *gendata,
+    int64_t *num_walked)
 {
   bool generated = false;
+  int64_t n = 0;
+  int64_t total = 0;
+  bool result = true;
 
   unused_parameter(gendata);
 
   // Time based query
   if (ctx->since.is_timestamp || !ctx->since.clock.is_fresh_instance) {
-    if (!time_generator(query, root, ctx)) {
-      return false;
+    n = 0;
+    result = time_generator(query, root, ctx, &n);
+    total += n;
+    if (!result) {
+      goto done;
     }
     generated = true;
   }
 
   // Suffix
   if (query->suffixes) {
-    if (!suffix_generator(query, root, ctx)) {
-      return false;
+    n = 0;
+    result = suffix_generator(query, root, ctx, &n);
+    total += n;
+    if (!result) {
+      goto done;
     }
     generated = true;
   }
 
   if (query->npaths) {
-    if (!path_generator(query, root, ctx)) {
-      return false;
+    n = 0;
+    result = path_generator(query, root, ctx, &n);
+    total += n;
+    if (!result) {
+      goto done;
     }
     generated = true;
   }
@@ -360,12 +418,17 @@ static bool default_generators(
   // And finally, if there were no other generators, we walk all known
   // files
   if (!generated) {
-    if (!all_files_generator(query, root, ctx)) {
-      return false;
+    n = 0;
+    result = all_files_generator(query, root, ctx, &n);
+    total += n;
+    if (!result) {
+      goto done;
     }
   }
 
-  return true;
+done:
+  *num_walked = total;
+  return result;
 }
 
 void w_query_result_free(w_query_res *res)
@@ -385,6 +448,7 @@ bool w_query_execute(
 {
   struct w_query_ctx ctx;
   w_perf_t sample;
+  int64_t num_walked = 0;
 
   memset(&ctx, 0, sizeof(ctx));
   ctx.query = query;
@@ -433,15 +497,16 @@ bool w_query_execute(
       generator = default_generators;
     }
 
-    generator(query, root, &ctx, gendata);
+    generator(query, root, &ctx, gendata, &num_walked);
   }
 
   if (w_perf_finish(&sample)) {
     w_perf_add_root_meta(&sample, root);
     w_perf_add_meta(&sample, "query_execute",
-                    json_pack("{s:b, s:i}",                             //
+                    json_pack("{s:b, s:i, s:i}",                        //
                               "fresh_instance", res->is_fresh_instance, //
-                              "num_results", ctx.num_results            //
+                              "num_results", ctx.num_results,           //
+                              "num_walked", num_walked                  //
                               ));
     w_perf_log(&sample);
   }
