@@ -572,7 +572,12 @@ static void parse_encoding(const char *enc, enum w_pdu_type *pdu)
     *pdu = is_bser;
     return;
   }
-  w_log(W_LOG_ERR, "Invalid encoding '%s', use one of json or bser\n", enc);
+  if (!strcmp(enc, "bser-v2")) {
+    *pdu = is_bser_v2;
+    return;
+  }
+  w_log(W_LOG_ERR, "Invalid encoding '%s', use one of json, bser or bser-v2\n",
+      enc);
   exit(EX_USAGE);
 }
 
@@ -967,6 +972,15 @@ static json_t *build_command(int argc, char **argv)
       }
       if (!output_encoding) {
         output_pdu = is_bser;
+      }
+    } else if (buf.pdu_type == is_bser_v2) {
+      // If they used bser v2 for the input, select bser v2 for output
+      // unless they explicitly requested something else
+      if (!server_encoding) {
+        server_pdu = is_bser_v2;
+      }
+      if (!output_encoding) {
+        output_pdu = is_bser_v2;
       }
     }
 

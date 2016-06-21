@@ -85,6 +85,9 @@ static inline enum w_pdu_type detect_pdu(w_jbuffer_t *jr)
   if (memcmp(jr->buf + jr->rpos, BSER_MAGIC, 2) == 0) {
     return is_bser;
   }
+  if (memcmp(jr->buf + jr->rpos, BSER_V2_MAGIC, 2) == 0) {
+    return is_bser_v2;
+  }
   return is_json_compact;
 }
 
@@ -499,13 +502,15 @@ static int jbuffer_write(const char *buffer, size_t size, void *ptr)
   return 0;
 }
 
-bool w_json_buffer_write_bser(w_jbuffer_t *jr, w_stm_t stm, json_t *json)
+bool w_json_buffer_write_bser(uint32_t bser_version, uint32_t bser_capabilities,
+    w_jbuffer_t *jr, w_stm_t stm, json_t *json)
 {
   struct jbuffer_write_data data = { stm, jr };
   int res;
 
   // bser_version == 1; capabilities == 0; dump == jbuffer_write
-  res = w_bser_write_pdu(1, 0, jbuffer_write, json, &data);
+  res = w_bser_write_pdu(bser_version, bser_capabilities, jbuffer_write, json,
+      &data);
 
   if (res != 0) {
     return false;
@@ -541,7 +546,9 @@ bool w_ser_write_pdu(enum w_pdu_type pdu_type,
     case is_json_pretty:
       return w_json_buffer_write(jr, stm, json, JSON_INDENT(4));
     case is_bser:
-      return w_json_buffer_write_bser(jr, stm, json);
+      return w_json_buffer_write_bser(1, 0, jr, stm, json);
+    case is_bser_v2:
+      return w_json_buffer_write_bser(2, 0, jr, stm, json);
     case need_data:
     default:
       return false;
