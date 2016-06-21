@@ -389,8 +389,14 @@ int w_bser_write_pdu(const uint32_t bser_version, const uint32_t capabilities,
   // To actually write the contents
   ctx.dump = dump;
 
-  if (dump(BSER_MAGIC, 2, data)) {
-    return -1;
+  if (bser_version == 2) {
+    if (dump(BSER_V2_MAGIC, 2, data)) {
+      return -1;
+    }
+  } else {
+    if (dump(BSER_MAGIC, 2, data)) {
+      return -1;
+    }
   }
 
   if (bser_int(&ctx, m_size, data)) {
