@@ -151,10 +151,26 @@ static void run_service(void)
         hostname);
   }
 
+#ifndef _WIN32
+  // Block SIGCHLD by default; we only want it to be delivered
+  // to the reaper thread and only when it is ready to reap.
+  // This MUST happen before we spawn any threads so that they
+  // can pick up our default blocked signal mask.
+  {
+    sigset_t sigset;
+
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGCHLD);
+    sigprocmask(SIG_BLOCK, &sigset, NULL);
+  }
+#endif
+
   watchman_watcher_init();
   w_clockspec_init();
-  w_state_load();
+  // Start the reaper before we load any state; the state may
+  // have triggers associated with it which may spawn processes
   w_start_reaper();
+  w_state_load();
   res = w_start_listener(sock_name);
   w_root_free_watched_roots();
 
