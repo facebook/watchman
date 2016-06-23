@@ -595,6 +595,10 @@ struct watchman_client {
   json_t *current_command;
   w_perf_t perf_sample;
 
+  // This handle is not joinable (CREATE_DETACHED), but can be
+  // used to deliver signals.
+  pthread_t thread_handle;
+
   struct watchman_client_response *head, *tail;
 };
 

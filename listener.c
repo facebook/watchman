@@ -407,7 +407,6 @@ static int get_listener_socket(const char *path)
 static struct watchman_client *make_new_client(w_stm_t stm) {
   struct watchman_client *client;
   pthread_attr_t attr;
-  pthread_t thr;
 
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
@@ -442,7 +441,7 @@ static struct watchman_client *make_new_client(w_stm_t stm) {
   // a low volume of concurrent clients and the json
   // parse/encode APIs are not easily used in a non-blocking
   // server architecture.
-  if (pthread_create(&thr, &attr, client_thread, client)) {
+  if (pthread_create(&client->thread_handle, &attr, client_thread, client)) {
     // It didn't work out, sorry!
     pthread_mutex_lock(&w_client_lock);
     w_ht_del(clients, w_ht_ptr_val(client));
@@ -724,6 +723,7 @@ bool w_start_listener(const char *path)
   {
     int interval = 2000;
     int last_count = 0, n_clients = 0;
+    const int max_interval = 1000000; // 1 second
 
     do {
       w_ht_iter_t iter;
@@ -734,6 +734,14 @@ bool w_start_listener(const char *path)
       if (w_ht_first(clients, &iter)) do {
         struct watchman_client *client = w_ht_val_ptr(iter.value);
         w_event_set(client->ping);
+
+#ifndef _WIN32
+        // If we've been waiting around for a while, interrupt
+        // the client thread; it may be blocked on a write
+        if (interval >= max_interval) {
+          pthread_kill(client->thread_handle, SIGUSR1);
+        }
+#endif
       } while (w_ht_next(clients, &iter));
 
       pthread_mutex_unlock(&w_client_lock);
@@ -742,7 +750,7 @@ bool w_start_listener(const char *path)
         w_log(W_LOG_ERR, "waiting for %d clients to terminate\n", n_clients);
       }
       usleep(interval);
-      interval = MIN(interval * 2, 1000000);
+      interval = MIN(interval * 2, max_interval);
     } while (n_clients > 0);
   }
 
