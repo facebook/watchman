@@ -109,7 +109,8 @@ class WatchmanTestCase(unittest.TestCase):
 
     def expandConfigurations(self):
         tests = []
-        for transport, encoding in [('local', 'bser'),
+        for transport, encoding in [('local', 'bser-v1'),
+                                    ('local', 'bser'),
                                     ('local', 'json'),
                                     ('cli', 'json')]:
             test = copy.copy(self)

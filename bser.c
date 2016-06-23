@@ -40,7 +40,7 @@ static const char bser_template_hdr = BSER_TEMPLATE;
 static const char bser_skip = BSER_SKIP;
 
 static bool is_bser_version_supported(const bser_ctx_t *ctx) {
-  return ctx->bser_version == 1;
+  return ctx->bser_version == 1 || ctx->bser_version == 2;
 }
 
 static int bser_real(const bser_ctx_t *ctx, double val, void *data)

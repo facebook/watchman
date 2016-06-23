@@ -211,13 +211,18 @@ class TestBSERDump(unittest.TestCase):
 
     def test_pdu_len(self):
         enc = self.bser_mod.dumps(1)
-        self.assertEqual(len(enc), self.bser_mod.pdu_len(enc))
+        # Note: bser.pdu_len returns the PDU length AND the BSER version,
+        # which is 1 by default.
+        DEFAULT_BSER_VERSION = 1
+        self.assertEqual((len(enc), DEFAULT_BSER_VERSION),
+                         self.bser_mod.pdu_len(enc))
 
         # try a bigger one; prove that we get the correct length
         # even though we receive just a portion of the complete
         # data
         enc = self.bser_mod.dumps([1, 2, 3, "hello there, much larger"])
-        self.assertEqual(len(enc), self.bser_mod.pdu_len(enc[0:7]))
+        self.assertEqual((len(enc), DEFAULT_BSER_VERSION),
+                         self.bser_mod.pdu_len(enc[0:7]))
 
     def test_garbage(self):
         # can't use the with form here because Python 2.6

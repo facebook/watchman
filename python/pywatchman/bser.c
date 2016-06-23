@@ -208,6 +208,7 @@ typedef struct loads_ctx {
   int mutable;
   const char *value_encoding;
   const char *value_errors;
+  uint32_t bser_version;
 } unser_ctx_t;
 
 static PyObject *bser_loads_recursive(const char **ptr, const char *end,
@@ -273,7 +274,12 @@ static int bser_init(bser_t *bser, uint32_t version, uint32_t capabilities)
   // our overall length.  To make things simpler, we'll use an
   // int32 for the header
 #define EMPTY_HEADER "\x00\x01\x05\x00\x00\x00\x00"
-  bser_append(bser, EMPTY_HEADER, sizeof(EMPTY_HEADER)-1);
+#define EMPTY_HEADER_V2 "\x00\x02\x05\x00\x00\x00\x00"
+  if (version == 2) {
+    bser_append(bser, EMPTY_HEADER_V2, sizeof(EMPTY_HEADER_V2)-1);
+  } else {
+    bser_append(bser, EMPTY_HEADER, sizeof(EMPTY_HEADER)-1);
+  }
 
   return 1;
 }
@@ -485,17 +491,21 @@ static int bser_recursive(bser_t *bser, PyObject *val)
   return 0;
 }
 
-static PyObject *bser_dumps(PyObject *self, PyObject *args)
+static PyObject *bser_dumps(PyObject *self, PyObject *args, PyObject *kw)
 {
   PyObject *val = NULL, *res;
   bser_t bser;
+  int bser_version = 1;
   uint32_t len;
 
-  if (!PyArg_ParseTuple(args, "O", &val)) {
+  static char *kw_list[] = {"val", "version", NULL};
+
+  if (!PyArg_ParseTupleAndKeywords(args, kw, "O|i:dumps", kw_list, &val,
+                                   &bser_version)) {
     return NULL;
   }
 
-  if (!bser_init(&bser, 1, 0)) {
+  if (!bser_init(&bser, bser_version, 0)) {
     return PyErr_NoMemory();
   }
 
@@ -931,6 +941,7 @@ static PyObject *bser_pdu_len(PyObject *self, PyObject *args)
   const char *data = NULL;
   int datalen = 0;
   const char *end;
+  uint32_t bser_version;
   int64_t expected_len, total_len;
 
   if (!PyArg_ParseTuple(args, "s#", &start, &datalen)) {
@@ -938,9 +949,12 @@ static PyObject *bser_pdu_len(PyObject *self, PyObject *args)
   }
   data = start;
   end = data + datalen;
-
   // Validate the header and length
-  if (memcmp(data, EMPTY_HEADER, 2) != 0) {
+  if (memcmp(data, EMPTY_HEADER, 2) == 0) {
+    bser_version = 1;
+  } else if (memcmp(data, EMPTY_HEADER_V2, 2) == 0) {
+    bser_version = 2;
+  } else {
     PyErr_SetString(PyExc_ValueError, "invalid bser header");
     return NULL;
   }
@@ -955,14 +969,7 @@ static PyObject *bser_pdu_len(PyObject *self, PyObject *args)
 
   total_len = expected_len + (data - start);
   // Python 3 has one integer type.
-#if PY_MAJOR_VERSION >= 3
-  return PyLong_FromLongLong(total_len);
-#else
-  if (total_len > LONG_MAX) {
-    return PyLong_FromLongLong(total_len);
-  }
-  return PyInt_FromLong((long)total_len);
-#endif // PY_MAJOR_VERSION >= 3
+  return Py_BuildValue("Lk", total_len, bser_version);
 }
 
 static PyObject *bser_loads(PyObject *self, PyObject *args, PyObject *kw)
@@ -971,19 +978,21 @@ static PyObject *bser_loads(PyObject *self, PyObject *args, PyObject *kw)
   int datalen = 0;
   const char *end;
   int64_t expected_len;
+  int bser_version = 1;
   PyObject *mutable_obj = NULL;
   const char *value_encoding = NULL;
   const char *value_errors = NULL;
   unser_ctx_t ctx = {1, 0};
 
   static char *kw_list[] = {"buf", "mutable", "value_encoding", "value_errors",
-                            NULL};
+                            "version", NULL};
 
-  if (!PyArg_ParseTupleAndKeywords(args, kw, "s#|Ozz:loads", kw_list, &data,
+  if (!PyArg_ParseTupleAndKeywords(args, kw, "s#|Ozzi:loads", kw_list, &data,
                                    &datalen, &mutable_obj, &value_encoding,
-                                   &value_errors)) {
+                                   &value_errors, &bser_version)) {
     return NULL;
   }
+
   if (mutable_obj) {
     ctx.mutable = PyObject_IsTrue(mutable_obj) > 0 ? 1 : 0;
   }
@@ -996,10 +1005,15 @@ static PyObject *bser_loads(PyObject *self, PyObject *args, PyObject *kw)
     ctx.value_errors = value_errors;
   }
 
+  ctx.bser_version = bser_version;
   end = data + datalen;
 
   // Validate the header and length
-  if (memcmp(data, EMPTY_HEADER, 2) != 0) {
+  if (memcmp(data, EMPTY_HEADER, 2) == 0) {
+    ctx.bser_version = 1;
+  } else if (memcmp(data, EMPTY_HEADER_V2, 2) == 0) {
+    ctx.bser_version = 2;
+  } else {
     PyErr_SetString(PyExc_ValueError, "invalid bser header");
     return NULL;
   }
@@ -1025,7 +1039,7 @@ static PyMethodDef bser_methods[] = {
   {"loads", (PyCFunction)bser_loads, METH_VARARGS | METH_KEYWORDS,
    "Deserialize string."},
   {"pdu_len", bser_pdu_len, METH_VARARGS, "Extract PDU length."},
-  {"dumps",  bser_dumps, METH_VARARGS, "Serialize string."},
+  {"dumps",  bser_dumps, METH_VARARGS | METH_KEYWORDS, "Serialize string."},
   {NULL, NULL, 0, NULL}
 };
 

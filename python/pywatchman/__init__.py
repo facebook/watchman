@@ -490,14 +490,14 @@ class BserCodec(Codec):
     """ use the BSER encoding.  This is the default, preferred codec """
 
     def _loads(self, response):
-        return bser.loads(response)
+        return bser.loads(response) # Defaults to BSER v1
 
     def receive(self):
         buf = [self.transport.readBytes(sniff_len)]
         if not buf[0]:
             raise WatchmanError('empty watchman response')
 
-        elen = bser.pdu_len(buf[0])
+        elen, _ = bser.pdu_len(buf[0]) # Second returned value is BSER version
 
         rlen = len(buf[0])
         while elen > rlen:
@@ -512,7 +512,7 @@ class BserCodec(Codec):
             raise WatchmanError('watchman response decode error: %s' % e)
 
     def send(self, *args):
-        cmd = bser.dumps(*args)
+        cmd = bser.dumps(*args) # Defaults to BSER v1
         self.transport.write(cmd)
 
 
@@ -521,7 +521,57 @@ class ImmutableBserCodec(BserCodec):
         immutable object support """
 
     def _loads(self, response):
-        return bser.loads(response, False)
+        return bser.loads(response, False) # Defaults to BSER v1
+
+
+class Bser2WithFallbackCodec(BserCodec):
+    """ use BSER v2 encoding """
+
+    def __init__(self, transport):
+        super(Bser2WithFallbackCodec, self).__init__(transport)
+        if compat.PYTHON3:
+            self.send(["version", {"required": ["bser-v2"]}])
+        else:
+            self.send(["version", {"optional": ["bser-v2"]}])
+
+        capabilities = self.receive()
+
+        if 'error' in capabilities:
+          raise Exception('Unsupported BSER version')
+
+        if capabilities['capabilities']['bser-v2']:
+            self.bser_version = 2
+        else:
+            self.bser_version = 1
+
+    def _loads(self, response, bser_version):
+        return bser.loads(response, version=bser_version)
+
+    def receive(self):
+        buf = [self.transport.readBytes(sniff_len)]
+        if not buf[0]:
+            raise WatchmanError('empty watchman response')
+
+        elen, bser_version = bser.pdu_len(buf[0])
+
+        rlen = len(buf[0])
+        while elen > rlen:
+            buf.append(self.transport.readBytes(elen - rlen))
+            rlen += len(buf[-1])
+
+        response = b''.join(buf)
+        try:
+            res = self._loads(response, bser_version)
+            return res
+        except ValueError as e:
+            raise WatchmanError('watchman response decode error: %s' % e)
+
+    def send(self, *args):
+        if hasattr(self, 'bser_version'):
+            cmd = bser.dumps(*args, version=self.bser_version)
+        else:
+            cmd = bser.dumps(*args)
+        self.transport.write(cmd)
 
 
 class JsonCodec(Codec):
@@ -608,10 +658,12 @@ class client(object):
         self.sendCodec = self._parseEncoding(sendEncoding)
 
     def _parseEncoding(self, enc):
-        if enc == 'bser':
+        if enc == 'bser-v1':
             if self.useImmutableBser:
                 return ImmutableBserCodec
             return BserCodec
+        elif enc == 'bser':
+          return Bser2WithFallbackCodec
         elif enc == 'json':
             return JsonCodec
         else:
