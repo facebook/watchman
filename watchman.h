@@ -526,7 +526,6 @@ struct watchman_root {
   uint32_t pending_trigger_tick;
   uint32_t pending_sub_tick;
   uint32_t last_age_out_tick;
-  uint32_t last_recheck_tick;
   time_t last_age_out_timestamp;
   time_t last_cmd_timestamp;
   time_t last_reap_timestamp;

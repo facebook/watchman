@@ -1456,105 +1456,6 @@ static void process_triggers(w_root_t *root)
   root->last_trigger_tick = root->pending_trigger_tick;
 }
 
-/* fsevents won't tell us about creation events for dangling symlinks;
- * we have to check to find those for ourselves.  To manage this, every
- * time we transition into being initially settled, we'll collect a
- * list of dirs that were modified since the last settle event and rescan
- * them (non-recursive).
- * We'll do this inspection in the context of the IO thread.
- * If we return true it means that we found something that the watcher
- * missed.
- */
-static bool recheck_dirs(w_root_t *root,
-    struct watchman_pending_collection *coll) {
-  struct watchman_file *f;
-  struct timeval now;
-
-  if (root->last_recheck_tick >= root->ticks) {
-    return false;
-  }
-
-  w_log(W_LOG_DBG, "recheck!, last_recheck_tick=%d root->ticks=%d\n",
-        root->last_recheck_tick, root->ticks);
-
-  gettimeofday(&now, NULL);
-
-  // First pass: collect a list of recently changed dirs
-  for (f = root->latest_file; f; f = f->next) {
-    // check dirs, but only if we've seen them change recently
-    if (f->otime.ticks <= root->last_recheck_tick) {
-      continue;
-    }
-
-    if (S_ISDIR(f->stat.mode)) {
-      // This was a dir, so check it again
-      w_pending_coll_add_rel(coll, f->parent, f->name->buf, now, 0);
-    } else {
-      // Crawl the parent dir
-      w_pending_coll_add(coll, f->parent->path, now, 0);
-    }
-  }
-
-  if (w_pending_coll_size(coll) == 0) {
-    // We're all up to date
-    root->last_recheck_tick = root->ticks;
-    w_log(W_LOG_DBG,
-          "recheck complete, last_recheck_tick=%d root->ticks=%d\n",
-          root->last_recheck_tick, root->ticks);
-    return false;
-  }
-
-  w_log(W_LOG_DBG, "Re-checking %d dirs (before considering symlinks)\n",
-      w_pending_coll_size(coll));
-
-  // Now that we know that something recently changed, let's go looking
-  // for symlinks and explicitly check their containing dirs for changes too
-  for (f = root->latest_file; f; f = f->next) {
-    if (S_ISLNK(f->stat.mode) && f->exists) {
-      // Re-examine this symlink
-      w_pending_coll_add_rel(coll, f->parent, f->name->buf, now, 0);
-      // and re-crawl its parent dir to discover other potentially newly
-      // created symlinks that were previously dangling
-      w_pending_coll_add(coll, f->parent->path, now, 0);
-    }
-  }
-
-  w_log(W_LOG_DBG, "Re-checking %d dirs (after considering symlinks)\n",
-      w_pending_coll_size(coll));
-  // Move the recheck window forward, and bump the tick counter
-  // ready to observe anything new in the crawl(s) that we trigger next
-  root->last_recheck_tick = root->ticks++;
-
-  // Now re-examine the list of dirs
-  while (w_root_process_pending(root, coll, false)) {
-    ;
-  }
-  w_log(W_LOG_DBG, "recheck complete, last_recheck_tick=%d root->ticks=%d\n",
-        root->last_recheck_tick, root->ticks);
-
-  // This is a bit icky, but let's find out how many things we observed
-  // change as a result of this check; if none, then we return false
-  for (f = root->latest_file; f; f = f->next) {
-    if (f->otime.ticks <= root->last_recheck_tick) {
-      // No more changes in the appropriate time range;
-      // nothing changed as a result of this recheck
-      return false;
-    }
-    if (f->otime.ticks == root->ticks) {
-      // Yep, something was updated.
-      // Log what it was so that we can debug situations where we don't
-      // really settle.
-      w_log(W_LOG_DBG, "Re-check: %.*s/%.*s was updated at tick=%d\n",
-          f->parent->path->len, f->parent->path->buf,
-          f->name->len, f->name->buf,
-          f->otime.ticks);
-      return true;
-    }
-  }
-
-  return false;
-}
-
 static bool handle_should_recrawl(w_root_t *root)
 {
   if (root->should_recrawl && !root->cancelled) {
@@ -1854,7 +1755,7 @@ static void notify_thread(w_root_t *root)
 
 static void io_thread(w_root_t *root)
 {
-  int timeoutms, biggest_timeout, recheck_timeout;
+  int timeoutms, biggest_timeout;
   struct watchman_pending_collection pending;
 
   timeoutms = root->trigger_settle;
@@ -1870,9 +1771,6 @@ static void io_thread(w_root_t *root)
   }
   // And convert to milliseconds
   biggest_timeout *= 1000;
-
-  recheck_timeout = (int)cfg_get_int(root, "recheck_dirs_interval_ms", 0);
-  recheck_timeout = MIN(recheck_timeout, biggest_timeout);
 
   w_pending_coll_init(&pending);
 
@@ -1911,8 +1809,6 @@ static void io_thread(w_root_t *root)
         }
       }
       root->done_initial = true;
-      // We just crawled everything, no need to recheck right now
-      root->last_recheck_tick = root->ticks + 1;
       w_perf_add_root_meta(&sample, root);
       w_root_unlock(root);
 
@@ -1946,16 +1842,6 @@ static void io_thread(w_root_t *root)
         // we need to recrawl, stop what we're doing here
         w_root_unlock(root);
         continue;
-      }
-
-      // If we just settled, the timeout will be the base timeout.
-      // This is an appropriate time to second guess the watcher
-      // and locate anything that we think we may have missed
-      if (recheck_timeout > 0 && timeoutms >= recheck_timeout) {
-        if (recheck_dirs(root, &pending)) {
-          // We're no longer settled, so reset the timeout
-          timeoutms = root->trigger_settle;
-        }
       }
 
       process_subscriptions(root);
