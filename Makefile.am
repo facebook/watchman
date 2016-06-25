@@ -66,7 +66,7 @@ watchman_SOURCES = \
 	watcher/portfs.c   \
 	launchd.cpp    \
 	listener.c   \
-	listener-user.c   \
+	listener-user.cpp   \
 	clientmode.cpp \
 	main.c       \
 	root.c       \

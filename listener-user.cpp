@@ -61,7 +61,7 @@ w_root_t *resolve_root_or_err(struct watchman_client *client, json_t *args,
   char *errmsg = NULL;
   json_t *ele;
 
-  ele = json_array_get(args, root_index);
+  ele = json_array_get(args, (size_t)root_index);
   if (!ele) {
     send_error_response(client, "wrong number of arguments");
     return NULL;
@@ -104,7 +104,7 @@ w_root_t *resolve_root_or_err(struct watchman_client *client, json_t *args,
 
 static void delete_subscription(w_ht_val_t val)
 {
-  struct watchman_client_subscription *sub = w_ht_val_ptr(val);
+  auto sub = (watchman_client_subscription *)w_ht_val_ptr(val);
 
   w_string_delref(sub->name);
   w_query_delref(sub->query);
