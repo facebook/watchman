@@ -13,7 +13,7 @@ watchman_LDADD = $(JSON_LIB) $(ART_LIB) libwildmatch.a
 watchman_SOURCES = \
 	argv.cpp       \
 	envp.cpp       \
-	spawn.c       \
+	spawn.cpp       \
 	opt.cpp        \
 	cfg.cpp        \
 	clockspec.cpp  \

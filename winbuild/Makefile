@@ -38,7 +38,7 @@ SRCS=\
 	argv.cpp \
 	envp.cpp \
 	ignore.cpp \
-	spawn.c \
+	spawn.cpp \
 	opt.cpp \
 	cfg.cpp \
 	clockspec.cpp \

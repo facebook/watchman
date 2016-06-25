@@ -19,7 +19,7 @@ static w_root_t *lookup_running_pid(pid_t pid)
     return NULL;
   }
 
-  return w_ht_val_ptr(w_ht_get(running_kids, pid));
+  return (w_root_t*)w_ht_val_ptr(w_ht_get(running_kids, pid));
 }
 
 // Caller must hold spawn_lock
@@ -62,9 +62,7 @@ void w_mark_dead(pid_t pid)
 
   /* walk the list of triggers, and run their rules */
   if (w_ht_first(root->commands, &iter)) do {
-    struct watchman_trigger_command *cmd;
-
-    cmd = w_ht_val_ptr(iter.value);
+    auto cmd = (watchman_trigger_command *)w_ht_val_ptr(iter.value);
     if (cmd->current_proc != pid) {
       w_log(W_LOG_DBG, "mark_dead: is [%.*s] %d == %d\n",
           cmd->triggername->len, cmd->triggername->buf,
@@ -95,7 +93,7 @@ static w_stm_t prepare_stdin(
   char stdin_file_name[WATCHMAN_NAME_MAX];
   w_stm_t stdin_file = NULL;
 
-  if (cmd->stdin_style == input_dev_null) {
+  if (cmd->stdin_style == watchman_trigger_command::input_dev_null) {
     return w_stm_open("/dev/null", O_RDONLY|O_CLOEXEC);
   }
 
@@ -120,7 +118,7 @@ static w_stm_t prepare_stdin(
   unlink(stdin_file_name); // FIXME: windows path translation
 
   switch (cmd->stdin_style) {
-    case input_json:
+    case watchman_trigger_command::input_json:
       {
         w_jbuffer_t buffer;
         json_t *file_list;
@@ -145,14 +143,15 @@ static w_stm_t prepare_stdin(
         json_decref(file_list);
         break;
       }
-    case input_name_list:
+    case watchman_trigger_command::input_name_list:
       {
         uint32_t i;
 
         for (i = 0; i < n_files; i++) {
           if (w_stm_write(stdin_file, res->results[i].relname->buf,
-              res->results[i].relname->len) != (int)res->results[i].relname->len
-              || w_stm_write(stdin_file, "\n", 1) != 1) {
+                          (int)res->results[i].relname->len) !=
+                  (int)res->results[i].relname->len ||
+              w_stm_write(stdin_file, "\n", 1) != 1) {
             w_log(W_LOG_ERR,
               "write failure while producing trigger stdin: %s\n",
               strerror(errno));
@@ -162,7 +161,7 @@ static w_stm_t prepare_stdin(
         }
         break;
       }
-    case input_dev_null:
+    case watchman_trigger_command::input_dev_null:
       // already handled above
       break;
   }
@@ -422,7 +421,7 @@ static bool trigger_generator(
     void *gendata)
 {
   struct watchman_file *f;
-  struct watchman_trigger_command *cmd = gendata;
+  auto cmd = (watchman_trigger_command *)gendata;
 
   w_log(W_LOG_DBG, "assessing trigger %s %p\n",
       cmd->triggername->buf, cmd);

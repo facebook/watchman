@@ -80,7 +80,8 @@
 #define PTHREAD_CANCELED ((void *)(intptr_t)0xDEADBEEF)
 
 #define PTHREAD_ONCE_INIT 0
-#define PTHREAD_MUTEX_INITIALIZER {(void*)-1,-1,0,0,0,0}
+#define PTHREAD_MUTEX_INITIALIZER                                              \
+  { (PRTL_CRITICAL_SECTION_DEBUG)(intptr_t) - 1, -1, 0, 0, 0, 0 }
 #define PTHREAD_RWLOCK_INITIALIZER {0}
 #define PTHREAD_COND_INITIALIZER {0}
 #define PTHREAD_BARRIER_INITIALIZER \
