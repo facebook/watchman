@@ -18,7 +18,7 @@ watchman_SOURCES = \
 	cfg.cpp        \
 	clockspec.cpp  \
 	checksock.cpp  \
-	fstype.c     \
+	fstype.cpp     \
 	log.c        \
 	ignore.c     \
 	json.c       \

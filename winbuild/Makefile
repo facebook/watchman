@@ -43,7 +43,7 @@ SRCS=\
 	cfg.cpp \
 	clockspec.cpp \
 	checksock.cpp \
-	fstype.c     \
+	fstype.cpp     \
 	log.c        \
 	json.c       \
 	bser.cpp       \
