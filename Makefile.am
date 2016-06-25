@@ -29,7 +29,7 @@ watchman_SOURCES = \
 	ioprio.cpp        \
 	opendir.cpp       \
 	pending.cpp     \
-	perf.c          \
+	perf.cpp          \
 	stream.c        \
 	stream_stdout.c \
 	stream_unix.c   \

@@ -52,7 +52,7 @@ SRCS=\
 	ioprio.cpp     \
 	opendir.cpp    \
 	pending.cpp    \
-	perf.c       \
+	perf.cpp       \
 	stream.c     \
 	stream_win.c \
 	stream_stdout.c \
