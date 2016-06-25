@@ -69,7 +69,7 @@ watchman_SOURCES = \
 	listener-user.cpp   \
 	clientmode.cpp \
 	main.cpp       \
-	root.c       \
+	root.cpp       \
 	state.c      \
 	string.c     \
 	time.c
