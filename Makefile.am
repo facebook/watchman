@@ -26,7 +26,7 @@ watchman_SOURCES = \
 	expflags.cpp   \
 	hash.cpp       \
 	ht.cpp         \
-	ioprio.c        \
+	ioprio.cpp        \
 	opendir.c       \
 	pending.c       \
 	perf.c          \

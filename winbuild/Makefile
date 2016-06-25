@@ -49,7 +49,7 @@ SRCS=\
 	bser.cpp       \
 	expflags.cpp   \
 	hash.cpp       \
-	ioprio.c     \
+	ioprio.cpp     \
 	opendir.c    \
 	pending.c    \
 	perf.c       \
