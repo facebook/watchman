@@ -14,14 +14,13 @@ addons:
       - python2.7-dev
       - python3.5
       - python3.5-dev
+      - gcc-4.8
+      - g++-4.8
       - gcc-5
+      - g++-5
 #      - ruby
 #      - rubygems
 #      - valgrind
-
-os:
-  - osx
-  - linux
 
 branches:
   only:
@@ -32,34 +31,37 @@ branches:
 #rvm:
 #  - "2.0.0"
 
-# try some different compiler options
-env:
-  - TRAVIS_PYTHON=python2.6
-  - TRAVIS_PYTHON=python2.7
-  - TRAVIS_PYTHON=python3.5
-
 # TODO: On Linux we currently use system versions of Python. That makes it
 # somewhat annoying to get third-party dependencies in, since sudo isn't
 # available. We should figure out how to solve this for real, either with
 # virtualenv or with the pyenv mechanism Hypothesis uses:
 # http://www.drmaciver.com/2015/10/a-whirlwind-tour-of-the-hypothesis-build/
 matrix:
-  exclude:
-    - os: linux
-      env: TRAVIS_PYTHON=python2.6
   include:
-    - os: linux
+    - os: osx
+      env: TRAVIS_PYTHON=python2.6
+    - os: osx
+      env: TRAVIS_PYTHON=python2.7 BUILD_JAVA_CLIENT=1
+    - os: osx
+      env: TRAVIS_PYTHON=python3.5
+    - os: osx
+      osx_image: xcode7.3
       env: TRAVIS_PYTHON=python2.7 ENABLE_ASAN=1
+    - os: osx
+      osx_image: xcode7.3
+      env: TRAVIS_PYTHON=python3.5 ENABLE_ASAN=1
+    - os: linux
+      env: TRAVIS_PYTHON=python2.7 ENABLE_ASAN=1 CXX=g++-5
       compiler: gcc-5
     - os: linux
-      env: TRAVIS_PYTHON=python3.5 ENABLE_ASAN=1
+      env: TRAVIS_PYTHON=python3.5 ENABLE_ASAN=1 CXX=g++-5
       compiler: gcc-5
-    - os: osx
-      osx_image: xcode7.3
-      env: TRAVIS_PYTHON=python2.7 ENABLE_ASAN=1 BUILD_JAVA_CLIENT=1
-    - os: osx
-      osx_image: xcode7.3
-      env: TRAVIS_PYTHON=python3.5 ENABLE_ASAN=1 BUILD_JAVA_CLIENT=0
+    - os: linux
+      env: TRAVIS_PYTHON=python2.7 CXX=g++-4.8
+      compiler: gcc-4.8
+    - os: linux
+      env: TRAVIS_PYTHON=python3.5 CXX=g++-4.8
+      compiler: gcc-4.8
 
 before_script: ./travis/deps.sh
 script: ./travis/run.sh
