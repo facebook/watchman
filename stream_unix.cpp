@@ -20,7 +20,7 @@ struct unix_handle {
 };
 
 static int unix_close(w_stm_t stm) {
-  struct unix_handle *h = stm->handle;
+  auto h = (unix_handle *)stm->handle;
   int res;
 
   res = close(h->fd);
@@ -32,24 +32,24 @@ static int unix_close(w_stm_t stm) {
 }
 
 static int unix_read(w_stm_t stm, void *buf, int size) {
-  struct unix_handle *h = stm->handle;
+  auto h = (unix_handle *)stm->handle;
   errno = 0;
   return read(h->fd, buf, size);
 }
 
 static int unix_write(w_stm_t stm, const void *buf, int size) {
-  struct unix_handle *h = stm->handle;
+  auto h = (unix_handle *)stm->handle;
   errno = 0;
   return write(h->fd, buf, size);
 }
 
 static void unix_get_events(w_stm_t stm, w_evt_t *readable) {
-  struct unix_handle *h = stm->handle;
+  auto h = (unix_handle *)stm->handle;
   *readable = &h->evt;
 }
 
 static void unix_set_nonb(w_stm_t stm, bool nonb) {
-  struct unix_handle *h = stm->handle;
+  auto h = (unix_handle *)stm->handle;
   if (nonb) {
     w_set_nonblock(h->fd);
   } else {
@@ -58,17 +58,17 @@ static void unix_set_nonb(w_stm_t stm, bool nonb) {
 }
 
 static bool unix_rewind(w_stm_t stm) {
-  struct unix_handle *h = stm->handle;
+  auto h = (unix_handle *)stm->handle;
   return lseek(h->fd, 0, SEEK_SET) == 0;
 }
 
 static bool unix_shutdown(w_stm_t stm) {
-  struct unix_handle *h = stm->handle;
+  auto h = (unix_handle *)stm->handle;
   return shutdown(h->fd, SHUT_RDWR);
 }
 
 static bool unix_peer_is_owner(w_stm_t stm) {
-  struct unix_handle *h = stm->handle;
+  auto h = (unix_handle *)stm->handle;
 
   // For these PEERCRED things, the uid reported is the effective uid of
   // the process, which may have been altered due to setuid or similar
@@ -109,7 +109,7 @@ static struct watchman_stream_ops unix_ops = {
 };
 
 w_evt_t w_event_make(void) {
-  w_evt_t evt = calloc(1, sizeof(*evt));
+  auto evt = (w_evt_t)calloc(1, sizeof(watchman_event));
   if (!evt) {
     return NULL;
   }
@@ -154,7 +154,7 @@ bool w_event_test_and_clear(w_evt_t evt) {
 }
 
 int w_stm_fileno(w_stm_t stm) {
-  struct unix_handle *h = stm->handle;
+  auto h = (unix_handle *)stm->handle;
   return h->fd;
 }
 
@@ -185,15 +185,12 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
 }
 
 w_stm_t w_stm_fdopen(int fd) {
-  w_stm_t stm;
-  struct unix_handle *h;
-
-  stm = calloc(1, sizeof(*stm));
+  auto stm = (w_stm_t)calloc(1, sizeof(watchman_stream));
   if (!stm) {
     return NULL;
   }
 
-  h = calloc(1, sizeof(*h));
+  auto h = (unix_handle*)calloc(1, sizeof(unix_handle));
   if (!h) {
     free(stm);
     return NULL;
