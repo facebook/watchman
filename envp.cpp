@@ -51,8 +51,8 @@ w_ht_t *w_envp_make_ht(void)
  * with posix_spawn() */
 char **w_envp_make_from_ht(w_ht_t *ht, uint32_t *env_size)
 {
-  int nele = w_ht_size(ht);
-  int len = (1 + nele) * sizeof(char*);
+  auto nele = w_ht_size(ht);
+  auto len = (1 + nele) * sizeof(char*);
   w_ht_iter_t iter;
   char **envp;
   char *buf;
@@ -60,16 +60,16 @@ char **w_envp_make_from_ht(w_ht_t *ht, uint32_t *env_size)
 
   // Make a pass through to compute the required memory size
   if (w_ht_first(ht, &iter)) do {
-    w_string_t *key = w_ht_val_ptr(iter.key);
-    w_string_t *val = w_ht_val_ptr(iter.value);
+    w_string_t *key = (w_string_t*)w_ht_val_ptr(iter.key);
+    w_string_t *val = (w_string_t*)w_ht_val_ptr(iter.value);
 
     // key=value\0
     len += key->len + 1 + val->len + 1;
   } while (w_ht_next(ht, &iter));
 
-  *env_size = len;
+  *env_size = (uint32_t)len;
 
-  envp = malloc(len);
+  envp = (char**)malloc(len);
   if (!envp) {
     return NULL;
   }
@@ -78,8 +78,8 @@ char **w_envp_make_from_ht(w_ht_t *ht, uint32_t *env_size)
 
   // Now populate
   if (w_ht_first(ht, &iter)) do {
-    w_string_t *key = w_ht_val_ptr(iter.key);
-    w_string_t *val = w_ht_val_ptr(iter.value);
+    w_string_t *key = (w_string_t*)w_ht_val_ptr(iter.key);
+    w_string_t *val = (w_string_t*)w_ht_val_ptr(iter.value);
 
     envp[i++] = buf;
 

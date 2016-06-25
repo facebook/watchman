@@ -12,7 +12,7 @@ watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 watchman_LDADD = $(JSON_LIB) $(ART_LIB) libwildmatch.a
 watchman_SOURCES = \
 	argv.cpp       \
-	envp.c       \
+	envp.cpp       \
 	spawn.c       \
 	opt.c        \
 	cfg.cpp        \

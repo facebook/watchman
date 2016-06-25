@@ -36,7 +36,7 @@ SRCS=\
 	winbuild\posix_spawn.c \
 	winbuild\pthread.c \
 	argv.cpp \
-	envp.c \
+	envp.cpp \
 	ignore.c \
 	spawn.c \
 	opt.c \
