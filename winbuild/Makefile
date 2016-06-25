@@ -55,7 +55,7 @@ SRCS=\
 	perf.cpp       \
 	stream.cpp     \
 	stream_win.c \
-	stream_stdout.c \
+	stream_stdout.cpp \
 	ht.cpp         \
 	cmds\find.c     \
 	cmds\info.c     \

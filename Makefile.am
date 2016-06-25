@@ -31,7 +31,7 @@ watchman_SOURCES = \
 	pending.cpp     \
 	perf.cpp          \
 	stream.cpp        \
-	stream_stdout.c \
+	stream_stdout.cpp \
 	stream_unix.c   \
 	timedlock.c     \
 	cmds/find.c     \

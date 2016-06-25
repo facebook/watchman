@@ -2,15 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
 
-static struct watchman_stream stm_stdout;
-static struct watchman_stream stm_stdin;
-
-static inline int which_fd(w_stm_t stm) {
-  if (stm == &stm_stdout) {
-    return STDOUT_FILENO;
-  }
-  return STDIN_FILENO;
-}
+static int which_fd(w_stm_t stm);
 
 static int stdio_close(w_stm_t stm) {
   unused_parameter(stm);
@@ -18,11 +10,11 @@ static int stdio_close(w_stm_t stm) {
 }
 
 static int stdio_read(w_stm_t stm, void *buf, int size) {
-  return read(which_fd(stm), buf, size);
+  return read(which_fd(stm), buf, (unsigned int)size);
 }
 
 static int stdio_write(w_stm_t stm, const void *buf, int size) {
-  return write(which_fd(stm), buf, size);
+  return write(which_fd(stm), buf, (unsigned int)size);
 }
 
 static void stdio_get_events(w_stm_t stm, w_evt_t *readable) {
@@ -66,6 +58,14 @@ static struct watchman_stream stm_stdin = {
   (void*)&stdio_ops,
   &stdio_ops
 };
+
+static int which_fd(w_stm_t stm) {
+  if (stm == &stm_stdout) {
+    return STDOUT_FILENO;
+  }
+  return STDIN_FILENO;
+}
+
 
 w_stm_t w_stm_stdout(void) {
   return &stm_stdout;
