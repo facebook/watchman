@@ -50,7 +50,7 @@ SRCS=\
 	expflags.cpp   \
 	hash.cpp       \
 	ioprio.cpp     \
-	opendir.c    \
+	opendir.cpp    \
 	pending.c    \
 	perf.c       \
 	stream.c     \

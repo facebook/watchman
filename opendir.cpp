@@ -115,7 +115,7 @@ static bool is_basename_canonical_case(const char *path) {
     w_log(W_LOG_FATAL, "GetLongPathNameW needs %lu chars\n", long_len);
   }
 
-  canon = w_win_unc_to_utf8(long_buf, long_len, NULL);
+  canon = w_win_unc_to_utf8(long_buf, (int)long_len, NULL);
   if (!canon) {
     return false;
   }
@@ -224,7 +224,7 @@ static int realpath_fd(int fd, char *canon, size_t canon_size) {
   }
   if (len > 0) {
     uint32_t utf_len;
-    char *utf8 = w_win_unc_to_utf8(final_buf, len, &utf_len);
+    char *utf8 = w_win_unc_to_utf8(final_buf, (int)len, &utf_len);
     if (!utf8) {
       return -1;
     }
@@ -413,7 +413,7 @@ static bool use_bulkstat_by_default(void) {
 #endif
 
 struct watchman_dir_handle *w_dir_open(const char *path) {
-  struct watchman_dir_handle *dir = calloc(1, sizeof(*dir));
+  auto dir = (watchman_dir_handle *)calloc(1, sizeof(watchman_dir_handle));
   int err;
 
   if (!dir) {
