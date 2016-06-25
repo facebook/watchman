@@ -403,9 +403,9 @@ static void spawn_via_launchd(void)
   struct passwd *pw;
   uid_t uid;
   char *argv[MAX_DAEMON_ARGS] = {
-    "/bin/launchctl",
-    "load",
-    "-F",
+    (char*)"/bin/launchctl",
+    (char*)"load",
+    (char*)"-F",
     NULL
   };
   posix_spawnattr_t attr;
@@ -438,8 +438,8 @@ static void spawn_via_launchd(void)
   if (access(plist_path, R_OK) == 0) {
     // Unload any that may already exist, as it is likely wrong
     char *unload_argv[MAX_DAEMON_ARGS] = {
-      "/bin/launchctl",
-      "unload",
+      (char*)"/bin/launchctl",
+      (char*)"unload",
       NULL
     };
     append_argv(unload_argv, plist_path);
@@ -878,52 +878,52 @@ static bool try_command(json_t *cmd, int timeout)
 
 static struct watchman_getopt opts[] = {
   { "help",     'h', "Show this help",
-    OPT_NONE,   &show_help, NULL, NOT_DAEMON },
+    watchman_getopt::OPT_NONE,   &show_help, NULL, NOT_DAEMON },
 #ifndef _WIN32
   { "inetd",    0,   "Spawning from an inetd style supervisor",
-    OPT_NONE,   &inetd_style, NULL, IS_DAEMON },
+    watchman_getopt::OPT_NONE,   &inetd_style, NULL, IS_DAEMON },
 #endif
   { "version",  'v', "Show version number",
-    OPT_NONE,   &show_version, NULL, NOT_DAEMON },
+    watchman_getopt::OPT_NONE,   &show_version, NULL, NOT_DAEMON },
   { "sockname", 'U', "Specify alternate sockname",
-    REQ_STRING, &sock_name, "PATH", IS_DAEMON },
+    watchman_getopt::REQ_STRING, &sock_name, "PATH", IS_DAEMON },
   { "logfile", 'o', "Specify path to logfile",
-    REQ_STRING, &log_name, "PATH", IS_DAEMON },
+    watchman_getopt::REQ_STRING, &log_name, "PATH", IS_DAEMON },
   { "log-level", 0, "set the log level (0 = off, default is 1, verbose = 2)",
-    REQ_INT, &log_level, NULL, IS_DAEMON },
+    watchman_getopt::REQ_INT, &log_level, NULL, IS_DAEMON },
 #ifdef USE_GIMLI
   { "pidfile", 0, "Specify path to gimli monitor pidfile",
-    REQ_STRING, &pid_file, "PATH", NOT_DAEMON },
+    watchman_getopt::REQ_STRING, &pid_file, "PATH", NOT_DAEMON },
 #else
   { "pidfile", 0, "Specify path to pidfile",
-    REQ_STRING, &pid_file, "PATH", IS_DAEMON },
+    watchman_getopt::REQ_STRING, &pid_file, "PATH", IS_DAEMON },
 #endif
   { "persistent", 'p', "Persist and wait for further responses",
-    OPT_NONE, &persistent, NULL, NOT_DAEMON },
+    watchman_getopt::OPT_NONE, &persistent, NULL, NOT_DAEMON },
   { "no-save-state", 'n', "Don't save state between invocations",
-    OPT_NONE, &dont_save_state, NULL, IS_DAEMON },
+    watchman_getopt::OPT_NONE, &dont_save_state, NULL, IS_DAEMON },
   { "statefile", 0, "Specify path to file to hold watch and trigger state",
-    REQ_STRING, &watchman_state_file, "PATH", IS_DAEMON },
+    watchman_getopt::REQ_STRING, &watchman_state_file, "PATH", IS_DAEMON },
   { "json-command", 'j', "Instead of parsing CLI arguments, take a single "
     "json object from stdin",
-    OPT_NONE, &json_input_arg, NULL, NOT_DAEMON },
+    watchman_getopt::OPT_NONE, &json_input_arg, NULL, NOT_DAEMON },
   { "output-encoding", 0, "CLI output encoding. json (default) or bser",
-    REQ_STRING, &output_encoding, NULL, NOT_DAEMON },
+    watchman_getopt::REQ_STRING, &output_encoding, NULL, NOT_DAEMON },
   { "server-encoding", 0, "CLI<->server encoding. bser (default) or json",
-    REQ_STRING, &server_encoding, NULL, NOT_DAEMON },
+    watchman_getopt::REQ_STRING, &server_encoding, NULL, NOT_DAEMON },
   { "foreground", 'f', "Run the service in the foreground",
-    OPT_NONE, &foreground, NULL, NOT_DAEMON },
+    watchman_getopt::OPT_NONE, &foreground, NULL, NOT_DAEMON },
   { "no-pretty", 0, "Don't pretty print JSON",
-    OPT_NONE, &no_pretty, NULL, NOT_DAEMON },
+    watchman_getopt::OPT_NONE, &no_pretty, NULL, NOT_DAEMON },
   { "no-spawn", 0, "Don't try to start the service if it is not available",
-    OPT_NONE, &no_spawn, NULL, NOT_DAEMON },
+    watchman_getopt::OPT_NONE, &no_spawn, NULL, NOT_DAEMON },
   { "no-local", 0, "When no-spawn is enabled, don't try to handle request"
     " in client mode if service is unavailable",
-    OPT_NONE, &no_local, NULL, NOT_DAEMON },
+    watchman_getopt::OPT_NONE, &no_local, NULL, NOT_DAEMON },
   // test-state-dir is for testing only and should not be used in production:
   // instead, use the compile-time WATCHMAN_STATE_DIR option
-  { "test-state-dir", 0, NULL, REQ_STRING, &test_state_dir, "DIR", NOT_DAEMON },
-  { 0, 0, 0, 0, 0, 0, 0 }
+  { "test-state-dir", 0, NULL, watchman_getopt::REQ_STRING, &test_state_dir, "DIR", NOT_DAEMON },
+  { 0, 0, 0, watchman_getopt::OPT_NONE, 0, 0, 0 }
 };
 
 static void parse_cmdline(int *argcp, char ***argvp)
