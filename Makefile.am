@@ -22,7 +22,7 @@ watchman_SOURCES = \
 	log.c        \
 	ignore.c     \
 	json.c       \
-	bser.c       \
+	bser.cpp       \
 	expflags.c   \
 	hash.c       \
 	ht.cpp         \
@@ -250,7 +250,7 @@ tests_bser_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_bser_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_bser_t_SOURCES = \
 	tests/bser.c \
-	bser.c
+	bser.cpp
 
 tests_wildmatch_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_wildmatch_t_LDADD = $(JSON_LIB) $(TAP_LIB) $(WILDMATCH_LIB)

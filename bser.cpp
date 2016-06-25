@@ -132,7 +132,7 @@ static int bser_int(json_int_t val, json_dump_callback_t dump, void *data)
   int32_t i32;
   int64_t i64;
   char sz;
-  int size = INT_SIZE(val);
+  size_t size = (size_t)INT_SIZE(val);
   char *iptr;
 
   switch (size) {
@@ -175,7 +175,7 @@ static int bser_string(const char *str, json_dump_callback_t dump, void *data)
     return -1;
   }
 
-  if (bser_int(len, dump, data)) {
+  if (bser_int((json_int_t)len, dump, data)) {
     return -1;
   }
 
@@ -206,7 +206,7 @@ static int bser_template(const json_t *array,
 
   // Now the array of arrays of object values.
   // How many objects
-  if (bser_int(n, dump, data)) {
+  if (bser_int((json_int_t)n, dump, data)) {
     return -1;
   }
 
@@ -258,7 +258,7 @@ static int bser_array(const json_t *array,
     return -1;
   }
 
-  if (bser_int(n, dump, data)) {
+  if (bser_int((json_int_t)n, dump, data)) {
     return -1;
   }
 
@@ -286,7 +286,7 @@ static int bser_object(json_t *obj,
   }
 
   n = json_object_size(obj);
-  if (bser_int(n, dump, data)) {
+  if (bser_int((json_int_t)n, dump, data)) {
     return -1;
   }
 
@@ -336,7 +336,7 @@ int w_bser_dump(json_t *json, json_dump_callback_t dump, void *data)
 
 static int measure(const char *buffer, size_t size, void *ptr)
 {
-  json_int_t *tot = ptr;
+  json_int_t *tot = (json_int_t*)ptr;
   *tot += size;
   unused_parameter(buffer);
   return 0;
@@ -428,7 +428,7 @@ static json_t *bunser_template(const char *buf, const char *end,
   json_int_t needed = 0;
   json_int_t total = 0;
   json_int_t i, nelems;
-  json_int_t ip, np;
+  size_t ip, np;
   json_t *templ = NULL, *arrval, *ret = NULL;
 
   buf++;
@@ -604,7 +604,7 @@ json_t *bunser(const char *buf, const char *end, json_int_t *needed,
         return NULL;
       }
 
-      return json_stringn_nocheck(start, len);
+      return json_stringn_nocheck(start, (size_t)len);
     }
 
     case BSER_REAL:

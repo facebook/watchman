@@ -46,7 +46,7 @@ SRCS=\
 	fstype.c     \
 	log.c        \
 	json.c       \
-	bser.c       \
+	bser.cpp       \
 	expflags.c   \
 	hash.c       \
 	ioprio.c     \
