@@ -18,8 +18,7 @@ void w_clockspec_init(void) {
 
 struct w_clockspec *w_clockspec_new_clock(uint32_t root_number,
                                           uint32_t ticks) {
-  struct w_clockspec *spec;
-  spec = calloc(1, sizeof(*spec));
+  auto spec = (w_clockspec*)calloc(1, sizeof(w_clockspec));
   if (!spec) {
     return NULL;
   }
@@ -38,9 +37,7 @@ struct w_clockspec *w_clockspec_parse(json_t *value) {
   uint32_t root_number;
   uint32_t ticks;
 
-  struct w_clockspec *spec;
-
-  spec = calloc(1, sizeof(*spec));
+  auto spec = (w_clockspec*)calloc(1, sizeof(w_clockspec));
   if (!spec) {
     return NULL;
   }

@@ -16,7 +16,7 @@ watchman_SOURCES = \
 	spawn.c       \
 	opt.c        \
 	cfg.cpp        \
-	clockspec.c  \
+	clockspec.cpp  \
 	checksock.cpp  \
 	fstype.c     \
 	log.c        \
