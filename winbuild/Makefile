@@ -40,7 +40,7 @@ SRCS=\
 	ignore.c \
 	spawn.c \
 	opt.c \
-	cfg.c \
+	cfg.cpp \
 	clockspec.c \
 	checksock.c \
 	fstype.c     \

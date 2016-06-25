@@ -15,7 +15,7 @@ watchman_SOURCES = \
 	envp.c       \
 	spawn.c       \
 	opt.c        \
-	cfg.c        \
+	cfg.cpp        \
 	clockspec.c  \
 	checksock.c  \
 	fstype.c     \
@@ -235,7 +235,7 @@ tests_pending_t_SOURCES = \
 	pending.c \
 	expflags.c \
 	opendir.c \
-	cfg.c \
+	cfg.cpp \
 	time.c \
 	string.c \
 	log.c
