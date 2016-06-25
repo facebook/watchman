@@ -28,7 +28,7 @@ watchman_SOURCES = \
 	ht.cpp         \
 	ioprio.cpp        \
 	opendir.cpp       \
-	pending.c       \
+	pending.cpp     \
 	perf.c          \
 	stream.c        \
 	stream_stdout.c \
@@ -232,7 +232,7 @@ tests_pending_t_SOURCES = \
 	hash.cpp \
 	ht.cpp \
 	ignore.cpp \
-	pending.c \
+	pending.cpp \
 	expflags.cpp \
 	opendir.cpp \
 	cfg.cpp \

@@ -51,7 +51,7 @@ SRCS=\
 	hash.cpp       \
 	ioprio.cpp     \
 	opendir.cpp    \
-	pending.c    \
+	pending.cpp    \
 	perf.c       \
 	stream.c     \
 	stream_win.c \
