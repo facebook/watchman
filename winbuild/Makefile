@@ -86,7 +86,7 @@ SRCS=\
 	watcher\helper.c \
 	listener.c   \
 	listener-user.c   \
-	clientmode.c \
+	clientmode.cpp \
 	main.c       \
 	root.c       \
 	state.c      \

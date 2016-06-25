@@ -15,7 +15,8 @@ bool try_client_mode_command(json_t *cmd, bool pretty)
 
   resp = client.head;
   if (resp) {
-    json_dumpf(resp->json, stdout, pretty ? JSON_INDENT(4) : JSON_COMPACT);
+    json_dumpf(resp->json, stdout,
+               (size_t)(pretty ? JSON_INDENT(4) : JSON_COMPACT));
     printf("\n");
   }
 
