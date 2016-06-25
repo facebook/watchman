@@ -20,7 +20,7 @@ watchman_SOURCES = \
 	checksock.cpp  \
 	fstype.cpp     \
 	log.c        \
-	ignore.c     \
+	ignore.cpp     \
 	json.c       \
 	bser.cpp       \
 	expflags.cpp   \
@@ -219,7 +219,7 @@ tests_ignore_t_SOURCES = \
 	watcher/helper.c \
 	hash.cpp \
 	ht.cpp \
-	ignore.c \
+	ignore.cpp \
 	string.c \
 	log.c
 
@@ -231,7 +231,7 @@ tests_pending_t_SOURCES = \
 	watcher/helper.c \
 	hash.cpp \
 	ht.cpp \
-	ignore.c \
+	ignore.cpp \
 	pending.c \
 	expflags.cpp \
 	opendir.c \

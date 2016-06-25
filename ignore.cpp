@@ -37,13 +37,13 @@ void w_ignore_addstr(struct watchman_ignore *ignore, w_string_t *path,
   w_ht_set(is_vcs_ignore ? ignore->ignore_vcs : ignore->ignore_dirs,
            w_ht_ptr_val(path), w_ht_ptr_val(path));
 
-  art_insert(&ignore->tree, (const unsigned char *)path->buf, path->len,
+  art_insert(&ignore->tree, (const unsigned char *)path->buf, (int)path->len,
              is_vcs_ignore ? VCS_IGNORE : FULL_IGNORE);
 
   if (!is_vcs_ignore) {
-    ignore->dirs_vec =
-        realloc(ignore->dirs_vec,
-                w_ht_size(ignore->ignore_dirs) * sizeof(w_string_t *));
+    ignore->dirs_vec = (w_string_t **)realloc(ignore->dirs_vec,
+                                              w_ht_size(ignore->ignore_dirs) *
+                                                  sizeof(w_string_t *));
     if (!ignore->dirs_vec) {
       w_log(W_LOG_FATAL, "OOM while recording ignore dirs");
     }
