@@ -19,7 +19,7 @@ watchman_SOURCES = \
 	clockspec.cpp  \
 	checksock.cpp  \
 	fstype.cpp     \
-	log.c        \
+	log.cpp        \
 	ignore.cpp     \
 	json.cpp       \
 	bser.cpp       \
@@ -203,7 +203,7 @@ tests_art_t_LDADD = $(ART_LIB) $(TAP_LIB)
 tests_art_t_SOURCES = \
 	tests/art_test.c \
 	tests/log_stub.c \
-	log.c
+	log.cpp
 
 tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_argv_t_LDADD = $(JSON_LIB) $(TAP_LIB)
@@ -221,7 +221,7 @@ tests_ignore_t_SOURCES = \
 	ht.cpp \
 	ignore.cpp \
 	string.c \
-	log.c
+	log.cpp
 
 tests_pending_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_pending_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
@@ -238,13 +238,13 @@ tests_pending_t_SOURCES = \
 	cfg.cpp \
 	time.c \
 	string.c \
-	log.c
+	log.cpp
 
 tests_log_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_log_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_log_t_SOURCES = \
 	tests/log.c \
-	log.c
+	log.cpp
 
 tests_bser_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_bser_t_LDADD = $(JSON_LIB) $(TAP_LIB)

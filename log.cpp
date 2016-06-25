@@ -124,7 +124,7 @@ static w_ctor_fn_type(register_thread_name) {
 w_ctor_fn_reg(register_thread_name);
 
 const char *w_get_thread_name(void) {
-  const char *name = pthread_getspecific(thread_name_key);
+  auto name = (const char*)pthread_getspecific(thread_name_key);
   if (name) {
     return name;
   }
