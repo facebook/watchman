@@ -24,7 +24,7 @@ watchman_SOURCES = \
 	json.c       \
 	bser.cpp       \
 	expflags.cpp   \
-	hash.c       \
+	hash.cpp       \
 	ht.cpp         \
 	ioprio.c        \
 	opendir.c       \
@@ -217,7 +217,7 @@ tests_ignore_t_SOURCES = \
 	tests/ignore_test.c \
 	tests/log_stub.c \
 	watcher/helper.c \
-	hash.c \
+	hash.cpp \
 	ht.cpp \
 	ignore.c \
 	string.c \
@@ -229,7 +229,7 @@ tests_pending_t_SOURCES = \
 	tests/pending_test.c \
 	tests/log_stub.c \
 	watcher/helper.c \
-	hash.c \
+	hash.cpp \
 	ht.cpp \
 	ignore.c \
 	pending.c \
