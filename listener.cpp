@@ -47,9 +47,8 @@ json_t *make_response(void)
 bool enqueue_response(struct watchman_client *client,
     json_t *json, bool ping)
 {
-  struct watchman_client_response *resp;
-
-  resp = calloc(1, sizeof(*resp));
+  auto resp =
+      (watchman_client_response *)calloc(1, sizeof(watchman_client_response));
   if (!resp) {
     return false;
   }
@@ -147,7 +146,7 @@ void w_request_shutdown(void) {
 // then dispatches the commands that it finds
 static void *client_thread(void *ptr)
 {
-  struct watchman_client *client = ptr;
+  auto client = (watchman_client *)ptr;
   struct watchman_event_poll pfd[2];
   struct watchman_client_response *queued_responses_to_send;
   json_t *request;
@@ -258,7 +257,7 @@ bool w_should_log_to_clients(int level)
   }
 
   if (w_ht_first(clients, &iter)) do {
-    struct watchman_client *client = w_ht_val_ptr(iter.value);
+    auto client = (watchman_client *)w_ht_val_ptr(iter.value);
 
     if (client->log_level != W_LOG_OFF && client->log_level >= level) {
       result = true;
@@ -282,7 +281,7 @@ void w_log_to_clients(int level, const char *buf)
 
   pthread_mutex_lock(&w_client_lock);
   if (w_ht_first(clients, &iter)) do {
-    struct watchman_client *client = w_ht_val_ptr(iter.value);
+    auto client = (watchman_client *)w_ht_val_ptr(iter.value);
 
     if (client->log_level != W_LOG_OFF && client->log_level >= level) {
       json = make_response();
@@ -298,6 +297,7 @@ void w_log_to_clients(int level, const char *buf)
   pthread_mutex_unlock(&w_client_lock);
 }
 
+#ifndef _WIN32
 // This is just a placeholder.
 // This catches SIGUSR1 so we don't terminate.
 // We use this to interrupt blocking syscalls
@@ -306,6 +306,7 @@ static void wakeme(int signo)
 {
   unused_parameter(signo);
 }
+#endif
 
 #if defined(HAVE_KQUEUE) || defined(HAVE_FSEVENTS)
 #ifdef __OpenBSD__
@@ -405,13 +406,12 @@ static int get_listener_socket(const char *path)
 #endif
 
 static struct watchman_client *make_new_client(w_stm_t stm) {
-  struct watchman_client *client;
   pthread_attr_t attr;
 
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-  client = calloc(1, derived_client_size);
+  auto client = (watchman_client*)calloc(1, derived_client_size);
   if (!client) {
     pthread_attr_destroy(&attr);
     return NULL;
@@ -722,7 +722,8 @@ bool w_start_listener(const char *path)
   // Wait for clients, waking any sleeping clients up in the process
   {
     int interval = 2000;
-    int last_count = 0, n_clients = 0;
+    uint32_t last_count = 0;
+    uint32_t n_clients = 0;
     const int max_interval = 1000000; // 1 second
 
     do {
@@ -732,7 +733,7 @@ bool w_start_listener(const char *path)
       n_clients = w_ht_size(clients);
 
       if (w_ht_first(clients, &iter)) do {
-        struct watchman_client *client = w_ht_val_ptr(iter.value);
+        auto client = (watchman_client *)w_ht_val_ptr(iter.value);
         w_event_set(client->ping);
 
 #ifndef _WIN32

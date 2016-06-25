@@ -84,7 +84,7 @@ SRCS=\
 	watcher\auto.c \
 	watcher\win32.c \
 	watcher\helper.c \
-	listener.c   \
+	listener.cpp   \
 	listener-user.cpp   \
 	clientmode.cpp \
 	main.c       \

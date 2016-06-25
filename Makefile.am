@@ -65,7 +65,7 @@ watchman_SOURCES = \
 	watcher/kqueue.c   \
 	watcher/portfs.c   \
 	launchd.cpp    \
-	listener.c   \
+	listener.cpp   \
 	listener-user.cpp   \
 	clientmode.cpp \
 	main.c       \
