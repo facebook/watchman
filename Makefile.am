@@ -14,7 +14,7 @@ watchman_SOURCES = \
 	argv.cpp       \
 	envp.cpp       \
 	spawn.c       \
-	opt.c        \
+	opt.cpp        \
 	cfg.cpp        \
 	clockspec.cpp  \
 	checksock.cpp  \

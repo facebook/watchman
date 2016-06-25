@@ -4,7 +4,7 @@
 #include "watchman.h"
 #include <getopt.h>
 
-#define IS_REQUIRED(x)  (x) == REQ_STRING
+#define IS_REQUIRED(x)  (x) == watchman_getopt::REQ_STRING
 
 /* One does not simply use getopt_long() */
 
@@ -23,9 +23,11 @@ void usage(struct watchman_getopt *opts, FILE *where)
 
     len = strlen(opts[i].optname);
     switch (opts[i].argtype) {
-      case REQ_STRING:
+      case watchman_getopt::REQ_STRING:
         len += strlen(label) + strlen("=");
         break;
+      case watchman_getopt::REQ_INT:
+      case watchman_getopt::OPT_NONE:
       default:
         ;
     }
@@ -59,9 +61,11 @@ void usage(struct watchman_getopt *opts, FILE *where)
       fprintf(where, "    ");
     }
     switch (opts[i].argtype) {
-      case REQ_STRING:
+      case watchman_getopt::REQ_STRING:
         snprintf(buf, sizeof(buf), "--%s=%s", opts[i].optname, label);
         break;
+      case watchman_getopt::REQ_INT:
+      case watchman_getopt::OPT_NONE:
       default:
         snprintf(buf, sizeof(buf), "--%s", opts[i].optname);
         break;
@@ -89,15 +93,13 @@ void usage(struct watchman_getopt *opts, FILE *where)
 bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
     char ***daemon_argvp)
 {
-  int num_opts, i;
-  struct option *long_opts;
-  char *shortopts, *nextshort;
+  size_t num_opts, i;
+  char *nextshort;
   int argc = *argcp;
   char **argv = *argvp;
   int long_pos = -1;
   int res;
   int num_daemon = 0;
-  char **daemon_argv;
 
   /* first build up the getopt_long bits that we need */
   for (num_opts = 0; opts[num_opts].optname; num_opts++) {
@@ -105,7 +107,7 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
   }
 
   /* to hold the args we pass to the daemon */
-  daemon_argv = calloc(num_opts + 1, sizeof(char*));
+  auto daemon_argv = (char**)calloc(num_opts + 1, sizeof(char*));
   if (!daemon_argv) {
     perror("calloc daemon opts");
     abort();
@@ -113,14 +115,14 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
   *daemon_argvp = daemon_argv;
 
   /* something to hold the long options */
-  long_opts = calloc(num_opts + 1, sizeof(struct option));
+  auto long_opts = (option*)calloc(num_opts + 1, sizeof(struct option));
   if (!long_opts) {
     perror("calloc struct option");
     abort();
   }
 
   /* and the short options */
-  shortopts = malloc((1 + num_opts) * 2);
+  auto shortopts = (char*)malloc((1 + num_opts) * 2);
   if (!shortopts) {
     perror("malloc shortopts");
     abort();
@@ -134,11 +136,11 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
     long_opts[i].name = (char*)opts[i].optname;
     long_opts[i].val = opts[i].shortopt;
     switch (opts[i].argtype) {
-      case OPT_NONE:
+      case watchman_getopt::OPT_NONE:
         long_opts[i].has_arg = no_argument;
         break;
-      case REQ_STRING:
-      case REQ_INT:
+      case watchman_getopt::REQ_STRING:
+      case watchman_getopt::REQ_INT:
         long_opts[i].has_arg = required_argument;
         break;
     }
@@ -164,7 +166,7 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
       case ':':
         /* missing option argument.
          * Check to see if it was actually optional */
-        for (long_pos = 0; long_pos < num_opts; long_pos++) {
+        for (long_pos = 0; long_pos < (int)num_opts; long_pos++) {
           if (opts[long_pos].shortopt == optopt) {
             if (IS_REQUIRED(opts[long_pos].argtype)) {
               fprintf(stderr, "--%s (-%c) requires an argument",
@@ -189,7 +191,7 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
         } else {
           /* map short option to the real thing */
           o = NULL;
-          for (long_pos = 0; long_pos < num_opts; long_pos++) {
+          for (long_pos = 0; long_pos < (int)num_opts; long_pos++) {
             if (opts[long_pos].shortopt == res) {
               o = &opts[long_pos];
               break;
@@ -204,9 +206,9 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
         }
 
         /* store the argument if we found one */
-        if (o->argtype != OPT_NONE && o->val && optarg) {
+        if (o->argtype != watchman_getopt::OPT_NONE && o->val && optarg) {
           switch (o->argtype) {
-            case REQ_INT:
+            case watchman_getopt::REQ_INT:
             {
               json_t *ival = json_integer(atoi(optarg));
               *(int*)o->val = (int)json_integer_value(ival);
@@ -214,7 +216,7 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
               json_decref(ival);
               break;
             }
-            case REQ_STRING:
+            case watchman_getopt::REQ_STRING:
             {
               json_t *sval = json_string(optarg);
               *(char**)o->val = strdup(optarg);
@@ -222,11 +224,11 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
               json_decref(sval);
               break;
             }
-            case OPT_NONE:
+            case watchman_getopt::OPT_NONE:
               ;
           }
         }
-        if (o->argtype == OPT_NONE && o->val) {
+        if (o->argtype == watchman_getopt::OPT_NONE && o->val) {
           json_t *bval = json_true();
           *(int*)o->val = 1;
           cfg_set_arg(o->optname, bval);
