@@ -47,7 +47,7 @@ SRCS=\
 	log.c        \
 	json.c       \
 	bser.cpp       \
-	expflags.c   \
+	expflags.cpp   \
 	hash.c       \
 	ioprio.c     \
 	opendir.c    \

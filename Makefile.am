@@ -23,7 +23,7 @@ watchman_SOURCES = \
 	ignore.c     \
 	json.c       \
 	bser.cpp       \
-	expflags.c   \
+	expflags.cpp   \
 	hash.c       \
 	ht.cpp         \
 	ioprio.c        \
@@ -233,7 +233,7 @@ tests_pending_t_SOURCES = \
 	ht.cpp \
 	ignore.c \
 	pending.c \
-	expflags.c \
+	expflags.cpp \
 	opendir.c \
 	cfg.cpp \
 	time.c \
