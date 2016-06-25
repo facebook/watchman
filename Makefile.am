@@ -21,7 +21,7 @@ watchman_SOURCES = \
 	fstype.cpp     \
 	log.c        \
 	ignore.cpp     \
-	json.c       \
+	json.cpp       \
 	bser.cpp       \
 	expflags.cpp   \
 	hash.cpp       \

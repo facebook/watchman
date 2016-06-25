@@ -45,7 +45,7 @@ SRCS=\
 	checksock.cpp \
 	fstype.cpp     \
 	log.c        \
-	json.c       \
+	json.cpp       \
 	bser.cpp       \
 	expflags.cpp   \
 	hash.cpp       \
