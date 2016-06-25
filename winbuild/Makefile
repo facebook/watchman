@@ -53,7 +53,7 @@ SRCS=\
 	opendir.cpp    \
 	pending.cpp    \
 	perf.cpp       \
-	stream.c     \
+	stream.cpp     \
 	stream_win.c \
 	stream_stdout.c \
 	ht.cpp         \

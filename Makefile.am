@@ -30,7 +30,7 @@ watchman_SOURCES = \
 	opendir.cpp       \
 	pending.cpp     \
 	perf.cpp          \
-	stream.c        \
+	stream.cpp        \
 	stream_stdout.c \
 	stream_unix.c   \
 	timedlock.c     \
