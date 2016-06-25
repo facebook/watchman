@@ -16,6 +16,7 @@ extern "C" {
 #include <unistd.h>
 #endif
 #include <ctype.h>
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #include <sys/stat.h>
 #if HAVE_SYS_INOTIFY_H
@@ -42,6 +43,7 @@ extern "C" {
 #include <grp.h>
 #include <libgen.h>
 #endif
+#define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 #include <limits.h>
 #ifndef _WIN32

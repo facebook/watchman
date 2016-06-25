@@ -20,7 +20,7 @@ char **w_argv_copy_from_json(json_t *arr, int skip)
 
   /* compute required size, and sanity check the
    * element types */
-  for (i = skip; i < json_array_size(arr); i++) {
+  for (i = (uint32_t)skip; i < json_array_size(arr); i++) {
     json_t *ele = json_array_get(arr, i);
     if (!ele) {
       return NULL;
@@ -32,14 +32,14 @@ char **w_argv_copy_from_json(json_t *arr, int skip)
     len += strlen(str) + 1;
   }
 
-  dup_argv = malloc(len);
+  dup_argv = (char**)malloc(len);
   if (!dup_argv) {
     return NULL;
   }
 
   buf = (char*)(dup_argv + argc + 1);
 
-  for (i = skip; i < json_array_size(arr); i++) {
+  for (i = (uint32_t)skip; i < json_array_size(arr); i++) {
     str = json_string_value(json_array_get(arr, i));
 
     dup_argv[i - skip] = buf;

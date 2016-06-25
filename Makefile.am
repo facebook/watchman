@@ -11,7 +11,7 @@ JSON_LIB = -L. libwmanjson.a
 watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 watchman_LDADD = $(JSON_LIB) $(ART_LIB) libwildmatch.a
 watchman_SOURCES = \
-	argv.c       \
+	argv.cpp       \
 	envp.c       \
 	spawn.c       \
 	opt.c        \
@@ -209,7 +209,7 @@ tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_argv_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_argv_t_SOURCES = \
 	tests/argv.c \
-	argv.c
+	argv.cpp
 
 tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_ignore_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
