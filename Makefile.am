@@ -25,7 +25,7 @@ watchman_SOURCES = \
 	bser.c       \
 	expflags.c   \
 	hash.c       \
-	ht.c         \
+	ht.cpp         \
 	ioprio.c        \
 	opendir.c       \
 	pending.c       \
@@ -218,7 +218,7 @@ tests_ignore_t_SOURCES = \
 	tests/log_stub.c \
 	watcher/helper.c \
 	hash.c \
-	ht.c \
+	ht.cpp \
 	ignore.c \
 	string.c \
 	log.c
@@ -230,7 +230,7 @@ tests_pending_t_SOURCES = \
 	tests/log_stub.c \
 	watcher/helper.c \
 	hash.c \
-	ht.c \
+	ht.cpp \
 	ignore.c \
 	pending.c \
 	expflags.c \

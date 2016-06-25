@@ -19,14 +19,14 @@ struct watchman_hash_table {
 
 w_ht_t *w_ht_new(uint32_t size_hint, const struct watchman_hash_funcs *funcs)
 {
-  w_ht_t *ht = calloc(1, sizeof(*ht));
+  w_ht_t *ht = (w_ht_t*)calloc(1, sizeof(*ht));
 
   if (!ht) {
     return NULL;
   }
 
   ht->table_size = next_power_2(size_hint);
-  ht->table = calloc(ht->table_size, sizeof(void*));
+  ht->table = (watchman_hash_bucket **)calloc(ht->table_size, sizeof(void *));
   if (!ht->table) {
     free(ht);
     return NULL;
@@ -102,7 +102,7 @@ static void resize(w_ht_t *ht, uint32_t newsize)
   struct watchman_hash_bucket **table;
   uint32_t slot;
 
-  table = calloc(newsize, sizeof(void*));
+  table = (watchman_hash_bucket **)calloc(newsize, sizeof(void *));
   if (!table) {
     return;
   }
@@ -180,7 +180,7 @@ bool w_ht_insert(w_ht_t *ht, w_ht_val_t key, w_ht_val_t value, bool replace)
     }
   }
 
-  b = malloc(sizeof(*b));
+  b = (watchman_hash_bucket*)malloc(sizeof(*b));
   if (!b) {
     errno = ENOMEM;
     return false;
@@ -238,7 +238,7 @@ bool w_ht_lookup(w_ht_t *ht, w_ht_val_t key, w_ht_val_t *val, bool copy)
 }
 
 static inline void delete_bucket(w_ht_t *ht,
-    struct watchman_hash_bucket *b, int slot,
+    struct watchman_hash_bucket *b, uint32_t slot,
     bool do_resize)
 {
   if (b->next) {
@@ -310,7 +310,7 @@ bool w_ht_first(w_ht_t *ht, w_ht_iter_t *iter)
 
 bool w_ht_next(w_ht_t *ht, w_ht_iter_t *iter)
 {
-  struct watchman_hash_bucket *b = iter->ptr;
+  auto b = (watchman_hash_bucket*)iter->ptr;
 
   if (iter->slot != (uint32_t)-1 && iter->slot >= ht->table_size) {
     return false;
@@ -329,7 +329,7 @@ bool w_ht_next(w_ht_t *ht, w_ht_iter_t *iter)
   }
 
   if (iter->ptr) {
-    b = iter->ptr;
+    b = (watchman_hash_bucket*)iter->ptr;
     iter->key = b->key;
     iter->value = b->value;
 
@@ -342,9 +342,7 @@ bool w_ht_next(w_ht_t *ht, w_ht_iter_t *iter)
 /* iterator aware delete */
 bool w_ht_iter_del(w_ht_t *ht, w_ht_iter_t *iter)
 {
-  struct watchman_hash_bucket *b;
-
-  b = iter->ptr;
+  auto b = (watchman_hash_bucket*)iter->ptr;
   if (!iter->ptr) {
     return false;
   }
@@ -367,18 +365,19 @@ bool w_ht_iter_del(w_ht_t *ht, w_ht_iter_t *iter)
 
 w_ht_val_t w_ht_string_copy(w_ht_val_t key)
 {
-  w_string_addref(w_ht_val_ptr(key));
+  w_string_addref((w_string_t*)w_ht_val_ptr(key));
   return key;
 }
 
 void w_ht_string_del(w_ht_val_t key)
 {
-  w_string_delref(w_ht_val_ptr(key));
+  w_string_delref((w_string_t*)w_ht_val_ptr(key));
 }
 
 bool w_ht_string_equal(w_ht_val_t a, w_ht_val_t b)
 {
-  return w_string_equal(w_ht_val_ptr(a), w_ht_val_ptr(b));
+  return w_string_equal((w_string_t *)w_ht_val_ptr(a),
+                        (w_string_t *)w_ht_val_ptr(b));
 }
 
 uint32_t w_ht_string_hash(w_ht_val_t key)
