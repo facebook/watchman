@@ -29,16 +29,18 @@ void w_log(int level, WATCHMAN_FMT_STRING(const char *fmt), ...)
 #endif
 ;
 
+#define w_check(e, ...)                                                        \
+  if (!(e)) {                                                                  \
+    w_log(W_LOG_ERR, "%s:%u failed assertion `%s'\n", __FILE__, __LINE__, #e); \
+    w_log(W_LOG_FATAL, __VA_ARGS__);                                           \
+  }
+
 // Similar to assert(), but uses W_LOG_FATAL to log the stack trace
 // before giving up the ghost
 #ifdef NDEBUG
 # define w_assert(e, ...) ((void)0)
 #else
-#define w_assert(e, ...)                                                       \
-  if (!(e)) {                                                                  \
-    w_log(W_LOG_ERR, "%s:%u failed assertion `%s'\n", __FILE__, __LINE__, #e); \
-    w_log(W_LOG_FATAL, __VA_ARGS__);                                           \
-  }
+#define w_assert(e, ...) w_check(e, __VA_ARGS__)
 #endif
 
 bool w_should_log_to_clients(int level);
