@@ -90,7 +90,7 @@ SRCS=\
 	main.cpp       \
 	root.cpp       \
 	state.cpp      \
-	string.c     \
+	string.cpp     \
 	time.c
 
 TEST_SRCS=\

@@ -71,7 +71,7 @@ watchman_SOURCES = \
 	main.cpp       \
 	root.cpp       \
 	state.cpp      \
-	string.c     \
+	string.cpp     \
 	time.c
 
 noinst_HEADERS =   \
@@ -220,7 +220,7 @@ tests_ignore_t_SOURCES = \
 	hash.cpp \
 	ht.cpp \
 	ignore.cpp \
-	string.c \
+	string.cpp \
 	log.cpp
 
 tests_pending_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
@@ -237,7 +237,7 @@ tests_pending_t_SOURCES = \
 	opendir.cpp \
 	cfg.cpp \
 	time.c \
-	string.c \
+	string.cpp \
 	log.cpp
 
 tests_log_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@

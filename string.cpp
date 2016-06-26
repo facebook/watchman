@@ -10,8 +10,6 @@ json_t *w_string_to_json(w_string_t *str) {
 
 w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
 {
-  w_string_t *slice;
-
   if (start == 0 && len == str->len) {
     w_string_addref(str);
     return str;
@@ -26,7 +24,7 @@ w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
     return NULL;
   }
 
-  slice = calloc(1, sizeof(*str));
+  auto slice = (w_string_t*)calloc(1, sizeof(w_string_t));
   slice->refcnt = 1;
   slice->len = len;
   slice->buf = str->buf + start;
@@ -52,12 +50,11 @@ w_string_t *w_string_new(const char *str) {
 }
 
 w_string_t *w_string_new_len(const char *str, uint32_t len) {
-  w_string_t *s;
   uint32_t hval;
   char *buf;
 
   hval = w_hash_bytes(str, len, 0);
-  s = malloc(sizeof(*s) + len + 1);
+  auto s = (w_string_t*)malloc(sizeof(w_string_t) + len + 1);
   if (!s) {
     perror("no memory available");
     abort();
@@ -103,7 +100,6 @@ w_string_t *w_string_new_wchar(WCHAR *str, int len) {
 
 w_string_t *w_string_make_printf(const char *format, ...)
 {
-  w_string_t *s;
   int len;
   char *buf;
   va_list args;
@@ -113,21 +109,21 @@ w_string_t *w_string_make_printf(const char *format, ...)
   len = vsnprintf(NULL, 0, format, args);
   va_end(args);
 
-  s = malloc(sizeof(*s) + len + 1);
+  auto s = (w_string_t*)malloc(sizeof(w_string_t) + len + 1);
   if (!s) {
     perror("no memory available");
     abort();
   }
 
   s->refcnt = 1;
-  s->len = len;
+  s->len = (uint32_t)len;
   s->slice = NULL;
   buf = (char*)(s + 1);
   va_start(args, format);
-  vsnprintf(buf, len + 1, format, args);
+  vsnprintf(buf, (size_t)len + 1, format, args);
   va_end(args);
   s->buf = buf;
-  s->hval = w_hash_bytes(buf, len, 0);
+  s->hval = w_hash_bytes(buf, (size_t)len, 0);
 
   return s;
 }
@@ -138,7 +134,6 @@ w_string_t *w_string_dup_lower(w_string_t *str)
   bool is_lower = true;
   char *buf;
   uint32_t i;
-  w_string_t *s;
 
   for (i = 0; i < str->len; i++) {
     if (tolower((uint8_t)str->buf[i]) != str->buf[i]) {
@@ -154,7 +149,7 @@ w_string_t *w_string_dup_lower(w_string_t *str)
 
   /* need to make a lowercase version */
 
-  s = malloc(sizeof(*s) + str->len + 1);
+  auto s = (w_string_t*)malloc(sizeof(w_string_t) + str->len + 1);
   if (!s) {
     perror("no memory available");
     abort();
@@ -177,12 +172,11 @@ w_string_t *w_string_dup_lower(w_string_t *str)
 /* make a lowercased copy of string */
 w_string_t *w_string_new_lower(const char *str)
 {
-  w_string_t *s;
   uint32_t len = strlen_uint32(str);
   char *buf;
   uint32_t i;
 
-  s = malloc(sizeof(*s) + len + 1);
+  auto s = (w_string_t*)malloc(sizeof(w_string_t) + len + 1);
   if (!s) {
     perror("no memory available");
     abort();
@@ -255,10 +249,10 @@ w_string_t *w_string_dirname(w_string_t *str)
 
   /* can't use libc strXXX functions because we may be operating
    * on a slice */
-  for (end = str->len - 1; end >= 0; end--) {
+  for (end = (int)str->len - 1; end >= 0; end--) {
     if (str->buf[end] == WATCHMAN_DIR_SEP) {
       /* found the end of the parent dir */
-      return w_string_slice(str, 0, end);
+      return w_string_slice(str, 0, (uint32_t)end);
     }
   }
 
@@ -297,7 +291,7 @@ w_string_t *w_string_suffix(w_string_t *str)
 
   /* can't use libc strXXX functions because we may be operating
    * on a slice */
-  for (end = str->len - 1; end >= 0; end--) {
+  for (end = (int)str->len - 1; end >= 0; end--) {
     if (str->buf[end] == '.') {
       if (str->len - (end + 1) >= sizeof(name_buf) - 1) {
         // Too long
@@ -364,7 +358,8 @@ bool w_string_contains_cstr_len(w_string_t *str, const char *needle,
   }
 
   limit = haystack + hlen - nlen + 1;
-  while ((haystack = memchr(haystack, needle[0], limit - haystack)) != NULL) {
+  while ((haystack = (const char *)memchr(
+              haystack, needle[0], (size_t)(limit - haystack))) != NULL) {
     if (memcmp(haystack, needle, nlen) == 0) {
       return true;
     }
@@ -379,7 +374,7 @@ w_string_t *w_string_canon_path(w_string_t *str)
   int end;
   int trim = 0;
 
-  for (end = str->len - 1;
+  for (end = (int)str->len - 1;
       end >= 0 && str->buf[end] == WATCHMAN_DIR_SEP; end--) {
     trim++;
   }
@@ -399,7 +394,6 @@ w_string_t *w_string_canon_path(w_string_t *str)
 // Normalize directory separators to match the platform.
 // Also trims any trailing directory separators
 w_string_t *w_string_normalize_separators(w_string_t *str, char target_sep) {
-  w_string_t *s;
   char *buf;
   uint32_t i, len;
 
@@ -422,7 +416,7 @@ w_string_t *w_string_normalize_separators(w_string_t *str, char target_sep) {
     }
   }
 
-  s = malloc(sizeof(*s) + len + 1);
+  auto s = (w_string_t*)malloc(sizeof(w_string_t) + len + 1);
   if (!s) {
     perror("no memory available");
     abort();
@@ -469,10 +463,10 @@ w_string_t *w_string_basename(w_string_t *str)
 
   /* can't use libc strXXX functions because we may be operating
    * on a slice */
-  for (end = str->len - 1; end >= 0; end--) {
+  for (end = (int)str->len - 1; end >= 0; end--) {
     if (str->buf[end] == WATCHMAN_DIR_SEP) {
       /* found the end of the parent dir */
-      return w_string_slice(str, end + 1, str->len - (end + 1));
+      return w_string_slice(str, (uint32_t)end + 1, str->len - (end + 1));
     }
   }
 
@@ -482,8 +476,7 @@ w_string_t *w_string_basename(w_string_t *str)
 
 w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
 {
-  w_string_t *s;
-  int len;
+  uint32_t len;
   char *buf;
 
   if (rhs->len == 0) {
@@ -493,7 +486,7 @@ w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
 
   len = parent->len + rhs->len + 1;
 
-  s = malloc(sizeof(*s) + len + 1);
+  auto s = (w_string_t*)malloc(sizeof(w_string_t) + len + 1);
   if (!s) {
     perror("no memory available");
     abort();
@@ -519,8 +512,7 @@ w_string_t *w_string_path_cat_cstr(w_string_t *parent, const char *rhs) {
 
 w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
                                        uint32_t rhs_len) {
-  w_string_t *s;
-  int len;
+  uint32_t len;
   char *buf;
 
   if (rhs_len == 0) {
@@ -530,7 +522,7 @@ w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
 
   len = parent->len + rhs_len + 1;
 
-  s = malloc(sizeof(*s) + len + 1);
+  auto s = (w_string_t*)malloc(sizeof(w_string_t) + len + 1);
   if (!s) {
     perror("no memory available");
     abort();
@@ -552,9 +544,7 @@ w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
 
 char *w_string_dup_buf(const w_string_t *str)
 {
-  char *buf;
-
-  buf = malloc(str->len + 1);
+  auto buf = (char*)malloc(str->len + 1);
   if (!buf) {
     return NULL;
   }
@@ -571,7 +561,6 @@ w_string_t *w_string_implode(json_t *arr, const char *delim)
   uint32_t delim_len = strlen_uint32(delim);
   uint32_t len = 0;
   uint32_t i;
-  w_string_t *s;
   char *buf;
 
   if (json_array_size(arr) == 0) {
@@ -591,7 +580,7 @@ w_string_t *w_string_implode(json_t *arr, const char *delim)
     len += strlen_uint32(str);
   }
 
-  s = malloc(sizeof(*s) + len + 1);
+  auto s = (w_string_t*)malloc(sizeof(w_string_t) + len + 1);
   if (!s) {
     perror("no memory available");
     abort();
@@ -633,11 +622,10 @@ w_string_t *w_string_shell_escape(const w_string_t *str)
 {
   // Worst case expansion for a char is 4x, plus quoting either end
   uint32_t len = 2 + (str->len * 4);
-  w_string_t *s;
   char *buf;
   const char *src, *end;
 
-  s = malloc(sizeof(*s) + len + 1);
+  auto s = (w_string_t*)malloc(sizeof(w_string_t) + len + 1);
   if (!s) {
     perror("no memory available");
     abort();
