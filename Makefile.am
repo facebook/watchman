@@ -255,7 +255,7 @@ tests_bser_t_SOURCES = \
 tests_wildmatch_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_wildmatch_t_LDADD = $(JSON_LIB) $(TAP_LIB) $(WILDMATCH_LIB)
 tests_wildmatch_t_SOURCES = \
-	tests/wildmatch_test.c
+	tests/wildmatch_test.cpp
 
 watch:
 	PYTHONPATH=python python/bin/watchman-make \
