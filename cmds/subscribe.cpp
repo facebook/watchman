@@ -10,7 +10,7 @@ static bool subscription_generator(
     void *gendata)
 {
   struct watchman_file *f;
-  struct watchman_client_subscription *sub = gendata;
+  auto sub = (watchman_client_subscription*)gendata;
 
   w_log(W_LOG_DBG, "running subscription %s %p\n",
       sub->name->buf, sub);
@@ -141,12 +141,12 @@ void w_cancel_subscriptions_for_root(w_root_t *root) {
   pthread_mutex_lock(&w_client_lock);
   if (w_ht_first(clients, &iter)) {
     do {
-      struct watchman_user_client *client = w_ht_val_ptr(iter.value);
+      auto client = (watchman_user_client *)w_ht_val_ptr(iter.value);
       w_ht_iter_t citer;
 
       if (w_ht_first(client->subscriptions, &citer)) {
         do {
-          struct watchman_client_subscription *sub = w_ht_val_ptr(citer.value);
+          auto sub = (watchman_client_subscription *)w_ht_val_ptr(citer.value);
 
           if (sub->root == root) {
             json_t *response = make_response();
@@ -283,7 +283,7 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
     goto done;
   }
 
-  sub = calloc(1, sizeof(*sub));
+  sub = (watchman_client_subscription*)calloc(1, sizeof(*sub));
   if (!sub) {
     send_error_response(&client->client, "no memory!");
     goto done;

@@ -64,7 +64,7 @@ SRCS=\
 	cmds\since.cpp    \
 	cmds\reg.cpp      \
 	cmds\state.cpp    \
-	cmds\subscribe.c    \
+	cmds\subscribe.cpp    \
 	cmds\trigger.c  \
 	cmds\watch.c    \
 	cmds\debug.cpp    \
