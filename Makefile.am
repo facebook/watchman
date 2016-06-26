@@ -63,7 +63,7 @@ watchman_SOURCES = \
 	watcher/helper.cpp   \
 	watcher/inotify.cpp  \
 	watcher/kqueue.cpp   \
-	watcher/portfs.c   \
+	watcher/portfs.cpp   \
 	launchd.cpp    \
 	listener.cpp   \
 	listener-user.cpp   \

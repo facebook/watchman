@@ -39,7 +39,7 @@ static struct watchman_port_file *make_port_file(w_string_t *name,
     struct stat *st) {
   struct watchman_port_file *f;
 
-  f = calloc(1, sizeof(*f));
+  f = (watchman_port_file*)calloc(1, sizeof(*f));
   if (!f) {
     return NULL;
   }
@@ -59,7 +59,7 @@ static void free_port_file(struct watchman_port_file *f) {
 }
 
 static void portfs_del_port_file(w_ht_val_t key) {
-  free_port_file(w_ht_val_ptr(key));
+  free_port_file((watchman_port_file*)w_ht_val_ptr(key));
 }
 
 const struct watchman_hash_funcs port_file_funcs = {
@@ -74,8 +74,7 @@ const struct watchman_hash_funcs port_file_funcs = {
 bool portfs_root_init(w_root_t *root, char **errmsg) {
   struct portfs_root_state *state;
 
-
-  state = calloc(1, sizeof(*state));
+  state = (portfs_root_state*)calloc(1, sizeof(*state));
   if (!state) {
     *errmsg = strdup("out of memory");
     return false;
@@ -99,7 +98,7 @@ bool portfs_root_init(w_root_t *root, char **errmsg) {
 }
 
 void portfs_root_dtor(w_root_t *root) {
-  struct portfs_root_state *state = root->watch;
+  auto state = (portfs_root_state*)root->watch;
 
   if (!state) {
     return;
@@ -166,7 +165,7 @@ out:
 
 static bool portfs_root_start_watch_file(w_root_t *root,
     struct watchman_file *file) {
-  struct portfs_root_state *state = root->watch;
+  auto state = (portfs_root_state*)root->watch;
   w_string_t *name;
   bool success = false;
 
@@ -189,7 +188,7 @@ static void portfs_root_stop_watch_file(w_root_t *root,
 static struct watchman_dir_handle *portfs_root_start_watch_dir(
     w_root_t *root, struct watchman_dir *dir, struct timeval now,
     const char *path) {
-  struct portfs_root_state *state = root->watch;
+  auto state = (portfs_root_state*)root->watch;
   struct watchman_dir_handle *osdir;
   struct stat st;
 
@@ -225,7 +224,7 @@ static void portfs_root_stop_watch_dir(w_root_t *root,
 static bool portfs_root_consume_notify(w_root_t *root,
     struct watchman_pending_collection *coll)
 {
-  struct portfs_root_state *state = root->watch;
+  auto state = (portfs_root_state*)root->watch;
   uint_t i, n;
   struct timeval now;
 
@@ -284,7 +283,7 @@ static bool portfs_root_consume_notify(w_root_t *root,
 }
 
 static bool portfs_root_wait_notify(w_root_t *root, int timeoutms) {
-  struct portfs_root_state *state = root->watch;
+  auto state = (portfs_root_state*)root->watch;
   int n;
   struct pollfd pfd;
 
