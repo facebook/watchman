@@ -33,7 +33,7 @@ watchman_SOURCES = \
 	stream.cpp        \
 	stream_stdout.cpp \
 	stream_unix.cpp   \
-	timedlock.c     \
+	timedlock.cpp     \
 	cmds/find.c     \
 	cmds/info.c     \
 	cmds/log.c      \
