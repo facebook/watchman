@@ -61,7 +61,7 @@ SRCS=\
 	cmds\info.cpp     \
 	cmds\log.cpp      \
 	cmds\query.cpp    \
-	cmds\since.c    \
+	cmds\since.cpp    \
 	cmds\reg.cpp      \
 	cmds\state.c    \
 	cmds\subscribe.c    \
