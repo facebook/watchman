@@ -60,8 +60,8 @@ struct inot_root_state {
 };
 
 static w_ht_val_t copy_pending(w_ht_val_t key) {
-  struct pending_move *src = w_ht_val_ptr(key);
-  struct pending_move *dest = malloc(sizeof(*dest));
+  auto src = (pending_move *)w_ht_val_ptr(key);
+  struct pending_move *dest = (pending_move*)malloc(sizeof(*dest));
   dest->created = src->created;
   dest->name = src->name;
   w_string_addref(src->name);
@@ -69,7 +69,7 @@ static w_ht_val_t copy_pending(w_ht_val_t key) {
 }
 
 static void del_pending(w_ht_val_t key) {
-  struct pending_move *p = w_ht_val_ptr(key);
+  auto p = (pending_move *)w_ht_val_ptr(key);
 
   w_string_delref(p->name);
   free(p);
@@ -107,7 +107,7 @@ bool inot_root_init(w_root_t *root, char **errmsg) {
   struct inot_root_state *state;
 
 
-  state = calloc(1, sizeof(*state));
+  state = (inot_root_state*)calloc(1, sizeof(*state));
   if (!state) {
     *errmsg = strdup("out of memory");
     return false;
@@ -136,8 +136,7 @@ bool inot_root_init(w_root_t *root, char **errmsg) {
 }
 
 void inot_root_dtor(w_root_t *root) {
-  struct inot_root_state *state = root->watch;
-
+  auto state = (inot_root_state*)root->watch;
 
   if (!state) {
     return;
@@ -186,7 +185,7 @@ static void inot_root_stop_watch_file(w_root_t *root,
 static struct watchman_dir_handle *inot_root_start_watch_dir(
     w_root_t *root, struct watchman_dir *dir, struct timeval now,
     const char *path) {
-  struct inot_root_state *state = root->watch;
+  auto state = (inot_root_state*)root->watch;
   struct watchman_dir_handle *osdir = NULL;
   int newwd, err;
 
@@ -227,7 +226,7 @@ static struct watchman_dir_handle *inot_root_start_watch_dir(
 
 static void inot_root_stop_watch_dir(w_root_t *root,
     struct watchman_dir *dir) {
-  struct inot_root_state *state = root->watch;
+  auto state = (inot_root_state*)root->watch;
   unused_parameter(state);
   unused_parameter(root);
   unused_parameter(dir);
@@ -242,7 +241,7 @@ static void process_inotify_event(
     struct inotify_event *ine,
     struct timeval now)
 {
-  struct inot_root_state *state = root->watch;
+  auto state = (inot_root_state*)root->watch;
   char flags_label[128];
 
   w_expand_flags(inflags, ine->mask, flags_label, sizeof(flags_label));
@@ -259,7 +258,7 @@ static void process_inotify_event(
     int pending_flags = W_PENDING_VIA_NOTIFY;
 
     pthread_mutex_lock(&state->lock);
-    dir_name = w_ht_val_ptr(w_ht_get(state->wd_to_name, ine->wd));
+    dir_name = (w_string_t*)w_ht_val_ptr(w_ht_get(state->wd_to_name, ine->wd));
     if (dir_name) {
       w_string_addref(dir_name);
     }
@@ -304,7 +303,7 @@ static void process_inotify_event(
       struct pending_move *old;
 
       pthread_mutex_lock(&state->lock);
-      old = w_ht_val_ptr(w_ht_get(state->move_map, ine->cookie));
+      old = (pending_move*)w_ht_val_ptr(w_ht_get(state->move_map, ine->cookie));
       if (old) {
         int wd = inotify_add_watch(state->infd, name->buf,
                     WATCHMAN_INOTIFY_MASK);
@@ -387,7 +386,7 @@ static void process_inotify_event(
 static bool inot_root_consume_notify(w_root_t *root,
     struct watchman_pending_collection *coll)
 {
-  struct inot_root_state *state = root->watch;
+  auto state = (inot_root_state*)root->watch;
   struct inotify_event *ine;
   char *iptr;
   int n;
@@ -428,7 +427,7 @@ static bool inot_root_consume_notify(w_root_t *root,
   if (w_ht_size(state->move_map) > 0) {
     w_ht_iter_t iter;
     if (w_ht_first(state->move_map, &iter)) do {
-      struct pending_move *pending = w_ht_val_ptr(iter.value);
+      auto pending = (pending_move*)w_ht_val_ptr(iter.value);
       if (now.tv_sec - pending->created > 5 /* seconds */) {
         w_log(W_LOG_DBG,
             "deleting pending move %s (moved outside of watch?)\n",
@@ -442,7 +441,7 @@ static bool inot_root_consume_notify(w_root_t *root,
 }
 
 static bool inot_root_wait_notify(w_root_t *root, int timeoutms) {
-  struct inot_root_state *state = root->watch;
+  auto state = (inot_root_state*)root->watch;
   int n;
   struct pollfd pfd;
 
