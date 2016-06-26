@@ -23,7 +23,6 @@ SRCS_C=\
 	winbuild\pathmap.c \
 	winbuild\stat.c \
 	winbuild\realpath.c \
-	winbuild\dir.c \
 	winbuild\hostname.c \
 	thirdparty\wildmatch\wildmatch.c \
 	thirdparty\libart\src\art.c \
@@ -36,6 +35,7 @@ SRCS_CPP=\
 	winbuild\abort.cpp \
 	winbuild\asprintf.cpp \
 	winbuild\backtrace.cpp \
+	winbuild\dir.cpp \
 	winbuild\dirname.cpp \
 	argv.cpp \
 	envp.cpp \
