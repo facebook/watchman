@@ -13,7 +13,7 @@ struct w_expr_list {
 
 static void dispose_expr(void *data)
 {
-  w_query_expr *expr = data;
+  auto expr = (w_query_expr *)data;
 
   w_query_expr_delref(expr);
 }
@@ -22,7 +22,7 @@ static bool eval_not(struct w_query_ctx *ctx,
     struct watchman_file *file,
     void *data)
 {
-  w_query_expr *expr = data;
+  auto expr = (w_query_expr *)data;
 
   return !w_query_expr_evaluate(expr, ctx, file);
 }
@@ -78,7 +78,7 @@ static bool eval_list(struct w_query_ctx *ctx,
     struct watchman_file *file,
     void *data)
 {
-  struct w_expr_list *list = data;
+  auto list = (w_expr_list*)data;
   size_t i;
 
   for (i = 0; i < list->num; i++) {
@@ -99,7 +99,7 @@ static bool eval_list(struct w_query_ctx *ctx,
 
 static void dispose_list(void *data)
 {
-  struct w_expr_list *list = data;
+  auto list = (w_expr_list*)data;
   size_t i;
 
   for (i = 0; i < list->num; i++) {
@@ -114,7 +114,6 @@ static void dispose_list(void *data)
 
 static w_query_expr *parse_list(w_query *query, json_t *term, bool allof)
 {
-  struct w_expr_list *list;
   size_t i;
 
   /* don't allow "allof" on its own */
@@ -123,7 +122,7 @@ static w_query_expr *parse_list(w_query *query, json_t *term, bool allof)
     return NULL;
   }
 
-  list = calloc(1, sizeof(*list));
+  auto list = (w_expr_list*)calloc(1, sizeof(w_expr_list));
   if (!list) {
     query->errmsg = strdup("out of memory");
     return NULL;
@@ -131,7 +130,7 @@ static w_query_expr *parse_list(w_query *query, json_t *term, bool allof)
 
   list->allof = allof;
   list->num = json_array_size(term) - 1;
-  list->exprs = calloc(list->num, sizeof(list->exprs[0]));
+  list->exprs = (w_query_expr**)calloc(list->num, sizeof(list->exprs[0]));
 
   for (i = 0; i < list->num; i++) {
     w_query_expr *parsed;
