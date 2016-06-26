@@ -24,7 +24,6 @@ SRCS_C=\
 	thirdparty\wildmatch\wildmatch.c \
 	thirdparty\libart\src\art.c \
 	winbuild\time.c \
-	winbuild\pthread.c 
 
 SRCS_CPP=\
 	winbuild\abort.cpp \
@@ -37,6 +36,7 @@ SRCS_CPP=\
 	winbuild\hostname.cpp \
 	winbuild\pathmap.cpp \
 	winbuild\posix_spawn.cpp \
+	winbuild\pthread.cpp \
 	argv.cpp \
 	envp.cpp \
 	ignore.cpp \
@@ -99,7 +99,6 @@ TEST_SRCS_C=\
 	thirdparty\tap.c \
 	thirdparty\wildmatch\wildmatch.c \
 	winbuild\time.c \
-	winbuild\pthread.c \
 	$(JSON_SRCS)
 
 TEST_SRCS_CPP=\
@@ -107,7 +106,8 @@ TEST_SRCS_CPP=\
 	winbuild\abort.cpp \
 	winbuild\asprintf.cpp \
 	winbuild\backtrace.cpp \
-	winbuild\errmap.cpp
+	winbuild\errmap.cpp \
+	winbuild\pthread.cpp
 
 TEST_DIR_SRCS=\
 	tests\art_test.cpp \
