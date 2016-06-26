@@ -1,6 +1,9 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Spawn attributes
 
@@ -64,3 +67,7 @@ int posix_spawnp(pid_t *pid, const char *file,
     char *const argv[], char *const envp[]);
 
 BOOL w_wait_for_any_child(DWORD timeoutms, DWORD *pid);
+
+#ifdef __cplusplus
+}
+#endif

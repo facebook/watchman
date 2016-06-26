@@ -4,6 +4,10 @@
 #ifndef DIRENT_H
 #define DIRENT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct dirent {
   char d_name[MAX_PATH];
 };
@@ -18,6 +22,10 @@ DIR *win_opendir(const char *path, int nofollow);
 DIR *opendir(const char *path);
 void closedir(DIR *d);
 struct dirent *readdir(DIR *d);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
