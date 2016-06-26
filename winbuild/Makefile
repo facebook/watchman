@@ -19,7 +19,6 @@ JSON_SRCS=\
 
 SRCS_C=\
 	$(JSON_SRCS) \
-	winbuild\pathmap.c \
 	winbuild\stat.c \
 	winbuild\realpath.c \
 	thirdparty\wildmatch\wildmatch.c \
@@ -37,6 +36,7 @@ SRCS_CPP=\
 	winbuild\errmap.cpp \
 	winbuild\getopt_long.cpp \
 	winbuild\hostname.cpp \
+	winbuild\pathmap.cpp \
 	argv.cpp \
 	envp.cpp \
 	ignore.cpp \
