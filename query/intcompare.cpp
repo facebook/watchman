@@ -83,7 +83,7 @@ bool eval_int_compare(json_int_t ival, struct w_query_int_compare *comp) {
 static bool eval_size(struct w_query_ctx *ctx, struct watchman_file *file,
     void *data)
 {
-  struct w_query_int_compare *comp = data;
+  auto comp = (w_query_int_compare*)data;
   unused_parameter(ctx);
 
   // Removed files never evaluate true
@@ -102,7 +102,7 @@ static w_query_expr *size_parser(w_query *query, json_t *term) {
     return NULL;
   }
 
-  comp = calloc(1, sizeof(*comp));
+  comp = (w_query_int_compare*)calloc(1, sizeof(*comp));
   if (!comp) {
     ignore_result(asprintf(&query->errmsg, "out of memory"));
     return NULL;

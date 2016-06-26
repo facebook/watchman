@@ -49,7 +49,7 @@ watchman_SOURCES = \
 	query/dirname.cpp    \
 	query/parse.c      \
 	query/eval.cpp       \
-	query/intcompare.c \
+	query/intcompare.cpp \
 	query/type.c       \
 	query/suffix.c     \
 	query/match.c      \
