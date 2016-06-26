@@ -19,7 +19,6 @@ JSON_SRCS=\
 
 SRCS_C=\
 	$(JSON_SRCS) \
-	winbuild\errmap.c \
 	winbuild\pathmap.c \
 	winbuild\stat.c \
 	winbuild\realpath.c \
@@ -37,6 +36,7 @@ SRCS_CPP=\
 	winbuild\backtrace.cpp \
 	winbuild\dir.cpp \
 	winbuild\dirname.cpp \
+	winbuild\errmap.cpp \
 	argv.cpp \
 	envp.cpp \
 	ignore.cpp \
@@ -100,14 +100,14 @@ TEST_SRCS_C=\
 	thirdparty\wildmatch\wildmatch.c \
 	winbuild\time.c \
 	winbuild\pthread.c \
-	winbuild\errmap.c \
 	$(JSON_SRCS)
 
 TEST_SRCS_CPP=\
 	argv.cpp \
 	winbuild\abort.cpp \
 	winbuild\asprintf.cpp \
-	winbuild\backtrace.cpp
+	winbuild\backtrace.cpp \
+	winbuild\errmap.cpp
 
 TEST_DIR_SRCS=\
 	tests\art_test.cpp \
