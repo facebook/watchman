@@ -214,7 +214,7 @@ tests_argv_t_SOURCES = \
 tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_ignore_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
 tests_ignore_t_SOURCES = \
-	tests/ignore_test.c \
+	tests/ignore_test.cpp \
 	tests/log_stub.c \
 	watcher/helper.cpp \
 	hash.cpp \

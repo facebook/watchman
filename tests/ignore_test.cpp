@@ -108,7 +108,7 @@ void test_correctness(void) {
 // If there are fewer than limit entries available in the data file, we will
 // abort.
 w_string_t** build_list_with_prefix(const char *prefix, size_t limit) {
-  w_string_t **strings = calloc(limit, sizeof(w_string_t*));
+  w_string_t **strings = (w_string_t**)calloc(limit, sizeof(w_string_t*));
   char buf[512];
   FILE *f = fopen("thirdparty/libart/tests/words.txt", "r");
   size_t i = 0;
