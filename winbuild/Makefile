@@ -22,7 +22,6 @@ SRCS_C=\
 	winbuild\pathmap.c \
 	winbuild\stat.c \
 	winbuild\realpath.c \
-	winbuild\hostname.c \
 	thirdparty\wildmatch\wildmatch.c \
 	thirdparty\libart\src\art.c \
 	winbuild\time.c \
@@ -37,6 +36,7 @@ SRCS_CPP=\
 	winbuild\dirname.cpp \
 	winbuild\errmap.cpp \
 	winbuild\getopt_long.cpp \
+	winbuild\hostname.cpp \
 	argv.cpp \
 	envp.cpp \
 	ignore.cpp \
