@@ -71,7 +71,7 @@ SRCS=\
 	query\base.cpp       \
 	query\parse.c      \
 	query\dirname.cpp    \
-	query\eval.c       \
+	query\eval.cpp       \
 	query\type.c       \
 	query\suffix.c     \
 	query\match.c      \

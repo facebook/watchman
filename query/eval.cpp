@@ -72,7 +72,7 @@ bool w_query_process_file(
     uint32_t new_num = ctx->num_allocd ? ctx->num_allocd * 2 : 64;
     struct watchman_rule_match *res;
 
-    res = realloc(ctx->results, new_num * sizeof(*res));
+    res = (watchman_rule_match *)realloc(ctx->results, new_num * sizeof(*res));
     if (!res) {
       w_log(W_LOG_ERR, "out of memory while capturing matches!\n");
       return false;
@@ -167,13 +167,11 @@ static bool suffix_generator(
     struct w_query_ctx *ctx)
 {
   uint32_t i;
-  struct watchman_file *f;
 
   for (i = 0; i < query->nsuffixes; i++) {
     // Head of suffix index for this suffix
-    f = w_ht_val_ptr(w_ht_get(root->suffixes,
-          w_ht_ptr_val(query->suffixes[i])));
-
+    auto f = (watchman_file *)w_ht_val_ptr(
+        w_ht_get(root->suffixes, w_ht_ptr_val(query->suffixes[i])));
 
     // Walk and process
     for (; f; f = f->suffix_next) {
@@ -213,12 +211,12 @@ static bool dir_generator(
     w_root_t *root,
     struct w_query_ctx *ctx,
     struct watchman_dir *dir,
-    uint32_t depth)
+    int depth)
 {
   w_ht_iter_t i;
 
   if (w_ht_first(dir->files, &i)) do {
-    struct watchman_file *file = w_ht_val_ptr(i.value);
+    auto file = (watchman_file *)w_ht_val_ptr(i.value);
 
     if (!w_query_process_file(query, ctx, file)) {
       return false;
@@ -226,7 +224,7 @@ static bool dir_generator(
   } while (w_ht_next(dir->files, &i));
 
   if (depth > 0 && w_ht_first(dir->dirs, &i)) do {
-    struct watchman_dir *child = w_ht_val_ptr(i.value);
+    auto child = (watchman_dir *)w_ht_val_ptr(i.value);
 
     if (!dir_generator(query, root, ctx, child, depth - 1)) {
       return false;
@@ -286,7 +284,7 @@ static bool path_generator(
 
     if (dir->files) {
       file_name = w_string_basename(query->paths[i].name);
-      f = w_ht_val_ptr(w_ht_get(dir->files, w_ht_ptr_val(file_name)));
+      f = (watchman_file*)w_ht_val_ptr(w_ht_get(dir->files, w_ht_ptr_val(file_name)));
       w_string_delref(file_name);
 
       // If it's a file (but not an existent dir)
@@ -305,7 +303,8 @@ static bool path_generator(
       continue;
     }
 
-    dir = w_ht_val_ptr(w_ht_get(dir->dirs, w_ht_ptr_val(full_name)));
+    dir = (watchman_dir *)w_ht_val_ptr(
+        w_ht_get(dir->dirs, w_ht_ptr_val(full_name)));
     w_string_delref(full_name);
 is_dir:
     // We got a dir; process recursively to specified depth
@@ -388,7 +387,8 @@ bool w_query_execute(
 
   w_perf_start(&sample, "query_execute");
 
-  if (query->sync_timeout && !w_root_sync_to_now(root, query->sync_timeout)) {
+  if (query->sync_timeout &&
+      !w_root_sync_to_now(root, (int)query->sync_timeout)) {
     ignore_result(asprintf(&res->errmsg, "synchronization failed: %s\n",
         strerror(errno)));
     return false;
@@ -406,7 +406,8 @@ bool w_query_execute(
    */
 
   // Lock the root and begin generation
-  if (!w_root_lock_with_timeout(root, "w_query_execute", query->lock_timeout)) {
+  if (!w_root_lock_with_timeout(root, "w_query_execute",
+                                (int)query->lock_timeout)) {
     ignore_result(asprintf(&res->errmsg, "couldn't acquire root lock within "
                                          "lock_timeout of %dms. root is "
                                          "currently busy (%s)\n",
