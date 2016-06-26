@@ -201,7 +201,7 @@ integration: all py-integration
 tests_art_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_art_t_LDADD = $(ART_LIB) $(TAP_LIB)
 tests_art_t_SOURCES = \
-	tests/art_test.c \
+	tests/art_test.cpp \
 	tests/log_stub.c \
 	log.cpp
 

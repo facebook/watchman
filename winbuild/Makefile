@@ -106,7 +106,7 @@ TEST_SRCS=\
 	$(JSON_SRCS)
 
 TEST_DIR_SRCS=\
-	tests\art_test.c \
+	tests\art_test.cpp \
 	tests\argv.cpp \
 	tests\bser.c \
 	tests\ignore_test.c \
