@@ -70,7 +70,7 @@ SRCS=\
 	cmds\debug.cpp    \
 	query\base.cpp       \
 	query\parse.c      \
-	query\dirname.c    \
+	query\dirname.cpp    \
 	query\eval.c       \
 	query\type.c       \
 	query\suffix.c     \

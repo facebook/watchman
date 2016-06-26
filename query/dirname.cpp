@@ -10,7 +10,7 @@ struct dirname_data {
 };
 
 static void dispose_dirname(void *ptr) {
-  struct dirname_data *data = ptr;
+  auto data = (dirname_data*)ptr;
 
   if (data->dirname) {
     w_string_delref(data->dirname);
@@ -24,7 +24,7 @@ static inline bool is_dir_sep(int c) {
 
 static bool eval_dirname(struct w_query_ctx *ctx,
     struct watchman_file *file, void *ptr) {
-  struct dirname_data *data = ptr;
+  auto data = (dirname_data*)ptr;
   w_string_t *str = w_query_ctx_get_wholename(ctx);
   json_int_t depth = 0;
   size_t i;
@@ -126,7 +126,7 @@ static w_query_expr *dirname_parser_inner(w_query *query, json_t *term,
     depth_comp.op = W_QUERY_ICMP_GE;
   }
 
-  data = calloc(1, sizeof(*data));
+  data = (dirname_data*)calloc(1, sizeof(*data));
   if (!data) {
     ignore_result(asprintf(&query->errmsg, "out of memory"));
     return NULL;
