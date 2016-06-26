@@ -249,7 +249,7 @@ tests_log_t_SOURCES = \
 tests_bser_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_bser_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_bser_t_SOURCES = \
-	tests/bser.c \
+	tests/bser.cpp \
 	bser.cpp
 
 tests_wildmatch_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@

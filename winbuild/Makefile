@@ -108,7 +108,7 @@ TEST_SRCS=\
 TEST_DIR_SRCS=\
 	tests\art_test.cpp \
 	tests\argv.cpp \
-	tests\bser.c \
+	tests\bser.cpp \
 	tests\ignore_test.c \
 	tests\log_stub.c \
 	tests\log.c

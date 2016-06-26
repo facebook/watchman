@@ -8,6 +8,10 @@
 #ifndef HASHTABLE_H
 #define HASHTABLE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct hashtable_list {
     struct hashtable_list *prev;
     struct hashtable_list *next;
@@ -176,5 +180,10 @@ void *hashtable_iter_value(void *iter);
  * @value: The value to set
  */
 void hashtable_iter_set(void *iter, json_t *value);
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif
