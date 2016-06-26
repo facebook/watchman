@@ -50,7 +50,7 @@ watchman_SOURCES = \
 	query/parse.cpp      \
 	query/eval.cpp       \
 	query/intcompare.cpp \
-	query/type.c       \
+	query/type.cpp       \
 	query/suffix.cpp     \
 	query/match.cpp      \
 	query/pcre.cpp       \
