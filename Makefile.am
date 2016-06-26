@@ -44,7 +44,7 @@ watchman_SOURCES = \
 	cmds/subscribe.c    \
 	cmds/trigger.c  \
 	cmds/watch.c    \
-	cmds/debug.c    \
+	cmds/debug.cpp    \
 	query/base.c       \
 	query/dirname.c    \
 	query/parse.c      \
