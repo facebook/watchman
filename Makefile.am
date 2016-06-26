@@ -202,7 +202,7 @@ tests_art_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_art_t_LDADD = $(ART_LIB) $(TAP_LIB)
 tests_art_t_SOURCES = \
 	tests/art_test.cpp \
-	tests/log_stub.c \
+	tests/log_stub.cpp \
 	log.cpp
 
 tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
@@ -215,7 +215,7 @@ tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_ignore_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
 tests_ignore_t_SOURCES = \
 	tests/ignore_test.cpp \
-	tests/log_stub.c \
+	tests/log_stub.cpp \
 	watcher/helper.cpp \
 	hash.cpp \
 	ht.cpp \
@@ -227,7 +227,7 @@ tests_pending_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_pending_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
 tests_pending_t_SOURCES = \
 	tests/pending_test.c \
-	tests/log_stub.c \
+	tests/log_stub.cpp \
 	watcher/helper.cpp \
 	hash.cpp \
 	ht.cpp \
