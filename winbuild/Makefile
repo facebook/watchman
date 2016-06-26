@@ -59,7 +59,7 @@ SRCS=\
 	ht.cpp         \
 	cmds\find.cpp     \
 	cmds\info.cpp     \
-	cmds\log.c      \
+	cmds\log.cpp      \
 	cmds\query.c    \
 	cmds\since.c    \
 	cmds\reg.c      \
