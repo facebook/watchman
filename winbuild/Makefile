@@ -76,7 +76,7 @@ SRCS=\
 	query\suffix.c     \
 	query\match.cpp      \
 	query\pcre.c       \
-	query\name.c       \
+	query\name.cpp       \
 	query\fieldlist.cpp  \
 	query\intcompare.cpp  \
 	query\since.c      \

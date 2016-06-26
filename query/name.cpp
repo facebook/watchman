@@ -14,7 +14,7 @@ static bool eval_name(struct w_query_ctx *ctx,
     struct watchman_file *file,
     void *data)
 {
-  struct name_data *name = data;
+  auto name = (name_data*)data;
   w_string_t *str;
 
   if (name->wholename) {
@@ -51,7 +51,7 @@ static bool eval_name(struct w_query_ctx *ctx,
 
 static void dispose_name(void *data)
 {
-  struct name_data *name = data;
+  auto name = (name_data*)data;
 
   if (name->map) {
     w_ht_free(name->map);
@@ -147,7 +147,7 @@ static w_query_expr *name_parser_inner(w_query *query,
   }
 
 
-  data = calloc(1, sizeof(*data));
+  data = (name_data*)calloc(1, sizeof(*data));
   if (pattern) {
     data->name = w_string_new(pattern);
     w_string_in_place_normalize_separators(&data->name, WATCHMAN_DIR_SEP);
