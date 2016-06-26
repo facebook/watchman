@@ -72,7 +72,7 @@ watchman_SOURCES = \
 	root.cpp       \
 	state.cpp      \
 	string.cpp     \
-	time.c
+	time.cpp
 
 noinst_HEADERS =   \
 	watchman.h       \
@@ -236,7 +236,7 @@ tests_pending_t_SOURCES = \
 	expflags.cpp \
 	opendir.cpp \
 	cfg.cpp \
-	time.c \
+	time.cpp \
 	string.cpp \
 	log.cpp
 

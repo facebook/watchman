@@ -91,7 +91,7 @@ SRCS=\
 	root.cpp       \
 	state.cpp      \
 	string.cpp     \
-	time.c
+	time.cpp
 
 TEST_SRCS=\
 	thirdparty\tap.c \
