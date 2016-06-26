@@ -18,7 +18,7 @@ static bool eval_wildmatch(struct w_query_ctx *ctx,
     struct watchman_file *file,
     void *data)
 {
-  struct wildmatch_data *match = data;
+  auto match = (wildmatch_data*)data;
   w_string_t *str;
   bool res;
 
@@ -33,14 +33,12 @@ static bool eval_wildmatch(struct w_query_ctx *ctx,
   str = w_string_normalize_separators(str, '/');
 #endif
 
-  res = wildmatch(
-    match->pattern,
-    str->buf,
-    (match->includedotfiles ? 0 : WM_PERIOD) |
-    (match->noescape ? WM_NOESCAPE : 0) |
-    (match->wholename ? WM_PATHNAME : 0) |
-    (match->caseless ? WM_CASEFOLD : 0),
-    0) == WM_MATCH;
+  res = wildmatch(match->pattern, str->buf,
+                  (unsigned int)((match->includedotfiles ? 0 : WM_PERIOD) |
+                                 (match->noescape ? WM_NOESCAPE : 0) |
+                                 (match->wholename ? WM_PATHNAME : 0) |
+                                 (match->caseless ? WM_CASEFOLD : 0)),
+                  0) == WM_MATCH;
 
 #ifdef _WIN32
   w_string_delref(str);
@@ -51,7 +49,7 @@ static bool eval_wildmatch(struct w_query_ctx *ctx,
 
 static void dispose_match(void *data)
 {
-  struct wildmatch_data *match = data;
+  auto match = (wildmatch_data*)data;
 
   free(match->pattern);
   free(match);
@@ -91,7 +89,7 @@ static w_query_expr *wildmatch_parser_inner(w_query *query,
     return NULL;
   }
 
-  data = malloc(sizeof(*data));
+  data = (wildmatch_data*)malloc(sizeof(*data));
   data->pattern = strdup(pattern);
   data->caseless = caseless;
   data->wholename = !strcmp(scope, "wholename");
