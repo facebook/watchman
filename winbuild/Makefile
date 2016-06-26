@@ -25,7 +25,6 @@ SRCS_C=\
 	winbuild\stat.c \
 	winbuild\realpath.c \
 	winbuild\dir.c \
-	winbuild\dirname.c \
 	winbuild\asprintf.c \
 	winbuild\hostname.c \
 	thirdparty\wildmatch\wildmatch.c \
@@ -37,6 +36,7 @@ SRCS_C=\
 	winbuild\pthread.c 
 
 SRCS_CPP=\
+	winbuild\dirname.cpp \
 	argv.cpp \
 	envp.cpp \
 	ignore.cpp \
