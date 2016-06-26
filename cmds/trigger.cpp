@@ -199,7 +199,7 @@ struct watchman_trigger_command *w_build_trigger_from_def(
   json_int_t jint;
   const char *name = NULL;
 
-  cmd = calloc(1, sizeof(*cmd));
+  cmd = (watchman_trigger_command*)calloc(1, sizeof(*cmd));
   if (!cmd) {
     *errmsg = strdup("no memory");
     return NULL;
@@ -246,9 +246,9 @@ struct watchman_trigger_command *w_build_trigger_from_def(
 
   ele = json_object_get(trig, "stdin");
   if (!ele) {
-    cmd->stdin_style = input_dev_null;
+    cmd->stdin_style = watchman_trigger_command::input_dev_null;
   } else if (json_is_array(ele)) {
-    cmd->stdin_style = input_json;
+    cmd->stdin_style = watchman_trigger_command::input_json;
     if (!parse_field_list(ele, &cmd->field_list, errmsg)) {
       w_trigger_command_free(cmd);
       return NULL;
@@ -256,9 +256,9 @@ struct watchman_trigger_command *w_build_trigger_from_def(
   } else if (json_is_string(ele)) {
     const char *str = json_string_value(ele);
     if (!strcmp(str, "/dev/null")) {
-      cmd->stdin_style = input_dev_null;
+      cmd->stdin_style = watchman_trigger_command::input_dev_null;
     } else if (!strcmp(str, "NAME_PER_LINE")) {
-      cmd->stdin_style = input_name_list;
+      cmd->stdin_style = watchman_trigger_command::input_name_list;
     } else {
       ignore_result(asprintf(errmsg, "invalid stdin value %s", str));
       w_trigger_command_free(cmd);
@@ -352,8 +352,8 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
 
   w_root_lock(root, "trigger-add");
 
-  old = w_ht_val_ptr(w_ht_get(root->commands,
-          w_ht_ptr_val(cmd->triggername)));
+  old = (watchman_trigger_command *)w_ht_val_ptr(
+      w_ht_get(root->commands, w_ht_ptr_val(cmd->triggername)));
   if (old && json_equal(cmd->definition, old->definition)) {
     // Same definition: we don't and shouldn't touch things, so that we
     // preserve the associated trigger clock and don't cause the trigger

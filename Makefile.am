@@ -42,7 +42,7 @@ watchman_SOURCES = \
 	cmds/reg.cpp      \
 	cmds/state.cpp    \
 	cmds/subscribe.cpp    \
-	cmds/trigger.c  \
+	cmds/trigger.cpp  \
 	cmds/watch.c    \
 	cmds/debug.cpp    \
 	query/base.c       \
