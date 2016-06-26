@@ -44,7 +44,6 @@ typedef BOOL (WINAPI *get_overlapped_result_ex_func)(
     LPDWORD bytes,
     DWORD millis,
     BOOL alertable);
-static get_overlapped_result_ex_func get_overlapped_result_ex;
 
 static BOOL WINAPI win7_get_overlapped_result_ex(
     HANDLE file,
@@ -82,6 +81,16 @@ static BOOL WINAPI probe_get_overlapped_result_ex(
     LPOVERLAPPED olap,
     LPDWORD bytes,
     DWORD millis,
+    BOOL alertable);
+
+static get_overlapped_result_ex_func get_overlapped_result_ex =
+  probe_get_overlapped_result_ex;
+
+static BOOL WINAPI probe_get_overlapped_result_ex(
+    HANDLE file,
+    LPOVERLAPPED olap,
+    LPDWORD bytes,
+    DWORD millis,
     BOOL alertable) {
   get_overlapped_result_ex_func func;
 
@@ -97,9 +106,6 @@ static BOOL WINAPI probe_get_overlapped_result_ex(
 
   return func(file, olap, bytes, millis, alertable);
 }
-
-static get_overlapped_result_ex_func get_overlapped_result_ex =
-  probe_get_overlapped_result_ex;
 
 
 #if 1
@@ -120,7 +126,7 @@ static get_overlapped_result_ex_func get_overlapped_result_ex =
 #endif
 
 static int win_close(w_stm_t stm) {
-  struct win_handle *h = stm->handle;
+  auto h = (win_handle*)stm->handle;
 
   EnterCriticalSection(&h->mtx);
 
@@ -163,26 +169,26 @@ static void move_from_read_buffer(struct win_handle *h,
     int *total_read_ptr,
     char **target_buf_ptr,
     int *size_ptr) {
-  int nread = MIN(*size_ptr, h->read_avail);
-  size_t wasted;
+  size_t nread = MIN((size_t)*size_ptr, (size_t)h->read_avail);
+
 
   if (!nread) {
     return;
   }
 
   memcpy(*target_buf_ptr, h->read_cursor, nread);
-  *total_read_ptr += nread;
+  *total_read_ptr += (int)nread;
   *target_buf_ptr += nread;
-  *size_ptr -= nread;
+  *size_ptr -= (int)nread;
   h->read_cursor += nread;
-  h->read_avail -= nread;
+  h->read_avail -= (int)nread;
 
   stream_debug("moved %d bytes from buffer\n", nread);
 
   // Pack the buffer to free up space at the rear for reads
-  wasted = h->read_cursor - h->read_buf;
+  auto wasted = h->read_cursor - h->read_buf;
   if (wasted) {
-    memmove(h->read_buf, h->read_cursor, h->read_avail);
+    memmove(h->read_buf, h->read_cursor, (size_t)h->read_avail);
     h->read_cursor = h->read_buf;
   }
 }
@@ -250,7 +256,7 @@ static int win_read_blocking(struct win_handle *h, char *buf, int size) {
   }
 
   stream_debug("blocking read of %d bytes\n", (int)size);
-  if (ReadFile(h->h, buf, size, &bytes, NULL)) {
+  if (ReadFile(h->h, buf, (DWORD)size, &bytes, NULL)) {
     total_read += bytes;
     stream_debug("blocking read provided %d bytes, total=%d\n",
         (int)bytes, total_read);
@@ -286,7 +292,7 @@ static int win_read_non_blocking(struct win_handle *h, char *buf, int size) {
   stream_debug("initiate read for %d\n", target_space);
 
   // Create a unique olap for each request
-  h->read_pending = calloc(1, sizeof(*h->read_pending));
+  h->read_pending = (overlapped_op*)calloc(1, sizeof(overlapped_op));
   if (h->read_avail == 0) {
     stream_debug("ResetEvent because there is no read_avail right now\n");
     ResetEvent(h->waitable);
@@ -330,7 +336,7 @@ static int win_read_non_blocking(struct win_handle *h, char *buf, int size) {
 }
 
 static int win_read(w_stm_t stm, void *buf, int size) {
-  struct win_handle *h = stm->handle;
+  auto h = (win_handle*)stm->handle;
 
   if (win_read_handle_completion(h)) {
     errno = EAGAIN;
@@ -348,10 +354,10 @@ static int win_read(w_stm_t stm, void *buf, int size) {
   }
 
   if (h->blocking) {
-    return win_read_blocking(h, buf, size);
+    return win_read_blocking(h, (char*)buf, size);
   }
 
-  return win_read_non_blocking(h, buf, size);
+  return win_read_non_blocking(h, (char*)buf, size);
 }
 
 static void initiate_write(struct win_handle *h);
@@ -359,7 +365,7 @@ static void initiate_write(struct win_handle *h);
 static void CALLBACK write_completed(DWORD err, DWORD bytes,
     LPOVERLAPPED olap) {
   // Reverse engineer our handle from the olap pointer
-  struct overlapped_op *op = (void*)olap;
+  auto op = (overlapped_op*)olap;
   struct win_handle *h = op->h;
   struct write_buf *wbuf = op->wbuf;
 
@@ -422,15 +428,15 @@ static void initiate_write(struct win_handle *h) {
     h->write_tail = NULL;
   }
 
-  h->write_pending = calloc(1, sizeof(*h->write_pending));
+  h->write_pending = (overlapped_op*)calloc(1, sizeof(overlapped_op));
   h->write_pending->h = h;
   h->write_pending->wbuf = wbuf;
 
   stream_debug(
       "Calling WriteFileEx with wbuf=%p wbuf->cursor=%p len=%d olap=%p\n", wbuf,
       wbuf->cursor, wbuf->len, &h->write_pending->olap);
-  if (!WriteFileEx(h->h, wbuf->cursor, wbuf->len, &h->write_pending->olap,
-        write_completed)) {
+  if (!WriteFileEx(h->h, wbuf->cursor, (DWORD)wbuf->len,
+                   &h->write_pending->olap, write_completed)) {
     stream_debug("WriteFileEx: failed %s\n",
         win32_strerror(GetLastError()));
     free(h->write_pending);
@@ -441,17 +447,17 @@ static void initiate_write(struct win_handle *h) {
 }
 
 static int win_write(w_stm_t stm, const void *buf, int size) {
-  struct win_handle *h = stm->handle;
+  auto h = (win_handle*)stm->handle;
   struct write_buf *wbuf;
 
   EnterCriticalSection(&h->mtx);
   if (h->file_type != FILE_TYPE_PIPE && h->blocking && !h->write_head) {
     DWORD bytes;
     stream_debug("blocking write of %d\n", size);
-    if (WriteFile(h->h, buf, size, &bytes, NULL)) {
+    if (WriteFile(h->h, buf, (DWORD)size, &bytes, NULL)) {
       LeaveCriticalSection(&h->mtx);
       stream_debug("blocking write wrote %d bytes of %d\n", bytes, size);
-      return bytes;
+      return (int)bytes;
     }
     h->errcode = GetLastError();
     h->error_pending = true;
@@ -463,14 +469,14 @@ static int win_write(w_stm_t stm, const void *buf, int size) {
     return -1;
   }
 
-  wbuf = malloc(sizeof(*wbuf) + size - 1);
+  wbuf = (write_buf*)malloc(sizeof(*wbuf) + size - 1);
   if (!wbuf) {
     return -1;
   }
   wbuf->next = NULL;
   wbuf->cursor = wbuf->data;
   wbuf->len = size;
-  memcpy(wbuf->data, buf, size);
+  memcpy(wbuf->data, buf, (size_t)size);
 
   if (h->write_tail) {
     h->write_tail->next = wbuf;
@@ -491,22 +497,22 @@ static int win_write(w_stm_t stm, const void *buf, int size) {
 }
 
 static void win_get_events(w_stm_t stm, w_evt_t *readable) {
-  struct win_handle *h = stm->handle;
-  *readable = h->waitable;
+  auto h = (win_handle*)stm->handle;
+  *readable = (w_evt_t)h->waitable;
 }
 
 static void win_set_nonb(w_stm_t stm, bool nonb) {
-  struct win_handle *h = stm->handle;
+  auto h = (win_handle*)stm->handle;
   h->blocking = !nonb;
 }
 
 static bool win_rewind(w_stm_t stm) {
-  struct win_handle *h = stm->handle;
+  auto h = (win_handle*)stm->handle;
   bool res;
   LARGE_INTEGER new_pos;
 
   new_pos.QuadPart = 0;
-  res = SetFilePointerEx(h->h, new_pos, &new_pos, FILE_BEGIN);
+  res = SetFilePointerEx(h->h, new_pos, &new_pos, FILE_BEGIN) ? true : false;
   errno = map_win32_err(GetLastError());
   return res;
 }
@@ -514,7 +520,7 @@ static bool win_rewind(w_stm_t stm) {
 // Ensure that any data buffered for write are sent prior to setting
 // ourselves up to close
 static bool win_shutdown(w_stm_t stm) {
-  struct win_handle *h = stm->handle;
+  auto h = (win_handle*)stm->handle;
   BOOL olap_res;
   DWORD bytes;
 
@@ -545,7 +551,7 @@ static struct watchman_stream_ops win_ops = {
 };
 
 w_evt_t w_event_make(void) {
-  return CreateEvent(NULL, TRUE, FALSE, NULL);
+  return (w_evt_t)CreateEvent(NULL, TRUE, FALSE, NULL);
 }
 
 void w_event_set(w_evt_t evt) {
@@ -563,19 +569,16 @@ bool w_event_test_and_clear(w_evt_t evt) {
 }
 
 w_stm_t w_stm_handleopen(HANDLE handle) {
-  w_stm_t stm;
-  struct win_handle *h;
-
   if (handle == INVALID_HANDLE_VALUE || handle == NULL) {
     return NULL;
   }
 
-  stm = calloc(1, sizeof(*stm));
+  auto stm = (w_stm_t)calloc(1, sizeof(watchman_stream));
   if (!stm) {
     return NULL;
   }
 
-  h = calloc(1, sizeof(*h));
+  auto h = (win_handle*)calloc(1, sizeof(win_handle));
   if (!h) {
     free(stm);
     return NULL;
@@ -635,7 +638,7 @@ retry_connect:
   }
 
   // We can retry
-  if (!WaitNamedPipe(path, timeoutms)) {
+  if (!WaitNamedPipe(path, (DWORD)timeoutms)) {
     err = GetLastError();
     if (err == ERROR_SEM_TIMEOUT) {
       errno = map_win32_err(err);
@@ -666,8 +669,8 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
     p[i].ready = false;
   }
 
-  res = WaitForMultipleObjectsEx(n, handles, false,
-          timeoutms == -1 ? INFINITE : timeoutms, true);
+  res = WaitForMultipleObjectsEx((DWORD)n, handles, false,
+          timeoutms == -1 ? INFINITE : (DWORD)timeoutms, true);
 
   if (res == WAIT_FAILED) {
     errno = map_win32_err(GetLastError());
@@ -764,6 +767,6 @@ w_stm_t w_stm_open(const char *path, int flags, ...) {
 }
 
 HANDLE w_stm_handle(w_stm_t stm) {
-  struct win_handle *h = stm->handle;
+  auto h = (win_handle*)stm->handle;
   return h->h;
 }
