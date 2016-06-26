@@ -58,7 +58,7 @@ SRCS=\
 	stream_stdout.cpp \
 	ht.cpp         \
 	cmds\find.cpp     \
-	cmds\info.c     \
+	cmds\info.cpp     \
 	cmds\log.c      \
 	cmds\query.c    \
 	cmds\since.c    \
