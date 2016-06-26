@@ -4,10 +4,6 @@
 #ifndef WATCHMAN_H
 #define WATCHMAN_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define _GNU_SOURCE 1
 #include "config.h"
 
@@ -1002,10 +998,6 @@ void w_expand_flags(const struct flag_map *fmap, uint32_t flags,
 
 #ifdef __APPLE__
 int pthread_mutex_timedlock(pthread_mutex_t *m, const struct timespec *ts);
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif
