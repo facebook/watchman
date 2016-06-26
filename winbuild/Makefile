@@ -111,7 +111,7 @@ TEST_DIR_SRCS=\
 	tests\bser.cpp \
 	tests\ignore_test.cpp \
 	tests\log_stub.c \
-	tests\log.c
+	tests\log.cpp
 
 OBJS=$(SRCS:.cpp=.obj) $(SRCS:.c=.obj)
 TEST_OBJS=$(TEST_SRCS:.cpp=.obj) $(TEST_SRCS:.c=.obj)

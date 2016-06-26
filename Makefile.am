@@ -243,7 +243,7 @@ tests_pending_t_SOURCES = \
 tests_log_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_log_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_log_t_SOURCES = \
-	tests/log.c \
+	tests/log.cpp \
 	log.cpp
 
 tests_bser_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
