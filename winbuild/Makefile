@@ -81,7 +81,7 @@ SRCS=\
 	query\intcompare.cpp  \
 	query\since.cpp      \
 	query\empty.cpp      \
-	watcher\auto.c \
+	watcher\auto.cpp \
 	watcher\win32.c \
 	watcher\helper.c \
 	listener.cpp   \

@@ -58,7 +58,7 @@ watchman_SOURCES = \
 	query/fieldlist.cpp  \
 	query/since.cpp      \
 	query/empty.cpp      \
-	watcher/auto.c     \
+	watcher/auto.cpp     \
 	watcher/fsevents.c \
 	watcher/helper.c   \
 	watcher/inotify.c  \
