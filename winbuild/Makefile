@@ -80,7 +80,7 @@ SRCS=\
 	query\fieldlist.c  \
 	query\intcompare.c  \
 	query\since.c      \
-	query\empty.c      \
+	query\empty.cpp      \
 	watcher\auto.c \
 	watcher\win32.c \
 	watcher\helper.c \
