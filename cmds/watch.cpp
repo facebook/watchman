@@ -223,20 +223,20 @@ static char *resolve_projpath(json_t *args, char **errmsg, char **relpath)
 
   if (json_array_size(args) < 2) {
     ignore_result(asprintf(errmsg, "wrong number of arguments"));
-    return false;
+    return nullptr;
   }
 
   path = json_string_value(json_array_get(args, 1));
   if (!path) {
     ignore_result(asprintf(errmsg, "second argument must be a string"));
-    return false;
+    return nullptr;
   }
 
   resolved = w_realpath(path);
   if (!resolved) {
     ignore_result(asprintf(errmsg,
           "resolve_projpath: path `%s` does not exist", path));
-    return false;
+    return nullptr;
   }
 
   root_files = cfg_compute_root_files(&enforcing);
@@ -244,7 +244,7 @@ static char *resolve_projpath(json_t *args, char **errmsg, char **relpath)
     ignore_result(asprintf(errmsg,
           "resolve_projpath: error computing root_files configuration value, "
           "consult your log file at %s for more details", log_name));
-    return false;
+    return nullptr;
   }
 
   // See if we're requesting something in a pre-existing watch
