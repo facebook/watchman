@@ -82,7 +82,7 @@ SRCS=\
 	query\since.cpp      \
 	query\empty.cpp      \
 	watcher\auto.cpp \
-	watcher\win32.c \
+	watcher\win32.cpp \
 	watcher\helper.cpp \
 	listener.cpp   \
 	listener-user.cpp   \

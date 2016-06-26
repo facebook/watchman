@@ -28,15 +28,14 @@ bool winwatch_root_init(w_root_t *root, char **errmsg) {
   WCHAR *wpath;
   int err;
 
-
-  state = calloc(1, sizeof(*state));
+  state = (winwatch_root_state*)calloc(1, sizeof(*state));
   if (!state) {
     *errmsg = strdup("out of memory");
     return false;
   }
   root->watch = state;
 
-  wpath = w_utf8_to_win_unc(root->root_path->buf, root->root_path->len);
+  wpath = w_utf8_to_win_unc(root->root_path->buf, (int)root->root_path->len);
   if (!wpath) {
     asprintf(errmsg, "failed to convert root path to WCHAR: %s",
         win32_strerror(GetLastError()));
@@ -84,7 +83,7 @@ bool winwatch_root_init(w_root_t *root, char **errmsg) {
 }
 
 void winwatch_root_dtor(w_root_t *root) {
-  struct winwatch_root_state *state = root->watch;
+  auto state = (winwatch_root_state*)root->watch;
 
   if (!state) {
     return;
@@ -105,14 +104,14 @@ void winwatch_root_dtor(w_root_t *root) {
 }
 
 static void winwatch_root_signal_threads(w_root_t *root) {
-  struct winwatch_root_state *state = root->watch;
+  auto state = (winwatch_root_state*)root->watch;
 
   SetEvent(state->ping);
 }
 
 static void *readchanges_thread(void *arg) {
-  w_root_t *root = arg;
-  struct winwatch_root_state *state = root->watch;
+  auto root = (w_root_t *)arg;
+  auto state = (winwatch_root_state*)root->watch;
   DWORD size = WATCHMAN_BATCH_LIMIT * (sizeof(FILE_NOTIFY_INFORMATION) + 512);
   char *buf;
   DWORD err, filter;
@@ -134,7 +133,7 @@ static void *readchanges_thread(void *arg) {
   memset(&olap, 0, sizeof(olap));
   olap.hEvent = state->olap;
 
-  buf = malloc(size);
+  buf = (char*)malloc(size);
   if (!buf) {
     w_log(W_LOG_ERR, "failed to allocate %u bytes for dirchanges buf\n", size);
     goto out;
@@ -221,7 +220,7 @@ static void *readchanges_thread(void *arg) {
 
           // FileNameLength is in BYTES, but FileName is WCHAR
           n_chars = not->FileNameLength / sizeof(not->FileName[0]);
-          name = w_string_new_wchar(not->FileName, n_chars);
+          name = w_string_new_wchar(not->FileName, (int)n_chars);
 
           full = w_string_path_cat(root->root_path, name);
           w_string_delref(name);
@@ -229,7 +228,7 @@ static void *readchanges_thread(void *arg) {
           if (w_is_ignored(root, full->buf, full->len)) {
             w_string_delref(full);
           } else {
-            item = calloc(1, sizeof(*item));
+            item = (winwatch_changed_item*)calloc(1, sizeof(*item));
             item->name = full;
 
             if (tail) {
@@ -291,7 +290,7 @@ out:
 }
 
 static bool winwatch_root_start(w_root_t *root) {
-  struct winwatch_root_state *state = root->watch;
+  auto state = (winwatch_root_state*)root->watch;
   int err;
   unused_parameter(root);
 
@@ -357,7 +356,7 @@ static void winwatch_root_stop_watch_dir(w_root_t *root,
 static bool winwatch_root_consume_notify(w_root_t *root,
     struct watchman_pending_collection *coll)
 {
-  struct winwatch_root_state *state = root->watch;
+  auto state = (winwatch_root_state*)root->watch;
   struct winwatch_changed_item *head, *item;
   struct timeval now;
   int n = 0;
@@ -387,7 +386,7 @@ static bool winwatch_root_consume_notify(w_root_t *root,
 }
 
 static bool winwatch_root_wait_notify(w_root_t *root, int timeoutms) {
-  struct winwatch_root_state *state = root->watch;
+  auto state = (winwatch_root_state*)root->watch;
   struct timeval now, delta, target;
   struct timespec ts;
 
