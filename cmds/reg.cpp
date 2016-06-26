@@ -13,10 +13,8 @@ char *poisoned_reason = NULL;
 
 static int compare_def(const void *A, const void *B)
 {
-  struct watchman_command_handler_def *a =
-    *(struct watchman_command_handler_def**)A;
-  struct watchman_command_handler_def *b =
-    *(struct watchman_command_handler_def**)B;
+  auto a = *(struct watchman_command_handler_def **)A;
+  auto b = *(struct watchman_command_handler_def **)B;
 
   return strcmp(a->name, b->name);
 }
@@ -24,15 +22,15 @@ static int compare_def(const void *A, const void *B)
 void print_command_list_for_help(FILE *where)
 {
   uint32_t i = 0, n = w_ht_size(command_funcs);
-  struct watchman_command_handler_def **defs;
   w_ht_iter_t iter;
 
-  defs = calloc(n, sizeof(*defs));
+  auto defs = (watchman_command_handler_def **)calloc(
+      n, sizeof(watchman_command_handler_def *));
   if (!defs) {
     abort();
   }
   if (w_ht_first(command_funcs, &iter)) do {
-    defs[i++] = w_ht_val_ptr(iter.value);
+    defs[i++] = (watchman_command_handler_def *)w_ht_val_ptr(iter.value);
   } while (w_ht_next(command_funcs, &iter));
 
   if (n > 0) {
@@ -64,31 +62,31 @@ void w_register_command(struct watchman_command_handler_def *defs)
 static struct watchman_command_handler_def *lookup(
     json_t *args, char **errmsg, int mode)
 {
-  struct watchman_command_handler_def *def;
   const char *cmd_name;
   w_string_t *cmd;
 
   if (!json_array_size(args)) {
     ignore_result(asprintf(errmsg,
         "invalid command (expected an array with some elements!)"));
-    return false;
+    return nullptr;
   }
 
   cmd_name = json_string_value(json_array_get(args, 0));
   if (!cmd_name) {
     ignore_result(asprintf(errmsg,
         "invalid command: expected element 0 to be the command name"));
-    return false;
+    return nullptr;
   }
   cmd = w_string_new(cmd_name);
-  def = w_ht_val_ptr(w_ht_get(command_funcs, w_ht_ptr_val(cmd)));
+  auto def = (watchman_command_handler_def *)w_ht_val_ptr(
+      w_ht_get(command_funcs, w_ht_ptr_val(cmd)));
   w_string_delref(cmd);
 
   if (def) {
     if (mode && ((def->flags & mode) == 0)) {
       ignore_result(asprintf(errmsg,
           "command %s not available in this mode", cmd_name));
-      return NULL;
+      return nullptr;
     }
     return def;
   }
@@ -216,7 +214,7 @@ json_t *w_capability_get_list(void) {
 
   w_ht_first(capabilities, &iter);
   do {
-    w_string_t *name = w_ht_val_ptr(iter.key);
+    auto name = (w_string_t *)w_ht_val_ptr(iter.key);
     json_array_append(arr, w_string_to_json(name));
   } while (w_ht_next(capabilities, &iter));
 
