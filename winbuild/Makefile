@@ -24,7 +24,6 @@ SRCS_C=\
 	winbuild\stat.c \
 	winbuild\realpath.c \
 	winbuild\dir.c \
-	winbuild\asprintf.c \
 	winbuild\hostname.c \
 	thirdparty\wildmatch\wildmatch.c \
 	thirdparty\libart\src\art.c \
@@ -36,6 +35,7 @@ SRCS_C=\
 
 SRCS_CPP=\
 	winbuild\abort.cpp \
+	winbuild\asprintf.cpp \
 	winbuild\dirname.cpp \
 	argv.cpp \
 	envp.cpp \
@@ -98,7 +98,6 @@ SRCS_CPP=\
 TEST_SRCS_C=\
 	thirdparty\tap.c \
 	thirdparty\wildmatch\wildmatch.c \
-	winbuild\asprintf.c \
 	winbuild\time.c \
 	winbuild\pthread.c \
 	winbuild\backtrace.c \
@@ -108,6 +107,7 @@ TEST_SRCS_C=\
 TEST_SRCS_CPP=\
 	argv.cpp \
 	winbuild\abort.cpp \
+	winbuild\asprintf.cpp
 
 TEST_DIR_SRCS=\
 	tests\art_test.cpp \
