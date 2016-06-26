@@ -92,7 +92,7 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
     goto done;
   }
 
-  assertion = calloc(1, sizeof(*assertion));
+  assertion = (watchman_client_state_assertion *)calloc(1, sizeof(*assertion));
   if (!assertion) {
     send_error_response(&client->client, "out of memory");
     goto done;
@@ -150,11 +150,11 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
   // notice of the state being entered
   pthread_mutex_lock(&w_client_lock);
   if (w_ht_first(clients, &iter)) do {
-    struct watchman_user_client *subclient = w_ht_val_ptr(iter.value);
+    auto subclient = (watchman_user_client *)w_ht_val_ptr(iter.value);
     w_ht_iter_t citer;
 
     if (w_ht_first(subclient->subscriptions, &citer)) do {
-      struct watchman_client_subscription *sub = w_ht_val_ptr(citer.value);
+      auto sub = (watchman_client_subscription *)w_ht_val_ptr(citer.value);
       json_t *pdu;
 
       if (sub->root != root) {
@@ -206,13 +206,13 @@ static void leave_state(struct watchman_user_client *client,
   // First locate all subscribers and notify them
   pthread_mutex_lock(&w_client_lock);
   if (w_ht_first(clients, &iter)) do {
-    struct watchman_user_client *subclient = w_ht_val_ptr(iter.value);
+    auto subclient = (watchman_user_client *)w_ht_val_ptr(iter.value);
     w_ht_iter_t citer;
 
     if (subclient->subscriptions &&
         w_ht_first(subclient->subscriptions, &citer))
       do {
-        struct watchman_client_subscription *sub = w_ht_val_ptr(citer.value);
+        auto sub = (watchman_client_subscription *)w_ht_val_ptr(citer.value);
         json_t *pdu;
 
         if (sub->root != root) {
@@ -260,10 +260,10 @@ void w_client_vacate_states(struct watchman_user_client *client) {
   }
 
   while (w_ht_first(client->states, &iter)) {
-    struct watchman_client_state_assertion *assertion;
     w_root_t *root;
 
-    assertion = w_ht_val_ptr(iter.value);
+    auto assertion =
+        (watchman_client_state_assertion *)w_ht_val_ptr(iter.value);
     root = assertion->root;
 
     w_log(W_LOG_ERR,
@@ -304,10 +304,10 @@ static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
   // Confirm that this client owns this state
   w_root_lock(root, "state-leave");
   {
-    assertion = root->asserted_states ?
-          w_ht_val_ptr(w_ht_get(root->asserted_states,
-                w_ht_ptr_val(parsed.name)))
-          : NULL;
+    assertion = root->asserted_states
+                    ? (watchman_client_state_assertion *)w_ht_val_ptr(w_ht_get(
+                          root->asserted_states, w_ht_ptr_val(parsed.name)))
+                    : NULL;
 
     // If the state is not asserted, we can't leave it
     if (!assertion) {
