@@ -26,7 +26,6 @@ SRCS_C=\
 	thirdparty\wildmatch\wildmatch.c \
 	thirdparty\libart\src\art.c \
 	winbuild\time.c \
-	winbuild\getopt_long.c \
 	winbuild\posix_spawn.c \
 	winbuild\pthread.c 
 
@@ -37,6 +36,7 @@ SRCS_CPP=\
 	winbuild\dir.cpp \
 	winbuild\dirname.cpp \
 	winbuild\errmap.cpp \
+	winbuild\getopt_long.cpp \
 	argv.cpp \
 	envp.cpp \
 	ignore.cpp \
