@@ -23,7 +23,7 @@ bool w_query_register_expression_parser(
     term_hash = w_ht_new(32, &w_ht_string_funcs);
   }
 
-  return w_ht_set(term_hash, w_ht_ptr_val(name), w_ht_ptr_val(parser));
+  return w_ht_set(term_hash, w_ht_ptr_val(name), w_ht_ptr_val((void *)parser));
 }
 
 /* parse an expression term. It can be one of:
@@ -51,7 +51,8 @@ w_query_expr *w_query_expr_parse(w_query *query, json_t *exp)
     return NULL;
   }
 
-  parser = w_ht_val_ptr(w_ht_get(term_hash, w_ht_ptr_val(name)));
+  parser = (w_query_expr_parser)w_ht_val_ptr(
+      w_ht_get(term_hash, w_ht_ptr_val(name)));
 
   if (!parser) {
     ignore_result(asprintf(&query->errmsg,
@@ -111,7 +112,7 @@ static bool parse_suffixes(w_query *res, json_t *query)
   if (json_is_string(suffixes)) {
     json_t *ele = suffixes;
     res->nsuffixes = 1;
-    res->suffixes = calloc(res->nsuffixes, sizeof(w_string_t*));
+    res->suffixes = (w_string_t**)calloc(res->nsuffixes, sizeof(w_string_t*));
     return set_suffix(res, ele, res->suffixes);
   }
 
@@ -121,7 +122,7 @@ static bool parse_suffixes(w_query *res, json_t *query)
   }
 
   res->nsuffixes = json_array_size(suffixes);
-  res->suffixes = calloc(res->nsuffixes, sizeof(w_string_t*));
+  res->suffixes = (w_string_t**)calloc(res->nsuffixes, sizeof(w_string_t*));
 
   if (!res->suffixes) {
     return false;
@@ -159,7 +160,7 @@ static bool parse_paths(w_query *res, json_t *query)
   }
 
   res->npaths = json_array_size(paths);
-  res->paths = calloc(res->npaths, sizeof(res->paths[0]));
+  res->paths = (w_query_path*)calloc(res->npaths, sizeof(res->paths[0]));
 
   if (!res->paths) {
     res->errmsg = strdup("out of memory");
@@ -254,7 +255,7 @@ static bool parse_sync(w_query *res, json_t *query)
     return false;
   }
 
-  res->sync_timeout = value;
+  res->sync_timeout = (uint32_t)value;
   return true;
 }
 
@@ -273,7 +274,7 @@ static bool parse_lock_timeout(w_query *res, json_t *query)
     return false;
   }
 
-  res->lock_timeout = value;
+  res->lock_timeout = (uint8_t)value;
   return true;
 }
 
@@ -298,7 +299,7 @@ w_query *w_query_parse(w_root_t *root, json_t *query, char **errmsg)
 
   *errmsg = NULL;
 
-  res = calloc(1, sizeof(*res));
+  res = (w_query*)calloc(1, sizeof(*res));
   if (!res) {
     *errmsg = strdup("out of memory");
     goto error;
@@ -405,7 +406,7 @@ w_query *w_query_parse_legacy(w_root_t *root, json_t *args, char **errmsg,
     return NULL;
   }
 
-  for (i = start; i < json_array_size(args); i++) {
+  for (i = (uint32_t)start; i < json_array_size(args); i++) {
     const char *arg = json_string_value(json_array_get(args, i));
     if (!arg) {
       /* not a string value! */
@@ -416,7 +417,7 @@ w_query *w_query_parse_legacy(w_root_t *root, json_t *args, char **errmsg,
     }
   }
 
-  for (i = start; i < json_array_size(args); i++) {
+  for (i = (uint32_t)start; i < json_array_size(args); i++) {
     const char *arg = json_string_value(json_array_get(args, i));
     if (!strcmp(arg, "--")) {
       i++;
@@ -559,7 +560,7 @@ w_query_expr *w_query_expr_new(
 {
   w_query_expr *expr;
 
-  expr = calloc(1, sizeof(*expr));
+  expr = (w_query_expr*)calloc(1, sizeof(*expr));
   if (!expr) {
     return NULL;
   }

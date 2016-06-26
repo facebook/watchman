@@ -69,7 +69,7 @@ SRCS=\
 	cmds\watch.cpp    \
 	cmds\debug.cpp    \
 	query\base.cpp       \
-	query\parse.c      \
+	query\parse.cpp      \
 	query\dirname.cpp    \
 	query\eval.cpp       \
 	query\type.c       \
