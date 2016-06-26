@@ -37,7 +37,7 @@ watchman_SOURCES = \
 	cmds/find.cpp     \
 	cmds/info.cpp     \
 	cmds/log.cpp      \
-	cmds/query.c    \
+	cmds/query.cpp    \
 	cmds/since.c    \
 	cmds/reg.c      \
 	cmds/state.c    \
