@@ -74,11 +74,11 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
    const FSEventStreamEventId eventIds[])
 {
   size_t i;
-  char **paths = eventPaths;
-  struct fse_stream *stream = clientCallBackInfo;
+  auto paths = (char**)eventPaths;
+  auto stream = (fse_stream *)clientCallBackInfo;
   w_root_t *root = stream->root;
   struct watchman_fsevent *head = NULL, *tail = NULL, *evt;
-  struct fsevents_root_state *state = root->watch;
+  auto state = (fsevents_root_state *)root->watch;
 
   unused_parameter(streamRef);
 
@@ -196,7 +196,7 @@ propagate:
       continue;
     }
 
-    evt = calloc(1, sizeof(*evt));
+    evt = (watchman_fsevent*)calloc(1, sizeof(*evt));
     if (!evt) {
       w_log(W_LOG_DBG, "FSEvents: OOM!");
       w_root_cancel(root);
@@ -234,7 +234,7 @@ propagate:
 static void fse_pipe_callback(CFFileDescriptorRef fdref,
       CFOptionFlags callBackTypes, void *info)
 {
-  w_root_t *root = info;
+  auto root = (w_root_t*)info;
 
   unused_parameter(fdref);
   unused_parameter(callBackTypes);
@@ -262,9 +262,9 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
   CFMutableArrayRef parray = NULL;
   CFStringRef cpath = NULL;
   double latency;
-  struct fse_stream *fse_stream = calloc(1, sizeof(*fse_stream));
+  auto fse_stream = (struct fse_stream*)calloc(1, sizeof(struct fse_stream));
   struct stat st;
-  struct fsevents_root_state *state = root->watch;
+  auto state = (fsevents_root_state *)root->watch;
 
   if (!fse_stream) {
     // Note that w_string_new will terminate the process on OOM
@@ -415,10 +415,10 @@ fail:
 
 static void *fsevents_thread(void *arg)
 {
-  w_root_t *root = arg;
+  auto root = (w_root_t *)arg;
   CFFileDescriptorRef fdref;
   CFFileDescriptorContext fdctx;
-  struct fsevents_root_state *state = root->watch;
+  auto state = (fsevents_root_state *)root->watch;
 
   w_set_thread_name("fsevents %.*s", root->root_path->len,
       root->root_path->buf);
@@ -502,7 +502,7 @@ static bool fsevents_root_consume_notify(w_root_t *root,
   int n = 0;
   struct timeval now;
   bool recurse;
-  struct fsevents_root_state *state = root->watch;
+  auto state = (fsevents_root_state *)root->watch;
   char flags_label[128];
 
   pthread_mutex_lock(&state->fse_mtx);
@@ -568,7 +568,7 @@ break_out:
 bool fsevents_root_init(w_root_t *root, char **errmsg) {
   struct fsevents_root_state *state;
 
-  state = calloc(1, sizeof(*state));
+  state = (fsevents_root_state*)calloc(1, sizeof(*state));
   if (!state) {
     *errmsg = strdup("out of memory");
     return false;
@@ -590,7 +590,7 @@ bool fsevents_root_init(w_root_t *root, char **errmsg) {
 }
 
 void fsevents_root_dtor(w_root_t *root) {
-  struct fsevents_root_state *state = root->watch;
+  auto state = (fsevents_root_state *)root->watch;
 
   if (!state) {
     return;
@@ -620,14 +620,14 @@ void fsevents_root_dtor(w_root_t *root) {
 }
 
 static void fsevents_root_signal_threads(w_root_t *root) {
-  struct fsevents_root_state *state = root->watch;
+  auto state = (fsevents_root_state *)root->watch;
 
   write(state->fse_pipe[1], "X", 1);
 }
 
 static bool fsevents_root_start(w_root_t *root) {
   int err;
-  struct fsevents_root_state *state = root->watch;
+  auto state = (fsevents_root_state *)root->watch;
 
   // Spin up the fsevents processing thread; it owns a ref on the root
   w_root_addref(root);
@@ -656,7 +656,7 @@ static bool fsevents_root_start(w_root_t *root) {
 }
 
 static bool fsevents_root_wait_notify(w_root_t *root, int timeoutms) {
-  struct fsevents_root_state *state = root->watch;
+  auto state = (fsevents_root_state *)root->watch;
   struct timeval now, delta, target;
   struct timespec ts;
 
@@ -738,7 +738,6 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
   w_root_t *root;
   json_t *resp;
   FSEventStreamEventId last_good;
-  struct fsevents_root_state *state;
 
   /* resolve the root */
   if (json_array_size(args) != 2) {
@@ -760,7 +759,7 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
   }
 
   w_root_lock(root, "debug-fsevents-inject-drop");
-  state = root->watch;
+  auto state = (fsevents_root_state*)root->watch;
 
   if (!state->attempt_resync_on_user_drop) {
     w_root_unlock(root);

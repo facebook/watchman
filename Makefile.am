@@ -59,7 +59,7 @@ watchman_SOURCES = \
 	query/since.cpp      \
 	query/empty.cpp      \
 	watcher/auto.cpp     \
-	watcher/fsevents.c \
+	watcher/fsevents.cpp \
 	watcher/helper.c   \
 	watcher/inotify.c  \
 	watcher/kqueue.c   \
