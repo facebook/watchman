@@ -28,7 +28,6 @@ SRCS_C=\
 	thirdparty\wildmatch\wildmatch.c \
 	thirdparty\libart\src\art.c \
 	winbuild\time.c \
-	winbuild\backtrace.c \
 	winbuild\getopt_long.c \
 	winbuild\posix_spawn.c \
 	winbuild\pthread.c 
@@ -36,6 +35,7 @@ SRCS_C=\
 SRCS_CPP=\
 	winbuild\abort.cpp \
 	winbuild\asprintf.cpp \
+	winbuild\backtrace.cpp \
 	winbuild\dirname.cpp \
 	argv.cpp \
 	envp.cpp \
@@ -100,14 +100,14 @@ TEST_SRCS_C=\
 	thirdparty\wildmatch\wildmatch.c \
 	winbuild\time.c \
 	winbuild\pthread.c \
-	winbuild\backtrace.c \
 	winbuild\errmap.c \
 	$(JSON_SRCS)
 
 TEST_SRCS_CPP=\
 	argv.cpp \
 	winbuild\abort.cpp \
-	winbuild\asprintf.cpp
+	winbuild\asprintf.cpp \
+	winbuild\backtrace.cpp
 
 TEST_DIR_SRCS=\
 	tests\art_test.cpp \
