@@ -7,7 +7,7 @@
 // troubleshooting UI that the user won't care about, and because
 // this actually doesn't work properly in our test harness
 void w_abort(void) {
-  ignore_result(write(STDERR_FILENO, "aborting\n",
-        (int)strlen("aborting\n")));
+  ignore_result(
+      write(STDERR_FILENO, "aborting\n", (unsigned int)strlen("aborting\n")));
   exit(1);
 }

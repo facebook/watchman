@@ -19,7 +19,6 @@ JSON_SRCS=\
 
 SRCS_C=\
 	$(JSON_SRCS) \
-	winbuild\abort.c \
 	winbuild\errmap.c \
 	winbuild\pathmap.c \
 	winbuild\stat.c \
@@ -36,6 +35,7 @@ SRCS_C=\
 	winbuild\pthread.c 
 
 SRCS_CPP=\
+	winbuild\abort.cpp \
 	winbuild\dirname.cpp \
 	argv.cpp \
 	envp.cpp \
@@ -102,12 +102,12 @@ TEST_SRCS_C=\
 	winbuild\time.c \
 	winbuild\pthread.c \
 	winbuild\backtrace.c \
-	winbuild\abort.c \
 	winbuild\errmap.c \
 	$(JSON_SRCS)
 
 TEST_SRCS_CPP=\
-	argv.cpp
+	argv.cpp \
+	winbuild\abort.cpp \
 
 TEST_DIR_SRCS=\
 	tests\art_test.cpp \
