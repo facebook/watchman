@@ -48,7 +48,7 @@ bool kqueue_root_init(w_root_t *root, char **errmsg) {
   json_int_t hint_num_dirs =
       cfg_get_int(root, CFG_HINT_NUM_DIRS, HINT_NUM_DIRS);
 
-  state = calloc(1, sizeof(*state));
+  state = (kqueue_root_state*)calloc(1, sizeof(*state));
   if (!state) {
     *errmsg = strdup("out of memory");
     return false;
@@ -71,7 +71,7 @@ bool kqueue_root_init(w_root_t *root, char **errmsg) {
 }
 
 void kqueue_root_dtor(w_root_t *root) {
-  struct kqueue_root_state *state = root->watch;
+  auto state = (kqueue_root_state*)root->watch;
 
   if (!state) {
     return;
@@ -99,7 +99,7 @@ static bool kqueue_root_start(w_root_t *root) {
 
 static bool kqueue_root_start_watch_file(
       w_root_t *root, struct watchman_file *file) {
-  struct kqueue_root_state *state = root->watch;
+  auto state = (kqueue_root_state*)root->watch;
   struct kevent k;
   w_ht_val_t fdval;
   int fd;
@@ -159,7 +159,7 @@ static void kqueue_root_stop_watch_file(
 static struct watchman_dir_handle *kqueue_root_start_watch_dir(
     w_root_t *root, struct watchman_dir *dir, struct timeval now,
     const char *path) {
-  struct kqueue_root_state *state = root->watch;
+  auto state = (kqueue_root_state*)root->watch;
   struct watchman_dir_handle *osdir;
   struct stat st, osdirst;
   struct kevent k;
@@ -235,7 +235,7 @@ static void kqueue_root_stop_watch_dir(
 static bool kqueue_root_consume_notify(
     w_root_t *root, struct watchman_pending_collection *coll)
 {
-  struct kqueue_root_state *state = root->watch;
+  auto state = (kqueue_root_state*)root->watch;
   int n;
   int i;
   struct timespec ts = { 0, 0 };
@@ -261,7 +261,7 @@ static bool kqueue_root_consume_notify(
 
     w_expand_flags(kflags, fflags, flags_label, sizeof(flags_label));
     pthread_mutex_lock(&state->lock);
-    path = w_ht_val_ptr(w_ht_get(state->fd_to_name, fd));
+    path = (w_string_t*)w_ht_val_ptr(w_ht_get(state->fd_to_name, fd));
     if (!path) {
       // Was likely a buffered notification for something that we decided
       // to stop watching
@@ -306,7 +306,7 @@ static bool kqueue_root_consume_notify(
 
 static bool kqueue_root_wait_notify(
     w_root_t *root, int timeoutms) {
-  struct kqueue_root_state *state = root->watch;
+  auto state = (kqueue_root_state*)root->watch;
   int n;
   struct pollfd pfd;
 
