@@ -55,7 +55,7 @@ watchman_SOURCES = \
 	query/match.c      \
 	query/pcre.c       \
 	query/name.c       \
-	query/fieldlist.c  \
+	query/fieldlist.cpp  \
 	query/since.c      \
 	query/empty.cpp      \
 	watcher/auto.c     \
