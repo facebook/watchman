@@ -79,7 +79,7 @@ SRCS=\
 	query\name.cpp       \
 	query\fieldlist.cpp  \
 	query\intcompare.cpp  \
-	query\since.c      \
+	query\since.cpp      \
 	query\empty.cpp      \
 	watcher\auto.c \
 	watcher\win32.c \

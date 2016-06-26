@@ -3,14 +3,11 @@
 
 #include "watchman.h"
 
+enum since_field { SINCE_OCLOCK, SINCE_CCLOCK, SINCE_MTIME, SINCE_CTIME };
+
 struct since_term {
   struct w_clockspec *spec;
-  enum {
-    SINCE_OCLOCK,
-    SINCE_CCLOCK,
-    SINCE_MTIME,
-    SINCE_CTIME
-  } field;
+  enum since_field field;
 };
 
 
@@ -18,7 +15,7 @@ static bool eval_since(struct w_query_ctx *ctx,
     struct watchman_file *file,
     void *data)
 {
-  struct since_term *term = data;
+  auto term = (since_term*)data;
   w_clock_t clock;
   struct w_query_since since;
   time_t tval = 0;
@@ -26,9 +23,9 @@ static bool eval_since(struct w_query_ctx *ctx,
   w_clockspec_eval(ctx->root, term->spec, &since);
 
   switch (term->field) {
-    case SINCE_OCLOCK:
-    case SINCE_CCLOCK:
-      clock = (term->field == SINCE_OCLOCK) ? file->otime : file->ctime;
+    case since_field::SINCE_OCLOCK:
+    case since_field::SINCE_CCLOCK:
+      clock = (term->field == since_field::SINCE_OCLOCK) ? file->otime : file->ctime;
       if (since.is_timestamp) {
         return w_timeval_compare(since.timestamp, clock.tv) > 0;
       }
@@ -36,10 +33,10 @@ static bool eval_since(struct w_query_ctx *ctx,
         return file->exists;
       }
       return clock.ticks > since.clock.ticks;
-    case SINCE_MTIME:
+    case since_field::SINCE_MTIME:
       tval = file->stat.mtime.tv_sec;
       break;
-    case SINCE_CTIME:
+    case since_field::SINCE_CTIME:
       tval = file->stat.ctime.tv_sec;
       break;
   }
@@ -50,20 +47,20 @@ static bool eval_since(struct w_query_ctx *ctx,
 
 static void dispose_since(void *data)
 {
-  struct since_term *term = data;
+  auto term = (since_term*)data;
   w_clockspec_free(term->spec);
   free(data);
 }
 
 static struct {
-  int value;
+  enum since_field value;
   const char *label;
 } allowed_fields[] = {
-  { SINCE_OCLOCK, "oclock" },
-  { SINCE_CCLOCK, "cclock" },
-  { SINCE_MTIME,  "mtime" },
-  { SINCE_CTIME,  "ctime" },
-  { 0, NULL }
+  { since_field::SINCE_OCLOCK, "oclock" },
+  { since_field::SINCE_CCLOCK, "cclock" },
+  { since_field::SINCE_MTIME,  "mtime" },
+  { since_field::SINCE_CTIME,  "ctime" },
+  { since_field::SINCE_OCLOCK, NULL }
 };
 
 static w_query_expr *since_parser(w_query *query, json_t *term)
@@ -72,7 +69,7 @@ static w_query_expr *since_parser(w_query *query, json_t *term)
 
   struct w_clockspec *spec;
   struct since_term *sterm;
-  int selected_field = SINCE_OCLOCK;
+  enum since_field selected_field = since_field::SINCE_OCLOCK;
   const char *fieldname = "oclock";
 
   if (!json_is_array(term)) {
@@ -124,8 +121,8 @@ static w_query_expr *since_parser(w_query *query, json_t *term)
   }
 
   switch (selected_field) {
-    case SINCE_CTIME:
-    case SINCE_MTIME:
+    case since_field::SINCE_CTIME:
+    case since_field::SINCE_MTIME:
       if (spec->tag != w_cs_timestamp) {
         ignore_result(asprintf(&query->errmsg,
             "field \"%s\" requires a timestamp value "
@@ -134,13 +131,13 @@ static w_query_expr *since_parser(w_query *query, json_t *term)
         goto fail;
       }
       break;
-    case SINCE_OCLOCK:
-    case SINCE_CCLOCK:
+    case since_field::SINCE_OCLOCK:
+    case since_field::SINCE_CCLOCK:
       /* we'll work with clocks or timestamps */
       break;
   }
 
-  sterm = calloc(1, sizeof(*sterm));
+  sterm = (since_term*)calloc(1, sizeof(*sterm));
   if (!sterm) {
     query->errmsg = strdup("out of memory");
     goto fail;
