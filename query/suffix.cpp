@@ -7,7 +7,7 @@ static bool eval_suffix(struct w_query_ctx *ctx,
     struct watchman_file *file,
     void *data)
 {
-  w_string_t *suffix = data;
+  auto suffix = (w_string_t*)data;
 
   unused_parameter(ctx);
 
@@ -16,7 +16,7 @@ static bool eval_suffix(struct w_query_ctx *ctx,
 
 static void dispose_suffix(void *data)
 {
-  w_string_t *suffix = data;
+  auto suffix = (w_string_t*)data;
 
   w_string_delref(suffix);
 }
@@ -26,7 +26,7 @@ static w_query_expr *suffix_parser(w_query *query, json_t *term)
   const char *ignore, *suffix;
   char *arg;
   w_string_t *str;
-  int i, l;
+  uint32_t i, l;
 
   if (json_unpack(term, "[s,s]", &ignore, &suffix) != 0) {
     query->errmsg = strdup("must use [\"suffix\", \"suffixstring\"]");
