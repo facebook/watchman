@@ -48,7 +48,7 @@ char *realpath(const char *filename, char *target) {
 
       if (len >= sizeof(final_buf)/sizeof(WCHAR)) {
         // Repeat with a heap buffer
-        final_bufptr = malloc((len + 1) * sizeof(WCHAR));
+        final_bufptr = (WCHAR *)malloc((len + 1) * sizeof(WCHAR));
         if (final_bufptr == NULL) {
           len = 0;
         } else {

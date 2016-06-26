@@ -20,7 +20,6 @@ JSON_SRCS=\
 SRCS_C=\
 	$(JSON_SRCS) \
 	winbuild\stat.c \
-	winbuild\realpath.c \
 	thirdparty\wildmatch\wildmatch.c \
 	thirdparty\libart\src\art.c \
 	winbuild\time.c \
@@ -37,6 +36,7 @@ SRCS_CPP=\
 	winbuild\pathmap.cpp \
 	winbuild\posix_spawn.cpp \
 	winbuild\pthread.cpp \
+	winbuild\realpath.cpp \
 	argv.cpp \
 	envp.cpp \
 	ignore.cpp \
