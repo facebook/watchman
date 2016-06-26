@@ -14,7 +14,7 @@ static bool eval_pcre(struct w_query_ctx *ctx,
     struct watchman_file *file,
     void *data)
 {
-  struct match_pcre *match = data;
+  auto match = (match_pcre*)data;
   w_string_t *str;
   int rc;
 
@@ -39,7 +39,7 @@ static bool eval_pcre(struct w_query_ctx *ctx,
 
 static void dispose_pcre(void *data)
 {
-  struct match_pcre *match = data;
+  auto match = (match_pcre*)data;
 
   if (match->re) {
     pcre_free(match->re);
@@ -85,7 +85,7 @@ static w_query_expr *pcre_parser_inner(w_query *query,
     return NULL;
   }
 
-  data = malloc(sizeof(*data));
+  data = (match_pcre *)malloc(sizeof(*data));
   data->re = re;
   data->extra = pcre_study(re, 0, &errptr);
   data->wholename = !strcmp(scope, "wholename");
