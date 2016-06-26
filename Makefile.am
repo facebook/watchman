@@ -226,7 +226,7 @@ tests_ignore_t_SOURCES = \
 tests_pending_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_pending_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
 tests_pending_t_SOURCES = \
-	tests/pending_test.c \
+	tests/pending_test.cpp \
 	tests/log_stub.cpp \
 	watcher/helper.cpp \
 	hash.cpp \

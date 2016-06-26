@@ -70,7 +70,8 @@ static void bench_pending(void) {
   const size_t alloc_size = 280000;
   struct timeval start, end;
 
-  list.pending = calloc(alloc_size, sizeof(struct watchman_pending_fs));
+  list.pending = (watchman_pending_fs *)calloc(
+      alloc_size, sizeof(struct watchman_pending_fs));
   list.avail = list.pending;
   list.end = list.pending + alloc_size;
 
