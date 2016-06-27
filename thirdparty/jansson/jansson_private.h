@@ -31,6 +31,10 @@
 #endif
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
     json_t json;
     hashtable_t hashtable;
@@ -89,5 +93,10 @@ char *jsonp_strdup(const char *str);
 #define snprintf _snprintf
 #define vsnprintf _vsnprintf
 #endif
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif

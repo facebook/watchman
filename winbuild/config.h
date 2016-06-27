@@ -21,7 +21,9 @@
 
 #endif
 
+#ifndef __cplusplus
 #define inline __inline
+#endif
 #define WIN32_LEAN_AND_MEAN
 #define EX_USAGE 1
 #include <windows.h>
@@ -32,6 +34,19 @@
 #include <process.h>
 #include <io.h>
 #include <sys/types.h>
+
+#if _MSC_VER >= 1400
+# include <sal.h>
+# if _MSC_VER > 1400
+#  define WATCHMAN_FMT_STRING(x) _Printf_format_string_ x
+# else
+#  define WATCHMAN_FMT_STRING(x) __format_string x
+# endif
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Use our own abort implementation
 #define abort() w_abort()
@@ -56,15 +71,6 @@ WCHAR *w_utf8_to_win_unc(const char *path, int pathlen);
 int map_win32_err(DWORD err);
 int map_winsock_err(void);
 
-#if _MSC_VER >= 1400
-# include <sal.h>
-# if _MSC_VER > 1400
-#  define WATCHMAN_FMT_STRING(x) _Printf_format_string_ x
-# else
-#  define WATCHMAN_FMT_STRING(x) __format_string x
-# endif
-#endif
-
 #define snprintf _snprintf
 int asprintf(char **out, WATCHMAN_FMT_STRING(const char *fmt), ...);
 int vasprintf(char **out, WATCHMAN_FMT_STRING(const char *fmt), va_list ap);
@@ -87,6 +93,10 @@ typedef DWORD pid_t;
 #define HAVE_BACKTRACE_SYMBOLS
 size_t backtrace(void **frames, size_t n_frames);
 char **backtrace_symbols(void **array, size_t n_frames);
+
+#ifdef __cplusplus
+}
+#endif
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1

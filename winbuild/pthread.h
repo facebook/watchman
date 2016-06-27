@@ -80,7 +80,8 @@
 #define PTHREAD_CANCELED ((void *)(intptr_t)0xDEADBEEF)
 
 #define PTHREAD_ONCE_INIT 0
-#define PTHREAD_MUTEX_INITIALIZER {(void*)-1,-1,0,0,0,0}
+#define PTHREAD_MUTEX_INITIALIZER                                              \
+  { (PRTL_CRITICAL_SECTION_DEBUG)(intptr_t) - 1, -1, 0, 0, 0, 0 }
 #define PTHREAD_RWLOCK_INITIALIZER {0}
 #define PTHREAD_COND_INITIALIZER {0}
 #define PTHREAD_BARRIER_INITIALIZER \
@@ -105,6 +106,9 @@
 
 #define PTHREAD_BARRIER_SERIAL_THREAD 1
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct _pthread_cleanup _pthread_cleanup;
 struct _pthread_cleanup
@@ -296,5 +300,9 @@ int pthread_rwlockattr_setpshared(pthread_rwlockattr_t *a, int s);
 /* Windows has rudimentary signals support */
 #define pthread_kill(T, S) 0
 #define pthread_sigmask(H, S1, S2) 0
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* WIN_PTHREADS */

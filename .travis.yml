@@ -15,6 +15,7 @@ addons:
       - python3.5
       - python3.5-dev
       - gcc-5
+      - g++-5
 #      - ruby
 #      - rubygems
 #      - valgrind
@@ -49,10 +50,10 @@ matrix:
       env: TRAVIS_PYTHON=python2.6
   include:
     - os: linux
-      env: TRAVIS_PYTHON=python2.7 ENABLE_ASAN=1
+      env: TRAVIS_PYTHON=python2.7 ENABLE_ASAN=1 CXX=g++-5
       compiler: gcc-5
     - os: linux
-      env: TRAVIS_PYTHON=python3.5 ENABLE_ASAN=1
+      env: TRAVIS_PYTHON=python3.5 ENABLE_ASAN=1 CXX=g++-5
       compiler: gcc-5
     - os: osx
       osx_image: xcode7.3

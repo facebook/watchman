@@ -11,68 +11,68 @@ JSON_LIB = -L. libwmanjson.a
 watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 watchman_LDADD = $(JSON_LIB) $(ART_LIB) libwildmatch.a
 watchman_SOURCES = \
-	argv.c       \
-	envp.c       \
-	spawn.c       \
-	opt.c        \
-	cfg.c        \
-	clockspec.c  \
-	checksock.c  \
-	fstype.c     \
-	log.c        \
-	ignore.c     \
-	json.c       \
-	bser.c       \
-	expflags.c   \
-	hash.c       \
-	ht.c         \
-	ioprio.c        \
-	opendir.c       \
-	pending.c       \
-	perf.c          \
-	stream.c        \
-	stream_stdout.c \
-	stream_unix.c   \
-	timedlock.c     \
-	cmds/find.c     \
-	cmds/info.c     \
-	cmds/log.c      \
-	cmds/query.c    \
-	cmds/since.c    \
-	cmds/reg.c      \
-	cmds/state.c    \
-	cmds/subscribe.c    \
-	cmds/trigger.c  \
-	cmds/watch.c    \
-	cmds/debug.c    \
-	query/base.c       \
-	query/dirname.c    \
-	query/parse.c      \
-	query/eval.c       \
-	query/intcompare.c \
-	query/type.c       \
-	query/suffix.c     \
-	query/match.c      \
-	query/pcre.c       \
-	query/name.c       \
-	query/fieldlist.c  \
-	query/since.c      \
-	query/empty.c      \
-	watcher/auto.c     \
-	watcher/fsevents.c \
-	watcher/helper.c   \
-	watcher/inotify.c  \
-	watcher/kqueue.c   \
-	watcher/portfs.c   \
-	launchd.c    \
-	listener.c   \
-	listener-user.c   \
-	clientmode.c \
-	main.c       \
-	root.c       \
-	state.c      \
-	string.c     \
-	time.c
+	argv.cpp       \
+	envp.cpp       \
+	spawn.cpp       \
+	opt.cpp        \
+	cfg.cpp        \
+	clockspec.cpp  \
+	checksock.cpp  \
+	fstype.cpp     \
+	log.cpp        \
+	ignore.cpp     \
+	json.cpp       \
+	bser.cpp       \
+	expflags.cpp   \
+	hash.cpp       \
+	ht.cpp         \
+	ioprio.cpp        \
+	opendir.cpp       \
+	pending.cpp     \
+	perf.cpp          \
+	stream.cpp        \
+	stream_stdout.cpp \
+	stream_unix.cpp   \
+	timedlock.cpp     \
+	cmds/find.cpp     \
+	cmds/info.cpp     \
+	cmds/log.cpp      \
+	cmds/query.cpp    \
+	cmds/since.cpp    \
+	cmds/reg.cpp      \
+	cmds/state.cpp    \
+	cmds/subscribe.cpp    \
+	cmds/trigger.cpp  \
+	cmds/watch.cpp    \
+	cmds/debug.cpp    \
+	query/base.cpp       \
+	query/dirname.cpp    \
+	query/parse.cpp      \
+	query/eval.cpp       \
+	query/intcompare.cpp \
+	query/type.cpp       \
+	query/suffix.cpp     \
+	query/match.cpp      \
+	query/pcre.cpp       \
+	query/name.cpp       \
+	query/fieldlist.cpp  \
+	query/since.cpp      \
+	query/empty.cpp      \
+	watcher/auto.cpp     \
+	watcher/fsevents.cpp \
+	watcher/helper.cpp   \
+	watcher/inotify.cpp  \
+	watcher/kqueue.cpp   \
+	watcher/portfs.cpp   \
+	launchd.cpp    \
+	listener.cpp   \
+	listener-user.cpp   \
+	clientmode.cpp \
+	main.cpp       \
+	root.cpp       \
+	state.cpp      \
+	string.cpp     \
+	time.cpp
 
 noinst_HEADERS =   \
 	watchman.h       \
@@ -201,61 +201,61 @@ integration: all py-integration
 tests_art_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_art_t_LDADD = $(ART_LIB) $(TAP_LIB)
 tests_art_t_SOURCES = \
-	tests/art_test.c \
-	tests/log_stub.c \
-	log.c
+	tests/art_test.cpp \
+	tests/log_stub.cpp \
+	log.cpp
 
 tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_argv_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_argv_t_SOURCES = \
-	tests/argv.c \
-	argv.c
+	tests/argv.cpp \
+	argv.cpp
 
 tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_ignore_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
 tests_ignore_t_SOURCES = \
-	tests/ignore_test.c \
-	tests/log_stub.c \
-	watcher/helper.c \
-	hash.c \
-	ht.c \
-	ignore.c \
-	string.c \
-	log.c
+	tests/ignore_test.cpp \
+	tests/log_stub.cpp \
+	watcher/helper.cpp \
+	hash.cpp \
+	ht.cpp \
+	ignore.cpp \
+	string.cpp \
+	log.cpp
 
 tests_pending_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_pending_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
 tests_pending_t_SOURCES = \
-	tests/pending_test.c \
-	tests/log_stub.c \
-	watcher/helper.c \
-	hash.c \
-	ht.c \
-	ignore.c \
-	pending.c \
-	expflags.c \
-	opendir.c \
-	cfg.c \
-	time.c \
-	string.c \
-	log.c
+	tests/pending_test.cpp \
+	tests/log_stub.cpp \
+	watcher/helper.cpp \
+	hash.cpp \
+	ht.cpp \
+	ignore.cpp \
+	pending.cpp \
+	expflags.cpp \
+	opendir.cpp \
+	cfg.cpp \
+	time.cpp \
+	string.cpp \
+	log.cpp
 
 tests_log_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_log_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_log_t_SOURCES = \
-	tests/log.c \
-	log.c
+	tests/log.cpp \
+	log.cpp
 
 tests_bser_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_bser_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_bser_t_SOURCES = \
-	tests/bser.c \
-	bser.c
+	tests/bser.cpp \
+	bser.cpp
 
 tests_wildmatch_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_wildmatch_t_LDADD = $(JSON_LIB) $(TAP_LIB) $(WILDMATCH_LIB)
 tests_wildmatch_t_SOURCES = \
-	tests/wildmatch_test.c
+	tests/wildmatch_test.cpp
 
 watch:
 	PYTHONPATH=python python/bin/watchman-make \

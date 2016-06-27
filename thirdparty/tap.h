@@ -24,6 +24,10 @@
  * SUCH DAMAGE.
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* '## __VA_ARGS__' is a gcc'ism. C99 doesn't allow the token pasting
    and requires the caller to add the final comma if they've ommitted
    the optional arguments */
@@ -83,7 +87,7 @@ int plan_no_plan(void);
 int plan_skip_all(char *);
 int plan_tests(unsigned int);
 
-unsigned int diag(char *, ...);
+unsigned int diag(const char *, ...);
 
 int skip(unsigned int, char *, ...);
 
@@ -91,3 +95,7 @@ void todo_start(char *, ...);
 void todo_end(void);
 
 int exit_status(void);
+
+#ifdef __cplusplus
+}
+#endif

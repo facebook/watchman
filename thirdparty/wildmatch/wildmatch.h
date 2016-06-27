@@ -4,6 +4,10 @@
 #ifndef WILDMATCH_H
 #define WILDMATCH_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define WM_CASEFOLD 1
 #define WM_PATHNAME 2
 #define WM_PERIOD 4
@@ -20,4 +24,9 @@ struct wildopts;
 int wildmatch(const char *pattern, const char *text,
               unsigned int flags,
               struct wildopts *wo);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

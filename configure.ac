@@ -10,6 +10,7 @@ case $target_os in
     dnl if we don't build 64-bit, our test suite fails when comparing the
     dnl results of a 64-bit dev_t from PHP's stat info
     CFLAGS="$CFLAGS -m64"
+    CXXFLAGS="$CXXFLAGS -m64"
     ;;
   *darwin*)
     dnl avoid compilation failure on OS X when building with python
@@ -17,8 +18,9 @@ case $target_os in
     AC_SUBST(ARCHFLAGS)
     ;;
 esac
-
 AC_PROG_CC
+AC_PROG_CXX
+AX_CXX_COMPILE_STDCXX_11([noext],[mandatory])
 AC_PROG_CPP
 AC_C_BIGENDIAN
 AC_C_INLINE
@@ -275,17 +277,21 @@ fi
 # Do this after we've looked for functions
 if test -n "$GCC" ; then
   CFLAGS="$CFLAGS -Wall -Wextra -Wdeclaration-after-statement -g -gdwarf-2 -fno-omit-frame-pointer"
+  CXXFLAGS="$CXXFLAGS -Wall -Wextra -g -gdwarf-2 -fno-omit-frame-pointer"
 fi
 if test -n "$GCC" -a "x$enable_opt" = "xno" ; then
   CFLAGS="$CFLAGS -O0"
+  CXXFLAGS="$CXXFLAGS -O0"
   LDFLAGS="$LDFLAGS -O0"
 fi
 if test -n "$GCC" -a "x$enable_asan" = "xyes" ; then
   CFLAGS="$CFLAGS -fsanitize=address"
+  CXXFLAGS="$CXXFLAGS -fsanitize=address"
   LDFLAGS="$LDFLAGS -fsanitize=address"
 fi
 if test -n "$GCC" -a "$stack_protect" = "yes" ; then
   CFLAGS="$CFLAGS -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4"
+  CXXFLAGS="$CXXFLAGS -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4"
 fi
 IRONMANCFLAGS=""
 if test -n "$GCC" -a "$lenient" = "no" ; then
@@ -307,8 +313,11 @@ cat << EOF
 
 Your build configuration:
 
+        CC = $CC
         CPPFLAGS = $CPPFLAGS
         CFLAGS = $CFLAGS
+        CXX = $CXX
+        CXXFLAGS = $CXXFLAGS
         LDFLAGS = $LDFLAGS
         prefix: $prefix
         version: $VERSION
