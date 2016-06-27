@@ -55,6 +55,23 @@ static char *bdumps(json_t *json, char **end)
     return NULL;
 }
 
+static char *bdumps_pdu(json_t *json, char **end)
+{
+    strbuffer_t strbuff;
+
+    if (strbuffer_init(&strbuff)) {
+        return NULL;
+    }
+
+    if (w_bser_write_pdu(json, dump_to_strbuffer, &strbuff) == 0) {
+      *end = strbuff.value + strbuff.length;
+      return strbuff.value;
+    }
+
+    strbuffer_close(&strbuff);
+    return NULL;
+}
+
 static const char *json_inputs[] = {
   "{\"foo\": 42, \"bar\": true}",
   "[1, 2, 3]",
@@ -123,6 +140,19 @@ static bool check_roundtrip(const char *input, const char *template_text,
   return true;
 }
 
+static void check_serialization(char* json_in, char* bser_out) {
+  char *bser_in;
+  char *end = NULL;
+  json_error_t jerr;
+  json_t *input;
+  unsigned int length;
+  input = json_loads(json_in, 0, &jerr);
+  bser_in = bdumps_pdu(input, &end);
+  length = (unsigned int)(end - bser_in);
+  ok(memcmp(bser_in, bser_out, length) == 0, "raw bser comparison %s",
+      json_in);
+}
+
 int main(int argc, char **argv)
 {
   int i, num_json_inputs, num_templ;
@@ -135,7 +165,8 @@ int main(int argc, char **argv)
 
   plan_tests(
       (6 * num_json_inputs) +
-      (6 * num_templ)
+      (6 * num_templ) +
+      4 // raw tests
   );
 
   for (i = 0; i < num_json_inputs; i++) {
@@ -156,7 +187,19 @@ int main(int argc, char **argv)
     json_decref(decoded);
 
   }
-
+  check_serialization("{\"name\": \"Tom\", \"age\": 24}",
+      "\x00\x01\x03\x18\x01\x03\x02\x02\x03\x04\x6e\x61\x6d\x65\x02\x03\x03"
+      "\x54\x6f\x6d\x02\x03\x03\x61\x67\x65\x03\x18");
+  check_serialization("{\"names\": [\"Tom\", \"Jerry\"], \"age\": 24}",
+      "\x00\x01\x03\x24\x01\x03\x02\x02\x03\x05\x6e\x61\x6d\x65\x73\x00\x03"
+      "\x02\x02\x03\x03\x54\x6f\x6d\x02\x03\x05\x4a\x65\x72\x72\x79\x02\x03"
+      "\x03\x61\x67\x65\x03\x18");
+  check_serialization("[\"Tom\", \"Jerry\"]",
+      "\x00\x01\x03\x11\x00\x03\x02\x02\x03\x03\x54\x6f\x6d\x02\x03\x05\x4a"
+      "\x65\x72\x72\x79");
+  check_serialization("[1, 123, 12345, 1234567, 12345678912345678]",
+      "\x00\x01\x03\x18\x00\x03\x05\x03\x01\x03\x7b\x04\x39\x30\x05\x87\xd6"
+      "\x12\x00\x06\x4e\xd6\x14\x5e\x54\xdc\x2b\x00");
   return exit_status();
 }
 
