@@ -128,13 +128,17 @@ class _bser_buffer(object):
         to_write = 2 + size + s_len
         self.ensure_size(to_write)
         if size == 1:
-            struct.pack_into(b'=ccb' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_BYTESTRING, BSER_INT8, s_len, s)
+            struct.pack_into(b'=ccb' + tobytes(s_len) + b's', self.buf,
+                self.wpos, BSER_BYTESTRING, BSER_INT8, s_len, s)
         elif size == 2:
-            struct.pack_into(b'=cch' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_BYTESTRING, BSER_INT16, s_len, s)
+            struct.pack_into(b'=cch' + tobytes(s_len) + b's', self.buf,
+                self.wpos, BSER_BYTESTRING, BSER_INT16, s_len, s)
         elif size == 4:
-            struct.pack_into(b'=cci' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_BYTESTRING, BSER_INT32, s_len, s)
+            struct.pack_into(b'=cci' + tobytes(s_len) + b's', self.buf,
+                self.wpos, BSER_BYTESTRING, BSER_INT32, s_len, s)
         elif size == 8:
-            struct.pack_into(b'=ccq' + tobytes(s_len) + b's', self.buf, self.wpos, BSER_BYTESTRING, BSER_INT64, s_len, s)
+            struct.pack_into(b'=ccq' + tobytes(s_len) + b's', self.buf,
+                self.wpos, BSER_BYTESTRING, BSER_INT64, s_len, s)
         else:
             raise RuntimeError('Cannot represent this string value')
         self.wpos += to_write
@@ -164,19 +168,24 @@ class _bser_buffer(object):
             self.ensure_size(needed)
             struct.pack_into(b'=cd', self.buf, self.wpos, BSER_REAL, val)
             self.wpos += needed
-        elif isinstance(val, collections.Mapping) and isinstance(val, collections.Sized):
+        elif isinstance(val, collections.Mapping) and \
+            isinstance(val, collections.Sized):
             val_len = len(val)
             size = _int_size(val_len)
             needed = 2 + size
             self.ensure_size(needed)
             if size == 1:
-                struct.pack_into(b'=ccb', self.buf, self.wpos, BSER_OBJECT, BSER_INT8, val_len)
+                struct.pack_into(b'=ccb', self.buf, self.wpos, BSER_OBJECT,
+                    BSER_INT8, val_len)
             elif size == 2:
-                struct.pack_into(b'=cch', self.buf, self.wpos, BSER_OBJECT, BSER_INT16, val_len)
+                struct.pack_into(b'=cch', self.buf, self.wpos, BSER_OBJECT,
+                    BSER_INT16, val_len)
             elif size == 4:
-                struct.pack_into(b'=cci', self.buf, self.wpos, BSER_OBJECT, BSER_INT32, val_len)
+                struct.pack_into(b'=cci', self.buf, self.wpos, BSER_OBJECT,
+                    BSER_INT32, val_len)
             elif size == 8:
-                struct.pack_into(b'=ccq', self.buf, self.wpos, BSER_OBJECT, BSER_INT64, val_len)
+                struct.pack_into(b'=ccq', self.buf, self.wpos, BSER_OBJECT,
+                    BSER_INT64, val_len)
             else:
                 raise RuntimeError('Cannot represent this mapping value')
             self.wpos += needed
@@ -187,19 +196,24 @@ class _bser_buffer(object):
             for k, v in iteritems:
                 self.append_string(k)
                 self.append_recursive(v)
-        elif isinstance(val, collections.Iterable) and isinstance(val, collections.Sized):
+        elif isinstance(val, collections.Iterable) and \
+            isinstance(val, collections.Sized):
             val_len = len(val)
             size = _int_size(val_len)
             needed = 2 + size
             self.ensure_size(needed)
             if size == 1:
-                struct.pack_into(b'=ccb', self.buf, self.wpos, BSER_ARRAY, BSER_INT8, val_len)
+                struct.pack_into(b'=ccb', self.buf, self.wpos, BSER_ARRAY,
+                    BSER_INT8, val_len)
             elif size == 2:
-                struct.pack_into(b'=cch', self.buf, self.wpos, BSER_ARRAY, BSER_INT16, val_len)
+                struct.pack_into(b'=cch', self.buf, self.wpos, BSER_ARRAY,
+                    BSER_INT16, val_len)
             elif size == 4:
-                struct.pack_into(b'=cci', self.buf, self.wpos, BSER_ARRAY, BSER_INT32, val_len)
+                struct.pack_into(b'=cci', self.buf, self.wpos, BSER_ARRAY,
+                    BSER_INT32, val_len)
             elif size == 8:
-                struct.pack_into(b'=ccq', self.buf, self.wpos, BSER_ARRAY, BSER_INT64, val_len)
+                struct.pack_into(b'=ccq', self.buf, self.wpos, BSER_ARRAY,
+                    BSER_INT64, val_len)
             else:
                 raise RuntimeError('Cannot represent this sequence value')
             self.wpos += needed
@@ -403,8 +417,8 @@ def loads(buf, mutable=True, value_encoding=None, value_errors=None):
     @param mutable: Whether to return mutable results.
     @type mutable: bool
 
-    @param value_encoding: Optional codec to use to decode values. If unspecified
-                           or None, return values as bytestrings.
+    @param value_encoding: Optional codec to use to decode values. If
+                           unspecified or None, return values as bytestrings.
     @type value_encoding: str
 
     @param value_errors: Optional error handler for codec. 'strict' by default.
