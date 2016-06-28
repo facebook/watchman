@@ -102,7 +102,7 @@ The default log location may be overridden by the `--logfile` [Server Option](
 /watchman/docs/cli-options.html#quick-note-on-default-locations) explains what
 we mean by `<STATEDIR>`, `<TMPDIR>`, `<USER>` and so on.
 
-## Poison: inotify_add_watch
+## <a id="poison-inotify-add-watch"></a>Poison: inotify_add_watch
 
 ```
 A non-recoverable condition has triggered.  Watchman needs your help!
