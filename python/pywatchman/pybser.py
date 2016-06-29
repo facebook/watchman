@@ -69,7 +69,7 @@ else:
 # our overall length.  To make things simpler, we'll use an
 # int32 for the header
 EMPTY_HEADER = b"\x00\x01\x05\x00\x00\x00\x00"
-EMPTY_HEADER_V2 = b"\x00\x02\x05\x00\x00\x00\x00"
+EMPTY_HEADER_V2 = b"\x00\x02\x05\x00\x00\x00\x00\x05\x00\x00\x00\x00"
 
 def _int_size(x):
     """Return the smallest size int that can store the value"""
@@ -231,12 +231,17 @@ class _bser_buffer(object):
             raise RuntimeError('Cannot represent unknown value type')
 
 
-def dumps(obj, version=1):
+def dumps(obj, version=1, capabilities=0):
     bser_buf = _bser_buffer(version=version)
     bser_buf.append_recursive(obj)
     # Now fill in the overall length
-    obj_len = bser_buf.wpos - len(EMPTY_HEADER)
-    struct.pack_into(b'=i', bser_buf.buf, 3, obj_len)
+    if version == 1:
+        obj_len = bser_buf.wpos - len(EMPTY_HEADER)
+        struct.pack_into(b'=i', bser_buf.buf, 3, obj_len)
+    else:
+        obj_len = bser_buf.wpos - len(EMPTY_HEADER_V2)
+        struct.pack_into(b'=i', bser_buf.buf, 3, capabilities)
+        struct.pack_into(b'=i', bser_buf.buf, 8, obj_len)
     return bser_buf.buf.raw[:bser_buf.wpos]
 
 # This is a quack-alike with the bserObjectType in bser.c
@@ -410,23 +415,22 @@ class Bunser(object):
             raise ValueError('unhandled bser opcode 0x%s' %
                              binascii.hexlify(val_type).decode('ascii'))
 
-def pdu_len(buf):
-    # The C-extension version of BSER tools does the detection of the protocol
-    # version (the MAGIC string test) in bser.pdu_len (this function), so for
-    # consistency this Python implementation does the same. Hence, it returns
-    # the (the PDU length, BSER version).
+def pdu_info(buf):
     bser_version = -1
     if buf[0:2] == EMPTY_HEADER[0:2]:
         bser_version = 1
+        bser_capabilities = 0
+        expected_len, pos2 = Bunser.unser_int(buf, 2)
     elif buf[0:2] == EMPTY_HEADER_V2[0:2]:
         bser_version = 2
+        bser_capabilities, pos1 = Bunser.unser_int(buf, 2)
+        expected_len, pos2 = Bunser.unser_int(buf, pos1)
     else:
         raise ValueError('Invalid BSER header')
-    expected_len, pos = Bunser.unser_int(buf, 2)
-    return expected_len + pos, bser_version
 
-def loads(buf, mutable=True, value_encoding=None, value_errors=None,
-    version=1):
+    return expected_len + pos2, bser_version, bser_capabilities
+
+def loads(buf, mutable=True, value_encoding=None, value_errors=None):
     """Deserialize a BSER-encoded blob.
 
     @param buf: The buffer to deserialize.
@@ -443,15 +447,24 @@ def loads(buf, mutable=True, value_encoding=None, value_errors=None,
                          The other most common argument is 'surrogateescape' on
                          Python 3. If value_encoding is None, this is ignored.
     @type value_errors: str
-
-    @param version: Version of BSER to use (1 or 2).
-    @type version: int
     """
-    if buf[0:2] != EMPTY_HEADER[0:2] and buf[0:2] != EMPTY_HEADER_V2[0:2]:
+    if buf[0:2] == EMPTY_HEADER[0:2]:
+        bser_version = 1
+    elif buf[0:2] == EMPTY_HEADER_V2[0:2]:
+        bser_version = 2
+    else:
         raise ValueError('Invalid BSER header')
-    expected_len, pos = Bunser.unser_int(buf, 2)
-    if len(buf) != expected_len + pos:
+
+    if bser_version == 1:
+        bser_capabilities = 0
+        expected_len, pos2 = Bunser.unser_int(buf, 2)
+    else: # bser_version == 2
+        bser_capabilities, pos1 = Bunser.unser_int(buf, 2)
+        expected_len, pos2 = Bunser.unser_int(buf, pos1)
+
+    if len(buf) != expected_len + pos2:
         raise ValueError('bser data len != header len')
     bunser = Bunser(mutable=mutable, value_encoding=value_encoding,
                     value_errors=value_errors)
-    return bunser.loads_recursive(buf, pos)[0]
+
+    return bunser.loads_recursive(buf, pos2)[0]

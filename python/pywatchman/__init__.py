@@ -497,7 +497,7 @@ class BserCodec(Codec):
         if not buf[0]:
             raise WatchmanError('empty watchman response')
 
-        elen, _ = bser.pdu_len(buf[0]) # Second returned value is BSER version
+        elen, _1, _2 = bser.pdu_info(buf[0])
 
         rlen = len(buf[0])
         while elen > rlen:
@@ -541,18 +541,25 @@ class Bser2WithFallbackCodec(BserCodec):
 
         if capabilities['capabilities']['bser-v2']:
             self.bser_version = 2
+            self.bser_capabilities = 0
         else:
             self.bser_version = 1
+            self.bser_capabilities = 0
 
-    def _loads(self, response, bser_version):
-        return bser.loads(response, version=bser_version)
+    def _loads(self, response):
+        return bser.loads(response)
 
     def receive(self):
         buf = [self.transport.readBytes(sniff_len)]
         if not buf[0]:
             raise WatchmanError('empty watchman response')
 
-        elen, bser_version = bser.pdu_len(buf[0])
+        elen, recv_bser_version, recv_bser_capabilities = bser.pdu_info(buf[0])
+
+        if hasattr(self, 'bser_version'):
+          # Readjust BSER version and capabilities if necessary
+          self.bser_version = max(self.bser_version, recv_bser_version)
+          self.capabilities = self.bser_capabilities & recv_bser_capabilities
 
         rlen = len(buf[0])
         while elen > rlen:
@@ -561,14 +568,15 @@ class Bser2WithFallbackCodec(BserCodec):
 
         response = b''.join(buf)
         try:
-            res = self._loads(response, bser_version)
+            res = self._loads(response)
             return res
         except ValueError as e:
             raise WatchmanError('watchman response decode error: %s' % e)
 
     def send(self, *args):
         if hasattr(self, 'bser_version'):
-            cmd = bser.dumps(*args, version=self.bser_version)
+            cmd = bser.dumps(*args, version=self.bser_version,
+                capabilities=self.bser_capabilities)
         else:
             cmd = bser.dumps(*args)
         self.transport.write(cmd)

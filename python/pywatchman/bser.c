@@ -209,6 +209,7 @@ typedef struct loads_ctx {
   const char *value_encoding;
   const char *value_errors;
   uint32_t bser_version;
+  uint32_t bser_capabilities;
 } unser_ctx_t;
 
 static PyObject *bser_loads_recursive(const char **ptr, const char *end,
@@ -274,7 +275,10 @@ static int bser_init(bser_t *bser, uint32_t version, uint32_t capabilities)
   // our overall length.  To make things simpler, we'll use an
   // int32 for the header
 #define EMPTY_HEADER "\x00\x01\x05\x00\x00\x00\x00"
-#define EMPTY_HEADER_V2 "\x00\x02\x05\x00\x00\x00\x00"
+
+  // Version 2 also carries an integer indicating the capabilities. The
+  // capabilities integer comes before the PDU size.
+#define EMPTY_HEADER_V2 "\x00\x02\x05\x00\x00\x00\x00\x05\x00\x00\x00\x00"
   if (version == 2) {
     bser_append(bser, EMPTY_HEADER_V2, sizeof(EMPTY_HEADER_V2)-1);
   } else {
@@ -495,17 +499,16 @@ static PyObject *bser_dumps(PyObject *self, PyObject *args, PyObject *kw)
 {
   PyObject *val = NULL, *res;
   bser_t bser;
-  int bser_version = 1;
-  uint32_t len;
+  uint32_t len, bser_version = 1, bser_capabilities = 0;
 
-  static char *kw_list[] = {"val", "version", NULL};
+  static char *kw_list[] = {"val", "version", "capabilities", NULL};
 
-  if (!PyArg_ParseTupleAndKeywords(args, kw, "O|i:dumps", kw_list, &val,
-                                   &bser_version)) {
+  if (!PyArg_ParseTupleAndKeywords(args, kw, "O|ii:dumps", kw_list, &val,
+                                   &bser_version, &bser_capabilities)) {
     return NULL;
   }
 
-  if (!bser_init(&bser, bser_version, 0)) {
+  if (!bser_init(&bser, bser_version, bser_capabilities)) {
     return PyErr_NoMemory();
   }
 
@@ -519,8 +522,15 @@ static PyObject *bser_dumps(PyObject *self, PyObject *args, PyObject *kw)
   }
 
   // Now fill in the overall length
-  len = bser.wpos - (sizeof(EMPTY_HEADER) - 1);
-  memcpy(bser.buf + 3, &len, sizeof(len));
+  if (bser_version == 1) {
+    len = bser.wpos - (sizeof(EMPTY_HEADER) - 1);
+    memcpy(bser.buf + 3, &len, sizeof(len));
+  } else {
+    len = bser.wpos - (sizeof(EMPTY_HEADER_V2) - 1);
+    // The BSER capabilities block comes before the PDU length
+    memcpy(bser.buf + 3, &bser_capabilities, sizeof(bser_capabilities));
+    memcpy(bser.buf + 8, &len, sizeof(len));
+  }
 
   res = PyBytes_FromStringAndSize(bser.buf, bser.wpos);
   bser_dtor(&bser);
@@ -930,18 +940,19 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end,
 }
 
 // Expected use case is to read a packet from the socket and
-// then call bser.pdu_len on the packet.  It returns the total
+// then call bser.pdu_info on the packet.  It returns the total
 // length of the entire response that the peer is sending,
 // including the bytes already received.  This allows the client
 // to compute the data size it needs to read before it can
 // decode the data
-static PyObject *bser_pdu_len(PyObject *self, PyObject *args)
+static PyObject *bser_pdu_info(PyObject *self, PyObject *args)
 {
   const char *start = NULL;
   const char *data = NULL;
   int datalen = 0;
   const char *end;
   uint32_t bser_version;
+  int64_t bser_capabilities = 0; // int64 because bunser_int requires it
   int64_t expected_len, total_len;
 
   if (!PyArg_ParseTuple(args, "s#", &start, &datalen)) {
@@ -961,6 +972,14 @@ static PyObject *bser_pdu_len(PyObject *self, PyObject *args)
 
   data += 2;
 
+  if (bser_version == 2) {
+    // Expect an integer telling us what capabilities are supported by the
+    // remote server (currently unused).
+    if (!bunser_int(&data, end, &bser_capabilities)) {
+      return NULL;
+    }
+  }
+
   // Expect an integer telling us how big the rest of the data
   // should be
   if (!bunser_int(&data, end, &expected_len)) {
@@ -968,8 +987,8 @@ static PyObject *bser_pdu_len(PyObject *self, PyObject *args)
   }
 
   total_len = expected_len + (data - start);
-  // Python 3 has one integer type.
-  return Py_BuildValue("Lk", total_len, bser_version);
+
+  return Py_BuildValue("Lkk", total_len, bser_version, bser_capabilities);
 }
 
 static PyObject *bser_loads(PyObject *self, PyObject *args, PyObject *kw)
@@ -978,18 +997,18 @@ static PyObject *bser_loads(PyObject *self, PyObject *args, PyObject *kw)
   int datalen = 0;
   const char *end;
   int64_t expected_len;
-  int bser_version = 1;
   PyObject *mutable_obj = NULL;
   const char *value_encoding = NULL;
   const char *value_errors = NULL;
   unser_ctx_t ctx = {1, 0};
+  int64_t bser_capabilities = 0; // int64 because bunser_int requires it
 
   static char *kw_list[] = {"buf", "mutable", "value_encoding", "value_errors",
-                            "version", NULL};
+                            NULL};
 
-  if (!PyArg_ParseTupleAndKeywords(args, kw, "s#|Ozzi:loads", kw_list, &data,
+  if (!PyArg_ParseTupleAndKeywords(args, kw, "s#|Ozz:loads", kw_list, &data,
                                    &datalen, &mutable_obj, &value_encoding,
-                                   &value_errors, &bser_version)) {
+                                   &value_errors)) {
     return NULL;
   }
 
@@ -1005,7 +1024,6 @@ static PyObject *bser_loads(PyObject *self, PyObject *args, PyObject *kw)
     ctx.value_errors = value_errors;
   }
 
-  ctx.bser_version = bser_version;
   end = data + datalen;
 
   // Validate the header and length
@@ -1019,13 +1037,19 @@ static PyObject *bser_loads(PyObject *self, PyObject *args, PyObject *kw)
   }
 
   data += 2;
+  if (ctx.bser_version == 2) {
+    // Expect an integer telling us what BSER capabilities are supported
+    if (!bunser_int(&data, end, &bser_capabilities)) {
+      return NULL;
+    }
+    ctx.bser_capabilities = (uint32_t) bser_capabilities;
+  }
 
   // Expect an integer telling us how big the rest of the data
   // should be
   if (!bunser_int(&data, end, &expected_len)) {
     return NULL;
   }
-
   // Verify
   if (expected_len + data != end) {
     PyErr_SetString(PyExc_ValueError, "bser data len != header len");
@@ -1038,8 +1062,10 @@ static PyObject *bser_loads(PyObject *self, PyObject *args, PyObject *kw)
 static PyMethodDef bser_methods[] = {
   {"loads", (PyCFunction)bser_loads, METH_VARARGS | METH_KEYWORDS,
    "Deserialize string."},
-  {"pdu_len", bser_pdu_len, METH_VARARGS, "Extract PDU length."},
-  {"dumps",  bser_dumps, METH_VARARGS | METH_KEYWORDS, "Serialize string."},
+  {"pdu_info", (PyCFunction)bser_pdu_info, METH_VARARGS,
+   "Extract PDU information."},
+  {"dumps",  (PyCFunction)bser_dumps, METH_VARARGS | METH_KEYWORDS,
+   "Serialize string."},
   {NULL, NULL, 0, NULL}
 };
 

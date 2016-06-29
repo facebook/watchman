@@ -209,20 +209,21 @@ class TestBSERDump(unittest.TestCase):
         for i in range(0, len(exp)):
             self.assertItemAttributes(exp[i], res[i])
 
-    def test_pdu_len(self):
+    def test_pdu_info(self):
         enc = self.bser_mod.dumps(1)
-        # Note: bser.pdu_len returns the PDU length AND the BSER version,
-        # which is 1 by default.
         DEFAULT_BSER_VERSION = 1
-        self.assertEqual((len(enc), DEFAULT_BSER_VERSION),
-                         self.bser_mod.pdu_len(enc))
+        DEFAULT_BSER_CAPABILITIES = 0
+        self.assertEqual((len(enc), DEFAULT_BSER_VERSION,
+                          DEFAULT_BSER_CAPABILITIES),
+                         self.bser_mod.pdu_info(enc))
 
         # try a bigger one; prove that we get the correct length
         # even though we receive just a portion of the complete
         # data
         enc = self.bser_mod.dumps([1, 2, 3, "hello there, much larger"])
-        self.assertEqual((len(enc), DEFAULT_BSER_VERSION),
-                         self.bser_mod.pdu_len(enc[0:7]))
+        self.assertEqual((len(enc), DEFAULT_BSER_VERSION,
+                          DEFAULT_BSER_CAPABILITIES),
+                         self.bser_mod.pdu_info(enc[0:7]))
 
     def test_garbage(self):
         # can't use the with form here because Python 2.6
@@ -233,7 +234,8 @@ class TestBSERDump(unittest.TestCase):
         self.assertRaises(ValueError, self.bser_mod.loads,
                           b'\x00\x01\x03\x01\xff')
 
-        self.assertRaises(ValueError, self.bser_mod.pdu_len, b'\x00\x02')
+        self.assertRaises(ValueError, self.bser_mod.pdu_info,
+                          b'\x00\x02')
 
 def load_tests(loader, test_methods=None, pattern=None):
     suite = unittest.TestSuite()
