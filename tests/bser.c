@@ -154,6 +154,8 @@ static void check_serialization(char* json_in, char* bser_out) {
   length = (unsigned int)(end - bser_in);
   ok(memcmp(bser_in, bser_out, length) == 0, "raw bser comparison %s",
       json_in);
+  free(bser_in);
+  json_decref(input);
 }
 
 int main(int argc, char **argv)
