@@ -1,0 +1,5 @@
+prebuilt_jar(
+  name = 'jna',
+  binary_jar = 'jna-4.2.0.jar',
+  visibility = ['PUBLIC'],
+)

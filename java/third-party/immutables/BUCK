@@ -1,0 +1,24 @@
+prebuilt_jar(
+  name = 'value',
+  binary_jar = 'value-2.1.5.jar',
+  visibility = [
+    'PUBLIC',
+  ],
+)
+
+prebuilt_jar(
+  name = 'value-processor',
+  binary_jar = 'value-processor-2.1.5.jar',
+  visibility = [
+    'PUBLIC',
+  ],
+)
+
+prebuilt_jar(
+  name = 'generator',
+  binary_jar = 'generator-2.1.5.jar',
+  visibility = [
+    'PUBLIC',
+  ],
+)
+

@@ -1,0 +1,9 @@
+prebuilt_jar(
+  name = 'mockito',
+  binary_jar = 'mockito-core-1.9.5.jar',
+  deps = [
+    '//third-party/hamcrest:hamcrest-2',
+    '//third-party/objenesis:objenesis',
+  ],
+  visibility = ['PUBLIC'],
+)

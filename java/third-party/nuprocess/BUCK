@@ -1,0 +1,8 @@
+prebuilt_jar(
+  name = 'nuprocess',
+  binary_jar = 'nuprocess-1.0.5-SNAPSHOT.jar',
+  deps = [
+    '//third-party/jna:jna',
+  ],
+  visibility = ['PUBLIC'],
+)

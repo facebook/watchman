@@ -1,0 +1,13 @@
+prebuilt_jar(
+  name = 'junit-jar',
+  binary_jar = 'junit-4.12.jar',
+)
+
+java_library(
+  name = 'junit',
+  exported_deps = [
+    ':junit-jar',
+    '//third-party/hamcrest:hamcrest-2',
+  ],
+  visibility = ['PUBLIC'],
+)

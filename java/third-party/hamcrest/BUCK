@@ -1,0 +1,24 @@
+java_library(
+  name = 'hamcrest-2',
+  deps = [],
+  exported_deps = [
+    ':java-hamcrest-2',
+    ':hamcrest-junit-2',
+  ],
+  visibility = ['PUBLIC'],
+)
+
+prebuilt_jar(
+  name = 'java-hamcrest-2',
+  binary_jar = 'java-hamcrest-2.0.0.0.jar',
+  visibility = ['PUBLIC'],
+)
+
+prebuilt_jar(
+  name = 'hamcrest-junit-2',
+  binary_jar = 'hamcrest-junit-2.0.0.0.jar',
+  deps = [
+    ':java-hamcrest-2',
+  ],
+  visibility = ['PUBLIC'],
+)

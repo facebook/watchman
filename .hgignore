@@ -1,6 +1,9 @@
 # If you make a change to this file, make sure to also make it to .gitignore.
 syntax: glob
 
+buck-out
+buck-cache
+.buckd
 Makefile.in
 aclocal.m4
 autom4te.cache/
@@ -14,7 +17,7 @@ config.log
 Makefile
 *.o
 config.status
-watchman
+./watchman
 arcanist/.phutil_module_cache
 *.swp
 compile

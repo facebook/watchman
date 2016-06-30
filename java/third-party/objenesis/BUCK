@@ -1,0 +1,5 @@
+prebuilt_jar(
+  name = 'objenesis',
+  binary_jar = 'objenesis-1.3.jar',
+  visibility = ['PUBLIC'],
+)
