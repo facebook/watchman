@@ -77,15 +77,12 @@ class TestBSERDump(unittest.TestCase):
         self.assertEqual(munged, dec)
 
     def test_raw(self):
-        # The order of serialization is undefined for dict keys, since Python
-        # dicts are unordered. Besides, bser and pybser do different things
-        # when they get an ordered dicts, so the following tests may be flaky.
-        self.raw({"name": "Tom", "age":24},
-            b"\x00\x01\x05\x18\x00\x00\x00\x01\x03\x02\x02\x03\x03age\x03"
-            b"\x18\x02\x03\x04name\x02\x03\x03Tom")
-        self.raw({"names": ["Tom", "Jerry"], "age": 24},
-            b"\x00\x01\x05$\x00\x00\x00\x01\x03\x02\x02\x03\x03age\x03\x18"
-            b"\x02\x03\x05names\x00\x03\x02\x02\x03\x03Tom\x02\x03\x05Jerry")
+        self.raw({"name": "Tom"},
+            b'\x00\x01\x05\x10\x00\x00\x00\x01\x03\x01\x02\x03\x04name\x02'
+            b'\x03\x03Tom')
+        self.raw({"names": ["Tom", "Jerry"]},
+            b'\x00\x01\x05\x1c\x00\x00\x00\x01\x03\x01\x02\x03\x05names\x00'
+            b'\x03\x02\x02\x03\x03Tom\x02\x03\x05Jerry')
         self.raw(["Tom", "Jerry"],
             b"\x00\x01\x05\x11\x00\x00\x00\x00\x03\x02\x02\x03\x03Tom\x02"
             b"\x03\x05Jerry")
