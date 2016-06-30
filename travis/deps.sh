@@ -3,7 +3,8 @@ set -x
 case `uname` in
   Darwin)
     brew update
-    brew install wget pcre ruby openssl readline pyenv
+    brew tap facebook/fb
+    brew install wget pcre ruby openssl readline buck pyenv
     # reinstall to get the latest versions
     brew upgrade
     # avoid snafu with OS X and python builds
