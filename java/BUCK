@@ -1,0 +1,43 @@
+java_library(
+  name = 'watchman',
+  srcs = glob(['src/**/*.java']),
+  source = '1.6',
+  target = '1.6',
+  visibility = ['PUBLIC'],
+  deps = [
+    '//third-party/guava:guava',
+    '//third-party/immutables:value',
+    '//third-party/jna:jna',
+    '//third-party/jsr-305:jsr-305',
+    '//third-party/nuprocess:nuprocess',
+  ],
+  annotation_processors = [
+    'org.immutables.value.processor.Processor'
+  ],
+  annotation_processor_deps = [
+    '//third-party/guava:guava',
+    '//third-party/immutables:generator',
+    '//third-party/immutables:value-processor',
+  ],
+  tests = [':watchman-tests'],
+)
+
+java_test(
+  name = 'watchman-tests',
+  srcs = glob(['test/**/*.java']),
+  source = '1.7',
+  target = '1.7',
+  deps = [
+    ':watchman',
+    '//third-party/guava:guava',
+    '//third-party/hamcrest:hamcrest-2',
+    '//third-party/junit:junit',
+    '//third-party/mockito:mockito',
+  ],
+)
+
+project_config(
+  src_target = ':watchman',
+  src_roots = ['src'],
+  test_roots = ['test'],
+)

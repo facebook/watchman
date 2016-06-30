@@ -57,5 +57,16 @@ test -d $INST_TEST && rm -rf $INST_TEST
 make DESTDIR=$INST_TEST install
 find $INST_TEST
 
+case $(uname) in
+  Darwin)
+    if [[ "$BUILD_JAVA_CLIENT" != "" ]] && [ "${BUILD_JAVA_CLIENT-0}" -eq 1 ]; then
+      pushd java
+      buck fetch :watchman :watchman-tests || exit 1
+      buck test :watchman || exit 1
+      popd
+    fi
+    ;;
+esac
+
 exit 0
 

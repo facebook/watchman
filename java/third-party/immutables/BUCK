@@ -1,0 +1,45 @@
+remote_file(
+  name = 'value-jar',
+  out = 'value-2.1.5.jar',
+  url = 'http://central.maven.org/maven2/org/immutables/value/2.1.5/value-2.1.5.jar',
+  sha1 = '8da4fc0eb4655734ffe1b09284f4fc62d033b853',
+)
+
+remote_file(
+  name = 'value-processor-jar',
+  out = 'value-processor-2.1.5.jar',
+  url = 'http://central.maven.org/maven2/org/immutables/value-processor/2.1.5/value-processor-2.1.5.jar',
+  sha1 = '37ad0e3c1bd72ab735eaf714b2ce935dee18e4a8',
+)
+
+remote_file(
+  name = 'generator-jar',
+  out = 'generator-2.1.5.jar',
+  url = 'http://central.maven.org/maven2/org/immutables/generator/2.1.5/generator-2.1.5.jar',
+  sha1 = '8cd760cf8cdcbee6f60f11fc7ed8034dfc650444',
+)
+
+prebuilt_jar(
+  name = 'value',
+  binary_jar = ':value-jar',
+  visibility = [
+    'PUBLIC',
+  ],
+)
+
+prebuilt_jar(
+  name = 'value-processor',
+  binary_jar = ':value-processor-jar',
+  visibility = [
+    'PUBLIC',
+  ],
+)
+
+prebuilt_jar(
+  name = 'generator',
+  binary_jar = ':generator-jar',
+  visibility = [
+    'PUBLIC',
+  ],
+)
+

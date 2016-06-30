@@ -1,0 +1,12 @@
+remote_file(
+  name = 'jna-jar',
+  out = 'jna-4.2.0.jar',
+  url = 'http://central.maven.org/maven2/net/java/dev/jna/jna/4.2.0/jna-4.2.0.jar',
+  sha1 = '812b976ed15bb1b0b3fc059fae927b0f76b39585',
+)
+
+prebuilt_jar(
+  name = 'jna',
+  binary_jar = ':jna-jar',
+  visibility = ['PUBLIC'],
+)
