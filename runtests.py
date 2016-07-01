@@ -76,6 +76,12 @@ parser.add_argument(
     default='auto',
     help='Specify which watcher should be used to run the tests')
 
+parser.add_argument(
+    '--debug-watchman',
+    action='store_true',
+    help='Pauses start up and prints out the PID for watchman server process.' +
+    'Use with concurrency set to 1')
+
 args = parser.parse_args()
 
 # We test for this in a test case
@@ -317,7 +323,7 @@ def runner():
         # Start up a shared watchman instance for the tests.
         inst = WatchmanInstance.Instance({
             "watcher": args.watcher
-        })
+        }, debug_watchman=args.debug_watchman)
         inst.start()
         # Allow tests to locate this default instance
         WatchmanInstance.setSharedInstance(inst)

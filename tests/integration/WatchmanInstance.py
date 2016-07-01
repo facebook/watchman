@@ -84,12 +84,13 @@ class _Instance(object):
     # overridden global configuration file; you may pass that
     # in to the constructor
 
-    def __init__(self, config={}, start_timeout=1.0):
+    def __init__(self, config={}, start_timeout=1.0, debug_watchman=False):
         self.start_timeout = start_timeout
         self.base_dir = tempfile.mkdtemp(prefix='inst')
         self._init_state()
         self.proc = None
         self.pid = None
+        self.debug_watchman = debug_watchman
         with open(self.cfg_file, "w") as f:
             f.write(json.dumps(config))
         # The log file doesn't exist right now, so we can't open it.
@@ -144,6 +145,10 @@ class _Instance(object):
                                      stdin=None,
                                      stdout=self.cli_log_file,
                                      stderr=self.cli_log_file)
+
+        if self.debug_watchman:
+            print('Watchman instance PID:' + str(self.proc.pid))
+            raw_input('Press enter to continue...')
 
         # wait for it to come up
         deadline = time.time() + self.start_timeout

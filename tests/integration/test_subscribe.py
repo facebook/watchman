@@ -28,7 +28,8 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         for sub in subdata:
             for f in sub['files']:
                 fname = f['name']
-                if pywatchman.compat.PYTHON3 and self.encoding == 'bser':
+                if pywatchman.compat.PYTHON3 and \
+                        (self.encoding == 'bser' or self.encoding == 'bser-v1'):
                     fname = pywatchman.encoding.decode_local(fname)
                 if f['exists'] == exists and \
                         self.normPath(fname) == norm_wlock:
@@ -149,7 +150,8 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         dat = self.waitForSub('defer', root)[0]
         self.assertEqual(True, dat['is_fresh_instance'])
         dot_hg = '.hg'
-        if pywatchman.compat.PYTHON3 and self.encoding == 'bser':
+        if pywatchman.compat.PYTHON3 and \
+                (self.encoding == 'bser' or self.encoding == 'bser-v1'):
             dot_hg = pywatchman.encoding.encode_local(dot_hg)
         self.assertEqual([{'name': dot_hg, 'exists': True}], dat['files'])
 
@@ -185,7 +187,8 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         dat = self.waitForSub('nodefer', root)[0]
         self.assertEqual(True, dat['is_fresh_instance'])
         dot_hg = '.hg'
-        if pywatchman.compat.PYTHON3 and self.encoding == 'bser':
+        if pywatchman.compat.PYTHON3 and \
+                (self.encoding == 'bser' or self.encoding == 'bser-v1'):
             dot_hg = pywatchman.encoding.encode_local(dot_hg)
         self.assertEqual([{'name': dot_hg, 'exists': True}], dat['files'])
 

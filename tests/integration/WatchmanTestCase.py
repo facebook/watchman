@@ -153,7 +153,8 @@ class WatchmanTestCase(unittest.TestCase):
         return self.getClient().query(*args)
 
     def decodeBSERUTF8(self, s, surrogateescape=False):
-        if pywatchman.compat.PYTHON3 and self.encoding == 'bser':
+        if pywatchman.compat.PYTHON3 and \
+                (self.encoding == 'bser' or self.encoding == 'bser-v1'):
             if surrogateescape:
                 errors = 'surrogateescape'
             else:
@@ -213,7 +214,8 @@ class WatchmanTestCase(unittest.TestCase):
     def normWatchmanFileList(self, files):
         # The BSER interface currently returns bytestrings on Python 3 -- decode
         # it into local strings.
-        if pywatchman.compat.PYTHON3 and self.encoding == 'bser':
+        if pywatchman.compat.PYTHON3 and \
+                (self.encoding == 'bser' or self.encoding == 'bser-v1'):
             files = [pywatchman.encoding.decode_local(f) for f in files]
         return sorted(map(norm_path, files))
 
