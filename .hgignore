@@ -4,6 +4,8 @@ syntax: glob
 buck-out
 buck-cache
 .buckd
+.idea
+*.iml
 Makefile.in
 aclocal.m4
 autom4te.cache/

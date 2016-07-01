@@ -2,6 +2,8 @@
 buck-out
 buck-cache
 .buckd
+.idea
+*.iml
 Makefile.in
 test-driver
 aclocal.m4
