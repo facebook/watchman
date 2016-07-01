@@ -156,11 +156,26 @@ static json_t *read_json_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
   return res;
 }
 
-bool w_bser_decode_pdu_len(w_jbuffer_t *jr, w_stm_t stm,
-    json_int_t *len, json_error_t *jerr)
+bool w_bser_decode_pdu_info(w_jbuffer_t *jr, w_stm_t stm, uint32_t bser_version,
+    json_int_t *len, json_int_t *bser_capabilities, json_error_t *jerr)
 {
   json_int_t needed;
-
+  if (bser_version == 2) {
+    while (!bunser_int(jr->buf + jr->rpos, jr->wpos - jr->rpos,
+          &needed, bser_capabilities)) {
+      if (needed == -1) {
+        snprintf(jerr->text, sizeof(jerr->text),
+            "failed to read BSER capabilities");
+        return false;
+      }
+      if (!fill_buffer(jr, stm)) {
+        snprintf(jerr->text, sizeof(jerr->text),
+            "unable to fill buffer");
+        return false;
+      }
+    }
+    jr->rpos += (uint32_t)needed;
+  }
   while (!bunser_int(jr->buf + jr->rpos, jr->wpos - jr->rpos,
         &needed, len)) {
     if (needed == -1) {
@@ -179,10 +194,12 @@ bool w_bser_decode_pdu_len(w_jbuffer_t *jr, w_stm_t stm,
   return true;
 }
 
-static json_t *read_bser_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
+static json_t *read_bser_pdu(w_jbuffer_t *jr, w_stm_t stm, uint32_t bser_version,
+    json_error_t *jerr)
 {
   json_int_t needed;
   json_int_t val;
+  json_int_t bser_capabilities;
   uint32_t ideal;
   json_int_t need;
   int r;
@@ -192,7 +209,8 @@ static json_t *read_bser_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
 
   // We don't handle EAGAIN cleanly in here
   w_stm_set_nonblock(stm, false);
-  if (!w_bser_decode_pdu_len(jr, stm, &val, jerr)) {
+  if (!w_bser_decode_pdu_info(jr, stm, bser_version, &val, &bser_capabilities,
+      jerr)) {
     return NULL;
   }
 
@@ -364,15 +382,25 @@ static bool stream_n_bytes(w_jbuffer_t *jr, w_stm_t stm, json_int_t len,
 
 static bool stream_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
 {
+  uint32_t bser_version = 1;
+  json_int_t bser_capabilities;
+  json_int_t len;
+
   switch (jr->pdu_type) {
     case is_json_compact:
     case is_json_pretty:
       return stream_until_newline(jr, stm);
     case is_bser:
+    case is_bser_v2:
       {
-        json_int_t len;
+        if (jr->pdu_type == is_bser_v2) {
+          bser_version = 2;
+        } else {
+          bser_version = 1;
+        }
         jr->rpos += 2;
-        if (!w_bser_decode_pdu_len(jr, stm, &len, jerr)) {
+        if (!w_bser_decode_pdu_info(jr, stm, bser_version, &len,
+            &bser_capabilities, jerr)) {
           return false;
         }
         return stream_n_bytes(jr, stm, len, jerr);
@@ -391,8 +419,10 @@ static json_t *read_pdu_into_json(w_jbuffer_t *jr, w_stm_t stm,
       return read_json_pdu(jr, stm, jerr);
     case is_json_pretty:
       return read_json_pretty_pdu(jr, stm, jerr);
-    default:
-      return read_bser_pdu(jr, stm, jerr);
+    case is_bser_v2:
+      return read_bser_pdu(jr, stm, 2, jerr);
+    default: // bser v1
+      return read_bser_pdu(jr, stm, 1, jerr);
   }
 }
 
@@ -508,7 +538,6 @@ bool w_json_buffer_write_bser(uint32_t bser_version, uint32_t bser_capabilities,
   struct jbuffer_write_data data = { stm, jr };
   int res;
 
-  // bser_version == 1; capabilities == 0; dump == jbuffer_write
   res = w_bser_write_pdu(bser_version, bser_capabilities, jbuffer_write, json,
       &data);
 

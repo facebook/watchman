@@ -371,12 +371,13 @@ static int measure(const char *buffer, size_t size, void *ptr)
   return 0;
 }
 
-int w_bser_write_pdu(const uint32_t bser_version, const uint32_t capabilities,
-    json_dump_callback_t dump, json_t *json, void *data)
+int w_bser_write_pdu(const uint32_t bser_version,
+    const uint32_t bser_capabilities, json_dump_callback_t dump, json_t *json,
+    void *data)
 {
   json_int_t m_size = 0;
-  bser_ctx_t ctx = { .bser_version = bser_version, .capabilities = capabilities,
-    .dump = measure };
+  bser_ctx_t ctx = { .bser_version = bser_version,
+    .bser_capabilities = bser_capabilities, .dump = measure };
 
   if (!is_bser_version_supported(&ctx)) {
     return -1;
@@ -395,6 +396,12 @@ int w_bser_write_pdu(const uint32_t bser_version, const uint32_t capabilities,
     }
   } else {
     if (dump(BSER_MAGIC, 2, data)) {
+      return -1;
+    }
+  }
+
+  if (bser_version == 2) {
+    if (bser_int(&ctx, bser_capabilities, data)) {
       return -1;
     }
   }

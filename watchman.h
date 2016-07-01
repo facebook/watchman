@@ -538,7 +538,7 @@ struct watchman_json_buffer {
 
 typedef struct bser_ctx {
   uint32_t bser_version;
-  uint32_t capabilities;
+  uint32_t bser_capabilities;
   json_dump_callback_t dump;
 } bser_ctx_t;
 

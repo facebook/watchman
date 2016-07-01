@@ -42,7 +42,7 @@ static char *bdumps(json_t *json, char **end)
 {
     strbuffer_t strbuff;
 
-    bser_ctx_t ctx = { .bser_version = 1, .capabilities = 0,
+    bser_ctx_t ctx = { .bser_version = 1, .bser_capabilities = 0,
       .dump = dump_to_strbuffer };
 
     if (strbuffer_init(&strbuff)) {
