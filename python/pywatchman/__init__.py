@@ -529,10 +529,9 @@ class Bser2WithFallbackCodec(BserCodec):
 
     def __init__(self, transport):
         super(Bser2WithFallbackCodec, self).__init__(transport)
-        if compat.PYTHON3:
-            self.send(["version", {"required": ["bser-v2"]}])
-        else:
-            self.send(["version", {"optional": ["bser-v2"]}])
+        # Once the server advertises support for bser-v2 we should switch this
+        # to 'required' on Python 3.
+        self.send(["version", {"optional": ["bser-v2"]}])
 
         capabilities = self.receive()
 
