@@ -109,8 +109,8 @@ class WatchmanTestCase(unittest.TestCase):
 
     def expandConfigurations(self):
         tests = []
-        for transport, encoding in [('local', 'bser-v1'),
-                                    ('local', 'bser'),
+        for transport, encoding in [('local', 'bser'),
+                                    ('local', 'experimental-bser-v2'),
                                     ('local', 'json'),
                                     ('cli', 'json')]:
             test = copy.copy(self)
@@ -154,7 +154,8 @@ class WatchmanTestCase(unittest.TestCase):
 
     def decodeBSERUTF8(self, s, surrogateescape=False):
         if pywatchman.compat.PYTHON3 and \
-                (self.encoding == 'bser' or self.encoding == 'bser-v1'):
+                (self.encoding == 'experimental-bser-v2' or \
+                 self.encoding == 'bser'):
             if surrogateescape:
                 errors = 'surrogateescape'
             else:
@@ -215,7 +216,8 @@ class WatchmanTestCase(unittest.TestCase):
         # The BSER interface currently returns bytestrings on Python 3 -- decode
         # it into local strings.
         if pywatchman.compat.PYTHON3 and \
-                (self.encoding == 'bser' or self.encoding == 'bser-v1'):
+            (self.encoding == 'experimental-bser-v2' or \
+             self.encoding == 'bser'):
             files = [pywatchman.encoding.decode_local(f) for f in files]
         return sorted(map(norm_path, files))
 

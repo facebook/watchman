@@ -665,11 +665,11 @@ class client(object):
         self.sendCodec = self._parseEncoding(sendEncoding)
 
     def _parseEncoding(self, enc):
-        if enc == 'bser-v1':
+        if enc == 'bser':
             if self.useImmutableBser:
                 return ImmutableBserCodec
             return BserCodec
-        elif enc == 'bser':
+        elif enc == 'experimental-bser-v2':
           return Bser2WithFallbackCodec
         elif enc == 'json':
             return JsonCodec
