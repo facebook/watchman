@@ -118,7 +118,7 @@ function make_subscription(client, watch, relative_path) {
     // Match any `.js` file in the dir_of_interest
     expression: ["allof", ["match", "*.js"]],
     // Which fields we're interested in
-    fields: ["name", "size", "exists", "type"]
+    fields: ["name", "size", "mtime_ms", "exists", "type"]
   };
   if (relative_path) {
     sub.relative_root = relative_path;
@@ -147,12 +147,14 @@ function make_subscription(client, watch, relative_path) {
   //       exists: true,
   //       type: 'f' } ] }
   client.on('subscription', function (resp) {
-    for (var i in resp.files) {
-      var f = resp.files[i];
-      if (resp.subscription == 'mysubscription') {
-        console.log('file changed: ' + f.name);
-      }
-    }
+    if (resp.subscription !== 'mysubscription') return;
+
+    resp.files.forEach(function (file) {
+      // convert Int64 instance to javascript integer
+      const mtime_ms = +file.mtime_ms;
+
+      console.log('file changed: ' + file.name, mtime_ms);
+    });
   });
 }
 ```
