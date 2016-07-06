@@ -217,8 +217,16 @@ void w_string_delref(w_string_t *str)
 
 int w_string_compare(const w_string_t *a, const w_string_t *b)
 {
+  int res;
   if (a == b) return 0;
-  return strcmp(a->buf, b->buf);
+  if (a->len < b->len) {
+    res = memcmp(a->buf, b->buf, a->len);
+    return res == 0 ? -1 : res;
+  } else if (a->len > b->len) {
+    res = memcmp(a->buf, b->buf, b->len);
+    return res == 0 ? +1 : res;
+  }
+  return memcmp(a->buf, b->buf, a->len);
 }
 
 bool w_string_equal_cstring(const w_string_t *a, const char *b)
