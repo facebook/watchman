@@ -209,7 +209,11 @@ tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_argv_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_argv_t_SOURCES = \
 	tests/argv.c \
-	argv.c
+	tests/log_stub.c \
+	argv.c \
+	string.c \
+	hash.c \
+	log.c
 
 tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_ignore_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
@@ -250,12 +254,20 @@ tests_bser_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_bser_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_bser_t_SOURCES = \
 	tests/bser.c \
-	bser.c
+	tests/log_stub.c \
+	bser.c \
+	string.c \
+	hash.c \
+	log.c
 
 tests_wildmatch_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_wildmatch_t_LDADD = $(JSON_LIB) $(TAP_LIB) $(WILDMATCH_LIB)
 tests_wildmatch_t_SOURCES = \
-	tests/wildmatch_test.c
+	tests/wildmatch_test.c \
+	tests/log_stub.c \
+	string.c \
+	hash.c \
+	log.c
 
 watch:
 	PYTHONPATH=python python/bin/watchman-make \

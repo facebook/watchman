@@ -4,7 +4,9 @@
 #ifndef WATCHMAN_STRING_H
 #define WATCHMAN_STRING_H
 
-#include "jansson.h" // we use json_t in here
+#include <stdint.h>
+#include <stdbool.h>
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,7 +44,6 @@ bool w_string_equal(const w_string_t *a, const w_string_t *b);
 bool w_string_equal_caseless(const w_string_t *a, const w_string_t *b);
 bool w_string_equal_cstring(const w_string_t *a, const char *b);
 
-w_string_t *w_string_implode(json_t *arr, const char *delim);
 void w_string_in_place_normalize_separators(w_string_t **str, char target_sep);
 
 w_string_t *w_string_make_printf(const char *format, ...);
@@ -85,11 +86,12 @@ w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len);
 w_string_t *w_string_suffix(w_string_t *str);
 bool w_string_suffix_match(w_string_t *str, w_string_t *suffix);
 
-json_t *w_string_to_json(w_string_t *str);
-
 bool w_string_is_known_unicode(w_string_t *str);
 bool w_string_is_null_terminated(w_string_t *str);
 size_t w_string_strlen(w_string_t *str);
+
+uint32_t strlen_uint32(const char *str);
+uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);
 
 #ifdef __cplusplus
 }

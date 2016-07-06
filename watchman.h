@@ -121,7 +121,7 @@ extern char *poisoned_reason;
 #include "watchman_stream.h"
 #include "watchman_ignore.h"
 #include "watchman_log.h"
-
+#include "jansson.h"
 
 #ifdef HAVE_CORESERVICES_CORESERVICES_H
 # include <CoreServices/CoreServices.h>

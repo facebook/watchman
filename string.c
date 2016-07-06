@@ -4,10 +4,6 @@
 #include "watchman.h"
 #include <stdarg.h>
 
-json_t *w_string_to_json(w_string_t *str) {
-  return json_stringn_nocheck(str->buf, str->len);
-}
-
 w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
 {
   w_string_t *slice;
@@ -618,68 +614,6 @@ char *w_string_dup_buf(const w_string_t *str)
   return buf;
 }
 
-// Given a json array, concat the elements using a delimiter
-w_string_t *w_string_implode(json_t *arr, const char *delim)
-{
-  uint32_t delim_len = strlen_uint32(delim);
-  uint32_t len = 0;
-  uint32_t i;
-  w_string_t *s;
-  char *buf;
-
-  if (json_array_size(arr) == 0) {
-    return w_string_new("");
-  }
-
-  if (json_array_size(arr) == 1) {
-    return w_string_new(json_string_value(json_array_get(arr, 0)));
-  }
-
-  len = ((uint32_t)json_array_size(arr) - 1) * delim_len;
-
-  for (i = 0; i < json_array_size(arr); i++) {
-    const char *str;
-
-    str = json_string_value(json_array_get(arr, i));
-    len += strlen_uint32(str);
-  }
-
-  s = malloc(sizeof(*s) + len + 1);
-  if (!s) {
-    perror("no memory available");
-    abort();
-  }
-
-  s->refcnt = 1;
-  s->slice = NULL;
-  buf = (char*)(s + 1);
-  s->buf = buf;
-
-  for (i = 0; i < json_array_size(arr); i++) {
-    const char *str;
-    uint32_t l;
-
-    str = json_string_value(json_array_get(arr, i));
-    l = strlen_uint32(str);
-
-    memcpy(buf, str, l);
-
-    // Final string doesn't want delimiter after it
-    if (i == json_array_size(arr) - 1) {
-      buf += l;
-      break;
-    }
-
-    memcpy(buf + l, delim, delim_len);
-    buf += l + delim_len;
-  }
-  *buf = '\0';
-
-  s->len = (uint32_t)(buf - s->buf);
-  s->hval = w_hash_bytes(s->buf, s->len, 0);
-
-  return s;
-}
 
 // Given a string, return a shell-escaped copy
 w_string_t *w_string_shell_escape(const w_string_t *str)

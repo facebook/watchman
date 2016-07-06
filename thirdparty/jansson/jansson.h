@@ -13,6 +13,7 @@
 #include <stdarg.h>
 
 #include <jansson_config.h>
+#include "watchman_string.h" // Needed for w_string_t
 
 #ifdef __cplusplus
 extern "C" {
@@ -85,6 +86,9 @@ json_t *json_array_of_size(size_t nelems);
 json_t *json_string(const char *value);
 json_t *json_string_nocheck(const char *value);
 json_t *json_stringn_nocheck(const char *value, size_t len);
+json_t *w_string_to_json(w_string_t *str);
+w_string_t *json_to_w_string(const json_t *json);
+w_string_t *json_to_w_string_incref(const json_t *json);
 json_t *json_integer(json_int_t value);
 json_t *json_real(double value);
 json_t *json_true(void);
@@ -202,8 +206,6 @@ json_int_t json_integer_value(const json_t *integer);
 double json_real_value(const json_t *real);
 double json_number_value(const json_t *json);
 
-int json_string_set(json_t *string, const char *value);
-int json_string_set_nocheck(json_t *string, const char *value);
 int json_integer_set(json_t *integer, json_int_t value);
 int json_real_set(json_t *real, double value);
 

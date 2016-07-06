@@ -199,11 +199,21 @@ watchman.exe: $(OBJS)
 	@echo LINK $@
 	$(LINKER) $(OBJS) $(LIBS)
 
-tests\argv.exe: tests\argv.obj $(TEST_OBJS)
+tests\argv.exe: tests\argv.obj $(TEST_OBJS) \
+	tests\log_stub.obj \
+	argv.obj \
+	string.obj \
+	hash.obj \
+	log.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 
-tests\art.exe: tests\art_test.obj $(TEST_OBJS) log.obj tests\log_stub.obj thirdparty\libart\src\art.obj
+tests\art.exe: tests\art_test.obj $(TEST_OBJS) \
+  	log.obj \
+	tests\log_stub.obj \
+	thirdparty\libart\src\art.obj \
+	string.obj \
+	hash.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 
@@ -240,15 +250,25 @@ tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 
-tests\bser.exe: tests\bser.obj bser.obj $(TEST_OBJS)
+tests\bser.exe: tests\bser.obj bser.obj $(TEST_OBJS) \
+	tests\log_stub.obj  \
+	string.obj \
+	hash.obj \
+	log.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 
-tests\log.exe: tests\log.obj log.obj $(TEST_OBJS)
+tests\log.exe: tests\log.obj log.obj $(TEST_OBJS) \
+	string.obj \
+	hash.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 
-tests\wildmatch_test.exe: tests\wildmatch_test.obj $(TEST_OBJS)
+tests\wildmatch_test.exe: tests\wildmatch_test.obj $(TEST_OBJS) \
+	tests\log_stub.obj  \
+	string.obj \
+	hash.obj \
+	log.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 

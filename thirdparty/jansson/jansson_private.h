@@ -49,7 +49,8 @@ typedef struct {
 
 typedef struct {
     json_t json;
-    char *value;
+    w_string_t *value;
+    char *cache;
 } json_string_t;
 
 typedef struct {

@@ -16,6 +16,7 @@
 #include "hashtable.h"
 #include "jansson_private.h"
 #include "utf.h"
+#include "watchman_string.h"
 
 /* Work around nonstandard isnan() and isinf() implementations */
 #if !defined(isnan) && !defined(sun)
@@ -652,11 +653,11 @@ static json_t *json_array_deep_copy(json_t *array)
 
 /*** string ***/
 
-json_t *json_stringn_nocheck(const char *value, size_t len)
+json_t *w_string_to_json(w_string_t *str)
 {
     json_string_t *string;
 
-    if(!value)
+    if(!str)
         return NULL;
 
     string = jsonp_malloc(sizeof(json_string_t));
@@ -664,37 +665,20 @@ json_t *json_stringn_nocheck(const char *value, size_t len)
         return NULL;
     json_init(&string->json, JSON_STRING);
 
-    string->value = jsonp_malloc(len + 1);
-    if(!string->value) {
-        jsonp_free(string);
-        return NULL;
-    }
-
-    memcpy(string->value, value, len);
-    string->value[len] = '\0';
-
+    string->value = str;
+    w_string_addref(str);
+    string->cache = NULL;
     return &string->json;
+}
+
+json_t *json_stringn_nocheck(const char *value, size_t len)
+{
+    return w_string_to_json(w_string_new_len_no_ref(value, len));
 }
 
 json_t *json_string_nocheck(const char *value)
 {
-    json_string_t *string;
-
-    if(!value)
-        return NULL;
-
-    string = jsonp_malloc(sizeof(json_string_t));
-    if(!string)
-        return NULL;
-    json_init(&string->json, JSON_STRING);
-
-    string->value = jsonp_strdup(value);
-    if(!string->value) {
-        jsonp_free(string);
-        return NULL;
-    }
-
-    return &string->json;
+    return json_stringn_nocheck(value, strlen(value));
 }
 
 json_t *json_string(const char *value)
@@ -707,42 +691,62 @@ json_t *json_string(const char *value)
 
 const char *json_string_value(const json_t *json)
 {
+    json_string_t *jstr;
+    w_string_t *value;
+    char *buf;
+
     if(!json_is_string(json))
         return NULL;
 
-    return json_to_string(json)->value;
+    jstr = json_to_string(json);
+    value = jstr->value;
+
+    if (w_string_is_null_terminated(value)) {
+        // Safe to return the buffer itself
+        return value->buf;
+    }
+    buf = w_string_dup_buf(value);
+    if (!buf) {
+        return NULL;
+    }
+    jstr->cache = buf;
+    return buf;
 }
 
-int json_string_set_nocheck(json_t *json, const char *value)
+w_string_t *json_to_w_string(const json_t *json)
 {
-    char *dup;
-    json_string_t *string;
+    json_string_t *jstr;
 
-    if(!json_is_string(json) || !value)
-        return -1;
+    if (!json_is_string(json)) {
+        return NULL;
+    }
 
-    dup = jsonp_strdup(value);
-    if(!dup)
-        return -1;
+    jstr = json_to_string(json);
 
-    string = json_to_string(json);
-    jsonp_free(string->value);
-    string->value = dup;
+    if (!jstr) {
+        return NULL;
+    }
 
-    return 0;
+    return jstr->value;
 }
 
-int json_string_set(json_t *json, const char *value)
+w_string_t *json_to_w_string_incref(const json_t *json)
 {
-    if(!value || !utf8_check_string(value, -1))
-        return -1;
+    w_string_t *str = json_to_w_string(json);
 
-    return json_string_set_nocheck(json, value);
+    if (!str) {
+        return NULL;
+    }
+
+    w_string_addref(str);
+
+    return str;
 }
 
 static void json_delete_string(json_string_t *string)
 {
-    jsonp_free(string->value);
+    w_string_delref(string->value);
+    free(string->cache);
     jsonp_free(string);
 }
 
@@ -755,7 +759,6 @@ static json_t *json_string_copy(json_t *string)
 {
     return json_string_nocheck(json_string_value(string));
 }
-
 
 /*** integer ***/
 
