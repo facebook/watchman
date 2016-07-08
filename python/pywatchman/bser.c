@@ -939,14 +939,11 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end,
   return NULL;
 }
 
-// Expected use case is to read a packet from the socket and
-// then call bser.pdu_info on the packet.  It returns the total
-// length of the entire response that the peer is sending,
-// including the bytes already received.  This allows the client
-// to compute the data size it needs to read before it can
-// decode the data
-static PyObject *bser_pdu_info(PyObject *self, PyObject *args)
-{
+// This function parses the PDU header and provides info about the packet
+// Returns false if unsuccessful
+static int pdu_info_helper(PyObject *self, PyObject *args,
+    uint32_t *bser_version_out, uint32_t *bser_capabilities_out,
+    int64_t *total_len_out) {
   const char *start = NULL;
   const char *data = NULL;
   int datalen = 0;
@@ -956,7 +953,7 @@ static PyObject *bser_pdu_info(PyObject *self, PyObject *args)
   int64_t expected_len, total_len;
 
   if (!PyArg_ParseTuple(args, "s#", &start, &datalen)) {
-    return NULL;
+    return 0;
   }
   data = start;
   end = data + datalen;
@@ -967,7 +964,7 @@ static PyObject *bser_pdu_info(PyObject *self, PyObject *args)
     bser_version = 2;
   } else {
     PyErr_SetString(PyExc_ValueError, "invalid bser header");
-    return NULL;
+    return 0;
   }
 
   data += 2;
@@ -976,19 +973,47 @@ static PyObject *bser_pdu_info(PyObject *self, PyObject *args)
     // Expect an integer telling us what capabilities are supported by the
     // remote server (currently unused).
     if (!bunser_int(&data, end, &bser_capabilities)) {
-      return NULL;
+      return 0;
     }
   }
 
   // Expect an integer telling us how big the rest of the data
   // should be
   if (!bunser_int(&data, end, &expected_len)) {
-    return NULL;
+    return 0;
   }
 
   total_len = expected_len + (data - start);
 
-  return Py_BuildValue("Lkk", total_len, bser_version, bser_capabilities);
+  *bser_version_out = bser_version;
+  *bser_capabilities_out = (uint32_t) bser_capabilities;
+  *total_len_out = total_len;
+  return 1;
+}
+
+// Expected use case is to read a packet from the socket and then call
+// bser.pdu_info on the packet.  It returns the BSER version, BSER capabilities,
+// and the total length of the entire response that the peer is sending,
+// including the bytes already received. This allows the client  to compute the
+// data size it needs to read before it can decode the data.
+static PyObject *bser_pdu_info(PyObject *self, PyObject *args)
+{
+  uint32_t version, capabilities;
+  int64_t total_len;
+  if (!pdu_info_helper(self, args, &version, &capabilities, &total_len)) {
+    return NULL;
+  }
+  return Py_BuildValue("Lkk", total_len, version, capabilities);
+}
+
+static PyObject *bser_pdu_len(PyObject *self, PyObject *args)
+{
+  uint32_t version, capabilities;
+  int64_t total_len;
+  if (!pdu_info_helper(self, args, &version, &capabilities, &total_len)) {
+    return NULL;
+  }
+  return Py_BuildValue("L", total_len);
 }
 
 static PyObject *bser_loads(PyObject *self, PyObject *args, PyObject *kw)
@@ -1064,6 +1089,8 @@ static PyMethodDef bser_methods[] = {
    "Deserialize string."},
   {"pdu_info", (PyCFunction)bser_pdu_info, METH_VARARGS,
    "Extract PDU information."},
+  {"pdu_len", (PyCFunction)bser_pdu_len, METH_VARARGS,
+   "Extract total PDU length."},
   {"dumps",  (PyCFunction)bser_dumps, METH_VARARGS | METH_KEYWORDS,
    "Serialize string."},
   {NULL, NULL, 0, NULL}
