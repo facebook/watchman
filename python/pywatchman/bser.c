@@ -1003,7 +1003,7 @@ static PyObject *bser_pdu_info(PyObject *self, PyObject *args)
   if (!pdu_info_helper(self, args, &version, &capabilities, &total_len)) {
     return NULL;
   }
-  return Py_BuildValue("Lkk", total_len, version, capabilities);
+  return Py_BuildValue("kkL", version, capabilities, total_len);
 }
 
 static PyObject *bser_pdu_len(PyObject *self, PyObject *args)

@@ -497,7 +497,7 @@ class BserCodec(Codec):
         if not buf[0]:
             raise WatchmanError('empty watchman response')
 
-        elen, _1, _2 = bser.pdu_info(buf[0])
+        _1, _2, elen = bser.pdu_info(buf[0])
 
         rlen = len(buf[0])
         while elen > rlen:
@@ -553,7 +553,7 @@ class Bser2WithFallbackCodec(BserCodec):
         if not buf[0]:
             raise WatchmanError('empty watchman response')
 
-        elen, recv_bser_version, recv_bser_capabilities = bser.pdu_info(buf[0])
+        recv_bser_version, recv_bser_capabilities, elen = bser.pdu_info(buf[0])
 
         if hasattr(self, 'bser_version'):
           # Readjust BSER version and capabilities if necessary

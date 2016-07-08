@@ -428,10 +428,10 @@ def pdu_info(buf):
     else:
         raise ValueError('Invalid BSER header')
 
-    return  expected_len + pos2, bser_version, bser_capabilities
+    return bser_version, bser_capabilities, expected_len + pos2
 
 def pdu_len(buf):
-    return pdu_info(buf)[0]
+    return pdu_info(buf)[2]
 
 def loads(buf, mutable=True, value_encoding=None, value_errors=None):
     """Deserialize a BSER-encoded blob.
