@@ -10,6 +10,45 @@ We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on
 GitHub](https://github.com/facebook/watchman/commits/master).
 
+### Watchman 4.6.0 (2016-07-09)
+
+* Improved I/O scheduling when processing recursive deletes and deep directory
+  rename operations.
+* Improved performance of the `ignore_dirs` configuration option on macOS and
+  Windows systems.  We take advantage of an undocumented (but supported!)
+  API to further accelerate this for the first 8 entries in the `ignore_dirs`
+  on macOS.  Users that depend on this configuration to avoid recrawls will
+  want to review and prioritize their most active build dirs to the front
+  of the `ignore_dirs` specified in their `.watchmanconfig` file.
+* Added an optional recrawl recovery strategy for macOS that will attempt to
+  resync from the fseventsd journal rather than performing a full filesystem
+  walk.  This is currently disabled by default but will likely be enabled
+  by default in the next Watchman release.  You can enable this by setting
+  `fsevents_try_resync: true` in either `/etc/watchman.json` or your
+  `.watchmanconfig`.  This should reduce the frequency of recrawl warnings
+  for some users/workloads, and also improves I/O for users with extremely
+  large trees.
+* Fixed accidental exponential time complexity issue with recursive deletes
+  and deep directory rename operations on case-insensitive filesystems (such as
+  macOS).  This manifested as high CPU utilization for extended periods of time.
+* Added support for allowing non-owner access to a Watchman instance.  Only
+  the owner is authorized to create or delete watches.  Non-owners can view
+  information about existing watches.  Access control is based on unix domain
+  socket permissions.  The new but not yet documented configuration options
+  `sock_group` and `sock_access` can be used to control this new behavior.
+* Added support for inetd-style socket activation of the watchman service.
+  [this commit includes a sample configuration for systemd](https://github.com/facebook/watchman/commit/2985377eaf8c8538b28fae9add061b67991a87c2).
+* Added the `symlink_target` field to the stored metadata for files.  This
+  holds the text of the symbolic link for symlinks.  You can test whether it
+  is supported by a watchman server using the capability name
+  `field-symlink_target`.
+* Fixed an issue where watchman may not reap child processes spawned by
+  triggers.
+* Fixed an issue where watchman may block forever during shutdown if there
+  are other connected clients.
+* Added `hint_num_dirs` configuration option.
+
+
 ### pywatchman 1.4.0 (????-??-??)
 
 (These changes have not yet been released to pypi)

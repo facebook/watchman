@@ -184,11 +184,29 @@ would ignore the `build` directory at the top level of the watched tree, and
 everything below it.  It will never appear in the watchman query results for
 the tree.
 
+On Linux systems, `ignore_dirs` is respected at the OS level; the kernel
+simply will not tell watchman about changes to ignored dirs.  macOS and Windows
+have limited or no support for this, so watchman needs to process and ignore
+this class of change.
+
+For large trees or especially busy build dirs, it is recommended that you move
+the busy build dirs out of the tree for more optimal performance.
+
+
 Since version 2.9.9, if you list a dir in `ignore_dirs` that is also listed in
 `ignore_vcs`, the `ignore_dirs` placement will take precedence.  This may not
 sound like a big deal, but since `ignore_vcs` is used as a hint to for the
 placement of [cookie files](/watchman/docs/cookies.html), having these two
 options overlap in earlier versions would break watchman queries.
+
+*Since 4.6.*
+
+On macOS the first 8 items listed in `ignore_dirs` can be accelerated at the
+OS level.  This means that changes to those paths are not even communicated
+to the watchman service.  Entries beyond the first 8 are processed and
+ignored by watchman.  If your workload is prone to recrawl events you will
+want to prioritize your `ignore_dirs` list so that the most busy ignored
+locations occupy the first 8 positions in this list.
 
 ### gc_age_seconds
 
@@ -219,6 +237,26 @@ per-root basis.
 If you observe problems with `kFSEventStreamEventFlagUserDropped` increasing
 the latency parameter will allow the system to batch more change notifications
 together and operate more efficiently.
+
+### fsevents_try_resync
+
+This is macOS specific.
+
+*Since 4.6.*
+
+Defaults to `false`.  If set to `true`, if a watch receives a
+`kFSEventStreamEventFlagUserDropped` event, attempt to resync from the
+`fsevents` journal if it is available.  The journal may not be available if one
+or more volumes are mounted read-only, if the administrator has purged the
+journal, or if the `fsevents` id numbers have rolled over.
+
+This resync operation is advantageous because it effectively allows rewinding
+and replaying the event stream from a known point in time and avoids the need
+to recrawl the entire watch.
+
+If this option is set to `false`, or if the journal is not available, the original
+strategy of recrawling the watched directory tree is used instead.
+
 
 ### idle_reap_age_seconds
 
