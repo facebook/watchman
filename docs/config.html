@@ -788,6 +788,11 @@ it from the <code>/etc/watchman.json</code> file.</li>
 <td>fallback</td>
 <td>3.9</td>
 </tr>
+<tr>
+<td><code>hint_num_dirs</code></td>
+<td>fallback</td>
+<td>4.6</td>
+</tr>
 </tbody></table>
 
 <h3 id="configuration-options">Configuration Options</h3>
@@ -907,11 +912,28 @@ are unwanted because of the sheer volume of files.</p>
 everything below it.  It will never appear in the watchman query results for
 the tree.</p>
 
+<p>On Linux systems, <code>ignore_dirs</code> is respected at the OS level; the kernel
+simply will not tell watchman about changes to ignored dirs.  macOS and Windows
+have limited or no support for this, so watchman needs to process and ignore
+this class of change.</p>
+
+<p>For large trees or especially busy build dirs, it is recommended that you move
+the busy build dirs out of the tree for more optimal performance.</p>
+
 <p>Since version 2.9.9, if you list a dir in <code>ignore_dirs</code> that is also listed in
 <code>ignore_vcs</code>, the <code>ignore_dirs</code> placement will take precedence.  This may not
 sound like a big deal, but since <code>ignore_vcs</code> is used as a hint to for the
 placement of <a href="/watchman/docs/cookies.html">cookie files</a>, having these two
 options overlap in earlier versions would break watchman queries.</p>
+
+<p><em>Since 4.6.</em></p>
+
+<p>On macOS the first 8 items listed in <code>ignore_dirs</code> can be accelerated at the
+OS level.  This means that changes to those paths are not even communicated
+to the watchman service.  Entries beyond the first 8 are processed and
+ignored by watchman.  If your workload is prone to recrawl events you will
+want to prioritize your <code>ignore_dirs</code> list so that the most busy ignored
+locations occupy the first 8 positions in this list.</p>
 
 <h3 id="gc_age_seconds">gc_age_seconds</h3>
 
@@ -942,6 +964,25 @@ per-root basis.</p>
 <p>If you observe problems with <code>kFSEventStreamEventFlagUserDropped</code> increasing
 the latency parameter will allow the system to batch more change notifications
 together and operate more efficiently.</p>
+
+<h3 id="fsevents_try_resync">fsevents_try_resync</h3>
+
+<p>This is macOS specific.</p>
+
+<p><em>Since 4.6.</em></p>
+
+<p>Defaults to <code>false</code>.  If set to <code>true</code>, if a watch receives a
+<code>kFSEventStreamEventFlagUserDropped</code> event, attempt to resync from the
+<code>fsevents</code> journal if it is available.  The journal may not be available if one
+or more volumes are mounted read-only, if the administrator has purged the
+journal, or if the <code>fsevents</code> id numbers have rolled over.</p>
+
+<p>This resync operation is advantageous because it effectively allows rewinding
+and replaying the event stream from a known point in time and avoids the need
+to recrawl the entire watch.</p>
+
+<p>If this option is set to <code>false</code>, or if the journal is not available, the original
+strategy of recrawling the watched directory tree is used instead.</p>
 
 <h3 id="idle_reap_age_seconds">idle_reap_age_seconds</h3>
 
@@ -982,6 +1023,21 @@ is 1; you would pay the cost of the collisions during the initial crawl and
 have a more optimal memory usage.  Since watchman is primarily employed as an
 accelerator, we&#39;d recommend biasing towards using more memory and taking less
 time to run.</p>
+
+<h3 id="hint_num_dirs">hint_num_dirs</h3>
+
+<p><em>Since 4.6</em></p>
+
+<p>Used to pre-size hash tables that are used to track the total set of files
+in the entire watched tree.  The default value for this is 131072.</p>
+
+<p>The optimal size is a power-of-two larger than the number of directories
+in your tree; running <code>find . -type d | wc -l</code> will tell you the number
+that you have.</p>
+
+<p>Making this number too large is potentially wasteful of memory.  Making this
+number too small results in increased latency during crawling while the
+hash tables are rebuilt.</p>
 
     
   </article>

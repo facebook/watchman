@@ -768,7 +768,7 @@ typically be a location like <code>&lt;PREFIX&gt;/var/run/watchman/&lt;USER&gt;-
 <p><a href="/watchman/docs/cli-options.html#quick-note-on-default-locations">Quick note on default locations</a> explains what
 we mean by <code>&lt;STATEDIR&gt;</code>, <code>&lt;TMPDIR&gt;</code>, <code>&lt;USER&gt;</code> and so on.</p>
 
-<h2 id="poison-inotify_add_watch">Poison: inotify_add_watch</h2>
+<h2 id="poison-inotify_add_watch"><a id="poison-inotify-add-watch"></a>Poison: inotify_add_watch</h2>
 <div class="highlight"><pre><code class="language-text" data-lang="text">A non-recoverable condition has triggered.  Watchman needs your help!
 The triggering condition was at timestamp=1407695600: inotify-add-watch(/my/path) -&gt; Cannot allocate memory
 All requests will continue to fail with this message until you resolve
@@ -804,10 +804,41 @@ some resources, or you may just need to install more RAM in the system.</p>
 <h3 id="i-39-ve-changed-my-limits-how-can-i-clear-the-error">I&#39;ve changed my limits, how can I clear the error?</h3>
 
 <p>The error will stick until you restart the watchman process.  The simplest
-resolution is to run <code>watchman shutdown-server</code>.</p>
+resolution is:</p>
 
+<p><em>Since 4.6</em></p>
+<div class="highlight"><pre><code class="language-text" data-lang="text">$ watchman watch-del-all
+$ watchman shutdown-server
+</code></pre></div>
+<p><em>Before 4.6</em></p>
+<div class="highlight"><pre><code class="language-text" data-lang="text">$ rm &lt;STATEDIR&gt;/state       # see above for what STATEDIR means
+$ watchman --no-spawn --no-local shutdown-server
+</code></pre></div>
 <p>If you have not actually resolved the root cause you may continue to trigger
 and experience this state each time the system trips over these limits.</p>
+
+<h2 id="posion-opendir">Posion: opendir</h2>
+<div class="highlight"><pre><code class="language-text" data-lang="text">A non-recoverable condition has triggered.  Watchman needs your help!
+The triggering condition was at timestamp=1407695600: opendir(/my/path) -&gt; Too many open files in system
+All requests will continue to fail with this message until you resolve
+the underlying problem.  You will find more information on fixing this at
+https://facebook.github.io/watchman/docs/troubleshooting.html#opendir
+</code></pre></div>
+<p>If you&#39;ve encountered this state it means that your entire system had too many
+open files, and that this prevented watchman from tracking the changes on your
+system.  In this case, the error isn&#39;t related to filesystem watching but to
+other (likely) misbehaving processes on your system; it&#39;s usually indicative of
+a runaway program or set of programs consuming resources, but in some cases it
+may just be that your system workload requires that you increase your system
+limits for the number of files.</p>
+
+<h3 id="how-do-i-resolve-this">How do I resolve this?</h3>
+
+<p><a href="/watchman/docs/troubleshooting.html#i-39-ve-changed-my-limits-how-can-i-clear-the-error">Follow these directions</a></p>
+
+<p>If the issue persists, consult your system administrator to identify what
+is consuming these resources and remediate it, or to increase your system
+limits.</p>
 
 <h2 id="fsevents">FSEvents</h2>
 

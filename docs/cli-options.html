@@ -847,6 +847,17 @@ depending on how they were configured.</p>
 need to directly run the service without it putting itself into the background:</p>
 <div class="highlight"><pre><code class="language-text" data-lang="text"> -f, --foreground      Run the service in the foreground
 </code></pre></div>
+<p><em>Since 4.6.</em></p>
+<div class="highlight"><pre><code class="language-text" data-lang="text">     --inetd                Spawning from an inetd style supervisor
+</code></pre></div>
+<p>When this flag is specified, watchman will use stdin as the listening socket
+rather than attempting to set it up for itself.  This allows some other process
+to maintain the socket and defer activating the watchman service until a client
+is ready to connect.  This is most practically beneficial when used together
+with <code>systemd</code>.</p>
+
+<p><a href="https://github.com/facebook/watchman/commit/2985377eaf8c8538b28fae9add061b67991a87c2">This commit includes a sample configuration for systemd</a>.</p>
+
     
   </article>
 </div>

@@ -775,7 +775,7 @@ results as files change:</p>
     <span class="c1">// Match any `.js` file in the dir_of_interest</span>
     <span class="nx">expression</span><span class="o">:</span> <span class="p">[</span><span class="s2">&quot;allof&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;match&quot;</span><span class="p">,</span> <span class="s2">&quot;*.js&quot;</span><span class="p">]],</span>
     <span class="c1">// Which fields we&#39;re interested in</span>
-    <span class="nx">fields</span><span class="o">:</span> <span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;size&quot;</span><span class="p">,</span> <span class="s2">&quot;exists&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">]</span>
+    <span class="nx">fields</span><span class="o">:</span> <span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;size&quot;</span><span class="p">,</span> <span class="s2">&quot;mtime_ms&quot;</span><span class="p">,</span> <span class="s2">&quot;exists&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">]</span>
   <span class="p">};</span>
   <span class="k">if</span> <span class="p">(</span><span class="nx">relative_path</span><span class="p">)</span> <span class="p">{</span>
     <span class="nx">sub</span><span class="p">.</span><span class="nx">relative_root</span> <span class="o">=</span> <span class="nx">relative_path</span><span class="p">;</span>
@@ -804,12 +804,14 @@ results as files change:</p>
   <span class="c1">//       exists: true,</span>
   <span class="c1">//       type: &#39;f&#39; } ] }</span>
   <span class="nx">client</span><span class="p">.</span><span class="nx">on</span><span class="p">(</span><span class="s1">&#39;subscription&#39;</span><span class="p">,</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="k">in</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">files</span><span class="p">)</span> <span class="p">{</span>
-      <span class="kd">var</span> <span class="nx">f</span> <span class="o">=</span> <span class="nx">resp</span><span class="p">.</span><span class="nx">files</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
-      <span class="k">if</span> <span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">subscription</span> <span class="o">==</span> <span class="s1">&#39;mysubscription&#39;</span><span class="p">)</span> <span class="p">{</span>
-        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;file changed: &#39;</span> <span class="o">+</span> <span class="nx">f</span><span class="p">.</span><span class="nx">name</span><span class="p">);</span>
-      <span class="p">}</span>
-    <span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">resp</span><span class="p">.</span><span class="nx">subscription</span> <span class="o">!==</span> <span class="s1">&#39;mysubscription&#39;</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span>
+
+    <span class="nx">resp</span><span class="p">.</span><span class="nx">files</span><span class="p">.</span><span class="nx">forEach</span><span class="p">(</span><span class="kd">function</span> <span class="p">(</span><span class="nx">file</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// convert Int64 instance to javascript integer</span>
+      <span class="kr">const</span> <span class="nx">mtime_ms</span> <span class="o">=</span> <span class="o">+</span><span class="nx">file</span><span class="p">.</span><span class="nx">mtime_ms</span><span class="p">;</span>
+
+      <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;file changed: &#39;</span> <span class="o">+</span> <span class="nx">file</span><span class="p">.</span><span class="nx">name</span><span class="p">,</span> <span class="nx">mtime_ms</span><span class="p">);</span>
+    <span class="p">});</span>
   <span class="p">});</span>
 <span class="p">}</span>
 </code></pre></div>
