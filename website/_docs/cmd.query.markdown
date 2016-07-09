@@ -104,8 +104,15 @@ microseconds, nanoseconds or floating point seconds respectively.
  * `dev` - integer: the device number
  * `nlink` - integer: number of hard links
  * `new` - bool: whether this entry is newer than the `since` generator criteria
- * `type` - string: the file type. (Available since version 3.1).  Has the
+
+*Since 3.1.*
+
+ * `type` - string: the file type. Has the
    the values listed in [the type query expression](../expr/type.html)
+
+*Since 4.6.*
+
+ * `symlink_target` - string: the target of a symbolic link if the file is a symbolic link
 
 ### Synchronization timeout (since 2.1)
 
