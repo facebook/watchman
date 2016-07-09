@@ -764,8 +764,19 @@ microseconds, nanoseconds or floating point seconds respectively.</li>
 <li><code>dev</code> - integer: the device number</li>
 <li><code>nlink</code> - integer: number of hard links</li>
 <li><code>new</code> - bool: whether this entry is newer than the <code>since</code> generator criteria</li>
-<li><code>type</code> - string: the file type. (Available since version 3.1).  Has the
+</ul>
+
+<p><em>Since 3.1.</em></p>
+
+<ul>
+<li><code>type</code> - string: the file type. Has the
 the values listed in <a href="../expr/type.html">the type query expression</a></li>
+</ul>
+
+<p><em>Since 4.6.</em></p>
+
+<ul>
+<li><code>symlink_target</code> - string: the target of a symbolic link if the file is a symbolic link</li>
 </ul>
 
 <h3 id="synchronization-timeout-since-2-1">Synchronization timeout (since 2.1)</h3>
