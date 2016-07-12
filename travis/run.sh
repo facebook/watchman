@@ -57,5 +57,11 @@ test -d $INST_TEST && rm -rf $INST_TEST
 make DESTDIR=$INST_TEST install
 find $INST_TEST
 
+case $(uname) in
+  Darwin)
+    cd java && buck test :watchman
+    ;;
+esac
+
 exit 0
 
