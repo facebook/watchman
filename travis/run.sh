@@ -59,7 +59,7 @@ find $INST_TEST
 
 case $(uname) in
   Darwin)
-    cd java && buck test :watchman
+    pushd java && bash deps.sh && buck test :watchman && popd
     ;;
 esac
 
