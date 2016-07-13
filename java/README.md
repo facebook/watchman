@@ -6,18 +6,11 @@ This provides Java bindings to the Watchman service.
 Building
 ===
 
-First, you must make sure that you have all the required dependencies. You can
-either download them manually (please read the individual README files in each
-folder under third-party/), or you can run the auto-downloader:
-
-```
-bash deps.sh
-```
-
 Make sure that you have [buck](https://buckbuild.com/) installed. In this
 folder, run:
 
 ```
+buck fetch :watchman
 buck build :watchman
 ```
 
@@ -27,6 +20,7 @@ The resulting JAR file is found in:
 To run the tests:
 
 ```
+buck fetch :watchman-tests
 buck test :watchman
 ```
 
