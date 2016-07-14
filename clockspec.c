@@ -61,7 +61,7 @@ struct w_clockspec *w_clockspec_parse(json_t *value) {
   if (str[0] == 'n' && str[1] == ':') {
     spec->tag = w_cs_named_cursor;
     // spec owns the ref to the string
-    spec->named_cursor.cursor = w_string_new(str);
+    spec->named_cursor.cursor = json_to_w_string_incref(value);
     return spec;
   }
 
