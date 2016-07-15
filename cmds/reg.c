@@ -54,7 +54,7 @@ void w_register_command(struct watchman_command_handler_def *defs)
     command_funcs = w_ht_new(16, &w_ht_string_funcs);
   }
   w_ht_set(command_funcs,
-      w_ht_ptr_val(w_string_new(defs->name)),
+      w_ht_ptr_val(w_string_new_typed(defs->name, W_STRING_UNICODE)),
       w_ht_ptr_val(defs));
 
   snprintf(capname, sizeof(capname), "cmd-%s", defs->name);
@@ -66,6 +66,7 @@ static struct watchman_command_handler_def *lookup(
 {
   struct watchman_command_handler_def *def;
   const char *cmd_name;
+  const json_t *jstr;
   w_string_t *cmd;
 
   if (!json_array_size(args)) {
@@ -74,15 +75,16 @@ static struct watchman_command_handler_def *lookup(
     return false;
   }
 
-  cmd_name = json_string_value(json_array_get(args, 0));
+  jstr = json_array_get(args, 0);
+  cmd_name = json_string_value(jstr);
   if (!cmd_name) {
     ignore_result(asprintf(errmsg,
         "invalid command: expected element 0 to be the command name"));
     return false;
   }
-  cmd = w_string_new(cmd_name);
+  cmd = json_to_w_string(jstr);
   def = w_ht_val_ptr(w_ht_get(command_funcs, w_ht_ptr_val(cmd)));
-  w_string_delref(cmd);
+  // Not added ref so not decrementing it.
 
   if (def) {
     if (mode && ((def->flags & mode) == 0)) {
@@ -198,7 +200,7 @@ void w_capability_register(const char *name) {
     capabilities = w_ht_new(128, &w_ht_string_funcs);
   }
   w_ht_set(capabilities,
-      w_ht_ptr_val(w_string_new_typed(name, UNICODE)),
+      w_ht_ptr_val(w_string_new_typed(name, W_STRING_UNICODE)),
       true);
 }
 
