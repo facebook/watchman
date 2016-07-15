@@ -30,7 +30,7 @@ static bool parse_state_arg(struct watchman_client *client, json_t *args,
   // [cmd, root, statename]
   if (json_unpack_ex(args, &err, 0, "[sss]",
         &ignored, &ignored, &statename) == 0) {
-    parsed->name = w_string_new(statename);
+    parsed->name = w_string_new_typed(statename, W_STRING_UNICODE);
     return true;
   }
 
@@ -48,7 +48,7 @@ static bool parse_state_arg(struct watchman_client *client, json_t *args,
     return false;
   }
 
-  parsed->name = w_string_new(statename);
+  parsed->name = w_string_new_typed(statename, W_STRING_UNICODE);
   return true;
 }
 
