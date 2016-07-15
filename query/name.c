@@ -123,12 +123,14 @@ static w_query_expr *name_parser_inner(w_query *query,
     for (i = 0; i < json_array_size(name); i++) {
       w_string_t *element;
       const char *ele;
-
-      ele = json_string_value(json_array_get(name, i));
+      const json_t *jele = json_array_get(name, i);
+      ele = json_string_value(jele);
+      // We need to make a copy of the string since we do in-place separator
+      // normalization on the paths.
       if (caseless) {
-        element = w_string_new_lower(ele);
+        element = w_string_new_lower_typed(ele, json_to_w_string(jele)->type);
       } else {
-        element = w_string_new(ele);
+        element = w_string_new_typed(ele, json_to_w_string(jele)->type);
       }
 
       w_string_in_place_normalize_separators(&element, WATCHMAN_DIR_SEP);
@@ -149,7 +151,9 @@ static w_query_expr *name_parser_inner(w_query *query,
 
   data = calloc(1, sizeof(*data));
   if (pattern) {
-    data->name = w_string_new(pattern);
+    // We need to make a copy of the string since we do in-place separator
+    // normalization on the paths.
+    data->name = w_string_new_typed(pattern, json_to_w_string(name)->type);
     w_string_in_place_normalize_separators(&data->name, WATCHMAN_DIR_SEP);
   }
   data->map = map;
