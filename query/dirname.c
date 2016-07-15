@@ -131,7 +131,7 @@ static w_query_expr *dirname_parser_inner(w_query *query, json_t *term,
     ignore_result(asprintf(&query->errmsg, "out of memory"));
     return NULL;
   }
-  data->dirname = w_string_new(json_string_value(name));
+  data->dirname = json_to_w_string_incref(name);
   data->startswith =
     caseless ?  w_string_startswith_caseless : w_string_startswith;
   data->depth = depth_comp;
