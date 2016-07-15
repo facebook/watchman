@@ -26,7 +26,7 @@ w_ht_t *w_envp_make_ht(void)
     }
 
     // slice name=value into a key and a value string
-    str = w_string_new(ent);
+    str = w_string_new_typed(ent, W_STRING_BYTE);
     key = w_string_slice(str, 0, (uint32_t)(eq - ent));
     val = w_string_slice(str, 1 + (uint32_t)(eq - ent),
             (uint32_t)(str->len - (key->len + 1)));
@@ -113,7 +113,7 @@ void w_envp_set_bool(w_ht_t *envht, const char *key, bool val)
 
 void w_envp_unset(w_ht_t *envht, const char *key)
 {
-  w_string_t *kstr = w_string_new(key);
+  w_string_t *kstr = w_string_new_typed(key, W_STRING_BYTE);
 
   w_ht_del(envht, w_ht_ptr_val(kstr));
 
@@ -122,7 +122,7 @@ void w_envp_unset(w_ht_t *envht, const char *key)
 
 void w_envp_set(w_ht_t *envht, const char *key, w_string_t *val)
 {
-  w_string_t *kstr = w_string_new(key);
+  w_string_t *kstr = w_string_new_typed(key, W_STRING_BYTE);
 
   w_ht_replace(envht, w_ht_ptr_val(kstr), w_ht_ptr_val(val));
 
@@ -131,8 +131,8 @@ void w_envp_set(w_ht_t *envht, const char *key, w_string_t *val)
 
 void w_envp_set_cstring(w_ht_t *envht, const char *key, const char *val)
 {
-  w_string_t *kstr = w_string_new(key);
-  w_string_t *vstr = w_string_new(val);
+  w_string_t *kstr = w_string_new_typed(key, W_STRING_BYTE);
+  w_string_t *vstr = w_string_new_typed(val, W_STRING_BYTE);
 
   w_ht_replace(envht, w_ht_ptr_val(kstr), w_ht_ptr_val(vstr));
 
