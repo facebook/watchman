@@ -183,6 +183,7 @@ static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
   w_string_t *sname;
   bool deleted;
   json_t *resp;
+  const json_t *jstr;
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
 
@@ -191,7 +192,8 @@ static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
     return;
   }
 
-  name = json_string_value(json_array_get(args, 2));
+  jstr = json_array_get(args, 2);
+  name = json_string_value(jstr);
   if (!name) {
     send_error_response(&client->client,
         "expected 2nd parameter to be subscription name");
@@ -199,7 +201,7 @@ static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
     return;
   }
 
-  sname = w_string_new(name);
+  sname = json_to_w_string_incref(jstr);
 
   pthread_mutex_lock(&w_client_lock);
   deleted = w_ht_del(client->subscriptions, w_ht_ptr_val(sname));
@@ -224,8 +226,8 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
   w_root_t *root;
   struct watchman_client_subscription *sub;
   json_t *resp;
-  const char *name;
   json_t *jfield_list;
+  json_t *jname;
   w_query *query;
   json_t *query_spec;
   struct w_query_field_list field_list;
@@ -247,8 +249,8 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
     return;
   }
 
-  name = json_string_value(json_array_get(args, 2));
-  if (!name) {
+  jname = json_array_get(args, 2);
+  if (!json_is_string(jname)) {
     send_error_response(&client->client,
         "expected 2nd parameter to be subscription name");
     goto done;
@@ -289,7 +291,7 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
     goto done;
   }
 
-  sub->name = w_string_new(name);
+  sub->name = json_to_w_string_incref(jname);
   sub->query = query;
 
   json_unpack(query_spec, "{s?:b}", "defer_vcs", &defer);
@@ -302,15 +304,15 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
     if (defer_list) {
       for (i = 0; i < json_array_size(defer_list); i++) {
         w_ht_replace(sub->drop_or_defer,
-            w_ht_ptr_val(w_string_new(json_string_value(
-                  json_array_get(defer_list, i)))), false);
+            w_ht_ptr_val(json_to_w_string_incref(
+            json_array_get(defer_list, i))), false);
       }
     }
     if (drop_list) {
       for (i = 0; i < json_array_size(drop_list); i++) {
         w_ht_replace(sub->drop_or_defer,
-            w_ht_ptr_val(w_string_new(json_string_value(
-                  json_array_get(drop_list, i)))), true);
+            w_ht_ptr_val(json_to_w_string_incref(json_array_get(drop_list, i))),
+            true);
       }
     }
   }
@@ -325,7 +327,8 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
 
   resp = make_response();
   annotate_with_clock(root, resp);
-  set_prop(resp, "subscribe", json_string(name));
+  json_incref(jname);
+  set_prop(resp, "subscribe", jname);
   add_root_warnings_to_response(resp, root);
   send_and_dispose_response(&client->client, resp);
 
