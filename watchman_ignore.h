@@ -31,10 +31,6 @@ bool w_ignore_init(struct watchman_ignore *ignore);
 // Adds a string to the ignore list.
 // The is_vcs_ignore parameter indicates whether it is a full ignore
 // or a vcs-style grandchild ignore.
-void w_ignore_add(struct watchman_ignore *ignore, const char *path,
-                  uint32_t pathlen, bool is_vcs_ignore);
-
-// As w_ignore_add, but accepts a w_string_t argument.
 void w_ignore_addstr(struct watchman_ignore *ignore, w_string_t *path,
                      bool is_vcs_ignore);
 

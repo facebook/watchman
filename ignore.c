@@ -25,13 +25,6 @@ bool w_ignore_init(struct watchman_ignore *ignore) {
   return true;
 }
 
-void w_ignore_add(struct watchman_ignore *ignore, const char *path,
-                  uint32_t pathlen, bool is_vcs_ignore) {
-  w_string_t *str = w_string_new_len(path, pathlen);
-  w_ignore_addstr(ignore, str, is_vcs_ignore);
-  w_string_delref(str);
-}
-
 void w_ignore_addstr(struct watchman_ignore *ignore, w_string_t *path,
                      bool is_vcs_ignore) {
   w_ht_set(is_vcs_ignore ? ignore->ignore_vcs : ignore->ignore_dirs,

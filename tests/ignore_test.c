@@ -57,9 +57,11 @@ void run_correctness_test(struct watchman_ignore *state,
 void add_strings(struct watchman_ignore *ignore, const char **strings,
                  uint32_t num_strings, bool is_vcs_ignore) {
   uint32_t i;
-
+  w_string_t *str;
   for (i = 0; i < num_strings; i++) {
-    w_ignore_add(ignore, strings[i], strlen_uint32(strings[i]), is_vcs_ignore);
+    str = w_string_new_typed(strings[i], W_STRING_UNICODE);
+    w_ignore_addstr(ignore, str, is_vcs_ignore);
+    w_string_delref(str);
   }
 }
 
