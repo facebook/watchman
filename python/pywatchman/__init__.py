@@ -690,10 +690,17 @@ class client(object):
 
         cmd = ['watchman', '--output-encoding=bser', 'get-sockname']
         try:
+            # if invoked via an application with a graphical user interface,
+            # this call will cause a brief command window pop-up.
+            # Using the flag STARTF_USESHOWWINDOW to avoid this behavior.
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            
             p = subprocess.Popen(cmd,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
-                                 close_fds=os.name != 'nt')
+                                 close_fds=os.name != 'nt',
+-                                startupinfo=startupinfo)
         except OSError as e:
             raise WatchmanError('"watchman" executable not in PATH (%s)', e)
 
