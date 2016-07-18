@@ -1,0 +1,15 @@
+remote_file(
+  name = 'nuprocess-jar',
+  out = 'nuprocess-1.1.0.jar',
+  url = 'http://central.maven.org/maven2/com/zaxxer/nuprocess/1.1.0/nuprocess-1.1.0.jar',
+  sha1 = '9479382344b61b36dd3ca1ec1b10aaa91295d632',
+)
+
+prebuilt_jar(
+  name = 'nuprocess',
+  binary_jar = ':nuprocess-jar',
+  deps = [
+    '//third-party/jna:jna',
+  ],
+  visibility = ['PUBLIC'],
+)
