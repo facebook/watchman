@@ -13,12 +13,15 @@ extern "C" {
 struct watchman_string;
 typedef struct watchman_string w_string_t;
 
+typedef enum { W_STRING_BYTE, W_STRING_UNICODE, W_STRING_MIXED } w_string_type_t;
+
 struct watchman_string {
   long refcnt;
   uint32_t hval;
   uint32_t len;
   w_string_t *slice;
   const char *buf;
+  w_string_type_t type;
 };
 
 void w_string_addref(w_string_t *str);
@@ -44,12 +47,29 @@ void w_string_in_place_normalize_separators(w_string_t **str, char target_sep);
 
 w_string_t *w_string_make_printf(const char *format, ...);
 
+/* Bytestring creation functions. */
 w_string_t *w_string_new(const char *str);
-w_string_t *w_string_new_basename(const char *path);
 w_string_t *w_string_new_len(const char *str, uint32_t len);
+w_string_t *w_string_new_len_no_ref(const char *str, uint32_t len);
+w_string_t *w_string_new_basename(const char *path);
 w_string_t *w_string_new_lower(const char *str);
+
+/* Typed string creation functions. */
+w_string_t *w_string_new_typed(const char *str,
+    w_string_type_t type);
+w_string_t *w_string_new_len_typed(const char *str, uint32_t len,
+    w_string_type_t type);
+w_string_t *w_string_new_len_no_ref_typed(const char *str, uint32_t len,
+    w_string_type_t type);
+w_string_t *w_string_new_basename_typed(const char *path,
+    w_string_type_t type);
+w_string_t *w_string_new_lower_typed(const char *str,
+    w_string_type_t type);
+
 #ifdef _WIN32
 w_string_t *w_string_new_wchar(WCHAR *str, int len);
+w_string_t *w_string_new_wchar_typed(WCHAR *str, int len,
+    w_string_type_t type);
 #endif
 w_string_t *w_string_normalize_separators(w_string_t *str, char target_sep);
 
@@ -67,6 +87,9 @@ bool w_string_suffix_match(w_string_t *str, w_string_t *suffix);
 
 json_t *w_string_to_json(w_string_t *str);
 
+bool w_string_is_known_unicode(w_string_t *str);
+bool w_string_is_null_terminated(w_string_t *str);
+size_t w_string_strlen(w_string_t *str);
 
 #ifdef __cplusplus
 }

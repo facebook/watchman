@@ -32,6 +32,7 @@ w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
   slice->buf = str->buf + start;
   slice->slice = str;
   slice->hval = w_hash_bytes(slice->buf, slice->len, 0);
+  slice->type = str->type;
 
   w_string_addref(str);
   return slice;
@@ -47,11 +48,9 @@ uint32_t strlen_uint32(const char *str) {
   return (uint32_t)slen;
 }
 
-w_string_t *w_string_new(const char *str) {
-  return w_string_new_len(str, strlen_uint32(str));
-}
+w_string_t *w_string_new_len_with_refcnt_typed(const char* str,
+    uint32_t len, long refcnt, w_string_type_t type) {
 
-w_string_t *w_string_new_len(const char *str, uint32_t len) {
   w_string_t *s;
   uint32_t hval;
   char *buf;
@@ -63,7 +62,7 @@ w_string_t *w_string_new_len(const char *str, uint32_t len) {
     abort();
   }
 
-  s->refcnt = 1;
+  s->refcnt = refcnt;
   s->hval = hval;
   s->len = len;
   s->slice = NULL;
@@ -71,17 +70,45 @@ w_string_t *w_string_new_len(const char *str, uint32_t len) {
   memcpy(buf, str, len);
   buf[len] = 0;
   s->buf = buf;
+  s->type = type;
 
   return s;
 }
 
+w_string_t *w_string_new_len(const char *str, uint32_t len) {
+  return w_string_new_len_with_refcnt_typed(str, len, 1, W_STRING_BYTE);
+}
+
+w_string_t *w_string_new_len_no_ref(const char *str, uint32_t len) {
+  return w_string_new_len_with_refcnt_typed(str, len, 0, W_STRING_BYTE);
+}
+
+w_string_t *w_string_new(const char *str) {
+  return w_string_new_len(str, strlen_uint32(str));
+}
+
+w_string_t *w_string_new_len_typed(const char *str, uint32_t len,
+    w_string_type_t type) {
+  return w_string_new_len_with_refcnt_typed(str, len, 1, type);
+}
+
+w_string_t *w_string_new_len_no_ref_typed(const char *str, uint32_t len,
+    w_string_type_t type) {
+  return w_string_new_len_with_refcnt_typed(str, len, 0, type);
+}
+
+w_string_t *w_string_new_typed(const char *str, w_string_type_t type) {
+  return w_string_new_len_typed(str, strlen_uint32(str), type);
+}
+
 #ifdef _WIN32
-w_string_t *w_string_new_wchar(WCHAR *str, int len) {
+w_string_t *w_string_new_wchar_typed(WCHAR *str, int len,
+    w_string_type_t type) {
   char buf[WATCHMAN_NAME_MAX];
   int res;
 
   if (len == 0) {
-    return w_string_new("");
+    return w_string_new_typed("", type);
   }
 
   res = WideCharToMultiByte(CP_UTF8, 0, str, len, buf, sizeof(buf), NULL, NULL);
@@ -97,8 +124,13 @@ w_string_t *w_string_new_wchar(WCHAR *str, int len) {
   }
 
   buf[res] = 0;
-  return w_string_new(buf);
+  return w_string_new_typed(buf, type);
 }
+
+w_string_t *w_string_new_wchar(WCHAR *str, int len) {
+  return w_string_new_wchar_typed(str, len, W_STRING_BYTE);
+}
+
 #endif
 
 w_string_t *w_string_make_printf(const char *format, ...)
@@ -175,7 +207,8 @@ w_string_t *w_string_dup_lower(w_string_t *str)
 }
 
 /* make a lowercased copy of string */
-w_string_t *w_string_new_lower(const char *str)
+w_string_t *w_string_new_lower_typed(const char *str,
+    w_string_type_t type)
 {
   w_string_t *s;
   uint32_t len = strlen_uint32(str);
@@ -199,8 +232,13 @@ w_string_t *w_string_new_lower(const char *str)
   buf[len] = 0;
   s->buf = buf;
   s->hval = w_hash_bytes(buf, len, 0);
+  s->type = type;
 
   return s;
+}
+
+w_string_t *w_string_new_lower(const char *str) {
+  return w_string_new_lower_typed(str, W_STRING_BYTE);
 }
 
 void w_string_addref(w_string_t *str)
@@ -462,13 +500,18 @@ void w_string_in_place_normalize_separators(w_string_t **str, char target_sep) {
 }
 
 // Compute the basename of path, return that as a string
-w_string_t *w_string_new_basename(const char *path) {
+w_string_t *w_string_new_basename_typed(const char *path,
+    w_string_type_t type) {
   const char *base;
   base = path + strlen(path);
   while (base > path && base[-1] != WATCHMAN_DIR_SEP) {
     base--;
   }
-  return w_string_new(base);
+  return w_string_new_typed(base, type);
+}
+
+w_string_t *w_string_new_basename(const char *path) {
+  return w_string_new_basename_typed(path, W_STRING_BYTE);
 }
 
 w_string_t *w_string_basename(w_string_t *str)
@@ -517,6 +560,7 @@ w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
   buf[parent->len + 1 + rhs->len] = '\0';
   s->buf = buf;
   s->hval = w_hash_bytes(buf, len, 0);
+  s->type = parent->type;
 
   return s;
 }
@@ -554,6 +598,7 @@ w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
   buf[parent->len + 1 + rhs_len] = '\0';
   s->buf = buf;
   s->hval = w_hash_bytes(buf, len, 0);
+  s->type = parent->type;
 
   return s;
 }
@@ -676,8 +721,23 @@ w_string_t *w_string_shell_escape(const w_string_t *str)
   *buf = 0;
   s->len = (uint32_t)(buf - s->buf);
   s->hval = w_hash_bytes(s->buf, s->len, 0);
+  s->type = str->type;
 
   return s;
+}
+
+bool w_string_is_known_unicode(w_string_t *str) {
+  return str->type == W_STRING_UNICODE;
+}
+
+bool w_string_is_null_terminated(w_string_t *str) {
+  return !str->slice ||
+    (str->buf + str->len == str->slice->buf + str->slice->len &&
+     w_string_is_null_terminated(str->slice));
+}
+
+size_t w_string_strlen(w_string_t *str) {
+  return str->len;
 }
 
 /* vim:ts=2:sw=2:et:
