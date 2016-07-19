@@ -203,7 +203,7 @@ propagate:
       break;
     }
 
-    evt->path = w_string_new_len(path, len);
+    evt->path = w_string_new_len_typed(path, len, W_STRING_BYTE);
     evt->flags = eventFlags[i];
     if (!stream->lost_sync) {
       stream->last_good = eventIds[i];
@@ -268,7 +268,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
 
   if (!fse_stream) {
     // Note that w_string_new will terminate the process on OOM
-    *failure_reason = w_string_new("OOM");
+    *failure_reason = w_string_new_typed("OOM", W_STRING_UNICODE);
     goto fail;
   }
   fse_stream->root = root;
@@ -303,7 +303,9 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
     // Compare the UUID with that of the current stream
     if (!state->stream->uuid) {
       *failure_reason =
-          w_string_new("fsevents journal was not available for prior stream");
+          w_string_new_typed(
+              "fsevents journal was not available for prior stream",
+              W_STRING_UNICODE);
       goto fail;
     }
 
@@ -311,7 +313,8 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
     b = CFUUIDGetUUIDBytes(state->stream->uuid);
 
     if (memcmp(&a, &b, sizeof(a)) != 0) {
-      *failure_reason = w_string_new("fsevents journal UUID is different");
+      *failure_reason = w_string_new_typed("fsevents journal UUID is different",
+          W_STRING_UNICODE);
       goto fail;
     }
   }
@@ -321,7 +324,8 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
 
   parray = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
   if (!parray) {
-    *failure_reason = w_string_new("CFArrayCreateMutable failed");
+    *failure_reason = w_string_new_typed("CFArrayCreateMutable failed",
+        W_STRING_UNICODE);
     goto fail;
   }
 
@@ -329,7 +333,8 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
                                   root->root_path->len, kCFStringEncodingUTF8,
                                   false);
   if (!cpath) {
-    *failure_reason = w_string_new("CFStringCreateWithBytes failed");
+    *failure_reason = w_string_new_typed("CFStringCreateWithBytes failed",
+        W_STRING_UNICODE);
     goto fail;
   }
 
@@ -350,7 +355,8 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
       kFSEventStreamCreateFlagFileEvents);
 
   if (!fse_stream->stream) {
-    *failure_reason = w_string_new("FSEventStreamCreate failed");
+    *failure_reason = w_string_new_typed("FSEventStreamCreate failed",
+        W_STRING_UNICODE);
     goto fail;
   }
 
@@ -365,7 +371,8 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
 
     ignarray = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
     if (!ignarray) {
-      *failure_reason = w_string_new("CFArrayCreateMutable failed");
+      *failure_reason = w_string_new_typed("CFArrayCreateMutable failed",
+          W_STRING_UNICODE);
       goto fail;
     }
 
@@ -378,7 +385,8 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
           kCFStringEncodingUTF8, false);
 
       if (!ignpath) {
-        *failure_reason = w_string_new("CFStringCreateWithBytes failed");
+        *failure_reason = w_string_new_typed("CFStringCreateWithBytes failed",
+            W_STRING_UNICODE);
         CFRelease(ignarray);
         goto fail;
       }
@@ -388,7 +396,8 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
     }
 
     if (!FSEventStreamSetExclusionPaths(fse_stream->stream, ignarray)) {
-      *failure_reason = w_string_new("FSEventStreamSetExclusionPaths failed");
+      *failure_reason = w_string_new_typed(
+          "FSEventStreamSetExclusionPaths failed", W_STRING_UNICODE);
       CFRelease(ignarray);
       goto fail;
     }
@@ -442,8 +451,8 @@ static void *fsevents_thread(void *arg)
 
     fdsrc = CFFileDescriptorCreateRunLoopSource(NULL, fdref, 0);
     if (!fdsrc) {
-      root->failure_reason = w_string_new(
-          "CFFileDescriptorCreateRunLoopSource failed");
+      root->failure_reason = w_string_new_typed(
+          "CFFileDescriptorCreateRunLoopSource failed", W_STRING_UNICODE);
       goto done;
     }
     CFRunLoopAddSource(CFRunLoopGetCurrent(), fdsrc, kCFRunLoopDefaultMode);
