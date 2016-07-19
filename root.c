@@ -962,7 +962,7 @@ static void stat_path(w_root_t *root,
         !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&
         dir->last_check_existed) {
       /* Make sure we update the mtime on the parent directory. */
-      w_pending_coll_add(coll, dir_name, now, flags & W_PENDING_VIA_NOTIFY);
+      w_pending_coll_add(coll, dir_name, now, 0);
     }
   }
 
