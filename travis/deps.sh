@@ -3,9 +3,9 @@ set -x
 case `uname` in
   Darwin)
     brew update
-    brew install wget pcre ruby openssl readline
+    brew install wget pcre ruby openssl readline pyenv
     # reinstall to get the latest versions
-    brew reinstall mercurial pyenv
+    brew upgrade
     # avoid snafu with OS X and python builds
     ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future
     CFLAGS="$CFLAGS $ARCHFLAGS"
