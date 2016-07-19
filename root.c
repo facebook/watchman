@@ -1019,8 +1019,16 @@ static void stat_path(w_root_t *root,
     if ((root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
         !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&
         dir->last_check_existed) {
-      /* Make sure we update the mtime on the parent directory. */
-      w_pending_coll_add(coll, dir_name, now, flags & W_PENDING_VIA_NOTIFY);
+      /* Make sure we update the mtime on the parent directory.
+       * We're deliberately not propagating any of the flags through; we
+       * definitely don't want this to be a recursive evaluation and we
+       * won'd want to treat this as VIA_NOTIFY to avoid spuriously
+       * marking the node as changed when only its atime was changed.
+       * https://github.com/facebook/watchman/issues/305 and
+       * https://github.com/facebook/watchman/issues/307 have more
+       * context on why this is.
+       */
+      w_pending_coll_add(coll, dir_name, now, 0);
     }
   }
 
