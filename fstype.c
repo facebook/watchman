@@ -52,23 +52,23 @@ w_string_t *w_fstype(const char *path)
     }
   }
 
-  return w_string_new(name);
+  return w_string_new_typed(name, W_STRING_UNICODE);
 #elif STATVFS_HAS_FSTYPE_AS_STRING
   struct statvfs sfs;
 
   if (statvfs(path, &sfs) == 0) {
 #ifdef HAVE_STRUCT_STATVFS_F_FSTYPENAME
-    return w_string_new(sfs.f_fstypename);
+    return w_string_new_typed(sfs.f_fstypename, W_STRING_UNICODE);
 #endif
 #ifdef HAVE_STRUCT_STATVFS_F_BASETYPE
-    return w_string_new(sfs.f_basetype);
+    return w_string_new_typed(sfs.f_basetype, W_STRING_UNICODE);
 #endif
   }
 #elif HAVE_STATFS
   struct statfs sfs;
 
   if (statfs(path, &sfs) == 0) {
-    return w_string_new(sfs.f_fstypename);
+    return w_string_new_typed(sfs.f_fstypename, W_STRING_UNICODE);
   }
 #endif
 #ifdef _WIN32
@@ -82,7 +82,7 @@ w_string_t *w_fstype(const char *path)
     if (h) {
       if (GetVolumeInformationByHandleW(h, NULL, 0, 0, 0, 0, fstype,
             MAX_PATH+1)) {
-        fstype_name = w_string_new_wchar(fstype, -1);
+        fstype_name = w_string_new_wchar_typed(fstype, -1, W_STRING_UNICODE);
       }
       CloseHandle(h);
     }
@@ -91,10 +91,10 @@ w_string_t *w_fstype(const char *path)
   if (fstype_name) {
     return fstype_name;
   }
-  return w_string_new("unknown");
+  return w_string_new_typed("unknown", W_STRING_UNICODE);
 #else
   unused_parameter(path);
-  return w_string_new("unknown");
+  return w_string_new_typed("unknown", W_STRING_UNICODE);
 #endif
 }
 
