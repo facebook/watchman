@@ -198,15 +198,13 @@ void w_capability_register(const char *name) {
     capabilities = w_ht_new(128, &w_ht_string_funcs);
   }
   w_ht_set(capabilities,
-      w_ht_ptr_val(w_string_new(name)),
+      w_ht_ptr_val(w_string_new_typed(name, UNICODE)),
       true);
 }
 
-bool w_capability_supported(const char *name) {
+bool w_capability_supported(const w_string_t *name) {
   bool res;
-  w_string_t *namestr = w_string_new(name);
-  res = w_ht_get(capabilities, w_ht_ptr_val(namestr));
-  w_string_delref(namestr);
+  res = w_ht_get(capabilities, w_ht_ptr_val(name));
   return res;
 }
 

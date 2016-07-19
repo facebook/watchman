@@ -10,8 +10,8 @@ static bool query_caps(json_t *response, json_t *result,
 
   for (i = 0; i < json_array_size(arr); i++) {
     json_t *ele = json_array_get(arr, i);
-    const char *capname = json_string_value(ele);
-    bool have = capname && w_capability_supported(json_string_value(ele));
+    const char* capname = json_string_value(ele);
+    bool have = w_capability_supported(json_to_w_string(ele));
     if (!have) {
       have_all = false;
     }
