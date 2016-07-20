@@ -2206,6 +2206,7 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   char *watch_path;
   w_string_t *root_str;
   int realpath_err;
+  struct stat st;
 
   *created = false;
 
@@ -2224,7 +2225,6 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
 
   watch_path = w_realpath(filename);
 
-  struct stat st;
   w_lstat(filename, &st, true);
   if (errno == ENOENT) {
     ignore_result(asprintf(errmsg, "casing problem in \"%s\"", filename));
