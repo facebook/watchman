@@ -221,7 +221,7 @@ static void *readchanges_thread(void *arg) {
 
           // FileNameLength is in BYTES, but FileName is WCHAR
           n_chars = not->FileNameLength / sizeof(not->FileName[0]);
-          name = w_string_new_wchar(not->FileName, n_chars);
+          name = w_string_new_wchar_typed(not->FileName, n_chars, W_STRING_BYTE);
 
           full = w_string_path_cat(root->root_path, name);
           w_string_delref(name);
