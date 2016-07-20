@@ -1,0 +1,12 @@
+remote_file(
+  name = 'objenesis-jar',
+  out = 'objenesis-1.3.jar',
+  url = 'http://central.maven.org/maven2/org/objenesis/objenesis/1.3/objenesis-1.3.jar',
+  sha1 = 'dc13ae4faca6df981fc7aeb5a522d9db446d5d50',
+)
+
+prebuilt_jar(
+  name = 'objenesis',
+  binary_jar = ':objenesis-jar',
+  visibility = ['PUBLIC'],
+)

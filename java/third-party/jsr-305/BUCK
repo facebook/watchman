@@ -1,0 +1,19 @@
+remote_file(
+  name = 'jsr-305-jar',
+  out = 'jsr305.jar',
+  url = 'http://central.maven.org/maven2/com/google/code/findbugs/jsr305/3.0.1/jsr305-3.0.1.jar',
+  sha1 = 'f7be08ec23c21485b9b5a1cf1654c2ec8c58168d',
+)
+
+prebuilt_jar(
+  name = 'jsr-305',
+  binary_jar = ':jsr-305-jar',
+  visibility = [
+    'PUBLIC',
+  ],
+)
+
+project_config(
+  src_target = ':jsr-305',
+  src_roots = ['src'],
+)

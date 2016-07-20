@@ -1,0 +1,38 @@
+remote_file(
+  name = 'java-hamcrest-2-jar',
+  out = 'java-hamcrest-2.0.0.0.jar',
+  url = 'http://central.maven.org/maven2/org/hamcrest/hamcrest-junit/2.0.0.0/hamcrest-junit-2.0.0.0.jar',
+  sha1 = '0221cf2b5aabedf8cd76534996caa21b283ea5d0',
+)
+
+remote_file(
+  name = 'hamcrest-junit-2-jar',
+  out = 'hamcrest-junit-2.0.0.0.jar',
+  url = 'http://central.maven.org/maven2/org/hamcrest/java-hamcrest/2.0.0.0/java-hamcrest-2.0.0.0.jar',
+  sha1 = '0f1c8853ade0ecf707f5a261c830e98893983813',
+)
+
+java_library(
+  name = 'hamcrest-2',
+  deps = [],
+  exported_deps = [
+    ':java-hamcrest-2',
+    ':hamcrest-junit-2',
+  ],
+  visibility = ['PUBLIC'],
+)
+
+prebuilt_jar(
+  name = 'java-hamcrest-2',
+  binary_jar = ':java-hamcrest-2-jar',
+  visibility = ['PUBLIC'],
+)
+
+prebuilt_jar(
+  name = 'hamcrest-junit-2',
+  binary_jar = ':hamcrest-junit-2-jar',
+  deps = [
+    ':java-hamcrest-2',
+  ],
+  visibility = ['PUBLIC'],
+)

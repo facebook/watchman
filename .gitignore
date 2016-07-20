@@ -1,4 +1,9 @@
 # If you make a change to this file, make sure to also make it to .hgignore.
+buck-out
+buck-cache
+.buckd
+.idea
+*.iml
 Makefile.in
 test-driver
 aclocal.m4
@@ -14,7 +19,7 @@ config.log
 Makefile
 *.o
 config.status
-watchman
+./watchman
 arcanist/.phutil_module_cache
 *.swp
 compile
