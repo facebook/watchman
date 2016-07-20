@@ -270,7 +270,7 @@ static void process_inotify_event(
         snprintf(buf, sizeof(buf), "%.*s/%s",
             dir_name->len, dir_name->buf,
             ine->name);
-        name = w_string_new(buf);
+        name = w_string_new_typed(buf, W_STRING_BYTE);
       } else {
         name = dir_name;
         w_string_addref(name);
