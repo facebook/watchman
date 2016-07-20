@@ -167,23 +167,22 @@ static bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg)
   }
 
   for (i = 0; i < json_array_size(ignores); i++) {
-    const char *ignore = json_string_value(json_array_get(ignores, i));
+    const json_t *jignore = json_array_get(ignores, i);
 
-    if (!ignore) {
+    if (!json_is_string(jignore)) {
       ignore_result(asprintf(errmsg,
           "ignore_vcs must be an array of strings"));
       json_decref(ignores);
       return false;
     }
 
-    name = w_string_new(ignore);
+    name = json_to_w_string(jignore);
     fullname = w_string_path_cat(root->root_path, name);
 
     // if we are completely ignoring this dir, we have nothing more to
     // do here
     if (w_ht_get(root->ignore.ignore_dirs, w_ht_ptr_val(fullname))) {
       w_string_delref(fullname);
-      w_string_delref(name);
       continue;
     }
 
@@ -197,7 +196,6 @@ static bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg)
       // root/{.hg,.git,.svn}
       root->query_cookie_dir = w_string_path_cat(root->root_path, name);
     }
-    w_string_delref(name);
     w_string_delref(fullname);
   }
 
@@ -233,20 +231,19 @@ static void apply_ignore_configuration(w_root_t *root)
   }
 
   for (i = 0; i < json_array_size(ignores); i++) {
-    const char *ignore = json_string_value(json_array_get(ignores, i));
+    const json_t *jignore = json_array_get(ignores, i);
 
-    if (!ignore) {
+    if (!json_is_string(jignore)) {
       w_log(W_LOG_ERR, "ignore_dirs must be an array of strings\n");
       continue;
     }
 
-    name = w_string_new(ignore);
+    name = json_to_w_string(jignore);
     fullname = w_string_path_cat(root->root_path, name);
     w_ignore_addstr(&root->ignore, fullname, false);
     w_log(W_LOG_DBG, "ignoring %.*s recursively\n",
         fullname->len, fullname->buf);
     w_string_delref(fullname);
-    w_string_delref(name);
   }
 }
 
@@ -279,7 +276,7 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   root->case_sensitive = is_case_sensitive_filesystem(path);
 
   w_pending_coll_init(&root->pending);
-  root->root_path = w_string_new(path);
+  root->root_path = w_string_new_typed(path, W_STRING_BYTE);
   root->commands = w_ht_new(2, &trigger_hash_funcs);
   root->query_cookies = w_ht_new(2, &w_ht_string_funcs);
   w_ignore_init(&root->ignore);
@@ -918,7 +915,8 @@ static void stat_path(w_root_t *root,
         w_log(W_LOG_ERR,
             "readlink(%s) errno=%d tlen=%d\n", path, errno, (int)tlen);
       } else {
-        file->symlink_target = w_string_new_len(link_target_path, tlen);
+        file->symlink_target = w_string_new_len_typed(link_target_path, tlen,
+            W_STRING_BYTE);
       }
     }
 #endif
@@ -1231,7 +1229,7 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
     }
 
     // Queue it up for analysis if the file is newly existing
-    name = w_string_new(dirent->d_name);
+    name = w_string_new_typed(dirent->d_name, W_STRING_BYTE);
     if (dir->files) {
       file = w_ht_val_ptr(w_ht_get(dir->files, w_ht_ptr_val(name)));
     } else {
@@ -1282,7 +1280,7 @@ static bool vcs_file_exists(w_root_t *root,
   w_string_t *dir_name;
   w_string_t *rel_dir_name;
 
-  rel_dir_name = w_string_new(dname);
+  rel_dir_name = w_string_new_typed(dname, W_STRING_BYTE);
   dir_name = w_string_path_cat(root->root_path, rel_dir_name);
   w_string_delref(rel_dir_name);
 
@@ -1297,7 +1295,7 @@ static bool vcs_file_exists(w_root_t *root,
     return false;
   }
 
-  file_name = w_string_new(fname);
+  file_name = w_string_new_typed(fname, W_STRING_BYTE);
   file = w_ht_val_ptr(w_ht_get(dir->files, w_ht_ptr_val(file_name)));
   w_string_delref(file_name);
 
@@ -2124,7 +2122,7 @@ static inline bool is_slash(char c) {
 char *w_find_enclosing_root(const char *filename, char **relpath) {
   w_ht_iter_t i;
   w_root_t *root = NULL;
-  w_string_t *name = w_string_new(filename);
+  w_string_t *name = w_string_new_typed(filename, W_STRING_BYTE);
   char *prefix = NULL;
 
   pthread_mutex_lock(&root_lock);
@@ -2231,7 +2229,7 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
     watch_path = (char*)filename;
   }
 
-  root_str = w_string_new(watch_path);
+  root_str = w_string_new_typed(watch_path, W_STRING_BYTE);
   pthread_mutex_lock(&root_lock);
   // This will addref if it returns root
   if (w_ht_lookup(watched_roots, w_ht_ptr_val(root_str), &root_val, true)) {
