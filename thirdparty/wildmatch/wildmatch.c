@@ -89,6 +89,12 @@ static int dowild(const uchar *p, const uchar *text, unsigned int flags)
 				p_ch = *++p;
 			/* FALLTHROUGH */
 		default:
+			if (p_ch == '/') {
+				/* Consume any number of consecutive slashes. */
+				while (*(p + 1) == '/') {
+					++p;
+				}
+			}
 			if (t_ch != p_ch)
 				return WM_NOMATCH;
 			if ((flags & WM_PERIOD) &&

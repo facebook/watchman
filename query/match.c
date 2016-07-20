@@ -13,6 +13,7 @@ struct wildmatch_data {
 };
 
 W_CAP_REG("wildmatch")
+W_CAP_REG("wildmatch-multislash")
 
 static bool eval_wildmatch(struct w_query_ctx *ctx,
     struct watchman_file *file,
