@@ -204,5 +204,7 @@
 [true, 6, "foo/bar/.baz", "**/.*"],
 [true, 0, "foobar", "foo\\bar"],
 [false, 8, "foobar", "foo\\bar"],
-[true, 8, "foo\\bar", "foo\\bar"]
+[true, 8, "foo\\bar", "foo\\bar"],
+[true, 2, "foo/bar/baz", "foo//bar/baz"],
+[true, 2, "foo/bar/baz", "foo/////bar/////////baz"]
 ]
