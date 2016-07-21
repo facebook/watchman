@@ -71,18 +71,6 @@ w_string_t *w_string_new_len_with_refcnt_typed(const char* str,
   return s;
 }
 
-w_string_t *w_string_new_len(const char *str, uint32_t len) {
-  return w_string_new_len_with_refcnt_typed(str, len, 1, W_STRING_BYTE);
-}
-
-w_string_t *w_string_new_len_no_ref(const char *str, uint32_t len) {
-  return w_string_new_len_with_refcnt_typed(str, len, 0, W_STRING_BYTE);
-}
-
-w_string_t *w_string_new(const char *str) {
-  return w_string_new_len(str, strlen_uint32(str));
-}
-
 w_string_t *w_string_new_len_typed(const char *str, uint32_t len,
     w_string_type_t type) {
   return w_string_new_len_with_refcnt_typed(str, len, 1, type);
@@ -121,10 +109,6 @@ w_string_t *w_string_new_wchar_typed(WCHAR *str, int len,
 
   buf[res] = 0;
   return w_string_new_typed(buf, type);
-}
-
-w_string_t *w_string_new_wchar(WCHAR *str, int len) {
-  return w_string_new_wchar_typed(str, len, W_STRING_BYTE);
 }
 
 #endif
@@ -231,10 +215,6 @@ w_string_t *w_string_new_lower_typed(const char *str,
   s->type = type;
 
   return s;
-}
-
-w_string_t *w_string_new_lower(const char *str) {
-  return w_string_new_lower_typed(str, W_STRING_BYTE);
 }
 
 void w_string_addref(w_string_t *str)
@@ -354,7 +334,7 @@ w_string_t *w_string_suffix(w_string_t *str)
         buf++;
       }
       *buf = '\0';
-      return w_string_new(name_buf);
+      return w_string_new_typed(name_buf, str->type);
     }
 
     if (str->buf[end] == WATCHMAN_DIR_SEP) {
@@ -504,10 +484,6 @@ w_string_t *w_string_new_basename_typed(const char *path,
     base--;
   }
   return w_string_new_typed(base, type);
-}
-
-w_string_t *w_string_new_basename(const char *path) {
-  return w_string_new_basename_typed(path, W_STRING_BYTE);
 }
 
 w_string_t *w_string_basename(w_string_t *str)

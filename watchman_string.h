@@ -48,13 +48,6 @@ void w_string_in_place_normalize_separators(w_string_t **str, char target_sep);
 
 w_string_t *w_string_make_printf(const char *format, ...);
 
-/* Bytestring creation functions. */
-w_string_t *w_string_new(const char *str);
-w_string_t *w_string_new_len(const char *str, uint32_t len);
-w_string_t *w_string_new_len_no_ref(const char *str, uint32_t len);
-w_string_t *w_string_new_basename(const char *path);
-w_string_t *w_string_new_lower(const char *str);
-
 /* Typed string creation functions. */
 w_string_t *w_string_new_typed(const char *str,
     w_string_type_t type);
@@ -68,7 +61,6 @@ w_string_t *w_string_new_lower_typed(const char *str,
     w_string_type_t type);
 
 #ifdef _WIN32
-w_string_t *w_string_new_wchar(WCHAR *str, int len);
 w_string_t *w_string_new_wchar_typed(WCHAR *str, int len,
     w_string_type_t type);
 #endif
