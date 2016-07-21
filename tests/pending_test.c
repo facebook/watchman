@@ -65,7 +65,7 @@ static void bench_pending(void) {
   const size_t tree_depth = 7;
   const size_t num_files_per_dir = 8;
   const size_t num_dirs_per_dir = 4;
-  w_string_t *root_name = w_string_new("/some/path");
+  w_string_t *root_name = w_string_new_typed("/some/path", W_STRING_BYTE);
   struct pending_list list;
   const size_t alloc_size = 280000;
   struct timeval start, end;
