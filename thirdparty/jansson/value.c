@@ -671,14 +671,24 @@ json_t *w_string_to_json(w_string_t *str)
     return &string->json;
 }
 
+json_t *typed_string_len_to_json(const char *str, size_t len, w_string_type_t type)
+{
+    return w_string_to_json(w_string_new_len_no_ref_typed(str, len, type));
+}
+
+json_t *typed_string_to_json(const char *str, w_string_type_t type)
+{
+    return typed_string_len_to_json(str, strlen(str), type);
+}
+
 json_t *json_stringn_nocheck(const char *value, size_t len)
 {
-    return w_string_to_json(w_string_new_len_no_ref(value, len));
+    return typed_string_len_to_json(value, len, W_STRING_BYTE);
 }
 
 json_t *json_string_nocheck(const char *value)
 {
-    return json_stringn_nocheck(value, strlen(value));
+    return typed_string_to_json(value, W_STRING_BYTE);
 }
 
 json_t *json_string(const char *value)
