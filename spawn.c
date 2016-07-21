@@ -343,7 +343,7 @@ static void spawn_command(w_root_t *root,
 
     json_unpack(cmd->definition, "{s:s}", "chdir", &cwd);
     if (cwd) {
-      w_string_t *cwd_str = w_string_new(cwd);
+      w_string_t *cwd_str = w_string_new_typed(cwd, W_STRING_BYTE);
 
       if (w_is_path_absolute(cwd)) {
         w_string_delref(working_dir);
