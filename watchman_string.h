@@ -15,7 +15,11 @@ extern "C" {
 struct watchman_string;
 typedef struct watchman_string w_string_t;
 
-typedef enum { W_STRING_BYTE, W_STRING_UNICODE, W_STRING_MIXED } w_string_type_t;
+typedef enum {
+  W_STRING_BYTE,
+  W_STRING_UNICODE,
+  W_STRING_MIXED
+} w_string_type_t;
 
 struct watchman_string {
   long refcnt;
