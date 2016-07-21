@@ -10,7 +10,7 @@ bool w_query_register_expression_parser(
     w_query_expr_parser parser)
 {
   char capname[128];
-  w_string_t *name = w_string_new(term);
+  w_string_t *name = w_string_new_typed(term, W_STRING_UNICODE);
 
   if (!name) {
     return false;
@@ -36,7 +36,7 @@ w_query_expr *w_query_expr_parse(w_query *query, json_t *exp)
   w_query_expr_parser parser;
 
   if (json_is_string(exp)) {
-    name = w_string_new(json_string_value(exp));
+    name = json_to_w_string_incref(exp);
   } else if (json_is_array(exp) && json_array_size(exp) > 0) {
     json_t *first = json_array_get(exp, 0);
 
@@ -45,7 +45,7 @@ w_query_expr *w_query_expr_parse(w_query *query, json_t *exp)
           "first element of an expression must be a string");
       return NULL;
     }
-    name = w_string_new(json_string_value(first));
+    name = json_to_w_string_incref(first);
   } else {
     query->errmsg = strdup("expected array or string for an expression");
     return NULL;
@@ -93,7 +93,8 @@ static bool set_suffix(w_query *res, json_t *ele, w_string_t **suffix)
     return false;
   }
 
-  *suffix = w_string_new_lower(json_string_value(ele));
+  *suffix = w_string_new_lower_typed(json_string_value(ele),
+      json_to_w_string(ele)->type);
 
   return true;
 }
@@ -184,7 +185,7 @@ static bool parse_paths(w_query *res, json_t *query)
       return false;
     }
 
-    res->paths[i].name = w_string_new(name);
+    res->paths[i].name = w_string_new_typed(name, W_STRING_BYTE);
     w_string_in_place_normalize_separators(
         &res->paths[i].name, WATCHMAN_DIR_SEP);
   }
@@ -209,7 +210,7 @@ static bool parse_relative_root(w_root_t *root, w_query *res, json_t *query)
     return false;
   }
 
-  path = w_string_new(json_string_value(relative_root));
+  path = json_to_w_string_incref(relative_root);
   canon_path = w_string_canon_path(path);
   res->relative_root = w_string_path_cat(root->root_path, canon_path);
   res->relative_root_slash = w_string_make_printf("%.*s%c",
