@@ -43,7 +43,7 @@ static void cmd_version(struct watchman_client *client, json_t *args)
   json_t *resp = make_response();
 
 #ifdef WATCHMAN_BUILD_INFO
-  set_prop(resp, "buildinfo", json_string(WATCHMAN_BUILD_INFO));
+  set_unicode_prop(resp, "buildinfo", WATCHMAN_BUILD_INFO);
 #endif
 
   /* ["version"]
@@ -101,7 +101,7 @@ static void cmd_get_sockname(struct watchman_client *client, json_t *args)
 
   unused_parameter(args);
 
-  set_prop(resp, "sockname", json_string(get_sock_name()));
+  set_bytestring_prop(resp, "sockname", get_sock_name());
 
   send_and_dispose_response(client, resp);
 }
