@@ -14,8 +14,8 @@ int main(int argc, char **argv)
   plan_tests(8);
 
   args = json_array();
-  json_array_append_new(args, json_string("one"));
-  json_array_append_new(args, json_string("two"));
+  json_array_append_new(args, typed_string_to_json("one", W_STRING_UNICODE));
+  json_array_append_new(args, typed_string_to_json("two", W_STRING_UNICODE));
   ok(json_array_size(args) == 2, "sanity check array size");
 
   dupd = w_argv_copy_from_json(args, 0);
