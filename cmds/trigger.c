@@ -359,13 +359,12 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
     // Same definition: we don't and shouldn't touch things, so that we
     // preserve the associated trigger clock and don't cause the trigger
     // to re-run immediately
-    set_prop(resp, "disposition", json_string_nocheck("already_defined"));
+    set_unicode_prop(resp, "disposition", "already_defined");
     w_trigger_command_free(cmd);
     cmd = NULL;
     need_save = false;
   } else {
-    set_prop(resp, "disposition", json_string_nocheck(
-          old ? "replaced" : "created"));
+    set_unicode_prop(resp, "disposition", old ? "replaced" : "created");
     w_ht_replace(root->commands, w_ht_ptr_val(cmd->triggername),
         w_ht_ptr_val(cmd));
     // Force the trigger to be eligible to run now
