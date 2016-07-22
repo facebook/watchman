@@ -38,7 +38,7 @@ json_t *make_response(void)
 {
   json_t *resp = json_object();
 
-  set_prop(resp, "version", json_string_nocheck(PACKAGE_VERSION));
+  set_unicode_prop(resp, "version", PACKAGE_VERSION);
 
   return resp;
 }
@@ -91,7 +91,7 @@ void send_error_response(struct watchman_client *client,
   vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
 
-  errstr = json_string_nocheck(buf);
+  errstr = typed_string_to_json(buf, W_STRING_MIXED);
   set_prop(resp, "error", errstr);
 
   json_incref(errstr);
@@ -287,7 +287,7 @@ void w_log_to_clients(int level, const char *buf)
     if (client->log_level != W_LOG_OFF && client->log_level >= level) {
       json = make_response();
       if (json) {
-        set_prop(json, "log", json_string_nocheck(buf));
+        set_mixed_string_prop(json, "log", buf);
         set_prop(json, "unilateral", json_true());
         if (!enqueue_response(client, json, true)) {
           json_decref(json);
