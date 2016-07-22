@@ -142,7 +142,8 @@ static void prepend_watchmanconfig_to_array(json_t *ref) {
   if (json_array_size(ref) == 0) {
     // json_array_insert_new at index can fail when the array is empty,
     // so just append in this case.
-    json_array_append_new(ref, json_string_nocheck(".watchmanconfig"));
+    json_array_append_new(ref, typed_string_to_json(".watchmanconfig",
+          W_STRING_UNICODE));
     return;
   }
 
@@ -150,7 +151,8 @@ static void prepend_watchmanconfig_to_array(json_t *ref) {
   if (!strcmp(val, ".watchmanconfig")) {
     return;
   }
-  json_array_insert_new(ref, 0, json_string_nocheck(".watchmanconfig"));
+  json_array_insert_new(ref, 0, typed_string_to_json(".watchmanconfig",
+        W_STRING_UNICODE));
 }
 
 // Compute the effective value of the root_files configuration and
