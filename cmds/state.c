@@ -142,7 +142,7 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
   response = make_response();
   set_prop(response, "root", w_string_to_json(root->root_path));
   set_prop(response, "state-enter", w_string_to_json(parsed.name));
-  set_prop(response, "clock", json_string_nocheck(clockbuf));
+  set_unicode_prop(response, "clock", clockbuf);
   send_and_dispose_response(&client->client, response);
   response = NULL;
 
@@ -166,7 +166,7 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
       set_prop(pdu, "root", w_string_to_json(root->root_path));
       set_prop(pdu, "subscription", w_string_to_json(sub->name));
       set_prop(pdu, "unilateral", json_true());
-      set_prop(pdu, "clock", json_string_nocheck(clockbuf));
+      set_unicode_prop(pdu, "clock", clockbuf);
       set_prop(pdu, "state-enter", w_string_to_json(parsed.name));
       if (parsed.metadata) {
         // set_prop would steal our ref, we don't want that
@@ -225,7 +225,7 @@ static void leave_state(struct watchman_user_client *client,
         set_prop(pdu, "root", w_string_to_json(root->root_path));
         set_prop(pdu, "subscription", w_string_to_json(sub->name));
         set_prop(pdu, "unilateral", json_true());
-        set_prop(pdu, "clock", json_string_nocheck(clockbuf));
+        set_unicode_prop(pdu, "clock", clockbuf);
         set_prop(pdu, "state-leave", w_string_to_json(assertion->name));
         if (metadata) {
           // set_prop would steal our ref, we don't want that
@@ -340,7 +340,7 @@ static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
   response = make_response();
   set_prop(response, "root", w_string_to_json(root->root_path));
   set_prop(response, "state-leave", w_string_to_json(parsed.name));
-  set_prop(response, "clock", json_string_nocheck(clockbuf));
+  set_unicode_prop(pdu, "clock", clockbuf);
   send_and_dispose_response(&client->client, response);
   response = NULL;
 
