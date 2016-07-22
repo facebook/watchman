@@ -99,7 +99,7 @@ bool w_state_save(void)
     goto out;
   }
 
-  json_object_set_new(state, "version", json_string(PACKAGE_VERSION));
+  set_unicode_prop(state, "version", PACKAGE_VERSION);
 
   /* now ask the different subsystems to fill out the state */
   if (!w_root_save_state(state)) {
