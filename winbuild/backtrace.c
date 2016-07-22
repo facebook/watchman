@@ -54,7 +54,7 @@ char **backtrace_symbols(void **array, size_t n_frames) {
         array[i], sym.info.Name);
     }
 
-    json_array_append_new(arr, json_string_nocheck(str));
+    json_array_append_new(arr, typed_string_to_json(str, W_STRING_MIXED));
   }
 
   strings = w_argv_copy_from_json(arr, 0);
