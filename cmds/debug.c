@@ -122,7 +122,7 @@ static void cmd_debug_poison(struct watchman_client *client, json_t *args)
   set_poison_state(root, dir->path, now, "debug-poison", ENOMEM, NULL);
 
   resp = make_response();
-  set_prop(resp, "poison", json_string_nocheck(poisoned_reason));
+  set_unicode_prop(resp, "poison", poisoned_reason);
   send_and_dispose_response(client, resp);
   w_root_delref(root);
 }
