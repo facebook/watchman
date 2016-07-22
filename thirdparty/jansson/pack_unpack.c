@@ -34,7 +34,7 @@ static const char *type_names[] = {
 
 #define type_name(x) type_names[json_typeof(x)]
 
-static const char *unpack_value_starters = "{[siIbfFOon";
+static const char *unpack_value_starters = "{[sumiIbfFOon";
 
 
 static void scanner_init(scanner_t *s, json_error_t *error,
@@ -100,8 +100,9 @@ static json_t *pack_object(scanner_t *s, va_list *ap)
             goto error;
         }
 
-        if(s->token != 's') {
-            set_error(s, "<format>", "Expected format 's', got '%c'", s->token);
+        if(s->token != 's' && s->token != 'u' && s->token != 'm') {
+            set_error(s, "<format>", "Expected format string, got '%c'",
+                s->token);
             goto error;
         }
 
@@ -177,7 +178,17 @@ static json_t *pack(scanner_t *s, va_list *ap)
         case '[':
             return pack_array(s, ap);
 
-        case 's': /* string */
+        case 's': /* byte string */
+        {
+            const char *str = va_arg(*ap, const char *);
+            if(!str) {
+                set_error(s, "<args>", "NULL string argument");
+                return NULL;
+            }
+            return typed_string_to_json(str, W_STRING_BYTE);
+        }
+
+        case 'u': /* unicode string */
         {
             const char *str = va_arg(*ap, const char *);
             if(!str) {
@@ -188,7 +199,17 @@ static json_t *pack(scanner_t *s, va_list *ap)
                 set_error(s, "<args>", "Invalid UTF-8 string");
                 return NULL;
             }
-            return typed_string_to_json(str, W_STRING_BYTE);
+            return typed_string_to_json(str, W_STRING_UNICODE);
+        }
+
+        case 'm': /* mixed string */
+        {
+            const char *str = va_arg(*ap, const char *);
+            if(!str) {
+                set_error(s, "<args>", "NULL string argument");
+                return NULL;
+            }
+            return typed_string_to_json(str, W_STRING_MIXED);
         }
 
         case 'n': /* null */
@@ -267,8 +288,9 @@ static int unpack_object(scanner_t *s, json_t *root, va_list *ap)
             continue;
         }
 
-        if(s->token != 's') {
-            set_error(s, "<format>", "Expected format 's', got '%c'", s->token);
+        if(s->token != 's' && s->token != 'u' && s->token != 'm') {
+            set_error(s, "<format>", "Expected format string, got '%c'",
+                s->token);
             goto out;
         }
 
@@ -401,6 +423,8 @@ static int unpack(scanner_t *s, json_t *root, va_list *ap)
             return unpack_array(s, root, ap);
 
         case 's':
+        case 'u':
+        case 'm':
             if(root && !json_is_string(root)) {
                 set_error(s, "<validation>", "Expected string, got %s",
                           type_name(root));
