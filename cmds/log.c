@@ -40,7 +40,7 @@ static void cmd_loglevel(struct watchman_client *client, json_t *args)
   pthread_mutex_unlock(&w_client_lock);
 
   resp = make_response();
-  set_prop(resp, "log_level", json_string_nocheck(str));
+  set_unicode_prop(resp, "log_level", str);
 
   send_and_dispose_response(client, resp);
 }
