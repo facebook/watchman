@@ -216,7 +216,7 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
             }
             case REQ_STRING:
             {
-              json_t *sval = json_string(optarg);
+              json_t *sval = typed_string_to_json(optarg, W_STRING_UNICODE);
               *(char**)o->val = strdup(optarg);
               cfg_set_arg(o->optname, sval);
               json_decref(sval);
