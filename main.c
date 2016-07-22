@@ -1003,7 +1003,7 @@ static json_t *build_command(int argc, char **argv)
 
   cmd = json_array();
   for (i = 0; i < argc; i++) {
-    json_array_append_new(cmd, json_string(argv[i]));
+    json_array_append_new(cmd, typed_string_to_json(argv[i], W_STRING_UNICODE));
   }
 
   return cmd;
