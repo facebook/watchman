@@ -56,7 +56,7 @@ static void cmd_find(struct watchman_client *client, json_t *args)
 
   response = make_response();
   if (clock_id_string(res.root_number, res.ticks, clockbuf, sizeof(clockbuf))) {
-    set_prop(response, "clock", json_string_nocheck(clockbuf));
+    set_unicode_prop(response, "clock", clockbuf);
   }
   set_prop(response, "files", file_list);
 
