@@ -368,7 +368,8 @@ bool w_query_legacy_field_list(struct w_query_field_list *flist)
   char *errmsg = NULL;
 
   for (i = 0; i < sizeof(names)/sizeof(names[0]); i++) {
-    json_array_append_new(list, json_string_nocheck(names[i]));
+    json_array_append_new(list, typed_string_to_json(names[i],
+        W_STRING_UNICODE));
   }
 
   res = parse_field_list(list, flist, &errmsg);
@@ -494,7 +495,7 @@ w_query *w_query_parse_legacy(w_root_t *root, json_t *args, char **errmsg,
 
   if (clockspec) {
     json_object_set_new_nocheck(query_obj,
-        "since", json_string_nocheck(clockspec));
+        "since", typed_string_to_json(clockspec, W_STRING_UNICODE));
   }
 
   /* compose the query with the field list */
