@@ -238,7 +238,7 @@ void w_perf_log(w_perf_t *perf) {
                    );
 
 #ifdef WATCHMAN_BUILD_INFO
-  set_prop(info, "buildinfo", json_string(WATCHMAN_BUILD_INFO));
+  set_unicode_prop(info, "buildinfo", WATCHMAN_BUILD_INFO);
 #endif
 
 #define ADDTV(name, tv)                                                        \
