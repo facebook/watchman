@@ -83,9 +83,6 @@ json_t *json_object(void);
 json_t *json_object_of_size(size_t nelems);
 json_t *json_array(void);
 json_t *json_array_of_size(size_t nelems);
-json_t *json_string(const char *value);
-json_t *json_string_nocheck(const char *value);
-json_t *json_stringn_nocheck(const char *value, size_t len);
 json_t *typed_string_len_to_json(const char *str, size_t len,
     w_string_type_t type);
 json_t *typed_string_to_json(const char *value, w_string_type_t type);

@@ -681,24 +681,6 @@ json_t *typed_string_to_json(const char *str, w_string_type_t type)
     return typed_string_len_to_json(str, strlen(str), type);
 }
 
-json_t *json_stringn_nocheck(const char *value, size_t len)
-{
-    return typed_string_len_to_json(value, len, W_STRING_BYTE);
-}
-
-json_t *json_string_nocheck(const char *value)
-{
-    return typed_string_to_json(value, W_STRING_BYTE);
-}
-
-json_t *json_string(const char *value)
-{
-    if(!value || !utf8_check_string(value, -1))
-        return NULL;
-
-    return json_string_nocheck(value);
-}
-
 const char *json_string_value(const json_t *json)
 {
     json_string_t *jstr;
@@ -767,7 +749,7 @@ static int json_string_equal(json_t *string1, json_t *string2)
 
 static json_t *json_string_copy(json_t *string)
 {
-    return json_string_nocheck(json_string_value(string));
+    return w_string_to_json(json_to_w_string(string));
 }
 
 /*** integer ***/

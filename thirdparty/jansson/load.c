@@ -773,7 +773,7 @@ static json_t *parse_value(lex_t *lex, size_t flags, json_error_t *error)
 
     switch(lex->token) {
         case TOKEN_STRING: {
-            json = json_string_nocheck(lex->value.string);
+            json = typed_string_to_json(lex->value.string, W_STRING_BYTE);
             break;
         }
 

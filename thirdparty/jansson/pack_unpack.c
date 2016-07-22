@@ -188,7 +188,7 @@ static json_t *pack(scanner_t *s, va_list *ap)
                 set_error(s, "<args>", "Invalid UTF-8 string");
                 return NULL;
             }
-            return json_string_nocheck(str);
+            return typed_string_to_json(str, W_STRING_BYTE);
         }
 
         case 'n': /* null */
