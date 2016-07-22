@@ -29,7 +29,7 @@ static json_t *make_new(struct watchman_rule_match *match)
     char buf[128]; \
     if (clock_id_string(match->root_number, match->file->member.ticks, buf, \
                         sizeof(buf))) { \
-      return json_string_nocheck(buf); \
+      return typed_string_to_json(buf, W_STRING_UNICODE); \
     } \
     return NULL; \
   }
@@ -93,32 +93,32 @@ MAKE_INT_FIELD(nlink, nlink)
 static json_t *make_type_field(struct watchman_rule_match *match) {
   // Bias towards the more common file types first
   if (S_ISREG(match->file->stat.mode)) {
-    return json_string_nocheck("f");
+    return typed_string_to_json("f", W_STRING_UNICODE);
   }
   if (S_ISDIR(match->file->stat.mode)) {
-    return json_string_nocheck("d");
+    return typed_string_to_json("d", W_STRING_UNICODE);
   }
   if (S_ISLNK(match->file->stat.mode)) {
-    return json_string_nocheck("l");
+    return typed_string_to_json("l", W_STRING_UNICODE);
   }
   if (S_ISBLK(match->file->stat.mode)) {
-    return json_string_nocheck("b");
+    return typed_string_to_json("b", W_STRING_UNICODE);
   }
   if (S_ISCHR(match->file->stat.mode)) {
-    return json_string_nocheck("c");
+    return typed_string_to_json("c", W_STRING_UNICODE);
   }
   if (S_ISFIFO(match->file->stat.mode)) {
-    return json_string_nocheck("p");
+    return typed_string_to_json("p", W_STRING_UNICODE);
   }
   if (S_ISSOCK(match->file->stat.mode)) {
-    return json_string_nocheck("s");
+    return typed_string_to_json("s", W_STRING_UNICODE);
   }
 #ifdef S_ISDOOR
   if (S_ISDOOR(match->file->stat.mode)) {
-    return json_string_nocheck("D");
+    return typed_string_to_json("D", W_STRING_UNICODE);
   }
 #endif
-  return json_string_nocheck("?");
+  return typed_string_to_json("?", W_STRING_UNICODE);
 }
 
 static struct w_query_field_renderer {
@@ -170,7 +170,8 @@ json_t *w_query_results_to_json(
 
     for (f = 0; f < field_list->num_fields; f++) {
       json_array_append_new(templ,
-          json_string_nocheck(field_list->fields[f]->name));
+          typed_string_to_json(field_list->fields[f]->name,
+          W_STRING_BYTE));
     }
 
     json_array_set_template_new(file_list, templ);
