@@ -101,10 +101,10 @@ static json_t *build_subscription_results(
   if (since_spec && since_spec->tag == w_cs_clock &&
       clock_id_string(since_spec->clock.root_number, since_spec->clock.ticks,
                       clockbuf, sizeof(clockbuf))) {
-    set_prop(response, "since", json_string_nocheck(clockbuf));
+    set_unicode_prop(response, "since", clockbuf);
   }
   if (clock_id_string(res.root_number, res.ticks, clockbuf, sizeof(clockbuf))) {
-    set_prop(response, "clock", json_string_nocheck(clockbuf));
+    set_unicode_prop(response, "clock", clockbuf);
   }
   update_subscription_ticks(sub, &res);
 
@@ -212,7 +212,7 @@ static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
   w_string_delref(sname);
 
   resp = make_response();
-  set_prop(resp, "unsubscribe", json_string_nocheck(name));
+  set_bytestring_prop(resp, "unsubscribe", name);
   set_prop(resp, "deleted", json_boolean(deleted));
 
   send_and_dispose_response(&client->client, resp);
