@@ -21,7 +21,8 @@ bool w_cmd_realpath_root(json_t *args, char **errmsg)
 
   resolved = w_realpath(path);
   if (resolved) {
-    json_array_set_new(args, 1, json_string_nocheck(resolved));
+    json_array_set_new(args, 1, typed_string_to_json(resolved,
+          W_STRING_BYTE));
     free(resolved);
   }
 
@@ -252,7 +253,8 @@ static char *resolve_projpath(json_t *args, char **errmsg, char **relpath)
   if (enclosing) {
     free(resolved);
     resolved = enclosing;
-    json_array_set_new(args, 1, json_string_nocheck(resolved));
+    json_array_set_new(args, 1, typed_string_to_json(resolved,
+          W_STRING_BYTE));
     res = true;
     goto done;
   }
@@ -265,7 +267,8 @@ static char *resolve_projpath(json_t *args, char **errmsg, char **relpath)
     const char *name = json_string_value(item);
 
     if (find_file_in_dir_tree(name, resolved, relpath)) {
-      json_array_set_new(args, 1, json_string_nocheck(resolved));
+      json_array_set_new(args, 1, typed_string_to_json(resolved,
+            W_STRING_BYTE));
       res = true;
       goto done;
     }
@@ -314,10 +317,10 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
   if (root->failure_reason) {
     set_prop(resp, "error", w_string_to_json(root->failure_reason));
   } else if (root->cancelled) {
-    set_prop(resp, "error", json_string_nocheck("root was cancelled"));
+    set_unicode_prop(resp, "error", "root was cancelled");
   } else {
     set_prop(resp, "watch", w_string_to_json(root->root_path));
-    set_prop(resp, "watcher", json_string_nocheck(root->watcher_ops->name));
+    set_unicode_prop(resp, "watcher", root->watcher_ops->name);
   }
   add_root_warnings_to_response(resp, root);
   send_and_dispose_response(client, resp);
@@ -363,15 +366,14 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
   if (root->failure_reason) {
     set_prop(resp, "error", w_string_to_json(root->failure_reason));
   } else if (root->cancelled) {
-    set_prop(resp, "error", json_string_nocheck("root was cancelled"));
+    set_unicode_prop(resp, "error", "root was cancelled");
   } else {
     set_prop(resp, "watch", w_string_to_json(root->root_path));
-    set_prop(resp, "watcher", json_string_nocheck(root->watcher_ops->name));
+    set_unicode_prop(resp, "watcher", root->watcher_ops->name);
   }
   add_root_warnings_to_response(resp, root);
   if (rel_path_from_watch) {
-    set_prop(resp, "relative_path",
-        json_string_nocheck(rel_path_from_watch));
+    set_bytestring_prop(resp, "relative_path",rel_path_from_watch);
   }
   send_and_dispose_response(client, resp);
   w_root_unlock(root);
