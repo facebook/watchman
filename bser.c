@@ -656,7 +656,7 @@ json_t *bunser(const char *buf, const char *end, json_int_t *needed,
         return NULL;
       }
 
-      return json_stringn_nocheck(start, len);
+      return typed_string_len_to_json(start, len, W_STRING_BYTE);
     }
 
     case BSER_REAL:
