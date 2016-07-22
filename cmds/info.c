@@ -24,7 +24,7 @@ static bool query_caps(json_t *response, json_t *result,
       ignore_result(asprintf(&buf,
             "client required capability `%s` is not supported by this server",
             capname));
-      set_prop(response, "error", json_string_nocheck(buf));
+      set_unicode_prop(response, "error", buf);
       w_log(W_LOG_ERR, "version: %s\n", buf);
       free(buf);
 
