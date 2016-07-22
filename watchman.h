@@ -922,6 +922,27 @@ static inline void set_prop(json_t *obj, const char *key, json_t *val)
   json_object_set_new_nocheck(obj, key, val);
 }
 
+static inline void set_unicode_prop(json_t *obj, const char *key,
+    const char *uni_str)
+{
+  json_object_set_new_nocheck(obj, key,
+      typed_string_to_json(uni_str, W_STRING_UNICODE));
+}
+
+static inline void set_bytestring_prop(json_t *obj, const char *key,
+    const char *uni_str)
+{
+  json_object_set_new_nocheck(obj, key,
+      typed_string_to_json(uni_str, W_STRING_BYTE));
+}
+
+static inline void set_mixed_string_prop(json_t *obj, const char *key,
+    const char *uni_str)
+{
+  json_object_set_new_nocheck(obj, key,
+      typed_string_to_json(uni_str, W_STRING_MIXED));
+}
+
 void cfg_shutdown(void);
 void cfg_set_arg(const char *name, json_t *val);
 void cfg_load_global_config_file(void);
