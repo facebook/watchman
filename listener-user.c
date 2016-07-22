@@ -48,7 +48,7 @@ void add_root_warnings_to_response(json_t *response, w_root_t *root) {
       root->root_path->len, root->root_path->buf));
 
   if (full) {
-    set_prop(response, "warning", json_string_nocheck(full));
+    set_prop(response, "warning", typed_string_to_json(full, W_STRING_MIXED));
   }
   free(str);
   free(full);
