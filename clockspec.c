@@ -196,7 +196,7 @@ void annotate_with_clock(w_root_t *root, json_t *resp) {
   char buf[128];
 
   if (current_clock_id_string(root, buf, sizeof(buf))) {
-    set_prop(resp, "clock", json_string_nocheck(buf));
+    set_prop(resp, "clock", typed_string_to_json(buf, W_STRING_UNICODE));
   }
 }
 
