@@ -448,19 +448,19 @@ w_query *w_query_parse_legacy(w_root_t *root, json_t *args, char **errmsg,
     // Which group are we going to file it into
     if (include) {
       if (!included) {
-        included = json_pack("[s]", "anyof");
+        included = json_pack("[u]", "anyof");
       }
       container = included;
     } else {
       if (!excluded) {
-        excluded = json_pack("[s]", "anyof");
+        excluded = json_pack("[u]", "anyof");
       }
       container = excluded;
     }
 
-    term = json_pack("[sss]", term_name, arg, "wholename");
+    term = json_pack("[usu]", term_name, arg, "wholename");
     if (negated) {
-      term = json_pack("[so]", "not", term);
+      term = json_pack("[uo]", "not", term);
     }
     json_array_append_new(container, term);
 
@@ -470,12 +470,12 @@ w_query *w_query_parse_legacy(w_root_t *root, json_t *args, char **errmsg,
   }
 
   if (excluded) {
-    term = json_pack("[so]", "not", excluded);
+    term = json_pack("[uo]", "not", excluded);
     excluded = term;
   }
 
   if (included && excluded) {
-    query_array = json_pack("[soo]", "allof", excluded, included);
+    query_array = json_pack("[uoo]", "allof", excluded, included);
   } else if (included) {
     query_array = included;
   } else {
