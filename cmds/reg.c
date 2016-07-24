@@ -123,7 +123,7 @@ void preprocess_command(json_t *args, enum w_pdu_type output_pdu)
     w_jbuffer_t jr;
 
     json_t *err = json_pack(
-      "{s:s, s:s, s:b}",
+      "{s:m, s:u, s:b}",
       "error", errmsg,
       "version", PACKAGE_VERSION,
       "cli_validated", true
