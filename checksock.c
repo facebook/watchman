@@ -11,7 +11,7 @@
  */
 
 static void *check_my_sock(void *unused) {
-  json_t *cmd = json_pack("[s]", "get-pid");
+  json_t *cmd = json_pack("[u]", "get-pid");
   json_t *result;
   w_stm_t client = NULL;
   w_jbuffer_t buf;
