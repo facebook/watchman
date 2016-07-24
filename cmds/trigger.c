@@ -89,7 +89,7 @@ static json_t *build_legacy_trigger(
   size_t n;
   w_query *query;
 
-  trig = json_pack("{s:O, s:b, s:[s, s, s, s, s]}",
+  trig = json_pack("{s:O, s:b, s:[u, u, u, u, u]}",
     "name", json_array_get(args, 2),
     "append_files", true,
     "stdin",
@@ -224,7 +224,7 @@ struct watchman_trigger_command *w_build_trigger_from_def(
     return NULL;
   }
 
-  json_unpack(trig, "{s:s}", "name", &name);
+  json_unpack(trig, "{s:u}", "name", &name);
   if (!name) {
     *errmsg = strdup("invalid or missing name");
     w_trigger_command_free(cmd);
