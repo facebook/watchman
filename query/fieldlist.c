@@ -206,7 +206,7 @@ bool parse_field_list(json_t *field_list,
 
   if (field_list == NULL) {
     // Use the default list
-    field_list = json_pack("[sssss]", "name", "exists", "new", "size", "mode");
+    field_list = json_pack("[uuuuu]", "name", "exists", "new", "size", "mode");
   } else {
     // Add a ref so that we don't need complicated logic to deal with
     // whether we defaulted or not; just unconditionally delref on return
