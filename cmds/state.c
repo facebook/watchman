@@ -28,13 +28,13 @@ static bool parse_state_arg(struct watchman_client *client, json_t *args,
   }
 
   // [cmd, root, statename]
-  if (json_unpack_ex(args, &err, 0, "[sss]",
+  if (json_unpack_ex(args, &err, 0, "[ssu]",
         &ignored, &ignored, &statename) == 0) {
     parsed->name = w_string_new_typed(statename, W_STRING_UNICODE);
     return true;
   }
 
-  if (json_unpack_ex(args, &err, 0, "[s, s, {s:s, s?:O, s?:i}]",
+  if (json_unpack_ex(args, &err, 0, "[s, s, {s:u, s?:O, s?:i}]",
         &ignored, &ignored,
         "name", &statename,
         "metadata", &parsed->metadata,
