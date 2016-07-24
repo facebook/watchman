@@ -100,7 +100,7 @@ void w_perf_add_root_meta(w_perf_t *perf, w_root_t *root) {
   // The funky comments at the end of the line force clang-format to keep the
   // elements on lines of their own
   w_perf_add_meta(perf, "root",
-                  json_pack("{s:o, s:i, s:i, s:i, s:b, s:s}",          //
+                  json_pack("{s:o, s:i, s:i, s:i, s:b, s:u}",          //
                             "path", w_string_to_json(root->root_path), //
                             "recrawl_count", root->recrawl_count,      //
                             "number", root->number,                    //
@@ -230,7 +230,7 @@ void w_perf_log(w_perf_t *perf) {
   }
 
   // Assemble a perf blob
-  info = json_pack("{s:s, s:O, s:i, s:s}",           //
+  info = json_pack("{s:u, s:O, s:i, s:u}",           //
                    "description", perf->description, //
                    "meta", perf->meta_data,          //
                    "pid", getpid(),                  //
