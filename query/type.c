@@ -45,7 +45,7 @@ static w_query_expr *type_parser(w_query *query, json_t *term)
   const char *ignore, *typestr, *found;
   intptr_t arg;
 
-  if (json_unpack(term, "[s,s]", &ignore, &typestr) != 0) {
+  if (json_unpack(term, "[s,u]", &ignore, &typestr) != 0) {
     query->errmsg = strdup("must use [\"type\", \"typestr\"]");
     return NULL;
   }
