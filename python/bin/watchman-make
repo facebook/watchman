@@ -7,13 +7,19 @@ import sys
 import subprocess
 
 
-def patterns_to_terms(pats):
+def patterns_to_terms(pats, excl):
     # convert a list of globs into the equivalent watchman expression term
-    if pats is None or len(pats) == 0:
-        return ['true']
-    terms = ['anyof']
-    for p in pats:
-        terms.append(['match', p, 'wholename', {'includedotfiles': True}])
+    terms = ['allof', ['type', 'f']]
+    if pats:
+      p_terms = ['anyof']
+      for p in pats:
+          p_terms.append(['match', p, 'wholename', {'includedotfiles': True}])
+      terms.append(p_terms)
+    if excl:
+      e_terms = ['anyof']
+      for e in excl:
+          e_terms.append(['match', e, 'wholename', {'includedotfiles': True}])
+      terms.append(['not', e_terms])
     return terms
 
 
@@ -27,20 +33,21 @@ class Target(object):
     we should execute the command to build this target.
     """
 
-    def __init__(self, name, make, targets, patterns):
+    def __init__(self, name, make, targets, patterns, excluded_patterns):
         self.name = name
         self.make = make
         self.targets = targets
         self.patterns = patterns
+        self.excluded_patterns = excluded_patterns
         self.triggered = False
 
     def __repr__(self):
-        return '{make=%r targets=%r pat=%r}' % (
-            self.make, self.targets, self.patterns)
+        return '{make=%r targets=%r pat=%r excl=%r}' % (
+            self.make, self.targets, self.patterns, self.excluded_patterns)
 
     def start(self, client, root):
         query = {
-            'expression': patterns_to_terms(self.patterns),
+            'expression': patterns_to_terms(self.patterns, self.excluded_patterns),
             'fields': ['name']
         }
         watch = client.query('watch-project', root)
@@ -53,9 +60,23 @@ class Target(object):
         # get the initial clock value so that we only get updates
         query['since'] = client.query('clock', root_dir)['clock']
 
-        print('# Changes to files matching %s will execute `%s %s`' % (
-            ' '.join(self.patterns), self.make, ' '.join(self.targets)),
-            file=sys.stderr)
+        configuration_message = ''
+        if not(not self.patterns):
+            configuration_message += 'matching %s' % (' '.join(self.patterns))
+        if not(not self.excluded_patterns):
+            if len(configuration_message) > 0:
+                configuration_message += ', but '
+            configuration_message += 'not matching %s' % (' '.join(self.excluded_patterns))
+        if len(configuration_message) > 0:
+            print('# Changes to files %s will execute `%s %s`' % (
+                configuration_message,
+                self.make,
+                ' '.join(self.targets)), file=sys.stderr)
+        else:
+            print('# Changes to any file will execute `%s %s`' % (
+                self.make,
+                ' '.join(self.targets)), file=sys.stderr)
+
         sub = client.query('subscribe', root_dir, self.name, query)
 
     def consumeEvents(self, client):
@@ -88,17 +109,13 @@ class DefineTarget(argparse.Action):
         if isinstance(values, basestring):
             values = [values]
 
-        if namespace.pattern is None or len(namespace.pattern) == 0:
-            print('no patterns were specified for target %s' %
-                  values, file=sys.stderr)
-            sys.exit(1)
-
         target = Target('target_%d' % len(targets),
-                        namespace.make, values, namespace.pattern)
+                        namespace.make, values, namespace.pattern, namespace.exclude)
         targets.append(target)
 
         # Clear out patterns between targets
         namespace.pattern = None
+        namespace.exclude = None
 
 
 parser = argparse.ArgumentParser(
@@ -145,6 +162,14 @@ parser.add_argument('--root', type=str, default='.', help="""
 Define the root of the project.  The default is to use the PWD.
 All patterns are considered to be relative to this root, and the build
 tool is executed with this location set as its PWD.
+""")
+parser.add_argument('-x', '--exclude', type=str, nargs='+',
+                    help="""
+Define a set of filename patterns which, if matching, will mark files as
+ignored from the next --target definition.
+
+The pattern syntax is wildmatch style; globbing with recursive matching via
+'**'. Exclude patterns have higher priority than match patterns.
 """)
 
 args = parser.parse_args()
