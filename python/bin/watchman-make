@@ -171,6 +171,9 @@ ignored from the next --target definition.
 The pattern syntax is wildmatch style; globbing with recursive matching via
 '**'. Exclude patterns have higher priority than match patterns.
 """)
+parser.add_argument('-U', '--sockname', type=str, default=None, help="""
+Specify the path to the UNIX socket used to communicate with Watchman.
+""")
 
 args = parser.parse_args()
 
@@ -190,7 +193,10 @@ def check_root(desired_root):
         sys.exit(1)
 
 targets = {}
-client = pywatchman.client(timeout=600)
+if args.sockname is not None:
+  client = pywatchman.client(timeout=600, sockpath=args.sockname)
+else:
+  client = pywatchman.client(timeout=600)
 try:
     client.capabilityCheck(
         required=['cmd-watch-project', 'wildmatch'])
