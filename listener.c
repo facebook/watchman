@@ -288,6 +288,7 @@ void w_log_to_clients(int level, const char *buf)
       json = make_response();
       if (json) {
         set_prop(json, "log", json_string_nocheck(buf));
+        set_prop(json, "unilateral", json_true());
         if (!enqueue_response(client, json, true)) {
           json_decref(json);
         }

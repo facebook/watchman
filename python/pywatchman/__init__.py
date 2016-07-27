@@ -778,6 +778,9 @@ class client(object):
         return result
 
     def isUnilateralResponse(self, res):
+        if 'unilateral' in res and res['unilateral']:
+            return True
+        # Fall back to checking for known unilateral responses
         for k in self.unilateral:
             if k in res:
                 return True

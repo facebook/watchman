@@ -165,6 +165,7 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
       pdu = make_response();
       set_prop(pdu, "root", w_string_to_json(root->root_path));
       set_prop(pdu, "subscription", w_string_to_json(sub->name));
+      set_prop(pdu, "unilateral", json_true());
       set_prop(pdu, "clock", json_string_nocheck(clockbuf));
       set_prop(pdu, "state-enter", w_string_to_json(parsed.name));
       if (parsed.metadata) {
@@ -223,6 +224,7 @@ static void leave_state(struct watchman_user_client *client,
         pdu = make_response();
         set_prop(pdu, "root", w_string_to_json(root->root_path));
         set_prop(pdu, "subscription", w_string_to_json(sub->name));
+        set_prop(pdu, "unilateral", json_true());
         set_prop(pdu, "clock", json_string_nocheck(clockbuf));
         set_prop(pdu, "state-leave", w_string_to_json(assertion->name));
         if (metadata) {
