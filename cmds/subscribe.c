@@ -112,6 +112,7 @@ static json_t *build_subscription_results(
   set_prop(response, "files", file_list);
   set_prop(response, "root", w_string_to_json(root->root_path));
   set_prop(response, "subscription", w_string_to_json(sub->name));
+  set_prop(response, "unilateral", json_true());
 
   return response;
 }
@@ -158,6 +159,7 @@ void w_cancel_subscriptions_for_root(w_root_t *root) {
 
             set_prop(response, "root", w_string_to_json(root->root_path));
             set_prop(response, "subscription", w_string_to_json(sub->name));
+            set_prop(response, "unilateral", json_true());
             set_prop(response, "canceled", json_true());
 
             if (!enqueue_response(&client->client, response, true)) {
