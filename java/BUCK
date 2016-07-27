@@ -1,5 +1,12 @@
-java_library(
+java_binary(
   name = 'watchman',
+  deps = [
+    ':watchman-lib',
+  ]
+)
+
+java_library(
+  name = 'watchman-lib',
   srcs = glob(['src/**/*.java']),
   source = '1.6',
   target = '1.6',
@@ -28,7 +35,7 @@ java_test(
   source = '1.7',
   target = '1.7',
   deps = [
-    ':watchman',
+    ':watchman-lib',
     '//third-party/guava:guava',
     '//third-party/hamcrest:hamcrest-2',
     '//third-party/junit:junit',

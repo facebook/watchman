@@ -15,12 +15,12 @@ buck build :watchman
 ```
 
 The resulting JAR file is found in:
-`buck-out/gen/lib__watchman__output/watchman.jar`
+`buck-out/gen/watchman.jar'
 
 To run the tests:
 
 ```
 buck fetch :watchman-tests
-buck test :watchman
+buck test :watchman-lib
 ```
 

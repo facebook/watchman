@@ -62,7 +62,7 @@ case $(uname) in
     if [[ "$BUILD_JAVA_CLIENT" != "" ]] && [ "${BUILD_JAVA_CLIENT-0}" -eq 1 ]; then
       pushd java
       buck fetch :watchman :watchman-tests || exit 1
-      buck test :watchman || exit 1
+      buck test :watchman-lib || exit 1
       popd
     fi
     ;;
