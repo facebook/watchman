@@ -2206,7 +2206,6 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   char *watch_path;
   w_string_t *root_str;
   int realpath_err;
-  struct stat st;
 
   *created = false;
 
@@ -2224,19 +2223,27 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   }
 
   watch_path = w_realpath(filename);
-
-  w_lstat(filename, &st, true);
-  if (errno == ENOENT) {
-    ignore_result(asprintf(errmsg, "casing problem in \"%s\"", filename));
-    w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
-    return NULL;
-  }
-
   realpath_err = errno;
 
   if (!watch_path) {
     watch_path = (char*)filename;
   }
+
+  if (watch_path) {
+    struct stat st;
+    int res = w_lstat(filename, &st, true);
+
+    if (res != 0 && errno == ENOENT) {
+      ignore_result(asprintf(errmsg, "casing problem in \"%s\"", filename));
+      w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
+      return NULL;
+    } else if (res != 0) {
+      ignore_result(asprintf(errmsg, "unable to lstat \"%s\" %d", filename, errno));
+      w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
+      return NULL;
+    }
+  }
+
 
   root_str = w_string_new_typed(watch_path, W_STRING_BYTE);
   pthread_mutex_lock(&root_lock);

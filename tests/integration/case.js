@@ -1,18 +1,30 @@
 var assert = require('assert');
 var watchman = require('../../node');
 var client = new watchman.Client();
-var fs = require('fs');
-var path = require('path');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
-var bar = fs.mkdtempSync('/tmp/BAR-');
-var foo = path.join(bar, 'FOO');
-fs.mkdirSync(foo);
+var platform = os.platform();
+if (platform == 'win32' || platform == 'darwin') {
+  var tmp = fs.realpathSync(process.env.TMPDIR);
+  var foo = path.join(tmp, 'foo');
+  var FOO = path.join(tmp, 'FOO');
 
-client.command(['watch', foo], function (error, resp) {
-  assert.equal('unable to resolve root ' + foo
-                + ': casing problem in \"'+ foo
-                + '\"'
-                , error.message);
-  console.log(error.message);
-  client.end();
-});
+  fs.mkdir(FOO, (err_mk_dir_foo) => {
+    assert.equal(err_mk_dir_foo, null, 'no errors');
+    var bar = path.join(foo, 'bar');
+    var BAR = path.join(FOO, 'bar');
+
+    fs.mkdir(BAR, (err_mk_dir_bar) => {
+      assert.equal(err_mk_dir_bar, null, 'no errors');
+      client.command(['watch', bar], function (error, resp) {
+        assert.equal('unable to resolve root ' + bar
+                      + ': casing problem in \"'+ bar
+                      + '\"'
+                      , error.message);
+        client.end();
+      });
+    });
+  });
+}
