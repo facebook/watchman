@@ -340,7 +340,7 @@ static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
   response = make_response();
   set_prop(response, "root", w_string_to_json(root->root_path));
   set_prop(response, "state-leave", w_string_to_json(parsed.name));
-  set_unicode_prop(pdu, "clock", clockbuf);
+  set_unicode_prop(response, "clock", clockbuf);
   send_and_dispose_response(&client->client, response);
   response = NULL;
 
