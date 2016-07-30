@@ -2225,16 +2225,16 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
   watch_path = w_realpath(filename);
   realpath_err = errno;
 
-  if (!watch_path) {
-    watch_path = (char*)filename;
-  }
-
   if (watch_path) {
     struct stat st;
     int res = w_lstat(filename, &st, true);
 
     if (res != 0 && errno == ENOENT) {
-      ignore_result(asprintf(errmsg, "casing problem in \"%s\"", filename));
+      ignore_result(asprintf(errmsg,
+      "\"%s\" resolved to \"%s\" but we were unable to examine \"%s\" using strict "
+      "case sensitive rules.  Please check each component of the path and make "
+      "sure that that path exactly matches the correct case of the files on your "
+      "filesystem.",  filename, watch_path, filename));
       w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
       return NULL;
     } else if (res != 0) {
@@ -2244,6 +2244,9 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
     }
   }
 
+  if (!watch_path) {
+    watch_path = (char*)filename;
+  }
 
   root_str = w_string_new_typed(watch_path, W_STRING_BYTE);
   pthread_mutex_lock(&root_lock);
