@@ -623,7 +623,7 @@ void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
     stop_watching_file(root, file);
   }
 
-  file->otime.tv = now;
+  file->otime.timestamp = now.tv_sec;
   file->otime.ticks = root->ticks;
 
   if (root->latest_file != file) {
@@ -677,7 +677,7 @@ struct watchman_file *w_root_resolve_file(w_root_t *root,
   file->parent = dir;
   file->exists = true;
   file->ctime.ticks = root->ticks;
-  file->ctime.tv = now;
+  file->ctime.timestamp = now.tv_sec;
 
   suffix = w_string_suffix(file_name);
   if (suffix) {
@@ -891,7 +891,7 @@ static void stat_path(w_root_t *root,
       /* we're transitioning from deleted to existing,
        * so we're effectively new again */
       file->ctime.ticks = root->ticks;
-      file->ctime.tv = now;
+      file->ctime.timestamp = now.tv_sec;
       /* if a dir was deleted and now exists again, we want
        * to crawl it again */
       recursive = true;
@@ -1597,7 +1597,7 @@ void w_root_perform_age_out(w_root_t *root, int min_age)
 
   file = root->latest_file;
   while (file) {
-    if (file->exists || file->otime.tv.tv_sec + min_age > now) {
+    if (file->exists || file->otime.timestamp + min_age > now) {
       file = file->next;
       continue;
     }

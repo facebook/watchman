@@ -17,8 +17,7 @@ static bool subscription_generator(
 
   // Walk back in time until we hit the boundary
   for (f = root->latest_file; f; f = f->next) {
-    if (ctx->since.is_timestamp &&
-        w_timeval_compare(f->otime.tv, ctx->since.timestamp) < 0) {
+    if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
       break;
     }
     if (!ctx->since.is_timestamp &&

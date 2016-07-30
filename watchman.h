@@ -244,7 +244,7 @@ typedef void *watchman_watcher_t;
 
 struct watchman_clock {
   uint32_t ticks;
-  struct timeval tv;
+  time_t timestamp;
 };
 typedef struct watchman_clock w_clock_t;
 
@@ -702,7 +702,7 @@ enum w_clockspec_tag {
 struct w_clockspec {
   enum w_clockspec_tag tag;
   union {
-    struct timeval timestamp;
+    time_t timestamp;
     struct {
       uint64_t start_time;
       int pid;
@@ -718,7 +718,7 @@ struct w_clockspec {
 struct w_query_since {
   bool is_timestamp;
   union {
-    struct timeval timestamp;
+    time_t timestamp;
     struct {
       bool is_fresh_instance;
       uint32_t ticks;
