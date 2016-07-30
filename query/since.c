@@ -30,7 +30,7 @@ static bool eval_since(struct w_query_ctx *ctx,
     case SINCE_CCLOCK:
       clock = (term->field == SINCE_OCLOCK) ? file->otime : file->ctime;
       if (since.is_timestamp) {
-        return w_timeval_compare(since.timestamp, clock.tv) > 0;
+        return since.timestamp > clock.timestamp;
       }
       if (since.clock.is_fresh_instance) {
         return file->exists;
@@ -45,7 +45,7 @@ static bool eval_since(struct w_query_ctx *ctx,
   }
 
   assert(since.is_timestamp);
-  return tval > since.timestamp.tv_sec;
+  return tval > since.timestamp;
 }
 
 static void dispose_since(void *data)

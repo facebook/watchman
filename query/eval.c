@@ -95,7 +95,7 @@ bool w_query_process_file(
 
   m->file = file;
   if (ctx->since.is_timestamp) {
-    m->is_new = w_timeval_compare(ctx->since.timestamp, file->ctime.tv) > 0;
+    m->is_new = ctx->since.timestamp > file->ctime.timestamp;
   } else if (ctx->since.clock.is_fresh_instance) {
     m->is_new = true;
   } else {
@@ -141,8 +141,7 @@ static bool time_generator(
 
   // Walk back in time until we hit the boundary
   for (f = root->latest_file; f; f = f->next) {
-    if (ctx->since.is_timestamp &&
-        w_timeval_compare(f->otime.tv, ctx->since.timestamp) < 0) {
+    if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
       break;
     }
     if (!ctx->since.is_timestamp &&

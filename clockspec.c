@@ -47,8 +47,7 @@ struct w_clockspec *w_clockspec_parse(json_t *value) {
 
   if (json_is_integer(value)) {
     spec->tag = w_cs_timestamp;
-    spec->timestamp.tv_usec = 0;
-    spec->timestamp.tv_sec = (time_t)json_integer_value(value);
+    spec->timestamp = (time_t)json_integer_value(value);
     return spec;
   }
 
