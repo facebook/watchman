@@ -4,6 +4,22 @@
 #include "watchman.h"
 #include <stdarg.h>
 
+/** An optimization to avoid heap allocations during a lookup, this function
+ * creates a string object on the stack.  This object does not own the memory
+ * that it references, so it is the responsibility of the caller
+ * to ensure that that memory is live for the duration of use of this string.
+ * It is therefore invalid to add a reference or take a slice of this stack
+ * string as the lifetime guarantees are not upheld. */
+void w_string_new_len_typed_stack(w_string_t *into, const char *str,
+                                  uint32_t len, w_string_type_t type) {
+  into->refcnt = 1;
+  into->slice = NULL;
+  into->len = len;
+  into->buf = str;
+  into->hval = w_hash_bytes(into->buf, into->len, 0);
+  into->type = type;
+}
+
 w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
 {
   w_string_t *slice;
@@ -594,6 +610,64 @@ w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
   s->type = parent->type;
 
   return s;
+}
+
+w_string_t *w_dir_path_cat_cstr(struct watchman_dir *dir, const char *extra) {
+  return w_dir_path_cat_cstr_len(dir, extra, strlen_uint32(extra));
+}
+
+w_string_t *w_dir_path_cat_cstr_len(struct watchman_dir *dir, const char *extra,
+                                    uint32_t extra_len) {
+  uint32_t length = 0;
+  struct watchman_dir *d;
+  w_string_t *s;
+  char *buf, *end;
+
+  if (extra && extra_len) {
+    length = extra_len + 1 /* separator */;
+  }
+  for (d = dir; d; d = d->parent) {
+    length += d->name->len + 1 /* separator OR final NUL terminator */;
+  }
+
+  s = malloc(sizeof(*s) + length);
+  if (!s) {
+    perror("no memory available");
+    abort();
+  }
+
+  s->refcnt = 1;
+  s->len = length - 1;
+  s->slice = NULL;
+  buf = (char *)(s + 1);
+  end = buf + s->len;
+
+  *end = 0;
+  if (extra && extra_len) {
+    end -= extra_len;
+    memcpy(end, extra, extra_len);
+  }
+  for (d = dir; d; d = d->parent) {
+    if (d != dir || (extra && extra_len)) {
+      --end;
+      *end = WATCHMAN_DIR_SEP;
+    }
+    end -= d->name->len;
+    memcpy(end, d->name->buf, d->name->len);
+  }
+
+  s->buf = buf;
+  s->hval = w_hash_bytes(s->buf, s->len, 0);
+  s->type = W_STRING_BYTE;
+  return s;
+}
+
+w_string_t *w_dir_copy_full_path(struct watchman_dir *dir) {
+  return w_dir_path_cat_cstr_len(dir, NULL, 0);
+}
+
+w_string_t *w_dir_path_cat_str(struct watchman_dir *dir, w_string_t *str) {
+  return w_dir_path_cat_cstr_len(dir, str->buf, str->len);
 }
 
 char *w_string_dup_buf(const w_string_t *str)

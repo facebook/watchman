@@ -332,7 +332,7 @@ bool w_pending_coll_add_rel(struct watchman_pending_collection *coll,
   w_string_t *path_str;
   bool res;
 
-  path_str = w_string_path_cat_cstr(dir->path, name);
+  path_str = w_dir_path_cat_cstr(dir, name);
   if (!path_str) {
     return false;
   }

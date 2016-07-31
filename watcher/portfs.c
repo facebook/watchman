@@ -192,6 +192,7 @@ static struct watchman_dir_handle *portfs_root_start_watch_dir(
   struct portfs_root_state *state = root->watch;
   struct watchman_dir_handle *osdir;
   struct stat st;
+  w_string_t *dir_name;
 
   osdir = w_dir_open(path);
   if (!osdir) {
@@ -208,11 +209,14 @@ static struct watchman_dir_handle *portfs_root_start_watch_dir(
     return NULL;
   }
 
-  if (!do_watch(state, dir->path, &st)) {
+  dir_name = w_dir_copy_full_path(dir);
+  if (!do_watch(state, dir_name, &st)) {
     w_dir_close(osdir);
+    w_string_delref(dir_name);
     return NULL;
   }
 
+  w_string_delref(dir_name);
   return osdir;
 }
 

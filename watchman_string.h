@@ -64,6 +64,9 @@ w_string_t *w_string_new_basename_typed(const char *path,
 w_string_t *w_string_new_lower_typed(const char *str,
     w_string_type_t type);
 
+void w_string_new_len_typed_stack(w_string_t *into, const char *str,
+                                  uint32_t len, w_string_type_t type);
+
 #ifdef _WIN32
 w_string_t *w_string_new_wchar_typed(WCHAR *str, int len,
     w_string_type_t type);
@@ -92,6 +95,12 @@ uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);
 uint32_t w_string_embedded_size(w_string_t *str);
 void w_string_embedded_copy(w_string_t *dest, w_string_t *src);
 
+struct watchman_dir;
+w_string_t *w_dir_copy_full_path(struct watchman_dir *dir);
+w_string_t *w_dir_path_cat_cstr_len(struct watchman_dir *dir, const char *extra,
+                                    uint32_t extra_len);
+w_string_t *w_dir_path_cat_cstr(struct watchman_dir *dir, const char *extra);
+w_string_t *w_dir_path_cat_str(struct watchman_dir *dir, w_string_t *str);
 #ifdef __cplusplus
 }
 #endif

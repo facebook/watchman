@@ -35,24 +35,28 @@ static const struct watchman_hash_funcs trigger_hash_funcs = {
   delete_trigger
 };
 
-static void delete_dir(w_ht_val_t val)
-{
-  struct watchman_dir *dir = w_ht_val_ptr(val);
+static void delete_dir(struct watchman_dir *dir) {
+  w_string_t *full_path = w_dir_copy_full_path(dir);
 
-  w_log(W_LOG_DBG, "delete_dir(%.*s)\n", dir->path->len, dir->path->buf);
-
-  w_string_delref(dir->path);
-  dir->path = NULL;
+  w_log(W_LOG_DBG, "delete_dir(%.*s)\n", full_path->len, full_path->buf);
+  w_string_delref(full_path);
 
   if (dir->files) {
     w_ht_free(dir->files);
     dir->files = NULL;
   }
+
   if (dir->dirs) {
     w_ht_free(dir->dirs);
     dir->dirs = NULL;
   }
+
+  w_string_delref(dir->name);
   free(dir);
+}
+
+static void delete_dir_helper(w_ht_val_t val) {
+  delete_dir((struct watchman_dir*)w_ht_val_ptr(val));
 }
 
 static const struct watchman_hash_funcs dirname_hash_funcs = {
@@ -61,7 +65,7 @@ static const struct watchman_hash_funcs dirname_hash_funcs = {
   w_ht_string_equal,
   w_ht_string_hash,
   NULL,
-  delete_dir
+  delete_dir_helper
 };
 
 static void load_root_config(w_root_t *root, const char *path)
@@ -93,7 +97,6 @@ static size_t root_init_offset = offsetof(w_root_t, _init_sentinel_);
 // internal initialization for root
 static bool w_root_init(w_root_t *root, char **errmsg)
 {
-  struct watchman_dir *dir;
   struct watchman_dir_handle *osdir;
 
   memset((char *)root + root_init_offset, 0,
@@ -116,18 +119,13 @@ static bool w_root_init(w_root_t *root, char **errmsg)
 
   root->cursors = w_ht_new(2, &w_ht_string_funcs);
   root->suffixes = w_ht_new(2, &w_ht_string_funcs);
-
-  root->dirname_to_dir =
-      w_ht_new((uint32_t)cfg_get_int(root, CFG_HINT_NUM_DIRS, HINT_NUM_DIRS),
-               &dirname_hash_funcs);
   root->ticks = 1;
 
   // "manually" populate the initial dir, as the dir resolver will
   // try to find its parent and we don't want it to for the root
-  dir = calloc(1, sizeof(*dir));
-  dir->path = root->root_path;
-  w_string_addref(dir->path);
-  w_ht_set(root->dirname_to_dir, w_ht_ptr_val(dir->path), w_ht_ptr_val(dir));
+  root->root_dir = calloc(1, sizeof(*root->root_dir));
+  root->root_dir->name = root->root_path;
+  w_string_addref(root->root_dir->name);
 
   time(&root->last_cmd_timestamp);
 
@@ -522,31 +520,80 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
     w_string_t *dir_name, bool create)
 {
   struct watchman_dir *dir, *parent;
-  w_string_t *parent_name;
+  const char *dir_component;
+  const char *dir_end;
 
-  dir = w_ht_val_ptr(w_ht_get(root->dirname_to_dir, w_ht_ptr_val(dir_name)));
-  if (dir || !create) {
-    return dir;
+  if (w_string_equal(dir_name, root->root_path)) {
+    return root->root_dir;
   }
 
-  parent_name = w_string_dirname(dir_name);
-  parent = w_root_resolve_dir(root, parent_name, create);
-  w_string_delref(parent_name);
+  dir_component = dir_name->buf;
+  dir_end = dir_component + dir_name->len;
 
-  assert(parent != NULL);
+  dir = root->root_dir;
+  dir_component += root->root_path->len + 1; // Skip root path prefix
+
+  w_assert(dir_component <= dir_end, "impossible file name");
+
+  while (true) {
+    struct watchman_dir *child;
+    w_string_t component;
+    const char *sep =
+        memchr(dir_component, WATCHMAN_DIR_SEP, dir_end - dir_component);
+    // Note: if sep is NULL it means that we're looking at the basename
+    // component of the input directory name, which is the terminal
+    // iteration of this search.
+
+    w_string_new_len_typed_stack(&component, dir_component,
+                                 sep ? (uint32_t)(sep - dir_component)
+                                     : (uint32_t)(dir_end - dir_component),
+                                 dir_name->type);
+
+    child = dir->dirs
+                ? w_ht_val_ptr(w_ht_get(dir->dirs, w_ht_ptr_val(&component)))
+                : NULL;
+    if (!child && !create) {
+      return NULL;
+    }
+    if (!child && sep && create) {
+      // A component in the middle wasn't present.  Even though we're in
+      // create mode, we don't know how to create this entry.  The parent
+      // MUST have been created before we try to create this one, so
+      // something is definitely fishy here.
+      w_log(W_LOG_FATAL,
+            "While resolving dir %.*s, %.*s was not found under %.*s\n",
+            dir_name->len, dir_name->buf, component.len, component.buf,
+            (int)(dir_component - dir_name->buf), dir_name->buf);
+    }
+
+    parent = dir;
+    dir = child;
+
+    if (!sep) {
+      // We reached the end of the string
+      if (dir) {
+        // We found the dir
+        return dir;
+      }
+      // We need to create the dir
+      break;
+    }
+
+    // Skip to the next component for the next iteration
+    dir_component = sep + 1;
+  }
 
   dir = calloc(1, sizeof(*dir));
-  dir->path = dir_name;
+  dir->name = w_string_new_len_typed(
+      dir_component, (uint32_t)(dir_end - dir_component), dir_name->type);
   dir->last_check_existed = true;
-  w_string_addref(dir->path);
+  dir->parent = parent;
 
   if (!parent->dirs) {
-    parent->dirs = w_ht_new(2, &w_ht_string_funcs);
+    parent->dirs = w_ht_new(2, &dirname_hash_funcs);
   }
 
-  assert(w_ht_set(parent->dirs, w_ht_ptr_val(dir_name), w_ht_ptr_val(dir)));
-  assert(w_ht_set(root->dirname_to_dir,
-        w_ht_ptr_val(dir_name), w_ht_ptr_val(dir)));
+  assert(w_ht_set(parent->dirs, w_ht_ptr_val(dir->name), w_ht_ptr_val(dir)));
 
   return dir;
 }
@@ -560,7 +607,7 @@ static void apply_dir_size_hint(struct watchman_dir *dir,
     }
   }
   if (!dir->dirs && ndirs > 0) {
-    dir->dirs = w_ht_new(ndirs, &w_ht_string_funcs);
+    dir->dirs = w_ht_new(ndirs, &dirname_hash_funcs);
   }
 }
 
@@ -699,9 +746,10 @@ struct watchman_file *w_root_resolve_file(w_root_t *root,
 void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
 {
   w_ht_iter_t i;
+  w_string_t *dir_path = w_dir_copy_full_path(dir);
 
-  w_log(W_LOG_DBG, "stop_watching_dir %.*s\n",
-      dir->path->len, dir->path->buf);
+  w_log(W_LOG_DBG, "stop_watching_dir %.*s\n", dir_path->len, dir_path->buf);
+  w_string_delref(dir_path);
 
   if (w_ht_first(dir->dirs, &i)) do {
     struct watchman_dir *child = w_ht_val_ptr(i.value);
@@ -819,7 +867,7 @@ static void stat_path(w_root_t *root,
   }
 
   if (dir->dirs) {
-    dir_ent = w_ht_val_ptr(w_ht_get(dir->dirs, w_ht_ptr_val(full_path)));
+    dir_ent = w_ht_val_ptr(w_ht_get(dir->dirs, w_ht_ptr_val(file_name)));
   }
 
   if (pre_stat && pre_stat->has_stat) {
@@ -845,7 +893,7 @@ static void stat_path(w_root_t *root,
     if (dir_ent) {
       w_root_mark_deleted(root, dir_ent, now, true);
       w_log(W_LOG_DBG, "w_lstat(%s) -> %s so stopping watch on %.*s\n", path,
-            strerror(err), dir_ent->path->len, dir_ent->path->buf);
+            strerror(err), dir_name->len, dir_name->buf);
       stop_watching_dir(root, dir_ent);
     }
     if (file) {
@@ -1055,10 +1103,9 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
     struct watchman_file *file = w_ht_val_ptr(i.value);
 
     if (file->exists) {
-      w_log(W_LOG_DBG, "mark_deleted: %.*s%c%.*s\n",
-          dir->path->len, dir->path->buf,
-          WATCHMAN_DIR_SEP,
-          w_file_get_name(file)->len, w_file_get_name(file)->buf);
+      w_string_t *full_name = w_dir_path_cat_str(dir, w_file_get_name(file));
+      w_log(W_LOG_DBG, "mark_deleted: %.*s\n", full_name->len, full_name->buf);
+      w_string_delref(full_name);
       file->exists = false;
       w_root_mark_file_changed(root, file, now);
     }
@@ -1075,7 +1122,7 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
 void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     struct timeval now, const char *syscall, int err, const char *reason)
 {
-  w_string_t *dir_name = dir->path;
+  w_string_t *dir_name = w_dir_copy_full_path(dir);
   w_string_t *warn = NULL;
   bool log_warning = true;
   bool transient = false;
@@ -1087,8 +1134,8 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     log_warning = true;
     transient = false;
   } else if (err == ENFILE || err == EMFILE) {
-    set_poison_state(root, dir->path, now, syscall, err,
-        strerror(err));
+    set_poison_state(root, dir_name, now, syscall, err, strerror(err));
+    w_string_delref(dir_name);
     return;
   } else {
     log_warning = true;
@@ -1102,6 +1149,7 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
             syscall, dir_name->len, dir_name->buf,
             reason ? reason : strerror(err));
       w_root_cancel(root);
+      w_string_delref(dir_name);
       return;
     }
   }
@@ -1119,6 +1167,7 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
 
   stop_watching_dir(root, dir);
   w_root_mark_deleted(root, dir, now, true);
+  w_string_delref(dir_name);
 }
 
 void w_root_set_warning(w_root_t *root, w_string_t *str) {
@@ -1251,21 +1300,14 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
       file->maybe_deleted = false;
     }
     if (!file || !file->exists || stat_all || recursive) {
-      w_string_t *full_path = w_string_path_cat_cstr(dir->path,
-                                dirent->d_name);
-      if (full_path) {
-        w_log(W_LOG_DBG, "in crawler[%.*s], calling process_path on %.*s\n",
-            dir->path->len, dir->path->buf,
+      w_string_t *full_path = w_dir_path_cat_str(dir, name);
+      w_log(W_LOG_DBG, "in crawler calling process_path on %.*s\n",
             full_path->len, full_path->buf);
-        w_root_process_path(root, coll, full_path, now,
-                                ((recursive || !file || !file->exists)
-                                     ? W_PENDING_RECURSIVE
-                                     : 0),
-                            dirent);
-        w_string_delref(full_path);
-      } else {
-        w_log(W_LOG_ERR, "OOM during crawl\n");
-      }
+      w_root_process_path(
+          root, coll, full_path, now,
+          ((recursive || !file || !file->exists) ? W_PENDING_RECURSIVE : 0),
+          dirent);
+      w_string_delref(full_path);
     }
     w_string_delref(name);
   }
@@ -1515,11 +1557,15 @@ static void record_aged_out_dir(w_root_t *root, w_ht_t *aged_dir_names,
     struct watchman_dir *dir)
 {
   w_ht_iter_t i;
+  w_string_t *full_name = w_dir_copy_full_path(dir);
 
-  w_log(W_LOG_DBG, "age_out: remember dir %.*s\n",
-      dir->path->len, dir->path->buf);
-  w_ht_insert(aged_dir_names, w_ht_ptr_val(dir->path),
-        w_ht_ptr_val(dir), false);
+  w_log(W_LOG_DBG, "age_out: remember dir %.*s\n", full_name->len,
+        full_name->buf);
+
+  w_ht_insert(aged_dir_names, w_ht_ptr_val(full_name), w_ht_ptr_val(dir),
+              false);
+
+  w_string_delref(full_name);
 
   if (dir->dirs && w_ht_first(dir->dirs, &i)) do {
     struct watchman_dir *child = w_ht_val_ptr(i.value);
@@ -1535,6 +1581,9 @@ static void age_out_file(w_root_t *root, w_ht_t *aged_dir_names,
   struct watchman_dir *dir;
   w_string_t *full_name;
 
+  full_name = w_dir_path_cat_str(file->parent, w_file_get_name(file));
+  w_log(W_LOG_DBG, "age_out file=%.*s\n", full_name->len, full_name->buf);
+
   // Revise tick for fresh instance reporting
   root->last_age_out_tick = MAX(root->last_age_out_tick, file->otime.ticks);
 
@@ -1542,15 +1591,9 @@ static void age_out_file(w_root_t *root, w_ht_t *aged_dir_names,
   remove_from_file_list(root, file);
   remove_from_suffix_list(root, file);
 
-  full_name = w_string_path_cat(file->parent->path, w_file_get_name(file));
-
   if (file->parent->files) {
     // Remove the entry from the containing file hash
     w_ht_del(file->parent->files, w_ht_ptr_val(w_file_get_name(file)));
-  }
-  if (file->parent->dirs) {
-    // Remove the entry from the containing dir hash
-    w_ht_del(file->parent->dirs, w_ht_ptr_val(full_name));
   }
 
   // resolve the dir of the same name and mark it for later removal
@@ -1558,6 +1601,11 @@ static void age_out_file(w_root_t *root, w_ht_t *aged_dir_names,
   dir = w_root_resolve_dir(root, full_name, false);
   if (dir) {
     record_aged_out_dir(root, aged_dir_names, dir);
+  } else if (file->parent->dirs) {
+    // Remove the entry from the containing dir hash.  This is contingent
+    // on not being a dir because in the dir case we want to defer removing
+    // the directory entries until later.
+    w_ht_del(file->parent->dirs, w_ht_ptr_val(w_file_get_name(file)));
   }
 
   // And free it.  We don't need to stop watching it, because we already
@@ -1567,16 +1615,13 @@ static void age_out_file(w_root_t *root, w_ht_t *aged_dir_names,
   w_string_delref(full_name);
 }
 
-static void age_out_dir(w_root_t *root, struct watchman_dir *dir)
+static void age_out_dir(struct watchman_dir *dir)
 {
-  w_log(W_LOG_DBG, "age_out: ht_del dir %.*s\n",
-      dir->path->len, dir->path->buf);
-
   assert(!dir->files || w_ht_size(dir->files) == 0);
 
   // This will implicitly call delete_dir() which will tear down
   // the files and dirs hashes
-  w_ht_del(root->dirname_to_dir, w_ht_ptr_val(dir->path));
+  w_ht_del(dir->parent->dirs, w_ht_ptr_val(dir->name));
 }
 
 // Find deleted nodes older than the gc_age setting.
@@ -1605,11 +1650,6 @@ void w_root_perform_age_out(w_root_t *root, int min_age)
     // Get the next file before we remove the current one
     tmp = file->next;
 
-    w_log(W_LOG_DBG, "age_out file=%.*s%c%.*s\n",
-        file->parent->path->len, file->parent->path->buf,
-        WATCHMAN_DIR_SEP,
-        w_file_get_name(file)->len, w_file_get_name(file)->buf);
-
     age_out_file(root, aged_dir_names, file);
 
     file = tmp;
@@ -1620,7 +1660,7 @@ void w_root_perform_age_out(w_root_t *root, int min_age)
   if (w_ht_first(aged_dir_names, &i)) do {
     struct watchman_dir *dir = w_ht_val_ptr(i.value);
 
-    age_out_dir(root, dir);
+    age_out_dir(dir);
   } while (w_ht_next(aged_dir_names, &i));
   w_ht_free(aged_dir_names);
 
@@ -1909,9 +1949,8 @@ static void w_root_teardown(w_root_t *root)
     root->watcher_ops->root_dtor(root);
   }
 
-  if (root->dirname_to_dir) {
-    w_ht_free(root->dirname_to_dir);
-    root->dirname_to_dir = NULL;
+  if (root->root_dir) {
+    delete_dir(root->root_dir);
   }
   w_pending_coll_drain(&root->pending);
 

@@ -189,6 +189,7 @@ static struct watchman_dir_handle *inot_root_start_watch_dir(
   struct inot_root_state *state = root->watch;
   struct watchman_dir_handle *osdir = NULL;
   int newwd, err;
+  w_string_t *dir_name;
 
   // Carry out our very strict opendir first to ensure that we're not
   // traversing symlinks in the context of this root
@@ -198,6 +199,8 @@ static struct watchman_dir_handle *inot_root_start_watch_dir(
     return NULL;
   }
 
+  dir_name = w_string_new_typed(path, W_STRING_BYTE);
+
   // The directory might be different since the last time we looked at it, so
   // call inotify_add_watch unconditionally.
   newwd = inotify_add_watch(state->infd, path, WATCHMAN_INOTIFY_MASK);
@@ -205,22 +208,24 @@ static struct watchman_dir_handle *inot_root_start_watch_dir(
     err = errno;
     if (errno == ENOSPC || errno == ENOMEM) {
       // Limits exceeded, no recovery from our perspective
-      set_poison_state(root, dir->path, now, "inotify-add-watch", errno,
-          inot_strerror(errno));
+      set_poison_state(root, dir_name, now, "inotify-add-watch", errno,
+                       inot_strerror(errno));
     } else {
       handle_open_errno(root, dir, now, "inotify_add_watch", errno,
           inot_strerror(errno));
     }
     w_dir_close(osdir);
+    w_string_delref(dir_name);
     errno = err;
     return NULL;
   }
 
   // record mapping
   pthread_mutex_lock(&state->lock);
-  w_ht_replace(state->wd_to_name, newwd, w_ht_ptr_val(dir->path));
+  w_ht_replace(state->wd_to_name, newwd, w_ht_ptr_val(dir_name));
   pthread_mutex_unlock(&state->lock);
   w_log(W_LOG_DBG, "adding %d -> %s mapping\n", newwd, path);
+  w_string_delref(dir_name);
 
   return osdir;
 }

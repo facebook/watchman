@@ -107,7 +107,6 @@ static void cmd_debug_poison(struct watchman_client *client, json_t *args)
 {
   w_root_t *root;
   struct timeval now;
-  struct watchman_dir *dir;
   json_t *resp;
 
   root = resolve_root_or_err(client, args, 1, false);
@@ -115,11 +114,9 @@ static void cmd_debug_poison(struct watchman_client *client, json_t *args)
     return;
   }
 
-  dir = w_root_resolve_dir(root, root->root_path, false);
-
   gettimeofday(&now, NULL);
 
-  set_poison_state(root, dir->path, now, "debug-poison", ENOMEM, NULL);
+  set_poison_state(root, root->root_path, now, "debug-poison", ENOMEM, NULL);
 
   resp = make_response();
   set_unicode_prop(resp, "poison", poisoned_reason);
