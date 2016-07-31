@@ -105,11 +105,12 @@ static bool kqueue_root_start_watch_file(
   int fd;
   w_string_t *full_name;
 
-  full_name = w_string_path_cat(file->parent->path, w_file_get_name(file));
+  full_name = w_dir_path_cat_str(file->parent, w_file_get_name(file));
   pthread_mutex_lock(&state->lock);
   if (w_ht_lookup(state->name_to_fd, w_ht_ptr_val(full_name), &fdval, false)) {
     // Already watching it
     pthread_mutex_unlock(&state->lock);
+    w_string_delref(full_name);
     return true;
   }
   pthread_mutex_unlock(&state->lock);
@@ -164,6 +165,7 @@ static struct watchman_dir_handle *kqueue_root_start_watch_dir(
   struct stat st, osdirst;
   struct kevent k;
   int newwd;
+  w_string_t *dir_name;
 
   osdir = w_dir_open(path);
   if (!osdir) {
@@ -199,15 +201,16 @@ static struct watchman_dir_handle *kqueue_root_start_watch_dir(
   }
 
   memset(&k, 0, sizeof(k));
-  EV_SET(&k, newwd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
-      NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME,
-      0, SET_DIR_BIT(dir->path));
+  dir_name = w_dir_copy_full_path(dir);
+  EV_SET(&k, newwd, EVFILT_VNODE, EV_ADD | EV_CLEAR,
+         NOTE_WRITE | NOTE_DELETE | NOTE_EXTEND | NOTE_RENAME, 0,
+         SET_DIR_BIT(dir_name));
 
   // Our mapping needs to be visible before we add it to the queue,
   // otherwise we can get a wakeup and not know what it is
   pthread_mutex_lock(&state->lock);
-  w_ht_replace(state->name_to_fd, w_ht_ptr_val(dir->path), newwd);
-  w_ht_replace(state->fd_to_name, newwd, w_ht_ptr_val(dir->path));
+  w_ht_replace(state->name_to_fd, w_ht_ptr_val(dir_name), newwd);
+  w_ht_replace(state->fd_to_name, newwd, w_ht_ptr_val(dir_name));
   pthread_mutex_unlock(&state->lock);
 
   if (kevent(state->kq_fd, &k, 1, NULL, 0, 0)) {
@@ -216,12 +219,13 @@ static struct watchman_dir_handle *kqueue_root_start_watch_dir(
     close(newwd);
 
     pthread_mutex_lock(&state->lock);
-    w_ht_del(state->name_to_fd, w_ht_ptr_val(dir->path));
+    w_ht_del(state->name_to_fd, w_ht_ptr_val(dir_name));
     w_ht_del(state->fd_to_name, newwd);
     pthread_mutex_unlock(&state->lock);
   } else {
-    w_log(W_LOG_DBG, "kevent dir %s -> %d\n", dir->path->buf, newwd);
+    w_log(W_LOG_DBG, "kevent dir %s -> %d\n", dir_name->buf, newwd);
   }
+  w_string_delref(dir_name);
 
   return osdir;
 }

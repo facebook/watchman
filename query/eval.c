@@ -32,8 +32,7 @@ w_string_t *w_query_ctx_get_wholename(
     name_start = ctx->root->root_path->len + 1;
   }
 
-  full_name =
-      w_string_path_cat(ctx->file->parent->path, w_file_get_name(ctx->file));
+  full_name = w_dir_path_cat_str(ctx->file->parent, w_file_get_name(ctx->file));
   // Record the name relative to the root
   ctx->wholename = w_string_slice(full_name, name_start,
       full_name->len - name_start);
@@ -121,15 +120,20 @@ bool w_query_file_matches_relative_root(
     struct watchman_file *f)
 {
   w_string_t *parent_path;
+  bool result;
+
   if (ctx->query->relative_root == NULL) {
     return true;
   }
 
-  parent_path = f->parent->path;
+  parent_path = w_dir_copy_full_path(f->parent);
   // "in relative root" here does not mean exactly the relative root, so compare
   // against the relative root's parent.
-  return w_string_equal(parent_path, ctx->query->relative_root)
-    || w_string_startswith(parent_path, ctx->query->relative_root_slash);
+  result = w_string_equal(parent_path, ctx->query->relative_root) ||
+           w_string_startswith(parent_path, ctx->query->relative_root_slash);
+  w_string_delref(parent_path);
+
+  return result;
 }
 
 static bool time_generator(
@@ -305,7 +309,9 @@ static bool path_generator(
       continue;
     }
 
-    dir = w_ht_val_ptr(w_ht_get(dir->dirs, w_ht_ptr_val(full_name)));
+    file_name = w_string_basename(full_name);
+    dir = w_ht_val_ptr(w_ht_get(dir->dirs, w_ht_ptr_val(file_name)));
+    w_string_delref(file_name);
     w_string_delref(full_name);
 is_dir:
     // We got a dir; process recursively to specified depth

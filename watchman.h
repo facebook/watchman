@@ -287,8 +287,11 @@ uint32_t w_pending_coll_size(struct watchman_pending_collection *coll);
 void w_pending_fs_free(struct watchman_pending_fs *p);
 
 struct watchman_dir {
-  /* full path */
-  w_string_t *path;
+  /* the name of this dir, relative to its parent */
+  w_string_t *name;
+  /* the parent dir */
+  struct watchman_dir *parent;
+
   /* files contained in this dir (keyed by file->name) */
   w_ht_t *files;
   /* child dirs contained in this dir (keyed by dir->path) */
@@ -491,8 +494,7 @@ struct watchman_root {
   // Watcher specific state
   watchman_watcher_t watch;
 
-  /* map of dir name to a dir */
-  w_ht_t *dirname_to_dir;
+  struct watchman_dir *root_dir;
 
   /* the most recently changed file */
   struct watchman_file *latest_file;
