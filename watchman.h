@@ -244,7 +244,7 @@ typedef void *watchman_watcher_t;
 
 struct watchman_clock {
   uint32_t ticks;
-  struct timeval tv;
+  time_t timestamp;
 };
 typedef struct watchman_clock w_clock_t;
 
@@ -379,8 +379,6 @@ void w_dir_close(struct watchman_dir_handle *dir);
 int w_dir_fd(struct watchman_dir_handle *dir);
 
 struct watchman_file {
-  /* our name within the parent dir */
-  w_string_t *name;
   /* the parent dir */
   struct watchman_dir *parent;
 
@@ -410,6 +408,10 @@ struct watchman_file {
    * Can be NULL if not a symlink, or we failed to read the target */
   w_string_t *symlink_target;
 };
+
+static inline w_string_t *w_file_get_name(struct watchman_file *file) {
+  return (w_string_t*)(file + 1);
+}
 
 #define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"
 struct watchman_query_cookie {
@@ -700,7 +702,7 @@ enum w_clockspec_tag {
 struct w_clockspec {
   enum w_clockspec_tag tag;
   union {
-    struct timeval timestamp;
+    time_t timestamp;
     struct {
       uint64_t start_time;
       int pid;
@@ -716,7 +718,7 @@ struct w_clockspec {
 struct w_query_since {
   bool is_timestamp;
   union {
-    struct timeval timestamp;
+    time_t timestamp;
     struct {
       bool is_fresh_instance;
       uint32_t ticks;

@@ -89,6 +89,9 @@ size_t w_string_strlen(w_string_t *str);
 uint32_t strlen_uint32(const char *str);
 uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);
 
+uint32_t w_string_embedded_size(w_string_t *str);
+void w_string_embedded_copy(w_string_t *dest, w_string_t *src);
+
 #ifdef __cplusplus
 }
 #endif

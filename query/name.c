@@ -20,7 +20,7 @@ static bool eval_name(struct w_query_ctx *ctx,
   if (name->wholename) {
     str = w_query_ctx_get_wholename(ctx);
   } else {
-    str = file->name;
+    str = w_file_get_name(file);
   }
 
   if (name->map) {
