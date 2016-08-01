@@ -697,6 +697,13 @@ const char *json_string_value(const json_t *json)
         // Safe to return the buffer itself
         return value->buf;
     }
+
+    // If it's not null-terminated, use a cached version that is null-terminated
+
+    if (jstr->cache) {
+        return jstr->cache;
+    }
+
     buf = w_string_dup_buf(value);
     if (!buf) {
         return NULL;
