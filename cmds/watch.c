@@ -203,6 +203,20 @@ static bool find_file_in_dir_tree(const char *root_file, char *candidate_dir,
   return false;
 }
 
+bool find_project_root(json_t *root_files, char * resolved, char **relpath) {
+  uint32_t i;
+
+  for (i = 0; i < json_array_size(root_files); i++) {
+    json_t *item = json_array_get(root_files, i);
+    const char *name = json_string_value(item);
+
+    if (find_file_in_dir_tree(name, resolved, relpath)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // For watch-project, take a root path string and resolve the
 // containing project directory, then update the args to reflect
 // that path.
@@ -215,7 +229,6 @@ static char *resolve_projpath(json_t *args, char **errmsg, char **relpath)
   char *resolved = NULL;
   bool res = false;
   json_t *root_files;
-  uint32_t i;
   bool enforcing;
   char *enclosing = NULL;
 
@@ -258,19 +271,11 @@ static char *resolve_projpath(json_t *args, char **errmsg, char **relpath)
     goto done;
   }
 
-  // Note: cfg_compute_root_files ensures that .watchmanconfig is first
-  // in the returned list of files.  This is important because it is the
-  // definitive indicator for the location of the project root.
-  for (i = 0; i < json_array_size(root_files); i++) {
-    json_t *item = json_array_get(root_files, i);
-    const char *name = json_string_value(item);
-
-    if (find_file_in_dir_tree(name, resolved, relpath)) {
-      json_array_set_new(args, 1, typed_string_to_json(resolved,
-            W_STRING_BYTE));
-      res = true;
-      goto done;
-    }
+  res = find_project_root(root_files, resolved, relpath);
+  if (res) {
+    json_array_set_new(args, 1, typed_string_to_json(resolved,
+          W_STRING_BYTE));
+    goto done;
   }
 
   if (!enforcing) {
