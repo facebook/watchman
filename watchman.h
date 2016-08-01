@@ -522,6 +522,11 @@ struct watchman_root {
    * of the suffix index.  Linkage via suffix_next */
   w_ht_t *suffixes;
 
+  /* Collection of symlink targets that we try to watch.
+   * Reads and writes on this collection are only safe if done from the IO
+   * thread; this collection is not protected by the root lock. */
+  struct watchman_pending_collection pending_symlink_targets;
+
   uint32_t next_cmd_id;
   uint32_t last_trigger_tick;
   uint32_t pending_trigger_tick;

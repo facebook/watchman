@@ -31,6 +31,15 @@ struct watchman_command_handler_def {
 // argument list
 bool w_cmd_realpath_root(json_t *args, char **errmsg);
 
+// Try to find a project root that contains the path `resolved`. If found,
+// modify `resolved` to hold the path to the root project and return true.
+// Else, return false.
+// root_files should be derived from a call to cfg_compute_root_files, and it
+// should not be null.  cfg_compute_root_files ensures that .watchmanconfig is
+// first in the returned list of files.  This is important because it is the
+// definitive indicator for the location of the project root.
+bool find_project_root(json_t *root_files, char * resolved, char **relpath);
+
 void preprocess_command(json_t *args, enum w_pdu_type output_pdu);
 bool dispatch_command(struct watchman_client *client, json_t *args, int mode);
 bool try_client_mode_command(json_t *cmd, bool pretty);

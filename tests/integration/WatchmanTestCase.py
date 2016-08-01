@@ -244,6 +244,11 @@ class WatchmanTestCase(unittest.TestCase):
             'expression': ['name', '_bogus_'],
             'fields': ['name']})
 
+    def getWatchList(self):
+        watch_list = self.watchmanCommand('watch-list')['roots']
+        self.last_root_list = watch_list
+        return watch_list
+
     def normWatchmanFileList(self, files):
         # The BSER interface currently returns bytestrings on Python 3 -- decode
         # it into local strings.
@@ -266,6 +271,16 @@ class WatchmanTestCase(unittest.TestCase):
         list2 = [conv_path_to_bytes(f) for f in list2]
         return list1 == list2
 
+    def fileListContains(self, list1, list2):
+        """ return true if list1 contains each unique element in list2 """
+        set1 = set([conv_path_to_bytes(f) for f in list1])
+        list2 = [conv_path_to_bytes(f) for f in list2]
+        return set1.issuperset(list2)
+
+    def assertFileListContains(self, list1, list2, message=None):
+        if not self.fileListContains(list1, list2):
+            self.fail(message)
+
     # Wait for the file list to match the input set
     def assertFileList(self, root, files=[], cursor=None,
                        relativeRoot=None, message=None):
@@ -280,6 +295,12 @@ class WatchmanTestCase(unittest.TestCase):
                                             relativeRoot=relativeRoot
                                             ), expected_files))
         self.assertFileListsEqual(self.last_file_list, expected_files, message)
+
+    # Wait for the list of watched roots to match the input set
+    def assertWatchListContains(self, roots, message=None):
+        st, res = self.waitFor(
+            lambda: self.fileListContains(self.getWatchList(), roots))
+        self.assertFileListContains(self.last_root_list, roots, message)
 
     def waitForSub(self, name, root, accept=None, timeout=10, remove=True):
         client = self.getClient()
