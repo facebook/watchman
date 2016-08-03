@@ -790,29 +790,28 @@ int pthread_mutex_timedlock(pthread_mutex_t *m, struct timespec *ts)
 {
   unsigned long long t, ct;
 
-  struct _pthread_crit_t
-  {
-    void *debug;
-    LONG count;
-    LONG r_count;
-    HANDLE owner;
-    HANDLE sem;
-    ULONG_PTR spin;
-  };
-
   /* Try to lock it without waiting */
   if (!pthread_mutex_trylock(m)) return 0;
 
   ct = _pthread_time_in_ms();
   t = _pthread_time_in_ms_from_timespec(ts);
-
+  
   while (1)
   {
     /* Have we waited long enough? */
-    if (ct > t) return ETIMEDOUT;
+    if (ct >= t) return ETIMEDOUT;
 
-    /* Wait on semaphore within critical section */
-    WaitForSingleObject(((struct _pthread_crit_t *)m)->sem, (DWORD)(t - ct));
+    /* Wait on semaphore within critical section
+     * We limit the wait time to 20 ms. For unknown reasons,
+     * WaitForSingleObject fails to return in timely fashion
+     * if we rely on the notification of LockSemaphore.
+     * Alternatively, we could give a SpinCount
+     * value on the critical section object and search for a sweet
+     * spot granting a lock with no wait time on most systems.
+     */
+    DWORD timeout = (DWORD)(t - ct);
+    timeout = min(timeout, 20);
+    WaitForSingleObject(((CRITICAL_SECTION *)m)->LockSemaphore, timeout);
 
     /* Try to grab lock */
     if (!pthread_mutex_trylock(m)) return 0;
