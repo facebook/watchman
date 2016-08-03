@@ -69,6 +69,22 @@ static void _pthread_once_cleanup(pthread_once_t *o)
   *o = 0;
 }
 
+/* Ensure the CriticalSection has been initialized */
+static inline void ensure_mutex_init(pthread_mutex_t *m) {
+   if (m->initialized) return;
+   pthread_spin_lock(&m->initializer_spin_lock);
+   if (!m->initialized) {
+      InitializeCriticalSection(&m->cs);
+      m->initialized = 1;
+   }
+   pthread_spin_unlock(&m->initializer_spin_lock);
+}
+
+static inline LPCRITICAL_SECTION pthread_mutex_cs_get(pthread_mutex_t *m) {
+  ensure_mutex_init(m);
+  return &m->cs;
+}
+
 int pthread_once(pthread_once_t *o, void (*func)(void))
 {
   long state = *o;
@@ -139,32 +155,36 @@ int _pthread_once_raw(pthread_once_t *o, void (*func)(void))
 
 int pthread_mutex_lock(pthread_mutex_t *m)
 {
-  EnterCriticalSection(m);
+  EnterCriticalSection(pthread_mutex_cs_get(m));
   return 0;
 }
 
 int pthread_mutex_unlock(pthread_mutex_t *m)
 {
-  LeaveCriticalSection(m);
+  LeaveCriticalSection(pthread_mutex_cs_get(m));
   return 0;
 }
 
 int pthread_mutex_trylock(pthread_mutex_t *m)
 {
-  return TryEnterCriticalSection(m) ? 0 : EBUSY;
+  return TryEnterCriticalSection(pthread_mutex_cs_get(m)) ? 0 : EBUSY;
 }
 
 int pthread_mutex_init(pthread_mutex_t *m, pthread_mutexattr_t *a)
 {
   (void) a;
-  InitializeCriticalSection(m);
-
+  InitializeCriticalSection(&m->cs);
+  m->initialized = TRUE;
+  m->initializer_spin_lock = 0;
   return 0;
 }
 
 int pthread_mutex_destroy(pthread_mutex_t *m)
 {
-  DeleteCriticalSection(m);
+  if (m->initialized) {
+    DeleteCriticalSection(&m->cs);
+    m->initialized = 0;
+  }
   return 0;
 }
 
@@ -790,16 +810,6 @@ int pthread_mutex_timedlock(pthread_mutex_t *m, struct timespec *ts)
 {
   unsigned long long t, ct;
 
-  struct _pthread_crit_t
-  {
-    void *debug;
-    LONG count;
-    LONG r_count;
-    HANDLE owner;
-    HANDLE sem;
-    ULONG_PTR spin;
-  };
-
   /* Try to lock it without waiting */
   if (!pthread_mutex_trylock(m)) return 0;
 
@@ -809,10 +819,19 @@ int pthread_mutex_timedlock(pthread_mutex_t *m, struct timespec *ts)
   while (1)
   {
     /* Have we waited long enough? */
-    if (ct > t) return ETIMEDOUT;
+    if (ct >= t) return ETIMEDOUT;
 
-    /* Wait on semaphore within critical section */
-    WaitForSingleObject(((struct _pthread_crit_t *)m)->sem, (DWORD)(t - ct));
+    /* Wait on semaphore within critical section
+     * We limit the wait time to 5 ms. For unknown reasons,
+     * WaitForSingleObject fails to return in timely fashion
+     * if we rely on the notification of m->LockSemaphore.
+     * In addition, we could give a SpinCount
+     * value on the critical section object and search for a sweet
+     * spot granting a lock with no wait time on most systems.
+     */
+    DWORD timeout = (DWORD)(t - ct);
+    timeout = min(timeout, 5);
+    WaitForSingleObject(((CRITICAL_SECTION *)m)->LockSemaphore, timeout);
 
     /* Try to grab lock */
     if (!pthread_mutex_trylock(m)) return 0;
@@ -1084,6 +1103,11 @@ int pthread_spin_destroy(pthread_spinlock_t *l)
 /* No-fair spinlock due to lack of knowledge of thread number */
 int pthread_spin_lock(pthread_spinlock_t *l)
 {
+  if ( *l != 0 && *l != EBUSY )
+  {
+    w_log( W_LOG_FATAL, "Fatal error: spinlock value different from 0 or EBUSY! Smells like an uninitialized spinlock. Deadlock insight.\n");
+  }
+
   while (_InterlockedExchange(l, EBUSY))
   {
     /* Don't lock the bus whilst waiting */
@@ -1137,7 +1161,7 @@ int pthread_cond_broadcast(pthread_cond_t *c)
 int pthread_cond_wait(pthread_cond_t *c, pthread_mutex_t *m)
 {
   pthread_testcancel();
-  SleepConditionVariableCS(c, m, INFINITE);
+  SleepConditionVariableCS(c, pthread_mutex_cs_get(m), INFINITE);
   return 0;
 }
 
@@ -1154,7 +1178,7 @@ int pthread_cond_timedwait(pthread_cond_t *c, pthread_mutex_t *m,
 
   pthread_testcancel();
 
-  if (!SleepConditionVariableCS(c, m, (DWORD)tm)) {
+  if (!SleepConditionVariableCS(c, pthread_mutex_cs_get(m), (DWORD)tm)) {
     return map_win32_err(GetLastError());
   }
 
