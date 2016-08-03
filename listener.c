@@ -183,13 +183,13 @@ static void *client_thread(void *ptr)
         if (client->reader.wpos == client->reader.rpos) {
           // If they disconnected in between PDUs, no need to log
           // any error
-          goto disconected;
+          goto disconnected;
         }
         send_error_response(client, "invalid json at position %d: %s",
             jerr.position, jerr.text);
         w_log(W_LOG_ERR, "invalid data from client: %s\n", jerr.text);
 
-        goto disconected;
+        goto disconnected;
       } else if (request) {
         client->pdu_type = client->reader.pdu_type;
         dispatch_command(client, request, CMD_DAEMON);
@@ -231,7 +231,7 @@ static void *client_thread(void *ptr)
     }
   }
 
-disconected:
+disconnected:
   w_set_thread_name("NOT_CONN:client=%p:stm=%p", client, client->stm);
   // Remove the client from the map before we tear it down, as this makes
   // it easier to flush out pending writes on windows without worrying
