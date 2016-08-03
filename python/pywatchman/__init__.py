@@ -52,7 +52,6 @@ from . import (
 )
 
 if os.name == 'nt':
-    import sys
     import ctypes
     import ctypes.wintypes
 
@@ -65,18 +64,18 @@ if os.name == 'nt':
     FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
     FORMAT_MESSAGE_ALLOCATE_BUFFER = 0x00000100
     FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200
+    WAIT_FAILED = 0xFFFFFFFF
     WAIT_TIMEOUT = 0x00000102
     WAIT_OBJECT_0 = 0x00000000
+    WAIT_IO_COMPLETION = 0x000000C0
+    INFINITE = 0xFFFFFFFF
 
-    # Overlapped I/O event is not in a signaled state. (996)
-    ERROR_IO_INCOMPLETE = 0x000003E4
     # Overlapped I/O operation is in progress. (997)
     ERROR_IO_PENDING = 0x000003E5
 
     # The pointer size follows the architecture
     # We use WPARAM since this type is already conditionally defined
     ULONG_PTR = ctypes.wintypes.WPARAM
-
 
     class OVERLAPPED(ctypes.Structure):
         _fields_ = [
@@ -129,124 +128,32 @@ if os.name == 'nt':
     # Windows 7 and earlier does not support GetOverlappedResultEx
     # The alternative is to use GetOverlappedResult and wait
     # for read or write operation to complete. This is
-    # done be using CreateEvent and WaitForSingleObject.
-    # Windows 8 is version 6.2 - see the Operating System Version
-    # page on MSDN
-    WINDOWS_8_AND_LATER = sys.getwindowsversion() >= (6, 2)
-    if not WINDOWS_8_AND_LATER:
-        CreateEvent = ctypes.windll.kernel32.CreateEventA
-        CreateEvent.argtypes = [LPDWORD, wintypes.BOOL, wintypes.BOOL,
-                                wintypes.LPSTR]
-        CreateEvent.restype = wintypes.HANDLE
+    # done be using CreateEvent and WaitForSingleObjectEx.
+    # CreateEvent, WaitForSingleObjectEx and GetOverlappedResult
+    # are all part of Windows API since the WindowsXP version.
+    GetOverlappedResult = ctypes.windll.kernel32.GetOverlappedResult
+    GetOverlappedResult.argtypes = [wintypes.HANDLE,
+                                    ctypes.POINTER(OVERLAPPED), LPDWORD,
+                                    wintypes.BOOL]
+    GetOverlappedResult.restype = wintypes.BOOL
 
-        GetOverlappedResult = ctypes.windll.kernel32.GetOverlappedResult
-        GetOverlappedResult.argtypes = [wintypes.HANDLE,
-                                        ctypes.POINTER(OVERLAPPED), LPDWORD,
-                                        wintypes.BOOL]
-        GetOverlappedResult.restype = wintypes.BOOL
+    WaitForSingleObjectEx = ctypes.windll.kernel32.WaitForSingleObjectEx
+    WaitForSingleObjectEx.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.BOOL]
+    WaitForSingleObjectEx.restype = wintypes.DWORD
 
-        WaitForSingleObject = ctypes.windll.kernel32.WaitForSingleObject
-        WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
-        WaitForSingleObject.restype = wintypes.DWORD
-    else:
-        GetOverlappedResultEx = ctypes.windll.kernel32.GetOverlappedResultEx
-        GetOverlappedResultEx.argtypes = [wintypes.HANDLE,
-                                          ctypes.POINTER(OVERLAPPED), LPDWORD,
-                                          wintypes.DWORD, wintypes.BOOL]
-        GetOverlappedResultEx.restype = wintypes.BOOL
+    SetLastError = ctypes.windll.kernel32.SetLastError
+    SetLastError.argtypes = [wintypes.DWORD]
+    SetLastError.restype = None
 
+    CreateEvent = ctypes.windll.kernel32.CreateEventA
+    CreateEvent.argtypes = [LPDWORD, wintypes.BOOL, wintypes.BOOL,
+                            wintypes.LPSTR]
+    CreateEvent.restype = wintypes.HANDLE
+
+    # Windows Vista is the minimum supported client for CancelIoEx.
     CancelIoEx = ctypes.windll.kernel32.CancelIoEx
     CancelIoEx.argtypes = [wintypes.HANDLE, ctypes.POINTER(OVERLAPPED)]
     CancelIoEx.restype = wintypes.BOOL
-
-
-    class OverlappedStructWrapper(object):
-        """We act differently on WindowsNamedPipe operations depending on the
-           os version. In Windows 7 and earlier, we have to wait explicitly for
-           the asynch readFile or writeFile to complete before retrieving the
-           result using GetOverlappedResult. The os takes care of everything in
-           Windows 8 and later using GetOverlappedResultEx with a timeout.
-        """
-
-        def __init__(self, _raisewinerrorfct):
-            self._raisewinerror = _raisewinerrorfct  # callback
-            self.olap = OVERLAPPED()  # instance of an OVERLAPPED struct
-
-        def __enter__(self):
-            # Zero mem on the OVERLAPPED struct.
-            ctypes.memset(ctypes.addressof(self.olap), 0,
-                                           ctypes.sizeof(self.olap))
-
-            if not WINDOWS_8_AND_LATER:
-                self.olap.hEvent = CreateEvent(None, True, False, None)
-
-                if self.olap.hEvent is None:
-                    self._raisewinerror('CreateEvent failed', GetLastError())
-
-            return self
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            if self.olap.hEvent is not None:
-                # We release the handle for the event
-                CloseHandle(self.olap.hEvent)
-
-        def GetOverlappedResult_(self, immediate, timeout, pipe, nbytes):
-            """ Called next to asynchronous ReadFile or WriteFile. We therefore
-                expect a pending IO operation, other cases are handled as
-                error.
-            """
-            if not WINDOWS_8_AND_LATER and not immediate:
-                if GetLastError() == ERROR_IO_PENDING:
-                    waitErr = WaitForSingleObject(self.olap.hEvent, timeout)
-                    if waitErr != WAIT_OBJECT_0:
-                        self._raisewinerror('WaitForSingleObject failed with'
-                                            ' code %d' % waitErr,
-                                            GetLastError())
-
-            getOverlappedResultSucceed = wintypes.BOOL()
-            if WINDOWS_8_AND_LATER:
-                dwms = 0 if immediate else timeout
-                getOverlappedResultSucceed = GetOverlappedResultEx(pipe,
-                                                                   self.olap,
-                                                                   nbytes,
-                                                                   dwms,
-                                                                   True)
-            else:
-                getOverlappedResultSucceed = GetOverlappedResult(pipe,
-                                                                 self.olap,
-                                                                 nbytes,
-                                                                 False)
-
-            if not getOverlappedResultSucceed:
-                getOverlappedErr = GetLastError()
-
-                # It's potentially unsafe to allow the write to continue after
-                # we unwind, so let's make a best effort to avoid that
-                # happening.
-                # We cancel the operation (read or write) on any fail
-                if not CancelIoEx(pipe, self.olap):
-                    self._raisewinerror('CancelIoEx failed with error %d',
-                                        GetLastError())
-
-                if WINDOWS_8_AND_LATER:
-                    if getOverlappedErr == WAIT_TIMEOUT:
-                        log('GetOverlappedResultEx timedout')
-                        raise SocketTimeout('timed out after waiting %dms for'
-                                            ' read' % timeout)
-                    log('GetOverlappedResultEx reports error %d',
-                        getOverlappedErr)
-                else:
-                    if getOverlappedErr == ERROR_IO_INCOMPLETE:
-                        self._raisewinerror('GetOverlappedResult: IO operation'
-                                            'still pending.', getOverlappedErr)
-                    log('GetOverlappedResult reports error %d',
-                        getOverlappedErr)
-
-                self._raisewinerror('error while waiting for read or write',
-                                    getOverlappedErr)
-                return False
-
-            return True
 
 # 2 bytes marker, 1 byte int size, 8 bytes int64 value
 sniff_len = 13
@@ -421,8 +328,13 @@ class WindowsNamedPipeTransport(Transport):
 
         if self.pipe == INVALID_HANDLE_VALUE:
             self.pipe = None
-            self._raisewinerror('failed to open pipe %s' % sockpath,
+            self._raise_win_err('failed to open pipe %s' % sockpath,
                                 GetLastError())
+
+        # event for the overlapped I/O operations
+        self._waitable = CreateEvent(None, True, False, None)
+        if self._waitable is None:
+            self._raise_win_err('CreateEvent failed', GetLastError())
 
     def _win32_strerror(self, err):
         """ expand a win32 error code into a human readable message """
@@ -437,14 +349,55 @@ class WindowsNamedPipeTransport(Transport):
         finally:
             LocalFree(buf)
 
-    def _raisewinerror(self, msg, err):
+    def _raise_win_err(self, msg, err):
         raise IOError('%s win32 error code: %d %s' %
                       (msg, err, self._win32_strerror(err)))
 
+    def _GetOverlappedResultEx(self, pipe, olap, nbytes, millis, alertable ):
+        # We use a custom implementation of GetOverlappedResultEx
+        # using GetOverlappedResult. This is the exact same implementation
+        # that can be found in the watchman source code
+        # (see get_overlapped_result_ex_impl in stream_win.c).
+        # This way, maintenance should be simplified.
+        log('Preparing to wait for maximum %dms', millis )
+        if millis != 0:
+            waitReturnCode = WaitForSingleObjectEx(olap.hEvent, millis, alertable)
+            if waitReturnCode == WAIT_OBJECT_0:
+                # Event is signaled, overlapped IO operation result should be available.
+                pass
+            elif waitReturnCode == WAIT_IO_COMPLETION:
+                # WaitForSingleObjectEx returnes because the system added an I/O completion
+                # routine or an asynchronous procedure call (APC) to the thread queue.
+                SetLastError(WAIT_IO_COMPLETION)
+                pass
+            elif waitReturnCode == WAIT_TIMEOUT:
+                # We reached the maximum allowed wait time, the IO operation failed
+                # to complete in timely fashion.
+                SetLastError(WAIT_TIMEOUT)
+                return False
+            elif waitReturnCode == WAIT_FAILED:
+                # something went wrong calling WaitForSingleObjectEx
+                err = GetLastError()
+                log('WaitForSingleObjectEx failed: %s', self._win32_strerror(err))
+                return False
+            else:
+                # unexpected situation deserving investigation.
+                err = GetLastError()
+                log('Unexpected error: %s', self._win32_strerror(err))
+                return False
+
+        return GetOverlappedResult(pipe, olap, nbytes, False)
+
     def close(self):
         if self.pipe:
+            log('Closing pipe')
             CloseHandle(self.pipe)
         self.pipe = None
+
+        if self._waitable is not None:
+            # We release the handle for the event
+            CloseHandle(self._waitable)
+        self._waitable = None
 
     def readBytes(self, size):
         """ A read can block for an unbounded amount of time, even if the
@@ -464,38 +417,49 @@ class WindowsNamedPipeTransport(Transport):
 
         # We need to initiate a read
         buf = ctypes.create_string_buffer(size)
+        olap = OVERLAPPED()
+        olap.hEvent = self._waitable
 
-        with OverlappedStructWrapper(self._raisewinerror) as olapwrapper:
-            log('made read buff of size %d', size)
+        log('made read buff of size %d', size)
 
-            # ReadFile docs warn against sending in the nbytes parameter for
-            # async operations, so we always collect it via
-            # GetOverlappedResultEx
-            immediate = ReadFile(self.pipe, buf, size, None, olapwrapper.olap)
+        # ReadFile docs warn against sending in the nread parameter for async
+        # operations, so we always collect it via GetOverlappedResultEx
+        immediate = ReadFile(self.pipe, buf, size, None, olap)
 
-            if (WINDOWS_8_AND_LATER and not immediate
-                and GetLastError() != ERROR_IO_PENDING):
-                self._raisewinerror('failed to read %d bytes' % size,
+        if not immediate:
+            err = GetLastError()
+            if err != ERROR_IO_PENDING:
+                self._raise_win_err('failed to read %d bytes' % size,
                                     GetLastError())
 
-            nbytes = wintypes.DWORD()
-            olapwrapper.GetOverlappedResult_(immediate, self.timeout,
-                                             self.pipe, nbytes)
+        nread = wintypes.DWORD()
+        if not self._GetOverlappedResultEx(self.pipe, olap, nread,
+                                           0 if immediate else self.timeout, True):
+            err = GetLastError()
+            CancelIoEx(self.pipe, olap)
 
-            nbytes = nbytes.value
-            if nbytes == 0:
-                # Docs say that named pipes return 0 byte when the other end did
-                # a zero byte write.  Since we don't ever do that, the only
-                # other way this shows up is if the client has gotten in a weird
-                # state, so let's bail out
-                CancelIoEx(self.pipe, olapwrapper.olap)
-                raise IOError('Async read yielded 0 bytes; unpossible!')
+            if err == WAIT_TIMEOUT:
+                log('GetOverlappedResultEx timedout')
+                raise SocketTimeout('timed out after waiting %dms for read' %
+                                    self.timeout)
+
+            log('GetOverlappedResultEx reports error %d', err)
+            self._raise_win_err('error while waiting for read', err)
+
+        nread = nread.value
+        if nread == 0:
+            # Docs say that named pipes return 0 byte when the other end did
+            # a zero byte write.  Since we don't ever do that, the only
+            # other way this shows up is if the client has gotten in a weird
+            # state, so let's bail out
+            CancelIoEx(self.pipe, olap)
+            raise IOError('Async read yielded 0 bytes; unpossible!')
 
         # Holds precisely the bytes that we read from the prior request
-        buf = buf[:nbytes]
+        buf = buf[:nread]
 
-        returned_size = min(nbytes, size)
-        if returned_size == nbytes:
+        returned_size = min(nread, size)
+        if returned_size == nread:
             return buf
 
         # keep any left-overs around for a later read to consume
@@ -503,23 +467,36 @@ class WindowsNamedPipeTransport(Transport):
         return buf[:returned_size]
 
     def write(self, data):
-        with OverlappedStructWrapper(self._raisewinerror) as olapwrapper:
-            immediate = WriteFile(self.pipe, ctypes.c_char_p(data), len(data),
-                                  None, olapwrapper.olap)
+        olap = OVERLAPPED()
+        olap.hEvent = self._waitable
 
-            if (WINDOWS_8_AND_LATER and not immediate
-                and GetLastError() != ERROR_IO_PENDING):
-                self._raisewinerror('failed to write %d bytes'
-                                    % len(data, GetLastError()))
+        immediate = WriteFile(self.pipe, ctypes.c_char_p(data), len(data),
+                              None, olap)
 
-            # Obtain results, waiting if needed
-            nbytes = wintypes.DWORD()
-            if olapwrapper.GetOverlappedResult_(immediate, self.timeout,
-                                                self.pipe, nbytes):
-                return nbytes.value
+        if not immediate:
+            err = GetLastError()
+            if err != ERROR_IO_PENDING:
+                self._raise_win_err('failed to write %d bytes' % len(data),
+                                    GetLastError())
 
-        self._raisewinerror('error while waiting for write of %d bytes' %
-                            len(data), GetLastError())
+        # Obtain results, waiting if needed
+        nwrote = wintypes.DWORD()
+        if self._GetOverlappedResultEx(self.pipe, olap, nwrote, 0 if immediate else
+                                       self.timeout, True):
+            log('made write of %d bytes', nwrote.value)
+            return nwrote.value
+
+        err = GetLastError()
+
+        # It's potentially unsafe to allow the write to continue after
+        # we unwind, so let's make a best effort to avoid that happening
+        CancelIoEx(self.pipe, olap)
+
+        if err == WAIT_TIMEOUT:
+            raise SocketTimeout('timed out after waiting %dms for write' %
+                                self.timeout)
+        self._raise_win_err('error while waiting for write of %d bytes' %
+                            len(data), err)
 
 
 class CLIProcessTransport(Transport):
