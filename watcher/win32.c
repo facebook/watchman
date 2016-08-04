@@ -96,6 +96,7 @@ void winwatch_root_dtor(w_root_t *root) {
     pthread_join(state->thread, &ignore);
   }
 
+  pthread_mutex_destroy(&state->mtx);
   CloseHandle(state->ping);
   CloseHandle(state->olap);
   CloseHandle(state->dir_handle);
