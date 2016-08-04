@@ -802,15 +802,15 @@ int pthread_mutex_timedlock(pthread_mutex_t *m, struct timespec *ts)
     if (ct >= t) return ETIMEDOUT;
 
     /* Wait on semaphore within critical section
-     * We limit the wait time to 20 ms. For unknown reasons,
+     * We limit the wait time to 5 ms. For unknown reasons,
      * WaitForSingleObject fails to return in timely fashion
-     * if we rely on the notification of LockSemaphore.
-     * Alternatively, we could give a SpinCount
+     * if we rely on the notification of m->LockSemaphore.
+     * In addition, we could give a SpinCount
      * value on the critical section object and search for a sweet
      * spot granting a lock with no wait time on most systems.
      */
     DWORD timeout = (DWORD)(t - ct);
-    timeout = min(timeout, 20);
+    timeout = min(timeout, 5);
     WaitForSingleObject(((CRITICAL_SECTION *)m)->LockSemaphore, timeout);
 
     /* Try to grab lock */
