@@ -9,7 +9,7 @@ import subprocess
 
 def patterns_to_terms(pats, excl):
     # convert a list of globs into the equivalent watchman expression term
-    terms = ['allof', ['type', 'f']]
+    terms = ['allof', 'true']
     if pats:
       p_terms = ['anyof']
       for p in pats:
