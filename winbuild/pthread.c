@@ -69,6 +69,21 @@ static void _pthread_once_cleanup(pthread_once_t *o)
   *o = 0;
 }
 
+/* Ensure the CriticalSection has been initialized */
+static void ensure_mutex_init(pthread_mutex_t *m) {
+   if (m->initialized) return;
+
+   if (!m->initialized) {
+      InitializeCriticalSection(&m->cs);
+      m->initialized = 1;
+   }
+}
+
+static LPCRITICAL_SECTION pthread_mutex_cs_get(pthread_mutex_t *m) {
+  ensure_mutex_init(m);
+  return &m->cs;
+}
+
 int pthread_once(pthread_once_t *o, void (*func)(void))
 {
   long state = *o;
@@ -139,32 +154,34 @@ int _pthread_once_raw(pthread_once_t *o, void (*func)(void))
 
 int pthread_mutex_lock(pthread_mutex_t *m)
 {
-  EnterCriticalSection(m);
+  EnterCriticalSection(pthread_mutex_cs_get(m));
   return 0;
 }
 
 int pthread_mutex_unlock(pthread_mutex_t *m)
 {
-  LeaveCriticalSection(m);
+  LeaveCriticalSection(pthread_mutex_cs_get(m));
   return 0;
 }
 
 int pthread_mutex_trylock(pthread_mutex_t *m)
 {
-  return TryEnterCriticalSection(m) ? 0 : EBUSY;
+  return TryEnterCriticalSection(pthread_mutex_cs_get(m)) ? 0 : EBUSY;
 }
 
 int pthread_mutex_init(pthread_mutex_t *m, pthread_mutexattr_t *a)
 {
   (void) a;
-  InitializeCriticalSection(m);
-
+  ensure_mutex_init(m);
   return 0;
 }
 
 int pthread_mutex_destroy(pthread_mutex_t *m)
 {
-  DeleteCriticalSection(m);
+  if (m->initialized) {
+    DeleteCriticalSection(&m->cs);
+    m->initialized = 0;
+  }  
   return 0;
 }
 
@@ -1136,7 +1153,7 @@ int pthread_cond_broadcast(pthread_cond_t *c)
 int pthread_cond_wait(pthread_cond_t *c, pthread_mutex_t *m)
 {
   pthread_testcancel();
-  SleepConditionVariableCS(c, m, INFINITE);
+  SleepConditionVariableCS(c, pthread_mutex_cs_get(m), INFINITE);
   return 0;
 }
 
@@ -1153,7 +1170,7 @@ int pthread_cond_timedwait(pthread_cond_t *c, pthread_mutex_t *m,
 
   pthread_testcancel();
 
-  if (!SleepConditionVariableCS(c, m, (DWORD)tm)) {
+  if (!SleepConditionVariableCS(c, pthread_mutex_cs_get(m), (DWORD)tm)) {
     return map_win32_err(GetLastError());
   }
 
