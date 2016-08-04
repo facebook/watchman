@@ -80,16 +80,12 @@
 #define PTHREAD_CANCELED ((void *)(intptr_t)0xDEADBEEF)
 
 #define PTHREAD_ONCE_INIT 0
-#define PTHREAD_MUTEX_CS_INITIALIZER {(void*)0,0,0,0,0,0}
+#define PTHREAD_MUTEX_INITIALIZER {(void*)-1,-1,0,0,0,0}
 #define PTHREAD_RWLOCK_INITIALIZER {0}
 #define PTHREAD_COND_INITIALIZER {0}
-#define PTHREAD_SPINLOCK_INITIALIZER 0
-#define PTHREAD_MUTEX_INITIALIZER \
-  {PTHREAD_SPINLOCK_INITIALIZER, 0, PTHREAD_MUTEX_CS_INITIALIZER}
 #define PTHREAD_BARRIER_INITIALIZER \
   {0,0,PTHREAD_MUTEX_INITIALIZER,PTHREAD_COND_INITIALIZER}
-
-
+#define PTHREAD_SPINLOCK_INITIALIZER 0
 
 #define PTHREAD_DESTRUCTOR_ITERATIONS 256
 #define PTHREAD_KEYS_MAX (1<<20)
@@ -157,18 +153,12 @@ struct pthread_attr_t
 typedef long pthread_once_t;
 typedef unsigned pthread_mutexattr_t;
 typedef SRWLOCK pthread_rwlock_t;
+typedef CRITICAL_SECTION pthread_mutex_t;
 typedef void *pthread_barrierattr_t;
 typedef long pthread_spinlock_t;
 typedef int pthread_condattr_t;
 typedef CONDITION_VARIABLE pthread_cond_t;
 typedef int pthread_rwlockattr_t;
-
-typedef struct pthread_mutex_t pthread_mutex_t;
-struct pthread_mutex_t {
-   pthread_spinlock_t initializer_spin_lock;
-   BOOL initialized;
-   CRITICAL_SECTION cs;
-};
 
 #define pthread_cleanup_push(F, A)\
 {\
