@@ -72,11 +72,12 @@ static void _pthread_once_cleanup(pthread_once_t *o)
 /* Ensure the CriticalSection has been initialized */
 static void ensure_mutex_init(pthread_mutex_t *m) {
    if (m->initialized) return;
-
+   pthread_spin_lock(&m->initializer_spin_lock);
    if (!m->initialized) {
       InitializeCriticalSection(&m->cs);
       m->initialized = 1;
    }
+   pthread_spin_unlock(&m->initializer_spin_lock);
 }
 
 static LPCRITICAL_SECTION pthread_mutex_cs_get(pthread_mutex_t *m) {
@@ -172,6 +173,8 @@ int pthread_mutex_trylock(pthread_mutex_t *m)
 int pthread_mutex_init(pthread_mutex_t *m, pthread_mutexattr_t *a)
 {
   (void) a;
+  m->initializer_spin_lock = 0;
+  m->initialized = FALSE;
   ensure_mutex_init(m);
   return 0;
 }
@@ -1100,6 +1103,11 @@ int pthread_spin_destroy(pthread_spinlock_t *l)
 /* No-fair spinlock due to lack of knowledge of thread number */
 int pthread_spin_lock(pthread_spinlock_t *l)
 {
+  if ( *l != 0 && *l != EBUSY )
+  {
+    w_log( W_LOG_FATAL, "Fatal error: spinlock value different from 0 or EBUSY! Smells like an uninitialized spinlock. Deadlock insight.");
+  }
+
   while (_InterlockedExchange(l, EBUSY))
   {
     /* Don't lock the bus whilst waiting */
