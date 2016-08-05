@@ -70,7 +70,7 @@ static void _pthread_once_cleanup(pthread_once_t *o)
 }
 
 /* Ensure the CriticalSection has been initialized */
-static void ensure_mutex_init(pthread_mutex_t *m) {
+static inline void ensure_mutex_init(pthread_mutex_t *m) {
    if (m->initialized) return;
    pthread_spin_lock(&m->initializer_spin_lock);
    if (!m->initialized) {
@@ -80,7 +80,7 @@ static void ensure_mutex_init(pthread_mutex_t *m) {
    pthread_spin_unlock(&m->initializer_spin_lock);
 }
 
-static LPCRITICAL_SECTION pthread_mutex_cs_get(pthread_mutex_t *m) {
+static inline LPCRITICAL_SECTION pthread_mutex_cs_get(pthread_mutex_t *m) {
   ensure_mutex_init(m);
   return &m->cs;
 }
