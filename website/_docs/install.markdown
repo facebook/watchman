@@ -10,7 +10,7 @@ permalink: docs/install.html
 
 Watchman is known to compile and pass its test suite on:
 
- * <i class="fa fa-linux"></i> Linux systems with `inotify`
+ * <i class="fa fa-linux"></i> Linux systems with `inotify` and `python-dev`
  * <i class="fa fa-apple"></i> OS X (uses `FSEvents` on 10.7+,
    `kqueue(2)` on earlier versions)
  * <i class="fa fa-windows"></i> Windows x64 on Windows Server 2012 R2 and
