@@ -109,8 +109,31 @@ static BOOL WINAPI get_overlapped_result_ex_impl(
   return GetOverlappedResult(file, olap, bytes, FALSE);
 }
 
+
+static BOOL WINAPI probe_get_overlapped_result_ex(
+    HANDLE file,
+    LPOVERLAPPED olap,
+    LPDWORD bytes,
+    DWORD millis,
+    BOOL alertable ) {
+  get_overlapped_result_ex_func func;
+
+  func = (get_overlapped_result_ex_func)GetProcAddress(
+      GetModuleHandle("kernel32.dll"),
+      "GetOverlappedResultEx");
+
+  if ( getenv( "WATCHMAN_WIN7_COMPAT") || !func ) {
+    func = get_overlapped_result_ex_impl;
+  }
+
+  get_overlapped_result_ex = func;
+
+  return func(file, olap, bytes, millis, alertable);
+}
+
+
 static get_overlapped_result_ex_func get_overlapped_result_ex =
-  get_overlapped_result_ex_impl;
+  probe_get_overlapped_result_ex;
 
 
 static int win_close(w_stm_t stm) {
