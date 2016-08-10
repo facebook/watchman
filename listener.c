@@ -8,7 +8,7 @@
 
 /* This needs to be recursive safe because we may log to clients
  * while we are dispatching subscriptions to clients */
-pthread_mutex_t w_client_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t w_client_lock;
 w_ht_t *clients = NULL;
 static int listener_fd = -1;
 pthread_t reaper_thread;

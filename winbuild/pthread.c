@@ -173,8 +173,9 @@ int pthread_mutex_trylock(pthread_mutex_t *m)
 int pthread_mutex_init(pthread_mutex_t *m, pthread_mutexattr_t *a)
 {
   (void) a;
+  InitializeCriticalSection(&m->cs);
+  m->initialized = TRUE;
   m->initializer_spin_lock = 0;
-  m->initialized = FALSE;
   ensure_mutex_init(m);
   return 0;
 }
@@ -1105,7 +1106,7 @@ int pthread_spin_lock(pthread_spinlock_t *l)
 {
   if ( *l != 0 && *l != EBUSY )
   {
-    w_log( W_LOG_FATAL, "Fatal error: spinlock value different from 0 or EBUSY! Smells like an uninitialized spinlock. Deadlock insight.");
+    w_log( W_LOG_FATAL, "Fatal error: spinlock value different from 0 or EBUSY! Smells like an uninitialized spinlock. Deadlock insight.\n");
   }
 
   while (_InterlockedExchange(l, EBUSY))
