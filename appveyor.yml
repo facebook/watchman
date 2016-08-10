@@ -5,7 +5,7 @@ branches:
     - gh-pages
 
 install:
-  - cinst php
+  - cinst -y php
 
 build_script:
   - make
