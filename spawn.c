@@ -13,13 +13,14 @@ static void spawn_command(w_root_t *root,
   struct w_clockspec *since_spec);
 
 // Caller must hold spawn_lock
-static w_root_t *lookup_running_pid(pid_t pid)
-{
+static bool lookup_running_pid(pid_t pid,
+                               struct unlocked_watchman_root *unlocked) {
   if (!running_kids) {
-    return NULL;
+    return false;
   }
 
-  return w_ht_val_ptr(w_ht_get(running_kids, pid));
+  unlocked->root = w_ht_val_ptr(w_ht_get(running_kids, pid));
+  return unlocked->root != NULL;
 }
 
 // Caller must hold spawn_lock
@@ -42,13 +43,12 @@ static void insert_running_pid(pid_t pid, w_root_t *root)
 
 void w_mark_dead(pid_t pid)
 {
-  w_root_t *root = NULL;
   w_ht_iter_t iter;
   struct write_locked_watchman_root lock;
+  struct unlocked_watchman_root unlocked;
 
   pthread_mutex_lock(&spawn_lock);
-  root = lookup_running_pid(pid);
-  if (!root) {
+  if (!lookup_running_pid(pid, &unlocked)) {
     pthread_mutex_unlock(&spawn_lock);
     return;
   }
@@ -56,10 +56,10 @@ void w_mark_dead(pid_t pid)
   pthread_mutex_unlock(&spawn_lock);
 
   w_log(W_LOG_DBG, "mark_dead: %.*s child pid %d\n",
-      root->root_path->len, root->root_path->buf, (int)pid);
+      unlocked.root->root_path->len, unlocked.root->root_path->buf, (int)pid);
 
   /* now walk the cmds and try to find our match */
-  w_root_lock(&root, "mark_dead", &lock);
+  w_root_lock(&unlocked, "mark_dead", &lock);
 
   /* walk the list of triggers, and run their rules */
   if (w_ht_first(lock.root->commands, &iter)) do {
@@ -84,8 +84,8 @@ void w_mark_dead(pid_t pid)
     break;
   } while (w_ht_next(lock.root->commands, &iter));
 
-  root = w_root_unlock(&lock);
-  w_root_delref(root);
+  w_root_unlock(&lock, &unlocked);
+  w_root_delref(unlocked.root);
 }
 
 static w_stm_t prepare_stdin(

@@ -657,8 +657,10 @@ void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec *deadline);
 w_string_t *w_fstype(const char *path);
 
 void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
-w_root_t *w_root_resolve(const char *path, bool auto_watch, char **errmsg);
-w_root_t *w_root_resolve_for_client_mode(const char *filename, char **errmsg);
+bool w_root_resolve(const char *path, bool auto_watch, char **errmsg,
+                    struct unlocked_watchman_root *unlocked);
+bool w_root_resolve_for_client_mode(const char *filename, char **errmsg,
+                                    struct unlocked_watchman_root *unlocked);
 char *w_find_enclosing_root(const char *filename, char **relpath);
 struct watchman_file *w_root_resolve_file(w_root_t *root,
     struct watchman_dir *dir, w_string_t *file_name,
@@ -693,12 +695,13 @@ void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
 
 bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked, int timeoutms);
 
-void w_root_lock(w_root_t **root, const char *purpose,
+void w_root_lock(struct unlocked_watchman_root *unlocked, const char *purpose,
                  struct write_locked_watchman_root *locked);
-bool w_root_lock_with_timeout(w_root_t **root, const char *purpose,
-                              int timeoutms,
+bool w_root_lock_with_timeout(struct unlocked_watchman_root *unlocked,
+                              const char *purpose, int timeoutms,
                               struct write_locked_watchman_root *locked);
-w_root_t *w_root_unlock(struct write_locked_watchman_root *locked);
+void w_root_unlock(struct write_locked_watchman_root *locked,
+                   struct unlocked_watchman_root *unlocked);
 
 /* Bob Jenkins' lookup3.c hash function */
 uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);

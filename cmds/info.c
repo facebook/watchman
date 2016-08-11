@@ -126,7 +126,7 @@ static void cmd_get_config(struct watchman_client *client, json_t *args)
 
   resp = make_response();
 
-  w_root_lock(&unlocked.root, "cmd_get_config", &lock);
+  w_root_lock(&unlocked, "cmd_get_config", &lock);
   {
     config = lock.root->config_file;
     if (config) {
@@ -134,7 +134,7 @@ static void cmd_get_config(struct watchman_client *client, json_t *args)
       json_incref(config);
     }
   }
-  unlocked.root = w_root_unlock(&lock);
+  w_root_unlock(&lock, &unlocked);
 
   if (!config) {
     // set_prop will own this

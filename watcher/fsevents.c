@@ -767,11 +767,11 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
     return;
   }
 
-  w_root_lock(&unlocked.root, "debug-fsevents-inject-drop", &lock);
+  w_root_lock(&unlocked, "debug-fsevents-inject-drop", &lock);
   state = lock.root->watch;
 
   if (!state->attempt_resync_on_user_drop) {
-    unlocked.root = w_root_unlock(&lock);
+    w_root_unlock(&lock, &unlocked);
     send_error_response(client, "fsevents_try_resync is not enabled");
     w_root_delref(unlocked.root);
     return;
@@ -782,7 +782,7 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
   state->stream->inject_drop = true;
   pthread_mutex_unlock(&state->fse_mtx);
 
-  unlocked.root = w_root_unlock(&lock);
+  w_root_unlock(&lock, &unlocked);
 
   resp = make_response();
   set_prop(resp, "last_good", json_integer(last_good));

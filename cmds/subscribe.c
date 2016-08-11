@@ -340,9 +340,9 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
   add_root_warnings_to_response(resp, unlocked.root);
   send_and_dispose_response(&client->client, resp);
 
-  w_root_lock(&unlocked.root, "initial subscription query", &lock);
+  w_root_lock(&unlocked, "initial subscription query", &lock);
   resp = build_subscription_results(sub, &lock);
-  unlocked.root = w_root_unlock(&lock);
+  w_root_unlock(&lock, &unlocked);
 
   if (resp) {
     send_and_dispose_response(&client->client, resp);

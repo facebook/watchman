@@ -68,9 +68,9 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
   }
 
   resp = make_response();
-  w_root_lock(&unlocked.root, "clock", &lock);
+  w_root_lock(&unlocked, "clock", &lock);
   annotate_with_clock(lock.root, resp);
-  unlocked.root = w_root_unlock(&lock);
+  w_root_unlock(&lock, &unlocked);
 
   send_and_dispose_response(client, resp);
   w_root_delref(unlocked.root);
@@ -312,7 +312,7 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
 
   resp = make_response();
 
-  w_root_lock(&unlocked.root, "watch", &lock);
+  w_root_lock(&unlocked, "watch", &lock);
   if (lock.root->failure_reason) {
     set_prop(resp, "error", w_string_to_json(lock.root->failure_reason));
   } else if (lock.root->cancelled) {
@@ -323,7 +323,7 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
   }
   add_root_warnings_to_response(resp, lock.root);
   send_and_dispose_response(client, resp);
-  unlocked.root = w_root_unlock(&lock);
+  w_root_unlock(&lock, &unlocked);
   w_root_delref(unlocked.root);
 }
 W_CMD_REG("watch", cmd_watch, CMD_DAEMON | CMD_ALLOW_ANY_USER,
@@ -361,7 +361,7 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
 
   resp = make_response();
 
-  w_root_lock(&unlocked.root, "watch-project", &lock);
+  w_root_lock(&unlocked, "watch-project", &lock);
   if (lock.root->failure_reason) {
     set_prop(resp, "error", w_string_to_json(lock.root->failure_reason));
   } else if (lock.root->cancelled) {
@@ -375,7 +375,7 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
     set_bytestring_prop(resp, "relative_path",rel_path_from_watch);
   }
   send_and_dispose_response(client, resp);
-  unlocked.root = w_root_unlock(&lock);
+  w_root_unlock(&lock, &unlocked);
   w_root_delref(unlocked.root);
   free(dir_to_watch);
 }

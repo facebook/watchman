@@ -563,7 +563,7 @@ bool w_query_execute(
    */
 
   // Lock the root and begin generation
-  if (!w_root_lock_with_timeout(&unlocked->root, "w_query_execute",
+  if (!w_root_lock_with_timeout(unlocked, "w_query_execute",
                                 query->lock_timeout, &lock)) {
     ignore_result(asprintf(&res->errmsg, "couldn't acquire root lock within "
                                          "lock_timeout of %dms. root is "
@@ -599,7 +599,7 @@ bool w_query_execute(
                               ));
     w_perf_log(&sample);
   }
-  unlocked->root = w_root_unlock(&lock);
+  w_root_unlock(&lock, unlocked);
   w_perf_destroy(&sample);
 
   if (ctx.wholename) {
