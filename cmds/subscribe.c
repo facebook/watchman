@@ -3,13 +3,10 @@
 
 #include "watchman.h"
 
-static bool subscription_generator(
-    w_query *query,
-    w_root_t *root,
-    struct w_query_ctx *ctx,
-    void *gendata,
-    int64_t *num_walked)
-{
+static bool subscription_generator(w_query *query,
+                                   struct write_locked_watchman_root *lock,
+                                   struct w_query_ctx *ctx, void *gendata,
+                                   int64_t *num_walked) {
   struct watchman_file *f;
   struct watchman_client_subscription *sub = gendata;
   int64_t n = 0;
@@ -19,7 +16,7 @@ static bool subscription_generator(
       sub->name->buf, sub);
 
   // Walk back in time until we hit the boundary
-  for (f = root->latest_file; f; f = f->next) {
+  for (f = lock->root->latest_file; f; f = f->next) {
     ++n;
     if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
       break;

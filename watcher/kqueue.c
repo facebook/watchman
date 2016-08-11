@@ -97,9 +97,10 @@ static bool kqueue_root_start(w_root_t *root) {
   return true;
 }
 
-static bool kqueue_root_start_watch_file(
-      w_root_t *root, struct watchman_file *file) {
-  struct kqueue_root_state *state = root->watch;
+static bool
+kqueue_root_start_watch_file(struct write_locked_watchman_root *lock,
+                             struct watchman_file *file) {
+  struct kqueue_root_state *state = lock->root->watch;
   struct kevent k;
   w_ht_val_t fdval;
   int fd;
@@ -151,16 +152,17 @@ static bool kqueue_root_start_watch_file(
   return true;
 }
 
-static void kqueue_root_stop_watch_file(
-    w_root_t *root, struct watchman_file *file) {
-  unused_parameter(root);
+static void kqueue_root_stop_watch_file(struct write_locked_watchman_root *lock,
+                                        struct watchman_file *file) {
+  unused_parameter(lock);
   unused_parameter(file);
 }
 
-static struct watchman_dir_handle *kqueue_root_start_watch_dir(
-    w_root_t *root, struct watchman_dir *dir, struct timeval now,
-    const char *path) {
-  struct kqueue_root_state *state = root->watch;
+static struct watchman_dir_handle *
+kqueue_root_start_watch_dir(struct write_locked_watchman_root *lock,
+                            struct watchman_dir *dir, struct timeval now,
+                            const char *path) {
+  struct kqueue_root_state *state = lock->root->watch;
   struct watchman_dir_handle *osdir;
   struct stat st, osdirst;
   struct kevent k;
@@ -169,7 +171,7 @@ static struct watchman_dir_handle *kqueue_root_start_watch_dir(
 
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(root, dir, now, "opendir", errno, NULL);
+    handle_open_errno(lock, dir, now, "opendir", errno, NULL);
     return NULL;
   }
 
@@ -177,7 +179,7 @@ static struct watchman_dir_handle *kqueue_root_start_watch_dir(
 
   if (newwd == -1) {
     // directory got deleted between opendir and open
-    handle_open_errno(root, dir, now, "open", errno, NULL);
+    handle_open_errno(lock, dir, now, "open", errno, NULL);
     w_dir_close(osdir);
     return NULL;
   }
@@ -185,7 +187,7 @@ static struct watchman_dir_handle *kqueue_root_start_watch_dir(
     // whaaa?
     w_log(W_LOG_ERR, "fstat on opened dir %s failed: %s\n", path,
         strerror(errno));
-    w_root_schedule_recrawl(root, "fstat failed");
+    w_root_schedule_recrawl(lock->root, "fstat failed");
     close(newwd);
     w_dir_close(osdir);
     return NULL;
@@ -194,7 +196,7 @@ static struct watchman_dir_handle *kqueue_root_start_watch_dir(
   if (st.st_dev != osdirst.st_dev || st.st_ino != osdirst.st_ino) {
     // directory got replaced between opendir and open -- at this point its
     // parent's being watched, so we let filesystem events take care of it
-    handle_open_errno(root, dir, now, "open", ENOTDIR, NULL);
+    handle_open_errno(lock, dir, now, "open", ENOTDIR, NULL);
     close(newwd);
     w_dir_close(osdir);
     return NULL;
@@ -230,9 +232,9 @@ static struct watchman_dir_handle *kqueue_root_start_watch_dir(
   return osdir;
 }
 
-static void kqueue_root_stop_watch_dir(
-    w_root_t *root, struct watchman_dir *dir) {
-  unused_parameter(root);
+static void kqueue_root_stop_watch_dir(struct write_locked_watchman_root *lock,
+                                       struct watchman_dir *dir) {
+  unused_parameter(lock);
   unused_parameter(dir);
 }
 

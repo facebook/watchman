@@ -544,22 +544,21 @@ bool w_root_process_pending(struct write_locked_watchman_root *lock,
   return true;
 }
 
-struct watchman_dir *w_root_resolve_dir(w_root_t *root,
-    w_string_t *dir_name, bool create)
-{
+struct watchman_dir *w_root_resolve_dir(struct write_locked_watchman_root *lock,
+                                        w_string_t *dir_name, bool create) {
   struct watchman_dir *dir, *parent;
   const char *dir_component;
   const char *dir_end;
 
-  if (w_string_equal(dir_name, root->root_path)) {
-    return root->root_dir;
+  if (w_string_equal(dir_name, lock->root->root_path)) {
+    return lock->root->root_dir;
   }
 
   dir_component = dir_name->buf;
   dir_end = dir_component + dir_name->len;
 
-  dir = root->root_dir;
-  dir_component += root->root_path->len + 1; // Skip root path prefix
+  dir = lock->root->root_dir;
+  dir_component += lock->root->root_path->len + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");
 
@@ -648,20 +647,20 @@ static void apply_dir_size_hint(struct watchman_dir *dir,
   }
 }
 
-static void watch_file(w_root_t *root, struct watchman_file *file)
-{
-  root->watcher_ops->root_start_watch_file(root, file);
+static void watch_file(struct write_locked_watchman_root *lock,
+                       struct watchman_file *file) {
+  lock->root->watcher_ops->root_start_watch_file(lock, file);
 }
 
-static void stop_watching_file(w_root_t *root, struct watchman_file *file)
-{
-  root->watcher_ops->root_stop_watch_file(root, file);
+static void stop_watching_file(struct write_locked_watchman_root *lock,
+                               struct watchman_file *file) {
+  lock->root->watcher_ops->root_stop_watch_file(lock, file);
 }
 
-static void remove_from_file_list(w_root_t *root, struct watchman_file *file)
-{
-  if (root->latest_file == file) {
-    root->latest_file = file->next;
+static void remove_from_file_list(struct write_locked_watchman_root *lock,
+                                  struct watchman_file *file) {
+  if (lock->root->latest_file == file) {
+    lock->root->latest_file = file->next;
   }
   if (file->next) {
     file->next->prev = file->prev;
@@ -671,8 +670,8 @@ static void remove_from_file_list(w_root_t *root, struct watchman_file *file)
   }
 }
 
-static void remove_from_suffix_list(w_root_t *root, struct watchman_file *file)
-{
+static void remove_from_suffix_list(struct write_locked_watchman_root *lock,
+                                    struct watchman_file *file) {
   w_string_t *suffix = w_string_suffix(w_file_get_name(file));
   struct watchman_file *sufhead;
 
@@ -680,7 +679,7 @@ static void remove_from_suffix_list(w_root_t *root, struct watchman_file *file)
     return;
   }
 
-  sufhead = w_ht_val_ptr(w_ht_get(root->suffixes, w_ht_ptr_val(suffix)));
+  sufhead = w_ht_val_ptr(w_ht_get(lock->root->suffixes, w_ht_ptr_val(suffix)));
   if (sufhead) {
     if (file->suffix_prev) {
       file->suffix_prev->suffix_next = file->suffix_next;
@@ -690,48 +689,47 @@ static void remove_from_suffix_list(w_root_t *root, struct watchman_file *file)
     }
     if (sufhead == file) {
       sufhead = file->suffix_next;
-      w_ht_replace(root->suffixes, w_ht_ptr_val(suffix),
-          w_ht_ptr_val(sufhead));
+      w_ht_replace(lock->root->suffixes, w_ht_ptr_val(suffix),
+                   w_ht_ptr_val(sufhead));
     }
   }
 
   w_string_delref(suffix);
 }
 
-void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
-    struct timeval now)
-{
+void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
+                              struct watchman_file *file, struct timeval now) {
   if (file->exists) {
-    watch_file(root, file);
+    watch_file(lock, file);
   } else {
-    stop_watching_file(root, file);
+    stop_watching_file(lock, file);
   }
 
   file->otime.timestamp = now.tv_sec;
-  file->otime.ticks = root->ticks;
+  file->otime.ticks = lock->root->ticks;
 
-  if (root->latest_file != file) {
+  if (lock->root->latest_file != file) {
     // unlink from list
-    remove_from_file_list(root, file);
+    remove_from_file_list(lock, file);
 
     // and move to the head
-    file->next = root->latest_file;
+    file->next = lock->root->latest_file;
     if (file->next) {
       file->next->prev = file;
     }
     file->prev = NULL;
-    root->latest_file = file;
+    lock->root->latest_file = file;
   }
 
   // Flag that we have pending trigger info
-  root->pending_trigger_tick = root->ticks;
-  root->pending_sub_tick = root->ticks;
+  lock->root->pending_trigger_tick = lock->root->ticks;
+  lock->root->pending_sub_tick = lock->root->ticks;
 }
 
-struct watchman_file *w_root_resolve_file(w_root_t *root,
-    struct watchman_dir *dir, w_string_t *file_name,
-    struct timeval now)
-{
+struct watchman_file *
+w_root_resolve_file(struct write_locked_watchman_root *lock,
+                    struct watchman_dir *dir, w_string_t *file_name,
+                    struct timeval now) {
   struct watchman_file *file, *sufhead;
   w_string_t *suffix;
   w_string_t *name;
@@ -760,28 +758,30 @@ struct watchman_file *w_root_resolve_file(w_root_t *root,
 
   file->parent = dir;
   file->exists = true;
-  file->ctime.ticks = root->ticks;
+  file->ctime.ticks = lock->root->ticks;
   file->ctime.timestamp = now.tv_sec;
 
   suffix = w_string_suffix(file_name);
   if (suffix) {
-    sufhead = w_ht_val_ptr(w_ht_get(root->suffixes, w_ht_ptr_val(suffix)));
+    sufhead =
+        w_ht_val_ptr(w_ht_get(lock->root->suffixes, w_ht_ptr_val(suffix)));
     file->suffix_next = sufhead;
     if (sufhead) {
       sufhead->suffix_prev = file;
     }
-    w_ht_replace(root->suffixes, w_ht_ptr_val(suffix), w_ht_ptr_val(file));
+    w_ht_replace(lock->root->suffixes, w_ht_ptr_val(suffix),
+                 w_ht_ptr_val(file));
     w_string_delref(suffix);
   }
 
   w_ht_set(dir->files, w_ht_ptr_val(name), w_ht_ptr_val(file));
-  watch_file(root, file);
+  watch_file(lock, file);
 
   return file;
 }
 
-void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
-{
+void stop_watching_dir(struct write_locked_watchman_root *lock,
+                       struct watchman_dir *dir) {
   w_ht_iter_t i;
   w_string_t *dir_path = w_dir_copy_full_path(dir);
 
@@ -791,10 +791,10 @@ void stop_watching_dir(w_root_t *root, struct watchman_dir *dir)
   if (w_ht_first(dir->dirs, &i)) do {
     struct watchman_dir *child = w_ht_val_ptr(i.value);
 
-    stop_watching_dir(root, child);
+    stop_watching_dir(lock, child);
   } while (w_ht_next(dir->dirs, &i));
 
-  root->watcher_ops->root_stop_watch_dir(root, dir);
+  lock->root->watcher_ops->root_stop_watch_dir(lock, dir);
 }
 
 static bool did_file_change(struct watchman_stat *saved,
@@ -896,7 +896,7 @@ static void stat_path(struct write_locked_watchman_root *lock,
 
   dir_name = w_string_dirname(full_path);
   file_name = w_string_basename(full_path);
-  dir = w_root_resolve_dir(root, dir_name, true);
+  dir = w_root_resolve_dir(lock, dir_name, true);
 
   if (dir->files) {
     file = w_ht_val_ptr(w_ht_get(dir->files, w_ht_ptr_val(file_name)));
@@ -927,10 +927,10 @@ static void stat_path(struct write_locked_watchman_root *lock,
   if (res && (err == ENOENT || err == ENOTDIR)) {
     /* it's not there, update our state */
     if (dir_ent) {
-      w_root_mark_deleted(root, dir_ent, now, true);
+      w_root_mark_deleted(lock, dir_ent, now, true);
       w_log(W_LOG_DBG, "w_lstat(%s) -> %s so stopping watch on %.*s\n", path,
             strerror(err), dir_name->len, dir_name->buf);
-      stop_watching_dir(root, dir_ent);
+      stop_watching_dir(lock, dir_ent);
     }
     if (file) {
       if (file->exists) {
@@ -938,18 +938,18 @@ static void stat_path(struct write_locked_watchman_root *lock,
               strerror(err), w_file_get_name(file)->len,
               w_file_get_name(file)->buf);
         file->exists = false;
-        w_root_mark_file_changed(root, file, now);
+        w_root_mark_file_changed(lock, file, now);
       }
     } else {
       // It was created and removed before we could ever observe it
       // in the filesystem.  We need to generate a deleted file
       // representation of it now, so that subscription clients can
       // be notified of this event
-      file = w_root_resolve_file(root, dir, file_name, now);
+      file = w_root_resolve_file(lock, dir, file_name, now);
       w_log(W_LOG_DBG, "w_lstat(%s) -> %s and file node was NULL. "
           "Generating a deleted node.\n", path, strerror(err));
       file->exists = false;
-      w_root_mark_file_changed(root, file, now);
+      w_root_mark_file_changed(lock, file, now);
     }
 
     if (!root->case_sensitive && !w_string_equal(dir_name, root->root_path) &&
@@ -968,7 +968,7 @@ static void stat_path(struct write_locked_watchman_root *lock,
         path, err, strerror(err));
   } else {
     if (!file) {
-      file = w_root_resolve_file(root, dir, file_name, now);
+      file = w_root_resolve_file(lock, dir, file_name, now);
     }
 
     if (!file->exists) {
@@ -990,7 +990,7 @@ static void stat_path(struct write_locked_watchman_root *lock,
           path
       );
       file->exists = true;
-      w_root_mark_file_changed(root, file, now);
+      w_root_mark_file_changed(lock, file, now);
     }
 
     memcpy(&file->stat, &st, sizeof(file->stat));
@@ -1050,7 +1050,7 @@ static void stat_path(struct write_locked_watchman_root *lock,
     } else if (dir_ent) {
       // We transitioned from dir to file (see fishy.php), so we should prune
       // our former tree here
-      w_root_mark_deleted(root, dir_ent, now, true);
+      w_root_mark_deleted(lock, dir_ent, now, true);
     }
     if ((root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
         !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&
@@ -1133,9 +1133,9 @@ void w_root_process_path(struct write_locked_watchman_root *lock,
 }
 
 /* recursively mark the dir contents as deleted */
-void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
-    struct timeval now, bool recursive)
-{
+void w_root_mark_deleted(struct write_locked_watchman_root *lock,
+                         struct watchman_dir *dir, struct timeval now,
+                         bool recursive) {
   w_ht_iter_t i;
 
   if (!dir->last_check_existed) {
@@ -1152,7 +1152,7 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
       w_log(W_LOG_DBG, "mark_deleted: %.*s\n", full_name->len, full_name->buf);
       w_string_delref(full_name);
       file->exists = false;
-      w_root_mark_file_changed(root, file, now);
+      w_root_mark_file_changed(lock, file, now);
     }
 
   } while (w_ht_next(dir->files, &i));
@@ -1160,13 +1160,13 @@ void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
   if (recursive && w_ht_first(dir->dirs, &i)) do {
     struct watchman_dir *child = w_ht_val_ptr(i.value);
 
-    w_root_mark_deleted(root, child, now, true);
+    w_root_mark_deleted(lock, child, now, true);
   } while (w_ht_next(dir->dirs, &i));
 }
 
-void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
-    struct timeval now, const char *syscall, int err, const char *reason)
-{
+void handle_open_errno(struct write_locked_watchman_root *lock,
+                       struct watchman_dir *dir, struct timeval now,
+                       const char *syscall, int err, const char *reason) {
   w_string_t *dir_name = w_dir_copy_full_path(dir);
   w_string_t *warn = NULL;
   bool log_warning = true;
@@ -1179,7 +1179,7 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     log_warning = true;
     transient = false;
   } else if (err == ENFILE || err == EMFILE) {
-    set_poison_state(root, dir_name, now, syscall, err, strerror(err));
+    set_poison_state(lock->root, dir_name, now, syscall, err, strerror(err));
     w_string_delref(dir_name);
     return;
   } else {
@@ -1187,13 +1187,13 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
     transient = true;
   }
 
-  if (w_string_equal(dir_name, root->root_path)) {
+  if (w_string_equal(dir_name, lock->root->root_path)) {
     if (!transient) {
       w_log(W_LOG_ERR,
             "%s(%.*s) -> %s. Root was deleted; cancelling watch\n",
             syscall, dir_name->len, dir_name->buf,
             reason ? reason : strerror(err));
-      w_root_cancel(root);
+      w_root_cancel(lock->root);
       w_string_delref(dir_name);
       return;
     }
@@ -1206,12 +1206,12 @@ void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
 
   w_log(err == ENOENT ? W_LOG_DBG : W_LOG_ERR, "%.*s\n", warn->len, warn->buf);
   if (log_warning) {
-    w_root_set_warning(root, warn);
+    w_root_set_warning(lock->root, warn);
   }
   w_string_delref(warn);
 
-  stop_watching_dir(root, dir);
-  w_root_mark_deleted(root, dir, now, true);
+  stop_watching_dir(lock, dir);
+  w_root_mark_deleted(lock, dir, now, true);
   w_string_delref(dir_name);
 }
 
@@ -1281,7 +1281,7 @@ static void crawler(struct write_locked_watchman_root *lock,
     stat_all = false;
   }
 
-  dir = w_root_resolve_dir(root, dir_name, true);
+  dir = w_root_resolve_dir(lock, dir_name, true);
 
   memcpy(path, dir_name->buf, dir_name->len);
   path[dir_name->len] = 0;
@@ -1292,7 +1292,7 @@ static void crawler(struct write_locked_watchman_root *lock,
   /* Start watching and open the dir for crawling.
    * Whether we open the dir prior to watching or after is watcher specific,
    * so the operations are rolled together in our abstraction */
-  osdir = root->watcher_ops->root_start_watch_dir(root, dir, now, path);
+  osdir = root->watcher_ops->root_start_watch_dir(lock, dir, now, path);
   if (!osdir) {
     return;
   }
@@ -1371,9 +1371,8 @@ static void crawler(struct write_locked_watchman_root *lock,
   } while (w_ht_next(dir->files, &i));
 }
 
-static bool vcs_file_exists(w_root_t *root,
-    const char *dname, const char *fname)
-{
+static bool vcs_file_exists(struct write_locked_watchman_root *lock,
+                            const char *dname, const char *fname) {
   struct watchman_dir *dir;
   struct watchman_file *file;
   w_string_t *file_name;
@@ -1381,10 +1380,10 @@ static bool vcs_file_exists(w_root_t *root,
   w_string_t *rel_dir_name;
 
   rel_dir_name = w_string_new_typed(dname, W_STRING_BYTE);
-  dir_name = w_string_path_cat(root->root_path, rel_dir_name);
+  dir_name = w_string_path_cat(lock->root->root_path, rel_dir_name);
   w_string_delref(rel_dir_name);
 
-  dir = w_root_resolve_dir(root, dir_name, false);
+  dir = w_root_resolve_dir(lock, dir_name, false);
   w_string_delref(dir_name);
 
   if (!dir) {
@@ -1406,9 +1405,9 @@ static bool vcs_file_exists(w_root_t *root,
   return file->exists;
 }
 
-static bool is_vcs_op_in_progress(w_root_t *root) {
-  return vcs_file_exists(root, ".hg", "wlock") ||
-         vcs_file_exists(root, ".git", "index.lock");
+static bool is_vcs_op_in_progress(struct write_locked_watchman_root *lock) {
+  return vcs_file_exists(lock, ".hg", "wlock") ||
+         vcs_file_exists(lock, ".git", "index.lock");
 }
 
 static void process_subscriptions(struct write_locked_watchman_root *lock)
@@ -1427,7 +1426,7 @@ static void process_subscriptions(struct write_locked_watchman_root *lock)
   // If it looks like we're in a repo undergoing a rebase or
   // other similar operation, we want to defer subscription
   // notifications until things settle down
-  vcs_in_progress = is_vcs_op_in_progress(root);
+  vcs_in_progress = is_vcs_op_in_progress(lock);
 
   do {
     struct watchman_user_client *client = w_ht_val_ptr(iter.value);
@@ -1528,7 +1527,7 @@ static void process_triggers(struct write_locked_watchman_root *lock) {
   // If it looks like we're in a repo undergoing a rebase or
   // other similar operation, we want to defer triggers until
   // things settle down
-  if (is_vcs_op_in_progress(root)) {
+  if (is_vcs_op_in_progress(lock)) {
     w_log(W_LOG_DBG, "deferring triggers until VCS operations complete\n");
     return;
   }
@@ -1602,9 +1601,8 @@ static void free_file_node(w_root_t *root, struct watchman_file *file)
   free(file);
 }
 
-static void record_aged_out_dir(w_root_t *root, w_ht_t *aged_dir_names,
-    struct watchman_dir *dir)
-{
+static void record_aged_out_dir(w_ht_t *aged_dir_names,
+                                struct watchman_dir *dir) {
   w_ht_iter_t i;
   w_string_t *full_name = w_dir_copy_full_path(dir);
 
@@ -1619,14 +1617,13 @@ static void record_aged_out_dir(w_root_t *root, w_ht_t *aged_dir_names,
   if (dir->dirs && w_ht_first(dir->dirs, &i)) do {
     struct watchman_dir *child = w_ht_val_ptr(i.value);
 
-    record_aged_out_dir(root, aged_dir_names, child);
+    record_aged_out_dir(aged_dir_names, child);
     w_ht_iter_del(dir->dirs, &i);
   } while (w_ht_next(dir->dirs, &i));
 }
 
-static void age_out_file(w_root_t *root, w_ht_t *aged_dir_names,
-    struct watchman_file *file)
-{
+static void age_out_file(struct write_locked_watchman_root *lock,
+                         w_ht_t *aged_dir_names, struct watchman_file *file) {
   struct watchman_dir *dir;
   w_string_t *full_name;
 
@@ -1634,11 +1631,12 @@ static void age_out_file(w_root_t *root, w_ht_t *aged_dir_names,
   w_log(W_LOG_DBG, "age_out file=%.*s\n", full_name->len, full_name->buf);
 
   // Revise tick for fresh instance reporting
-  root->last_age_out_tick = MAX(root->last_age_out_tick, file->otime.ticks);
+  lock->root->last_age_out_tick =
+      MAX(lock->root->last_age_out_tick, file->otime.ticks);
 
   // And remove from the overall file list
-  remove_from_file_list(root, file);
-  remove_from_suffix_list(root, file);
+  remove_from_file_list(lock, file);
+  remove_from_suffix_list(lock, file);
 
   if (file->parent->files) {
     // Remove the entry from the containing file hash
@@ -1647,9 +1645,9 @@ static void age_out_file(w_root_t *root, w_ht_t *aged_dir_names,
 
   // resolve the dir of the same name and mark it for later removal
   // from our internal datastructures
-  dir = w_root_resolve_dir(root, full_name, false);
+  dir = w_root_resolve_dir(lock, full_name, false);
   if (dir) {
-    record_aged_out_dir(root, aged_dir_names, dir);
+    record_aged_out_dir(aged_dir_names, dir);
   } else if (file->parent->dirs) {
     // Remove the entry from the containing dir hash.  This is contingent
     // on not being a dir because in the dir case we want to defer removing
@@ -1659,7 +1657,7 @@ static void age_out_file(w_root_t *root, w_ht_t *aged_dir_names,
 
   // And free it.  We don't need to stop watching it, because we already
   // stopped watching it when we marked it as !exists
-  free_file_node(root, file);
+  free_file_node(lock->root, file);
 
   w_string_delref(full_name);
 }
@@ -1700,7 +1698,7 @@ void w_root_perform_age_out(struct write_locked_watchman_root *lock,
     // Get the next file before we remove the current one
     tmp = file->next;
 
-    age_out_file(root, aged_dir_names, file);
+    age_out_file(lock, aged_dir_names, file);
 
     file = tmp;
   }
@@ -1954,7 +1952,7 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
       process_triggers(&lock);
       if (consider_reap(&lock)) {
         w_root_unlock(&lock, unlocked);
-        w_root_stop_watch(unlocked->root);
+        w_root_stop_watch(unlocked);
         break;
       }
       consider_age_out(&lock);
@@ -2098,9 +2096,8 @@ void watchman_watcher_init(void) {
   watched_roots = w_ht_new(4, &root_funcs);
 }
 
-// Must not be called with root->lock held :-/
-static bool remove_root_from_watched(w_root_t *root)
-{
+static bool
+remove_root_from_watched(w_root_t *root /* don't care about locked state */) {
   bool removed = false;
   pthread_mutex_lock(&root_lock);
   // it's possible that the root has already been removed and replaced with
@@ -2572,8 +2569,7 @@ void w_root_schedule_recrawl(w_root_t *root, const char *why)
 }
 
 // Cancels a watch.
-// Caller must have locked root
-bool w_root_cancel(w_root_t *root)
+bool w_root_cancel(w_root_t *root /* don't care about locked state */)
 {
   bool cancelled = false;
 
@@ -2590,15 +2586,15 @@ bool w_root_cancel(w_root_t *root)
   return cancelled;
 }
 
-bool w_root_stop_watch(w_root_t *root)
+bool w_root_stop_watch(struct unlocked_watchman_root *unlocked)
 {
-  bool stopped = remove_root_from_watched(root);
+  bool stopped = remove_root_from_watched(unlocked->root);
 
   if (stopped) {
-    w_root_cancel(root);
-    w_state_save();
+    w_root_cancel(unlocked->root);
+    w_state_save(); // this is what required that we are not locked
   }
-  signal_root_threads(root);
+  signal_root_threads(unlocked->root);
 
   return stopped;
 }

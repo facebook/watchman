@@ -96,7 +96,7 @@ static void cmd_watch_delete(struct watchman_client *client, json_t *args)
   }
 
   resp = make_response();
-  set_prop(resp, "watch-del", json_boolean(w_root_stop_watch(unlocked.root)));
+  set_prop(resp, "watch-del", json_boolean(w_root_stop_watch(&unlocked)));
   set_prop(resp, "root", w_string_to_json(unlocked.root->root_path));
   send_and_dispose_response(client, resp);
   w_root_delref(unlocked.root);

@@ -686,36 +686,40 @@ static bool fsevents_root_wait_notify(w_root_t *root, int timeoutms) {
   return state->fse_head ? true : false;
 }
 
-static bool fsevents_root_start_watch_file(w_root_t *root,
-    struct watchman_file *file) {
-  unused_parameter(root);
+static bool
+fsevents_root_start_watch_file(struct write_locked_watchman_root *lock,
+                               struct watchman_file *file) {
+  unused_parameter(lock);
   unused_parameter(file);
   return true;
 }
 
-static void fsevents_root_stop_watch_file(w_root_t *root,
-    struct watchman_file *file) {
-  unused_parameter(root);
+static void
+fsevents_root_stop_watch_file(struct write_locked_watchman_root *lock,
+                              struct watchman_file *file) {
+  unused_parameter(lock);
   unused_parameter(file);
 }
 
-static struct watchman_dir_handle *fsevents_root_start_watch_dir(
-      w_root_t *root, struct watchman_dir *dir, struct timeval now,
-      const char *path) {
+static struct watchman_dir_handle *
+fsevents_root_start_watch_dir(struct write_locked_watchman_root *lock,
+                              struct watchman_dir *dir, struct timeval now,
+                              const char *path) {
   struct watchman_dir_handle *osdir;
 
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(root, dir, now, "opendir", errno, NULL);
+    handle_open_errno(lock, dir, now, "opendir", errno, NULL);
     return NULL;
   }
 
   return osdir;
 }
 
-static void fsevents_root_stop_watch_dir(w_root_t *root,
-    struct watchman_dir *dir) {
-  unused_parameter(root);
+static void
+fsevents_root_stop_watch_dir(struct write_locked_watchman_root *lock,
+                             struct watchman_dir *dir) {
+  unused_parameter(lock);
   unused_parameter(dir);
 }
 

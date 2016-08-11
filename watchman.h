@@ -237,6 +237,9 @@ struct watchman_dir;
 struct watchman_root;
 struct watchman_pending_fs;
 struct watchman_trigger_command;
+struct write_locked_watchman_root;
+struct unlocked_watchman_root;
+struct read_locked_watchman_root;
 typedef struct watchman_root w_root_t;
 
 // Per-watch state for the selected watcher
@@ -325,19 +328,22 @@ struct watchman_ops {
   void (*root_dtor)(w_root_t *root);
 
   // Initiate an OS-level watch on the provided file
-  bool (*root_start_watch_file)(w_root_t *root, struct watchman_file *file);
+  bool (*root_start_watch_file)(struct write_locked_watchman_root *lock,
+                                struct watchman_file *file);
 
   // Cancel an OS-level watch on the provided file
-  void (*root_stop_watch_file)(w_root_t *root, struct watchman_file *file);
+  void (*root_stop_watch_file)(struct write_locked_watchman_root *lock,
+                               struct watchman_file *file);
 
   // Initiate an OS-level watch on the provided dir, return a DIR
   // handle, or NULL on error
   struct watchman_dir_handle *(*root_start_watch_dir)(
-      w_root_t *root, struct watchman_dir *dir, struct timeval now,
-      const char *path);
+      struct write_locked_watchman_root *lock, struct watchman_dir *dir,
+      struct timeval now, const char *path);
 
   // Cancel an OS-level watch on the provided dir
-  void (*root_stop_watch_dir)(w_root_t *root, struct watchman_dir *dir);
+  void (*root_stop_watch_dir)(struct write_locked_watchman_root *lock,
+                              struct watchman_dir *dir);
 
   // Signal any threads to terminate.  Do not join them here.
   void (*root_signal_threads)(w_root_t *root);
@@ -656,32 +662,33 @@ void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec *deadline);
 // Returns the name of the filesystem for the specified path
 w_string_t *w_fstype(const char *path);
 
-void w_root_crawl_recursive(w_root_t *root, w_string_t *dir_name, time_t now);
 bool w_root_resolve(const char *path, bool auto_watch, char **errmsg,
                     struct unlocked_watchman_root *unlocked);
 bool w_root_resolve_for_client_mode(const char *filename, char **errmsg,
                                     struct unlocked_watchman_root *unlocked);
 char *w_find_enclosing_root(const char *filename, char **relpath);
-struct watchman_file *w_root_resolve_file(w_root_t *root,
-    struct watchman_dir *dir, w_string_t *file_name,
-    struct timeval now);
+struct watchman_file *
+w_root_resolve_file(struct write_locked_watchman_root *lock,
+                    struct watchman_dir *dir, w_string_t *file_name,
+                    struct timeval now);
 
 void w_root_perform_age_out(struct write_locked_watchman_root *lock,
                             int min_age);
 void w_root_free_watched_roots(void);
 void w_root_schedule_recrawl(w_root_t *root, const char *why);
 bool w_root_cancel(w_root_t *root);
-bool w_root_stop_watch(w_root_t *root);
+bool w_root_stop_watch(struct unlocked_watchman_root *unlocked);
 json_t *w_root_stop_watch_all(void);
-void w_root_mark_deleted(w_root_t *root, struct watchman_dir *dir,
-    struct timeval now, bool recursive);
+void w_root_mark_deleted(struct write_locked_watchman_root *lock,
+                         struct watchman_dir *dir, struct timeval now,
+                         bool recursive);
 void w_root_reap(void);
 void w_root_delref(w_root_t *root);
 void w_root_addref(w_root_t *root);
 void w_root_set_warning(w_root_t *root, w_string_t *str);
 
-struct watchman_dir *w_root_resolve_dir(w_root_t *root,
-    w_string_t *dir_name, bool create);
+struct watchman_dir *w_root_resolve_dir(struct write_locked_watchman_root *lock,
+                                        w_string_t *dir_name, bool create);
 void w_root_process_path(struct write_locked_watchman_root *root,
     struct watchman_pending_collection *coll, w_string_t *full_path,
     struct timeval now, int flags,
@@ -690,8 +697,8 @@ bool w_root_process_pending(struct write_locked_watchman_root *lock,
     struct watchman_pending_collection *coll,
     bool pull_from_root);
 
-void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
-    struct timeval now);
+void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
+                              struct watchman_file *file, struct timeval now);
 
 bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked, int timeoutms);
 
@@ -1031,10 +1038,11 @@ void set_poison_state(w_root_t *root, w_string_t *dir,
     const char *reason);
 
 void watchman_watcher_init(void);
-void handle_open_errno(w_root_t *root, struct watchman_dir *dir,
-    struct timeval now, const char *syscall, int err,
-    const char *reason);
-void stop_watching_dir(w_root_t *root, struct watchman_dir *dir);
+void handle_open_errno(struct write_locked_watchman_root *lock,
+                       struct watchman_dir *dir, struct timeval now,
+                       const char *syscall, int err, const char *reason);
+void stop_watching_dir(struct write_locked_watchman_root *lock,
+                       struct watchman_dir *dir);
 uint32_t strlen_uint32(const char *str);
 int w_lstat(const char *path, struct stat *st, bool case_sensitive);
 
