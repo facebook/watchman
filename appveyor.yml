@@ -29,5 +29,4 @@ environment:
     - WATCHMAN_WIN7_COMPAT:
 
 platform:
-  - x86
   - x64
