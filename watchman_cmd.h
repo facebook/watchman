@@ -69,11 +69,9 @@ void send_and_dispose_response(struct watchman_client *client,
 bool enqueue_response(struct watchman_client *client,
     json_t *json, bool ping);
 
-w_root_t *resolve_root_or_err(
-    struct watchman_client *client,
-    json_t *args,
-    int root_index,
-    bool create);
+bool resolve_root_or_err(struct watchman_client *client, json_t *args,
+                         int root_index, bool create,
+                         struct unlocked_watchman_root *unlocked);
 
 json_t *make_response(void);
 void annotate_with_clock(w_root_t *root, json_t *resp);

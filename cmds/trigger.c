@@ -8,34 +8,33 @@
  */
 static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
 {
-  w_root_t *root;
   json_t *resp;
   json_t *jname;
   w_string_t *tname;
   bool res;
   struct write_locked_watchman_root lock;
+  struct unlocked_watchman_root unlocked;
 
-  root = resolve_root_or_err(client, args, 1, false);
-  if (!root) {
+  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
     return;
   }
 
   if (json_array_size(args) != 3) {
     send_error_response(client, "wrong number of arguments");
-    w_root_delref(root);
+    w_root_delref(unlocked.root);
     return;
   }
   jname = json_array_get(args, 2);
   if (!json_is_string(jname)) {
     send_error_response(client, "expected 2nd parameter to be trigger name");
-    w_root_delref(root);
+    w_root_delref(unlocked.root);
     return;
   }
   tname = json_to_w_string_incref(jname);
 
-  w_root_lock(&root, "trigger-del", &lock);
+  w_root_lock(&unlocked.root, "trigger-del", &lock);
   res = w_ht_del(lock.root->commands, w_ht_ptr_val(tname));
-  root = w_root_unlock(&lock);
+  unlocked.root = w_root_unlock(&lock);
 
   if (res) {
     w_state_save();
@@ -48,7 +47,7 @@ static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
   json_incref(jname);
   set_prop(resp, "trigger", jname);
   send_and_dispose_response(client, resp);
-  w_root_delref(root);
+  w_root_delref(unlocked.root);
 }
 W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -57,24 +56,23 @@ W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root)
  */
 static void cmd_trigger_list(struct watchman_client *client, json_t *args)
 {
-  w_root_t *root;
   json_t *resp;
   json_t *arr;
   struct write_locked_watchman_root lock;
+  struct unlocked_watchman_root unlocked;
 
-  root = resolve_root_or_err(client, args, 1, false);
-  if (!root) {
+  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
     return;
   }
 
   resp = make_response();
-  w_root_lock(&root, "trigger-list", &lock);
+  w_root_lock(&unlocked.root, "trigger-list", &lock);
   arr = w_root_trigger_list_to_json(lock.root);
-  root = w_root_unlock(&lock);
+  unlocked.root = w_root_unlock(&lock);
 
   set_prop(resp, "triggers", arr);
   send_and_dispose_response(client, resp);
-  w_root_delref(root);
+  w_root_delref(unlocked.root);
 }
 W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -313,16 +311,15 @@ struct watchman_trigger_command *w_build_trigger_from_def(
  * is detected */
 static void cmd_trigger(struct watchman_client *client, json_t *args)
 {
-  w_root_t *root;
   struct watchman_trigger_command *cmd, *old;
   json_t *resp;
   json_t *trig;
   char *errmsg = NULL;
   bool need_save = true;
   struct write_locked_watchman_root lock;
+  struct unlocked_watchman_root unlocked;
 
-  root = resolve_root_or_err(client, args, 1, true);
-  if (!root) {
+  if (!resolve_root_or_err(client, args, 1, true, &unlocked)) {
     return;
   }
 
@@ -333,7 +330,7 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
 
   trig = json_array_get(args, 2);
   if (json_is_string(trig)) {
-    trig = build_legacy_trigger(root, client, args);
+    trig = build_legacy_trigger(unlocked.root, client, args);
     if (!trig) {
       goto done;
     }
@@ -343,7 +340,7 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
     json_incref(trig);
   }
 
-  cmd = w_build_trigger_from_def(root, trig, &errmsg);
+  cmd = w_build_trigger_from_def(unlocked.root, trig, &errmsg);
   json_decref(trig);
 
   if (!cmd) {
@@ -354,7 +351,7 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
   resp = make_response();
   set_prop(resp, "triggerid", w_string_to_json(cmd->triggername));
 
-  w_root_lock(&root, "trigger-add", &lock);
+  w_root_lock(&unlocked.root, "trigger-add", &lock);
 
   old = w_ht_val_ptr(w_ht_get(lock.root->commands,
           w_ht_ptr_val(cmd->triggername)));
@@ -374,7 +371,7 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
     lock.root->ticks++;
     lock.root->pending_trigger_tick = lock.root->ticks;
   }
-  root = w_root_unlock(&lock);
+  unlocked.root = w_root_unlock(&lock);
 
   if (need_save) {
     w_state_save();
@@ -386,7 +383,7 @@ done:
   if (errmsg) {
     free(errmsg);
   }
-  w_root_delref(root);
+  w_root_delref(unlocked.root);
 }
 W_CMD_REG("trigger", cmd_trigger, CMD_DAEMON, w_cmd_realpath_root)
 

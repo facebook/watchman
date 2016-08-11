@@ -6,7 +6,6 @@
 /* query /root {query} */
 static void cmd_query(struct watchman_client *client, json_t *args)
 {
-  w_root_t *root;
   w_query *query;
   json_t *query_spec;
   char *errmsg = NULL;
@@ -15,14 +14,14 @@ static void cmd_query(struct watchman_client *client, json_t *args)
   json_t *file_list, *jfield_list;
   char clockbuf[128];
   struct w_query_field_list field_list;
+  struct unlocked_watchman_root unlocked;
 
   if (json_array_size(args) != 3) {
     send_error_response(client, "wrong number of arguments for 'query'");
     return;
   }
 
-  root = resolve_root_or_err(client, args, 1, false);
-  if (!root) {
+  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
     return;
   }
 
@@ -32,15 +31,15 @@ static void cmd_query(struct watchman_client *client, json_t *args)
   if (!parse_field_list(jfield_list, &field_list, &errmsg)) {
     send_error_response(client, "invalid field list: %s", errmsg);
     free(errmsg);
-    w_root_delref(root);
+    w_root_delref(unlocked.root);
     return;
   }
 
-  query = w_query_parse(root, query_spec, &errmsg);
+  query = w_query_parse(unlocked.root, query_spec, &errmsg);
   if (!query) {
     send_error_response(client, "failed to parse query: %s", errmsg);
     free(errmsg);
-    w_root_delref(root);
+    w_root_delref(unlocked.root);
     return;
   }
 
@@ -48,10 +47,10 @@ static void cmd_query(struct watchman_client *client, json_t *args)
     query->sync_timeout = 0;
   }
 
-  if (!w_query_execute(query, root, &res, NULL, NULL)) {
+  if (!w_query_execute(query, &unlocked, &res, NULL, NULL)) {
     send_error_response(client, "query failed: %s", res.errmsg);
     w_query_result_free(&res);
-    w_root_delref(root);
+    w_root_delref(unlocked.root);
     w_query_delref(query);
     return;
   }
@@ -69,10 +68,10 @@ static void cmd_query(struct watchman_client *client, json_t *args)
   set_prop(response, "is_fresh_instance",
            json_pack("b", res.is_fresh_instance));
   set_prop(response, "files", file_list);
-  add_root_warnings_to_response(response, root);
+  add_root_warnings_to_response(response, unlocked.root);
 
   send_and_dispose_response(client, response);
-  w_root_delref(root);
+  w_root_delref(unlocked.root);
 }
 W_CMD_REG("query", cmd_query, CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
           w_cmd_realpath_root)

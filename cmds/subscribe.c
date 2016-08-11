@@ -55,7 +55,7 @@ static void update_subscription_ticks(struct watchman_client_subscription *sub,
 
 static json_t *build_subscription_results(
     struct watchman_client_subscription *sub,
-    w_root_t *root)
+    struct write_locked_watchman_root *lock)
 {
   w_query_res res;
   json_t *response;
@@ -78,8 +78,9 @@ static json_t *build_subscription_results(
   // could be legitimately blocked by something else.  That means that we
   // can use a short lock_timeout
   sub->query->lock_timeout =
-      (uint32_t)cfg_get_int(root, "subscription_lock_timeout_ms", 100);
-  if (!w_query_execute(sub->query, root, &res, subscription_generator, sub)) {
+      (uint32_t)cfg_get_int(lock->root, "subscription_lock_timeout_ms", 100);
+  if (!w_query_execute_locked(sub->query, lock, &res, subscription_generator,
+                              sub)) {
     w_log(W_LOG_ERR, "error running subscription %s query: %s",
         sub->name->buf, res.errmsg);
     w_query_result_free(&res);
@@ -116,7 +117,7 @@ static json_t *build_subscription_results(
 
   set_prop(response, "is_fresh_instance", json_boolean(res.is_fresh_instance));
   set_prop(response, "files", file_list);
-  set_prop(response, "root", w_string_to_json(root->root_path));
+  set_prop(response, "root", w_string_to_json(lock->root->root_path));
   set_prop(response, "subscription", w_string_to_json(sub->name));
   set_prop(response, "unilateral", json_true());
 
@@ -127,15 +128,15 @@ static json_t *build_subscription_results(
 void w_run_subscription_rules(
     struct watchman_user_client *client,
     struct watchman_client_subscription *sub,
-    w_root_t *root)
+    struct write_locked_watchman_root *lock)
 {
-  json_t *response = build_subscription_results(sub, root);
+  json_t *response = build_subscription_results(sub, lock);
 
   if (!response) {
     return;
   }
 
-  add_root_warnings_to_response(response, root);
+  add_root_warnings_to_response(response, lock->root);
 
   if (!enqueue_response(&client->client, response, true)) {
     w_log(W_LOG_DBG, "failed to queue sub response\n");
@@ -186,7 +187,6 @@ void w_cancel_subscriptions_for_root(w_root_t *root) {
  * Cancels a subscription */
 static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
 {
-  w_root_t *root;
   const char *name;
   w_string_t *sname;
   bool deleted;
@@ -194,9 +194,9 @@ static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
   const json_t *jstr;
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
+  struct unlocked_watchman_root unlocked;
 
-  root = resolve_root_or_err(&client->client, args, 1, false);
-  if (!root) {
+  if (!resolve_root_or_err(&client->client, args, 1, false, &unlocked)) {
     return;
   }
 
@@ -205,7 +205,7 @@ static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
   if (!name) {
     send_error_response(&client->client,
         "expected 2nd parameter to be subscription name");
-    w_root_delref(root);
+    w_root_delref(unlocked.root);
     return;
   }
 
@@ -222,7 +222,7 @@ static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
   set_prop(resp, "deleted", json_boolean(deleted));
 
   send_and_dispose_response(&client->client, resp);
-  w_root_delref(root);
+  w_root_delref(unlocked.root);
 }
 W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
           w_cmd_realpath_root)
@@ -231,7 +231,6 @@ W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
  * Subscribes the client connection to the specified root. */
 static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
 {
-  w_root_t *root;
   struct watchman_client_subscription *sub;
   json_t *resp;
   json_t *jfield_list;
@@ -245,6 +244,8 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
   json_t *drop_list = NULL;
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
+  struct unlocked_watchman_root unlocked;
+  struct write_locked_watchman_root lock;
 
   if (json_array_size(args) != 4) {
     send_error_response(&client->client,
@@ -252,8 +253,7 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
     return;
   }
 
-  root = resolve_root_or_err(&client->client, args, 1, true);
-  if (!root) {
+  if (!resolve_root_or_err(&client->client, args, 1, true, &unlocked)) {
     return;
   }
 
@@ -273,7 +273,7 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
     goto done;
   }
 
-  query = w_query_parse(root, query_spec, &errmsg);
+  query = w_query_parse(unlocked.root, query_spec, &errmsg);
   if (!query) {
     send_error_response(&client->client, "failed to parse query: %s", errmsg);
     free(errmsg);
@@ -326,7 +326,7 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
   }
 
   memcpy(&sub->field_list, &field_list, sizeof(field_list));
-  sub->root = root;
+  sub->root = unlocked.root;
 
   pthread_mutex_lock(&w_client_lock);
   w_ht_replace(client->subscriptions, w_ht_ptr_val(sub->name),
@@ -334,18 +334,21 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
   pthread_mutex_unlock(&w_client_lock);
 
   resp = make_response();
-  annotate_with_clock(root, resp);
+  annotate_with_clock(unlocked.root, resp);
   json_incref(jname);
   set_prop(resp, "subscribe", jname);
-  add_root_warnings_to_response(resp, root);
+  add_root_warnings_to_response(resp, unlocked.root);
   send_and_dispose_response(&client->client, resp);
 
-  resp = build_subscription_results(sub, root);
+  w_root_lock(&unlocked.root, "initial subscription query", &lock);
+  resp = build_subscription_results(sub, &lock);
+  unlocked.root = w_root_unlock(&lock);
+
   if (resp) {
     send_and_dispose_response(&client->client, resp);
   }
 done:
-  w_root_delref(root);
+  w_root_delref(unlocked.root);
 }
 W_CMD_REG("subscribe", cmd_subscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
           w_cmd_realpath_root)

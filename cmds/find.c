@@ -6,7 +6,6 @@
 /* find /root [patterns] */
 static void cmd_find(struct watchman_client *client, json_t *args)
 {
-  w_root_t *root;
   w_query *query;
   char *errmsg = NULL;
   struct w_query_field_list field_list;
@@ -14,6 +13,7 @@ static void cmd_find(struct watchman_client *client, json_t *args)
   json_t *response;
   json_t *file_list;
   char clockbuf[128];
+  struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
   if (json_array_size(args) < 2) {
@@ -21,16 +21,16 @@ static void cmd_find(struct watchman_client *client, json_t *args)
     return;
   }
 
-  root = resolve_root_or_err(client, args, 1, false);
-  if (!root) {
+  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
     return;
   }
 
-  query = w_query_parse_legacy(root, args, &errmsg, 2, NULL, NULL, NULL);
+  query =
+      w_query_parse_legacy(unlocked.root, args, &errmsg, 2, NULL, NULL, NULL);
   if (errmsg) {
     send_error_response(client, "%s", errmsg);
     free(errmsg);
-    w_root_delref(root);
+    w_root_delref(unlocked.root);
     return;
   }
 
@@ -40,10 +40,10 @@ static void cmd_find(struct watchman_client *client, json_t *args)
     query->sync_timeout = 0;
   }
 
-  if (!w_query_execute(query, root, &res, NULL, NULL)) {
+  if (!w_query_execute(query, &unlocked, &res, NULL, NULL)) {
     send_error_response(client, "query failed: %s", res.errmsg);
     w_query_result_free(&res);
-    w_root_delref(root);
+    w_root_delref(unlocked.root);
     w_query_delref(query);
     return;
   }
@@ -61,7 +61,7 @@ static void cmd_find(struct watchman_client *client, json_t *args)
   set_prop(response, "files", file_list);
 
   send_and_dispose_response(client, response);
-  w_root_delref(root);
+  w_root_delref(unlocked.root);
 }
 W_CMD_REG("find", cmd_find, CMD_DAEMON | CMD_ALLOW_ANY_USER,
           w_cmd_realpath_root)

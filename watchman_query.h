@@ -143,7 +143,15 @@ void w_query_result_free(w_query_res *res);
 
 bool w_query_execute(
     w_query *query,
-    w_root_t *root,
+    struct unlocked_watchman_root *unlocked,
+    w_query_res *results,
+    w_query_generator generator,
+    void *gendata
+);
+
+bool w_query_execute_locked(
+    w_query *query,
+    struct write_locked_watchman_root *lock,
     w_query_res *results,
     w_query_generator generator,
     void *gendata

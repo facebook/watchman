@@ -412,8 +412,8 @@ w_root_t* w_root_unlock(struct write_locked_watchman_root *lock)
  * Must be called with the root UNLOCKED.  This function
  * will acquire and release the root lock.
  */
-bool w_root_sync_to_now(w_root_t *root, int timeoutms)
-{
+bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked,
+                        int timeoutms) {
   uint32_t tick;
   struct watchman_query_cookie cookie;
   w_string_t *path_str;
@@ -434,7 +434,7 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
   cookie.seen = false;
 
   /* generate a cookie name: cookie prefix + id */
-  w_root_lock(&root, "w_root_sync_to_now", &lock);
+  w_root_lock(&unlocked->root, "w_root_sync_to_now", &lock);
   tick = lock.root->ticks++;
   path_str = w_string_make_printf("%.*s%" PRIu32 "-%" PRIu32,
                                   lock.root->query_cookie_prefix->len,
@@ -476,7 +476,7 @@ out:
   // we don't know which file got changed until we look in the cookie dir
   unlink(path_str->buf);
   w_ht_del(lock.root->query_cookies, w_ht_ptr_val(path_str));
-  root = w_root_unlock(&lock);
+  unlocked->root = w_root_unlock(&lock);
 
   // We want to know about all timeouts
   if (!cookie.seen) {
@@ -484,7 +484,7 @@ out:
   }
 
   if (w_perf_finish(&sample)) {
-    w_perf_add_root_meta(&sample, root);
+    w_perf_add_root_meta(&sample, unlocked->root);
     w_perf_add_meta(&sample, "sync_to_now",
                     json_pack("{s:b, s:i, s:i}",      //
                               "success", cookie.seen, //
@@ -1504,7 +1504,7 @@ static void process_subscriptions(struct write_locked_watchman_root *lock)
         continue;
       }
 
-      w_run_subscription_rules(client, sub, root);
+      w_run_subscription_rules(client, sub, lock);
       sub->last_sub_tick = root->pending_sub_tick;
 
     } while (w_ht_next(client->subscriptions, &citer));
@@ -1548,7 +1548,7 @@ static void process_triggers(struct write_locked_watchman_root *lock) {
       continue;
     }
 
-    w_assess_trigger(root, cmd);
+    w_assess_trigger(lock, cmd);
 
   } while (w_ht_next(root->commands, &iter));
 

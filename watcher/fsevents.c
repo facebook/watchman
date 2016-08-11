@@ -744,11 +744,11 @@ struct watchman_ops fsevents_watcher = {
 // resync the stream.
 static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
                                            json_t *args) {
-  w_root_t *root;
   json_t *resp;
   FSEventStreamEventId last_good;
   struct fsevents_root_state *state;
   struct write_locked_watchman_root lock;
+  struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
   if (json_array_size(args) != 2) {
@@ -757,25 +757,23 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
     return;
   }
 
-  root = resolve_root_or_err(client, args, 1, false);
-
-  if (!root) {
+  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
     return;
   }
 
-  if (root->watcher_ops != &fsevents_watcher) {
+  if (unlocked.root->watcher_ops != &fsevents_watcher) {
     send_error_response(client, "root is not using the fsevents watcher");
-    w_root_delref(root);
+    w_root_delref(unlocked.root);
     return;
   }
 
-  w_root_lock(&root, "debug-fsevents-inject-drop", &lock);
+  w_root_lock(&unlocked.root, "debug-fsevents-inject-drop", &lock);
   state = lock.root->watch;
 
   if (!state->attempt_resync_on_user_drop) {
-    root = w_root_unlock(&lock);
+    unlocked.root = w_root_unlock(&lock);
     send_error_response(client, "fsevents_try_resync is not enabled");
-    w_root_delref(root);
+    w_root_delref(unlocked.root);
     return;
   }
 
@@ -784,11 +782,12 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
   state->stream->inject_drop = true;
   pthread_mutex_unlock(&state->fse_mtx);
 
-  root = w_root_unlock(&lock);
+  unlocked.root = w_root_unlock(&lock);
 
   resp = make_response();
   set_prop(resp, "last_good", json_integer(last_good));
   send_and_dispose_response(client, resp);
+  w_root_delref(unlocked.root);
 }
 W_CMD_REG("debug-fsevents-inject-drop", cmd_debug_fsevents_inject_drop,
           CMD_DAEMON, w_cmd_realpath_root);

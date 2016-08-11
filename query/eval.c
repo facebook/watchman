@@ -456,9 +456,77 @@ void w_query_result_free(w_query_res *res)
   res->results = NULL;
 }
 
+bool w_query_execute_locked(
+    w_query *query,
+    struct write_locked_watchman_root *lock,
+    w_query_res *res,
+    w_query_generator generator,
+    void *gendata)
+{
+  struct w_query_ctx ctx;
+  w_perf_t sample;
+  int64_t num_walked = 0;
+
+  memset(&ctx, 0, sizeof(ctx));
+  ctx.query = query;
+  ctx.root = lock->root;
+
+  memset(res, 0, sizeof(*res));
+
+  w_perf_start(&sample, "query_execute");
+
+  /* The first stage of execution is generation.
+   * We generate a series of file inputs to pass to
+   * the query executor.
+   *
+   * We evaluate each of the generators one after the
+   * other.  If multiple generators are used, it is
+   * possible and expected that the same file name
+   * will be evaluated multiple times if those generators
+   * both emit the same file.
+   */
+
+  res->root_number = lock->root->number;
+  res->ticks = lock->root->ticks;
+
+  // Evaluate the cursor for this root
+  w_clockspec_eval(lock->root, query->since_spec, &ctx.since);
+
+  res->is_fresh_instance = !ctx.since.is_timestamp &&
+    ctx.since.clock.is_fresh_instance;
+
+  if (!(res->is_fresh_instance && query->empty_on_fresh_instance)) {
+    if (!generator) {
+      generator = default_generators;
+    }
+
+    generator(query, lock->root, &ctx, gendata, &num_walked);
+  }
+
+  if (w_perf_finish(&sample)) {
+    w_perf_add_root_meta(&sample, lock->root);
+    w_perf_add_meta(&sample, "query_execute",
+                    json_pack("{s:b, s:i, s:i}",                        //
+                              "fresh_instance", res->is_fresh_instance, //
+                              "num_results", ctx.num_results,           //
+                              "num_walked", num_walked                  //
+                              ));
+    w_perf_log(&sample);
+  }
+  w_perf_destroy(&sample);
+
+  if (ctx.wholename) {
+    w_string_delref(ctx.wholename);
+  }
+  res->results = ctx.results;
+  res->num_results = ctx.num_results;
+
+  return true;
+}
+
 bool w_query_execute(
     w_query *query,
-    w_root_t *root,
+    struct unlocked_watchman_root *unlocked,
     w_query_res *res,
     w_query_generator generator,
     void *gendata)
@@ -470,13 +538,14 @@ bool w_query_execute(
 
   memset(&ctx, 0, sizeof(ctx));
   ctx.query = query;
-  ctx.root = root;
+  ctx.root = unlocked->root;
 
   memset(res, 0, sizeof(*res));
 
   w_perf_start(&sample, "query_execute");
 
-  if (query->sync_timeout && !w_root_sync_to_now(root, query->sync_timeout)) {
+  if (query->sync_timeout &&
+      !w_root_sync_to_now(unlocked, query->sync_timeout)) {
     ignore_result(asprintf(&res->errmsg, "synchronization failed: %s\n",
         strerror(errno)));
     return false;
@@ -494,12 +563,12 @@ bool w_query_execute(
    */
 
   // Lock the root and begin generation
-  if (!w_root_lock_with_timeout(&root, "w_query_execute", query->lock_timeout,
-                                &lock)) {
+  if (!w_root_lock_with_timeout(&unlocked->root, "w_query_execute",
+                                query->lock_timeout, &lock)) {
     ignore_result(asprintf(&res->errmsg, "couldn't acquire root lock within "
                                          "lock_timeout of %dms. root is "
                                          "currently busy (%s)\n",
-                           query->lock_timeout, root->lock_reason));
+                           query->lock_timeout, unlocked->root->lock_reason));
     return false;
   }
   res->root_number = lock.root->number;
@@ -530,7 +599,7 @@ bool w_query_execute(
                               ));
     w_perf_log(&sample);
   }
-  root = w_root_unlock(&lock);
+  unlocked->root = w_root_unlock(&lock);
   w_perf_destroy(&sample);
 
   if (ctx.wholename) {

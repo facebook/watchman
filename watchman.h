@@ -530,6 +530,10 @@ struct write_locked_watchman_root {
 };
 
 struct read_locked_watchman_root {
+  const w_root_t *root;
+};
+
+struct unlocked_watchman_root {
   w_root_t *root;
 };
 
@@ -687,7 +691,7 @@ bool w_root_process_pending(struct write_locked_watchman_root *lock,
 void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
     struct timeval now);
 
-bool w_root_sync_to_now(w_root_t *root, int timeoutms);
+bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked, int timeoutms);
 
 void w_root_lock(w_root_t **root, const char *purpose,
                  struct write_locked_watchman_root *locked);
@@ -742,7 +746,7 @@ struct w_query_since {
 void w_run_subscription_rules(
     struct watchman_user_client *client,
     struct watchman_client_subscription *sub,
-    w_root_t *root);
+    struct write_locked_watchman_root *lock);
 void w_cancel_subscriptions_for_root(w_root_t *root);
 
 void w_match_results_free(uint32_t num_matches,
@@ -1014,7 +1018,8 @@ struct watchman_trigger_command {
 };
 
 void w_trigger_command_free(struct watchman_trigger_command *cmd);
-void w_assess_trigger(w_root_t *root, struct watchman_trigger_command *cmd);
+void w_assess_trigger(struct write_locked_watchman_root *lock,
+                      struct watchman_trigger_command *cmd);
 struct watchman_trigger_command *w_build_trigger_from_def(
   w_root_t *root, json_t *trig, char **errmsg);
 

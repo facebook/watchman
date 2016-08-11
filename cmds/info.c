@@ -110,9 +110,9 @@ W_CMD_REG("get-sockname", cmd_get_sockname,
 
 static void cmd_get_config(struct watchman_client *client, json_t *args)
 {
-  w_root_t *root;
   json_t *resp;
   json_t *config;
+  struct unlocked_watchman_root unlocked;
   struct write_locked_watchman_root lock;
 
   if (json_array_size(args) != 2) {
@@ -120,15 +120,13 @@ static void cmd_get_config(struct watchman_client *client, json_t *args)
     return;
   }
 
-  root = resolve_root_or_err(client, args, 1, false);
-
-  if (!root) {
+  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
     return;
   }
 
   resp = make_response();
 
-  w_root_lock(&root, "cmd_get_config", &lock);
+  w_root_lock(&unlocked.root, "cmd_get_config", &lock);
   {
     config = lock.root->config_file;
     if (config) {
@@ -136,17 +134,17 @@ static void cmd_get_config(struct watchman_client *client, json_t *args)
       json_incref(config);
     }
   }
-  root = w_root_unlock(&lock);
+  unlocked.root = w_root_unlock(&lock);
 
   if (!config) {
     // set_prop will own this
     config = json_object();
   }
 
-  json_incref(root->config_file);
+  json_incref(unlocked.root->config_file);
   set_prop(resp, "config", config);
   send_and_dispose_response(client, resp);
-  w_root_delref(root);
+  w_root_delref(unlocked.root);
 }
 W_CMD_REG("get-config", cmd_get_config, CMD_DAEMON, w_cmd_realpath_root)
 

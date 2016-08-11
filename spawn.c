@@ -80,7 +80,7 @@ void w_mark_dead(pid_t pid)
       break;
     }
 
-    w_assess_trigger(lock.root, cmd);
+    w_assess_trigger(&lock, cmd);
     break;
   } while (w_ht_next(lock.root->commands, &iter));
 
@@ -458,8 +458,8 @@ done:
 }
 
 /* must be called with root locked */
-void w_assess_trigger(w_root_t *root, struct watchman_trigger_command *cmd)
-{
+void w_assess_trigger(struct write_locked_watchman_root *lock,
+                      struct watchman_trigger_command *cmd) {
   w_query_res res;
   struct w_clockspec *since_spec = cmd->query->since_spec;
 
@@ -475,7 +475,7 @@ void w_assess_trigger(w_root_t *root, struct watchman_trigger_command *cmd)
   // Triggers never need to sync explicitly; we are only dispatched
   // at settle points which are by definition sync'd to the present time
   cmd->query->sync_timeout = 0;
-  if (!w_query_execute(cmd->query, root, &res, trigger_generator, cmd)) {
+  if (!w_query_execute_locked(cmd->query, lock, &res, trigger_generator, cmd)) {
     w_log(W_LOG_ERR, "error running trigger \"%s\" query: %s",
         cmd->triggername->buf, res.errmsg);
     w_query_result_free(&res);
@@ -492,7 +492,7 @@ void w_assess_trigger(w_root_t *root, struct watchman_trigger_command *cmd)
       cmd->triggername->buf, res.ticks);
 
   if (res.num_results) {
-    spawn_command(root, cmd, &res, since_spec);
+    spawn_command(lock->root, cmd, &res, since_spec);
   }
 
   if (since_spec) {

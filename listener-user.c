@@ -58,17 +58,20 @@ void add_root_warnings_to_response(json_t *response, w_root_t *root) {
   free(full);
 }
 
-w_root_t *resolve_root_or_err(struct watchman_client *client, json_t *args,
-                              int root_index, bool create) {
+bool resolve_root_or_err(struct watchman_client *client, json_t *args,
+                         int root_index, bool create,
+                         struct unlocked_watchman_root *unlocked) {
   w_root_t *root;
   const char *root_name;
   char *errmsg = NULL;
   json_t *ele;
 
+  unlocked->root = NULL;
+
   ele = json_array_get(args, root_index);
   if (!ele) {
     send_error_response(client, "wrong number of arguments");
-    return NULL;
+    return false;
   }
 
   root_name = json_string_value(ele);
@@ -76,7 +79,7 @@ w_root_t *resolve_root_or_err(struct watchman_client *client, json_t *args,
     send_error_response(client, "invalid value for argument %d, expected "
                                 "a string naming the root dir",
                         root_index);
-    return NULL;
+    return false;
   }
 
   if (client->client_mode) {
@@ -99,11 +102,12 @@ w_root_t *resolve_root_or_err(struct watchman_client *client, json_t *args,
                           errmsg);
     }
     free(errmsg);
-  } else {
-    w_perf_add_root_meta(&client->perf_sample, root);
+    return false;
   }
 
-  return root;
+  w_perf_add_root_meta(&client->perf_sample, root);
+  unlocked->root = root;
+  return true;
 }
 
 static void delete_subscription(w_ht_val_t val)
