@@ -8,6 +8,7 @@ from __future__ import print_function
 # no unicode literals
 
 import WatchmanTestCase
+import json
 import tempfile
 import os
 import os.path
@@ -251,4 +252,32 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
                          self.normFileList(['222']))
         warning = self.decodeBSERUTF8(res['warning'])
         self.assertRegexpMatches(warning, 'Recrawled this watch')
+
+    def test_recrawlFreshInstanceWarningSuppressed(self):
+        root = self.mkdtemp()
+        with open(os.path.join(root, '.watchmanconfig'), 'w') as f:
+            f.write(json.dumps({
+                'suppress_recrawl_warnings': True
+            }))
+
+        self.watchmanCommand('watch', root)
+        self.touchRelative(root, '111')
+        self.assertFileList(root, ['.watchmanconfig', '111'])
+
+        res = self.watchmanCommand('query', root, {
+            'fields': ['name']})
+        self.assertTrue(res['is_fresh_instance'])
+
+        clock = res['clock']
+        os.unlink(os.path.join(root, '111'))
+        self.watchmanCommand('debug-recrawl', root)
+
+        self.touchRelative(root, '222')
+        res = self.watchmanCommand('query', root, {
+            'since': clock,
+            'fields': ['name']})
+        self.assertTrue(res['is_fresh_instance'])
+        self.assertEqual(self.normWatchmanFileList(res['files']),
+                         self.normFileList(['.watchmanconfig', '222']))
+        self.assertTrue('warning' not in res)
 

@@ -25,6 +25,10 @@ void add_root_warnings_to_response(json_t *response, w_root_t *root) {
     return;
   }
 
+  if (cfg_get_bool(root, "suppress_recrawl_warnings", false)) {
+    return;
+  }
+
   if (root->last_recrawl_reason) {
     ignore_result(
         asprintf(&str, "Recrawled this watch %d times, most recently because:\n"

@@ -56,6 +56,7 @@ Option | Scope | Since version
 `idle_reap_age_seconds` | local | 3.7
 `hint_num_files_per_dir` | fallback | 3.9
 `hint_num_dirs` | fallback | 4.6
+`suppress_recrawl_warnings` | fallback | 4.7
 
 ### Configuration Options
 
@@ -312,3 +313,16 @@ that you have.
 Making this number too large is potentially wasteful of memory.  Making this
 number too small results in increased latency during crawling while the
 hash tables are rebuilt.
+
+### suppress_recrawl_warnings
+
+*Since 4.7*
+
+When set to `true`, watchman will not produce recrawl related warning fields in
+the response PDUs of various requests.  The default is `false`; the intent is
+that someone in your organization should be aware of recrawls and be able to
+manage the configuration and workload.  Some sites employ an alternative
+mechanism for sampling and reporting this to the right set of people and wish
+to disable the warning so that it doesn't appear in front of users that are
+unable to make the appropriate configuration changes for themselves.
+
