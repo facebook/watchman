@@ -13,6 +13,7 @@ static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
   json_t *jname;
   w_string_t *tname;
   bool res;
+  struct write_locked_watchman_root lock;
 
   root = resolve_root_or_err(client, args, 1, false);
   if (!root) {
@@ -32,9 +33,9 @@ static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
   }
   tname = json_to_w_string_incref(jname);
 
-  w_root_lock(root, "trigger-del");
-  res = w_ht_del(root->commands, w_ht_ptr_val(tname));
-  w_root_unlock(root);
+  w_root_lock(&root, "trigger-del", &lock);
+  res = w_ht_del(lock.root->commands, w_ht_ptr_val(tname));
+  root = w_root_unlock(&lock);
 
   if (res) {
     w_state_save();
@@ -59,6 +60,7 @@ static void cmd_trigger_list(struct watchman_client *client, json_t *args)
   w_root_t *root;
   json_t *resp;
   json_t *arr;
+  struct write_locked_watchman_root lock;
 
   root = resolve_root_or_err(client, args, 1, false);
   if (!root) {
@@ -66,9 +68,9 @@ static void cmd_trigger_list(struct watchman_client *client, json_t *args)
   }
 
   resp = make_response();
-  w_root_lock(root, "trigger-list");
-  arr = w_root_trigger_list_to_json(root);
-  w_root_unlock(root);
+  w_root_lock(&root, "trigger-list", &lock);
+  arr = w_root_trigger_list_to_json(lock.root);
+  root = w_root_unlock(&lock);
 
   set_prop(resp, "triggers", arr);
   send_and_dispose_response(client, resp);
@@ -317,6 +319,7 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
   json_t *trig;
   char *errmsg = NULL;
   bool need_save = true;
+  struct write_locked_watchman_root lock;
 
   root = resolve_root_or_err(client, args, 1, true);
   if (!root) {
@@ -351,9 +354,9 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
   resp = make_response();
   set_prop(resp, "triggerid", w_string_to_json(cmd->triggername));
 
-  w_root_lock(root, "trigger-add");
+  w_root_lock(&root, "trigger-add", &lock);
 
-  old = w_ht_val_ptr(w_ht_get(root->commands,
+  old = w_ht_val_ptr(w_ht_get(lock.root->commands,
           w_ht_ptr_val(cmd->triggername)));
   if (old && json_equal(cmd->definition, old->definition)) {
     // Same definition: we don't and shouldn't touch things, so that we
@@ -365,13 +368,13 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
     need_save = false;
   } else {
     set_unicode_prop(resp, "disposition", old ? "replaced" : "created");
-    w_ht_replace(root->commands, w_ht_ptr_val(cmd->triggername),
+    w_ht_replace(lock.root->commands, w_ht_ptr_val(cmd->triggername),
         w_ht_ptr_val(cmd));
     // Force the trigger to be eligible to run now
-    root->ticks++;
-    root->pending_trigger_tick = root->ticks;
+    lock.root->ticks++;
+    lock.root->pending_trigger_tick = lock.root->ticks;
   }
-  w_root_unlock(root);
+  root = w_root_unlock(&lock);
 
   if (need_save) {
     w_state_save();

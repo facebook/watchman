@@ -748,6 +748,7 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
   json_t *resp;
   FSEventStreamEventId last_good;
   struct fsevents_root_state *state;
+  struct write_locked_watchman_root lock;
 
   /* resolve the root */
   if (json_array_size(args) != 2) {
@@ -768,11 +769,11 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
     return;
   }
 
-  w_root_lock(root, "debug-fsevents-inject-drop");
-  state = root->watch;
+  w_root_lock(&root, "debug-fsevents-inject-drop", &lock);
+  state = lock.root->watch;
 
   if (!state->attempt_resync_on_user_drop) {
-    w_root_unlock(root);
+    root = w_root_unlock(&lock);
     send_error_response(client, "fsevents_try_resync is not enabled");
     w_root_delref(root);
     return;
@@ -783,7 +784,7 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
   state->stream->inject_drop = true;
   pthread_mutex_unlock(&state->fse_mtx);
 
-  w_root_unlock(root);
+  root = w_root_unlock(&lock);
 
   resp = make_response();
   set_prop(resp, "last_good", json_integer(last_good));

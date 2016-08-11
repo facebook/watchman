@@ -41,6 +41,7 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
   w_root_t *root;
   json_t *resp;
   int sync_timeout = 0;
+  struct write_locked_watchman_root lock;
 
   if (json_array_size(args) == 3) {
     const char *ignored;
@@ -68,9 +69,9 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
   }
 
   resp = make_response();
-  w_root_lock(root, "clock");
-  annotate_with_clock(root, resp);
-  w_root_unlock(root);
+  w_root_lock(&root, "clock", &lock);
+  annotate_with_clock(lock.root, resp);
+  root = w_root_unlock(&lock);
 
   send_and_dispose_response(client, resp);
   w_root_delref(root);
@@ -299,6 +300,7 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
 {
   w_root_t *root;
   json_t *resp;
+  struct write_locked_watchman_root lock;
 
   /* resolve the root */
   if (json_array_size(args) != 2) {
@@ -313,18 +315,18 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
 
   resp = make_response();
 
-  w_root_lock(root, "watch");
-  if (root->failure_reason) {
+  w_root_lock(&root, "watch", &lock);
+  if (lock.root->failure_reason) {
     set_prop(resp, "error", w_string_to_json(root->failure_reason));
-  } else if (root->cancelled) {
+  } else if (lock.root->cancelled) {
     set_unicode_prop(resp, "error", "root was cancelled");
   } else {
-    set_prop(resp, "watch", w_string_to_json(root->root_path));
-    set_unicode_prop(resp, "watcher", root->watcher_ops->name);
+    set_prop(resp, "watch", w_string_to_json(lock.root->root_path));
+    set_unicode_prop(resp, "watcher", lock.root->watcher_ops->name);
   }
-  add_root_warnings_to_response(resp, root);
+  add_root_warnings_to_response(resp, lock.root);
   send_and_dispose_response(client, resp);
-  w_root_unlock(root);
+  root = w_root_unlock(&lock);
   w_root_delref(root);
 }
 W_CMD_REG("watch", cmd_watch, CMD_DAEMON | CMD_ALLOW_ANY_USER,
@@ -337,6 +339,7 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
   char *dir_to_watch = NULL;
   char *rel_path_from_watch = NULL;
   char *errmsg = NULL;
+  struct write_locked_watchman_root lock;
 
   /* resolve the root */
   if (json_array_size(args) != 2) {
@@ -362,21 +365,21 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
 
   resp = make_response();
 
-  w_root_lock(root, "watch-project");
-  if (root->failure_reason) {
-    set_prop(resp, "error", w_string_to_json(root->failure_reason));
-  } else if (root->cancelled) {
+  w_root_lock(&root, "watch-project", &lock);
+  if (lock.root->failure_reason) {
+    set_prop(resp, "error", w_string_to_json(lock.root->failure_reason));
+  } else if (lock.root->cancelled) {
     set_unicode_prop(resp, "error", "root was cancelled");
   } else {
-    set_prop(resp, "watch", w_string_to_json(root->root_path));
-    set_unicode_prop(resp, "watcher", root->watcher_ops->name);
+    set_prop(resp, "watch", w_string_to_json(lock.root->root_path));
+    set_unicode_prop(resp, "watcher", lock.root->watcher_ops->name);
   }
-  add_root_warnings_to_response(resp, root);
+  add_root_warnings_to_response(resp, lock.root);
   if (rel_path_from_watch) {
     set_bytestring_prop(resp, "relative_path",rel_path_from_watch);
   }
   send_and_dispose_response(client, resp);
-  w_root_unlock(root);
+  root = w_root_unlock(&lock);
   w_root_delref(root);
   free(dir_to_watch);
 }

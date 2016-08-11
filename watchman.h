@@ -525,6 +525,14 @@ struct watchman_root {
   time_t last_reap_timestamp;
 };
 
+struct write_locked_watchman_root {
+  w_root_t *root;
+};
+
+struct read_locked_watchman_root {
+  w_root_t *root;
+};
+
 enum w_pdu_type {
   need_data,
   is_json_compact,
@@ -652,7 +660,8 @@ struct watchman_file *w_root_resolve_file(w_root_t *root,
     struct watchman_dir *dir, w_string_t *file_name,
     struct timeval now);
 
-void w_root_perform_age_out(w_root_t *root, int min_age);
+void w_root_perform_age_out(struct write_locked_watchman_root *lock,
+                            int min_age);
 void w_root_free_watched_roots(void);
 void w_root_schedule_recrawl(w_root_t *root, const char *why);
 bool w_root_cancel(w_root_t *root);
@@ -667,11 +676,11 @@ void w_root_set_warning(w_root_t *root, w_string_t *str);
 
 struct watchman_dir *w_root_resolve_dir(w_root_t *root,
     w_string_t *dir_name, bool create);
-void w_root_process_path(w_root_t *root,
+void w_root_process_path(struct write_locked_watchman_root *root,
     struct watchman_pending_collection *coll, w_string_t *full_path,
     struct timeval now, int flags,
     struct watchman_dir_ent *pre_stat);
-bool w_root_process_pending(w_root_t *root,
+bool w_root_process_pending(struct write_locked_watchman_root *lock,
     struct watchman_pending_collection *coll,
     bool pull_from_root);
 
@@ -680,10 +689,12 @@ void w_root_mark_file_changed(w_root_t *root, struct watchman_file *file,
 
 bool w_root_sync_to_now(w_root_t *root, int timeoutms);
 
-void w_root_lock(w_root_t *root, const char *purpose);
-bool w_root_lock_with_timeout(w_root_t *root, const char *purpose,
-                              int timeoutms);
-void w_root_unlock(w_root_t *root);
+void w_root_lock(w_root_t **root, const char *purpose,
+                 struct write_locked_watchman_root *locked);
+bool w_root_lock_with_timeout(w_root_t **root, const char *purpose,
+                              int timeoutms,
+                              struct write_locked_watchman_root *locked);
+w_root_t *w_root_unlock(struct write_locked_watchman_root *locked);
 
 /* Bob Jenkins' lookup3.c hash function */
 uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);

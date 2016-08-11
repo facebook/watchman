@@ -466,6 +466,7 @@ bool w_query_execute(
   struct w_query_ctx ctx;
   w_perf_t sample;
   int64_t num_walked = 0;
+  struct write_locked_watchman_root lock;
 
   memset(&ctx, 0, sizeof(ctx));
   ctx.query = query;
@@ -493,18 +494,19 @@ bool w_query_execute(
    */
 
   // Lock the root and begin generation
-  if (!w_root_lock_with_timeout(root, "w_query_execute", query->lock_timeout)) {
+  if (!w_root_lock_with_timeout(&root, "w_query_execute", query->lock_timeout,
+                                &lock)) {
     ignore_result(asprintf(&res->errmsg, "couldn't acquire root lock within "
                                          "lock_timeout of %dms. root is "
                                          "currently busy (%s)\n",
                            query->lock_timeout, root->lock_reason));
     return false;
   }
-  res->root_number = root->number;
-  res->ticks = root->ticks;
+  res->root_number = lock.root->number;
+  res->ticks = lock.root->ticks;
 
   // Evaluate the cursor for this root
-  w_clockspec_eval(root, query->since_spec, &ctx.since);
+  w_clockspec_eval(lock.root, query->since_spec, &ctx.since);
 
   res->is_fresh_instance = !ctx.since.is_timestamp &&
     ctx.since.clock.is_fresh_instance;
@@ -514,11 +516,11 @@ bool w_query_execute(
       generator = default_generators;
     }
 
-    generator(query, root, &ctx, gendata, &num_walked);
+    generator(query, lock.root, &ctx, gendata, &num_walked);
   }
 
   if (w_perf_finish(&sample)) {
-    w_perf_add_root_meta(&sample, root);
+    w_perf_add_root_meta(&sample, lock.root);
     w_perf_add_meta(&sample, "query_execute",
                     json_pack("{s:b, s:i, s:i, s:O}",                   //
                               "fresh_instance", res->is_fresh_instance, //
@@ -528,7 +530,7 @@ bool w_query_execute(
                               ));
     w_perf_log(&sample);
   }
-  w_root_unlock(root);
+  root = w_root_unlock(&lock);
   w_perf_destroy(&sample);
 
   if (ctx.wholename) {

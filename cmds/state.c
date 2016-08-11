@@ -76,6 +76,7 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
   json_t *response;
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
+  struct write_locked_watchman_root lock;
 
   root = resolve_root_or_err(&client->client, args, 1, true);
   if (!root) {
@@ -103,20 +104,21 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
   w_root_addref(assertion->root);
   w_string_addref(assertion->name);
 
-  w_root_lock(root, "state-enter");
+  w_root_lock(&root, "state-enter", &lock);
   {
     // If the state is already asserted, we can't re-assert it
-    if (!root->asserted_states) {
-      root->asserted_states = w_ht_new(2, &w_ht_string_funcs);
-    } else if (w_ht_get(root->asserted_states, w_ht_ptr_val(parsed.name))) {
+    if (!lock.root->asserted_states) {
+      lock.root->asserted_states = w_ht_new(2, &w_ht_string_funcs);
+    } else if (w_ht_get(lock.root->asserted_states,
+                        w_ht_ptr_val(parsed.name))) {
       send_error_response(&client->client, "state %s is already asserted",
           parsed.name->buf);
-      w_root_unlock(root);
+      root = w_root_unlock(&lock);
       goto done;
     }
 
     // We're now in this state
-    w_ht_set(root->asserted_states, w_ht_ptr_val(parsed.name),
+    w_ht_set(lock.root->asserted_states, w_ht_ptr_val(parsed.name),
         w_ht_ptr_val(assertion));
 
     // Record the state assertion in the client
@@ -132,9 +134,10 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
 
     // Sample the clock buf for the subscription PDUs we're going to
     // send
-    clock_id_string(root->number, root->ticks, clockbuf, sizeof(clockbuf));
+    clock_id_string(lock.root->number, lock.root->ticks, clockbuf,
+                    sizeof(clockbuf));
   }
-  w_root_unlock(root);
+  root = w_root_unlock(&lock);
 
   // We successfully entered the state, this is our response to the
   // state-enter command.  We do this before we send the subscription
@@ -195,11 +198,12 @@ static void leave_state(struct watchman_user_client *client,
   char buf[128];
   w_ht_iter_t iter;
   w_root_t *root = assertion->root;
+  struct write_locked_watchman_root lock;
 
   if (!clockbuf) {
-    w_root_lock(root, "state-leave");
-    clock_id_string(root->number, root->ticks, buf, sizeof(buf));
-    w_root_unlock(root);
+    w_root_lock(&root, "state-leave", &lock);
+    clock_id_string(lock.root->number, lock.root->ticks, buf, sizeof(buf));
+    root = w_root_unlock(&lock);
 
     clockbuf = buf;
   }
@@ -243,9 +247,9 @@ static void leave_state(struct watchman_user_client *client,
   pthread_mutex_unlock(&w_client_lock);
 
   // Now remove the state
-  w_root_lock(root, "state-leave");
-  w_ht_del(root->asserted_states, w_ht_ptr_val(assertion->name));
-  w_root_unlock(root);
+  w_root_lock(&root, "state-leave", &lock);
+  w_ht_del(lock.root->asserted_states, w_ht_ptr_val(assertion->name));
+  root = w_root_unlock(&lock);
 
   if (client) {
     w_ht_del(client->states, assertion->id);
@@ -287,6 +291,7 @@ static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
   json_t *response;
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
+  struct write_locked_watchman_root lock;
 
   root = resolve_root_or_err(&client->client, args, 1, true);
   if (!root) {
@@ -304,10 +309,10 @@ static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
   }
 
   // Confirm that this client owns this state
-  w_root_lock(root, "state-leave");
+  w_root_lock(&root, "state-leave", &lock);
   {
-    assertion = root->asserted_states ?
-          w_ht_val_ptr(w_ht_get(root->asserted_states,
+    assertion = lock.root->asserted_states ?
+          w_ht_val_ptr(w_ht_get(lock.root->asserted_states,
                 w_ht_ptr_val(parsed.name)))
           : NULL;
 
@@ -315,7 +320,7 @@ static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
     if (!assertion) {
       send_error_response(&client->client, "state %s is not asserted",
           parsed.name->buf);
-      w_root_unlock(root);
+      root = w_root_unlock(&lock);
       goto done;
     }
 
@@ -324,15 +329,16 @@ static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
       send_error_response(&client->client,
                           "state %s was not asserted by this session",
                           parsed.name->buf);
-      w_root_unlock(root);
+      root = w_root_unlock(&lock);
       goto done;
     }
 
     // Sample the clock buf for the subscription PDUs we're going to
     // send
-    clock_id_string(root->number, root->ticks, clockbuf, sizeof(clockbuf));
+    clock_id_string(lock.root->number, lock.root->ticks, clockbuf,
+                    sizeof(clockbuf));
   }
-  w_root_unlock(root);
+  root = w_root_unlock(&lock);
 
   // We're about to successfully leave the state, this is our response to the
   // state-leave command.  We do this before we send the subscription

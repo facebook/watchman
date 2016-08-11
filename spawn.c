@@ -44,6 +44,7 @@ void w_mark_dead(pid_t pid)
 {
   w_root_t *root = NULL;
   w_ht_iter_t iter;
+  struct write_locked_watchman_root lock;
 
   pthread_mutex_lock(&spawn_lock);
   root = lookup_running_pid(pid);
@@ -58,10 +59,10 @@ void w_mark_dead(pid_t pid)
       root->root_path->len, root->root_path->buf, (int)pid);
 
   /* now walk the cmds and try to find our match */
-  w_root_lock(root, "mark_dead");
+  w_root_lock(&root, "mark_dead", &lock);
 
   /* walk the list of triggers, and run their rules */
-  if (w_ht_first(root->commands, &iter)) do {
+  if (w_ht_first(lock.root->commands, &iter)) do {
     struct watchman_trigger_command *cmd;
 
     cmd = w_ht_val_ptr(iter.value);
@@ -74,16 +75,16 @@ void w_mark_dead(pid_t pid)
 
     /* first mark the process as dead */
     cmd->current_proc = 0;
-    if (root->cancelled) {
+    if (lock.root->cancelled) {
       w_log(W_LOG_DBG, "mark_dead: root was cancelled\n");
       break;
     }
 
-    w_assess_trigger(root, cmd);
+    w_assess_trigger(lock.root, cmd);
     break;
-  } while (w_ht_next(root->commands, &iter));
+  } while (w_ht_next(lock.root->commands, &iter));
 
-  w_root_unlock(root);
+  root = w_root_unlock(&lock);
   w_root_delref(root);
 }
 

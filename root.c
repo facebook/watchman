@@ -14,8 +14,9 @@ static pthread_mutex_t root_lock = PTHREAD_MUTEX_INITIALIZER;
 // helps avoid confusion if a root is removed and then added again.
 static long next_root_number = 1;
 
-static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
-    w_string_t *dir_name, struct timeval now, bool recursive);
+static void crawler(struct write_locked_watchman_root *lock,
+                    struct watchman_pending_collection *coll,
+                    w_string_t *dir_name, struct timeval now, bool recursive);
 
 static void w_root_teardown(w_root_t *root);
 
@@ -302,33 +303,51 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
   return root;
 }
 
-void w_root_lock(w_root_t *root, const char *purpose)
-{
+void w_root_lock(w_root_t **root, const char *purpose,
+                 struct write_locked_watchman_root *lock) {
   int err;
 
-  err = pthread_mutex_lock(&root->lock);
+  if (!root || !*root) {
+    w_log(W_LOG_FATAL, "vacated or already locked root passed to w_root_lock "
+                       "with purpose %s\n",
+          purpose);
+  }
+
+  err = pthread_mutex_lock(&(*root)->lock);
   if (err != 0) {
     w_log(W_LOG_FATAL, "lock (%s) [%.*s]: %s\n",
         purpose,
-        root->root_path->len,
-        root->root_path->buf,
+        (*root)->root_path->len,
+        (*root)->root_path->buf,
         strerror(err)
     );
   }
-  root->lock_reason = purpose;
+  (*root)->lock_reason = purpose;
+
+  // We've logically moved the callers root into the lock holder
+  lock->root = *root;
+  *root = NULL;
 }
 
-bool w_root_lock_with_timeout(w_root_t *root, const char *purpose,
-                              int timeoutms) {
+bool w_root_lock_with_timeout(w_root_t **root, const char *purpose,
+                              int timeoutms,
+                              struct write_locked_watchman_root *lock) {
   struct timespec ts;
   struct timeval delta, now, target;
   int err;
+
+  if (!root || !*root) {
+    w_log(W_LOG_FATAL, "vacated or already locked root passed to w_root_lock "
+                       "with purpose %s\n",
+          purpose);
+  }
+
 
   if (timeoutms <= 0) {
     // Special case an immediate check, because the implementation of
     // pthread_mutex_timedlock may return immediately if we are already
     // past-due.
-    err = pthread_mutex_trylock(&root->lock);
+    err = pthread_mutex_trylock(&(*root)->lock);
   } else {
     // Add timeout to current time, convert to absolute timespec
     gettimeofday(&now, NULL);
@@ -337,31 +356,36 @@ bool w_root_lock_with_timeout(w_root_t *root, const char *purpose,
     w_timeval_add(now, delta, &target);
     w_timeval_to_timespec(target, &ts);
 
-    err = pthread_mutex_timedlock(&root->lock, &ts);
+    err = pthread_mutex_timedlock(&(*root)->lock, &ts);
   }
   if (err == ETIMEDOUT || err == EBUSY) {
     w_log(W_LOG_ERR,
           "lock (%s) [%.*s] failed after %dms, current lock purpose: %s\n",
-          purpose, root->root_path->len, root->root_path->buf, timeoutms,
-          root->lock_reason);
+          purpose, (*root)->root_path->len, (*root)->root_path->buf, timeoutms,
+          (*root)->lock_reason);
     errno = ETIMEDOUT;
     return false;
   }
   if (err != 0) {
     w_log(W_LOG_FATAL, "lock (%s) [%.*s]: %s\n",
         purpose,
-        root->root_path->len,
-        root->root_path->buf,
+        (*root)->root_path->len,
+        (*root)->root_path->buf,
         strerror(err)
     );
   }
-  root->lock_reason = purpose;
+  (*root)->lock_reason = purpose;
+
+  // We've logically moved the callers root into the lock holder
+  lock->root = *root;
+  *root = NULL;
   return true;
 }
 
-void w_root_unlock(w_root_t *root)
+w_root_t* w_root_unlock(struct write_locked_watchman_root *lock)
 {
   int err;
+  w_root_t *root = lock->root;
 
   root->lock_reason = NULL;
   err = pthread_mutex_unlock(&root->lock);
@@ -372,6 +396,9 @@ void w_root_unlock(w_root_t *root)
         strerror(err)
     );
   }
+
+  lock->root = NULL;
+  return root;
 }
 
 /* Ensure that we're synchronized with the state of the
@@ -394,6 +421,7 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
   int errcode = 0;
   struct timespec deadline;
   w_perf_t sample;
+  struct write_locked_watchman_root lock;
 
   w_perf_start(&sample, "sync_to_now");
 
@@ -406,14 +434,14 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
   cookie.seen = false;
 
   /* generate a cookie name: cookie prefix + id */
-  w_root_lock(root, "w_root_sync_to_now");
-  tick = root->ticks++;
+  w_root_lock(&root, "w_root_sync_to_now", &lock);
+  tick = lock.root->ticks++;
   path_str = w_string_make_printf("%.*s%" PRIu32 "-%" PRIu32,
-                                  root->query_cookie_prefix->len,
-                                  root->query_cookie_prefix->buf,
-                                  root->number, tick);
+                                  lock.root->query_cookie_prefix->len,
+                                  lock.root->query_cookie_prefix->buf,
+                                  lock.root->number, tick);
   /* insert our cookie in the map */
-  w_ht_set(root->query_cookies, w_ht_ptr_val(path_str),
+  w_ht_set(lock.root->query_cookies, w_ht_ptr_val(path_str),
       w_ht_ptr_val(&cookie));
 
   /* touch the file */
@@ -433,7 +461,7 @@ bool w_root_sync_to_now(w_root_t *root, int timeoutms)
 
   /* timed cond wait (unlocks root lock, reacquires) */
   while (!cookie.seen) {
-    errcode = pthread_cond_timedwait(&cookie.cond, &root->lock, &deadline);
+    errcode = pthread_cond_timedwait(&cookie.cond, &lock.root->lock, &deadline);
     if (errcode && !cookie.seen) {
       w_log(W_LOG_ERR,
           "sync_to_now: %s timedwait failed: %d: istimeout=%d %s\n",
@@ -447,8 +475,8 @@ out:
   // can't unlink the file until after the cookie has been observed because
   // we don't know which file got changed until we look in the cookie dir
   unlink(path_str->buf);
-  w_ht_del(root->query_cookies, w_ht_ptr_val(path_str));
-  w_root_unlock(root);
+  w_ht_del(lock.root->query_cookies, w_ht_ptr_val(path_str));
+  root = w_root_unlock(&lock);
 
   // We want to know about all timeouts
   if (!cookie.seen) {
@@ -479,7 +507,7 @@ out:
   return true;
 }
 
-bool w_root_process_pending(w_root_t *root,
+bool w_root_process_pending(struct write_locked_watchman_root *lock,
     struct watchman_pending_collection *coll,
     bool pull_from_root)
 {
@@ -487,7 +515,7 @@ bool w_root_process_pending(w_root_t *root,
 
   if (pull_from_root) {
     // You MUST own root->pending lock for this
-    w_pending_coll_append(coll, &root->pending);
+    w_pending_coll_append(coll, &lock->root->pending);
   }
 
   if (!coll->pending) {
@@ -495,7 +523,7 @@ bool w_root_process_pending(w_root_t *root,
   }
 
   w_log(W_LOG_DBG, "processing %d events in %s\n",
-      w_pending_coll_size(coll), root->root_path->buf);
+      w_pending_coll_size(coll), lock->root->root_path->buf);
 
   // Steal the contents
   pending = coll->pending;
@@ -506,8 +534,8 @@ bool w_root_process_pending(w_root_t *root,
     p = pending;
     pending = p->next;
 
-    if (!root->cancelled) {
-      w_root_process_path(root, coll, p->path, p->now, p->flags, NULL);
+    if (!lock->root->cancelled) {
+      w_root_process_path(lock, coll, p->path, p->now, p->flags, NULL);
     }
 
     w_pending_fs_free(p);
@@ -836,12 +864,10 @@ static void struct_stat_to_watchman_stat(const struct stat *st,
       sizeof(target->ctime));
 }
 
-static void stat_path(w_root_t *root,
-    struct watchman_pending_collection *coll, w_string_t *full_path,
-    struct timeval now,
-    int flags,
-    struct watchman_dir_ent *pre_stat)
-{
+static void stat_path(struct write_locked_watchman_root *lock,
+                      struct watchman_pending_collection *coll,
+                      w_string_t *full_path, struct timeval now, int flags,
+                      struct watchman_dir_ent *pre_stat) {
   struct watchman_stat st;
   int res, err;
   char path[WATCHMAN_NAME_MAX];
@@ -852,6 +878,7 @@ static void stat_path(w_root_t *root,
   w_string_t *file_name;
   bool recursive = flags & W_PENDING_RECURSIVE;
   bool via_notify = flags & W_PENDING_VIA_NOTIFY;
+  w_root_t *root = lock->root;
 
   if (w_ht_get(root->ignore.ignore_dirs, w_ht_ptr_val(full_path))) {
     w_log(W_LOG_DBG, "%.*s matches ignore_dir rules\n",
@@ -1051,7 +1078,7 @@ out:
 }
 
 
-void w_root_process_path(w_root_t *root,
+void w_root_process_path(struct write_locked_watchman_root *lock,
     struct watchman_pending_collection *coll, w_string_t *full_path,
     struct timeval now, int flags,
     struct watchman_dir_ent *pre_stat)
@@ -1070,19 +1097,20 @@ void w_root_process_path(w_root_t *root,
    *
    * The below condition is true for cases 1 and 2 and false for 3 and 4.
    */
-  if (w_string_startswith(full_path, root->query_cookie_prefix)) {
+  if (w_string_startswith(full_path, lock->root->query_cookie_prefix)) {
     struct watchman_query_cookie *cookie;
     bool consider_cookie =
-      (root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) ?
-      ((flags & W_PENDING_VIA_NOTIFY) || !root->done_initial) : true;
+        (lock->root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)
+            ? ((flags & W_PENDING_VIA_NOTIFY) || !lock->root->done_initial)
+            : true;
 
     if (!consider_cookie) {
       // Never allow cookie files to show up in the tree
       return;
     }
 
-    cookie = w_ht_val_ptr(w_ht_get(root->query_cookies,
-                                   w_ht_ptr_val(full_path)));
+    cookie = w_ht_val_ptr(
+        w_ht_get(lock->root->query_cookies, w_ht_ptr_val(full_path)));
     w_log(W_LOG_DBG, "cookie! %.*s cookie=%p\n",
         full_path->len, full_path->buf, cookie);
 
@@ -1095,12 +1123,12 @@ void w_root_process_path(w_root_t *root,
     return;
   }
 
-  if (w_string_equal(full_path, root->root_path)
+  if (w_string_equal(full_path, lock->root->root_path)
       || (flags & W_PENDING_CRAWL_ONLY) == W_PENDING_CRAWL_ONLY) {
-    crawler(root, coll, full_path, now,
+    crawler(lock, coll, full_path, now,
         (flags & W_PENDING_RECURSIVE) == W_PENDING_RECURSIVE);
   } else {
-    stat_path(root, coll, full_path, now, flags, pre_stat);
+    stat_path(lock, coll, full_path, now, flags, pre_stat);
   }
 }
 
@@ -1231,9 +1259,9 @@ void set_poison_state(w_root_t *root, w_string_t *dir,
   poisoned_reason = why;
 }
 
-static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
-    w_string_t *dir_name, struct timeval now, bool recursive)
-{
+static void crawler(struct write_locked_watchman_root *lock,
+                    struct watchman_pending_collection *coll,
+                    w_string_t *dir_name, struct timeval now, bool recursive) {
   struct watchman_dir *dir;
   struct watchman_file *file;
   struct watchman_dir_handle *osdir;
@@ -1241,6 +1269,7 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
   w_ht_iter_t i;
   char path[WATCHMAN_NAME_MAX];
   bool stat_all = false;
+  w_root_t *root = lock->root;
 
   if (root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
     stat_all = root->watcher_ops->flags & WATCHER_COALESCED_RENAME;
@@ -1321,7 +1350,7 @@ static void crawler(w_root_t *root, struct watchman_pending_collection *coll,
       w_log(W_LOG_DBG, "in crawler calling process_path on %.*s\n",
             full_path->len, full_path->buf);
       w_root_process_path(
-          root, coll, full_path, now,
+          lock, coll, full_path, now,
           ((recursive || !file || !file->exists) ? W_PENDING_RECURSIVE : 0),
           dirent);
       w_string_delref(full_path);
@@ -1382,10 +1411,11 @@ static bool is_vcs_op_in_progress(w_root_t *root) {
          vcs_file_exists(root, ".git", "index.lock");
 }
 
-static void process_subscriptions(w_root_t *root)
+static void process_subscriptions(struct write_locked_watchman_root *lock)
 {
   w_ht_iter_t iter;
   bool vcs_in_progress;
+  w_root_t *root = lock->root;
 
   pthread_mutex_lock(&w_client_lock);
 
@@ -1487,9 +1517,9 @@ done:
 /* process any pending triggers.
  * must be called with root locked
  */
-static void process_triggers(w_root_t *root)
-{
+static void process_triggers(struct write_locked_watchman_root *lock) {
   w_ht_iter_t iter;
+  w_root_t *root = lock->root;
 
   if (root->last_trigger_tick == root->pending_trigger_tick) {
     return;
@@ -1525,8 +1555,10 @@ static void process_triggers(w_root_t *root)
   root->last_trigger_tick = root->pending_trigger_tick;
 }
 
-static bool handle_should_recrawl(w_root_t *root)
+static bool handle_should_recrawl(struct write_locked_watchman_root *lock)
 {
+  w_root_t *root = lock->root;
+
   if (root->should_recrawl && !root->cancelled) {
     char *errmsg;
     // be careful, this is a bit of a switcheroo
@@ -1646,12 +1678,13 @@ static void age_out_dir(struct watchman_dir *dir)
 // large number of creates and deletes for many unique filenames in
 // a given dir (eg: temporary/randomized filenames generated as part
 // of build tooling or atomic renames)
-void w_root_perform_age_out(w_root_t *root, int min_age)
-{
+void w_root_perform_age_out(struct write_locked_watchman_root *lock,
+                            int min_age) {
   struct watchman_file *file, *tmp;
   time_t now;
   w_ht_iter_t i;
   w_ht_t *aged_dir_names;
+  w_root_t *root = lock->root;
 
   time(&now);
   root->last_age_out_timestamp = now;
@@ -1712,29 +1745,30 @@ static bool root_has_subscriptions(w_root_t *root) {
   return has_subscribers;
 }
 
-static void consider_age_out(w_root_t *root)
+static void consider_age_out(struct write_locked_watchman_root *lock)
 {
   time_t now;
 
-  if (root->gc_interval == 0) {
+  if (lock->root->gc_interval == 0) {
     return;
   }
 
   time(&now);
 
-  if (now <= root->last_age_out_timestamp + root->gc_interval) {
+  if (now <= lock->root->last_age_out_timestamp + lock->root->gc_interval) {
     // Don't check too often
     return;
   }
 
-  w_root_perform_age_out(root, root->gc_age);
+  w_root_perform_age_out(lock, lock->root->gc_age);
 }
 
 // This is a little tricky.  We have to be called with root->lock
 // held, but we must not call w_root_stop_watch with the lock held,
 // so we return true if the caller should do that
-static bool consider_reap(w_root_t *root) {
+static bool consider_reap(struct write_locked_watchman_root *lock) {
   time_t now;
+  w_root_t *root = lock->root;
 
   if (root->idle_reap_age == 0) {
     return false;
@@ -1769,6 +1803,7 @@ static bool consider_reap(w_root_t *root) {
 static void notify_thread(w_root_t *root)
 {
   struct watchman_pending_collection pending;
+  struct write_locked_watchman_root lock;
 
   if (!w_pending_coll_init(&pending)) {
     w_root_cancel(root);
@@ -1811,9 +1846,9 @@ static void notify_thread(w_root_t *root)
       }
     }
 
-    w_root_lock(root, "notify_thread: handle_should_recrawl");
-    handle_should_recrawl(root);
-    w_root_unlock(root);
+    w_root_lock(&root, "notify_thread: handle_should_recrawl", &lock);
+    handle_should_recrawl(&lock);
+    root = w_root_unlock(&lock);
   }
 
   w_pending_coll_destroy(&pending);
@@ -1823,6 +1858,7 @@ static void io_thread(w_root_t *root)
 {
   int timeoutms, biggest_timeout;
   struct watchman_pending_collection pending;
+  struct write_locked_watchman_root lock;
 
   timeoutms = root->trigger_settle;
 
@@ -1853,13 +1889,13 @@ static void io_thread(w_root_t *root)
       if (cfg_get_bool(root, "iothrottle", false)) {
         w_ioprio_set_low();
       }
-      w_root_lock(root, "io_thread: bump ticks");
+      w_root_lock(&root, "io_thread: bump ticks", &lock);
       // Ensure that we observe these files with a new, distinct clock,
       // otherwise a fresh subscription established immediately after a watch
       // can get stuck with an empty view until another change is observed
-      root->ticks++;
+      lock.root->ticks++;
       gettimeofday(&start, NULL);
-      w_pending_coll_add(&root->pending, root->root_path, start, 0);
+      w_pending_coll_add(&lock.root->pending, lock.root->root_path, start, 0);
       // There is the potential for a subtle race condition here.  The boolean
       // parameter indicates whether we want to merge in the set of
       // notifications pending from the watcher or not.  Since we now coalesce
@@ -1869,14 +1905,14 @@ static void io_thread(w_root_t *root)
       // translates to a two level loop; the outer loop sweeps in data from
       // inotify, then the inner loop processes it and any dirs that we pick up
       // from recursive processing.
-      while (w_root_process_pending(root, &pending, true)) {
-        while (w_root_process_pending(root, &pending, false)) {
+      while (w_root_process_pending(&lock, &pending, true)) {
+        while (w_root_process_pending(&lock, &pending, false)) {
           ;
         }
       }
-      root->done_initial = true;
-      w_perf_add_root_meta(&sample, root);
-      w_root_unlock(root);
+      lock.root->done_initial = true;
+      w_perf_add_root_meta(&sample, lock.root);
+      root = w_root_unlock(&lock);
 
       if (cfg_get_bool(root, "iothrottle", false)) {
         w_ioprio_set_normal();
@@ -1903,22 +1939,22 @@ static void io_thread(w_root_t *root)
       // No new pending items were given to us, so consider that
       // we may now be settled.
 
-      w_root_lock(root, "io_thread: settle out");
-      if (!root->done_initial) {
+      w_root_lock(&root, "io_thread: settle out", &lock);
+      if (!lock.root->done_initial) {
         // we need to recrawl, stop what we're doing here
-        w_root_unlock(root);
+        root = w_root_unlock(&lock);
         continue;
       }
 
-      process_subscriptions(root);
-      process_triggers(root);
-      if (consider_reap(root)) {
-        w_root_unlock(root);
+      process_subscriptions(&lock);
+      process_triggers(&lock);
+      if (consider_reap(&lock)) {
+        root = w_root_unlock(&lock);
         w_root_stop_watch(root);
         break;
       }
-      consider_age_out(root);
-      w_root_unlock(root);
+      consider_age_out(&lock);
+      root = w_root_unlock(&lock);
 
       timeoutms = MIN(biggest_timeout, timeoutms * 2);
       continue;
@@ -1930,24 +1966,24 @@ static void io_thread(w_root_t *root)
     // to the settle duration ready for the next loop through
     timeoutms = root->trigger_settle;
 
-    w_root_lock(root, "io_thread: process notifications");
-    if (!root->done_initial) {
+    w_root_lock(&root, "io_thread: process notifications", &lock);
+    if (!lock.root->done_initial) {
       // we need to recrawl.  Discard these notifications
       w_pending_coll_drain(&pending);
-      w_root_unlock(root);
+      root = w_root_unlock(&lock);
       continue;
     }
 
-    root->ticks++;
+    lock.root->ticks++;
     // If we're not settled, we need an opportunity to age out
     // dead file nodes.  This happens in the test harness.
-    consider_age_out(root);
+    consider_age_out(&lock);
 
-    while (w_root_process_pending(root, &pending, false)) {
+    while (w_root_process_pending(&lock, &pending, false)) {
       ;
     }
 
-    w_root_unlock(root);
+    root = w_root_unlock(&lock);
   }
 
   w_pending_coll_destroy(&pending);
@@ -2327,9 +2363,10 @@ static w_root_t *root_resolve(const char *filename, bool auto_watch,
     // to a client querying something about the root and should extend
     // the lifetime of the root
     if (root) {
-      w_root_lock(root, "root_resolve: last_cmd_timestamp");
-      time(&root->last_cmd_timestamp);
-      w_root_unlock(root);
+      struct write_locked_watchman_root lock;
+      w_root_lock(&root, "root_resolve: last_cmd_timestamp", &lock);
+      time(&lock.root->last_cmd_timestamp);
+      root = w_root_unlock(&lock);
     }
 
     // caller owns a ref
@@ -2469,21 +2506,22 @@ w_root_t *w_root_resolve_for_client_mode(const char *filename, char **errmsg)
   if (created) {
     struct timeval start;
     struct watchman_pending_collection pending;
+    struct write_locked_watchman_root lock;
 
     w_pending_coll_init(&pending);
 
     /* force a walk now */
     gettimeofday(&start, NULL);
-    w_root_lock(root, "w_root_resolve_for_client_mode");
-    w_pending_coll_add(&root->pending, root->root_path,
+    w_root_lock(&root, "w_root_resolve_for_client_mode", &lock);
+    w_pending_coll_add(&lock.root->pending, lock.root->root_path,
         start, W_PENDING_RECURSIVE);
-    while (w_root_process_pending(root, &pending, true)) {
+    while (w_root_process_pending(&lock, &pending, true)) {
       // Note that we don't need a two-level loop (as we do in the main
       // watcher-enabled mode) in client mode as we are not using a
       // watcher in this situation.
       ;
     }
-    w_root_unlock(root);
+    root = w_root_unlock(&lock);
 
     w_pending_coll_destroy(&pending);
   }
@@ -2659,6 +2697,7 @@ bool w_root_load_state(json_t *state)
     json_t *triggers;
     size_t j;
     char *errmsg = NULL;
+    struct write_locked_watchman_root lock;
 
     triggers = json_object_get(obj, "triggers");
     filename = json_string_value(json_object_get(obj, "path"));
@@ -2669,7 +2708,7 @@ bool w_root_load_state(json_t *state)
       continue;
     }
 
-    w_root_lock(root, "w_root_load_state");
+    w_root_lock(&root, "w_root_load_state", &lock);
 
     /* re-create the trigger configuration */
     for (j = 0; j < json_array_size(triggers); j++) {
@@ -2683,19 +2722,19 @@ bool w_root_load_state(json_t *state)
         continue;
       }
 
-      cmd = w_build_trigger_from_def(root, tobj, &errmsg);
+      cmd = w_build_trigger_from_def(lock.root, tobj, &errmsg);
       if (!cmd) {
         w_log(W_LOG_ERR, "loading trigger for %s: %s\n",
-            root->root_path->buf, errmsg);
+              lock.root->root_path->buf, errmsg);
         free(errmsg);
         continue;
       }
 
-      w_ht_replace(root->commands, w_ht_ptr_val(cmd->triggername),
-          w_ht_ptr_val(cmd));
+      w_ht_replace(lock.root->commands, w_ht_ptr_val(cmd->triggername),
+                   w_ht_ptr_val(cmd));
     }
 
-    w_root_unlock(root);
+    root = w_root_unlock(&lock);
 
     if (created) {
       if (!root_start(root, &errmsg)) {
@@ -2727,14 +2766,15 @@ bool w_root_save_state(json_t *state)
     w_root_t *root = w_ht_val_ptr(root_iter.value);
     json_t *obj;
     json_t *triggers;
+    struct write_locked_watchman_root lock;
 
     obj = json_object();
 
     json_object_set_new(obj, "path", w_string_to_json(root->root_path));
 
-    w_root_lock(root, "w_root_save_state");
-    triggers = w_root_trigger_list_to_json(root);
-    w_root_unlock(root);
+    w_root_lock(&root, "w_root_save_state", &lock);
+    triggers = w_root_trigger_list_to_json(lock.root);
+    root = w_root_unlock(&lock);
     json_object_set_new(obj, "triggers", triggers);
 
     json_array_append_new(watched_dirs, obj);
