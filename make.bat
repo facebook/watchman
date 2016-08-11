@@ -25,6 +25,8 @@ if %ERRORLEVEL% GTR 0 set PATH=c:\php;%PATH%
 @rem finally, run make
 nmake /nologo /s /f winbuild\Makefile %1
 
+SET RETURN_CODE=%ERRORLEVEL%
+
 @rem restore the original path value
 @set PATH=%PATH_BACKUP%
 
@@ -33,3 +35,5 @@ nmake /nologo /s /f winbuild\Makefile %1
 @set INCLUDE=
 @set LIB=
 @set LIBPATH=
+
+EXIT /B %RETURN_CODE%
