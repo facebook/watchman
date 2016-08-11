@@ -261,16 +261,12 @@ static bool is_case_sensitive_filesystem(const char *path) {
 static w_root_t *w_root_new(const char *path, char **errmsg)
 {
   w_root_t *root = calloc(1, sizeof(*root));
-  pthread_mutexattr_t attr;
 
   assert(root != NULL);
 
   root->refcnt = 1;
   w_refcnt_add(&live_roots);
-  pthread_mutexattr_init(&attr);
-  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-  pthread_mutex_init(&root->lock, &attr);
-  pthread_mutexattr_destroy(&attr);
+  pthread_mutex_init(&root->lock, NULL);
 
   root->case_sensitive = is_case_sensitive_filesystem(path);
 
@@ -361,7 +357,8 @@ bool w_root_lock_with_timeout(struct unlocked_watchman_root *unlocked,
   if (err == ETIMEDOUT || err == EBUSY) {
     w_log(W_LOG_ERR,
           "lock (%s) [%.*s] failed after %dms, current lock purpose: %s\n",
-          purpose, unlocked->root->root_path->len, unlocked->root->root_path->buf, timeoutms,
+          purpose, unlocked->root->root_path->len,
+          unlocked->root->root_path->buf, timeoutms,
           unlocked->root->lock_reason);
     errno = ETIMEDOUT;
     return false;
@@ -2784,7 +2781,8 @@ bool w_root_save_state(json_t *state)
 
     obj = json_object();
 
-    json_object_set_new(obj, "path", w_string_to_json(unlocked.root->root_path));
+    json_object_set_new(obj, "path",
+                        w_string_to_json(unlocked.root->root_path));
 
     w_root_lock(&unlocked, "w_root_save_state", &lock);
     triggers = w_root_trigger_list_to_json(lock.root);
