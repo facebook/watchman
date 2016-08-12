@@ -473,7 +473,7 @@ bool w_query_execute_locked(
   res->ticks = lock->root->ticks;
 
   // Evaluate the cursor for this root
-  w_clockspec_eval(lock->root, query->since_spec, &ctx.since);
+  w_clockspec_eval(lock, query->since_spec, &ctx.since);
 
   res->is_fresh_instance = !ctx.since.is_timestamp &&
     ctx.since.clock.is_fresh_instance;
@@ -558,7 +558,7 @@ bool w_query_execute(
   res->ticks = lock.root->ticks;
 
   // Evaluate the cursor for this root
-  w_clockspec_eval(lock.root, query->since_spec, &ctx.since);
+  w_clockspec_eval(&lock, query->since_spec, &ctx.since);
 
   res->is_fresh_instance = !ctx.since.is_timestamp &&
     ctx.since.clock.is_fresh_instance;

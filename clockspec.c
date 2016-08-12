@@ -89,9 +89,72 @@ struct w_clockspec *w_clockspec_parse(json_t *value) {
   return NULL;
 }
 
+void w_clockspec_eval_readonly(struct read_locked_watchman_root *lock,
+                               const struct w_clockspec *spec,
+                               struct w_query_since *since) {
+  if (spec == NULL) {
+    since->is_timestamp = false;
+    since->clock.is_fresh_instance = true;
+    since->clock.ticks = 0;
+    return;
+  }
+
+  if (spec->tag == w_cs_timestamp) {
+    // just copy the values over
+    since->is_timestamp = true;
+    since->timestamp = spec->timestamp;
+    return;
+  }
+
+  since->is_timestamp = false;
+
+  if (spec->tag == w_cs_named_cursor) {
+    w_ht_val_t ticks_val;
+    w_string_t *cursor = spec->named_cursor.cursor;
+    since->clock.is_fresh_instance = !w_ht_lookup(lock->root->cursors,
+                                                  w_ht_ptr_val(cursor),
+                                                  &ticks_val, false);
+    if (!since->clock.is_fresh_instance) {
+      since->clock.is_fresh_instance =
+          ticks_val < lock->root->last_age_out_tick;
+    }
+    if (since->clock.is_fresh_instance) {
+      since->clock.ticks = 0;
+    } else {
+      since->clock.ticks = (uint32_t)ticks_val;
+    }
+
+    w_log(W_LOG_DBG, "resolved cursor %.*s -> %" PRIu32 "\n",
+        cursor->len, cursor->buf, since->clock.ticks);
+    return;
+  }
+
+  // spec->tag == w_cs_clock
+  if (spec->clock.start_time == proc_start_time &&
+      spec->clock.pid == proc_pid &&
+      spec->clock.root_number == lock->root->number) {
+
+    since->clock.is_fresh_instance =
+        spec->clock.ticks < lock->root->last_age_out_tick;
+    if (since->clock.is_fresh_instance) {
+      since->clock.ticks = 0;
+    } else {
+      since->clock.ticks = spec->clock.ticks;
+    }
+    return;
+  }
+
+  // If the pid, start time or root number don't match, they asked a different
+  // incarnation of the server or a different instance of this root, so we treat
+  // them as having never spoken to us before
+  since->clock.is_fresh_instance = true;
+  since->clock.ticks = 0;
+}
+
 // must be called with the root locked
 // spec can be null, in which case a fresh instance is assumed
-void w_clockspec_eval(w_root_t *root, const struct w_clockspec *spec,
+void w_clockspec_eval(struct write_locked_watchman_root *lock,
+                      const struct w_clockspec *spec,
                       struct w_query_since *since) {
   if (spec == NULL) {
     since->is_timestamp = false;
@@ -112,11 +175,12 @@ void w_clockspec_eval(w_root_t *root, const struct w_clockspec *spec,
   if (spec->tag == w_cs_named_cursor) {
     w_ht_val_t ticks_val;
     w_string_t *cursor = spec->named_cursor.cursor;
-    since->clock.is_fresh_instance = !w_ht_lookup(root->cursors,
+    since->clock.is_fresh_instance = !w_ht_lookup(lock->root->cursors,
                                                   w_ht_ptr_val(cursor),
                                                   &ticks_val, false);
     if (!since->clock.is_fresh_instance) {
-      since->clock.is_fresh_instance = ticks_val < root->last_age_out_tick;
+      since->clock.is_fresh_instance =
+          ticks_val < lock->root->last_age_out_tick;
     }
     if (since->clock.is_fresh_instance) {
       since->clock.ticks = 0;
@@ -130,7 +194,8 @@ void w_clockspec_eval(w_root_t *root, const struct w_clockspec *spec,
     // to return the same set of files; we only want the first
     // of these to return the files and the rest to return nothing
     // until something subsequently changes
-    w_ht_replace(root->cursors, w_ht_ptr_val(cursor), ++root->ticks);
+    w_ht_replace(lock->root->cursors, w_ht_ptr_val(cursor),
+                 ++lock->root->ticks);
 
     w_log(W_LOG_DBG, "resolved cursor %.*s -> %" PRIu32 "\n",
         cursor->len, cursor->buf, since->clock.ticks);
@@ -140,20 +205,20 @@ void w_clockspec_eval(w_root_t *root, const struct w_clockspec *spec,
   // spec->tag == w_cs_clock
   if (spec->clock.start_time == proc_start_time &&
       spec->clock.pid == proc_pid &&
-      spec->clock.root_number == root->number) {
+      spec->clock.root_number == lock->root->number) {
 
     since->clock.is_fresh_instance =
-      spec->clock.ticks < root->last_age_out_tick;
+        spec->clock.ticks < lock->root->last_age_out_tick;
     if (since->clock.is_fresh_instance) {
       since->clock.ticks = 0;
     } else {
       since->clock.ticks = spec->clock.ticks;
     }
-    if (spec->clock.ticks == root->ticks) {
+    if (spec->clock.ticks == lock->root->ticks) {
       /* Force ticks to increment.  This avoids returning and querying the
        * same tick value over and over when no files have changed in the
        * meantime */
-      root->ticks++;
+      lock->root->ticks++;
     }
     return;
   }
