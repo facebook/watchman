@@ -266,7 +266,7 @@ static w_root_t *w_root_new(const char *path, char **errmsg)
 
   root->refcnt = 1;
   w_refcnt_add(&live_roots);
-  pthread_mutex_init(&root->lock, NULL);
+  pthread_rwlock_init(&root->lock, NULL);
 
   root->case_sensitive = is_case_sensitive_filesystem(path);
 
@@ -309,7 +309,7 @@ void w_root_lock(struct unlocked_watchman_root *unlocked, const char *purpose,
           purpose);
   }
 
-  err = pthread_mutex_lock(&unlocked->root->lock);
+  err = pthread_rwlock_wrlock(&unlocked->root->lock);
   if (err != 0) {
     w_log(W_LOG_FATAL, "lock (%s) [%.*s]: %s\n",
         purpose,
@@ -343,7 +343,7 @@ bool w_root_lock_with_timeout(struct unlocked_watchman_root *unlocked,
     // Special case an immediate check, because the implementation of
     // pthread_mutex_timedlock may return immediately if we are already
     // past-due.
-    err = pthread_mutex_trylock(&unlocked->root->lock);
+    err = pthread_rwlock_trywrlock(&unlocked->root->lock);
   } else {
     // Add timeout to current time, convert to absolute timespec
     gettimeofday(&now, NULL);
@@ -352,7 +352,7 @@ bool w_root_lock_with_timeout(struct unlocked_watchman_root *unlocked,
     w_timeval_add(now, delta, &target);
     w_timeval_to_timespec(target, &ts);
 
-    err = pthread_mutex_timedlock(&unlocked->root->lock, &ts);
+    err = pthread_rwlock_timedwrlock(&unlocked->root->lock, &ts);
   }
   if (err == ETIMEDOUT || err == EBUSY) {
     w_log(W_LOG_ERR,
@@ -388,7 +388,7 @@ void w_root_unlock(struct write_locked_watchman_root *lock,
   }
 
   lock->root->lock_reason = NULL;
-  err = pthread_mutex_unlock(&lock->root->lock);
+  err = pthread_rwlock_unlock(&lock->root->lock);
   if (err != 0) {
     w_log(W_LOG_FATAL, "lock: [%.*s] %s\n",
         lock->root->root_path->len,
@@ -2049,7 +2049,7 @@ void w_root_delref(w_root_t *root)
 
   w_root_teardown(root);
 
-  pthread_mutex_destroy(&root->lock);
+  pthread_rwlock_destroy(&root->lock);
   w_string_delref(root->root_path);
   w_ignore_destroy(&root->ignore);
   w_ht_free(root->commands);

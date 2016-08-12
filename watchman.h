@@ -449,7 +449,7 @@ struct watchman_root {
   bool case_sensitive;
 
   /* our locking granularity is per-root */
-  pthread_mutex_t lock;
+  pthread_rwlock_t lock;
   const char *lock_reason;
   pthread_t notify_thread;
   pthread_t io_thread;
@@ -1065,6 +1065,10 @@ void w_expand_flags(const struct flag_map *fmap, uint32_t flags,
 
 #ifdef __APPLE__
 int pthread_mutex_timedlock(pthread_mutex_t *m, const struct timespec *ts);
+int pthread_rwlock_timedwrlock(pthread_rwlock_t *restrict rwlock,
+                               const struct timespec *ts);
+int pthread_rwlock_timedrdlock(pthread_rwlock_t *restrict rwlock,
+                               const struct timespec *ts);
 #endif
 
 #ifdef __cplusplus
