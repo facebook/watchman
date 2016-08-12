@@ -342,6 +342,9 @@ w_query *w_query_parse(w_root_t *root, json_t *query, char **errmsg)
     goto error;
   }
 
+  res->query_spec = query;
+  json_incref(res->query_spec);
+
   return res;
 error:
   if (res) {
@@ -548,6 +551,10 @@ void w_query_delref(w_query *query)
       }
     }
     free(query->suffixes);
+  }
+
+  if (query->query_spec) {
+    json_decref(query->query_spec);
   }
 
   free(query);

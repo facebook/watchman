@@ -144,7 +144,7 @@ const char *w_set_thread_name(const char *fmt, ...) {
 
 void w_log(int level, WATCHMAN_FMT_STRING(const char *fmt), ...)
 {
-  char buf[4096];
+  char buf[4096*4];
   va_list ap;
   int len, len2;
   bool fatal = false;

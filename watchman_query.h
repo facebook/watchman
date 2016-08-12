@@ -77,6 +77,9 @@ struct w_query {
 
   // Error message placeholder while parsing
   char *errmsg;
+
+  // The query that we parsed into this struct
+  json_t *query_spec;
 };
 
 typedef w_query_expr *(*w_query_expr_parser)(
