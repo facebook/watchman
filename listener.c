@@ -192,6 +192,7 @@ static void *client_thread(void *ptr)
         goto disconnected;
       } else if (request) {
         client->pdu_type = client->reader.pdu_type;
+        client->capabilities = client->reader.capabilities;
         dispatch_command(client, request, CMD_DAEMON);
         json_decref(request);
       }
@@ -219,8 +220,9 @@ static void *client_thread(void *ptr)
          * Don't bother sending any more messages if the client disconnects,
          * but still free their memory.
          */
-        send_ok = w_ser_write_pdu(client->pdu_type, &client->writer,
-                                  client->stm, response_to_send->json);
+        send_ok = w_ser_write_pdu(client->pdu_type, client->capabilities,
+                                  &client->writer, client->stm,
+                                  response_to_send->json);
         w_stm_set_nonblock(client->stm, true);
       }
 

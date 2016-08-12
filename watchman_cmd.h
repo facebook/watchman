@@ -31,7 +31,8 @@ struct watchman_command_handler_def {
 // argument list
 bool w_cmd_realpath_root(json_t *args, char **errmsg);
 
-void preprocess_command(json_t *args, enum w_pdu_type output_pdu);
+void preprocess_command(json_t *args, enum w_pdu_type output_pdu,
+                        uint32_t output_capabilities);
 bool dispatch_command(struct watchman_client *client, json_t *args, int mode);
 bool try_client_mode_command(json_t *cmd, bool pretty);
 void w_register_command(struct watchman_command_handler_def *defs);

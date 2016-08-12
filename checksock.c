@@ -32,7 +32,7 @@ static void *check_my_sock(void *unused) {
   w_stm_set_nonblock(client, false);
 
   w_json_buffer_init(&buf);
-  if (!w_ser_write_pdu(is_bser, &buf, client, cmd)) {
+  if (!w_ser_write_pdu(is_bser, 0, &buf, client, cmd)) {
     w_log(W_LOG_FATAL, "Failed to send get-pid PDU: %s\n",
           strerror(errno));
     /* NOTREACHED */

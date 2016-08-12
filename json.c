@@ -256,6 +256,7 @@ static bool read_and_detect_pdu(w_jbuffer_t *jr, w_stm_t stm,
     json_error_t *jerr)
 {
   enum w_pdu_type pdu;
+  uint32_t capabilities;
 
   shunt_down(jr);
   pdu = detect_pdu(jr);
@@ -278,6 +279,23 @@ static bool read_and_detect_pdu(w_jbuffer_t *jr, w_stm_t stm,
   }
 
   jr->pdu_type = pdu;
+  jr->capabilities = 0;
+  if (pdu == is_bser_v2) {
+    // read capabilities
+    while (jr->wpos - jr->rpos < 6) {
+      if (!fill_buffer(jr, stm)) {
+        if (errno != EAGAIN) {
+          snprintf(jerr->text, sizeof(jerr->text),
+            "fill_buffer: %s",
+            errno ? strerror(errno) : "EOF");
+        }
+        return false;
+      }
+    }
+    memcpy(&capabilities, jr->buf + jr->rpos + 2, 4);
+    printf("cap %d", capabilities);
+    jr->capabilities = capabilities;
+  }
   return true;
 }
 
@@ -423,6 +441,7 @@ static json_t *read_pdu_into_json(w_jbuffer_t *jr, w_stm_t stm,
 
 bool w_json_buffer_passthru(w_jbuffer_t *jr,
     enum w_pdu_type output_pdu,
+    uint32_t output_capabilities,
     w_jbuffer_t *output_pdu_buf,
     w_stm_t stm)
 {
@@ -456,7 +475,8 @@ bool w_json_buffer_passthru(w_jbuffer_t *jr,
 
   w_json_buffer_reset(output_pdu_buf);
 
-  res = w_ser_write_pdu(output_pdu, output_pdu_buf, w_stm_stdout(), j);
+  res = w_ser_write_pdu(output_pdu, output_capabilities,
+      output_pdu_buf, w_stm_stdout(), j);
 
   json_decref(j);
   return res;
@@ -561,7 +581,7 @@ bool w_json_buffer_write(w_jbuffer_t *jr, w_stm_t stm, json_t *json, int flags)
   return jbuffer_flush(&data);
 }
 
-bool w_ser_write_pdu(enum w_pdu_type pdu_type,
+bool w_ser_write_pdu(enum w_pdu_type pdu_type, uint32_t capabilities,
     w_jbuffer_t *jr, w_stm_t stm, json_t *json)
 {
   switch (pdu_type) {
@@ -570,9 +590,9 @@ bool w_ser_write_pdu(enum w_pdu_type pdu_type,
     case is_json_pretty:
       return w_json_buffer_write(jr, stm, json, JSON_INDENT(4));
     case is_bser:
-      return w_json_buffer_write_bser(1, 0, jr, stm, json);
+      return w_json_buffer_write_bser(1, capabilities, jr, stm, json);
     case is_bser_v2:
-      return w_json_buffer_write_bser(2, 0, jr, stm, json);
+      return w_json_buffer_write_bser(2, capabilities, jr, stm, json);
     case need_data:
     default:
       return false;

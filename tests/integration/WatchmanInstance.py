@@ -148,7 +148,7 @@ class _Instance(object):
 
         if self.debug_watchman:
             print('Watchman instance PID:' + str(self.proc.pid))
-            raw_input('Press enter to continue...')
+            input('Press enter to continue...')
 
         # wait for it to come up
         deadline = time.time() + self.start_timeout
