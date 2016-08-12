@@ -4,6 +4,12 @@
 #include "watchman.h"
 #include <stdarg.h>
 
+uint32_t w_string_compute_hval(w_string_t *str) {
+  str->_hval = w_hash_bytes(str->buf, str->len, 0);
+  str->hval_computed = 1;
+  return str->_hval;
+}
+
 /** An optimization to avoid heap allocations during a lookup, this function
  * creates a string object on the stack.  This object does not own the memory
  * that it references, so it is the responsibility of the caller
@@ -16,7 +22,7 @@ void w_string_new_len_typed_stack(w_string_t *into, const char *str,
   into->slice = NULL;
   into->len = len;
   into->buf = str;
-  into->hval = w_hash_bytes(into->buf, into->len, 0);
+  into->hval_computed = 0;
   into->type = type;
 }
 
@@ -43,7 +49,6 @@ w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
   slice->len = len;
   slice->buf = str->buf + start;
   slice->slice = str;
-  slice->hval = w_hash_bytes(slice->buf, slice->len, 0);
   slice->type = str->type;
 
   w_string_addref(str);
@@ -70,7 +75,8 @@ uint32_t w_string_embedded_size(w_string_t *str) {
 void w_string_embedded_copy(w_string_t *dest, w_string_t *src) {
   char *buf;
   dest->refcnt = 1;
-  dest->hval = src->hval;
+  dest->_hval = src->_hval;
+  dest->hval_computed = src->hval_computed;
   dest->len = src->len;
   dest->slice = NULL;
 
@@ -85,10 +91,8 @@ w_string_t *w_string_new_len_with_refcnt_typed(const char* str,
     uint32_t len, long refcnt, w_string_type_t type) {
 
   w_string_t *s;
-  uint32_t hval;
   char *buf;
 
-  hval = w_hash_bytes(str, len, 0);
   s = malloc(sizeof(*s) + len + 1);
   if (!s) {
     perror("no memory available");
@@ -96,7 +100,7 @@ w_string_t *w_string_new_len_with_refcnt_typed(const char* str,
   }
 
   s->refcnt = refcnt;
-  s->hval = hval;
+  s->hval_computed = 0;
   s->len = len;
   s->slice = NULL;
   buf = (char*)(s + 1);
@@ -176,7 +180,7 @@ w_string_t *w_string_make_printf(const char *format, ...)
   vsnprintf(buf, len + 1, format, args);
   va_end(args);
   s->buf = buf;
-  s->hval = w_hash_bytes(buf, len, 0);
+  s->hval_computed = 0;
 
   return s;
 }
@@ -218,7 +222,7 @@ w_string_t *w_string_dup_lower(w_string_t *str)
   }
   buf[str->len] = 0;
   s->buf = buf;
-  s->hval = w_hash_bytes(buf, str->len, 0);
+  s->hval_computed = 0;
 
   return s;
 }
@@ -248,7 +252,7 @@ w_string_t *w_string_new_lower_typed(const char *str,
   }
   buf[len] = 0;
   s->buf = buf;
-  s->hval = w_hash_bytes(buf, len, 0);
+  s->hval_computed = 0;
   s->type = type;
 
   return s;
@@ -290,8 +294,10 @@ bool w_string_equal_cstring(const w_string_t *a, const char *b)
 bool w_string_equal(const w_string_t *a, const w_string_t *b)
 {
   if (a == b) return true;
-  if (a->hval != b->hval) return false;
   if (a->len != b->len) return false;
+  if (a->hval_computed && b->hval_computed && a->_hval != b->_hval) {
+    return false;
+  }
   return memcmp(a->buf, b->buf, a->len) == 0 ? true : false;
 }
 
@@ -501,7 +507,7 @@ w_string_t *w_string_normalize_separators(w_string_t *str, char target_sep) {
   }
   buf[len] = 0;
   s->buf = buf;
-  s->hval = w_hash_bytes(buf, len, 0);
+  s->hval_computed = 0;
 
   return s;
 }
@@ -568,7 +574,7 @@ w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
   memcpy(buf + parent->len + 1, rhs->buf, rhs->len);
   buf[parent->len + 1 + rhs->len] = '\0';
   s->buf = buf;
-  s->hval = w_hash_bytes(buf, len, 0);
+  s->hval_computed = 0;
   s->type = parent->type;
 
   return s;
@@ -606,7 +612,7 @@ w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
   memcpy(buf + parent->len + 1, rhs, rhs_len);
   buf[parent->len + 1 + rhs_len] = '\0';
   s->buf = buf;
-  s->hval = w_hash_bytes(buf, len, 0);
+  s->hval_computed = 0;
   s->type = parent->type;
 
   return s;
@@ -657,7 +663,7 @@ w_string_t *w_dir_path_cat_cstr_len(struct watchman_dir *dir, const char *extra,
   }
 
   s->buf = buf;
-  s->hval = w_hash_bytes(s->buf, s->len, 0);
+  s->hval_computed = 0;
   s->type = W_STRING_BYTE;
   return s;
 }
@@ -725,7 +731,7 @@ w_string_t *w_string_shell_escape(const w_string_t *str)
   buf++;
   *buf = 0;
   s->len = (uint32_t)(buf - s->buf);
-  s->hval = w_hash_bytes(s->buf, s->len, 0);
+  s->hval_computed = 0;
   s->type = str->type;
 
   return s;

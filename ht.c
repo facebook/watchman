@@ -383,7 +383,7 @@ bool w_ht_string_equal(w_ht_val_t a, w_ht_val_t b)
 
 uint32_t w_ht_string_hash(w_ht_val_t key)
 {
-  return ((w_string_t*)w_ht_val_ptr(key))->hval;
+  return w_string_hval(((w_string_t *)w_ht_val_ptr(key)));
 }
 
 const struct watchman_hash_funcs w_ht_string_funcs = {
