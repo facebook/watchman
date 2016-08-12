@@ -425,6 +425,7 @@ static inline w_string_t *w_file_get_name(struct watchman_file *file) {
 #define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"
 struct watchman_query_cookie {
   pthread_cond_t cond;
+  pthread_mutex_t lock;
   bool seen;
 };
 

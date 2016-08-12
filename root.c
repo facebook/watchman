@@ -431,7 +431,16 @@ bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked,
     errno = errcode;
     return false;
   }
+
+  if (pthread_mutex_init(&cookie.lock, NULL)) {
+    errcode = errno;
+    pthread_cond_destroy(&cookie.cond);
+    w_log(W_LOG_ERR, "sync_to_now: mutex_init failed: %s\n", strerror(errcode));
+    errno = errcode;
+    return false;
+  }
   cookie.seen = false;
+  pthread_mutex_lock(&cookie.lock);
 
   /* generate a cookie name: cookie prefix + id */
   w_root_lock(unlocked, "w_root_sync_to_now", &lock);
@@ -443,6 +452,7 @@ bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked,
   /* insert our cookie in the map */
   w_ht_set(lock.root->query_cookies, w_ht_ptr_val(path_str),
       w_ht_ptr_val(&cookie));
+  w_root_unlock(&lock, unlocked);
 
   /* touch the file */
   file = w_stm_open(path_str->buf, O_CREAT|O_TRUNC|O_WRONLY|O_CLOEXEC, 0700);
@@ -461,7 +471,7 @@ bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked,
 
   /* timed cond wait (unlocks root lock, reacquires) */
   while (!cookie.seen) {
-    errcode = pthread_cond_timedwait(&cookie.cond, &lock.root->lock, &deadline);
+    errcode = pthread_cond_timedwait(&cookie.cond, &cookie.lock, &deadline);
     if (errcode && !cookie.seen) {
       w_log(W_LOG_ERR,
           "sync_to_now: %s timedwait failed: %d: istimeout=%d %s\n",
@@ -472,6 +482,9 @@ bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked,
   w_log(W_LOG_DBG, "sync_to_now [%s] done\n", path_str->buf);
 
 out:
+  pthread_mutex_unlock(&cookie.lock);
+  w_root_lock(unlocked, "w_root_sync_to_now_done", &lock);
+
   // can't unlink the file until after the cookie has been observed because
   // we don't know which file got changed until we look in the cookie dir
   unlink(path_str->buf);
@@ -496,6 +509,7 @@ out:
 
   w_string_delref(path_str);
   pthread_cond_destroy(&cookie.cond);
+  pthread_mutex_destroy(&cookie.lock);
 
   w_perf_destroy(&sample);
 
