@@ -147,9 +147,7 @@ static void *readchanges_thread(void *arg) {
     w_log(W_LOG_ERR,
         "ReadDirectoryChangesW: failed, cancel watch. %s\n",
         win32_strerror(err));
-    w_root_lock(root, "w_root_cancel");
     w_root_cancel(root);
-    w_root_unlock(root);
     goto out;
   }
   // Signal that we are done with init.  We MUST do this AFTER our first
@@ -170,9 +168,7 @@ static void *readchanges_thread(void *arg) {
         w_log(W_LOG_ERR,
             "ReadDirectoryChangesW: failed, cancel watch. %s\n",
             win32_strerror(err));
-        w_root_lock(root, "w_root_cancel");
         w_root_cancel(root);
-        w_root_unlock(root);
         break;
       } else {
         initiate_read = false;
@@ -207,9 +203,7 @@ static void *readchanges_thread(void *arg) {
         } else {
           w_log(W_LOG_ERR, "Cancelling watch for %s\n",
               root->root_path->buf);
-          w_root_lock(root, "w_root_cancel");
           w_root_cancel(root);
-          w_root_unlock(root);
           break;
         }
       } else {
@@ -322,37 +316,41 @@ static bool winwatch_root_start(w_root_t *root) {
   return false;
 }
 
-static bool winwatch_root_start_watch_file(w_root_t *root,
-    struct watchman_file *file) {
+static bool
+winwatch_root_start_watch_file(struct write_locked_watchman_root *lock,
+                               struct watchman_file *file) {
   unused_parameter(file);
-  unused_parameter(root);
+  unused_parameter(lock);
   return true;
 }
 
-static void winwatch_root_stop_watch_file(w_root_t *root,
-    struct watchman_file *file) {
+static void
+winwatch_root_stop_watch_file(struct write_locked_watchman_root *lock,
+                              struct watchman_file *file) {
   unused_parameter(file);
-  unused_parameter(root);
+  unused_parameter(lock);
 }
 
-static struct watchman_dir_handle *winwatch_root_start_watch_dir(
-    w_root_t *root, struct watchman_dir *dir, struct timeval now,
-    const char *path) {
+static struct watchman_dir_handle *
+winwatch_root_start_watch_dir(struct write_locked_watchman_root *lock,
+                              struct watchman_dir *dir, struct timeval now,
+                              const char *path) {
   struct watchman_dir_handle *osdir;
 
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(root, dir, now, "opendir", errno, strerror(errno));
+    handle_open_errno(lock, dir, now, "opendir", errno, strerror(errno));
     return NULL;
   }
 
   return osdir;
 }
 
-static void winwatch_root_stop_watch_dir(w_root_t *root,
-    struct watchman_dir *dir) {
+static void
+winwatch_root_stop_watch_dir(struct write_locked_watchman_root *lock,
+                             struct watchman_dir *dir) {
   unused_parameter(dir);
-  unused_parameter(root);
+  unused_parameter(lock);
 }
 
 static bool winwatch_root_consume_notify(w_root_t *root,

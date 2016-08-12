@@ -164,9 +164,10 @@ out:
   return success;
 }
 
-static bool portfs_root_start_watch_file(w_root_t *root,
-    struct watchman_file *file) {
-  struct portfs_root_state *state = root->watch;
+static bool
+portfs_root_start_watch_file(struct write_locked_watchman_root *lock,
+                             struct watchman_file *file) {
+  struct portfs_root_state *state = lock->root->watch;
   w_string_t *name;
   bool success = false;
 
@@ -180,23 +181,24 @@ static bool portfs_root_start_watch_file(w_root_t *root,
   return success;
 }
 
-static void portfs_root_stop_watch_file(w_root_t *root,
-    struct watchman_file *file) {
-  unused_parameter(root);
+static void portfs_root_stop_watch_file(struct write_locked_watchman_root *lock,
+                                        struct watchman_file *file) {
+  unused_parameter(lock);
   unused_parameter(file);
 }
 
-static struct watchman_dir_handle *portfs_root_start_watch_dir(
-    w_root_t *root, struct watchman_dir *dir, struct timeval now,
-    const char *path) {
-  struct portfs_root_state *state = root->watch;
+static struct watchman_dir_handle *
+portfs_root_start_watch_dir(struct write_locked_watchman_root *lock,
+                            struct watchman_dir *dir, struct timeval now,
+                            const char *path) {
+  struct portfs_root_state *state = lock->root->watch;
   struct watchman_dir_handle *osdir;
   struct stat st;
   w_string_t *dir_name;
 
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(root, dir, now, "opendir", errno, NULL);
+    handle_open_errno(lock, dir, now, "opendir", errno, NULL);
     return NULL;
   }
 
@@ -220,9 +222,9 @@ static struct watchman_dir_handle *portfs_root_start_watch_dir(
   return osdir;
 }
 
-static void portfs_root_stop_watch_dir(w_root_t *root,
-    struct watchman_dir *dir) {
-  unused_parameter(root);
+static void portfs_root_stop_watch_dir(struct write_locked_watchman_root *lock,
+                                       struct watchman_dir *dir) {
+  unused_parameter(lock);
   unused_parameter(dir);
 }
 

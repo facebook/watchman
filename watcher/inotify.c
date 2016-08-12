@@ -170,23 +170,24 @@ static bool inot_root_start(w_root_t *root) {
   return true;
 }
 
-static bool inot_root_start_watch_file(w_root_t *root,
-    struct watchman_file *file) {
-  unused_parameter(root);
+static bool inot_root_start_watch_file(struct write_locked_watchman_root *lock,
+                                       struct watchman_file *file) {
+  unused_parameter(lock);
   unused_parameter(file);
   return true;
 }
 
-static void inot_root_stop_watch_file(w_root_t *root,
-    struct watchman_file *file) {
-  unused_parameter(root);
+static void inot_root_stop_watch_file(struct write_locked_watchman_root *lock,
+                                      struct watchman_file *file) {
+  unused_parameter(lock);
   unused_parameter(file);
 }
 
-static struct watchman_dir_handle *inot_root_start_watch_dir(
-    w_root_t *root, struct watchman_dir *dir, struct timeval now,
-    const char *path) {
-  struct inot_root_state *state = root->watch;
+static struct watchman_dir_handle *
+inot_root_start_watch_dir(struct write_locked_watchman_root *lock,
+                          struct watchman_dir *dir, struct timeval now,
+                          const char *path) {
+  struct inot_root_state *state = lock->root->watch;
   struct watchman_dir_handle *osdir = NULL;
   int newwd, err;
   w_string_t *dir_name;
@@ -195,7 +196,7 @@ static struct watchman_dir_handle *inot_root_start_watch_dir(
   // traversing symlinks in the context of this root
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(root, dir, now, "opendir", errno, NULL);
+    handle_open_errno(lock, dir, now, "opendir", errno, NULL);
     return NULL;
   }
 
@@ -208,10 +209,10 @@ static struct watchman_dir_handle *inot_root_start_watch_dir(
     err = errno;
     if (errno == ENOSPC || errno == ENOMEM) {
       // Limits exceeded, no recovery from our perspective
-      set_poison_state(root, dir_name, now, "inotify-add-watch", errno,
+      set_poison_state(dir_name, now, "inotify-add-watch", errno,
                        inot_strerror(errno));
     } else {
-      handle_open_errno(root, dir, now, "inotify_add_watch", errno,
+      handle_open_errno(lock, dir, now, "inotify_add_watch", errno,
           inot_strerror(errno));
     }
     w_dir_close(osdir);
@@ -230,11 +231,9 @@ static struct watchman_dir_handle *inot_root_start_watch_dir(
   return osdir;
 }
 
-static void inot_root_stop_watch_dir(w_root_t *root,
-    struct watchman_dir *dir) {
-  struct inot_root_state *state = root->watch;
-  unused_parameter(state);
-  unused_parameter(root);
+static void inot_root_stop_watch_dir(struct write_locked_watchman_root *lock,
+                                     struct watchman_dir *dir) {
+  unused_parameter(lock);
   unused_parameter(dir);
 
   // Linux removes watches for us at the appropriate times,
@@ -316,7 +315,7 @@ static void process_inotify_event(
         if (wd == -1) {
           if (errno == ENOSPC || errno == ENOMEM) {
             // Limits exceeded, no recovery from our perspective
-            set_poison_state(root, name, now, "inotify-add-watch", errno,
+            set_poison_state(name, now, "inotify-add-watch", errno,
                 inot_strerror(errno));
           } else {
             w_log(W_LOG_DBG, "add_watch: %s %s\n",
