@@ -23,12 +23,22 @@ typedef enum {
 
 struct watchman_string {
   long refcnt;
-  uint32_t hval;
+  uint32_t _hval;
   uint32_t len;
   w_string_t *slice;
   const char *buf;
-  w_string_type_t type;
+  w_string_type_t type:3;
+  unsigned hval_computed:1;
 };
+
+uint32_t w_string_compute_hval(w_string_t *str);
+
+static inline uint32_t w_string_hval(w_string_t *str) {
+  if (str->hval_computed) {
+    return str->_hval;
+  }
+  return w_string_compute_hval(str);
+}
 
 void w_string_addref(w_string_t *str);
 
