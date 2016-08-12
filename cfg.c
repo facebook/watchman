@@ -84,7 +84,7 @@ static json_t *cfg_get_raw(const char *name, json_t **optr)
   return val;
 }
 
-json_t *cfg_get_json(w_root_t *root, const char *name)
+json_t *cfg_get_json(const w_root_t *root, const char *name)
 {
   json_t *val = NULL;
 
@@ -103,7 +103,7 @@ json_t *cfg_get_json(w_root_t *root, const char *name)
   return val;
 }
 
-const char *cfg_get_string(w_root_t *root, const char *name,
+const char *cfg_get_string(const w_root_t *root, const char *name,
     const char *defval)
 {
   json_t *val = cfg_get_json(root, name);
@@ -209,7 +209,7 @@ json_t *cfg_compute_root_files(bool *enforcing) {
   return json_pack("[ssss]", ".watchmanconfig", ".hg", ".git", ".svn");
 }
 
-json_int_t cfg_get_int(w_root_t *root, const char *name,
+json_int_t cfg_get_int(const w_root_t *root, const char *name,
     json_int_t defval)
 {
   json_t *val = cfg_get_json(root, name);
@@ -224,7 +224,7 @@ json_int_t cfg_get_int(w_root_t *root, const char *name,
   return defval;
 }
 
-bool cfg_get_bool(w_root_t *root, const char *name, bool defval)
+bool cfg_get_bool(const w_root_t *root, const char *name, bool defval)
 {
   json_t *val = cfg_get_json(root, name);
 
@@ -238,7 +238,7 @@ bool cfg_get_bool(w_root_t *root, const char *name, bool defval)
   return defval;
 }
 
-double cfg_get_double(w_root_t *root, const char *name, double defval) {
+double cfg_get_double(const w_root_t *root, const char *name, double defval) {
   json_t *val = cfg_get_json(root, name);
 
   if (val) {
@@ -281,7 +281,7 @@ MAKE_GET_PERM(others, OTH)
  * This function expects the config to be an object containing the keys 'group'
  * and 'others', each a bool.
  */
-mode_t cfg_get_perms(w_root_t *root, const char *name, bool write_bits,
+mode_t cfg_get_perms(const w_root_t *root, const char *name, bool write_bits,
                      bool execute_bits) {
   json_t *val = cfg_get_json(root, name);
   mode_t ret = S_IRUSR | S_IWUSR;

@@ -141,7 +141,7 @@ void w_run_subscription_rules(
   }
 }
 
-void w_cancel_subscriptions_for_root(w_root_t *root) {
+void w_cancel_subscriptions_for_root(const w_root_t *root) {
   w_ht_iter_t iter;
   pthread_mutex_lock(&w_client_lock);
   if (w_ht_first(clients, &iter)) {

@@ -195,8 +195,8 @@ static bool parse_paths(w_query *res, json_t *query)
 
 W_CAP_REG("relative_root")
 
-static bool parse_relative_root(w_root_t *root, w_query *res, json_t *query)
-{
+static bool parse_relative_root(const w_root_t *root, w_query *res,
+                                json_t *query) {
   json_t *relative_root;
   w_string_t *path, *canon_path;
 
@@ -305,7 +305,7 @@ static bool parse_case_sensitive(w_query *res, const w_root_t *root, json_t *que
   return true;
 }
 
-w_query *w_query_parse(w_root_t *root, json_t *query, char **errmsg)
+w_query *w_query_parse(const w_root_t *root, json_t *query, char **errmsg)
 {
   w_query *res;
 
@@ -404,7 +404,7 @@ bool w_query_legacy_field_list(struct w_query_field_list *flist)
 // Translate from the legacy array into the new style, then
 // delegate to the main parser.
 // We build a big anyof expression
-w_query *w_query_parse_legacy(w_root_t *root, json_t *args, char **errmsg,
+w_query *w_query_parse_legacy(const w_root_t *root, json_t *args, char **errmsg,
     int start, uint32_t *next_arg,
     const char *clockspec, json_t **expr_p)
 {

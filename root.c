@@ -1249,7 +1249,7 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
     log_warning = true;
     transient = false;
   } else if (err == ENFILE || err == EMFILE) {
-    set_poison_state(lock->root, dir_name, now, syscall, err, strerror(err));
+    set_poison_state(dir_name, now, syscall, err, strerror(err));
     w_string_delref(dir_name);
     return;
   } else {
@@ -1295,12 +1295,9 @@ void w_root_set_warning(w_root_t *root, w_string_t *str) {
   }
 }
 
-void set_poison_state(w_root_t *root, w_string_t *dir,
-    struct timeval now, const char *syscall, int err, const char *reason)
-{
+void set_poison_state(w_string_t *dir, struct timeval now,
+                      const char *syscall, int err, const char *reason) {
   char *why = NULL;
-
-  unused_parameter(root);
 
   if (poisoned_reason) {
     return;

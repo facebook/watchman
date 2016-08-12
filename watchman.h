@@ -791,7 +791,7 @@ void w_run_subscription_rules(
     struct watchman_user_client *client,
     struct watchman_client_subscription *sub,
     struct write_locked_watchman_root *lock);
-void w_cancel_subscriptions_for_root(w_root_t *root);
+void w_cancel_subscriptions_for_root(const w_root_t *root);
 
 void w_match_results_free(uint32_t num_matches,
     struct watchman_rule_match *matches);
@@ -1013,14 +1013,14 @@ static inline void set_mixed_string_prop(json_t *obj, const char *key,
 void cfg_shutdown(void);
 void cfg_set_arg(const char *name, json_t *val);
 void cfg_load_global_config_file(void);
-json_t *cfg_get_json(w_root_t *root, const char *name);
-const char *cfg_get_string(w_root_t *root, const char *name,
+json_t *cfg_get_json(const w_root_t *root, const char *name);
+const char *cfg_get_string(const w_root_t *root, const char *name,
     const char *defval);
-json_int_t cfg_get_int(w_root_t *root, const char *name,
+json_int_t cfg_get_int(const w_root_t *root, const char *name,
     json_int_t defval);
-bool cfg_get_bool(w_root_t *root, const char *name, bool defval);
-double cfg_get_double(w_root_t *root, const char *name, double defval);
-mode_t cfg_get_perms(w_root_t *root, const char *name, bool write_bits,
+bool cfg_get_bool(const w_root_t *root, const char *name, bool defval);
+double cfg_get_double(const w_root_t *root, const char *name, double defval);
+mode_t cfg_get_perms(const w_root_t *root, const char *name, bool write_bits,
                      bool execute_bits);
 const char *cfg_get_trouble_url(void);
 json_t *cfg_compute_root_files(bool *enforcing);
@@ -1068,11 +1068,10 @@ void w_trigger_command_free(struct watchman_trigger_command *cmd);
 void w_assess_trigger(struct write_locked_watchman_root *lock,
                       struct watchman_trigger_command *cmd);
 struct watchman_trigger_command *w_build_trigger_from_def(
-  w_root_t *root, json_t *trig, char **errmsg);
+  const w_root_t *root, json_t *trig, char **errmsg);
 
-void set_poison_state(w_root_t *root, w_string_t *dir,
-    struct timeval now, const char *syscall, int err,
-    const char *reason);
+void set_poison_state(w_string_t *dir, struct timeval now, const char *syscall,
+                      int err, const char *reason);
 
 void watchman_watcher_init(void);
 void handle_open_errno(struct write_locked_watchman_root *lock,

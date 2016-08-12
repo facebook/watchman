@@ -112,8 +112,7 @@ static void cmd_debug_poison(struct watchman_client *client, json_t *args)
 
   gettimeofday(&now, NULL);
 
-  set_poison_state(unlocked.root, unlocked.root->root_path, now, "debug-poison",
-                   ENOMEM, NULL);
+  set_poison_state(unlocked.root->root_path, now, "debug-poison", ENOMEM, NULL);
 
   resp = make_response();
   set_unicode_prop(resp, "poison", poisoned_reason);

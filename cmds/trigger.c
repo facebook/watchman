@@ -193,7 +193,7 @@ void w_trigger_command_free(struct watchman_trigger_command *cmd)
 }
 
 struct watchman_trigger_command *w_build_trigger_from_def(
-  w_root_t *root, json_t *trig, char **errmsg)
+  const w_root_t *root, json_t *trig, char **errmsg)
 {
   struct watchman_trigger_command *cmd;
   json_t *ele, *query, *relative_root;
