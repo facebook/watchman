@@ -22,9 +22,8 @@ static bool eval_since(struct w_query_ctx *ctx,
   w_clock_t clock;
   struct w_query_since since;
   time_t tval = 0;
-  struct read_locked_watchman_root lock = {ctx->root};
 
-  w_clockspec_eval_readonly(&lock, term->spec, &since);
+  w_clockspec_eval_readonly(ctx->lock, term->spec, &since);
 
   switch (term->field) {
     case SINCE_OCLOCK:

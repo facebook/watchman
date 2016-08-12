@@ -17,7 +17,7 @@ typedef struct w_query_expr w_query_expr;
 // Holds state for the execution of a query
 struct w_query_ctx {
   struct w_query *query;
-  w_root_t *root;
+  struct read_locked_watchman_root *lock;
   struct watchman_file *file;
   w_string_t *wholename;
   struct w_query_since since;

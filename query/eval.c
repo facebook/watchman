@@ -45,7 +45,7 @@ w_string_t *w_query_ctx_get_wholename(
     // legal
     name_start = ctx->query->relative_root->len + 1;
   } else {
-    name_start = ctx->root->root_path->len + 1;
+    name_start = ctx->lock->root->root_path->len + 1;
   }
 
   full_name = w_string_path_cat(compute_parent_path(ctx, ctx->file),
@@ -102,7 +102,7 @@ bool w_query_process_file(
 
   m = &ctx->results[ctx->num_results++];
 
-  m->root_number = ctx->root->number;
+  m->root_number = ctx->lock->root->number;
   m->relname = w_query_ctx_get_wholename(ctx);
   if (!m->relname) {
     w_log(W_LOG_ERR, "out of memory while capturing matches!\n");
@@ -452,7 +452,7 @@ bool w_query_execute_locked(
 
   memset(&ctx, 0, sizeof(ctx));
   ctx.query = query;
-  ctx.root = lock->root;
+  ctx.lock = w_root_read_lock_from_write(lock);
 
   memset(res, 0, sizeof(*res));
 
@@ -521,7 +521,6 @@ bool w_query_execute(
 
   memset(&ctx, 0, sizeof(ctx));
   ctx.query = query;
-  ctx.root = unlocked->root;
 
   memset(res, 0, sizeof(*res));
 
@@ -567,6 +566,8 @@ bool w_query_execute(
     if (!generator) {
       generator = default_generators;
     }
+
+    ctx.lock = w_root_read_lock_from_write(&lock);
 
     generator(query, &lock, &ctx, gendata, &num_walked);
   }

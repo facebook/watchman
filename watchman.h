@@ -540,6 +540,27 @@ struct read_locked_watchman_root {
   const w_root_t *root;
 };
 
+/** Massage a write lock into a read lock.
+ * This is suitable for passing a write lock to functions that want a
+ * read lock.  It works by simply casting the address of the write lock
+ * pointer to a read lock pointer.  Casting in this direction is fine,
+ * but not casting in the opposite direction.
+ * This is safe for a couple of reasons:
+ *
+ *  1. The read and write lock holders are binary compatible with each
+ *     other; they both simply hold a root pointer.
+ *  2. The underlying unlock function pthread_rwlock_unlock works regardless
+ *     of the read-ness or write-ness of the lock, even though we have
+ *     a separate read and write unlock functions.
+ *  3. We're careful to pass a pointer to the existing lock instance
+ *     around rather than copying it around; that way don't lose track of
+ *     the fact that we unlocked the root.
+ */
+static inline struct read_locked_watchman_root *
+w_root_read_lock_from_write(struct write_locked_watchman_root *lock) {
+  return (struct read_locked_watchman_root*)lock;
+}
+
 struct unlocked_watchman_root {
   w_root_t *root;
 };
