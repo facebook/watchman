@@ -711,6 +711,15 @@ bool w_root_lock_with_timeout(struct unlocked_watchman_root *unlocked,
 void w_root_unlock(struct write_locked_watchman_root *locked,
                    struct unlocked_watchman_root *unlocked);
 
+void w_root_read_lock(struct unlocked_watchman_root *unlocked,
+                      const char *purpose,
+                      struct read_locked_watchman_root *locked);
+bool w_root_read_lock_with_timeout(struct unlocked_watchman_root *unlocked,
+                                   const char *purpose, int timeoutms,
+                                   struct read_locked_watchman_root *locked);
+void w_root_read_unlock(struct read_locked_watchman_root *locked,
+                        struct unlocked_watchman_root *unlocked);
+
 /* Bob Jenkins' lookup3.c hash function */
 uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);
 
