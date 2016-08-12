@@ -557,11 +557,12 @@ bool w_query_execute(
 
   if (query->since_spec && query->since_spec->tag == w_cs_named_cursor) {
     // We need a write lock to evaluate this cursor
-    if (!w_root_lock_with_timeout(unlocked, "w_query_execute",
+    if (!w_root_lock_with_timeout(unlocked, "w_query_execute_named_cursor",
                                   query->lock_timeout, &wlock)) {
-      ignore_result(asprintf(&res->errmsg, "couldn't acquire root lock within "
-                                           "lock_timeout of %dms. root is "
-                                           "currently busy (%s)\n",
+      ignore_result(asprintf(&res->errmsg,
+                             "couldn't acquire root wrlock within "
+                             "lock_timeout of %dms. root is "
+                             "currently busy (%s)\n",
                              query->lock_timeout, unlocked->root->lock_reason));
       return false;
     }
@@ -577,9 +578,10 @@ bool w_query_execute(
   } else {
     if (!w_root_read_lock_with_timeout(unlocked, "w_query_execute",
                                   query->lock_timeout, &rlock)) {
-      ignore_result(asprintf(&res->errmsg, "couldn't acquire root lock within "
-                                           "lock_timeout of %dms. root is "
-                                           "currently busy (%s)\n",
+      ignore_result(asprintf(&res->errmsg,
+                             "couldn't acquire root rdlock within "
+                             "lock_timeout of %dms. root is "
+                             "currently busy (%s)\n",
                              query->lock_timeout, unlocked->root->lock_reason));
       return false;
     }
