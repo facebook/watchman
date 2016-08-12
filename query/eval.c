@@ -503,10 +503,11 @@ bool w_query_execute(
   if (w_perf_finish(&sample)) {
     w_perf_add_root_meta(&sample, root);
     w_perf_add_meta(&sample, "query_execute",
-                    json_pack("{s:b, s:i, s:i}",                        //
+                    json_pack("{s:b, s:i, s:i, s:O}",                   //
                               "fresh_instance", res->is_fresh_instance, //
                               "num_results", ctx.num_results,           //
-                              "num_walked", num_walked                  //
+                              "num_walked", num_walked,                 //
+                              "query", ctx.query->query_spec           //
                               ));
     w_perf_log(&sample);
   }
