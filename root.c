@@ -555,6 +555,65 @@ bool w_root_process_pending(struct write_locked_watchman_root *lock,
   return true;
 }
 
+struct watchman_dir *
+w_root_resolve_dir_read(struct read_locked_watchman_root *lock,
+                        w_string_t *dir_name) {
+  struct watchman_dir *dir;
+  const char *dir_component;
+  const char *dir_end;
+
+  if (w_string_equal(dir_name, lock->root->root_path)) {
+    return lock->root->root_dir;
+  }
+
+  dir_component = dir_name->buf;
+  dir_end = dir_component + dir_name->len;
+
+  dir = lock->root->root_dir;
+  dir_component += lock->root->root_path->len + 1; // Skip root path prefix
+
+  w_assert(dir_component <= dir_end, "impossible file name");
+
+  while (true) {
+    struct watchman_dir *child;
+    w_string_t component;
+    const char *sep =
+        memchr(dir_component, WATCHMAN_DIR_SEP, dir_end - dir_component);
+    // Note: if sep is NULL it means that we're looking at the basename
+    // component of the input directory name, which is the terminal
+    // iteration of this search.
+
+    w_string_new_len_typed_stack(&component, dir_component,
+                                 sep ? (uint32_t)(sep - dir_component)
+                                     : (uint32_t)(dir_end - dir_component),
+                                 dir_name->type);
+
+    child = dir->dirs
+                ? w_ht_val_ptr(w_ht_get(dir->dirs, w_ht_ptr_val(&component)))
+                : NULL;
+    if (!child) {
+      return NULL;
+    }
+
+    dir = child;
+
+    if (!sep) {
+      // We reached the end of the string
+      if (dir) {
+        // We found the dir
+        return dir;
+      }
+      // Does not exist
+      return NULL;
+    }
+
+    // Skip to the next component for the next iteration
+    dir_component = sep + 1;
+  }
+
+  return NULL;
+}
+
 struct watchman_dir *w_root_resolve_dir(struct write_locked_watchman_root *lock,
                                         w_string_t *dir_name, bool create) {
   struct watchman_dir *dir, *parent;

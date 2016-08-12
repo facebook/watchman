@@ -154,7 +154,7 @@ bool w_query_file_matches_relative_root(
 }
 
 static bool time_generator(w_query *query,
-                           struct write_locked_watchman_root *lock,
+                           struct read_locked_watchman_root *lock,
                            struct w_query_ctx *ctx, int64_t *num_walked) {
   struct watchman_file *f;
   int64_t n = 0;
@@ -187,7 +187,7 @@ done:
 }
 
 static bool suffix_generator(w_query *query,
-                             struct write_locked_watchman_root *lock,
+                             struct read_locked_watchman_root *lock,
                              struct w_query_ctx *ctx, int64_t *num_walked) {
   uint32_t i;
   struct watchman_file *f;
@@ -219,7 +219,7 @@ done:
 }
 
 static bool all_files_generator(w_query *query,
-                                struct write_locked_watchman_root *lock,
+                                struct read_locked_watchman_root *lock,
                                 struct w_query_ctx *ctx, int64_t *num_walked) {
   struct watchman_file *f;
   int64_t n = 0;
@@ -243,7 +243,7 @@ done:
 }
 
 static bool dir_generator(w_query *query,
-                          struct write_locked_watchman_root *lock,
+                          struct read_locked_watchman_root *lock,
                           struct w_query_ctx *ctx, struct watchman_dir *dir,
                           uint32_t depth, int64_t *num_walked) {
   w_ht_iter_t i;
@@ -278,7 +278,7 @@ done:
 
 static bool path_generator(
     w_query *query,
-    struct write_locked_watchman_root *lock,
+    struct read_locked_watchman_root *lock,
     struct w_query_ctx *ctx,
     int64_t *num_walked)
 {
@@ -304,7 +304,7 @@ static bool path_generator(
     // special case of root dir itself
     if (w_string_equal(lock->root->root_path, full_name)) {
       // dirname on the root is outside the root, which is useless
-      dir = w_root_resolve_dir(lock, full_name, false);
+      dir = w_root_resolve_dir_read(lock, full_name);
       goto is_dir;
     }
 
@@ -318,7 +318,7 @@ static bool path_generator(
       continue;
     }
 
-    dir = w_root_resolve_dir(lock, dir_name, false);
+    dir = w_root_resolve_dir_read(lock, dir_name);
     w_string_delref(dir_name);
 
     if (!dir) {
@@ -373,7 +373,7 @@ done:
 }
 
 static bool default_generators(w_query *query,
-                               struct write_locked_watchman_root *lock,
+                               struct read_locked_watchman_root *lock,
                                struct w_query_ctx *ctx, void *gendata,
                                int64_t *num_walked) {
   bool generated = false;
@@ -439,6 +439,47 @@ void w_query_result_free(w_query_res *res)
   res->results = NULL;
 }
 
+static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
+                           w_query_res *res, w_query_generator generator,
+                           void *gendata) {
+  int64_t num_walked = 0;
+
+  res->is_fresh_instance = !ctx->since.is_timestamp &&
+    ctx->since.clock.is_fresh_instance;
+
+  if (!(res->is_fresh_instance && ctx->query->empty_on_fresh_instance)) {
+    if (!generator) {
+      generator = default_generators;
+    }
+
+    generator(ctx->query, ctx->lock, ctx, gendata, &num_walked);
+  }
+
+  if (w_perf_finish(sample)) {
+    w_perf_add_root_meta(sample, ctx->lock->root);
+    w_perf_add_meta(sample, "query_execute",
+                    json_pack("{s:b, s:i, s:i, s:O}",                   //
+                              "fresh_instance", res->is_fresh_instance, //
+                              "num_results", ctx->num_results,          //
+                              "num_walked", num_walked,                 //
+                              "query", ctx->query->query_spec           //
+                              ));
+    w_perf_log(sample);
+  }
+  w_perf_destroy(sample);
+
+  if (ctx->wholename) {
+    w_string_delref(ctx->wholename);
+  }
+  if (ctx->last_parent_path) {
+    w_string_delref(ctx->last_parent_path);
+  }
+  res->results = ctx->results;
+  res->num_results = ctx->num_results;
+
+  return true;
+}
+
 bool w_query_execute_locked(
     w_query *query,
     struct write_locked_watchman_root *lock,
@@ -448,14 +489,12 @@ bool w_query_execute_locked(
 {
   struct w_query_ctx ctx;
   w_perf_t sample;
-  int64_t num_walked = 0;
 
   memset(&ctx, 0, sizeof(ctx));
   ctx.query = query;
   ctx.lock = w_root_read_lock_from_write(lock);
 
   memset(res, 0, sizeof(*res));
-
   w_perf_start(&sample, "query_execute");
 
   /* The first stage of execution is generation.
@@ -475,36 +514,7 @@ bool w_query_execute_locked(
   // Evaluate the cursor for this root
   w_clockspec_eval(lock, query->since_spec, &ctx.since);
 
-  res->is_fresh_instance = !ctx.since.is_timestamp &&
-    ctx.since.clock.is_fresh_instance;
-
-  if (!(res->is_fresh_instance && query->empty_on_fresh_instance)) {
-    if (!generator) {
-      generator = default_generators;
-    }
-
-    generator(query, lock, &ctx, gendata, &num_walked);
-  }
-
-  if (w_perf_finish(&sample)) {
-    w_perf_add_root_meta(&sample, lock->root);
-    w_perf_add_meta(&sample, "query_execute",
-                    json_pack("{s:b, s:i, s:i}",                        //
-                              "fresh_instance", res->is_fresh_instance, //
-                              "num_results", ctx.num_results,           //
-                              "num_walked", num_walked                  //
-                              ));
-    w_perf_log(&sample);
-  }
-  w_perf_destroy(&sample);
-
-  if (ctx.wholename) {
-    w_string_delref(ctx.wholename);
-  }
-  res->results = ctx.results;
-  res->num_results = ctx.num_results;
-
-  return true;
+  return execute_common(&ctx, &sample, res, generator, gendata);
 }
 
 bool w_query_execute(
@@ -516,8 +526,9 @@ bool w_query_execute(
 {
   struct w_query_ctx ctx;
   w_perf_t sample;
-  int64_t num_walked = 0;
-  struct write_locked_watchman_root lock;
+  struct write_locked_watchman_root wlock;
+  struct read_locked_watchman_root rlock;
+  bool result;
 
   memset(&ctx, 0, sizeof(ctx));
   ctx.query = query;
@@ -544,58 +555,48 @@ bool w_query_execute(
    * both emit the same file.
    */
 
-  // Lock the root and begin generation
-  if (!w_root_lock_with_timeout(unlocked, "w_query_execute",
-                                query->lock_timeout, &lock)) {
-    ignore_result(asprintf(&res->errmsg, "couldn't acquire root lock within "
-                                         "lock_timeout of %dms. root is "
-                                         "currently busy (%s)\n",
-                           query->lock_timeout, unlocked->root->lock_reason));
-    return false;
-  }
-  res->root_number = lock.root->number;
-  res->ticks = lock.root->ticks;
-
-  // Evaluate the cursor for this root
-  w_clockspec_eval(&lock, query->since_spec, &ctx.since);
-
-  res->is_fresh_instance = !ctx.since.is_timestamp &&
-    ctx.since.clock.is_fresh_instance;
-
-  if (!(res->is_fresh_instance && query->empty_on_fresh_instance)) {
-    if (!generator) {
-      generator = default_generators;
+  if (query->since_spec && query->since_spec->tag == w_cs_named_cursor) {
+    // We need a write lock to evaluate this cursor
+    if (!w_root_lock_with_timeout(unlocked, "w_query_execute",
+                                  query->lock_timeout, &wlock)) {
+      ignore_result(asprintf(&res->errmsg, "couldn't acquire root lock within "
+                                           "lock_timeout of %dms. root is "
+                                           "currently busy (%s)\n",
+                             query->lock_timeout, unlocked->root->lock_reason));
+      return false;
     }
+    ctx.lock = w_root_read_lock_from_write(&wlock);
+    // Evaluate the cursor for this root
+    w_clockspec_eval(&wlock, query->since_spec, &ctx.since);
 
-    ctx.lock = w_root_read_lock_from_write(&lock);
-
-    generator(query, &lock, &ctx, gendata, &num_walked);
+    // Note that we proceed with the rest of query while we hold our write
+    // lock.  We could potentially drop the write lock and re-acquire the
+    // lock as a read lock so that other queries could proceed concurrently,
+    // but that would make the overall timeout situation more complex and
+    // may not be a significant win in any case.
+  } else {
+    if (!w_root_read_lock_with_timeout(unlocked, "w_query_execute",
+                                  query->lock_timeout, &rlock)) {
+      ignore_result(asprintf(&res->errmsg, "couldn't acquire root lock within "
+                                           "lock_timeout of %dms. root is "
+                                           "currently busy (%s)\n",
+                             query->lock_timeout, unlocked->root->lock_reason));
+      return false;
+    }
+    ctx.lock = &rlock;
+    // Evaluate the cursor for this root
+    w_clockspec_eval_readonly(&rlock, query->since_spec, &ctx.since);
   }
 
-  if (w_perf_finish(&sample)) {
-    w_perf_add_root_meta(&sample, lock.root);
-    w_perf_add_meta(&sample, "query_execute",
-                    json_pack("{s:b, s:i, s:i, s:O}",                   //
-                              "fresh_instance", res->is_fresh_instance, //
-                              "num_results", ctx.num_results,           //
-                              "num_walked", num_walked,                 //
-                              "query", ctx.query->query_spec           //
-                              ));
-    w_perf_log(&sample);
-  }
-  w_root_unlock(&lock, unlocked);
-  w_perf_destroy(&sample);
+  res->root_number = ctx.lock->root->number;
+  res->ticks = ctx.lock->root->ticks;
 
-  if (ctx.wholename) {
-    w_string_delref(ctx.wholename);
-  }
-  if (ctx.last_parent_path) {
-    w_string_delref(ctx.last_parent_path);
-  }
-  res->results = ctx.results;
-  res->num_results = ctx.num_results;
-
-  return true;
+  result = execute_common(&ctx, &sample, res, generator, gendata);
+  // This handles the unlock in both the read and write case, as ctx.lock
+  // points to the read or write lock as appropriate, and the underlying
+  // unlock operation is defined to be safe for either.
+  w_root_read_unlock(ctx.lock, unlocked);
+  return result;
 }
 
 /* vim:ts=2:sw=2:et:

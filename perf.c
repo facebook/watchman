@@ -92,7 +92,7 @@ void w_perf_add_meta(w_perf_t *perf, const char *key, json_t *val) {
   set_prop(perf->meta_data, key, val);
 }
 
-void w_perf_add_root_meta(w_perf_t *perf, w_root_t *root) {
+void w_perf_add_root_meta(w_perf_t *perf, const w_root_t *root) {
   // Note: if the root lock isn't held, we may read inaccurate numbers for
   // some of these properties.  We're ok with that, and don't want to force
   // the root lock to be re-acquired just for this.

@@ -417,7 +417,7 @@ static void spawn_command(w_root_t *root,
 }
 
 static bool trigger_generator(w_query *query,
-                              struct write_locked_watchman_root *lock,
+                              struct read_locked_watchman_root *lock,
                               struct w_query_ctx *ctx, void *gendata,
                               int64_t *num_walked) {
   struct watchman_file *f;

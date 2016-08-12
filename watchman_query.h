@@ -122,7 +122,7 @@ bool w_query_process_file(
 // Generator callback, used to plug in an alternate
 // generator when used in triggers or subscriptions
 typedef bool (*w_query_generator)(w_query *query,
-                                  struct write_locked_watchman_root *lock,
+                                  struct read_locked_watchman_root *lock,
                                   struct w_query_ctx *ctx, void *gendata,
                                   int64_t *num_walked);
 

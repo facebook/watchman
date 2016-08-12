@@ -61,7 +61,7 @@ bool w_perf_finish(w_perf_t *perf);
 void w_perf_add_meta(w_perf_t *perf, const char *key, json_t *val);
 
 // Annotate the sample with some standard metadata taken from a root.
-void w_perf_add_root_meta(w_perf_t *perf, w_root_t *root);
+void w_perf_add_root_meta(w_perf_t *perf, const w_root_t *root);
 
 // Force the sample to go to the log
 void w_perf_force_log(w_perf_t *perf);

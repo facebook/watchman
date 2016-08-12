@@ -711,6 +711,9 @@ void w_root_set_warning(w_root_t *root, w_string_t *str);
 
 struct watchman_dir *w_root_resolve_dir(struct write_locked_watchman_root *lock,
                                         w_string_t *dir_name, bool create);
+struct watchman_dir *
+w_root_resolve_dir_read(struct read_locked_watchman_root *lock,
+                        w_string_t *dir_name);
 void w_root_process_path(struct write_locked_watchman_root *root,
     struct watchman_pending_collection *coll, w_string_t *full_path,
     struct timeval now, int flags,
