@@ -2419,8 +2419,6 @@ static bool root_resolve(const char *filename, bool auto_watch, bool *created,
   }
 
   if (root || !auto_watch) {
-    struct write_locked_watchman_root lock;
-
     if (!root) {
       ignore_result(
           asprintf(errmsg, "directory %s is not watched", watch_path));
@@ -2439,9 +2437,12 @@ static bool root_resolve(const char *filename, bool auto_watch, bool *created,
     // the lifetime of the root
 
     unlocked->root = root;
-    w_root_lock(unlocked, "root_resolve: last_cmd_timestamp", &lock);
-    time(&lock.root->last_cmd_timestamp);
-    w_root_unlock(&lock, unlocked);
+    // Note that this write potentially races with the read in consider_reap
+    // but we're "OK" with it because the latter is performed under a write
+    // lock and the worst case side effect is that we (safely) decide to reap
+    // at the same instant that a new command comes in.  The reap intervals
+    // are typically on the order of days.
+    time(&unlocked->root->last_cmd_timestamp);
     // caller owns a ref
     return true;
   }
