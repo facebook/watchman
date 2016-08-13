@@ -32,6 +32,11 @@ case.
 On systems where the watched root is a case insensitive filesystem (this is the
 common case for OS X and Windows), `match` is equivalent to `imatch`.
 
+*Since 4.7.*
+
+You can override the case sensitivity of all name matching operations used
+in the query by setting the `case_sensitive` field in your query.
+
 ## wildmatch
 
 *Since 3.7.*

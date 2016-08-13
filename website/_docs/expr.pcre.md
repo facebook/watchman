@@ -24,6 +24,14 @@ from the basename to the wholename of the file.
 it behaves identically to `pcre` except that the match is performed ignoring
 case.
 
+*Since 2.9.9.*
+
 Starting in version 2.9.9, on OS X systems where the watched root is a case
 insensitive filesystem (this is the common case for OS X), `pcre` is equivalent
 to `ipcre`.
+
+*Since 4.7.*
+
+You can override the case sensitivity of all name matching operations used
+in the query by setting the `case_sensitive` field in your query.
+

@@ -112,7 +112,8 @@ microseconds, nanoseconds or floating point seconds respectively.
 
 *Since 4.6.*
 
- * `symlink_target` - string: the target of a symbolic link if the file is a symbolic link
+ * `symlink_target` - string: the target of a symbolic link if the file is a
+   symbolic link
 
 ### Synchronization timeout (since 2.1)
 
@@ -160,3 +161,32 @@ than this.  You may use the `lock_timeout` field to control this behavior.
 
 Prior to version 4.6, the `lock_timeout` could not be configured and had an
 effective value of infinity.
+
+### Case sensitivity
+
+*Since 2.9.9.*
+
+On systems where the watched root is a case insensitive filesystem (this is the
+common case for OS X and Windows), various name matching operations default to
+case insensitive.
+
+*Since 4.7.*
+
+You may override the case sensitivity of the various name matching operations
+by setting the `case_sensitive` field in your query spec.  It default to the
+case sensitivity of the watched root.  This is useful in cases where you know
+that the contents of the tree are treated case sensitively by your various
+tools but are running on a case insensitive filesystem.  By forcing the name
+matches to case sensitive mode the matches are faster and in some cases can be
+accelerated by using alternative algorithms.
+
+```bash
+$ watchman -j <<-EOT
+["query", "/path/to/root", {
+  "suffix": "php",
+  "expression": ["match", "foo*.c", "basename"],
+  "case_sensitive": true,
+  "fields": ["name"]
+}]
+EOT
+```

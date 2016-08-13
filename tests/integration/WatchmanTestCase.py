@@ -300,3 +300,11 @@ class WatchmanTestCase(unittest.TestCase):
                 filename in self.normWatchmanFileList(dat['files'])):
                 return dat
         return None
+
+    def isCaseInsensitive(self):
+        if hasattr(self, '_case_insensitive'):
+            return self._case_insensitive
+        d = self.mkdtemp()
+        self.touchRelative(d, 'a')
+        self._case_insensitive = os.path.exists(os.path.join(d, 'A'))
+        return self._case_insensitive
