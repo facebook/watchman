@@ -68,3 +68,25 @@ class TestMatch(WatchmanTestCase.WatchmanTestCase):
           'fields': ['name']})
         self.assertEqual(self.normWatchmanFileList(res['files']),
                          self.normFileList(['foo/baz.c']))
+
+        res = self.watchmanCommand('query', root, {
+            'expression': ['match', 'FOO/*.c', 'wholename'],
+            'fields': ['name']})
+        if self.isCaseInsensitive():
+            self.assertEqual(self.normWatchmanFileList(res['files']),
+                            self.normFileList(['foo/baz.c']))
+        else:
+            self.assertEqual(self.normWatchmanFileList(res['files']), [])
+
+        res = self.watchmanCommand('query', root, {
+            'expression': ['match', 'FOO/*.c', 'wholename'],
+            'case_sensitive': True,
+            'fields': ['name']})
+        self.assertEqual(self.normWatchmanFileList(res['files']), [])
+
+        res = self.watchmanCommand('query', root, {
+            'expression': ['match', 'FOO/*.c', 'wholename'],
+            'case_sensitive': False,
+            'fields': ['name']})
+        self.assertEqual(self.normWatchmanFileList(res['files']),
+                            self.normFileList(['foo/baz.c']))

@@ -293,6 +293,18 @@ static bool parse_empty_on_fresh_instance(w_query *res, json_t *query)
   return true;
 }
 
+static bool parse_case_sensitive(w_query *res, const w_root_t *root, json_t *query) {
+  int value = root->case_sensitive;
+
+  if (query && json_unpack(query, "{s?:b*}", "case_sensitive", &value) != 0) {
+    res->errmsg = strdup("case_sensitive must be a boolean");
+    return false;
+  }
+
+  res->case_sensitive = (bool) value;
+  return true;
+}
+
 w_query *w_query_parse(w_root_t *root, json_t *query, char **errmsg)
 {
   w_query *res;
@@ -305,7 +317,10 @@ w_query *w_query_parse(w_root_t *root, json_t *query, char **errmsg)
     goto error;
   }
   res->refcnt = 1;
-  res->case_sensitive = root->case_sensitive;
+
+  if (!parse_case_sensitive(res, root, query)) {
+    goto error;
+  }
 
   if (!parse_sync(res, query)) {
     goto error;
