@@ -415,6 +415,16 @@ static bool default_generators(w_query *query,
     generated = true;
   }
 
+  if (query->glob_tree) {
+    n = 0;
+    result = glob_generator(query, lock, ctx, &n);
+    total += n;
+    if (!result) {
+      goto done;
+    }
+    generated = true;
+  }
+
   // And finally, if there were no other generators, we walk all known
   // files
   if (!generated) {

@@ -72,6 +72,7 @@ SRCS=\
 	query\parse.c      \
 	query\dirname.c    \
 	query\eval.c       \
+	query\glob.c       \
 	query\type.c       \
 	query\suffix.c     \
 	query\match.c      \

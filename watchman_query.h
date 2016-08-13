@@ -51,6 +51,8 @@ struct w_query_expr {
   void *data;
 };
 
+struct watchman_glob_tree;
+
 struct w_query {
   long refcnt;
 
@@ -62,6 +64,8 @@ struct w_query {
 
   struct w_query_path *paths;
   size_t npaths;
+
+  struct watchman_glob_tree *glob_tree;
 
   w_string_t **suffixes;
   size_t nsuffixes;
@@ -204,6 +208,11 @@ bool eval_int_compare(json_int_t ival, struct w_query_int_compare *comp);
 bool parse_field_list(json_t *field_list,
     struct w_query_field_list *selected,
     char **errmsg);
+
+bool glob_generator(w_query *query, struct read_locked_watchman_root *lock,
+                    struct w_query_ctx *ctx, int64_t *num_walked);
+bool parse_globs(w_query *res, json_t *query);
+void free_glob_tree(struct watchman_glob_tree *glob_tree);
 
 #define W_TERM_PARSER1(symbol, name, func) \
   static w_ctor_fn_type(symbol) {                   \
