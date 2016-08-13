@@ -25,6 +25,10 @@ struct w_query_ctx {
   struct watchman_rule_match *results;
   uint32_t num_results;
   uint32_t num_allocd;
+
+  // Cache for dir name lookups when computing wholename
+  struct watchman_dir *last_parent;
+  w_string_t *last_parent_path;
 };
 
 struct w_query_path {

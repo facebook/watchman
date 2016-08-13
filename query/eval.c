@@ -13,6 +13,22 @@ bool w_query_expr_evaluate(
   return expr->evaluate(ctx, file, expr->data);
 }
 
+static w_string_t *compute_parent_path(struct w_query_ctx *ctx,
+                                       struct watchman_file *file) {
+  if (ctx->last_parent == file->parent) {
+    return ctx->last_parent_path;
+  }
+
+  if (ctx->last_parent_path) {
+    w_string_delref(ctx->last_parent_path);
+  }
+
+  ctx->last_parent_path = w_dir_copy_full_path(file->parent);
+  ctx->last_parent = file->parent;
+
+  return ctx->last_parent_path;
+}
+
 w_string_t *w_query_ctx_get_wholename(
     struct w_query_ctx *ctx
 )
@@ -32,7 +48,9 @@ w_string_t *w_query_ctx_get_wholename(
     name_start = ctx->root->root_path->len + 1;
   }
 
-  full_name = w_dir_path_cat_str(ctx->file->parent, w_file_get_name(ctx->file));
+  full_name = w_string_path_cat(compute_parent_path(ctx, ctx->file),
+                                w_file_get_name(ctx->file));
+
   // Record the name relative to the root
   ctx->wholename = w_string_slice(full_name, name_start,
       full_name->len - name_start);
@@ -126,12 +144,11 @@ bool w_query_file_matches_relative_root(
     return true;
   }
 
-  parent_path = w_dir_copy_full_path(f->parent);
+  parent_path = compute_parent_path(ctx, f);
   // "in relative root" here does not mean exactly the relative root, so compare
   // against the relative root's parent.
   result = w_string_equal(parent_path, ctx->query->relative_root) ||
            w_string_startswith(parent_path, ctx->query->relative_root_slash);
-  w_string_delref(parent_path);
 
   return result;
 }
@@ -515,6 +532,9 @@ bool w_query_execute(
 
   if (ctx.wholename) {
     w_string_delref(ctx.wholename);
+  }
+  if (ctx.last_parent_path) {
+    w_string_delref(ctx.last_parent_path);
   }
   res->results = ctx.results;
   res->num_results = ctx.num_results;
