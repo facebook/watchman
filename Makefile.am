@@ -49,6 +49,7 @@ watchman_SOURCES = \
 	query/dirname.c    \
 	query/parse.c      \
 	query/eval.c       \
+	query/glob.c       \
 	query/intcompare.c \
 	query/type.c       \
 	query/suffix.c     \

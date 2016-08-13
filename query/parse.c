@@ -343,6 +343,11 @@ w_query *w_query_parse(const w_root_t *root, json_t *query, char **errmsg)
     goto error;
   }
 
+  /* Look for glob generators */
+  if (!parse_globs(res, query)) {
+    goto error;
+  }
+
   /* Look for suffix generators */
   if (!parse_suffixes(res, query)) {
     goto error;
@@ -550,6 +555,8 @@ void w_query_delref(w_query *query)
     }
   }
   free(query->paths);
+
+  free_glob_tree(query->glob_tree);
 
   if (query->since_spec) {
     w_clockspec_free(query->since_spec);

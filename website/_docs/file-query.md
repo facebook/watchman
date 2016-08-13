@@ -20,11 +20,12 @@ A query may specify any number of generators; each generator will emit its list
 of files and this may mean that you see the same file output more than once if
 you specified the use of multiple generators that all produce the same file.
 
-Watchman provides 4 generators:
+Watchman provides 5 generators:
 
  * **since**: produces a list of files that were modified since a specific
    clockspec.
  * **suffix**: produces a list of files that have a particular suffix.
+ * **glob**: efficiently pattern match a list of files based on their names.
  * **path**: produces a list of files based on their path and depth.
  * **all**: produces a list of all known files
 
@@ -79,6 +80,42 @@ $ watchman -j <<-EOT
 }]
 EOT
 ```
+
+### Glob Generator
+
+*Since 4.7.*
+
+The `glob` generator produces a list of files by matching against your
+input list of patterns.  It does this by building a tree from the glob
+expression(s) and walking both the expression and the in-memory filesystem
+tree concurrently.
+
+This query will yield a list of all of the C source and header files found
+directly in the `src` dir:
+
+```
+$ watchman -j <<-EOT
+["query", "/path/to/root", {
+  "glob": ["src/*.c", "src/*.h"],
+  "fields": ["name"]
+}]
+```
+
+This query will yield a list of all of the C source and header files found
+in any subdirectories of the root:
+
+```
+$ watchman -j <<-EOT
+["query", "/path/to/root", {
+  "glob": ["**/*.c", "**/*.h"],
+  "fields": ["name"]
+}]
+```
+
+Note that it is more efficient to use the `suffix` generator together with a
+`dirname` expression term for such a broadly scoped query as it results in
+fewer comparisons.  This example is included as an illustration of recursive
+globbing.
 
 ### Path Generator
 
