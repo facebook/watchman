@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 
+W_CAP_REG("bser-v2")
 bool w_json_buffer_init(w_jbuffer_t *jr)
 {
   memset(jr, 0, sizeof(*jr));
