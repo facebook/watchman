@@ -53,6 +53,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define BSER_NULL      0x0a
 #define BSER_TEMPLATE  0x0b
 #define BSER_SKIP      0x0c
+#define BSER_UTF8STRING 0x0d
 
 // An immutable object representation of BSER_OBJECT.
 // Rather than build a hash table, key -> value are obtained
@@ -921,6 +922,23 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end,
         } else {
           return PyBytes_FromStringAndSize(start, (long)len);
         }
+      }
+
+    case BSER_UTF8STRING:
+      {
+        const char *start;
+        int64_t len;
+
+        if (!bunser_bytestring(ptr, end, &start, &len)) {
+          return NULL;
+        }
+
+        if (len > LONG_MAX) {
+          PyErr_Format(PyExc_ValueError, "string too long for python");
+          return NULL;
+        }
+
+        return PyUnicode_Decode(start, (long)len, "utf-8", "strict");
       }
 
     case BSER_ARRAY:

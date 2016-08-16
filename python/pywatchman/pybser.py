@@ -54,6 +54,7 @@ BSER_FALSE = b'\x09'
 BSER_NULL = b'\x0a'
 BSER_TEMPLATE = b'\x0b'
 BSER_SKIP = b'\x0c'
+BSER_UTF8STRING = b'\x0d'
 
 if compat.PYTHON3:
     STRING_TYPES = (str, bytes)
@@ -313,12 +314,18 @@ class Bunser(object):
         str_val = struct.unpack_from(tobytes(str_len) + b's', buf, pos)[0]
         return (str_val.decode('utf-8'), pos + str_len)
 
-    def unser_string(self, buf, pos):
+    def unser_bytestring(self, buf, pos):
         str_len, pos = self.unser_int(buf, pos + 1)
         str_val = struct.unpack_from(tobytes(str_len) + b's', buf, pos)[0]
         if self.value_encoding is not None:
             str_val = str_val.decode(self.value_encoding, self.value_errors)
             # str_len stays the same because that's the length in bytes
+        return (str_val, pos + str_len)
+
+    def unser_utf8string(self, buf, pos):
+        str_len, pos = self.unser_int(buf, pos + 1)
+        str_val = struct.unpack_from(tobytes(str_len) + b's', buf, pos)[0]
+        str_val = str_val.decode('utf-8')
         return (str_val, pos + str_len)
 
     def unser_array(self, buf, pos):
@@ -404,7 +411,9 @@ class Bunser(object):
         elif val_type == BSER_NULL:
             return (None, pos + 1)
         elif val_type == BSER_BYTESTRING:
-            return self.unser_string(buf, pos)
+            return self.unser_bytestring(buf, pos)
+        elif val_type == BSER_UTF8STRING:
+            return self.unser_utf8string(buf, pos)
         elif val_type == BSER_ARRAY:
             return self.unser_array(buf, pos)
         elif val_type == BSER_OBJECT:
