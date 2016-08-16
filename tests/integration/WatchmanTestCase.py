@@ -50,16 +50,21 @@ class WatchmanTestCase(unittest.TestCase):
     def setUp(self):
         self.checkPersistentSession()
 
-    def getClient(self):
-        if not hasattr(self, 'client'):
-            self.client = pywatchman.client(
+    def getClient(self, inst=None):
+        if inst or not hasattr(self, 'client'):
+            client = pywatchman.client(
                 # ASAN-enabled builds can be slower enough that we hit timeouts
                 # with the default of 1 second
                 timeout=3.0,
                 transport=self.transport,
                 sendEncoding=self.encoding,
                 recvEncoding=self.encoding,
-                sockpath=WatchmanInstance.getSharedInstance().getSockPath())
+                sockpath=(inst or WatchmanInstance.getSharedInstance()).
+                         getSockPath())
+            if not inst:
+                # only cache the client if it points to the shared instance
+                self.client = client
+            return client
         return self.client
 
     def __logTestInfo(self, test, msg):
@@ -73,8 +78,8 @@ class WatchmanTestCase(unittest.TestCase):
     def normPath(self, name):
         return norm_path(name)
 
-    def mkdtemp(self):
-        return self.normPath(tempfile.mkdtemp(dir=self.tempdir))
+    def mkdtemp(self, **kwargs):
+        return self.normPath(tempfile.mkdtemp(dir=self.tempdir, **kwargs))
 
     def mktemp(self, prefix=''):
         f, name = tempfile.mkstemp(prefix=prefix, dir=self.tempdir)
