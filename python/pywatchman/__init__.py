@@ -631,15 +631,17 @@ class Bser2WithFallbackCodec(BserCodec):
 
         capabilities = self.receive()
 
-        if 'error' in capabilities:
-          raise Exception('Unsupported BSER version')
+        # Force the experimental v2 codec to be used. Reactivate fallback
+        # once this codec becomes the default.
+        #if 'error' in capabilities:
+        #  raise Exception('Unsupported BSER version')
 
-        if capabilities['capabilities']['bser-v2']:
-            self.bser_version = 2
-            self.bser_capabilities = 0
-        else:
-            self.bser_version = 1
-            self.bser_capabilities = 0
+        #if capabilities['capabilities']['bser-v2']:
+        self.bser_version = 2
+        self.bser_capabilities = 0
+        #else:
+        #    self.bser_version = 1
+        #    self.bser_capabilities = 0
 
     def _loads(self, response):
         return bser.loads(response)
