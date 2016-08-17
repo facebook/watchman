@@ -123,7 +123,8 @@ static BOOL WINAPI probe_get_overlapped_result_ex(
       GetModuleHandle("kernel32.dll"),
       "GetOverlappedResultEx");
 
-  if ( getenv( "WATCHMAN_WIN7_COMPAT") || !func ) {
+  if ((getenv("WATCHMAN_WIN7_COMPAT") &&
+       getenv("WATCHMAN_WIN7_COMPAT")[0] == '1') || !func) {
     func = get_overlapped_result_ex_impl;
   }
 
