@@ -161,20 +161,15 @@ bool w_bser_decode_pdu_info(w_jbuffer_t *jr, w_stm_t stm, uint32_t bser_version,
 {
   json_int_t needed;
   if (bser_version == 2) {
-    while (!bunser_int(jr->buf + jr->rpos, jr->wpos - jr->rpos,
-          &needed, bser_capabilities)) {
-      if (needed == -1) {
-        snprintf(jerr->text, sizeof(jerr->text),
-            "failed to read BSER capabilities");
-        return false;
-      }
+    while (jr->wpos - jr->rpos < 4) {
       if (!fill_buffer(jr, stm)) {
         snprintf(jerr->text, sizeof(jerr->text),
             "unable to fill buffer");
         return false;
       }
     }
-    jr->rpos += (uint32_t)needed;
+    memcpy(bser_capabilities, jr->buf + jr->rpos, 4);
+    jr->rpos += (uint32_t)4;
   }
   while (!bunser_int(jr->buf + jr->rpos, jr->wpos - jr->rpos,
         &needed, len)) {

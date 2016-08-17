@@ -401,7 +401,7 @@ int w_bser_write_pdu(const uint32_t bser_version,
   }
 
   if (bser_version == 2) {
-    if (bser_int(&ctx, bser_capabilities, data)) {
+    if (dump((const char*) &bser_capabilities, 4, data)) {
       return -1;
     }
   }
