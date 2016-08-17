@@ -393,7 +393,7 @@ class WindowsNamedPipeTransport(Transport):
             self._raise_win_err('CreateEvent failed', GetLastError())
 
         self._get_overlapped_result_ex = GetOverlappedResultEx
-        if (os.getenv('WATCHMAN_WIN7_COMPAT') is not None or
+        if (os.getenv('WATCHMAN_WIN7_COMPAT') == '1' or
             self._get_overlapped_result_ex is None):
             self._get_overlapped_result_ex = _get_overlapped_result_ex_impl
 
