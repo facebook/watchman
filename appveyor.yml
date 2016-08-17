@@ -22,3 +22,11 @@ artifacts:
   - path: Watchman
     name: watchman
     type: zip
+
+environment:
+  matrix:
+    - WATCHMAN_WIN7_COMPAT: 1
+    - WATCHMAN_WIN7_COMPAT:
+
+platform:
+  - x64

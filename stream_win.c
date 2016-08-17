@@ -38,70 +38,6 @@ struct win_handle {
   bool blocking;
 };
 
-typedef BOOL (WINAPI *get_overlapped_result_ex_func)(
-    HANDLE file,
-    LPOVERLAPPED olap,
-    LPDWORD bytes,
-    DWORD millis,
-    BOOL alertable);
-static get_overlapped_result_ex_func get_overlapped_result_ex;
-
-static BOOL WINAPI win7_get_overlapped_result_ex(
-    HANDLE file,
-    LPOVERLAPPED olap,
-    LPDWORD bytes,
-    DWORD millis,
-    BOOL alertable) {
-
-  while (true) {
-    if (GetOverlappedResult(file, olap, bytes, FALSE)) {
-      // Result is available
-      return TRUE;
-    }
-
-    ULONGLONG start = GetTickCount64();
-    if (SleepEx(millis, alertable) == WAIT_IO_COMPLETION) {
-      SetLastError(WAIT_IO_COMPLETION);
-      return FALSE;
-    }
-    ULONGLONG end = GetTickCount64();
-
-    if (millis != INFINITE) {
-      millis = (DWORD)((ULONGLONG)millis - (end - start));
-      if (millis <= 0) {
-        // Out of time
-        SetLastError(WAIT_TIMEOUT);
-        return FALSE;
-      }
-    }
-  }
-}
-
-static BOOL WINAPI probe_get_overlapped_result_ex(
-    HANDLE file,
-    LPOVERLAPPED olap,
-    LPDWORD bytes,
-    DWORD millis,
-    BOOL alertable) {
-  get_overlapped_result_ex_func func;
-
-  func = (get_overlapped_result_ex_func)GetProcAddress(
-      GetModuleHandle("kernel32.dll"),
-      "GetOverlappedResultEx");
-
-  if (!func) {
-    func = win7_get_overlapped_result_ex;
-  }
-
-  get_overlapped_result_ex = func;
-
-  return func(file, olap, bytes, millis, alertable);
-}
-
-static get_overlapped_result_ex_func get_overlapped_result_ex =
-  probe_get_overlapped_result_ex;
-
-
 #if 1
 #define stream_debug(x, ...) 0
 #else
@@ -118,6 +54,88 @@ static get_overlapped_result_ex_func get_overlapped_result_ex =
     fflush(stderr);                                                            \
   } while (0)
 #endif
+
+typedef BOOL (WINAPI *get_overlapped_result_ex_func)(
+    HANDLE file,
+    LPOVERLAPPED olap,
+    LPDWORD bytes,
+    DWORD millis,
+    BOOL alertable);
+static get_overlapped_result_ex_func get_overlapped_result_ex;
+
+static BOOL WINAPI get_overlapped_result_ex_impl(
+    HANDLE file,
+    LPOVERLAPPED olap,
+    LPDWORD bytes,
+    DWORD millis,
+    BOOL alertable) {
+
+  DWORD waitReturnCode, err;
+
+  stream_debug( "Preparing to wait for maximum %ums\n", millis );
+  if ( millis != 0 ) {
+
+    waitReturnCode = WaitForSingleObjectEx(olap->hEvent, millis, alertable);
+    switch (waitReturnCode)
+    {
+    case WAIT_OBJECT_0:
+      // Event is signaled, overlapped IO operation result should be available.
+      break;
+    case WAIT_IO_COMPLETION:
+      // WaitForSingleObjectEx returnes because the system added an I/O completion
+      // routine or an asynchronous procedure call (APC) to the thread queue.
+      SetLastError(WAIT_IO_COMPLETION);
+      break;
+    case WAIT_TIMEOUT:
+      // We reached the maximum allowed wait time, the IO operation failed
+      // to complete in timely fashion.
+      SetLastError(WAIT_TIMEOUT);
+      return FALSE;
+
+    case WAIT_FAILED:
+      // something went wrong calling WaitForSingleObjectEx
+      err = GetLastError();
+      stream_debug("WaitForSingleObjectEx failed: %s\n", win32_strerror(err));
+      return FALSE;
+
+    default:
+      // unexpected situation deserving investigation.
+      err = GetLastError();
+      stream_debug("Unexpected error: %s\n", win32_strerror(err));
+      return FALSE;
+    }
+  }
+
+  return GetOverlappedResult(file, olap, bytes, FALSE);
+}
+
+
+static BOOL WINAPI probe_get_overlapped_result_ex(
+    HANDLE file,
+    LPOVERLAPPED olap,
+    LPDWORD bytes,
+    DWORD millis,
+    BOOL alertable ) {
+  get_overlapped_result_ex_func func;
+
+  func = (get_overlapped_result_ex_func)GetProcAddress(
+      GetModuleHandle("kernel32.dll"),
+      "GetOverlappedResultEx");
+
+  if ((getenv("WATCHMAN_WIN7_COMPAT") &&
+       getenv("WATCHMAN_WIN7_COMPAT")[0] == '1') || !func) {
+    func = get_overlapped_result_ex_impl;
+  }
+
+  get_overlapped_result_ex = func;
+
+  return func(file, olap, bytes, millis, alertable);
+}
+
+
+static get_overlapped_result_ex_func get_overlapped_result_ex =
+  probe_get_overlapped_result_ex;
+
 
 static int win_close(w_stm_t stm) {
   struct win_handle *h = stm->handle;

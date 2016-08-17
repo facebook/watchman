@@ -32,7 +32,6 @@ from __future__ import print_function
 # no unicode literals
 
 import os
-import errno
 import math
 import socket
 import subprocess
@@ -51,6 +50,7 @@ from . import (
     encoding,
 )
 
+
 if os.name == 'nt':
     import ctypes
     import ctypes.wintypes
@@ -64,18 +64,29 @@ if os.name == 'nt':
     FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
     FORMAT_MESSAGE_ALLOCATE_BUFFER = 0x00000100
     FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200
+    WAIT_FAILED = 0xFFFFFFFF
     WAIT_TIMEOUT = 0x00000102
     WAIT_OBJECT_0 = 0x00000000
-    ERROR_IO_PENDING = 997
+    WAIT_IO_COMPLETION = 0x000000C0
+    INFINITE = 0xFFFFFFFF
+
+    # Overlapped I/O operation is in progress. (997)
+    ERROR_IO_PENDING = 0x000003E5
+
+    # The pointer size follows the architecture
+    # We use WPARAM since this type is already conditionally defined
+    ULONG_PTR = ctypes.wintypes.WPARAM
 
     class OVERLAPPED(ctypes.Structure):
         _fields_ = [
-            ("Internal", wintypes.ULONG), ("InternalHigh", wintypes.ULONG),
+            ("Internal", ULONG_PTR), ("InternalHigh", ULONG_PTR),
             ("Offset", wintypes.DWORD), ("OffsetHigh", wintypes.DWORD),
             ("hEvent", wintypes.HANDLE)
         ]
 
         def __init__(self):
+            self.Internal = 0
+            self.InternalHigh = 0
             self.Offset = 0
             self.OffsetHigh = 0
             self.hEvent = 0
@@ -106,6 +117,10 @@ if os.name == 'nt':
     GetLastError.argtypes = []
     GetLastError.restype = wintypes.DWORD
 
+    SetLastError = ctypes.windll.kernel32.SetLastError
+    SetLastError.argtypes = [wintypes.DWORD]
+    SetLastError.restype = None
+
     FormatMessage = ctypes.windll.kernel32.FormatMessageA
     FormatMessage.argtypes = [wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD,
                               wintypes.DWORD, ctypes.POINTER(wintypes.LPSTR),
@@ -114,12 +129,30 @@ if os.name == 'nt':
 
     LocalFree = ctypes.windll.kernel32.LocalFree
 
-    GetOverlappedResultEx = ctypes.windll.kernel32.GetOverlappedResultEx
-    GetOverlappedResultEx.argtypes = [wintypes.HANDLE,
-                                      ctypes.POINTER(OVERLAPPED), LPDWORD,
-                                      wintypes.DWORD, wintypes.BOOL]
-    GetOverlappedResultEx.restype = wintypes.BOOL
+    GetOverlappedResult = ctypes.windll.kernel32.GetOverlappedResult
+    GetOverlappedResult.argtypes = [wintypes.HANDLE,
+                                    ctypes.POINTER(OVERLAPPED), LPDWORD,
+                                    wintypes.BOOL]
+    GetOverlappedResult.restype = wintypes.BOOL
 
+    GetOverlappedResultEx = getattr(ctypes.windll.kernel32,
+                                    'GetOverlappedResultEx', None)
+    if GetOverlappedResultEx is not None:
+        GetOverlappedResultEx.argtypes = [wintypes.HANDLE,
+                                          ctypes.POINTER(OVERLAPPED), LPDWORD,
+                                          wintypes.DWORD, wintypes.BOOL]
+        GetOverlappedResultEx.restype = wintypes.BOOL
+
+    WaitForSingleObjectEx = ctypes.windll.kernel32.WaitForSingleObjectEx
+    WaitForSingleObjectEx.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.BOOL]
+    WaitForSingleObjectEx.restype = wintypes.DWORD
+
+    CreateEvent = ctypes.windll.kernel32.CreateEventA
+    CreateEvent.argtypes = [LPDWORD, wintypes.BOOL, wintypes.BOOL,
+                            wintypes.LPSTR]
+    CreateEvent.restype = wintypes.HANDLE
+
+    # Windows Vista is the minimum supported client for CancelIoEx.
     CancelIoEx = ctypes.windll.kernel32.CancelIoEx
     CancelIoEx.argtypes = [wintypes.HANDLE, ctypes.POINTER(OVERLAPPED)]
     CancelIoEx.restype = wintypes.BOOL
@@ -139,6 +172,20 @@ else:
 
     def log(fmt, *args):
         pass
+
+
+def _win32_strerror(err):
+    """ expand a win32 error code into a human readable message """
+
+    # FormatMessage will allocate memory and assign it here
+    buf = ctypes.c_char_p()
+    FormatMessage(
+        FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER
+        | FORMAT_MESSAGE_IGNORE_INSERTS, None, err, 0, buf, 0, None)
+    try:
+        return buf.value
+    finally:
+        LocalFree(buf)
 
 
 class WatchmanError(Exception):
@@ -284,6 +331,46 @@ class UnixSocketTransport(Transport):
             raise SocketTimeout('timed out sending query command')
 
 
+def _get_overlapped_result_ex_impl(pipe, olap, nbytes, millis, alertable):
+    """ Windows 7 and earlier does not support GetOverlappedResultEx. The
+    alternative is to use GetOverlappedResult and wait for read or write
+    operation to complete. This is done be using CreateEvent and
+    WaitForSingleObjectEx. CreateEvent, WaitForSingleObjectEx
+    and GetOverlappedResult are all part of Windows API since WindowsXP.
+    This is the exact same implementation that can be found in the watchman
+    source code (see get_overlapped_result_ex_impl in stream_win.c). This
+    way, maintenance should be simplified.
+    """
+    log('Preparing to wait for maximum %dms', millis )
+    if millis != 0:
+        waitReturnCode = WaitForSingleObjectEx(olap.hEvent, millis, alertable)
+        if waitReturnCode == WAIT_OBJECT_0:
+            # Event is signaled, overlapped IO operation result should be available.
+            pass
+        elif waitReturnCode == WAIT_IO_COMPLETION:
+            # WaitForSingleObjectEx returnes because the system added an I/O completion
+            # routine or an asynchronous procedure call (APC) to the thread queue.
+            SetLastError(WAIT_IO_COMPLETION)
+            pass
+        elif waitReturnCode == WAIT_TIMEOUT:
+            # We reached the maximum allowed wait time, the IO operation failed
+            # to complete in timely fashion.
+            SetLastError(WAIT_TIMEOUT)
+            return False
+        elif waitReturnCode == WAIT_FAILED:
+            # something went wrong calling WaitForSingleObjectEx
+            err = GetLastError()
+            log('WaitForSingleObjectEx failed: %s', _win32_strerror(err))
+            return False
+        else:
+            # unexpected situation deserving investigation.
+            err = GetLastError()
+            log('Unexpected error: %s', _win32_strerror(err))
+            return False
+
+    return GetOverlappedResult(pipe, olap, nbytes, False)
+
+
 class WindowsNamedPipeTransport(Transport):
     """ connect to a named pipe """
 
@@ -300,27 +387,30 @@ class WindowsNamedPipeTransport(Transport):
             self._raise_win_err('failed to open pipe %s' % sockpath,
                                 GetLastError())
 
-    def _win32_strerror(self, err):
-        """ expand a win32 error code into a human readable message """
+        # event for the overlapped I/O operations
+        self._waitable = CreateEvent(None, True, False, None)
+        if self._waitable is None:
+            self._raise_win_err('CreateEvent failed', GetLastError())
 
-        # FormatMessage will allocate memory and assign it here
-        buf = ctypes.c_char_p()
-        FormatMessage(
-            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER
-            | FORMAT_MESSAGE_IGNORE_INSERTS, None, err, 0, buf, 0, None)
-        try:
-            return buf.value
-        finally:
-            LocalFree(buf)
+        self._get_overlapped_result_ex = GetOverlappedResultEx
+        if (os.getenv('WATCHMAN_WIN7_COMPAT') == '1' or
+            self._get_overlapped_result_ex is None):
+            self._get_overlapped_result_ex = _get_overlapped_result_ex_impl
 
     def _raise_win_err(self, msg, err):
         raise IOError('%s win32 error code: %d %s' %
-                      (msg, err, self._win32_strerror(err)))
+                      (msg, err, _win32_strerror(err)))
 
     def close(self):
         if self.pipe:
+            log('Closing pipe')
             CloseHandle(self.pipe)
         self.pipe = None
+
+        if self._waitable is not None:
+            # We release the handle for the event
+            CloseHandle(self._waitable)
+        self._waitable = None
 
     def readBytes(self, size):
         """ A read can block for an unbounded amount of time, even if the
@@ -341,6 +431,7 @@ class WindowsNamedPipeTransport(Transport):
         # We need to initiate a read
         buf = ctypes.create_string_buffer(size)
         olap = OVERLAPPED()
+        olap.hEvent = self._waitable
 
         log('made read buff of size %d', size)
 
@@ -355,8 +446,9 @@ class WindowsNamedPipeTransport(Transport):
                                     GetLastError())
 
         nread = wintypes.DWORD()
-        if not GetOverlappedResultEx(self.pipe, olap, nread,
-                                     0 if immediate else self.timeout, True):
+        if not self._get_overlapped_result_ex(self.pipe, olap, nread,
+                                              0 if immediate else self.timeout,
+                                              True):
             err = GetLastError()
             CancelIoEx(self.pipe, olap)
 
@@ -390,6 +482,8 @@ class WindowsNamedPipeTransport(Transport):
 
     def write(self, data):
         olap = OVERLAPPED()
+        olap.hEvent = self._waitable
+
         immediate = WriteFile(self.pipe, ctypes.c_char_p(data), len(data),
                               None, olap)
 
@@ -401,8 +495,10 @@ class WindowsNamedPipeTransport(Transport):
 
         # Obtain results, waiting if needed
         nwrote = wintypes.DWORD()
-        if GetOverlappedResultEx(self.pipe, olap, nwrote, 0 if immediate else
-                                 self.timeout, True):
+        if self._get_overlapped_result_ex(self.pipe, olap, nwrote,
+                                          0 if immediate else self.timeout,
+                                          True):
+            log('made write of %d bytes', nwrote.value)
             return nwrote.value
 
         err = GetLastError()
