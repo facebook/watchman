@@ -192,7 +192,7 @@ propagate:
       len--;
     }
 
-    if (w_is_ignored(root, path, len)) {
+    if (w_ignore_check(&root->ignore, path, len)) {
       continue;
     }
 

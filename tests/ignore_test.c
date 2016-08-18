@@ -42,7 +42,7 @@ struct test_case {
 
 void run_correctness_test(struct watchman_ignore *state,
                           const struct test_case *tests, uint32_t num_tests,
-                          bool (*checker)(struct watchman_ignore *,
+                          bool (*checker)(const struct watchman_ignore *,
                                           const char *, uint32_t)) {
 
   uint32_t i;
@@ -136,7 +136,7 @@ w_string_t** build_list_with_prefix(const char *prefix, size_t limit) {
 static const size_t kWordLimit = 230000;
 
 void bench_list(const char *label, const char *prefix,
-                bool (*checker)(struct watchman_ignore *, const char *,
+                bool (*checker)(const struct watchman_ignore *, const char *,
                                 uint32_t)) {
 
   struct watchman_ignore state;

@@ -678,7 +678,6 @@ extern pthread_t reaper_thread;
 
 void w_request_shutdown(void);
 
-bool w_is_ignored(w_root_t *root, const char *path, uint32_t pathlen);
 void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec *deadline);
 
 // Returns the name of the filesystem for the specified path

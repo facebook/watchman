@@ -36,7 +36,7 @@ void w_ignore_addstr(struct watchman_ignore *ignore, w_string_t *path,
 
 // Tests whether path is ignored.
 // Returns true if the path is ignored, false otherwise.
-bool w_ignore_check(struct watchman_ignore *ignore, const char *path,
+bool w_ignore_check(const struct watchman_ignore *ignore, const char *path,
                     uint32_t pathlen);
 
 // Releases ignore state

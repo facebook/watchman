@@ -83,7 +83,6 @@ SRCS=\
 	query\empty.c      \
 	watcher\auto.c \
 	watcher\win32.c \
-	watcher\helper.c \
 	listener.c   \
 	listener-user.c   \
 	clientmode.c \
@@ -218,7 +217,6 @@ tests\art.exe: tests\art_test.obj $(TEST_OBJS) \
 	$(LINKER) $** $(LIBS)
 
 tests\ignore.exe: tests\ignore_test.obj $(TEST_OBJS) \
-		watcher\helper.obj \
 		hash.obj \
 		ht.obj \
 		ignore.obj \
@@ -230,7 +228,6 @@ tests\ignore.exe: tests\ignore_test.obj $(TEST_OBJS) \
 	$(LINKER) $** $(LIBS)
 
 tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
-		watcher\helper.obj \
 		hash.obj \
 		ht.obj \
 		ignore.obj \

@@ -60,7 +60,6 @@ watchman_SOURCES = \
 	query/empty.c      \
 	watcher/auto.c     \
 	watcher/fsevents.c \
-	watcher/helper.c   \
 	watcher/inotify.c  \
 	watcher/kqueue.c   \
 	watcher/portfs.c   \
@@ -220,7 +219,6 @@ tests_ignore_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
 tests_ignore_t_SOURCES = \
 	tests/ignore_test.c \
 	tests/log_stub.c \
-	watcher/helper.c \
 	hash.c \
 	ht.c \
 	ignore.c \
@@ -232,7 +230,6 @@ tests_pending_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
 tests_pending_t_SOURCES = \
 	tests/pending_test.c \
 	tests/log_stub.c \
-	watcher/helper.c \
 	hash.c \
 	ht.c \
 	ignore.c \

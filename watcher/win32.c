@@ -221,7 +221,7 @@ static void *readchanges_thread(void *arg) {
           full = w_string_path_cat(root->root_path, name);
           w_string_delref(name);
 
-          if (w_is_ignored(root, full->buf, full->len)) {
+          if (w_ignore_check(&root->ignore, full->buf, full->len)) {
             w_string_delref(full);
           } else {
             item = calloc(1, sizeof(*item));
