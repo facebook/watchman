@@ -14,7 +14,7 @@
 
 #include <jansson_config.h>
 #include "watchman_string.h" // Needed for w_string_t
-
+#include "utf.h"
 #ifdef __cplusplus
 extern "C" {
 #endif

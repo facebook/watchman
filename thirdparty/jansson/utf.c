@@ -188,3 +188,34 @@ int utf8_check_string(const char *string, int length)
 
     return 1;
 }
+
+void utf8_fix_string(char *string, int length)
+{
+    int i, j;
+
+    if(length == -1)
+        length = strlen(string);
+
+    for(i = 0; i < length; i++)
+    {
+        int count = utf8_check_first(string[i]);
+        if(count == 0) {
+            string[i] = '?';
+        }
+        else if(count > 1)
+        {
+            if(i + count > length) {
+                for (j = i; j < length; j++) {
+                    string[j] = '?';
+                }
+            }
+
+            if(!utf8_check_full(&string[i], count, NULL)) {
+                for (j = i; j < i + count; j++) {
+                    string[j] = '?';
+                }
+            }
+            i += count - 1;
+        }
+    }
+}

@@ -225,8 +225,20 @@ static int bser_utf8string(const bser_ctx_t *ctx, const char *str, void *data)
 
 static int bser_mixedstring(const bser_ctx_t *ctx, const char *str, void *data)
 {
-  // TODO: Add escaping
-  return bser_generic_string(ctx, str, data, bser_bytestring_hdr);
+  int res, length;
+  char *cpy;
+  if (!(BSER_CAP_DISABLE_UNICODE_FOR_ERRORS & ctx->bser_capabilities) &&
+      !(BSER_CAP_DISABLE_UNICODE & ctx->bser_capabilities)) {
+    length = strlen(str);
+    cpy = malloc(length + 1);
+    memcpy(cpy, str, length + 1);
+    utf8_fix_string(cpy, length);
+    res = bser_utf8string(ctx, str, data);
+    free(cpy);
+  } else {
+    res = bser_bytestring(ctx, str, data);
+  }
+  return res;
 }
 
 static int bser_array(const bser_ctx_t *ctx, const json_t *array, void *data);
