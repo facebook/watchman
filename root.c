@@ -556,14 +556,23 @@ struct watchman_dir *w_root_resolve_dir(w_root_t *root,
       return NULL;
     }
     if (!child && sep && create) {
-      // A component in the middle wasn't present.  Even though we're in
-      // create mode, we don't know how to create this entry.  The parent
-      // MUST have been created before we try to create this one, so
-      // something is definitely fishy here.
-      w_log(W_LOG_FATAL,
-            "While resolving dir %.*s, %.*s was not found under %.*s\n",
-            dir_name->len, dir_name->buf, component.len, component.buf,
-            (int)(dir_component - dir_name->buf), dir_name->buf);
+      // A component in the middle wasn't present.  Since we're in create
+      // mode, we know that the leaf must exist.  The assumption is that
+      // we have another pending item for the parent.  We'll create the
+      // parent dir now and our other machinery will populate its contents
+      // later.
+      child = calloc(1, sizeof(*child));
+      child->name = w_string_new_len_typed(
+          dir_component, (uint32_t)(sep - dir_component), dir_name->type);
+      child->last_check_existed = true;
+      child->parent = dir;
+
+      if (!dir->dirs) {
+        dir->dirs = w_ht_new(2, &dirname_hash_funcs);
+      }
+
+      assert(
+          w_ht_set(dir->dirs, w_ht_ptr_val(child->name), w_ht_ptr_val(child)));
     }
 
     parent = dir;
