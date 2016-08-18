@@ -74,8 +74,9 @@ bool resolve_root_or_err(struct watchman_client *client, json_t *args,
                          struct unlocked_watchman_root *unlocked);
 
 json_t *make_response(void);
-void annotate_with_clock(w_root_t *root, json_t *resp);
-void add_root_warnings_to_response(json_t *response, w_root_t *root);
+void annotate_with_clock(struct read_locked_watchman_root *lock, json_t *resp);
+void add_root_warnings_to_response(json_t *response,
+                                   struct read_locked_watchman_root *lock);
 
 bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
     size_t bufsize);

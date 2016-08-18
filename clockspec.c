@@ -250,16 +250,17 @@ bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
 
 // Renders the current clock id string to the supplied buffer.
 // Must be called with the root locked.
-static bool current_clock_id_string(w_root_t *root, char *buf, size_t bufsize) {
-  return clock_id_string(root->number, root->ticks, buf, bufsize);
+static bool current_clock_id_string(struct read_locked_watchman_root *lock,
+                                    char *buf, size_t bufsize) {
+  return clock_id_string(lock->root->number, lock->root->ticks, buf, bufsize);
 }
 
 /* Add the current clock value to the response.
  * must be called with the root locked */
-void annotate_with_clock(w_root_t *root, json_t *resp) {
+void annotate_with_clock(struct read_locked_watchman_root *lock, json_t *resp) {
   char buf[128];
 
-  if (current_clock_id_string(root, buf, sizeof(buf))) {
+  if (current_clock_id_string(lock, buf, sizeof(buf))) {
     set_prop(resp, "clock", typed_string_to_json(buf, W_STRING_UNICODE));
   }
 }

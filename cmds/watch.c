@@ -40,7 +40,7 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
 {
   json_t *resp;
   int sync_timeout = 0;
-  struct write_locked_watchman_root lock;
+  struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
   if (json_array_size(args) == 3) {
@@ -68,9 +68,9 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
   }
 
   resp = make_response();
-  w_root_lock(&unlocked, "clock", &lock);
-  annotate_with_clock(lock.root, resp);
-  w_root_unlock(&lock, &unlocked);
+  w_root_read_lock(&unlocked, "clock", &lock);
+  annotate_with_clock(&lock, resp);
+  w_root_read_unlock(&lock, &unlocked);
 
   send_and_dispose_response(client, resp);
   w_root_delref(unlocked.root);
@@ -321,7 +321,7 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
     set_prop(resp, "watch", w_string_to_json(lock.root->root_path));
     set_unicode_prop(resp, "watcher", lock.root->watcher_ops->name);
   }
-  add_root_warnings_to_response(resp, lock.root);
+  add_root_warnings_to_response(resp, w_root_read_lock_from_write(&lock));
   send_and_dispose_response(client, resp);
   w_root_unlock(&lock, &unlocked);
   w_root_delref(unlocked.root);
@@ -370,7 +370,7 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
     set_prop(resp, "watch", w_string_to_json(lock.root->root_path));
     set_unicode_prop(resp, "watcher", lock.root->watcher_ops->name);
   }
-  add_root_warnings_to_response(resp, lock.root);
+  add_root_warnings_to_response(resp, w_root_read_lock_from_write(&lock));
   if (rel_path_from_watch) {
     set_bytestring_prop(resp, "relative_path",rel_path_from_watch);
   }

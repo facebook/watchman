@@ -133,7 +133,7 @@ void w_run_subscription_rules(
     return;
   }
 
-  add_root_warnings_to_response(response, lock->root);
+  add_root_warnings_to_response(response, w_root_read_lock_from_write(lock));
 
   if (!enqueue_response(&client->client, response, true)) {
     w_log(W_LOG_DBG, "failed to queue sub response\n");
@@ -229,7 +229,7 @@ W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
 static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
 {
   struct watchman_client_subscription *sub;
-  json_t *resp;
+  json_t *resp, *initial_subscription_results;
   json_t *jfield_list;
   json_t *jname;
   w_query *query;
@@ -331,18 +331,19 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
   pthread_mutex_unlock(&w_client_lock);
 
   resp = make_response();
-  annotate_with_clock(unlocked.root, resp);
   json_incref(jname);
   set_prop(resp, "subscribe", jname);
-  add_root_warnings_to_response(resp, unlocked.root);
-  send_and_dispose_response(&client->client, resp);
 
   w_root_lock(&unlocked, "initial subscription query", &lock);
-  resp = build_subscription_results(sub, &lock);
+
+  add_root_warnings_to_response(resp, w_root_read_lock_from_write(&lock));
+  annotate_with_clock(w_root_read_lock_from_write(&lock), resp);
+  initial_subscription_results = build_subscription_results(sub, &lock);
   w_root_unlock(&lock, &unlocked);
 
-  if (resp) {
-    send_and_dispose_response(&client->client, resp);
+  send_and_dispose_response(&client->client, resp);
+  if (initial_subscription_results) {
+    send_and_dispose_response(&client->client, initial_subscription_results);
   }
 done:
   w_root_delref(unlocked.root);

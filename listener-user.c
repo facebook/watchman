@@ -17,9 +17,11 @@ static void cmd_shutdown(struct watchman_client *client, json_t *args) {
 }
 W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON|CMD_POISON_IMMUNE, NULL)
 
-void add_root_warnings_to_response(json_t *response, w_root_t *root) {
+void add_root_warnings_to_response(json_t *response,
+                                   struct read_locked_watchman_root *lock) {
   char *str = NULL;
   char *full = NULL;
+  const w_root_t *root = lock->root;
 
   if (!root->last_recrawl_reason && !root->warning) {
     return;

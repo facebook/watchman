@@ -67,7 +67,13 @@ static void cmd_since(struct watchman_client *client, json_t *args)
   set_prop(response, "is_fresh_instance",
            json_pack("b", res.is_fresh_instance));
   set_prop(response, "files", file_list);
-  add_root_warnings_to_response(response, unlocked.root);
+
+  {
+    struct read_locked_watchman_root lock;
+    w_root_read_lock(&unlocked, "obtain_warnings", &lock);
+    add_root_warnings_to_response(response, &lock);
+    w_root_read_unlock(&lock, &unlocked);
+  }
 
   send_and_dispose_response(client, response);
   w_root_delref(unlocked.root);
