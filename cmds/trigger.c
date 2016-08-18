@@ -58,7 +58,7 @@ static void cmd_trigger_list(struct watchman_client *client, json_t *args)
 {
   json_t *resp;
   json_t *arr;
-  struct write_locked_watchman_root lock;
+  struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
   if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
@@ -66,9 +66,9 @@ static void cmd_trigger_list(struct watchman_client *client, json_t *args)
   }
 
   resp = make_response();
-  w_root_lock(&unlocked, "trigger-list", &lock);
-  arr = w_root_trigger_list_to_json(lock.root);
-  w_root_unlock(&lock, &unlocked);
+  w_root_read_lock(&unlocked, "trigger-list", &lock);
+  arr = w_root_trigger_list_to_json(&lock);
+  w_root_read_unlock(&lock, &unlocked);
 
   set_prop(resp, "triggers", arr);
   send_and_dispose_response(client, resp);

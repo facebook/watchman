@@ -1276,7 +1276,7 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
 
   w_log(err == ENOENT ? W_LOG_DBG : W_LOG_ERR, "%.*s\n", warn->len, warn->buf);
   if (log_warning) {
-    w_root_set_warning(lock->root, warn);
+    w_root_set_warning(lock, warn);
   }
   w_string_delref(warn);
 
@@ -1285,13 +1285,14 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
   w_string_delref(dir_name);
 }
 
-void w_root_set_warning(w_root_t *root, w_string_t *str) {
-  if (root->warning) {
-    w_string_delref(root->warning);
+void w_root_set_warning(struct write_locked_watchman_root *lock,
+                        w_string_t *str) {
+  if (lock->root->warning) {
+    w_string_delref(lock->root->warning);
   }
-  root->warning = str;
-  if (root->warning) {
-    w_string_addref(root->warning);
+  lock->root->warning = str;
+  if (lock->root->warning) {
+    w_string_addref(lock->root->warning);
   }
 }
 
@@ -2721,17 +2722,17 @@ bool w_root_resolve(const char *filename, bool auto_watch, char **errmsg,
 }
 
 // Caller must have locked root
-json_t *w_root_trigger_list_to_json(w_root_t *root)
+json_t *w_root_trigger_list_to_json(struct read_locked_watchman_root *lock)
 {
   w_ht_iter_t iter;
   json_t *arr;
 
   arr = json_array();
-  if (w_ht_first(root->commands, &iter)) do {
+  if (w_ht_first(lock->root->commands, &iter)) do {
     struct watchman_trigger_command *cmd = w_ht_val_ptr(iter.value);
 
     json_array_append(arr, cmd->definition);
-  } while (w_ht_next(root->commands, &iter));
+  } while (w_ht_next(lock->root->commands, &iter));
 
   return arr;
 }
@@ -2840,7 +2841,7 @@ bool w_root_save_state(json_t *state)
   if (w_ht_first(watched_roots, &root_iter)) do {
     json_t *obj;
     json_t *triggers;
-    struct write_locked_watchman_root lock;
+    struct read_locked_watchman_root lock;
     struct unlocked_watchman_root unlocked = {w_ht_val_ptr(root_iter.value)};
 
     obj = json_object();
@@ -2848,9 +2849,9 @@ bool w_root_save_state(json_t *state)
     json_object_set_new(obj, "path",
                         w_string_to_json(unlocked.root->root_path));
 
-    w_root_lock(&unlocked, "w_root_save_state", &lock);
-    triggers = w_root_trigger_list_to_json(lock.root);
-    w_root_unlock(&lock, &unlocked);
+    w_root_read_lock(&unlocked, "w_root_save_state", &lock);
+    triggers = w_root_trigger_list_to_json(&lock);
+    w_root_read_unlock(&lock, &unlocked);
     json_object_set_new(obj, "triggers", triggers);
 
     json_array_append_new(watched_dirs, obj);

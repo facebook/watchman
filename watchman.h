@@ -706,7 +706,8 @@ void w_root_mark_deleted(struct write_locked_watchman_root *lock,
 void w_root_reap(void);
 void w_root_delref(w_root_t *root);
 void w_root_addref(w_root_t *root);
-void w_root_set_warning(w_root_t *root, w_string_t *str);
+void w_root_set_warning(struct write_locked_watchman_root *lock,
+                        w_string_t *str);
 
 struct watchman_dir *w_root_resolve_dir(struct write_locked_watchman_root *lock,
                                         w_string_t *dir_name, bool create);
@@ -898,7 +899,7 @@ void w_state_save(void);
 bool w_state_load(void);
 bool w_root_save_state(json_t *state);
 bool w_root_load_state(json_t *state);
-json_t *w_root_trigger_list_to_json(w_root_t *root);
+json_t *w_root_trigger_list_to_json(struct read_locked_watchman_root *lock);
 json_t *w_root_watch_list_to_json(void);
 
 #ifdef __APPLE__
