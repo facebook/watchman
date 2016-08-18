@@ -638,7 +638,7 @@ class Bser2WithFallbackCodec(BserCodec):
 
         #if capabilities['capabilities']['bser-v2']:
         self.bser_version = 2
-        self.bser_capabilities = 0
+        self.bser_capabilities = 1
         #else:
         #    self.bser_version = 1
         #    self.bser_capabilities = 0
@@ -656,7 +656,6 @@ class Bser2WithFallbackCodec(BserCodec):
         if hasattr(self, 'bser_version'):
           # Readjust BSER version and capabilities if necessary
           self.bser_version = max(self.bser_version, recv_bser_version)
-          self.capabilities = self.bser_capabilities & recv_bser_capabilities
 
         rlen = len(buf[0])
         while elen > rlen:
