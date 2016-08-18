@@ -255,9 +255,13 @@ This resync operation is advantageous because it effectively allows rewinding
 and replaying the event stream from a known point in time and avoids the need
 to recrawl the entire watch.
 
-If this option is set to `false`, or if the journal is not available, the original
-strategy of recrawling the watched directory tree is used instead.
+If this option is set to `false`, or if the journal is not available, the
+original strategy of recrawling the watched directory tree is used instead.
 
+*Since 4.7.*
+
+The default changed to `true`.  In addition, this resync strategy is now
+also applied to `kFSEventStreamEventFlagKernelDropped` events.
 
 ### idle_reap_age_seconds
 
@@ -325,4 +329,3 @@ manage the configuration and workload.  Some sites employ an alternative
 mechanism for sampling and reporting this to the right set of people and wish
 to disable the warning so that it doesn't appear in front of users that are
 unable to make the appropriate configuration changes for themselves.
-
