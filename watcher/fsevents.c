@@ -35,7 +35,7 @@ struct fsevents_root_state {
 
   struct watchman_fsevent *fse_head, *fse_tail;
   struct fse_stream *stream;
-  bool attempt_resync_on_user_drop;
+  bool attempt_resync_on_drop;
 };
 
 static const struct flag_map kflags[] = {
@@ -66,6 +66,18 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
                                           w_string_t **failure_reason);
 static void fse_stream_free(struct fse_stream *fse_stream);
 
+/** Generate a perf event for the drop */
+static void log_drop_event(w_root_t *root, bool isKernel) {
+  w_perf_t sample;
+
+  w_perf_start(&sample, isKernel ? "KernelDropped" : "UserDropped");
+  w_perf_add_root_meta(&sample, root);
+  w_perf_finish(&sample);
+  w_perf_force_log(&sample);
+  w_perf_log(&sample);
+  w_perf_destroy(&sample);
+}
+
 static void fse_callback(ConstFSEventStreamRef streamRef,
    void *clientCallBackInfo,
    size_t numEvents,
@@ -86,6 +98,7 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
     // This is to facilitate testing via debug-fsevents-inject-drop.
     if (stream->inject_drop) {
       stream->lost_sync = true;
+      log_drop_event(root, false);
       goto do_resync;
     }
 
@@ -100,17 +113,16 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
         // set up a whole new state for the recrawled instance.
         stream->lost_sync = true;
 
-        if (state->attempt_resync_on_user_drop &&
-            (eventFlags[i] & (kFSEventStreamEventFlagUserDropped |
-                              kFSEventStreamEventFlagKernelDropped)) ==
-                kFSEventStreamEventFlagUserDropped) {
-          // User-space dropped events.  fseventsd has a reliable journal so we
-          // can attempt to resync.
+        log_drop_event(root,
+                       eventFlags[i] & kFSEventStreamEventFlagKernelDropped);
+
+        if (state->attempt_resync_on_drop) {
+          // fseventsd has a reliable journal so we can attempt to resync.
 do_resync:
           if (stream->event_id_wrapped) {
             w_log(W_LOG_ERR, "fsevents lost sync and the event_ids wrapped, so "
                              "we have no choice but to do a full recrawl\n");
-            // Allow the UserDropped event to propagate and trigger a recrawl
+            // Allow the Dropped event to propagate and trigger a recrawl
             goto propagate;
           }
 
@@ -159,7 +171,7 @@ do_resync:
         break;
       }
     }
-  } else if (state->attempt_resync_on_user_drop) {
+  } else if (state->attempt_resync_on_drop) {
     // This stream has already lost sync and our policy is to resync
     // for ourselves.  This is most likely a spurious callback triggered
     // after we'd taken action above.  We just ignore further events
@@ -435,10 +447,8 @@ static void *fsevents_thread(void *arg)
   // Block until fsevents_root_start is waiting for our initialization
   pthread_mutex_lock(&state->fse_mtx);
 
-  // We'll default this to off in the 4.6 release and review the default
-  // value for 4.7
-  state->attempt_resync_on_user_drop =
-      cfg_get_bool(root, "fsevents_try_resync", false);
+  state->attempt_resync_on_drop =
+      cfg_get_bool(root, "fsevents_try_resync", true);
 
   memset(&fdctx, 0, sizeof(fdctx));
   fdctx.info = root;
@@ -774,7 +784,7 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
   w_root_lock(&unlocked, "debug-fsevents-inject-drop", &lock);
   state = lock.root->watch;
 
-  if (!state->attempt_resync_on_user_drop) {
+  if (!state->attempt_resync_on_drop) {
     w_root_unlock(&lock, &unlocked);
     send_error_response(client, "fsevents_try_resync is not enabled");
     w_root_delref(unlocked.root);
