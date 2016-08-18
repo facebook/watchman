@@ -52,12 +52,12 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
                   with self.assertRaises(pywatchman.WatchmanError) as ctx:
                       client.query('watch', d)
                   self.assertIn(
-                      "unable to resolve root " + d +
+                      ("unable to resolve root " + d +
                       ": Your watchman administrator has configured watchman "+
                       "to prevent watching this path.  "+
                       "None of the files listed in global config root_files "+
-                      "are present and enforce_root_files is set to true",
-                      str(ctx.exception))
+                      "are present and enforce_root_files is set to true").lower(),
+                      str(ctx.exception).lower())
 
       finally:
           inst.stop()
