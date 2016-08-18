@@ -638,7 +638,7 @@ class Bser2WithFallbackCodec(BserCodec):
 
         #if capabilities['capabilities']['bser-v2']:
         self.bser_version = 2
-        self.bser_capabilities = 1
+        self.bser_capabilities = 0
         #else:
         #    self.bser_version = 1
         #    self.bser_capabilities = 0
@@ -858,13 +858,13 @@ class client(object):
         result = self.recvConn.receive()
         if self._hasprop(result, 'error'):
             error = result['error']
-            if compat.PYTHON3 and isinstance(self.recvConn, BserCodec):
-                error = result['error'].decode('utf-8', 'surrogateescape')
+            if not isinstance(error, compat.UNICODE):
+                error = error.decode('utf-8', 'surrogateescape')
             raise CommandError(error)
 
         if self._hasprop(result, 'log'):
             log = result['log']
-            if compat.PYTHON3 and isinstance(self.recvConn, BserCodec):
+            if not isinstance(log, compat.UNICODE):
                 log = log.decode('utf-8', 'surrogateescape')
             self.logs.append(log)
 
