@@ -14,8 +14,15 @@ import os.path
 import time
 import shutil
 import time
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 
+# testing this is flaky at best on windows due to latency
+# and exclusivity of file handles, so skip it.
+@unittest.skipIf(os.name == 'nt', 'win')
 class TestDirMove(WatchmanTestCase.WatchmanTestCase):
     def build_under(self, root, name, latency=0):
         os.mkdir(os.path.join(root, name))
