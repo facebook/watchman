@@ -835,7 +835,8 @@ static inline double w_timeval_diff(struct timeval start, struct timeval end)
 extern const char *watchman_tmp_dir;
 extern char *watchman_state_file;
 extern int dont_save_state;
-bool w_state_save(void);
+void w_state_shutdown(void);
+void w_state_save(void);
 bool w_state_load(void);
 bool w_root_save_state(json_t *state);
 bool w_root_load_state(json_t *state);
