@@ -3,7 +3,55 @@
 
 #include "watchman.h"
 
+/** The state saving thread is responsible for writing out the
+ * persistent information about the users watches.
+ * It runs in its own thread so that we avoid the possibility
+ * of self deadlock if various threads were to immediately
+ * save the state when things are changing.
+ *
+ * This uses a simple condition variable to wait for and be
+ * notified of state changes.
+ */
+
+static pthread_t state_saver_thread;
 static pthread_mutex_t state_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t state_cond;
+static bool need_save = false;
+
+static bool do_state_save(void);
+
+static void *state_saver(void *unused) {
+  bool do_save;
+  unused_parameter(unused);
+
+  w_set_thread_name("statesaver");
+
+  while (!w_is_stopping()) {
+    pthread_mutex_lock(&state_lock);
+    if (!need_save) {
+      pthread_cond_wait(&state_cond, &state_lock);
+    }
+    do_save = need_save;
+    need_save = false;
+    pthread_mutex_unlock(&state_lock);
+
+    if (do_save) {
+      do_state_save();
+    }
+  }
+  return NULL;
+}
+
+void w_state_shutdown(void) {
+  void *result;
+
+  if (dont_save_state) {
+    return;
+  }
+
+  pthread_cond_signal(&state_cond);
+  pthread_join(state_saver_thread, &result);
+}
 
 bool w_state_load(void)
 {
@@ -13,6 +61,12 @@ bool w_state_load(void)
 
   if (dont_save_state) {
     return true;
+  }
+
+  pthread_cond_init(&state_cond, NULL);
+  errno = pthread_create(&state_saver_thread, NULL, state_saver, NULL);
+  if (errno) {
+    w_log(W_LOG_FATAL, "failed to spawn state thread: %s\n", strerror(errno));
   }
 
   state = json_load_file(watchman_state_file, 0, &err);
@@ -71,18 +125,12 @@ w_stm_t w_mkstemp(char *templ)
 #endif
 }
 
-bool w_state_save(void)
+static bool do_state_save(void)
 {
   json_t *state;
   w_jbuffer_t buffer;
   w_stm_t file = NULL;
   bool result = false;
-
-  if (dont_save_state) {
-    return true;
-  }
-
-  pthread_mutex_lock(&state_lock);
 
   state = json_object();
 
@@ -121,9 +169,21 @@ out:
   }
   w_json_buffer_free(&buffer);
 
+  return result;
+}
+
+/** Arranges for the state to be saved.
+ * Does not immediately save the state. */
+void w_state_save(void) {
+  if (dont_save_state) {
+    return;
+  }
+
+  pthread_mutex_lock(&state_lock);
+  need_save = true;
   pthread_mutex_unlock(&state_lock);
 
-  return result;
+  pthread_cond_signal(&state_cond);
 }
 
 /* vim:ts=2:sw=2:et:
