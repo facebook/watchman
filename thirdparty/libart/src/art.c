@@ -1,7 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#ifdef __SSE__
 #include <emmintrin.h>
+#endif
 #include <assert.h>
 #include <stdbool.h>
 #include "art.h"
@@ -206,7 +208,7 @@ extern inline uint64_t art_size(art_tree *t);
 #endif
 
 static art_node** find_child(art_node *n, unsigned char c) {
-    int i, mask, bitfield;
+    int i;
     union node_ptr p = {n};
     switch (n->type) {
         case NODE4:
@@ -218,7 +220,9 @@ static art_node** find_child(art_node *n, unsigned char c) {
 
         case NODE16:
         {
+#ifdef __SSE__
             __m128i cmp;
+            int mask, bitfield;
 
             // Compare the key to all 16 stored keys
             cmp = _mm_cmpeq_epi8(_mm_set1_epi8(c),
@@ -235,6 +239,13 @@ static art_node** find_child(art_node *n, unsigned char c) {
              */
             if (bitfield)
                 return &p.n16->children[__builtin_ctz(bitfield)];
+#else
+            for (i = 0; i < n->num_children; i++) {
+                if (p.n16->keys[i] == c) {
+                    return &p.n16->children[i];
+                }
+            }
+#endif
             break;
         }
 
@@ -522,8 +533,10 @@ static void add_child48(art_node48 *n, art_node **ref, unsigned char c, void *ch
 
 static void add_child16(art_node16 *n, art_node **ref, unsigned char c, void *child) {
     if (n->n.num_children < 16) {
+        unsigned idx;
+#ifdef __SSE__
         __m128i cmp;
-        unsigned idx, mask, bitfield;
+        unsigned mask, bitfield;
 
         // Compare the key to all 16 stored keys
         cmp = _mm_cmplt_epi8(_mm_set1_epi8(c),
@@ -541,6 +554,17 @@ static void add_child16(art_node16 *n, art_node **ref, unsigned char c, void *ch
                     (n->n.num_children-idx)*sizeof(void*));
         } else
             idx = n->n.num_children;
+#else
+        for (idx = 0; idx < n->n.num_children; idx++) {
+            if (c < n->keys[idx]) {
+                memmove(n->keys + idx + 1, n->keys + idx,
+                        n->n.num_children - idx);
+                memmove(n->children + idx + 1, n->children + idx,
+                        (n->n.num_children - idx) * sizeof(void *));
+                break;
+            }
+        }
+#endif
 
         // Set the child
         n->keys[idx] = c;
