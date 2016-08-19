@@ -38,6 +38,33 @@ def conv_path_to_bytes(path):
     else:
         return path
 
+if os.name == 'nt':
+    # monkey patch to hopefully minimize test flakiness
+    def wrap_with_backoff(fn):
+        def wrapper(*args, **kwargs):
+            delay = 0.01
+            attempts = 10
+            while True:
+                try:
+                    return fn(*args, **kwargs)
+                except WindowsError as e:
+                    if attempts == 0:
+                        raise
+                    # WindowsError: [Error 32] The process cannot access the
+                    # file because it is being used by another process.
+                    # Error 5: Access is denied.
+                    if e.winerror not in (5, 32):
+                        raise
+
+                attempts = attempts - 1
+                time.sleep(delay)
+                delay = delay * 2
+
+        return wrapper
+
+    for name in ['rename', 'unlink', 'remove']:
+        setattr(os, name, wrap_with_backoff(getattr(os, name)))
+
 class WatchmanTestCase(unittest.TestCase):
 
     def requiresPersistentSession(self):
