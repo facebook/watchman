@@ -2,25 +2,129 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#ifdef HAVE_LIBUNWIND_H
+#include <libunwind.h>
+#endif
+
+#define MAX_BT_FRAMES 24
+
+static char **get_backtrace(size_t *n_frames, void *frames[MAX_BT_FRAMES]) {
+#if defined(HAVE_UNW_INIT_LOCAL) && defined(HAVE_LIBUNWIND_H)
+  unw_cursor_t cursor;
+  unw_context_t uc;
+  unw_word_t ip;
+  char **strings = calloc(MAX_BT_FRAMES, sizeof(char*));
+  size_t n = 0;
+
+  *n_frames = 0;
+  if (!strings) {
+    return NULL;
+  }
+
+  unw_getcontext(&uc);
+  unw_init_local(&cursor, &uc);
+  while (unw_step(&cursor) > 0) {
+    char name[128];
+    unw_word_t off;
+
+    unw_get_reg(&cursor, UNW_REG_IP, &ip);
+
+    off = 0;
+    if (unw_get_proc_name(&cursor, name, sizeof(name), &off) != 0) {
+      strcpy(name, "???");
+    }
+
+    asprintf(&strings[n], "#%" PRIsize_t " %p %s`%lx", n, (void *)(intptr_t)ip,
+             name, off);
+
+    frames[n] = (void*)(intptr_t)ip;
+
+    ++n;
+  }
+
+  *n_frames = n;
+  return strings;
+
+#elif defined(HAVE_BACKTRACE) && defined(HAVE_BACKTRACE_SYMBOLS)
+  size_t size;
+
+  size = backtrace(frames, MAX_BT_FRAMES);
+  *n_frames = size;
+  return backtrace_symbols(frames, size);
+#else
+  *n_frames = 0;
+  return NULL;
+#endif
+}
+
+#ifndef _WIN32
+/** Attempt to run addr2line on the frames as a last-ditch effort
+ * to get some line number information */
+void addr2line_frames(void *frames[MAX_BT_FRAMES], size_t n_frames) {
+  char exename[WATCHMAN_NAME_MAX];
+  int result;
+  size_t i, argc;
+  posix_spawnattr_t attr;
+  posix_spawn_file_actions_t actions;
+  pid_t pid;
+  char addrs[MAX_BT_FRAMES][32];
+  char *argv[64] = {
+    "addr2line",
+    "-e",
+    exename,
+    "--inlines",
+    NULL,
+  };
+
+  // Figure out our executable path.  Most likely only successful on
+  // Linux, but safe to try on other systems.
+  result = readlink("/proc/self/exe", exename, sizeof(exename));
+  if (result <= 0) {
+    return;
+  }
+  exename[result] = '\0';
+
+  // Compute the end of argv; we'll append addresses there
+  for (argc = 0; argv[argc]; ++argc) {
+    ;
+  }
+
+  // Generate hex address strings and append them to argv
+  for (i = 0; i < n_frames; ++i) {
+    if (frames[i] == 0) {
+      break;
+    }
+
+    snprintf(addrs[i], sizeof(addrs[i]), " 0x%lx", (intptr_t)frames[i]);
+    argv[argc++] = addrs[i];
+    argv[argc] = NULL;
+  }
+
+  // And run it!
+  posix_spawnattr_init(&attr);
+  posix_spawn_file_actions_init(&actions);
+  posix_spawn_file_actions_adddup2(&actions, STDERR_FILENO, STDOUT_FILENO);
+  dprintf(STDERR_FILENO, "Attempting to symbolize stack trace via addr2line:\n");
+  posix_spawnp(&pid, argv[0], &actions, &attr, argv, NULL);
+
+  // We can't waitpid reliably here because of our reaper thread :-/
+}
+#endif
 
 static void log_stack_trace(void)
 {
-#if defined(HAVE_BACKTRACE) && defined(HAVE_BACKTRACE_SYMBOLS)
-  void *array[24];
-  size_t size;
   char **strings;
-  size_t i;
+  size_t i, n;
+  void *frames[MAX_BT_FRAMES];
 
-  size = backtrace(array, sizeof(array)/sizeof(array[0]));
-  strings = backtrace_symbols(array, size);
+  strings = get_backtrace(&n, frames);
   w_log(W_LOG_ERR, "Fatal error detected at:\n");
 
-  for (i = 0; i < size; i++) {
+  for (i = 0; i < n; i++) {
     w_log(W_LOG_ERR, "%s\n", strings[i]);
   }
 
   free(strings);
-#endif
 }
 
 int log_level = W_LOG_ERR;
@@ -85,13 +189,21 @@ static void crash_handler(int signo, siginfo_t *si, void *ucontext) {
       signo, w_strsignal(signo), reason);
   }
 
-#if defined(HAVE_BACKTRACE) && defined(HAVE_BACKTRACE_SYMBOLS_FD)
   {
-    void *array[24];
-    size_t size = backtrace(array, sizeof(array)/sizeof(array[0]));
-    backtrace_symbols_fd(array, size, STDERR_FILENO);
+    size_t i, n;
+    void *frames[MAX_BT_FRAMES];
+    char **strings = get_backtrace(&n, frames);
+
+    for (i = 0; i < n; ++i) {
+      dprintf(STDERR_FILENO, "%s\n", strings[i]);
+    }
+
+    addr2line_frames(frames, n);
+
+    // Deliberately leaking strings just in case crash was due to
+    // heap corruption.
   }
-#endif
+
   if (signo == SIGTERM) {
     w_request_shutdown();
     return;
