@@ -266,6 +266,19 @@ AC_CHECK_FUNCS(backtrace backtrace_symbols backtrace_symbols_fd)
 AC_CHECK_FUNCS(sys_siglist)
 AC_CHECK_FUNCS(memmem)
 
+dnl Can't just use AC_SEARCH_LIBS because the true symbols are hidden through
+dnl preprocessor magicks
+AC_CHECK_HEADERS(libunwind.h)
+save_libs="$LIBS"
+LIBS="$LIBS -lunwind-generic"
+AC_TRY_LINK([
+#include <libunwind.h>
+],[unw_init_local(0,0);],[
+AC_DEFINE([HAVE_UNW_INIT_LOCAL],[],[Have unw_init_local])
+],[
+LIBS="$save_libs"
+])
+
 if test -n "$ac_cv_header_sys_statvfs_h"; then
 AC_CHECK_MEMBERS([struct statvfs.f_fstypename,struct statvfs.f_basetype],
   [AC_DEFINE([STATVFS_HAS_FSTYPE_AS_STRING], [1],[if statvfs holds fstype as string])],[],[[#include <sys/statvfs.h>]])
