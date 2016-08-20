@@ -62,7 +62,7 @@ if os.name == 'nt':
 
         return wrapper
 
-    for name in ['rename', 'unlink', 'remove']:
+    for name in ['rename', 'unlink', 'remove', 'rmdir']:
         setattr(os, name, wrap_with_backoff(getattr(os, name)))
 
 class WatchmanTestCase(unittest.TestCase):
