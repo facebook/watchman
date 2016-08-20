@@ -31,6 +31,8 @@ struct stat {
 
 int lstat(const char *path, struct stat *st);
 int mkdir(const char *path, int mode);
+int open_and_share(const char *path, int flags, ...);
+#define open open_and_share
 
 #define S_ISUID       0004000     ///< set user id on execution
 #define S_ISGID       0002000     ///< set group id on execution

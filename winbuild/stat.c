@@ -25,6 +25,27 @@ int mkdir(const char *path, int mode) {
   return -1;
 }
 
+/** Replace open with a version that enables all sharing flags.
+ * This minimizes the chances that we'll encounter a sharing violation
+ * while we try to examine a file. */
+int open_and_share(const char *path, int flags, ...) {
+  HANDLE h;
+  int fd;
+
+  h = w_handle_open(path, flags);
+  if (h == INVALID_HANDLE_VALUE) {
+    return -1;
+  }
+
+  fd = _open_osfhandle((intptr_t)h, flags);
+
+  if (fd == -1) {
+    CloseHandle(h);
+  }
+
+  return fd;
+}
+
 int lstat(const char *path, struct stat *st) {
   FILE_BASIC_INFO binfo;
   FILE_STANDARD_INFO sinfo;

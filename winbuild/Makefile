@@ -237,6 +237,7 @@ tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
 		cfg.obj \
 		time.obj \
 		string.obj \
+		stream_win.obj \
 		log.obj \
 		tests\log_stub.obj \
 		thirdparty\libart\src\art.obj \
