@@ -145,6 +145,7 @@ static void *perf_log_thread(void *unused) {
     w_envp_set_cstring(envpht, "WATCHMAN_STATE_DIR", statedir);
     w_envp_set_cstring(envpht, "WATCHMAN_SOCK", get_sock_name());
     envp = w_envp_make_from_ht(envpht, &env_size);
+    w_ht_free(envpht);
   }
 
   perf_cmd = cfg_get_json(NULL, "perf_logger_command");
