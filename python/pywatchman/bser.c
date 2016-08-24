@@ -54,6 +54,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define BSER_TEMPLATE  0x0b
 #define BSER_SKIP      0x0c
 
+#define SNIFF_BUFFER_SIZE 13
+
 // An immutable object representation of BSER_OBJECT.
 // Rather than build a hash table, key -> value are obtained
 // by walking the list of keys to determine the offset into
@@ -1085,9 +1087,96 @@ static PyObject *bser_loads(PyObject *self, PyObject *args, PyObject *kw)
   return bser_loads_recursive(&data, end, &ctx);
 }
 
+static PyObject *bser_load(PyObject *self, PyObject *args, PyObject *kw)
+{
+  size_t rc = 0;
+  FILE *fp = NULL;
+  char header[SNIFF_BUFFER_SIZE];
+  const char *data = NULL;
+  char *newdata = NULL;
+  const char *end;
+  int64_t expected_len, total_len;
+  off_t position;
+  PyObject *fp_obj = NULL;
+  PyObject *mutable_obj = NULL;
+  const char *value_encoding = NULL;
+  const char *value_errors = NULL;
+  unser_ctx_t ctx = {1, 0};
+  size_t read_offset = 0;
+  size_t read_remaining = sizeof(header);
+
+  PyObject *ret = NULL;
+
+  static char *kw_list[] = {"fp", "mutable", "value_encoding", "value_errors",
+                            NULL};
+
+  if (!PyArg_ParseTupleAndKeywords(args, kw, "O|Ozz:loads", kw_list, &fp_obj,
+                                   &mutable_obj, &value_encoding,
+                                   &value_errors)) {
+    goto out;
+  }
+
+  if (mutable_obj) {
+    ctx.mutable = PyObject_IsTrue(mutable_obj) > 0 ? 1 : 0;
+  }
+  ctx.value_encoding = value_encoding;
+  if (value_encoding == NULL) {
+    ctx.value_errors = NULL;
+  } else if (value_errors == NULL) {
+    ctx.value_errors = "strict";
+  } else {
+    ctx.value_errors = value_errors;
+  }
+
+  if (!PyFile_Check(fp_obj)) {
+    PyErr_SetString(PyExc_ValueError, "invalid file object");
+    goto out;
+  }
+  fp = PyFile_AsFile(fp_obj);
+
+  while (read_remaining > 0) {
+    rc = fread(header + read_offset, 1, read_remaining, fp);
+    if (rc <= 0) {
+      PyErr_SetString(PyExc_ValueError, "bser data ended early");
+      goto out;
+    }
+    read_offset += rc;
+    read_remaining -= rc;
+  }
+  if (!_pdu_info_helper(header, header + read_offset, &ctx.bser_version,
+                        &ctx.bser_capabilities, &expected_len, &position)) {
+    goto out;
+  }
+  total_len = expected_len + position;
+  newdata = (char *)malloc(total_len);
+  if (newdata == NULL) {
+    goto out;
+  }
+  memcpy(newdata, header, sizeof(header));
+  read_remaining = total_len - read_offset;
+  while (read_remaining > 0) {
+    rc = fread(newdata + read_offset, 1, read_remaining, fp);
+    if (rc <= 0) {
+      PyErr_SetString(PyExc_ValueError, "bser data ended early");
+      goto out;
+    }
+    read_offset += rc;
+    read_remaining -= rc;
+  }
+  data = newdata + position;
+
+  ret = bser_loads_recursive(&data, end, &ctx);
+
+ out:
+  free(newdata);
+  return ret;
+}
+
 static PyMethodDef bser_methods[] = {
   {"loads", (PyCFunction)bser_loads, METH_VARARGS | METH_KEYWORDS,
    "Deserialize string."},
+  {"load", (PyCFunction)bser_load, METH_VARARGS | METH_KEYWORDS,
+   "Deserialize file."},
   {"pdu_info", (PyCFunction)bser_pdu_info, METH_VARARGS,
    "Extract PDU information."},
   {"pdu_len", (PyCFunction)bser_pdu_len, METH_VARARGS,
