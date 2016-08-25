@@ -1967,7 +1967,7 @@ static w_string_t *get_normalized_target(w_string_t *target) {
 }
 
 // Requires target to be an absolute path
-static void watch_symlink_target(w_string_t *target) {
+static void watch_symlink_target(w_string_t *target, json_t *root_files) {
   char *watched_root = NULL, *relpath = NULL;
   w_string_t *normalized_target;
 
@@ -1988,27 +1988,18 @@ static void watch_symlink_target(w_string_t *target) {
     }
   } else {
     char *resolved, *errmsg;
-    json_t *root_files;
-    bool enforcing, res;
-    resolved = strdup(normalized_target->buf);
-    root_files = cfg_compute_root_files(&enforcing);
-    if (!root_files) {
-      w_log(W_LOG_ERR,
-            "watch_symlink_target: error computing root_files configuration "
-            "value, consult your log file at %s for more details\n", log_name);
+    bool res;
+    resolved = w_string_dup_buf(normalized_target);
+    res = find_project_root(root_files, resolved, &relpath);
+    if (!res) {
+      w_log(W_LOG_ERR, "No root project found to contain %s\n", resolved);
     } else {
-      res = find_project_root(root_files, resolved, &relpath);
-      if (!res) {
-        w_log(W_LOG_ERR, "No root project found to contain %s\n", resolved);
-      } else {
-        struct unlocked_watchman_root unlocked;
-        bool success = w_root_resolve(resolved, true, &errmsg, &unlocked);
-        if (!success) {
-          w_log(W_LOG_ERR, "watch_symlink_target: failed to watch %s\n",
-                resolved);
-        }
+      struct unlocked_watchman_root unlocked;
+      bool success = w_root_resolve(resolved, true, &errmsg, &unlocked);
+      if (!success) {
+        w_log(W_LOG_ERR, "watch_symlink_target: failed to watch %s\n",
+              resolved);
       }
-      json_decref(root_files);
     }
     // Freeing resolved also frees rel_path
     free(resolved);
@@ -2020,7 +2011,7 @@ static void watch_symlink_target(w_string_t *target) {
  * Since the target of a symbolic link might contain several components that
  * are themselves symlinks, this function gets called recursively called on
  * all the components of path. */
-static void watch_symlinks(w_string_t *path) {
+static void watch_symlinks(w_string_t *path, json_t *root_files) {
   w_string_t *dir_name, *file_name;
   char link_target_path[WATCHMAN_NAME_MAX];
   ssize_t tlen = 0;
@@ -2043,7 +2034,7 @@ static void watch_symlinks(w_string_t *path) {
     if (errno == EINVAL) {
       // The final component of path is not a symbolic link, but other
       // components in the path might be symbolic links
-      watch_symlinks(dir_name);
+      watch_symlinks(dir_name, root_files);
     } else {
       w_log(W_LOG_ERR,
           "readlink(%s) errno=%d tlen=%d\n", path->buf, errno, (int)tlen);
@@ -2052,13 +2043,13 @@ static void watch_symlinks(w_string_t *path) {
     w_string_t *target = w_string_new_len_typed(
         link_target_path, tlen, W_STRING_BYTE);
     if (w_is_path_absolute(target->buf)) {
-      watch_symlink_target(target);
-      watch_symlinks(target);
-      watch_symlinks(dir_name);
+      watch_symlink_target(target, root_files);
+      watch_symlinks(target, root_files);
+      watch_symlinks(dir_name, root_files);
     } else {
       w_string_t *absolute_target = w_string_path_cat(dir_name, target);
-      watch_symlink_target(absolute_target);
-      watch_symlinks(absolute_target);
+      watch_symlink_target(absolute_target, root_files);
+      watch_symlinks(absolute_target, root_files);
       // No need to watch_symlinks(dir_name), since
       // watch_symlinks(absolute_target) will eventually have the same effect
       w_string_delref(absolute_target);
@@ -2077,19 +2068,32 @@ static void watch_symlinks(w_string_t *path) {
  * watches for their new targets */
 static void process_pending_symlink_targets(w_root_t *root) {
   struct watchman_pending_fs *p, *pending;
+  json_t *root_files;
+  bool enforcing;
 
   pending = root->pending_symlink_targets.pending;
   if (!pending) {
     return;
   }
+
+  root_files = cfg_compute_root_files(&enforcing);
+  if (!root_files) {
+    w_log(W_LOG_ERR,
+          "watch_symlink_target: error computing root_files configuration "
+          "value, consult your log file at %s for more details\n", log_name);
+    return;
+  }
+
   root->pending_symlink_targets.pending = NULL;
   w_pending_coll_drain(&root->pending_symlink_targets);
   while (pending) {
     p = pending;
     pending = p->next;
-    watch_symlinks(p->path);
+    watch_symlinks(p->path, root_files);
     w_pending_fs_free(p);
   }
+
+  json_decref(root_files);
 }
 #endif  // Symlink-related function definitions excluded for _WIN32
 
