@@ -1938,6 +1938,7 @@ static void notify_thread(struct unlocked_watchman_root *unlocked)
   w_pending_coll_destroy(&pending);
 }
 
+#ifndef _WIN32
 // Given a target of the form "absolute_path/filename", return
 // realpath(absolute_path) + filename, where realpath(absolute_path) resolves
 // all the symlinks in absolute_path.
@@ -1966,7 +1967,7 @@ static w_string_t *get_normalized_target(w_string_t *target) {
 }
 
 // Requires target to be an absolute path
-void watch_symlink_target(w_string_t *target) {
+static void watch_symlink_target(w_string_t *target) {
   char *watched_root = NULL, *relpath = NULL;
   w_string_t *normalized_target;
 
@@ -2020,7 +2021,6 @@ void watch_symlink_target(w_string_t *target) {
  * are themselves symlinks, this function gets called recursively called on
  * all the components of path. */
 static void watch_symlinks(w_string_t *path) {
-#ifndef _WIN32
   w_string_t *dir_name, *file_name;
   char link_target_path[WATCHMAN_NAME_MAX];
   ssize_t tlen = 0;
@@ -2071,7 +2071,6 @@ static void watch_symlinks(w_string_t *path) {
   if (file_name) {
     w_string_delref(file_name);
   }
-#endif
 }
 
 /** Process the list of observed changed symlinks and arrange to establish
@@ -2092,6 +2091,7 @@ static void process_pending_symlink_targets(w_root_t *root) {
     w_pending_fs_free(p);
   }
 }
+#endif  // Symlink-related function definitions excluded for _WIN32
 
 static void io_thread(struct unlocked_watchman_root *unlocked)
 {
@@ -2177,7 +2177,9 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
     w_pending_coll_unlock(&unlocked->root->pending);
 
     if (!pinged && w_pending_coll_size(&pending) == 0) {
+#ifndef _WIN32
       process_pending_symlink_targets(unlocked->root);
+#endif
 
       // No new pending items were given to us, so consider that
       // we may now be settled.
