@@ -2020,6 +2020,7 @@ void watch_symlink_target(w_string_t *target) {
  * are themselves symlinks, this function gets called recursively called on
  * all the components of path. */
 static void watch_symlinks(w_string_t *path) {
+#ifndef _WIN32
   w_string_t *dir_name, *file_name;
   char link_target_path[WATCHMAN_NAME_MAX];
   ssize_t tlen = 0;
@@ -2070,6 +2071,7 @@ static void watch_symlinks(w_string_t *path) {
   if (file_name) {
     w_string_delref(file_name);
   }
+#endif
 }
 
 /** Process the list of observed changed symlinks and arrange to establish
