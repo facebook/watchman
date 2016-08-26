@@ -187,7 +187,8 @@ class WatchmanTestCase(unittest.TestCase):
     def decodeBSERUTF8(self, s, surrogateescape=False):
         if pywatchman.compat.PYTHON3 and \
                 (self.encoding == 'experimental-bser-v2' or \
-                 self.encoding == 'bser'):
+                 self.encoding == 'bser') and \
+                 not isinstance(s, pywatchman.compat.UNICODE):
             if surrogateescape:
                 errors = 'surrogateescape'
             else:

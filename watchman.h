@@ -578,6 +578,7 @@ struct watchman_json_buffer {
   uint32_t allocd;
   uint32_t rpos, wpos;
   enum w_pdu_type pdu_type;
+  uint32_t capabilities;
 };
 
 typedef struct bser_ctx {
@@ -593,12 +594,13 @@ void w_json_buffer_free(w_jbuffer_t *jr);
 json_t *w_json_buffer_next(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr);
 bool w_json_buffer_passthru(w_jbuffer_t *jr,
     enum w_pdu_type output_pdu,
+    uint32_t output_capabilities,
     w_jbuffer_t *output_pdu_buf,
     w_stm_t stm);
 bool w_json_buffer_write(w_jbuffer_t *jr, w_stm_t stm, json_t *json, int flags);
 bool w_json_buffer_write_bser(uint32_t bser_version, uint32_t bser_capabilities,
     w_jbuffer_t *jr, w_stm_t stm, json_t *json);
-bool w_ser_write_pdu(enum w_pdu_type pdu_type,
+bool w_ser_write_pdu(enum w_pdu_type pdu_type, uint32_t capabilities,
     w_jbuffer_t *jr, w_stm_t stm, json_t *json);
 
 #define BSER_MAGIC "\x00\x01"
@@ -634,6 +636,7 @@ struct watchman_client {
   bool client_mode;
   bool client_is_owner;
   enum w_pdu_type pdu_type;
+  uint32_t capabilities;
 
   // The command currently being processed by dispatch_command
   json_t *current_command;

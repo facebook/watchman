@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 
+W_CAP_REG("bser-v2")
 bool w_json_buffer_init(w_jbuffer_t *jr)
 {
   memset(jr, 0, sizeof(*jr));
@@ -161,20 +162,15 @@ bool w_bser_decode_pdu_info(w_jbuffer_t *jr, w_stm_t stm, uint32_t bser_version,
 {
   json_int_t needed;
   if (bser_version == 2) {
-    while (!bunser_int(jr->buf + jr->rpos, jr->wpos - jr->rpos,
-          &needed, bser_capabilities)) {
-      if (needed == -1) {
-        snprintf(jerr->text, sizeof(jerr->text),
-            "failed to read BSER capabilities");
-        return false;
-      }
+    while (jr->wpos - jr->rpos < 4) {
       if (!fill_buffer(jr, stm)) {
         snprintf(jerr->text, sizeof(jerr->text),
             "unable to fill buffer");
         return false;
       }
     }
-    jr->rpos += (uint32_t)needed;
+    memcpy(bser_capabilities, jr->buf + jr->rpos, 4);
+    jr->rpos += (uint32_t)4;
   }
   while (!bunser_int(jr->buf + jr->rpos, jr->wpos - jr->rpos,
         &needed, len)) {
@@ -261,6 +257,7 @@ static bool read_and_detect_pdu(w_jbuffer_t *jr, w_stm_t stm,
     json_error_t *jerr)
 {
   enum w_pdu_type pdu;
+  uint32_t capabilities;
 
   shunt_down(jr);
   pdu = detect_pdu(jr);
@@ -283,6 +280,23 @@ static bool read_and_detect_pdu(w_jbuffer_t *jr, w_stm_t stm,
   }
 
   jr->pdu_type = pdu;
+  jr->capabilities = 0;
+  if (pdu == is_bser_v2) {
+    // read capabilities
+    while (jr->wpos - jr->rpos < 6) {
+      if (!fill_buffer(jr, stm)) {
+        if (errno != EAGAIN) {
+          snprintf(jerr->text, sizeof(jerr->text),
+            "fill_buffer: %s",
+            errno ? strerror(errno) : "EOF");
+        }
+        return false;
+      }
+    }
+    memcpy(&capabilities, jr->buf + jr->rpos + 2, 4);
+    printf("cap %d", capabilities);
+    jr->capabilities = capabilities;
+  }
   return true;
 }
 
@@ -428,6 +442,7 @@ static json_t *read_pdu_into_json(w_jbuffer_t *jr, w_stm_t stm,
 
 bool w_json_buffer_passthru(w_jbuffer_t *jr,
     enum w_pdu_type output_pdu,
+    uint32_t output_capabilities,
     w_jbuffer_t *output_pdu_buf,
     w_stm_t stm)
 {
@@ -461,7 +476,8 @@ bool w_json_buffer_passthru(w_jbuffer_t *jr,
 
   w_json_buffer_reset(output_pdu_buf);
 
-  res = w_ser_write_pdu(output_pdu, output_pdu_buf, w_stm_stdout(), j);
+  res = w_ser_write_pdu(output_pdu, output_capabilities,
+      output_pdu_buf, w_stm_stdout(), j);
 
   json_decref(j);
   return res;
@@ -566,7 +582,7 @@ bool w_json_buffer_write(w_jbuffer_t *jr, w_stm_t stm, json_t *json, int flags)
   return jbuffer_flush(&data);
 }
 
-bool w_ser_write_pdu(enum w_pdu_type pdu_type,
+bool w_ser_write_pdu(enum w_pdu_type pdu_type, uint32_t capabilities,
     w_jbuffer_t *jr, w_stm_t stm, json_t *json)
 {
   switch (pdu_type) {
@@ -575,9 +591,9 @@ bool w_ser_write_pdu(enum w_pdu_type pdu_type,
     case is_json_pretty:
       return w_json_buffer_write(jr, stm, json, JSON_INDENT(4));
     case is_bser:
-      return w_json_buffer_write_bser(1, 0, jr, stm, json);
+      return w_json_buffer_write_bser(1, capabilities, jr, stm, json);
     case is_bser_v2:
-      return w_json_buffer_write_bser(2, 0, jr, stm, json);
+      return w_json_buffer_write_bser(2, capabilities, jr, stm, json);
     case need_data:
     default:
       return false;

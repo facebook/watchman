@@ -102,7 +102,8 @@ static struct watchman_command_handler_def *lookup(
   return NULL;
 }
 
-void preprocess_command(json_t *args, enum w_pdu_type output_pdu)
+void preprocess_command(json_t *args, enum w_pdu_type output_pdu,
+    uint32_t output_capabilities)
 {
   char *errmsg = NULL;
   struct watchman_command_handler_def *def;
@@ -130,7 +131,7 @@ void preprocess_command(json_t *args, enum w_pdu_type output_pdu)
     );
 
     w_json_buffer_init(&jr);
-    w_ser_write_pdu(output_pdu, &jr, w_stm_stdout(), err);
+    w_ser_write_pdu(output_pdu, output_capabilities, &jr, w_stm_stdout(), err);
     json_decref(err);
     w_json_buffer_free(&jr);
 

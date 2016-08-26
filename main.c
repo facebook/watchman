@@ -9,6 +9,8 @@ static int show_help = 0;
 static int show_version = 0;
 static enum w_pdu_type server_pdu = is_bser;
 static enum w_pdu_type output_pdu = is_json_pretty;
+static uint32_t server_capabilities = 0;
+static uint32_t output_capabilities = 0;
 static char *server_encoding = NULL;
 static char *output_encoding = NULL;
 static char *test_state_dir = NULL;
@@ -850,7 +852,7 @@ static bool try_command(json_t *cmd, int timeout)
   w_json_buffer_init(&buffer);
 
   // Send command
-  if (!w_ser_write_pdu(server_pdu, &buffer, client, cmd)) {
+  if (!w_ser_write_pdu(server_pdu, server_capabilities, &buffer, client, cmd)) {
     err = errno;
     w_log(W_LOG_ERR, "error sending PDU to server\n");
     w_json_buffer_free(&buffer);
@@ -864,8 +866,8 @@ static bool try_command(json_t *cmd, int timeout)
   w_json_buffer_init(&output_pdu_buffer);
 
   do {
-    if (!w_json_buffer_passthru(
-          &buffer, output_pdu, &output_pdu_buffer, client)) {
+    if (!w_json_buffer_passthru(&buffer, output_pdu, output_capabilities,
+          &output_pdu_buffer, client)) {
       err = errno;
       w_json_buffer_free(&buffer);
       w_json_buffer_free(&output_pdu_buffer);
@@ -1052,7 +1054,7 @@ int main(int argc, char **argv)
 
   w_set_thread_name("cli");
   cmd = build_command(argc, argv);
-  preprocess_command(cmd, output_pdu);
+  preprocess_command(cmd, output_pdu, output_capabilities);
 
   ran = try_command(cmd, 0);
   if (!ran && should_start(errno)) {
