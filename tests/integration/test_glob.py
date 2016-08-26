@@ -76,6 +76,15 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
                                             'includes/second/foo.h']),
                          self.normWatchmanFileList(res['files']))
 
+        # check that dedup is happening
+        res = self.watchmanCommand('query', root, {
+            'glob': ['**/*.h', '**/**/*.h', 'includes/*.h'],
+            'fields': ['name']})
+        self.assertEqual(self.normFileList(['includes/a.h', 'includes/b.h',
+                                            'includes/second/bar.h',
+                                            'includes/second/foo.h']),
+                         self.normWatchmanFileList(res['files']))
+
         shutil.rmtree(second_inc_dir)
 
         res = self.watchmanCommand('query', root, {

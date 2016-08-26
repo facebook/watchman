@@ -29,6 +29,13 @@ struct w_query_ctx {
   // Cache for dir name lookups when computing wholename
   struct watchman_dir *last_parent;
   w_string_t *last_parent_path;
+
+  // When deduping the results, effectively a set<wholename> of
+  // the files held in results
+  w_ht_t *dedup;
+
+  // How many times we suppressed a result due to dedup checking
+  uint32_t num_deduped;
 };
 
 struct w_query_path {
@@ -57,6 +64,8 @@ struct w_query {
   long refcnt;
 
   bool case_sensitive;
+  bool empty_on_fresh_instance;
+  bool dedup_results;
 
   /* optional full path to relative root, without and with trailing slash */
   w_string_t *relative_root;
@@ -72,8 +81,6 @@ struct w_query {
 
   uint32_t sync_timeout;
   uint32_t lock_timeout;
-
-  bool empty_on_fresh_instance;
 
   // We can't (and mustn't!) evaluate the clockspec
   // fully until we execute query, because we have

@@ -278,6 +278,21 @@ static bool parse_lock_timeout(w_query *res, json_t *query)
   return true;
 }
 
+W_CAP_REG("dedup_results")
+
+static bool parse_dedup(w_query *res, json_t *query)
+{
+  int value = 0;
+
+  if (query &&
+      json_unpack(query, "{s?:b*}", "dedup_results", &value) != 0) {
+    res->errmsg = strdup("dedup_results must be a boolean");
+    return false;
+  }
+
+  res->dedup_results = (bool) value;
+  return true;
+}
 
 static bool parse_empty_on_fresh_instance(w_query *res, json_t *query)
 {
@@ -293,7 +308,8 @@ static bool parse_empty_on_fresh_instance(w_query *res, json_t *query)
   return true;
 }
 
-static bool parse_case_sensitive(w_query *res, const w_root_t *root, json_t *query) {
+static bool parse_case_sensitive(w_query *res, const w_root_t *root,
+                                 json_t *query) {
   int value = root->case_sensitive;
 
   if (query && json_unpack(query, "{s?:b*}", "case_sensitive", &value) != 0) {
@@ -323,6 +339,10 @@ w_query *w_query_parse(const w_root_t *root, json_t *query, char **errmsg)
   }
 
   if (!parse_sync(res, query)) {
+    goto error;
+  }
+
+  if (!parse_dedup(res, query)) {
     goto error;
   }
 
