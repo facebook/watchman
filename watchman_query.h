@@ -75,6 +75,8 @@ struct w_query {
   size_t npaths;
 
   struct watchman_glob_tree *glob_tree;
+  // Additional flags to pass to wildmatch in the glob_generator
+  int glob_flags;
 
   w_string_t **suffixes;
   size_t nsuffixes;
