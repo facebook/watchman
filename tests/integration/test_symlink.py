@@ -137,6 +137,8 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
     @unittest.skipIf(os.name == 'nt', 'win')
     def test_watchSymlinkTarget(self):
         def make_roots():
+            # B/link -> C/file
+            # A/link -> B/file
             rootA = self.makeRootAndConfig()
             rootB = self.makeRootAndConfig()
             rootC = self.makeRootAndConfig()
@@ -163,6 +165,8 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
     @unittest.skipIf(os.name == 'nt', 'win')
     def test_watchSymlinkTargetLinkToLink(self):
         def make_roots():
+            # B/link -> C/file
+            # A/link -> B/link
             rootA = self.makeRootAndConfig()
             rootB = self.makeRootAndConfig()
             rootC = self.makeRootAndConfig()
@@ -188,6 +192,8 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
     @unittest.skipIf(os.name == 'nt', 'win')
     def test_watchRelativeSymlinkTarget(self):
         def make_roots():
+            # A/link --relative-link--> B/file
+            # So, the target of A/link is "../B/file"
             rootA = self.makeRootAndConfig()
             rootB = self.makeRootAndConfig()
             self.touchRelative(rootA, 'file')
@@ -213,6 +219,8 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
     @unittest.skipIf(os.name == 'nt', 'win')
     def test_watchRelativeSymlinkTargetOneHop(self):
         def make_roots():
+            # A/dir/link --relative-link--> B/file
+            # So, the target of A/dir/link is "../../B/file"
             rootA = self.makeRootAndConfig()
             rootB = self.makeRootAndConfig()
             self.touchRelative(rootA, 'file')
@@ -239,6 +247,7 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
     @unittest.skipIf(os.name == 'nt', 'win')
     def test_watchSymlinkToDir(self):
         def make_roots():
+            # A/link -> B/dir
             rootA = self.makeRootAndConfig()
             rootB = self.makeRootAndConfig()
             os.mkdir(os.path.join(rootB, 'dir'))
@@ -264,6 +273,8 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
     @unittest.skipIf(os.name == 'nt', 'win')
     def test_watchSymlinkToDirContainsSymlink(self):
         def make_roots():
+            # B/dir/link -> C/file
+            # A/link -> B/dir
             rootA = self.makeRootAndConfig()
             rootB = self.makeRootAndConfig()
             rootC = self.makeRootAndConfig()

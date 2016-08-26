@@ -1072,7 +1072,7 @@ static void stat_path(struct write_locked_watchman_root *lock,
       char link_target_path[WATCHMAN_NAME_MAX];
       ssize_t tlen = 0;
 
-      tlen = readlink(path, link_target_path, WATCHMAN_NAME_MAX);
+      tlen = readlink(path, link_target_path, sizeof(link_target_path));
       if (tlen < 0 || tlen >= WATCHMAN_NAME_MAX) {
         w_log(W_LOG_ERR,
             "readlink(%s) errno=%d tlen=%d\n", path, errno, (int)tlen);
@@ -1999,6 +1999,7 @@ static void watch_symlink_target(w_string_t *target, json_t *root_files) {
       if (!success) {
         w_log(W_LOG_ERR, "watch_symlink_target: failed to watch %s\n",
               resolved);
+        w_root_delref(unlocked.root);
       }
     }
     // Freeing resolved also frees rel_path
@@ -2009,27 +2010,31 @@ static void watch_symlink_target(w_string_t *target, json_t *root_files) {
 
 /** Given an absolute path, watch all symbolic links associated with the path.
  * Since the target of a symbolic link might contain several components that
- * are themselves symlinks, this function gets called recursively called on
- * all the components of path. */
+ * are themselves symlinks, this function gets called recursively on all the
+ * components of path. */
 static void watch_symlinks(w_string_t *path, json_t *root_files) {
   w_string_t *dir_name, *file_name;
   char link_target_path[WATCHMAN_NAME_MAX];
   ssize_t tlen = 0;
+  char *path_buf = NULL;
 
   // We do not currently support symlinks on Windows, so comparing path to "/"
   // is ok
-  if (!path || w_string_equal_cstring(path, "/")) {
+  if (!path || w_string_strlen(path) == 0 ||
+      w_string_equal_cstring(path, "/")) {
     return;
   }
-  w_assert(w_is_path_absolute(path->buf),
-           "watch_symlinks: path %s is not absolute\n", path->buf);
+  // Duplicate to ensure that buffer is null-terminated
+  path_buf = w_string_dup_buf(path);
+  w_assert(w_is_path_absolute(path_buf),
+           "watch_symlinks: path %s is not absolute\n", path_buf);
   dir_name = w_string_dirname(path);
   file_name = w_string_basename(path);
-  tlen = readlink(path->buf, link_target_path, WATCHMAN_NAME_MAX);
+  tlen = readlink(path_buf, link_target_path, sizeof(link_target_path));
   if (tlen >= WATCHMAN_NAME_MAX) {
     w_log(W_LOG_ERR,
           "readlink(%s), symlink target is too long: %d chars >= %d chars\n",
-          path->buf, (int)tlen, WATCHMAN_NAME_MAX);
+          path_buf, (int)tlen, WATCHMAN_NAME_MAX);
   } else if (tlen < 0) {
     if (errno == EINVAL) {
       // The final component of path is not a symbolic link, but other
@@ -2037,7 +2042,7 @@ static void watch_symlinks(w_string_t *path, json_t *root_files) {
       watch_symlinks(dir_name, root_files);
     } else {
       w_log(W_LOG_ERR,
-          "readlink(%s) errno=%d tlen=%d\n", path->buf, errno, (int)tlen);
+          "readlink(%s) errno=%d tlen=%d\n", path_buf, errno, (int)tlen);
     }
   } else {
     w_string_t *target = w_string_new_len_typed(
@@ -2062,16 +2067,20 @@ static void watch_symlinks(w_string_t *path, json_t *root_files) {
   if (file_name) {
     w_string_delref(file_name);
   }
+  if (path_buf) {
+    free(path_buf);
+  }
 }
 
 /** Process the list of observed changed symlinks and arrange to establish
  * watches for their new targets */
-static void process_pending_symlink_targets(w_root_t *root) {
+static void process_pending_symlink_targets(
+    struct unlocked_watchman_root *unlocked) {
   struct watchman_pending_fs *p, *pending;
   json_t *root_files;
   bool enforcing;
 
-  pending = root->pending_symlink_targets.pending;
+  pending = unlocked->root->pending_symlink_targets.pending;
   if (!pending) {
     return;
   }
@@ -2084,8 +2093,10 @@ static void process_pending_symlink_targets(w_root_t *root) {
     return;
   }
 
-  root->pending_symlink_targets.pending = NULL;
-  w_pending_coll_drain(&root->pending_symlink_targets);
+  // It is safe to work with unlocked->root->pending_symlink_targets because
+  // this collection is only ever mutated from the IO thread
+  unlocked->root->pending_symlink_targets.pending = NULL;
+  w_pending_coll_drain(&unlocked->root->pending_symlink_targets);
   while (pending) {
     p = pending;
     pending = p->next;
@@ -2182,7 +2193,7 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
 
     if (!pinged && w_pending_coll_size(&pending) == 0) {
 #ifndef _WIN32
-      process_pending_symlink_targets(unlocked->root);
+      process_pending_symlink_targets(unlocked);
 #endif
 
       // No new pending items were given to us, so consider that
