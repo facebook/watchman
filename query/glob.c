@@ -323,7 +323,8 @@ static bool glob_generator_doublestar(struct w_query_ctx *ctx,
           node->doublestar_children.children[j];
 
       matched = wildmatch(child_node->pattern, subject,
-                          ctx->query->case_sensitive ? 0 : WM_CASEFOLD,
+                          WM_PATHNAME |
+                              (ctx->query->case_sensitive ? 0 : WM_CASEFOLD),
                           0) == WM_MATCH;
 
       if (matched) {

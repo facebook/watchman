@@ -42,24 +42,25 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
             'glob': ['*.h'],
             'relative_root': 'includes',
             'fields': ['name']})
-        self.assertEqual(self.normWatchmanFileList(res['files']),
-                         self.normFileList(['a.h', 'b.h']))
+        self.assertEqual(self.normFileList(['a.h', 'b.h']),
+                         self.normWatchmanFileList(res['files']))
 
         res = self.watchmanCommand('query', root, {
             'glob': ['**/*.h'],
             'fields': ['name']})
-        self.assertEqual(self.normWatchmanFileList(res['files']),
-                         self.normFileList(['includes/a.h', 'includes/b.h',
+        self.assertEqual(self.normFileList(['includes/a.h', 'includes/b.h',
                                             'includes/second/bar.h',
-                                            'includes/second/foo.h']))
+                                            'includes/second/foo.h']),
+                         self.normWatchmanFileList(res['files']))
 
         res = self.watchmanCommand('query', root, {
             'glob': ['**/*.h'],
             'relative_root': 'includes',
             'fields': ['name']})
-        self.assertEqual(self.normWatchmanFileList(res['files']),
-                         self.normFileList(['second/bar.h',
-                                            'second/foo.h']))
+        self.assertEqual(self.normFileList(['a.h', 'b.h',
+                                            'second/bar.h',
+                                            'second/foo.h']),
+                         self.normWatchmanFileList(res['files']))
 
         res = self.watchmanCommand('query', root, {
             'glob': ['*.c'],
@@ -70,30 +71,30 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
         res = self.watchmanCommand('query', root, {
             'glob': ['**/*.h', '**/**/*.h'],
             'fields': ['name']})
-        self.assertEqual(self.normWatchmanFileList(res['files']),
-                         self.normFileList(['includes/a.h', 'includes/b.h',
+        self.assertEqual(self.normFileList(['includes/a.h', 'includes/b.h',
                                             'includes/second/bar.h',
-                                            'includes/second/foo.h']))
+                                            'includes/second/foo.h']),
+                         self.normWatchmanFileList(res['files']))
 
         shutil.rmtree(second_inc_dir)
 
         res = self.watchmanCommand('query', root, {
             'glob': ['**/*.h', '**/**/*.h'],
             'fields': ['name']})
-        self.assertEqual(self.normWatchmanFileList(res['files']),
-                         self.normFileList(['includes/a.h', 'includes/b.h']))
+        self.assertEqual(self.normFileList(['includes/a.h', 'includes/b.h']),
+                         self.normWatchmanFileList(res['files']))
 
         res = self.watchmanCommand('query', root, {
             'glob': ['*/*.h'],
             'fields': ['name']})
-        self.assertEqual(self.normWatchmanFileList(res['files']),
-                         self.normFileList(['includes/a.h', 'includes/b.h']))
+        self.assertEqual(self.normFileList(['includes/a.h', 'includes/b.h']),
+                         self.normWatchmanFileList(res['files']))
 
         os.unlink(os.path.join(inc_dir, 'a.h'))
 
         res = self.watchmanCommand('query', root, {
             'glob': ['*/*.h'],
             'fields': ['name']})
-        self.assertEqual(self.normWatchmanFileList(res['files']),
-                         self.normFileList(['includes/b.h']))
+        self.assertEqual(self.normFileList(['includes/b.h']),
+                         self.normWatchmanFileList(res['files']))
 
