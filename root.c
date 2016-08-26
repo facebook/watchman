@@ -1999,6 +1999,7 @@ static void watch_symlink_target(w_string_t *target, json_t *root_files) {
       if (!success) {
         w_log(W_LOG_ERR, "watch_symlink_target: failed to watch %s\n",
               resolved);
+      } else {
         w_root_delref(unlocked.root);
       }
     }
