@@ -213,6 +213,8 @@ bool parse_globs(w_query *res, json_t *query)
 {
   json_t *globs;
   size_t i;
+  int noescape = 0;
+  int includedotfiles = 0;
 
   globs = json_object_get(query, "glob");
   if (!globs) {
@@ -226,6 +228,20 @@ bool parse_globs(w_query *res, json_t *query)
 
   // Globs implicitly enable dedup_results mode
   res->dedup_results = true;
+
+  if (json_unpack(query, "{s?b}", "glob_noescape", &noescape) != 0) {
+    res->errmsg = strdup("glob_noescape must be a boolean");
+    return false;
+  }
+
+  if (json_unpack(query, "{s?b}", "glob_includedotfiles", &includedotfiles) !=
+      0) {
+    res->errmsg = strdup("glob_includedotfiles must be a boolean");
+    return false;
+  }
+
+  res->glob_flags =
+      (includedotfiles ? 0 : WM_PERIOD) | (noescape ? WM_NOESCAPE : 0);
 
   res->glob_tree = make_node("", 0);
   for (i = 0; i < json_array_size(globs); i++) {
@@ -326,7 +342,7 @@ static bool glob_generator_doublestar(struct w_query_ctx *ctx,
           node->doublestar_children.children[j];
 
       matched = wildmatch(child_node->pattern, subject,
-                          WM_PATHNAME |
+                          ctx->query->glob_flags | WM_PATHNAME |
                               (ctx->query->case_sensitive ? 0 : WM_CASEFOLD),
                           0) == WM_MATCH;
 
@@ -434,7 +450,8 @@ static bool glob_generator_tree(struct w_query_ctx *ctx, int64_t *num_walked,
           }
 
           if (wildmatch(child_node->pattern, child_dir->name->buf,
-                        ctx->query->case_sensitive ? 0 : WM_CASEFOLD,
+                        ctx->query->glob_flags |
+                            (ctx->query->case_sensitive ? 0 : WM_CASEFOLD),
                         0) == WM_MATCH) {
             int64_t child_walked = 0;
             result = glob_generator_tree(ctx, &child_walked, lock, child_node,
@@ -480,8 +497,9 @@ static bool glob_generator_tree(struct w_query_ctx *ctx, int64_t *num_walked,
         }
 
         if (wildmatch(child_node->pattern, file_name->buf,
-              ctx->query->case_sensitive ? WM_CASEFOLD : 0,
-              0) == WM_MATCH) {
+                      ctx->query->glob_flags |
+                          (ctx->query->case_sensitive ? WM_CASEFOLD : 0),
+                      0) == WM_MATCH) {
           if (!w_query_process_file(ctx->query, ctx, file)) {
             result = false;
             goto done;

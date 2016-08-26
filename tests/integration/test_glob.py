@@ -20,6 +20,7 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
         root = self.mkdtemp()
         self.touchRelative(root, 'a.c')
         self.touchRelative(root, 'b.c')
+        self.touchRelative(root, '.a.c')
 
         inc_dir = os.path.join(root, 'includes')
         os.mkdir(inc_dir)
@@ -67,6 +68,13 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
             'fields': ['name']})
         self.assertEqual(self.normWatchmanFileList(res['files']),
                          self.normFileList(['a.c', 'b.c']))
+
+        res = self.watchmanCommand('query', root, {
+            'glob': ['*.c'],
+            'glob_includedotfiles': True,
+            'fields': ['name']})
+        self.assertEqual(self.normWatchmanFileList(res['files']),
+                         self.normFileList(['.a.c', 'a.c', 'b.c']))
 
         res = self.watchmanCommand('query', root, {
             'glob': ['**/*.h', '**/**/*.h'],
