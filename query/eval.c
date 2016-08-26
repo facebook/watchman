@@ -85,6 +85,18 @@ bool w_query_process_file(
     return true;
   }
 
+  if (ctx->dedup) {
+    w_string_t *name = w_query_ctx_get_wholename(ctx);
+
+    if (w_ht_get(ctx->dedup, w_ht_ptr_val(name))) {
+      // Already present in the results, no need to emit it again
+      ctx->num_deduped++;
+      return true;
+    }
+
+    w_ht_set(ctx->dedup, w_ht_ptr_val(name), 1);
+  }
+
   // Need more room?
   if (ctx->num_results + 1 > ctx->num_allocd) {
     uint32_t new_num = ctx->num_allocd ? ctx->num_allocd * 2 : 64;
@@ -454,6 +466,10 @@ static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
                            void *gendata) {
   int64_t num_walked = 0;
 
+  if (ctx->query->dedup_results) {
+    ctx->dedup = w_ht_new(64, &w_ht_string_funcs);
+  }
+
   res->is_fresh_instance = !ctx->since.is_timestamp &&
     ctx->since.clock.is_fresh_instance;
 
@@ -468,8 +484,9 @@ static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
   if (w_perf_finish(sample)) {
     w_perf_add_root_meta(sample, ctx->lock->root);
     w_perf_add_meta(sample, "query_execute",
-                    json_pack("{s:b, s:i, s:i, s:O}",                   //
+                    json_pack("{s:b, s:i, s:i, s:i, s:O}",              //
                               "fresh_instance", res->is_fresh_instance, //
+                              "num_deduped", ctx->num_deduped,          //
                               "num_results", ctx->num_results,          //
                               "num_walked", num_walked,                 //
                               "query", ctx->query->query_spec           //
@@ -483,6 +500,9 @@ static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
   }
   if (ctx->last_parent_path) {
     w_string_delref(ctx->last_parent_path);
+  }
+  if (ctx->dedup) {
+    w_ht_free(ctx->dedup);
   }
   res->results = ctx->results;
   res->num_results = ctx->num_results;

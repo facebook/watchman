@@ -29,6 +29,30 @@ Watchman provides 5 generators:
  * **path**: produces a list of files based on their path and depth.
  * **all**: produces a list of all known files
 
+
+### De-duplicating results
+
+*Since 4.7.*
+
+If your query uses multiple generators, or configures the `path` generator with
+paths that yield multiple results, the default behavior (for backwards
+compatibility reasons) is to emit those duplicate results in the query output.
+
+You may ask Watchman to de-duplicate results for you by enabling the
+`dedup_results` boolean in your query:
+
+```
+$ watchman -j <<-EOT
+["query", "/path/to/root", {
+  "path": ["bar", "bar"],
+  "dedup_results": true
+}]
+EOT
+```
+
+You may test for this feature using an extended version command and requesting
+the capability name `dedup_results`.
+
 ### Since Generator
 
 The `since` generator produces a list of files that were modified since a
@@ -116,6 +140,8 @@ Note that it is more efficient to use the `suffix` generator together with a
 `dirname` expression term for such a broadly scoped query as it results in
 fewer comparisons.  This example is included as an illustration of recursive
 globbing.
+
+The glob generator implicitly enables `dedup_results` mode.
 
 ### Path Generator
 

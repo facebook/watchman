@@ -224,6 +224,9 @@ bool parse_globs(w_query *res, json_t *query)
     return false;
   }
 
+  // Globs implicitly enable dedup_results mode
+  res->dedup_results = true;
+
   res->glob_tree = make_node("", 0);
   for (i = 0; i < json_array_size(globs); i++) {
     json_t *ele = json_array_get(globs, i);
@@ -370,7 +373,6 @@ static bool glob_generator_doublestar(struct w_query_ctx *ctx,
 done:
   *num_walked = n;
   return result;
-
 }
 
 /* Match each child of node against the children of dir */
