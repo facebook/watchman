@@ -750,6 +750,11 @@ void w_root_read_unlock(struct read_locked_watchman_root *locked,
                         struct unlocked_watchman_root *unlocked);
 
 void process_pending_symlink_targets(struct unlocked_watchman_root *unlocked);
+void *run_io_thread(void *arg);
+void process_subscriptions(struct write_locked_watchman_root *lock);
+void process_triggers(struct write_locked_watchman_root *lock);
+void consider_age_out(struct write_locked_watchman_root *lock);
+bool consider_reap(struct write_locked_watchman_root *lock);
 
 /* Bob Jenkins' lookup3.c hash function */
 uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);

@@ -89,6 +89,7 @@ SRCS=\
 	clientmode.c \
 	main.c       \
 	root.c       \
+	root/iothread.c       \
 	root/lock.c       \
 	root/symlink.c       \
 	state.c      \
