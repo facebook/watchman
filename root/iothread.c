@@ -142,6 +142,59 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
   w_pending_coll_destroy(&pending);
 }
 
+void w_root_process_path(struct write_locked_watchman_root *lock,
+                         struct watchman_pending_collection *coll,
+                         w_string_t *full_path, struct timeval now, int flags,
+                         struct watchman_dir_ent *pre_stat) {
+  /* From a particular query's point of view, there are four sorts of cookies we
+   * can observe:
+   * 1. Cookies that this query has created. This marks the end of this query's
+   *    sync_to_now, so we hide it from the results.
+   * 2. Cookies that another query on the same watch by the same process has
+   *    created. This marks the end of that other query's sync_to_now, so from
+   *    the point of view of this query we turn a blind eye to it.
+   * 3. Cookies created by another process on the same watch. We're independent
+   *    of other processes, so we report these.
+   * 4. Cookies created by a nested watch by the same or a different process.
+   *    We're independent of other watches, so we report these.
+   *
+   * The below condition is true for cases 1 and 2 and false for 3 and 4.
+   */
+  if (w_string_startswith(full_path, lock->root->query_cookie_prefix)) {
+    struct watchman_query_cookie *cookie;
+    bool consider_cookie =
+        (lock->root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)
+            ? ((flags & W_PENDING_VIA_NOTIFY) || !lock->root->done_initial)
+            : true;
+
+    if (!consider_cookie) {
+      // Never allow cookie files to show up in the tree
+      return;
+    }
+
+    cookie = w_ht_val_ptr(
+        w_ht_get(lock->root->query_cookies, w_ht_ptr_val(full_path)));
+    w_log(W_LOG_DBG, "cookie! %.*s cookie=%p\n",
+        full_path->len, full_path->buf, cookie);
+
+    if (cookie) {
+      cookie->seen = true;
+      pthread_cond_signal(&cookie->cond);
+    }
+
+    // Never allow cookie files to show up in the tree
+    return;
+  }
+
+  if (w_string_equal(full_path, lock->root->root_path)
+      || (flags & W_PENDING_CRAWL_ONLY) == W_PENDING_CRAWL_ONLY) {
+    crawler(lock, coll, full_path, now,
+        (flags & W_PENDING_RECURSIVE) == W_PENDING_RECURSIVE);
+  } else {
+    stat_path(lock, coll, full_path, now, flags, pre_stat);
+  }
+}
+
 bool w_root_process_pending(struct write_locked_watchman_root *lock,
     struct watchman_pending_collection *coll,
     bool pull_from_root)
