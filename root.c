@@ -274,37 +274,6 @@ void w_root_schedule_recrawl(w_root_t *root, const char *why)
   signal_root_threads(root);
 }
 
-// Cancels a watch.
-bool w_root_cancel(w_root_t *root /* don't care about locked state */)
-{
-  bool cancelled = false;
-
-  if (!root->cancelled) {
-    cancelled = true;
-
-    w_log(W_LOG_DBG, "marked %s cancelled\n",
-        root->root_path->buf);
-    root->cancelled = true;
-
-    signal_root_threads(root);
-  }
-
-  return cancelled;
-}
-
-bool w_root_stop_watch(struct unlocked_watchman_root *unlocked)
-{
-  bool stopped = remove_root_from_watched(unlocked->root);
-
-  if (stopped) {
-    w_root_cancel(unlocked->root);
-    w_state_save(); // this is what required that we are not locked
-  }
-  signal_root_threads(unlocked->root);
-
-  return stopped;
-}
-
 // Caller must have locked root
 json_t *w_root_trigger_list_to_json(struct read_locked_watchman_root *lock)
 {
