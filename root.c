@@ -6,23 +6,6 @@
 # include <sys/attr.h>
 #endif
 
-void stop_watching_dir(struct write_locked_watchman_root *lock,
-                       struct watchman_dir *dir) {
-  w_ht_iter_t i;
-  w_string_t *dir_path = w_dir_copy_full_path(dir);
-
-  w_log(W_LOG_DBG, "stop_watching_dir %.*s\n", dir_path->len, dir_path->buf);
-  w_string_delref(dir_path);
-
-  if (w_ht_first(dir->dirs, &i)) do {
-    struct watchman_dir *child = w_ht_val_ptr(i.value);
-
-    stop_watching_dir(lock, child);
-  } while (w_ht_next(dir->dirs, &i));
-
-  lock->root->watcher_ops->root_stop_watch_dir(lock, dir);
-}
-
 bool did_file_change(struct watchman_stat *saved, struct watchman_stat *fresh) {
   /* we have to compare this way because the stat structure
    * may contain fields that vary and that don't impact our
@@ -140,38 +123,6 @@ void w_root_process_path(struct write_locked_watchman_root *lock,
   } else {
     stat_path(lock, coll, full_path, now, flags, pre_stat);
   }
-}
-
-/* recursively mark the dir contents as deleted */
-void w_root_mark_deleted(struct write_locked_watchman_root *lock,
-                         struct watchman_dir *dir, struct timeval now,
-                         bool recursive) {
-  w_ht_iter_t i;
-
-  if (!dir->last_check_existed) {
-    // If we know that it doesn't exist, return early
-    return;
-  }
-  dir->last_check_existed = false;
-
-  if (w_ht_first(dir->files, &i)) do {
-    struct watchman_file *file = w_ht_val_ptr(i.value);
-
-    if (file->exists) {
-      w_string_t *full_name = w_dir_path_cat_str(dir, w_file_get_name(file));
-      w_log(W_LOG_DBG, "mark_deleted: %.*s\n", full_name->len, full_name->buf);
-      w_string_delref(full_name);
-      file->exists = false;
-      w_root_mark_file_changed(lock, file, now);
-    }
-
-  } while (w_ht_next(dir->files, &i));
-
-  if (recursive && w_ht_first(dir->dirs, &i)) do {
-    struct watchman_dir *child = w_ht_val_ptr(i.value);
-
-    w_root_mark_deleted(lock, child, now, true);
-  } while (w_ht_next(dir->dirs, &i));
 }
 
 void handle_open_errno(struct write_locked_watchman_root *lock,
