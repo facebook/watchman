@@ -114,6 +114,14 @@ void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
   lock->root->pending_sub_tick = lock->root->ticks;
 }
 
+void free_file_node(w_root_t *root, struct watchman_file *file) {
+  root->watcher_ops->file_free(file);
+  if (file->symlink_target) {
+    w_string_delref(file->symlink_target);
+  }
+  free(file);
+}
+
 struct watchman_file *
 w_root_resolve_file(struct write_locked_watchman_root *lock,
                     struct watchman_dir *dir, w_string_t *file_name,

@@ -88,7 +88,6 @@ SRCS=\
 	listener-user.c   \
 	clientmode.c \
 	main.c       \
-	root.c       \
 	root/ageout.c       \
 	root/crawler.c       \
 	root/dir.c       \

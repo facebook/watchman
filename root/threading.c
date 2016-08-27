@@ -43,6 +43,23 @@ bool root_start(w_root_t *root, char **errmsg) {
   return true;
 }
 
+void w_root_schedule_recrawl(w_root_t *root, const char *why) {
+  if (!root->should_recrawl) {
+    if (root->last_recrawl_reason) {
+      w_string_delref(root->last_recrawl_reason);
+    }
+
+    root->last_recrawl_reason = w_string_make_printf(
+        "%.*s: %s",
+        root->root_path->len, root->root_path->buf, why);
+
+    w_log(W_LOG_ERR, "%.*s: %s: scheduling a tree recrawl\n",
+        root->root_path->len, root->root_path->buf, why);
+  }
+  root->should_recrawl = true;
+  signal_root_threads(root);
+}
+
 void signal_root_threads(w_root_t *root) {
   // Send SIGUSR1 to interrupt blocking syscalls on the
   // worker threads.  They'll self-terminate.

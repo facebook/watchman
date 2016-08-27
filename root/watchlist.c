@@ -190,6 +190,20 @@ bool w_root_save_state(json_t *state) {
   return result;
 }
 
+json_t *w_root_trigger_list_to_json(struct read_locked_watchman_root *lock) {
+  w_ht_iter_t iter;
+  json_t *arr;
+
+  arr = json_array();
+  if (w_ht_first(lock->root->commands, &iter)) do {
+    struct watchman_trigger_command *cmd = w_ht_val_ptr(iter.value);
+
+    json_array_append(arr, cmd->definition);
+  } while (w_ht_next(lock->root->commands, &iter));
+
+  return arr;
+}
+
 bool w_root_load_state(json_t *state) {
   json_t *watched;
   size_t i;
