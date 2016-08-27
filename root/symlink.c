@@ -181,6 +181,8 @@ void process_pending_symlink_targets(struct unlocked_watchman_root *unlocked) {
   }
 
   json_decref(root_files);
+#else
+  unused_parameter(unlocked);
 #endif
 }
 

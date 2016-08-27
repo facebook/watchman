@@ -88,24 +88,24 @@ SRCS=\
 	listener-user.c   \
 	clientmode.c \
 	main.c       \
-	root/ageout.c       \
-	root/crawler.c       \
-	root/dir.c       \
-	root/file.c       \
-	root/init.c       \
-	root/iothread.c       \
-	root/lock.c       \
-	root/notifythread.c       \
-	root/poison.c       \
-	root/reap.c       \
-	root/resolve.c       \
-	root/stat.c       \
-	root/symlink.c       \
-	root/sync.c       \
-	root/threading.c       \
-	root/vcs.c       \
-	root/warnerr.c       \
-	root/watchlist.c       \
+	root\ageout.c       \
+	root\crawler.c       \
+	root\dir.c       \
+	root\file.c       \
+	root\init.c       \
+	root\iothread.c       \
+	root\lock.c       \
+	root\notifythread.c       \
+	root\poison.c       \
+	root\reap.c       \
+	root\resolve.c       \
+	root\stat.c       \
+	root\symlink.c       \
+	root\sync.c       \
+	root\threading.c       \
+	root\vcs.c       \
+	root\warnerr.c       \
+	root\watchlist.c       \
 	state.c      \
 	string.c     \
 	time.c
@@ -171,6 +171,11 @@ COLLECTDEPS=$(CC) $(CFLAGS) /Zs /showIncludes /EHsc $< | cscript /nologo //E:jsc
 	@echo CC $<
 	$(CC) $(CFLAGS) $(PEDANTIC) /Fo:watcher\ /c $<
 	$(COLLECTDEPS) watcher
+
+{root}.c{root}.obj::
+	@echo CC $<
+	$(CC) $(CFLAGS) $(PEDANTIC) /Fo:root\ /c $<
+	$(COLLECTDEPS) root
 
 {thirdparty\wildmatch}.c{thirdparty\wildmatch}.obj::
 	@echo CC $<
