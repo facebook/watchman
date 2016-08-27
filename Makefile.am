@@ -86,6 +86,7 @@ watchman_SOURCES = \
 	root/sync.c       \
 	root/threading.c       \
 	root/vcs.c       \
+	root/warnerr.c       \
 	root/watchlist.c       \
 	state.c      \
 	string.c     \
