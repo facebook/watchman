@@ -79,6 +79,7 @@ watchman_SOURCES = \
 	root/lock.c       \
 	root/notifythread.c       \
 	root/poison.c       \
+	root/reap.c       \
 	root/resolve.c       \
 	root/stat.c       \
 	root/symlink.c       \
