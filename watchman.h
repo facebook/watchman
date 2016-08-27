@@ -778,6 +778,12 @@ void struct_stat_to_watchman_stat(const struct stat *st,
 bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg);
 w_root_t *w_root_new(const char *path, char **errmsg);
 extern volatile long live_roots;
+bool root_start(w_root_t *root, char **errmsg);
+extern pthread_mutex_t watch_list_lock;
+extern w_ht_t *watched_roots;
+bool root_resolve(const char *filename, bool auto_watch, bool *created,
+                  char **errmsg, struct unlocked_watchman_root *unlocked);
+void signal_root_threads(w_root_t *root);
 
 /* Bob Jenkins' lookup3.c hash function */
 uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);

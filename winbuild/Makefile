@@ -98,9 +98,11 @@ SRCS=\
 	root/lock.c       \
 	root/notifythread.c       \
 	root/poison.c       \
+	root/resolve.c       \
 	root/stat.c       \
 	root/symlink.c       \
 	root/vcs.c       \
+	root/watchlist.c       \
 	state.c      \
 	string.c     \
 	time.c
