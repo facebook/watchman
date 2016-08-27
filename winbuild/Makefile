@@ -90,11 +90,13 @@ SRCS=\
 	main.c       \
 	root.c       \
 	root/ageout.c       \
+	root/crawler.c       \
 	root/dir.c       \
 	root/file.c       \
 	root/iothread.c       \
 	root/lock.c       \
 	root/notifythread.c       \
+	root/stat.c       \
 	root/symlink.c       \
 	state.c      \
 	string.c     \

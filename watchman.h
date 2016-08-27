@@ -766,6 +766,16 @@ bool remove_root_from_watched(
 bool is_vcs_op_in_progress(struct write_locked_watchman_root *lock);
 extern const struct watchman_hash_funcs dirname_hash_funcs;
 void delete_dir(struct watchman_dir *dir);
+void crawler(struct write_locked_watchman_root *lock,
+             struct watchman_pending_collection *coll, w_string_t *dir_name,
+             struct timeval now, bool recursive);
+void stat_path(struct write_locked_watchman_root *lock,
+               struct watchman_pending_collection *coll, w_string_t *full_path,
+               struct timeval now, int flags,
+               struct watchman_dir_ent *pre_stat);
+bool did_file_change(struct watchman_stat *saved, struct watchman_stat *fresh);
+void struct_stat_to_watchman_stat(const struct stat *st,
+                                  struct watchman_stat *target);
 
 /* Bob Jenkins' lookup3.c hash function */
 uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);
