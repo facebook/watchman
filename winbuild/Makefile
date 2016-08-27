@@ -90,6 +90,7 @@ SRCS=\
 	main.c       \
 	root.c       \
 	root/ageout.c       \
+	root/dir.c       \
 	root/file.c       \
 	root/iothread.c       \
 	root/lock.c       \
