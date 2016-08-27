@@ -74,6 +74,7 @@ watchman_SOURCES = \
 	root/crawler.c       \
 	root/dir.c       \
 	root/file.c       \
+	root/init.c       \
 	root/iothread.c       \
 	root/lock.c       \
 	root/notifythread.c       \

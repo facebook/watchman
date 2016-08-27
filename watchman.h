@@ -776,6 +776,8 @@ bool did_file_change(struct watchman_stat *saved, struct watchman_stat *fresh);
 void struct_stat_to_watchman_stat(const struct stat *st,
                                   struct watchman_stat *target);
 bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg);
+w_root_t *w_root_new(const char *path, char **errmsg);
+extern volatile long live_roots;
 
 /* Bob Jenkins' lookup3.c hash function */
 uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);
