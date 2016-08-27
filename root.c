@@ -301,43 +301,6 @@ out:
   return true;
 }
 
-bool w_root_process_pending(struct write_locked_watchman_root *lock,
-    struct watchman_pending_collection *coll,
-    bool pull_from_root)
-{
-  struct watchman_pending_fs *p, *pending;
-
-  if (pull_from_root) {
-    // You MUST own root->pending lock for this
-    w_pending_coll_append(coll, &lock->root->pending);
-  }
-
-  if (!coll->pending) {
-    return false;
-  }
-
-  w_log(W_LOG_DBG, "processing %d events in %s\n",
-      w_pending_coll_size(coll), lock->root->root_path->buf);
-
-  // Steal the contents
-  pending = coll->pending;
-  coll->pending = NULL;
-  w_pending_coll_drain(coll);
-
-  while (pending) {
-    p = pending;
-    pending = p->next;
-
-    if (!lock->root->cancelled) {
-      w_root_process_path(lock, coll, p->path, p->now, p->flags, NULL);
-    }
-
-    w_pending_fs_free(p);
-  }
-
-  return true;
-}
-
 void stop_watching_dir(struct write_locked_watchman_root *lock,
                        struct watchman_dir *dir) {
   w_ht_iter_t i;
