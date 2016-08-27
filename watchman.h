@@ -755,6 +755,9 @@ void process_subscriptions(struct write_locked_watchman_root *lock);
 void process_triggers(struct write_locked_watchman_root *lock);
 void consider_age_out(struct write_locked_watchman_root *lock);
 bool consider_reap(struct write_locked_watchman_root *lock);
+void remove_from_file_list(struct write_locked_watchman_root *lock,
+                           struct watchman_file *file);
+void free_file_node(w_root_t *root, struct watchman_file *file);
 
 /* Bob Jenkins' lookup3.c hash function */
 uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);
