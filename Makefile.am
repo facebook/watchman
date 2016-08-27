@@ -74,6 +74,7 @@ watchman_SOURCES = \
 	root/file.c       \
 	root/iothread.c       \
 	root/lock.c       \
+	root/notifythread.c       \
 	root/symlink.c       \
 	state.c      \
 	string.c     \
