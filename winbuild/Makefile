@@ -90,6 +90,7 @@ SRCS=\
 	main.c       \
 	root.c       \
 	root/lock.c       \
+	root/symlink.c       \
 	state.c      \
 	string.c     \
 	time.c

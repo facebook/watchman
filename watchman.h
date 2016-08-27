@@ -749,6 +749,8 @@ bool w_root_read_lock_with_timeout(struct unlocked_watchman_root *unlocked,
 void w_root_read_unlock(struct read_locked_watchman_root *locked,
                         struct unlocked_watchman_root *unlocked);
 
+void process_pending_symlink_targets(struct unlocked_watchman_root *unlocked);
+
 /* Bob Jenkins' lookup3.c hash function */
 uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);
 
