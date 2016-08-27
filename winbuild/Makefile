@@ -89,6 +89,7 @@ SRCS=\
 	clientmode.c \
 	main.c       \
 	root.c       \
+	root/lock.c       \
 	state.c      \
 	string.c     \
 	time.c
