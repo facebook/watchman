@@ -1945,6 +1945,7 @@ static void notify_thread(struct unlocked_watchman_root *unlocked)
 static w_string_t *get_normalized_target(w_string_t *target) {
   w_string_t *dir_name, *file_name, *normalized_target = NULL;
   char *dir_name_buf, *dir_name_real;
+  int err;
 
   w_assert(w_is_path_absolute(target->buf),
            "get_normalized_target: path %s is not absolute\n", target->buf);
@@ -1952,7 +1953,10 @@ static w_string_t *get_normalized_target(w_string_t *target) {
   // Need a duplicated buffer to get terminating null character
   dir_name_buf = w_string_dup_buf(dir_name);
   file_name = w_string_basename(target);
+
   dir_name_real = w_realpath(dir_name_buf);
+  err = errno;
+
   if (dir_name_real) {
     w_string_t *dir_name_real_wstr =
       w_string_new_typed(dir_name_real, W_STRING_BYTE);
@@ -1963,6 +1967,8 @@ static w_string_t *get_normalized_target(w_string_t *target) {
   w_string_delref(dir_name);
   w_string_delref(file_name);
   free(dir_name_buf);
+
+  errno = err;
   return normalized_target;
 }
 
@@ -1976,33 +1982,37 @@ static void watch_symlink_target(w_string_t *target, json_t *root_files) {
   normalized_target = get_normalized_target(target);
   if (!normalized_target) {
     w_log(W_LOG_ERR, "watch_symlink_target: "
-          "failed to get normalized version of target %s\n", target->buf);
+                     "unable to get normalized version of target `%s`; "
+                     "realpath errno %d %s\n",
+          target->buf, errno, strerror(errno));
     return;
   }
+
   watched_root = w_find_enclosing_root(normalized_target->buf, &relpath);
   if (watched_root) {
     // We are already watching a root that contains this target
     free(watched_root);
-    if (relpath) {
-      free(relpath);
-    }
+    free(relpath);
   } else {
-    char *resolved, *errmsg;
-    bool res;
+    char *resolved, *errmsg = NULL;
+
     resolved = w_string_dup_buf(normalized_target);
-    res = find_project_root(root_files, resolved, &relpath);
-    if (!res) {
-      w_log(W_LOG_ERR, "No root project found to contain %s\n", resolved);
+    if (!find_project_root(root_files, resolved, &relpath)) {
+      w_log(W_LOG_ERR, "watch_symlink_target: No watchable root for %s\n",
+            resolved);
     } else {
       struct unlocked_watchman_root unlocked;
       bool success = w_root_resolve(resolved, true, &errmsg, &unlocked);
+
       if (!success) {
-        w_log(W_LOG_ERR, "watch_symlink_target: failed to watch %s\n",
-              resolved);
+        w_log(W_LOG_ERR, "watch_symlink_target: unable to watch %s: %s\n",
+              resolved, errmsg);
       } else {
         w_root_delref(unlocked.root);
       }
+      free(errmsg);
     }
+
     // Freeing resolved also frees rel_path
     free(resolved);
   }
@@ -2025,29 +2035,33 @@ static void watch_symlinks(w_string_t *path, json_t *root_files) {
       w_string_equal_cstring(path, "/")) {
     return;
   }
+
   // Duplicate to ensure that buffer is null-terminated
   path_buf = w_string_dup_buf(path);
   w_assert(w_is_path_absolute(path_buf),
            "watch_symlinks: path %s is not absolute\n", path_buf);
+
   dir_name = w_string_dirname(path);
   file_name = w_string_basename(path);
   tlen = readlink(path_buf, link_target_path, sizeof(link_target_path));
-  if (tlen >= WATCHMAN_NAME_MAX) {
-    w_log(W_LOG_ERR,
-          "readlink(%s), symlink target is too long: %d chars >= %d chars\n",
-          path_buf, (int)tlen, WATCHMAN_NAME_MAX);
+
+  if (tlen >= (ssize_t)sizeof(link_target_path)) {
+    w_log(W_LOG_ERR, "watch_symlinks: readlink(%s), symlink target is too "
+                     "long: %d chars >= %d chars\n",
+          path_buf, (int)tlen, (int)sizeof(link_target_path));
   } else if (tlen < 0) {
     if (errno == EINVAL) {
       // The final component of path is not a symbolic link, but other
       // components in the path might be symbolic links
       watch_symlinks(dir_name, root_files);
     } else {
-      w_log(W_LOG_ERR,
-          "readlink(%s) errno=%d tlen=%d\n", path_buf, errno, (int)tlen);
+      w_log(W_LOG_ERR, "watch_symlinks: readlink(%s) errno=%d %s tlen=%d\n",
+            path_buf, errno, strerror(errno), (int)tlen);
     }
   } else {
-    w_string_t *target = w_string_new_len_typed(
-        link_target_path, tlen, W_STRING_BYTE);
+    w_string_t *target =
+        w_string_new_len_typed(link_target_path, tlen, W_STRING_BYTE);
+
     if (w_is_path_absolute(target->buf)) {
       watch_symlink_target(target, root_files);
       watch_symlinks(target, root_files);
@@ -2062,21 +2076,16 @@ static void watch_symlinks(w_string_t *path, json_t *root_files) {
     }
     w_string_delref(target);
   }
-  if (dir_name) {
-    w_string_delref(dir_name);
-  }
-  if (file_name) {
-    w_string_delref(file_name);
-  }
-  if (path_buf) {
-    free(path_buf);
-  }
+
+  w_string_delref(dir_name);
+  w_string_delref(file_name);
+  free(path_buf);
 }
 
 /** Process the list of observed changed symlinks and arrange to establish
  * watches for their new targets */
-static void process_pending_symlink_targets(
-    struct unlocked_watchman_root *unlocked) {
+static void
+process_pending_symlink_targets(struct unlocked_watchman_root *unlocked) {
   struct watchman_pending_fs *p, *pending;
   json_t *root_files;
   bool enforcing;
