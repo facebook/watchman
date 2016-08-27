@@ -531,37 +531,6 @@ void w_root_set_warning(struct write_locked_watchman_root *lock,
   }
 }
 
-void set_poison_state(w_string_t *dir, struct timeval now,
-                      const char *syscall, int err, const char *reason) {
-  char *why = NULL;
-
-  if (poisoned_reason) {
-    return;
-  }
-
-  ignore_result(asprintf(&why,
-"A non-recoverable condition has triggered.  Watchman needs your help!\n"
-"The triggering condition was at timestamp=%ld: %s(%.*s) -> %s\n"
-"All requests will continue to fail with this message until you resolve\n"
-"the underlying problem.  You will find more information on fixing this at\n"
-"%s#poison-%s\n",
-    (long)now.tv_sec,
-    syscall,
-    dir->len,
-    dir->buf,
-    reason ? reason : strerror(err),
-    cfg_get_trouble_url(),
-    syscall
-  ));
-
-  w_log(W_LOG_ERR, "%s", why);
-
-  // This assignment can race for store with other threads.  We don't
-  // care about that; we consider ourselves broken and the worst case
-  // is that we leak a handful of strings around the race
-  poisoned_reason = why;
-}
-
 void free_file_node(w_root_t *root, struct watchman_file *file)
 {
   root->watcher_ops->file_free(file);

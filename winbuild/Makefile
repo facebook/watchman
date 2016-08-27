@@ -96,6 +96,7 @@ SRCS=\
 	root/iothread.c       \
 	root/lock.c       \
 	root/notifythread.c       \
+	root/poison.c       \
 	root/stat.c       \
 	root/symlink.c       \
 	root/vcs.c       \
