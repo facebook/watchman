@@ -101,6 +101,7 @@ SRCS=\
 	root/resolve.c       \
 	root/stat.c       \
 	root/symlink.c       \
+	root/sync.c       \
 	root/threading.c       \
 	root/vcs.c       \
 	root/watchlist.c       \
