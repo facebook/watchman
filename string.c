@@ -751,5 +751,45 @@ size_t w_string_strlen(w_string_t *str) {
   return str->len;
 }
 
+bool w_string_path_is_absolute(const w_string_t *str) {
+  return w_is_path_absolute_cstr_len(str->buf, str->len);
+}
+
+bool w_is_path_absolute_cstr(const char *path) {
+  return w_is_path_absolute_cstr_len(path, strlen_uint32(path));
+}
+
+bool w_is_path_absolute_cstr_len(const char *path, uint32_t len) {
+#ifdef _WIN32
+  char drive_letter;
+
+  if (len <= 2) {
+    return false;
+  }
+
+  // "\something"
+  if (is_slash(path[0])) {
+    // "\\something" is absolute, "\something" is relative to the current
+    // dir of the current drive, whatever that may be, for a given process
+    return is_slash(path[1]);
+  }
+
+  drive_letter = (char)tolower(path[0]);
+  // "C:something"
+  if (drive_letter >= 'a' && drive_letter <= 'z' && path[1] == ':') {
+    // "C:\something" is absolute, but "C:something" is relative to
+    // the current dir on the C drive(!)
+    return is_slash(path[2]);
+  }
+  // we could check for things like NUL:, COM: and so on here.
+  // While those are technically absolute names, we can't watch them, so
+  // we don't consider them absolute for the purposes of checking whether
+  // the path is a valid watchable root
+  return false;
+#else
+  return len > 0 && path[0] == '/';
+#endif
+}
+
 /* vim:ts=2:sw=2:et:
  */

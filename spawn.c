@@ -346,7 +346,7 @@ static void spawn_command(w_root_t *root,
     if (cwd) {
       w_string_t *cwd_str = w_string_new_typed(cwd, W_STRING_BYTE);
 
-      if (w_is_path_absolute(cwd)) {
+      if (w_is_path_absolute_cstr(cwd)) {
         w_string_delref(working_dir);
         working_dir = cwd_str;
       } else {

@@ -12,7 +12,7 @@ static w_string_t *get_normalized_target(w_string_t *target) {
   char *dir_name_buf, *dir_name_real;
   int err;
 
-  w_assert(w_is_path_absolute(target->buf),
+  w_assert(w_string_path_is_absolute(target),
            "get_normalized_target: path %s is not absolute\n", target->buf);
   dir_name = w_string_dirname(target);
   // Need a duplicated buffer to get terminating null character
@@ -42,7 +42,7 @@ static void watch_symlink_target(w_string_t *target, json_t *root_files) {
   char *watched_root = NULL, *relpath = NULL;
   w_string_t *normalized_target;
 
-  w_assert(w_is_path_absolute(target->buf),
+  w_assert(w_string_path_is_absolute(target),
            "watch_symlink_target: path %s is not absolute\n", target->buf);
   normalized_target = get_normalized_target(target);
   if (!normalized_target) {
@@ -103,7 +103,7 @@ static void watch_symlinks(w_string_t *path, json_t *root_files) {
 
   // Duplicate to ensure that buffer is null-terminated
   path_buf = w_string_dup_buf(path);
-  w_assert(w_is_path_absolute(path_buf),
+  w_assert(w_is_path_absolute_cstr(path_buf),
            "watch_symlinks: path %s is not absolute\n", path_buf);
 
   dir_name = w_string_dirname(path);
@@ -127,7 +127,7 @@ static void watch_symlinks(w_string_t *path, json_t *root_files) {
     w_string_t *target =
         w_string_new_len_typed(link_target_path, tlen, W_STRING_BYTE);
 
-    if (w_is_path_absolute(target->buf)) {
+    if (w_string_path_is_absolute(target)) {
       watch_symlink_target(target, root_files);
       watch_symlinks(target, root_files);
       watch_symlinks(dir_name, root_files);

@@ -87,6 +87,7 @@ w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
 w_string_t *w_string_path_cat_cstr(w_string_t *parent, const char *rhs);
 w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
                                        uint32_t rhs_len);
+bool w_string_path_is_absolute(const w_string_t *str);
 
 bool w_string_startswith(w_string_t *str, w_string_t *prefix);
 bool w_string_startswith_caseless(w_string_t *str, w_string_t *prefix);
@@ -111,6 +112,14 @@ w_string_t *w_dir_path_cat_cstr_len(struct watchman_dir *dir, const char *extra,
                                     uint32_t extra_len);
 w_string_t *w_dir_path_cat_cstr(struct watchman_dir *dir, const char *extra);
 w_string_t *w_dir_path_cat_str(struct watchman_dir *dir, w_string_t *str);
+
+bool w_is_path_absolute_cstr(const char *path);
+bool w_is_path_absolute_cstr_len(const char *path, uint32_t len);
+
+static inline bool is_slash(char c) {
+  return (c == '/') || (c == '\\');
+}
+
 #ifdef __cplusplus
 }
 #endif
