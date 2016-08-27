@@ -1255,7 +1255,7 @@ static bool vcs_file_exists(struct write_locked_watchman_root *lock,
   return file->exists;
 }
 
-static bool is_vcs_op_in_progress(struct write_locked_watchman_root *lock) {
+bool is_vcs_op_in_progress(struct write_locked_watchman_root *lock) {
   return vcs_file_exists(lock, ".hg", "wlock") ||
          vcs_file_exists(lock, ".git", "index.lock");
 }
@@ -1361,47 +1361,6 @@ void process_subscriptions(struct write_locked_watchman_root *lock)
   } while (w_ht_next(clients, &iter));
 done:
   pthread_mutex_unlock(&w_client_lock);
-}
-
-/* process any pending triggers.
- * must be called with root locked
- */
-void process_triggers(struct write_locked_watchman_root *lock) {
-  w_ht_iter_t iter;
-  w_root_t *root = lock->root;
-
-  if (root->last_trigger_tick == root->pending_trigger_tick) {
-    return;
-  }
-
-  // If it looks like we're in a repo undergoing a rebase or
-  // other similar operation, we want to defer triggers until
-  // things settle down
-  if (is_vcs_op_in_progress(lock)) {
-    w_log(W_LOG_DBG, "deferring triggers until VCS operations complete\n");
-    return;
-  }
-
-  w_log(W_LOG_DBG, "last=%" PRIu32 "  pending=%" PRIu32 "\n",
-      root->last_trigger_tick,
-      root->pending_trigger_tick);
-
-  /* walk the list of triggers, and run their rules */
-  if (w_ht_first(root->commands, &iter)) do {
-    struct watchman_trigger_command *cmd = w_ht_val_ptr(iter.value);
-
-    if (cmd->current_proc) {
-      // Don't spawn if there's one already running
-      w_log(W_LOG_DBG, "process_triggers: %.*s is already running\n",
-          cmd->triggername->len, cmd->triggername->buf);
-      continue;
-    }
-
-    w_assess_trigger(lock, cmd);
-
-  } while (w_ht_next(root->commands, &iter));
-
-  root->last_trigger_tick = root->pending_trigger_tick;
 }
 
 void free_file_node(w_root_t *root, struct watchman_file *file)
