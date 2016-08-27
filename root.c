@@ -425,36 +425,6 @@ void w_root_addref(w_root_t *root)
   w_refcnt_add(&root->refcnt);
 }
 
-void w_root_teardown(w_root_t *root)
-{
-  struct watchman_file *file;
-
-  if (root->watcher_ops) {
-    root->watcher_ops->root_dtor(root);
-  }
-
-  if (root->root_dir) {
-    delete_dir(root->root_dir);
-  }
-  w_pending_coll_drain(&root->pending);
-  w_pending_coll_drain(&root->pending_symlink_targets);
-
-  while (root->latest_file) {
-    file = root->latest_file;
-    root->latest_file = file->next;
-    free_file_node(root, file);
-  }
-
-  if (root->cursors) {
-    w_ht_free(root->cursors);
-    root->cursors = NULL;
-  }
-  if (root->suffixes) {
-    w_ht_free(root->suffixes);
-    root->suffixes = NULL;
-  }
-}
-
 static bool start_detached_root_thread(w_root_t *root, char **errmsg,
     void*(*func)(void*), pthread_t *thr) {
   pthread_attr_t attr;
