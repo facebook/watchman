@@ -144,7 +144,7 @@ static void cmd_get_config(struct watchman_client *client, json_t *args)
   json_incref(unlocked.root->config_file);
   set_prop(resp, "config", config);
   send_and_dispose_response(client, resp);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("get-config", cmd_get_config, CMD_DAEMON, w_cmd_realpath_root)
 

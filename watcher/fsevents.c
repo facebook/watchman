@@ -510,7 +510,7 @@ done:
   pthread_mutex_unlock(&state->fse_mtx);
 
   w_log(W_LOG_DBG, "fse_thread done\n");
-  w_root_delref(root);
+  w_root_delref_raw(root);
   return NULL;
 }
 
@@ -669,7 +669,7 @@ static bool fsevents_root_start(w_root_t *root) {
   }
 
   pthread_mutex_unlock(&state->fse_mtx);
-  w_root_delref(root);
+  w_root_delref_raw(root);
   w_log(W_LOG_ERR, "failed to start fsevents thread: %s\n", strerror(err));
   return false;
 }
@@ -777,7 +777,7 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
 
   if (unlocked.root->watcher_ops != &fsevents_watcher) {
     send_error_response(client, "root is not using the fsevents watcher");
-    w_root_delref(unlocked.root);
+    w_root_delref(&unlocked);
     return;
   }
 
@@ -787,7 +787,7 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
   if (!state->attempt_resync_on_drop) {
     w_root_unlock(&lock, &unlocked);
     send_error_response(client, "fsevents_try_resync is not enabled");
-    w_root_delref(unlocked.root);
+    w_root_delref(&unlocked);
     return;
   }
 
@@ -801,7 +801,7 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
   resp = make_response();
   set_prop(resp, "last_good", json_integer(last_good));
   send_and_dispose_response(client, resp);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("debug-fsevents-inject-drop", cmd_debug_fsevents_inject_drop,
           CMD_DAEMON, w_cmd_realpath_root);

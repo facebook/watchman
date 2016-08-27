@@ -158,12 +158,12 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
   apply_ignore_configuration(root);
 
   if (!apply_ignore_vcs_configuration(root, errmsg)) {
-    w_root_delref(root);
+    w_root_delref_raw(root);
     return NULL;
   }
 
   if (!w_root_init(root, errmsg)) {
-    w_root_delref(root);
+    w_root_delref_raw(root);
     return NULL;
   }
   return root;
@@ -202,7 +202,15 @@ void w_root_addref(w_root_t *root) {
   w_refcnt_add(&root->refcnt);
 }
 
-void w_root_delref(w_root_t *root) {
+void w_root_delref(struct unlocked_watchman_root *unlocked) {
+  if (!unlocked->root) {
+    w_log(W_LOG_FATAL, "already released root passed to w_root_delref");
+  }
+  w_root_delref_raw(unlocked->root);
+  unlocked->root = NULL;
+}
+
+void w_root_delref_raw(w_root_t *root) {
   if (!w_refcnt_del(&root->refcnt)) return;
 
   w_log(W_LOG_DBG, "root: final ref on %s\n",

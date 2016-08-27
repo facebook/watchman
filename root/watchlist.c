@@ -18,7 +18,7 @@ static w_ht_val_t root_copy_val(w_ht_val_t val) {
 static void root_del_val(w_ht_val_t val) {
   w_root_t *root = w_ht_val_ptr(val);
 
-  w_root_delref(root);
+  w_root_delref_raw(root);
 }
 
 static const struct watchman_hash_funcs root_funcs = {
@@ -95,7 +95,7 @@ char *w_find_enclosing_root(const char *filename, char **relpath) {
 
 out:
   if (root) {
-    w_root_delref(root);
+    w_root_delref_raw(root);
   }
   w_string_delref(name);
 
@@ -127,7 +127,7 @@ json_t *w_root_stop_watch_all(void) {
       w_root_cancel(root);
       json_array_append_new(stopped, w_string_to_json(path));
     }
-    w_root_delref(root);
+    w_root_delref_raw(root);
   }
   free(roots);
   pthread_mutex_unlock(&watch_list_lock);
@@ -270,7 +270,7 @@ bool w_root_load_state(json_t *state) {
       }
     }
 
-    w_root_delref(unlocked.root);
+    w_root_delref(&unlocked);
   }
 
   return true;

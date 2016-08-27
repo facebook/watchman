@@ -219,7 +219,7 @@ bool root_resolve(const char *filename, bool auto_watch, bool *created,
   if (existing) {
     // Someone beat us in this race
     w_root_addref(existing);
-    w_root_delref(root);
+    w_root_delref_raw(root);
     root = existing;
     *created = false;
   } else {
@@ -243,7 +243,7 @@ bool w_root_resolve(const char *filename, bool auto_watch, char **errmsg,
   if (created) {
     if (!root_start(unlocked->root, errmsg)) {
       w_root_cancel(unlocked->root);
-      w_root_delref(unlocked->root);
+      w_root_delref(unlocked);
       return false;
     }
     w_state_save();

@@ -63,7 +63,7 @@ static void destroy_state_arg(struct state_arg *parsed) {
 }
 
 static void free_assertion(struct watchman_client_state_assertion *assertion) {
-  w_root_delref(assertion->root);
+  w_root_delref_raw(assertion->root);
   w_string_delref(assertion->name);
 }
 
@@ -184,7 +184,7 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
   pthread_mutex_unlock(&w_client_lock);
 
 done:
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
   destroy_state_arg(&parsed);
   if (assertion) {
     free_assertion(assertion);
@@ -354,7 +354,7 @@ static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
   leave_state(client, assertion, false, parsed.metadata, clockbuf);
 
 done:
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
   destroy_state_arg(&parsed);
 }
 W_CMD_REG("state-leave", cmd_state_leave, CMD_DAEMON, w_cmd_realpath_root)

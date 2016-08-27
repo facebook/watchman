@@ -21,7 +21,7 @@ static bool start_detached_root_thread(w_root_t *root, char **errmsg,
 
   ignore_result(asprintf(errmsg,
         "failed to pthread_create: %s\n", strerror(err)));
-  w_root_delref(root);
+  w_root_delref_raw(root);
   return false;
 }
 

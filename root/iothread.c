@@ -241,7 +241,7 @@ void *run_io_thread(void *arg)
   io_thread(&unlocked);
   w_log(W_LOG_DBG, "out of loop\n");
 
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
   return 0;
 }
 

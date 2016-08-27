@@ -63,7 +63,7 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
 
   if (sync_timeout && !w_root_sync_to_now(&unlocked, sync_timeout)) {
     send_error_response(client, "sync_timeout expired");
-    w_root_delref(unlocked.root);
+    w_root_delref(&unlocked);
     return;
   }
 
@@ -73,7 +73,7 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
   w_root_read_unlock(&lock, &unlocked);
 
   send_and_dispose_response(client, resp);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("clock", cmd_clock, CMD_DAEMON | CMD_ALLOW_ANY_USER,
           w_cmd_realpath_root)
@@ -99,7 +99,7 @@ static void cmd_watch_delete(struct watchman_client *client, json_t *args)
   set_prop(resp, "watch-del", json_boolean(w_root_stop_watch(&unlocked)));
   set_prop(resp, "root", w_string_to_json(unlocked.root->root_path));
   send_and_dispose_response(client, resp);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("watch-del", cmd_watch_delete, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -329,7 +329,7 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
   add_root_warnings_to_response(resp, w_root_read_lock_from_write(&lock));
   send_and_dispose_response(client, resp);
   w_root_unlock(&lock, &unlocked);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("watch", cmd_watch, CMD_DAEMON | CMD_ALLOW_ANY_USER,
           w_cmd_realpath_root)
@@ -381,7 +381,7 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
   }
   send_and_dispose_response(client, resp);
   w_root_unlock(&lock, &unlocked);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
   free(dir_to_watch);
 }
 W_CMD_REG("watch-project", cmd_watch_project, CMD_DAEMON | CMD_ALLOW_ANY_USER,

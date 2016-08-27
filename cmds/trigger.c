@@ -62,13 +62,13 @@ static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
 
   if (json_array_size(args) != 3) {
     send_error_response(client, "wrong number of arguments");
-    w_root_delref(unlocked.root);
+    w_root_delref(&unlocked);
     return;
   }
   jname = json_array_get(args, 2);
   if (!json_is_string(jname)) {
     send_error_response(client, "expected 2nd parameter to be trigger name");
-    w_root_delref(unlocked.root);
+    w_root_delref(&unlocked);
     return;
   }
   tname = json_to_w_string_incref(jname);
@@ -88,7 +88,7 @@ static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
   json_incref(jname);
   set_prop(resp, "trigger", jname);
   send_and_dispose_response(client, resp);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -113,7 +113,7 @@ static void cmd_trigger_list(struct watchman_client *client, json_t *args)
 
   set_prop(resp, "triggers", arr);
   send_and_dispose_response(client, resp);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -424,7 +424,7 @@ done:
   if (errmsg) {
     free(errmsg);
   }
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("trigger", cmd_trigger, CMD_DAEMON, w_cmd_realpath_root)
 

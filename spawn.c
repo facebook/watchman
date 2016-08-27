@@ -85,7 +85,7 @@ void w_mark_dead(pid_t pid)
   } while (w_ht_next(lock.root->commands, &iter));
 
   w_root_unlock(&lock, &unlocked);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 
 static w_stm_t prepare_stdin(

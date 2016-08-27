@@ -305,7 +305,7 @@ static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
   if (!name) {
     send_error_response(&client->client,
         "expected 2nd parameter to be subscription name");
-    w_root_delref(unlocked.root);
+    w_root_delref(&unlocked);
     return;
   }
 
@@ -322,7 +322,7 @@ static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
   set_prop(resp, "deleted", json_boolean(deleted));
 
   send_and_dispose_response(&client->client, resp);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
           w_cmd_realpath_root)
@@ -449,7 +449,7 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
     send_and_dispose_response(&client->client, initial_subscription_results);
   }
 done:
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("subscribe", cmd_subscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
           w_cmd_realpath_root)

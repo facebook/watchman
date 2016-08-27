@@ -30,7 +30,7 @@ static void cmd_find(struct watchman_client *client, json_t *args)
   if (errmsg) {
     send_error_response(client, "%s", errmsg);
     free(errmsg);
-    w_root_delref(unlocked.root);
+    w_root_delref(&unlocked);
     return;
   }
 
@@ -43,7 +43,7 @@ static void cmd_find(struct watchman_client *client, json_t *args)
   if (!w_query_execute(query, &unlocked, &res, NULL, NULL)) {
     send_error_response(client, "query failed: %s", res.errmsg);
     w_query_result_free(&res);
-    w_root_delref(unlocked.root);
+    w_root_delref(&unlocked);
     w_query_delref(query);
     return;
   }
@@ -61,7 +61,7 @@ static void cmd_find(struct watchman_client *client, json_t *args)
   set_prop(response, "files", file_list);
 
   send_and_dispose_response(client, response);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("find", cmd_find, CMD_DAEMON | CMD_ALLOW_ANY_USER,
           w_cmd_realpath_root)

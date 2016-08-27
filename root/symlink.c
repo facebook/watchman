@@ -73,7 +73,7 @@ static void watch_symlink_target(w_string_t *target, json_t *root_files) {
         w_log(W_LOG_ERR, "watch_symlink_target: unable to watch %s: %s\n",
               resolved, errmsg);
       } else {
-        w_root_delref(unlocked.root);
+        w_root_delref(&unlocked);
       }
       free(errmsg);
     }

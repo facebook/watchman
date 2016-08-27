@@ -281,7 +281,7 @@ out:
     free(buf);
   }
   w_log(W_LOG_DBG, "done\n");
-  w_root_delref(root);
+  w_root_delref_raw(root);
   return NULL;
 }
 
@@ -311,7 +311,7 @@ static bool winwatch_root_start(w_root_t *root) {
   }
 
   pthread_mutex_unlock(&state->mtx);
-  w_root_delref(root);
+  w_root_delref_raw(root);
   w_log(W_LOG_ERR, "failed to start readchanges thread: %s\n", strerror(err));
   return false;
 }

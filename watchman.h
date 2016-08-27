@@ -708,7 +708,8 @@ void w_root_mark_deleted(struct write_locked_watchman_root *lock,
                          struct watchman_dir *dir, struct timeval now,
                          bool recursive);
 void w_root_reap(void);
-void w_root_delref(w_root_t *root);
+void w_root_delref(struct unlocked_watchman_root *unlocked);
+void w_root_delref_raw(w_root_t *root);
 void w_root_addref(w_root_t *root);
 void w_root_set_warning(struct write_locked_watchman_root *lock,
                         w_string_t *str);

@@ -28,7 +28,7 @@ static void cmd_debug_recrawl(struct watchman_client *client, json_t *args)
 
   set_prop(resp, "recrawl", json_true());
   send_and_dispose_response(client, resp);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("debug-recrawl", cmd_debug_recrawl, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -62,7 +62,7 @@ static void cmd_debug_show_cursors(struct watchman_client *client, json_t *args)
 
   set_prop(resp, "cursors", cursors);
   send_and_dispose_response(client, resp);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("debug-show-cursors", cmd_debug_show_cursors,
     CMD_DAEMON, w_cmd_realpath_root)
@@ -96,7 +96,7 @@ static void cmd_debug_ageout(struct watchman_client *client, json_t *args)
 
   set_prop(resp, "ageout", json_true());
   send_and_dispose_response(client, resp);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("debug-ageout", cmd_debug_ageout, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -117,7 +117,7 @@ static void cmd_debug_poison(struct watchman_client *client, json_t *args)
   resp = make_response();
   set_unicode_prop(resp, "poison", poisoned_reason);
   send_and_dispose_response(client, resp);
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
 }
 W_CMD_REG("debug-poison", cmd_debug_poison, CMD_DAEMON, w_cmd_realpath_root)
 

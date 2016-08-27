@@ -115,7 +115,7 @@ void *run_notify_thread(void *arg) {
    * already out of there */
   remove_root_from_watched(unlocked.root);
 
-  w_root_delref(unlocked.root);
+  w_root_delref(&unlocked);
   return 0;
 }
 
