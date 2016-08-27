@@ -79,6 +79,7 @@ watchman_SOURCES = \
 	root/notifythread.c       \
 	root/stat.c       \
 	root/symlink.c       \
+	root/vcs.c       \
 	state.c      \
 	string.c     \
 	time.c

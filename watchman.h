@@ -776,6 +776,7 @@ void stat_path(struct write_locked_watchman_root *lock,
 bool did_file_change(struct watchman_stat *saved, struct watchman_stat *fresh);
 void struct_stat_to_watchman_stat(const struct stat *st,
                                   struct watchman_stat *target);
+bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg);
 
 /* Bob Jenkins' lookup3.c hash function */
 uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);
