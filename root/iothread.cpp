@@ -26,10 +26,10 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
 
   w_pending_coll_init(&pending);
 
-  while (!unlocked->root->cancelled) {
+  while (!unlocked->root->inner.cancelled) {
     bool pinged;
 
-    if (!unlocked->root->done_initial) {
+    if (!unlocked->root->inner.done_initial) {
       struct timeval start;
       w_perf_t sample;
 
@@ -43,7 +43,7 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
       // Ensure that we observe these files with a new, distinct clock,
       // otherwise a fresh subscription established immediately after a watch
       // can get stuck with an empty view until another change is observed
-      lock.root->ticks++;
+      lock.root->inner.ticks++;
       gettimeofday(&start, NULL);
       w_pending_coll_add(&lock.root->pending, lock.root->root_path, start, 0);
       // There is the potential for a subtle race condition here.  The boolean
@@ -60,7 +60,7 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
           ;
         }
       }
-      lock.root->done_initial = true;
+      lock.root->inner.done_initial = true;
       w_perf_add_root_meta(&sample, lock.root);
       w_root_unlock(&lock, unlocked);
 
@@ -93,7 +93,7 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
       // we may now be settled.
 
       w_root_lock(unlocked, "io_thread: settle out", &lock);
-      if (!lock.root->done_initial) {
+      if (!lock.root->inner.done_initial) {
         // we need to recrawl, stop what we're doing here
         w_root_unlock(&lock, unlocked);
         continue;
@@ -120,14 +120,14 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
     timeoutms = unlocked->root->trigger_settle;
 
     w_root_lock(unlocked, "io_thread: process notifications", &lock);
-    if (!lock.root->done_initial) {
+    if (!lock.root->inner.done_initial) {
       // we need to recrawl.  Discard these notifications
       w_pending_coll_drain(&pending);
       w_root_unlock(&lock, unlocked);
       continue;
     }
 
-    lock.root->ticks++;
+    lock.root->inner.ticks++;
     // If we're not settled, we need an opportunity to age out
     // dead file nodes.  This happens in the test harness.
     consider_age_out(&lock);
@@ -164,8 +164,8 @@ void w_root_process_path(struct write_locked_watchman_root *lock,
     struct watchman_query_cookie *cookie;
     bool consider_cookie =
         (lock->root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)
-            ? ((flags & W_PENDING_VIA_NOTIFY) || !lock->root->done_initial)
-            : true;
+        ? ((flags & W_PENDING_VIA_NOTIFY) || !lock->root->inner.done_initial)
+        : true;
 
     if (!consider_cookie) {
       // Never allow cookie files to show up in the tree
@@ -222,7 +222,7 @@ bool w_root_process_pending(struct write_locked_watchman_root *lock,
     p = pending;
     pending = p->next;
 
-    if (!lock->root->cancelled) {
+    if (!lock->root->inner.cancelled) {
       w_root_process_path(lock, coll, p->path, p->now, p->flags, NULL);
     }
 

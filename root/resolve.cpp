@@ -174,7 +174,7 @@ bool root_resolve(const char *filename, bool auto_watch, bool *created,
     // lock and the worst case side effect is that we (safely) decide to reap
     // at the same instant that a new command comes in.  The reap intervals
     // are typically on the order of days.
-    time(&unlocked->root->last_cmd_timestamp);
+    time(&unlocked->root->inner.last_cmd_timestamp);
     // caller owns a ref
     return true;
   }

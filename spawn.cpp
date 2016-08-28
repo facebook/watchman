@@ -74,7 +74,7 @@ void w_mark_dead(pid_t pid)
 
     /* first mark the process as dead */
     cmd->current_proc = 0;
-    if (lock.root->cancelled) {
+    if (lock.root->inner.cancelled) {
       w_log(W_LOG_DBG, "mark_dead: root was cancelled\n");
       break;
     }
@@ -428,7 +428,7 @@ static bool trigger_generator(w_query *query,
       cmd->triggername->buf, cmd);
 
   // Walk back in time until we hit the boundary
-  for (f = lock->root->latest_file; f; f = f->next) {
+  for (f = lock->root->inner.latest_file; f; f = f->next) {
     ++n;
     if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
       break;

@@ -9,7 +9,7 @@ void process_triggers(struct write_locked_watchman_root *lock) {
   w_ht_iter_t iter;
   w_root_t *root = lock->root;
 
-  if (root->last_trigger_tick == root->pending_trigger_tick) {
+  if (root->inner.last_trigger_tick == root->inner.pending_trigger_tick) {
     return;
   }
 
@@ -21,9 +21,11 @@ void process_triggers(struct write_locked_watchman_root *lock) {
     return;
   }
 
-  w_log(W_LOG_DBG, "last=%" PRIu32 "  pending=%" PRIu32 "\n",
-      root->last_trigger_tick,
-      root->pending_trigger_tick);
+  w_log(
+      W_LOG_DBG,
+      "last=%" PRIu32 "  pending=%" PRIu32 "\n",
+      root->inner.last_trigger_tick,
+      root->inner.pending_trigger_tick);
 
   /* walk the list of triggers, and run their rules */
   if (w_ht_first(root->commands, &iter)) do {
@@ -40,7 +42,7 @@ void process_triggers(struct write_locked_watchman_root *lock) {
 
   } while (w_ht_next(root->commands, &iter));
 
-  root->last_trigger_tick = root->pending_trigger_tick;
+  root->inner.last_trigger_tick = root->inner.pending_trigger_tick;
 }
 
 
@@ -409,8 +411,8 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
     w_ht_replace(lock.root->commands, w_ht_ptr_val(cmd->triggername),
         w_ht_ptr_val(cmd));
     // Force the trigger to be eligible to run now
-    lock.root->ticks++;
-    lock.root->pending_trigger_tick = lock.root->ticks;
+    lock.root->inner.ticks++;
+    lock.root->inner.pending_trigger_tick = lock.root->inner.ticks;
   }
   w_root_unlock(&lock, &unlocked);
 

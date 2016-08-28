@@ -74,8 +74,8 @@ static void stop_watching_file(struct write_locked_watchman_root *lock,
 
 void remove_from_file_list(struct write_locked_watchman_root *lock,
                            struct watchman_file *file) {
-  if (lock->root->latest_file == file) {
-    lock->root->latest_file = file->next;
+  if (lock->root->inner.latest_file == file) {
+    lock->root->inner.latest_file = file->next;
   }
   if (file->next) {
     file->next->prev = file->prev;
@@ -94,24 +94,24 @@ void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
   }
 
   file->otime.timestamp = now.tv_sec;
-  file->otime.ticks = lock->root->ticks;
+  file->otime.ticks = lock->root->inner.ticks;
 
-  if (lock->root->latest_file != file) {
+  if (lock->root->inner.latest_file != file) {
     // unlink from list
     remove_from_file_list(lock, file);
 
     // and move to the head
-    file->next = lock->root->latest_file;
+    file->next = lock->root->inner.latest_file;
     if (file->next) {
       file->next->prev = file;
     }
     file->prev = NULL;
-    lock->root->latest_file = file;
+    lock->root->inner.latest_file = file;
   }
 
   // Flag that we have pending trigger info
-  lock->root->pending_trigger_tick = lock->root->ticks;
-  lock->root->pending_sub_tick = lock->root->ticks;
+  lock->root->inner.pending_trigger_tick = lock->root->inner.ticks;
+  lock->root->inner.pending_sub_tick = lock->root->inner.ticks;
 }
 
 void free_file_node(w_root_t *root, struct watchman_file *file) {
@@ -155,18 +155,18 @@ w_root_resolve_file(struct write_locked_watchman_root *lock,
 
   file->parent = dir;
   file->exists = true;
-  file->ctime.ticks = lock->root->ticks;
+  file->ctime.ticks = lock->root->inner.ticks;
   file->ctime.timestamp = now.tv_sec;
 
   suffix = w_string_suffix(file_name);
   if (suffix) {
     sufhead = (watchman_file*)w_ht_val_ptr(
-        w_ht_get(lock->root->suffixes, w_ht_ptr_val(suffix)));
+        w_ht_get(lock->root->inner.suffixes, w_ht_ptr_val(suffix)));
     file->suffix_next = sufhead;
     if (sufhead) {
       sufhead->suffix_prev = file;
     }
-    w_ht_replace(lock->root->suffixes, w_ht_ptr_val(suffix),
+    w_ht_replace(lock->root->inner.suffixes, w_ht_ptr_val(suffix),
                  w_ht_ptr_val(file));
     w_string_delref(suffix);
   }

@@ -134,8 +134,11 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
 
     // Sample the clock buf for the subscription PDUs we're going to
     // send
-    clock_id_string(lock.root->number, lock.root->ticks, clockbuf,
-                    sizeof(clockbuf));
+    clock_id_string(
+        lock.root->inner.number,
+        lock.root->inner.ticks,
+        clockbuf,
+        sizeof(clockbuf));
   }
   w_root_unlock(&lock, &unlocked);
 
@@ -202,7 +205,8 @@ static void leave_state(struct watchman_user_client *client,
 
   if (!clockbuf) {
     w_root_lock(&unlocked, "state-leave", &lock);
-    clock_id_string(lock.root->number, lock.root->ticks, buf, sizeof(buf));
+    clock_id_string(
+        lock.root->inner.number, lock.root->inner.ticks, buf, sizeof(buf));
     w_root_unlock(&lock, &unlocked);
 
     clockbuf = buf;
@@ -334,8 +338,11 @@ static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
 
     // Sample the clock buf for the subscription PDUs we're going to
     // send
-    clock_id_string(lock.root->number, lock.root->ticks, clockbuf,
-                    sizeof(clockbuf));
+    clock_id_string(
+        lock.root->inner.number,
+        lock.root->inner.ticks,
+        clockbuf,
+        sizeof(clockbuf));
   }
   w_root_unlock(&lock, &unlocked);
 

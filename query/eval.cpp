@@ -114,7 +114,7 @@ bool w_query_process_file(
 
   m = &ctx->results[ctx->num_results++];
 
-  m->root_number = ctx->lock->root->number;
+  m->root_number = ctx->lock->root->inner.number;
   m->relname = w_query_ctx_get_wholename(ctx);
   if (!m->relname) {
     w_log(W_LOG_ERR, "out of memory while capturing matches!\n");
@@ -173,7 +173,7 @@ static bool time_generator(w_query *query,
   bool result = true;
 
   // Walk back in time until we hit the boundary
-  for (f = lock->root->latest_file; f; f = f->next) {
+  for (f = lock->root->inner.latest_file; f; f = f->next) {
     ++n;
     if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
       break;
@@ -209,7 +209,7 @@ static bool suffix_generator(w_query *query,
   for (i = 0; i < query->nsuffixes; i++) {
     // Head of suffix index for this suffix
     f = (watchman_file*)w_ht_val_ptr(
-        w_ht_get(lock->root->suffixes, w_ht_ptr_val(query->suffixes[i])));
+        w_ht_get(lock->root->inner.suffixes, w_ht_ptr_val(query->suffixes[i])));
 
     // Walk and process
     for (; f; f = f->suffix_next) {
@@ -237,7 +237,7 @@ static bool all_files_generator(w_query *query,
   int64_t n = 0;
   bool result = true;
 
-  for (f = lock->root->latest_file; f; f = f->next) {
+  for (f = lock->root->inner.latest_file; f; f = f->next) {
     ++n;
     if (!w_query_file_matches_relative_root(ctx, f)) {
       continue;
@@ -539,8 +539,8 @@ bool w_query_execute_locked(
    * both emit the same file.
    */
 
-  res->root_number = lock->root->number;
-  res->ticks = lock->root->ticks;
+  res->root_number = lock->root->inner.number;
+  res->ticks = lock->root->inner.ticks;
 
   // Evaluate the cursor for this root
   w_clockspec_eval(lock, query->since_spec, &ctx.since);
@@ -621,8 +621,8 @@ bool w_query_execute(
     w_clockspec_eval_readonly(&rlock, query->since_spec, &ctx.since);
   }
 
-  res->root_number = ctx.lock->root->number;
-  res->ticks = ctx.lock->root->ticks;
+  res->root_number = ctx.lock->root->inner.number;
+  res->ticks = ctx.lock->root->inner.ticks;
 
   result = execute_common(&ctx, &sample, res, generator, gendata);
   // This handles the unlock in both the read and write case, as ctx.lock

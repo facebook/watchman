@@ -7,7 +7,7 @@ static bool handle_should_recrawl(struct write_locked_watchman_root *lock)
 {
   w_root_t *root = lock->root;
 
-  if (root->should_recrawl && !root->cancelled) {
+  if (root->inner.should_recrawl && !root->inner.cancelled) {
     char *errmsg;
     // be careful, this is a bit of a switcheroo
     w_root_teardown(root);
@@ -74,7 +74,7 @@ static void notify_thread(struct unlocked_watchman_root *unlocked)
   w_pending_coll_ping(root_pending);
   w_pending_coll_unlock(root_pending);
 
-  while (!unlocked->root->cancelled) {
+  while (!unlocked->root->inner.cancelled) {
     // big number because not all watchers can deal with
     // -1 meaning infinite wait at the moment
     if (wait_for_notify(unlocked->root, 86400)) {

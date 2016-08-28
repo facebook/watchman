@@ -108,12 +108,11 @@ void w_clockspec_eval_readonly(struct read_locked_watchman_root *lock,
   if (spec->tag == w_cs_named_cursor) {
     w_ht_val_t ticks_val;
     w_string_t *cursor = spec->named_cursor.cursor;
-    since->clock.is_fresh_instance = !w_ht_lookup(lock->root->cursors,
-                                                  w_ht_ptr_val(cursor),
-                                                  &ticks_val, false);
+    since->clock.is_fresh_instance = !w_ht_lookup(
+        lock->root->inner.cursors, w_ht_ptr_val(cursor), &ticks_val, false);
     if (!since->clock.is_fresh_instance) {
       since->clock.is_fresh_instance =
-          ticks_val < lock->root->last_age_out_tick;
+          ticks_val < lock->root->inner.last_age_out_tick;
     }
     if (since->clock.is_fresh_instance) {
       since->clock.ticks = 0;
@@ -129,10 +128,9 @@ void w_clockspec_eval_readonly(struct read_locked_watchman_root *lock,
   // spec->tag == w_cs_clock
   if (spec->clock.start_time == proc_start_time &&
       spec->clock.pid == proc_pid &&
-      spec->clock.root_number == lock->root->number) {
-
+      spec->clock.root_number == lock->root->inner.number) {
     since->clock.is_fresh_instance =
-        spec->clock.ticks < lock->root->last_age_out_tick;
+        spec->clock.ticks < lock->root->inner.last_age_out_tick;
     if (since->clock.is_fresh_instance) {
       since->clock.ticks = 0;
     } else {
@@ -172,12 +170,11 @@ void w_clockspec_eval(struct write_locked_watchman_root *lock,
   if (spec->tag == w_cs_named_cursor) {
     w_ht_val_t ticks_val;
     w_string_t *cursor = spec->named_cursor.cursor;
-    since->clock.is_fresh_instance = !w_ht_lookup(lock->root->cursors,
-                                                  w_ht_ptr_val(cursor),
-                                                  &ticks_val, false);
+    since->clock.is_fresh_instance = !w_ht_lookup(
+        lock->root->inner.cursors, w_ht_ptr_val(cursor), &ticks_val, false);
     if (!since->clock.is_fresh_instance) {
       since->clock.is_fresh_instance =
-          ticks_val < lock->root->last_age_out_tick;
+          ticks_val < lock->root->inner.last_age_out_tick;
     }
     if (since->clock.is_fresh_instance) {
       since->clock.ticks = 0;
@@ -191,8 +188,10 @@ void w_clockspec_eval(struct write_locked_watchman_root *lock,
     // to return the same set of files; we only want the first
     // of these to return the files and the rest to return nothing
     // until something subsequently changes
-    w_ht_replace(lock->root->cursors, w_ht_ptr_val(cursor),
-                 ++lock->root->ticks);
+    w_ht_replace(
+        lock->root->inner.cursors,
+        w_ht_ptr_val(cursor),
+        ++lock->root->inner.ticks);
 
     w_log(W_LOG_DBG, "resolved cursor %.*s -> %" PRIu32 "\n",
         cursor->len, cursor->buf, since->clock.ticks);
@@ -202,20 +201,20 @@ void w_clockspec_eval(struct write_locked_watchman_root *lock,
   // spec->tag == w_cs_clock
   if (spec->clock.start_time == proc_start_time &&
       spec->clock.pid == proc_pid &&
-      spec->clock.root_number == lock->root->number) {
+      spec->clock.root_number == lock->root->inner.number) {
 
     since->clock.is_fresh_instance =
-        spec->clock.ticks < lock->root->last_age_out_tick;
+        spec->clock.ticks < lock->root->inner.last_age_out_tick;
     if (since->clock.is_fresh_instance) {
       since->clock.ticks = 0;
     } else {
       since->clock.ticks = spec->clock.ticks;
     }
-    if (spec->clock.ticks == lock->root->ticks) {
+    if (spec->clock.ticks == lock->root->inner.ticks) {
       /* Force ticks to increment.  This avoids returning and querying the
        * same tick value over and over when no files have changed in the
        * meantime */
-      lock->root->ticks++;
+      lock->root->inner.ticks++;
     }
     return;
   }
@@ -249,7 +248,8 @@ bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
 // Must be called with the root locked.
 static bool current_clock_id_string(struct read_locked_watchman_root *lock,
                                     char *buf, size_t bufsize) {
-  return clock_id_string(lock->root->number, lock->root->ticks, buf, bufsize);
+  return clock_id_string(
+      lock->root->inner.number, lock->root->inner.ticks, buf, bufsize);
 }
 
 /* Add the current clock value to the response.

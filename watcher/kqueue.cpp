@@ -53,7 +53,7 @@ bool kqueue_root_init(w_root_t *root, char **errmsg) {
     *errmsg = strdup("out of memory");
     return false;
   }
-  root->watch = state;
+  root->inner.watch = state;
   pthread_mutex_init(&state->lock, NULL);
   state->name_to_fd = w_ht_new(hint_num_dirs, &name_to_fd_funcs);
   state->fd_to_name = w_ht_new(hint_num_dirs, &w_ht_string_val_funcs);
@@ -71,7 +71,7 @@ bool kqueue_root_init(w_root_t *root, char **errmsg) {
 }
 
 void kqueue_root_dtor(w_root_t *root) {
-  auto state = (kqueue_root_state *)root->watch;
+  auto state = (kqueue_root_state *)root->inner.watch;
 
   if (!state) {
     return;
@@ -84,7 +84,7 @@ void kqueue_root_dtor(w_root_t *root) {
   w_ht_free(state->fd_to_name);
 
   free(state);
-  root->watch = NULL;
+  root->inner.watch = NULL;
 }
 
 static void kqueue_root_signal_threads(w_root_t *root) {
@@ -100,7 +100,7 @@ static bool kqueue_root_start(w_root_t *root) {
 static bool
 kqueue_root_start_watch_file(struct write_locked_watchman_root *lock,
                              struct watchman_file *file) {
-  auto state = (kqueue_root_state *)lock->root->watch;
+  auto state = (kqueue_root_state *)lock->root->inner.watch;
   struct kevent k;
   w_ht_val_t fdval;
   int fd;
@@ -162,7 +162,7 @@ static struct watchman_dir_handle *
 kqueue_root_start_watch_dir(struct write_locked_watchman_root *lock,
                             struct watchman_dir *dir, struct timeval now,
                             const char *path) {
-  auto state = (kqueue_root_state *)lock->root->watch;
+  auto state = (kqueue_root_state *)lock->root->inner.watch;
   struct watchman_dir_handle *osdir;
   struct stat st, osdirst;
   struct kevent k;
@@ -241,7 +241,7 @@ static void kqueue_root_stop_watch_dir(struct write_locked_watchman_root *lock,
 static bool kqueue_root_consume_notify(
     w_root_t *root, struct watchman_pending_collection *coll)
 {
-  auto state = (kqueue_root_state *)root->watch;
+  auto state = (kqueue_root_state *)root->inner.watch;
   int n;
   int i;
   struct timespec ts = { 0, 0 };
@@ -253,7 +253,7 @@ static bool kqueue_root_consume_notify(
       &ts);
   w_log(W_LOG_DBG, "consume_kqueue: %s n=%d err=%s\n",
       root->root_path->buf, n, strerror(errno));
-  if (root->cancelled) {
+  if (root->inner.cancelled) {
     return 0;
   }
 
@@ -311,7 +311,7 @@ static bool kqueue_root_consume_notify(
 
 static bool kqueue_root_wait_notify(
     w_root_t *root, int timeoutms) {
-  auto state = (kqueue_root_state *)root->watch;
+  auto state = (kqueue_root_state *)root->inner.watch;
   int n;
   struct pollfd pfd;
 
