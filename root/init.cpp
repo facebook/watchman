@@ -94,9 +94,6 @@ static void apply_ignore_configuration(w_root_t *root) {
 bool w_root_init(w_root_t *root, char **errmsg) {
   struct watchman_dir_handle *osdir;
 
-  // Placement new to re-initialize the storage
-  new (&root->inner) watchman_root::Inner;
-
   osdir = w_dir_open(root->root_path->buf);
   if (!osdir) {
     ignore_result(asprintf(errmsg, "failed to opendir(%s): %s",
@@ -124,17 +121,12 @@ bool w_root_init(w_root_t *root, char **errmsg) {
 
   time(&root->inner.last_cmd_timestamp);
 
-  w_pending_coll_init(&root->inner.pending_symlink_targets);
-
   return root;
 }
 
 w_root_t *w_root_new(const char *path, char **errmsg) {
-  w_root_t *root = (w_root_t*)calloc(1, sizeof(*root));
+  auto root = new w_root_t();
 
-  assert(root != NULL);
-
-  root->refcnt = 1;
   w_refcnt_add(&live_roots);
   pthread_rwlock_init(&root->lock, NULL);
 
@@ -159,12 +151,12 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
 
   if (!apply_ignore_vcs_configuration(root, errmsg)) {
     w_root_delref_raw(root);
-    return NULL;
+    return nullptr;
   }
 
   if (!w_root_init(root, errmsg)) {
     w_root_delref_raw(root);
-    return NULL;
+    return nullptr;
   }
   return root;
 }
@@ -189,8 +181,17 @@ void w_root_teardown(w_root_t *root) {
     root->watcher_ops->root_dtor(root);
   }
 
-  // Placement delete (must be last!)
+  // Placement delete and then new to re-init the storage.
+  // We can't just delete because we need to leave things
+  // in a well defined state for when we subsequently
+  // delete the containing root (that will call the Inner
+  // destructor).
   root->inner.~Inner();
+  new (&root->inner) watchman_root::Inner;
+}
+
+watchman_root::Inner::Inner() {
+  w_pending_coll_init(&pending_symlink_targets);
 }
 
 watchman_root::Inner::~Inner() {
@@ -255,7 +256,7 @@ void w_root_delref_raw(w_root_t *root) {
   }
   w_pending_coll_destroy(&root->pending);
 
-  free(root);
+  delete root;
   w_refcnt_del(&live_roots);
 }
 

@@ -23,55 +23,55 @@ struct watchman_query_cookie {
 };
 
 struct watchman_root {
-  long refcnt;
+  long refcnt{1};
 
   /* path to root */
-  w_string_t *root_path;
-  bool case_sensitive;
+  w_string_t *root_path{nullptr};
+  bool case_sensitive{false};
 
   /* our locking granularity is per-root */
   pthread_rwlock_t lock;
-  const char *lock_reason;
+  const char *lock_reason{nullptr};
   pthread_t notify_thread;
   pthread_t io_thread;
 
   /* map of rule id => struct watchman_trigger_command */
-  w_ht_t *commands;
+  w_ht_t *commands{nullptr};
 
   /* path to the query cookie dir */
-  w_string_t *query_cookie_dir;
-  w_string_t *query_cookie_prefix;
-  w_ht_t *query_cookies;
+  w_string_t *query_cookie_dir{nullptr};
+  w_string_t *query_cookie_prefix{nullptr};
+  w_ht_t *query_cookies{nullptr};
 
   struct watchman_ignore ignore;
 
-  int trigger_settle;
-  int gc_interval;
-  int gc_age;
-  int idle_reap_age;
+  int trigger_settle{0};
+  int gc_interval{0};
+  int gc_age{0};
+  int idle_reap_age{0};
 
   /* config options loaded via json file */
-  json_t *config_file;
+  json_t *config_file{nullptr};
 
   /* how many times we've had to recrawl */
-  int recrawl_count;
-  w_string_t *last_recrawl_reason;
+  int recrawl_count{0};
+  w_string_t *last_recrawl_reason{nullptr};
 
   // Why we failed to watch
-  w_string_t *failure_reason;
+  w_string_t *failure_reason{nullptr};
 
   // Last ad-hoc warning message
-  w_string_t *warning;
+  w_string_t *warning{nullptr};
 
   /* queue of items that we need to stat/process */
   struct watchman_pending_collection pending;
 
   // map of state name => watchman_client_state_assertion for
   // asserted states
-  w_ht_t *asserted_states;
+  w_ht_t *asserted_states{nullptr};
 
   /* the watcher that we're using for this root */
-  struct watchman_ops *watcher_ops;
+  struct watchman_ops *watcher_ops{nullptr};
 
   /* --- everything in inner will be reset on w_root_init --- */
   struct Inner {
@@ -116,6 +116,7 @@ struct watchman_root {
     time_t last_cmd_timestamp{0};
     time_t last_reap_timestamp{0};
 
+    Inner();
     ~Inner();
   } inner;
 };
