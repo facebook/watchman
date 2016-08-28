@@ -14,6 +14,24 @@ typedef struct w_query w_query;
 struct w_query_expr;
 typedef struct w_query_expr w_query_expr;
 
+struct w_query_since {
+  bool is_timestamp;
+  union {
+    time_t timestamp;
+    struct {
+      bool is_fresh_instance;
+      uint32_t ticks;
+    } clock;
+  };
+};
+
+struct watchman_rule_match {
+  uint32_t root_number;
+  w_string_t *relname;
+  bool is_new;
+  struct watchman_file *file;
+};
+
 // Holds state for the execution of a query
 struct w_query_ctx {
   struct w_query *query;
@@ -222,6 +240,10 @@ bool glob_generator(w_query *query, struct read_locked_watchman_root *lock,
                     struct w_query_ctx *ctx, int64_t *num_walked);
 bool parse_globs(w_query *res, json_t *query);
 void free_glob_tree(struct watchman_glob_tree *glob_tree);
+
+void w_match_results_free(uint32_t num_matches,
+    struct watchman_rule_match *matches);
+
 
 #define W_TERM_PARSER1(symbol, name, func) \
   static w_ctor_fn_type(symbol) {                   \
