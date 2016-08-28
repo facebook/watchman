@@ -21,10 +21,8 @@ static w_string get_normalized_target(const w_string& target) {
   err = errno;
 
   if (dir_name_real) {
-    w_string dir_name_real_wstr(
-        dir_name_real.get(), strlen_uint32(dir_name_real.get()));
     auto file_name = target.baseName();
-    return w_string(w_string_path_cat(dir_name_real_wstr, file_name), false);
+    return w_string::pathCat({dir_name_real.get(), file_name});
   }
 
   errno = err;
@@ -138,7 +136,7 @@ static void watch_symlinks(const w_string& inputPath, json_t* root_files) {
       watch_symlinks(target, root_files);
       watch_symlinks(dir_name, root_files);
     } else {
-      w_string absolute_target(w_string_path_cat(dir_name, target), false);
+      auto absolute_target = w_string::pathCat({dir_name, target});
 
       watch_symlink_target(absolute_target, root_files);
       watch_symlinks(absolute_target, root_files);

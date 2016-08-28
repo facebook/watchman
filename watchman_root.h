@@ -39,7 +39,7 @@ struct watchman_root {
   w_ht_t *commands{nullptr};
 
   /* path to the query cookie dir */
-  w_string_t *query_cookie_dir{nullptr};
+  w_string query_cookie_dir;
   w_string_t *query_cookie_prefix{nullptr};
   w_ht_t *query_cookies{nullptr};
 

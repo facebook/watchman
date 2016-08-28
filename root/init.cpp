@@ -248,9 +248,6 @@ void w_root_delref_raw(w_root_t *root) {
     w_string_delref(root->warning);
   }
 
-  if (root->query_cookie_dir) {
-    w_string_delref(root->query_cookie_dir);
-  }
   if (root->query_cookie_prefix) {
     w_string_delref(root->query_cookie_prefix);
   }

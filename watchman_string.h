@@ -133,6 +133,59 @@ static inline bool is_slash(char c) {
 #endif
 
 #ifdef __cplusplus
+class w_string;
+
+/** Represents a view over some externally managed string storage.
+ * It is simply a pair of pointers that define the start and end
+ * of the valid region. */
+class w_string_piece {
+  const char *s_, *e_;
+
+ public:
+  w_string_piece();
+  w_string_piece(std::nullptr_t);
+
+  inline w_string_piece(w_string_t* str)
+      : s_(str->buf), e_(str->buf + str->len) {}
+
+  /** Construct from a string-like object */
+  template <typename String,
+            typename std::enable_if<std::is_class<String>::value>::type = 0>
+  inline w_string_piece(const String &str)
+      : s_(str.data()), e_(str.data() + str.size()) {}
+
+  inline w_string_piece(const char* cstr) : s_(cstr), e_(cstr + strlen(cstr)){};
+  inline w_string_piece(const char* cstr, size_t len)
+      : s_(cstr), e_(cstr + len){};
+
+  w_string_piece(const w_string_piece& other) = default;
+  w_string_piece(w_string_piece&& other) = default;
+
+  inline const char* data() const {
+    return s_;
+  }
+
+  inline size_t size() const {
+    return e_ - s_;
+  }
+
+  const char& operator[](size_t i) const {
+    return s_[i];
+  }
+
+  /** Return a copy of the string as a w_string */
+  w_string asWString(w_string_type_t stringType = W_STRING_BYTE) const;
+
+  bool pathIsAbsolute() const;
+  w_string_piece dirName() const;
+  w_string_piece baseName() const;
+
+  bool operator==(w_string_piece other) const;
+
+  bool startsWith(w_string_piece prefix) const;
+  bool startsWithCaseInsensitive(w_string_piece prefix) const;
+};
+
 /** A smart pointer class for tracking w_string_t instances */
 class w_string {
  public:
@@ -173,9 +226,18 @@ class w_string {
     return str_;
   }
 
+  operator w_string_piece() const {
+    return w_string_piece(data(), size());
+  }
+
   explicit operator bool() const {
     return str_ != nullptr;
   }
+
+  /** path concatenation
+   * Pass in a list of w_string_pieces to join them all similarly to
+   * the python os.path.join() function. */
+  static w_string pathCat(std::initializer_list<w_string_piece> elems);
 
   /** Return a possibly new version of this string that is null terminated */
   w_string asNullTerminated() const;
@@ -189,6 +251,12 @@ class w_string {
    * an exception that tells you to use asNullTerminated or makeNullTerminated
    * first. */
   const char* c_str() const;
+  const char* data() const {
+    return str_->buf;
+  }
+  size_t size() const {
+    return str_->len;
+  }
 
   /** Returns the directory component of the string, assuming a path string */
   w_string dirName() const;
