@@ -138,10 +138,15 @@ class w_string {
  public:
   /** Initialize a nullptr */
   w_string();
+  w_string(std::nullptr_t);
+
   /** Make a new string from some bytes and a type */
   w_string(
       const char* buf,
       uint32_t len,
+      w_string_type_t stringType = W_STRING_BYTE);
+  w_string(
+      const char* buf,
       w_string_type_t stringType = W_STRING_BYTE);
 
   /** Initialize, taking a ref on w_string_t */

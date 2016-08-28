@@ -8,6 +8,8 @@
 
 w_string::w_string() {}
 
+w_string::w_string(std::nullptr_t) {}
+
 w_string::~w_string() {
   if (str_) {
     w_string_delref(str_);
@@ -72,6 +74,11 @@ w_string_t *w_string::release() {
 
 w_string::w_string(const char* buf, uint32_t len, w_string_type_t stringType)
     : w_string(w_string_new_len_typed(buf, len, stringType), false) {}
+
+w_string::w_string(const char* buf, w_string_type_t stringType)
+    : w_string(
+          w_string_new_len_typed(buf, strlen_uint32(buf), stringType),
+          false) {}
 
 w_string w_string::dirName() const {
   return w_string(w_string_dirname(str_), false);
