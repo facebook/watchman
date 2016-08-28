@@ -29,6 +29,12 @@ struct watchman_string {
   const char *buf;
   w_string_type_t type:3;
   unsigned hval_computed:1;
+
+#ifdef __cplusplus
+  // our jansson fork depends on the C API, so hide this c++ism from it
+  watchman_string();
+  ~watchman_string();
+#endif
 };
 
 uint32_t w_string_compute_hval(w_string_t *str);

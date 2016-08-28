@@ -160,7 +160,7 @@ static void *readchanges_thread(void *arg) {
   initiate_read = false;
 
   // The state->mutex must not be held when we enter the loop
-  while (!root->cancelled) {
+  while (!root->inner.cancelled) {
     if (initiate_read) {
       if (!ReadDirectoryChangesW(state->dir_handle,
             buf, size, TRUE, filter, NULL, &olap, NULL)) {
