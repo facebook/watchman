@@ -87,7 +87,7 @@ bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg) {
 
     // While we're at it, see if we can find out where to put our
     // query cookie information
-    if (root->query_cookie_dir == NULL &&
+    if (!root->query_cookie_dir &&
         w_lstat(fullname.c_str(), &st, root->case_sensitive) == 0 &&
         S_ISDIR(st.st_mode)) {
       // root/{.hg,.git,.svn}

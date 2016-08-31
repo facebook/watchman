@@ -161,7 +161,6 @@ void w_root_process_path(struct write_locked_watchman_root *lock,
    * The below condition is true for cases 1 and 2 and false for 3 and 4.
    */
   if (w_string_startswith(full_path, lock->root->query_cookie_prefix)) {
-    struct watchman_query_cookie *cookie;
     bool consider_cookie =
         (lock->root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)
         ? ((flags & W_PENDING_VIA_NOTIFY) || !lock->root->inner.done_initial)
@@ -172,12 +171,15 @@ void w_root_process_path(struct write_locked_watchman_root *lock,
       return;
     }
 
-    cookie = (watchman_query_cookie*)w_ht_val_ptr(
-        w_ht_get(lock->root->query_cookies, w_ht_ptr_val(full_path)));
-    w_log(W_LOG_DBG, "cookie! %.*s cookie=%p\n",
-        full_path->len, full_path->buf, cookie);
+    auto cookie_iter = lock->root->query_cookies.find(full_path);
+    w_log(
+        W_LOG_DBG,
+        "cookie for %s? %s\n",
+        full_path->buf,
+        cookie_iter != lock->root->query_cookies.end() ? "yes" : "no");
 
-    if (cookie) {
+    if (cookie_iter != lock->root->query_cookies.end()) {
+      auto cookie = cookie_iter->second;
       cookie->seen = true;
       pthread_cond_signal(&cookie->cond);
     }

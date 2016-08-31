@@ -234,6 +234,8 @@ class w_string {
     return str_ != nullptr;
   }
 
+  bool operator==(const w_string& other) const;
+
   /** path concatenation
    * Pass in a list of w_string_pieces to join them all similarly to
    * the python os.path.join() function. */
@@ -268,6 +270,16 @@ class w_string {
  private:
   w_string_t* str_{nullptr};
 };
+
+/** Allow w_string to act as a key in unordered_(map|set) */
+namespace std {
+template <>
+struct hash<w_string> {
+  std::size_t operator()(w_string const& str) const {
+    return w_string_hval(str);
+  }
+};
+}
 
 /** helper for automatically releasing malloc'd memory.
  *
