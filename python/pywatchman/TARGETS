@@ -1,0 +1,11 @@
+cpp_python_extension(
+  name='bser',
+  base_module='pywatchman',
+  srcs=['bser.c'],
+)
+python_library(
+  name='pywatchman',
+  srcs=glob(['*.py']),
+  base_module='pywatchman',
+  deps=[':bser'],
+)
