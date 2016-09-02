@@ -5,7 +5,9 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <stddef.h>
 #include <stdlib.h>

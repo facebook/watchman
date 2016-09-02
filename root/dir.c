@@ -149,8 +149,7 @@ struct watchman_dir *w_root_resolve_dir(struct write_locked_watchman_root *lock,
         dir->dirs = w_ht_new(2, &dirname_hash_funcs);
       }
 
-      assert(
-          w_ht_set(dir->dirs, w_ht_ptr_val(child->name), w_ht_ptr_val(child)));
+      w_ht_set(dir->dirs, w_ht_ptr_val(child->name), w_ht_ptr_val(child));
     }
 
     parent = dir;
@@ -180,7 +179,7 @@ struct watchman_dir *w_root_resolve_dir(struct write_locked_watchman_root *lock,
     parent->dirs = w_ht_new(2, &dirname_hash_funcs);
   }
 
-  assert(w_ht_set(parent->dirs, w_ht_ptr_val(dir->name), w_ht_ptr_val(dir)));
+  w_ht_set(parent->dirs, w_ht_ptr_val(dir->name), w_ht_ptr_val(dir));
 
   return dir;
 }

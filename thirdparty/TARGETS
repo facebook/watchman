@@ -1,0 +1,6 @@
+cpp_library(
+  name='tap',
+  srcs=['tap.c'],
+  headers=['tap.h'],
+  deps=['@/watchman:headers'],
+)

@@ -115,6 +115,10 @@ w_string_t** build_list_with_prefix(const char *prefix, size_t limit) {
   FILE *f = fopen("thirdparty/libart/tests/words.txt", "r");
   size_t i = 0;
 
+  if (!f) {
+    f = fopen("watchman/thirdparty/libart/tests/words.txt", "r");
+  }
+
   while (fgets(buf, sizeof buf, f)) {
     // Remove newline
     uint32_t len = strlen_uint32(buf);

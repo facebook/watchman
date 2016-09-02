@@ -1,0 +1,45 @@
+buck_genrule(
+  name='generate_config_h',
+  srcs=[
+    'jansson_config.h.in',
+  ],
+  cmd='cp $SRCDIR/jansson_config.h.in $OUT',
+  out='jansson_config.h',
+)
+
+buck_cxx_library(
+  name='config_h',
+  exported_headers=[
+    ':generate_config_h',
+  ],
+  header_namespace="",
+  visibility=["PUBLIC"],
+)
+
+cpp_library(
+  name='jansson',
+  srcs=[
+    'dump.c',
+    'error.c',
+    'hashtable.c',
+    'load.c',
+    'memory.c',
+    'pack_unpack.c',
+    'strbuffer.c',
+    'strconv.c',
+    'utf.c',
+    'value.c',
+  ],
+  deps=[
+    ':config_h',
+    '@/watchman:headers',
+    '@/watchman:string',
+  ],
+  headers=[
+    'jansson.h',
+    'hashtable.h',
+    'jansson_private.h',
+    'strbuffer.h',
+    'utf.h',
+  ],
+)

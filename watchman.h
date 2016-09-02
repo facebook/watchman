@@ -8,7 +8,9 @@
 extern "C" {
 #endif
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
+#endif
 #include "config.h"
 
 #include <assert.h>
@@ -116,12 +118,12 @@ extern char **environ;
 
 extern char *poisoned_reason;
 
-#include "watchman_string.h"
+#include "thirdparty/jansson/jansson.h"
 #include "watchman_hash.h"
-#include "watchman_stream.h"
 #include "watchman_ignore.h"
 #include "watchman_log.h"
-#include "jansson.h"
+#include "watchman_stream.h"
+#include "watchman_string.h"
 
 #ifdef HAVE_CORESERVICES_CORESERVICES_H
 # include <CoreServices/CoreServices.h>

@@ -71,6 +71,9 @@ int main(int argc, char **argv)
 
   test_cases_file = fopen(WILDMATCH_TEST_JSON_FILE, "r");
   if (!test_cases_file) {
+    test_cases_file = fopen("watchman/" WILDMATCH_TEST_JSON_FILE, "r");
+  }
+  if (!test_cases_file) {
     diag("Couldn't open %s: %s\n", WILDMATCH_TEST_JSON_FILE, strerror(errno));
     abort();
   }

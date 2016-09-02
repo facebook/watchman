@@ -8,8 +8,6 @@
 #include <string.h>
 #include <fcntl.h>
 #include <inttypes.h>
-#include <stdio.h>
-#include <string.h>
 
 #include "thirdparty/tap.h"
 #include "thirdparty/libart/src/art.h"
@@ -18,6 +16,22 @@
 #define stringy2(line)  #line
 #define stringy(line)   stringy2(line)
 #define fail_unless(__x)  ok(__x, __FILE__ ":" stringy(__LINE__) " " # __x)
+
+static FILE *open_test_file(const char *name) {
+  FILE *f = fopen(name, "r");
+  if (f) {
+    return f;
+  }
+
+  char altname[1024];
+  snprintf(altname, sizeof(altname), "watchman/%s", name);
+  f = fopen(altname, "r");
+  if (f) {
+    return f;
+  }
+  fail("can't find test data file %s", name);
+  return NULL;
+}
 
 void test_art_init_and_destroy(void) {
   art_tree t;
@@ -35,7 +49,7 @@ void test_art_insert(void) {
   int res = art_tree_init(&t);
   int len;
   char buf[512];
-  FILE *f = fopen("thirdparty/libart/tests/words.txt", "r");
+  FILE *f = open_test_file("thirdparty/libart/tests/words.txt");
   uintptr_t line = 1;
 
   fail_unless(res == 0);
@@ -120,7 +134,7 @@ void test_art_insert_search(void) {
   int res = art_tree_init(&t);
   int len;
   char buf[512];
-  FILE *f = fopen("thirdparty/libart/tests/words.txt", "r");
+  FILE *f = open_test_file("thirdparty/libart/tests/words.txt");
   uintptr_t line = 1;
   art_leaf *l;
 
@@ -169,7 +183,7 @@ void test_art_insert_delete(void) {
   int res = art_tree_init(&t);
   int len;
   char buf[512];
-  FILE *f = fopen("thirdparty/libart/tests/words.txt", "r");
+  FILE *f = open_test_file("thirdparty/libart/tests/words.txt");
 
   uintptr_t line = 1, nlines;
   fail_unless(res == 0);
@@ -237,7 +251,7 @@ void test_art_insert_iter(void) {
 
   int len;
   char buf[512];
-  FILE *f = fopen("thirdparty/libart/tests/words.txt", "r");
+  FILE *f = open_test_file("thirdparty/libart/tests/words.txt");
 
   uint64_t xor_mask = 0;
   uintptr_t line = 1, nlines;
@@ -469,7 +483,7 @@ void test_art_insert_search_uuid(void) {
   int res = art_tree_init(&t);
   int len;
   char buf[512];
-  FILE *f = fopen("thirdparty/libart/tests/uuid.txt", "r");
+  FILE *f = open_test_file("thirdparty/libart/tests/uuid.txt");
   uintptr_t line = 1;
 
   fail_unless(res == 0);

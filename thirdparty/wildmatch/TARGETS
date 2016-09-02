@@ -1,0 +1,8 @@
+cpp_library(
+  name='wildmatch',
+  srcs=['wildmatch.c'],
+  headers=['wildmatch.h'],
+  deps=[
+    '@/watchman:headers',
+  ],
+)

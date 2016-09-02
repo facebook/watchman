@@ -1,0 +1,182 @@
+# Things aren't as nice in here as we'd like, but that's because
+# we need to preserve how things build in the autoconf and windows
+# builds for watchman.
+
+# Generates 'config.h' by probing for system capabilities
+def prober():
+    import os
+
+    # We're going to extract the configured compiler from the buck config
+    # and pass that down to the probe script.
+    config_flags = {
+      'cc': 'cc_real',
+      'cppflags': 'cppflags',
+      'ldflags': 'ldflags',
+    }
+
+    probe_cmd = [
+        'python',
+        '$SRCDIR/probe.py',
+        '--configure=$SRCDIR/configure.ac',
+        '--cwd=%s' % os.getcwd()]
+
+    for name, key in config_flags.iteritems():
+        val = read_config('cxx', key)
+        probe_cmd.append("--%s='%s'" % (name, val))
+
+    probe_cmd.append('> $OUT')
+
+    buck_genrule(
+        name='generate_config_h',
+        srcs=[
+            'probe.py',
+            'configure.ac',
+        ],
+        cmd=' '.join(probe_cmd),
+        out='config.h',
+    )
+
+def config_h():
+    # we use this same convention in the eden build to discover whether
+    # we are building in the internal fb repo or in the opensourced project(s).
+    if read_config('codebase', 'mode') == 'public':
+        prober()
+    else:
+        # Just copy the pre-configured linux attributes so that we have
+        # know precisely what the characteristics will be for this build.
+        buck_genrule(
+            name='generate_config_h',
+            srcs=['facebook/linux_config.h'],
+            cmd='cp $SRCDIR/facebook/linux_config.h $OUT',
+            out='config.h',
+        )
+
+config_h()
+
+# Wraps the generated config.h file in a library rule that we can
+# depend upon.
+buck_cxx_library(
+    name='config_h',
+    exported_headers=[
+        ':generate_config_h',
+    ],
+    header_namespace="",
+    visibility=["PUBLIC"],
+)
+
+# Exports all watchman headers without the 'watchman/' prefix that
+# they would otherwise have in our build tree.
+buck_cxx_library(
+    name='headers',
+    exported_headers=glob(['**/*.h']),
+    header_namespace="",
+    visibility=["PUBLIC"],
+    exported_deps=[
+        ':config_h', '//watchman/thirdparty/jansson:config_h'
+    ],
+)
+
+# Linux specific watcher module
+cpp_library(
+    name='sysdep_watcher',
+    supported_platforms_regex='glibc',
+    srcs=['watcher/inotify.c'],
+    deps=[':headers', ':err'],
+)
+
+# mac specific watcher module
+cpp_library(
+    name='sysdep_watcher',
+    supported_platforms_regex='macos',
+    srcs=['watcher/fsevents.c', 'watcher/kqueue.c'],
+    deps=[':headers'],
+)
+
+# windows specific watcher module
+cpp_library(
+    name='sysdep_watcher',
+    supported_platforms_regex='windows',
+    srcs=['watcher/win32.c'],
+    deps=[':headers'],
+)
+
+cpp_library(name="log",
+            srcs=["log.c"],
+            deps=[':headers'], )
+
+cpp_library(name='hash',
+            srcs=['hash.c'],
+            deps=[':headers'], )
+
+cpp_library(name="string",
+            srcs=["string.c"],
+            deps=[':headers', ':hash'], )
+
+cpp_library(
+    name="err",
+    srcs=["root/warnerr.c", "root/poison.c"],
+    deps=[':headers'],
+)
+
+cpp_library(
+    name='pcre',
+    srcs=['query/pcre.c'],
+    deps=[':headers'],
+    compiler_flags=['-DHAVE_PCRE_H'],
+    external_deps=['pcre'],
+)
+
+cpp_library(
+    name='testsupport',
+    srcs=[
+        'argv.c',
+        'bser.c',
+        'cfg.c',
+        'expflags.c',
+        'ht.c',
+        'ignore.c',
+        'opendir.c',
+        'pending.c',
+        'time.c',
+    ],
+    deps=[
+        ':headers',
+        ':log',
+        ':string',
+        '@/watchman/thirdparty/jansson:jansson',
+        '@/watchman/thirdparty/libart/src:art',
+    ],
+)
+
+# The bulk of the watchman implementation lives in this library
+cpp_library(
+    name="watchmanlib",
+    srcs=glob(
+        ["*.c", "query/*.c", "watcher/auto.c", "root/*.c", "cmds/*.c"],
+        excludes=[
+            'main.c', 'stream_win.c', 'log.c', 'query/pcre.c', 'root/warnerr.c',
+            'root/poison.c'
+        ]
+    ),
+    deps=[
+        ':headers',
+        '@/watchman/thirdparty/jansson:jansson',
+        '@/watchman/thirdparty/libart/src:art',
+        '@/watchman/thirdparty/wildmatch:wildmatch',
+        ':sysdep_watcher',
+        ':log',
+        ':pcre',
+        ':string',
+        ':err',
+    ],
+)
+
+# and the watchman binary itself
+cpp_binary(
+    name="watchman",
+    srcs=["main.c"],
+    deps=[
+        ':headers',
+        ':watchmanlib',
+    ]
+)
