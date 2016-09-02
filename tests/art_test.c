@@ -19,11 +19,12 @@
 
 static FILE *open_test_file(const char *name) {
   FILE *f = fopen(name, "r");
+  char altname[1024];
+
   if (f) {
     return f;
   }
 
-  char altname[1024];
   snprintf(altname, sizeof(altname), "watchman/%s", name);
   f = fopen(altname, "r");
   if (f) {
