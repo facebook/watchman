@@ -1,6 +1,9 @@
 cpp_python_extension(
   name='bser',
   base_module='pywatchman',
+  # https://osdir.com/ml/python.cython.devel/2008-04/msg00080.html
+  # This triggers for us calling Py_INCREF(Py_True)
+  compiler_flags=['-fno-strict-aliasing'],
   srcs=['bser.c'],
 )
 python_library(

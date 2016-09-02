@@ -82,6 +82,10 @@ cpp_library(
     supported_platforms_regex='glibc',
     srcs=['watcher/inotify.c'],
     deps=[':headers', ':err'],
+    # We use constructors to declare commands rather than maintaining
+    # static tables of things.  Ensure that they don't get stripped
+    # out of the final binary!
+    link_whole=True,
 )
 
 # mac specific watcher module
@@ -90,6 +94,10 @@ cpp_library(
     supported_platforms_regex='macos',
     srcs=['watcher/fsevents.c', 'watcher/kqueue.c'],
     deps=[':headers'],
+    # We use constructors to declare commands rather than maintaining
+    # static tables of things.  Ensure that they don't get stripped
+    # out of the final binary!
+    link_whole=True,
 )
 
 # windows specific watcher module
@@ -98,6 +106,10 @@ cpp_library(
     supported_platforms_regex='windows',
     srcs=['watcher/win32.c'],
     deps=[':headers'],
+    # We use constructors to declare commands rather than maintaining
+    # static tables of things.  Ensure that they don't get stripped
+    # out of the final binary!
+    link_whole=True,
 )
 
 cpp_library(name="log",
@@ -158,6 +170,10 @@ cpp_library(
             'root/poison.c'
         ]
     ),
+    # We use constructors to declare commands rather than maintaining
+    # static tables of things.  Ensure that they don't get stripped
+    # out of the final binary!
+    link_whole=True,
     deps=[
         ':headers',
         '@/watchman/thirdparty/jansson:jansson',
@@ -178,5 +194,29 @@ cpp_binary(
     deps=[
         ':headers',
         ':watchmanlib',
+    ]
+)
+
+python_binary(
+    name='runtests',
+    srcs=['runtests.py'],
+    main_module='runtests',
+    base_module='',
+    deps=[
+        '@/watchman/tests/integration:integration',
+        '@/watchman/python/tests:tests',
+    ],
+    py_version="<3"
+)
+
+buck_sh_test(
+    name='integration',
+    test='tests/run.sh',
+    args=[
+        '$(location :runtests)', '--watchman-path=$(location :watchman)',
+        '--concurrency=4',
+        # This is useful for troubleshooting test failures; it will print out
+        # the path to where the logs and trees are preserved when it exits
+        # '--keep-if-fail',
     ]
 )

@@ -1,0 +1,8 @@
+python_library(
+    name='tests',
+    srcs=glob(['*.py']),
+    base_module='python/tests',
+    deps=[
+      '@/watchman/python/pywatchman:pywatchman',
+    ],
+)

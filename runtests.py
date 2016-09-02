@@ -5,13 +5,21 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 # no unicode literals
+import os
+import os.path
+
+# in the FB internal test infra, ensure that we are running from the
+# dir that houses this script rather than some other higher level dir
+# in the containing tree.  We can't use __file__ to determine this
+# because our PAR machinery can generate a name like /proc/self/fd/3/foo
+# which won't resolve to anything useful by the time we get here.
+if not os.path.exists('runtests.py') and os.path.exists('watchman/runtests.py'):
+    os.chdir('watchman')
 
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
-import os
-import os.path
 import sys
 # Ensure that we can find pywatchman
 sys.path.insert(0, os.path.join(os.getcwd(), 'python'))
@@ -82,16 +90,25 @@ parser.add_argument(
     help='Pauses start up and prints out the PID for watchman server process.' +
     'Use with concurrency set to 1')
 
+parser.add_argument(
+    '--watchman-path',
+    action='store',
+    help='Specify the path to the watchman binary')
+
 args = parser.parse_args()
 
 # We test for this in a test case
 os.environ['WATCHMAN_EMPTY_ENV_VAR'] = ''
 
 # Ensure that we find the watchman we built in the tests
-os.environ['PATH'] = '%s%s%s' % (
-        os.path.abspath(os.path.dirname(__file__)),
-        os.pathsep,
-        os.environ['PATH'])
+if args.watchman_path:
+    bin_dir = os.path.dirname(args.watchman_path)
+else:
+    bin_dir = os.path.dirname(__file__)
+
+os.environ['PATH'] = '%s%s%s' % (os.path.abspath(bin_dir),
+                                 os.pathsep,
+                                 os.environ['PATH'])
 
 # We'll put all our temporary stuff under one dir so that we
 # can clean it all up at the end

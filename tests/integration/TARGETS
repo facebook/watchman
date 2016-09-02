@@ -1,0 +1,8 @@
+python_library(
+    name='integration',
+    srcs=glob(['*.py']),
+    base_module='tests/integration',
+    deps=[
+      '@/watchman/python/pywatchman:pywatchman',
+    ],
+)

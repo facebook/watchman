@@ -15,6 +15,7 @@ import re
 import WatchmanInstance
 import signal
 import Interrupt
+import shutil
 import tempfile
 import distutils.spawn
 
@@ -42,9 +43,16 @@ class NodeTestCase(unittest.TestCase):
             'tests.integration.', '').replace('.php', '')
         env['TMPDIR'] = os.path.join(tempfile.tempdir, dotted)
         os.mkdir(env['TMPDIR'])
+
+        # build the node module with npm
+        node_dir = os.path.join(env['TMPDIR'], 'fb-watchman')
+        shutil.copytree('node', node_dir)
+        subprocess.check_call(['npm', 'install'], cwd=node_dir)
+
         env['TMP'] = env['TMPDIR']
         env['TEMP'] = env['TMPDIR']
         env['IN_PYTHON_HARNESS'] = '1'
+        env['NODE_PATH'] = '%s:%s' % (env['TMPDIR'], env.get('NODE_PATH', ''))
         proc = subprocess.Popen(
             self.getCommandArgs(),
             env=env,

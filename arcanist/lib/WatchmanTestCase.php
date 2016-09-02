@@ -597,7 +597,7 @@ class WatchmanTestCase {
         if (!strlen($data)) {
           return false;
         }
-        $obj = @json_decode($data, true);
+        $obj = @json_decode(trim($data), true);
         return is_array($obj);
       },
       $timeout,

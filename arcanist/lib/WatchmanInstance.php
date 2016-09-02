@@ -222,7 +222,15 @@ class WatchmanInstance {
 
     putenv("WATCHMAN_CONFIG_FILE=".$this->config_file);
 
-    $cmd = sprintf($cmd, $this->repo_root . '/watchman',
+    $watchman_bin = $this->repo_root . '/watchman';
+    if (!file_exists($watchman_bin)) {
+      // Inside a buck-built test suite.  We "know" that
+      // the test running machinery has put watchman in
+      // the PATH, so just trust that.
+      $watchman_bin = 'watchman';
+    }
+
+    $cmd = sprintf($cmd, $watchman_bin,
       $this->getFullSockName(), $this->logfile,
       $this->logfile, $this->logfile);
 

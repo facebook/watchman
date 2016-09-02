@@ -1,5 +1,5 @@
 var assert = require('assert');
-var watchman = require('../../node');
+var watchman = require('fb-watchman');
 var client = new watchman.Client();
 
 var t = setTimeout(function () {
