@@ -34,7 +34,6 @@ import atexit
 import WatchmanInstance
 import WatchmanTestCase
 import TempDir
-import NodeTests
 import glob
 import threading
 import multiprocessing
