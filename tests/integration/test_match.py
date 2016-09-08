@@ -13,6 +13,7 @@ import os
 import os.path
 
 
+@WatchmanTestCase.expand_matrix
 class TestMatch(WatchmanTestCase.WatchmanTestCase):
 
     def test_match(self):

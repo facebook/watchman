@@ -14,13 +14,12 @@ import os
 import os.path
 import sys
 
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
 
-@unittest.skipIf(sys.platform != 'darwin', 'N/A unless macOS')
+@WatchmanTestCase.expand_matrix
 class TestFSEventsResync(WatchmanTestCase.WatchmanTestCase):
+    def checkOSApplicability(self):
+        if sys.platform != 'darwin':
+            self.skipTest('N/A unless macOS')
 
     def test_resync(self):
         root = self.mkdtemp()

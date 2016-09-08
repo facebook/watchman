@@ -213,7 +213,7 @@ clean-local: py-clean rb-clean
 build-tests: $(TESTS)
 .PHONY: lint build-tests integration py-tests
 # run integration AND unit tests
-integration: all py-integration
+integration: all py-integration check
 
 tests_art_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_art_t_LDADD = $(ART_LIB) $(TAP_LIB)

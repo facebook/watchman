@@ -15,6 +15,7 @@ import time
 import json
 
 
+@WatchmanTestCase.expand_matrix
 class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
 
     def makeRootAndConfig(self):

@@ -17,11 +17,14 @@ except ImportError:
 
 import WatchmanInstance
 
+WATCHMAN_SRC_DIR = os.environ.get('WATCHMAN_SRC_DIR', os.getcwd())
+THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, 'tests', 'integration')
+
 @unittest.skipIf(os.name == 'nt', "not supported on windows")
 class TestSiteSpawn(unittest.TestCase):
     def test_failingSpawner(self):
       config = {
-          'spawn_watchman_service': os.path.join(os.path.dirname(__file__), 'site_spawn_fail.py')
+          'spawn_watchman_service': os.path.join(THIS_DIR, 'site_spawn_fail.py')
       }
 
       inst = WatchmanInstance.Instance(config=config)
@@ -35,7 +38,7 @@ class TestSiteSpawn(unittest.TestCase):
 
     def test_spawner(self):
       config = {
-          'spawn_watchman_service': os.path.join(os.path.dirname(__file__), 'site_spawn.py')
+          'spawn_watchman_service': os.path.join(THIS_DIR, 'site_spawn.py')
       }
 
       inst = WatchmanInstance.Instance(config=config)

@@ -305,6 +305,7 @@ class UnixSocketTransport(Transport):
             sock.connect(self.sockpath)
             self.sock = sock
         except socket.error as e:
+            sock.close()
             raise SocketConnectError(self.sockpath, e)
 
     def close(self):
@@ -544,6 +545,8 @@ class CLIProcessTransport(Transport):
         if self.proc:
             if self.proc.pid is not None:
                 self.proc.kill()
+            self.proc.stdin.close()
+            self.proc.stdout.close()
             self.proc = None
 
     def _connect(self):
@@ -573,8 +576,8 @@ class CLIProcessTransport(Transport):
 
     def write(self, data):
         if self.closed:
+            self.close()
             self.closed = False
-            self.proc = None
         self._connect()
         res = self.proc.stdin.write(data)
         self.proc.stdin.close()

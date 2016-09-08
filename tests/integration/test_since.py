@@ -14,6 +14,7 @@ import os
 import os.path
 
 
+@WatchmanTestCase.expand_matrix
 class TestSince(WatchmanTestCase.WatchmanTestCase):
 
     def test_sinceIssue1(self):

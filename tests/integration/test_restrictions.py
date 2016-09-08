@@ -14,6 +14,8 @@ import pywatchman
 import WatchmanInstance
 import WatchmanTestCase
 
+
+@WatchmanTestCase.expand_matrix
 class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
     def test_rootRestrict(self):
       config = {

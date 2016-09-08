@@ -12,6 +12,7 @@ import pywatchman
 import pywatchman.capabilities
 
 
+@WatchmanTestCase.expand_matrix
 class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
 
     def test_capabilities(self):

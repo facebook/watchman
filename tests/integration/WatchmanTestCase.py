@@ -7,6 +7,7 @@ from __future__ import division
 from __future__ import print_function
 # no unicode literals
 
+import inspect
 import errno
 try:
     import unittest2 as unittest
@@ -18,6 +19,7 @@ import tempfile
 import os.path
 import os
 import WatchmanInstance
+import TempDir
 import copy
 import sys
 
@@ -67,6 +69,10 @@ if os.name == 'nt':
 
 class WatchmanTestCase(unittest.TestCase):
 
+    def __init__(self, methodName='run'):
+        super(WatchmanTestCase, self).__init__(methodName)
+        self.setDefaultConfiguration()
+
     def requiresPersistentSession(self):
         return False
 
@@ -74,8 +80,14 @@ class WatchmanTestCase(unittest.TestCase):
         if self.requiresPersistentSession() and self.transport == 'cli':
             self.skipTest('need persistent session')
 
+    def checkOSApplicability(self):
+        # override this to call self.skipTest if this test class should skip
+        # on the current OS
+        pass
+
     def setUp(self):
         self.checkPersistentSession()
+        self.checkOSApplicability()
 
     def getClient(self, inst=None):
         if inst or not hasattr(self, 'client'):
@@ -86,8 +98,8 @@ class WatchmanTestCase(unittest.TestCase):
                 transport=self.transport,
                 sendEncoding=self.encoding,
                 recvEncoding=self.encoding,
-                sockpath=(inst or WatchmanInstance.getSharedInstance()).
-                         getSockPath())
+                sockpath=(inst or
+                          WatchmanInstance.getSharedInstance()).getSockPath())
             if not inst:
                 # only cache the client if it points to the shared instance
                 self.client = client
@@ -120,10 +132,10 @@ class WatchmanTestCase(unittest.TestCase):
         # our global tempdir and put it in a dir named for the test
         id = '%s.%s.%s' % (self.id(), self.transport, self.encoding)
         try:
-            self.tempdir = os.path.join(tempfile.tempdir, id)
+            self.tempdir = os.path.join(TempDir.get_temp_dir().get_dir(), id)
             os.mkdir(self.tempdir)
+
             self.__logTestInfo(id, 'BEGIN')
-            result.setFlavour(self.transport, self.encoding)
             super(WatchmanTestCase, self).run(result)
         finally:
             try:
@@ -139,21 +151,9 @@ class WatchmanTestCase(unittest.TestCase):
 
         return result
 
-    def expandConfigurations(self):
-        tests = []
-        for transport, encoding in [('local', 'bser'),
-                                    ('local', 'experimental-bser-v2'),
-                                    ('local', 'json'),
-                                    ('cli', 'json')]:
-            test = copy.copy(self)
-            test.setConfiguration(transport, encoding)
-            tests.append(test)
-        return tests
-
     def setConfiguration(self, transport, encoding):
         self.transport = transport
         self.encoding = encoding
-
 
     def touch(self, fname, times=None):
         try:
@@ -361,3 +361,55 @@ class WatchmanTestCase(unittest.TestCase):
         self.touchRelative(d, 'a')
         self._case_insensitive = os.path.exists(os.path.join(d, 'A'))
         return self._case_insensitive
+
+
+def expand_matrix(test_class):
+    '''
+    A decorator function used to create different permutations from
+    a given input test class.
+
+    Given a test class named "MyTest", this will create 4 separate
+    classes named "MyTestLocalBser", "MyTestLocalBser2",
+    "MyTestLocalJson" and "MyTestCliJson" that will exercise the
+    different transport and encoding options implied by their names.
+    '''
+
+    matrix = [
+        ('local', 'bser', 'LocalBser'),
+        ('local', 'experimental-bser-v2', 'LocalBser2'),
+        ('local', 'json', 'LocalJson'),
+        ('cli', 'json', 'CliJson'),
+    ]
+
+    # We do some rather hacky things here to define new test class types
+    # in our caller's scope.  This is needed so that the unittest TestLoader
+    # will find the subclasses we define.
+    caller_scope = inspect.currentframe().f_back.f_locals
+
+    for (transport, encoding, suffix) in matrix:
+        def make_class(transport, encoding, suffix):
+            subclass_name = test_class.__name__ + suffix
+
+            # Define a new class that derives from the input class
+            class MatrixTest(test_class):
+                def setDefaultConfiguration(self):
+                    self.setConfiguration(transport, encoding)
+
+            # Set the name and module information on our new subclass
+            MatrixTest.__name__ = subclass_name
+            MatrixTest.__qualname__ = subclass_name
+            MatrixTest.__module__ = test_class.__module__
+
+            # Before we publish the test, check whether that generated
+            # configuration would always skip
+            try:
+                t = MatrixTest()
+                t.checkPersistentSession()
+                t.checkOSApplicability()
+                caller_scope[subclass_name] = MatrixTest
+            except unittest.SkipTest:
+                pass
+
+        make_class(transport, encoding, suffix)
+
+    return None

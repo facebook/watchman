@@ -12,7 +12,13 @@ try:
 except ImportError:
     import unittest
 
+
+@WatchmanTestCase.expand_matrix
 class TestSymlink(WatchmanTestCase.WatchmanTestCase):
+
+    def checkOSApplicability(self):
+        if os.name == 'nt':
+            self.skipTest('N/A on Windows')
 
     def makeRootAndConfig(self):
         root = self.mkdtemp()
@@ -24,7 +30,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
 
     # test to see that valid symbolic link
     # updates are picked up by the symlink_target field
-    @unittest.skipIf(os.name == 'nt', 'win')
     def test_symlink(self):
         root = self.mkdtemp()
         self.touchRelative(root, '222')
@@ -51,7 +56,7 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
     # test to see that invalid symbolic link
     # updates are picked up by the symlink_target field
     # Skipping this test on mac due to the dangling symlink bug in fsevents
-    @unittest.skipIf(sys.platform == 'darwin' or os.name == 'nt', 'mac os or win')
+    @unittest.skipIf(sys.platform == 'darwin', 'known fsevents bug')
     def test_invalidSymlink(self):
         root = self.mkdtemp()
         os.symlink(os.path.join(root, '222'), os.path.join(root, '111'))
@@ -74,7 +79,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.assertEqualUTF8Strings('333', os.path.basename(res['files'][0]['symlink_target']))
 
     # test to see that symbolic link deletes work
-    @unittest.skipIf(os.name == 'nt', 'win')
     def test_delSymlink(self):
         root = self.mkdtemp()
         self.touchRelative(root, '222')
@@ -101,7 +105,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
 
     # test to see that when a symbolic link is changed to a file,
     # the symlink target is updated correctly
-    @unittest.skipIf(os.name == 'nt', 'win')
     def test_symlinkToFileDir(self):
         root = self.mkdtemp()
         self.touchRelative(root, '222')
@@ -134,7 +137,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.assertTrue(res['files'] and ('symlink_target' not in res['files'][0] or res['files'][0]['symlink_target'] is None))
         self.assertEqualUTF8Strings('d', res['files'][0]['type'])
 
-    @unittest.skipIf(os.name == 'nt', 'win')
     def test_watchSymlinkTarget(self):
         def make_roots():
             # B/link -> C/file
@@ -162,7 +164,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.assertWatchListContains(expected)
         self.assertFileList(root1prime, ['.watchmanconfig', 'file', 'link'])
 
-    @unittest.skipIf(os.name == 'nt', 'win')
     def test_watchSymlinkTargetLinkToLink(self):
         def make_roots():
             # B/link -> C/file
@@ -189,7 +190,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.assertWatchListContains(expected)
         self.assertFileList(root1prime, ['.watchmanconfig', 'file', 'link'])
 
-    @unittest.skipIf(os.name == 'nt', 'win')
     def test_watchRelativeSymlinkTarget(self):
         def make_roots():
             # A/link --relative-link--> B/file
@@ -216,7 +216,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.assertWatchListContains(expected)
         self.assertFileList(root1prime, ['.watchmanconfig', 'file', 'link'])
 
-    @unittest.skipIf(os.name == 'nt', 'win')
     def test_watchRelativeSymlinkTargetOneHop(self):
         def make_roots():
             # A/dir/link --relative-link--> B/file
@@ -244,7 +243,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.assertWatchListContains(expected)
         self.assertFileList(root1prime, ['.watchmanconfig', 'file', 'dir', 'dir/link'])
 
-    @unittest.skipIf(os.name == 'nt', 'win')
     def test_watchSymlinkToDir(self):
         def make_roots():
             # A/link -> B/dir
@@ -270,7 +268,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.assertWatchListContains(expected)
         self.assertFileList(root1prime, ['.watchmanconfig', 'file', 'linkToDir'])
 
-    @unittest.skipIf(os.name == 'nt', 'win')
     def test_watchSymlinkToDirContainsSymlink(self):
         def make_roots():
             # B/dir/link -> C/file

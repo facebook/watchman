@@ -270,7 +270,7 @@ class WatchmanTestCase {
     $this->assertEqual('off', $out['log_level'], "set log level to 'off'");
   }
 
-  function waitForSub($subname, $callable, $timeout = 5) {
+  function waitForSub($subname, $callable, $timeout = 15) {
     return $this->watchman_instance->waitForSub($subname, $callable, $timeout);
   }
 
@@ -278,7 +278,7 @@ class WatchmanTestCase {
     return $this->watchman_instance->getSubData($subname);
   }
 
-  function waitForLog($criteria, $timeout = 5) {
+  function waitForLog($criteria, $timeout = 15) {
     $this->assertLiveConnection();
     // Can't use the generic waitFor routine here because
     // we're delegating to a more efficient mechanism in
@@ -286,7 +286,7 @@ class WatchmanTestCase {
     return $this->watchman_instance->waitForLog($criteria, $timeout);
   }
 
-  function assertWaitForLog($criteria, $timeout = 5) {
+  function assertWaitForLog($criteria, $timeout = 15) {
     list($ok, $line, $matches) = $this->waitForLog($criteria, $timeout);
     if (!$ok) {
       $this->assertFailure(
@@ -295,14 +295,14 @@ class WatchmanTestCase {
     return array($ok, $line, $matches);
   }
 
-  function waitForLogOutput($criteria, $timeout = 5) {
+  function waitForLogOutput($criteria, $timeout = 15) {
     // Can't use the generic waitFor routine here because
     // we're delegating to a more efficient mechanism in
     // the instance class.
     return $this->watchman_instance->waitForLogOutput($criteria, $timeout);
   }
 
-  function assertWaitForLogOutput($criteria, $timeout = 5) {
+  function assertWaitForLogOutput($criteria, $timeout = 15) {
     list($ok, $line, $matches) = $this->waitForLogOutput($criteria, $timeout);
     if (!$ok) {
       $this->assertFailure(
@@ -316,7 +316,7 @@ class WatchmanTestCase {
   // $callable if it is truthy.
   // Asserts failure if no truthy value is encountered within
   // the timeout
-  function waitForNoThrow($callable, $timeout = 10) {
+  function waitForNoThrow($callable, $timeout = 20) {
     $current_time = time();
     $deadline = $current_time + $timeout;
     $res = null;
@@ -336,7 +336,7 @@ class WatchmanTestCase {
     return array(false, $res);
   }
 
-  function waitFor($callable, $timeout = 10, $message = null) {
+  function waitFor($callable, $timeout = 20, $message = null) {
     list($ok, $res) = $this->waitForNoThrow($callable, $timeout);
 
     if ($ok) {
@@ -361,7 +361,7 @@ class WatchmanTestCase {
   // $have_data is a callable that returns a boolean result
   // to indicate that the criteria have been met.
   // timeout is the timeout in seconds.
-  function waitForWatchmanNoThrow(array $command, $have_data, $timeout = 10) {
+  function waitForWatchmanNoThrow(array $command, $have_data, $timeout = 20) {
     $last_output = null;
 
     $instance = $this->watchman_instance;
@@ -391,7 +391,7 @@ class WatchmanTestCase {
   }
 
   function waitForWatchman(array $command, $have_data,
-      $timeout = 10, $message = null)
+      $timeout = 20, $message = null)
   {
     list($ok, $res) = $this->waitForWatchmanNoThrow(
                         $command, $have_data, $timeout);
@@ -554,7 +554,7 @@ class WatchmanTestCase {
     );
   }
 
-  function waitForFileContents($filename, $content, $timeout = 5) {
+  function waitForFileContents($filename, $content, $timeout = 15) {
     $this->waitFor(
       function () use ($filename, $content) {
         $got = @file_get_contents($filename);
@@ -570,13 +570,13 @@ class WatchmanTestCase {
     return @file_get_contents($filename);
   }
 
-  function assertFileContents($filename, $content, $timeout = 5) {
+  function assertFileContents($filename, $content, $timeout = 15) {
     $got = $this->waitForFileContents($filename, $content, $timeout);
     $this->assertEqual($got, $content,
         "waiting for $filename to have a certain content");
   }
 
-  function waitForFileToHaveNLines($filename, $nlines, $timeout = 5) {
+  function waitForFileToHaveNLines($filename, $nlines, $timeout = 15) {
     $this->waitFor(
       function () use ($filename, $nlines) {
         return count(@file($filename)) == $nlines;
@@ -590,7 +590,7 @@ class WatchmanTestCase {
     return @file($filename, FILE_IGNORE_NEW_LINES);
   }
 
-  function waitForJsonInput($log, $timeout = 5) {
+  function waitForJsonInput($log, $timeout = 15) {
     $this->waitFor(
       function () use ($log) {
         $data = @file_get_contents($log);
@@ -604,7 +604,7 @@ class WatchmanTestCase {
       "waiting for $log to hold a JSON object"
     );
 
-    $obj = json_decode(file_get_contents($log), true);
+    $obj = json_decode(trim(file_get_contents($log)), true);
     $this->assertTrue(is_array($obj), "got JSON object in $log");
 
     return $obj;

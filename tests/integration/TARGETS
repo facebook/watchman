@@ -1,8 +1,36 @@
-python_library(
-    name='integration',
-    srcs=glob(['*.py']),
-    base_module='tests/integration',
+import os
+
+python_unittest(
+    name='test',
+    srcs=glob([
+        'Interrupt.py',
+        'TempDir.py',
+        'Wat*.py',
+        'test_*.py'
+    ]),
+    env = {
+        'TESTING_VIA_BUCK': '1',
+        'WATCHMAN_SRC_DIR': os.path.dirname(os.path.dirname(
+                                  os.path.dirname(__file__))),
+        'WATCHMAN_BINARY': '$(location @/watchman:watchman)',
+        # We test for this in a test case
+        'WATCHMAN_EMPTY_ENV_VAR': '',
+        # Uncomment next line to preserve all logs from the test
+        #'WATCHMAN_TEST_KEEP': '1',
+    },
     deps=[
       '@/watchman/python/pywatchman:pywatchman',
+      '@/watchman:watchman',
+    ],
+    base_module='',
+    # suppress annoying imp module deprecation notice in our SKIPd tests
+    py_version="<3",
+    tags=[
+      # Running too many watchman processes concurrently puts strain
+      # on the change notification stuff and results in flakiness.
+      'serialize_test_cases',
+      # we have some pre-buck test runner stuff that makes it cheaper
+      # to run our tests in a single bundled invocation, so do that.
+      'run_as_bundle',
     ],
 )

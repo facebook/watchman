@@ -10,6 +10,8 @@ from __future__ import print_function
 import WatchmanTestCase
 import pywatchman
 
+
+@WatchmanTestCase.expand_matrix
 class TestAuth(WatchmanTestCase.WatchmanTestCase):
     def requiresPersistentSession(self):
         return True

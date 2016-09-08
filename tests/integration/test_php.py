@@ -7,36 +7,84 @@ import unittest
 import os
 import os.path
 import subprocess
+import inspect
 import glob
 import re
 import WatchmanInstance
 import signal
 import Interrupt
 import tempfile
+import TempDir
 
-class TapExeTestCase(unittest.TestCase):
 
-    def __init__(self, executable):
-        super(TapExeTestCase, self).__init__()
-        self.executable = executable
+WATCHMAN_SRC_DIR = os.environ.get('WATCHMAN_SRC_DIR', os.getcwd())
+THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, 'tests', 'integration')
 
-    def id(self):
-        return self.executable
 
-    def getCommandArgs(self):
-        return [self.executable]
+def find_php_tests(test_class):
+    '''
+    A decorator function used to create a class per legacy PHP test
+    '''
 
-    def run(self, result=None):
-        if result is not None:
-            result.setFlavour(None, None)
-        return super(TapExeTestCase, self).run(result)
+    # We do some rather hacky things here to define new test class types
+    # in our caller's scope.  This is needed so that the unittest TestLoader
+    # will find the subclasses we define.
+    caller_scope = inspect.currentframe().f_back.f_locals
+    phprunner = os.path.join(THIS_DIR, 'phprunner')
+
+    for php in glob.glob(os.path.join(THIS_DIR, '*.php')):
+        base = os.path.basename(php)
+        if base.startswith('.') or base.startswith('_'):
+            continue
+
+        subclass_name = base.replace('.', '_').replace('-', '_')
+
+        def make_class(phpfile):
+            # Define a new class that derives from the input class.
+            # This has to be a function otherwise phpfile captures
+            # the value from the last iteration of the glob loop.
+
+            class PHPTest(test_class):
+                def getCommandArgs(self):
+                    return [
+                        'php',
+                        '-d variables_order=EGPCS',
+                        '-d register_argc_argv=1',
+                        '-d sys_temp_dir=%s' % TempDir.get_temp_dir().get_dir(),
+                        phprunner,
+                        phpfile,
+                    ]
+
+            # Set the name and module information on our new subclass
+            PHPTest.__name__ = subclass_name
+            PHPTest.__qualname__ = subclass_name
+            PHPTest.__module__ = test_class.__module__
+
+            caller_scope[subclass_name] = PHPTest
+
+        make_class(php)
+
+    return None
+
+
+@find_php_tests
+class PHPTestCase(unittest.TestCase):
 
     def runTest(self):
         env = os.environ.copy()
         env['WATCHMAN_SOCK'] = WatchmanInstance.getSharedInstance().getSockPath()
-        dotted = os.path.normpath(self.id()).replace(os.sep, '.').replace(
-            'tests.integration.', '').replace('.php', '')
-        env['TMPDIR'] = os.path.join(tempfile.tempdir, dotted)
+
+        def clean_file_name(name):
+            name = name.replace(os.sep, '')
+            name = name.replace('tests.integration', '')
+            name = name.replace('.php', '')
+            name = name.replace('WatchmanTapTests.', '')
+            name = name.replace('_php', '')
+            name = name.replace('.runTest', '')
+            return name
+
+        dotted = clean_file_name(os.path.normpath(self.id()))
+        env['TMPDIR'] = os.path.join(TempDir.get_temp_dir().get_dir(), dotted)
         if os.name != 'nt' and len(env['TMPDIR']) > 94:
             self.fail('temp dir name %s is too long for unix domain sockets' %
                 env['TMPDIR'])
@@ -46,6 +94,7 @@ class TapExeTestCase(unittest.TestCase):
         env['IN_PYTHON_HARNESS'] = '1'
         proc = subprocess.Popen(
             self.getCommandArgs(),
+            cwd=env.get('WATCHMAN_SRC_DIR', os.getcwd()),
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
@@ -116,33 +165,4 @@ class TapExeTestCase(unittest.TestCase):
                              self.id(),
                              plan,
                              last_test))
-
-
-class PhpTestCase(TapExeTestCase):
-    def __init__(self, phpfile):
-        super(TapExeTestCase, self).__init__()
-        self.phpfile = phpfile
-
-    def id(self):
-        return self.phpfile
-
-    def getCommandArgs(self):
-        return ['php', '-d register_argc_argv=1',
-                'tests/integration/phprunner', self.phpfile]
-
-
-def discover(filematcher, path):
-    suite = unittest.TestSuite()
-    for exe in glob.glob(path):
-        if not filematcher(exe):
-            continue
-        base = os.path.basename(exe)
-        if base.startswith('.') or base.startswith('_'):
-            continue
-        if exe.endswith('.php'):
-            suite.addTest(PhpTestCase(exe))
-        else:
-            suite.addTest(TapExeTestCase(exe))
-    return suite
-
 

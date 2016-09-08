@@ -141,7 +141,7 @@ class WatchmanInstance {
   function waitForLogOutput($criteria, $timeout = 5) {
     $deadline = time() + $timeout;
     while (time() < $deadline) {
-      foreach (file($this->logfile) as $line) {
+      foreach (file($this->logfile.'.log') as $line) {
         if (preg_match($criteria, $line, $matches)) {
           return array(true, $line, $matches);
         }
@@ -201,7 +201,7 @@ class WatchmanInstance {
   }
 
   function start() {
-    $cmd = "%s --foreground --sockname=%s --logfile=%s " .
+    $cmd = "%s --foreground --sockname=%s --logfile=%s.log " .
             "--statefile=%s.state --log-level=2 --pidfile=%s.pid";
     if ($this->valgrind) {
       $cmd = "valgrind --tool=memcheck " .
@@ -224,10 +224,11 @@ class WatchmanInstance {
 
     $watchman_bin = $this->repo_root . '/watchman';
     if (!file_exists($watchman_bin)) {
-      // Inside a buck-built test suite.  We "know" that
-      // the test running machinery has put watchman in
-      // the PATH, so just trust that.
-      $watchman_bin = 'watchman';
+      // Probably inside a buck-built test suite.  We "know" that
+      // the test running machinery has set WATCHMAN_BINARY to the
+      // appropriate path, but if not, we just have to assume that
+      // it is in the PATH and trust that.
+      $watchman_bin = idx($_ENV, 'WATCHMAN_BINARY', 'watchman');
     }
 
     $cmd = sprintf($cmd, $watchman_bin,
@@ -657,7 +658,7 @@ class WatchmanInstance {
     }
     $this->proc = null;
     if ($this->debug) {
-      readfile($this->logfile);
+      readfile($this->logfile.'.log');
     }
     $TMP = phutil_is_windows() ? '' : '/tmp/';
     $this->appendLogFile(

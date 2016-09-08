@@ -18,6 +18,7 @@ except ImportError:
 import pywatchman
 
 
+@WatchmanTestCase.expand_matrix
 class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
     def requiresPersistentSession(self):

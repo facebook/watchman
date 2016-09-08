@@ -34,6 +34,7 @@ import atexit
 import WatchmanTapTests
 import WatchmanInstance
 import WatchmanTestCase
+import TempDir
 import NodeTests
 import glob
 import threading
@@ -112,40 +113,11 @@ os.environ['PATH'] = '%s%s%s' % (os.path.abspath(bin_dir),
 
 # We'll put all our temporary stuff under one dir so that we
 # can clean it all up at the end
-temp_dir = os.path.realpath(tempfile.mkdtemp(prefix='watchmantest'))
-if os.name != 'nt':
-    # On some platforms, setting the setgid bit on a directory doesn't work if
-    # the user isn't a member of the directory's group. Set the group explicitly
-    # to avoid this.
-    os.chown(temp_dir, -1, os.getegid())
-    # Some environments have a weird umask that can leave state directories too
-    # open and break tests.
-    os.umask(0o022)
-# Redirect all temporary files to that location
-tempfile.tempdir = temp_dir
-
+temp_dir = TempDir.get_temp_dir(args.keep)
 
 def interrupt_handler(signo, frame):
     Interrupt.setInterrupted()
 signal.signal(signal.SIGINT, interrupt_handler)
-
-def retry_rmtree(top):
-    # Keep trying to remove it; on Windows it may take a few moments
-    # for any outstanding locks/handles to be released
-    for i in range(1, 10):
-        shutil.rmtree(top, ignore_errors=True)
-        if not os.path.isdir(top):
-            return
-        time.sleep(0.2)
-    sys.stdout.write('Failed to completely remove ' + top)
-
-def cleanup():
-    if args.keep:
-        sys.stdout.write('Preserving output in %s\n' % temp_dir)
-        return
-    retry_rmtree(temp_dir)
-
-atexit.register(cleanup)
 
 
 class Result(unittest.TestResult):
@@ -164,31 +136,22 @@ class Result(unittest.TestResult):
         self.startTime = time.time()
         super(Result, self).startTest(test)
 
-    def setFlavour(self, transport, encoding):
-        self.transport = transport
-        self.encoding = encoding
-
-    def flavour(self, test):
-        if self.transport:
-            return '%s [%s, %s]' % (test.id(), self.transport, self.encoding)
-        return test.id()
-
     def addSuccess(self, test):
         elapsed = time.time() - self.startTime
         super(Result, self).addSuccess(test)
-        print('\033[32mPASS\033[0m %s (%.3fs)' % (self.flavour(test), elapsed))
+        print('\033[32mPASS\033[0m %s (%.3fs)' % (test.id(), elapsed))
 
     def addSkip(self, test, reason):
         elapsed = time.time() - self.startTime
         super(Result, self).addSkip(test, reason)
         print('\033[33mSKIP\033[0m %s (%.3fs) %s' %
-              (self.flavour(test), elapsed, reason))
+              (test.id(), elapsed, reason))
 
     def __printFail(self, test, err):
         elapsed = time.time() - self.startTime
         t, val, trace = err
         print('\033[31mFAIL\033[0m %s (%.3fs)\n%s' % (
-            self.flavour(test),
+            test.id(),
             elapsed,
             ''.join(traceback.format_exception(t, val, trace))))
 
@@ -274,16 +237,6 @@ if os.name == 'nt':
     t_globs = 'tests/*.exe'
 else:
     t_globs = 'tests/*.t'
-
-suite.addTests(WatchmanTapTests.discover(
-    shouldIncludeTestFile, t_globs))
-suite.addTests(WatchmanTapTests.discover(
-    shouldIncludeTestFile, 'tests/integration/*.php'))
-
-suite.addTests(NodeTests.discover(
-    shouldIncludeTestFile, 'node/test/*.js'))
-suite.addTests(NodeTests.discover(
-    shouldIncludeTestFile, 'tests/integration/*.js'))
 
 # Manage printing from concurrent threads
 # http://stackoverflow.com/a/3030755/149111
@@ -377,9 +330,6 @@ def expand_suite(suite, target=None):
     for i, test in enumerate(suite):
         if isinstance(test, unittest.TestSuite):
             expand_suite(test, target)
-        elif isinstance(test, WatchmanTestCase.WatchmanTestCase):
-            for cfg in test.expandConfigurations():
-                target.append(cfg)
         else:
             target.append(test)
 
@@ -428,5 +378,5 @@ if 'APPVEYOR' in os.environ:
 
 if tests_failed or (tests_run == 0):
     if args.keep_if_fail:
-        args.keep = True
+        temp_dir.set_keep(True)
     sys.exit(1)

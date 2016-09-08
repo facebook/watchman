@@ -14,6 +14,7 @@ import os.path
 import shutil
 
 
+@WatchmanTestCase.expand_matrix
 class TestGlob(WatchmanTestCase.WatchmanTestCase):
 
     def test_glob(self):

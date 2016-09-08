@@ -14,6 +14,7 @@ import os
 import os.path
 
 
+@WatchmanTestCase.expand_matrix
 class TestFind(WatchmanTestCase.WatchmanTestCase):
 
     def test_find(self):

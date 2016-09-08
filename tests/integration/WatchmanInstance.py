@@ -22,6 +22,7 @@ import threading
 import uuid
 import traceback
 import sys
+import TempDir
 
 tls = threading.local()
 
@@ -29,9 +30,23 @@ def setSharedInstance(inst):
     global tls
     tls.instance = inst
 
+
 def getSharedInstance():
     global tls
+    if hasattr(tls, 'instance'):
+        return tls.instance
+    if os.environ.get('TESTING_VIA_BUCK', '0') == '1':
+        # Ensure that the temporary dir is configured
+        TempDir.get_temp_dir().get_dir()
+        tls.instance = Instance()
+        tls.instance.start()
     return tls.instance
+
+
+def hasSharedInstance():
+    global tls
+    return hasattr(tls, 'instance')
+
 
 class InitWithFilesMixin(object):
     def _init_state(self):
@@ -110,14 +125,16 @@ class _Instance(object):
         if self.proc:
             if kill:
                 self.proc.kill()
-            self.proc.wait()
             self.proc = None
         self.cli_log_file.close()
+
+    def watchmanBinary(self):
+        return os.environ.get('WATCHMAN_BINARY', 'watchman')
 
     def commandViaCLI(self, cmd):
         '''a very bare bones helper to test the site spawner functionality'''
         args = [
-            'watchman',
+            self.watchmanBinary(),
             '--log-level=2',
         ]
         args.extend(self.get_state_args())
@@ -133,7 +150,7 @@ class _Instance(object):
 
     def start(self):
         args = [
-            'watchman',
+            self.watchmanBinary(),
             '--foreground',
             '--log-level=2',
         ]

@@ -31,29 +31,41 @@ class TestSocketTimeout(unittest.TestCase):
             pass
 
 
+def expand_bser_mods(test_class):
+    '''
+    A decorator function used to create a class for bser and pybser
+    variants of the test.
+    '''
+
+    # We do some rather hacky things here to define new test class types
+    # in our caller's scope.  This is needed so that the unittest TestLoader
+    # will find the subclasses we define.
+    caller_scope = inspect.currentframe().f_back.f_locals
+
+    flavors = [(bser, 'Bser'), (pybser, 'PyBser')]
+    for (mod, suffix) in flavors:
+        def make_class(mod, suffix):
+            subclass_name = test_class.__name__ + suffix
+
+            # Define a new class that derives from the input class
+            class MatrixTest(test_class):
+                def init_bser_mod(self):
+                    self.bser_mod = mod
+
+            # Set the name and module information on our new subclass
+            MatrixTest.__name__ = subclass_name
+            MatrixTest.__qualname__ = subclass_name
+            MatrixTest.__module__ = test_class.__module__
+
+            caller_scope[subclass_name] = MatrixTest
+
+        make_class(mod, suffix)
+
+
+@expand_bser_mods
 class TestBSERDump(unittest.TestCase):
-    # bser_mod will be None during discovery
-    def __init__(self, method_name, bser_mod=None):
-        super(TestBSERDump, self).__init__(method_name)
-        if bser_mod:
-            self._test_name = '%s.%s [%s]' % (
-                self.__class__.__name__, method_name, bser_mod.__name__)
-        else:
-            self._test_name = None
-        self.bser_mod = bser_mod
-
-    @staticmethod
-    def parameterize(loader, bser_mod):
-        suite = unittest.TestSuite()
-        for method_name in loader.getTestCaseNames(TestBSERDump):
-            suite.addTest(TestBSERDump(method_name, bser_mod))
-        return suite
-
-    def id(self):
-        if self._test_name:
-            return self._test_name
-        else:
-            return super(TestBSERDump, self).id()
+    def setUp(self):
+        self.init_bser_mod()
 
     def raw(self, structured_input, bser_output):
         enc = self.bser_mod.dumps(structured_input)
@@ -244,13 +256,6 @@ class TestBSERDump(unittest.TestCase):
 
         self.assertRaises(ValueError, self.bser_mod.pdu_info,
                           b'\x00\x02')
-
-def load_tests(loader, test_methods=None, pattern=None):
-    suite = unittest.TestSuite()
-    suite.addTests(loader.loadTestsFromTestCase(TestSocketTimeout))
-    for bser_mod in (bser, pybser):
-        suite.addTest(TestBSERDump.parameterize(loader, bser_mod))
-    return suite
 
 if __name__ == '__main__':
     suite = load_tests(unittest.TestLoader())

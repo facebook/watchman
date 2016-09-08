@@ -13,8 +13,16 @@ import os.path
 import sys
 import re
 
+WATCHMAN_SRC_DIR = os.environ.get('WATCHMAN_SRC_DIR', os.getcwd())
+THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, 'tests', 'integration')
 
-class TestTrigger(WatchmanTestCase.WatchmanTestCase):
+
+@WatchmanTestCase.expand_matrix
+class TestTriggerIssue141(WatchmanTestCase.WatchmanTestCase):
+
+    def requiresPersistentSession(self):
+        # cli transport has no log subscriptions
+        return True
 
     def matchTriggerInLog(self, logs, root, triggerName):
         r = re.compile(' trigger %s:%s pid=' %
@@ -39,16 +47,13 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
 
     # https://github.com/facebook/watchman/issues/141
     def test_triggerIssue141(self):
-        if self.transport == 'cli':
-            self.skipTest('cli transport has no log subscriptions')
-
         root = self.mkdtemp()
         self.touchRelative(root, 'foo.js')
 
         self.watchmanCommand('watch', root)
         self.assertFileList(root, ['foo.js'])
 
-        touch = os.path.join(os.path.dirname(__file__), 'touch.py')
+        touch = os.path.join(THIS_DIR, 'touch.py')
         logs = self.mkdtemp()
         first_log = os.path.join(logs, 'first')
         second_log = os.path.join(logs, 'second')
