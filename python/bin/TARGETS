@@ -3,6 +3,7 @@ python_binary(
   srcs={'watchman-make': 'watchman_make.py'},
   main_module='watchman_make',
   base_module='',
+  py_version='<3',
   deps=['@/watchman/python/pywatchman:pywatchman'],
 )
 
@@ -11,5 +12,6 @@ python_binary(
   srcs={'watchman-wait': 'watchman_wait.py'},
   main_module='watchman_wait',
   base_module='',
+  py_version='<3',
   deps=['@/watchman/python/pywatchman:pywatchman'],
 )
