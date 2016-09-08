@@ -93,7 +93,6 @@ headers_to_probe = [
 def makesym(name):
     return re.sub('[./]', '_', name.upper())
 
-
 def emit_status(proc, what, sym):
     out, err = proc.communicate()
     status = proc.wait()
@@ -215,6 +214,7 @@ print('#ifndef WATCHMAN_CONFIG_H')
 print('#define WATCHMAN_CONFIG_H')
 print('#define PACKAGE_VERSION "%s"' % extract_version())
 print('#define WATCHMAN_STATE_DIR "/var/facebook/watchman"')
+print('#define WATCHMAN_CONFIG_FILE "/etc/watchman.json"')
 
 for hname in headers_to_probe:
     check_header(hname)
