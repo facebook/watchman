@@ -78,7 +78,6 @@ class PHPTestCase(unittest.TestCase):
             name = name.replace(os.sep, '')
             name = name.replace('tests.integration', '')
             name = name.replace('.php', '')
-            name = name.replace('WatchmanTapTests.', '')
             name = name.replace('_php', '')
             name = name.replace('.runTest', '')
             return name

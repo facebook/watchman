@@ -31,7 +31,6 @@ import traceback
 import time
 import argparse
 import atexit
-import WatchmanTapTests
 import WatchmanInstance
 import WatchmanTestCase
 import TempDir
