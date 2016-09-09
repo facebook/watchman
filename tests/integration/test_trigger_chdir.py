@@ -39,6 +39,10 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         except Exception:
             return False
 
+    def checkOSApplicability(self):
+        if os.name == 'nt':
+            self.skipTest('no append on Windows')
+
     def test_triggerChdir(self):
         root = self.mkdtemp()
         os.mkdir(os.path.join(root, 'sub'))
