@@ -297,9 +297,11 @@ def runner():
         WatchmanInstance.setSharedInstance(inst)
     except Exception as e:
         print('while starting watchman: %s' % str(e))
+        traceback.print_exc()
+        print(os.environ)
         broken = True
 
-    while True:
+    while not broken:
         test = tests_queue.get()
         try:
             if test == 'terminate':
@@ -370,7 +372,7 @@ print('Ran %d, failed %d, skipped %d, concurrency %d' % (
     tests_run, tests_failed, tests_skipped, args.concurrency))
 
 if 'APPVEYOR' in os.environ:
-    shutil.copytree(temp_dir, 'logs')
+    shutil.copytree(temp_dir.get_dir(), 'logs')
     subprocess.call(['7z', 'a', 'logs.zip', 'logs'])
     subprocess.call(['appveyor', 'PushArtifact', 'logs.zip'])
 

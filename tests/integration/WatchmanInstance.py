@@ -157,11 +157,18 @@ class _Instance(object):
         args.extend(self.get_state_args())
         env = os.environ.copy()
         env["WATCHMAN_CONFIG_FILE"] = self.cfg_file
-        self.proc = subprocess.Popen(args,
-                                     env=env,
-                                     stdin=None,
-                                     stdout=self.cli_log_file,
-                                     stderr=self.cli_log_file)
+        try:
+            self.proc = subprocess.Popen(args,
+                                        env=env,
+                                        stdin=None,
+                                        stdout=self.cli_log_file,
+                                        stderr=self.cli_log_file)
+        except TypeError as e:
+            print(e)
+            print(env)
+            for k, v in env.items():
+                print('ENV: %r = %r' % (k, v))
+            raise
 
         if self.debug_watchman:
             print('Watchman instance PID:' + str(self.proc.pid))

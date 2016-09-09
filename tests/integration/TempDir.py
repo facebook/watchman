@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from __future__ import unicode_literals
+# no unicode literals
 import os
 import shutil
 import sys
@@ -42,9 +42,8 @@ class TempDir(object):
         else:
             prefix = 'watchmantest'
 
-        self.temp_dir = os.path.realpath(
-            tempfile.mkdtemp(dir=parent_dir, prefix=prefix)
-        )
+        self.temp_dir = os.path.normcase(os.path.realpath(
+            tempfile.mkdtemp(dir=parent_dir, prefix=prefix)))
         if os.name != 'nt':
             # On some platforms, setting the setgid bit on a directory doesn't
             # work if the user isn't a member of the directory's group. Set the
