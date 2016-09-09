@@ -19,6 +19,9 @@ except ImportError:
 import pywatchman
 
 
+def is_root():
+    return hasattr(os, 'geteuid') and os.geteuid() == 0
+
 @WatchmanTestCase.expand_matrix
 class TestPerms(WatchmanTestCase.WatchmanTestCase):
 
@@ -26,7 +29,7 @@ class TestPerms(WatchmanTestCase.WatchmanTestCase):
         if os.name == 'nt':
             self.skipTest('N/A on Windows')
 
-    @unittest.skipIf(os.geteuid() == 0, "N/A if root")
+    @unittest.skipIf(is_root(), "N/A if root")
     def test_permDeniedSubDir(self):
         root = self.mkdtemp()
         subdir = os.path.join(root, 'subdir')
@@ -40,7 +43,7 @@ class TestPerms(WatchmanTestCase.WatchmanTestCase):
         self.assertRegexpMatches(warning,
                                  'Marking this portion of the tree deleted')
 
-    @unittest.skipIf(os.geteuid() == 0, "N/A if root")
+    @unittest.skipIf(is_root(), "N/A if root")
     def test_permDeniedRoot(self):
         root = self.mkdtemp()
         os.chmod(root, 0)
