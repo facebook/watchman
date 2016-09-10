@@ -11,6 +11,12 @@
 w_string_piece::w_string_piece() : s_(nullptr), e_(nullptr) {}
 w_string_piece::w_string_piece(std::nullptr_t) : s_(nullptr), e_(nullptr) {}
 
+w_string_piece::w_string_piece(w_string_piece &&other)
+    : s_(other.s_), e_(other.e_) {
+  other.s_ = nullptr;
+  other.e_ = nullptr;
+}
+
 w_string w_string_piece::asWString(w_string_type_t stringType) const {
   return w_string(data(), size(), stringType);
 }

@@ -159,7 +159,7 @@ class w_string_piece {
       : s_(cstr), e_(cstr + len){};
 
   w_string_piece(const w_string_piece& other) = default;
-  w_string_piece(w_string_piece&& other) = default;
+  w_string_piece(w_string_piece&& other);
 
   inline const char* data() const {
     return s_;
