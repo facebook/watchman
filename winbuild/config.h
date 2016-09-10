@@ -21,6 +21,7 @@
 
 #endif
 
+#define _ALLOW_KEYWORD_MACROS
 #ifndef __cplusplus
 #define inline __inline
 #endif
