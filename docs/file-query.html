@@ -692,15 +692,36 @@ maintains a couple of indexes over the tree.</p>
 of files and this may mean that you see the same file output more than once if
 you specified the use of multiple generators that all produce the same file.</p>
 
-<p>Watchman provides 4 generators:</p>
+<p>Watchman provides 5 generators:</p>
 
 <ul>
 <li><strong>since</strong>: produces a list of files that were modified since a specific
 clockspec.</li>
 <li><strong>suffix</strong>: produces a list of files that have a particular suffix.</li>
+<li><strong>glob</strong>: efficiently pattern match a list of files based on their names.</li>
 <li><strong>path</strong>: produces a list of files based on their path and depth.</li>
 <li><strong>all</strong>: produces a list of all known files</li>
 </ul>
+
+<h3 id="de-duplicating-results">De-duplicating results</h3>
+
+<p><em>Since 4.7.</em></p>
+
+<p>If your query uses multiple generators, or configures the <code>path</code> generator with
+paths that yield multiple results, the default behavior (for backwards
+compatibility reasons) is to emit those duplicate results in the query output.</p>
+
+<p>You may ask Watchman to de-duplicate results for you by enabling the
+<code>dedup_results</code> boolean in your query:</p>
+<div class="highlight"><pre><code class="language-text" data-lang="text">$ watchman -j &lt;&lt;-EOT
+[&quot;query&quot;, &quot;/path/to/root&quot;, {
+  &quot;path&quot;: [&quot;bar&quot;, &quot;bar&quot;],
+  &quot;dedup_results&quot;: true
+}]
+EOT
+</code></pre></div>
+<p>You may test for this feature using an extended version command and requesting
+the capability name <code>dedup_results</code>.</p>
 
 <h3 id="since-generator">Since Generator</h3>
 
@@ -745,6 +766,38 @@ or set of suffixes.  The value can be either a string or an array of strings.</p
 <span class="s">}]</span>
 <span class="s">EOT</span>
 </code></pre></div>
+<h3 id="glob-generator">Glob Generator</h3>
+
+<p><em>Since 4.7.</em></p>
+
+<p>The <code>glob</code> generator produces a list of files by matching against your
+input list of patterns.  It does this by building a tree from the glob
+expression(s) and walking both the expression and the in-memory filesystem
+tree concurrently.</p>
+
+<p>This query will yield a list of all of the C source and header files found
+directly in the <code>src</code> dir:</p>
+<div class="highlight"><pre><code class="language-text" data-lang="text">$ watchman -j &lt;&lt;-EOT
+[&quot;query&quot;, &quot;/path/to/root&quot;, {
+  &quot;glob&quot;: [&quot;src/*.c&quot;, &quot;src/*.h&quot;],
+  &quot;fields&quot;: [&quot;name&quot;]
+}]
+</code></pre></div>
+<p>This query will yield a list of all of the C source and header files found
+in any subdirectories of the root:</p>
+<div class="highlight"><pre><code class="language-text" data-lang="text">$ watchman -j &lt;&lt;-EOT
+[&quot;query&quot;, &quot;/path/to/root&quot;, {
+  &quot;glob&quot;: [&quot;**/*.c&quot;, &quot;**/*.h&quot;],
+  &quot;fields&quot;: [&quot;name&quot;]
+}]
+</code></pre></div>
+<p>Note that it is more efficient to use the <code>suffix</code> generator together with a
+<code>dirname</code> expression term for such a broadly scoped query as it results in
+fewer comparisons.  This example is included as an illustration of recursive
+globbing.</p>
+
+<p>The glob generator implicitly enables <code>dedup_results</code> mode.</p>
+
 <h3 id="path-generator">Path Generator</h3>
 
 <p>The <code>path</code> generator produces a list of files based on their path and depth.

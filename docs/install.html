@@ -689,6 +689,13 @@ window.addEventListener('load', function() {
 <li><i class="fa fa-windows"></i> Windows x64 on Windows Server 2012 R2 and
 later is currently in <strong>alpha</strong> status.  <a href="https://github.com/facebook/watchman/issues/19">More details on alpha testing this
 here</a></li>
+</ul>
+
+<p>Watchman used to support the following systems, but no one is actively
+maintaining them.  The core of the code should be OK, but they likely don&#39;t
+build.  We&#39;d love it if someone would step forward to maintain them:</p>
+
+<ul>
 <li>BSDish systems (FreeBSD 9.1, OpenBSD 5.2) that have the
 <code>kqueue(2)</code> facility</li>
 <li>Illumos and Solaris style systems that have <code>port_create(3C)</code></li>
@@ -728,7 +735,7 @@ install a <code>python-dev</code> or <code>python-devel</code> package.</p>
 <p>See below for some more information on options to configure your build.</p>
 <div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>git clone https://github.com/facebook/watchman.git
 <span class="nv">$ </span><span class="nb">cd </span>watchman
-<span class="nv">$ </span>git checkout v4.6.0  <span class="c"># the latest stable release</span>
+<span class="nv">$ </span>git checkout v4.7.0  <span class="c"># the latest stable release</span>
 <span class="nv">$ </span>./autogen.sh
 <span class="nv">$ </span>./configure
 <span class="nv">$ </span>make

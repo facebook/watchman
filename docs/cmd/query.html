@@ -776,7 +776,8 @@ the values listed in <a href="../expr/type.html">the type query expression</a></
 <p><em>Since 4.6.</em></p>
 
 <ul>
-<li><code>symlink_target</code> - string: the target of a symbolic link if the file is a symbolic link</li>
+<li><code>symlink_target</code> - string: the target of a symbolic link if the file is a
+symbolic link</li>
 </ul>
 
 <h3 id="synchronization-timeout-since-2-1">Synchronization timeout (since 2.1)</h3>
@@ -820,6 +821,32 @@ than this.  You may use the <code>lock_timeout</code> field to control this beha
 <p>Prior to version 4.6, the <code>lock_timeout</code> could not be configured and had an
 effective value of infinity.</p>
 
+<h3 id="case-sensitivity">Case sensitivity</h3>
+
+<p><em>Since 2.9.9.</em></p>
+
+<p>On systems where the watched root is a case insensitive filesystem (this is the
+common case for OS X and Windows), various name matching operations default to
+case insensitive.</p>
+
+<p><em>Since 4.7.</em></p>
+
+<p>You may override the case sensitivity of the various name matching operations
+by setting the <code>case_sensitive</code> field in your query spec.  It default to the
+case sensitivity of the watched root.  This is useful in cases where you know
+that the contents of the tree are treated case sensitively by your various
+tools but are running on a case insensitive filesystem.  By forcing the name
+matches to case sensitive mode the matches are faster and in some cases can be
+accelerated by using alternative algorithms.</p>
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman -j <span class="s">&lt;&lt;-EOT</span>
+<span class="s">[&quot;query&quot;, &quot;/path/to/root&quot;, {</span>
+<span class="s">  &quot;suffix&quot;: &quot;php&quot;,</span>
+<span class="s">  &quot;expression&quot;: [&quot;match&quot;, &quot;foo*.c&quot;, &quot;basename&quot;],</span>
+<span class="s">  &quot;case_sensitive&quot;: true,</span>
+<span class="s">  &quot;fields&quot;: [&quot;name&quot;]</span>
+<span class="s">}]</span>
+<span class="s">EOT</span>
+</code></pre></div>
     
   </article>
 </div>

@@ -683,8 +683,8 @@ ways to measure time.</p>
 
 <ul>
 <li>number of seconds since the unix epoch (unix <code>time_t</code> style)</li>
-<li><strong>recommended for most users</strong>: a named cursor of the form <code>n:whatever</code></li>
-<li><strong>recommended for advanced users</strong>: a clock id of the form <code>c:123:234</code></li>
+<li>a clock id of the form <code>c:123:234</code></li>
+<li>a named cursor of the form <code>n:whatever</code> (but clock ids are faster!)</li>
 </ul>
 
 <p>The first and most obvious is passing a unix timestamp.  Watchman records
@@ -707,6 +707,12 @@ enumerate all the &quot;C&quot; source files on your first invocation of:</p>
 that changed since the last time that someone queried using &quot;n:c_srcs&quot; as the
 clock spec. However, it&#39;s not possible to &quot;roll back&quot; a named cursor, so
 advanced users desiring such functionality should use clock ids instead.</p>
+
+<p><em>Since 4.7.</em></p>
+
+<p>We recommend not using the <code>n:whatever</code> form as it requires an exclusive lock
+on the view to execute; this can increase contention and result in slower
+queries.</p>
 
     
   </article>

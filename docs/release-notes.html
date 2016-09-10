@@ -682,6 +682,30 @@ window.addEventListener('load', function() {
 that includes all of the gory details, please see <a href="https://github.com/facebook/watchman/commits/master">the commit history on
 GitHub</a>.</p>
 
+<h3 id="watchman-4-7-0-2016-09-10">Watchman 4.7.0 (2016-09-10)</h3>
+
+<ul>
+<li>Reduced memory usage by 40%</li>
+<li>Queries can now run with a shared lock.  It is recommended that clients
+move away from the <code>n:FOO</code> style server side named cursor clockspecs to
+take full advantage of this.</li>
+<li>Added new <code>glob</code> generator as a walking strategy for queries.  This
+allows watchman to evaluate globs in the most efficient manner.  Our
+friends in the Buck project have already integrated this into their
+<code>BUCK</code> file parsing to evaluate globs without touching the filesystem!</li>
+<li>Added <code>&quot;case_sensitive&quot;: true</code> option to queries to force matches to
+happen in a case sensitive manner, even if the watched root is on
+a case insensitive filesystem.  This is used to accelerate certain
+types of internal traversal: if we know that a path is case sensitive
+we can perform an <code>O(1)</code> lookup where we would otherwise have to perform
+an <code>O(number-of-directory-entries)</code> scan and compare.</li>
+<li>Fixed a race condition during subscription initiation that could emit
+incorrect clock values.</li>
+<li>Fixed spurious over-notification for parent directories of changed files
+on Mac.</li>
+<li>Fixed some reliability issues on Windows</li>
+</ul>
+
 <h3 id="watchman-4-6-0-2016-07-09">Watchman 4.6.0 (2016-07-09)</h3>
 
 <ul>

@@ -694,9 +694,16 @@ from the basename to the wholename of the file.</p>
 it behaves identically to <code>pcre</code> except that the match is performed ignoring
 case.</p>
 
+<p><em>Since 2.9.9.</em></p>
+
 <p>Starting in version 2.9.9, on OS X systems where the watched root is a case
 insensitive filesystem (this is the common case for OS X), <code>pcre</code> is equivalent
 to <code>ipcre</code>.</p>
+
+<p><em>Since 4.7.</em></p>
+
+<p>You can override the case sensitivity of all name matching operations used
+in the query by setting the <code>case_sensitive</code> field in your query.</p>
 
     
   </article>

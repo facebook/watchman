@@ -793,6 +793,11 @@ it from the <code>/etc/watchman.json</code> file.</li>
 <td>fallback</td>
 <td>4.6</td>
 </tr>
+<tr>
+<td><code>suppress_recrawl_warnings</code></td>
+<td>fallback</td>
+<td>4.7</td>
+</tr>
 </tbody></table>
 
 <h3 id="configuration-options">Configuration Options</h3>
@@ -981,8 +986,13 @@ journal, or if the <code>fsevents</code> id numbers have rolled over.</p>
 and replaying the event stream from a known point in time and avoids the need
 to recrawl the entire watch.</p>
 
-<p>If this option is set to <code>false</code>, or if the journal is not available, the original
-strategy of recrawling the watched directory tree is used instead.</p>
+<p>If this option is set to <code>false</code>, or if the journal is not available, the
+original strategy of recrawling the watched directory tree is used instead.</p>
+
+<p><em>Since 4.7.</em></p>
+
+<p>The default changed to <code>true</code>.  In addition, this resync strategy is now
+also applied to <code>kFSEventStreamEventFlagKernelDropped</code> events.</p>
 
 <h3 id="idle_reap_age_seconds">idle_reap_age_seconds</h3>
 
@@ -1038,6 +1048,18 @@ that you have.</p>
 <p>Making this number too large is potentially wasteful of memory.  Making this
 number too small results in increased latency during crawling while the
 hash tables are rebuilt.</p>
+
+<h3 id="suppress_recrawl_warnings">suppress_recrawl_warnings</h3>
+
+<p><em>Since 4.7</em></p>
+
+<p>When set to <code>true</code>, watchman will not produce recrawl related warning fields in
+the response PDUs of various requests.  The default is <code>false</code>; the intent is
+that someone in your organization should be aware of recrawls and be able to
+manage the configuration and workload.  Some sites employ an alternative
+mechanism for sampling and reporting this to the right set of people and wish
+to disable the warning so that it doesn&#39;t appear in front of users that are
+unable to make the appropriate configuration changes for themselves.</p>
 
     
   </article>
