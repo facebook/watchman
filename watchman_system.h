@@ -4,10 +4,6 @@
 #ifndef WATCHMAN_SYSTEM_H
 #define WATCHMAN_SYSTEM_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
@@ -81,10 +77,6 @@ extern "C" {
 #endif
 #ifdef HAVE_SYS_RESOURCE_H
 # include <sys/resource.h>
-#endif
-#ifndef _WIN32
-// Not explicitly exported on Darwin, so we get to define it.
-extern char **environ;
 #endif
 
 #ifdef _WIN32
@@ -164,6 +156,15 @@ extern char **environ;
 
 // self-documenting hint to the compiler that we didn't use it
 #define unused_parameter(x)  (void)x
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef _WIN32
+// Not explicitly exported on Darwin, so we get to define it.
+extern char **environ;
+#endif
 
 #ifdef __cplusplus
 }
