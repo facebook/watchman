@@ -16,6 +16,7 @@ typedef int gid_t;
 typedef int nlink_t;
 
 // FIXME: don't do this, define our own layer
+#define _STAT_DEFINED
 struct stat {
   uint64_t st_size;
   mode_t st_mode;
