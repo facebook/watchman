@@ -90,12 +90,13 @@ int posix_spawn_file_actions_init(posix_spawn_file_actions_t *actions) {
 int posix_spawn_file_actions_adddup2(posix_spawn_file_actions_t *actions,
     int fd, int target_fd) {
   struct _posix_spawn_file_action *acts, *act;
-  acts = realloc(actions->acts, (actions->nacts + 1) * sizeof(*acts));
+  acts = (_posix_spawn_file_action *)realloc(
+      actions->acts, (actions->nacts + 1) * sizeof(*acts));
   if (!acts) {
     return ENOMEM;
   }
   act = &acts[actions->nacts];
-  act->action = dup_fd;
+  act->action = _posix_spawn_file_action::dup_fd;
   act->u.source_fd = fd;
   act->target_fd = target_fd;
   actions->acts = acts;
@@ -107,12 +108,13 @@ int posix_spawn_file_actions_adddup2_handle_np(
     posix_spawn_file_actions_t *actions,
     HANDLE handle, int target_fd) {
   struct _posix_spawn_file_action *acts, *act;
-  acts = realloc(actions->acts, (actions->nacts + 1) * sizeof(*acts));
+  acts = (_posix_spawn_file_action *)realloc(
+      actions->acts, (actions->nacts + 1) * sizeof(*acts));
   if (!acts) {
     return ENOMEM;
   }
   act = &acts[actions->nacts];
-  act->action = dup_handle;
+  act->action = _posix_spawn_file_action::dup_handle;
   act->u.dup_local_handle = handle;
   act->target_fd = target_fd;
   actions->acts = acts;
@@ -127,13 +129,14 @@ int posix_spawn_file_actions_addopen(posix_spawn_file_actions_t *actions,
   if (!name_dup) {
     return ENOMEM;
   }
-  acts = realloc(actions->acts, (actions->nacts + 1) * sizeof(*acts));
+  acts = (_posix_spawn_file_action *)realloc(
+      actions->acts, (actions->nacts + 1) * sizeof(*acts));
   if (!acts) {
     free(name_dup);
     return ENOMEM;
   }
   act = &acts[actions->nacts];
-  act->action = open_file;
+  act->action = _posix_spawn_file_action::open_file;
   act->target_fd = target_fd;
   act->u.open_info.name = name_dup;
   act->u.open_info.flags = flags;
@@ -147,7 +150,7 @@ int posix_spawn_file_actions_addopen(posix_spawn_file_actions_t *actions,
 int posix_spawn_file_actions_destroy(posix_spawn_file_actions_t *actions) {
   int i;
   for (i = 0; i < actions->nacts; i++) {
-    if (actions->acts[i].action != open_file) {
+    if (actions->acts[i].action != _posix_spawn_file_action::open_file) {
       continue;
     }
     free(actions->acts[i].u.open_info.name);
@@ -169,7 +172,7 @@ static char *build_command_line(char *const argv[]) {
     size += 4 * (strlen(argv[argc]) + 1);
   }
 
-  cmdbuf = malloc(size);
+  cmdbuf = (char*)malloc(size);
   if (!cmdbuf) {
     return NULL;
   }
@@ -223,7 +226,7 @@ static char *make_env_block(char *const envp[]) {
     total_len += strlen(envp[i]) + 1;
   }
 
-  block = malloc(total_len);
+  block = (char*)malloc(total_len);
   if (!block) {
     return NULL;
   }
@@ -307,7 +310,7 @@ static int posix_spawn_common(
       goto done;
     }
 
-    if (act->action != open_file) {
+    if (act->action != _posix_spawn_file_action::open_file) {
       // Process a dup(2) action
       DWORD err;
 
@@ -316,7 +319,7 @@ static int posix_spawn_common(
         *target = INVALID_HANDLE_VALUE;
       }
 
-      if (act->action == dup_fd) {
+      if (act->action == _posix_spawn_file_action::dup_fd) {
         HANDLE src = NULL;
         switch (act->u.source_fd) {
           case 0:
@@ -384,7 +387,7 @@ static int posix_spawn_common(
     sinfo.lpAttributeList = NULL;
 
     InitializeProcThreadAttributeList(NULL, 1, 0, &size);
-    sinfo.lpAttributeList = malloc(size);
+    sinfo.lpAttributeList = (LPPROC_THREAD_ATTRIBUTE_LIST)malloc(size);
     InitializeProcThreadAttributeList(sinfo.lpAttributeList, 1, 0, &size);
     UpdateProcThreadAttribute(sinfo.lpAttributeList, 0,
         PROC_THREAD_ATTRIBUTE_HANDLE_LIST,

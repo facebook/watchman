@@ -64,8 +64,8 @@ static pthread_key_t _pthread_key_max;
 static pthread_key_t _pthread_key_sch;
 static _pthread_tls_dtor_t *_pthread_key_dest;
 
-static void _pthread_once_cleanup(pthread_once_t *o)
-{
+static void _pthread_once_cleanup(void *arg) {
+  auto o = (pthread_once_t*)arg;
   *o = 0;
 }
 
@@ -268,10 +268,10 @@ pthread_t pthread_self(void)
 
   _pthread_once_raw(&_pthread_tls_once, pthread_tls_init);
 
-  t = TlsGetValue(_pthread_tls);
+  t = (_pthread_v*)TlsGetValue(_pthread_tls);
   /* Main thread? */
   if (t == NULL) {
-    t = calloc(1, sizeof(*t));
+    t = (_pthread_v*)calloc(1, sizeof(*t));
 
     // If cannot initialize main thread, then the only thing we can do is abort
     if (!t) {
@@ -326,7 +326,7 @@ int pthread_rwlock_tryrdlock(pthread_rwlock_t *l)
   if (!state)
   {
     /* Unlocked to locked */
-    if (!_InterlockedCompareExchangePointer((void *) l, (void *)0x11, NULL)) {
+    if (!_InterlockedCompareExchangePointer((void **)l, (void *)0x11, NULL)) {
       return 0;
     }
     return EBUSY;
@@ -338,8 +338,8 @@ int pthread_rwlock_tryrdlock(pthread_rwlock_t *l)
   /* Multiple writers exist? */
   if ((uintptr_t) state & 14) return EBUSY;
 
-  if (_InterlockedCompareExchangePointer((void *) l,
-        (void *) ((uintptr_t)state + 16), state) == state) {
+  if (_InterlockedCompareExchangePointer(
+          (void **)l, (void *)((uintptr_t)state + 16), state) == state) {
     return 0;
   }
 
@@ -349,7 +349,7 @@ int pthread_rwlock_tryrdlock(pthread_rwlock_t *l)
 int pthread_rwlock_trywrlock(pthread_rwlock_t *l)
 {
   /* Try to grab lock if it has no users */
-  if (!_InterlockedCompareExchangePointer((void *) l, (void *)1, NULL)) {
+  if (!_InterlockedCompareExchangePointer((void **)l, (void *)1, NULL)) {
     return 0;
   }
 
@@ -620,7 +620,7 @@ int pthread_setcanceltype(int type, int *oldtype)
 
 static unsigned int __stdcall pthread_create_wrapper(void *args)
 {
-  struct _pthread_v *tv = args;
+  auto tv = (_pthread_v*)args;
 
   _pthread_once_raw(&_pthread_tls_once, pthread_tls_init);
 
@@ -651,7 +651,7 @@ static unsigned int __stdcall pthread_create_wrapper(void *args)
 int pthread_create(pthread_t *th, pthread_attr_t *attr,
     void *(* func)(void *), void *arg)
 {
-  struct _pthread_v *tv = malloc(sizeof(struct _pthread_v));
+  auto tv = (_pthread_v *)malloc(sizeof(struct _pthread_v));
   unsigned ssize = 0;
 
   if (!tv) return 1;
@@ -1004,7 +1004,7 @@ int pthread_key_create(pthread_key_t *key, void (* dest)(void *))
   if (nmax > PTHREAD_KEYS_MAX) nmax = PTHREAD_KEYS_MAX;
 
   /* No spare room anywhere */
-  d = realloc(_pthread_key_dest, nmax * sizeof(*d));
+  d = (void (**)(void *))realloc(_pthread_key_dest, nmax * sizeof(*d));
   if (!d)
   {
     pthread_rwlock_unlock(&_pthread_key_lock);
@@ -1069,7 +1069,7 @@ int pthread_setspecific(pthread_key_t key, const void *value)
   if (key > t->keymax)
   {
     int keymax = (key + 1) * 2;
-    void **kv = realloc(t->keyval, keymax * sizeof(void *));
+    void **kv = (void **)realloc(t->keyval, keymax * sizeof(void *));
 
     if (!kv) return ENOMEM;
 

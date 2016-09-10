@@ -46,7 +46,7 @@ char *w_win_unc_to_utf8(WCHAR *wpath, int pathlen, uint32_t *outlen) {
     return NULL;
   }
 
-  buf = malloc(len + 1);
+  buf = (char*)malloc(len + 1);
   if (!buf) {
     return NULL;
   }
@@ -136,7 +136,7 @@ WCHAR *w_utf8_to_win_unc(const char *path, int pathlen) {
   }
 
   // Step 2, allocate and prepend UNC prefix
-  buf = malloc((prefix_len + len + 1) * sizeof(WCHAR));
+  buf = (WCHAR*)malloc((prefix_len + len + 1) * sizeof(WCHAR));
   if (!buf) {
     return NULL;
   }
