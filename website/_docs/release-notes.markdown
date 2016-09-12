@@ -10,6 +10,28 @@ We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on
 GitHub](https://github.com/facebook/watchman/commits/master).
 
+### Watchman 4.7.0 (2016-09-10)
+
+* Reduced memory usage by 40%
+* Queries can now run with a shared lock.  It is recommended that clients
+  move away from the `n:FOO` style server side named cursor clockspecs to
+  take full advantage of this.
+* Added new `glob` generator as a walking strategy for queries.  This
+  allows watchman to evaluate globs in the most efficient manner.  Our
+  friends in the Buck project have already integrated this into their
+  `BUCK` file parsing to evaluate globs without touching the filesystem!
+* Added `"case_sensitive": true` option to queries to force matches to
+  happen in a case sensitive manner, even if the watched root is on
+  a case insensitive filesystem.  This is used to accelerate certain
+  types of internal traversal: if we know that a path is case sensitive
+  we can perform an `O(1)` lookup where we would otherwise have to perform
+  an `O(number-of-directory-entries)` scan and compare.
+* Fixed a race condition during subscription initiation that could emit
+  incorrect clock values.
+* Fixed spurious over-notification for parent directories of changed files
+  on Mac.
+* Fixed some reliability issues on Windows
+
 ### Watchman 4.6.0 (2016-07-09)
 
 * Improved I/O scheduling when processing recursive deletes and deep directory

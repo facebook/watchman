@@ -16,6 +16,11 @@ Watchman is known to compile and pass its test suite on:
  * <i class="fa fa-windows"></i> Windows x64 on Windows Server 2012 R2 and
    later is currently in **alpha** status.  [More details on alpha testing this
    here](https://github.com/facebook/watchman/issues/19)
+
+Watchman used to support the following systems, but no one is actively
+maintaining them.  The core of the code should be OK, but they likely don't
+build.  We'd love it if someone would step forward to maintain them:
+
  * BSDish systems (FreeBSD 9.1, OpenBSD 5.2) that have the
    `kqueue(2)` facility
  * Illumos and Solaris style systems that have `port_create(3C)`
