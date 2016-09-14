@@ -159,7 +159,7 @@ $ watchman --no-spawn --no-local shutdown-server
 If you have not actually resolved the root cause you may continue to trigger
 and experience this state each time the system trips over these limits.
 
-## Posion: opendir
+## Poison: opendir
 
 ```
 A non-recoverable condition has triggered.  Watchman needs your help!
