@@ -12,6 +12,7 @@ import tempfile
 import os
 import os.path
 import shutil
+import pywatchman
 
 
 @WatchmanTestCase.expand_matrix
@@ -116,3 +117,8 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
         self.assertEqual(self.normFileList(['includes/b.h']),
                          self.normWatchmanFileList(res['files']))
 
+        with self.assertRaises(pywatchman.WatchmanError) as ctx:
+            self.watchmanCommand('query', root, {
+                'glob': ['*/*.h'],
+                'relative_root': 'bogus'})
+        self.assertIn('check your relative_root', str(ctx.exception))
