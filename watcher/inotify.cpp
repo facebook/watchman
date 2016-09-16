@@ -412,7 +412,7 @@ static bool inot_root_consume_notify(w_root_t *root,
 
     process_inotify_event(root, coll, ine, now);
 
-    if (root->cancelled) {
+    if (root->inner.cancelled) {
       return false;
     }
   }

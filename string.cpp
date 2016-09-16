@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #include <stdarg.h>
+#include <new>
 
 uint32_t w_string_compute_hval(w_string_t *str) {
   str->_hval = w_hash_bytes(str->buf, str->len, 0);
@@ -28,8 +29,6 @@ void w_string_new_len_typed_stack(w_string_t *into, const char *str,
 
 w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
 {
-  w_string_t *slice;
-
   if (start == 0 && len == str->len) {
     w_string_addref(str);
     return str;
@@ -44,7 +43,7 @@ w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
     return NULL;
   }
 
-  slice = (w_string_t*)calloc(1, sizeof(*str));
+  auto slice = new w_string_t();
   slice->refcnt = 1;
   slice->len = len;
   slice->buf = str->buf + start;
@@ -87,22 +86,31 @@ void w_string_embedded_copy(w_string_t *dest, w_string_t *src) {
   dest->buf = buf;
 }
 
+watchman_string::watchman_string()
+    : refcnt(0),
+      len(0),
+      slice(nullptr),
+      buf(nullptr),
+      type(W_STRING_BYTE),
+      hval_computed(0) {}
+
+watchman_string::~watchman_string() {
+  if (slice) {
+    w_string_delref(slice);
+  }
+}
+
 w_string_t *w_string_new_len_with_refcnt_typed(const char* str,
     uint32_t len, long refcnt, w_string_type_t type) {
 
   w_string_t *s;
   char *buf;
 
-  s = (w_string_t*)malloc(sizeof(*s) + len + 1);
-  if (!s) {
-    perror("no memory available");
-    abort();
-  }
+  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
+  new (s) watchman_string();
 
   s->refcnt = refcnt;
-  s->hval_computed = 0;
   s->len = len;
-  s->slice = NULL;
   buf = (char*)(s + 1);
   memcpy(buf, str, len);
   buf[len] = 0;
@@ -166,21 +174,21 @@ w_string_t *w_string_make_printf(const char *format, ...)
   len = vsnprintf(NULL, 0, format, args);
   va_end(args);
 
-  s = (w_string_t*)malloc(sizeof(*s) + len + 1);
+  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
   if (!s) {
     perror("no memory available");
     abort();
   }
 
+  new (s) watchman_string();
+
   s->refcnt = 1;
   s->len = len;
-  s->slice = NULL;
   buf = (char*)(s + 1);
   va_start(args, format);
   vsnprintf(buf, len + 1, format, args);
   va_end(args);
   s->buf = buf;
-  s->hval_computed = 0;
 
   return s;
 }
@@ -207,22 +215,17 @@ w_string_t *w_string_dup_lower(w_string_t *str)
 
   /* need to make a lowercase version */
 
-  s = (w_string_t*)malloc(sizeof(*s) + str->len + 1);
-  if (!s) {
-    perror("no memory available");
-    abort();
-  }
+  s = (w_string_t*)(new char[sizeof(*s) + str->len + 1]);
+  new (s) watchman_string();
 
   s->refcnt = 1;
   s->len = str->len;
-  s->slice = NULL;
   buf = (char*)(s + 1);
   for (i = 0; i < str->len; i++) {
     buf[i] = (char)tolower((uint8_t)str->buf[i]);
   }
   buf[str->len] = 0;
   s->buf = buf;
-  s->hval_computed = 0;
 
   return s;
 }
@@ -236,15 +239,11 @@ w_string_t *w_string_new_lower_typed(const char *str,
   char *buf;
   uint32_t i;
 
-  s = (w_string_t*)malloc(sizeof(*s) + len + 1);
-  if (!s) {
-    perror("no memory available");
-    abort();
-  }
+  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
+  new (s) watchman_string();
 
   s->refcnt = 1;
   s->len = len;
-  s->slice = NULL;
   buf = (char*)(s + 1);
   // TODO: optionally use ICU
   for (i = 0; i < len; i++) {
@@ -252,7 +251,6 @@ w_string_t *w_string_new_lower_typed(const char *str,
   }
   buf[len] = 0;
   s->buf = buf;
-  s->hval_computed = 0;
   s->type = type;
 
   return s;
@@ -265,9 +263,10 @@ void w_string_addref(w_string_t *str)
 
 void w_string_delref(w_string_t *str)
 {
-  if (!w_refcnt_del(&str->refcnt)) return;
-  if (str->slice) w_string_delref(str->slice);
-  free(str);
+  if (!w_refcnt_del(&str->refcnt)) {
+    return;
+  }
+  delete str;
 }
 
 int w_string_compare(const w_string_t *a, const w_string_t *b)
@@ -488,15 +487,11 @@ w_string_t *w_string_normalize_separators(w_string_t *str, char target_sep) {
     }
   }
 
-  s = (w_string_t*)malloc(sizeof(*s) + len + 1);
-  if (!s) {
-    perror("no memory available");
-    abort();
-  }
+  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
+  new (s) watchman_string();
 
   s->refcnt = 1;
   s->len = len;
-  s->slice = NULL;
   buf = (char*)(s + 1);
 
   for (i = 0; i < len; i++) {
@@ -508,7 +503,6 @@ w_string_t *w_string_normalize_separators(w_string_t *str, char target_sep) {
   }
   buf[len] = 0;
   s->buf = buf;
-  s->hval_computed = 0;
 
   return s;
 }
@@ -560,22 +554,17 @@ w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
 
   len = parent->len + rhs->len + 1;
 
-  s = (w_string_t*)malloc(sizeof(*s) + len + 1);
-  if (!s) {
-    perror("no memory available");
-    abort();
-  }
+  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
+  new (s) watchman_string();
 
   s->refcnt = 1;
   s->len = len;
-  s->slice = NULL;
   buf = (char*)(s + 1);
   memcpy(buf, parent->buf, parent->len);
   buf[parent->len] = WATCHMAN_DIR_SEP;
   memcpy(buf + parent->len + 1, rhs->buf, rhs->len);
   buf[parent->len + 1 + rhs->len] = '\0';
   s->buf = buf;
-  s->hval_computed = 0;
   s->type = parent->type;
 
   return s;
@@ -598,22 +587,17 @@ w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
 
   len = parent->len + rhs_len + 1;
 
-  s = (w_string_t*)malloc(sizeof(*s) + len + 1);
-  if (!s) {
-    perror("no memory available");
-    abort();
-  }
+  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
+  new (s) watchman_string();
 
   s->refcnt = 1;
   s->len = len;
-  s->slice = NULL;
   buf = (char*)(s + 1);
   memcpy(buf, parent->buf, parent->len);
   buf[parent->len] = WATCHMAN_DIR_SEP;
   memcpy(buf + parent->len + 1, rhs, rhs_len);
   buf[parent->len + 1 + rhs_len] = '\0';
   s->buf = buf;
-  s->hval_computed = 0;
   s->type = parent->type;
 
   return s;
@@ -637,15 +621,11 @@ w_string_t *w_dir_path_cat_cstr_len(struct watchman_dir *dir, const char *extra,
     length += d->name->len + 1 /* separator OR final NUL terminator */;
   }
 
-  s = (w_string_t*)malloc(sizeof(*s) + length);
-  if (!s) {
-    perror("no memory available");
-    abort();
-  }
+  s = (w_string_t*)(new char[sizeof(*s) + length]);
+  new (s) watchman_string();
 
   s->refcnt = 1;
   s->len = length - 1;
-  s->slice = NULL;
   buf = (char *)(s + 1);
   end = buf + s->len;
 
@@ -664,8 +644,6 @@ w_string_t *w_dir_path_cat_cstr_len(struct watchman_dir *dir, const char *extra,
   }
 
   s->buf = buf;
-  s->hval_computed = 0;
-  s->type = W_STRING_BYTE;
   return s;
 }
 
@@ -702,14 +680,10 @@ w_string_t *w_string_shell_escape(const w_string_t *str)
   char *buf;
   const char *src, *end;
 
-  s = (w_string_t*)malloc(sizeof(*s) + len + 1);
-  if (!s) {
-    perror("no memory available");
-    abort();
-  }
+  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
+  new (s) watchman_string();
 
   s->refcnt = 1;
-  s->slice = NULL;
   buf = (char*)(s + 1);
   s->buf = buf;
 
@@ -732,7 +706,6 @@ w_string_t *w_string_shell_escape(const w_string_t *str)
   buf++;
   *buf = 0;
   s->len = (uint32_t)(buf - s->buf);
-  s->hval_computed = 0;
   s->type = str->type;
 
   return s;
