@@ -5,12 +5,7 @@
 #define WATCHMAN_H
 
 #include "watchman_system.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern char *poisoned_reason;
+#include "jansson.h"
 
 #include "thirdparty/jansson/jansson.h"
 #include "watchman_hash.h"
@@ -18,6 +13,41 @@ extern char *poisoned_reason;
 #include "watchman_log.h"
 #include "watchman_stream.h"
 #include "watchman_string.h"
+
+struct watchman_file;
+struct watchman_dir;
+struct watchman_root;
+struct watchman_pending_fs;
+struct watchman_trigger_command;
+struct write_locked_watchman_root;
+struct unlocked_watchman_root;
+struct read_locked_watchman_root;
+typedef struct watchman_root w_root_t;
+
+// Per-watch state for the selected watcher
+typedef void *watchman_watcher_t;
+
+#include "watchman_clockspec.h"
+#include "watchman_pending.h"
+#include "watchman_dir.h"
+#include "watchman_watcher.h"
+#include "watchman_opendir.h"
+#include "watchman_file.h"
+
+#define WATCHMAN_IO_BUF_SIZE 1048576
+#define WATCHMAN_BATCH_LIMIT (16*1024)
+
+#include "watchman_root.h"
+#include "watchman_pdu.h"
+#include "watchman_perf.h"
+#include "watchman_query.h"
+#include "watchman_client.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+extern char *poisoned_reason;
 
 static inline void w_refcnt_add(volatile long *refcnt)
 {
@@ -76,35 +106,6 @@ bool w_path_exists(const char *path);
 #define SET_DIR_BIT(dir)   ((void*)(((intptr_t)dir) | 0x1))
 #define IS_DIR_BIT_SET(dir) ((((intptr_t)dir) & 0x1) == 0x1)
 #define DECODE_DIR(dir)    ((void*)(((intptr_t)dir) & ~0x1))
-
-struct watchman_file;
-struct watchman_dir;
-struct watchman_root;
-struct watchman_pending_fs;
-struct watchman_trigger_command;
-struct write_locked_watchman_root;
-struct unlocked_watchman_root;
-struct read_locked_watchman_root;
-typedef struct watchman_root w_root_t;
-
-// Per-watch state for the selected watcher
-typedef void *watchman_watcher_t;
-
-#include "watchman_clockspec.h"
-#include "watchman_pending.h"
-#include "watchman_dir.h"
-#include "watchman_watcher.h"
-#include "watchman_opendir.h"
-#include "watchman_file.h"
-
-#define WATCHMAN_IO_BUF_SIZE 1048576
-#define WATCHMAN_BATCH_LIMIT (16*1024)
-
-#include "watchman_root.h"
-#include "watchman_pdu.h"
-#include "watchman_perf.h"
-#include "watchman_query.h"
-#include "watchman_client.h"
 
 void w_mark_dead(pid_t pid);
 bool w_reap_children(bool block);

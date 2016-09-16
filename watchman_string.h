@@ -6,7 +6,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-
+#ifdef __cplusplus
+#include <memory>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -128,6 +130,84 @@ static inline bool is_slash(char c) {
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef __cplusplus
+/** A smart pointer class for tracking w_string_t instances */
+class w_string {
+ public:
+  /** Initialize a nullptr */
+  w_string();
+  /** Make a new string from some bytes and a type */
+  w_string(
+      const char* buf,
+      uint32_t len,
+      w_string_type_t stringType = W_STRING_BYTE);
+
+  /** Initialize, taking a ref on w_string_t */
+  w_string(w_string_t* str, bool addRef = true);
+  /** Release the string reference when we fall out of scope */
+  ~w_string();
+  /** Copying adds a ref */
+  w_string(const w_string& other);
+  w_string& operator=(const w_string& other);
+  /** Moving steals a ref */
+  w_string(w_string&& other);
+  w_string& operator=(w_string&& other);
+
+  /** Stop tracking the underlying string object, decrementing
+   * the reference count. */
+  void reset();
+
+  /** Stop tracking the underlying string object, returning the
+   * reference to the caller.  The caller is responsible for
+   * decrementing the refcount */
+  w_string_t *release();
+
+  operator w_string_t*() const {
+    return str_;
+  }
+
+  explicit operator bool() const {
+    return str_ != nullptr;
+  }
+
+  /** Return a possibly new version of this string that is null terminated */
+  w_string asNullTerminated() const;
+
+  /** Ensure that this instance is referencing a null terminated version
+   * of the current string */
+  void makeNullTerminated();
+
+  /** Returns a pointer to a null terminated c-string.
+   * If this instance doesn't point to a null terminated c-string, throws
+   * an exception that tells you to use asNullTerminated or makeNullTerminated
+   * first. */
+  const char* c_str() const;
+
+  /** Returns the directory component of the string, assuming a path string */
+  w_string dirName() const;
+  /** Returns the file name component of the string, assuming a path string */
+  w_string baseName() const;
+  /** Returns the filename suffix of a path string */
+  w_string suffix() const;
+
+ private:
+  w_string_t* str_{nullptr};
+};
+
+/** helper for automatically releasing malloc'd memory.
+ *
+ * auto s = autofree(strdup("something"));
+ * printf("%s\n", s.get());
+ *
+ * The implementation returns a unique_ptr that will free()
+ * the memory when it falls out of scope. */
+template <typename T>
+std::unique_ptr<T, decltype(free) *> autofree(T* mem) {
+  return std::unique_ptr<T, decltype(free)*>{mem, free};
+}
+
 #endif
 
 #endif

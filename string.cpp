@@ -4,6 +4,110 @@
 #include "watchman.h"
 #include <stdarg.h>
 #include <new>
+#include <stdexcept>
+
+w_string::w_string() {}
+
+w_string::~w_string() {
+  if (str_) {
+    w_string_delref(str_);
+  }
+}
+
+w_string::w_string(w_string_t* str, bool addRef) : str_(str) {
+  if (str_ && addRef) {
+    w_string_addref(str_);
+  }
+}
+
+w_string::w_string(const w_string& other) : str_(other.str_) {
+  if (str_) {
+    w_string_addref(str_);
+  }
+}
+
+w_string& w_string::operator=(const w_string& other) {
+  if (&other == this) {
+    return *this;
+  }
+
+  reset();
+  if (str_) {
+    w_string_delref(str_);
+  }
+  str_ = other.str_;
+  if (str_) {
+    w_string_addref(str_);
+  }
+
+  return *this;
+}
+
+w_string::w_string(w_string&& other) : str_(other.str_) {
+  other.str_ = nullptr;
+}
+
+w_string& w_string::operator=(w_string&& other) {
+  if (&other == this) {
+    return *this;
+  }
+  reset();
+  str_ = other.str_;
+  other.str_ = nullptr;
+  return *this;
+}
+
+void w_string::reset() {
+  if (str_) {
+    w_string_delref(str_);
+    str_ = nullptr;
+  }
+}
+
+w_string_t *w_string::release() {
+  auto res = str_;
+  str_ = nullptr;
+  return res;
+}
+
+w_string::w_string(const char* buf, uint32_t len, w_string_type_t stringType)
+    : w_string(w_string_new_len_typed(buf, len, stringType), false) {}
+
+w_string w_string::dirName() const {
+  return w_string(w_string_dirname(str_), false);
+}
+
+w_string w_string::baseName() const {
+  return w_string(w_string_basename(str_), false);
+}
+
+w_string w_string::suffix() const {
+  return w_string(w_string_suffix(str_), false);
+}
+
+w_string w_string::asNullTerminated() const {
+  if (w_string_is_null_terminated(str_)) {
+    return *this;
+  }
+
+  return w_string(str_->buf, str_->len, str_->type);
+}
+
+void w_string::makeNullTerminated() {
+  if (w_string_is_null_terminated(str_)) {
+    return;
+  }
+
+  *this = asNullTerminated();
+}
+
+const char* w_string::c_str() const {
+  if (!w_string_is_null_terminated(str_)) {
+    throw std::runtime_error(
+        "string is not NULL terminated, use asNullTerminated() or makeNullTerminated()!");
+  }
+  return str_->buf;
+}
 
 uint32_t w_string_compute_hval(w_string_t *str) {
   str->_hval = w_hash_bytes(str->buf, str->len, 0);
