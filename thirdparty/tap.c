@@ -273,7 +273,7 @@ plan_tests(unsigned int tests)
 }
 
 unsigned int
-diag(char *fmt, ...)
+diag(const char *fmt, ...)
 {
 	va_list ap;
 

@@ -76,6 +76,10 @@
 
 #define skip_end() } while(0);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 unsigned int _gen_result(int, const char *, const char *, unsigned int,
                          const char *, ...);
 
@@ -83,7 +87,7 @@ int plan_no_plan(void);
 int plan_skip_all(char *);
 int plan_tests(unsigned int);
 
-unsigned int diag(char *, ...);
+unsigned int diag(const char *, ...);
 
 int skip(unsigned int, char *, ...);
 
@@ -91,3 +95,7 @@ void todo_start(char *, ...);
 void todo_end(void);
 
 int exit_status(void);
+
+#ifdef __cplusplus
+}
+#endif

@@ -11,6 +11,8 @@ extern "C" {
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
+#define __STDC_LIMIT_MACROS
+#define __STDC_FORMAT_MACROS
 #include "config.h"
 
 #include <assert.h>

@@ -809,6 +809,12 @@ void w_envp_set_list(w_ht_t *envht, const char *key, json_t *arr);
 void w_envp_set_bool(w_ht_t *envht, const char *key, bool val);
 void w_envp_unset(w_ht_t *envht, const char *key);
 
+enum argtype {
+  OPT_NONE,
+  REQ_STRING,
+  REQ_INT,
+};
+
 struct watchman_getopt {
   /* name of long option: --optname */
   const char *optname;
@@ -817,11 +823,7 @@ struct watchman_getopt {
   /* help text shown in the usage information */
   const char *helptext;
   /* whether we accept an argument */
-  enum {
-    OPT_NONE,
-    REQ_STRING,
-    REQ_INT,
-  } argtype;
+  enum argtype argtype;
   /* if an argument was provided, *val will be set to
    * point to the option value.
    * Because we only update the option if one was provided
@@ -929,6 +931,8 @@ struct watchman_client_subscription {
   w_ht_t *drop_or_defer;
 };
 
+enum trigger_input_style { input_dev_null, input_json, input_name_list };
+
 struct watchman_trigger_command {
   w_string_t *triggername;
   w_query *query;
@@ -938,11 +942,7 @@ struct watchman_trigger_command {
 
   struct w_query_field_list field_list;
   int append_files;
-  enum {
-    input_dev_null,
-    input_json,
-    input_name_list
-  } stdin_style;
+  enum trigger_input_style stdin_style;
   uint32_t max_files_stdin;
 
   int stdout_flags;
@@ -991,10 +991,12 @@ void w_expand_flags(const struct flag_map *fmap, uint32_t flags,
 
 #ifdef __APPLE__
 int pthread_mutex_timedlock(pthread_mutex_t *m, const struct timespec *ts);
-int pthread_rwlock_timedwrlock(pthread_rwlock_t *restrict rwlock,
-                               const struct timespec *ts);
-int pthread_rwlock_timedrdlock(pthread_rwlock_t *restrict rwlock,
-                               const struct timespec *ts);
+int pthread_rwlock_timedwrlock(
+    pthread_rwlock_t* rwlock,
+    const struct timespec* ts);
+int pthread_rwlock_timedrdlock(
+    pthread_rwlock_t* rwlock,
+    const struct timespec* ts);
 #endif
 
 #ifdef __cplusplus
