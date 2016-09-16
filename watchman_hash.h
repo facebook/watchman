@@ -167,6 +167,9 @@ void w_ht_string_del(w_ht_val_t val);
 bool w_ht_string_equal(w_ht_val_t a, w_ht_val_t b);
 uint32_t w_ht_string_hash(w_ht_val_t val);
 
+/* Bob Jenkins' lookup3.c hash function */
+uint32_t w_hash_bytes(const void* key, size_t length, uint32_t initval);
+
 /* if you're building a hash table that uses w_string_t as keys,
  * then you can use w_ht_string_funcs as the second parameter
  * to w_ht_new to safely reference the keys as the table is updated.
