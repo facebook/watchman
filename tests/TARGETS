@@ -23,7 +23,7 @@ def t_test(name, srcs=None, deps=None, extra_args=None):
 
 t_test(
     name='art',
-    srcs=['art_test.c', 'log_stub.c'],
+    srcs=['art_test.c', 'log_stub.cpp'],
     deps=[
       '@/watchman:testsupport',
     ],
@@ -31,7 +31,7 @@ t_test(
 
 t_test(
     name='argv',
-    srcs=['argv.c', 'log_stub.c'],
+    srcs=['argv.cpp', 'log_stub.cpp'],
     deps=[
       '@/watchman/thirdparty/jansson:jansson',
       '@/watchman:testsupport',
@@ -40,7 +40,7 @@ t_test(
 
 t_test(
     name='ignore',
-    srcs=['ignore_test.c', 'log_stub.c'],
+    srcs=['ignore_test.cpp', 'log_stub.cpp'],
     deps=[
       '@/watchman:testsupport',
     ],
@@ -48,7 +48,7 @@ t_test(
 
 t_test(
     name='pending',
-    srcs=['pending_test.c', 'log_stub.c'],
+    srcs=['pending_test.cpp', 'log_stub.cpp'],
     deps=[
       '@/watchman:testsupport',
     ],
@@ -56,7 +56,7 @@ t_test(
 
 t_test(
     name='log',
-    srcs=['log.c'],
+    srcs=['log.cpp'],
     deps=[
       '@/watchman:testsupport',
     ],
@@ -64,7 +64,7 @@ t_test(
 
 t_test(
     name='bser',
-    srcs=['bser.c', 'log_stub.c'],
+    srcs=['bser.cpp', 'log_stub.cpp'],
     deps=[
       '@/watchman:testsupport',
     ],
@@ -72,7 +72,7 @@ t_test(
 
 t_test(
     name='wildmatch',
-    srcs=['wildmatch_test.c', 'log_stub.c'],
+    srcs=['wildmatch_test.c', 'log_stub.cpp'],
     deps=[
       '@/watchman:testsupport',
       '@/watchman/thirdparty/wildmatch:wildmatch',

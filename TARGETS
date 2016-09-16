@@ -80,7 +80,7 @@ buck_cxx_library(
 cpp_library(
     name='sysdep_watcher',
     supported_platforms_regex='glibc',
-    srcs=['watcher/inotify.c'],
+    srcs=['watcher/inotify.cpp'],
     deps=[':headers', ':err'],
     # We use constructors to declare commands rather than maintaining
     # static tables of things.  Ensure that they don't get stripped
@@ -92,7 +92,7 @@ cpp_library(
 cpp_library(
     name='sysdep_watcher',
     supported_platforms_regex='macos',
-    srcs=['watcher/fsevents.c', 'watcher/kqueue.c'],
+    srcs=['watcher/fsevents.cpp', 'watcher/kqueue.cpp'],
     deps=[':headers'],
     # We use constructors to declare commands rather than maintaining
     # static tables of things.  Ensure that they don't get stripped
@@ -104,7 +104,7 @@ cpp_library(
 cpp_library(
     name='sysdep_watcher',
     supported_platforms_regex='windows',
-    srcs=['watcher/win32.c'],
+    srcs=['watcher/win32.cpp'],
     deps=[':headers'],
     # We use constructors to declare commands rather than maintaining
     # static tables of things.  Ensure that they don't get stripped
@@ -113,26 +113,26 @@ cpp_library(
 )
 
 cpp_library(name="log",
-            srcs=["log.c"],
+            srcs=["log.cpp"],
             deps=[':headers'], )
 
 cpp_library(name='hash',
-            srcs=['hash.c'],
+            srcs=['hash.cpp'],
             deps=[':headers'], )
 
 cpp_library(name="string",
-            srcs=["string.c"],
+            srcs=["string.cpp"],
             deps=[':headers', ':hash'], )
 
 cpp_library(
     name="err",
-    srcs=["root/warnerr.c", "root/poison.c"],
+    srcs=["root/warnerr.cpp", "root/poison.cpp"],
     deps=[':headers'],
 )
 
 cpp_library(
     name='pcre',
-    srcs=['query/pcre.c'],
+    srcs=['query/pcre.cpp'],
     deps=[':headers'],
     compiler_flags=['-DHAVE_PCRE_H'],
     external_deps=['pcre'],
@@ -141,15 +141,15 @@ cpp_library(
 cpp_library(
     name='testsupport',
     srcs=[
-        'argv.c',
-        'bser.c',
-        'cfg.c',
-        'expflags.c',
-        'ht.c',
-        'ignore.c',
-        'opendir.c',
-        'pending.c',
-        'time.c',
+        'argv.cpp',
+        'bser.cpp',
+        'cfg.cpp',
+        'expflags.cpp',
+        'ht.cpp',
+        'ignore.cpp',
+        'opendir.cpp',
+        'pending.cpp',
+        'time.cpp',
     ],
     deps=[
         ':headers',
@@ -164,10 +164,10 @@ cpp_library(
 cpp_library(
     name="watchmanlib",
     srcs=glob(
-        ["*.c", "query/*.c", "watcher/auto.c", "root/*.c", "cmds/*.c"],
+        ["*.cpp", "query/*.cpp", "watcher/auto.cpp", "root/*.cpp", "cmds/*.cpp"],
         excludes=[
-            'main.c', 'stream_win.c', 'log.c', 'query/pcre.c', 'root/warnerr.c',
-            'root/poison.c'
+            'main.cpp', 'stream_win.cpp', 'log.cpp', 'query/pcre.cpp', 'root/warnerr.cpp',
+            'root/poison.cpp'
         ]
     ),
     # We use constructors to declare commands rather than maintaining
@@ -190,7 +190,7 @@ cpp_library(
 # and the watchman binary itself
 cpp_binary(
     name="watchman",
-    srcs=["main.c"],
+    srcs=["main.cpp"],
     deps=[
         ':headers',
         ':watchmanlib',

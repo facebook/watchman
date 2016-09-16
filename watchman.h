@@ -5,7 +5,6 @@
 #define WATCHMAN_H
 
 #include "watchman_system.h"
-#include "jansson.h"
 
 #include "thirdparty/jansson/jansson.h"
 #include "watchman_hash.h"
