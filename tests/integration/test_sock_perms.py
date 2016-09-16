@@ -19,6 +19,7 @@ import random
 import stat
 import string
 import tempfile
+import time
 try:
     import unittest2 as unittest
 except ImportError:
@@ -48,6 +49,24 @@ class TestSockPerms(unittest.TestCase):
                 return gid
         self.skipTest('no usable groups found')
 
+    def waitFor(self, cond, timeout=10):
+        deadline = time.time() + timeout
+        res = None
+        while time.time() < deadline:
+            res = cond()
+            if res:
+                return [True, res]
+            time.sleep(0.03)
+        return [False, res]
+
+    def assertWaitFor(self, cond, timeout=10, message=None):
+        status, res = self.waitFor(cond, timeout)
+        if status:
+            return res
+        if message is None:
+            message = "%s was not met in %s seconds: %s" % (cond, timeout, res)
+        self.fail(message)
+
     def test_too_open_user_dir(self):
         instance = self._new_instance({}, expect_success=False)
         os.makedirs(instance.user_dir)
@@ -55,8 +74,10 @@ class TestSockPerms(unittest.TestCase):
         with self.assertRaises(pywatchman.SocketConnectError) as ctx:
             instance.start()
         self.assertEqual(ctx.exception.sockpath, instance.getSockPath())
-        self.assertIn('the permissions on %s allow others to write to it'
-                      % instance.user_dir, instance.getCLILogContents())
+
+        wanted = 'the permissions on %s allow others to write to it' % (
+            instance.user_dir)
+        self.assertWaitFor(lambda: wanted in instance.getCLILogContents())
 
     def test_invalid_sock_group(self):
         # create a random group name
@@ -73,8 +94,8 @@ class TestSockPerms(unittest.TestCase):
         with self.assertRaises(pywatchman.SocketConnectError) as ctx:
             instance.start()
         self.assertEqual(ctx.exception.sockpath, instance.getSockPath())
-        self.assertIn("group '%s' does not exist" % group_name,
-                      instance.getCLILogContents())
+        wanted = "group '%s' does not exist" % group_name
+        self.assertWaitFor(lambda: wanted in instance.getCLILogContents())
 
     def test_default_sock_group(self):
         # By default the socket group should be the effective gid of the process
@@ -102,16 +123,16 @@ class TestSockPerms(unittest.TestCase):
         with self.assertRaises(pywatchman.SocketConnectError) as ctx:
             instance.start()
         self.assertEqual(ctx.exception.sockpath, instance.getSockPath())
-        self.assertIn('Expected config value sock_access to be an object',
-                      instance.getCLILogContents())
+        wanted = 'Expected config value sock_access to be an object'
+        self.assertWaitFor(lambda: wanted in instance.getCLILogContents())
 
         instance = self._new_instance({'sock_access': {'group': 'oui'}},
                                       expect_success=False)
         with self.assertRaises(pywatchman.SocketConnectError) as ctx:
             instance.start()
         self.assertEqual(ctx.exception.sockpath, instance.getSockPath())
-        self.assertIn('Expected config value sock_access.group to be a boolean',
-                      instance.getCLILogContents())
+        wanted = 'Expected config value sock_access.group to be a boolean'
+        self.assertWaitFor(lambda: wanted in instance.getCLILogContents())
 
     def test_default_sock_access(self):
         instance = self._new_instance({})
