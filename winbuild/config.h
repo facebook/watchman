@@ -21,7 +21,11 @@
 
 #endif
 
+#define _ALLOW_KEYWORD_MACROS
+#ifndef __cplusplus
 #define inline __inline
+#endif
+
 #define WIN32_LEAN_AND_MEAN
 #define EX_USAGE 1
 #include <windows.h>
