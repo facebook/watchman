@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <unordered_map>
 
 #define HINT_NUM_DIRS 128*1024
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
@@ -41,7 +42,7 @@ struct watchman_root {
   /* path to the query cookie dir */
   w_string query_cookie_dir;
   w_string_t *query_cookie_prefix{nullptr};
-  w_ht_t *query_cookies{nullptr};
+  std::unordered_map<w_string, watchman_query_cookie*> query_cookies;
 
   struct watchman_ignore ignore;
 

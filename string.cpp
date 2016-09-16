@@ -187,6 +187,10 @@ const char* w_string::c_str() const {
   return str_->buf;
 }
 
+bool w_string::operator==(const w_string& other) const {
+  return w_string_equal(str_, other.str_);
+}
+
 w_string w_string::pathCat(std::initializer_list<w_string_piece> elems) {
   uint32_t length = 0;
   w_string_t *s;
