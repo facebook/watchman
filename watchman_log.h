@@ -18,6 +18,10 @@
 # define WATCHMAN_FMT_STRING(x) x
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int log_level;
 extern char *log_name;
 const char *w_set_thread_name(const char *fmt, ...);
@@ -28,6 +32,12 @@ void w_log(int level, WATCHMAN_FMT_STRING(const char *fmt), ...)
   __attribute__((format(printf, 2, 3)))
 #endif
 ;
+bool w_should_log_to_clients(int level);
+void w_log_to_clients(int level, const char *buf);
+
+#ifdef __cplusplus
+}
+#endif
 
 #define w_check(e, ...)                                                        \
   if (!(e)) {                                                                  \
@@ -42,8 +52,5 @@ void w_log(int level, WATCHMAN_FMT_STRING(const char *fmt), ...)
 #else
 #define w_assert(e, ...) w_check(e, __VA_ARGS__)
 #endif
-
-bool w_should_log_to_clients(int level);
-void w_log_to_clients(int level, const char *buf);
 
 #endif

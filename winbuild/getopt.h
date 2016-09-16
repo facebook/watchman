@@ -7,6 +7,10 @@
 #ifndef GETOPT_LONG_H
 #define GETOPT_LONG_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int   opterr;
 extern int   optind;
 extern int   optopt;
@@ -28,5 +32,9 @@ extern int getopt_long(int argc, char *const argv[],
            const struct option * longopts, int *longindex);
 
 int getopt(int nargc, char * const nargv[], const char *ostr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif   /* GETOPT_LONG_H */

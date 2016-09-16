@@ -61,7 +61,7 @@ function parse_dep_stream(is, write_back) {
       }
 
       if (write_back) {
-        var depfilename = current_file.replace(/.c$/, '.dep');
+        var depfilename = current_file.replace(/.(c|cpp)$/, '.dep');
         depfile = fs.CreateTextFile(depfilename, true);
         depfile.WriteLine(current_file);
       }
@@ -76,8 +76,8 @@ function parse_dep_stream(is, write_back) {
 }
 
 function parse_dep_file(srcfile) {
-  var depfile = srcfile.replace(/\.c$/, '.dep');
-  var objfile = srcfile.replace(/\.c$/, '.obj');
+  var depfile = srcfile.replace(/\.(c|cpp)$/, '.dep');
+  var objfile = srcfile.replace(/\.(c|cpp)$/, '.obj');
 
   if (!fs.FileExists(depfile)) {
     return null;
@@ -177,7 +177,7 @@ function find_c_files(dir) {
   var en = new Enumerator(f.files);
   for (; !en.atEnd(); en.moveNext()) {
     var item = en.item();
-    if (/\.c$/.exec(item)) {
+    if (/\.(c|cpp)$/.exec(item)) {
       var rel = item.Path.substr(cwd.length);
       var dep = parse_dep_file(rel);
       if (dep) {
