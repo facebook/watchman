@@ -8,7 +8,7 @@ DIR *win_opendir(const char *path, int nofollow) {
   WCHAR *wpath = NULL;
   int err = 0;
 
-  d = calloc(1, sizeof(*d));
+  d = (watchman_win32_dir*)calloc(1, sizeof(*d));
   if (!d) {
     err = errno;
     goto err;

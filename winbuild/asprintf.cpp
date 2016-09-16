@@ -28,7 +28,7 @@ int vasprintf(char **out, WATCHMAN_FMT_STRING(const char *fmt), va_list ap) {
 
     // Need a bigger boat
     alloc *= 2;
-    newbuf = realloc(buf == stack ? NULL : buf, alloc);
+    newbuf = (char*)realloc(buf == stack ? NULL : buf, alloc);
     if (!newbuf) {
       if (buf != stack) {
         free(buf);
