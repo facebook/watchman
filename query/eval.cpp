@@ -33,7 +33,6 @@ w_string_t *w_query_ctx_get_wholename(
     struct w_query_ctx *ctx
 )
 {
-  w_string_t *full_name;
   uint32_t name_start;
 
   if (ctx->wholename) {
@@ -48,13 +47,12 @@ w_string_t *w_query_ctx_get_wholename(
     name_start = ctx->lock->root->root_path->len + 1;
   }
 
-  full_name = w_string_path_cat(compute_parent_path(ctx, ctx->file),
-                                w_file_get_name(ctx->file));
+  auto full_name = w_string::pathCat(
+      {compute_parent_path(ctx, ctx->file), w_file_get_name(ctx->file)});
 
   // Record the name relative to the root
-  ctx->wholename = w_string_slice(full_name, name_start,
-      full_name->len - name_start);
-  w_string_delref(full_name);
+  ctx->wholename =
+      w_string_slice(full_name, name_start, full_name.size() - name_start);
 
   return ctx->wholename;
 }
@@ -308,10 +306,11 @@ static bool path_generator(
 
   for (i = 0; i < query->npaths; i++) {
     struct watchman_dir *dir;
-    w_string_t *dir_name, *file_name, *full_name;
+    w_string_t *file_name;
+    w_string dir_name;
 
     // Compose path with root
-    full_name = w_string_path_cat(relative_root, query->paths[i].name);
+    auto full_name = w_string::pathCat({relative_root, query->paths[i].name});
 
     // special case of root dir itself
     if (w_string_equal(lock->root->root_path, full_name)) {
@@ -324,18 +323,15 @@ static bool path_generator(
     // It's not quite so simple though, because we may resolve a dir
     // that had been deleted and replaced by a file.
     // We prefer to resolve the parent and walk down.
-    dir_name = w_string_dirname(full_name);
+    dir_name = full_name.dirName();
     if (!dir_name) {
-      w_string_delref(full_name);
       continue;
     }
 
     dir = w_root_resolve_dir_read(lock, dir_name);
-    w_string_delref(dir_name);
 
     if (!dir) {
       // Doesn't exist, and never has
-      w_string_delref(full_name);
       continue;
     }
 
@@ -359,14 +355,12 @@ static bool path_generator(
 
     // Is it a dir?
     if (!dir->dirs) {
-      w_string_delref(full_name);
       continue;
     }
 
     file_name = w_string_basename(full_name);
     dir = (watchman_dir*)w_ht_val_ptr(w_ht_get(dir->dirs, w_ht_ptr_val(file_name)));
     w_string_delref(file_name);
-    w_string_delref(full_name);
 is_dir:
     // We got a dir; process recursively to specified depth
     if (dir) {

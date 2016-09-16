@@ -6,6 +6,77 @@
 #include <new>
 #include <stdexcept>
 
+// string piece
+
+w_string_piece::w_string_piece() : s_(nullptr), e_(nullptr) {}
+w_string_piece::w_string_piece(std::nullptr_t) : s_(nullptr), e_(nullptr) {}
+
+w_string w_string_piece::asWString(w_string_type_t stringType) const {
+  return w_string(data(), size(), stringType);
+}
+
+bool w_string_piece::pathIsAbsolute() const {
+  return w_is_path_absolute_cstr_len(data(), size());
+}
+
+w_string_piece w_string_piece::dirName() const {
+  for (auto end = e_; end >= s_; --end) {
+    if (*end == WATCHMAN_DIR_SEP) {
+      /* found the end of the parent dir */
+      return w_string_piece(s_, end - s_);
+    }
+  }
+  return nullptr;
+}
+
+w_string_piece w_string_piece::baseName() const {
+  for (auto end = e_; end >= s_; --end) {
+    if (*end == WATCHMAN_DIR_SEP) {
+      /* found the end of the parent dir */
+      return w_string_piece(s_, end - s_);
+    }
+  }
+
+  return *this;
+}
+
+bool w_string_piece::operator==(w_string_piece other) const {
+  if (s_ == other.s_ && e_ == other.e_) {
+    return true;
+  }
+  if (size() != other.size()) {
+    return false;
+  }
+  return memcmp(data(), other.data(), size()) == 0;
+}
+
+bool w_string_piece::startsWith(w_string_piece prefix) const {
+  if (prefix.size() > size()) {
+    return false;
+  }
+  return memcmp(data(), prefix.data(), prefix.size()) == 0;
+}
+
+bool w_string_piece::startsWithCaseInsensitive(w_string_piece prefix) const{
+  if (prefix.size() > size()) {
+    return false;
+  }
+
+  auto me = s_;
+  auto pref = prefix.s_;
+
+  while (pref < prefix.e_) {
+    if (tolower((uint8_t)*me) != tolower((uint8_t)*pref)) {
+      return false;
+    }
+    ++pref;
+    ++me;
+  }
+  return true;
+}
+
+// string
+
 w_string::w_string() {}
 
 w_string::w_string(std::nullptr_t) {}
@@ -114,6 +185,40 @@ const char* w_string::c_str() const {
         "string is not NULL terminated, use asNullTerminated() or makeNullTerminated()!");
   }
   return str_->buf;
+}
+
+w_string w_string::pathCat(std::initializer_list<w_string_piece> elems) {
+  uint32_t length = 0;
+  w_string_t *s;
+  char *buf;
+
+  for (auto &p : elems) {
+    length += p.size() + 1;
+  }
+
+  s = (w_string_t*)(new char[sizeof(*s) + length]);
+  new (s) watchman_string();
+
+  s->refcnt = 1;
+  buf = (char *)(s + 1);
+  s->buf = buf;
+
+  for (auto &p : elems) {
+    if (p.size() == 0 && buf == s->buf) {
+      // Skip leading empty strings
+      continue;
+    }
+    if (buf != s->buf) {
+      *buf = WATCHMAN_DIR_SEP;
+      ++buf;
+    }
+    memcpy(buf, p.data(), p.size());
+    buf += p.size();
+  }
+  *buf = 0;
+  s->len = buf - s->buf;
+
+  return s;
 }
 
 uint32_t w_string_compute_hval(w_string_t *str) {
