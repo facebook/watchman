@@ -11,7 +11,7 @@
 
 #include "thirdparty/tap.h"
 #include "thirdparty/libart/src/art.h"
-#include "watchman.h"
+#include "watchman_system.h"
 
 #define stringy2(line)  #line
 #define stringy(line)   stringy2(line)

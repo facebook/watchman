@@ -100,14 +100,20 @@ void w_perf_add_root_meta(w_perf_t *perf, const w_root_t *root) {
   // The funky comments at the end of the line force clang-format to keep the
   // elements on lines of their own
   w_perf_add_meta(
-      perf, "root",
+      perf,
+      "root",
       json_pack(
-          "{s:o, s:i, s:i, s:i, s:b, s:u}",          //
-          "path", w_string_to_json(root->root_path), //
-          "recrawl_count", root->recrawl_count,      //
-          "number", root->number,                    //
-          "ticks", root->ticks,                      //
-          "case_sensitive", root->case_sensitive,    //
+          "{s:o, s:i, s:i, s:i, s:b, s:u}",
+          "path",
+          w_string_to_json(root->root_path),
+          "recrawl_count",
+          root->recrawl_count,
+          "number",
+          root->inner.number,
+          "ticks",
+          root->inner.ticks,
+          "case_sensitive",
+          root->case_sensitive,
           // there is potential to race with a concurrent w_root_init in some
           // recrawl scenarios in the test harness.  In those cases it is
           // possible that root->watcher_ops is briefly set to a NULL pointer.
@@ -115,8 +121,7 @@ void w_perf_add_root_meta(w_perf_t *perf, const w_root_t *root) {
           // stable address, we can safely deal with reading a stale value, but
           // we do need to guard against a NULL pointer value.
           "watcher",
-          root->watcher_ops ? root->watcher_ops->name : "<recrawling>" //
-          ));
+          root->watcher_ops ? root->watcher_ops->name : "<recrawling>"));
 }
 
 void w_perf_set_wall_time_thresh(w_perf_t *perf, double thresh) {

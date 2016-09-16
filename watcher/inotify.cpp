@@ -112,7 +112,7 @@ bool inot_root_init(w_root_t *root, char **errmsg) {
     *errmsg = strdup("out of memory");
     return false;
   }
-  root->watch = state;
+  root->inner.watch = state;
   pthread_mutex_init(&state->lock, NULL);
 
 #ifdef HAVE_INOTIFY_INIT1
@@ -136,7 +136,7 @@ bool inot_root_init(w_root_t *root, char **errmsg) {
 }
 
 void inot_root_dtor(w_root_t *root) {
-  auto state = (inot_root_state*)root->watch;
+  auto state = (inot_root_state*)root->inner.watch;
 
   if (!state) {
     return;
@@ -156,7 +156,7 @@ void inot_root_dtor(w_root_t *root) {
   }
 
   free(state);
-  root->watch = NULL;
+  root->inner.watch = NULL;
 }
 
 static void inot_root_signal_threads(w_root_t *root) {
@@ -186,7 +186,7 @@ static struct watchman_dir_handle *
 inot_root_start_watch_dir(struct write_locked_watchman_root *lock,
                           struct watchman_dir *dir, struct timeval now,
                           const char *path) {
-  auto state = (inot_root_state*)lock->root->watch;
+  auto state = (inot_root_state*)lock->root->inner.watch;
   struct watchman_dir_handle *osdir = NULL;
   int newwd, err;
   w_string_t *dir_name;
@@ -245,7 +245,7 @@ static void process_inotify_event(
     struct inotify_event *ine,
     struct timeval now)
 {
-  auto state = (inot_root_state*)root->watch;
+  auto state = (inot_root_state*)root->inner.watch;
   char flags_label[128];
 
   w_expand_flags(inflags, ine->mask, flags_label, sizeof(flags_label));
@@ -388,7 +388,7 @@ static void process_inotify_event(
 static bool inot_root_consume_notify(w_root_t *root,
     struct watchman_pending_collection *coll)
 {
-  auto state = (inot_root_state*)root->watch;
+  auto state = (inot_root_state*)root->inner.watch;
   struct inotify_event *ine;
   char *iptr;
   int n;
@@ -443,7 +443,7 @@ static bool inot_root_consume_notify(w_root_t *root,
 }
 
 static bool inot_root_wait_notify(w_root_t *root, int timeoutms) {
-  auto state = (inot_root_state *)root->watch;
+  auto state = (inot_root_state *)root->inner.watch;
   int n;
   struct pollfd pfd;
 

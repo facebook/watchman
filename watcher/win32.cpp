@@ -34,7 +34,7 @@ bool winwatch_root_init(w_root_t *root, char **errmsg) {
     *errmsg = strdup("out of memory");
     return false;
   }
-  root->watch = state;
+  root->inner.watch = state;
 
   wpath = w_utf8_to_win_unc(root->root_path->buf, root->root_path->len);
   if (!wpath) {
@@ -84,7 +84,7 @@ bool winwatch_root_init(w_root_t *root, char **errmsg) {
 }
 
 void winwatch_root_dtor(w_root_t *root) {
-  auto state = (winwatch_root_state*)root->watch;
+  auto state = (winwatch_root_state*)root->inner.watch;
 
   if (!state) {
     return;
@@ -102,18 +102,18 @@ void winwatch_root_dtor(w_root_t *root) {
   CloseHandle(state->dir_handle);
 
   free(state);
-  root->watch = NULL;
+  root->inner.watch = NULL;
 }
 
 static void winwatch_root_signal_threads(w_root_t *root) {
-  auto state = (winwatch_root_state*)root->watch;
+  auto state = (winwatch_root_state*)root->inner.watch;
 
   SetEvent(state->ping);
 }
 
 static void *readchanges_thread(void *arg) {
   w_root_t *root = (w_root_t*)arg;
-  auto state = (winwatch_root_state*)root->watch;
+  auto state = (winwatch_root_state*)root->inner.watch;
   DWORD size = WATCHMAN_BATCH_LIMIT * (sizeof(FILE_NOTIFY_INFORMATION) + 512);
   char *buf;
   DWORD err, filter;
@@ -286,7 +286,7 @@ out:
 }
 
 static bool winwatch_root_start(w_root_t *root) {
-  auto state = (winwatch_root_state*)root->watch;
+  auto state = (winwatch_root_state*)root->inner.watch;
   int err;
   unused_parameter(root);
 
@@ -356,7 +356,7 @@ winwatch_root_stop_watch_dir(struct write_locked_watchman_root *lock,
 static bool winwatch_root_consume_notify(w_root_t *root,
     struct watchman_pending_collection *coll)
 {
-  auto state = (winwatch_root_state*)root->watch;
+  auto state = (winwatch_root_state*)root->inner.watch;
   struct winwatch_changed_item *head, *item;
   struct timeval now;
   int n = 0;
@@ -386,7 +386,7 @@ static bool winwatch_root_consume_notify(w_root_t *root,
 }
 
 static bool winwatch_root_wait_notify(w_root_t *root, int timeoutms) {
-  auto state = (winwatch_root_state*)root->watch;
+  auto state = (winwatch_root_state*)root->inner.watch;
   struct timeval now, delta, target;
   struct timespec ts;
 

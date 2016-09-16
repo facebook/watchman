@@ -44,13 +44,13 @@ w_root_resolve_dir_read(struct read_locked_watchman_root *lock,
   const char *dir_end;
 
   if (w_string_equal(dir_name, lock->root->root_path)) {
-    return lock->root->root_dir;
+    return lock->root->inner.root_dir;
   }
 
   dir_component = dir_name->buf;
   dir_end = dir_component + dir_name->len;
 
-  dir = lock->root->root_dir;
+  dir = lock->root->inner.root_dir;
   dir_component += lock->root->root_path->len + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");
@@ -102,13 +102,13 @@ struct watchman_dir *w_root_resolve_dir(struct write_locked_watchman_root *lock,
   const char *dir_end;
 
   if (w_string_equal(dir_name, lock->root->root_path)) {
-    return lock->root->root_dir;
+    return lock->root->inner.root_dir;
   }
 
   dir_component = dir_name->buf;
   dir_end = dir_component + dir_name->len;
 
-  dir = lock->root->root_dir;
+  dir = lock->root->inner.root_dir;
   dir_component += lock->root->root_path->len + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");

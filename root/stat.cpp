@@ -115,7 +115,7 @@ void stat_path(struct write_locked_watchman_root *lock,
     if (!file->exists) {
       /* we're transitioning from deleted to existing,
        * so we're effectively new again */
-      file->ctime.ticks = root->ticks;
+      file->ctime.ticks = root->inner.ticks;
       file->ctime.timestamp = now.tv_sec;
       /* if a dir was deleted and now exists again, we want
        * to crawl it again */
@@ -164,7 +164,8 @@ void stat_path(struct write_locked_watchman_root *lock,
         file->symlink_target = new_symlink_target;
 
         if (symlink_changed && cfg_get_bool(root, "watch_symlinks", false)) {
-          w_pending_coll_add(&root->pending_symlink_targets, full_path, now, 0);
+          w_pending_coll_add(
+              &root->inner.pending_symlink_targets, full_path, now, 0);
         }
       }
     } else if (file->symlink_target) {

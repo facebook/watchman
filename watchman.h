@@ -340,49 +340,51 @@ struct watchman_root {
   /* the watcher that we're using for this root */
   struct watchman_ops *watcher_ops;
 
-  /* --- everything below this point will be reset on w_root_init --- */
-  bool _init_sentinel_;
+  /* --- everything in inner will be reset on w_root_init --- */
+  struct Inner {
+    /* root number */
+    uint32_t number{0};
 
-  /* root number */
-  uint32_t number;
+    // Watcher specific state
+    watchman_watcher_t watch{0};
 
-  // Watcher specific state
-  watchman_watcher_t watch;
+    struct watchman_dir* root_dir{0};
 
-  struct watchman_dir *root_dir;
+    /* the most recently changed file */
+    struct watchman_file* latest_file{0};
 
-  /* the most recently changed file */
-  struct watchman_file *latest_file;
+    /* current tick */
+    uint32_t ticks{1};
 
-  /* current tick */
-  uint32_t ticks;
+    bool done_initial{0};
+    /* if true, we've decided that we should re-crawl the root
+     * for the sake of ensuring consistency */
+    bool should_recrawl{0};
+    bool cancelled{0};
 
-  bool done_initial;
-  /* if true, we've decided that we should re-crawl the root
-   * for the sake of ensuring consistency */
-  bool should_recrawl;
-  bool cancelled;
+    /* map of cursor name => last observed tick value */
+    w_ht_t* cursors{0};
 
-  /* map of cursor name => last observed tick value */
-  w_ht_t *cursors;
+    /* map of filename suffix => watchman_file at the head
+     * of the suffix index.  Linkage via suffix_next */
+    w_ht_t* suffixes{0};
 
-  /* map of filename suffix => watchman_file at the head
-   * of the suffix index.  Linkage via suffix_next */
-  w_ht_t *suffixes;
+    /* Collection of symlink targets that we try to watch.
+     * Reads and writes on this collection are only safe if done from the IO
+     * thread; this collection is not protected by the root lock. */
+    struct watchman_pending_collection pending_symlink_targets;
 
-  /* Collection of symlink targets that we try to watch.
-   * Reads and writes on this collection are only safe if done from the IO
-   * thread; this collection is not protected by the root lock. */
-  struct watchman_pending_collection pending_symlink_targets;
+    uint32_t next_cmd_id{0};
+    uint32_t last_trigger_tick{0};
+    uint32_t pending_trigger_tick{0};
+    uint32_t pending_sub_tick{0};
+    uint32_t last_age_out_tick{0};
+    time_t last_age_out_timestamp{0};
+    time_t last_cmd_timestamp{0};
+    time_t last_reap_timestamp{0};
 
-  uint32_t next_cmd_id;
-  uint32_t last_trigger_tick;
-  uint32_t pending_trigger_tick;
-  uint32_t pending_sub_tick;
-  uint32_t last_age_out_tick;
-  time_t last_age_out_timestamp;
-  time_t last_cmd_timestamp;
-  time_t last_reap_timestamp;
+    ~Inner();
+  } inner;
 };
 
 struct write_locked_watchman_root {

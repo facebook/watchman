@@ -39,9 +39,9 @@ bool consider_reap(struct write_locked_watchman_root *lock) {
 
   time(&now);
 
-  if (now > root->last_cmd_timestamp + root->idle_reap_age &&
+  if (now > root->inner.last_cmd_timestamp + root->idle_reap_age &&
       (root->commands == NULL || w_ht_size(root->commands) == 0) &&
-      (now > root->last_reap_timestamp) &&
+      (now > root->inner.last_reap_timestamp) &&
       !root_has_subscriptions(root)) {
     // We haven't had any activity in a while, and there are no registered
     // triggers or subscriptions against this watch.
@@ -53,7 +53,7 @@ bool consider_reap(struct write_locked_watchman_root *lock) {
     return true;
   }
 
-  root->last_reap_timestamp = now;
+  root->inner.last_reap_timestamp = now;
 
   return false;
 }

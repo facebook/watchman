@@ -90,7 +90,7 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
   auto stream = (fse_stream *)clientCallBackInfo;
   w_root_t *root = stream->root;
   struct watchman_fsevent *head = NULL, *tail = NULL, *evt;
-  auto state = (fsevents_root_state*)root->watch;
+  auto state = (fsevents_root_state*)root->inner.watch;
 
   unused_parameter(streamRef);
 
@@ -276,7 +276,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
   double latency;
   struct fse_stream *fse_stream = (struct fse_stream*)calloc(1, sizeof(*fse_stream));
   struct stat st;
-  auto state = (fsevents_root_state*)root->watch;
+  auto state = (fsevents_root_state*)root->inner.watch;
 
   if (!fse_stream) {
     // Note that w_string_new will terminate the process on OOM
@@ -439,7 +439,7 @@ static void *fsevents_thread(void *arg)
   auto root = (w_root_t *)arg;
   CFFileDescriptorRef fdref;
   CFFileDescriptorContext fdctx;
-  auto state = (fsevents_root_state *)root->watch;
+  auto state = (fsevents_root_state *)root->inner.watch;
 
   w_set_thread_name("fsevents %.*s", root->root_path->len,
       root->root_path->buf);
@@ -521,7 +521,7 @@ static bool fsevents_root_consume_notify(w_root_t *root,
   int n = 0;
   struct timeval now;
   bool recurse;
-  auto state = (fsevents_root_state *)root->watch;
+  auto state = (fsevents_root_state *)root->inner.watch;
   char flags_label[128];
 
   pthread_mutex_lock(&state->fse_mtx);
@@ -592,7 +592,7 @@ bool fsevents_root_init(w_root_t *root, char **errmsg) {
     *errmsg = strdup("out of memory");
     return false;
   }
-  root->watch = state;
+  root->inner.watch = state;
 
   if (pipe(state->fse_pipe)) {
     ignore_result(asprintf(errmsg, "watch(%.*s): pipe error: %s",
@@ -609,7 +609,7 @@ bool fsevents_root_init(w_root_t *root, char **errmsg) {
 }
 
 void fsevents_root_dtor(w_root_t *root) {
-  auto state = (fsevents_root_state *)root->watch;
+  auto state = (fsevents_root_state *)root->inner.watch;
 
   if (!state) {
     return;
@@ -635,18 +635,18 @@ void fsevents_root_dtor(w_root_t *root) {
   }
 
   free(state);
-  root->watch = NULL;
+  root->inner.watch = NULL;
 }
 
 static void fsevents_root_signal_threads(w_root_t *root) {
-  auto state = (fsevents_root_state *)root->watch;
+  auto state = (fsevents_root_state *)root->inner.watch;
 
   write(state->fse_pipe[1], "X", 1);
 }
 
 static bool fsevents_root_start(w_root_t *root) {
   int err;
-  auto state = (fsevents_root_state *)root->watch;
+  auto state = (fsevents_root_state *)root->inner.watch;
 
   // Spin up the fsevents processing thread; it owns a ref on the root
   w_root_addref(root);
@@ -675,7 +675,7 @@ static bool fsevents_root_start(w_root_t *root) {
 }
 
 static bool fsevents_root_wait_notify(w_root_t *root, int timeoutms) {
-  auto state = (fsevents_root_state *)root->watch;
+  auto state = (fsevents_root_state *)root->inner.watch;
   struct timeval now, delta, target;
   struct timespec ts;
 
@@ -782,7 +782,7 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
   }
 
   w_root_lock(&unlocked, "debug-fsevents-inject-drop", &lock);
-  state = (fsevents_root_state*)lock.root->watch;
+  state = (fsevents_root_state*)lock.root->inner.watch;
 
   if (!state->attempt_resync_on_drop) {
     w_root_unlock(&lock, &unlocked);

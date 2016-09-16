@@ -12,7 +12,7 @@ static void remove_from_suffix_list(struct write_locked_watchman_root *lock,
   }
 
   auto sufhead = (watchman_file*)w_ht_val_ptr(
-      w_ht_get(lock->root->suffixes, w_ht_ptr_val(suffix)));
+      w_ht_get(lock->root->inner.suffixes, w_ht_ptr_val(suffix)));
   if (sufhead) {
     if (file->suffix_prev) {
       file->suffix_prev->suffix_next = file->suffix_next;
@@ -22,8 +22,10 @@ static void remove_from_suffix_list(struct write_locked_watchman_root *lock,
     }
     if (sufhead == file) {
       sufhead = file->suffix_next;
-      w_ht_replace(lock->root->suffixes, w_ht_ptr_val(suffix),
-                   w_ht_ptr_val(sufhead));
+      w_ht_replace(
+          lock->root->inner.suffixes,
+          w_ht_ptr_val(suffix),
+          w_ht_ptr_val(sufhead));
     }
   }
 
@@ -60,8 +62,8 @@ static void age_out_file(struct write_locked_watchman_root *lock,
   w_log(W_LOG_DBG, "age_out file=%.*s\n", full_name->len, full_name->buf);
 
   // Revise tick for fresh instance reporting
-  lock->root->last_age_out_tick =
-      MAX(lock->root->last_age_out_tick, file->otime.ticks);
+  lock->root->inner.last_age_out_tick =
+      MAX(lock->root->inner.last_age_out_tick, file->otime.ticks);
 
   // And remove from the overall file list
   remove_from_file_list(lock, file);
@@ -111,7 +113,8 @@ void consider_age_out(struct write_locked_watchman_root *lock)
 
   time(&now);
 
-  if (now <= lock->root->last_age_out_timestamp + lock->root->gc_interval) {
+  if (now <=
+      lock->root->inner.last_age_out_timestamp + lock->root->gc_interval) {
     // Don't check too often
     return;
   }
@@ -133,10 +136,10 @@ void w_root_perform_age_out(struct write_locked_watchman_root *lock,
   w_root_t *root = lock->root;
 
   time(&now);
-  root->last_age_out_timestamp = now;
+  root->inner.last_age_out_timestamp = now;
   aged_dir_names = w_ht_new(2, &w_ht_string_funcs);
 
-  file = root->latest_file;
+  file = root->inner.latest_file;
   while (file) {
     if (file->exists || file->otime.timestamp + min_age > now) {
       file = file->next;
@@ -161,11 +164,11 @@ void w_root_perform_age_out(struct write_locked_watchman_root *lock,
   w_ht_free(aged_dir_names);
 
   // Age out cursors too.
-  if (w_ht_first(root->cursors, &i)) do {
-    if (i.value < root->last_age_out_tick) {
-      w_ht_iter_del(root->cursors, &i);
+  if (w_ht_first(root->inner.cursors, &i)) do {
+    if (i.value < root->inner.last_age_out_tick) {
+      w_ht_iter_del(root->inner.cursors, &i);
     }
-  } while (w_ht_next(root->cursors, &i));
+  } while (w_ht_next(root->inner.cursors, &i));
 }
 
 /* vim:ts=2:sw=2:et:

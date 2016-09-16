@@ -34,12 +34,16 @@ void process_subscriptions(struct write_locked_watchman_root *lock) {
         w_log(W_LOG_DBG, "root doesn't match, skipping\n");
         continue;
       }
-      w_log(W_LOG_DBG, "client->stm=%p sub=%p %s, last=%" PRIu32
-          " pending=%" PRIu32 "\n",
-          client->client.stm, sub, sub->name->buf, sub->last_sub_tick,
-          root->pending_sub_tick);
+      w_log(
+          W_LOG_DBG,
+          "client->stm=%p sub=%p %s, last=%" PRIu32 " pending=%" PRIu32 "\n",
+          client->client.stm,
+          sub,
+          sub->name->buf,
+          sub->last_sub_tick,
+          root->inner.pending_sub_tick);
 
-      if (sub->last_sub_tick == root->pending_sub_tick) {
+      if (sub->last_sub_tick == root->inner.pending_sub_tick) {
         continue;
       }
 
@@ -77,7 +81,7 @@ void process_subscriptions(struct write_locked_watchman_root *lock) {
 
         if (drop) {
           // fast-forward over any notifications while in the drop state
-          sub->last_sub_tick = root->pending_sub_tick;
+          sub->last_sub_tick = root->inner.pending_sub_tick;
           w_log(W_LOG_DBG, "dropping subscription notifications for %s "
               "until state %s is vacated\n", sub->name->buf, policy_name->buf);
           continue;
@@ -97,7 +101,7 @@ void process_subscriptions(struct write_locked_watchman_root *lock) {
       }
 
       w_run_subscription_rules(client, sub, lock);
-      sub->last_sub_tick = root->pending_sub_tick;
+      sub->last_sub_tick = root->inner.pending_sub_tick;
 
     } while (w_ht_next(client->subscriptions, &citer));
 
@@ -119,7 +123,7 @@ static bool subscription_generator(w_query *query,
       sub->name->buf, sub);
 
   // Walk back in time until we hit the boundary
-  for (f = lock->root->latest_file; f; f = f->next) {
+  for (f = lock->root->inner.latest_file; f; f = f->next) {
     ++n;
     if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
       break;

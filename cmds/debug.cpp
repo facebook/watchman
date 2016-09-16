@@ -53,11 +53,11 @@ static void cmd_debug_show_cursors(struct watchman_client *client, json_t *args)
   resp = make_response();
 
   w_root_lock(&unlocked, "debug-show-cursors", &lock);
-  cursors = json_object_of_size(w_ht_size(lock.root->cursors));
-  if (w_ht_first(lock.root->cursors, &i)) do {
+  cursors = json_object_of_size(w_ht_size(lock.root->inner.cursors));
+  if (w_ht_first(lock.root->inner.cursors, &i)) do {
     auto name = (w_string_t*)w_ht_val_ptr(i.key);
     set_prop(cursors, name->buf, json_integer(i.value));
-  } while (w_ht_next(lock.root->cursors, &i));
+  } while (w_ht_next(lock.root->inner.cursors, &i));
   w_root_unlock(&lock, &unlocked);
 
   set_prop(resp, "cursors", cursors);

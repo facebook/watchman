@@ -156,7 +156,7 @@ void process_pending_symlink_targets(struct unlocked_watchman_root *unlocked) {
   json_t *root_files;
   bool enforcing;
 
-  pending = unlocked->root->pending_symlink_targets.pending;
+  pending = unlocked->root->inner.pending_symlink_targets.pending;
   if (!pending) {
     return;
   }
@@ -171,8 +171,8 @@ void process_pending_symlink_targets(struct unlocked_watchman_root *unlocked) {
 
   // It is safe to work with unlocked->root->pending_symlink_targets because
   // this collection is only ever mutated from the IO thread
-  unlocked->root->pending_symlink_targets.pending = NULL;
-  w_pending_coll_drain(&unlocked->root->pending_symlink_targets);
+  unlocked->root->inner.pending_symlink_targets.pending = NULL;
+  w_pending_coll_drain(&unlocked->root->inner.pending_symlink_targets);
   while (pending) {
     p = pending;
     pending = p->next;

@@ -46,11 +46,13 @@ bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked,
 
   /* generate a cookie name: cookie prefix + id */
   w_root_lock(unlocked, "w_root_sync_to_now", &lock);
-  tick = lock.root->ticks++;
-  path_str = w_string_make_printf("%.*s%" PRIu32 "-%" PRIu32,
-                                  lock.root->query_cookie_prefix->len,
-                                  lock.root->query_cookie_prefix->buf,
-                                  lock.root->number, tick);
+  tick = lock.root->inner.ticks++;
+  path_str = w_string_make_printf(
+      "%.*s%" PRIu32 "-%" PRIu32,
+      lock.root->query_cookie_prefix->len,
+      lock.root->query_cookie_prefix->buf,
+      lock.root->inner.number,
+      tick);
   /* insert our cookie in the map */
   w_ht_set(lock.root->query_cookies, w_ht_ptr_val(path_str),
       w_ht_ptr_val(&cookie));

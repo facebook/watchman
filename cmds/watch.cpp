@@ -320,7 +320,7 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
   w_root_lock(&unlocked, "watch", &lock);
   if (lock.root->failure_reason) {
     set_prop(resp, "error", w_string_to_json(lock.root->failure_reason));
-  } else if (lock.root->cancelled) {
+  } else if (lock.root->inner.cancelled) {
     set_unicode_prop(resp, "error", "root was cancelled");
   } else {
     set_prop(resp, "watch", w_string_to_json(lock.root->root_path));
@@ -369,7 +369,7 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
   w_root_lock(&unlocked, "watch-project", &lock);
   if (lock.root->failure_reason) {
     set_prop(resp, "error", w_string_to_json(lock.root->failure_reason));
-  } else if (lock.root->cancelled) {
+  } else if (lock.root->inner.cancelled) {
     set_unicode_prop(resp, "error", "root was cancelled");
   } else {
     set_prop(resp, "watch", w_string_to_json(lock.root->root_path));

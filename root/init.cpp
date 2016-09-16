@@ -2,12 +2,11 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <new>
 
 // Each root gets a number that uniquely identifies it within the process. This
 // helps avoid confusion if a root is removed and then added again.
 static long next_root_number = 1;
-
-static const size_t root_init_offset = offsetof(w_root_t, _init_sentinel_);
 
 static void delete_trigger(w_ht_val_t val) {
   auto cmd = (watchman_trigger_command*)w_ht_val_ptr(val);
@@ -95,8 +94,8 @@ static void apply_ignore_configuration(w_root_t *root) {
 bool w_root_init(w_root_t *root, char **errmsg) {
   struct watchman_dir_handle *osdir;
 
-  memset((char *)root + root_init_offset, 0,
-         sizeof(w_root_t) - root_init_offset);
+  // Placement new to re-initialize the storage
+  new (&root->inner) watchman_root::Inner;
 
   osdir = w_dir_open(root->root_path->buf);
   if (!osdir) {
@@ -111,19 +110,21 @@ bool w_root_init(w_root_t *root, char **errmsg) {
     return false;
   }
 
-  root->number = __sync_fetch_and_add(&next_root_number, 1);
+  root->inner.number = __sync_fetch_and_add(&next_root_number, 1);
 
-  root->cursors = w_ht_new(2, &w_ht_string_funcs);
-  root->suffixes = w_ht_new(2, &w_ht_string_funcs);
-  root->ticks = 1;
+  root->inner.cursors = w_ht_new(2, &w_ht_string_funcs);
+  root->inner.suffixes = w_ht_new(2, &w_ht_string_funcs);
 
   // "manually" populate the initial dir, as the dir resolver will
   // try to find its parent and we don't want it to for the root
-  root->root_dir = (watchman_dir*)calloc(1, sizeof(*root->root_dir));
-  root->root_dir->name = root->root_path;
-  w_string_addref(root->root_dir->name);
+  root->inner.root_dir =
+      (watchman_dir*)calloc(1, sizeof(*root->inner.root_dir));
+  root->inner.root_dir->name = root->root_path;
+  w_string_addref(root->inner.root_dir->name);
 
-  time(&root->last_cmd_timestamp);
+  time(&root->inner.last_cmd_timestamp);
+
+  w_pending_coll_init(&root->inner.pending_symlink_targets);
 
   return root;
 }
@@ -140,7 +141,6 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
   root->case_sensitive = is_case_sensitive_filesystem(path);
 
   w_pending_coll_init(&root->pending);
-  w_pending_coll_init(&root->pending_symlink_targets);
   root->root_path = w_string_new_typed(path, W_STRING_BYTE);
   root->commands = w_ht_new(2, &trigger_hash_funcs);
   root->query_cookies = w_ht_new(2, &w_ht_string_funcs);
@@ -170,31 +170,39 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
 }
 
 void w_root_teardown(w_root_t *root) {
-  struct watchman_file *file;
+  w_pending_coll_drain(&root->pending);
+
+  // Must delete_dir before we process the files to avoid
+  // an ASAN issue when trying to free the dir children
+  if (root->inner.root_dir) {
+    delete_dir(root->inner.root_dir);
+    root->inner.root_dir = nullptr;
+  }
+
+  while (root->inner.latest_file) {
+    auto file = root->inner.latest_file;
+    root->inner.latest_file = file->next;
+    free_file_node(root, file);
+  }
 
   if (root->watcher_ops) {
     root->watcher_ops->root_dtor(root);
   }
 
-  if (root->root_dir) {
-    delete_dir(root->root_dir);
-  }
-  w_pending_coll_drain(&root->pending);
-  w_pending_coll_drain(&root->pending_symlink_targets);
+  // Placement delete (must be last!)
+  root->inner.~Inner();
+}
 
-  while (root->latest_file) {
-    file = root->latest_file;
-    root->latest_file = file->next;
-    free_file_node(root, file);
-  }
+watchman_root::Inner::~Inner() {
+  w_pending_coll_destroy(&pending_symlink_targets);
 
-  if (root->cursors) {
-    w_ht_free(root->cursors);
-    root->cursors = NULL;
+  if (cursors) {
+    w_ht_free(cursors);
+    cursors = nullptr;
   }
-  if (root->suffixes) {
-    w_ht_free(root->suffixes);
-    root->suffixes = NULL;
+  if (suffixes) {
+    w_ht_free(suffixes);
+    suffixes = nullptr;
   }
 }
 
@@ -246,7 +254,6 @@ void w_root_delref_raw(w_root_t *root) {
     w_string_delref(root->query_cookie_prefix);
   }
   w_pending_coll_destroy(&root->pending);
-  w_pending_coll_destroy(&root->pending_symlink_targets);
 
   free(root);
   w_refcnt_del(&live_roots);
