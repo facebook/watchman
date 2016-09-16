@@ -440,6 +440,7 @@ static void spawn_via_launchd(void)
     char *unload_argv[MAX_DAEMON_ARGS] = {
       "/bin/launchctl",
       "unload",
+      "-F",
       NULL
     };
     append_argv(unload_argv, plist_path);
