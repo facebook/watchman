@@ -24,9 +24,10 @@
  * SUCH DAMAGE.
  */
 
-#include "watchman.h"
+#include "watchman_system.h"
 #include <ctype.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 #include "tap.h"
 
