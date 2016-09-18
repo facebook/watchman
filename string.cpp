@@ -11,7 +11,7 @@
 w_string_piece::w_string_piece() : s_(nullptr), e_(nullptr) {}
 w_string_piece::w_string_piece(std::nullptr_t) : s_(nullptr), e_(nullptr) {}
 
-w_string_piece::w_string_piece(w_string_piece &&other)
+w_string_piece::w_string_piece(w_string_piece&& other) noexcept
     : s_(other.s_), e_(other.e_) {
   other.s_ = nullptr;
   other.e_ = nullptr;
@@ -122,7 +122,7 @@ w_string& w_string::operator=(const w_string& other) {
   return *this;
 }
 
-w_string::w_string(w_string&& other) : str_(other.str_) {
+w_string::w_string(w_string&& other) noexcept : str_(other.str_) {
   other.str_ = nullptr;
 }
 

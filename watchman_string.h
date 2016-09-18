@@ -143,23 +143,26 @@ class w_string_piece {
 
  public:
   w_string_piece();
-  w_string_piece(std::nullptr_t);
+  /* implicit */ w_string_piece(std::nullptr_t);
 
-  inline w_string_piece(w_string_t* str)
+  inline /* implicit */ w_string_piece(w_string_t* str)
       : s_(str->buf), e_(str->buf + str->len) {}
 
   /** Construct from a string-like object */
-  template <typename String,
-            typename std::enable_if<std::is_class<String>::value>::type = 0>
-  inline w_string_piece(const String &str)
+  template <
+      typename String,
+      typename std::enable_if<std::is_class<String>::value>::type = 0>
+  inline /* implicit */ w_string_piece(const String& str)
       : s_(str.data()), e_(str.data() + str.size()) {}
 
-  inline w_string_piece(const char* cstr) : s_(cstr), e_(cstr + strlen(cstr)){};
-  inline w_string_piece(const char* cstr, size_t len)
-      : s_(cstr), e_(cstr + len){};
+  inline /* implicit */ w_string_piece(const char* cstr)
+      : s_(cstr), e_(cstr + strlen(cstr)) {}
+
+  /* implicit */ inline w_string_piece(const char* cstr, size_t len)
+      : s_(cstr), e_(cstr + len) {}
 
   w_string_piece(const w_string_piece& other) = default;
-  w_string_piece(w_string_piece&& other);
+  w_string_piece(w_string_piece&& other) noexcept;
 
   inline const char* data() const {
     return s_;
@@ -191,26 +194,26 @@ class w_string {
  public:
   /** Initialize a nullptr */
   w_string();
-  w_string(std::nullptr_t);
+  /* implicit */ w_string(std::nullptr_t);
 
   /** Make a new string from some bytes and a type */
   w_string(
       const char* buf,
       uint32_t len,
       w_string_type_t stringType = W_STRING_BYTE);
-  w_string(
+  /* implicit */ w_string(
       const char* buf,
       w_string_type_t stringType = W_STRING_BYTE);
 
   /** Initialize, taking a ref on w_string_t */
-  w_string(w_string_t* str, bool addRef = true);
+  /* implicit */ w_string(w_string_t* str, bool addRef = true);
   /** Release the string reference when we fall out of scope */
   ~w_string();
   /** Copying adds a ref */
   w_string(const w_string& other);
   w_string& operator=(const w_string& other);
   /** Moving steals a ref */
-  w_string(w_string&& other);
+  w_string(w_string&& other) noexcept;
   w_string& operator=(w_string&& other);
 
   /** Stop tracking the underlying string object, decrementing
