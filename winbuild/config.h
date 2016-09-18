@@ -46,6 +46,10 @@
 # endif
 #endif
 
+#ifdef _MSC_VER
+# define noexcept /* nothing */
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
