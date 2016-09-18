@@ -284,6 +284,8 @@ void w_client_vacate_states(struct watchman_user_client *client) {
     // the iterator.
     leave_state(client, assertion, true, NULL, NULL);
   }
+
+  w_ht_free(client->states);
 }
 
 static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
