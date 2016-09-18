@@ -526,6 +526,13 @@ bool glob_generator(w_query *query, struct read_locked_watchman_root *lock,
     relative_root = lock->root->root_path;
   }
   dir = w_root_resolve_dir_read(lock, relative_root);
+  if (!dir) {
+    ignore_result(asprintf(&query->errmsg,
+                           "glob_generator could not resolve %.*s, check your "
+                           "relative_root parameter!\n",
+                           relative_root->len, relative_root->buf));
+    return false;
+  }
 
   return glob_generator_tree(ctx, num_walked, lock, query->glob_tree, dir);
 }

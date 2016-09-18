@@ -460,6 +460,7 @@ static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
                            w_query_res *res, w_query_generator generator,
                            void *gendata) {
   int64_t num_walked = 0;
+  bool result = true;
 
   if (ctx->query->dedup_results) {
     ctx->dedup = w_ht_new(64, &w_ht_string_funcs);
@@ -473,7 +474,11 @@ static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
       generator = default_generators;
     }
 
-    generator(ctx->query, ctx->lock, ctx, gendata, &num_walked);
+    if (!generator(ctx->query, ctx->lock, ctx, gendata, &num_walked)) {
+      res->errmsg = ctx->query->errmsg;
+      ctx->query->errmsg = NULL;
+      result = false;
+    }
   }
 
   if (w_perf_finish(sample)) {
@@ -502,7 +507,7 @@ static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
   res->results = ctx->results;
   res->num_results = ctx->num_results;
 
-  return true;
+  return result;
 }
 
 bool w_query_execute_locked(
