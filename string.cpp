@@ -228,7 +228,7 @@ w_string w_string::pathCat(std::initializer_list<w_string_piece> elems) {
   *buf = 0;
   s->len = buf - s->buf;
 
-  return s;
+  return w_string(s, false);
 }
 
 uint32_t w_string_compute_hval(w_string_t *str) {

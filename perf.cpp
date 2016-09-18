@@ -190,8 +190,8 @@ static void *perf_log_thread(void *unused) {
         while (i < sample_batch && json_array_size(samples) > 0) {
           char *stringy = json_dumps(json_array_get(samples, 0), 0);
           if (stringy) {
-            json_array_append(cmd,
-                              typed_string_to_json(stringy, W_STRING_MIXED));
+            json_array_append_new(
+                cmd, typed_string_to_json(stringy, W_STRING_MIXED));
             free(stringy);
           }
           json_array_remove(samples, 0);
