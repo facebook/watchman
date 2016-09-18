@@ -173,6 +173,7 @@ static void run_service(void)
   w_state_load();
   res = w_start_listener(sock_name);
   w_root_free_watched_roots();
+  cfg_shutdown();
 
   if (res) {
     exit(0);

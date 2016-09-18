@@ -756,7 +756,6 @@ bool w_start_listener(const char *path)
 
   pthread_join(reaper_thread, &ignored);
   w_state_shutdown();
-  cfg_shutdown();
 
   return true;
 }
