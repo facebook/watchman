@@ -269,7 +269,11 @@ w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
     return NULL;
   }
 
-  auto slice = new w_string_t();
+  // Can't just new w_string_t because the delref has to call delete[]
+  // in most cases.
+  auto slice = (w_string_t*)(new char[sizeof(w_string_t)]);
+  new (slice) watchman_string();
+
   slice->refcnt = 1;
   slice->len = len;
   slice->buf = str->buf + start;
@@ -492,7 +496,12 @@ void w_string_delref(w_string_t *str)
   if (!w_refcnt_del(&str->refcnt)) {
     return;
   }
-  delete str;
+  // Call the destructor.  We can't use regular delete because
+  // we allocated using operator new[], and we can't use delete[]
+  // directly either because the type doesn't match what we allocated.
+  str->~w_string_t();
+  // Release the raw memory.
+  delete[](char*) str;
 }
 
 int w_string_compare(const w_string_t *a, const w_string_t *b)
