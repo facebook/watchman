@@ -110,7 +110,6 @@ bool w_root_init(w_root_t *root, char **errmsg) {
   root->inner.number = __sync_fetch_and_add(&next_root_number, 1);
 
   root->inner.cursors = w_ht_new(2, &w_ht_string_funcs);
-  root->inner.suffixes = w_ht_new(2, &w_ht_string_funcs);
 
   // "manually" populate the initial dir, as the dir resolver will
   // try to find its parent and we don't want it to for the root
@@ -165,9 +164,7 @@ void w_root_teardown(w_root_t *root) {
   root->inner.root_dir.reset();
 
   while (root->inner.latest_file) {
-    auto file = root->inner.latest_file;
-    root->inner.latest_file = file->next;
-    free_file_node(root, file);
+    free_file_node(root, root->inner.latest_file);
   }
 
   if (root->watcher_ops) {
@@ -193,10 +190,6 @@ watchman_root::Inner::~Inner() {
   if (cursors) {
     w_ht_free(cursors);
     cursors = nullptr;
-  }
-  if (suffixes) {
-    w_ht_free(suffixes);
-    suffixes = nullptr;
   }
 }
 

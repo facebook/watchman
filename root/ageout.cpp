@@ -4,35 +4,6 @@
 #include "watchman.h"
 #include <unordered_set>
 
-static void remove_from_suffix_list(struct write_locked_watchman_root *lock,
-                                    struct watchman_file *file) {
-  w_string_t *suffix = w_string_suffix(w_file_get_name(file));
-
-  if (!suffix) {
-    return;
-  }
-
-  auto sufhead = (watchman_file*)w_ht_val_ptr(
-      w_ht_get(lock->root->inner.suffixes, w_ht_ptr_val(suffix)));
-  if (sufhead) {
-    if (file->suffix_prev) {
-      file->suffix_prev->suffix_next = file->suffix_next;
-    }
-    if (file->suffix_next) {
-      file->suffix_next->suffix_prev = file->suffix_prev;
-    }
-    if (sufhead == file) {
-      sufhead = file->suffix_next;
-      w_ht_replace(
-          lock->root->inner.suffixes,
-          w_ht_ptr_val(suffix),
-          w_ht_ptr_val(sufhead));
-    }
-  }
-
-  w_string_delref(suffix);
-}
-
 static void age_out_file(
     struct write_locked_watchman_root* lock,
     std::unordered_set<w_string> &dirs_to_erase,
@@ -45,10 +16,6 @@ static void age_out_file(
   // Revise tick for fresh instance reporting
   lock->root->inner.last_age_out_tick =
       MAX(lock->root->inner.last_age_out_tick, file->otime.ticks);
-
-  // And remove from the overall file list
-  remove_from_file_list(file);
-  remove_from_suffix_list(lock, file);
 
   if (parent->files) {
     // Remove the entry from the containing file hash

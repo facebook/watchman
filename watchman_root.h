@@ -99,9 +99,12 @@ struct watchman_root {
     /* map of cursor name => last observed tick value */
     w_ht_t* cursors{0};
 
-    /* map of filename suffix => watchman_file at the head
-     * of the suffix index.  Linkage via suffix_next */
-    w_ht_t* suffixes{0};
+    /* Holds the list head for files of a given suffix */
+    struct file_list_head {
+      watchman_file* head{nullptr};
+    };
+    /* Holds the list heads for all known suffixes */
+    std::unordered_map<w_string, std::unique_ptr<file_list_head>> suffixes;
 
     /* Collection of symlink targets that we try to watch.
      * Reads and writes on this collection are only safe if done from the IO

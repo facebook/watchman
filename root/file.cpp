@@ -121,7 +121,25 @@ void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
   lock->root->inner.pending_sub_tick = lock->root->inner.ticks;
 }
 
+static void remove_from_suffix_list(struct watchman_file* file) {
+  if (file->suffix_next) {
+    file->suffix_next->suffix_prev = file->suffix_prev;
+  }
+  // file->suffix_prev points to the address of either
+  // `previous_file->suffix_next` OR the `file_list_head.head`
+  // tracked in `root->inner.suffixes`.
+  // This next assignment is therefore fixing up either
+  // the linkage from the prior file node or from the
+  // head of the list.
+  if (file->suffix_prev) {
+    *file->suffix_prev = file->suffix_next;
+  }
+}
+
 void free_file_node(w_root_t *root, struct watchman_file *file) {
+  remove_from_file_list(file);
+  remove_from_suffix_list(file);
+
   root->watcher_ops->file_free(file);
   if (file->symlink_target) {
     w_string_delref(file->symlink_target);
@@ -134,7 +152,7 @@ struct watchman_file* w_root_resolve_file(
     watchman_dir* dir,
     w_string_t* file_name,
     struct timeval now) {
-  struct watchman_file *file, *sufhead;
+  struct watchman_file* file;
   w_string_t *suffix;
   w_string_t *name;
 
@@ -168,14 +186,19 @@ struct watchman_file* w_root_resolve_file(
 
   suffix = w_string_suffix(file_name);
   if (suffix) {
-    sufhead = (watchman_file*)w_ht_val_ptr(
-        w_ht_get(lock->root->inner.suffixes, w_ht_ptr_val(suffix)));
-    file->suffix_next = sufhead;
-    if (sufhead) {
-      sufhead->suffix_prev = file;
+    auto& sufhead = lock->root->inner.suffixes[suffix];
+    if (!sufhead) {
+      // Create the list head if we don't already have one for this suffix.
+      sufhead.reset(new watchman_root::Inner::file_list_head);
     }
-    w_ht_replace(lock->root->inner.suffixes, w_ht_ptr_val(suffix),
-                 w_ht_ptr_val(file));
+
+    file->suffix_next = sufhead->head;
+    if (file->suffix_next) {
+      sufhead->head->suffix_prev = &file->suffix_next;
+    }
+    sufhead->head = file;
+    file->suffix_prev = &sufhead->head;
+
     w_string_delref(suffix);
   }
 

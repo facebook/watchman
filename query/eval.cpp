@@ -206,11 +206,13 @@ static bool suffix_generator(w_query *query,
 
   for (i = 0; i < query->nsuffixes; i++) {
     // Head of suffix index for this suffix
-    f = (watchman_file*)w_ht_val_ptr(
-        w_ht_get(lock->root->inner.suffixes, w_ht_ptr_val(query->suffixes[i])));
+    auto it = lock->root->inner.suffixes.find(query->suffixes[i]);
+    if (it == lock->root->inner.suffixes.end()) {
+      continue;
+    }
 
     // Walk and process
-    for (; f; f = f->suffix_next) {
+    for (f = it->second->head; f; f = f->suffix_next) {
       ++n;
       if (!w_query_file_matches_relative_root(ctx, f)) {
         continue;
