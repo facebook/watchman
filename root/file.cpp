@@ -72,17 +72,29 @@ static void stop_watching_file(struct write_locked_watchman_root *lock,
   lock->root->watcher_ops->root_stop_watch_file(lock, file);
 }
 
-void remove_from_file_list(struct write_locked_watchman_root *lock,
-                           struct watchman_file *file) {
-  if (lock->root->inner.latest_file == file) {
-    lock->root->inner.latest_file = file->next;
-  }
+void remove_from_file_list(struct watchman_file* file) {
   if (file->next) {
     file->next->prev = file->prev;
   }
+  // file->prev points to the address of either
+  // `previous_file->next` OR `root->inner.latest_file`.
+  // This next assignment is therefore fixing up either
+  // the linkage from the prior file node or from the
+  // head of the list.
   if (file->prev) {
-    file->prev->next = file->next;
+    *file->prev = file->next;
   }
+}
+
+static void insert_at_head_of_file_list(
+    struct write_locked_watchman_root* lock,
+    struct watchman_file* file) {
+  file->next = lock->root->inner.latest_file;
+  if (file->next) {
+    file->next->prev = &file->next;
+  }
+  lock->root->inner.latest_file = file;
+  file->prev = &lock->root->inner.latest_file;
 }
 
 void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
@@ -98,15 +110,10 @@ void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
 
   if (lock->root->inner.latest_file != file) {
     // unlink from list
-    remove_from_file_list(lock, file);
+    remove_from_file_list(file);
 
     // and move to the head
-    file->next = lock->root->inner.latest_file;
-    if (file->next) {
-      file->next->prev = file;
-    }
-    file->prev = NULL;
-    lock->root->inner.latest_file = file;
+    insert_at_head_of_file_list(lock, file);
   }
 
   // Flag that we have pending trigger info

@@ -47,7 +47,7 @@ static void age_out_file(
       MAX(lock->root->inner.last_age_out_tick, file->otime.ticks);
 
   // And remove from the overall file list
-  remove_from_file_list(lock, file);
+  remove_from_file_list(file);
   remove_from_suffix_list(lock, file);
 
   if (parent->files) {

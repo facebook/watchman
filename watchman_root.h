@@ -251,9 +251,7 @@ void process_subscriptions(struct write_locked_watchman_root* lock);
 void process_triggers(struct write_locked_watchman_root* lock);
 void consider_age_out(struct write_locked_watchman_root* lock);
 bool consider_reap(struct write_locked_watchman_root* lock);
-void remove_from_file_list(
-    struct write_locked_watchman_root* lock,
-    struct watchman_file* file);
+void remove_from_file_list(struct watchman_file* file);
 void free_file_node(w_root_t* root, struct watchman_file* file);
 void w_root_teardown(w_root_t* root);
 bool w_root_init(w_root_t* root, char** errmsg);

@@ -6,8 +6,10 @@ struct watchman_file {
   /* the parent dir */
   watchman_dir *parent;
 
-  /* linkage to files ordered by changed time */
-  struct watchman_file *prev, *next;
+  /* linkage to files ordered by changed time.
+   * prev points to the address of `next` in the
+   * previous file node, or the head of the list. */
+  struct watchman_file **prev, *next;
 
   /* linkage to files ordered by common suffix */
   struct watchman_file *suffix_prev, *suffix_next;
