@@ -61,8 +61,9 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
   w_root_mark_deleted(lock, dir, now, true);
 }
 
-void w_root_set_warning(struct write_locked_watchman_root *lock,
-                        w_string_t *str) {
+void w_root_set_warning(
+    struct write_locked_watchman_root* lock,
+    const w_string& str) {
   lock->root->warning = str;
 }
 

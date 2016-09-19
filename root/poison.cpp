@@ -3,8 +3,12 @@
 
 #include "watchman.h"
 
-void set_poison_state(w_string_t *dir, struct timeval now,
-                      const char *syscall, int err, const char *reason) {
+void set_poison_state(
+    const w_string& dir,
+    struct timeval now,
+    const char* syscall,
+    int err,
+    const char* reason) {
   char *why = NULL;
 
   if (poisoned_reason) {
@@ -19,8 +23,8 @@ void set_poison_state(w_string_t *dir, struct timeval now,
 "%s#poison-%s\n",
     (long)now.tv_sec,
     syscall,
-    dir->len,
-    dir->buf,
+    int(dir.size()),
+    dir.data(),
     reason ? reason : strerror(err),
     cfg_get_trouble_url(),
     syscall

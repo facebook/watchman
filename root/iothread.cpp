@@ -139,10 +139,13 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
   w_pending_coll_destroy(&pending);
 }
 
-void w_root_process_path(struct write_locked_watchman_root *lock,
-                         struct watchman_pending_collection *coll,
-                         w_string_t *full_path, struct timeval now, int flags,
-                         struct watchman_dir_ent *pre_stat) {
+void w_root_process_path(
+    struct write_locked_watchman_root* lock,
+    struct watchman_pending_collection* coll,
+    const w_string& full_path,
+    struct timeval now,
+    int flags,
+    struct watchman_dir_ent* pre_stat) {
   /* From a particular query's point of view, there are four sorts of cookies we
    * can observe:
    * 1. Cookies that this query has created. This marks the end of this query's
@@ -172,7 +175,7 @@ void w_root_process_path(struct write_locked_watchman_root *lock,
     w_log(
         W_LOG_DBG,
         "cookie for %s? %s\n",
-        full_path->buf,
+        full_path.c_str(),
         cookie_iter != lock->root->query_cookies.end() ? "yes" : "no");
 
     if (cookie_iter != lock->root->query_cookies.end()) {

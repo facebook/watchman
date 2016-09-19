@@ -13,9 +13,12 @@ static void apply_dir_size_hint(struct watchman_dir *dir,
   }
 }
 
-void crawler(struct write_locked_watchman_root *lock,
-             struct watchman_pending_collection *coll, w_string_t *dir_name,
-             struct timeval now, bool recursive) {
+void crawler(
+    struct write_locked_watchman_root* lock,
+    struct watchman_pending_collection* coll,
+    const w_string& dir_name,
+    struct timeval now,
+    bool recursive) {
   struct watchman_file *file;
   struct watchman_dir_handle *osdir;
   struct watchman_dir_ent *dirent;
@@ -35,8 +38,8 @@ void crawler(struct write_locked_watchman_root *lock,
 
   auto dir = w_root_resolve_dir(lock, dir_name, true);
 
-  memcpy(path, dir_name->buf, dir_name->len);
-  path[dir_name->len] = 0;
+  memcpy(path, dir_name.data(), dir_name.size());
+  path[dir_name.size()] = 0;
 
   w_log(W_LOG_DBG, "opendir(%s) recursive=%s\n",
       path, recursive ? "true" : "false");

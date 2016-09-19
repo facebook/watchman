@@ -22,7 +22,7 @@ w_string watchman_dir::getFullPath() const {
 
 const watchman_dir* w_root_resolve_dir_read(
     struct read_locked_watchman_root* lock,
-    w_string_t* dir_name) {
+    const w_string& dir_name) {
   watchman_dir* dir;
   const char *dir_component;
   const char *dir_end;
@@ -31,8 +31,8 @@ const watchman_dir* w_root_resolve_dir_read(
     return lock->root->inner.root_dir.get();
   }
 
-  dir_component = dir_name->buf;
-  dir_end = dir_component + dir_name->len;
+  dir_component = dir_name.data();
+  dir_end = dir_component + dir_name.size();
 
   dir = lock->root->inner.root_dir.get();
   dir_component += lock->root->root_path.size() + 1; // Skip root path prefix
@@ -47,10 +47,12 @@ const watchman_dir* w_root_resolve_dir_read(
     // component of the input directory name, which is the terminal
     // iteration of this search.
 
-    w_string_new_len_typed_stack(&component, dir_component,
-                                 sep ? (uint32_t)(sep - dir_component)
-                                     : (uint32_t)(dir_end - dir_component),
-                                 dir_name->type);
+    w_string_new_len_typed_stack(
+        &component,
+        dir_component,
+        sep ? (uint32_t)(sep - dir_component)
+            : (uint32_t)(dir_end - dir_component),
+        W_STRING_BYTE);
 
     auto child = dir->getChildDir(&component);
     if (!child) {
@@ -78,7 +80,7 @@ const watchman_dir* w_root_resolve_dir_read(
 
 watchman_dir* w_root_resolve_dir(
     struct write_locked_watchman_root* lock,
-    w_string_t* dir_name,
+    const w_string& dir_name,
     bool create) {
   watchman_dir *dir, *parent;
   const char *dir_component;
@@ -88,8 +90,8 @@ watchman_dir* w_root_resolve_dir(
     return lock->root->inner.root_dir.get();
   }
 
-  dir_component = dir_name->buf;
-  dir_end = dir_component + dir_name->len;
+  dir_component = dir_name.data();
+  dir_end = dir_component + dir_name.size();
 
   dir = lock->root->inner.root_dir.get();
   dir_component += lock->root->root_path.size() + 1; // Skip root path prefix
@@ -104,10 +106,12 @@ watchman_dir* w_root_resolve_dir(
     // component of the input directory name, which is the terminal
     // iteration of this search.
 
-    w_string_new_len_typed_stack(&component, dir_component,
-                                 sep ? (uint32_t)(sep - dir_component)
-                                     : (uint32_t)(dir_end - dir_component),
-                                 dir_name->type);
+    w_string_new_len_typed_stack(
+        &component,
+        dir_component,
+        sep ? (uint32_t)(sep - dir_component)
+            : (uint32_t)(dir_end - dir_component),
+        W_STRING_BYTE);
 
     auto child = dir->getChildDir(&component);
 
@@ -120,8 +124,7 @@ watchman_dir* w_root_resolve_dir(
       // we have another pending item for the parent.  We'll create the
       // parent dir now and our other machinery will populate its contents
       // later.
-      w_string child_name(
-          dir_component, (uint32_t)(sep - dir_component), dir_name->type);
+      w_string child_name(dir_component, (uint32_t)(sep - dir_component));
 
       auto &new_child = dir->dirs[child_name];
       new_child.reset(new watchman_dir(child_name, dir));
@@ -146,8 +149,7 @@ watchman_dir* w_root_resolve_dir(
     dir_component = sep + 1;
   }
 
-  w_string child_name(
-      dir_component, (uint32_t)(dir_end - dir_component), dir_name->type);
+  w_string child_name(dir_component, (uint32_t)(dir_end - dir_component));
   auto &new_child = parent->dirs[child_name];
   new_child.reset(new watchman_dir(child_name, parent));
 

@@ -193,19 +193,19 @@ void w_root_delref_raw(w_root_t* root);
 void w_root_addref(w_root_t* root);
 void w_root_set_warning(
     struct write_locked_watchman_root* lock,
-    w_string_t* str);
+    const w_string& str);
 
 watchman_dir* w_root_resolve_dir(
     struct write_locked_watchman_root* lock,
-    w_string_t* dir_name,
+    const w_string& dir_name,
     bool create);
 const watchman_dir* w_root_resolve_dir_read(
     struct read_locked_watchman_root* lock,
-    w_string_t* dir_name);
+    const w_string& dir_name);
 void w_root_process_path(
     struct write_locked_watchman_root* root,
     struct watchman_pending_collection* coll,
-    w_string_t* full_path,
+    const w_string& full_path,
     struct timeval now,
     int flags,
     struct watchman_dir_ent* pre_stat);
@@ -266,7 +266,7 @@ void delete_dir(struct watchman_dir* dir);
 void crawler(
     struct write_locked_watchman_root* lock,
     struct watchman_pending_collection* coll,
-    w_string_t* dir_name,
+    const w_string& dir_name,
     struct timeval now,
     bool recursive);
 void stat_path(
@@ -294,7 +294,7 @@ bool root_resolve(
 void signal_root_threads(w_root_t* root);
 
 void set_poison_state(
-    w_string_t* dir,
+    const w_string& dir,
     struct timeval now,
     const char* syscall,
     int err,
