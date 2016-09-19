@@ -733,10 +733,6 @@ fsevents_root_stop_watch_dir(struct write_locked_watchman_root *lock,
   unused_parameter(dir);
 }
 
-static void fsevents_file_free(struct watchman_file *file) {
-  unused_parameter(file);
-}
-
 struct watchman_ops fsevents_watcher = {
   "fsevents",
   WATCHER_HAS_PER_FILE_NOTIFICATIONS|
@@ -751,7 +747,6 @@ struct watchman_ops fsevents_watcher = {
   fsevents_root_signal_threads,
   fsevents_root_consume_notify,
   fsevents_root_wait_notify,
-  fsevents_file_free
 };
 
 // A helper command to facilitate testing that we can successfully

@@ -53,9 +53,6 @@ struct watchman_ops {
 
   // Wait for an inotify event to become available
   bool (*root_wait_notify)(w_root_t *root, int timeoutms);
-
-  // Called when freeing a file node
-  void (*file_free)(struct watchman_file *file);
 };
 
 bool w_watcher_init(w_root_t *root, char **errmsg);

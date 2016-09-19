@@ -30,7 +30,7 @@ static void age_out_file(
 
   // And free it.  We don't need to stop watching it, because we already
   // stopped watching it when we marked it as !exists
-  free_file_node(lock->root, file);
+  free_file_node(file);
 }
 
 void consider_age_out(struct write_locked_watchman_root *lock)

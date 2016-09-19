@@ -302,10 +302,6 @@ static bool portfs_root_wait_notify(w_root_t *root, int timeoutms) {
   return n == 1;
 }
 
-static void portfs_file_free(struct watchman_file *file) {
-  unused_parameter(file);
-}
-
 struct watchman_ops portfs_watcher = {
   "portfs",
   0,
@@ -319,7 +315,6 @@ struct watchman_ops portfs_watcher = {
   portfs_root_signal_threads,
   portfs_root_consume_notify,
   portfs_root_wait_notify,
-  portfs_file_free
 };
 
 #endif // HAVE_INOTIFY_INIT

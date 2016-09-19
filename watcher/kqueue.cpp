@@ -323,10 +323,6 @@ static bool kqueue_root_wait_notify(
   return n == 1;
 }
 
-static void kqueue_file_free(struct watchman_file *file) {
-  unused_parameter(file);
-}
-
 struct watchman_ops kqueue_watcher = {
   "kqueue",
   0,
@@ -340,7 +336,6 @@ struct watchman_ops kqueue_watcher = {
   kqueue_root_signal_threads,
   kqueue_root_consume_notify,
   kqueue_root_wait_notify,
-  kqueue_file_free
 };
 
 #endif // HAVE_KQUEUE

@@ -164,7 +164,7 @@ void w_root_teardown(w_root_t *root) {
   root->inner.root_dir.reset();
 
   while (root->inner.latest_file) {
-    free_file_node(root, root->inner.latest_file);
+    free_file_node(root->inner.latest_file);
   }
 
   if (root->watcher_ops) {

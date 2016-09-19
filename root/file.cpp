@@ -136,11 +136,10 @@ static void remove_from_suffix_list(struct watchman_file* file) {
   }
 }
 
-void free_file_node(w_root_t *root, struct watchman_file *file) {
+void free_file_node(struct watchman_file* file) {
   remove_from_file_list(file);
   remove_from_suffix_list(file);
 
-  root->watcher_ops->file_free(file);
   if (file->symlink_target) {
     w_string_delref(file->symlink_target);
   }

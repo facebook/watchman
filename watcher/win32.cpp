@@ -407,10 +407,6 @@ static bool winwatch_root_wait_notify(w_root_t *root, int timeoutms) {
   return state->head ? true : false;
 }
 
-static void winwatch_file_free(struct watchman_file *file) {
-  unused_parameter(file);
-}
-
 struct watchman_ops win32_watcher = {
   "win32",
   WATCHER_HAS_PER_FILE_NOTIFICATIONS,
@@ -424,7 +420,6 @@ struct watchman_ops win32_watcher = {
   winwatch_root_signal_threads,
   winwatch_root_consume_notify,
   winwatch_root_wait_notify,
-  winwatch_file_free
 };
 
 #endif // _WIN32

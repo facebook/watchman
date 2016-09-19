@@ -455,10 +455,6 @@ static bool inot_root_wait_notify(w_root_t *root, int timeoutms) {
   return n == 1;
 }
 
-static void inot_file_free(struct watchman_file *file) {
-  unused_parameter(file);
-}
-
 struct watchman_ops inotify_watcher = {
   "inotify",
   WATCHER_HAS_PER_FILE_NOTIFICATIONS,
@@ -472,7 +468,6 @@ struct watchman_ops inotify_watcher = {
   inot_root_signal_threads,
   inot_root_consume_notify,
   inot_root_wait_notify,
-  inot_file_free
 };
 
 #endif // HAVE_INOTIFY_INIT
