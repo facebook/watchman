@@ -248,6 +248,9 @@ class w_string {
    * the python os.path.join() function. */
   static w_string pathCat(std::initializer_list<w_string_piece> elems);
 
+  /** Similar to asprintf, but returns a w_string */
+  static w_string printf(const char *format, ...);
+
   /** Return a possibly new version of this string that is null terminated */
   w_string asNullTerminated() const;
 
