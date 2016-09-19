@@ -10,7 +10,6 @@ void stat_path(struct write_locked_watchman_root *lock,
   struct watchman_stat st;
   int res, err;
   char path[WATCHMAN_NAME_MAX];
-  struct watchman_file *file = NULL;
   w_string_t *dir_name;
   w_string_t *file_name;
   bool recursive = flags & W_PENDING_RECURSIVE;
@@ -35,10 +34,7 @@ void stat_path(struct write_locked_watchman_root *lock,
   file_name = w_string_basename(full_path);
   auto dir = w_root_resolve_dir(lock, dir_name, true);
 
-  if (dir->files) {
-    file = (watchman_file*)w_ht_val_ptr(
-        w_ht_get(dir->files, w_ht_ptr_val(file_name)));
-  }
+  auto file = dir->getChildFile(file_name);
 
   auto dir_ent = dir->getChildDir(file_name);
 

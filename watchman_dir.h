@@ -10,7 +10,10 @@ struct watchman_dir {
   watchman_dir* parent;
 
   /* files contained in this dir (keyed by file->name) */
-  w_ht_t *files{nullptr};
+  struct Deleter {
+    void operator()(watchman_file*) const;
+  };
+  std::unordered_map<w_string, std::unique_ptr<watchman_file, Deleter>> files;
 
   /* child dirs contained in this dir (keyed by dir->path) */
   std::unordered_map<w_string, std::unique_ptr<watchman_dir>> dirs;
@@ -23,5 +26,6 @@ struct watchman_dir {
   ~watchman_dir();
 
   watchman_dir* getChildDir(w_string name) const;
+  watchman_file* getChildFile(w_string name) const;
   w_string getFullPath() const;
 };

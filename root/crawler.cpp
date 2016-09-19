@@ -5,11 +5,8 @@
 
 static void apply_dir_size_hint(struct watchman_dir *dir,
     uint32_t ndirs, uint32_t nfiles) {
-
-  if (nfiles > 0) {
-    if (!dir->files) {
-      dir->files = w_ht_new(nfiles, &w_ht_string_funcs);
-    }
+  if (dir->files.empty() && nfiles > 0) {
+    dir->files.reserve(nfiles);
   }
   if (dir->dirs.empty() && ndirs > 0) {
     dir->dirs.reserve(ndirs);
@@ -53,7 +50,7 @@ void crawler(struct write_locked_watchman_root *lock,
     return;
   }
 
-  if (!dir->files) {
+  if (dir->files.empty()) {
     // Pre-size our hash(es) if we can, so that we can avoid collisions
     // and re-hashing during initial crawl
     uint32_t num_dirs = 0;
@@ -75,12 +72,12 @@ void crawler(struct write_locked_watchman_root *lock,
   }
 
   /* flag for delete detection */
-  if (w_ht_first(dir->files, &i)) do {
-    file = (watchman_file*)w_ht_val_ptr(i.value);
+  for (auto& it : dir->files) {
+    auto file = it.second.get();
     if (file->exists) {
       file->maybe_deleted = true;
     }
-  } while (w_ht_next(dir->files, &i));
+  }
 
   while ((dirent = w_dir_read(osdir)) != NULL) {
     w_string_t *name;
@@ -95,12 +92,7 @@ void crawler(struct write_locked_watchman_root *lock,
 
     // Queue it up for analysis if the file is newly existing
     name = w_string_new_typed(dirent->d_name, W_STRING_BYTE);
-    if (dir->files) {
-      file = (watchman_file*)w_ht_val_ptr(
-          w_ht_get(dir->files, w_ht_ptr_val(name)));
-    } else {
-      file = NULL;
-    }
+    file = dir->getChildFile(name);
     if (file) {
       file->maybe_deleted = false;
     }
@@ -121,10 +113,10 @@ void crawler(struct write_locked_watchman_root *lock,
 
   // Anything still in maybe_deleted is actually deleted.
   // Arrange to re-process it shortly
-  if (w_ht_first(dir->files, &i)) do {
-    file = (watchman_file*)w_ht_val_ptr(i.value);
-    if (file->exists && (file->maybe_deleted ||
-          (S_ISDIR(file->stat.mode) && recursive))) {
+  for (auto& it : dir->files) {
+    auto file = it.second.get();
+    if (file->exists &&
+        (file->maybe_deleted || (S_ISDIR(file->stat.mode) && recursive))) {
       w_pending_coll_add_rel(
           coll,
           dir,
@@ -132,7 +124,7 @@ void crawler(struct write_locked_watchman_root *lock,
           now,
           recursive ? W_PENDING_RECURSIVE : 0);
     }
-  } while (w_ht_next(dir->files, &i));
+  }
 }
 
 /* vim:ts=2:sw=2:et:

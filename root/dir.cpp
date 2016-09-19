@@ -3,6 +3,10 @@
 
 #include "watchman.h"
 
+void watchman_dir::Deleter::operator()(watchman_file* file) const {
+  free_file_node(file);
+}
+
 watchman_dir::watchman_dir(w_string name, watchman_dir* parent)
     : name(name), parent(parent) {}
 
@@ -10,11 +14,6 @@ watchman_dir::~watchman_dir() {
   auto full_path = getFullPath();
 
   w_log(W_LOG_DBG, "delete_dir(%s)\n", full_path.c_str());
-
-  if (files) {
-    w_ht_free(files);
-    files = NULL;
-  }
 }
 
 w_string watchman_dir::getFullPath() const {
@@ -157,6 +156,14 @@ watchman_dir* w_root_resolve_dir(
   return dir;
 }
 
+watchman_file* watchman_dir::getChildFile(w_string name) const {
+  auto it = files.find(name);
+  if (it == files.end()) {
+    return nullptr;
+  }
+  return it->second.get();
+}
+
 watchman_dir* watchman_dir::getChildDir(w_string name) const {
   auto it = dirs.find(name);
   if (it == dirs.end()) {
@@ -169,16 +176,14 @@ watchman_dir* watchman_dir::getChildDir(w_string name) const {
 void w_root_mark_deleted(struct write_locked_watchman_root *lock,
                          struct watchman_dir *dir, struct timeval now,
                          bool recursive) {
-  w_ht_iter_t i;
-
   if (!dir->last_check_existed) {
     // If we know that it doesn't exist, return early
     return;
   }
   dir->last_check_existed = false;
 
-  if (w_ht_first(dir->files, &i)) do {
-    auto file = (watchman_file *)w_ht_val_ptr(i.value);
+  for (auto& it : dir->files) {
+    auto file = it.second.get();
 
     if (file->exists) {
       w_string_t *full_name = w_dir_path_cat_str(dir, w_file_get_name(file));
@@ -187,8 +192,7 @@ void w_root_mark_deleted(struct write_locked_watchman_root *lock,
       file->exists = false;
       w_root_mark_file_changed(lock, file, now);
     }
-
-  } while (w_ht_next(dir->files, &i));
+  }
 
   if (recursive) {
     for (auto& it : dir->dirs) {

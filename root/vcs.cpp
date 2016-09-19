@@ -15,13 +15,8 @@ bool vcs_file_exists(struct write_locked_watchman_root *lock, const char *dname,
     return false;
   }
 
-  if (!dir->files) {
-    return false;
-  }
-
   w_string file_name(fname);
-  file = (watchman_file*)w_ht_val_ptr(
-      w_ht_get(dir->files, w_ht_ptr_val(file_name)));
+  file = dir->getChildFile(file_name);
 
   if (!file) {
     return false;

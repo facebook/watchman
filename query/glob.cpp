@@ -307,7 +307,6 @@ static bool glob_generator_doublestar(struct w_query_ctx *ctx,
                                       const struct watchman_glob_tree *node,
                                       const char *dir_name,
                                       uint32_t dir_name_len) {
-  w_ht_iter_t i;
   int64_t n = 0;
   bool result = true;
   bool matched;
@@ -315,8 +314,8 @@ static bool glob_generator_doublestar(struct w_query_ctx *ctx,
   uint32_t j;
 
   // First step is to walk the set of files contained in this node
-  if (w_ht_first(dir->files, &i)) do {
-    auto file = (watchman_file*)w_ht_val_ptr(i.value);
+  for (auto& it : dir->files) {
+    auto file = it.second.get();
     w_string_t *file_name = w_file_get_name(file);
 
     ++n;
@@ -360,7 +359,7 @@ static bool glob_generator_doublestar(struct w_query_ctx *ctx,
     }
 
     free(subject);
-  } while (w_ht_next(dir->files, &i));
+  }
 
   // And now walk down to any dirs; all dirs are eligible
   for (auto& it : dir->dirs) {
@@ -470,13 +469,12 @@ static bool glob_generator_tree(struct w_query_ctx *ctx, int64_t *num_walked,
     }
 
     // If the node is a leaf we are in a position to match files.
-    if (child_node->is_leaf && dir->files) {
+    if (child_node->is_leaf && !dir->files.empty()) {
       // Attempt direct lookup if possible
       if (!child_node->had_specials && ctx->query->case_sensitive) {
         w_string_new_len_typed_stack(&component, child_node->pattern,
                                      child_node->pattern_len, W_STRING_BYTE);
-        auto file = (watchman_file*)w_ht_val_ptr(
-            w_ht_get(dir->files, w_ht_ptr_val(&component)));
+        auto file = dir->getChildFile(&component);
 
         if (file) {
           ++n;
@@ -488,27 +486,31 @@ static bool glob_generator_tree(struct w_query_ctx *ctx, int64_t *num_walked,
             }
           }
         }
-      } else if (w_ht_first(dir->files, &iter)) do {
-        // Otherwise we have to walk and match
-        auto file = (watchman_file*)w_ht_val_ptr(iter.value);
-        w_string_t *file_name = w_file_get_name(file);
-        ++n;
+      } else {
+        for (auto& it : dir->files) {
+          // Otherwise we have to walk and match
+          auto file = it.second.get();
+          w_string_t* file_name = w_file_get_name(file);
+          ++n;
 
-        if (!file->exists) {
-          // Globs can only match files that exist
-          continue;
-        }
+          if (!file->exists) {
+            // Globs can only match files that exist
+            continue;
+          }
 
-        if (wildmatch(child_node->pattern, file_name->buf,
-                      ctx->query->glob_flags |
-                          (ctx->query->case_sensitive ? WM_CASEFOLD : 0),
-                      0) == WM_MATCH) {
-          if (!w_query_process_file(ctx->query, ctx, file)) {
-            result = false;
-            goto done;
+          if (wildmatch(
+                  child_node->pattern,
+                  file_name->buf,
+                  ctx->query->glob_flags |
+                      (ctx->query->case_sensitive ? WM_CASEFOLD : 0),
+                  0) == WM_MATCH) {
+            if (!w_query_process_file(ctx->query, ctx, file)) {
+              result = false;
+              goto done;
+            }
           }
         }
-      } while (w_ht_next(dir->files, &iter));
+      }
     }
   }
 

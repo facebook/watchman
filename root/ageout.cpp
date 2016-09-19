@@ -17,20 +17,17 @@ static void age_out_file(
   lock->root->inner.last_age_out_tick =
       MAX(lock->root->inner.last_age_out_tick, file->otime.ticks);
 
-  if (parent->files) {
-    // Remove the entry from the containing file hash
-    w_ht_del(parent->files, w_ht_ptr_val(w_file_get_name(file)));
-  }
-
   // If we have a corresponding dir, we want to arrange to remove it, but only
   // after we have unlinked all of the associated file nodes.
-  if (parent->dirs.find(w_file_get_name(file)) != parent->dirs.end()) {
-    dirs_to_erase.insert(full_name);
-  }
+  dirs_to_erase.insert(full_name);
 
-  // And free it.  We don't need to stop watching it, because we already
-  // stopped watching it when we marked it as !exists
-  free_file_node(file);
+  // Remove the entry from the containing file hash; this will free it.
+  // We don't need to stop watching it, because we already stopped watching it
+  // when we marked it as !exists.
+  // We remove using the iterator rather than passing the file name in, because
+  // the file name will be freed as part of the erasure.
+  auto it = parent->files.find(w_file_get_name(file));
+  parent->files.erase(it);
 }
 
 void consider_age_out(struct write_locked_watchman_root *lock)

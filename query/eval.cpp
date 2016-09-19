@@ -261,19 +261,18 @@ static bool dir_generator(
     const watchman_dir* dir,
     uint32_t depth,
     int64_t* num_walked) {
-  w_ht_iter_t i;
   int64_t n = 0;
   bool result = true;
 
-  if (w_ht_first(dir->files, &i)) do {
-    auto file = (watchman_file*)w_ht_val_ptr(i.value);
+  for (auto& it : dir->files) {
+    auto file = it.second.get();
     ++n;
 
     if (!w_query_process_file(query, ctx, file)) {
       result = false;
       goto done;
     }
-  } while (w_ht_next(dir->files, &i));
+  }
 
   if (depth > 0) {
     for (auto &it : dir->dirs) {
@@ -342,10 +341,9 @@ static bool path_generator(
       continue;
     }
 
-    if (dir->files) {
+    if (!dir->files.empty()) {
       file_name = w_string_basename(query->paths[i].name);
-      f = (watchman_file*)w_ht_val_ptr(
-          w_ht_get(dir->files, w_ht_ptr_val(file_name)));
+      f = dir->getChildFile(file_name);
       w_string_delref(file_name);
 
       // If it's a file (but not an existent dir)

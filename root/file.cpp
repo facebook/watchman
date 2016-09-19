@@ -151,17 +151,12 @@ struct watchman_file* w_root_resolve_file(
     watchman_dir* dir,
     w_string_t* file_name,
     struct timeval now) {
-  struct watchman_file* file;
   w_string_t *suffix;
   w_string_t *name;
+  auto& file_ptr = dir->files[file_name];
 
-  if (dir->files) {
-    file = (watchman_file*)w_ht_val_ptr(w_ht_get(dir->files, w_ht_ptr_val(file_name)));
-    if (file) {
-      return file;
-    }
-  } else {
-    dir->files = w_ht_new(2, &w_ht_string_funcs);
+  if (file_ptr) {
+    return file_ptr.get();
   }
 
   /* We embed our name string in the tail end of the struct that we're
@@ -172,8 +167,11 @@ struct watchman_file* w_root_resolve_file(
    * Embedding the name in the end allows us to make the most of this
    * memory and free up the separate heap allocation for file_name.
    */
-  file = (watchman_file*)calloc(
-      1, sizeof(*file) + w_string_embedded_size(file_name));
+  auto file = (watchman_file*)calloc(
+      1, sizeof(watchman_file) + w_string_embedded_size(file_name));
+  file_ptr = std::unique_ptr<watchman_file, watchman_dir::Deleter>(
+      file, watchman_dir::Deleter());
+
   name = w_file_get_name(file);
   w_string_embedded_copy(name, file_name);
   w_string_addref(name);
@@ -201,7 +199,6 @@ struct watchman_file* w_root_resolve_file(
     w_string_delref(suffix);
   }
 
-  w_ht_set(dir->files, w_ht_ptr_val(name), w_ht_ptr_val(file));
   watch_file(lock, file);
 
   return file;
