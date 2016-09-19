@@ -155,7 +155,7 @@ Perhaps you should use the --pattern option?""" % (path, self.path), file=sys.st
         if data is None:
             return False
         for dat in data:
-            for f in dat['files']:
+            for f in dat.get('files', []):
                 out = []
                 if len(args.fields) == 1:
                     # When only 1 field is specified, the result is a
