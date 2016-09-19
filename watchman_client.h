@@ -26,7 +26,7 @@ struct watchman_client {
 
   // The command currently being processed by dispatch_command
   json_t *current_command;
-  w_perf_t perf_sample;
+  w_perf_t* perf_sample;
 
   // This handle is not joinable (CREATE_DETACHED), but can be
   // used to deliver signals.

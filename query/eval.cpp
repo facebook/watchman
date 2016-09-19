@@ -485,19 +485,24 @@ static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
     }
   }
 
-  if (w_perf_finish(sample)) {
-    w_perf_add_root_meta(sample, ctx->lock->root);
-    w_perf_add_meta(sample, "query_execute",
-                    json_pack("{s:b, s:i, s:i, s:i, s:O}",              //
-                              "fresh_instance", res->is_fresh_instance, //
-                              "num_deduped", ctx->num_deduped,          //
-                              "num_results", ctx->num_results,          //
-                              "num_walked", num_walked,                 //
-                              "query", ctx->query->query_spec           //
-                              ));
-    w_perf_log(sample);
+  if (sample->finish()) {
+    sample->add_root_meta(ctx->lock->root);
+    sample->add_meta(
+        "query_execute",
+        json_pack(
+            "{s:b, s:i, s:i, s:i, s:O}",
+            "fresh_instance",
+            res->is_fresh_instance,
+            "num_deduped",
+            ctx->num_deduped,
+            "num_results",
+            ctx->num_results,
+            "num_walked",
+            num_walked,
+            "query",
+            ctx->query->query_spec));
+    sample->log();
   }
-  w_perf_destroy(sample);
 
   if (ctx->wholename) {
     w_string_delref(ctx->wholename);
@@ -522,14 +527,13 @@ bool w_query_execute_locked(
     void *gendata)
 {
   struct w_query_ctx ctx;
-  w_perf_t sample;
 
   memset(&ctx, 0, sizeof(ctx));
   ctx.query = query;
   ctx.lock = w_root_read_lock_from_write(lock);
 
   memset(res, 0, sizeof(*res));
-  w_perf_start(&sample, "query_execute");
+  w_perf_t sample("query_execute");
 
   /* The first stage of execution is generation.
    * We generate a series of file inputs to pass to
@@ -559,7 +563,6 @@ bool w_query_execute(
     void *gendata)
 {
   struct w_query_ctx ctx;
-  w_perf_t sample;
   struct write_locked_watchman_root wlock;
   struct read_locked_watchman_root rlock;
   bool result;
@@ -569,7 +572,7 @@ bool w_query_execute(
 
   memset(res, 0, sizeof(*res));
 
-  w_perf_start(&sample, "query_execute");
+  w_perf_t sample("query_execute");
 
   if (query->sync_timeout &&
       !w_root_sync_to_now(unlocked, query->sync_timeout)) {

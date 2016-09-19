@@ -68,14 +68,11 @@ static void fse_stream_free(struct fse_stream *fse_stream);
 
 /** Generate a perf event for the drop */
 static void log_drop_event(w_root_t *root, bool isKernel) {
-  w_perf_t sample;
-
-  w_perf_start(&sample, isKernel ? "KernelDropped" : "UserDropped");
-  w_perf_add_root_meta(&sample, root);
-  w_perf_finish(&sample);
-  w_perf_force_log(&sample);
-  w_perf_log(&sample);
-  w_perf_destroy(&sample);
+  w_perf_t sample(isKernel ? "KernelDropped" : "UserDropped");
+  sample.add_root_meta(root);
+  sample.finish();
+  sample.force_log();
+  sample.log();
 }
 
 static void fse_callback(ConstFSEventStreamRef streamRef,

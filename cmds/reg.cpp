@@ -169,29 +169,34 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
     return false;
   }
 
-  w_log(W_LOG_DBG, "dispatch_command: %s\n", def->name);
-  snprintf(sample_name, sizeof(sample_name), "dispatch_command:%s", def->name);
-  w_perf_start(&client->perf_sample, sample_name);
-  w_perf_set_wall_time_thresh(
-      &client->perf_sample,
-      cfg_get_double(NULL, "slow_command_log_threshold_seconds", 1.0));
+  // Scope for the perf sample
+  {
+    w_log(W_LOG_DBG, "dispatch_command: %s\n", def->name);
+    snprintf(
+        sample_name, sizeof(sample_name), "dispatch_command:%s", def->name);
+    w_perf_t sample(sample_name);
+    client->perf_sample = &sample;
 
-  result = true;
-  def->func(client, args);
+    sample.set_wall_time_thresh(
+        cfg_get_double(nullptr, "slow_command_log_threshold_seconds", 1.0));
 
-  if (w_perf_finish(&client->perf_sample)) {
-    json_incref(args);
-    w_perf_add_meta(&client->perf_sample, "args", args);
-    w_perf_log(&client->perf_sample);
-  } else {
-    w_log(W_LOG_DBG, "dispatch_command: %s (completed)\n", def->name);
+    result = true;
+    def->func(client, args);
+
+    if (sample.finish()) {
+      json_incref(args);
+      sample.add_meta("args", args);
+      sample.log();
+    } else {
+      w_log(W_LOG_DBG, "dispatch_command: %s (completed)\n", def->name);
+    }
   }
 
 done:
   free(errmsg);
   json_decref(client->current_command);
   client->current_command = NULL;
-  w_perf_destroy(&client->perf_sample);
+  client->perf_sample = nullptr;
   return result;
 }
 

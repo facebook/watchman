@@ -31,9 +31,7 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
 
     if (!unlocked->root->inner.done_initial) {
       struct timeval start;
-      w_perf_t sample;
-
-      w_perf_start(&sample, "full-crawl");
+      w_perf_t sample("full-crawl");
 
       /* first order of business is to find all the files under our root */
       if (cfg_get_bool(unlocked->root, "iothrottle", false)) {
@@ -61,17 +59,16 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
         }
       }
       lock.root->inner.done_initial = true;
-      w_perf_add_root_meta(&sample, lock.root);
+      sample.add_root_meta(lock.root);
       w_root_unlock(&lock, unlocked);
 
       if (cfg_get_bool(unlocked->root, "iothrottle", false)) {
         w_ioprio_set_normal();
       }
 
-      w_perf_finish(&sample);
-      w_perf_force_log(&sample);
-      w_perf_log(&sample);
-      w_perf_destroy(&sample);
+      sample.finish();
+      sample.force_log();
+      sample.log();
 
       w_log(W_LOG_ERR, "%scrawl complete\n",
             unlocked->root->recrawl_count ? "re" : "");

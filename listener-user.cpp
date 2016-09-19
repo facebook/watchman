@@ -106,7 +106,9 @@ bool resolve_root_or_err(struct watchman_client *client, json_t *args,
     return false;
   }
 
-  w_perf_add_root_meta(&client->perf_sample, unlocked->root);
+  if (client->perf_sample) {
+    client->perf_sample->add_root_meta(unlocked->root);
+  }
   return true;
 }
 

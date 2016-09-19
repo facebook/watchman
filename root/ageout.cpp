@@ -64,11 +64,10 @@ void w_root_perform_age_out(struct write_locked_watchman_root *lock,
   uint32_t num_aged_cursors = 0;
   uint32_t num_walked = 0;
   std::unordered_set<w_string> dirs_to_erase;
-  w_perf_t sample;
 
   time(&now);
   root->inner.last_age_out_timestamp = now;
-  w_perf_start(&sample, "age_out");
+  w_perf_t sample("age_out");
 
   file = root->inner.latest_file;
   prior = nullptr;
@@ -113,10 +112,9 @@ void w_root_perform_age_out(struct write_locked_watchman_root *lock,
         uint32_t(dirs_to_erase.size()),
         num_aged_cursors);
   }
-  if (w_perf_finish(&sample)) {
-    w_perf_add_root_meta(&sample, lock->root);
-    w_perf_add_meta(
-        &sample,
+  if (sample.finish()) {
+    sample.add_root_meta(lock->root);
+    sample.add_meta(
         "age_out",
         json_pack(
             "{s:i, s:i, s:i, s:i}",
@@ -128,9 +126,8 @@ void w_root_perform_age_out(struct write_locked_watchman_root *lock,
             dirs_to_erase.size(),
             "cursors",
             num_aged_cursors));
-    w_perf_log(&sample);
+    sample.log();
   }
-  w_perf_destroy(&sample);
 }
 
 /* vim:ts=2:sw=2:et:

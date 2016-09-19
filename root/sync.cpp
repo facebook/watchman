@@ -21,10 +21,9 @@ bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked,
   w_stm_t file;
   int errcode = 0;
   struct timespec deadline;
-  w_perf_t sample;
   struct write_locked_watchman_root lock;
 
-  w_perf_start(&sample, "sync_to_now");
+  w_perf_t sample("sync_to_now");
 
   if (pthread_cond_init(&cookie.cond, NULL)) {
     errcode = errno;
@@ -105,24 +104,26 @@ out:
 
   // We want to know about all timeouts
   if (!cookie.seen) {
-    w_perf_force_log(&sample);
+    sample.force_log();
   }
 
-  if (w_perf_finish(&sample)) {
-    w_perf_add_root_meta(&sample, unlocked->root);
-    w_perf_add_meta(&sample, "sync_to_now",
-                    json_pack("{s:b, s:i, s:i}",      //
-                              "success", cookie.seen, //
-                              "timeoutms", timeoutms, //
-                              "errcode", errcode      //
-                              ));
-    w_perf_log(&sample);
+  if (sample.finish()) {
+    sample.add_root_meta(unlocked->root);
+    sample.add_meta(
+        "sync_to_now",
+        json_pack(
+            "{s:b, s:i, s:i}",
+            "success",
+            cookie.seen,
+            "timeoutms",
+            timeoutms,
+            "errcode",
+            errcode));
+    sample.log();
   }
 
   pthread_cond_destroy(&cookie.cond);
   pthread_mutex_destroy(&cookie.lock);
-
-  w_perf_destroy(&sample);
 
   if (!cookie.seen) {
     errno = errcode;

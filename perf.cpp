@@ -10,42 +10,32 @@ static json_t *perf_log_samples = NULL;
 static pthread_cond_t perf_log_cond;
 static bool perf_log_thread_started = false;
 
-void w_perf_start(w_perf_t *perf, const char *description) {
-  perf->root_path = NULL;
-  perf->description = description;
-  perf->meta_data = NULL;
-  perf->will_log = false;
-  perf->wall_time_elapsed_thresh = 0;
-
-  gettimeofday(&perf->time_begin, NULL);
+watchman_perf_sample::watchman_perf_sample(const char* description)
+    : description(description) {
+  gettimeofday(&time_begin, nullptr);
 #ifdef HAVE_SYS_RESOURCE_H
-  getrusage(RUSAGE_SELF, &perf->usage_begin);
+  getrusage(RUSAGE_SELF, &usage_begin);
 #endif
 }
 
-void w_perf_destroy(w_perf_t *perf) {
-  if (perf->root_path) {
-    w_string_delref(perf->root_path);
+watchman_perf_sample::~watchman_perf_sample() {
+  if (meta_data) {
+    json_decref(meta_data);
   }
-  if (perf->meta_data) {
-    json_decref(perf->meta_data);
-  }
-  memset(perf, 0, sizeof(*perf));
+  memset(this, 0, sizeof(*this));
 }
 
-bool w_perf_finish(w_perf_t *perf) {
-  gettimeofday(&perf->time_end, NULL);
-  w_timeval_sub(perf->time_end, perf->time_begin, &perf->duration);
+bool watchman_perf_sample::finish() {
+  gettimeofday(&time_end, nullptr);
+  w_timeval_sub(time_end, time_begin, &duration);
 #ifdef HAVE_SYS_RESOURCE_H
-  getrusage(RUSAGE_SELF, &perf->usage_end);
+  getrusage(RUSAGE_SELF, &usage_end);
 
   // Compute the delta for the usage
-  w_timeval_sub(perf->usage_end.ru_utime, perf->usage_begin.ru_utime,
-                &perf->usage.ru_utime);
-  w_timeval_sub(perf->usage_end.ru_stime, perf->usage_begin.ru_stime,
-                &perf->usage.ru_stime);
+  w_timeval_sub(usage_end.ru_utime, usage_begin.ru_utime, &usage.ru_utime);
+  w_timeval_sub(usage_end.ru_stime, usage_begin.ru_stime, &usage.ru_stime);
 
-#define DIFFU(n) perf->usage.n = perf->usage_end.n - perf->usage_begin.n
+#define DIFFU(n) usage.n = usage_end.n - usage_begin.n
   DIFFU(ru_maxrss);
   DIFFU(ru_ixrss);
   DIFFU(ru_idrss);
@@ -62,45 +52,40 @@ bool w_perf_finish(w_perf_t *perf) {
 #undef DIFFU
 #endif
 
-  if (!perf->will_log) {
-    if (perf->wall_time_elapsed_thresh == 0) {
+  if (!will_log) {
+    if (wall_time_elapsed_thresh == 0) {
       json_t *thresh = cfg_get_json(NULL, "perf_sampling_thresh");
       if (thresh) {
         if (json_is_number(thresh)) {
-          perf->wall_time_elapsed_thresh = json_number_value(thresh);
+          wall_time_elapsed_thresh = json_number_value(thresh);
         } else {
-          json_unpack(thresh, "{s:f}", perf->description,
-                    &perf->wall_time_elapsed_thresh);
+          json_unpack(thresh, "{s:f}", description, &wall_time_elapsed_thresh);
         }
       }
     }
 
-    if (perf->wall_time_elapsed_thresh > 0 &&
-        w_timeval_diff(perf->time_begin, perf->time_end) >
-            perf->wall_time_elapsed_thresh) {
-      perf->will_log = true;
+    if (wall_time_elapsed_thresh > 0 &&
+        w_timeval_diff(time_begin, time_end) > wall_time_elapsed_thresh) {
+      will_log = true;
     }
   }
 
-  return perf->will_log;
+  return will_log;
 }
 
-void w_perf_add_meta(w_perf_t *perf, const char *key, json_t *val) {
-  if (!perf->meta_data) {
-    perf->meta_data = json_object();
+void watchman_perf_sample::add_meta(const char* key, json_t* val) {
+  if (!meta_data) {
+    meta_data = json_object();
   }
-  set_prop(perf->meta_data, key, val);
+  set_prop(meta_data, key, val);
 }
 
-void w_perf_add_root_meta(w_perf_t *perf, const w_root_t *root) {
+void watchman_perf_sample::add_root_meta(const w_root_t* root) {
   // Note: if the root lock isn't held, we may read inaccurate numbers for
   // some of these properties.  We're ok with that, and don't want to force
   // the root lock to be re-acquired just for this.
 
-  // The funky comments at the end of the line force clang-format to keep the
-  // elements on lines of their own
-  w_perf_add_meta(
-      perf,
+  add_meta(
       "root",
       json_pack(
           "{s:o, s:i, s:i, s:i, s:b, s:u}",
@@ -124,12 +109,12 @@ void w_perf_add_root_meta(w_perf_t *perf, const w_root_t *root) {
           root->watcher_ops ? root->watcher_ops->name : "<recrawling>"));
 }
 
-void w_perf_set_wall_time_thresh(w_perf_t *perf, double thresh) {
-  perf->wall_time_elapsed_thresh = thresh;
+void watchman_perf_sample::set_wall_time_thresh(double thresh) {
+  wall_time_elapsed_thresh = thresh;
 }
 
-void w_perf_force_log(w_perf_t *perf) {
-  perf->will_log = true;
+void watchman_perf_sample::force_log() {
+  will_log = true;
 }
 
 static void *perf_log_thread(void *unused) {
@@ -238,22 +223,25 @@ static void *perf_log_thread(void *unused) {
   return NULL;
 }
 
-
-void w_perf_log(w_perf_t *perf) {
+void watchman_perf_sample::log() {
   json_t *info;
   char *dumped = NULL;
 
-  if (!perf->will_log) {
+  if (!will_log) {
     return;
   }
 
   // Assemble a perf blob
-  info = json_pack("{s:u, s:O, s:i, s:u}",           //
-                   "description", perf->description, //
-                   "meta", perf->meta_data,          //
-                   "pid", getpid(),                  //
-                   "version", PACKAGE_VERSION        //
-                   );
+  info = json_pack(
+      "{s:u, s:O, s:i, s:u}",
+      "description",
+      description,
+      "meta",
+      meta_data,
+      "pid",
+      getpid(),
+      "version",
+      PACKAGE_VERSION);
 
 #ifdef WATCHMAN_BUILD_INFO
   set_unicode_prop(info, "buildinfo", WATCHMAN_BUILD_INFO);
@@ -261,12 +249,12 @@ void w_perf_log(w_perf_t *perf) {
 
 #define ADDTV(name, tv)                                                        \
   set_prop(info, name, json_real(w_timeval_abs_seconds(tv)))
-  ADDTV("elapsed_time", perf->duration);
-  ADDTV("start_time", perf->time_begin);
+  ADDTV("elapsed_time", duration);
+  ADDTV("start_time", time_begin);
 #ifdef HAVE_SYS_RESOURCE_H
-  ADDTV("user_time", perf->usage.ru_utime);
-  ADDTV("system_time", perf->usage.ru_stime);
-#define ADDU(n) set_prop(info, #n, json_integer(perf->usage.n))
+  ADDTV("user_time", usage.ru_utime);
+  ADDTV("system_time", usage.ru_stime);
+#define ADDU(n) set_prop(info, #n, json_integer(usage.n))
   ADDU(ru_maxrss);
   ADDU(ru_ixrss);
   ADDU(ru_idrss);

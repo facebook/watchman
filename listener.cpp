@@ -95,7 +95,9 @@ void send_error_response(struct watchman_client *client,
   set_prop(resp, "error", errstr);
 
   json_incref(errstr);
-  w_perf_add_meta(&client->perf_sample, "error", errstr);
+  if (client->perf_sample) {
+    client->perf_sample->add_meta("error", errstr);
+  }
 
   if (client->current_command) {
     char *command = NULL;
