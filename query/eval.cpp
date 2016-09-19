@@ -358,9 +358,7 @@ static bool path_generator(
       continue;
     }
 
-    file_name = w_string_basename(full_name);
-    dir = dir->getChildDir(file_name);
-    w_string_delref(file_name);
+    dir = dir->getChildDir(full_name.baseName());
 is_dir:
     // We got a dir; process recursively to specified depth
     if (dir) {
