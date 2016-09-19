@@ -4,7 +4,7 @@
 
 struct watchman_file {
   /* the parent dir */
-  struct watchman_dir *parent;
+  watchman_dir *parent;
 
   /* linkage to files ordered by changed time */
   struct watchman_file *prev, *next;

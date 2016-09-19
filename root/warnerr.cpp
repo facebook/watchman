@@ -15,7 +15,7 @@
 void handle_open_errno(struct write_locked_watchman_root *lock,
                        struct watchman_dir *dir, struct timeval now,
                        const char *syscall, int err, const char *reason) {
-  w_string_t *dir_name = w_dir_copy_full_path(dir);
+  auto dir_name = dir->getFullPath();
   w_string_t *warn = NULL;
   bool log_warning = true;
   bool transient = false;
@@ -28,7 +28,6 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
     transient = false;
   } else if (err == ENFILE || err == EMFILE) {
     set_poison_state(dir_name, now, syscall, err, strerror(err));
-    w_string_delref(dir_name);
     return;
   } else {
     log_warning = true;
@@ -37,19 +36,21 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
 
   if (w_string_equal(dir_name, lock->root->root_path)) {
     if (!transient) {
-      w_log(W_LOG_ERR,
-            "%s(%.*s) -> %s. Root was deleted; cancelling watch\n",
-            syscall, dir_name->len, dir_name->buf,
-            reason ? reason : strerror(err));
+      w_log(
+          W_LOG_ERR,
+          "%s(%s) -> %s. Root was deleted; cancelling watch\n",
+          syscall,
+          dir_name.c_str(),
+          reason ? reason : strerror(err));
       w_root_cancel(lock->root);
-      w_string_delref(dir_name);
       return;
     }
   }
 
   warn = w_string_make_printf(
-      "%s(%.*s) -> %s. Marking this portion of the tree deleted",
-      syscall, dir_name->len, dir_name->buf,
+      "%s(%s) -> %s. Marking this portion of the tree deleted",
+      syscall,
+      dir_name.c_str(),
       reason ? reason : strerror(err));
 
   w_log(err == ENOENT ? W_LOG_DBG : W_LOG_ERR, "%.*s\n", warn->len, warn->buf);
@@ -60,7 +61,6 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
 
   stop_watching_dir(lock, dir);
   w_root_mark_deleted(lock, dir, now, true);
-  w_string_delref(dir_name);
 }
 
 void w_root_set_warning(struct write_locked_watchman_root *lock,

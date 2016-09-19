@@ -252,10 +252,13 @@ done:
   return result;
 }
 
-static bool dir_generator(w_query *query,
-                          struct read_locked_watchman_root *lock,
-                          struct w_query_ctx *ctx, struct watchman_dir *dir,
-                          uint32_t depth, int64_t *num_walked) {
+static bool dir_generator(
+    w_query* query,
+    struct read_locked_watchman_root* lock,
+    struct w_query_ctx* ctx,
+    const watchman_dir* dir,
+    uint32_t depth,
+    int64_t* num_walked) {
   w_ht_iter_t i;
   int64_t n = 0;
   bool result = true;
@@ -270,16 +273,18 @@ static bool dir_generator(w_query *query,
     }
   } while (w_ht_next(dir->files, &i));
 
-  if (depth > 0 && w_ht_first(dir->dirs, &i)) do {
-    auto child = (watchman_dir*)w_ht_val_ptr(i.value);
-    int64_t child_walked = 0;
+  if (depth > 0) {
+    for (auto &it : dir->dirs) {
+      const auto child = it.second.get();
+      int64_t child_walked = 0;
 
-    result = dir_generator(query, lock, ctx, child, depth - 1, &child_walked);
-    n += child_walked;
-    if (!result) {
-      goto done;
+      result = dir_generator(query, lock, ctx, child, depth - 1, &child_walked);
+      n += child_walked;
+      if (!result) {
+        goto done;
+      }
     }
-  } while (w_ht_next(dir->dirs, &i));
+  }
 
 done:
   *num_walked = n;
@@ -305,7 +310,7 @@ static bool path_generator(
   }
 
   for (i = 0; i < query->npaths; i++) {
-    struct watchman_dir *dir;
+    const watchman_dir* dir;
     w_string_t *file_name;
     w_string dir_name;
 
@@ -353,19 +358,19 @@ static bool path_generator(
     }
 
     // Is it a dir?
-    if (!dir->dirs) {
+    if (dir->dirs.empty()) {
       continue;
     }
 
     file_name = w_string_basename(full_name);
-    dir = (watchman_dir*)w_ht_val_ptr(w_ht_get(dir->dirs, w_ht_ptr_val(file_name)));
+    dir = dir->getChildDir(file_name);
     w_string_delref(file_name);
 is_dir:
     // We got a dir; process recursively to specified depth
     if (dir) {
       int64_t child_walked = 0;
-      result = dir_generator(query, lock, ctx, dir, query->paths[i].depth,
-                             &child_walked);
+      result = dir_generator(
+          query, lock, ctx, dir, query->paths[i].depth, &child_walked);
       n += child_walked;
       if (!result) {
         goto done;

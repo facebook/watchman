@@ -45,7 +45,7 @@ struct w_query_ctx {
   uint32_t num_allocd;
 
   // Cache for dir name lookups when computing wholename
-  struct watchman_dir *last_parent;
+  watchman_dir *last_parent;
   w_string_t *last_parent_path;
 
   // When deduping the results, effectively a set<wholename> of

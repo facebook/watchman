@@ -11,15 +11,14 @@ static void apply_dir_size_hint(struct watchman_dir *dir,
       dir->files = w_ht_new(nfiles, &w_ht_string_funcs);
     }
   }
-  if (!dir->dirs && ndirs > 0) {
-    dir->dirs = w_ht_new(ndirs, &dirname_hash_funcs);
+  if (dir->dirs.empty() && ndirs > 0) {
+    dir->dirs.reserve(ndirs);
   }
 }
 
 void crawler(struct write_locked_watchman_root *lock,
              struct watchman_pending_collection *coll, w_string_t *dir_name,
              struct timeval now, bool recursive) {
-  struct watchman_dir *dir;
   struct watchman_file *file;
   struct watchman_dir_handle *osdir;
   struct watchman_dir_ent *dirent;
@@ -38,7 +37,7 @@ void crawler(struct write_locked_watchman_root *lock,
     stat_all = false;
   }
 
-  dir = w_root_resolve_dir(lock, dir_name, true);
+  auto dir = w_root_resolve_dir(lock, dir_name, true);
 
   memcpy(path, dir_name->buf, dir_name->len);
   path[dir_name->len] = 0;
@@ -69,8 +68,10 @@ void crawler(struct write_locked_watchman_root *lock,
     // If it is less than 2 then it doesn't follow that convention.
     // We just pass it through for the dir size hint and the hash
     // table implementation will round that up to the next power of 2
-    apply_dir_size_hint(dir, num_dirs, (uint32_t)cfg_get_int(
-                                           root, "hint_num_files_per_dir", 64));
+    apply_dir_size_hint(
+        dir,
+        num_dirs,
+        (uint32_t)cfg_get_int(root, "hint_num_files_per_dir", 64));
   }
 
   /* flag for delete detection */
@@ -104,14 +105,15 @@ void crawler(struct write_locked_watchman_root *lock,
       file->maybe_deleted = false;
     }
     if (!file || !file->exists || stat_all || recursive) {
-      w_string_t *full_path = w_dir_path_cat_str(dir, name);
-      w_log(W_LOG_DBG, "in crawler calling process_path on %.*s\n",
-            full_path->len, full_path->buf);
+      w_string full_path(w_dir_path_cat_str(dir, name), false);
+      w_log(
+          W_LOG_DBG,
+          "in crawler calling process_path on %s\n",
+          full_path.c_str());
       w_root_process_path(
           lock, coll, full_path, now,
           ((recursive || !file || !file->exists) ? W_PENDING_RECURSIVE : 0),
           dirent);
-      w_string_delref(full_path);
     }
     w_string_delref(name);
   }
@@ -123,8 +125,12 @@ void crawler(struct write_locked_watchman_root *lock,
     file = (watchman_file*)w_ht_val_ptr(i.value);
     if (file->exists && (file->maybe_deleted ||
           (S_ISDIR(file->stat.mode) && recursive))) {
-      w_pending_coll_add_rel(coll, dir, w_file_get_name(file)->buf,
-          now, recursive ? W_PENDING_RECURSIVE : 0);
+      w_pending_coll_add_rel(
+          coll,
+          dir,
+          w_file_get_name(file)->buf,
+          now,
+          recursive ? W_PENDING_RECURSIVE : 0);
     }
   } while (w_ht_next(dir->files, &i));
 }

@@ -363,8 +363,8 @@ static bool glob_generator_doublestar(struct w_query_ctx *ctx,
   } while (w_ht_next(dir->files, &i));
 
   // And now walk down to any dirs; all dirs are eligible
-  if (w_ht_first(dir->dirs, &i)) do {
-    auto child = (watchman_dir*)w_ht_val_ptr(i.value);
+  for (auto& it : dir->dirs) {
+    const auto child = it.second.get();
     int64_t child_walked = 0;
 
     if (!child->last_check_existed) {
@@ -372,20 +372,20 @@ static bool glob_generator_doublestar(struct w_query_ctx *ctx,
       continue;
     }
 
-    subject = make_path_name(dir_name, dir_name_len, child->name->buf,
-                             child->name->len);
+    subject = make_path_name(
+        dir_name, dir_name_len, child->name.data(), child->name.size());
     if (!subject) {
       result = false;
       goto done;
     }
-    result = glob_generator_doublestar(ctx, &child_walked, lock, child, node,
-                                       subject, strlen_uint32(subject));
+    result = glob_generator_doublestar(
+        ctx, &child_walked, lock, child, node, subject, strlen_uint32(subject));
     free(subject);
     n += child_walked;
     if (!result) {
       goto done;
     }
-  } while (w_ht_next(dir->dirs, &i));
+  }
 
 done:
   *num_walked = n;
@@ -400,7 +400,6 @@ static bool glob_generator_tree(struct w_query_ctx *ctx, int64_t *num_walked,
   uint32_t i;
   w_string_t component;
   w_ht_iter_t iter;
-  const struct watchman_dir *child_dir;
   bool result = true;
   int64_t n = 0;
 
@@ -423,19 +422,20 @@ static bool glob_generator_tree(struct w_query_ctx *ctx, int64_t *num_walked,
     // Note that we don't restrict this to !leaf because the user may have
     // set their globs list to something like ["some_dir", "some_dir/file"]
     // and we don't want to preclude matching the latter.
-    if (dir->dirs) {
-
+    if (!dir->dirs.empty()) {
       // Attempt direct lookup if possible
       if (!child_node->had_specials && ctx->query->case_sensitive) {
-        w_string_new_len_typed_stack(&component, child_node->pattern,
-            child_node->pattern_len, W_STRING_BYTE);
-        child_dir = (const watchman_dir*)w_ht_val_ptr(
-            w_ht_get(dir->dirs, w_ht_ptr_val(&component)));
+        w_string_new_len_typed_stack(
+            &component,
+            child_node->pattern,
+            child_node->pattern_len,
+            W_STRING_BYTE);
+        const auto child_dir = dir->getChildDir(&component);
 
         if (child_dir) {
           int64_t child_walked = 0;
-          result = glob_generator_tree(ctx, &child_walked, lock, child_node,
-              child_dir);
+          result = glob_generator_tree(
+              ctx, &child_walked, lock, child_node, child_dir);
           n += child_walked;
           if (!result) {
             goto done;
@@ -443,27 +443,29 @@ static bool glob_generator_tree(struct w_query_ctx *ctx, int64_t *num_walked,
         }
       } else {
         // Otherwise we have to walk and match
-        if (w_ht_first(dir->dirs, &iter)) do {
-          child_dir = (const watchman_dir*)w_ht_val_ptr(iter.value);
+        for (auto& it : dir->dirs) {
+          const auto child_dir = it.second.get();
 
           if (!child_dir->last_check_existed) {
             // Globs can only match files in dirs that exist
             continue;
           }
 
-          if (wildmatch(child_node->pattern, child_dir->name->buf,
-                        ctx->query->glob_flags |
-                            (ctx->query->case_sensitive ? 0 : WM_CASEFOLD),
-                        0) == WM_MATCH) {
+          if (wildmatch(
+                  child_node->pattern,
+                  child_dir->name.c_str(),
+                  ctx->query->glob_flags |
+                      (ctx->query->case_sensitive ? 0 : WM_CASEFOLD),
+                  0) == WM_MATCH) {
             int64_t child_walked = 0;
-            result = glob_generator_tree(ctx, &child_walked, lock, child_node,
-                                         child_dir);
+            result = glob_generator_tree(
+                ctx, &child_walked, lock, child_node, child_dir);
             n += child_walked;
             if (!result) {
               goto done;
             }
           }
-        } while (w_ht_next(dir->dirs, &iter));
+        }
       }
     }
 
@@ -518,19 +520,21 @@ done:
 bool glob_generator(w_query *query, struct read_locked_watchman_root *lock,
                     struct w_query_ctx *ctx, int64_t *num_walked) {
   w_string_t *relative_root;
-  const struct watchman_dir *dir;
 
   if (query->relative_root != NULL) {
     relative_root = query->relative_root;
   } else {
     relative_root = lock->root->root_path;
   }
-  dir = w_root_resolve_dir_read(lock, relative_root);
+
+  const auto dir = w_root_resolve_dir_read(lock, relative_root);
   if (!dir) {
-    ignore_result(asprintf(&query->errmsg,
-                           "glob_generator could not resolve %.*s, check your "
-                           "relative_root parameter!\n",
-                           relative_root->len, relative_root->buf));
+    ignore_result(asprintf(
+        &query->errmsg,
+        "glob_generator could not resolve %.*s, check your "
+        "relative_root parameter!\n",
+        relative_root->len,
+        relative_root->buf));
     return false;
   }
 

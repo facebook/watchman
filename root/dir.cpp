@@ -3,60 +3,44 @@
 
 #include "watchman.h"
 
-void delete_dir(struct watchman_dir *dir) {
-  w_string_t *full_path = w_dir_copy_full_path(dir);
+watchman_dir::watchman_dir(w_string name, watchman_dir* parent)
+    : name(name), parent(parent) {}
 
-  w_log(W_LOG_DBG, "delete_dir(%.*s)\n", full_path->len, full_path->buf);
-  w_string_delref(full_path);
+watchman_dir::~watchman_dir() {
+  auto full_path = getFullPath();
 
-  if (dir->files) {
-    w_ht_free(dir->files);
-    dir->files = NULL;
+  w_log(W_LOG_DBG, "delete_dir(%s)\n", full_path.c_str());
+
+  if (files) {
+    w_ht_free(files);
+    files = NULL;
   }
-
-  if (dir->dirs) {
-    w_ht_free(dir->dirs);
-    dir->dirs = NULL;
-  }
-
-  w_string_delref(dir->name);
-  free(dir);
 }
 
-static void delete_dir_helper(w_ht_val_t val) {
-  delete_dir((struct watchman_dir*)w_ht_val_ptr(val));
+w_string watchman_dir::getFullPath() const {
+  return w_string(w_dir_copy_full_path(this), false);
 }
 
-const struct watchman_hash_funcs dirname_hash_funcs = {
-  w_ht_string_copy,
-  w_ht_string_del,
-  w_ht_string_equal,
-  w_ht_string_hash,
-  NULL,
-  delete_dir_helper
-};
-
-struct watchman_dir *
-w_root_resolve_dir_read(struct read_locked_watchman_root *lock,
-                        w_string_t *dir_name) {
-  struct watchman_dir *dir;
+const watchman_dir* w_root_resolve_dir_read(
+    struct read_locked_watchman_root* lock,
+    w_string_t* dir_name) {
+  watchman_dir* dir;
   const char *dir_component;
   const char *dir_end;
 
   if (w_string_equal(dir_name, lock->root->root_path)) {
-    return lock->root->inner.root_dir;
+    return lock->root->inner.root_dir.get();
   }
 
   dir_component = dir_name->buf;
   dir_end = dir_component + dir_name->len;
 
-  dir = lock->root->inner.root_dir;
+  dir = lock->root->inner.root_dir.get();
   dir_component += lock->root->root_path->len + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");
 
   while (true) {
-    struct watchman_dir *child;
     w_string_t component;
     auto sep = (const char*)memchr(
         dir_component, WATCHMAN_DIR_SEP, dir_end - dir_component);
@@ -69,9 +53,7 @@ w_root_resolve_dir_read(struct read_locked_watchman_root *lock,
                                      : (uint32_t)(dir_end - dir_component),
                                  dir_name->type);
 
-    child = dir->dirs ? (watchman_dir*)w_ht_val_ptr(
-                            w_ht_get(dir->dirs, w_ht_ptr_val(&component)))
-                      : NULL;
+    auto child = dir->getChildDir(&component);
     if (!child) {
       return NULL;
     }
@@ -95,26 +77,27 @@ w_root_resolve_dir_read(struct read_locked_watchman_root *lock,
   return NULL;
 }
 
-struct watchman_dir *w_root_resolve_dir(struct write_locked_watchman_root *lock,
-                                        w_string_t *dir_name, bool create) {
-  struct watchman_dir *dir, *parent;
+watchman_dir* w_root_resolve_dir(
+    struct write_locked_watchman_root* lock,
+    w_string_t* dir_name,
+    bool create) {
+  watchman_dir *dir, *parent;
   const char *dir_component;
   const char *dir_end;
 
   if (w_string_equal(dir_name, lock->root->root_path)) {
-    return lock->root->inner.root_dir;
+    return lock->root->inner.root_dir.get();
   }
 
   dir_component = dir_name->buf;
   dir_end = dir_component + dir_name->len;
 
-  dir = lock->root->inner.root_dir;
+  dir = lock->root->inner.root_dir.get();
   dir_component += lock->root->root_path->len + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");
 
   while (true) {
-    struct watchman_dir *child;
     w_string_t component;
     auto sep = (const char*)memchr(
         dir_component, WATCHMAN_DIR_SEP, dir_end - dir_component);
@@ -127,9 +110,8 @@ struct watchman_dir *w_root_resolve_dir(struct write_locked_watchman_root *lock,
                                      : (uint32_t)(dir_end - dir_component),
                                  dir_name->type);
 
-    child = dir->dirs ? (watchman_dir*)w_ht_val_ptr(
-                            w_ht_get(dir->dirs, w_ht_ptr_val(&component)))
-                      : NULL;
+    auto child = dir->getChildDir(&component);
+
     if (!child && !create) {
       return NULL;
     }
@@ -139,17 +121,13 @@ struct watchman_dir *w_root_resolve_dir(struct write_locked_watchman_root *lock,
       // we have another pending item for the parent.  We'll create the
       // parent dir now and our other machinery will populate its contents
       // later.
-      child = (watchman_dir*)calloc(1, sizeof(*child));
-      child->name = w_string_new_len_typed(
+      w_string child_name(
           dir_component, (uint32_t)(sep - dir_component), dir_name->type);
-      child->last_check_existed = true;
-      child->parent = dir;
 
-      if (!dir->dirs) {
-        dir->dirs = w_ht_new(2, &dirname_hash_funcs);
-      }
+      auto &new_child = dir->dirs[child_name];
+      new_child.reset(new watchman_dir(child_name, dir));
 
-      w_ht_set(dir->dirs, w_ht_ptr_val(child->name), w_ht_ptr_val(child));
+      child = new_child.get();
     }
 
     parent = dir;
@@ -169,19 +147,22 @@ struct watchman_dir *w_root_resolve_dir(struct write_locked_watchman_root *lock,
     dir_component = sep + 1;
   }
 
-  dir = (watchman_dir*)calloc(1, sizeof(*dir));
-  dir->name = w_string_new_len_typed(
+  w_string child_name(
       dir_component, (uint32_t)(dir_end - dir_component), dir_name->type);
-  dir->last_check_existed = true;
-  dir->parent = parent;
+  auto &new_child = parent->dirs[child_name];
+  new_child.reset(new watchman_dir(child_name, parent));
 
-  if (!parent->dirs) {
-    parent->dirs = w_ht_new(2, &dirname_hash_funcs);
-  }
-
-  w_ht_set(parent->dirs, w_ht_ptr_val(dir->name), w_ht_ptr_val(dir));
+  dir = new_child.get();
 
   return dir;
+}
+
+watchman_dir* watchman_dir::getChildDir(w_string name) const {
+  auto it = dirs.find(name);
+  if (it == dirs.end()) {
+    return nullptr;
+  }
+  return it->second.get();
 }
 
 /* recursively mark the dir contents as deleted */
@@ -209,26 +190,27 @@ void w_root_mark_deleted(struct write_locked_watchman_root *lock,
 
   } while (w_ht_next(dir->files, &i));
 
-  if (recursive && w_ht_first(dir->dirs, &i)) do {
-    auto child = (watchman_dir *)w_ht_val_ptr(i.value);
+  if (recursive) {
+    for (auto& it : dir->dirs) {
+      auto child = it.second.get();
 
-    w_root_mark_deleted(lock, child, now, true);
-  } while (w_ht_next(dir->dirs, &i));
+      w_root_mark_deleted(lock, child, now, true);
+    }
+  }
 }
 
 void stop_watching_dir(struct write_locked_watchman_root *lock,
                        struct watchman_dir *dir) {
   w_ht_iter_t i;
-  w_string_t *dir_path = w_dir_copy_full_path(dir);
+  auto dir_path = dir->getFullPath();
 
-  w_log(W_LOG_DBG, "stop_watching_dir %.*s\n", dir_path->len, dir_path->buf);
-  w_string_delref(dir_path);
+  w_log(W_LOG_DBG, "stop_watching_dir %s\n", dir_path.c_str());
 
-  if (w_ht_first(dir->dirs, &i)) do {
-    auto child = (watchman_dir *)w_ht_val_ptr(i.value);
+  for (auto& it : dir->dirs) {
+    auto child = it.second.get();
 
     stop_watching_dir(lock, child);
-  } while (w_ht_next(dir->dirs, &i));
+  }
 
   lock->root->watcher_ops->root_stop_watch_dir(lock, dir);
 }

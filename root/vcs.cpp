@@ -5,12 +5,11 @@
 
 bool vcs_file_exists(struct write_locked_watchman_root *lock, const char *dname,
                      const char *fname) {
-  struct watchman_dir *dir;
   struct watchman_file *file;
 
   auto dir_name = w_string::pathCat({lock->root->root_path, dname});
 
-  dir = w_root_resolve_dir(lock, dir_name, false);
+  auto dir = w_root_resolve_dir(lock, dir_name, false);
 
   if (!dir) {
     return false;

@@ -114,10 +114,7 @@ bool w_root_init(w_root_t *root, char **errmsg) {
 
   // "manually" populate the initial dir, as the dir resolver will
   // try to find its parent and we don't want it to for the root
-  root->inner.root_dir =
-      (watchman_dir*)calloc(1, sizeof(*root->inner.root_dir));
-  root->inner.root_dir->name = root->root_path;
-  w_string_addref(root->inner.root_dir->name);
+  root->inner.root_dir.reset(new watchman_dir(root->root_path, nullptr));
 
   time(&root->inner.last_cmd_timestamp);
 
@@ -165,10 +162,7 @@ void w_root_teardown(w_root_t *root) {
 
   // Must delete_dir before we process the files to avoid
   // an ASAN issue when trying to free the dir children
-  if (root->inner.root_dir) {
-    delete_dir(root->inner.root_dir);
-    root->inner.root_dir = nullptr;
-  }
+  root->inner.root_dir.reset();
 
   while (root->inner.latest_file) {
     auto file = root->inner.latest_file;

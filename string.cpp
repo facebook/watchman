@@ -838,14 +838,18 @@ w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
   return s;
 }
 
-w_string_t *w_dir_path_cat_cstr(struct watchman_dir *dir, const char *extra) {
+w_string_t* w_dir_path_cat_cstr(
+    const struct watchman_dir* dir,
+    const char* extra) {
   return w_dir_path_cat_cstr_len(dir, extra, strlen_uint32(extra));
 }
 
-w_string_t *w_dir_path_cat_cstr_len(struct watchman_dir *dir, const char *extra,
-                                    uint32_t extra_len) {
+w_string_t* w_dir_path_cat_cstr_len(
+    const struct watchman_dir* dir,
+    const char* extra,
+    uint32_t extra_len) {
   uint32_t length = 0;
-  struct watchman_dir *d;
+  const struct watchman_dir* d;
   w_string_t *s;
   char *buf, *end;
 
@@ -853,7 +857,7 @@ w_string_t *w_dir_path_cat_cstr_len(struct watchman_dir *dir, const char *extra,
     length = extra_len + 1 /* separator */;
   }
   for (d = dir; d; d = d->parent) {
-    length += d->name->len + 1 /* separator OR final NUL terminator */;
+    length += d->name.size() + 1 /* separator OR final NUL terminator */;
   }
 
   s = (w_string_t*)(new char[sizeof(*s) + length]);
@@ -874,19 +878,21 @@ w_string_t *w_dir_path_cat_cstr_len(struct watchman_dir *dir, const char *extra,
       --end;
       *end = WATCHMAN_DIR_SEP;
     }
-    end -= d->name->len;
-    memcpy(end, d->name->buf, d->name->len);
+    end -= d->name.size();
+    memcpy(end, d->name.data(), d->name.size());
   }
 
   s->buf = buf;
   return s;
 }
 
-w_string_t *w_dir_copy_full_path(struct watchman_dir *dir) {
+w_string_t* w_dir_copy_full_path(const struct watchman_dir* dir) {
   return w_dir_path_cat_cstr_len(dir, NULL, 0);
 }
 
-w_string_t *w_dir_path_cat_str(struct watchman_dir *dir, w_string_t *str) {
+w_string_t* w_dir_path_cat_str(
+    const struct watchman_dir* dir,
+    w_string_t* str) {
   return w_dir_path_cat_cstr_len(dir, str->buf, str->len);
 }
 

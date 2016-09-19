@@ -10,8 +10,6 @@ void stat_path(struct write_locked_watchman_root *lock,
   struct watchman_stat st;
   int res, err;
   char path[WATCHMAN_NAME_MAX];
-  struct watchman_dir *dir;
-  struct watchman_dir *dir_ent = NULL;
   struct watchman_file *file = NULL;
   w_string_t *dir_name;
   w_string_t *file_name;
@@ -35,17 +33,14 @@ void stat_path(struct write_locked_watchman_root *lock,
 
   dir_name = w_string_dirname(full_path);
   file_name = w_string_basename(full_path);
-  dir = w_root_resolve_dir(lock, dir_name, true);
+  auto dir = w_root_resolve_dir(lock, dir_name, true);
 
   if (dir->files) {
     file = (watchman_file*)w_ht_val_ptr(
         w_ht_get(dir->files, w_ht_ptr_val(file_name)));
   }
 
-  if (dir->dirs) {
-    dir_ent = (watchman_dir*)w_ht_val_ptr(
-        w_ht_get(dir->dirs, w_ht_ptr_val(file_name)));
-  }
+  auto dir_ent = dir->getChildDir(file_name);
 
   if (pre_stat && pre_stat->has_stat) {
     memcpy(&st, &pre_stat->stat, sizeof(st));

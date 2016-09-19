@@ -82,7 +82,7 @@ struct watchman_root {
     // Watcher specific state
     watchman_watcher_t watch{0};
 
-    struct watchman_dir* root_dir{0};
+    std::unique_ptr<watchman_dir> root_dir;
 
     /* the most recently changed file */
     struct watchman_file* latest_file{0};
@@ -192,11 +192,11 @@ void w_root_set_warning(
     struct write_locked_watchman_root* lock,
     w_string_t* str);
 
-struct watchman_dir* w_root_resolve_dir(
+watchman_dir* w_root_resolve_dir(
     struct write_locked_watchman_root* lock,
     w_string_t* dir_name,
     bool create);
-struct watchman_dir* w_root_resolve_dir_read(
+const watchman_dir* w_root_resolve_dir_read(
     struct read_locked_watchman_root* lock,
     w_string_t* dir_name);
 void w_root_process_path(

@@ -115,11 +115,15 @@ uint32_t w_string_embedded_size(w_string_t *str);
 void w_string_embedded_copy(w_string_t *dest, w_string_t *src);
 
 struct watchman_dir;
-w_string_t *w_dir_copy_full_path(struct watchman_dir *dir);
-w_string_t *w_dir_path_cat_cstr_len(struct watchman_dir *dir, const char *extra,
-                                    uint32_t extra_len);
-w_string_t *w_dir_path_cat_cstr(struct watchman_dir *dir, const char *extra);
-w_string_t *w_dir_path_cat_str(struct watchman_dir *dir, w_string_t *str);
+w_string_t *w_dir_copy_full_path(const struct watchman_dir *dir);
+w_string_t* w_dir_path_cat_cstr_len(
+    const struct watchman_dir* dir,
+    const char* extra,
+    uint32_t extra_len);
+w_string_t* w_dir_path_cat_cstr(
+    const struct watchman_dir* dir,
+    const char* extra);
+w_string_t* w_dir_path_cat_str(const struct watchman_dir* dir, w_string_t* str);
 
 bool w_is_path_absolute_cstr(const char *path);
 bool w_is_path_absolute_cstr_len(const char *path, uint32_t len);

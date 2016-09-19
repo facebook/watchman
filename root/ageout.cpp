@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <unordered_set>
 
 static void remove_from_suffix_list(struct write_locked_watchman_root *lock,
                                     struct watchman_file *file) {
@@ -32,34 +33,14 @@ static void remove_from_suffix_list(struct write_locked_watchman_root *lock,
   w_string_delref(suffix);
 }
 
-static void record_aged_out_dir(w_ht_t *aged_dir_names,
-                                struct watchman_dir *dir) {
-  w_ht_iter_t i;
-  w_string_t *full_name = w_dir_copy_full_path(dir);
+static void age_out_file(
+    struct write_locked_watchman_root* lock,
+    std::unordered_set<w_string> &dirs_to_erase,
+    struct watchman_file* file) {
+  auto parent = file->parent;
 
-  w_log(W_LOG_DBG, "age_out: remember dir %.*s\n", full_name->len,
-        full_name->buf);
-
-  w_ht_insert(aged_dir_names, w_ht_ptr_val(full_name), w_ht_ptr_val(dir),
-              false);
-
-  w_string_delref(full_name);
-
-  if (dir->dirs && w_ht_first(dir->dirs, &i)) do {
-    auto child = (watchman_dir*)w_ht_val_ptr(i.value);
-
-    record_aged_out_dir(aged_dir_names, child);
-    w_ht_iter_del(dir->dirs, &i);
-  } while (w_ht_next(dir->dirs, &i));
-}
-
-static void age_out_file(struct write_locked_watchman_root *lock,
-                         w_ht_t *aged_dir_names, struct watchman_file *file) {
-  struct watchman_dir *dir;
-  w_string_t *full_name;
-
-  full_name = w_dir_path_cat_str(file->parent, w_file_get_name(file));
-  w_log(W_LOG_DBG, "age_out file=%.*s\n", full_name->len, full_name->buf);
+  w_string full_name(w_dir_path_cat_str(parent, w_file_get_name(file)), false);
+  w_log(W_LOG_DBG, "age_out file=%s\n", full_name.c_str());
 
   // Revise tick for fresh instance reporting
   lock->root->inner.last_age_out_tick =
@@ -69,39 +50,21 @@ static void age_out_file(struct write_locked_watchman_root *lock,
   remove_from_file_list(lock, file);
   remove_from_suffix_list(lock, file);
 
-  if (file->parent->files) {
+  if (parent->files) {
     // Remove the entry from the containing file hash
-    w_ht_del(file->parent->files, w_ht_ptr_val(w_file_get_name(file)));
+    w_ht_del(parent->files, w_ht_ptr_val(w_file_get_name(file)));
   }
 
-  // resolve the dir of the same name and mark it for later removal
-  // from our internal datastructures
-  dir = w_root_resolve_dir(lock, full_name, false);
-  if (dir) {
-    record_aged_out_dir(aged_dir_names, dir);
-  } else if (file->parent->dirs) {
-    // Remove the entry from the containing dir hash.  This is contingent
-    // on not being a dir because in the dir case we want to defer removing
-    // the directory entries until later.
-    w_ht_del(file->parent->dirs, w_ht_ptr_val(w_file_get_name(file)));
+  // If we have a corresponding dir, we want to arrange to remove it, but only
+  // after we have unlinked all of the associated file nodes.
+  if (parent->dirs.find(w_file_get_name(file)) != parent->dirs.end()) {
+    dirs_to_erase.insert(full_name);
   }
 
   // And free it.  We don't need to stop watching it, because we already
   // stopped watching it when we marked it as !exists
   free_file_node(lock->root, file);
-
-  w_string_delref(full_name);
 }
-
-static void age_out_dir(struct watchman_dir *dir)
-{
-  assert(!dir->files || w_ht_size(dir->files) == 0);
-
-  // This will implicitly call delete_dir() which will tear down
-  // the files and dirs hashes
-  w_ht_del(dir->parent->dirs, w_ht_ptr_val(dir->name));
-}
-
 
 void consider_age_out(struct write_locked_watchman_root *lock)
 {
@@ -129,46 +92,81 @@ void consider_age_out(struct write_locked_watchman_root *lock)
 // of build tooling or atomic renames)
 void w_root_perform_age_out(struct write_locked_watchman_root *lock,
                             int min_age) {
-  struct watchman_file *file, *tmp;
+  struct watchman_file *file, *prior;
   time_t now;
   w_ht_iter_t i;
-  w_ht_t *aged_dir_names;
   w_root_t *root = lock->root;
+  uint32_t num_aged_files = 0;
+  uint32_t num_aged_cursors = 0;
+  uint32_t num_walked = 0;
+  std::unordered_set<w_string> dirs_to_erase;
+  w_perf_t sample;
 
   time(&now);
   root->inner.last_age_out_timestamp = now;
-  aged_dir_names = w_ht_new(2, &w_ht_string_funcs);
+  w_perf_start(&sample, "age_out");
 
   file = root->inner.latest_file;
+  prior = nullptr;
   while (file) {
+    ++num_walked;
     if (file->exists || file->otime.timestamp + min_age > now) {
+      prior = file;
       file = file->next;
       continue;
     }
 
-    // Get the next file before we remove the current one
-    tmp = file->next;
+    age_out_file(lock, dirs_to_erase, file);
+    num_aged_files++;
 
-    age_out_file(lock, aged_dir_names, file);
-
-    file = tmp;
+    // Go back to last good file node; we can't trust that the
+    // value of file->next saved before age_out_file is a valid
+    // file node as anything past that point may have also been
+    // aged out along with it.
+    file = prior;
   }
 
-  // For each dir that matched a pruned file node, delete from
-  // our internal structures
-  if (w_ht_first(aged_dir_names, &i)) do {
-    auto dir = (watchman_dir *)w_ht_val_ptr(i.value);
-
-    age_out_dir(dir);
-  } while (w_ht_next(aged_dir_names, &i));
-  w_ht_free(aged_dir_names);
+  for (auto& name : dirs_to_erase) {
+    auto parent = w_root_resolve_dir(lock, name.dirName(), false);
+    if (parent) {
+      parent->dirs.erase(name.baseName());
+    }
+  }
 
   // Age out cursors too.
   if (w_ht_first(root->inner.cursors, &i)) do {
     if (i.value < root->inner.last_age_out_tick) {
       w_ht_iter_del(root->inner.cursors, &i);
+      num_aged_cursors++;
     }
   } while (w_ht_next(root->inner.cursors, &i));
+
+  if (num_aged_files + dirs_to_erase.size() + num_aged_cursors) {
+    w_log(
+        W_LOG_ERR,
+        "aged %" PRIu32 " files, %" PRIu32 " dirs, %" PRIu32 " cursors\n",
+        num_aged_files,
+        uint32_t(dirs_to_erase.size()),
+        num_aged_cursors);
+  }
+  if (w_perf_finish(&sample)) {
+    w_perf_add_root_meta(&sample, lock->root);
+    w_perf_add_meta(
+        &sample,
+        "age_out",
+        json_pack(
+            "{s:i, s:i, s:i, s:i}",
+            "walked",
+            num_walked,
+            "files",
+            num_aged_files,
+            "dirs",
+            dirs_to_erase.size(),
+            "cursors",
+            num_aged_cursors));
+    w_perf_log(&sample);
+  }
+  w_perf_destroy(&sample);
 }
 
 /* vim:ts=2:sw=2:et:
