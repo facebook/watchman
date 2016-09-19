@@ -204,7 +204,6 @@ void w_root_mark_deleted(struct write_locked_watchman_root *lock,
 
 void stop_watching_dir(struct write_locked_watchman_root *lock,
                        struct watchman_dir *dir) {
-  w_ht_iter_t i;
   auto dir_path = dir->getFullPath();
 
   w_log(W_LOG_DBG, "stop_watching_dir %s\n", dir_path.c_str());

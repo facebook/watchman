@@ -19,7 +19,6 @@ void crawler(struct write_locked_watchman_root *lock,
   struct watchman_file *file;
   struct watchman_dir_handle *osdir;
   struct watchman_dir_ent *dirent;
-  w_ht_iter_t i;
   char path[WATCHMAN_NAME_MAX];
   bool stat_all = false;
   w_root_t *root = lock->root;

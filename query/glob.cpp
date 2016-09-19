@@ -398,7 +398,6 @@ static bool glob_generator_tree(struct w_query_ctx *ctx, int64_t *num_walked,
                                 const struct watchman_dir *dir) {
   uint32_t i;
   w_string_t component;
-  w_ht_iter_t iter;
   bool result = true;
   int64_t n = 0;
 

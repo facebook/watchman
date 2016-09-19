@@ -60,7 +60,6 @@ static void load_root_config(w_root_t *root, const char *path) {
 
 static void apply_ignore_configuration(w_root_t *root) {
   w_string_t *name;
-  w_string_t *fullname;
   uint8_t i;
   json_t *ignores;
 
