@@ -60,8 +60,11 @@ bool kqueue_root_init(w_root_t *root, char **errmsg) {
 
   state->kq_fd = kqueue();
   if (state->kq_fd == -1) {
-    ignore_result(asprintf(errmsg, "watch(%.*s): kqueue() error: %s",
-        root->root_path->len, root->root_path->buf, strerror(errno)));
+    ignore_result(asprintf(
+        errmsg,
+        "watch(%s): kqueue() error: %s",
+        root->root_path.c_str(),
+        strerror(errno)));
     w_log(W_LOG_ERR, "%s\n", *errmsg);
     return false;
   }
@@ -251,8 +254,12 @@ static bool kqueue_root_consume_notify(
   n = kevent(state->kq_fd, NULL, 0,
       state->keventbuf, sizeof(state->keventbuf) / sizeof(state->keventbuf[0]),
       &ts);
-  w_log(W_LOG_DBG, "consume_kqueue: %s n=%d err=%s\n",
-      root->root_path->buf, n, strerror(errno));
+  w_log(
+      W_LOG_DBG,
+      "consume_kqueue: %s n=%d err=%s\n",
+      root->root_path.c_str(),
+      n,
+      strerror(errno));
   if (root->inner.cancelled) {
     return 0;
   }
@@ -284,9 +291,11 @@ static bool kqueue_root_consume_notify(
       struct kevent k;
 
       if (w_string_equal(path, root->root_path)) {
-        w_log(W_LOG_ERR,
+        w_log(
+            W_LOG_ERR,
             "root dir %s has been (re)moved [code 0x%x], canceling watch\n",
-            root->root_path->buf, fflags);
+            root->root_path.c_str(),
+            fflags);
         w_root_cancel(root);
         pthread_mutex_unlock(&state->lock);
         return 0;

@@ -36,7 +36,7 @@ bool winwatch_root_init(w_root_t *root, char **errmsg) {
   }
   root->inner.watch = state;
 
-  wpath = w_utf8_to_win_unc(root->root_path->buf, root->root_path->len);
+  wpath = w_utf8_to_win_unc(root->root_path.data(), root->root_path.size());
   if (!wpath) {
     asprintf(errmsg, "failed to convert root path to WCHAR: %s",
         win32_strerror(GetLastError()));
@@ -50,8 +50,11 @@ bool winwatch_root_init(w_root_t *root, char **errmsg) {
       NULL, OPEN_EXISTING,
       FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED, NULL);
   if (!state->dir_handle) {
-    asprintf(errmsg, "failed to open dir %s: %s",
-        root->root_path->buf, win32_strerror(GetLastError()));
+    asprintf(
+        errmsg,
+        "failed to open dir %s: %s",
+        root->root_path.c_str(),
+        win32_strerror(GetLastError()));
     return false;
   }
 
@@ -122,8 +125,7 @@ static void *readchanges_thread(void *arg) {
   HANDLE handles[2] = { state->olap, state->ping };
   DWORD bytes;
 
-  w_set_thread_name("readchange %.*s",
-      root->root_path->len, root->root_path->buf);
+  w_set_thread_name("readchange %s", root->root_path.c_str());
 
   // Block until winmatch_root_st is waiting for our initialization
   pthread_mutex_lock(&state->mtx);
@@ -183,16 +185,22 @@ static void *readchanges_thread(void *arg) {
       if (!GetOverlappedResult(state->dir_handle, &olap,
             &bytes, FALSE)) {
         err = GetLastError();
-        w_log(W_LOG_ERR, "overlapped ReadDirectoryChangesW(%s): 0x%x %s\n",
-            root->root_path->buf,
-            err, win32_strerror(err));
+        w_log(
+            W_LOG_ERR,
+            "overlapped ReadDirectoryChangesW(%s): 0x%x %s\n",
+            root->root_path.c_str(),
+            err,
+            win32_strerror(err));
 
         if (err == ERROR_INVALID_PARAMETER && size > NETWORK_BUF_SIZE) {
           // May be a network buffer related size issue; the docs say that
           // we can hit this when watching a UNC path. Let's downsize and
           // retry the read just one time
-          w_log(W_LOG_ERR, "retrying watch for possible network location %s "
-              "with smaller buffer\n", root->root_path->buf);
+          w_log(
+              W_LOG_ERR,
+              "retrying watch for possible network location %s "
+              "with smaller buffer\n",
+              root->root_path.c_str());
           size = NETWORK_BUF_SIZE;
           initiate_read = true;
           continue;
@@ -201,8 +209,8 @@ static void *readchanges_thread(void *arg) {
         if (err == ERROR_NOTIFY_ENUM_DIR) {
           w_root_schedule_recrawl(root, "ERROR_NOTIFY_ENUM_DIR");
         } else {
-          w_log(W_LOG_ERR, "Cancelling watch for %s\n",
-              root->root_path->buf);
+          w_log(
+              W_LOG_ERR, "Cancelling watch for %s\n", root->root_path.c_str());
           w_root_cancel(root);
           break;
         }

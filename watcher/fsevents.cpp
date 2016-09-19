@@ -292,9 +292,9 @@ static struct fse_stream* fse_stream_make(
   // if the EventId rolls over.
   // We need to lookup up the UUID for the associated path and use that to
   // help decide whether we can use a value of `since` other than SinceNow.
-  if (stat(root->root_path->buf, &st)) {
+  if (stat(root->root_path.c_str(), &st)) {
     failure_reason = w_string::printf(
-        "failed to stat(%s): %s\n", root->root_path->buf, strerror(errno));
+        "failed to stat(%s): %s\n", root->root_path.c_str(), strerror(errno));
     goto fail;
   }
 
@@ -337,9 +337,12 @@ static struct fse_stream* fse_stream_make(
     goto fail;
   }
 
-  cpath = CFStringCreateWithBytes(NULL, (const UInt8 *)root->root_path->buf,
-                                  root->root_path->len, kCFStringEncodingUTF8,
-                                  false);
+  cpath = CFStringCreateWithBytes(
+      nullptr,
+      (const UInt8*)root->root_path.data(),
+      root->root_path.size(),
+      kCFStringEncodingUTF8,
+      false);
   if (!cpath) {
     failure_reason =
         w_string("CFStringCreateWithBytes failed", W_STRING_UNICODE);
@@ -349,10 +352,10 @@ static struct fse_stream* fse_stream_make(
   CFArrayAppendValue(parray, cpath);
 
   latency = cfg_get_double(root, "fsevents_latency", 0.01),
-  w_log(W_LOG_DBG,
-      "FSEventStreamCreate for path %.*s with latency %f seconds\n",
-      root->root_path->len,
-      root->root_path->buf,
+  w_log(
+      W_LOG_DBG,
+      "FSEventStreamCreate for path %s with latency %f seconds\n",
+      root->root_path.c_str(),
       latency);
 
   fse_stream->stream = FSEventStreamCreate(NULL, fse_callback,
@@ -436,8 +439,7 @@ static void *fsevents_thread(void *arg)
   CFFileDescriptorContext fdctx;
   auto state = (fsevents_root_state *)root->inner.watch;
 
-  w_set_thread_name("fsevents %.*s", root->root_path->len,
-      root->root_path->buf);
+  w_set_thread_name("fsevents %s", root->root_path.c_str());
 
   // Block until fsevents_root_start is waiting for our initialization
   pthread_mutex_lock(&state->fse_mtx);
@@ -592,8 +594,11 @@ bool fsevents_root_init(w_root_t *root, char **errmsg) {
   root->inner.watch = state;
 
   if (pipe(state->fse_pipe)) {
-    ignore_result(asprintf(errmsg, "watch(%.*s): pipe error: %s",
-        root->root_path->len, root->root_path->buf, strerror(errno)));
+    ignore_result(asprintf(
+        errmsg,
+        "watch(%s): pipe error: %s",
+        root->root_path.c_str(),
+        strerror(errno)));
     w_log(W_LOG_ERR, "%s\n", *errmsg);
     return false;
   }

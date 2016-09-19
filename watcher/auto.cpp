@@ -88,8 +88,10 @@ bool w_watcher_init(w_root_t *root, char **errmsg) {
   }
 
 done:
-  w_log(W_LOG_ERR, "root %.*s using watcher mechanism %s (%s was requested)\n",
-      root->root_path->len, root->root_path->buf,
+  w_log(
+      W_LOG_ERR,
+      "root %s using watcher mechanism %s (%s was requested)\n",
+      root->root_path.c_str(),
       root->watcher_ops->name,
       watcher_name);
   free(first_err);

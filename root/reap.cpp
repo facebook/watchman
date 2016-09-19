@@ -45,11 +45,14 @@ bool consider_reap(struct write_locked_watchman_root *lock) {
       !root_has_subscriptions(root)) {
     // We haven't had any activity in a while, and there are no registered
     // triggers or subscriptions against this watch.
-    w_log(W_LOG_ERR, "root %.*s has had no activity in %d seconds and has "
+    w_log(
+        W_LOG_ERR,
+        "root %s has had no activity in %d seconds and has "
         "no triggers or subscriptions, cancelling watch.  "
         "Set idle_reap_age_seconds in your .watchmanconfig to control "
         "this behavior\n",
-        root->root_path->len, root->root_path->buf, root->idle_reap_age);
+        root->root_path.c_str(),
+        root->idle_reap_age);
     return true;
   }
 

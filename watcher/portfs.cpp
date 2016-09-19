@@ -88,8 +88,11 @@ bool portfs_root_init(w_root_t *root, char **errmsg) {
 
   state->port_fd = port_create();
   if (state->port_fd == -1) {
-    ignore_result(asprintf(errmsg, "watch(%.*s): port_create() error: %s",
-        root->root_path->len, root->root_path->buf, strerror(errno)));
+    ignore_result(asprintf(
+        errmsg,
+        "watch(%s): port_create() error: %s",
+        root->root_path.c_str(),
+        strerror(errno)));
     w_log(W_LOG_ERR, "%s\n", *errmsg);
     return false;
   }
@@ -268,10 +271,12 @@ static bool portfs_root_consume_notify(w_root_t *root,
 
     if ((pe & (FILE_RENAME_FROM|UNMOUNTED|MOUNTEDOVER|FILE_DELETE))
         && w_string_equal(f->name, root->root_path)) {
-
-      w_log(W_LOG_ERR,
-        "root dir %s has been (re)moved (code 0x%x %s), canceling watch\n",
-        root->root_path->buf, pe, flags_label);
+      w_log(
+          W_LOG_ERR,
+          "root dir %s has been (re)moved (code 0x%x %s), canceling watch\n",
+          root->root_path.c_str(),
+          pe,
+          flags_label);
 
       w_root_cancel(root);
       pthread_mutex_unlock(&state->lock);

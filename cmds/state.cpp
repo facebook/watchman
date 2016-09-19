@@ -275,10 +275,11 @@ void w_client_vacate_states(struct watchman_user_client *client) {
     auto assertion = (watchman_client_state_assertion*)w_ht_val_ptr(iter.value);
     root = assertion->root;
 
-    w_log(W_LOG_ERR,
-        "implicitly vacating state %s on %.*s due to client disconnect\n",
+    w_log(
+        W_LOG_ERR,
+        "implicitly vacating state %s on %s due to client disconnect\n",
         assertion->name->buf,
-        root->root_path->len, root->root_path->buf);
+        root->root_path.c_str());
 
     // This will delete the state from client->states and invalidate
     // the iterator.

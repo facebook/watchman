@@ -49,12 +49,14 @@ void w_root_schedule_recrawl(w_root_t *root, const char *why) {
       w_string_delref(root->last_recrawl_reason);
     }
 
-    root->last_recrawl_reason = w_string_make_printf(
-        "%.*s: %s",
-        root->root_path->len, root->root_path->buf, why);
+    root->last_recrawl_reason =
+        w_string_make_printf("%s: %s", root->root_path.c_str(), why);
 
-    w_log(W_LOG_ERR, "%.*s: %s: scheduling a tree recrawl\n",
-        root->root_path->len, root->root_path->buf, why);
+    w_log(
+        W_LOG_ERR,
+        "%s: %s: scheduling a tree recrawl\n",
+        root->root_path.c_str(),
+        why);
   }
   root->inner.should_recrawl = true;
   signal_root_threads(root);
@@ -77,8 +79,7 @@ bool w_root_cancel(w_root_t *root /* don't care about locked state */) {
   if (!root->inner.cancelled) {
     cancelled = true;
 
-    w_log(W_LOG_DBG, "marked %s cancelled\n",
-        root->root_path->buf);
+    w_log(W_LOG_DBG, "marked %s cancelled\n", root->root_path.c_str());
     root->inner.cancelled = true;
 
     signal_root_threads(root);

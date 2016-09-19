@@ -35,7 +35,7 @@ const watchman_dir* w_root_resolve_dir_read(
   dir_end = dir_component + dir_name->len;
 
   dir = lock->root->inner.root_dir.get();
-  dir_component += lock->root->root_path->len + 1; // Skip root path prefix
+  dir_component += lock->root->root_path.size() + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");
 
@@ -92,7 +92,7 @@ watchman_dir* w_root_resolve_dir(
   dir_end = dir_component + dir_name->len;
 
   dir = lock->root->inner.root_dir.get();
-  dir_component += lock->root->root_path->len + 1; // Skip root path prefix
+  dir_component += lock->root->root_path.size() + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");
 

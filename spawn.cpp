@@ -55,8 +55,11 @@ void w_mark_dead(pid_t pid)
   delete_running_pid(pid);
   pthread_mutex_unlock(&spawn_lock);
 
-  w_log(W_LOG_DBG, "mark_dead: %.*s child pid %d\n",
-      unlocked.root->root_path->len, unlocked.root->root_path->buf, (int)pid);
+  w_log(
+      W_LOG_DBG,
+      "mark_dead: %s child pid %d\n",
+      unlocked.root->root_path.c_str(),
+      (int)pid);
 
   /* now walk the cmds and try to find our match */
   w_root_lock(&unlocked, "mark_dead", &lock);
@@ -212,10 +215,12 @@ static void spawn_command(w_root_t *root,
 
   stdin_file = prepare_stdin(cmd, res);
   if (!stdin_file) {
-    w_log(W_LOG_ERR, "trigger %.*s:%s %s\n",
-        (int)root->root_path->len,
-        root->root_path->buf,
-        cmd->triggername->buf, strerror(errno));
+    w_log(
+        W_LOG_ERR,
+        "trigger %s:%s %s\n",
+        root->root_path.c_str(),
+        cmd->triggername->buf,
+        strerror(errno));
     return;
   }
 
@@ -399,10 +404,14 @@ static void spawn_command(w_root_t *root,
     w_log(result_log_level, "envp[%d] %s\n", i, envp[i]);
   }
 
-  w_log(result_log_level, "trigger %.*s:%s pid=%d ret=%d %s\n",
-      (int)root->root_path->len,
-      root->root_path->buf,
-      cmd->triggername->buf, (int)cmd->current_proc, ret, strerror(ret));
+  w_log(
+      result_log_level,
+      "trigger %s:%s pid=%d ret=%d %s\n",
+      root->root_path.c_str(),
+      cmd->triggername->buf,
+      (int)cmd->current_proc,
+      ret,
+      strerror(ret));
 
   free(argv);
   free(envp);

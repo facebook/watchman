@@ -94,10 +94,10 @@ static void apply_ignore_configuration(w_root_t *root) {
 bool w_root_init(w_root_t *root, char **errmsg) {
   struct watchman_dir_handle *osdir;
 
-  osdir = w_dir_open(root->root_path->buf);
+  osdir = w_dir_open(root->root_path.c_str());
   if (!osdir) {
     ignore_result(asprintf(errmsg, "failed to opendir(%s): %s",
-          root->root_path->buf,
+          root->root_path.c_str(),
           strerror(errno)));
     return false;
   }
@@ -129,7 +129,7 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
   root->case_sensitive = is_case_sensitive_filesystem(path);
 
   w_pending_coll_init(&root->pending);
-  root->root_path = w_string_new_typed(path, W_STRING_BYTE);
+  root->root_path = w_string(path, W_STRING_BYTE);
   root->commands = w_ht_new(2, &trigger_hash_funcs);
   w_ignore_init(&root->ignore);
 
@@ -204,14 +204,12 @@ void w_root_delref(struct unlocked_watchman_root *unlocked) {
 void w_root_delref_raw(w_root_t *root) {
   if (!w_refcnt_del(&root->refcnt)) return;
 
-  w_log(W_LOG_DBG, "root: final ref on %s\n",
-      root->root_path->buf);
+  w_log(W_LOG_DBG, "root: final ref on %s\n", root->root_path.c_str());
   w_cancel_subscriptions_for_root(root);
 
   w_root_teardown(root);
 
   pthread_rwlock_destroy(&root->lock);
-  w_string_delref(root->root_path);
   w_ignore_destroy(&root->ignore);
   w_ht_free(root->commands);
 

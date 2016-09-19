@@ -121,8 +121,11 @@ bool inot_root_init(w_root_t *root, char **errmsg) {
   state->infd = inotify_init();
 #endif
   if (state->infd == -1) {
-    ignore_result(asprintf(errmsg, "watch(%.*s): inotify_init error: %s",
-        root->root_path->len, root->root_path->buf, inot_strerror(errno)));
+    ignore_result(asprintf(
+        errmsg,
+        "watch(%s): inotify_init error: %s",
+        root->root_path.c_str(),
+        inot_strerror(errno)));
     w_log(W_LOG_ERR, "%s\n", *errmsg);
     return false;
   }
@@ -333,7 +336,7 @@ static void process_inotify_event(
         if (w_string_equal(root->root_path, name)) {
           w_log(W_LOG_ERR,
               "root dir %s has been (re)moved, canceling watch\n",
-              root->root_path->buf);
+              root->root_path.c_str());
           w_string_delref(name);
           w_string_delref(dir_name);
           w_root_cancel(root);

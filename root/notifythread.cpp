@@ -12,16 +12,22 @@ static bool handle_should_recrawl(struct write_locked_watchman_root *lock)
     // be careful, this is a bit of a switcheroo
     w_root_teardown(root);
     if (!w_root_init(root, &errmsg)) {
-      w_log(W_LOG_ERR, "failed to init root %.*s, cancelling watch: %s\n",
-          root->root_path->len, root->root_path->buf, errmsg);
+      w_log(
+          W_LOG_ERR,
+          "failed to init root %s, cancelling watch: %s\n",
+          root->root_path.c_str(),
+          errmsg);
       // this should cause us to exit from the notify loop
       w_root_cancel(root);
     }
     root->recrawl_count++;
     if (!root->watcher_ops->root_start(root)) {
-      w_log(W_LOG_ERR, "failed to start root %.*s, cancelling watch: %.*s\n",
-          root->root_path->len, root->root_path->buf,
-          root->failure_reason->len, root->failure_reason->buf);
+      w_log(
+          W_LOG_ERR,
+          "failed to start root %s, cancelling watch: %.*s\n",
+          root->root_path.c_str(),
+          root->failure_reason->len,
+          root->failure_reason->buf);
       w_root_cancel(root);
     }
     w_pending_coll_ping(&root->pending);
@@ -58,10 +64,12 @@ static void notify_thread(struct unlocked_watchman_root *unlocked)
   }
 
   if (!unlocked->root->watcher_ops->root_start(unlocked->root)) {
-    w_log(W_LOG_ERR, "failed to start root %.*s, cancelling watch: %.*s\n",
-          unlocked->root->root_path->len, unlocked->root->root_path->buf,
-          unlocked->root->failure_reason->len,
-          unlocked->root->failure_reason->buf);
+    w_log(
+        W_LOG_ERR,
+        "failed to start root %s, cancelling watch: %.*s\n",
+        unlocked->root->root_path.c_str(),
+        unlocked->root->failure_reason->len,
+        unlocked->root->failure_reason->buf);
     w_root_cancel(unlocked->root);
     w_pending_coll_destroy(&pending);
     return;
@@ -105,8 +113,7 @@ static void notify_thread(struct unlocked_watchman_root *unlocked)
 void *run_notify_thread(void *arg) {
   struct unlocked_watchman_root unlocked = {(w_root_t*)arg};
 
-  w_set_thread_name("notify %.*s", unlocked.root->root_path->len,
-                    unlocked.root->root_path->buf);
+  w_set_thread_name("notify %s", unlocked.root->root_path.c_str());
   notify_thread(&unlocked);
 
   w_log(W_LOG_DBG, "out of loop\n");

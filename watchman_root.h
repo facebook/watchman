@@ -27,7 +27,7 @@ struct watchman_root {
   long refcnt{1};
 
   /* path to root */
-  w_string_t *root_path{nullptr};
+  w_string root_path;
   bool case_sensitive{false};
 
   /* our locking granularity is per-root */

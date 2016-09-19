@@ -46,12 +46,12 @@ void add_root_warnings_to_response(json_t *response,
       "%.*s%s" // root->warning
       "%s\n"   // str (last recrawl reason)
       "To clear this warning, run:\n"
-      "`watchman watch-del %.*s ; watchman watch-project %.*s`\n",
+      "`watchman watch-del %s ; watchman watch-project %s`\n",
       root->warning ? root->warning->len : 0,
       root->warning ? root->warning->buf : "",
       root->warning && str ? "\n" : "", // newline if we have both strings
-      str ? str : "", root->root_path->len, root->root_path->buf,
-      root->root_path->len, root->root_path->buf));
+      str ? str : "", root->root_path.c_str(),
+      root->root_path.c_str()));
 
   if (full) {
     set_prop(response, "warning", typed_string_to_json(full, W_STRING_MIXED));

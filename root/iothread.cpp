@@ -209,8 +209,11 @@ bool w_root_process_pending(struct write_locked_watchman_root *lock,
     return false;
   }
 
-  w_log(W_LOG_DBG, "processing %d events in %s\n",
-      w_pending_coll_size(coll), lock->root->root_path->buf);
+  w_log(
+      W_LOG_DBG,
+      "processing %d events in %s\n",
+      w_pending_coll_size(coll),
+      lock->root->root_path.c_str());
 
   // Steal the contents
   pending = coll->pending;
@@ -235,8 +238,7 @@ void *run_io_thread(void *arg)
 {
   struct unlocked_watchman_root unlocked = {(w_root_t*)arg};
 
-  w_set_thread_name("io %.*s", unlocked.root->root_path->len,
-                    unlocked.root->root_path->buf);
+  w_set_thread_name("io %s", unlocked.root->root_path.c_str());
   io_thread(&unlocked);
   w_log(W_LOG_DBG, "out of loop\n");
 

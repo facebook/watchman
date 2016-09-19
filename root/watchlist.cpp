@@ -80,17 +80,17 @@ char *w_find_enclosing_root(const char *filename, char **relpath) {
   }
 
   // extract the path portions
-  prefix = (char*)malloc(root->root_path->len + 1);
+  prefix = (char*)malloc(root->root_path.size() + 1);
   if (!prefix) {
     goto out;
   }
-  memcpy(prefix, filename, root->root_path->len);
-  prefix[root->root_path->len] = '\0';
+  memcpy(prefix, filename, root->root_path.size());
+  prefix[root->root_path.size()] = '\0';
 
-  if (root->root_path->len == name->len) {
+  if (root->root_path.size() == name->len) {
     *relpath = NULL;
   } else {
-    *relpath = strdup(filename + root->root_path->len + 1);
+    *relpath = strdup(filename + root->root_path.size() + 1);
   }
 
 out:
@@ -251,8 +251,11 @@ bool w_root_load_state(json_t *state) {
 
       cmd = w_build_trigger_from_def(lock.root, tobj, &errmsg);
       if (!cmd) {
-        w_log(W_LOG_ERR, "loading trigger for %s: %s\n",
-              lock.root->root_path->buf, errmsg);
+        w_log(
+            W_LOG_ERR,
+            "loading trigger for %s: %s\n",
+            lock.root->root_path.c_str(),
+            errmsg);
         free(errmsg);
         continue;
       }
@@ -264,8 +267,11 @@ bool w_root_load_state(json_t *state) {
 
     if (created) {
       if (!root_start(unlocked.root, &errmsg)) {
-        w_log(W_LOG_ERR, "root_start(%s) failed: %s\n",
-            unlocked.root->root_path->buf, errmsg);
+        w_log(
+            W_LOG_ERR,
+            "root_start(%s) failed: %s\n",
+            unlocked.root->root_path.c_str(),
+            errmsg);
         free(errmsg);
         w_root_cancel(unlocked.root);
       }

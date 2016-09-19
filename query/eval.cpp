@@ -44,7 +44,7 @@ w_string_t *w_query_ctx_get_wholename(
     // legal
     name_start = ctx->query->relative_root->len + 1;
   } else {
-    name_start = ctx->lock->root->root_path->len + 1;
+    name_start = ctx->lock->root->root_path.size() + 1;
   }
 
   auto full_name = w_string::pathCat(
