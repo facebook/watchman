@@ -61,9 +61,10 @@ static const struct flag_map kflags[] = {
   {0, NULL},
 };
 
-static struct fse_stream *fse_stream_make(w_root_t *root,
-                                          FSEventStreamEventId since,
-                                          w_string_t **failure_reason);
+static struct fse_stream* fse_stream_make(
+    w_root_t* root,
+    FSEventStreamEventId since,
+    w_string& failure_reason);
 static void fse_stream_free(struct fse_stream *fse_stream);
 
 /** Generate a perf event for the drop */
@@ -131,16 +132,15 @@ do_resync:
             // If we fail, then we allow the UserDropped event to propagate
             // to the consumer thread which has existing logic to schedule
             // a recrawl.
-            w_string_t *failure_reason = NULL;
+            w_string failure_reason;
             struct fse_stream *replacement =
-                fse_stream_make(root, stream->last_good, &failure_reason);
+                fse_stream_make(root, stream->last_good, failure_reason);
 
             if (!replacement) {
               w_log(W_LOG_ERR,
-                    "Failed to rebuild fsevent stream (%.*s) while trying to "
+                    "Failed to rebuild fsevent stream (%s) while trying to "
                     "resync, falling back to a regular recrawl\n",
-                    failure_reason->len, failure_reason->buf);
-              w_string_delref(failure_reason);
+                    failure_reason.c_str());
               // Allow the UserDropped event to propagate and trigger a recrawl
               goto propagate;
             }
@@ -264,9 +264,10 @@ static void fse_stream_free(struct fse_stream *fse_stream) {
   }
 }
 
-static struct fse_stream *fse_stream_make(w_root_t *root,
-                                          FSEventStreamEventId since,
-                                          w_string_t **failure_reason) {
+static struct fse_stream* fse_stream_make(
+    w_root_t* root,
+    FSEventStreamEventId since,
+    w_string& failure_reason) {
   FSEventStreamContext ctx;
   CFMutableArrayRef parray = NULL;
   CFStringRef cpath = NULL;
@@ -277,7 +278,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
 
   if (!fse_stream) {
     // Note that w_string_new will terminate the process on OOM
-    *failure_reason = w_string_new_typed("OOM", W_STRING_UNICODE);
+    failure_reason = w_string("OOM", W_STRING_UNICODE);
     goto fail;
   }
   fse_stream->root = root;
@@ -292,7 +293,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
   // We need to lookup up the UUID for the associated path and use that to
   // help decide whether we can use a value of `since` other than SinceNow.
   if (stat(root->root_path->buf, &st)) {
-    *failure_reason = w_string_make_printf(
+    failure_reason = w_string::printf(
         "failed to stat(%s): %s\n", root->root_path->buf, strerror(errno));
     goto fail;
   }
@@ -305,16 +306,15 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
     if (!fse_stream->uuid) {
       // If there is no UUID available and we want to use an event offset,
       // we fail: a NULL UUID means that the journal is not available.
-      *failure_reason = w_string_make_printf(
+      failure_reason = w_string::printf(
           "fsevents journal is not available for dev_t=%lu\n", st.st_dev);
       goto fail;
     }
     // Compare the UUID with that of the current stream
     if (!state->stream->uuid) {
-      *failure_reason =
-          w_string_new_typed(
-              "fsevents journal was not available for prior stream",
-              W_STRING_UNICODE);
+      failure_reason = w_string(
+          "fsevents journal was not available for prior stream",
+          W_STRING_UNICODE);
       goto fail;
     }
 
@@ -322,8 +322,8 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
     b = CFUUIDGetUUIDBytes(state->stream->uuid);
 
     if (memcmp(&a, &b, sizeof(a)) != 0) {
-      *failure_reason = w_string_new_typed("fsevents journal UUID is different",
-          W_STRING_UNICODE);
+      failure_reason =
+          w_string("fsevents journal UUID is different", W_STRING_UNICODE);
       goto fail;
     }
   }
@@ -333,8 +333,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
 
   parray = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
   if (!parray) {
-    *failure_reason = w_string_new_typed("CFArrayCreateMutable failed",
-        W_STRING_UNICODE);
+    failure_reason = w_string("CFArrayCreateMutable failed", W_STRING_UNICODE);
     goto fail;
   }
 
@@ -342,8 +341,8 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
                                   root->root_path->len, kCFStringEncodingUTF8,
                                   false);
   if (!cpath) {
-    *failure_reason = w_string_new_typed("CFStringCreateWithBytes failed",
-        W_STRING_UNICODE);
+    failure_reason =
+        w_string("CFStringCreateWithBytes failed", W_STRING_UNICODE);
     goto fail;
   }
 
@@ -364,8 +363,7 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
       kFSEventStreamCreateFlagFileEvents);
 
   if (!fse_stream->stream) {
-    *failure_reason = w_string_new_typed("FSEventStreamCreate failed",
-        W_STRING_UNICODE);
+    failure_reason = w_string("FSEventStreamCreate failed", W_STRING_UNICODE);
     goto fail;
   }
 
@@ -380,8 +378,8 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
 
     ignarray = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
     if (!ignarray) {
-      *failure_reason = w_string_new_typed("CFArrayCreateMutable failed",
-          W_STRING_UNICODE);
+      failure_reason =
+          w_string("CFArrayCreateMutable failed", W_STRING_UNICODE);
       goto fail;
     }
 
@@ -394,8 +392,8 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
           kCFStringEncodingUTF8, false);
 
       if (!ignpath) {
-        *failure_reason = w_string_new_typed("CFStringCreateWithBytes failed",
-            W_STRING_UNICODE);
+        failure_reason =
+            w_string("CFStringCreateWithBytes failed", W_STRING_UNICODE);
         CFRelease(ignarray);
         goto fail;
       }
@@ -405,8 +403,8 @@ static struct fse_stream *fse_stream_make(w_root_t *root,
     }
 
     if (!FSEventStreamSetExclusionPaths(fse_stream->stream, ignarray)) {
-      *failure_reason = w_string_new_typed(
-          "FSEventStreamSetExclusionPaths failed", W_STRING_UNICODE);
+      failure_reason =
+          w_string("FSEventStreamSetExclusionPaths failed", W_STRING_UNICODE);
       CFRelease(ignarray);
       goto fail;
     }
@@ -466,8 +464,10 @@ static void *fsevents_thread(void *arg)
     CFRelease(fdsrc);
   }
 
-  state->stream = fse_stream_make(root, kFSEventStreamEventIdSinceNow,
-                                  &root->failure_reason);
+  w_string failure_reason;
+  state->stream =
+      fse_stream_make(root, kFSEventStreamEventIdSinceNow, failure_reason);
+  root->failure_reason = failure_reason.release();
   if (!state->stream) {
     goto done;
   }
