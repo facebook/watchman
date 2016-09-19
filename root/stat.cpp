@@ -137,20 +137,12 @@ void stat_path(struct write_locked_watchman_root *lock,
       if (tlen < 0 || tlen >= WATCHMAN_NAME_MAX) {
         w_log(W_LOG_ERR,
             "readlink(%s) errno=%d tlen=%d\n", path, errno, (int)tlen);
-        if (file->symlink_target) {
-          w_string_delref(file->symlink_target);
-          file->symlink_target = NULL;
-        }
+        file->symlink_target.reset();
       } else {
         bool symlink_changed = false;
-        w_string_t *new_symlink_target = w_string_new_len_typed(
-            link_target_path, tlen, W_STRING_BYTE);
-        if (!file->symlink_target ||
-            !w_string_equal(file->symlink_target, new_symlink_target)) {
+        w_string new_symlink_target(link_target_path, tlen, W_STRING_BYTE);
+        if (file->symlink_target != new_symlink_target) {
           symlink_changed = true;
-        }
-        if (file->symlink_target) {
-          w_string_delref(file->symlink_target);
         }
         file->symlink_target = new_symlink_target;
 
@@ -159,9 +151,8 @@ void stat_path(struct write_locked_watchman_root *lock,
               &root->inner.pending_symlink_targets, full_path, now, 0);
         }
       }
-    } else if (file->symlink_target) {
-      w_string_delref(file->symlink_target);
-      file->symlink_target = NULL;
+    } else {
+      file->symlink_target.reset();
     }
 #endif
 

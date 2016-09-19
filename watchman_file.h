@@ -35,7 +35,7 @@ struct watchman_file {
 
   /* the symbolic link target of this file.
    * Can be NULL if not a symlink, or we failed to read the target */
-  w_string_t *symlink_target;
+  w_string symlink_target;
 };
 
 static inline w_string_t *w_file_get_name(struct watchman_file *file) {

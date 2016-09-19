@@ -242,6 +242,7 @@ class w_string {
   }
 
   bool operator==(const w_string& other) const;
+  bool operator!=(const w_string& other) const;
 
   /** path concatenation
    * Pass in a list of w_string_pieces to join them all similarly to

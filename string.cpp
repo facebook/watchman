@@ -197,6 +197,10 @@ bool w_string::operator==(const w_string& other) const {
   return w_string_equal(str_, other.str_);
 }
 
+bool w_string::operator!=(const w_string& other) const {
+  return !(*this == other);
+}
+
 w_string w_string::pathCat(std::initializer_list<w_string_piece> elems) {
   uint32_t length = 0;
   w_string_t *s;
@@ -565,6 +569,7 @@ bool w_string_equal_cstring(const w_string_t *a, const char *b)
 bool w_string_equal(const w_string_t *a, const w_string_t *b)
 {
   if (a == b) return true;
+  if (a == nullptr || b == nullptr) return false;
   if (a->len != b->len) return false;
   if (a->hval_computed && b->hval_computed && a->_hval != b->_hval) {
     return false;
