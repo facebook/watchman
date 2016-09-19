@@ -171,7 +171,7 @@ char* w_find_enclosing_root(const char* filename, char** relpath);
 struct watchman_file* w_root_resolve_file(
     struct write_locked_watchman_root* lock,
     struct watchman_dir* dir,
-    w_string_t* file_name,
+    const w_string& file_name,
     struct timeval now);
 
 void w_root_perform_age_out(
@@ -269,10 +269,13 @@ void crawler(
     w_string_t* dir_name,
     struct timeval now,
     bool recursive);
-void stat_path(struct write_locked_watchman_root *lock,
-               struct watchman_pending_collection *coll, w_string_t *full_path,
-               struct timeval now, int flags,
-               struct watchman_dir_ent *pre_stat);
+void stat_path(
+    struct write_locked_watchman_root* lock,
+    struct watchman_pending_collection* coll,
+    const w_string& full_path,
+    struct timeval now,
+    int flags,
+    struct watchman_dir_ent* pre_stat);
 bool did_file_change(struct watchman_stat *saved, struct watchman_stat *fresh);
 void struct_stat_to_watchman_stat(const struct stat *st,
                                   struct watchman_stat *target);

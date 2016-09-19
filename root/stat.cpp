@@ -3,35 +3,42 @@
 
 #include "watchman.h"
 
-void stat_path(struct write_locked_watchman_root *lock,
-               struct watchman_pending_collection *coll, w_string_t *full_path,
-               struct timeval now, int flags,
-               struct watchman_dir_ent *pre_stat) {
+void stat_path(
+    struct write_locked_watchman_root* lock,
+    struct watchman_pending_collection* coll,
+    const w_string& full_path,
+    struct timeval now,
+    int flags,
+    struct watchman_dir_ent* pre_stat) {
   struct watchman_stat st;
   int res, err;
   char path[WATCHMAN_NAME_MAX];
-  w_string_t *dir_name;
-  w_string_t *file_name;
   bool recursive = flags & W_PENDING_RECURSIVE;
   bool via_notify = flags & W_PENDING_VIA_NOTIFY;
   w_root_t *root = lock->root;
 
   if (w_ht_get(root->ignore.ignore_dirs, w_ht_ptr_val(full_path))) {
-    w_log(W_LOG_DBG, "%.*s matches ignore_dir rules\n",
-        full_path->len, full_path->buf);
+    w_log(
+        W_LOG_DBG,
+        "%.*s matches ignore_dir rules\n",
+        int(full_path.size()),
+        full_path.data());
     return;
   }
 
-  if (full_path->len > sizeof(path)-1) {
-    w_log(W_LOG_FATAL, "path %.*s is too big\n",
-        full_path->len, full_path->buf);
+  if (full_path.size() > sizeof(path) - 1) {
+    w_log(
+        W_LOG_FATAL,
+        "path %.*s is too big\n",
+        int(full_path.size()),
+        full_path.data());
   }
 
-  memcpy(path, full_path->buf, full_path->len);
-  path[full_path->len] = 0;
+  memcpy(path, full_path.data(), full_path.size());
+  path[full_path.size()] = 0;
 
-  dir_name = w_string_dirname(full_path);
-  file_name = w_string_basename(full_path);
+  auto dir_name = full_path.dirName();
+  auto file_name = full_path.baseName();
   auto dir = w_root_resolve_dir(lock, dir_name, true);
 
   auto file = dir->getChildFile(file_name);
@@ -60,8 +67,13 @@ void stat_path(struct write_locked_watchman_root *lock,
     /* it's not there, update our state */
     if (dir_ent) {
       w_root_mark_deleted(lock, dir_ent, now, true);
-      w_log(W_LOG_DBG, "w_lstat(%s) -> %s so stopping watch on %.*s\n", path,
-            strerror(err), dir_name->len, dir_name->buf);
+      w_log(
+          W_LOG_DBG,
+          "w_lstat(%s) -> %s so stopping watch on %.*s\n",
+          path,
+          strerror(err),
+          int(dir_name.size()),
+          dir_name.data());
       stop_watching_dir(lock, dir_ent);
     }
     if (file) {
@@ -89,9 +101,13 @@ void stat_path(struct write_locked_watchman_root *lock,
       /* If we rejected the name because it wasn't canonical,
        * we need to ensure that we look in the parent dir to discover
        * the new item(s) */
-      w_log(W_LOG_DBG, "we're case insensitive, and %s is ENOENT, "
-                       "speculatively look at parent dir %.*s\n",
-            path, dir_name->len, dir_name->buf);
+      w_log(
+          W_LOG_DBG,
+          "we're case insensitive, and %s is ENOENT, "
+          "speculatively look at parent dir %.*s\n",
+          path,
+          int(dir_name.size()),
+          dir_name.data());
       w_pending_coll_add(coll, dir_name, now, W_PENDING_CRAWL_ONLY);
     }
 
@@ -206,14 +222,6 @@ void stat_path(struct write_locked_watchman_root *lock,
       w_pending_coll_add(coll, dir_name, now, 0);
     }
   }
-
-  // out is only used on some platforms, so on others compilers will complain
-  // about it being unused
-  goto out;
-
-out:
-  w_string_delref(dir_name);
-  w_string_delref(file_name);
 }
 
 /* vim:ts=2:sw=2:et:

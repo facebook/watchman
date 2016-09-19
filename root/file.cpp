@@ -147,9 +147,8 @@ void free_file_node(struct watchman_file* file) {
 struct watchman_file* w_root_resolve_file(
     struct write_locked_watchman_root* lock,
     watchman_dir* dir,
-    w_string_t* file_name,
+    const w_string& file_name,
     struct timeval now) {
-  w_string_t *suffix;
   w_string_t *name;
   auto& file_ptr = dir->files[file_name];
 
@@ -179,7 +178,7 @@ struct watchman_file* w_root_resolve_file(
   file->ctime.ticks = lock->root->inner.ticks;
   file->ctime.timestamp = now.tv_sec;
 
-  suffix = w_string_suffix(file_name);
+  auto suffix = file_name.suffix();
   if (suffix) {
     auto& sufhead = lock->root->inner.suffixes[suffix];
     if (!sufhead) {
@@ -193,8 +192,6 @@ struct watchman_file* w_root_resolve_file(
     }
     sufhead->head = file;
     file->suffix_prev = &sufhead->head;
-
-    w_string_delref(suffix);
   }
 
   watch_file(lock, file);
