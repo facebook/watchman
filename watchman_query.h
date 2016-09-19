@@ -37,7 +37,7 @@ struct w_query_ctx {
   struct w_query *query;
   struct read_locked_watchman_root *lock;
   struct watchman_file *file;
-  w_string_t *wholename;
+  w_string wholename;
   struct w_query_since since;
 
   struct watchman_rule_match *results;

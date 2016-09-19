@@ -51,8 +51,7 @@ w_string_t *w_query_ctx_get_wholename(
       {compute_parent_path(ctx, ctx->file), w_file_get_name(ctx->file)});
 
   // Record the name relative to the root
-  ctx->wholename =
-      w_string_slice(full_name, name_start, full_name.size() - name_start);
+  ctx->wholename = full_name.slice(name_start, full_name.size() - name_start);
 
   return ctx->wholename;
 }
@@ -64,10 +63,7 @@ bool w_query_process_file(
 {
   struct watchman_rule_match *m;
 
-  if (ctx->wholename) {
-    w_string_delref(ctx->wholename);
-    ctx->wholename = NULL;
-  }
+  ctx->wholename.reset();
   ctx->file = file;
 
   // For fresh instances, only return files that currently exist.
@@ -504,9 +500,7 @@ static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
     sample->log();
   }
 
-  if (ctx->wholename) {
-    w_string_delref(ctx->wholename);
-  }
+  ctx->wholename.reset();
   if (ctx->last_parent_path) {
     w_string_delref(ctx->last_parent_path);
   }

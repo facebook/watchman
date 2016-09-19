@@ -284,6 +284,10 @@ w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
   return slice;
 }
 
+w_string w_string::slice(uint32_t start, uint32_t len) const {
+  return w_string(w_string_slice(str_, start, len), false);
+}
+
 uint32_t strlen_uint32(const char *str) {
   size_t slen = strlen(str);
   if (slen > UINT32_MAX) {

@@ -274,6 +274,9 @@ class w_string {
   /** Returns the filename suffix of a path string */
   w_string suffix() const;
 
+  /** Returns a slice of this string */
+  w_string slice(uint32_t start, uint32_t len) const;
+
  private:
   w_string_t* str_{nullptr};
 };
