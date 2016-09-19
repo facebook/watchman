@@ -41,7 +41,7 @@ struct watchman_root {
 
   /* path to the query cookie dir */
   w_string query_cookie_dir;
-  w_string_t *query_cookie_prefix{nullptr};
+  w_string query_cookie_prefix;
   std::unordered_map<w_string, watchman_query_cookie*> query_cookies;
 
   struct watchman_ignore ignore;
@@ -56,13 +56,13 @@ struct watchman_root {
 
   /* how many times we've had to recrawl */
   int recrawl_count{0};
-  w_string_t *last_recrawl_reason{nullptr};
+  w_string last_recrawl_reason;
 
   // Why we failed to watch
-  w_string_t *failure_reason{nullptr};
+  w_string failure_reason;
 
   // Last ad-hoc warning message
-  w_string_t *warning{nullptr};
+  w_string warning;
 
   /* queue of items that we need to stat/process */
   struct watchman_pending_collection pending;

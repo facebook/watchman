@@ -43,7 +43,7 @@ static bool root_check_restrict(const char *watch_path) {
 }
 
 static bool check_allowed_fs(const char *filename, char **errmsg) {
-  w_string_t *fs_type = w_fstype(filename);
+  auto fs_type = w_fstype(filename);
   json_t *illegal_fstypes = NULL;
   json_t *advice_string;
   uint32_t i;
@@ -51,12 +51,14 @@ static bool check_allowed_fs(const char *filename, char **errmsg) {
 
   // Report this to the log always, as it is helpful in understanding
   // problem reports
-  w_log(W_LOG_ERR, "path %s is on filesystem type %.*s\n",
-      filename, fs_type->len, fs_type->buf);
+  w_log(
+      W_LOG_ERR,
+      "path %s is on filesystem type %s\n",
+      filename,
+      fs_type.c_str());
 
   illegal_fstypes = cfg_get_json(NULL, "illegal_fstypes");
   if (!illegal_fstypes) {
-    w_string_delref(fs_type);
     return true;
   }
 
@@ -71,7 +73,6 @@ static bool check_allowed_fs(const char *filename, char **errmsg) {
   if (!json_is_array(illegal_fstypes)) {
     w_log(W_LOG_ERR,
           "resolve_root: global config illegal_fstypes is not an array\n");
-    w_string_delref(fs_type);
     return true;
   }
 
@@ -89,16 +90,16 @@ static bool check_allowed_fs(const char *filename, char **errmsg) {
       continue;
     }
 
-    ignore_result(asprintf(errmsg,
-      "path uses the \"%.*s\" filesystem "
-      "and is disallowed by global config illegal_fstypes: %s",
-      fs_type->len, fs_type->buf, advice));
+    ignore_result(asprintf(
+        errmsg,
+        "path uses the \"%s\" filesystem "
+        "and is disallowed by global config illegal_fstypes: %s",
+        fs_type.c_str(),
+        advice));
 
-    w_string_delref(fs_type);
     return false;
   }
 
-  w_string_delref(fs_type);
   return true;
 }
 
@@ -107,7 +108,6 @@ bool root_resolve(const char *filename, bool auto_watch, bool *created,
   struct watchman_root *root = NULL, *existing = NULL;
   w_ht_val_t root_val;
   char *watch_path;
-  w_string_t *root_str;
   int realpath_err;
 
   *created = false;
@@ -133,14 +133,13 @@ bool root_resolve(const char *filename, bool auto_watch, bool *created,
     watch_path = (char*)filename;
   }
 
-  root_str = w_string_new_typed(watch_path, W_STRING_BYTE);
+  w_string root_str(watch_path, W_STRING_BYTE);
   pthread_mutex_lock(&watch_list_lock);
   // This will addref if it returns root
   if (w_ht_lookup(watched_roots, w_ht_ptr_val(root_str), &root_val, true)) {
     root = (w_root_t*)w_ht_val_ptr(root_val);
   }
   pthread_mutex_unlock(&watch_list_lock);
-  w_string_delref(root_str);
 
   if (!root && watch_path == filename) {
     // Path didn't resolve and neither did the name they passed in

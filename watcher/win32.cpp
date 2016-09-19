@@ -311,8 +311,10 @@ static bool winwatch_root_start(w_root_t *root) {
     pthread_mutex_unlock(&state->mtx);
 
     if (root->failure_reason) {
-      w_log(W_LOG_ERR, "failed to start readchanges thread: %.*s\n",
-          root->failure_reason->len, root->failure_reason->buf);
+      w_log(
+          W_LOG_ERR,
+          "failed to start readchanges thread: %s\n",
+          root->failure_reason.c_str());
       return false;
     }
     return true;

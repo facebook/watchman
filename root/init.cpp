@@ -82,11 +82,9 @@ static void apply_ignore_configuration(w_root_t *root) {
     }
 
     name = json_to_w_string(jignore);
-    fullname = w_string_path_cat(root->root_path, name);
+    auto fullname = w_string::pathCat({root->root_path, name});
     w_ignore_addstr(&root->ignore, fullname, false);
-    w_log(W_LOG_DBG, "ignoring %.*s recursively\n",
-        fullname->len, fullname->buf);
-    w_string_delref(fullname);
+    w_log(W_LOG_DBG, "ignoring %s recursively\n", fullname.c_str());
   }
 }
 
@@ -217,19 +215,6 @@ void w_root_delref_raw(w_root_t *root) {
     json_decref(root->config_file);
   }
 
-  if (root->last_recrawl_reason) {
-    w_string_delref(root->last_recrawl_reason);
-  }
-  if (root->failure_reason) {
-    w_string_delref(root->failure_reason);
-  }
-  if (root->warning) {
-    w_string_delref(root->warning);
-  }
-
-  if (root->query_cookie_prefix) {
-    w_string_delref(root->query_cookie_prefix);
-  }
   w_pending_coll_destroy(&root->pending);
 
   delete root;

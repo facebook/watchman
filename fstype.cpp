@@ -24,7 +24,7 @@
 // need to have a fully comprehensive mapping of the underlying filesystem
 // type codes to names, just the known problematic types
 
-w_string_t *w_fstype(const char *path)
+w_string w_fstype(const char *path)
 {
 #ifdef __linux__
   struct statfs sfs;
@@ -52,23 +52,23 @@ w_string_t *w_fstype(const char *path)
     }
   }
 
-  return w_string_new_typed(name, W_STRING_UNICODE);
+  return w_string(name, W_STRING_UNICODE);
 #elif STATVFS_HAS_FSTYPE_AS_STRING
   struct statvfs sfs;
 
   if (statvfs(path, &sfs) == 0) {
 #ifdef HAVE_STRUCT_STATVFS_F_FSTYPENAME
-    return w_string_new_typed(sfs.f_fstypename, W_STRING_UNICODE);
+    return w_string(sfs.f_fstypename, W_STRING_UNICODE);
 #endif
 #ifdef HAVE_STRUCT_STATVFS_F_BASETYPE
-    return w_string_new_typed(sfs.f_basetype, W_STRING_UNICODE);
+    return w_string(sfs.f_basetype, W_STRING_UNICODE);
 #endif
   }
 #elif HAVE_STATFS
   struct statfs sfs;
 
   if (statfs(path, &sfs) == 0) {
-    return w_string_new_typed(sfs.f_fstypename, W_STRING_UNICODE);
+    return w_string(sfs.f_fstypename, W_STRING_UNICODE);
   }
 #endif
 #ifdef _WIN32
@@ -89,12 +89,12 @@ w_string_t *w_fstype(const char *path)
     free(wpath);
   }
   if (fstype_name) {
-    return fstype_name;
+    return w_string(fstype_name, false);
   }
-  return w_string_new_typed("unknown", W_STRING_UNICODE);
+  return w_string("unknown", W_STRING_UNICODE);
 #else
   unused_parameter(path);
-  return w_string_new_typed("unknown", W_STRING_UNICODE);
+  return w_string("unknown", W_STRING_UNICODE);
 #endif
 }
 

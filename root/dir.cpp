@@ -186,9 +186,8 @@ void w_root_mark_deleted(struct write_locked_watchman_root *lock,
     auto file = it.second.get();
 
     if (file->exists) {
-      w_string_t *full_name = w_dir_path_cat_str(dir, w_file_get_name(file));
-      w_log(W_LOG_DBG, "mark_deleted: %.*s\n", full_name->len, full_name->buf);
-      w_string_delref(full_name);
+      w_string full_name(w_dir_path_cat_str(dir, w_file_get_name(file)), false);
+      w_log(W_LOG_DBG, "mark_deleted: %s\n", full_name.c_str());
       file->exists = false;
       w_root_mark_file_changed(lock, file, now);
     }

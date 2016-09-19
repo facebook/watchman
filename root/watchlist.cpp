@@ -59,15 +59,15 @@ bool remove_root_from_watched(
 char *w_find_enclosing_root(const char *filename, char **relpath) {
   w_ht_iter_t i;
   w_root_t *root = NULL;
-  w_string_t *name = w_string_new_typed(filename, W_STRING_BYTE);
+  w_string name(filename, W_STRING_BYTE);
   char *prefix = NULL;
 
   pthread_mutex_lock(&watch_list_lock);
   if (w_ht_first(watched_roots, &i)) do {
     auto root_name = (w_string_t *)w_ht_val_ptr(i.key);
-    if (w_string_startswith(name, root_name) && (
-          name->len == root_name->len /* exact match */ ||
-          is_slash(name->buf[root_name->len]) /* dir container matches */)) {
+    if (w_string_startswith(name, root_name) &&
+        (name.size() == root_name->len /* exact match */ ||
+         is_slash(name.data()[root_name->len]) /* dir container matches */)) {
       root = (w_root_t*)w_ht_val_ptr(i.value);
       w_root_addref(root);
       break;
@@ -87,7 +87,7 @@ char *w_find_enclosing_root(const char *filename, char **relpath) {
   memcpy(prefix, filename, root->root_path.size());
   prefix[root->root_path.size()] = '\0';
 
-  if (root->root_path.size() == name->len) {
+  if (root->root_path.size() == name.size()) {
     *relpath = NULL;
   } else {
     *relpath = strdup(filename + root->root_path.size() + 1);
@@ -97,7 +97,6 @@ out:
   if (root) {
     w_root_delref_raw(root);
   }
-  w_string_delref(name);
 
   return prefix;
 }

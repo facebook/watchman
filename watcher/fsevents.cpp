@@ -466,19 +466,18 @@ static void *fsevents_thread(void *arg)
     CFRelease(fdsrc);
   }
 
-  w_string failure_reason;
-  state->stream =
-      fse_stream_make(root, kFSEventStreamEventIdSinceNow, failure_reason);
-  root->failure_reason = failure_reason.release();
+  state->stream = fse_stream_make(
+      root, kFSEventStreamEventIdSinceNow, root->failure_reason);
   if (!state->stream) {
     goto done;
   }
 
   if (!FSEventStreamStart(state->stream->stream)) {
-    root->failure_reason = w_string_make_printf(
+    root->failure_reason = w_string::printf(
         "FSEventStreamStart failed, look at your log file %s for "
         "lines mentioning FSEvents and see %s#fsevents for more information\n",
-        log_name, cfg_get_trouble_url());
+        log_name,
+        cfg_get_trouble_url());
     goto done;
   }
 
@@ -663,8 +662,10 @@ static bool fsevents_root_start(w_root_t *root) {
     pthread_mutex_unlock(&state->fse_mtx);
 
     if (root->failure_reason) {
-      w_log(W_LOG_ERR, "failed to start fsevents thread: %.*s\n",
-          root->failure_reason->len, root->failure_reason->buf);
+      w_log(
+          W_LOG_ERR,
+          "failed to start fsevents thread: %s\n",
+          root->failure_reason.c_str());
       return false;
     }
     return true;

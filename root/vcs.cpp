@@ -97,7 +97,7 @@ bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg) {
   gethostname(hostname, sizeof(hostname));
   hostname[sizeof(hostname) - 1] = '\0';
 
-  root->query_cookie_prefix = w_string_make_printf(
+  root->query_cookie_prefix = w_string::printf(
       "%.*s%c" WATCHMAN_COOKIE_PREFIX "%s-%d-",
       root->query_cookie_dir.size(),
       root->query_cookie_dir.data(),

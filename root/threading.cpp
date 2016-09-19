@@ -45,12 +45,8 @@ bool root_start(w_root_t *root, char **errmsg) {
 
 void w_root_schedule_recrawl(w_root_t *root, const char *why) {
   if (!root->inner.should_recrawl) {
-    if (root->last_recrawl_reason) {
-      w_string_delref(root->last_recrawl_reason);
-    }
-
     root->last_recrawl_reason =
-        w_string_make_printf("%s: %s", root->root_path.c_str(), why);
+        w_string::printf("%s: %s", root->root_path.c_str(), why);
 
     w_log(
         W_LOG_ERR,

@@ -32,25 +32,27 @@ void add_root_warnings_to_response(json_t *response,
   }
 
   if (root->last_recrawl_reason) {
-    ignore_result(
-        asprintf(&str, "Recrawled this watch %d times, most recently because:\n"
-                       "%.*s\n"
-                       "To resolve, please review the information on\n"
-                       "%s#recrawl",
-                 root->recrawl_count, root->last_recrawl_reason->len,
-                 root->last_recrawl_reason->buf, cfg_get_trouble_url()));
+    ignore_result(asprintf(
+        &str,
+        "Recrawled this watch %d times, most recently because:\n"
+        "%s\n"
+        "To resolve, please review the information on\n"
+        "%s#recrawl",
+        root->recrawl_count,
+        root->last_recrawl_reason.c_str(),
+        cfg_get_trouble_url()));
   }
 
   ignore_result(asprintf(
       &full,
-      "%.*s%s" // root->warning
-      "%s\n"   // str (last recrawl reason)
+      "%s%s" // root->warning
+      "%s\n" // str (last recrawl reason)
       "To clear this warning, run:\n"
       "`watchman watch-del %s ; watchman watch-project %s`\n",
-      root->warning ? root->warning->len : 0,
-      root->warning ? root->warning->buf : "",
+      root->warning ? root->warning.c_str() : "",
       root->warning && str ? "\n" : "", // newline if we have both strings
-      str ? str : "", root->root_path.c_str(),
+      str ? str : "",
+      root->root_path.c_str(),
       root->root_path.c_str()));
 
   if (full) {

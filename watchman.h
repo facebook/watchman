@@ -42,6 +42,9 @@ typedef void *watchman_watcher_t;
 #include "watchman_query.h"
 #include "watchman_client.h"
 
+// Returns the name of the filesystem for the specified path
+w_string w_fstype(const char *path);
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -113,9 +116,6 @@ bool w_is_stopping(void);
 extern pthread_t reaper_thread;
 
 void w_request_shutdown(void);
-
-// Returns the name of the filesystem for the specified path
-w_string_t *w_fstype(const char *path);
 
 void w_run_subscription_rules(
     struct watchman_user_client *client,

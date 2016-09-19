@@ -16,7 +16,6 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
                        struct watchman_dir *dir, struct timeval now,
                        const char *syscall, int err, const char *reason) {
   auto dir_name = dir->getFullPath();
-  w_string_t *warn = NULL;
   bool log_warning = true;
   bool transient = false;
 
@@ -47,17 +46,16 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
     }
   }
 
-  warn = w_string_make_printf(
+  auto warn = w_string::printf(
       "%s(%s) -> %s. Marking this portion of the tree deleted",
       syscall,
       dir_name.c_str(),
       reason ? reason : strerror(err));
 
-  w_log(err == ENOENT ? W_LOG_DBG : W_LOG_ERR, "%.*s\n", warn->len, warn->buf);
+  w_log(err == ENOENT ? W_LOG_DBG : W_LOG_ERR, "%s\n", warn.c_str());
   if (log_warning) {
     w_root_set_warning(lock, warn);
   }
-  w_string_delref(warn);
 
   stop_watching_dir(lock, dir);
   w_root_mark_deleted(lock, dir, now, true);
@@ -65,13 +63,7 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
 
 void w_root_set_warning(struct write_locked_watchman_root *lock,
                         w_string_t *str) {
-  if (lock->root->warning) {
-    w_string_delref(lock->root->warning);
-  }
   lock->root->warning = str;
-  if (lock->root->warning) {
-    w_string_addref(lock->root->warning);
-  }
 }
 
 

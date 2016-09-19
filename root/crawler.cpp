@@ -80,8 +80,6 @@ void crawler(struct write_locked_watchman_root *lock,
   }
 
   while ((dirent = w_dir_read(osdir)) != NULL) {
-    w_string_t *name;
-
     // Don't follow parent/self links
     if (dirent->d_name[0] == '.' && (
           !strcmp(dirent->d_name, ".") ||
@@ -91,7 +89,7 @@ void crawler(struct write_locked_watchman_root *lock,
     }
 
     // Queue it up for analysis if the file is newly existing
-    name = w_string_new_typed(dirent->d_name, W_STRING_BYTE);
+    w_string name(dirent->d_name, W_STRING_BYTE);
     file = dir->getChildFile(name);
     if (file) {
       file->maybe_deleted = false;
@@ -107,7 +105,6 @@ void crawler(struct write_locked_watchman_root *lock,
           ((recursive || !file || !file->exists) ? W_PENDING_RECURSIVE : 0),
           dirent);
     }
-    w_string_delref(name);
   }
   w_dir_close(osdir);
 
