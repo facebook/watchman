@@ -163,7 +163,7 @@ char *w_realpath(const char *filename) {
   if (path_max <= 0) {
     path_max = WATCHMAN_NAME_MAX;
   }
-  buf = malloc(path_max);
+  buf = (char*)malloc(path_max);
   if (!buf) {
     return NULL;
   }
