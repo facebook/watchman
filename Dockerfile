@@ -16,3 +16,6 @@ RUN \
   ./configure && \
   make && \
   make install
+
+ENTRYPOINT [ "watchman" ]
+CMD [ "--help" ]
