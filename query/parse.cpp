@@ -295,6 +295,20 @@ static bool parse_dedup(w_query *res, json_t *query)
   return true;
 }
 
+static bool parse_fast_fail(w_query *res, json_t *query)
+{
+  int value = 0;
+
+  if (query &&
+      json_unpack(query, "{s?:b*}", "fast_fail", &value) != 0) {
+    res->errmsg = strdup("fast_fail must be a boolean");
+    return false;
+  }
+
+  res->fast_fail = (bool) value;
+  return true;
+}
+
 static bool parse_empty_on_fresh_instance(w_query *res, json_t *query)
 {
   int value = 0;
@@ -344,6 +358,10 @@ w_query *w_query_parse(const w_root_t *root, json_t *query, char **errmsg)
   }
 
   if (!parse_dedup(res, query)) {
+    goto error;
+  }
+
+  if (!parse_fast_fail(res, query)) {
     goto error;
   }
 

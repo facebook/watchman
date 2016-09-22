@@ -90,10 +90,10 @@ struct watchman_root {
     /* current tick */
     uint32_t ticks{1};
 
-    bool done_initial{0};
+    std::atomic<bool> done_initial{0};
     /* if true, we've decided that we should re-crawl the root
      * for the sake of ensuring consistency */
-    bool should_recrawl{0};
+    std::atomic<bool> should_recrawl{0};
     bool cancelled{0};
 
     /* map of cursor name => last observed tick value */
