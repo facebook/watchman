@@ -10,7 +10,7 @@ if not defined INCLUDE set need_setup=1
 @set PATH_BACKUP=%PATH%
 
 @rem run setup if we need to
-if %need_setup% == 1 call "c:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat" amd64
+if %need_setup% == 1 call "c:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 
 @rem Allow python build to succeed:
 @rem http://stackoverflow.com/questions/2817869/error-unable-to-find-vcvarsall-bat

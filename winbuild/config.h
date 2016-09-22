@@ -36,6 +36,7 @@
 #include <process.h>
 #include <io.h>
 #include <sys/types.h>
+#include <intrin.h>
 
 #if _MSC_VER >= 1400
 # include <sal.h>
@@ -55,6 +56,7 @@ extern "C" {
 #endif
 
 // Use our own abort implementation
+#undef abort
 #define abort() w_abort()
 extern void w_abort(void);
 

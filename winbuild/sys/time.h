@@ -16,10 +16,12 @@ struct timeval {
   time_t tv_sec;
   time_t tv_usec;
 };
+#if 0
 struct timespec {
   time_t tv_sec;
   long long tv_nsec;
 };
+#endif
 
 int gettimeofday(struct timeval *tv, void *ignored);
 void FILETIME_to_timespec(const FILETIME *ft, struct timespec *ts);

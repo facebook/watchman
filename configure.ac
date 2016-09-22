@@ -20,7 +20,7 @@ case $target_os in
 esac
 AC_PROG_CC
 AC_PROG_CXX
-AX_CXX_COMPILE_STDCXX_11([noext],[mandatory])
+AX_CXX_COMPILE_STDCXX_14([noext],[mandatory])
 AC_PROG_CPP
 AC_C_BIGENDIAN
 AC_C_INLINE
