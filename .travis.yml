@@ -14,8 +14,6 @@ addons:
       - python2.7-dev
       - python3.5
       - python3.5-dev
-      - gcc-4.8
-      - g++-4.8
       - gcc-5
       - g++-5
 #      - ruby
@@ -56,12 +54,6 @@ matrix:
     - os: linux
       env: TRAVIS_PYTHON=python3.5 ENABLE_ASAN=1 CXX=g++-5
       compiler: gcc-5
-    - os: linux
-      env: TRAVIS_PYTHON=python2.7 CXX=g++-4.8
-      compiler: gcc-4.8
-    - os: linux
-      env: TRAVIS_PYTHON=python3.5 CXX=g++-4.8
-      compiler: gcc-4.8
 
 before_script: ./travis/deps.sh
 script: ./travis/run.sh
