@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <unordered_map>
+#include <atomic>
 
 #define HINT_NUM_DIRS 128*1024
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
