@@ -26,8 +26,10 @@ class TestRecrawl(WatchmanTestCase.WatchmanTestCase):
         # Trigger the recrawl
         self.watchmanCommand('debug-recrawl', root)
 
-        with self.assertRaises(pywatchman.WatchmanError):
+        with self.assertRaises(pywatchman.WatchmanError) as ctx:
             self.watchmanCommand('query', root, {
                 'relative_root': 'subdir',
                 'fields': ['name'],
                 "dont_wait_for_recrawl": True })
+
+        self.assertIn("recrawl is active", str(ctx.exception))

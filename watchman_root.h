@@ -38,7 +38,7 @@ struct watchman_root {
   pthread_t notify_thread;
   pthread_t io_thread;
 
-  /* Time to wait before locking */
+  /* Time to wait prior to performing a recrawl */
   std::chrono::milliseconds recrawl_delay;
 
   /* map of rule id => struct watchman_trigger_command */
