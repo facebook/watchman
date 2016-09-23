@@ -3,6 +3,7 @@
 #pragma once
 #include <unordered_map>
 #include <atomic>
+#include <chrono>
 
 #define HINT_NUM_DIRS 128*1024
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
@@ -36,6 +37,9 @@ struct watchman_root {
   const char *lock_reason{nullptr};
   pthread_t notify_thread;
   pthread_t io_thread;
+
+  /* Time to wait before locking */
+  std::chrono::milliseconds recrawl_delay;
 
   /* map of rule id => struct watchman_trigger_command */
   w_ht_t *commands{nullptr};

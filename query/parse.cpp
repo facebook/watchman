@@ -295,17 +295,17 @@ static bool parse_dedup(w_query *res, json_t *query)
   return true;
 }
 
-static bool parse_fast_fail(w_query *res, json_t *query)
+static bool parse_dont_wait_for_recrawl(w_query *res, json_t *query)
 {
   int value = 0;
 
   if (query &&
-      json_unpack(query, "{s?:b*}", "fast_fail", &value) != 0) {
-    res->errmsg = strdup("fast_fail must be a boolean");
+      json_unpack(query, "{s?:b*}", "dont_wait_for_recrawl", &value) != 0) {
+    res->errmsg = strdup("dont_wait_for_recrawl must be a boolean");
     return false;
   }
 
-  res->fast_fail = (bool) value;
+  res->dont_wait_for_recrawl = (bool) value;
   return true;
 }
 
@@ -361,7 +361,7 @@ w_query *w_query_parse(const w_root_t *root, json_t *query, char **errmsg)
     goto error;
   }
 
-  if (!parse_fast_fail(res, query)) {
+  if (!parse_dont_wait_for_recrawl(res, query)) {
     goto error;
   }
 

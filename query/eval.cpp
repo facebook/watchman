@@ -566,7 +566,7 @@ bool w_query_execute(
 
   w_perf_t sample("query_execute");
 
-  if (query->fast_fail &&
+  if (query->dont_wait_for_recrawl &&
       (unlocked->root->inner.should_recrawl ||
       !unlocked->root->inner.done_initial)) {
     ignore_result(asprintf(&res->errmsg, "recrawl is active\n"));

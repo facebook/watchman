@@ -84,7 +84,7 @@ struct w_query {
   bool case_sensitive;
   bool empty_on_fresh_instance;
   bool dedup_results;
-  bool fast_fail;
+  bool dont_wait_for_recrawl;
 
   /* optional full path to relative root, without and with trailing slash */
   w_string_t *relative_root;
