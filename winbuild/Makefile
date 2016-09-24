@@ -218,6 +218,10 @@ remove-config-h:
 
 # problems with vcvarsall.bat? http://stackoverflow.com/a/10558328/149111
 py-build:
+	if defined APPVEYOR set INCLUDE=
+	if defined APPVEYOR set LIB=
+	if defined APPVEYOR set LIBPATH=
+	if defined APPVEYOR set VS90COMNTOOLS=
 	cd python && python ./setup.py clean build_py -c -d . build_ext -i
 
 py-integration: py-build
