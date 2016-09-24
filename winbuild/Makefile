@@ -24,7 +24,6 @@ SRCS_C=\
 	thirdparty\libart\src\art.c
 
 SRCS_CPP=\
-	winbuild\abort.cpp \
 	winbuild\errmap.cpp \
 	winbuild\pathmap.cpp \
 	winbuild\stat.cpp \
@@ -123,7 +122,6 @@ TEST_SRCS_CPP=\
 	winbuild\time.cpp \
 	winbuild\pthread.cpp \
 	winbuild\backtrace.cpp \
-	winbuild\abort.cpp \
 	winbuild\errmap.cpp \
 	argv.cpp
 
@@ -223,7 +221,7 @@ py-build:
 	cd python && python ./setup.py clean build_py -c -d . build_ext -i
 
 py-integration: py-build
-	python -u runtests.py
+	python -u runtests.py --keep-if-fail
 
 # helper for suspending/resuming a target process
 susres.exe: winbuild\susres.cpp

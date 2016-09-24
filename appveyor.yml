@@ -1,5 +1,7 @@
 version: b{build}
 
+os: Visual Studio 2015
+
 branches:
   except:
     - gh-pages

@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #ifdef __cplusplus
+#include <atomic>
 #include <memory>
 #endif
 

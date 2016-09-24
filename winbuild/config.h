@@ -27,14 +27,16 @@
 
 #define WIN32_LEAN_AND_MEAN
 #define EX_USAGE 1
-#include <windows.h>
 #include <errno.h>
-#include <stdio.h>
+#include <io.h>
+#include <process.h>
 #include <stdarg.h>
 #include <stdint.h>
-#include <process.h>
-#include <io.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
+#include <time.h>
+#include <windows.h>
 
 #if _MSC_VER >= 1400
 # include <sal.h>
@@ -45,17 +47,9 @@
 # endif
 #endif
 
-#ifdef _MSC_VER
-# define noexcept /* nothing */
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-// Use our own abort implementation
-#define abort() w_abort()
-extern void w_abort(void);
 
 typedef ptrdiff_t ssize_t;
 
