@@ -125,8 +125,7 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
     if (!client->states) {
       client->states = w_ht_new(2, NULL);
     }
-    w_refcnt_add(&client->next_state_id);
-    assertion->id = client->next_state_id;
+    assertion->id = ++client->next_state_id;
     w_ht_set(client->states, assertion->id, w_ht_ptr_val(assertion));
 
     // Make sure we don't free the assertion in the cleanup code below

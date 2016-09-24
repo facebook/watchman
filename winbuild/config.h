@@ -1,9 +1,8 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 // Shim for building on Win32
-
-#define _CRT_SECURE_NO_WARNINGS 1
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS 1
 
 #ifndef WATCHMAN_SUPER_PEDANTIC
 // Each of these is something that we should address :-/
@@ -62,14 +61,6 @@ typedef ptrdiff_t ssize_t;
 
 #define WATCHMAN_DIR_SEP '\\'
 #define WATCHMAN_DIR_DOT '.'
-
-static inline long __sync_fetch_and_add(volatile long *target, long add) {
-  return _InterlockedExchangeAdd(target, add);
-}
-
-static inline long __sync_add_and_fetch(volatile long *target, long add) {
-  return _InterlockedAdd(target, add);
-}
 
 const char *win32_strerror(DWORD err);
 char *w_win_unc_to_utf8(WCHAR *wpath, int pathlen, uint32_t *outlen);

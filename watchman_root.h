@@ -24,7 +24,7 @@ struct watchman_query_cookie {
 };
 
 struct watchman_root {
-  long refcnt{1};
+  std::atomic<long> refcnt{1};
 
   /* path to root */
   w_string root_path;
@@ -281,7 +281,7 @@ void struct_stat_to_watchman_stat(const struct stat *st,
                                   struct watchman_stat *target);
 bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg);
 w_root_t *w_root_new(const char *path, char **errmsg);
-extern volatile long live_roots;
+extern std::atomic<long> live_roots;
 bool root_start(w_root_t *root, char **errmsg);
 extern pthread_mutex_t watch_list_lock;
 extern w_ht_t *watched_roots;
