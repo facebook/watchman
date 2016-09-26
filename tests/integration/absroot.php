@@ -9,7 +9,10 @@ class absoluteRootTestCase extends WatchmanTestCase {
 
     try {
       $this->assertEqual(true, chdir($root), "failed to chdir $root");
-      $this->assertEqual($root, getcwd(), "chdir/getcwd are consistent");
+      $this->assertEqual(
+        $root,
+        w_normalize_filename(getcwd()),
+        "chdir/getcwd are consistent");
 
       $is_cli = $this->isUsingCLI();
 
