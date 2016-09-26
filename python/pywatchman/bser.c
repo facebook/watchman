@@ -32,7 +32,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <bytesobject.h>
 #ifdef _MSC_VER
 #define inline __inline
+#if _MSC_VER >= 1800
 #include <stdint.h>
+#else
+// The compiler associated with Python 2.7 on Windows doesn't ship
+// with stdint.h, so define the small subset that we use here.
+typedef __int8 int8_t;
+typedef __int16 int16_t;
+typedef __int32 int32_t;
+typedef __int64 int64_t;
+typedef unsigned __int8 uint8_t;
+typedef unsigned __int16 uint16_t;
+typedef unsigned __int32 uint32_t;
+typedef unsigned __int64 uint64_t;
+#define UINT32_MAX 4294967295U
+#endif
 #endif
 
 /* Return the smallest size int that can store the value */

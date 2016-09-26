@@ -24,7 +24,6 @@ SRCS_C=\
 	thirdparty\libart\src\art.c
 
 SRCS_CPP=\
-	winbuild\abort.cpp \
 	winbuild\errmap.cpp \
 	winbuild\pathmap.cpp \
 	winbuild\stat.cpp \
@@ -123,7 +122,6 @@ TEST_SRCS_CPP=\
 	winbuild\time.cpp \
 	winbuild\pthread.cpp \
 	winbuild\backtrace.cpp \
-	winbuild\abort.cpp \
 	winbuild\errmap.cpp \
 	argv.cpp
 
@@ -219,11 +217,21 @@ remove-config-h:
 	-del config.h watchman
 
 # problems with vcvarsall.bat? http://stackoverflow.com/a/10558328/149111
+# The Visual Studio 2015 image on AppVeyor includes Visual Studio for Python
+# and that MUST be used to compile the python extension.  The build system
+# that we use locally does not have this installed, so we use our installed
+# compiler.  To allow AppVeyor to use the python specific compiler without
+# getting confused by our 2015 environment, we clear out the compiler
+# related environment when we're running in AppVeyor.
 py-build:
+	if defined APPVEYOR set INCLUDE=
+	if defined APPVEYOR set LIB=
+	if defined APPVEYOR set LIBPATH=
+	if defined APPVEYOR set VS90COMNTOOLS=
 	cd python && python ./setup.py clean build_py -c -d . build_ext -i
 
 py-integration: py-build
-	python -u runtests.py
+	python -u runtests.py --keep-if-fail
 
 # helper for suspending/resuming a target process
 susres.exe: winbuild\susres.cpp
