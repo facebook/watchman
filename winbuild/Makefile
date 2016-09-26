@@ -138,80 +138,58 @@ TEST_DIR_SRCS_CPP=\
 OBJS=$(SRCS_CPP:.cpp=.obj) $(SRCS_C:.c=.obj)
 TEST_OBJS=$(TEST_SRCS_CPP:.cpp=.obj) $(TEST_SRCS_C:.c=.obj)
 TEST_DIR_OBJS=$(TEST_DIR_SRCS:.c=.obj) $(TEST_DIR_SRCS_CPP:.cpp=.obj)
-DEPS=$(SRCS_CPP:.cpp=.dep) $(SRCS_C:.c=.dep) $(TEST_SRCS_C:.c=.dep) $(TEST_SRCS_CPP:.cpp=.dep) $(TEST_DIR_SRCS:.cpp=.dep)
 TESTS=tests\argv.exe tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
 			tests\art.exe tests\ignore.exe tests\pending.exe
-COLLECTDEPS=$(CC) $(CFLAGS) /Zs /showIncludes /EHsc $< | cscript /nologo //E:jscript winbuild\depends.js --stdin
-
-.c.dep:
-	@echo DEPEND $<
-	@$(CC) $(CFLAGS) /Zs /showIncludes /EHsc $< > $@
-
-.cpp.dep:
-	@echo DEPEND $<
-	@$(CC) $(CFLAGS) /Zs /showIncludes /EHsc $< > $@
 
 {}.cpp{}.obj::
 	@echo CXX $<
 	$(CC) $(CXXFLAGS) $(PEDANTIC) /Fo:.\ /c $<
-	$(COLLECTDEPS) .
 
 {tests}.c{tests}.obj::
 	@echo CC $<
 	$(CC) $(CFLAGS) $(PEDANTIC) /Fo:tests\ /c $<
-	$(COLLECTDEPS) tests
 
 {tests}.cpp{tests}.obj::
 	@echo CXX $<
 	$(CC) $(CXXFLAGS) $(PEDANTIC) /Fo:tests\ /c $<
-	$(COLLECTDEPS) tests
 
 {winbuild}.cpp{winbuild}.obj::
 	@echo CXX $<
 	$(CC) $(CXXFLAGS) $(PEDANTIC) /Fo:winbuild\ /c $<
-	$(COLLECTDEPS) winbuild
 
 {cmds}.cpp{cmds}.obj::
 	@echo CXX $<
 	$(CC) $(CXXFLAGS) $(PEDANTIC) /Fo:cmds\ /c $<
-	$(COLLECTDEPS) cmds
 
 {query}.cpp{query}.obj::
 	@echo CXX $<
 	$(CC) $(CXXFLAGS) $(PEDANTIC) /Fo:query\ /c $<
-	$(COLLECTDEPS) query
 
 {watcher}.cpp{watcher}.obj::
 	@echo CXX $<
 	$(CC) $(CXXFLAGS) $(PEDANTIC) /Fo:watcher\ /c $<
-	$(COLLECTDEPS) watcher
 
 {root}.cpp{root}.obj::
 	@echo CXX $<
 	$(CC) $(CXXFLAGS) $(PEDANTIC) /Fo:root\ /c $<
-	$(COLLECTDEPS) root
 
 {thirdparty\wildmatch}.c{thirdparty\wildmatch}.obj::
 	@echo CC $<
 	$(CC) $(CFLAGS) /Fo:thirdparty\wildmatch\ /c $<
-	$(COLLECTDEPS) thirdparty\wildmatch
 
 {thirdparty\libart\src}.c{thirdparty\libart\src}.obj::
 	@echo CC $<
 	$(CC) $(CFLAGS) /Fo:thirdparty\libart\src\ /c $<
-	$(COLLECTDEPS) thirdparty\libart\src
 
 {thirdparty\jansson}.c{thirdparty\jansson}.obj::
 	@echo CC $<
 	$(CC) $(CFLAGS) /Fo:thirdparty\jansson\ /c $<
-	$(COLLECTDEPS) thirdparty\jansson
 
 {thirdparty}.c{thirdparty}.obj::
 	@echo CC $<
 	$(CC) $(CFLAGS) /Fo:thirdparty\ /c $<
-	$(COLLECTDEPS) thirdparty
 
-all: remove-config-h watchman.exe build-tests depend susres.exe
+all: remove-config-h watchman.exe build-tests susres.exe
 
 remove-config-h:
 	-del config.h watchman
@@ -317,11 +295,6 @@ tests\wildmatch_test.exe: tests\wildmatch_test.obj $(TEST_OBJS) \
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 
-.windeps: $(DEPS)
-	@cscript /nologo //E:jscript winbuild\depends.js
-
-depend: .windeps
-
 dist:
 	-mkdir Watchman
 	copy watchman.exe Watchman
@@ -333,8 +306,4 @@ clean:
 	-del $(OBJS) $(TEST_OBJS) $(TEST_DIR_OBJS) *.exe
 
 distclean: clean
-	-del $(DEPS) .windeps
 
-!IF EXIST(.windeps)
-!INCLUDE .windeps
-!ENDIF
