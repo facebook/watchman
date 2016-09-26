@@ -6,7 +6,7 @@
 
 // Each root gets a number that uniquely identifies it within the process. This
 // helps avoid confusion if a root is removed and then added again.
-static long next_root_number = 1;
+static std::atomic<long> next_root_number{1};
 
 static void delete_trigger(w_ht_val_t val) {
   auto cmd = (watchman_trigger_command*)w_ht_val_ptr(val);
@@ -104,7 +104,7 @@ bool w_root_init(w_root_t *root, char **errmsg) {
     return false;
   }
 
-  root->inner.number = __sync_fetch_and_add(&next_root_number, 1);
+  root->inner.number = next_root_number++;
 
   root->inner.cursors = w_ht_new(2, &w_ht_string_funcs);
 
@@ -120,7 +120,7 @@ bool w_root_init(w_root_t *root, char **errmsg) {
 w_root_t *w_root_new(const char *path, char **errmsg) {
   auto root = new w_root_t();
 
-  w_refcnt_add(&live_roots);
+  ++live_roots;
   pthread_rwlock_init(&root->lock, NULL);
 
   root->case_sensitive = is_case_sensitive_filesystem(path);
@@ -187,7 +187,7 @@ watchman_root::Inner::~Inner() {
 }
 
 void w_root_addref(w_root_t *root) {
-  w_refcnt_add(&root->refcnt);
+  ++root->refcnt;
 }
 
 void w_root_delref(struct unlocked_watchman_root *unlocked) {
@@ -199,7 +199,9 @@ void w_root_delref(struct unlocked_watchman_root *unlocked) {
 }
 
 void w_root_delref_raw(w_root_t *root) {
-  if (!w_refcnt_del(&root->refcnt)) return;
+  if (--root->refcnt != 0) {
+    return;
+  }
 
   w_log(W_LOG_DBG, "root: final ref on %s\n", root->root_path.c_str());
   w_cancel_subscriptions_for_root(root);
@@ -217,7 +219,7 @@ void w_root_delref_raw(w_root_t *root) {
   w_pending_coll_destroy(&root->pending);
 
   delete root;
-  w_refcnt_del(&live_roots);
+  --live_roots;
 }
 
 /* vim:ts=2:sw=2:et:

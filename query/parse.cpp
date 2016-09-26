@@ -558,7 +558,7 @@ void w_query_delref(w_query *query)
 {
   uint32_t i;
 
-  if (!w_refcnt_del(&query->refcnt)) {
+  if (--query->refcnt != 0) {
     return;
   }
 
@@ -625,7 +625,7 @@ w_query_expr *w_query_expr_new(
 
 void w_query_expr_delref(w_query_expr *expr)
 {
-  if (!w_refcnt_del(&expr->refcnt)) {
+  if (--expr->refcnt != 0) {
     return;
   }
   if (expr->dispose) {

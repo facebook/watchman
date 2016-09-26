@@ -51,17 +51,6 @@ extern "C" {
 
 extern char *poisoned_reason;
 
-static inline void w_refcnt_add(volatile long *refcnt)
-{
-  (void)__sync_fetch_and_add(refcnt, 1);
-}
-
-/* returns true if we deleted the last ref */
-static inline bool w_refcnt_del(volatile long *refcnt)
-{
-  return __sync_add_and_fetch(refcnt, -1) == 0;
-}
-
 static inline void w_set_cloexec(int fd)
 {
 #ifndef _WIN32

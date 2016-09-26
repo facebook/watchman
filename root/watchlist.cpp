@@ -4,7 +4,7 @@
 #include "watchman.h"
 
 w_ht_t *watched_roots = NULL;
-volatile long live_roots = 0;
+std::atomic<long> live_roots{0};
 pthread_mutex_t watch_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static w_ht_val_t root_copy_val(w_ht_val_t val) {
@@ -305,16 +305,16 @@ void w_root_free_watched_roots(void) {
   w_log(W_LOG_DBG, "waiting for roots to cancel and go away %d\n", last);
   interval = 100;
   for (;;) {
-    int current = __sync_fetch_and_add(&live_roots, 0);
+    auto current = live_roots.load();
     if (current == 0) {
       break;
     }
     if (time(NULL) > started + 3) {
-      w_log(W_LOG_ERR, "%d roots were still live at exit\n", current);
+      w_log(W_LOG_ERR, "%ld roots were still live at exit\n", current);
       break;
     }
     if (current != last) {
-      w_log(W_LOG_DBG, "waiting: %d live\n", current);
+      w_log(W_LOG_DBG, "waiting: %ld live\n", current);
       last = current;
     }
     usleep(interval);

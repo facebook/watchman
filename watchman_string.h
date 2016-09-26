@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #ifdef __cplusplus
+#include <atomic>
 #include <memory>
 #endif
 
@@ -24,7 +25,13 @@ typedef enum {
 } w_string_type_t;
 
 struct watchman_string {
+// Temporarily conditional because jansson needs this
+// to be compilable as C.
+#ifdef __cplusplus
+  std::atomic<long> refcnt;
+#else
   long refcnt;
+#endif
   uint32_t _hval;
   uint32_t len;
   w_string_t *slice;

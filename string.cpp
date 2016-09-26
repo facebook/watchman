@@ -529,12 +529,12 @@ w_string_t *w_string_new_lower_typed(const char *str,
 
 void w_string_addref(w_string_t *str)
 {
-  w_refcnt_add(&str->refcnt);
+  ++str->refcnt;
 }
 
 void w_string_delref(w_string_t *str)
 {
-  if (!w_refcnt_del(&str->refcnt)) {
+  if (--str->refcnt != 0) {
     return;
   }
   // Call the destructor.  We can't use regular delete because
