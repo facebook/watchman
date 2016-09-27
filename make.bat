@@ -23,7 +23,7 @@ where php.exe 2> NUL
 if %ERRORLEVEL% GTR 0 set PATH=c:\php;%PATH%
 
 @rem finally, run make
-nmake /nologo /s /f winbuild\Makefile %1
+nmake /nologo /s /f winbuild\Makefile %1 %2 %3 %4
 
 SET RETURN_CODE=%ERRORLEVEL%
 
