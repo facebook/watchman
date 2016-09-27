@@ -104,7 +104,22 @@ w_stm_t w_mkstemp(char *templ)
   if (!name) {
     return NULL;
   }
-  return w_stm_open(name, O_RDWR|O_CLOEXEC|O_CREAT|O_TRUNC);
+  // Most annoying aspect of windows is the latency around
+  // file handle exclusivity.  We could avoid this dumb loop
+  // by implementing our own mkostemp, but this is the most
+  // expedient option for the moment.
+  for (size_t attempts = 0; attempts < 10; ++attempts) {
+    auto stm = w_stm_open(name, O_RDWR | O_CLOEXEC | O_CREAT | O_TRUNC);
+    if (stm) {
+      return stm;
+    }
+    if (errno == EACCES) {
+      /* sleep override */ usleep(2000);
+      continue;
+    }
+    return nullptr;
+  }
+  return nullptr;
 #else
   w_stm_t file;
   int fd;
