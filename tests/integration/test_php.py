@@ -12,6 +12,7 @@ import glob
 import re
 import WatchmanInstance
 import signal
+import sys
 import Interrupt
 import tempfile
 import TempDir
@@ -91,6 +92,7 @@ class PHPTestCase(unittest.TestCase):
         env['TMP'] = env['TMPDIR']
         env['TEMP'] = env['TMPDIR']
         env['IN_PYTHON_HARNESS'] = '1'
+        env['WATCHMAN_PYTHON_BINARY'] = sys.executable
         proc = subprocess.Popen(
             self.getCommandArgs(),
             cwd=env.get('WATCHMAN_SRC_DIR', os.getcwd()),

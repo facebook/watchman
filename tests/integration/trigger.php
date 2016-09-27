@@ -132,12 +132,14 @@ class triggerTestCase extends WatchmanTestCase {
 
     $res = $this->trigger($root,
       'test', '*.c', '--',
+      $_ENV['WATCHMAN_PYTHON_BINARY'],
       dirname(__FILE__) . DIRECTORY_SEPARATOR . 'trig.py',
       $root . DIRECTORY_SEPARATOR . "trigger.log");
     $this->assertEqual('created', idx($res, 'disposition'));
 
     $this->trigger($root,
       'other', '*.c', '--',
+      $_ENV['WATCHMAN_PYTHON_BINARY'],
       dirname(__FILE__) . DIRECTORY_SEPARATOR . 'trigjson.py',
       $root . DIRECTORY_SEPARATOR . "trigger.json");
 
@@ -146,6 +148,7 @@ class triggerTestCase extends WatchmanTestCase {
         'append_files' => true,
         'name' => 'other',
         'command' => array(
+          $_ENV['WATCHMAN_PYTHON_BINARY'],
           dirname(__FILE__) . DIRECTORY_SEPARATOR . 'trigjson.py',
           $root . DIRECTORY_SEPARATOR . "trigger.json"
         ),
@@ -159,6 +162,7 @@ class triggerTestCase extends WatchmanTestCase {
         'append_files' => true,
         'name' => 'test',
         'command' => array(
+          $_ENV['WATCHMAN_PYTHON_BINARY'],
           dirname(__FILE__) . DIRECTORY_SEPARATOR . 'trig.py',
           $root . DIRECTORY_SEPARATOR . "trigger.log"
         ),
