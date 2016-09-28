@@ -51,7 +51,7 @@ static void cmd_debug_delay_next_recrawl(struct watchman_client *client,
 
   w_root_lock(&unlocked, "debug-delay-next-recrawl", &lock);
   lock.root->recrawl_delay = std::chrono::milliseconds(
-      (int)json_integer_value(json_array_get(args, 2)));
+      json_integer_value(json_array_get(args, 2)));
   w_root_unlock(&lock, &unlocked);
 
   resp = make_response();

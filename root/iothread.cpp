@@ -35,6 +35,7 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
       struct timeval start;
       w_perf_t sample("full-crawl");
 
+      /* sleep override */
       std::this_thread::sleep_for(unlocked->root->recrawl_delay);
 
       /* first order of business is to find all the files under our root */
