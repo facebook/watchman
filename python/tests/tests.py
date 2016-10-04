@@ -16,6 +16,7 @@ from pywatchman import (
     bser,
     compat,
     pybser,
+    load,
     SocketTimeout,
     WatchmanError,
 )
@@ -62,6 +63,23 @@ def expand_bser_mods(test_class):
         make_class(mod, suffix)
 
 
+class FakeFile(object):
+    def __init__(self, data):
+        self._data = data
+        self._ptr = 0
+        print("# FakeFile(%s): %d" % (
+            binascii.hexlify(data).decode('ascii'),
+            len(data)))
+
+    def readinto(self, buf):
+        l = len(buf)
+        print("# buf: %d" % (l))
+        if len(self._data) - self._ptr < l:
+            return None
+        buf[:] = self._data[self._ptr:self._ptr + l]
+        self._ptr += l
+        return l
+
 @expand_bser_mods
 class TestBSERDump(unittest.TestCase):
     def setUp(self):
@@ -78,6 +96,11 @@ class TestBSERDump(unittest.TestCase):
                                  binascii.hexlify(enc).decode('ascii')))
         dec = self.bser_mod.loads(enc, mutable, value_encoding=value_encoding,
                                   value_errors=value_errors)
+        self.assertEqual(val, dec)
+
+        fp = FakeFile(enc)
+        dec = self.bser_mod.load(fp, mutable, value_encoding=value_encoding,
+                                 value_errors=value_errors)
         self.assertEqual(val, dec)
 
     def munged(self, val, munged, value_encoding=None, value_errors=None):

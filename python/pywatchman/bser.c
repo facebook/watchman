@@ -953,24 +953,15 @@ static PyObject *bser_loads_recursive(const char **ptr, const char *end,
   return NULL;
 }
 
-// This function parses the PDU header and provides info about the packet
-// Returns false if unsuccessful
-static int pdu_info_helper(PyObject *self, PyObject *args,
+static int _pdu_info_helper(const char *data, const char *end,
     uint32_t *bser_version_out, uint32_t *bser_capabilities_out,
-    int64_t *total_len_out) {
-  const char *start = NULL;
-  const char *data = NULL;
-  int datalen = 0;
-  const char *end;
+    int64_t *expected_len_out, off_t *position_out) {
   uint32_t bser_version;
   int64_t bser_capabilities = 0; // int64 because bunser_int requires it
   int64_t expected_len, total_len;
 
-  if (!PyArg_ParseTuple(args, "s#", &start, &datalen)) {
-    return 0;
-  }
-  data = start;
-  end = data + datalen;
+  const char *start;
+  start = data;
   // Validate the header and length
   if (memcmp(data, EMPTY_HEADER, 2) == 0) {
     bser_version = 1;
@@ -1001,7 +992,34 @@ static int pdu_info_helper(PyObject *self, PyObject *args,
 
   *bser_version_out = bser_version;
   *bser_capabilities_out = (uint32_t) bser_capabilities;
-  *total_len_out = total_len;
+  *expected_len_out = expected_len;
+  *position_out = (off_t)(data - start);
+  return 1;
+}
+
+// This function parses the PDU header and provides info about the packet
+// Returns false if unsuccessful
+static int pdu_info_helper(PyObject *self, PyObject *args,
+    uint32_t *bser_version_out, uint32_t *bser_capabilities_out,
+    int64_t *total_len_out) {
+  const char *start = NULL;
+  const char *data = NULL;
+  int datalen = 0;
+  const char *end;
+  int64_t expected_len;
+  off_t position;
+
+  if (!PyArg_ParseTuple(args, "s#", &start, &datalen)) {
+    return 0;
+  }
+  data = start;
+  end = data + datalen;
+
+  if (!_pdu_info_helper(data, end, bser_version_out, bser_capabilities_out,
+                        &expected_len, &position)) {
+    return 0;
+  }
+  *total_len_out = (int64_t)(expected_len + position);
   return 1;
 }
 
@@ -1034,18 +1052,19 @@ static PyObject *bser_loads(PyObject *self, PyObject *args, PyObject *kw)
 {
   const char *data = NULL;
   int datalen = 0;
+  const char *start;
   const char *end;
   int64_t expected_len;
+  off_t position;
   PyObject *mutable_obj = NULL;
   const char *value_encoding = NULL;
   const char *value_errors = NULL;
   unser_ctx_t ctx = {1, 0};
-  int64_t bser_capabilities = 0; // int64 because bunser_int requires it
 
   static char *kw_list[] = {"buf", "mutable", "value_encoding", "value_errors",
                             NULL};
 
-  if (!PyArg_ParseTupleAndKeywords(args, kw, "s#|Ozz:loads", kw_list, &data,
+  if (!PyArg_ParseTupleAndKeywords(args, kw, "s#|Ozz:loads", kw_list, &start,
                                    &datalen, &mutable_obj, &value_encoding,
                                    &value_errors)) {
     return NULL;
@@ -1062,33 +1081,15 @@ static PyObject *bser_loads(PyObject *self, PyObject *args, PyObject *kw)
   } else {
     ctx.value_errors = value_errors;
   }
-
+  data = start;
   end = data + datalen;
 
-  // Validate the header and length
-  if (memcmp(data, EMPTY_HEADER, 2) == 0) {
-    ctx.bser_version = 1;
-  } else if (memcmp(data, EMPTY_HEADER_V2, 2) == 0) {
-    ctx.bser_version = 2;
-  } else {
-    PyErr_SetString(PyExc_ValueError, "invalid bser header");
+  if (!_pdu_info_helper(data, end, &ctx.bser_version, &ctx.bser_capabilities,
+                        &expected_len, &position)) {
     return NULL;
   }
 
-  data += 2;
-  if (ctx.bser_version == 2) {
-    // Expect an integer telling us what BSER capabilities are supported
-    if (!bunser_int(&data, end, &bser_capabilities)) {
-      return NULL;
-    }
-    ctx.bser_capabilities = (uint32_t) bser_capabilities;
-  }
-
-  // Expect an integer telling us how big the rest of the data
-  // should be
-  if (!bunser_int(&data, end, &expected_len)) {
-    return NULL;
-  }
+  data = start + position;
   // Verify
   if (expected_len + data != end) {
     PyErr_SetString(PyExc_ValueError, "bser data len != header len");
@@ -1098,9 +1099,38 @@ static PyObject *bser_loads(PyObject *self, PyObject *args, PyObject *kw)
   return bser_loads_recursive(&data, end, &ctx);
 }
 
+static PyObject *bser_load(PyObject *self, PyObject *args, PyObject *kw)
+{
+  PyObject *load, *string;
+  PyObject *fp = NULL;
+  PyObject *mutable_obj = NULL;
+  const char *value_encoding = NULL;
+  const char *value_errors = NULL;
+
+  static char *kw_list[] = {"fp", "mutable", "value_encoding", "value_errors",
+                            NULL};
+
+  if (!PyArg_ParseTupleAndKeywords(args, kw, "OOzz:load", kw_list, &fp,
+                                   &mutable_obj, &value_encoding,
+                                   &value_errors)) {
+    return NULL;
+  }
+
+  load = PyImport_ImportModule("pywatchman.load");
+  if (load == NULL) {
+    return NULL;
+  }
+  string = PyObject_CallMethod(load, "load", "OOzz", fp, mutable_obj,
+                               value_encoding, value_errors);
+  Py_DECREF(load);
+  return string;
+}
+
 static PyMethodDef bser_methods[] = {
   {"loads", (PyCFunction)bser_loads, METH_VARARGS | METH_KEYWORDS,
    "Deserialize string."},
+  {"load", (PyCFunction)bser_load, METH_VARARGS | METH_KEYWORDS,
+   "Deserialize a file object"},
   {"pdu_info", (PyCFunction)bser_pdu_info, METH_VARARGS,
    "Extract PDU information."},
   {"pdu_len", (PyCFunction)bser_pdu_len, METH_VARARGS,

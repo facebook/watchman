@@ -48,6 +48,7 @@ from . import (
     capabilities,
     compat,
     encoding,
+    load,
 )
 
 

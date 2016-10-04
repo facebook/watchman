@@ -415,7 +415,8 @@ class Bunser(object):
             raise ValueError('unhandled bser opcode 0x%s' %
                              binascii.hexlify(val_type).decode('ascii'))
 
-def pdu_info(buf):
+
+def _pdu_info_helper(buf):
     bser_version = -1
     if buf[0:2] == EMPTY_HEADER[0:2]:
         bser_version = 1
@@ -428,10 +429,18 @@ def pdu_info(buf):
     else:
         raise ValueError('Invalid BSER header')
 
-    return bser_version, bser_capabilities, expected_len + pos2
+    return bser_version, bser_capabilities, expected_len, pos2
+
+
+def pdu_info(buf):
+    info = _pdu_info_helper(buf)
+    return info[0], info[1], info[2] + info[3]
+
 
 def pdu_len(buf):
-    return pdu_info(buf)[2]
+    info = _pdu_info_helper(buf)
+    return info[2] + info[3]
+
 
 def loads(buf, mutable=True, value_encoding=None, value_errors=None):
     """Deserialize a BSER-encoded blob.
@@ -451,23 +460,20 @@ def loads(buf, mutable=True, value_encoding=None, value_errors=None):
                          Python 3. If value_encoding is None, this is ignored.
     @type value_errors: str
     """
-    if buf[0:2] == EMPTY_HEADER[0:2]:
-        bser_version = 1
-    elif buf[0:2] == EMPTY_HEADER_V2[0:2]:
-        bser_version = 2
-    else:
-        raise ValueError('Invalid BSER header')
 
-    if bser_version == 1:
-        bser_capabilities = 0
-        expected_len, pos2 = Bunser.unser_int(buf, 2)
-    else: # bser_version == 2
-        bser_capabilities, pos1 = Bunser.unser_int(buf, 2)
-        expected_len, pos2 = Bunser.unser_int(buf, pos1)
+    info = _pdu_info_helper(buf)
+    expected_len = info[2]
+    pos = info[3]
 
-    if len(buf) != expected_len + pos2:
+    if len(buf) != expected_len + pos:
         raise ValueError('bser data len != header len')
+
     bunser = Bunser(mutable=mutable, value_encoding=value_encoding,
                     value_errors=value_errors)
 
-    return bunser.loads_recursive(buf, pos2)[0]
+    return bunser.loads_recursive(buf, pos)[0]
+
+
+def load(fp, mutable=True, value_encoding=None, value_errors=None):
+    from . import load
+    return load.load(fp, mutable, value_encoding, value_errors)
