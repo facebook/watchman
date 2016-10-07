@@ -4,42 +4,13 @@
 #include "watchman.h"
 
 // Maps pid => root
-static w_ht_t *running_kids = NULL;
-static pthread_mutex_t spawn_lock = PTHREAD_MUTEX_INITIALIZER;
+static watchman::Synchronized<std::unordered_map<pid_t, w_root_t*>>
+    running_kids;
 
 static void spawn_command(w_root_t *root,
   struct watchman_trigger_command *cmd,
   w_query_res *res,
   struct w_clockspec *since_spec);
-
-// Caller must hold spawn_lock
-static bool lookup_running_pid(pid_t pid,
-                               struct unlocked_watchman_root *unlocked) {
-  if (!running_kids) {
-    return false;
-  }
-
-  unlocked->root = (w_root_t*)w_ht_val_ptr(w_ht_get(running_kids, pid));
-  return unlocked->root != NULL;
-}
-
-// Caller must hold spawn_lock
-static void delete_running_pid(pid_t pid)
-{
-  if (!running_kids) {
-    return;
-  }
-  w_ht_del(running_kids, pid);
-}
-
-// Caller must hold spawn_lock
-static void insert_running_pid(pid_t pid, w_root_t *root)
-{
-  if (!running_kids) {
-    running_kids = w_ht_new(2, NULL);
-  }
-  w_ht_set(running_kids, pid, w_ht_ptr_val(root));
-}
 
 void w_mark_dead(pid_t pid)
 {
@@ -47,13 +18,15 @@ void w_mark_dead(pid_t pid)
   struct write_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
-  pthread_mutex_lock(&spawn_lock);
-  if (!lookup_running_pid(pid, &unlocked)) {
-    pthread_mutex_unlock(&spawn_lock);
-    return;
+  {
+    auto map = running_kids.wlock();
+    auto it = map->find(pid);
+    if (it == map->end()) {
+      return;
+    }
+    unlocked.root = it->second;
+    map->erase(it);
   }
-  delete_running_pid(pid);
-  pthread_mutex_unlock(&spawn_lock);
 
   w_log(
       W_LOG_DBG,
@@ -368,30 +341,33 @@ static void spawn_command(w_root_t *root,
           working_dir->buf);
   }
 
-  pthread_mutex_lock(&spawn_lock);
+  {
+    auto wlock = running_kids.wlock();
+    auto& map = *wlock;
 #ifndef _WIN32
-  ignore_result(chdir(working_dir->buf));
+    ignore_result(chdir(working_dir->buf));
 #else
-  posix_spawnattr_setcwd_np(&attr, working_dir->buf);
+    posix_spawnattr_setcwd_np(&attr, working_dir->buf);
 #endif
-  w_string_delref(working_dir);
-  working_dir = NULL;
+    w_string_delref(working_dir);
+    working_dir = nullptr;
 
-  ret = posix_spawnp(&cmd->current_proc, argv[0], &actions, &attr, argv, envp);
-  if (ret == 0) {
-    w_root_addref(root);
-    insert_running_pid(cmd->current_proc, root);
-  } else {
-    // On Darwin (at least), posix_spawn can fail but will still populate the
-    // pid.  Since we use the pid to gate future spawns, we need to ensure
-    // that we clear out the pid on failure, otherwise the trigger would be
-    // effectively disabled for the rest of the watch lifetime
-    cmd->current_proc = 0;
-  }
+    ret =
+        posix_spawnp(&cmd->current_proc, argv[0], &actions, &attr, argv, envp);
+    if (ret == 0) {
+      w_root_addref(root);
+      map[cmd->current_proc] = root;
+    } else {
+      // On Darwin (at least), posix_spawn can fail but will still populate the
+      // pid.  Since we use the pid to gate future spawns, we need to ensure
+      // that we clear out the pid on failure, otherwise the trigger would be
+      // effectively disabled for the rest of the watch lifetime
+      cmd->current_proc = 0;
+    }
 #ifndef _WIN32
-  ignore_result(chdir("/"));
+    ignore_result(chdir("/"));
 #endif
-  pthread_mutex_unlock(&spawn_lock);
+  }
 
   // If failed, we want to make sure we log enough info to figure out why
   result_log_level = res == 0 ? W_LOG_DBG : W_LOG_ERR;
