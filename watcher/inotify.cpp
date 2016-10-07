@@ -47,12 +47,14 @@ struct inot_root_state {
   /* we use one inotify instance per watched root dir */
   int infd;
 
-  /* map of active watch descriptor to name of the corresponding dir */
-  w_ht_t *wd_to_name;
-  /* map of inotify cookie to corresponding name */
-  w_ht_t *move_map;
-  /* lock to protect both of the maps above */
-  pthread_mutex_t lock;
+  struct maps {
+    /* map of active watch descriptor to name of the corresponding dir */
+    w_ht_t* wd_to_name;
+    /* map of inotify cookie to corresponding name */
+    w_ht_t* move_map;
+  };
+
+  watchman::Synchronized<maps> maps;
 
   // Make the buffer big enough for 16k entries, which
   // happens to be the default fs.inotify.max_queued_events
@@ -113,7 +115,6 @@ bool inot_root_init(w_root_t *root, char **errmsg) {
     return false;
   }
   root->inner.watch = state;
-  pthread_mutex_init(&state->lock, NULL);
 
 #ifdef HAVE_INOTIFY_INIT1
   state->infd = inotify_init1(IN_CLOEXEC);
@@ -130,10 +131,14 @@ bool inot_root_init(w_root_t *root, char **errmsg) {
     return false;
   }
   w_set_cloexec(state->infd);
-  state->wd_to_name =
-      w_ht_new(cfg_get_int(root, CFG_HINT_NUM_DIRS, HINT_NUM_DIRS),
-               &w_ht_string_val_funcs);
-  state->move_map = w_ht_new(2, &move_hash_funcs);
+
+  {
+    auto maps = state->maps.wlock();
+    maps->wd_to_name = w_ht_new(
+        cfg_get_int(root, CFG_HINT_NUM_DIRS, HINT_NUM_DIRS),
+        &w_ht_string_val_funcs);
+    maps->move_map = w_ht_new(2, &move_hash_funcs);
+  }
 
   return true;
 }
@@ -145,17 +150,18 @@ void inot_root_dtor(w_root_t *root) {
     return;
   }
 
-  pthread_mutex_destroy(&state->lock);
-
   close(state->infd);
   state->infd = -1;
-  if (state->wd_to_name) {
-    w_ht_free(state->wd_to_name);
-    state->wd_to_name = NULL;
-  }
-  if (state->move_map) {
-    w_ht_free(state->move_map);
-    state->move_map = NULL;
+  {
+    auto maps = state->maps.wlock();
+    if (maps->wd_to_name) {
+      w_ht_free(maps->wd_to_name);
+      maps->wd_to_name = nullptr;
+    }
+    if (maps->move_map) {
+      w_ht_free(maps->move_map);
+      maps->move_map = nullptr;
+    }
   }
 
   free(state);
@@ -222,9 +228,10 @@ inot_root_start_watch_dir(struct write_locked_watchman_root *lock,
   }
 
   // record mapping
-  pthread_mutex_lock(&state->lock);
-  w_ht_replace(state->wd_to_name, newwd, w_ht_ptr_val(dir_name));
-  pthread_mutex_unlock(&state->lock);
+  {
+    auto maps = state->maps.wlock();
+    w_ht_replace(maps->wd_to_name, newwd, w_ht_ptr_val(dir_name));
+  }
   w_log(W_LOG_DBG, "adding %d -> %s mapping\n", newwd, path);
 
   return osdir;
@@ -259,18 +266,21 @@ static void process_inotify_event(
     w_string_t *name = NULL;
     char buf[WATCHMAN_NAME_MAX];
     int pending_flags = W_PENDING_VIA_NOTIFY;
+    w_string dir_name;
 
-    pthread_mutex_lock(&state->lock);
-    auto dir_name = (w_string_t*)w_ht_val_ptr(w_ht_get(state->wd_to_name, ine->wd));
-    if (dir_name) {
-      w_string_addref(dir_name);
+    {
+      auto maps = state->maps.rlock();
+      dir_name = (w_string_t*)w_ht_val_ptr(w_ht_get(maps->wd_to_name, ine->wd));
     }
-    pthread_mutex_unlock(&state->lock);
 
     if (dir_name) {
       if (ine->len > 0) {
-        snprintf(buf, sizeof(buf), "%.*s/%s",
-            dir_name->len, dir_name->buf,
+        snprintf(
+            buf,
+            sizeof(buf),
+            "%.*s/%s",
+            int(dir_name.size()),
+            dir_name.data(),
             ine->name);
         name = w_string_new_typed(buf, W_STRING_BYTE);
       } else {
@@ -288,45 +298,53 @@ static void process_inotify_event(
       mv.created = now.tv_sec;
       mv.name = name;
 
-      pthread_mutex_lock(&state->lock);
-      if (!w_ht_replace(state->move_map, ine->cookie, w_ht_ptr_val(&mv))) {
-        w_log(W_LOG_FATAL,
-            "failed to store %" PRIx32 " -> %s in move map\n",
-            ine->cookie, name->buf);
-      }
-      pthread_mutex_unlock(&state->lock);
+      {
+        auto maps = state->maps.rlock();
+        if (!w_ht_replace(maps->move_map, ine->cookie, w_ht_ptr_val(&mv))) {
+          w_log(
+              W_LOG_FATAL,
+              "failed to store %" PRIx32 " -> %s in move map\n",
+              ine->cookie,
+              name->buf);
+        }
+      };
 
       w_log(W_LOG_DBG,
           "recording move_from %" PRIx32 " %s\n", ine->cookie,
           name->buf);
     }
 
-    if (ine->len > 0 && (ine->mask & (IN_MOVED_TO|IN_ISDIR))
-        == (IN_MOVED_FROM|IN_ISDIR)) {
-      pthread_mutex_lock(&state->lock);
+    if (ine->len > 0 &&
+        (ine->mask & (IN_MOVED_TO | IN_ISDIR)) == (IN_MOVED_FROM | IN_ISDIR)) {
+      auto maps = state->maps.wlock();
       auto old =
-          (pending_move*)w_ht_val_ptr(w_ht_get(state->move_map, ine->cookie));
+          (pending_move*)w_ht_val_ptr(w_ht_get(maps->move_map, ine->cookie));
       if (old) {
-        int wd = inotify_add_watch(state->infd, name->buf,
-                    WATCHMAN_INOTIFY_MASK);
+        int wd =
+            inotify_add_watch(state->infd, name->buf, WATCHMAN_INOTIFY_MASK);
         if (wd == -1) {
           if (errno == ENOSPC || errno == ENOMEM) {
             // Limits exceeded, no recovery from our perspective
-            set_poison_state(name, now, "inotify-add-watch", errno,
-                inot_strerror(errno));
+            set_poison_state(
+                name, now, "inotify-add-watch", errno, inot_strerror(errno));
           } else {
-            w_log(W_LOG_DBG, "add_watch: %s %s\n",
-                name->buf, inot_strerror(errno));
+            w_log(
+                W_LOG_DBG,
+                "add_watch: %s %s\n",
+                name->buf,
+                inot_strerror(errno));
           }
         } else {
           w_log(W_LOG_DBG, "moved %s -> %s\n", old->name->buf, name->buf);
-          w_ht_replace(state->wd_to_name, wd, w_ht_ptr_val(name));
+          w_ht_replace(maps->wd_to_name, wd, w_ht_ptr_val(name));
         }
       } else {
-        w_log(W_LOG_DBG, "move: cookie=%" PRIx32 " not found in move map %s\n",
-            ine->cookie, name->buf);
+        w_log(
+            W_LOG_DBG,
+            "move: cookie=%" PRIx32 " not found in move map %s\n",
+            ine->cookie,
+            name->buf);
       }
-      pthread_mutex_unlock(&state->lock);
     }
 
     if (dir_name) {
@@ -338,7 +356,6 @@ static void process_inotify_event(
               "root dir %s has been (re)moved, canceling watch\n",
               root->root_path.c_str());
           w_string_delref(name);
-          w_string_delref(dir_name);
           w_root_cancel(root);
           return;
         }
@@ -365,14 +382,16 @@ static void process_inotify_event(
       // The kernel removed the wd -> name mapping, so let's update
       // our state here also
       if ((ine->mask & IN_IGNORED) != 0) {
-        w_log(W_LOG_DBG, "mask=%x: remove watch %d %.*s\n", ine->mask,
-            ine->wd, dir_name->len, dir_name->buf);
-        pthread_mutex_lock(&state->lock);
-        w_ht_del(state->wd_to_name, ine->wd);
-        pthread_mutex_unlock(&state->lock);
+        w_log(
+            W_LOG_DBG,
+            "mask=%x: remove watch %d %.*s\n",
+            ine->mask,
+            ine->wd,
+            int(dir_name.size()),
+            dir_name.data());
+        auto maps = state->maps.wlock();
+        w_ht_del(maps->wd_to_name, ine->wd);
       }
-
-      w_string_delref(dir_name);
 
     } else if ((ine->mask & (IN_MOVE_SELF|IN_IGNORED)) == 0) {
       // If we can't resolve the dir, and this isn't notification
@@ -426,17 +445,22 @@ static bool inot_root_consume_notify(w_root_t *root,
   // the MOVE_TO may yet be waiting to read in another go around.
   // We allow a somewhat arbitrary but practical grace period to
   // observe the corresponding MOVE_TO.
-  if (w_ht_size(state->move_map) > 0) {
-    w_ht_iter_t iter;
-    if (w_ht_first(state->move_map, &iter)) do {
-      auto pending = (pending_move*)w_ht_val_ptr(iter.value);
-      if (now.tv_sec - pending->created > 5 /* seconds */) {
-        w_log(W_LOG_DBG,
-            "deleting pending move %s (moved outside of watch?)\n",
-            pending->name->buf);
-        w_ht_iter_del(state->move_map, &iter);
-      }
-    } while (w_ht_next(state->move_map, &iter));
+  {
+    auto maps = state->maps.wlock();
+    if (w_ht_size(maps->move_map) > 0) {
+      w_ht_iter_t iter;
+      if (w_ht_first(maps->move_map, &iter))
+        do {
+          auto pending = (pending_move*)w_ht_val_ptr(iter.value);
+          if (now.tv_sec - pending->created > 5 /* seconds */) {
+            w_log(
+                W_LOG_DBG,
+                "deleting pending move %s (moved outside of watch?)\n",
+                pending->name->buf);
+            w_ht_iter_del(maps->move_map, &iter);
+          }
+        } while (w_ht_next(maps->move_map, &iter));
+    }
   }
 
   return true;
