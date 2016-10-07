@@ -3,50 +3,29 @@
 
 #include "watchman.h"
 
-w_ht_t *watched_roots = NULL;
+#include <vector>
+
+watchman::Synchronized<std::unordered_map<w_string, w_root_t*>> watched_roots;
 std::atomic<long> live_roots{0};
-pthread_mutex_t watch_list_lock = PTHREAD_MUTEX_INITIALIZER;
-
-static w_ht_val_t root_copy_val(w_ht_val_t val) {
-  auto root = (w_root_t *)w_ht_val_ptr(val);
-
-  w_root_addref(root);
-
-  return val;
-}
-
-static void root_del_val(w_ht_val_t val) {
-  auto root = (w_root_t *)w_ht_val_ptr(val);
-
-  w_root_delref_raw(root);
-}
-
-static const struct watchman_hash_funcs root_funcs = {
-  w_ht_string_copy,
-  w_ht_string_del,
-  w_ht_string_equal,
-  w_ht_string_hash,
-  root_copy_val,
-  root_del_val
-};
 
 void watchman_watcher_init(void) {
-  watched_roots = w_ht_new(4, &root_funcs);
 }
 
 bool remove_root_from_watched(
-    w_root_t *root /* don't care about locked state */) {
-  bool removed = false;
-  pthread_mutex_lock(&watch_list_lock);
+    w_root_t* root /* don't care about locked state */) {
+  auto map = watched_roots.wlock();
+  auto it = map->find(root->root_path);
+  if (it == map->end()) {
+    return false;
+  }
   // it's possible that the root has already been removed and replaced with
   // another, so make sure we're removing the right object
-  if (w_ht_val_ptr(w_ht_get(watched_roots, w_ht_ptr_val(root->root_path))) ==
-      root) {
-    w_ht_del(watched_roots, w_ht_ptr_val(root->root_path));
-    removed = true;
+  if (it->second == root) {
+    map->erase(it);
+    w_root_delref_raw(root);
+    return true;
   }
-  pthread_mutex_unlock(&watch_list_lock);
-  return removed;
+  return false;
 }
 
 // Given a filename, walk the current set of watches.
@@ -57,23 +36,24 @@ bool remove_root_from_watched(
 // If multiple watches have the same prefix, it is undefined which one will
 // match.
 char *w_find_enclosing_root(const char *filename, char **relpath) {
-  w_ht_iter_t i;
   w_root_t *root = NULL;
   w_string name(filename, W_STRING_BYTE);
   char *prefix = NULL;
 
-  pthread_mutex_lock(&watch_list_lock);
-  if (w_ht_first(watched_roots, &i)) do {
-    auto root_name = (w_string_t *)w_ht_val_ptr(i.key);
-    if (w_string_startswith(name, root_name) &&
-        (name.size() == root_name->len /* exact match */ ||
-         is_slash(name.data()[root_name->len]) /* dir container matches */)) {
-      root = (w_root_t*)w_ht_val_ptr(i.value);
-      w_root_addref(root);
-      break;
+  {
+    auto map = watched_roots.rlock();
+    for (const auto& it : *map) {
+      auto root_name = it.first;
+      if (w_string_startswith(name, root_name) &&
+          (name.size() == root_name.size() /* exact match */ ||
+           is_slash(
+               name.data()[root_name.size()]) /* dir container matches */)) {
+        root = it.second;
+        w_root_addref(root);
+        break;
+      }
     }
-  } while (w_ht_next(watched_roots, &i));
-  pthread_mutex_unlock(&watch_list_lock);
+  }
 
   if (!root) {
     goto out;
@@ -102,34 +82,22 @@ out:
 }
 
 json_t *w_root_stop_watch_all(void) {
-  uint32_t roots_count, i;
-  w_root_t **roots;
-  w_ht_iter_t iter;
+  std::vector<w_root_t*> roots;
   json_t *stopped;
 
-  pthread_mutex_lock(&watch_list_lock);
-  roots_count = w_ht_size(watched_roots);
-  roots = (w_root_t**)calloc(roots_count, sizeof(*roots));
+  {
+    auto map = watched_roots.wlock();
+    stopped = json_array_of_size(map->size());
 
-  i = 0;
-  if (w_ht_first(watched_roots, &iter)) do {
-    auto root = (w_root_t *)w_ht_val_ptr(iter.value);
-    w_root_addref(root);
-    roots[i++] = root;
-  } while (w_ht_next(watched_roots, &iter));
-
-  stopped = json_array();
-  for (i = 0; i < roots_count; i++) {
-    w_root_t *root = roots[i];
-    w_string_t *path = root->root_path;
-    if (w_ht_del(watched_roots, w_ht_ptr_val(path))) {
+    for (auto& it : *map) {
+      auto root = it.second;
+      auto path = it.first;
       w_root_cancel(root);
       json_array_append_new(stopped, w_string_to_json(path));
+      w_root_delref_raw(root);
     }
-    w_root_delref_raw(root);
+    map->clear();
   }
-  free(roots);
-  pthread_mutex_unlock(&watch_list_lock);
 
   w_state_save();
 
@@ -137,23 +105,20 @@ json_t *w_root_stop_watch_all(void) {
 }
 
 json_t *w_root_watch_list_to_json(void) {
-  w_ht_iter_t iter;
   json_t *arr;
 
   arr = json_array();
 
-  pthread_mutex_lock(&watch_list_lock);
-  if (w_ht_first(watched_roots, &iter)) do {
-    auto root = (w_root_t *)w_ht_val_ptr(iter.value);
+  auto map = watched_roots.rlock();
+  for (const auto& it : *map) {
+    auto root = it.second;
     json_array_append_new(arr, w_string_to_json(root->root_path));
-  } while (w_ht_next(watched_roots, &iter));
-  pthread_mutex_unlock(&watch_list_lock);
+  }
 
   return arr;
 }
 
 bool w_root_save_state(json_t *state) {
-  w_ht_iter_t root_iter;
   bool result = true;
   json_t *watched_dirs;
 
@@ -161,29 +126,28 @@ bool w_root_save_state(json_t *state) {
 
   w_log(W_LOG_DBG, "saving state\n");
 
-  pthread_mutex_lock(&watch_list_lock);
-  if (w_ht_first(watched_roots, &root_iter)) do {
-    json_t *obj;
-    json_t *triggers;
-    struct read_locked_watchman_root lock;
-    struct unlocked_watchman_root unlocked = {
-        (w_root_t*)w_ht_val_ptr(root_iter.value)};
+  {
+    auto map = watched_roots.rlock();
+    for (const auto& it : *map) {
+      auto root = it.second;
+      json_t* obj;
+      json_t* triggers;
+      struct read_locked_watchman_root lock;
+      struct unlocked_watchman_root unlocked = {root};
 
-    obj = json_object();
+      obj = json_object();
 
-    json_object_set_new(obj, "path",
-                        w_string_to_json(unlocked.root->root_path));
+      json_object_set_new(
+          obj, "path", w_string_to_json(unlocked.root->root_path));
 
-    w_root_read_lock(&unlocked, "w_root_save_state", &lock);
-    triggers = w_root_trigger_list_to_json(&lock);
-    w_root_read_unlock(&lock, &unlocked);
-    json_object_set_new(obj, "triggers", triggers);
+      w_root_read_lock(&unlocked, "w_root_save_state", &lock);
+      triggers = w_root_trigger_list_to_json(&lock);
+      w_root_read_unlock(&lock, &unlocked);
+      json_object_set_new(obj, "triggers", triggers);
 
-    json_array_append_new(watched_dirs, obj);
-
-  } while (w_ht_next(watched_roots, &root_iter));
-
-  pthread_mutex_unlock(&watch_list_lock);
+      json_array_append_new(watched_dirs, obj);
+    }
+  }
 
   json_object_set_new(state, "watched", watched_dirs);
 
@@ -283,7 +247,6 @@ bool w_root_load_state(json_t *state) {
 }
 
 void w_root_free_watched_roots(void) {
-  w_ht_iter_t root_iter;
   int last, interval;
   time_t started;
 
@@ -291,14 +254,15 @@ void w_root_free_watched_roots(void) {
   // references on the root
   w_reap_children(true);
 
-  pthread_mutex_lock(&watch_list_lock);
-  if (w_ht_first(watched_roots, &root_iter)) do {
-    auto root = (w_root_t *)w_ht_val_ptr(root_iter.value);
-    if (!w_root_cancel(root)) {
-      signal_root_threads(root);
+  {
+    auto map = watched_roots.rlock();
+    for (const auto& it : *map) {
+      auto root = it.second;
+      if (!w_root_cancel(root)) {
+        signal_root_threads(root);
+      }
     }
-  } while (w_ht_next(watched_roots, &root_iter));
-  pthread_mutex_unlock(&watch_list_lock);
+  }
 
   last = live_roots;
   time(&started);

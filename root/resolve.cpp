@@ -105,8 +105,7 @@ static bool check_allowed_fs(const char *filename, char **errmsg) {
 
 bool root_resolve(const char *filename, bool auto_watch, bool *created,
                   char **errmsg, struct unlocked_watchman_root *unlocked) {
-  struct watchman_root *root = NULL, *existing = NULL;
-  w_ht_val_t root_val;
+  struct watchman_root* root = nullptr;
   char *watch_path;
   int realpath_err;
 
@@ -134,12 +133,15 @@ bool root_resolve(const char *filename, bool auto_watch, bool *created,
   }
 
   w_string root_str(watch_path, W_STRING_BYTE);
-  pthread_mutex_lock(&watch_list_lock);
-  // This will addref if it returns root
-  if (w_ht_lookup(watched_roots, w_ht_ptr_val(root_str), &root_val, true)) {
-    root = (w_root_t*)w_ht_val_ptr(root_val);
+
+  {
+    auto map = watched_roots.rlock();
+    const auto& it = map->find(root_str);
+    if (it != map->end()) {
+      root = it->second;
+      w_root_addref(root);
+    }
   }
-  pthread_mutex_unlock(&watch_list_lock);
 
   if (!root && watch_path == filename) {
     // Path didn't resolve and neither did the name they passed in
@@ -212,21 +214,23 @@ bool root_resolve(const char *filename, bool auto_watch, bool *created,
     return false;
   }
 
-  pthread_mutex_lock(&watch_list_lock);
-  existing = (w_root_t*)w_ht_val_ptr(
-      w_ht_get(watched_roots, w_ht_ptr_val(root->root_path)));
-  if (existing) {
-    // Someone beat us in this race
-    w_root_addref(existing);
-    w_root_delref_raw(root);
-    root = existing;
-    *created = false;
-  } else {
-    // adds 1 ref
-    w_ht_set(watched_roots, w_ht_ptr_val(root->root_path), w_ht_ptr_val(root));
-    *created = true;
+  {
+    auto wlock = watched_roots.wlock();
+    auto& map = *wlock;
+    auto& existing = map[root->root_path];
+    if (existing) {
+      // Someone beat us in this race
+      w_root_addref(existing);
+      w_root_delref_raw(root);
+      root = existing;
+      *created = false;
+    } else {
+      existing = root;
+      // map owns a ref
+      w_root_addref(root);
+      *created = true;
+    }
   }
-  pthread_mutex_unlock(&watch_list_lock);
 
   // caller owns 1 ref
   unlocked->root = root;

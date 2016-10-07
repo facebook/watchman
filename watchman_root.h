@@ -285,8 +285,10 @@ bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg);
 w_root_t *w_root_new(const char *path, char **errmsg);
 extern std::atomic<long> live_roots;
 bool root_start(w_root_t *root, char **errmsg);
-extern pthread_mutex_t watch_list_lock;
-extern w_ht_t *watched_roots;
+
+extern watchman::Synchronized<std::unordered_map<w_string, w_root_t*>>
+    watched_roots;
+
 bool root_resolve(
     const char* filename,
     bool auto_watch,
