@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <unordered_map>
+#include "watchman_shared_mutex.h"
 
 #define HINT_NUM_DIRS 128*1024
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"

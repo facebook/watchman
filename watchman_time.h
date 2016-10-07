@@ -1,6 +1,30 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <chrono>
+
+/* Return a timespec holding the equivalent of the supplied duration */
+template <class Rep, class Period>
+inline timespec
+durationToTimeSpecDuration(const std::chrono::duration<Rep, Period> &d) {
+  timespec ts{0,0};
+
+  ts.tv_sec = std::chrono::duration_cast<std::chrono::seconds>(d).count();
+  ts.tv_nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                   d - std::chrono::seconds(ts.tv_sec))
+                   .count();
+  return ts;
+}
+
+/* Return a timespec holding an absolute time equivalent to the provided
+ * system_clock timepoint */
+inline timespec
+systemClockToTimeSpec(const std::chrono::system_clock::time_point &p) {
+  /* It just so happens that the epoch for system_clock is the same as the
+   * epoch for timespec, so we can use our duration helper on the duration
+   * since the epoch. */
+  return durationToTimeSpecDuration(p.time_since_epoch());
+}
 
 void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec *deadline);
 
