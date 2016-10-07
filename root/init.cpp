@@ -201,22 +201,24 @@ void w_root_delref_raw(w_root_t *root) {
   if (--root->refcnt != 0) {
     return;
   }
+  delete root;
+}
 
-  w_log(W_LOG_DBG, "root: final ref on %s\n", root->root_path.c_str());
-  w_cancel_subscriptions_for_root(root);
+watchman_root::~watchman_root() {
+  w_log(W_LOG_DBG, "root: final ref on %s\n", root_path.c_str());
+  w_cancel_subscriptions_for_root(this);
 
-  w_root_teardown(root);
+  w_root_teardown(this);
 
-  pthread_rwlock_destroy(&root->lock);
-  w_ht_free(root->commands);
+  pthread_rwlock_destroy(&lock);
+  w_ht_free(commands);
 
-  if (root->config_file) {
-    json_decref(root->config_file);
+  if (config_file) {
+    json_decref(config_file);
   }
 
-  w_pending_coll_destroy(&root->pending);
+  w_pending_coll_destroy(&pending);
 
-  delete root;
   --live_roots;
 }
 

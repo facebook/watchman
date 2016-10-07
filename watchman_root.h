@@ -125,6 +125,8 @@ struct watchman_root {
     Inner();
     ~Inner();
   } inner;
+
+  ~watchman_root();
 };
 
 struct write_locked_watchman_root {
