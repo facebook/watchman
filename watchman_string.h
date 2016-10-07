@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #ifdef __cplusplus
 #include <atomic>
+#include <initializer_list>
 #include <memory>
 #endif
 
