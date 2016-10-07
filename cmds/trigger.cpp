@@ -6,7 +6,6 @@
 /* process any pending triggers.
  * This is called from the IO thread */
 void process_triggers(struct write_locked_watchman_root *lock) {
-  w_ht_iter_t iter;
   w_root_t *root = lock->root;
 
   if (root->inner.last_trigger_tick == root->inner.pending_trigger_tick) {
@@ -28,19 +27,23 @@ void process_triggers(struct write_locked_watchman_root *lock) {
       root->inner.pending_trigger_tick);
 
   /* walk the list of triggers, and run their rules */
-  if (w_ht_first(root->commands, &iter)) do {
-    auto cmd = (watchman_trigger_command*)w_ht_val_ptr(iter.value);
+  {
+    auto map = root->triggers.rlock();
+    for (const auto& it : *map) {
+      const auto& cmd = it.second;
 
-    if (cmd->current_proc) {
-      // Don't spawn if there's one already running
-      w_log(W_LOG_DBG, "process_triggers: %.*s is already running\n",
-          cmd->triggername->len, cmd->triggername->buf);
-      continue;
+      if (cmd->current_proc) {
+        // Don't spawn if there's one already running
+        w_log(
+            W_LOG_DBG,
+            "process_triggers: %s is already running\n",
+            cmd->triggername.c_str());
+        continue;
+      }
+
+      w_assess_trigger(lock, cmd.get());
     }
-
-    w_assess_trigger(lock, cmd);
-
-  } while (w_ht_next(root->commands, &iter));
+  }
 
   root->inner.last_trigger_tick = root->inner.pending_trigger_tick;
 }
@@ -53,9 +56,8 @@ static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
 {
   json_t *resp;
   json_t *jname;
-  w_string_t *tname;
+  w_string tname;
   bool res;
-  struct write_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
   if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
@@ -73,17 +75,22 @@ static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
     w_root_delref(&unlocked);
     return;
   }
-  tname = json_to_w_string_incref(jname);
+  tname = json_to_w_string(jname);
 
-  w_root_lock(&unlocked, "trigger-del", &lock);
-  res = w_ht_del(lock.root->commands, w_ht_ptr_val(tname));
-  w_root_unlock(&lock, &unlocked);
+  {
+    auto map = unlocked.root->triggers.wlock();
+    auto it = map->find(tname);
+    if (it == map->end()) {
+      res = false;
+    } else {
+      map->erase(it);
+      res = true;
+    }
+  }
 
   if (res) {
     w_state_save();
   }
-
-  w_string_delref(tname);
 
   resp = make_response();
   set_prop(resp, "deleted", json_boolean(res));
@@ -210,43 +217,49 @@ static bool parse_redirection(const char **name_p, int *flags,
   return true;
 }
 
-void w_trigger_command_free(struct watchman_trigger_command *cmd)
-{
-  if (cmd->triggername) {
-    w_string_delref(cmd->triggername);
+watchman_trigger_command::~watchman_trigger_command() {
+  if (command) {
+    json_decref(command);
   }
 
-  if (cmd->command) {
-    json_decref(cmd->command);
+  if (definition) {
+    json_decref(definition);
   }
 
-  if (cmd->definition) {
-    json_decref(cmd->definition);
+  if (query) {
+    w_query_delref(query);
   }
 
-  if (cmd->query) {
-    w_query_delref(cmd->query);
+  if (envht) {
+    w_ht_free(envht);
   }
-
-  if (cmd->envht) {
-    w_ht_free(cmd->envht);
-  }
-
-  free(cmd);
 }
 
-struct watchman_trigger_command *w_build_trigger_from_def(
-  const w_root_t *root, json_t *trig, char **errmsg)
-{
-  struct watchman_trigger_command *cmd;
+watchman_trigger_command::watchman_trigger_command()
+    : query(nullptr),
+      definition(nullptr),
+      command(nullptr),
+      envht(nullptr),
+      append_files(0),
+      stdin_style(input_dev_null),
+      max_files_stdin(0),
+      stdout_flags(0),
+      stderr_flags(0),
+      stdout_name(nullptr),
+      stderr_name(nullptr),
+      current_proc(0) {}
+
+std::unique_ptr<watchman_trigger_command>
+w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg) {
+  std::unique_ptr<watchman_trigger_command> cmd;
   json_t *ele, *query, *relative_root;
   json_int_t jint;
   const char *name = NULL;
 
-  cmd = (watchman_trigger_command*)calloc(1, sizeof(*cmd));
+  cmd.reset(new watchman_trigger_command);
   if (!cmd) {
     *errmsg = strdup("no memory");
-    return NULL;
+    return nullptr;
   }
 
   cmd->definition = trig;
@@ -263,18 +276,16 @@ struct watchman_trigger_command *w_build_trigger_from_def(
   json_decref(query);
 
   if (!cmd->query) {
-    w_trigger_command_free(cmd);
-    return NULL;
+    return nullptr;
   }
 
   json_unpack(trig, "{s:u}", "name", &name);
   if (!name) {
     *errmsg = strdup("invalid or missing name");
-    w_trigger_command_free(cmd);
-    return NULL;
+    return nullptr;
   }
 
-  cmd->triggername = w_string_new_typed(name, W_STRING_UNICODE);
+  cmd->triggername = w_string(name, W_STRING_UNICODE);
   cmd->command = json_object_get(trig, "command");
   if (cmd->command) {
     json_incref(cmd->command);
@@ -282,8 +293,7 @@ struct watchman_trigger_command *w_build_trigger_from_def(
   if (!cmd->command || !json_is_array(cmd->command) ||
       !json_array_size(cmd->command)) {
     *errmsg = strdup("invalid command array");
-    w_trigger_command_free(cmd);
-    return NULL;
+    return nullptr;
   }
 
   json_unpack(trig, "{s:b}", "append_files", &cmd->append_files);
@@ -294,8 +304,7 @@ struct watchman_trigger_command *w_build_trigger_from_def(
   } else if (json_is_array(ele)) {
     cmd->stdin_style = input_json;
     if (!parse_field_list(ele, &cmd->field_list, errmsg)) {
-      w_trigger_command_free(cmd);
-      return NULL;
+      return nullptr;
     }
   } else if (json_is_string(ele)) {
     const char *str = json_string_value(ele);
@@ -305,21 +314,18 @@ struct watchman_trigger_command *w_build_trigger_from_def(
       cmd->stdin_style = input_name_list;
     } else {
       ignore_result(asprintf(errmsg, "invalid stdin value %s", str));
-      w_trigger_command_free(cmd);
-      return NULL;
+      return nullptr;
     }
   } else {
     *errmsg = strdup("invalid value for stdin");
-    w_trigger_command_free(cmd);
-    return NULL;
+    return nullptr;
   }
 
   jint = 0; // unlimited unless specified
   json_unpack(trig, "{s:I}", "max_files_stdin", &jint);
   if (jint < 0) {
     *errmsg = strdup("max_files_stdin must be >= 0");
-    w_trigger_command_free(cmd);
-    return NULL;
+    return nullptr;
   }
   cmd->max_files_stdin = (uint32_t)jint;
 
@@ -328,14 +334,12 @@ struct watchman_trigger_command *w_build_trigger_from_def(
 
   if (!parse_redirection(&cmd->stdout_name, &cmd->stdout_flags,
         "stdout", errmsg)) {
-    w_trigger_command_free(cmd);
-    return NULL;
+    return nullptr;
   }
 
   if (!parse_redirection(&cmd->stderr_name, &cmd->stderr_flags,
         "stderr", errmsg)) {
-    w_trigger_command_free(cmd);
-    return NULL;
+    return nullptr;
   }
 
   // Copy current environment
@@ -354,13 +358,12 @@ struct watchman_trigger_command *w_build_trigger_from_def(
  * is detected */
 static void cmd_trigger(struct watchman_client *client, json_t *args)
 {
-  struct watchman_trigger_command *cmd, *old;
   json_t *resp;
   json_t *trig;
   char *errmsg = NULL;
   bool need_save = true;
-  struct write_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
+  std::unique_ptr<watchman_trigger_command> cmd;
 
   if (!resolve_root_or_err(client, args, 1, true, &unlocked)) {
     return;
@@ -394,29 +397,33 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
   resp = make_response();
   set_prop(resp, "triggerid", w_string_to_json(cmd->triggername));
 
-  w_root_lock(&unlocked, "trigger-add", &lock);
+  {
+    auto wlock = unlocked.root->triggers.wlock();
+    auto& map = *wlock;
+    auto& old = map[cmd->triggername];
 
-  old = (watchman_trigger_command*)w_ht_val_ptr(
-      w_ht_get(lock.root->commands, w_ht_ptr_val(cmd->triggername)));
-  if (old && json_equal(cmd->definition, old->definition)) {
-    // Same definition: we don't and shouldn't touch things, so that we
-    // preserve the associated trigger clock and don't cause the trigger
-    // to re-run immediately
-    set_unicode_prop(resp, "disposition", "already_defined");
-    w_trigger_command_free(cmd);
-    cmd = NULL;
-    need_save = false;
-  } else {
-    set_unicode_prop(resp, "disposition", old ? "replaced" : "created");
-    w_ht_replace(lock.root->commands, w_ht_ptr_val(cmd->triggername),
-        w_ht_ptr_val(cmd));
+    if (old && json_equal(cmd->definition, old->definition)) {
+      // Same definition: we don't and shouldn't touch things, so that we
+      // preserve the associated trigger clock and don't cause the trigger
+      // to re-run immediately
+      set_unicode_prop(resp, "disposition", "already_defined");
+      need_save = false;
+    } else {
+      set_unicode_prop(resp, "disposition", old ? "replaced" : "created");
+      old = std::move(cmd);
+      need_save = true;
+    }
+  }
+
+  if (need_save) {
+    struct write_locked_watchman_root lock;
+
+    w_root_lock(&unlocked, "trigger-add", &lock);
     // Force the trigger to be eligible to run now
     lock.root->inner.ticks++;
     lock.root->inner.pending_trigger_tick = lock.root->inner.ticks;
-  }
-  w_root_unlock(&lock, &unlocked);
+    w_root_unlock(&lock, &unlocked);
 
-  if (need_save) {
     w_state_save();
   }
 

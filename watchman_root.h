@@ -40,7 +40,9 @@ struct watchman_root {
   pthread_t io_thread;
 
   /* map of rule id => struct watchman_trigger_command */
-  w_ht_t *commands{nullptr};
+  watchman::Synchronized<
+      std::unordered_map<w_string, std::unique_ptr<watchman_trigger_command>>>
+      triggers;
 
   /* path to the query cookie dir */
   w_string query_cookie_dir;

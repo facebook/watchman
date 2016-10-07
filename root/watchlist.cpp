@@ -155,15 +155,16 @@ bool w_root_save_state(json_t *state) {
 }
 
 json_t *w_root_trigger_list_to_json(struct read_locked_watchman_root *lock) {
-  w_ht_iter_t iter;
   json_t *arr;
 
   arr = json_array();
-  if (w_ht_first(lock->root->commands, &iter)) do {
-    auto cmd = (watchman_trigger_command *)w_ht_val_ptr(iter.value);
-
-    json_array_append(arr, cmd->definition);
-  } while (w_ht_next(lock->root->commands, &iter));
+  {
+    auto map = lock->root->triggers.rlock();
+    for (const auto& it : *map) {
+      const auto& cmd = it.second;
+      json_array_append(arr, cmd->definition);
+    }
+  }
 
   return arr;
 }
@@ -188,7 +189,6 @@ bool w_root_load_state(json_t *state) {
     json_t *triggers;
     size_t j;
     char *errmsg = NULL;
-    struct write_locked_watchman_root lock;
     struct unlocked_watchman_root unlocked;
 
     triggers = json_object_get(obj, "triggers");
@@ -198,35 +198,35 @@ bool w_root_load_state(json_t *state) {
       continue;
     }
 
-    w_root_lock(&unlocked, "w_root_load_state", &lock);
+    {
+      auto wlock = unlocked.root->triggers.wlock();
+      auto& map = *wlock;
 
-    /* re-create the trigger configuration */
-    for (j = 0; j < json_array_size(triggers); j++) {
-      json_t *tobj = json_array_get(triggers, j);
-      json_t *rarray;
-      struct watchman_trigger_command *cmd;
+      /* re-create the trigger configuration */
+      for (j = 0; j < json_array_size(triggers); j++) {
+        json_t* tobj = json_array_get(triggers, j);
+        json_t* rarray;
 
-      // Legacy rules format
-      rarray = json_object_get(tobj, "rules");
-      if (rarray) {
-        continue;
+        // Legacy rules format
+        rarray = json_object_get(tobj, "rules");
+        if (rarray) {
+          continue;
+        }
+
+        auto cmd = w_build_trigger_from_def(unlocked.root, tobj, &errmsg);
+        if (!cmd) {
+          w_log(
+              W_LOG_ERR,
+              "loading trigger for %s: %s\n",
+              unlocked.root->root_path.c_str(),
+              errmsg);
+          free(errmsg);
+          continue;
+        }
+
+        map[cmd->triggername] = std::move(cmd);
       }
-
-      cmd = w_build_trigger_from_def(lock.root, tobj, &errmsg);
-      if (!cmd) {
-        w_log(
-            W_LOG_ERR,
-            "loading trigger for %s: %s\n",
-            lock.root->root_path.c_str(),
-            errmsg);
-        free(errmsg);
-        continue;
-      }
-
-      w_ht_replace(lock.root->commands, w_ht_ptr_val(cmd->triggername),
-                   w_ht_ptr_val(cmd));
     }
-    w_root_unlock(&lock, &unlocked);
 
     if (created) {
       if (!root_start(unlocked.root, &errmsg)) {

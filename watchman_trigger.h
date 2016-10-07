@@ -5,7 +5,7 @@
 enum trigger_input_style { input_dev_null, input_json, input_name_list };
 
 struct watchman_trigger_command {
-  w_string_t *triggername;
+  w_string triggername;
   w_query *query;
   json_t *definition;
   json_t *command;
@@ -24,10 +24,13 @@ struct watchman_trigger_command {
   /* While we are running, this holds the pid
    * of the running process */
   pid_t current_proc;
+
+  watchman_trigger_command();
+  watchman_trigger_command(const watchman_trigger_command&) = delete;
+  ~watchman_trigger_command();
 };
 
-void w_trigger_command_free(struct watchman_trigger_command *cmd);
 void w_assess_trigger(struct write_locked_watchman_root *lock,
                       struct watchman_trigger_command *cmd);
-struct watchman_trigger_command *w_build_trigger_from_def(
-  const w_root_t *root, json_t *trig, char **errmsg);
+std::unique_ptr<watchman_trigger_command>
+w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg);

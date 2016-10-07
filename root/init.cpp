@@ -8,21 +8,6 @@
 // helps avoid confusion if a root is removed and then added again.
 static std::atomic<long> next_root_number{1};
 
-static void delete_trigger(w_ht_val_t val) {
-  auto cmd = (watchman_trigger_command*)w_ht_val_ptr(val);
-
-  w_trigger_command_free(cmd);
-}
-
-static const struct watchman_hash_funcs trigger_hash_funcs = {
-  w_ht_string_copy,
-  w_ht_string_del,
-  w_ht_string_equal,
-  w_ht_string_hash,
-  NULL,
-  delete_trigger
-};
-
 static bool is_case_sensitive_filesystem(const char *path) {
 #ifdef __APPLE__
   return pathconf(path, _PC_CASE_SENSITIVE);
@@ -127,7 +112,6 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
 
   w_pending_coll_init(&root->pending);
   root->root_path = w_string(path, W_STRING_BYTE);
-  root->commands = w_ht_new(2, &trigger_hash_funcs);
 
   load_root_config(root, path);
   root->trigger_settle = (int)cfg_get_int(
@@ -211,7 +195,6 @@ watchman_root::~watchman_root() {
   w_root_teardown(this);
 
   pthread_rwlock_destroy(&lock);
-  w_ht_free(commands);
 
   if (config_file) {
     json_decref(config_file);

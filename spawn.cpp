@@ -14,7 +14,6 @@ static void spawn_command(w_root_t *root,
 
 void w_mark_dead(pid_t pid)
 {
-  w_ht_iter_t iter;
   struct write_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
@@ -38,26 +37,32 @@ void w_mark_dead(pid_t pid)
   w_root_lock(&unlocked, "mark_dead", &lock);
 
   /* walk the list of triggers, and run their rules */
-  if (w_ht_first(lock.root->commands, &iter)) do {
-    auto cmd = (watchman_trigger_command*)w_ht_val_ptr(iter.value);
+  {
+    auto map = lock.root->triggers.rlock();
+    for (const auto& it : *map) {
+      const auto& cmd = it.second;
 
-    if (cmd->current_proc != pid) {
-      w_log(W_LOG_DBG, "mark_dead: is [%.*s] %d == %d\n",
-          cmd->triggername->len, cmd->triggername->buf,
-          (int)cmd->current_proc, (int)pid);
-      continue;
-    }
+      if (cmd->current_proc != pid) {
+        w_log(
+            W_LOG_DBG,
+            "mark_dead: is [%s] %d == %d\n",
+            cmd->triggername.c_str(),
+            (int)cmd->current_proc,
+            (int)pid);
+        continue;
+      }
 
-    /* first mark the process as dead */
-    cmd->current_proc = 0;
-    if (lock.root->inner.cancelled) {
-      w_log(W_LOG_DBG, "mark_dead: root was cancelled\n");
+      /* first mark the process as dead */
+      cmd->current_proc = 0;
+      if (lock.root->inner.cancelled) {
+        w_log(W_LOG_DBG, "mark_dead: root was cancelled\n");
+        break;
+      }
+
+      w_assess_trigger(&lock, cmd.get());
       break;
     }
-
-    w_assess_trigger(&lock, cmd);
-    break;
-  } while (w_ht_next(lock.root->commands, &iter));
+  }
 
   w_root_unlock(&lock, &unlocked);
   w_root_delref(&unlocked);
@@ -192,7 +197,7 @@ static void spawn_command(w_root_t *root,
         W_LOG_ERR,
         "trigger %s:%s %s\n",
         root->root_path.c_str(),
-        cmd->triggername->buf,
+        cmd->triggername.c_str(),
         strerror(errno));
     return;
   }
@@ -372,7 +377,7 @@ static void spawn_command(w_root_t *root,
   // If failed, we want to make sure we log enough info to figure out why
   result_log_level = res == 0 ? W_LOG_DBG : W_LOG_ERR;
 
-  w_log(result_log_level, "posix_spawnp: %s\n", cmd->triggername->buf);
+  w_log(result_log_level, "posix_spawnp: %s\n", cmd->triggername.c_str());
   for (i = 0; argv[i]; i++) {
     w_log(result_log_level, "argv[%d] %s\n", i, argv[i]);
   }
@@ -384,7 +389,7 @@ static void spawn_command(w_root_t *root,
       result_log_level,
       "trigger %s:%s pid=%d ret=%d %s\n",
       root->root_path.c_str(),
-      cmd->triggername->buf,
+      cmd->triggername.c_str(),
       (int)cmd->current_proc,
       ret,
       strerror(ret));
@@ -409,8 +414,7 @@ static bool trigger_generator(w_query *query,
   int64_t n = 0;
   bool result = true;
 
-  w_log(W_LOG_DBG, "assessing trigger %s %p\n",
-      cmd->triggername->buf, cmd);
+  w_log(W_LOG_DBG, "assessing trigger %s %p\n", cmd->triggername.c_str(), cmd);
 
   // Walk back in time until we hit the boundary
   for (f = lock->root->inner.latest_file; f; f = f->next) {
@@ -445,32 +449,43 @@ void w_assess_trigger(struct write_locked_watchman_root *lock,
   struct w_clockspec *since_spec = cmd->query->since_spec;
 
   if (since_spec && since_spec->tag == w_cs_clock) {
-    w_log(W_LOG_DBG, "running trigger \"%s\" rules! since %" PRIu32 "\n",
-        cmd->triggername->buf,
+    w_log(
+        W_LOG_DBG,
+        "running trigger \"%s\" rules! since %" PRIu32 "\n",
+        cmd->triggername.c_str(),
         since_spec->clock.ticks);
   } else {
-    w_log(W_LOG_DBG, "running trigger \"%s\" rules!\n",
-        cmd->triggername->buf);
+    w_log(
+        W_LOG_DBG, "running trigger \"%s\" rules!\n", cmd->triggername.c_str());
   }
 
   // Triggers never need to sync explicitly; we are only dispatched
   // at settle points which are by definition sync'd to the present time
   cmd->query->sync_timeout = 0;
   if (!w_query_execute_locked(cmd->query, lock, &res, trigger_generator, cmd)) {
-    w_log(W_LOG_ERR, "error running trigger \"%s\" query: %s",
-        cmd->triggername->buf, res.errmsg);
+    w_log(
+        W_LOG_ERR,
+        "error running trigger \"%s\" query: %s",
+        cmd->triggername.c_str(),
+        res.errmsg);
     w_query_result_free(&res);
     return;
   }
 
-  w_log(W_LOG_DBG, "trigger \"%s\" generated %" PRIu32 " results\n",
-      cmd->triggername->buf, res.num_results);
+  w_log(
+      W_LOG_DBG,
+      "trigger \"%s\" generated %" PRIu32 " results\n",
+      cmd->triggername.c_str(),
+      res.num_results);
 
   // create a new spec that will be used the next time
   cmd->query->since_spec = w_clockspec_new_clock(res.root_number, res.ticks);
 
-  w_log(W_LOG_DBG, "updating trigger \"%s\" use %" PRIu32 " ticks next time\n",
-      cmd->triggername->buf, res.ticks);
+  w_log(
+      W_LOG_DBG,
+      "updating trigger \"%s\" use %" PRIu32 " ticks next time\n",
+      cmd->triggername.c_str(),
+      res.ticks);
 
   if (res.num_results) {
     spawn_command(lock->root, cmd, &res, since_spec);

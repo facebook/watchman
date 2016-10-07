@@ -42,6 +42,10 @@ typedef void *watchman_watcher_t;
 #include "watchman_query.h"
 #include "watchman_client.h"
 
+#include "watchman_cmd.h"
+#include "watchman_config.h"
+#include "watchman_trigger.h"
+
 // Returns the name of the filesystem for the specified path
 w_string w_fstype(const char *path);
 
@@ -187,10 +191,6 @@ static inline void set_mixed_string_prop(json_t *obj, const char *key,
   json_object_set_new_nocheck(obj, key,
       typed_string_to_json(uni_str, W_STRING_MIXED));
 }
-
-#include "watchman_config.h"
-#include "watchman_cmd.h"
-#include "watchman_trigger.h"
 
 uint32_t strlen_uint32(const char *str);
 int w_lstat(const char *path, struct stat *st, bool case_sensitive);
