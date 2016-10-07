@@ -29,6 +29,7 @@ void process_subscriptions(struct write_locked_watchman_root *lock) {
       auto sub = (watchman_client_subscription*)w_ht_val_ptr(citer.value);
       bool defer = false;
       bool drop = false;
+      w_string policy_name;
 
       if (sub->root != root) {
         w_log(W_LOG_DBG, "root doesn't match, skipping\n");
@@ -47,51 +48,62 @@ void process_subscriptions(struct write_locked_watchman_root *lock) {
         continue;
       }
 
-      if (root->asserted_states && w_ht_size(root->asserted_states) > 0
-          && sub->drop_or_defer) {
-        w_ht_iter_t policy_iter;
-        w_string_t *policy_name = NULL;
+      {
+        auto asserted_states = root->asserted_states.rlock();
+        if (!asserted_states->empty() && sub->drop_or_defer) {
+          w_ht_iter_t policy_iter;
+          policy_name.reset();
 
-        // There are 1 or more states asserted and this subscription
-        // has some policy for states.  Figure out what we should do.
-        if (w_ht_first(sub->drop_or_defer, &policy_iter)) do {
-          auto name = (w_string_t*)w_ht_val_ptr(policy_iter.key);
-          bool policy_is_drop = policy_iter.value;
+          // There are 1 or more states asserted and this subscription
+          // has some policy for states.  Figure out what we should do.
+          if (w_ht_first(sub->drop_or_defer, &policy_iter)) do {
+            auto name = (w_string_t*)w_ht_val_ptr(policy_iter.key);
+            bool policy_is_drop = policy_iter.value;
 
-          if (!w_ht_get(root->asserted_states, policy_iter.key)) {
-            continue;
-          }
+            if (asserted_states->find(name) == asserted_states->end()) {
+              continue;
+            }
 
-          if (!defer) {
-            // This policy is active
-            defer = true;
-            policy_name = name;
-          }
+            if (!defer) {
+              // This policy is active
+              defer = true;
+              policy_name = name;
+            }
 
-          if (policy_is_drop) {
-            drop = true;
+            if (policy_is_drop) {
+              drop = true;
 
-            // If we're dropping, we don't need to look at any
-            // other policies
-            policy_name = name;
-            break;
-          }
-          // Otherwise keep looking until we find a drop
-        } while (w_ht_next(sub->drop_or_defer, &policy_iter));
+              // If we're dropping, we don't need to look at any
+              // other policies
+              policy_name = name;
+              break;
+            }
+            // Otherwise keep looking until we find a drop
+          } while (w_ht_next(sub->drop_or_defer, &policy_iter));
 
-        if (drop) {
-          // fast-forward over any notifications while in the drop state
-          sub->last_sub_tick = root->inner.pending_sub_tick;
-          w_log(W_LOG_DBG, "dropping subscription notifications for %s "
-              "until state %s is vacated\n", sub->name->buf, policy_name->buf);
-          continue;
         }
+      }
 
-        if (defer) {
-          w_log(W_LOG_DBG, "deferring subscription notifications for %s "
-              "until state %s is vacated\n", sub->name->buf, policy_name->buf);
-          continue;
-        }
+      if (drop) {
+        // fast-forward over any notifications while in the drop state
+        sub->last_sub_tick = root->inner.pending_sub_tick;
+        w_log(
+            W_LOG_DBG,
+            "dropping subscription notifications for %s "
+            "until state %s is vacated\n",
+            sub->name->buf,
+            policy_name.c_str());
+        continue;
+      }
+
+      if (defer) {
+        w_log(
+            W_LOG_DBG,
+            "deferring subscription notifications for %s "
+            "until state %s is vacated\n",
+            sub->name->buf,
+            policy_name.c_str());
+        continue;
       }
 
       if (sub->vcs_defer && vcs_in_progress) {

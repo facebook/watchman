@@ -26,6 +26,8 @@ struct watchman_query_cookie {
   bool seen{false};
 };
 
+struct watchman_client_state_assertion;
+
 struct watchman_root {
   std::atomic<long> refcnt{1};
 
@@ -75,7 +77,10 @@ struct watchman_root {
 
   // map of state name => watchman_client_state_assertion for
   // asserted states
-  w_ht_t *asserted_states{nullptr};
+  watchman::Synchronized<std::unordered_map<
+      w_string,
+      std::unique_ptr<watchman_client_state_assertion>>>
+      asserted_states;
 
   /* the watcher that we're using for this root */
   struct watchman_ops *watcher_ops{nullptr};

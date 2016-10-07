@@ -11,8 +11,11 @@ struct watchman_client_subscription;
 
 struct watchman_client_state_assertion {
   w_root_t *root; // Holds a ref on the root
-  w_string_t *name;
+  w_string name;
   long id;
+
+  watchman_client_state_assertion(w_root_t* root, const w_string& name);
+  ~watchman_client_state_assertion();
 };
 
 struct watchman_client {

@@ -62,20 +62,26 @@ static void destroy_state_arg(struct state_arg *parsed) {
   memset(parsed, 0, sizeof(*parsed));
 }
 
-static void free_assertion(struct watchman_client_state_assertion *assertion) {
-  w_root_delref_raw(assertion->root);
-  w_string_delref(assertion->name);
+watchman_client_state_assertion::watchman_client_state_assertion(
+    w_root_t* root,
+    const w_string& name)
+    : root(root), name(name), id(0) {
+  w_root_addref(root);
+}
+
+watchman_client_state_assertion::~watchman_client_state_assertion() {
+  w_root_delref_raw(root);
 }
 
 static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
   struct state_arg parsed = { NULL, 0, NULL };
-  struct watchman_client_state_assertion *assertion = NULL;
+  std::unique_ptr<watchman_client_state_assertion> assertion;
   char clockbuf[128];
   w_ht_iter_t iter;
   json_t *response;
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
-  struct write_locked_watchman_root lock;
+  struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
   if (!resolve_root_or_err(&client->client, args, 1, true, &unlocked)) {
@@ -93,44 +99,37 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
     goto done;
   }
 
-  assertion = (watchman_client_state_assertion*)calloc(1, sizeof(*assertion));
+  assertion.reset(
+      new watchman_client_state_assertion(unlocked.root, parsed.name));
   if (!assertion) {
     send_error_response(&client->client, "out of memory");
     goto done;
   }
 
-  assertion->root = unlocked.root;
-  assertion->name = parsed.name;
-  w_root_addref(assertion->root);
-  w_string_addref(assertion->name);
-
-  w_root_lock(&unlocked, "state-enter", &lock);
   {
+    auto wlock = unlocked.root->asserted_states.wlock();
+    auto& map = *wlock;
+    auto& entry = map[assertion->name];
+
     // If the state is already asserted, we can't re-assert it
-    if (!lock.root->asserted_states) {
-      lock.root->asserted_states = w_ht_new(2, &w_ht_string_funcs);
-    } else if (w_ht_get(lock.root->asserted_states,
-                        w_ht_ptr_val(parsed.name))) {
+    if (entry) {
       send_error_response(&client->client, "state %s is already asserted",
           parsed.name->buf);
-      w_root_unlock(&lock, &unlocked);
       goto done;
     }
-
     // We're now in this state
-    w_ht_set(lock.root->asserted_states, w_ht_ptr_val(parsed.name),
-        w_ht_ptr_val(assertion));
+    entry = std::move(assertion);
 
     // Record the state assertion in the client
     if (!client->states) {
       client->states = w_ht_new(2, NULL);
     }
-    assertion->id = ++client->next_state_id;
-    w_ht_set(client->states, assertion->id, w_ht_ptr_val(assertion));
+    entry->id = ++client->next_state_id;
+    w_ht_set(client->states, entry->id, w_ht_ptr_val(entry.get()));
+  }
 
-    // Make sure we don't free the assertion in the cleanup code below
-    assertion = NULL;
-
+  w_root_read_lock(&unlocked, "state-enter", &lock);
+  {
     // Sample the clock buf for the subscription PDUs we're going to
     // send
     clock_id_string(
@@ -139,7 +138,7 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
         clockbuf,
         sizeof(clockbuf));
   }
-  w_root_unlock(&lock, &unlocked);
+  w_root_read_unlock(&lock, &unlocked);
 
   // We successfully entered the state, this is our response to the
   // state-enter command.  We do this before we send the subscription
@@ -188,9 +187,6 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
 done:
   w_root_delref(&unlocked);
   destroy_state_arg(&parsed);
-  if (assertion) {
-    free_assertion(assertion);
-  }
 }
 W_CMD_REG("state-enter", cmd_state_enter, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -249,15 +245,19 @@ static void leave_state(struct watchman_user_client *client,
   } while (w_ht_next(clients, &iter));
   pthread_mutex_unlock(&w_client_lock);
 
+  // The erase will delete the assertion pointer, so save these things
+  auto id = assertion->id;
+  w_string name = assertion->name;
+
   // Now remove the state
-  w_root_lock(&unlocked, "state-leave", &lock);
-  w_ht_del(lock.root->asserted_states, w_ht_ptr_val(assertion->name));
-  w_root_unlock(&lock, &unlocked);
+  {
+    auto map = unlocked.root->asserted_states.wlock();
+    map->erase(name);
+  }
 
   if (client) {
-    w_ht_del(client->states, assertion->id);
+    w_ht_del(client->states, id);
   }
-  free_assertion(assertion);
 }
 
 // Abandon any states that haven't been explicitly vacated
@@ -277,7 +277,7 @@ void w_client_vacate_states(struct watchman_user_client *client) {
     w_log(
         W_LOG_ERR,
         "implicitly vacating state %s on %s due to client disconnect\n",
-        assertion->name->buf,
+        assertion->name.c_str(),
         root->root_path.c_str());
 
     // This will delete the state from client->states and invalidate
@@ -290,12 +290,15 @@ void w_client_vacate_states(struct watchman_user_client *client) {
 
 static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
   struct state_arg parsed = { NULL, 0, NULL };
+  // This is a weak reference to the assertion.  This is safe because only this
+  // client can delete this assertion, and this function is only executed by
+  // the thread that owns this client.
   struct watchman_client_state_assertion *assertion = NULL;
   char clockbuf[128];
   json_t *response;
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
-  struct write_locked_watchman_root lock;
+  struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
   if (!resolve_root_or_err(&client->client, args, 1, true, &unlocked)) {
@@ -313,31 +316,31 @@ static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
     goto done;
   }
 
-  // Confirm that this client owns this state
-  w_root_lock(&unlocked, "state-leave", &lock);
   {
-    assertion = lock.root->asserted_states
-        ? (watchman_client_state_assertion*)w_ht_val_ptr(
-              w_ht_get(lock.root->asserted_states, w_ht_ptr_val(parsed.name)))
-        : nullptr;
-
+    auto map = unlocked.root->asserted_states.rlock();
+    // Confirm that this client owns this state
+    const auto& it = map->find(parsed.name);
     // If the state is not asserted, we can't leave it
-    if (!assertion) {
-      send_error_response(&client->client, "state %s is not asserted",
-          parsed.name->buf);
-      w_root_unlock(&lock, &unlocked);
+    if (it == map->end()) {
+      send_error_response(
+          &client->client, "state %s is not asserted", parsed.name->buf);
       goto done;
     }
+
+    assertion = it->second.get();
 
     // Sanity check ownership
     if (w_ht_val_ptr(w_ht_get(client->states, assertion->id)) != assertion) {
-      send_error_response(&client->client,
-                          "state %s was not asserted by this session",
-                          parsed.name->buf);
-      w_root_unlock(&lock, &unlocked);
+      send_error_response(
+          &client->client,
+          "state %s was not asserted by this session",
+          parsed.name->buf);
       goto done;
     }
+  }
 
+  w_root_read_lock(&unlocked, "state-leave", &lock);
+  {
     // Sample the clock buf for the subscription PDUs we're going to
     // send
     clock_id_string(
@@ -346,7 +349,7 @@ static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
         clockbuf,
         sizeof(clockbuf));
   }
-  w_root_unlock(&lock, &unlocked);
+  w_root_read_unlock(&lock, &unlocked);
 
   // We're about to successfully leave the state, this is our response to the
   // state-leave command.  We do this before we send the subscription
