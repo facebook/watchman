@@ -20,27 +20,11 @@ bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked,
   struct watchman_query_cookie cookie;
   w_stm_t file;
   int errcode = 0;
-  struct timespec deadline;
   struct write_locked_watchman_root lock;
 
   w_perf_t sample("sync_to_now");
 
-  if (pthread_cond_init(&cookie.cond, NULL)) {
-    errcode = errno;
-    w_log(W_LOG_ERR, "sync_to_now: cond_init failed: %s\n", strerror(errcode));
-    errno = errcode;
-    return false;
-  }
-
-  if (pthread_mutex_init(&cookie.lock, NULL)) {
-    errcode = errno;
-    pthread_cond_destroy(&cookie.cond);
-    w_log(W_LOG_ERR, "sync_to_now: mutex_init failed: %s\n", strerror(errcode));
-    errno = errcode;
-    return false;
-  }
-  cookie.seen = false;
-  pthread_mutex_lock(&cookie.lock);
+  auto cookie_lock = std::unique_lock<std::mutex>(cookie.mutex);
 
   /* generate a cookie name: cookie prefix + id */
   w_root_lock(unlocked, "w_root_sync_to_now", &lock);
@@ -51,9 +35,18 @@ bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked,
       lock.root->query_cookie_prefix.data(),
       lock.root->inner.number,
       tick);
-  /* insert our cookie in the map */
-  lock.root->query_cookies[path_str] = &cookie;
   w_root_unlock(&lock, unlocked);
+
+  /* insert our cookie in the map */
+  {
+    auto wlock = unlocked->root->query_cookies.wlock();
+    auto& map = *wlock;
+    map[path_str] = &cookie;
+  }
+
+  /* compute deadline */
+  auto deadline =
+      std::chrono::system_clock::now() + std::chrono::milliseconds(timeoutms);
 
   /* touch the file */
   file = w_stm_open(
@@ -69,36 +62,33 @@ bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked,
   }
   w_stm_close(file);
 
-  /* compute deadline */
-  w_timeoutms_to_abs_timespec(timeoutms, &deadline);
-
   w_log(W_LOG_DBG, "sync_to_now [%s] waiting\n", path_str.c_str());
 
-  /* timed cond wait (unlocks root lock, reacquires) */
-  while (!cookie.seen) {
-    errcode = pthread_cond_timedwait(&cookie.cond, &cookie.lock, &deadline);
-    if (errcode && !cookie.seen) {
-      w_log(
-          W_LOG_ERR,
-          "sync_to_now: %s timedwait failed: %d: istimeout=%d %s\n",
-          path_str.c_str(),
-          errcode,
-          errcode == ETIMEDOUT,
-          strerror(errcode));
-      goto out;
-    }
+  /* timed cond wait (unlocks cookie lock, reacquires) */
+  if (!cookie.cond.wait_until(
+          cookie_lock, deadline, [&] { return cookie.seen; })) {
+    w_log(
+        W_LOG_ERR,
+        "sync_to_now: %s timedwait failed: %d: istimeout=%d %s\n",
+        path_str.c_str(),
+        errcode,
+        errcode == ETIMEDOUT,
+        strerror(errcode));
+    goto out;
   }
   w_log(W_LOG_DBG, "sync_to_now [%s] done\n", path_str.c_str());
 
 out:
-  pthread_mutex_unlock(&cookie.lock);
-  w_root_lock(unlocked, "w_root_sync_to_now_done", &lock);
+  cookie_lock.unlock();
 
   // can't unlink the file until after the cookie has been observed because
   // we don't know which file got changed until we look in the cookie dir
   unlink(path_str.c_str());
-  lock.root->query_cookies.erase(path_str);
-  w_root_unlock(&lock, unlocked);
+
+  {
+    auto map = unlocked->root->query_cookies.wlock();
+    map->erase(path_str);
+  }
 
   // We want to know about all timeouts
   if (!cookie.seen) {
@@ -119,9 +109,6 @@ out:
             errcode));
     sample.log();
   }
-
-  pthread_cond_destroy(&cookie.cond);
-  pthread_mutex_destroy(&cookie.lock);
 
   if (!cookie.seen) {
     errno = errcode;

@@ -171,18 +171,21 @@ void w_root_process_path(
       return;
     }
 
-    auto cookie_iter = lock->root->query_cookies.find(full_path);
-    w_log(
-        W_LOG_DBG,
-        "cookie for %s? %s\n",
-        full_path.c_str(),
-        cookie_iter != lock->root->query_cookies.end() ? "yes" : "no");
+    {
+      auto map = lock->root->query_cookies.rlock();
+      auto cookie_iter = map->find(full_path);
+      w_log(
+          W_LOG_DBG,
+          "cookie for %s? %s\n",
+          full_path.c_str(),
+          cookie_iter != map->end() ? "yes" : "no");
 
-    if (cookie_iter != lock->root->query_cookies.end()) {
-      auto cookie = cookie_iter->second;
-      cookie->seen = true;
-      pthread_cond_signal(&cookie->cond);
-    }
+      if (cookie_iter != map->end()) {
+        auto cookie = cookie_iter->second;
+        cookie->seen = true;
+        cookie->cond.notify_one();
+      }
+    };
 
     // Never allow cookie files to show up in the tree
     return;

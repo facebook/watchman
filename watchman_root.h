@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <condition_variable>
 #include <unordered_map>
 #include "watchman_shared_mutex.h"
 #include "watchman_synchronized.h"
@@ -20,9 +21,9 @@
 
 #define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"
 struct watchman_query_cookie {
-  pthread_cond_t cond;
-  pthread_mutex_t lock;
-  bool seen;
+  std::condition_variable cond;
+  std::mutex mutex;
+  bool seen{false};
 };
 
 struct watchman_root {
@@ -44,7 +45,8 @@ struct watchman_root {
   /* path to the query cookie dir */
   w_string query_cookie_dir;
   w_string query_cookie_prefix;
-  std::unordered_map<w_string, watchman_query_cookie*> query_cookies;
+  watchman::Synchronized<std::unordered_map<w_string, watchman_query_cookie*>>
+      query_cookies;
 
   struct watchman_ignore ignore;
 
