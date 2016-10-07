@@ -2,6 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <unordered_map>
+#include <atomic>
+#include <chrono>
 
 #define HINT_NUM_DIRS 128*1024
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
@@ -35,6 +37,9 @@ struct watchman_root {
   const char *lock_reason{nullptr};
   pthread_t notify_thread;
   pthread_t io_thread;
+
+  /* Time to wait prior to performing a recrawl */
+  std::chrono::milliseconds recrawl_delay;
 
   /* map of rule id => struct watchman_trigger_command */
   w_ht_t *commands{nullptr};
@@ -90,10 +95,10 @@ struct watchman_root {
     /* current tick */
     uint32_t ticks{1};
 
-    bool done_initial{0};
+    std::atomic<bool> done_initial{0};
     /* if true, we've decided that we should re-crawl the root
      * for the sake of ensuring consistency */
-    bool should_recrawl{0};
+    std::atomic<bool> should_recrawl{0};
     bool cancelled{0};
 
     /* map of cursor name => last observed tick value */

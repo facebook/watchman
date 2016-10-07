@@ -32,8 +32,39 @@ static void cmd_debug_recrawl(struct watchman_client *client, json_t *args)
 }
 W_CMD_REG("debug-recrawl", cmd_debug_recrawl, CMD_DAEMON, w_cmd_realpath_root)
 
-static void cmd_debug_show_cursors(struct watchman_client *client, json_t *args)
-{
+static void cmd_debug_delay_next_recrawl(struct watchman_client *client,
+                                         json_t *args) {
+  json_t *resp;
+  struct write_locked_watchman_root lock;
+  struct unlocked_watchman_root unlocked;
+
+  if (json_array_size(args) != 3) {
+    send_error_response(
+        client, "wrong number of arguments for 'debug-delay-next-recrawl'");
+    return;
+  }
+
+  /* resolve the root */
+  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
+    return;
+  }
+
+  w_root_lock(&unlocked, "debug-delay-next-recrawl", &lock);
+  lock.root->recrawl_delay = std::chrono::milliseconds(
+      json_integer_value(json_array_get(args, 2)));
+  w_root_unlock(&lock, &unlocked);
+
+  resp = make_response();
+
+  set_prop(resp, "delay", json_true());
+  send_and_dispose_response(client, resp);
+  w_root_delref(&unlocked);
+}
+W_CMD_REG("debug-delay-next-recrawl", cmd_debug_delay_next_recrawl, CMD_DAEMON,
+          w_cmd_realpath_root)
+
+static void cmd_debug_show_cursors(struct watchman_client *client,
+                                   json_t *args) {
   json_t *resp, *cursors;
   w_ht_iter_t i;
   struct write_locked_watchman_root lock;
