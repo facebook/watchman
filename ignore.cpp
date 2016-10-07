@@ -9,20 +9,11 @@
 // or its direct children.
 #define VCS_IGNORE   (void*)0x2
 
-bool w_ignore_init(struct watchman_ignore *ignore) {
-  ignore->ignore_vcs = w_ht_new(2, &w_ht_string_funcs);
-  ignore->dirs_vec = NULL;
-  if (!ignore->ignore_vcs) {
-    return false;
-  }
-  ignore->ignore_dirs = w_ht_new(2, &w_ht_string_funcs);
-  if (!ignore->ignore_dirs) {
-    return false;
-  }
-  if (art_tree_init(&ignore->tree) != 0) {
-    return false;
-  }
-  return true;
+watchman_ignore::watchman_ignore()
+    : ignore_vcs(w_ht_new(2, &w_ht_string_funcs)),
+      ignore_dirs(w_ht_new(2, &w_ht_string_funcs)),
+      dirs_vec(nullptr) {
+  art_tree_init(&tree);
 }
 
 void w_ignore_addstr(struct watchman_ignore *ignore, w_string_t *path,
@@ -121,17 +112,11 @@ bool w_ignore_check(const struct watchman_ignore *ignore, const char *path,
 #endif
 }
 
-void w_ignore_destroy(struct watchman_ignore *ignore) {
-  w_ht_free(ignore->ignore_vcs);
-  ignore->ignore_vcs = NULL;
-
-  w_ht_free(ignore->ignore_dirs);
-  ignore->ignore_dirs = NULL;
-
-  free(ignore->dirs_vec);
-  ignore->dirs_vec = NULL;
-
-  art_tree_destroy(&ignore->tree);
+watchman_ignore::~watchman_ignore() {
+  w_ht_free(ignore_vcs);
+  w_ht_free(ignore_dirs);
+  free(dirs_vec);
+  art_tree_destroy(&tree);
 }
 
 /* vim:ts=2:sw=2:et:

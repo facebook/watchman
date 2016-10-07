@@ -128,7 +128,6 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
   w_pending_coll_init(&root->pending);
   root->root_path = w_string(path, W_STRING_BYTE);
   root->commands = w_ht_new(2, &trigger_hash_funcs);
-  w_ignore_init(&root->ignore);
 
   load_root_config(root, path);
   root->trigger_settle = (int)cfg_get_int(
@@ -209,7 +208,6 @@ void w_root_delref_raw(w_root_t *root) {
   w_root_teardown(root);
 
   pthread_rwlock_destroy(&root->lock);
-  w_ignore_destroy(&root->ignore);
   w_ht_free(root->commands);
 
   if (root->config_file) {

@@ -23,10 +23,10 @@ struct watchman_ignore {
    * that we can exclude things deterministically and fit within
    * system limits. */
   w_string_t **dirs_vec;
-};
 
-// Initialize ignore state
-bool w_ignore_init(struct watchman_ignore *ignore);
+  ~watchman_ignore();
+  watchman_ignore();
+};
 
 // Adds a string to the ignore list.
 // The is_vcs_ignore parameter indicates whether it is a full ignore
@@ -38,9 +38,6 @@ void w_ignore_addstr(struct watchman_ignore *ignore, w_string_t *path,
 // Returns true if the path is ignored, false otherwise.
 bool w_ignore_check(const struct watchman_ignore *ignore, const char *path,
                     uint32_t pathlen);
-
-// Releases ignore state
-void w_ignore_destroy(struct watchman_ignore *ignore);
 
 #ifdef __cplusplus
 }

@@ -66,8 +66,6 @@ void add_strings(struct watchman_ignore *ignore, const char **strings,
 }
 
 void init_state(struct watchman_ignore *state) {
-  w_ignore_init(state);
-
   add_strings(state, ignore_dirs, sizeof(ignore_dirs) / sizeof(ignore_dirs[0]),
               false);
 
@@ -101,8 +99,6 @@ void test_correctness(void) {
 
   run_correctness_test(&state, tests, sizeof(tests) / sizeof(tests[0]),
                        w_ignore_check);
-
-  w_ignore_destroy(&state);
 }
 
 // Load up the words data file and build a list of strings from that list.
@@ -166,8 +162,6 @@ void bench_list(const char *label, const char *prefix,
     w_string_delref(strings[i++]);
   }
   free(strings);
-
-  w_ignore_destroy(&state);
 }
 
 void bench_all_ignores(void) {
