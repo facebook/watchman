@@ -29,12 +29,6 @@ AC_PROG_RANLIB
 AM_PROG_CC_C_O
 AM_PROG_AS
 
-dnl Look for "arc" so that we can conditionally enable more pedantry
-dnl when building.  We prefer that contributors use "arc" but don't
-dnl require users to have it to build and use watchman
-AC_CHECK_PROG(HAVE_ARC, arc, yes, no)
-AM_CONDITIONAL(HAVE_ARC, test "x$HAVE_ARC" = xyes)
-
 dnl I don't care that this is supposed to be sysconfdir; autoconf doesn't
 dnl allow it to be evaluated sanely from configure, only via Makefile,
 dnl which I don't care about.  Just pass the right value to configure.

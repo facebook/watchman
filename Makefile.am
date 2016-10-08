@@ -144,15 +144,6 @@ TESTS = \
 		tests/wildmatch.t
 noinst_PROGRAMS = $(TESTS)
 
-if HAVE_ARC
-# Run lint and output stuff suitable for feeding into ":make" in vim
-# quickfix mode.
-lint:
-	-arc lint --output compiler --lintall
-else
-lint:
-endif
-
 export ARCHFLAGS=@ARCHFLAGS@
 if HAVE_PYTHON
 py-build:
@@ -196,7 +187,7 @@ rb-tests:
 rb-clean:
 endif
 
-all-local: py-build rb-build lint
+all-local: py-build rb-build
 
 install-exec-local: py-install
 if WATCHMAN_STATE_DIR
@@ -212,7 +203,7 @@ clean-local: py-clean rb-clean
 # generate a rule that we can use to ensure that
 # the test programs are built
 build-tests: $(TESTS)
-.PHONY: lint build-tests integration py-tests
+.PHONY: build-tests integration py-tests
 # run integration AND unit tests
 integration: all py-integration check
 
