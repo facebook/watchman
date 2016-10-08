@@ -106,22 +106,26 @@ void w_clockspec_eval_readonly(struct read_locked_watchman_root *lock,
   since->is_timestamp = false;
 
   if (spec->tag == w_cs_named_cursor) {
-    w_ht_val_t ticks_val;
-    w_string_t *cursor = spec->named_cursor.cursor;
-    since->clock.is_fresh_instance = !w_ht_lookup(
-        lock->root->inner.cursors, w_ht_ptr_val(cursor), &ticks_val, false);
-    if (!since->clock.is_fresh_instance) {
-      since->clock.is_fresh_instance =
-          ticks_val < lock->root->inner.last_age_out_tick;
-    }
-    if (since->clock.is_fresh_instance) {
-      since->clock.ticks = 0;
-    } else {
-      since->clock.ticks = (uint32_t)ticks_val;
+    w_string cursor = spec->named_cursor.cursor;
+
+    {
+      auto cursors = lock->root->inner.cursors.rlock();
+      const auto& it = cursors->find(cursor);
+      if (it == cursors->end()) {
+        since->clock.is_fresh_instance = true;
+        since->clock.ticks = 0;
+      } else {
+        since->clock.ticks = it->second;
+        since->clock.is_fresh_instance =
+            since->clock.ticks < lock->root->inner.last_age_out_tick;
+      }
     }
 
-    w_log(W_LOG_DBG, "resolved cursor %.*s -> %" PRIu32 "\n",
-        cursor->len, cursor->buf, since->clock.ticks);
+    w_log(
+        W_LOG_DBG,
+        "resolved cursor %s -> %" PRIu32 "\n",
+        cursor.c_str(),
+        since->clock.ticks);
     return;
   }
 
@@ -168,33 +172,36 @@ void w_clockspec_eval(struct write_locked_watchman_root *lock,
   since->is_timestamp = false;
 
   if (spec->tag == w_cs_named_cursor) {
-    w_ht_val_t ticks_val;
-    w_string_t *cursor = spec->named_cursor.cursor;
-    since->clock.is_fresh_instance = !w_ht_lookup(
-        lock->root->inner.cursors, w_ht_ptr_val(cursor), &ticks_val, false);
-    if (!since->clock.is_fresh_instance) {
-      since->clock.is_fresh_instance =
-          ticks_val < lock->root->inner.last_age_out_tick;
-    }
-    if (since->clock.is_fresh_instance) {
-      since->clock.ticks = 0;
-    } else {
-      since->clock.ticks = (uint32_t)ticks_val;
+    w_string cursor = spec->named_cursor.cursor;
+
+    {
+      auto wlock = lock->root->inner.cursors.wlock();
+      auto& cursors = *wlock;
+      auto it = cursors.find(cursor);
+
+      if (it == cursors.end()) {
+        since->clock.is_fresh_instance = true;
+        since->clock.ticks = 0;
+      } else {
+        since->clock.ticks = it->second;
+        since->clock.is_fresh_instance =
+            since->clock.ticks < lock->root->inner.last_age_out_tick;
+      }
+
+      // Bump the tick value and record it against the cursor.
+      // We need to bump the tick value so that repeated queries
+      // when nothing has changed in the filesystem won't continue
+      // to return the same set of files; we only want the first
+      // of these to return the files and the rest to return nothing
+      // until something subsequently changes
+      cursors[cursor] = ++lock->root->inner.ticks;
     }
 
-    // Bump the tick value and record it against the cursor.
-    // We need to bump the tick value so that repeated queries
-    // when nothing has changed in the filesystem won't continue
-    // to return the same set of files; we only want the first
-    // of these to return the files and the rest to return nothing
-    // until something subsequently changes
-    w_ht_replace(
-        lock->root->inner.cursors,
-        w_ht_ptr_val(cursor),
-        ++lock->root->inner.ticks);
-
-    w_log(W_LOG_DBG, "resolved cursor %.*s -> %" PRIu32 "\n",
-        cursor->len, cursor->buf, since->clock.ticks);
+    w_log(
+        W_LOG_DBG,
+        "resolved cursor %s -> %" PRIu32 "\n",
+        cursor.c_str(),
+        since->clock.ticks);
     return;
   }
 

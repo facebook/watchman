@@ -58,7 +58,6 @@ void w_root_perform_age_out(struct write_locked_watchman_root *lock,
                             int min_age) {
   struct watchman_file *file, *prior;
   time_t now;
-  w_ht_iter_t i;
   w_root_t *root = lock->root;
   uint32_t num_aged_files = 0;
   uint32_t num_aged_cursors = 0;
@@ -97,12 +96,18 @@ void w_root_perform_age_out(struct write_locked_watchman_root *lock,
   }
 
   // Age out cursors too.
-  if (w_ht_first(root->inner.cursors, &i)) do {
-    if (i.value < root->inner.last_age_out_tick) {
-      w_ht_iter_del(root->inner.cursors, &i);
-      num_aged_cursors++;
+  {
+    auto cursors = root->inner.cursors.wlock();
+    auto it = cursors->begin();
+    while (it != cursors->end()) {
+      if (it->second < root->inner.last_age_out_tick) {
+        it = cursors->erase(it);
+        num_aged_cursors++;
+      } else {
+        ++it;
+      }
     }
-  } while (w_ht_next(root->inner.cursors, &i));
+  }
 
   if (num_aged_files + dirs_to_erase.size() + num_aged_cursors) {
     w_log(

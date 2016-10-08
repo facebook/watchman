@@ -91,8 +91,6 @@ bool w_root_init(w_root_t *root, char **errmsg) {
 
   root->inner.number = next_root_number++;
 
-  root->inner.cursors = w_ht_new(2, &w_ht_string_funcs);
-
   // "manually" populate the initial dir, as the dir resolver will
   // try to find its parent and we don't want it to for the root
   root->inner.root_dir.reset(new watchman_dir(root->root_path, nullptr));
@@ -162,11 +160,6 @@ watchman_root::Inner::Inner() {
 
 watchman_root::Inner::~Inner() {
   w_pending_coll_destroy(&pending_symlink_targets);
-
-  if (cursors) {
-    w_ht_free(cursors);
-    cursors = nullptr;
-  }
 }
 
 void w_root_addref(w_root_t *root) {

@@ -108,7 +108,7 @@ struct watchman_root {
     bool cancelled{0};
 
     /* map of cursor name => last observed tick value */
-    w_ht_t* cursors{0};
+    watchman::Synchronized<std::unordered_map<w_string, uint32_t>> cursors;
 
     /* Holds the list head for files of a given suffix */
     struct file_list_head {
