@@ -101,7 +101,7 @@ bool w_root_init(w_root_t *root, char **errmsg) {
 }
 
 w_root_t *w_root_new(const char *path, char **errmsg) {
-  auto root = new w_root_t();
+  auto root = new w_root_t(w_string(path, W_STRING_BYTE));
 
   ++live_roots;
   pthread_rwlock_init(&root->lock, NULL);
@@ -109,7 +109,6 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
   root->case_sensitive = is_case_sensitive_filesystem(path);
 
   w_pending_coll_init(&root->pending);
-  root->root_path = w_string(path, W_STRING_BYTE);
 
   load_root_config(root, path);
   root->trigger_settle = (int)cfg_get_int(
@@ -151,10 +150,10 @@ void w_root_teardown(w_root_t *root) {
   // delete the containing root (that will call the Inner
   // destructor).
   root->inner.~Inner();
-  new (&root->inner) watchman_root::Inner;
+  new (&root->inner) watchman_root::Inner(root->root_path);
 }
 
-watchman_root::Inner::Inner() {
+watchman_root::Inner::Inner(const w_string& root_path) : view(root_path) {
   w_pending_coll_init(&pending_symlink_targets);
 }
 
@@ -180,6 +179,9 @@ void w_root_delref_raw(w_root_t *root) {
   }
   delete root;
 }
+
+watchman_root::watchman_root(const w_string& root_path)
+    : root_path(root_path), inner(root_path) {}
 
 watchman_root::~watchman_root() {
   w_log(W_LOG_DBG, "root: final ref on %s\n", root_path.c_str());
