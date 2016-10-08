@@ -28,13 +28,13 @@ const watchman_dir* w_root_resolve_dir_read(
   const char *dir_end;
 
   if (w_string_equal(dir_name, lock->root->root_path)) {
-    return lock->root->inner.root_dir.get();
+    return lock->root->inner.view.root_dir.get();
   }
 
   dir_component = dir_name.data();
   dir_end = dir_component + dir_name.size();
 
-  dir = lock->root->inner.root_dir.get();
+  dir = lock->root->inner.view.root_dir.get();
   dir_component += lock->root->root_path.size() + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");
@@ -87,13 +87,13 @@ watchman_dir* w_root_resolve_dir(
   const char *dir_end;
 
   if (w_string_equal(dir_name, lock->root->root_path)) {
-    return lock->root->inner.root_dir.get();
+    return lock->root->inner.view.root_dir.get();
   }
 
   dir_component = dir_name.data();
   dir_end = dir_component + dir_name.size();
 
-  dir = lock->root->inner.root_dir.get();
+  dir = lock->root->inner.view.root_dir.get();
   dir_component += lock->root->root_path.size() + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");

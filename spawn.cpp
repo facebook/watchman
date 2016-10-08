@@ -417,7 +417,7 @@ static bool trigger_generator(w_query *query,
   w_log(W_LOG_DBG, "assessing trigger %s %p\n", cmd->triggername.c_str(), cmd);
 
   // Walk back in time until we hit the boundary
-  for (f = lock->root->inner.latest_file; f; f = f->next) {
+  for (f = lock->root->inner.view.latest_file; f; f = f->next) {
     ++n;
     if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
       break;

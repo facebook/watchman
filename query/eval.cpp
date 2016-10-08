@@ -145,7 +145,7 @@ static bool time_generator(w_query *query,
   bool result = true;
 
   // Walk back in time until we hit the boundary
-  for (f = lock->root->inner.latest_file; f; f = f->next) {
+  for (f = lock->root->inner.view.latest_file; f; f = f->next) {
     ++n;
     if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
       break;
@@ -180,8 +180,8 @@ static bool suffix_generator(w_query *query,
 
   for (i = 0; i < query->nsuffixes; i++) {
     // Head of suffix index for this suffix
-    auto it = lock->root->inner.suffixes.find(query->suffixes[i]);
-    if (it == lock->root->inner.suffixes.end()) {
+    auto it = lock->root->inner.view.suffixes.find(query->suffixes[i]);
+    if (it == lock->root->inner.view.suffixes.end()) {
       continue;
     }
 
@@ -211,7 +211,7 @@ static bool all_files_generator(w_query *query,
   int64_t n = 0;
   bool result = true;
 
-  for (f = lock->root->inner.latest_file; f; f = f->next) {
+  for (f = lock->root->inner.view.latest_file; f; f = f->next) {
     ++n;
     if (!w_query_file_matches_relative_root(ctx, f)) {
       continue;

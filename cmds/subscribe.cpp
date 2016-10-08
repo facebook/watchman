@@ -135,7 +135,7 @@ static bool subscription_generator(w_query *query,
       sub->name->buf, sub);
 
   // Walk back in time until we hit the boundary
-  for (f = lock->root->inner.latest_file; f; f = f->next) {
+  for (f = lock->root->inner.view.latest_file; f; f = f->next) {
     ++n;
     if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
       break;

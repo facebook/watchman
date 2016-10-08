@@ -89,12 +89,12 @@ void remove_from_file_list(struct watchman_file* file) {
 static void insert_at_head_of_file_list(
     struct write_locked_watchman_root* lock,
     struct watchman_file* file) {
-  file->next = lock->root->inner.latest_file;
+  file->next = lock->root->inner.view.latest_file;
   if (file->next) {
     file->next->prev = &file->next;
   }
-  lock->root->inner.latest_file = file;
-  file->prev = &lock->root->inner.latest_file;
+  lock->root->inner.view.latest_file = file;
+  file->prev = &lock->root->inner.view.latest_file;
 }
 
 void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
@@ -108,7 +108,7 @@ void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
   file->otime.timestamp = now.tv_sec;
   file->otime.ticks = lock->root->inner.ticks;
 
-  if (lock->root->inner.latest_file != file) {
+  if (lock->root->inner.view.latest_file != file) {
     // unlink from list
     remove_from_file_list(file);
 
@@ -180,10 +180,10 @@ struct watchman_file* w_root_resolve_file(
 
   auto suffix = file_name.suffix();
   if (suffix) {
-    auto& sufhead = lock->root->inner.suffixes[suffix];
+    auto& sufhead = lock->root->inner.view.suffixes[suffix];
     if (!sufhead) {
       // Create the list head if we don't already have one for this suffix.
-      sufhead.reset(new watchman_root::Inner::file_list_head);
+      sufhead.reset(new watchman::InMemoryView::file_list_head);
     }
 
     file->suffix_next = sufhead->head;

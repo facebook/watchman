@@ -3,6 +3,7 @@
 #pragma once
 #include <condition_variable>
 #include <unordered_map>
+#include "InMemoryView.h"
 #include "watchman_shared_mutex.h"
 #include "watchman_synchronized.h"
 
@@ -93,10 +94,7 @@ struct watchman_root {
     // Watcher specific state
     watchman_watcher_t watch{0};
 
-    std::unique_ptr<watchman_dir> root_dir;
-
-    /* the most recently changed file */
-    struct watchman_file* latest_file{0};
+    watchman::InMemoryView view;
 
     /* current tick */
     uint32_t ticks{1};
@@ -109,13 +107,6 @@ struct watchman_root {
 
     /* map of cursor name => last observed tick value */
     watchman::Synchronized<std::unordered_map<w_string, uint32_t>> cursors;
-
-    /* Holds the list head for files of a given suffix */
-    struct file_list_head {
-      watchman_file* head{nullptr};
-    };
-    /* Holds the list heads for all known suffixes */
-    std::unordered_map<w_string, std::unique_ptr<file_list_head>> suffixes;
 
     /* Collection of symlink targets that we try to watch.
      * Reads and writes on this collection are only safe if done from the IO

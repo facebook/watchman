@@ -93,7 +93,7 @@ bool w_root_init(w_root_t *root, char **errmsg) {
 
   // "manually" populate the initial dir, as the dir resolver will
   // try to find its parent and we don't want it to for the root
-  root->inner.root_dir.reset(new watchman_dir(root->root_path, nullptr));
+  root->inner.view.root_dir.reset(new watchman_dir(root->root_path, nullptr));
 
   time(&root->inner.last_cmd_timestamp);
 
@@ -139,7 +139,7 @@ void w_root_teardown(w_root_t *root) {
 
   // Must delete_dir before we process the files to avoid
   // an ASAN issue when trying to free the dir children
-  root->inner.root_dir.reset();
+  root->inner.view.root_dir.reset();
 
   if (root->watcher_ops) {
     root->watcher_ops->root_dtor(root);

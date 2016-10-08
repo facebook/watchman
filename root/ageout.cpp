@@ -68,7 +68,7 @@ void w_root_perform_age_out(struct write_locked_watchman_root *lock,
   root->inner.last_age_out_timestamp = now;
   w_perf_t sample("age_out");
 
-  file = root->inner.latest_file;
+  file = root->inner.view.latest_file;
   prior = nullptr;
   while (file) {
     ++num_walked;
