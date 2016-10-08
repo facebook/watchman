@@ -24,6 +24,7 @@ SRCS_C=\
 	thirdparty\libart\src\art.c
 
 SRCS_CPP=\
+	InMemoryView.cpp \
 	winbuild\errmap.cpp \
 	winbuild\pathmap.cpp \
 	winbuild\stat.cpp \

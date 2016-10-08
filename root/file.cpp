@@ -86,17 +86,6 @@ void remove_from_file_list(struct watchman_file* file) {
   }
 }
 
-static void insert_at_head_of_file_list(
-    struct write_locked_watchman_root* lock,
-    struct watchman_file* file) {
-  file->next = lock->root->inner.view.latest_file;
-  if (file->next) {
-    file->next->prev = &file->next;
-  }
-  lock->root->inner.view.latest_file = file;
-  file->prev = &lock->root->inner.view.latest_file;
-}
-
 void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
                               struct watchman_file *file, struct timeval now) {
   if (file->exists) {
@@ -105,16 +94,7 @@ void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
     stop_watching_file(lock, file);
   }
 
-  file->otime.timestamp = now.tv_sec;
-  file->otime.ticks = lock->root->inner.ticks;
-
-  if (lock->root->inner.view.latest_file != file) {
-    // unlink from list
-    remove_from_file_list(file);
-
-    // and move to the head
-    insert_at_head_of_file_list(lock, file);
-  }
+  lock->root->inner.view.markFileChanged(file, now, lock->root->inner.ticks);
 
   // Flag that we have pending trigger info
   lock->root->inner.pending_trigger_tick = lock->root->inner.ticks;
