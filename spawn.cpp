@@ -80,7 +80,7 @@ static w_stm_t prepare_stdin(
     return w_stm_open("/dev/null", O_RDONLY|O_CLOEXEC);
   }
 
-  n_files = res->num_results;
+  n_files = res->results.size();
 
   if (cmd->max_files_stdin > 0) {
     n_files = MIN(cmd->max_files_stdin, n_files);
@@ -131,9 +131,12 @@ static w_stm_t prepare_stdin(
         uint32_t i;
 
         for (i = 0; i < n_files; i++) {
-          if (w_stm_write(stdin_file, res->results[i].relname->buf,
-              res->results[i].relname->len) != (int)res->results[i].relname->len
-              || w_stm_write(stdin_file, "\n", 1) != 1) {
+          if (w_stm_write(
+                  stdin_file,
+                  res->results[i].relname.data(),
+                  res->results[i].relname.size()) !=
+                  (int)res->results[i].relname.size() ||
+              w_stm_write(stdin_file, "\n", 1) != 1) {
             w_log(W_LOG_ERR,
               "write failure while producing trigger stdin: %s\n",
               strerror(errno));
@@ -206,7 +209,7 @@ static void spawn_command(w_root_t *root,
   // cmd instance so that mutation of cmd->envht is safe.
   // This is guaranteed in the current architecture.
 
-  if (cmd->max_files_stdin > 0 && res->num_results > cmd->max_files_stdin) {
+  if (cmd->max_files_stdin > 0 && res->results.size() > cmd->max_files_stdin) {
     file_overflow = true;
   }
 
@@ -251,9 +254,9 @@ static void spawn_command(w_root_t *root,
     envp = NULL;
     argspace_remaining -= env_size;
 
-    for (i = 0; i < res->num_results; i++) {
+    for (const auto& item : res->results) {
       // also: NUL terminator and entry in argv
-      uint32_t size = res->results[i].relname->len + 1 + sizeof(char*);
+      uint32_t size = item.relname.size() + 1 + sizeof(char*);
 
       if (argspace_remaining < size) {
         file_overflow = true;
@@ -261,10 +264,7 @@ static void spawn_command(w_root_t *root,
       }
       argspace_remaining -= size;
 
-      json_array_append_new(
-        args,
-        w_string_to_json(res->results[i].relname)
-      );
+      json_array_append_new(args, w_string_to_json(item.relname));
     }
   }
 
@@ -468,7 +468,6 @@ void w_assess_trigger(struct write_locked_watchman_root *lock,
         "error running trigger \"%s\" query: %s",
         cmd->triggername.c_str(),
         res.errmsg);
-    w_query_result_free(&res);
     return;
   }
 
@@ -476,7 +475,7 @@ void w_assess_trigger(struct write_locked_watchman_root *lock,
       W_LOG_DBG,
       "trigger \"%s\" generated %" PRIu32 " results\n",
       cmd->triggername.c_str(),
-      res.num_results);
+      uint32_t(res.results.size()));
 
   // create a new spec that will be used the next time
   cmd->query->since_spec = w_clockspec_new_clock(res.root_number, res.ticks);
@@ -487,7 +486,7 @@ void w_assess_trigger(struct write_locked_watchman_root *lock,
       cmd->triggername.c_str(),
       res.ticks);
 
-  if (res.num_results) {
+  if (!res.results.empty()) {
     spawn_command(lock->root, cmd, &res, since_spec);
   }
 
@@ -495,8 +494,6 @@ void w_assess_trigger(struct write_locked_watchman_root *lock,
     w_clockspec_free(since_spec);
     since_spec = NULL;
   }
-
-  w_query_result_free(&res);
 }
 
 bool w_reap_children(bool block) {

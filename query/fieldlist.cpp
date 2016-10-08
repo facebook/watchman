@@ -3,35 +3,34 @@
 
 #include "watchman.h"
 
-static json_t *make_name(struct watchman_rule_match *match)
-{
+static json_t* make_name(const struct watchman_rule_match* match) {
   return w_string_to_json(match->relname);
 }
 
-static json_t *make_symlink(struct watchman_rule_match *match)
-{
+static json_t* make_symlink(const struct watchman_rule_match* match) {
   return (match->file->symlink_target) ?
     w_string_to_json(match->file->symlink_target) : json_null();
 }
 
-static json_t *make_exists(struct watchman_rule_match *match)
-{
+static json_t* make_exists(const struct watchman_rule_match* match) {
   return json_boolean(match->file->exists);
 }
 
-static json_t *make_new(struct watchman_rule_match *match)
-{
+static json_t* make_new(const struct watchman_rule_match* match) {
   return json_boolean(match->is_new);
 }
 
-#define MAKE_CLOCK_FIELD(name, member) \
-  static json_t *make_##name(struct watchman_rule_match *match) { \
-    char buf[128]; \
-    if (clock_id_string(match->root_number, match->file->member.ticks, buf, \
-                        sizeof(buf))) { \
-      return typed_string_to_json(buf, W_STRING_UNICODE); \
-    } \
-    return NULL; \
+#define MAKE_CLOCK_FIELD(name, member)                                  \
+  static json_t* make_##name(const struct watchman_rule_match* match) { \
+    char buf[128];                                                      \
+    if (clock_id_string(                                                \
+            match->root_number,                                         \
+            match->file->member.ticks,                                  \
+            buf,                                                        \
+            sizeof(buf))) {                                             \
+      return typed_string_to_json(buf, W_STRING_UNICODE);               \
+    }                                                                   \
+    return nullptr;                                                     \
   }
 MAKE_CLOCK_FIELD(cclock, ctime)
 MAKE_CLOCK_FIELD(oclock, otime)
@@ -39,23 +38,23 @@ MAKE_CLOCK_FIELD(oclock, otime)
 // Note: our JSON library supports 64-bit integers, but this may
 // pose a compatibility issue for others.  We'll see if anyone
 // runs into an issue and deal with it then...
-#define MAKE_INT_FIELD(name, member) \
-  static json_t *make_##name(struct watchman_rule_match *match) { \
-    return json_integer(match->file->stat.member); \
+#define MAKE_INT_FIELD(name, member)                                    \
+  static json_t* make_##name(const struct watchman_rule_match* match) { \
+    return json_integer(match->file->stat.member);                      \
   }
 
-#define MAKE_TIME_INT_FIELD(name, type, scale) \
-  static json_t *make_##name(struct watchman_rule_match *match) { \
-    struct timespec spec = match->file->stat.type##time; \
-    return json_integer(((int64_t) spec.tv_sec * scale) + \
-                        ((int64_t) spec.tv_nsec * scale / \
-                         WATCHMAN_NSEC_IN_SEC)); \
+#define MAKE_TIME_INT_FIELD(name, type, scale)                          \
+  static json_t* make_##name(const struct watchman_rule_match* match) { \
+    struct timespec spec = match->file->stat.type##time;                \
+    return json_integer(                                                \
+        ((int64_t)spec.tv_sec * scale) +                                \
+        ((int64_t)spec.tv_nsec * scale / WATCHMAN_NSEC_IN_SEC));        \
   }
 
-#define MAKE_TIME_DOUBLE_FIELD(name, type) \
-  static json_t *make_##name(struct watchman_rule_match *match) { \
-    struct timespec spec = match->file->stat.type##time; \
-    return json_real(spec.tv_sec + 1e-9 * spec.tv_nsec); \
+#define MAKE_TIME_DOUBLE_FIELD(name, type)                              \
+  static json_t* make_##name(const struct watchman_rule_match* match) { \
+    struct timespec spec = match->file->stat.type##time;                \
+    return json_real(spec.tv_sec + 1e-9 * spec.tv_nsec);                \
   }
 
 /* For each type (e.g. "m"), define fields
@@ -90,7 +89,7 @@ MAKE_INT_FIELD(nlink, nlink)
   { #type "time_ns", make_##type##time_ns }, \
   { #type "time_f", make_##type##time_f }
 
-static json_t *make_type_field(struct watchman_rule_match *match) {
+static json_t* make_type_field(const struct watchman_rule_match* match) {
   // Bias towards the more common file types first
   if (S_ISREG(match->file->stat.mode)) {
     return typed_string_to_json("f", W_STRING_UNICODE);
@@ -123,7 +122,7 @@ static json_t *make_type_field(struct watchman_rule_match *match) {
 
 static struct w_query_field_renderer {
   const char *name;
-  json_t *(*make)(struct watchman_rule_match *match);
+  json_t* (*make)(const struct watchman_rule_match* match);
 } field_defs[] = {
   { "name", make_name },
   { "symlink_target", make_symlink },
@@ -156,11 +155,10 @@ static w_ctor_fn_type(register_field_capabilities) {
 }
 w_ctor_fn_reg(register_field_capabilities)
 
-json_t *w_query_results_to_json(
-    struct w_query_field_list *field_list,
+json_t* w_query_results_to_json(
+    struct w_query_field_list* field_list,
     uint32_t num_results,
-    struct watchman_rule_match *results)
-{
+    const std::deque<watchman_rule_match>& results) {
   json_t *file_list = json_array_of_size(num_results);
   uint32_t i, f;
 

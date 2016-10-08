@@ -3,10 +3,7 @@
 
 #ifndef WATCHMAN_QUERY_H
 #define WATCHMAN_QUERY_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <deque>
 
 struct w_query;
 typedef struct w_query w_query;
@@ -27,9 +24,19 @@ struct w_query_since {
 
 struct watchman_rule_match {
   uint32_t root_number;
-  w_string_t *relname;
+  w_string relname;
   bool is_new;
   struct watchman_file *file;
+
+  watchman_rule_match(
+      uint32_t root_number,
+      const w_string& relname,
+      bool is_new,
+      watchman_file* file)
+      : root_number(root_number),
+        relname(relname),
+        is_new(is_new),
+        file(file) {}
 };
 
 // Holds state for the execution of a query
@@ -40,9 +47,7 @@ struct w_query_ctx {
   w_string wholename;
   struct w_query_since since;
 
-  struct watchman_rule_match *results;
-  uint32_t num_results;
-  uint32_t num_allocd;
+  std::deque<watchman_rule_match> results;
 
   // Cache for dir name lookups when computing wholename
   watchman_dir *last_parent;
@@ -159,15 +164,14 @@ typedef bool (*w_query_generator)(w_query *query,
 
 struct w_query_result {
   bool is_fresh_instance;
-  uint32_t num_results;
-  struct watchman_rule_match *results;
+  std::deque<watchman_rule_match> results;
   uint32_t root_number;
   uint32_t ticks;
-  char *errmsg;
+  char* errmsg{nullptr};
+
+  ~w_query_result();
 };
 typedef struct w_query_result w_query_res;
-
-void w_query_result_free(w_query_res *res);
 
 bool w_query_execute(
     w_query *query,
@@ -209,10 +213,10 @@ w_query *w_query_parse_legacy(const w_root_t *root, json_t *args, char **errmsg,
     int start, uint32_t *next_arg, const char *clockspec, json_t **expr_p);
 bool w_query_legacy_field_list(struct w_query_field_list *flist);
 
-json_t *w_query_results_to_json(
-    struct w_query_field_list *field_list,
+json_t* w_query_results_to_json(
+    struct w_query_field_list* field_list,
     uint32_t num_results,
-    struct watchman_rule_match *results);
+    const std::deque<watchman_rule_match>& results);
 
 void w_query_init_all(void);
 
@@ -241,10 +245,6 @@ bool glob_generator(w_query *query, struct read_locked_watchman_root *lock,
 bool parse_globs(w_query *res, json_t *query);
 void free_glob_tree(struct watchman_glob_tree *glob_tree);
 
-void w_match_results_free(uint32_t num_matches,
-    struct watchman_rule_match *matches);
-
-
 #define W_TERM_PARSER1(symbol, name, func) \
   static w_ctor_fn_type(symbol) {                   \
     w_query_register_expression_parser(name, func); \
@@ -253,10 +253,6 @@ void w_match_results_free(uint32_t num_matches,
 
 #define W_TERM_PARSER(name, func) \
   W_TERM_PARSER1(w_gen_symbol(w_term_register_), name, func)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

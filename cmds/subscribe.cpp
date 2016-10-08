@@ -199,22 +199,22 @@ static json_t *build_subscription_results(
                               sub)) {
     w_log(W_LOG_ERR, "error running subscription %s query: %s",
         sub->name->buf, res.errmsg);
-    w_query_result_free(&res);
     return NULL;
   }
 
-  w_log(W_LOG_DBG, "subscription %s generated %" PRIu32 " results\n",
-      sub->name->buf, res.num_results);
+  w_log(
+      W_LOG_DBG,
+      "subscription %s generated %" PRIu32 " results\n",
+      sub->name->buf,
+      uint32_t(res.results.size()));
 
-  if (res.num_results == 0) {
+  if (res.results.empty()) {
     update_subscription_ticks(sub, &res);
-    w_query_result_free(&res);
     return NULL;
   }
 
-  file_list = w_query_results_to_json(&sub->field_list,
-      res.num_results, res.results);
-  w_query_result_free(&res);
+  file_list = w_query_results_to_json(
+      &sub->field_list, res.results.size(), res.results);
 
   response = make_response();
 

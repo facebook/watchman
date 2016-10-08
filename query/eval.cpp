@@ -61,8 +61,6 @@ bool w_query_process_file(
     struct w_query_ctx *ctx,
     struct watchman_file *file)
 {
-  struct watchman_rule_match *m;
-
   ctx->wholename.reset();
   ctx->file = file;
 
@@ -91,39 +89,19 @@ bool w_query_process_file(
     w_ht_set(ctx->dedup, w_ht_ptr_val(name), 1);
   }
 
-  // Need more room?
-  if (ctx->num_results + 1 > ctx->num_allocd) {
-    uint32_t new_num = ctx->num_allocd ? ctx->num_allocd * 2 : 64;
-    struct watchman_rule_match *res;
-
-    res = (watchman_rule_match*)realloc(ctx->results, new_num * sizeof(*res));
-    if (!res) {
-      w_log(W_LOG_ERR, "out of memory while capturing matches!\n");
-      return false;
-    }
-
-    ctx->results = res;
-    ctx->num_allocd = new_num;
-  }
-
-  m = &ctx->results[ctx->num_results++];
-
-  m->root_number = ctx->lock->root->inner.number;
-  m->relname = w_query_ctx_get_wholename(ctx);
-  if (!m->relname) {
-    w_log(W_LOG_ERR, "out of memory while capturing matches!\n");
-    return false;
-  }
-  w_string_addref(m->relname);
-
-  m->file = file;
+  bool is_new;
   if (ctx->since.is_timestamp) {
-    m->is_new = ctx->since.timestamp > file->ctime.timestamp;
+    is_new = ctx->since.timestamp > file->ctime.timestamp;
   } else if (ctx->since.clock.is_fresh_instance) {
-    m->is_new = true;
+    is_new = true;
   } else {
-    m->is_new = file->ctime.ticks > ctx->since.clock.ticks;
+    is_new = file->ctime.ticks > ctx->since.clock.ticks;
   }
+  ctx->results.emplace_back(
+      ctx->lock->root->inner.number,
+      w_query_ctx_get_wholename(ctx),
+      is_new,
+      file);
 
   return true;
 }
@@ -446,12 +424,8 @@ done:
   return result;
 }
 
-void w_query_result_free(w_query_res *res)
-{
-  free(res->errmsg);
-  res->errmsg = NULL;
-  w_match_results_free(res->num_results, res->results);
-  res->results = NULL;
+w_query_result::~w_query_result() {
+  free(errmsg);
 }
 
 static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
@@ -490,7 +464,7 @@ static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
             "num_deduped",
             ctx->num_deduped,
             "num_results",
-            ctx->num_results,
+            int64_t(ctx->results.size()),
             "num_walked",
             num_walked,
             "query",
@@ -505,8 +479,7 @@ static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
   if (ctx->dedup) {
     w_ht_free(ctx->dedup);
   }
-  res->results = ctx->results;
-  res->num_results = ctx->num_results;
+  res->results = std::move(ctx->results);
 
   return result;
 }

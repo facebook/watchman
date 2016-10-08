@@ -49,7 +49,6 @@ static void cmd_query(struct watchman_client *client, json_t *args)
 
   if (!w_query_execute(query, &unlocked, &res, NULL, NULL)) {
     send_error_response(client, "query failed: %s", res.errmsg);
-    w_query_result_free(&res);
     w_root_delref(&unlocked);
     w_query_delref(query);
     return;
@@ -57,9 +56,8 @@ static void cmd_query(struct watchman_client *client, json_t *args)
 
   w_query_delref(query);
 
-  file_list = w_query_results_to_json(&field_list,
-                res.num_results, res.results);
-  w_query_result_free(&res);
+  file_list =
+      w_query_results_to_json(&field_list, res.results.size(), res.results);
 
   response = make_response();
   if (clock_id_string(res.root_number, res.ticks, clockbuf, sizeof(clockbuf))) {
