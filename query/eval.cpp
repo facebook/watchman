@@ -472,16 +472,21 @@ static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
     sample->log();
   }
 
-  ctx->wholename.reset();
-  if (ctx->last_parent_path) {
-    w_string_delref(ctx->last_parent_path);
-  }
-  if (ctx->dedup) {
-    w_ht_free(ctx->dedup);
-  }
   res->results = std::move(ctx->results);
 
   return result;
+}
+
+w_query_ctx::w_query_ctx(w_query* q, read_locked_watchman_root* lock)
+    : query(q), lock(lock) {}
+
+w_query_ctx::~w_query_ctx() {
+  if (last_parent_path) {
+    w_string_delref(last_parent_path);
+  }
+  if (dedup) {
+    w_ht_free(dedup);
+  }
 }
 
 bool w_query_execute_locked(
@@ -491,11 +496,7 @@ bool w_query_execute_locked(
     w_query_generator generator,
     void *gendata)
 {
-  struct w_query_ctx ctx;
-
-  memset(&ctx, 0, sizeof(ctx));
-  ctx.query = query;
-  ctx.lock = w_root_read_lock_from_write(lock);
+  w_query_ctx ctx(query, w_root_read_lock_from_write(lock));
 
   memset(res, 0, sizeof(*res));
   w_perf_t sample("query_execute");
@@ -527,14 +528,11 @@ bool w_query_execute(
     w_query_generator generator,
     void *gendata)
 {
-  struct w_query_ctx ctx;
   struct write_locked_watchman_root wlock;
   struct read_locked_watchman_root rlock;
   bool result;
 
-  memset(&ctx, 0, sizeof(ctx));
-  ctx.query = query;
-
+  w_query_ctx ctx(query, nullptr);
   memset(res, 0, sizeof(*res));
 
   w_perf_t sample("query_execute");

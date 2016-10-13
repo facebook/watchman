@@ -20,6 +20,8 @@ struct w_query_since {
       uint32_t ticks;
     } clock;
   };
+
+  w_query_since() : is_timestamp(false), clock{false, 0} {}
 };
 
 struct watchman_rule_match {
@@ -43,22 +45,27 @@ struct watchman_rule_match {
 struct w_query_ctx {
   struct w_query *query;
   struct read_locked_watchman_root *lock;
-  struct watchman_file *file;
+  struct watchman_file* file{nullptr};
   w_string wholename;
   struct w_query_since since;
 
   std::deque<watchman_rule_match> results;
 
   // Cache for dir name lookups when computing wholename
-  watchman_dir *last_parent;
-  w_string_t *last_parent_path;
+  watchman_dir* last_parent{nullptr};
+  w_string_t* last_parent_path{nullptr};
 
   // When deduping the results, effectively a set<wholename> of
   // the files held in results
-  w_ht_t *dedup;
+  w_ht_t* dedup{nullptr};
 
   // How many times we suppressed a result due to dedup checking
-  uint32_t num_deduped;
+  uint32_t num_deduped{0};
+
+  w_query_ctx(w_query* q, read_locked_watchman_root* lock);
+  ~w_query_ctx();
+  w_query_ctx(const w_query_ctx&) = delete;
+  w_query_ctx& operator=(const w_query_ctx&) = delete;
 };
 
 struct w_query_path {
