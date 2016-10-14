@@ -2,7 +2,6 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-#include <new>
 
 // Each root gets a number that uniquely identifies it within the process. This
 // helps avoid confusion if a root is removed and then added again.
