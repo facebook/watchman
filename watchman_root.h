@@ -115,8 +115,6 @@ struct watchman_root {
 
     uint32_t next_cmd_id{0};
     uint32_t last_trigger_tick{0};
-    uint32_t pending_trigger_tick{0};
-    uint32_t pending_sub_tick{0};
     uint32_t last_age_out_tick{0};
     time_t last_age_out_timestamp{0};
     time_t last_cmd_timestamp{0};

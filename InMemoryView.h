@@ -16,6 +16,11 @@ struct InMemoryView {
   std::unique_ptr<watchman_dir> root_dir;
   w_string root_path;
   Watcher* watcher;
+  /** Record the most recent tick value seen during either markFileChanged
+   * (or for triggers, is bumped when a trigger is registered).
+   * This allows subscribers to know how far back they need to query. */
+  uint32_t pending_trigger_tick{0};
+  uint32_t pending_sub_tick{0};
 
   /* the most recently changed file */
   struct watchman_file* latest_file{0};

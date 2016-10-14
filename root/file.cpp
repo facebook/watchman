@@ -79,10 +79,6 @@ void remove_from_file_list(struct watchman_file* file) {
 void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
                               struct watchman_file *file, struct timeval now) {
   lock->root->inner.view.markFileChanged(file, now, lock->root->inner.ticks);
-
-  // Flag that we have pending trigger info
-  lock->root->inner.pending_trigger_tick = lock->root->inner.ticks;
-  lock->root->inner.pending_sub_tick = lock->root->inner.ticks;
 }
 
 static void remove_from_suffix_list(struct watchman_file* file) {

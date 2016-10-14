@@ -37,6 +37,10 @@ void InMemoryView::markFileChanged(
     // and move to the head
     insert_at_head_of_file_list(this, file);
   }
+
+  // Flag that we have pending trigger info
+  pending_trigger_tick = tick;
+  pending_sub_tick = tick;
 }
 
 const watchman_dir* InMemoryView::resolveDir(const w_string& dir_name) const {
