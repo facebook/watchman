@@ -25,6 +25,9 @@
 #define inline __inline
 #endif
 
+// Tell windows.h not to #define min/max
+#define NOMINMAX
+
 #define WIN32_LEAN_AND_MEAN
 #define EX_USAGE 1
 #include <errno.h>

@@ -2,6 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+
+#include <algorithm>
 #include <unordered_set>
 
 static void age_out_file(
@@ -14,8 +16,8 @@ static void age_out_file(
   w_log(W_LOG_DBG, "age_out file=%s\n", full_name.c_str());
 
   // Revise tick for fresh instance reporting
-  lock->root->inner.last_age_out_tick =
-      MAX(lock->root->inner.last_age_out_tick, file->otime.ticks);
+  lock->root->inner.view.last_age_out_tick =
+      std::max(lock->root->inner.view.last_age_out_tick, file->otime.ticks);
 
   // If we have a corresponding dir, we want to arrange to remove it, but only
   // after we have unlinked all of the associated file nodes.
@@ -41,7 +43,7 @@ void consider_age_out(struct write_locked_watchman_root *lock)
   time(&now);
 
   if (now <=
-      lock->root->inner.last_age_out_timestamp + lock->root->gc_interval) {
+      lock->root->inner.view.last_age_out_timestamp + lock->root->gc_interval) {
     // Don't check too often
     return;
   }
@@ -65,7 +67,7 @@ void w_root_perform_age_out(struct write_locked_watchman_root *lock,
   std::unordered_set<w_string> dirs_to_erase;
 
   time(&now);
-  root->inner.last_age_out_timestamp = now;
+  root->inner.view.last_age_out_timestamp = now;
   w_perf_t sample("age_out");
 
   file = root->inner.view.latest_file;
@@ -100,7 +102,7 @@ void w_root_perform_age_out(struct write_locked_watchman_root *lock,
     auto cursors = root->inner.cursors.wlock();
     auto it = cursors->begin();
     while (it != cursors->end()) {
-      if (it->second < root->inner.last_age_out_tick) {
+      if (it->second < root->inner.view.last_age_out_tick) {
         it = cursors->erase(it);
         num_aged_cursors++;
       } else {

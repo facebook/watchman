@@ -51,6 +51,7 @@
 #include <sys/timeb.h>
 #include <pthread.h>
 #include <process.h>
+#include <algorithm>
 
 static volatile long _pthread_cancelling;
 
@@ -830,7 +831,7 @@ int pthread_mutex_timedlock(pthread_mutex_t *m, struct timespec *ts)
      * spot granting a lock with no wait time on most systems.
      */
     DWORD timeout = (DWORD)(t - ct);
-    timeout = min(timeout, 5);
+    timeout = std::min(timeout, DWORD(5));
     WaitForSingleObject(((CRITICAL_SECTION *)m)->LockSemaphore, timeout);
 
     /* Try to grab lock */
