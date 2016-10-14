@@ -23,6 +23,10 @@ void InMemoryView::markFileChanged(
     watchman_file* file,
     const struct timeval& now,
     uint32_t tick) {
+  if (file->exists) {
+    watcher->startWatchFile(file);
+  }
+
   file->otime.timestamp = now.tv_sec;
   file->otime.ticks = tick;
 
