@@ -91,7 +91,8 @@ void stat_path(
       // in the filesystem.  We need to generate a deleted file
       // representation of it now, so that subscription clients can
       // be notified of this event
-      file = w_root_resolve_file(lock, dir, file_name, now);
+      file = lock->root->inner.view.getOrCreateChildFile(
+          dir, file_name, now, lock->root->inner.ticks);
       w_log(W_LOG_DBG, "w_lstat(%s) -> %s and file node was NULL. "
           "Generating a deleted node.\n", path, strerror(err));
       file->exists = false;
@@ -119,7 +120,8 @@ void stat_path(
         path, err, strerror(err));
   } else {
     if (!file) {
-      file = w_root_resolve_file(lock, dir, file_name, now);
+      file = lock->root->inner.view.getOrCreateChildFile(
+          dir, file_name, now, lock->root->inner.ticks);
     }
 
     if (!file->exists) {

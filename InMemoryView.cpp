@@ -206,4 +206,59 @@ void InMemoryView::markDirDeleted(
     }
   }
 }
+
+watchman_file* InMemoryView::getOrCreateChildFile(
+    watchman_dir* dir,
+    const w_string& file_name,
+    const struct timeval& now,
+    uint32_t tick) {
+  w_string_t* name;
+  auto& file_ptr = dir->files[file_name];
+
+  if (file_ptr) {
+    return file_ptr.get();
+  }
+
+  /* We embed our name string in the tail end of the struct that we're
+   * allocating here.  This turns out to be more memory efficient due
+   * to the way that the allocator bins sizeof(watchman_file); there's
+   * a bit of unusable space after the end of the structure that happens
+   * to be about the right size to fit a typical filename.
+   * Embedding the name in the end allows us to make the most of this
+   * memory and free up the separate heap allocation for file_name.
+   */
+  auto file = (watchman_file*)calloc(
+      1, sizeof(watchman_file) + w_string_embedded_size(file_name));
+  file_ptr = std::unique_ptr<watchman_file, watchman_dir::Deleter>(
+      file, watchman_dir::Deleter());
+
+  name = w_file_get_name(file);
+  w_string_embedded_copy(name, file_name);
+  w_string_addref(name);
+
+  file->parent = dir;
+  file->exists = true;
+  file->ctime.ticks = tick;
+  file->ctime.timestamp = now.tv_sec;
+
+  auto suffix = file_name.suffix();
+  if (suffix) {
+    auto& sufhead = suffixes[suffix];
+    if (!sufhead) {
+      // Create the list head if we don't already have one for this suffix.
+      sufhead.reset(new watchman::InMemoryView::file_list_head);
+    }
+
+    file->suffix_next = sufhead->head;
+    if (file->suffix_next) {
+      sufhead->head->suffix_prev = &file->suffix_next;
+    }
+    sufhead->head = file;
+    file->suffix_prev = &sufhead->head;
+  }
+
+  watcher->startWatchFile(file);
+
+  return file;
+}
 }

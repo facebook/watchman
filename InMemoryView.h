@@ -53,5 +53,13 @@ struct InMemoryView {
 
   watchman_dir* resolveDir(const w_string& dirname, bool create);
   const watchman_dir* resolveDir(const w_string& dirname) const;
+
+  /** Returns the direct child file named name if it already
+   * exists, else creates that entry and returns it */
+  watchman_file* getOrCreateChildFile(
+      watchman_dir* dir,
+      const w_string& file_name,
+      const struct timeval& now,
+      uint32_t tick);
 };
 }

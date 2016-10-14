@@ -26,6 +26,9 @@ struct watchman_dir {
   ~watchman_dir();
 
   watchman_dir* getChildDir(w_string name) const;
+
+  /** Returns the direct child file named name, or nullptr
+   * if there is no such entry */
   watchman_file* getChildFile(w_string name) const;
   w_string getFullPath() const;
 };

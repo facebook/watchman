@@ -171,11 +171,6 @@ bool w_root_resolve_for_client_mode(
     char** errmsg,
     struct unlocked_watchman_root* unlocked);
 char* w_find_enclosing_root(const char* filename, char** relpath);
-struct watchman_file* w_root_resolve_file(
-    struct write_locked_watchman_root* lock,
-    struct watchman_dir* dir,
-    const w_string& file_name,
-    struct timeval now);
 
 void w_root_perform_age_out(
     struct write_locked_watchman_root* lock,
