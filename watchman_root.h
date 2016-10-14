@@ -185,11 +185,6 @@ void w_root_schedule_recrawl(w_root_t* root, const char* why);
 bool w_root_cancel(w_root_t* root);
 bool w_root_stop_watch(struct unlocked_watchman_root* unlocked);
 json_t* w_root_stop_watch_all(void);
-void w_root_mark_deleted(
-    struct write_locked_watchman_root* lock,
-    struct watchman_dir* dir,
-    struct timeval now,
-    bool recursive);
 void w_root_reap(void);
 void w_root_delref(struct unlocked_watchman_root* unlocked);
 void w_root_delref_raw(w_root_t* root);

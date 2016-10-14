@@ -175,4 +175,35 @@ watchman_dir* InMemoryView::resolveDir(const w_string& dir_name, bool create) {
 
   return dir;
 }
+
+void InMemoryView::markDirDeleted(
+    struct watchman_dir* dir,
+    const struct timeval& now,
+    uint32_t tick,
+    bool recursive) {
+  if (!dir->last_check_existed) {
+    // If we know that it doesn't exist, return early
+    return;
+  }
+  dir->last_check_existed = false;
+
+  for (auto& it : dir->files) {
+    auto file = it.second.get();
+
+    if (file->exists) {
+      w_string full_name(w_dir_path_cat_str(dir, w_file_get_name(file)), false);
+      w_log(W_LOG_DBG, "mark_deleted: %s\n", full_name.c_str());
+      file->exists = false;
+      markFileChanged(file, now, tick);
+    }
+  }
+
+  if (recursive) {
+    for (auto& it : dir->dirs) {
+      auto child = it.second.get();
+
+      markDirDeleted(child, now, tick, true);
+    }
+  }
+}
 }

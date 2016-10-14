@@ -49,37 +49,6 @@ watchman_dir* watchman_dir::getChildDir(w_string name) const {
   return it->second.get();
 }
 
-/* recursively mark the dir contents as deleted */
-void w_root_mark_deleted(struct write_locked_watchman_root *lock,
-                         struct watchman_dir *dir, struct timeval now,
-                         bool recursive) {
-  if (!dir->last_check_existed) {
-    // If we know that it doesn't exist, return early
-    return;
-  }
-  dir->last_check_existed = false;
-
-  for (auto& it : dir->files) {
-    auto file = it.second.get();
-
-    if (file->exists) {
-      w_string full_name(w_dir_path_cat_str(dir, w_file_get_name(file)), false);
-      w_log(W_LOG_DBG, "mark_deleted: %s\n", full_name.c_str());
-      file->exists = false;
-      lock->root->inner.view.markFileChanged(
-          file, now, lock->root->inner.ticks);
-    }
-  }
-
-  if (recursive) {
-    for (auto& it : dir->dirs) {
-      auto child = it.second.get();
-
-      w_root_mark_deleted(lock, child, now, true);
-    }
-  }
-}
-
 void stop_watching_dir(struct write_locked_watchman_root *lock,
                        struct watchman_dir *dir) {
   auto dir_path = dir->getFullPath();

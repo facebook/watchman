@@ -42,6 +42,15 @@ struct InMemoryView {
       const struct timeval& now,
       uint32_t tick);
 
+  /** Mark a directory as being removed from the view.
+   * Marks the contained set of files as deleted.
+   * If recursive is true, is recursively invoked on child dirs. */
+  void markDirDeleted(
+      struct watchman_dir* dir,
+      const struct timeval& now,
+      uint32_t tick,
+      bool recursive);
+
   watchman_dir* resolveDir(const w_string& dirname, bool create);
   const watchman_dir* resolveDir(const w_string& dirname) const;
 };

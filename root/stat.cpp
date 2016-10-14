@@ -66,7 +66,8 @@ void stat_path(
   if (res && (err == ENOENT || err == ENOTDIR)) {
     /* it's not there, update our state */
     if (dir_ent) {
-      w_root_mark_deleted(lock, dir_ent, now, true);
+      lock->root->inner.view.markDirDeleted(
+          dir_ent, now, lock->root->inner.ticks, true);
       w_log(
           W_LOG_DBG,
           "w_lstat(%s) -> %s so stopping watch on %.*s\n",
@@ -207,7 +208,8 @@ void stat_path(
     } else if (dir_ent) {
       // We transitioned from dir to file (see fishy.php), so we should prune
       // our former tree here
-      w_root_mark_deleted(lock, dir_ent, now, true);
+      lock->root->inner.view.markDirDeleted(
+          dir_ent, now, lock->root->inner.ticks, true);
     }
     if ((root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
         !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&
