@@ -217,11 +217,6 @@ bool w_root_process_pending(
     struct watchman_pending_collection* coll,
     bool pull_from_root);
 
-void w_root_mark_file_changed(
-    struct write_locked_watchman_root* lock,
-    struct watchman_file* file,
-    struct timeval now);
-
 bool w_root_sync_to_now(struct unlocked_watchman_root* unlocked, int timeoutms);
 
 void w_root_lock(

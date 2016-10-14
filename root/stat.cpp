@@ -82,7 +82,8 @@ void stat_path(
               strerror(err), w_file_get_name(file)->len,
               w_file_get_name(file)->buf);
         file->exists = false;
-        w_root_mark_file_changed(lock, file, now);
+        lock->root->inner.view.markFileChanged(
+            file, now, lock->root->inner.ticks);
       }
     } else {
       // It was created and removed before we could ever observe it
@@ -93,7 +94,8 @@ void stat_path(
       w_log(W_LOG_DBG, "w_lstat(%s) -> %s and file node was NULL. "
           "Generating a deleted node.\n", path, strerror(err));
       file->exists = false;
-      w_root_mark_file_changed(lock, file, now);
+      lock->root->inner.view.markFileChanged(
+          file, now, lock->root->inner.ticks);
     }
 
     if (!root->case_sensitive && !w_string_equal(dir_name, root->root_path) &&
@@ -138,7 +140,8 @@ void stat_path(
           path
       );
       file->exists = true;
-      w_root_mark_file_changed(lock, file, now);
+      lock->root->inner.view.markFileChanged(
+          file, now, lock->root->inner.ticks);
     }
 
     memcpy(&file->stat, &st, sizeof(file->stat));

@@ -76,11 +76,6 @@ void remove_from_file_list(struct watchman_file* file) {
   }
 }
 
-void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
-                              struct watchman_file *file, struct timeval now) {
-  lock->root->inner.view.markFileChanged(file, now, lock->root->inner.ticks);
-}
-
 static void remove_from_suffix_list(struct watchman_file* file) {
   if (file->suffix_next) {
     file->suffix_next->suffix_prev = file->suffix_prev;
