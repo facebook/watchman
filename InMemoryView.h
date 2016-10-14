@@ -7,6 +7,7 @@
 
 struct watchman_file;
 struct watchman_dir;
+struct Watcher;
 
 namespace watchman {
 
@@ -14,6 +15,7 @@ namespace watchman {
 struct InMemoryView {
   std::unique_ptr<watchman_dir> root_dir;
   w_string root_path;
+  Watcher* watcher;
 
   /* the most recently changed file */
   struct watchman_file* latest_file{0};
