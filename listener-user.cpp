@@ -22,8 +22,9 @@ void add_root_warnings_to_response(json_t *response,
   char *str = NULL;
   char *full = NULL;
   const w_root_t *root = lock->root;
+  auto info = lock->root->recrawlInfo.rlock();
 
-  if (!root->last_recrawl_reason && !root->warning) {
+  if (!info->lastRecrawlReason && !root->warning) {
     return;
   }
 
@@ -31,15 +32,15 @@ void add_root_warnings_to_response(json_t *response,
     return;
   }
 
-  if (root->last_recrawl_reason) {
+  if (info->lastRecrawlReason) {
     ignore_result(asprintf(
         &str,
         "Recrawled this watch %d times, most recently because:\n"
         "%s\n"
         "To resolve, please review the information on\n"
         "%s#recrawl",
-        root->recrawl_count,
-        root->last_recrawl_reason.c_str(),
+        info->recrawlCount,
+        info->lastRecrawlReason.c_str(),
         cfg_get_trouble_url()));
   }
 

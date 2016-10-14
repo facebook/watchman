@@ -63,9 +63,15 @@ struct watchman_root {
   /* config options loaded via json file */
   json_t *config_file{nullptr};
 
-  /* how many times we've had to recrawl */
-  int recrawl_count{0};
-  w_string last_recrawl_reason;
+  struct RecrawlInfo {
+    /* how many times we've had to recrawl */
+    int recrawlCount{0};
+    w_string lastRecrawlReason;
+    /* if true, we've decided that we should re-crawl the root
+     * for the sake of ensuring consistency */
+    bool shouldRecrawl{false};
+  };
+  watchman::Synchronized<RecrawlInfo> recrawlInfo;
 
   // Why we failed to watch
   w_string failure_reason;
@@ -97,9 +103,6 @@ struct watchman_root {
     uint32_t ticks{1};
 
     bool done_initial{0};
-    /* if true, we've decided that we should re-crawl the root
-     * for the sake of ensuring consistency */
-    bool should_recrawl{0};
     bool cancelled{0};
 
     /* map of cursor name => last observed tick value */

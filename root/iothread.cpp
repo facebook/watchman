@@ -70,8 +70,10 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
       sample.force_log();
       sample.log();
 
-      w_log(W_LOG_ERR, "%scrawl complete\n",
-            unlocked->root->recrawl_count ? "re" : "");
+      w_log(
+          W_LOG_ERR,
+          "%scrawl complete\n",
+          unlocked->root->recrawlInfo.rlock()->recrawlCount ? "re" : "");
       timeoutms = unlocked->root->trigger_settle;
     }
 

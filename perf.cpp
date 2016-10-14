@@ -92,7 +92,7 @@ void watchman_perf_sample::add_root_meta(const w_root_t* root) {
           "path",
           w_string_to_json(root->root_path),
           "recrawl_count",
-          root->recrawl_count,
+          root->recrawlInfo.rlock()->recrawlCount,
           "number",
           root->inner.number,
           "ticks",

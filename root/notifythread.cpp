@@ -3,12 +3,23 @@
 
 #include "watchman.h"
 
-static bool handle_should_recrawl(struct write_locked_watchman_root *lock)
-{
-  w_root_t *root = lock->root;
+static void handle_should_recrawl(struct unlocked_watchman_root* unlocked) {
+  {
+    auto info = unlocked->root->recrawlInfo.rlock();
+    if (!info->shouldRecrawl) {
+      return;
+    }
+  }
 
-  if (root->inner.should_recrawl && !root->inner.cancelled) {
+  struct write_locked_watchman_root lock;
+  w_root_lock(unlocked, "notify_thread: handle_should_recrawl", &lock);
+  if (!lock.root->inner.cancelled) {
     char *errmsg;
+    auto info = lock.root->recrawlInfo.wlock();
+    auto root = lock.root;
+
+    info->shouldRecrawl = false;
+
     // be careful, this is a bit of a switcheroo
     w_root_teardown(root);
     if (!w_root_init(root, &errmsg)) {
@@ -20,7 +31,7 @@ static bool handle_should_recrawl(struct write_locked_watchman_root *lock)
       // this should cause us to exit from the notify loop
       w_root_cancel(root);
     }
-    root->recrawl_count++;
+    info->recrawlCount++;
     if (!root->inner.watcher->start(root)) {
       w_log(
           W_LOG_ERR,
@@ -30,9 +41,9 @@ static bool handle_should_recrawl(struct write_locked_watchman_root *lock)
       w_root_cancel(root);
     }
     w_pending_coll_ping(&root->pending);
-    return true;
   }
-  return false;
+
+  w_root_unlock(&lock, unlocked);
 }
 
 // we want to consume inotify events as quickly as possible
@@ -44,7 +55,6 @@ static void notify_thread(struct unlocked_watchman_root *unlocked)
 {
   struct watchman_pending_collection pending;
   struct watchman_pending_collection *root_pending = &unlocked->root->pending;
-  struct write_locked_watchman_root lock;
 
   if (!w_pending_coll_init(&pending)) {
     w_root_cancel(unlocked->root);
@@ -90,9 +100,7 @@ static void notify_thread(struct unlocked_watchman_root *unlocked)
       }
     }
 
-    w_root_lock(unlocked, "notify_thread: handle_should_recrawl", &lock);
-    handle_should_recrawl(&lock);
-    w_root_unlock(&lock, unlocked);
+    handle_should_recrawl(unlocked);
   }
 
   w_pending_coll_destroy(&pending);
