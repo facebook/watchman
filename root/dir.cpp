@@ -91,7 +91,7 @@ void stop_watching_dir(struct write_locked_watchman_root *lock,
     stop_watching_dir(lock, child);
   }
 
-  lock->root->watcher_ops->root_stop_watch_dir(lock, dir);
+  lock->root->inner.watcher->stopWatchDir(lock, dir);
 }
 
 /* vim:ts=2:sw=2:et:

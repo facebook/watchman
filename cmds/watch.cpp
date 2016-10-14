@@ -324,7 +324,7 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
     set_unicode_prop(resp, "error", "root was cancelled");
   } else {
     set_prop(resp, "watch", w_string_to_json(lock.root->root_path));
-    set_unicode_prop(resp, "watcher", lock.root->watcher_ops->name);
+    set_unicode_prop(resp, "watcher", lock.root->inner.watcher->name);
   }
   add_root_warnings_to_response(resp, w_root_read_lock_from_write(&lock));
   send_and_dispose_response(client, resp);
@@ -373,7 +373,7 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
     set_unicode_prop(resp, "error", "root was cancelled");
   } else {
     set_prop(resp, "watch", w_string_to_json(lock.root->root_path));
-    set_unicode_prop(resp, "watcher", lock.root->watcher_ops->name);
+    set_unicode_prop(resp, "watcher", lock.root->inner.watcher->name);
   }
   add_root_warnings_to_response(resp, w_root_read_lock_from_write(&lock));
   if (rel_path_from_watch) {

@@ -62,16 +62,6 @@ void struct_stat_to_watchman_stat(const struct stat *st,
       sizeof(target->ctime));
 }
 
-static void watch_file(struct write_locked_watchman_root *lock,
-                       struct watchman_file *file) {
-  lock->root->watcher_ops->root_start_watch_file(lock, file);
-}
-
-static void stop_watching_file(struct write_locked_watchman_root *lock,
-                               struct watchman_file *file) {
-  lock->root->watcher_ops->root_stop_watch_file(lock, file);
-}
-
 void remove_from_file_list(struct watchman_file* file) {
   if (file->next) {
     file->next->prev = file->prev;
@@ -89,9 +79,9 @@ void remove_from_file_list(struct watchman_file* file) {
 void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
                               struct watchman_file *file, struct timeval now) {
   if (file->exists) {
-    watch_file(lock, file);
+    lock->root->inner.watcher->startWatchFile(file);
   } else {
-    stop_watching_file(lock, file);
+    lock->root->inner.watcher->stopWatchFile(file);
   }
 
   lock->root->inner.view.markFileChanged(file, now, lock->root->inner.ticks);
@@ -174,7 +164,7 @@ struct watchman_file* w_root_resolve_file(
     file->suffix_prev = &sufhead->head;
   }
 
-  watch_file(lock, file);
+  lock->root->inner.watcher->startWatchFile(file);
 
   return file;
 }

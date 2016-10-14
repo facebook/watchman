@@ -162,7 +162,7 @@ void w_root_process_path(
    */
   if (w_string_startswith(full_path, lock->root->query_cookie_prefix)) {
     bool consider_cookie =
-        (lock->root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)
+        (lock->root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)
         ? ((flags & W_PENDING_VIA_NOTIFY) || !lock->root->inner.done_initial)
         : true;
 

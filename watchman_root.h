@@ -83,16 +83,13 @@ struct watchman_root {
       std::unique_ptr<watchman_client_state_assertion>>>
       asserted_states;
 
-  /* the watcher that we're using for this root */
-  struct watchman_ops *watcher_ops{nullptr};
-
   /* --- everything in inner will be reset on w_root_init --- */
   struct Inner {
     /* root number */
     uint32_t number{0};
 
-    // Watcher specific state
-    watchman_watcher_t watch{0};
+    /* the watcher that we're using for this root */
+    std::unique_ptr<Watcher> watcher;
 
     watchman::InMemoryView view;
 

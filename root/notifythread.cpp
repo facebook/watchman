@@ -21,7 +21,7 @@ static bool handle_should_recrawl(struct write_locked_watchman_root *lock)
       w_root_cancel(root);
     }
     root->recrawl_count++;
-    if (!root->watcher_ops->root_start(root)) {
+    if (!root->inner.watcher->start(root)) {
       w_log(
           W_LOG_ERR,
           "failed to start root %s, cancelling watch: %s\n",
@@ -33,17 +33,6 @@ static bool handle_should_recrawl(struct write_locked_watchman_root *lock)
     return true;
   }
   return false;
-}
-
-static bool wait_for_notify(w_root_t *root, int timeoutms)
-{
-  return root->watcher_ops->root_wait_notify(root, timeoutms);
-}
-
-static bool consume_notify(w_root_t *root,
-    struct watchman_pending_collection *coll)
-{
-  return root->watcher_ops->root_consume_notify(root, coll);
 }
 
 // we want to consume inotify events as quickly as possible
@@ -62,7 +51,7 @@ static void notify_thread(struct unlocked_watchman_root *unlocked)
     return;
   }
 
-  if (!unlocked->root->watcher_ops->root_start(unlocked->root)) {
+  if (!unlocked->root->inner.watcher->start(unlocked->root)) {
     w_log(
         W_LOG_ERR,
         "failed to start root %s, cancelling watch: %s\n",
@@ -83,12 +72,13 @@ static void notify_thread(struct unlocked_watchman_root *unlocked)
   while (!unlocked->root->inner.cancelled) {
     // big number because not all watchers can deal with
     // -1 meaning infinite wait at the moment
-    if (wait_for_notify(unlocked->root, 86400)) {
-      while (consume_notify(unlocked->root, &pending)) {
+    if (unlocked->root->inner.watcher->waitNotify(86400)) {
+      while (unlocked->root->inner.watcher->consumeNotify(
+          unlocked->root, &pending)) {
         if (w_pending_coll_size(&pending) >= WATCHMAN_BATCH_LIMIT) {
           break;
         }
-        if (!wait_for_notify(unlocked->root, 0)) {
+        if (!unlocked->root->inner.watcher->waitNotify(0)) {
           break;
         }
       }

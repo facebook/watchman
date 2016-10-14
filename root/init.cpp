@@ -139,10 +139,6 @@ void w_root_teardown(w_root_t *root) {
   // an ASAN issue when trying to free the dir children
   root->inner.view.root_dir.reset();
 
-  if (root->watcher_ops) {
-    root->watcher_ops->root_dtor(root);
-  }
-
   // Placement delete and then new to re-init the storage.
   // We can't just delete because we need to leave things
   // in a well defined state for when we subsequently

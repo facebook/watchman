@@ -19,23 +19,23 @@
   IN_MOVED_TO | IN_DONT_FOLLOW | IN_ONLYDIR | WATCHMAN_IN_EXCL_UNLINK
 
 static const struct flag_map inflags[] = {
-  {IN_ACCESS, "IN_ACCESS"},
-  {IN_MODIFY, "IN_MODIFY"},
-  {IN_ATTRIB, "IN_ATTRIB"},
-  {IN_CLOSE_WRITE, "IN_CLOSE_WRITE"},
-  {IN_CLOSE_NOWRITE, "IN_CLOSE_NOWRITE"},
-  {IN_OPEN, "IN_OPEN"},
-  {IN_MOVED_FROM, "IN_MOVED_FROM"},
-  {IN_MOVED_TO, "IN_MOVED_TO"},
-  {IN_CREATE, "IN_CREATE"},
-  {IN_DELETE, "IN_DELETE"},
-  {IN_DELETE_SELF, "IN_DELETE_SELF"},
-  {IN_MOVE_SELF, "IN_MOVE_SELF"},
-  {IN_UNMOUNT, "IN_UNMOUNT"},
-  {IN_Q_OVERFLOW, "IN_Q_OVERFLOW"},
-  {IN_IGNORED, "IN_IGNORED"},
-  {IN_ISDIR, "IN_ISDIR"},
-  {0, NULL},
+    {IN_ACCESS, "IN_ACCESS"},
+    {IN_MODIFY, "IN_MODIFY"},
+    {IN_ATTRIB, "IN_ATTRIB"},
+    {IN_CLOSE_WRITE, "IN_CLOSE_WRITE"},
+    {IN_CLOSE_NOWRITE, "IN_CLOSE_NOWRITE"},
+    {IN_OPEN, "IN_OPEN"},
+    {IN_MOVED_FROM, "IN_MOVED_FROM"},
+    {IN_MOVED_TO, "IN_MOVED_TO"},
+    {IN_CREATE, "IN_CREATE"},
+    {IN_DELETE, "IN_DELETE"},
+    {IN_DELETE_SELF, "IN_DELETE_SELF"},
+    {IN_MOVE_SELF, "IN_MOVE_SELF"},
+    {IN_UNMOUNT, "IN_UNMOUNT"},
+    {IN_Q_OVERFLOW, "IN_Q_OVERFLOW"},
+    {IN_IGNORED, "IN_IGNORED"},
+    {IN_ISDIR, "IN_ISDIR"},
+    {0, nullptr},
 };
 
 struct pending_move {
@@ -43,15 +43,24 @@ struct pending_move {
   w_string_t *name;
 };
 
-struct inot_root_state {
+struct InotifyWatcher : public Watcher {
   /* we use one inotify instance per watched root dir */
   int infd;
 
   struct maps {
     /* map of active watch descriptor to name of the corresponding dir */
-    w_ht_t* wd_to_name;
+    w_ht_t* wd_to_name{nullptr};
     /* map of inotify cookie to corresponding name */
-    w_ht_t* move_map;
+    w_ht_t* move_map{nullptr};
+
+    ~maps() {
+      if (wd_to_name) {
+        w_ht_free(wd_to_name);
+      }
+      if (move_map) {
+        w_ht_free(move_map);
+      }
+    }
   };
 
   watchman::Synchronized<maps> maps;
@@ -59,6 +68,32 @@ struct inot_root_state {
   // Make the buffer big enough for 16k entries, which
   // happens to be the default fs.inotify.max_queued_events
   char ibuf[WATCHMAN_BATCH_LIMIT * (sizeof(struct inotify_event) + 256)];
+
+  InotifyWatcher() : Watcher("inotify", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {}
+  ~InotifyWatcher();
+
+  bool initNew(w_root_t* root, char** errmsg) override;
+
+  struct watchman_dir_handle* startWatchDir(
+      struct write_locked_watchman_root* lock,
+      struct watchman_dir* dir,
+      struct timeval now,
+      const char* path) override;
+
+  void stopWatchDir(
+      struct write_locked_watchman_root* lock,
+      struct watchman_dir* dir) override;
+
+  bool consumeNotify(w_root_t* root, struct watchman_pending_collection* coll)
+      override;
+
+  bool waitNotify(int timeoutms) override;
+
+  void process_inotify_event(
+      w_root_t* root,
+      struct watchman_pending_collection* coll,
+      struct inotify_event* ine,
+      struct timeval now);
 };
 
 static w_ht_val_t copy_pending(w_ht_val_t key) {
@@ -78,12 +113,12 @@ static void del_pending(w_ht_val_t key) {
 }
 
 static const struct watchman_hash_funcs move_hash_funcs = {
-  NULL, // copy_key
-  NULL, // del_key
-  NULL, // equal_key
-  NULL, // hash_key
-  copy_pending, // copy_val
-  del_pending   // del_val
+    nullptr, // copy_key
+    nullptr, // del_key
+    nullptr, // equal_key
+    nullptr, // hash_key
+    copy_pending, // copy_val
+    del_pending // del_val
 };
 
 static const char *inot_strerror(int err) {
@@ -105,23 +140,20 @@ static const char *inot_strerror(int err) {
   }
 }
 
-bool inot_root_init(w_root_t *root, char **errmsg) {
-  struct inot_root_state *state;
+bool InotifyWatcher::initNew(w_root_t* root, char** errmsg) {
+  std::unique_ptr<InotifyWatcher> watcher(new InotifyWatcher);
 
-
-  state = (inot_root_state*)calloc(1, sizeof(*state));
-  if (!state) {
+  if (!watcher) {
     *errmsg = strdup("out of memory");
     return false;
   }
-  root->inner.watch = state;
 
 #ifdef HAVE_INOTIFY_INIT1
-  state->infd = inotify_init1(IN_CLOEXEC);
+  watcher->infd = inotify_init1(IN_CLOEXEC);
 #else
-  state->infd = inotify_init();
+  watcher->infd = inotify_init();
 #endif
-  if (state->infd == -1) {
+  if (watcher->infd == -1) {
     ignore_result(asprintf(
         errmsg,
         "watch(%s): inotify_init error: %s",
@@ -130,88 +162,45 @@ bool inot_root_init(w_root_t *root, char **errmsg) {
     w_log(W_LOG_ERR, "%s\n", *errmsg);
     return false;
   }
-  w_set_cloexec(state->infd);
+  w_set_cloexec(watcher->infd);
 
   {
-    auto maps = state->maps.wlock();
+    auto maps = watcher->maps.wlock();
     maps->wd_to_name = w_ht_new(
         cfg_get_int(root, CFG_HINT_NUM_DIRS, HINT_NUM_DIRS),
         &w_ht_string_val_funcs);
     maps->move_map = w_ht_new(2, &move_hash_funcs);
   }
 
+  root->inner.watcher = std::move(watcher);
   return true;
 }
 
-void inot_root_dtor(w_root_t *root) {
-  auto state = (inot_root_state*)root->inner.watch;
-
-  if (!state) {
-    return;
-  }
-
-  close(state->infd);
-  state->infd = -1;
-  {
-    auto maps = state->maps.wlock();
-    if (maps->wd_to_name) {
-      w_ht_free(maps->wd_to_name);
-      maps->wd_to_name = nullptr;
-    }
-    if (maps->move_map) {
-      w_ht_free(maps->move_map);
-      maps->move_map = nullptr;
-    }
-  }
-
-  free(state);
-  root->inner.watch = NULL;
+InotifyWatcher::~InotifyWatcher() {
+  close(infd);
 }
 
-static void inot_root_signal_threads(w_root_t *root) {
-  unused_parameter(root);
-}
-
-static bool inot_root_start(w_root_t *root) {
-  unused_parameter(root);
-
-  return true;
-}
-
-static bool inot_root_start_watch_file(struct write_locked_watchman_root *lock,
-                                       struct watchman_file *file) {
-  unused_parameter(lock);
-  unused_parameter(file);
-  return true;
-}
-
-static void inot_root_stop_watch_file(struct write_locked_watchman_root *lock,
-                                      struct watchman_file *file) {
-  unused_parameter(lock);
-  unused_parameter(file);
-}
-
-static struct watchman_dir_handle *
-inot_root_start_watch_dir(struct write_locked_watchman_root *lock,
-                          struct watchman_dir *dir, struct timeval now,
-                          const char *path) {
-  auto state = (inot_root_state*)lock->root->inner.watch;
-  struct watchman_dir_handle *osdir = NULL;
+struct watchman_dir_handle* InotifyWatcher::startWatchDir(
+    struct write_locked_watchman_root* lock,
+    struct watchman_dir* dir,
+    struct timeval now,
+    const char* path) {
+  struct watchman_dir_handle* osdir = nullptr;
   int newwd, err;
 
   // Carry out our very strict opendir first to ensure that we're not
   // traversing symlinks in the context of this root
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(lock, dir, now, "opendir", errno, NULL);
-    return NULL;
+    handle_open_errno(lock, dir, now, "opendir", errno, nullptr);
+    return nullptr;
   }
 
   w_string dir_name(path, W_STRING_BYTE);
 
   // The directory might be different since the last time we looked at it, so
   // call inotify_add_watch unconditionally.
-  newwd = inotify_add_watch(state->infd, path, WATCHMAN_INOTIFY_MASK);
+  newwd = inotify_add_watch(infd, path, WATCHMAN_INOTIFY_MASK);
   if (newwd == -1) {
     err = errno;
     if (errno == ENOSPC || errno == ENOMEM) {
@@ -224,35 +213,31 @@ inot_root_start_watch_dir(struct write_locked_watchman_root *lock,
     }
     w_dir_close(osdir);
     errno = err;
-    return NULL;
+    return nullptr;
   }
 
   // record mapping
   {
-    auto maps = state->maps.wlock();
-    w_ht_replace(maps->wd_to_name, newwd, w_ht_ptr_val(dir_name));
+    auto wlock = maps.wlock();
+    w_ht_replace(wlock->wd_to_name, newwd, w_ht_ptr_val(dir_name));
   }
   w_log(W_LOG_DBG, "adding %d -> %s mapping\n", newwd, path);
 
   return osdir;
 }
 
-static void inot_root_stop_watch_dir(struct write_locked_watchman_root *lock,
-                                     struct watchman_dir *dir) {
-  unused_parameter(lock);
-  unused_parameter(dir);
-
+void InotifyWatcher::stopWatchDir(
+    struct write_locked_watchman_root*,
+    struct watchman_dir*) {
   // Linux removes watches for us at the appropriate times,
   // and tells us about it via inotify, so we have nothing to do here
 }
 
-static void process_inotify_event(
-    w_root_t *root,
-    struct watchman_pending_collection *coll,
-    struct inotify_event *ine,
-    struct timeval now)
-{
-  auto state = (inot_root_state*)root->inner.watch;
+void InotifyWatcher::process_inotify_event(
+    w_root_t* root,
+    struct watchman_pending_collection* coll,
+    struct inotify_event* ine,
+    struct timeval now) {
   char flags_label[128];
 
   w_expand_flags(inflags, ine->mask, flags_label, sizeof(flags_label));
@@ -263,14 +248,15 @@ static void process_inotify_event(
     /* we missed something, will need to re-crawl */
     w_root_schedule_recrawl(root, "IN_Q_OVERFLOW");
   } else if (ine->wd != -1) {
-    w_string_t *name = NULL;
+    w_string_t* name = nullptr;
     char buf[WATCHMAN_NAME_MAX];
     int pending_flags = W_PENDING_VIA_NOTIFY;
     w_string dir_name;
 
     {
-      auto maps = state->maps.rlock();
-      dir_name = (w_string_t*)w_ht_val_ptr(w_ht_get(maps->wd_to_name, ine->wd));
+      auto rlock = maps.rlock();
+      dir_name =
+          (w_string_t*)w_ht_val_ptr(w_ht_get(rlock->wd_to_name, ine->wd));
     }
 
     if (dir_name) {
@@ -299,15 +285,15 @@ static void process_inotify_event(
       mv.name = name;
 
       {
-        auto maps = state->maps.rlock();
-        if (!w_ht_replace(maps->move_map, ine->cookie, w_ht_ptr_val(&mv))) {
+        auto wlock = maps.wlock();
+        if (!w_ht_replace(wlock->move_map, ine->cookie, w_ht_ptr_val(&mv))) {
           w_log(
               W_LOG_FATAL,
               "failed to store %" PRIx32 " -> %s in move map\n",
               ine->cookie,
               name->buf);
         }
-      };
+      }
 
       w_log(W_LOG_DBG,
           "recording move_from %" PRIx32 " %s\n", ine->cookie,
@@ -316,12 +302,11 @@ static void process_inotify_event(
 
     if (ine->len > 0 &&
         (ine->mask & (IN_MOVED_TO | IN_ISDIR)) == (IN_MOVED_FROM | IN_ISDIR)) {
-      auto maps = state->maps.wlock();
+      auto wlock = maps.wlock();
       auto old =
-          (pending_move*)w_ht_val_ptr(w_ht_get(maps->move_map, ine->cookie));
+          (pending_move*)w_ht_val_ptr(w_ht_get(wlock->move_map, ine->cookie));
       if (old) {
-        int wd =
-            inotify_add_watch(state->infd, name->buf, WATCHMAN_INOTIFY_MASK);
+        int wd = inotify_add_watch(infd, name->buf, WATCHMAN_INOTIFY_MASK);
         if (wd == -1) {
           if (errno == ENOSPC || errno == ENOMEM) {
             // Limits exceeded, no recovery from our perspective
@@ -336,7 +321,7 @@ static void process_inotify_event(
           }
         } else {
           w_log(W_LOG_DBG, "moved %s -> %s\n", old->name->buf, name->buf);
-          w_ht_replace(maps->wd_to_name, wd, w_ht_ptr_val(name));
+          w_ht_replace(wlock->wd_to_name, wd, w_ht_ptr_val(name));
         }
       } else {
         w_log(
@@ -389,8 +374,8 @@ static void process_inotify_event(
             ine->wd,
             int(dir_name.size()),
             dir_name.data());
-        auto maps = state->maps.wlock();
-        w_ht_del(maps->wd_to_name, ine->wd);
+        auto wlock = maps.wlock();
+        w_ht_del(wlock->wd_to_name, ine->wd);
       }
 
     } else if ((ine->mask & (IN_MOVE_SELF|IN_IGNORED)) == 0) {
@@ -404,36 +389,34 @@ static void process_inotify_event(
   }
 }
 
-static bool inot_root_consume_notify(w_root_t *root,
-    struct watchman_pending_collection *coll)
-{
-  auto state = (inot_root_state*)root->inner.watch;
+bool InotifyWatcher::consumeNotify(
+    w_root_t* root,
+    struct watchman_pending_collection* coll) {
   struct inotify_event *ine;
   char *iptr;
   int n;
   struct timeval now;
 
-  n = read(state->infd, &state->ibuf, sizeof(state->ibuf));
+  n = read(infd, &ibuf, sizeof(ibuf));
   if (n == -1) {
     if (errno == EINTR) {
       return false;
     }
-    w_log(W_LOG_FATAL, "read(%d, %zu): error %s\n",
-        state->infd, sizeof(state->ibuf), strerror(errno));
+    w_log(
+        W_LOG_FATAL,
+        "read(%d, %zu): error %s\n",
+        infd,
+        sizeof(ibuf),
+        strerror(errno));
   }
 
   w_log(W_LOG_DBG, "inotify read: returned %d.\n", n);
-  gettimeofday(&now, NULL);
+  gettimeofday(&now, nullptr);
 
-  for (iptr = state->ibuf; iptr < state->ibuf + n;
-      iptr = iptr + sizeof(*ine) + ine->len) {
+  for (iptr = ibuf; iptr < ibuf + n; iptr = iptr + sizeof(*ine) + ine->len) {
     ine = (struct inotify_event*)iptr;
 
     process_inotify_event(root, coll, ine, now);
-
-    if (root->inner.cancelled) {
-      return false;
-    }
   }
 
   // It is possible that we can accumulate a set of pending_move
@@ -446,10 +429,10 @@ static bool inot_root_consume_notify(w_root_t *root,
   // We allow a somewhat arbitrary but practical grace period to
   // observe the corresponding MOVE_TO.
   {
-    auto maps = state->maps.wlock();
-    if (w_ht_size(maps->move_map) > 0) {
+    auto wlock = maps.wlock();
+    if (w_ht_size(wlock->move_map) > 0) {
       w_ht_iter_t iter;
-      if (w_ht_first(maps->move_map, &iter))
+      if (w_ht_first(wlock->move_map, &iter))
         do {
           auto pending = (pending_move*)w_ht_val_ptr(iter.value);
           if (now.tv_sec - pending->created > 5 /* seconds */) {
@@ -457,21 +440,20 @@ static bool inot_root_consume_notify(w_root_t *root,
                 W_LOG_DBG,
                 "deleting pending move %s (moved outside of watch?)\n",
                 pending->name->buf);
-            w_ht_iter_del(maps->move_map, &iter);
+            w_ht_iter_del(wlock->move_map, &iter);
           }
-        } while (w_ht_next(maps->move_map, &iter));
+        } while (w_ht_next(wlock->move_map, &iter));
     }
   }
 
   return true;
 }
 
-static bool inot_root_wait_notify(w_root_t *root, int timeoutms) {
-  auto state = (inot_root_state *)root->inner.watch;
+bool InotifyWatcher::waitNotify(int timeoutms) {
   int n;
   struct pollfd pfd;
 
-  pfd.fd = state->infd;
+  pfd.fd = infd;
   pfd.events = POLLIN;
 
   n = poll(&pfd, 1, timeoutms);
@@ -479,20 +461,8 @@ static bool inot_root_wait_notify(w_root_t *root, int timeoutms) {
   return n == 1;
 }
 
-struct watchman_ops inotify_watcher = {
-  "inotify",
-  WATCHER_HAS_PER_FILE_NOTIFICATIONS,
-  inot_root_init,
-  inot_root_start,
-  inot_root_dtor,
-  inot_root_start_watch_file,
-  inot_root_stop_watch_file,
-  inot_root_start_watch_dir,
-  inot_root_stop_watch_dir,
-  inot_root_signal_threads,
-  inot_root_consume_notify,
-  inot_root_wait_notify,
-};
+static InotifyWatcher watcher;
+Watcher* inotify_watcher = &watcher;
 
 #endif // HAVE_INOTIFY_INIT
 

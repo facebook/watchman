@@ -101,12 +101,12 @@ void watchman_perf_sample::add_root_meta(const w_root_t* root) {
           root->case_sensitive,
           // there is potential to race with a concurrent w_root_init in some
           // recrawl scenarios in the test harness.  In those cases it is
-          // possible that root->watcher_ops is briefly set to a NULL pointer.
+          // possible that the watcher is briefly set to a NULL pointer.
           // Since the target of that pointer is always a structure with a
           // stable address, we can safely deal with reading a stale value, but
           // we do need to guard against a NULL pointer value.
           "watcher",
-          root->watcher_ops ? root->watcher_ops->name : "<recrawling>"));
+          root->inner.watcher ? root->inner.watcher->name : "<recrawling>"));
 }
 
 void watchman_perf_sample::set_wall_time_thresh(double thresh) {

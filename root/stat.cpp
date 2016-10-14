@@ -185,8 +185,7 @@ void stat_path(
           // but do if we're looking at the cookie dir (stat_path is never
           // called for the root itself)
           w_string_equal(full_path, root->query_cookie_dir)) {
-
-        if (!root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
+        if (!root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
           /* we always need to crawl, but may not need to be fully recursive */
           w_pending_coll_add(coll, full_path, now,
               W_PENDING_CRAWL_ONLY | (recursive ? W_PENDING_RECURSIVE : 0));
@@ -207,7 +206,7 @@ void stat_path(
       // our former tree here
       w_root_mark_deleted(lock, dir_ent, now, true);
     }
-    if ((root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
+    if ((root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
         !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&
         dir->last_check_existed) {
       /* Make sure we update the mtime on the parent directory.

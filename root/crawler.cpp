@@ -26,8 +26,8 @@ void crawler(
   bool stat_all = false;
   w_root_t *root = lock->root;
 
-  if (root->watcher_ops->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
-    stat_all = root->watcher_ops->flags & WATCHER_COALESCED_RENAME;
+  if (root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
+    stat_all = root->inner.watcher->flags & WATCHER_COALESCED_RENAME;
   } else {
     // If the watcher doesn't give us per-file notifications for
     // watched dirs, then we'll end up explicitly tracking them
@@ -47,7 +47,7 @@ void crawler(
   /* Start watching and open the dir for crawling.
    * Whether we open the dir prior to watching or after is watcher specific,
    * so the operations are rolled together in our abstraction */
-  osdir = root->watcher_ops->root_start_watch_dir(lock, dir, now, path);
+  osdir = root->inner.watcher->startWatchDir(lock, dir, now, path);
   if (!osdir) {
     return;
   }

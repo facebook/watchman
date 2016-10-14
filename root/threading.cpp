@@ -65,7 +65,7 @@ void signal_root_threads(w_root_t *root) {
     pthread_kill(root->notify_thread, SIGUSR1);
   }
   w_pending_coll_ping(&root->pending);
-  root->watcher_ops->root_signal_threads(root);
+  root->inner.watcher->signalThreads();
 }
 
 // Cancels a watch.
