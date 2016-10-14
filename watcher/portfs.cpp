@@ -31,7 +31,6 @@ struct PortFSWatcher : public Watcher {
       struct write_locked_watchman_root* lock,
       struct watchman_dir* dir) override;
   bool startWatchFile(struct watchman_file* file) override;
-  void stopWatchFile(struct watchman_file* file) override;
 
   bool consumeNotify(w_root_t* root, struct watchman_pending_collection* coll)
       override;
@@ -121,7 +120,7 @@ bool PortFSWatcher::initNew(w_root_t* root, char** errmsg) {
   return true;
 }
 
-~PortFSWatcher() {
+PortFSWatcher::~PortFSWatcher() {
   close(port_fd);
   port_fd = -1;
   w_ht_free(port_files);

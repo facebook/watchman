@@ -30,9 +30,6 @@ struct Watcher {
   // Initiate an OS-level watch on the provided file
   virtual bool startWatchFile(struct watchman_file* file);
 
-  // Cancel an OS-level watch on the provided file
-  virtual void stopWatchFile(struct watchman_file* file);
-
   // Initiate an OS-level watch on the provided dir, return a DIR
   // handle, or NULL on error
   virtual struct watchman_dir_handle* startWatchDir(

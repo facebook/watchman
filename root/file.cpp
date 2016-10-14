@@ -80,8 +80,6 @@ void w_root_mark_file_changed(struct write_locked_watchman_root *lock,
                               struct watchman_file *file, struct timeval now) {
   if (file->exists) {
     lock->root->inner.watcher->startWatchFile(file);
-  } else {
-    lock->root->inner.watcher->stopWatchFile(file);
   }
 
   lock->root->inner.view.markFileChanged(file, now, lock->root->inner.ticks);

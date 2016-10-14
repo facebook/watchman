@@ -10,8 +10,6 @@ bool Watcher::startWatchFile(struct watchman_file*) {
   return true;
 }
 
-void Watcher::stopWatchFile(struct watchman_file*) {}
-
 bool Watcher::start(w_root_t*) {
   return true;
 }
