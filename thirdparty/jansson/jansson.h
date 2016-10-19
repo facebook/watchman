@@ -15,10 +15,6 @@
 #include "jansson_config.h"
 #include "watchman_string.h" // Needed for w_string_t
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* version */
 
 #define JANSSON_MAJOR_VERSION  2
@@ -273,9 +269,5 @@ typedef void *(*json_malloc_t)(size_t);
 typedef void (*json_free_t)(void *);
 
 void json_set_alloc_funcs(json_malloc_t malloc_fn, json_free_t free_fn);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

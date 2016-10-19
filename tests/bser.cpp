@@ -3,11 +3,8 @@
 
 #include "watchman.h"
 #include "thirdparty/tap.h"
-
-extern "C" {
 #include "thirdparty/jansson/jansson_private.h"
 #include "thirdparty/jansson/strbuffer.h"
-}
 
 static int dump_to_strbuffer(const char *buffer, size_t size, void *data)
 {

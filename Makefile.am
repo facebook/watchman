@@ -107,20 +107,20 @@ noinst_LIBRARIES = \
 # bundled json library
 libwmanjson_a_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 libwmanjson_a_SOURCES = \
-	thirdparty/jansson/dump.c \
-	thirdparty/jansson/error.c \
-	thirdparty/jansson/hashtable.c \
+	thirdparty/jansson/dump.cpp \
+	thirdparty/jansson/error.cpp \
+	thirdparty/jansson/hashtable.cpp \
 	thirdparty/jansson/hashtable.h \
 	thirdparty/jansson/jansson_private.h \
-	thirdparty/jansson/load.c \
-	thirdparty/jansson/memory.c \
-	thirdparty/jansson/pack_unpack.c \
-	thirdparty/jansson/strbuffer.c \
+	thirdparty/jansson/load.cpp \
+	thirdparty/jansson/memory.cpp \
+	thirdparty/jansson/pack_unpack.cpp \
+	thirdparty/jansson/strbuffer.cpp \
 	thirdparty/jansson/strbuffer.h \
-	thirdparty/jansson/strconv.c \
-	thirdparty/jansson/utf.c \
+	thirdparty/jansson/strconv.cpp \
+	thirdparty/jansson/utf.cpp \
 	thirdparty/jansson/utf.h \
-	thirdparty/jansson/value.c
+	thirdparty/jansson/value.cpp
 
 # bundled testing library
 libtap_a_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
@@ -272,7 +272,7 @@ tests_bser_t_SOURCES = \
 tests_wildmatch_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_wildmatch_t_LDADD = $(JSON_LIB) $(TAP_LIB) $(WILDMATCH_LIB)
 tests_wildmatch_t_SOURCES = \
-	tests/wildmatch_test.c \
+	tests/wildmatch_test.cpp \
 	tests/log_stub.cpp \
 	string.cpp \
 	hash.cpp \

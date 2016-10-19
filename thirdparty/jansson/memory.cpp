@@ -36,7 +36,7 @@ char *jsonp_strdup(const char *str)
 {
     char *new_str;
 
-    new_str = jsonp_malloc(strlen(str) + 1);
+    new_str = (char*)jsonp_malloc(strlen(str) + 1);
     if(!new_str)
         return NULL;
 

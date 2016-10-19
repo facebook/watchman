@@ -49,10 +49,6 @@ typedef void *watchman_watcher_t;
 // Returns the name of the filesystem for the specified path
 w_string w_fstype(const char *path);
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 extern char *poisoned_reason;
 
 static inline void w_set_cloexec(int fd)
@@ -192,7 +188,6 @@ static inline void set_mixed_string_prop(json_t *obj, const char *key,
       typed_string_to_json(uni_str, W_STRING_MIXED));
 }
 
-uint32_t strlen_uint32(const char *str);
 int w_lstat(const char *path, struct stat *st, bool case_sensitive);
 
 void w_ioprio_set_low(void);
@@ -213,10 +208,6 @@ int pthread_rwlock_timedwrlock(
 int pthread_rwlock_timedrdlock(
     pthread_rwlock_t* rwlock,
     const struct timespec* ts);
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif

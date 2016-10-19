@@ -72,7 +72,7 @@ t_test(
 
 t_test(
     name='wildmatch',
-    srcs=['wildmatch_test.c', 'log_stub.cpp'],
+    srcs=['wildmatch_test.cpp', 'log_stub.cpp'],
     deps=[
       '@/watchman:testsupport',
       '@/watchman/thirdparty/wildmatch:wildmatch',

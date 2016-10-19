@@ -7,23 +7,23 @@ LIBS=shlwapi.lib advapi32.lib dbghelp.lib
 LINKER=link /nologo /out:$@ /debug /incremental:no /opt:ref /opt:icf /pdb:$(@:.exe=.pdb)
 
 JSON_SRCS=\
-	thirdparty\jansson\dump.c \
-	thirdparty\jansson\error.c \
-	thirdparty\jansson\hashtable.c \
-	thirdparty\jansson\load.c \
-	thirdparty\jansson\memory.c \
-	thirdparty\jansson\pack_unpack.c \
-	thirdparty\jansson\strbuffer.c \
-	thirdparty\jansson\strconv.c \
-	thirdparty\jansson\utf.c \
-	thirdparty\jansson\value.c
+	thirdparty\jansson\dump.cpp \
+	thirdparty\jansson\error.cpp \
+	thirdparty\jansson\hashtable.cpp \
+	thirdparty\jansson\load.cpp \
+	thirdparty\jansson\memory.cpp \
+	thirdparty\jansson\pack_unpack.cpp \
+	thirdparty\jansson\strbuffer.cpp \
+	thirdparty\jansson\strconv.cpp \
+	thirdparty\jansson\utf.cpp \
+	thirdparty\jansson\value.cpp
 
 SRCS_C=\
-	$(JSON_SRCS) \
 	thirdparty\wildmatch\wildmatch.c \
 	thirdparty\libart\src\art.c
 
 SRCS_CPP=\
+	$(JSON_SRCS) \
 	CookieSync.cpp \
 	InMemoryView.cpp \
 	QueryableView.cpp \
@@ -117,8 +117,7 @@ SRCS_CPP=\
 
 TEST_SRCS_C=\
 	thirdparty\tap.c \
-	thirdparty\wildmatch\wildmatch.c \
-	$(JSON_SRCS)
+	thirdparty\wildmatch\wildmatch.c
 
 TEST_SRCS_CPP=\
 	winbuild\asprintf.cpp \
@@ -126,7 +125,8 @@ TEST_SRCS_CPP=\
 	winbuild\pthread.cpp \
 	winbuild\backtrace.cpp \
 	winbuild\errmap.cpp \
-	argv.cpp
+	argv.cpp \
+	$(JSON_SRCS)
 
 TEST_DIR_SRCS=\
 	tests\art_test.c \
@@ -184,9 +184,9 @@ TESTS=tests\argv.exe tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
 	@echo CC $<
 	$(CC) $(CFLAGS) /Fo:thirdparty\libart\src\ /c $<
 
-{thirdparty\jansson}.c{thirdparty\jansson}.obj::
-	@echo CC $<
-	$(CC) $(CFLAGS) /Fo:thirdparty\jansson\ /c $<
+{thirdparty\jansson}.cpp{thirdparty\jansson}.obj::
+	@echo CXX $<
+	$(CC) $(CXXFLAGS) /Fo:thirdparty\jansson\ /c $<
 
 {thirdparty}.c{thirdparty}.obj::
 	@echo CC $<

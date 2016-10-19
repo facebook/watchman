@@ -4,10 +4,6 @@
 #ifndef WATCHMAN_HASH_H
 #define WATCHMAN_HASH_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct watchman_hash_table;
 typedef struct watchman_hash_table w_ht_t;
 
@@ -188,11 +184,6 @@ extern const struct watchman_hash_funcs w_ht_string_val_funcs;
  * table is updated
  */
 extern const struct watchman_hash_funcs w_ht_dict_funcs;
-
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

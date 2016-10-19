@@ -6,15 +6,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#ifdef __cplusplus
 #include <atomic>
 #include <initializer_list>
 #include <memory>
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct watchman_string;
 typedef struct watchman_string w_string_t;
@@ -26,13 +20,7 @@ typedef enum {
 } w_string_type_t;
 
 struct watchman_string {
-// Temporarily conditional because jansson needs this
-// to be compilable as C.
-#ifdef __cplusplus
   std::atomic<long> refcnt;
-#else
-  long refcnt;
-#endif
   uint32_t _hval;
   uint32_t len;
   w_string_t *slice;
@@ -40,11 +28,8 @@ struct watchman_string {
   w_string_type_t type:3;
   unsigned hval_computed:1;
 
-#ifdef __cplusplus
-  // our jansson fork depends on the C API, so hide this c++ism from it
   watchman_string();
   ~watchman_string();
-#endif
 };
 
 uint32_t w_string_compute_hval(w_string_t *str);
@@ -119,7 +104,6 @@ bool w_string_is_null_terminated(w_string_t *str);
 size_t w_string_strlen(w_string_t *str);
 
 uint32_t strlen_uint32(const char *str);
-uint32_t w_hash_bytes(const void *key, size_t length, uint32_t initval);
 
 uint32_t w_string_embedded_size(w_string_t *str);
 void w_string_embedded_copy(w_string_t *dest, w_string_t *src);
@@ -142,11 +126,6 @@ static inline bool is_slash(char c) {
   return (c == '/') || (c == '\\');
 }
 
-#ifdef __cplusplus
-}
-#endif
-
-#ifdef __cplusplus
 class w_string;
 
 /** Represents a view over some externally managed string storage.
@@ -316,8 +295,6 @@ template <typename T>
 std::unique_ptr<T, decltype(free) *> autofree(T* mem) {
   return std::unique_ptr<T, decltype(free)*>{mem, free};
 }
-
-#endif
 
 #endif
 
