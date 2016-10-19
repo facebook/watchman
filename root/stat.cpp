@@ -66,7 +66,7 @@ void stat_path(
   if (res && (err == ENOENT || err == ENOTDIR)) {
     /* it's not there, update our state */
     if (dir_ent) {
-      lock->root->inner.view.markDirDeleted(
+      lock->root->inner.view->markDirDeleted(
           dir_ent, now, lock->root->inner.ticks, true);
       w_log(
           W_LOG_DBG,
@@ -83,7 +83,7 @@ void stat_path(
               strerror(err), w_file_get_name(file)->len,
               w_file_get_name(file)->buf);
         file->exists = false;
-        lock->root->inner.view.markFileChanged(
+        lock->root->inner.view->markFileChanged(
             file, now, lock->root->inner.ticks);
       }
     } else {
@@ -91,12 +91,12 @@ void stat_path(
       // in the filesystem.  We need to generate a deleted file
       // representation of it now, so that subscription clients can
       // be notified of this event
-      file = lock->root->inner.view.getOrCreateChildFile(
+      file = lock->root->inner.view->getOrCreateChildFile(
           dir, file_name, now, lock->root->inner.ticks);
       w_log(W_LOG_DBG, "w_lstat(%s) -> %s and file node was NULL. "
           "Generating a deleted node.\n", path, strerror(err));
       file->exists = false;
-      lock->root->inner.view.markFileChanged(
+      lock->root->inner.view->markFileChanged(
           file, now, lock->root->inner.ticks);
     }
 
@@ -120,7 +120,7 @@ void stat_path(
         path, err, strerror(err));
   } else {
     if (!file) {
-      file = lock->root->inner.view.getOrCreateChildFile(
+      file = lock->root->inner.view->getOrCreateChildFile(
           dir, file_name, now, lock->root->inner.ticks);
     }
 
@@ -143,7 +143,7 @@ void stat_path(
           path
       );
       file->exists = true;
-      lock->root->inner.view.markFileChanged(
+      lock->root->inner.view->markFileChanged(
           file, now, lock->root->inner.ticks);
     }
 
@@ -210,7 +210,7 @@ void stat_path(
     } else if (dir_ent) {
       // We transitioned from dir to file (see fishy.php), so we should prune
       // our former tree here
-      lock->root->inner.view.markDirDeleted(
+      lock->root->inner.view->markDirDeleted(
           dir_ent, now, lock->root->inner.ticks, true);
     }
     if ((root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&

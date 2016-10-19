@@ -140,7 +140,8 @@ void w_root_teardown(w_root_t *root) {
   new (&root->inner) watchman_root::Inner(root->root_path);
 }
 
-watchman_root::Inner::Inner(const w_string& root_path) : view(root_path) {}
+watchman_root::Inner::Inner(const w_string& root_path)
+    : view(watchman::make_unique<watchman::InMemoryView>(root_path)) {}
 
 watchman_root::Inner::~Inner() {}
 

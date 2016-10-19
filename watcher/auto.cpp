@@ -97,7 +97,7 @@ bool w_watcher_init(w_root_t *root, char **errmsg) {
   }
 
 done:
-  root->inner.view.watcher = root->inner.watcher.get();
+  root->inner.view->watcher = root->inner.watcher.get();
   w_log(
       W_LOG_ERR,
       "root %s using watcher mechanism %s (%s was requested)\n",

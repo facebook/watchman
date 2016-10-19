@@ -23,14 +23,14 @@ w_string watchman_dir::getFullPath() const {
 const watchman_dir* w_root_resolve_dir_read(
     struct read_locked_watchman_root* lock,
     const w_string& dir_name) {
-  return lock->root->inner.view.resolveDir(dir_name);
+  return lock->root->inner.view->resolveDir(dir_name);
 }
 
 watchman_dir* w_root_resolve_dir(
     struct write_locked_watchman_root* lock,
     const w_string& dir_name,
     bool create) {
-  return lock->root->inner.view.resolveDir(dir_name, create);
+  return lock->root->inner.view->resolveDir(dir_name, create);
 }
 
 watchman_file* watchman_dir::getChildFile(w_string name) const {

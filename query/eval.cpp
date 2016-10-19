@@ -133,7 +133,7 @@ bool time_generator(
     struct read_locked_watchman_root* lock,
     struct w_query_ctx* ctx,
     int64_t* num_walked) {
-  return lock->root->inner.view.timeGenerator(query, ctx, num_walked);
+  return lock->root->inner.view->timeGenerator(query, ctx, num_walked);
 }
 
 static bool default_generators(
@@ -160,7 +160,7 @@ static bool default_generators(
   // Suffix
   if (query->suffixes) {
     n = 0;
-    result = lock->root->inner.view.suffixGenerator(query, ctx, &n);
+    result = lock->root->inner.view->suffixGenerator(query, ctx, &n);
     total += n;
     if (!result) {
       goto done;
@@ -170,7 +170,7 @@ static bool default_generators(
 
   if (query->npaths) {
     n = 0;
-    result = lock->root->inner.view.pathGenerator(query, ctx, &n);
+    result = lock->root->inner.view->pathGenerator(query, ctx, &n);
     total += n;
     if (!result) {
       goto done;
@@ -180,7 +180,7 @@ static bool default_generators(
 
   if (query->glob_tree) {
     n = 0;
-    result = lock->root->inner.view.globGenerator(query, ctx, &n);
+    result = lock->root->inner.view->globGenerator(query, ctx, &n);
     total += n;
     if (!result) {
       goto done;
@@ -192,7 +192,7 @@ static bool default_generators(
   // files
   if (!generated) {
     n = 0;
-    result = lock->root->inner.view.allFilesGenerator(query, ctx, &n);
+    result = lock->root->inner.view->allFilesGenerator(query, ctx, &n);
     total += n;
     if (!result) {
       goto done;

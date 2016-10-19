@@ -100,7 +100,7 @@ struct watchman_root {
     /* the watcher that we're using for this root */
     std::unique_ptr<Watcher> watcher;
 
-    watchman::InMemoryView view;
+    std::unique_ptr<watchman::InMemoryView> view;
 
     /* current tick */
     uint32_t ticks{1};

@@ -58,7 +58,7 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
   }
 
   stop_watching_dir(lock, dir);
-  lock->root->inner.view.markDirDeleted(
+  lock->root->inner.view->markDirDeleted(
       dir, now, lock->root->inner.ticks, true);
 }
 
