@@ -405,43 +405,6 @@ static void spawn_command(w_root_t *root,
   }
 }
 
-static bool trigger_generator(w_query *query,
-                              struct read_locked_watchman_root *lock,
-                              struct w_query_ctx *ctx, void *gendata,
-                              int64_t *num_walked) {
-  struct watchman_file *f;
-  auto cmd = (watchman_trigger_command*)gendata;
-  int64_t n = 0;
-  bool result = true;
-
-  w_log(W_LOG_DBG, "assessing trigger %s %p\n", cmd->triggername.c_str(), cmd);
-
-  // Walk back in time until we hit the boundary
-  for (f = lock->root->inner.view.latest_file; f; f = f->next) {
-    ++n;
-    if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
-      break;
-    }
-    if (!ctx->since.is_timestamp &&
-        f->otime.ticks <= ctx->since.clock.ticks) {
-      break;
-    }
-
-    if (!w_query_file_matches_relative_root(ctx, f)) {
-      continue;
-    }
-
-    if (!w_query_process_file(query, ctx, f)) {
-      result = false;
-      goto done;
-    }
-  }
-
-done:
-  *num_walked = n;
-  return result;
-}
-
 /* must be called with root locked */
 void w_assess_trigger(struct write_locked_watchman_root *lock,
                       struct watchman_trigger_command *cmd) {
@@ -462,8 +425,9 @@ void w_assess_trigger(struct write_locked_watchman_root *lock,
   // Triggers never need to sync explicitly; we are only dispatched
   // at settle points which are by definition sync'd to the present time
   cmd->query->sync_timeout = 0;
+  w_log(W_LOG_DBG, "assessing trigger %s %p\n", cmd->triggername.c_str(), cmd);
   if (!w_query_execute_locked(
-          cmd->query.get(), lock, &res, trigger_generator, cmd)) {
+          cmd->query.get(), lock, &res, time_generator, cmd)) {
     w_log(
         W_LOG_ERR,
         "error running trigger \"%s\" query: %s",

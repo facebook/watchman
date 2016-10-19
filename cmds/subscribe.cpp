@@ -122,44 +122,6 @@ done:
   pthread_mutex_unlock(&w_client_lock);
 }
 
-static bool subscription_generator(w_query *query,
-                                   struct read_locked_watchman_root *lock,
-                                   struct w_query_ctx *ctx, void *gendata,
-                                   int64_t *num_walked) {
-  struct watchman_file *f;
-  auto sub = (watchman_client_subscription*)gendata;
-  int64_t n = 0;
-  bool result = true;
-
-  w_log(W_LOG_DBG, "running subscription %s %p\n",
-      sub->name->buf, sub);
-
-  // Walk back in time until we hit the boundary
-  for (f = lock->root->inner.view.latest_file; f; f = f->next) {
-    ++n;
-    if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
-      break;
-    }
-    if (!ctx->since.is_timestamp &&
-        f->otime.ticks <= ctx->since.clock.ticks) {
-      break;
-    }
-
-    if (!w_query_file_matches_relative_root(ctx, f)) {
-      continue;
-    }
-
-    if (!w_query_process_file(query, ctx, f)) {
-      result = false;
-      goto done;
-    }
-  }
-
-done:
-  *num_walked = n;
-  return result;
-}
-
 static void update_subscription_ticks(struct watchman_client_subscription *sub,
     w_query_res *res) {
   // create a new spec that will be used the next time
@@ -192,8 +154,10 @@ static json_t *build_subscription_results(
   // can use a short lock_timeout
   sub->query->lock_timeout =
       (uint32_t)cfg_get_int(lock->root, "subscription_lock_timeout_ms", 100);
+  w_log(W_LOG_DBG, "running subscription %s %p\n", sub->name->buf, sub);
+
   if (!w_query_execute_locked(
-          sub->query.get(), lock, &res, subscription_generator, sub)) {
+          sub->query.get(), lock, &res, time_generator, sub)) {
     w_log(W_LOG_ERR, "error running subscription %s query: %s",
         sub->name->buf, res.errmsg);
     return NULL;

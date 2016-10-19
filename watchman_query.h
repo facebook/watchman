@@ -146,6 +146,12 @@ typedef bool (*w_query_generator)(w_query *query,
                                   struct read_locked_watchman_root *lock,
                                   struct w_query_ctx *ctx, void *gendata,
                                   int64_t *num_walked);
+bool time_generator(
+    w_query* query,
+    struct read_locked_watchman_root* lock,
+    struct w_query_ctx* ctx,
+    void* gendata,
+    int64_t* num_walked);
 
 struct w_query_result {
   bool is_fresh_instance;

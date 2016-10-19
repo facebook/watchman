@@ -129,9 +129,12 @@ bool w_query_file_matches_relative_root(
   return result;
 }
 
-static bool time_generator(w_query *query,
-                           struct read_locked_watchman_root *lock,
-                           struct w_query_ctx *ctx, int64_t *num_walked) {
+bool time_generator(
+    w_query* query,
+    struct read_locked_watchman_root* lock,
+    struct w_query_ctx* ctx,
+    void*,
+    int64_t* num_walked) {
   struct watchman_file *f;
   int64_t n = 0;
   bool result = true;
@@ -361,7 +364,7 @@ static bool default_generators(w_query *query,
   // Time based query
   if (ctx->since.is_timestamp || !ctx->since.clock.is_fresh_instance) {
     n = 0;
-    result = time_generator(query, lock, ctx, &n);
+    result = time_generator(query, lock, ctx, nullptr, &n);
     total += n;
     if (!result) {
       goto done;
