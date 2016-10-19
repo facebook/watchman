@@ -69,25 +69,23 @@ void w_pending_fs_free(struct watchman_pending_fs *p) {
 }
 
 /* initialize a pending_coll */
-bool w_pending_coll_init(struct watchman_pending_collection *coll) {
-  coll->pending = NULL;
-  coll->pinged = false;
-  if (pthread_mutex_init(&coll->lock, NULL)) {
-    return false;
+watchman_pending_collection::watchman_pending_collection()
+    : pending(nullptr), pinged(false) {
+  if (pthread_mutex_init(&lock, nullptr)) {
+    throw std::runtime_error("failed to init mutex");
   }
-  if (pthread_cond_init(&coll->cond, NULL)) {
-    return false;
+  if (pthread_cond_init(&cond, nullptr)) {
+    throw std::runtime_error("failed to init cond");
   }
-  art_tree_init(&coll->tree);
-  return true;
+  art_tree_init(&tree);
 }
 
 /* destroy a pending_coll */
-void w_pending_coll_destroy(struct watchman_pending_collection *coll) {
-  w_pending_coll_drain(coll);
-  art_tree_destroy(&coll->tree);
-  pthread_mutex_destroy(&coll->lock);
-  pthread_cond_destroy(&coll->cond);
+watchman_pending_collection::~watchman_pending_collection() {
+  w_pending_coll_drain(this);
+  art_tree_destroy(&tree);
+  pthread_mutex_destroy(&lock);
+  pthread_cond_destroy(&cond);
 }
 
 /* drain and discard the content of a pending_coll, but do not destroy it */

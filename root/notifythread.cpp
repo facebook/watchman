@@ -56,11 +56,6 @@ static void notify_thread(struct unlocked_watchman_root *unlocked)
   struct watchman_pending_collection pending;
   struct watchman_pending_collection *root_pending = &unlocked->root->pending;
 
-  if (!w_pending_coll_init(&pending)) {
-    w_root_cancel(unlocked->root);
-    return;
-  }
-
   if (!unlocked->root->inner.watcher->start(unlocked->root)) {
     w_log(
         W_LOG_ERR,
@@ -68,7 +63,6 @@ static void notify_thread(struct unlocked_watchman_root *unlocked)
         unlocked->root->root_path.c_str(),
         unlocked->root->failure_reason.c_str());
     w_root_cancel(unlocked->root);
-    w_pending_coll_destroy(&pending);
     return;
   }
 
@@ -102,8 +96,6 @@ static void notify_thread(struct unlocked_watchman_root *unlocked)
 
     handle_should_recrawl(unlocked);
   }
-
-  w_pending_coll_destroy(&pending);
 }
 
 void *run_notify_thread(void *arg) {

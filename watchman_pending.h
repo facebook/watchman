@@ -19,10 +19,12 @@ struct watchman_pending_collection {
   pthread_cond_t cond;
   bool pinged;
   art_tree tree;
+
+  watchman_pending_collection();
+  watchman_pending_collection(const watchman_pending_collection&) = delete;
+  ~watchman_pending_collection();
 };
 
-bool w_pending_coll_init(struct watchman_pending_collection *coll);
-void w_pending_coll_destroy(struct watchman_pending_collection *coll);
 void w_pending_coll_drain(struct watchman_pending_collection *coll);
 void w_pending_coll_lock(struct watchman_pending_collection *coll);
 void w_pending_coll_unlock(struct watchman_pending_collection *coll);

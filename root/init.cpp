@@ -110,8 +110,6 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
 
   root->case_sensitive = is_case_sensitive_filesystem(path);
 
-  w_pending_coll_init(&root->pending);
-
   load_root_config(root, path);
   root->trigger_settle = (int)cfg_get_int(
       root, "settle", DEFAULT_SETTLE_PERIOD);
@@ -151,13 +149,9 @@ void w_root_teardown(w_root_t *root) {
   new (&root->inner) watchman_root::Inner(root->root_path);
 }
 
-watchman_root::Inner::Inner(const w_string& root_path) : view(root_path) {
-  w_pending_coll_init(&pending_symlink_targets);
-}
+watchman_root::Inner::Inner(const w_string& root_path) : view(root_path) {}
 
-watchman_root::Inner::~Inner() {
-  w_pending_coll_destroy(&pending_symlink_targets);
-}
+watchman_root::Inner::~Inner() {}
 
 void w_root_addref(w_root_t *root) {
   ++root->refcnt;
@@ -192,8 +186,6 @@ watchman_root::~watchman_root() {
   if (config_file) {
     json_decref(config_file);
   }
-
-  w_pending_coll_destroy(&pending);
 
   --live_roots;
 }

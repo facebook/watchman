@@ -267,8 +267,6 @@ bool w_root_resolve_for_client_mode(const char *filename, char **errmsg,
     struct watchman_pending_collection pending;
     struct write_locked_watchman_root lock;
 
-    w_pending_coll_init(&pending);
-
     /* force a walk now */
     gettimeofday(&start, NULL);
     w_root_lock(unlocked, "w_root_resolve_for_client_mode", &lock);
@@ -281,8 +279,6 @@ bool w_root_resolve_for_client_mode(const char *filename, char **errmsg,
       ;
     }
     w_root_unlock(&lock, unlocked);
-
-    w_pending_coll_destroy(&pending);
   }
   return true;
 }

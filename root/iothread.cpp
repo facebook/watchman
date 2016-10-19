@@ -24,8 +24,6 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
   // And convert to milliseconds
   biggest_timeout *= 1000;
 
-  w_pending_coll_init(&pending);
-
   while (!unlocked->root->inner.cancelled) {
     bool pinged;
 
@@ -137,8 +135,6 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
 
     w_root_unlock(&lock, unlocked);
   }
-
-  w_pending_coll_destroy(&pending);
 }
 
 void w_root_process_path(
