@@ -124,5 +124,6 @@ struct InMemoryView {
       const struct watchman_glob_tree* node,
       const char* dir_name,
       uint32_t dir_name_len) const;
+  void insertAtHeadOfFileList(struct watchman_file* file);
 };
 }
