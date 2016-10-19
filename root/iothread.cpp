@@ -53,6 +53,36 @@ static void full_crawl(
       unlocked->root->recrawlInfo.rlock()->recrawlCount ? "re" : "");
 }
 
+// Performs settle-time actions.
+// Returns true if the root was reaped and the io thread should terminate.
+static bool do_settle_things(struct unlocked_watchman_root* unlocked) {
+  struct write_locked_watchman_root lock;
+
+  // No new pending items were given to us, so consider that
+  // we may now be settled.
+
+  process_pending_symlink_targets(unlocked);
+
+  w_root_lock(unlocked, "io_thread: settle out", &lock);
+  if (!lock.root->inner.done_initial) {
+    // we need to recrawl, stop what we're doing here
+    w_root_unlock(&lock, unlocked);
+    return false;
+  }
+
+  process_subscriptions(&lock);
+  process_triggers(&lock);
+  if (consider_reap(&lock)) {
+    w_root_unlock(&lock, unlocked);
+    w_root_stop_watch(unlocked);
+    return true;
+  }
+
+  consider_age_out(&lock);
+  w_root_unlock(&lock, unlocked);
+  return false;
+}
+
 static void io_thread(struct unlocked_watchman_root *unlocked)
 {
   int timeoutms, biggest_timeout;
@@ -94,28 +124,9 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
     w_pending_coll_unlock(&unlocked->root->ioThread.pending);
 
     if (!pinged && w_pending_coll_size(&pending) == 0) {
-      process_pending_symlink_targets(unlocked);
-
-      // No new pending items were given to us, so consider that
-      // we may now be settled.
-
-      w_root_lock(unlocked, "io_thread: settle out", &lock);
-      if (!lock.root->inner.done_initial) {
-        // we need to recrawl, stop what we're doing here
-        w_root_unlock(&lock, unlocked);
-        continue;
-      }
-
-      process_subscriptions(&lock);
-      process_triggers(&lock);
-      if (consider_reap(&lock)) {
-        w_root_unlock(&lock, unlocked);
-        w_root_stop_watch(unlocked);
+      if (do_settle_things(unlocked)) {
         break;
       }
-      consider_age_out(&lock);
-      w_root_unlock(&lock, unlocked);
-
       timeoutms = MIN(biggest_timeout, timeoutms * 2);
       continue;
     }
