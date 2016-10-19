@@ -134,7 +134,7 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
 }
 
 void w_root_teardown(w_root_t *root) {
-  w_pending_coll_drain(&root->pending);
+  w_pending_coll_drain(&root->ioThread.pending);
 
   // Must delete_dir before we process the files to avoid
   // an ASAN issue when trying to free the dir children

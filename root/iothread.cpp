@@ -41,7 +41,8 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
       // can get stuck with an empty view until another change is observed
       lock.root->inner.ticks++;
       gettimeofday(&start, NULL);
-      w_pending_coll_add(&lock.root->pending, lock.root->root_path, start, 0);
+      w_pending_coll_add(
+          &lock.root->ioThread.pending, lock.root->root_path, start, 0);
       // There is the potential for a subtle race condition here.  The boolean
       // parameter indicates whether we want to merge in the set of
       // notifications pending from the watcher or not.  Since we now coalesce
@@ -78,10 +79,11 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
     // Wait for the notify thread to give us pending items, or for
     // the settle period to expire
     w_log(W_LOG_DBG, "poll_events timeout=%dms\n", timeoutms);
-    pinged = w_pending_coll_lock_and_wait(&unlocked->root->pending, timeoutms);
+    pinged = w_pending_coll_lock_and_wait(
+        &unlocked->root->ioThread.pending, timeoutms);
     w_log(W_LOG_DBG, " ... wake up (pinged=%s)\n", pinged ? "true" : "false");
-    w_pending_coll_append(&pending, &unlocked->root->pending);
-    w_pending_coll_unlock(&unlocked->root->pending);
+    w_pending_coll_append(&pending, &unlocked->root->ioThread.pending);
+    w_pending_coll_unlock(&unlocked->root->ioThread.pending);
 
     if (!pinged && w_pending_coll_size(&pending) == 0) {
       process_pending_symlink_targets(unlocked);
@@ -206,7 +208,7 @@ bool w_root_process_pending(struct write_locked_watchman_root *lock,
 
   if (pull_from_root) {
     // You MUST own root->pending lock for this
-    w_pending_coll_append(coll, &lock->root->pending);
+    w_pending_coll_append(coll, &lock->root->ioThread.pending);
   }
 
   if (!coll->pending) {

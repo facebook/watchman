@@ -40,7 +40,7 @@ static void handle_should_recrawl(struct unlocked_watchman_root* unlocked) {
           root->failure_reason.c_str());
       w_root_cancel(root);
     }
-    w_pending_coll_ping(&root->pending);
+    w_pending_coll_ping(&root->ioThread.pending);
   }
 
   w_root_unlock(&lock, unlocked);
@@ -54,7 +54,7 @@ static void handle_should_recrawl(struct unlocked_watchman_root* unlocked) {
 static void notify_thread(struct unlocked_watchman_root *unlocked)
 {
   struct watchman_pending_collection pending;
-  struct watchman_pending_collection *root_pending = &unlocked->root->pending;
+  auto root_pending = &unlocked->root->ioThread.pending;
 
   if (!unlocked->root->inner.watcher->start(unlocked->root)) {
     w_log(

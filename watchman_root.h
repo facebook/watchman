@@ -40,7 +40,13 @@ struct watchman_root {
   pthread_rwlock_t lock;
   const char *lock_reason{nullptr};
   pthread_t notify_thread;
-  pthread_t io_thread;
+
+  struct IOThread {
+    pthread_t handle;
+
+    /* queue of items that we need to stat/process */
+    struct watchman_pending_collection pending;
+  } ioThread;
 
   /* map of rule id => struct watchman_trigger_command */
   watchman::Synchronized<
@@ -78,9 +84,6 @@ struct watchman_root {
 
   // Last ad-hoc warning message
   w_string warning;
-
-  /* queue of items that we need to stat/process */
-  struct watchman_pending_collection pending;
 
   // map of state name => watchman_client_state_assertion for
   // asserted states

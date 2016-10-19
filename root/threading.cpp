@@ -32,11 +32,11 @@ bool root_start(w_root_t *root, char **errmsg) {
   }
 
   // Wait for it to signal that the watcher has been initialized
-  w_pending_coll_lock_and_wait(&root->pending, -1 /* infinite */);
-  w_pending_coll_unlock(&root->pending);
+  w_pending_coll_lock_and_wait(&root->ioThread.pending, -1 /* infinite */);
+  w_pending_coll_unlock(&root->ioThread.pending);
 
-  if (!start_detached_root_thread(root, errmsg,
-        run_io_thread, &root->io_thread)) {
+  if (!start_detached_root_thread(
+          root, errmsg, run_io_thread, &root->ioThread.handle)) {
     w_root_cancel(root);
     return false;
   }
@@ -66,7 +66,7 @@ void signal_root_threads(w_root_t *root) {
   if (!pthread_equal(root->notify_thread, pthread_self())) {
     pthread_kill(root->notify_thread, SIGUSR1);
   }
-  w_pending_coll_ping(&root->pending);
+  w_pending_coll_ping(&root->ioThread.pending);
   root->inner.watcher->signalThreads();
 }
 
