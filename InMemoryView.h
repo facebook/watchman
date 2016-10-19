@@ -3,6 +3,8 @@
 #pragma once
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
+#include "watchman_perf.h"
 #include "watchman_string.h"
 
 struct watchman_file;
@@ -64,5 +66,12 @@ struct InMemoryView {
       const w_string& file_name,
       const struct timeval& now,
       uint32_t tick);
+
+  void ageOut(w_perf_t& sample, std::chrono::seconds minAge);
+
+ private:
+  void ageOutFile(
+      std::unordered_set<w_string>& dirs_to_erase,
+      watchman_file* file);
 };
 }
