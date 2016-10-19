@@ -25,13 +25,13 @@ struct watchman_rule_match {
   uint32_t root_number;
   w_string relname;
   bool is_new;
-  struct watchman_file *file;
+  const watchman_file* file;
 
   watchman_rule_match(
       uint32_t root_number,
       const w_string& relname,
       bool is_new,
-      watchman_file* file)
+      const watchman_file* file)
       : root_number(root_number),
         relname(relname),
         is_new(is_new),
@@ -42,7 +42,7 @@ struct watchman_rule_match {
 struct w_query_ctx {
   struct w_query *query;
   struct read_locked_watchman_root *lock;
-  struct watchman_file* file{nullptr};
+  const watchman_file* file{nullptr};
   w_string wholename;
   struct w_query_since since;
 
@@ -130,15 +130,15 @@ w_query_parse(const w_root_t* root, json_t* query, char** errmsg);
 std::unique_ptr<QueryExpr> w_query_expr_parse(w_query* query, json_t* term);
 
 bool w_query_file_matches_relative_root(
-    struct w_query_ctx *ctx,
-    struct watchman_file *file);
+    struct w_query_ctx* ctx,
+    const watchman_file* file);
 
 // Allows a generator to process a file node
 // through the query engine
 bool w_query_process_file(
-    w_query *query,
-    struct w_query_ctx *ctx,
-    struct watchman_file *file);
+    w_query* query,
+    struct w_query_ctx* ctx,
+    const watchman_file* file);
 
 // Generator callback, used to plug in an alternate
 // generator when used in triggers or subscriptions

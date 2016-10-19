@@ -5,8 +5,9 @@
 
 /* Query evaluator */
 
-static w_string_t *compute_parent_path(struct w_query_ctx *ctx,
-                                       struct watchman_file *file) {
+static w_string_t* compute_parent_path(
+    struct w_query_ctx* ctx,
+    const watchman_file* file) {
   if (ctx->last_parent == file->parent) {
     return ctx->last_parent_path;
   }
@@ -49,10 +50,9 @@ w_string_t *w_query_ctx_get_wholename(
 }
 
 bool w_query_process_file(
-    w_query *query,
-    struct w_query_ctx *ctx,
-    struct watchman_file *file)
-{
+    w_query* query,
+    struct w_query_ctx* ctx,
+    const watchman_file* file) {
   ctx->wholename.reset();
   ctx->file = file;
 
@@ -110,9 +110,8 @@ void w_match_results_free(uint32_t num_matches,
 }
 
 bool w_query_file_matches_relative_root(
-    struct w_query_ctx *ctx,
-    struct watchman_file *f)
-{
+    struct w_query_ctx* ctx,
+    const watchman_file* f) {
   w_string_t *parent_path;
   bool result;
 
