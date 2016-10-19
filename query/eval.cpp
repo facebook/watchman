@@ -5,14 +5,6 @@
 
 /* Query evaluator */
 
-bool w_query_expr_evaluate(
-    w_query_expr *expr,
-    struct w_query_ctx *ctx,
-    struct watchman_file *file)
-{
-  return expr->evaluate(ctx, file, expr->data);
-}
-
 static w_string_t *compute_parent_path(struct w_query_ctx *ctx,
                                        struct watchman_file *file) {
   if (ctx->last_parent == file->parent) {
@@ -72,7 +64,7 @@ bool w_query_process_file(
 
   // We produce an output for this file if there is no expression,
   // or if the expression matched.
-  if (query->expr && !w_query_expr_evaluate(query->expr, ctx, file)) {
+  if (query->expr && !query->expr->evaluate(ctx, file)) {
     // No matched
     return true;
   }

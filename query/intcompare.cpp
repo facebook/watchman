@@ -80,42 +80,37 @@ bool eval_int_compare(json_int_t ival, struct w_query_int_compare *comp) {
   }
 }
 
-static bool eval_size(struct w_query_ctx *ctx, struct watchman_file *file,
-    void *data)
-{
-  auto comp = (w_query_int_compare*)data;
-  unused_parameter(ctx);
+class SizeExpr : public QueryExpr {
+  w_query_int_compare comp;
 
-  // Removed files never evaluate true
-  if (!file->exists) {
-    return false;
+  explicit SizeExpr(w_query_int_compare comp) : comp(comp) {}
+
+ public:
+  bool evaluate(struct w_query_ctx*, const watchman_file* file) override {
+    // Removed files never evaluate true
+    if (!file->exists) {
+      return false;
+    }
+
+    return eval_int_compare(file->stat.size, &comp);
   }
 
-  return eval_int_compare(file->stat.size, comp);
-}
+  static std::unique_ptr<QueryExpr> parse(w_query* query, json_t* term) {
+    if (!json_is_array(term)) {
+      ignore_result(asprintf(&query->errmsg, "Expected array for 'size' term"));
+      return nullptr;
+    }
 
-static w_query_expr *size_parser(w_query *query, json_t *term) {
-  struct w_query_int_compare *comp;
+    w_query_int_compare comp;
 
-  if (!json_is_array(term)) {
-    ignore_result(asprintf(&query->errmsg, "Expected array for 'size' term"));
-    return NULL;
+    if (!parse_int_compare(term, &comp, &query->errmsg)) {
+      return nullptr;
+    }
+
+    return std::unique_ptr<QueryExpr>(new SizeExpr(comp));
   }
-
-  comp = (w_query_int_compare*)calloc(1, sizeof(*comp));
-  if (!comp) {
-    ignore_result(asprintf(&query->errmsg, "out of memory"));
-    return NULL;
-  }
-
-  if (!parse_int_compare(term, comp, &query->errmsg)) {
-    free(comp);
-    return NULL;
-  }
-
-  return w_query_expr_new(eval_size, free, comp);
-}
-W_TERM_PARSER("size", size_parser)
+};
+W_TERM_PARSER("size", SizeExpr::parse)
 
 /* vim:ts=2:sw=2:et:
  */

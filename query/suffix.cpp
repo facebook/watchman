@@ -3,57 +3,34 @@
 
 #include "watchman.h"
 
-static bool eval_suffix(struct w_query_ctx *ctx,
-    struct watchman_file *file,
-    void *data)
-{
-  auto suffix = (w_string_t*)data;
+class SuffixExpr : public QueryExpr {
+  w_string suffix;
 
-  unused_parameter(ctx);
+  explicit SuffixExpr(w_string suffix) : suffix(suffix) {}
 
-  return w_string_suffix_match(w_file_get_name(file), suffix);
-}
-
-static void dispose_suffix(void *data)
-{
-  auto suffix = (w_string_t*)data;
-
-  w_string_delref(suffix);
-}
-
-static w_query_expr *suffix_parser(w_query *query, json_t *term)
-{
-  const char *ignore, *suffix;
-  char *arg;
-  w_string_t *str;
-  int i, l;
-
-  if (json_unpack(term, "[s,s]", &ignore, &suffix) != 0) {
-    query->errmsg = strdup("must use [\"suffix\", \"suffixstring\"]");
-    return NULL;
+ public:
+  bool evaluate(struct w_query_ctx*, const watchman_file* file) {
+    return w_string_suffix_match(w_file_get_name(file), suffix);
   }
 
-  arg = strdup(suffix);
-  if (!arg) {
-    query->errmsg = strdup("out of memory");
-    return NULL;
-  }
+  static std::unique_ptr<QueryExpr> parse(w_query* query, json_t* term) {
+    const char *ignore, *suffix;
 
-  l = strlen_uint32(arg);
-  for (i = 0; i < l; i++) {
-    arg[i] = (char)tolower((uint8_t)arg[i]);
-  }
+    if (json_unpack(term, "[s,s]", &ignore, &suffix) != 0) {
+      query->errmsg = strdup("must use [\"suffix\", \"suffixstring\"]");
+      return nullptr;
+    }
 
-  str = w_string_new_typed(arg, W_STRING_BYTE);
-  free(arg);
-  if (!str) {
-    query->errmsg = strdup("out of memory");
-    return NULL;
-  }
+    w_string str(w_string_new_lower_typed(suffix, W_STRING_BYTE), false);
+    if (!str) {
+      query->errmsg = strdup("out of memory");
+      return nullptr;
+    }
 
-  return w_query_expr_new(eval_suffix, dispose_suffix, str);
-}
-W_TERM_PARSER("suffix", suffix_parser)
+    return std::unique_ptr<QueryExpr>(new SuffixExpr(str));
+  }
+};
+W_TERM_PARSER("suffix", SuffixExpr::parse)
 
 /* vim:ts=2:sw=2:et:
  */

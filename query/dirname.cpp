@@ -3,153 +3,139 @@
 
 #include "watchman.h"
 
-struct dirname_data {
-  w_string_t *dirname;
-  struct w_query_int_compare depth;
-  bool (*startswith)(w_string_t *str, w_string_t *prefix);
-};
-
-static void dispose_dirname(void *ptr) {
-  auto data = (dirname_data*)ptr;
-
-  if (data->dirname) {
-    w_string_delref(data->dirname);
-  }
-  free(data);
-}
-
 static inline bool is_dir_sep(int c) {
   return c == '/' || c == '\\';
 }
 
-static bool eval_dirname(struct w_query_ctx *ctx,
-    struct watchman_file *file, void *ptr) {
-  auto data = (dirname_data*)ptr;
-  w_string_t *str = w_query_ctx_get_wholename(ctx);
-  json_int_t depth = 0;
-  size_t i;
+class DirNameExpr : public QueryExpr {
+  w_string dirname;
+  struct w_query_int_compare depth;
+  using StartsWith = bool (*)(w_string_t* str, w_string_t* prefix);
+  StartsWith startswith;
 
-  unused_parameter(file);
+  explicit DirNameExpr(
+      w_string dirname,
+      struct w_query_int_compare depth,
+      StartsWith startswith)
+      : dirname(dirname), depth(depth), startswith(startswith) {}
 
-  if (str->len <= data->dirname->len) {
-    // Either it doesn't prefix match, or file name is == dirname.
-    // That means that the best case is that the wholename matches.
-    // we only want to match if dirname(wholename) matches, so it
-    // is not possible for us to match unless the length of wholename
-    // is greater than the dirname operand
-    return false;
-  }
+ public:
+  bool evaluate(w_query_ctx* ctx, const watchman_file* file) override {
+    w_string_t* str = w_query_ctx_get_wholename(ctx);
+    size_t i;
 
-  // Want to make sure that wholename is a child of dirname, so
-  // check for a dir separator.  Special case for dirname == '' (the root),
-  // which won't have a slash in position 0.
-  if (data->dirname->len > 0 &&
-      !is_dir_sep(str->buf[data->dirname->len])) {
-    // may have a common prefix with, but is not a child of dirname
-    return false;
-  }
+    unused_parameter(file);
 
-  if (!data->startswith(str, data->dirname)) {
-    return false;
-  }
-
-  // Now compute the depth of file from dirname.  We do this by
-  // counting dir separators, not including the one we saw above.
-  for (i = data->dirname->len + 1; i < str->len; i++) {
-    if (is_dir_sep(str->buf[i])) {
-      depth++;
-    }
-  }
-
-  return eval_int_compare(depth, &data->depth);
-}
-
-// ["dirname", "foo"] -> ["dirname", "foo", ["depth", "ge", 0]]
-static w_query_expr *dirname_parser_inner(w_query *query, json_t *term,
-    bool caseless)
-{
-  const char *which = caseless ? "idirname" : "dirname";
-  struct dirname_data *data;
-  json_t *name;
-  struct w_query_int_compare depth_comp;
-
-  if (!json_is_array(term)) {
-    ignore_result(asprintf(&query->errmsg, "Expected array for '%s' term",
-        which));
-    return NULL;
-  }
-
-  if (json_array_size(term) < 2) {
-    ignore_result(asprintf(&query->errmsg,
-        "Invalid number of arguments for '%s' term",
-        which));
-    return NULL;
-  }
-
-  if (json_array_size(term) > 3) {
-    ignore_result(asprintf(&query->errmsg,
-        "Invalid number of arguments for '%s' term",
-        which));
-    return NULL;
-  }
-
-  name = json_array_get(term, 1);
-  if (!json_is_string(name)) {
-    ignore_result(asprintf(&query->errmsg,
-        "Argument 2 to '%s' must be a string", which));
-    return NULL;
-  }
-
-  if (json_array_size(term) == 3) {
-    json_t *depth;
-
-    depth = json_array_get(term, 2);
-    if (!json_is_array(depth)) {
-      ignore_result(asprintf(&query->errmsg,
-        "Invalid number of arguments for '%s' term",
-        which));
-      return NULL;
+    if (str->len <= dirname.size()) {
+      // Either it doesn't prefix match, or file name is == dirname.
+      // That means that the best case is that the wholename matches.
+      // we only want to match if dirname(wholename) matches, so it
+      // is not possible for us to match unless the length of wholename
+      // is greater than the dirname operand
+      return false;
     }
 
-    if (!parse_int_compare(depth, &depth_comp, &query->errmsg)) {
-      return NULL;
+    // Want to make sure that wholename is a child of dirname, so
+    // check for a dir separator.  Special case for dirname == '' (the root),
+    // which won't have a slash in position 0.
+    if (dirname.size() > 0 && !is_dir_sep(str->buf[dirname.size()])) {
+      // may have a common prefix with, but is not a child of dirname
+      return false;
     }
 
-    if (strcmp("depth", json_string_value(json_array_get(depth, 0)))) {
-      ignore_result(asprintf(&query->errmsg,
+    if (!startswith(str, dirname)) {
+      return false;
+    }
+
+    // Now compute the depth of file from dirname.  We do this by
+    // counting dir separators, not including the one we saw above.
+    json_int_t actual_depth = 0;
+    for (i = dirname.size() + 1; i < str->len; i++) {
+      if (is_dir_sep(str->buf[i])) {
+        actual_depth++;
+      }
+    }
+
+    return eval_int_compare(actual_depth, &depth);
+  }
+
+  // ["dirname", "foo"] -> ["dirname", "foo", ["depth", "ge", 0]]
+  static std::unique_ptr<QueryExpr>
+  parse(w_query* query, json_t* term, bool caseless) {
+    const char* which = caseless ? "idirname" : "dirname";
+    json_t* name;
+    struct w_query_int_compare depth_comp;
+
+    if (!json_is_array(term)) {
+      ignore_result(
+          asprintf(&query->errmsg, "Expected array for '%s' term", which));
+      return nullptr;
+    }
+
+    if (json_array_size(term) < 2) {
+      ignore_result(asprintf(
+          &query->errmsg, "Invalid number of arguments for '%s' term", which));
+      return nullptr;
+    }
+
+    if (json_array_size(term) > 3) {
+      ignore_result(asprintf(
+          &query->errmsg, "Invalid number of arguments for '%s' term", which));
+      return nullptr;
+    }
+
+    name = json_array_get(term, 1);
+    if (!json_is_string(name)) {
+      ignore_result(asprintf(
+          &query->errmsg, "Argument 2 to '%s' must be a string", which));
+      return nullptr;
+    }
+
+    if (json_array_size(term) == 3) {
+      json_t* depth;
+
+      depth = json_array_get(term, 2);
+      if (!json_is_array(depth)) {
+        ignore_result(asprintf(
+            &query->errmsg,
+            "Invalid number of arguments for '%s' term",
+            which));
+        return nullptr;
+      }
+
+      if (!parse_int_compare(depth, &depth_comp, &query->errmsg)) {
+        return nullptr;
+      }
+
+      if (strcmp("depth", json_string_value(json_array_get(depth, 0)))) {
+        ignore_result(asprintf(
+            &query->errmsg,
             "Third parameter to '%s' should be a relational depth term",
             which));
-      return NULL;
+        return nullptr;
+      }
+    } else {
+      depth_comp.operand = 0;
+      depth_comp.op = W_QUERY_ICMP_GE;
     }
-  } else {
-    depth_comp.operand = 0;
-    depth_comp.op = W_QUERY_ICMP_GE;
+
+    return std::unique_ptr<QueryExpr>(new DirNameExpr(
+        json_to_w_string(name),
+        depth_comp,
+        caseless ? w_string_startswith_caseless : w_string_startswith));
   }
-
-  data = (dirname_data*)calloc(1, sizeof(*data));
-  if (!data) {
-    ignore_result(asprintf(&query->errmsg, "out of memory"));
-    return NULL;
+  static std::unique_ptr<QueryExpr> parseDirName(w_query* query, json_t* term) {
+    return parse(query, term, !query->case_sensitive);
   }
-  data->dirname = json_to_w_string_incref(name);
-  data->startswith =
-    caseless ?  w_string_startswith_caseless : w_string_startswith;
-  data->depth = depth_comp;
+  static std::unique_ptr<QueryExpr> parseIDirName(
+      w_query* query,
+      json_t* term) {
+    return parse(query, term, false);
+  }
+};
 
-  return w_query_expr_new(eval_dirname, dispose_dirname, data);
-}
-
-static w_query_expr *dirname_parser(w_query *query, json_t *term)
-{
-  return dirname_parser_inner(query, term, !query->case_sensitive);
-}
-W_TERM_PARSER("dirname", dirname_parser)
-
-static w_query_expr *idirname_parser(w_query *query, json_t *term)
-{
-  return dirname_parser_inner(query, term, true);
-}
-W_TERM_PARSER("idirname", idirname_parser)
+W_TERM_PARSER("dirname", DirNameExpr::parseDirName)
+W_TERM_PARSER("idirname", DirNameExpr::parseIDirName)
 
 /* vim:ts=2:sw=2:et:
  */

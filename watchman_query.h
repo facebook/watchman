@@ -8,9 +8,6 @@
 struct w_query;
 typedef struct w_query w_query;
 
-struct w_query_expr;
-typedef struct w_query_expr w_query_expr;
-
 struct w_query_since {
   bool is_timestamp;
   union {
@@ -73,19 +70,10 @@ struct w_query_path {
   int depth;
 };
 
-typedef bool (*w_query_expr_eval_func)(
-    struct w_query_ctx *ctx,
-    struct watchman_file *file,
-    void *data
-);
-typedef void (*w_query_expr_dispose_func)(
-    void *data
-);
-struct w_query_expr {
-  long refcnt;
-  w_query_expr_eval_func    evaluate;
-  w_query_expr_dispose_func dispose;
-  void *data;
+class QueryExpr {
+ public:
+  virtual ~QueryExpr();
+  virtual bool evaluate(w_query_ctx* ctx, const watchman_file* file) = 0;
 };
 
 struct watchman_glob_tree;
@@ -120,7 +108,7 @@ struct w_query {
   // instance at the time we execute
   struct w_clockspec *since_spec;
 
-  w_query_expr *expr;
+  std::unique_ptr<QueryExpr> expr;
 
   // Error message placeholder while parsing
   char *errmsg;
@@ -129,10 +117,8 @@ struct w_query {
   json_t *query_spec;
 };
 
-typedef w_query_expr *(*w_query_expr_parser)(
-    w_query *query,
-    json_t *term
-);
+typedef std::unique_ptr<QueryExpr> (
+    *w_query_expr_parser)(w_query* query, json_t* term);
 
 bool w_query_register_expression_parser(
     const char *term,
@@ -141,15 +127,7 @@ bool w_query_register_expression_parser(
 w_query *w_query_parse(const w_root_t *root, json_t *query, char **errmsg);
 void w_query_delref(w_query *query);
 
-w_query_expr *w_query_expr_parse(w_query *query, json_t *term);
-
-void w_query_expr_delref(w_query_expr *expr);
-void w_query_expr_addref(w_query_expr *expr);
-w_query_expr *w_query_expr_new(
-    w_query_expr_eval_func evaluate,
-    w_query_expr_dispose_func dispose,
-    void *data
-);
+std::unique_ptr<QueryExpr> w_query_expr_parse(w_query* query, json_t* term);
 
 bool w_query_file_matches_relative_root(
     struct w_query_ctx *ctx,
@@ -203,11 +181,6 @@ bool w_query_execute_locked(
 w_string_t *w_query_ctx_get_wholename(
     struct w_query_ctx *ctx
 );
-
-bool w_query_expr_evaluate(
-    w_query_expr *expr,
-    struct w_query_ctx *ctx,
-    struct watchman_file *file);
 
 struct w_query_field_renderer;
 struct w_query_field_list {

@@ -3,49 +3,36 @@
 
 #include "watchman.h"
 
-static bool eval_exists(struct w_query_ctx *ctx,
-    struct watchman_file *file,
-    void *data)
-{
-  unused_parameter(ctx);
-  unused_parameter(data);
+class ExistsExpr : public QueryExpr {
+ public:
+  bool evaluate(struct w_query_ctx*, const watchman_file* file) override {
+    return file->exists;
+  }
+  static std::unique_ptr<QueryExpr> parse(w_query*, json_t*) {
+    return std::unique_ptr<QueryExpr>(new ExistsExpr);
+  }
+};
+W_TERM_PARSER("exists", ExistsExpr::parse)
 
-  return file->exists;
-}
+class EmptyExpr : public QueryExpr {
+ public:
+  bool evaluate(struct w_query_ctx*, const watchman_file* file) override {
+    if (!file->exists) {
+      return false;
+    }
 
-static w_query_expr *exists_parser(w_query *query, json_t *term)
-{
-  unused_parameter(query);
-  unused_parameter(term);
-  return w_query_expr_new(eval_exists, NULL, NULL);
-}
-W_TERM_PARSER("exists", exists_parser)
+    if (S_ISDIR(file->stat.mode) || S_ISREG(file->stat.mode)) {
+      return file->stat.size == 0;
+    }
 
-static bool eval_empty(struct w_query_ctx *ctx,
-    struct watchman_file *file,
-    void *data)
-{
-  unused_parameter(ctx);
-  unused_parameter(data);
-
-  if (!file->exists) {
     return false;
   }
 
-  if (S_ISDIR(file->stat.mode) || S_ISREG(file->stat.mode)) {
-    return file->stat.size == 0;
+  static std::unique_ptr<QueryExpr> parse(w_query*, json_t*) {
+    return std::unique_ptr<QueryExpr>(new EmptyExpr);
   }
-
-  return false;
-}
-
-static w_query_expr *empty_parser(w_query *query, json_t *term)
-{
-  unused_parameter(query);
-  unused_parameter(term);
-  return w_query_expr_new(eval_empty, NULL, NULL);
-}
-W_TERM_PARSER("empty", empty_parser)
+};
+W_TERM_PARSER("empty", EmptyExpr::parse)
 
 /* vim:ts=2:sw=2:et:
  */

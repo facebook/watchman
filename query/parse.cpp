@@ -5,6 +5,8 @@
 
 static w_ht_t *term_hash = NULL;
 
+QueryExpr::~QueryExpr() {}
+
 bool w_query_register_expression_parser(
     const char *term,
     w_query_expr_parser parser)
@@ -30,8 +32,7 @@ bool w_query_register_expression_parser(
  * "term"
  * ["term" <parameters>]
  */
-w_query_expr *w_query_expr_parse(w_query *query, json_t *exp)
-{
+std::unique_ptr<QueryExpr> w_query_expr_parse(w_query* query, json_t* exp) {
   w_string_t *name;
   w_query_expr_parser parser;
 
@@ -583,10 +584,6 @@ void w_query_delref(w_query *query)
     w_clockspec_free(query->since_spec);
   }
 
-  if (query->expr) {
-    w_query_expr_delref(query->expr);
-  }
-
   if (query->suffixes) {
     for (i = 0; i < query->nsuffixes; i++) {
       if (query->suffixes[i]) {
@@ -601,37 +598,6 @@ void w_query_delref(w_query *query)
   }
 
   free(query);
-}
-
-w_query_expr *w_query_expr_new(
-    w_query_expr_eval_func evaluate,
-    w_query_expr_dispose_func dispose,
-    void *data
-)
-{
-  w_query_expr *expr;
-
-  expr = (w_query_expr*)calloc(1, sizeof(*expr));
-  if (!expr) {
-    return NULL;
-  }
-  expr->refcnt = 1;
-  expr->evaluate = evaluate;
-  expr->dispose = dispose;
-  expr->data = data;
-
-  return expr;
-}
-
-void w_query_expr_delref(w_query_expr *expr)
-{
-  if (--expr->refcnt != 0) {
-    return;
-  }
-  if (expr->dispose) {
-    expr->dispose(expr->data);
-  }
-  free(expr);
 }
 
 /* vim:ts=2:sw=2:et:

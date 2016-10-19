@@ -38,6 +38,6 @@ struct watchman_file {
   w_string symlink_target;
 };
 
-static inline w_string_t *w_file_get_name(struct watchman_file *file) {
+static inline w_string_t* w_file_get_name(const watchman_file* file) {
   return (w_string_t*)(file + 1);
 }
