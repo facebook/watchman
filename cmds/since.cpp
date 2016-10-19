@@ -45,7 +45,7 @@ static void cmd_since(struct watchman_client *client, json_t *args)
 
   w_query_legacy_field_list(&field_list);
 
-  if (!w_query_execute(query.get(), &unlocked, &res, nullptr, nullptr)) {
+  if (!w_query_execute(query.get(), &unlocked, &res, nullptr)) {
     send_error_response(client, "query failed: %s", res.errmsg);
     w_root_delref(&unlocked);
     return;

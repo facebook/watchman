@@ -133,7 +133,6 @@ bool time_generator(
     w_query* query,
     struct read_locked_watchman_root* lock,
     struct w_query_ctx* ctx,
-    void*,
     int64_t* num_walked) {
   struct watchman_file *f;
   int64_t n = 0;
@@ -350,21 +349,20 @@ done:
   return result;
 }
 
-static bool default_generators(w_query *query,
-                               struct read_locked_watchman_root *lock,
-                               struct w_query_ctx *ctx, void *gendata,
-                               int64_t *num_walked) {
+static bool default_generators(
+    w_query* query,
+    struct read_locked_watchman_root* lock,
+    struct w_query_ctx* ctx,
+    int64_t* num_walked) {
   bool generated = false;
   int64_t n = 0;
   int64_t total = 0;
   bool result = true;
 
-  unused_parameter(gendata);
-
   // Time based query
   if (ctx->since.is_timestamp || !ctx->since.clock.is_fresh_instance) {
     n = 0;
-    result = time_generator(query, lock, ctx, nullptr, &n);
+    result = time_generator(query, lock, ctx, &n);
     total += n;
     if (!result) {
       goto done;
@@ -423,9 +421,11 @@ w_query_result::~w_query_result() {
   free(errmsg);
 }
 
-static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
-                           w_query_res *res, w_query_generator generator,
-                           void *gendata) {
+static bool execute_common(
+    struct w_query_ctx* ctx,
+    w_perf_t* sample,
+    w_query_res* res,
+    w_query_generator generator) {
   int64_t num_walked = 0;
   bool result = true;
 
@@ -441,7 +441,7 @@ static bool execute_common(struct w_query_ctx *ctx, w_perf_t *sample,
       generator = default_generators;
     }
 
-    if (!generator(ctx->query, ctx->lock, ctx, gendata, &num_walked)) {
+    if (!generator(ctx->query, ctx->lock, ctx, &num_walked)) {
       res->errmsg = ctx->query->errmsg;
       ctx->query->errmsg = NULL;
       result = false;
@@ -485,12 +485,10 @@ w_query_ctx::~w_query_ctx() {
 }
 
 bool w_query_execute_locked(
-    w_query *query,
-    struct write_locked_watchman_root *lock,
-    w_query_res *res,
-    w_query_generator generator,
-    void *gendata)
-{
+    w_query* query,
+    struct write_locked_watchman_root* lock,
+    w_query_res* res,
+    w_query_generator generator) {
   w_query_ctx ctx(query, w_root_read_lock_from_write(lock));
 
   memset(res, 0, sizeof(*res));
@@ -513,16 +511,14 @@ bool w_query_execute_locked(
   // Evaluate the cursor for this root
   w_clockspec_eval(lock, query->since_spec.get(), &ctx.since);
 
-  return execute_common(&ctx, &sample, res, generator, gendata);
+  return execute_common(&ctx, &sample, res, generator);
 }
 
 bool w_query_execute(
-    w_query *query,
-    struct unlocked_watchman_root *unlocked,
-    w_query_res *res,
-    w_query_generator generator,
-    void *gendata)
-{
+    w_query* query,
+    struct unlocked_watchman_root* unlocked,
+    w_query_res* res,
+    w_query_generator generator) {
   struct write_locked_watchman_root wlock;
   struct read_locked_watchman_root rlock;
   bool result;
@@ -588,7 +584,7 @@ bool w_query_execute(
   res->root_number = ctx.lock->root->inner.number;
   res->ticks = ctx.lock->root->inner.ticks;
 
-  result = execute_common(&ctx, &sample, res, generator, gendata);
+  result = execute_common(&ctx, &sample, res, generator);
   // This handles the unlock in both the read and write case, as ctx.lock
   // points to the read or write lock as appropriate, and the underlying
   // unlock operation is defined to be safe for either.

@@ -142,15 +142,15 @@ bool w_query_process_file(
 
 // Generator callback, used to plug in an alternate
 // generator when used in triggers or subscriptions
-typedef bool (*w_query_generator)(w_query *query,
-                                  struct read_locked_watchman_root *lock,
-                                  struct w_query_ctx *ctx, void *gendata,
-                                  int64_t *num_walked);
+using w_query_generator = std::function<bool(
+    w_query* query,
+    struct read_locked_watchman_root* lock,
+    struct w_query_ctx* ctx,
+    int64_t* num_walked)>;
 bool time_generator(
     w_query* query,
     struct read_locked_watchman_root* lock,
     struct w_query_ctx* ctx,
-    void* gendata,
     int64_t* num_walked);
 
 struct w_query_result {
@@ -165,21 +165,16 @@ struct w_query_result {
 typedef struct w_query_result w_query_res;
 
 bool w_query_execute(
-    w_query *query,
-    struct unlocked_watchman_root *unlocked,
-    w_query_res *results,
-    w_query_generator generator,
-    void *gendata
-);
+    w_query* query,
+    struct unlocked_watchman_root* unlocked,
+    w_query_res* results,
+    w_query_generator generator);
 
 bool w_query_execute_locked(
-    w_query *query,
-    struct write_locked_watchman_root *lock,
-    w_query_res *results,
-    w_query_generator generator,
-    void *gendata
-);
-
+    w_query* query,
+    struct write_locked_watchman_root* lock,
+    w_query_res* results,
+    w_query_generator generator);
 
 // Returns a shared reference to the wholename
 // of the file.  The caller must not delref

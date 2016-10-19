@@ -46,7 +46,7 @@ static void cmd_query(struct watchman_client *client, json_t *args)
     query->sync_timeout = 0;
   }
 
-  if (!w_query_execute(query.get(), &unlocked, &res, nullptr, nullptr)) {
+  if (!w_query_execute(query.get(), &unlocked, &res, nullptr)) {
     send_error_response(client, "query failed: %s", res.errmsg);
     w_root_delref(&unlocked);
     return;

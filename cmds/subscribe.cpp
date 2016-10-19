@@ -156,8 +156,7 @@ static json_t *build_subscription_results(
       (uint32_t)cfg_get_int(lock->root, "subscription_lock_timeout_ms", 100);
   w_log(W_LOG_DBG, "running subscription %s %p\n", sub->name->buf, sub);
 
-  if (!w_query_execute_locked(
-          sub->query.get(), lock, &res, time_generator, sub)) {
+  if (!w_query_execute_locked(sub->query.get(), lock, &res, time_generator)) {
     w_log(W_LOG_ERR, "error running subscription %s query: %s",
         sub->name->buf, res.errmsg);
     return NULL;
