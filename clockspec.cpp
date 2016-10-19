@@ -16,12 +16,10 @@ void w_clockspec_init(void) {
   proc_start_time = (uint64_t)tv.tv_sec;
 }
 
-struct w_clockspec *w_clockspec_new_clock(uint32_t root_number,
-                                          uint32_t ticks) {
-  auto spec = (w_clockspec*)calloc(1, sizeof(w_clockspec));
-  if (!spec) {
-    return NULL;
-  }
+std::unique_ptr<w_clockspec> w_clockspec_new_clock(
+    uint32_t root_number,
+    uint32_t ticks) {
+  std::unique_ptr<w_clockspec> spec(new w_clockspec);
   spec->tag = w_cs_clock;
   spec->clock.start_time = proc_start_time;
   spec->clock.pid = proc_pid;
@@ -30,17 +28,14 @@ struct w_clockspec *w_clockspec_new_clock(uint32_t root_number,
   return spec;
 }
 
-struct w_clockspec *w_clockspec_parse(json_t *value) {
+std::unique_ptr<w_clockspec> w_clockspec_parse(json_t* value) {
   const char *str;
   uint64_t start_time;
   int pid;
   uint32_t root_number;
   uint32_t ticks;
 
-  auto spec = (w_clockspec*)calloc(1, sizeof(w_clockspec));
-  if (!spec) {
-    return NULL;
-  }
+  std::unique_ptr<w_clockspec> spec(new w_clockspec);
 
   if (json_is_integer(value)) {
     spec->tag = w_cs_timestamp;
@@ -50,8 +45,7 @@ struct w_clockspec *w_clockspec_parse(json_t *value) {
 
   str = json_string_value(value);
   if (!str) {
-    free(spec);
-    return NULL;
+    return nullptr;
   }
 
   if (str[0] == 'n' && str[1] == ':') {
@@ -82,8 +76,7 @@ struct w_clockspec *w_clockspec_parse(json_t *value) {
     return spec;
   }
 
-  free(spec);
-  return NULL;
+  return nullptr;
 }
 
 void w_clockspec_eval_readonly(struct read_locked_watchman_root *lock,
@@ -232,11 +225,10 @@ void w_clockspec_eval(struct write_locked_watchman_root *lock,
   since->clock.ticks = 0;
 }
 
-void w_clockspec_free(struct w_clockspec *spec) {
-  if (spec->tag == w_cs_named_cursor) {
-    w_string_delref(spec->named_cursor.cursor);
+w_clockspec::~w_clockspec() {
+  if (tag == w_cs_named_cursor) {
+    w_string_delref(named_cursor.cursor);
   }
-  free(spec);
 }
 
 bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,

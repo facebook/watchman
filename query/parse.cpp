@@ -69,17 +69,16 @@ std::unique_ptr<QueryExpr> w_query_expr_parse(w_query* query, json_t* exp) {
 static bool parse_since(w_query *res, json_t *query)
 {
   json_t *since;
-  struct w_clockspec *spec;
 
   since = json_object_get(query, "since");
   if (!since) {
     return true;
   }
 
-  spec = w_clockspec_parse(since);
+  auto spec = w_clockspec_parse(since);
   if (spec) {
     // res owns the ref to spec
-    res->since_spec = spec;
+    res->since_spec = std::move(spec);
     return true;
   }
 
@@ -570,10 +569,6 @@ w_query::~w_query() {
   free(paths);
 
   free_glob_tree(glob_tree);
-
-  if (since_spec) {
-    w_clockspec_free(since_spec);
-  }
 
   if (suffixes) {
     for (i = 0; i < nsuffixes; i++) {

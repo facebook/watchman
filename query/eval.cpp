@@ -508,7 +508,7 @@ bool w_query_execute_locked(
   res->ticks = lock->root->inner.ticks;
 
   // Evaluate the cursor for this root
-  w_clockspec_eval(lock, query->since_spec, &ctx.since);
+  w_clockspec_eval(lock, query->since_spec.get(), &ctx.since);
 
   return execute_common(&ctx, &sample, res, generator, gendata);
 }
@@ -560,7 +560,7 @@ bool w_query_execute(
     }
     ctx.lock = w_root_read_lock_from_write(&wlock);
     // Evaluate the cursor for this root
-    w_clockspec_eval(&wlock, query->since_spec, &ctx.since);
+    w_clockspec_eval(&wlock, query->since_spec.get(), &ctx.since);
 
     // Note that we proceed with the rest of query while we hold our write
     // lock.  We could potentially drop the write lock and re-acquire the
@@ -579,7 +579,7 @@ bool w_query_execute(
     }
     ctx.lock = &rlock;
     // Evaluate the cursor for this root
-    w_clockspec_eval_readonly(&rlock, query->since_spec, &ctx.since);
+    w_clockspec_eval_readonly(&rlock, query->since_spec.get(), &ctx.since);
   }
 
   res->root_number = ctx.lock->root->inner.number;

@@ -28,15 +28,18 @@ struct w_clockspec {
       w_string_t *cursor;
     } named_cursor;
   };
+
+  ~w_clockspec();
 };
 
-struct w_clockspec *w_clockspec_new_clock(uint32_t root_number, uint32_t ticks);
-struct w_clockspec *w_clockspec_parse(json_t *value);
+std::unique_ptr<w_clockspec> w_clockspec_new_clock(
+    uint32_t root_number,
+    uint32_t ticks);
+std::unique_ptr<w_clockspec> w_clockspec_parse(json_t* value);
 void w_clockspec_eval(struct write_locked_watchman_root *lock,
                       const struct w_clockspec *spec,
                       struct w_query_since *since);
 void w_clockspec_eval_readonly(struct read_locked_watchman_root *lock,
                                const struct w_clockspec *spec,
                                struct w_query_since *since);
-void w_clockspec_free(struct w_clockspec *spec);
 void w_clockspec_init(void);

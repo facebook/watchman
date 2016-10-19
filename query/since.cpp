@@ -70,7 +70,7 @@ class SinceExpr : public QueryExpr {
     }
 
     jval = json_array_get(term, 1);
-    spec.reset(w_clockspec_parse(jval));
+    spec = w_clockspec_parse(jval);
     if (!spec) {
       query->errmsg = strdup("invalid clockspec for \"since\" term");
       return nullptr;

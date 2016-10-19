@@ -446,7 +446,7 @@ done:
 void w_assess_trigger(struct write_locked_watchman_root *lock,
                       struct watchman_trigger_command *cmd) {
   w_query_res res;
-  struct w_clockspec *since_spec = cmd->query->since_spec;
+  auto since_spec = cmd->query->since_spec.get();
 
   if (since_spec && since_spec->tag == w_cs_clock) {
     w_log(
@@ -479,6 +479,7 @@ void w_assess_trigger(struct write_locked_watchman_root *lock,
       uint32_t(res.results.size()));
 
   // create a new spec that will be used the next time
+  auto saved_spec = std::move(cmd->query->since_spec);
   cmd->query->since_spec = w_clockspec_new_clock(res.root_number, res.ticks);
 
   w_log(
@@ -488,12 +489,7 @@ void w_assess_trigger(struct write_locked_watchman_root *lock,
       res.ticks);
 
   if (!res.results.empty()) {
-    spawn_command(lock->root, cmd, &res, since_spec);
-  }
-
-  if (since_spec) {
-    w_clockspec_free(since_spec);
-    since_spec = NULL;
+    spawn_command(lock->root, cmd, &res, saved_spec.get());
   }
 }
 

@@ -163,9 +163,6 @@ done:
 static void update_subscription_ticks(struct watchman_client_subscription *sub,
     w_query_res *res) {
   // create a new spec that will be used the next time
-  if (sub->query->since_spec) {
-    w_clockspec_free(sub->query->since_spec);
-  }
   sub->query->since_spec = w_clockspec_new_clock(res->root_number, res->ticks);
 }
 
@@ -177,7 +174,7 @@ static json_t *build_subscription_results(
   json_t *response;
   json_t *file_list;
   char clockbuf[128];
-  struct w_clockspec *since_spec = sub->query->since_spec;
+  auto since_spec = sub->query->since_spec.get();
 
   if (since_spec && since_spec->tag == w_cs_clock) {
     w_log(W_LOG_DBG, "running subscription %s rules since %" PRIu32 "\n",
