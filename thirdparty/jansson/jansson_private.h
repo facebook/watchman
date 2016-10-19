@@ -31,37 +31,37 @@
 #endif
 #endif
 
-typedef struct {
+struct json_object_t {
     json_t json;
     hashtable_t hashtable;
     size_t serial;
     int visited;
-} json_object_t;
+};
 
-typedef struct {
+struct json_array_t {
     json_t json;
     size_t size;
     size_t entries;
     json_t **table;
     int visited;
     json_t *templ;
-} json_array_t;
+};
 
-typedef struct {
+struct json_string_t {
     json_t json;
     w_string_t *value;
     char *cache;
-} json_string_t;
+};
 
-typedef struct {
+struct json_real_t {
     json_t json;
     double value;
-} json_real_t;
+};
 
-typedef struct {
-    json_t json;
-    json_int_t value;
-} json_integer_t;
+struct json_integer_t {
+  json_t json;
+  json_int_t value;
+};
 
 #define json_to_object(json_)  container_of(json_, json_object_t, json)
 #define json_to_array(json_)   container_of(json_, json_array_t, json)

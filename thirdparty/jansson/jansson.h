@@ -44,10 +44,10 @@ typedef enum {
     JSON_NULL
 } json_type;
 
-typedef struct {
+struct json_t {
     json_type type;
     size_t refcount;
-} json_t;
+};
 
 #if JSON_INTEGER_IS_LONG_LONG
 #ifdef _WIN32
@@ -116,14 +116,13 @@ void json_decref(json_t *json)
 #define JSON_ERROR_TEXT_LENGTH    160
 #define JSON_ERROR_SOURCE_LENGTH   80
 
-typedef struct {
+struct json_error_t {
     int line;
     int column;
     int position;
     char source[JSON_ERROR_SOURCE_LENGTH];
     char text[JSON_ERROR_TEXT_LENGTH];
-} json_error_t;
-
+};
 
 /* getters, setters, manipulation */
 

@@ -8,11 +8,11 @@
 #ifndef STRBUFFER_H
 #define STRBUFFER_H
 
-typedef struct {
-    char *value;
-    size_t length;   /* bytes used */
-    size_t size;     /* bytes allocated */
-} strbuffer_t;
+struct strbuffer_t {
+  char* value;
+  size_t length; /* bytes used */
+  size_t size; /* bytes allocated */
+};
 
 int strbuffer_init(strbuffer_t *strbuff);
 void strbuffer_close(strbuffer_t *strbuff);

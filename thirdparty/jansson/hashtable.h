@@ -29,13 +29,12 @@ struct hashtable_bucket {
     struct hashtable_list *last;
 };
 
-typedef struct hashtable {
+struct hashtable_t {
     size_t size;
     struct hashtable_bucket *buckets;
     size_t num_buckets;  /* index to primes[] */
     struct hashtable_list list;
-} hashtable_t;
-
+};
 
 #define hashtable_key_to_iter(key_) \
     (&(container_of(key_, struct hashtable_pair, key)->list))
