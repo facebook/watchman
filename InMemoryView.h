@@ -19,11 +19,7 @@ namespace watchman {
 struct InMemoryView {
   Watcher* watcher;
 
-  /** Record the most recent tick value seen during either markFileChanged
-   * (or for triggers, is bumped when a trigger is registered).
-   * This allows subscribers to know how far back they need to query. */
-  uint32_t pending_trigger_tick{0};
-  uint32_t pending_sub_tick{0};
+  uint32_t getMostRecentTickValue() const;
 
   uint32_t last_age_out_tick{0};
   time_t last_age_out_timestamp{0};
@@ -127,5 +123,8 @@ struct InMemoryView {
 
   w_string root_path;
   std::unique_ptr<watchman_dir> root_dir;
+
+  // The most recently observed tick value of an item in the view
+  std::atomic<uint32_t> mostRecentTick_{0};
 };
 }

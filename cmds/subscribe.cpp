@@ -42,9 +42,9 @@ void process_subscriptions(struct write_locked_watchman_root *lock) {
           sub,
           sub->name->buf,
           sub->last_sub_tick,
-          root->inner.view.pending_sub_tick);
+          root->inner.view.getMostRecentTickValue());
 
-      if (sub->last_sub_tick == root->inner.view.pending_sub_tick) {
+      if (sub->last_sub_tick == root->inner.view.getMostRecentTickValue()) {
         continue;
       }
 
@@ -86,7 +86,7 @@ void process_subscriptions(struct write_locked_watchman_root *lock) {
 
       if (drop) {
         // fast-forward over any notifications while in the drop state
-        sub->last_sub_tick = root->inner.view.pending_sub_tick;
+        sub->last_sub_tick = root->inner.view.getMostRecentTickValue();
         w_log(
             W_LOG_DBG,
             "dropping subscription notifications for %s "
@@ -113,7 +113,7 @@ void process_subscriptions(struct write_locked_watchman_root *lock) {
       }
 
       w_run_subscription_rules(client, sub, lock);
-      sub->last_sub_tick = root->inner.view.pending_sub_tick;
+      sub->last_sub_tick = root->inner.view.getMostRecentTickValue();
 
     } while (w_ht_next(client->subscriptions, &citer));
 

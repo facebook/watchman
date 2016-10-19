@@ -40,8 +40,7 @@ void InMemoryView::markFileChanged(
   }
 
   // Flag that we have pending trigger info
-  pending_trigger_tick = tick;
-  pending_sub_tick = tick;
+  mostRecentTick_ = tick;
 }
 
 const watchman_dir* InMemoryView::resolveDir(const w_string& dir_name) const {
@@ -558,5 +557,9 @@ bool InMemoryView::allFilesGenerator(
 done:
   *num_walked = n;
   return result;
+}
+
+uint32_t InMemoryView::getMostRecentTickValue() const {
+  return mostRecentTick_.load();
 }
 }
