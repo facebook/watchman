@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "make_unique.h"
 #include "watchman.h"
 
 #ifdef HAVE_KQUEUE
@@ -65,7 +66,7 @@ const struct watchman_hash_funcs name_to_fd_funcs = {
 };
 
 bool KQueueWatcher::initNew(w_root_t* root, char** errmsg) {
-  std::unique_ptr<KQueueWatcher> watcher(new KQueueWatcher);
+  auto watcher = watchman::make_unique<KQueueWatcher>();
   json_int_t hint_num_dirs =
       cfg_get_int(root, CFG_HINT_NUM_DIRS, HINT_NUM_DIRS);
 

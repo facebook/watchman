@@ -3,12 +3,14 @@
 
 #include "watchman.h"
 
+#include "make_unique.h"
+
 class SuffixExpr : public QueryExpr {
   w_string suffix;
 
+ public:
   explicit SuffixExpr(w_string suffix) : suffix(suffix) {}
 
- public:
   bool evaluate(struct w_query_ctx*, const watchman_file* file) {
     return w_string_suffix_match(w_file_get_name(file), suffix);
   }
@@ -27,7 +29,7 @@ class SuffixExpr : public QueryExpr {
       return nullptr;
     }
 
-    return std::unique_ptr<QueryExpr>(new SuffixExpr(str));
+    return watchman::make_unique<SuffixExpr>(str);
   }
 };
 W_TERM_PARSER("suffix", SuffixExpr::parse)

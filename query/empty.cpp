@@ -3,13 +3,15 @@
 
 #include "watchman.h"
 
+#include "make_unique.h"
+
 class ExistsExpr : public QueryExpr {
  public:
   bool evaluate(struct w_query_ctx*, const watchman_file* file) override {
     return file->exists;
   }
   static std::unique_ptr<QueryExpr> parse(w_query*, json_t*) {
-    return std::unique_ptr<QueryExpr>(new ExistsExpr);
+    return watchman::make_unique<ExistsExpr>();
   }
 };
 W_TERM_PARSER("exists", ExistsExpr::parse)
@@ -29,7 +31,7 @@ class EmptyExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr> parse(w_query*, json_t*) {
-    return std::unique_ptr<QueryExpr>(new EmptyExpr);
+    return watchman::make_unique<EmptyExpr>();
   }
 };
 W_TERM_PARSER("empty", EmptyExpr::parse)

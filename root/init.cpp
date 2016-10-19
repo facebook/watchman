@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+#include "make_unique.h"
+
 // Each root gets a number that uniquely identifies it within the process. This
 // helps avoid confusion if a root is removed and then added again.
 static std::atomic<long> next_root_number{1};
@@ -92,7 +94,8 @@ bool w_root_init(w_root_t *root, char **errmsg) {
 
   // "manually" populate the initial dir, as the dir resolver will
   // try to find its parent and we don't want it to for the root
-  root->inner.view.root_dir.reset(new watchman_dir(root->root_path, nullptr));
+  root->inner.view.root_dir =
+      watchman::make_unique<watchman_dir>(root->root_path, nullptr);
 
   time(&root->inner.last_cmd_timestamp);
 

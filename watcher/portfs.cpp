@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "make_unique.h"
 #include "watchman.h"
 
 #ifdef HAVE_PORT_CREATE
@@ -93,7 +94,7 @@ const struct watchman_hash_funcs port_file_funcs = {
 };
 
 bool PortFSWatcher::initNew(w_root_t* root, char** errmsg) {
-  std::unique_ptr<PortFSWatcher> watcher(new PortFSWatcher);
+  auto watcher = watchman::make_unique<PortFSWatcher>();
 
   if (!watcher) {
     *errmsg = strdup("out of memory");

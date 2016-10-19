@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+#include "make_unique.h"
+
 /* process any pending triggers.
  * This is called from the IO thread */
 void process_triggers(struct write_locked_watchman_root *lock) {
@@ -246,12 +248,11 @@ watchman_trigger_command::watchman_trigger_command()
 
 std::unique_ptr<watchman_trigger_command>
 w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg) {
-  std::unique_ptr<watchman_trigger_command> cmd;
   json_t *ele, *query, *relative_root;
   json_int_t jint;
   const char *name = NULL;
 
-  cmd.reset(new watchman_trigger_command);
+  auto cmd = watchman::make_unique<watchman_trigger_command>();
   if (!cmd) {
     *errmsg = strdup("no memory");
     return nullptr;

@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "make_unique.h"
 #include "watchman.h"
 
 #if HAVE_FSEVENTS
@@ -611,7 +612,7 @@ break_out:
 }
 
 bool FSEventsWatcher::initNew(w_root_t* root, char** errmsg) {
-  std::unique_ptr<FSEventsWatcher> watcher(new FSEventsWatcher);
+  auto watcher = watchman::make_unique<FSEventsWatcher>();
 
   if (!watcher) {
     *errmsg = strdup("out of memory");

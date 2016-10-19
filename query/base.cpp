@@ -4,16 +4,17 @@
 #include "watchman.h"
 
 #include <vector>
+#include "make_unique.h"
 
 /* Basic boolean and compound expressions */
 
 class NotExpr : public QueryExpr {
   std::unique_ptr<QueryExpr> expr;
 
+ public:
   explicit NotExpr(std::unique_ptr<QueryExpr> other_expr)
       : expr(std::move(other_expr)) {}
 
- public:
   bool evaluate(w_query_ctx* ctx, const watchman_file* file) override {
     return !expr->evaluate(ctx, file);
   }
@@ -33,7 +34,7 @@ class NotExpr : public QueryExpr {
       return nullptr;
     }
 
-    return std::unique_ptr<QueryExpr>(new NotExpr(std::move(other_expr)));
+    return watchman::make_unique<NotExpr>(std::move(other_expr));
   }
 };
 
@@ -46,7 +47,7 @@ class TrueExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr> parse(w_query*, json_t*) {
-    return std::unique_ptr<QueryExpr>(new TrueExpr());
+    return watchman::make_unique<TrueExpr>();
   }
 };
 
@@ -59,7 +60,7 @@ class FalseExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr> parse(w_query*, json_t*) {
-    return std::unique_ptr<QueryExpr>(new FalseExpr());
+    return watchman::make_unique<FalseExpr>();
   }
 };
 
@@ -69,10 +70,10 @@ class ListExpr : public QueryExpr {
   bool allof;
   std::vector<std::unique_ptr<QueryExpr>> exprs;
 
+ public:
   ListExpr(bool isAll, std::vector<std::unique_ptr<QueryExpr>> exprs)
       : allof(isAll), exprs(std::move(exprs)) {}
 
- public:
   bool evaluate(w_query_ctx* ctx, const watchman_file* file) override {
     for (auto& expr : exprs) {
       bool res = expr->evaluate(ctx, file);
@@ -117,7 +118,7 @@ class ListExpr : public QueryExpr {
       list.emplace_back(std::move(parsed));
     }
 
-    return std::unique_ptr<QueryExpr>(new ListExpr(allof, std::move(list)));
+    return watchman::make_unique<ListExpr>(allof, std::move(list));
   }
 
   static std::unique_ptr<QueryExpr> parseAllOf(w_query* query, json_t* term) {

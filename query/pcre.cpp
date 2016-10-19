@@ -3,12 +3,15 @@
 
 #include "watchman.h"
 
+#include "make_unique.h"
+
 #ifdef HAVE_PCRE_H
 class PcreExpr : public QueryExpr {
   pcre *re;
   pcre_extra *extra;
   bool wholename;
 
+ public:
   explicit PcreExpr(pcre* re, pcre_extra* extra, bool wholename)
       : re(re), extra(extra), wholename(wholename) {}
 
@@ -21,7 +24,6 @@ class PcreExpr : public QueryExpr {
     }
   }
 
- public:
   bool evaluate(struct w_query_ctx* ctx, const watchman_file* file) override {
     w_string_t* str;
     int rc;
@@ -88,8 +90,8 @@ class PcreExpr : public QueryExpr {
       return nullptr;
     }
 
-    return std::unique_ptr<QueryExpr>(new PcreExpr(
-        re, pcre_study(re, 0, &errptr), !strcmp(scope, "wholename")));
+    return watchman::make_unique<PcreExpr>(
+        re, pcre_study(re, 0, &errptr), !strcmp(scope, "wholename"));
   }
   static std::unique_ptr<QueryExpr> parsePcre(w_query* query, json_t* term) {
     return parse(query, term, !query->case_sensitive);

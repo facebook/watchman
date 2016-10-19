@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "make_unique.h"
 #include "watchman.h"
 
 #ifdef HAVE_INOTIFY_INIT
@@ -141,7 +142,7 @@ static const char *inot_strerror(int err) {
 }
 
 bool InotifyWatcher::initNew(w_root_t* root, char** errmsg) {
-  std::unique_ptr<InotifyWatcher> watcher(new InotifyWatcher);
+  auto watcher = watchman::make_unique<InotifyWatcher>();
 
   if (!watcher) {
     *errmsg = strdup("out of memory");

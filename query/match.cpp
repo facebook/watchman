@@ -2,6 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+
+#include "make_unique.h"
 #include "thirdparty/wildmatch/wildmatch.h"
 #include <string>
 
@@ -87,14 +89,13 @@ class WildMatchExpr : public QueryExpr {
       return nullptr;
     }
 
-    return std::unique_ptr<QueryExpr>(new WildMatchExpr(
+    return watchman::make_unique<WildMatchExpr>(
         pattern,
         caseless,
         !strcmp(scope, "wholename"),
         noescape,
-        includedotfiles));
+        includedotfiles);
   }
-
   static std::unique_ptr<QueryExpr> parseMatch(w_query* query, json_t* term) {
     return parse(query, term, !query->case_sensitive);
   }

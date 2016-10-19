@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "make_unique.h"
 
 static int proc_pid;
 static uint64_t proc_start_time;
@@ -19,7 +20,7 @@ void w_clockspec_init(void) {
 std::unique_ptr<w_clockspec> w_clockspec_new_clock(
     uint32_t root_number,
     uint32_t ticks) {
-  std::unique_ptr<w_clockspec> spec(new w_clockspec);
+  auto spec = watchman::make_unique<w_clockspec>();
   spec->tag = w_cs_clock;
   spec->clock.start_time = proc_start_time;
   spec->clock.pid = proc_pid;
@@ -35,7 +36,7 @@ std::unique_ptr<w_clockspec> w_clockspec_parse(json_t* value) {
   uint32_t root_number;
   uint32_t ticks;
 
-  std::unique_ptr<w_clockspec> spec(new w_clockspec);
+  auto spec = watchman::make_unique<w_clockspec>();
 
   if (json_is_integer(value)) {
     spec->tag = w_cs_timestamp;

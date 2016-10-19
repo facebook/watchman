@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+#include "make_unique.h"
+
 static inline bool is_dir_sep(int c) {
   return c == '/' || c == '\\';
 }
@@ -13,13 +15,13 @@ class DirNameExpr : public QueryExpr {
   using StartsWith = bool (*)(w_string_t* str, w_string_t* prefix);
   StartsWith startswith;
 
+ public:
   explicit DirNameExpr(
       w_string dirname,
       struct w_query_int_compare depth,
       StartsWith startswith)
       : dirname(dirname), depth(depth), startswith(startswith) {}
 
- public:
   bool evaluate(w_query_ctx* ctx, const watchman_file* file) override {
     w_string_t* str = w_query_ctx_get_wholename(ctx);
     size_t i;
@@ -119,10 +121,10 @@ class DirNameExpr : public QueryExpr {
       depth_comp.op = W_QUERY_ICMP_GE;
     }
 
-    return std::unique_ptr<QueryExpr>(new DirNameExpr(
+    return watchman::make_unique<DirNameExpr>(
         json_to_w_string(name),
         depth_comp,
-        caseless ? w_string_startswith_caseless : w_string_startswith));
+        caseless ? w_string_startswith_caseless : w_string_startswith);
   }
   static std::unique_ptr<QueryExpr> parseDirName(w_query* query, json_t* term) {
     return parse(query, term, !query->case_sensitive);

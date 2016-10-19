@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+#include "make_unique.h"
+
 enum since_what { SINCE_OCLOCK, SINCE_CCLOCK, SINCE_MTIME, SINCE_CTIME };
 
 static struct {
@@ -19,10 +21,10 @@ class SinceExpr : public QueryExpr {
   std::unique_ptr<w_clockspec> spec;
   enum since_what field;
 
+ public:
   explicit SinceExpr(std::unique_ptr<w_clockspec> spec, enum since_what field)
       : spec(std::move(spec)), field(field) {}
 
- public:
   bool evaluate(struct w_query_ctx* ctx, const watchman_file* file) override {
     w_clock_t clock;
     struct w_query_since since;
@@ -128,8 +130,7 @@ class SinceExpr : public QueryExpr {
         break;
     }
 
-    return std::unique_ptr<QueryExpr>(
-        new SinceExpr(std::move(spec), selected_field));
+    return watchman::make_unique<SinceExpr>(std::move(spec), selected_field);
   }
 };
 W_TERM_PARSER("since", SinceExpr::parse)

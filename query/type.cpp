@@ -3,12 +3,14 @@
 
 #include "watchman.h"
 
+#include "make_unique.h"
+
 class TypeExpr : public QueryExpr {
   char arg;
 
+ public:
   explicit TypeExpr(char arg) : arg(arg) {}
 
- public:
   bool evaluate(struct w_query_ctx*, const watchman_file* file) override {
     switch (arg) {
       case 'b':
@@ -52,7 +54,7 @@ class TypeExpr : public QueryExpr {
 
     arg = *found;
 
-    return std::unique_ptr<QueryExpr>(new TypeExpr(arg));
+    return watchman::make_unique<TypeExpr>(arg);
   }
 };
 W_TERM_PARSER("type", TypeExpr::parse)

@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+#include "make_unique.h"
+
 #ifdef _WIN32
 
 #define NETWORK_BUF_SIZE (64*1024)
@@ -47,7 +49,7 @@ struct WinWatcher : public Watcher {
 };
 
 bool WinWatcher::initNew(w_root_t* root, char** errmsg) {
-  std::unique_ptr<WinWatcher> watcher(new WinWatcher);
+  auto watcher = watchman::make_unique<WinWatcher>();
   WCHAR *wpath;
   int err;
 

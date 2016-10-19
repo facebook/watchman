@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+#include "make_unique.h"
+
 // Helper functions for integer comparisons in query expressions
 
 static const struct {
@@ -83,9 +85,9 @@ bool eval_int_compare(json_int_t ival, struct w_query_int_compare *comp) {
 class SizeExpr : public QueryExpr {
   w_query_int_compare comp;
 
+ public:
   explicit SizeExpr(w_query_int_compare comp) : comp(comp) {}
 
- public:
   bool evaluate(struct w_query_ctx*, const watchman_file* file) override {
     // Removed files never evaluate true
     if (!file->exists) {
@@ -107,7 +109,7 @@ class SizeExpr : public QueryExpr {
       return nullptr;
     }
 
-    return std::unique_ptr<QueryExpr>(new SizeExpr(comp));
+    return watchman::make_unique<SizeExpr>(comp);
   }
 };
 W_TERM_PARSER("size", SizeExpr::parse)
