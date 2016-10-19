@@ -25,6 +25,7 @@ SRCS_C=\
 
 SRCS_CPP=\
 	InMemoryView.cpp \
+	QueryableView.cpp \
 	winbuild\errmap.cpp \
 	winbuild\pathmap.cpp \
 	winbuild\stat.cpp \

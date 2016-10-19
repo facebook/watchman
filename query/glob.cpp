@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #include "thirdparty/wildmatch/wildmatch.h"
+#include "InMemoryView.h"
 
 /* The glob generator.
  * The user can specify a list of globs as the set of candidate nodes

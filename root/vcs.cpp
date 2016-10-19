@@ -2,13 +2,23 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "InMemoryView.h"
 
 bool vcs_file_exists(struct write_locked_watchman_root *lock, const char *dname,
                      const char *fname) {
   struct watchman_file *file;
 
   auto dir_name = w_string::pathCat({lock->root->root_path, dname});
-  const auto dir = lock->root->inner.view->resolveDir(dir_name);
+  auto view =
+      dynamic_cast<watchman::InMemoryView*>(lock->root->inner.view.get());
+
+  if (!view) {
+    // TODO: figure out how we're going to handle this for eden;
+    // perhaps just bite the bullet and look at the VFS directly?
+    return false;
+  }
+
+  const auto dir = view->resolveDir(dir_name);
 
   if (!dir) {
     return false;

@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 
+#include "InMemoryView.h"
 #include "make_unique.h"
 
 // Each root gets a number that uniquely identifies it within the process. This

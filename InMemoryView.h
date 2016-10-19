@@ -4,24 +4,18 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include "QueryableView.h"
 #include "watchman_perf.h"
 #include "watchman_query.h"
 #include "watchman_string.h"
 
-struct watchman_file;
-struct watchman_dir;
-struct Watcher;
-struct watchman_glob_tree;
-
 namespace watchman {
 
 /** Keeps track of the state of the filesystem in-memory. */
-struct InMemoryView {
-  Watcher* watcher;
-
-  uint32_t getMostRecentTickValue() const;
-  uint32_t getLastAgeOutTickValue() const;
-  time_t getLastAgeOutTimeStamp() const;
+struct InMemoryView : public QueryableView {
+  uint32_t getMostRecentTickValue() const override;
+  uint32_t getLastAgeOutTickValue() const override;
+  time_t getLastAgeOutTimeStamp() const override;
 
   explicit InMemoryView(const w_string& root_path);
 
@@ -52,36 +46,36 @@ struct InMemoryView {
       const struct timeval& now,
       uint32_t tick);
 
-  void ageOut(w_perf_t& sample, std::chrono::seconds minAge);
+  void ageOut(w_perf_t& sample, std::chrono::seconds minAge) override;
 
   /** Perform a time-based (since) query and emit results to the supplied
    * query context */
   bool timeGenerator(
       w_query* query,
       struct w_query_ctx* ctx,
-      int64_t* num_walked) const;
+      int64_t* num_walked) const override;
 
   /** Walks all files with the suffix(es) configured in the query */
   bool suffixGenerator(
       w_query* query,
       struct w_query_ctx* ctx,
-      int64_t* num_walked) const;
+      int64_t* num_walked) const override;
 
   /** Walks files that match the supplied set of paths */
   bool pathGenerator(
       w_query* query,
       struct w_query_ctx* ctx,
-      int64_t* num_walked) const;
+      int64_t* num_walked) const override;
 
   bool globGenerator(
       w_query* query,
       struct w_query_ctx* ctx,
-      int64_t* num_walked) const;
+      int64_t* num_walked) const override;
 
   bool allFilesGenerator(
       w_query* query,
       struct w_query_ctx* ctx,
-      int64_t* num_walked) const;
+      int64_t* num_walked) const override;
 
  private:
   void ageOutFile(

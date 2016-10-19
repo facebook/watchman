@@ -12,6 +12,7 @@ watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 watchman_LDADD = $(JSON_LIB) $(ART_LIB) libwildmatch.a
 watchman_SOURCES = \
 	InMemoryView.cpp \
+	QueryableView.cpp \
 	argv.cpp       \
 	envp.cpp       \
 	spawn.cpp       \

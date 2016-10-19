@@ -3,7 +3,7 @@
 #pragma once
 #include <condition_variable>
 #include <unordered_map>
-#include "InMemoryView.h"
+#include "QueryableView.h"
 #include "watchman_shared_mutex.h"
 #include "watchman_synchronized.h"
 
@@ -100,7 +100,7 @@ struct watchman_root {
     /* the watcher that we're using for this root */
     std::unique_ptr<Watcher> watcher;
 
-    std::unique_ptr<watchman::InMemoryView> view;
+    std::unique_ptr<watchman::QueryableView> view;
 
     /* current tick */
     uint32_t ticks{1};

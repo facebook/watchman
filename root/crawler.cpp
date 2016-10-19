@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "InMemoryView.h"
 
 static void apply_dir_size_hint(struct watchman_dir *dir,
     uint32_t ndirs, uint32_t nfiles) {
@@ -25,6 +26,10 @@ void crawler(
   char path[WATCHMAN_NAME_MAX];
   bool stat_all = false;
   w_root_t *root = lock->root;
+  // crawler is only invoked for instances of InMemoryView so we
+  // need not check the return value of this cast expression.
+  auto view =
+      dynamic_cast<watchman::InMemoryView*>(lock->root->inner.view.get());
 
   if (root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
     stat_all = root->inner.watcher->flags & WATCHER_COALESCED_RENAME;
@@ -36,7 +41,7 @@ void crawler(
     stat_all = false;
   }
 
-  auto dir = lock->root->inner.view->resolveDir(dir_name, true);
+  auto dir = view->resolveDir(dir_name, true);
 
   memcpy(path, dir_name.data(), dir_name.size());
   path[dir_name.size()] = 0;

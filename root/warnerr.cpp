@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "InMemoryView.h"
 
 // POSIX says open with O_NOFOLLOW should set errno to ELOOP if the path is a
 // symlink. However, FreeBSD (which ironically originated O_NOFOLLOW) sets it to
@@ -58,8 +59,9 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
   }
 
   stop_watching_dir(lock, dir);
-  lock->root->inner.view->markDirDeleted(
-      dir, now, lock->root->inner.ticks, true);
+  auto view =
+      dynamic_cast<watchman::InMemoryView*>(lock->root->inner.view.get());
+  view->markDirDeleted(dir, now, lock->root->inner.ticks, true);
 }
 
 void w_root_set_warning(
