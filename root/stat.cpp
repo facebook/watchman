@@ -17,6 +17,11 @@ void stat_path(
   bool via_notify = flags & W_PENDING_VIA_NOTIFY;
   w_root_t *root = lock->root;
 
+  // stat_path is only invoked for instances of InMemoryView so we
+  // need not check the return value of this cast expression.
+  auto view =
+      dynamic_cast<watchman::InMemoryView*>(lock->root->inner.view.get());
+
   if (w_ht_get(root->ignore.ignore_dirs, w_ht_ptr_val(full_path))) {
     w_log(
         W_LOG_DBG,
@@ -66,8 +71,7 @@ void stat_path(
   if (res && (err == ENOENT || err == ENOTDIR)) {
     /* it's not there, update our state */
     if (dir_ent) {
-      lock->root->inner.view->markDirDeleted(
-          dir_ent, now, lock->root->inner.ticks, true);
+      view->markDirDeleted(dir_ent, now, lock->root->inner.ticks, true);
       w_log(
           W_LOG_DBG,
           "w_lstat(%s) -> %s so stopping watch on %.*s\n",
@@ -83,21 +87,19 @@ void stat_path(
               strerror(err), w_file_get_name(file)->len,
               w_file_get_name(file)->buf);
         file->exists = false;
-        lock->root->inner.view->markFileChanged(
-            file, now, lock->root->inner.ticks);
+        view->markFileChanged(file, now, lock->root->inner.ticks);
       }
     } else {
       // It was created and removed before we could ever observe it
       // in the filesystem.  We need to generate a deleted file
       // representation of it now, so that subscription clients can
       // be notified of this event
-      file = lock->root->inner.view->getOrCreateChildFile(
+      file = view->getOrCreateChildFile(
           dir, file_name, now, lock->root->inner.ticks);
       w_log(W_LOG_DBG, "w_lstat(%s) -> %s and file node was NULL. "
           "Generating a deleted node.\n", path, strerror(err));
       file->exists = false;
-      lock->root->inner.view->markFileChanged(
-          file, now, lock->root->inner.ticks);
+      view->markFileChanged(file, now, lock->root->inner.ticks);
     }
 
     if (!root->case_sensitive && !w_string_equal(dir_name, root->root_path) &&
@@ -120,7 +122,7 @@ void stat_path(
         path, err, strerror(err));
   } else {
     if (!file) {
-      file = lock->root->inner.view->getOrCreateChildFile(
+      file = view->getOrCreateChildFile(
           dir, file_name, now, lock->root->inner.ticks);
     }
 
@@ -143,8 +145,7 @@ void stat_path(
           path
       );
       file->exists = true;
-      lock->root->inner.view->markFileChanged(
-          file, now, lock->root->inner.ticks);
+      view->markFileChanged(file, now, lock->root->inner.ticks);
     }
 
     memcpy(&file->stat, &st, sizeof(file->stat));
@@ -210,8 +211,7 @@ void stat_path(
     } else if (dir_ent) {
       // We transitioned from dir to file (see fishy.php), so we should prune
       // our former tree here
-      lock->root->inner.view->markDirDeleted(
-          dir_ent, now, lock->root->inner.ticks, true);
+      view->markDirDeleted(dir_ent, now, lock->root->inner.ticks, true);
     }
     if ((root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
         !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&
