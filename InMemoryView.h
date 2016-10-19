@@ -83,9 +83,23 @@ struct InMemoryView {
       struct w_query_ctx* ctx,
       int64_t* num_walked) const;
 
+  /** Walks files that match the supplied set of paths */
+  bool pathGenerator(
+      w_query* query,
+      struct w_query_ctx* ctx,
+      int64_t* num_walked) const;
+
  private:
   void ageOutFile(
       std::unordered_set<w_string>& dirs_to_erase,
       watchman_file* file);
+
+  /** Recursively walks files under a specified dir */
+  bool dirGenerator(
+      w_query* query,
+      struct w_query_ctx* ctx,
+      const watchman_dir* dir,
+      uint32_t depth,
+      int64_t* num_walked) const;
 };
 }

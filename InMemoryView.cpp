@@ -410,4 +410,128 @@ done:
   *num_walked = n;
   return result;
 }
+
+bool InMemoryView::pathGenerator(
+    w_query* query,
+    struct w_query_ctx* ctx,
+    int64_t* num_walked) const {
+  w_string_t* relative_root;
+  struct watchman_file* f;
+  uint32_t i;
+  int64_t n = 0;
+  bool result = true;
+
+  if (query->relative_root != nullptr) {
+    relative_root = query->relative_root;
+  } else {
+    relative_root = root_path;
+  }
+
+  for (i = 0; i < query->npaths; i++) {
+    const watchman_dir* dir;
+    w_string_t* file_name;
+    w_string dir_name;
+
+    // Compose path with root
+    auto full_name = w_string::pathCat({relative_root, query->paths[i].name});
+
+    // special case of root dir itself
+    if (w_string_equal(root_path, full_name)) {
+      // dirname on the root is outside the root, which is useless
+      dir = resolveDir(full_name);
+      goto is_dir;
+    }
+
+    // Ideally, we'd just resolve it directly as a dir and be done.
+    // It's not quite so simple though, because we may resolve a dir
+    // that had been deleted and replaced by a file.
+    // We prefer to resolve the parent and walk down.
+    dir_name = full_name.dirName();
+    if (!dir_name) {
+      continue;
+    }
+
+    dir = resolveDir(dir_name);
+
+    if (!dir) {
+      // Doesn't exist, and never has
+      continue;
+    }
+
+    if (!dir->files.empty()) {
+      file_name = w_string_basename(query->paths[i].name);
+      f = dir->getChildFile(file_name);
+      w_string_delref(file_name);
+
+      // If it's a file (but not an existent dir)
+      if (f && (!f->exists || !S_ISDIR(f->stat.mode))) {
+        ++n;
+        if (!w_query_process_file(query, ctx, f)) {
+          result = false;
+          goto done;
+        }
+        continue;
+      }
+    }
+
+    // Is it a dir?
+    if (dir->dirs.empty()) {
+      continue;
+    }
+
+    dir = dir->getChildDir(full_name.baseName());
+  is_dir:
+    // We got a dir; process recursively to specified depth
+    if (dir) {
+      int64_t child_walked = 0;
+      result =
+          dirGenerator(query, ctx, dir, query->paths[i].depth, &child_walked);
+      n += child_walked;
+      if (!result) {
+        goto done;
+      }
+    }
+  }
+
+done:
+  *num_walked = n;
+  return result;
+}
+
+bool InMemoryView::dirGenerator(
+    w_query* query,
+    struct w_query_ctx* ctx,
+    const watchman_dir* dir,
+    uint32_t depth,
+    int64_t* num_walked) const {
+  int64_t n = 0;
+  bool result = true;
+
+  for (auto& it : dir->files) {
+    auto file = it.second.get();
+    ++n;
+
+    if (!w_query_process_file(query, ctx, file)) {
+      result = false;
+      goto done;
+    }
+  }
+
+  if (depth > 0) {
+    for (auto& it : dir->dirs) {
+      const auto child = it.second.get();
+      int64_t child_walked = 0;
+
+      result = dirGenerator(query, ctx, child, depth - 1, &child_walked);
+      n += child_walked;
+      if (!result) {
+        goto done;
+      }
+    }
+  }
+
+done:
+  *num_walked = n;
+  return result;
+}
 }
