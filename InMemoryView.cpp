@@ -2,12 +2,14 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
 #include <algorithm>
-
+#include "make_unique.h"
 #include "InMemoryView.h"
 
 namespace watchman {
 
-InMemoryView::InMemoryView(const w_string& root_path) : root_path(root_path) {}
+InMemoryView::InMemoryView(const w_string& root_path)
+    : root_path(root_path),
+      root_dir(watchman::make_unique<watchman_dir>(root_path, nullptr)) {}
 
 void InMemoryView::insertAtHeadOfFileList(struct watchman_file* file) {
   file->next = latest_file;

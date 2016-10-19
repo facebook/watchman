@@ -92,11 +92,6 @@ bool w_root_init(w_root_t *root, char **errmsg) {
 
   root->inner.number = next_root_number++;
 
-  // "manually" populate the initial dir, as the dir resolver will
-  // try to find its parent and we don't want it to for the root
-  root->inner.view.root_dir =
-      watchman::make_unique<watchman_dir>(root->root_path, nullptr);
-
   time(&root->inner.last_cmd_timestamp);
 
   return root;
@@ -135,10 +130,6 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
 
 void w_root_teardown(w_root_t *root) {
   w_pending_coll_drain(&root->ioThread.pending);
-
-  // Must delete_dir before we process the files to avoid
-  // an ASAN issue when trying to free the dir children
-  root->inner.view.root_dir.reset();
 
   // Placement delete and then new to re-init the storage.
   // We can't just delete because we need to leave things

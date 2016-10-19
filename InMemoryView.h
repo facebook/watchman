@@ -17,9 +17,8 @@ namespace watchman {
 
 /** Keeps track of the state of the filesystem in-memory. */
 struct InMemoryView {
-  std::unique_ptr<watchman_dir> root_dir;
-  w_string root_path;
   Watcher* watcher;
+
   /** Record the most recent tick value seen during either markFileChanged
    * (or for triggers, is bumped when a trigger is registered).
    * This allows subscribers to know how far back they need to query. */
@@ -28,17 +27,6 @@ struct InMemoryView {
 
   uint32_t last_age_out_tick{0};
   time_t last_age_out_timestamp{0};
-
-  /* the most recently changed file */
-  struct watchman_file* latest_file{0};
-
-  /* Holds the list head for files of a given suffix */
-  struct file_list_head {
-    watchman_file* head{nullptr};
-  };
-
-  /* Holds the list heads for all known suffixes */
-  std::unordered_map<w_string, std::unique_ptr<file_list_head>> suffixes;
 
   explicit InMemoryView(const w_string& root_path);
 
@@ -125,5 +113,19 @@ struct InMemoryView {
       const char* dir_name,
       uint32_t dir_name_len) const;
   void insertAtHeadOfFileList(struct watchman_file* file);
+
+  /* the most recently changed file */
+  struct watchman_file* latest_file{0};
+
+  /* Holds the list head for files of a given suffix */
+  struct file_list_head {
+    watchman_file* head{nullptr};
+  };
+
+  /* Holds the list heads for all known suffixes */
+  std::unordered_map<w_string, std::unique_ptr<file_list_head>> suffixes;
+
+  w_string root_path;
+  std::unique_ptr<watchman_dir> root_dir;
 };
 }
