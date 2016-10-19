@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "watchman_perf.h"
+#include "watchman_query.h"
 #include "watchman_string.h"
 
 struct watchman_file;
@@ -68,6 +69,13 @@ struct InMemoryView {
       uint32_t tick);
 
   void ageOut(w_perf_t& sample, std::chrono::seconds minAge);
+
+  /** Perform a time-based (since) query and emit results to the supplied
+   * query context */
+  bool timeGenerator(
+      w_query* query,
+      struct w_query_ctx* ctx,
+      int64_t* num_walked) const;
 
  private:
   void ageOutFile(

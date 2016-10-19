@@ -342,4 +342,37 @@ void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {
           "dirs",
           dirs_to_erase.size()));
 }
+
+bool InMemoryView::timeGenerator(
+    w_query* query,
+    struct w_query_ctx* ctx,
+    int64_t* num_walked) const {
+  struct watchman_file* f;
+  int64_t n = 0;
+  bool result = true;
+
+  // Walk back in time until we hit the boundary
+  for (f = latest_file; f; f = f->next) {
+    ++n;
+    if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
+      break;
+    }
+    if (!ctx->since.is_timestamp && f->otime.ticks <= ctx->since.clock.ticks) {
+      break;
+    }
+
+    if (!w_query_file_matches_relative_root(ctx, f)) {
+      continue;
+    }
+
+    if (!w_query_process_file(query, ctx, f)) {
+      result = false;
+      goto done;
+    }
+  }
+
+done:
+  *num_walked = n;
+  return result;
+}
 }

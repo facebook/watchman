@@ -134,34 +134,7 @@ bool time_generator(
     struct read_locked_watchman_root* lock,
     struct w_query_ctx* ctx,
     int64_t* num_walked) {
-  struct watchman_file *f;
-  int64_t n = 0;
-  bool result = true;
-
-  // Walk back in time until we hit the boundary
-  for (f = lock->root->inner.view.latest_file; f; f = f->next) {
-    ++n;
-    if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
-      break;
-    }
-    if (!ctx->since.is_timestamp &&
-        f->otime.ticks <= ctx->since.clock.ticks) {
-      break;
-    }
-
-    if (!w_query_file_matches_relative_root(ctx, f)) {
-      continue;
-    }
-
-    if (!w_query_process_file(query, ctx, f)) {
-      result = false;
-      goto done;
-    }
-  }
-
-done:
-  *num_walked = n;
-  return result;
+  return lock->root->inner.view.timeGenerator(query, ctx, num_walked);
 }
 
 static bool suffix_generator(w_query *query,
