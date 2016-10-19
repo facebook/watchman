@@ -24,6 +24,7 @@ SRCS_C=\
 	thirdparty\libart\src\art.c
 
 SRCS_CPP=\
+	CookieSync.cpp \
 	InMemoryView.cpp \
 	QueryableView.cpp \
 	winbuild\errmap.cpp \

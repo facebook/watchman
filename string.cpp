@@ -689,8 +689,10 @@ bool w_string_startswith_caseless(w_string_t *str, w_string_t *prefix)
   return true;
 }
 
-bool w_string_contains_cstr_len(w_string_t *str, const char *needle,
-                                uint32_t nlen) {
+bool w_string_contains_cstr_len(
+    const w_string_t* str,
+    const char* needle,
+    uint32_t nlen) {
 #if HAVE_MEMMEM
   return memmem(str->buf, str->len, needle, nlen) != NULL;
 #else

@@ -192,7 +192,7 @@ void stat_path(
       if (!w_ht_get(root->ignore.ignore_vcs, w_ht_ptr_val(dir_name)) ||
           // but do if we're looking at the cookie dir (stat_path is never
           // called for the root itself)
-          w_string_equal(full_path, root->query_cookie_dir)) {
+          w_string_equal(full_path, root->cookies.cookieDir())) {
         if (!root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
           /* we always need to crawl, but may not need to be fully recursive */
           w_pending_coll_add(coll, full_path, now,

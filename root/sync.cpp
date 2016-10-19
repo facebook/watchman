@@ -16,108 +16,25 @@
  */
 bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked,
                         int timeoutms) {
-  uint32_t tick;
-  struct watchman_query_cookie cookie;
-  w_stm_t file;
-  int errcode = 0;
-  struct write_locked_watchman_root lock;
-
   w_perf_t sample("sync_to_now");
 
-  auto cookie_lock = std::unique_lock<std::mutex>(cookie.mutex);
-
-  /* generate a cookie name: cookie prefix + id */
-  w_root_lock(unlocked, "w_root_sync_to_now", &lock);
-  tick = lock.root->inner.ticks++;
-  auto path_str = w_string::printf(
-      "%.*s%" PRIu32 "-%" PRIu32,
-      lock.root->query_cookie_prefix.size(),
-      lock.root->query_cookie_prefix.data(),
-      lock.root->inner.number,
-      tick);
-  w_root_unlock(&lock, unlocked);
-
-  /* insert our cookie in the map */
-  {
-    auto wlock = unlocked->root->query_cookies.wlock();
-    auto& map = *wlock;
-    map[path_str] = &cookie;
-  }
-
-  /* compute deadline */
-  auto deadline =
-      std::chrono::system_clock::now() + std::chrono::milliseconds(timeoutms);
-
-  /* touch the file */
-  file = w_stm_open(
-      path_str.c_str(), O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0700);
-  if (!file) {
-    errcode = errno;
-    w_log(
-        W_LOG_ERR,
-        "sync_to_now: creat(%s) failed: %s\n",
-        path_str.c_str(),
-        strerror(errcode));
-    goto out;
-  }
-  w_stm_close(file);
-
-  w_log(W_LOG_DBG, "sync_to_now [%s] waiting\n", path_str.c_str());
-
-  /* timed cond wait (unlocks cookie lock, reacquires) */
-  if (!cookie.cond.wait_until(
-          cookie_lock, deadline, [&] { return cookie.seen; })) {
-    w_log(
-        W_LOG_ERR,
-        "sync_to_now: %s timedwait failed: %d: istimeout=%d %s\n",
-        path_str.c_str(),
-        errcode,
-        errcode == ETIMEDOUT,
-        strerror(errcode));
-    goto out;
-  }
-  w_log(W_LOG_DBG, "sync_to_now [%s] done\n", path_str.c_str());
-
-out:
-  cookie_lock.unlock();
-
-  // can't unlink the file until after the cookie has been observed because
-  // we don't know which file got changed until we look in the cookie dir
-  unlink(path_str.c_str());
-
-  {
-    auto map = unlocked->root->query_cookies.wlock();
-    map->erase(path_str);
-  }
+  auto res =
+      unlocked->root->cookies.syncToNow(std::chrono::milliseconds(timeoutms));
 
   // We want to know about all timeouts
-  if (!cookie.seen) {
+  if (!res) {
     sample.force_log();
   }
-
   if (sample.finish()) {
     sample.add_root_meta(unlocked->root);
     sample.add_meta(
         "sync_to_now",
-        json_pack(
-            "{s:b, s:i, s:i}",
-            "success",
-            cookie.seen,
-            "timeoutms",
-            timeoutms,
-            "errcode",
-            errcode));
+        json_pack("{s:b, s:i}", "success", res, "timeoutms", timeoutms));
     sample.log();
   }
 
-  if (!cookie.seen) {
-    errno = errcode;
-    return false;
-  }
-
-  return true;
+  return res;
 }
-
 
 /* vim:ts=2:sw=2:et:
  */

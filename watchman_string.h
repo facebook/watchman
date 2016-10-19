@@ -62,8 +62,10 @@ w_string_t *w_string_basename(w_string_t *str);
 
 w_string_t *w_string_canon_path(w_string_t *str);
 int w_string_compare(const w_string_t *a, const w_string_t *b);
-bool w_string_contains_cstr_len(w_string_t *str, const char *needle,
-                                uint32_t nlen);
+bool w_string_contains_cstr_len(
+    const w_string_t* str,
+    const char* needle,
+    uint32_t nlen);
 
 void w_string_delref(w_string_t *str);
 w_string_t *w_string_dirname(w_string_t *str);

@@ -58,7 +58,6 @@ static json_t *config_get_ignore_vcs(w_root_t *root) {
 bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg) {
   uint8_t i;
   json_t *ignores;
-  char hostname[256];
   struct stat st;
 
   ignores = config_get_ignore_vcs(root);
@@ -90,29 +89,16 @@ bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg) {
 
     // While we're at it, see if we can find out where to put our
     // query cookie information
-    if (!root->query_cookie_dir &&
+    if (root->cookies.cookieDir() == root->root_path &&
         w_lstat(fullname.c_str(), &st, root->case_sensitive) == 0 &&
         S_ISDIR(st.st_mode)) {
       // root/{.hg,.git,.svn}
-      root->query_cookie_dir = fullname;
+      root->cookies.setCookieDir(fullname);
     }
   }
 
   json_decref(ignores);
 
-  if (!root->query_cookie_dir ) {
-    root->query_cookie_dir = root->root_path;
-  }
-  gethostname(hostname, sizeof(hostname));
-  hostname[sizeof(hostname) - 1] = '\0';
-
-  root->query_cookie_prefix = w_string::printf(
-      "%.*s%c" WATCHMAN_COOKIE_PREFIX "%s-%d-",
-      root->query_cookie_dir.size(),
-      root->query_cookie_dir.data(),
-      WATCHMAN_DIR_SEP,
-      hostname,
-      (int)getpid());
   return true;
 }
 

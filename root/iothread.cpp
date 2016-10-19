@@ -179,32 +179,15 @@ void w_root_process_path(
    *
    * The below condition is true for cases 1 and 2 and false for 3 and 4.
    */
-  if (w_string_startswith(full_path, lock->root->query_cookie_prefix)) {
+  if (w_string_startswith(full_path, lock->root->cookies.cookiePrefix())) {
     bool consider_cookie =
         (lock->root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)
         ? ((flags & W_PENDING_VIA_NOTIFY) || !lock->root->inner.done_initial)
         : true;
 
-    if (!consider_cookie) {
-      // Never allow cookie files to show up in the tree
-      return;
+    if (consider_cookie) {
+      lock->root->cookies.notifyCookie(full_path);
     }
-
-    {
-      auto map = lock->root->query_cookies.rlock();
-      auto cookie_iter = map->find(full_path);
-      w_log(
-          W_LOG_DBG,
-          "cookie for %s? %s\n",
-          full_path.c_str(),
-          cookie_iter != map->end() ? "yes" : "no");
-
-      if (cookie_iter != map->end()) {
-        auto cookie = cookie_iter->second;
-        cookie->seen = true;
-        cookie->cond.notify_one();
-      }
-    };
 
     // Never allow cookie files to show up in the tree
     return;

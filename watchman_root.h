@@ -3,6 +3,7 @@
 #pragma once
 #include <condition_variable>
 #include <unordered_map>
+#include "CookieSync.h"
 #include "QueryableView.h"
 #include "watchman_shared_mutex.h"
 #include "watchman_synchronized.h"
@@ -19,13 +20,6 @@
 
 /* Idle out watches that haven't had activity in several days */
 #define DEFAULT_REAP_AGE (86400*5)
-
-#define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"
-struct watchman_query_cookie {
-  std::condition_variable cond;
-  std::mutex mutex;
-  bool seen{false};
-};
 
 struct watchman_client_state_assertion;
 
@@ -53,11 +47,7 @@ struct watchman_root {
       std::unordered_map<w_string, std::unique_ptr<watchman_trigger_command>>>
       triggers;
 
-  /* path to the query cookie dir */
-  w_string query_cookie_dir;
-  w_string query_cookie_prefix;
-  watchman::Synchronized<std::unordered_map<w_string, watchman_query_cookie*>>
-      query_cookies;
+  watchman::CookieSync cookies;
 
   struct watchman_ignore ignore;
 

@@ -166,7 +166,7 @@ void w_root_delref_raw(w_root_t *root) {
 }
 
 watchman_root::watchman_root(const w_string& root_path)
-    : root_path(root_path), inner(root_path) {}
+    : root_path(root_path), cookies(root_path), inner(root_path) {}
 
 watchman_root::~watchman_root() {
   w_log(W_LOG_DBG, "root: final ref on %s\n", root_path.c_str());

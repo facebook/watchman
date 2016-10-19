@@ -162,18 +162,6 @@ struct kid_context {
   struct watchman_pending_collection *coll;
 };
 
-// We need to guarantee that we never collapse a cookie notification
-// out of the pending list, because we absolutely must observe it coming
-// in via the kernel notification mechanism in order for synchronization
-// to be correct.
-// Since we don't have a w_root_t available, we can't tell what the
-// precise cookie prefix is for the current pending list here, so
-// we do a substring match.  Not the most elegant thing in the world.
-static inline bool is_possibly_a_cookie(w_string_t *path) {
-  return w_string_contains_cstr_len(path, WATCHMAN_COOKIE_PREFIX,
-                                    sizeof(WATCHMAN_COOKIE_PREFIX) - 1);
-}
-
 // This is the iterator callback we use to prune out obsoleted leaves.
 // We need to compare the prefix to make sure that we don't delete
 // a sibling node by mistake (see commentary on the is_path_prefix
@@ -185,10 +173,9 @@ static int delete_kids(void *data, const unsigned char *key, uint32_t key_len,
   unused_parameter(value);
 
   if ((p->flags & W_PENDING_CRAWL_ONLY) == 0 && key_len > ctx->root->len &&
-      is_path_prefix((const char *)key, key_len, ctx->root->buf,
-                     ctx->root->len) &&
-      !is_possibly_a_cookie(p->path)) {
-
+      is_path_prefix(
+          (const char*)key, key_len, ctx->root->buf, ctx->root->len) &&
+      !watchman::CookieSync::isPossiblyACookie(p->path)) {
     w_log(W_LOG_DBG,
           "delete_kids: removing (%d) %.*s from pending because it is "
           "obsoleted by (%d) %.*s\n",
@@ -266,8 +253,7 @@ is_obsoleted_by_containing_dir(struct watchman_pending_collection *coll,
 
   if ((p->flags & W_PENDING_RECURSIVE) &&
       is_path_prefix(path->buf, path->len, (const char*)leaf->key, leaf->key_len)) {
-
-    if (is_possibly_a_cookie(path)) {
+    if (watchman::CookieSync::isPossiblyACookie(path)) {
       return false;
     }
 
