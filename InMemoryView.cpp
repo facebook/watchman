@@ -375,4 +375,39 @@ done:
   *num_walked = n;
   return result;
 }
+
+bool InMemoryView::suffixGenerator(
+    w_query* query,
+    struct w_query_ctx* ctx,
+    int64_t* num_walked) const {
+  uint32_t i;
+  struct watchman_file* f;
+  int64_t n = 0;
+  bool result = true;
+
+  for (i = 0; i < query->nsuffixes; i++) {
+    // Head of suffix index for this suffix
+    auto it = suffixes.find(query->suffixes[i]);
+    if (it == suffixes.end()) {
+      continue;
+    }
+
+    // Walk and process
+    for (f = it->second->head; f; f = f->suffix_next) {
+      ++n;
+      if (!w_query_file_matches_relative_root(ctx, f)) {
+        continue;
+      }
+
+      if (!w_query_process_file(query, ctx, f)) {
+        result = false;
+        goto done;
+      }
+    }
+  }
+
+done:
+  *num_walked = n;
+  return result;
+}
 }

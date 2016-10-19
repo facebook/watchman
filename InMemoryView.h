@@ -77,6 +77,12 @@ struct InMemoryView {
       struct w_query_ctx* ctx,
       int64_t* num_walked) const;
 
+  /** Walks all files with the suffix(es) configured in the query */
+  bool suffixGenerator(
+      w_query* query,
+      struct w_query_ctx* ctx,
+      int64_t* num_walked) const;
+
  private:
   void ageOutFile(
       std::unordered_set<w_string>& dirs_to_erase,

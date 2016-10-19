@@ -137,40 +137,6 @@ bool time_generator(
   return lock->root->inner.view.timeGenerator(query, ctx, num_walked);
 }
 
-static bool suffix_generator(w_query *query,
-                             struct read_locked_watchman_root *lock,
-                             struct w_query_ctx *ctx, int64_t *num_walked) {
-  uint32_t i;
-  struct watchman_file *f;
-  int64_t n = 0;
-  bool result = true;
-
-  for (i = 0; i < query->nsuffixes; i++) {
-    // Head of suffix index for this suffix
-    auto it = lock->root->inner.view.suffixes.find(query->suffixes[i]);
-    if (it == lock->root->inner.view.suffixes.end()) {
-      continue;
-    }
-
-    // Walk and process
-    for (f = it->second->head; f; f = f->suffix_next) {
-      ++n;
-      if (!w_query_file_matches_relative_root(ctx, f)) {
-        continue;
-      }
-
-      if (!w_query_process_file(query, ctx, f)) {
-        result = false;
-        goto done;
-      }
-    }
-  }
-
-done:
-  *num_walked = n;
-  return result;
-}
-
 static bool all_files_generator(w_query *query,
                                 struct read_locked_watchman_root *lock,
                                 struct w_query_ctx *ctx, int64_t *num_walked) {
@@ -346,7 +312,7 @@ static bool default_generators(
   // Suffix
   if (query->suffixes) {
     n = 0;
-    result = suffix_generator(query, lock, ctx, &n);
+    result = lock->root->inner.view.suffixGenerator(query, ctx, &n);
     total += n;
     if (!result) {
       goto done;
