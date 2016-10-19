@@ -13,8 +13,8 @@ void consider_age_out(struct write_locked_watchman_root *lock)
 
   time(&now);
 
-  if (now <=
-      lock->root->inner.view.last_age_out_timestamp + lock->root->gc_interval) {
+  if (now <= lock->root->inner.view.getLastAgeOutTimeStamp() +
+          lock->root->gc_interval) {
     // Don't check too often
     return;
   }
@@ -38,7 +38,7 @@ void w_root_perform_age_out(struct write_locked_watchman_root *lock,
     auto cursors = lock->root->inner.cursors.wlock();
     auto it = cursors->begin();
     while (it != cursors->end()) {
-      if (it->second < lock->root->inner.view.last_age_out_tick) {
+      if (it->second < lock->root->inner.view.getLastAgeOutTickValue()) {
         it = cursors->erase(it);
       } else {
         ++it;

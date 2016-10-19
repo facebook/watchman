@@ -110,8 +110,8 @@ void w_clockspec_eval_readonly(struct read_locked_watchman_root *lock,
         since->clock.ticks = 0;
       } else {
         since->clock.ticks = it->second;
-        since->clock.is_fresh_instance =
-            since->clock.ticks < lock->root->inner.view.last_age_out_tick;
+        since->clock.is_fresh_instance = since->clock.ticks <
+            lock->root->inner.view.getLastAgeOutTickValue();
       }
     }
 
@@ -128,7 +128,7 @@ void w_clockspec_eval_readonly(struct read_locked_watchman_root *lock,
       spec->clock.pid == proc_pid &&
       spec->clock.root_number == lock->root->inner.number) {
     since->clock.is_fresh_instance =
-        spec->clock.ticks < lock->root->inner.view.last_age_out_tick;
+        spec->clock.ticks < lock->root->inner.view.getLastAgeOutTickValue();
     if (since->clock.is_fresh_instance) {
       since->clock.ticks = 0;
     } else {
@@ -178,8 +178,8 @@ void w_clockspec_eval(struct write_locked_watchman_root *lock,
         since->clock.ticks = 0;
       } else {
         since->clock.ticks = it->second;
-        since->clock.is_fresh_instance =
-            since->clock.ticks < lock->root->inner.view.last_age_out_tick;
+        since->clock.is_fresh_instance = since->clock.ticks <
+            lock->root->inner.view.getLastAgeOutTickValue();
       }
 
       // Bump the tick value and record it against the cursor.
@@ -204,7 +204,7 @@ void w_clockspec_eval(struct write_locked_watchman_root *lock,
       spec->clock.pid == proc_pid &&
       spec->clock.root_number == lock->root->inner.number) {
     since->clock.is_fresh_instance =
-        spec->clock.ticks < lock->root->inner.view.last_age_out_tick;
+        spec->clock.ticks < lock->root->inner.view.getLastAgeOutTickValue();
     if (since->clock.is_fresh_instance) {
       since->clock.ticks = 0;
     } else {

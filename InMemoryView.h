@@ -20,9 +20,8 @@ struct InMemoryView {
   Watcher* watcher;
 
   uint32_t getMostRecentTickValue() const;
-
-  uint32_t last_age_out_tick{0};
-  time_t last_age_out_timestamp{0};
+  uint32_t getLastAgeOutTickValue() const;
+  time_t getLastAgeOutTimeStamp() const;
 
   explicit InMemoryView(const w_string& root_path);
 
@@ -126,5 +125,8 @@ struct InMemoryView {
 
   // The most recently observed tick value of an item in the view
   std::atomic<uint32_t> mostRecentTick_{0};
+
+  uint32_t last_age_out_tick{0};
+  time_t last_age_out_timestamp{0};
 };
 }

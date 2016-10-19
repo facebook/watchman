@@ -562,4 +562,12 @@ done:
 uint32_t InMemoryView::getMostRecentTickValue() const {
   return mostRecentTick_.load();
 }
+
+uint32_t InMemoryView::getLastAgeOutTickValue() const {
+  return last_age_out_tick;
+}
+
+time_t InMemoryView::getLastAgeOutTimeStamp() const {
+  return last_age_out_timestamp;
+}
 }
