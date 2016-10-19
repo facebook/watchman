@@ -8,8 +8,7 @@ bool vcs_file_exists(struct write_locked_watchman_root *lock, const char *dname,
   struct watchman_file *file;
 
   auto dir_name = w_string::pathCat({lock->root->root_path, dname});
-
-  auto dir = w_root_resolve_dir(lock, dir_name, false);
+  const auto dir = lock->root->inner.view->resolveDir(dir_name);
 
   if (!dir) {
     return false;

@@ -36,7 +36,7 @@ void crawler(
     stat_all = false;
   }
 
-  auto dir = w_root_resolve_dir(lock, dir_name, true);
+  auto dir = lock->root->inner.view->resolveDir(dir_name, true);
 
   memcpy(path, dir_name.data(), dir_name.size());
   path[dir_name.size()] = 0;

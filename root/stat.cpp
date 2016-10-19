@@ -44,7 +44,7 @@ void stat_path(
 
   auto dir_name = full_path.dirName();
   auto file_name = full_path.baseName();
-  auto dir = w_root_resolve_dir(lock, dir_name, true);
+  auto dir = view->resolveDir(dir_name, true);
 
   auto file = dir->getChildFile(file_name);
 
