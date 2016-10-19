@@ -205,7 +205,7 @@ static bool default_generators(
 
   if (query->glob_tree) {
     n = 0;
-    result = glob_generator(query, lock, ctx, &n);
+    result = lock->root->inner.view.globGenerator(query, ctx, &n);
     total += n;
     if (!result) {
       goto done;

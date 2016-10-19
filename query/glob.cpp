@@ -288,6 +288,7 @@ static inline char *make_path_name(const char *dir_name, uint32_t dlen,
   return result;
 }
 
+namespace watchman {
 /** This is our specialized handler for the ** recursive glob pattern.
  * This is the unhappy path because we have no choice but to recursively
  * walk the tree; we have no way to prune portions that won't match.
@@ -300,13 +301,13 @@ static inline char *make_path_name(const char *dir_name, uint32_t dlen,
  * file against the list of patterns, terminating that match as soon
  * as any one of them matches the file node.
  */
-static bool glob_generator_doublestar(struct w_query_ctx *ctx,
-                                      int64_t *num_walked,
-                                      struct read_locked_watchman_root *lock,
-                                      const struct watchman_dir *dir,
-                                      const struct watchman_glob_tree *node,
-                                      const char *dir_name,
-                                      uint32_t dir_name_len) {
+bool InMemoryView::globGeneratorDoublestar(
+    struct w_query_ctx* ctx,
+    int64_t* num_walked,
+    const struct watchman_dir* dir,
+    const struct watchman_glob_tree* node,
+    const char* dir_name,
+    uint32_t dir_name_len) const {
   int64_t n = 0;
   bool result = true;
   bool matched;
@@ -377,8 +378,8 @@ static bool glob_generator_doublestar(struct w_query_ctx *ctx,
       result = false;
       goto done;
     }
-    result = glob_generator_doublestar(
-        ctx, &child_walked, lock, child, node, subject, strlen_uint32(subject));
+    result = globGeneratorDoublestar(
+        ctx, &child_walked, child, node, subject, strlen_uint32(subject));
     free(subject);
     n += child_walked;
     if (!result) {
@@ -392,10 +393,11 @@ done:
 }
 
 /* Match each child of node against the children of dir */
-static bool glob_generator_tree(struct w_query_ctx *ctx, int64_t *num_walked,
-                                struct read_locked_watchman_root *lock,
-                                const struct watchman_glob_tree *node,
-                                const struct watchman_dir *dir) {
+bool InMemoryView::globGeneratorTree(
+    struct w_query_ctx* ctx,
+    int64_t* num_walked,
+    const struct watchman_glob_tree* node,
+    const struct watchman_dir* dir) const {
   uint32_t i;
   w_string_t component;
   bool result = true;
@@ -403,8 +405,7 @@ static bool glob_generator_tree(struct w_query_ctx *ctx, int64_t *num_walked,
 
   if (node->doublestar_children.num_children > 0) {
     int64_t child_walked = 0;
-    result =
-        glob_generator_doublestar(ctx, &child_walked, lock, dir, node, NULL, 0);
+    result = globGeneratorDoublestar(ctx, &child_walked, dir, node, nullptr, 0);
     n += child_walked;
     if (!result) {
       goto done;
@@ -432,8 +433,7 @@ static bool glob_generator_tree(struct w_query_ctx *ctx, int64_t *num_walked,
 
         if (child_dir) {
           int64_t child_walked = 0;
-          result = glob_generator_tree(
-              ctx, &child_walked, lock, child_node, child_dir);
+          result = globGeneratorTree(ctx, &child_walked, child_node, child_dir);
           n += child_walked;
           if (!result) {
             goto done;
@@ -456,8 +456,8 @@ static bool glob_generator_tree(struct w_query_ctx *ctx, int64_t *num_walked,
                       (ctx->query->case_sensitive ? 0 : WM_CASEFOLD),
                   0) == WM_MATCH) {
             int64_t child_walked = 0;
-            result = glob_generator_tree(
-                ctx, &child_walked, lock, child_node, child_dir);
+            result =
+                globGeneratorTree(ctx, &child_walked, child_node, child_dir);
             n += child_walked;
             if (!result) {
               goto done;
@@ -518,17 +518,19 @@ done:
   return result;
 }
 
-bool glob_generator(w_query *query, struct read_locked_watchman_root *lock,
-                    struct w_query_ctx *ctx, int64_t *num_walked) {
+bool InMemoryView::globGenerator(
+    w_query* query,
+    struct w_query_ctx* ctx,
+    int64_t* num_walked) const {
   w_string_t *relative_root;
 
   if (query->relative_root != NULL) {
     relative_root = query->relative_root;
   } else {
-    relative_root = lock->root->root_path;
+    relative_root = root_path;
   }
 
-  const auto dir = w_root_resolve_dir_read(lock, relative_root);
+  const auto dir = resolveDir(relative_root);
   if (!dir) {
     ignore_result(asprintf(
         &query->errmsg,
@@ -539,7 +541,8 @@ bool glob_generator(w_query *query, struct read_locked_watchman_root *lock,
     return false;
   }
 
-  return glob_generator_tree(ctx, num_walked, lock, query->glob_tree, dir);
+  return globGeneratorTree(ctx, num_walked, query->glob_tree, dir);
+}
 }
 
 /* vim:ts=2:sw=2:et:

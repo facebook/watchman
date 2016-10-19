@@ -227,8 +227,6 @@ bool parse_field_list(json_t *field_list,
     struct w_query_field_list *selected,
     char **errmsg);
 
-bool glob_generator(w_query *query, struct read_locked_watchman_root *lock,
-                    struct w_query_ctx *ctx, int64_t *num_walked);
 bool parse_globs(w_query *res, json_t *query);
 void free_glob_tree(struct watchman_glob_tree *glob_tree);
 

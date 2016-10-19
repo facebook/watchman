@@ -11,6 +11,7 @@
 struct watchman_file;
 struct watchman_dir;
 struct Watcher;
+struct watchman_glob_tree;
 
 namespace watchman {
 
@@ -89,6 +90,11 @@ struct InMemoryView {
       struct w_query_ctx* ctx,
       int64_t* num_walked) const;
 
+  bool globGenerator(
+      w_query* query,
+      struct w_query_ctx* ctx,
+      int64_t* num_walked) const;
+
  private:
   void ageOutFile(
       std::unordered_set<w_string>& dirs_to_erase,
@@ -101,5 +107,17 @@ struct InMemoryView {
       const watchman_dir* dir,
       uint32_t depth,
       int64_t* num_walked) const;
+  bool globGeneratorTree(
+      struct w_query_ctx* ctx,
+      int64_t* num_walked,
+      const struct watchman_glob_tree* node,
+      const struct watchman_dir* dir) const;
+  bool globGeneratorDoublestar(
+      struct w_query_ctx* ctx,
+      int64_t* num_walked,
+      const struct watchman_dir* dir,
+      const struct watchman_glob_tree* node,
+      const char* dir_name,
+      uint32_t dir_name_len) const;
 };
 }
