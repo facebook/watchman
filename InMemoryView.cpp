@@ -534,4 +534,29 @@ done:
   *num_walked = n;
   return result;
 }
+
+bool InMemoryView::allFilesGenerator(
+    w_query* query,
+    struct w_query_ctx* ctx,
+    int64_t* num_walked) const {
+  struct watchman_file* f;
+  int64_t n = 0;
+  bool result = true;
+
+  for (f = latest_file; f; f = f->next) {
+    ++n;
+    if (!w_query_file_matches_relative_root(ctx, f)) {
+      continue;
+    }
+
+    if (!w_query_process_file(query, ctx, f)) {
+      result = false;
+      goto done;
+    }
+  }
+
+done:
+  *num_walked = n;
+  return result;
+}
 }

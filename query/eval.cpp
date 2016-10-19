@@ -137,30 +137,6 @@ bool time_generator(
   return lock->root->inner.view.timeGenerator(query, ctx, num_walked);
 }
 
-static bool all_files_generator(w_query *query,
-                                struct read_locked_watchman_root *lock,
-                                struct w_query_ctx *ctx, int64_t *num_walked) {
-  struct watchman_file *f;
-  int64_t n = 0;
-  bool result = true;
-
-  for (f = lock->root->inner.view.latest_file; f; f = f->next) {
-    ++n;
-    if (!w_query_file_matches_relative_root(ctx, f)) {
-      continue;
-    }
-
-    if (!w_query_process_file(query, ctx, f)) {
-      result = false;
-      goto done;
-    }
-  }
-
-done:
-  *num_walked = n;
-  return result;
-}
-
 static bool default_generators(
     w_query* query,
     struct read_locked_watchman_root* lock,
@@ -217,7 +193,7 @@ static bool default_generators(
   // files
   if (!generated) {
     n = 0;
-    result = all_files_generator(query, lock, ctx, &n);
+    result = lock->root->inner.view.allFilesGenerator(query, ctx, &n);
     total += n;
     if (!result) {
       goto done;
