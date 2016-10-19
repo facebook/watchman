@@ -462,7 +462,8 @@ void w_assess_trigger(struct write_locked_watchman_root *lock,
   // Triggers never need to sync explicitly; we are only dispatched
   // at settle points which are by definition sync'd to the present time
   cmd->query->sync_timeout = 0;
-  if (!w_query_execute_locked(cmd->query, lock, &res, trigger_generator, cmd)) {
+  if (!w_query_execute_locked(
+          cmd->query.get(), lock, &res, trigger_generator, cmd)) {
     w_log(
         W_LOG_ERR,
         "error running trigger \"%s\" query: %s",

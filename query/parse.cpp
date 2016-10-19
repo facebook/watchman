@@ -323,18 +323,12 @@ static bool parse_case_sensitive(w_query *res, const w_root_t *root,
   return true;
 }
 
-w_query *w_query_parse(const w_root_t *root, json_t *query, char **errmsg)
-{
-  w_query *res;
+std::shared_ptr<w_query>
+w_query_parse(const w_root_t* root, json_t* query, char** errmsg) {
+  auto result = std::make_shared<w_query>();
+  auto res = result.get();
 
   *errmsg = NULL;
-
-  res = (w_query*)calloc(1, sizeof(*res));
-  if (!res) {
-    *errmsg = strdup("out of memory");
-    goto error;
-  }
-  res->refcnt = 1;
 
   if (!parse_case_sensitive(res, root, query)) {
     goto error;
@@ -387,18 +381,17 @@ w_query *w_query_parse(const w_root_t *root, json_t *query, char **errmsg)
   res->query_spec = query;
   json_incref(res->query_spec);
 
-  return res;
+  return result;
 error:
   if (res) {
     *errmsg = res->errmsg;
     res->errmsg = NULL;
-    w_query_delref(res);
   }
   if (!*errmsg) {
     *errmsg = strdup("unspecified error");
   }
 
-  return NULL;
+  return nullptr;
 }
 
 bool w_query_legacy_field_list(struct w_query_field_list *flist)
@@ -431,10 +424,14 @@ bool w_query_legacy_field_list(struct w_query_field_list *flist)
 // Translate from the legacy array into the new style, then
 // delegate to the main parser.
 // We build a big anyof expression
-w_query *w_query_parse_legacy(const w_root_t *root, json_t *args, char **errmsg,
-    int start, uint32_t *next_arg,
-    const char *clockspec, json_t **expr_p)
-{
+std::shared_ptr<w_query> w_query_parse_legacy(
+    const w_root_t* root,
+    json_t* args,
+    char** errmsg,
+    int start,
+    uint32_t* next_arg,
+    const char* clockspec,
+    json_t** expr_p) {
   bool include = true;
   bool negated = false;
   uint32_t i;
@@ -444,7 +441,6 @@ w_query *w_query_parse_legacy(const w_root_t *root, json_t *args, char **errmsg,
   json_t *term;
   json_t *container;
   json_t *query_obj = json_object();
-  w_query *query;
 
   if (!json_is_array(args)) {
     *errmsg = strdup("Expected an array");
@@ -544,7 +540,7 @@ w_query *w_query_parse_legacy(const w_root_t *root, json_t *args, char **errmsg,
   }
 
   /* compose the query with the field list */
-  query = w_query_parse(root, query_obj, errmsg);
+  auto query = w_query_parse(root, query_obj, errmsg);
 
   if (expr_p) {
     *expr_p = query_obj;
@@ -555,49 +551,42 @@ w_query *w_query_parse_legacy(const w_root_t *root, json_t *args, char **errmsg,
   return query;
 }
 
-void w_query_delref(w_query *query)
-{
+w_query::~w_query() {
   uint32_t i;
 
-  if (--query->refcnt != 0) {
-    return;
+  if (relative_root) {
+    w_string_delref(relative_root);
   }
 
-  if (query->relative_root) {
-    w_string_delref(query->relative_root);
+  if (relative_root_slash) {
+    w_string_delref(relative_root_slash);
   }
 
-  if (query->relative_root_slash) {
-    w_string_delref(query->relative_root_slash);
-  }
-
-  for (i = 0; i < query->npaths; i++) {
-    if (query->paths[i].name) {
-      w_string_delref(query->paths[i].name);
+  for (i = 0; i < npaths; i++) {
+    if (paths[i].name) {
+      w_string_delref(paths[i].name);
     }
   }
-  free(query->paths);
+  free(paths);
 
-  free_glob_tree(query->glob_tree);
+  free_glob_tree(glob_tree);
 
-  if (query->since_spec) {
-    w_clockspec_free(query->since_spec);
+  if (since_spec) {
+    w_clockspec_free(since_spec);
   }
 
-  if (query->suffixes) {
-    for (i = 0; i < query->nsuffixes; i++) {
-      if (query->suffixes[i]) {
-        w_string_delref(query->suffixes[i]);
+  if (suffixes) {
+    for (i = 0; i < nsuffixes; i++) {
+      if (suffixes[i]) {
+        w_string_delref(suffixes[i]);
       }
     }
-    free(query->suffixes);
+    free(suffixes);
   }
 
-  if (query->query_spec) {
-    json_decref(query->query_spec);
+  if (query_spec) {
+    json_decref(query_spec);
   }
-
-  free(query);
 }
 
 /* vim:ts=2:sw=2:et:

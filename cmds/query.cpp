@@ -6,7 +6,6 @@
 /* query /root {query} */
 static void cmd_query(struct watchman_client *client, json_t *args)
 {
-  w_query *query;
   json_t *query_spec;
   char *errmsg = NULL;
   w_query_res res;
@@ -35,7 +34,7 @@ static void cmd_query(struct watchman_client *client, json_t *args)
     return;
   }
 
-  query = w_query_parse(unlocked.root, query_spec, &errmsg);
+  auto query = w_query_parse(unlocked.root, query_spec, &errmsg);
   if (!query) {
     send_error_response(client, "failed to parse query: %s", errmsg);
     free(errmsg);
@@ -47,14 +46,11 @@ static void cmd_query(struct watchman_client *client, json_t *args)
     query->sync_timeout = 0;
   }
 
-  if (!w_query_execute(query, &unlocked, &res, NULL, NULL)) {
+  if (!w_query_execute(query.get(), &unlocked, &res, nullptr, nullptr)) {
     send_error_response(client, "query failed: %s", res.errmsg);
     w_root_delref(&unlocked);
-    w_query_delref(query);
     return;
   }
-
-  w_query_delref(query);
 
   file_list =
       w_query_results_to_json(&field_list, res.results.size(), res.results);

@@ -195,8 +195,8 @@ static json_t *build_subscription_results(
   // can use a short lock_timeout
   sub->query->lock_timeout =
       (uint32_t)cfg_get_int(lock->root, "subscription_lock_timeout_ms", 100);
-  if (!w_query_execute_locked(sub->query, lock, &res, subscription_generator,
-                              sub)) {
+  if (!w_query_execute_locked(
+          sub->query.get(), lock, &res, subscription_generator, sub)) {
     w_log(W_LOG_ERR, "error running subscription %s query: %s",
         sub->name->buf, res.errmsg);
     return NULL;
@@ -351,7 +351,7 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
   json_t *resp, *initial_subscription_results;
   json_t *jfield_list;
   json_t *jname;
-  w_query *query;
+  std::shared_ptr<w_query> query;
   json_t *query_spec;
   struct w_query_field_list field_list;
   char *errmsg;

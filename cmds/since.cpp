@@ -7,7 +7,6 @@
 static void cmd_since(struct watchman_client *client, json_t *args)
 {
   const char *clockspec;
-  w_query *query;
   char *errmsg = NULL;
   struct w_query_field_list field_list;
   w_query_res res;
@@ -35,8 +34,8 @@ static void cmd_since(struct watchman_client *client, json_t *args)
     return;
   }
 
-  query = w_query_parse_legacy(unlocked.root, args, &errmsg, 3, NULL, clockspec,
-                               NULL);
+  auto query = w_query_parse_legacy(
+      unlocked.root, args, &errmsg, 3, nullptr, clockspec, nullptr);
   if (errmsg) {
     send_error_response(client, "%s", errmsg);
     free(errmsg);
@@ -46,14 +45,11 @@ static void cmd_since(struct watchman_client *client, json_t *args)
 
   w_query_legacy_field_list(&field_list);
 
-  if (!w_query_execute(query, &unlocked, &res, NULL, NULL)) {
+  if (!w_query_execute(query.get(), &unlocked, &res, nullptr, nullptr)) {
     send_error_response(client, "query failed: %s", res.errmsg);
     w_root_delref(&unlocked);
-    w_query_delref(query);
     return;
   }
-
-  w_query_delref(query);
 
   file_list =
       w_query_results_to_json(&field_list, res.results.size(), res.results);

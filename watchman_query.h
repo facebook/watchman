@@ -79,42 +79,42 @@ class QueryExpr {
 struct watchman_glob_tree;
 
 struct w_query {
-  long refcnt;
-
-  bool case_sensitive;
-  bool empty_on_fresh_instance;
-  bool dedup_results;
+  bool case_sensitive{false};
+  bool empty_on_fresh_instance{false};
+  bool dedup_results{false};
 
   /* optional full path to relative root, without and with trailing slash */
-  w_string_t *relative_root;
-  w_string_t *relative_root_slash;
+  w_string_t* relative_root{nullptr};
+  w_string_t* relative_root_slash{nullptr};
 
-  struct w_query_path *paths;
-  size_t npaths;
+  struct w_query_path* paths{nullptr};
+  size_t npaths{0};
 
-  struct watchman_glob_tree *glob_tree;
+  struct watchman_glob_tree* glob_tree{0};
   // Additional flags to pass to wildmatch in the glob_generator
-  int glob_flags;
+  int glob_flags{0};
 
-  w_string_t **suffixes;
-  size_t nsuffixes;
+  w_string_t** suffixes{nullptr};
+  size_t nsuffixes{0};
 
-  uint32_t sync_timeout;
-  uint32_t lock_timeout;
+  uint32_t sync_timeout{0};
+  uint32_t lock_timeout{0};
 
   // We can't (and mustn't!) evaluate the clockspec
   // fully until we execute query, because we have
   // to evaluate named cursors and determine fresh
   // instance at the time we execute
-  struct w_clockspec *since_spec;
+  struct w_clockspec* since_spec{nullptr};
 
   std::unique_ptr<QueryExpr> expr;
 
   // Error message placeholder while parsing
-  char *errmsg;
+  char* errmsg{nullptr};
 
   // The query that we parsed into this struct
-  json_t *query_spec;
+  json_t* query_spec{nullptr};
+
+  ~w_query();
 };
 
 typedef std::unique_ptr<QueryExpr> (
@@ -124,8 +124,8 @@ bool w_query_register_expression_parser(
     const char *term,
     w_query_expr_parser parser);
 
-w_query *w_query_parse(const w_root_t *root, json_t *query, char **errmsg);
-void w_query_delref(w_query *query);
+std::shared_ptr<w_query>
+w_query_parse(const w_root_t* root, json_t* query, char** errmsg);
 
 std::unique_ptr<QueryExpr> w_query_expr_parse(w_query* query, json_t* term);
 
@@ -189,8 +189,14 @@ struct w_query_field_list {
 };
 
 // parse the old style since and find queries
-w_query *w_query_parse_legacy(const w_root_t *root, json_t *args, char **errmsg,
-    int start, uint32_t *next_arg, const char *clockspec, json_t **expr_p);
+std::shared_ptr<w_query> w_query_parse_legacy(
+    const w_root_t* root,
+    json_t* args,
+    char** errmsg,
+    int start,
+    uint32_t* next_arg,
+    const char* clockspec,
+    json_t** expr_p);
 bool w_query_legacy_field_list(struct w_query_field_list *flist);
 
 json_t* w_query_results_to_json(

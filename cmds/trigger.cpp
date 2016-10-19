@@ -137,7 +137,7 @@ static json_t *build_legacy_trigger(
   uint32_t next_arg = 0;
   uint32_t i;
   size_t n;
-  w_query *query;
+  std::shared_ptr<w_query> query;
 
   trig = json_pack("{s:O, s:b, s:[u, u, u, u, u]}",
     "name", json_array_get(args, 2),
@@ -155,7 +155,6 @@ static json_t *build_legacy_trigger(
     json_decref(trig);
     return NULL;
   }
-  w_query_delref(query);
 
   json_object_set(trig, "expression", json_object_get(expr, "expression"));
   json_decref(expr);
@@ -224,10 +223,6 @@ watchman_trigger_command::~watchman_trigger_command() {
 
   if (definition) {
     json_decref(definition);
-  }
-
-  if (query) {
-    w_query_delref(query);
   }
 
   if (envht) {
