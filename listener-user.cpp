@@ -24,7 +24,7 @@ void add_root_warnings_to_response(json_t *response,
   const w_root_t *root = lock->root;
   auto info = lock->root->recrawlInfo.rlock();
 
-  if (!info->lastRecrawlReason && !root->warning) {
+  if (!info->lastRecrawlReason && !info->warning) {
     return;
   }
 
@@ -50,8 +50,8 @@ void add_root_warnings_to_response(json_t *response,
       "%s\n" // str (last recrawl reason)
       "To clear this warning, run:\n"
       "`watchman watch-del %s ; watchman watch-project %s`\n",
-      root->warning ? root->warning.c_str() : "",
-      root->warning && str ? "\n" : "", // newline if we have both strings
+      info->warning ? info->warning.c_str() : "",
+      info->warning && str ? "\n" : "", // newline if we have both strings
       str ? str : "",
       root->root_path.c_str(),
       root->root_path.c_str()));

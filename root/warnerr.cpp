@@ -55,7 +55,7 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
 
   w_log(err == ENOENT ? W_LOG_DBG : W_LOG_ERR, "%s\n", warn.c_str());
   if (log_warning) {
-    w_root_set_warning(lock, warn);
+    lock->root->recrawlInfo.wlock()->warning = warn;
   }
 
   stop_watching_dir(lock, dir);
@@ -63,13 +63,6 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
       dynamic_cast<watchman::InMemoryView*>(lock->root->inner.view.get());
   view->markDirDeleted(dir, now, lock->root->inner.ticks, true);
 }
-
-void w_root_set_warning(
-    struct write_locked_watchman_root* lock,
-    const w_string& str) {
-  lock->root->warning = str;
-}
-
 
 /* vim:ts=2:sw=2:et:
  */

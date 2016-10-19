@@ -76,14 +76,13 @@ struct watchman_root {
     /* if true, we've decided that we should re-crawl the root
      * for the sake of ensuring consistency */
     bool shouldRecrawl{false};
+    // Last ad-hoc warning message
+    w_string warning;
   };
   watchman::Synchronized<RecrawlInfo> recrawlInfo;
 
   // Why we failed to watch
   w_string failure_reason;
-
-  // Last ad-hoc warning message
-  w_string warning;
 
   // map of state name => watchman_client_state_assertion for
   // asserted states
@@ -185,9 +184,6 @@ void w_root_reap(void);
 void w_root_delref(struct unlocked_watchman_root* unlocked);
 void w_root_delref_raw(w_root_t* root);
 void w_root_addref(w_root_t* root);
-void w_root_set_warning(
-    struct write_locked_watchman_root* lock,
-    const w_string& str);
 
 void w_root_process_path(
     struct write_locked_watchman_root* root,
