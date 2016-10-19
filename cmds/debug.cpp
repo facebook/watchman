@@ -71,7 +71,6 @@ W_CMD_REG("debug-show-cursors", cmd_debug_show_cursors,
 static void cmd_debug_ageout(struct watchman_client *client, json_t *args)
 {
   json_t *resp;
-  int min_age;
   struct write_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
@@ -86,12 +85,12 @@ static void cmd_debug_ageout(struct watchman_client *client, json_t *args)
     return;
   }
 
-  min_age = (int)json_integer_value(json_array_get(args, 2));
+  std::chrono::seconds min_age(json_integer_value(json_array_get(args, 2)));
 
   resp = make_response();
 
   w_root_lock(&unlocked, "debug-ageout", &lock);
-  w_root_perform_age_out(&lock, min_age);
+  lock.root->performAgeOut(min_age);
   w_root_unlock(&lock, &unlocked);
 
   set_prop(resp, "ageout", json_true());

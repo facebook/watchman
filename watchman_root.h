@@ -127,6 +127,9 @@ struct watchman_root {
 
   explicit watchman_root(const w_string& root_path);
   ~watchman_root();
+
+  void considerAgeOut();
+  void performAgeOut(std::chrono::seconds min_age);
 };
 
 struct write_locked_watchman_root {
@@ -173,9 +176,6 @@ bool w_root_resolve_for_client_mode(
     struct unlocked_watchman_root* unlocked);
 char* w_find_enclosing_root(const char* filename, char** relpath);
 
-void w_root_perform_age_out(
-    struct write_locked_watchman_root* lock,
-    int min_age);
 void w_root_free_watched_roots(void);
 void w_root_schedule_recrawl(w_root_t* root, const char* why);
 bool w_root_cancel(w_root_t* root);

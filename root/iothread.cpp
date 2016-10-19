@@ -78,7 +78,7 @@ static bool do_settle_things(struct unlocked_watchman_root* unlocked) {
     return true;
   }
 
-  consider_age_out(&lock);
+  lock.root->considerAgeOut();
   w_root_unlock(&lock, unlocked);
   return false;
 }
@@ -148,7 +148,7 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
     lock.root->inner.ticks++;
     // If we're not settled, we need an opportunity to age out
     // dead file nodes.  This happens in the test harness.
-    consider_age_out(&lock);
+    lock.root->considerAgeOut();
 
     while (w_root_process_pending(&lock, &pending, false)) {
       ;
