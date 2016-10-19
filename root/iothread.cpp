@@ -3,6 +3,56 @@
 
 #include "watchman.h"
 
+static void full_crawl(
+    unlocked_watchman_root* unlocked,
+    watchman_pending_collection& pending) {
+  struct timeval start;
+  struct write_locked_watchman_root lock;
+
+  w_perf_t sample("full-crawl");
+  if (cfg_get_bool(unlocked->root, "iothrottle", false)) {
+    w_ioprio_set_low();
+  }
+  w_root_lock(unlocked, "io_thread: bump ticks", &lock);
+  // Ensure that we observe these files with a new, distinct clock,
+  // otherwise a fresh subscription established immediately after a watch
+  // can get stuck with an empty view until another change is observed
+  lock.root->inner.ticks++;
+  gettimeofday(&start, NULL);
+  w_pending_coll_add(
+      &lock.root->ioThread.pending, lock.root->root_path, start, 0);
+  // There is the potential for a subtle race condition here.  The boolean
+  // parameter indicates whether we want to merge in the set of
+  // notifications pending from the watcher or not.  Since we now coalesce
+  // overlaps we must consume our outstanding set before we merge in any
+  // new kernel notification information or we risk missing out on
+  // observing changes that happen during the initial crawl.  This
+  // translates to a two level loop; the outer loop sweeps in data from
+  // inotify, then the inner loop processes it and any dirs that we pick up
+  // from recursive processing.
+  while (w_root_process_pending(&lock, &pending, true)) {
+    while (w_root_process_pending(&lock, &pending, false)) {
+      ;
+    }
+  }
+  lock.root->inner.done_initial = true;
+  sample.add_root_meta(lock.root);
+  w_root_unlock(&lock, unlocked);
+
+  if (cfg_get_bool(unlocked->root, "iothrottle", false)) {
+    w_ioprio_set_normal();
+  }
+
+  sample.finish();
+  sample.force_log();
+  sample.log();
+
+  w_log(
+      W_LOG_ERR,
+      "%scrawl complete\n",
+      unlocked->root->recrawlInfo.rlock()->recrawlCount ? "re" : "");
+}
+
 static void io_thread(struct unlocked_watchman_root *unlocked)
 {
   int timeoutms, biggest_timeout;
@@ -28,51 +78,9 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
     bool pinged;
 
     if (!unlocked->root->inner.done_initial) {
-      struct timeval start;
-      w_perf_t sample("full-crawl");
-
       /* first order of business is to find all the files under our root */
-      if (cfg_get_bool(unlocked->root, "iothrottle", false)) {
-        w_ioprio_set_low();
-      }
-      w_root_lock(unlocked, "io_thread: bump ticks", &lock);
-      // Ensure that we observe these files with a new, distinct clock,
-      // otherwise a fresh subscription established immediately after a watch
-      // can get stuck with an empty view until another change is observed
-      lock.root->inner.ticks++;
-      gettimeofday(&start, NULL);
-      w_pending_coll_add(
-          &lock.root->ioThread.pending, lock.root->root_path, start, 0);
-      // There is the potential for a subtle race condition here.  The boolean
-      // parameter indicates whether we want to merge in the set of
-      // notifications pending from the watcher or not.  Since we now coalesce
-      // overlaps we must consume our outstanding set before we merge in any
-      // new kernel notification information or we risk missing out on
-      // observing changes that happen during the initial crawl.  This
-      // translates to a two level loop; the outer loop sweeps in data from
-      // inotify, then the inner loop processes it and any dirs that we pick up
-      // from recursive processing.
-      while (w_root_process_pending(&lock, &pending, true)) {
-        while (w_root_process_pending(&lock, &pending, false)) {
-          ;
-        }
-      }
-      lock.root->inner.done_initial = true;
-      sample.add_root_meta(lock.root);
-      w_root_unlock(&lock, unlocked);
+      full_crawl(unlocked, pending);
 
-      if (cfg_get_bool(unlocked->root, "iothrottle", false)) {
-        w_ioprio_set_normal();
-      }
-
-      sample.finish();
-      sample.force_log();
-      sample.log();
-
-      w_log(
-          W_LOG_ERR,
-          "%scrawl complete\n",
-          unlocked->root->recrawlInfo.rlock()->recrawlCount ? "re" : "");
       timeoutms = unlocked->root->trigger_settle;
     }
 
