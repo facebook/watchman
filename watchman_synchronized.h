@@ -701,7 +701,7 @@ class LockedPtr : public LockedPtrBase<
   /**
    * Move constructor.
    */
-  LockedPtr(LockedPtr&& rhs) noexcept = default;
+  LockedPtr(LockedPtr&&) noexcept = default;
 
   /**
    * Move assignment operator.
