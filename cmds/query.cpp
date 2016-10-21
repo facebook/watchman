@@ -9,8 +9,6 @@ static void cmd_query(struct watchman_client *client, json_t *args)
   json_t *query_spec;
   char *errmsg = NULL;
   w_query_res res;
-  json_t *response;
-  json_t *file_list, *jfield_list;
   char clockbuf[128];
   struct w_query_field_list field_list;
   struct unlocked_watchman_root unlocked;
@@ -26,7 +24,7 @@ static void cmd_query(struct watchman_client *client, json_t *args)
 
   query_spec = json_array_get(args, 2);
 
-  jfield_list = json_object_get(query_spec, "fields");
+  auto jfield_list = json_object_get(query_spec, "fields");
   if (!parse_field_list(jfield_list, &field_list, &errmsg)) {
     send_error_response(client, "invalid field list: %s", errmsg);
     free(errmsg);
@@ -52,16 +50,16 @@ static void cmd_query(struct watchman_client *client, json_t *args)
     return;
   }
 
-  file_list =
+  auto file_list =
       w_query_results_to_json(&field_list, res.results.size(), res.results);
 
-  response = make_response();
+  auto response = make_response();
   if (clock_id_string(res.root_number, res.ticks, clockbuf, sizeof(clockbuf))) {
     set_unicode_prop(response, "clock", clockbuf);
   }
   set_prop(response, "is_fresh_instance",
            json_pack("b", res.is_fresh_instance));
-  set_prop(response, "files", file_list);
+  set_prop(response, "files", std::move(file_list));
 
   {
     struct read_locked_watchman_root lock;
@@ -70,7 +68,7 @@ static void cmd_query(struct watchman_client *client, json_t *args)
     w_root_read_unlock(&lock, &unlocked);
   }
 
-  send_and_dispose_response(client, response);
+  send_and_dispose_response(client, std::move(response));
   w_root_delref(&unlocked);
 }
 W_CMD_REG("query", cmd_query, CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,

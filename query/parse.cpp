@@ -378,7 +378,6 @@ w_query_parse(const w_root_t* root, json_t* query, char** errmsg) {
   }
 
   res->query_spec = query;
-  json_incref(res->query_spec);
 
   return result;
 error:
@@ -400,7 +399,7 @@ bool w_query_legacy_field_list(struct w_query_field_list *flist)
     "ctime", "ino", "dev", "nlink", "new", "cclock", "oclock"
   };
   uint8_t i;
-  json_t *list = json_array();
+  auto list = json_array();
   bool res;
   char *errmsg = NULL;
 
@@ -410,8 +409,6 @@ bool w_query_legacy_field_list(struct w_query_field_list *flist)
   }
 
   res = parse_field_list(list, flist, &errmsg);
-
-  json_decref(list);
 
   if (errmsg) {
     w_log(W_LOG_FATAL, "should never happen: %s\n", errmsg);
@@ -430,20 +427,16 @@ std::shared_ptr<w_query> w_query_parse_legacy(
     int start,
     uint32_t* next_arg,
     const char* clockspec,
-    json_t** expr_p) {
+    json_ref* expr_p) {
   bool include = true;
   bool negated = false;
   uint32_t i;
   const char *term_name = "match";
-  json_t *query_array;
-  json_t *included = NULL, *excluded = NULL;
-  json_t *term;
-  json_t *container;
-  json_t *query_obj = json_object();
+  json_ref included, excluded;
+  auto query_obj = json_object();
 
   if (!json_is_array(args)) {
     *errmsg = strdup("Expected an array");
-    json_decref(query_obj);
     return NULL;
   }
 
@@ -453,7 +446,6 @@ std::shared_ptr<w_query> w_query_parse_legacy(
       /* not a string value! */
       ignore_result(asprintf(errmsg,
           "rule @ position %d is not a string value", i));
-      json_decref(query_obj);
       return NULL;
     }
   }
@@ -486,6 +478,7 @@ std::shared_ptr<w_query> w_query_parse_legacy(
     }
 
     // Which group are we going to file it into
+    json_ref container;
     if (include) {
       if (!included) {
         included = json_pack("[u]", "anyof");
@@ -498,11 +491,11 @@ std::shared_ptr<w_query> w_query_parse_legacy(
       container = excluded;
     }
 
-    term = json_pack("[usu]", term_name, arg, "wholename");
+    auto term = json_pack("[usu]", term_name, arg, "wholename");
     if (negated) {
-      term = json_pack("[uo]", "not", term);
+      term = json_pack("[uo]", "not", term.get());
     }
-    json_array_append_new(container, term);
+    json_array_append_new(container, std::move(term));
 
     // Reset negated flag
     negated = false;
@@ -510,12 +503,12 @@ std::shared_ptr<w_query> w_query_parse_legacy(
   }
 
   if (excluded) {
-    term = json_pack("[uo]", "not", excluded);
-    excluded = term;
+    excluded = json_pack("[uo]", "not", excluded.get());
   }
 
+  json_ref query_array;
   if (included && excluded) {
-    query_array = json_pack("[uoo]", "allof", excluded, included);
+    query_array = json_pack("[uoo]", "allof", excluded.get(), included.get());
   } else if (included) {
     query_array = included;
   } else {
@@ -525,7 +518,8 @@ std::shared_ptr<w_query> w_query_parse_legacy(
   // query_array may be NULL, which means find me all files.
   // Otherwise, it is the expression we want to use.
   if (query_array) {
-    json_object_set_new_nocheck(query_obj, "expression", query_array);
+    json_object_set_new_nocheck(
+        query_obj, "expression", std::move(query_array));
   }
 
   // For trigger
@@ -543,8 +537,6 @@ std::shared_ptr<w_query> w_query_parse_legacy(
 
   if (expr_p) {
     *expr_p = query_obj;
-  } else {
-    json_decref(query_obj);
   }
 
   return query;
@@ -577,10 +569,6 @@ w_query::~w_query() {
       }
     }
     free(suffixes);
-  }
-
-  if (query_spec) {
-    json_decref(query_spec);
   }
 }
 

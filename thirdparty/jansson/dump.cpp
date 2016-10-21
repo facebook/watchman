@@ -19,8 +19,6 @@
 #include "strbuffer.h"
 #include "utf.h"
 
-#include <vector>
-
 #define MAX_INTEGER_STR_LENGTH  100
 #define MAX_REAL_STR_LENGTH     100
 

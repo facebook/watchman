@@ -952,9 +952,7 @@ static void parse_cmdline(int *argcp, char ***argvp)
   }
 }
 
-static json_t *build_command(int argc, char **argv)
-{
-  json_t *cmd;
+static json_ref build_command(int argc, char** argv) {
   int i;
 
   // Read blob from stdin
@@ -964,7 +962,7 @@ static json_t *build_command(int argc, char **argv)
 
     memset(&err, 0, sizeof(err));
     w_json_buffer_init(&buf);
-    cmd = w_json_buffer_next(&buf, w_stm_stdin(), &err);
+    auto cmd = w_json_buffer_next(&buf, w_stm_stdin(), &err);
 
     if (buf.pdu_type == is_bser) {
       // If they used bser for the input, select bser for output
@@ -988,7 +986,7 @@ static json_t *build_command(int argc, char **argv)
 
     w_json_buffer_free(&buf);
 
-    if (cmd == NULL) {
+    if (!cmd) {
       fprintf(stderr, "failed to parse command from stdin: %s\n",
           err.text);
       exit(1);
@@ -1000,10 +998,10 @@ static json_t *build_command(int argc, char **argv)
   // to verify that the service is up, starting it if
   // needed
   if (argc == 0) {
-    return NULL;
+    return nullptr;
   }
 
-  cmd = json_array();
+  auto cmd = json_array();
   for (i = 0; i < argc; i++) {
     json_array_append_new(cmd, typed_string_to_json(argv[i], W_STRING_UNICODE));
   }
@@ -1042,7 +1040,6 @@ static void spawn_watchman(void) {
 int main(int argc, char **argv)
 {
   bool ran;
-  json_t *cmd;
 
   w_client_lock_init();
   parse_cmdline(&argc, &argv);
@@ -1053,7 +1050,7 @@ int main(int argc, char **argv)
   }
 
   w_set_thread_name("cli");
-  cmd = build_command(argc, argv);
+  auto cmd = build_command(argc, argv);
   preprocess_command(cmd, output_pdu);
 
   ran = try_command(cmd, 0);
@@ -1067,8 +1064,6 @@ int main(int argc, char **argv)
       ran = try_command(cmd, 10);
     }
   }
-
-  json_decref(cmd);
 
   if (ran) {
     return 0;

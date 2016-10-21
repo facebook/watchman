@@ -104,7 +104,6 @@ static w_stm_t prepare_stdin(
     case input_json:
       {
         w_jbuffer_t buffer;
-        json_t *file_list;
 
         if (!w_json_buffer_init(&buffer)) {
           w_log(W_LOG_ERR, "failed to init json buffer\n");
@@ -112,8 +111,8 @@ static w_stm_t prepare_stdin(
           return NULL;
         }
 
-        file_list = w_query_results_to_json(&cmd->field_list,
-            n_files, res->results);
+        auto file_list =
+            w_query_results_to_json(&cmd->field_list, n_files, res->results);
         w_log(W_LOG_ERR, "input_json: sending json object to stm\n");
         if (!w_json_buffer_write(&buffer, stdin_file, file_list, 0)) {
           w_log(W_LOG_ERR,
@@ -123,7 +122,6 @@ static w_stm_t prepare_stdin(
           return NULL;
         }
         w_json_buffer_free(&buffer);
-        json_decref(file_list);
         break;
       }
     case input_name_list:
@@ -164,7 +162,6 @@ static void spawn_command(w_root_t *root,
   uint32_t i = 0;
   int ret;
   w_stm_t stdin_file = NULL;
-  json_t *args;
   char **argv = NULL;
   uint32_t env_size;
   posix_spawn_file_actions_t actions;
@@ -238,7 +235,7 @@ static void spawn_command(w_root_t *root,
   }
 
   // Compute args
-  args = json_deep_copy(cmd->command);
+  auto args = json_deep_copy(cmd->command);
 
   if (cmd->append_files) {
     // Measure how much space the base args take up
@@ -269,8 +266,7 @@ static void spawn_command(w_root_t *root,
   }
 
   argv = w_argv_copy_from_json(args, 0);
-  json_decref(args);
-  args = NULL;
+  args = nullptr;
 
   w_envp_set_bool(cmd->envht, "WATCHMAN_FILES_OVERFLOW", file_overflow);
 

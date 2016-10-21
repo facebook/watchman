@@ -250,7 +250,7 @@ static bool execute_common(
             "num_walked",
             num_walked,
             "query",
-            ctx->query->query_spec));
+            ctx->query->query_spec.get()));
     sample->log();
   }
 

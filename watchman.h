@@ -132,8 +132,8 @@ void w_state_save(void);
 bool w_state_load(void);
 bool w_root_save_state(json_t *state);
 bool w_root_load_state(json_t *state);
-json_t *w_root_trigger_list_to_json(struct read_locked_watchman_root *lock);
-json_t *w_root_watch_list_to_json(void);
+json_ref w_root_trigger_list_to_json(struct read_locked_watchman_root* lock);
+json_ref w_root_watch_list_to_json(void);
 
 #ifdef __APPLE__
 int w_get_listener_socket_from_launchd(void);
@@ -162,9 +162,8 @@ char **w_argv_copy_from_json(json_t *arr, int skip);
 const char *get_sock_name(void);
 
 // Helps write shorter lines
-static inline void set_prop(json_t *obj, const char *key, json_t *val)
-{
-  json_object_set_new_nocheck(obj, key, val);
+static inline void set_prop(json_t* obj, const char* key, json_ref&& val) {
+  json_object_set_new_nocheck(obj, key, std::move(val));
 }
 
 static inline void set_unicode_prop(json_t *obj, const char *key,

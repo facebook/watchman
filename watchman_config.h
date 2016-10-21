@@ -18,4 +18,4 @@ mode_t cfg_get_perms(
     bool write_bits,
     bool execute_bits);
 const char *cfg_get_trouble_url(void);
-json_t *cfg_compute_root_files(bool *enforcing);
+json_ref cfg_compute_root_files(bool* enforcing);

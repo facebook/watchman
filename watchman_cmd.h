@@ -4,10 +4,6 @@
 #ifndef WATCHMAN_CMD_H
 #define WATCHMAN_CMD_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef void (*watchman_command_func)(
     struct watchman_client *client,
     json_t *args);
@@ -73,26 +69,25 @@ json_t *w_capability_get_list(void);
 
 void send_error_response(struct watchman_client *client,
     const char *fmt, ...);
-void send_and_dispose_response(struct watchman_client *client,
-    json_t *response);
-bool enqueue_response(struct watchman_client *client,
-    json_t *json, bool ping);
+void send_and_dispose_response(
+    struct watchman_client* client,
+    json_ref&& response);
+bool enqueue_response(
+    struct watchman_client* client,
+    json_ref&& json,
+    bool ping);
 
 bool resolve_root_or_err(struct watchman_client *client, json_t *args,
                          int root_index, bool create,
                          struct unlocked_watchman_root *unlocked);
 
-json_t *make_response(void);
+json_ref make_response(void);
 void annotate_with_clock(struct read_locked_watchman_root *lock, json_t *resp);
 void add_root_warnings_to_response(json_t *response,
                                    struct read_locked_watchman_root *lock);
 
 bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
     size_t bufsize);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

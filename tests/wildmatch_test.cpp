@@ -62,7 +62,6 @@ int main(int argc, char **argv)
 {
   FILE *test_cases_file;
   json_error_t error;
-  json_t *test_cases;
   size_t num_tests;
   size_t index;
 
@@ -77,7 +76,7 @@ int main(int argc, char **argv)
     diag("Couldn't open %s: %s\n", WILDMATCH_TEST_JSON_FILE, strerror(errno));
     abort();
   }
-  test_cases = json_loadf(test_cases_file, 0, &error);
+  auto test_cases = json_loadf(test_cases_file, 0, &error);
   if (!test_cases) {
     diag(
       "Error decoding JSON: %s (source=%s, line=%d, col=%d)\n",
@@ -101,6 +100,5 @@ int main(int argc, char **argv)
     json_t *test_case_data = json_array_get(test_cases, index);
     run_test(test_case_data);
   }
-  json_decref(test_cases);
   return exit_status();
 }

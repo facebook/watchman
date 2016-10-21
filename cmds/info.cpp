@@ -40,7 +40,7 @@ static bool query_caps(json_t *response, json_t *result,
 /* version */
 static void cmd_version(struct watchman_client *client, json_t *args)
 {
-  json_t *resp = make_response();
+  auto resp = make_response();
 
 #ifdef WATCHMAN_BUILD_INFO
   set_unicode_prop(resp, "buildinfo", WATCHMAN_BUILD_INFO);
@@ -56,14 +56,13 @@ static void cmd_version(struct watchman_client *client, json_t *args)
     const char *ignored;
     json_t *req_cap = NULL;
     json_t *opt_cap = NULL;
-    json_t *cap_res;
 
     json_unpack(args, "[s, {s?:o, s?:o}]",
         &ignored,
         "required", &req_cap,
         "optional", &opt_cap);
 
-    cap_res = json_object_of_size(
+    auto cap_res = json_object_of_size(
         (opt_cap ? json_array_size(opt_cap) : 0) +
         (req_cap ? json_array_size(req_cap) : 0));
 
@@ -74,10 +73,10 @@ static void cmd_version(struct watchman_client *client, json_t *args)
       query_caps(resp, cap_res, req_cap, true);
     }
 
-    set_prop(resp, "capabilities", cap_res);
+    set_prop(resp, "capabilities", std::move(cap_res));
   }
 
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("version", cmd_version, CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
           NULL)
@@ -85,11 +84,11 @@ W_CMD_REG("version", cmd_version, CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
 /* list-capabilities */
 static void cmd_list_capabilities(struct watchman_client *client,
     json_t *args) {
-  json_t *resp = make_response();
+  auto resp = make_response();
   unused_parameter(args);
 
   set_prop(resp, "capabilities", w_capability_get_list());
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("list-capabilities", cmd_list_capabilities,
           CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER, NULL)
@@ -97,21 +96,20 @@ W_CMD_REG("list-capabilities", cmd_list_capabilities,
 /* get-sockname */
 static void cmd_get_sockname(struct watchman_client *client, json_t *args)
 {
-  json_t *resp = make_response();
+  auto resp = make_response();
 
   unused_parameter(args);
 
   set_bytestring_prop(resp, "sockname", get_sock_name());
 
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("get-sockname", cmd_get_sockname,
           CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER, NULL)
 
 static void cmd_get_config(struct watchman_client *client, json_t *args)
 {
-  json_t *resp;
-  json_t *config;
+  json_ref config;
   struct unlocked_watchman_root unlocked;
   struct write_locked_watchman_root lock;
 
@@ -124,15 +122,11 @@ static void cmd_get_config(struct watchman_client *client, json_t *args)
     return;
   }
 
-  resp = make_response();
+  auto resp = make_response();
 
   w_root_lock(&unlocked, "cmd_get_config", &lock);
   {
     config = lock.root->config_file;
-    if (config) {
-      // set_prop will claim this ref
-      json_incref(config);
-    }
   }
   w_root_unlock(&lock, &unlocked);
 
@@ -141,9 +135,8 @@ static void cmd_get_config(struct watchman_client *client, json_t *args)
     config = json_object();
   }
 
-  json_incref(unlocked.root->config_file);
-  set_prop(resp, "config", config);
-  send_and_dispose_response(client, resp);
+  set_prop(resp, "config", std::move(config));
+  send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
 W_CMD_REG("get-config", cmd_get_config, CMD_DAEMON, w_cmd_realpath_root)

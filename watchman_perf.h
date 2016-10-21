@@ -16,7 +16,7 @@ struct watchman_perf_sample {
 
   // Additional arbitrary information.  This is either NULL
   // or is a json object with various properties set inside it
-  json_t* meta_data{nullptr};
+  json_ref meta_data;
 
   // Measure the wall time
   struct timeval time_begin, time_end, duration;
@@ -53,7 +53,7 @@ struct watchman_perf_sample {
   bool finish();
 
   // Annotate the sample with metadata
-  void add_meta(const char* key, json_t* val);
+  void add_meta(const char* key, json_ref&& val);
 
   // Annotate the sample with some standard metadata taken from a root.
   void add_root_meta(const w_root_t* root);

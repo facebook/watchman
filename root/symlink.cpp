@@ -152,7 +152,6 @@ static void watch_symlinks(const w_string& inputPath, json_t* root_files) {
 void process_pending_symlink_targets(struct unlocked_watchman_root *unlocked) {
 #ifndef _WIN32
   struct watchman_pending_fs *p, *pending;
-  json_t *root_files;
   bool enforcing;
 
   pending = unlocked->root->inner.pending_symlink_targets.pending;
@@ -160,7 +159,7 @@ void process_pending_symlink_targets(struct unlocked_watchman_root *unlocked) {
     return;
   }
 
-  root_files = cfg_compute_root_files(&enforcing);
+  auto root_files = cfg_compute_root_files(&enforcing);
   if (!root_files) {
     w_log(W_LOG_ERR,
           "watch_symlink_target: error computing root_files configuration "
@@ -179,7 +178,6 @@ void process_pending_symlink_targets(struct unlocked_watchman_root *unlocked) {
     w_pending_fs_free(p);
   }
 
-  json_decref(root_files);
 #else
   unused_parameter(unlocked);
 #endif

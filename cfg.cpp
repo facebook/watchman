@@ -3,25 +3,20 @@
 
 #include "watchman.h"
 
-static json_t *global_cfg = NULL;
-static json_t *arg_cfg = NULL;
+static json_ref global_cfg;
+static json_ref arg_cfg;
 static pthread_rwlock_t cfg_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 /* Called during shutdown to free things so that we run cleanly
  * under valgrind */
 void cfg_shutdown(void)
 {
-  if (global_cfg) {
-    json_decref(global_cfg);
-  }
-  if (arg_cfg) {
-    json_decref(arg_cfg);
-  }
+  global_cfg.reset();
+  arg_cfg.reset();
 }
 
 void cfg_load_global_config_file(void)
 {
-  json_t *config = NULL;
   json_error_t err;
 
   const char *cfg_file = getenv("WATCHMAN_CONFIG_FILE");
@@ -38,7 +33,7 @@ void cfg_load_global_config_file(void)
     return;
   }
 
-  config = json_load_file(cfg_file, 0, &err);
+  auto config = json_load_file(cfg_file, 0, &err);
   if (!config) {
     w_log(W_LOG_ERR, "failed to parse json from %s: %s\n",
           cfg_file, err.text);
@@ -72,8 +67,7 @@ void cfg_set_global(const char *name, json_t *val)
   pthread_rwlock_unlock(&cfg_lock);
 }
 
-static json_t *cfg_get_raw(const char *name, json_t **optr)
-{
+static json_t* cfg_get_raw(const char* name, json_ref* optr) {
   json_t *val = NULL;
 
   pthread_rwlock_rdlock(&cfg_lock);
@@ -161,12 +155,10 @@ static void prepend_watchmanconfig_to_array(json_t *ref) {
 // we will only allow watches on the root_files.
 // The array returned by this function (if not NULL) is guaranteed to
 // list .watchmanconfig as its zeroth element.
-json_t *cfg_compute_root_files(bool *enforcing) {
-  json_t *ref;
-
+json_ref cfg_compute_root_files(bool* enforcing) {
   *enforcing = false;
 
-  ref = cfg_get_json(NULL, "enforce_root_files");
+  json_ref ref = cfg_get_json(nullptr, "enforce_root_files");
   if (ref) {
     if (!json_is_boolean(ref)) {
       w_log(W_LOG_FATAL,
@@ -181,11 +173,10 @@ json_t *cfg_compute_root_files(bool *enforcing) {
       w_log(W_LOG_FATAL,
           "global config root_files must be an array of strings\n");
       *enforcing = false;
-      return NULL;
+      return nullptr;
     }
     prepend_watchmanconfig_to_array(ref);
 
-    json_incref(ref);
     return ref;
   }
 
@@ -196,10 +187,9 @@ json_t *cfg_compute_root_files(bool *enforcing) {
       w_log(W_LOG_FATAL, "deprecated global config root_restrict_files "
           "must be an array of strings\n");
       *enforcing = false;
-      return NULL;
+      return nullptr;
     }
     prepend_watchmanconfig_to_array(ref);
-    json_incref(ref);
     *enforcing = true;
     return ref;
   }

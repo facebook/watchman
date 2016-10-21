@@ -81,9 +81,9 @@ out:
   return prefix;
 }
 
-json_t *w_root_stop_watch_all(void) {
+json_ref w_root_stop_watch_all(void) {
   std::vector<w_root_t*> roots;
-  json_t *stopped;
+  json_ref stopped;
 
   {
     auto map = watched_roots.wlock();
@@ -104,10 +104,8 @@ json_t *w_root_stop_watch_all(void) {
   return stopped;
 }
 
-json_t *w_root_watch_list_to_json(void) {
-  json_t *arr;
-
-  arr = json_array();
+json_ref w_root_watch_list_to_json(void) {
+  auto arr = json_array();
 
   auto map = watched_roots.rlock();
   for (const auto& it : *map) {
@@ -120,9 +118,8 @@ json_t *w_root_watch_list_to_json(void) {
 
 bool w_root_save_state(json_t *state) {
   bool result = true;
-  json_t *watched_dirs;
 
-  watched_dirs = json_array();
+  auto watched_dirs = json_array();
 
   w_log(W_LOG_DBG, "saving state\n");
 
@@ -130,34 +127,30 @@ bool w_root_save_state(json_t *state) {
     auto map = watched_roots.rlock();
     for (const auto& it : *map) {
       auto root = it.second;
-      json_t* obj;
-      json_t* triggers;
       struct read_locked_watchman_root lock;
       struct unlocked_watchman_root unlocked = {root};
 
-      obj = json_object();
+      auto obj = json_object();
 
       json_object_set_new(
           obj, "path", w_string_to_json(unlocked.root->root_path));
 
       w_root_read_lock(&unlocked, "w_root_save_state", &lock);
-      triggers = w_root_trigger_list_to_json(&lock);
+      auto triggers = w_root_trigger_list_to_json(&lock);
       w_root_read_unlock(&lock, &unlocked);
-      json_object_set_new(obj, "triggers", triggers);
+      json_object_set_new(obj, "triggers", std::move(triggers));
 
-      json_array_append_new(watched_dirs, obj);
+      json_array_append_new(watched_dirs, std::move(obj));
     }
   }
 
-  json_object_set_new(state, "watched", watched_dirs);
+  json_object_set_new(state, "watched", std::move(watched_dirs));
 
   return result;
 }
 
-json_t *w_root_trigger_list_to_json(struct read_locked_watchman_root *lock) {
-  json_t *arr;
-
-  arr = json_array();
+json_ref w_root_trigger_list_to_json(struct read_locked_watchman_root* lock) {
+  auto arr = json_array();
   {
     auto map = lock->root->triggers.rlock();
     for (const auto& it : *map) {
@@ -170,10 +163,9 @@ json_t *w_root_trigger_list_to_json(struct read_locked_watchman_root *lock) {
 }
 
 bool w_root_load_state(json_t *state) {
-  json_t *watched;
   size_t i;
 
-  watched = json_object_get(state, "watched");
+  auto watched = json_object_get(state, "watched");
   if (!watched) {
     return true;
   }

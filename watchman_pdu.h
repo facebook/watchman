@@ -25,14 +25,10 @@ typedef struct bser_ctx {
 
 typedef struct watchman_json_buffer w_jbuffer_t;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 bool w_json_buffer_init(w_jbuffer_t* jr);
 void w_json_buffer_reset(w_jbuffer_t* jr);
 void w_json_buffer_free(w_jbuffer_t* jr);
-json_t* w_json_buffer_next(w_jbuffer_t* jr, w_stm_t stm, json_error_t* jerr);
+json_ref w_json_buffer_next(w_jbuffer_t* jr, w_stm_t stm, json_error_t* jerr);
 bool w_json_buffer_passthru(
     w_jbuffer_t* jr,
     enum w_pdu_type output_pdu,
@@ -65,12 +61,8 @@ bool bunser_int(
     json_int_t avail,
     json_int_t* needed,
     json_int_t* val);
-json_t* bunser(
+json_ref bunser(
     const char* buf,
     const char* end,
     json_int_t* needed,
     json_error_t* jerr);
-
-#ifdef __cplusplus
-}
-#endif

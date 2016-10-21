@@ -112,7 +112,7 @@ struct w_query {
   char* errmsg{nullptr};
 
   // The query that we parsed into this struct
-  json_t* query_spec{nullptr};
+  json_ref query_spec;
 
   ~w_query();
 };
@@ -197,10 +197,10 @@ std::shared_ptr<w_query> w_query_parse_legacy(
     int start,
     uint32_t* next_arg,
     const char* clockspec,
-    json_t** expr_p);
+    json_ref* expr_p);
 bool w_query_legacy_field_list(struct w_query_field_list *flist);
 
-json_t* w_query_results_to_json(
+json_ref w_query_results_to_json(
     struct w_query_field_list* field_list,
     uint32_t num_results,
     const std::deque<watchman_rule_match>& results);
@@ -223,9 +223,10 @@ bool parse_int_compare(json_t *term, struct w_query_int_compare *comp,
     char **errmsg);
 bool eval_int_compare(json_int_t ival, struct w_query_int_compare *comp);
 
-bool parse_field_list(json_t *field_list,
-    struct w_query_field_list *selected,
-    char **errmsg);
+bool parse_field_list(
+    json_ref field_list,
+    struct w_query_field_list* selected,
+    char** errmsg);
 
 bool parse_globs(w_query *res, json_t *query);
 void free_glob_tree(struct watchman_glob_tree *glob_tree);

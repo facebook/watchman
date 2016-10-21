@@ -206,18 +206,16 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
           switch (o->argtype) {
             case REQ_INT:
             {
-              json_t *ival = json_integer(atoi(optarg));
+              auto ival = json_integer(atoi(optarg));
               *(int*)o->val = (int)json_integer_value(ival);
               cfg_set_arg(o->optname, ival);
-              json_decref(ival);
               break;
             }
             case REQ_STRING:
             {
-              json_t *sval = typed_string_to_json(optarg, W_STRING_UNICODE);
+              auto sval = typed_string_to_json(optarg, W_STRING_UNICODE);
               *(char**)o->val = strdup(optarg);
               cfg_set_arg(o->optname, sval);
-              json_decref(sval);
               break;
             }
             case OPT_NONE:
@@ -225,10 +223,9 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
           }
         }
         if (o->argtype == OPT_NONE && o->val) {
-          json_t *bval = json_true();
+          auto bval = json_true();
           *(int*)o->val = 1;
           cfg_set_arg(o->optname, bval);
-          json_decref(bval);
         }
     }
 

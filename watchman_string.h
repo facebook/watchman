@@ -4,9 +4,10 @@
 #ifndef WATCHMAN_STRING_H
 #define WATCHMAN_STRING_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <atomic>
+#include <cstring>
 #include <initializer_list>
 #include <memory>
 

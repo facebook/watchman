@@ -13,6 +13,7 @@
 #include "strbuffer.h"
 #include <algorithm>
 #include <unordered_map>
+#include <vector>
 
 #define container_of(ptr_, type_, member_)  \
     ((type_ *)((char *)ptr_ - offsetof(type_, member_)))
@@ -29,26 +30,22 @@
 
 struct json_object_t {
     json_t json;
-    std::unordered_map<w_string, json_t*> map;
+    std::unordered_map<w_string, json_ref> map;
     int visited;
 
     json_object_t(size_t sizeHint = 0);
-    ~json_object_t();
 
-    typename std::unordered_map<w_string, json_t*>::iterator findCString(
+    typename std::unordered_map<w_string, json_ref>::iterator findCString(
         const char* key);
 };
 
 struct json_array_t {
     json_t json;
-    size_t size;
-    size_t entries;
-    json_t **table;
+    std::vector<json_ref> table;
     int visited;
-    json_t *templ;
+    json_ref templ;
 
     json_array_t(size_t sizeHint = 0);
-    ~json_array_t();
 };
 
 struct json_string_t {

@@ -4,7 +4,7 @@
 
 struct watchman_client_response {
   struct watchman_client_response *next;
-  json_t *json;
+  json_ref json;
 };
 
 struct watchman_client_subscription;
@@ -28,7 +28,7 @@ struct watchman_client {
   enum w_pdu_type pdu_type;
 
   // The command currently being processed by dispatch_command
-  json_t *current_command;
+  json_ref current_command;
   w_perf_t* perf_sample;
 
   // This handle is not joinable (CREATE_DETACHED), but can be

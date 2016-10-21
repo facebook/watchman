@@ -57,8 +57,6 @@ void process_triggers(struct write_locked_watchman_root *lock) {
  */
 static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
 {
-  json_t *resp;
-  json_t *jname;
   w_string tname;
   bool res;
   struct unlocked_watchman_root unlocked;
@@ -72,7 +70,7 @@ static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
     w_root_delref(&unlocked);
     return;
   }
-  jname = json_array_get(args, 2);
+  auto jname = json_array_get(args, 2);
   if (!json_is_string(jname)) {
     send_error_response(client, "expected 2nd parameter to be trigger name");
     w_root_delref(&unlocked);
@@ -95,11 +93,10 @@ static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
     w_state_save();
   }
 
-  resp = make_response();
+  auto resp = make_response();
   set_prop(resp, "deleted", json_boolean(res));
-  json_incref(jname);
   set_prop(resp, "trigger", jname);
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
 W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root)
@@ -109,8 +106,6 @@ W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root)
  */
 static void cmd_trigger_list(struct watchman_client *client, json_t *args)
 {
-  json_t *resp;
-  json_t *arr;
   struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
@@ -118,68 +113,69 @@ static void cmd_trigger_list(struct watchman_client *client, json_t *args)
     return;
   }
 
-  resp = make_response();
+  auto resp = make_response();
   w_root_read_lock(&unlocked, "trigger-list", &lock);
-  arr = w_root_trigger_list_to_json(&lock);
+  auto arr = w_root_trigger_list_to_json(&lock);
   w_root_read_unlock(&lock, &unlocked);
 
-  set_prop(resp, "triggers", arr);
-  send_and_dispose_response(client, resp);
+  set_prop(resp, "triggers", std::move(arr));
+  send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
 W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root)
 
-static json_t *build_legacy_trigger(
-  w_root_t *root,
-  struct watchman_client *client,
-  json_t *args)
-{
-  json_t *trig, *expr;
-  json_t *command;
+static json_ref build_legacy_trigger(
+    w_root_t* root,
+    struct watchman_client* client,
+    json_t* args) {
   char *errmsg;
   uint32_t next_arg = 0;
   uint32_t i;
   size_t n;
-  std::shared_ptr<w_query> query;
 
-  trig = json_pack("{s:O, s:b, s:[u, u, u, u, u]}",
-    "name", json_array_get(args, 2),
-    "append_files", true,
-    "stdin",
+  auto trig = json_pack(
+      "{s:O, s:b, s:[u, u, u, u, u]}",
+      "name",
+      json_array_get(args, 2),
+      "append_files",
+      true,
+      "stdin",
       // [
-      "name", "exists", "new", "size", "mode"
+      "name",
+      "exists",
+      "new",
+      "size",
+      "mode"
       // ]
-  );
+      );
 
-  query = w_query_parse_legacy(root, args, &errmsg, 3, &next_arg, NULL, &expr);
+  json_ref expr;
+  auto query =
+      w_query_parse_legacy(root, args, &errmsg, 3, &next_arg, nullptr, &expr);
   if (!query) {
     send_error_response(client, "invalid rule spec: %s", errmsg);
     free(errmsg);
-    json_decref(trig);
-    return NULL;
+    return nullptr;
   }
 
   json_object_set(trig, "expression", json_object_get(expr, "expression"));
-  json_decref(expr);
 
   if (next_arg >= json_array_size(args)) {
     send_error_response(client, "no command was specified");
-    json_decref(trig);
-    return NULL;
+    return nullptr;
   }
 
   n = json_array_size(args) - next_arg;
-  command = json_array_of_size(n);
+  auto command = json_array_of_size(n);
   for (i = 0; i < n; i++) {
-    json_t *ele = json_array_get(args, i + next_arg);
+    auto ele = json_array_get(args, i + next_arg);
     if (!json_is_string(ele)) {
       send_error_response(client, "expected argument %d to be a string", i);
-      json_decref(trig);
-      return NULL;
+      return nullptr;
     }
     json_array_append(command, ele);
   }
-  json_object_set_new(trig, "command", command);
+  json_object_set_new(trig, "command", std::move(command));
 
   return trig;
 }
@@ -220,14 +216,6 @@ static bool parse_redirection(const char **name_p, int *flags,
 }
 
 watchman_trigger_command::~watchman_trigger_command() {
-  if (command) {
-    json_decref(command);
-  }
-
-  if (definition) {
-    json_decref(definition);
-  }
-
   if (envht) {
     w_ht_free(envht);
   }
@@ -249,7 +237,7 @@ watchman_trigger_command::watchman_trigger_command()
 
 std::unique_ptr<watchman_trigger_command>
 w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg) {
-  json_t *ele, *query, *relative_root;
+  json_t *ele, *relative_root;
   json_int_t jint;
   const char *name = NULL;
 
@@ -260,17 +248,15 @@ w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg) {
   }
 
   cmd->definition = trig;
-  json_incref(cmd->definition);
 
-  query = json_pack("{s:O}", "expression",
-      json_object_get(cmd->definition, "expression"));
+  auto query = json_pack(
+      "{s:O}", "expression", json_object_get(cmd->definition, "expression"));
   relative_root = json_object_get(cmd->definition, "relative_root");
   if (relative_root) {
     json_object_set_nocheck(query, "relative_root", relative_root);
   }
 
   cmd->query = w_query_parse(root, query, errmsg);
-  json_decref(query);
 
   if (!cmd->query) {
     return nullptr;
@@ -284,9 +270,6 @@ w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg) {
 
   cmd->triggername = w_string(name, W_STRING_UNICODE);
   cmd->command = json_object_get(trig, "command");
-  if (cmd->command) {
-    json_incref(cmd->command);
-  }
   if (!cmd->command || !json_is_array(cmd->command) ||
       !json_array_size(cmd->command)) {
     *errmsg = strdup("invalid command array");
@@ -355,12 +338,12 @@ w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg) {
  * is detected */
 static void cmd_trigger(struct watchman_client *client, json_t *args)
 {
-  json_t *resp;
-  json_t *trig;
   char *errmsg = NULL;
   bool need_save = true;
   struct unlocked_watchman_root unlocked;
   std::unique_ptr<watchman_trigger_command> cmd;
+  json_ref trig;
+  json_ref resp;
 
   if (!resolve_root_or_err(client, args, 1, true, &unlocked)) {
     return;
@@ -377,14 +360,9 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
     if (!trig) {
       goto done;
     }
-  } else {
-    // Add a ref so that we don't need to conditionally decref later
-    // for the legacy case later
-    json_incref(trig);
   }
 
   cmd = w_build_trigger_from_def(unlocked.root, trig, &errmsg);
-  json_decref(trig);
 
   if (!cmd) {
     send_error_response(client, "%s", errmsg);
@@ -423,7 +401,7 @@ static void cmd_trigger(struct watchman_client *client, json_t *args)
     w_state_save();
   }
 
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
 
 done:
   if (errmsg) {

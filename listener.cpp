@@ -34,9 +34,8 @@ void w_client_lock_init(void) {
   pthread_mutexattr_destroy(&mattr);
 }
 
-json_t *make_response(void)
-{
-  json_t *resp = json_object();
+json_ref make_response(void) {
+  auto resp = json_object();
 
   set_unicode_prop(resp, "version", PACKAGE_VERSION);
 
@@ -44,16 +43,17 @@ json_t *make_response(void)
 }
 
 /* must be called with the w_client_lock held */
-bool enqueue_response(struct watchman_client *client,
-    json_t *json, bool ping)
-{
+bool enqueue_response(
+    struct watchman_client* client,
+    json_ref&& json,
+    bool ping) {
   struct watchman_client_response *resp;
 
   resp = (watchman_client_response*)calloc(1, sizeof(*resp));
   if (!resp) {
     return false;
   }
-  resp->json = json;
+  resp->json = std::move(json);
 
   if (client->tail) {
     client->tail->next = resp;
@@ -69,13 +69,11 @@ bool enqueue_response(struct watchman_client *client,
   return true;
 }
 
-void send_and_dispose_response(struct watchman_client *client,
-    json_t *response)
-{
+void send_and_dispose_response(
+    struct watchman_client* client,
+    json_ref&& response) {
   pthread_mutex_lock(&w_client_lock);
-  if (!enqueue_response(client, response, false)) {
-    json_decref(response);
-  }
+  enqueue_response(client, std::move(response), false);
   pthread_mutex_unlock(&w_client_lock);
 }
 
@@ -84,19 +82,17 @@ void send_error_response(struct watchman_client *client,
 {
   char buf[WATCHMAN_NAME_MAX];
   va_list ap;
-  json_t *resp = make_response();
-  json_t *errstr;
+  auto resp = make_response();
 
   va_start(ap, fmt);
   vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
 
-  errstr = typed_string_to_json(buf, W_STRING_MIXED);
-  set_prop(resp, "error", errstr);
+  auto errstr = typed_string_to_json(buf, W_STRING_MIXED);
+  set_prop(resp, "error", std::move(errstr));
 
-  json_incref(errstr);
   if (client->perf_sample) {
-    client->perf_sample->add_meta("error", errstr);
+    client->perf_sample->add_meta("error", std::move(errstr));
   }
 
   if (client->current_command) {
@@ -109,7 +105,7 @@ void send_error_response(struct watchman_client *client,
     w_log(W_LOG_ERR, "send_error_response: %s\n", buf);
   }
 
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
 }
 
 static void client_delete(struct watchman_client *client)
@@ -122,7 +118,7 @@ static void client_delete(struct watchman_client *client)
   while (client->head) {
     resp = client->head;
     client->head = resp->next;
-    json_decref(resp->json);
+    resp->json.reset();
     free(resp);
   }
 
@@ -152,7 +148,6 @@ static void *client_thread(void *ptr)
   auto client = (watchman_client*)ptr;
   struct watchman_event_poll pfd[2];
   struct watchman_client_response *queued_responses_to_send;
-  json_t *request;
   json_error_t jerr;
   bool send_ok = true;
 
@@ -176,7 +171,7 @@ static void *client_thread(void *ptr)
     }
 
     if (pfd[0].ready) {
-      request = w_json_buffer_next(&client->reader, client->stm, &jerr);
+      auto request = w_json_buffer_next(&client->reader, client->stm, &jerr);
 
       if (!request && errno == EAGAIN) {
         // That's fine
@@ -195,7 +190,6 @@ static void *client_thread(void *ptr)
       } else if (request) {
         client->pdu_type = client->reader.pdu_type;
         dispatch_command(client, request, CMD_DAEMON);
-        json_decref(request);
       }
     }
 
@@ -228,7 +222,7 @@ static void *client_thread(void *ptr)
 
       queued_responses_to_send = response_to_send->next;
 
-      json_decref(response_to_send->json);
+      response_to_send->json.reset();
       free(response_to_send);
     }
   }
@@ -275,7 +269,6 @@ bool w_should_log_to_clients(int level)
 
 void w_log_to_clients(int level, const char *buf)
 {
-  json_t *json = NULL;
   w_ht_iter_t iter;
 
   if (!clients) {
@@ -287,13 +280,11 @@ void w_log_to_clients(int level, const char *buf)
     auto client = (watchman_client *)w_ht_val_ptr(iter.value);
 
     if (client->log_level != W_LOG_OFF && client->log_level >= level) {
-      json = make_response();
+      auto json = make_response();
       if (json) {
         set_mixed_string_prop(json, "log", buf);
         set_prop(json, "unilateral", json_true());
-        if (!enqueue_response(client, json, true)) {
-          json_decref(json);
-        }
+        enqueue_response(client, std::move(json), true);
       }
     }
 
@@ -765,13 +756,13 @@ bool w_start_listener(const char *path)
 /* get-pid */
 static void cmd_get_pid(struct watchman_client *client, json_t *args)
 {
-  json_t *resp = make_response();
+  auto resp = make_response();
 
   unused_parameter(args);
 
   set_prop(resp, "pid", json_integer(getpid()));
 
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("get-pid", cmd_get_pid, CMD_DAEMON, NULL)
 

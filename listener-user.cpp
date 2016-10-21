@@ -6,14 +6,14 @@
 // Functions relating to the per-user service
 
 static void cmd_shutdown(struct watchman_client *client, json_t *args) {
-  json_t *resp = make_response();
+  auto resp = make_response();
   unused_parameter(args);
 
   w_log(W_LOG_ERR, "shutdown-server was requested, exiting!\n");
   w_request_shutdown();
 
   set_prop(resp, "shutdown-server", json_true());
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON|CMD_POISON_IMMUNE, NULL)
 

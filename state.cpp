@@ -55,8 +55,6 @@ void w_state_shutdown(void) {
 
 bool w_state_load(void)
 {
-  json_t *state = NULL;
-  bool result = false;
   json_error_t err;
 
   if (dont_save_state) {
@@ -69,27 +67,20 @@ bool w_state_load(void)
     w_log(W_LOG_FATAL, "failed to spawn state thread: %s\n", strerror(errno));
   }
 
-  state = json_load_file(watchman_state_file, 0, &err);
+  auto state = json_load_file(watchman_state_file, 0, &err);
 
   if (!state) {
     w_log(W_LOG_ERR, "failed to parse json from %s: %s\n",
         watchman_state_file,
         err.text);
-    goto out;
+    return false;
   }
 
   if (!w_root_load_state(state)) {
-    goto out;
+    return false;
   }
 
-  result = true;
-
-out:
-  if (state) {
-    json_decref(state);
-  }
-
-  return result;
+  return true;
 }
 
 #if defined(HAVE_MKOSTEMP) && defined(sun)
@@ -142,12 +133,11 @@ w_stm_t w_mkstemp(char *templ)
 
 static bool do_state_save(void)
 {
-  json_t *state;
   w_jbuffer_t buffer;
   w_stm_t file = NULL;
   bool result = false;
 
-  state = json_object();
+  auto state = json_object();
 
   if (!w_json_buffer_init(&buffer)) {
     w_log(W_LOG_ERR, "save_state: failed to init json buffer\n");
@@ -178,9 +168,6 @@ static bool do_state_save(void)
 out:
   if (file) {
     w_stm_close(file);
-  }
-  if (state) {
-    json_decref(state);
   }
   w_json_buffer_free(&buffer);
 

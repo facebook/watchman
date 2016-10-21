@@ -21,7 +21,7 @@ size_t backtrace(void **frames, size_t n_frames) {
 }
 
 char **backtrace_symbols(void **array, size_t n_frames) {
-  json_t *arr = json_array_of_size(n_frames);
+  auto arr = json_array_of_size(n_frames);
   char **strings;
   size_t i;
   union {
@@ -58,6 +58,5 @@ char **backtrace_symbols(void **array, size_t n_frames) {
   }
 
   strings = w_argv_copy_from_json(arr, 0);
-  json_decref(arr);
   return strings;
 }

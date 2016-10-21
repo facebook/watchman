@@ -11,8 +11,7 @@
  */
 
 static void *check_my_sock(void *unused) {
-  json_t *cmd = json_pack("[u]", "get-pid");
-  json_t *result;
+  auto cmd = json_pack("[u]", "get-pid");
   w_stm_t client = NULL;
   w_jbuffer_t buf;
   json_error_t jerr;
@@ -39,7 +38,7 @@ static void *check_my_sock(void *unused) {
   }
 
   w_json_buffer_reset(&buf);
-  result = w_json_buffer_next(&buf, client, &jerr);
+  auto result = w_json_buffer_next(&buf, client, &jerr);
   if (!result) {
     w_log(W_LOG_FATAL, "Failed to decode get-pid response: %s %s\n",
         jerr.text, strerror(errno));
@@ -59,8 +58,6 @@ static void *check_my_sock(void *unused) {
         (long)remote_pid, (long)my_pid);
     /* NOTREACHED */
   }
-  json_decref(cmd);
-  json_decref(result);
   w_json_buffer_free(&buf);
   w_stm_close(client);
   return NULL;

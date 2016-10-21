@@ -7,8 +7,8 @@ enum trigger_input_style { input_dev_null, input_json, input_name_list };
 struct watchman_trigger_command {
   w_string triggername;
   std::shared_ptr<w_query> query;
-  json_t *definition;
-  json_t *command;
+  json_ref definition;
+  json_ref command;
   w_ht_t *envht;
 
   struct w_query_field_list field_list;

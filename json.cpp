@@ -91,11 +91,11 @@ static inline enum w_pdu_type detect_pdu(w_jbuffer_t *jr)
   return is_json_compact;
 }
 
-static json_t *read_json_pretty_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
-{
+static json_ref
+read_json_pretty_pdu(w_jbuffer_t* jr, w_stm_t stm, json_error_t* jerr) {
   char *nl;
   int r;
-  json_t *res;
+  json_ref res;
 
   // Assume newline is at the end of what we have
   nl = jr->buf + jr->wpos;
@@ -105,7 +105,7 @@ static json_t *read_json_pretty_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *
     // Maybe we can fill more data into the buffer and retry?
     if (!fill_buffer(jr, stm)) {
       // No, then error is terminal
-      return NULL;
+      return nullptr;
     }
     // Recompute end of buffer
     nl = jr->buf + jr->wpos;
@@ -120,10 +120,9 @@ static json_t *read_json_pretty_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *
   return res;
 }
 
-static json_t *read_json_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
-{
+static json_ref
+read_json_pdu(w_jbuffer_t* jr, w_stm_t stm, json_error_t* jerr) {
   int r;
-  json_t *res;
 
   /* look for a newline; that indicates the end of
    * a json packet */
@@ -140,14 +139,14 @@ static json_t *read_json_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
         nl = jr->buf + jr->wpos;
         break;
       }
-      return NULL;
+      return nullptr;
     }
     nl = (char*)memchr(jr->buf + jr->rpos, '\n', jr->wpos - jr->rpos);
   }
 
   // buflen
   r = (int)(nl - (jr->buf + jr->rpos));
-  res = json_loadb(jr->buf + jr->rpos, r, 0, jerr);
+  auto res = json_loadb(jr->buf + jr->rpos, r, 0, jerr);
 
   // update read pos to look beyond this point
   jr->rpos += r + 1;
@@ -193,16 +192,18 @@ bool w_bser_decode_pdu_info(w_jbuffer_t *jr, w_stm_t stm, uint32_t bser_version,
   return true;
 }
 
-static json_t *read_bser_pdu(w_jbuffer_t *jr, w_stm_t stm, uint32_t bser_version,
-    json_error_t *jerr)
-{
+static json_ref read_bser_pdu(
+    w_jbuffer_t* jr,
+    w_stm_t stm,
+    uint32_t bser_version,
+    json_error_t* jerr) {
   json_int_t needed;
   json_int_t val;
   json_int_t bser_capabilities;
   uint32_t ideal;
   json_int_t need;
   int r;
-  json_t *obj;
+  json_ref obj;
 
   jr->rpos += 2;
 
@@ -210,7 +211,7 @@ static json_t *read_bser_pdu(w_jbuffer_t *jr, w_stm_t stm, uint32_t bser_version
   w_stm_set_nonblock(stm, false);
   if (!w_bser_decode_pdu_info(jr, stm, bser_version, &val, &bser_capabilities,
       jerr)) {
-    return NULL;
+    return nullptr;
   }
 
   // val tells us exactly how much storage we need for this PDU
@@ -227,7 +228,7 @@ static json_t *read_bser_pdu(w_jbuffer_t *jr, w_stm_t stm, uint32_t bser_version
         snprintf(jerr->text, sizeof(jerr->text),
             "out of memory while allocating %" PRIu32 " bytes",
             ideal);
-        return NULL;
+        return nullptr;
       }
 
       jr->buf = buf;
@@ -242,7 +243,7 @@ static json_t *read_bser_pdu(w_jbuffer_t *jr, w_stm_t stm, uint32_t bser_version
       snprintf(jerr->text, sizeof(jerr->text),
           "error reading PDU: %s",
           strerror(errno));
-      return NULL;
+      return nullptr;
     }
     jr->wpos += r;
   }
@@ -414,9 +415,8 @@ static bool stream_pdu(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
   }
 }
 
-static json_t *read_pdu_into_json(w_jbuffer_t *jr, w_stm_t stm,
-    json_error_t *jerr)
-{
+static json_ref
+read_pdu_into_json(w_jbuffer_t* jr, w_stm_t stm, json_error_t* jerr) {
   switch (jr->pdu_type) {
     case is_json_compact:
       return read_json_pdu(jr, stm, jerr);
@@ -434,7 +434,6 @@ bool w_json_buffer_passthru(w_jbuffer_t *jr,
     w_jbuffer_t *output_pdu_buf,
     w_stm_t stm)
 {
-  json_t *j;
   json_error_t jerr;
   bool res;
 
@@ -454,7 +453,7 @@ bool w_json_buffer_passthru(w_jbuffer_t *jr,
     return true;
   }
 
-  j = read_pdu_into_json(jr, stm, &jerr);
+  auto j = read_pdu_into_json(jr, stm, &jerr);
 
   if (!j) {
     w_log(W_LOG_ERR, "failed to parse response: %s\n",
@@ -466,15 +465,13 @@ bool w_json_buffer_passthru(w_jbuffer_t *jr,
 
   res = w_ser_write_pdu(output_pdu, output_pdu_buf, w_stm_stdout(), j);
 
-  json_decref(j);
   return res;
 }
 
-json_t *w_json_buffer_next(w_jbuffer_t *jr, w_stm_t stm, json_error_t *jerr)
-{
+json_ref w_json_buffer_next(w_jbuffer_t* jr, w_stm_t stm, json_error_t* jerr) {
   memset(jerr, 0, sizeof(*jerr));
   if (!read_and_detect_pdu(jr, stm, jerr)) {
-    return NULL;
+    return nullptr;
   }
   return read_pdu_into_json(jr, stm, jerr);
 }

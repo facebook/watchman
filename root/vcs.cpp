@@ -39,16 +39,13 @@ bool is_vcs_op_in_progress(struct write_locked_watchman_root *lock) {
          vcs_file_exists(lock, ".git", "index.lock");
 }
 
-static json_t *config_get_ignore_vcs(w_root_t *root) {
-  json_t *ignores = cfg_get_json(root, "ignore_vcs");
+static json_ref config_get_ignore_vcs(w_root_t* root) {
+  json_ref ignores = cfg_get_json(root, "ignore_vcs");
   if (ignores && !json_is_array(ignores)) {
-    return NULL;
+    return nullptr;
   }
 
-  if (ignores) {
-    // incref so that the caller can simply decref whatever we return
-    json_incref(ignores);
-  } else {
+  if (!ignores) {
     // default to a well-known set of vcs's
     ignores = json_pack("[sss]", ".git", ".svn", ".hg");
   }
@@ -57,10 +54,9 @@ static json_t *config_get_ignore_vcs(w_root_t *root) {
 
 bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg) {
   uint8_t i;
-  json_t *ignores;
   struct stat st;
 
-  ignores = config_get_ignore_vcs(root);
+  auto ignores = config_get_ignore_vcs(root);
   if (!ignores) {
     ignore_result(asprintf(errmsg, "ignore_vcs must be an array of strings"));
     return false;
@@ -72,7 +68,6 @@ bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg) {
     if (!json_is_string(jignore)) {
       ignore_result(asprintf(errmsg,
           "ignore_vcs must be an array of strings"));
-      json_decref(ignores);
       return false;
     }
 
@@ -96,8 +91,6 @@ bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg) {
       root->cookies.setCookieDir(fullname);
     }
   }
-
-  json_decref(ignores);
 
   return true;
 }

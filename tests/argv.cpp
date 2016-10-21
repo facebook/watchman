@@ -7,13 +7,12 @@
 int main(int argc, char **argv)
 {
   char **dupd;
-  json_t *args;
   (void)argc;
   (void)argv;
 
   plan_tests(8);
 
-  args = json_array();
+  auto args = json_array();
   json_array_append_new(args, typed_string_to_json("one", W_STRING_UNICODE));
   json_array_append_new(args, typed_string_to_json("two", W_STRING_UNICODE));
   ok(json_array_size(args) == 2, "sanity check array size");
@@ -31,7 +30,6 @@ int main(int argc, char **argv)
   ok(dupd[1] == NULL, "terminated");
   free(dupd);
 
-  json_decref(args);
   return exit_status();
 }
 

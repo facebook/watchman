@@ -38,7 +38,6 @@ W_CAP_REG("clock-sync-timeout")
  */
 static void cmd_clock(struct watchman_client *client, json_t *args)
 {
-  json_t *resp;
   int sync_timeout = 0;
   struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
@@ -67,12 +66,12 @@ static void cmd_clock(struct watchman_client *client, json_t *args)
     return;
   }
 
-  resp = make_response();
+  auto resp = make_response();
   w_root_read_lock(&unlocked, "clock", &lock);
   annotate_with_clock(&lock, resp);
   w_root_read_unlock(&lock, &unlocked);
 
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
 W_CMD_REG("clock", cmd_clock, CMD_DAEMON | CMD_ALLOW_ANY_USER,
@@ -82,7 +81,6 @@ W_CMD_REG("clock", cmd_clock, CMD_DAEMON | CMD_ALLOW_ANY_USER,
  * Stops watching the specified root */
 static void cmd_watch_delete(struct watchman_client *client, json_t *args)
 {
-  json_t *resp;
   struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
@@ -95,42 +93,32 @@ static void cmd_watch_delete(struct watchman_client *client, json_t *args)
     return;
   }
 
-  resp = make_response();
+  auto resp = make_response();
   set_prop(resp, "watch-del", json_boolean(w_root_stop_watch(&unlocked)));
   set_prop(resp, "root", w_string_to_json(unlocked.root->root_path));
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
 W_CMD_REG("watch-del", cmd_watch_delete, CMD_DAEMON, w_cmd_realpath_root)
 
 /* watch-del-all
  * Stops watching all roots */
-static void cmd_watch_del_all(struct watchman_client *client, json_t *args)
-{
-  json_t *resp;
-  json_t *roots;
-  unused_parameter(args);
-
-  resp = make_response();
-  roots = w_root_stop_watch_all();
-  set_prop(resp, "roots", roots);
-  send_and_dispose_response(client, resp);
+static void cmd_watch_del_all(struct watchman_client* client, json_t*) {
+  auto resp = make_response();
+  auto roots = w_root_stop_watch_all();
+  set_prop(resp, "roots", std::move(roots));
+  send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("watch-del-all", cmd_watch_del_all, CMD_DAEMON | CMD_POISON_IMMUNE,
           NULL)
 
 /* watch-list
  * Returns a list of watched roots */
-static void cmd_watch_list(struct watchman_client *client, json_t *args)
-{
-  json_t *resp;
-  json_t *root_paths;
-  unused_parameter(args);
-
-  resp = make_response();
-  root_paths = w_root_watch_list_to_json();
-  set_prop(resp, "roots", root_paths);
-  send_and_dispose_response(client, resp);
+static void cmd_watch_list(struct watchman_client* client, json_t*) {
+  auto resp = make_response();
+  auto root_paths = w_root_watch_list_to_json();
+  set_prop(resp, "roots", std::move(root_paths));
+  send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("watch-list", cmd_watch_list, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL)
 
@@ -228,7 +216,6 @@ static char *resolve_projpath(json_t *args, char **errmsg, char **relpath)
   const char *path;
   char *resolved = NULL;
   bool res = false;
-  json_t *root_files;
   bool enforcing;
   char *enclosing = NULL;
 
@@ -252,7 +239,7 @@ static char *resolve_projpath(json_t *args, char **errmsg, char **relpath)
     return nullptr;
   }
 
-  root_files = cfg_compute_root_files(&enforcing);
+  auto root_files = cfg_compute_root_files(&enforcing);
   if (!root_files) {
     ignore_result(asprintf(errmsg,
           "resolve_projpath: error computing root_files configuration value, "
@@ -290,7 +277,6 @@ static char *resolve_projpath(json_t *args, char **errmsg, char **relpath)
       "parent directories", path));
 
 done:
-  json_decref(root_files);
   if (!res) {
     free(resolved);
     resolved = nullptr;
@@ -301,7 +287,6 @@ done:
 /* watch /root */
 static void cmd_watch(struct watchman_client *client, json_t *args)
 {
-  json_t *resp;
   struct write_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
@@ -315,7 +300,7 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
     return;
   }
 
-  resp = make_response();
+  auto resp = make_response();
 
   w_root_lock(&unlocked, "watch", &lock);
   if (lock.root->failure_reason) {
@@ -327,7 +312,7 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
     set_unicode_prop(resp, "watcher", lock.root->inner.watcher->name);
   }
   add_root_warnings_to_response(resp, w_root_read_lock_from_write(&lock));
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
   w_root_unlock(&lock, &unlocked);
   w_root_delref(&unlocked);
 }
@@ -336,7 +321,6 @@ W_CMD_REG("watch", cmd_watch, CMD_DAEMON | CMD_ALLOW_ANY_USER,
 
 static void cmd_watch_project(struct watchman_client *client, json_t *args)
 {
-  json_t *resp;
   char *dir_to_watch = NULL;
   char *rel_path_from_watch = NULL;
   char *errmsg = NULL;
@@ -364,7 +348,7 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
     return;
   }
 
-  resp = make_response();
+  auto resp = make_response();
 
   w_root_lock(&unlocked, "watch-project", &lock);
   if (lock.root->failure_reason) {
@@ -379,7 +363,7 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
   if (rel_path_from_watch) {
     set_bytestring_prop(resp, "relative_path",rel_path_from_watch);
   }
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
   w_root_unlock(&lock, &unlocked);
   w_root_delref(&unlocked);
   free(dir_to_watch);

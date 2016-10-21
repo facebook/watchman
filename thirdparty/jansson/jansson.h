@@ -1,5 +1,4 @@
-/* @nolint
- * Copyright (c) 2009-2012 Petri Lehtinen <petri@digip.org>
+/* Copyright (c) 2009-2012 Petri Lehtinen <petri@digip.org>
  *
  * Jansson is free software; you can redistribute it and/or modify
  * it under the terms of the MIT license. See LICENSE for details.
@@ -48,12 +47,56 @@ struct json_t {
     json_type type;
     size_t refcount;
 
-    json_t(json_type type);
+    explicit json_t(json_type type);
 
     struct SingletonHack {};
     // true, false, null are never heap allocated, always
     // reference a global singleton value with a bogus refcount
     json_t(json_type type, SingletonHack&&);
+};
+
+class json_ref {
+  json_t* ref_;
+
+  static inline json_t* incref(json_t* json) {
+    if (json && json->refcount != (size_t)-1) {
+      ++json->refcount;
+    }
+    return json;
+  }
+
+  static inline void decref(json_t* json) {
+    if (json && json->refcount != (size_t)-1 && --json->refcount == 0) {
+      json_delete(json);
+    }
+  }
+  static void json_delete(json_t* json);
+
+ public:
+  json_ref();
+  /* implicit */ json_ref(json_t* ref, bool addRef = true);
+  /* implicit */ json_ref(std::nullptr_t);
+
+  ~json_ref();
+  void reset(json_t* ref = nullptr);
+
+  json_ref(const json_ref& other);
+  json_ref& operator=(const json_ref& other);
+
+  json_ref(json_ref&& other) noexcept;
+  json_ref& operator=(json_ref&& other) noexcept;
+
+  /* implicit */ operator json_t*() const {
+    return ref_;
+  }
+
+  /* implicit */ operator bool() const {
+    return ref_ != nullptr;
+  }
+
+  json_t* get() const {
+    return ref_;
+  }
 };
 
 #if JSON_INTEGER_IS_LONG_LONG
@@ -68,7 +111,9 @@ typedef long long json_int_t;
 typedef long json_int_t;
 #endif /* JSON_INTEGER_IS_LONG_LONG */
 
-#define json_typeof(json)      ((json)->type)
+inline json_type json_typeof(const json_t* json) {
+  return json->type;
+}
 #define json_is_object(json)   (json && json_typeof(json) == JSON_OBJECT)
 #define json_is_array(json)    (json && json_typeof(json) == JSON_ARRAY)
 #define json_is_string(json)   (json && json_typeof(json) == JSON_STRING)
@@ -82,41 +127,22 @@ typedef long json_int_t;
 
 /* construction, destruction, reference counting */
 
-json_t *json_object(void);
-json_t *json_object_of_size(size_t nelems);
-json_t *json_array(void);
-json_t *json_array_of_size(size_t nelems);
-json_t *typed_string_len_to_json(const char *str, size_t len,
-    w_string_type_t type);
-json_t *typed_string_to_json(const char *value, w_string_type_t type);
-json_t *w_string_to_json(w_string_t *str);
+json_ref json_object(void);
+json_ref json_object_of_size(size_t nelems);
+json_ref json_array(void);
+json_ref json_array_of_size(size_t nelems);
+json_ref
+typed_string_len_to_json(const char* str, size_t len, w_string_type_t type);
+json_ref typed_string_to_json(const char* value, w_string_type_t type);
+json_ref w_string_to_json(w_string_t* str);
 w_string_t *json_to_w_string(const json_t *json);
 w_string_t *json_to_w_string_incref(const json_t *json);
-json_t *json_integer(json_int_t value);
-json_t *json_real(double value);
-json_t *json_true(void);
-json_t *json_false(void);
+json_ref json_integer(json_int_t value);
+json_ref json_real(double value);
+json_ref json_true(void);
+json_ref json_false(void);
 #define json_boolean(val)      ((val) ? json_true() : json_false())
-json_t *json_null(void);
-
-static JSON_INLINE
-json_t *json_incref(json_t *json)
-{
-    if(json && json->refcount != (size_t)-1)
-        ++json->refcount;
-    return json;
-}
-
-/* do not call json_delete directly */
-void json_delete(json_t *json);
-
-static JSON_INLINE
-void json_decref(json_t *json)
-{
-    if(json && json->refcount != (size_t)-1 && --json->refcount == 0)
-        json_delete(json);
-}
-
+json_ref json_null(void);
 
 /* error reporting */
 
@@ -135,8 +161,11 @@ struct json_error_t {
 
 size_t json_object_size(const json_t *object);
 json_t *json_object_get(const json_t *object, const char *key);
-int json_object_set_new(json_t *object, const char *key, json_t *value);
-int json_object_set_new_nocheck(json_t *object, const char *key, json_t *value);
+int json_object_set_new(json_t* object, const char* key, json_ref&& value);
+int json_object_set_new_nocheck(
+    json_t* object,
+    const char* key,
+    json_ref&& value);
 int json_object_del(json_t *object, const char *key);
 int json_object_clear(json_t *object);
 int json_object_update(json_t *object, json_t *other);
@@ -146,43 +175,43 @@ int json_object_update_missing(json_t *object, json_t *other);
 static JSON_INLINE
 int json_object_set(json_t *object, const char *key, json_t *value)
 {
-    return json_object_set_new(object, key, json_incref(value));
+  return json_object_set_new(object, key, json_ref(value));
 }
 
 static JSON_INLINE
 int json_object_set_nocheck(json_t *object, const char *key, json_t *value)
 {
-    return json_object_set_new_nocheck(object, key, json_incref(value));
+  return json_object_set_new_nocheck(object, key, json_ref(value));
 }
 
 size_t json_array_size(const json_t *array);
 json_t *json_array_get(const json_t *array, size_t index);
-int json_array_set_new(json_t *array, size_t index, json_t *value);
-int json_array_append_new(json_t *array, json_t *value);
-int json_array_insert_new(json_t *array, size_t index, json_t *value);
+int json_array_set_new(json_t* array, size_t index, json_ref&& value);
+int json_array_append_new(json_t* array, json_ref&& value);
+int json_array_insert_new(json_t* array, size_t index, json_ref&& value);
 int json_array_remove(json_t *array, size_t index);
 int json_array_clear(json_t *array);
 int json_array_extend(json_t *array, json_t *other);
 int json_array_set_template(json_t *array, json_t *templ);
-int json_array_set_template_new(json_t *json, json_t *templ);
+int json_array_set_template_new(json_t* json, json_ref&& templ);
 json_t *json_array_get_template(const json_t *array);
 
 static JSON_INLINE
 int json_array_set(json_t *array, size_t index, json_t *value)
 {
-    return json_array_set_new(array, index, json_incref(value));
+  return json_array_set_new(array, index, json_ref(value));
 }
 
 static JSON_INLINE
 int json_array_append(json_t *array, json_t *value)
 {
-    return json_array_append_new(array, json_incref(value));
+  return json_array_append_new(array, json_ref(value));
 }
 
 static JSON_INLINE
 int json_array_insert(json_t *array, size_t index, json_t *value)
 {
-    return json_array_insert_new(array, index, json_incref(value));
+  return json_array_insert_new(array, index, json_ref(value));
 }
 
 const char *json_string_value(const json_t *string);
@@ -196,9 +225,10 @@ int json_real_set(json_t *real, double value);
 
 /* pack, unpack */
 
-json_t *json_pack(const char *fmt, ...);
-json_t *json_pack_ex(json_error_t *error, size_t flags, const char *fmt, ...);
-json_t *json_vpack_ex(json_error_t *error, size_t flags, const char *fmt, va_list ap);
+json_ref json_pack(const char* fmt, ...);
+json_ref json_pack_ex(json_error_t* error, size_t flags, const char* fmt, ...);
+json_ref
+json_vpack_ex(json_error_t* error, size_t flags, const char* fmt, va_list ap);
 
 #define JSON_VALIDATE_ONLY  0x1
 #define JSON_STRICT         0x2
@@ -215,9 +245,8 @@ int json_equal(json_t *value1, json_t *value2);
 
 /* copying */
 
-json_t *json_copy(json_t *value);
-json_t *json_deep_copy(json_t *value);
-
+json_ref json_copy(json_t* value);
+json_ref json_deep_copy(json_t* value);
 
 /* decoding */
 
@@ -227,12 +256,19 @@ json_t *json_deep_copy(json_t *value);
 
 typedef size_t (*json_load_callback_t)(void *buffer, size_t buflen, void *data);
 
-json_t *json_loads(const char *input, size_t flags, json_error_t *error);
-json_t *json_loadb(const char *buffer, size_t buflen, size_t flags, json_error_t *error);
-json_t *json_loadf(FILE *input, size_t flags, json_error_t *error);
-json_t *json_load_file(const char *path, size_t flags, json_error_t *error);
-json_t *json_load_callback(json_load_callback_t callback, void *data, size_t flags, json_error_t *error);
-
+json_ref json_loads(const char* input, size_t flags, json_error_t* error);
+json_ref json_loadb(
+    const char* buffer,
+    size_t buflen,
+    size_t flags,
+    json_error_t* error);
+json_ref json_loadf(FILE* input, size_t flags, json_error_t* error);
+json_ref json_load_file(const char* path, size_t flags, json_error_t* error);
+json_ref json_load_callback(
+    json_load_callback_t callback,
+    void* data,
+    size_t flags,
+    json_error_t* error);
 
 /* encoding */
 

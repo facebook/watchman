@@ -122,16 +122,17 @@ void preprocess_command(json_t *args, enum w_pdu_type output_pdu)
   if (errmsg) {
     w_jbuffer_t jr;
 
-    json_t *err = json_pack(
-      "{s:m, s:u, s:b}",
-      "error", errmsg,
-      "version", PACKAGE_VERSION,
-      "cli_validated", true
-    );
+    auto err = json_pack(
+        "{s:m, s:u, s:b}",
+        "error",
+        errmsg,
+        "version",
+        PACKAGE_VERSION,
+        "cli_validated",
+        true);
 
     w_json_buffer_init(&jr);
     w_ser_write_pdu(output_pdu, &jr, w_stm_stdout(), err);
-    json_decref(err);
     w_json_buffer_free(&jr);
 
     free(errmsg);
@@ -149,7 +150,6 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
   // Stash a reference to the current command to make it easier to log
   // the command context in some of the error paths
   client->current_command = args;
-  json_incref(client->current_command);
 
   def = lookup(args, &errmsg, mode);
 
@@ -184,7 +184,6 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
     def->func(client, args);
 
     if (sample.finish()) {
-      json_incref(args);
       sample.add_meta("args", args);
       sample.log();
     } else {
@@ -194,8 +193,7 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
 
 done:
   free(errmsg);
-  json_decref(client->current_command);
-  client->current_command = NULL;
+  client->current_command = nullptr;
   client->perf_sample = nullptr;
   return result;
 }

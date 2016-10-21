@@ -128,13 +128,10 @@ static void update_subscription_ticks(struct watchman_client_subscription *sub,
   sub->query->since_spec = w_clockspec_new_clock(res->root_number, res->ticks);
 }
 
-static json_t *build_subscription_results(
-    struct watchman_client_subscription *sub,
-    struct write_locked_watchman_root *lock)
-{
+static json_ref build_subscription_results(
+    struct watchman_client_subscription* sub,
+    struct write_locked_watchman_root* lock) {
   w_query_res res;
-  json_t *response;
-  json_t *file_list;
   char clockbuf[128];
   auto since_spec = sub->query->since_spec.get();
 
@@ -159,7 +156,7 @@ static json_t *build_subscription_results(
   if (!w_query_execute_locked(sub->query.get(), lock, &res, time_generator)) {
     w_log(W_LOG_ERR, "error running subscription %s query: %s",
         sub->name->buf, res.errmsg);
-    return NULL;
+    return nullptr;
   }
 
   w_log(
@@ -170,13 +167,13 @@ static json_t *build_subscription_results(
 
   if (res.results.empty()) {
     update_subscription_ticks(sub, &res);
-    return NULL;
+    return nullptr;
   }
 
-  file_list = w_query_results_to_json(
+  auto file_list = w_query_results_to_json(
       &sub->field_list, res.results.size(), res.results);
 
-  response = make_response();
+  auto response = make_response();
 
   // It is way too much of a hassle to try to recreate the clock value if it's
   // not a relative clock spec, and it's only going to happen on the first run
@@ -192,7 +189,7 @@ static json_t *build_subscription_results(
   update_subscription_ticks(sub, &res);
 
   set_prop(response, "is_fresh_instance", json_boolean(res.is_fresh_instance));
-  set_prop(response, "files", file_list);
+  set_prop(response, "files", std::move(file_list));
   set_prop(response, "root", w_string_to_json(lock->root->root_path));
   set_prop(response, "subscription", w_string_to_json(sub->name));
   set_prop(response, "unilateral", json_true());
@@ -206,7 +203,7 @@ void w_run_subscription_rules(
     struct watchman_client_subscription *sub,
     struct write_locked_watchman_root *lock)
 {
-  json_t *response = build_subscription_results(sub, lock);
+  auto response = build_subscription_results(sub, lock);
 
   if (!response) {
     return;
@@ -214,9 +211,8 @@ void w_run_subscription_rules(
 
   add_root_warnings_to_response(response, w_root_read_lock_from_write(lock));
 
-  if (!enqueue_response(&client->client, response, true)) {
+  if (!enqueue_response(&client->client, std::move(response), true)) {
     w_log(W_LOG_DBG, "failed to queue sub response\n");
-    json_decref(response);
   }
 }
 
@@ -233,7 +229,7 @@ void w_cancel_subscriptions_for_root(const w_root_t *root) {
           auto sub = (watchman_client_subscription*)w_ht_val_ptr(citer.value);
 
           if (sub->root == root) {
-            json_t *response = make_response();
+            auto response = make_response();
 
             w_log(W_LOG_ERR,
                   "Cancel subscription %.*s for client:stm=%p due to "
@@ -245,9 +241,8 @@ void w_cancel_subscriptions_for_root(const w_root_t *root) {
             set_prop(response, "unilateral", json_true());
             set_prop(response, "canceled", json_true());
 
-            if (!enqueue_response(&client->client, response, true)) {
+            if (!enqueue_response(&client->client, std::move(response), true)) {
               w_log(W_LOG_DBG, "failed to queue sub cancellation\n");
-              json_decref(response);
             }
 
             w_ht_iter_del(client->subscriptions, &citer);
@@ -266,7 +261,6 @@ static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
   const char *name;
   w_string_t *sname;
   bool deleted;
-  json_t *resp;
   const json_t *jstr;
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
@@ -293,11 +287,11 @@ static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
 
   w_string_delref(sname);
 
-  resp = make_response();
+  auto resp = make_response();
   set_bytestring_prop(resp, "unsubscribe", name);
   set_prop(resp, "deleted", json_boolean(deleted));
 
-  send_and_dispose_response(&client->client, resp);
+  send_and_dispose_response(&client->client, std::move(resp));
   w_root_delref(&unlocked);
 }
 W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
@@ -308,7 +302,7 @@ W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
 static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
 {
   struct watchman_client_subscription *sub;
-  json_t *resp, *initial_subscription_results;
+  json_ref resp, initial_subscription_results;
   json_t *jfield_list;
   json_t *jname;
   std::shared_ptr<w_query> query;
@@ -410,7 +404,6 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
   pthread_mutex_unlock(&w_client_lock);
 
   resp = make_response();
-  json_incref(jname);
   set_prop(resp, "subscribe", jname);
 
   w_root_lock(&unlocked, "initial subscription query", &lock);
@@ -420,9 +413,10 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
   initial_subscription_results = build_subscription_results(sub, &lock);
   w_root_unlock(&lock, &unlocked);
 
-  send_and_dispose_response(&client->client, resp);
+  send_and_dispose_response(&client->client, std::move(resp));
   if (initial_subscription_results) {
-    send_and_dispose_response(&client->client, initial_subscription_results);
+    send_and_dispose_response(
+        &client->client, std::move(initial_subscription_results));
   }
 done:
   w_root_delref(&unlocked);

@@ -176,10 +176,6 @@ watchman_root::~watchman_root() {
 
   pthread_rwlock_destroy(&lock);
 
-  if (config_file) {
-    json_decref(config_file);
-  }
-
   --live_roots;
 }
 

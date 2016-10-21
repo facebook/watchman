@@ -6,7 +6,7 @@
 
 static pthread_t perf_log_thr;
 static pthread_mutex_t perf_log_lock = PTHREAD_MUTEX_INITIALIZER;
-static json_t *perf_log_samples = NULL;
+static json_ref perf_log_samples;
 static pthread_cond_t perf_log_cond;
 static bool perf_log_thread_started = false;
 
@@ -19,9 +19,6 @@ watchman_perf_sample::watchman_perf_sample(const char* description)
 }
 
 watchman_perf_sample::~watchman_perf_sample() {
-  if (meta_data) {
-    json_decref(meta_data);
-  }
   memset(this, 0, sizeof(*this));
 }
 
@@ -54,7 +51,7 @@ bool watchman_perf_sample::finish() {
 
   if (!will_log) {
     if (wall_time_elapsed_thresh == 0) {
-      json_t *thresh = cfg_get_json(NULL, "perf_sampling_thresh");
+      auto thresh = cfg_get_json(nullptr, "perf_sampling_thresh");
       if (thresh) {
         if (json_is_number(thresh)) {
           wall_time_elapsed_thresh = json_number_value(thresh);
@@ -73,11 +70,11 @@ bool watchman_perf_sample::finish() {
   return will_log;
 }
 
-void watchman_perf_sample::add_meta(const char* key, json_t* val) {
+void watchman_perf_sample::add_meta(const char* key, json_ref&& val) {
   if (!meta_data) {
     meta_data = json_object();
   }
-  set_prop(meta_data, key, val);
+  set_prop(meta_data, key, std::move(val));
 }
 
 void watchman_perf_sample::add_root_meta(const w_root_t* root) {
@@ -88,9 +85,9 @@ void watchman_perf_sample::add_root_meta(const w_root_t* root) {
   add_meta(
       "root",
       json_pack(
-          "{s:o, s:i, s:i, s:i, s:b, s:u}",
+          "{s:s, s:i, s:i, s:i, s:b, s:u}",
           "path",
-          w_string_to_json(root->root_path),
+          root->root_path.c_str(),
           "recrawl_count",
           root->recrawlInfo.rlock()->recrawlCount,
           "number",
@@ -118,9 +115,9 @@ void watchman_perf_sample::force_log() {
 }
 
 static void *perf_log_thread(void *unused) {
-  json_t *samples = NULL;
+  json_ref samples;
   char **envp;
-  json_t *perf_cmd;
+  json_ref perf_cmd;
   int64_t sample_batch;
 
   unused_parameter(unused);
@@ -140,7 +137,7 @@ static void *perf_log_thread(void *unused) {
 
   perf_cmd = cfg_get_json(NULL, "perf_logger_command");
   if (json_is_string(perf_cmd)) {
-    perf_cmd = json_pack("[O]", perf_cmd);
+    perf_cmd = json_pack("[O]", perf_cmd.get());
   }
   if (!json_is_array(perf_cmd)) {
     w_log(
@@ -156,15 +153,14 @@ static void *perf_log_thread(void *unused) {
     if (!perf_log_samples) {
       pthread_cond_wait(&perf_log_cond, &perf_log_lock);
     }
-    samples = perf_log_samples;
-    perf_log_samples = NULL;
-
+    samples = nullptr;
+    std::swap(samples, perf_log_samples);
     pthread_mutex_unlock(&perf_log_lock);
 
     if (samples) {
       while (json_array_size(samples) > 0) {
         int i = 0;
-        json_t *cmd = json_array();
+        auto cmd = json_array();
         posix_spawnattr_t attr;
         posix_spawn_file_actions_t actions;
         pid_t pid;
@@ -214,9 +210,7 @@ static void *perf_log_thread(void *unused) {
         posix_spawn_file_actions_destroy(&actions);
 
         free(argv);
-        json_decref(cmd);
       }
-      json_decref(samples);
     }
   }
 
@@ -224,7 +218,6 @@ static void *perf_log_thread(void *unused) {
 }
 
 void watchman_perf_sample::log() {
-  json_t *info;
   char *dumped = NULL;
 
   if (!will_log) {
@@ -232,12 +225,12 @@ void watchman_perf_sample::log() {
   }
 
   // Assemble a perf blob
-  info = json_pack(
+  auto info = json_pack(
       "{s:u, s:O, s:i, s:u}",
       "description",
       description,
       "meta",
-      meta_data,
+      meta_data.get(),
       "pid",
       getpid(),
       "version",
@@ -278,7 +271,6 @@ void watchman_perf_sample::log() {
   free(dumped);
 
   if (!cfg_get_json(NULL, "perf_logger_command")) {
-    json_decref(info);
     return;
   }
 
@@ -294,7 +286,7 @@ void watchman_perf_sample::log() {
   if (!perf_log_samples) {
     perf_log_samples = json_array();
   }
-  json_array_append_new(perf_log_samples, info);
+  json_array_append_new(perf_log_samples, std::move(info));
   pthread_mutex_unlock(&perf_log_lock);
 
   pthread_cond_signal(&perf_log_cond);

@@ -9,8 +9,6 @@ static void cmd_find(struct watchman_client *client, json_t *args)
   char *errmsg = NULL;
   struct w_query_field_list field_list;
   w_query_res res;
-  json_t *response;
-  json_t *file_list;
   char clockbuf[128];
   struct unlocked_watchman_root unlocked;
 
@@ -45,16 +43,16 @@ static void cmd_find(struct watchman_client *client, json_t *args)
     return;
   }
 
-  file_list =
+  auto file_list =
       w_query_results_to_json(&field_list, res.results.size(), res.results);
 
-  response = make_response();
+  auto response = make_response();
   if (clock_id_string(res.root_number, res.ticks, clockbuf, sizeof(clockbuf))) {
     set_unicode_prop(response, "clock", clockbuf);
   }
-  set_prop(response, "files", file_list);
+  set_prop(response, "files", std::move(file_list));
 
-  send_and_dispose_response(client, response);
+  send_and_dispose_response(client, std::move(response));
   w_root_delref(&unlocked);
 }
 W_CMD_REG("find", cmd_find, CMD_DAEMON | CMD_ALLOW_ANY_USER,

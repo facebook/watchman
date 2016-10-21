@@ -86,92 +86,81 @@ static void set_error(scanner_t *s, const char *source, const char *fmt, ...)
     va_end(ap);
 }
 
-static json_t *pack(scanner_t *s, va_list *ap);
+static json_ref pack(scanner_t *s, va_list *ap);
 
-static json_t *pack_object(scanner_t *s, va_list *ap)
+static json_ref pack_object(scanner_t *s, va_list *ap)
 {
-    json_t *object = json_object();
+    auto object = json_object();
     next_token(s);
 
     while(s->token != '}') {
         const char *key;
-        json_t *value;
 
         if(!s->token) {
             set_error(s, "<format>", "Unexpected end of format string");
-            goto error;
+            return nullptr;
         }
 
         if(s->token != 's' && s->token != 'u' && s->token != 'm') {
             set_error(s, "<format>", "Expected format string, got '%c'",
                 s->token);
-            goto error;
+            return nullptr;
         }
 
         key = va_arg(*ap, const char *);
         if(!key) {
             set_error(s, "<args>", "NULL object key");
-            goto error;
+            return nullptr;
         }
 
         if(!utf8_check_string(key, -1)) {
             set_error(s, "<args>", "Invalid UTF-8 in object key");
-            goto error;
+            return nullptr;
         }
 
         next_token(s);
 
-        value = pack(s, ap);
+        auto value = pack(s, ap);
         if(!value)
-            goto error;
+            return nullptr;
 
-        if(json_object_set_new_nocheck(object, key, value)) {
-            set_error(s, "<internal>", "Unable to add key \"%s\"", key);
-            goto error;
+        if (json_object_set_new_nocheck(object, key, std::move(value))) {
+          set_error(s, "<internal>", "Unable to add key \"%s\"", key);
+          return nullptr;
         }
 
         next_token(s);
     }
 
     return object;
-
-error:
-    json_decref(object);
-    return NULL;
 }
 
-static json_t *pack_array(scanner_t *s, va_list *ap)
+static json_ref pack_array(scanner_t *s, va_list *ap)
 {
-    json_t *array = json_array();
+    auto array = json_array();
     next_token(s);
 
     while(s->token != ']') {
-        json_t *value;
-
         if(!s->token) {
             set_error(s, "<format>", "Unexpected end of format string");
-            goto error;
+            return nullptr;
         }
 
-        value = pack(s, ap);
+        auto value = pack(s, ap);
         if(!value)
-            goto error;
+            return nullptr;
 
-        if(json_array_append_new(array, value)) {
+        if(json_array_append_new(array, std::move(value))) {
             set_error(s, "<internal>", "Unable to append to array");
-            goto error;
+            return nullptr;
         }
 
         next_token(s);
     }
     return array;
-
-error:
-    json_decref(array);
-    return NULL;
 }
 
-static json_t *pack(scanner_t *s, va_list *ap)
+static json_ref pack(scanner_t *s, va_list *ap)
 {
     switch(s->token) {
         case '{':
@@ -185,7 +174,7 @@ static json_t *pack(scanner_t *s, va_list *ap)
             const char *str = va_arg(*ap, const char *);
             if(!str) {
                 set_error(s, "<args>", "NULL string argument");
-                return NULL;
+                return nullptr;
             }
             return typed_string_to_json(str, W_STRING_BYTE);
         }
@@ -195,11 +184,11 @@ static json_t *pack(scanner_t *s, va_list *ap)
             const char *str = va_arg(*ap, const char *);
             if(!str) {
                 set_error(s, "<args>", "NULL string argument");
-                return NULL;
+                return nullptr;
             }
             if(!utf8_check_string(str, -1)) {
                 set_error(s, "<args>", "Invalid UTF-8 string");
-                return NULL;
+                return nullptr;
             }
             return typed_string_to_json(str, W_STRING_UNICODE);
         }
@@ -209,7 +198,7 @@ static json_t *pack(scanner_t *s, va_list *ap)
             const char *str = va_arg(*ap, const char *);
             if(!str) {
                 set_error(s, "<args>", "NULL string argument");
-                return NULL;
+                return nullptr;
             }
             return typed_string_to_json(str, W_STRING_MIXED);
         }
@@ -230,15 +219,15 @@ static json_t *pack(scanner_t *s, va_list *ap)
             return json_real(va_arg(*ap, double));
 
         case 'O': /* a json_t object; increments refcount */
-            return json_incref(va_arg(*ap, json_t *));
+            return json_ref(va_arg(*ap, json_t *));
 
         case 'o': /* a json_t object; doesn't increment refcount */
-            return va_arg(*ap, json_t *);
+            return json_ref(va_arg(*ap, json_t *), false);
 
         default:
             set_error(s, "<format>", "Unexpected format character '%c'",
                       s->token);
-            return NULL;
+            return nullptr;
     }
 }
 
@@ -517,18 +506,16 @@ static int unpack(scanner_t *s, json_t *root, va_list *ap)
             return 0;
 
         case 'O':
-            if(root && !(s->flags & JSON_VALIDATE_ONLY))
-                json_incref(root);
-            /* Fall through */
-
         case 'o':
             if(!(s->flags & JSON_VALIDATE_ONLY)) {
-                json_t **target = va_arg(*ap, json_t**);
-                if(root)
-                    *target = root;
+                json_ref *target = va_arg(*ap, json_ref*);
+                if(root){
+                  *target = json_ref(root, s->token == 'O');
+                }
             }
 
             return 0;
+
 
         case 'n':
             /* Never assign, just validate */
@@ -546,59 +533,54 @@ static int unpack(scanner_t *s, json_t *root, va_list *ap)
     }
 }
 
-json_t *json_vpack_ex(json_error_t *error, size_t flags,
-                      const char *fmt, va_list ap)
-{
-    scanner_t s;
-    va_list ap_copy;
-    json_t *value;
+json_ref
+json_vpack_ex(json_error_t* error, size_t flags, const char* fmt, va_list ap) {
+  scanner_t s;
+  va_list ap_copy;
 
-    if(!fmt || !*fmt) {
-        jsonp_error_init(error, "<format>");
-        jsonp_error_set(error, -1, -1, 0, "NULL or empty format string");
-        return NULL;
-    }
-    jsonp_error_init(error, NULL);
+  if (!fmt || !*fmt) {
+    jsonp_error_init(error, "<format>");
+    jsonp_error_set(error, -1, -1, 0, "NULL or empty format string");
+    return nullptr;
+  }
+  jsonp_error_init(error, NULL);
 
-    scanner_init(&s, error, flags, fmt);
-    next_token(&s);
+  scanner_init(&s, error, flags, fmt);
+  next_token(&s);
 
-    va_copy(ap_copy, ap);
-    value = pack(&s, &ap_copy);
-    va_end(ap_copy);
+  va_copy(ap_copy, ap);
+  auto value = pack(&s, &ap_copy);
+  va_end(ap_copy);
 
-    if(!value)
-        return NULL;
+  if (!value)
+    return nullptr;
 
-    next_token(&s);
-    if(s.token) {
-        json_decref(value);
-        set_error(&s, "<format>", "Garbage after format string");
-        return NULL;
-    }
+  next_token(&s);
+  if (s.token) {
+    set_error(&s, "<format>", "Garbage after format string");
+    return nullptr;
+  }
 
-    return value;
+  return value;
 }
 
-json_t *json_pack_ex(json_error_t *error, size_t flags, const char *fmt, ...)
+json_ref json_pack_ex(json_error_t *error, size_t flags, const char *fmt, ...)
 {
-    json_t *value;
     va_list ap;
 
     va_start(ap, fmt);
-    value = json_vpack_ex(error, flags, fmt, ap);
+    auto value = json_vpack_ex(error, flags, fmt, ap);
     va_end(ap);
 
     return value;
 }
 
-json_t *json_pack(const char *fmt, ...)
+json_ref json_pack(const char *fmt, ...)
 {
-    json_t *value;
     va_list ap;
 
     va_start(ap, fmt);
-    value = json_vpack_ex(NULL, 0, fmt, ap);
+    auto value = json_vpack_ex(NULL, 0, fmt, ap);
     va_end(ap);
 
     return value;

@@ -96,17 +96,15 @@ static struct {
   }
 };
 
-static bool check_roundtrip(const char *input, const char *template_text,
-    json_t **expect_p, json_t **got_p)
-{
+static bool check_roundtrip(const char* input, const char* template_text) {
   char *dump_buf, *end;
   char *jdump;
-  json_t *expected, *decoded, *templ = NULL;
+  json_ref templ;
   json_error_t jerr;
   json_int_t needed;
 
-  expected = json_loads(input, 0, &jerr);
-  ok(expected != NULL, "loaded %s: %s", input, jerr.text);
+  auto expected = json_loads(input, 0, &jerr);
+  ok(expected, "loaded %s: %s", input, jerr.text);
   if (!expected) {
       return false;
   }
@@ -118,26 +116,22 @@ static bool check_roundtrip(const char *input, const char *template_text,
   dump_buf = bdumps(expected, &end);
   ok(dump_buf != NULL, "dumped something");
   if (!dump_buf) {
-    json_decref(templ);
     return false;;
   }
   hexdump(dump_buf, end);
 
   memset(&jerr, 0, sizeof(jerr));
-  decoded = bunser(dump_buf, end, &needed, &jerr);
-  ok(decoded != NULL, "decoded something (err = %s)", jerr.text);
+  auto decoded = bunser(dump_buf, end, &needed, &jerr);
+  ok(decoded, "decoded something (err = %s)", jerr.text);
 
   jdump = json_dumps(decoded, JSON_SORT_KEYS);
-  ok(jdump != NULL, "dumped %s", jdump);
+  ok(jdump, "dumped %s", jdump);
 
   ok(json_equal(expected, decoded), "round-tripped json_equal");
   ok(!strcmp(jdump, input), "round-tripped strcmp");
 
   free(jdump);
   free(dump_buf);
-  json_decref(templ);
-  *expect_p = expected;
-  *got_p = decoded;
   return true;
 }
 
@@ -145,21 +139,18 @@ static void check_serialization(const char* json_in, const char* bser_out) {
   char *bser_in;
   char *end = NULL;
   json_error_t jerr;
-  json_t *input;
   unsigned int length;
-  input = json_loads(json_in, 0, &jerr);
+  auto input = json_loads(json_in, 0, &jerr);
   bser_in = bdumps_pdu(input, &end);
   length = (unsigned int)(end - bser_in);
   ok(memcmp(bser_in, bser_out, length) == 0, "raw bser comparison %s",
       json_in);
   free(bser_in);
-  json_decref(input);
 }
 
 int main(int argc, char **argv)
 {
   int i, num_json_inputs, num_templ;
-  json_t *expected, *decoded;
   (void)argc;
   (void)argv;
 
@@ -173,22 +164,12 @@ int main(int argc, char **argv)
   );
 
   for (i = 0; i < num_json_inputs; i++) {
-    expected = NULL;
-    decoded = NULL;
-    check_roundtrip(json_inputs[i], NULL, &expected, &decoded);
-    json_decref(expected);
-    json_decref(decoded);
+    check_roundtrip(json_inputs[i], nullptr);
   }
 
   for (i = 0; i < num_templ; i++) {
-    expected = NULL;
-    decoded = NULL;
-    check_roundtrip(template_tests[i].json_text,
-        template_tests[i].template_text,
-        &expected, &decoded);
-    json_decref(expected);
-    json_decref(decoded);
-
+    check_roundtrip(
+        template_tests[i].json_text, template_tests[i].template_text);
   }
   check_serialization("[\"Tom\", \"Jerry\"]",
       "\x00\x01\x03\x11\x00\x03\x02\x02\x03\x03\x54\x6f\x6d\x02\x03\x05\x4a"

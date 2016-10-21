@@ -6,7 +6,7 @@
 struct state_arg {
   w_string_t *name;
   int sync_timeout;
-  json_t *metadata;
+  json_ref metadata;
 };
 
 // Parses the args for state-enter and state-leave
@@ -14,11 +14,11 @@ static bool parse_state_arg(struct watchman_client *client, json_t *args,
     struct state_arg *parsed) {
   json_error_t err;
   const char *ignored;
-  const char *statename = NULL;
+  const char* statename = nullptr;
 
   parsed->sync_timeout = DEFAULT_QUERY_SYNC_MS;
-  parsed->metadata = NULL;
-  parsed->name = NULL;
+  parsed->metadata = nullptr;
+  parsed->name = nullptr;
 
   if (json_array_size(args) != 3) {
     send_error_response(client,
@@ -56,9 +56,7 @@ static void destroy_state_arg(struct state_arg *parsed) {
   if (parsed->name) {
     w_string_delref(parsed->name);
   }
-  if (parsed->metadata) {
-    json_decref(parsed->metadata);
-  }
+  parsed->metadata.reset();
   memset(parsed, 0, sizeof(*parsed));
 }
 
@@ -74,11 +72,11 @@ watchman_client_state_assertion::~watchman_client_state_assertion() {
 }
 
 static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
-  struct state_arg parsed = { NULL, 0, NULL };
+  struct state_arg parsed = {nullptr, 0, nullptr};
   std::unique_ptr<watchman_client_state_assertion> assertion;
   char clockbuf[128];
   w_ht_iter_t iter;
-  json_t *response;
+  json_ref response;
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
   struct read_locked_watchman_root lock;
@@ -147,8 +145,7 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
   set_prop(response, "root", w_string_to_json(unlocked.root->root_path));
   set_prop(response, "state-enter", w_string_to_json(parsed.name));
   set_unicode_prop(response, "clock", clockbuf);
-  send_and_dispose_response(&client->client, response);
-  response = NULL;
+  send_and_dispose_response(&client->client, std::move(response));
 
   // Now find all the clients with subscriptions and send them
   // notice of the state being entered
@@ -159,14 +156,13 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
 
     if (w_ht_first(subclient->subscriptions, &citer)) do {
       auto sub = (watchman_client_subscription*)w_ht_val_ptr(citer.value);
-      json_t *pdu;
 
       if (sub->root != unlocked.root) {
         w_log(W_LOG_DBG, "root doesn't match, skipping\n");
         continue;
       }
 
-      pdu = make_response();
+      auto pdu = make_response();
       set_prop(pdu, "root", w_string_to_json(unlocked.root->root_path));
       set_prop(pdu, "subscription", w_string_to_json(sub->name));
       set_prop(pdu, "unilateral", json_true());
@@ -176,9 +172,7 @@ static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
         // set_prop would steal our ref, we don't want that
         json_object_set_nocheck(pdu, "metadata", parsed.metadata);
       }
-      if (!enqueue_response(&subclient->client, pdu, true)) {
-        json_decref(pdu);
-      }
+      enqueue_response(&subclient->client, std::move(pdu), true);
 
     } while (w_ht_next(subclient->subscriptions, &citer));
   } while (w_ht_next(clients, &iter));
@@ -217,14 +211,13 @@ static void leave_state(struct watchman_user_client *client,
         w_ht_first(subclient->subscriptions, &citer))
       do {
         auto sub = (watchman_client_subscription*)w_ht_val_ptr(citer.value);
-        json_t *pdu;
 
         if (sub->root != unlocked.root) {
           w_log(W_LOG_DBG, "root doesn't match, skipping\n");
           continue;
         }
 
-        pdu = make_response();
+        auto pdu = make_response();
         set_prop(pdu, "root", w_string_to_json(unlocked.root->root_path));
         set_prop(pdu, "subscription", w_string_to_json(sub->name));
         set_prop(pdu, "unilateral", json_true());
@@ -237,9 +230,7 @@ static void leave_state(struct watchman_user_client *client,
         if (abandoned) {
           set_prop(pdu, "abandoned", json_true());
         }
-        if (!enqueue_response(&subclient->client, pdu, true)) {
-          json_decref(pdu);
-        }
+        enqueue_response(&subclient->client, std::move(pdu), true);
 
       } while (w_ht_next(subclient->subscriptions, &citer));
   } while (w_ht_next(clients, &iter));
@@ -289,17 +280,17 @@ void w_client_vacate_states(struct watchman_user_client *client) {
 }
 
 static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
-  struct state_arg parsed = { NULL, 0, NULL };
+  struct state_arg parsed = {nullptr, 0, nullptr};
   // This is a weak reference to the assertion.  This is safe because only this
   // client can delete this assertion, and this function is only executed by
   // the thread that owns this client.
   struct watchman_client_state_assertion *assertion = NULL;
   char clockbuf[128];
-  json_t *response;
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
   struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
+  json_ref response;
 
   if (!resolve_root_or_err(&client->client, args, 1, true, &unlocked)) {
     return;
@@ -358,8 +349,7 @@ static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
   set_prop(response, "root", w_string_to_json(unlocked.root->root_path));
   set_prop(response, "state-leave", w_string_to_json(parsed.name));
   set_unicode_prop(response, "clock", clockbuf);
-  send_and_dispose_response(&client->client, response);
-  response = NULL;
+  send_and_dispose_response(&client->client, std::move(response));
 
   // Notify and exit the state
   leave_state(client, assertion, false, parsed.metadata, clockbuf);

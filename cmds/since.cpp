@@ -10,8 +10,6 @@ static void cmd_since(struct watchman_client *client, json_t *args)
   char *errmsg = NULL;
   struct w_query_field_list field_list;
   w_query_res res;
-  json_t *response, *clock_ele;
-  json_t *file_list;
   char clockbuf[128];
   struct unlocked_watchman_root unlocked;
 
@@ -25,7 +23,7 @@ static void cmd_since(struct watchman_client *client, json_t *args)
     return;
   }
 
-  clock_ele = json_array_get(args, 2);
+  auto clock_ele = json_array_get(args, 2);
   clockspec = json_string_value(clock_ele);
   if (!clockspec) {
     send_error_response(client,
@@ -51,16 +49,16 @@ static void cmd_since(struct watchman_client *client, json_t *args)
     return;
   }
 
-  file_list =
+  auto file_list =
       w_query_results_to_json(&field_list, res.results.size(), res.results);
 
-  response = make_response();
+  auto response = make_response();
   if (clock_id_string(res.root_number, res.ticks, clockbuf, sizeof(clockbuf))) {
     set_unicode_prop(response, "clock", clockbuf);
   }
   set_prop(response, "is_fresh_instance",
            json_pack("b", res.is_fresh_instance));
-  set_prop(response, "files", file_list);
+  set_prop(response, "files", std::move(file_list));
 
   {
     struct read_locked_watchman_root lock;
@@ -69,7 +67,7 @@ static void cmd_since(struct watchman_client *client, json_t *args)
     w_root_read_unlock(&lock, &unlocked);
   }
 
-  send_and_dispose_response(client, response);
+  send_and_dispose_response(client, std::move(response));
   w_root_delref(&unlocked);
 }
 W_CMD_REG("since", cmd_since, CMD_DAEMON | CMD_ALLOW_ANY_USER,

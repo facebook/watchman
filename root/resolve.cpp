@@ -6,21 +6,19 @@
 /* Returns true if the global config root_restrict_files is not defined or if
  * one of the files in root_restrict_files exists, false otherwise. */
 static bool root_check_restrict(const char *watch_path) {
-  json_t *root_restrict_files = NULL;
   uint32_t i;
   bool enforcing;
 
-  root_restrict_files = cfg_compute_root_files(&enforcing);
+  auto root_restrict_files = cfg_compute_root_files(&enforcing);
   if (!root_restrict_files) {
     return true;
   }
   if (!enforcing) {
-    json_decref(root_restrict_files);
     return true;
   }
 
   for (i = 0; i < json_array_size(root_restrict_files); i++) {
-    json_t *obj = json_array_get(root_restrict_files, i);
+    auto obj = json_array_get(root_restrict_files, i);
     const char *restrict_file = json_string_value(obj);
     char *restrict_path;
     bool rv;

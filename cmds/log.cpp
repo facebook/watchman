@@ -21,7 +21,6 @@ static int parse_log_level(const char *str)
 static void cmd_loglevel(struct watchman_client *client, json_t *args)
 {
   const char *cmd, *str;
-  json_t *resp;
   int level;
 
   if (json_unpack(args, "[us]", &cmd, &str)) {
@@ -39,10 +38,10 @@ static void cmd_loglevel(struct watchman_client *client, json_t *args)
   client->log_level = level;
   pthread_mutex_unlock(&w_client_lock);
 
-  resp = make_response();
+  auto resp = make_response();
   set_unicode_prop(resp, "log_level", str);
 
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON, NULL)
 
@@ -50,7 +49,6 @@ W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON, NULL)
 static void cmd_log(struct watchman_client *client, json_t *args)
 {
   const char *cmd, *str, *text;
-  json_t *resp;
   int level;
 
   if (json_unpack(args, "[uss]", &cmd, &str, &text)) {
@@ -66,9 +64,9 @@ static void cmd_log(struct watchman_client *client, json_t *args)
 
   w_log(level, "%s\n", text);
 
-  resp = make_response();
+  auto resp = make_response();
   set_prop(resp, "logged", json_true());
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("log", cmd_log, CMD_DAEMON, NULL)
 
