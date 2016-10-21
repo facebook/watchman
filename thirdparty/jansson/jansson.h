@@ -131,10 +131,13 @@ json_ref json_object(void);
 json_ref json_object_of_size(size_t nelems);
 json_ref json_array(void);
 json_ref json_array_of_size(size_t nelems);
-json_ref
-typed_string_len_to_json(const char* str, size_t len, w_string_type_t type);
-json_ref typed_string_to_json(const char* value, w_string_type_t type);
 json_ref w_string_to_json(w_string_t* str);
+
+template <typename... Args>
+json_ref typed_string_to_json(Args&&... args) {
+  return w_string_to_json(w_string(std::forward<Args>(args)...));
+}
+
 const w_string& json_to_w_string(const json_t* json);
 json_ref json_integer(json_int_t value);
 json_ref json_real(double value);

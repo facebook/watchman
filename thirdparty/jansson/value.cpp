@@ -481,15 +481,6 @@ json_ref w_string_to_json(w_string_t* str) {
   return json_ref(&string->json, false);
 }
 
-json_ref
-typed_string_len_to_json(const char* str, size_t len, w_string_type_t type) {
-  return w_string_to_json(w_string_new_len_no_ref_typed(str, len, type));
-}
-
-json_ref typed_string_to_json(const char* str, w_string_type_t type) {
-  return typed_string_len_to_json(str, strlen(str), type);
-}
-
 const char* json_string_value(const json_t* json) {
   json_string_t* jstr;
 

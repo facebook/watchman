@@ -640,7 +640,7 @@ json_ref bunser(
         return nullptr;
       }
 
-      return typed_string_len_to_json(start, len, W_STRING_BYTE);
+      return typed_string_to_json(start, len, W_STRING_BYTE);
     }
 
     case BSER_REAL:
