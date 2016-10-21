@@ -22,7 +22,7 @@ static bool is_case_sensitive_filesystem(const char *path) {
 #endif
 }
 
-static void load_root_config(w_root_t *root, const char *path) {
+static json_ref load_root_config(const char* path) {
   char cfgfilename[WATCHMAN_NAME_MAX];
   json_error_t err;
 
@@ -31,18 +31,19 @@ static void load_root_config(w_root_t *root, const char *path) {
 
   if (!w_path_exists(cfgfilename)) {
     if (errno == ENOENT) {
-      return;
+      return nullptr;
     }
     w_log(W_LOG_ERR, "%s is not accessible: %s\n",
         cfgfilename, strerror(errno));
-    return;
+    return nullptr;
   }
 
-  root->config_file = json_load_file(cfgfilename, 0, &err);
-  if (!root->config_file) {
+  auto res = json_load_file(cfgfilename, 0, &err);
+  if (!res) {
     w_log(W_LOG_ERR, "failed to parse json from %s: %s\n",
         cfgfilename, err.text);
   }
+  return res;
 }
 
 static void apply_ignore_configuration(w_root_t *root) {
@@ -105,7 +106,6 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
 
   root->case_sensitive = is_case_sensitive_filesystem(path);
 
-  load_root_config(root, path);
   root->trigger_settle = (int)cfg_get_int(
       root, "settle", DEFAULT_SETTLE_PERIOD);
   root->gc_age = (int)cfg_get_int(root, "gc_age_seconds", DEFAULT_GC_AGE);
@@ -165,7 +165,10 @@ void w_root_delref_raw(w_root_t *root) {
 }
 
 watchman_root::watchman_root(const w_string& root_path)
-    : root_path(root_path), cookies(root_path), inner(root_path) {}
+    : root_path(root_path),
+      cookies(root_path),
+      config_file(load_root_config(root_path.c_str())),
+      inner(root_path) {}
 
 watchman_root::~watchman_root() {
   w_log(W_LOG_DBG, "root: final ref on %s\n", root_path.c_str());
