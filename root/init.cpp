@@ -137,11 +137,18 @@ void w_root_teardown(w_root_t *root) {
   // delete the containing root (that will call the Inner
   // destructor).
   root->inner.~Inner();
-  new (&root->inner) watchman_root::Inner(root->root_path);
+  new (&root->inner)
+      watchman_root::Inner(root->root_path, root->cookies, root->config);
 }
 
-watchman_root::Inner::Inner(const w_string& root_path)
-    : view(watchman::make_unique<watchman::InMemoryView>(root_path)) {}
+watchman_root::Inner::Inner(
+    const w_string& root_path,
+    watchman::CookieSync& cookies,
+    Configuration& config)
+    : view(watchman::make_unique<watchman::InMemoryView>(
+          root_path,
+          cookies,
+          config)) {}
 
 watchman_root::Inner::~Inner() {}
 
@@ -169,7 +176,7 @@ watchman_root::watchman_root(const w_string& root_path)
       cookies(root_path),
       config_file(load_root_config(root_path.c_str())),
       config(config_file),
-      inner(root_path) {}
+      inner(root_path, cookies, config) {}
 
 watchman_root::~watchman_root() {
   w_log(W_LOG_DBG, "root: final ref on %s\n", root_path.c_str());

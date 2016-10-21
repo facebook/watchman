@@ -112,7 +112,10 @@ struct watchman_root {
     time_t last_cmd_timestamp{0};
     time_t last_reap_timestamp{0};
 
-    explicit Inner(const w_string& root_path);
+    explicit Inner(
+        const w_string& root_path,
+        watchman::CookieSync& cookies,
+        Configuration& config);
     ~Inner();
   } inner;
 

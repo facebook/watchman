@@ -7,8 +7,13 @@
 
 namespace watchman {
 
-InMemoryView::InMemoryView(const w_string& root_path)
-    : root_path(root_path),
+InMemoryView::InMemoryView(
+    const w_string& root_path,
+    CookieSync& cookies,
+    Configuration& config)
+    : cookies_(cookies),
+      config_(config),
+      root_path(root_path),
       root_dir(watchman::make_unique<watchman_dir>(root_path, nullptr)) {}
 
 void InMemoryView::insertAtHeadOfFileList(struct watchman_file* file) {

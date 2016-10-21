@@ -4,7 +4,9 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include "CookieSync.h"
 #include "QueryableView.h"
+#include "watchman_config.h"
 #include "watchman_perf.h"
 #include "watchman_query.h"
 #include "watchman_string.h"
@@ -17,7 +19,10 @@ struct InMemoryView : public QueryableView {
   uint32_t getLastAgeOutTickValue() const override;
   time_t getLastAgeOutTimeStamp() const override;
 
-  explicit InMemoryView(const w_string& root_path);
+  explicit InMemoryView(
+      const w_string& root_path,
+      CookieSync& cookies,
+      Configuration& config);
 
   /** Updates the otime for the file and bubbles it to the front of recency
    * index */
@@ -103,6 +108,8 @@ struct InMemoryView : public QueryableView {
       uint32_t dir_name_len) const;
   void insertAtHeadOfFileList(struct watchman_file* file);
 
+  CookieSync& cookies_;
+  Configuration& config_;
   /* the most recently changed file */
   struct watchman_file* latest_file{0};
 
