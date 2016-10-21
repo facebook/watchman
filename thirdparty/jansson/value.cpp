@@ -472,12 +472,9 @@ static json_ref json_array_deep_copy(json_t* array) {
 /*** string ***/
 
 json_string_t::json_string_t(w_string_t* str)
-    : json(JSON_STRING), value(str), cache(nullptr) {
-  w_string_addref(str);
-}
+    : json(JSON_STRING), value(str), cache(nullptr) {}
 
 json_string_t::~json_string_t() {
-  w_string_delref(value);
   free(cache);
 }
 
