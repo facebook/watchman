@@ -10,7 +10,7 @@ static void full_crawl(
   struct write_locked_watchman_root lock;
 
   w_perf_t sample("full-crawl");
-  if (cfg_get_bool(unlocked->root, "iothrottle", false)) {
+  if (unlocked->root->config.getBool("iothrottle", false)) {
     w_ioprio_set_low();
   }
   w_root_lock(unlocked, "io_thread: bump ticks", &lock);
@@ -39,7 +39,7 @@ static void full_crawl(
   sample.add_root_meta(lock.root);
   w_root_unlock(&lock, unlocked);
 
-  if (cfg_get_bool(unlocked->root, "iothrottle", false)) {
+  if (unlocked->root->config.getBool("iothrottle", false)) {
     w_ioprio_set_normal();
   }
 

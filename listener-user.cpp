@@ -28,7 +28,7 @@ void add_root_warnings_to_response(json_t *response,
     return;
   }
 
-  if (cfg_get_bool(root, "suppress_recrawl_warnings", false)) {
+  if (root->config.getBool("suppress_recrawl_warnings", false)) {
     return;
   }
 

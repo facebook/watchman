@@ -68,7 +68,7 @@ const struct watchman_hash_funcs name_to_fd_funcs = {
 bool KQueueWatcher::initNew(w_root_t* root, char** errmsg) {
   auto watcher = watchman::make_unique<KQueueWatcher>();
   json_int_t hint_num_dirs =
-      cfg_get_int(root, CFG_HINT_NUM_DIRS, HINT_NUM_DIRS);
+      root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS);
 
   if (!watcher) {
     *errmsg = strdup("out of memory");

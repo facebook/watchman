@@ -374,7 +374,7 @@ static struct fse_stream* fse_stream_make(
 
   CFArrayAppendValue(parray, cpath);
 
-  latency = cfg_get_double(root, "fsevents_latency", 0.01),
+  latency = root->config.getDouble("fsevents_latency", 0.01),
   w_log(
       W_LOG_DBG,
       "FSEventStreamCreate for path %s with latency %f seconds\n",
@@ -401,7 +401,7 @@ static struct fse_stream* fse_stream_make(
 
 #ifdef HAVE_FSEVENTSTREAMSETEXCLUSIONPATHS
   if (w_ht_size(root->ignore.ignore_dirs) > 0 &&
-      cfg_get_bool(root, "_use_fsevents_exclusions", true)) {
+      root->config.getBool("_use_fsevents_exclusions", true)) {
     CFMutableArrayRef ignarray;
     size_t i, nitems = MIN(w_ht_size(root->ignore.ignore_dirs), MAX_EXCLUSIONS);
 
@@ -474,7 +474,7 @@ static void *fsevents_thread(void *arg)
   pthread_mutex_lock(&watcher->fse_mtx);
 
   watcher->attempt_resync_on_drop =
-      cfg_get_bool(root, "fsevents_try_resync", true);
+      root->config.getBool("fsevents_try_resync", true);
 
   memset(&fdctx, 0, sizeof(fdctx));
   fdctx.info = root;

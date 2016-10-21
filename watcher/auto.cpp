@@ -41,7 +41,7 @@ static Watcher* available_watchers[] = {
     nullptr};
 
 bool w_watcher_init(w_root_t *root, char **errmsg) {
-  const char *watcher_name = cfg_get_string(root, "watcher", "auto");
+  const char* watcher_name = root->config.getString("watcher", "auto");
   Watcher* ops = nullptr;
   char* first_err = nullptr;
   int i;

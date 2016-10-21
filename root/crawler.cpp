@@ -75,7 +75,7 @@ void crawler(
     apply_dir_size_hint(
         dir,
         num_dirs,
-        (uint32_t)cfg_get_int(root, "hint_num_files_per_dir", 64));
+        uint32_t(root->config.getInt("hint_num_files_per_dir", 64)));
   }
 
   /* flag for delete detection */

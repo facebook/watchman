@@ -103,7 +103,7 @@ bool PortFSWatcher::initNew(w_root_t* root, char** errmsg) {
 
   pthread_mutex_init(&watcher->lock, nullptr);
   watcher->port_files = w_ht_new(
-      cfg_get_int(root, CFG_HINT_NUM_DIRS, HINT_NUM_DIRS), &port_file_funcs);
+      root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS), &port_file_funcs);
 
   watcher->port_fd = port_create();
   if (watcher->port_fd == -1) {

@@ -50,7 +50,7 @@ static void apply_ignore_configuration(w_root_t *root) {
   uint8_t i;
   json_t *ignores;
 
-  ignores = cfg_get_json(root, "ignore_dirs");
+  ignores = root->config.get("ignore_dirs");
   if (!ignores) {
     return;
   }
@@ -106,13 +106,13 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
 
   root->case_sensitive = is_case_sensitive_filesystem(path);
 
-  root->trigger_settle = (int)cfg_get_int(
-      root, "settle", DEFAULT_SETTLE_PERIOD);
-  root->gc_age = (int)cfg_get_int(root, "gc_age_seconds", DEFAULT_GC_AGE);
-  root->gc_interval = (int)cfg_get_int(root, "gc_interval_seconds",
-      DEFAULT_GC_INTERVAL);
-  root->idle_reap_age = (int)cfg_get_int(root, "idle_reap_age_seconds",
-      DEFAULT_REAP_AGE);
+  root->trigger_settle =
+      int(root->config.getInt("settle", DEFAULT_SETTLE_PERIOD));
+  root->gc_age = int(root->config.getInt("gc_age_seconds", DEFAULT_GC_AGE));
+  root->gc_interval =
+      int(root->config.getInt("gc_interval_seconds", DEFAULT_GC_INTERVAL));
+  root->idle_reap_age =
+      int(root->config.getInt("idle_reap_age_seconds", DEFAULT_REAP_AGE));
 
   apply_ignore_configuration(root);
 

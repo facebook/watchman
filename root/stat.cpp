@@ -170,7 +170,8 @@ void stat_path(
         }
         file->symlink_target = new_symlink_target;
 
-        if (symlink_changed && cfg_get_bool(root, "watch_symlinks", false)) {
+        if (symlink_changed &&
+            lock->root->config.getBool("watch_symlinks", false)) {
           w_pending_coll_add(
               &root->inner.pending_symlink_targets, full_path, now, 0);
         }

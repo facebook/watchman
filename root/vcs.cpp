@@ -40,7 +40,7 @@ bool is_vcs_op_in_progress(struct write_locked_watchman_root *lock) {
 }
 
 static json_ref config_get_ignore_vcs(w_root_t* root) {
-  json_ref ignores = cfg_get_json(root, "ignore_vcs");
+  json_ref ignores = root->config.get("ignore_vcs");
   if (ignores && !json_is_array(ignores)) {
     return nullptr;
   }

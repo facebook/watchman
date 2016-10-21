@@ -158,7 +158,7 @@ static json_ref build_subscription_results(
   // could be legitimately blocked by something else.  That means that we
   // can use a short lock_timeout
   sub->query->lock_timeout =
-      (uint32_t)cfg_get_int(lock->root, "subscription_lock_timeout_ms", 100);
+      uint32_t(lock->root->config.getInt("subscription_lock_timeout_ms", 100));
   w_log(W_LOG_DBG, "running subscription %s %p\n", sub->name.c_str(), sub);
 
   if (!w_query_execute_locked(sub->query.get(), lock, &res, time_generator)) {
