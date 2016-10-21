@@ -337,9 +337,8 @@ bool w_listener_prep_inetd(void) {
 static int get_listener_socket(const char *path)
 {
   struct sockaddr_un un;
-  mode_t perms = cfg_get_perms(NULL, "sock_access",
-                               true /* write bits */,
-                               false /* execute bits */);
+  mode_t perms = cfg_get_perms(
+      "sock_access", true /* write bits */, false /* execute bits */);
 
   if (listener_fd != -1) {
     // Assume that it was prepped by w_listener_prep_inetd()

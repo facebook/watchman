@@ -78,18 +78,11 @@ static json_t* cfg_get_raw(const char* name, json_ref* optr) {
   return val;
 }
 
-json_t *cfg_get_json(const w_root_t *root, const char *name)
-{
+json_t* cfg_get_json(const char* name) {
   json_t *val = NULL;
 
-  // Highest precedence: options set on the root
-  if (root && root->config_file) {
-    val = json_object_get(root->config_file, name);
-  }
-  // then: command line arguments
-  if (!val) {
-    val = cfg_get_raw(name, &arg_cfg);
-  }
+  // Highest precedence: command line arguments
+  val = cfg_get_raw(name, &arg_cfg);
   // then: global config options
   if (!val) {
     val = cfg_get_raw(name, &global_cfg);
@@ -97,10 +90,8 @@ json_t *cfg_get_json(const w_root_t *root, const char *name)
   return val;
 }
 
-const char *cfg_get_string(const w_root_t *root, const char *name,
-    const char *defval)
-{
-  json_t *val = cfg_get_json(root, name);
+const char* cfg_get_string(const char* name, const char* defval) {
+  json_t* val = cfg_get_json(name);
 
   if (val) {
     if (!json_is_string(val)) {
@@ -158,7 +149,7 @@ static void prepend_watchmanconfig_to_array(json_t *ref) {
 json_ref cfg_compute_root_files(bool* enforcing) {
   *enforcing = false;
 
-  json_ref ref = cfg_get_json(nullptr, "enforce_root_files");
+  json_ref ref = cfg_get_json("enforce_root_files");
   if (ref) {
     if (!json_is_boolean(ref)) {
       w_log(W_LOG_FATAL,
@@ -167,7 +158,7 @@ json_ref cfg_compute_root_files(bool* enforcing) {
     *enforcing = json_is_true(ref);
   }
 
-  ref = cfg_get_json(NULL, "root_files");
+  ref = cfg_get_json("root_files");
   if (ref) {
     if (!is_array_of_strings(ref)) {
       w_log(W_LOG_FATAL,
@@ -181,7 +172,7 @@ json_ref cfg_compute_root_files(bool* enforcing) {
   }
 
   // Try legacy root_restrict_files configuration
-  ref = cfg_get_json(NULL, "root_restrict_files");
+  ref = cfg_get_json("root_restrict_files");
   if (ref) {
     if (!is_array_of_strings(ref)) {
       w_log(W_LOG_FATAL, "deprecated global config root_restrict_files "
@@ -199,10 +190,8 @@ json_ref cfg_compute_root_files(bool* enforcing) {
   return json_pack("[ssss]", ".watchmanconfig", ".hg", ".git", ".svn");
 }
 
-json_int_t cfg_get_int(const w_root_t *root, const char *name,
-    json_int_t defval)
-{
-  json_t *val = cfg_get_json(root, name);
+json_int_t cfg_get_int(const char* name, json_int_t defval) {
+  json_t* val = cfg_get_json(name);
 
   if (val) {
     if (!json_is_integer(val)) {
@@ -214,9 +203,8 @@ json_int_t cfg_get_int(const w_root_t *root, const char *name,
   return defval;
 }
 
-bool cfg_get_bool(const w_root_t *root, const char *name, bool defval)
-{
-  json_t *val = cfg_get_json(root, name);
+bool cfg_get_bool(const char* name, bool defval) {
+  json_t* val = cfg_get_json(name);
 
   if (val) {
     if (!json_is_boolean(val)) {
@@ -228,8 +216,8 @@ bool cfg_get_bool(const w_root_t *root, const char *name, bool defval)
   return defval;
 }
 
-double cfg_get_double(const w_root_t *root, const char *name, double defval) {
-  json_t *val = cfg_get_json(root, name);
+double cfg_get_double(const char* name, double defval) {
+  json_t* val = cfg_get_json(name);
 
   if (val) {
     if (!json_is_number(val)) {
@@ -271,9 +259,8 @@ MAKE_GET_PERM(others, OTH)
  * This function expects the config to be an object containing the keys 'group'
  * and 'others', each a bool.
  */
-mode_t cfg_get_perms(const w_root_t *root, const char *name, bool write_bits,
-                     bool execute_bits) {
-  json_t *val = cfg_get_json(root, name);
+mode_t cfg_get_perms(const char* name, bool write_bits, bool execute_bits) {
+  json_t* val = cfg_get_json(name);
   mode_t ret = S_IRUSR | S_IWUSR;
   if (execute_bits) {
     ret |= S_IXUSR;
@@ -292,8 +279,9 @@ mode_t cfg_get_perms(const w_root_t *root, const char *name, bool write_bits,
 }
 
 const char *cfg_get_trouble_url(void) {
-  return cfg_get_string(NULL, "troubleshooting_url",
-    "https://facebook.github.io/watchman/docs/troubleshooting.html");
+  return cfg_get_string(
+      "troubleshooting_url",
+      "https://facebook.github.io/watchman/docs/troubleshooting.html");
 }
 
 Configuration::Configuration(const json_ref& local) : local_(local) {}

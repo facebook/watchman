@@ -420,7 +420,7 @@ struct watchman_dir_handle *w_dir_open(const char *path) {
     return NULL;
   }
 #ifdef HAVE_GETATTRLISTBULK
-  if (cfg_get_bool(NULL, "_use_bulkstat", use_bulkstat_by_default())) {
+  if (cfg_get_bool("_use_bulkstat", use_bulkstat_by_default())) {
     struct stat st;
 
     dir->fd = open_strict(path, O_NOFOLLOW | O_CLOEXEC | O_RDONLY);

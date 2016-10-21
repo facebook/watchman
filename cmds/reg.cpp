@@ -177,7 +177,7 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
     client->perf_sample = &sample;
 
     sample.set_wall_time_thresh(
-        cfg_get_double(nullptr, "slow_command_log_threshold_seconds", 1.0));
+        cfg_get_double("slow_command_log_threshold_seconds", 1.0));
 
     result = true;
     def->func(client, args);

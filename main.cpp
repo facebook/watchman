@@ -639,12 +639,13 @@ static void compute_file_name(char **strp,
       int ret = 0;
       uid_t euid = geteuid();
       // TODO: also allow a gid to be specified here
-      const char *sock_group_name = cfg_get_string(NULL, "sock_group", NULL);
+      const char* sock_group_name = cfg_get_string("sock_group", nullptr);
       // S_ISGID is set so that files inside this directory inherit the group
       // name
-      mode_t dir_perms = cfg_get_perms(NULL, "sock_access",
-                                       false /* write bits */,
-                                       true /* execute bits */) | S_ISGID;
+      mode_t dir_perms =
+          cfg_get_perms(
+              "sock_access", false /* write bits */, true /* execute bits */) |
+          S_ISGID;
 
       dirp = opendir(state_dir);
       if (!dirp) {
@@ -1019,7 +1020,7 @@ static void spawn_watchman(void) {
   // If we have a site-specific spawning requirement, then we'll
   // invoke that spawner rather than using any of the built-in
   // spawning functionality.
-  const char *site_spawn = cfg_get_string(NULL, "spawn_watchman_service", NULL);
+  const char* site_spawn = cfg_get_string("spawn_watchman_service", nullptr);
   if (site_spawn) {
     spawn_site_specific(site_spawn);
     return;

@@ -51,7 +51,7 @@ bool watchman_perf_sample::finish() {
 
   if (!will_log) {
     if (wall_time_elapsed_thresh == 0) {
-      auto thresh = cfg_get_json(nullptr, "perf_sampling_thresh");
+      auto thresh = cfg_get_json("perf_sampling_thresh");
       if (thresh) {
         if (json_is_number(thresh)) {
           wall_time_elapsed_thresh = json_number_value(thresh);
@@ -135,7 +135,7 @@ static void *perf_log_thread(void *unused) {
     w_ht_free(envpht);
   }
 
-  perf_cmd = cfg_get_json(NULL, "perf_logger_command");
+  perf_cmd = cfg_get_json("perf_logger_command");
   if (json_is_string(perf_cmd)) {
     perf_cmd = json_pack("[O]", perf_cmd.get());
   }
@@ -145,8 +145,7 @@ static void *perf_log_thread(void *unused) {
         "perf_logger_command must be either a string or an array of strings\n");
   }
 
-  sample_batch =
-      cfg_get_int(NULL, "perf_logger_command_max_samples_per_call", 4);
+  sample_batch = cfg_get_int("perf_logger_command_max_samples_per_call", 4);
 
   while (true) {
     pthread_mutex_lock(&perf_log_lock);
@@ -270,7 +269,7 @@ void watchman_perf_sample::log() {
   w_log(W_LOG_ERR, "PERF: %s\n", dumped);
   free(dumped);
 
-  if (!cfg_get_json(NULL, "perf_logger_command")) {
+  if (!cfg_get_json("perf_logger_command")) {
     return;
   }
 

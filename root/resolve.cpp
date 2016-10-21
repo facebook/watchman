@@ -55,12 +55,12 @@ static bool check_allowed_fs(const char *filename, char **errmsg) {
       filename,
       fs_type.c_str());
 
-  illegal_fstypes = cfg_get_json(NULL, "illegal_fstypes");
+  illegal_fstypes = cfg_get_json("illegal_fstypes");
   if (!illegal_fstypes) {
     return true;
   }
 
-  advice_string = cfg_get_json(NULL, "illegal_fstypes_advice");
+  advice_string = cfg_get_json("illegal_fstypes_advice");
   if (advice_string) {
     advice = json_string_value(advice_string);
   }
