@@ -12,14 +12,10 @@
 #include "jansson.h"
 #include "hashtable.h"
 #include "strbuffer.h"
+#include <algorithm>
 
 #define container_of(ptr_, type_, member_)  \
     ((type_ *)((char *)ptr_ - offsetof(type_, member_)))
-
-/* On some platforms, max() may already be defined */
-#ifndef max
-#define max(a, b)  ((a) > (b) ? (a) : (b))
-#endif
 
 /* va_copy is a C99 feature. In C89 implementations, it's sometimes
    available as __va_copy. If not, memcpy() should do the trick. */
@@ -36,6 +32,9 @@ struct json_object_t {
     hashtable_t hashtable;
     size_t serial;
     int visited;
+
+    json_object_t(size_t sizeHint = 0);
+    ~json_object_t();
 };
 
 struct json_array_t {
@@ -45,22 +44,32 @@ struct json_array_t {
     json_t **table;
     int visited;
     json_t *templ;
+
+    json_array_t(size_t sizeHint = 0);
+    ~json_array_t();
 };
 
 struct json_string_t {
     json_t json;
     w_string_t *value;
     char *cache;
+
+    json_string_t(w_string_t* str);
+    ~json_string_t();
 };
 
 struct json_real_t {
     json_t json;
     double value;
+
+    json_real_t(double value);
 };
 
 struct json_integer_t {
   json_t json;
   json_int_t value;
+
+  json_integer_t(json_int_t value);
 };
 
 #define json_to_object(json_)  container_of(json_, json_object_t, json)

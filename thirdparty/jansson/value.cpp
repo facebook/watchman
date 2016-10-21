@@ -12,7 +12,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
+#include <cmath>
 
 #include "jansson.h"
 #include "hashtable.h"
@@ -20,39 +20,23 @@
 #include "utf.h"
 #include "watchman_string.h"
 
-/* Work around nonstandard isnan() and isinf() implementations */
-#if !defined(isnan) && !defined(sun)
-static JSON_INLINE int isnan(double x) { return x != x; }
-#endif
-#ifndef isinf
-static JSON_INLINE int isinf(double x) { return !isnan(x) && isnan(x - x); }
-#endif
+json_t::json_t(json_type type) : type(type), refcount(1) {}
 
-static JSON_INLINE void json_init(json_t *json, json_type type)
-{
-    json->type = type;
-    json->refcount = 1;
-}
-
+json_t::json_t(json_type type, json_t::SingletonHack&&)
+    : type(type), refcount(-1) {}
 
 /*** object ***/
 
+json_object_t::json_object_t(size_t sizeHint)
+    : json(JSON_OBJECT), serial(0), visited(0) {
+  if (hashtable_init(&hashtable, sizeHint)) {
+    throw std::bad_alloc();
+  }
+}
+
 json_t *json_object_of_size(size_t size)
 {
-    auto object = (json_object_t*)jsonp_malloc(sizeof(json_object_t));
-    if(!object)
-        return NULL;
-    json_init(&object->json, JSON_OBJECT);
-
-    if(hashtable_init(&object->hashtable, size))
-    {
-        jsonp_free(object);
-        return NULL;
-    }
-
-    object->serial = 0;
-    object->visited = 0;
-
+    auto object = new json_object_t(size);
     return &object->json;
 }
 
@@ -61,10 +45,8 @@ json_t *json_object(void)
     return json_object_of_size(0);
 }
 
-static void json_delete_object(json_object_t *object)
-{
-    hashtable_close(&object->hashtable);
-    jsonp_free(object);
+json_object_t::~json_object_t() {
+  hashtable_close(&hashtable);
 }
 
 size_t json_object_size(const json_t *json)
@@ -318,45 +300,40 @@ static json_t *json_object_deep_copy(json_t *object)
 
 /*** array ***/
 
+json_array_t::json_array_t(size_t sizeHint)
+    : json(JSON_ARRAY),
+      size(std::max(sizeHint, size_t(8))),
+      entries(0),
+      table(nullptr),
+      visited(0),
+      templ(nullptr) {
+  table = (json_t**)jsonp_malloc(size * sizeof(json_t*));
+  if (!table) {
+    throw std::bad_alloc();
+  }
+}
+
+json_array_t::~json_array_t() {
+  size_t i;
+
+  for (i = 0; i < entries; i++)
+    json_decref(table[i]);
+
+  if (templ) {
+    json_decref(templ);
+  }
+  jsonp_free(table);
+}
+
 json_t *json_array_of_size(size_t nelems)
 {
-    auto array = (json_array_t*)jsonp_malloc(sizeof(json_array_t));
-    if(!array)
-        return NULL;
-    json_init(&array->json, JSON_ARRAY);
-
-    array->entries = 0;
-    array->size = max(nelems, 8);
-    array->templ = NULL;
-
-    array->table = (json_t**)jsonp_malloc(array->size * sizeof(json_t *));
-    if(!array->table) {
-        jsonp_free(array);
-        return NULL;
-    }
-
-    array->visited = 0;
-
+    auto array = new json_array_t(nelems);
     return &array->json;
 }
 
 json_t *json_array(void)
 {
     return json_array_of_size(8);
-}
-
-static void json_delete_array(json_array_t *array)
-{
-    size_t i;
-
-    for(i = 0; i < array->entries; i++)
-        json_decref(array->table[i]);
-
-    if (array->templ) {
-      json_decref(array->templ);
-    }
-    jsonp_free(array->table);
-    jsonp_free(array);
 }
 
 int json_array_set_template(json_t *json, json_t *templ)
@@ -462,7 +439,7 @@ static json_t **json_array_grow(json_array_t *array,
 
     old_table = array->table;
 
-    new_size = max(array->size + amount, array->size * 2);
+    new_size = std::max(array->size + amount, array->size * 2);
     new_table = (json_t**)jsonp_malloc(new_size * sizeof(json_t *));
     if(!new_table)
         return NULL;
@@ -655,19 +632,22 @@ static json_t *json_array_deep_copy(json_t *array)
 
 /*** string ***/
 
+json_string_t::json_string_t(w_string_t* str)
+    : json(JSON_STRING), value(str), cache(nullptr) {
+  w_string_addref(str);
+}
+
+json_string_t::~json_string_t() {
+  w_string_delref(value);
+  free(cache);
+}
+
 json_t *w_string_to_json(w_string_t *str)
 {
     if(!str)
         return NULL;
 
-    auto string = (json_string_t*)jsonp_malloc(sizeof(json_string_t));
-    if(!string)
-        return NULL;
-    json_init(&string->json, JSON_STRING);
-
-    string->value = str;
-    w_string_addref(str);
-    string->cache = NULL;
+    auto string = new json_string_t(str);
     return &string->json;
 }
 
@@ -742,13 +722,6 @@ w_string_t *json_to_w_string_incref(const json_t *json)
     return str;
 }
 
-static void json_delete_string(json_string_t *string)
-{
-    w_string_delref(string->value);
-    free(string->cache);
-    jsonp_free(string);
-}
-
 static int json_string_equal(json_t *string1, json_t *string2)
 {
     return strcmp(json_string_value(string1), json_string_value(string2)) == 0;
@@ -761,14 +734,12 @@ static json_t *json_string_copy(json_t *string)
 
 /*** integer ***/
 
+json_integer_t::json_integer_t(json_int_t value)
+    : json(JSON_INTEGER), value(value) {}
+
 json_t *json_integer(json_int_t value)
 {
-    auto integer = (json_integer_t*)jsonp_malloc(sizeof(json_integer_t));
-    if(!integer)
-        return NULL;
-    json_init(&integer->json, JSON_INTEGER);
-
-    integer->value = value;
+    auto integer = new json_integer_t(value);
     return &integer->json;
 }
 
@@ -790,11 +761,6 @@ int json_integer_set(json_t *json, json_int_t value)
     return 0;
 }
 
-static void json_delete_integer(json_integer_t *integer)
-{
-    jsonp_free(integer);
-}
-
 static int json_integer_equal(json_t *integer1, json_t *integer2)
 {
     return json_integer_value(integer1) == json_integer_value(integer2);
@@ -808,18 +774,15 @@ static json_t *json_integer_copy(json_t *integer)
 
 /*** real ***/
 
-json_t *json_real(double value)
-{
-    if(isnan(value) || isinf(value))
-        return NULL;
+json_real_t::json_real_t(double value) : json(JSON_REAL), value(value) {}
 
-    auto real = (json_real_t*)jsonp_malloc(sizeof(json_real_t));
-    if(!real)
-        return NULL;
-    json_init(&real->json, JSON_REAL);
+json_t* json_real(double value) {
+  if (std::isnan(value) || std::isinf(value)) {
+    return nullptr;
+  }
 
-    real->value = value;
-    return &real->json;
+  auto real = new json_real_t(value);
+  return &real->json;
 }
 
 double json_real_value(const json_t *json)
@@ -830,19 +793,14 @@ double json_real_value(const json_t *json)
     return json_to_real(json)->value;
 }
 
-int json_real_set(json_t *json, double value)
-{
-    if(!json_is_real(json) || isnan(value) || isinf(value))
-        return -1;
+int json_real_set(json_t* json, double value) {
+  if (!json_is_real(json) || std::isnan(value) || std::isinf(value)) {
+    return -1;
+  }
 
-    json_to_real(json)->value = value;
+  json_to_real(json)->value = value;
 
-    return 0;
-}
-
-static void json_delete_real(json_real_t *real)
-{
-    jsonp_free(real);
+  return 0;
 }
 
 static int json_real_equal(json_t *real1, json_t *real2)
@@ -873,22 +831,22 @@ double json_number_value(const json_t *json)
 
 json_t *json_true(void)
 {
-    static json_t the_true = {JSON_TRUE, (size_t)-1};
-    return &the_true;
+  static json_t the_true{JSON_TRUE, json_t::SingletonHack()};
+  return &the_true;
 }
 
 
 json_t *json_false(void)
 {
-    static json_t the_false = {JSON_FALSE, (size_t)-1};
-    return &the_false;
+  static json_t the_false{JSON_FALSE, json_t::SingletonHack()};
+  return &the_false;
 }
 
 
 json_t *json_null(void)
 {
-    static json_t the_null = {JSON_NULL, (size_t)-1};
-    return &the_null;
+  static json_t the_null{JSON_NULL, json_t::SingletonHack()};
+  return &the_null;
 }
 
 
@@ -896,22 +854,27 @@ json_t *json_null(void)
 
 void json_delete(json_t *json)
 {
-    if(json_is_object(json))
-        json_delete_object(json_to_object(json));
-
-    else if(json_is_array(json))
-        json_delete_array(json_to_array(json));
-
-    else if(json_is_string(json))
-        json_delete_string(json_to_string(json));
-
-    else if(json_is_integer(json))
-        json_delete_integer(json_to_integer(json));
-
-    else if(json_is_real(json))
-        json_delete_real(json_to_real(json));
-
-    /* json_delete is not called for true, false or null */
+  switch (json->type) {
+    case JSON_OBJECT:
+      delete (json_object_t*)json;
+      break;
+    case JSON_ARRAY:
+      delete (json_array_t*)json;
+      break;
+    case JSON_STRING:
+      delete (json_string_t*)json;
+      break;
+    case JSON_INTEGER:
+      delete (json_integer_t*)json;
+      break;
+    case JSON_REAL:
+      delete (json_real_t*)json;
+      break;
+    case JSON_TRUE:
+    case JSON_FALSE:
+    case JSON_NULL:
+      break;
+  }
 }
 
 

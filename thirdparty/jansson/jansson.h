@@ -47,6 +47,13 @@ typedef enum {
 struct json_t {
     json_type type;
     size_t refcount;
+
+    json_t(json_type type);
+
+    struct SingletonHack {};
+    // true, false, null are never heap allocated, always
+    // reference a global singleton value with a bogus refcount
+    json_t(json_type type, SingletonHack&&);
 };
 
 #if JSON_INTEGER_IS_LONG_LONG

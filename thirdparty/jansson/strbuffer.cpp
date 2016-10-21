@@ -80,8 +80,8 @@ int strbuffer_append_bytes(strbuffer_t *strbuff, const char *data, size_t size)
             || strbuff->length > STRBUFFER_SIZE_MAX - 1 - size)
             return -1;
 
-        new_size = max(strbuff->size * STRBUFFER_FACTOR,
-                       strbuff->length + size + 1);
+        new_size = std::max(
+            strbuff->size * STRBUFFER_FACTOR, strbuff->length + size + 1);
 
         new_value = (char*)jsonp_malloc(new_size);
         if(!new_value)
