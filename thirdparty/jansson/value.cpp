@@ -502,7 +502,7 @@ const w_string& json_to_w_string(const json_t* json) {
 
 static int json_string_equal(json_t *string1, json_t *string2)
 {
-    return strcmp(json_string_value(string1), json_string_value(string2)) == 0;
+  return json_to_string(string1)->value == json_to_string(string2)->value;
 }
 
 static json_ref json_string_copy(json_t* string) {
