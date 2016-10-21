@@ -546,19 +546,6 @@ w_string_t *json_to_w_string(const json_t *json)
     return jstr->value;
 }
 
-w_string_t *json_to_w_string_incref(const json_t *json)
-{
-    w_string_t *str = json_to_w_string(json);
-
-    if (!str) {
-        return NULL;
-    }
-
-    w_string_addref(str);
-
-    return str;
-}
-
 static int json_string_equal(json_t *string1, json_t *string2)
 {
     return strcmp(json_string_value(string1), json_string_value(string2)) == 0;

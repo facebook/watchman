@@ -136,7 +136,6 @@ typed_string_len_to_json(const char* str, size_t len, w_string_type_t type);
 json_ref typed_string_to_json(const char* value, w_string_type_t type);
 json_ref w_string_to_json(w_string_t* str);
 w_string_t *json_to_w_string(const json_t *json);
-w_string_t *json_to_w_string_incref(const json_t *json);
 json_ref json_integer(json_int_t value);
 json_ref json_real(double value);
 json_ref json_true(void);
