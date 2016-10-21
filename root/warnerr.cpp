@@ -58,7 +58,6 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
     lock->root->recrawlInfo.wlock()->warning = warn;
   }
 
-  stop_watching_dir(lock, dir);
   auto view =
       dynamic_cast<watchman::InMemoryView*>(lock->root->inner.view.get());
   view->markDirDeleted(dir, now, lock->root->inner.ticks, true);

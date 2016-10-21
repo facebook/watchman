@@ -36,20 +36,5 @@ watchman_dir* watchman_dir::getChildDir(w_string name) const {
   return it->second.get();
 }
 
-void stop_watching_dir(struct write_locked_watchman_root *lock,
-                       struct watchman_dir *dir) {
-  auto dir_path = dir->getFullPath();
-
-  w_log(W_LOG_DBG, "stop_watching_dir %s\n", dir_path.c_str());
-
-  for (auto& it : dir->dirs) {
-    auto child = it.second.get();
-
-    stop_watching_dir(lock, child);
-  }
-
-  lock->root->inner.watcher->stopWatchDir(lock, dir);
-}
-
 /* vim:ts=2:sw=2:et:
  */

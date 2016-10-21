@@ -81,10 +81,6 @@ struct InotifyWatcher : public Watcher {
       struct timeval now,
       const char* path) override;
 
-  void stopWatchDir(
-      struct write_locked_watchman_root* lock,
-      struct watchman_dir* dir) override;
-
   bool consumeNotify(w_root_t* root, struct watchman_pending_collection* coll)
       override;
 
@@ -225,13 +221,6 @@ struct watchman_dir_handle* InotifyWatcher::startWatchDir(
   w_log(W_LOG_DBG, "adding %d -> %s mapping\n", newwd, path);
 
   return osdir;
-}
-
-void InotifyWatcher::stopWatchDir(
-    struct write_locked_watchman_root*,
-    struct watchman_dir*) {
-  // Linux removes watches for us at the appropriate times,
-  // and tells us about it via inotify, so we have nothing to do here
 }
 
 void InotifyWatcher::process_inotify_event(

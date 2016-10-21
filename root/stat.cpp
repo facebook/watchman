@@ -80,7 +80,6 @@ void stat_path(
           strerror(err),
           int(dir_name.size()),
           dir_name.data());
-      stop_watching_dir(lock, dir_ent);
     }
     if (file) {
       if (file->exists) {

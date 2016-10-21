@@ -36,10 +36,6 @@ struct WinWatcher : public Watcher {
       struct timeval now,
       const char* path) override;
 
-  void stopWatchDir(
-      struct write_locked_watchman_root* lock,
-      struct watchman_dir* dir) override;
-
   bool consumeNotify(w_root_t* root, struct watchman_pending_collection* coll)
       override;
 
@@ -376,10 +372,6 @@ struct watchman_dir_handle* WinWatcher::startWatchDir(
 
   return osdir;
 }
-
-void WinWatcher::stopWatchDir(
-    struct write_locked_watchman_root*,
-    struct watchman_dir*) {}
 
 bool WinWatcher::consumeNotify(
     w_root_t* root,

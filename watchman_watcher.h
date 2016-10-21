@@ -38,11 +38,6 @@ struct Watcher {
       struct timeval now,
       const char* path) = 0;
 
-  // Cancel an OS-level watch on the provided dir
-  virtual void stopWatchDir(
-      struct write_locked_watchman_root* lock,
-      struct watchman_dir* dir) = 0;
-
   // Signal any threads to terminate.  Do not join them here.
   virtual void signalThreads();
 

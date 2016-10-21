@@ -282,5 +282,3 @@ void handle_open_errno(
     const char* syscall,
     int err,
     const char* reason);
-void stop_watching_dir(struct write_locked_watchman_root *lock,
-                       struct watchman_dir *dir);
