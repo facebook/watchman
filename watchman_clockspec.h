@@ -25,10 +25,11 @@ struct w_clockspec {
       uint32_t ticks;
     } clock;
     struct {
-      w_string_t *cursor;
+      w_string cursor;
     } named_cursor;
   };
 
+  w_clockspec();
   ~w_clockspec();
 };
 

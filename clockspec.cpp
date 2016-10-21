@@ -52,7 +52,7 @@ std::unique_ptr<w_clockspec> w_clockspec_parse(json_t* value) {
   if (str[0] == 'n' && str[1] == ':') {
     spec->tag = w_cs_named_cursor;
     // spec owns the ref to the string
-    spec->named_cursor.cursor = json_to_w_string_incref(value);
+    spec->named_cursor.cursor = json_to_w_string(value);
     return spec;
   }
 
@@ -226,9 +226,11 @@ void w_clockspec_eval(struct write_locked_watchman_root *lock,
   since->clock.ticks = 0;
 }
 
+w_clockspec::w_clockspec() : tag(w_cs_timestamp), timestamp(0) {}
+
 w_clockspec::~w_clockspec() {
   if (tag == w_cs_named_cursor) {
-    w_string_delref(named_cursor.cursor);
+    named_cursor.cursor.reset();
   }
 }
 
