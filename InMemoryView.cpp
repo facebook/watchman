@@ -575,4 +575,8 @@ uint32_t InMemoryView::getLastAgeOutTickValue() const {
 time_t InMemoryView::getLastAgeOutTimeStamp() const {
   return last_age_out_timestamp;
 }
+
+void InMemoryView::startThreads(w_root_t*) {}
+
+void InMemoryView::signalThreads() {}
 }

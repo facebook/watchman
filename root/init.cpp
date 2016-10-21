@@ -91,6 +91,7 @@ bool w_root_init(w_root_t *root, char **errmsg) {
     return false;
   }
 
+  root->inner.view->startThreads(root);
   root->inner.number = next_root_number++;
 
   time(&root->inner.last_cmd_timestamp);

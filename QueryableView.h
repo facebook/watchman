@@ -49,5 +49,10 @@ class QueryableView {
   virtual uint32_t getLastAgeOutTickValue() const;
   virtual time_t getLastAgeOutTimeStamp() const;
   virtual void ageOut(w_perf_t& sample, std::chrono::seconds minAge);
+
+  // Start up any helper threads
+  virtual void startThreads(w_root_t* root);
+  // Request that helper threads shutdown (but does not join them)
+  virtual void signalThreads();
 };
 }

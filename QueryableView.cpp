@@ -50,4 +50,6 @@ time_t QueryableView::getLastAgeOutTimeStamp() const {
 }
 
 void QueryableView::ageOut(w_perf_t&, std::chrono::seconds) {}
+void QueryableView::startThreads(w_root_t*) {}
+void QueryableView::signalThreads() {}
 }

@@ -94,6 +94,9 @@ struct InMemoryView : public QueryableView {
       int flags,
       struct watchman_dir_ent* pre_stat);
 
+  void startThreads(w_root_t* root) override;
+  void signalThreads() override;
+
  private:
   void ageOutFile(
       std::unordered_set<w_string>& dirs_to_erase,

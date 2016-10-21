@@ -67,6 +67,7 @@ void signal_root_threads(w_root_t *root) {
     pthread_kill(root->notify_thread, SIGUSR1);
   }
   w_pending_coll_ping(&root->ioThread.pending);
+  root->inner.view->signalThreads();
   root->inner.watcher->signalThreads();
 }
 
