@@ -530,7 +530,7 @@ class WatchmanTestCase {
     $this->assertFileListUsingSince($root, null, $files, null, $message);
   }
 
-  private function secondLevelSort(array $objs) {
+   function secondLevelSort(array $objs) {
     $ret = array();
 
     foreach ($objs as $obj) {

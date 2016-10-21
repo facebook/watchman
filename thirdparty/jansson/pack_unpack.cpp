@@ -6,9 +6,11 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
-#include <string.h>
 #include "jansson.h"
 #include "jansson_private.h"
+#include <string.h>
+#include <unordered_set>
+#include <string>
 #include "utf.h"
 
 typedef struct {
@@ -252,12 +254,7 @@ static int unpack_object(scanner_t *s, json_t *root, va_list *ap)
        were accessed is not enough, as the same key can be unpacked
        multiple times.
     */
-    hashtable_t key_set;
-
-    if(hashtable_init(&key_set, 0)) {
-        set_error(s, "<internal>", "Out of memory");
-        return -1;
-    }
+    std::unordered_set<std::string> key_set;
 
     if(root && !json_is_object(root)) {
         set_error(s, "<validation>", "Expected object, got %s",
@@ -322,15 +319,15 @@ static int unpack_object(scanner_t *s, json_t *root, va_list *ap)
         if(unpack(s, value, ap))
             goto out;
 
-        hashtable_set(&key_set, key, 0, json_null());
+        key_set.emplace(key);
         next_token(s);
     }
 
     if(strict == 0 && (s->flags & JSON_STRICT))
         strict = 1;
 
-    if(root && strict == 1 && key_set.size != json_object_size(root)) {
-        long diff = (long)json_object_size(root) - (long)key_set.size;
+    if(root && strict == 1 && key_set.size() != json_object_size(root)) {
+        long diff = (long)json_object_size(root) - (long)key_set.size();
         set_error(s, "<validation>", "%li object item(s) left unpacked", diff);
         goto out;
     }
@@ -338,7 +335,6 @@ static int unpack_object(scanner_t *s, json_t *root, va_list *ap)
     ret = 0;
 
 out:
-    hashtable_close(&key_set);
     return ret;
 }
 

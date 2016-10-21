@@ -27,9 +27,11 @@ class TypeExprTestCase extends WatchmanTestCase {
       'fields' => array('name', 'type'),
     ));
 
-    $this->assertEqual(array(
+    $this->assertEqual(
+      $this->secondLevelSort(array(
         array('name' => 'subdir', 'type' => 'd')
-      ), $res['files']);
+      )),
+      $this->secondLevelSort($res['files']));
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array('type', 'f'),
@@ -39,10 +41,12 @@ class TypeExprTestCase extends WatchmanTestCase {
     usort($res['files'], function ($a, $b) {
       return strcmp($a['name'], $b['name']);
     });
-    $this->assertEqual(array(
+    $this->assertEqual(
+      $this->secondLevelSort(array(
         array('name' => 'foo.c', 'type' => 'f'),
         array('name' => w_normalize_filename('subdir/bar.txt'), 'type' => 'f')
-      ), $res['files']);
+      )),
+      $this->secondLevelSort($res['files']));
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array('type', 'x'),

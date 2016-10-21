@@ -15,7 +15,6 @@
 #include <cmath>
 
 #include "jansson.h"
-#include "hashtable.h"
 #include "jansson_private.h"
 #include "utf.h"
 #include "watchman_string.h"
@@ -27,11 +26,8 @@ json_t::json_t(json_type type, json_t::SingletonHack&&)
 
 /*** object ***/
 
-json_object_t::json_object_t(size_t sizeHint)
-    : json(JSON_OBJECT), serial(0), visited(0) {
-  if (hashtable_init(&hashtable, sizeHint)) {
-    throw std::bad_alloc();
-  }
+json_object_t::json_object_t(size_t sizeHint) : json(JSON_OBJECT), visited(0) {
+  map.reserve(sizeHint);
 }
 
 json_t *json_object_of_size(size_t size)
@@ -46,7 +42,9 @@ json_t *json_object(void)
 }
 
 json_object_t::~json_object_t() {
-  hashtable_close(&hashtable);
+  for (auto& it : map) {
+    json_decref(it.second);
+  }
 }
 
 size_t json_object_size(const json_t *json)
@@ -57,7 +55,16 @@ size_t json_object_size(const json_t *json)
         return 0;
 
     object = json_to_object(json);
-    return object->hashtable.size;
+    return object->map.size();
+}
+
+typename std::unordered_map<w_string, json_t*>::iterator
+json_object_t::findCString(const char* key) {
+  // Avoid making a copy of the string for this lookup
+  w_string_t key_string;
+  w_string_new_len_typed_stack(
+      &key_string, key, strlen_uint32(key), W_STRING_BYTE);
+  return map.find(w_string(&key_string));
 }
 
 json_t *json_object_get(const json_t *json, const char *key)
@@ -68,7 +75,11 @@ json_t *json_object_get(const json_t *json, const char *key)
         return NULL;
 
     object = json_to_object(json);
-    return (json_t*)hashtable_get(&object->hashtable, key);
+    auto it = object->findCString(key);
+    if (it == object->map.end()) {
+      return nullptr;
+    }
+    return it->second;
 }
 
 int json_object_set_new_nocheck(json_t *json, const char *key, json_t *value)
@@ -85,12 +96,8 @@ int json_object_set_new_nocheck(json_t *json, const char *key, json_t *value)
     }
     object = json_to_object(json);
 
-    if(hashtable_set(&object->hashtable, key, object->serial++, value))
-    {
-        json_decref(value);
-        return -1;
-    }
-
+    w_string key_string(key);
+    object->map[key_string] = value;
     return 0;
 }
 
@@ -113,7 +120,12 @@ int json_object_del(json_t *json, const char *key)
         return -1;
 
     object = json_to_object(json);
-    return hashtable_del(&object->hashtable, key);
+    auto it = object->findCString(key);
+    if (it == object->map.end()) {
+      return -1;
+    }
+    object->map.erase(it);
+    return 0;
 }
 
 int json_object_clear(json_t *json)
@@ -125,23 +137,23 @@ int json_object_clear(json_t *json)
 
     object = json_to_object(json);
 
-    hashtable_clear(&object->hashtable);
-    object->serial = 0;
+    for (auto& it : object->map) {
+      json_decref(it.second);
+    }
+    object->map.clear();
 
     return 0;
 }
 
 int json_object_update(json_t *object, json_t *other)
 {
-    const char *key;
-    json_t *value;
-
     if(!json_is_object(object) || !json_is_object(other))
         return -1;
 
-    json_object_foreach(other, key, value) {
-        if(json_object_set_nocheck(object, key, value))
-            return -1;
+    auto target_obj = json_to_object(other);
+    for (auto& it : json_to_object(object)->map) {
+      target_obj->map[it.first] = it.second;
+      json_incref(it.second);
     }
 
     return 0;
@@ -149,15 +161,16 @@ int json_object_update(json_t *object, json_t *other)
 
 int json_object_update_existing(json_t *object, json_t *other)
 {
-    const char *key;
-    json_t *value;
-
     if(!json_is_object(object) || !json_is_object(other))
         return -1;
 
-    json_object_foreach(other, key, value) {
-        if(json_object_get(object, key))
-            json_object_set_nocheck(object, key, value);
+    auto target_obj = json_to_object(other);
+    for (auto& it : json_to_object(object)->map) {
+      auto find = target_obj->map.find(it.first);
+      if (find != target_obj->map.end()) {
+        target_obj->map[it.first] = it.second;
+        json_incref(it.second);
+      }
     }
 
     return 0;
@@ -165,117 +178,48 @@ int json_object_update_existing(json_t *object, json_t *other)
 
 int json_object_update_missing(json_t *object, json_t *other)
 {
-    const char *key;
-    json_t *value;
-
     if(!json_is_object(object) || !json_is_object(other))
         return -1;
 
-    json_object_foreach(other, key, value) {
-        if(!json_object_get(object, key))
-            json_object_set_nocheck(object, key, value);
+    auto target_obj = json_to_object(other);
+    for (auto& it : json_to_object(object)->map) {
+      auto find = target_obj->map.find(it.first);
+      if (find == target_obj->map.end()) {
+        target_obj->map[it.first] = it.second;
+        json_incref(it.second);
+      }
     }
 
     return 0;
 }
 
-void *json_object_iter(json_t *json)
-{
-    json_object_t *object;
-
-    if(!json_is_object(json))
-        return NULL;
-
-    object = json_to_object(json);
-    return hashtable_iter(&object->hashtable);
-}
-
-void *json_object_iter_at(json_t *json, const char *key)
-{
-    json_object_t *object;
-
-    if(!key || !json_is_object(json))
-        return NULL;
-
-    object = json_to_object(json);
-    return hashtable_iter_at(&object->hashtable, key);
-}
-
-void *json_object_iter_next(json_t *json, void *iter)
-{
-    json_object_t *object;
-
-    if(!json_is_object(json) || iter == NULL)
-        return NULL;
-
-    object = json_to_object(json);
-    return hashtable_iter_next(&object->hashtable, iter);
-}
-
-const char *json_object_iter_key(void *iter)
-{
-    if(!iter)
-        return NULL;
-
-    return (const char*)hashtable_iter_key(iter);
-}
-
-json_t *json_object_iter_value(void *iter)
-{
-    if(!iter)
-        return NULL;
-
-    return (json_t *)hashtable_iter_value(iter);
-}
-
-int json_object_iter_set_new(json_t *json, void *iter, json_t *value)
-{
-    if(!json_is_object(json) || !iter || !value)
-        return -1;
-
-    hashtable_iter_set(iter, value);
+static int json_object_equal(json_t* object1, json_t* object2) {
+  if (json_object_size(object1) != json_object_size(object2))
     return 0;
-}
 
-void *json_object_key_to_iter(const char *key)
-{
-    if(!key)
-        return NULL;
+  auto target_obj = json_to_object(object2);
+  for (auto& it : json_to_object(object1)->map) {
+    auto other_it = target_obj->map.find(it.first);
 
-    return hashtable_key_to_iter(key);
-}
-
-static int json_object_equal(json_t *object1, json_t *object2)
-{
-    const char *key;
-    json_t *value1, *value2;
-
-    if(json_object_size(object1) != json_object_size(object2))
-        return 0;
-
-    json_object_foreach(object1, key, value1) {
-        value2 = json_object_get(object2, key);
-
-        if(!json_equal(value1, value2))
-            return 0;
+    if (other_it == target_obj->map.end()) {
+      return 0;
     }
 
-    return 1;
+    if (!json_equal(it.second, other_it->second)) {
+      return 0;
+    }
+  }
+
+  return 1;
 }
 
 static json_t *json_object_copy(json_t *object)
 {
-    json_t *result;
-
-    const char *key;
-    json_t *value;
-
-    result = json_object();
+    auto result = json_object();
     if(!result)
         return NULL;
 
-    json_object_foreach(object, key, value)
-        json_object_set_nocheck(result, key, value);
+    json_object_update(result, object);
 
     return result;
 }
@@ -284,15 +228,14 @@ static json_t *json_object_deep_copy(json_t *object)
 {
     json_t *result;
 
-    const char *key;
-    json_t *value;
-
     result = json_object();
     if(!result)
         return NULL;
 
-    json_object_foreach(object, key, value)
-        json_object_set_new_nocheck(result, key, json_deep_copy(value));
+    auto target_obj = json_to_object(result);
+    for (auto& it : json_to_object(object)->map) {
+      target_obj->map[it.first] = json_deep_copy(it.second);
+    }
 
     return result;
 }

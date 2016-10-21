@@ -193,6 +193,10 @@ const char* w_string::c_str() const {
   return str_->buf;
 }
 
+bool w_string::operator<(const w_string& other) const {
+  return w_string_compare(str_, other.str_) < 0;
+}
+
 bool w_string::operator==(const w_string& other) const {
   return w_string_equal(str_, other.str_);
 }

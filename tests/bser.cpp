@@ -74,7 +74,7 @@ static char *bdumps_pdu(json_t *json, char **end)
 }
 
 static const char *json_inputs[] = {
-  "{\"foo\": 42, \"bar\": true}",
+  "{\"bar\": true, \"foo\": 42}",
   "[1, 2, 3]",
   "[null, true, false, 65536]",
   "[1.5, 2.0]",
@@ -88,8 +88,8 @@ static struct {
 } template_tests[] = {
   {
     "["
-      "{\"name\": \"fred\", \"age\": 20}, "
-      "{\"name\": \"pete\", \"age\": 30}, "
+      "{\"age\": 20, \"name\": \"fred\"}, "
+      "{\"age\": 30, \"name\": \"pete\"}, "
       "{\"age\": 25}"
     "]",
     "[\"name\", \"age\"]"
@@ -127,7 +127,7 @@ static bool check_roundtrip(const char *input, const char *template_text,
   decoded = bunser(dump_buf, end, &needed, &jerr);
   ok(decoded != NULL, "decoded something (err = %s)", jerr.text);
 
-  jdump = json_dumps(decoded, 0);
+  jdump = json_dumps(decoded, JSON_SORT_KEYS);
   ok(jdump != NULL, "dumped %s", jdump);
 
   ok(json_equal(expected, decoded), "round-tripped json_equal");
@@ -169,7 +169,7 @@ int main(int argc, char **argv)
   plan_tests(
       (6 * num_json_inputs) +
       (6 * num_templ) +
-      4 // raw tests
+      2 // raw tests
   );
 
   for (i = 0; i < num_json_inputs; i++) {
@@ -190,13 +190,6 @@ int main(int argc, char **argv)
     json_decref(decoded);
 
   }
-  check_serialization("{\"name\": \"Tom\", \"age\": 24}",
-      "\x00\x01\x03\x18\x01\x03\x02\x02\x03\x04\x6e\x61\x6d\x65\x02\x03\x03"
-      "\x54\x6f\x6d\x02\x03\x03\x61\x67\x65\x03\x18");
-  check_serialization("{\"names\": [\"Tom\", \"Jerry\"], \"age\": 24}",
-      "\x00\x01\x03\x24\x01\x03\x02\x02\x03\x05\x6e\x61\x6d\x65\x73\x00\x03"
-      "\x02\x02\x03\x03\x54\x6f\x6d\x02\x03\x05\x4a\x65\x72\x72\x79\x02\x03"
-      "\x03\x61\x67\x65\x03\x18");
   check_serialization("[\"Tom\", \"Jerry\"]",
       "\x00\x01\x03\x11\x00\x03\x02\x02\x03\x03\x54\x6f\x6d\x02\x03\x05\x4a"
       "\x65\x72\x72\x79");

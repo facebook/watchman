@@ -21,7 +21,6 @@ cpp_library(
   srcs=[
     'dump.cpp',
     'error.cpp',
-    'hashtable.cpp',
     'load.cpp',
     'memory.cpp',
     'pack_unpack.cpp',
@@ -37,7 +36,6 @@ cpp_library(
   ],
   headers=[
     'jansson.h',
-    'hashtable.h',
     'jansson_private.h',
     'strbuffer.h',
     'utf.h',

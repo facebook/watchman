@@ -19,6 +19,8 @@
 #include "strbuffer.h"
 #include "utf.h"
 
+#include <vector>
+
 #define MAX_INTEGER_STR_LENGTH  100
 #define MAX_REAL_STR_LENGTH     100
 
@@ -157,20 +159,6 @@ static int dump_string(const char *str, json_dump_callback_t dump, void *data, s
     return dump("\"", 1, data);
 }
 
-static int object_key_compare_keys(const void *key1, const void *key2)
-{
-    return strcmp(((const struct object_key *)key1)->key,
-                  ((const struct object_key *)key2)->key);
-}
-
-static int object_key_compare_serials(const void *key1, const void *key2)
-{
-    size_t a = ((const struct object_key *)key1)->serial;
-    size_t b = ((const struct object_key *)key2)->serial;
-
-    return a < b ? -1 : a == b ? 0 : 1;
-}
-
 static int do_dump(const json_t *json, size_t flags, int depth,
                    json_dump_callback_t dump, void *data)
 {
@@ -266,7 +254,6 @@ static int do_dump(const json_t *json, size_t flags, int depth,
         case JSON_OBJECT:
         {
             json_object_t *object;
-            void *iter;
             const char *separator;
             int separator_length;
 
@@ -281,115 +268,71 @@ static int do_dump(const json_t *json, size_t flags, int depth,
 
             /* detect circular references */
             object = json_to_object(json);
+            auto it = object->map.begin();
+
             if(object->visited)
                 goto object_error;
             object->visited = 1;
 
-            iter = json_object_iter((json_t *)json);
-
             if(dump("{", 1, data))
                 goto object_error;
-            if(!iter) {
+            if (object->map.empty()) {
                 object->visited = 0;
                 return dump("}", 1, data);
             }
+
             if(dump_indent(flags, depth + 1, 0, dump, data))
                 goto object_error;
 
-            if(flags & JSON_SORT_KEYS || flags & JSON_PRESERVE_ORDER)
-            {
-                struct object_key *keys;
-                size_t size, i;
-                int (*cmp_func)(const void *, const void *);
+            if (flags & JSON_SORT_KEYS) {
+              using Pair = std::pair<w_string, json_t*>;
+              std::vector<Pair> items(object->map.begin(), object->map.end());
 
-                size = json_object_size(json);
-                keys = (struct object_key*)jsonp_malloc(size * sizeof(struct object_key));
-                if(!keys)
+              std::sort(
+                  items.begin(), items.end(), [](const Pair& a, const Pair& b) {
+                    return a.first < b.first;
+                  });
+
+              auto sorted_it = items.begin();
+              while (sorted_it != items.end()) {
+                auto next = std::next(sorted_it);
+
+                dump_string(sorted_it->first.c_str(), dump, data, flags);
+                if (dump(separator, separator_length, data) ||
+                    do_dump(sorted_it->second, flags, depth + 1, dump, data))
+                  goto object_error;
+
+                if (next != items.end()) {
+                  if (dump(",", 1, data) ||
+                      dump_indent(flags, depth + 1, 1, dump, data))
                     goto object_error;
-
-                i = 0;
-                while(iter)
-                {
-                    keys[i].serial = hashtable_iter_serial(iter);
-                    keys[i].key = json_object_iter_key(iter);
-                    iter = json_object_iter_next((json_t *)json, iter);
-                    i++;
-                }
-                assert(i == size);
-
-                if(flags & JSON_SORT_KEYS)
-                    cmp_func = object_key_compare_keys;
-                else
-                    cmp_func = object_key_compare_serials;
-
-                qsort(keys, size, sizeof(struct object_key), cmp_func);
-
-                for(i = 0; i < size; i++)
-                {
-                    const char *key;
-                    json_t *value;
-
-                    key = keys[i].key;
-                    value = json_object_get(json, key);
-                    assert(value);
-
-                    dump_string(key, dump, data, flags);
-                    if(dump(separator, separator_length, data) ||
-                       do_dump(value, flags, depth + 1, dump, data))
-                    {
-                        jsonp_free(keys);
-                        goto object_error;
-                    }
-
-                    if(i < size - 1)
-                    {
-                        if(dump(",", 1, data) ||
-                           dump_indent(flags, depth + 1, 1, dump, data))
-                        {
-                            jsonp_free(keys);
-                            goto object_error;
-                        }
-                    }
-                    else
-                    {
-                        if(dump_indent(flags, depth, 0, dump, data))
-                        {
-                            jsonp_free(keys);
-                            goto object_error;
-                        }
-                    }
+                } else {
+                  if (dump_indent(flags, depth, 0, dump, data))
+                    goto object_error;
                 }
 
-                jsonp_free(keys);
-            }
-            else
-            {
-                /* Don't sort keys */
+                sorted_it = next;
+              }
+            } else {
+              while (it != object->map.end()) {
+                auto next = std::next(it);
 
-                while(iter)
-                {
-                    void *next = json_object_iter_next((json_t *)json, iter);
+                dump_string(it->first.c_str(), dump, data, flags);
+                if (dump(separator, separator_length, data) ||
+                    do_dump(it->second, flags, depth + 1, dump, data))
+                  goto object_error;
 
-                    dump_string(json_object_iter_key(iter), dump, data, flags);
-                    if(dump(separator, separator_length, data) ||
-                       do_dump(json_object_iter_value(iter), flags, depth + 1,
-                               dump, data))
-                        goto object_error;
-
-                    if(next)
-                    {
-                        if(dump(",", 1, data) ||
-                           dump_indent(flags, depth + 1, 1, dump, data))
-                            goto object_error;
-                    }
-                    else
-                    {
-                        if(dump_indent(flags, depth, 0, dump, data))
-                            goto object_error;
-                    }
-
-                    iter = next;
+                if (next != object->map.end()) {
+                  if (dump(",", 1, data) ||
+                      dump_indent(flags, depth + 1, 1, dump, data))
+                    goto object_error;
+                } else {
+                  if (dump_indent(flags, depth, 0, dump, data))
+                    goto object_error;
                 }
+
+                it = next;
+              }
             }
 
             object->visited = 0;

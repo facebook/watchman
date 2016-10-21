@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "thirdparty/jansson/jansson_private.h"
 
 /*
  * This defines a binary serialization of the JSON data objects in this
@@ -298,9 +299,6 @@ static int bser_array(const bser_ctx_t *ctx, const json_t *array, void *data)
 static int bser_object(const bser_ctx_t *ctx, json_t *obj, void *data)
 {
   size_t n;
-  json_t *val;
-  const char *key;
-  void *iter;
 
   if (!is_bser_version_supported(ctx)) {
     return -1;
@@ -315,19 +313,17 @@ static int bser_object(const bser_ctx_t *ctx, json_t *obj, void *data)
     return -1;
   }
 
-  iter = json_object_iter(obj);
-  while (iter) {
-    key = json_object_iter_key(iter);
-    val = json_object_iter_value(iter);
+  auto object = json_to_object(obj);
+  for (auto& it : object->map) {
+    auto &key = it.first;
+    auto &val = it.second;
 
-    if (bser_bytestring(ctx, key, data)) {
+    if (bser_bytestring(ctx, key.c_str(), data)) {
       return -1;
     }
     if (w_bser_dump(ctx, val, data)) {
       return -1;
     }
-
-    iter = json_object_iter_next(obj, iter);
   }
 
   return 0;

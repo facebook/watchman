@@ -109,8 +109,6 @@ libwmanjson_a_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 libwmanjson_a_SOURCES = \
 	thirdparty/jansson/dump.cpp \
 	thirdparty/jansson/error.cpp \
-	thirdparty/jansson/hashtable.cpp \
-	thirdparty/jansson/hashtable.h \
 	thirdparty/jansson/jansson_private.h \
 	thirdparty/jansson/load.cpp \
 	thirdparty/jansson/memory.cpp \

@@ -9,7 +9,6 @@ LINKER=link /nologo /out:$@ /debug /incremental:no /opt:ref /opt:icf /pdb:$(@:.e
 JSON_SRCS=\
 	thirdparty\jansson\dump.cpp \
 	thirdparty\jansson\error.cpp \
-	thirdparty\jansson\hashtable.cpp \
 	thirdparty\jansson\load.cpp \
 	thirdparty\jansson\memory.cpp \
 	thirdparty\jansson\pack_unpack.cpp \
