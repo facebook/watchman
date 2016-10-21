@@ -296,5 +296,77 @@ const char *cfg_get_trouble_url(void) {
     "https://facebook.github.io/watchman/docs/troubleshooting.html");
 }
 
+Configuration::Configuration(const json_ref& local) : local_(local) {}
+
+json_ref Configuration::get(const char* name) const {
+  // Highest precedence: options set locally
+  json_t* val = nullptr;
+  if (local_) {
+    val = json_object_get(local_, name);
+  }
+  // then: command line arguments
+  if (!val) {
+    val = cfg_get_raw(name, &arg_cfg);
+  }
+  // then: global config options
+  if (!val) {
+    val = cfg_get_raw(name, &global_cfg);
+  }
+  return val;
+}
+
+const char* Configuration::getString(const char* name, const char* defval)
+    const {
+  auto val = get(name);
+
+  if (val) {
+    if (!json_is_string(val)) {
+      w_log(W_LOG_FATAL, "Expected config value %s to be a string\n", name);
+    }
+    return json_string_value(val);
+  }
+
+  return defval;
+}
+
+json_int_t Configuration::getInt(const char* name, json_int_t defval) const {
+  auto val = get(name);
+
+  if (val) {
+    if (!json_is_integer(val)) {
+      w_log(W_LOG_FATAL, "Expected config value %s to be an integer\n", name);
+    }
+    return json_integer_value(val);
+  }
+
+  return defval;
+}
+
+bool Configuration::getBool(const char* name, bool defval) const {
+  auto val = get(name);
+
+  if (val) {
+    if (!json_is_boolean(val)) {
+      w_log(W_LOG_FATAL, "Expected config value %s to be a boolean\n", name);
+    }
+    return json_is_true(val);
+  }
+
+  return defval;
+}
+
+double Configuration::getDouble(const char* name, double defval) const {
+  auto val = get(name);
+
+  if (val) {
+    if (!json_is_number(val)) {
+      w_log(W_LOG_FATAL, "Expected config value %s to be a number\n", name);
+    }
+    return json_real_value(val);
+  }
+
+  return defval;
+}
+
 /* vim:ts=2:sw=2:et:
  */

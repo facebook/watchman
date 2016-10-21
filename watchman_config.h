@@ -19,3 +19,17 @@ mode_t cfg_get_perms(
     bool execute_bits);
 const char *cfg_get_trouble_url(void);
 json_ref cfg_compute_root_files(bool* enforcing);
+
+class Configuration {
+  json_ref local_;
+
+ public:
+  Configuration() = default;
+  explicit Configuration(const json_ref& local);
+
+  json_ref get(const char* name) const;
+  const char* getString(const char* name, const char* defval) const;
+  json_int_t getInt(const char* name, json_int_t defval) const;
+  bool getBool(const char* name, bool defval) const;
+  double getDouble(const char* name, double defval) const;
+};
