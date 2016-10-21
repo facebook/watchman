@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include "CookieSync.h"
 #include "QueryableView.h"
+#include "watchman_config.h"
 #include "watchman_shared_mutex.h"
 #include "watchman_synchronized.h"
 
@@ -58,6 +59,7 @@ struct watchman_root {
 
   /* config options loaded via json file */
   json_ref config_file;
+  Configuration config;
 
   struct RecrawlInfo {
     /* how many times we've had to recrawl */

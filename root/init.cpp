@@ -168,6 +168,7 @@ watchman_root::watchman_root(const w_string& root_path)
     : root_path(root_path),
       cookies(root_path),
       config_file(load_root_config(root_path.c_str())),
+      config(config_file),
       inner(root_path) {}
 
 watchman_root::~watchman_root() {
