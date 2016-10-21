@@ -210,6 +210,37 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
                               accept=lambda x: self.wlockExists(x, False))
         self.assertNotEqual(None, dat)
 
+    def test_multi_cancel(self):
+        """Test that for multiple subscriptions on the same socket, we receive
+        cancellation notices for all of them."""
+        root = self.mkdtemp()
+        self.touchRelative(root, 'lemon')
+        self.watchmanCommand('watch', root)
+        self.assertFileList(root, files=['lemon'])
+
+        for n in range(32):
+            sub_name = 'sub%d' % n
+            self.watchmanCommand('subscribe', root, sub_name,
+                                 {'fields': ['name']})
+            # Drain the initial messages
+            dat = self.waitForSub(sub_name, root, remove=True)
+            self.assertEqual(len(dat), 1)
+            dat = dat[0]
+            self.assertFileListsEqual(
+                self.normWatchmanFileList(dat['files']),
+                self.normFileList(['lemon']),
+            )
+
+        self.watchmanCommand('watch-del', root)
+
+        for n in range(32):
+            # If the cancellation notice doesn't come through this will timeout.
+            dat = self.waitForSub('sub%d' % n, root)
+            self.assertEqual(len(dat), 1)
+            dat = dat[0]
+            self.assertTrue(dat['canceled'])
+            self.assertTrue(dat['unilateral'])
+
     def test_subscribe(self):
         root = self.mkdtemp()
         a_dir = os.path.join(root, 'a')

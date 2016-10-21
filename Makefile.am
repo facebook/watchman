@@ -138,6 +138,7 @@ TESTS = \
 		tests/art.t \
 		tests/argv.t \
 		tests/bser.t \
+		tests/ht.t \
 		tests/ignore.t \
 		tests/pending.t \
 		tests/log.t \
@@ -222,6 +223,16 @@ tests_argv_t_SOURCES = \
 	argv.cpp \
 	string.cpp \
 	hash.cpp \
+	log.cpp
+
+tests_ht_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
+tests_ht_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
+tests_ht_t_SOURCES = \
+	tests/ht_test.cpp \
+	tests/log_stub.cpp \
+	hash.cpp \
+	ht.cpp \
+	string.cpp \
 	log.cpp
 
 tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@

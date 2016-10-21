@@ -349,15 +349,19 @@ bool w_ht_iter_del(w_ht_t *ht, w_ht_iter_t *iter)
   /* walk back to the prior iterm, because ht_next will be used
    * to walk forwards; we want to land on the next item and not skip
    * it */
+  uint32_t slot = iter->slot;
   if (b->prev) {
     iter->ptr = b->prev;
   } else {
     /* we were the front of that bucket slot, arrange for iteration
-     * to find the front of it again */
+     * to find the front of the *same* slot */
     iter->ptr = NULL;
+    /* If iter->slot is 0, this will underflow to (uint32_t)-1. That is fine.
+     * It'll be as if the iterator is starting from the beginning. */
+    iter->slot--;
   }
 
-  delete_bucket(ht, b, iter->slot, false);
+  delete_bucket(ht, b, slot, false);
 
   return true;
 }
