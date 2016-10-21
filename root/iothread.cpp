@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "InMemoryView.h"
 
 static void full_crawl(
     unlocked_watchman_root* unlocked,
@@ -158,8 +159,9 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
   }
 }
 
-void w_root_process_path(
-    struct write_locked_watchman_root* lock,
+namespace watchman {
+void InMemoryView::processPath(
+    write_locked_watchman_root* lock,
     struct watchman_pending_collection* coll,
     const w_string& full_path,
     struct timeval now,
@@ -179,40 +181,47 @@ void w_root_process_path(
    *
    * The below condition is true for cases 1 and 2 and false for 3 and 4.
    */
-  if (w_string_startswith(full_path, lock->root->cookies.cookiePrefix())) {
-    bool consider_cookie =
-        (lock->root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)
+  if (w_string_startswith(full_path, cookies_.cookiePrefix())) {
+    bool consider_cookie = (watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)
         ? ((flags & W_PENDING_VIA_NOTIFY) || !lock->root->inner.done_initial)
         : true;
 
     if (consider_cookie) {
-      lock->root->cookies.notifyCookie(full_path);
+      cookies_.notifyCookie(full_path);
     }
 
     // Never allow cookie files to show up in the tree
     return;
   }
 
-  if (w_string_equal(full_path, lock->root->root_path)
-      || (flags & W_PENDING_CRAWL_ONLY) == W_PENDING_CRAWL_ONLY) {
+  if (w_string_equal(full_path, root_path) ||
+      (flags & W_PENDING_CRAWL_ONLY) == W_PENDING_CRAWL_ONLY) {
     crawler(lock, coll, full_path, now,
         (flags & W_PENDING_RECURSIVE) == W_PENDING_RECURSIVE);
   } else {
     stat_path(lock, coll, full_path, now, flags, pre_stat);
   }
 }
+}
 
 bool w_root_process_pending(struct write_locked_watchman_root *lock,
     struct watchman_pending_collection *coll,
     bool pull_from_root)
 {
-  struct watchman_pending_fs *p, *pending;
-
   if (pull_from_root) {
     // You MUST own root->pending lock for this
     w_pending_coll_append(coll, &lock->root->ioThread.pending);
   }
 
+  auto view =
+      dynamic_cast<watchman::InMemoryView*>(lock->root->inner.view.get());
+  return view->processPending(lock, coll);
+}
+
+namespace watchman {
+bool InMemoryView::processPending(
+    write_locked_watchman_root* lock,
+    watchman_pending_collection* coll) {
   if (!coll->pending) {
     return false;
   }
@@ -221,25 +230,26 @@ bool w_root_process_pending(struct write_locked_watchman_root *lock,
       W_LOG_DBG,
       "processing %d events in %s\n",
       w_pending_coll_size(coll),
-      lock->root->root_path.c_str());
+      root_path.c_str());
 
   // Steal the contents
-  pending = coll->pending;
+  auto pending = coll->pending;
   coll->pending = NULL;
   w_pending_coll_drain(coll);
 
   while (pending) {
-    p = pending;
+    auto p = pending;
     pending = p->next;
 
     if (!lock->root->inner.cancelled) {
-      w_root_process_path(lock, coll, p->path, p->now, p->flags, NULL);
+      processPath(lock, coll, p->path, p->now, p->flags, nullptr);
     }
 
     w_pending_fs_free(p);
   }
 
   return true;
+}
 }
 
 void *run_io_thread(void *arg)

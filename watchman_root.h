@@ -180,13 +180,6 @@ void w_root_delref(struct unlocked_watchman_root* unlocked);
 void w_root_delref_raw(w_root_t* root);
 void w_root_addref(w_root_t* root);
 
-void w_root_process_path(
-    struct write_locked_watchman_root* root,
-    struct watchman_pending_collection* coll,
-    const w_string& full_path,
-    struct timeval now,
-    int flags,
-    struct watchman_dir_ent* pre_stat);
 bool w_root_process_pending(
     struct write_locked_watchman_root* lock,
     struct watchman_pending_collection* coll,

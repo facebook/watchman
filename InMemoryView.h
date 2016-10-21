@@ -82,6 +82,18 @@ struct InMemoryView : public QueryableView {
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override;
 
+  // Consume entries from pending and apply them to the InMemoryView
+  bool processPending(
+      write_locked_watchman_root* lock,
+      watchman_pending_collection* pending);
+  void processPath(
+      write_locked_watchman_root* lock,
+      struct watchman_pending_collection* coll,
+      const w_string& full_path,
+      struct timeval now,
+      int flags,
+      struct watchman_dir_ent* pre_stat);
+
  private:
   void ageOutFile(
       std::unordered_set<w_string>& dirs_to_erase,
@@ -107,6 +119,12 @@ struct InMemoryView : public QueryableView {
       const char* dir_name,
       uint32_t dir_name_len) const;
   void insertAtHeadOfFileList(struct watchman_file* file);
+  void crawler(
+      write_locked_watchman_root* lock,
+      struct watchman_pending_collection* coll,
+      const w_string& dir_name,
+      struct timeval now,
+      bool recursive);
 
   CookieSync& cookies_;
   Configuration& config_;

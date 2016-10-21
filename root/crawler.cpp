@@ -14,8 +14,9 @@ static void apply_dir_size_hint(struct watchman_dir *dir,
   }
 }
 
-void crawler(
-    struct write_locked_watchman_root* lock,
+namespace watchman {
+void InMemoryView::crawler(
+    write_locked_watchman_root* lock,
     struct watchman_pending_collection* coll,
     const w_string& dir_name,
     struct timeval now,
@@ -25,14 +26,9 @@ void crawler(
   struct watchman_dir_ent *dirent;
   char path[WATCHMAN_NAME_MAX];
   bool stat_all = false;
-  w_root_t *root = lock->root;
-  // crawler is only invoked for instances of InMemoryView so we
-  // need not check the return value of this cast expression.
-  auto view =
-      dynamic_cast<watchman::InMemoryView*>(lock->root->inner.view.get());
 
-  if (root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
-    stat_all = root->inner.watcher->flags & WATCHER_COALESCED_RENAME;
+  if (watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
+    stat_all = watcher->flags & WATCHER_COALESCED_RENAME;
   } else {
     // If the watcher doesn't give us per-file notifications for
     // watched dirs, then we'll end up explicitly tracking them
@@ -41,7 +37,7 @@ void crawler(
     stat_all = false;
   }
 
-  auto dir = view->resolveDir(dir_name, true);
+  auto dir = resolveDir(dir_name, true);
 
   memcpy(path, dir_name.data(), dir_name.size());
   path[dir_name.size()] = 0;
@@ -52,7 +48,7 @@ void crawler(
   /* Start watching and open the dir for crawling.
    * Whether we open the dir prior to watching or after is watcher specific,
    * so the operations are rolled together in our abstraction */
-  osdir = root->inner.watcher->startWatchDir(lock, dir, now, path);
+  osdir = watcher->startWatchDir(lock, dir, now, path);
   if (!osdir) {
     return;
   }
@@ -75,7 +71,7 @@ void crawler(
     apply_dir_size_hint(
         dir,
         num_dirs,
-        uint32_t(root->config.getInt("hint_num_files_per_dir", 64)));
+        uint32_t(lock->root->config.getInt("hint_num_files_per_dir", 64)));
   }
 
   /* flag for delete detection */
@@ -107,8 +103,11 @@ void crawler(
           W_LOG_DBG,
           "in crawler calling process_path on %s\n",
           full_path.c_str());
-      w_root_process_path(
-          lock, coll, full_path, now,
+      processPath(
+          lock,
+          coll,
+          full_path,
+          now,
           ((recursive || !file || !file->exists) ? W_PENDING_RECURSIVE : 0),
           dirent);
     }
@@ -129,6 +128,7 @@ void crawler(
           recursive ? W_PENDING_RECURSIVE : 0);
     }
   }
+}
 }
 
 /* vim:ts=2:sw=2:et:
