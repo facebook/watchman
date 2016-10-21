@@ -119,7 +119,6 @@ static void delete_subscription(w_ht_val_t val)
 {
   auto sub = (watchman_client_subscription *)w_ht_val_ptr(val);
 
-  w_string_delref(sub->name);
   sub->query.reset();
   if (sub->drop_or_defer) {
     w_ht_free(sub->drop_or_defer);

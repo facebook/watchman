@@ -40,7 +40,7 @@ void process_subscriptions(struct write_locked_watchman_root *lock) {
           "client->stm=%p sub=%p %s, last=%" PRIu32 " pending=%" PRIu32 "\n",
           client->client.stm,
           sub,
-          sub->name->buf,
+          sub->name.c_str(),
           sub->last_sub_tick,
           root->inner.view->getMostRecentTickValue());
 
@@ -91,7 +91,7 @@ void process_subscriptions(struct write_locked_watchman_root *lock) {
             W_LOG_DBG,
             "dropping subscription notifications for %s "
             "until state %s is vacated\n",
-            sub->name->buf,
+            sub->name.c_str(),
             policy_name.c_str());
         continue;
       }
@@ -101,14 +101,17 @@ void process_subscriptions(struct write_locked_watchman_root *lock) {
             W_LOG_DBG,
             "deferring subscription notifications for %s "
             "until state %s is vacated\n",
-            sub->name->buf,
+            sub->name.c_str(),
             policy_name.c_str());
         continue;
       }
 
       if (sub->vcs_defer && vcs_in_progress) {
-        w_log(W_LOG_DBG, "deferring subscription notifications for %s "
-          "until VCS operations complete\n", sub->name->buf);
+        w_log(
+            W_LOG_DBG,
+            "deferring subscription notifications for %s "
+            "until VCS operations complete\n",
+            sub->name.c_str());
         continue;
       }
 
@@ -136,11 +139,16 @@ static json_ref build_subscription_results(
   auto since_spec = sub->query->since_spec.get();
 
   if (since_spec && since_spec->tag == w_cs_clock) {
-    w_log(W_LOG_DBG, "running subscription %s rules since %" PRIu32 "\n",
-        sub->name->buf, since_spec->clock.ticks);
+    w_log(
+        W_LOG_DBG,
+        "running subscription %s rules since %" PRIu32 "\n",
+        sub->name.c_str(),
+        since_spec->clock.ticks);
   } else {
-    w_log(W_LOG_DBG, "running subscription %s rules (no since)\n",
-        sub->name->buf);
+    w_log(
+        W_LOG_DBG,
+        "running subscription %s rules (no since)\n",
+        sub->name.c_str());
   }
 
   // Subscriptions never need to sync explicitly; we are only dispatched
@@ -151,18 +159,21 @@ static json_ref build_subscription_results(
   // can use a short lock_timeout
   sub->query->lock_timeout =
       (uint32_t)cfg_get_int(lock->root, "subscription_lock_timeout_ms", 100);
-  w_log(W_LOG_DBG, "running subscription %s %p\n", sub->name->buf, sub);
+  w_log(W_LOG_DBG, "running subscription %s %p\n", sub->name.c_str(), sub);
 
   if (!w_query_execute_locked(sub->query.get(), lock, &res, time_generator)) {
-    w_log(W_LOG_ERR, "error running subscription %s query: %s",
-        sub->name->buf, res.errmsg);
+    w_log(
+        W_LOG_ERR,
+        "error running subscription %s query: %s",
+        sub->name.c_str(),
+        res.errmsg);
     return nullptr;
   }
 
   w_log(
       W_LOG_DBG,
       "subscription %s generated %" PRIu32 " results\n",
-      sub->name->buf,
+      sub->name.c_str(),
       uint32_t(res.results.size()));
 
   if (res.results.empty()) {
@@ -231,10 +242,12 @@ void w_cancel_subscriptions_for_root(const w_root_t *root) {
           if (sub->root == root) {
             auto response = make_response();
 
-            w_log(W_LOG_ERR,
-                  "Cancel subscription %.*s for client:stm=%p due to "
-                  "root cancellation\n",
-                  sub->name->len, sub->name->buf, client->client.stm);
+            w_log(
+                W_LOG_ERR,
+                "Cancel subscription %s for client:stm=%p due to "
+                "root cancellation\n",
+                sub->name.c_str(),
+                client->client.stm);
 
             set_prop(response, "root", w_string_to_json(root->root_path));
             set_prop(response, "subscription", w_string_to_json(sub->name));
@@ -259,7 +272,6 @@ void w_cancel_subscriptions_for_root(const w_root_t *root) {
 static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
 {
   const char *name;
-  w_string_t *sname;
   bool deleted;
   const json_t *jstr;
   struct watchman_user_client *client =
@@ -279,13 +291,11 @@ static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
     return;
   }
 
-  sname = json_to_w_string_incref(jstr);
+  w_string sname = json_to_w_string(jstr);
 
   pthread_mutex_lock(&w_client_lock);
   deleted = w_ht_del(client->subscriptions, w_ht_ptr_val(sname));
   pthread_mutex_unlock(&w_client_lock);
-
-  w_string_delref(sname);
 
   auto resp = make_response();
   set_bytestring_prop(resp, "unsubscribe", name);
@@ -369,7 +379,7 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
     goto done;
   }
 
-  sub->name = json_to_w_string_incref(jname);
+  sub->name = json_to_w_string(jname);
   sub->query = query;
 
   json_unpack(query_spec, "{s?:b}", "defer_vcs", &defer);
@@ -381,15 +391,17 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
     sub->drop_or_defer = w_ht_new(2, &w_ht_string_funcs);
     if (defer_list) {
       for (i = 0; i < json_array_size(defer_list); i++) {
-        w_ht_replace(sub->drop_or_defer,
-            w_ht_ptr_val(json_to_w_string_incref(
-            json_array_get(defer_list, i))), false);
+        w_ht_replace(
+            sub->drop_or_defer,
+            w_ht_ptr_val(json_to_w_string(json_array_get(defer_list, i))),
+            false);
       }
     }
     if (drop_list) {
       for (i = 0; i < json_array_size(drop_list); i++) {
-        w_ht_replace(sub->drop_or_defer,
-            w_ht_ptr_val(json_to_w_string_incref(json_array_get(drop_list, i))),
+        w_ht_replace(
+            sub->drop_or_defer,
+            w_ht_ptr_val(json_to_w_string(json_array_get(drop_list, i))),
             true);
       }
     }

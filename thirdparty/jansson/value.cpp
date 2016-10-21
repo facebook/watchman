@@ -360,15 +360,13 @@ int json_array_append_new(json_t* json, json_ref&& value) {
 }
 
 int json_array_insert_new(json_t* json, size_t index, json_ref&& value) {
-  json_array_t* array;
-
   if (!value)
     return -1;
 
   if (!json_is_array(json) || json == value) {
     return -1;
   }
-  array = json_to_array(json);
+  auto array = json_to_array(json);
   if (index > array->table.size()) {
     return -1;
   }
@@ -401,13 +399,9 @@ int json_array_remove(json_t *json, size_t index)
 
 int json_array_clear(json_t *json)
 {
-    json_array_t *array;
-
     if(!json_is_array(json))
         return -1;
-    array = json_to_array(json);
-
-    array->table.clear();
+    json_to_array(json)->table.clear();
     return 0;
 }
 

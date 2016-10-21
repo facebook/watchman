@@ -45,7 +45,7 @@ extern const uint32_t derived_client_size;
 
 struct watchman_client_subscription {
   w_root_t *root;
-  w_string_t *name;
+  w_string name;
   std::shared_ptr<w_query> query;
   bool vcs_defer;
   uint32_t last_sub_tick;
