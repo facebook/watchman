@@ -471,12 +471,7 @@ static json_ref json_array_deep_copy(json_t* array) {
 
 /*** string ***/
 
-json_string_t::json_string_t(w_string_t* str)
-    : json(JSON_STRING), value(str), cache(nullptr) {}
-
-json_string_t::~json_string_t() {
-  free(cache);
-}
+json_string_t::json_string_t(w_string_t* str) : json(JSON_STRING), value(str) {}
 
 json_ref w_string_to_json(w_string_t* str) {
   if (!str)
@@ -495,35 +490,15 @@ json_ref typed_string_to_json(const char* str, w_string_type_t type) {
   return typed_string_len_to_json(str, strlen(str), type);
 }
 
-const char *json_string_value(const json_t *json)
-{
-    json_string_t *jstr;
-    w_string_t *value;
-    char *buf;
+const char* json_string_value(const json_t* json) {
+  json_string_t* jstr;
 
-    if(!json_is_string(json))
-        return NULL;
+  if (!json_is_string(json))
+    return NULL;
 
-    jstr = json_to_string(json);
-    value = jstr->value;
-
-    if (w_string_is_null_terminated(value)) {
-        // Safe to return the buffer itself
-        return value->buf;
-    }
-
-    // If it's not null-terminated, use a cached version that is null-terminated
-
-    if (jstr->cache) {
-        return jstr->cache;
-    }
-
-    buf = w_string_dup_buf(value);
-    if (!buf) {
-        return NULL;
-    }
-    jstr->cache = buf;
-    return buf;
+  jstr = json_to_string(json);
+  jstr->value.makeNullTerminated();
+  return jstr->value.c_str();
 }
 
 const w_string& json_to_w_string(const json_t* json) {

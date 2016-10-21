@@ -51,10 +51,8 @@ struct json_array_t {
 struct json_string_t {
     json_t json;
     w_string value;
-    char *cache;
 
     json_string_t(w_string_t* str);
-    ~json_string_t();
 };
 
 struct json_real_t {
