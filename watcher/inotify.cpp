@@ -47,6 +47,7 @@ struct pending_move {
 struct InotifyWatcher : public Watcher {
   /* we use one inotify instance per watched root dir */
   int infd;
+  int terminatePipe_[2]{-1, -1};
 
   struct maps {
     /* map of active watch descriptor to name of the corresponding dir */
@@ -91,6 +92,8 @@ struct InotifyWatcher : public Watcher {
       struct watchman_pending_collection* coll,
       struct inotify_event* ine,
       struct timeval now);
+
+  void signalThreads() override;
 };
 
 static w_ht_val_t copy_pending(w_ht_val_t key) {
@@ -161,6 +164,18 @@ bool InotifyWatcher::initNew(w_root_t* root, char** errmsg) {
   }
   w_set_cloexec(watcher->infd);
 
+  if (pipe(watcher->terminatePipe_)) {
+    ignore_result(asprintf(
+        errmsg,
+        "watch(%s): pipe error: %s",
+        root->root_path.c_str(),
+        strerror(errno)));
+    w_log(W_LOG_ERR, "%s\n", *errmsg);
+    return false;
+  }
+  w_set_cloexec(watcher->terminatePipe_[0]);
+  w_set_cloexec(watcher->terminatePipe_[1]);
+
   {
     auto maps = watcher->maps.wlock();
     maps->wd_to_name = w_ht_new(
@@ -175,6 +190,12 @@ bool InotifyWatcher::initNew(w_root_t* root, char** errmsg) {
 
 InotifyWatcher::~InotifyWatcher() {
   close(infd);
+  if (terminatePipe_[0] != -1) {
+    close(terminatePipe_[0]);
+  }
+  if (terminatePipe_[1] != -1) {
+    close(terminatePipe_[1]);
+  }
 }
 
 struct watchman_dir_handle* InotifyWatcher::startWatchDir(
@@ -441,14 +462,27 @@ bool InotifyWatcher::consumeNotify(
 
 bool InotifyWatcher::waitNotify(int timeoutms) {
   int n;
-  struct pollfd pfd;
+  std::array<struct pollfd, 2> pfd;
 
-  pfd.fd = infd;
-  pfd.events = POLLIN;
+  pfd[0].fd = infd;
+  pfd[0].events = POLLIN;
+  pfd[1].fd = terminatePipe_[0];
+  pfd[1].events = POLLIN;
 
-  n = poll(&pfd, 1, timeoutms);
+  n = poll(pfd.data(), pfd.size(), timeoutms);
 
-  return n == 1;
+  if (n > 0) {
+    if (pfd[1].revents) {
+      // We were signalled via signalThreads
+      return false;
+    }
+    return pfd[0].revents != 0;
+  }
+  return false;
+}
+
+void InotifyWatcher::signalThreads() {
+  ignore_result(write(terminatePipe_[1], "X", 1));
 }
 
 static InotifyWatcher watcher;

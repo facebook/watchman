@@ -3,6 +3,7 @@
 
 #include "make_unique.h"
 #include "watchman.h"
+#include <array>
 
 #ifdef HAVE_KQUEUE
 #if !defined(O_EVTONLY)
@@ -11,6 +12,7 @@
 
 struct KQueueWatcher : public Watcher {
   int kq_fd{-1};
+  int terminatePipe_[2]{-1, -1};
   /* map of active watch descriptor to name of the corresponding item */
   w_ht_t* name_to_fd{nullptr};
   w_ht_t* fd_to_name{nullptr};
@@ -35,6 +37,7 @@ struct KQueueWatcher : public Watcher {
       override;
 
   bool waitNotify(int timeoutms) override;
+  void signalThreads() override;
 };
 
 static const struct flag_map kflags[] = {
@@ -74,6 +77,17 @@ bool KQueueWatcher::initNew(w_root_t* root, char** errmsg) {
   pthread_mutex_init(&watcher->lock, nullptr);
   watcher->name_to_fd = w_ht_new(hint_num_dirs, &name_to_fd_funcs);
   watcher->fd_to_name = w_ht_new(hint_num_dirs, &w_ht_string_val_funcs);
+  if (pipe(watcher->terminatePipe_)) {
+    ignore_result(asprintf(
+        errmsg,
+        "watch(%s): pipe error: %s",
+        root->root_path.c_str(),
+        strerror(errno)));
+    w_log(W_LOG_ERR, "%s\n", *errmsg);
+    return false;
+  }
+  w_set_cloexec(watcher->terminatePipe_[0]);
+  w_set_cloexec(watcher->terminatePipe_[1]);
 
   watcher->kq_fd = kqueue();
   if (watcher->kq_fd == -1) {
@@ -101,6 +115,12 @@ KQueueWatcher::~KQueueWatcher() {
   }
   if (fd_to_name) {
     w_ht_free(fd_to_name);
+  }
+  if (terminatePipe_[0] != -1) {
+    close(terminatePipe_[0]);
+  }
+  if (terminatePipe_[1] != -1) {
+    close(terminatePipe_[1]);
   }
 }
 
@@ -312,14 +332,27 @@ bool KQueueWatcher::consumeNotify(
 
 bool KQueueWatcher::waitNotify(int timeoutms) {
   int n;
-  struct pollfd pfd;
+  std::array<struct pollfd, 2> pfd;
 
-  pfd.fd = kq_fd;
-  pfd.events = POLLIN;
+  pfd[0].fd = kq_fd;
+  pfd[0].events = POLLIN;
+  pfd[1].fd = terminatePipe_[0];
+  pfd[1].events = POLLIN;
 
-  n = poll(&pfd, 1, timeoutms);
+  n = poll(pfd.data(), pfd.size(), timeoutms);
 
-  return n == 1;
+  if (n > 0) {
+    if (pfd[1].revents) {
+      // We were signalled via signalThreads
+      return false;
+    }
+    return pfd[0].revents != 0;
+  }
+  return false;
+}
+
+void KQueueWatcher::signalThreads() {
+  ignore_result(write(terminatePipe_[1], "X", 1));
 }
 
 static KQueueWatcher watcher;
