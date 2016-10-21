@@ -526,21 +526,12 @@ const char *json_string_value(const json_t *json)
     return buf;
 }
 
-w_string_t *json_to_w_string(const json_t *json)
-{
-    json_string_t *jstr;
+const w_string& json_to_w_string(const json_t* json) {
+  if (!json_is_string(json)) {
+    throw std::runtime_error("expected json string object");
+  }
 
-    if (!json_is_string(json)) {
-        return NULL;
-    }
-
-    jstr = json_to_string(json);
-
-    if (!jstr) {
-        return NULL;
-    }
-
-    return jstr->value;
+  return json_to_string(json)->value;
 }
 
 static int json_string_equal(json_t *string1, json_t *string2)

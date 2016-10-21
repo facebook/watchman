@@ -291,7 +291,7 @@ static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
     return;
   }
 
-  w_string sname = json_to_w_string(jstr);
+  auto sname = json_to_w_string(jstr);
 
   pthread_mutex_lock(&w_client_lock);
   deleted = w_ht_del(client->subscriptions, w_ht_ptr_val(sname));

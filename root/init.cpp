@@ -46,7 +46,6 @@ static void load_root_config(w_root_t *root, const char *path) {
 }
 
 static void apply_ignore_configuration(w_root_t *root) {
-  w_string_t *name;
   uint8_t i;
   json_t *ignores;
 
@@ -67,7 +66,7 @@ static void apply_ignore_configuration(w_root_t *root) {
       continue;
     }
 
-    name = json_to_w_string(jignore);
+    auto name = json_to_w_string(jignore);
     auto fullname = w_string::pathCat({root->root_path, name});
     w_ignore_addstr(&root->ignore, fullname, false);
     w_log(W_LOG_DBG, "ignoring %s recursively\n", fullname.c_str());

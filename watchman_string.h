@@ -262,6 +262,10 @@ class w_string {
     return str_->len;
   }
 
+  w_string_type_t type() const {
+    return str_->type;
+  }
+
   /** Returns the directory component of the string, assuming a path string */
   w_string dirName() const;
   /** Returns the file name component of the string, assuming a path string */

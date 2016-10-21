@@ -66,7 +66,6 @@ static struct watchman_command_handler_def *lookup(
 {
   const char *cmd_name;
   const json_t *jstr;
-  w_string_t *cmd;
 
   if (!json_array_size(args)) {
     ignore_result(asprintf(errmsg,
@@ -81,7 +80,7 @@ static struct watchman_command_handler_def *lookup(
         "invalid command: expected element 0 to be the command name"));
     return nullptr;
   }
-  cmd = json_to_w_string(jstr);
+  auto cmd = json_to_w_string(jstr);
   auto def = (watchman_command_handler_def*)w_ht_val_ptr(
       w_ht_get(command_funcs, w_ht_ptr_val(cmd)));
   // Not added ref so not decrementing it.

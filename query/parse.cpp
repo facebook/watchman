@@ -91,8 +91,8 @@ static bool set_suffix(w_query *res, json_t *ele, w_string_t **suffix)
     return false;
   }
 
-  *suffix = w_string_new_lower_typed(json_string_value(ele),
-      json_to_w_string(ele)->type);
+  *suffix = w_string_new_lower_typed(
+      json_string_value(ele), json_to_w_string(ele).type());
 
   return true;
 }

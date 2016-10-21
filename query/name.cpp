@@ -120,9 +120,10 @@ class NameExpr : public QueryExpr {
         // We need to make a copy of the string since we do in-place separator
         // normalization on the paths.
         if (caseless) {
-          element = w_string_new_lower_typed(ele, json_to_w_string(jele)->type);
+          element =
+              w_string_new_lower_typed(ele, json_to_w_string(jele).type());
         } else {
-          element = w_string_new_typed(ele, json_to_w_string(jele)->type);
+          element = w_string_new_typed(ele, json_to_w_string(jele).type());
         }
 
         w_string_in_place_normalize_separators(&element, WATCHMAN_DIR_SEP);
@@ -146,7 +147,7 @@ class NameExpr : public QueryExpr {
     if (pattern) {
       // We need to make a copy of the string since we do in-place separator
       // normalization on the paths.
-      w_string pat(pattern, json_to_w_string(name)->type);
+      w_string pat(pattern, json_to_w_string(name).type());
       data->name = w_string_normalize_separators(pat, WATCHMAN_DIR_SEP);
     }
 
