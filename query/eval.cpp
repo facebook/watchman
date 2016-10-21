@@ -32,10 +32,10 @@ w_string_t *w_query_ctx_get_wholename(
     return ctx->wholename;
   }
 
-  if (ctx->query->relative_root != NULL) {
+  if (ctx->query->relative_root) {
     // At this point every path should start with the relative root, so this is
     // legal
-    name_start = ctx->query->relative_root->len + 1;
+    name_start = ctx->query->relative_root.size() + 1;
   } else {
     name_start = ctx->lock->root->root_path.size() + 1;
   }
@@ -115,7 +115,7 @@ bool w_query_file_matches_relative_root(
   w_string_t *parent_path;
   bool result;
 
-  if (ctx->query->relative_root == NULL) {
+  if (!ctx->query->relative_root) {
     return true;
   }
 

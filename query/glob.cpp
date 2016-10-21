@@ -525,7 +525,7 @@ bool InMemoryView::globGenerator(
     int64_t* num_walked) const {
   w_string_t *relative_root;
 
-  if (query->relative_root != NULL) {
+  if (query->relative_root) {
     relative_root = query->relative_root;
   } else {
     relative_root = root_path;

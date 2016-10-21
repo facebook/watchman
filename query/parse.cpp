@@ -33,11 +33,11 @@ bool w_query_register_expression_parser(
  * ["term" <parameters>]
  */
 std::unique_ptr<QueryExpr> w_query_expr_parse(w_query* query, json_t* exp) {
-  w_string_t *name;
+  w_string name;
   w_query_expr_parser parser;
 
   if (json_is_string(exp)) {
-    name = json_to_w_string_incref(exp);
+    name = json_to_w_string(exp);
   } else if (json_is_array(exp) && json_array_size(exp) > 0) {
     json_t *first = json_array_get(exp, 0);
 
@@ -46,7 +46,7 @@ std::unique_ptr<QueryExpr> w_query_expr_parse(w_query* query, json_t* exp) {
           "first element of an expression must be a string");
       return NULL;
     }
-    name = json_to_w_string_incref(first);
+    name = json_to_w_string(first);
   } else {
     query->errmsg = strdup("expected array or string for an expression");
     return NULL;
@@ -56,13 +56,10 @@ std::unique_ptr<QueryExpr> w_query_expr_parse(w_query* query, json_t* exp) {
       w_ht_get(term_hash, w_ht_ptr_val(name)));
 
   if (!parser) {
-    ignore_result(asprintf(&query->errmsg,
-        "unknown expression term '%s'",
-        name->buf));
-    w_string_delref(name);
+    ignore_result(
+        asprintf(&query->errmsg, "unknown expression term '%s'", name.c_str()));
     return NULL;
   }
-  w_string_delref(name);
   return parser(query, exp);
 }
 
@@ -199,7 +196,6 @@ W_CAP_REG("relative_root")
 static bool parse_relative_root(const w_root_t *root, w_query *res,
                                 json_t *query) {
   json_t *relative_root;
-  w_string_t *path, *canon_path;
 
   relative_root = json_object_get(query, "relative_root");
   if (!relative_root) {
@@ -211,14 +207,11 @@ static bool parse_relative_root(const w_root_t *root, w_query *res,
     return false;
   }
 
-  path = json_to_w_string_incref(relative_root);
-  canon_path = w_string_canon_path(path);
-  res->relative_root = w_string_path_cat(root->root_path, canon_path);
-  res->relative_root_slash = w_string_make_printf("%.*s%c",
-        res->relative_root->len, res->relative_root->buf,
-        WATCHMAN_DIR_SEP);
-  w_string_delref(path);
-  w_string_delref(canon_path);
+  w_string path = json_to_w_string(relative_root);
+  w_string canon_path = w_string_canon_path(path);
+  res->relative_root = w_string::pathCat({root->root_path, canon_path});
+  res->relative_root_slash =
+      w_string::printf("%s%c", res->relative_root.c_str(), WATCHMAN_DIR_SEP);
 
   return true;
 }
@@ -544,14 +537,6 @@ std::shared_ptr<w_query> w_query_parse_legacy(
 
 w_query::~w_query() {
   uint32_t i;
-
-  if (relative_root) {
-    w_string_delref(relative_root);
-  }
-
-  if (relative_root_slash) {
-    w_string_delref(relative_root_slash);
-  }
 
   for (i = 0; i < npaths; i++) {
     if (paths[i].name) {

@@ -420,7 +420,7 @@ bool InMemoryView::pathGenerator(
   int64_t n = 0;
   bool result = true;
 
-  if (query->relative_root != nullptr) {
+  if (query->relative_root) {
     relative_root = query->relative_root;
   } else {
     relative_root = root_path;

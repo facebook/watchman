@@ -84,8 +84,8 @@ struct w_query {
   bool dedup_results{false};
 
   /* optional full path to relative root, without and with trailing slash */
-  w_string_t* relative_root{nullptr};
-  w_string_t* relative_root_slash{nullptr};
+  w_string relative_root;
+  w_string relative_root_slash;
 
   struct w_query_path* paths{nullptr};
   size_t npaths{0};
