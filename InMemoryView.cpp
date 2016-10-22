@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
 #include <algorithm>
+#include <thread>
 #include "make_unique.h"
 #include "InMemoryView.h"
 
@@ -576,7 +577,41 @@ time_t InMemoryView::getLastAgeOutTimeStamp() const {
   return last_age_out_timestamp;
 }
 
-void InMemoryView::startThreads(w_root_t*) {}
+void InMemoryView::startThreads(w_root_t* root) {
+  // Start a thread to call into the watcher API for filesystem notifications
+  auto self = std::static_pointer_cast<InMemoryView>(shared_from_this());
+  w_log(W_LOG_DBG, "starting threads for %p %s\n", this, root_path.c_str());
+  w_root_addref(root);
+  std::thread notifyThreadInstance([self, root]() {
+    unlocked_watchman_root unlocked{root};
+    w_set_thread_name("notify %p %s", self.get(), self->root_path.c_str());
+    self->notifyThread(&unlocked);
+    w_log(W_LOG_DBG, "out of loop\n");
+    w_root_delref(&unlocked);
+  });
+  notifyThreadInstance.detach();
 
-void InMemoryView::signalThreads() {}
+  // Wait for it to signal that the watcher has been initialized
+  w_pending_coll_lock_and_wait(&pending_, -1 /* infinite */);
+  w_pending_coll_unlock(&pending_);
+
+  // And now start the IO thread
+  w_root_addref(root);
+  std::thread ioThreadInstance([self, root]() {
+    unlocked_watchman_root unlocked{root};
+
+    w_set_thread_name("io %p %s", self.get(), self->root_path.c_str());
+    self->ioThread(&unlocked);
+    w_log(W_LOG_DBG, "out of loop\n");
+    w_root_delref(&unlocked);
+  });
+  ioThreadInstance.detach();
+}
+
+void InMemoryView::signalThreads() {
+  w_log(W_LOG_DBG, "signalThreads! %p %s\n", this, root_path.c_str());
+  stopThreads_ = true;
+  watcher->signalThreads();
+  w_pending_coll_ping(&pending_);
+}
 }

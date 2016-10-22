@@ -4,14 +4,15 @@
 #include "watchman.h"
 #include "InMemoryView.h"
 
-static void full_crawl(
+namespace watchman {
+void InMemoryView::fullCrawl(
     unlocked_watchman_root* unlocked,
     watchman_pending_collection& pending) {
   struct timeval start;
   struct write_locked_watchman_root lock;
 
   w_perf_t sample("full-crawl");
-  if (unlocked->root->config.getBool("iothrottle", false)) {
+  if (config_.getBool("iothrottle", false)) {
     w_ioprio_set_low();
   }
   w_root_lock(unlocked, "io_thread: bump ticks", &lock);
@@ -20,8 +21,7 @@ static void full_crawl(
   // can get stuck with an empty view until another change is observed
   lock.root->inner.ticks++;
   gettimeofday(&start, NULL);
-  w_pending_coll_add(
-      &lock.root->ioThread.pending, lock.root->root_path, start, 0);
+  w_pending_coll_add(&pending_, lock.root->root_path, start, 0);
   // There is the potential for a subtle race condition here.  The boolean
   // parameter indicates whether we want to merge in the set of
   // notifications pending from the watcher or not.  Since we now coalesce
@@ -31,8 +31,8 @@ static void full_crawl(
   // translates to a two level loop; the outer loop sweeps in data from
   // inotify, then the inner loop processes it and any dirs that we pick up
   // from recursive processing.
-  while (w_root_process_pending(&lock, &pending, true)) {
-    while (w_root_process_pending(&lock, &pending, false)) {
+  while (processPending(&lock, &pending, true)) {
+    while (processPending(&lock, &pending, false)) {
       ;
     }
   }
@@ -40,7 +40,7 @@ static void full_crawl(
   sample.add_root_meta(lock.root);
   w_root_unlock(&lock, unlocked);
 
-  if (unlocked->root->config.getBool("iothrottle", false)) {
+  if (config_.getBool("iothrottle", false)) {
     w_ioprio_set_normal();
   }
 
@@ -84,8 +84,13 @@ static bool do_settle_things(struct unlocked_watchman_root* unlocked) {
   return false;
 }
 
-static void io_thread(struct unlocked_watchman_root *unlocked)
-{
+void InMemoryView::clientModeCrawl(unlocked_watchman_root* unlocked) {
+  struct watchman_pending_collection pending;
+
+  fullCrawl(unlocked, pending);
+}
+
+void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
   int timeoutms, biggest_timeout;
   struct watchman_pending_collection pending;
   struct write_locked_watchman_root lock;
@@ -105,12 +110,12 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
   // And convert to milliseconds
   biggest_timeout *= 1000;
 
-  while (!unlocked->root->inner.cancelled) {
+  while (!stopThreads_) {
     bool pinged;
 
     if (!unlocked->root->inner.done_initial) {
       /* first order of business is to find all the files under our root */
-      full_crawl(unlocked, pending);
+      fullCrawl(unlocked, pending);
 
       timeoutms = unlocked->root->trigger_settle;
     }
@@ -118,11 +123,10 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
     // Wait for the notify thread to give us pending items, or for
     // the settle period to expire
     w_log(W_LOG_DBG, "poll_events timeout=%dms\n", timeoutms);
-    pinged = w_pending_coll_lock_and_wait(
-        &unlocked->root->ioThread.pending, timeoutms);
+    pinged = w_pending_coll_lock_and_wait(&pending_, timeoutms);
     w_log(W_LOG_DBG, " ... wake up (pinged=%s)\n", pinged ? "true" : "false");
-    w_pending_coll_append(&pending, &unlocked->root->ioThread.pending);
-    w_pending_coll_unlock(&unlocked->root->ioThread.pending);
+    w_pending_coll_append(&pending, &pending_);
+    w_pending_coll_unlock(&pending_);
 
     if (!pinged && w_pending_coll_size(&pending) == 0) {
       if (do_settle_things(unlocked)) {
@@ -151,7 +155,7 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
     // dead file nodes.  This happens in the test harness.
     lock.root->considerAgeOut();
 
-    while (w_root_process_pending(&lock, &pending, false)) {
+    while (processPending(&lock, &pending, false)) {
       ;
     }
 
@@ -159,7 +163,6 @@ static void io_thread(struct unlocked_watchman_root *unlocked)
   }
 }
 
-namespace watchman {
 void InMemoryView::processPath(
     write_locked_watchman_root* lock,
     struct watchman_pending_collection* coll,
@@ -208,20 +211,21 @@ bool w_root_process_pending(struct write_locked_watchman_root *lock,
     struct watchman_pending_collection *coll,
     bool pull_from_root)
 {
-  if (pull_from_root) {
-    // You MUST own root->pending lock for this
-    w_pending_coll_append(coll, &lock->root->ioThread.pending);
-  }
-
   auto view =
       dynamic_cast<watchman::InMemoryView*>(lock->root->inner.view.get());
-  return view->processPending(lock, coll);
+  return view->processPending(lock, coll, pull_from_root);
 }
 
 namespace watchman {
 bool InMemoryView::processPending(
     write_locked_watchman_root* lock,
-    watchman_pending_collection* coll) {
+    watchman_pending_collection* coll,
+    bool pullFromRoot) {
+  if (pullFromRoot) {
+    // You MUST own root->pending lock for this
+    w_pending_coll_append(coll, &pending_);
+  }
+
   if (!coll->pending) {
     return false;
   }
@@ -241,7 +245,7 @@ bool InMemoryView::processPending(
     auto p = pending;
     pending = p->next;
 
-    if (!lock->root->inner.cancelled) {
+    if (!stopThreads_) {
       processPath(lock, coll, p->path, p->now, p->flags, nullptr);
     }
 
@@ -250,18 +254,6 @@ bool InMemoryView::processPending(
 
   return true;
 }
-}
-
-void *run_io_thread(void *arg)
-{
-  struct unlocked_watchman_root unlocked = {(w_root_t*)arg};
-
-  w_set_thread_name("io %s", unlocked.root->root_path.c_str());
-  io_thread(&unlocked);
-  w_log(W_LOG_DBG, "out of loop\n");
-
-  w_root_delref(&unlocked);
-  return 0;
 }
 
 /* vim:ts=2:sw=2:et:

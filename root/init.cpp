@@ -91,7 +91,6 @@ bool w_root_init(w_root_t *root, char **errmsg) {
     return false;
   }
 
-  root->inner.view->startThreads(root);
   root->inner.number = next_root_number++;
 
   time(&root->inner.last_cmd_timestamp);
@@ -130,8 +129,6 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
 }
 
 void w_root_teardown(w_root_t *root) {
-  w_pending_coll_drain(&root->ioThread.pending);
-
   // Placement delete and then new to re-init the storage.
   // We can't just delete because we need to leave things
   // in a well defined state for when we subsequently
@@ -146,7 +143,7 @@ watchman_root::Inner::Inner(
     const w_string& root_path,
     watchman::CookieSync& cookies,
     Configuration& config)
-    : view(watchman::make_unique<watchman::InMemoryView>(
+    : view(std::make_shared<watchman::InMemoryView>(
           root_path,
           cookies,
           config)) {}
@@ -182,8 +179,6 @@ watchman_root::watchman_root(const w_string& root_path)
 watchman_root::~watchman_root() {
   w_log(W_LOG_DBG, "root: final ref on %s\n", root_path.c_str());
   w_cancel_subscriptions_for_root(this);
-
-  w_root_teardown(this);
 
   pthread_rwlock_destroy(&lock);
 

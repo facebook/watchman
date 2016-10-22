@@ -83,20 +83,29 @@ out:
 
 json_ref w_root_stop_watch_all(void) {
   std::vector<w_root_t*> roots;
-  json_ref stopped;
+  json_ref stopped = json_array();
 
-  {
-    auto map = watched_roots.wlock();
-    stopped = json_array_of_size(map->size());
+  // Funky looking loop because w_root_cancel() needs to acquire the
+  // watched_roots wlock and will invalidate any iterators we might
+  // otherwise have held.  Therefore we just loop until the map is
+  // empty.
+  while (true) {
+    w_root_t* root;
 
-    for (auto& it : *map) {
-      auto root = it.second;
-      auto path = it.first;
-      w_root_cancel(root);
-      json_array_append_new(stopped, w_string_to_json(path));
-      w_root_delref_raw(root);
+    {
+      auto map = watched_roots.wlock();
+      if (map->empty()) {
+        break;
+      }
+
+      auto it = map->begin();
+      root = it->second;
+      w_root_addref(root);
     }
-    map->clear();
+
+    w_root_cancel(root);
+    json_array_append_new(stopped, w_string_to_json(root->root_path));
+    w_root_delref_raw(root);
   }
 
   w_state_save();

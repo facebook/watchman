@@ -85,7 +85,8 @@ struct InMemoryView : public QueryableView {
   // Consume entries from pending and apply them to the InMemoryView
   bool processPending(
       write_locked_watchman_root* lock,
-      watchman_pending_collection* pending);
+      watchman_pending_collection* pending,
+      bool pullFromRoot = false);
   void processPath(
       write_locked_watchman_root* lock,
       struct watchman_pending_collection* coll,
@@ -96,6 +97,7 @@ struct InMemoryView : public QueryableView {
 
   void startThreads(w_root_t* root) override;
   void signalThreads() override;
+  void clientModeCrawl(unlocked_watchman_root* unlocked);
 
  private:
   void ageOutFile(
@@ -128,6 +130,12 @@ struct InMemoryView : public QueryableView {
       const w_string& dir_name,
       struct timeval now,
       bool recursive);
+  void notifyThread(unlocked_watchman_root* unlocked);
+  void ioThread(unlocked_watchman_root* unlocked);
+  void handleShouldRecrawl(unlocked_watchman_root* unlocked);
+  void fullCrawl(
+      unlocked_watchman_root* unlocked,
+      watchman_pending_collection& pending);
 
   CookieSync& cookies_;
   Configuration& config_;
@@ -150,5 +158,10 @@ struct InMemoryView : public QueryableView {
 
   uint32_t last_age_out_tick{0};
   time_t last_age_out_timestamp{0};
+
+  /* queue of items that we need to stat/process */
+  struct watchman_pending_collection pending_;
+
+  std::atomic<bool> stopThreads_{false};
 };
 }

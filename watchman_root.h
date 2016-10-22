@@ -34,14 +34,6 @@ struct watchman_root {
   /* our locking granularity is per-root */
   pthread_rwlock_t lock;
   const char *lock_reason{nullptr};
-  pthread_t notify_thread;
-
-  struct IOThread {
-    pthread_t handle;
-
-    /* queue of items that we need to stat/process */
-    struct watchman_pending_collection pending;
-  } ioThread;
 
   /* map of rule id => struct watchman_trigger_command */
   watchman::Synchronized<
@@ -89,9 +81,9 @@ struct watchman_root {
     uint32_t number{0};
 
     /* the watcher that we're using for this root */
-    std::unique_ptr<Watcher> watcher;
+    std::shared_ptr<Watcher> watcher;
 
-    std::unique_ptr<watchman::QueryableView> view;
+    std::shared_ptr<watchman::QueryableView> view;
 
     /* current tick */
     uint32_t ticks{1};

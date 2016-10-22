@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "InMemoryView.h"
 
 /* Returns true if the global config root_restrict_files is not defined or if
  * one of the files in root_restrict_files exists, false otherwise. */
@@ -261,25 +262,15 @@ bool w_root_resolve_for_client_mode(const char *filename, char **errmsg,
   }
 
   if (created) {
-    struct timeval start;
-    struct watchman_pending_collection pending;
-    struct write_locked_watchman_root lock;
+    auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(
+        unlocked->root->inner.view);
+    if (!view) {
+      *errmsg = strdup("client mode not available");
+      return false;
+    }
 
     /* force a walk now */
-    gettimeofday(&start, NULL);
-    w_root_lock(unlocked, "w_root_resolve_for_client_mode", &lock);
-    w_pending_coll_add(
-        &lock.root->ioThread.pending,
-        lock.root->root_path,
-        start,
-        W_PENDING_RECURSIVE);
-    while (w_root_process_pending(&lock, &pending, true)) {
-      // Note that we don't need a two-level loop (as we do in the main
-      // watcher-enabled mode) in client mode as we are not using a
-      // watcher in this situation.
-      ;
-    }
-    w_root_unlock(&lock, unlocked);
+    view->clientModeCrawl(unlocked);
   }
   return true;
 }

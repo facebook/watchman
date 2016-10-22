@@ -12,9 +12,9 @@ struct Watcher;
 struct watchman_glob_tree;
 
 namespace watchman {
-class QueryableView {
+class QueryableView : public std::enable_shared_from_this<QueryableView> {
  public:
-  Watcher* watcher;
+  std::shared_ptr<Watcher> watcher;
   virtual ~QueryableView();
 
   /** Perform a time-based (since) query and emit results to the supplied

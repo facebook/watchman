@@ -2,8 +2,10 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "InMemoryView.h"
 
-static void handle_should_recrawl(struct unlocked_watchman_root* unlocked) {
+namespace watchman {
+void InMemoryView::handleShouldRecrawl(unlocked_watchman_root* unlocked) {
   {
     auto info = unlocked->root->recrawlInfo.rlock();
     if (!info->shouldRecrawl) {
@@ -32,15 +34,9 @@ static void handle_should_recrawl(struct unlocked_watchman_root* unlocked) {
       w_root_cancel(root);
     }
     info->recrawlCount++;
-    if (!root->inner.watcher->start(root)) {
-      w_log(
-          W_LOG_ERR,
-          "failed to start root %s, cancelling watch: %s\n",
-          root->root_path.c_str(),
-          root->failure_reason.c_str());
-      w_root_cancel(root);
-    }
-    w_pending_coll_ping(&root->ioThread.pending);
+    // Tell the new view instance to start up
+    root->inner.view->startThreads(root);
+    w_pending_coll_ping(&pending_);
   }
 
   w_root_unlock(&lock, unlocked);
@@ -51,12 +47,10 @@ static void handle_should_recrawl(struct unlocked_watchman_root* unlocked) {
 // so we do this as a blocking thread that reads the inotify
 // descriptor and then queues the filesystem IO work until after
 // we have drained the inotify descriptor
-static void notify_thread(struct unlocked_watchman_root *unlocked)
-{
+void InMemoryView::notifyThread(unlocked_watchman_root* unlocked) {
   struct watchman_pending_collection pending;
-  auto root_pending = &unlocked->root->ioThread.pending;
 
-  if (!unlocked->root->inner.watcher->start(unlocked->root)) {
+  if (!watcher->start(unlocked->root)) {
     w_log(
         W_LOG_ERR,
         "failed to start root %s, cancelling watch: %s\n",
@@ -68,50 +62,33 @@ static void notify_thread(struct unlocked_watchman_root *unlocked)
 
   // signal that we're done here, so that we can start the
   // io thread after this point
-  w_pending_coll_lock(root_pending);
-  root_pending->pinged = true;
-  w_pending_coll_ping(root_pending);
-  w_pending_coll_unlock(root_pending);
+  w_pending_coll_lock(&pending_);
+  pending_.pinged = true;
+  w_pending_coll_ping(&pending_);
+  w_pending_coll_unlock(&pending_);
 
-  while (!unlocked->root->inner.cancelled) {
+  while (!stopThreads_) {
     // big number because not all watchers can deal with
     // -1 meaning infinite wait at the moment
-    if (unlocked->root->inner.watcher->waitNotify(86400)) {
-      while (unlocked->root->inner.watcher->consumeNotify(
-          unlocked->root, &pending)) {
+    if (watcher->waitNotify(86400)) {
+      while (watcher->consumeNotify(unlocked->root, &pending)) {
         if (w_pending_coll_size(&pending) >= WATCHMAN_BATCH_LIMIT) {
           break;
         }
-        if (!unlocked->root->inner.watcher->waitNotify(0)) {
+        if (!watcher->waitNotify(0)) {
           break;
         }
       }
       if (w_pending_coll_size(&pending) > 0) {
-        w_pending_coll_lock(root_pending);
-        w_pending_coll_append(root_pending, &pending);
-        w_pending_coll_ping(root_pending);
-        w_pending_coll_unlock(root_pending);
+        w_pending_coll_lock(&pending_);
+        w_pending_coll_append(&pending_, &pending);
+        w_pending_coll_ping(&pending_);
+        w_pending_coll_unlock(&pending_);
       }
     }
-
-    handle_should_recrawl(unlocked);
   }
+  handleShouldRecrawl(unlocked);
 }
-
-void *run_notify_thread(void *arg) {
-  struct unlocked_watchman_root unlocked = {(w_root_t*)arg};
-
-  w_set_thread_name("notify %s", unlocked.root->root_path.c_str());
-  notify_thread(&unlocked);
-
-  w_log(W_LOG_DBG, "out of loop\n");
-
-  /* we'll remove it from watched roots if it isn't
-   * already out of there */
-  remove_root_from_watched(unlocked.root);
-
-  w_root_delref(&unlocked);
-  return 0;
 }
 
 /* vim:ts=2:sw=2:et:
