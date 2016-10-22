@@ -165,7 +165,6 @@ static void run_service(void)
   }
 #endif
 
-  watchman_watcher_init();
   w_clockspec_init();
   // Start the reaper before we load any state; the state may
   // have triggers associated with it which may spawn processes

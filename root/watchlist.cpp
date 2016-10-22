@@ -8,9 +8,6 @@
 watchman::Synchronized<std::unordered_map<w_string, w_root_t*>> watched_roots;
 std::atomic<long> live_roots{0};
 
-void watchman_watcher_init(void) {
-}
-
 bool remove_root_from_watched(
     w_root_t* root /* don't care about locked state */) {
   auto map = watched_roots.wlock();

@@ -52,7 +52,6 @@ struct Watcher {
 };
 
 bool w_watcher_init(w_root_t *root, char **errmsg);
-void watchman_watcher_init(void);
 
 extern Watcher* fsevents_watcher;
 extern Watcher* kqueue_watcher;
