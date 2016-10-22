@@ -77,7 +77,7 @@ struct InotifyWatcher : public Watcher {
   bool initNew(w_root_t* root, char** errmsg) override;
 
   struct watchman_dir_handle* startWatchDir(
-      struct write_locked_watchman_root* lock,
+      w_root_t* root,
       struct watchman_dir* dir,
       struct timeval now,
       const char* path) override;
@@ -199,7 +199,7 @@ InotifyWatcher::~InotifyWatcher() {
 }
 
 struct watchman_dir_handle* InotifyWatcher::startWatchDir(
-    struct write_locked_watchman_root* lock,
+    w_root_t* root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* path) {
@@ -210,7 +210,7 @@ struct watchman_dir_handle* InotifyWatcher::startWatchDir(
   // traversing symlinks in the context of this root
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(lock->root, dir, now, "opendir", errno, nullptr);
+    handle_open_errno(root, dir, now, "opendir", errno, nullptr);
     return nullptr;
   }
 
@@ -227,12 +227,7 @@ struct watchman_dir_handle* InotifyWatcher::startWatchDir(
                        inot_strerror(errno));
     } else {
       handle_open_errno(
-          lock->root,
-          dir,
-          now,
-          "inotify_add_watch",
-          errno,
-          inot_strerror(errno));
+          root, dir, now, "inotify_add_watch", errno, inot_strerror(errno));
     }
     w_dir_close(osdir);
     errno = err;

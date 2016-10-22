@@ -23,7 +23,7 @@ struct PortFSWatcher : public Watcher {
   bool initNew(w_root_t* root, char** errmsg) override;
 
   struct watchman_dir_handle* startWatchDir(
-      struct write_locked_watchman_root* lock,
+      w_root_t* root,
       struct watchman_dir* dir,
       struct timeval now,
       const char* path) override;
@@ -182,7 +182,7 @@ bool PortFSWatcher::startWatchFile(struct watchman_file* file) {
 }
 
 struct watchman_dir_handle* PortFSWatcher::startWatchDir(
-    struct write_locked_watchman_root* lock,
+    w_root_t* root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* path) {
@@ -192,7 +192,7 @@ struct watchman_dir_handle* PortFSWatcher::startWatchDir(
 
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(lock->root, dir, now, "opendir", errno, nullptr);
+    handle_open_errno(root, dir, now, "opendir", errno, nullptr);
     return nullptr;
   }
 

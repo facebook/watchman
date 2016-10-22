@@ -33,7 +33,7 @@ struct Watcher {
   // Initiate an OS-level watch on the provided dir, return a DIR
   // handle, or NULL on error
   virtual struct watchman_dir_handle* startWatchDir(
-      struct write_locked_watchman_root* lock,
+      w_root_t* root,
       struct watchman_dir* dir,
       struct timeval now,
       const char* path) = 0;

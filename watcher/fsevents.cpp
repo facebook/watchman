@@ -53,7 +53,7 @@ struct FSEventsWatcher : public Watcher {
   bool start(w_root_t* root) override;
 
   struct watchman_dir_handle* startWatchDir(
-      struct write_locked_watchman_root* lock,
+      w_root_t* root,
       struct watchman_dir* dir,
       struct timeval now,
       const char* path) override;
@@ -717,7 +717,7 @@ bool FSEventsWatcher::waitNotify(int timeoutms) {
 }
 
 struct watchman_dir_handle* FSEventsWatcher::startWatchDir(
-    struct write_locked_watchman_root* lock,
+    w_root_t* root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* path) {
@@ -725,7 +725,7 @@ struct watchman_dir_handle* FSEventsWatcher::startWatchDir(
 
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(lock->root, dir, now, "opendir", errno, nullptr);
+    handle_open_errno(root, dir, now, "opendir", errno, nullptr);
     return nullptr;
   }
 

@@ -31,7 +31,7 @@ struct WinWatcher : public Watcher {
   bool initNew(w_root_t* root, char** errmsg) override;
 
   struct watchman_dir_handle* startWatchDir(
-      struct write_locked_watchman_root* lock,
+      w_root_t* root,
       struct watchman_dir* dir,
       struct timeval now,
       const char* path) override;
@@ -358,7 +358,7 @@ bool WinWatcher::start(w_root_t* root) {
 }
 
 struct watchman_dir_handle* WinWatcher::startWatchDir(
-    struct write_locked_watchman_root* lock,
+    w_root_t* root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* path) {
@@ -366,7 +366,7 @@ struct watchman_dir_handle* WinWatcher::startWatchDir(
 
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(lock->root, dir, now, "opendir", errno, strerror(errno));
+    handle_open_errno(root, dir, now, "opendir", errno, strerror(errno));
     return nullptr;
   }
 

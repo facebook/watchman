@@ -48,7 +48,7 @@ void InMemoryView::crawler(
   /* Start watching and open the dir for crawling.
    * Whether we open the dir prior to watching or after is watcher specific,
    * so the operations are rolled together in our abstraction */
-  osdir = watcher->startWatchDir(lock, dir, now, path);
+  osdir = watcher->startWatchDir(lock->root, dir, now, path);
   if (!osdir) {
     return;
   }

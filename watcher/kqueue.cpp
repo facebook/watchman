@@ -26,7 +26,7 @@ struct KQueueWatcher : public Watcher {
   bool initNew(w_root_t* root, char** errmsg) override;
 
   struct watchman_dir_handle* startWatchDir(
-      struct write_locked_watchman_root* lock,
+      w_root_t* root,
       struct watchman_dir* dir,
       struct timeval now,
       const char* path) override;
@@ -177,7 +177,7 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
 }
 
 struct watchman_dir_handle* KQueueWatcher::startWatchDir(
-    struct write_locked_watchman_root* lock,
+    w_root_t* root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* path) {
@@ -189,7 +189,7 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
 
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(lock->root, dir, now, "opendir", errno, nullptr);
+    handle_open_errno(root, dir, now, "opendir", errno, nullptr);
     return nullptr;
   }
 
@@ -197,7 +197,7 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
 
   if (newwd == -1) {
     // directory got deleted between opendir and open
-    handle_open_errno(lock->root, dir, now, "open", errno, nullptr);
+    handle_open_errno(root, dir, now, "open", errno, nullptr);
     w_dir_close(osdir);
     return nullptr;
   }
@@ -205,7 +205,7 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
     // whaaa?
     w_log(W_LOG_ERR, "fstat on opened dir %s failed: %s\n", path,
         strerror(errno));
-    w_root_schedule_recrawl(lock->root, "fstat failed");
+    w_root_schedule_recrawl(root, "fstat failed");
     close(newwd);
     w_dir_close(osdir);
     return nullptr;
@@ -214,7 +214,7 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
   if (st.st_dev != osdirst.st_dev || st.st_ino != osdirst.st_ino) {
     // directory got replaced between opendir and open -- at this point its
     // parent's being watched, so we let filesystem events take care of it
-    handle_open_errno(lock->root, dir, now, "open", ENOTDIR, nullptr);
+    handle_open_errno(root, dir, now, "open", ENOTDIR, nullptr);
     close(newwd);
     w_dir_close(osdir);
     return nullptr;
