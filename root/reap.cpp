@@ -29,9 +29,9 @@ static bool root_has_subscriptions(w_root_t *root) {
 // This is a little tricky.  We have to be called with root->lock
 // held, but we must not call w_root_stop_watch with the lock held,
 // so we return true if the caller should do that
-bool consider_reap(struct write_locked_watchman_root *lock) {
+bool consider_reap(struct read_locked_watchman_root* lock) {
   time_t now;
-  w_root_t *root = lock->root;
+  auto root = const_cast<w_root_t*>(lock->root);
 
   if (root->idle_reap_age == 0) {
     return false;
