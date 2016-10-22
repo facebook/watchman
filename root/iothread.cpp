@@ -205,18 +205,7 @@ void InMemoryView::processPath(
     stat_path(lock, coll, full_path, now, flags, pre_stat);
   }
 }
-}
 
-bool w_root_process_pending(struct write_locked_watchman_root *lock,
-    struct watchman_pending_collection *coll,
-    bool pull_from_root)
-{
-  auto view =
-      dynamic_cast<watchman::InMemoryView*>(lock->root->inner.view.get());
-  return view->processPending(lock, coll, pull_from_root);
-}
-
-namespace watchman {
 bool InMemoryView::processPending(
     write_locked_watchman_root* lock,
     watchman_pending_collection* coll,

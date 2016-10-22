@@ -172,11 +172,6 @@ void w_root_delref(struct unlocked_watchman_root* unlocked);
 void w_root_delref_raw(w_root_t* root);
 void w_root_addref(w_root_t* root);
 
-bool w_root_process_pending(
-    struct write_locked_watchman_root* lock,
-    struct watchman_pending_collection* coll,
-    bool pull_from_root);
-
 bool w_root_sync_to_now(struct unlocked_watchman_root* unlocked, int timeoutms);
 
 void w_root_lock(
