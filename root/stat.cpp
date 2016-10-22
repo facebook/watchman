@@ -6,7 +6,7 @@
 
 namespace watchman {
 void InMemoryView::statPath(
-    struct write_locked_watchman_root* lock,
+    read_locked_watchman_root* lock,
     struct watchman_pending_collection* coll,
     const w_string& full_path,
     struct timeval now,
@@ -17,7 +17,7 @@ void InMemoryView::statPath(
   char path[WATCHMAN_NAME_MAX];
   bool recursive = flags & W_PENDING_RECURSIVE;
   bool via_notify = flags & W_PENDING_VIA_NOTIFY;
-  w_root_t *root = lock->root;
+  const w_root_t* root = lock->root;
 
   if (w_ht_get(root->ignore.ignore_dirs, w_ht_ptr_val(full_path))) {
     w_log(
@@ -68,7 +68,7 @@ void InMemoryView::statPath(
   if (res && (err == ENOENT || err == ENOTDIR)) {
     /* it's not there, update our state */
     if (dir_ent) {
-      markDirDeleted(dir_ent, now, lock->root->inner.ticks, true);
+      markDirDeleted(dir_ent, now, root->inner.ticks, true);
       w_log(
           W_LOG_DBG,
           "w_lstat(%s) -> %s so stopping watch on %.*s\n",
@@ -83,18 +83,18 @@ void InMemoryView::statPath(
               strerror(err), w_file_get_name(file)->len,
               w_file_get_name(file)->buf);
         file->exists = false;
-        markFileChanged(file, now, lock->root->inner.ticks);
+        markFileChanged(file, now, root->inner.ticks);
       }
     } else {
       // It was created and removed before we could ever observe it
       // in the filesystem.  We need to generate a deleted file
       // representation of it now, so that subscription clients can
       // be notified of this event
-      file = getOrCreateChildFile(dir, file_name, now, lock->root->inner.ticks);
+      file = getOrCreateChildFile(dir, file_name, now, root->inner.ticks);
       w_log(W_LOG_DBG, "w_lstat(%s) -> %s and file node was NULL. "
           "Generating a deleted node.\n", path, strerror(err));
       file->exists = false;
-      markFileChanged(file, now, lock->root->inner.ticks);
+      markFileChanged(file, now, root->inner.ticks);
     }
 
     if (!root->case_sensitive && !w_string_equal(dir_name, root->root_path) &&
@@ -117,7 +117,7 @@ void InMemoryView::statPath(
         path, err, strerror(err));
   } else {
     if (!file) {
-      file = getOrCreateChildFile(dir, file_name, now, lock->root->inner.ticks);
+      file = getOrCreateChildFile(dir, file_name, now, root->inner.ticks);
     }
 
     if (!file->exists) {
@@ -139,7 +139,7 @@ void InMemoryView::statPath(
           path
       );
       file->exists = true;
-      markFileChanged(file, now, lock->root->inner.ticks);
+      markFileChanged(file, now, root->inner.ticks);
     }
 
     memcpy(&file->stat, &st, sizeof(file->stat));
@@ -163,10 +163,12 @@ void InMemoryView::statPath(
         }
         file->symlink_target = new_symlink_target;
 
-        if (symlink_changed &&
-            lock->root->config.getBool("watch_symlinks", false)) {
+        if (symlink_changed && root->config.getBool("watch_symlinks", false)) {
           w_pending_coll_add(
-              &root->inner.pending_symlink_targets, full_path, now, 0);
+              &const_cast<w_root_t*>(root)->inner.pending_symlink_targets,
+              full_path,
+              now,
+              0);
         }
       }
     } else {
@@ -206,7 +208,7 @@ void InMemoryView::statPath(
     } else if (dir_ent) {
       // We transitioned from dir to file (see fishy.php), so we should prune
       // our former tree here
-      markDirDeleted(dir_ent, now, lock->root->inner.ticks, true);
+      markDirDeleted(dir_ent, now, root->inner.ticks, true);
     }
     if ((root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
         !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&

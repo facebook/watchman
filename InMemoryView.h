@@ -137,7 +137,7 @@ struct InMemoryView : public QueryableView {
       unlocked_watchman_root* unlocked,
       watchman_pending_collection& pending);
   void statPath(
-      struct write_locked_watchman_root* lock,
+      read_locked_watchman_root* lock,
       struct watchman_pending_collection* coll,
       const w_string& full_path,
       struct timeval now,
