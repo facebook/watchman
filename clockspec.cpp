@@ -182,13 +182,9 @@ void w_clockspec_eval(struct write_locked_watchman_root *lock,
             lock->root->inner.view->getLastAgeOutTickValue();
       }
 
-      // Bump the tick value and record it against the cursor.
-      // We need to bump the tick value so that repeated queries
-      // when nothing has changed in the filesystem won't continue
-      // to return the same set of files; we only want the first
-      // of these to return the files and the rest to return nothing
-      // until something subsequently changes
-      cursors[cursor] = ++lock->root->inner.ticks;
+      // record the current tick value against the cursor so that we use that
+      // as the basis for a subsequent query.
+      cursors[cursor] = lock->root->inner.view->getMostRecentTickValue();
     }
 
     w_log(
@@ -209,12 +205,6 @@ void w_clockspec_eval(struct write_locked_watchman_root *lock,
       since->clock.ticks = 0;
     } else {
       since->clock.ticks = spec->clock.ticks;
-    }
-    if (spec->clock.ticks == lock->root->inner.ticks) {
-      /* Force ticks to increment.  This avoids returning and querying the
-       * same tick value over and over when no files have changed in the
-       * meantime */
-      lock->root->inner.ticks++;
     }
     return;
   }
