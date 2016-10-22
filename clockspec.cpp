@@ -80,75 +80,12 @@ std::unique_ptr<w_clockspec> w_clockspec_parse(json_t* value) {
   return nullptr;
 }
 
-void w_clockspec_eval_readonly(struct read_locked_watchman_root *lock,
-                               const struct w_clockspec *spec,
-                               struct w_query_since *since) {
-  if (spec == NULL) {
-    since->is_timestamp = false;
-    since->clock.is_fresh_instance = true;
-    since->clock.ticks = 0;
-    return;
-  }
-
-  if (spec->tag == w_cs_timestamp) {
-    // just copy the values over
-    since->is_timestamp = true;
-    since->timestamp = spec->timestamp;
-    return;
-  }
-
-  since->is_timestamp = false;
-
-  if (spec->tag == w_cs_named_cursor) {
-    w_string cursor = spec->named_cursor.cursor;
-
-    {
-      auto cursors = lock->root->inner.cursors.rlock();
-      const auto& it = cursors->find(cursor);
-      if (it == cursors->end()) {
-        since->clock.is_fresh_instance = true;
-        since->clock.ticks = 0;
-      } else {
-        since->clock.ticks = it->second;
-        since->clock.is_fresh_instance = since->clock.ticks <
-            lock->root->inner.view->getLastAgeOutTickValue();
-      }
-    }
-
-    w_log(
-        W_LOG_DBG,
-        "resolved cursor %s -> %" PRIu32 "\n",
-        cursor.c_str(),
-        since->clock.ticks);
-    return;
-  }
-
-  // spec->tag == w_cs_clock
-  if (spec->clock.start_time == proc_start_time &&
-      spec->clock.pid == proc_pid &&
-      spec->clock.root_number == lock->root->inner.number) {
-    since->clock.is_fresh_instance =
-        spec->clock.ticks < lock->root->inner.view->getLastAgeOutTickValue();
-    if (since->clock.is_fresh_instance) {
-      since->clock.ticks = 0;
-    } else {
-      since->clock.ticks = spec->clock.ticks;
-    }
-    return;
-  }
-
-  // If the pid, start time or root number don't match, they asked a different
-  // incarnation of the server or a different instance of this root, so we treat
-  // them as having never spoken to us before
-  since->clock.is_fresh_instance = true;
-  since->clock.ticks = 0;
-}
-
 // must be called with the root locked
 // spec can be null, in which case a fresh instance is assumed
-void w_clockspec_eval(struct write_locked_watchman_root *lock,
-                      const struct w_clockspec *spec,
-                      struct w_query_since *since) {
+void w_clockspec_eval(
+    struct read_locked_watchman_root* lock,
+    const struct w_clockspec* spec,
+    struct w_query_since* since) {
   if (spec == NULL) {
     since->is_timestamp = false;
     since->clock.is_fresh_instance = true;
@@ -169,7 +106,10 @@ void w_clockspec_eval(struct write_locked_watchman_root *lock,
     w_string cursor = spec->named_cursor.cursor;
 
     {
-      auto wlock = lock->root->inner.cursors.wlock();
+      // this const_cast is horrible but don't worry, it's just
+      // transitional until we eliminate write_locked and read_locked
+      // references to w_root_t.
+      auto wlock = const_cast<w_root_t*>(lock->root)->inner.cursors.wlock();
       auto& cursors = *wlock;
       auto it = cursors.find(cursor);
 

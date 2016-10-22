@@ -37,10 +37,8 @@ std::unique_ptr<w_clockspec> w_clockspec_new_clock(
     uint32_t root_number,
     uint32_t ticks);
 std::unique_ptr<w_clockspec> w_clockspec_parse(json_t* value);
-void w_clockspec_eval(struct write_locked_watchman_root *lock,
-                      const struct w_clockspec *spec,
-                      struct w_query_since *since);
-void w_clockspec_eval_readonly(struct read_locked_watchman_root *lock,
-                               const struct w_clockspec *spec,
-                               struct w_query_since *since);
+void w_clockspec_eval(
+    struct read_locked_watchman_root* lock,
+    const struct w_clockspec* spec,
+    struct w_query_since* since);
 void w_clockspec_init(void);

@@ -296,7 +296,8 @@ bool w_query_execute_locked(
   res->ticks = lock->root->inner.ticks;
 
   // Evaluate the cursor for this root
-  w_clockspec_eval(lock, query->since_spec.get(), &ctx.since);
+  w_clockspec_eval(
+      w_root_read_lock_from_write(lock), query->since_spec.get(), &ctx.since);
 
   return execute_common(&ctx, &sample, res, generator);
 }
@@ -306,7 +307,6 @@ bool w_query_execute(
     struct unlocked_watchman_root* unlocked,
     w_query_res* res,
     w_query_generator generator) {
-  struct write_locked_watchman_root wlock;
   struct read_locked_watchman_root rlock;
   bool result;
 
@@ -333,40 +333,20 @@ bool w_query_execute(
    * both emit the same file.
    */
 
-  if (query->since_spec && query->since_spec->tag == w_cs_named_cursor) {
-    // We need a write lock to evaluate this cursor
-    if (!w_root_lock_with_timeout(unlocked, "w_query_execute_named_cursor",
-                                  query->lock_timeout, &wlock)) {
-      ignore_result(asprintf(&res->errmsg,
-                             "couldn't acquire root wrlock within "
-                             "lock_timeout of %dms. root is "
-                             "currently busy (%s)\n",
-                             query->lock_timeout, unlocked->root->lock_reason));
-      return false;
-    }
-    ctx.lock = w_root_read_lock_from_write(&wlock);
-    // Evaluate the cursor for this root
-    w_clockspec_eval(&wlock, query->since_spec.get(), &ctx.since);
-
-    // Note that we proceed with the rest of query while we hold our write
-    // lock.  We could potentially drop the write lock and re-acquire the
-    // lock as a read lock so that other queries could proceed concurrently,
-    // but that would make the overall timeout situation more complex and
-    // may not be a significant win in any case.
-  } else {
-    if (!w_root_read_lock_with_timeout(unlocked, "w_query_execute",
-                                  query->lock_timeout, &rlock)) {
-      ignore_result(asprintf(&res->errmsg,
-                             "couldn't acquire root rdlock within "
-                             "lock_timeout of %dms. root is "
-                             "currently busy (%s)\n",
-                             query->lock_timeout, unlocked->root->lock_reason));
-      return false;
-    }
-    ctx.lock = &rlock;
-    // Evaluate the cursor for this root
-    w_clockspec_eval_readonly(&rlock, query->since_spec.get(), &ctx.since);
+  if (!w_root_read_lock_with_timeout(
+          unlocked, "w_query_execute", query->lock_timeout, &rlock)) {
+    ignore_result(asprintf(
+        &res->errmsg,
+        "couldn't acquire root rdlock within "
+        "lock_timeout of %dms. root is "
+        "currently busy (%s)\n",
+        query->lock_timeout,
+        unlocked->root->lock_reason));
+    return false;
   }
+  ctx.lock = &rlock;
+  // Evaluate the cursor for this root
+  w_clockspec_eval(&rlock, query->since_spec.get(), &ctx.since);
 
   res->root_number = ctx.lock->root->inner.number;
   res->ticks = ctx.lock->root->inner.ticks;

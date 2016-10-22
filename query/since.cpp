@@ -30,7 +30,7 @@ class SinceExpr : public QueryExpr {
     struct w_query_since since;
     time_t tval = 0;
 
-    w_clockspec_eval_readonly(ctx->lock, spec.get(), &since);
+    w_clockspec_eval(ctx->lock, spec.get(), &since);
 
     switch (field) {
       case since_what::SINCE_OCLOCK:
