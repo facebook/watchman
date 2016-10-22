@@ -210,7 +210,7 @@ struct watchman_dir_handle* InotifyWatcher::startWatchDir(
   // traversing symlinks in the context of this root
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(lock, dir, now, "opendir", errno, nullptr);
+    handle_open_errno(lock->root, dir, now, "opendir", errno, nullptr);
     return nullptr;
   }
 
@@ -226,7 +226,12 @@ struct watchman_dir_handle* InotifyWatcher::startWatchDir(
       set_poison_state(dir_name, now, "inotify-add-watch", errno,
                        inot_strerror(errno));
     } else {
-      handle_open_errno(lock, dir, now, "inotify_add_watch", errno,
+      handle_open_errno(
+          lock->root,
+          dir,
+          now,
+          "inotify_add_watch",
+          errno,
           inot_strerror(errno));
     }
     w_dir_close(osdir);

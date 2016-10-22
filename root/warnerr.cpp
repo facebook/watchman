@@ -13,9 +13,13 @@
 #define ENOFOLLOWSYMLINK ELOOP
 #endif
 
-void handle_open_errno(struct write_locked_watchman_root *lock,
-                       struct watchman_dir *dir, struct timeval now,
-                       const char *syscall, int err, const char *reason) {
+void handle_open_errno(
+    w_root_t* root,
+    struct watchman_dir* dir,
+    struct timeval now,
+    const char* syscall,
+    int err,
+    const char* reason) {
   auto dir_name = dir->getFullPath();
   bool log_warning = true;
   bool transient = false;
@@ -34,7 +38,7 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
     transient = true;
   }
 
-  if (w_string_equal(dir_name, lock->root->root_path)) {
+  if (w_string_equal(dir_name, root->root_path)) {
     if (!transient) {
       w_log(
           W_LOG_ERR,
@@ -42,7 +46,7 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
           syscall,
           dir_name.c_str(),
           reason ? reason : strerror(err));
-      w_root_cancel(lock->root);
+      w_root_cancel(root);
       return;
     }
   }
@@ -55,12 +59,11 @@ void handle_open_errno(struct write_locked_watchman_root *lock,
 
   w_log(err == ENOENT ? W_LOG_DBG : W_LOG_ERR, "%s\n", warn.c_str());
   if (log_warning) {
-    lock->root->recrawlInfo.wlock()->warning = warn;
+    root->recrawlInfo.wlock()->warning = warn;
   }
 
-  auto view =
-      dynamic_cast<watchman::InMemoryView*>(lock->root->inner.view.get());
-  view->markDirDeleted(dir, now, lock->root->inner.ticks, true);
+  auto view = dynamic_cast<watchman::InMemoryView*>(root->inner.view.get());
+  view->markDirDeleted(dir, now, root->inner.ticks, true);
 }
 
 /* vim:ts=2:sw=2:et:

@@ -245,7 +245,7 @@ void set_poison_state(
     const char* reason);
 
 void handle_open_errno(
-    struct write_locked_watchman_root* lock,
+    w_root_t* root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* syscall,
