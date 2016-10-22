@@ -213,7 +213,7 @@ void w_root_teardown(w_root_t* root);
 bool w_root_init(w_root_t* root, char** errmsg);
 bool remove_root_from_watched(
     w_root_t* root /* don't care about locked state */);
-bool is_vcs_op_in_progress(struct write_locked_watchman_root* lock);
+bool is_vcs_op_in_progress(struct read_locked_watchman_root* lock);
 extern const struct watchman_hash_funcs dirname_hash_funcs;
 void delete_dir(struct watchman_dir* dir);
 void crawler(

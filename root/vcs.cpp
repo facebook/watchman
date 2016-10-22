@@ -4,8 +4,10 @@
 #include "watchman.h"
 #include "InMemoryView.h"
 
-bool vcs_file_exists(struct write_locked_watchman_root *lock, const char *dname,
-                     const char *fname) {
+bool vcs_file_exists(
+    struct read_locked_watchman_root* lock,
+    const char* dname,
+    const char* fname) {
   struct watchman_file *file;
 
   auto dir_name = w_string::pathCat({lock->root->root_path, dname});
@@ -34,7 +36,7 @@ bool vcs_file_exists(struct write_locked_watchman_root *lock, const char *dname,
   return file->exists;
 }
 
-bool is_vcs_op_in_progress(struct write_locked_watchman_root *lock) {
+bool is_vcs_op_in_progress(struct read_locked_watchman_root* lock) {
   return vcs_file_exists(lock, ".hg", "wlock") ||
          vcs_file_exists(lock, ".git", "index.lock");
 }
