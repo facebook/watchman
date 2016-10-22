@@ -136,6 +136,13 @@ struct InMemoryView : public QueryableView {
   void fullCrawl(
       unlocked_watchman_root* unlocked,
       watchman_pending_collection& pending);
+  void statPath(
+      struct write_locked_watchman_root* lock,
+      struct watchman_pending_collection* coll,
+      const w_string& full_path,
+      struct timeval now,
+      int flags,
+      struct watchman_dir_ent* pre_stat);
 
   CookieSync& cookies_;
   Configuration& config_;

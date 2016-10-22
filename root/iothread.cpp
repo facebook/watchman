@@ -202,7 +202,7 @@ void InMemoryView::processPath(
     crawler(lock, coll, full_path, now,
         (flags & W_PENDING_RECURSIVE) == W_PENDING_RECURSIVE);
   } else {
-    stat_path(lock, coll, full_path, now, flags, pre_stat);
+    statPath(lock, coll, full_path, now, flags, pre_stat);
   }
 }
 

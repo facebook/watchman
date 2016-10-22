@@ -4,7 +4,8 @@
 #include "watchman.h"
 #include "InMemoryView.h"
 
-void stat_path(
+namespace watchman {
+void InMemoryView::statPath(
     struct write_locked_watchman_root* lock,
     struct watchman_pending_collection* coll,
     const w_string& full_path,
@@ -17,11 +18,6 @@ void stat_path(
   bool recursive = flags & W_PENDING_RECURSIVE;
   bool via_notify = flags & W_PENDING_VIA_NOTIFY;
   w_root_t *root = lock->root;
-
-  // stat_path is only invoked for instances of InMemoryView so we
-  // need not check the return value of this cast expression.
-  auto view =
-      dynamic_cast<watchman::InMemoryView*>(lock->root->inner.view.get());
 
   if (w_ht_get(root->ignore.ignore_dirs, w_ht_ptr_val(full_path))) {
     w_log(
@@ -45,7 +41,7 @@ void stat_path(
 
   auto dir_name = full_path.dirName();
   auto file_name = full_path.baseName();
-  auto dir = view->resolveDir(dir_name, true);
+  auto dir = resolveDir(dir_name, true);
 
   auto file = dir->getChildFile(file_name);
 
@@ -72,7 +68,7 @@ void stat_path(
   if (res && (err == ENOENT || err == ENOTDIR)) {
     /* it's not there, update our state */
     if (dir_ent) {
-      view->markDirDeleted(dir_ent, now, lock->root->inner.ticks, true);
+      markDirDeleted(dir_ent, now, lock->root->inner.ticks, true);
       w_log(
           W_LOG_DBG,
           "w_lstat(%s) -> %s so stopping watch on %.*s\n",
@@ -87,19 +83,18 @@ void stat_path(
               strerror(err), w_file_get_name(file)->len,
               w_file_get_name(file)->buf);
         file->exists = false;
-        view->markFileChanged(file, now, lock->root->inner.ticks);
+        markFileChanged(file, now, lock->root->inner.ticks);
       }
     } else {
       // It was created and removed before we could ever observe it
       // in the filesystem.  We need to generate a deleted file
       // representation of it now, so that subscription clients can
       // be notified of this event
-      file = view->getOrCreateChildFile(
-          dir, file_name, now, lock->root->inner.ticks);
+      file = getOrCreateChildFile(dir, file_name, now, lock->root->inner.ticks);
       w_log(W_LOG_DBG, "w_lstat(%s) -> %s and file node was NULL. "
           "Generating a deleted node.\n", path, strerror(err));
       file->exists = false;
-      view->markFileChanged(file, now, lock->root->inner.ticks);
+      markFileChanged(file, now, lock->root->inner.ticks);
     }
 
     if (!root->case_sensitive && !w_string_equal(dir_name, root->root_path) &&
@@ -122,8 +117,7 @@ void stat_path(
         path, err, strerror(err));
   } else {
     if (!file) {
-      file = view->getOrCreateChildFile(
-          dir, file_name, now, lock->root->inner.ticks);
+      file = getOrCreateChildFile(dir, file_name, now, lock->root->inner.ticks);
     }
 
     if (!file->exists) {
@@ -145,7 +139,7 @@ void stat_path(
           path
       );
       file->exists = true;
-      view->markFileChanged(file, now, lock->root->inner.ticks);
+      markFileChanged(file, now, lock->root->inner.ticks);
     }
 
     memcpy(&file->stat, &st, sizeof(file->stat));
@@ -212,7 +206,7 @@ void stat_path(
     } else if (dir_ent) {
       // We transitioned from dir to file (see fishy.php), so we should prune
       // our former tree here
-      view->markDirDeleted(dir_ent, now, lock->root->inner.ticks, true);
+      markDirDeleted(dir_ent, now, lock->root->inner.ticks, true);
     }
     if ((root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
         !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&
@@ -229,6 +223,7 @@ void stat_path(
       w_pending_coll_add(coll, dir_name, now, 0);
     }
   }
+}
 }
 
 /* vim:ts=2:sw=2:et:
