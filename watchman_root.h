@@ -203,7 +203,7 @@ void w_root_read_unlock(
 void process_pending_symlink_targets(struct unlocked_watchman_root* unlocked);
 void* run_io_thread(void* arg);
 void* run_notify_thread(void* arg);
-void process_subscriptions(struct write_locked_watchman_root* lock);
+void process_subscriptions(struct read_locked_watchman_root* lock);
 void process_triggers(struct write_locked_watchman_root* lock);
 void consider_age_out(struct write_locked_watchman_root* lock);
 bool consider_reap(struct write_locked_watchman_root* lock);

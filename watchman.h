@@ -106,10 +106,6 @@ extern pthread_t reaper_thread;
 
 void w_request_shutdown(void);
 
-void w_run_subscription_rules(
-    struct watchman_user_client *client,
-    struct watchman_client_subscription *sub,
-    struct write_locked_watchman_root *lock);
 void w_cancel_subscriptions_for_root(const w_root_t *root);
 
 static inline uint32_t next_power_2(uint32_t n)

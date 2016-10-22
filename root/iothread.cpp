@@ -71,7 +71,7 @@ static bool do_settle_things(struct unlocked_watchman_root* unlocked) {
     return false;
   }
 
-  process_subscriptions(&lock);
+  process_subscriptions(w_root_read_lock_from_write(&lock));
   process_triggers(&lock);
   if (consider_reap(&lock)) {
     w_root_unlock(&lock, unlocked);

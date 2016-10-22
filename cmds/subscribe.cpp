@@ -3,11 +3,16 @@
 
 #include "watchman.h"
 
+static void w_run_subscription_rules(
+    struct watchman_user_client* client,
+    struct watchman_client_subscription* sub,
+    struct read_locked_watchman_root* lock);
+
 /** This is called from the IO thread */
-void process_subscriptions(struct write_locked_watchman_root *lock) {
+void process_subscriptions(struct read_locked_watchman_root* lock) {
   w_ht_iter_t iter;
   bool vcs_in_progress;
-  w_root_t *root = lock->root;
+  const w_root_t* root = lock->root;
 
   pthread_mutex_lock(&w_client_lock);
 
@@ -19,7 +24,7 @@ void process_subscriptions(struct write_locked_watchman_root *lock) {
   // If it looks like we're in a repo undergoing a rebase or
   // other similar operation, we want to defer subscription
   // notifications until things settle down
-  vcs_in_progress = is_vcs_op_in_progress(w_root_read_lock_from_write(lock));
+  vcs_in_progress = is_vcs_op_in_progress(lock);
 
   do {
     auto client = (watchman_user_client*)w_ht_val_ptr(iter.value);
@@ -133,7 +138,7 @@ static void update_subscription_ticks(struct watchman_client_subscription *sub,
 
 static json_ref build_subscription_results(
     struct watchman_client_subscription* sub,
-    struct write_locked_watchman_root* lock) {
+    struct read_locked_watchman_root* lock) {
   w_query_res res;
   char clockbuf[128];
   auto since_spec = sub->query->since_spec.get();
@@ -161,11 +166,7 @@ static json_ref build_subscription_results(
       uint32_t(lock->root->config.getInt("subscription_lock_timeout_ms", 100));
   w_log(W_LOG_DBG, "running subscription %s %p\n", sub->name.c_str(), sub);
 
-  if (!w_query_execute_locked(
-          sub->query.get(),
-          w_root_read_lock_from_write(lock),
-          &res,
-          time_generator)) {
+  if (!w_query_execute_locked(sub->query.get(), lock, &res, time_generator)) {
     w_log(
         W_LOG_ERR,
         "error running subscription %s query: %s",
@@ -212,19 +213,17 @@ static json_ref build_subscription_results(
   return response;
 }
 
-/* must be called with root and client locked */
-void w_run_subscription_rules(
-    struct watchman_user_client *client,
-    struct watchman_client_subscription *sub,
-    struct write_locked_watchman_root *lock)
-{
+static void w_run_subscription_rules(
+    struct watchman_user_client* client,
+    struct watchman_client_subscription* sub,
+    struct read_locked_watchman_root* lock) {
   auto response = build_subscription_results(sub, lock);
 
   if (!response) {
     return;
   }
 
-  add_root_warnings_to_response(response, w_root_read_lock_from_write(lock));
+  add_root_warnings_to_response(response, lock);
 
   if (!enqueue_response(&client->client, std::move(response), true)) {
     w_log(W_LOG_DBG, "failed to queue sub response\n");
@@ -329,7 +328,7 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
   struct unlocked_watchman_root unlocked;
-  struct write_locked_watchman_root lock;
+  struct read_locked_watchman_root lock;
 
   if (json_array_size(args) != 4) {
     send_error_response(&client->client,
@@ -422,12 +421,12 @@ static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
   resp = make_response();
   set_prop(resp, "subscribe", jname);
 
-  w_root_lock(&unlocked, "initial subscription query", &lock);
+  w_root_read_lock(&unlocked, "initial subscription query", &lock);
 
-  add_root_warnings_to_response(resp, w_root_read_lock_from_write(&lock));
-  annotate_with_clock(w_root_read_lock_from_write(&lock), resp);
+  add_root_warnings_to_response(resp, &lock);
+  annotate_with_clock(&lock, resp);
   initial_subscription_results = build_subscription_results(sub, &lock);
-  w_root_unlock(&lock, &unlocked);
+  w_root_read_unlock(&lock, &unlocked);
 
   send_and_dispose_response(&client->client, std::move(resp));
   if (initial_subscription_results) {
