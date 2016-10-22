@@ -161,7 +161,11 @@ static json_ref build_subscription_results(
       uint32_t(lock->root->config.getInt("subscription_lock_timeout_ms", 100));
   w_log(W_LOG_DBG, "running subscription %s %p\n", sub->name.c_str(), sub);
 
-  if (!w_query_execute_locked(sub->query.get(), lock, &res, time_generator)) {
+  if (!w_query_execute_locked(
+          sub->query.get(),
+          w_root_read_lock_from_write(lock),
+          &res,
+          time_generator)) {
     w_log(
         W_LOG_ERR,
         "error running subscription %s query: %s",

@@ -273,10 +273,10 @@ w_query_ctx::~w_query_ctx() {
 
 bool w_query_execute_locked(
     w_query* query,
-    struct write_locked_watchman_root* lock,
+    struct read_locked_watchman_root* lock,
     w_query_res* res,
     w_query_generator generator) {
-  w_query_ctx ctx(query, w_root_read_lock_from_write(lock));
+  w_query_ctx ctx(query, lock);
 
   memset(res, 0, sizeof(*res));
   w_perf_t sample("query_execute");
@@ -296,8 +296,7 @@ bool w_query_execute_locked(
   res->ticks = lock->root->inner.ticks;
 
   // Evaluate the cursor for this root
-  w_clockspec_eval(
-      w_root_read_lock_from_write(lock), query->since_spec.get(), &ctx.since);
+  w_clockspec_eval(lock, query->since_spec.get(), &ctx.since);
 
   return execute_common(&ctx, &sample, res, generator);
 }

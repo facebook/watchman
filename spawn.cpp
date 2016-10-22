@@ -7,14 +7,9 @@
 static watchman::Synchronized<std::unordered_map<pid_t, w_root_t*>>
     running_kids;
 
-static void spawn_command(w_root_t *root,
-  struct watchman_trigger_command *cmd,
-  w_query_res *res,
-  struct w_clockspec *since_spec);
-
 void w_mark_dead(pid_t pid)
 {
-  struct write_locked_watchman_root lock;
+  struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
   {
@@ -34,7 +29,7 @@ void w_mark_dead(pid_t pid)
       (int)pid);
 
   /* now walk the cmds and try to find our match */
-  w_root_lock(&unlocked, "mark_dead", &lock);
+  w_root_read_lock(&unlocked, "mark_dead", &lock);
 
   /* walk the list of triggers, and run their rules */
   {
@@ -64,7 +59,7 @@ void w_mark_dead(pid_t pid)
     }
   }
 
-  w_root_unlock(&lock, &unlocked);
+  w_root_read_unlock(&lock, &unlocked);
   w_root_delref(&unlocked);
 }
 
@@ -402,8 +397,9 @@ static void spawn_command(w_root_t *root,
 }
 
 /* must be called with root locked */
-void w_assess_trigger(struct write_locked_watchman_root *lock,
-                      struct watchman_trigger_command *cmd) {
+void w_assess_trigger(
+    struct read_locked_watchman_root* lock,
+    struct watchman_trigger_command* cmd) {
   w_query_res res;
   auto since_spec = cmd->query->since_spec.get();
 
@@ -448,7 +444,9 @@ void w_assess_trigger(struct write_locked_watchman_root *lock,
       res.ticks);
 
   if (!res.results.empty()) {
-    spawn_command(lock->root, cmd, &res, saved_spec.get());
+    // transitional const_cast until we remove read_locked refs
+    spawn_command(
+        const_cast<w_root_t*>(lock->root), cmd, &res, saved_spec.get());
   }
 }
 

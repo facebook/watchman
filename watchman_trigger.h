@@ -30,7 +30,8 @@ struct watchman_trigger_command {
   ~watchman_trigger_command();
 };
 
-void w_assess_trigger(struct write_locked_watchman_root *lock,
-                      struct watchman_trigger_command *cmd);
+void w_assess_trigger(
+    struct read_locked_watchman_root* lock,
+    struct watchman_trigger_command* cmd);
 std::unique_ptr<watchman_trigger_command>
 w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg);

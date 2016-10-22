@@ -172,7 +172,7 @@ bool w_query_execute(
 
 bool w_query_execute_locked(
     w_query* query,
-    struct write_locked_watchman_root* lock,
+    struct read_locked_watchman_root* lock,
     w_query_res* results,
     w_query_generator generator);
 

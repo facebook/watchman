@@ -45,7 +45,7 @@ void process_triggers(struct write_locked_watchman_root *lock) {
         continue;
       }
 
-      w_assess_trigger(lock, cmd.get());
+      w_assess_trigger(w_root_read_lock_from_write(lock), cmd.get());
     }
   }
 
