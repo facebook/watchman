@@ -1,0 +1,8 @@
+python_binary(
+  name='watchman-diag',
+  srcs={'watchman-diag': 'watchman_diag.py'},
+  main_module='watchman_diag',
+  base_module='',
+  py_version='<3',
+  deps=['@/watchman/python/pywatchman:pywatchman'],
+)
