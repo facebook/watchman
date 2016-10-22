@@ -72,7 +72,7 @@ static bool do_settle_things(struct unlocked_watchman_root* unlocked) {
   }
 
   process_subscriptions(w_root_read_lock_from_write(&lock));
-  process_triggers(&lock);
+  process_triggers(w_root_read_lock_from_write(&lock));
   if (consider_reap(&lock)) {
     w_root_unlock(&lock, unlocked);
     w_root_stop_watch(unlocked);

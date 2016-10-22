@@ -100,7 +100,10 @@ struct watchman_root {
     struct watchman_pending_collection pending_symlink_targets;
 
     uint32_t next_cmd_id{0};
+
+    // This is only read or written by process_triggers
     uint32_t last_trigger_tick{0};
+
     time_t last_cmd_timestamp{0};
     time_t last_reap_timestamp{0};
 
@@ -204,7 +207,7 @@ void process_pending_symlink_targets(struct unlocked_watchman_root* unlocked);
 void* run_io_thread(void* arg);
 void* run_notify_thread(void* arg);
 void process_subscriptions(struct read_locked_watchman_root* lock);
-void process_triggers(struct write_locked_watchman_root* lock);
+void process_triggers(struct read_locked_watchman_root* lock);
 void consider_age_out(struct write_locked_watchman_root* lock);
 bool consider_reap(struct write_locked_watchman_root* lock);
 void remove_from_file_list(struct watchman_file* file);

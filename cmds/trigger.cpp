@@ -7,8 +7,8 @@
 
 /* process any pending triggers.
  * This is called from the IO thread */
-void process_triggers(struct write_locked_watchman_root *lock) {
-  w_root_t *root = lock->root;
+void process_triggers(struct read_locked_watchman_root* lock) {
+  auto root = const_cast<w_root_t*>(lock->root);
 
   auto mostRecent = root->inner.ticks;
 
@@ -19,7 +19,7 @@ void process_triggers(struct write_locked_watchman_root *lock) {
   // If it looks like we're in a repo undergoing a rebase or
   // other similar operation, we want to defer triggers until
   // things settle down
-  if (is_vcs_op_in_progress(w_root_read_lock_from_write(lock))) {
+  if (is_vcs_op_in_progress(lock)) {
     w_log(W_LOG_DBG, "deferring triggers until VCS operations complete\n");
     return;
   }
@@ -45,7 +45,7 @@ void process_triggers(struct write_locked_watchman_root *lock) {
         continue;
       }
 
-      w_assess_trigger(w_root_read_lock_from_write(lock), cmd.get());
+      w_assess_trigger(lock, cmd.get());
     }
   }
 
