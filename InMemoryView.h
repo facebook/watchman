@@ -53,6 +53,9 @@ struct InMemoryView : public QueryableView {
 
   void ageOut(w_perf_t& sample, std::chrono::seconds minAge) override;
 
+  bool doAnyOfTheseFilesExist(
+      const std::vector<w_string>& fileNames) const override;
+
   /** Perform a time-based (since) query and emit results to the supplied
    * query context */
   bool timeGenerator(

@@ -24,7 +24,7 @@ void process_subscriptions(struct read_locked_watchman_root* lock) {
   // If it looks like we're in a repo undergoing a rebase or
   // other similar operation, we want to defer subscription
   // notifications until things settle down
-  vcs_in_progress = is_vcs_op_in_progress(lock);
+  vcs_in_progress = lock->root->inner.view->isVCSOperationInProgress();
 
   do {
     auto client = (watchman_user_client*)w_ht_val_ptr(iter.value);

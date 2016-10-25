@@ -609,4 +609,24 @@ void InMemoryView::signalThreads() {
   watcher->signalThreads();
   w_pending_coll_ping(&pending_);
 }
+
+bool InMemoryView::doAnyOfTheseFilesExist(
+    const std::vector<w_string>& fileNames) const {
+  for (auto& name : fileNames) {
+    auto fullName = w_string::pathCat({root_path, name});
+    const auto dir = resolveDir(fullName.dirName());
+    if (!dir) {
+      continue;
+    }
+
+    auto file = dir->getChildFile(fullName.baseName());
+    if (!file) {
+      continue;
+    }
+    if (file->exists) {
+      return true;
+    }
+  }
+  return false;
+}
 }

@@ -5,6 +5,7 @@
 #include "watchman_perf.h"
 #include "watchman_query.h"
 #include "watchman_string.h"
+#include <vector>
 
 struct watchman_file;
 struct watchman_dir;
@@ -49,6 +50,15 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   virtual uint32_t getLastAgeOutTickValue() const;
   virtual time_t getLastAgeOutTimeStamp() const;
   virtual void ageOut(w_perf_t& sample, std::chrono::seconds minAge);
+
+  // Specialized query function that is used to test whether
+  // version control files exist as part of some settling handling.
+  // It should query the view and return true if any of the named
+  // files current exist in the view.
+  virtual bool doAnyOfTheseFilesExist(
+      const std::vector<w_string>& fileNames) const = 0;
+
+  bool isVCSOperationInProgress() const;
 
   // Start up any helper threads
   virtual void startThreads(w_root_t* root);

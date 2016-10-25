@@ -19,7 +19,7 @@ void process_triggers(struct read_locked_watchman_root* lock) {
   // If it looks like we're in a repo undergoing a rebase or
   // other similar operation, we want to defer triggers until
   // things settle down
-  if (is_vcs_op_in_progress(lock)) {
+  if (root->inner.view->isVCSOperationInProgress()) {
     w_log(W_LOG_DBG, "deferring triggers until VCS operations complete\n");
     return;
   }

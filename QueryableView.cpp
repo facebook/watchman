@@ -52,4 +52,9 @@ time_t QueryableView::getLastAgeOutTimeStamp() const {
 void QueryableView::ageOut(w_perf_t&, std::chrono::seconds) {}
 void QueryableView::startThreads(w_root_t*) {}
 void QueryableView::signalThreads() {}
+
+bool QueryableView::isVCSOperationInProgress() const {
+  static const std::vector<w_string> lockFiles{".hg/wlock", ".git/index.lock"};
+  return doAnyOfTheseFilesExist(lockFiles);
+}
 }
