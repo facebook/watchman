@@ -5,7 +5,6 @@
 
 static void cmd_debug_recrawl(struct watchman_client *client, json_t *args)
 {
-  struct write_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
@@ -21,9 +20,7 @@ static void cmd_debug_recrawl(struct watchman_client *client, json_t *args)
 
   auto resp = make_response();
 
-  w_root_lock(&unlocked, "debug-recrawl", &lock);
-  w_root_schedule_recrawl(lock.root, "debug-recrawl");
-  w_root_unlock(&lock, &unlocked);
+  w_root_schedule_recrawl(unlocked.root, "debug-recrawl");
 
   set_prop(resp, "recrawl", json_true());
   send_and_dispose_response(client, std::move(resp));
@@ -69,7 +66,6 @@ W_CMD_REG("debug-show-cursors", cmd_debug_show_cursors,
 /* debug-ageout */
 static void cmd_debug_ageout(struct watchman_client *client, json_t *args)
 {
-  struct write_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
@@ -87,6 +83,7 @@ static void cmd_debug_ageout(struct watchman_client *client, json_t *args)
 
   auto resp = make_response();
 
+  write_locked_watchman_root lock;
   w_root_lock(&unlocked, "debug-ageout", &lock);
   lock.root->performAgeOut(min_age);
   w_root_unlock(&lock, &unlocked);

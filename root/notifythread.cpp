@@ -13,12 +13,11 @@ void InMemoryView::handleShouldRecrawl(unlocked_watchman_root* unlocked) {
     }
   }
 
-  struct write_locked_watchman_root lock;
-  w_root_lock(unlocked, "notify_thread: handle_should_recrawl", &lock);
-  if (!lock.root->inner.cancelled) {
+  auto root = unlocked->root;
+
+  if (!root->inner.cancelled) {
     char *errmsg;
-    auto info = lock.root->recrawlInfo.wlock();
-    auto root = lock.root;
+    auto info = root->recrawlInfo.wlock();
 
     info->shouldRecrawl = false;
 
@@ -38,8 +37,6 @@ void InMemoryView::handleShouldRecrawl(unlocked_watchman_root* unlocked) {
     root->inner.view->startThreads(root);
     w_pending_coll_ping(&pending_);
   }
-
-  w_root_unlock(&lock, unlocked);
 }
 
 // we want to consume inotify events as quickly as possible

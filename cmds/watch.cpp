@@ -287,7 +287,7 @@ done:
 /* watch /root */
 static void cmd_watch(struct watchman_client *client, json_t *args)
 {
-  struct write_locked_watchman_root lock;
+  struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
@@ -302,7 +302,7 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
 
   auto resp = make_response();
 
-  w_root_lock(&unlocked, "watch", &lock);
+  w_root_read_lock(&unlocked, "watch", &lock);
   if (lock.root->failure_reason) {
     set_prop(resp, "error", w_string_to_json(lock.root->failure_reason));
   } else if (lock.root->inner.cancelled) {
@@ -311,9 +311,9 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
     set_prop(resp, "watch", w_string_to_json(lock.root->root_path));
     set_unicode_prop(resp, "watcher", lock.root->inner.watcher->name);
   }
-  add_root_warnings_to_response(resp, w_root_read_lock_from_write(&lock));
+  add_root_warnings_to_response(resp, &lock);
   send_and_dispose_response(client, std::move(resp));
-  w_root_unlock(&lock, &unlocked);
+  w_root_read_unlock(&lock, &unlocked);
   w_root_delref(&unlocked);
 }
 W_CMD_REG("watch", cmd_watch, CMD_DAEMON | CMD_ALLOW_ANY_USER,
@@ -324,7 +324,7 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
   char *dir_to_watch = NULL;
   char *rel_path_from_watch = NULL;
   char *errmsg = NULL;
-  struct write_locked_watchman_root lock;
+  struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
@@ -350,7 +350,7 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
 
   auto resp = make_response();
 
-  w_root_lock(&unlocked, "watch-project", &lock);
+  w_root_read_lock(&unlocked, "watch-project", &lock);
   if (lock.root->failure_reason) {
     set_prop(resp, "error", w_string_to_json(lock.root->failure_reason));
   } else if (lock.root->inner.cancelled) {
@@ -359,12 +359,12 @@ static void cmd_watch_project(struct watchman_client *client, json_t *args)
     set_prop(resp, "watch", w_string_to_json(lock.root->root_path));
     set_unicode_prop(resp, "watcher", lock.root->inner.watcher->name);
   }
-  add_root_warnings_to_response(resp, w_root_read_lock_from_write(&lock));
+  add_root_warnings_to_response(resp, &lock);
   if (rel_path_from_watch) {
     set_bytestring_prop(resp, "relative_path",rel_path_from_watch);
   }
   send_and_dispose_response(client, std::move(resp));
-  w_root_unlock(&lock, &unlocked);
+  w_root_read_unlock(&lock, &unlocked);
   w_root_delref(&unlocked);
   free(dir_to_watch);
 }

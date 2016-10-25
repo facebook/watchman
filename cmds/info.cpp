@@ -111,7 +111,6 @@ static void cmd_get_config(struct watchman_client *client, json_t *args)
 {
   json_ref config;
   struct unlocked_watchman_root unlocked;
-  struct write_locked_watchman_root lock;
 
   if (json_array_size(args) != 2) {
     send_error_response(client, "wrong number of arguments for 'get-config'");
@@ -124,11 +123,7 @@ static void cmd_get_config(struct watchman_client *client, json_t *args)
 
   auto resp = make_response();
 
-  w_root_lock(&unlocked, "cmd_get_config", &lock);
-  {
-    config = lock.root->config_file;
-  }
-  w_root_unlock(&lock, &unlocked);
+  config = unlocked.root->config_file;
 
   if (!config) {
     // set_prop will own this

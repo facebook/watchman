@@ -57,30 +57,35 @@ void InMemoryView::fullCrawl(
 // Performs settle-time actions.
 // Returns true if the root was reaped and the io thread should terminate.
 static bool do_settle_things(struct unlocked_watchman_root* unlocked) {
-  struct write_locked_watchman_root lock;
+  struct read_locked_watchman_root lock;
 
   // No new pending items were given to us, so consider that
   // we may now be settled.
 
   process_pending_symlink_targets(unlocked);
 
-  w_root_lock(unlocked, "io_thread: settle out", &lock);
+  w_root_read_lock(unlocked, "io_thread: settle out", &lock);
   if (!lock.root->inner.done_initial) {
     // we need to recrawl, stop what we're doing here
-    w_root_unlock(&lock, unlocked);
+    w_root_read_unlock(&lock, unlocked);
     return false;
   }
 
-  process_subscriptions(w_root_read_lock_from_write(&lock));
-  process_triggers(w_root_read_lock_from_write(&lock));
-  if (consider_reap(w_root_read_lock_from_write(&lock))) {
-    w_root_unlock(&lock, unlocked);
+  process_subscriptions(&lock);
+  process_triggers(&lock);
+  if (consider_reap(&lock)) {
+    w_root_read_unlock(&lock, unlocked);
     w_root_stop_watch(unlocked);
     return true;
   }
+  w_root_read_unlock(&lock, unlocked);
 
-  lock.root->considerAgeOut();
-  w_root_unlock(&lock, unlocked);
+  {
+    write_locked_watchman_root lock;
+    w_root_lock(unlocked, "io_thread: considerAgeOut", &lock);
+    lock.root->considerAgeOut();
+    w_root_unlock(&lock, unlocked);
+  }
   return false;
 }
 

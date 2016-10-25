@@ -190,13 +190,13 @@ static void leave_state(struct watchman_user_client *client,
   char buf[128];
   w_ht_iter_t iter;
   struct unlocked_watchman_root unlocked = {assertion->root};
-  struct write_locked_watchman_root lock;
 
   if (!clockbuf) {
-    w_root_lock(&unlocked, "state-leave", &lock);
+    struct read_locked_watchman_root lock;
+    w_root_read_lock(&unlocked, "state-leave", &lock);
     clock_id_string(
         lock.root->inner.number, lock.root->inner.ticks, buf, sizeof(buf));
-    w_root_unlock(&lock, &unlocked);
+    w_root_read_unlock(&lock, &unlocked);
 
     clockbuf = buf;
   }
