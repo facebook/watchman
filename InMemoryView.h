@@ -24,33 +24,6 @@ struct InMemoryView : public QueryableView {
       CookieSync& cookies,
       Configuration& config);
 
-  /** Updates the otime for the file and bubbles it to the front of recency
-   * index */
-  void markFileChanged(
-      watchman_file* file,
-      const struct timeval& now,
-      uint32_t tick);
-
-  /** Mark a directory as being removed from the view.
-   * Marks the contained set of files as deleted.
-   * If recursive is true, is recursively invoked on child dirs. */
-  void markDirDeleted(
-      struct watchman_dir* dir,
-      const struct timeval& now,
-      uint32_t tick,
-      bool recursive);
-
-  watchman_dir* resolveDir(const w_string& dirname, bool create);
-  const watchman_dir* resolveDir(const w_string& dirname) const;
-
-  /** Returns the direct child file named name if it already
-   * exists, else creates that entry and returns it */
-  watchman_file* getOrCreateChildFile(
-      watchman_dir* dir,
-      const w_string& file_name,
-      const struct timeval& now,
-      uint32_t tick);
-
   void ageOut(w_perf_t& sample, std::chrono::seconds minAge) override;
 
   bool doAnyOfTheseFilesExist(
@@ -85,6 +58,15 @@ struct InMemoryView : public QueryableView {
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override;
 
+  void startThreads(w_root_t* root) override;
+  void signalThreads() override;
+  void clientModeCrawl(unlocked_watchman_root* unlocked);
+
+ private:
+  void ageOutFile(
+      std::unordered_set<w_string>& dirs_to_erase,
+      watchman_file* file);
+
   // Consume entries from pending and apply them to the InMemoryView
   bool processPending(
       write_locked_watchman_root* lock,
@@ -98,14 +80,32 @@ struct InMemoryView : public QueryableView {
       int flags,
       struct watchman_dir_ent* pre_stat);
 
-  void startThreads(w_root_t* root) override;
-  void signalThreads() override;
-  void clientModeCrawl(unlocked_watchman_root* unlocked);
+  /** Updates the otime for the file and bubbles it to the front of recency
+   * index */
+  void markFileChanged(
+      watchman_file* file,
+      const struct timeval& now,
+      uint32_t tick);
 
- private:
-  void ageOutFile(
-      std::unordered_set<w_string>& dirs_to_erase,
-      watchman_file* file);
+  /** Mark a directory as being removed from the view.
+   * Marks the contained set of files as deleted.
+   * If recursive is true, is recursively invoked on child dirs. */
+  void markDirDeleted(
+      struct watchman_dir* dir,
+      const struct timeval& now,
+      uint32_t tick,
+      bool recursive);
+
+  watchman_dir* resolveDir(const w_string& dirname, bool create);
+  const watchman_dir* resolveDir(const w_string& dirname) const;
+
+  /** Returns the direct child file named name if it already
+   * exists, else creates that entry and returns it */
+  watchman_file* getOrCreateChildFile(
+      watchman_dir* dir,
+      const w_string& file_name,
+      const struct timeval& now,
+      uint32_t tick);
 
   /** Recursively walks files under a specified dir */
   bool dirGenerator(
