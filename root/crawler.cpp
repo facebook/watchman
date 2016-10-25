@@ -50,6 +50,7 @@ void InMemoryView::crawler(
    * so the operations are rolled together in our abstraction */
   osdir = watcher->startWatchDir(lock->root, dir, now, path);
   if (!osdir) {
+    markDirDeleted(dir, now, lock->root->inner.ticks, true);
     return;
   }
 

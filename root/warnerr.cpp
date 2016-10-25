@@ -61,9 +61,6 @@ void handle_open_errno(
   if (log_warning) {
     root->recrawlInfo.wlock()->warning = warn;
   }
-
-  auto view = dynamic_cast<watchman::InMemoryView*>(root->inner.view.get());
-  view->markDirDeleted(dir, now, root->inner.ticks, true);
 }
 
 /* vim:ts=2:sw=2:et:
