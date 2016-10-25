@@ -128,9 +128,12 @@ inline json_type json_typeof(const json_t* json) {
 /* construction, destruction, reference counting */
 
 json_ref json_object(void);
+json_ref json_object(
+    std::initializer_list<std::pair<const char*, json_ref>> values);
 json_ref json_object_of_size(size_t nelems);
 json_ref json_array(void);
 json_ref json_array_of_size(size_t nelems);
+json_ref json_array(std::initializer_list<json_ref> values);
 json_ref w_string_to_json(w_string_t* str);
 
 template <typename... Args>
@@ -224,13 +227,6 @@ double json_number_value(const json_t *json);
 int json_integer_set(json_t *integer, json_int_t value);
 int json_real_set(json_t *real, double value);
 
-
-/* pack, unpack */
-
-json_ref json_pack(const char* fmt, ...);
-json_ref json_pack_ex(json_error_t* error, size_t flags, const char* fmt, ...);
-json_ref
-json_vpack_ex(json_error_t* error, size_t flags, const char* fmt, va_list ap);
 
 #define JSON_VALIDATE_ONLY  0x1
 #define JSON_STRICT         0x2

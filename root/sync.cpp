@@ -29,7 +29,8 @@ bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked,
     sample.add_root_meta(unlocked->root);
     sample.add_meta(
         "sync_to_now",
-        json_pack("{s:b, s:i}", "success", res, "timeoutms", timeoutms));
+        json_object({{"success", json_boolean(res)},
+                     {"timeoutms", json_integer(timeoutms)}}));
     sample.log();
   }
 

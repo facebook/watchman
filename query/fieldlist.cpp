@@ -203,7 +203,11 @@ bool parse_field_list(
 
   if (!field_list) {
     // Use the default list
-    field_list = json_pack("[uuuuu]", "name", "exists", "new", "size", "mode");
+    field_list = json_array({typed_string_to_json("name", W_STRING_UNICODE),
+                             typed_string_to_json("exists", W_STRING_UNICODE),
+                             typed_string_to_json("new", W_STRING_UNICODE),
+                             typed_string_to_json("size", W_STRING_UNICODE),
+                             typed_string_to_json("mode", W_STRING_UNICODE)});
   }
 
   if (!json_is_array(field_list)) {

@@ -133,21 +133,14 @@ static json_ref build_legacy_trigger(
   uint32_t i;
   size_t n;
 
-  auto trig = json_pack(
-      "{s:O, s:b, s:[u, u, u, u, u]}",
-      "name",
-      json_array_get(args, 2),
-      "append_files",
-      true,
-      "stdin",
-      // [
-      "name",
-      "exists",
-      "new",
-      "size",
-      "mode"
-      // ]
-      );
+  auto trig = json_object({{"name", json_array_get(args, 2)},
+                           {"append_files", json_true()},
+                           {"stdin",
+                            json_array({typed_string_to_json("name"),
+                                        typed_string_to_json("exists"),
+                                        typed_string_to_json("new"),
+                                        typed_string_to_json("size"),
+                                        typed_string_to_json("mode")})}});
 
   json_ref expr;
   auto query =
@@ -249,8 +242,8 @@ w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg) {
 
   cmd->definition = trig;
 
-  auto query = json_pack(
-      "{s:O}", "expression", json_object_get(cmd->definition, "expression"));
+  auto query = json_object(
+      {{"expression", json_object_get(cmd->definition, "expression")}});
   relative_root = json_object_get(cmd->definition, "relative_root");
   if (relative_root) {
     json_object_set_nocheck(query, "relative_root", relative_root);

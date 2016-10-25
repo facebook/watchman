@@ -474,19 +474,24 @@ std::shared_ptr<w_query> w_query_parse_legacy(
     json_ref container;
     if (include) {
       if (!included) {
-        included = json_pack("[u]", "anyof");
+        included =
+            json_array({typed_string_to_json("anyof", W_STRING_UNICODE)});
       }
       container = included;
     } else {
       if (!excluded) {
-        excluded = json_pack("[u]", "anyof");
+        excluded =
+            json_array({typed_string_to_json("anyof", W_STRING_UNICODE)});
       }
       container = excluded;
     }
 
-    auto term = json_pack("[usu]", term_name, arg, "wholename");
+    auto term =
+        json_array({typed_string_to_json(term_name, W_STRING_UNICODE),
+                    typed_string_to_json(arg),
+                    typed_string_to_json("wholename", W_STRING_UNICODE)});
     if (negated) {
-      term = json_pack("[uo]", "not", term.get());
+      term = json_array({typed_string_to_json("not", W_STRING_UNICODE), term});
     }
     json_array_append_new(container, std::move(term));
 
@@ -496,12 +501,14 @@ std::shared_ptr<w_query> w_query_parse_legacy(
   }
 
   if (excluded) {
-    excluded = json_pack("[uo]", "not", excluded.get());
+    excluded =
+        json_array({typed_string_to_json("not", W_STRING_UNICODE), excluded});
   }
 
   json_ref query_array;
   if (included && excluded) {
-    query_array = json_pack("[uoo]", "allof", excluded.get(), included.get());
+    query_array = json_array(
+        {typed_string_to_json("allof", W_STRING_UNICODE), excluded, included});
   } else if (included) {
     query_array = included;
   } else {

@@ -11,7 +11,7 @@
  */
 
 static void *check_my_sock(void *unused) {
-  auto cmd = json_pack("[u]", "get-pid");
+  auto cmd = json_array({typed_string_to_json("get-pid", W_STRING_UNICODE)});
   w_stm_t client = NULL;
   w_jbuffer_t buf;
   json_error_t jerr;

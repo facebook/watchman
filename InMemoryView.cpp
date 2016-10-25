@@ -338,14 +338,9 @@ void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {
   }
   sample.add_meta(
       "age_out",
-      json_pack(
-          "{s:i, s:i, s:i}",
-          "walked",
-          num_walked,
-          "files",
-          num_aged_files,
-          "dirs",
-          dirs_to_erase.size()));
+      json_object({{"walked", json_integer(num_walked)},
+                   {"files", json_integer(num_aged_files)},
+                   {"dirs", json_integer(dirs_to_erase.size())}}));
 }
 
 bool InMemoryView::timeGenerator(

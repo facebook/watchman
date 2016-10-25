@@ -56,8 +56,7 @@ static void cmd_since(struct watchman_client *client, json_t *args)
   if (clock_id_string(res.root_number, res.ticks, clockbuf, sizeof(clockbuf))) {
     set_unicode_prop(response, "clock", clockbuf);
   }
-  set_prop(response, "is_fresh_instance",
-           json_pack("b", res.is_fresh_instance));
+  set_prop(response, "is_fresh_instance", json_boolean(res.is_fresh_instance));
   set_prop(response, "files", std::move(file_list));
 
   {

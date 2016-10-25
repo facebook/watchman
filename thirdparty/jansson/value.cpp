@@ -81,6 +81,17 @@ json_ref json_object_of_size(size_t size) {
   return json_ref(&object->json, false);
 }
 
+json_ref json_object(
+    std::initializer_list<std::pair<const char*, json_ref>> values) {
+  auto object = json_object_of_size(values.size());
+  auto& map = json_to_object(object.get())->map;
+  for (auto& it : values) {
+    map.emplace(w_string(it.first, W_STRING_UNICODE), it.second);
+  }
+
+  return object;
+}
+
 json_ref json_object(void) {
   return json_object_of_size(0);
 }
@@ -273,6 +284,9 @@ json_array_t::json_array_t(size_t sizeHint) : json(JSON_ARRAY), visited(0) {
   table.reserve(std::max(sizeHint, size_t(8)));
 }
 
+json_array_t::json_array_t(std::initializer_list<json_ref> values)
+    : json(JSON_ARRAY), table(values), visited(0) {}
+
 json_ref json_array_of_size(size_t nelems) {
   auto array = new json_array_t(nelems);
   return json_ref(&array->json, false);
@@ -280,6 +294,11 @@ json_ref json_array_of_size(size_t nelems) {
 
 json_ref json_array(void) {
   return json_array_of_size(8);
+}
+
+json_ref json_array(std::initializer_list<json_ref> values) {
+  auto array = new json_array_t(std::move(values));
+  return json_ref(&array->json, false);
 }
 
 int json_array_set_template(json_t *json, json_t *templ)

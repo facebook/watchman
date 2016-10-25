@@ -239,18 +239,12 @@ static bool execute_common(
     sample->add_root_meta(ctx->lock->root);
     sample->add_meta(
         "query_execute",
-        json_pack(
-            "{s:b, s:i, s:i, s:i, s:O}",
-            "fresh_instance",
-            res->is_fresh_instance,
-            "num_deduped",
-            ctx->num_deduped,
-            "num_results",
-            int64_t(ctx->results.size()),
-            "num_walked",
-            num_walked,
-            "query",
-            ctx->query->query_spec.get()));
+        json_object(
+            {{"fresh_instance", json_boolean(res->is_fresh_instance)},
+             {"num_deduped", json_integer(ctx->num_deduped)},
+             {"num_results", json_integer(int64_t(ctx->results.size()))},
+             {"num_walked", json_integer(num_walked)},
+             {"query", ctx->query->query_spec}}));
     sample->log();
   }
 

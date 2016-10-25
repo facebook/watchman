@@ -121,14 +121,10 @@ void preprocess_command(json_t *args, enum w_pdu_type output_pdu)
   if (errmsg) {
     w_jbuffer_t jr;
 
-    auto err = json_pack(
-        "{s:m, s:u, s:b}",
-        "error",
-        errmsg,
-        "version",
-        PACKAGE_VERSION,
-        "cli_validated",
-        true);
+    auto err = json_object(
+        {{"error", typed_string_to_json(errmsg, W_STRING_MIXED)},
+         {"version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE)},
+         {"cli_validated", json_true()}});
 
     w_json_buffer_init(&jr);
     w_ser_write_pdu(output_pdu, &jr, w_stm_stdout(), err);

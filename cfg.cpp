@@ -187,7 +187,10 @@ json_ref cfg_compute_root_files(bool* enforcing) {
 
   // Synthesize our conservative default value.
   // .watchmanconfig MUST be first
-  return json_pack("[ssss]", ".watchmanconfig", ".hg", ".git", ".svn");
+  return json_array({typed_string_to_json(".watchmanconfig"),
+                     typed_string_to_json(".hg"),
+                     typed_string_to_json(".git"),
+                     typed_string_to_json(".svn")});
 }
 
 json_int_t cfg_get_int(const char* name, json_int_t defval) {

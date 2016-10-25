@@ -49,7 +49,9 @@ static json_ref config_get_ignore_vcs(w_root_t* root) {
 
   if (!ignores) {
     // default to a well-known set of vcs's
-    ignores = json_pack("[sss]", ".git", ".svn", ".hg");
+    ignores = json_array({typed_string_to_json(".git"),
+                          typed_string_to_json(".svn"),
+                          typed_string_to_json(".hg")});
   }
   return ignores;
 }

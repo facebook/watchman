@@ -84,26 +84,24 @@ void watchman_perf_sample::add_root_meta(const w_root_t* root) {
 
   add_meta(
       "root",
-      json_pack(
-          "{s:s, s:i, s:i, s:i, s:b, s:u}",
-          "path",
-          root->root_path.c_str(),
-          "recrawl_count",
-          root->recrawlInfo.rlock()->recrawlCount,
-          "number",
-          root->inner.number,
-          "ticks",
-          root->inner.ticks,
-          "case_sensitive",
-          root->case_sensitive,
-          // there is potential to race with a concurrent w_root_init in some
-          // recrawl scenarios in the test harness.  In those cases it is
-          // possible that the watcher is briefly set to a NULL pointer.
-          // Since the target of that pointer is always a structure with a
-          // stable address, we can safely deal with reading a stale value, but
-          // we do need to guard against a NULL pointer value.
-          "watcher",
-          root->inner.watcher ? root->inner.watcher->name : "<recrawling>"));
+      json_object(
+          {{"path", w_string_to_json(root->root_path)},
+           {"recrawl_count",
+            json_integer(root->recrawlInfo.rlock()->recrawlCount)},
+           {"number", json_integer(root->inner.number)},
+           {"ticks", json_integer(root->inner.ticks)},
+           {"case_sensitive", json_boolean(root->case_sensitive)},
+           // there is potential to race with a concurrent w_root_init in some
+           // recrawl scenarios in the test harness.  In those cases it is
+           // possible that the watcher is briefly set to a NULL pointer.
+           // Since the target of that pointer is always a structure with a
+           // stable address, we can safely deal with reading a stale value, but
+           // we do need to guard against a NULL pointer value.
+           {"watcher",
+            w_string_to_json(w_string(
+                root->inner.watcher ? root->inner.watcher->name
+                                    : "<recrawling>",
+                W_STRING_UNICODE))}}));
 }
 
 void watchman_perf_sample::set_wall_time_thresh(double thresh) {
@@ -137,7 +135,7 @@ static void *perf_log_thread(void *unused) {
 
   perf_cmd = cfg_get_json("perf_logger_command");
   if (json_is_string(perf_cmd)) {
-    perf_cmd = json_pack("[O]", perf_cmd.get());
+    perf_cmd = json_array({perf_cmd});
   }
   if (!json_is_array(perf_cmd)) {
     w_log(
@@ -224,16 +222,11 @@ void watchman_perf_sample::log() {
   }
 
   // Assemble a perf blob
-  auto info = json_pack(
-      "{s:u, s:O, s:i, s:u}",
-      "description",
-      description,
-      "meta",
-      meta_data.get(),
-      "pid",
-      getpid(),
-      "version",
-      PACKAGE_VERSION);
+  auto info = json_object(
+      {{"description", typed_string_to_json(description)},
+       {"meta", meta_data},
+       {"pid", json_integer(getpid())},
+       {"version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE)}});
 
 #ifdef WATCHMAN_BUILD_INFO
   set_unicode_prop(info, "buildinfo", WATCHMAN_BUILD_INFO);
