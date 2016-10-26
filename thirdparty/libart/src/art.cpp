@@ -134,8 +134,8 @@ art_node256::art_node256() : n(NODE256) {
  * @return 0 on success.
  */
 int art_tree_init(art_tree *t) {
-    t->root = NULL;
-    t->size = 0;
+    t->root_ = NULL;
+    t->size_ = 0;
     return 0;
 }
 
@@ -200,19 +200,15 @@ static void destroy_node(art_node *n) {
  * @return 0 on success.
  */
 int art_tree_destroy(art_tree *t) {
-    destroy_node(t->root);
-    t->root = NULL;
-    t->size = 0;
+    destroy_node(t->root_);
+    t->root_ = nullptr;
+    t->size_ = 0;
     return 0;
 }
 
 /**
  * Returns the size of the ART tree.
  */
-
-#ifndef BROKEN_GCC_C99_INLINE
-extern inline uint64_t art_size(art_tree *t);
-#endif
 
 static art_node** find_child(art_node *n, unsigned char c) {
     int i;
@@ -316,7 +312,7 @@ static bool leaf_matches(const art_leaf *n, const unsigned char *key, int key_le
  */
 void* art_search(const art_tree *t, const unsigned char *key, int key_len) {
     art_node **child;
-    art_node *n = t->root;
+    art_node *n = t->root_;
     int prefix_len, depth = 0;
     while (n) {
         // Might be a leaf
@@ -352,7 +348,7 @@ void* art_search(const art_tree *t, const unsigned char *key, int key_len) {
 
 art_leaf* art_longest_match(const art_tree *t, const unsigned char *key, int key_len) {
     art_node **child;
-    art_node *n = t->root;
+    art_node *n = t->root_;
     int prefix_len, depth = 0;
     while (n) {
         // Might be a leaf
@@ -472,14 +468,14 @@ static art_leaf* maximum(const art_node *n) {
  * Returns the minimum valued leaf
  */
 art_leaf* art_minimum(art_tree *t) {
-    return minimum((art_node*)t->root);
+    return minimum((art_node*)t->root_);
 }
 
 /**
  * Returns the maximum valued leaf
  */
 art_leaf* art_maximum(art_tree *t) {
-    return maximum((art_node*)t->root);
+    return maximum((art_node*)t->root_);
 }
 
 // Constructs a new leaf using the provided key.
@@ -784,8 +780,8 @@ RECURSE_SEARCH:;
  */
 void* art_insert(art_tree *t, const unsigned char *key, int key_len, void *value) {
     int old_val = 0;
-    void *old = recursive_insert(t->root, &t->root, key, key_len, value, 0, &old_val);
-    if (!old_val) t->size++;
+    void *old = recursive_insert(t->root_, &t->root_, key, key_len, value, 0, &old_val);
+    if (!old_val) t->size_++;
     return old;
 }
 
@@ -957,10 +953,10 @@ static art_leaf* recursive_delete(art_node *n, art_node **ref, const unsigned ch
  * the value pointer is returned.
  */
 void* art_delete(art_tree *t, const unsigned char *key, int key_len) {
-    art_leaf *l = recursive_delete(t->root, &t->root, key, key_len, 0);
+    art_leaf *l = recursive_delete(t->root_, &t->root_, key, key_len, 0);
     if (l) {
         void *old = l->value;
-        t->size--;
+        t->size_--;
         destroy_leaf(l);
         return old;
     }
@@ -1029,7 +1025,7 @@ static int recursive_iter(art_node *n, art_callback cb, void *data) {
  * @return 0 on success, or the return of the callback.
  */
 int art_iter(art_tree *t, art_callback cb, void *data) {
-    return recursive_iter(t->root, cb, data);
+    return recursive_iter(t->root_, cb, data);
 }
 
 /**
@@ -1100,7 +1096,7 @@ int art_iter_prefix(
     art_callback cb,
     void* data) {
   art_node** child;
-  art_node* n = t->root;
+  art_node* n = t->root_;
   uint32_t prefix_len, depth = 0;
   struct prefix_iterator_state state = {key, key_len, cb, data};
   while (n) {

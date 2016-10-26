@@ -5,17 +5,6 @@
 
 #define ART_MAX_PREFIX_LEN 10
 
-#if defined(__GNUC__) && !defined(__clang__)
-# if __STDC_VERSION__ >= 199901L && 402 == (__GNUC__ * 100 + __GNUC_MINOR__)
-/*
- * GCC 4.2.2's C99 inline keyword support is pretty broken; avoid. Introduced in
- * GCC 4.2.something, fixed in 4.3.0. So checking for specific major.minor of
- * 4.2 is fine.
- */
-#  define BROKEN_GCC_C99_INLINE
-# endif
-#endif
-
 typedef int(*art_callback)(void *data, const unsigned char *key, uint32_t key_len, void *value);
 
 /**
@@ -88,10 +77,10 @@ struct art_leaf {
 /**
  * Main struct, points to root.
  */
-typedef struct {
-    art_node *root;
-    uint64_t size;
-} art_tree;
+struct art_tree {
+  art_node* root_;
+  uint64_t size_;
+};
 
 /**
  * Initializes an ART tree
@@ -108,13 +97,9 @@ int art_tree_destroy(art_tree *t);
 /**
  * Returns the size of the ART tree.
  */
-#ifdef BROKEN_GCC_C99_INLINE
-# define art_size(t) ((t)->size)
-#else
-static inline uint64_t art_size(art_tree *t) {
-    return t->size;
+inline uint64_t art_size(art_tree *t) {
+    return t->size_;
 }
-#endif
 
 /**
  * Inserts a new value into the ART tree
