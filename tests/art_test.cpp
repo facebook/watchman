@@ -34,45 +34,28 @@ static FILE *open_test_file(const char *name) {
   return NULL;
 }
 
-void test_art_init_and_destroy(void) {
-  art_tree t;
-  int res = art_tree_init(&t);
-  fail_unless(res == 0);
-
-  fail_unless(art_size(&t) == 0);
-
-  res = art_tree_destroy(&t);
-  fail_unless(res == 0);
-}
-
 void test_art_insert(void) {
   art_tree t;
-  int res = art_tree_init(&t);
   int len;
   char buf[512];
   FILE *f = open_test_file("thirdparty/libart/tests/words.txt");
   uintptr_t line = 1;
 
-  fail_unless(res == 0);
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
     if (art_insert(&t, (unsigned char *)buf, len, (void *)line)) {
       fail("insert should have returned NULL but did not");
     }
-    if (art_size(&t) != line) {
+    if (t.size() != line) {
       fail("art_size didn't match current line no");
     }
     line++;
   }
-
-  res = art_tree_destroy(&t);
-  fail_unless(res == 0);
 }
 
 void test_art_insert_verylong(void) {
   art_tree t;
-  int res = art_tree_init(&t);
 
   unsigned char key1[300] = {
       16,  0,   0,   0,   7,   10,  0,   0,   0,   2,   17,  10,  0,   0,
@@ -120,26 +103,20 @@ void test_art_insert_verylong(void) {
       219, 191, 198, 134, 5,   208, 212, 72,  44,  208, 250, 180, 14,  1,   0,
       0,   8,   '\0'};
 
-  fail_unless(res == 0);
   fail_unless(NULL == art_insert(&t, key1, 299, (void *)key1));
   fail_unless(NULL == art_insert(&t, key2, 302, (void *)key2));
   art_insert(&t, key2, 302, (void *)key2);
-  fail_unless(art_size(&t) == 2);
-
-  res = art_tree_destroy(&t);
-  fail_unless(res == 0);
+  fail_unless(t.size() == 2);
 }
 
 void test_art_insert_search(void) {
   art_tree t;
-  int res = art_tree_init(&t);
   int len;
   char buf[512];
   FILE *f = open_test_file("thirdparty/libart/tests/words.txt");
   uintptr_t line = 1;
   art_leaf *l;
 
-  fail_unless(res == 0);
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
@@ -174,20 +151,15 @@ void test_art_insert_search(void) {
   // Check the maximum
   l = art_maximum(&t);
   fail_unless(l && strcmp((char *)l->key, "zythum") == 0);
-
-  res = art_tree_destroy(&t);
-  fail_unless(res == 0);
 }
 
 void test_art_insert_delete(void) {
   art_tree t;
-  int res = art_tree_init(&t);
   int len;
   char buf[512];
   FILE *f = open_test_file("thirdparty/libart/tests/words.txt");
 
   uintptr_t line = 1, nlines;
-  fail_unless(res == 0);
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
@@ -223,7 +195,7 @@ void test_art_insert_delete(void) {
     }
 
     // Check the size
-    if (art_size(&t) != nlines - line) {
+    if (t.size() != nlines - line) {
       fail("bad size after delete");
     }
     line++;
@@ -232,9 +204,6 @@ void test_art_insert_delete(void) {
   // Check the minimum and maximum
   fail_unless(!art_minimum(&t));
   fail_unless(!art_maximum(&t));
-
-  res = art_tree_destroy(&t);
-  fail_unless(res == 0);
 }
 
 int iter_cb(void *data, const unsigned char *key, uint32_t key_len, void *val) {
@@ -248,7 +217,6 @@ int iter_cb(void *data, const unsigned char *key, uint32_t key_len, void *val) {
 
 void test_art_insert_iter(void) {
   art_tree t;
-  int res = art_tree_init(&t);
 
   int len;
   char buf[512];
@@ -256,7 +224,6 @@ void test_art_insert_iter(void) {
 
   uint64_t xor_mask = 0;
   uintptr_t line = 1, nlines;
-  fail_unless(res == 0);
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
@@ -276,9 +243,6 @@ void test_art_insert_iter(void) {
     fail_unless(out[0] == nlines);
     fail_unless(out[1] == xor_mask);
   }
-
-  res = art_tree_destroy(&t);
-  fail_unless(res == 0);
 }
 
 typedef struct {
@@ -300,12 +264,10 @@ static int test_prefix_cb(void *data, const unsigned char *k, uint32_t k_len,
 
 void test_art_iter_prefix(void) {
   art_tree t;
-  int res = art_tree_init(&t);
   const char *s = "api.foo.bar";
   const char *expected2[] = {"abc.123.456", "api",         "api.foe.fum",
                              "api.foo",     "api.foo.bar", "api.foo.baz"};
 
-  fail_unless(res == 0);
   fail_unless(NULL ==
               art_insert(&t, (unsigned char *)s, (int)strlen(s) + 1, NULL));
 
@@ -392,18 +354,13 @@ void test_art_iter_prefix(void) {
         !art_iter_prefix(&t, (unsigned char *)"", 0, test_prefix_cb, &p7));
     fail_unless(p7.count == p7.max_count);
   }
-
-  res = art_tree_destroy(&t);
-  fail_unless(res == 0);
 }
 
 void test_art_long_prefix(void) {
   art_tree t;
-  int res = art_tree_init(&t);
   uintptr_t v;
   const char *s;
 
-  fail_unless(res == 0);
   s = "this:key:has:a:long:prefix:3";
   v = 3;
   fail_unless(NULL == art_insert(&t, (unsigned char *)s, (int)strlen(s) + 1,
@@ -443,9 +400,6 @@ void test_art_long_prefix(void) {
     diag("Count: %d Max: %d", p.count, p.max_count);
     fail_unless(p.count == p.max_count);
   }
-
-  res = art_tree_destroy(&t);
-  fail_unless(res == 0);
 }
 
 static int dump_iter(void *data, const unsigned char *key, unsigned int key_len,
@@ -459,15 +413,13 @@ void test_art_prefix(void) {
   art_tree t;
   void *v;
 
-  art_tree_init(&t);
-
   fail_unless(
       art_insert(&t, (const unsigned char*)"food", 4, (void*)"food") ==
       nullptr);
   fail_unless(
       art_insert(&t, (const unsigned char*)"foo", 3, (void*)"foo") == nullptr);
-  diag("size is now %d", art_size(&t));
-  fail_unless(art_size(&t) == 2);
+  diag("size is now %d", t.size());
+  fail_unless(t.size() == 2);
   fail_unless((v = art_search(&t, (const unsigned char*)"food", 4)) != NULL);
   diag("food lookup yields %s", v);
   fail_unless(v && strcmp((char*)v, "food") == 0);
@@ -477,20 +429,16 @@ void test_art_prefix(void) {
   fail_unless((v = art_search(&t, (const unsigned char*)"foo", 3)) != NULL);
   diag("foo lookup yields %s", v);
   fail_unless(v && strcmp((char*)v, "foo") == 0);
-
-  art_tree_destroy(&t);
 }
 
 void test_art_insert_search_uuid(void) {
   art_tree t;
   art_leaf *l;
-  int res = art_tree_init(&t);
   int len;
   char buf[512];
   FILE *f = open_test_file("thirdparty/libart/tests/uuid.txt");
   uintptr_t line = 1;
 
-  fail_unless(res == 0);
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
@@ -528,17 +476,13 @@ void test_art_insert_search_uuid(void) {
   diag("maximum is %s", l->key);
   fail_unless(
       l && strcmp((char *)l->key, "ffffcb46-a92e-4822-82af-a7190f9c1ec5") == 0);
-
-  res = art_tree_destroy(&t);
-  fail_unless(res == 0);
 }
 
 int main(int argc, char **argv) {
   (void)argc;
   (void)argv;
 
-  plan_tests(116);
-  test_art_init_and_destroy();
+  plan_tests(97);
   test_art_insert();
   test_art_insert_verylong();
   test_art_insert_search();

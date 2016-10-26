@@ -12,9 +12,7 @@
 watchman_ignore::watchman_ignore()
     : ignore_vcs(w_ht_new(2, &w_ht_string_funcs)),
       ignore_dirs(w_ht_new(2, &w_ht_string_funcs)),
-      dirs_vec(nullptr) {
-  art_tree_init(&tree);
-}
+      dirs_vec(nullptr) {}
 
 void w_ignore_addstr(struct watchman_ignore *ignore, w_string_t *path,
                      bool is_vcs_ignore) {
@@ -116,7 +114,6 @@ watchman_ignore::~watchman_ignore() {
   w_ht_free(ignore_vcs);
   w_ht_free(ignore_dirs);
   free(dirs_vec);
-  art_tree_destroy(&tree);
 }
 
 /* vim:ts=2:sw=2:et:

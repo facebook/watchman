@@ -76,13 +76,11 @@ watchman_pending_collection::watchman_pending_collection()
   if (pthread_cond_init(&cond, nullptr)) {
     throw std::runtime_error("failed to init cond");
   }
-  art_tree_init(&tree);
 }
 
 /* destroy a pending_coll */
 watchman_pending_collection::~watchman_pending_collection() {
   w_pending_coll_drain(this);
-  art_tree_destroy(&tree);
   pthread_mutex_destroy(&lock);
   pthread_cond_destroy(&cond);
 }
@@ -95,8 +93,7 @@ void w_pending_coll_drain(struct watchman_pending_collection *coll) {
     w_pending_fs_free(p);
   }
 
-  art_tree_destroy(&coll->tree);
-  art_tree_init(&coll->tree);
+  coll->tree.clear();
 }
 
 /* compute a deadline on entry, then obtain the collection lock
@@ -370,8 +367,7 @@ void w_pending_coll_append(struct watchman_pending_collection *target,
   }
 
   // Empty the src tree and reset it
-  art_tree_destroy(&src->tree);
-  art_tree_init(&src->tree);
+  src->tree.clear();
   src->pending = NULL;
 }
 
@@ -392,7 +388,7 @@ struct watchman_pending_fs *w_pending_coll_pop(
 
 /* Returns the number of unique pending items in the collection */
 uint32_t w_pending_coll_size(struct watchman_pending_collection *coll) {
-  return (uint32_t)art_size(&coll->tree);
+  return coll->tree.size();
 }
 
 /* vim:ts=2:sw=2:et:

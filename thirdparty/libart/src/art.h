@@ -80,26 +80,16 @@ struct art_leaf {
 struct art_tree {
   art_node* root_;
   uint64_t size_;
+
+  art_tree();
+  ~art_tree();
+
+  inline uint64_t size() const {
+    return size_;
+  }
+
+  void clear();
 };
-
-/**
- * Initializes an ART tree
- * @return 0 on success.
- */
-int art_tree_init(art_tree *t);
-
-/**
- * Destroys an ART tree
- * @return 0 on success.
- */
-int art_tree_destroy(art_tree *t);
-
-/**
- * Returns the size of the ART tree.
- */
-inline uint64_t art_size(art_tree *t) {
-    return t->size_;
-}
 
 /**
  * Inserts a new value into the ART tree

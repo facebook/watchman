@@ -133,11 +133,7 @@ art_node256::art_node256() : n(NODE256) {
  * Initializes an ART tree
  * @return 0 on success.
  */
-int art_tree_init(art_tree *t) {
-    t->root_ = NULL;
-    t->size_ = 0;
-    return 0;
-}
+art_tree::art_tree() : root_(nullptr), size_(0) {}
 
 static void destroy_leaf(art_leaf* leaf) {
   leaf->~art_leaf();
@@ -195,15 +191,14 @@ static void destroy_node(art_node *n) {
     }
 }
 
-/**
- * Destroys an ART tree
- * @return 0 on success.
- */
-int art_tree_destroy(art_tree *t) {
-    destroy_node(t->root_);
-    t->root_ = nullptr;
-    t->size_ = 0;
-    return 0;
+art_tree::~art_tree() {
+  clear();
+}
+
+void art_tree::clear() {
+  destroy_node(root_);
+  root_ = nullptr;
+  size_ = 0;
 }
 
 /**
