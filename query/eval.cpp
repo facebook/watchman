@@ -168,7 +168,7 @@ static bool default_generators(
     generated = true;
   }
 
-  if (query->npaths) {
+  if (!query->paths.empty()) {
     n = 0;
     result = lock->root->inner.view->pathGenerator(query, ctx, &n);
     total += n;

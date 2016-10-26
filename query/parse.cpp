@@ -154,13 +154,7 @@ static bool parse_paths(w_query *res, json_t *query)
     return false;
   }
 
-  res->npaths = json_array_size(paths);
-  res->paths = (w_query_path*)calloc(res->npaths, sizeof(res->paths[0]));
-
-  if (!res->paths) {
-    res->errmsg = strdup("out of memory");
-    return false;
-  }
+  res->paths.resize(json_array_size(paths));
 
   for (i = 0; i < json_array_size(paths); i++) {
     json_t *ele = json_array_get(paths, i);
@@ -180,9 +174,9 @@ static bool parse_paths(w_query *res, json_t *query)
       return false;
     }
 
-    res->paths[i].name = w_string_new_typed(name, W_STRING_BYTE);
-    w_string_in_place_normalize_separators(
-        &res->paths[i].name, WATCHMAN_DIR_SEP);
+    auto nameCopy = w_string_new_typed(name, W_STRING_BYTE);
+    w_string_in_place_normalize_separators(&nameCopy, WATCHMAN_DIR_SEP);
+    res->paths[i].name = nameCopy;
   }
 
   return true;
@@ -537,17 +531,6 @@ std::shared_ptr<w_query> w_query_parse_legacy(
   }
 
   return query;
-}
-
-w_query::~w_query() {
-  uint32_t i;
-
-  for (i = 0; i < npaths; i++) {
-    if (paths[i].name) {
-      w_string_delref(paths[i].name);
-    }
-  }
-  free(paths);
 }
 
 /* vim:ts=2:sw=2:et:

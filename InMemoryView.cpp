@@ -419,7 +419,6 @@ bool InMemoryView::pathGenerator(
     int64_t* num_walked) const {
   w_string_t* relative_root;
   struct watchman_file* f;
-  uint32_t i;
   int64_t n = 0;
   bool result = true;
 
@@ -429,13 +428,13 @@ bool InMemoryView::pathGenerator(
     relative_root = root_path;
   }
 
-  for (i = 0; i < query->npaths; i++) {
+  for (const auto& path : query->paths) {
     const watchman_dir* dir;
     w_string_t* file_name;
     w_string dir_name;
 
     // Compose path with root
-    auto full_name = w_string::pathCat({relative_root, query->paths[i].name});
+    auto full_name = w_string::pathCat({relative_root, path.name});
 
     // special case of root dir itself
     if (w_string_equal(root_path, full_name)) {
@@ -461,7 +460,7 @@ bool InMemoryView::pathGenerator(
     }
 
     if (!dir->files.empty()) {
-      file_name = w_string_basename(query->paths[i].name);
+      file_name = w_string_basename(path.name);
       f = dir->getChildFile(file_name);
       w_string_delref(file_name);
 
@@ -486,8 +485,7 @@ bool InMemoryView::pathGenerator(
     // We got a dir; process recursively to specified depth
     if (dir) {
       int64_t child_walked = 0;
-      result =
-          dirGenerator(query, ctx, dir, query->paths[i].depth, &child_walked);
+      result = dirGenerator(query, ctx, dir, path.depth, &child_walked);
       n += child_walked;
       if (!result) {
         goto done;

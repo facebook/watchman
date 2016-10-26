@@ -68,7 +68,7 @@ struct w_query_ctx {
 };
 
 struct w_query_path {
-  w_string_t *name;
+  w_string name;
   int depth;
 };
 
@@ -89,8 +89,7 @@ struct w_query {
   w_string relative_root;
   w_string relative_root_slash;
 
-  struct w_query_path* paths{nullptr};
-  size_t npaths{0};
+  std::vector<w_query_path> paths;
 
   std::unique_ptr<watchman_glob_tree> glob_tree;
   // Additional flags to pass to wildmatch in the glob_generator
@@ -114,8 +113,6 @@ struct w_query {
 
   // The query that we parsed into this struct
   json_ref query_spec;
-
-  ~w_query();
 };
 
 typedef std::unique_ptr<QueryExpr> (
