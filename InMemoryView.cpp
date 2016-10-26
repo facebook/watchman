@@ -383,14 +383,13 @@ bool InMemoryView::suffixGenerator(
     w_query* query,
     struct w_query_ctx* ctx,
     int64_t* num_walked) const {
-  uint32_t i;
   struct watchman_file* f;
   int64_t n = 0;
   bool result = true;
 
-  for (i = 0; i < query->nsuffixes; i++) {
+  for (const auto& suff : query->suffixes) {
     // Head of suffix index for this suffix
-    auto it = view_.suffixes.find(query->suffixes[i]);
+    auto it = view_.suffixes.find(suff);
     if (it == view_.suffixes.end()) {
       continue;
     }

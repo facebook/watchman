@@ -84,17 +84,15 @@ static bool parse_since(w_query *res, json_t *query)
   return false;
 }
 
-static bool set_suffix(w_query *res, json_t *ele, w_string_t **suffix)
-{
+static w_string parse_suffix(w_query* res, const json_ref& ele) {
   if (!json_is_string(ele)) {
     res->errmsg = strdup("'suffix' must be a string or an array of strings");
-    return false;
+    return nullptr;
   }
 
-  *suffix = w_string_new_lower_typed(
-      json_string_value(ele), json_to_w_string(ele).type());
+  auto str = json_to_w_string(ele);
 
-  return true;
+  return w_string(w_string_new_lower_typed(str.c_str(), str.type()), false);
 }
 
 static bool parse_suffixes(w_query *res, json_t *query)
@@ -108,10 +106,12 @@ static bool parse_suffixes(w_query *res, json_t *query)
   }
 
   if (json_is_string(suffixes)) {
-    json_t *ele = suffixes;
-    res->nsuffixes = 1;
-    res->suffixes = (w_string_t**)calloc(res->nsuffixes, sizeof(w_string_t*));
-    return set_suffix(res, ele, res->suffixes);
+    auto suff = parse_suffix(res, suffixes);
+    if (!suff) {
+      return false;
+    }
+    res->suffixes.emplace_back(std::move(suff));
+    return true;
   }
 
   if (!json_is_array(suffixes)) {
@@ -119,12 +119,7 @@ static bool parse_suffixes(w_query *res, json_t *query)
     return false;
   }
 
-  res->nsuffixes = json_array_size(suffixes);
-  res->suffixes = (w_string_t**)calloc(res->nsuffixes, sizeof(w_string_t*));
-
-  if (!res->suffixes) {
-    return false;
-  }
+  res->suffixes.reserve(json_array_size(suffixes));
 
   for (i = 0; i < json_array_size(suffixes); i++) {
     json_t *ele = json_array_get(suffixes, i);
@@ -134,9 +129,11 @@ static bool parse_suffixes(w_query *res, json_t *query)
       return false;
     }
 
-    if (!set_suffix(res, ele, res->suffixes + i)) {
+    auto suff = parse_suffix(res, ele);
+    if (!suff) {
       return false;
     }
+    res->suffixes.emplace_back(std::move(suff));
   }
 
   return true;
@@ -551,15 +548,6 @@ w_query::~w_query() {
     }
   }
   free(paths);
-
-  if (suffixes) {
-    for (i = 0; i < nsuffixes; i++) {
-      if (suffixes[i]) {
-        w_string_delref(suffixes[i]);
-      }
-    }
-    free(suffixes);
-  }
 }
 
 /* vim:ts=2:sw=2:et:

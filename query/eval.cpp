@@ -158,7 +158,7 @@ static bool default_generators(
   }
 
   // Suffix
-  if (query->suffixes) {
+  if (!query->suffixes.empty()) {
     n = 0;
     result = lock->root->inner.view->suffixGenerator(query, ctx, &n);
     total += n;

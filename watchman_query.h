@@ -96,8 +96,7 @@ struct w_query {
   // Additional flags to pass to wildmatch in the glob_generator
   int glob_flags{0};
 
-  w_string_t** suffixes{nullptr};
-  size_t nsuffixes{0};
+  std::vector<w_string> suffixes;
 
   uint32_t sync_timeout{0};
   uint32_t lock_timeout{0};
