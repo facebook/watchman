@@ -11,13 +11,12 @@ static void w_run_subscription_rules(
 
 /** This is called from the IO thread */
 void process_subscriptions(struct read_locked_watchman_root* lock) {
-  w_ht_iter_t iter;
   bool vcs_in_progress;
   const w_root_t* root = lock->root;
 
   pthread_mutex_lock(&w_client_lock);
 
-  if (!w_ht_first(clients, &iter)) {
+  if (clients.empty()) {
     // No subscribers
     goto done;
   }
@@ -27,9 +26,8 @@ void process_subscriptions(struct read_locked_watchman_root* lock) {
   // notifications until things settle down
   vcs_in_progress = lock->root->inner.view->isVCSOperationInProgress();
 
-  do {
-    auto client = (watchman_user_client*)w_ht_val_ptr(iter.value);
-
+  for (auto client_base : clients) {
+    auto client = (watchman_user_client*)client_base;
     for (auto& citer : client->subscriptions) {
       auto sub = citer.second.get();
       bool defer = false;
@@ -61,31 +59,31 @@ void process_subscriptions(struct read_locked_watchman_root* lock) {
 
           // There are 1 or more states asserted and this subscription
           // has some policy for states.  Figure out what we should do.
-          if (w_ht_first(sub->drop_or_defer, &policy_iter)) do {
-            auto name = (w_string_t*)w_ht_val_ptr(policy_iter.key);
-            bool policy_is_drop = policy_iter.value;
+          if (w_ht_first(sub->drop_or_defer, &policy_iter))
+            do {
+              auto name = (w_string_t*)w_ht_val_ptr(policy_iter.key);
+              bool policy_is_drop = policy_iter.value;
 
-            if (asserted_states->find(name) == asserted_states->end()) {
-              continue;
-            }
+              if (asserted_states->find(name) == asserted_states->end()) {
+                continue;
+              }
 
-            if (!defer) {
-              // This policy is active
-              defer = true;
-              policy_name = name;
-            }
+              if (!defer) {
+                // This policy is active
+                defer = true;
+                policy_name = name;
+              }
 
-            if (policy_is_drop) {
-              drop = true;
+              if (policy_is_drop) {
+                drop = true;
 
-              // If we're dropping, we don't need to look at any
-              // other policies
-              policy_name = name;
-              break;
-            }
-            // Otherwise keep looking until we find a drop
-          } while (w_ht_next(sub->drop_or_defer, &policy_iter));
-
+                // If we're dropping, we don't need to look at any
+                // other policies
+                policy_name = name;
+                break;
+              }
+              // Otherwise keep looking until we find a drop
+            } while (w_ht_next(sub->drop_or_defer, &policy_iter));
         }
       }
 
@@ -122,10 +120,8 @@ void process_subscriptions(struct read_locked_watchman_root* lock) {
 
       w_run_subscription_rules(client, sub, lock);
       sub->last_sub_tick = root->inner.view->getMostRecentTickValue();
-
     }
-
-  } while (w_ht_next(clients, &iter));
+  }
 done:
   pthread_mutex_unlock(&w_client_lock);
 }
@@ -231,42 +227,38 @@ static void w_run_subscription_rules(
 }
 
 void w_cancel_subscriptions_for_root(const w_root_t *root) {
-  w_ht_iter_t iter;
   pthread_mutex_lock(&w_client_lock);
-  if (w_ht_first(clients, &iter)) {
-    do {
-      auto client = (watchman_user_client*)w_ht_val_ptr(iter.value);
+  for (auto client_base : clients) {
+    auto client = (watchman_user_client*)client_base;
+    // Manually iterate since we will be erasing elements as we go
+    auto citer = client->subscriptions.begin();
+    while (citer != client->subscriptions.end()) {
+      auto sub = citer->second.get();
 
-      // Manually iterate since we will be erasing elements as we go
-      auto citer = client->subscriptions.begin();
-      while (citer != client->subscriptions.end()) {
-        auto sub = citer->second.get();
+      if (sub->root == root) {
+        auto response = make_response();
 
-        if (sub->root == root) {
-          auto response = make_response();
+        w_log(
+            W_LOG_ERR,
+            "Cancel subscription %s for client:stm=%p due to "
+            "root cancellation\n",
+            sub->name.c_str(),
+            client->stm);
 
-          w_log(
-              W_LOG_ERR,
-              "Cancel subscription %s for client:stm=%p due to "
-              "root cancellation\n",
-              sub->name.c_str(),
-              client->stm);
+        response.set({{"root", w_string_to_json(root->root_path)},
+                      {"subscription", w_string_to_json(sub->name)},
+                      {"unilateral", json_true()},
+                      {"canceled", json_true()}});
 
-          response.set({{"root", w_string_to_json(root->root_path)},
-                        {"subscription", w_string_to_json(sub->name)},
-                        {"unilateral", json_true()},
-                        {"canceled", json_true()}});
-
-          if (!enqueue_response(client, std::move(response), true)) {
-            w_log(W_LOG_DBG, "failed to queue sub cancellation\n");
-          }
-
-          citer = client->subscriptions.erase(citer);
-        } else {
-          ++citer;
+        if (!enqueue_response(client, std::move(response), true)) {
+          w_log(W_LOG_DBG, "failed to queue sub cancellation\n");
         }
+
+        citer = client->subscriptions.erase(citer);
+      } else {
+        ++citer;
       }
-    } while (w_ht_next(clients, &iter));
+    }
   }
   pthread_mutex_unlock(&w_client_lock);
 }

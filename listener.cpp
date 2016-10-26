@@ -9,7 +9,7 @@
 /* This needs to be recursive safe because we may log to clients
  * while we are dispatching subscriptions to clients */
 pthread_mutex_t w_client_lock;
-w_ht_t *clients = NULL;
+std::unordered_set<watchman_client*> clients;
 static int listener_fd = -1;
 pthread_t reaper_thread;
 static pthread_t listener_thread;
@@ -230,7 +230,7 @@ disconnected:
   // it easier to flush out pending writes on windows without worrying
   // about w_log_to_clients contending for the write buffers
   pthread_mutex_lock(&w_client_lock);
-  w_ht_del(clients, w_ht_ptr_val(client));
+  clients.erase(client);
   pthread_mutex_unlock(&w_client_lock);
 
   delete client;
@@ -240,25 +240,16 @@ disconnected:
 
 bool w_should_log_to_clients(int level)
 {
-  w_ht_iter_t iter;
   bool result = false;
 
   pthread_mutex_lock(&w_client_lock);
 
-  if (!clients) {
-    pthread_mutex_unlock(&w_client_lock);
-    return false;
-  }
-
-  if (w_ht_first(clients, &iter)) do {
-    auto client = (watchman_client *)w_ht_val_ptr(iter.value);
-
+  for (auto client : clients) {
     if (client->log_level != W_LOG_OFF && client->log_level >= level) {
       result = true;
       break;
     }
-
-  } while (w_ht_next(clients, &iter));
+  }
   pthread_mutex_unlock(&w_client_lock);
 
   return result;
@@ -266,16 +257,8 @@ bool w_should_log_to_clients(int level)
 
 void w_log_to_clients(int level, const char *buf)
 {
-  w_ht_iter_t iter;
-
-  if (!clients) {
-    return;
-  }
-
   pthread_mutex_lock(&w_client_lock);
-  if (w_ht_first(clients, &iter)) do {
-    auto client = (watchman_client *)w_ht_val_ptr(iter.value);
-
+  for (auto client : clients) {
     if (client->log_level != W_LOG_OFF && client->log_level >= level) {
       auto json = make_response();
       if (json) {
@@ -284,8 +267,7 @@ void w_log_to_clients(int level, const char *buf)
         enqueue_response(client, std::move(json), true);
       }
     }
-
-  } while (w_ht_next(clients, &iter));
+  }
   pthread_mutex_unlock(&w_client_lock);
 }
 
@@ -420,7 +402,7 @@ static struct watchman_client *make_new_client(w_stm_t stm) {
   }
 
   pthread_mutex_lock(&w_client_lock);
-  w_ht_set(clients, w_ht_ptr_val(client), w_ht_ptr_val(client));
+  clients.insert(client);
   pthread_mutex_unlock(&w_client_lock);
 
   // Start a thread for the client.
@@ -431,7 +413,7 @@ static struct watchman_client *make_new_client(w_stm_t stm) {
   if (pthread_create(&client->thread_handle, &attr, client_thread, client)) {
     // It didn't work out, sorry!
     pthread_mutex_lock(&w_client_lock);
-    w_ht_del(clients, w_ht_ptr_val(client));
+    clients.erase(client);
     pthread_mutex_unlock(&w_client_lock);
     delete client;
   }
@@ -678,10 +660,6 @@ bool w_start_listener(const char *path)
   w_set_cloexec(listener_fd);
 #endif
 
-  if (!clients) {
-    clients = w_ht_new(2, NULL);
-  }
-
 #ifdef HAVE_LIBGIMLI_H
   if (hb) {
     gimli_heartbeat_set(hb, GIMLI_HB_RUNNING);
@@ -713,13 +691,10 @@ bool w_start_listener(const char *path)
     const int max_interval = 1000000; // 1 second
 
     do {
-      w_ht_iter_t iter;
-
       pthread_mutex_lock(&w_client_lock);
-      n_clients = w_ht_size(clients);
+      n_clients = clients.size();
 
-      if (w_ht_first(clients, &iter)) do {
-        auto client = (watchman_client *)w_ht_val_ptr(iter.value);
+      for (auto client : clients) {
         w_event_set(client->ping);
 
 #ifndef _WIN32
@@ -729,7 +704,7 @@ bool w_start_listener(const char *path)
           pthread_kill(client->thread_handle, SIGUSR1);
         }
 #endif
-      } while (w_ht_next(clients, &iter));
+      }
 
       pthread_mutex_unlock(&w_client_lock);
 

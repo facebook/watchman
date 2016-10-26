@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <unordered_map>
+#include <unordered_set>
 
 struct watchman_client_response {
   struct watchman_client_response *next;
@@ -69,7 +70,7 @@ struct watchman_user_client : public watchman_client {
 };
 
 extern pthread_mutex_t w_client_lock;
-extern w_ht_t *clients;
+extern std::unordered_set<watchman_client*> clients;
 void w_client_lock_init(void);
 
 void w_client_vacate_states(struct watchman_user_client *client);

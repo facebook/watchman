@@ -5,11 +5,10 @@
 
 static bool root_has_subscriptions(w_root_t *root) {
   bool has_subscribers = false;
-  w_ht_iter_t iter;
 
   pthread_mutex_lock(&w_client_lock);
-  if (w_ht_first(clients, &iter)) do {
-    auto client = (watchman_user_client *)w_ht_val_ptr(iter.value);
+  for (auto client_base : clients) {
+    auto client = (watchman_user_client*)client_base;
 
     for (auto& citer : client->subscriptions) {
       auto sub = citer.second.get();
@@ -19,7 +18,11 @@ static bool root_has_subscriptions(w_root_t *root) {
         break;
       }
     }
-  } while (!has_subscribers && w_ht_next(clients, &iter));
+
+    if (!has_subscribers) {
+      break;
+    }
+  }
   pthread_mutex_unlock(&w_client_lock);
   return has_subscribers;
 }

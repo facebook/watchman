@@ -79,10 +79,8 @@ static void cmd_state_enter(
   struct state_arg parsed = {nullptr, 0, nullptr};
   std::unique_ptr<watchman_client_state_assertion> assertion;
   char clockbuf[128];
-  w_ht_iter_t iter;
   json_ref response;
-  struct watchman_user_client *client =
-      (struct watchman_user_client *)clientbase;
+  auto client = dynamic_cast<watchman_user_client*>(clientbase);
   struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
@@ -153,8 +151,8 @@ static void cmd_state_enter(
   // Now find all the clients with subscriptions and send them
   // notice of the state being entered
   pthread_mutex_lock(&w_client_lock);
-  if (w_ht_first(clients, &iter)) do {
-    auto subclient = (watchman_user_client*)w_ht_val_ptr(iter.value);
+  for (auto subclient_base : clients) {
+    auto subclient = dynamic_cast<watchman_user_client*>(subclient_base);
 
     for (auto& citer : subclient->subscriptions) {
       auto sub = citer.second.get();
@@ -175,7 +173,7 @@ static void cmd_state_enter(
       }
       enqueue_response(subclient, std::move(pdu), true);
     }
-  } while (w_ht_next(clients, &iter));
+  }
   pthread_mutex_unlock(&w_client_lock);
 
 done:
@@ -188,7 +186,6 @@ static void leave_state(struct watchman_user_client *client,
     struct watchman_client_state_assertion *assertion,
     bool abandoned, json_t *metadata, const char *clockbuf) {
   char buf[128];
-  w_ht_iter_t iter;
   struct unlocked_watchman_root unlocked = {assertion->root};
 
   if (!clockbuf) {
@@ -203,8 +200,8 @@ static void leave_state(struct watchman_user_client *client,
 
   // First locate all subscribers and notify them
   pthread_mutex_lock(&w_client_lock);
-  if (w_ht_first(clients, &iter)) do {
-    auto subclient = (watchman_user_client*)w_ht_val_ptr(iter.value);
+  for (auto subclient_base : clients) {
+    auto subclient = dynamic_cast<watchman_user_client*>(subclient_base);
 
     for (auto& citer : subclient->subscriptions) {
       auto sub = citer.second.get();
@@ -228,7 +225,7 @@ static void leave_state(struct watchman_user_client *client,
       }
       enqueue_response(subclient, std::move(pdu), true);
     }
-  } while (w_ht_next(clients, &iter));
+  }
   pthread_mutex_unlock(&w_client_lock);
 
   // The erase will delete the assertion pointer, so save these things
@@ -283,8 +280,7 @@ static void cmd_state_leave(
   // the thread that owns this client.
   struct watchman_client_state_assertion *assertion = NULL;
   char clockbuf[128];
-  struct watchman_user_client *client =
-      (struct watchman_user_client *)clientbase;
+  auto client = dynamic_cast<watchman_user_client*>(clientbase);
   struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
   json_ref response;
