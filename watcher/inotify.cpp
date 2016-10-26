@@ -41,7 +41,10 @@ static const struct flag_map inflags[] = {
 
 struct pending_move {
   time_t created;
-  w_string_t *name;
+  w_string name;
+
+  pending_move(time_t created, const w_string& name)
+      : created(created), name(name) {}
 };
 
 struct InotifyWatcher : public Watcher {
@@ -53,13 +56,7 @@ struct InotifyWatcher : public Watcher {
     /* map of active watch descriptor to name of the corresponding dir */
     std::unordered_map<int, w_string> wd_to_name;
     /* map of inotify cookie to corresponding name */
-    w_ht_t* move_map{nullptr};
-
-    ~maps() {
-      if (move_map) {
-        w_ht_free(move_map);
-      }
-    }
+    std::unordered_map<uint32_t, pending_move> move_map;
   };
 
   watchman::Synchronized<maps> maps;
@@ -91,31 +88,6 @@ struct InotifyWatcher : public Watcher {
       struct timeval now);
 
   void signalThreads() override;
-};
-
-static w_ht_val_t copy_pending(w_ht_val_t key) {
-  auto src = (pending_move*)w_ht_val_ptr(key);
-  struct pending_move *dest = (pending_move*)malloc(sizeof(*dest));
-  dest->created = src->created;
-  dest->name = src->name;
-  w_string_addref(src->name);
-  return w_ht_ptr_val(dest);
-}
-
-static void del_pending(w_ht_val_t key) {
-  auto p = (pending_move*)w_ht_val_ptr(key);
-
-  w_string_delref(p->name);
-  free(p);
-}
-
-static const struct watchman_hash_funcs move_hash_funcs = {
-    nullptr, // copy_key
-    nullptr, // del_key
-    nullptr, // equal_key
-    nullptr, // hash_key
-    copy_pending, // copy_val
-    del_pending // del_val
 };
 
 static const char *inot_strerror(int err) {
@@ -177,7 +149,6 @@ bool InotifyWatcher::initNew(w_root_t* root, char** errmsg) {
     auto maps = watcher->maps.wlock();
     maps->wd_to_name.reserve(
         root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS));
-    maps->move_map = w_ht_new(2, &move_hash_funcs);
   }
 
   root->inner.watcher = std::move(watcher);
@@ -286,22 +257,12 @@ void InotifyWatcher::process_inotify_event(
 
     if (ine->len > 0 && (ine->mask & (IN_MOVED_FROM|IN_ISDIR))
         == (IN_MOVED_FROM|IN_ISDIR)) {
-      struct pending_move mv;
 
       // record this as a pending move, so that we can automatically
       // watch the target when we get the other side of it.
-      mv.created = now.tv_sec;
-      mv.name = name;
-
       {
         auto wlock = maps.wlock();
-        if (!w_ht_replace(wlock->move_map, ine->cookie, w_ht_ptr_val(&mv))) {
-          w_log(
-              W_LOG_FATAL,
-              "failed to store %" PRIx32 " -> %s in move map\n",
-              ine->cookie,
-              name->buf);
-        }
+        wlock->move_map.emplace(ine->cookie, pending_move(now.tv_sec, name));
       }
 
       w_log(W_LOG_DBG,
@@ -312,9 +273,9 @@ void InotifyWatcher::process_inotify_event(
     if (ine->len > 0 &&
         (ine->mask & (IN_MOVED_TO | IN_ISDIR)) == (IN_MOVED_FROM | IN_ISDIR)) {
       auto wlock = maps.wlock();
-      auto old =
-          (pending_move*)w_ht_val_ptr(w_ht_get(wlock->move_map, ine->cookie));
-      if (old) {
+      auto it = wlock->move_map.find(ine->cookie);
+      if (it != wlock->move_map.end()) {
+        auto& old = it->second;
         int wd = inotify_add_watch(infd, name->buf, WATCHMAN_INOTIFY_MASK);
         if (wd == -1) {
           if (errno == ENOSPC || errno == ENOMEM) {
@@ -329,7 +290,7 @@ void InotifyWatcher::process_inotify_event(
                 inot_strerror(errno));
           }
         } else {
-          w_log(W_LOG_DBG, "moved %s -> %s\n", old->name->buf, name->buf);
+          w_log(W_LOG_DBG, "moved %s -> %s\n", old.name.c_str(), name->buf);
           wlock->wd_to_name[wd] = name;
         }
       } else {
@@ -439,19 +400,20 @@ bool InotifyWatcher::consumeNotify(
   // observe the corresponding MOVE_TO.
   {
     auto wlock = maps.wlock();
-    if (w_ht_size(wlock->move_map) > 0) {
-      w_ht_iter_t iter;
-      if (w_ht_first(wlock->move_map, &iter))
-        do {
-          auto pending = (pending_move*)w_ht_val_ptr(iter.value);
-          if (now.tv_sec - pending->created > 5 /* seconds */) {
-            w_log(
-                W_LOG_DBG,
-                "deleting pending move %s (moved outside of watch?)\n",
-                pending->name->buf);
-            w_ht_iter_del(wlock->move_map, &iter);
-          }
-        } while (w_ht_next(wlock->move_map, &iter));
+    if (!wlock->move_map.empty()) {
+      auto it = wlock->move_map.begin();
+      while (it != wlock->move_map.end()) {
+        auto& pending = it->second;
+        if (now.tv_sec - pending.created > 5 /* seconds */) {
+          w_log(
+              W_LOG_DBG,
+              "deleting pending move %s (moved outside of watch?)\n",
+              pending.name.c_str());
+          it = wlock->move_map.erase(it);
+        } else {
+          ++it;
+        }
+      }
     }
   }
 
