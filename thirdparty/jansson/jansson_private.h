@@ -70,11 +70,11 @@ struct json_integer_t {
   json_integer_t(json_int_t value);
 };
 
-#define json_to_object(json_)  container_of(json_, json_object_t, json)
-#define json_to_array(json_)   container_of(json_, json_array_t, json)
-#define json_to_string(json_)  container_of(json_, json_string_t, json)
-#define json_to_real(json_)   container_of(json_, json_real_t, json)
-#define json_to_integer(json_) container_of(json_, json_integer_t, json)
+#define json_to_object(json_)  container_of((json_t*)json_, json_object_t, json)
+#define json_to_array(json_)   container_of((json_t*)json_, json_array_t, json)
+#define json_to_string(json_)  container_of((json_t*)json_, json_string_t, json)
+#define json_to_real(json_)   container_of((json_t*)json_, json_real_t, json)
+#define json_to_integer(json_) container_of((json_t*)json_, json_integer_t, json)
 
 void jsonp_error_init(json_error_t *error, const char *source);
 void jsonp_error_set_source(json_error_t *error, const char *source);

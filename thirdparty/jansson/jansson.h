@@ -93,10 +93,6 @@ class json_ref {
   /* implicit */ operator bool() const {
     return ref_ != nullptr;
   }
-
-  json_t* get() const {
-    return ref_;
-  }
 };
 
 #if JSON_INTEGER_IS_LONG_LONG

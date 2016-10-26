@@ -84,7 +84,7 @@ json_ref json_object_of_size(size_t size) {
 json_ref json_object(
     std::initializer_list<std::pair<const char*, json_ref>> values) {
   auto object = json_object_of_size(values.size());
-  auto& map = json_to_object(object.get())->map;
+  auto& map = json_to_object(object)->map;
   for (auto& it : values) {
     map.emplace(w_string(it.first, W_STRING_UNICODE), it.second);
   }
@@ -319,7 +319,7 @@ json_t *json_array_get_template(const json_t *array)
 {
     if(!json_is_array(array))
         return 0;
-    return json_to_array(array)->templ.get();
+    return json_to_array(array)->templ;
 }
 
 size_t json_array_size(const json_t *json)
@@ -341,7 +341,7 @@ json_t *json_array_get(const json_t *json, size_t index)
       return nullptr;
     }
 
-    return array->table[index].get();
+    return array->table[index];
 }
 
 int json_array_set_new(json_t* json, size_t index, json_ref&& value) {
@@ -466,7 +466,7 @@ static json_ref json_array_copy(json_t* array) {
   if (!result)
     return nullptr;
 
-  auto& target_vector = json_to_array(result.get())->table;
+  auto& target_vector = json_to_array(result)->table;
   const auto& src_vector = json_to_array(array)->table;
 
   target_vector.insert(
