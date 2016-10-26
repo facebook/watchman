@@ -151,7 +151,7 @@ static json_ref build_legacy_trigger(
     return nullptr;
   }
 
-  json_object_set(trig, "expression", json_object_get(expr, "expression"));
+  json_object_set(trig, "expression", expr.get_default("expression"));
 
   if (next_arg >= json_array_size(args)) {
     send_error_response(client, "no command was specified");
@@ -230,7 +230,6 @@ watchman_trigger_command::watchman_trigger_command()
 
 std::unique_ptr<watchman_trigger_command>
 w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg) {
-  json_t *ele, *relative_root;
   json_int_t jint;
   const char *name = NULL;
 
@@ -242,9 +241,9 @@ w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg) {
 
   cmd->definition = trig;
 
-  auto query = json_object(
-      {{"expression", json_object_get(cmd->definition, "expression")}});
-  relative_root = json_object_get(cmd->definition, "relative_root");
+  auto query =
+      json_object({{"expression", cmd->definition.get_default("expression")}});
+  auto relative_root = cmd->definition.get_default("relative_root");
   if (relative_root) {
     json_object_set_nocheck(query, "relative_root", relative_root);
   }
@@ -262,7 +261,7 @@ w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg) {
   }
 
   cmd->triggername = w_string(name, W_STRING_UNICODE);
-  cmd->command = json_object_get(trig, "command");
+  cmd->command = cmd->definition.get_default("command");
   if (!cmd->command || !json_is_array(cmd->command) ||
       !json_array_size(cmd->command)) {
     *errmsg = strdup("invalid command array");
@@ -271,7 +270,7 @@ w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg) {
 
   json_unpack(trig, "{s:b}", "append_files", &cmd->append_files);
 
-  ele = json_object_get(trig, "stdin");
+  auto ele = cmd->definition.get_default("stdin");
   if (!ele) {
     cmd->stdin_style = input_dev_null;
   } else if (json_is_array(ele)) {

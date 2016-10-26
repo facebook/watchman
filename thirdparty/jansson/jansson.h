@@ -93,6 +93,16 @@ class json_ref {
   /* implicit */ operator bool() const {
     return ref_ != nullptr;
   }
+
+  /** Returns the value associated with key in a json object.
+   * Returns defval if this json value is not an object or
+   * if the key was not found. */
+  json_ref get_default(const char* key, json_ref defval = nullptr) const;
+
+  /** Returns the vaule associated with key in a json object.
+   * Throws domain_error if this is not a json object or
+   * a range_error if the key is not present. */
+  const json_ref& get(const char* key) const;
 };
 
 #if JSON_INTEGER_IS_LONG_LONG

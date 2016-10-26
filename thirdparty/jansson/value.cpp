@@ -116,6 +116,30 @@ json_object_t::findCString(const char* key) {
   return map.find(w_string(&key_string));
 }
 
+const json_ref& json_ref::get(const char* key) const {
+  if (!json_is_object(ref_)) {
+    throw std::domain_error("json_ref::get called on a non object type");
+  }
+  auto object = json_to_object(ref_);
+  auto it = object->findCString(key);
+  if (it == object->map.end()) {
+    throw std::range_error("key is not present in this json object");
+  }
+  return it->second;
+}
+
+json_ref json_ref::get_default(const char* key, json_ref defval) const {
+  if (!json_is_object(ref_)) {
+    return defval;
+  }
+  auto object = json_to_object(ref_);
+  auto it = object->findCString(key);
+  if (it == object->map.end()) {
+    return defval;
+  }
+  return it->second;
+}
+
 json_t *json_object_get(const json_t *json, const char *key)
 {
     json_object_t *object;
