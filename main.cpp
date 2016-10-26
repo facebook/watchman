@@ -1041,7 +1041,6 @@ int main(int argc, char **argv)
 {
   bool ran;
 
-  w_client_lock_init();
   parse_cmdline(&argc, &argv);
 
   if (foreground) {

@@ -33,9 +33,10 @@ static void cmd_loglevel(struct watchman_client* client, const json_ref& args) {
     return;
   }
 
-  pthread_mutex_lock(&w_client_lock);
-  client->log_level = level;
-  pthread_mutex_unlock(&w_client_lock);
+  {
+    auto clientsLock = clients.wlock();
+    client->log_level = level;
+  }
 
   auto resp = make_response();
   resp.set("log_level", typed_string_to_json(str, W_STRING_UNICODE));

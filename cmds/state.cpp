@@ -150,31 +150,32 @@ static void cmd_state_enter(
 
   // Now find all the clients with subscriptions and send them
   // notice of the state being entered
-  pthread_mutex_lock(&w_client_lock);
-  for (auto subclient_base : clients) {
-    auto subclient = dynamic_cast<watchman_user_client*>(subclient_base);
+  {
+    auto clientsLock = clients.wlock();
+    for (auto subclient_base : *clientsLock) {
+      auto subclient = dynamic_cast<watchman_user_client*>(subclient_base);
 
-    for (auto& citer : subclient->subscriptions) {
-      auto sub = citer.second.get();
+      for (auto& citer : subclient->subscriptions) {
+        auto sub = citer.second.get();
 
-      if (sub->root != unlocked.root) {
-        w_log(W_LOG_DBG, "root doesn't match, skipping\n");
-        continue;
+        if (sub->root != unlocked.root) {
+          w_log(W_LOG_DBG, "root doesn't match, skipping\n");
+          continue;
+        }
+
+        auto pdu = make_response();
+        pdu.set({{"root", w_string_to_json(unlocked.root->root_path)},
+                 {"subscription", w_string_to_json(sub->name)},
+                 {"unilateral", json_true()},
+                 {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
+                 {"state-enter", w_string_to_json(parsed.name)}});
+        if (parsed.metadata) {
+          pdu.set("metadata", json_ref(parsed.metadata));
+        }
+        enqueue_response(subclient, std::move(pdu), true);
       }
-
-      auto pdu = make_response();
-      pdu.set({{"root", w_string_to_json(unlocked.root->root_path)},
-               {"subscription", w_string_to_json(sub->name)},
-               {"unilateral", json_true()},
-               {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
-               {"state-enter", w_string_to_json(parsed.name)}});
-      if (parsed.metadata) {
-        pdu.set("metadata", json_ref(parsed.metadata));
-      }
-      enqueue_response(subclient, std::move(pdu), true);
     }
   }
-  pthread_mutex_unlock(&w_client_lock);
 
 done:
   w_root_delref(&unlocked);
@@ -199,34 +200,35 @@ static void leave_state(struct watchman_user_client *client,
   }
 
   // First locate all subscribers and notify them
-  pthread_mutex_lock(&w_client_lock);
-  for (auto subclient_base : clients) {
-    auto subclient = dynamic_cast<watchman_user_client*>(subclient_base);
+  {
+    auto clientsLock = clients.wlock();
+    for (auto subclient_base : *clientsLock) {
+      auto subclient = dynamic_cast<watchman_user_client*>(subclient_base);
 
-    for (auto& citer : subclient->subscriptions) {
-      auto sub = citer.second.get();
+      for (auto& citer : subclient->subscriptions) {
+        auto sub = citer.second.get();
 
-      if (sub->root != unlocked.root) {
-        w_log(W_LOG_DBG, "root doesn't match, skipping\n");
-        continue;
-      }
+        if (sub->root != unlocked.root) {
+          w_log(W_LOG_DBG, "root doesn't match, skipping\n");
+          continue;
+        }
 
-      auto pdu = make_response();
-      pdu.set({{"root", w_string_to_json(unlocked.root->root_path)},
-               {"subscription", w_string_to_json(sub->name)},
-               {"unilateral", json_true()},
-               {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
-               {"state-leave", w_string_to_json(assertion->name)}});
-      if (metadata) {
-        pdu.set("metadata", json_ref(metadata));
+        auto pdu = make_response();
+        pdu.set({{"root", w_string_to_json(unlocked.root->root_path)},
+                 {"subscription", w_string_to_json(sub->name)},
+                 {"unilateral", json_true()},
+                 {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
+                 {"state-leave", w_string_to_json(assertion->name)}});
+        if (metadata) {
+          pdu.set("metadata", json_ref(metadata));
+        }
+        if (abandoned) {
+          pdu.set("abandoned", json_true());
+        }
+        enqueue_response(subclient, std::move(pdu), true);
       }
-      if (abandoned) {
-        pdu.set("abandoned", json_true());
-      }
-      enqueue_response(subclient, std::move(pdu), true);
     }
   }
-  pthread_mutex_unlock(&w_client_lock);
 
   // The erase will delete the assertion pointer, so save these things
   auto id = assertion->id;

@@ -14,11 +14,11 @@ void process_subscriptions(struct read_locked_watchman_root* lock) {
   bool vcs_in_progress;
   const w_root_t* root = lock->root;
 
-  pthread_mutex_lock(&w_client_lock);
+  auto clientsLock = clients.wlock();
 
-  if (clients.empty()) {
+  if (clientsLock->empty()) {
     // No subscribers
-    goto done;
+    return;
   }
 
   // If it looks like we're in a repo undergoing a rebase or
@@ -26,7 +26,7 @@ void process_subscriptions(struct read_locked_watchman_root* lock) {
   // notifications until things settle down
   vcs_in_progress = lock->root->inner.view->isVCSOperationInProgress();
 
-  for (auto client_base : clients) {
+  for (auto client_base : *clientsLock) {
     auto client = (watchman_user_client*)client_base;
     for (auto& citer : client->subscriptions) {
       auto sub = citer.second.get();
@@ -122,8 +122,6 @@ void process_subscriptions(struct read_locked_watchman_root* lock) {
       sub->last_sub_tick = root->inner.view->getMostRecentTickValue();
     }
   }
-done:
-  pthread_mutex_unlock(&w_client_lock);
 }
 
 static void update_subscription_ticks(struct watchman_client_subscription *sub,
@@ -227,8 +225,8 @@ static void w_run_subscription_rules(
 }
 
 void w_cancel_subscriptions_for_root(const w_root_t *root) {
-  pthread_mutex_lock(&w_client_lock);
-  for (auto client_base : clients) {
+  auto lock = clients.wlock();
+  for (auto client_base : *lock) {
     auto client = (watchman_user_client*)client_base;
     // Manually iterate since we will be erasing elements as we go
     auto citer = client->subscriptions.begin();
@@ -260,7 +258,6 @@ void w_cancel_subscriptions_for_root(const w_root_t *root) {
       }
     }
   }
-  pthread_mutex_unlock(&w_client_lock);
 }
 
 /* unsubscribe /root subname
@@ -289,13 +286,14 @@ static void cmd_unsubscribe(
 
   auto sname = json_to_w_string(jstr);
 
-  pthread_mutex_lock(&w_client_lock);
-  auto it = client->subscriptions.find(sname);
-  if (it != client->subscriptions.end()) {
-    client->subscriptions.erase(it);
-    deleted = true;
+  {
+    auto lock = clients.wlock();
+    auto it = client->subscriptions.find(sname);
+    if (it != client->subscriptions.end()) {
+      client->subscriptions.erase(it);
+      deleted = true;
+    }
   }
-  pthread_mutex_unlock(&w_client_lock);
 
   auto resp = make_response();
   resp.set({{"unsubscribe", typed_string_to_json(name)},
@@ -415,9 +413,10 @@ static void cmd_subscribe(
   // now, so it is safe to hold on to the raw pointer while we do the tail
   // processing in the remainder of the function below.
   subPtr = sub.get();
-  pthread_mutex_lock(&w_client_lock);
-  client->subscriptions[sub->name] = std::move(sub);
-  pthread_mutex_unlock(&w_client_lock);
+  {
+    auto lock = clients.wlock();
+    client->subscriptions[subPtr->name] = std::move(sub);
+  }
 
   resp = make_response();
   resp.set("subscribe", jname);

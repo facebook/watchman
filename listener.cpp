@@ -8,8 +8,9 @@
 
 /* This needs to be recursive safe because we may log to clients
  * while we are dispatching subscriptions to clients */
-pthread_mutex_t w_client_lock;
-std::unordered_set<watchman_client*> clients;
+watchman::
+    Synchronized<std::unordered_set<watchman_client*>, std::recursive_mutex>
+        clients;
 static int listener_fd = -1;
 pthread_t reaper_thread;
 static pthread_t listener_thread;
@@ -25,15 +26,6 @@ bool w_is_stopping(void) {
   return stopping;
 }
 
-void w_client_lock_init(void) {
-  pthread_mutexattr_t mattr;
-
-  pthread_mutexattr_init(&mattr);
-  pthread_mutexattr_settype(&mattr, PTHREAD_MUTEX_RECURSIVE);
-  pthread_mutex_init(&w_client_lock, &mattr);
-  pthread_mutexattr_destroy(&mattr);
-}
-
 json_ref make_response(void) {
   auto resp = json_object();
 
@@ -42,7 +34,7 @@ json_ref make_response(void) {
   return resp;
 }
 
-/* must be called with the w_client_lock held */
+/* must be called with the clients.wlock() held */
 bool enqueue_response(
     struct watchman_client* client,
     json_ref&& json,
@@ -72,9 +64,8 @@ bool enqueue_response(
 void send_and_dispose_response(
     struct watchman_client* client,
     json_ref&& response) {
-  pthread_mutex_lock(&w_client_lock);
+  auto lock = clients.wlock();
   enqueue_response(client, std::move(response), false);
-  pthread_mutex_unlock(&w_client_lock);
 }
 
 void send_error_response(struct watchman_client *client,
@@ -195,11 +186,12 @@ static void *client_thread(void *ptr)
     }
 
     /* de-queue the pending responses under the lock */
-    pthread_mutex_lock(&w_client_lock);
-    queued_responses_to_send = client->head;
-    client->head = NULL;
-    client->tail = NULL;
-    pthread_mutex_unlock(&w_client_lock);
+    {
+      auto lock = clients.wlock();
+      queued_responses_to_send = client->head;
+      client->head = NULL;
+      client->tail = NULL;
+    }
 
     /* now send our response(s) */
     while (queued_responses_to_send) {
@@ -229,9 +221,7 @@ disconnected:
   // Remove the client from the map before we tear it down, as this makes
   // it easier to flush out pending writes on windows without worrying
   // about w_log_to_clients contending for the write buffers
-  pthread_mutex_lock(&w_client_lock);
-  clients.erase(client);
-  pthread_mutex_unlock(&w_client_lock);
+  clients.wlock()->erase(client);
 
   delete client;
 
@@ -242,23 +232,23 @@ bool w_should_log_to_clients(int level)
 {
   bool result = false;
 
-  pthread_mutex_lock(&w_client_lock);
+  auto clientsLock = clients.wlock();
 
-  for (auto client : clients) {
+  for (auto client : *clientsLock) {
     if (client->log_level != W_LOG_OFF && client->log_level >= level) {
       result = true;
       break;
     }
   }
-  pthread_mutex_unlock(&w_client_lock);
 
   return result;
 }
 
 void w_log_to_clients(int level, const char *buf)
 {
-  pthread_mutex_lock(&w_client_lock);
-  for (auto client : clients) {
+  auto clientsLock = clients.wlock();
+
+  for (auto client : *clientsLock) {
     if (client->log_level != W_LOG_OFF && client->log_level >= level) {
       auto json = make_response();
       if (json) {
@@ -268,7 +258,6 @@ void w_log_to_clients(int level, const char *buf)
       }
     }
   }
-  pthread_mutex_unlock(&w_client_lock);
 }
 
 // This is just a placeholder.
@@ -401,9 +390,7 @@ static struct watchman_client *make_new_client(w_stm_t stm) {
     // FIXME: error handling
   }
 
-  pthread_mutex_lock(&w_client_lock);
-  clients.insert(client);
-  pthread_mutex_unlock(&w_client_lock);
+  clients.wlock()->insert(client);
 
   // Start a thread for the client.
   // We used to use libevent for this, but we have
@@ -412,9 +399,7 @@ static struct watchman_client *make_new_client(w_stm_t stm) {
   // server architecture.
   if (pthread_create(&client->thread_handle, &attr, client_thread, client)) {
     // It didn't work out, sorry!
-    pthread_mutex_lock(&w_client_lock);
-    clients.erase(client);
-    pthread_mutex_unlock(&w_client_lock);
+    clients.wlock()->erase(client);
     delete client;
   }
 
@@ -691,22 +676,22 @@ bool w_start_listener(const char *path)
     const int max_interval = 1000000; // 1 second
 
     do {
-      pthread_mutex_lock(&w_client_lock);
-      n_clients = clients.size();
+      {
+        auto clientsLock = clients.wlock();
+        n_clients = clientsLock->size();
 
-      for (auto client : clients) {
-        w_event_set(client->ping);
+        for (auto client : *clientsLock) {
+          w_event_set(client->ping);
 
 #ifndef _WIN32
-        // If we've been waiting around for a while, interrupt
-        // the client thread; it may be blocked on a write
-        if (interval >= max_interval) {
-          pthread_kill(client->thread_handle, SIGUSR1);
-        }
+          // If we've been waiting around for a while, interrupt
+          // the client thread; it may be blocked on a write
+          if (interval >= max_interval) {
+            pthread_kill(client->thread_handle, SIGUSR1);
+          }
 #endif
+        }
       }
-
-      pthread_mutex_unlock(&w_client_lock);
 
       if (n_clients != last_count) {
         w_log(W_LOG_ERR, "waiting for %d clients to terminate\n", n_clients);

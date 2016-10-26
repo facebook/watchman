@@ -6,8 +6,8 @@
 static bool root_has_subscriptions(w_root_t *root) {
   bool has_subscribers = false;
 
-  pthread_mutex_lock(&w_client_lock);
-  for (auto client_base : clients) {
+  auto lock = clients.wlock();
+  for (auto client_base : *lock) {
     auto client = (watchman_user_client*)client_base;
 
     for (auto& citer : client->subscriptions) {
@@ -23,7 +23,6 @@ static bool root_has_subscriptions(w_root_t *root) {
       break;
     }
   }
-  pthread_mutex_unlock(&w_client_lock);
   return has_subscribers;
 }
 
