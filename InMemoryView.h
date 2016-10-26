@@ -126,7 +126,6 @@ struct InMemoryView : public QueryableView {
       const struct watchman_glob_tree* node,
       const char* dir_name,
       uint32_t dir_name_len) const;
-  void insertAtHeadOfFileList(struct watchman_file* file);
   void crawler(
       write_locked_watchman_root* lock,
       struct watchman_pending_collection* coll,
@@ -165,6 +164,8 @@ struct InMemoryView : public QueryableView {
     std::unique_ptr<watchman_dir> root_dir;
 
     explicit view(const w_string& root_path);
+
+    void insertAtHeadOfFileList(struct watchman_file* file);
   } view_;
   w_string root_path;
 

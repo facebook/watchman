@@ -20,13 +20,13 @@ InMemoryView::InMemoryView(
       view_(root_path),
       root_path(root_path) {}
 
-void InMemoryView::insertAtHeadOfFileList(struct watchman_file* file) {
-  file->next = view_.latest_file;
+void InMemoryView::view::insertAtHeadOfFileList(struct watchman_file* file) {
+  file->next = latest_file;
   if (file->next) {
     file->next->prev = &file->next;
   }
-  view_.latest_file = file;
-  file->prev = &view_.latest_file;
+  latest_file = file;
+  file->prev = &latest_file;
 }
 
 void InMemoryView::markFileChanged(
@@ -45,7 +45,7 @@ void InMemoryView::markFileChanged(
     remove_from_file_list(file);
 
     // and move to the head
-    insertAtHeadOfFileList(file);
+    view_.insertAtHeadOfFileList(file);
   }
 
   // Flag that we have pending trigger info
