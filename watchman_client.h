@@ -63,8 +63,9 @@ struct watchman_user_client : public watchman_client {
   std::unordered_map<w_string, std::unique_ptr<watchman_client_subscription>>
       subscriptions;
 
-  /* map of unique id => watchman_client_state_assertion */
-  w_ht_t* states{nullptr};
+  /* map of unique id => watchman_client_state_assertion.
+   * The values are owned by root::asserted_states */
+  std::unordered_map<long, watchman_client_state_assertion*> states;
   long next_state_id{0};
 
   ~watchman_user_client();

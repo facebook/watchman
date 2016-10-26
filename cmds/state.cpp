@@ -120,11 +120,8 @@ static void cmd_state_enter(
     entry = std::move(assertion);
 
     // Record the state assertion in the client
-    if (!client->states) {
-      client->states = w_ht_new(2, NULL);
-    }
     entry->id = ++client->next_state_id;
-    w_ht_set(client->states, entry->id, w_ht_ptr_val(entry.get()));
+    client->states[entry->id] = entry.get();
   }
 
   w_root_read_lock(&unlocked, "state-enter", &lock);
@@ -241,23 +238,15 @@ static void leave_state(struct watchman_user_client *client,
   }
 
   if (client) {
-    w_ht_del(client->states, id);
+    client->states.erase(id);
   }
 }
 
 // Abandon any states that haven't been explicitly vacated
 void w_client_vacate_states(struct watchman_user_client *client) {
-  w_ht_iter_t iter;
-
-  if (!client->states) {
-    return;
-  }
-
-  while (w_ht_first(client->states, &iter)) {
-    w_root_t *root;
-
-    auto assertion = (watchman_client_state_assertion*)w_ht_val_ptr(iter.value);
-    root = assertion->root;
+  while (!client->states.empty()) {
+    auto assertion = client->states.begin()->second;
+    auto root = assertion->root;
 
     w_log(
         W_LOG_ERR,
@@ -269,8 +258,6 @@ void w_client_vacate_states(struct watchman_user_client *client) {
     // the iterator.
     leave_state(client, assertion, true, NULL, NULL);
   }
-
-  w_ht_free(client->states);
 }
 
 static void cmd_state_leave(
@@ -314,7 +301,7 @@ static void cmd_state_leave(
     assertion = it->second.get();
 
     // Sanity check ownership
-    if (w_ht_val_ptr(w_ht_get(client->states, assertion->id)) != assertion) {
+    if (client->states[assertion->id] != assertion) {
       send_error_response(
           client,
           "state %s was not asserted by this session",
