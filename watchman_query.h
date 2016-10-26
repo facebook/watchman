@@ -4,6 +4,8 @@
 #ifndef WATCHMAN_QUERY_H
 #define WATCHMAN_QUERY_H
 #include <deque>
+#include <string>
+#include <vector>
 
 struct w_query;
 typedef struct w_query w_query;
@@ -90,7 +92,7 @@ struct w_query {
   struct w_query_path* paths{nullptr};
   size_t npaths{0};
 
-  struct watchman_glob_tree* glob_tree{0};
+  std::unique_ptr<watchman_glob_tree> glob_tree;
   // Additional flags to pass to wildmatch in the glob_generator
   int glob_flags{0};
 
@@ -229,7 +231,21 @@ bool parse_field_list(
     char** errmsg);
 
 bool parse_globs(w_query *res, json_t *query);
-void free_glob_tree(struct watchman_glob_tree *glob_tree);
+// A node in the tree of node matching rules
+struct watchman_glob_tree {
+  std::string pattern;
+
+  // The list of child rules, excluding any ** rules
+  std::vector<std::unique_ptr<watchman_glob_tree>> children;
+  // The list of ** rules that exist under this node
+  std::vector<std::unique_ptr<watchman_glob_tree>> doublestar_children;
+
+  unsigned is_leaf : 1; // if true, generate files for matches
+  unsigned had_specials : 1; // if false, can do simple string compare
+  unsigned is_doublestar : 1; // pattern begins with **
+
+  watchman_glob_tree(const char* pattern, uint32_t pattern_len);
+};
 
 #define W_TERM_PARSER1(symbol, name, func) \
   static w_ctor_fn_type(symbol) {                   \

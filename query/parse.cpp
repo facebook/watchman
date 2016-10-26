@@ -552,8 +552,6 @@ w_query::~w_query() {
   }
   free(paths);
 
-  free_glob_tree(glob_tree);
-
   if (suffixes) {
     for (i = 0; i < nsuffixes; i++) {
       if (suffixes[i]) {

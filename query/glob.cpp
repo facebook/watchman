@@ -4,6 +4,7 @@
 #include "watchman.h"
 #include "thirdparty/wildmatch/wildmatch.h"
 #include "InMemoryView.h"
+#include "make_unique.h"
 
 /* The glob generator.
  * The user can specify a list of globs as the set of candidate nodes
@@ -23,28 +24,6 @@
  */
 
 W_CAP_REG("glob_generator")
-
-// Holds a list of glob matching rules
-struct glob_child_vec {
-  struct watchman_glob_tree **children;
-  uint32_t num_children;
-  uint32_t num_children_allocd;
-};
-
-// A node in the tree of node matching rules
-struct watchman_glob_tree {
-  char *pattern;
-  uint32_t pattern_len;
-
-  // The list of child rules, excluding any ** rules
-  struct glob_child_vec children;
-  // The list of ** rules that exist under this node
-  struct glob_child_vec doublestar_children;
-
-  unsigned is_leaf:1;       // if true, generate files for matches
-  unsigned had_specials:1;  // if false, can do simple string compare
-  unsigned is_doublestar:1; // pattern begins with **
-};
 
 // Look ahead in pattern; we want to find the directory separator.
 // While we are looking, check for wildmatch special characters.
@@ -70,82 +49,28 @@ static inline const char *find_sep_and_specials(const char *pattern,
   return NULL;
 }
 
-static void destroy_glob_child_vec(struct glob_child_vec *vec) {
-  uint32_t i;
-  for (i = 0; i < vec->num_children; ++i) {
-    free_glob_tree(vec->children[i]);
-  }
-  free(vec->children);
-}
-
-void free_glob_tree(struct watchman_glob_tree *node) {
-
-  if (!node) {
-    return;
-  }
-  destroy_glob_child_vec(&node->children);
-  destroy_glob_child_vec(&node->doublestar_children);
-
-  free(node);
-}
-
-static struct watchman_glob_tree *make_node(const char *pattern,
-                                            uint32_t pattern_len) {
-  struct watchman_glob_tree *node;
-
-  node = (watchman_glob_tree*)calloc(1, sizeof(*node) + pattern_len + 1);
-  if (!node) {
-    return NULL;
-  }
-
-  node->pattern = (char*)(node + 1);
-  memcpy(node->pattern, pattern, pattern_len);
-  node->pattern[pattern_len] = '\0';
-
-  node->pattern_len = pattern_len;
-
-  return node;
-}
+watchman_glob_tree::watchman_glob_tree(
+    const char* pattern,
+    uint32_t pattern_len)
+    : pattern(pattern, pattern_len),
+      is_leaf(0),
+      had_specials(0),
+      is_doublestar(0) {}
 
 // Simple brute force lookup of pattern within a node.
 // This is run at compile time and most glob sets are low enough cardinality
 // that this doesn't turn out to be a hot spot in practice.
-static struct watchman_glob_tree *lookup_node_child(struct glob_child_vec *vec,
-                                                    const char *pattern,
-                                                    uint32_t pattern_len) {
-  uint32_t i;
-
-  for (i = 0; i < vec->num_children; ++i) {
-    if (vec->children[i]->pattern_len == pattern_len &&
-        memcmp(vec->children[i]->pattern, pattern, pattern_len) == 0) {
-      return vec->children[i];
+static watchman_glob_tree* lookup_node_child(
+    std::vector<std::unique_ptr<watchman_glob_tree>>* vec,
+    const char* pattern,
+    uint32_t pattern_len) {
+  for (auto& kid : *vec) {
+    if (kid->pattern.size() == pattern_len &&
+        memcmp(kid->pattern.data(), pattern, pattern_len) == 0) {
+      return kid.get();
     }
   }
-  return NULL;
-}
-
-// Add a child node to parent, allocating more space if needed.
-static bool add_node(struct glob_child_vec *vec,
-                     struct watchman_glob_tree *child) {
-  if (!vec->children) {
-    vec->num_children_allocd = 8;
-    vec->children = (watchman_glob_tree**)calloc(
-        vec->num_children_allocd, sizeof(*vec->children));
-    if (!vec->children) {
-      return false;
-    }
-  } else if (vec->num_children + 1 > vec->num_children_allocd) {
-    auto bigger = (watchman_glob_tree**)realloc(
-        vec->children, vec->num_children_allocd * 2 * sizeof(*vec->children));
-    if (!bigger) {
-      return false;
-    }
-    vec->num_children_allocd *= 2;
-    vec->children = bigger;
-  }
-
-  vec->children[vec->num_children++] = child;
-  return true;
+  return nullptr;
 }
 
 // Compile and add a new glob pattern to the tree.
@@ -163,7 +88,7 @@ static bool add_glob(struct watchman_glob_tree *tree, w_string_t *glob_str) {
     const char *end;
     struct watchman_glob_tree *node;
     bool is_doublestar = false;
-    struct glob_child_vec *container = &parent->children;
+    auto* container = &parent->children;
 
     end = sep ? sep : pattern_end;
 
@@ -185,13 +110,9 @@ static bool add_glob(struct watchman_glob_tree *tree, w_string_t *glob_str) {
     node = lookup_node_child(container, pattern, (uint32_t)(end - pattern));
     if (!node) {
       // This is a new matching possibility.
-      node = make_node(pattern, (uint32_t)(end - pattern));
-      if (!node) {
-        return false;
-      }
-      if (!add_node(container, node)) {
-        return false;
-      }
+      container->emplace_back(watchman::make_unique<watchman_glob_tree>(
+          pattern, (uint32_t)(end - pattern)));
+      node = container->back().get();
       node->had_specials = had_specials;
       node->is_doublestar = is_doublestar;
     }
@@ -245,12 +166,12 @@ bool parse_globs(w_query *res, json_t *query)
   res->glob_flags =
       (includedotfiles ? 0 : WM_PERIOD) | (noescape ? WM_NOESCAPE : 0);
 
-  res->glob_tree = make_node("", 0);
+  res->glob_tree = watchman::make_unique<watchman_glob_tree>("", 0);
   for (i = 0; i < json_array_size(globs); i++) {
     json_t *ele = json_array_get(globs, i);
     w_string_t *pattern = json_to_w_string(ele);
 
-    if (!add_glob(res->glob_tree, pattern)) {
+    if (!add_glob(res->glob_tree.get(), pattern)) {
       res->errmsg = strdup("failed to compile multi-glob");
       return false;
     }
@@ -263,29 +184,20 @@ bool parse_globs(w_query *res, json_t *query)
  * separator.
  * dir_name may be NULL in which case this returns a copy of name.
  */
-static inline char *make_path_name(const char *dir_name, uint32_t dlen,
-                                   const char *name, uint32_t nlen) {
-  char *result;
+static inline std::string make_path_name(
+    const char* dir_name,
+    uint32_t dlen,
+    const char* name,
+    uint32_t nlen) {
+  std::string result;
+  result.reserve(dlen + nlen + 1);
 
   if (dlen) {
-    result = (char*)malloc(dlen + nlen + 2);
-    if (!result) {
-      return NULL;
-    }
-    memcpy(result, dir_name, dlen);
-    result[dlen] = '/'; // wildmatch wants unix separators
-    memcpy(result + dlen + 1, name, nlen);
-    result[dlen + nlen + 1] = '\0';
-
-    return result;
+    result.append(dir_name, dlen);
+    // wildmatch wants unix separators
+    result.push_back('/');
   }
-
-  result = (char*)malloc(nlen + 1);
-  if (!result) {
-    return NULL;
-  }
-  memcpy(result, name, nlen);
-  result[nlen] = '\0';
+  result.append(name, nlen);
   return result;
 }
 
@@ -312,8 +224,6 @@ bool InMemoryView::globGeneratorDoublestar(
   int64_t n = 0;
   bool result = true;
   bool matched;
-  char *subject;
-  uint32_t j;
 
   // First step is to walk the set of files contained in this node
   for (auto& it : dir->files) {
@@ -327,31 +237,25 @@ bool InMemoryView::globGeneratorDoublestar(
       continue;
     }
 
-    subject =
+    auto subject =
         make_path_name(dir_name, dir_name_len, file_name->buf, file_name->len);
-    if (!subject) {
-      result = false;
-      goto done;
-    }
 
     // Now that we have computed the name of this candidate file node,
     // attempt to match against each of the possible doublestar patterns
     // in turn.  As soon as any one of them matches we can stop this loop
     // as it doesn't make a lot of sense to yield multiple results for
     // the same file.
-    for (j = 0; j < node->doublestar_children.num_children; ++j) {
-      struct watchman_glob_tree *child_node =
-          node->doublestar_children.children[j];
-
-      matched = wildmatch(child_node->pattern, subject,
-                          ctx->query->glob_flags | WM_PATHNAME |
-                              (ctx->query->case_sensitive ? 0 : WM_CASEFOLD),
-                          0) == WM_MATCH;
+    for (const auto& child_node : node->doublestar_children) {
+      matched = wildmatch(
+                    child_node->pattern.c_str(),
+                    subject.c_str(),
+                    ctx->query->glob_flags | WM_PATHNAME |
+                        (ctx->query->case_sensitive ? 0 : WM_CASEFOLD),
+                    0) == WM_MATCH;
 
       if (matched) {
         if (!w_query_process_file(ctx->query, ctx, file)) {
           result = false;
-          free(subject);
           goto done;
         }
         // No sense running multiple matches for this same file node
@@ -359,8 +263,6 @@ bool InMemoryView::globGeneratorDoublestar(
         break;
       }
     }
-
-    free(subject);
   }
 
   // And now walk down to any dirs; all dirs are eligible
@@ -373,15 +275,10 @@ bool InMemoryView::globGeneratorDoublestar(
       continue;
     }
 
-    subject = make_path_name(
+    auto subject = make_path_name(
         dir_name, dir_name_len, child->name.data(), child->name.size());
-    if (!subject) {
-      result = false;
-      goto done;
-    }
     result = globGeneratorDoublestar(
-        ctx, &child_walked, child, node, subject, strlen_uint32(subject));
-    free(subject);
+        ctx, &child_walked, child, node, subject.data(), subject.size());
     n += child_walked;
     if (!result) {
       goto done;
@@ -399,12 +296,11 @@ bool InMemoryView::globGeneratorTree(
     int64_t* num_walked,
     const struct watchman_glob_tree* node,
     const struct watchman_dir* dir) const {
-  uint32_t i;
   w_string_t component;
   bool result = true;
   int64_t n = 0;
 
-  if (node->doublestar_children.num_children > 0) {
+  if (!node->doublestar_children.empty()) {
     int64_t child_walked = 0;
     result = globGeneratorDoublestar(ctx, &child_walked, dir, node, nullptr, 0);
     n += child_walked;
@@ -413,9 +309,7 @@ bool InMemoryView::globGeneratorTree(
     }
   }
 
-  for (i = 0; i < node->children.num_children; ++i) {
-    const struct watchman_glob_tree *child_node = node->children.children[i];
-
+  for (const auto& child_node : node->children) {
     w_assert(!child_node->is_doublestar, "should not get here with ** glob");
 
     // If there are child dirs, consider them for recursion.
@@ -427,14 +321,15 @@ bool InMemoryView::globGeneratorTree(
       if (!child_node->had_specials && ctx->query->case_sensitive) {
         w_string_new_len_typed_stack(
             &component,
-            child_node->pattern,
-            child_node->pattern_len,
+            child_node->pattern.data(),
+            child_node->pattern.size(),
             W_STRING_BYTE);
         const auto child_dir = dir->getChildDir(&component);
 
         if (child_dir) {
           int64_t child_walked = 0;
-          result = globGeneratorTree(ctx, &child_walked, child_node, child_dir);
+          result = globGeneratorTree(
+              ctx, &child_walked, child_node.get(), child_dir);
           n += child_walked;
           if (!result) {
             goto done;
@@ -451,14 +346,14 @@ bool InMemoryView::globGeneratorTree(
           }
 
           if (wildmatch(
-                  child_node->pattern,
+                  child_node->pattern.c_str(),
                   child_dir->name.c_str(),
                   ctx->query->glob_flags |
                       (ctx->query->case_sensitive ? 0 : WM_CASEFOLD),
                   0) == WM_MATCH) {
             int64_t child_walked = 0;
-            result =
-                globGeneratorTree(ctx, &child_walked, child_node, child_dir);
+            result = globGeneratorTree(
+                ctx, &child_walked, child_node.get(), child_dir);
             n += child_walked;
             if (!result) {
               goto done;
@@ -472,8 +367,11 @@ bool InMemoryView::globGeneratorTree(
     if (child_node->is_leaf && !dir->files.empty()) {
       // Attempt direct lookup if possible
       if (!child_node->had_specials && ctx->query->case_sensitive) {
-        w_string_new_len_typed_stack(&component, child_node->pattern,
-                                     child_node->pattern_len, W_STRING_BYTE);
+        w_string_new_len_typed_stack(
+            &component,
+            child_node->pattern.data(),
+            child_node->pattern.size(),
+            W_STRING_BYTE);
         auto file = dir->getChildFile(&component);
 
         if (file) {
@@ -499,7 +397,7 @@ bool InMemoryView::globGeneratorTree(
           }
 
           if (wildmatch(
-                  child_node->pattern,
+                  child_node->pattern.c_str(),
                   file_name->buf,
                   ctx->query->glob_flags |
                       (ctx->query->case_sensitive ? WM_CASEFOLD : 0),
@@ -542,7 +440,7 @@ bool InMemoryView::globGenerator(
     return false;
   }
 
-  return globGeneratorTree(ctx, num_walked, query->glob_tree, dir);
+  return globGeneratorTree(ctx, num_walked, query->glob_tree.get(), dir);
 }
 }
 
