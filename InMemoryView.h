@@ -149,19 +149,24 @@ struct InMemoryView : public QueryableView {
 
   CookieSync& cookies_;
   Configuration& config_;
-  /* the most recently changed file */
-  struct watchman_file* latest_file{0};
 
   /* Holds the list head for files of a given suffix */
   struct file_list_head {
     watchman_file* head{nullptr};
   };
 
-  /* Holds the list heads for all known suffixes */
-  std::unordered_map<w_string, std::unique_ptr<file_list_head>> suffixes;
+  struct view {
+    /* the most recently changed file */
+    struct watchman_file* latest_file{0};
 
+    /* Holds the list heads for all known suffixes */
+    std::unordered_map<w_string, std::unique_ptr<file_list_head>> suffixes;
+
+    std::unique_ptr<watchman_dir> root_dir;
+
+    explicit view(const w_string& root_path);
+  } view_;
   w_string root_path;
-  std::unique_ptr<watchman_dir> root_dir;
 
   // The most recently observed tick value of an item in the view
   std::atomic<uint32_t> mostRecentTick_{0};

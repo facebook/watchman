@@ -8,22 +8,25 @@
 
 namespace watchman {
 
+InMemoryView::view::view(const w_string& root_path)
+    : root_dir(watchman::make_unique<watchman_dir>(root_path, nullptr)) {}
+
 InMemoryView::InMemoryView(
     const w_string& root_path,
     CookieSync& cookies,
     Configuration& config)
     : cookies_(cookies),
       config_(config),
-      root_path(root_path),
-      root_dir(watchman::make_unique<watchman_dir>(root_path, nullptr)) {}
+      view_(root_path),
+      root_path(root_path) {}
 
 void InMemoryView::insertAtHeadOfFileList(struct watchman_file* file) {
-  file->next = latest_file;
+  file->next = view_.latest_file;
   if (file->next) {
     file->next->prev = &file->next;
   }
-  latest_file = file;
-  file->prev = &latest_file;
+  view_.latest_file = file;
+  file->prev = &view_.latest_file;
 }
 
 void InMemoryView::markFileChanged(
@@ -37,7 +40,7 @@ void InMemoryView::markFileChanged(
   file->otime.timestamp = now.tv_sec;
   file->otime.ticks = tick;
 
-  if (latest_file != file) {
+  if (view_.latest_file != file) {
     // unlink from list
     remove_from_file_list(file);
 
@@ -55,13 +58,13 @@ const watchman_dir* InMemoryView::resolveDir(const w_string& dir_name) const {
   const char* dir_end;
 
   if (dir_name == root_path) {
-    return root_dir.get();
+    return view_.root_dir.get();
   }
 
   dir_component = dir_name.data();
   dir_end = dir_component + dir_name.size();
 
-  dir = root_dir.get();
+  dir = view_.root_dir.get();
   dir_component += root_path.size() + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");
@@ -111,13 +114,13 @@ watchman_dir* InMemoryView::resolveDir(const w_string& dir_name, bool create) {
   const char* dir_end;
 
   if (dir_name == root_path) {
-    return root_dir.get();
+    return view_.root_dir.get();
   }
 
   dir_component = dir_name.data();
   dir_end = dir_component + dir_name.size();
 
-  dir = root_dir.get();
+  dir = view_.root_dir.get();
   dir_component += root_path.size() + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");
@@ -249,7 +252,7 @@ watchman_file* InMemoryView::getOrCreateChildFile(
 
   auto suffix = file_name.suffix();
   if (suffix) {
-    auto& sufhead = suffixes[suffix];
+    auto& sufhead = view_.suffixes[suffix];
     if (!sufhead) {
       // Create the list head if we don't already have one for this suffix.
       sufhead.reset(new watchman::InMemoryView::file_list_head);
@@ -302,7 +305,7 @@ void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {
   time(&now);
   last_age_out_timestamp = now;
 
-  file = latest_file;
+  file = view_.latest_file;
   prior = nullptr;
   while (file) {
     ++num_walked;
@@ -352,7 +355,7 @@ bool InMemoryView::timeGenerator(
   bool result = true;
 
   // Walk back in time until we hit the boundary
-  for (f = latest_file; f; f = f->next) {
+  for (f = view_.latest_file; f; f = f->next) {
     ++n;
     if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
       break;
@@ -387,8 +390,8 @@ bool InMemoryView::suffixGenerator(
 
   for (i = 0; i < query->nsuffixes; i++) {
     // Head of suffix index for this suffix
-    auto it = suffixes.find(query->suffixes[i]);
-    if (it == suffixes.end()) {
+    auto it = view_.suffixes.find(query->suffixes[i]);
+    if (it == view_.suffixes.end()) {
       continue;
     }
 
@@ -543,7 +546,7 @@ bool InMemoryView::allFilesGenerator(
   int64_t n = 0;
   bool result = true;
 
-  for (f = latest_file; f; f = f->next) {
+  for (f = view_.latest_file; f; f = f->next) {
     ++n;
     if (!w_query_file_matches_relative_root(ctx, f)) {
       continue;
