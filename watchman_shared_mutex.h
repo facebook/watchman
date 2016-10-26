@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <chrono>
+#include "watchman_log.h"
 #include "watchman_time.h"
 
 #ifdef __APPLE__
@@ -38,7 +39,10 @@ class shared_timed_mutex {
 
   // Exclusive ownership
   void lock() {
-    pthread_rwlock_wrlock(&rwlock_);
+    auto err = pthread_rwlock_wrlock(&rwlock_);
+    if (err != 0) {
+      w_log(W_LOG_FATAL, "lock failed: %s\n", strerror(err));
+    }
   }
   bool try_lock() {
     return pthread_rwlock_trywrlock(&rwlock_) == 0;
@@ -52,12 +56,18 @@ class shared_timed_mutex {
   }
 
   void unlock() {
-    pthread_rwlock_unlock(&rwlock_);
+    auto err = pthread_rwlock_unlock(&rwlock_);
+    if (err != 0) {
+      w_log(W_LOG_FATAL, "unlock failed: %s\n", strerror(err));
+    }
   }
 
   // Shared ownership
   void lock_shared() {
-    pthread_rwlock_rdlock(&rwlock_);
+    auto err = pthread_rwlock_rdlock(&rwlock_);
+    if (err != 0) {
+      w_log(W_LOG_FATAL, "lock_shared failed: %s\n", strerror(err));
+    }
   }
   bool try_lock_shared() {
     return pthread_rwlock_tryrdlock(&rwlock_) == 0;
@@ -70,7 +80,10 @@ class shared_timed_mutex {
     return pthread_rwlock_timedrdlock(&rwlock_, &ts) == 0;
   }
   void unlock_shared() {
-    pthread_rwlock_unlock(&rwlock_);
+    auto err = pthread_rwlock_unlock(&rwlock_);
+    if (err != 0) {
+      w_log(W_LOG_FATAL, "unlock_shared failed: %s\n", strerror(err));
+    }
   }
 };
 
