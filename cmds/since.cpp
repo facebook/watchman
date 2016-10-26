@@ -53,10 +53,10 @@ static void cmd_since(struct watchman_client* client, const json_ref& args) {
 
   auto response = make_response();
   if (clock_id_string(res.root_number, res.ticks, clockbuf, sizeof(clockbuf))) {
-    set_unicode_prop(response, "clock", clockbuf);
+    response.set("clock", typed_string_to_json(clockbuf, W_STRING_UNICODE));
   }
-  set_prop(response, "is_fresh_instance", json_boolean(res.is_fresh_instance));
-  set_prop(response, "files", std::move(file_list));
+  response.set({{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
+                {"files", std::move(file_list)}});
 
   {
     struct read_locked_watchman_root lock;

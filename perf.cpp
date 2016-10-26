@@ -74,7 +74,7 @@ void watchman_perf_sample::add_meta(const char* key, json_ref&& val) {
   if (!meta_data) {
     meta_data = json_object();
   }
-  set_prop(meta_data, key, std::move(val));
+  meta_data.set(key, std::move(val));
 }
 
 void watchman_perf_sample::add_root_meta(const w_root_t* root) {
@@ -229,17 +229,17 @@ void watchman_perf_sample::log() {
        {"version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE)}});
 
 #ifdef WATCHMAN_BUILD_INFO
-  set_unicode_prop(info, "buildinfo", WATCHMAN_BUILD_INFO);
+  info.set(
+      "buildinfo", typed_string_to_json(WATCHMAN_BUILD_INFO, W_STRING_UNICODE));
 #endif
 
-#define ADDTV(name, tv)                                                        \
-  set_prop(info, name, json_real(w_timeval_abs_seconds(tv)))
+#define ADDTV(name, tv) info.set(name, json_real(w_timeval_abs_seconds(tv)))
   ADDTV("elapsed_time", duration);
   ADDTV("start_time", time_begin);
 #ifdef HAVE_SYS_RESOURCE_H
   ADDTV("user_time", usage.ru_utime);
   ADDTV("system_time", usage.ru_stime);
-#define ADDU(n) set_prop(info, #n, json_integer(usage.n))
+#define ADDU(n) info.set(#n, json_integer(usage.n))
   ADDU(ru_maxrss);
   ADDU(ru_ixrss);
   ADDU(ru_idrss);

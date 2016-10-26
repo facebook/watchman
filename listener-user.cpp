@@ -11,7 +11,7 @@ static void cmd_shutdown(struct watchman_client* client, const json_ref&) {
   w_log(W_LOG_ERR, "shutdown-server was requested, exiting!\n");
   w_request_shutdown();
 
-  set_prop(resp, "shutdown-server", json_true());
+  resp.set("shutdown-server", json_true());
   send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON|CMD_POISON_IMMUNE, NULL)
@@ -57,7 +57,7 @@ void add_root_warnings_to_response(
       root->root_path.c_str()));
 
   if (full) {
-    set_prop(response, "warning", typed_string_to_json(full, W_STRING_MIXED));
+    response.set("warning", typed_string_to_json(full, W_STRING_MIXED));
   }
   free(str);
   free(full);

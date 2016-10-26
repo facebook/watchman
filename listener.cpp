@@ -37,7 +37,7 @@ void w_client_lock_init(void) {
 json_ref make_response(void) {
   auto resp = json_object();
 
-  set_unicode_prop(resp, "version", PACKAGE_VERSION);
+  resp.set("version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE));
 
   return resp;
 }
@@ -89,7 +89,7 @@ void send_error_response(struct watchman_client *client,
   va_end(ap);
 
   auto errstr = typed_string_to_json(buf, W_STRING_MIXED);
-  set_prop(resp, "error", std::move(errstr));
+  resp.set("error", std::move(errstr));
 
   if (client->perf_sample) {
     client->perf_sample->add_meta("error", std::move(errstr));
@@ -282,8 +282,8 @@ void w_log_to_clients(int level, const char *buf)
     if (client->log_level != W_LOG_OFF && client->log_level >= level) {
       auto json = make_response();
       if (json) {
-        set_mixed_string_prop(json, "log", buf);
-        set_prop(json, "unilateral", json_true());
+        json.set({{"log", typed_string_to_json(buf, W_STRING_MIXED)},
+                  {"unilateral", json_true()}});
         enqueue_response(client, std::move(json), true);
       }
     }
@@ -756,7 +756,7 @@ bool w_start_listener(const char *path)
 static void cmd_get_pid(struct watchman_client* client, const json_ref&) {
   auto resp = make_response();
 
-  set_prop(resp, "pid", json_integer(getpid()));
+  resp.set("pid", json_integer(getpid()));
 
   send_and_dispose_response(client, std::move(resp));
 }

@@ -103,6 +103,17 @@ class json_ref {
    * Throws domain_error if this is not a json object or
    * a range_error if the key is not present. */
   const json_ref& get(const char* key) const;
+
+  /** Set key = value */
+  void set(const char* key, json_ref&& val);
+
+  /** Set a list of key/value pairs */
+  inline void set(
+      std::initializer_list<std::pair<const char*, json_ref&&>> pairs) {
+    for (auto& p : pairs) {
+      set(p.first, std::move(p.second));
+    }
+  }
 };
 
 #if JSON_INTEGER_IS_LONG_LONG

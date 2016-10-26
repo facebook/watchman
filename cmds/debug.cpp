@@ -23,7 +23,7 @@ static void cmd_debug_recrawl(
 
   w_root_schedule_recrawl(unlocked.root, "debug-recrawl");
 
-  set_prop(resp, "recrawl", json_true());
+  resp.set("recrawl", json_true());
   send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
@@ -54,11 +54,11 @@ static void cmd_debug_show_cursors(
     for (const auto& it : *map) {
       const auto& name = it.first;
       const auto& ticks = it.second;
-      set_prop(cursors, name.c_str(), json_integer(ticks));
+      cursors.set(name.c_str(), json_integer(ticks));
     }
   }
 
-  set_prop(resp, "cursors", std::move(cursors));
+  resp.set("cursors", std::move(cursors));
   send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
@@ -91,7 +91,7 @@ static void cmd_debug_ageout(
   lock.root->performAgeOut(min_age);
   w_root_unlock(&lock, &unlocked);
 
-  set_prop(resp, "ageout", json_true());
+  resp.set("ageout", json_true());
   send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
@@ -112,7 +112,7 @@ static void cmd_debug_poison(
   set_poison_state(unlocked.root->root_path, now, "debug-poison", ENOMEM, NULL);
 
   auto resp = make_response();
-  set_unicode_prop(resp, "poison", poisoned_reason);
+  resp.set("poison", typed_string_to_json(poisoned_reason, W_STRING_UNICODE));
   send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
@@ -124,7 +124,7 @@ static void cmd_debug_drop_privs(
   client->client_is_owner = false;
 
   auto resp = make_response();
-  set_prop(resp, "owner", json_boolean(client->client_is_owner));
+  resp.set("owner", json_boolean(client->client_is_owner));
   send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("debug-drop-privs", cmd_debug_drop_privs, CMD_DAEMON, NULL);

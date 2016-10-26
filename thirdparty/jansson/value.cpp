@@ -15,6 +15,7 @@
 #include <cmath>
 
 #include "utf.h"
+#include "watchman_log.h"
 #include "watchman_string.h"
 
 json_ref::json_ref() : ref_(nullptr) {}
@@ -172,6 +173,16 @@ int json_object_set_new_nocheck(
   w_string key_string(key);
   object->map[key_string] = std::move(value);
   return 0;
+}
+
+void json_ref::set(const char* key, json_ref&& val) {
+  w_assert(key != nullptr, "json_ref::set called with NULL key");
+  w_assert(ref_ != nullptr, "json_ref::set called NULL object");
+  w_assert(val != ref_, "json_ref::set cannot create cycle");
+  w_assert(json_is_object(ref_), "json_ref::set called for non object type");
+
+  w_string key_string(key);
+  json_to_object(ref_)->map[key_string] = std::move(val);
 }
 
 int json_object_set_new(json_t* json, const char* key, json_ref&& value) {

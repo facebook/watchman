@@ -157,32 +157,6 @@ char **w_argv_copy_from_json(json_t *arr, int skip);
 
 const char *get_sock_name(void);
 
-// Helps write shorter lines
-static inline void set_prop(json_t* obj, const char* key, json_ref&& val) {
-  json_object_set_new_nocheck(obj, key, std::move(val));
-}
-
-static inline void set_unicode_prop(json_t *obj, const char *key,
-    const char *uni_str)
-{
-  json_object_set_new_nocheck(obj, key,
-      typed_string_to_json(uni_str, W_STRING_UNICODE));
-}
-
-static inline void set_bytestring_prop(json_t *obj, const char *key,
-    const char *uni_str)
-{
-  json_object_set_new_nocheck(obj, key,
-      typed_string_to_json(uni_str, W_STRING_BYTE));
-}
-
-static inline void set_mixed_string_prop(json_t *obj, const char *key,
-    const char *uni_str)
-{
-  json_object_set_new_nocheck(obj, key,
-      typed_string_to_json(uni_str, W_STRING_MIXED));
-}
-
 int w_lstat(const char *path, struct stat *st, bool case_sensitive);
 
 void w_ioprio_set_low(void);

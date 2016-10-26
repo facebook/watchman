@@ -95,8 +95,7 @@ static void cmd_trigger_delete(
   }
 
   auto resp = make_response();
-  set_prop(resp, "deleted", json_boolean(res));
-  set_prop(resp, "trigger", jname);
+  resp.set({{"deleted", json_boolean(res)}, {"trigger", json_ref(jname)}});
   send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
@@ -120,7 +119,7 @@ static void cmd_trigger_list(
   auto arr = w_root_trigger_list_to_json(&lock);
   w_root_read_unlock(&lock, &unlocked);
 
-  set_prop(resp, "triggers", std::move(arr));
+  resp.set("triggers", std::move(arr));
   send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
@@ -363,7 +362,7 @@ static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
   }
 
   resp = make_response();
-  set_prop(resp, "triggerid", w_string_to_json(cmd->triggername));
+  resp.set("triggerid", w_string_to_json(cmd->triggername));
 
   {
     auto wlock = unlocked.root->triggers.wlock();
@@ -374,10 +373,14 @@ static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
       // Same definition: we don't and shouldn't touch things, so that we
       // preserve the associated trigger clock and don't cause the trigger
       // to re-run immediately
-      set_unicode_prop(resp, "disposition", "already_defined");
+      resp.set(
+          "disposition",
+          typed_string_to_json("already_defined", W_STRING_UNICODE));
       need_save = false;
     } else {
-      set_unicode_prop(resp, "disposition", old ? "replaced" : "created");
+      resp.set(
+          "disposition",
+          typed_string_to_json(old ? "replaced" : "created", W_STRING_UNICODE));
       old = std::move(cmd);
       need_save = true;
     }

@@ -197,18 +197,18 @@ static json_ref build_subscription_results(
   if (since_spec && since_spec->tag == w_cs_clock &&
       clock_id_string(since_spec->clock.root_number, since_spec->clock.ticks,
                       clockbuf, sizeof(clockbuf))) {
-    set_unicode_prop(response, "since", clockbuf);
+    response.set("since", typed_string_to_json(clockbuf, W_STRING_UNICODE));
   }
   if (clock_id_string(res.root_number, res.ticks, clockbuf, sizeof(clockbuf))) {
-    set_unicode_prop(response, "clock", clockbuf);
+    response.set("clock", typed_string_to_json(clockbuf, W_STRING_UNICODE));
   }
   update_subscription_ticks(sub, &res);
 
-  set_prop(response, "is_fresh_instance", json_boolean(res.is_fresh_instance));
-  set_prop(response, "files", std::move(file_list));
-  set_prop(response, "root", w_string_to_json(lock->root->root_path));
-  set_prop(response, "subscription", w_string_to_json(sub->name));
-  set_prop(response, "unilateral", json_true());
+  response.set({{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
+                {"files", std::move(file_list)},
+                {"root", w_string_to_json(lock->root->root_path)},
+                {"subscription", w_string_to_json(sub->name)},
+                {"unilateral", json_true()}});
 
   return response;
 }
@@ -252,10 +252,10 @@ void w_cancel_subscriptions_for_root(const w_root_t *root) {
                 sub->name.c_str(),
                 client->client.stm);
 
-            set_prop(response, "root", w_string_to_json(root->root_path));
-            set_prop(response, "subscription", w_string_to_json(sub->name));
-            set_prop(response, "unilateral", json_true());
-            set_prop(response, "canceled", json_true());
+            response.set({{"root", w_string_to_json(root->root_path)},
+                          {"subscription", w_string_to_json(sub->name)},
+                          {"unilateral", json_true()},
+                          {"canceled", json_true()}});
 
             if (!enqueue_response(&client->client, std::move(response), true)) {
               w_log(W_LOG_DBG, "failed to queue sub cancellation\n");
@@ -277,7 +277,6 @@ static void cmd_unsubscribe(
     const json_ref& args) {
   const char *name;
   bool deleted;
-  const json_t *jstr;
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
   struct unlocked_watchman_root unlocked;
@@ -286,7 +285,7 @@ static void cmd_unsubscribe(
     return;
   }
 
-  jstr = json_array_get(args, 2);
+  auto jstr = json_array_get(args, 2);
   name = json_string_value(jstr);
   if (!name) {
     send_error_response(&client->client,
@@ -302,8 +301,8 @@ static void cmd_unsubscribe(
   pthread_mutex_unlock(&w_client_lock);
 
   auto resp = make_response();
-  set_bytestring_prop(resp, "unsubscribe", name);
-  set_prop(resp, "deleted", json_boolean(deleted));
+  resp.set({{"unsubscribe", typed_string_to_json(name)},
+            {"deleted", json_boolean(deleted)}});
 
   send_and_dispose_response(&client->client, std::move(resp));
   w_root_delref(&unlocked);
@@ -421,7 +420,7 @@ static void cmd_subscribe(
   pthread_mutex_unlock(&w_client_lock);
 
   resp = make_response();
-  set_prop(resp, "subscribe", jname);
+  resp.set("subscribe", jname);
 
   w_root_read_lock(&unlocked, "initial subscription query", &lock);
 

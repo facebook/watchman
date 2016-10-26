@@ -93,8 +93,8 @@ static void cmd_watch_delete(
   }
 
   auto resp = make_response();
-  set_prop(resp, "watch-del", json_boolean(w_root_stop_watch(&unlocked)));
-  set_prop(resp, "root", w_string_to_json(unlocked.root->root_path));
+  resp.set({{"watch-del", json_boolean(w_root_stop_watch(&unlocked))},
+            {"root", w_string_to_json(unlocked.root->root_path)}});
   send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
@@ -105,7 +105,7 @@ W_CMD_REG("watch-del", cmd_watch_delete, CMD_DAEMON, w_cmd_realpath_root)
 static void cmd_watch_del_all(struct watchman_client* client, const json_ref&) {
   auto resp = make_response();
   auto roots = w_root_stop_watch_all();
-  set_prop(resp, "roots", std::move(roots));
+  resp.set("roots", std::move(roots));
   send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("watch-del-all", cmd_watch_del_all, CMD_DAEMON | CMD_POISON_IMMUNE,
@@ -116,7 +116,7 @@ W_CMD_REG("watch-del-all", cmd_watch_del_all, CMD_DAEMON | CMD_POISON_IMMUNE,
 static void cmd_watch_list(struct watchman_client* client, const json_ref&) {
   auto resp = make_response();
   auto root_paths = w_root_watch_list_to_json();
-  set_prop(resp, "roots", std::move(root_paths));
+  resp.set("roots", std::move(root_paths));
   send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("watch-list", cmd_watch_list, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL)
@@ -305,12 +305,15 @@ static void cmd_watch(struct watchman_client* client, const json_ref& args) {
 
   w_root_read_lock(&unlocked, "watch", &lock);
   if (lock.root->failure_reason) {
-    set_prop(resp, "error", w_string_to_json(lock.root->failure_reason));
+    resp.set("error", w_string_to_json(lock.root->failure_reason));
   } else if (lock.root->inner.cancelled) {
-    set_unicode_prop(resp, "error", "root was cancelled");
+    resp.set(
+        "error", typed_string_to_json("root was cancelled", W_STRING_UNICODE));
   } else {
-    set_prop(resp, "watch", w_string_to_json(lock.root->root_path));
-    set_unicode_prop(resp, "watcher", lock.root->inner.watcher->name);
+    resp.set({{"watch", w_string_to_json(lock.root->root_path)},
+              {"watcher",
+               typed_string_to_json(
+                   lock.root->inner.watcher->name, W_STRING_UNICODE)}});
   }
   add_root_warnings_to_response(resp, &lock);
   send_and_dispose_response(client, std::move(resp));
@@ -354,16 +357,20 @@ static void cmd_watch_project(
 
   w_root_read_lock(&unlocked, "watch-project", &lock);
   if (lock.root->failure_reason) {
-    set_prop(resp, "error", w_string_to_json(lock.root->failure_reason));
+    resp.set("error", w_string_to_json(lock.root->failure_reason));
   } else if (lock.root->inner.cancelled) {
-    set_unicode_prop(resp, "error", "root was cancelled");
+    resp.set(
+        "error", typed_string_to_json("root was cancelled", W_STRING_UNICODE));
   } else {
-    set_prop(resp, "watch", w_string_to_json(lock.root->root_path));
-    set_unicode_prop(resp, "watcher", lock.root->inner.watcher->name);
+    resp.set(
+        {{"watch", w_string_to_json(lock.root->root_path)},
+         {"watcher", typed_string_to_json(lock.root->inner.watcher->name)}});
   }
   add_root_warnings_to_response(resp, &lock);
   if (rel_path_from_watch) {
-    set_bytestring_prop(resp, "relative_path",rel_path_from_watch);
+    resp.set(
+        "relative_path",
+        typed_string_to_json(rel_path_from_watch, W_STRING_BYTE));
   }
   send_and_dispose_response(client, std::move(resp));
   w_root_read_unlock(&lock, &unlocked);

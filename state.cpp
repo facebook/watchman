@@ -152,7 +152,7 @@ static bool do_state_save(void)
     goto out;
   }
 
-  set_unicode_prop(state, "version", PACKAGE_VERSION);
+  state.set("version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE));
 
   /* now ask the different subsystems to fill out the state */
   if (!w_root_save_state(state)) {

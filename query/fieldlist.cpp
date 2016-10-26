@@ -185,7 +185,7 @@ w_ctor_fn_reg(register_field_capabilities)
 
       for (f = 0; f < field_list->num_fields; f++) {
         ele = field_list->fields[f]->make(&results[i]);
-        set_prop(value, field_list->fields[f]->name, std::move(ele));
+        value.set(field_list->fields[f]->name, std::move(ele));
       }
     }
     json_array_append_new(file_list, std::move(value));

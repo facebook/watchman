@@ -3,8 +3,8 @@
 
 #include "watchman.h"
 
-static bool query_caps(json_t *response, json_t *result,
-    json_t *arr, bool required) {
+static bool
+query_caps(json_ref& response, json_ref& result, json_t* arr, bool required) {
   size_t i;
   bool have_all = true;
 
@@ -18,13 +18,14 @@ static bool query_caps(json_t *response, json_t *result,
     if (!capname) {
       break;
     }
-    set_prop(result, capname, json_boolean(have));
+    result.set(capname, json_boolean(have));
     if (required && !have) {
       char *buf = NULL;
-      ignore_result(asprintf(&buf,
-            "client required capability `%s` is not supported by this server",
-            capname));
-      set_unicode_prop(response, "error", buf);
+      ignore_result(asprintf(
+          &buf,
+          "client required capability `%s` is not supported by this server",
+          capname));
+      response.set("error", typed_string_to_json(buf, W_STRING_UNICODE));
       w_log(W_LOG_ERR, "version: %s\n", buf);
       free(buf);
 
@@ -42,7 +43,8 @@ static void cmd_version(struct watchman_client* client, const json_ref& args) {
   auto resp = make_response();
 
 #ifdef WATCHMAN_BUILD_INFO
-  set_unicode_prop(resp, "buildinfo", WATCHMAN_BUILD_INFO);
+  resp.set(
+      "buildinfo", typed_string_to_json(WATCHMAN_BUILD_INFO, W_STRING_UNICODE));
 #endif
 
   /* ["version"]
@@ -72,7 +74,7 @@ static void cmd_version(struct watchman_client* client, const json_ref& args) {
       query_caps(resp, cap_res, req_cap, true);
     }
 
-    set_prop(resp, "capabilities", std::move(cap_res));
+    resp.set("capabilities", std::move(cap_res));
   }
 
   send_and_dispose_response(client, std::move(resp));
@@ -87,21 +89,17 @@ static void cmd_list_capabilities(
   auto resp = make_response();
   unused_parameter(args);
 
-  set_prop(resp, "capabilities", w_capability_get_list());
+  resp.set("capabilities", w_capability_get_list());
   send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("list-capabilities", cmd_list_capabilities,
           CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER, NULL)
 
 /* get-sockname */
-static void cmd_get_sockname(
-    struct watchman_client* client,
-    const json_ref& args) {
+static void cmd_get_sockname(struct watchman_client* client, const json_ref&) {
   auto resp = make_response();
 
-  unused_parameter(args);
-
-  set_bytestring_prop(resp, "sockname", get_sock_name());
+  resp.set("sockname", typed_string_to_json(get_sock_name(), W_STRING_BYTE));
 
   send_and_dispose_response(client, std::move(resp));
 }
@@ -128,11 +126,10 @@ static void cmd_get_config(
   config = unlocked.root->config_file;
 
   if (!config) {
-    // set_prop will own this
     config = json_object();
   }
 
-  set_prop(resp, "config", std::move(config));
+  resp.set("config", std::move(config));
   send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }

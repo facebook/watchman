@@ -146,9 +146,9 @@ static void cmd_state_enter(
   // state-enter command.  We do this before we send the subscription
   // PDUs in case CLIENT has active subscriptions for this root
   response = make_response();
-  set_prop(response, "root", w_string_to_json(unlocked.root->root_path));
-  set_prop(response, "state-enter", w_string_to_json(parsed.name));
-  set_unicode_prop(response, "clock", clockbuf);
+  response.set({{"root", w_string_to_json(unlocked.root->root_path)},
+                {"state-enter", w_string_to_json(parsed.name)},
+                {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)}});
   send_and_dispose_response(&client->client, std::move(response));
 
   // Now find all the clients with subscriptions and send them
@@ -167,14 +167,13 @@ static void cmd_state_enter(
       }
 
       auto pdu = make_response();
-      set_prop(pdu, "root", w_string_to_json(unlocked.root->root_path));
-      set_prop(pdu, "subscription", w_string_to_json(sub->name));
-      set_prop(pdu, "unilateral", json_true());
-      set_unicode_prop(pdu, "clock", clockbuf);
-      set_prop(pdu, "state-enter", w_string_to_json(parsed.name));
+      pdu.set({{"root", w_string_to_json(unlocked.root->root_path)},
+               {"subscription", w_string_to_json(sub->name)},
+               {"unilateral", json_true()},
+               {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
+               {"state-enter", w_string_to_json(parsed.name)}});
       if (parsed.metadata) {
-        // set_prop would steal our ref, we don't want that
-        json_object_set_nocheck(pdu, "metadata", parsed.metadata);
+        pdu.set("metadata", json_ref(parsed.metadata));
       }
       enqueue_response(&subclient->client, std::move(pdu), true);
 
@@ -222,17 +221,16 @@ static void leave_state(struct watchman_user_client *client,
         }
 
         auto pdu = make_response();
-        set_prop(pdu, "root", w_string_to_json(unlocked.root->root_path));
-        set_prop(pdu, "subscription", w_string_to_json(sub->name));
-        set_prop(pdu, "unilateral", json_true());
-        set_unicode_prop(pdu, "clock", clockbuf);
-        set_prop(pdu, "state-leave", w_string_to_json(assertion->name));
+        pdu.set({{"root", w_string_to_json(unlocked.root->root_path)},
+                 {"subscription", w_string_to_json(sub->name)},
+                 {"unilateral", json_true()},
+                 {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
+                 {"state-leave", w_string_to_json(assertion->name)}});
         if (metadata) {
-          // set_prop would steal our ref, we don't want that
-          json_object_set_nocheck(pdu, "metadata", metadata);
+          pdu.set("metadata", json_ref(metadata));
         }
         if (abandoned) {
-          set_prop(pdu, "abandoned", json_true());
+          pdu.set("abandoned", json_true());
         }
         enqueue_response(&subclient->client, std::move(pdu), true);
 
@@ -352,9 +350,9 @@ static void cmd_state_leave(
   // state-leave command.  We do this before we send the subscription
   // PDUs in case CLIENT has active subscriptions for this root
   response = make_response();
-  set_prop(response, "root", w_string_to_json(unlocked.root->root_path));
-  set_prop(response, "state-leave", w_string_to_json(parsed.name));
-  set_unicode_prop(response, "clock", clockbuf);
+  response.set({{"root", w_string_to_json(unlocked.root->root_path)},
+                {"state-leave", w_string_to_json(parsed.name)},
+                {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)}});
   send_and_dispose_response(&client->client, std::move(response));
 
   // Notify and exit the state

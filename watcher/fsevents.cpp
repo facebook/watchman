@@ -774,7 +774,7 @@ static void cmd_debug_fsevents_inject_drop(
   pthread_mutex_unlock(&watcher->fse_mtx);
 
   auto resp = make_response();
-  set_prop(resp, "last_good", json_integer(last_good));
+  resp.set("last_good", json_integer(last_good));
   send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
