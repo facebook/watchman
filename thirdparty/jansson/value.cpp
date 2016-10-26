@@ -322,6 +322,13 @@ json_array_t::json_array_t(size_t sizeHint) : json(JSON_ARRAY), visited(0) {
 json_array_t::json_array_t(std::initializer_list<json_ref> values)
     : json(JSON_ARRAY), table(values), visited(0) {}
 
+const std::vector<json_ref>& json_ref::array() const {
+  if (!json_is_array(ref_)) {
+    throw std::domain_error("json_ref::array() called for non-array");
+  }
+  return json_to_array(ref_)->table;
+}
+
 json_ref json_array_of_size(size_t nelems) {
   auto array = new json_array_t(nelems);
   return json_ref(&array->json, false);

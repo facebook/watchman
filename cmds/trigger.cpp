@@ -71,7 +71,7 @@ static void cmd_trigger_delete(
     w_root_delref(&unlocked);
     return;
   }
-  auto jname = json_array_get(args, 2);
+  auto jname = args.get(2);
   if (!json_is_string(jname)) {
     send_error_response(client, "expected 2nd parameter to be trigger name");
     w_root_delref(&unlocked);
@@ -134,7 +134,7 @@ static json_ref build_legacy_trigger(
   uint32_t i;
   size_t n;
 
-  auto trig = json_object({{"name", json_array_get(args, 2)},
+  auto trig = json_object({{"name", args.get(2)},
                            {"append_files", json_true()},
                            {"stdin",
                             json_array({typed_string_to_json("name"),
@@ -154,7 +154,7 @@ static json_ref build_legacy_trigger(
 
   json_object_set(trig, "expression", expr.get_default("expression"));
 
-  if (next_arg >= json_array_size(args)) {
+  if (next_arg >= args.array().size()) {
     send_error_response(client, "no command was specified");
     return nullptr;
   }
@@ -162,7 +162,7 @@ static json_ref build_legacy_trigger(
   n = json_array_size(args) - next_arg;
   auto command = json_array_of_size(n);
   for (i = 0; i < n; i++) {
-    auto ele = json_array_get(args, i + next_arg);
+    auto ele = args.get(i + next_arg);
     if (!json_is_string(ele)) {
       send_error_response(client, "expected argument %d to be a string", i);
       return nullptr;
@@ -346,7 +346,7 @@ static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
     goto done;
   }
 
-  trig = json_array_get(args, 2);
+  trig = args.get(2);
   if (json_is_string(trig)) {
     trig = build_legacy_trigger(unlocked.root, client, args);
     if (!trig) {

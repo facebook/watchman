@@ -13,6 +13,7 @@
 
 #include "jansson_config.h"
 #include "watchman_string.h" // Needed for w_string_t
+#include <vector>
 
 /* version */
 
@@ -113,6 +114,19 @@ class json_ref {
     for (auto& p : pairs) {
       set(p.first, std::move(p.second));
     }
+  }
+
+  /** Returns a reference to the underlying array.
+   * Throws domain_error if this is not an array.
+   * This is useful both for iterating the array contents
+   * and for returning the size of the array. */
+  const std::vector<json_ref>& array() const;
+
+  /** Returns a reference to the array value at the specified index.
+   * Throws out_of_range or domain_error if the index is bad or if
+   * this is not an array */
+  inline const json_ref& get(std::size_t idx) const {
+    return array().at(idx);
   }
 };
 
