@@ -51,14 +51,11 @@ struct InotifyWatcher : public Watcher {
 
   struct maps {
     /* map of active watch descriptor to name of the corresponding dir */
-    w_ht_t* wd_to_name{nullptr};
+    std::unordered_map<int, w_string> wd_to_name;
     /* map of inotify cookie to corresponding name */
     w_ht_t* move_map{nullptr};
 
     ~maps() {
-      if (wd_to_name) {
-        w_ht_free(wd_to_name);
-      }
       if (move_map) {
         w_ht_free(move_map);
       }
@@ -178,9 +175,8 @@ bool InotifyWatcher::initNew(w_root_t* root, char** errmsg) {
 
   {
     auto maps = watcher->maps.wlock();
-    maps->wd_to_name = w_ht_new(
-        root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS),
-        &w_ht_string_val_funcs);
+    maps->wd_to_name.reserve(
+        root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS));
     maps->move_map = w_ht_new(2, &move_hash_funcs);
   }
 
@@ -237,7 +233,7 @@ struct watchman_dir_handle* InotifyWatcher::startWatchDir(
   // record mapping
   {
     auto wlock = maps.wlock();
-    w_ht_replace(wlock->wd_to_name, newwd, w_ht_ptr_val(dir_name));
+    wlock->wd_to_name[newwd] = dir_name;
   }
   w_log(W_LOG_DBG, "adding %d -> %s mapping\n", newwd, path);
 
@@ -266,8 +262,10 @@ void InotifyWatcher::process_inotify_event(
 
     {
       auto rlock = maps.rlock();
-      dir_name =
-          (w_string_t*)w_ht_val_ptr(w_ht_get(rlock->wd_to_name, ine->wd));
+      auto it = rlock->wd_to_name.find(ine->wd);
+      if (it != rlock->wd_to_name.end()) {
+        dir_name = it->second;
+      }
     }
 
     if (dir_name) {
@@ -332,7 +330,7 @@ void InotifyWatcher::process_inotify_event(
           }
         } else {
           w_log(W_LOG_DBG, "moved %s -> %s\n", old->name->buf, name->buf);
-          w_ht_replace(wlock->wd_to_name, wd, w_ht_ptr_val(name));
+          wlock->wd_to_name[wd] = name;
         }
       } else {
         w_log(
@@ -386,7 +384,7 @@ void InotifyWatcher::process_inotify_event(
             int(dir_name.size()),
             dir_name.data());
         auto wlock = maps.wlock();
-        w_ht_del(wlock->wd_to_name, ine->wd);
+        wlock->wd_to_name.erase(ine->wd);
       }
 
     } else if ((ine->mask & (IN_MOVE_SELF|IN_IGNORED)) == 0) {
