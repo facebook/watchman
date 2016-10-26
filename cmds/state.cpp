@@ -156,10 +156,9 @@ static void cmd_state_enter(
   pthread_mutex_lock(&w_client_lock);
   if (w_ht_first(clients, &iter)) do {
     auto subclient = (watchman_user_client*)w_ht_val_ptr(iter.value);
-    w_ht_iter_t citer;
 
-    if (w_ht_first(subclient->subscriptions, &citer)) do {
-      auto sub = (watchman_client_subscription*)w_ht_val_ptr(citer.value);
+    for (auto& citer : subclient->subscriptions) {
+      auto sub = citer.second.get();
 
       if (sub->root != unlocked.root) {
         w_log(W_LOG_DBG, "root doesn't match, skipping\n");
@@ -176,8 +175,7 @@ static void cmd_state_enter(
         pdu.set("metadata", json_ref(parsed.metadata));
       }
       enqueue_response(&subclient->client, std::move(pdu), true);
-
-    } while (w_ht_next(subclient->subscriptions, &citer));
+    }
   } while (w_ht_next(clients, &iter));
   pthread_mutex_unlock(&w_client_lock);
 
@@ -208,33 +206,29 @@ static void leave_state(struct watchman_user_client *client,
   pthread_mutex_lock(&w_client_lock);
   if (w_ht_first(clients, &iter)) do {
     auto subclient = (watchman_user_client*)w_ht_val_ptr(iter.value);
-    w_ht_iter_t citer;
 
-    if (subclient->subscriptions &&
-        w_ht_first(subclient->subscriptions, &citer))
-      do {
-        auto sub = (watchman_client_subscription*)w_ht_val_ptr(citer.value);
+    for (auto& citer : subclient->subscriptions) {
+      auto sub = citer.second.get();
 
-        if (sub->root != unlocked.root) {
-          w_log(W_LOG_DBG, "root doesn't match, skipping\n");
-          continue;
-        }
+      if (sub->root != unlocked.root) {
+        w_log(W_LOG_DBG, "root doesn't match, skipping\n");
+        continue;
+      }
 
-        auto pdu = make_response();
-        pdu.set({{"root", w_string_to_json(unlocked.root->root_path)},
-                 {"subscription", w_string_to_json(sub->name)},
-                 {"unilateral", json_true()},
-                 {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
-                 {"state-leave", w_string_to_json(assertion->name)}});
-        if (metadata) {
-          pdu.set("metadata", json_ref(metadata));
-        }
-        if (abandoned) {
-          pdu.set("abandoned", json_true());
-        }
-        enqueue_response(&subclient->client, std::move(pdu), true);
-
-      } while (w_ht_next(subclient->subscriptions, &citer));
+      auto pdu = make_response();
+      pdu.set({{"root", w_string_to_json(unlocked.root->root_path)},
+               {"subscription", w_string_to_json(sub->name)},
+               {"unilateral", json_true()},
+               {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
+               {"state-leave", w_string_to_json(assertion->name)}});
+      if (metadata) {
+        pdu.set("metadata", json_ref(metadata));
+      }
+      if (abandoned) {
+        pdu.set("abandoned", json_true());
+      }
+      enqueue_response(&subclient->client, std::move(pdu), true);
+    }
   } while (w_ht_next(clients, &iter));
   pthread_mutex_unlock(&w_client_lock);
 

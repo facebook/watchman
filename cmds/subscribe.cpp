@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "make_unique.h"
 
 static void w_run_subscription_rules(
     struct watchman_user_client* client,
@@ -28,10 +29,9 @@ void process_subscriptions(struct read_locked_watchman_root* lock) {
 
   do {
     auto client = (watchman_user_client*)w_ht_val_ptr(iter.value);
-    w_ht_iter_t citer;
 
-    if (w_ht_first(client->subscriptions, &citer)) do {
-      auto sub = (watchman_client_subscription*)w_ht_val_ptr(citer.value);
+    for (auto& citer : client->subscriptions) {
+      auto sub = citer.second.get();
       bool defer = false;
       bool drop = false;
       w_string policy_name;
@@ -123,7 +123,7 @@ void process_subscriptions(struct read_locked_watchman_root* lock) {
       w_run_subscription_rules(client, sub, lock);
       sub->last_sub_tick = root->inner.view->getMostRecentTickValue();
 
-    } while (w_ht_next(client->subscriptions, &citer));
+    }
 
   } while (w_ht_next(clients, &iter));
 done:
@@ -236,34 +236,35 @@ void w_cancel_subscriptions_for_root(const w_root_t *root) {
   if (w_ht_first(clients, &iter)) {
     do {
       auto client = (watchman_user_client*)w_ht_val_ptr(iter.value);
-      w_ht_iter_t citer;
 
-      if (w_ht_first(client->subscriptions, &citer)) {
-        do {
-          auto sub = (watchman_client_subscription*)w_ht_val_ptr(citer.value);
+      // Manually iterate since we will be erasing elements as we go
+      auto citer = client->subscriptions.begin();
+      while (citer != client->subscriptions.end()) {
+        auto sub = citer->second.get();
 
-          if (sub->root == root) {
-            auto response = make_response();
+        if (sub->root == root) {
+          auto response = make_response();
 
-            w_log(
-                W_LOG_ERR,
-                "Cancel subscription %s for client:stm=%p due to "
-                "root cancellation\n",
-                sub->name.c_str(),
-                client->client.stm);
+          w_log(
+              W_LOG_ERR,
+              "Cancel subscription %s for client:stm=%p due to "
+              "root cancellation\n",
+              sub->name.c_str(),
+              client->client.stm);
 
-            response.set({{"root", w_string_to_json(root->root_path)},
-                          {"subscription", w_string_to_json(sub->name)},
-                          {"unilateral", json_true()},
-                          {"canceled", json_true()}});
+          response.set({{"root", w_string_to_json(root->root_path)},
+                        {"subscription", w_string_to_json(sub->name)},
+                        {"unilateral", json_true()},
+                        {"canceled", json_true()}});
 
-            if (!enqueue_response(&client->client, std::move(response), true)) {
-              w_log(W_LOG_DBG, "failed to queue sub cancellation\n");
-            }
-
-            w_ht_iter_del(client->subscriptions, &citer);
+          if (!enqueue_response(&client->client, std::move(response), true)) {
+            w_log(W_LOG_DBG, "failed to queue sub cancellation\n");
           }
-        } while (w_ht_next(client->subscriptions, &citer));
+
+          citer = client->subscriptions.erase(citer);
+        } else {
+          ++citer;
+        }
       }
     } while (w_ht_next(clients, &iter));
   }
@@ -276,7 +277,7 @@ static void cmd_unsubscribe(
     struct watchman_client* clientbase,
     const json_ref& args) {
   const char *name;
-  bool deleted;
+  bool deleted{false};
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
   struct unlocked_watchman_root unlocked;
@@ -297,7 +298,11 @@ static void cmd_unsubscribe(
   auto sname = json_to_w_string(jstr);
 
   pthread_mutex_lock(&w_client_lock);
-  deleted = w_ht_del(client->subscriptions, w_ht_ptr_val(sname));
+  auto it = client->subscriptions.find(sname);
+  if (it != client->subscriptions.end()) {
+    client->subscriptions.erase(it);
+    deleted = true;
+  }
   pthread_mutex_unlock(&w_client_lock);
 
   auto resp = make_response();
@@ -315,7 +320,8 @@ W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
 static void cmd_subscribe(
     struct watchman_client* clientbase,
     const json_ref& args) {
-  struct watchman_client_subscription *sub;
+  std::unique_ptr<watchman_client_subscription> sub;
+  watchman_client_subscription* subPtr{nullptr};
   json_ref resp, initial_subscription_results;
   json_t *jfield_list;
   json_t *jname;
@@ -377,7 +383,7 @@ static void cmd_subscribe(
     goto done;
   }
 
-  sub = (watchman_client_subscription*)calloc(1, sizeof(*sub));
+  sub = watchman::make_unique<watchman_client_subscription>();
   if (!sub) {
     send_error_response(&client->client, "no memory!");
     goto done;
@@ -414,9 +420,14 @@ static void cmd_subscribe(
   memcpy(&sub->field_list, &field_list, sizeof(field_list));
   sub->root = unlocked.root;
 
+  // This locking is to ensure that we publish a subscription when
+  // it is fully constructed.  No other threads can delete the subscription;
+  // it is owned by the client thread which is calling this function right
+  // now, so it is safe to hold on to the raw pointer while we do the tail
+  // processing in the remainder of the function below.
+  subPtr = sub.get();
   pthread_mutex_lock(&w_client_lock);
-  w_ht_replace(client->subscriptions, w_ht_ptr_val(sub->name),
-      w_ht_ptr_val(sub));
+  client->subscriptions[sub->name] = std::move(sub);
   pthread_mutex_unlock(&w_client_lock);
 
   resp = make_response();
@@ -426,7 +437,7 @@ static void cmd_subscribe(
 
   add_root_warnings_to_response(resp, &lock);
   annotate_with_clock(&lock, resp);
-  initial_subscription_results = build_subscription_results(sub, &lock);
+  initial_subscription_results = build_subscription_results(subPtr, &lock);
   w_root_read_unlock(&lock, &unlocked);
 
   send_and_dispose_response(&client->client, std::move(resp));

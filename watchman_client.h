@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <unordered_map>
 
 struct watchman_client_response {
   struct watchman_client_response *next;
@@ -52,6 +53,8 @@ struct watchman_client_subscription {
   struct w_query_field_list field_list;
   // map of statename => bool.  If true, policy is drop, else defer
   w_ht_t *drop_or_defer;
+
+  ~watchman_client_subscription();
 };
 
 // Represents the server side session maintained for a client of
@@ -60,7 +63,8 @@ struct watchman_user_client {
   struct watchman_client client;
 
   /* map of subscription name => struct watchman_client_subscription */
-  w_ht_t *subscriptions;
+  std::unordered_map<w_string, std::unique_ptr<watchman_client_subscription>>
+      subscriptions;
 
   /* map of unique id => watchman_client_state_assertion */
   w_ht_t *states;
