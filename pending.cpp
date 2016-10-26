@@ -64,8 +64,7 @@ static inline void link_head(struct watchman_pending_collection *coll,
 
 /* Free a pending_fs node */
 void w_pending_fs_free(struct watchman_pending_fs *p) {
-  w_string_delref(p->path);
-  free(p);
+  delete p;
 }
 
 /* initialize a pending_coll */
@@ -176,11 +175,16 @@ static int delete_kids(void *data, const unsigned char *key, uint32_t key_len,
       is_path_prefix(
           (const char*)key, key_len, ctx->root->buf, ctx->root->len) &&
       !watchman::CookieSync::isPossiblyACookie(p->path)) {
-    w_log(W_LOG_DBG,
-          "delete_kids: removing (%d) %.*s from pending because it is "
-          "obsoleted by (%d) %.*s\n",
-          p->path->len, p->path->len, p->path->buf, ctx->root->len,
-          ctx->root->len, ctx->root->buf);
+    w_log(
+        W_LOG_DBG,
+        "delete_kids: removing (%d) %.*s from pending because it is "
+        "obsoleted by (%d) %.*s\n",
+        int(p->path.size()),
+        int(p->path.size()),
+        p->path.data(),
+        ctx->root->len,
+        ctx->root->len,
+        ctx->root->buf);
 
     // Unlink the child from the pending index.
     unlink_item(ctx->coll, p);
@@ -241,40 +245,55 @@ static inline void consolidate_item(struct watchman_pending_collection *coll,
 // filesystem than the input path; if there is, and it is recursive,
 // return true to indicate that there is no need to track this new path
 // due to the already scheduled higher level path.
-static bool
-is_obsoleted_by_containing_dir(struct watchman_pending_collection *coll,
-                               w_string_t *path) {
-  art_leaf *leaf =
-      art_longest_match(&coll->tree, (const uint8_t *)path->buf, path->len);
+static bool is_obsoleted_by_containing_dir(
+    struct watchman_pending_collection* coll,
+    const w_string& path) {
+  art_leaf* leaf =
+      art_longest_match(&coll->tree, (const uint8_t*)path.data(), path.size());
   if (!leaf) {
     return false;
   }
   auto p = (watchman_pending_fs*)leaf->value;
 
   if ((p->flags & W_PENDING_RECURSIVE) &&
-      is_path_prefix(path->buf, path->len, (const char*)leaf->key, leaf->key_len)) {
+      is_path_prefix(
+          path.data(), path.size(), (const char*)leaf->key, leaf->key_len)) {
     if (watchman::CookieSync::isPossiblyACookie(path)) {
       return false;
     }
 
     // Yes: the pre-existing entry higher up in the tree obsoletes this
     // one that we would add now.
-    w_log(W_LOG_DBG, "is_obsoleted: SKIP %.*s is obsoleted by %.*s\n",
-        path->len, path->buf, p->path->len, p->path->buf);
+    w_log(
+        W_LOG_DBG,
+        "is_obsoleted: SKIP %.*s is obsoleted by %.*s\n",
+        int(path.size()),
+        path.data(),
+        int(p->path.size()),
+        p->path.data());
     return true;
   }
   return false;
 }
 
+watchman_pending_fs::watchman_pending_fs(
+    const w_string& path,
+    const struct timeval& now,
+    int flags)
+    : path(path), now(now), flags(flags) {}
+
 /* add a pending entry.  Will consolidate an existing entry with the
  * same name.  Returns false if an allocation fails.
  * The caller must own the collection lock. */
-bool w_pending_coll_add(struct watchman_pending_collection *coll,
-    w_string_t *path, struct timeval now, int flags) {
+bool w_pending_coll_add(
+    struct watchman_pending_collection* coll,
+    const w_string& path,
+    struct timeval now,
+    int flags) {
   char flags_label[128];
 
   auto p = (watchman_pending_fs*)art_search(
-      &coll->tree, (const unsigned char*)path->buf, path->len);
+      &coll->tree, (const unsigned char*)path.data(), path.size());
   if (p) {
     /* Entry already exists: consolidate */
     consolidate_item(coll, p, flags);
@@ -287,23 +306,20 @@ bool w_pending_coll_add(struct watchman_pending_collection *coll,
   }
 
   // Try to allocate the new node before we prune any children.
-  p = (watchman_pending_fs*)calloc(1, sizeof(*p));
-  if (!p) {
-    return false;
-  }
+  p = new watchman_pending_fs(path, now, flags);
 
   maybe_prune_obsoleted_children(coll, path, flags);
 
   w_expand_flags(kflags, flags, flags_label, sizeof(flags_label));
-  w_log(W_LOG_DBG, "add_pending: %.*s %s\n", path->len, path->buf, flags_label);
-
-  p->flags = flags;
-  p->now = now;
-  p->path = path;
-  w_string_addref(path);
+  w_log(
+      W_LOG_DBG,
+      "add_pending: %.*s %s\n",
+      int(path.size()),
+      path.data(),
+      flags_label);
 
   link_head(coll, p);
-  art_insert(&coll->tree, (const uint8_t *)path->buf, path->len, p);
+  art_insert(&coll->tree, (const uint8_t*)path.data(), path.size(), p);
 
   return true;
 }
@@ -334,7 +350,7 @@ void w_pending_coll_append(struct watchman_pending_collection *target,
 
   while ((p = w_pending_coll_pop(src)) != NULL) {
     target_p = (watchman_pending_fs*)art_search(
-        &target->tree, (const uint8_t*)p->path->buf, p->path->len);
+        &target->tree, (const uint8_t*)p->path.data(), p->path.size());
     if (target_p) {
       /* Entry already exists: consolidate */
       consolidate_item(target, target_p, p->flags);
@@ -349,7 +365,8 @@ void w_pending_coll_append(struct watchman_pending_collection *target,
     maybe_prune_obsoleted_children(target, p->path, p->flags);
 
     link_head(target, p);
-    art_insert(&target->tree, (const uint8_t *)p->path->buf, p->path->len, p);
+    art_insert(
+        &target->tree, (const uint8_t*)p->path.data(), p->path.size(), p);
   }
 
   // Empty the src tree and reset it

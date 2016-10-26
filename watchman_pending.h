@@ -7,10 +7,15 @@
 #define W_PENDING_CRAWL_ONLY 4
 
 struct watchman_pending_fs {
-  struct watchman_pending_fs *next, *prev;
-  w_string_t *path;
+  struct watchman_pending_fs *next{nullptr}, *prev{nullptr};
+  w_string path;
   struct timeval now;
   int flags;
+
+  watchman_pending_fs(
+      const w_string& path,
+      const struct timeval& now,
+      int flags);
 };
 
 struct watchman_pending_collection {
@@ -28,8 +33,11 @@ struct watchman_pending_collection {
 void w_pending_coll_drain(struct watchman_pending_collection *coll);
 void w_pending_coll_lock(struct watchman_pending_collection *coll);
 void w_pending_coll_unlock(struct watchman_pending_collection *coll);
-bool w_pending_coll_add(struct watchman_pending_collection *coll,
-    w_string_t *path, struct timeval now, int flags);
+bool w_pending_coll_add(
+    struct watchman_pending_collection* coll,
+    const w_string& path,
+    struct timeval now,
+    int flags);
 bool w_pending_coll_add_rel(struct watchman_pending_collection *coll,
     struct watchman_dir *dir, const char *name,
     struct timeval now, int flags);

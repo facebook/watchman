@@ -3,40 +3,30 @@
 
 #include "watchman.h"
 #include "thirdparty/tap.h"
-#include "thirdparty/libart/src/art.h"
 
-struct pending_list {
-  struct watchman_pending_fs *pending, *avail, *end;
-};
-
-struct watchman_pending_fs *next_pending(struct pending_list *list) {
-  if (list->avail == list->end) {
-    fail("make list alloc size bigger (used %u entries)",
-         list->avail - list->pending);
-    abort();
-  }
-
-  return list->avail++;
-}
-
-static void build_list(struct pending_list *list, w_string_t *parent_name,
-                       size_t depth, size_t num_files, size_t num_dirs) {
+static void build_list(
+    std::vector<watchman_pending_fs>* list,
+    struct timeval* now,
+    const w_string& parent_name,
+    size_t depth,
+    size_t num_files,
+    size_t num_dirs) {
   size_t i;
   for (i = 0; i < num_files; i++) {
-    struct watchman_pending_fs *item = next_pending(list);
-    item->path = w_string_make_printf("%.*s/file%d", parent_name->len,
-                                      parent_name->buf, i);
-    item->flags = W_PENDING_VIA_NOTIFY;
+    list->emplace_back(
+        w_string::printf("%s/file%d", parent_name.c_str(), i),
+        *now,
+        W_PENDING_VIA_NOTIFY);
   }
 
   for (i = 0; i < num_dirs; i++) {
-    struct watchman_pending_fs *item = next_pending(list);
-    item->path = w_string_make_printf("%.*s/dir%d", parent_name->len,
-                                      parent_name->buf, i);
-    item->flags = W_PENDING_RECURSIVE;
+    list->emplace_back(
+        w_string::printf("%s/dir%d", parent_name.c_str(), i),
+        *now,
+        W_PENDING_RECURSIVE);
 
     if (depth > 0) {
-      build_list(list, item->path, depth - 1, num_files, num_dirs);
+      build_list(list, now, list->back().path, depth - 1, num_files, num_dirs);
     }
   }
 }
@@ -65,29 +55,32 @@ static void bench_pending(void) {
   const size_t tree_depth = 7;
   const size_t num_files_per_dir = 8;
   const size_t num_dirs_per_dir = 4;
-  w_string_t *root_name = w_string_new_typed("/some/path", W_STRING_BYTE);
-  struct pending_list list;
+  w_string root_name("/some/path", W_STRING_BYTE);
+  std::vector<watchman_pending_fs> list;
   const size_t alloc_size = 280000;
   struct timeval start, end;
 
-  list.pending = (watchman_pending_fs*)calloc(
-      alloc_size, sizeof(struct watchman_pending_fs));
-  list.avail = list.pending;
-  list.end = list.pending + alloc_size;
+  list.reserve(alloc_size);
 
   // Build a list ordered from the root (top) down to the leaves.
-  build_list(&list, root_name, tree_depth, num_files_per_dir, num_dirs_per_dir);
-  diag("built list with %u items", list.avail - list.pending);
+  gettimeofday(&start, nullptr);
+  build_list(
+      &list,
+      &start,
+      root_name,
+      tree_depth,
+      num_files_per_dir,
+      num_dirs_per_dir);
+  diag("built list with %u items", list.size());
 
   // Benchmark insertion in top-down order.
   {
     struct watchman_pending_collection coll;
-    struct watchman_pending_fs *item;
     size_t drained = 0;
 
     gettimeofday(&start, NULL);
-    for (item = list.pending; item < list.avail; item++) {
-      w_pending_coll_add(&coll, item->path, item->now, item->flags);
+    for (auto& item : list) {
+      w_pending_coll_add(&coll, item.path, item.now, item.flags);
     }
     drained = process_items(&coll);
 
@@ -101,12 +94,12 @@ static void bench_pending(void) {
   // a recursive delete of a filesystem tree.
   {
     struct watchman_pending_collection coll;
-    struct watchman_pending_fs *item;
     size_t drained = 0;
 
     gettimeofday(&start, NULL);
-    for (item = list.avail - 1; item >= list.pending; item--) {
-      w_pending_coll_add(&coll, item->path, item->now, item->flags);
+    for (auto it = list.rbegin(); it != list.rend(); ++it) {
+      auto& item = *it;
+      w_pending_coll_add(&coll, item.path, item.now, item.flags);
     }
 
     drained = process_items(&coll);
@@ -114,15 +107,6 @@ static void bench_pending(void) {
     gettimeofday(&end, NULL);
     diag("took %.3fs to reverse insert %u items into pending coll",
          w_timeval_diff(start, end), drained);
-  }
-
-  {
-    struct watchman_pending_fs *item;
-    for (item = list.pending; item < list.avail; item++) {
-      w_string_delref(item->path);
-    }
-    free(list.pending);
-    w_string_delref(root_name);
   }
 }
 
