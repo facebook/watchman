@@ -51,9 +51,7 @@ struct watchman_client_subscription {
   uint32_t last_sub_tick;
   struct w_query_field_list field_list;
   // map of statename => bool.  If true, policy is drop, else defer
-  w_ht_t *drop_or_defer;
-
-  ~watchman_client_subscription();
+  std::unordered_map<w_string, bool> drop_or_defer;
 };
 
 // Represents the server side session maintained for a client of

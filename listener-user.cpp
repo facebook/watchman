@@ -115,12 +115,6 @@ bool resolve_root_or_err(struct watchman_client *client, json_t *args,
   return true;
 }
 
-watchman_client_subscription::~watchman_client_subscription() {
-  if (drop_or_defer) {
-    w_ht_free(drop_or_defer);
-  }
-}
-
 watchman_user_client::~watchman_user_client() {
   /* cancel subscriptions */
   subscriptions.clear();

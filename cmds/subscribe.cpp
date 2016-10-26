@@ -53,37 +53,35 @@ void process_subscriptions(struct read_locked_watchman_root* lock) {
 
       {
         auto asserted_states = root->asserted_states.rlock();
-        if (!asserted_states->empty() && sub->drop_or_defer) {
-          w_ht_iter_t policy_iter;
+        if (!asserted_states->empty() && !sub->drop_or_defer.empty()) {
           policy_name.reset();
 
           // There are 1 or more states asserted and this subscription
           // has some policy for states.  Figure out what we should do.
-          if (w_ht_first(sub->drop_or_defer, &policy_iter))
-            do {
-              auto name = (w_string_t*)w_ht_val_ptr(policy_iter.key);
-              bool policy_is_drop = policy_iter.value;
+          for (auto& policy_iter : sub->drop_or_defer) {
+            auto name = policy_iter.first;
+            bool policy_is_drop = policy_iter.second;
 
-              if (asserted_states->find(name) == asserted_states->end()) {
-                continue;
-              }
+            if (asserted_states->find(name) == asserted_states->end()) {
+              continue;
+            }
 
-              if (!defer) {
-                // This policy is active
-                defer = true;
-                policy_name = name;
-              }
+            if (!defer) {
+              // This policy is active
+              defer = true;
+              policy_name = name;
+            }
 
-              if (policy_is_drop) {
-                drop = true;
+            if (policy_is_drop) {
+              drop = true;
 
-                // If we're dropping, we don't need to look at any
-                // other policies
-                policy_name = name;
-                break;
-              }
-              // Otherwise keep looking until we find a drop
-            } while (w_ht_next(sub->drop_or_defer, &policy_iter));
+              // If we're dropping, we don't need to look at any
+              // other policies
+              policy_name = name;
+              break;
+            }
+            // Otherwise keep looking until we find a drop
+          }
         }
       }
 
@@ -385,21 +383,16 @@ static void cmd_subscribe(
   if (drop_list || defer_list) {
     size_t i;
 
-    sub->drop_or_defer = w_ht_new(2, &w_ht_string_funcs);
     if (defer_list) {
       for (i = 0; i < json_array_size(defer_list); i++) {
-        w_ht_replace(
-            sub->drop_or_defer,
-            w_ht_ptr_val(json_to_w_string(json_array_get(defer_list, i))),
-            false);
+        sub->drop_or_defer[json_to_w_string(json_array_get(defer_list, i))] =
+            false;
       }
     }
     if (drop_list) {
       for (i = 0; i < json_array_size(drop_list); i++) {
-        w_ht_replace(
-            sub->drop_or_defer,
-            w_ht_ptr_val(json_to_w_string(json_array_get(drop_list, i))),
-            true);
+        sub->drop_or_defer[json_to_w_string(json_array_get(drop_list, i))] =
+            true;
       }
     }
   }
