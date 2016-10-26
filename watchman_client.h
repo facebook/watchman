@@ -1,14 +1,10 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <deque>
 #include <unordered_map>
 #include <unordered_set>
 #include "watchman_synchronized.h"
-
-struct watchman_client_response {
-  struct watchman_client_response *next;
-  json_ref json;
-};
 
 struct watchman_client_subscription;
 
@@ -38,7 +34,9 @@ struct watchman_client {
   // used to deliver signals.
   pthread_t thread_handle;
 
-  struct watchman_client_response *head{nullptr}, *tail{nullptr};
+  // Queue of things to send to the client.
+  // Protected by clients.wlock()
+  std::deque<json_ref> responses;
 
   virtual ~watchman_client();
 };

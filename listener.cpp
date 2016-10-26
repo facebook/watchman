@@ -39,20 +39,7 @@ bool enqueue_response(
     struct watchman_client* client,
     json_ref&& json,
     bool ping) {
-  struct watchman_client_response *resp;
-
-  resp = (watchman_client_response*)calloc(1, sizeof(*resp));
-  if (!resp) {
-    return false;
-  }
-  resp->json = std::move(json);
-
-  if (client->tail) {
-    client->tail->next = resp;
-  } else {
-    client->head = resp;
-  }
-  client->tail = resp;
+  client->responses.emplace_back(std::move(json));
 
   if (ping) {
     w_event_set(client->ping);
@@ -100,16 +87,7 @@ void send_error_response(struct watchman_client *client,
 }
 
 watchman_client::~watchman_client() {
-  struct watchman_client_response *resp;
-
   w_log(W_LOG_DBG, "client_delete %p\n", this);
-
-  while (head) {
-    resp = head;
-    head = resp->next;
-    resp->json.reset();
-    free(resp);
-  }
 
   w_json_buffer_free(&reader);
   w_json_buffer_free(&writer);
@@ -135,7 +113,6 @@ static void *client_thread(void *ptr)
 {
   auto client = (watchman_client*)ptr;
   struct watchman_event_poll pfd[2];
-  struct watchman_client_response *queued_responses_to_send;
   json_error_t jerr;
   bool send_ok = true;
 
@@ -186,17 +163,15 @@ static void *client_thread(void *ptr)
     }
 
     /* de-queue the pending responses under the lock */
+    std::deque<json_ref> queued_responses_to_send;
     {
       auto lock = clients.wlock();
-      queued_responses_to_send = client->head;
-      client->head = NULL;
-      client->tail = NULL;
+      std::swap(queued_responses_to_send, client->responses);
     }
 
     /* now send our response(s) */
-    while (queued_responses_to_send) {
-      struct watchman_client_response *response_to_send =
-        queued_responses_to_send;
+    while (!queued_responses_to_send.empty()) {
+      auto& response_to_send = queued_responses_to_send.front();
 
       if (send_ok) {
         w_stm_set_nonblock(client->stm, false);
@@ -204,15 +179,12 @@ static void *client_thread(void *ptr)
          * Don't bother sending any more messages if the client disconnects,
          * but still free their memory.
          */
-        send_ok = w_ser_write_pdu(client->pdu_type, &client->writer,
-                                  client->stm, response_to_send->json);
+        send_ok = w_ser_write_pdu(
+            client->pdu_type, &client->writer, client->stm, response_to_send);
         w_stm_set_nonblock(client->stm, true);
       }
 
-      queued_responses_to_send = response_to_send->next;
-
-      response_to_send->json.reset();
-      free(response_to_send);
+      queued_responses_to_send.pop_front();
     }
   }
 

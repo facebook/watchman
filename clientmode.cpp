@@ -6,14 +6,15 @@
 bool try_client_mode_command(const json_ref& cmd, bool pretty) {
   struct watchman_client client;
   bool res;
-  struct watchman_client_response *resp;
 
   client.client_mode = true;
   res = dispatch_command(&client, cmd, CMD_CLIENT);
 
-  resp = client.head;
-  if (resp) {
-    json_dumpf(resp->json, stdout, pretty ? JSON_INDENT(4) : JSON_COMPACT);
+  if (!client.responses.empty()) {
+    json_dumpf(
+        client.responses.front(),
+        stdout,
+        pretty ? JSON_INDENT(4) : JSON_COMPACT);
     printf("\n");
   }
 
