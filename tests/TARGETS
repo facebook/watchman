@@ -23,7 +23,7 @@ def t_test(name, srcs=None, deps=None, extra_args=None):
 
 t_test(
     name='art',
-    srcs=['art_test.c', 'log_stub.cpp'],
+    srcs=['art_test.cpp', 'log_stub.cpp'],
     deps=[
       '@/watchman:testsupport',
     ],

@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include "art.h"
 #include "watchman_log.h"
+#include <new>
 
 #if defined(__clang__)
 # if __has_feature(address_sanitizer)
@@ -55,7 +56,7 @@ union cnode_ptr {
 #ifdef _MSC_VER
 #include <intrin.h>
 static uint32_t __inline __builtin_ctz(uint32_t x) {
-   uint32_t r = 0;
+   DWORD r = 0;
    _BitScanForward(&r, x);
    return (uint32_t)r;
 }
@@ -106,26 +107,26 @@ static inline unsigned char leaf_key_at(const art_leaf *l, int idx) {
  * Allocates a node of the given type,
  * initializes to zero and sets the type.
  */
-static art_node* alloc_node(uint8_t type) {
-    union node_ptr p;
-    switch (type) {
-        case NODE4:
-            p.n4 = calloc(1, sizeof(art_node4));
-            break;
-        case NODE16:
-            p.n16 = calloc(1, sizeof(art_node16));
-            break;
-        case NODE48:
-            p.n48 = calloc(1, sizeof(art_node48));
-            break;
-        case NODE256:
-            p.n256 = calloc(1, sizeof(art_node256));
-            break;
-        default:
-            abort();
-    }
-    p.n->type = type;
-    return p.n;
+
+art_node::art_node(uint8_t type) : type(type) {}
+
+art_node4::art_node4() : n(NODE4) {
+  memset(keys, 0, sizeof(keys));
+  memset(children, 0, sizeof(children));
+}
+
+art_node16::art_node16() : n(NODE16) {
+  memset(keys, 0, sizeof(keys));
+  memset(children, 0, sizeof(children));
+}
+
+art_node48::art_node48() : n(NODE48) {
+  memset(keys, 0, sizeof(keys));
+  memset(children, 0, sizeof(children));
+}
+
+art_node256::art_node256() : n(NODE256) {
+  memset(children, 0, sizeof(children));
 }
 
 /**
@@ -138,6 +139,11 @@ int art_tree_init(art_tree *t) {
     return 0;
 }
 
+static void destroy_leaf(art_leaf* leaf) {
+  leaf->~art_leaf();
+  delete[](char*) leaf;
+}
+
 // Recursively destroys the tree
 static void destroy_node(art_node *n) {
     int i;
@@ -148,7 +154,7 @@ static void destroy_node(art_node *n) {
 
     // Special case leafs
     if (IS_LEAF(n)) {
-        free(LEAF_RAW(n));
+        destroy_leaf(LEAF_RAW(n));
         return;
     }
 
@@ -158,18 +164,21 @@ static void destroy_node(art_node *n) {
             for (i=0;i<n->num_children;i++) {
                 destroy_node(p.n4->children[i]);
             }
+            delete p.n4;
             break;
 
         case NODE16:
             for (i=0;i<n->num_children;i++) {
                 destroy_node(p.n16->children[i]);
             }
+            delete p.n16;
             break;
 
         case NODE48:
             for (i=0;i<n->num_children;i++) {
                 destroy_node(p.n48->children[i]);
             }
+            delete p.n48;
             break;
 
         case NODE256:
@@ -178,14 +187,12 @@ static void destroy_node(art_node *n) {
                     destroy_node(p.n256->children[i]);
                 }
             }
+            delete p.n256;
             break;
 
         default:
             abort();
     }
-
-    // Free ourself on the way up
-    free(n);
 }
 
 /**
@@ -479,7 +486,8 @@ art_leaf* art_maximum(art_tree *t) {
 static art_leaf* make_leaf(const unsigned char *key, int key_len, void *value) {
     // art_leaf::key is declared as key[1] so sizeof(art_leaf) is 1 too many;
     // deduct 1 so that we allocate the perfect size
-    art_leaf *l = (art_leaf *)malloc(sizeof(art_leaf) + key_len - 1);
+    auto l = (art_leaf*)(new char[sizeof(art_leaf) + key_len - 1]);
+    new (l) art_leaf();
     l->value = value;
     l->key_len = key_len;
     memcpy(l->key, key, key_len);
@@ -517,7 +525,7 @@ static void add_child48(art_node48 *n, art_node **ref, unsigned char c, void *ch
         n->keys[c] = pos + 1;
         n->n.num_children++;
     } else {
-        art_node256 *new_node = (art_node256*)alloc_node(NODE256);
+        auto new_node = new art_node256;
         int i;
         for (i=0;i<256;i++) {
             if (n->keys[i]) {
@@ -526,7 +534,7 @@ static void add_child48(art_node48 *n, art_node **ref, unsigned char c, void *ch
         }
         copy_header((art_node*)new_node, (art_node*)n);
         *ref = (art_node*)new_node;
-        free(n);
+        delete n;
         add_child256(new_node, ref, c, child);
     }
 }
@@ -572,7 +580,7 @@ static void add_child16(art_node16 *n, art_node **ref, unsigned char c, void *ch
         n->n.num_children++;
 
     } else {
-        art_node48 *new_node = (art_node48*)alloc_node(NODE48);
+        auto new_node = new art_node48;
         int i;
 
         // Copy the child pointers and populate the key map
@@ -583,7 +591,7 @@ static void add_child16(art_node16 *n, art_node **ref, unsigned char c, void *ch
         }
         copy_header((art_node*)new_node, (art_node*)n);
         *ref = (art_node*)new_node;
-        free(n);
+        delete n;
         add_child48(new_node, ref, c, child);
     }
 }
@@ -606,7 +614,7 @@ static void add_child4(art_node4 *n, art_node **ref, unsigned char c, void *chil
         n->n.num_children++;
 
     } else {
-        art_node16 *new_node = (art_node16*)alloc_node(NODE16);
+        auto new_node = new art_node16;
 
         // Copy the child pointers and the key map
         memcpy(new_node->children, n->children,
@@ -615,7 +623,7 @@ static void add_child4(art_node4 *n, art_node **ref, unsigned char c, void *chil
                 sizeof(unsigned char)*n->n.num_children);
         copy_header((art_node*)new_node, (art_node*)n);
         *ref = (art_node*)new_node;
-        free(n);
+        delete n;
         add_child16(new_node, ref, c, child);
     }
 }
@@ -693,7 +701,7 @@ static void *recursive_insert(art_node *n, art_node **ref,
         }
 
         // New value, we must split the leaf into a node4
-        new_node = (art_node4*)alloc_node(NODE4);
+        new_node = new art_node4;
 
         // Create a new leaf
         l2 = make_leaf(key, key_len, value);
@@ -723,7 +731,7 @@ static void *recursive_insert(art_node *n, art_node **ref,
         }
 
         // Create a new node
-        new_node = (art_node4*)alloc_node(NODE4);
+        new_node = new art_node4;
         *ref = (art_node*)new_node;
         new_node->n.partial_len = prefix_diff;
         memcpy(new_node->n.partial, n->partial, min(ART_MAX_PREFIX_LEN, prefix_diff));
@@ -789,7 +797,7 @@ static void remove_child256(art_node256 *n, art_node **ref, unsigned char c) {
     // trashing if we sit on the 48/49 boundary
     if (n->n.num_children == 37) {
         int i, pos = 0;
-        art_node48 *new_node = (art_node48*)alloc_node(NODE48);
+        auto new_node = new art_node48;
         *ref = (art_node*)new_node;
         copy_header((art_node*)new_node, (art_node*)n);
 
@@ -800,7 +808,7 @@ static void remove_child256(art_node256 *n, art_node **ref, unsigned char c) {
                 pos++;
             }
         }
-        free(n);
+        delete n;
     }
 }
 
@@ -812,7 +820,7 @@ static void remove_child48(art_node48 *n, art_node **ref, unsigned char c) {
 
     if (n->n.num_children == 12) {
         int i, child = 0;
-        art_node16 *new_node = (art_node16*)alloc_node(NODE16);
+        auto new_node = new art_node16;
         *ref = (art_node*)new_node;
         copy_header((art_node*)new_node, (art_node*)n);
 
@@ -824,7 +832,7 @@ static void remove_child48(art_node48 *n, art_node **ref, unsigned char c) {
                 child++;
             }
         }
-        free(n);
+        delete n;
     }
 }
 
@@ -835,12 +843,12 @@ static void remove_child16(art_node16 *n, art_node **ref, art_node **l) {
     n->n.num_children--;
 
     if (n->n.num_children == 3) {
-        art_node4 *new_node = (art_node4*)alloc_node(NODE4);
+        auto new_node = new art_node4;
         *ref = (art_node*)new_node;
         copy_header((art_node*)new_node, (art_node*)n);
         memcpy(new_node->keys, n->keys, 4);
         memcpy(new_node->children, n->children, 4*sizeof(void*));
-        free(n);
+        delete n;
     }
 }
 
@@ -871,7 +879,7 @@ static void remove_child4(art_node4 *n, art_node **ref, art_node **l) {
             child->partial_len += n->n.partial_len + 1;
         }
         *ref = child;
-        free(n);
+        delete n;
     }
 }
 
@@ -953,7 +961,7 @@ void* art_delete(art_tree *t, const unsigned char *key, int key_len) {
     if (l) {
         void *old = l->value;
         t->size--;
-        free(l);
+        destroy_leaf(l);
         return old;
     }
     return NULL;
@@ -1057,7 +1065,7 @@ struct prefix_iterator_state {
 
 static int prefix_iterator_callback(void *data, const unsigned char *key,
                                     uint32_t key_len, void *value) {
-    struct prefix_iterator_state *state = data;
+    auto state = (prefix_iterator_state *)data;
 
     if (key_len < state->key_len) {
         // Can't match, keep iterating
@@ -1085,59 +1093,64 @@ static int prefix_iterator_callback(void *data, const unsigned char *key,
  * @arg data Opaque handle passed to the callback
  * @return 0 on success, or the return of the callback.
  */
-int art_iter_prefix(art_tree *t, const unsigned char *key, int key_len, art_callback cb, void *data) {
-    art_node **child;
-    art_node *n = t->root;
-    int prefix_len, depth = 0;
-    struct prefix_iterator_state state = {key, key_len, cb, data};
-    while (n) {
-        // Might be a leaf
-        if (IS_LEAF(n)) {
-            n = (art_node*)LEAF_RAW(n);
-            // Check if the expanded path matches
-            if (leaf_prefix_matches((art_leaf*)n, key, key_len)) {
-                art_leaf *l = (art_leaf*)n;
-                return cb(data, l->key, l->key_len, l->value);
-            }
-            return 0;
-        }
-
-        // If the depth matches the prefix, we need to handle this node
-        if (depth == key_len) {
-            art_leaf *l = minimum(n);
-            if (leaf_prefix_matches(l, key, key_len)) {
-                return recursive_iter(n, prefix_iterator_callback, &state);
-            }
-            return 0;
-        }
-
-        // Bail if the prefix does not match
-        if (n->partial_len) {
-            prefix_len = prefix_mismatch(n, key, key_len, depth);
-
-            // If there is no match, search is terminated
-            if (!prefix_len)
-                return 0;
-
-            // If we've matched the prefix, iterate on this node
-            else if (depth + prefix_len == key_len) {
-                return recursive_iter(n, prefix_iterator_callback, &state);
-            }
-
-            // if there is a full match, go deeper
-            depth = depth + n->partial_len;
-        }
-
-        if (depth > key_len) {
-            return 0;
-        }
-
-        // Recursively search
-        child = find_child(n, key_at(key, key_len, depth));
-        n = (child) ? *child : NULL;
-        depth++;
+int art_iter_prefix(
+    art_tree* t,
+    const unsigned char* key,
+    uint32_t key_len,
+    art_callback cb,
+    void* data) {
+  art_node** child;
+  art_node* n = t->root;
+  uint32_t prefix_len, depth = 0;
+  struct prefix_iterator_state state = {key, key_len, cb, data};
+  while (n) {
+    // Might be a leaf
+    if (IS_LEAF(n)) {
+      n = (art_node*)LEAF_RAW(n);
+      // Check if the expanded path matches
+      if (leaf_prefix_matches((art_leaf*)n, key, key_len)) {
+        art_leaf* l = (art_leaf*)n;
+        return cb(data, l->key, l->key_len, l->value);
+      }
+      return 0;
     }
-    return 0;
+
+    // If the depth matches the prefix, we need to handle this node
+    if (depth == key_len) {
+      art_leaf* l = minimum(n);
+      if (leaf_prefix_matches(l, key, key_len)) {
+        return recursive_iter(n, prefix_iterator_callback, &state);
+      }
+      return 0;
+    }
+
+    // Bail if the prefix does not match
+    if (n->partial_len) {
+      prefix_len = prefix_mismatch(n, key, key_len, depth);
+
+      // If there is no match, search is terminated
+      if (!prefix_len)
+        return 0;
+
+      // If we've matched the prefix, iterate on this node
+      else if (depth + prefix_len == key_len) {
+        return recursive_iter(n, prefix_iterator_callback, &state);
+      }
+
+      // if there is a full match, go deeper
+      depth = depth + n->partial_len;
+    }
+
+    if (depth > key_len) {
+      return 0;
+    }
+
+    // Recursively search
+    child = find_child(n, key_at(key, key_len, depth));
+    n = (child) ? *child : NULL;
+    depth++;
+  }
+  return 0;
 }
 
 // vim:ts=4:sw=4:

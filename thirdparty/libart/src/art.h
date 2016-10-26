@@ -1,11 +1,7 @@
-#include "config.h"
-#include <stdint.h>
 #ifndef ART_H
 #define ART_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "config.h"
+#include <stdint.h>
 
 #define ART_MAX_PREFIX_LEN 10
 
@@ -26,58 +22,68 @@ typedef int(*art_callback)(void *data, const unsigned char *key, uint32_t key_le
  * This struct is included as part
  * of all the various node sizes
  */
-typedef struct {
-    uint8_t type;
-    uint8_t num_children;
-    uint32_t partial_len;
-    unsigned char partial[ART_MAX_PREFIX_LEN];
-} art_node;
+struct art_node {
+  uint8_t type;
+  uint8_t num_children{0};
+  uint32_t partial_len{0};
+  unsigned char partial[ART_MAX_PREFIX_LEN];
+
+  explicit art_node(uint8_t type);
+};
 
 /**
  * Small node with only 4 children
  */
-typedef struct {
-    art_node n;
-    unsigned char keys[4];
-    art_node *children[4];
-} art_node4;
+struct art_node4 {
+  art_node n;
+  unsigned char keys[4];
+  art_node* children[4];
+
+  art_node4();
+};
 
 /**
  * Node with 16 children
  */
-typedef struct {
-    art_node n;
-    unsigned char keys[16];
-    art_node *children[16];
-} art_node16;
+struct art_node16 {
+  art_node n;
+  unsigned char keys[16];
+  art_node* children[16];
+
+  art_node16();
+};
 
 /**
  * Node with 48 children, but
  * a full 256 byte field.
  */
-typedef struct {
-    art_node n;
-    unsigned char keys[256];
-    art_node *children[48];
-} art_node48;
+struct art_node48 {
+  art_node n;
+  unsigned char keys[256];
+  art_node* children[48];
+
+  art_node48();
+};
 
 /**
  * Full node with 256 children
  */
-typedef struct {
-    art_node n;
-    art_node *children[256];
-} art_node256;
+struct art_node256 {
+  art_node n;
+  art_node* children[256];
+
+  art_node256();
+};
 
 /**
  * Represents a leaf. These are
  * of arbitrary size, as they include the key.
  */
-typedef struct {
-    void *value;
-    uint32_t key_len;
-    unsigned char key[1];
-} art_leaf;
+struct art_leaf {
+  void* value;
+  uint32_t key_len;
+  unsigned char key[1];
+};
 
 /**
  * Main struct, points to root.
@@ -188,10 +194,11 @@ int art_iter(art_tree *t, art_callback cb, void *data);
  * @arg data Opaque handle passed to the callback
  * @return 0 on success, or the return of the callback.
  */
-int art_iter_prefix(art_tree *t, const unsigned char *prefix, int prefix_len, art_callback cb, void *data);
-
-#ifdef __cplusplus
-}
-#endif
+int art_iter_prefix(
+    art_tree* t,
+    const unsigned char* prefix,
+    uint32_t prefix_len,
+    art_callback cb,
+    void* data);
 
 #endif

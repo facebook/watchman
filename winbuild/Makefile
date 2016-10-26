@@ -19,10 +19,10 @@ JSON_SRCS=\
 
 SRCS_C=\
 	thirdparty\wildmatch\wildmatch.c \
-	thirdparty\libart\src\art.c
 
 SRCS_CPP=\
 	$(JSON_SRCS) \
+	thirdparty\libart\src\art.cpp \
 	CookieSync.cpp \
 	InMemoryView.cpp \
 	QueryableView.cpp \
@@ -127,10 +127,10 @@ TEST_SRCS_CPP=\
 	argv.cpp \
 	$(JSON_SRCS)
 
-TEST_DIR_SRCS=\
-	tests\art_test.c \
+TEST_DIR_SRCS=
 
 TEST_DIR_SRCS_CPP=\
+	tests\art_test.cpp \
 	tests\argv.cpp \
 	tests\bser.cpp \
 	tests\ht_test.cpp \
@@ -180,9 +180,9 @@ TESTS=tests\argv.exe tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
 	@echo CC $<
 	$(CC) $(CFLAGS) /Fo:thirdparty\wildmatch\ /c $<
 
-{thirdparty\libart\src}.c{thirdparty\libart\src}.obj::
-	@echo CC $<
-	$(CC) $(CFLAGS) /Fo:thirdparty\libart\src\ /c $<
+{thirdparty\libart\src}.cpp{thirdparty\libart\src}.obj::
+	@echo CXX $<
+	$(CC) $(CXXFLAGS) /Fo:thirdparty\libart\src\ /c $<
 
 {thirdparty\jansson}.cpp{thirdparty\jansson}.obj::
 	@echo CXX $<

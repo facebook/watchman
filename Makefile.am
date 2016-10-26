@@ -130,7 +130,7 @@ libwildmatch_a_SOURCES = thirdparty/wildmatch/wildmatch.c
 WILDMATCH_LIB = libwildmatch.a
 
 # adaptive radix tree library
-libart_a_SOURCES = thirdparty/libart/src/art.c
+libart_a_SOURCES = thirdparty/libart/src/art.cpp
 ART_LIB = libart.a
 
 # unit tests
@@ -211,7 +211,7 @@ integration: all py-integration check
 tests_art_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_art_t_LDADD = $(ART_LIB) $(TAP_LIB)
 tests_art_t_SOURCES = \
-	tests/art_test.c \
+	tests/art_test.cpp \
 	tests/log_stub.cpp \
 	log.cpp
 

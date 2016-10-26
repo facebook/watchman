@@ -461,8 +461,11 @@ void test_art_prefix(void) {
 
   art_tree_init(&t);
 
-  fail_unless(art_insert(&t, (const unsigned char*)"food", 4, "food") == NULL);
-  fail_unless(art_insert(&t, (const unsigned char*)"foo", 3, "foo") == NULL);
+  fail_unless(
+      art_insert(&t, (const unsigned char*)"food", 4, (void*)"food") ==
+      nullptr);
+  fail_unless(
+      art_insert(&t, (const unsigned char*)"foo", 3, (void*)"foo") == nullptr);
   diag("size is now %d", art_size(&t));
   fail_unless(art_size(&t) == 2);
   fail_unless((v = art_search(&t, (const unsigned char*)"food", 4)) != NULL);
