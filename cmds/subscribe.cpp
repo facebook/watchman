@@ -43,7 +43,7 @@ void process_subscriptions(struct read_locked_watchman_root* lock) {
       w_log(
           W_LOG_DBG,
           "client->stm=%p sub=%p %s, last=%" PRIu32 " pending=%" PRIu32 "\n",
-          client->client.stm,
+          client->stm,
           sub,
           sub->name.c_str(),
           sub->last_sub_tick,
@@ -225,7 +225,7 @@ static void w_run_subscription_rules(
 
   add_root_warnings_to_response(response, lock);
 
-  if (!enqueue_response(&client->client, std::move(response), true)) {
+  if (!enqueue_response(client, std::move(response), true)) {
     w_log(W_LOG_DBG, "failed to queue sub response\n");
   }
 }
@@ -250,14 +250,14 @@ void w_cancel_subscriptions_for_root(const w_root_t *root) {
               "Cancel subscription %s for client:stm=%p due to "
               "root cancellation\n",
               sub->name.c_str(),
-              client->client.stm);
+              client->stm);
 
           response.set({{"root", w_string_to_json(root->root_path)},
                         {"subscription", w_string_to_json(sub->name)},
                         {"unilateral", json_true()},
                         {"canceled", json_true()}});
 
-          if (!enqueue_response(&client->client, std::move(response), true)) {
+          if (!enqueue_response(client, std::move(response), true)) {
             w_log(W_LOG_DBG, "failed to queue sub cancellation\n");
           }
 
@@ -282,15 +282,15 @@ static void cmd_unsubscribe(
       (struct watchman_user_client *)clientbase;
   struct unlocked_watchman_root unlocked;
 
-  if (!resolve_root_or_err(&client->client, args, 1, false, &unlocked)) {
+  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
     return;
   }
 
   auto jstr = json_array_get(args, 2);
   name = json_string_value(jstr);
   if (!name) {
-    send_error_response(&client->client,
-        "expected 2nd parameter to be subscription name");
+    send_error_response(
+        client, "expected 2nd parameter to be subscription name");
     w_root_delref(&unlocked);
     return;
   }
@@ -309,7 +309,7 @@ static void cmd_unsubscribe(
   resp.set({{"unsubscribe", typed_string_to_json(name)},
             {"deleted", json_boolean(deleted)}});
 
-  send_and_dispose_response(&client->client, std::move(resp));
+  send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
 W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
@@ -338,19 +338,18 @@ static void cmd_subscribe(
   struct read_locked_watchman_root lock;
 
   if (json_array_size(args) != 4) {
-    send_error_response(&client->client,
-                        "wrong number of arguments for subscribe");
+    send_error_response(client, "wrong number of arguments for subscribe");
     return;
   }
 
-  if (!resolve_root_or_err(&client->client, args, 1, true, &unlocked)) {
+  if (!resolve_root_or_err(client, args, 1, true, &unlocked)) {
     return;
   }
 
   jname = json_array_get(args, 2);
   if (!json_is_string(jname)) {
-    send_error_response(&client->client,
-        "expected 2nd parameter to be subscription name");
+    send_error_response(
+        client, "expected 2nd parameter to be subscription name");
     goto done;
   }
 
@@ -358,34 +357,32 @@ static void cmd_subscribe(
 
   jfield_list = json_object_get(query_spec, "fields");
   if (!parse_field_list(jfield_list, &field_list, &errmsg)) {
-    send_error_response(&client->client, "invalid field list: %s", errmsg);
+    send_error_response(client, "invalid field list: %s", errmsg);
     free(errmsg);
     goto done;
   }
 
   query = w_query_parse(unlocked.root, query_spec, &errmsg);
   if (!query) {
-    send_error_response(&client->client, "failed to parse query: %s", errmsg);
+    send_error_response(client, "failed to parse query: %s", errmsg);
     free(errmsg);
     goto done;
   }
 
   json_unpack(query_spec, "{s?:o}", "defer", &defer_list);
   if (defer_list && !json_is_array(defer_list)) {
-    send_error_response(&client->client,
-                        "defer field must be an array of strings");
+    send_error_response(client, "defer field must be an array of strings");
     goto done;
   }
   json_unpack(query_spec, "{s?:o}", "drop", &drop_list);
   if (drop_list && !json_is_array(drop_list)) {
-    send_error_response(&client->client,
-                        "drop field must be an array of strings");
+    send_error_response(client, "drop field must be an array of strings");
     goto done;
   }
 
   sub = watchman::make_unique<watchman_client_subscription>();
   if (!sub) {
-    send_error_response(&client->client, "no memory!");
+    send_error_response(client, "no memory!");
     goto done;
   }
 
@@ -440,10 +437,9 @@ static void cmd_subscribe(
   initial_subscription_results = build_subscription_results(subPtr, &lock);
   w_root_read_unlock(&lock, &unlocked);
 
-  send_and_dispose_response(&client->client, std::move(resp));
+  send_and_dispose_response(client, std::move(resp));
   if (initial_subscription_results) {
-    send_and_dispose_response(
-        &client->client, std::move(initial_subscription_results));
+    send_and_dispose_response(client, std::move(initial_subscription_results));
   }
 done:
   w_root_delref(&unlocked);

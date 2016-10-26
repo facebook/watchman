@@ -108,26 +108,23 @@ void send_error_response(struct watchman_client *client,
   send_and_dispose_response(client, std::move(resp));
 }
 
-static void client_delete(struct watchman_client *client)
-{
+watchman_client::~watchman_client() {
   struct watchman_client_response *resp;
 
-  w_log(W_LOG_DBG, "client_delete %p\n", client);
-  derived_client_dtor(client);
+  w_log(W_LOG_DBG, "client_delete %p\n", this);
 
-  while (client->head) {
-    resp = client->head;
-    client->head = resp->next;
+  while (head) {
+    resp = head;
+    head = resp->next;
     resp->json.reset();
     free(resp);
   }
 
-  w_json_buffer_free(&client->reader);
-  w_json_buffer_free(&client->writer);
-  w_event_destroy(client->ping);
-  w_stm_shutdown(client->stm);
-  w_stm_close(client->stm);
-  free(client);
+  w_json_buffer_free(&reader);
+  w_json_buffer_free(&writer);
+  w_event_destroy(ping);
+  w_stm_shutdown(stm);
+  w_stm_close(stm);
 }
 
 void w_request_shutdown(void) {
@@ -236,7 +233,7 @@ disconnected:
   w_ht_del(clients, w_ht_ptr_val(client));
   pthread_mutex_unlock(&w_client_lock);
 
-  client_delete(client);
+  delete client;
 
   return NULL;
 }
@@ -403,7 +400,7 @@ static struct watchman_client *make_new_client(w_stm_t stm) {
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
-  auto client = (watchman_client*)calloc(1, derived_client_size);
+  auto client = new watchman_user_client();
   if (!client) {
     pthread_attr_destroy(&attr);
     return NULL;
@@ -422,8 +419,6 @@ static struct watchman_client *make_new_client(w_stm_t stm) {
     // FIXME: error handling
   }
 
-  derived_client_ctor(client);
-
   pthread_mutex_lock(&w_client_lock);
   w_ht_set(clients, w_ht_ptr_val(client), w_ht_ptr_val(client));
   pthread_mutex_unlock(&w_client_lock);
@@ -438,7 +433,7 @@ static struct watchman_client *make_new_client(w_stm_t stm) {
     pthread_mutex_lock(&w_client_lock);
     w_ht_del(clients, w_ht_ptr_val(client));
     pthread_mutex_unlock(&w_client_lock);
-    client_delete(client);
+    delete client;
   }
 
   pthread_attr_destroy(&attr);

@@ -8,7 +8,6 @@ bool try_client_mode_command(const json_ref& cmd, bool pretty) {
   bool res;
   struct watchman_client_response *resp;
 
-  memset(&client, 0, sizeof(client));
   client.client_mode = true;
   res = dispatch_command(&client, cmd, CMD_CLIENT);
 

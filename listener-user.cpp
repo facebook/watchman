@@ -121,26 +121,12 @@ watchman_client_subscription::~watchman_client_subscription() {
   }
 }
 
-void derived_client_ctor(struct watchman_client *ptr) {
-  struct watchman_user_client *client = (struct watchman_user_client *)ptr;
-
-  // Mild hack until we make this a regular c++ derived class
-  new (&client->subscriptions) std::
-      unordered_map<w_string, std::unique_ptr<watchman_client_subscription>>();
-}
-
-void derived_client_dtor(struct watchman_client *ptr) {
-  struct watchman_user_client *client = (struct watchman_user_client *)ptr;
-
+watchman_user_client::~watchman_user_client() {
   /* cancel subscriptions */
-  // Mild hack until we make this a regular c++ derived class
-  using Dtor = std::
-      unordered_map<w_string, std::unique_ptr<watchman_client_subscription>>;
-  client->subscriptions.~Dtor();
+  subscriptions.clear();
 
-  w_client_vacate_states(client);
+  w_client_vacate_states(this);
 }
-const uint32_t derived_client_size = sizeof(struct watchman_user_client);
 
 /* vim:ts=2:sw=2:et:
  */

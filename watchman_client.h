@@ -20,29 +20,26 @@ struct watchman_client_state_assertion {
 };
 
 struct watchman_client {
-  w_stm_t stm;
-  w_evt_t ping;
-  int log_level;
+  w_stm_t stm{nullptr};
+  w_evt_t ping{nullptr};
+  int log_level{0};
   w_jbuffer_t reader, writer;
-  bool client_mode;
-  bool client_is_owner;
+  bool client_mode{false};
+  bool client_is_owner{false};
   enum w_pdu_type pdu_type;
 
   // The command currently being processed by dispatch_command
   json_ref current_command;
-  w_perf_t* perf_sample;
+  w_perf_t* perf_sample{nullptr};
 
   // This handle is not joinable (CREATE_DETACHED), but can be
   // used to deliver signals.
   pthread_t thread_handle;
 
-  struct watchman_client_response *head, *tail;
-};
+  struct watchman_client_response *head{nullptr}, *tail{nullptr};
 
-// These are approximations for managing derived client "classes"
-extern void derived_client_dtor(struct watchman_client *client);
-extern void derived_client_ctor(struct watchman_client *client);
-extern const uint32_t derived_client_size;
+  virtual ~watchman_client();
+};
 
 struct watchman_client_subscription {
   w_root_t *root;
@@ -59,16 +56,16 @@ struct watchman_client_subscription {
 
 // Represents the server side session maintained for a client of
 // the watchman per-user process
-struct watchman_user_client {
-  struct watchman_client client;
-
+struct watchman_user_client : public watchman_client {
   /* map of subscription name => struct watchman_client_subscription */
   std::unordered_map<w_string, std::unique_ptr<watchman_client_subscription>>
       subscriptions;
 
   /* map of unique id => watchman_client_state_assertion */
-  w_ht_t *states;
-  long next_state_id;
+  w_ht_t* states{nullptr};
+  long next_state_id{0};
+
+  ~watchman_user_client();
 };
 
 extern pthread_mutex_t w_client_lock;
