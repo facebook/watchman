@@ -10,8 +10,10 @@ struct state_arg {
 };
 
 // Parses the args for state-enter and state-leave
-static bool parse_state_arg(struct watchman_client *client, json_t *args,
-    struct state_arg *parsed) {
+static bool parse_state_arg(
+    struct watchman_client* client,
+    const json_ref& args,
+    struct state_arg* parsed) {
   json_error_t err;
   const char *ignored;
   const char* statename = nullptr;
@@ -71,7 +73,9 @@ watchman_client_state_assertion::~watchman_client_state_assertion() {
   w_root_delref_raw(root);
 }
 
-static void cmd_state_enter(struct watchman_client *clientbase, json_t *args) {
+static void cmd_state_enter(
+    struct watchman_client* clientbase,
+    const json_ref& args) {
   struct state_arg parsed = {nullptr, 0, nullptr};
   std::unique_ptr<watchman_client_state_assertion> assertion;
   char clockbuf[128];
@@ -279,7 +283,9 @@ void w_client_vacate_states(struct watchman_user_client *client) {
   w_ht_free(client->states);
 }
 
-static void cmd_state_leave(struct watchman_client *clientbase, json_t *args) {
+static void cmd_state_leave(
+    struct watchman_client* clientbase,
+    const json_ref& args) {
   struct state_arg parsed = {nullptr, 0, nullptr};
   // This is a weak reference to the assertion.  This is safe because only this
   // client can delete this assertion, and this function is only executed by

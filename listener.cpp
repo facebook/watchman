@@ -753,11 +753,8 @@ bool w_start_listener(const char *path)
 }
 
 /* get-pid */
-static void cmd_get_pid(struct watchman_client *client, json_t *args)
-{
+static void cmd_get_pid(struct watchman_client* client, const json_ref&) {
   auto resp = make_response();
-
-  unused_parameter(args);
 
   set_prop(resp, "pid", json_integer(getpid()));
 

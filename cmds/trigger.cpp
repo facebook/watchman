@@ -55,8 +55,9 @@ void process_triggers(struct read_locked_watchman_root* lock) {
 /* trigger-del /root triggername
  * Delete a trigger from a root
  */
-static void cmd_trigger_delete(struct watchman_client *client, json_t *args)
-{
+static void cmd_trigger_delete(
+    struct watchman_client* client,
+    const json_ref& args) {
   w_string tname;
   bool res;
   struct unlocked_watchman_root unlocked;
@@ -104,8 +105,9 @@ W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root)
 /* trigger-list /root
  * Displays a list of registered triggers for a given root
  */
-static void cmd_trigger_list(struct watchman_client *client, json_t *args)
-{
+static void cmd_trigger_list(
+    struct watchman_client* client,
+    const json_ref& args) {
   struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
@@ -127,7 +129,7 @@ W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root)
 static json_ref build_legacy_trigger(
     w_root_t* root,
     struct watchman_client* client,
-    json_t* args) {
+    const json_ref& args) {
   char *errmsg;
   uint32_t next_arg = 0;
   uint32_t i;
@@ -328,8 +330,7 @@ w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg) {
 /* trigger /root triggername [watch patterns] -- cmd to run
  * Sets up a trigger so that we can execute a command when a change
  * is detected */
-static void cmd_trigger(struct watchman_client *client, json_t *args)
-{
+static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
   char *errmsg = NULL;
   bool need_save = true;
   struct unlocked_watchman_root unlocked;

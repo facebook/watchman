@@ -272,8 +272,9 @@ void w_cancel_subscriptions_for_root(const w_root_t *root) {
 
 /* unsubscribe /root subname
  * Cancels a subscription */
-static void cmd_unsubscribe(struct watchman_client *clientbase, json_t *args)
-{
+static void cmd_unsubscribe(
+    struct watchman_client* clientbase,
+    const json_ref& args) {
   const char *name;
   bool deleted;
   const json_t *jstr;
@@ -312,8 +313,9 @@ W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
 
 /* subscribe /root subname {query}
  * Subscribes the client connection to the specified root. */
-static void cmd_subscribe(struct watchman_client *clientbase, json_t *args)
-{
+static void cmd_subscribe(
+    struct watchman_client* clientbase,
+    const json_ref& args) {
   struct watchman_client_subscription *sub;
   json_ref resp, initial_subscription_results;
   json_t *jfield_list;

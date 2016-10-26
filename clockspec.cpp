@@ -185,7 +185,9 @@ static bool current_clock_id_string(struct read_locked_watchman_root *lock,
 
 /* Add the current clock value to the response.
  * must be called with the root locked */
-void annotate_with_clock(struct read_locked_watchman_root *lock, json_t *resp) {
+void annotate_with_clock(
+    struct read_locked_watchman_root* lock,
+    json_ref& resp) {
   char buf[128];
 
   if (current_clock_id_string(lock, buf, sizeof(buf))) {

@@ -4,8 +4,7 @@
 #include "watchman.h"
 
 /* find /root [patterns] */
-static void cmd_find(struct watchman_client *client, json_t *args)
-{
+static void cmd_find(struct watchman_client* client, const json_ref& args) {
   char *errmsg = NULL;
   struct w_query_field_list field_list;
   w_query_res res;

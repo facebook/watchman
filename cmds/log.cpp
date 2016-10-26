@@ -18,8 +18,7 @@ static int parse_log_level(const char *str)
 // log-level "debug"
 // log-level "error"
 // log-level "off"
-static void cmd_loglevel(struct watchman_client *client, json_t *args)
-{
+static void cmd_loglevel(struct watchman_client* client, const json_ref& args) {
   const char *cmd, *str;
   int level;
 
@@ -46,8 +45,7 @@ static void cmd_loglevel(struct watchman_client *client, json_t *args)
 W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON, NULL)
 
 // log "debug" "text to log"
-static void cmd_log(struct watchman_client *client, json_t *args)
-{
+static void cmd_log(struct watchman_client* client, const json_ref& args) {
   const char *cmd, *str, *text;
   int level;
 

@@ -737,9 +737,9 @@ Watcher* fsevents_watcher = &watcher;
 
 // A helper command to facilitate testing that we can successfully
 // resync the stream.
-static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
-                                           json_t *args) {
-  json_t *resp;
+static void cmd_debug_fsevents_inject_drop(
+    struct watchman_client* client,
+    const json_ref& args) {
   FSEventStreamEventId last_good;
   struct unlocked_watchman_root unlocked;
 
@@ -773,9 +773,9 @@ static void cmd_debug_fsevents_inject_drop(struct watchman_client *client,
   watcher->stream->inject_drop = true;
   pthread_mutex_unlock(&watcher->fse_mtx);
 
-  resp = make_response();
+  auto resp = make_response();
   set_prop(resp, "last_good", json_integer(last_good));
-  send_and_dispose_response(client, resp);
+  send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);
 }
 W_CMD_REG("debug-fsevents-inject-drop", cmd_debug_fsevents_inject_drop,

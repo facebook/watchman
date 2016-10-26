@@ -4,8 +4,7 @@
 #include "watchman.h"
 
 /* query /root {query} */
-static void cmd_query(struct watchman_client *client, json_t *args)
-{
+static void cmd_query(struct watchman_client* client, const json_ref& args) {
   json_t *query_spec;
   char *errmsg = NULL;
   w_query_res res;

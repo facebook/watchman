@@ -3,8 +3,9 @@
 
 #include "watchman.h"
 
-static void cmd_debug_recrawl(struct watchman_client *client, json_t *args)
-{
+static void cmd_debug_recrawl(
+    struct watchman_client* client,
+    const json_ref& args) {
   struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
@@ -28,8 +29,9 @@ static void cmd_debug_recrawl(struct watchman_client *client, json_t *args)
 }
 W_CMD_REG("debug-recrawl", cmd_debug_recrawl, CMD_DAEMON, w_cmd_realpath_root)
 
-static void cmd_debug_show_cursors(struct watchman_client *client, json_t *args)
-{
+static void cmd_debug_show_cursors(
+    struct watchman_client* client,
+    const json_ref& args) {
   json_ref cursors;
   struct unlocked_watchman_root unlocked;
 
@@ -64,8 +66,9 @@ W_CMD_REG("debug-show-cursors", cmd_debug_show_cursors,
     CMD_DAEMON, w_cmd_realpath_root)
 
 /* debug-ageout */
-static void cmd_debug_ageout(struct watchman_client *client, json_t *args)
-{
+static void cmd_debug_ageout(
+    struct watchman_client* client,
+    const json_ref& args) {
   struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
@@ -94,8 +97,9 @@ static void cmd_debug_ageout(struct watchman_client *client, json_t *args)
 }
 W_CMD_REG("debug-ageout", cmd_debug_ageout, CMD_DAEMON, w_cmd_realpath_root)
 
-static void cmd_debug_poison(struct watchman_client *client, json_t *args)
-{
+static void cmd_debug_poison(
+    struct watchman_client* client,
+    const json_ref& args) {
   struct timeval now;
   struct unlocked_watchman_root unlocked;
 
@@ -114,7 +118,9 @@ static void cmd_debug_poison(struct watchman_client *client, json_t *args)
 }
 W_CMD_REG("debug-poison", cmd_debug_poison, CMD_DAEMON, w_cmd_realpath_root)
 
-static void cmd_debug_drop_privs(struct watchman_client* client, json_t*) {
+static void cmd_debug_drop_privs(
+    struct watchman_client* client,
+    const json_ref&) {
   client->client_is_owner = false;
 
   auto resp = make_response();

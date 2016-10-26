@@ -3,8 +3,7 @@
 
 #include "watchman.h"
 
-bool w_cmd_realpath_root(json_t *args, char **errmsg)
-{
+bool w_cmd_realpath_root(json_ref& args, char** errmsg) {
   const char *path;
   char *resolved;
 
@@ -36,8 +35,7 @@ W_CAP_REG("clock-sync-timeout")
  * is synced up-to-date and the returned clock represents the
  * latest state.
  */
-static void cmd_clock(struct watchman_client *client, json_t *args)
-{
+static void cmd_clock(struct watchman_client* client, const json_ref& args) {
   int sync_timeout = 0;
   struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
@@ -79,8 +77,9 @@ W_CMD_REG("clock", cmd_clock, CMD_DAEMON | CMD_ALLOW_ANY_USER,
 
 /* watch-del /root
  * Stops watching the specified root */
-static void cmd_watch_delete(struct watchman_client *client, json_t *args)
-{
+static void cmd_watch_delete(
+    struct watchman_client* client,
+    const json_ref& args) {
   struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
@@ -103,7 +102,7 @@ W_CMD_REG("watch-del", cmd_watch_delete, CMD_DAEMON, w_cmd_realpath_root)
 
 /* watch-del-all
  * Stops watching all roots */
-static void cmd_watch_del_all(struct watchman_client* client, json_t*) {
+static void cmd_watch_del_all(struct watchman_client* client, const json_ref&) {
   auto resp = make_response();
   auto roots = w_root_stop_watch_all();
   set_prop(resp, "roots", std::move(roots));
@@ -114,7 +113,7 @@ W_CMD_REG("watch-del-all", cmd_watch_del_all, CMD_DAEMON | CMD_POISON_IMMUNE,
 
 /* watch-list
  * Returns a list of watched roots */
-static void cmd_watch_list(struct watchman_client* client, json_t*) {
+static void cmd_watch_list(struct watchman_client* client, const json_ref&) {
   auto resp = make_response();
   auto root_paths = w_root_watch_list_to_json();
   set_prop(resp, "roots", std::move(root_paths));
@@ -191,7 +190,10 @@ static bool find_file_in_dir_tree(const char *root_file, char *candidate_dir,
   return false;
 }
 
-bool find_project_root(json_t *root_files, char * resolved, char **relpath) {
+bool find_project_root(
+    const json_ref& root_files,
+    char* resolved,
+    char** relpath) {
   uint32_t i;
 
   for (i = 0; i < json_array_size(root_files); i++) {
@@ -211,8 +213,8 @@ bool find_project_root(json_t *root_files, char * resolved, char **relpath) {
 // relpath will hold the path to the project dir, relative to the
 // watched dir.  If it is NULL it means that the project dir is
 // equivalent to the watched dir.
-static char *resolve_projpath(json_t *args, char **errmsg, char **relpath)
-{
+static char*
+resolve_projpath(const json_ref& args, char** errmsg, char** relpath) {
   const char *path;
   char *resolved = NULL;
   bool res = false;
@@ -285,8 +287,7 @@ done:
 }
 
 /* watch /root */
-static void cmd_watch(struct watchman_client *client, json_t *args)
-{
+static void cmd_watch(struct watchman_client* client, const json_ref& args) {
   struct read_locked_watchman_root lock;
   struct unlocked_watchman_root unlocked;
 
@@ -319,8 +320,9 @@ static void cmd_watch(struct watchman_client *client, json_t *args)
 W_CMD_REG("watch", cmd_watch, CMD_DAEMON | CMD_ALLOW_ANY_USER,
           w_cmd_realpath_root)
 
-static void cmd_watch_project(struct watchman_client *client, json_t *args)
-{
+static void cmd_watch_project(
+    struct watchman_client* client,
+    const json_ref& args) {
   char *dir_to_watch = NULL;
   char *rel_path_from_watch = NULL;
   char *errmsg = NULL;

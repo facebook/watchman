@@ -61,11 +61,9 @@ void w_register_command(struct watchman_command_handler_def *defs)
   w_capability_register(capname);
 }
 
-static struct watchman_command_handler_def *lookup(
-    json_t *args, char **errmsg, int mode)
-{
+static struct watchman_command_handler_def*
+lookup(const json_ref& args, char** errmsg, int mode) {
   const char *cmd_name;
-  const json_t *jstr;
 
   if (!json_array_size(args)) {
     ignore_result(asprintf(errmsg,
@@ -73,7 +71,7 @@ static struct watchman_command_handler_def *lookup(
     return nullptr;
   }
 
-  jstr = json_array_get(args, 0);
+  const auto jstr = json_array_get(args, 0);
   cmd_name = json_string_value(jstr);
   if (!cmd_name) {
     ignore_result(asprintf(errmsg,
@@ -101,8 +99,7 @@ static struct watchman_command_handler_def *lookup(
   return nullptr;
 }
 
-void preprocess_command(json_t *args, enum w_pdu_type output_pdu)
-{
+void preprocess_command(json_ref& args, enum w_pdu_type output_pdu) {
   char *errmsg = NULL;
   struct watchman_command_handler_def *def;
 
@@ -135,8 +132,10 @@ void preprocess_command(json_t *args, enum w_pdu_type output_pdu)
   }
 }
 
-bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
-{
+bool dispatch_command(
+    struct watchman_client* client,
+    const json_ref& args,
+    int mode) {
   struct watchman_command_handler_def *def;
   char *errmsg = NULL;
   bool result = false;
@@ -179,7 +178,7 @@ bool dispatch_command(struct watchman_client *client, json_t *args, int mode)
     def->func(client, args);
 
     if (sample.finish()) {
-      sample.add_meta("args", args);
+      sample.add_meta("args", json_ref(args));
       sample.log();
     } else {
       w_log(W_LOG_DBG, "dispatch_command: %s (completed)\n", def->name);
@@ -208,8 +207,8 @@ bool w_capability_supported(const w_string_t *name) {
   return res;
 }
 
-json_t *w_capability_get_list(void) {
-  json_t *arr = json_array_of_size(w_ht_size(capabilities));
+json_ref w_capability_get_list(void) {
+  auto arr = json_array_of_size(w_ht_size(capabilities));
   w_ht_iter_t iter;
 
   w_ht_first(capabilities, &iter);

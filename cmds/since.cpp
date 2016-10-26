@@ -4,8 +4,7 @@
 #include "watchman.h"
 
 /* since /root <timestamp> [patterns] */
-static void cmd_since(struct watchman_client *client, json_t *args)
-{
+static void cmd_since(struct watchman_client* client, const json_ref& args) {
   const char *clockspec;
   char *errmsg = NULL;
   struct w_query_field_list field_list;

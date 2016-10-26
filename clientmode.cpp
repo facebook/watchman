@@ -3,8 +3,7 @@
 
 #include "watchman.h"
 
-bool try_client_mode_command(json_t *cmd, bool pretty)
-{
+bool try_client_mode_command(const json_ref& cmd, bool pretty) {
   struct watchman_client client;
   bool res;
   struct watchman_client_response *resp;

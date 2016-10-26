@@ -5,9 +5,8 @@
 
 // Functions relating to the per-user service
 
-static void cmd_shutdown(struct watchman_client *client, json_t *args) {
+static void cmd_shutdown(struct watchman_client* client, const json_ref&) {
   auto resp = make_response();
-  unused_parameter(args);
 
   w_log(W_LOG_ERR, "shutdown-server was requested, exiting!\n");
   w_request_shutdown();
@@ -17,8 +16,9 @@ static void cmd_shutdown(struct watchman_client *client, json_t *args) {
 }
 W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON|CMD_POISON_IMMUNE, NULL)
 
-void add_root_warnings_to_response(json_t *response,
-                                   struct read_locked_watchman_root *lock) {
+void add_root_warnings_to_response(
+    json_ref& response,
+    struct read_locked_watchman_root* lock) {
   char *str = NULL;
   char *full = NULL;
   const w_root_t *root = lock->root;
