@@ -23,6 +23,10 @@ struct art_node {
   art_leaf* maximum() const;
   art_leaf* minimum() const;
   art_node** findChild(unsigned char c);
+
+  // Returns the number of prefix characters shared between the key and node.
+  uint32_t checkPrefix(const unsigned char* key, uint32_t key_len, int depth)
+      const;
 };
 
 /**

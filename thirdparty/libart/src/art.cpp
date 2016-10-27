@@ -270,17 +270,17 @@ art_node** art_node::findChild(unsigned char c) {
  * Returns the number of prefix characters shared between
  * the key and node.
  */
-static int check_prefix(
-    const art_node* n,
+uint32_t art_node::checkPrefix(
     const unsigned char* key,
     uint32_t key_len,
-    int depth) {
-  int max_cmp =
-      std::min(std::min(n->partial_len, ART_MAX_PREFIX_LEN), key_len - depth);
+    int depth) const {
+  auto max_cmp =
+      std::min(std::min(partial_len, ART_MAX_PREFIX_LEN), key_len - depth);
   int idx;
   for (idx = 0; idx < max_cmp; idx++) {
-    if (n->partial[idx] != key[depth + idx])
+    if (partial[idx] != key[depth + idx]) {
       return idx;
+    }
   }
   return idx;
 }
@@ -310,7 +310,7 @@ leaf_matches(const art_leaf* n, const unsigned char* key, uint32_t key_len) {
 void* art_tree::search(const unsigned char* key, uint32_t key_len) const {
   art_node** child;
   art_node* n = root_;
-  int prefix_len, depth = 0;
+  int depth = 0;
   while (n) {
     // Might be a leaf
     if (IS_LEAF(n)) {
@@ -324,7 +324,7 @@ void* art_tree::search(const unsigned char* key, uint32_t key_len) const {
 
     // Bail if the prefix does not match
     if (n->partial_len) {
-      prefix_len = check_prefix(n, key, key_len, depth);
+      auto prefix_len = n->checkPrefix(key, key_len, depth);
       if (prefix_len != std::min(ART_MAX_PREFIX_LEN, n->partial_len))
         return NULL;
       depth = depth + n->partial_len;
@@ -347,13 +347,13 @@ art_leaf* art_tree::longestMatch(const unsigned char* key, uint32_t key_len)
     const {
   art_node** child;
   art_node* n = root_;
-  int prefix_len, depth = 0;
+  int depth = 0;
   while (n) {
     // Might be a leaf
     if (IS_LEAF(n)) {
       art_leaf* leaf = LEAF_RAW(n);
       // Check if the prefix matches
-      prefix_len = std::min(leaf->key_len, key_len);
+      auto prefix_len = std::min(leaf->key_len, key_len);
       if (prefix_len > 0 && memcmp(leaf->key, key, prefix_len) == 0) {
         // Shares the same prefix
         return leaf;
@@ -363,7 +363,7 @@ art_leaf* art_tree::longestMatch(const unsigned char* key, uint32_t key_len)
 
     // Bail if the prefix does not match
     if (n->partial_len) {
-      prefix_len = check_prefix(n, key, key_len, depth);
+      auto prefix_len = n->checkPrefix(key, key_len, depth);
       if (prefix_len != std::min(ART_MAX_PREFIX_LEN, n->partial_len)) {
         return nullptr;
       }
@@ -943,7 +943,7 @@ static art_leaf* recursive_delete(art_node *n, art_node **ref, const unsigned ch
 
     // Bail if the prefix does not match
     if (n->partial_len) {
-        int prefix_len = check_prefix(n, key, key_len, depth);
+        auto prefix_len = n->checkPrefix(key, key_len, depth);
         if (prefix_len != std::min(ART_MAX_PREFIX_LEN, n->partial_len)) {
           return NULL;
         }
