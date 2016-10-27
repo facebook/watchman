@@ -3,7 +3,7 @@
 #include "config.h"
 #include <stdint.h>
 
-#define ART_MAX_PREFIX_LEN 10
+#define ART_MAX_PREFIX_LEN 10u
 
 typedef int(*art_callback)(void *data, const unsigned char *key, uint32_t key_len, void *value);
 struct art_leaf;
@@ -103,7 +103,7 @@ struct art_tree {
    * @return NULL if the item was newly inserted, otherwise
    * the old value pointer is returned.
    */
-  void* insert(const unsigned char* key, int key_len, void* value);
+  void* insert(const unsigned char* key, uint32_t key_len, void* value);
 
   /**
    * Deletes a value from the ART tree
@@ -112,7 +112,7 @@ struct art_tree {
    * @return NULL if the item was not found, otherwise
    * the value pointer is returned.
    */
-  void* erase(const unsigned char* key, int key_len);
+  void* erase(const unsigned char* key, uint32_t key_len);
 
   /**
    * Searches for a value in the ART tree
@@ -121,7 +121,7 @@ struct art_tree {
    * @return NULL if the item was not found, otherwise
    * the value pointer is returned.
    */
-  void* search(const unsigned char* key, int key_len) const;
+  void* search(const unsigned char* key, uint32_t key_len) const;
 
   /**
    * Searches for the longest prefix match for the input key.
@@ -130,7 +130,7 @@ struct art_tree {
    * @return NULL if no match was not found, otherwise
    * the leaf node with the longest matching prefix is returned.
    */
-  art_leaf* longestMatch(const unsigned char* key, int key_len) const;
+  art_leaf* longestMatch(const unsigned char* key, uint32_t key_len) const;
 
   /**
    * Returns the minimum valued leaf
