@@ -289,14 +289,13 @@ uint32_t art_node::checkPrefix(
  * Checks if a leaf matches
  * @return true if the key is an exact match.
  */
-static bool
-leaf_matches(const art_leaf* n, const unsigned char* key, uint32_t key_len) {
+bool art_leaf::matches(const unsigned char* key, uint32_t key_len) const {
   // Fail if the key lengths are different
-  if (n->key_len != key_len) {
+  if (this->key_len != key_len) {
     return false;
   }
 
-  return memcmp(n->key, key, key_len) == 0;
+  return memcmp(this->key, key, key_len) == 0;
 }
 
 /**
@@ -316,7 +315,7 @@ void* art_tree::search(const unsigned char* key, uint32_t key_len) const {
     if (IS_LEAF(n)) {
       art_leaf* leaf = LEAF_RAW(n);
       // Check if the expanded path matches
-      if (leaf_matches(leaf, key, key_len)) {
+      if (leaf->matches(key, key_len)) {
         return leaf->value;
       }
       return NULL;
@@ -696,11 +695,11 @@ static void *recursive_insert(art_node *n, art_node **ref,
         l = LEAF_RAW(n);
 
         // Check if we are updating an existing value
-        if (leaf_matches(l, key, key_len)) {
-            void *old_val = l->value;
-            *old = 1;
-            l->value = value;
-            return old_val;
+        if (l->matches(key, key_len)) {
+          void* old_val = l->value;
+          *old = 1;
+          l->value = value;
+          return old_val;
         }
 
         // New value, we must split the leaf into a node4
@@ -934,9 +933,9 @@ static art_leaf* recursive_delete(art_node *n, art_node **ref, const unsigned ch
     // Handle hitting a leaf node
     if (IS_LEAF(n)) {
         art_leaf *l = LEAF_RAW(n);
-        if (leaf_matches(l, key, key_len)) {
-            *ref = NULL;
-            return l;
+        if (l->matches(key, key_len)) {
+          *ref = nullptr;
+          return l;
         }
         return NULL;
     }
@@ -957,11 +956,11 @@ static art_leaf* recursive_delete(art_node *n, art_node **ref, const unsigned ch
     // If the child is leaf, delete from this node
     if (IS_LEAF(*child)) {
         art_leaf *l = LEAF_RAW(*child);
-        if (leaf_matches(l, key, key_len)) {
-            remove_child(n, ref, key_at(key, key_len, depth), child);
-            return l;
+        if (l->matches(key, key_len)) {
+          remove_child(n, ref, key_at(key, key_len, depth), child);
+          return l;
         }
-        return NULL;
+        return nullptr;
 
     // Recurse
     } else {

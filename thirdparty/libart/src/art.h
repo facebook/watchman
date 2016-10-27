@@ -81,6 +81,8 @@ struct art_leaf {
   void* value;
   uint32_t key_len;
   unsigned char key[1];
+
+  bool matches(const unsigned char* key, uint32_t key_len) const;
 };
 
 /**
