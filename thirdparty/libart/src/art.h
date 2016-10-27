@@ -209,6 +209,23 @@ struct art_tree {
       uint32_t prefix_len,
       art_callback cb,
       void* data);
+
+ private:
+  void* recursiveInsert(
+      art_node* n,
+      art_node** ref,
+      const unsigned char* key,
+      int key_len,
+      void* value,
+      int depth,
+      int* old);
+  art_leaf* recursiveDelete(
+      art_node* n,
+      art_node** ref,
+      const unsigned char* key,
+      int key_len,
+      int depth);
+  int recursiveIter(art_node* n, art_callback cb, void* data);
 };
 
 #endif
