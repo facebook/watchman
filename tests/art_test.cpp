@@ -238,7 +238,7 @@ void test_art_insert_iter(void) {
 
   {
     uint64_t out[] = {0, 0};
-    fail_unless(art_iter(&t, iter_cb, &out) == 0);
+    fail_unless(t.iter(iter_cb, &out) == 0);
 
     fail_unless(out[0] == nlines);
     fail_unless(out[1] == xor_mask);
@@ -296,8 +296,7 @@ void test_art_iter_prefix(void) {
     const char *expected[] = {"api", "api.foe.fum", "api.foo", "api.foo.bar",
                               "api.foo.baz"};
     prefix_data p = {0, 5, expected};
-    fail_unless(
-        !art_iter_prefix(&t, (unsigned char *)"api", 3, test_prefix_cb, &p));
+    fail_unless(!t.iterPrefix((unsigned char*)"api", 3, test_prefix_cb, &p));
     diag("Count: %d Max: %d", p.count, p.max_count);
     fail_unless(p.count == p.max_count);
   }
@@ -305,16 +304,14 @@ void test_art_iter_prefix(void) {
   {
     // Iterate over 'a'
     prefix_data p2 = {0, 6, expected2};
-    fail_unless(
-        !art_iter_prefix(&t, (unsigned char *)"a", 1, test_prefix_cb, &p2));
+    fail_unless(!t.iterPrefix((unsigned char*)"a", 1, test_prefix_cb, &p2));
     fail_unless(p2.count == p2.max_count);
   }
 
   {
     // Check a failed iteration
     prefix_data p3 = {0, 0, NULL};
-    fail_unless(
-        !art_iter_prefix(&t, (unsigned char *)"b", 1, test_prefix_cb, &p3));
+    fail_unless(!t.iterPrefix((unsigned char*)"b", 1, test_prefix_cb, &p3));
     fail_unless(p3.count == 0);
   }
 
@@ -323,8 +320,7 @@ void test_art_iter_prefix(void) {
     const char *expected4[] = {"api.foe.fum", "api.foo", "api.foo.bar",
                                "api.foo.baz"};
     prefix_data p4 = {0, 4, expected4};
-    fail_unless(
-        !art_iter_prefix(&t, (unsigned char *)"api.", 4, test_prefix_cb, &p4));
+    fail_unless(!t.iterPrefix((unsigned char*)"api.", 4, test_prefix_cb, &p4));
     diag("Count: %d Max: %d", p4.count, p4.max_count);
     fail_unless(p4.count == p4.max_count);
   }
@@ -333,8 +329,8 @@ void test_art_iter_prefix(void) {
     // Iterate over api.foo.ba
     const char *expected5[] = {"api.foo.bar"};
     prefix_data p5 = {0, 1, expected5};
-    fail_unless(!art_iter_prefix(&t, (unsigned char *)"api.foo.bar", 11,
-                                 test_prefix_cb, &p5));
+    fail_unless(
+        !t.iterPrefix((unsigned char*)"api.foo.bar", 11, test_prefix_cb, &p5));
     diag("Count: %d Max: %d", p5.count, p5.max_count);
     fail_unless(p5.count == p5.max_count);
   }
@@ -342,16 +338,15 @@ void test_art_iter_prefix(void) {
   // Check a failed iteration on api.end
   {
     prefix_data p6 = {0, 0, NULL};
-    fail_unless(!art_iter_prefix(&t, (unsigned char *)"api.end", 7,
-                                 test_prefix_cb, &p6));
+    fail_unless(
+        !t.iterPrefix((unsigned char*)"api.end", 7, test_prefix_cb, &p6));
     fail_unless(p6.count == 0);
   }
 
   // Iterate over empty prefix
   {
     prefix_data p7 = {0, 6, expected2};
-    fail_unless(
-        !art_iter_prefix(&t, (unsigned char *)"", 0, test_prefix_cb, &p7));
+    fail_unless(!t.iterPrefix((unsigned char*)"", 0, test_prefix_cb, &p7));
     fail_unless(p7.count == p7.max_count);
   }
 }
@@ -395,8 +390,8 @@ void test_art_long_prefix(void) {
         "this:key:has:a:long:common:prefix:2", "this:key:has:a:long:prefix:3",
     };
     prefix_data p = {0, 3, expected};
-    fail_unless(!art_iter_prefix(&t, (unsigned char *)"this:key:has", 12,
-                                 test_prefix_cb, &p));
+    fail_unless(
+        !t.iterPrefix((unsigned char*)"this:key:has", 12, test_prefix_cb, &p));
     diag("Count: %d Max: %d", p.count, p.max_count);
     fail_unless(p.count == p.max_count);
   }
@@ -424,7 +419,7 @@ void test_art_prefix(void) {
   diag("food lookup yields %s", v);
   fail_unless(v && strcmp((char*)v, "food") == 0);
 
-  art_iter(&t, dump_iter, NULL);
+  t.iter(dump_iter, NULL);
 
   fail_unless((v = t.search((const unsigned char*)"foo", 3)) != NULL);
   diag("foo lookup yields %s", v);

@@ -142,37 +142,34 @@ struct art_tree {
    * @return The maximum leaf or NULL
    */
   art_leaf* maximum() const;
+
+  /**
+   * Iterates through the entries pairs in the map,
+   * invoking a callback for each. The call back gets a
+   * key, value for each and returns an integer stop value.
+   * If the callback returns non-zero, then the iteration stops.
+   * @arg cb The callback function to invoke
+   * @arg data Opaque handle passed to the callback
+   * @return 0 on success, or the return of the callback.
+   */
+  int iter(art_callback cb, void* data);
+
+  /**
+   * Iterates through the entries pairs in the map,
+   * invoking a callback for each that matches a given prefix.
+   * The call back gets a key, value for each and returns an integer stop value.
+   * If the callback returns non-zero, then the iteration stops.
+   * @arg prefix The prefix of keys to read
+   * @arg prefix_len The length of the prefix
+   * @arg cb The callback function to invoke
+   * @arg data Opaque handle passed to the callback
+   * @return 0 on success, or the return of the callback.
+   */
+  int iterPrefix(
+      const unsigned char* prefix,
+      uint32_t prefix_len,
+      art_callback cb,
+      void* data);
 };
-
-/**
- * Iterates through the entries pairs in the map,
- * invoking a callback for each. The call back gets a
- * key, value for each and returns an integer stop value.
- * If the callback returns non-zero, then the iteration stops.
- * @arg t The tree to iterate over
- * @arg cb The callback function to invoke
- * @arg data Opaque handle passed to the callback
- * @return 0 on success, or the return of the callback.
- */
-int art_iter(art_tree *t, art_callback cb, void *data);
-
-/**
- * Iterates through the entries pairs in the map,
- * invoking a callback for each that matches a given prefix.
- * The call back gets a key, value for each and returns an integer stop value.
- * If the callback returns non-zero, then the iteration stops.
- * @arg t The tree to iterate over
- * @arg prefix The prefix of keys to read
- * @arg prefix_len The length of the prefix
- * @arg cb The callback function to invoke
- * @arg data Opaque handle passed to the callback
- * @return 0 on success, or the return of the callback.
- */
-int art_iter_prefix(
-    art_tree* t,
-    const unsigned char* prefix,
-    uint32_t prefix_len,
-    art_callback cb,
-    void* data);
 
 #endif

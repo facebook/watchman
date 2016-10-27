@@ -1022,8 +1022,8 @@ static int recursive_iter(art_node *n, art_callback cb, void *data) {
  * @arg data Opaque handle passed to the callback
  * @return 0 on success, or the return of the callback.
  */
-int art_iter(art_tree *t, art_callback cb, void *data) {
-    return recursive_iter(t->root_, cb, data);
+int art_tree::iter(art_callback cb, void* data) {
+  return recursive_iter(root_, cb, data);
 }
 
 /**
@@ -1087,14 +1087,13 @@ static int prefix_iterator_callback(void *data, const unsigned char *key,
  * @arg data Opaque handle passed to the callback
  * @return 0 on success, or the return of the callback.
  */
-int art_iter_prefix(
-    art_tree* t,
+int art_tree::iterPrefix(
     const unsigned char* key,
     uint32_t key_len,
     art_callback cb,
     void* data) {
   art_node** child;
-  art_node* n = t->root_;
+  art_node* n = root_;
   uint32_t prefix_len, depth = 0;
   struct prefix_iterator_state state = {key, key_len, cb, data};
   while (n) {

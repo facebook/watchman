@@ -212,8 +212,8 @@ maybe_prune_obsoleted_children(struct watchman_pending_collection *coll,
     // Since deletion invalidates the iterator, we need to repeatedly
     // call this to prune out the nodes.  It will return 0 once no
     // matching prefixes are found and deleted.
-    while (art_iter_prefix(&coll->tree, (const uint8_t *)path->buf, path->len,
-                           delete_kids, &ctx)) {
+    while (coll->tree.iterPrefix(
+        (const uint8_t*)path->buf, path->len, delete_kids, &ctx)) {
       // OK; try again
       ++pruned;
     }
