@@ -86,6 +86,8 @@ struct art_leaf {
 
   static art_leaf*
   make(const unsigned char* key, uint32_t key_len, void* value);
+
+  uint32_t longestCommonPrefix(const art_leaf* other, int depth) const;
 };
 
 /**

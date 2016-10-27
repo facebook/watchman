@@ -489,11 +489,11 @@ art_leaf::make(const unsigned char* key, uint32_t key_len, void* value) {
   return l;
 }
 
-static uint32_t longest_common_prefix(art_leaf* l1, art_leaf* l2, int depth) {
-  auto max_cmp = std::min(l1->key_len, l2->key_len) - depth;
+uint32_t art_leaf::longestCommonPrefix(const art_leaf* l2, int depth) const {
+  auto max_cmp = std::min(key_len, l2->key_len) - depth;
   int idx;
   for (idx = 0; idx < max_cmp; idx++) {
-    if (l1->key[depth + idx] != l2->key[depth + idx]) {
+    if (key[depth + idx] != l2->key[depth + idx]) {
       return idx;
     }
   }
@@ -710,7 +710,7 @@ static void *recursive_insert(art_node *n, art_node **ref,
         l2 = art_leaf::make(key, key_len, value);
 
         // Determine longest prefix
-        auto longest_prefix = longest_common_prefix(l, l2, depth);
+        auto longest_prefix = l->longestCommonPrefix(l2, depth);
         new_node->n.partial_len = longest_prefix;
         memcpy(
             new_node->n.partial,
