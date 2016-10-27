@@ -99,27 +99,26 @@ struct art_tree {
    * the old value pointer is returned.
    */
   void* insert(const unsigned char* key, int key_len, void* value);
+
+  /**
+   * Deletes a value from the ART tree
+   * @arg key The key
+   * @arg key_len The length of the key
+   * @return NULL if the item was not found, otherwise
+   * the value pointer is returned.
+   */
+  void* erase(const unsigned char* key, int key_len);
+
+  /**
+   * Searches for a value in the ART tree
+   * @arg key The key
+   * @arg key_len The length of the key
+   * @return NULL if the item was not found, otherwise
+   * the value pointer is returned.
+   */
+  void* search(const unsigned char* key, int key_len) const;
 };
 
-/**
- * Deletes a value from the ART tree
- * @arg t The tree
- * @arg key The key
- * @arg key_len The length of the key
- * @return NULL if the item was not found, otherwise
- * the value pointer is returned.
- */
-void* art_delete(art_tree *t, const unsigned char *key, int key_len);
-
-/**
- * Searches for a value in the ART tree
- * @arg t The tree
- * @arg key The key
- * @arg key_len The length of the key
- * @return NULL if the item was not found, otherwise
- * the value pointer is returned.
- */
-void* art_search(const art_tree *t, const unsigned char *key, int key_len);
 
 /**
  * Searches for the longest prefix match for the input key.

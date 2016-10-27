@@ -190,7 +190,7 @@ static int delete_kids(void *data, const unsigned char *key, uint32_t key_len,
     w_pending_fs_free(p);
 
     // Remove it from the art tree also.
-    art_delete(&ctx->coll->tree, key, key_len);
+    ctx->coll->tree.erase(key, key_len);
 
     // Stop iteration because we just invalidated the iterator state
     // by modifying the tree mid-iteration.
@@ -289,8 +289,8 @@ bool w_pending_coll_add(
     int flags) {
   char flags_label[128];
 
-  auto p = (watchman_pending_fs*)art_search(
-      &coll->tree, (const unsigned char*)path.data(), path.size());
+  auto p = (watchman_pending_fs*)coll->tree.search(
+      (const unsigned char*)path.data(), path.size());
   if (p) {
     /* Entry already exists: consolidate */
     consolidate_item(coll, p, flags);
@@ -346,8 +346,8 @@ void w_pending_coll_append(struct watchman_pending_collection *target,
   struct watchman_pending_fs *p, *target_p;
 
   while ((p = w_pending_coll_pop(src)) != NULL) {
-    target_p = (watchman_pending_fs*)art_search(
-        &target->tree, (const uint8_t*)p->path.data(), p->path.size());
+    target_p = (watchman_pending_fs*)target->tree.search(
+        (const uint8_t*)p->path.data(), p->path.size());
     if (target_p) {
       /* Entry already exists: consolidate */
       consolidate_item(target, target_p, p->flags);

@@ -136,7 +136,7 @@ void test_art_insert_search(void) {
     buf[len - 1] = '\0';
 
     {
-      uintptr_t val = (uintptr_t)art_search(&t, (unsigned char *)buf, len);
+      uintptr_t val = (uintptr_t)t.search((unsigned char *)buf, len);
       if (line != val) {
         fail("Line: %d Val: %" PRIuPTR " Str: %s", line, val, buf);
       }
@@ -183,13 +183,13 @@ void test_art_insert_delete(void) {
 
     // Search first, ensure all entries still
     // visible
-    val = (uintptr_t)art_search(&t, (unsigned char *)buf, len);
+    val = (uintptr_t)t.search((unsigned char *)buf, len);
     if (line != val) {
       fail("Line: %d Val: %" PRIuPTR " Str: %s", line, val, buf);
     }
 
     // Delete, should get lineno back
-    val = (uintptr_t)art_delete(&t, (unsigned char *)buf, len);
+    val = (uintptr_t)t.erase((unsigned char*)buf, len);
     if (line != val) {
       fail("Line: %d Val: %" PRIuPTR " Str: %s", line, val, buf);
     }
@@ -379,15 +379,15 @@ void test_art_long_prefix(void) {
   // Search for the keys
   s = "this:key:has:a:long:common:prefix:1";
   fail_unless(
-      1 == (uintptr_t)art_search(&t, (unsigned char *)s, (int)strlen(s) + 1));
+      1 == (uintptr_t)t.search((unsigned char *)s, (int)strlen(s) + 1));
 
   s = "this:key:has:a:long:common:prefix:2";
   fail_unless(
-      2 == (uintptr_t)art_search(&t, (unsigned char *)s, (int)strlen(s) + 1));
+      2 == (uintptr_t)t.search((unsigned char *)s, (int)strlen(s) + 1));
 
   s = "this:key:has:a:long:prefix:3";
   fail_unless(
-      3 == (uintptr_t)art_search(&t, (unsigned char *)s, (int)strlen(s) + 1));
+      3 == (uintptr_t)t.search((unsigned char *)s, (int)strlen(s) + 1));
 
   {
     const char *expected[] = {
@@ -420,13 +420,13 @@ void test_art_prefix(void) {
       t.insert((const unsigned char*)"foo", 3, (void*)"foo") == nullptr);
   diag("size is now %d", t.size());
   fail_unless(t.size() == 2);
-  fail_unless((v = art_search(&t, (const unsigned char*)"food", 4)) != NULL);
+  fail_unless((v = t.search((const unsigned char*)"food", 4)) != NULL);
   diag("food lookup yields %s", v);
   fail_unless(v && strcmp((char*)v, "food") == 0);
 
   art_iter(&t, dump_iter, NULL);
 
-  fail_unless((v = art_search(&t, (const unsigned char*)"foo", 3)) != NULL);
+  fail_unless((v = t.search((const unsigned char*)"foo", 3)) != NULL);
   diag("foo lookup yields %s", v);
   fail_unless(v && strcmp((char*)v, "foo") == 0);
 }
@@ -458,7 +458,7 @@ void test_art_insert_search_uuid(void) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
 
-    val = (uintptr_t)art_search(&t, (unsigned char *)buf, len);
+    val = (uintptr_t)t.search((unsigned char *)buf, len);
     if (line != val) {
       fail("Line: %d Val: %" PRIuPTR " Str: %s\n", line, val, buf);
     }

@@ -305,40 +305,40 @@ static bool leaf_matches(const art_leaf *n, const unsigned char *key, int key_le
  * @return NULL if the item was not found, otherwise
  * the value pointer is returned.
  */
-void* art_search(const art_tree *t, const unsigned char *key, int key_len) {
-    art_node **child;
-    art_node *n = t->root_;
-    int prefix_len, depth = 0;
-    while (n) {
-        // Might be a leaf
-        if (IS_LEAF(n)) {
-            art_leaf *leaf = LEAF_RAW(n);
-            // Check if the expanded path matches
-            if (leaf_matches(leaf, key, key_len)) {
-                return leaf->value;
-            }
-            return NULL;
-        }
-
-        // Bail if the prefix does not match
-        if (n->partial_len) {
-            prefix_len = check_prefix(n, key, key_len, depth);
-            if (prefix_len != min(ART_MAX_PREFIX_LEN, n->partial_len))
-                return NULL;
-            depth = depth + n->partial_len;
-        }
-
-        if (depth > key_len) {
-            // Stored key is longer than input key, can't be an exact match
-            return NULL;
-        }
-
-        // Recursively search
-        child = find_child(n, key_at(key, key_len, depth));
-        n = (child) ? *child : NULL;
-        depth++;
+void* art_tree::search(const unsigned char* key, int key_len) const {
+  art_node** child;
+  art_node* n = root_;
+  int prefix_len, depth = 0;
+  while (n) {
+    // Might be a leaf
+    if (IS_LEAF(n)) {
+      art_leaf* leaf = LEAF_RAW(n);
+      // Check if the expanded path matches
+      if (leaf_matches(leaf, key, key_len)) {
+        return leaf->value;
+      }
+      return NULL;
     }
-    return NULL;
+
+    // Bail if the prefix does not match
+    if (n->partial_len) {
+      prefix_len = check_prefix(n, key, key_len, depth);
+      if (prefix_len != min(ART_MAX_PREFIX_LEN, n->partial_len))
+        return NULL;
+      depth = depth + n->partial_len;
+    }
+
+    if (depth > key_len) {
+      // Stored key is longer than input key, can't be an exact match
+      return NULL;
+    }
+
+    // Recursively search
+    child = find_child(n, key_at(key, key_len, depth));
+    n = (child) ? *child : NULL;
+    depth++;
+  }
+  return NULL;
 }
 
 art_leaf* art_longest_match(const art_tree *t, const unsigned char *key, int key_len) {
@@ -949,15 +949,15 @@ static art_leaf* recursive_delete(art_node *n, art_node **ref, const unsigned ch
  * @return NULL if the item was not found, otherwise
  * the value pointer is returned.
  */
-void* art_delete(art_tree *t, const unsigned char *key, int key_len) {
-    art_leaf *l = recursive_delete(t->root_, &t->root_, key, key_len, 0);
-    if (l) {
-        void *old = l->value;
-        t->size_--;
-        destroy_leaf(l);
-        return old;
-    }
-    return NULL;
+void* art_tree::erase(const unsigned char* key, int key_len) {
+  art_leaf* l = recursive_delete(root_, &root_, key, key_len, 0);
+  if (l) {
+    void* old = l->value;
+    size_--;
+    destroy_leaf(l);
+    return old;
+  }
+  return NULL;
 }
 
 // Recursively iterates over the tree
