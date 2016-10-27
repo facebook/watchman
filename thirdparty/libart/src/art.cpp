@@ -111,22 +111,22 @@ static inline unsigned char leaf_key_at(const art_leaf *l, int idx) {
 
 art_node::art_node(uint8_t type) : type(type) {}
 
-art_node4::art_node4() : n(NODE4) {
+art_node4::art_node4() : art_node(NODE4) {
   memset(keys, 0, sizeof(keys));
   memset(children, 0, sizeof(children));
 }
 
-art_node16::art_node16() : n(NODE16) {
+art_node16::art_node16() : art_node(NODE16) {
   memset(keys, 0, sizeof(keys));
   memset(children, 0, sizeof(children));
 }
 
-art_node48::art_node48() : n(NODE48) {
+art_node48::art_node48() : art_node(NODE48) {
   memset(keys, 0, sizeof(keys));
   memset(children, 0, sizeof(children));
 }
 
-art_node256::art_node256() : n(NODE256) {
+art_node256::art_node256() : art_node(NODE256) {
   memset(children, 0, sizeof(children));
 }
 
@@ -142,54 +142,49 @@ static void destroy_leaf(art_leaf* leaf) {
 }
 
 // Recursively destroys the tree
-static void destroy_node(art_node *n) {
-    int i;
-    union node_ptr p = {n};
+static void destroy_node(art_node* n) {
+  // Break if null
+  if (!n) {
+    return;
+  }
 
-    // Break if null
-    if (!n) return;
+  // Special case leafs
+  if (IS_LEAF(n)) {
+    destroy_leaf(LEAF_RAW(n));
+    return;
+  }
 
-    // Special case leafs
-    if (IS_LEAF(n)) {
-        destroy_leaf(LEAF_RAW(n));
-        return;
+  delete n;
+}
+
+art_node4::~art_node4() {
+  int i;
+  for (i = 0; i < num_children; i++) {
+    destroy_node(children[i]);
+  }
+}
+
+art_node16::~art_node16() {
+  int i;
+  for (i = 0; i < num_children; i++) {
+    destroy_node(children[i]);
+  }
+}
+
+art_node48::~art_node48() {
+  int i;
+  for (i = 0; i < num_children; i++) {
+    destroy_node(children[i]);
+  }
+}
+
+art_node256::~art_node256() {
+  int i;
+  for (i = 0; num_children > 0 && i < 256; i++) {
+    if (children[i]) {
+      destroy_node(children[i]);
     }
-
-    // Handle each node type
-    switch (n->type) {
-        case NODE4:
-            for (i=0;i<n->num_children;i++) {
-                destroy_node(p.n4->children[i]);
-            }
-            delete p.n4;
-            break;
-
-        case NODE16:
-            for (i=0;i<n->num_children;i++) {
-                destroy_node(p.n16->children[i]);
-            }
-            delete p.n16;
-            break;
-
-        case NODE48:
-            for (i=0;i<n->num_children;i++) {
-                destroy_node(p.n48->children[i]);
-            }
-            delete p.n48;
-            break;
-
-        case NODE256:
-            for (i=0;i<256;i++) {
-                if (p.n256->children[i]) {
-                    destroy_node(p.n256->children[i]);
-                }
-            }
-            delete p.n256;
-            break;
-
-        default:
-            abort();
-    }
+  }
 }
 
 art_tree::~art_tree() {
@@ -206,64 +201,60 @@ void art_tree::clear() {
  * Returns the size of the ART tree.
  */
 
-art_node** art_node::findChild(unsigned char c) {
+art_node** art_node4::findChild(unsigned char c) {
   int i;
-  union node_ptr p = {this};
-  switch (type) {
-    case NODE4:
-      for (i = 0; i < num_children; i++) {
-        if (p.n4->keys[i] == c) {
-          return &p.n4->children[i];
-        }
-      }
-      return nullptr;
-
-    case NODE16: {
-#ifdef __SSE__
-      __m128i cmp;
-      int mask, bitfield;
-
-      // Compare the key to all 16 stored keys
-      cmp = _mm_cmpeq_epi8(
-          _mm_set1_epi8(c), _mm_loadu_si128((__m128i*)p.n16->keys));
-
-      // Use a mask to ignore children that don't exist
-      mask = (1 << num_children) - 1;
-      bitfield = _mm_movemask_epi8(cmp) & mask;
-
-      /*
-       * If we have a match (any bit set) then we can
-       * return the pointer match using ctz to get
-       * the index.
-       */
-      if (bitfield)
-        return &p.n16->children[__builtin_ctz(bitfield)];
-#else
-      for (i = 0; i < num_children; i++) {
-        if (p.n16->keys[i] == c) {
-          return &p.n16->children[i];
-        }
-      }
-#endif
-      return nullptr;
+  for (i = 0; i < num_children; i++) {
+    if (keys[i] == c) {
+      return &children[i];
     }
-
-    case NODE48:
-      i = p.n48->keys[c];
-      if (i) {
-        return &p.n48->children[i - 1];
-      }
-      return nullptr;
-
-    case NODE256:
-      if (p.n256->children[c]) {
-        return &p.n256->children[c];
-      }
-      return nullptr;
-
-    default:
-      abort();
   }
+  return nullptr;
+}
+
+art_node** art_node16::findChild(unsigned char c) {
+  int i;
+#ifdef __SSE__
+  __m128i cmp;
+  int mask, bitfield;
+
+  // Compare the key to all 16 stored keys
+  cmp = _mm_cmpeq_epi8(_mm_set1_epi8(c), _mm_loadu_si128((__m128i*)keys));
+
+  // Use a mask to ignore children that don't exist
+  mask = (1 << num_children) - 1;
+  bitfield = _mm_movemask_epi8(cmp) & mask;
+
+  /*
+   * If we have a match (any bit set) then we can
+   * return the pointer match using ctz to get
+   * the index.
+   */
+  if (bitfield) {
+    return &children[__builtin_ctz(bitfield)];
+  }
+#else
+  for (i = 0; i < num_children; i++) {
+    if (keys[i] == c) {
+      return &children[i];
+    }
+  }
+#endif
+  return nullptr;
+}
+
+art_node** art_node48::findChild(unsigned char c) {
+  auto i = keys[c];
+  if (i) {
+    return &children[i - 1];
+  }
+  return nullptr;
+}
+
+art_node** art_node256::findChild(unsigned char c) {
+  if (children[c]) {
+    return &children[c];
+  }
+  return nullptr;
 }
 
 /**
@@ -508,28 +499,28 @@ art_node::art_node(uint8_t type, const art_node& other)
 }
 
 void art_node256::addChild(art_node**, unsigned char c, art_node* child) {
-  n.num_children++;
+  num_children++;
   children[c] = child;
 }
 
 void art_node48::addChild(art_node** ref, unsigned char c, art_node* child) {
-  if (n.num_children < 48) {
+  if (num_children < 48) {
     int pos = 0;
     while (children[pos]) {
       pos++;
     }
     children[pos] = child;
     keys[c] = pos + 1;
-    n.num_children++;
+    num_children++;
   } else {
     auto new_node = new art_node256(std::move(*this));
-    *ref = &new_node->n;
+    *ref = new_node;
     delete this;
     new_node->addChild(ref, c, child);
   }
 }
 
-art_node256::art_node256(art_node48&& n48) : n(NODE256, n48.n) {
+art_node256::art_node256(art_node48&& n48) : art_node(NODE256, n48) {
   int i;
   memset(children, 0, sizeof(children));
   for (i = 0; i < 256; i++) {
@@ -537,10 +528,12 @@ art_node256::art_node256(art_node48&& n48) : n(NODE256, n48.n) {
       children[i] = n48.children[n48.keys[i] - 1];
     }
   }
+
+  n48.num_children = 0;
 }
 
 void art_node16::addChild(art_node** ref, unsigned char c, art_node* child) {
-  if (n.num_children < 16) {
+  if (num_children < 16) {
     unsigned idx;
 #ifdef __SSE__
     __m128i cmp;
@@ -550,28 +543,28 @@ void art_node16::addChild(art_node** ref, unsigned char c, art_node* child) {
     cmp = _mm_cmplt_epi8(_mm_set1_epi8(c), _mm_loadu_si128((__m128i*)keys));
 
     // Use a mask to ignore children that don't exist
-    mask = (1 << n.num_children) - 1;
+    mask = (1 << num_children) - 1;
     bitfield = _mm_movemask_epi8(cmp) & mask;
 
     // Check if less than any
     if (bitfield) {
       idx = __builtin_ctz(bitfield);
-      memmove(keys + idx + 1, keys + idx, n.num_children - idx);
+      memmove(keys + idx + 1, keys + idx, num_children - idx);
       memmove(
           children + idx + 1,
           children + idx,
-          (n.num_children - idx) * sizeof(void*));
+          (num_children - idx) * sizeof(void*));
     } else {
-      idx = n.num_children;
+      idx = num_children;
     }
 #else
-    for (idx = 0; idx < n.num_children; idx++) {
+    for (idx = 0; idx < num_children; idx++) {
       if (c < keys[idx]) {
-        memmove(keys + idx + 1, keys + idx, n.num_children - idx);
+        memmove(keys + idx + 1, keys + idx, num_children - idx);
         memmove(
             children + idx + 1,
             children + idx,
-            (n.num_children - idx) * sizeof(void*));
+            (num_children - idx) * sizeof(void*));
         break;
       }
     }
@@ -580,83 +573,66 @@ void art_node16::addChild(art_node** ref, unsigned char c, art_node* child) {
     // Set the child
     keys[idx] = c;
     children[idx] = child;
-    n.num_children++;
+    num_children++;
 
   } else {
     auto new_node = new art_node48(std::move(*this));
-    *ref = &new_node->n;
+    *ref = new_node;
     delete this;
     new_node->addChild(ref, c, child);
   }
 }
 
-art_node48::art_node48(art_node16&& n16) : n(NODE48, n16.n) {
+art_node48::art_node48(art_node16&& n16) : art_node(NODE48, n16) {
   int i;
   memset(children, 0, sizeof(children));
   memset(keys, 0, sizeof(keys));
 
   // Copy the child pointers and populate the key map
-  memcpy(children, n16.children, sizeof(children[0]) * n16.n.num_children);
-  for (i = 0; i < n16.n.num_children; i++) {
+  memcpy(children, n16.children, sizeof(children[0]) * n16.num_children);
+  for (i = 0; i < n16.num_children; i++) {
     keys[n16.keys[i]] = i + 1;
   }
+
+  n16.num_children = 0;
 }
 
 void art_node4::addChild(art_node** ref, unsigned char c, art_node* child) {
-  if (n.num_children < 4) {
+  if (num_children < 4) {
     int idx;
-    for (idx = 0; idx < n.num_children; idx++) {
+    for (idx = 0; idx < num_children; idx++) {
       if (c < keys[idx]) {
         break;
       }
     }
 
     // Shift to make room
-    memmove(keys + idx + 1, keys + idx, n.num_children - idx);
+    memmove(keys + idx + 1, keys + idx, num_children - idx);
     memmove(
         children + idx + 1,
         children + idx,
-        (n.num_children - idx) * sizeof(void*));
+        (num_children - idx) * sizeof(void*));
 
     // Insert element
     keys[idx] = c;
     children[idx] = child;
-    n.num_children++;
+    num_children++;
 
   } else {
     auto new_node = new art_node16(std::move(*this));
-    *ref = &new_node->n;
+    *ref = new_node;
     delete this;
     new_node->addChild(ref, c, child);
   }
 }
 
-art_node16::art_node16(art_node4&& n4) : n(NODE16, n4.n) {
+art_node16::art_node16(art_node4&& n4) : art_node(NODE16, n4) {
   memset(children, 0, sizeof(children));
   memset(keys, 0, sizeof(keys));
-  memcpy(children, n4.children, n.num_children * sizeof(children[0]));
-  memcpy(keys, n4.keys, n.num_children * sizeof(keys[0]));
-}
+  memcpy(children, n4.children, num_children * sizeof(children[0]));
+  memcpy(keys, n4.keys, num_children * sizeof(keys[0]));
 
-void art_node::addChild(art_node** ref, unsigned char c, art_node* child) {
-  union node_ptr p = {this};
-
-  switch (type) {
-    case NODE4:
-      p.n4->addChild(ref, c, child);
-      return;
-    case NODE16:
-      p.n16->addChild(ref, c, child);
-      return;
-    case NODE48:
-      p.n48->addChild(ref, c, child);
-      return;
-    case NODE256:
-      p.n256->addChild(ref, c, child);
-      return;
-    default:
-      abort();
-  }
+  n4.num_children = 0;
 }
 
 /**
@@ -727,13 +703,13 @@ void* art_tree::recursiveInsert(
 
     // Determine longest prefix
     auto longest_prefix = l->longestCommonPrefix(l2, depth);
-    new_node->n.partial_len = longest_prefix;
+    new_node->partial_len = longest_prefix;
     memcpy(
-        new_node->n.partial,
+        new_node->partial,
         l2->key + depth,
         std::min(ART_MAX_PREFIX_LEN, longest_prefix));
     // Add the leafs to the new node4
-    *ref = &new_node->n;
+    *ref = new_node;
     new_node->addChild(
         ref, leaf_key_at(l, depth + longest_prefix), SET_LEAF(l));
     new_node->addChild(
@@ -754,9 +730,9 @@ void* art_tree::recursiveInsert(
     // Create a new node
     new_node = new art_node4;
     *ref = (art_node*)new_node;
-    new_node->n.partial_len = prefix_diff;
+    new_node->partial_len = prefix_diff;
     memcpy(
-        new_node->n.partial,
+        new_node->partial,
         n->partial,
         std::min(ART_MAX_PREFIX_LEN, prefix_diff));
 
@@ -823,18 +799,18 @@ void* art_tree::insert(
 
 void art_node256::removeChild(art_node** ref, unsigned char c, art_node**) {
   children[c] = NULL;
-  n.num_children--;
+  num_children--;
 
   // Resize to a node48 on underflow, not immediately to prevent
   // trashing if we sit on the 48/49 boundary
-  if (n.num_children == 37) {
+  if (num_children == 37) {
     auto new_node = new art_node48(std::move(*this));
-    *ref = &new_node->n;
+    *ref = new_node;
     delete this;
   }
 }
 
-art_node48::art_node48(art_node256&& n256) : n(NODE48, n256.n) {
+art_node48::art_node48(art_node256&& n256) : art_node(NODE48, n256) {
   int i, pos = 0;
   memset(keys, 0, sizeof(keys));
   memset(children, 0, sizeof(children));
@@ -846,22 +822,24 @@ art_node48::art_node48(art_node256&& n256) : n(NODE48, n256.n) {
       pos++;
     }
   }
+
+  n256.num_children = 0;
 }
 
 void art_node48::removeChild(art_node** ref, unsigned char c, art_node**) {
   int pos = keys[c];
   keys[c] = 0;
   children[pos - 1] = nullptr;
-  n.num_children--;
+  num_children--;
 
-  if (n.num_children == 12) {
+  if (num_children == 12) {
     auto new_node = new art_node16(std::move(*this));
-    *ref = &new_node->n;
+    *ref = new_node;
     delete this;
   }
 }
 
-art_node16::art_node16(art_node48&& n48) : n(NODE16, n48.n) {
+art_node16::art_node16(art_node48&& n48) : art_node(NODE16, n48) {
   int i, child = 0;
   memset(keys, 0, sizeof(keys));
   memset(children, 0, sizeof(children));
@@ -874,84 +852,68 @@ art_node16::art_node16(art_node48&& n48) : n(NODE16, n48.n) {
       child++;
     }
   }
+
+  n48.num_children = 0;
 }
 
 void art_node16::removeChild(art_node** ref, unsigned char, art_node** l) {
   int pos = l - children;
-  memmove(keys + pos, keys + pos + 1, n.num_children - 1 - pos);
+  memmove(keys + pos, keys + pos + 1, num_children - 1 - pos);
   memmove(
       children + pos,
       children + pos + 1,
-      (n.num_children - 1 - pos) * sizeof(void*));
-  n.num_children--;
+      (num_children - 1 - pos) * sizeof(void*));
+  num_children--;
 
-  if (n.num_children == 3) {
+  if (num_children == 3) {
     auto new_node = new art_node4(std::move(*this));
-    *ref = &new_node->n;
+    *ref = new_node;
     delete this;
   }
 }
 
-art_node4::art_node4(art_node16&& n16) : n(NODE4, n16.n) {
+art_node4::art_node4(art_node16&& n16) : art_node(NODE4, n16) {
   memset(keys, 0, sizeof(keys));
   memset(children, 0, sizeof(children));
-  memcpy(keys, n16.keys, n16.n.num_children * sizeof(keys[0]));
-  memcpy(children, n16.children, n16.n.num_children * sizeof(children[0]));
+  memcpy(keys, n16.keys, n16.num_children * sizeof(keys[0]));
+  memcpy(children, n16.children, n16.num_children * sizeof(children[0]));
+
+  n16.num_children = 0;
 }
 
 void art_node4::removeChild(art_node** ref, unsigned char, art_node** l) {
   int pos = l - children;
-  memmove(keys + pos, keys + pos + 1, n.num_children - 1 - pos);
+  memmove(keys + pos, keys + pos + 1, num_children - 1 - pos);
   memmove(
       children + pos,
       children + pos + 1,
-      (n.num_children - 1 - pos) * sizeof(void*));
-  n.num_children--;
+      (num_children - 1 - pos) * sizeof(void*));
+  num_children--;
 
   // Remove nodes with only a single child
-  if (n.num_children == 1) {
+  if (num_children == 1) {
     auto child = children[0];
     if (!IS_LEAF(child)) {
       // Concatenate the prefixes
-      auto prefix = n.partial_len;
+      auto prefix = partial_len;
       if (prefix < ART_MAX_PREFIX_LEN) {
-        n.partial[prefix] = keys[0];
+        partial[prefix] = keys[0];
         prefix++;
       }
       if (prefix < ART_MAX_PREFIX_LEN) {
         auto sub_prefix =
             std::min(child->partial_len, ART_MAX_PREFIX_LEN - prefix);
-        memcpy(n.partial + prefix, child->partial, sub_prefix);
+        memcpy(partial + prefix, child->partial, sub_prefix);
         prefix += sub_prefix;
       }
 
       // Store the prefix in the child
-      memcpy(child->partial, n.partial, std::min(prefix, ART_MAX_PREFIX_LEN));
-      child->partial_len += n.partial_len + 1;
+      memcpy(child->partial, partial, std::min(prefix, ART_MAX_PREFIX_LEN));
+      child->partial_len += partial_len + 1;
     }
     *ref = child;
+    num_children = 0;
     delete this;
-  }
-}
-
-void art_node::removeChild(art_node** ref, unsigned char c, art_node** l) {
-  union node_ptr p = {this};
-
-  switch (type) {
-    case NODE4:
-      p.n4->removeChild(ref, c, l);
-      return;
-    case NODE16:
-      p.n16->removeChild(ref, c, l);
-      return;
-    case NODE48:
-      p.n48->removeChild(ref, c, l);
-      return;
-    case NODE256:
-      p.n256->removeChild(ref, c, l);
-      return;
-    default:
-      abort();
   }
 }
 
