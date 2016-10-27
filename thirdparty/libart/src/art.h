@@ -29,6 +29,9 @@ struct art_node {
   // Returns the number of prefix characters shared between the key and node.
   uint32_t checkPrefix(const unsigned char* key, uint32_t key_len, int depth)
       const;
+  // Calculates the index at which the prefixes mismatch
+  uint32_t prefixMismatch(const unsigned char* key, uint32_t key_len, int depth)
+      const;
 
   void addChild(art_node** ref, unsigned char c, art_node* child);
   void removeChild(art_node** ref, unsigned char c, art_node** l);

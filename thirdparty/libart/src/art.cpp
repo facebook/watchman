@@ -662,24 +662,23 @@ void art_node::addChild(art_node** ref, unsigned char c, art_node* child) {
 /**
  * Calculates the index at which the prefixes mismatch
  */
-static uint32_t prefix_mismatch(
-    const art_node* n,
+uint32_t art_node::prefixMismatch(
     const unsigned char* key,
     uint32_t key_len,
-    int depth) {
+    int depth) const {
   auto max_cmp =
-      std::min(std::min(ART_MAX_PREFIX_LEN, n->partial_len), key_len - depth);
+      std::min(std::min(ART_MAX_PREFIX_LEN, partial_len), key_len - depth);
   int idx;
   for (idx = 0; idx < max_cmp; idx++) {
-    if (n->partial[idx] != key[depth + idx]) {
+    if (partial[idx] != key[depth + idx]) {
       return idx;
     }
   }
 
   // If the prefix is short we can avoid finding a leaf
-  if (n->partial_len > ART_MAX_PREFIX_LEN) {
+  if (partial_len > ART_MAX_PREFIX_LEN) {
     // Prefix is longer than what we've checked, find a leaf
-    art_leaf* l = n->minimum();
+    art_leaf* l = minimum();
     max_cmp = std::min(l->key_len, key_len) - depth;
     for (; idx < max_cmp; idx++) {
       if (l->key[idx + depth] != key[depth + idx]) {
@@ -740,7 +739,7 @@ static void *recursive_insert(art_node *n, art_node **ref,
     // Check if given node has a prefix
     if (n->partial_len) {
         // Determine if the prefixes differ, since we need to split
-        auto prefix_diff = prefix_mismatch(n, key, key_len, depth);
+        auto prefix_diff = n->prefixMismatch(key, key_len, depth);
         art_node4 *new_node;
         if (prefix_diff >= n->partial_len) {
           depth += n->partial_len;
@@ -1173,7 +1172,7 @@ int art_tree::iterPrefix(
 
     // Bail if the prefix does not match
     if (n->partial_len) {
-      prefix_len = prefix_mismatch(n, key, key_len, depth);
+      prefix_len = n->prefixMismatch(key, key_len, depth);
 
       // If there is no match, search is terminated
       if (!prefix_len)
