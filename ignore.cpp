@@ -19,8 +19,10 @@ void w_ignore_addstr(struct watchman_ignore *ignore, w_string_t *path,
   w_ht_set(is_vcs_ignore ? ignore->ignore_vcs : ignore->ignore_dirs,
            w_ht_ptr_val(path), w_ht_ptr_val(path));
 
-  art_insert(&ignore->tree, (const unsigned char *)path->buf, path->len,
-             is_vcs_ignore ? VCS_IGNORE : FULL_IGNORE);
+  ignore->tree.insert(
+      (const unsigned char*)path->buf,
+      path->len,
+      is_vcs_ignore ? VCS_IGNORE : FULL_IGNORE);
 
   if (!is_vcs_ignore) {
     ignore->dirs_vec = (w_string_t**)realloc(

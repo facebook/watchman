@@ -44,7 +44,7 @@ void test_art_insert(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    if (art_insert(&t, (unsigned char *)buf, len, (void *)line)) {
+    if (t.insert((unsigned char*)buf, len, (void*)line)) {
       fail("insert should have returned NULL but did not");
     }
     if (t.size() != line) {
@@ -103,9 +103,9 @@ void test_art_insert_verylong(void) {
       219, 191, 198, 134, 5,   208, 212, 72,  44,  208, 250, 180, 14,  1,   0,
       0,   8,   '\0'};
 
-  fail_unless(NULL == art_insert(&t, key1, 299, (void *)key1));
-  fail_unless(NULL == art_insert(&t, key2, 302, (void *)key2));
-  art_insert(&t, key2, 302, (void *)key2);
+  fail_unless(nullptr == t.insert(key1, 299, (void*)key1));
+  fail_unless(nullptr == t.insert(key2, 302, (void *)key2));
+  t.insert(key2, 302, (void *)key2);
   fail_unless(t.size() == 2);
 }
 
@@ -120,7 +120,7 @@ void test_art_insert_search(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    if (art_insert(&t, (unsigned char *)buf, len, (void *)line)) {
+    if (t.insert((unsigned char *)buf, len, (void *)line)) {
       fail("art_insert didn't return NULL");
     }
     line++;
@@ -163,7 +163,7 @@ void test_art_insert_delete(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    if (art_insert(&t, (unsigned char *)buf, len, (void *)line)) {
+    if (t.insert((unsigned char*)buf, len, (void*)line)) {
       fail("art_insert didn't return NULL");
     }
     line++;
@@ -227,7 +227,7 @@ void test_art_insert_iter(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    if (art_insert(&t, (unsigned char *)buf, len, (void *)line)) {
+    if (t.insert((unsigned char*)buf, len, (void*)line)) {
       fail("art_insert didn't return NULL");
     }
 
@@ -269,27 +269,27 @@ void test_art_iter_prefix(void) {
                              "api.foo",     "api.foo.bar", "api.foo.baz"};
 
   fail_unless(NULL ==
-              art_insert(&t, (unsigned char *)s, (int)strlen(s) + 1, NULL));
+              t.insert((unsigned char *)s, (int)strlen(s) + 1, NULL));
 
   s = "api.foo.baz";
   fail_unless(NULL ==
-              art_insert(&t, (unsigned char *)s, (int)strlen(s) + 1, NULL));
+              t.insert((unsigned char *)s, (int)strlen(s) + 1, NULL));
 
   s = "api.foe.fum";
   fail_unless(NULL ==
-              art_insert(&t, (unsigned char *)s, (int)strlen(s) + 1, NULL));
+              t.insert((unsigned char *)s, (int)strlen(s) + 1, NULL));
 
   s = "abc.123.456";
   fail_unless(NULL ==
-              art_insert(&t, (unsigned char *)s, (int)strlen(s) + 1, NULL));
+              t.insert((unsigned char *)s, (int)strlen(s) + 1, NULL));
 
   s = "api.foo";
   fail_unless(NULL ==
-              art_insert(&t, (unsigned char *)s, (int)strlen(s) + 1, NULL));
+              t.insert((unsigned char *)s, (int)strlen(s) + 1, NULL));
 
   s = "api";
   fail_unless(NULL ==
-              art_insert(&t, (unsigned char *)s, (int)strlen(s) + 1, NULL));
+              t.insert((unsigned char *)s, (int)strlen(s) + 1, NULL));
 
   {
     // Iterate over api
@@ -363,17 +363,17 @@ void test_art_long_prefix(void) {
 
   s = "this:key:has:a:long:prefix:3";
   v = 3;
-  fail_unless(NULL == art_insert(&t, (unsigned char *)s, (int)strlen(s) + 1,
+  fail_unless(NULL == t.insert((unsigned char *)s, (int)strlen(s) + 1,
                                  (void *)v));
 
   s = "this:key:has:a:long:common:prefix:2";
   v = 2;
-  fail_unless(NULL == art_insert(&t, (unsigned char *)s, (int)strlen(s) + 1,
+  fail_unless(NULL == t.insert((unsigned char *)s, (int)strlen(s) + 1,
                                  (void *)v));
 
   s = "this:key:has:a:long:common:prefix:1";
   v = 1;
-  fail_unless(NULL == art_insert(&t, (unsigned char *)s, (int)strlen(s) + 1,
+  fail_unless(NULL == t.insert((unsigned char *)s, (int)strlen(s) + 1,
                                  (void *)v));
 
   // Search for the keys
@@ -414,10 +414,10 @@ void test_art_prefix(void) {
   void *v;
 
   fail_unless(
-      art_insert(&t, (const unsigned char*)"food", 4, (void*)"food") ==
+      t.insert((const unsigned char*)"food", 4, (void*)"food") ==
       nullptr);
   fail_unless(
-      art_insert(&t, (const unsigned char*)"foo", 3, (void*)"foo") == nullptr);
+      t.insert((const unsigned char*)"foo", 3, (void*)"foo") == nullptr);
   diag("size is now %d", t.size());
   fail_unless(t.size() == 2);
   fail_unless((v = art_search(&t, (const unsigned char*)"food", 4)) != NULL);
@@ -442,7 +442,7 @@ void test_art_insert_search_uuid(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    if (art_insert(&t, (unsigned char *)buf, len, (void *)line)) {
+    if (t.insert((unsigned char *)buf, len, (void *)line)) {
       fail("art_insert didn't return NULL");
     }
     line++;

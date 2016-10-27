@@ -316,7 +316,7 @@ bool w_pending_coll_add(
       flags_label);
 
   link_head(coll, p);
-  art_insert(&coll->tree, (const uint8_t*)path.data(), path.size(), p);
+  coll->tree.insert((const uint8_t*)path.data(), path.size(), p);
 
   return true;
 }
@@ -362,8 +362,7 @@ void w_pending_coll_append(struct watchman_pending_collection *target,
     maybe_prune_obsoleted_children(target, p->path, p->flags);
 
     link_head(target, p);
-    art_insert(
-        &target->tree, (const uint8_t*)p->path.data(), p->path.size(), p);
+    target->tree.insert((const uint8_t*)p->path.data(), p->path.size(), p);
   }
 
   // Empty the src tree and reset it

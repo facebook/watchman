@@ -89,18 +89,17 @@ struct art_tree {
   }
 
   void clear();
-};
 
-/**
- * Inserts a new value into the ART tree
- * @arg t The tree
- * @arg key The key
- * @arg key_len The length of the key
- * @arg value Opaque value.
- * @return NULL if the item was newly inserted, otherwise
- * the old value pointer is returned.
- */
-void* art_insert(art_tree *t, const unsigned char *key, int key_len, void *value);
+  /**
+   * Inserts a new value into the ART tree
+   * @arg key The key
+   * @arg key_len The length of the key
+   * @arg value Opaque value.
+   * @return NULL if the item was newly inserted, otherwise
+   * the old value pointer is returned.
+   */
+  void* insert(const unsigned char* key, int key_len, void* value);
+};
 
 /**
  * Deletes a value from the ART tree

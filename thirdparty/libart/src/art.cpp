@@ -773,11 +773,13 @@ RECURSE_SEARCH:;
  * @return NULL if the item was newly inserted, otherwise
  * the old value pointer is returned.
  */
-void* art_insert(art_tree *t, const unsigned char *key, int key_len, void *value) {
-    int old_val = 0;
-    void *old = recursive_insert(t->root_, &t->root_, key, key_len, value, 0, &old_val);
-    if (!old_val) t->size_++;
-    return old;
+void* art_tree::insert(const unsigned char* key, int key_len, void* value) {
+  int old_val = 0;
+  void* old = recursive_insert(root_, &root_, key, key_len, value, 0, &old_val);
+  if (!old_val) {
+    size_++;
+  }
+  return old;
 }
 
 static void remove_child256(art_node256 *n, art_node **ref, unsigned char c) {
