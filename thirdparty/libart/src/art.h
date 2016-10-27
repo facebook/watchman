@@ -22,6 +22,7 @@ struct art_node {
 
   art_leaf* maximum() const;
   art_leaf* minimum() const;
+  art_node** findChild(unsigned char c);
 };
 
 /**

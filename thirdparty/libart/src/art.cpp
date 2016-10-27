@@ -205,63 +205,64 @@ void art_tree::clear() {
  * Returns the size of the ART tree.
  */
 
-static art_node** find_child(art_node *n, unsigned char c) {
-    int i;
-    union node_ptr p = {n};
-    switch (n->type) {
-        case NODE4:
-            for (i=0;i < n->num_children; i++) {
-                if (p.n4->keys[i] == c)
-                    return &p.n4->children[i];
-            }
-            break;
-
-        case NODE16:
-        {
-#ifdef __SSE__
-            __m128i cmp;
-            int mask, bitfield;
-
-            // Compare the key to all 16 stored keys
-            cmp = _mm_cmpeq_epi8(_mm_set1_epi8(c),
-                    _mm_loadu_si128((__m128i*)p.n16->keys));
-
-            // Use a mask to ignore children that don't exist
-            mask = (1 << n->num_children) - 1;
-            bitfield = _mm_movemask_epi8(cmp) & mask;
-
-            /*
-             * If we have a match (any bit set) then we can
-             * return the pointer match using ctz to get
-             * the index.
-             */
-            if (bitfield)
-                return &p.n16->children[__builtin_ctz(bitfield)];
-#else
-            for (i = 0; i < n->num_children; i++) {
-                if (p.n16->keys[i] == c) {
-                    return &p.n16->children[i];
-                }
-            }
-#endif
-            break;
+art_node** art_node::findChild(unsigned char c) {
+  int i;
+  union node_ptr p = {this};
+  switch (type) {
+    case NODE4:
+      for (i = 0; i < num_children; i++) {
+        if (p.n4->keys[i] == c) {
+          return &p.n4->children[i];
         }
+      }
+      return nullptr;
 
-        case NODE48:
-            i = p.n48->keys[c];
-            if (i)
-                return &p.n48->children[i-1];
-            break;
+    case NODE16: {
+#ifdef __SSE__
+      __m128i cmp;
+      int mask, bitfield;
 
-        case NODE256:
-            if (p.n256->children[c])
-                return &p.n256->children[c];
-            break;
+      // Compare the key to all 16 stored keys
+      cmp = _mm_cmpeq_epi8(
+          _mm_set1_epi8(c), _mm_loadu_si128((__m128i*)p.n16->keys));
 
-        default:
-            abort();
+      // Use a mask to ignore children that don't exist
+      mask = (1 << num_children) - 1;
+      bitfield = _mm_movemask_epi8(cmp) & mask;
+
+      /*
+       * If we have a match (any bit set) then we can
+       * return the pointer match using ctz to get
+       * the index.
+       */
+      if (bitfield)
+        return &p.n16->children[__builtin_ctz(bitfield)];
+#else
+      for (i = 0; i < num_children; i++) {
+        if (p.n16->keys[i] == c) {
+          return &p.n16->children[i];
+        }
+      }
+#endif
+      return nullptr;
     }
-    return NULL;
+
+    case NODE48:
+      i = p.n48->keys[c];
+      if (i) {
+        return &p.n48->children[i - 1];
+      }
+      return nullptr;
+
+    case NODE256:
+      if (p.n256->children[c]) {
+        return &p.n256->children[c];
+      }
+      return nullptr;
+
+    default:
+      abort();
+  }
 }
 
 // Simple inlined if
@@ -334,7 +335,7 @@ void* art_tree::search(const unsigned char* key, int key_len) const {
     }
 
     // Recursively search
-    child = find_child(n, key_at(key, key_len, depth));
+    child = n->findChild(key_at(key, key_len, depth));
     n = (child) ? *child : NULL;
     depth++;
   }
@@ -373,7 +374,7 @@ art_leaf* art_tree::longestMatch(const unsigned char* key, int key_len) const {
     }
 
     // Recursively search
-    child = find_child(n, key_at(key, key_len, depth));
+    child = n->findChild(key_at(key, key_len, depth));
     n = (child) ? *child : nullptr;
     depth++;
   }
@@ -752,7 +753,7 @@ static void *recursive_insert(art_node *n, art_node **ref,
 RECURSE_SEARCH:;
     {
         // Find a child to recurse to
-        art_node **child = find_child(n, key_at(key, key_len, depth));
+        art_node** child = n->findChild(key_at(key, key_len, depth));
         if (child) {
             return recursive_insert(*child, child, key, key_len, value,
                                     depth + 1, old);
@@ -924,7 +925,7 @@ static art_leaf* recursive_delete(art_node *n, art_node **ref, const unsigned ch
     }
 
     // Find child node
-    child = find_child(n, key_at(key, key_len, depth));
+    child = n->findChild(key_at(key, key_len, depth));
     if (!child) return NULL;
 
     // If the child is leaf, delete from this node
@@ -1139,7 +1140,7 @@ int art_tree::iterPrefix(
     }
 
     // Recursively search
-    child = find_child(n, key_at(key, key_len, depth));
+    child = n->findChild(key_at(key, key_len, depth));
     n = (child) ? *child : NULL;
     depth++;
   }
