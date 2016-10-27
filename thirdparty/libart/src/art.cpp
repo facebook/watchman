@@ -25,7 +25,7 @@
  * Macros to manipulate pointer tags
  */
 #define IS_LEAF(x) (((uintptr_t)x & 1))
-#define SET_LEAF(x) ((void*)((uintptr_t)x | 1))
+#define SET_LEAF(x) ((art_node*)((uintptr_t)x | 1))
 #define LEAF_RAW(x) ((art_leaf*)((void*)((uintptr_t)x & ~1)))
 
 // Valid values for art_node::type
@@ -500,151 +500,163 @@ uint32_t art_leaf::longestCommonPrefix(const art_leaf* l2, int depth) const {
   return idx;
 }
 
-static void copy_header(art_node *dest, art_node *src) {
-    dest->num_children = src->num_children;
-    dest->partial_len = src->partial_len;
-    memcpy(
-        dest->partial,
-        src->partial,
-        std::min(ART_MAX_PREFIX_LEN, src->partial_len));
+art_node::art_node(uint8_t type, const art_node& other)
+    : type(type),
+      num_children(other.num_children),
+      partial_len(other.partial_len) {
+  memcpy(partial, other.partial, std::min(ART_MAX_PREFIX_LEN, partial_len));
 }
 
-static void add_child256(art_node256 *n, art_node **ref, unsigned char c, void *child) {
-    (void)ref;
-    n->n.num_children++;
-    n->children[c] = (art_node*)child;
+void art_node256::addChild(art_node**, unsigned char c, art_node* child) {
+  n.num_children++;
+  children[c] = child;
 }
 
-static void add_child48(art_node48 *n, art_node **ref, unsigned char c, void *child) {
-    if (n->n.num_children < 48) {
-        int pos = 0;
-        while (n->children[pos]) pos++;
-        n->children[pos] = (art_node*)child;
-        n->keys[c] = pos + 1;
-        n->n.num_children++;
-    } else {
-        auto new_node = new art_node256;
-        int i;
-        for (i=0;i<256;i++) {
-            if (n->keys[i]) {
-                new_node->children[i] = n->children[n->keys[i] - 1];
-            }
-        }
-        copy_header((art_node*)new_node, (art_node*)n);
-        *ref = (art_node*)new_node;
-        delete n;
-        add_child256(new_node, ref, c, child);
+void art_node48::addChild(art_node** ref, unsigned char c, art_node* child) {
+  if (n.num_children < 48) {
+    int pos = 0;
+    while (children[pos]) {
+      pos++;
     }
+    children[pos] = child;
+    keys[c] = pos + 1;
+    n.num_children++;
+  } else {
+    auto new_node = new art_node256(std::move(*this));
+    *ref = &new_node->n;
+    delete this;
+    new_node->addChild(ref, c, child);
+  }
 }
 
-static void add_child16(art_node16 *n, art_node **ref, unsigned char c, void *child) {
-    if (n->n.num_children < 16) {
-        unsigned idx;
+art_node256::art_node256(art_node48&& n48) : n(NODE256, n48.n) {
+  int i;
+  memset(children, 0, sizeof(children));
+  for (i = 0; i < 256; i++) {
+    if (n48.keys[i]) {
+      children[i] = n48.children[n48.keys[i] - 1];
+    }
+  }
+}
+
+void art_node16::addChild(art_node** ref, unsigned char c, art_node* child) {
+  if (n.num_children < 16) {
+    unsigned idx;
 #ifdef __SSE__
-        __m128i cmp;
-        unsigned mask, bitfield;
+    __m128i cmp;
+    unsigned mask, bitfield;
 
-        // Compare the key to all 16 stored keys
-        cmp = _mm_cmplt_epi8(_mm_set1_epi8(c),
-                _mm_loadu_si128((__m128i*)n->keys));
+    // Compare the key to all 16 stored keys
+    cmp = _mm_cmplt_epi8(_mm_set1_epi8(c), _mm_loadu_si128((__m128i*)keys));
 
-        // Use a mask to ignore children that don't exist
-        mask = (1 << n->n.num_children) - 1;
-        bitfield = _mm_movemask_epi8(cmp) & mask;
+    // Use a mask to ignore children that don't exist
+    mask = (1 << n.num_children) - 1;
+    bitfield = _mm_movemask_epi8(cmp) & mask;
 
-        // Check if less than any
-        if (bitfield) {
-            idx = __builtin_ctz(bitfield);
-            memmove(n->keys+idx+1,n->keys+idx,n->n.num_children-idx);
-            memmove(n->children+idx+1,n->children+idx,
-                    (n->n.num_children-idx)*sizeof(void*));
-        } else
-            idx = n->n.num_children;
+    // Check if less than any
+    if (bitfield) {
+      idx = __builtin_ctz(bitfield);
+      memmove(keys + idx + 1, keys + idx, n.num_children - idx);
+      memmove(
+          children + idx + 1,
+          children + idx,
+          (n.num_children - idx) * sizeof(void*));
+    } else {
+      idx = n.num_children;
+    }
 #else
-        for (idx = 0; idx < n->n.num_children; idx++) {
-            if (c < n->keys[idx]) {
-                memmove(n->keys + idx + 1, n->keys + idx,
-                        n->n.num_children - idx);
-                memmove(n->children + idx + 1, n->children + idx,
-                        (n->n.num_children - idx) * sizeof(void *));
-                break;
-            }
-        }
+    for (idx = 0; idx < n.num_children; idx++) {
+      if (c < keys[idx]) {
+        memmove(keys + idx + 1, keys + idx, n.num_children - idx);
+        memmove(
+            children + idx + 1,
+            children + idx,
+            (n.num_children - idx) * sizeof(void*));
+        break;
+      }
+    }
 #endif
 
-        // Set the child
-        n->keys[idx] = c;
-        n->children[idx] = (art_node*)child;
-        n->n.num_children++;
+    // Set the child
+    keys[idx] = c;
+    children[idx] = child;
+    n.num_children++;
 
-    } else {
-        auto new_node = new art_node48;
-        int i;
-
-        // Copy the child pointers and populate the key map
-        memcpy(new_node->children, n->children,
-                sizeof(void*)*n->n.num_children);
-        for (i=0;i<n->n.num_children;i++) {
-            new_node->keys[n->keys[i]] = i + 1;
-        }
-        copy_header((art_node*)new_node, (art_node*)n);
-        *ref = (art_node*)new_node;
-        delete n;
-        add_child48(new_node, ref, c, child);
-    }
+  } else {
+    auto new_node = new art_node48(std::move(*this));
+    *ref = &new_node->n;
+    delete this;
+    new_node->addChild(ref, c, child);
+  }
 }
 
-static void add_child4(art_node4 *n, art_node **ref, unsigned char c, void *child) {
-    if (n->n.num_children < 4) {
-        int idx;
-        for (idx=0; idx < n->n.num_children; idx++) {
-            if (c < n->keys[idx]) break;
-        }
+art_node48::art_node48(art_node16&& n16) : n(NODE48, n16.n) {
+  int i;
+  memset(children, 0, sizeof(children));
+  memset(keys, 0, sizeof(keys));
 
-        // Shift to make room
-        memmove(n->keys+idx+1, n->keys+idx, n->n.num_children - idx);
-        memmove(n->children+idx+1, n->children+idx,
-                (n->n.num_children - idx)*sizeof(void*));
-
-        // Insert element
-        n->keys[idx] = c;
-        n->children[idx] = (art_node*)child;
-        n->n.num_children++;
-
-    } else {
-        auto new_node = new art_node16;
-
-        // Copy the child pointers and the key map
-        memcpy(new_node->children, n->children,
-                sizeof(void*)*n->n.num_children);
-        memcpy(new_node->keys, n->keys,
-                sizeof(unsigned char)*n->n.num_children);
-        copy_header((art_node*)new_node, (art_node*)n);
-        *ref = (art_node*)new_node;
-        delete n;
-        add_child16(new_node, ref, c, child);
-    }
+  // Copy the child pointers and populate the key map
+  memcpy(children, n16.children, sizeof(children[0]) * n16.n.num_children);
+  for (i = 0; i < n16.n.num_children; i++) {
+    keys[n16.keys[i]] = i + 1;
+  }
 }
 
-static void add_child(art_node *n, art_node **ref, unsigned char c, void *child) {
-    union node_ptr p = {n};
-
-    switch (n->type) {
-        case NODE4:
-            add_child4(p.n4, ref, c, child);
-            return;
-        case NODE16:
-            add_child16(p.n16, ref, c, child);
-            return;
-        case NODE48:
-            add_child48(p.n48, ref, c, child);
-            return;
-        case NODE256:
-            add_child256(p.n256, ref, c, child);
-            return;
-        default:
-            abort();
+void art_node4::addChild(art_node** ref, unsigned char c, art_node* child) {
+  if (n.num_children < 4) {
+    int idx;
+    for (idx = 0; idx < n.num_children; idx++) {
+      if (c < keys[idx]) {
+        break;
+      }
     }
+
+    // Shift to make room
+    memmove(keys + idx + 1, keys + idx, n.num_children - idx);
+    memmove(
+        children + idx + 1,
+        children + idx,
+        (n.num_children - idx) * sizeof(void*));
+
+    // Insert element
+    keys[idx] = c;
+    children[idx] = child;
+    n.num_children++;
+
+  } else {
+    auto new_node = new art_node16(std::move(*this));
+    *ref = &new_node->n;
+    delete this;
+    new_node->addChild(ref, c, child);
+  }
+}
+
+art_node16::art_node16(art_node4&& n4) : n(NODE16, n4.n) {
+  memset(children, 0, sizeof(children));
+  memset(keys, 0, sizeof(keys));
+  memcpy(children, n4.children, n.num_children * sizeof(children[0]));
+  memcpy(keys, n4.keys, n.num_children * sizeof(keys[0]));
+}
+
+void art_node::addChild(art_node** ref, unsigned char c, art_node* child) {
+  union node_ptr p = {this};
+
+  switch (type) {
+    case NODE4:
+      p.n4->addChild(ref, c, child);
+      return;
+    case NODE16:
+      p.n16->addChild(ref, c, child);
+      return;
+    case NODE48:
+      p.n48->addChild(ref, c, child);
+      return;
+    case NODE256:
+      p.n256->addChild(ref, c, child);
+      return;
+    default:
+      abort();
+  }
 }
 
 /**
@@ -684,7 +696,7 @@ static void *recursive_insert(art_node *n, art_node **ref,
     art_leaf *l;
     // If we are at a NULL node, inject a leaf
     if (!n) {
-      *ref = (art_node*)SET_LEAF(art_leaf::make(key, key_len, value));
+      *ref = SET_LEAF(art_leaf::make(key, key_len, value));
       return NULL;
     }
 
@@ -717,11 +729,11 @@ static void *recursive_insert(art_node *n, art_node **ref,
             l2->key + depth,
             std::min(ART_MAX_PREFIX_LEN, longest_prefix));
         // Add the leafs to the new node4
-        *ref = (art_node*)new_node;
-        add_child4(new_node, ref, leaf_key_at(l, depth + longest_prefix),
-                   SET_LEAF(l));
-        add_child4(new_node, ref, leaf_key_at(l2, depth + longest_prefix),
-                   SET_LEAF(l2));
+        *ref = &new_node->n;
+        new_node->addChild(
+            ref, leaf_key_at(l, depth + longest_prefix), SET_LEAF(l));
+        new_node->addChild(
+            ref, leaf_key_at(l2, depth + longest_prefix), SET_LEAF(l2));
         return NULL;
     }
 
@@ -746,16 +758,16 @@ static void *recursive_insert(art_node *n, art_node **ref,
 
         // Adjust the prefix of the old node
         if (n->partial_len <= ART_MAX_PREFIX_LEN) {
-            add_child4(new_node, ref, n->partial[prefix_diff], n);
-            n->partial_len -= (prefix_diff+1);
-            memmove(
-                n->partial,
-                n->partial + prefix_diff + 1,
-                std::min(ART_MAX_PREFIX_LEN, n->partial_len));
+          new_node->addChild(ref, n->partial[prefix_diff], n);
+          n->partial_len -= (prefix_diff + 1);
+          memmove(
+              n->partial,
+              n->partial + prefix_diff + 1,
+              std::min(ART_MAX_PREFIX_LEN, n->partial_len));
         } else {
             n->partial_len -= (prefix_diff+1);
             l = n->minimum();
-            add_child4(new_node, ref, leaf_key_at(l, depth + prefix_diff), n);
+            new_node->addChild(ref, leaf_key_at(l, depth + prefix_diff), n);
             memcpy(
                 n->partial,
                 l->key + depth + prefix_diff + 1,
@@ -764,8 +776,8 @@ static void *recursive_insert(art_node *n, art_node **ref,
 
         // Insert the new leaf
         l = art_leaf::make(key, key_len, value);
-        add_child4(new_node, ref, leaf_key_at(l, depth + prefix_diff),
-                   SET_LEAF(l));
+        new_node->addChild(
+            ref, leaf_key_at(l, depth + prefix_diff), SET_LEAF(l));
         return NULL;
     }
 
@@ -781,7 +793,7 @@ RECURSE_SEARCH:;
 
     // No child, node goes within us
     l = art_leaf::make(key, key_len, value);
-    add_child(n, ref, leaf_key_at(l, depth), SET_LEAF(l));
+    n->addChild(ref, leaf_key_at(l, depth), SET_LEAF(l));
     return NULL;
 }
 
@@ -806,123 +818,138 @@ void* art_tree::insert(
   return old;
 }
 
-static void remove_child256(art_node256 *n, art_node **ref, unsigned char c) {
-    n->children[c] = NULL;
-    n->n.num_children--;
+void art_node256::removeChild(art_node** ref, unsigned char c, art_node**) {
+  children[c] = NULL;
+  n.num_children--;
 
-    // Resize to a node48 on underflow, not immediately to prevent
-    // trashing if we sit on the 48/49 boundary
-    if (n->n.num_children == 37) {
-        int i, pos = 0;
-        auto new_node = new art_node48;
-        *ref = (art_node*)new_node;
-        copy_header((art_node*)new_node, (art_node*)n);
-
-        for (i=0;i<256;i++) {
-            if (n->children[i]) {
-                new_node->children[pos] = n->children[i];
-                new_node->keys[i] = pos + 1;
-                pos++;
-            }
-        }
-        delete n;
-    }
+  // Resize to a node48 on underflow, not immediately to prevent
+  // trashing if we sit on the 48/49 boundary
+  if (n.num_children == 37) {
+    auto new_node = new art_node48(std::move(*this));
+    *ref = &new_node->n;
+    delete this;
+  }
 }
 
-static void remove_child48(art_node48 *n, art_node **ref, unsigned char c) {
-    int pos = n->keys[c];
-    n->keys[c] = 0;
-    n->children[pos-1] = NULL;
-    n->n.num_children--;
+art_node48::art_node48(art_node256&& n256) : n(NODE48, n256.n) {
+  int i, pos = 0;
+  memset(keys, 0, sizeof(keys));
+  memset(children, 0, sizeof(children));
 
-    if (n->n.num_children == 12) {
-        int i, child = 0;
-        auto new_node = new art_node16;
-        *ref = (art_node*)new_node;
-        copy_header((art_node*)new_node, (art_node*)n);
-
-        for (i=0;i<256;i++) {
-            pos = n->keys[i];
-            if (pos) {
-                new_node->keys[child] = i;
-                new_node->children[child] = n->children[pos - 1];
-                child++;
-            }
-        }
-        delete n;
+  for (i = 0; i < 256; i++) {
+    if (n256.children[i]) {
+      children[pos] = n256.children[i];
+      keys[i] = pos + 1;
+      pos++;
     }
+  }
 }
 
-static void remove_child16(art_node16 *n, art_node **ref, art_node **l) {
-    int pos = l - n->children;
-    memmove(n->keys+pos, n->keys+pos+1, n->n.num_children - 1 - pos);
-    memmove(n->children+pos, n->children+pos+1, (n->n.num_children - 1 - pos)*sizeof(void*));
-    n->n.num_children--;
+void art_node48::removeChild(art_node** ref, unsigned char c, art_node**) {
+  int pos = keys[c];
+  keys[c] = 0;
+  children[pos - 1] = nullptr;
+  n.num_children--;
 
-    if (n->n.num_children == 3) {
-        auto new_node = new art_node4;
-        *ref = (art_node*)new_node;
-        copy_header((art_node*)new_node, (art_node*)n);
-        memcpy(new_node->keys, n->keys, 4);
-        memcpy(new_node->children, n->children, 4*sizeof(void*));
-        delete n;
-    }
+  if (n.num_children == 12) {
+    auto new_node = new art_node16(std::move(*this));
+    *ref = &new_node->n;
+    delete this;
+  }
 }
 
-static void remove_child4(art_node4 *n, art_node **ref, art_node **l) {
-    int pos = l - n->children;
-    memmove(n->keys+pos, n->keys+pos+1, n->n.num_children - 1 - pos);
-    memmove(n->children+pos, n->children+pos+1, (n->n.num_children - 1 - pos)*sizeof(void*));
-    n->n.num_children--;
+art_node16::art_node16(art_node48&& n48) : n(NODE16, n48.n) {
+  int i, child = 0;
+  memset(keys, 0, sizeof(keys));
+  memset(children, 0, sizeof(children));
 
-    // Remove nodes with only a single child
-    if (n->n.num_children == 1) {
-        art_node *child = n->children[0];
-        if (!IS_LEAF(child)) {
-            // Concatenate the prefixes
-            auto prefix = n->n.partial_len;
-            if (prefix < ART_MAX_PREFIX_LEN) {
-                n->n.partial[prefix] = n->keys[0];
-                prefix++;
-            }
-            if (prefix < ART_MAX_PREFIX_LEN) {
-              auto sub_prefix =
-                  std::min(child->partial_len, ART_MAX_PREFIX_LEN - prefix);
-              memcpy(n->n.partial + prefix, child->partial, sub_prefix);
-              prefix += sub_prefix;
-            }
-
-            // Store the prefix in the child
-            memcpy(
-                child->partial,
-                n->n.partial,
-                std::min(prefix, ART_MAX_PREFIX_LEN));
-            child->partial_len += n->n.partial_len + 1;
-        }
-        *ref = child;
-        delete n;
+  for (i = 0; i < 256; i++) {
+    auto pos = n48.keys[i];
+    if (pos) {
+      keys[child] = i;
+      children[child] = n48.children[pos - 1];
+      child++;
     }
+  }
 }
 
-static void remove_child(art_node *n, art_node **ref, unsigned char c, art_node **l) {
-    union node_ptr p = {n};
+void art_node16::removeChild(art_node** ref, unsigned char, art_node** l) {
+  int pos = l - children;
+  memmove(keys + pos, keys + pos + 1, n.num_children - 1 - pos);
+  memmove(
+      children + pos,
+      children + pos + 1,
+      (n.num_children - 1 - pos) * sizeof(void*));
+  n.num_children--;
 
-    switch (n->type) {
-        case NODE4:
-            remove_child4(p.n4, ref, l);
-            return;
-        case NODE16:
-            remove_child16(p.n16, ref, l);
-            return;
-        case NODE48:
-            remove_child48(p.n48, ref, c);
-            return;
-        case NODE256:
-            remove_child256(p.n256, ref, c);
-            return;
-        default:
-            abort();
+  if (n.num_children == 3) {
+    auto new_node = new art_node4(std::move(*this));
+    *ref = &new_node->n;
+    delete this;
+  }
+}
+
+art_node4::art_node4(art_node16&& n16) : n(NODE4, n16.n) {
+  memset(keys, 0, sizeof(keys));
+  memset(children, 0, sizeof(children));
+  memcpy(keys, n16.keys, n16.n.num_children * sizeof(keys[0]));
+  memcpy(children, n16.children, n16.n.num_children * sizeof(children[0]));
+}
+
+void art_node4::removeChild(art_node** ref, unsigned char, art_node** l) {
+  int pos = l - children;
+  memmove(keys + pos, keys + pos + 1, n.num_children - 1 - pos);
+  memmove(
+      children + pos,
+      children + pos + 1,
+      (n.num_children - 1 - pos) * sizeof(void*));
+  n.num_children--;
+
+  // Remove nodes with only a single child
+  if (n.num_children == 1) {
+    auto child = children[0];
+    if (!IS_LEAF(child)) {
+      // Concatenate the prefixes
+      auto prefix = n.partial_len;
+      if (prefix < ART_MAX_PREFIX_LEN) {
+        n.partial[prefix] = keys[0];
+        prefix++;
+      }
+      if (prefix < ART_MAX_PREFIX_LEN) {
+        auto sub_prefix =
+            std::min(child->partial_len, ART_MAX_PREFIX_LEN - prefix);
+        memcpy(n.partial + prefix, child->partial, sub_prefix);
+        prefix += sub_prefix;
+      }
+
+      // Store the prefix in the child
+      memcpy(child->partial, n.partial, std::min(prefix, ART_MAX_PREFIX_LEN));
+      child->partial_len += n.partial_len + 1;
     }
+    *ref = child;
+    delete this;
+  }
+}
+
+void art_node::removeChild(art_node** ref, unsigned char c, art_node** l) {
+  union node_ptr p = {this};
+
+  switch (type) {
+    case NODE4:
+      p.n4->removeChild(ref, c, l);
+      return;
+    case NODE16:
+      p.n16->removeChild(ref, c, l);
+      return;
+    case NODE48:
+      p.n48->removeChild(ref, c, l);
+      return;
+    case NODE256:
+      p.n256->removeChild(ref, c, l);
+      return;
+    default:
+      abort();
+  }
 }
 
 static art_leaf* recursive_delete(art_node *n, art_node **ref, const unsigned char *key, int key_len, int depth) {
@@ -958,7 +985,7 @@ static art_leaf* recursive_delete(art_node *n, art_node **ref, const unsigned ch
     if (IS_LEAF(*child)) {
         art_leaf *l = LEAF_RAW(*child);
         if (l->matches(key, key_len)) {
-          remove_child(n, ref, key_at(key, key_len, depth), child);
+          n->removeChild(ref, key_at(key, key_len, depth), child);
           return l;
         }
         return nullptr;

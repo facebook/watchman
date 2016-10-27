@@ -19,6 +19,8 @@ struct art_node {
   unsigned char partial[ART_MAX_PREFIX_LEN];
 
   explicit art_node(uint8_t type);
+  art_node(uint8_t type, const art_node& other);
+  art_node(const art_node&) = delete;
 
   art_leaf* maximum() const;
   art_leaf* minimum() const;
@@ -27,7 +29,15 @@ struct art_node {
   // Returns the number of prefix characters shared between the key and node.
   uint32_t checkPrefix(const unsigned char* key, uint32_t key_len, int depth)
       const;
+
+  void addChild(art_node** ref, unsigned char c, art_node* child);
+  void removeChild(art_node** ref, unsigned char c, art_node** l);
 };
+
+struct art_node4;
+struct art_node16;
+struct art_node48;
+struct art_node256;
 
 /**
  * Small node with only 4 children
@@ -38,6 +48,9 @@ struct art_node4 {
   art_node* children[4];
 
   art_node4();
+  explicit art_node4(art_node16&& n16);
+  void addChild(art_node** ref, unsigned char c, art_node* child);
+  void removeChild(art_node** ref, unsigned char c, art_node** l);
 };
 
 /**
@@ -49,6 +62,10 @@ struct art_node16 {
   art_node* children[16];
 
   art_node16();
+  explicit art_node16(art_node4&& n4);
+  explicit art_node16(art_node48&& n48);
+  void addChild(art_node** ref, unsigned char c, art_node* child);
+  void removeChild(art_node** ref, unsigned char c, art_node** l);
 };
 
 /**
@@ -61,6 +78,10 @@ struct art_node48 {
   art_node* children[48];
 
   art_node48();
+  explicit art_node48(art_node16&& n16);
+  explicit art_node48(art_node256&& n256);
+  void addChild(art_node** ref, unsigned char c, art_node* child);
+  void removeChild(art_node** ref, unsigned char c, art_node** l);
 };
 
 /**
@@ -71,6 +92,9 @@ struct art_node256 {
   art_node* children[256];
 
   art_node256();
+  explicit art_node256(art_node48&& n48);
+  void addChild(art_node** ref, unsigned char c, art_node* child);
+  void removeChild(art_node** ref, unsigned char c, art_node** l);
 };
 
 /**
