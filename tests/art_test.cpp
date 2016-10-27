@@ -145,11 +145,11 @@ void test_art_insert_search(void) {
   }
 
   // Check the minimum
-  l = art_minimum(&t);
+  l = t.minimum();
   fail_unless(l && strcmp((char *)l->key, "A") == 0);
 
   // Check the maximum
-  l = art_maximum(&t);
+  l = t.maximum();
   fail_unless(l && strcmp((char *)l->key, "zythum") == 0);
 }
 
@@ -202,8 +202,8 @@ void test_art_insert_delete(void) {
   }
 
   // Check the minimum and maximum
-  fail_unless(!art_minimum(&t));
-  fail_unless(!art_maximum(&t));
+  fail_unless(!t.minimum());
+  fail_unless(!t.maximum());
 }
 
 int iter_cb(void *data, const unsigned char *key, uint32_t key_len, void *val) {
@@ -466,13 +466,13 @@ void test_art_insert_search_uuid(void) {
   }
 
   // Check the minimum
-  l = art_minimum(&t);
+  l = t.minimum();
   diag("minimum is %s", l->key);
   fail_unless(
       l && strcmp((char *)l->key, "00026bda-e0ea-4cda-8245-522764e9f325") == 0);
 
   // Check the maximum
-  l = art_maximum(&t);
+  l = t.maximum();
   diag("maximum is %s", l->key);
   fail_unless(
       l && strcmp((char *)l->key, "ffffcb46-a92e-4822-82af-a7190f9c1ec5") == 0);

@@ -6,6 +6,7 @@
 #define ART_MAX_PREFIX_LEN 10
 
 typedef int(*art_callback)(void *data, const unsigned char *key, uint32_t key_len, void *value);
+struct art_leaf;
 
 /**
  * This struct is included as part
@@ -18,6 +19,9 @@ struct art_node {
   unsigned char partial[ART_MAX_PREFIX_LEN];
 
   explicit art_node(uint8_t type);
+
+  art_leaf* maximum() const;
+  art_leaf* minimum() const;
 };
 
 /**
@@ -126,19 +130,19 @@ struct art_tree {
    * the leaf node with the longest matching prefix is returned.
    */
   art_leaf* longestMatch(const unsigned char* key, int key_len) const;
+
+  /**
+   * Returns the minimum valued leaf
+   * @return The minimum leaf or NULL
+   */
+  art_leaf* minimum() const;
+
+  /**
+   * Returns the maximum valued leaf
+   * @return The maximum leaf or NULL
+   */
+  art_leaf* maximum() const;
 };
-
-/**
- * Returns the minimum valued leaf
- * @return The minimum leaf or NULL
- */
-art_leaf* art_minimum(art_tree *t);
-
-/**
- * Returns the maximum valued leaf
- * @return The maximum leaf or NULL
- */
-art_leaf* art_maximum(art_tree *t);
 
 /**
  * Iterates through the entries pairs in the map,

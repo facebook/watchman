@@ -381,97 +381,97 @@ art_leaf* art_tree::longestMatch(const unsigned char* key, int key_len) const {
 }
 
 // Find the minimum leaf under a node
-static art_leaf *minimum(const art_node *n) {
-    int idx;
-    union cnode_ptr p = {n};
+art_leaf* art_node::minimum() const {
+  int idx;
+  union cnode_ptr p = {this};
 
-    while (p.n) {
-        if (IS_LEAF(p.n)) {
-            return LEAF_RAW(p.n);
-        }
-
-        switch (p.n->type) {
-            case NODE4:
-                p.n = p.n4->children[0];
-                break;
-            case NODE16:
-                p.n = p.n16->children[0];
-                break;
-            case NODE48:
-                idx = 0;
-                while (!p.n48->keys[idx]) {
-                    idx++;
-                }
-                idx = p.n48->keys[idx] - 1;
-                p.n = p.n48->children[idx];
-                break;
-            case NODE256:
-                idx = 0;
-                while (!p.n256->children[idx]) {
-                    idx++;
-                }
-                p.n = p.n256->children[idx];
-                break;
-            default:
-                abort();
-                return NULL;
-        }
+  while (p.n) {
+    if (IS_LEAF(p.n)) {
+      return LEAF_RAW(p.n);
     }
-    return NULL;
+
+    switch (p.n->type) {
+      case NODE4:
+        p.n = p.n4->children[0];
+        break;
+      case NODE16:
+        p.n = p.n16->children[0];
+        break;
+      case NODE48:
+        idx = 0;
+        while (!p.n48->keys[idx]) {
+          idx++;
+        }
+        idx = p.n48->keys[idx] - 1;
+        p.n = p.n48->children[idx];
+        break;
+      case NODE256:
+        idx = 0;
+        while (!p.n256->children[idx]) {
+          idx++;
+        }
+        p.n = p.n256->children[idx];
+        break;
+      default:
+        abort();
+        return nullptr;
+    }
+  }
+  return nullptr;
 }
 
 // Find the maximum leaf under a node
-static art_leaf* maximum(const art_node *n) {
-    int idx;
-    union cnode_ptr p = {n};
+art_leaf* art_node::maximum() const {
+  int idx;
+  union cnode_ptr p = {this};
 
-    while (p.n) {
-        if (IS_LEAF(p.n)) {
-            return LEAF_RAW(p.n);
-        }
-
-        switch (p.n->type) {
-            case NODE4:
-                p.n = p.n4->children[p.n->num_children - 1];
-                break;
-            case NODE16:
-                p.n = p.n16->children[p.n->num_children - 1];
-                break;
-            case NODE48:
-                idx = 255;
-                while (!p.n48->keys[idx]) {
-                    idx--;
-                }
-                idx = p.n48->keys[idx] - 1;
-                p.n = p.n48->children[idx];
-                break;
-            case NODE256:
-                idx = 255;
-                while (!p.n256->children[idx]) {
-                    idx--;
-                }
-                p.n = p.n256->children[idx];
-                break;
-            default:
-                abort();
-                return NULL;
-        }
+  while (p.n) {
+    if (IS_LEAF(p.n)) {
+      return LEAF_RAW(p.n);
     }
-    return NULL;
+
+    switch (p.n->type) {
+      case NODE4:
+        p.n = p.n4->children[p.n->num_children - 1];
+        break;
+      case NODE16:
+        p.n = p.n16->children[p.n->num_children - 1];
+        break;
+      case NODE48:
+        idx = 255;
+        while (!p.n48->keys[idx]) {
+          idx--;
+        }
+        idx = p.n48->keys[idx] - 1;
+        p.n = p.n48->children[idx];
+        break;
+      case NODE256:
+        idx = 255;
+        while (!p.n256->children[idx]) {
+          idx--;
+        }
+        p.n = p.n256->children[idx];
+        break;
+      default:
+        abort();
+        return nullptr;
+    }
+  }
+  return nullptr;
 }
 
 /**
  * Returns the minimum valued leaf
  */
-art_leaf* art_minimum(art_tree *t) {
-    return minimum((art_node*)t->root_);
+art_leaf* art_tree::minimum() const {
+  return root_->minimum();
 }
 
 /**
  * Returns the maximum valued leaf
  */
-art_leaf* art_maximum(art_tree *t) {
-    return maximum((art_node*)t->root_);
+art_leaf* art_tree::maximum() const {
+  return root_->maximum();
 }
 
 // Constructs a new leaf using the provided key.
@@ -656,7 +656,7 @@ static int prefix_mismatch(const art_node *n, const unsigned char *key, int key_
     // If the prefix is short we can avoid finding a leaf
     if (n->partial_len > ART_MAX_PREFIX_LEN) {
         // Prefix is longer than what we've checked, find a leaf
-        art_leaf *l = minimum(n);
+        art_leaf* l = n->minimum();
         max_cmp = min(l->key_len, key_len)- depth;
         for (; idx < max_cmp; idx++) {
             if (l->key[idx+depth] != key[depth+idx])
@@ -736,7 +736,7 @@ static void *recursive_insert(art_node *n, art_node **ref,
                     min(ART_MAX_PREFIX_LEN, n->partial_len));
         } else {
             n->partial_len -= (prefix_diff+1);
-            l = minimum(n);
+            l = n->minimum();
             add_child4(new_node, ref, leaf_key_at(l, depth + prefix_diff), n);
             memcpy(n->partial, l->key+depth+prefix_diff+1,
                     min(ART_MAX_PREFIX_LEN, n->partial_len));
@@ -1111,7 +1111,7 @@ int art_iter_prefix(
 
     // If the depth matches the prefix, we need to handle this node
     if (depth == key_len) {
-      art_leaf* l = minimum(n);
+      art_leaf* l = n->minimum();
       if (leaf_prefix_matches(l, key, key_len)) {
         return recursive_iter(n, prefix_iterator_callback, &state);
       }
