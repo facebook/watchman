@@ -246,7 +246,7 @@ static bool is_obsoleted_by_containing_dir(
     struct watchman_pending_collection* coll,
     const w_string& path) {
   art_leaf* leaf =
-      art_longest_match(&coll->tree, (const uint8_t*)path.data(), path.size());
+      coll->tree.longestMatch((const uint8_t*)path.data(), path.size());
   if (!leaf) {
     return false;
   }

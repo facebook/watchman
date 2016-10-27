@@ -341,42 +341,43 @@ void* art_tree::search(const unsigned char* key, int key_len) const {
   return NULL;
 }
 
-art_leaf* art_longest_match(const art_tree *t, const unsigned char *key, int key_len) {
-    art_node **child;
-    art_node *n = t->root_;
-    int prefix_len, depth = 0;
-    while (n) {
-        // Might be a leaf
-        if (IS_LEAF(n)) {
-            art_leaf *leaf = LEAF_RAW(n);
-            // Check if the prefix matches
-            prefix_len = min(leaf->key_len, key_len);
-            if (prefix_len > 0 && memcmp(leaf->key, key, prefix_len) == 0) {
-                // Shares the same prefix
-                return leaf;
-            }
-            return NULL;
-        }
-
-        // Bail if the prefix does not match
-        if (n->partial_len) {
-            prefix_len = check_prefix(n, key, key_len, depth);
-            if (prefix_len != min(ART_MAX_PREFIX_LEN, n->partial_len))
-                return NULL;
-            depth = depth + n->partial_len;
-        }
-
-        if (depth > key_len) {
-            // Stored key is longer than input key, can't be an exact match
-            return NULL;
-        }
-
-        // Recursively search
-        child = find_child(n, key_at(key, key_len, depth));
-        n = (child) ? *child : NULL;
-        depth++;
+art_leaf* art_tree::longestMatch(const unsigned char* key, int key_len) const {
+  art_node** child;
+  art_node* n = root_;
+  int prefix_len, depth = 0;
+  while (n) {
+    // Might be a leaf
+    if (IS_LEAF(n)) {
+      art_leaf* leaf = LEAF_RAW(n);
+      // Check if the prefix matches
+      prefix_len = min(leaf->key_len, key_len);
+      if (prefix_len > 0 && memcmp(leaf->key, key, prefix_len) == 0) {
+        // Shares the same prefix
+        return leaf;
+      }
+      return nullptr;
     }
-    return NULL;
+
+    // Bail if the prefix does not match
+    if (n->partial_len) {
+      prefix_len = check_prefix(n, key, key_len, depth);
+      if (prefix_len != min(ART_MAX_PREFIX_LEN, n->partial_len)) {
+        return nullptr;
+      }
+      depth = depth + n->partial_len;
+    }
+
+    if (depth > key_len) {
+      // Stored key is longer than input key, can't be an exact match
+      return nullptr;
+    }
+
+    // Recursively search
+    child = find_child(n, key_at(key, key_len, depth));
+    n = (child) ? *child : nullptr;
+    depth++;
+  }
+  return nullptr;
 }
 
 // Find the minimum leaf under a node
