@@ -115,6 +115,7 @@ struct art_leaf {
   make(const unsigned char* key, uint32_t key_len, void* value);
 
   uint32_t longestCommonPrefix(const art_leaf* other, int depth) const;
+  bool prefixMatches(const unsigned char* prefix, uint32_t prefix_len) const;
 };
 
 /**

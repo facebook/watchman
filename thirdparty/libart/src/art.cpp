@@ -1107,15 +1107,15 @@ int art_tree::iter(art_callback cb, void* data) {
 /**
  * Checks if a leaf prefix matches
  */
-static bool leaf_prefix_matches(const art_leaf *n, const unsigned char *prefix,
-                                int prefix_len) {
-    // Fail if the key length is too short
-    if (n->key_len < (uint32_t)prefix_len) {
-        return false;
-    }
+bool art_leaf::prefixMatches(const unsigned char* prefix, uint32_t prefix_len)
+    const {
+  // Fail if the key length is too short
+  if (key_len < prefix_len) {
+    return false;
+  }
 
-    // Compare the keys
-    return memcmp(n->key, prefix, prefix_len) == 0;
+  // Compare the keys
+  return memcmp(key, prefix, prefix_len) == 0;
 }
 
 /**
@@ -1177,10 +1177,9 @@ int art_tree::iterPrefix(
   while (n) {
     // Might be a leaf
     if (IS_LEAF(n)) {
-      n = (art_node*)LEAF_RAW(n);
+      auto l = LEAF_RAW(n);
       // Check if the expanded path matches
-      if (leaf_prefix_matches((art_leaf*)n, key, key_len)) {
-        art_leaf* l = (art_leaf*)n;
+      if (l->prefixMatches(key, key_len)) {
         return cb(data, l->key, l->key_len, l->value);
       }
       return 0;
@@ -1189,7 +1188,7 @@ int art_tree::iterPrefix(
     // If the depth matches the prefix, we need to handle this node
     if (depth == key_len) {
       art_leaf* l = n->minimum();
-      if (leaf_prefix_matches(l, key, key_len)) {
+      if (l->prefixMatches(key, key_len)) {
         return recursiveIter(n, prefix_iterator_callback, &state);
       }
       return 0;
