@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0.
  * Derived from thirdparty/libart/tests/test_art.c which is
  * Copyright 2012 Armon Dadgar. See thirdparty/libart/LICENSE. */
+#include "watchman_system.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,7 +12,6 @@
 
 #include "thirdparty/tap.h"
 #include "thirdparty/libart/src/art.h"
-#include "watchman_system.h"
 
 #define stringy2(line)  #line
 #define stringy(line)   stringy2(line)
