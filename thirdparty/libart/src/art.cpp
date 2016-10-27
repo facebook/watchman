@@ -477,15 +477,16 @@ art_leaf* art_tree::maximum() const {
 }
 
 // Constructs a new leaf using the provided key.
-static art_leaf* make_leaf(const unsigned char *key, int key_len, void *value) {
-    // art_leaf::key is declared as key[1] so sizeof(art_leaf) is 1 too many;
-    // deduct 1 so that we allocate the perfect size
-    auto l = (art_leaf*)(new char[sizeof(art_leaf) + key_len - 1]);
-    new (l) art_leaf();
-    l->value = value;
-    l->key_len = key_len;
-    memcpy(l->key, key, key_len);
-    return l;
+art_leaf*
+art_leaf::make(const unsigned char* key, uint32_t key_len, void* value) {
+  // art_leaf::key is declared as key[1] so sizeof(art_leaf) is 1 too many;
+  // deduct 1 so that we allocate the perfect size
+  auto l = (art_leaf*)(new char[sizeof(art_leaf) + key_len - 1]);
+  new (l) art_leaf();
+  l->value = value;
+  l->key_len = key_len;
+  memcpy(l->key, key, key_len);
+  return l;
 }
 
 static uint32_t longest_common_prefix(art_leaf* l1, art_leaf* l2, int depth) {
@@ -683,8 +684,8 @@ static void *recursive_insert(art_node *n, art_node **ref,
     art_leaf *l;
     // If we are at a NULL node, inject a leaf
     if (!n) {
-        *ref = (art_node*)SET_LEAF(make_leaf(key, key_len, value));
-        return NULL;
+      *ref = (art_node*)SET_LEAF(art_leaf::make(key, key_len, value));
+      return NULL;
     }
 
     // If we are at a leaf, we need to replace it with a node
@@ -706,7 +707,7 @@ static void *recursive_insert(art_node *n, art_node **ref,
         new_node = new art_node4;
 
         // Create a new leaf
-        l2 = make_leaf(key, key_len, value);
+        l2 = art_leaf::make(key, key_len, value);
 
         // Determine longest prefix
         auto longest_prefix = longest_common_prefix(l, l2, depth);
@@ -762,7 +763,7 @@ static void *recursive_insert(art_node *n, art_node **ref,
         }
 
         // Insert the new leaf
-        l = make_leaf(key, key_len, value);
+        l = art_leaf::make(key, key_len, value);
         add_child4(new_node, ref, leaf_key_at(l, depth + prefix_diff),
                    SET_LEAF(l));
         return NULL;
@@ -779,7 +780,7 @@ RECURSE_SEARCH:;
     }
 
     // No child, node goes within us
-    l = make_leaf(key, key_len, value);
+    l = art_leaf::make(key, key_len, value);
     add_child(n, ref, leaf_key_at(l, depth), SET_LEAF(l));
     return NULL;
 }
