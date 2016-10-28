@@ -2,10 +2,12 @@
 #define ART_H
 #include "config.h"
 #include <stdint.h>
+#include <functional>
 
 #define ART_MAX_PREFIX_LEN 10u
 
-typedef int(*art_callback)(void *data, const unsigned char *key, uint32_t key_len, void *value);
+using art_callback = std::function<
+    int(void* data, const unsigned char* key, uint32_t key_len, void* value)>;
 struct art_leaf;
 
 /**
