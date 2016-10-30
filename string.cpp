@@ -642,9 +642,9 @@ w_string_t *w_string_suffix(w_string_t *str)
 
   /* can't use libc strXXX functions because we may be operating
    * on a slice */
-  for (end = str->len - 1; end >= 0; end--) {
+  for (end = str->len - 2; end >= 0; end--) {
     if (str->buf[end] == '.') {
-      if (str->len - (end + 1) >= sizeof(name_buf) - 1) {
+      if (str->len - end >= sizeof(name_buf)) {
         // Too long
         return NULL;
       }
