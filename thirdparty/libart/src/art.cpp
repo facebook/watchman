@@ -1,15 +1,11 @@
 #include "art.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "watchman_log.h"
+
 #ifdef __SSE__
 #include <emmintrin.h>
 #endif
-#include <assert.h>
-#include <stdbool.h>
 #include <algorithm>
 #include <new>
-#include "watchman_log.h"
 
 #if defined(__clang__)
 # if __has_feature(address_sanitizer)
@@ -24,17 +20,17 @@
 /**
  * Macros to manipulate pointer tags
  */
-#define IS_LEAF(x) (((uintptr_t)x & 1))
-#define SET_LEAF(x) ((art_node*)((uintptr_t)x | 1))
-#define LEAF_RAW(x) ((art_leaf*)((void*)((uintptr_t)x & ~1)))
+inline bool IS_LEAF(const art_node* x) {
+  return uintptr_t(x) & 1;
+}
 
-// Valid values for art_node::type
-enum {
-    NODE4 = 1,
-    NODE16,
-    NODE48,
-    NODE256
-};
+inline art_node* SET_LEAF(const art_leaf* l) {
+  return (art_node*)(uintptr_t(l) | 1);
+}
+
+inline art_leaf* LEAF_RAW(const art_node* x) {
+  return (art_leaf*)((void*)((uintptr_t(x) & ~1)));
+}
 
 // Helper for dispatching to the correct node type
 union node_ptr {
@@ -109,7 +105,7 @@ static inline unsigned char leaf_key_at(const art_leaf *l, int idx) {
  * initializes to zero and sets the type.
  */
 
-art_node::art_node(uint8_t type) : type(type) {}
+art_node::art_node(art_node_type type) : type(type) {}
 
 art_node4::art_node4() : art_node(NODE4) {
   memset(keys, 0, sizeof(keys));
@@ -491,7 +487,7 @@ uint32_t art_leaf::longestCommonPrefix(const art_leaf* l2, int depth) const {
   return idx;
 }
 
-art_node::art_node(uint8_t type, const art_node& other)
+art_node::art_node(art_node_type type, const art_node& other)
     : type(type),
       num_children(other.num_children),
       partial_len(other.partial_len) {
@@ -996,7 +992,7 @@ int art_tree::recursiveIter(art_node* n, art_callback cb, void* data) {
   }
 
   switch (n->type) {
-    case NODE4:
+    case art_node::NODE4:
       for (i = 0; i < n->num_children; i++) {
         res = recursiveIter(p.n4->children[i], cb, data);
         if (res) {
@@ -1005,7 +1001,7 @@ int art_tree::recursiveIter(art_node* n, art_callback cb, void* data) {
       }
       break;
 
-    case NODE16:
+    case art_node::NODE16:
       for (i = 0; i < n->num_children; i++) {
         res = recursiveIter(p.n16->children[i], cb, data);
         if (res) {
@@ -1014,7 +1010,7 @@ int art_tree::recursiveIter(art_node* n, art_callback cb, void* data) {
       }
       break;
 
-    case NODE48:
+    case art_node::NODE48:
       for (i = 0; i < 256; i++) {
         idx = p.n48->keys[i];
         if (!idx) {
@@ -1028,7 +1024,7 @@ int art_tree::recursiveIter(art_node* n, art_callback cb, void* data) {
       }
       break;
 
-    case NODE256:
+    case art_node::NODE256:
       for (i = 0; i < 256; i++) {
         if (!p.n256->children[i]) {
           continue;

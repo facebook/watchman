@@ -1,7 +1,7 @@
 #ifndef ART_H
 #define ART_H
 #include "config.h"
-#include <stdint.h>
+#include <cstdint>
 #include <functional>
 
 #define ART_MAX_PREFIX_LEN 10u
@@ -15,14 +15,15 @@ struct art_leaf;
  * of all the various node sizes
  */
 struct art_node {
-  uint8_t type;
+  enum art_node_type : uint8_t { NODE4 = 1, NODE16, NODE48, NODE256 };
+  art_node_type type;
   uint8_t num_children{0};
   uint32_t partial_len{0};
   unsigned char partial[ART_MAX_PREFIX_LEN];
 
   virtual ~art_node() = default;
-  explicit art_node(uint8_t type);
-  art_node(uint8_t type, const art_node& other);
+  explicit art_node(art_node_type type);
+  art_node(art_node_type type, const art_node& other);
   art_node(const art_node&) = delete;
 
   art_leaf* maximum() const;
