@@ -173,6 +173,7 @@ struct art_tree {
 
     uint32_t longestCommonPrefix(const Leaf* other, uint32_t depth) const;
     bool prefixMatches(const unsigned char* prefix, uint32_t prefix_len) const;
+    inline unsigned char keyAt(uint32_t idx) const;
   };
 
   art_tree();

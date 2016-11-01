@@ -67,10 +67,8 @@ inline unsigned char art_tree<ValueType>::keyAt(
 
 // A helper for looking at the key value at given index, in a leaf
 template <typename ValueType>
-inline unsigned char leaf_key_at(
-    const typename art_tree<ValueType>::Leaf* l,
-    uint32_t idx) {
-  return art_tree<ValueType>::keyAt(l->key, l->key_len, idx);
+inline unsigned char art_tree<ValueType>::Leaf::keyAt(uint32_t idx) const {
+  return art_tree<ValueType>::keyAt(key, key_len, idx);
 }
 
 /**
@@ -739,10 +737,8 @@ void art_tree<ValueType>::recursiveInsert(
         std::min(ART_MAX_PREFIX_LEN, longest_prefix));
     // Add the leafs to the new node4
     *ref = new_node;
-    new_node->addChild(
-        ref, leaf_key_at<ValueType>(l, depth + longest_prefix), SET_LEAF(l));
-    new_node->addChild(
-        ref, leaf_key_at<ValueType>(l2, depth + longest_prefix), SET_LEAF(l2));
+    new_node->addChild(ref, l->keyAt(depth + longest_prefix), SET_LEAF(l));
+    new_node->addChild(ref, l2->keyAt(depth + longest_prefix), SET_LEAF(l2));
     return;
   }
 
@@ -775,8 +771,7 @@ void art_tree<ValueType>::recursiveInsert(
     } else {
       n->partial_len -= (prefix_diff + 1);
       l = n->minimum();
-      new_node->addChild(
-          ref, leaf_key_at<ValueType>(l, depth + prefix_diff), n);
+      new_node->addChild(ref, l->keyAt(depth + prefix_diff), n);
       memcpy(
           n->partial,
           l->key + depth + prefix_diff + 1,
@@ -785,8 +780,7 @@ void art_tree<ValueType>::recursiveInsert(
 
     // Insert the new leaf
     l = Leaf::make(key, key_len, value);
-    new_node->addChild(
-        ref, leaf_key_at<ValueType>(l, depth + prefix_diff), SET_LEAF(l));
+    new_node->addChild(ref, l->keyAt(depth + prefix_diff), SET_LEAF(l));
     return;
   }
 
@@ -802,7 +796,7 @@ RECURSE_SEARCH:;
 
     // No child, node goes within us
     l = Leaf::make(key, key_len, value);
-    n->addChild(ref, leaf_key_at<ValueType>(l, depth), SET_LEAF(l));
+    n->addChild(ref, l->keyAt(depth), SET_LEAF(l));
 }
 
 /**
