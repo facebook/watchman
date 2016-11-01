@@ -80,55 +80,29 @@ template <typename ValueType>
 art_tree<ValueType>::Node::Node(Node_type type) : type(type) {}
 
 template <typename ValueType>
+art_tree<ValueType>::Node::Node(Node_type type, const Node& other)
+    : type(type),
+      num_children(other.num_children),
+      partial_len(other.partial_len) {
+  memcpy(partial, other.partial, std::min(ART_MAX_PREFIX_LEN, partial_len));
+}
+
+// --------------------- Node4
+
+template <typename ValueType>
 art_tree<ValueType>::Node4::Node4() : Node(NODE4) {
   memset(keys, 0, sizeof(keys));
   memset(children, 0, sizeof(children));
 }
 
 template <typename ValueType>
-art_tree<ValueType>::Node16::Node16() : Node(NODE16) {
+art_tree<ValueType>::Node4::Node4(Node16&& n16) : Node(NODE4, n16) {
   memset(keys, 0, sizeof(keys));
   memset(children, 0, sizeof(children));
-}
+  memcpy(keys, n16.keys, n16.num_children * sizeof(keys[0]));
+  memcpy(children, n16.children, n16.num_children * sizeof(children[0]));
 
-template <typename ValueType>
-art_tree<ValueType>::Node48::Node48() : Node(NODE48) {
-  memset(keys, 0, sizeof(keys));
-  memset(children, 0, sizeof(children));
-}
-
-template <typename ValueType>
-art_tree<ValueType>::Node256::Node256() : Node(NODE256) {
-  memset(children, 0, sizeof(children));
-}
-
-/**
- * Initializes an ART tree
- * @return 0 on success.
- */
-template <typename ValueType>
-art_tree<ValueType>::art_tree() : root_(nullptr), size_(0) {}
-
-template <typename ValueType>
-void art_tree<ValueType>::Deleter::operator()(Leaf* leaf) const {
-  leaf->~Leaf();
-  delete[](char*) leaf;
-}
-
-template <typename ValueType>
-void art_tree<ValueType>::Deleter::operator()(Node* node) const {
-  // Break if null
-  if (!node) {
-    return;
-  }
-
-  // Special case leafs
-  if (IS_LEAF(node)) {
-    operator()(LEAF_RAW(node));
-    return;
-  }
-
-  delete node;
+  n16.num_children = 0;
 }
 
 template <typename ValueType>
@@ -140,46 +114,37 @@ art_tree<ValueType>::Node4::~Node4() {
 }
 
 template <typename ValueType>
-art_tree<ValueType>::Node16::~Node16() {
-  int i;
-  for (i = 0; i < this->num_children; i++) {
-    Deleter()(children[i]);
-  }
-}
-
-template <typename ValueType>
-art_tree<ValueType>::Node48::~Node48() {
-  int i;
-  for (i = 0; i < this->num_children; i++) {
-    Deleter()(children[i]);
-  }
-}
-
-template <typename ValueType>
-art_tree<ValueType>::Node256::~Node256() {
-  int i;
-  for (i = 0; this->num_children > 0 && i < 256; i++) {
-    if (children[i]) {
-      Deleter()(children[i]);
+void art_tree<ValueType>::Node4::addChild(
+    Node** ref,
+    unsigned char c,
+    Node* child) {
+  if (this->num_children < 4) {
+    int idx;
+    for (idx = 0; idx < this->num_children; idx++) {
+      if (c < keys[idx]) {
+        break;
+      }
     }
+
+    // Shift to make room
+    memmove(keys + idx + 1, keys + idx, this->num_children - idx);
+    memmove(
+        children + idx + 1,
+        children + idx,
+        (this->num_children - idx) * sizeof(void*));
+
+    // Insert element
+    keys[idx] = c;
+    children[idx] = child;
+    this->num_children++;
+
+  } else {
+    auto new_node = new Node16(std::move(*this));
+    *ref = new_node;
+    delete this;
+    new_node->addChild(ref, c, child);
   }
 }
-
-template <typename ValueType>
-art_tree<ValueType>::~art_tree() {
-  clear();
-}
-
-template <typename ValueType>
-void art_tree<ValueType>::clear() {
-  Deleter()(root_);
-  root_ = nullptr;
-  size_ = 0;
-}
-
-/**
- * Returns the size of the ART tree.
- */
 
 template <typename ValueType>
 typename art_tree<ValueType>::Node** art_tree<ValueType>::Node4::findChild(
@@ -191,6 +156,146 @@ typename art_tree<ValueType>::Node** art_tree<ValueType>::Node4::findChild(
     }
   }
   return nullptr;
+}
+
+template <typename ValueType>
+void art_tree<ValueType>::Node4::removeChild(
+    Node** ref,
+    unsigned char,
+    Node** l) {
+  int pos = l - children;
+  memmove(keys + pos, keys + pos + 1, this->num_children - 1 - pos);
+  memmove(
+      children + pos,
+      children + pos + 1,
+      (this->num_children - 1 - pos) * sizeof(void*));
+  this->num_children--;
+
+  // Remove nodes with only a single child
+  if (this->num_children == 1) {
+    auto child = children[0];
+    if (!IS_LEAF(child)) {
+      // Concatenate the prefixes
+      auto prefix = this->partial_len;
+      if (prefix < ART_MAX_PREFIX_LEN) {
+        this->partial[prefix] = keys[0];
+        prefix++;
+      }
+      if (prefix < ART_MAX_PREFIX_LEN) {
+        auto sub_prefix =
+            std::min(child->partial_len, ART_MAX_PREFIX_LEN - prefix);
+        memcpy(this->partial + prefix, child->partial, sub_prefix);
+        prefix += sub_prefix;
+      }
+
+      // Store the prefix in the child
+      memcpy(
+          child->partial, this->partial, std::min(prefix, ART_MAX_PREFIX_LEN));
+      child->partial_len += this->partial_len + 1;
+    }
+    *ref = child;
+    this->num_children = 0;
+    delete this;
+  }
+}
+
+// --------------------- Node16
+
+template <typename ValueType>
+art_tree<ValueType>::Node16::Node16() : Node(NODE16) {
+  memset(keys, 0, sizeof(keys));
+  memset(children, 0, sizeof(children));
+}
+
+template <typename ValueType>
+art_tree<ValueType>::Node16::Node16(Node4&& n4) : Node(NODE16, n4) {
+  memset(children, 0, sizeof(children));
+  memset(keys, 0, sizeof(keys));
+  memcpy(children, n4.children, this->num_children * sizeof(children[0]));
+  memcpy(keys, n4.keys, this->num_children * sizeof(keys[0]));
+
+  n4.num_children = 0;
+}
+
+template <typename ValueType>
+art_tree<ValueType>::Node16::Node16(Node48&& n48) : Node(NODE16, n48) {
+  int i, child = 0;
+  memset(keys, 0, sizeof(keys));
+  memset(children, 0, sizeof(children));
+
+  for (i = 0; i < 256; i++) {
+    auto pos = n48.keys[i];
+    if (pos) {
+      keys[child] = i;
+      children[child] = n48.children[pos - 1];
+      child++;
+    }
+  }
+
+  n48.num_children = 0;
+}
+
+template <typename ValueType>
+art_tree<ValueType>::Node16::~Node16() {
+  int i;
+  for (i = 0; i < this->num_children; i++) {
+    Deleter()(children[i]);
+  }
+}
+
+template <typename ValueType>
+void art_tree<ValueType>::Node16::addChild(
+    Node** ref,
+    unsigned char c,
+    Node* child) {
+  if (this->num_children < 16) {
+    unsigned idx;
+#ifdef __SSE__
+    __m128i cmp;
+    unsigned mask, bitfield;
+
+    // Compare the key to all 16 stored keys
+    cmp = _mm_cmplt_epi8(_mm_set1_epi8(c), _mm_loadu_si128((__m128i*)keys));
+
+    // Use a mask to ignore children that don't exist
+    mask = (1 << this->num_children) - 1;
+    bitfield = _mm_movemask_epi8(cmp) & mask;
+
+    // Check if less than any
+    if (bitfield) {
+      idx = __builtin_ctz(bitfield);
+      memmove(keys + idx + 1, keys + idx, this->num_children - idx);
+      memmove(
+          children + idx + 1,
+          children + idx,
+          (this->num_children - idx) * sizeof(void*));
+    } else {
+      idx = this->num_children;
+    }
+#else
+    for (idx = 0; idx < this->num_children; idx++) {
+      if (c < keys[idx]) {
+        memmove(keys + idx + 1, keys + idx, this->num_children - idx);
+        memmove(
+            children + idx + 1,
+            children + idx,
+            (this->num_children - idx) * sizeof(void*));
+        break;
+      }
+    }
+#endif
+
+    // Set the child
+    keys[idx] = c;
+    children[idx] = child;
+    this->num_children++;
+
+  } else {
+    auto new_node = new Node48(std::move(*this));
+    *ref = new_node;
+    delete this;
+    new_node->addChild(ref, c, child);
+  }
 }
 
 template <typename ValueType>
@@ -227,6 +332,96 @@ typename art_tree<ValueType>::Node** art_tree<ValueType>::Node16::findChild(
 }
 
 template <typename ValueType>
+void art_tree<ValueType>::Node16::removeChild(
+    Node** ref,
+    unsigned char,
+    Node** l) {
+  int pos = l - children;
+  memmove(keys + pos, keys + pos + 1, this->num_children - 1 - pos);
+  memmove(
+      children + pos,
+      children + pos + 1,
+      (this->num_children - 1 - pos) * sizeof(void*));
+  this->num_children--;
+
+  if (this->num_children == 3) {
+    auto new_node = new Node4(std::move(*this));
+    *ref = new_node;
+    delete this;
+  }
+}
+
+// --------------------- Node48
+
+template <typename ValueType>
+art_tree<ValueType>::Node48::Node48() : Node(NODE48) {
+  memset(keys, 0, sizeof(keys));
+  memset(children, 0, sizeof(children));
+}
+
+template <typename ValueType>
+art_tree<ValueType>::Node48::Node48(Node16&& n16) : Node(NODE48, n16) {
+  int i;
+  memset(children, 0, sizeof(children));
+  memset(keys, 0, sizeof(keys));
+
+  // Copy the child pointers and populate the key map
+  memcpy(children, n16.children, sizeof(children[0]) * n16.num_children);
+  for (i = 0; i < n16.num_children; i++) {
+    keys[n16.keys[i]] = i + 1;
+  }
+
+  n16.num_children = 0;
+}
+
+template <typename ValueType>
+art_tree<ValueType>::Node48::Node48(Node256&& n256)
+    : art_tree::Node(NODE48, n256) {
+  int i, pos = 0;
+  memset(keys, 0, sizeof(keys));
+  memset(children, 0, sizeof(children));
+
+  for (i = 0; i < 256; i++) {
+    if (n256.children[i]) {
+      children[pos] = n256.children[i];
+      keys[i] = pos + 1;
+      pos++;
+    }
+  }
+
+  n256.num_children = 0;
+}
+
+template <typename ValueType>
+art_tree<ValueType>::Node48::~Node48() {
+  int i;
+  for (i = 0; i < this->num_children; i++) {
+    Deleter()(children[i]);
+  }
+}
+
+template <typename ValueType>
+void art_tree<ValueType>::Node48::addChild(
+    Node** ref,
+    unsigned char c,
+    Node* child) {
+  if (this->num_children < 48) {
+    int pos = 0;
+    while (children[pos]) {
+      pos++;
+    }
+    children[pos] = child;
+    keys[c] = pos + 1;
+    this->num_children++;
+  } else {
+    auto new_node = new Node256(std::move(*this));
+    *ref = new_node;
+    delete this;
+    new_node->addChild(ref, c, child);
+  }
+}
+
+template <typename ValueType>
 typename art_tree<ValueType>::Node** art_tree<ValueType>::Node48::findChild(
     unsigned char c) {
   auto i = keys[c];
@@ -237,12 +432,126 @@ typename art_tree<ValueType>::Node** art_tree<ValueType>::Node48::findChild(
 }
 
 template <typename ValueType>
+void art_tree<ValueType>::Node48::removeChild(
+    Node** ref,
+    unsigned char c,
+    Node**) {
+  int pos = keys[c];
+  keys[c] = 0;
+  children[pos - 1] = nullptr;
+  this->num_children--;
+
+  if (this->num_children == 12) {
+    auto new_node = new Node16(std::move(*this));
+    *ref = new_node;
+    delete this;
+  }
+}
+
+// --------------------- Node256
+
+template <typename ValueType>
+art_tree<ValueType>::Node256::Node256() : Node(NODE256) {
+  memset(children, 0, sizeof(children));
+}
+
+template <typename ValueType>
+art_tree<ValueType>::Node256::Node256(Node48&& n48) : Node(NODE256, n48) {
+  int i;
+  memset(children, 0, sizeof(children));
+  for (i = 0; i < 256; i++) {
+    if (n48.keys[i]) {
+      children[i] = n48.children[n48.keys[i] - 1];
+    }
+  }
+
+  n48.num_children = 0;
+}
+
+template <typename ValueType>
+art_tree<ValueType>::Node256::~Node256() {
+  int i;
+  for (i = 0; this->num_children > 0 && i < 256; i++) {
+    if (children[i]) {
+      Deleter()(children[i]);
+    }
+  }
+}
+
+template <typename ValueType>
+void art_tree<ValueType>::Node256::addChild(
+    Node**,
+    unsigned char c,
+    Node* child) {
+  this->num_children++;
+  children[c] = child;
+}
+
+template <typename ValueType>
 typename art_tree<ValueType>::Node** art_tree<ValueType>::Node256::findChild(
     unsigned char c) {
   if (children[c]) {
     return &children[c];
   }
   return nullptr;
+}
+
+template <typename ValueType>
+void art_tree<ValueType>::Node256::removeChild(
+    Node** ref,
+    unsigned char c,
+    Node**) {
+  children[c] = NULL;
+  this->num_children--;
+
+  // Resize to a node48 on underflow, not immediately to prevent
+  // trashing if we sit on the 48/49 boundary
+  if (this->num_children == 37) {
+    auto new_node = new Node48(std::move(*this));
+    *ref = new_node;
+    delete this;
+  }
+}
+
+/**
+ * Initializes an ART tree
+ * @return 0 on success.
+ */
+template <typename ValueType>
+art_tree<ValueType>::art_tree() : root_(nullptr), size_(0) {}
+
+template <typename ValueType>
+void art_tree<ValueType>::Deleter::operator()(Leaf* leaf) const {
+  leaf->~Leaf();
+  delete[](char*) leaf;
+}
+
+template <typename ValueType>
+void art_tree<ValueType>::Deleter::operator()(Node* node) const {
+  // Break if null
+  if (!node) {
+    return;
+  }
+
+  // Special case leafs
+  if (IS_LEAF(node)) {
+    operator()(LEAF_RAW(node));
+    return;
+  }
+
+  delete node;
+}
+
+template <typename ValueType>
+art_tree<ValueType>::~art_tree() {
+  clear();
+}
+
+template <typename ValueType>
+void art_tree<ValueType>::clear() {
+  Deleter()(root_);
+  root_ = nullptr;
+  size_ = 0;
 }
 
 /**
@@ -497,170 +806,6 @@ uint32_t art_tree<ValueType>::Leaf::longestCommonPrefix(
   return idx;
 }
 
-template <typename ValueType>
-art_tree<ValueType>::Node::Node(Node_type type, const Node& other)
-    : type(type),
-      num_children(other.num_children),
-      partial_len(other.partial_len) {
-  memcpy(partial, other.partial, std::min(ART_MAX_PREFIX_LEN, partial_len));
-}
-
-template <typename ValueType>
-void art_tree<ValueType>::Node256::addChild(
-    Node**,
-    unsigned char c,
-    Node* child) {
-  this->num_children++;
-  children[c] = child;
-}
-
-template <typename ValueType>
-void art_tree<ValueType>::Node48::addChild(
-    Node** ref,
-    unsigned char c,
-    Node* child) {
-  if (this->num_children < 48) {
-    int pos = 0;
-    while (children[pos]) {
-      pos++;
-    }
-    children[pos] = child;
-    keys[c] = pos + 1;
-    this->num_children++;
-  } else {
-    auto new_node = new Node256(std::move(*this));
-    *ref = new_node;
-    delete this;
-    new_node->addChild(ref, c, child);
-  }
-}
-
-template <typename ValueType>
-art_tree<ValueType>::Node256::Node256(Node48&& n48) : Node(NODE256, n48) {
-  int i;
-  memset(children, 0, sizeof(children));
-  for (i = 0; i < 256; i++) {
-    if (n48.keys[i]) {
-      children[i] = n48.children[n48.keys[i] - 1];
-    }
-  }
-
-  n48.num_children = 0;
-}
-
-template <typename ValueType>
-void art_tree<ValueType>::Node16::addChild(
-    Node** ref,
-    unsigned char c,
-    Node* child) {
-  if (this->num_children < 16) {
-    unsigned idx;
-#ifdef __SSE__
-    __m128i cmp;
-    unsigned mask, bitfield;
-
-    // Compare the key to all 16 stored keys
-    cmp = _mm_cmplt_epi8(_mm_set1_epi8(c), _mm_loadu_si128((__m128i*)keys));
-
-    // Use a mask to ignore children that don't exist
-    mask = (1 << this->num_children) - 1;
-    bitfield = _mm_movemask_epi8(cmp) & mask;
-
-    // Check if less than any
-    if (bitfield) {
-      idx = __builtin_ctz(bitfield);
-      memmove(keys + idx + 1, keys + idx, this->num_children - idx);
-      memmove(
-          children + idx + 1,
-          children + idx,
-          (this->num_children - idx) * sizeof(void*));
-    } else {
-      idx = this->num_children;
-    }
-#else
-    for (idx = 0; idx < this->num_children; idx++) {
-      if (c < keys[idx]) {
-        memmove(keys + idx + 1, keys + idx, this->num_children - idx);
-        memmove(
-            children + idx + 1,
-            children + idx,
-            (this->num_children - idx) * sizeof(void*));
-        break;
-      }
-    }
-#endif
-
-    // Set the child
-    keys[idx] = c;
-    children[idx] = child;
-    this->num_children++;
-
-  } else {
-    auto new_node = new Node48(std::move(*this));
-    *ref = new_node;
-    delete this;
-    new_node->addChild(ref, c, child);
-  }
-}
-
-template <typename ValueType>
-art_tree<ValueType>::Node48::Node48(Node16&& n16) : Node(NODE48, n16) {
-  int i;
-  memset(children, 0, sizeof(children));
-  memset(keys, 0, sizeof(keys));
-
-  // Copy the child pointers and populate the key map
-  memcpy(children, n16.children, sizeof(children[0]) * n16.num_children);
-  for (i = 0; i < n16.num_children; i++) {
-    keys[n16.keys[i]] = i + 1;
-  }
-
-  n16.num_children = 0;
-}
-
-template <typename ValueType>
-void art_tree<ValueType>::Node4::addChild(
-    Node** ref,
-    unsigned char c,
-    Node* child) {
-  if (this->num_children < 4) {
-    uint32_t idx;
-    for (idx = 0; idx < this->num_children; idx++) {
-      if (c < keys[idx]) {
-        break;
-      }
-    }
-
-    // Shift to make room
-    memmove(keys + idx + 1, keys + idx, this->num_children - idx);
-    memmove(
-        children + idx + 1,
-        children + idx,
-        (this->num_children - idx) * sizeof(void*));
-
-    // Insert element
-    keys[idx] = c;
-    children[idx] = child;
-    this->num_children++;
-
-  } else {
-    auto new_node = new Node16(std::move(*this));
-    *ref = new_node;
-    delete this;
-    new_node->addChild(ref, c, child);
-  }
-}
-
-template <typename ValueType>
-art_tree<ValueType>::Node16::Node16(Node4&& n4) : Node(NODE16, n4) {
-  memset(children, 0, sizeof(children));
-  memset(keys, 0, sizeof(keys));
-  memcpy(children, n4.children, this->num_children * sizeof(children[0]));
-  memcpy(keys, n4.keys, this->num_children * sizeof(keys[0]));
-
-  n4.num_children = 0;
-}
-
 /**
  * Calculates the index at which the prefixes mismatch
  */
@@ -817,147 +962,6 @@ void art_tree<ValueType>::insert(
   recursiveInsert(root_, &root_, key, key_len, value, 0, &old_val);
   if (!old_val) {
     size_++;
-  }
-}
-
-template <typename ValueType>
-void art_tree<ValueType>::Node256::removeChild(
-    Node** ref,
-    unsigned char c,
-    Node**) {
-  children[c] = NULL;
-  this->num_children--;
-
-  // Resize to a node48 on underflow, not immediately to prevent
-  // trashing if we sit on the 48/49 boundary
-  if (this->num_children == 37) {
-    auto new_node = new Node48(std::move(*this));
-    *ref = new_node;
-    delete this;
-  }
-}
-
-template <typename ValueType>
-art_tree<ValueType>::Node48::Node48(Node256&& n256)
-    : art_tree::Node(NODE48, n256) {
-  int i, pos = 0;
-  memset(keys, 0, sizeof(keys));
-  memset(children, 0, sizeof(children));
-
-  for (i = 0; i < 256; i++) {
-    if (n256.children[i]) {
-      children[pos] = n256.children[i];
-      keys[i] = pos + 1;
-      pos++;
-    }
-  }
-
-  n256.num_children = 0;
-}
-
-template <typename ValueType>
-void art_tree<ValueType>::Node48::removeChild(
-    Node** ref,
-    unsigned char c,
-    Node**) {
-  int pos = keys[c];
-  keys[c] = 0;
-  children[pos - 1] = nullptr;
-  this->num_children--;
-
-  if (this->num_children == 12) {
-    auto new_node = new Node16(std::move(*this));
-    *ref = new_node;
-    delete this;
-  }
-}
-
-template <typename ValueType>
-art_tree<ValueType>::Node16::Node16(Node48&& n48) : Node(NODE16, n48) {
-  int i, child = 0;
-  memset(keys, 0, sizeof(keys));
-  memset(children, 0, sizeof(children));
-
-  for (i = 0; i < 256; i++) {
-    auto pos = n48.keys[i];
-    if (pos) {
-      keys[child] = i;
-      children[child] = n48.children[pos - 1];
-      child++;
-    }
-  }
-
-  n48.num_children = 0;
-}
-
-template <typename ValueType>
-void art_tree<ValueType>::Node16::removeChild(
-    Node** ref,
-    unsigned char,
-    Node** l) {
-  int pos = l - children;
-  memmove(keys + pos, keys + pos + 1, this->num_children - 1 - pos);
-  memmove(
-      children + pos,
-      children + pos + 1,
-      (this->num_children - 1 - pos) * sizeof(void*));
-  this->num_children--;
-
-  if (this->num_children == 3) {
-    auto new_node = new Node4(std::move(*this));
-    *ref = new_node;
-    delete this;
-  }
-}
-
-template <typename ValueType>
-art_tree<ValueType>::Node4::Node4(Node16&& n16) : Node(NODE4, n16) {
-  memset(keys, 0, sizeof(keys));
-  memset(children, 0, sizeof(children));
-  memcpy(keys, n16.keys, n16.num_children * sizeof(keys[0]));
-  memcpy(children, n16.children, n16.num_children * sizeof(children[0]));
-
-  n16.num_children = 0;
-}
-
-template <typename ValueType>
-void art_tree<ValueType>::Node4::removeChild(
-    Node** ref,
-    unsigned char,
-    Node** l) {
-  int pos = l - children;
-  memmove(keys + pos, keys + pos + 1, this->num_children - 1 - pos);
-  memmove(
-      children + pos,
-      children + pos + 1,
-      (this->num_children - 1 - pos) * sizeof(void*));
-  this->num_children--;
-
-  // Remove nodes with only a single child
-  if (this->num_children == 1) {
-    auto child = children[0];
-    if (!IS_LEAF(child)) {
-      // Concatenate the prefixes
-      auto prefix = this->partial_len;
-      if (prefix < ART_MAX_PREFIX_LEN) {
-        this->partial[prefix] = keys[0];
-        prefix++;
-      }
-      if (prefix < ART_MAX_PREFIX_LEN) {
-        auto sub_prefix =
-            std::min(child->partial_len, ART_MAX_PREFIX_LEN - prefix);
-        memcpy(this->partial + prefix, child->partial, sub_prefix);
-        prefix += sub_prefix;
-      }
-
-      // Store the prefix in the child
-      memcpy(
-          child->partial, this->partial, std::min(prefix, ART_MAX_PREFIX_LEN));
-      child->partial_len += this->partial_len + 1;
-    }
-    *ref = child;
-    this->num_children = 0;
-    delete this;
   }
 }
 
