@@ -40,7 +40,7 @@ bool w_ignore_check(const struct watchman_ignore *ignore, const char *path,
                     uint32_t pathlen) {
   const char *skip_prefix;
   uint32_t len;
-  art_leaf* leaf =
+  auto leaf =
       ignore->tree.longestMatch((const unsigned char*)path, (int)pathlen);
 
   if (!leaf) {

@@ -113,7 +113,6 @@ void test_art_insert_search(void) {
   char buf[512];
   FILE *f = open_test_file("thirdparty/libart/tests/words.txt");
   uintptr_t line = 1;
-  art_leaf *l;
 
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
@@ -141,7 +140,7 @@ void test_art_insert_search(void) {
   }
 
   // Check the minimum
-  l = t.minimum();
+  auto l = t.minimum();
   fail_unless(l && strcmp((char *)l->key, "A") == 0);
 
   // Check the maximum
@@ -407,7 +406,6 @@ void test_art_prefix(void) {
 
 void test_art_insert_search_uuid(void) {
   art_tree t;
-  art_leaf *l;
   int len;
   char buf[512];
   FILE *f = open_test_file("thirdparty/libart/tests/uuid.txt");
@@ -438,7 +436,7 @@ void test_art_insert_search_uuid(void) {
   }
 
   // Check the minimum
-  l = t.minimum();
+  auto l = t.minimum();
   diag("minimum is %s", l->key);
   fail_unless(
       l && strcmp((char *)l->key, "00026bda-e0ea-4cda-8245-522764e9f325") == 0);
