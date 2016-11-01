@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <string>
 #include "watchman_log.h"
 
 #define ART_MAX_PREFIX_LEN 10u
@@ -12,7 +13,7 @@
 /**
  * Main struct, points to root.
  */
-template <typename ValueType>
+template <typename ValueType, typename KeyType = std::string>
 struct art_tree {
   struct Leaf;
   struct Node;
@@ -20,10 +21,9 @@ struct art_tree {
 
   struct Deleter {
     void operator()(Node* node) const;
-    void operator()(Leaf* leaf) const;
   };
   using NodePtr = std::unique_ptr<Node, Deleter>;
-  using LeafPtr = std::unique_ptr<Leaf, Deleter>;
+  using LeafPtr = std::unique_ptr<Leaf>;
 
   /**
    * This struct is included as part
@@ -101,6 +101,8 @@ struct art_tree {
 
   static inline unsigned char
   keyAt(const unsigned char* key, uint32_t key_len, uint32_t idx);
+  static inline unsigned char
+  keyAt(const char* key, uint32_t key_len, uint32_t idx);
 
   /**
    * Small node with only 4 children
@@ -165,18 +167,14 @@ struct art_tree {
    * of arbitrary size, as they include the key.
    */
   struct Leaf {
+    KeyType key;
     ValueType value;
-    uint32_t key_len;
-    unsigned char key[1];
 
     template <typename... Args>
-    Leaf(const unsigned char* key, uint32_t key_len, Args&&... args);
+    Leaf(const KeyType& key, Args&&... args);
 
     bool matches(const unsigned char* key, uint32_t key_len) const;
-
-    template <typename... Args>
-    static LeafPtr
-    make(const unsigned char* key, uint32_t key_len, Args&&... args);
+    bool matches(const KeyType& key) const;
 
     uint32_t longestCommonPrefix(const Leaf* other, uint32_t depth) const;
     bool prefixMatches(const unsigned char* prefix, uint32_t prefix_len) const;
@@ -200,7 +198,7 @@ struct art_tree {
    * The arguments are forwarded to the ValueType constructor
    */
   template <typename... Args>
-  void insert(const unsigned char* key, uint32_t key_len, Args&&... args);
+  void insert(const KeyType& key, Args&&... args);
 
   /**
    * Deletes a value from the ART tree
@@ -209,6 +207,7 @@ struct art_tree {
    * @return true if the item was erased, false otherwise.
    */
   LeafPtr erase(const unsigned char* key, uint32_t key_len);
+  LeafPtr erase(const KeyType& key);
 
   /**
    * Searches for a value in the ART tree
@@ -218,6 +217,7 @@ struct art_tree {
    * the value pointer is returned.
    */
   ValueType* search(const unsigned char* key, uint32_t key_len) const;
+  ValueType* search(const KeyType& key) const;
 
   /**
    * Searches for the longest prefix match for the input key.
@@ -273,8 +273,7 @@ struct art_tree {
   template <typename... Args>
   void recursiveInsert(
       NodePtr& ref,
-      const unsigned char* key,
-      uint32_t key_len,
+      const KeyType& key,
       uint32_t depth,
       bool& replaced,
       Args&&... args);

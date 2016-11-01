@@ -47,16 +47,13 @@ struct PendingCollectionBase {
  private:
   std::condition_variable& cond_;
   std::atomic<bool>& pinged_;
-  art_tree<watchman_pending_fs*> tree_;
+  art_tree<watchman_pending_fs*, w_string> tree_;
 
   struct iterContext {
     const w_string& root;
     PendingCollectionBase& coll;
 
-    int operator()(
-        const unsigned char* key,
-        uint32_t key_len,
-        watchman_pending_fs*& p);
+    int operator()(const w_string& key, watchman_pending_fs*& p);
 
     iterContext(const w_string& root, PendingCollectionBase& coll);
   };

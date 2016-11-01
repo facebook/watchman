@@ -48,7 +48,7 @@ void test_art_insert(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    t.insert((unsigned char*)buf, len, line);
+    t.insert(buf, line);
     if (t.size() != line) {
       fail("art_size didn't match current line no");
     }
@@ -105,9 +105,9 @@ void test_art_insert_verylong(void) {
       219, 191, 198, 134, 5,   208, 212, 72,  44,  208, 250, 180, 14,  1,   0,
       0,   8,   '\0'};
 
-  t.insert(key1, 299, (void*)key1);
-  t.insert(key2, 302, (void*)key2);
-  t.insert(key2, 302, (void*)key2);
+  t.insert(std::string(reinterpret_cast<char*>(key1), 299), (void*)key1);
+  t.insert(std::string(reinterpret_cast<char*>(key2), 302), (void*)key2);
+  t.insert(std::string(reinterpret_cast<char*>(key2), 302), (void*)key2);
   fail_unless(t.size() == 2);
 }
 
@@ -121,7 +121,7 @@ void test_art_insert_search(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    t.insert((unsigned char*)buf, len, line);
+    t.insert(std::string(buf), line);
     line++;
   }
 
@@ -135,7 +135,7 @@ void test_art_insert_search(void) {
     buf[len - 1] = '\0';
 
     {
-      uintptr_t val = *t.search((unsigned char*)buf, len);
+      uintptr_t val = *t.search(buf);
       if (line != val) {
         fail("Line: %d Val: %" PRIuPTR " Str: %s", line, val, buf);
       }
@@ -145,11 +145,11 @@ void test_art_insert_search(void) {
 
   // Check the minimum
   auto l = t.minimum();
-  fail_unless(l && strcmp((char *)l->key, "A") == 0);
+  fail_unless(l && l->key == "A");
 
   // Check the maximum
   l = t.maximum();
-  fail_unless(l && strcmp((char *)l->key, "zythum") == 0);
+  fail_unless(l && l->key == "zythum");
 }
 
 void test_art_insert_delete(void) {
@@ -162,7 +162,7 @@ void test_art_insert_delete(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    t.insert((unsigned char*)buf, len, line);
+    t.insert(buf, line);
     line++;
   }
 
@@ -180,13 +180,13 @@ void test_art_insert_delete(void) {
 
     // Search first, ensure all entries still
     // visible
-    val = *t.search((unsigned char*)buf, len);
+    val = *t.search(buf);
     if (line != val) {
       fail("Line: %d Val: %" PRIuPTR " Str: %s", line, val, buf);
     }
 
     // Delete, should get lineno back
-    if (!t.erase((unsigned char*)buf, len)) {
+    if (!t.erase(buf)) {
       fail("failed to erase line %d, str: %s", line, buf);
     }
 
@@ -214,24 +214,22 @@ void test_art_insert_iter(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    t.insert((unsigned char*)buf, len, line);
+    t.insert(buf, line);
 
-    xor_mask ^= (line * (buf[0] + len));
+    xor_mask ^= (line * (buf[0] + len - 1));
     line++;
   }
   nlines = line - 1;
 
   {
     uint64_t out[] = {0, 0};
-    fail_unless(
-        t.iter([&out](
-            const unsigned char* key, uint32_t key_len, uintptr_t& line) {
-          uint64_t mask = (line * (key[0] + key_len));
-          out[0]++;
-          out[1] ^= mask;
-          return 0;
+    fail_unless(t.iter([&out](const std::string& key, uintptr_t& line) {
+      uint64_t mask = (line * (key[0] + key.size()));
+      out[0]++;
+      out[1] ^= mask;
+      return 0;
 
-        }) == 0);
+    }) == 0);
 
     fail_unless(out[0] == nlines);
     fail_unless(out[1] == xor_mask);
@@ -244,10 +242,10 @@ struct prefix_data {
   int max_count;
   const char **expected;
 
-  int operator()(const unsigned char* k, uint32_t k_len, T&) {
+  int operator()(const std::string& k, T&) {
     fail_unless(count < max_count);
-    diag("Key: %s Expect: %s", k, expected[count]);
-    fail_unless(memcmp(k, expected[count], k_len) == 0);
+    diag("Key: %s Expect: %s", k.c_str(), expected[count]);
+    fail_unless(memcmp(k.data(), expected[count], k.size()) == 0);
     count++;
     return 0;
   }
@@ -255,26 +253,15 @@ struct prefix_data {
 
 void test_art_iter_prefix(void) {
   art_tree<void*> t;
-  const char *s = "api.foo.bar";
   const char *expected2[] = {"abc.123.456", "api",         "api.foe.fum",
                              "api.foo",     "api.foo.bar", "api.foo.baz"};
 
-  t.insert((unsigned char*)s, (int)strlen(s) + 1, nullptr);
-
-  s = "api.foo.baz";
-  t.insert((unsigned char*)s, (int)strlen(s) + 1, nullptr);
-
-  s = "api.foe.fum";
-  t.insert((unsigned char*)s, (int)strlen(s) + 1, nullptr);
-
-  s = "abc.123.456";
-  t.insert((unsigned char*)s, (int)strlen(s) + 1, nullptr);
-
-  s = "api.foo";
-  t.insert((unsigned char*)s, (int)strlen(s) + 1, nullptr);
-
-  s = "api";
-  t.insert((unsigned char*)s, (int)strlen(s) + 1, nullptr);
+  t.insert("api.foo.bar", nullptr);
+  t.insert("api.foo.baz", nullptr);
+  t.insert("api.foe.fum", nullptr);
+  t.insert("abc.123.456", nullptr);
+  t.insert("api.foo", nullptr);
+  t.insert("api", nullptr);
 
   {
     // Iterate over api
@@ -336,30 +323,15 @@ void test_art_iter_prefix(void) {
 
 void test_art_long_prefix(void) {
   art_tree<uintptr_t> t;
-  uintptr_t v;
-  const char *s;
 
-  s = "this:key:has:a:long:prefix:3";
-  v = 3;
-  t.insert((unsigned char*)s, (int)strlen(s) + 1, v);
-
-  s = "this:key:has:a:long:common:prefix:2";
-  v = 2;
-  t.insert((unsigned char*)s, (int)strlen(s) + 1, v);
-
-  s = "this:key:has:a:long:common:prefix:1";
-  v = 1;
-  t.insert((unsigned char*)s, (int)strlen(s) + 1, v);
+  t.insert("this:key:has:a:long:prefix:3", 3);
+  t.insert("this:key:has:a:long:common:prefix:2", 2);
+  t.insert("this:key:has:a:long:common:prefix:1", 1);
 
   // Search for the keys
-  s = "this:key:has:a:long:common:prefix:1";
-  fail_unless(1 == *t.search((unsigned char*)s, (int)strlen(s) + 1));
-
-  s = "this:key:has:a:long:common:prefix:2";
-  fail_unless(2 == *t.search((unsigned char*)s, (int)strlen(s) + 1));
-
-  s = "this:key:has:a:long:prefix:3";
-  fail_unless(3 == *t.search((unsigned char*)s, (int)strlen(s) + 1));
+  fail_unless(1 == *t.search("this:key:has:a:long:common:prefix:1"));
+  fail_unless(2 == *t.search("this:key:has:a:long:common:prefix:2"));
+  fail_unless(3 == *t.search("this:key:has:a:long:prefix:3"));
 
   {
     const char *expected[] = {
@@ -377,25 +349,25 @@ void test_art_prefix(void) {
   art_tree<void*> t;
   void *v;
 
-  t.insert((const unsigned char*)"food", 4, (void*)"food");
-  t.insert((const unsigned char*)"foo", 3, (void*)"foo");
+  t.insert("food", (void*)"food");
+  t.insert("foo", (void*)"foo");
   diag("size is now %d", t.size());
   fail_unless(t.size() == 2);
-  fail_unless((v = *t.search((const unsigned char*)"food", 4)) != NULL);
+  fail_unless((v = *t.search("food")) != nullptr);
   diag("food lookup yields %s", v);
   fail_unless(v && strcmp((char*)v, "food") == 0);
 
-  t.iter([](const unsigned char* key, uint32_t key_len, void*& value) {
+  t.iter([](const std::string& key, void*& value) {
     diag(
         "iter leaf: key_len=%d %.*s value=%p",
-        (int)key_len,
-        (int)key_len,
-        key,
+        int(key.size()),
+        int(key.size()),
+        key.data(),
         value);
     return 0;
   });
 
-  fail_unless((v = *t.search((const unsigned char*)"foo", 3)) != NULL);
+  fail_unless((v = *t.search("foo")) != nullptr);
   diag("foo lookup yields %s", v);
   fail_unless(v && strcmp((char*)v, "foo") == 0);
 }
@@ -410,7 +382,7 @@ void test_art_insert_search_uuid(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    t.insert((unsigned char*)buf, len, line);
+    t.insert(buf, line);
     line++;
   }
 
@@ -424,7 +396,7 @@ void test_art_insert_search_uuid(void) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
 
-    val = *t.search((unsigned char*)buf, len);
+    val = *t.search(buf);
     if (line != val) {
       fail("Line: %d Val: %" PRIuPTR " Str: %s\n", line, val, buf);
     }
@@ -433,15 +405,13 @@ void test_art_insert_search_uuid(void) {
 
   // Check the minimum
   auto l = t.minimum();
-  diag("minimum is %s", l->key);
-  fail_unless(
-      l && strcmp((char *)l->key, "00026bda-e0ea-4cda-8245-522764e9f325") == 0);
+  diag("minimum is %s", l->key.c_str());
+  fail_unless(l && l->key == "00026bda-e0ea-4cda-8245-522764e9f325");
 
   // Check the maximum
   l = t.maximum();
-  diag("maximum is %s", l->key);
-  fail_unless(
-      l && strcmp((char *)l->key, "ffffcb46-a92e-4822-82af-a7190f9c1ec5") == 0);
+  diag("maximum is %s", l->key.c_str());
+  fail_unless(l && l->key == "ffffcb46-a92e-4822-82af-a7190f9c1ec5");
 }
 
 int main(int argc, char **argv) {

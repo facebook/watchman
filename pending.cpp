@@ -119,11 +119,11 @@ PendingCollectionBase::iterContext::iterContext(
 // a sibling node by mistake (see commentary on the is_path_prefix
 // function for more on that).
 int PendingCollectionBase::iterContext::operator()(
-    const unsigned char* key,
-    uint32_t key_len,
+    const w_string& key,
     watchman_pending_fs*& p) {
-  if ((p->flags & W_PENDING_CRAWL_ONLY) == 0 && key_len > root.size() &&
-      is_path_prefix((const char*)key, key_len, root.data(), root.size()) &&
+  if ((p->flags & W_PENDING_CRAWL_ONLY) == 0 && key.size() > root.size() &&
+      is_path_prefix(
+          (const char*)key.data(), key.size(), root.data(), root.size()) &&
       !watchman::CookieSync::isPossiblyACookie(p->path)) {
     w_log(
         W_LOG_DBG,
@@ -143,7 +143,7 @@ int PendingCollectionBase::iterContext::operator()(
     w_pending_fs_free(p);
 
     // Remove it from the art tree also.
-    coll.tree_.erase(key, key_len);
+    coll.tree_.erase(key);
 
     // Stop iteration because we just invalidated the iterator state
     // by modifying the tree mid-iteration.
@@ -204,9 +204,11 @@ bool PendingCollectionBase::isObsoletedByContainingDir(const w_string& path) {
   }
   auto p = leaf->value;
 
-  if ((p->flags & W_PENDING_RECURSIVE) &&
-      is_path_prefix(
-          path.data(), path.size(), (const char*)leaf->key, leaf->key_len)) {
+  if ((p->flags & W_PENDING_RECURSIVE) && is_path_prefix(
+                                              path.data(),
+                                              path.size(),
+                                              (const char*)leaf->key.data(),
+                                              leaf->key.size())) {
     if (watchman::CookieSync::isPossiblyACookie(path)) {
       return false;
     }
@@ -266,7 +268,7 @@ bool PendingCollectionBase::add(
       flags_label);
 
   linkHead(p);
-  tree_.insert((const uint8_t*)path.data(), path.size(), p);
+  tree_.insert(path, p);
 
   return true;
 }
@@ -312,7 +314,7 @@ void PendingCollectionBase::append(PendingCollectionBase* src) {
     maybePruneObsoletedChildren(p->path, p->flags);
 
     linkHead(p);
-    tree_.insert((const uint8_t*)p->path.data(), p->path.size(), p);
+    tree_.insert(p->path, p);
   }
 
   // Empty the src tree and reset it

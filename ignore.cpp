@@ -19,10 +19,7 @@ void w_ignore_addstr(struct watchman_ignore *ignore, w_string_t *path,
   w_ht_set(is_vcs_ignore ? ignore->ignore_vcs : ignore->ignore_dirs,
            w_ht_ptr_val(path), w_ht_ptr_val(path));
 
-  ignore->tree.insert(
-      (const unsigned char*)path->buf,
-      path->len,
-      is_vcs_ignore ? VCS_IGNORE : FULL_IGNORE);
+  ignore->tree.insert(path, is_vcs_ignore ? VCS_IGNORE : FULL_IGNORE);
 
   if (!is_vcs_ignore) {
     ignore->dirs_vec = (w_string_t**)realloc(
@@ -48,12 +45,12 @@ bool w_ignore_check(const struct watchman_ignore *ignore, const char *path,
     return false;
   }
 
-  if (pathlen < leaf->key_len) {
+  if (pathlen < leaf->key.size()) {
     // We wanted "buil" but matched "build"
     return false;
   }
 
-  if (pathlen == leaf->key_len) {
+  if (pathlen == leaf->key.size()) {
     // Exact match.  This is an ignore if we are in FULL_IGNORE,
     // but not in VCS_IGNORE mode.
     return leaf->value == FULL_IGNORE ? true : false;
@@ -63,8 +60,8 @@ bool w_ignore_check(const struct watchman_ignore *ignore, const char *path,
   // We need to ensure that we observe a directory separator at the
   // character after the common prefix, otherwise we may be falsely
   // matching a sibling entry.
-  skip_prefix = path + leaf->key_len;
-  len = pathlen - leaf->key_len;
+  skip_prefix = path + leaf->key.size();
+  len = pathlen - leaf->key.size();
 
   if (*skip_prefix != WATCHMAN_DIR_SEP
 #ifdef _WIN32
@@ -86,7 +83,7 @@ bool w_ignore_check(const struct watchman_ignore *ignore, const char *path,
   // this path.  This devolves to: "is there a '/' character after the end of
   // the leaf key prefix?"
 
-  if (pathlen <= leaf->key_len) {
+  if (pathlen <= leaf->key.size()) {
     // There can't be a slash after this portion of the tree, therefore
     // this is not ignored.
     return false;
