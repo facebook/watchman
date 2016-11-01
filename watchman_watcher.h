@@ -45,7 +45,7 @@ struct Watcher {
   // does not block.
   virtual bool consumeNotify(
       w_root_t* root,
-      struct watchman_pending_collection* coll) = 0;
+      PendingCollection::LockedPtr& coll) = 0;
 
   // Wait for an inotify event to become available
   virtual bool waitNotify(int timeoutms) = 0;

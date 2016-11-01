@@ -488,6 +488,10 @@ template <typename ValueType>
 art_tree<ValueType>::art_tree() : root_(nullptr), size_(0) {}
 
 template <typename ValueType>
+art_tree<ValueType>::art_tree(art_tree&& other) noexcept
+    : root_(std::move(other.root_)), size_(std::move(other.size_)) {}
+
+template <typename ValueType>
 void art_tree<ValueType>::Deleter::operator()(Leaf* leaf) const {
   leaf->~Leaf();
   delete[](char*) leaf;

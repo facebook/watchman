@@ -587,8 +587,8 @@ void InMemoryView::startThreads(w_root_t* root) {
   notifyThreadInstance.detach();
 
   // Wait for it to signal that the watcher has been initialized
-  pending_.lockAndWait(std::chrono::milliseconds(-1) /* infinite */);
-  pending_.unlock();
+  bool pinged = false;
+  pending_.lockAndWait(std::chrono::milliseconds(-1) /* infinite */, pinged);
 
   // And now start the IO thread
   w_root_addref(root);

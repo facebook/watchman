@@ -7,7 +7,7 @@
 namespace watchman {
 void InMemoryView::fullCrawl(
     unlocked_watchman_root* unlocked,
-    watchman_pending_collection& pending) {
+    PendingCollection::LockedPtr& pending) {
   struct timeval start;
   struct write_locked_watchman_root lock;
 
@@ -21,7 +21,7 @@ void InMemoryView::fullCrawl(
   // can get stuck with an empty view until another change is observed
   lock.root->inner.ticks++;
   gettimeofday(&start, NULL);
-  pending_.add(lock.root->root_path, start, 0);
+  pending_.wlock()->add(lock.root->root_path, start, 0);
   // There is the potential for a subtle race condition here.  The boolean
   // parameter indicates whether we want to merge in the set of
   // notifications pending from the watcher or not.  Since we now coalesce
@@ -31,8 +31,8 @@ void InMemoryView::fullCrawl(
   // translates to a two level loop; the outer loop sweeps in data from
   // inotify, then the inner loop processes it and any dirs that we pick up
   // from recursive processing.
-  while (processPending(&lock, &pending, true)) {
-    while (processPending(&lock, &pending, false)) {
+  while (processPending(&lock, pending, true)) {
+    while (processPending(&lock, pending, false)) {
       ;
     }
   }
@@ -90,15 +90,17 @@ static bool do_settle_things(struct unlocked_watchman_root* unlocked) {
 }
 
 void InMemoryView::clientModeCrawl(unlocked_watchman_root* unlocked) {
-  struct watchman_pending_collection pending;
+  PendingCollection pending;
 
-  fullCrawl(unlocked, pending);
+  auto lock = pending.wlock();
+  fullCrawl(unlocked, lock);
 }
 
 void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
   int timeoutms, biggest_timeout;
-  struct watchman_pending_collection pending;
+  PendingCollection pending;
   struct write_locked_watchman_root lock;
+  auto localPendingLock = pending.wlock();
 
   timeoutms = unlocked->root->trigger_settle;
 
@@ -120,20 +122,22 @@ void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
 
     if (!unlocked->root->inner.done_initial) {
       /* first order of business is to find all the files under our root */
-      fullCrawl(unlocked, pending);
+      fullCrawl(unlocked, localPendingLock);
 
       timeoutms = unlocked->root->trigger_settle;
     }
 
     // Wait for the notify thread to give us pending items, or for
     // the settle period to expire
-    w_log(W_LOG_DBG, "poll_events timeout=%dms\n", timeoutms);
-    pinged = pending_.lockAndWait(std::chrono::milliseconds(timeoutms));
-    w_log(W_LOG_DBG, " ... wake up (pinged=%s)\n", pinged ? "true" : "false");
-    pending.append(&pending_);
-    pending_.unlock();
+    {
+      w_log(W_LOG_DBG, "poll_events timeout=%dms\n", timeoutms);
+      auto targetPendingLock =
+          pending_.lockAndWait(std::chrono::milliseconds(timeoutms), pinged);
+      w_log(W_LOG_DBG, " ... wake up (pinged=%s)\n", pinged ? "true" : "false");
+      localPendingLock->append(&*targetPendingLock);
+    }
 
-    if (!pinged && pending.size() == 0) {
+    if (!pinged && localPendingLock->size() == 0) {
       if (do_settle_things(unlocked)) {
         break;
       }
@@ -150,7 +154,7 @@ void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
     w_root_lock(unlocked, "io_thread: process notifications", &lock);
     if (!lock.root->inner.done_initial) {
       // we need to recrawl.  Discard these notifications
-      pending.drain();
+      localPendingLock->drain();
       w_root_unlock(&lock, unlocked);
       continue;
     }
@@ -160,7 +164,7 @@ void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
     // dead file nodes.  This happens in the test harness.
     lock.root->considerAgeOut();
 
-    while (processPending(&lock, &pending, false)) {
+    while (processPending(&lock, localPendingLock, false)) {
       ;
     }
 
@@ -170,7 +174,7 @@ void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
 
 void InMemoryView::processPath(
     write_locked_watchman_root* lock,
-    struct watchman_pending_collection* coll,
+    PendingCollection::LockedPtr& coll,
     const w_string& full_path,
     struct timeval now,
     int flags,
@@ -219,11 +223,11 @@ void InMemoryView::processPath(
 
 bool InMemoryView::processPending(
     write_locked_watchman_root* lock,
-    watchman_pending_collection* coll,
+    PendingCollection::LockedPtr& coll,
     bool pullFromRoot) {
   if (pullFromRoot) {
-    // You MUST own root->pending lock for this
-    coll->append(&pending_);
+    auto srcLock = pending_.wlock();
+    coll->append(&*srcLock);
   }
 
   if (!coll->pending_) {

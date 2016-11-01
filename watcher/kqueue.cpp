@@ -33,7 +33,7 @@ struct KQueueWatcher : public Watcher {
 
   bool startWatchFile(struct watchman_file* file) override;
 
-  bool consumeNotify(w_root_t* root, struct watchman_pending_collection* coll)
+  bool consumeNotify(w_root_t* root, PendingCollection::LockedPtr& coll)
       override;
 
   bool waitNotify(int timeoutms) override;
@@ -252,7 +252,7 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
 
 bool KQueueWatcher::consumeNotify(
     w_root_t* root,
-    struct watchman_pending_collection* coll) {
+    PendingCollection::LockedPtr& coll) {
   int n;
   int i;
   struct timespec ts = { 0, 0 };

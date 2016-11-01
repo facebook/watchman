@@ -58,7 +58,7 @@ struct FSEventsWatcher : public Watcher {
       struct timeval now,
       const char* path) override;
 
-  bool consumeNotify(w_root_t* root, struct watchman_pending_collection* coll)
+  bool consumeNotify(w_root_t* root, PendingCollection::LockedPtr& coll)
       override;
 
   bool waitNotify(int timeoutms) override;
@@ -539,7 +539,7 @@ done:
 
 bool FSEventsWatcher::consumeNotify(
     w_root_t* root,
-    struct watchman_pending_collection* coll) {
+    PendingCollection::LockedPtr& coll) {
   struct watchman_fsevent *head, *evt;
   int n = 0;
   struct timeval now;

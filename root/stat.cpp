@@ -7,7 +7,7 @@
 namespace watchman {
 void InMemoryView::statPath(
     read_locked_watchman_root* lock,
-    struct watchman_pending_collection* coll,
+    PendingCollection::LockedPtr& coll,
     const w_string& full_path,
     struct timeval now,
     int flags,
@@ -164,8 +164,9 @@ void InMemoryView::statPath(
         file->symlink_target = new_symlink_target;
 
         if (symlink_changed && root->config.getBool("watch_symlinks", false)) {
-          const_cast<w_root_t*>(root)->inner.pending_symlink_targets.add(
-              full_path, now, 0);
+          const_cast<w_root_t*>(root)
+              ->inner.pending_symlink_targets.wlock()
+              ->add(full_path, now, 0);
         }
       }
     } else {

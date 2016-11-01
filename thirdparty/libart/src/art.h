@@ -186,6 +186,9 @@ struct art_tree {
   art_tree();
   ~art_tree();
 
+  art_tree(const art_tree&) = delete;
+  art_tree(art_tree&& other) noexcept;
+
   inline uint64_t size() const {
     return size_;
   }

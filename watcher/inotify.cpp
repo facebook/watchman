@@ -76,14 +76,14 @@ struct InotifyWatcher : public Watcher {
       struct timeval now,
       const char* path) override;
 
-  bool consumeNotify(w_root_t* root, struct watchman_pending_collection* coll)
+  bool consumeNotify(w_root_t* root, PendingCollection::LockedPtr& coll)
       override;
 
   bool waitNotify(int timeoutms) override;
 
   void process_inotify_event(
       w_root_t* root,
-      struct watchman_pending_collection* coll,
+      PendingCollection::LockedPtr& coll,
       struct inotify_event* ine,
       struct timeval now);
 
@@ -213,7 +213,7 @@ struct watchman_dir_handle* InotifyWatcher::startWatchDir(
 
 void InotifyWatcher::process_inotify_event(
     w_root_t* root,
-    struct watchman_pending_collection* coll,
+    PendingCollection::LockedPtr& coll,
     struct inotify_event* ine,
     struct timeval now) {
   char flags_label[128];
@@ -361,7 +361,7 @@ void InotifyWatcher::process_inotify_event(
 
 bool InotifyWatcher::consumeNotify(
     w_root_t* root,
-    struct watchman_pending_collection* coll) {
+    PendingCollection::LockedPtr& coll) {
   struct inotify_event *ine;
   char *iptr;
   int n;

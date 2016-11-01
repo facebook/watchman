@@ -38,7 +38,7 @@ static bool is_path_prefix(const char *path, size_t path_len, const char *other,
 }
 
 // Helper to un-doubly-link a pending item.
-void watchman_pending_collection::unlinkItem(watchman_pending_fs* p) {
+void PendingCollectionBase::unlinkItem(watchman_pending_fs* p) {
   if (pending_ == p) {
     pending_ = p->next;
   }
@@ -51,7 +51,7 @@ void watchman_pending_collection::unlinkItem(watchman_pending_fs* p) {
 }
 
 // Helper to doubly-link a pending item to the head of a collection.
-void watchman_pending_collection::linkHead(watchman_pending_fs* p) {
+void PendingCollectionBase::linkHead(watchman_pending_fs* p) {
   p->prev = NULL;
   p->next = pending_;
   if (pending_) {
@@ -66,25 +66,18 @@ void w_pending_fs_free(struct watchman_pending_fs *p) {
 }
 
 /* initialize a pending_coll */
-watchman_pending_collection::watchman_pending_collection()
-    : pending_(nullptr), pinged_(false) {
-  if (pthread_mutex_init(&mutex_, nullptr)) {
-    throw std::runtime_error("failed to init mutex");
-  }
-  if (pthread_cond_init(&cond_, nullptr)) {
-    throw std::runtime_error("failed to init cond");
-  }
-}
+PendingCollectionBase::PendingCollectionBase(
+    std::condition_variable& cond,
+    std::atomic<bool>& pinged)
+    : pending_(nullptr), cond_(cond), pinged_(pinged) {}
 
 /* destroy a pending_coll */
-watchman_pending_collection::~watchman_pending_collection() {
+PendingCollectionBase::~PendingCollectionBase() {
   drain();
-  pthread_mutex_destroy(&mutex_);
-  pthread_cond_destroy(&cond_);
 }
 
 /* drain and discard the content of a pending_coll, but do not destroy it */
-void watchman_pending_collection::drain() {
+void PendingCollectionBase::drain() {
   struct watchman_pending_fs *p;
 
   while ((p = pop()) != NULL) {
@@ -94,50 +87,14 @@ void watchman_pending_collection::drain() {
   tree_.clear();
 }
 
-/* compute a deadline on entry, then obtain the collection lock
- * and wait until the deadline expires or until the collection is
- * pinged.  On Return, the caller owns the collection lock. */
-bool watchman_pending_collection::lockAndWait(
-    std::chrono::milliseconds timeoutms) {
-  struct timespec deadline;
-  int errcode;
-
-  if (timeoutms.count() != -1) {
-    w_timeoutms_to_abs_timespec(timeoutms.count(), &deadline);
-  }
-  lock();
-  if (pending_ || pinged_) {
-    pinged_ = false;
-    return true;
-  }
-  if (timeoutms.count() == -1) {
-    errcode = pthread_cond_wait(&cond_, &mutex_);
-  } else {
-    errcode = pthread_cond_timedwait(&cond_, &mutex_, &deadline);
-  }
-
-  return errcode == 0;
-}
-
-void watchman_pending_collection::ping() {
+void PendingCollectionBase::ping() {
   pinged_ = true;
-  pthread_cond_broadcast(&cond_);
+  cond_.notify_all();
 }
 
-/* obtain the collection lock */
-void watchman_pending_collection::lock() {
-  int err = pthread_mutex_lock(&mutex_);
-  if (err != 0) {
-    w_log(W_LOG_FATAL, "lock assertion: %s\n", strerror(err));
-  }
-}
-
-/* release the collection lock */
-void watchman_pending_collection::unlock() {
-  int err = pthread_mutex_unlock(&mutex_);
-  if (err != 0) {
-    w_log(W_LOG_FATAL, "unlock assertion: %s\n", strerror(err));
-  }
+void PendingCollection::ping() {
+  pinged_ = true;
+  cond_.notify_all();
 }
 
 // Deletion is a bit awkward in this radix tree implementation.
@@ -152,16 +109,16 @@ void watchman_pending_collection::unlock() {
 // We use this kid_context state to pass down the required information
 // to the iterator callback so that we adjust the overall state correctly.
 
-watchman_pending_collection::iterContext::iterContext(
+PendingCollectionBase::iterContext::iterContext(
     const w_string& root,
-    watchman_pending_collection& coll)
+    PendingCollectionBase& coll)
     : root(root), coll(coll) {}
 
 // This is the iterator callback we use to prune out obsoleted leaves.
 // We need to compare the prefix to make sure that we don't delete
 // a sibling node by mistake (see commentary on the is_path_prefix
 // function for more on that).
-int watchman_pending_collection::iterContext::operator()(
+int PendingCollectionBase::iterContext::operator()(
     const unsigned char* key,
     uint32_t key_len,
     watchman_pending_fs*& p) {
@@ -198,7 +155,7 @@ int watchman_pending_collection::iterContext::operator()(
 
 // if there are any entries that are obsoleted by a recursive insert,
 // walk over them now and mark them as ignored.
-void watchman_pending_collection::maybePruneObsoletedChildren(
+void PendingCollectionBase::maybePruneObsoletedChildren(
     const w_string& path,
     int flags) {
   if ((flags & (W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY)) ==
@@ -225,9 +182,7 @@ void watchman_pending_collection::maybePruneObsoletedChildren(
   }
 }
 
-void watchman_pending_collection::consolidateItem(
-    watchman_pending_fs* p,
-    int flags) {
+void PendingCollectionBase::consolidateItem(watchman_pending_fs* p, int flags) {
   // Increase the strength of the pending item if either of these
   // flags are set.
   // We upgrade crawl-only as well as recursive; it indicates that
@@ -242,8 +197,7 @@ void watchman_pending_collection::consolidateItem(
 // filesystem than the input path; if there is, and it is recursive,
 // return true to indicate that there is no need to track this new path
 // due to the already scheduled higher level path.
-bool watchman_pending_collection::isObsoletedByContainingDir(
-    const w_string& path) {
+bool PendingCollectionBase::isObsoletedByContainingDir(const w_string& path) {
   auto leaf = tree_.longestMatch((const uint8_t*)path.data(), path.size());
   if (!leaf) {
     return false;
@@ -280,7 +234,7 @@ watchman_pending_fs::watchman_pending_fs(
 /* add a pending entry.  Will consolidate an existing entry with the
  * same name.  Returns false if an allocation fails.
  * The caller must own the collection lock. */
-bool watchman_pending_collection::add(
+bool PendingCollectionBase::add(
     const w_string& path,
     struct timeval now,
     int flags) {
@@ -317,7 +271,7 @@ bool watchman_pending_collection::add(
   return true;
 }
 
-bool watchman_pending_collection::add(
+bool PendingCollectionBase::add(
     struct watchman_dir* dir,
     const char* name,
     struct timeval now,
@@ -338,7 +292,7 @@ bool watchman_pending_collection::add(
 /* Append the contents of src to target, consolidating in target.
  * src is effectively drained in the process.
  * Caller must own the lock on both src and target. */
-void watchman_pending_collection::append(watchman_pending_collection* src) {
+void PendingCollectionBase::append(PendingCollectionBase* src) {
   struct watchman_pending_fs* p;
 
   while ((p = src->pop()) != NULL) {
@@ -370,7 +324,7 @@ void watchman_pending_collection::append(watchman_pending_collection* src) {
  * Does NOT remove the entry from the uniq hash.
  * The intent is that the caller will call this in a tight loop and
  * then _drain() it at the end to clear the uniq hash */
-struct watchman_pending_fs* watchman_pending_collection::pop() {
+struct watchman_pending_fs* PendingCollectionBase::pop() {
   struct watchman_pending_fs* p = pending_;
 
   if (p) {
@@ -381,8 +335,42 @@ struct watchman_pending_fs* watchman_pending_collection::pop() {
 }
 
 /* Returns the number of unique pending items in the collection */
-uint32_t watchman_pending_collection::size() const {
+uint32_t PendingCollectionBase::size() const {
   return tree_.size();
+}
+
+bool PendingCollectionBase::checkAndResetPinged() {
+  if (pending_ || pinged_) {
+    pinged_ = false;
+    return true;
+  }
+  return false;
+}
+
+PendingCollection::PendingCollection()
+    : watchman::Synchronized<PendingCollectionBase, std::mutex>(
+          PendingCollectionBase(cond_, pinged_)),
+      pinged_(false) {}
+
+PendingCollection::LockedPtr PendingCollection::lockAndWait(
+    std::chrono::milliseconds timeoutms,
+    bool& pinged) {
+  auto lock = wlock();
+
+  if (lock->checkAndResetPinged()) {
+    pinged = true;
+    return lock;
+  }
+
+  if (timeoutms.count() == -1) {
+    cond_.wait(lock.getUniqueLock());
+  } else {
+    cond_.wait_for(lock.getUniqueLock(), timeoutms);
+  }
+
+  pinged = lock->checkAndResetPinged();
+
+  return lock;
 }
 
 /* vim:ts=2:sw=2:et:

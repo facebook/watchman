@@ -2,6 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <chrono>
+#include <condition_variable>
+#include "watchman_synchronized.h"
 
 #define W_PENDING_RECURSIVE 1
 #define W_PENDING_VIA_NOTIFY 2
@@ -19,44 +21,44 @@ struct watchman_pending_fs {
       int flags);
 };
 
-struct watchman_pending_collection {
+struct PendingCollectionBase {
   watchman_pending_fs* pending_;
 
-  watchman_pending_collection();
-  watchman_pending_collection(const watchman_pending_collection&) = delete;
-  ~watchman_pending_collection();
+  PendingCollectionBase(
+      std::condition_variable& cond,
+      std::atomic<bool>& pinged);
+  PendingCollectionBase(const PendingCollectionBase&) = delete;
+  PendingCollectionBase(PendingCollectionBase&&) = default;
+  ~PendingCollectionBase();
 
   void drain();
-  void lock();
-  void unlock();
   bool add(const w_string& path, struct timeval now, int flags);
   bool add(
       struct watchman_dir* dir,
       const char* name,
       struct timeval now,
       int flags);
-  void append(watchman_pending_collection* src);
+  void append(PendingCollectionBase* src);
   struct watchman_pending_fs* pop();
-  bool lockAndWait(std::chrono::milliseconds timeoutms);
-  void ping();
   uint32_t size() const;
+  void ping();
+  bool checkAndResetPinged();
 
  private:
-  pthread_mutex_t mutex_;
-  pthread_cond_t cond_;
-  bool pinged_;
+  std::condition_variable& cond_;
+  std::atomic<bool>& pinged_;
   art_tree<watchman_pending_fs*> tree_;
 
   struct iterContext {
     const w_string& root;
-    watchman_pending_collection& coll;
+    PendingCollectionBase& coll;
 
     int operator()(
         const unsigned char* key,
         uint32_t key_len,
         watchman_pending_fs*& p);
 
-    iterContext(const w_string& root, watchman_pending_collection& coll);
+    iterContext(const w_string& root, PendingCollectionBase& coll);
   };
   friend struct iterContext;
 
@@ -65,6 +67,19 @@ struct watchman_pending_collection {
   bool isObsoletedByContainingDir(const w_string& path);
   inline void linkHead(watchman_pending_fs* p);
   inline void unlinkItem(watchman_pending_fs* p);
+};
+
+class PendingCollection
+    : public watchman::Synchronized<PendingCollectionBase, std::mutex> {
+  std::condition_variable cond_;
+  std::atomic<bool> pinged_;
+
+ public:
+  PendingCollection();
+  LockedPtr lockAndWait(std::chrono::milliseconds timeoutms, bool& pinged);
+
+  // Ping without requiring the lock to be held
+  void ping();
 };
 
 void w_pending_fs_free(watchman_pending_fs* p);

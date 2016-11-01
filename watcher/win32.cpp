@@ -36,7 +36,7 @@ struct WinWatcher : public Watcher {
       struct timeval now,
       const char* path) override;
 
-  bool consumeNotify(w_root_t* root, struct watchman_pending_collection* coll)
+  bool consumeNotify(w_root_t* root, PendingCollection::LockedPtr& coll)
       override;
 
   bool waitNotify(int timeoutms) override;
@@ -375,7 +375,7 @@ struct watchman_dir_handle* WinWatcher::startWatchDir(
 
 bool WinWatcher::consumeNotify(
     w_root_t* root,
-    struct watchman_pending_collection* coll) {
+    PendingCollection::LockedPtr& coll) {
   struct winwatch_changed_item *list, *item;
   struct timeval now;
   int n = 0;

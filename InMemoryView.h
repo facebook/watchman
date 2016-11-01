@@ -70,11 +70,11 @@ struct InMemoryView : public QueryableView {
   // Consume entries from pending and apply them to the InMemoryView
   bool processPending(
       write_locked_watchman_root* lock,
-      watchman_pending_collection* pending,
+      PendingCollection::LockedPtr& pending,
       bool pullFromRoot = false);
   void processPath(
       write_locked_watchman_root* lock,
-      struct watchman_pending_collection* coll,
+      PendingCollection::LockedPtr& coll,
       const w_string& full_path,
       struct timeval now,
       int flags,
@@ -128,7 +128,7 @@ struct InMemoryView : public QueryableView {
       uint32_t dir_name_len) const;
   void crawler(
       write_locked_watchman_root* lock,
-      struct watchman_pending_collection* coll,
+      PendingCollection::LockedPtr& coll,
       const w_string& dir_name,
       struct timeval now,
       bool recursive);
@@ -137,10 +137,10 @@ struct InMemoryView : public QueryableView {
   void handleShouldRecrawl(unlocked_watchman_root* unlocked);
   void fullCrawl(
       unlocked_watchman_root* unlocked,
-      watchman_pending_collection& pending);
+      PendingCollection::LockedPtr& pending);
   void statPath(
       read_locked_watchman_root* lock,
-      struct watchman_pending_collection* coll,
+      PendingCollection::LockedPtr& coll,
       const w_string& full_path,
       struct timeval now,
       int flags,
@@ -176,7 +176,7 @@ struct InMemoryView : public QueryableView {
   time_t last_age_out_timestamp{0};
 
   /* queue of items that we need to stat/process */
-  struct watchman_pending_collection pending_;
+  PendingCollection pending_;
 
   std::atomic<bool> stopThreads_{false};
 };
