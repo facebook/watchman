@@ -237,12 +237,6 @@ struct art_tree {
    */
   Leaf* maximum() const;
 
-  using art_callback = std::function<int(
-      void* data,
-      const unsigned char* key,
-      uint32_t key_len,
-      ValueType& value)>;
-
   /**
    * Iterates through the entries pairs in the map,
    * invoking a callback for each. The call back gets a
@@ -252,7 +246,8 @@ struct art_tree {
    * @arg data Opaque handle passed to the callback
    * @return 0 on success, or the return of the callback.
    */
-  int iter(art_callback cb, void* data);
+  template <typename Func>
+  int iter(Func&& func);
 
   /**
    * Iterates through the entries pairs in the map,
@@ -265,11 +260,8 @@ struct art_tree {
    * @arg data Opaque handle passed to the callback
    * @return 0 on success, or the return of the callback.
    */
-  int iterPrefix(
-      const unsigned char* prefix,
-      uint32_t prefix_len,
-      art_callback cb,
-      void* data);
+  template <typename Func>
+  int iterPrefix(const unsigned char* prefix, uint32_t prefix_len, Func&& func);
 
  private:
   NodePtr root_;
@@ -288,7 +280,9 @@ struct art_tree {
       const unsigned char* key,
       uint32_t key_len,
       uint32_t depth);
-  int recursiveIter(Node* n, art_callback cb, void* data);
+
+  template <typename Func>
+  int recursiveIter(Node* n, Func& func);
 };
 
 #include "art-inl.h"

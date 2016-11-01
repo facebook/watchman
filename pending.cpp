@@ -156,49 +156,46 @@ void w_pending_coll_unlock(struct watchman_pending_collection *coll) {
 struct kid_context {
   w_string_t *root;
   struct watchman_pending_collection *coll;
-};
 
-// This is the iterator callback we use to prune out obsoleted leaves.
-// We need to compare the prefix to make sure that we don't delete
-// a sibling node by mistake (see commentary on the is_path_prefix
-// function for more on that).
-static int delete_kids(void *data, const unsigned char *key, uint32_t key_len,
-                       void *value) {
-  auto ctx = (kid_context *)data;
-  auto p = (watchman_pending_fs*)value;
-  unused_parameter(value);
+  // This is the iterator callback we use to prune out obsoleted leaves.
+  // We need to compare the prefix to make sure that we don't delete
+  // a sibling node by mistake (see commentary on the is_path_prefix
+  // function for more on that).
+  int operator()(
+      const unsigned char* key,
+      uint32_t key_len,
+      watchman_pending_fs*& p) {
+    if ((p->flags & W_PENDING_CRAWL_ONLY) == 0 && key_len > root->len &&
+        is_path_prefix((const char*)key, key_len, root->buf, root->len) &&
+        !watchman::CookieSync::isPossiblyACookie(p->path)) {
+      w_log(
+          W_LOG_DBG,
+          "delete_kids: removing (%d) %.*s from pending because it is "
+          "obsoleted by (%d) %.*s\n",
+          int(p->path.size()),
+          int(p->path.size()),
+          p->path.data(),
+          root->len,
+          root->len,
+          root->buf);
 
-  if ((p->flags & W_PENDING_CRAWL_ONLY) == 0 && key_len > ctx->root->len &&
-      is_path_prefix(
-          (const char*)key, key_len, ctx->root->buf, ctx->root->len) &&
-      !watchman::CookieSync::isPossiblyACookie(p->path)) {
-    w_log(
-        W_LOG_DBG,
-        "delete_kids: removing (%d) %.*s from pending because it is "
-        "obsoleted by (%d) %.*s\n",
-        int(p->path.size()),
-        int(p->path.size()),
-        p->path.data(),
-        ctx->root->len,
-        ctx->root->len,
-        ctx->root->buf);
+      // Unlink the child from the pending index.
+      unlink_item(coll, p);
 
-    // Unlink the child from the pending index.
-    unlink_item(ctx->coll, p);
+      // and completely free it.
+      w_pending_fs_free(p);
 
-    // and completely free it.
-    w_pending_fs_free(p);
+      // Remove it from the art tree also.
+      coll->tree.erase(key, key_len);
 
-    // Remove it from the art tree also.
-    ctx->coll->tree.erase(key, key_len);
+      // Stop iteration because we just invalidated the iterator state
+      // by modifying the tree mid-iteration.
+      return 1;
+    }
 
-    // Stop iteration because we just invalidated the iterator state
-    // by modifying the tree mid-iteration.
-    return 1;
+    return 0;
   }
-
-  return 0;
-}
+};
 
 // if there are any entries that are obsoleted by a recursive insert,
 // walk over them now and mark them as ignored.
@@ -212,8 +209,7 @@ maybe_prune_obsoleted_children(struct watchman_pending_collection *coll,
     // Since deletion invalidates the iterator, we need to repeatedly
     // call this to prune out the nodes.  It will return 0 once no
     // matching prefixes are found and deleted.
-    while (coll->tree.iterPrefix(
-        (const uint8_t*)path->buf, path->len, delete_kids, &ctx)) {
+    while (coll->tree.iterPrefix((const uint8_t*)path->buf, path->len, ctx)) {
       // OK; try again
       ++pruned;
     }

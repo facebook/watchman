@@ -1024,7 +1024,8 @@ typename art_tree<ValueType>::LeafPtr art_tree<ValueType>::erase(
 
 // Recursively iterates over the tree
 template <typename ValueType>
-int art_tree<ValueType>::recursiveIter(Node* n, art_callback cb, void* data) {
+template <typename Func>
+int art_tree<ValueType>::recursiveIter(Node* n, Func& func) {
   int i, idx, res;
   union node_ptr p = {n};
 
@@ -1034,13 +1035,13 @@ int art_tree<ValueType>::recursiveIter(Node* n, art_callback cb, void* data) {
   }
   if (IS_LEAF(n)) {
     auto l = LEAF_RAW(n);
-    return cb(data, l->key, l->key_len, l->value);
+    return func(l->key, l->key_len, l->value);
   }
 
   switch (n->type) {
     case Node_type::NODE4:
       for (i = 0; i < n->num_children; i++) {
-        res = recursiveIter(p.n4->children[i].get(), cb, data);
+        res = recursiveIter(p.n4->children[i].get(), func);
         if (res) {
           return res;
         }
@@ -1049,7 +1050,7 @@ int art_tree<ValueType>::recursiveIter(Node* n, art_callback cb, void* data) {
 
     case Node_type::NODE16:
       for (i = 0; i < n->num_children; i++) {
-        res = recursiveIter(p.n16->children[i].get(), cb, data);
+        res = recursiveIter(p.n16->children[i].get(), func);
         if (res) {
           return res;
         }
@@ -1063,7 +1064,7 @@ int art_tree<ValueType>::recursiveIter(Node* n, art_callback cb, void* data) {
           continue;
         }
 
-        res = recursiveIter(p.n48->children[idx - 1].get(), cb, data);
+        res = recursiveIter(p.n48->children[idx - 1].get(), func);
         if (res) {
           return res;
         }
@@ -1075,7 +1076,7 @@ int art_tree<ValueType>::recursiveIter(Node* n, art_callback cb, void* data) {
         if (!p.n256->children[i]) {
           continue;
         }
-        res = recursiveIter(p.n256->children[i].get(), cb, data);
+        res = recursiveIter(p.n256->children[i].get(), func);
         if (res) {
           return res;
         }
@@ -1099,8 +1100,9 @@ int art_tree<ValueType>::recursiveIter(Node* n, art_callback cb, void* data) {
  * @return 0 on success, or the return of the callback.
  */
 template <typename ValueType>
-int art_tree<ValueType>::iter(art_callback cb, void* data) {
-  return recursiveIter(root_.get(), cb, data);
+template <typename Func>
+int art_tree<ValueType>::iter(Func&& func) {
+  return recursiveIter(root_.get(), func);
 }
 
 /**
@@ -1120,46 +1122,6 @@ bool art_tree<ValueType>::Leaf::prefixMatches(
 }
 
 /**
- * Helper function for prefix iteration.
- * In some cases, such as when the relative key is longer than
- * ART_MAX_PREFIX_LEN, and especially after a series of inserts and deletes has
- * churned things up, the iterator locates a potential for matching within a
- * sub-tree that has shorter prefixes than desired (it calls minimum() to find
- * the candidate).  We need to filter these before calling the user supplied
- * iterator callback or else risk incorrect results.
- */
-
-template <typename ValueType>
-struct prefix_iterator_state {
-  const unsigned char* key;
-  uint32_t key_len;
-  typename art_tree<ValueType>::art_callback cb;
-  void* data;
-};
-
-template <typename ValueType>
-inline int prefix_iterator_callback(
-    void* data,
-    const unsigned char* key,
-    uint32_t key_len,
-    ValueType& value) {
-  auto state = (prefix_iterator_state<ValueType>*)data;
-
-  if (key_len < state->key_len) {
-    // Can't match, keep iterating
-    return 0;
-  }
-
-  if (memcmp(key, state->key, state->key_len) != 0) {
-    // Prefix doesn't match, keep iterating
-    return 0;
-  }
-
-  // Prefix matches, it is valid to call the user iterator callback
-  return state->cb(state->data, key, key_len, value);
-}
-
-/**
  * Iterates through the entries pairs in the map,
  * invoking a callback for each that matches a given prefix.
  * The call back gets a key, value for each and returns an integer stop value.
@@ -1172,23 +1134,50 @@ inline int prefix_iterator_callback(
  * @return 0 on success, or the return of the callback.
  */
 template <typename ValueType>
+template <typename Func>
 int art_tree<ValueType>::iterPrefix(
     const unsigned char* key,
     uint32_t key_len,
-    art_callback cb,
-    void* data) {
+    Func&& func) {
   auto n = root_.get();
   uint32_t prefix_len, depth = 0;
-  struct prefix_iterator_state<ValueType> state = {
-    key, key_len, cb, data
+
+  auto prefix_key_len = key_len;
+  auto prefix_key = key;
+
+  auto prefixCallback = [prefix_key, prefix_key_len, &func](
+      const unsigned char* key, uint32_t key_len, ValueType& value) {
+    /**
+     * Helper function for prefix iteration.
+     * In some cases, such as when the relative key is longer than
+     * ART_MAX_PREFIX_LEN, and especially after a series of inserts and deletes
+     * has churned things up, the iterator locates a potential for matching
+     * within a sub-tree that has shorter prefixes than desired (it calls
+     * minimum() to find the candidate).  We need to filter these before
+     * calling the user supplied iterator callback or else risk incorrect
+     * results.  */
+
+    if (key_len < prefix_key_len) {
+      // Can't match, keep iterating
+      return 0;
+    }
+
+    if (memcmp(key, prefix_key, prefix_key_len) != 0) {
+      // Prefix doesn't match, keep iterating
+      return 0;
+    }
+
+    // Prefix matches, it is valid to call the user iterator callback
+    return func(key, key_len, value);
   };
+
   while (n) {
     // Might be a leaf
     if (IS_LEAF(n)) {
       auto l = LEAF_RAW(n);
       // Check if the expanded path matches
       if (l->prefixMatches(key, key_len)) {
-        return cb(data, l->key, l->key_len, l->value);
+        return func(l->key, l->key_len, l->value);
       }
       return 0;
     }
@@ -1197,7 +1186,7 @@ int art_tree<ValueType>::iterPrefix(
     if (depth == key_len) {
       auto l = n->minimum();
       if (l->prefixMatches(key, key_len)) {
-        return recursiveIter(n, prefix_iterator_callback<ValueType>, &state);
+        return recursiveIter(n, prefixCallback);
       }
       return 0;
     }
@@ -1212,7 +1201,7 @@ int art_tree<ValueType>::iterPrefix(
       }
       // If we've matched the prefix, iterate on this node
       else if (depth + prefix_len == key_len) {
-        return recursiveIter(n, prefix_iterator_callback<ValueType>, &state);
+        return recursiveIter(n, prefixCallback);
       }
 
       // if there is a full match, go deeper

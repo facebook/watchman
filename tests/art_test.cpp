@@ -202,17 +202,8 @@ void test_art_insert_delete(void) {
   fail_unless(!t.maximum());
 }
 
-int iter_cb(void *data, const unsigned char *key, uint32_t key_len, void *val) {
-  uint64_t *out = (uint64_t *)data;
-  uintptr_t line = (uintptr_t)val;
-  uint64_t mask = (line * (key[0] + key_len));
-  out[0]++;
-  out[1] ^= mask;
-  return 0;
-}
-
 void test_art_insert_iter(void) {
-  art_tree<void*> t;
+  art_tree<uintptr_t> t;
 
   int len;
   char buf[512];
@@ -223,7 +214,7 @@ void test_art_insert_iter(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    t.insert((unsigned char*)buf, len, (void*)line);
+    t.insert((unsigned char*)buf, len, line);
 
     xor_mask ^= (line * (buf[0] + len));
     line++;
@@ -232,29 +223,35 @@ void test_art_insert_iter(void) {
 
   {
     uint64_t out[] = {0, 0};
-    fail_unless(t.iter(iter_cb, &out) == 0);
+    fail_unless(
+        t.iter([&out](
+            const unsigned char* key, uint32_t key_len, uintptr_t& line) {
+          uint64_t mask = (line * (key[0] + key_len));
+          out[0]++;
+          out[1] ^= mask;
+          return 0;
+
+        }) == 0);
 
     fail_unless(out[0] == nlines);
     fail_unless(out[1] == xor_mask);
   }
 }
 
-typedef struct {
+template <typename T>
+struct prefix_data {
   int count;
   int max_count;
   const char **expected;
-} prefix_data;
 
-template <typename T>
-static int
-test_prefix_cb(void* data, const unsigned char* k, uint32_t k_len, T&) {
-  prefix_data *p = (prefix_data *)data;
-  fail_unless(p->count < p->max_count);
-  diag("Key: %s Expect: %s", k, p->expected[p->count]);
-  fail_unless(memcmp(k, p->expected[p->count], k_len) == 0);
-  p->count++;
-  return 0;
-}
+  int operator()(const unsigned char* k, uint32_t k_len, T&) {
+    fail_unless(count < max_count);
+    diag("Key: %s Expect: %s", k, expected[count]);
+    fail_unless(memcmp(k, expected[count], k_len) == 0);
+    count++;
+    return 0;
+  }
+};
 
 void test_art_iter_prefix(void) {
   art_tree<void*> t;
@@ -283,26 +280,23 @@ void test_art_iter_prefix(void) {
     // Iterate over api
     const char *expected[] = {"api", "api.foe.fum", "api.foo", "api.foo.bar",
                               "api.foo.baz"};
-    prefix_data p = {0, 5, expected};
-    fail_unless(
-        !t.iterPrefix((unsigned char*)"api", 3, test_prefix_cb<void*>, &p));
+    prefix_data<void*> p = {0, 5, expected};
+    fail_unless(!t.iterPrefix((unsigned char*)"api", 3, p));
     diag("Count: %d Max: %d", p.count, p.max_count);
     fail_unless(p.count == p.max_count);
   }
 
   {
     // Iterate over 'a'
-    prefix_data p2 = {0, 6, expected2};
-    fail_unless(
-        !t.iterPrefix((unsigned char*)"a", 1, test_prefix_cb<void*>, &p2));
+    prefix_data<void*> p2 = {0, 6, expected2};
+    fail_unless(!t.iterPrefix((unsigned char*)"a", 1, p2));
     fail_unless(p2.count == p2.max_count);
   }
 
   {
     // Check a failed iteration
-    prefix_data p3 = {0, 0, NULL};
-    fail_unless(
-        !t.iterPrefix((unsigned char*)"b", 1, test_prefix_cb<void*>, &p3));
+    prefix_data<void*> p3 = {0, 0, nullptr};
+    fail_unless(!t.iterPrefix((unsigned char*)"b", 1, p3));
     fail_unless(p3.count == 0);
   }
 
@@ -310,9 +304,8 @@ void test_art_iter_prefix(void) {
     // Iterate over api.
     const char *expected4[] = {"api.foe.fum", "api.foo", "api.foo.bar",
                                "api.foo.baz"};
-    prefix_data p4 = {0, 4, expected4};
-    fail_unless(
-        !t.iterPrefix((unsigned char*)"api.", 4, test_prefix_cb<void*>, &p4));
+    prefix_data<void*> p4 = {0, 4, expected4};
+    fail_unless(!t.iterPrefix((unsigned char*)"api.", 4, p4));
     diag("Count: %d Max: %d", p4.count, p4.max_count);
     fail_unless(p4.count == p4.max_count);
   }
@@ -320,26 +313,23 @@ void test_art_iter_prefix(void) {
   {
     // Iterate over api.foo.ba
     const char *expected5[] = {"api.foo.bar"};
-    prefix_data p5 = {0, 1, expected5};
-    fail_unless(!t.iterPrefix(
-        (unsigned char*)"api.foo.bar", 11, test_prefix_cb<void*>, &p5));
+    prefix_data<void*> p5 = {0, 1, expected5};
+    fail_unless(!t.iterPrefix((unsigned char*)"api.foo.bar", 11, p5));
     diag("Count: %d Max: %d", p5.count, p5.max_count);
     fail_unless(p5.count == p5.max_count);
   }
 
   // Check a failed iteration on api.end
   {
-    prefix_data p6 = {0, 0, NULL};
-    fail_unless(!t.iterPrefix(
-        (unsigned char*)"api.end", 7, test_prefix_cb<void*>, &p6));
+    prefix_data<void*> p6 = {0, 0, nullptr};
+    fail_unless(!t.iterPrefix((unsigned char*)"api.end", 7, p6));
     fail_unless(p6.count == 0);
   }
 
   // Iterate over empty prefix
   {
-    prefix_data p7 = {0, 6, expected2};
-    fail_unless(
-        !t.iterPrefix((unsigned char*)"", 0, test_prefix_cb<void*>, &p7));
+    prefix_data<void*> p7 = {0, 6, expected2};
+    fail_unless(!t.iterPrefix((unsigned char*)"", 0, p7));
     fail_unless(p7.count == p7.max_count);
   }
 }
@@ -376,19 +366,11 @@ void test_art_long_prefix(void) {
         "this:key:has:a:long:common:prefix:1",
         "this:key:has:a:long:common:prefix:2", "this:key:has:a:long:prefix:3",
     };
-    prefix_data p = {0, 3, expected};
-    fail_unless(!t.iterPrefix(
-        (unsigned char*)"this:key:has", 12, test_prefix_cb<uintptr_t>, &p));
+    prefix_data<uintptr_t> p = {0, 3, expected};
+    fail_unless(!t.iterPrefix((unsigned char*)"this:key:has", 12, p));
     diag("Count: %d Max: %d", p.count, p.max_count);
     fail_unless(p.count == p.max_count);
   }
-}
-
-static int dump_iter(void *data, const unsigned char *key, unsigned int key_len,
-                     void *value) {
-  diag("iter leaf: data=%p key_len=%d %.*s value=%p", data, (int)key_len,
-       (int)key_len, key, value);
-  return 0;
 }
 
 void test_art_prefix(void) {
@@ -403,7 +385,15 @@ void test_art_prefix(void) {
   diag("food lookup yields %s", v);
   fail_unless(v && strcmp((char*)v, "food") == 0);
 
-  t.iter(dump_iter, NULL);
+  t.iter([](const unsigned char* key, uint32_t key_len, void*& value) {
+    diag(
+        "iter leaf: key_len=%d %.*s value=%p",
+        (int)key_len,
+        (int)key_len,
+        key,
+        value);
+    return 0;
+  });
 
   fail_unless((v = *t.search((const unsigned char*)"foo", 3)) != NULL);
   diag("foo lookup yields %s", v);
