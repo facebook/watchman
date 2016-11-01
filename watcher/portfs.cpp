@@ -9,12 +9,17 @@
 #define WATCHMAN_PORT_EVENTS \
   FILE_MODIFIED | FILE_ATTRIB | FILE_NOFOLLOW
 
+struct watchman_port_file {
+  file_obj_t port_file;
+  w_string name;
+};
+
 struct PortFSWatcher : public Watcher {
   int port_fd;
   /* map of file name to watchman_port_file */
-  w_ht_t *port_files;
-  /* protects port_files */
-  pthread_mutex_t lock;
+  watchman::Synchronized<
+      std::unordered_map<w_string, std::unique_ptr<watchman_port_file>>>
+      port_files;
   port_event_t portevents[WATCHMAN_BATCH_LIMIT];
 
   PortFSWatcher() : Watcher("portfs", 0) {}
@@ -37,11 +42,6 @@ struct PortFSWatcher : public Watcher {
   bool do_watch(w_string_t* name, struct stat* st);
 };
 
-struct watchman_port_file {
-  file_obj_t port_file;
-  w_string_t *name;
-};
-
 static const struct flag_map pflags[] = {
     {FILE_ACCESS, "FILE_ACCESS"},
     {FILE_MODIFIED, "FILE_MODIFIED"},
@@ -54,16 +54,12 @@ static const struct flag_map pflags[] = {
     {0, nullptr},
 };
 
-static struct watchman_port_file *make_port_file(w_string_t *name,
-    struct stat *st) {
-  struct watchman_port_file *f;
+static std::unique_ptr<watchman_port_file> make_port_file(
+    const w_string& name,
+    struct stat* st) {
+  auto f = watchman::make_unique<watchman_port_file>();
 
-  f = calloc(1, sizeof(*f));
-  if (!f) {
-    return nullptr;
-  }
   f->name = name;
-  w_string_addref(name);
   f->port_file.fo_name = (char*)name->buf;
   f->port_file.fo_atime = st->st_atim;
   f->port_file.fo_mtime = st->st_mtim;
@@ -71,24 +67,6 @@ static struct watchman_port_file *make_port_file(w_string_t *name,
 
   return f;
 }
-
-static void free_port_file(struct watchman_port_file *f) {
-  w_string_delref(f->name);
-  free(f);
-}
-
-static void portfs_del_port_file(w_ht_val_t key) {
-  free_port_file(w_ht_val_ptr(key));
-}
-
-const struct watchman_hash_funcs port_file_funcs = {
-    w_ht_string_copy,
-    w_ht_string_del,
-    w_ht_string_equal,
-    w_ht_string_hash,
-    nullptr, // copy_val
-    portfs_del_port_file,
-};
 
 bool PortFSWatcher::initNew(w_root_t* root, char** errmsg) {
   auto watcher = watchman::make_unique<PortFSWatcher>();
@@ -98,9 +76,8 @@ bool PortFSWatcher::initNew(w_root_t* root, char** errmsg) {
     return false;
   }
 
-  pthread_mutex_init(&watcher->lock, nullptr);
-  watcher->port_files = w_ht_new(
-      root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS), &port_file_funcs);
+  watcher->port_files.reserve(
+      root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS));
 
   watcher->port_fd = port_create();
   if (watcher->port_fd == -1) {
@@ -121,50 +98,39 @@ bool PortFSWatcher::initNew(w_root_t* root, char** errmsg) {
 PortFSWatcher::~PortFSWatcher() {
   close(port_fd);
   port_fd = -1;
-  w_ht_free(port_files);
-  pthread_mutex_destroy(&lock);
 }
 
 bool PortFSWatcher::do_watch(w_string_t* name, struct stat* st) {
-  struct watchman_port_file *f;
   bool success = false;
 
-  pthread_mutex_lock(&lock);
-  if (w_ht_get(port_files, w_ht_ptr_val(name))) {
+  auto wlock = port_files.wlock();
+  if (port_files.find(name) != port_files.end()) {
     // Already watching it
-    success = true;
-    goto out;
+    return true;
   }
 
-  f = make_port_file(name, st);
-  if (!f) {
-    goto out;
-  }
-
-  if (!w_ht_set(port_files, w_ht_ptr_val(name), w_ht_ptr_val(f))) {
-    free_port_file(f);
-    goto out;
-  }
+  auto f = make_port_file(name, st);
+  auto rawFile = f.get();
+  wlock->emplace(name, std::move(f));
 
   w_log(W_LOG_DBG, "watching %s\n", name->buf);
   errno = 0;
   if (port_associate(
           port_fd,
           PORT_SOURCE_FILE,
-          (uintptr_t)&f->port_file,
+          (uintptr_t)&rawFile->port_file,
           WATCHMAN_PORT_EVENTS,
-          (void*)f)) {
-    w_log(W_LOG_ERR, "port_associate %s %s\n",
-        f->port_file.fo_name, strerror(errno));
-    w_ht_del(port_files, w_ht_ptr_val(name));
-    goto out;
+          (void*)rawFile)) {
+    w_log(
+        W_LOG_ERR,
+        "port_associate %s %s\n",
+        rawFile->port_file.fo_name,
+        strerror(errno));
+    wlock->erase(name);
+    return false;
   }
 
-  success = true;
-
-out:
-  pthread_mutex_unlock(&lock);
-  return success;
+  return true;
 }
 
 bool PortFSWatcher::startWatchFile(struct watchman_file* file) {
@@ -244,7 +210,7 @@ bool PortFSWatcher::consumeNotify(
     return false;
   }
 
-  pthread_mutex_lock(&lock);
+  auto wlock = port_files.wlock();
 
   for (i = 0; i < n; i++) {
     struct watchman_port_file *f;
@@ -267,7 +233,6 @@ bool PortFSWatcher::consumeNotify(
           flags_label);
 
       w_root_cancel(root);
-      pthread_mutex_unlock(&lock);
       return false;
     }
     w_pending_coll_add(coll, f->name, now,
@@ -275,9 +240,8 @@ bool PortFSWatcher::consumeNotify(
 
     // It was port_dissociate'd implicitly.  We'll re-establish a
     // watch later when portfs_root_start_watch_(file|dir) are called again
-    w_ht_del(port_files, w_ht_ptr_val(f->name));
+    wlock->erase(f->name);
   }
-  pthread_mutex_unlock(&lock);
 
   return true;
 }
