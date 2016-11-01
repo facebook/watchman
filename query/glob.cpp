@@ -132,14 +132,12 @@ static bool add_glob(struct watchman_glob_tree *tree, w_string_t *glob_str) {
   return true;
 }
 
-bool parse_globs(w_query *res, json_t *query)
-{
-  json_t *globs;
+bool parse_globs(w_query* res, const json_ref& query) {
   size_t i;
   int noescape = 0;
   int includedotfiles = 0;
 
-  globs = json_object_get(query, "glob");
+  auto globs = query.get_default("glob");
   if (!globs) {
     return true;
   }
@@ -168,8 +166,8 @@ bool parse_globs(w_query *res, json_t *query)
 
   res->glob_tree = watchman::make_unique<watchman_glob_tree>("", 0);
   for (i = 0; i < json_array_size(globs); i++) {
-    json_t *ele = json_array_get(globs, i);
-    w_string_t *pattern = json_to_w_string(ele);
+    const auto& ele = globs.at(i);
+    const auto& pattern = json_to_w_string(ele);
 
     if (!add_glob(res->glob_tree.get(), pattern)) {
       res->errmsg = strdup("failed to compile multi-glob");

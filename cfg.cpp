@@ -43,43 +43,41 @@ void cfg_load_global_config_file(void)
   global_cfg = config;
 }
 
-void cfg_set_arg(const char *name, json_t *val)
-{
+void cfg_set_arg(const char* name, const json_ref& val) {
   pthread_rwlock_wrlock(&cfg_lock);
   if (!arg_cfg) {
     arg_cfg = json_object();
   }
 
-  json_object_set_nocheck(arg_cfg, name, val);
+  arg_cfg.set(name, json_ref(val));
 
   pthread_rwlock_unlock(&cfg_lock);
 }
 
-void cfg_set_global(const char *name, json_t *val)
-{
+void cfg_set_global(const char* name, const json_ref& val) {
   pthread_rwlock_wrlock(&cfg_lock);
   if (!global_cfg) {
     global_cfg = json_object();
   }
 
-  json_object_set_nocheck(global_cfg, name, val);
+  global_cfg.set(name, json_ref(val));
 
   pthread_rwlock_unlock(&cfg_lock);
 }
 
-static json_t* cfg_get_raw(const char* name, json_ref* optr) {
-  json_t *val = NULL;
+static json_ref cfg_get_raw(const char* name, json_ref* optr) {
+  json_ref val;
 
   pthread_rwlock_rdlock(&cfg_lock);
   if (*optr) {
-    val = json_object_get(*optr, name);
+    val = optr->get_default(name);
   }
   pthread_rwlock_unlock(&cfg_lock);
   return val;
 }
 
-json_t* cfg_get_json(const char* name) {
-  json_t *val = NULL;
+json_ref cfg_get_json(const char* name) {
+  json_ref val;
 
   // Highest precedence: command line arguments
   val = cfg_get_raw(name, &arg_cfg);
@@ -91,7 +89,7 @@ json_t* cfg_get_json(const char* name) {
 }
 
 const char* cfg_get_string(const char* name, const char* defval) {
-  json_t* val = cfg_get_json(name);
+  auto val = cfg_get_json(name);
 
   if (val) {
     if (!json_is_string(val)) {
@@ -104,7 +102,7 @@ const char* cfg_get_string(const char* name, const char* defval) {
 }
 
 // Return true if the json ref is an array of string values
-static bool is_array_of_strings(json_t *ref) {
+static bool is_array_of_strings(const json_ref& ref) {
   uint32_t i;
 
   if (!json_is_array(ref)) {
@@ -121,7 +119,7 @@ static bool is_array_of_strings(json_t *ref) {
 
 // Given an array of string values, if that array does not contain
 // a ".watchmanconfig" entry, prepend it
-static void prepend_watchmanconfig_to_array(json_t *ref) {
+static void prepend_watchmanconfig_to_array(json_ref& ref) {
   const char *val;
 
   if (json_array_size(ref) == 0) {
@@ -194,7 +192,7 @@ json_ref cfg_compute_root_files(bool* enforcing) {
 }
 
 json_int_t cfg_get_int(const char* name, json_int_t defval) {
-  json_t* val = cfg_get_json(name);
+  auto val = cfg_get_json(name);
 
   if (val) {
     if (!json_is_integer(val)) {
@@ -207,7 +205,7 @@ json_int_t cfg_get_int(const char* name, json_int_t defval) {
 }
 
 bool cfg_get_bool(const char* name, bool defval) {
-  json_t* val = cfg_get_json(name);
+  auto val = cfg_get_json(name);
 
   if (val) {
     if (!json_is_boolean(val)) {
@@ -220,7 +218,7 @@ bool cfg_get_bool(const char* name, bool defval) {
 }
 
 double cfg_get_double(const char* name, double defval) {
-  json_t* val = cfg_get_json(name);
+  auto val = cfg_get_json(name);
 
   if (val) {
     if (!json_is_number(val)) {
@@ -232,27 +230,32 @@ double cfg_get_double(const char* name, double defval) {
   return defval;
 }
 
-#define MAKE_GET_PERM(PROP, SUFFIX) \
-  static mode_t get_ ## PROP ## _perm(const char *name, json_t *val, \
-                                      bool write_bits, bool execute_bits) { \
-    mode_t ret = 0; \
-    json_t *perm = json_object_get(val, #PROP); \
-    if (perm) { \
-      if (!json_is_boolean(perm)) { \
-        w_log(W_LOG_FATAL, "Expected config value %s." #PROP \
-              " to be a boolean\n", name); \
-      } \
-      if (json_is_true(perm)) { \
-        ret |= S_IR ## SUFFIX; \
-        if (write_bits) { \
-          ret |= S_IW ## SUFFIX; \
-        } \
-        if (execute_bits) { \
-          ret |= S_IX ## SUFFIX; \
-        } \
-      } \
-    } \
-    return ret; \
+#define MAKE_GET_PERM(PROP, SUFFIX)                                 \
+  static mode_t get_##PROP##_perm(                                  \
+      const char* name,                                             \
+      const json_ref& val,                                          \
+      bool write_bits,                                              \
+      bool execute_bits) {                                          \
+    mode_t ret = 0;                                                 \
+    auto perm = val.get_default(#PROP);                             \
+    if (perm) {                                                     \
+      if (!json_is_boolean(perm)) {                                 \
+        w_log(                                                      \
+            W_LOG_FATAL,                                            \
+            "Expected config value %s." #PROP " to be a boolean\n", \
+            name);                                                  \
+      }                                                             \
+      if (json_is_true(perm)) {                                     \
+        ret |= S_IR##SUFFIX;                                        \
+        if (write_bits) {                                           \
+          ret |= S_IW##SUFFIX;                                      \
+        }                                                           \
+        if (execute_bits) {                                         \
+          ret |= S_IX##SUFFIX;                                      \
+        }                                                           \
+      }                                                             \
+    }                                                               \
+    return ret;                                                     \
   }
 
 MAKE_GET_PERM(group, GRP)
@@ -263,7 +266,7 @@ MAKE_GET_PERM(others, OTH)
  * and 'others', each a bool.
  */
 mode_t cfg_get_perms(const char* name, bool write_bits, bool execute_bits) {
-  json_t* val = cfg_get_json(name);
+  auto val = cfg_get_json(name);
   mode_t ret = S_IRUSR | S_IWUSR;
   if (execute_bits) {
     ret |= S_IXUSR;
@@ -291,9 +294,9 @@ Configuration::Configuration(const json_ref& local) : local_(local) {}
 
 json_ref Configuration::get(const char* name) const {
   // Highest precedence: options set locally
-  json_t* val = nullptr;
+  json_ref val;
   if (local_) {
-    val = json_object_get(local_, name);
+    val = local_.get_default(name);
   }
   // then: command line arguments
   if (!val) {

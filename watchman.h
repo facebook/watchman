@@ -126,8 +126,8 @@ extern int dont_save_state;
 void w_state_shutdown(void);
 void w_state_save(void);
 bool w_state_load(void);
-bool w_root_save_state(json_t *state);
-bool w_root_load_state(json_t *state);
+bool w_root_save_state(json_ref& state);
+bool w_root_load_state(const json_ref& state);
 json_ref w_root_trigger_list_to_json(struct read_locked_watchman_root* lock);
 json_ref w_root_watch_list_to_json(void);
 
@@ -137,7 +137,7 @@ int w_get_listener_socket_from_launchd(void);
 bool w_listener_prep_inetd(void);
 bool w_start_listener(const char *socket_path);
 void w_check_my_sock(void);
-char **w_argv_copy_from_json(json_t *arr, int skip);
+char** w_argv_copy_from_json(const json_ref& arr, int skip);
 
 #include "watchman_env.h"
 #include "watchman_getopt.h"

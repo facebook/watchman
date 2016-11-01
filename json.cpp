@@ -532,9 +532,12 @@ static int jbuffer_write(const char *buffer, size_t size, void *ptr)
   return 0;
 }
 
-bool w_json_buffer_write_bser(uint32_t bser_version, uint32_t bser_capabilities,
-    w_jbuffer_t *jr, w_stm_t stm, json_t *json)
-{
+bool w_json_buffer_write_bser(
+    uint32_t bser_version,
+    uint32_t bser_capabilities,
+    w_jbuffer_t* jr,
+    w_stm_t stm,
+    const json_ref& json) {
   struct jbuffer_write_data data = { stm, jr };
   int res;
 
@@ -548,8 +551,11 @@ bool w_json_buffer_write_bser(uint32_t bser_version, uint32_t bser_capabilities,
   return jbuffer_flush(&data);
 }
 
-bool w_json_buffer_write(w_jbuffer_t *jr, w_stm_t stm, json_t *json, int flags)
-{
+bool w_json_buffer_write(
+    w_jbuffer_t* jr,
+    w_stm_t stm,
+    const json_ref& json,
+    int flags) {
   struct jbuffer_write_data data = { stm, jr };
   int res;
 
@@ -566,9 +572,11 @@ bool w_json_buffer_write(w_jbuffer_t *jr, w_stm_t stm, json_t *json, int flags)
   return jbuffer_flush(&data);
 }
 
-bool w_ser_write_pdu(enum w_pdu_type pdu_type,
-    w_jbuffer_t *jr, w_stm_t stm, json_t *json)
-{
+bool w_ser_write_pdu(
+    enum w_pdu_type pdu_type,
+    w_jbuffer_t* jr,
+    w_stm_t stm,
+    const json_ref& json) {
   switch (pdu_type) {
     case is_json_compact:
       return w_json_buffer_write(jr, stm, json, JSON_COMPACT);

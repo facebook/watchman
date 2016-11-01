@@ -29,7 +29,7 @@ std::unique_ptr<w_clockspec> w_clockspec_new_clock(
   return spec;
 }
 
-std::unique_ptr<w_clockspec> w_clockspec_parse(json_t* value) {
+std::unique_ptr<w_clockspec> w_clockspec_parse(const json_ref& value) {
   const char *str;
   uint64_t start_time;
   int pid;

@@ -219,8 +219,10 @@ struct w_query_int_compare {
   enum w_query_icmp_op op;
   json_int_t operand;
 };
-bool parse_int_compare(json_t *term, struct w_query_int_compare *comp,
-    char **errmsg);
+bool parse_int_compare(
+    const json_ref& term,
+    struct w_query_int_compare* comp,
+    char** errmsg);
 bool eval_int_compare(json_int_t ival, struct w_query_int_compare *comp);
 
 bool parse_field_list(
@@ -228,7 +230,7 @@ bool parse_field_list(
     struct w_query_field_list* selected,
     char** errmsg);
 
-bool parse_globs(w_query *res, json_t *query);
+bool parse_globs(w_query* res, const json_ref& query);
 // A node in the tree of node matching rules
 struct watchman_glob_tree {
   std::string pattern;

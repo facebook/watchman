@@ -3,9 +3,9 @@
 #pragma once
 
 void cfg_shutdown(void);
-void cfg_set_arg(const char* name, json_t* val);
+void cfg_set_arg(const char* name, const json_ref& val);
 void cfg_load_global_config_file(void);
-json_t* cfg_get_json(const char* name);
+json_ref cfg_get_json(const char* name);
 const char* cfg_get_string(const char* name, const char* defval);
 json_int_t cfg_get_int(const char* name, json_int_t defval);
 bool cfg_get_bool(const char* name, bool defval);

@@ -14,10 +14,6 @@ void w_envp_set(
     std::unordered_map<w_string, w_string>& envht,
     const char* key,
     w_string_t* val);
-void w_envp_set_list(
-    std::unordered_map<w_string, w_string>& envht,
-    const char* key,
-    json_t* arr);
 void w_envp_set_bool(
     std::unordered_map<w_string, w_string>& envht,
     const char* key,

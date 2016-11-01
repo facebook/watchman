@@ -34,18 +34,22 @@ bool w_json_buffer_passthru(
     enum w_pdu_type output_pdu,
     w_jbuffer_t* output_pdu_buf,
     w_stm_t stm);
-bool w_json_buffer_write(w_jbuffer_t* jr, w_stm_t stm, json_t* json, int flags);
+bool w_json_buffer_write(
+    w_jbuffer_t* jr,
+    w_stm_t stm,
+    const json_ref& json,
+    int flags);
 bool w_json_buffer_write_bser(
     uint32_t bser_version,
     uint32_t bser_capabilities,
     w_jbuffer_t* jr,
     w_stm_t stm,
-    json_t* json);
+    const json_ref& json);
 bool w_ser_write_pdu(
     enum w_pdu_type pdu_type,
     w_jbuffer_t* jr,
     w_stm_t stm,
-    json_t* json);
+    const json_ref& json);
 
 #define BSER_MAGIC "\x00\x01"
 #define BSER_V2_MAGIC "\x00\x02"
@@ -53,9 +57,9 @@ int w_bser_write_pdu(
     const uint32_t bser_version,
     const uint32_t capabilities,
     json_dump_callback_t dump,
-    json_t* json,
+    const json_ref& json,
     void* data);
-int w_bser_dump(const bser_ctx_t* ctx, json_t* json, void* data);
+int w_bser_dump(const bser_ctx_t* ctx, const json_ref& json, void* data);
 bool bunser_int(
     const char* buf,
     json_int_t avail,

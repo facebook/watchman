@@ -294,8 +294,7 @@ static int bser_array(const bser_ctx_t *ctx, const json_t *array, void *data)
   return 0;
 }
 
-static int bser_object(const bser_ctx_t *ctx, json_t *obj, void *data)
-{
+static int bser_object(const bser_ctx_t* ctx, const json_ref& obj, void* data) {
   size_t n;
 
   if (!is_bser_version_supported(ctx)) {
@@ -327,8 +326,7 @@ static int bser_object(const bser_ctx_t *ctx, json_t *obj, void *data)
   return 0;
 }
 
-int w_bser_dump(const bser_ctx_t* ctx, json_t *json, void *data)
-{
+int w_bser_dump(const bser_ctx_t* ctx, const json_ref& json, void* data) {
   int type = json_typeof(json);
 
   if (!is_bser_version_supported(ctx)) {
@@ -365,10 +363,12 @@ static int measure(const char *buffer, size_t size, void *ptr)
   return 0;
 }
 
-int w_bser_write_pdu(const uint32_t bser_version,
-    const uint32_t bser_capabilities, json_dump_callback_t dump, json_t *json,
-    void *data)
-{
+int w_bser_write_pdu(
+    const uint32_t bser_version,
+    const uint32_t bser_capabilities,
+    json_dump_callback_t dump,
+    const json_ref& json,
+    void* data) {
   json_int_t m_size = 0;
   bser_ctx_t ctx{bser_version, bser_capabilities, measure};
 

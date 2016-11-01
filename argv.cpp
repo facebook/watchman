@@ -9,8 +9,7 @@
  * to free(3).
  * The last element of the returned argv is set to NULL for
  * compatibility with posix_spawn() */
-char **w_argv_copy_from_json(json_t *arr, int skip)
-{
+char** w_argv_copy_from_json(const json_ref& arr, int skip) {
   size_t argc = json_array_size(arr) - skip;
   size_t len = (1 + argc) * sizeof(char*);
   uint32_t i;
@@ -20,10 +19,7 @@ char **w_argv_copy_from_json(json_t *arr, int skip)
   /* compute required size, and sanity check the
    * element types */
   for (i = skip; i < json_array_size(arr); i++) {
-    json_t *ele = json_array_get(arr, i);
-    if (!ele) {
-      return NULL;
-    }
+    const auto& ele = arr.at(i);
     str = json_string_value(ele);
     if (!str) {
       return NULL;
@@ -39,7 +35,7 @@ char **w_argv_copy_from_json(json_t *arr, int skip)
   buf = (char*)(dup_argv + argc + 1);
 
   for (i = skip; i < json_array_size(arr); i++) {
-    str = json_string_value(json_array_get(arr, i));
+    str = json_string_value(arr.at(i));
 
     dup_argv[i - skip] = buf;
     len = strlen(str);

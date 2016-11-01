@@ -222,8 +222,10 @@ watchman_trigger_command::watchman_trigger_command()
       stderr_name(nullptr),
       current_proc(0) {}
 
-std::unique_ptr<watchman_trigger_command>
-w_build_trigger_from_def(const w_root_t* root, json_t* trig, char** errmsg) {
+std::unique_ptr<watchman_trigger_command> w_build_trigger_from_def(
+    const w_root_t* root,
+    const json_ref& trig,
+    char** errmsg) {
   json_int_t jint;
   const char *name = NULL;
 

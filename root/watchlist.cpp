@@ -122,7 +122,7 @@ json_ref w_root_watch_list_to_json(void) {
   return arr;
 }
 
-bool w_root_save_state(json_t *state) {
+bool w_root_save_state(json_ref& state) {
   bool result = true;
 
   auto watched_dirs = json_array();
@@ -168,10 +168,10 @@ json_ref w_root_trigger_list_to_json(struct read_locked_watchman_root* lock) {
   return arr;
 }
 
-bool w_root_load_state(json_t *state) {
+bool w_root_load_state(const json_ref& state) {
   size_t i;
 
-  auto watched = json_object_get(state, "watched");
+  auto watched = state.get_default("watched");
   if (!watched) {
     return true;
   }
@@ -181,15 +181,14 @@ bool w_root_load_state(json_t *state) {
   }
 
   for (i = 0; i < json_array_size(watched); i++) {
-    json_t *obj = json_array_get(watched, i);
+    const auto& obj = watched.at(i);
     bool created = false;
     const char *filename;
-    json_t *triggers;
     size_t j;
     char *errmsg = NULL;
     struct unlocked_watchman_root unlocked;
 
-    triggers = json_object_get(obj, "triggers");
+    auto triggers = obj.get_default("triggers");
     filename = json_string_value(json_object_get(obj, "path"));
     if (!root_resolve(filename, true, &created, &errmsg, &unlocked)) {
       free(errmsg);
@@ -202,11 +201,10 @@ bool w_root_load_state(json_t *state) {
 
       /* re-create the trigger configuration */
       for (j = 0; j < json_array_size(triggers); j++) {
-        json_t* tobj = json_array_get(triggers, j);
-        json_t* rarray;
+        const auto& tobj = triggers.at(j);
 
         // Legacy rules format
-        rarray = json_object_get(tobj, "rules");
+        auto rarray = tobj.get_default("rules");
         if (rarray) {
           continue;
         }
