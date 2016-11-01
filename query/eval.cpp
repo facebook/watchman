@@ -69,16 +69,15 @@ bool w_query_process_file(
     return true;
   }
 
-  if (ctx->dedup) {
+  if (ctx->query->dedup_results) {
     w_string_t *name = w_query_ctx_get_wholename(ctx);
 
-    if (w_ht_get(ctx->dedup, w_ht_ptr_val(name))) {
+    auto inserted = ctx->dedup.insert(name);
+    if (!inserted.second) {
       // Already present in the results, no need to emit it again
       ctx->num_deduped++;
       return true;
     }
-
-    w_ht_set(ctx->dedup, w_ht_ptr_val(name), 1);
   }
 
   bool is_new;
@@ -217,7 +216,7 @@ static bool execute_common(
   bool result = true;
 
   if (ctx->query->dedup_results) {
-    ctx->dedup = w_ht_new(64, &w_ht_string_funcs);
+    ctx->dedup.reserve(64);
   }
 
   res->is_fresh_instance = !ctx->since.is_timestamp &&
@@ -259,9 +258,6 @@ w_query_ctx::w_query_ctx(w_query* q, read_locked_watchman_root* lock)
 w_query_ctx::~w_query_ctx() {
   if (last_parent_path) {
     w_string_delref(last_parent_path);
-  }
-  if (dedup) {
-    w_ht_free(dedup);
   }
 }
 

@@ -54,9 +54,9 @@ struct w_query_ctx {
   watchman_dir* last_parent{nullptr};
   w_string_t* last_parent_path{nullptr};
 
-  // When deduping the results, effectively a set<wholename> of
+  // When deduping the results, set<wholename> of
   // the files held in results
-  w_ht_t* dedup{nullptr};
+  std::unordered_set<w_string> dedup;
 
   // How many times we suppressed a result due to dedup checking
   uint32_t num_deduped{0};
