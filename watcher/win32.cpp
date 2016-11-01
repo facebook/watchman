@@ -395,7 +395,7 @@ bool WinWatcher::consumeNotify(
 
     w_log(W_LOG_DBG, "readchanges: add pending %.*s\n",
         item->name->len, item->name->buf);
-    w_pending_coll_add(coll, item->name, now, W_PENDING_VIA_NOTIFY);
+    coll->add(item->name, now, W_PENDING_VIA_NOTIFY);
 
     w_string_delref(item->name);
     free(item);

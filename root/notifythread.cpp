@@ -35,7 +35,7 @@ void InMemoryView::handleShouldRecrawl(unlocked_watchman_root* unlocked) {
     info->recrawlCount++;
     // Tell the new view instance to start up
     root->inner.view->startThreads(root);
-    w_pending_coll_ping(&pending_);
+    pending_.ping();
   }
 }
 
@@ -59,28 +59,27 @@ void InMemoryView::notifyThread(unlocked_watchman_root* unlocked) {
 
   // signal that we're done here, so that we can start the
   // io thread after this point
-  w_pending_coll_lock(&pending_);
-  pending_.pinged = true;
-  w_pending_coll_ping(&pending_);
-  w_pending_coll_unlock(&pending_);
+  pending_.lock();
+  pending_.ping();
+  pending_.unlock();
 
   while (!stopThreads_) {
     // big number because not all watchers can deal with
     // -1 meaning infinite wait at the moment
     if (watcher->waitNotify(86400)) {
       while (watcher->consumeNotify(unlocked->root, &pending)) {
-        if (w_pending_coll_size(&pending) >= WATCHMAN_BATCH_LIMIT) {
+        if (pending.size() >= WATCHMAN_BATCH_LIMIT) {
           break;
         }
         if (!watcher->waitNotify(0)) {
           break;
         }
       }
-      if (w_pending_coll_size(&pending) > 0) {
-        w_pending_coll_lock(&pending_);
-        w_pending_coll_append(&pending_, &pending);
-        w_pending_coll_ping(&pending_);
-        w_pending_coll_unlock(&pending_);
+      if (pending.size() > 0) {
+        pending_.lock();
+        pending_.append(&pending);
+        pending_.ping();
+        pending_.unlock();
       }
     }
   }

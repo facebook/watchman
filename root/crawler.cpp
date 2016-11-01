@@ -121,8 +121,7 @@ void InMemoryView::crawler(
     auto file = it.second.get();
     if (file->exists &&
         (file->maybe_deleted || (S_ISDIR(file->stat.mode) && recursive))) {
-      w_pending_coll_add_rel(
-          coll,
+      coll->add(
           dir,
           w_file_get_name(file)->buf,
           now,

@@ -322,8 +322,8 @@ bool KQueueWatcher::consumeNotify(
     }
 
     pthread_mutex_unlock(&lock);
-    w_pending_coll_add(coll, path, now,
-        is_dir ? 0 : (W_PENDING_RECURSIVE|W_PENDING_VIA_NOTIFY));
+    coll->add(
+        path, now, is_dir ? 0 : (W_PENDING_RECURSIVE | W_PENDING_VIA_NOTIFY));
     w_string_delref(path);
   }
 

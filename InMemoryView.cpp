@@ -587,8 +587,8 @@ void InMemoryView::startThreads(w_root_t* root) {
   notifyThreadInstance.detach();
 
   // Wait for it to signal that the watcher has been initialized
-  w_pending_coll_lock_and_wait(&pending_, -1 /* infinite */);
-  w_pending_coll_unlock(&pending_);
+  pending_.lockAndWait(std::chrono::milliseconds(-1) /* infinite */);
+  pending_.unlock();
 
   // And now start the IO thread
   w_root_addref(root);
@@ -607,7 +607,7 @@ void InMemoryView::signalThreads() {
   w_log(W_LOG_DBG, "signalThreads! %p %s\n", this, root_path.c_str());
   stopThreads_ = true;
   watcher->signalThreads();
-  w_pending_coll_ping(&pending_);
+  pending_.ping();
 }
 
 bool InMemoryView::doAnyOfTheseFilesExist(

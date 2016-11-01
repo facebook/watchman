@@ -109,7 +109,7 @@ void InMemoryView::statPath(
           path,
           int(dir_name.size()),
           dir_name.data());
-      w_pending_coll_add(coll, dir_name, now, W_PENDING_CRAWL_ONLY);
+      coll->add(dir_name, now, W_PENDING_CRAWL_ONLY);
     }
 
   } else if (res) {
@@ -164,11 +164,8 @@ void InMemoryView::statPath(
         file->symlink_target = new_symlink_target;
 
         if (symlink_changed && root->config.getBool("watch_symlinks", false)) {
-          w_pending_coll_add(
-              &const_cast<w_root_t*>(root)->inner.pending_symlink_targets,
-              full_path,
-              now,
-              0);
+          const_cast<w_root_t*>(root)->inner.pending_symlink_targets.add(
+              full_path, now, 0);
         }
       }
     } else {
@@ -191,7 +188,9 @@ void InMemoryView::statPath(
           w_string_equal(full_path, root->cookies.cookieDir())) {
         if (!root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
           /* we always need to crawl, but may not need to be fully recursive */
-          w_pending_coll_add(coll, full_path, now,
+          coll->add(
+              full_path,
+              now,
               W_PENDING_CRAWL_ONLY | (recursive ? W_PENDING_RECURSIVE : 0));
         } else {
           /* we get told about changes on the child, so we only
@@ -200,8 +199,8 @@ void InMemoryView::statPath(
            * of a dir rename and not a rename event for all of its
            * children. */
           if (recursive) {
-            w_pending_coll_add(coll, full_path, now,
-                W_PENDING_RECURSIVE|W_PENDING_CRAWL_ONLY);
+            coll->add(
+                full_path, now, W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY);
           }
         }
       }
@@ -222,7 +221,7 @@ void InMemoryView::statPath(
        * https://github.com/facebook/watchman/issues/307 have more
        * context on why this is.
        */
-      w_pending_coll_add(coll, dir_name, now, 0);
+      coll->add(dir_name, now, 0);
     }
   }
 }

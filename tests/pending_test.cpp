@@ -36,7 +36,7 @@ size_t process_items(struct watchman_pending_collection *coll) {
   size_t drained = 0;
   struct stat st;
 
-  while ((item = w_pending_coll_pop(coll)) != NULL) {
+  while ((item = coll->pop()) != nullptr) {
     // To simulate looking at the file, we're just going to stat
     // ourselves over and over, as the path we put in the list
     // doesn't exist on the filesystem.  We're measuring hot cache
@@ -80,7 +80,7 @@ static void bench_pending(void) {
 
     gettimeofday(&start, NULL);
     for (auto& item : list) {
-      w_pending_coll_add(&coll, item.path, item.now, item.flags);
+      coll.add(item.path, item.now, item.flags);
     }
     drained = process_items(&coll);
 
@@ -99,7 +99,7 @@ static void bench_pending(void) {
     gettimeofday(&start, NULL);
     for (auto it = list.rbegin(); it != list.rend(); ++it) {
       auto& item = *it;
-      w_pending_coll_add(&coll, item.path, item.now, item.flags);
+      coll.add(item.path, item.now, item.flags);
     }
 
     drained = process_items(&coll);

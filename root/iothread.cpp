@@ -21,7 +21,7 @@ void InMemoryView::fullCrawl(
   // can get stuck with an empty view until another change is observed
   lock.root->inner.ticks++;
   gettimeofday(&start, NULL);
-  w_pending_coll_add(&pending_, lock.root->root_path, start, 0);
+  pending_.add(lock.root->root_path, start, 0);
   // There is the potential for a subtle race condition here.  The boolean
   // parameter indicates whether we want to merge in the set of
   // notifications pending from the watcher or not.  Since we now coalesce
@@ -128,12 +128,12 @@ void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
     // Wait for the notify thread to give us pending items, or for
     // the settle period to expire
     w_log(W_LOG_DBG, "poll_events timeout=%dms\n", timeoutms);
-    pinged = w_pending_coll_lock_and_wait(&pending_, timeoutms);
+    pinged = pending_.lockAndWait(std::chrono::milliseconds(timeoutms));
     w_log(W_LOG_DBG, " ... wake up (pinged=%s)\n", pinged ? "true" : "false");
-    w_pending_coll_append(&pending, &pending_);
-    w_pending_coll_unlock(&pending_);
+    pending.append(&pending_);
+    pending_.unlock();
 
-    if (!pinged && w_pending_coll_size(&pending) == 0) {
+    if (!pinged && pending.size() == 0) {
       if (do_settle_things(unlocked)) {
         break;
       }
@@ -150,7 +150,7 @@ void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
     w_root_lock(unlocked, "io_thread: process notifications", &lock);
     if (!lock.root->inner.done_initial) {
       // we need to recrawl.  Discard these notifications
-      w_pending_coll_drain(&pending);
+      pending.drain();
       w_root_unlock(&lock, unlocked);
       continue;
     }
@@ -223,23 +223,23 @@ bool InMemoryView::processPending(
     bool pullFromRoot) {
   if (pullFromRoot) {
     // You MUST own root->pending lock for this
-    w_pending_coll_append(coll, &pending_);
+    coll->append(&pending_);
   }
 
-  if (!coll->pending) {
+  if (!coll->pending_) {
     return false;
   }
 
   w_log(
       W_LOG_DBG,
       "processing %d events in %s\n",
-      w_pending_coll_size(coll),
+      coll->size(),
       root_path.c_str());
 
   // Steal the contents
-  auto pending = coll->pending;
-  coll->pending = NULL;
-  w_pending_coll_drain(coll);
+  auto pending = coll->pending_;
+  coll->pending_ = nullptr;
+  coll->drain();
 
   while (pending) {
     auto p = pending;

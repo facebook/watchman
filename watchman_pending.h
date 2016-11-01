@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <chrono>
 
 #define W_PENDING_RECURSIVE 1
 #define W_PENDING_VIA_NOTIFY 2
@@ -19,34 +20,51 @@ struct watchman_pending_fs {
 };
 
 struct watchman_pending_collection {
-  struct watchman_pending_fs *pending;
-  pthread_mutex_t lock;
-  pthread_cond_t cond;
-  bool pinged;
-  art_tree<watchman_pending_fs*> tree;
+  watchman_pending_fs* pending_;
 
   watchman_pending_collection();
   watchman_pending_collection(const watchman_pending_collection&) = delete;
   ~watchman_pending_collection();
+
+  void drain();
+  void lock();
+  void unlock();
+  bool add(const w_string& path, struct timeval now, int flags);
+  bool add(
+      struct watchman_dir* dir,
+      const char* name,
+      struct timeval now,
+      int flags);
+  void append(watchman_pending_collection* src);
+  struct watchman_pending_fs* pop();
+  bool lockAndWait(std::chrono::milliseconds timeoutms);
+  void ping();
+  uint32_t size() const;
+
+ private:
+  pthread_mutex_t mutex_;
+  pthread_cond_t cond_;
+  bool pinged_;
+  art_tree<watchman_pending_fs*> tree_;
+
+  struct iterContext {
+    const w_string& root;
+    watchman_pending_collection& coll;
+
+    int operator()(
+        const unsigned char* key,
+        uint32_t key_len,
+        watchman_pending_fs*& p);
+
+    iterContext(const w_string& root, watchman_pending_collection& coll);
+  };
+  friend struct iterContext;
+
+  void maybePruneObsoletedChildren(const w_string& path, int flags);
+  inline void consolidateItem(watchman_pending_fs* p, int flags);
+  bool isObsoletedByContainingDir(const w_string& path);
+  inline void linkHead(watchman_pending_fs* p);
+  inline void unlinkItem(watchman_pending_fs* p);
 };
 
-void w_pending_coll_drain(struct watchman_pending_collection *coll);
-void w_pending_coll_lock(struct watchman_pending_collection *coll);
-void w_pending_coll_unlock(struct watchman_pending_collection *coll);
-bool w_pending_coll_add(
-    struct watchman_pending_collection* coll,
-    const w_string& path,
-    struct timeval now,
-    int flags);
-bool w_pending_coll_add_rel(struct watchman_pending_collection *coll,
-    struct watchman_dir *dir, const char *name,
-    struct timeval now, int flags);
-void w_pending_coll_append(struct watchman_pending_collection *target,
-    struct watchman_pending_collection *src);
-struct watchman_pending_fs *w_pending_coll_pop(
-    struct watchman_pending_collection *coll);
-bool w_pending_coll_lock_and_wait(struct watchman_pending_collection *coll,
-    int timeoutms);
-void w_pending_coll_ping(struct watchman_pending_collection *coll);
-uint32_t w_pending_coll_size(struct watchman_pending_collection *coll);
-void w_pending_fs_free(struct watchman_pending_fs *p);
+void w_pending_fs_free(watchman_pending_fs* p);

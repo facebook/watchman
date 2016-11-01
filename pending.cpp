@@ -38,10 +38,9 @@ static bool is_path_prefix(const char *path, size_t path_len, const char *other,
 }
 
 // Helper to un-doubly-link a pending item.
-static inline void unlink_item(struct watchman_pending_collection *coll,
-                               struct watchman_pending_fs *p) {
-  if (coll->pending == p) {
-    coll->pending = p->next;
+void watchman_pending_collection::unlinkItem(watchman_pending_fs* p) {
+  if (pending_ == p) {
+    pending_ = p->next;
   }
   if (p->prev) {
     p->prev->next = p->next;
@@ -52,14 +51,13 @@ static inline void unlink_item(struct watchman_pending_collection *coll,
 }
 
 // Helper to doubly-link a pending item to the head of a collection.
-static inline void link_head(struct watchman_pending_collection *coll,
-                             struct watchman_pending_fs *p) {
+void watchman_pending_collection::linkHead(watchman_pending_fs* p) {
   p->prev = NULL;
-  p->next = coll->pending;
-  if (coll->pending) {
-    coll->pending->prev = p;
+  p->next = pending_;
+  if (pending_) {
+    pending_->prev = p;
   }
-  coll->pending = p;
+  pending_ = p;
 }
 
 /* Free a pending_fs node */
@@ -69,74 +67,74 @@ void w_pending_fs_free(struct watchman_pending_fs *p) {
 
 /* initialize a pending_coll */
 watchman_pending_collection::watchman_pending_collection()
-    : pending(nullptr), pinged(false) {
-  if (pthread_mutex_init(&lock, nullptr)) {
+    : pending_(nullptr), pinged_(false) {
+  if (pthread_mutex_init(&mutex_, nullptr)) {
     throw std::runtime_error("failed to init mutex");
   }
-  if (pthread_cond_init(&cond, nullptr)) {
+  if (pthread_cond_init(&cond_, nullptr)) {
     throw std::runtime_error("failed to init cond");
   }
 }
 
 /* destroy a pending_coll */
 watchman_pending_collection::~watchman_pending_collection() {
-  w_pending_coll_drain(this);
-  pthread_mutex_destroy(&lock);
-  pthread_cond_destroy(&cond);
+  drain();
+  pthread_mutex_destroy(&mutex_);
+  pthread_cond_destroy(&cond_);
 }
 
 /* drain and discard the content of a pending_coll, but do not destroy it */
-void w_pending_coll_drain(struct watchman_pending_collection *coll) {
+void watchman_pending_collection::drain() {
   struct watchman_pending_fs *p;
 
-  while ((p = w_pending_coll_pop(coll)) != NULL) {
+  while ((p = pop()) != NULL) {
     w_pending_fs_free(p);
   }
 
-  coll->tree.clear();
+  tree_.clear();
 }
 
 /* compute a deadline on entry, then obtain the collection lock
  * and wait until the deadline expires or until the collection is
  * pinged.  On Return, the caller owns the collection lock. */
-bool w_pending_coll_lock_and_wait(struct watchman_pending_collection *coll,
-    int timeoutms) {
+bool watchman_pending_collection::lockAndWait(
+    std::chrono::milliseconds timeoutms) {
   struct timespec deadline;
   int errcode;
 
-  if (timeoutms != -1) {
-    w_timeoutms_to_abs_timespec(timeoutms, &deadline);
+  if (timeoutms.count() != -1) {
+    w_timeoutms_to_abs_timespec(timeoutms.count(), &deadline);
   }
-  w_pending_coll_lock(coll);
-  if (coll->pending || coll->pinged) {
-    coll->pinged = false;
+  lock();
+  if (pending_ || pinged_) {
+    pinged_ = false;
     return true;
   }
-  if (timeoutms == -1) {
-    errcode = pthread_cond_wait(&coll->cond, &coll->lock);
+  if (timeoutms.count() == -1) {
+    errcode = pthread_cond_wait(&cond_, &mutex_);
   } else {
-    errcode = pthread_cond_timedwait(&coll->cond, &coll->lock, &deadline);
+    errcode = pthread_cond_timedwait(&cond_, &mutex_, &deadline);
   }
 
   return errcode == 0;
 }
 
-void w_pending_coll_ping(struct watchman_pending_collection *coll) {
-  coll->pinged = true;
-  pthread_cond_broadcast(&coll->cond);
+void watchman_pending_collection::ping() {
+  pinged_ = true;
+  pthread_cond_broadcast(&cond_);
 }
 
 /* obtain the collection lock */
-void w_pending_coll_lock(struct watchman_pending_collection *coll) {
-  int err = pthread_mutex_lock(&coll->lock);
+void watchman_pending_collection::lock() {
+  int err = pthread_mutex_lock(&mutex_);
   if (err != 0) {
     w_log(W_LOG_FATAL, "lock assertion: %s\n", strerror(err));
   }
 }
 
 /* release the collection lock */
-void w_pending_coll_unlock(struct watchman_pending_collection *coll) {
-  int err = pthread_mutex_unlock(&coll->lock);
+void watchman_pending_collection::unlock() {
+  int err = pthread_mutex_unlock(&mutex_);
   if (err != 0) {
     w_log(W_LOG_FATAL, "unlock assertion: %s\n", strerror(err));
   }
@@ -153,77 +151,83 @@ void w_pending_coll_unlock(struct watchman_pending_collection *coll) {
 // deletion.
 // We use this kid_context state to pass down the required information
 // to the iterator callback so that we adjust the overall state correctly.
-struct kid_context {
-  w_string_t *root;
-  struct watchman_pending_collection *coll;
 
-  // This is the iterator callback we use to prune out obsoleted leaves.
-  // We need to compare the prefix to make sure that we don't delete
-  // a sibling node by mistake (see commentary on the is_path_prefix
-  // function for more on that).
-  int operator()(
-      const unsigned char* key,
-      uint32_t key_len,
-      watchman_pending_fs*& p) {
-    if ((p->flags & W_PENDING_CRAWL_ONLY) == 0 && key_len > root->len &&
-        is_path_prefix((const char*)key, key_len, root->buf, root->len) &&
-        !watchman::CookieSync::isPossiblyACookie(p->path)) {
-      w_log(
-          W_LOG_DBG,
-          "delete_kids: removing (%d) %.*s from pending because it is "
-          "obsoleted by (%d) %.*s\n",
-          int(p->path.size()),
-          int(p->path.size()),
-          p->path.data(),
-          root->len,
-          root->len,
-          root->buf);
+watchman_pending_collection::iterContext::iterContext(
+    const w_string& root,
+    watchman_pending_collection& coll)
+    : root(root), coll(coll) {}
 
-      // Unlink the child from the pending index.
-      unlink_item(coll, p);
+// This is the iterator callback we use to prune out obsoleted leaves.
+// We need to compare the prefix to make sure that we don't delete
+// a sibling node by mistake (see commentary on the is_path_prefix
+// function for more on that).
+int watchman_pending_collection::iterContext::operator()(
+    const unsigned char* key,
+    uint32_t key_len,
+    watchman_pending_fs*& p) {
+  if ((p->flags & W_PENDING_CRAWL_ONLY) == 0 && key_len > root.size() &&
+      is_path_prefix((const char*)key, key_len, root.data(), root.size()) &&
+      !watchman::CookieSync::isPossiblyACookie(p->path)) {
+    w_log(
+        W_LOG_DBG,
+        "delete_kids: removing (%d) %.*s from pending because it is "
+        "obsoleted by (%d) %.*s\n",
+        int(p->path.size()),
+        int(p->path.size()),
+        p->path.data(),
+        int(root.size()),
+        int(root.size()),
+        root.data());
 
-      // and completely free it.
-      w_pending_fs_free(p);
+    // Unlink the child from the pending index.
+    coll.unlinkItem(p);
 
-      // Remove it from the art tree also.
-      coll->tree.erase(key, key_len);
+    // and completely free it.
+    w_pending_fs_free(p);
 
-      // Stop iteration because we just invalidated the iterator state
-      // by modifying the tree mid-iteration.
-      return 1;
-    }
+    // Remove it from the art tree also.
+    coll.tree_.erase(key, key_len);
 
-    return 0;
+    // Stop iteration because we just invalidated the iterator state
+    // by modifying the tree mid-iteration.
+    return 1;
   }
-};
+
+  return 0;
+}
 
 // if there are any entries that are obsoleted by a recursive insert,
 // walk over them now and mark them as ignored.
-static void
-maybe_prune_obsoleted_children(struct watchman_pending_collection *coll,
-                               w_string_t *path, int flags) {
+void watchman_pending_collection::maybePruneObsoletedChildren(
+    const w_string& path,
+    int flags) {
   if ((flags & (W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY)) ==
       W_PENDING_RECURSIVE) {
-    struct kid_context ctx = {path, coll};
+    iterContext ctx{path, *this};
     uint32_t pruned = 0;
     // Since deletion invalidates the iterator, we need to repeatedly
     // call this to prune out the nodes.  It will return 0 once no
     // matching prefixes are found and deleted.
-    while (coll->tree.iterPrefix((const uint8_t*)path->buf, path->len, ctx)) {
+    while (tree_.iterPrefix((const uint8_t*)path.data(), path.size(), ctx)) {
       // OK; try again
       ++pruned;
     }
 
     if (pruned) {
-      w_log(W_LOG_DBG,
-            "maybe_prune_obsoleted_children: pruned %u nodes under (%d) %.*s\n",
-            pruned, path->len, path->len, path->buf);
+      w_log(
+          W_LOG_DBG,
+          "maybePruneObsoletedChildren: pruned %u nodes under (%d) %.*s\n",
+          pruned,
+          int(path.size()),
+          int(path.size()),
+          path.data());
     }
   }
 }
 
-static inline void consolidate_item(struct watchman_pending_collection *coll,
-                                    struct watchman_pending_fs *p, int flags) {
+void watchman_pending_collection::consolidateItem(
+    watchman_pending_fs* p,
+    int flags) {
   // Increase the strength of the pending item if either of these
   // flags are set.
   // We upgrade crawl-only as well as recursive; it indicates that
@@ -231,17 +235,16 @@ static inline void consolidate_item(struct watchman_pending_collection *coll,
   // infinitely trying to stat-and-crawl
   p->flags |= flags & (W_PENDING_CRAWL_ONLY|W_PENDING_RECURSIVE);
 
-  maybe_prune_obsoleted_children(coll, p->path, p->flags);
+  maybePruneObsoletedChildren(p->path, p->flags);
 }
 
 // Check the tree to see if there is a path that is earlier/higher in the
 // filesystem than the input path; if there is, and it is recursive,
 // return true to indicate that there is no need to track this new path
 // due to the already scheduled higher level path.
-static bool is_obsoleted_by_containing_dir(
-    struct watchman_pending_collection* coll,
+bool watchman_pending_collection::isObsoletedByContainingDir(
     const w_string& path) {
-  auto leaf = coll->tree.longestMatch((const uint8_t*)path.data(), path.size());
+  auto leaf = tree_.longestMatch((const uint8_t*)path.data(), path.size());
   if (!leaf) {
     return false;
   }
@@ -277,30 +280,28 @@ watchman_pending_fs::watchman_pending_fs(
 /* add a pending entry.  Will consolidate an existing entry with the
  * same name.  Returns false if an allocation fails.
  * The caller must own the collection lock. */
-bool w_pending_coll_add(
-    struct watchman_pending_collection* coll,
+bool watchman_pending_collection::add(
     const w_string& path,
     struct timeval now,
     int flags) {
   char flags_label[128];
 
-  auto existing =
-      coll->tree.search((const unsigned char*)path.data(), path.size());
+  auto existing = tree_.search((const unsigned char*)path.data(), path.size());
   if (existing) {
     /* Entry already exists: consolidate */
-    consolidate_item(coll, *existing, flags);
+    consolidateItem(*existing, flags);
     /* all done */
     return true;
   }
 
-  if (is_obsoleted_by_containing_dir(coll, path)) {
+  if (isObsoletedByContainingDir(path)) {
     return true;
   }
 
   // Try to allocate the new node before we prune any children.
   auto p = new watchman_pending_fs(path, now, flags);
 
-  maybe_prune_obsoleted_children(coll, path, flags);
+  maybePruneObsoletedChildren(path, flags);
 
   w_expand_flags(kflags, flags, flags_label, sizeof(flags_label));
   w_log(
@@ -310,16 +311,17 @@ bool w_pending_coll_add(
       path.data(),
       flags_label);
 
-  link_head(coll, p);
-  coll->tree.insert((const uint8_t*)path.data(), path.size(), p);
+  linkHead(p);
+  tree_.insert((const uint8_t*)path.data(), path.size(), p);
 
   return true;
 }
 
-bool w_pending_coll_add_rel(struct watchman_pending_collection *coll,
-    struct watchman_dir *dir, const char *name,
-    struct timeval now, int flags)
-{
+bool watchman_pending_collection::add(
+    struct watchman_dir* dir,
+    const char* name,
+    struct timeval now,
+    int flags) {
   w_string_t *path_str;
   bool res;
 
@@ -327,7 +329,7 @@ bool w_pending_coll_add_rel(struct watchman_pending_collection *coll,
   if (!path_str) {
     return false;
   }
-  res = w_pending_coll_add(coll, path_str, now, flags);
+  res = add(path_str, now, flags);
   w_string_delref(path_str);
 
   return res;
@@ -336,53 +338,51 @@ bool w_pending_coll_add_rel(struct watchman_pending_collection *coll,
 /* Append the contents of src to target, consolidating in target.
  * src is effectively drained in the process.
  * Caller must own the lock on both src and target. */
-void w_pending_coll_append(struct watchman_pending_collection *target,
-    struct watchman_pending_collection *src) {
+void watchman_pending_collection::append(watchman_pending_collection* src) {
   struct watchman_pending_fs* p;
 
-  while ((p = w_pending_coll_pop(src)) != NULL) {
+  while ((p = src->pop()) != NULL) {
     auto target_p =
-        target->tree.search((const uint8_t*)p->path.data(), p->path.size());
+        tree_.search((const uint8_t*)p->path.data(), p->path.size());
     if (target_p) {
       /* Entry already exists: consolidate */
-      consolidate_item(target, *target_p, p->flags);
+      consolidateItem(*target_p, p->flags);
       w_pending_fs_free(p);
       continue;
     }
 
-    if (is_obsoleted_by_containing_dir(target, p->path)) {
+    if (isObsoletedByContainingDir(p->path)) {
       w_pending_fs_free(p);
       continue;
     }
-    maybe_prune_obsoleted_children(target, p->path, p->flags);
+    maybePruneObsoletedChildren(p->path, p->flags);
 
-    link_head(target, p);
-    target->tree.insert((const uint8_t*)p->path.data(), p->path.size(), p);
+    linkHead(p);
+    tree_.insert((const uint8_t*)p->path.data(), p->path.size(), p);
   }
 
   // Empty the src tree and reset it
-  src->tree.clear();
-  src->pending = NULL;
+  src->tree_.clear();
+  src->pending_ = NULL;
 }
 
 /* Logically pop an entry from the collection.
  * Does NOT remove the entry from the uniq hash.
  * The intent is that the caller will call this in a tight loop and
  * then _drain() it at the end to clear the uniq hash */
-struct watchman_pending_fs *w_pending_coll_pop(
-    struct watchman_pending_collection *coll) {
-  struct watchman_pending_fs *p = coll->pending;
+struct watchman_pending_fs* watchman_pending_collection::pop() {
+  struct watchman_pending_fs* p = pending_;
 
   if (p) {
-    unlink_item(coll, p);
+    unlinkItem(p);
   }
 
   return p;
 }
 
 /* Returns the number of unique pending items in the collection */
-uint32_t w_pending_coll_size(struct watchman_pending_collection *coll) {
-  return coll->tree.size();
+uint32_t watchman_pending_collection::size() const {
+  return tree_.size();
 }
 
 /* vim:ts=2:sw=2:et:

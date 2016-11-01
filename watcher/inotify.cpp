@@ -330,7 +330,7 @@ void InotifyWatcher::process_inotify_event(
 
       w_log(W_LOG_DBG, "add_pending for inotify mask=%x %.*s\n",
           ine->mask, name->len, name->buf);
-      w_pending_coll_add(coll, name, now, pending_flags);
+      coll->add(name, now, pending_flags);
 
       w_string_delref(name);
 
