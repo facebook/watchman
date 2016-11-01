@@ -146,19 +146,16 @@ struct art_tree {
    * @arg key The key
    * @arg key_len The length of the key
    * @arg value Opaque value.
-   * @return NULL if the item was newly inserted, otherwise
-   * the old value pointer is returned.
    */
-  void* insert(const unsigned char* key, uint32_t key_len, void* value);
+  void insert(const unsigned char* key, uint32_t key_len, void* value);
 
   /**
    * Deletes a value from the ART tree
    * @arg key The key
    * @arg key_len The length of the key
-   * @return NULL if the item was not found, otherwise
-   * the value pointer is returned.
+   * @return true if the item was erased, false otherwise.
    */
-  void* erase(const unsigned char* key, uint32_t key_len);
+  bool erase(const unsigned char* key, uint32_t key_len);
 
   /**
    * Searches for a value in the ART tree
@@ -219,7 +216,7 @@ struct art_tree {
       void* data);
 
  private:
-  void* recursiveInsert(
+  void recursiveInsert(
       art_node* n,
       art_node** ref,
       const unsigned char* key,

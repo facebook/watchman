@@ -44,9 +44,7 @@ void test_art_insert(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    if (t.insert((unsigned char*)buf, len, (void*)line)) {
-      fail("insert should have returned NULL but did not");
-    }
+    t.insert((unsigned char*)buf, len, (void*)line);
     if (t.size() != line) {
       fail("art_size didn't match current line no");
     }
@@ -103,9 +101,9 @@ void test_art_insert_verylong(void) {
       219, 191, 198, 134, 5,   208, 212, 72,  44,  208, 250, 180, 14,  1,   0,
       0,   8,   '\0'};
 
-  fail_unless(nullptr == t.insert(key1, 299, (void*)key1));
-  fail_unless(nullptr == t.insert(key2, 302, (void *)key2));
-  t.insert(key2, 302, (void *)key2);
+  t.insert(key1, 299, (void*)key1);
+  t.insert(key2, 302, (void*)key2);
+  t.insert(key2, 302, (void*)key2);
   fail_unless(t.size() == 2);
 }
 
@@ -120,9 +118,7 @@ void test_art_insert_search(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    if (t.insert((unsigned char *)buf, len, (void *)line)) {
-      fail("art_insert didn't return NULL");
-    }
+    t.insert((unsigned char*)buf, len, (void*)line);
     line++;
   }
 
@@ -163,9 +159,7 @@ void test_art_insert_delete(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    if (t.insert((unsigned char*)buf, len, (void*)line)) {
-      fail("art_insert didn't return NULL");
-    }
+    t.insert((unsigned char*)buf, len, (void*)line);
     line++;
   }
 
@@ -189,9 +183,8 @@ void test_art_insert_delete(void) {
     }
 
     // Delete, should get lineno back
-    val = (uintptr_t)t.erase((unsigned char*)buf, len);
-    if (line != val) {
-      fail("Line: %d Val: %" PRIuPTR " Str: %s", line, val, buf);
+    if (!t.erase((unsigned char*)buf, len)) {
+      fail("failed to erase line %d, str: %s", line, buf);
     }
 
     // Check the size
@@ -227,9 +220,7 @@ void test_art_insert_iter(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    if (t.insert((unsigned char*)buf, len, (void*)line)) {
-      fail("art_insert didn't return NULL");
-    }
+    t.insert((unsigned char*)buf, len, (void*)line);
 
     xor_mask ^= (line * (buf[0] + len));
     line++;
@@ -268,28 +259,22 @@ void test_art_iter_prefix(void) {
   const char *expected2[] = {"abc.123.456", "api",         "api.foe.fum",
                              "api.foo",     "api.foo.bar", "api.foo.baz"};
 
-  fail_unless(NULL ==
-              t.insert((unsigned char *)s, (int)strlen(s) + 1, NULL));
+  t.insert((unsigned char*)s, (int)strlen(s) + 1, nullptr);
 
   s = "api.foo.baz";
-  fail_unless(NULL ==
-              t.insert((unsigned char *)s, (int)strlen(s) + 1, NULL));
+  t.insert((unsigned char*)s, (int)strlen(s) + 1, nullptr);
 
   s = "api.foe.fum";
-  fail_unless(NULL ==
-              t.insert((unsigned char *)s, (int)strlen(s) + 1, NULL));
+  t.insert((unsigned char*)s, (int)strlen(s) + 1, nullptr);
 
   s = "abc.123.456";
-  fail_unless(NULL ==
-              t.insert((unsigned char *)s, (int)strlen(s) + 1, NULL));
+  t.insert((unsigned char*)s, (int)strlen(s) + 1, nullptr);
 
   s = "api.foo";
-  fail_unless(NULL ==
-              t.insert((unsigned char *)s, (int)strlen(s) + 1, NULL));
+  t.insert((unsigned char*)s, (int)strlen(s) + 1, nullptr);
 
   s = "api";
-  fail_unless(NULL ==
-              t.insert((unsigned char *)s, (int)strlen(s) + 1, NULL));
+  t.insert((unsigned char*)s, (int)strlen(s) + 1, nullptr);
 
   {
     // Iterate over api
@@ -358,18 +343,15 @@ void test_art_long_prefix(void) {
 
   s = "this:key:has:a:long:prefix:3";
   v = 3;
-  fail_unless(NULL == t.insert((unsigned char *)s, (int)strlen(s) + 1,
-                                 (void *)v));
+  t.insert((unsigned char*)s, (int)strlen(s) + 1, (void*)v);
 
   s = "this:key:has:a:long:common:prefix:2";
   v = 2;
-  fail_unless(NULL == t.insert((unsigned char *)s, (int)strlen(s) + 1,
-                                 (void *)v));
+  t.insert((unsigned char*)s, (int)strlen(s) + 1, (void*)v);
 
   s = "this:key:has:a:long:common:prefix:1";
   v = 1;
-  fail_unless(NULL == t.insert((unsigned char *)s, (int)strlen(s) + 1,
-                                 (void *)v));
+  t.insert((unsigned char*)s, (int)strlen(s) + 1, (void*)v);
 
   // Search for the keys
   s = "this:key:has:a:long:common:prefix:1";
@@ -408,11 +390,8 @@ void test_art_prefix(void) {
   art_tree t;
   void *v;
 
-  fail_unless(
-      t.insert((const unsigned char*)"food", 4, (void*)"food") ==
-      nullptr);
-  fail_unless(
-      t.insert((const unsigned char*)"foo", 3, (void*)"foo") == nullptr);
+  t.insert((const unsigned char*)"food", 4, (void*)"food");
+  t.insert((const unsigned char*)"foo", 3, (void*)"foo");
   diag("size is now %d", t.size());
   fail_unless(t.size() == 2);
   fail_unless((v = t.search((const unsigned char*)"food", 4)) != NULL);
@@ -437,9 +416,7 @@ void test_art_insert_search_uuid(void) {
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    if (t.insert((unsigned char *)buf, len, (void *)line)) {
-      fail("art_insert didn't return NULL");
-    }
+    t.insert((unsigned char*)buf, len, (void*)line);
     line++;
   }
 
@@ -477,7 +454,7 @@ int main(int argc, char **argv) {
   (void)argc;
   (void)argv;
 
-  plan_tests(97);
+  plan_tests(84);
   test_art_insert();
   test_art_insert_verylong();
   test_art_insert_search();

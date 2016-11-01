@@ -665,7 +665,7 @@ uint32_t art_node::prefixMismatch(
   return idx;
 }
 
-void* art_tree::recursiveInsert(
+void art_tree::recursiveInsert(
     art_node* n,
     art_node** ref,
     const unsigned char* key,
@@ -677,7 +677,7 @@ void* art_tree::recursiveInsert(
   // If we are at a NULL node, inject a leaf
   if (!n) {
     *ref = SET_LEAF(art_leaf::make(key, key_len, value));
-    return nullptr;
+    return;
   }
 
   // If we are at a leaf, we need to replace it with a node
@@ -692,7 +692,7 @@ void* art_tree::recursiveInsert(
       void* old_val = l->value;
       *old = 1;
       l->value = value;
-      return old_val;
+      return;
     }
 
     // New value, we must split the leaf into a node4
@@ -714,7 +714,7 @@ void* art_tree::recursiveInsert(
         ref, leaf_key_at(l, depth + longest_prefix), SET_LEAF(l));
     new_node->addChild(
         ref, leaf_key_at(l2, depth + longest_prefix), SET_LEAF(l2));
-    return nullptr;
+    return;
   }
 
   // Check if given node has a prefix
@@ -757,7 +757,7 @@ void* art_tree::recursiveInsert(
     // Insert the new leaf
     l = art_leaf::make(key, key_len, value);
     new_node->addChild(ref, leaf_key_at(l, depth + prefix_diff), SET_LEAF(l));
-    return nullptr;
+    return;
   }
 
 RECURSE_SEARCH:;
@@ -765,15 +765,14 @@ RECURSE_SEARCH:;
         // Find a child to recurse to
         art_node** child = n->findChild(key_at(key, key_len, depth));
         if (child) {
-          return recursiveInsert(
-              *child, child, key, key_len, value, depth + 1, old);
+          recursiveInsert(*child, child, key, key_len, value, depth + 1, old);
+          return;
         }
     }
 
     // No child, node goes within us
     l = art_leaf::make(key, key_len, value);
     n->addChild(ref, leaf_key_at(l, depth), SET_LEAF(l));
-    return nullptr;
 }
 
 /**
@@ -785,16 +784,12 @@ RECURSE_SEARCH:;
  * @return NULL if the item was newly inserted, otherwise
  * the old value pointer is returned.
  */
-void* art_tree::insert(
-    const unsigned char* key,
-    uint32_t key_len,
-    void* value) {
+void art_tree::insert(const unsigned char* key, uint32_t key_len, void* value) {
   int old_val = 0;
-  void* old = recursiveInsert(root_, &root_, key, key_len, value, 0, &old_val);
+  recursiveInsert(root_, &root_, key, key_len, value, 0, &old_val);
   if (!old_val) {
     size_++;
   }
-  return old;
 }
 
 void art_node256::removeChild(art_node** ref, unsigned char c, art_node**) {
@@ -976,15 +971,14 @@ art_leaf* art_tree::recursiveDelete(
  * @return NULL if the item was not found, otherwise
  * the value pointer is returned.
  */
-void* art_tree::erase(const unsigned char* key, uint32_t key_len) {
-  art_leaf* l = recursiveDelete(root_, &root_, key, key_len, 0);
+bool art_tree::erase(const unsigned char* key, uint32_t key_len) {
+  auto l = recursiveDelete(root_, &root_, key, key_len, 0);
   if (l) {
-    void* old = l->value;
     size_--;
     destroy_leaf(l);
-    return old;
+    return true;
   }
-  return NULL;
+  return false;
 }
 
 // Recursively iterates over the tree
