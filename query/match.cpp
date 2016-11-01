@@ -57,7 +57,7 @@ class WildMatchExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query* query, json_t* term, bool caseless) {
+  parse(w_query* query, const json_ref& term, bool caseless) {
     const char *ignore, *pattern, *scope = "basename";
     const char* which = caseless ? "imatch" : "match";
     int noescape = 0;
@@ -96,10 +96,14 @@ class WildMatchExpr : public QueryExpr {
         noescape,
         includedotfiles);
   }
-  static std::unique_ptr<QueryExpr> parseMatch(w_query* query, json_t* term) {
+  static std::unique_ptr<QueryExpr> parseMatch(
+      w_query* query,
+      const json_ref& term) {
     return parse(query, term, !query->case_sensitive);
   }
-  static std::unique_ptr<QueryExpr> parseIMatch(w_query* query, json_t* term) {
+  static std::unique_ptr<QueryExpr> parseIMatch(
+      w_query* query,
+      const json_ref& term) {
     return parse(query, term, true);
   }
 };

@@ -125,7 +125,7 @@ class json_ref {
   /** Returns a reference to the array value at the specified index.
    * Throws out_of_range or domain_error if the index is bad or if
    * this is not an array */
-  inline const json_ref& get(std::size_t idx) const {
+  inline const json_ref& at(std::size_t idx) const {
     return array().at(idx);
   }
 };

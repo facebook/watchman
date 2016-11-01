@@ -18,16 +18,16 @@ class NotExpr : public QueryExpr {
   bool evaluate(w_query_ctx* ctx, const watchman_file* file) override {
     return !expr->evaluate(ctx, file);
   }
-  static std::unique_ptr<QueryExpr> parse(w_query* query, json_t* term) {
-    json_t* other;
-
+  static std::unique_ptr<QueryExpr> parse(
+      w_query* query,
+      const json_ref& term) {
     /* rigidly require ["not", expr] */
     if (!json_is_array(term) || json_array_size(term) != 2) {
       query->errmsg = strdup("must use [\"not\", expr]");
       return nullptr;
     }
 
-    other = json_array_get(term, 1);
+    const auto& other = term.at(1);
     auto other_expr = w_query_expr_parse(query, other);
     if (!other_expr) {
       // other expr sets errmsg
@@ -46,7 +46,7 @@ class TrueExpr : public QueryExpr {
     return true;
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query*, json_t*) {
+  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref&) {
     return watchman::make_unique<TrueExpr>();
   }
 };
@@ -59,7 +59,7 @@ class FalseExpr : public QueryExpr {
     return false;
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query*, json_t*) {
+  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref&) {
     return watchman::make_unique<FalseExpr>();
   }
 };
@@ -90,7 +90,7 @@ class ListExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query* query, json_t* term, bool allof) {
+  parse(w_query* query, const json_ref& term, bool allof) {
     std::vector<std::unique_ptr<QueryExpr>> list;
 
     /* don't allow "allof" on its own */
@@ -107,7 +107,7 @@ class ListExpr : public QueryExpr {
     list.reserve(n);
 
     for (size_t i = 0; i < n; i++) {
-      json_t* exp = json_array_get(term, i + 1);
+      const auto& exp = term.at(i + 1);
 
       auto parsed = w_query_expr_parse(query, exp);
       if (!parsed) {
@@ -121,10 +121,14 @@ class ListExpr : public QueryExpr {
     return watchman::make_unique<ListExpr>(allof, std::move(list));
   }
 
-  static std::unique_ptr<QueryExpr> parseAllOf(w_query* query, json_t* term) {
+  static std::unique_ptr<QueryExpr> parseAllOf(
+      w_query* query,
+      const json_ref& term) {
     return parse(query, term, true);
   }
-  static std::unique_ptr<QueryExpr> parseAnyOf(w_query* query, json_t* term) {
+  static std::unique_ptr<QueryExpr> parseAnyOf(
+      w_query* query,
+      const json_ref& term) {
     return parse(query, term, false);
   }
 };

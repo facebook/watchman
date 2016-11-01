@@ -97,7 +97,9 @@ class SizeExpr : public QueryExpr {
     return eval_int_compare(file->stat.size, &comp);
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query* query, json_t* term) {
+  static std::unique_ptr<QueryExpr> parse(
+      w_query* query,
+      const json_ref& term) {
     if (!json_is_array(term)) {
       ignore_result(asprintf(&query->errmsg, "Expected array for 'size' term"));
       return nullptr;

@@ -116,16 +116,18 @@ struct w_query {
 };
 
 typedef std::unique_ptr<QueryExpr> (
-    *w_query_expr_parser)(w_query* query, json_t* term);
+    *w_query_expr_parser)(w_query* query, const json_ref& term);
 
 bool w_query_register_expression_parser(
     const char *term,
     w_query_expr_parser parser);
 
 std::shared_ptr<w_query>
-w_query_parse(const w_root_t* root, json_t* query, char** errmsg);
+w_query_parse(const w_root_t* root, const json_ref& query, char** errmsg);
 
-std::unique_ptr<QueryExpr> w_query_expr_parse(w_query* query, json_t* term);
+std::unique_ptr<QueryExpr> w_query_expr_parse(
+    w_query* query,
+    const json_ref& term);
 
 bool w_query_file_matches_relative_root(
     struct w_query_ctx* ctx,
@@ -190,7 +192,7 @@ struct w_query_field_list {
 // parse the old style since and find queries
 std::shared_ptr<w_query> w_query_parse_legacy(
     const w_root_t* root,
-    json_t* args,
+    const json_ref& args,
     char** errmsg,
     int start,
     uint32_t* next_arg,

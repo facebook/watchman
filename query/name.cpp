@@ -50,10 +50,9 @@ class NameExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query* query, json_t* term, bool caseless) {
+  parse(w_query* query, const json_ref& term, bool caseless) {
     const char *pattern = nullptr, *scope = "basename";
     const char* which = caseless ? "iname" : "name";
-    json_t* name;
     std::unordered_set<w_string> set;
 
     if (!json_is_array(term)) {
@@ -69,9 +68,7 @@ class NameExpr : public QueryExpr {
     }
 
     if (json_array_size(term) == 3) {
-      json_t* jscope;
-
-      jscope = json_array_get(term, 2);
+      const auto& jscope = term.at(2);
       if (!json_is_string(jscope)) {
         ignore_result(asprintf(
             &query->errmsg, "Argument 3 to '%s' must be a string", which));
@@ -90,7 +87,7 @@ class NameExpr : public QueryExpr {
       }
     }
 
-    name = json_array_get(term, 1);
+    const auto& name = term.at(1);
 
     if (json_is_array(name)) {
       uint32_t i;
@@ -111,7 +108,7 @@ class NameExpr : public QueryExpr {
       for (i = 0; i < json_array_size(name); i++) {
         w_string_t* element;
         const char* ele;
-        const json_t* jele = json_array_get(name, i);
+        const auto& jele = name.at(i);
         ele = json_string_value(jele);
         // We need to make a copy of the string since we do in-place separator
         // normalization on the paths.
@@ -151,10 +148,14 @@ class NameExpr : public QueryExpr {
     return std::unique_ptr<QueryExpr>(data);
   }
 
-  static std::unique_ptr<QueryExpr> parseName(w_query* query, json_t* term) {
+  static std::unique_ptr<QueryExpr> parseName(
+      w_query* query,
+      const json_ref& term) {
     return parse(query, term, !query->case_sensitive);
   }
-  static std::unique_ptr<QueryExpr> parseIName(w_query* query, json_t* term) {
+  static std::unique_ptr<QueryExpr> parseIName(
+      w_query* query,
+      const json_ref& term) {
     return parse(query, term, true);
   }
 };

@@ -10,7 +10,7 @@ class ExistsExpr : public QueryExpr {
   bool evaluate(struct w_query_ctx*, const watchman_file* file) override {
     return file->exists;
   }
-  static std::unique_ptr<QueryExpr> parse(w_query*, json_t*) {
+  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref&) {
     return watchman::make_unique<ExistsExpr>();
   }
 };
@@ -30,7 +30,7 @@ class EmptyExpr : public QueryExpr {
     return false;
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query*, json_t*) {
+  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref&) {
     return watchman::make_unique<EmptyExpr>();
   }
 };

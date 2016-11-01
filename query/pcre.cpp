@@ -47,7 +47,7 @@ class PcreExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query* query, json_t* term, bool caseless) {
+  parse(w_query* query, const json_ref& term, bool caseless) {
     const char *ignore, *pattern, *scope = "basename";
     const char* which = caseless ? "ipcre" : "pcre";
     pcre* re;
@@ -93,10 +93,14 @@ class PcreExpr : public QueryExpr {
     return watchman::make_unique<PcreExpr>(
         re, pcre_study(re, 0, &errptr), !strcmp(scope, "wholename"));
   }
-  static std::unique_ptr<QueryExpr> parsePcre(w_query* query, json_t* term) {
+  static std::unique_ptr<QueryExpr> parsePcre(
+      w_query* query,
+      const json_ref& term) {
     return parse(query, term, !query->case_sensitive);
   }
-  static std::unique_ptr<QueryExpr> parseIPcre(w_query* query, json_t* term) {
+  static std::unique_ptr<QueryExpr> parseIPcre(
+      w_query* query,
+      const json_ref& term) {
     return parse(query, term, true);
   }
 };

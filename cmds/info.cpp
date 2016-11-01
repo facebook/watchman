@@ -3,13 +3,16 @@
 
 #include "watchman.h"
 
-static bool
-query_caps(json_ref& response, json_ref& result, json_t* arr, bool required) {
+static bool query_caps(
+    json_ref& response,
+    json_ref& result,
+    const json_ref& arr,
+    bool required) {
   size_t i;
   bool have_all = true;
 
   for (i = 0; i < json_array_size(arr); i++) {
-    json_t *ele = json_array_get(arr, i);
+    const auto& ele = arr.at(i);
     const char* capname = json_string_value(ele);
     bool have = w_capability_supported(json_to_w_string(ele));
     if (!have) {
@@ -54,14 +57,10 @@ static void cmd_version(struct watchman_client* client, const json_ref& args) {
    */
 
   if (json_array_size(args) == 2) {
-    const char *ignored;
-    json_t *req_cap = NULL;
-    json_t *opt_cap = NULL;
+    const auto& arg_obj = args.at(1);
 
-    json_unpack(args, "[s, {s?:o, s?:o}]",
-        &ignored,
-        "required", &req_cap,
-        "optional", &opt_cap);
+    auto req_cap = arg_obj.get_default("required");
+    auto opt_cap = arg_obj.get_default("optional");
 
     auto cap_res = json_object_of_size(
         (opt_cap ? json_array_size(opt_cap) : 0) +
