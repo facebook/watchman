@@ -137,48 +137,54 @@ bool dispatch_command(
   bool result = false;
   char sample_name[128];
 
-  // Stash a reference to the current command to make it easier to log
-  // the command context in some of the error paths
-  client->current_command = args;
+  try {
+    // Stash a reference to the current command to make it easier to log
+    // the command context in some of the error paths
+    client->current_command = args;
 
-  def = lookup(args, &errmsg, mode);
+    def = lookup(args, &errmsg, mode);
 
-  if (!def) {
-    send_error_response(client, "%s", errmsg);
-    goto done;
-  }
-
-  if (poisoned_reason && (def->flags & CMD_POISON_IMMUNE) == 0) {
-    send_error_response(client, "%s", poisoned_reason);
-    goto done;
-  }
-
-  if (!client->client_is_owner && (def->flags & CMD_ALLOW_ANY_USER) == 0) {
-    send_error_response(client, "you must be the process owner to execute '%s'",
-                        def->name);
-    return false;
-  }
-
-  // Scope for the perf sample
-  {
-    w_log(W_LOG_DBG, "dispatch_command: %s\n", def->name);
-    snprintf(
-        sample_name, sizeof(sample_name), "dispatch_command:%s", def->name);
-    w_perf_t sample(sample_name);
-    client->perf_sample = &sample;
-
-    sample.set_wall_time_thresh(
-        cfg_get_double("slow_command_log_threshold_seconds", 1.0));
-
-    result = true;
-    def->func(client, args);
-
-    if (sample.finish()) {
-      sample.add_meta("args", json_ref(args));
-      sample.log();
-    } else {
-      w_log(W_LOG_DBG, "dispatch_command: %s (completed)\n", def->name);
+    if (!def) {
+      send_error_response(client, "%s", errmsg);
+      goto done;
     }
+
+    if (poisoned_reason && (def->flags & CMD_POISON_IMMUNE) == 0) {
+      send_error_response(client, "%s", poisoned_reason);
+      goto done;
+    }
+
+    if (!client->client_is_owner && (def->flags & CMD_ALLOW_ANY_USER) == 0) {
+      send_error_response(
+          client, "you must be the process owner to execute '%s'", def->name);
+      return false;
+    }
+
+    // Scope for the perf sample
+    {
+      w_log(W_LOG_DBG, "dispatch_command: %s\n", def->name);
+      snprintf(
+          sample_name, sizeof(sample_name), "dispatch_command:%s", def->name);
+      w_perf_t sample(sample_name);
+      client->perf_sample = &sample;
+
+      sample.set_wall_time_thresh(
+          cfg_get_double("slow_command_log_threshold_seconds", 1.0));
+
+      result = true;
+      def->func(client, args);
+
+      if (sample.finish()) {
+        sample.add_meta("args", json_ref(args));
+        sample.log();
+      } else {
+        w_log(W_LOG_DBG, "dispatch_command: %s (completed)\n", def->name);
+      }
+    }
+
+  } catch (const std::exception& e) {
+    send_error_response(client, e.what());
+    result = false;
   }
 
 done:
