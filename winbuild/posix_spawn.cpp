@@ -1,28 +1,27 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
+#include "watchman_synchronized.h"
 
 // Maps pid => process handle
 // This is so that we can wait/poll/query the termination status
-static w_ht_t *child_procs = NULL;
-static pthread_mutex_t child_proc_lock = PTHREAD_MUTEX_INITIALIZER;
+static watchman::Synchronized<std::unordered_map<DWORD, HANDLE>> child_procs;
 
 BOOL w_wait_for_any_child(DWORD timeoutms, DWORD *pid) {
   HANDLE handles[MAXIMUM_WAIT_OBJECTS];
   DWORD pids[MAXIMUM_WAIT_OBJECTS];
   int i = 0;
-  w_ht_iter_t iter;
   DWORD res;
 
   *pid = 0;
 
-  pthread_mutex_lock(&child_proc_lock);
-  if (child_procs && w_ht_first(child_procs, &iter)) do {
-    HANDLE proc = w_ht_val_ptr(iter.value);
-    pids[i] = (DWORD)iter.key;
-    handles[i++] = proc;
-  } while (w_ht_next(child_procs, &iter));
-  pthread_mutex_unlock(&child_proc_lock);
+  {
+    auto rlock = child_procs.rlock();
+    for (auto& it : *rlock) {
+      pids[i] = it.first;
+      handles[i++] = it.second;
+    }
+  }
 
   if (i == 0) {
     return false;
@@ -43,9 +42,7 @@ BOOL w_wait_for_any_child(DWORD timeoutms, DWORD *pid) {
     return false;
   }
 
-  pthread_mutex_lock(&child_proc_lock);
-  w_ht_del(child_procs, pids[i]);
-  pthread_mutex_unlock(&child_proc_lock);
+  child_procs.wlock()->erase(pids[i]);
 
   CloseHandle(handles[i]);
   *pid = pids[i];
@@ -406,12 +403,7 @@ static int posix_spawn_common(
     *pid = (pid_t)pinfo.dwProcessId;
 
     // Record the pid -> handle mapping for later wait/reap
-    pthread_mutex_lock(&child_proc_lock);
-    if (!child_procs) {
-      child_procs = w_ht_new(2, NULL);
-    }
-    w_ht_set(child_procs, pinfo.dwProcessId, w_ht_ptr_val(pinfo.hProcess));
-    pthread_mutex_unlock(&child_proc_lock);
+    child_procs.wlock()->emplace(pinfo.dwProcessId, pinfo.hProcess);
 
     CloseHandle(pinfo.hThread);
     ret = 0;
