@@ -85,7 +85,7 @@ bool enqueue_response(
 bool resolve_root_or_err(
     struct watchman_client* client,
     const json_ref& args,
-    int root_index,
+    size_t root_index,
     bool create,
     struct unlocked_watchman_root* unlocked);
 
