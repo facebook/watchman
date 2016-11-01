@@ -10,6 +10,10 @@
 #include <fcntl.h>
 #include <inttypes.h>
 
+#include "thirdparty/libart/src/art.h"
+
+// This has to come after the art.h include because the MSVC
+// runtime gets confused by the #define fail in tap.h
 #include "thirdparty/tap.h"
 #include "thirdparty/libart/src/art.h"
 

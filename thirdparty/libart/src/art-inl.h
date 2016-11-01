@@ -92,15 +92,18 @@ art_tree<ValueType>::Node::Node(Node_type type, const Node& other)
 template <typename ValueType>
 art_tree<ValueType>::Node4::Node4() : Node(NODE4) {
   memset(keys, 0, sizeof(keys));
-  memset(children, 0, sizeof(children));
+  children.fill(nullptr);
 }
 
 template <typename ValueType>
 art_tree<ValueType>::Node4::Node4(Node16&& n16) : Node(NODE4, n16) {
   memset(keys, 0, sizeof(keys));
-  memset(children, 0, sizeof(children));
+  children.fill(nullptr);
   memcpy(keys, n16.keys, n16.num_children * sizeof(keys[0]));
-  memcpy(children, n16.children, n16.num_children * sizeof(children[0]));
+  std::move(
+      n16.children.begin(),
+      n16.children.begin() + n16.num_children,
+      children.begin());
 
   n16.num_children = 0;
 }
@@ -128,10 +131,11 @@ void art_tree<ValueType>::Node4::addChild(
 
     // Shift to make room
     memmove(keys + idx + 1, keys + idx, this->num_children - idx);
-    memmove(
-        children + idx + 1,
-        children + idx,
-        (this->num_children - idx) * sizeof(void*));
+
+    std::move_backward(
+        children.begin() + idx,
+        children.begin() + this->num_children,
+        children.begin() + this->num_children + 1);
 
     // Insert element
     keys[idx] = c;
@@ -163,12 +167,14 @@ void art_tree<ValueType>::Node4::removeChild(
     Node** ref,
     unsigned char,
     Node** l) {
-  int pos = l - children;
+  auto pos = l - children.data();
   memmove(keys + pos, keys + pos + 1, this->num_children - 1 - pos);
-  memmove(
-      children + pos,
-      children + pos + 1,
-      (this->num_children - 1 - pos) * sizeof(void*));
+
+  std::move(
+      children.begin() + pos + 1,
+      children.begin() + this->num_children,
+      children.begin() + pos);
+
   this->num_children--;
 
   // Remove nodes with only a single child
@@ -204,14 +210,18 @@ void art_tree<ValueType>::Node4::removeChild(
 template <typename ValueType>
 art_tree<ValueType>::Node16::Node16() : Node(NODE16) {
   memset(keys, 0, sizeof(keys));
-  memset(children, 0, sizeof(children));
+  children.fill(nullptr);
 }
 
 template <typename ValueType>
 art_tree<ValueType>::Node16::Node16(Node4&& n4) : Node(NODE16, n4) {
-  memset(children, 0, sizeof(children));
+  children.fill(nullptr);
   memset(keys, 0, sizeof(keys));
-  memcpy(children, n4.children, this->num_children * sizeof(children[0]));
+
+  std::move(
+      n4.children.begin(),
+      n4.children.begin() + this->num_children,
+      children.begin());
   memcpy(keys, n4.keys, this->num_children * sizeof(keys[0]));
 
   n4.num_children = 0;
@@ -221,7 +231,7 @@ template <typename ValueType>
 art_tree<ValueType>::Node16::Node16(Node48&& n48) : Node(NODE16, n48) {
   int i, child = 0;
   memset(keys, 0, sizeof(keys));
-  memset(children, 0, sizeof(children));
+  children.fill(nullptr);
 
   for (i = 0; i < 256; i++) {
     auto pos = n48.keys[i];
@@ -265,10 +275,10 @@ void art_tree<ValueType>::Node16::addChild(
     if (bitfield) {
       idx = __builtin_ctz(bitfield);
       memmove(keys + idx + 1, keys + idx, this->num_children - idx);
-      memmove(
-          children + idx + 1,
-          children + idx,
-          (this->num_children - idx) * sizeof(void*));
+      std::move_backward(
+          children.begin() + idx,
+          children.begin() + this->num_children,
+          children.begin() + this->num_children + 1);
     } else {
       idx = this->num_children;
     }
@@ -276,10 +286,10 @@ void art_tree<ValueType>::Node16::addChild(
     for (idx = 0; idx < this->num_children; idx++) {
       if (c < keys[idx]) {
         memmove(keys + idx + 1, keys + idx, this->num_children - idx);
-        memmove(
-            children + idx + 1,
-            children + idx,
-            (this->num_children - idx) * sizeof(void*));
+        std::move_backward(
+            children.begin() + idx,
+            children.begin() + this->num_children,
+            children.begin() + this->num_children + 1);
         break;
       }
     }
@@ -336,12 +346,13 @@ void art_tree<ValueType>::Node16::removeChild(
     Node** ref,
     unsigned char,
     Node** l) {
-  int pos = l - children;
+  auto pos = l - children.data();
   memmove(keys + pos, keys + pos + 1, this->num_children - 1 - pos);
-  memmove(
-      children + pos,
-      children + pos + 1,
-      (this->num_children - 1 - pos) * sizeof(void*));
+
+  std::move(
+      children.begin() + pos + 1,
+      children.begin() + this->num_children,
+      children.begin() + pos);
   this->num_children--;
 
   if (this->num_children == 3) {
@@ -356,17 +367,20 @@ void art_tree<ValueType>::Node16::removeChild(
 template <typename ValueType>
 art_tree<ValueType>::Node48::Node48() : Node(NODE48) {
   memset(keys, 0, sizeof(keys));
-  memset(children, 0, sizeof(children));
+  children.fill(nullptr);
 }
 
 template <typename ValueType>
 art_tree<ValueType>::Node48::Node48(Node16&& n16) : Node(NODE48, n16) {
   int i;
-  memset(children, 0, sizeof(children));
   memset(keys, 0, sizeof(keys));
+  children.fill(nullptr);
 
-  // Copy the child pointers and populate the key map
-  memcpy(children, n16.children, sizeof(children[0]) * n16.num_children);
+  std::move(
+      n16.children.begin(),
+      n16.children.begin() + n16.num_children,
+      children.begin());
+
   for (i = 0; i < n16.num_children; i++) {
     keys[n16.keys[i]] = i + 1;
   }
@@ -379,7 +393,7 @@ art_tree<ValueType>::Node48::Node48(Node256&& n256)
     : art_tree::Node(NODE48, n256) {
   int i, pos = 0;
   memset(keys, 0, sizeof(keys));
-  memset(children, 0, sizeof(children));
+  children.fill(nullptr);
 
   for (i = 0; i < 256; i++) {
     if (n256.children[i]) {
@@ -452,13 +466,13 @@ void art_tree<ValueType>::Node48::removeChild(
 
 template <typename ValueType>
 art_tree<ValueType>::Node256::Node256() : Node(NODE256) {
-  memset(children, 0, sizeof(children));
+  children.fill(nullptr);
 }
 
 template <typename ValueType>
 art_tree<ValueType>::Node256::Node256(Node48&& n48) : Node(NODE256, n48) {
   int i;
-  memset(children, 0, sizeof(children));
+  children.fill(nullptr);
   for (i = 0; i < 256; i++) {
     if (n48.keys[i]) {
       children[i] = n48.children[n48.keys[i] - 1];

@@ -1,6 +1,7 @@
 #ifndef ART_H
 #define ART_H
 #include "config.h"
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -100,7 +101,7 @@ struct art_tree {
    */
   struct Node4 : public Node {
     unsigned char keys[4];
-    Node* children[4];
+    std::array<Node*, 4> children;
 
     ~Node4();
     Node4();
@@ -115,7 +116,7 @@ struct art_tree {
    */
   struct Node16 : public Node {
     unsigned char keys[16];
-    Node* children[16];
+    std::array<Node*, 16> children;
 
     ~Node16();
     Node16();
@@ -132,7 +133,7 @@ struct art_tree {
    */
   struct Node48 : public Node {
     unsigned char keys[256];
-    Node* children[48];
+    std::array<Node*, 48> children;
 
     ~Node48();
     Node48();
@@ -147,7 +148,7 @@ struct art_tree {
    * Full node with 256 children
    */
   struct Node256 : public Node {
-    Node* children[256];
+    std::array<Node*, 256> children;
 
     ~Node256();
     Node256();
