@@ -14,16 +14,12 @@ static void build_list(
   size_t i;
   for (i = 0; i < num_files; i++) {
     list->emplace_back(
-        w_string::printf("%s/file%" PRIsize_t, parent_name.c_str(), i),
-        *now,
-        W_PENDING_VIA_NOTIFY);
+        w_string::build(parent_name, "/file", i), *now, W_PENDING_VIA_NOTIFY);
   }
 
   for (i = 0; i < num_dirs; i++) {
     list->emplace_back(
-        w_string::printf("%s/dir%" PRIsize_t, parent_name.c_str(), i),
-        *now,
-        W_PENDING_RECURSIVE);
+        w_string::build(parent_name, "/dir", i), *now, W_PENDING_RECURSIVE);
 
     if (depth > 0) {
       build_list(list, now, list->back().path, depth - 1, num_files, num_dirs);

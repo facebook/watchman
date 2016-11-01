@@ -136,6 +136,7 @@ TESTS = \
 		tests/ht.t \
 		tests/ignore.t \
 		tests/pending.t \
+		tests/string.t \
 		tests/log.t \
 		tests/wildmatch.t
 noinst_PROGRAMS = $(TESTS)
@@ -238,6 +239,15 @@ tests_ignore_t_SOURCES = \
 	hash.cpp \
 	ht.cpp \
 	ignore.cpp \
+	string.cpp \
+	log.cpp
+
+tests_string_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
+tests_string_t_LDADD = $(TAP_LIB) $(JSON_LIB)
+tests_string_t_SOURCES = \
+	tests/string_test.cpp \
+	tests/log_stub.cpp \
+	hash.cpp \
 	string.cpp \
 	log.cpp
 

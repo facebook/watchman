@@ -63,6 +63,14 @@ t_test(
 )
 
 t_test(
+    name='string',
+    srcs=['string_test.cpp', 'log_stub.cpp'],
+    deps=[
+      '@/watchman:testsupport',
+    ],
+)
+
+t_test(
     name='log',
     srcs=['log.cpp'],
     deps=[
