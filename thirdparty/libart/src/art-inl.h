@@ -860,7 +860,6 @@ void art_tree<ValueType>::recursiveInsert(
     const ValueType& value,
     uint32_t depth,
     int* old) {
-  Leaf* l;
   // If we are at a NULL node, inject a leaf
   if (!n) {
     *ref = SET_LEAF(art_tree<ValueType>::Leaf::make(key, key_len, value));
@@ -872,7 +871,7 @@ void art_tree<ValueType>::recursiveInsert(
     Node4* new_node;
     Leaf* l2;
 
-    l = LEAF_RAW(n);
+    auto l = LEAF_RAW(n);
 
     // Check if we are updating an existing value
     if (l->matches(key, key_len)) {
@@ -929,33 +928,33 @@ void art_tree<ValueType>::recursiveInsert(
           std::min(ART_MAX_PREFIX_LEN, n->partial_len));
     } else {
       n->partial_len -= (prefix_diff + 1);
-      l = n->minimum();
-      new_node->addChild(ref, l->keyAt(depth + prefix_diff), n);
+      auto minLeaf = n->minimum();
+      new_node->addChild(ref, minLeaf->keyAt(depth + prefix_diff), n);
       memcpy(
           n->partial,
-          l->key + depth + prefix_diff + 1,
+          minLeaf->key + depth + prefix_diff + 1,
           std::min(ART_MAX_PREFIX_LEN, n->partial_len));
     }
 
     // Insert the new leaf
-    l = Leaf::make(key, key_len, value);
+    auto l = Leaf::make(key, key_len, value);
     new_node->addChild(ref, l->keyAt(depth + prefix_diff), SET_LEAF(l));
     return;
   }
 
 RECURSE_SEARCH:;
-    {
-        // Find a child to recurse to
-        auto child = n->findChild(keyAt(key, key_len, depth));
-        if (child) {
-          recursiveInsert(*child, child, key, key_len, value, depth + 1, old);
-          return;
-        }
+  {
+    // Find a child to recurse to
+    auto child = n->findChild(keyAt(key, key_len, depth));
+    if (child) {
+      recursiveInsert(*child, child, key, key_len, value, depth + 1, old);
+      return;
     }
 
     // No child, node goes within us
-    l = Leaf::make(key, key_len, value);
+    auto l = Leaf::make(key, key_len, value);
     n->addChild(ref, l->keyAt(depth), SET_LEAF(l));
+  }
 }
 
 /**
@@ -1256,5 +1255,3 @@ int art_tree<ValueType>::iterPrefix(
   }
   return 0;
 }
-
-// vim:ts=4:sw=4:
