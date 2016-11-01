@@ -404,9 +404,6 @@ w_string_t *w_string_new_wchar_typed(WCHAR *str, int len,
 
 #endif
 
-/* This is copy-pasta from the function below, but that is less
- * work than swinging through with a vprintf variant that we don't
- * need and the plan is just to kill make_printf anyway. */
 w_string w_string::printf(const char *format, ...) {
   w_string_t *s;
   int len;
@@ -435,37 +432,6 @@ w_string w_string::printf(const char *format, ...) {
   s->buf = buf;
 
   return w_string(s, false);
-}
-
-w_string_t *w_string_make_printf(const char *format, ...)
-{
-  w_string_t *s;
-  int len;
-  char *buf;
-  va_list args;
-
-  va_start(args, format);
-  // Get the length needed
-  len = vsnprintf(NULL, 0, format, args);
-  va_end(args);
-
-  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
-  if (!s) {
-    perror("no memory available");
-    abort();
-  }
-
-  new (s) watchman_string();
-
-  s->refcnt = 1;
-  s->len = len;
-  buf = (char*)(s + 1);
-  va_start(args, format);
-  vsnprintf(buf, len + 1, format, args);
-  va_end(args);
-  s->buf = buf;
-
-  return s;
 }
 
 /* return a reference to a lowercased version of a string */

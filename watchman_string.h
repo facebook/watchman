@@ -64,8 +64,6 @@ bool w_string_equal_cstring(const w_string_t *a, const char *b);
 
 void w_string_in_place_normalize_separators(w_string_t **str, char target_sep);
 
-w_string_t *w_string_make_printf(const char *format, ...);
-
 /* Typed string creation functions. */
 w_string_t *w_string_new_typed(const char *str,
     w_string_type_t type);

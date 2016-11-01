@@ -57,11 +57,9 @@ void run_correctness_test(struct watchman_ignore *state,
 void add_strings(struct watchman_ignore *ignore, const char **strings,
                  uint32_t num_strings, bool is_vcs_ignore) {
   uint32_t i;
-  w_string_t *str;
   for (i = 0; i < num_strings; i++) {
-    str = w_string_new_typed(strings[i], W_STRING_UNICODE);
+    w_string str(strings[i], W_STRING_UNICODE);
     w_ignore_addstr(ignore, str, is_vcs_ignore);
-    w_string_delref(str);
   }
 }
 
@@ -105,11 +103,10 @@ void test_correctness(void) {
 // Each of those strings is prefixed with the supplied string.
 // If there are fewer than limit entries available in the data file, we will
 // abort.
-w_string_t** build_list_with_prefix(const char *prefix, size_t limit) {
-  auto strings = (w_string_t**)calloc(limit, sizeof(w_string_t*));
+std::vector<w_string> build_list_with_prefix(const char* prefix, size_t limit) {
+  std::vector<w_string> strings;
   char buf[512];
   FILE *f = fopen("thirdparty/libart/tests/words.txt", "r");
-  size_t i = 0;
 
   if (!f) {
     f = fopen("watchman/thirdparty/libart/tests/words.txt", "r");
@@ -119,14 +116,14 @@ w_string_t** build_list_with_prefix(const char *prefix, size_t limit) {
     // Remove newline
     uint32_t len = strlen_uint32(buf);
     buf[len - 1] = '\0';
-    strings[i++] = w_string_make_printf("%s%s", prefix, buf);
+    strings.emplace_back(w_string::printf("%s%s", prefix, buf));
 
-    if (i >= limit) {
+    if (strings.size() >= limit) {
       break;
     }
   }
 
-  if (i < limit) {
+  if (strings.size() < limit) {
     abort();
   }
 
@@ -141,27 +138,20 @@ void bench_list(const char *label, const char *prefix,
 
   struct watchman_ignore state;
   size_t i, n;
-  w_string_t **strings;
   struct timeval start, end;
 
   init_state(&state);
-  strings = build_list_with_prefix(prefix, kWordLimit);
+  auto strings = build_list_with_prefix(prefix, kWordLimit);
 
   gettimeofday(&start, NULL);
   for (n = 0; n < 100; n++) {
     for (i = 0; i < kWordLimit; i++) {
-      checker(&state, strings[i]->buf, strings[i]->len);
+      checker(&state, strings[i].data(), strings[i].size());
     }
   }
   gettimeofday(&end, NULL);
 
   diag("%s: took %.3fs", label, w_timeval_diff(start, end));
-
-  i = 0;
-  while (i < kWordLimit && strings[i] != NULL) {
-    w_string_delref(strings[i++]);
-  }
-  free(strings);
 }
 
 void bench_all_ignores(void) {
@@ -172,10 +162,7 @@ void bench_no_ignores(void) {
   bench_list("no_ignores_tree", "baz/some/path", w_ignore_check);
 }
 
-int main(int argc, char **argv) {
-  (void)argc;
-  (void)argv;
-
+int main(int, char**) {
   plan_tests(17);
   test_correctness();
   bench_all_ignores();
