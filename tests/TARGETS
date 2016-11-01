@@ -39,14 +39,6 @@ t_test(
 )
 
 t_test(
-    name='ht',
-    srcs=['ht_test.cpp', 'log_stub.cpp'],
-    deps=[
-      '@/watchman:testsupport',
-    ],
-)
-
-t_test(
     name='ignore',
     srcs=['ignore_test.cpp', 'log_stub.cpp'],
     deps=[

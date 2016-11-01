@@ -28,7 +28,6 @@ watchman_SOURCES = \
 	bser.cpp       \
 	expflags.cpp   \
 	hash.cpp       \
-	ht.cpp         \
 	ioprio.cpp        \
 	opendir.cpp       \
 	pending.cpp       \
@@ -133,7 +132,6 @@ TESTS = \
 		tests/art.t \
 		tests/argv.t \
 		tests/bser.t \
-		tests/ht.t \
 		tests/ignore.t \
 		tests/pending.t \
 		tests/string.t \
@@ -221,23 +219,12 @@ tests_argv_t_SOURCES = \
 	hash.cpp \
 	log.cpp
 
-tests_ht_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-tests_ht_t_LDADD = $(TAP_LIB) $(JSON_LIB)
-tests_ht_t_SOURCES = \
-	tests/ht_test.cpp \
-	tests/log_stub.cpp \
-	hash.cpp \
-	ht.cpp \
-	string.cpp \
-	log.cpp
-
 tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_ignore_t_LDADD = $(TAP_LIB) $(JSON_LIB)
 tests_ignore_t_SOURCES = \
 	tests/ignore_test.cpp \
 	tests/log_stub.cpp \
 	hash.cpp \
-	ht.cpp \
 	ignore.cpp \
 	string.cpp \
 	log.cpp
@@ -257,7 +244,6 @@ tests_pending_t_SOURCES = \
 	tests/pending_test.cpp \
 	tests/log_stub.cpp \
 	hash.cpp \
-	ht.cpp \
 	ignore.cpp \
 	pending.cpp \
 	expflags.cpp \

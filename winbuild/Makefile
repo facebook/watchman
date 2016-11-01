@@ -59,7 +59,6 @@ SRCS_CPP=\
 	stream.cpp     \
 	stream_win.cpp \
 	stream_stdout.cpp \
-	ht.cpp         \
 	cmds\find.cpp     \
 	cmds\info.cpp     \
 	cmds\log.cpp      \
@@ -132,7 +131,6 @@ TEST_DIR_SRCS_CPP=\
 	tests\art_test.cpp \
 	tests\argv.cpp \
 	tests\bser.cpp \
-	tests\ht_test.cpp \
 	tests\ignore_test.cpp \
 	tests\log_stub.cpp \
 	tests\log.cpp
@@ -141,7 +139,7 @@ OBJS=$(SRCS_CPP:.cpp=.obj) $(SRCS_C:.c=.obj)
 TEST_OBJS=$(TEST_SRCS_CPP:.cpp=.obj) $(TEST_SRCS_C:.c=.obj)
 TEST_DIR_OBJS=$(TEST_DIR_SRCS:.c=.obj) $(TEST_DIR_SRCS_CPP:.cpp=.obj)
 TESTS=tests\argv.exe tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
-			tests\art.exe tests\ignore.exe tests\pending.exe tests\ht.exe \
+			tests\art.exe tests\ignore.exe tests\pending.exe \
 			tests\string.exe
 
 {}.cpp{}.obj::
@@ -239,18 +237,8 @@ tests\art.exe: tests\art_test.obj $(TEST_OBJS) \
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 
-tests\ht.exe: tests\ht_test.obj $(TEST_OBJS) \
-		hash.obj \
-		ht.obj \
-		string.obj \
-		log.obj \
-		tests\log_stub.obj
-	@echo LINK $@
-	$(LINKER) $** $(LIBS)
-
 tests\ignore.exe: tests\ignore_test.obj $(TEST_OBJS) \
 		hash.obj \
-		ht.obj \
 		ignore.obj \
 		string.obj \
 		log.obj \
@@ -268,7 +256,6 @@ tests\string.exe: tests\string_test.obj $(TEST_OBJS) \
 
 tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
 		hash.obj \
-		ht.obj \
 		ignore.obj \
 		pending.obj \
 		expflags.obj \
