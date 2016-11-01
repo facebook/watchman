@@ -38,38 +38,36 @@ static bool is_path_prefix(const char *path, size_t path_len, const char *other,
 }
 
 // Helper to un-doubly-link a pending item.
-void PendingCollectionBase::unlinkItem(watchman_pending_fs* p) {
+void PendingCollectionBase::unlinkItem(
+    std::shared_ptr<watchman_pending_fs>& p) {
   if (pending_ == p) {
     pending_ = p->next;
   }
-  if (p->prev) {
-    p->prev->next = p->next;
+  auto prev = p->prev.lock();
+
+  if (prev) {
+    prev->next = std::move(p->next);
   }
+
   if (p->next) {
-    p->next->prev = p->prev;
+    p->next->prev = prev;
   }
 }
 
 // Helper to doubly-link a pending item to the head of a collection.
-void PendingCollectionBase::linkHead(watchman_pending_fs* p) {
-  p->prev = NULL;
+void PendingCollectionBase::linkHead(std::shared_ptr<watchman_pending_fs>&& p) {
   p->next = pending_;
-  if (pending_) {
-    pending_->prev = p;
+  if (p->next) {
+    p->next->prev = p;
   }
-  pending_ = p;
-}
-
-/* Free a pending_fs node */
-void w_pending_fs_free(struct watchman_pending_fs *p) {
-  delete p;
+  pending_ = std::move(p);
 }
 
 /* initialize a pending_coll */
 PendingCollectionBase::PendingCollectionBase(
     std::condition_variable& cond,
     std::atomic<bool>& pinged)
-    : pending_(nullptr), cond_(cond), pinged_(pinged) {}
+    : cond_(cond), pinged_(pinged) {}
 
 /* destroy a pending_coll */
 PendingCollectionBase::~PendingCollectionBase() {
@@ -78,12 +76,7 @@ PendingCollectionBase::~PendingCollectionBase() {
 
 /* drain and discard the content of a pending_coll, but do not destroy it */
 void PendingCollectionBase::drain() {
-  struct watchman_pending_fs *p;
-
-  while ((p = pop()) != NULL) {
-    w_pending_fs_free(p);
-  }
-
+  pending_.reset();
   tree_.clear();
 }
 
@@ -120,7 +113,14 @@ PendingCollectionBase::iterContext::iterContext(
 // function for more on that).
 int PendingCollectionBase::iterContext::operator()(
     const w_string& key,
-    watchman_pending_fs*& p) {
+    std::shared_ptr<watchman_pending_fs>& p) {
+  if (!p) {
+    // It was removed; update the tree to reflect this
+    coll.tree_.erase(key);
+    // Stop iteration: we deleted something and invalidated the iterators.
+    return 1;
+  }
+
   if ((p->flags & W_PENDING_CRAWL_ONLY) == 0 && key.size() > root.size() &&
       is_path_prefix(
           (const char*)key.data(), key.size(), root.data(), root.size()) &&
@@ -139,10 +139,7 @@ int PendingCollectionBase::iterContext::operator()(
     // Unlink the child from the pending index.
     coll.unlinkItem(p);
 
-    // and completely free it.
-    w_pending_fs_free(p);
-
-    // Remove it from the art tree also.
+    // Remove it from the art tree.
     coll.tree_.erase(key);
 
     // Stop iteration because we just invalidated the iterator state
@@ -156,7 +153,7 @@ int PendingCollectionBase::iterContext::operator()(
 // if there are any entries that are obsoleted by a recursive insert,
 // walk over them now and mark them as ignored.
 void PendingCollectionBase::maybePruneObsoletedChildren(
-    const w_string& path,
+    w_string path,
     int flags) {
   if ((flags & (W_PENDING_RECURSIVE | W_PENDING_CRAWL_ONLY)) ==
       W_PENDING_RECURSIVE) {
@@ -242,10 +239,10 @@ bool PendingCollectionBase::add(
     int flags) {
   char flags_label[128];
 
-  auto existing = tree_.search((const unsigned char*)path.data(), path.size());
+  auto existing = tree_.search(path);
   if (existing) {
     /* Entry already exists: consolidate */
-    consolidateItem(*existing, flags);
+    consolidateItem(existing->get(), flags);
     /* all done */
     return true;
   }
@@ -255,7 +252,7 @@ bool PendingCollectionBase::add(
   }
 
   // Try to allocate the new node before we prune any children.
-  auto p = new watchman_pending_fs(path, now, flags);
+  auto p = std::make_shared<watchman_pending_fs>(path, now, flags);
 
   maybePruneObsoletedChildren(path, flags);
 
@@ -267,8 +264,8 @@ bool PendingCollectionBase::add(
       path.data(),
       flags_label);
 
-  linkHead(p);
   tree_.insert(path, p);
+  linkHead(std::move(p));
 
   return true;
 }
@@ -295,45 +292,34 @@ bool PendingCollectionBase::add(
  * src is effectively drained in the process.
  * Caller must own the lock on both src and target. */
 void PendingCollectionBase::append(PendingCollectionBase* src) {
-  struct watchman_pending_fs* p;
-
-  while ((p = src->pop()) != NULL) {
+  auto p = src->stealItems();
+  while (p) {
     auto target_p =
         tree_.search((const uint8_t*)p->path.data(), p->path.size());
     if (target_p) {
       /* Entry already exists: consolidate */
-      consolidateItem(*target_p, p->flags);
-      w_pending_fs_free(p);
+      consolidateItem(target_p->get(), p->flags);
+      p = std::move(p->next);
       continue;
     }
 
     if (isObsoletedByContainingDir(p->path)) {
-      w_pending_fs_free(p);
+      p = std::move(p->next);
       continue;
     }
     maybePruneObsoletedChildren(p->path, p->flags);
 
-    linkHead(p);
+    auto next = std::move(p->next);
     tree_.insert(p->path, p);
-  }
+    linkHead(std::move(p));
 
-  // Empty the src tree and reset it
-  src->tree_.clear();
-  src->pending_ = NULL;
+    p = std::move(next);
+  }
 }
 
-/* Logically pop an entry from the collection.
- * Does NOT remove the entry from the uniq hash.
- * The intent is that the caller will call this in a tight loop and
- * then _drain() it at the end to clear the uniq hash */
-struct watchman_pending_fs* PendingCollectionBase::pop() {
-  struct watchman_pending_fs* p = pending_;
-
-  if (p) {
-    unlinkItem(p);
-  }
-
-  return p;
+std::shared_ptr<watchman_pending_fs> PendingCollectionBase::stealItems() {
+  tree_.clear();
+  return std::move(pending_);
 }
 
 /* Returns the number of unique pending items in the collection */

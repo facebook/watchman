@@ -28,19 +28,20 @@ static void build_list(
 }
 
 size_t process_items(PendingCollection::LockedPtr& coll) {
-  struct watchman_pending_fs *item;
   size_t drained = 0;
   struct stat st;
 
-  while ((item = coll->pop()) != nullptr) {
+  auto item = coll->stealItems();
+  while (item) {
     // To simulate looking at the file, we're just going to stat
     // ourselves over and over, as the path we put in the list
     // doesn't exist on the filesystem.  We're measuring hot cache
     // (best case) stat performance here.
     w_lstat(__FILE__, &st, true);
-    w_pending_fs_free(item);
 
     drained++;
+
+    item = std::move(item->next);
   }
   return drained;
 }

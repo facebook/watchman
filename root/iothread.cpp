@@ -230,7 +230,7 @@ bool InMemoryView::processPending(
     coll->append(&*srcLock);
   }
 
-  if (!coll->pending_) {
+  if (!coll->size()) {
     return false;
   }
 
@@ -240,20 +240,15 @@ bool InMemoryView::processPending(
       coll->size(),
       root_path.c_str());
 
-  // Steal the contents
-  auto pending = coll->pending_;
-  coll->pending_ = nullptr;
-  coll->drain();
+  auto pending = coll->stealItems();
 
   while (pending) {
-    auto p = pending;
-    pending = p->next;
-
     if (!stopThreads_) {
-      processPath(lock, coll, p->path, p->now, p->flags, nullptr);
+      processPath(
+          lock, coll, pending->path, pending->now, pending->flags, nullptr);
     }
 
-    w_pending_fs_free(p);
+    pending = std::move(pending->next);
   }
 
   return true;

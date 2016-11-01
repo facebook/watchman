@@ -10,7 +10,10 @@
 #define W_PENDING_CRAWL_ONLY 4
 
 struct watchman_pending_fs {
-  struct watchman_pending_fs *next{nullptr}, *prev{nullptr};
+  // We own the next entry and will destroy that chain when we
+  // are destroyed.
+  std::shared_ptr<watchman_pending_fs> next;
+  std::weak_ptr<watchman_pending_fs> prev;
   w_string path;
   struct timeval now;
   int flags;
@@ -22,8 +25,6 @@ struct watchman_pending_fs {
 };
 
 struct PendingCollectionBase {
-  watchman_pending_fs* pending_;
-
   PendingCollectionBase(
       std::condition_variable& cond,
       std::atomic<bool>& pinged);
@@ -39,7 +40,11 @@ struct PendingCollectionBase {
       struct timeval now,
       int flags);
   void append(PendingCollectionBase* src);
-  struct watchman_pending_fs* pop();
+
+  /* Moves the head of the chain of items to the caller.
+   * The tree is cleared and the caller owns the whole chain */
+  std::shared_ptr<watchman_pending_fs> stealItems();
+
   uint32_t size() const;
   void ping();
   bool checkAndResetPinged();
@@ -47,23 +52,26 @@ struct PendingCollectionBase {
  private:
   std::condition_variable& cond_;
   std::atomic<bool>& pinged_;
-  art_tree<watchman_pending_fs*, w_string> tree_;
+  art_tree<std::shared_ptr<watchman_pending_fs>, w_string> tree_;
+  std::shared_ptr<watchman_pending_fs> pending_;
 
   struct iterContext {
     const w_string& root;
     PendingCollectionBase& coll;
 
-    int operator()(const w_string& key, watchman_pending_fs*& p);
+    int operator()(
+        const w_string& key,
+        std::shared_ptr<watchman_pending_fs>& p);
 
     iterContext(const w_string& root, PendingCollectionBase& coll);
   };
   friend struct iterContext;
 
-  void maybePruneObsoletedChildren(const w_string& path, int flags);
+  void maybePruneObsoletedChildren(w_string path, int flags);
   inline void consolidateItem(watchman_pending_fs* p, int flags);
   bool isObsoletedByContainingDir(const w_string& path);
-  inline void linkHead(watchman_pending_fs* p);
-  inline void unlinkItem(watchman_pending_fs* p);
+  inline void linkHead(std::shared_ptr<watchman_pending_fs>&& p);
+  inline void unlinkItem(std::shared_ptr<watchman_pending_fs>& p);
 };
 
 class PendingCollection
@@ -78,5 +86,3 @@ class PendingCollection
   // Ping without requiring the lock to be held
   void ping();
 };
-
-void w_pending_fs_free(watchman_pending_fs* p);

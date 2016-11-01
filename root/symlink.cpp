@@ -151,13 +151,11 @@ static void watch_symlinks(const w_string& inputPath, json_t* root_files) {
  * watches for their new targets */
 void process_pending_symlink_targets(struct unlocked_watchman_root *unlocked) {
 #ifndef _WIN32
-  struct watchman_pending_fs *p, *pending;
   bool enforcing;
 
   auto pendingLock = unlocked->root->inner.pending_symlink_targets.wlock();
 
-  pending = pendingLock->pending_;
-  if (!pending) {
+  if (!pendingLock->size()) {
     return;
   }
 
@@ -169,14 +167,10 @@ void process_pending_symlink_targets(struct unlocked_watchman_root *unlocked) {
     return;
   }
 
-  pendingLock->pending_ = nullptr;
-  pendingLock->drain();
-
-  while (pending) {
-    p = pending;
-    pending = p->next;
+  auto p = pendingLock->stealItems();
+  while (p) {
     watch_symlinks(p->path, root_files);
-    w_pending_fs_free(p);
+    p = std::move(p->next);
   }
 
 #else
