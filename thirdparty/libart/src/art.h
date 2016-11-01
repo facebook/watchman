@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include "watchman_log.h"
 
 #define ART_MAX_PREFIX_LEN 10u
 
@@ -22,6 +23,7 @@ struct art_tree {
     void operator()(Leaf* leaf) const;
   };
   using NodePtr = std::unique_ptr<Node, Deleter>;
+  using LeafPtr = std::unique_ptr<Leaf, Deleter>;
 
   /**
    * This struct is included as part
@@ -41,7 +43,7 @@ struct art_tree {
 
     Leaf* maximum() const;
     Leaf* minimum() const;
-    virtual Node** findChild(unsigned char c) = 0;
+    virtual NodePtr* findChild(unsigned char c) = 0;
 
     // Returns the number of prefix characters shared between the key and node.
     uint32_t checkPrefix(
@@ -54,8 +56,8 @@ struct art_tree {
         uint32_t key_len,
         uint32_t depth) const;
 
-    virtual void addChild(Node** ref, unsigned char c, Node* child) = 0;
-    virtual void removeChild(Node** ref, unsigned char c, Node** l) = 0;
+    virtual void addChild(NodePtr& ref, unsigned char c, NodePtr&& child) = 0;
+    virtual NodePtr removeChild(NodePtr& ref, unsigned char c, NodePtr* l) = 0;
   };
 
   struct Node4;
@@ -85,12 +87,16 @@ struct art_tree {
     return uintptr_t(x) & 1;
   }
 
-  static inline Node* SET_LEAF(const Leaf* l) {
-    return (Node*)(uintptr_t(l) | 1);
-  }
-
   static inline Leaf* LEAF_RAW(const Node* x) {
     return (Leaf*)((void*)((uintptr_t(x) & ~1)));
+  }
+
+  static inline NodePtr LeafToNode(LeafPtr&& leaf) {
+    return NodePtr((Node*)(uintptr_t(leaf.release()) | 1));
+  }
+
+  static inline LeafPtr NodeToLeaf(NodePtr&& node) {
+    return LeafPtr(LEAF_RAW(node.release()));
   }
 
   static inline unsigned char
@@ -101,14 +107,13 @@ struct art_tree {
    */
   struct Node4 : public Node {
     unsigned char keys[4];
-    std::array<Node*, 4> children;
+    std::array<NodePtr, 4> children;
 
-    ~Node4();
     Node4();
     explicit Node4(Node16&& n16);
-    void addChild(Node** ref, unsigned char c, Node* child) override;
-    void removeChild(Node** ref, unsigned char c, Node** l) override;
-    Node** findChild(unsigned char c) override;
+    void addChild(NodePtr& ref, unsigned char c, NodePtr&& child) override;
+    NodePtr removeChild(NodePtr& ref, unsigned char c, NodePtr* l) override;
+    NodePtr* findChild(unsigned char c) override;
   };
 
   /**
@@ -116,15 +121,14 @@ struct art_tree {
    */
   struct Node16 : public Node {
     unsigned char keys[16];
-    std::array<Node*, 16> children;
+    std::array<NodePtr, 16> children;
 
-    ~Node16();
     Node16();
     explicit Node16(Node4&& n4);
     explicit Node16(Node48&& n48);
-    void addChild(Node** ref, unsigned char c, Node* child) override;
-    void removeChild(Node** ref, unsigned char c, Node** l) override;
-    Node** findChild(unsigned char c) override;
+    void addChild(NodePtr& ref, unsigned char c, NodePtr&& child) override;
+    NodePtr removeChild(NodePtr& ref, unsigned char c, NodePtr* l) override;
+    NodePtr* findChild(unsigned char c) override;
   };
 
   /**
@@ -133,29 +137,27 @@ struct art_tree {
    */
   struct Node48 : public Node {
     unsigned char keys[256];
-    std::array<Node*, 48> children;
+    std::array<NodePtr, 48> children;
 
-    ~Node48();
     Node48();
     explicit Node48(Node16&& n16);
     explicit Node48(Node256&& n256);
-    void addChild(Node** ref, unsigned char c, Node* child) override;
-    void removeChild(Node** ref, unsigned char c, Node** l) override;
-    Node** findChild(unsigned char c) override;
+    void addChild(NodePtr& ref, unsigned char c, NodePtr&& child) override;
+    NodePtr removeChild(NodePtr& ref, unsigned char c, NodePtr* l) override;
+    NodePtr* findChild(unsigned char c) override;
   };
 
   /**
    * Full node with 256 children
    */
   struct Node256 : public Node {
-    std::array<Node*, 256> children;
+    std::array<NodePtr, 256> children;
 
-    ~Node256();
     Node256();
     explicit Node256(Node48&& n48);
-    void addChild(Node** ref, unsigned char c, Node* child) override;
-    void removeChild(Node** ref, unsigned char c, Node** l) override;
-    Node** findChild(unsigned char c) override;
+    void addChild(NodePtr& ref, unsigned char c, NodePtr&& child) override;
+    NodePtr removeChild(NodePtr& ref, unsigned char c, NodePtr* l) override;
+    NodePtr* findChild(unsigned char c) override;
   };
 
   /**
@@ -169,7 +171,7 @@ struct art_tree {
 
     bool matches(const unsigned char* key, uint32_t key_len) const;
 
-    static Leaf*
+    static LeafPtr
     make(const unsigned char* key, uint32_t key_len, const ValueType& value);
 
     uint32_t longestCommonPrefix(const Leaf* other, uint32_t depth) const;
@@ -201,7 +203,7 @@ struct art_tree {
    * @arg key_len The length of the key
    * @return true if the item was erased, false otherwise.
    */
-  bool erase(const unsigned char* key, uint32_t key_len);
+  LeafPtr erase(const unsigned char* key, uint32_t key_len);
 
   /**
    * Searches for a value in the ART tree
@@ -268,20 +270,18 @@ struct art_tree {
       void* data);
 
  private:
-  Node* root_;
+  NodePtr root_;
   uint64_t size_;
 
   void recursiveInsert(
-      Node* n,
-      Node** ref,
+      NodePtr& ref,
       const unsigned char* key,
       uint32_t key_len,
       const ValueType& value,
       uint32_t depth,
       int* old);
-  Leaf* recursiveDelete(
-      Node* n,
-      Node** ref,
+  NodePtr recursiveDelete(
+      NodePtr& ref,
       const unsigned char* key,
       uint32_t key_len,
       uint32_t depth);

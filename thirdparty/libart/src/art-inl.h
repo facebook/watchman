@@ -1,4 +1,4 @@
-#include "watchman_log.h"
+#include "make_unique.h"
 
 #ifdef __SSE__
 #include <emmintrin.h>
@@ -92,13 +92,11 @@ art_tree<ValueType>::Node::Node(Node_type type, const Node& other)
 template <typename ValueType>
 art_tree<ValueType>::Node4::Node4() : Node(NODE4) {
   memset(keys, 0, sizeof(keys));
-  children.fill(nullptr);
 }
 
 template <typename ValueType>
 art_tree<ValueType>::Node4::Node4(Node16&& n16) : Node(NODE4, n16) {
   memset(keys, 0, sizeof(keys));
-  children.fill(nullptr);
   memcpy(keys, n16.keys, n16.num_children * sizeof(keys[0]));
   std::move(
       n16.children.begin(),
@@ -109,18 +107,10 @@ art_tree<ValueType>::Node4::Node4(Node16&& n16) : Node(NODE4, n16) {
 }
 
 template <typename ValueType>
-art_tree<ValueType>::Node4::~Node4() {
-  int i;
-  for (i = 0; i < this->num_children; i++) {
-    Deleter()(children[i]);
-  }
-}
-
-template <typename ValueType>
 void art_tree<ValueType>::Node4::addChild(
-    Node** ref,
+    NodePtr& ref,
     unsigned char c,
-    Node* child) {
+    NodePtr&& child) {
   if (this->num_children < 4) {
     int idx;
     for (idx = 0; idx < this->num_children; idx++) {
@@ -139,19 +129,17 @@ void art_tree<ValueType>::Node4::addChild(
 
     // Insert element
     keys[idx] = c;
-    children[idx] = child;
+    children[idx] = std::move(child);
     this->num_children++;
 
   } else {
-    auto new_node = new Node16(std::move(*this));
-    *ref = new_node;
-    delete this;
-    new_node->addChild(ref, c, child);
+    ref = watchman::make_unique<Node16, Deleter>(std::move(*this));
+    ref->addChild(ref, c, std::move(child));
   }
 }
 
 template <typename ValueType>
-typename art_tree<ValueType>::Node** art_tree<ValueType>::Node4::findChild(
+typename art_tree<ValueType>::NodePtr* art_tree<ValueType>::Node4::findChild(
     unsigned char c) {
   int i;
   for (i = 0; i < this->num_children; i++) {
@@ -163,12 +151,14 @@ typename art_tree<ValueType>::Node** art_tree<ValueType>::Node4::findChild(
 }
 
 template <typename ValueType>
-void art_tree<ValueType>::Node4::removeChild(
-    Node** ref,
+typename art_tree<ValueType>::NodePtr art_tree<ValueType>::Node4::removeChild(
+    NodePtr& ref,
     unsigned char,
-    Node** l) {
+    NodePtr* l) {
   auto pos = l - children.data();
   memmove(keys + pos, keys + pos + 1, this->num_children - 1 - pos);
+
+  NodePtr result = std::move(children[pos]);
 
   std::move(
       children.begin() + pos + 1,
@@ -179,7 +169,8 @@ void art_tree<ValueType>::Node4::removeChild(
 
   // Remove nodes with only a single child
   if (this->num_children == 1) {
-    auto child = children[0];
+    auto child = children[0].get();
+
     if (!IS_LEAF(child)) {
       // Concatenate the prefixes
       auto prefix = this->partial_len;
@@ -199,10 +190,11 @@ void art_tree<ValueType>::Node4::removeChild(
           child->partial, this->partial, std::min(prefix, ART_MAX_PREFIX_LEN));
       child->partial_len += this->partial_len + 1;
     }
-    *ref = child;
-    this->num_children = 0;
-    delete this;
+
+    ref = std::move(children[0]);
   }
+
+  return result;
 }
 
 // --------------------- Node16
@@ -210,12 +202,10 @@ void art_tree<ValueType>::Node4::removeChild(
 template <typename ValueType>
 art_tree<ValueType>::Node16::Node16() : Node(NODE16) {
   memset(keys, 0, sizeof(keys));
-  children.fill(nullptr);
 }
 
 template <typename ValueType>
 art_tree<ValueType>::Node16::Node16(Node4&& n4) : Node(NODE16, n4) {
-  children.fill(nullptr);
   memset(keys, 0, sizeof(keys));
 
   std::move(
@@ -231,13 +221,12 @@ template <typename ValueType>
 art_tree<ValueType>::Node16::Node16(Node48&& n48) : Node(NODE16, n48) {
   int i, child = 0;
   memset(keys, 0, sizeof(keys));
-  children.fill(nullptr);
 
   for (i = 0; i < 256; i++) {
     auto pos = n48.keys[i];
     if (pos) {
       keys[child] = i;
-      children[child] = n48.children[pos - 1];
+      children[child] = std::move(n48.children[pos - 1]);
       child++;
     }
   }
@@ -246,18 +235,10 @@ art_tree<ValueType>::Node16::Node16(Node48&& n48) : Node(NODE16, n48) {
 }
 
 template <typename ValueType>
-art_tree<ValueType>::Node16::~Node16() {
-  int i;
-  for (i = 0; i < this->num_children; i++) {
-    Deleter()(children[i]);
-  }
-}
-
-template <typename ValueType>
 void art_tree<ValueType>::Node16::addChild(
-    Node** ref,
+    NodePtr& ref,
     unsigned char c,
-    Node* child) {
+    NodePtr&& child) {
   if (this->num_children < 16) {
     unsigned idx;
 #ifdef __SSE__
@@ -297,19 +278,17 @@ void art_tree<ValueType>::Node16::addChild(
 
     // Set the child
     keys[idx] = c;
-    children[idx] = child;
+    children[idx] = std::move(child);
     this->num_children++;
 
   } else {
-    auto new_node = new Node48(std::move(*this));
-    *ref = new_node;
-    delete this;
-    new_node->addChild(ref, c, child);
+    ref = watchman::make_unique<Node48, Deleter>(std::move(*this));
+    ref->addChild(ref, c, std::move(child));
   }
 }
 
 template <typename ValueType>
-typename art_tree<ValueType>::Node** art_tree<ValueType>::Node16::findChild(
+typename art_tree<ValueType>::NodePtr* art_tree<ValueType>::Node16::findChild(
     unsigned char c) {
 #ifdef __SSE__
   __m128i cmp;
@@ -342,12 +321,14 @@ typename art_tree<ValueType>::Node** art_tree<ValueType>::Node16::findChild(
 }
 
 template <typename ValueType>
-void art_tree<ValueType>::Node16::removeChild(
-    Node** ref,
+typename art_tree<ValueType>::NodePtr art_tree<ValueType>::Node16::removeChild(
+    NodePtr& ref,
     unsigned char,
-    Node** l) {
+    NodePtr* l) {
   auto pos = l - children.data();
   memmove(keys + pos, keys + pos + 1, this->num_children - 1 - pos);
+
+  NodePtr result = std::move(children[pos]);
 
   std::move(
       children.begin() + pos + 1,
@@ -356,10 +337,10 @@ void art_tree<ValueType>::Node16::removeChild(
   this->num_children--;
 
   if (this->num_children == 3) {
-    auto new_node = new Node4(std::move(*this));
-    *ref = new_node;
-    delete this;
+    ref = watchman::make_unique<Node4, Deleter>(std::move(*this));
   }
+
+  return result;
 }
 
 // --------------------- Node48
@@ -367,14 +348,12 @@ void art_tree<ValueType>::Node16::removeChild(
 template <typename ValueType>
 art_tree<ValueType>::Node48::Node48() : Node(NODE48) {
   memset(keys, 0, sizeof(keys));
-  children.fill(nullptr);
 }
 
 template <typename ValueType>
 art_tree<ValueType>::Node48::Node48(Node16&& n16) : Node(NODE48, n16) {
   int i;
   memset(keys, 0, sizeof(keys));
-  children.fill(nullptr);
 
   std::move(
       n16.children.begin(),
@@ -393,11 +372,10 @@ art_tree<ValueType>::Node48::Node48(Node256&& n256)
     : art_tree::Node(NODE48, n256) {
   int i, pos = 0;
   memset(keys, 0, sizeof(keys));
-  children.fill(nullptr);
 
   for (i = 0; i < 256; i++) {
     if (n256.children[i]) {
-      children[pos] = n256.children[i];
+      children[pos] = std::move(n256.children[i]);
       keys[i] = pos + 1;
       pos++;
     }
@@ -407,36 +385,26 @@ art_tree<ValueType>::Node48::Node48(Node256&& n256)
 }
 
 template <typename ValueType>
-art_tree<ValueType>::Node48::~Node48() {
-  int i;
-  for (i = 0; i < this->num_children; i++) {
-    Deleter()(children[i]);
-  }
-}
-
-template <typename ValueType>
 void art_tree<ValueType>::Node48::addChild(
-    Node** ref,
+    NodePtr& ref,
     unsigned char c,
-    Node* child) {
+    NodePtr&& child) {
   if (this->num_children < 48) {
     int pos = 0;
     while (children[pos]) {
       pos++;
     }
-    children[pos] = child;
+    children[pos] = std::move(child);
     keys[c] = pos + 1;
     this->num_children++;
   } else {
-    auto new_node = new Node256(std::move(*this));
-    *ref = new_node;
-    delete this;
-    new_node->addChild(ref, c, child);
+    ref = watchman::make_unique<Node256, Deleter>(std::move(*this));
+    ref->addChild(ref, c, std::move(child));
   }
 }
 
 template <typename ValueType>
-typename art_tree<ValueType>::Node** art_tree<ValueType>::Node48::findChild(
+typename art_tree<ValueType>::NodePtr* art_tree<ValueType>::Node48::findChild(
     unsigned char c) {
   auto i = keys[c];
   if (i) {
@@ -446,36 +414,31 @@ typename art_tree<ValueType>::Node** art_tree<ValueType>::Node48::findChild(
 }
 
 template <typename ValueType>
-void art_tree<ValueType>::Node48::removeChild(
-    Node** ref,
+typename art_tree<ValueType>::NodePtr art_tree<ValueType>::Node48::removeChild(
+    NodePtr& ref,
     unsigned char c,
-    Node**) {
+    NodePtr*) {
   int pos = keys[c];
   keys[c] = 0;
-  children[pos - 1] = nullptr;
+
+  NodePtr result = std::move(children[pos - 1]);
   this->num_children--;
 
   if (this->num_children == 12) {
-    auto new_node = new Node16(std::move(*this));
-    *ref = new_node;
-    delete this;
+    ref = watchman::make_unique<Node16, Deleter>(std::move(*this));
   }
+
+  return result;
 }
 
 // --------------------- Node256
 
 template <typename ValueType>
-art_tree<ValueType>::Node256::Node256() : Node(NODE256) {
-  children.fill(nullptr);
-}
-
-template <typename ValueType>
 art_tree<ValueType>::Node256::Node256(Node48&& n48) : Node(NODE256, n48) {
   int i;
-  children.fill(nullptr);
   for (i = 0; i < 256; i++) {
     if (n48.keys[i]) {
-      children[i] = n48.children[n48.keys[i] - 1];
+      children[i] = std::move(n48.children[n48.keys[i] - 1]);
     }
   }
 
@@ -483,26 +446,16 @@ art_tree<ValueType>::Node256::Node256(Node48&& n48) : Node(NODE256, n48) {
 }
 
 template <typename ValueType>
-art_tree<ValueType>::Node256::~Node256() {
-  int i;
-  for (i = 0; this->num_children > 0 && i < 256; i++) {
-    if (children[i]) {
-      Deleter()(children[i]);
-    }
-  }
-}
-
-template <typename ValueType>
 void art_tree<ValueType>::Node256::addChild(
-    Node**,
+    NodePtr&,
     unsigned char c,
-    Node* child) {
+    NodePtr&& child) {
   this->num_children++;
-  children[c] = child;
+  children[c] = std::move(child);
 }
 
 template <typename ValueType>
-typename art_tree<ValueType>::Node** art_tree<ValueType>::Node256::findChild(
+typename art_tree<ValueType>::NodePtr* art_tree<ValueType>::Node256::findChild(
     unsigned char c) {
   if (children[c]) {
     return &children[c];
@@ -511,20 +464,20 @@ typename art_tree<ValueType>::Node** art_tree<ValueType>::Node256::findChild(
 }
 
 template <typename ValueType>
-void art_tree<ValueType>::Node256::removeChild(
-    Node** ref,
+typename art_tree<ValueType>::NodePtr art_tree<ValueType>::Node256::removeChild(
+    NodePtr& ref,
     unsigned char c,
-    Node**) {
-  children[c] = NULL;
+    NodePtr*) {
+  NodePtr result = std::move(children[c]);
   this->num_children--;
 
   // Resize to a node48 on underflow, not immediately to prevent
   // trashing if we sit on the 48/49 boundary
   if (this->num_children == 37) {
-    auto new_node = new Node48(std::move(*this));
-    *ref = new_node;
-    delete this;
+    ref = watchman::make_unique<Node48, Deleter>(std::move(*this));
   }
+
+  return result;
 }
 
 /**
@@ -563,8 +516,7 @@ art_tree<ValueType>::~art_tree() {
 
 template <typename ValueType>
 void art_tree<ValueType>::clear() {
-  Deleter()(root_);
-  root_ = nullptr;
+  root_.reset();
   size_ = 0;
 }
 
@@ -616,7 +568,7 @@ template <typename ValueType>
 ValueType* art_tree<ValueType>::search(
     const unsigned char* key,
     uint32_t key_len) const {
-  auto n = root_;
+  auto n = root_.get();
   uint32_t depth = 0;
   while (n) {
     // Might be a leaf
@@ -645,7 +597,7 @@ ValueType* art_tree<ValueType>::search(
 
     // Recursively search
     auto child = n->findChild(keyAt(key, key_len, depth));
-    n = (child) ? *child : NULL;
+    n = child ? child->get() : nullptr;
     depth++;
   }
   return nullptr;
@@ -655,7 +607,7 @@ template <typename ValueType>
 typename art_tree<ValueType>::Leaf* art_tree<ValueType>::longestMatch(
     const unsigned char* key,
     uint32_t key_len) const {
-  auto n = root_;
+  auto n = root_.get();
   uint32_t depth = 0;
   while (n) {
     // Might be a leaf
@@ -686,7 +638,7 @@ typename art_tree<ValueType>::Leaf* art_tree<ValueType>::longestMatch(
 
     // Recursively search
     auto child = n->findChild(keyAt(key, key_len, depth));
-    n = (child) ? *child : nullptr;
+    n = child ? child->get() : nullptr;
     depth++;
   }
   return nullptr;
@@ -705,10 +657,10 @@ typename art_tree<ValueType>::Leaf* art_tree<ValueType>::Node::minimum() const {
 
     switch (p.n->type) {
       case NODE4:
-        p.n = p.n4->children[0];
+        p.n = p.n4->children[0].get();
         break;
       case NODE16:
-        p.n = p.n16->children[0];
+        p.n = p.n16->children[0].get();
         break;
       case NODE48:
         idx = 0;
@@ -716,14 +668,14 @@ typename art_tree<ValueType>::Leaf* art_tree<ValueType>::Node::minimum() const {
           idx++;
         }
         idx = p.n48->keys[idx] - 1;
-        p.n = p.n48->children[idx];
+        p.n = p.n48->children[idx].get();
         break;
       case NODE256:
         idx = 0;
         while (!p.n256->children[idx]) {
           idx++;
         }
-        p.n = p.n256->children[idx];
+        p.n = p.n256->children[idx].get();
         break;
       default:
         abort();
@@ -746,10 +698,10 @@ typename art_tree<ValueType>::Leaf* art_tree<ValueType>::Node::maximum() const {
 
     switch (p.n->type) {
       case NODE4:
-        p.n = p.n4->children[p.n->num_children - 1];
+        p.n = p.n4->children[p.n->num_children - 1].get();
         break;
       case NODE16:
-        p.n = p.n16->children[p.n->num_children - 1];
+        p.n = p.n16->children[p.n->num_children - 1].get();
         break;
       case NODE48:
         idx = 255;
@@ -757,14 +709,14 @@ typename art_tree<ValueType>::Leaf* art_tree<ValueType>::Node::maximum() const {
           idx--;
         }
         idx = p.n48->keys[idx] - 1;
-        p.n = p.n48->children[idx];
+        p.n = p.n48->children[idx].get();
         break;
       case NODE256:
         idx = 255;
         while (!p.n256->children[idx]) {
           idx--;
         }
-        p.n = p.n256->children[idx];
+        p.n = p.n256->children[idx].get();
         break;
       default:
         abort();
@@ -792,7 +744,7 @@ typename art_tree<ValueType>::Leaf* art_tree<ValueType>::maximum() const {
 
 // Constructs a new leaf using the provided key.
 template <typename ValueType>
-typename art_tree<ValueType>::Leaf* art_tree<ValueType>::Leaf::make(
+typename art_tree<ValueType>::LeafPtr art_tree<ValueType>::Leaf::make(
     const unsigned char* key,
     uint32_t key_len,
     const ValueType& value) {
@@ -803,7 +755,7 @@ typename art_tree<ValueType>::Leaf* art_tree<ValueType>::Leaf::make(
   l->value = value;
   l->key_len = key_len;
   memcpy(l->key, key, key_len);
-  return l;
+  return LeafPtr(l);
 }
 
 template <typename ValueType>
@@ -853,25 +805,21 @@ uint32_t art_tree<ValueType>::Node::prefixMismatch(
 
 template <typename ValueType>
 void art_tree<ValueType>::recursiveInsert(
-    Node* n,
-    Node** ref,
+    NodePtr& ref,
     const unsigned char* key,
     uint32_t key_len,
     const ValueType& value,
     uint32_t depth,
     int* old) {
   // If we are at a NULL node, inject a leaf
-  if (!n) {
-    *ref = SET_LEAF(art_tree<ValueType>::Leaf::make(key, key_len, value));
+  if (!ref) {
+    ref = LeafToNode(Leaf::make(key, key_len, value));
     return;
   }
 
   // If we are at a leaf, we need to replace it with a node
-  if (IS_LEAF(n)) {
-    Node4* new_node;
-    Leaf* l2;
-
-    auto l = LEAF_RAW(n);
+  if (IS_LEAF(ref.get())) {
+    auto l = LEAF_RAW(ref.get());
 
     // Check if we are updating an existing value
     if (l->matches(key, key_len)) {
@@ -881,79 +829,98 @@ void art_tree<ValueType>::recursiveInsert(
     }
 
     // New value, we must split the leaf into a node4
-    new_node = new Node4;
+    NodePtr new_node = watchman::make_unique<Node4, Deleter>();
 
     // Create a new leaf
-    l2 = Leaf::make(key, key_len, value);
+    auto l2 = Leaf::make(key, key_len, value);
 
     // Determine longest prefix
-    auto longest_prefix = l->longestCommonPrefix(l2, depth);
+    auto longest_prefix = l->longestCommonPrefix(l2.get(), depth);
     new_node->partial_len = longest_prefix;
     memcpy(
         new_node->partial,
         l2->key + depth,
         std::min(ART_MAX_PREFIX_LEN, longest_prefix));
+
     // Add the leafs to the new node4
-    *ref = new_node;
-    new_node->addChild(ref, l->keyAt(depth + longest_prefix), SET_LEAF(l));
-    new_node->addChild(ref, l2->keyAt(depth + longest_prefix), SET_LEAF(l2));
+    new_node->addChild(
+        new_node, l->keyAt(depth + longest_prefix), std::move(ref));
+
+    auto leaf2Weak = l2.get();
+    new_node->addChild(
+        new_node,
+        leaf2Weak->keyAt(depth + longest_prefix),
+        LeafToNode(std::move(l2)));
+
+    ref = std::move(new_node);
     return;
   }
 
   // Check if given node has a prefix
-  if (n->partial_len) {
+  if (ref->partial_len) {
     // Determine if the prefixes differ, since we need to split
-    auto prefix_diff = n->prefixMismatch(key, key_len, depth);
-    if (prefix_diff >= n->partial_len) {
-      depth += n->partial_len;
+    auto prefix_diff = ref->prefixMismatch(key, key_len, depth);
+    if (prefix_diff >= ref->partial_len) {
+      depth += ref->partial_len;
       goto RECURSE_SEARCH;
     }
 
+    // Weak ref to current node
+    auto origNode = ref.get();
+
     // Create a new node
-    auto new_node = new art_tree<ValueType>::Node4;
-    *ref = new_node;
+    NodePtr new_node = watchman::make_unique<Node4, Deleter>();
     new_node->partial_len = prefix_diff;
     memcpy(
         new_node->partial,
-        n->partial,
+        origNode->partial,
         std::min(ART_MAX_PREFIX_LEN, prefix_diff));
 
     // Adjust the prefix of the old node
-    if (n->partial_len <= ART_MAX_PREFIX_LEN) {
-      new_node->addChild(ref, n->partial[prefix_diff], n);
-      n->partial_len -= (prefix_diff + 1);
+    if (origNode->partial_len <= ART_MAX_PREFIX_LEN) {
+      new_node->addChild(
+          new_node, origNode->partial[prefix_diff], std::move(ref));
+      origNode->partial_len -= (prefix_diff + 1);
       memmove(
-          n->partial,
-          n->partial + prefix_diff + 1,
-          std::min(ART_MAX_PREFIX_LEN, n->partial_len));
+          origNode->partial,
+          origNode->partial + prefix_diff + 1,
+          std::min(ART_MAX_PREFIX_LEN, origNode->partial_len));
     } else {
-      n->partial_len -= (prefix_diff + 1);
-      auto minLeaf = n->minimum();
-      new_node->addChild(ref, minLeaf->keyAt(depth + prefix_diff), n);
+      origNode->partial_len -= (prefix_diff + 1);
+      auto minLeaf = origNode->minimum();
+      new_node->addChild(
+          new_node, minLeaf->keyAt(depth + prefix_diff), std::move(ref));
       memcpy(
-          n->partial,
+          origNode->partial,
           minLeaf->key + depth + prefix_diff + 1,
-          std::min(ART_MAX_PREFIX_LEN, n->partial_len));
+          std::min(ART_MAX_PREFIX_LEN, origNode->partial_len));
     }
 
     // Insert the new leaf
     auto l = Leaf::make(key, key_len, value);
-    new_node->addChild(ref, l->keyAt(depth + prefix_diff), SET_LEAF(l));
+    auto leafWeak = l.get();
+    new_node->addChild(
+        new_node,
+        leafWeak->keyAt(depth + prefix_diff),
+        LeafToNode(std::move(l)));
+
+    ref = std::move(new_node);
     return;
   }
 
 RECURSE_SEARCH:;
   {
     // Find a child to recurse to
-    auto child = n->findChild(keyAt(key, key_len, depth));
+    auto child = ref->findChild(keyAt(key, key_len, depth));
     if (child) {
-      recursiveInsert(*child, child, key, key_len, value, depth + 1, old);
+      recursiveInsert(*child, key, key_len, value, depth + 1, old);
       return;
     }
 
     // No child, node goes within us
     auto l = Leaf::make(key, key_len, value);
-    n->addChild(ref, l->keyAt(depth), SET_LEAF(l));
+    auto leafWeak = l.get();
+    ref->addChild(ref, leafWeak->keyAt(depth), LeafToNode(std::move(l)));
   }
 }
 
@@ -972,60 +939,59 @@ void art_tree<ValueType>::insert(
     uint32_t key_len,
     const ValueType& value) {
   int old_val = 0;
-  recursiveInsert(root_, &root_, key, key_len, value, 0, &old_val);
+  recursiveInsert(root_, key, key_len, value, 0, &old_val);
   if (!old_val) {
     size_++;
   }
 }
 
 template <typename ValueType>
-typename art_tree<ValueType>::Leaf* art_tree<ValueType>::recursiveDelete(
-    Node* n,
-    Node** ref,
+typename art_tree<ValueType>::NodePtr art_tree<ValueType>::recursiveDelete(
+    NodePtr& ref,
     const unsigned char* key,
     uint32_t key_len,
     uint32_t depth) {
   // Search terminated
-  if (!n) {
+  if (!ref) {
     return nullptr;
   }
 
   // Handle hitting a leaf node
-  if (IS_LEAF(n)) {
-    auto l = LEAF_RAW(n);
+  if (IS_LEAF(ref.get())) {
+    auto l = LEAF_RAW(ref.get());
     if (l->matches(key, key_len)) {
-      *ref = nullptr;
-      return l;
+      NodePtr result;
+      std::swap(result, ref);
+      return result;
     }
     return nullptr;
   }
 
   // Bail if the prefix does not match
-  if (n->partial_len) {
-    auto prefix_len = n->checkPrefix(key, key_len, depth);
-    if (prefix_len != std::min(ART_MAX_PREFIX_LEN, n->partial_len)) {
+  if (ref->partial_len) {
+    auto prefix_len = ref->checkPrefix(key, key_len, depth);
+    if (prefix_len != std::min(ART_MAX_PREFIX_LEN, ref->partial_len)) {
       return nullptr;
     }
-    depth = depth + n->partial_len;
+    depth = depth + ref->partial_len;
   }
 
   // Find child node
-  auto child = n->findChild(keyAt(key, key_len, depth));
+  auto child = ref->findChild(keyAt(key, key_len, depth));
   if (!child) {
     return nullptr;
   }
 
   // If the child is leaf, delete from this node
-  if (IS_LEAF(*child)) {
-    auto l = LEAF_RAW(*child);
+  if (IS_LEAF(child->get())) {
+    auto l = LEAF_RAW(child->get());
     if (l->matches(key, key_len)) {
-      n->removeChild(ref, keyAt(key, key_len, depth), child);
-      return l;
+      return ref->removeChild(ref, keyAt(key, key_len, depth), child);
     }
     return nullptr;
   }
   // Recurse
-  return recursiveDelete(*child, child, key, key_len, depth + 1);
+  return recursiveDelete(*child, key, key_len, depth + 1);
 }
 
 /**
@@ -1037,14 +1003,15 @@ typename art_tree<ValueType>::Leaf* art_tree<ValueType>::recursiveDelete(
  * the value pointer is returned.
  */
 template <typename ValueType>
-bool art_tree<ValueType>::erase(const unsigned char* key, uint32_t key_len) {
-  auto l = recursiveDelete(root_, &root_, key, key_len, 0);
+typename art_tree<ValueType>::LeafPtr art_tree<ValueType>::erase(
+    const unsigned char* key,
+    uint32_t key_len) {
+  auto l = recursiveDelete(root_, key, key_len, 0);
   if (l) {
     size_--;
-    Deleter()(l);
-    return true;
+    return NodeToLeaf(std::move(l));
   }
-  return false;
+  return nullptr;
 }
 
 // Recursively iterates over the tree
@@ -1065,7 +1032,7 @@ int art_tree<ValueType>::recursiveIter(Node* n, art_callback cb, void* data) {
   switch (n->type) {
     case Node_type::NODE4:
       for (i = 0; i < n->num_children; i++) {
-        res = recursiveIter(p.n4->children[i], cb, data);
+        res = recursiveIter(p.n4->children[i].get(), cb, data);
         if (res) {
           return res;
         }
@@ -1074,7 +1041,7 @@ int art_tree<ValueType>::recursiveIter(Node* n, art_callback cb, void* data) {
 
     case Node_type::NODE16:
       for (i = 0; i < n->num_children; i++) {
-        res = recursiveIter(p.n16->children[i], cb, data);
+        res = recursiveIter(p.n16->children[i].get(), cb, data);
         if (res) {
           return res;
         }
@@ -1088,7 +1055,7 @@ int art_tree<ValueType>::recursiveIter(Node* n, art_callback cb, void* data) {
           continue;
         }
 
-        res = recursiveIter(p.n48->children[idx - 1], cb, data);
+        res = recursiveIter(p.n48->children[idx - 1].get(), cb, data);
         if (res) {
           return res;
         }
@@ -1100,7 +1067,7 @@ int art_tree<ValueType>::recursiveIter(Node* n, art_callback cb, void* data) {
         if (!p.n256->children[i]) {
           continue;
         }
-        res = recursiveIter(p.n256->children[i], cb, data);
+        res = recursiveIter(p.n256->children[i].get(), cb, data);
         if (res) {
           return res;
         }
@@ -1125,7 +1092,7 @@ int art_tree<ValueType>::recursiveIter(Node* n, art_callback cb, void* data) {
  */
 template <typename ValueType>
 int art_tree<ValueType>::iter(art_callback cb, void* data) {
-  return recursiveIter(root_, cb, data);
+  return recursiveIter(root_.get(), cb, data);
 }
 
 /**
@@ -1202,7 +1169,7 @@ int art_tree<ValueType>::iterPrefix(
     uint32_t key_len,
     art_callback cb,
     void* data) {
-  auto n = root_;
+  auto n = root_.get();
   uint32_t prefix_len, depth = 0;
   struct prefix_iterator_state<ValueType> state = {
     key, key_len, cb, data
@@ -1250,7 +1217,7 @@ int art_tree<ValueType>::iterPrefix(
 
     // Recursively search
     auto child = n->findChild(keyAt(key, key_len, depth));
-    n = (child) ? *child : NULL;
+    n = child ? child->get() : nullptr;
     depth++;
   }
   return 0;
