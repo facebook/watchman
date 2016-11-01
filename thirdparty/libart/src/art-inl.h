@@ -112,33 +112,32 @@ template <typename ValueType>
 art_tree<ValueType>::art_tree() : root_(nullptr), size_(0) {}
 
 template <typename ValueType>
-inline void destroy_leaf(typename art_tree<ValueType>::Leaf* leaf) {
+void art_tree<ValueType>::Deleter::operator()(Leaf* leaf) const {
   leaf->~Leaf();
   delete[](char*) leaf;
 }
 
-// Recursively destroys the tree
 template <typename ValueType>
-inline void destroy_node(typename art_tree<ValueType>::Node* n) {
+void art_tree<ValueType>::Deleter::operator()(Node* node) const {
   // Break if null
-  if (!n) {
+  if (!node) {
     return;
   }
 
   // Special case leafs
-  if (art_tree<ValueType>::IS_LEAF(n)) {
-    destroy_leaf<ValueType>(art_tree<ValueType>::LEAF_RAW(n));
+  if (IS_LEAF(node)) {
+    operator()(LEAF_RAW(node));
     return;
   }
 
-  delete n;
+  delete node;
 }
 
 template <typename ValueType>
 art_tree<ValueType>::Node4::~Node4() {
   int i;
   for (i = 0; i < this->num_children; i++) {
-    destroy_node<ValueType>(children[i]);
+    Deleter()(children[i]);
   }
 }
 
@@ -146,7 +145,7 @@ template <typename ValueType>
 art_tree<ValueType>::Node16::~Node16() {
   int i;
   for (i = 0; i < this->num_children; i++) {
-    destroy_node<ValueType>(children[i]);
+    Deleter()(children[i]);
   }
 }
 
@@ -154,7 +153,7 @@ template <typename ValueType>
 art_tree<ValueType>::Node48::~Node48() {
   int i;
   for (i = 0; i < this->num_children; i++) {
-    destroy_node<ValueType>(children[i]);
+    Deleter()(children[i]);
   }
 }
 
@@ -163,7 +162,7 @@ art_tree<ValueType>::Node256::~Node256() {
   int i;
   for (i = 0; this->num_children > 0 && i < 256; i++) {
     if (children[i]) {
-      destroy_node<ValueType>(children[i]);
+      Deleter()(children[i]);
     }
   }
 }
@@ -175,7 +174,7 @@ art_tree<ValueType>::~art_tree() {
 
 template <typename ValueType>
 void art_tree<ValueType>::clear() {
-  destroy_node<ValueType>(root_);
+  Deleter()(root_);
   root_ = nullptr;
   size_ = 0;
 }
@@ -1031,7 +1030,7 @@ bool art_tree<ValueType>::erase(const unsigned char* key, uint32_t key_len) {
   auto l = recursiveDelete(root_, &root_, key, key_len, 0);
   if (l) {
     size_--;
-    destroy_leaf<ValueType>(l);
+    Deleter()(l);
     return true;
   }
   return false;

@@ -3,6 +3,7 @@
 #include "config.h"
 #include <cstdint>
 #include <functional>
+#include <memory>
 
 #define ART_MAX_PREFIX_LEN 10u
 
@@ -12,7 +13,14 @@
 template <typename ValueType>
 struct art_tree {
   struct Leaf;
+  struct Node;
   enum Node_type : uint8_t { NODE4 = 1, NODE16, NODE48, NODE256 };
+
+  struct Deleter {
+    void operator()(Node* node) const;
+    void operator()(Leaf* leaf) const;
+  };
+  using NodePtr = std::unique_ptr<Node, Deleter>;
 
   /**
    * This struct is included as part
