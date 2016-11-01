@@ -23,7 +23,7 @@ struct watchman_pending_collection {
   pthread_mutex_t lock;
   pthread_cond_t cond;
   bool pinged;
-  art_tree tree;
+  art_tree<watchman_pending_fs*> tree;
 
   watchman_pending_collection();
   watchman_pending_collection(const watchman_pending_collection&) = delete;

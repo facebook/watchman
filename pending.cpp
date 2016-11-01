@@ -249,7 +249,7 @@ static bool is_obsoleted_by_containing_dir(
   if (!leaf) {
     return false;
   }
-  auto p = (watchman_pending_fs*)leaf->value;
+  auto p = leaf->value;
 
   if ((p->flags & W_PENDING_RECURSIVE) &&
       is_path_prefix(
@@ -288,11 +288,11 @@ bool w_pending_coll_add(
     int flags) {
   char flags_label[128];
 
-  auto p = (watchman_pending_fs*)coll->tree.search(
-      (const unsigned char*)path.data(), path.size());
-  if (p) {
+  auto existing =
+      coll->tree.search((const unsigned char*)path.data(), path.size());
+  if (existing) {
     /* Entry already exists: consolidate */
-    consolidate_item(coll, p, flags);
+    consolidate_item(coll, *existing, flags);
     /* all done */
     return true;
   }
@@ -302,7 +302,7 @@ bool w_pending_coll_add(
   }
 
   // Try to allocate the new node before we prune any children.
-  p = new watchman_pending_fs(path, now, flags);
+  auto p = new watchman_pending_fs(path, now, flags);
 
   maybe_prune_obsoleted_children(coll, path, flags);
 
@@ -342,14 +342,14 @@ bool w_pending_coll_add_rel(struct watchman_pending_collection *coll,
  * Caller must own the lock on both src and target. */
 void w_pending_coll_append(struct watchman_pending_collection *target,
     struct watchman_pending_collection *src) {
-  struct watchman_pending_fs *p, *target_p;
+  struct watchman_pending_fs* p;
 
   while ((p = w_pending_coll_pop(src)) != NULL) {
-    target_p = (watchman_pending_fs*)target->tree.search(
-        (const uint8_t*)p->path.data(), p->path.size());
+    auto target_p =
+        target->tree.search((const uint8_t*)p->path.data(), p->path.size());
     if (target_p) {
       /* Entry already exists: consolidate */
-      consolidate_item(target, target_p, p->flags);
+      consolidate_item(target, *target_p, p->flags);
       w_pending_fs_free(p);
       continue;
     }

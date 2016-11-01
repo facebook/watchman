@@ -18,7 +18,7 @@ struct watchman_ignore {
   /* radix tree containing the same information as the ignore
    * entries above.  This is used only on OS X and Windows because
    * we cannot exclude these dirs using the kernel watching APIs */
-  art_tree tree;
+  art_tree<uint8_t> tree;
   /* On OS X, we need to preserve the order of the ignore list so
    * that we can exclude things deterministically and fit within
    * system limits. */

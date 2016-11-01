@@ -4,10 +4,10 @@
 #include "watchman.h"
 
 // The path and everything below it is ignored.
-#define FULL_IGNORE  (void*)0x1
+#define FULL_IGNORE 0x1
 // The grand-children of the path are ignored, but not the path
 // or its direct children.
-#define VCS_IGNORE   (void*)0x2
+#define VCS_IGNORE 0x2
 
 watchman_ignore::watchman_ignore()
     : ignore_vcs(w_ht_new(2, &w_ht_string_funcs)),

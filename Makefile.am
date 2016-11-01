@@ -9,7 +9,7 @@ THIRDPARTY_CPPFLAGS = -I$(top_srcdir)/thirdparty/jansson -I$(top_builddir)/third
 JSON_LIB = -L. libwmanjson.a
 
 watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-watchman_LDADD = $(JSON_LIB) $(ART_LIB) libwildmatch.a
+watchman_LDADD = $(JSON_LIB) libwildmatch.a
 watchman_SOURCES = \
 	CookieSync.cpp \
 	InMemoryView.cpp \
@@ -99,7 +99,6 @@ noinst_HEADERS =   \
 	watchman_hash.h
 
 noinst_LIBRARIES = \
-	libart.a \
 	libtap.a \
 	libwildmatch.a \
 	libwmanjson.a
@@ -128,10 +127,6 @@ TAP_LIB = libtap.a
 # pattern matching library
 libwildmatch_a_SOURCES = thirdparty/wildmatch/wildmatch.c
 WILDMATCH_LIB = libwildmatch.a
-
-# adaptive radix tree library
-libart_a_SOURCES = thirdparty/libart/src/art.cpp
-ART_LIB = libart.a
 
 # unit tests
 TESTS = \
@@ -209,7 +204,7 @@ build-tests: $(TESTS)
 integration: all py-integration check
 
 tests_art_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-tests_art_t_LDADD = $(ART_LIB) $(TAP_LIB)
+tests_art_t_LDADD = $(TAP_LIB)
 tests_art_t_SOURCES = \
 	tests/art_test.cpp \
 	tests/log_stub.cpp \
@@ -226,7 +221,7 @@ tests_argv_t_SOURCES = \
 	log.cpp
 
 tests_ht_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-tests_ht_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
+tests_ht_t_LDADD = $(TAP_LIB) $(JSON_LIB)
 tests_ht_t_SOURCES = \
 	tests/ht_test.cpp \
 	tests/log_stub.cpp \
@@ -236,7 +231,7 @@ tests_ht_t_SOURCES = \
 	log.cpp
 
 tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-tests_ignore_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
+tests_ignore_t_LDADD = $(TAP_LIB) $(JSON_LIB)
 tests_ignore_t_SOURCES = \
 	tests/ignore_test.cpp \
 	tests/log_stub.cpp \
@@ -247,7 +242,7 @@ tests_ignore_t_SOURCES = \
 	log.cpp
 
 tests_pending_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-tests_pending_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
+tests_pending_t_LDADD = $(TAP_LIB) $(JSON_LIB)
 tests_pending_t_SOURCES = \
 	tests/pending_test.cpp \
 	tests/log_stub.cpp \

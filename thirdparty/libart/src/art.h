@@ -9,15 +9,16 @@
 /**
  * Main struct, points to root.
  */
+template <typename ValueType>
 struct art_tree {
   struct Leaf;
+  enum Node_type : uint8_t { NODE4 = 1, NODE16, NODE48, NODE256 };
 
   /**
    * This struct is included as part
    * of all the various node sizes
    */
   struct Node {
-    enum Node_type : uint8_t { NODE4 = 1, NODE16, NODE48, NODE256 };
     Node_type type;
     uint8_t num_children{0};
     uint32_t partial_len{0};
@@ -34,11 +35,15 @@ struct art_tree {
     virtual Node** findChild(unsigned char c) = 0;
 
     // Returns the number of prefix characters shared between the key and node.
-    uint32_t checkPrefix(const unsigned char* key, uint32_t key_len, int depth)
-        const;
+    uint32_t checkPrefix(
+        const unsigned char* key,
+        uint32_t key_len,
+        uint32_t depth) const;
     // Calculates the index at which the prefixes mismatch
-    uint32_t
-    prefixMismatch(const unsigned char* key, uint32_t key_len, int depth) const;
+    uint32_t prefixMismatch(
+        const unsigned char* key,
+        uint32_t key_len,
+        uint32_t depth) const;
 
     virtual void addChild(Node** ref, unsigned char c, Node* child) = 0;
     virtual void removeChild(Node** ref, unsigned char c, Node** l) = 0;
@@ -48,6 +53,39 @@ struct art_tree {
   struct Node16;
   struct Node48;
   struct Node256;
+
+  // Helper for dispatching to the correct node type
+  union node_ptr {
+    Node* n;
+    Node4* n4;
+    Node16* n16;
+    Node48* n48;
+    Node256* n256;
+  };
+
+  // const flavor of the above
+  union cnode_ptr {
+    const Node* n;
+    const Node4* n4;
+    const Node16* n16;
+    const Node48* n48;
+    const Node256* n256;
+  };
+
+  static inline bool IS_LEAF(const Node* x) {
+    return uintptr_t(x) & 1;
+  }
+
+  static inline Node* SET_LEAF(const Leaf* l) {
+    return (Node*)(uintptr_t(l) | 1);
+  }
+
+  static inline Leaf* LEAF_RAW(const Node* x) {
+    return (Leaf*)((void*)((uintptr_t(x) & ~1)));
+  }
+
+  static inline unsigned char
+  keyAt(const unsigned char* key, uint32_t key_len, uint32_t idx);
 
   /**
    * Small node with only 4 children
@@ -116,15 +154,16 @@ struct art_tree {
    * of arbitrary size, as they include the key.
    */
   struct Leaf {
-    void* value;
+    ValueType value;
     uint32_t key_len;
     unsigned char key[1];
 
     bool matches(const unsigned char* key, uint32_t key_len) const;
 
-    static Leaf* make(const unsigned char* key, uint32_t key_len, void* value);
+    static Leaf*
+    make(const unsigned char* key, uint32_t key_len, const ValueType& value);
 
-    uint32_t longestCommonPrefix(const Leaf* other, int depth) const;
+    uint32_t longestCommonPrefix(const Leaf* other, uint32_t depth) const;
     bool prefixMatches(const unsigned char* prefix, uint32_t prefix_len) const;
   };
 
@@ -143,7 +182,8 @@ struct art_tree {
    * @arg key_len The length of the key
    * @arg value Opaque value.
    */
-  void insert(const unsigned char* key, uint32_t key_len, void* value);
+  void
+  insert(const unsigned char* key, uint32_t key_len, const ValueType& value);
 
   /**
    * Deletes a value from the ART tree
@@ -160,7 +200,7 @@ struct art_tree {
    * @return NULL if the item was not found, otherwise
    * the value pointer is returned.
    */
-  void* search(const unsigned char* key, uint32_t key_len) const;
+  ValueType* search(const unsigned char* key, uint32_t key_len) const;
 
   /**
    * Searches for the longest prefix match for the input key.
@@ -183,8 +223,11 @@ struct art_tree {
    */
   Leaf* maximum() const;
 
-  using art_callback = std::function<
-      int(void* data, const unsigned char* key, uint32_t key_len, void* value)>;
+  using art_callback = std::function<int(
+      void* data,
+      const unsigned char* key,
+      uint32_t key_len,
+      ValueType& value)>;
 
   /**
    * Iterates through the entries pairs in the map,
@@ -222,17 +265,18 @@ struct art_tree {
       Node* n,
       Node** ref,
       const unsigned char* key,
-      int key_len,
-      void* value,
-      int depth,
+      uint32_t key_len,
+      const ValueType& value,
+      uint32_t depth,
       int* old);
   Leaf* recursiveDelete(
       Node* n,
       Node** ref,
       const unsigned char* key,
-      int key_len,
-      int depth);
+      uint32_t key_len,
+      uint32_t depth);
   int recursiveIter(Node* n, art_callback cb, void* data);
 };
 
+#include "art-inl.h"
 #endif
