@@ -209,17 +209,10 @@ static bool parse_redirection(const char **name_p, int *flags,
   return true;
 }
 
-watchman_trigger_command::~watchman_trigger_command() {
-  if (envht) {
-    w_ht_free(envht);
-  }
-}
-
 watchman_trigger_command::watchman_trigger_command()
     : query(nullptr),
       definition(nullptr),
       command(nullptr),
-      envht(nullptr),
       append_files(0),
       stdin_style(input_dev_null),
       max_files_stdin(0),

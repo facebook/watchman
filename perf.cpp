@@ -125,12 +125,11 @@ static void *perf_log_thread(void *unused) {
   // Prep some things that we'll need each time we run a command
   {
     uint32_t env_size;
-    w_ht_t *envpht = w_envp_make_ht();
+    auto envpht = w_envp_make_ht();
     char *statedir = dirname(strdup(watchman_state_file));
     w_envp_set_cstring(envpht, "WATCHMAN_STATE_DIR", statedir);
     w_envp_set_cstring(envpht, "WATCHMAN_SOCK", get_sock_name());
     envp = w_envp_make_from_ht(envpht, &env_size);
-    w_ht_free(envpht);
   }
 
   perf_cmd = cfg_get_json("perf_logger_command");

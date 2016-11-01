@@ -4,19 +4,17 @@
 #include "watchman.h"
 
 /* Constructs a hash table from the current process environment */
-w_ht_t *w_envp_make_ht(void)
-{
-  w_ht_t *ht;
+std::unordered_map<w_string, w_string> w_envp_make_ht(void) {
+  std::unordered_map<w_string, w_string> ht;
   uint32_t nenv, i;
   const char *eq;
   const char *ent;
-  w_string_t *key, *val, *str;
 
   for (i = 0, nenv = 0; environ[i]; i++) {
     nenv++;
   }
 
-  ht = w_ht_new(nenv, &w_ht_dict_funcs);
+  ht.reserve(nenv);
 
   for (i = 0; environ[i]; i++) {
     ent = environ[i];
@@ -26,19 +24,14 @@ w_ht_t *w_envp_make_ht(void)
     }
 
     // slice name=value into a key and a value string
-    str = w_string_new_typed(ent, W_STRING_BYTE);
-    key = w_string_slice(str, 0, (uint32_t)(eq - ent));
-    val = w_string_slice(str, 1 + (uint32_t)(eq - ent),
-            (uint32_t)(str->len - (key->len + 1)));
+    w_string str(ent, W_STRING_BYTE);
+    auto key = str.slice(0, (uint32_t)(eq - ent));
+    auto val = str.slice(
+        1 + (uint32_t)(eq - ent), (uint32_t)(str.size() - (key.size() + 1)));
 
     // Replace rather than set, just in case we somehow have duplicate
     // keys in our environment array.
-    w_ht_replace(ht, w_ht_ptr_val(key), w_ht_ptr_val(val));
-
-    // Release our slices
-    w_string_delref(str);
-    w_string_delref(key);
-    w_string_delref(val);
+    ht[key] = val;
   }
 
   return ht;
@@ -49,22 +42,22 @@ w_ht_t *w_envp_make_ht(void)
  * such that it can be released by a single call to free(3).
  * The last element of the returned array is set to NULL for compatibility
  * with posix_spawn() */
-char **w_envp_make_from_ht(w_ht_t *ht, uint32_t *env_size)
-{
-  int nele = w_ht_size(ht);
+char** w_envp_make_from_ht(
+    const std::unordered_map<w_string, w_string>& ht,
+    uint32_t* env_size) {
+  int nele = ht.size();
   int len = (1 + nele) * sizeof(char*);
-  w_ht_iter_t iter;
   char *buf;
   uint32_t i = 0;
 
   // Make a pass through to compute the required memory size
-  if (w_ht_first(ht, &iter)) do {
-    auto key = (w_string_t*)w_ht_val_ptr(iter.key);
-    auto val = (w_string_t*)w_ht_val_ptr(iter.value);
+  for (const auto& it : ht) {
+    const auto& key = it.first;
+    const auto& val = it.second;
 
     // key=value\0
-    len += key->len + 1 + val->len + 1;
-  } while (w_ht_next(ht, &iter));
+    len += key.size() + 1 + val.size() + 1;
+  }
 
   *env_size = len;
 
@@ -76,33 +69,35 @@ char **w_envp_make_from_ht(w_ht_t *ht, uint32_t *env_size)
   buf = (char*)(envp + nele + 1);
 
   // Now populate
-  if (w_ht_first(ht, &iter)) do {
-    auto key = (w_string_t*)w_ht_val_ptr(iter.key);
-    auto val = (w_string_t*)w_ht_val_ptr(iter.value);
+  for (const auto& it : ht) {
+    const auto& key = it.first;
+    const auto& val = it.second;
 
     envp[i++] = buf;
 
     // key=value\0
-    memcpy(buf, key->buf, key->len);
-    buf += key->len;
+    memcpy(buf, key.data(), key.size());
+    buf += key.size();
 
     memcpy(buf, "=", 1);
     buf++;
 
-    memcpy(buf, val->buf, val->len);
-    buf += val->len;
+    memcpy(buf, val.data(), val.size());
+    buf += val.size();
 
     *buf = 0;
     buf++;
-  } while (w_ht_next(ht, &iter));
+  }
 
   envp[nele] = NULL;
 
   return envp;
 }
 
-void w_envp_set_bool(w_ht_t *envht, const char *key, bool val)
-{
+void w_envp_set_bool(
+    std::unordered_map<w_string, w_string>& envht,
+    const char* key,
+    bool val) {
   if (val) {
     w_envp_set_cstring(envht, key, "true");
   } else {
@@ -110,33 +105,24 @@ void w_envp_set_bool(w_ht_t *envht, const char *key, bool val)
   }
 }
 
-void w_envp_unset(w_ht_t *envht, const char *key)
-{
-  w_string_t *kstr = w_string_new_typed(key, W_STRING_BYTE);
-
-  w_ht_del(envht, w_ht_ptr_val(kstr));
-
-  w_string_delref(kstr);
+void w_envp_unset(
+    std::unordered_map<w_string, w_string>& envht,
+    const char* key) {
+  envht.erase(key);
 }
 
-void w_envp_set(w_ht_t *envht, const char *key, w_string_t *val)
-{
-  w_string_t *kstr = w_string_new_typed(key, W_STRING_BYTE);
-
-  w_ht_replace(envht, w_ht_ptr_val(kstr), w_ht_ptr_val(val));
-
-  w_string_delref(kstr);
+void w_envp_set(
+    std::unordered_map<w_string, w_string>& envht,
+    const char* key,
+    w_string_t* val) {
+  envht[key] = val;
 }
 
-void w_envp_set_cstring(w_ht_t *envht, const char *key, const char *val)
-{
-  w_string_t *kstr = w_string_new_typed(key, W_STRING_BYTE);
-  w_string_t *vstr = w_string_new_typed(val, W_STRING_BYTE);
-
-  w_ht_replace(envht, w_ht_ptr_val(kstr), w_ht_ptr_val(vstr));
-
-  w_string_delref(kstr);
-  w_string_delref(vstr);
+void w_envp_set_cstring(
+    std::unordered_map<w_string, w_string>& envht,
+    const char* key,
+    const char* val) {
+  envht[key] = val;
 }
 
 /* vim:ts=2:sw=2:et:

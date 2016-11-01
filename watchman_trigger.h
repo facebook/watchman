@@ -9,7 +9,7 @@ struct watchman_trigger_command {
   std::shared_ptr<w_query> query;
   json_ref definition;
   json_ref command;
-  w_ht_t *envht;
+  std::unordered_map<w_string, w_string> envht;
 
   struct w_query_field_list field_list;
   int append_files;
@@ -27,7 +27,6 @@ struct watchman_trigger_command {
 
   watchman_trigger_command();
   watchman_trigger_command(const watchman_trigger_command&) = delete;
-  ~watchman_trigger_command();
 };
 
 void w_assess_trigger(
