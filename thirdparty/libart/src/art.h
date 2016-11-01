@@ -281,7 +281,7 @@ struct art_tree {
       const unsigned char* key,
       uint32_t key_len,
       uint32_t depth,
-      int* old,
+      bool& replaced,
       Args&&... args);
   NodePtr recursiveDelete(
       NodePtr& ref,

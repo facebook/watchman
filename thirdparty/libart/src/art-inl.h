@@ -818,7 +818,7 @@ void art_tree<ValueType>::recursiveInsert(
     const unsigned char* key,
     uint32_t key_len,
     uint32_t depth,
-    int* old,
+    bool& replaced,
     Args&&... args) {
   // If we are at a NULL node, inject a leaf
   if (!ref) {
@@ -832,7 +832,7 @@ void art_tree<ValueType>::recursiveInsert(
 
     // Check if we are updating an existing value
     if (l->matches(key, key_len)) {
-      *old = 1;
+      replaced = true;
       l->value = ValueType(std::forward<Args>(args)...);
       return;
     }
@@ -923,7 +923,12 @@ RECURSE_SEARCH:;
     auto child = ref->findChild(keyAt(key, key_len, depth));
     if (child) {
       recursiveInsert(
-          *child, key, key_len, depth + 1, old, std::forward<Args>(args)...);
+          *child,
+          key,
+          key_len,
+          depth + 1,
+          replaced,
+          std::forward<Args>(args)...);
       return;
     }
 
@@ -940,10 +945,10 @@ void art_tree<ValueType>::insert(
     const unsigned char* key,
     uint32_t key_len,
     Args&&... args) {
-  int old_val = 0;
+  bool replaced = false;
   recursiveInsert(
-      root_, key, key_len, 0, &old_val, std::forward<Args>(args)...);
-  if (!old_val) {
+      root_, key, key_len, 0, replaced, std::forward<Args>(args)...);
+  if (!replaced) {
     size_++;
   }
 }
