@@ -744,18 +744,26 @@ typename art_tree<ValueType>::Leaf* art_tree<ValueType>::maximum() const {
 
 // Constructs a new leaf using the provided key.
 template <typename ValueType>
+template <typename... Args>
 typename art_tree<ValueType>::LeafPtr art_tree<ValueType>::Leaf::make(
     const unsigned char* key,
     uint32_t key_len,
-    const ValueType& value) {
+    Args&&... args) {
   // Leaf::key is declared as key[1] so sizeof(Leaf) is 1 too many;
   // deduct 1 so that we allocate the perfect size
   auto l = (Leaf*)(new char[sizeof(art_tree::Leaf) + key_len - 1]);
-  new (l) Leaf();
-  l->value = value;
-  l->key_len = key_len;
-  memcpy(l->key, key, key_len);
+  new (l) Leaf(key, key_len, std::forward<Args>(args)...);
   return LeafPtr(l);
+}
+
+template <typename ValueType>
+template <typename... Args>
+art_tree<ValueType>::Leaf::Leaf(
+    const unsigned char* key,
+    uint32_t key_len,
+    Args&&... args)
+    : value(std::forward<Args>(args)...), key_len(key_len) {
+  memcpy(this->key, key, key_len);
 }
 
 template <typename ValueType>
@@ -804,16 +812,17 @@ uint32_t art_tree<ValueType>::Node::prefixMismatch(
 }
 
 template <typename ValueType>
+template <typename... Args>
 void art_tree<ValueType>::recursiveInsert(
     NodePtr& ref,
     const unsigned char* key,
     uint32_t key_len,
-    const ValueType& value,
     uint32_t depth,
-    int* old) {
+    int* old,
+    Args&&... args) {
   // If we are at a NULL node, inject a leaf
   if (!ref) {
-    ref = LeafToNode(Leaf::make(key, key_len, value));
+    ref = LeafToNode(Leaf::make(key, key_len, std::forward<Args>(args)...));
     return;
   }
 
@@ -824,7 +833,7 @@ void art_tree<ValueType>::recursiveInsert(
     // Check if we are updating an existing value
     if (l->matches(key, key_len)) {
       *old = 1;
-      l->value = value;
+      l->value = ValueType(std::forward<Args>(args)...);
       return;
     }
 
@@ -832,7 +841,7 @@ void art_tree<ValueType>::recursiveInsert(
     NodePtr new_node = watchman::make_unique<Node4, Deleter>();
 
     // Create a new leaf
-    auto l2 = Leaf::make(key, key_len, value);
+    auto l2 = Leaf::make(key, key_len, std::forward<Args>(args)...);
 
     // Determine longest prefix
     auto longest_prefix = l->longestCommonPrefix(l2.get(), depth);
@@ -897,7 +906,7 @@ void art_tree<ValueType>::recursiveInsert(
     }
 
     // Insert the new leaf
-    auto l = Leaf::make(key, key_len, value);
+    auto l = Leaf::make(key, key_len, std::forward<Args>(args)...);
     auto leafWeak = l.get();
     new_node->addChild(
         new_node,
@@ -913,33 +922,27 @@ RECURSE_SEARCH:;
     // Find a child to recurse to
     auto child = ref->findChild(keyAt(key, key_len, depth));
     if (child) {
-      recursiveInsert(*child, key, key_len, value, depth + 1, old);
+      recursiveInsert(
+          *child, key, key_len, depth + 1, old, std::forward<Args>(args)...);
       return;
     }
 
     // No child, node goes within us
-    auto l = Leaf::make(key, key_len, value);
+    auto l = Leaf::make(key, key_len, std::forward<Args>(args)...);
     auto leafWeak = l.get();
     ref->addChild(ref, leafWeak->keyAt(depth), LeafToNode(std::move(l)));
   }
 }
 
-/**
- * Inserts a new value into the ART tree
- * @arg t The tree
- * @arg key The key
- * @arg key_len The length of the key
- * @arg value Opaque value.
- * @return NULL if the item was newly inserted, otherwise
- * the old value pointer is returned.
- */
 template <typename ValueType>
+template <typename... Args>
 void art_tree<ValueType>::insert(
     const unsigned char* key,
     uint32_t key_len,
-    const ValueType& value) {
+    Args&&... args) {
   int old_val = 0;
-  recursiveInsert(root_, key, key_len, value, 0, &old_val);
+  recursiveInsert(
+      root_, key, key_len, 0, &old_val, std::forward<Args>(args)...);
   if (!old_val) {
     size_++;
   }

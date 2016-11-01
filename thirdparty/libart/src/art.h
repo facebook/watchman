@@ -169,10 +169,14 @@ struct art_tree {
     uint32_t key_len;
     unsigned char key[1];
 
+    template <typename... Args>
+    Leaf(const unsigned char* key, uint32_t key_len, Args&&... args);
+
     bool matches(const unsigned char* key, uint32_t key_len) const;
 
+    template <typename... Args>
     static LeafPtr
-    make(const unsigned char* key, uint32_t key_len, const ValueType& value);
+    make(const unsigned char* key, uint32_t key_len, Args&&... args);
 
     uint32_t longestCommonPrefix(const Leaf* other, uint32_t depth) const;
     bool prefixMatches(const unsigned char* prefix, uint32_t prefix_len) const;
@@ -189,13 +193,11 @@ struct art_tree {
   void clear();
 
   /**
-   * Inserts a new value into the ART tree
-   * @arg key The key
-   * @arg key_len The length of the key
-   * @arg value Opaque value.
+   * Construct a new value in-place in the ART tree.
+   * The arguments are forwarded to the ValueType constructor
    */
-  void
-  insert(const unsigned char* key, uint32_t key_len, const ValueType& value);
+  template <typename... Args>
+  void insert(const unsigned char* key, uint32_t key_len, Args&&... args);
 
   /**
    * Deletes a value from the ART tree
@@ -273,13 +275,14 @@ struct art_tree {
   NodePtr root_;
   uint64_t size_;
 
+  template <typename... Args>
   void recursiveInsert(
       NodePtr& ref,
       const unsigned char* key,
       uint32_t key_len,
-      const ValueType& value,
       uint32_t depth,
-      int* old);
+      int* old,
+      Args&&... args);
   NodePtr recursiveDelete(
       NodePtr& ref,
       const unsigned char* key,
