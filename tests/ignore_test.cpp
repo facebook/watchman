@@ -40,15 +40,14 @@ struct test_case {
   bool ignored;
 };
 
-void run_correctness_test(struct watchman_ignore *state,
-                          const struct test_case *tests, uint32_t num_tests,
-                          bool (*checker)(const struct watchman_ignore *,
-                                          const char *, uint32_t)) {
-
+void run_correctness_test(
+    struct watchman_ignore* state,
+    const struct test_case* tests,
+    uint32_t num_tests) {
   uint32_t i;
 
   for (i = 0; i < num_tests; i++) {
-    bool res = checker(state, tests[i].path, strlen_uint32(tests[i].path));
+    bool res = state->isIgnored(tests[i].path, strlen_uint32(tests[i].path));
     ok(res == tests[i].ignored, "%s expected=%d actual=%d", tests[i].path,
        tests[i].ignored, res);
   }
@@ -58,12 +57,11 @@ void add_strings(struct watchman_ignore *ignore, const char **strings,
                  uint32_t num_strings, bool is_vcs_ignore) {
   uint32_t i;
   for (i = 0; i < num_strings; i++) {
-    w_string str(strings[i], W_STRING_UNICODE);
-    w_ignore_addstr(ignore, str, is_vcs_ignore);
+    ignore->add(w_string(strings[i], W_STRING_UNICODE), is_vcs_ignore);
   }
 }
 
-void init_state(struct watchman_ignore *state) {
+void init_state(struct watchman_ignore* state) {
   add_strings(state, ignore_dirs, sizeof(ignore_dirs) / sizeof(ignore_dirs[0]),
               false);
 
@@ -95,8 +93,7 @@ void test_correctness(void) {
 
   init_state(&state);
 
-  run_correctness_test(&state, tests, sizeof(tests) / sizeof(tests[0]),
-                       w_ignore_check);
+  run_correctness_test(&state, tests, sizeof(tests) / sizeof(tests[0]));
 }
 
 // Load up the words data file and build a list of strings from that list.
@@ -132,10 +129,7 @@ std::vector<w_string> build_list_with_prefix(const char* prefix, size_t limit) {
 
 static const size_t kWordLimit = 230000;
 
-void bench_list(const char *label, const char *prefix,
-                bool (*checker)(const struct watchman_ignore *, const char *,
-                                uint32_t)) {
-
+void bench_list(const char* label, const char* prefix) {
   struct watchman_ignore state;
   size_t i, n;
   struct timeval start, end;
@@ -146,7 +140,7 @@ void bench_list(const char *label, const char *prefix,
   gettimeofday(&start, NULL);
   for (n = 0; n < 100; n++) {
     for (i = 0; i < kWordLimit; i++) {
-      checker(&state, strings[i].data(), strings[i].size());
+      state.isIgnored(strings[i].data(), strings[i].size());
     }
   }
   gettimeofday(&end, NULL);
@@ -155,11 +149,11 @@ void bench_list(const char *label, const char *prefix,
 }
 
 void bench_all_ignores(void) {
-  bench_list("all_ignores_tree", "baz/buck-out/gen/", w_ignore_check);
+  bench_list("all_ignores_tree", "baz/buck-out/gen/");
 }
 
 void bench_no_ignores(void) {
-  bench_list("no_ignores_tree", "baz/some/path", w_ignore_check);
+  bench_list("no_ignores_tree", "baz/some/path");
 }
 
 int main(int, char**) {

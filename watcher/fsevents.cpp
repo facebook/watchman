@@ -8,7 +8,7 @@
 
 // The FSEventStreamSetExclusionPaths API has a limit of 8 items.
 // If that limit is exceeded, it will fail.
-#define MAX_EXCLUSIONS 8
+#define MAX_EXCLUSIONS size_t(8)
 
 struct watchman_fsevent {
   struct watchman_fsevent *next;
@@ -228,7 +228,7 @@ propagate:
       len--;
     }
 
-    if (w_ignore_check(&root->ignore, path, len)) {
+    if (root->ignore.isIgnored(path, len)) {
       continue;
     }
 
@@ -396,10 +396,10 @@ static struct fse_stream* fse_stream_make(
       CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
 
 #ifdef HAVE_FSEVENTSTREAMSETEXCLUSIONPATHS
-  if (w_ht_size(root->ignore.ignore_dirs) > 0 &&
+  if (!root->ignore.dirs_vec.empty() &&
       root->config.getBool("_use_fsevents_exclusions", true)) {
     CFMutableArrayRef ignarray;
-    size_t i, nitems = MIN(w_ht_size(root->ignore.ignore_dirs), MAX_EXCLUSIONS);
+    size_t i, nitems = std::min(root->ignore.dirs_vec.size(), MAX_EXCLUSIONS);
 
     ignarray = CFArrayCreateMutable(nullptr, 0, &kCFTypeArrayCallBacks);
     if (!ignarray) {
@@ -409,13 +409,13 @@ static struct fse_stream* fse_stream_make(
     }
 
     for (i = 0; i < nitems; ++i) {
-      w_string_t *path = root->ignore.dirs_vec[i];
+      const auto& path = root->ignore.dirs_vec[i];
       CFStringRef ignpath;
 
       ignpath = CFStringCreateWithBytes(
           nullptr,
-          (const UInt8*)path->buf,
-          path->len,
+          (const UInt8*)path.data(),
+          path.size(),
           kCFStringEncodingUTF8,
           false);
 

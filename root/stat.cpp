@@ -19,7 +19,7 @@ void InMemoryView::statPath(
   bool via_notify = flags & W_PENDING_VIA_NOTIFY;
   const w_root_t* root = lock->root;
 
-  if (w_ht_get(root->ignore.ignore_dirs, w_ht_ptr_val(full_path))) {
+  if (root->ignore.isIgnoreDir(full_path)) {
     w_log(
         W_LOG_DBG,
         "%.*s matches ignore_dir rules\n",
@@ -183,7 +183,7 @@ void InMemoryView::statPath(
       }
 
       // Don't recurse if our parent is an ignore dir
-      if (!w_ht_get(root->ignore.ignore_vcs, w_ht_ptr_val(dir_name)) ||
+      if (!root->ignore.isIgnoreVCS(dir_name) ||
           // but do if we're looking at the cookie dir (stat_path is never
           // called for the root itself)
           w_string_equal(full_path, root->cookies.cookieDir())) {

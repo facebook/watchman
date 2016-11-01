@@ -10,8 +10,8 @@
 #define NETWORK_BUF_SIZE (64*1024)
 
 struct winwatch_changed_item {
-  struct winwatch_changed_item *next;
-  w_string_t *name;
+  struct winwatch_changed_item* next{nullptr};
+  w_string name;
 };
 
 struct WinWatcher : public Watcher {
@@ -251,19 +251,17 @@ static void *readchanges_thread(void *arg) {
         while (true) {
           struct winwatch_changed_item *item;
           DWORD n_chars;
-          w_string_t *name, *full;
+          w_string_t* name;
 
           // FileNameLength is in BYTES, but FileName is WCHAR
           n_chars = not->FileNameLength / sizeof(not->FileName[0]);
           name = w_string_new_wchar_typed(not->FileName, n_chars, W_STRING_BYTE);
 
-          full = w_string_path_cat(root->root_path, name);
+          auto full = w_string::pathCat({root->root_path, name});
           w_string_delref(name);
 
-          if (w_ignore_check(&root->ignore, full->buf, full->len)) {
-            w_string_delref(full);
-          } else {
-            item = (winwatch_changed_item*)calloc(1, sizeof(*item));
+          if (!root->ignore.isIgnored(full.data(), full.size())) {
+            item = new winwatch_changed_item;
             item->name = full;
 
             if (tail) {
@@ -393,12 +391,14 @@ bool WinWatcher::consumeNotify(
     list = item->next;
     n++;
 
-    w_log(W_LOG_DBG, "readchanges: add pending %.*s\n",
-        item->name->len, item->name->buf);
+    w_log(
+        W_LOG_DBG,
+        "readchanges: add pending %.*s\n",
+        int(item->name.size()),
+        item->name.data());
     coll->add(item->name, now, W_PENDING_VIA_NOTIFY);
 
-    w_string_delref(item->name);
-    free(item);
+    delete item;
   }
 
   return n > 0;

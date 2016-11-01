@@ -9,36 +9,20 @@
 // or its direct children.
 #define VCS_IGNORE 0x2
 
-watchman_ignore::watchman_ignore()
-    : ignore_vcs(w_ht_new(2, &w_ht_string_funcs)),
-      ignore_dirs(w_ht_new(2, &w_ht_string_funcs)),
-      dirs_vec(nullptr) {}
+void watchman_ignore::add(const w_string& path, bool is_vcs_ignore) {
+  (is_vcs_ignore ? ignore_vcs : ignore_dirs).insert(path);
 
-void w_ignore_addstr(struct watchman_ignore *ignore, w_string_t *path,
-                     bool is_vcs_ignore) {
-  w_ht_set(is_vcs_ignore ? ignore->ignore_vcs : ignore->ignore_dirs,
-           w_ht_ptr_val(path), w_ht_ptr_val(path));
-
-  ignore->tree.insert(path, is_vcs_ignore ? VCS_IGNORE : FULL_IGNORE);
+  tree.insert(path, is_vcs_ignore ? VCS_IGNORE : FULL_IGNORE);
 
   if (!is_vcs_ignore) {
-    ignore->dirs_vec = (w_string_t**)realloc(
-        ignore->dirs_vec, w_ht_size(ignore->ignore_dirs) * sizeof(w_string_t*));
-    if (!ignore->dirs_vec) {
-      w_log(W_LOG_FATAL, "OOM while recording ignore dirs");
-    }
-
-    // No need to add a ref, as that is tracked by the hash table
-    ignore->dirs_vec[w_ht_size(ignore->ignore_dirs)-1] = path;
+    dirs_vec.push_back(path);
   }
 }
 
-bool w_ignore_check(const struct watchman_ignore *ignore, const char *path,
-                    uint32_t pathlen) {
+bool watchman_ignore::isIgnored(const char* path, uint32_t pathlen) const {
   const char *skip_prefix;
   uint32_t len;
-  auto leaf =
-      ignore->tree.longestMatch((const unsigned char*)path, (int)pathlen);
+  auto leaf = tree.longestMatch((const unsigned char*)path, (int)pathlen);
 
   if (!leaf) {
     // No entry -> not ignored.
@@ -109,10 +93,12 @@ bool w_ignore_check(const struct watchman_ignore *ignore, const char *path,
 #endif
 }
 
-watchman_ignore::~watchman_ignore() {
-  w_ht_free(ignore_vcs);
-  w_ht_free(ignore_dirs);
-  free(dirs_vec);
+bool watchman_ignore::isIgnoreVCS(const w_string& path) const {
+  return ignore_vcs.find(path) != ignore_vcs.end();
+}
+
+bool watchman_ignore::isIgnoreDir(const w_string& path) const {
+  return ignore_dirs.find(path) != ignore_dirs.end();
 }
 
 /* vim:ts=2:sw=2:et:
