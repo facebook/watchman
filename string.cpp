@@ -404,7 +404,7 @@ w_string_t *w_string_new_wchar_typed(WCHAR *str, int len,
 
 #endif
 
-w_string w_string::printf(const char *format, ...) {
+w_string w_string::printf(WATCHMAN_FMT_STRING(const char* format), ...) {
   w_string_t *s;
   int len;
   char *buf;

@@ -14,14 +14,14 @@ static void build_list(
   size_t i;
   for (i = 0; i < num_files; i++) {
     list->emplace_back(
-        w_string::printf("%s/file%d", parent_name.c_str(), i),
+        w_string::printf("%s/file%" PRIsize_t, parent_name.c_str(), i),
         *now,
         W_PENDING_VIA_NOTIFY);
   }
 
   for (i = 0; i < num_dirs; i++) {
     list->emplace_back(
-        w_string::printf("%s/dir%d", parent_name.c_str(), i),
+        w_string::printf("%s/dir%" PRIsize_t, parent_name.c_str(), i),
         *now,
         W_PENDING_RECURSIVE);
 

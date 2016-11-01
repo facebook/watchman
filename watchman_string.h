@@ -10,6 +10,7 @@
 #include <cstring>
 #include <initializer_list>
 #include <memory>
+#include "watchman_log.h"
 
 struct watchman_string;
 typedef struct watchman_string w_string_t;
@@ -239,7 +240,8 @@ class w_string {
   static w_string pathCat(std::initializer_list<w_string_piece> elems);
 
   /** Similar to asprintf, but returns a w_string */
-  static w_string printf(const char *format, ...);
+  static w_string printf(WATCHMAN_FMT_STRING(const char* format), ...)
+      WATCHMAN_FMT_ATTR(1, 2);
 
   /** Return a possibly new version of this string that is null terminated */
   w_string asNullTerminated() const;

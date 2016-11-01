@@ -326,7 +326,7 @@ static struct fse_stream* fse_stream_make(
       // If there is no UUID available and we want to use an event offset,
       // we fail: a nullptr UUID means that the journal is not available.
       failure_reason = w_string::printf(
-          "fsevents journal is not available for dev_t=%lu\n", st.st_dev);
+          "fsevents journal is not available for dev_t=%d\n", st.st_dev);
       goto fail;
     }
     // Compare the UUID with that of the current stream
