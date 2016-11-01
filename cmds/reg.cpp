@@ -3,59 +3,56 @@
 
 #include "watchman.h"
 
-static w_ht_t *command_funcs = NULL;
-static w_ht_t *capabilities = NULL;
+namespace {
+struct reg {
+  std::unordered_map<w_string, watchman_command_handler_def*> commands;
+  std::unordered_set<w_string> capabilities;
+
+  reg() {
+    commands.reserve(16);
+    capabilities.reserve(128);
+  }
+};
+
+// Meyers singleton to avoid SIOF problems
+reg& get_reg() {
+  static struct reg reg;
+  return reg;
+}
+}
+
 /* Some error conditions will put us into a non-recoverable state where we
  * can't guarantee that we will be operating correctly.  Rather than suffering
  * in silence and misleading our clients, we'll poison ourselves and advertise
  * that we have done so and provide some advice on how the user can cure us. */
 char *poisoned_reason = NULL;
 
-static int compare_def(const void *A, const void *B)
-{
-  struct watchman_command_handler_def *a =
-    *(struct watchman_command_handler_def**)A;
-  struct watchman_command_handler_def *b =
-    *(struct watchman_command_handler_def**)B;
-
-  return strcmp(a->name, b->name);
-}
-
 void print_command_list_for_help(FILE *where)
 {
-  uint32_t i = 0, n = w_ht_size(command_funcs);
-  struct watchman_command_handler_def **defs;
-  w_ht_iter_t iter;
+  std::vector<watchman_command_handler_def*> defs;
 
-  defs = (watchman_command_handler_def**)calloc(n, sizeof(*defs));
-  if (!defs) {
-    abort();
+  for (auto& it : get_reg().commands) {
+    defs.emplace_back(it.second);
   }
-  if (w_ht_first(command_funcs, &iter)) do {
-    defs[i++] = (watchman_command_handler_def*)w_ht_val_ptr(iter.value);
-  } while (w_ht_next(command_funcs, &iter));
 
-  if (n > 0) {
-    qsort(defs, n, sizeof(*defs), compare_def);
-  }
+  std::sort(
+      defs.begin(),
+      defs.end(),
+      [](watchman_command_handler_def* A, watchman_command_handler_def* B) {
+        return strcmp(A->name, B->name) < 0;
+      });
 
   fprintf(where, "\n\nAvailable commands:\n\n");
-  for (i = 0; i < n; i++) {
-    fprintf(where, "      %s\n", defs[i]->name);
+  for (auto& def : defs) {
+    fprintf(where, "      %s\n", def->name);
   }
-  free(defs);
 }
 
 void w_register_command(struct watchman_command_handler_def *defs)
 {
   char capname[128];
 
-  if (!command_funcs) {
-    command_funcs = w_ht_new(16, &w_ht_string_funcs);
-  }
-  w_ht_set(command_funcs,
-      w_ht_ptr_val(w_string_new_typed(defs->name, W_STRING_UNICODE)),
-      w_ht_ptr_val(defs));
+  get_reg().commands[w_string(defs->name, W_STRING_UNICODE)] = defs;
 
   snprintf(capname, sizeof(capname), "cmd-%s", defs->name);
   w_capability_register(capname);
@@ -79,9 +76,8 @@ lookup(const json_ref& args, char** errmsg, int mode) {
     return nullptr;
   }
   auto cmd = json_to_w_string(jstr);
-  auto def = (watchman_command_handler_def*)w_ht_val_ptr(
-      w_ht_get(command_funcs, w_ht_ptr_val(cmd)));
-  // Not added ref so not decrementing it.
+  auto it = get_reg().commands.find(cmd);
+  auto def = it == get_reg().commands.end() ? nullptr : it->second;
 
   if (def) {
     if (mode && ((def->flags & mode) == 0)) {
@@ -193,29 +189,19 @@ done:
 }
 
 void w_capability_register(const char *name) {
-  if (!capabilities) {
-    capabilities = w_ht_new(128, &w_ht_string_funcs);
-  }
-  w_ht_set(capabilities,
-      w_ht_ptr_val(w_string_new_typed(name, W_STRING_UNICODE)),
-      true);
+  get_reg().capabilities.insert(w_string(name, W_STRING_UNICODE));
 }
 
-bool w_capability_supported(const w_string_t *name) {
-  bool res;
-  res = w_ht_get(capabilities, w_ht_ptr_val(name));
-  return res;
+bool w_capability_supported(const w_string& name) {
+  return get_reg().capabilities.find(name) != get_reg().capabilities.end();
 }
 
 json_ref w_capability_get_list(void) {
-  auto arr = json_array_of_size(w_ht_size(capabilities));
-  w_ht_iter_t iter;
+  auto arr = json_array_of_size(get_reg().capabilities.size());
 
-  w_ht_first(capabilities, &iter);
-  do {
-    auto name = (w_string_t*)w_ht_val_ptr(iter.key);
+  for (auto& name : get_reg().capabilities) {
     json_array_append(arr, w_string_to_json(name));
-  } while (w_ht_next(capabilities, &iter));
+  }
 
   return arr;
 }
