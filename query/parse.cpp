@@ -3,7 +3,13 @@
 
 #include "watchman.h"
 
-static w_ht_t *term_hash = NULL;
+// This can't be a simple global because other compilation units
+// may try to mutate it before this compilation unit has had its
+// constructors run, leading to SIOF.
+static std::unordered_map<w_string, w_query_expr_parser>& term_hash() {
+  static std::unordered_map<w_string, w_query_expr_parser> hash;
+  return hash;
+}
 
 QueryExpr::~QueryExpr() {}
 
@@ -12,20 +18,13 @@ bool w_query_register_expression_parser(
     w_query_expr_parser parser)
 {
   char capname[128];
-  w_string_t *name = w_string_new_typed(term, W_STRING_UNICODE);
-
-  if (!name) {
-    return false;
-  }
+  w_string name(term, W_STRING_UNICODE);
 
   snprintf(capname, sizeof(capname), "term-%s", term);
   w_capability_register(capname);
 
-  if (!term_hash) {
-    term_hash = w_ht_new(32, &w_ht_string_funcs);
-  }
-
-  return w_ht_set(term_hash, w_ht_ptr_val(name), w_ht_ptr_val((void*)parser));
+  term_hash()[name] = parser;
+  return true;
 }
 
 /* parse an expression term. It can be one of:
@@ -34,7 +33,6 @@ bool w_query_register_expression_parser(
  */
 std::unique_ptr<QueryExpr> w_query_expr_parse(w_query* query, json_t* exp) {
   w_string name;
-  w_query_expr_parser parser;
 
   if (json_is_string(exp)) {
     name = json_to_w_string(exp);
@@ -52,15 +50,13 @@ std::unique_ptr<QueryExpr> w_query_expr_parse(w_query* query, json_t* exp) {
     return NULL;
   }
 
-  parser = (w_query_expr_parser)w_ht_val_ptr(
-      w_ht_get(term_hash, w_ht_ptr_val(name)));
-
-  if (!parser) {
+  auto it = term_hash().find(name);
+  if (it == term_hash().end()) {
     ignore_result(
         asprintf(&query->errmsg, "unknown expression term '%s'", name.c_str()));
     return NULL;
   }
-  return parser(query, exp);
+  return it->second(query, exp);
 }
 
 static bool parse_since(w_query *res, json_t *query)
