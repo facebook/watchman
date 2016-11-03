@@ -130,6 +130,8 @@ struct watchman_root {
   // Returns true if this request caused the root cancellation, false
   // if it was already in the process of being cancelled.
   bool cancel();
+
+  void processPendingSymlinkTargets();
 };
 
 struct write_locked_watchman_root {
@@ -210,7 +212,6 @@ void w_root_read_unlock(
     struct read_locked_watchman_root* locked,
     struct unlocked_watchman_root* unlocked);
 
-void process_pending_symlink_targets(struct unlocked_watchman_root* unlocked);
 void* run_io_thread(void* arg);
 void* run_notify_thread(void* arg);
 void process_triggers(struct read_locked_watchman_root* lock);

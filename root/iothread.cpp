@@ -62,7 +62,7 @@ static bool do_settle_things(struct unlocked_watchman_root* unlocked) {
   // No new pending items were given to us, so consider that
   // we may now be settled.
 
-  process_pending_symlink_targets(unlocked);
+  unlocked->root->processPendingSymlinkTargets();
 
   w_root_read_lock(unlocked, "io_thread: settle out", &lock);
   if (!lock.root->inner.done_initial) {
