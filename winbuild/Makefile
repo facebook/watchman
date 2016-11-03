@@ -133,8 +133,7 @@ TEST_DIR_SRCS_CPP=\
 	tests\bser.cpp \
 	tests\ignore_test.cpp \
 	tests\log_stub.cpp \
-	tests\log.cpp \
-	tests\string.cpp
+	tests\log.cpp
 
 OBJS=$(SRCS_CPP:.cpp=.obj) $(SRCS_C:.c=.obj)
 TEST_OBJS=$(TEST_SRCS_CPP:.cpp=.obj) $(TEST_SRCS_C:.c=.obj)
@@ -227,12 +226,6 @@ tests\argv.exe: tests\argv.obj $(TEST_OBJS) \
 	string.obj \
 	hash.obj \
 	log.obj
-	@echo LINK $@
-	$(LINKER) $** $(LIBS)
-
-tests\string.exe: tests\string.obj $(TEST_OBJS) \
-	string.obj \
-	hash.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 

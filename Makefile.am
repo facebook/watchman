@@ -134,7 +134,6 @@ TESTS = \
 		tests/bser.t \
 		tests/ignore.t \
 		tests/pending.t \
-		tests/string.t \
 		tests/log.t \
 		tests/string.t \
 		tests/wildmatch.t
@@ -260,12 +259,6 @@ tests_log_t_SOURCES = \
 	tests/log.cpp \
 	log.cpp
 
-tests_string_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-tests_string_t_LDADD = $(JSON_LIB) $(TAP_LIB)
-tests_string_t_SOURCES = \
-	tests/string.cpp \
-	hash.cpp \
-	string.cpp
 
 tests_bser_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_bser_t_LDADD = $(JSON_LIB) $(TAP_LIB)

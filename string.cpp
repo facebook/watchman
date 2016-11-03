@@ -608,9 +608,9 @@ w_string_t *w_string_suffix(w_string_t *str)
 
   /* can't use libc strXXX functions because we may be operating
    * on a slice */
-  for (end = str->len - 2; end >= 0; end--) {
+  for (end = str->len - 1; end >= 0; end--) {
     if (str->buf[end] == '.') {
-      if (str->len - end >= sizeof(name_buf)) {
+      if (str->len - end > sizeof(name_buf)) {
         // Too long
         return NULL;
       }
@@ -624,6 +624,11 @@ w_string_t *w_string_suffix(w_string_t *str)
       }
       *buf = '\0';
       return w_string_new_typed(name_buf, str->type);
+    } else {
+      // Too long, to avoid useless search
+      if (str->len - end >= sizeof(name_buf)) {
+        return NULL;
+      }
     }
 
     if (str->buf[end] == WATCHMAN_DIR_SEP) {
