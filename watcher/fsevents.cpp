@@ -565,7 +565,7 @@ bool FSEventsWatcher::consumeNotify(
           evt->path->buf, evt->flags, flags_label);
 
     if (evt->flags & kFSEventStreamEventFlagUserDropped) {
-      w_root_schedule_recrawl(root, "kFSEventStreamEventFlagUserDropped");
+      root->scheduleRecrawl("kFSEventStreamEventFlagUserDropped");
 break_out:
       w_string_delref(evt->path);
       free(evt);
@@ -573,7 +573,7 @@ break_out:
     }
 
     if (evt->flags & kFSEventStreamEventFlagKernelDropped) {
-      w_root_schedule_recrawl(root, "kFSEventStreamEventFlagKernelDropped");
+      root->scheduleRecrawl("kFSEventStreamEventFlagKernelDropped");
       goto break_out;
     }
 

@@ -238,7 +238,7 @@ static void *readchanges_thread(void *arg) {
         }
 
         if (err == ERROR_NOTIFY_ENUM_DIR) {
-          w_root_schedule_recrawl(root, "ERROR_NOTIFY_ENUM_DIR");
+          root->scheduleRecrawl("ERROR_NOTIFY_ENUM_DIR");
         } else {
           w_log(
               W_LOG_ERR, "Cancelling watch for %s\n", root->root_path.c_str());

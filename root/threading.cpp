@@ -8,21 +8,17 @@ bool root_start(w_root_t* root, char**) {
   return true;
 }
 
-void w_root_schedule_recrawl(w_root_t *root, const char *why) {
-  auto info = root->recrawlInfo.wlock();
+void watchman_root::scheduleRecrawl(const char* why) {
+  auto info = recrawlInfo.wlock();
 
   if (!info->shouldRecrawl) {
-    info->lastRecrawlReason =
-        w_string::printf("%s: %s", root->root_path.c_str(), why);
+    info->lastRecrawlReason = w_string::build(root_path, ": ", why);
 
-    w_log(
-        W_LOG_ERR,
-        "%s: %s: scheduling a tree recrawl\n",
-        root->root_path.c_str(),
-        why);
+    watchman::log(
+        watchman::ERR, root_path, ": ", why, ": scheduling a tree recrawl\n");
   }
   info->shouldRecrawl = true;
-  signal_root_threads(root);
+  signal_root_threads(this);
 }
 
 void signal_root_threads(w_root_t *root) {
