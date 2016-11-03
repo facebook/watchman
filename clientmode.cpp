@@ -4,15 +4,15 @@
 #include "watchman.h"
 
 bool try_client_mode_command(const json_ref& cmd, bool pretty) {
-  struct watchman_client client;
+  auto client = std::make_shared<watchman_client>();
   bool res;
 
-  client.client_mode = true;
-  res = dispatch_command(&client, cmd, CMD_CLIENT);
+  client->client_mode = true;
+  res = dispatch_command(client.get(), cmd, CMD_CLIENT);
 
-  if (!client.responses.empty()) {
+  if (!client->responses.empty()) {
     json_dumpf(
-        client.responses.front(),
+        client->responses.front(),
         stdout,
         pretty ? JSON_INDENT(4) : JSON_COMPACT);
     printf("\n");

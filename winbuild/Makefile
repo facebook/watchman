@@ -24,6 +24,7 @@ SRCS_CPP=\
 	$(JSON_SRCS) \
 	CookieSync.cpp \
 	InMemoryView.cpp \
+	PubSub.cpp \
 	QueryableView.cpp \
 	winbuild\errmap.cpp \
 	winbuild\pathmap.cpp \
@@ -222,6 +223,7 @@ watchman.exe: $(OBJS)
 
 tests\argv.exe: tests\argv.obj $(TEST_OBJS) \
 	tests\log_stub.obj \
+	PubSub.obj \
 	argv.obj \
 	string.obj \
 	hash.obj \
@@ -232,6 +234,7 @@ tests\argv.exe: tests\argv.obj $(TEST_OBJS) \
 tests\art.exe: tests\art_test.obj $(TEST_OBJS) \
   	log.obj \
 	tests\log_stub.obj \
+	PubSub.obj \
 	string.obj \
 	hash.obj
 	@echo LINK $@
@@ -242,6 +245,7 @@ tests\ignore.exe: tests\ignore_test.obj $(TEST_OBJS) \
 		ignore.obj \
 		string.obj \
 		log.obj \
+		PubSub.obj \
 		tests\log_stub.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
@@ -250,6 +254,7 @@ tests\string.exe: tests\string_test.obj $(TEST_OBJS) \
 		hash.obj \
 		string.obj \
 		log.obj \
+		PubSub.obj \
 		tests\log_stub.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
@@ -265,6 +270,7 @@ tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
 		string.obj \
 		stream_win.obj \
 		log.obj \
+		PubSub.obj \
 		tests\log_stub.obj \
 		winbuild\pathmap.obj \
 		winbuild\stat.obj \
@@ -277,11 +283,13 @@ tests\bser.exe: tests\bser.obj bser.obj $(TEST_OBJS) \
 	tests\log_stub.obj  \
 	string.obj \
 	hash.obj \
+	PubSub.obj \
 	log.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 
 tests\log.exe: tests\log.obj log.obj $(TEST_OBJS) \
+	PubSub.obj \
 	string.obj \
 	hash.obj
 	@echo LINK $@
@@ -289,6 +297,7 @@ tests\log.exe: tests\log.obj log.obj $(TEST_OBJS) \
 
 tests\wildmatch_test.exe: tests\wildmatch_test.obj $(TEST_OBJS) \
 	tests\log_stub.obj  \
+	PubSub.obj \
 	string.obj \
 	hash.obj \
 	log.obj

@@ -113,8 +113,11 @@ cpp_library(
 )
 
 cpp_library(name="log",
-            srcs=["log.cpp"],
-            deps=[':headers'], )
+            srcs=["log.cpp", "PubSub.cpp"],
+            deps=[
+                ':headers',
+                '@/watchman/thirdparty/jansson:jansson',
+            ], )
 
 cpp_library(name='hash',
             srcs=['hash.cpp'],

@@ -118,6 +118,9 @@ bool resolve_root_or_err(
   return true;
 }
 
+watchman_user_client::watchman_user_client(w_stm_t stm)
+    : watchman_client(stm) {}
+
 watchman_user_client::~watchman_user_client() {
   /* cancel subscriptions */
   subscriptions.clear();

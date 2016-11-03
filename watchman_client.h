@@ -4,6 +4,7 @@
 #include <deque>
 #include <unordered_map>
 #include <unordered_set>
+#include "Logging.h"
 #include "watchman_synchronized.h"
 
 struct watchman_client_subscription;
@@ -17,10 +18,9 @@ struct watchman_client_state_assertion {
   ~watchman_client_state_assertion();
 };
 
-struct watchman_client {
+struct watchman_client : public std::enable_shared_from_this<watchman_client> {
   w_stm_t stm{nullptr};
   w_evt_t ping{nullptr};
-  int log_level{0};
   w_jbuffer_t reader, writer;
   bool client_mode{false};
   bool client_is_owner{false};
@@ -38,7 +38,15 @@ struct watchman_client {
   // Protected by clients.wlock()
   std::deque<json_ref> responses;
 
+  // Logging Subscriptions
+  std::shared_ptr<watchman::Publisher::Subscriber> debugSub;
+  std::shared_ptr<watchman::Publisher::Subscriber> errorSub;
+
+  watchman_client();
+  explicit watchman_client(w_stm_t stm);
   virtual ~watchman_client();
+
+  void enqueueResponse(json_ref&& resp, bool ping = true);
 };
 
 struct watchman_client_subscription {
@@ -64,11 +72,13 @@ struct watchman_user_client : public watchman_client {
   std::unordered_map<long, watchman_client_state_assertion*> states;
   long next_state_id{0};
 
+  explicit watchman_user_client(w_stm_t stm);
   ~watchman_user_client();
 };
 
-extern watchman::
-    Synchronized<std::unordered_set<watchman_client*>, std::recursive_mutex>
-        clients;
+extern watchman::Synchronized<
+    std::unordered_set<std::shared_ptr<watchman_client>>,
+    std::recursive_mutex>
+    clients;
 
 void w_client_vacate_states(struct watchman_user_client *client);

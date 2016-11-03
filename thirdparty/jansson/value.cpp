@@ -176,10 +176,12 @@ int json_object_set_new_nocheck(
 }
 
 void json_ref::set(const char* key, json_ref&& val) {
+#if 0 // circular build dep
   w_assert(key != nullptr, "json_ref::set called with NULL key");
   w_assert(ref_ != nullptr, "json_ref::set called NULL object");
   w_assert(val != ref_, "json_ref::set cannot create cycle");
   w_assert(json_is_object(ref_), "json_ref::set called for non object type");
+#endif
 
   w_string key_string(key);
   json_to_object(ref_)->map[key_string] = std::move(val);

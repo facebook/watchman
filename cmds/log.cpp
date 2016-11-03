@@ -3,65 +3,43 @@
 
 #include "watchman.h"
 
-static int parse_log_level(const char *str)
-{
-  if (!strcmp(str, "debug")) {
-    return W_LOG_DBG;
-  } else if (!strcmp(str, "error")) {
-    return W_LOG_ERR;
-  } else if (!strcmp(str, "off")) {
-    return W_LOG_OFF;
-  }
-  return -1;
-}
-
 // log-level "debug"
 // log-level "error"
 // log-level "off"
 static void cmd_loglevel(struct watchman_client* client, const json_ref& args) {
-  const char *cmd, *str;
-  int level;
+  const auto& label = json_to_w_string(args.at(1));
+  auto level = watchman::logLabelToLevel(label);
+  auto clientRef = client->shared_from_this();
+  auto notify = [clientRef]() { w_event_set(clientRef->ping); };
+  auto& log = watchman::getLog();
 
-  if (json_unpack(args, "[us]", &cmd, &str)) {
-    send_error_response(client, "expected a debug level argument");
-    return;
-  }
-
-  level = parse_log_level(str);
-  if (level == -1) {
-    send_error_response(client, "invalid debug level %s", str);
-    return;
-  }
-
-  {
-    auto clientsLock = clients.wlock();
-    client->log_level = level;
+  switch (level) {
+    case watchman::OFF:
+      client->debugSub.reset();
+      client->errorSub.reset();
+      break;
+    case watchman::DBG:
+      client->debugSub = log.subscribe(watchman::DBG, notify);
+      client->errorSub = log.subscribe(watchman::ERR, notify);
+      break;
+    case watchman::ERR:
+    default:
+      client->debugSub.reset();
+      client->errorSub = log.subscribe(watchman::ERR, notify);
   }
 
   auto resp = make_response();
-  resp.set("log_level", typed_string_to_json(str, W_STRING_UNICODE));
-
+  resp.set("log_level", json_ref(args.at(1)));
   send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON, NULL)
 
 // log "debug" "text to log"
 static void cmd_log(struct watchman_client* client, const json_ref& args) {
-  const char *cmd, *str, *text;
-  int level;
+  auto level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
+  auto text = json_to_w_string(args.at(2));
 
-  if (json_unpack(args, "[uss]", &cmd, &str, &text)) {
-    send_error_response(client, "expected a string to log");
-    return;
-  }
-
-  level = parse_log_level(str);
-  if (level == -1) {
-    send_error_response(client, "invalid debug level %s", str);
-    return;
-  }
-
-  w_log(level, "%s\n", text);
+  watchman::log(level, text, "\n");
 
   auto resp = make_response();
   resp.set("logged", json_true());

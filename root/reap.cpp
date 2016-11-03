@@ -8,7 +8,7 @@ static bool root_has_subscriptions(w_root_t *root) {
 
   auto lock = clients.wlock();
   for (auto client_base : *lock) {
-    auto client = (watchman_user_client*)client_base;
+    auto client = std::dynamic_pointer_cast<watchman_user_client>(client_base);
 
     for (auto& citer : client->subscriptions) {
       auto sub = citer.second.get();

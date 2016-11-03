@@ -27,7 +27,7 @@ void process_subscriptions(struct read_locked_watchman_root* lock) {
   vcs_in_progress = lock->root->inner.view->isVCSOperationInProgress();
 
   for (auto client_base : *clientsLock) {
-    auto client = (watchman_user_client*)client_base;
+    auto client = std::dynamic_pointer_cast<watchman_user_client>(client_base);
     for (auto& citer : client->subscriptions) {
       auto sub = citer.second.get();
       bool defer = false;
@@ -116,7 +116,7 @@ void process_subscriptions(struct read_locked_watchman_root* lock) {
         continue;
       }
 
-      w_run_subscription_rules(client, sub, lock);
+      w_run_subscription_rules(client.get(), sub, lock);
       sub->last_sub_tick = root->inner.view->getMostRecentTickValue();
     }
   }
@@ -225,7 +225,7 @@ static void w_run_subscription_rules(
 void w_cancel_subscriptions_for_root(const w_root_t *root) {
   auto lock = clients.wlock();
   for (auto client_base : *lock) {
-    auto client = (watchman_user_client*)client_base;
+    auto client = std::dynamic_pointer_cast<watchman_user_client>(client_base);
     // Manually iterate since we will be erasing elements as we go
     auto citer = client->subscriptions.begin();
     while (citer != client->subscriptions.end()) {
@@ -246,9 +246,7 @@ void w_cancel_subscriptions_for_root(const w_root_t *root) {
                       {"unilateral", json_true()},
                       {"canceled", json_true()}});
 
-        if (!enqueue_response(client, std::move(response), true)) {
-          w_log(W_LOG_DBG, "failed to queue sub cancellation\n");
-        }
+        client->enqueueResponse(std::move(response));
 
         citer = client->subscriptions.erase(citer);
       } else {

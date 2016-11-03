@@ -135,7 +135,8 @@ static void cmd_state_enter(
   {
     auto clientsLock = clients.wlock();
     for (auto subclient_base : *clientsLock) {
-      auto subclient = dynamic_cast<watchman_user_client*>(subclient_base);
+      auto subclient =
+          std::dynamic_pointer_cast<watchman_user_client>(subclient_base);
 
       for (auto& citer : subclient->subscriptions) {
         auto sub = citer.second.get();
@@ -154,7 +155,7 @@ static void cmd_state_enter(
         if (parsed.metadata) {
           pdu.set("metadata", json_ref(parsed.metadata));
         }
-        enqueue_response(subclient, std::move(pdu), true);
+        subclient->enqueueResponse(std::move(pdu));
       }
     }
   }
@@ -184,7 +185,8 @@ static void leave_state(struct watchman_user_client *client,
   {
     auto clientsLock = clients.wlock();
     for (auto subclient_base : *clientsLock) {
-      auto subclient = dynamic_cast<watchman_user_client*>(subclient_base);
+      auto subclient =
+          std::dynamic_pointer_cast<watchman_user_client>(subclient_base);
 
       for (auto& citer : subclient->subscriptions) {
         auto sub = citer.second.get();
@@ -206,7 +208,7 @@ static void leave_state(struct watchman_user_client *client,
         if (abandoned) {
           pdu.set("abandoned", json_true());
         }
-        enqueue_response(subclient, std::move(pdu), true);
+        subclient->enqueueResponse(std::move(pdu));
       }
     }
   }

@@ -13,6 +13,7 @@ watchman_LDADD = $(JSON_LIB) libwildmatch.a
 watchman_SOURCES = \
 	CookieSync.cpp \
 	InMemoryView.cpp \
+	PubSub.cpp \
 	QueryableView.cpp \
 	argv.cpp       \
 	envp.cpp       \
@@ -203,10 +204,13 @@ build-tests: $(TESTS)
 integration: all py-integration check
 
 tests_art_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-tests_art_t_LDADD = $(TAP_LIB)
+tests_art_t_LDADD = $(TAP_LIB) $(JSON_LIB)
 tests_art_t_SOURCES = \
 	tests/art_test.cpp \
 	tests/log_stub.cpp \
+	PubSub.cpp \
+	string.cpp \
+	hash.cpp \
 	log.cpp
 
 tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
@@ -217,6 +221,7 @@ tests_argv_t_SOURCES = \
 	argv.cpp \
 	string.cpp \
 	hash.cpp \
+	PubSub.cpp \
 	log.cpp
 
 tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
@@ -227,6 +232,7 @@ tests_ignore_t_SOURCES = \
 	hash.cpp \
 	ignore.cpp \
 	string.cpp \
+	PubSub.cpp \
 	log.cpp
 
 tests_string_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
@@ -234,15 +240,17 @@ tests_string_t_LDADD = $(TAP_LIB) $(JSON_LIB)
 tests_string_t_SOURCES = \
 	tests/string_test.cpp \
 	tests/log_stub.cpp \
+	PubSub.cpp \
 	hash.cpp \
-	string.cpp \
-	log.cpp
+	log.cpp \
+	string.cpp
 
 tests_pending_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_pending_t_LDADD = $(TAP_LIB) $(JSON_LIB)
 tests_pending_t_SOURCES = \
 	tests/pending_test.cpp \
 	tests/log_stub.cpp \
+	PubSub.cpp \
 	hash.cpp \
 	ignore.cpp \
 	pending.cpp \
@@ -257,6 +265,9 @@ tests_log_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_log_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_log_t_SOURCES = \
 	tests/log.cpp \
+	PubSub.cpp \
+	string.cpp \
+	hash.cpp \
 	log.cpp
 
 tests_bser_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
@@ -264,6 +275,7 @@ tests_bser_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_bser_t_SOURCES = \
 	tests/bser.cpp \
 	tests/log_stub.cpp \
+	PubSub.cpp \
 	bser.cpp \
 	string.cpp \
 	hash.cpp \
@@ -274,6 +286,7 @@ tests_wildmatch_t_LDADD = $(JSON_LIB) $(TAP_LIB) $(WILDMATCH_LIB)
 tests_wildmatch_t_SOURCES = \
 	tests/wildmatch_test.cpp \
 	tests/log_stub.cpp \
+	PubSub.cpp \
 	string.cpp \
 	hash.cpp \
 	log.cpp

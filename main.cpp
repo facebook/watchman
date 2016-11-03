@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
+#include "Logging.h"
 #ifndef _WIN32
 #include <poll.h>
 #endif
@@ -944,6 +945,8 @@ static void parse_cmdline(int *argcp, char ***argvp)
     printf("%s\n", PACKAGE_VERSION);
     exit(0);
   }
+  watchman::getLog().setStdErrLoggingLevel(
+      static_cast<enum watchman::LogLevel>(log_level));
   setup_sock_name();
   parse_encoding(server_encoding, &server_pdu);
   parse_encoding(output_encoding, &output_pdu);
