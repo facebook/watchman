@@ -38,6 +38,7 @@ bool w_root_cancel(w_root_t *root /* don't care about locked state */) {
 
     w_log(W_LOG_DBG, "marked %s cancelled\n", root->root_path.c_str());
     root->inner.cancelled = true;
+    w_cancel_subscriptions_for_root(root);
 
     signal_root_threads(root);
     remove_root_from_watched(root);

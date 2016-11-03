@@ -174,11 +174,11 @@ watchman_root::watchman_root(const w_string& root_path)
       cookies(root_path),
       config_file(load_root_config(root_path.c_str())),
       config(config_file),
+      unilateralResponses(std::make_shared<watchman::Publisher>()),
       inner(root_path, cookies, config) {}
 
 watchman_root::~watchman_root() {
   w_log(W_LOG_DBG, "root: final ref on %s\n", root_path.c_str());
-  w_cancel_subscriptions_for_root(this);
 
   pthread_rwlock_destroy(&lock);
 

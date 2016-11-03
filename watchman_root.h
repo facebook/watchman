@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <unordered_map>
 #include "CookieSync.h"
+#include "PubSub.h"
 #include "QueryableView.h"
 #include "watchman_config.h"
 #include "watchman_shared_mutex.h"
@@ -52,6 +53,9 @@ struct watchman_root {
   /* config options loaded via json file */
   json_ref config_file;
   Configuration config;
+
+  // Stream of broadcast unilateral items emitted by this root
+  std::shared_ptr<watchman::Publisher> unilateralResponses;
 
   struct RecrawlInfo {
     /* how many times we've had to recrawl */
@@ -206,7 +210,6 @@ void w_root_read_unlock(
 void process_pending_symlink_targets(struct unlocked_watchman_root* unlocked);
 void* run_io_thread(void* arg);
 void* run_notify_thread(void* arg);
-void process_subscriptions(struct read_locked_watchman_root* lock);
 void process_triggers(struct read_locked_watchman_root* lock);
 bool consider_reap(struct read_locked_watchman_root* lock);
 void remove_from_file_list(struct watchman_file* file);

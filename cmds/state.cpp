@@ -130,34 +130,16 @@ static void cmd_state_enter(
                 {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)}});
   send_and_dispose_response(client, std::move(response));
 
-  // Now find all the clients with subscriptions and send them
-  // notice of the state being entered
+  // Broadcast about the state enter
   {
-    auto clientsLock = clients.wlock();
-    for (auto subclient_base : *clientsLock) {
-      auto subclient =
-          std::dynamic_pointer_cast<watchman_user_client>(subclient_base);
-
-      for (auto& citer : subclient->subscriptions) {
-        auto sub = citer.second.get();
-
-        if (sub->root != unlocked.root) {
-          w_log(W_LOG_DBG, "root doesn't match, skipping\n");
-          continue;
-        }
-
-        auto pdu = make_response();
-        pdu.set({{"root", w_string_to_json(unlocked.root->root_path)},
-                 {"subscription", w_string_to_json(sub->name)},
-                 {"unilateral", json_true()},
-                 {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
-                 {"state-enter", w_string_to_json(parsed.name)}});
-        if (parsed.metadata) {
-          pdu.set("metadata", json_ref(parsed.metadata));
-        }
-        subclient->enqueueResponse(std::move(pdu));
-      }
+    auto payload = json_object(
+        {{"root", w_string_to_json(unlocked.root->root_path)},
+         {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
+         {"state-enter", w_string_to_json(parsed.name)}});
+    if (parsed.metadata) {
+      payload.set("metadata", json_ref(parsed.metadata));
     }
+    unlocked.root->unilateralResponses->enqueue(std::move(payload));
   }
 
 done:
@@ -181,37 +163,18 @@ static void leave_state(struct watchman_user_client *client,
     clockbuf = buf;
   }
 
-  // First locate all subscribers and notify them
-  {
-    auto clientsLock = clients.wlock();
-    for (auto subclient_base : *clientsLock) {
-      auto subclient =
-          std::dynamic_pointer_cast<watchman_user_client>(subclient_base);
-
-      for (auto& citer : subclient->subscriptions) {
-        auto sub = citer.second.get();
-
-        if (sub->root != unlocked.root) {
-          w_log(W_LOG_DBG, "root doesn't match, skipping\n");
-          continue;
-        }
-
-        auto pdu = make_response();
-        pdu.set({{"root", w_string_to_json(unlocked.root->root_path)},
-                 {"subscription", w_string_to_json(sub->name)},
-                 {"unilateral", json_true()},
-                 {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
-                 {"state-leave", w_string_to_json(assertion->name)}});
-        if (metadata) {
-          pdu.set("metadata", json_ref(metadata));
-        }
-        if (abandoned) {
-          pdu.set("abandoned", json_true());
-        }
-        subclient->enqueueResponse(std::move(pdu));
-      }
-    }
+  // Broadcast about the state leave
+  auto payload =
+      json_object({{"root", w_string_to_json(unlocked.root->root_path)},
+                   {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
+                   {"state-leave", w_string_to_json(assertion->name)}});
+  if (metadata) {
+    payload.set("metadata", json_ref(metadata));
   }
+  if (abandoned) {
+    payload.set("abandoned", json_true());
+  }
+  unlocked.root->unilateralResponses->enqueue(std::move(payload));
 
   // The erase will delete the assertion pointer, so save these things
   auto id = assertion->id;

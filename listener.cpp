@@ -7,11 +7,7 @@
 #endif
 #include <thread>
 
-/* This needs to be recursive safe because we may log to clients
- * while we are dispatching subscriptions to clients */
-watchman::Synchronized<
-    std::unordered_set<std::shared_ptr<watchman_client>>,
-    std::recursive_mutex>
+watchman::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
 static int listener_fd = -1;
 pthread_t reaper_thread;
@@ -36,7 +32,6 @@ json_ref make_response(void) {
   return resp;
 }
 
-/* must be called with the clients.wlock() held */
 bool enqueue_response(
     struct watchman_client* client,
     json_ref&& json,
@@ -48,7 +43,6 @@ bool enqueue_response(
 void send_and_dispose_response(
     struct watchman_client* client,
     json_ref&& response) {
-  auto lock = clients.wlock();
   enqueue_response(client, std::move(response), false);
 }
 
@@ -154,7 +148,6 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
     // thread wants to unilaterally send data to the client
 
     ignore_result(w_poll_events(pfd, 2, 2000));
-
     if (stopping) {
       break;
     }
@@ -186,28 +179,101 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
     }
 
     if (pfd[1].ready) {
-      w_event_test_and_clear(client->ping);
+      while (w_event_test_and_clear(client->ping)) {
+        // Enqueue refs to pending log payloads
+        auto items = watchman::getPending(client->debugSub, client->errorSub);
+        for (auto& item : items) {
+          client->enqueueResponse(json_ref(item->payload), false);
+        }
 
-      // FIXME: remove this lock when state and subscriptions use PubSub
-      auto lock = clients.wlock();
+        // Maybe we have subscriptions to dispatch?
+        auto userClient =
+            std::dynamic_pointer_cast<watchman_user_client>(client);
 
-      // Enqueue refs to pending log payloads
-      auto items = watchman::getPending(client->debugSub, client->errorSub);
-      for (auto& item : items) {
-        client->enqueueResponse(json_ref(item->payload), false);
+        if (userClient) {
+          std::vector<w_string> subsToDelete;
+          for (auto& subiter : userClient->unilateralSub) {
+            auto sub = subiter.first;
+            auto subStream = subiter.second;
+
+            watchman::log(
+                watchman::DBG, "consider fan out sub ", sub->name, "\n");
+
+            while (true) {
+              auto item = subStream->getNext();
+              if (!item) {
+                break;
+              }
+
+              auto dumped = json_dumps(item->payload, 0);
+              watchman::log(
+                  watchman::ERR,
+                  "Unilateral payload for sub ",
+                  sub->name,
+                  " ",
+                  dumped,
+                  "\n");
+              free(dumped);
+
+              if (item->payload.get_default("canceled")) {
+                auto resp = make_response();
+
+                watchman::log(
+                    watchman::ERR,
+                    "Cancel subscription ",
+                    sub->name,
+                    " due to root cancellation\n");
+
+                resp.set({{"root", item->payload.get_default("root")},
+                          {"unilateral", json_true()},
+                          {"canceled", json_true()},
+                          {"subscription", w_string_to_json(sub->name)}});
+                client->enqueueResponse(std::move(resp), false);
+                // Remember to cancel this subscription.
+                // We can't do it in this loop because that would
+                // invalidate the iterators and cause a headache.
+                subsToDelete.push_back(sub->name);
+                continue;
+              }
+
+              if (item->payload.get_default("state-enter") ||
+                  item->payload.get_default("state-leave")) {
+                auto resp = make_response();
+                json_object_update(item->payload, resp);
+                resp.set({{"unilateral", json_true()},
+                          {"subscription", w_string_to_json(sub->name)}});
+                client->enqueueResponse(std::move(resp), false);
+
+                watchman::log(
+                    watchman::ERR,
+                    "Fan out subscription state change for ",
+                    sub->name);
+                continue;
+              }
+
+              if (item->payload.get_default("settled")) {
+                sub->processSubscription();
+                continue;
+              }
+            }
+          }
+
+          for (auto& name : subsToDelete) {
+            userClient->unsubByName(name);
+          }
+        }
       }
     }
 
-    /* de-queue the pending responses under the lock */
-    std::deque<json_ref> queued_responses_to_send;
-    {
-      auto lock = clients.wlock();
-      std::swap(queued_responses_to_send, client->responses);
-    }
+    watchman::log(
+        watchman::DBG,
+        "will send ",
+        client->responses.size(),
+        " items to client\n");
 
     /* now send our response(s) */
-    while (!queued_responses_to_send.empty()) {
-      auto& response_to_send = queued_responses_to_send.front();
+    while (!client->responses.empty()) {
+      auto& response_to_send = client->responses.front();
 
       if (send_ok) {
         w_stm_set_nonblock(client->stm, false);
@@ -220,7 +286,7 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
         w_stm_set_nonblock(client->stm, true);
       }
 
-      queued_responses_to_send.pop_front();
+      client->responses.pop_front();
     }
   }
 
@@ -627,7 +693,7 @@ bool w_start_listener(const char *path)
 
     do {
       {
-        auto clientsLock = clients.wlock();
+        auto clientsLock = clients.rlock();
         n_clients = clientsLock->size();
 
         for (auto client : *clientsLock) {
