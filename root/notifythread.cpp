@@ -30,7 +30,7 @@ void InMemoryView::handleShouldRecrawl(unlocked_watchman_root* unlocked) {
           root->root_path.c_str(),
           errmsg);
       // this should cause us to exit from the notify loop
-      w_root_cancel(root);
+      root->cancel();
     }
     info->recrawlCount++;
     // Tell the new view instance to start up
@@ -54,7 +54,7 @@ void InMemoryView::notifyThread(unlocked_watchman_root* unlocked) {
         "failed to start root %s, cancelling watch: %s\n",
         unlocked->root->root_path.c_str(),
         unlocked->root->failure_reason.c_str());
-    w_root_cancel(unlocked->root);
+    unlocked->root->cancel();
     return;
   }
 

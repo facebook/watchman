@@ -331,7 +331,7 @@ bool KQueueWatcher::consumeNotify(
             "root dir %s has been (re)moved [code 0x%x], canceling watch\n",
             root->root_path.c_str(),
             fflags);
-        w_root_cancel(root);
+        root->cancel();
         pthread_mutex_unlock(&lock);
         return 0;
       }

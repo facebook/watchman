@@ -232,7 +232,7 @@ bool PortFSWatcher::consumeNotify(
           pe,
           flags_label);
 
-      w_root_cancel(root);
+      root->cancel();
       return false;
     }
     w_pending_coll_add(coll, f->name, now,

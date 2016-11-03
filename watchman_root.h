@@ -125,6 +125,11 @@ struct watchman_root {
   void performAgeOut(std::chrono::seconds min_age);
   bool syncToNow(std::chrono::milliseconds timeout);
   void scheduleRecrawl(const char* why);
+
+  // Requests cancellation of the root.
+  // Returns true if this request caused the root cancellation, false
+  // if it was already in the process of being cancelled.
+  bool cancel();
 };
 
 struct write_locked_watchman_root {
@@ -172,7 +177,6 @@ bool w_root_resolve_for_client_mode(
 char* w_find_enclosing_root(const char* filename, char** relpath);
 
 void w_root_free_watched_roots(void);
-bool w_root_cancel(w_root_t* root);
 bool w_root_stop_watch(struct unlocked_watchman_root* unlocked);
 json_ref w_root_stop_watch_all(void);
 void w_root_reap(void);

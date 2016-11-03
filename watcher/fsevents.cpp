@@ -235,7 +235,7 @@ propagate:
     evt = (watchman_fsevent*)calloc(1, sizeof(*evt));
     if (!evt) {
       w_log(W_LOG_DBG, "FSEvents: OOM!");
-      w_root_cancel(root);
+      root->cancel();
       break;
     }
 
@@ -580,7 +580,7 @@ break_out:
     if (evt->flags & kFSEventStreamEventFlagUnmount) {
       w_log(W_LOG_ERR, "kFSEventStreamEventFlagUnmount %.*s, cancel watch\n",
         evt->path->len, evt->path->buf);
-      w_root_cancel(root);
+      root->cancel();
       goto break_out;
     }
 
@@ -588,7 +588,7 @@ break_out:
       w_log(W_LOG_ERR,
         "kFSEventStreamEventFlagRootChanged %.*s, cancel watch\n",
         evt->path->len, evt->path->buf);
-      w_root_cancel(root);
+      root->cancel();
       goto break_out;
     }
 

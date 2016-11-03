@@ -311,7 +311,7 @@ void InotifyWatcher::process_inotify_event(
               "root dir %s has been (re)moved, canceling watch\n",
               root->root_path.c_str());
           w_string_delref(name);
-          w_root_cancel(root);
+          root->cancel();
           return;
         }
 

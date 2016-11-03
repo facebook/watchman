@@ -174,7 +174,7 @@ static void *readchanges_thread(void *arg) {
     w_log(W_LOG_ERR,
         "ReadDirectoryChangesW: failed, cancel watch. %s\n",
         win32_strerror(err));
-    w_root_cancel(root);
+    root->cancel();
     goto out;
   }
   // Signal that we are done with init.  We MUST do this AFTER our first
@@ -202,7 +202,7 @@ static void *readchanges_thread(void *arg) {
         w_log(W_LOG_ERR,
             "ReadDirectoryChangesW: failed, cancel watch. %s\n",
             win32_strerror(err));
-        w_root_cancel(root);
+        root->cancel();
         break;
       } else {
         initiate_read = false;
@@ -242,7 +242,7 @@ static void *readchanges_thread(void *arg) {
         } else {
           w_log(
               W_LOG_ERR, "Cancelling watch for %s\n", root->root_path.c_str());
-          w_root_cancel(root);
+          root->cancel();
           break;
         }
       } else {
