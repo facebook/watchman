@@ -1,7 +1,7 @@
 cpp_library(
   name='art',
-  srcs=['art.cpp'],
-  headers=['art.h'],
+  srcs=[],
+  headers=['art.h', 'art-inl.h'],
   deps=[
     '@/watchman:headers',
   ],

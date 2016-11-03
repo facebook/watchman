@@ -36,7 +36,9 @@ class TypeExpr : public QueryExpr {
     }
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query* query, json_t* term) {
+  static std::unique_ptr<QueryExpr> parse(
+      w_query* query,
+      const json_ref& term) {
     const char *ignore, *typestr, *found;
     char arg;
 

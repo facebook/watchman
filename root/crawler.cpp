@@ -17,7 +17,7 @@ static void apply_dir_size_hint(struct watchman_dir *dir,
 namespace watchman {
 void InMemoryView::crawler(
     write_locked_watchman_root* lock,
-    struct watchman_pending_collection* coll,
+    PendingCollection::LockedPtr& coll,
     const w_string& dir_name,
     struct timeval now,
     bool recursive) {
@@ -121,8 +121,7 @@ void InMemoryView::crawler(
     auto file = it.second.get();
     if (file->exists &&
         (file->maybe_deleted || (S_ISDIR(file->stat.mode) && recursive))) {
-      w_pending_coll_add_rel(
-          coll,
+      coll->add(
           dir,
           w_file_get_name(file)->buf,
           now,

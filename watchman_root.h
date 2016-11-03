@@ -97,7 +97,7 @@ struct watchman_root {
     /* Collection of symlink targets that we try to watch.
      * Reads and writes on this collection are only safe if done from the IO
      * thread; this collection is not protected by the root lock. */
-    struct watchman_pending_collection pending_symlink_targets;
+    PendingCollection pending_symlink_targets;
 
     uint32_t next_cmd_id{0};
 

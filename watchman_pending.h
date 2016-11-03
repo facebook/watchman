@@ -1,13 +1,19 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <chrono>
+#include <condition_variable>
+#include "watchman_synchronized.h"
 
 #define W_PENDING_RECURSIVE 1
 #define W_PENDING_VIA_NOTIFY 2
 #define W_PENDING_CRAWL_ONLY 4
 
 struct watchman_pending_fs {
-  struct watchman_pending_fs *next{nullptr}, *prev{nullptr};
+  // We own the next entry and will destroy that chain when we
+  // are destroyed.
+  std::shared_ptr<watchman_pending_fs> next;
+  std::weak_ptr<watchman_pending_fs> prev;
   w_string path;
   struct timeval now;
   int flags;
@@ -18,35 +24,65 @@ struct watchman_pending_fs {
       int flags);
 };
 
-struct watchman_pending_collection {
-  struct watchman_pending_fs *pending;
-  pthread_mutex_t lock;
-  pthread_cond_t cond;
-  bool pinged;
-  art_tree tree;
+struct PendingCollectionBase {
+  PendingCollectionBase(
+      std::condition_variable& cond,
+      std::atomic<bool>& pinged);
+  PendingCollectionBase(const PendingCollectionBase&) = delete;
+  PendingCollectionBase(PendingCollectionBase&&) = default;
+  ~PendingCollectionBase();
 
-  watchman_pending_collection();
-  watchman_pending_collection(const watchman_pending_collection&) = delete;
-  ~watchman_pending_collection();
+  void drain();
+  bool add(const w_string& path, struct timeval now, int flags);
+  bool add(
+      struct watchman_dir* dir,
+      const char* name,
+      struct timeval now,
+      int flags);
+  void append(PendingCollectionBase* src);
+
+  /* Moves the head of the chain of items to the caller.
+   * The tree is cleared and the caller owns the whole chain */
+  std::shared_ptr<watchman_pending_fs> stealItems();
+
+  uint32_t size() const;
+  void ping();
+  bool checkAndResetPinged();
+
+ private:
+  std::condition_variable& cond_;
+  std::atomic<bool>& pinged_;
+  art_tree<std::shared_ptr<watchman_pending_fs>, w_string> tree_;
+  std::shared_ptr<watchman_pending_fs> pending_;
+
+  struct iterContext {
+    const w_string& root;
+    PendingCollectionBase& coll;
+
+    int operator()(
+        const w_string& key,
+        std::shared_ptr<watchman_pending_fs>& p);
+
+    iterContext(const w_string& root, PendingCollectionBase& coll);
+  };
+  friend struct iterContext;
+
+  void maybePruneObsoletedChildren(w_string path, int flags);
+  inline void consolidateItem(watchman_pending_fs* p, int flags);
+  bool isObsoletedByContainingDir(const w_string& path);
+  inline void linkHead(std::shared_ptr<watchman_pending_fs>&& p);
+  inline void unlinkItem(std::shared_ptr<watchman_pending_fs>& p);
 };
 
-void w_pending_coll_drain(struct watchman_pending_collection *coll);
-void w_pending_coll_lock(struct watchman_pending_collection *coll);
-void w_pending_coll_unlock(struct watchman_pending_collection *coll);
-bool w_pending_coll_add(
-    struct watchman_pending_collection* coll,
-    const w_string& path,
-    struct timeval now,
-    int flags);
-bool w_pending_coll_add_rel(struct watchman_pending_collection *coll,
-    struct watchman_dir *dir, const char *name,
-    struct timeval now, int flags);
-void w_pending_coll_append(struct watchman_pending_collection *target,
-    struct watchman_pending_collection *src);
-struct watchman_pending_fs *w_pending_coll_pop(
-    struct watchman_pending_collection *coll);
-bool w_pending_coll_lock_and_wait(struct watchman_pending_collection *coll,
-    int timeoutms);
-void w_pending_coll_ping(struct watchman_pending_collection *coll);
-uint32_t w_pending_coll_size(struct watchman_pending_collection *coll);
-void w_pending_fs_free(struct watchman_pending_fs *p);
+class PendingCollection
+    : public watchman::Synchronized<PendingCollectionBase, std::mutex> {
+  std::condition_variable cond_;
+  std::atomic<bool> pinged_;
+
+ public:
+  PendingCollection();
+  LockedPtr lockAndWait(std::chrono::milliseconds timeoutms, bool& pinged);
+
+  // Ping without requiring the lock to be held
+  void ping();
+};

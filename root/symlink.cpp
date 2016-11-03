@@ -151,11 +151,11 @@ static void watch_symlinks(const w_string& inputPath, json_t* root_files) {
  * watches for their new targets */
 void process_pending_symlink_targets(struct unlocked_watchman_root *unlocked) {
 #ifndef _WIN32
-  struct watchman_pending_fs *p, *pending;
   bool enforcing;
 
-  pending = unlocked->root->inner.pending_symlink_targets.pending;
-  if (!pending) {
+  auto pendingLock = unlocked->root->inner.pending_symlink_targets.wlock();
+
+  if (!pendingLock->size()) {
     return;
   }
 
@@ -167,15 +167,10 @@ void process_pending_symlink_targets(struct unlocked_watchman_root *unlocked) {
     return;
   }
 
-  // It is safe to work with unlocked->root->pending_symlink_targets because
-  // this collection is only ever mutated from the IO thread
-  unlocked->root->inner.pending_symlink_targets.pending = NULL;
-  w_pending_coll_drain(&unlocked->root->inner.pending_symlink_targets);
-  while (pending) {
-    p = pending;
-    pending = p->next;
+  auto p = pendingLock->stealItems();
+  while (p) {
     watch_symlinks(p->path, root_files);
-    w_pending_fs_free(p);
+    p = std::move(p->next);
   }
 
 #else

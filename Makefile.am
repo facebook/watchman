@@ -9,7 +9,7 @@ THIRDPARTY_CPPFLAGS = -I$(top_srcdir)/thirdparty/jansson -I$(top_builddir)/third
 JSON_LIB = -L. libwmanjson.a
 
 watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-watchman_LDADD = $(JSON_LIB) $(ART_LIB) libwildmatch.a
+watchman_LDADD = $(JSON_LIB) libwildmatch.a
 watchman_SOURCES = \
 	CookieSync.cpp \
 	InMemoryView.cpp \
@@ -28,7 +28,6 @@ watchman_SOURCES = \
 	bser.cpp       \
 	expflags.cpp   \
 	hash.cpp       \
-	ht.cpp         \
 	ioprio.cpp        \
 	opendir.cpp       \
 	pending.cpp       \
@@ -99,7 +98,6 @@ noinst_HEADERS =   \
 	watchman_hash.h
 
 noinst_LIBRARIES = \
-	libart.a \
 	libtap.a \
 	libwildmatch.a \
 	libwmanjson.a
@@ -129,18 +127,14 @@ TAP_LIB = libtap.a
 libwildmatch_a_SOURCES = thirdparty/wildmatch/wildmatch.c
 WILDMATCH_LIB = libwildmatch.a
 
-# adaptive radix tree library
-libart_a_SOURCES = thirdparty/libart/src/art.cpp
-ART_LIB = libart.a
-
 # unit tests
 TESTS = \
 		tests/art.t \
 		tests/argv.t \
 		tests/bser.t \
-		tests/ht.t \
 		tests/ignore.t \
 		tests/pending.t \
+		tests/string.t \
 		tests/log.t \
 		tests/string.t \
 		tests/wildmatch.t
@@ -210,7 +204,7 @@ build-tests: $(TESTS)
 integration: all py-integration check
 
 tests_art_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-tests_art_t_LDADD = $(ART_LIB) $(TAP_LIB)
+tests_art_t_LDADD = $(TAP_LIB)
 tests_art_t_SOURCES = \
 	tests/art_test.cpp \
 	tests/log_stub.cpp \
@@ -226,34 +220,31 @@ tests_argv_t_SOURCES = \
 	hash.cpp \
 	log.cpp
 
-tests_ht_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-tests_ht_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
-tests_ht_t_SOURCES = \
-	tests/ht_test.cpp \
-	tests/log_stub.cpp \
-	hash.cpp \
-	ht.cpp \
-	string.cpp \
-	log.cpp
-
 tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-tests_ignore_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
+tests_ignore_t_LDADD = $(TAP_LIB) $(JSON_LIB)
 tests_ignore_t_SOURCES = \
 	tests/ignore_test.cpp \
 	tests/log_stub.cpp \
 	hash.cpp \
-	ht.cpp \
 	ignore.cpp \
 	string.cpp \
 	log.cpp
 
+tests_string_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
+tests_string_t_LDADD = $(TAP_LIB) $(JSON_LIB)
+tests_string_t_SOURCES = \
+	tests/string_test.cpp \
+	tests/log_stub.cpp \
+	hash.cpp \
+	string.cpp \
+	log.cpp
+
 tests_pending_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-tests_pending_t_LDADD = $(ART_LIB) $(TAP_LIB) $(JSON_LIB)
+tests_pending_t_LDADD = $(TAP_LIB) $(JSON_LIB)
 tests_pending_t_SOURCES = \
 	tests/pending_test.cpp \
 	tests/log_stub.cpp \
 	hash.cpp \
-	ht.cpp \
 	ignore.cpp \
 	pending.cpp \
 	expflags.cpp \

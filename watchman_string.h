@@ -10,6 +10,7 @@
 #include <cstring>
 #include <initializer_list>
 #include <memory>
+#include "watchman_log.h"
 
 struct watchman_string;
 typedef struct watchman_string w_string_t;
@@ -63,8 +64,6 @@ bool w_string_equal_caseless(const w_string_t *a, const w_string_t *b);
 bool w_string_equal_cstring(const w_string_t *a, const char *b);
 
 void w_string_in_place_normalize_separators(w_string_t **str, char target_sep);
-
-w_string_t *w_string_make_printf(const char *format, ...);
 
 /* Typed string creation functions. */
 w_string_t *w_string_new_typed(const char *str,
@@ -241,7 +240,11 @@ class w_string {
   static w_string pathCat(std::initializer_list<w_string_piece> elems);
 
   /** Similar to asprintf, but returns a w_string */
-  static w_string printf(const char *format, ...);
+  static w_string printf(WATCHMAN_FMT_STRING(const char* format), ...)
+      WATCHMAN_FMT_ATTR(1, 2);
+
+  template <typename... Args>
+  static w_string build(Args&&... args);
 
   /** Return a possibly new version of this string that is null terminated */
   w_string asNullTerminated() const;
@@ -300,6 +303,265 @@ struct hash<w_string> {
 template <typename T>
 std::unique_ptr<T, decltype(free) *> autofree(T* mem) {
   return std::unique_ptr<T, decltype(free)*>{mem, free};
+}
+
+namespace detail {
+
+// Testing whether something is a known stringy type
+// with .data(), .size() methods
+template <typename T>
+struct IsStringSrc {
+  enum {
+    value = std::is_same<T, std::string>::value ||
+        std::is_same<T, w_string>::value ||
+        std::is_same<T, w_string_piece>::value
+  };
+};
+
+// w_string_t is immutable so it doesn't have an .append() method, so
+// we use this helper class to keep track of where we're emitting the
+// concatenated strings.
+struct Appender {
+  char* buf;
+  char* limit;
+
+  Appender(char* buf, size_t len) : buf(buf), limit(buf + len) {}
+
+  // After placing data in the buffer, move the cursor forwards
+  void advance(size_t amount) {
+    w_assert(amount <= avail(), "advanced more than reserved space");
+    buf += amount;
+  }
+
+  // How many bytes of space are available
+  size_t avail() const {
+    return limit - buf;
+  }
+
+  // Copy a buffer in and advance the cursor
+  void append(const char* src, size_t amount) {
+    w_assert(amount <= avail(), "advancing more than reserved space");
+    memcpy(buf, src, amount);
+    advance(amount);
+  }
+
+  // Helper for rendering a base10 number
+  void appendUint64(uint64_t v) {
+    // 20 is max possible decimal digits for a 64-bit number
+    char localBuf[20];
+    uint32_t pos = sizeof(localBuf) - 1;
+    while (v >= 10) {
+      auto const q = v / 10;
+      auto const r = static_cast<uint32_t>(v % 10);
+      localBuf[pos--] = '0' + r;
+      v = q;
+    }
+    localBuf[pos] = static_cast<uint32_t>(v) + '0';
+    append(localBuf + pos, sizeof(localBuf) - pos);
+  }
+
+  // Helper for rendering a base16 number
+  void appendHexUint64(uint64_t v) {
+    // 16 is max possible hex digits for a 64-bit number
+    char localBuf[16];
+    static const char* hexDigit = "0123456789abcdef";
+
+    uint32_t pos = sizeof(localBuf) - 1;
+    while (v >= 16) {
+      auto const q = v / 16;
+      auto const r = static_cast<uint32_t>(v % 16);
+      localBuf[pos--] = hexDigit[r];
+      v = q;
+    }
+    localBuf[pos] = hexDigit[static_cast<uint32_t>(v)];
+    append(localBuf + pos, sizeof(localBuf) - pos);
+  }
+};
+
+template <typename T>
+constexpr typename std::enable_if<
+    std::is_pointer<T>::value && !std::is_convertible<T, const char*>::value,
+    size_t>::type
+estimateSpaceNeeded(T) {
+  // We render pointers as 0xXXXXXX, so we need a 2 byte prefix
+  // and then an appropriate number of hex digits for the pointer size.
+  return 2 + (sizeof(T) * 2);
+}
+
+// Render pointers as lowercase hex
+template <typename T>
+typename std::enable_if<
+    std::is_pointer<T>::value &&
+    !std::is_convertible<T, const char*>::value>::type
+toAppend(T value, Appender& result) {
+  result.append("0x", 2);
+  result.appendHexUint64(uintptr_t(value));
+}
+
+// Defer to snprintf for rendering floating point values
+inline size_t estimateSpaceNeeded(double val) {
+  return snprintf(nullptr, 0, "%f", val);
+}
+
+inline void toAppend(double val, Appender& result) {
+  auto len = snprintf(result.buf, result.avail(), "%f", val);
+  result.advance(len);
+}
+
+// Need to specialize nullptr otherwise we see it as an empty w_string_piece
+constexpr size_t estimateSpaceNeeded(std::nullptr_t) {
+  return 3; // 0x0
+}
+
+inline void toAppend(std::nullptr_t, Appender& result) {
+  result.append("0x0", 3);
+}
+
+// Size an unsigned integer value
+template <typename T>
+constexpr typename std::enable_if<
+    std::is_integral<T>::value && !std::is_signed<T>::value,
+    size_t>::type
+estimateSpaceNeeded(T) {
+  // approx 0.3 decimal digits per binary bit; round up.
+  // 8 bits -> 3 digits
+  // 16 bits -> 5 digits
+  // 32 bits -> 10 digits
+  // 64 bits -> 20 digits
+  // Note that for larger bit sizes it is more memory efficient
+  // to compute the size on a per value basis (eg: if a 64-bit value
+  // fits in a single decimal digit, we're 20x more wasteful with
+  // memory).  We're going for relative simplicity here; just
+  // one simple function to measure up and ensure we have enough
+  // room.
+  return 1 + (sizeof(T) * 8 * 0.3);
+}
+
+// Render an unsigned integer value
+template <typename T>
+typename std::enable_if<
+    std::is_integral<T>::value && !std::is_signed<T>::value>::type
+toAppend(T value, Appender& result) {
+  result.appendUint64(value);
+}
+
+template <typename T>
+constexpr typename std::enable_if<
+    std::is_integral<T>::value && std::is_signed<T>::value,
+    size_t>::type
+estimateSpaceNeeded(T) {
+  // Need 1 extra byte for the '-' sign
+  return 2 + (sizeof(T) * 8 * 0.3);
+}
+
+// Render a signed integer value
+template <typename T>
+typename std::enable_if<
+    std::is_integral<T>::value && std::is_signed<T>::value>::type
+toAppend(T value, Appender& result) {
+  if (value < 0) {
+    result.append("-", 1);
+    // When "value" is the smallest negative, negating it would
+    // evoke undefined behavior, so instead of "-value" we carry
+    // out a bitwise complement and add one.
+    result.appendUint64(~static_cast<uint64_t>(value) + 1);
+  } else {
+    result.appendUint64(static_cast<uint64_t>(value));
+  }
+}
+
+// Measure a stringy value
+template <typename T>
+typename std::enable_if<IsStringSrc<T>::value, size_t>::type
+estimateSpaceNeeded(const T& src) {
+  // For known stringy types, we call the size method
+  return src.size();
+}
+
+template <typename T>
+typename std::enable_if<IsStringSrc<T>::value>::type toAppend(
+    const T& src,
+    Appender& result) {
+  result.append(src.data(), src.size());
+}
+
+// If we can convert it to a string piece, we can call its size() method
+template <typename T>
+typename std::enable_if<std::is_convertible<T, const char*>::value, size_t>::
+    type
+    estimateSpaceNeeded(T src) {
+  return w_string_piece(src).size();
+}
+
+template <typename T>
+typename std::enable_if<std::is_convertible<T, const char*>::value>::type
+toAppend(T src, Appender& result) {
+  w_string_piece piece(src);
+  result.append(piece.data(), piece.size());
+}
+
+// If we can convert it to a string piece, we can call its size() method
+template <typename T>
+typename std::enable_if<
+    std::is_convertible<T, w_string_piece>::value && !IsStringSrc<T>::value &&
+        !std::is_convertible<T, const char*>::value,
+    size_t>::type
+estimateSpaceNeeded(T src) {
+  return w_string_piece(src).size();
+}
+
+template <typename T>
+typename std::enable_if<
+    std::is_convertible<T, w_string_piece>::value && !IsStringSrc<T>::value &&
+    !std::is_convertible<T, const char*>::value>::type
+toAppend(T src, Appender& result) {
+  w_string_piece piece(src);
+  result.append(piece.data(), piece.size());
+}
+
+// Recursive, variadic expansion to measure up a set of arguments
+
+inline size_t estimateSpaceToReserve(size_t accumulated) {
+  return accumulated;
+}
+
+template <typename T, typename... Args>
+size_t
+estimateSpaceToReserve(size_t accumulated, const T& v, const Args&... args) {
+  return estimateSpaceToReserve(accumulated + estimateSpaceNeeded(v), args...);
+}
+
+// Recursive, variadic expansion to append a set of arguments
+
+inline void appendTo(Appender&) {}
+
+template <typename T, typename... Args>
+void appendTo(Appender& result, const T& v, const Args&... args) {
+  toAppend(v, result);
+  appendTo(result, args...);
+}
+} // namespace detail
+
+// Concat the args together into a w_string
+
+template <typename... Args>
+w_string w_string::build(Args&&... args) {
+  auto reserved = detail::estimateSpaceToReserve(1, args...);
+
+  auto s = (w_string_t*)(new char[sizeof(w_string_t) + reserved]);
+  new (s) watchman_string();
+
+  s->refcnt = 1;
+  auto buf = (char*)(s + 1);
+  s->buf = buf;
+
+  detail::Appender appender(buf, reserved);
+  detail::appendTo(appender, args...);
+
+  s->len = reserved - appender.avail();
+  buf[s->len] = '\0';
+
+  return w_string(s, false);
 }
 
 #endif

@@ -15,7 +15,9 @@ class SuffixExpr : public QueryExpr {
     return w_string_suffix_match(w_file_get_name(file), suffix);
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query* query, json_t* term) {
+  static std::unique_ptr<QueryExpr> parse(
+      w_query* query,
+      const json_ref& term) {
     const char *ignore, *suffix;
 
     if (json_unpack(term, "[s,s]", &ignore, &suffix) != 0) {

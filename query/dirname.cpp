@@ -63,9 +63,8 @@ class DirNameExpr : public QueryExpr {
 
   // ["dirname", "foo"] -> ["dirname", "foo", ["depth", "ge", 0]]
   static std::unique_ptr<QueryExpr>
-  parse(w_query* query, json_t* term, bool caseless) {
+  parse(w_query* query, const json_ref& term, bool caseless) {
     const char* which = caseless ? "idirname" : "dirname";
-    json_t* name;
     struct w_query_int_compare depth_comp;
 
     if (!json_is_array(term)) {
@@ -86,7 +85,7 @@ class DirNameExpr : public QueryExpr {
       return nullptr;
     }
 
-    name = json_array_get(term, 1);
+    const auto& name = term.at(1);
     if (!json_is_string(name)) {
       ignore_result(asprintf(
           &query->errmsg, "Argument 2 to '%s' must be a string", which));
@@ -94,9 +93,7 @@ class DirNameExpr : public QueryExpr {
     }
 
     if (json_array_size(term) == 3) {
-      json_t* depth;
-
-      depth = json_array_get(term, 2);
+      const auto& depth = term.at(2);
       if (!json_is_array(depth)) {
         ignore_result(asprintf(
             &query->errmsg,
@@ -126,12 +123,14 @@ class DirNameExpr : public QueryExpr {
         depth_comp,
         caseless ? w_string_startswith_caseless : w_string_startswith);
   }
-  static std::unique_ptr<QueryExpr> parseDirName(w_query* query, json_t* term) {
+  static std::unique_ptr<QueryExpr> parseDirName(
+      w_query* query,
+      const json_ref& term) {
     return parse(query, term, !query->case_sensitive);
   }
   static std::unique_ptr<QueryExpr> parseIDirName(
       w_query* query,
-      json_t* term) {
+      const json_ref& term) {
     return parse(query, term, false);
   }
 };

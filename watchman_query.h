@@ -54,9 +54,9 @@ struct w_query_ctx {
   watchman_dir* last_parent{nullptr};
   w_string_t* last_parent_path{nullptr};
 
-  // When deduping the results, effectively a set<wholename> of
+  // When deduping the results, set<wholename> of
   // the files held in results
-  w_ht_t* dedup{nullptr};
+  std::unordered_set<w_string> dedup;
 
   // How many times we suppressed a result due to dedup checking
   uint32_t num_deduped{0};
@@ -116,16 +116,18 @@ struct w_query {
 };
 
 typedef std::unique_ptr<QueryExpr> (
-    *w_query_expr_parser)(w_query* query, json_t* term);
+    *w_query_expr_parser)(w_query* query, const json_ref& term);
 
 bool w_query_register_expression_parser(
     const char *term,
     w_query_expr_parser parser);
 
 std::shared_ptr<w_query>
-w_query_parse(const w_root_t* root, json_t* query, char** errmsg);
+w_query_parse(const w_root_t* root, const json_ref& query, char** errmsg);
 
-std::unique_ptr<QueryExpr> w_query_expr_parse(w_query* query, json_t* term);
+std::unique_ptr<QueryExpr> w_query_expr_parse(
+    w_query* query,
+    const json_ref& term);
 
 bool w_query_file_matches_relative_root(
     struct w_query_ctx* ctx,
@@ -190,7 +192,7 @@ struct w_query_field_list {
 // parse the old style since and find queries
 std::shared_ptr<w_query> w_query_parse_legacy(
     const w_root_t* root,
-    json_t* args,
+    const json_ref& args,
     char** errmsg,
     int start,
     uint32_t* next_arg,
@@ -217,8 +219,10 @@ struct w_query_int_compare {
   enum w_query_icmp_op op;
   json_int_t operand;
 };
-bool parse_int_compare(json_t *term, struct w_query_int_compare *comp,
-    char **errmsg);
+bool parse_int_compare(
+    const json_ref& term,
+    struct w_query_int_compare* comp,
+    char** errmsg);
 bool eval_int_compare(json_int_t ival, struct w_query_int_compare *comp);
 
 bool parse_field_list(
@@ -226,7 +230,7 @@ bool parse_field_list(
     struct w_query_field_list* selected,
     char** errmsg);
 
-bool parse_globs(w_query *res, json_t *query);
+bool parse_globs(w_query* res, const json_ref& query);
 // A node in the tree of node matching rules
 struct watchman_glob_tree {
   std::string pattern;

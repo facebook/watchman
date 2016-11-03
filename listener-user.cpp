@@ -63,20 +63,23 @@ void add_root_warnings_to_response(
   free(full);
 }
 
-bool resolve_root_or_err(struct watchman_client *client, json_t *args,
-                         int root_index, bool create,
-                         struct unlocked_watchman_root *unlocked) {
+bool resolve_root_or_err(
+    struct watchman_client* client,
+    const json_ref& args,
+    size_t root_index,
+    bool create,
+    struct unlocked_watchman_root* unlocked) {
   const char *root_name;
   char *errmsg = NULL;
-  json_t *ele;
 
   unlocked->root = NULL;
 
-  ele = json_array_get(args, root_index);
-  if (!ele) {
+  if (args.array().size() <= root_index) {
     send_error_response(client, "wrong number of arguments");
     return false;
   }
+
+  const auto& ele = args.at(root_index);
 
   root_name = json_string_value(ele);
   if (!root_name) {

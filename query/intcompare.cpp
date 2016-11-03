@@ -21,8 +21,10 @@ static const struct {
 
 // term is a json array that looks like:
 // ["size", "eq", 1024]
-bool parse_int_compare(json_t *term, struct w_query_int_compare *comp,
-    char **errmsg) {
+bool parse_int_compare(
+    const json_ref& term,
+    struct w_query_int_compare* comp,
+    char** errmsg) {
   const char *opname;
   size_t i;
   bool found = false;
@@ -97,7 +99,9 @@ class SizeExpr : public QueryExpr {
     return eval_int_compare(file->stat.size, &comp);
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query* query, json_t* term) {
+  static std::unique_ptr<QueryExpr> parse(
+      w_query* query,
+      const json_ref& term) {
     if (!json_is_array(term)) {
       ignore_result(asprintf(&query->errmsg, "Expected array for 'size' term"));
       return nullptr;

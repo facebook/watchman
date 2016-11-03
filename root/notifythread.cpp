@@ -35,7 +35,7 @@ void InMemoryView::handleShouldRecrawl(unlocked_watchman_root* unlocked) {
     info->recrawlCount++;
     // Tell the new view instance to start up
     root->inner.view->startThreads(root);
-    w_pending_coll_ping(&pending_);
+    pending_.wlock()->ping();
   }
 }
 
@@ -45,7 +45,8 @@ void InMemoryView::handleShouldRecrawl(unlocked_watchman_root* unlocked) {
 // descriptor and then queues the filesystem IO work until after
 // we have drained the inotify descriptor
 void InMemoryView::notifyThread(unlocked_watchman_root* unlocked) {
-  struct watchman_pending_collection pending;
+  PendingCollection pending;
+  auto localLock = pending.wlock();
 
   if (!watcher->start(unlocked->root)) {
     w_log(
@@ -59,28 +60,24 @@ void InMemoryView::notifyThread(unlocked_watchman_root* unlocked) {
 
   // signal that we're done here, so that we can start the
   // io thread after this point
-  w_pending_coll_lock(&pending_);
-  pending_.pinged = true;
-  w_pending_coll_ping(&pending_);
-  w_pending_coll_unlock(&pending_);
+  pending_.wlock()->ping();
 
   while (!stopThreads_) {
     // big number because not all watchers can deal with
     // -1 meaning infinite wait at the moment
     if (watcher->waitNotify(86400)) {
-      while (watcher->consumeNotify(unlocked->root, &pending)) {
-        if (w_pending_coll_size(&pending) >= WATCHMAN_BATCH_LIMIT) {
+      while (watcher->consumeNotify(unlocked->root, localLock)) {
+        if (localLock->size() >= WATCHMAN_BATCH_LIMIT) {
           break;
         }
         if (!watcher->waitNotify(0)) {
           break;
         }
       }
-      if (w_pending_coll_size(&pending) > 0) {
-        w_pending_coll_lock(&pending_);
-        w_pending_coll_append(&pending_, &pending);
-        w_pending_coll_ping(&pending_);
-        w_pending_coll_unlock(&pending_);
+      if (localLock->size() > 0) {
+        auto lock = pending_.wlock();
+        lock->append(&*localLock);
+        lock->ping();
       }
     }
   }

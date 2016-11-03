@@ -4,7 +4,7 @@
 #include "watchman.h"
 
 struct state_arg {
-  w_string_t *name;
+  w_string name;
   int sync_timeout;
   json_ref metadata;
 };
@@ -14,10 +14,6 @@ static bool parse_state_arg(
     struct watchman_client* client,
     const json_ref& args,
     struct state_arg* parsed) {
-  json_error_t err;
-  const char *ignored;
-  const char* statename = nullptr;
-
   parsed->sync_timeout = DEFAULT_QUERY_SYNC_MS;
   parsed->metadata = nullptr;
   parsed->name = nullptr;
@@ -29,37 +25,26 @@ static bool parse_state_arg(
     return false;
   }
 
+  const auto& state_args = args.at(2);
+
   // [cmd, root, statename]
-  if (json_unpack_ex(args, &err, 0, "[ssu]",
-        &ignored, &ignored, &statename) == 0) {
-    parsed->name = w_string_new_typed(statename, W_STRING_UNICODE);
+  if (json_is_string(state_args)) {
+    parsed->name = json_to_w_string(state_args);
     return true;
   }
 
-  if (json_unpack_ex(args, &err, 0, "[s, s, {s:u, s?:O, s?:i}]",
-        &ignored, &ignored,
-        "name", &statename,
-        "metadata", &parsed->metadata,
-        "sync_timeout", &parsed->sync_timeout) != 0) {
-    send_error_response(client, "invalid arguments: %s", err.text);
-    return false;
-  }
+  // [cmd, root, {name:, metadata:, sync_timeout:}]
+  parsed->name = json_to_w_string(state_args.get("name"));
+  parsed->metadata = state_args.get_default("metadata");
+  parsed->sync_timeout = json_integer_value(state_args.get_default(
+      "sync_timeout", json_integer(parsed->sync_timeout)));
 
   if (parsed->sync_timeout < 0) {
     send_error_response(client, "sync_timeout must be >= 0");
     return false;
   }
 
-  parsed->name = w_string_new_typed(statename, W_STRING_UNICODE);
   return true;
-}
-
-static void destroy_state_arg(struct state_arg *parsed) {
-  if (parsed->name) {
-    w_string_delref(parsed->name);
-  }
-  parsed->metadata.reset();
-  memset(parsed, 0, sizeof(*parsed));
 }
 
 watchman_client_state_assertion::watchman_client_state_assertion(
@@ -113,7 +98,7 @@ static void cmd_state_enter(
     // If the state is already asserted, we can't re-assert it
     if (entry) {
       send_error_response(
-          client, "state %s is already asserted", parsed.name->buf);
+          client, "state %s is already asserted", parsed.name.c_str());
       goto done;
     }
     // We're now in this state
@@ -176,7 +161,6 @@ static void cmd_state_enter(
 
 done:
   w_root_delref(&unlocked);
-  destroy_state_arg(&parsed);
 }
 W_CMD_REG("state-enter", cmd_state_enter, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -294,7 +278,8 @@ static void cmd_state_leave(
     const auto& it = map->find(parsed.name);
     // If the state is not asserted, we can't leave it
     if (it == map->end()) {
-      send_error_response(client, "state %s is not asserted", parsed.name->buf);
+      send_error_response(
+          client, "state %s is not asserted", parsed.name.c_str());
       goto done;
     }
 
@@ -305,7 +290,7 @@ static void cmd_state_leave(
       send_error_response(
           client,
           "state %s was not asserted by this session",
-          parsed.name->buf);
+          parsed.name.c_str());
       goto done;
     }
   }
@@ -336,7 +321,6 @@ static void cmd_state_leave(
 
 done:
   w_root_delref(&unlocked);
-  destroy_state_arg(&parsed);
 }
 W_CMD_REG("state-leave", cmd_state_leave, CMD_DAEMON, w_cmd_realpath_root)
 

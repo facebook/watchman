@@ -69,7 +69,7 @@ void w_register_command(struct watchman_command_handler_def *defs);
   W_CAP_REG1(w_gen_symbol(w_cap_reg_), name)
 
 void w_capability_register(const char *name);
-bool w_capability_supported(const w_string_t *name);
+bool w_capability_supported(const w_string& name);
 json_ref w_capability_get_list(void);
 
 void send_error_response(struct watchman_client *client,
@@ -82,9 +82,12 @@ bool enqueue_response(
     json_ref&& json,
     bool ping);
 
-bool resolve_root_or_err(struct watchman_client *client, json_t *args,
-                         int root_index, bool create,
-                         struct unlocked_watchman_root *unlocked);
+bool resolve_root_or_err(
+    struct watchman_client* client,
+    const json_ref& args,
+    size_t root_index,
+    bool create,
+    struct unlocked_watchman_root* unlocked);
 
 json_ref make_response(void);
 void annotate_with_clock(

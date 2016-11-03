@@ -1,137 +1,191 @@
 #ifndef ART_H
 #define ART_H
 #include "config.h"
-#include <stdint.h>
+#include <array>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include "watchman_log.h"
 
 #define ART_MAX_PREFIX_LEN 10u
-
-typedef int(*art_callback)(void *data, const unsigned char *key, uint32_t key_len, void *value);
-struct art_leaf;
-
-/**
- * This struct is included as part
- * of all the various node sizes
- */
-struct art_node {
-  uint8_t type;
-  uint8_t num_children{0};
-  uint32_t partial_len{0};
-  unsigned char partial[ART_MAX_PREFIX_LEN];
-
-  virtual ~art_node() = default;
-  explicit art_node(uint8_t type);
-  art_node(uint8_t type, const art_node& other);
-  art_node(const art_node&) = delete;
-
-  art_leaf* maximum() const;
-  art_leaf* minimum() const;
-  virtual art_node** findChild(unsigned char c) = 0;
-
-  // Returns the number of prefix characters shared between the key and node.
-  uint32_t checkPrefix(const unsigned char* key, uint32_t key_len, int depth)
-      const;
-  // Calculates the index at which the prefixes mismatch
-  uint32_t prefixMismatch(const unsigned char* key, uint32_t key_len, int depth)
-      const;
-
-  virtual void addChild(art_node** ref, unsigned char c, art_node* child) = 0;
-  virtual void removeChild(art_node** ref, unsigned char c, art_node** l) = 0;
-};
-
-struct art_node4;
-struct art_node16;
-struct art_node48;
-struct art_node256;
-
-/**
- * Small node with only 4 children
- */
-struct art_node4 : public art_node {
-  unsigned char keys[4];
-  art_node* children[4];
-
-  ~art_node4();
-  art_node4();
-  explicit art_node4(art_node16&& n16);
-  void addChild(art_node** ref, unsigned char c, art_node* child) override;
-  void removeChild(art_node** ref, unsigned char c, art_node** l) override;
-  art_node** findChild(unsigned char c) override;
-};
-
-/**
- * Node with 16 children
- */
-struct art_node16 : public art_node {
-  unsigned char keys[16];
-  art_node* children[16];
-
-  ~art_node16();
-  art_node16();
-  explicit art_node16(art_node4&& n4);
-  explicit art_node16(art_node48&& n48);
-  void addChild(art_node** ref, unsigned char c, art_node* child) override;
-  void removeChild(art_node** ref, unsigned char c, art_node** l) override;
-  art_node** findChild(unsigned char c) override;
-};
-
-/**
- * Node with 48 children, but
- * a full 256 byte field.
- */
-struct art_node48 : public art_node {
-  unsigned char keys[256];
-  art_node* children[48];
-
-  ~art_node48();
-  art_node48();
-  explicit art_node48(art_node16&& n16);
-  explicit art_node48(art_node256&& n256);
-  void addChild(art_node** ref, unsigned char c, art_node* child) override;
-  void removeChild(art_node** ref, unsigned char c, art_node** l) override;
-  art_node** findChild(unsigned char c) override;
-};
-
-/**
- * Full node with 256 children
- */
-struct art_node256 : public art_node {
-  art_node* children[256];
-
-  ~art_node256();
-  art_node256();
-  explicit art_node256(art_node48&& n48);
-  void addChild(art_node** ref, unsigned char c, art_node* child) override;
-  void removeChild(art_node** ref, unsigned char c, art_node** l) override;
-  art_node** findChild(unsigned char c) override;
-};
-
-/**
- * Represents a leaf. These are
- * of arbitrary size, as they include the key.
- */
-struct art_leaf {
-  void* value;
-  uint32_t key_len;
-  unsigned char key[1];
-
-  bool matches(const unsigned char* key, uint32_t key_len) const;
-
-  static art_leaf*
-  make(const unsigned char* key, uint32_t key_len, void* value);
-
-  uint32_t longestCommonPrefix(const art_leaf* other, int depth) const;
-  bool prefixMatches(const unsigned char* prefix, uint32_t prefix_len) const;
-};
 
 /**
  * Main struct, points to root.
  */
+template <typename ValueType, typename KeyType = std::string>
 struct art_tree {
-  art_node* root_;
-  uint64_t size_;
+  struct Leaf;
+  struct Node;
+  enum Node_type : uint8_t { NODE4 = 1, NODE16, NODE48, NODE256 };
+
+  struct Deleter {
+    void operator()(Node* node) const;
+  };
+  using NodePtr = std::unique_ptr<Node, Deleter>;
+  using LeafPtr = std::unique_ptr<Leaf>;
+
+  /**
+   * This struct is included as part
+   * of all the various node sizes
+   */
+  struct Node {
+    Node_type type;
+    uint8_t num_children{0};
+    uint32_t partial_len{0};
+    unsigned char partial[ART_MAX_PREFIX_LEN];
+
+    virtual ~Node() = default;
+    explicit Node(Node_type type);
+    Node(Node_type type, const Node& other);
+    Node(const Node&) = delete;
+    Node& operator=(const Node&) = delete;
+
+    Leaf* maximum() const;
+    Leaf* minimum() const;
+    virtual NodePtr* findChild(unsigned char c) = 0;
+
+    // Returns the number of prefix characters shared between the key and node.
+    uint32_t checkPrefix(
+        const unsigned char* key,
+        uint32_t key_len,
+        uint32_t depth) const;
+    // Calculates the index at which the prefixes mismatch
+    uint32_t prefixMismatch(
+        const unsigned char* key,
+        uint32_t key_len,
+        uint32_t depth) const;
+
+    virtual void addChild(NodePtr& ref, unsigned char c, NodePtr&& child) = 0;
+    virtual NodePtr removeChild(NodePtr& ref, unsigned char c, NodePtr* l) = 0;
+  };
+
+  struct Node4;
+  struct Node16;
+  struct Node48;
+  struct Node256;
+
+  // Helper for dispatching to the correct node type
+  union node_ptr {
+    Node* n;
+    Node4* n4;
+    Node16* n16;
+    Node48* n48;
+    Node256* n256;
+  };
+
+  // const flavor of the above
+  union cnode_ptr {
+    const Node* n;
+    const Node4* n4;
+    const Node16* n16;
+    const Node48* n48;
+    const Node256* n256;
+  };
+
+  static inline bool IS_LEAF(const Node* x) {
+    return uintptr_t(x) & 1;
+  }
+
+  static inline Leaf* LEAF_RAW(const Node* x) {
+    return (Leaf*)((void*)((uintptr_t(x) & ~1)));
+  }
+
+  static inline NodePtr LeafToNode(LeafPtr&& leaf) {
+    return NodePtr((Node*)(uintptr_t(leaf.release()) | 1));
+  }
+
+  static inline LeafPtr NodeToLeaf(NodePtr&& node) {
+    return LeafPtr(LEAF_RAW(node.release()));
+  }
+
+  static inline unsigned char
+  keyAt(const unsigned char* key, uint32_t key_len, uint32_t idx);
+  static inline unsigned char
+  keyAt(const char* key, uint32_t key_len, uint32_t idx);
+
+  /**
+   * Small node with only 4 children
+   */
+  struct Node4 : public Node {
+    unsigned char keys[4];
+    std::array<NodePtr, 4> children;
+
+    Node4();
+    explicit Node4(Node16&& n16);
+    void addChild(NodePtr& ref, unsigned char c, NodePtr&& child) override;
+    NodePtr removeChild(NodePtr& ref, unsigned char c, NodePtr* l) override;
+    NodePtr* findChild(unsigned char c) override;
+  };
+
+  /**
+   * Node with 16 children
+   */
+  struct Node16 : public Node {
+    unsigned char keys[16];
+    std::array<NodePtr, 16> children;
+
+    Node16();
+    explicit Node16(Node4&& n4);
+    explicit Node16(Node48&& n48);
+    void addChild(NodePtr& ref, unsigned char c, NodePtr&& child) override;
+    NodePtr removeChild(NodePtr& ref, unsigned char c, NodePtr* l) override;
+    NodePtr* findChild(unsigned char c) override;
+  };
+
+  /**
+   * Node with 48 children, but
+   * a full 256 byte field.
+   */
+  struct Node48 : public Node {
+    unsigned char keys[256];
+    std::array<NodePtr, 48> children;
+
+    Node48();
+    explicit Node48(Node16&& n16);
+    explicit Node48(Node256&& n256);
+    void addChild(NodePtr& ref, unsigned char c, NodePtr&& child) override;
+    NodePtr removeChild(NodePtr& ref, unsigned char c, NodePtr* l) override;
+    NodePtr* findChild(unsigned char c) override;
+  };
+
+  /**
+   * Full node with 256 children
+   */
+  struct Node256 : public Node {
+    std::array<NodePtr, 256> children;
+
+    Node256();
+    explicit Node256(Node48&& n48);
+    void addChild(NodePtr& ref, unsigned char c, NodePtr&& child) override;
+    NodePtr removeChild(NodePtr& ref, unsigned char c, NodePtr* l) override;
+    NodePtr* findChild(unsigned char c) override;
+  };
+
+  /**
+   * Represents a leaf. These are
+   * of arbitrary size, as they include the key.
+   */
+  struct Leaf {
+    KeyType key;
+    ValueType value;
+
+    template <typename... Args>
+    Leaf(const KeyType& key, Args&&... args);
+
+    bool matches(const unsigned char* key, uint32_t key_len) const;
+    bool matches(const KeyType& key) const;
+
+    uint32_t longestCommonPrefix(const Leaf* other, uint32_t depth) const;
+    bool prefixMatches(const unsigned char* prefix, uint32_t prefix_len) const;
+    inline unsigned char keyAt(uint32_t idx) const;
+  };
 
   art_tree();
   ~art_tree();
+
+  art_tree(const art_tree&) = delete;
+  art_tree(art_tree&& other) noexcept;
 
   inline uint64_t size() const {
     return size_;
@@ -140,23 +194,20 @@ struct art_tree {
   void clear();
 
   /**
-   * Inserts a new value into the ART tree
-   * @arg key The key
-   * @arg key_len The length of the key
-   * @arg value Opaque value.
-   * @return NULL if the item was newly inserted, otherwise
-   * the old value pointer is returned.
+   * Construct a new value in-place in the ART tree.
+   * The arguments are forwarded to the ValueType constructor
    */
-  void* insert(const unsigned char* key, uint32_t key_len, void* value);
+  template <typename... Args>
+  void insert(const KeyType& key, Args&&... args);
 
   /**
    * Deletes a value from the ART tree
    * @arg key The key
    * @arg key_len The length of the key
-   * @return NULL if the item was not found, otherwise
-   * the value pointer is returned.
+   * @return true if the item was erased, false otherwise.
    */
-  void* erase(const unsigned char* key, uint32_t key_len);
+  LeafPtr erase(const unsigned char* key, uint32_t key_len);
+  LeafPtr erase(const KeyType& key);
 
   /**
    * Searches for a value in the ART tree
@@ -165,7 +216,8 @@ struct art_tree {
    * @return NULL if the item was not found, otherwise
    * the value pointer is returned.
    */
-  void* search(const unsigned char* key, uint32_t key_len) const;
+  ValueType* search(const unsigned char* key, uint32_t key_len) const;
+  ValueType* search(const KeyType& key) const;
 
   /**
    * Searches for the longest prefix match for the input key.
@@ -174,19 +226,19 @@ struct art_tree {
    * @return NULL if no match was not found, otherwise
    * the leaf node with the longest matching prefix is returned.
    */
-  art_leaf* longestMatch(const unsigned char* key, uint32_t key_len) const;
+  Leaf* longestMatch(const unsigned char* key, uint32_t key_len) const;
 
   /**
    * Returns the minimum valued leaf
    * @return The minimum leaf or NULL
    */
-  art_leaf* minimum() const;
+  Leaf* minimum() const;
 
   /**
    * Returns the maximum valued leaf
    * @return The maximum leaf or NULL
    */
-  art_leaf* maximum() const;
+  Leaf* maximum() const;
 
   /**
    * Iterates through the entries pairs in the map,
@@ -197,7 +249,8 @@ struct art_tree {
    * @arg data Opaque handle passed to the callback
    * @return 0 on success, or the return of the callback.
    */
-  int iter(art_callback cb, void* data);
+  template <typename Func>
+  int iter(Func&& func);
 
   /**
    * Iterates through the entries pairs in the map,
@@ -210,28 +263,29 @@ struct art_tree {
    * @arg data Opaque handle passed to the callback
    * @return 0 on success, or the return of the callback.
    */
-  int iterPrefix(
-      const unsigned char* prefix,
-      uint32_t prefix_len,
-      art_callback cb,
-      void* data);
+  template <typename Func>
+  int iterPrefix(const unsigned char* prefix, uint32_t prefix_len, Func&& func);
 
  private:
-  void* recursiveInsert(
-      art_node* n,
-      art_node** ref,
+  NodePtr root_;
+  uint64_t size_;
+
+  template <typename... Args>
+  void recursiveInsert(
+      NodePtr& ref,
+      const KeyType& key,
+      uint32_t depth,
+      bool& replaced,
+      Args&&... args);
+  NodePtr recursiveDelete(
+      NodePtr& ref,
       const unsigned char* key,
-      int key_len,
-      void* value,
-      int depth,
-      int* old);
-  art_leaf* recursiveDelete(
-      art_node* n,
-      art_node** ref,
-      const unsigned char* key,
-      int key_len,
-      int depth);
-  int recursiveIter(art_node* n, art_callback cb, void* data);
+      uint32_t key_len,
+      uint32_t depth);
+
+  template <typename Func>
+  int recursiveIter(Node* n, Func& func);
 };
 
+#include "art-inl.h"
 #endif

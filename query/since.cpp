@@ -55,8 +55,9 @@ class SinceExpr : public QueryExpr {
     return tval > since.timestamp;
   }
 
-  static std::unique_ptr<QueryExpr> parse(w_query* query, json_t* term) {
-    json_t* jval;
+  static std::unique_ptr<QueryExpr> parse(
+      w_query* query,
+      const json_ref& term) {
     std::unique_ptr<w_clockspec> spec;
     auto selected_field = since_what::SINCE_OCLOCK;
     const char* fieldname = "oclock";
@@ -71,7 +72,7 @@ class SinceExpr : public QueryExpr {
       return nullptr;
     }
 
-    jval = json_array_get(term, 1);
+    const auto& jval = term.at(1);
     spec = w_clockspec_parse(jval);
     if (!spec) {
       query->errmsg = strdup("invalid clockspec for \"since\" term");
@@ -83,12 +84,12 @@ class SinceExpr : public QueryExpr {
       return nullptr;
     }
 
-    jval = json_array_get(term, 2);
-    if (jval) {
+    if (term.array().size() == 3) {
+      const auto& field = term.at(2);
       size_t i;
       bool valid = false;
 
-      fieldname = json_string_value(jval);
+      fieldname = json_string_value(field);
       if (!fieldname) {
         query->errmsg =
             strdup("field name for \"since\" term must be a string");

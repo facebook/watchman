@@ -22,7 +22,6 @@ SRCS_C=\
 
 SRCS_CPP=\
 	$(JSON_SRCS) \
-	thirdparty\libart\src\art.cpp \
 	CookieSync.cpp \
 	InMemoryView.cpp \
 	QueryableView.cpp \
@@ -60,7 +59,6 @@ SRCS_CPP=\
 	stream.cpp     \
 	stream_win.cpp \
 	stream_stdout.cpp \
-	ht.cpp         \
 	cmds\find.cpp     \
 	cmds\info.cpp     \
 	cmds\log.cpp      \
@@ -133,7 +131,6 @@ TEST_DIR_SRCS_CPP=\
 	tests\art_test.cpp \
 	tests\argv.cpp \
 	tests\bser.cpp \
-	tests\ht_test.cpp \
 	tests\ignore_test.cpp \
 	tests\log_stub.cpp \
 	tests\log.cpp \
@@ -143,7 +140,8 @@ OBJS=$(SRCS_CPP:.cpp=.obj) $(SRCS_C:.c=.obj)
 TEST_OBJS=$(TEST_SRCS_CPP:.cpp=.obj) $(TEST_SRCS_C:.c=.obj)
 TEST_DIR_OBJS=$(TEST_DIR_SRCS:.c=.obj) $(TEST_DIR_SRCS_CPP:.cpp=.obj)
 TESTS=tests\argv.exe tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
-			tests\art.exe tests\ignore.exe tests\pending.exe tests\ht.exe
+			tests\art.exe tests\ignore.exe tests\pending.exe \
+			tests\string.exe
 
 {}.cpp{}.obj::
 	@echo CXX $<
@@ -180,10 +178,6 @@ TESTS=tests\argv.exe tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
 {thirdparty\wildmatch}.c{thirdparty\wildmatch}.obj::
 	@echo CC $<
 	$(CC) $(CFLAGS) /Fo:thirdparty\wildmatch\ /c $<
-
-{thirdparty\libart\src}.cpp{thirdparty\libart\src}.obj::
-	@echo CXX $<
-	$(CC) $(CXXFLAGS) /Fo:thirdparty\libart\src\ /c $<
 
 {thirdparty\jansson}.cpp{thirdparty\jansson}.obj::
 	@echo CXX $<
@@ -245,35 +239,30 @@ tests\string.exe: tests\string.obj $(TEST_OBJS) \
 tests\art.exe: tests\art_test.obj $(TEST_OBJS) \
   	log.obj \
 	tests\log_stub.obj \
-	thirdparty\libart\src\art.obj \
 	string.obj \
 	hash.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 
-tests\ht.exe: tests\ht_test.obj $(TEST_OBJS) \
+tests\ignore.exe: tests\ignore_test.obj $(TEST_OBJS) \
 		hash.obj \
-		ht.obj \
+		ignore.obj \
 		string.obj \
 		log.obj \
 		tests\log_stub.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 
-tests\ignore.exe: tests\ignore_test.obj $(TEST_OBJS) \
+tests\string.exe: tests\string_test.obj $(TEST_OBJS) \
 		hash.obj \
-		ht.obj \
-		ignore.obj \
 		string.obj \
 		log.obj \
-		tests\log_stub.obj \
-		thirdparty\libart\src\art.obj
+		tests\log_stub.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
 
 tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
 		hash.obj \
-		ht.obj \
 		ignore.obj \
 		pending.obj \
 		expflags.obj \
@@ -284,7 +273,6 @@ tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
 		stream_win.obj \
 		log.obj \
 		tests\log_stub.obj \
-		thirdparty\libart\src\art.obj \
 		winbuild\pathmap.obj \
 		winbuild\stat.obj \
 		winbuild\realpath.obj \

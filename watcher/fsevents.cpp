@@ -8,7 +8,7 @@
 
 // The FSEventStreamSetExclusionPaths API has a limit of 8 items.
 // If that limit is exceeded, it will fail.
-#define MAX_EXCLUSIONS 8
+#define MAX_EXCLUSIONS size_t(8)
 
 struct watchman_fsevent {
   struct watchman_fsevent *next;
@@ -58,7 +58,7 @@ struct FSEventsWatcher : public Watcher {
       struct timeval now,
       const char* path) override;
 
-  bool consumeNotify(w_root_t* root, struct watchman_pending_collection* coll)
+  bool consumeNotify(w_root_t* root, PendingCollection::LockedPtr& coll)
       override;
 
   bool waitNotify(int timeoutms) override;
@@ -228,7 +228,7 @@ propagate:
       len--;
     }
 
-    if (w_ignore_check(&root->ignore, path, len)) {
+    if (root->ignore.isIgnored(path, len)) {
       continue;
     }
 
@@ -326,7 +326,7 @@ static struct fse_stream* fse_stream_make(
       // If there is no UUID available and we want to use an event offset,
       // we fail: a nullptr UUID means that the journal is not available.
       failure_reason = w_string::printf(
-          "fsevents journal is not available for dev_t=%lu\n", st.st_dev);
+          "fsevents journal is not available for dev_t=%d\n", st.st_dev);
       goto fail;
     }
     // Compare the UUID with that of the current stream
@@ -396,10 +396,10 @@ static struct fse_stream* fse_stream_make(
       CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
 
 #ifdef HAVE_FSEVENTSTREAMSETEXCLUSIONPATHS
-  if (w_ht_size(root->ignore.ignore_dirs) > 0 &&
+  if (!root->ignore.dirs_vec.empty() &&
       root->config.getBool("_use_fsevents_exclusions", true)) {
     CFMutableArrayRef ignarray;
-    size_t i, nitems = MIN(w_ht_size(root->ignore.ignore_dirs), MAX_EXCLUSIONS);
+    size_t i, nitems = std::min(root->ignore.dirs_vec.size(), MAX_EXCLUSIONS);
 
     ignarray = CFArrayCreateMutable(nullptr, 0, &kCFTypeArrayCallBacks);
     if (!ignarray) {
@@ -409,13 +409,13 @@ static struct fse_stream* fse_stream_make(
     }
 
     for (i = 0; i < nitems; ++i) {
-      w_string_t *path = root->ignore.dirs_vec[i];
+      const auto& path = root->ignore.dirs_vec[i];
       CFStringRef ignpath;
 
       ignpath = CFStringCreateWithBytes(
           nullptr,
-          (const UInt8*)path->buf,
-          path->len,
+          (const UInt8*)path.data(),
+          path.size(),
           kCFStringEncodingUTF8,
           false);
 
@@ -539,7 +539,7 @@ done:
 
 bool FSEventsWatcher::consumeNotify(
     w_root_t* root,
-    struct watchman_pending_collection* coll) {
+    PendingCollection::LockedPtr& coll) {
   struct watchman_fsevent *head, *evt;
   int n = 0;
   struct timeval now;
@@ -597,7 +597,9 @@ break_out:
                  kFSEventStreamEventFlagItemRenamed))
               ? true : false;
 
-    w_pending_coll_add(coll, evt->path, now,
+    coll->add(
+        evt->path,
+        now,
         W_PENDING_VIA_NOTIFY | (recurse ? W_PENDING_RECURSIVE : 0));
 
     w_string_delref(evt->path);

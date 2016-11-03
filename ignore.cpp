@@ -4,56 +4,37 @@
 #include "watchman.h"
 
 // The path and everything below it is ignored.
-#define FULL_IGNORE  (void*)0x1
+#define FULL_IGNORE 0x1
 // The grand-children of the path are ignored, but not the path
 // or its direct children.
-#define VCS_IGNORE   (void*)0x2
+#define VCS_IGNORE 0x2
 
-watchman_ignore::watchman_ignore()
-    : ignore_vcs(w_ht_new(2, &w_ht_string_funcs)),
-      ignore_dirs(w_ht_new(2, &w_ht_string_funcs)),
-      dirs_vec(nullptr) {}
+void watchman_ignore::add(const w_string& path, bool is_vcs_ignore) {
+  (is_vcs_ignore ? ignore_vcs : ignore_dirs).insert(path);
 
-void w_ignore_addstr(struct watchman_ignore *ignore, w_string_t *path,
-                     bool is_vcs_ignore) {
-  w_ht_set(is_vcs_ignore ? ignore->ignore_vcs : ignore->ignore_dirs,
-           w_ht_ptr_val(path), w_ht_ptr_val(path));
-
-  ignore->tree.insert(
-      (const unsigned char*)path->buf,
-      path->len,
-      is_vcs_ignore ? VCS_IGNORE : FULL_IGNORE);
+  tree.insert(path, is_vcs_ignore ? VCS_IGNORE : FULL_IGNORE);
 
   if (!is_vcs_ignore) {
-    ignore->dirs_vec = (w_string_t**)realloc(
-        ignore->dirs_vec, w_ht_size(ignore->ignore_dirs) * sizeof(w_string_t*));
-    if (!ignore->dirs_vec) {
-      w_log(W_LOG_FATAL, "OOM while recording ignore dirs");
-    }
-
-    // No need to add a ref, as that is tracked by the hash table
-    ignore->dirs_vec[w_ht_size(ignore->ignore_dirs)-1] = path;
+    dirs_vec.push_back(path);
   }
 }
 
-bool w_ignore_check(const struct watchman_ignore *ignore, const char *path,
-                    uint32_t pathlen) {
+bool watchman_ignore::isIgnored(const char* path, uint32_t pathlen) const {
   const char *skip_prefix;
   uint32_t len;
-  art_leaf* leaf =
-      ignore->tree.longestMatch((const unsigned char*)path, (int)pathlen);
+  auto leaf = tree.longestMatch((const unsigned char*)path, (int)pathlen);
 
   if (!leaf) {
     // No entry -> not ignored.
     return false;
   }
 
-  if (pathlen < leaf->key_len) {
+  if (pathlen < leaf->key.size()) {
     // We wanted "buil" but matched "build"
     return false;
   }
 
-  if (pathlen == leaf->key_len) {
+  if (pathlen == leaf->key.size()) {
     // Exact match.  This is an ignore if we are in FULL_IGNORE,
     // but not in VCS_IGNORE mode.
     return leaf->value == FULL_IGNORE ? true : false;
@@ -63,8 +44,8 @@ bool w_ignore_check(const struct watchman_ignore *ignore, const char *path,
   // We need to ensure that we observe a directory separator at the
   // character after the common prefix, otherwise we may be falsely
   // matching a sibling entry.
-  skip_prefix = path + leaf->key_len;
-  len = pathlen - leaf->key_len;
+  skip_prefix = path + leaf->key.size();
+  len = pathlen - leaf->key.size();
 
   if (*skip_prefix != WATCHMAN_DIR_SEP
 #ifdef _WIN32
@@ -86,7 +67,7 @@ bool w_ignore_check(const struct watchman_ignore *ignore, const char *path,
   // this path.  This devolves to: "is there a '/' character after the end of
   // the leaf key prefix?"
 
-  if (pathlen <= leaf->key_len) {
+  if (pathlen <= leaf->key.size()) {
     // There can't be a slash after this portion of the tree, therefore
     // this is not ignored.
     return false;
@@ -112,10 +93,12 @@ bool w_ignore_check(const struct watchman_ignore *ignore, const char *path,
 #endif
 }
 
-watchman_ignore::~watchman_ignore() {
-  w_ht_free(ignore_vcs);
-  w_ht_free(ignore_dirs);
-  free(dirs_vec);
+bool watchman_ignore::isIgnoreVCS(const w_string& path) const {
+  return ignore_vcs.find(path) != ignore_vcs.end();
+}
+
+bool watchman_ignore::isIgnoreDir(const w_string& path) const {
+  return ignore_dirs.find(path) != ignore_dirs.end();
 }
 
 /* vim:ts=2:sw=2:et:

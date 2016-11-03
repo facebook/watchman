@@ -36,7 +36,7 @@ struct w_clockspec {
 std::unique_ptr<w_clockspec> w_clockspec_new_clock(
     uint32_t root_number,
     uint32_t ticks);
-std::unique_ptr<w_clockspec> w_clockspec_parse(json_t* value);
+std::unique_ptr<w_clockspec> w_clockspec_parse(const json_ref& value);
 void w_clockspec_eval(
     struct read_locked_watchman_root* lock,
     const struct w_clockspec* spec,

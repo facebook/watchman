@@ -34,7 +34,10 @@ bool CookieSync::syncToNow(std::chrono::milliseconds timeout) {
 
   /* generate a cookie name: cookie prefix + id */
   auto path_str = w_string::printf(
-      "%.*s%" PRIu32, cookiePrefix_.size(), cookiePrefix_.data(), serial_++);
+      "%.*s%" PRIu32,
+      int(cookiePrefix_.size()),
+      cookiePrefix_.data(),
+      serial_++);
 
   /* insert our cookie in the map */
   {

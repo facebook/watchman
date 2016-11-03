@@ -14,16 +14,12 @@ static void build_list(
   size_t i;
   for (i = 0; i < num_files; i++) {
     list->emplace_back(
-        w_string::printf("%s/file%d", parent_name.c_str(), i),
-        *now,
-        W_PENDING_VIA_NOTIFY);
+        w_string::build(parent_name, "/file", i), *now, W_PENDING_VIA_NOTIFY);
   }
 
   for (i = 0; i < num_dirs; i++) {
     list->emplace_back(
-        w_string::printf("%s/dir%d", parent_name.c_str(), i),
-        *now,
-        W_PENDING_RECURSIVE);
+        w_string::build(parent_name, "/dir", i), *now, W_PENDING_RECURSIVE);
 
     if (depth > 0) {
       build_list(list, now, list->back().path, depth - 1, num_files, num_dirs);
@@ -31,20 +27,21 @@ static void build_list(
   }
 }
 
-size_t process_items(struct watchman_pending_collection *coll) {
-  struct watchman_pending_fs *item;
+size_t process_items(PendingCollection::LockedPtr& coll) {
   size_t drained = 0;
   struct stat st;
 
-  while ((item = w_pending_coll_pop(coll)) != NULL) {
+  auto item = coll->stealItems();
+  while (item) {
     // To simulate looking at the file, we're just going to stat
     // ourselves over and over, as the path we put in the list
     // doesn't exist on the filesystem.  We're measuring hot cache
     // (best case) stat performance here.
     w_lstat(__FILE__, &st, true);
-    w_pending_fs_free(item);
 
     drained++;
+
+    item = std::move(item->next);
   }
   return drained;
 }
@@ -75,14 +72,15 @@ static void bench_pending(void) {
 
   // Benchmark insertion in top-down order.
   {
-    struct watchman_pending_collection coll;
+    PendingCollection coll;
     size_t drained = 0;
+    auto lock = coll.wlock();
 
     gettimeofday(&start, NULL);
     for (auto& item : list) {
-      w_pending_coll_add(&coll, item.path, item.now, item.flags);
+      lock->add(item.path, item.now, item.flags);
     }
-    drained = process_items(&coll);
+    drained = process_items(lock);
 
     gettimeofday(&end, NULL);
     diag("took %.3fs to insert %u items into pending coll",
@@ -93,16 +91,17 @@ static void bench_pending(void) {
   // tree up to the root, or bottom-up.  This simulates the workload of
   // a recursive delete of a filesystem tree.
   {
-    struct watchman_pending_collection coll;
+    PendingCollection coll;
     size_t drained = 0;
+    auto lock = coll.wlock();
 
     gettimeofday(&start, NULL);
     for (auto it = list.rbegin(); it != list.rend(); ++it) {
       auto& item = *it;
-      w_pending_coll_add(&coll, item.path, item.now, item.flags);
+      lock->add(item.path, item.now, item.flags);
     }
 
-    drained = process_items(&coll);
+    drained = process_items(lock);
 
     gettimeofday(&end, NULL);
     diag("took %.3fs to reverse insert %u items into pending coll",
@@ -110,10 +109,7 @@ static void bench_pending(void) {
   }
 }
 
-int main(int argc, char **argv) {
-  (void)argc;
-  (void)argv;
-
+int main(int, char**) {
   plan_tests(1);
   bench_pending();
   pass("got here");

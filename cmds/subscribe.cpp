@@ -311,15 +311,15 @@ static void cmd_subscribe(
   std::unique_ptr<watchman_client_subscription> sub;
   watchman_client_subscription* subPtr{nullptr};
   json_ref resp, initial_subscription_results;
-  json_t *jfield_list;
-  json_t *jname;
+  json_ref jfield_list;
+  json_ref jname;
   std::shared_ptr<w_query> query;
-  json_t *query_spec;
+  json_ref query_spec;
   struct w_query_field_list field_list;
   char *errmsg;
   int defer = true; /* can't use bool because json_unpack requires int */
-  json_t *defer_list = NULL;
-  json_t *drop_list = NULL;
+  json_ref defer_list;
+  json_ref drop_list;
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
   struct unlocked_watchman_root unlocked;
@@ -334,16 +334,16 @@ static void cmd_subscribe(
     return;
   }
 
-  jname = json_array_get(args, 2);
+  jname = args.at(2);
   if (!json_is_string(jname)) {
     send_error_response(
         client, "expected 2nd parameter to be subscription name");
     goto done;
   }
 
-  query_spec = json_array_get(args, 3);
+  query_spec = args.at(3);
 
-  jfield_list = json_object_get(query_spec, "fields");
+  jfield_list = query_spec.get_default("fields");
   if (!parse_field_list(jfield_list, &field_list, &errmsg)) {
     send_error_response(client, "invalid field list: %s", errmsg);
     free(errmsg);
@@ -357,12 +357,13 @@ static void cmd_subscribe(
     goto done;
   }
 
-  json_unpack(query_spec, "{s?:o}", "defer", &defer_list);
+  defer_list = query_spec.get_default("defer");
   if (defer_list && !json_is_array(defer_list)) {
     send_error_response(client, "defer field must be an array of strings");
     goto done;
   }
-  json_unpack(query_spec, "{s?:o}", "drop", &drop_list);
+
+  drop_list = query_spec.get_default("drop");
   if (drop_list && !json_is_array(drop_list)) {
     send_error_response(client, "drop field must be an array of strings");
     goto done;
@@ -412,7 +413,7 @@ static void cmd_subscribe(
   }
 
   resp = make_response();
-  resp.set("subscribe", jname);
+  resp.set("subscribe", json_ref(jname));
 
   w_root_read_lock(&unlocked, "initial subscription query", &lock);
 

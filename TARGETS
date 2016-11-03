@@ -145,7 +145,6 @@ cpp_library(
         'bser.cpp',
         'cfg.cpp',
         'expflags.cpp',
-        'ht.cpp',
         'ignore.cpp',
         'opendir.cpp',
         'pending.cpp',

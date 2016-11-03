@@ -5,7 +5,6 @@
 
 /* query /root {query} */
 static void cmd_query(struct watchman_client* client, const json_ref& args) {
-  json_t *query_spec;
   char *errmsg = NULL;
   w_query_res res;
   char clockbuf[128];
@@ -21,9 +20,9 @@ static void cmd_query(struct watchman_client* client, const json_ref& args) {
     return;
   }
 
-  query_spec = json_array_get(args, 2);
+  const auto& query_spec = args.at(2);
 
-  auto jfield_list = json_object_get(query_spec, "fields");
+  auto jfield_list = query_spec.get_default("fields");
   if (!parse_field_list(jfield_list, &field_list, &errmsg)) {
     send_error_response(client, "invalid field list: %s", errmsg);
     free(errmsg);

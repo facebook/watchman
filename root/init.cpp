@@ -69,7 +69,7 @@ static void apply_ignore_configuration(w_root_t *root) {
 
     auto name = json_to_w_string(jignore);
     auto fullname = w_string::pathCat({root->root_path, name});
-    w_ignore_addstr(&root->ignore, fullname, false);
+    root->ignore.add(fullname, false);
     w_log(W_LOG_DBG, "ignoring %s recursively\n", fullname.c_str());
   }
 }

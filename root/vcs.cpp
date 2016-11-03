@@ -43,11 +43,11 @@ bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg) {
 
     // if we are completely ignoring this dir, we have nothing more to
     // do here
-    if (w_ht_get(root->ignore.ignore_dirs, w_ht_ptr_val(fullname))) {
+    if (root->ignore.isIgnoreDir(fullname)) {
       continue;
     }
 
-    w_ignore_addstr(&root->ignore, fullname, true);
+    root->ignore.add(fullname, true);
 
     // While we're at it, see if we can find out where to put our
     // query cookie information
