@@ -212,7 +212,7 @@ static bool parse_query_expression(w_query* res, const json_ref& query) {
 }
 
 static bool parse_sync(w_query* res, const json_ref& query) {
-  int value = DEFAULT_QUERY_SYNC_MS;
+  int value = DEFAULT_QUERY_SYNC_MS.count();
 
   if (query &&
       json_unpack(query, "{s?:i*}", "sync_timeout", &value) != 0) {
@@ -225,12 +225,12 @@ static bool parse_sync(w_query* res, const json_ref& query) {
     return false;
   }
 
-  res->sync_timeout = value;
+  res->sync_timeout = std::chrono::milliseconds(value);
   return true;
 }
 
 static bool parse_lock_timeout(w_query* res, const json_ref& query) {
-  int value = DEFAULT_QUERY_SYNC_MS;
+  int value = DEFAULT_QUERY_SYNC_MS.count();
 
   if (query &&
       json_unpack(query, "{s?:i*}", "lock_timeout", &value) != 0) {

@@ -416,7 +416,7 @@ void w_assess_trigger(
 
   // Triggers never need to sync explicitly; we are only dispatched
   // at settle points which are by definition sync'd to the present time
-  cmd->query->sync_timeout = 0;
+  cmd->query->sync_timeout = std::chrono::milliseconds(0);
   w_log(W_LOG_DBG, "assessing trigger %s %p\n", cmd->triggername.c_str(), cmd);
   if (!w_query_execute_locked(cmd->query.get(), lock, &res, time_generator)) {
     w_log(

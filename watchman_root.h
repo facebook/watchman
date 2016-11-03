@@ -14,7 +14,7 @@
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
 
 #define DEFAULT_SETTLE_PERIOD 20
-#define DEFAULT_QUERY_SYNC_MS 60000
+constexpr std::chrono::milliseconds DEFAULT_QUERY_SYNC_MS(60000);
 
 /* Prune out nodes that were deleted roughly 12-36 hours ago */
 #define DEFAULT_GC_AGE (86400/2)
@@ -123,6 +123,7 @@ struct watchman_root {
 
   void considerAgeOut();
   void performAgeOut(std::chrono::seconds min_age);
+  bool syncToNow(std::chrono::milliseconds timeout);
 };
 
 struct write_locked_watchman_root {
@@ -178,8 +179,6 @@ void w_root_reap(void);
 void w_root_delref(struct unlocked_watchman_root* unlocked);
 void w_root_delref_raw(w_root_t* root);
 void w_root_addref(w_root_t* root);
-
-bool w_root_sync_to_now(struct unlocked_watchman_root* unlocked, int timeoutms);
 
 void w_root_lock(
     struct unlocked_watchman_root* unlocked,

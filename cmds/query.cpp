@@ -39,7 +39,7 @@ static void cmd_query(struct watchman_client* client, const json_ref& args) {
   }
 
   if (client->client_mode) {
-    query->sync_timeout = 0;
+    query->sync_timeout = std::chrono::milliseconds(0);
   }
 
   if (!w_query_execute(query.get(), &unlocked, &res, nullptr)) {

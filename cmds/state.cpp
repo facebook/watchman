@@ -3,9 +3,11 @@
 
 #include "watchman.h"
 
+using ms = std::chrono::milliseconds;
+
 struct state_arg {
   w_string name;
-  int sync_timeout;
+  ms sync_timeout;
   json_ref metadata;
 };
 
@@ -36,10 +38,10 @@ static bool parse_state_arg(
   // [cmd, root, {name:, metadata:, sync_timeout:}]
   parsed->name = json_to_w_string(state_args.get("name"));
   parsed->metadata = state_args.get_default("metadata");
-  parsed->sync_timeout = json_integer_value(state_args.get_default(
-      "sync_timeout", json_integer(parsed->sync_timeout)));
+  parsed->sync_timeout = ms(json_integer_value(state_args.get_default(
+      "sync_timeout", json_integer(parsed->sync_timeout.count()))));
 
-  if (parsed->sync_timeout < 0) {
+  if (parsed->sync_timeout < ms::zero()) {
     send_error_response(client, "sync_timeout must be >= 0");
     return false;
   }
@@ -61,7 +63,7 @@ watchman_client_state_assertion::~watchman_client_state_assertion() {
 static void cmd_state_enter(
     struct watchman_client* clientbase,
     const json_ref& args) {
-  struct state_arg parsed = {nullptr, 0, nullptr};
+  struct state_arg parsed;
   std::unique_ptr<watchman_client_state_assertion> assertion;
   char clockbuf[128];
   json_ref response;
@@ -77,8 +79,8 @@ static void cmd_state_enter(
     goto done;
   }
 
-  if (parsed.sync_timeout &&
-      !w_root_sync_to_now(&unlocked, parsed.sync_timeout)) {
+  if (parsed.sync_timeout.count() &&
+      !unlocked.root->syncToNow(parsed.sync_timeout)) {
     send_error_response(client, "synchronization failed: %s", strerror(errno));
     goto done;
   }
@@ -212,7 +214,7 @@ void w_client_vacate_states(struct watchman_user_client *client) {
 static void cmd_state_leave(
     struct watchman_client* clientbase,
     const json_ref& args) {
-  struct state_arg parsed = {nullptr, 0, nullptr};
+  struct state_arg parsed;
   // This is a weak reference to the assertion.  This is safe because only this
   // client can delete this assertion, and this function is only executed by
   // the thread that owns this client.
@@ -231,8 +233,8 @@ static void cmd_state_leave(
     goto done;
   }
 
-  if (parsed.sync_timeout &&
-      !w_root_sync_to_now(&unlocked, parsed.sync_timeout)) {
+  if (parsed.sync_timeout.count() &&
+      !unlocked.root->syncToNow(parsed.sync_timeout)) {
     send_error_response(client, "synchronization failed: %s", strerror(errno));
     goto done;
   }

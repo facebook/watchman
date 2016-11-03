@@ -304,8 +304,8 @@ bool w_query_execute(
 
   w_perf_t sample("query_execute");
 
-  if (query->sync_timeout &&
-      !w_root_sync_to_now(unlocked, query->sync_timeout)) {
+  if (query->sync_timeout.count() &&
+      !unlocked->root->syncToNow(query->sync_timeout)) {
     ignore_result(asprintf(&res->errmsg, "synchronization failed: %s\n",
         strerror(errno)));
     return false;

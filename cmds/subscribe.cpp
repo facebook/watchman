@@ -175,7 +175,7 @@ static json_ref build_subscription_results(
 
   // Subscriptions never need to sync explicitly; we are only dispatched
   // at settle points which are by definition sync'd to the present time
-  sub->query->sync_timeout = 0;
+  sub->query->sync_timeout = std::chrono::milliseconds(0);
   // We're called by the io thread, so there's little chance that the root
   // could be legitimately blocked by something else.  That means that we
   // can use a short lock_timeout
