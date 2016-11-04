@@ -69,12 +69,12 @@ class TestTransportErrorHandling(unittest.TestCase):
             sendEncoding='json',
             recvEncoding='json',
         )
-        with self.assertRaisesRegexp(
-                WatchmanError,
-                'I/O error communicating with watchman daemon: errno=23 ' +
-                'errmsg=fnord, while executing \(\'foobarbaz\',\)'):
-            c.query("foobarbaz")
-
+        self.assertRaisesRegexp(
+            WatchmanError,
+            'I/O error communicating with watchman daemon: errno=23 ' +
+            'errmsg=fnord, while executing \(\'foobarbaz\',\)',
+            c.query,
+            "foobarbaz")
 
 def expand_bser_mods(test_class):
     '''
