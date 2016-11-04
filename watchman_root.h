@@ -45,14 +45,15 @@ struct watchman_root {
 
   struct watchman_ignore ignore;
 
+  /* config options loaded via json file */
+  json_ref config_file;
+  Configuration config;
+
   int trigger_settle{0};
   int gc_interval{0};
   int gc_age{0};
   int idle_reap_age{0};
 
-  /* config options loaded via json file */
-  json_ref config_file;
-  Configuration config;
 
   // Stream of broadcast unilateral items emitted by this root
   std::shared_ptr<watchman::Publisher> unilateralResponses;
@@ -143,6 +144,9 @@ struct watchman_root {
   void signalThreads();
   bool stopWatch();
   json_ref triggerListToJson() const;
+
+ private:
+  void applyIgnoreConfiguration();
 };
 
 struct write_locked_watchman_root {

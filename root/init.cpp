@@ -46,11 +46,11 @@ static json_ref load_root_config(const char* path) {
   return res;
 }
 
-static void apply_ignore_configuration(w_root_t *root) {
+void watchman_root::applyIgnoreConfiguration() {
   uint8_t i;
   json_t *ignores;
 
-  ignores = root->config.get("ignore_dirs");
+  ignores = config.get("ignore_dirs");
   if (!ignores) {
     return;
   }
@@ -68,8 +68,8 @@ static void apply_ignore_configuration(w_root_t *root) {
     }
 
     auto name = json_to_w_string(jignore);
-    auto fullname = w_string::pathCat({root->root_path, name});
-    root->ignore.add(fullname, false);
+    auto fullname = w_string::pathCat({root_path, name});
+    ignore.add(fullname, false);
     w_log(W_LOG_DBG, "ignoring %s recursively\n", fullname.c_str());
   }
 }
@@ -102,21 +102,6 @@ bool watchman_root::init(char** errmsg) {
 
 w_root_t *w_root_new(const char *path, char **errmsg) {
   auto root = new w_root_t(w_string(path, W_STRING_BYTE));
-
-  ++live_roots;
-  pthread_rwlock_init(&root->lock, NULL);
-
-  root->case_sensitive = is_case_sensitive_filesystem(path);
-
-  root->trigger_settle =
-      int(root->config.getInt("settle", DEFAULT_SETTLE_PERIOD));
-  root->gc_age = int(root->config.getInt("gc_age_seconds", DEFAULT_GC_AGE));
-  root->gc_interval =
-      int(root->config.getInt("gc_interval_seconds", DEFAULT_GC_INTERVAL));
-  root->idle_reap_age =
-      int(root->config.getInt("idle_reap_age_seconds", DEFAULT_REAP_AGE));
-
-  apply_ignore_configuration(root);
 
   if (!root->applyIgnoreVCSConfiguration(errmsg)) {
     w_root_delref_raw(root);
@@ -172,11 +157,22 @@ void w_root_delref_raw(w_root_t *root) {
 
 watchman_root::watchman_root(const w_string& root_path)
     : root_path(root_path),
+      case_sensitive(is_case_sensitive_filesystem(root_path.c_str())),
       cookies(root_path),
       config_file(load_root_config(root_path.c_str())),
       config(config_file),
+      trigger_settle(int(config.getInt("settle", DEFAULT_SETTLE_PERIOD))),
+      gc_interval(
+          int(config.getInt("gc_interval_seconds", DEFAULT_GC_INTERVAL))),
+      gc_age(int(config.getInt("gc_age_seconds", DEFAULT_GC_AGE))),
+      idle_reap_age(
+          int(config.getInt("idle_reap_age_seconds", DEFAULT_REAP_AGE))),
       unilateralResponses(std::make_shared<watchman::Publisher>()),
-      inner(root_path, cookies, config) {}
+      inner(root_path, cookies, config) {
+  pthread_rwlock_init(&lock, nullptr);
+  ++live_roots;
+  applyIgnoreConfiguration();
+}
 
 watchman_root::~watchman_root() {
   w_log(W_LOG_DBG, "root: final ref on %s\n", root_path.c_str());
