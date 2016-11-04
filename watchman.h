@@ -102,8 +102,6 @@ extern pthread_t reaper_thread;
 
 void w_request_shutdown(void);
 
-void w_cancel_subscriptions_for_root(const w_root_t *root);
-
 #include "watchman_time.h"
 
 extern const char *watchman_tmp_dir;

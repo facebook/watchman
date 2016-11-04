@@ -34,7 +34,11 @@ bool watchman_root::cancel() {
 
     watchman::log(watchman::DBG, "marked ", root_path, " cancelled\n");
     inner.cancelled = true;
-    w_cancel_subscriptions_for_root(this);
+
+    // The client will fan this out to all matching subscriptions.
+    // This happens in listener.cpp.
+    unilateralResponses->enqueue(json_object(
+        {{"root", w_string_to_json(root_path)}, {"canceled", json_true()}}));
 
     signalThreads();
     removeFromWatched();

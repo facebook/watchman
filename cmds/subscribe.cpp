@@ -245,17 +245,6 @@ static void w_run_subscription_rules(
   client->enqueueResponse(std::move(response), false);
 }
 
-void w_cancel_subscriptions_for_root(const w_root_t *root) {
-  watchman::log(
-      watchman::DBG, "queue up cancel for root ", root->root_path, "\n");
-
-  // The client will fan this out to all matching subscriptions.
-  // This happens in listener.cpp.
-  root->unilateralResponses->enqueue(
-      json_object({{"root", w_string_to_json(root->root_path)},
-                   {"canceled", json_true()}}));
-}
-
 /* unsubscribe /root subname
  * Cancels a subscription */
 static void cmd_unsubscribe(
