@@ -2,124 +2,149 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-#include "make_unique.h"
+
+watchman_client_subscription::watchman_client_subscription(
+    std::weak_ptr<watchman_client> client)
+    : weakClient(client) {}
+
+std::shared_ptr<watchman_user_client>
+watchman_client_subscription::lockClient() {
+  auto client = weakClient.lock();
+  if (client) {
+    return std::dynamic_pointer_cast<watchman_user_client>(client);
+  }
+  return nullptr;
+}
+
+watchman_client_subscription::~watchman_client_subscription() {
+  auto client = lockClient();
+  if (client) {
+    client->unsubByName(name);
+  }
+  w_root_delref(&unlocked);
+}
+
+bool watchman_user_client::unsubByName(const w_string& name) {
+  auto subIter = subscriptions.find(name);
+  if (subIter == subscriptions.end()) {
+    return false;
+  }
+
+  unilateralSub.erase(subIter->second);
+  subscriptions.erase(subIter);
+
+  return true;
+}
 
 static void w_run_subscription_rules(
     struct watchman_user_client* client,
     struct watchman_client_subscription* sub,
     struct read_locked_watchman_root* lock);
 
-/** This is called from the IO thread */
-void process_subscriptions(struct read_locked_watchman_root* lock) {
-  bool vcs_in_progress;
-  const w_root_t* root = lock->root;
+void watchman_client_subscription::processSubscription() {
+  read_locked_watchman_root lock;
 
-  auto clientsLock = clients.wlock();
-
-  if (clientsLock->empty()) {
-    // No subscribers
+  auto client = lockClient();
+  if (!client) {
+    watchman::log(
+        watchman::ERR,
+        "encountered a vacated client while running subscription rules\n");
     return;
   }
 
-  // If it looks like we're in a repo undergoing a rebase or
-  // other similar operation, we want to defer subscription
-  // notifications until things settle down
-  vcs_in_progress = lock->root->inner.view->isVCSOperationInProgress();
+  w_root_read_lock(&unlocked, "subscription query", &lock);
 
-  for (auto client_base : *clientsLock) {
-    auto client = (watchman_user_client*)client_base;
-    for (auto& citer : client->subscriptions) {
-      auto sub = citer.second.get();
-      bool defer = false;
-      bool drop = false;
-      w_string policy_name;
+  bool defer = false;
+  bool drop = false;
+  w_string policy_name;
 
-      if (sub->root != root) {
-        w_log(W_LOG_DBG, "root doesn't match, skipping\n");
-        continue;
-      }
-      w_log(
-          W_LOG_DBG,
-          "client->stm=%p sub=%p %s, last=%" PRIu32 " pending=%" PRIu32 "\n",
-          client->stm,
-          sub,
-          sub->name.c_str(),
-          sub->last_sub_tick,
-          root->inner.view->getMostRecentTickValue());
+  watchman::log(
+      watchman::DBG,
+      "sub=",
+      this,
+      " ",
+      name,
+      ", last=",
+      last_sub_tick,
+      " pending=",
+      lock.root->inner.view->getMostRecentTickValue(),
+      "\n");
 
-      if (sub->last_sub_tick == root->inner.view->getMostRecentTickValue()) {
-        continue;
-      }
+  if (last_sub_tick != lock.root->inner.view->getMostRecentTickValue()) {
+    auto asserted_states = lock.root->asserted_states.rlock();
+    if (!asserted_states->empty() && !drop_or_defer.empty()) {
+      // There are 1 or more states asserted and this subscription
+      // has some policy for states.  Figure out what we should do.
+      for (auto& policy_iter : drop_or_defer) {
+        auto name = policy_iter.first;
+        bool policy_is_drop = policy_iter.second;
 
-      {
-        auto asserted_states = root->asserted_states.rlock();
-        if (!asserted_states->empty() && !sub->drop_or_defer.empty()) {
-          policy_name.reset();
-
-          // There are 1 or more states asserted and this subscription
-          // has some policy for states.  Figure out what we should do.
-          for (auto& policy_iter : sub->drop_or_defer) {
-            auto name = policy_iter.first;
-            bool policy_is_drop = policy_iter.second;
-
-            if (asserted_states->find(name) == asserted_states->end()) {
-              continue;
-            }
-
-            if (!defer) {
-              // This policy is active
-              defer = true;
-              policy_name = name;
-            }
-
-            if (policy_is_drop) {
-              drop = true;
-
-              // If we're dropping, we don't need to look at any
-              // other policies
-              policy_name = name;
-              break;
-            }
-            // Otherwise keep looking until we find a drop
-          }
+        if (asserted_states->find(name) == asserted_states->end()) {
+          continue;
         }
-      }
 
-      if (drop) {
-        // fast-forward over any notifications while in the drop state
-        sub->last_sub_tick = root->inner.view->getMostRecentTickValue();
-        w_log(
-            W_LOG_DBG,
-            "dropping subscription notifications for %s "
-            "until state %s is vacated\n",
-            sub->name.c_str(),
-            policy_name.c_str());
-        continue;
-      }
+        if (!defer) {
+          // This policy is active
+          defer = true;
+          policy_name = name;
+        }
 
-      if (defer) {
-        w_log(
-            W_LOG_DBG,
-            "deferring subscription notifications for %s "
-            "until state %s is vacated\n",
-            sub->name.c_str(),
-            policy_name.c_str());
-        continue;
-      }
+        if (policy_is_drop) {
+          drop = true;
 
-      if (sub->vcs_defer && vcs_in_progress) {
-        w_log(
-            W_LOG_DBG,
-            "deferring subscription notifications for %s "
-            "until VCS operations complete\n",
-            sub->name.c_str());
-        continue;
+          // If we're dropping, we don't need to look at any
+          // other policies
+          policy_name = name;
+          break;
+        }
+        // Otherwise keep looking until we find a drop
       }
+    }
 
-      w_run_subscription_rules(client, sub, lock);
-      sub->last_sub_tick = root->inner.view->getMostRecentTickValue();
+    bool executeQuery = true;
+
+    if (drop) {
+      // fast-forward over any notifications while in the drop state
+      last_sub_tick = lock.root->inner.view->getMostRecentTickValue();
+      watchman::log(
+          watchman::DBG,
+          "dropping subscription notifications for ",
+          name,
+          " until state ",
+          policy_name,
+          " is vacated. Advanced ticks to ",
+          last_sub_tick,
+          "\n");
+      executeQuery = false;
+    }
+
+    if (defer) {
+      watchman::log(
+          watchman::DBG,
+          "deferring subscription notifications for ",
+          name,
+          " until state ",
+          policy_name,
+          " is vacated\n");
+      executeQuery = false;
+    }
+
+    if (vcs_defer && lock.root->inner.view->isVCSOperationInProgress()) {
+      watchman::log(
+          watchman::DBG,
+          "deferring subscription notifications for ",
+          name,
+          " until VCS operations complete\n");
+      executeQuery = false;
+    }
+
+    if (executeQuery) {
+      w_run_subscription_rules(client.get(), this, &lock);
+      last_sub_tick = lock.root->inner.view->getMostRecentTickValue();
     }
   }
+
+  w_root_read_unlock(&lock, &unlocked);
 }
 
 static void update_subscription_ticks(struct watchman_client_subscription *sub,
@@ -150,7 +175,7 @@ static json_ref build_subscription_results(
 
   // Subscriptions never need to sync explicitly; we are only dispatched
   // at settle points which are by definition sync'd to the present time
-  sub->query->sync_timeout = 0;
+  sub->query->sync_timeout = std::chrono::milliseconds(0);
   // We're called by the io thread, so there's little chance that the root
   // could be legitimately blocked by something else.  That means that we
   // can use a short lock_timeout
@@ -217,45 +242,18 @@ static void w_run_subscription_rules(
 
   add_root_warnings_to_response(response, lock);
 
-  if (!enqueue_response(client, std::move(response), true)) {
-    w_log(W_LOG_DBG, "failed to queue sub response\n");
-  }
+  client->enqueueResponse(std::move(response), false);
 }
 
 void w_cancel_subscriptions_for_root(const w_root_t *root) {
-  auto lock = clients.wlock();
-  for (auto client_base : *lock) {
-    auto client = (watchman_user_client*)client_base;
-    // Manually iterate since we will be erasing elements as we go
-    auto citer = client->subscriptions.begin();
-    while (citer != client->subscriptions.end()) {
-      auto sub = citer->second.get();
+  watchman::log(
+      watchman::DBG, "queue up cancel for root ", root->root_path, "\n");
 
-      if (sub->root == root) {
-        auto response = make_response();
-
-        w_log(
-            W_LOG_ERR,
-            "Cancel subscription %s for client:stm=%p due to "
-            "root cancellation\n",
-            sub->name.c_str(),
-            client->stm);
-
-        response.set({{"root", w_string_to_json(root->root_path)},
-                      {"subscription", w_string_to_json(sub->name)},
-                      {"unilateral", json_true()},
-                      {"canceled", json_true()}});
-
-        if (!enqueue_response(client, std::move(response), true)) {
-          w_log(W_LOG_DBG, "failed to queue sub cancellation\n");
-        }
-
-        citer = client->subscriptions.erase(citer);
-      } else {
-        ++citer;
-      }
-    }
-  }
+  // The client will fan this out to all matching subscriptions.
+  // This happens in listener.cpp.
+  root->unilateralResponses->enqueue(
+      json_object({{"root", w_string_to_json(root->root_path)},
+                   {"canceled", json_true()}}));
 }
 
 /* unsubscribe /root subname
@@ -283,15 +281,7 @@ static void cmd_unsubscribe(
   }
 
   auto sname = json_to_w_string(jstr);
-
-  {
-    auto lock = clients.wlock();
-    auto it = client->subscriptions.find(sname);
-    if (it != client->subscriptions.end()) {
-      client->subscriptions.erase(it);
-      deleted = true;
-    }
-  }
+  deleted = client->unsubByName(sname);
 
   auto resp = make_response();
   resp.set({{"unsubscribe", typed_string_to_json(name)},
@@ -308,8 +298,7 @@ W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
 static void cmd_subscribe(
     struct watchman_client* clientbase,
     const json_ref& args) {
-  std::unique_ptr<watchman_client_subscription> sub;
-  watchman_client_subscription* subPtr{nullptr};
+  std::shared_ptr<watchman_client_subscription> sub;
   json_ref resp, initial_subscription_results;
   json_ref jfield_list;
   json_ref jname;
@@ -369,7 +358,8 @@ static void cmd_subscribe(
     goto done;
   }
 
-  sub = watchman::make_unique<watchman_client_subscription>();
+  sub = std::make_shared<watchman_client_subscription>(
+      client->shared_from_this());
   if (!sub) {
     send_error_response(client, "no memory!");
     goto done;
@@ -399,18 +389,19 @@ static void cmd_subscribe(
   }
 
   memcpy(&sub->field_list, &field_list, sizeof(field_list));
-  sub->root = unlocked.root;
+  sub->unlocked.root = unlocked.root;
+  w_root_addref(sub->unlocked.root);
 
-  // This locking is to ensure that we publish a subscription when
-  // it is fully constructed.  No other threads can delete the subscription;
-  // it is owned by the client thread which is calling this function right
-  // now, so it is safe to hold on to the raw pointer while we do the tail
-  // processing in the remainder of the function below.
-  subPtr = sub.get();
+  // Connect the root to our subscription
   {
-    auto lock = clients.wlock();
-    client->subscriptions[subPtr->name] = std::move(sub);
+    auto clientRef = client->shared_from_this();
+    client->unilateralSub.insert(std::make_pair(
+        sub, unlocked.root->unilateralResponses->subscribe([clientRef, sub]() {
+          w_event_set(clientRef->ping);
+        })));
   }
+
+  client->subscriptions[sub->name] = sub;
 
   resp = make_response();
   resp.set("subscribe", json_ref(jname));
@@ -419,7 +410,7 @@ static void cmd_subscribe(
 
   add_root_warnings_to_response(resp, &lock);
   annotate_with_clock(&lock, resp);
-  initial_subscription_results = build_subscription_results(subPtr, &lock);
+  initial_subscription_results = build_subscription_results(sub.get(), &lock);
   w_root_read_unlock(&lock, &unlocked);
 
   send_and_dispose_response(client, std::move(resp));

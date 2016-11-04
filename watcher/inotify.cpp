@@ -224,7 +224,7 @@ void InotifyWatcher::process_inotify_event(
 
   if (ine->wd == -1 && (ine->mask & IN_Q_OVERFLOW)) {
     /* we missed something, will need to re-crawl */
-    w_root_schedule_recrawl(root, "IN_Q_OVERFLOW");
+    root->scheduleRecrawl("IN_Q_OVERFLOW");
   } else if (ine->wd != -1) {
     w_string_t* name = nullptr;
     char buf[WATCHMAN_NAME_MAX];
@@ -311,7 +311,7 @@ void InotifyWatcher::process_inotify_event(
               "root dir %s has been (re)moved, canceling watch\n",
               root->root_path.c_str());
           w_string_delref(name);
-          w_root_cancel(root);
+          root->cancel();
           return;
         }
 
@@ -354,7 +354,7 @@ void InotifyWatcher::process_inotify_event(
       // up our state.
       w_log(W_LOG_ERR, "wanted dir %d for mask %x but not found %.*s\n",
           ine->wd, ine->mask, ine->len, ine->name);
-      w_root_schedule_recrawl(root, "dir missing from internal state");
+      root->scheduleRecrawl("dir missing from internal state");
     }
   }
 }

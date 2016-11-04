@@ -15,14 +15,17 @@ import sys
 from pywatchman import (
     bser,
     compat,
+    client,
     pybser,
     load,
     SocketTimeout,
+    Transport,
     WatchmanError,
 )
 
 PILE_OF_POO = u"\U0001F4A9"
 NON_UTF8_STRING = b'\xff\xff\xff'
+
 
 class TestSocketTimeout(unittest.TestCase):
     def test_exception_handling(self):
@@ -30,6 +33,47 @@ class TestSocketTimeout(unittest.TestCase):
             raise SocketTimeout('should not raise')
         except WatchmanError:
             pass
+
+
+class TestTransportErrorHandling(unittest.TestCase):
+    def test_transport_error(self):
+        buf = '{"foo":"bar"}'
+        failAfterBytesRead = 5
+
+        class FakeFailingTransport(Transport):
+            def __init__(self, sockpath, timeout):
+                self.readBuf = buf
+                self.readBufPos = 0
+                self.writeBuf = []
+                self.closed = False
+
+            def close(self):
+                self.closed = True
+
+            def readBytes(self, size):
+                readEnd = self.readBufPos + size
+                if readEnd > failAfterBytesRead:
+                    raise IOError(23, 'fnord')
+                elif readEnd > len(self.readBuf):
+                    return ''
+                read = self.readBuf[self.readBufPos:self.readBufPos + size]
+                self.readBufPos += size
+                return read
+
+            def write(self, buf):
+                self.writeBuf.extend(buf)
+
+        c = client(
+            sockpath='',
+            transport=FakeFailingTransport,
+            sendEncoding='json',
+            recvEncoding='json',
+        )
+        with self.assertRaisesRegexp(
+                WatchmanError,
+                'I/O error communicating with watchman daemon: errno=23 ' +
+                'errmsg=fnord, while executing \(\'foobarbaz\',\)'):
+            c.query("foobarbaz")
 
 
 def expand_bser_mods(test_class):

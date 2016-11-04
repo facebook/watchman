@@ -222,7 +222,7 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
     // whaaa?
     w_log(W_LOG_ERR, "fstat on opened dir %s failed: %s\n", path,
         strerror(errno));
-    w_root_schedule_recrawl(root, "fstat failed");
+    root->scheduleRecrawl("fstat failed");
     close(newwd);
     w_dir_close(osdir);
     return nullptr;
@@ -331,7 +331,7 @@ bool KQueueWatcher::consumeNotify(
             "root dir %s has been (re)moved [code 0x%x], canceling watch\n",
             root->root_path.c_str(),
             fflags);
-        w_root_cancel(root);
+        root->cancel();
         pthread_mutex_unlock(&lock);
         return 0;
       }

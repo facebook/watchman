@@ -9,7 +9,6 @@
 #include "thirdparty/jansson/jansson.h"
 #include "watchman_hash.h"
 #include "watchman_ignore.h"
-#include "watchman_log.h"
 #include "watchman_stream.h"
 #include "watchman_string.h"
 

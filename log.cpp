@@ -2,9 +2,17 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "Logging.h"
+#include <limits>
 
-static void log_stack_trace(void)
-{
+int log_level = W_LOG_ERR;
+static pthread_key_t thread_name_key;
+
+static void write_str_stderr(const char* str) {
+  ignore_result(write(STDERR_FILENO, str, strlen(str)));
+}
+
+static void log_stack_trace(void) {
 #if defined(HAVE_BACKTRACE) && defined(HAVE_BACKTRACE_SYMBOLS)
   void *array[24];
   size_t size;
@@ -13,18 +21,139 @@ static void log_stack_trace(void)
 
   size = backtrace(array, sizeof(array)/sizeof(array[0]));
   strings = backtrace_symbols(array, size);
-  w_log(W_LOG_ERR, "Fatal error detected at:\n");
+
+  write_str_stderr("Fatal error detected at:\n");
 
   for (i = 0; i < size; i++) {
-    w_log(W_LOG_ERR, "%s\n", strings[i]);
+    write_str_stderr(strings[i]);
+    write_str_stderr("\n");
   }
 
   free(strings);
 #endif
 }
 
-int log_level = W_LOG_ERR;
-static pthread_key_t thread_name_key;
+namespace watchman {
+
+namespace {
+struct levelMaps {
+  // Actually a map of LogLevel, w_string, but it is relatively high friction
+  // to define the hasher for an enum key :-p
+  std::unordered_map<int, w_string> levelToLabel;
+  std::unordered_map<w_string, enum LogLevel> labelToLevel;
+
+  levelMaps()
+      : levelToLabel{{FATAL, "fatal"},
+                     {ERR, "error"},
+                     {OFF, "off"},
+                     {DBG, "debug"}} {
+    // Create the reverse map
+    for (auto& it : levelToLabel) {
+      labelToLevel.insert(
+          std::make_pair(it.second, static_cast<enum LogLevel>(it.first)));
+    }
+  }
+};
+
+// Meyers singleton for holding the log level maps
+levelMaps& getLevelMaps() {
+  static levelMaps maps;
+  return maps;
+}
+
+}
+
+const w_string& logLevelToLabel(enum LogLevel level) {
+  return getLevelMaps().levelToLabel.at(static_cast<int>(level));
+}
+
+enum LogLevel logLabelToLevel(const w_string& label) {
+  return getLevelMaps().labelToLevel.at(label);
+}
+
+Log::Log()
+    : errorPub_(std::make_shared<Publisher>()),
+      debugPub_(std::make_shared<Publisher>()) {
+  setStdErrLoggingLevel(ERR);
+}
+
+Log& getLog() {
+  static Log log;
+  return log;
+}
+
+char* Log::currentTimeString(char* buf, size_t bufsize) {
+  struct timeval tv;
+  char timebuf[64];
+  struct tm tm;
+
+  gettimeofday(&tv, NULL);
+#ifdef _WIN32
+  tm = *localtime(&tv.tv_sec);
+#else
+  localtime_r(&tv.tv_sec, &tm);
+#endif
+  strftime(timebuf, sizeof(timebuf), "%Y-%m-%dT%H:%M:%S", &tm);
+
+  snprintf(buf, bufsize, "%s,%03d", timebuf, (int)tv.tv_usec / 1000);
+
+  return buf;
+}
+
+const char* Log::getThreadName() {
+  auto name = (const char*)pthread_getspecific(thread_name_key);
+  if (name) {
+    return name;
+  }
+  return w_set_thread_name("%" PRIu32, (uint32_t)(uintptr_t)pthread_self());
+}
+
+void Log::setStdErrLoggingLevel(enum LogLevel level) {
+  auto notify = [this]() { doLogToStdErr(); };
+  switch (level) {
+    case OFF:
+      errorSub_.reset();
+      debugSub_.reset();
+      return;
+    case DBG:
+      if (!debugSub_) {
+        debugSub_ = debugPub_->subscribe(notify);
+      }
+      if (!errorSub_) {
+        errorSub_ = errorPub_->subscribe(notify);
+      }
+      return;
+    default:
+      debugSub_.reset();
+      if (!errorSub_) {
+        errorSub_ = errorPub_->subscribe(notify);
+      }
+      return;
+  }
+}
+
+void Log::doLogToStdErr() {
+  auto items = getPending(errorSub_, debugSub_);
+
+  bool fatal = false;
+  static w_string kFatal("fatal");
+
+  for (auto& item : items) {
+    auto& log = json_to_w_string(item->payload.get("log"));
+    ignore_result(write(STDERR_FILENO, log.data(), log.size()));
+
+    if (json_to_w_string(item->payload.get("level")) == kFatal) {
+      fatal = true;
+    }
+  }
+
+  if (fatal) {
+    log_stack_trace();
+    abort();
+  }
+}
+
+} // namespace watchman
 
 #ifndef _WIN32
 static void crash_handler(int signo, siginfo_t *si, void *ucontext) {
@@ -123,14 +252,6 @@ static w_ctor_fn_type(register_thread_name) {
 }
 w_ctor_fn_reg(register_thread_name);
 
-const char *w_get_thread_name(void) {
-  auto name = (const char*)pthread_getspecific(thread_name_key);
-  if (name) {
-    return name;
-  }
-  return w_set_thread_name("%" PRIu32, (uint32_t)(uintptr_t)pthread_self());
-}
-
 const char *w_set_thread_name(const char *fmt, ...) {
   char *name = NULL;
   va_list ap;
@@ -144,70 +265,11 @@ const char *w_set_thread_name(const char *fmt, ...) {
 
 void w_log(int level, WATCHMAN_FMT_STRING(const char *fmt), ...)
 {
-  char buf[4096*4];
   va_list ap;
-  int len, len2;
-  bool fatal = false;
-  struct timeval tv;
-  char timebuf[64];
-  struct tm tm;
-
-  bool should_log_to_stderr = level <= log_level;
-  bool should_log_to_clients = w_should_log_to_clients(level);
-
-  if (!(should_log_to_stderr || should_log_to_clients)) {
-    // Don't bother formatting the log message if nobody's listening.
-    return;
-  }
-
-  if (level == W_LOG_FATAL) {
-    level = W_LOG_ERR;
-    fatal = true;
-  }
-
-  gettimeofday(&tv, NULL);
-#ifdef _WIN32
-  tm = *localtime(&tv.tv_sec);
-#else
-  localtime_r(&tv.tv_sec, &tm);
-#endif
-  strftime(timebuf, sizeof(timebuf), "%Y-%m-%dT%H:%M:%S", &tm);
-
-  len = snprintf(buf, sizeof(buf), "%s,%03d: [%s] ",
-         timebuf, (int)tv.tv_usec / 1000, w_get_thread_name());
   va_start(ap, fmt);
-  len2 = vsnprintf(buf + len, sizeof(buf) - len, fmt, ap);
+  watchman::getLog().logVPrintf(
+      static_cast<enum watchman::LogLevel>(level), fmt, ap);
   va_end(ap);
-
-  if (len2 == -1) {
-    // Truncated.  Ensure that we have a NUL terminator
-    buf[sizeof(buf)-1] = 0;
-  }
-
-  len = (int)strlen(buf);
-
-  if (buf[len - 1] != '\n') {
-    if (len < (int)sizeof(buf) - 1) {
-      buf[len] = '\n';
-      buf[len + 1] = 0;
-      len++;
-    } else {
-      buf[len - 1] = '\n';
-    }
-  }
-
-  if (should_log_to_stderr) {
-    ignore_result(write(STDERR_FILENO, buf, (unsigned int)len));
-  }
-
-  if (should_log_to_clients) {
-    w_log_to_clients(level, buf);
-  }
-
-  if (fatal) {
-    log_stack_trace();
-    abort();
-  }
 }
 
 /* vim:ts=2:sw=2:et:

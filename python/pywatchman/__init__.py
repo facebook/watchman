@@ -31,6 +31,7 @@ from __future__ import division
 from __future__ import print_function
 # no unicode literals
 
+import inspect
 import os
 import math
 import socket
@@ -190,7 +191,24 @@ def _win32_strerror(err):
 
 
 class WatchmanError(Exception):
-    pass
+    def __init__(self, msg=None, cmd=None):
+        self.msg = msg
+        self.cmd = cmd
+
+    def setCommand(self, cmd):
+        self.cmd = cmd
+
+    def __str__(self):
+        if self.cmd:
+            return '%s, while executing %s' % (self.msg, self.cmd)
+        return self.msg
+
+
+class WatchmanEnvironmentError(WatchmanError):
+    def __init__(self, msg, errno, errmsg, cmd=None):
+        super(WatchmanEnvironmentError, self).__init__(
+            '{0}: errno={1} errmsg={2}'.format(msg, errno, errmsg),
+            cmd)
 
 
 class SocketConnectError(WatchmanError):
@@ -216,19 +234,11 @@ class CommandError(WatchmanError):
 
     self.msg is the message returned by watchman.
     """
-
     def __init__(self, msg, cmd=None):
-        self.msg = msg
-        self.cmd = cmd
-        super(CommandError, self).__init__('watchman command error: %s' % msg)
-
-    def setCommand(self, cmd):
-        self.cmd = cmd
-
-    def __str__(self):
-        if self.cmd:
-            return '%s, while executing %s' % (self.msg, self.cmd)
-        return self.msg
+        super(CommandError, self).__init__(
+            'watchman command error: %s' % (msg, ),
+            cmd,
+        )
 
 
 class Transport(object):
@@ -742,19 +752,22 @@ class client(object):
         self.timeout = timeout
         self.useImmutableBser = useImmutableBser
 
-        transport = transport or os.getenv('WATCHMAN_TRANSPORT') or 'local'
-        if transport == 'local' and os.name == 'nt':
-            self.transport = WindowsNamedPipeTransport
-        elif transport == 'local':
-            self.transport = UnixSocketTransport
-        elif transport == 'cli':
-            self.transport = CLIProcessTransport
-            if sendEncoding is None:
-                sendEncoding = 'json'
-            if recvEncoding is None:
-                recvEncoding = sendEncoding
+        if inspect.isclass(transport) and issubclass(transport, Transport):
+            self.transport = transport
         else:
-            raise WatchmanError('invalid transport %s' % transport)
+            transport = transport or os.getenv('WATCHMAN_TRANSPORT') or 'local'
+            if transport == 'local' and os.name == 'nt':
+                self.transport = WindowsNamedPipeTransport
+            elif transport == 'local':
+                self.transport = UnixSocketTransport
+            elif transport == 'cli':
+                self.transport = CLIProcessTransport
+                if sendEncoding is None:
+                    sendEncoding = 'json'
+                if recvEncoding is None:
+                    recvEncoding = sendEncoding
+            else:
+                raise WatchmanError('invalid transport %s' % transport)
 
         sendEncoding = str(sendEncoding or os.getenv('WATCHMAN_ENCODING') or
                            'bser')
@@ -968,9 +981,17 @@ class client(object):
                 res = self.receive()
 
             return res
-        except CommandError as ex:
+        except EnvironmentError as ee:
+            # When we can depend on Python 3, we can use PEP 3134
+            # exception chaining here.
+            raise WatchmanEnvironmentError(
+                'I/O error communicating with watchman daemon',
+                ee.errno,
+                ee.strerror,
+                args)
+        except WatchmanError as ex:
             ex.setCommand(args)
-            raise ex
+            raise
 
     def capabilityCheck(self, optional=None, required=None):
         """ Perform a server capability check """

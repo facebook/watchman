@@ -14,23 +14,21 @@
  * Must be called with the root UNLOCKED.  This function
  * will acquire and release the root lock.
  */
-bool w_root_sync_to_now(struct unlocked_watchman_root *unlocked,
-                        int timeoutms) {
+bool watchman_root::syncToNow(std::chrono::milliseconds timeout) {
   w_perf_t sample("sync_to_now");
 
-  auto res =
-      unlocked->root->cookies.syncToNow(std::chrono::milliseconds(timeoutms));
+  auto res = cookies.syncToNow(timeout);
 
   // We want to know about all timeouts
   if (!res) {
     sample.force_log();
   }
   if (sample.finish()) {
-    sample.add_root_meta(unlocked->root);
+    sample.add_root_meta(this);
     sample.add_meta(
         "sync_to_now",
         json_object({{"success", json_boolean(res)},
-                     {"timeoutms", json_integer(timeoutms)}}));
+                     {"timeoutms", json_integer(timeout.count())}}));
     sample.log();
   }
 

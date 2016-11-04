@@ -242,6 +242,7 @@ class w_string {
   /** Similar to asprintf, but returns a w_string */
   static w_string printf(WATCHMAN_FMT_STRING(const char* format), ...)
       WATCHMAN_FMT_ATTR(1, 2);
+  static w_string vprintf(const char* format, va_list ap);
 
   template <typename... Args>
   static w_string build(Args&&... args);

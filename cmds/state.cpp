@@ -3,9 +3,11 @@
 
 #include "watchman.h"
 
+using ms = std::chrono::milliseconds;
+
 struct state_arg {
   w_string name;
-  int sync_timeout;
+  ms sync_timeout;
   json_ref metadata;
 };
 
@@ -36,10 +38,10 @@ static bool parse_state_arg(
   // [cmd, root, {name:, metadata:, sync_timeout:}]
   parsed->name = json_to_w_string(state_args.get("name"));
   parsed->metadata = state_args.get_default("metadata");
-  parsed->sync_timeout = json_integer_value(state_args.get_default(
-      "sync_timeout", json_integer(parsed->sync_timeout)));
+  parsed->sync_timeout = ms(json_integer_value(state_args.get_default(
+      "sync_timeout", json_integer(parsed->sync_timeout.count()))));
 
-  if (parsed->sync_timeout < 0) {
+  if (parsed->sync_timeout < ms::zero()) {
     send_error_response(client, "sync_timeout must be >= 0");
     return false;
   }
@@ -61,7 +63,7 @@ watchman_client_state_assertion::~watchman_client_state_assertion() {
 static void cmd_state_enter(
     struct watchman_client* clientbase,
     const json_ref& args) {
-  struct state_arg parsed = {nullptr, 0, nullptr};
+  struct state_arg parsed;
   std::unique_ptr<watchman_client_state_assertion> assertion;
   char clockbuf[128];
   json_ref response;
@@ -77,8 +79,8 @@ static void cmd_state_enter(
     goto done;
   }
 
-  if (parsed.sync_timeout &&
-      !w_root_sync_to_now(&unlocked, parsed.sync_timeout)) {
+  if (parsed.sync_timeout.count() &&
+      !unlocked.root->syncToNow(parsed.sync_timeout)) {
     send_error_response(client, "synchronization failed: %s", strerror(errno));
     goto done;
   }
@@ -130,33 +132,16 @@ static void cmd_state_enter(
                 {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)}});
   send_and_dispose_response(client, std::move(response));
 
-  // Now find all the clients with subscriptions and send them
-  // notice of the state being entered
+  // Broadcast about the state enter
   {
-    auto clientsLock = clients.wlock();
-    for (auto subclient_base : *clientsLock) {
-      auto subclient = dynamic_cast<watchman_user_client*>(subclient_base);
-
-      for (auto& citer : subclient->subscriptions) {
-        auto sub = citer.second.get();
-
-        if (sub->root != unlocked.root) {
-          w_log(W_LOG_DBG, "root doesn't match, skipping\n");
-          continue;
-        }
-
-        auto pdu = make_response();
-        pdu.set({{"root", w_string_to_json(unlocked.root->root_path)},
-                 {"subscription", w_string_to_json(sub->name)},
-                 {"unilateral", json_true()},
-                 {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
-                 {"state-enter", w_string_to_json(parsed.name)}});
-        if (parsed.metadata) {
-          pdu.set("metadata", json_ref(parsed.metadata));
-        }
-        enqueue_response(subclient, std::move(pdu), true);
-      }
+    auto payload = json_object(
+        {{"root", w_string_to_json(unlocked.root->root_path)},
+         {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
+         {"state-enter", w_string_to_json(parsed.name)}});
+    if (parsed.metadata) {
+      payload.set("metadata", json_ref(parsed.metadata));
     }
+    unlocked.root->unilateralResponses->enqueue(std::move(payload));
   }
 
 done:
@@ -180,36 +165,18 @@ static void leave_state(struct watchman_user_client *client,
     clockbuf = buf;
   }
 
-  // First locate all subscribers and notify them
-  {
-    auto clientsLock = clients.wlock();
-    for (auto subclient_base : *clientsLock) {
-      auto subclient = dynamic_cast<watchman_user_client*>(subclient_base);
-
-      for (auto& citer : subclient->subscriptions) {
-        auto sub = citer.second.get();
-
-        if (sub->root != unlocked.root) {
-          w_log(W_LOG_DBG, "root doesn't match, skipping\n");
-          continue;
-        }
-
-        auto pdu = make_response();
-        pdu.set({{"root", w_string_to_json(unlocked.root->root_path)},
-                 {"subscription", w_string_to_json(sub->name)},
-                 {"unilateral", json_true()},
-                 {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
-                 {"state-leave", w_string_to_json(assertion->name)}});
-        if (metadata) {
-          pdu.set("metadata", json_ref(metadata));
-        }
-        if (abandoned) {
-          pdu.set("abandoned", json_true());
-        }
-        enqueue_response(subclient, std::move(pdu), true);
-      }
-    }
+  // Broadcast about the state leave
+  auto payload =
+      json_object({{"root", w_string_to_json(unlocked.root->root_path)},
+                   {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
+                   {"state-leave", w_string_to_json(assertion->name)}});
+  if (metadata) {
+    payload.set("metadata", json_ref(metadata));
   }
+  if (abandoned) {
+    payload.set("abandoned", json_true());
+  }
+  unlocked.root->unilateralResponses->enqueue(std::move(payload));
 
   // The erase will delete the assertion pointer, so save these things
   auto id = assertion->id;
@@ -247,7 +214,7 @@ void w_client_vacate_states(struct watchman_user_client *client) {
 static void cmd_state_leave(
     struct watchman_client* clientbase,
     const json_ref& args) {
-  struct state_arg parsed = {nullptr, 0, nullptr};
+  struct state_arg parsed;
   // This is a weak reference to the assertion.  This is safe because only this
   // client can delete this assertion, and this function is only executed by
   // the thread that owns this client.
@@ -266,8 +233,8 @@ static void cmd_state_leave(
     goto done;
   }
 
-  if (parsed.sync_timeout &&
-      !w_root_sync_to_now(&unlocked, parsed.sync_timeout)) {
+  if (parsed.sync_timeout.count() &&
+      !unlocked.root->syncToNow(parsed.sync_timeout)) {
     send_error_response(client, "synchronization failed: %s", strerror(errno));
     goto done;
   }

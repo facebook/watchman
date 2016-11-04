@@ -235,7 +235,7 @@ propagate:
     evt = (watchman_fsevent*)calloc(1, sizeof(*evt));
     if (!evt) {
       w_log(W_LOG_DBG, "FSEvents: OOM!");
-      w_root_cancel(root);
+      root->cancel();
       break;
     }
 
@@ -565,7 +565,7 @@ bool FSEventsWatcher::consumeNotify(
           evt->path->buf, evt->flags, flags_label);
 
     if (evt->flags & kFSEventStreamEventFlagUserDropped) {
-      w_root_schedule_recrawl(root, "kFSEventStreamEventFlagUserDropped");
+      root->scheduleRecrawl("kFSEventStreamEventFlagUserDropped");
 break_out:
       w_string_delref(evt->path);
       free(evt);
@@ -573,14 +573,14 @@ break_out:
     }
 
     if (evt->flags & kFSEventStreamEventFlagKernelDropped) {
-      w_root_schedule_recrawl(root, "kFSEventStreamEventFlagKernelDropped");
+      root->scheduleRecrawl("kFSEventStreamEventFlagKernelDropped");
       goto break_out;
     }
 
     if (evt->flags & kFSEventStreamEventFlagUnmount) {
       w_log(W_LOG_ERR, "kFSEventStreamEventFlagUnmount %.*s, cancel watch\n",
         evt->path->len, evt->path->buf);
-      w_root_cancel(root);
+      root->cancel();
       goto break_out;
     }
 
@@ -588,7 +588,7 @@ break_out:
       w_log(W_LOG_ERR,
         "kFSEventStreamEventFlagRootChanged %.*s, cancel watch\n",
         evt->path->len, evt->path->buf);
-      w_root_cancel(root);
+      root->cancel();
       goto break_out;
     }
 

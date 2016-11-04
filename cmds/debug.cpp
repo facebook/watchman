@@ -21,7 +21,7 @@ static void cmd_debug_recrawl(
 
   auto resp = make_response();
 
-  w_root_schedule_recrawl(unlocked.root, "debug-recrawl");
+  unlocked.root->scheduleRecrawl("debug-recrawl");
 
   resp.set("recrawl", json_true());
   send_and_dispose_response(client, std::move(resp));

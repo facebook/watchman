@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <unordered_map>
 #include "CookieSync.h"
+#include "PubSub.h"
 #include "QueryableView.h"
 #include "watchman_config.h"
 #include "watchman_shared_mutex.h"
@@ -13,7 +14,7 @@
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
 
 #define DEFAULT_SETTLE_PERIOD 20
-#define DEFAULT_QUERY_SYNC_MS 60000
+constexpr std::chrono::milliseconds DEFAULT_QUERY_SYNC_MS(60000);
 
 /* Prune out nodes that were deleted roughly 12-36 hours ago */
 #define DEFAULT_GC_AGE (86400/2)
@@ -52,6 +53,9 @@ struct watchman_root {
   /* config options loaded via json file */
   json_ref config_file;
   Configuration config;
+
+  // Stream of broadcast unilateral items emitted by this root
+  std::shared_ptr<watchman::Publisher> unilateralResponses;
 
   struct RecrawlInfo {
     /* how many times we've had to recrawl */
@@ -119,6 +123,15 @@ struct watchman_root {
 
   void considerAgeOut();
   void performAgeOut(std::chrono::seconds min_age);
+  bool syncToNow(std::chrono::milliseconds timeout);
+  void scheduleRecrawl(const char* why);
+
+  // Requests cancellation of the root.
+  // Returns true if this request caused the root cancellation, false
+  // if it was already in the process of being cancelled.
+  bool cancel();
+
+  void processPendingSymlinkTargets();
 };
 
 struct write_locked_watchman_root {
@@ -166,16 +179,12 @@ bool w_root_resolve_for_client_mode(
 char* w_find_enclosing_root(const char* filename, char** relpath);
 
 void w_root_free_watched_roots(void);
-void w_root_schedule_recrawl(w_root_t* root, const char* why);
-bool w_root_cancel(w_root_t* root);
 bool w_root_stop_watch(struct unlocked_watchman_root* unlocked);
 json_ref w_root_stop_watch_all(void);
 void w_root_reap(void);
 void w_root_delref(struct unlocked_watchman_root* unlocked);
 void w_root_delref_raw(w_root_t* root);
 void w_root_addref(w_root_t* root);
-
-bool w_root_sync_to_now(struct unlocked_watchman_root* unlocked, int timeoutms);
 
 void w_root_lock(
     struct unlocked_watchman_root* unlocked,
@@ -203,10 +212,8 @@ void w_root_read_unlock(
     struct read_locked_watchman_root* locked,
     struct unlocked_watchman_root* unlocked);
 
-void process_pending_symlink_targets(struct unlocked_watchman_root* unlocked);
 void* run_io_thread(void* arg);
 void* run_notify_thread(void* arg);
-void process_subscriptions(struct read_locked_watchman_root* lock);
 void process_triggers(struct read_locked_watchman_root* lock);
 bool consider_reap(struct read_locked_watchman_root* lock);
 void remove_from_file_list(struct watchman_file* file);

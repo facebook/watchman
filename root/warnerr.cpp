@@ -46,7 +46,7 @@ void handle_open_errno(
           syscall,
           dir_name.c_str(),
           reason ? reason : strerror(err));
-      w_root_cancel(root);
+      root->cancel();
       return;
     }
   }

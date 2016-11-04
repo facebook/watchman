@@ -5,12 +5,10 @@
 #ifdef HAVE_LIBGIMLI_H
 # include <libgimli.h>
 #endif
+#include <thread>
 
-/* This needs to be recursive safe because we may log to clients
- * while we are dispatching subscriptions to clients */
-watchman::
-    Synchronized<std::unordered_set<watchman_client*>, std::recursive_mutex>
-        clients;
+watchman::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
+    clients;
 static int listener_fd = -1;
 pthread_t reaper_thread;
 static pthread_t listener_thread;
@@ -34,24 +32,17 @@ json_ref make_response(void) {
   return resp;
 }
 
-/* must be called with the clients.wlock() held */
 bool enqueue_response(
     struct watchman_client* client,
     json_ref&& json,
     bool ping) {
-  client->responses.emplace_back(std::move(json));
-
-  if (ping) {
-    w_event_set(client->ping);
-  }
-
+  client->enqueueResponse(std::move(json), ping);
   return true;
 }
 
 void send_and_dispose_response(
     struct watchman_client* client,
     json_ref&& response) {
-  auto lock = clients.wlock();
   enqueue_response(client, std::move(response), false);
 }
 
@@ -86,7 +77,26 @@ void send_error_response(struct watchman_client *client,
   send_and_dispose_response(client, std::move(resp));
 }
 
+watchman_client::watchman_client() : watchman_client(nullptr) {}
+
+watchman_client::watchman_client(w_stm_t stm) : stm(stm) {
+  w_log(W_LOG_DBG, "accepted client:stm=%p\n", stm);
+  if (!w_json_buffer_init(&reader)) {
+    // FIXME: error handling
+  }
+  if (!w_json_buffer_init(&writer)) {
+    // FIXME: error handling
+  }
+  ping = w_event_make();
+  if (!ping) {
+    // FIXME: error handling
+  }
+}
+
 watchman_client::~watchman_client() {
+  debugSub.reset();
+  errorSub.reset();
+
   w_log(W_LOG_DBG, "client_delete %p\n", this);
 
   w_json_buffer_free(&reader);
@@ -94,6 +104,14 @@ watchman_client::~watchman_client() {
   w_event_destroy(ping);
   w_stm_shutdown(stm);
   w_stm_close(stm);
+}
+
+void watchman_client::enqueueResponse(json_ref&& resp, bool ping) {
+  responses.emplace_back(std::move(resp));
+
+  if (ping) {
+    w_event_set(this->ping);
+  }
 }
 
 void w_request_shutdown(void) {
@@ -109,15 +127,15 @@ void w_request_shutdown(void) {
 
 // The client thread reads and decodes json packets,
 // then dispatches the commands that it finds
-static void *client_thread(void *ptr)
-{
-  auto client = (watchman_client*)ptr;
+static void client_thread(std::shared_ptr<watchman_client> client) {
   struct watchman_event_poll pfd[2];
   json_error_t jerr;
   bool send_ok = true;
 
+  client->thread_handle = pthread_self();
+
   w_stm_set_nonblock(client->stm, true);
-  w_set_thread_name("client=%p:stm=%p", client, client->stm);
+  w_set_thread_name("client=%p:stm=%p", client.get(), client->stm);
 
   client->client_is_owner = w_stm_peer_is_owner(client->stm);
 
@@ -130,7 +148,6 @@ static void *client_thread(void *ptr)
     // thread wants to unilaterally send data to the client
 
     ignore_result(w_poll_events(pfd, 2, 2000));
-
     if (stopping) {
       break;
     }
@@ -147,31 +164,116 @@ static void *client_thread(void *ptr)
           // any error
           goto disconnected;
         }
-        send_error_response(client, "invalid json at position %d: %s",
-            jerr.position, jerr.text);
+        send_error_response(
+            client.get(),
+            "invalid json at position %d: %s",
+            jerr.position,
+            jerr.text);
         w_log(W_LOG_ERR, "invalid data from client: %s\n", jerr.text);
 
         goto disconnected;
       } else if (request) {
         client->pdu_type = client->reader.pdu_type;
-        dispatch_command(client, request, CMD_DAEMON);
+        dispatch_command(client.get(), request, CMD_DAEMON);
       }
     }
 
     if (pfd[1].ready) {
-      w_event_test_and_clear(client->ping);
+      while (w_event_test_and_clear(client->ping)) {
+        // Enqueue refs to pending log payloads
+        auto items = watchman::getPending(client->debugSub, client->errorSub);
+        for (auto& item : items) {
+          client->enqueueResponse(json_ref(item->payload), false);
+        }
+
+        // Maybe we have subscriptions to dispatch?
+        auto userClient =
+            std::dynamic_pointer_cast<watchman_user_client>(client);
+
+        if (userClient) {
+          std::vector<w_string> subsToDelete;
+          for (auto& subiter : userClient->unilateralSub) {
+            auto sub = subiter.first;
+            auto subStream = subiter.second;
+
+            watchman::log(
+                watchman::DBG, "consider fan out sub ", sub->name, "\n");
+
+            while (true) {
+              auto item = subStream->getNext();
+              if (!item) {
+                break;
+              }
+
+              auto dumped = json_dumps(item->payload, 0);
+              watchman::log(
+                  watchman::ERR,
+                  "Unilateral payload for sub ",
+                  sub->name,
+                  " ",
+                  dumped,
+                  "\n");
+              free(dumped);
+
+              if (item->payload.get_default("canceled")) {
+                auto resp = make_response();
+
+                watchman::log(
+                    watchman::ERR,
+                    "Cancel subscription ",
+                    sub->name,
+                    " due to root cancellation\n");
+
+                resp.set({{"root", item->payload.get_default("root")},
+                          {"unilateral", json_true()},
+                          {"canceled", json_true()},
+                          {"subscription", w_string_to_json(sub->name)}});
+                client->enqueueResponse(std::move(resp), false);
+                // Remember to cancel this subscription.
+                // We can't do it in this loop because that would
+                // invalidate the iterators and cause a headache.
+                subsToDelete.push_back(sub->name);
+                continue;
+              }
+
+              if (item->payload.get_default("state-enter") ||
+                  item->payload.get_default("state-leave")) {
+                auto resp = make_response();
+                json_object_update(item->payload, resp);
+                resp.set({{"unilateral", json_true()},
+                          {"subscription", w_string_to_json(sub->name)}});
+                client->enqueueResponse(std::move(resp), false);
+
+                watchman::log(
+                    watchman::ERR,
+                    "Fan out subscription state change for ",
+                    sub->name);
+                continue;
+              }
+
+              if (item->payload.get_default("settled")) {
+                sub->processSubscription();
+                continue;
+              }
+            }
+          }
+
+          for (auto& name : subsToDelete) {
+            userClient->unsubByName(name);
+          }
+        }
+      }
     }
 
-    /* de-queue the pending responses under the lock */
-    std::deque<json_ref> queued_responses_to_send;
-    {
-      auto lock = clients.wlock();
-      std::swap(queued_responses_to_send, client->responses);
-    }
+    watchman::log(
+        watchman::DBG,
+        "will send ",
+        client->responses.size(),
+        " items to client\n");
 
     /* now send our response(s) */
-    while (!queued_responses_to_send.empty()) {
-      auto& response_to_send = queued_responses_to_send.front();
+    while (!client->responses.empty()) {
+      auto& response_to_send = client->responses.front();
 
       if (send_ok) {
         w_stm_set_nonblock(client->stm, false);
@@ -184,52 +286,16 @@ static void *client_thread(void *ptr)
         w_stm_set_nonblock(client->stm, true);
       }
 
-      queued_responses_to_send.pop_front();
+      client->responses.pop_front();
     }
   }
 
 disconnected:
-  w_set_thread_name("NOT_CONN:client=%p:stm=%p", client, client->stm);
+  w_set_thread_name("NOT_CONN:client=%p:stm=%p", client.get(), client->stm);
   // Remove the client from the map before we tear it down, as this makes
   // it easier to flush out pending writes on windows without worrying
   // about w_log_to_clients contending for the write buffers
   clients.wlock()->erase(client);
-
-  delete client;
-
-  return NULL;
-}
-
-bool w_should_log_to_clients(int level)
-{
-  bool result = false;
-
-  auto clientsLock = clients.wlock();
-
-  for (auto client : *clientsLock) {
-    if (client->log_level != W_LOG_OFF && client->log_level >= level) {
-      result = true;
-      break;
-    }
-  }
-
-  return result;
-}
-
-void w_log_to_clients(int level, const char *buf)
-{
-  auto clientsLock = clients.wlock();
-
-  for (auto client : *clientsLock) {
-    if (client->log_level != W_LOG_OFF && client->log_level >= level) {
-      auto json = make_response();
-      if (json) {
-        json.set({{"log", typed_string_to_json(buf, W_STRING_MIXED)},
-                  {"unilateral", json_true()}});
-        enqueue_response(client, std::move(json), true);
-      }
-    }
-  }
 }
 
 // This is just a placeholder.
@@ -337,30 +403,8 @@ static int get_listener_socket(const char *path)
 }
 #endif
 
-static struct watchman_client *make_new_client(w_stm_t stm) {
-  pthread_attr_t attr;
-
-  pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
-  auto client = new watchman_user_client();
-  if (!client) {
-    pthread_attr_destroy(&attr);
-    return NULL;
-  }
-  client->stm = stm;
-  w_log(W_LOG_DBG, "accepted client:stm=%p\n", client->stm);
-
-  if (!w_json_buffer_init(&client->reader)) {
-    // FIXME: error handling
-  }
-  if (!w_json_buffer_init(&client->writer)) {
-    // FIXME: error handling
-  }
-  client->ping = w_event_make();
-  if (!client->ping) {
-    // FIXME: error handling
-  }
+static std::shared_ptr<watchman_client> make_new_client(w_stm_t stm) {
+  auto client = std::make_shared<watchman_user_client>(stm);
 
   clients.wlock()->insert(client);
 
@@ -369,13 +413,13 @@ static struct watchman_client *make_new_client(w_stm_t stm) {
   // a low volume of concurrent clients and the json
   // parse/encode APIs are not easily used in a non-blocking
   // server architecture.
-  if (pthread_create(&client->thread_handle, &attr, client_thread, client)) {
-    // It didn't work out, sorry!
+  try {
+    std::thread thr([client]() { client_thread(client); });
+    thr.detach();
+  } catch (const std::exception& e) {
     clients.wlock()->erase(client);
-    delete client;
+    throw;
   }
-
-  pthread_attr_destroy(&attr);
 
   return client;
 }
@@ -649,7 +693,7 @@ bool w_start_listener(const char *path)
 
     do {
       {
-        auto clientsLock = clients.wlock();
+        auto clientsLock = clients.rlock();
         n_clients = clientsLock->size();
 
         for (auto client : *clientsLock) {

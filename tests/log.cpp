@@ -2,35 +2,25 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "Logging.h"
 #include "thirdparty/tap.h"
 
 void w_request_shutdown(void) {}
 
-bool w_should_log_to_clients(int level)
-{
-  unused_parameter(level);
-  return true;
-}
-
-void w_log_to_clients(int level, const char *buf)
-{
-  unused_parameter(level);
-  unused_parameter(buf);
-
-  pass("made it into w_log_to_clients");
-}
-
-int main(int argc, char **argv)
-{
+int main(int, char**) {
   char huge[8192];
-  (void)argc;
-  (void)argv;
 
-  plan_tests(2);
+  plan_tests(3);
+  auto sub = watchman::getLog().subscribe(
+      watchman::DBG, []() { pass("made it to logging callback"); });
 
   memset(huge, 'X', sizeof(huge));
   huge[sizeof(huge)-1] = '\0';
+
   w_log(W_LOG_DBG, "test %s", huge);
+
+  auto item = sub->getNext();
+  ok(item != nullptr, "got an item from our subscription");
 
   pass("made it to the end");
 

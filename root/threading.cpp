@@ -8,21 +8,17 @@ bool root_start(w_root_t* root, char**) {
   return true;
 }
 
-void w_root_schedule_recrawl(w_root_t *root, const char *why) {
-  auto info = root->recrawlInfo.wlock();
+void watchman_root::scheduleRecrawl(const char* why) {
+  auto info = recrawlInfo.wlock();
 
   if (!info->shouldRecrawl) {
-    info->lastRecrawlReason =
-        w_string::printf("%s: %s", root->root_path.c_str(), why);
+    info->lastRecrawlReason = w_string::build(root_path, ": ", why);
 
-    w_log(
-        W_LOG_ERR,
-        "%s: %s: scheduling a tree recrawl\n",
-        root->root_path.c_str(),
-        why);
+    watchman::log(
+        watchman::ERR, root_path, ": ", why, ": scheduling a tree recrawl\n");
   }
   info->shouldRecrawl = true;
-  signal_root_threads(root);
+  signal_root_threads(this);
 }
 
 void signal_root_threads(w_root_t *root) {
@@ -30,17 +26,18 @@ void signal_root_threads(w_root_t *root) {
 }
 
 // Cancels a watch.
-bool w_root_cancel(w_root_t *root /* don't care about locked state */) {
+bool watchman_root::cancel() {
   bool cancelled = false;
 
-  if (!root->inner.cancelled) {
+  if (!inner.cancelled) {
     cancelled = true;
 
-    w_log(W_LOG_DBG, "marked %s cancelled\n", root->root_path.c_str());
-    root->inner.cancelled = true;
+    watchman::log(watchman::DBG, "marked ", root_path, " cancelled\n");
+    inner.cancelled = true;
+    w_cancel_subscriptions_for_root(this);
 
-    signal_root_threads(root);
-    remove_root_from_watched(root);
+    signal_root_threads(this);
+    remove_root_from_watched(this);
   }
 
   return cancelled;
@@ -50,7 +47,7 @@ bool w_root_stop_watch(struct unlocked_watchman_root *unlocked) {
   bool stopped = remove_root_from_watched(unlocked->root);
 
   if (stopped) {
-    w_root_cancel(unlocked->root);
+    unlocked->root->cancel();
     w_state_save(); // this is what required that we are not locked
   }
   signal_root_threads(unlocked->root);

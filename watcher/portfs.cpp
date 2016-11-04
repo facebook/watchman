@@ -166,7 +166,7 @@ struct watchman_dir_handle* PortFSWatcher::startWatchDir(
     // whaaa?
     w_log(W_LOG_ERR, "fstat on opened dir %s failed: %s\n", path,
         strerror(errno));
-    w_root_schedule_recrawl(root, "fstat failed");
+    root->scheduleRecrawl("fstat failed");
     w_dir_close(osdir);
     return nullptr;
   }
@@ -232,7 +232,7 @@ bool PortFSWatcher::consumeNotify(
           pe,
           flags_label);
 
-      w_root_cancel(root);
+      root->cancel();
       return false;
     }
     w_pending_coll_add(coll, f->name, now,

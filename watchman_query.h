@@ -97,7 +97,7 @@ struct w_query {
 
   std::vector<w_string> suffixes;
 
-  uint32_t sync_timeout{0};
+  std::chrono::milliseconds sync_timeout{0};
   uint32_t lock_timeout{0};
 
   // We can't (and mustn't!) evaluate the clockspec

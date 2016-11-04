@@ -149,11 +149,11 @@ static void watch_symlinks(const w_string& inputPath, json_t* root_files) {
 
 /** Process the list of observed changed symlinks and arrange to establish
  * watches for their new targets */
-void process_pending_symlink_targets(struct unlocked_watchman_root *unlocked) {
+void watchman_root::processPendingSymlinkTargets() {
 #ifndef _WIN32
   bool enforcing;
 
-  auto pendingLock = unlocked->root->inner.pending_symlink_targets.wlock();
+  auto pendingLock = inner.pending_symlink_targets.wlock();
 
   if (!pendingLock->size()) {
     return;
@@ -172,9 +172,6 @@ void process_pending_symlink_targets(struct unlocked_watchman_root *unlocked) {
     watch_symlinks(p->path, root_files);
     p = std::move(p->next);
   }
-
-#else
-  unused_parameter(unlocked);
 #endif
 }
 

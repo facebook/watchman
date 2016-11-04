@@ -270,11 +270,7 @@ w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
 
   if (start > str->len || start + len > str->len) {
     errno = EINVAL;
-    w_log(W_LOG_FATAL,
-        "illegal string slice start=%" PRIu32 " len=%" PRIu32
-        " but str->len=%" PRIu32 "\nstring={%.*s}\n",
-        start, len, str->len, str->len, str->buf);
-    return NULL;
+    throw std::range_error("illegal string slice");
   }
 
   // Can't just new w_string_t because the delref has to call delete[]
@@ -299,8 +295,7 @@ w_string w_string::slice(uint32_t start, uint32_t len) const {
 uint32_t strlen_uint32(const char *str) {
   size_t slen = strlen(str);
   if (slen > UINT32_MAX) {
-    w_log(W_LOG_FATAL, "string of length %" PRIsize_t " is too damned long\n",
-        slen);
+    throw std::range_error("string length exceeds UINT32_MAX");
   }
 
   return (uint32_t)slen;
@@ -394,8 +389,7 @@ w_string_t *w_string_new_wchar_typed(WCHAR *str, int len,
       FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
       NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
       msgbuf, sizeof(msgbuf)-1, NULL);
-    w_log(W_LOG_ERR, "WideCharToMultiByte failed: 0x%x %s\n", err, msgbuf);
-    return NULL;
+    throw std::runtime_error("WideCharToMultiByte failed");
   }
 
   buf[res] = 0;
@@ -404,16 +398,16 @@ w_string_t *w_string_new_wchar_typed(WCHAR *str, int len,
 
 #endif
 
-w_string w_string::printf(WATCHMAN_FMT_STRING(const char* format), ...) {
+w_string w_string::vprintf(const char* format, va_list args) {
   w_string_t *s;
   int len;
   char *buf;
-  va_list args;
+  va_list args_copy;
 
-  va_start(args, format);
+  va_copy(args_copy, args);
   // Get the length needed
-  len = vsnprintf(nullptr, 0, format, args);
-  va_end(args);
+  len = vsnprintf(nullptr, 0, format, args_copy);
+  va_end(args_copy);
 
   s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
   if (!s) {
@@ -426,12 +420,18 @@ w_string w_string::printf(WATCHMAN_FMT_STRING(const char* format), ...) {
   s->refcnt = 1;
   s->len = len;
   buf = (char*)(s + 1);
-  va_start(args, format);
   vsnprintf(buf, len + 1, format, args);
-  va_end(args);
   s->buf = buf;
 
   return w_string(s, false);
+}
+
+w_string w_string::printf(WATCHMAN_FMT_STRING(const char* format), ...) {
+  va_list args;
+  va_start(args, format);
+  auto res = w_string::vprintf(format, args);
+  va_end(args);
+  return res;
 }
 
 /* return a reference to a lowercased version of a string */

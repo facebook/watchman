@@ -58,7 +58,8 @@ static void cmd_clock(struct watchman_client* client, const json_ref& args) {
     return;
   }
 
-  if (sync_timeout && !w_root_sync_to_now(&unlocked, sync_timeout)) {
+  if (sync_timeout &&
+      !unlocked.root->syncToNow(std::chrono::milliseconds(sync_timeout))) {
     send_error_response(client, "sync_timeout expired");
     w_root_delref(&unlocked);
     return;

@@ -62,7 +62,7 @@ static bool do_settle_things(struct unlocked_watchman_root* unlocked) {
   // No new pending items were given to us, so consider that
   // we may now be settled.
 
-  process_pending_symlink_targets(unlocked);
+  unlocked->root->processPendingSymlinkTargets();
 
   w_root_read_lock(unlocked, "io_thread: settle out", &lock);
   if (!lock.root->inner.done_initial) {
@@ -71,7 +71,9 @@ static bool do_settle_things(struct unlocked_watchman_root* unlocked) {
     return false;
   }
 
-  process_subscriptions(&lock);
+  auto settledPayload = json_object({{"settled", json_true()}});
+  lock.root->unilateralResponses->enqueue(std::move(settledPayload));
+
   process_triggers(&lock);
   if (consider_reap(&lock)) {
     w_root_read_unlock(&lock, unlocked);
