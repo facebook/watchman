@@ -22,8 +22,8 @@ void InMemoryView::handleShouldRecrawl(unlocked_watchman_root* unlocked) {
     info->shouldRecrawl = false;
 
     // be careful, this is a bit of a switcheroo
-    w_root_teardown(root);
-    if (!w_root_init(root, &errmsg)) {
+    root->tearDown();
+    if (!root->init(&errmsg)) {
       w_log(
           W_LOG_ERR,
           "failed to init root %s, cancelling watch: %s\n",

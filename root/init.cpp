@@ -75,27 +75,29 @@ static void apply_ignore_configuration(w_root_t *root) {
 }
 
 // internal initialization for root
-bool w_root_init(w_root_t *root, char **errmsg) {
+bool watchman_root::init(char** errmsg) {
   struct watchman_dir_handle *osdir;
 
-  osdir = w_dir_open(root->root_path.c_str());
+  osdir = w_dir_open(root_path.c_str());
   if (!osdir) {
-    ignore_result(asprintf(errmsg, "failed to opendir(%s): %s",
-          root->root_path.c_str(),
-          strerror(errno)));
+    ignore_result(asprintf(
+        errmsg,
+        "failed to opendir(%s): %s",
+        root_path.c_str(),
+        strerror(errno)));
     return false;
   }
   w_dir_close(osdir);
 
-  if (!w_watcher_init(root, errmsg)) {
+  if (!w_watcher_init(this, errmsg)) {
     return false;
   }
 
-  root->inner.number = next_root_number++;
+  inner.number = next_root_number++;
 
-  time(&root->inner.last_cmd_timestamp);
+  time(&inner.last_cmd_timestamp);
 
-  return root;
+  return true;
 }
 
 w_root_t *w_root_new(const char *path, char **errmsg) {
@@ -121,22 +123,21 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
     return nullptr;
   }
 
-  if (!w_root_init(root, errmsg)) {
+  if (!root->init(errmsg)) {
     w_root_delref_raw(root);
     return nullptr;
   }
   return root;
 }
 
-void w_root_teardown(w_root_t *root) {
+void watchman_root::tearDown() {
   // Placement delete and then new to re-init the storage.
   // We can't just delete because we need to leave things
   // in a well defined state for when we subsequently
   // delete the containing root (that will call the Inner
   // destructor).
-  root->inner.~Inner();
-  new (&root->inner)
-      watchman_root::Inner(root->root_path, root->cookies, root->config);
+  inner.~Inner();
+  new (&inner) watchman_root::Inner(root_path, cookies, config);
 }
 
 watchman_root::Inner::Inner(

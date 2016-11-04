@@ -135,6 +135,8 @@ struct watchman_root {
 
   // Returns true if the caller should stop the watch.
   bool considerReap() const;
+  void tearDown();
+  bool init(char** errmsg);
 };
 
 struct write_locked_watchman_root {
@@ -218,8 +220,6 @@ void w_root_read_unlock(
 void* run_io_thread(void* arg);
 void* run_notify_thread(void* arg);
 void process_triggers(struct read_locked_watchman_root* lock);
-void w_root_teardown(w_root_t* root);
-bool w_root_init(w_root_t* root, char** errmsg);
 bool remove_root_from_watched(
     w_root_t* root /* don't care about locked state */);
 bool is_vcs_op_in_progress(struct read_locked_watchman_root* lock);
