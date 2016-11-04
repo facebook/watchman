@@ -143,7 +143,7 @@ void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
       if (do_settle_things(unlocked)) {
         break;
       }
-      timeoutms = MIN(biggest_timeout, timeoutms * 2);
+      timeoutms = std::min(biggest_timeout, timeoutms * 2);
       continue;
     }
 

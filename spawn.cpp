@@ -78,7 +78,7 @@ static w_stm_t prepare_stdin(
   n_files = res->results.size();
 
   if (cmd->max_files_stdin > 0) {
-    n_files = MIN(cmd->max_files_stdin, n_files);
+    n_files = std::min(cmd->max_files_stdin, n_files);
   }
 
   /* prepare the input stream for the child process */

@@ -364,7 +364,7 @@ static bool stream_n_bytes(w_jbuffer_t *jr, w_stm_t stm, json_int_t len,
       }
     }
 
-    avail = MIN((uint32_t)len, shunt_down(jr));
+    avail = std::min((uint32_t)len, shunt_down(jr));
     r = w_stm_read(stm, jr->buf + jr->wpos, avail);
 
     if (r <= 0) {

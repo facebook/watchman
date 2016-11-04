@@ -277,7 +277,7 @@ void w_root_free_watched_roots(void) {
       last = current;
     }
     usleep(interval);
-    interval = MIN(interval * 2, 1000000);
+    interval = std::min(interval * 2, 1000000);
   }
 
   w_log(W_LOG_DBG, "all roots are gone\n");

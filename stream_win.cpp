@@ -185,7 +185,7 @@ static void move_from_read_buffer(struct win_handle *h,
     int *total_read_ptr,
     char **target_buf_ptr,
     int *size_ptr) {
-  int nread = MIN(*size_ptr, h->read_avail);
+  int nread = std::min(*size_ptr, h->read_avail);
   size_t wasted;
 
   if (!nread) {

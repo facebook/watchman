@@ -127,13 +127,6 @@ char** w_argv_copy_from_json(const json_ref& arr, int skip);
 #include "watchman_env.h"
 #include "watchman_getopt.h"
 
-#ifndef MIN
-# define MIN(a, b)  (a) < (b) ? (a) : (b)
-#endif
-#ifndef MAX
-# define MAX(a, b)  (a) > (b) ? (a) : (b)
-#endif
-
 #ifdef HAVE_SYS_SIGLIST
 # define w_strsignal(val) sys_siglist[(val)]
 #else

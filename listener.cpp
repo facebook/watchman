@@ -713,7 +713,7 @@ bool w_start_listener(const char *path)
         w_log(W_LOG_ERR, "waiting for %d clients to terminate\n", n_clients);
       }
       usleep(interval);
-      interval = MIN(interval * 2, max_interval);
+      interval = std::min(interval * 2, max_interval);
     } while (n_clients > 0);
   }
 

@@ -23,7 +23,7 @@ void w_expand_flags(const struct flag_map *fmap, uint32_t flags,
         first = false;
       }
 
-      space = MIN(len, strlen(fmap->label) + 1);
+      space = std::min(len, strlen(fmap->label) + 1);
       memcpy(buf, fmap->label, space);
 
       len -= space - 1;
