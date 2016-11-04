@@ -122,8 +122,12 @@ w_string_t* w_dir_path_cat_str(const struct watchman_dir* dir, w_string_t* str);
 bool w_is_path_absolute_cstr(const char *path);
 bool w_is_path_absolute_cstr_len(const char *path, uint32_t len);
 
-static inline bool is_slash(char c) {
-  return (c == '/') || (c == '\\');
+inline bool is_slash(char c) {
+  return c == '/'
+#ifdef _WIN32
+      || c == '\\'
+#endif
+      ;
 }
 
 class w_string;

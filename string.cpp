@@ -27,7 +27,7 @@ bool w_string_piece::pathIsAbsolute() const {
 
 w_string_piece w_string_piece::dirName() const {
   for (auto end = e_; end >= s_; --end) {
-    if (*end == WATCHMAN_DIR_SEP) {
+    if (is_slash(*end)) {
       /* found the end of the parent dir */
       return w_string_piece(s_, end - s_);
     }
@@ -37,7 +37,7 @@ w_string_piece w_string_piece::dirName() const {
 
 w_string_piece w_string_piece::baseName() const {
   for (auto end = e_; end >= s_; --end) {
-    if (*end == WATCHMAN_DIR_SEP) {
+    if (is_slash(*end)) {
       /* found the end of the parent dir */
       return w_string_piece(s_, end - s_);
     }
@@ -567,7 +567,7 @@ w_string_t *w_string_dirname(w_string_t *str)
   /* can't use libc strXXX functions because we may be operating
    * on a slice */
   for (end = str->len - 1; end >= 0; end--) {
-    if (str->buf[end] == WATCHMAN_DIR_SEP) {
+    if (is_slash(str->buf[end])) {
       /* found the end of the parent dir */
       return w_string_slice(str, 0, end);
     }
@@ -626,7 +626,7 @@ w_string_t *w_string_suffix(w_string_t *str)
       return w_string_new_typed(name_buf, str->type);
     }
 
-    if (str->buf[end] == WATCHMAN_DIR_SEP) {
+    if (is_slash(str->buf[end])) {
       // No suffix
       return NULL;
     }
@@ -693,8 +693,7 @@ w_string_t *w_string_canon_path(w_string_t *str)
   int end;
   int trim = 0;
 
-  for (end = str->len - 1;
-      end >= 0 && str->buf[end] == WATCHMAN_DIR_SEP; end--) {
+  for (end = str->len - 1; end >= 0 && is_slash(str->buf[end]); end--) {
     trim++;
   }
   if (trim) {
@@ -767,7 +766,7 @@ w_string_t *w_string_new_basename_typed(const char *path,
     w_string_type_t type) {
   const char *base;
   base = path + strlen(path);
-  while (base > path && base[-1] != WATCHMAN_DIR_SEP) {
+  while (base > path && !is_slash(base[-1])) {
     base--;
   }
   return w_string_new_typed(base, type);
@@ -780,7 +779,7 @@ w_string_t *w_string_basename(w_string_t *str)
   /* can't use libc strXXX functions because we may be operating
    * on a slice */
   for (end = str->len - 1; end >= 0; end--) {
-    if (str->buf[end] == WATCHMAN_DIR_SEP) {
+    if (is_slash(str->buf[end])) {
       /* found the end of the parent dir */
       return w_string_slice(str, end + 1, str->len - (end + 1));
     }

@@ -209,7 +209,7 @@ static void *readchanges_thread(void *arg) {
       }
     }
 
-    w_log(W_LOG_DBG, "waiting for change notifications");
+    watchman::log(watchman::DBG, "waiting for change notifications\n");
     DWORD status = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
 
     if (status == WAIT_OBJECT_0) {
