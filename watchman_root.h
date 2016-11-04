@@ -106,9 +106,6 @@ struct watchman_root {
 
     uint32_t next_cmd_id{0};
 
-    // This is only read or written by process_triggers
-    uint32_t last_trigger_tick{0};
-
     time_t last_cmd_timestamp{0};
     mutable time_t last_reap_timestamp{0};
 

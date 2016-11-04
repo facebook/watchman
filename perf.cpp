@@ -194,8 +194,12 @@ static void *perf_log_thread(void *unused) {
                                          O_WRONLY, 0666);
 
         if (posix_spawnp(&pid, argv[0], &actions, &attr, argv, envp) == 0) {
-          // There's no sense waiting here, because w_reap_children is called
-          // by the reaper thread.
+          int status;
+          while (waitpid(pid, &status, 0) != pid) {
+            if (errno != EINTR) {
+              break;
+            }
+          }
         } else {
           int err = errno;
           w_log(W_LOG_ERR, "failed to spawn %s: %s\n", argv[0],

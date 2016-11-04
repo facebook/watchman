@@ -63,4 +63,4 @@ int posix_spawnp(pid_t *pid, const char *file,
     const posix_spawnattr_t *attrp,
     char *const argv[], char *const envp[]);
 
-BOOL w_wait_for_any_child(DWORD timeoutms, DWORD *pid);
+pid_t waitpid(pid_t pid, int* status, int options);

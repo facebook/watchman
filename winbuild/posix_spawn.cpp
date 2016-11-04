@@ -7,46 +7,33 @@
 // This is so that we can wait/poll/query the termination status
 static watchman::Synchronized<std::unordered_map<DWORD, HANDLE>> child_procs;
 
-BOOL w_wait_for_any_child(DWORD timeoutms, DWORD *pid) {
-  HANDLE handles[MAXIMUM_WAIT_OBJECTS];
-  DWORD pids[MAXIMUM_WAIT_OBJECTS];
-  int i = 0;
-  DWORD res;
+pid_t waitpid(pid_t pid, int* status, int options) {
+  HANDLE h;
 
-  *pid = 0;
+  w_check(options == 0, "we have a limited waitpid on windows");
 
   {
     auto rlock = child_procs.rlock();
-    for (auto& it : *rlock) {
-      pids[i] = it.first;
-      handles[i++] = it.second;
+    auto it = rlock->find(pid);
+    if (it == rlock->end()) {
+      errno = ESRCH;
+      return -1;
     }
+    h = it->second;
   }
 
-  if (i == 0) {
-    return false;
+  auto res = WaitForSingleObject(h, INFINITE);
+  child_procs.wlock()->erase(pid);
+
+  switch (res) {
+    case WAIT_OBJECT_0:
+    case WAIT_ABANDONED_0:
+      *status = 0;
+      return pid;
+    default:
+      errno = EINVAL;
+      return -1;
   }
-
-  w_log(W_LOG_DBG, "w_wait_for_any_child: waiting for %d handles\n", i);
-  res = WaitForMultipleObjectsEx(i, handles, false, timeoutms, true);
-  if (res == WAIT_FAILED) {
-    errno = map_win32_err(GetLastError());
-    return false;
-  }
-
-  if (res < WAIT_OBJECT_0 + i) {
-    i = res - WAIT_OBJECT_0;
-  } else if (res >= WAIT_ABANDONED_0 && res < WAIT_ABANDONED_0 + i) {
-    i = res - WAIT_ABANDONED_0;
-  } else {
-    return false;
-  }
-
-  child_procs.wlock()->erase(pids[i]);
-
-  CloseHandle(handles[i]);
-  *pid = pids[i];
-  return true;
 }
 
 int posix_spawnattr_init(posix_spawnattr_t *attrp) {

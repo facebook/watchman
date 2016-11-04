@@ -3,66 +3,6 @@
 
 #include "watchman.h"
 
-// Maps pid => root
-static watchman::Synchronized<std::unordered_map<pid_t, w_root_t*>>
-    running_kids;
-
-void w_mark_dead(pid_t pid)
-{
-  struct read_locked_watchman_root lock;
-  struct unlocked_watchman_root unlocked;
-
-  {
-    auto map = running_kids.wlock();
-    auto it = map->find(pid);
-    if (it == map->end()) {
-      return;
-    }
-    unlocked.root = it->second;
-    map->erase(it);
-  }
-
-  w_log(
-      W_LOG_DBG,
-      "mark_dead: %s child pid %d\n",
-      unlocked.root->root_path.c_str(),
-      (int)pid);
-
-  /* now walk the cmds and try to find our match */
-  w_root_read_lock(&unlocked, "mark_dead", &lock);
-
-  /* walk the list of triggers, and run their rules */
-  {
-    auto map = lock.root->triggers.rlock();
-    for (const auto& it : *map) {
-      const auto& cmd = it.second;
-
-      if (cmd->current_proc != pid) {
-        w_log(
-            W_LOG_DBG,
-            "mark_dead: is [%s] %d == %d\n",
-            cmd->triggername.c_str(),
-            (int)cmd->current_proc,
-            (int)pid);
-        continue;
-      }
-
-      /* first mark the process as dead */
-      cmd->current_proc = 0;
-      if (lock.root->inner.cancelled) {
-        w_log(W_LOG_DBG, "mark_dead: root was cancelled\n");
-        break;
-      }
-
-      w_assess_trigger(&lock, cmd.get());
-      break;
-    }
-  }
-
-  w_root_read_unlock(&lock, &unlocked);
-  w_root_delref(&unlocked);
-}
-
 static w_stm_t prepare_stdin(
   struct watchman_trigger_command *cmd,
   w_query_res *res)
@@ -337,10 +277,14 @@ static void spawn_command(w_root_t *root,
           working_dir->buf);
   }
 
-  {
-    auto wlock = running_kids.wlock();
-    auto& map = *wlock;
 #ifndef _WIN32
+  // This mutex is present to avoid fighting over the cwd when multiple
+  // triggers run at the same time.  It doesn't coordinate with all
+  // possible chdir() calls, but this is the only place that we do this
+  // in the watchman server process.
+  static std::mutex cwdMutex;
+  {
+    std::unique_lock<std::mutex> lock(cwdMutex);
     ignore_result(chdir(working_dir->buf));
 #else
     posix_spawnattr_setcwd_np(&attr, working_dir->buf);
@@ -350,10 +294,7 @@ static void spawn_command(w_root_t *root,
 
     ret =
         posix_spawnp(&cmd->current_proc, argv[0], &actions, &attr, argv, envp);
-    if (ret == 0) {
-      w_root_addref(root);
-      map[cmd->current_proc] = root;
-    } else {
+    if (ret != 0) {
       // On Darwin (at least), posix_spawn can fail but will still populate the
       // pid.  Since we use the pid to gate future spawns, we need to ensure
       // that we clear out the pid on failure, otherwise the trigger would be
@@ -362,8 +303,8 @@ static void spawn_command(w_root_t *root,
     }
 #ifndef _WIN32
     ignore_result(chdir("/"));
-#endif
   }
+#endif
 
   // If failed, we want to make sure we log enough info to figure out why
   result_log_level = res == 0 ? W_LOG_DBG : W_LOG_ERR;
@@ -396,151 +337,79 @@ static void spawn_command(w_root_t *root,
   }
 }
 
-/* must be called with root locked */
-void w_assess_trigger(
-    struct read_locked_watchman_root* lock,
-    struct watchman_trigger_command* cmd) {
-  w_query_res res;
-  auto since_spec = cmd->query->since_spec.get();
+bool watchman_trigger_command::maybeSpawn(unlocked_watchman_root* unlocked) {
+  read_locked_watchman_root lock;
+  bool didRun = false;
 
-  if (since_spec && since_spec->tag == w_cs_clock) {
-    w_log(
-        W_LOG_DBG,
-        "running trigger \"%s\" rules! since %" PRIu32 "\n",
-        cmd->triggername.c_str(),
-        since_spec->clock.ticks);
-  } else {
-    w_log(
-        W_LOG_DBG, "running trigger \"%s\" rules!\n", cmd->triggername.c_str());
+  // If it looks like we're in a repo undergoing a rebase or
+  // other similar operation, we want to defer triggers until
+  // things settle down
+  if (unlocked->root->inner.view->isVCSOperationInProgress()) {
+    w_log(W_LOG_DBG, "deferring triggers until VCS operations complete\n");
+    return didRun;
   }
 
-  // Triggers never need to sync explicitly; we are only dispatched
-  // at settle points which are by definition sync'd to the present time
-  cmd->query->sync_timeout = std::chrono::milliseconds(0);
-  w_log(W_LOG_DBG, "assessing trigger %s %p\n", cmd->triggername.c_str(), cmd);
-  if (!w_query_execute_locked(cmd->query.get(), lock, &res, time_generator)) {
-    w_log(
-        W_LOG_ERR,
-        "error running trigger \"%s\" query: %s",
-        cmd->triggername.c_str(),
-        res.errmsg);
-    return;
-  }
+  w_root_read_lock(unlocked, "trigger assess", &lock);
+  {
+    w_query_res res;
+    auto since_spec = query->since_spec.get();
 
-  w_log(
-      W_LOG_DBG,
-      "trigger \"%s\" generated %" PRIu32 " results\n",
-      cmd->triggername.c_str(),
-      uint32_t(res.results.size()));
-
-  // create a new spec that will be used the next time
-  auto saved_spec = std::move(cmd->query->since_spec);
-  cmd->query->since_spec = w_clockspec_new_clock(res.root_number, res.ticks);
-
-  w_log(
-      W_LOG_DBG,
-      "updating trigger \"%s\" use %" PRIu32 " ticks next time\n",
-      cmd->triggername.c_str(),
-      res.ticks);
-
-  if (!res.results.empty()) {
-    // transitional const_cast until we remove read_locked refs
-    spawn_command(
-        const_cast<w_root_t*>(lock->root), cmd, &res, saved_spec.get());
-  }
-}
-
-bool w_reap_children(bool block) {
-  pid_t pid;
-  int reaped = 0;
-
-  // Reap any children so that we can release their
-  // references on the root
-  do {
-#ifndef _WIN32
-    int st;
-    pid = waitpid(-1, &st, block ? 0 : WNOHANG);
-    if (pid == -1) {
-      break;
-    }
-#else
-    if (!w_wait_for_any_child(block ? INFINITE : 0, &pid)) {
-      break;
-    }
-#endif
-    w_mark_dead(pid);
-    reaped++;
-  } while (1);
-
-  return reaped != 0;
-}
-
-static void *child_reaper(void *arg)
-{
-#ifndef _WIN32
-  sigset_t sigset;
-
-  // By default, keep both SIGCHLD and SIGUSR1 blocked
-  sigemptyset(&sigset);
-  sigaddset(&sigset, SIGUSR1);
-  sigaddset(&sigset, SIGCHLD);
-  pthread_sigmask(SIG_BLOCK, &sigset, NULL);
-
-  // SIGCHLD is ordinarily blocked, so we listen for it only in
-  // sigsuspend, when we're also listening for the SIGUSR1 that tells
-  // us to exit.
-  pthread_sigmask(SIG_BLOCK, NULL, &sigset);
-  sigdelset(&sigset, SIGCHLD);
-  sigdelset(&sigset, SIGUSR1);
-
-#endif
-  unused_parameter(arg);
-  w_set_thread_name("child_reaper");
-
-#ifdef _WIN32
-  while (!w_is_stopping()) {
-    usleep(200000);
-    w_reap_children(true);
-  }
-#else
-  while (!w_is_stopping()) {
-    int err;
-
-    // Poll for any finished child processes.
-    w_reap_children(false);
-    err = errno;
-
-    // If we got EINTR then it may be due to SIGCHLD
-    // or SIGUSR1.  The latter is our shutdown signal,
-    // so check our predicate for that first.
-    if (w_is_stopping()) {
-      break;
+    if (since_spec && since_spec->tag == w_cs_clock) {
+      w_log(
+          W_LOG_DBG,
+          "running trigger \"%s\" rules! since %" PRIu32 "\n",
+          triggername.c_str(),
+          since_spec->clock.ticks);
+    } else {
+      w_log(W_LOG_DBG, "running trigger \"%s\" rules!\n", triggername.c_str());
     }
 
-    // If we ran out of children, wait for more to be
-    // ready for reaping.
-    if (err == ECHILD) {
-      sigsuspend(&sigset);
+    // Triggers never need to sync explicitly; we are only dispatched
+    // at settle points which are by definition sync'd to the present time
+    query->sync_timeout = std::chrono::milliseconds(0);
+    watchman::log(watchman::DBG, "assessing trigger ", triggername, "\n");
+    if (!w_query_execute_locked(query.get(), &lock, &res, time_generator)) {
+      watchman::log(
+          watchman::ERR,
+          "error running trigger \"",
+          triggername,
+          "\" query: ",
+          res.errmsg,
+          "\n");
+      goto done;
     }
 
-    // If we didn't get ECHILD, then we were most likely
-    // spuriously woken up by something else; let's
-    // have another go around the loop and check for
-    // more children, and only allow ECHILD to send us into
-    // the sigsuspend.
+    watchman::log(
+        watchman::DBG,
+        "trigger \"",
+        triggername,
+        "\" generated ",
+        res.results.size(),
+        " results\n");
+
+    // create a new spec that will be used the next time
+    auto saved_spec = std::move(query->since_spec);
+    query->since_spec = w_clockspec_new_clock(res.root_number, res.ticks);
+
+    watchman::log(
+        watchman::DBG,
+        "updating trigger \"",
+        triggername,
+        "\" use ",
+        res.ticks,
+        " ticks next time\n");
+
+    if (!res.results.empty()) {
+      // transitional const_cast until we remove read_locked refs
+      didRun = true;
+      spawn_command(
+          const_cast<w_root_t*>(lock.root), this, &res, saved_spec.get());
+    }
   }
-#endif
-
-  return 0;
+done:
+  w_root_read_unlock(&lock, unlocked);
+  return didRun;
 }
-
-void w_start_reaper(void) {
-  if (pthread_create(&reaper_thread, NULL, child_reaper, NULL)) {
-    w_log(W_LOG_FATAL, "pthread_create(reaper): %s\n",
-        strerror(errno));
-  }
-}
-
 
 /* vim:ts=2:sw=2:et:
  */

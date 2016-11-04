@@ -265,12 +265,6 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
       }
     }
 
-    watchman::log(
-        watchman::DBG,
-        "will send ",
-        client->responses.size(),
-        " items to client\n");
-
     /* now send our response(s) */
     while (!client->responses.empty()) {
       auto& response_to_send = client->responses.front();

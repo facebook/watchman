@@ -167,9 +167,6 @@ static void run_service(void)
 #endif
 
   w_clockspec_init();
-  // Start the reaper before we load any state; the state may
-  // have triggers associated with it which may spawn processes
-  w_start_reaper();
   w_state_load();
   res = w_start_listener(sock_name);
   w_root_free_watched_roots();

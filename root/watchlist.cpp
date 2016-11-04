@@ -208,8 +208,9 @@ bool w_root_load_state(const json_ref& state) {
           continue;
         }
 
-        auto cmd = w_build_trigger_from_def(unlocked.root, tobj, &errmsg);
-        if (!cmd) {
+        auto cmd = watchman::make_unique<watchman_trigger_command>(
+            unlocked.root, tobj, &errmsg);
+        if (errmsg) {
           w_log(
               W_LOG_ERR,
               "loading trigger for %s: %s\n",
@@ -219,6 +220,7 @@ bool w_root_load_state(const json_ref& state) {
           continue;
         }
 
+        cmd->start(unlocked.root);
         map[cmd->triggername] = std::move(cmd);
       }
     }
@@ -244,10 +246,6 @@ bool w_root_load_state(const json_ref& state) {
 void w_root_free_watched_roots(void) {
   int last, interval;
   time_t started;
-
-  // Reap any children so that we can release their
-  // references on the root
-  w_reap_children(true);
 
   {
     auto map = watched_roots.rlock();

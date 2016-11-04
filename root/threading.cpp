@@ -42,6 +42,13 @@ bool watchman_root::cancel() {
 
     signalThreads();
     removeFromWatched();
+
+    {
+      auto map = triggers.rlock();
+      for (auto& it : *map) {
+        it.second->stop();
+      }
+    }
   }
 
   return cancelled;

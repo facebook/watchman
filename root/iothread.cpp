@@ -74,7 +74,6 @@ static bool do_settle_things(struct unlocked_watchman_root* unlocked) {
   auto settledPayload = json_object({{"settled", json_true()}});
   lock.root->unilateralResponses->enqueue(std::move(settledPayload));
 
-  process_triggers(&lock);
   if (lock.root->considerReap()) {
     w_root_read_unlock(&lock, unlocked);
     unlocked->root->stopWatch();

@@ -94,11 +94,7 @@ bool w_path_exists(const char *path);
 #define IS_DIR_BIT_SET(dir) ((((intptr_t)dir) & 0x1) == 0x1)
 #define DECODE_DIR(dir)    ((void*)(((intptr_t)dir) & ~0x1))
 
-void w_mark_dead(pid_t pid);
-bool w_reap_children(bool block);
-void w_start_reaper(void);
 bool w_is_stopping(void);
-extern pthread_t reaper_thread;
 
 void w_request_shutdown(void);
 
