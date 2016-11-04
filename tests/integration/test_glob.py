@@ -122,3 +122,8 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
                 'glob': ['*/*.h'],
                 'relative_root': 'bogus'})
         self.assertIn('check your relative_root', str(ctx.exception))
+
+        with self.assertRaises(pywatchman.WatchmanError) as ctx:
+            self.watchmanCommand('query', root, {
+                'glob': [12345]})
+        self.assertIn('expected json string object', str(ctx.exception))
