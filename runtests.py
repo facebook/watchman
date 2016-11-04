@@ -73,7 +73,7 @@ parser.add_argument(
 
 parser.add_argument(
     '--concurrency',
-    default=int(min(8, math.ceil(1.5 * multiprocessing.cpu_count()))),
+    default=int(min(4, math.ceil(1.5 * multiprocessing.cpu_count()))),
     type=int,
     help='How many tests to run at once')
 

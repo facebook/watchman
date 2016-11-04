@@ -16,10 +16,12 @@ import sys
 import Interrupt
 import tempfile
 import TempDir
+import distutils.spawn
 
 
 WATCHMAN_SRC_DIR = os.environ.get('WATCHMAN_SRC_DIR', os.getcwd())
 THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, 'tests', 'integration')
+php_bin = distutils.spawn.find_executable('php')
 
 
 def find_php_tests(test_class):
@@ -48,7 +50,7 @@ def find_php_tests(test_class):
             class PHPTest(test_class):
                 def getCommandArgs(self):
                     return [
-                        'php',
+                        php_bin,
                         '-d variables_order=EGPCS',
                         '-d register_argc_argv=1',
                         '-d sys_temp_dir=%s' % TempDir.get_temp_dir().get_dir(),
@@ -71,6 +73,7 @@ def find_php_tests(test_class):
 @find_php_tests
 class PHPTestCase(unittest.TestCase):
 
+    @unittest.skipIf(php_bin is None, 'php not installed')
     def runTest(self):
         env = os.environ.copy()
         env['WATCHMAN_SOCK'] = WatchmanInstance.getSharedInstance().getSockPath()
