@@ -374,7 +374,7 @@ static int get_listener_socket(const char *path)
   }
 
   un.sun_family = PF_LOCAL;
-  strcpy(un.sun_path, path);
+  memcpy(un.sun_path, path, strlen(path) + 1);
   unlink(path);
 
   if (bind(listener_fd, (struct sockaddr*)&un, sizeof(un)) != 0) {
