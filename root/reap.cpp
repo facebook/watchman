@@ -3,37 +3,33 @@
 
 #include "watchman.h"
 
-// This is a little tricky.  We have to be called with root->lock
-// held, but we must not call w_root_stop_watch with the lock held,
-// so we return true if the caller should do that
-bool consider_reap(struct read_locked_watchman_root* lock) {
+bool watchman_root::considerReap() const {
   time_t now;
-  auto root = const_cast<w_root_t*>(lock->root);
 
-  if (root->idle_reap_age == 0) {
+  if (idle_reap_age == 0) {
     return false;
   }
 
   time(&now);
 
-  if (now > root->inner.last_cmd_timestamp + root->idle_reap_age &&
-      (root->triggers.rlock()->empty()) &&
-      (now > root->inner.last_reap_timestamp) &&
-      !root->unilateralResponses->hasSubscribers()) {
+  if (now > inner.last_cmd_timestamp + idle_reap_age &&
+      (triggers.rlock()->empty()) && (now > inner.last_reap_timestamp) &&
+      !unilateralResponses->hasSubscribers()) {
     // We haven't had any activity in a while, and there are no registered
     // triggers or subscriptions against this watch.
-    w_log(
-        W_LOG_ERR,
-        "root %s has had no activity in %d seconds and has "
-        "no triggers or subscriptions, cancelling watch.  "
-        "Set idle_reap_age_seconds in your .watchmanconfig to control "
-        "this behavior\n",
-        root->root_path.c_str(),
-        root->idle_reap_age);
+    watchman::log(
+        watchman::ERR,
+        "root ",
+        root_path,
+        " has had no activity in ",
+        idle_reap_age,
+        " seconds and has no triggers or subscriptions, cancelling watch.  "
+        "Set idle_reap_age_seconds in your .watchmanconfig to control this "
+        "behavior\n");
     return true;
   }
 
-  root->inner.last_reap_timestamp = now;
+  inner.last_reap_timestamp = now;
 
   return false;
 }

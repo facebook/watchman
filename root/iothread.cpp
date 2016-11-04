@@ -75,7 +75,7 @@ static bool do_settle_things(struct unlocked_watchman_root* unlocked) {
   lock.root->unilateralResponses->enqueue(std::move(settledPayload));
 
   process_triggers(&lock);
-  if (consider_reap(&lock)) {
+  if (lock.root->considerReap()) {
     w_root_read_unlock(&lock, unlocked);
     w_root_stop_watch(unlocked);
     return true;
