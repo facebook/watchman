@@ -94,7 +94,7 @@ static void cmd_watch_delete(
   }
 
   auto resp = make_response();
-  resp.set({{"watch-del", json_boolean(w_root_stop_watch(&unlocked))},
+  resp.set({{"watch-del", json_boolean(unlocked.root->stopWatch())},
             {"root", w_string_to_json(unlocked.root->root_path)}});
   send_and_dispose_response(client, std::move(resp));
   w_root_delref(&unlocked);

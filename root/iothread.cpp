@@ -77,7 +77,7 @@ static bool do_settle_things(struct unlocked_watchman_root* unlocked) {
   process_triggers(&lock);
   if (lock.root->considerReap()) {
     w_root_read_unlock(&lock, unlocked);
-    w_root_stop_watch(unlocked);
+    unlocked->root->stopWatch();
     return true;
   }
   w_root_read_unlock(&lock, unlocked);

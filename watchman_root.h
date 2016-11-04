@@ -137,6 +137,11 @@ struct watchman_root {
   bool considerReap() const;
   void tearDown();
   bool init(char** errmsg);
+  bool removeFromWatched();
+  bool applyIgnoreVCSConfiguration(char** errmsg);
+  bool start(char** errmsg);
+  void signalThreads();
+  bool stopWatch();
 };
 
 struct write_locked_watchman_root {
@@ -184,7 +189,6 @@ bool w_root_resolve_for_client_mode(
 char* w_find_enclosing_root(const char* filename, char** relpath);
 
 void w_root_free_watched_roots(void);
-bool w_root_stop_watch(struct unlocked_watchman_root* unlocked);
 json_ref w_root_stop_watch_all(void);
 void w_root_reap(void);
 void w_root_delref(struct unlocked_watchman_root* unlocked);
@@ -217,20 +221,12 @@ void w_root_read_unlock(
     struct read_locked_watchman_root* locked,
     struct unlocked_watchman_root* unlocked);
 
-void* run_io_thread(void* arg);
-void* run_notify_thread(void* arg);
 void process_triggers(struct read_locked_watchman_root* lock);
-bool remove_root_from_watched(
-    w_root_t* root /* don't care about locked state */);
-bool is_vcs_op_in_progress(struct read_locked_watchman_root* lock);
-extern const struct watchman_hash_funcs dirname_hash_funcs;
 bool did_file_change(struct watchman_stat *saved, struct watchman_stat *fresh);
 void struct_stat_to_watchman_stat(const struct stat *st,
                                   struct watchman_stat *target);
-bool apply_ignore_vcs_configuration(w_root_t *root, char **errmsg);
 w_root_t *w_root_new(const char *path, char **errmsg);
 extern std::atomic<long> live_roots;
-bool root_start(w_root_t *root, char **errmsg);
 
 extern watchman::Synchronized<std::unordered_map<w_string, w_root_t*>>
     watched_roots;
@@ -241,7 +237,6 @@ bool root_resolve(
     bool* created,
     char** errmsg,
     struct unlocked_watchman_root* unlocked);
-void signal_root_threads(w_root_t* root);
 
 void set_poison_state(
     const w_string& dir,

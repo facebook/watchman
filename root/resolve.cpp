@@ -243,7 +243,7 @@ bool w_root_resolve(const char *filename, bool auto_watch, char **errmsg,
     return false;
   }
   if (created) {
-    if (!root_start(unlocked->root, errmsg)) {
+    if (!unlocked->root->start(errmsg)) {
       unlocked->root->cancel();
       w_root_delref(unlocked);
       return false;

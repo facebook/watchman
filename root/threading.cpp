@@ -3,8 +3,8 @@
 
 #include "watchman.h"
 
-bool root_start(w_root_t* root, char**) {
-  root->inner.view->startThreads(root);
+bool watchman_root::start(char**) {
+  inner.view->startThreads(this);
   return true;
 }
 
@@ -18,11 +18,11 @@ void watchman_root::scheduleRecrawl(const char* why) {
         watchman::ERR, root_path, ": ", why, ": scheduling a tree recrawl\n");
   }
   info->shouldRecrawl = true;
-  signal_root_threads(this);
+  signalThreads();
 }
 
-void signal_root_threads(w_root_t *root) {
-  root->inner.view->signalThreads();
+void watchman_root::signalThreads() {
+  inner.view->signalThreads();
 }
 
 // Cancels a watch.
@@ -36,21 +36,21 @@ bool watchman_root::cancel() {
     inner.cancelled = true;
     w_cancel_subscriptions_for_root(this);
 
-    signal_root_threads(this);
-    remove_root_from_watched(this);
+    signalThreads();
+    removeFromWatched();
   }
 
   return cancelled;
 }
 
-bool w_root_stop_watch(struct unlocked_watchman_root *unlocked) {
-  bool stopped = remove_root_from_watched(unlocked->root);
+bool watchman_root::stopWatch() {
+  bool stopped = removeFromWatched();
 
   if (stopped) {
-    unlocked->root->cancel();
-    w_state_save(); // this is what required that we are not locked
+    cancel();
+    w_state_save();
   }
-  signal_root_threads(unlocked->root);
+  signalThreads();
 
   return stopped;
 }

@@ -107,16 +107,6 @@ void w_request_shutdown(void);
 
 void w_cancel_subscriptions_for_root(const w_root_t *root);
 
-static inline uint32_t next_power_2(uint32_t n)
-{
-  n |= (n >> 16);
-  n |= (n >> 8);
-  n |= (n >> 4);
-  n |= (n >> 2);
-  n |= (n >> 1);
-  return n + 1;
-}
-
 #include "watchman_time.h"
 
 extern const char *watchman_tmp_dir;

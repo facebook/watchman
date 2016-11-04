@@ -8,18 +8,17 @@
 watchman::Synchronized<std::unordered_map<w_string, w_root_t*>> watched_roots;
 std::atomic<long> live_roots{0};
 
-bool remove_root_from_watched(
-    w_root_t* root /* don't care about locked state */) {
+bool watchman_root::removeFromWatched() {
   auto map = watched_roots.wlock();
-  auto it = map->find(root->root_path);
+  auto it = map->find(root_path);
   if (it == map->end()) {
     return false;
   }
   // it's possible that the root has already been removed and replaced with
   // another, so make sure we're removing the right object
-  if (it->second == root) {
+  if (it->second == this) {
     map->erase(it);
-    w_root_delref_raw(root);
+    w_root_delref_raw(this);
     return true;
   }
   return false;
@@ -225,7 +224,7 @@ bool w_root_load_state(const json_ref& state) {
     }
 
     if (created) {
-      if (!root_start(unlocked.root, &errmsg)) {
+      if (!unlocked.root->start(&errmsg)) {
         w_log(
             W_LOG_ERR,
             "root_start(%s) failed: %s\n",
@@ -255,7 +254,7 @@ void w_root_free_watched_roots(void) {
     for (const auto& it : *map) {
       auto root = it.second;
       if (!root->cancel()) {
-        signal_root_threads(root);
+        root->signalThreads();
       }
     }
   }

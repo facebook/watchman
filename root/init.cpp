@@ -118,7 +118,7 @@ w_root_t *w_root_new(const char *path, char **errmsg) {
 
   apply_ignore_configuration(root);
 
-  if (!apply_ignore_vcs_configuration(root, errmsg)) {
+  if (!root->applyIgnoreVCSConfiguration(errmsg)) {
     w_root_delref_raw(root);
     return nullptr;
   }
