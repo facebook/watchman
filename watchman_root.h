@@ -218,15 +218,12 @@ void w_root_read_unlock(
 void* run_io_thread(void* arg);
 void* run_notify_thread(void* arg);
 void process_triggers(struct read_locked_watchman_root* lock);
-void remove_from_file_list(struct watchman_file* file);
-void free_file_node(struct watchman_file* file);
 void w_root_teardown(w_root_t* root);
 bool w_root_init(w_root_t* root, char** errmsg);
 bool remove_root_from_watched(
     w_root_t* root /* don't care about locked state */);
 bool is_vcs_op_in_progress(struct read_locked_watchman_root* lock);
 extern const struct watchman_hash_funcs dirname_hash_funcs;
-void delete_dir(struct watchman_dir* dir);
 bool did_file_change(struct watchman_stat *saved, struct watchman_stat *fresh);
 void struct_stat_to_watchman_stat(const struct stat *st,
                                   struct watchman_stat *target);

@@ -32,3 +32,4 @@ struct watchman_dir {
   watchman_file* getChildFile(w_string name) const;
   w_string getFullPath() const;
 };
+void delete_dir(struct watchman_dir* dir);

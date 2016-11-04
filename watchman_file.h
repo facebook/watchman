@@ -38,6 +38,9 @@ struct watchman_file {
   w_string symlink_target;
 };
 
-static inline w_string_t* w_file_get_name(const watchman_file* file) {
+inline w_string_t* w_file_get_name(const watchman_file* file) {
   return (w_string_t*)(file + 1);
 }
+
+void remove_from_file_list(struct watchman_file* file);
+void free_file_node(struct watchman_file* file);
