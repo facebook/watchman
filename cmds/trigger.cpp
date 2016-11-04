@@ -116,7 +116,7 @@ static void cmd_trigger_list(
 
   auto resp = make_response();
   w_root_read_lock(&unlocked, "trigger-list", &lock);
-  auto arr = w_root_trigger_list_to_json(&lock);
+  auto arr = lock.root->triggerListToJson();
   w_root_read_unlock(&lock, &unlocked);
 
   resp.set("triggers", std::move(arr));

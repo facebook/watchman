@@ -17,9 +17,6 @@ struct watchman_dir;
 struct watchman_root;
 struct watchman_pending_fs;
 struct watchman_trigger_command;
-struct write_locked_watchman_root;
-struct unlocked_watchman_root;
-struct read_locked_watchman_root;
 typedef struct watchman_root w_root_t;
 
 // Per-watch state for the selected watcher
@@ -117,7 +114,6 @@ void w_state_save(void);
 bool w_state_load(void);
 bool w_root_save_state(json_ref& state);
 bool w_root_load_state(const json_ref& state);
-json_ref w_root_trigger_list_to_json(struct read_locked_watchman_root* lock);
 json_ref w_root_watch_list_to_json(void);
 
 #ifdef __APPLE__

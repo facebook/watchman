@@ -142,6 +142,7 @@ struct watchman_root {
   bool start(char** errmsg);
   void signalThreads();
   bool stopWatch();
+  json_ref triggerListToJson() const;
 };
 
 struct write_locked_watchman_root {

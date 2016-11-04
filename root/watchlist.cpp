@@ -141,7 +141,7 @@ bool w_root_save_state(json_ref& state) {
           obj, "path", w_string_to_json(unlocked.root->root_path));
 
       w_root_read_lock(&unlocked, "w_root_save_state", &lock);
-      auto triggers = w_root_trigger_list_to_json(&lock);
+      auto triggers = lock.root->triggerListToJson();
       w_root_read_unlock(&lock, &unlocked);
       json_object_set_new(obj, "triggers", std::move(triggers));
 
@@ -154,10 +154,10 @@ bool w_root_save_state(json_ref& state) {
   return result;
 }
 
-json_ref w_root_trigger_list_to_json(struct read_locked_watchman_root* lock) {
+json_ref watchman_root::triggerListToJson() const {
   auto arr = json_array();
   {
-    auto map = lock->root->triggers.rlock();
+    auto map = triggers.rlock();
     for (const auto& it : *map) {
       const auto& cmd = it.second;
       json_array_append(arr, cmd->definition);
