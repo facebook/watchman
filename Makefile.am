@@ -134,8 +134,8 @@ TESTS = \
 		tests/bser.t \
 		tests/ignore.t \
 		tests/pending.t \
-		tests/log.t \
 		tests/string.t \
+		tests/log.t \
 		tests/wildmatch.t
 noinst_PROGRAMS = $(TESTS)
 
@@ -258,7 +258,6 @@ tests_log_t_LDADD = $(JSON_LIB) $(TAP_LIB)
 tests_log_t_SOURCES = \
 	tests/log.cpp \
 	log.cpp
-
 
 tests_bser_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_bser_t_LDADD = $(JSON_LIB) $(TAP_LIB)

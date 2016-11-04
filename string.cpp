@@ -625,7 +625,7 @@ w_string_t *w_string_suffix(w_string_t *str)
       *buf = '\0';
       return w_string_new_typed(name_buf, str->type);
     } else {
-      // Too long, to avoid useless search
+      //We haven't found the '.' yet but the suffix will never fit in our local buffer
       if (str->len - end >= sizeof(name_buf)) {
         return NULL;
       }
