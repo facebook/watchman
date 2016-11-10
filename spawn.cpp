@@ -46,8 +46,8 @@ static w_stm_t prepare_stdin(
           return NULL;
         }
 
-        auto file_list =
-            w_query_results_to_json(&cmd->field_list, n_files, res->results);
+        auto file_list = w_query_results_to_json(
+            &cmd->query->fieldList, n_files, res->results);
         w_log(W_LOG_ERR, "input_json: sending json object to stm\n");
         if (!w_json_buffer_write(&buffer, stdin_file, file_list, 0)) {
           w_log(W_LOG_ERR,

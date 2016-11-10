@@ -268,7 +268,7 @@ watchman_trigger_command::watchman_trigger_command(
     stdin_style = input_dev_null;
   } else if (json_is_array(ele)) {
     stdin_style = input_json;
-    if (!parse_field_list(ele, &field_list, errmsg)) {
+    if (!parse_field_list(ele, &query->fieldList, errmsg)) {
       return;
     }
   } else if (json_is_string(ele)) {

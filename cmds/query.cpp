@@ -8,7 +8,6 @@ static void cmd_query(struct watchman_client* client, const json_ref& args) {
   char *errmsg = NULL;
   w_query_res res;
   char clockbuf[128];
-  struct w_query_field_list field_list;
   struct unlocked_watchman_root unlocked;
 
   if (json_array_size(args) != 3) {
@@ -21,15 +20,6 @@ static void cmd_query(struct watchman_client* client, const json_ref& args) {
   }
 
   const auto& query_spec = args.at(2);
-
-  auto jfield_list = query_spec.get_default("fields");
-  if (!parse_field_list(jfield_list, &field_list, &errmsg)) {
-    send_error_response(client, "invalid field list: %s", errmsg);
-    free(errmsg);
-    w_root_delref(&unlocked);
-    return;
-  }
-
   auto query = w_query_parse(unlocked.root, query_spec, &errmsg);
   if (!query) {
     send_error_response(client, "failed to parse query: %s", errmsg);
@@ -48,8 +38,8 @@ static void cmd_query(struct watchman_client* client, const json_ref& args) {
     return;
   }
 
-  auto file_list =
-      w_query_results_to_json(&field_list, res.results.size(), res.results);
+  auto file_list = w_query_results_to_json(
+      &query->fieldList, res.results.size(), res.results);
 
   auto response = make_response();
   if (clock_id_string(res.root_number, res.ticks, clockbuf, sizeof(clockbuf))) {

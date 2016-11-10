@@ -9,6 +9,8 @@
 
 struct w_query;
 typedef struct w_query w_query;
+struct w_query_field_renderer;
+using w_query_field_list = std::vector<const w_query_field_renderer*>;
 
 struct w_query_since {
   bool is_timestamp;
@@ -113,6 +115,8 @@ struct w_query {
 
   // The query that we parsed into this struct
   json_ref query_spec;
+
+  w_query_field_list fieldList;
 };
 
 typedef std::unique_ptr<QueryExpr> (
@@ -183,12 +187,6 @@ w_string_t *w_query_ctx_get_wholename(
     struct w_query_ctx *ctx
 );
 
-struct w_query_field_renderer;
-struct w_query_field_list {
-  unsigned int num_fields;
-  struct w_query_field_renderer *fields[32];
-};
-
 // parse the old style since and find queries
 std::shared_ptr<w_query> w_query_parse_legacy(
     const w_root_t* root,
@@ -198,10 +196,10 @@ std::shared_ptr<w_query> w_query_parse_legacy(
     uint32_t* next_arg,
     const char* clockspec,
     json_ref* expr_p);
-bool w_query_legacy_field_list(struct w_query_field_list *flist);
+bool w_query_legacy_field_list(w_query_field_list* flist);
 
 json_ref w_query_results_to_json(
-    struct w_query_field_list* field_list,
+    w_query_field_list* field_list,
     uint32_t num_results,
     const std::deque<watchman_rule_match>& results);
 
@@ -227,7 +225,7 @@ bool eval_int_compare(json_int_t ival, struct w_query_int_compare *comp);
 
 bool parse_field_list(
     json_ref field_list,
-    struct w_query_field_list* selected,
+    w_query_field_list* selected,
     char** errmsg);
 
 bool parse_globs(w_query* res, const json_ref& query);

@@ -345,6 +345,10 @@ w_query_parse(const w_root_t* root, const json_ref& query, char** errmsg) {
     goto error;
   }
 
+  if (!parse_field_list(query.get_default("fields"), &res->fieldList, errmsg)) {
+    goto error;
+  }
+
   res->query_spec = query;
 
   return result;
@@ -360,8 +364,7 @@ error:
   return nullptr;
 }
 
-bool w_query_legacy_field_list(struct w_query_field_list *flist)
-{
+bool w_query_legacy_field_list(w_query_field_list* flist) {
   static const char *names[] = {
     "name", "exists", "size", "mode", "uid", "gid", "mtime",
     "ctime", "ino", "dev", "nlink", "new", "cclock", "oclock"
@@ -512,6 +515,10 @@ std::shared_ptr<w_query> w_query_parse_legacy(
 
   if (expr_p) {
     *expr_p = query_obj;
+  }
+
+  if (query) {
+    w_query_legacy_field_list(&query->fieldList);
   }
 
   return query;

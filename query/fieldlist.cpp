@@ -156,20 +156,19 @@ static w_ctor_fn_type(register_field_capabilities) {
 w_ctor_fn_reg(register_field_capabilities)
 
     json_ref w_query_results_to_json(
-        struct w_query_field_list* field_list,
+        w_query_field_list* field_list,
         uint32_t num_results,
         const std::deque<watchman_rule_match>& results) {
   auto file_list = json_array_of_size(num_results);
-  uint32_t i, f;
+  uint32_t i;
 
   // build a template for the serializer
-  if (num_results && field_list->num_fields > 1) {
-    auto templ = json_array_of_size(field_list->num_fields);
+  if (num_results && field_list->size() > 1) {
+    auto templ = json_array_of_size(field_list->size());
 
-    for (f = 0; f < field_list->num_fields; f++) {
-      json_array_append_new(templ,
-          typed_string_to_json(field_list->fields[f]->name,
-          W_STRING_BYTE));
+    for (auto& f : *field_list) {
+      json_array_append_new(
+          templ, typed_string_to_json(f->name, W_STRING_BYTE));
     }
 
     json_array_set_template_new(file_list, std::move(templ));
@@ -178,14 +177,14 @@ w_ctor_fn_reg(register_field_capabilities)
   for (i = 0; i < num_results; i++) {
     json_ref value, ele;
 
-    if (field_list->num_fields == 1) {
-      value = field_list->fields[0]->make(&results[i]);
+    if (field_list->size() == 1) {
+      value = field_list->front()->make(&results[i]);
     } else {
-      value = json_object_of_size(field_list->num_fields);
+      value = json_object_of_size(field_list->size());
 
-      for (f = 0; f < field_list->num_fields; f++) {
-        ele = field_list->fields[f]->make(&results[i]);
-        value.set(field_list->fields[f]->name, std::move(ele));
+      for (auto& f : *field_list) {
+        ele = f->make(&results[i]);
+        value.set(f->name, std::move(ele));
       }
     }
     json_array_append_new(file_list, std::move(value));
@@ -195,11 +194,11 @@ w_ctor_fn_reg(register_field_capabilities)
 
 bool parse_field_list(
     json_ref field_list,
-    struct w_query_field_list* selected,
+    w_query_field_list* selected,
     char** errmsg) {
   uint32_t i, f;
 
-  memset(selected, 0, sizeof(*selected));
+  selected->clear();
 
   if (!field_list) {
     // Use the default list
@@ -230,7 +229,7 @@ bool parse_field_list(
     for (f = 0; field_defs[f].name; f++) {
       if (!strcmp(name, field_defs[f].name)) {
         found = true;
-        selected->fields[selected->num_fields++] = &field_defs[f];
+        selected->push_back(&field_defs[f]);
         break;
       }
     }

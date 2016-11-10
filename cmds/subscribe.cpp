@@ -204,7 +204,7 @@ static json_ref build_subscription_results(
   }
 
   auto file_list = w_query_results_to_json(
-      &sub->field_list, res.results.size(), res.results);
+      &sub->query->fieldList, res.results.size(), res.results);
 
   auto response = make_response();
 
@@ -293,7 +293,6 @@ static void cmd_subscribe(
   json_ref jname;
   std::shared_ptr<w_query> query;
   json_ref query_spec;
-  struct w_query_field_list field_list;
   char *errmsg;
   int defer = true; /* can't use bool because json_unpack requires int */
   json_ref defer_list;
@@ -320,13 +319,6 @@ static void cmd_subscribe(
   }
 
   query_spec = args.at(3);
-
-  jfield_list = query_spec.get_default("fields");
-  if (!parse_field_list(jfield_list, &field_list, &errmsg)) {
-    send_error_response(client, "invalid field list: %s", errmsg);
-    free(errmsg);
-    goto done;
-  }
 
   query = w_query_parse(unlocked.root, query_spec, &errmsg);
   if (!query) {
@@ -377,7 +369,6 @@ static void cmd_subscribe(
     }
   }
 
-  memcpy(&sub->field_list, &field_list, sizeof(field_list));
   sub->unlocked.root = unlocked.root;
   w_root_addref(sub->unlocked.root);
 

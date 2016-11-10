@@ -12,7 +12,6 @@ struct watchman_trigger_command {
   json_ref command;
   std::unordered_map<w_string, w_string> envht;
 
-  struct w_query_field_list field_list;
   bool append_files;
   enum trigger_input_style stdin_style;
   uint32_t max_files_stdin;
