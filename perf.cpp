@@ -18,10 +18,6 @@ watchman_perf_sample::watchman_perf_sample(const char* description)
 #endif
 }
 
-watchman_perf_sample::~watchman_perf_sample() {
-  memset(this, 0, sizeof(*this));
-}
-
 bool watchman_perf_sample::finish() {
   gettimeofday(&time_end, nullptr);
   w_timeval_sub(time_end, time_begin, &duration);

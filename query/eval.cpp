@@ -279,7 +279,6 @@ bool w_query_execute_locked(
     w_query_generator generator) {
   w_query_ctx ctx(query, lock);
 
-  memset(res, 0, sizeof(*res));
   w_perf_t sample("query_execute");
 
   /* The first stage of execution is generation.
@@ -311,7 +310,6 @@ bool w_query_execute(
   bool result;
 
   w_query_ctx ctx(query, nullptr);
-  memset(res, 0, sizeof(*res));
 
   w_perf_t sample("query_execute");
 

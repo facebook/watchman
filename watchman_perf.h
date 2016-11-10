@@ -40,7 +40,6 @@ struct watchman_perf_sample {
 
   // Initialize and mark the start of a sample
   watchman_perf_sample(const char* description);
-  ~watchman_perf_sample();
   watchman_perf_sample(const watchman_perf_sample&) = delete;
   watchman_perf_sample(watchman_perf_sample&&) = delete;
 
