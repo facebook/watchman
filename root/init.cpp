@@ -88,9 +88,7 @@ void watchman_root::init() {
   }
   w_dir_close(osdir);
 
-  inner.watcher = WatcherRegistry::initWatcher(this);
-  inner.view->watcher = inner.watcher;
-
+  inner.view->watcher = WatcherRegistry::initWatcher(this);
   inner.number = next_root_number++;
 
   time(&inner.last_cmd_timestamp);

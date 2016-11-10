@@ -214,7 +214,7 @@ void InMemoryView::statPath(
       // our former tree here
       markDirDeleted(dir_ent, now, root->inner.ticks, true);
     }
-    if ((root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
+    if ((watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
         !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&
         dir->last_check_existed) {
       /* Make sure we update the mtime on the parent directory.

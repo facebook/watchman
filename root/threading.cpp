@@ -3,11 +3,6 @@
 
 #include "watchman.h"
 
-bool watchman_root::start(char**) {
-  inner.view->startThreads(this);
-  return true;
-}
-
 void watchman_root::scheduleRecrawl(const char* why) {
   auto info = recrawlInfo.wlock();
 

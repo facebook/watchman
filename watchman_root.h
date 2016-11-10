@@ -85,9 +85,6 @@ struct watchman_root {
     /* root number */
     uint32_t number{0};
 
-    /* the watcher that we're using for this root */
-    std::shared_ptr<Watcher> watcher;
-
     std::shared_ptr<watchman::QueryableView> view;
 
     /* current tick */
@@ -137,7 +134,6 @@ struct watchman_root {
   void init();
   bool removeFromWatched();
   void applyIgnoreVCSConfiguration();
-  bool start(char** errmsg);
   void signalThreads();
   bool stopWatch();
   json_ref triggerListToJson() const;

@@ -110,7 +110,7 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
   auto stream = (fse_stream *)clientCallBackInfo;
   w_root_t *root = stream->root;
   std::deque<watchman_fsevent> items;
-  auto watcher = (FSEventsWatcher*)root->inner.watcher.get();
+  auto watcher = (FSEventsWatcher*)root->inner.view->watcher.get();
 
   unused_parameter(streamRef);
 
@@ -266,7 +266,7 @@ static struct fse_stream* fse_stream_make(
   double latency;
   struct fse_stream *fse_stream = (struct fse_stream*)calloc(1, sizeof(*fse_stream));
   struct stat st;
-  auto watcher = (FSEventsWatcher*)root->inner.watcher.get();
+  auto watcher = (FSEventsWatcher*)root->inner.view->watcher.get();
 
   if (!fse_stream) {
     // Note that w_string_new will terminate the process on OOM
@@ -682,7 +682,7 @@ static void cmd_debug_fsevents_inject_drop(
   }
 
   auto watcher =
-      dynamic_cast<FSEventsWatcher*>(unlocked.root->inner.watcher.get());
+      dynamic_cast<FSEventsWatcher*>(unlocked.root->inner.view->watcher.get());
 
   if (!watcher) {
     send_error_response(client, "root is not using the fsevents watcher");

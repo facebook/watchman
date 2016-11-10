@@ -226,13 +226,16 @@ bool w_root_load_state(const json_ref& state) {
     }
 
     if (created) {
-      if (!unlocked.root->start(&errmsg)) {
-        w_log(
-            W_LOG_ERR,
-            "root_start(%s) failed: %s\n",
-            unlocked.root->root_path.c_str(),
-            errmsg);
-        free(errmsg);
+      try {
+        unlocked.root->inner.view->startThreads(unlocked.root);
+      } catch (const std::exception& e) {
+        watchman::log(
+            watchman::ERR,
+            "root_start(",
+            unlocked.root->root_path,
+            ") failed: ",
+            e.what(),
+            "\n");
         unlocked.root->cancel();
       }
     }
