@@ -191,7 +191,7 @@ void InMemoryView::statPath(
           // but do if we're looking at the cookie dir (stat_path is never
           // called for the root itself)
           w_string_equal(full_path, root->cookies.cookieDir())) {
-        if (!root->inner.watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
+        if (!(watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)) {
           /* we always need to crawl, but may not need to be fully recursive */
           coll->add(
               full_path,
