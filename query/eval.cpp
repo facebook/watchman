@@ -88,11 +88,15 @@ bool w_query_process_file(
   } else {
     is_new = file->ctime.ticks > ctx->since.clock.ticks;
   }
-  ctx->results.emplace_back(
+
+  watchman_rule_match match(
       ctx->lock->root->inner.number,
       w_query_ctx_get_wholename(ctx),
       is_new,
       file);
+
+  json_array_append_new(
+      ctx->resultsArray, file_result_to_json(ctx->query->fieldList, match));
 
   return true;
 }
@@ -203,7 +207,7 @@ done:
   return result;
 }
 
-w_query_result::~w_query_result() {
+w_query_res::~w_query_res() {
   free(errmsg);
 }
 
@@ -241,19 +245,26 @@ static bool execute_common(
         json_object(
             {{"fresh_instance", json_boolean(res->is_fresh_instance)},
              {"num_deduped", json_integer(ctx->num_deduped)},
-             {"num_results", json_integer(int64_t(ctx->results.size()))},
+             {"num_results", json_integer(json_array_size(ctx->resultsArray))},
              {"num_walked", json_integer(num_walked)},
              {"query", ctx->query->query_spec}}));
     sample->log();
   }
 
-  res->results = std::move(ctx->results);
+  res->resultsArray = ctx->resultsArray;
+  res->dedupedFileNames = std::move(ctx->dedup);
 
   return result;
 }
 
 w_query_ctx::w_query_ctx(w_query* q, read_locked_watchman_root* lock)
-    : query(q), lock(lock) {}
+    : query(q), lock(lock), resultsArray(json_array()) {
+  // build a template for the serializer
+  if (query->fieldList.size() > 1) {
+    json_array_set_template_new(
+        resultsArray, field_list_to_json_name_array(query->fieldList));
+  }
+}
 
 w_query_ctx::~w_query_ctx() {
   if (last_parent_path) {

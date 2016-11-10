@@ -196,15 +196,12 @@ static json_ref build_subscription_results(
       W_LOG_DBG,
       "subscription %s generated %" PRIu32 " results\n",
       sub->name.c_str(),
-      uint32_t(res.results.size()));
+      uint32_t(res.resultsArray.array().size()));
 
-  if (res.results.empty()) {
+  if (res.resultsArray.array().empty()) {
     update_subscription_ticks(sub, &res);
     return nullptr;
   }
-
-  auto file_list = w_query_results_to_json(
-      &sub->query->fieldList, res.results.size(), res.results);
 
   auto response = make_response();
 
@@ -222,7 +219,7 @@ static json_ref build_subscription_results(
   update_subscription_ticks(sub, &res);
 
   response.set({{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
-                {"files", std::move(file_list)},
+                {"files", std::move(res.resultsArray)},
                 {"root", w_string_to_json(lock->root->root_path)},
                 {"subscription", w_string_to_json(sub->name)},
                 {"unilateral", json_true()}});

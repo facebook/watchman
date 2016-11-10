@@ -7,7 +7,6 @@ static w_stm_t prepare_stdin(
   struct watchman_trigger_command *cmd,
   w_query_res *res)
 {
-  uint32_t n_files;
   char stdin_file_name[WATCHMAN_NAME_MAX];
   w_stm_t stdin_file = NULL;
 
@@ -15,10 +14,11 @@ static w_stm_t prepare_stdin(
     return w_stm_open("/dev/null", O_RDONLY|O_CLOEXEC);
   }
 
-  n_files = res->results.size();
-
+  // Adjust result to fit within the specified limit
   if (cmd->max_files_stdin > 0) {
-    n_files = std::min(cmd->max_files_stdin, n_files);
+    auto& fileList = res->resultsArray.array();
+    auto n_files = std::min(size_t(cmd->max_files_stdin), fileList.size());
+    fileList.resize(std::min(fileList.size(), n_files));
   }
 
   /* prepare the input stream for the child process */
@@ -46,10 +46,8 @@ static w_stm_t prepare_stdin(
           return NULL;
         }
 
-        auto file_list = w_query_results_to_json(
-            &cmd->query->fieldList, n_files, res->results);
         w_log(W_LOG_ERR, "input_json: sending json object to stm\n");
-        if (!w_json_buffer_write(&buffer, stdin_file, file_list, 0)) {
+        if (!w_json_buffer_write(&buffer, stdin_file, res->resultsArray, 0)) {
           w_log(W_LOG_ERR,
               "input_json: failed to write json data to stream: %s\n",
               strerror(errno));
@@ -60,25 +58,20 @@ static w_stm_t prepare_stdin(
         break;
       }
     case input_name_list:
-      {
-        uint32_t i;
-
-        for (i = 0; i < n_files; i++) {
-          if (w_stm_write(
-                  stdin_file,
-                  res->results[i].relname.data(),
-                  res->results[i].relname.size()) !=
-                  (int)res->results[i].relname.size() ||
-              w_stm_write(stdin_file, "\n", 1) != 1) {
-            w_log(W_LOG_ERR,
+      for (auto& name : res->resultsArray.array()) {
+        auto& nameStr = json_to_w_string(name);
+        if (w_stm_write(stdin_file, nameStr.data(), nameStr.size()) !=
+                (int)nameStr.size() ||
+            w_stm_write(stdin_file, "\n", 1) != 1) {
+          w_log(
+              W_LOG_ERR,
               "write failure while producing trigger stdin: %s\n",
               strerror(errno));
-            w_stm_close(stdin_file);
-            return NULL;
-          }
+          w_stm_close(stdin_file);
+          return nullptr;
         }
-        break;
       }
+      break;
     case input_dev_null:
       // already handled above
       break;
@@ -126,6 +119,13 @@ static void spawn_command(w_root_t *root,
   // Allow some misc working overhead
   argspace_remaining -= 32;
 
+  // Record an overflow before we call prepare_stdin(), which mutates
+  // and resizes the results to fit the specified limit.
+  if (cmd->max_files_stdin > 0 &&
+      res->resultsArray.array().size() > cmd->max_files_stdin) {
+    file_overflow = true;
+  }
+
   stdin_file = prepare_stdin(cmd, res);
   if (!stdin_file) {
     w_log(
@@ -140,10 +140,6 @@ static void spawn_command(w_root_t *root,
   // Assumption: that only one thread will be executing on a given
   // cmd instance so that mutation of cmd->envht is safe.
   // This is guaranteed in the current architecture.
-
-  if (cmd->max_files_stdin > 0 && res->results.size() > cmd->max_files_stdin) {
-    file_overflow = true;
-  }
 
   // It is way too much of a hassle to try to recreate the clock value if it's
   // not a relative clock spec, and it's only going to happen on the first run
@@ -186,9 +182,9 @@ static void spawn_command(w_root_t *root,
     envp = NULL;
     argspace_remaining -= env_size;
 
-    for (const auto& item : res->results) {
+    for (const auto& item : res->dedupedFileNames) {
       // also: NUL terminator and entry in argv
-      uint32_t size = item.relname.size() + 1 + sizeof(char*);
+      uint32_t size = item.size() + 1 + sizeof(char*);
 
       if (argspace_remaining < size) {
         file_overflow = true;
@@ -196,7 +192,7 @@ static void spawn_command(w_root_t *root,
       }
       argspace_remaining -= size;
 
-      json_array_append_new(args, w_string_to_json(item.relname));
+      json_array_append_new(args, w_string_to_json(item));
     }
   }
 
@@ -384,7 +380,7 @@ bool watchman_trigger_command::maybeSpawn(unlocked_watchman_root* unlocked) {
         "trigger \"",
         triggername,
         "\" generated ",
-        res.results.size(),
+        res.resultsArray.array().size(),
         " results\n");
 
     // create a new spec that will be used the next time
@@ -399,7 +395,7 @@ bool watchman_trigger_command::maybeSpawn(unlocked_watchman_root* unlocked) {
         res.ticks,
         " ticks next time\n");
 
-    if (!res.results.empty()) {
+    if (!res.resultsArray.array().empty()) {
       // transitional const_cast until we remove read_locked refs
       didRun = true;
       spawn_command(

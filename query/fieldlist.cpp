@@ -155,41 +155,29 @@ static w_ctor_fn_type(register_field_capabilities) {
 }
 w_ctor_fn_reg(register_field_capabilities)
 
-    json_ref w_query_results_to_json(
-        w_query_field_list* field_list,
-        uint32_t num_results,
-        const std::deque<watchman_rule_match>& results) {
-  auto file_list = json_array_of_size(num_results);
-  uint32_t i;
+json_ref field_list_to_json_name_array(const w_query_field_list& fieldList) {
+  auto templ = json_array_of_size(fieldList.size());
 
-  // build a template for the serializer
-  if (num_results && field_list->size() > 1) {
-    auto templ = json_array_of_size(field_list->size());
-
-    for (auto& f : *field_list) {
-      json_array_append_new(
-          templ, typed_string_to_json(f->name, W_STRING_BYTE));
-    }
-
-    json_array_set_template_new(file_list, std::move(templ));
+  for (auto& f : fieldList) {
+    json_array_append_new(templ, typed_string_to_json(f->name, W_STRING_BYTE));
   }
 
-  for (i = 0; i < num_results; i++) {
-    json_ref value, ele;
+  return templ;
+}
 
-    if (field_list->size() == 1) {
-      value = field_list->front()->make(&results[i]);
-    } else {
-      value = json_object_of_size(field_list->size());
-
-      for (auto& f : *field_list) {
-        ele = f->make(&results[i]);
-        value.set(f->name, std::move(ele));
-      }
-    }
-    json_array_append_new(file_list, std::move(value));
+json_ref file_result_to_json(
+    const w_query_field_list& fieldList,
+    const watchman_rule_match& match) {
+  if (fieldList.size() == 1) {
+    return fieldList.front()->make(&match);
   }
-  return file_list;
+  auto value = json_object_of_size(fieldList.size());
+
+  for (auto& f : fieldList) {
+    auto ele = f->make(&match);
+    value.set(f->name, std::move(ele));
+  }
+  return value;
 }
 
 bool parse_field_list(

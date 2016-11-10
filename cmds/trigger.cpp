@@ -262,6 +262,16 @@ watchman_trigger_command::watchman_trigger_command(
   }
 
   append_files = json_is_true(trig.get_default("append_files", json_false()));
+  if (append_files) {
+    // This is unfortunately a bit of a hack.  When appending files to the
+    // command line we need a list of just the file names.  We would normally
+    // just set the field list to contain the name, but that may conflict with
+    // the setting for the "stdin" property that is managed below; if they
+    // didn't ask for the name, we can't just force it in. As a bit of an
+    // "easy" workaround, we'll capture the list of names from the deduping
+    // mechanism.
+    query->dedup_results = true;
+  }
 
   auto ele = definition.get_default("stdin");
   if (!ele) {
@@ -277,6 +287,12 @@ watchman_trigger_command::watchman_trigger_command(
       stdin_style = input_dev_null;
     } else if (!strcmp(str, "NAME_PER_LINE")) {
       stdin_style = input_name_list;
+      if (!parse_field_list(
+              json_array({typed_string_to_json("name")}),
+              &query->fieldList,
+              errmsg)) {
+        return;
+      }
     } else {
       ignore_result(asprintf(errmsg, "invalid stdin value %s", str));
       return;

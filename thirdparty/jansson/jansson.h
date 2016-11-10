@@ -121,6 +121,7 @@ class json_ref {
    * This is useful both for iterating the array contents
    * and for returning the size of the array. */
   const std::vector<json_ref>& array() const;
+  std::vector<json_ref>& array();
 
   /** Returns a reference to the array value at the specified index.
    * Throws out_of_range or domain_error if the index is bad or if

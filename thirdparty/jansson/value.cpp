@@ -331,6 +331,13 @@ const std::vector<json_ref>& json_ref::array() const {
   return json_to_array(ref_)->table;
 }
 
+std::vector<json_ref>& json_ref::array() {
+  if (!json_is_array(ref_)) {
+    throw std::domain_error("json_ref::array() called for non-array");
+  }
+  return json_to_array(ref_)->table;
+}
+
 json_ref json_array_of_size(size_t nelems) {
   auto array = new json_array_t(nelems);
   return json_ref(&array->json, false);
