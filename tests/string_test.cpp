@@ -103,13 +103,37 @@ void test_concat() {
   ok(str == w_string("one2three1.2000000"), "concatenated to %s", str.c_str());
 }
 
+void test_suffix() {
+  ok(!w_string("").suffix(), "empty string suffix");
+  ok(w_string(".").suffix() == w_string(""), "only one dot suffix");
+  ok(w_string("endwithdot.").suffix() == w_string(""), "end with dot");
+  ok(!w_string("nosuffix").suffix(), "no suffix");
+  ok(w_string(".beginwithdot").suffix() == w_string("beginwithdot"),
+     "begin with dot");
+  ok(w_string("MainActivity.java").suffix() == w_string("java"), "java suffix");
+
+  std::string longName(128, 'a');
+  auto str = w_string::build(".", longName.c_str());
+  ok(!str.suffix(), "too long suffix");
+
+  std::string nearlongName(127, 'a');
+  str = w_string::build("I am not long enough.", nearlongName.c_str());
+  ok(str.suffix().size() == 127, "nearly too long suffix");
+
+  // 255 is the longest suffix among some systems
+  std::string toolongName(255, 'a');
+  str = w_string::build(".", toolongName.c_str());
+  ok(!str.suffix(), "too long suffix");
+}
+
 int main(int, char**) {
-  plan_tests(37);
+  plan_tests(46);
   test_integrals();
   test_strings();
   test_pointers();
   test_double();
   test_concat();
+  test_suffix();
 
   return exit_status();
 }

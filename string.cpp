@@ -610,7 +610,7 @@ w_string_t *w_string_suffix(w_string_t *str)
    * on a slice */
   for (end = str->len - 1; end >= 0; end--) {
     if (str->buf[end] == '.') {
-      if (str->len - (end + 1) >= sizeof(name_buf) - 1) {
+      if (str->len - end > sizeof(name_buf)) {
         // Too long
         return NULL;
       }
@@ -624,6 +624,10 @@ w_string_t *w_string_suffix(w_string_t *str)
       }
       *buf = '\0';
       return w_string_new_typed(name_buf, str->type);
+    } else if (str->len - end >= sizeof(name_buf)) {
+      // We haven't found the '.' yet but the suffix will never fit in our local
+      // buffer
+      return nullptr;
     }
 
     if (is_slash(str->buf[end])) {
