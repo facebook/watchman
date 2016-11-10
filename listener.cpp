@@ -10,7 +10,6 @@
 watchman::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
 static int listener_fd = -1;
-pthread_t reaper_thread;
 static pthread_t listener_thread;
 #ifdef _WIN32
 static HANDLE listener_thread_event;
@@ -119,7 +118,6 @@ void w_request_shutdown(void) {
 // Knock listener thread out of poll/accept
 #ifndef _WIN32
   pthread_kill(listener_thread, SIGUSR1);
-  pthread_kill(reaper_thread, SIGUSR1);
 #else
   SetEvent(listener_thread_event);
 #endif
@@ -562,7 +560,6 @@ bool w_start_listener(const char *path)
   struct sigaction sa;
   sigset_t sigset;
 #endif
-  void *ignored;
 
   listener_thread = pthread_self();
 
@@ -711,7 +708,6 @@ bool w_start_listener(const char *path)
     } while (n_clients > 0);
   }
 
-  pthread_join(reaper_thread, &ignored);
   w_state_shutdown();
 
   return true;
