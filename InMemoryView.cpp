@@ -42,7 +42,7 @@ void InMemoryView::markFileChanged(
 
   if (view_.latest_file != file) {
     // unlink from list
-    remove_from_file_list(file);
+    file->removeFromFileList();
 
     // and move to the head
     view_.insertAtHeadOfFileList(file);
@@ -200,7 +200,7 @@ void InMemoryView::markDirDeleted(
     auto file = it.second.get();
 
     if (file->exists) {
-      w_string full_name(w_dir_path_cat_str(dir, w_file_get_name(file)), false);
+      w_string full_name(w_dir_path_cat_str(dir, file->getName()), false);
       w_log(W_LOG_DBG, "mark_deleted: %s\n", full_name.c_str());
       file->exists = false;
       markFileChanged(file, now, tick);
@@ -221,34 +221,16 @@ watchman_file* InMemoryView::getOrCreateChildFile(
     const w_string& file_name,
     const struct timeval& now,
     uint32_t tick) {
-  w_string_t* name;
   auto& file_ptr = dir->files[file_name];
 
   if (file_ptr) {
     return file_ptr.get();
   }
 
-  /* We embed our name string in the tail end of the struct that we're
-   * allocating here.  This turns out to be more memory efficient due
-   * to the way that the allocator bins sizeof(watchman_file); there's
-   * a bit of unusable space after the end of the structure that happens
-   * to be about the right size to fit a typical filename.
-   * Embedding the name in the end allows us to make the most of this
-   * memory and free up the separate heap allocation for file_name.
-   */
-  auto file = (watchman_file*)calloc(
-      1, sizeof(watchman_file) + w_string_embedded_size(file_name));
-  file_ptr = std::unique_ptr<watchman_file, watchman_dir::Deleter>(
-      file, watchman_dir::Deleter());
+  file_ptr = watchman_file::make(file_name, dir);
 
-  name = w_file_get_name(file);
-  w_string_embedded_copy(name, file_name);
-  w_string_addref(name);
-
-  file->parent = dir;
-  file->exists = true;
-  file->ctime.ticks = tick;
-  file->ctime.timestamp = now.tv_sec;
+  file_ptr->ctime.ticks = tick;
+  file_ptr->ctime.timestamp = now.tv_sec;
 
   auto suffix = file_name.suffix();
   if (suffix) {
@@ -258,17 +240,17 @@ watchman_file* InMemoryView::getOrCreateChildFile(
       sufhead.reset(new watchman::InMemoryView::file_list_head);
     }
 
-    file->suffix_next = sufhead->head;
-    if (file->suffix_next) {
-      sufhead->head->suffix_prev = &file->suffix_next;
+    file_ptr->suffix_next = sufhead->head;
+    if (file_ptr->suffix_next) {
+      sufhead->head->suffix_prev = &file_ptr->suffix_next;
     }
-    sufhead->head = file;
-    file->suffix_prev = &sufhead->head;
+    sufhead->head = file_ptr.get();
+    file_ptr->suffix_prev = &sufhead->head;
   }
 
-  watcher->startWatchFile(file);
+  watcher->startWatchFile(file_ptr.get());
 
-  return file;
+  return file_ptr.get();
 }
 
 void InMemoryView::ageOutFile(
@@ -276,7 +258,7 @@ void InMemoryView::ageOutFile(
     watchman_file* file) {
   auto parent = file->parent;
 
-  w_string full_name(w_dir_path_cat_str(parent, w_file_get_name(file)), false);
+  w_string full_name(w_dir_path_cat_str(parent, file->getName()), false);
   w_log(W_LOG_DBG, "age_out file=%s\n", full_name.c_str());
 
   // Revise tick for fresh instance reporting
@@ -291,7 +273,7 @@ void InMemoryView::ageOutFile(
   // when we marked it as !exists.
   // We remove using the iterator rather than passing the file name in, because
   // the file name will be freed as part of the erasure.
-  auto it = parent->files.find(w_file_get_name(file));
+  auto it = parent->files.find(file->getName());
   parent->files.erase(it);
 }
 

@@ -31,7 +31,7 @@ class PcreExpr : public QueryExpr {
     if (wholename) {
       str = w_query_ctx_get_wholename(ctx);
     } else {
-      str = w_file_get_name(file);
+      str = file->getName();
     }
 
     rc = pcre_exec(re, extra, str->buf, str->len, 0, 0, nullptr, 0);

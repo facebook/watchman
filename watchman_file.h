@@ -36,11 +36,24 @@ struct watchman_file {
   /* the symbolic link target of this file.
    * Can be NULL if not a symlink, or we failed to read the target */
   w_string symlink_target;
+
+  inline w_string_t* getName() const {
+    return (w_string_t*)(this + 1);
+  }
+
+  void removeFromFileList();
+
+  watchman_file() = delete;
+  watchman_file(const watchman_file&) = delete;
+  watchman_file& operator=(const watchman_file&) = delete;
+  ~watchman_file();
+
+  static std::unique_ptr<watchman_file, watchman_dir::Deleter> make(
+      const w_string& name,
+      watchman_dir* parent);
+
+ private:
+  void removeFromSuffixList();
 };
 
-inline w_string_t* w_file_get_name(const watchman_file* file) {
-  return (w_string_t*)(file + 1);
-}
-
-void remove_from_file_list(struct watchman_file* file);
 void free_file_node(struct watchman_file* file);

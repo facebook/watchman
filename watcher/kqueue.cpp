@@ -131,8 +131,7 @@ KQueueWatcher::~KQueueWatcher() {
 bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
   struct kevent k;
 
-  w_string full_name(
-      w_dir_path_cat_str(file->parent, w_file_get_name(file)), false);
+  w_string full_name(w_dir_path_cat_str(file->parent, file->getName()), false);
   {
     auto rlock = maps_.rlock();
     if (rlock->name_to_fd.find(full_name) != rlock->name_to_fd.end()) {

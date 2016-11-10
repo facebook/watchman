@@ -41,7 +41,7 @@ w_string_t *w_query_ctx_get_wholename(
   }
 
   auto full_name = w_string::pathCat(
-      {compute_parent_path(ctx, ctx->file), w_file_get_name(ctx->file)});
+      {compute_parent_path(ctx, ctx->file), ctx->file->getName()});
 
   // Record the name relative to the root
   ctx->wholename = full_name.slice(name_start, full_name.size() - name_start);

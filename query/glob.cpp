@@ -226,7 +226,7 @@ bool InMemoryView::globGeneratorDoublestar(
   // First step is to walk the set of files contained in this node
   for (auto& it : dir->files) {
     auto file = it.second.get();
-    w_string_t *file_name = w_file_get_name(file);
+    w_string_t* file_name = file->getName();
 
     ++n;
 
@@ -386,7 +386,7 @@ bool InMemoryView::globGeneratorTree(
         for (auto& it : dir->files) {
           // Otherwise we have to walk and match
           auto file = it.second.get();
-          w_string_t* file_name = w_file_get_name(file);
+          w_string_t* file_name = file->getName();
           ++n;
 
           if (!file->exists) {

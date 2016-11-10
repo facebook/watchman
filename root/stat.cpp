@@ -79,9 +79,13 @@ void InMemoryView::statPath(
     }
     if (file) {
       if (file->exists) {
-        w_log(W_LOG_DBG, "w_lstat(%s) -> %s so marking %.*s deleted\n", path,
-              strerror(err), w_file_get_name(file)->len,
-              w_file_get_name(file)->buf);
+        w_log(
+            W_LOG_DBG,
+            "w_lstat(%s) -> %s so marking %.*s deleted\n",
+            path,
+            strerror(err),
+            file->getName()->len,
+            file->getName()->buf);
         file->exists = false;
         markFileChanged(file, now, root->inner.ticks);
       }

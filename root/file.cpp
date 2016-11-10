@@ -62,40 +62,68 @@ void struct_stat_to_watchman_stat(const struct stat *st,
       sizeof(target->ctime));
 }
 
-void remove_from_file_list(struct watchman_file* file) {
-  if (file->next) {
-    file->next->prev = file->prev;
+void watchman_file::removeFromFileList() {
+  if (next) {
+    next->prev = prev;
   }
   // file->prev points to the address of either
   // `previous_file->next` OR `root->inner.latest_file`.
   // This next assignment is therefore fixing up either
   // the linkage from the prior file node or from the
   // head of the list.
-  if (file->prev) {
-    *file->prev = file->next;
+  if (prev) {
+    *prev = next;
   }
 }
 
-static void remove_from_suffix_list(struct watchman_file* file) {
-  if (file->suffix_next) {
-    file->suffix_next->suffix_prev = file->suffix_prev;
+void watchman_file::removeFromSuffixList() {
+  if (suffix_next) {
+    suffix_next->suffix_prev = suffix_prev;
   }
-  // file->suffix_prev points to the address of either
+  // suffix_prev points to the address of either
   // `previous_file->suffix_next` OR the `file_list_head.head`
   // tracked in `root->inner.suffixes`.
   // This next assignment is therefore fixing up either
   // the linkage from the prior file node or from the
   // head of the list.
-  if (file->suffix_prev) {
-    *file->suffix_prev = file->suffix_next;
+  if (suffix_prev) {
+    *suffix_prev = suffix_next;
   }
 }
 
-void free_file_node(struct watchman_file* file) {
-  remove_from_file_list(file);
-  remove_from_suffix_list(file);
+/* We embed our name string in the tail end of the struct that we're
+ * allocating here.  This turns out to be more memory efficient due
+ * to the way that the allocator bins sizeof(watchman_file); there's
+ * a bit of unusable space after the end of the structure that happens
+ * to be about the right size to fit a typical filename.
+ * Embedding the name in the end allows us to make the most of this
+ * memory and free up the separate heap allocation for file_name.
+ */
+std::unique_ptr<watchman_file, watchman_dir::Deleter> watchman_file::make(
+    const w_string& name,
+    watchman_dir* parent) {
+  auto file = (watchman_file*)calloc(
+      1, sizeof(watchman_file) + w_string_embedded_size(name));
+  std::unique_ptr<watchman_file, watchman_dir::Deleter> filePtr(
+      file, watchman_dir::Deleter());
 
-  file->symlink_target.reset();
+  auto targetName = file->getName();
+  w_string_embedded_copy(targetName, name);
+  w_string_addref(targetName);
+
+  file->parent = parent;
+  file->exists = true;
+
+  return filePtr;
+}
+
+watchman_file::~watchman_file() {
+  removeFromFileList();
+  removeFromSuffixList();
+}
+
+void free_file_node(struct watchman_file* file) {
+  file->~watchman_file();
   free(file);
 }
 

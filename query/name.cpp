@@ -21,7 +21,7 @@ class NameExpr : public QueryExpr {
     if (wholename) {
       str = w_query_ctx_get_wholename(ctx);
     } else {
-      str = w_file_get_name(file);
+      str = file->getName();
     }
 
     if (!set.empty()) {
