@@ -1,7 +1,6 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "make_unique.h"
 #include "watchman.h"
 #include <array>
 
@@ -51,17 +50,23 @@ struct FileDescriptor {
 struct KQueueWatcher : public Watcher {
   int kq_fd{-1};
   int terminatePipe_[2]{-1, -1};
-  std::unordered_map<w_string, FileDescriptor> name_to_fd;
-  /* map of active watch descriptor to name of the corresponding item */
-  std::unordered_map<int, w_string> fd_to_name;
-  /* lock to protect the map above */
-  pthread_mutex_t lock;
+
+  struct maps {
+    std::unordered_map<w_string, FileDescriptor> name_to_fd;
+    /* map of active watch descriptor to name of the corresponding item */
+    std::unordered_map<int, w_string> fd_to_name;
+
+    explicit maps(json_int_t sizeHint) {
+      name_to_fd.reserve(sizeHint);
+      fd_to_name.reserve(sizeHint);
+    }
+  };
+  watchman::Synchronized<maps> maps_;
+
   struct kevent keventbuf[WATCHMAN_BATCH_LIMIT];
 
-  KQueueWatcher() : Watcher("kqueue", 0) {}
+  explicit KQueueWatcher(w_root_t* root);
   ~KQueueWatcher();
-
-  bool initNew(w_root_t* root, char** errmsg) override;
 
   struct watchman_dir_handle* startWatchDir(
       w_root_t* root,
@@ -89,49 +94,29 @@ static const struct flag_map kflags[] = {
     {0, nullptr},
 };
 
-bool KQueueWatcher::initNew(w_root_t* root, char** errmsg) {
-  auto watcher = watchman::make_unique<KQueueWatcher>();
-  json_int_t hint_num_dirs =
-      root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS);
-
-  if (!watcher) {
-    *errmsg = strdup("out of memory");
-    return false;
+KQueueWatcher::KQueueWatcher(w_root_t* root)
+    : Watcher("kqueue", 0),
+      maps_(maps(root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS))) {
+  if (pipe(terminatePipe_)) {
+    throw std::system_error(
+        errno,
+        std::system_category(),
+        std::string("pipe error: ") + strerror(errno));
   }
-  pthread_mutex_init(&watcher->lock, nullptr);
-  watcher->name_to_fd.reserve(hint_num_dirs);
-  watcher->fd_to_name.reserve(hint_num_dirs);
+  w_set_cloexec(terminatePipe_[0]);
+  w_set_cloexec(terminatePipe_[1]);
 
-  if (pipe(watcher->terminatePipe_)) {
-    ignore_result(asprintf(
-        errmsg,
-        "watch(%s): pipe error: %s",
-        root->root_path.c_str(),
-        strerror(errno)));
-    w_log(W_LOG_ERR, "%s\n", *errmsg);
-    return false;
+  kq_fd = kqueue();
+  if (kq_fd == -1) {
+    throw std::system_error(
+        errno,
+        std::system_category(),
+        std::string("kqueue error: ") + strerror(errno));
   }
-  w_set_cloexec(watcher->terminatePipe_[0]);
-  w_set_cloexec(watcher->terminatePipe_[1]);
-
-  watcher->kq_fd = kqueue();
-  if (watcher->kq_fd == -1) {
-    ignore_result(asprintf(
-        errmsg,
-        "watch(%s): kqueue() error: %s",
-        root->root_path.c_str(),
-        strerror(errno)));
-    w_log(W_LOG_ERR, "%s\n", *errmsg);
-    return false;
-  }
-  w_set_cloexec(watcher->kq_fd);
-
-  root->inner.watcher = std::move(watcher);
-  return true;
+  w_set_cloexec(kq_fd);
 }
 
 KQueueWatcher::~KQueueWatcher() {
-  pthread_mutex_destroy(&lock);
   if (kq_fd != -1) {
     close(kq_fd);
   }
@@ -145,50 +130,66 @@ KQueueWatcher::~KQueueWatcher() {
 
 bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
   struct kevent k;
-  int fd;
-  w_string_t *full_name;
 
-  full_name = w_dir_path_cat_str(file->parent, w_file_get_name(file));
-  pthread_mutex_lock(&lock);
-  if (name_to_fd.find(full_name) != name_to_fd.end()) {
-    // Already watching it
-    pthread_mutex_unlock(&lock);
-    w_string_delref(full_name);
-    return true;
+  w_string full_name(
+      w_dir_path_cat_str(file->parent, w_file_get_name(file)), false);
+  {
+    auto rlock = maps_.rlock();
+    if (rlock->name_to_fd.find(full_name) != rlock->name_to_fd.end()) {
+      // Already watching it
+      return true;
+    }
   }
-  pthread_mutex_unlock(&lock);
 
-  w_log(W_LOG_DBG, "watch_file(%s)\n", full_name->buf);
+  w_log(W_LOG_DBG, "watch_file(%s)\n", full_name.c_str());
 
-  fd = open(full_name->buf, O_EVTONLY|O_CLOEXEC);
-  if (fd == -1) {
-    w_log(W_LOG_ERR, "failed to open %s O_EVTONLY: %s\n",
-        full_name->buf, strerror(errno));
-    w_string_delref(full_name);
+  FileDescriptor fdHolder(open(full_name.c_str(), O_EVTONLY | O_CLOEXEC));
+
+  auto rawFd = fdHolder.fd;
+
+  if (rawFd == -1) {
+    watchman::log(
+        watchman::ERR,
+        "failed to open ",
+        full_name,
+        ", O_EVTONLY: ",
+        strerror(errno),
+        "\n");
     return false;
   }
 
   memset(&k, 0, sizeof(k));
-  EV_SET(&k, fd, EVFILT_VNODE, EV_ADD|EV_CLEAR,
-      NOTE_WRITE|NOTE_DELETE|NOTE_EXTEND|NOTE_RENAME|NOTE_ATTRIB,
-      0, full_name);
+  EV_SET(
+      &k,
+      rawFd,
+      EVFILT_VNODE,
+      EV_ADD | EV_CLEAR,
+      NOTE_WRITE | NOTE_DELETE | NOTE_EXTEND | NOTE_RENAME | NOTE_ATTRIB,
+      0,
+      (w_string_t*)full_name);
 
-  pthread_mutex_lock(&lock);
-  name_to_fd[full_name] = FileDescriptor(fd);
-  fd_to_name[fd] = full_name;
-  pthread_mutex_unlock(&lock);
+  {
+    auto wlock = maps_.wlock();
+    wlock->name_to_fd[full_name] = std::move(fdHolder);
+    wlock->fd_to_name[rawFd] = full_name;
+  }
 
   if (kevent(kq_fd, &k, 1, nullptr, 0, 0)) {
-    w_log(W_LOG_DBG, "kevent EV_ADD file %s failed: %s",
-        full_name->buf, strerror(errno));
-    pthread_mutex_lock(&lock);
-    name_to_fd.erase(full_name);
-    fd_to_name.erase(fd);
-    pthread_mutex_unlock(&lock);
+    watchman::log(
+        watchman::DBG,
+        "kevent EV_ADD file ",
+        full_name,
+        " failed: ",
+        full_name.c_str(),
+        strerror(errno),
+        "\n");
+    auto wlock = maps_.wlock();
+    wlock->name_to_fd.erase(full_name);
+    wlock->fd_to_name.erase(rawFd);
   } else {
-    w_log(W_LOG_DBG, "kevent file %s -> %d\n", full_name->buf, fd);
+    watchman::log(
+        watchman::DBG, "kevent file ", full_name, " -> ", rawFd, "\n");
   }
-  w_string_delref(full_name);
 
   return true;
 }
@@ -201,8 +202,6 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
   struct watchman_dir_handle *osdir;
   struct stat st, osdirst;
   struct kevent k;
-  int newwd;
-  w_string_t *dir_name;
 
   osdir = w_dir_open(path);
   if (!osdir) {
@@ -210,20 +209,20 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
     return nullptr;
   }
 
-  newwd = open(path, O_NOFOLLOW|O_EVTONLY|O_CLOEXEC);
+  FileDescriptor fdHolder(open(path, O_NOFOLLOW | O_EVTONLY | O_CLOEXEC));
+  auto rawFd = fdHolder.fd;
 
-  if (newwd == -1) {
+  if (rawFd == -1) {
     // directory got deleted between opendir and open
     handle_open_errno(root, dir, now, "open", errno, nullptr);
     w_dir_close(osdir);
     return nullptr;
   }
-  if (fstat(newwd, &st) == -1 || fstat(w_dir_fd(osdir), &osdirst) == -1) {
+  if (fstat(rawFd, &st) == -1 || fstat(w_dir_fd(osdir), &osdirst) == -1) {
     // whaaa?
     w_log(W_LOG_ERR, "fstat on opened dir %s failed: %s\n", path,
         strerror(errno));
     root->scheduleRecrawl("fstat failed");
-    close(newwd);
     w_dir_close(osdir);
     return nullptr;
   }
@@ -232,37 +231,39 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
     // directory got replaced between opendir and open -- at this point its
     // parent's being watched, so we let filesystem events take care of it
     handle_open_errno(root, dir, now, "open", ENOTDIR, nullptr);
-    close(newwd);
     w_dir_close(osdir);
     return nullptr;
   }
 
   memset(&k, 0, sizeof(k));
-  dir_name = w_dir_copy_full_path(dir);
-  EV_SET(&k, newwd, EVFILT_VNODE, EV_ADD | EV_CLEAR,
-         NOTE_WRITE | NOTE_DELETE | NOTE_EXTEND | NOTE_RENAME, 0,
-         SET_DIR_BIT(dir_name));
+  w_string dir_name(w_dir_copy_full_path(dir), false);
+  EV_SET(
+      &k,
+      rawFd,
+      EVFILT_VNODE,
+      EV_ADD | EV_CLEAR,
+      NOTE_WRITE | NOTE_DELETE | NOTE_EXTEND | NOTE_RENAME,
+      0,
+      SET_DIR_BIT((w_string_t*)dir_name));
 
   // Our mapping needs to be visible before we add it to the queue,
   // otherwise we can get a wakeup and not know what it is
-  pthread_mutex_lock(&this->lock);
-  name_to_fd[dir_name] = FileDescriptor(newwd);
-  fd_to_name[newwd] = dir_name;
-  pthread_mutex_unlock(&this->lock);
+  {
+    auto wlock = maps_.wlock();
+    wlock->name_to_fd[dir_name] = std::move(fdHolder);
+    wlock->fd_to_name[rawFd] = dir_name;
+  }
 
   if (kevent(kq_fd, &k, 1, nullptr, 0, 0)) {
     w_log(W_LOG_DBG, "kevent EV_ADD dir %s failed: %s",
         path, strerror(errno));
-    close(newwd);
 
-    pthread_mutex_lock(&this->lock);
-    name_to_fd.erase(dir_name);
-    fd_to_name.erase(newwd);
-    pthread_mutex_unlock(&this->lock);
+    auto wlock = maps_.wlock();
+    wlock->name_to_fd.erase(dir_name);
+    wlock->fd_to_name.erase(rawFd);
   } else {
-    w_log(W_LOG_DBG, "kevent dir %s -> %d\n", dir_name->buf, newwd);
+    watchman::log(watchman::DBG, "kevent dir ", dir_name, " -> ", rawFd, "\n");
   }
-  w_string_delref(dir_name);
 
   return osdir;
 }
@@ -301,19 +302,17 @@ bool KQueueWatcher::consumeNotify(
     int fd = keventbuf[i].ident;
 
     w_expand_flags(kflags, fflags, flags_label, sizeof(flags_label));
-    pthread_mutex_lock(&lock);
-    auto it = fd_to_name.find(fd);
-    auto path = it == fd_to_name.end() ? nullptr : it->second;
+    auto wlock = maps_.wlock();
+    auto it = wlock->fd_to_name.find(fd);
+    w_string path = it == wlock->fd_to_name.end() ? nullptr : it->second;
     if (!path) {
       // Was likely a buffered notification for something that we decided
       // to stop watching
       w_log(W_LOG_DBG,
           " KQ notif for fd=%d; flags=0x%x %s no ref for it in fd_to_name\n",
           fd, fflags, flags_label);
-      pthread_mutex_unlock(&lock);
       continue;
     }
-    w_string_addref(path);
 
     w_log(
         W_LOG_DBG,
@@ -332,7 +331,6 @@ bool KQueueWatcher::consumeNotify(
             root->root_path.c_str(),
             fflags);
         root->cancel();
-        pthread_mutex_unlock(&lock);
         return 0;
       }
 
@@ -340,14 +338,12 @@ bool KQueueWatcher::consumeNotify(
       memset(&k, 0, sizeof(k));
       EV_SET(&k, fd, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
       kevent(kq_fd, &k, 1, nullptr, 0, 0);
-      name_to_fd.erase(path);
-      fd_to_name.erase(fd);
+      wlock->name_to_fd.erase(path);
+      wlock->fd_to_name.erase(fd);
     }
 
-    pthread_mutex_unlock(&lock);
     coll->add(
         path, now, is_dir ? 0 : (W_PENDING_RECURSIVE | W_PENDING_VIA_NOTIFY));
-    w_string_delref(path);
   }
 
   return n > 0;
@@ -378,8 +374,9 @@ void KQueueWatcher::signalThreads() {
   ignore_result(write(terminatePipe_[1], "X", 1));
 }
 
-static KQueueWatcher watcher;
-Watcher* kqueue_watcher = &watcher;
+static RegisterWatcher<KQueueWatcher> reg(
+    "kqueue",
+    -1 /* last resort on OS X */);
 
 #endif // HAVE_KQUEUE
 

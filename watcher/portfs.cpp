@@ -22,10 +22,8 @@ struct PortFSWatcher : public Watcher {
       port_files;
   port_event_t portevents[WATCHMAN_BATCH_LIMIT];
 
-  PortFSWatcher() : Watcher("portfs", 0) {}
+  explicit PortFSWatcher(w_root_t* root);
   ~PortFSWatcher();
-
-  bool initNew(w_root_t* root, char** errmsg) override;
 
   struct watchman_dir_handle* startWatchDir(
       w_root_t* root,
@@ -68,31 +66,17 @@ static std::unique_ptr<watchman_port_file> make_port_file(
   return f;
 }
 
-bool PortFSWatcher::initNew(w_root_t* root, char** errmsg) {
-  auto watcher = watchman::make_unique<PortFSWatcher>();
+PortFSWatcher::PortFSWatcher(w_root_t* root) : Watcher("portfs", 0) {
+  port_files.reserve(root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS));
 
-  if (!watcher) {
-    *errmsg = strdup("out of memory");
-    return false;
+  port_fd = port_create();
+  if (port_fd == -1) {
+    throw std::system_error(
+        errno,
+        std::system_category(),
+        std::string("port_create() error: ") + strerror(errno));
   }
-
-  watcher->port_files.reserve(
-      root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS));
-
-  watcher->port_fd = port_create();
-  if (watcher->port_fd == -1) {
-    ignore_result(asprintf(
-        errmsg,
-        "watch(%s): port_create() error: %s",
-        root->root_path.c_str(),
-        strerror(errno)));
-    w_log(W_LOG_ERR, "%s\n", *errmsg);
-    return false;
-  }
-  w_set_cloexec(watcher->port_fd);
-
-  root->inner.watcher = std::move(watcher);
-  return true;
+  w_set_cloexec(port_fd);
 }
 
 PortFSWatcher::~PortFSWatcher() {
@@ -258,10 +242,11 @@ bool PortFSWatcher::waitNotify(int timeoutms) {
   return n == 1;
 }
 
-static PortFSWatcher watcher;
-Watcher* portfs_watcher = &watcher;
+static RegisterWatcher<PortFSWatcher> reg(
+    "portfs",
+    1 /* higher priority than inotify */);
 
-#endif // HAVE_INOTIFY_INIT
+#endif // HAVE_PORT_CREATE
 
 /* vim:ts=2:sw=2:et:
  */

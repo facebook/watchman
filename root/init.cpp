@@ -75,44 +75,25 @@ void watchman_root::applyIgnoreConfiguration() {
 }
 
 // internal initialization for root
-bool watchman_root::init(char** errmsg) {
+void watchman_root::init() {
   struct watchman_dir_handle *osdir;
 
   osdir = w_dir_open(root_path.c_str());
   if (!osdir) {
-    ignore_result(asprintf(
-        errmsg,
-        "failed to opendir(%s): %s",
-        root_path.c_str(),
-        strerror(errno)));
-    return false;
+    throw std::system_error(
+        errno,
+        std::system_category(),
+        std::string("failed to opendir: ") + root_path.c_str() + ": " +
+            strerror(errno));
   }
   w_dir_close(osdir);
 
-  if (!w_watcher_init(this, errmsg)) {
-    return false;
-  }
+  inner.watcher = WatcherRegistry::initWatcher(this);
+  inner.view->watcher = inner.watcher;
 
   inner.number = next_root_number++;
 
   time(&inner.last_cmd_timestamp);
-
-  return true;
-}
-
-w_root_t *w_root_new(const char *path, char **errmsg) {
-  auto root = new w_root_t(w_string(path, W_STRING_BYTE));
-
-  if (!root->applyIgnoreVCSConfiguration(errmsg)) {
-    w_root_delref_raw(root);
-    return nullptr;
-  }
-
-  if (!root->init(errmsg)) {
-    w_root_delref_raw(root);
-    return nullptr;
-  }
-  return root;
 }
 
 void watchman_root::tearDown() {
@@ -172,6 +153,8 @@ watchman_root::watchman_root(const w_string& root_path)
   pthread_rwlock_init(&lock, nullptr);
   ++live_roots;
   applyIgnoreConfiguration();
+  applyIgnoreVCSConfiguration();
+  init();
 }
 
 watchman_root::~watchman_root() {

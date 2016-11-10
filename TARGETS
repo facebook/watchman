@@ -2,6 +2,8 @@
 # we need to preserve how things build in the autoconf and windows
 # builds for watchman.
 
+compiler_flags=["-Wunused-variable"]
+
 # Generates 'config.h' by probing for system capabilities
 def prober():
     import os
@@ -86,6 +88,7 @@ cpp_library(
     # static tables of things.  Ensure that they don't get stripped
     # out of the final binary!
     link_whole=True,
+    compiler_flags=compiler_flags,
 )
 
 # mac specific watcher module
@@ -98,6 +101,7 @@ cpp_library(
     # static tables of things.  Ensure that they don't get stripped
     # out of the final binary!
     link_whole=True,
+    compiler_flags=compiler_flags,
 )
 
 # windows specific watcher module
@@ -110,9 +114,11 @@ cpp_library(
     # static tables of things.  Ensure that they don't get stripped
     # out of the final binary!
     link_whole=True,
+    compiler_flags=compiler_flags,
 )
 
 cpp_library(name="log",
+            compiler_flags=compiler_flags,
             srcs=["log.cpp", "PubSub.cpp"],
             deps=[
                 ':headers',
@@ -120,15 +126,18 @@ cpp_library(name="log",
             ], )
 
 cpp_library(name='hash',
+            compiler_flags=compiler_flags,
             srcs=['hash.cpp'],
             deps=[':headers'], )
 
 cpp_library(name="string",
+            compiler_flags=compiler_flags,
             srcs=["string.cpp"],
             deps=[':headers', ':hash'], )
 
 cpp_library(
     name="err",
+    compiler_flags=compiler_flags,
     srcs=["root/warnerr.cpp", "root/poison.cpp"],
     deps=[':headers'],
 )
@@ -137,12 +146,13 @@ cpp_library(
     name='pcre',
     srcs=['query/pcre.cpp'],
     deps=[':headers'],
-    compiler_flags=['-DHAVE_PCRE_H'],
+    compiler_flags=['-DHAVE_PCRE_H']+compiler_flags,
     external_deps=['pcre'],
 )
 
 cpp_library(
     name='testsupport',
+    compiler_flags=compiler_flags,
     srcs=[
         'argv.cpp',
         'bser.cpp',
@@ -165,6 +175,7 @@ cpp_library(
 # The bulk of the watchman implementation lives in this library
 cpp_library(
     name="watchmanlib",
+    compiler_flags=compiler_flags,
     srcs=glob(
         ["*.cpp", "query/*.cpp", "watcher/auto.cpp", "root/*.cpp", "cmds/*.cpp"],
         excludes=[
@@ -192,6 +203,7 @@ cpp_library(
 # and the watchman binary itself
 cpp_binary(
     name="watchman",
+    compiler_flags=compiler_flags,
     srcs=["main.cpp"],
     deps=[
         ':headers',

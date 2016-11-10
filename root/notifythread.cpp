@@ -16,19 +16,20 @@ void InMemoryView::handleShouldRecrawl(unlocked_watchman_root* unlocked) {
   auto root = unlocked->root;
 
   if (!root->inner.cancelled) {
-    char *errmsg;
     auto info = root->recrawlInfo.wlock();
 
     info->shouldRecrawl = false;
 
     // be careful, this is a bit of a switcheroo
     root->tearDown();
-    if (!root->init(&errmsg)) {
+    try {
+      root->init();
+    } catch (const std::exception& e) {
       w_log(
           W_LOG_ERR,
           "failed to init root %s, cancelling watch: %s\n",
           root->root_path.c_str(),
-          errmsg);
+          e.what());
       // this should cause us to exit from the notify loop
       root->cancel();
     }

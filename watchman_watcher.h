@@ -2,7 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 
-struct Watcher {
+struct Watcher : public std::enable_shared_from_this<Watcher> {
   // What's it called??
   const char *name;
 
@@ -15,10 +15,6 @@ struct Watcher {
   unsigned flags;
 
   Watcher(const char* name, unsigned flags);
-
-  // Perform watcher-specific initialization for a watched root.
-  // Do not start threads here
-  virtual bool initNew(w_root_t* root, char** errmsg) = 0;
 
   // Start up threads or similar.  Called in the context of the
   // notify thread
@@ -51,10 +47,45 @@ struct Watcher {
   virtual bool waitNotify(int timeoutms) = 0;
 };
 
-bool w_watcher_init(w_root_t *root, char **errmsg);
+/** Maintains the list of available watchers.
+ * This is fundamentally a map of name -> factory function.
+ * Some watchers (kqueue, inotify) are available on multiple operating
+ * systems: kqueue on OSX and *BSD, inotify on Linux and Solaris.
+ * There are cases where a given watcher is not the preferred mechanism
+ * (eg: inotify is implemented in terms of portfs on Solaris, so we
+ * prefer to target the portfs layer directly), so we have a concept
+ * of priority associated with the watcher.
+ * Larger numbers are higher priority and will be favored when performing
+ * auto-detection.
+ **/
+class WatcherRegistry {
+ public:
+  WatcherRegistry(
+      const std::string& name,
+      std::function<std::shared_ptr<Watcher>(w_root_t*)> init,
+      int priority = 0);
 
-extern Watcher* fsevents_watcher;
-extern Watcher* kqueue_watcher;
-extern Watcher* inotify_watcher;
-extern Watcher* portfs_watcher;
-extern Watcher* win32_watcher;
+  /** Locate the appropriate watcher for root and initialize it */
+  static std::shared_ptr<Watcher> initWatcher(w_root_t* root);
+
+ private:
+  std::string name_;
+  std::function<std::shared_ptr<Watcher>(w_root_t*)> init_;
+  int pri_;
+
+  static std::unordered_map<std::string, WatcherRegistry>& getRegistry();
+  static void registerFactory(const WatcherRegistry& factory);
+  static const WatcherRegistry* getWatcherByName(const std::string& name);
+};
+
+/** This template makes it less verbose for the common case of defining
+ * a name -> class mapping in the registry. */
+template <class WATCHER>
+class RegisterWatcher : public WatcherRegistry {
+ public:
+  explicit RegisterWatcher(const std::string& name, int priority = 0)
+      : WatcherRegistry(
+            name,
+            [](w_root_t* root) { return std::make_shared<WATCHER>(root); },
+            priority) {}
+};

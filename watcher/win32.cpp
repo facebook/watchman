@@ -2,33 +2,27 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "watchman_synchronized.h"
 
-#include "make_unique.h"
+#include <algorithm>
+#include <condition_variable>
+#include <deque>
+#include <iterator>
+#include <mutex>
 
 #ifdef _WIN32
 
 #define NETWORK_BUF_SIZE (64*1024)
 
-struct winwatch_changed_item {
-  struct winwatch_changed_item* next{nullptr};
-  w_string name;
-};
-
 struct WinWatcher : public Watcher {
-  HANDLE ping{INVALID_HANDLE_VALUE}, olap{INVALID_HANDLE_VALUE};
+  HANDLE ping{INVALID_HANDLE_VALUE}, olapEvent{INVALID_HANDLE_VALUE};
   HANDLE dir_handle{INVALID_HANDLE_VALUE};
 
-  pthread_mutex_t mtx;
-  pthread_cond_t cond;
-  pthread_t thread;
-  bool thread_started{false};
+  std::condition_variable cond;
+  watchman::Synchronized<std::deque<w_string>, std::mutex> changedItems;
 
-  struct winwatch_changed_item *head{nullptr}, *tail{nullptr};
-
-  WinWatcher() : Watcher("win32", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {}
+  explicit WinWatcher(w_root_t* root);
   ~WinWatcher();
-
-  bool initNew(w_root_t* root, char** errmsg) override;
 
   struct watchman_dir_handle* startWatchDir(
       w_root_t* root,
@@ -42,28 +36,24 @@ struct WinWatcher : public Watcher {
   bool waitNotify(int timeoutms) override;
   bool start(w_root_t* root) override;
   void signalThreads() override;
+  void readChangesThread(w_root_t* root);
 };
 
-bool WinWatcher::initNew(w_root_t* root, char** errmsg) {
-  auto watcher = watchman::make_unique<WinWatcher>();
-  WCHAR *wpath;
+WinWatcher::WinWatcher(w_root_t* root)
+    : Watcher("win32", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
+  WCHAR* wpath;
   int err;
-
-  if (!watcher) {
-    *errmsg = strdup("out of memory");
-    return false;
-  }
 
   wpath = w_utf8_to_win_unc(root->root_path.data(), root->root_path.size());
   if (!wpath) {
-    asprintf(errmsg, "failed to convert root path to WCHAR: %s",
+    throw std::runtime_error(
+        std::string("failed to convert root path to WCHAR: ") +
         win32_strerror(GetLastError()));
-    return false;
   }
 
   // Create an overlapped handle so that we can avoid blocking forever
   // in ReadDirectoryChangesW
-  watcher->dir_handle = CreateFileW(
+  dir_handle = CreateFileW(
       wpath,
       GENERIC_READ,
       FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE,
@@ -71,57 +61,32 @@ bool WinWatcher::initNew(w_root_t* root, char** errmsg) {
       OPEN_EXISTING,
       FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
       nullptr);
-  if (!watcher->dir_handle) {
-    asprintf(
-        errmsg,
-        "failed to open dir %s: %s",
-        root->root_path.c_str(),
+  if (!dir_handle) {
+    throw std::runtime_error(
+        std::string("failed to open dir ") + root->root_path.c_str() + ": " +
         win32_strerror(GetLastError()));
-    return false;
   }
 
-  watcher->ping = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-  if (!watcher->ping) {
-    asprintf(errmsg, "failed to create event: %s",
+  ping = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+  if (!ping) {
+    throw std::runtime_error(
+        std::string("failed to create event: ") +
         win32_strerror(GetLastError()));
-    return false;
   }
-  watcher->olap = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-  if (!watcher->olap) {
-    asprintf(errmsg, "failed to create event: %s",
+  olapEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+  if (!olapEvent) {
+    throw std::runtime_error(
+        std::string("failed to create event: ") +
         win32_strerror(GetLastError()));
-    return false;
   }
-  err = pthread_mutex_init(&watcher->mtx, nullptr);
-  if (err) {
-    asprintf(errmsg, "failed to init mutex: %s",
-        strerror(err));
-    return false;
-  }
-  err = pthread_cond_init(&watcher->cond, nullptr);
-  if (err) {
-    asprintf(errmsg, "failed to init cond: %s",
-        strerror(err));
-    return false;
-  }
-
-  root->inner.watcher = std::move(watcher);
-  return true;
 }
 
 WinWatcher::~WinWatcher() {
-  // wait for readchanges_thread to quit before we tear down state
-  if (thread_started && !pthread_equal(thread, pthread_self())) {
-    void *ignore;
-    pthread_join(thread, &ignore);
-  }
-
-  pthread_mutex_destroy(&mtx);
   if (ping != INVALID_HANDLE_VALUE) {
     CloseHandle(ping);
   }
-  if (olap != INVALID_HANDLE_VALUE) {
-    CloseHandle(olap);
+  if (olapEvent != INVALID_HANDLE_VALUE) {
+    CloseHandle(olapEvent);
   }
   if (dir_handle != INVALID_HANDLE_VALUE) {
     CloseHandle(dir_handle);
@@ -132,66 +97,56 @@ void WinWatcher::signalThreads() {
   SetEvent(ping);
 }
 
-static void *readchanges_thread(void *arg) {
-  w_root_t *root = (w_root_t*)arg;
-  auto watcher = (WinWatcher*)root->inner.watcher.get();
+void WinWatcher::readChangesThread(w_root_t* root) {
   DWORD size = WATCHMAN_BATCH_LIMIT * (sizeof(FILE_NOTIFY_INFORMATION) + 512);
-  char *buf;
+  std::vector<uint8_t> buf;
   DWORD err, filter;
   OVERLAPPED olap;
   BOOL initiate_read = true;
-  HANDLE handles[2] = {watcher->olap, watcher->ping};
+  HANDLE handles[2] = {olapEvent, ping};
   DWORD bytes;
 
   w_set_thread_name("readchange %s", root->root_path.c_str());
+  watchman::log(watchman::DBG, "initializing\n");
 
   // Block until winmatch_root_st is waiting for our initialization
-  pthread_mutex_lock(&watcher->mtx);
+  {
+    auto wlock = changedItems.wlock();
 
-  filter = FILE_NOTIFY_CHANGE_FILE_NAME|FILE_NOTIFY_CHANGE_DIR_NAME|
-    FILE_NOTIFY_CHANGE_ATTRIBUTES|FILE_NOTIFY_CHANGE_SIZE|
-    FILE_NOTIFY_CHANGE_LAST_WRITE;
+    filter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
+        FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE |
+        FILE_NOTIFY_CHANGE_LAST_WRITE;
 
-  memset(&olap, 0, sizeof(olap));
-  olap.hEvent = watcher->olap;
+    memset(&olap, 0, sizeof(olap));
+    olap.hEvent = olapEvent;
 
-  buf = (char*)malloc(size);
-  if (!buf) {
-    w_log(W_LOG_ERR, "failed to allocate %u bytes for dirchanges buf\n", size);
-    goto out;
+    buf.resize(size);
+
+    if (!ReadDirectoryChangesW(
+            dir_handle, &buf[0], size, TRUE, filter, nullptr, &olap, nullptr)) {
+      err = GetLastError();
+      w_log(
+          W_LOG_ERR,
+          "ReadDirectoryChangesW: failed, cancel watch. %s\n",
+          win32_strerror(err));
+      root->cancel();
+      return;
+    }
+    // Signal that we are done with init.  We MUST do this AFTER our first
+    // successful ReadDirectoryChangesW, otherwise there is a race condition
+    // where we'll miss observing the cookie for a query that comes in
+    // after we've crawled but before the watch is established.
+    w_log(W_LOG_DBG, "ReadDirectoryChangesW signalling as init done\n");
+    cond.notify_one();
   }
-
-  if (!ReadDirectoryChangesW(
-          watcher->dir_handle,
-          buf,
-          size,
-          TRUE,
-          filter,
-          nullptr,
-          &olap,
-          nullptr)) {
-    err = GetLastError();
-    w_log(W_LOG_ERR,
-        "ReadDirectoryChangesW: failed, cancel watch. %s\n",
-        win32_strerror(err));
-    root->cancel();
-    goto out;
-  }
-  // Signal that we are done with init.  We MUST do this AFTER our first
-  // successful ReadDirectoryChangesW, otherwise there is a race condition
-  // where we'll miss observing the cookie for a query that comes in
-  // after we've crawled but before the watch is established.
-  w_log(W_LOG_DBG, "ReadDirectoryChangesW signalling as init done");
-  pthread_cond_signal(&watcher->cond);
-  pthread_mutex_unlock(&watcher->mtx);
   initiate_read = false;
 
-  // The watcher->mutex must not be held when we enter the loop
+  // The mutex must not be held when we enter the loop
   while (!root->inner.cancelled) {
     if (initiate_read) {
       if (!ReadDirectoryChangesW(
-              watcher->dir_handle,
-              buf,
+              dir_handle,
+              &buf[0],
               size,
               TRUE,
               filter,
@@ -210,11 +165,12 @@ static void *readchanges_thread(void *arg) {
     }
 
     watchman::log(watchman::DBG, "waiting for change notifications\n");
-    DWORD status = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
+    DWORD status = WaitForMultipleObjects(2, handles, FALSE, 10000);
+    watchman::log(watchman::DBG, "wait returned with status ", status, "\n");
 
     if (status == WAIT_OBJECT_0) {
       bytes = 0;
-      if (!GetOverlappedResult(watcher->dir_handle, &olap, &bytes, FALSE)) {
+      if (!GetOverlappedResult(dir_handle, &olap, &bytes, FALSE)) {
         err = GetLastError();
         w_log(
             W_LOG_ERR,
@@ -246,10 +202,10 @@ static void *readchanges_thread(void *arg) {
           break;
         }
       } else {
-        PFILE_NOTIFY_INFORMATION not = (PFILE_NOTIFY_INFORMATION)buf;
-        struct winwatch_changed_item *head = nullptr, *tail = nullptr;
+        PFILE_NOTIFY_INFORMATION not = (PFILE_NOTIFY_INFORMATION)buf.data();
+        std::deque<w_string> items;
+
         while (true) {
-          struct winwatch_changed_item *item;
           DWORD n_chars;
           w_string_t* name;
 
@@ -261,15 +217,7 @@ static void *readchanges_thread(void *arg) {
           w_string_delref(name);
 
           if (!root->ignore.isIgnored(full.data(), full.size())) {
-            item = new winwatch_changed_item;
-            item->name = full;
-
-            if (tail) {
-              tail->next = item;
-            } else {
-              head = item;
-            }
-            tail = item;
+            items.emplace_back(std::move(full));
           }
 
           // Advance to next item
@@ -279,47 +227,24 @@ static void *readchanges_thread(void *arg) {
           not = (PFILE_NOTIFY_INFORMATION)(not->NextEntryOffset + (char*)not);
         }
 
-        if (tail) {
-          pthread_mutex_lock(&watcher->mtx);
-          if (watcher->tail) {
-            watcher->tail->next = head;
-          } else {
-            watcher->head = head;
-          }
-          watcher->tail = tail;
-          pthread_mutex_unlock(&watcher->mtx);
-          pthread_cond_signal(&watcher->cond);
+        if (!items.empty()) {
+          auto wlock = changedItems.wlock();
+          std::move(items.begin(), items.end(), std::back_inserter(*wlock));
+          cond.notify_one();
         }
-        ResetEvent(watcher->olap);
+        ResetEvent(olapEvent);
         initiate_read = true;
       }
     } else if (status == WAIT_OBJECT_0 + 1) {
       w_log(W_LOG_ERR, "signalled\n");
       break;
-    } else {
-      w_log(W_LOG_ERR, "impossible wait status=%d\n",
-          status);
+    } else if (status != WAIT_TIMEOUT) {
+      w_log(W_LOG_ERR, "impossible wait status=%d\n", status);
       break;
     }
   }
 
-  pthread_mutex_lock(&watcher->mtx);
-out:
-  // Signal to winwatch_root_start that we're done initializing in
-  // the failure path.  We'll also do this after we've completed
-  // the run loop in the success path; it's a spurious wakeup but
-  // harmless and saves us from adding and setting a control flag
-  // in each of the failure `goto` statements. winwatch_root_dtor
-  // will `pthread_join` us before `watcher` is freed.
-  pthread_cond_signal(&watcher->cond);
-  pthread_mutex_unlock(&watcher->mtx);
-
-  if (buf) {
-    free(buf);
-  }
   w_log(W_LOG_DBG, "done\n");
-  w_root_delref_raw(root);
-  return nullptr;
 }
 
 bool WinWatcher::start(w_root_t* root) {
@@ -329,14 +254,41 @@ bool WinWatcher::start(w_root_t* root) {
   // Spin up the changes reading thread; it owns a ref on the root
   w_root_addref(root);
 
-  // Acquire the mutex so thread initialization waits until we release it
-  pthread_mutex_lock(&mtx);
+  try {
+    // Acquire the mutex so thread initialization waits until we release it
+    auto wlock = changedItems.wlock();
 
-  err = pthread_create(&thread, nullptr, readchanges_thread, root);
-  if (err == 0) {
+    watchman::log(watchman::DBG, "starting readChangesThread\n");
+    auto self = std::dynamic_pointer_cast<WinWatcher>(shared_from_this());
+    std::thread thread([self, root]() {
+      try {
+        self->readChangesThread(root);
+      } catch (const std::exception& e) {
+        watchman::log(watchman::ERR, "uncaught exception: ", e.what());
+        root->cancel();
+      }
+
+      // Ensure that we signal the condition variable before we
+      // finish this thread.  That ensures that don't get stuck
+      // waiting in WinWatcher::start if something unexpected happens.
+      auto wlock = self->changedItems.wlock();
+      self->cond.notify_one();
+
+      w_root_delref_raw(root);
+    });
+    // We have to detach because the readChangesThread may wind up
+    // being the last thread to reference the watcher state and
+    // cannot join itself.
+    thread.detach();
+
     // Allow thread init to proceed; wait for its signal
-    pthread_cond_wait(&cond, &mtx);
-    pthread_mutex_unlock(&mtx);
+    if (cond.wait_for(wlock.getUniqueLock(), std::chrono::seconds(10)) ==
+        std::cv_status::timeout) {
+      watchman::log(
+          watchman::ERR, "timedout waiting for readChangesThread to start\n");
+      root->cancel();
+      return false;
+    }
 
     if (root->failure_reason) {
       w_log(
@@ -345,14 +297,12 @@ bool WinWatcher::start(w_root_t* root) {
           root->failure_reason.c_str());
       return false;
     }
-    thread_started = true;
     return true;
+  } catch (const std::exception& e) {
+    w_root_delref_raw(root);
+    w_log(W_LOG_ERR, "failed to start readchanges thread: %s\n", e.what());
+    return false;
   }
-
-  pthread_mutex_unlock(&mtx);
-  w_root_delref_raw(root);
-  w_log(W_LOG_ERR, "failed to start readchanges thread: %s\n", strerror(err));
-  return false;
 }
 
 struct watchman_dir_handle* WinWatcher::startWatchDir(
@@ -374,59 +324,31 @@ struct watchman_dir_handle* WinWatcher::startWatchDir(
 bool WinWatcher::consumeNotify(
     w_root_t* root,
     PendingCollection::LockedPtr& coll) {
-  struct winwatch_changed_item *list, *item;
+  std::deque<w_string> items;
   struct timeval now;
-  int n = 0;
 
-  pthread_mutex_lock(&mtx);
-  list = head;
-  head = nullptr;
-  tail = nullptr;
-  pthread_mutex_unlock(&mtx);
+  {
+    auto wlock = changedItems.wlock();
+    std::swap(items, *wlock);
+  }
 
   gettimeofday(&now, nullptr);
 
-  while (list) {
-    item = list;
-    list = item->next;
-    n++;
-
-    w_log(
-        W_LOG_DBG,
-        "readchanges: add pending %.*s\n",
-        int(item->name.size()),
-        item->name.data());
-    coll->add(item->name, now, W_PENDING_VIA_NOTIFY);
-
-    delete item;
+  for (auto& item : items) {
+    watchman::log(watchman::DBG, "readchanges: add pending ", item, "\n");
+    coll->add(item, now, W_PENDING_VIA_NOTIFY);
   }
 
-  return n > 0;
+  return !items.empty();
 }
 
 bool WinWatcher::waitNotify(int timeoutms) {
-  struct timeval now, delta, target;
-  struct timespec ts;
-
-  if (timeoutms == 0 || head) {
-    return head ? true : false;
-  }
-
-  // Add timeout to current time, convert to absolute timespec
-  gettimeofday(&now, nullptr);
-  delta.tv_sec = timeoutms / 1000;
-  delta.tv_usec = (timeoutms - (delta.tv_sec * 1000)) * 1000;
-  w_timeval_add(now, delta, &target);
-  w_timeval_to_timespec(target, &ts);
-
-  pthread_mutex_lock(&mtx);
-  pthread_cond_timedwait(&cond, &mtx, &ts);
-  pthread_mutex_unlock(&mtx);
-  return head ? true : false;
+  auto wlock = changedItems.wlock();
+  cond.wait_for(wlock.getUniqueLock(), std::chrono::milliseconds(timeoutms));
+  return !wlock->empty();
 }
 
-static WinWatcher watcher;
-Watcher* win32_watcher = &watcher;
+static RegisterWatcher<WinWatcher> reg("win32");
 
 #endif // _WIN32
 

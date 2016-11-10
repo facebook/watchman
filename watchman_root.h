@@ -134,9 +134,9 @@ struct watchman_root {
   // Returns true if the caller should stop the watch.
   bool considerReap() const;
   void tearDown();
-  bool init(char** errmsg);
+  void init();
   bool removeFromWatched();
-  bool applyIgnoreVCSConfiguration(char** errmsg);
+  void applyIgnoreVCSConfiguration();
   bool start(char** errmsg);
   void signalThreads();
   bool stopWatch();
@@ -227,7 +227,6 @@ void process_triggers(struct read_locked_watchman_root* lock);
 bool did_file_change(struct watchman_stat *saved, struct watchman_stat *fresh);
 void struct_stat_to_watchman_stat(const struct stat *st,
                                   struct watchman_stat *target);
-w_root_t *w_root_new(const char *path, char **errmsg);
 extern std::atomic<long> live_roots;
 
 extern watchman::Synchronized<std::unordered_map<w_string, w_root_t*>>

@@ -19,23 +19,20 @@ static json_ref config_get_ignore_vcs(w_root_t* root) {
   return ignores;
 }
 
-bool watchman_root::applyIgnoreVCSConfiguration(char** errmsg) {
+void watchman_root::applyIgnoreVCSConfiguration() {
   uint8_t i;
   struct stat st;
 
   auto ignores = config_get_ignore_vcs(this);
   if (!ignores) {
-    ignore_result(asprintf(errmsg, "ignore_vcs must be an array of strings"));
-    return false;
+    throw std::runtime_error("ignore_vcs must be an array of strings");
   }
 
   for (i = 0; i < json_array_size(ignores); i++) {
     const json_t *jignore = json_array_get(ignores, i);
 
     if (!json_is_string(jignore)) {
-      ignore_result(asprintf(errmsg,
-          "ignore_vcs must be an array of strings"));
-      return false;
+      throw std::runtime_error("ignore_vcs must be an array of strings");
     }
 
     auto fullname = w_string::pathCat({root_path, json_to_w_string(jignore)});
@@ -57,8 +54,6 @@ bool watchman_root::applyIgnoreVCSConfiguration(char** errmsg) {
       cookies.setCookieDir(fullname);
     }
   }
-
-  return true;
 }
 
 /* vim:ts=2:sw=2:et:

@@ -1,7 +1,6 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "make_unique.h"
 #include "watchman.h"
 
 #ifdef HAVE_INOTIFY_INIT
@@ -65,10 +64,8 @@ struct InotifyWatcher : public Watcher {
   // happens to be the default fs.inotify.max_queued_events
   char ibuf[WATCHMAN_BATCH_LIMIT * (sizeof(struct inotify_event) + 256)];
 
-  InotifyWatcher() : Watcher("inotify", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {}
+  explicit InotifyWatcher(w_root_t* root);
   ~InotifyWatcher();
-
-  bool initNew(w_root_t* root, char** errmsg) override;
 
   struct watchman_dir_handle* startWatchDir(
       w_root_t* root,
@@ -109,50 +106,35 @@ static const char *inot_strerror(int err) {
   }
 }
 
-bool InotifyWatcher::initNew(w_root_t* root, char** errmsg) {
-  auto watcher = watchman::make_unique<InotifyWatcher>();
-
-  if (!watcher) {
-    *errmsg = strdup("out of memory");
-    return false;
-  }
-
+InotifyWatcher::InotifyWatcher(w_root_t* root)
+    : Watcher("inotify", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
 #ifdef HAVE_INOTIFY_INIT1
-  watcher->infd = inotify_init1(IN_CLOEXEC);
+  infd = inotify_init1(IN_CLOEXEC);
 #else
-  watcher->infd = inotify_init();
+  infd = inotify_init();
 #endif
-  if (watcher->infd == -1) {
-    ignore_result(asprintf(
-        errmsg,
-        "watch(%s): inotify_init error: %s",
-        root->root_path.c_str(),
-        inot_strerror(errno)));
-    w_log(W_LOG_ERR, "%s\n", *errmsg);
-    return false;
+  if (infd == -1) {
+    throw std::system_error(
+        errno,
+        std::system_category(),
+        std::string("inotify_init error: ") + inot_strerror(errno));
   }
-  w_set_cloexec(watcher->infd);
+  w_set_cloexec(infd);
 
-  if (pipe(watcher->terminatePipe_)) {
-    ignore_result(asprintf(
-        errmsg,
-        "watch(%s): pipe error: %s",
-        root->root_path.c_str(),
-        strerror(errno)));
-    w_log(W_LOG_ERR, "%s\n", *errmsg);
-    return false;
+  if (pipe(terminatePipe_)) {
+    throw std::system_error(
+        errno,
+        std::system_category(),
+        std::string("pipe error: ") + strerror(errno));
   }
-  w_set_cloexec(watcher->terminatePipe_[0]);
-  w_set_cloexec(watcher->terminatePipe_[1]);
+  w_set_cloexec(terminatePipe_[0]);
+  w_set_cloexec(terminatePipe_[1]);
 
   {
-    auto maps = watcher->maps.wlock();
-    maps->wd_to_name.reserve(
+    auto wlock = maps.wlock();
+    wlock->wd_to_name.reserve(
         root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS));
   }
-
-  root->inner.watcher = std::move(watcher);
-  return true;
 }
 
 InotifyWatcher::~InotifyWatcher() {
@@ -445,8 +427,7 @@ void InotifyWatcher::signalThreads() {
   ignore_result(write(terminatePipe_[1], "X", 1));
 }
 
-static InotifyWatcher watcher;
-Watcher* inotify_watcher = &watcher;
+static RegisterWatcher<InotifyWatcher> reg("inotify");
 
 #endif // HAVE_INOTIFY_INIT
 
