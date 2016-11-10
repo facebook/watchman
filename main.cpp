@@ -172,6 +172,8 @@ static void run_service(void)
   w_root_free_watched_roots();
   cfg_shutdown();
 
+  watchman::log(watchman::ERR, "Exiting from service with res=", res, "\n");
+
   if (res) {
     exit(0);
   }

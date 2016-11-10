@@ -229,6 +229,13 @@ static void crash_handler(int signo, siginfo_t *si, void *ucontext) {
 }
 #endif
 
+#ifdef _WIN32
+static LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep) {
+  watchman::log(watchman::FATAL, "Unhandled win32 exception\n");
+  return EXCEPTION_CONTINUE_SEARCH; // Terminate the process
+}
+#endif
+
 void w_setup_signal_handlers(void) {
 #ifndef _WIN32
   struct sigaction sa;
@@ -244,7 +251,16 @@ void w_setup_signal_handlers(void) {
   sigaction(SIGFPE, &sa, NULL);
   sigaction(SIGILL, &sa, NULL);
   sigaction(SIGTERM, &sa, NULL);
+#else
+  // Don't show error dialogs for background service failures
+  SetErrorMode(SEM_FAILCRITICALERRORS);
+  // bridge OS exceptions into our FATAL logger so that we can
+  // capture a stack trace.
+  SetUnhandledExceptionFilter(exception_filter);
 #endif
+
+  std::set_terminate(
+      []() { watchman::log(watchman::FATAL, "std::terminate was called\n"); });
 }
 
 static w_ctor_fn_type(register_thread_name) {
