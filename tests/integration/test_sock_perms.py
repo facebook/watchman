@@ -49,6 +49,14 @@ class TestSockPerms(unittest.TestCase):
                 return gid
         self.skipTest('no usable groups found')
 
+    def _get_non_member_group(self):
+        """Get a group tuple that this user is not a member of."""
+        user_groups = set(os.getgroups())
+        for group in grp.getgrall():
+            if group.gr_gid not in user_groups:
+                return group
+        self.skipTest('no usable groups found')
+
     def waitFor(self, cond, timeout=10):
         deadline = time.time() + timeout
         res = None
@@ -97,6 +105,16 @@ class TestSockPerms(unittest.TestCase):
         wanted = "group '%s' does not exist" % group_name
         self.assertWaitFor(lambda: wanted in instance.getCLILogContents())
 
+    def test_user_not_in_sock_group(self):
+        group = self._get_non_member_group()
+        instance = self._new_instance({'sock_group': group.gr_name},
+                                      expect_success=False)
+        with self.assertRaises(pywatchman.SocketConnectError) as ctx:
+            instance.start()
+        self.assertEqual(ctx.exception.sockpath, instance.getSockPath())
+        wanted = "setting up group '%s' failed" % group.gr_name
+        self.assertWaitFor(lambda: wanted in instance.getCLILogContents())
+
     def test_default_sock_group(self):
         # By default the socket group should be the effective gid of the process
         gid = os.getegid()
@@ -116,6 +134,30 @@ class TestSockPerms(unittest.TestCase):
 
         self.assertFileGID(instance.user_dir, gid)
         self.assertFileGID(instance.sock_file, gid)
+
+    def test_user_previously_in_sock_group(self):
+        """This tests the case where a user was previously in sock_group
+        (so Watchman created the directory with that group), but no longer is
+        (so the socket is created with a different group)."""
+        # Since it's hard to drop a group from a process without being
+        # superuser, fake it. Use a private testing-only config option to set
+        # up separate groups for the directory and the file.
+        gid = self._get_custom_gid()
+        group = grp.getgrgid(gid)
+        non_member_group = self._get_non_member_group()
+        # Need to wait for the server to come up here, can't use
+        # expect_success=False.
+        instance = self._new_instance(
+            {'sock_group': group.gr_name,
+             '__sock_file_group': non_member_group.gr_name})
+        with self.assertRaises(pywatchman.SocketConnectError):
+            instance.start()
+
+        wanted = ("for socket '%s', gid %d doesn't match expected gid %d "
+                  "(group name %s)." %
+                  (instance.getSockPath(), gid, non_member_group.gr_gid,
+                   non_member_group.gr_name))
+        self.assertWaitFor(lambda: wanted in instance.getServerLogContents())
 
     def test_invalid_sock_access(self):
         instance = self._new_instance({'sock_access': 'bogus'},
