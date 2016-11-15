@@ -49,11 +49,10 @@ struct watchman_root {
   json_ref config_file;
   Configuration config;
 
-  int trigger_settle{0};
-  int gc_interval{0};
-  int gc_age{0};
-  int idle_reap_age{0};
-
+  const int trigger_settle{0};
+  const int gc_interval{0};
+  const int gc_age{0};
+  const int idle_reap_age{0};
 
   // Stream of broadcast unilateral items emitted by this root
   std::shared_ptr<watchman::Publisher> unilateralResponses;
@@ -100,8 +99,6 @@ struct watchman_root {
      * Reads and writes on this collection are only safe if done from the IO
      * thread; this collection is not protected by the root lock. */
     PendingCollection pending_symlink_targets;
-
-    uint32_t next_cmd_id{0};
 
     time_t last_cmd_timestamp{0};
     mutable time_t last_reap_timestamp{0};
