@@ -427,7 +427,9 @@ bool InMemoryView::globGenerator(
     relative_root = root_path;
   }
 
-  const auto dir = resolveDir(relative_root);
+  auto view = view_.rlock();
+
+  const auto dir = resolveDir(view, relative_root);
   if (!dir) {
     ignore_result(asprintf(
         &query->errmsg,

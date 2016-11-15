@@ -37,38 +37,41 @@ void InMemoryView::fullCrawl(
   if (config_.getBool("iothrottle", false)) {
     w_ioprio_set_low();
   }
-  w_root_lock(unlocked, "io_thread: bump ticks", &lock);
-  // Ensure that we observe these files with a new, distinct clock,
-  // otherwise a fresh subscription established immediately after a watch
-  // can get stuck with an empty view until another change is observed
-  mostRecentTick_++;
-  gettimeofday(&start, NULL);
-  pending_.wlock()->add(lock.root->root_path, start, 0);
-  // There is the potential for a subtle race condition here.  The boolean
-  // parameter indicates whether we want to merge in the set of
-  // notifications pending from the watcher or not.  Since we now coalesce
-  // overlaps we must consume our outstanding set before we merge in any
-  // new kernel notification information or we risk missing out on
-  // observing changes that happen during the initial crawl.  This
-  // translates to a two level loop; the outer loop sweeps in data from
-  // inotify, then the inner loop processes it and any dirs that we pick up
-  // from recursive processing.
-  while (processPending(&lock, pending, true)) {
-    while (processPending(&lock, pending, false)) {
-      ;
-    }
-  }
   {
-    auto lockPair = acquireLockedPair(lock.root->recrawlInfo, crawlState_);
-    lockPair.first->shouldRecrawl = false;
-    if (lockPair.second->promise) {
-      lockPair.second->promise->set_value();
-      lockPair.second->promise.reset();
+    auto view = view_.wlock();
+    w_root_lock(unlocked, "io_thread: bump ticks", &lock);
+    // Ensure that we observe these files with a new, distinct clock,
+    // otherwise a fresh subscription established immediately after a watch
+    // can get stuck with an empty view until another change is observed
+    mostRecentTick_++;
+    gettimeofday(&start, NULL);
+    pending_.wlock()->add(lock.root->root_path, start, 0);
+    // There is the potential for a subtle race condition here.  The boolean
+    // parameter indicates whether we want to merge in the set of
+    // notifications pending from the watcher or not.  Since we now coalesce
+    // overlaps we must consume our outstanding set before we merge in any
+    // new kernel notification information or we risk missing out on
+    // observing changes that happen during the initial crawl.  This
+    // translates to a two level loop; the outer loop sweeps in data from
+    // inotify, then the inner loop processes it and any dirs that we pick up
+    // from recursive processing.
+    while (processPending(&lock, view, pending, true)) {
+      while (processPending(&lock, view, pending, false)) {
+        ;
+      }
     }
-    lock.root->inner.done_initial = true;
+    {
+      auto lockPair = acquireLockedPair(lock.root->recrawlInfo, crawlState_);
+      lockPair.first->shouldRecrawl = false;
+      if (lockPair.second->promise) {
+        lockPair.second->promise->set_value();
+        lockPair.second->promise.reset();
+      }
+      lock.root->inner.done_initial = true;
+    }
+    sample.add_root_meta(lock.root);
+    w_root_unlock(&lock, unlocked);
   }
-  sample.add_root_meta(lock.root);
-  w_root_unlock(&lock, unlocked);
 
   if (config_.getBool("iothrottle", false)) {
     w_ioprio_set_normal();
@@ -182,29 +185,30 @@ void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
     // to the settle duration ready for the next loop through
     timeoutms = unlocked->root->trigger_settle;
 
-    w_root_lock(unlocked, "io_thread: process notifications", &lock);
-    if (!lock.root->inner.done_initial) {
-      // we need to recrawl.  Discard these notifications
-      localPendingLock->drain();
+    {
+      auto view = view_.wlock();
+      w_root_lock(unlocked, "io_thread: process notifications", &lock);
+      if (!lock.root->inner.done_initial) {
+        // we need to recrawl.  Discard these notifications
+        localPendingLock->drain();
+        w_root_unlock(&lock, unlocked);
+        continue;
+      }
+
+      mostRecentTick_++;
+
+      while (processPending(&lock, view, localPendingLock, false)) {
+        ;
+      }
+
       w_root_unlock(&lock, unlocked);
-      continue;
     }
-
-    mostRecentTick_++;
-    // If we're not settled, we need an opportunity to age out
-    // dead file nodes.  This happens in the test harness.
-    lock.root->considerAgeOut();
-
-    while (processPending(&lock, localPendingLock, false)) {
-      ;
-    }
-
-    w_root_unlock(&lock, unlocked);
   }
 }
 
 void InMemoryView::processPath(
     write_locked_watchman_root* lock,
+    SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
     const w_string& full_path,
     struct timeval now,
@@ -240,11 +244,17 @@ void InMemoryView::processPath(
 
   if (w_string_equal(full_path, root_path) ||
       (flags & W_PENDING_CRAWL_ONLY) == W_PENDING_CRAWL_ONLY) {
-    crawler(lock, coll, full_path, now,
+    crawler(
+        lock,
+        view,
+        coll,
+        full_path,
+        now,
         (flags & W_PENDING_RECURSIVE) == W_PENDING_RECURSIVE);
   } else {
     statPath(
         w_root_read_lock_from_write(lock),
+        view,
         coll,
         full_path,
         now,
@@ -255,6 +265,7 @@ void InMemoryView::processPath(
 
 bool InMemoryView::processPending(
     write_locked_watchman_root* lock,
+    SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
     bool pullFromRoot) {
   if (pullFromRoot) {
@@ -277,7 +288,13 @@ bool InMemoryView::processPending(
   while (pending) {
     if (!stopThreads_) {
       processPath(
-          lock, coll, pending->path, pending->now, pending->flags, nullptr);
+          lock,
+          view,
+          coll,
+          pending->path,
+          pending->now,
+          pending->flags,
+          nullptr);
     }
 
     pending = std::move(pending->next);

@@ -7,6 +7,7 @@
 namespace watchman {
 void InMemoryView::statPath(
     read_locked_watchman_root* lock,
+    SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
     const w_string& full_path,
     struct timeval now,
@@ -41,7 +42,7 @@ void InMemoryView::statPath(
 
   auto dir_name = full_path.dirName();
   auto file_name = full_path.baseName();
-  auto dir = resolveDir(dir_name, true);
+  auto dir = resolveDir(view, dir_name, true);
 
   auto file = dir->getChildFile(file_name);
 
@@ -68,7 +69,7 @@ void InMemoryView::statPath(
   if (res && (err == ENOENT || err == ENOTDIR)) {
     /* it's not there, update our state */
     if (dir_ent) {
-      markDirDeleted(dir_ent, now, true);
+      markDirDeleted(view, dir_ent, now, true);
       w_log(
           W_LOG_DBG,
           "w_lstat(%s) -> %s so stopping watch on %.*s\n",
@@ -87,18 +88,18 @@ void InMemoryView::statPath(
             file->getName()->len,
             file->getName()->buf);
         file->exists = false;
-        markFileChanged(file, now);
+        markFileChanged(view, file, now);
       }
     } else {
       // It was created and removed before we could ever observe it
       // in the filesystem.  We need to generate a deleted file
       // representation of it now, so that subscription clients can
       // be notified of this event
-      file = getOrCreateChildFile(dir, file_name, now);
+      file = getOrCreateChildFile(view, dir, file_name, now);
       w_log(W_LOG_DBG, "w_lstat(%s) -> %s and file node was NULL. "
           "Generating a deleted node.\n", path, strerror(err));
       file->exists = false;
-      markFileChanged(file, now);
+      markFileChanged(view, file, now);
     }
 
     if (!root->case_sensitive && !w_string_equal(dir_name, root->root_path) &&
@@ -121,7 +122,7 @@ void InMemoryView::statPath(
         path, err, strerror(err));
   } else {
     if (!file) {
-      file = getOrCreateChildFile(dir, file_name, now);
+      file = getOrCreateChildFile(view, dir, file_name, now);
     }
 
     if (!file->exists) {
@@ -143,7 +144,7 @@ void InMemoryView::statPath(
           path
       );
       file->exists = true;
-      markFileChanged(file, now);
+      markFileChanged(view, file, now);
     }
 
     memcpy(&file->stat, &st, sizeof(file->stat));
@@ -212,7 +213,7 @@ void InMemoryView::statPath(
     } else if (dir_ent) {
       // We transitioned from dir to file (see fishy.php), so we should prune
       // our former tree here
-      markDirDeleted(dir_ent, now, true);
+      markDirDeleted(view, dir_ent, now, true);
     }
     if ((watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
         !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&

@@ -67,6 +67,26 @@ struct InMemoryView : public QueryableView {
   const std::shared_ptr<Watcher>& getWatcher() const;
 
  private:
+  /* Holds the list head for files of a given suffix */
+  struct file_list_head {
+    watchman_file* head{nullptr};
+  };
+
+  struct view {
+    /* the most recently changed file */
+    struct watchman_file* latest_file{0};
+
+    /* Holds the list heads for all known suffixes */
+    std::unordered_map<w_string, std::unique_ptr<file_list_head>> suffixes;
+
+    std::unique_ptr<watchman_dir> root_dir;
+
+    explicit view(const w_string& root_path);
+
+    void insertAtHeadOfFileList(struct watchman_file* file);
+  };
+  using SyncView = watchman::Synchronized<view>;
+
   void ageOutFile(
       std::unordered_set<w_string>& dirs_to_erase,
       watchman_file* file);
@@ -74,10 +94,12 @@ struct InMemoryView : public QueryableView {
   // Consume entries from pending and apply them to the InMemoryView
   bool processPending(
       write_locked_watchman_root* lock,
+      SyncView::LockedPtr& view,
       PendingCollection::LockedPtr& pending,
       bool pullFromRoot = false);
   void processPath(
       write_locked_watchman_root* lock,
+      SyncView::LockedPtr& view,
       PendingCollection::LockedPtr& coll,
       const w_string& full_path,
       struct timeval now,
@@ -86,22 +108,30 @@ struct InMemoryView : public QueryableView {
 
   /** Updates the otime for the file and bubbles it to the front of recency
    * index */
-  void markFileChanged(watchman_file* file, const struct timeval& now);
+  void markFileChanged(
+      SyncView::LockedPtr& view,
+      watchman_file* file,
+      const struct timeval& now);
 
   /** Mark a directory as being removed from the view.
    * Marks the contained set of files as deleted.
    * If recursive is true, is recursively invoked on child dirs. */
   void markDirDeleted(
+      SyncView::LockedPtr& view,
       struct watchman_dir* dir,
       const struct timeval& now,
       bool recursive);
 
-  watchman_dir* resolveDir(const w_string& dirname, bool create);
-  const watchman_dir* resolveDir(const w_string& dirname) const;
+  watchman_dir*
+  resolveDir(SyncView::LockedPtr& view, const w_string& dirname, bool create);
+  const watchman_dir* resolveDir(
+      SyncView::ConstLockedPtr& view,
+      const w_string& dirname) const;
 
   /** Returns the direct child file named name if it already
    * exists, else creates that entry and returns it */
   watchman_file* getOrCreateChildFile(
+      SyncView::LockedPtr& view,
       watchman_dir* dir,
       const w_string& file_name,
       const struct timeval& now);
@@ -127,6 +157,7 @@ struct InMemoryView : public QueryableView {
       uint32_t dir_name_len) const;
   void crawler(
       write_locked_watchman_root* lock,
+      SyncView::LockedPtr& view,
       PendingCollection::LockedPtr& coll,
       const w_string& dir_name,
       struct timeval now,
@@ -139,6 +170,7 @@ struct InMemoryView : public QueryableView {
       PendingCollection::LockedPtr& pending);
   void statPath(
       read_locked_watchman_root* lock,
+      SyncView::LockedPtr& view,
       PendingCollection::LockedPtr& coll,
       const w_string& full_path,
       struct timeval now,
@@ -148,24 +180,7 @@ struct InMemoryView : public QueryableView {
   CookieSync& cookies_;
   Configuration& config_;
 
-  /* Holds the list head for files of a given suffix */
-  struct file_list_head {
-    watchman_file* head{nullptr};
-  };
-
-  struct view {
-    /* the most recently changed file */
-    struct watchman_file* latest_file{0};
-
-    /* Holds the list heads for all known suffixes */
-    std::unordered_map<w_string, std::unique_ptr<file_list_head>> suffixes;
-
-    std::unique_ptr<watchman_dir> root_dir;
-
-    explicit view(const w_string& root_path);
-
-    void insertAtHeadOfFileList(struct watchman_file* file);
-  } view_;
+  SyncView view_;
   w_string root_path;
 
   // This allows a client to wait for a recrawl to complete.

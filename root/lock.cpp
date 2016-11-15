@@ -25,7 +25,7 @@
           "%s\n",                                                            \
           purpose);                                                          \
     }                                                                        \
-    err = do_lock(&unlocked->root->lock);                                    \
+    err = 0; /*do_lock(&unlocked->root->lock); */                            \
     if (err != 0) {                                                          \
       w_log(                                                                 \
           W_LOG_FATAL,                                                       \
@@ -58,7 +58,7 @@
       /* Special case an immediate check, because the implementation of */   \
       /* pthread_mutex_timedlock may return immediately if we are already */ \
       /* past-due. */                                                        \
-      err = do_try_lock(&unlocked->root->lock);                              \
+      err = 0; /*do_try_lock(&unlocked->root->lock);*/                       \
     } else {                                                                 \
       /* Add timeout to current time, convert to absolute timespec */        \
       gettimeofday(&now, nullptr);                                           \
@@ -66,7 +66,7 @@
       delta.tv_usec = (timeoutms - (delta.tv_sec * 1000)) * 1000;            \
       w_timeval_add(now, delta, &target);                                    \
       w_timeval_to_timespec(target, &ts);                                    \
-      err = do_timed_lock(&unlocked->root->lock, &ts);                       \
+      err = 0; /*do_timed_lock(&unlocked->root->lock, &ts); */               \
     }                                                                        \
     if (err == ETIMEDOUT || err == EBUSY) {                                  \
       w_log(                                                                 \
@@ -104,7 +104,7 @@
       w_log(W_LOG_FATAL, "destination of unlock already holds a root!?\n");  \
     }                                                                        \
     root->lock_reason = nullptr;                                             \
-    err = pthread_rwlock_unlock(&root->lock);                                \
+    err = 0; /*pthread_rwlock_unlock(&root->lock); */                        \
     if (err != 0) {                                                          \
       w_log(                                                                 \
           W_LOG_FATAL,                                                       \

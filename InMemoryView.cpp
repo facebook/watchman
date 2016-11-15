@@ -14,7 +14,7 @@ InMemoryView::view::view(const w_string& root_path)
 InMemoryView::InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher)
     : cookies_(root->cookies),
       config_(root->config),
-      view_(root->root_path),
+      view_(view(root->root_path)),
       root_path(root->root_path),
       watcher_(watcher) {}
 
@@ -28,6 +28,7 @@ void InMemoryView::view::insertAtHeadOfFileList(struct watchman_file* file) {
 }
 
 void InMemoryView::markFileChanged(
+    SyncView::LockedPtr& view,
     watchman_file* file,
     const struct timeval& now) {
   if (file->exists) {
@@ -37,28 +38,30 @@ void InMemoryView::markFileChanged(
   file->otime.timestamp = now.tv_sec;
   file->otime.ticks = mostRecentTick_;
 
-  if (view_.latest_file != file) {
+  if (view->latest_file != file) {
     // unlink from list
     file->removeFromFileList();
 
     // and move to the head
-    view_.insertAtHeadOfFileList(file);
+    view->insertAtHeadOfFileList(file);
   }
 }
 
-const watchman_dir* InMemoryView::resolveDir(const w_string& dir_name) const {
+const watchman_dir* InMemoryView::resolveDir(
+    SyncView::ConstLockedPtr& view,
+    const w_string& dir_name) const {
   watchman_dir* dir;
   const char* dir_component;
   const char* dir_end;
 
   if (dir_name == root_path) {
-    return view_.root_dir.get();
+    return view->root_dir.get();
   }
 
   dir_component = dir_name.data();
   dir_end = dir_component + dir_name.size();
 
-  dir = view_.root_dir.get();
+  dir = view->root_dir.get();
   dir_component += root_path.size() + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");
@@ -102,19 +105,22 @@ const watchman_dir* InMemoryView::resolveDir(const w_string& dir_name) const {
   return nullptr;
 }
 
-watchman_dir* InMemoryView::resolveDir(const w_string& dir_name, bool create) {
+watchman_dir* InMemoryView::resolveDir(
+    SyncView::LockedPtr& view,
+    const w_string& dir_name,
+    bool create) {
   watchman_dir *dir, *parent;
   const char* dir_component;
   const char* dir_end;
 
   if (dir_name == root_path) {
-    return view_.root_dir.get();
+    return view->root_dir.get();
   }
 
   dir_component = dir_name.data();
   dir_end = dir_component + dir_name.size();
 
-  dir = view_.root_dir.get();
+  dir = view->root_dir.get();
   dir_component += root_path.size() + 1; // Skip root path prefix
 
   w_assert(dir_component <= dir_end, "impossible file name");
@@ -180,6 +186,7 @@ watchman_dir* InMemoryView::resolveDir(const w_string& dir_name, bool create) {
 }
 
 void InMemoryView::markDirDeleted(
+    SyncView::LockedPtr& view,
     struct watchman_dir* dir,
     const struct timeval& now,
     bool recursive) {
@@ -196,7 +203,7 @@ void InMemoryView::markDirDeleted(
       w_string full_name(w_dir_path_cat_str(dir, file->getName()), false);
       w_log(W_LOG_DBG, "mark_deleted: %s\n", full_name.c_str());
       file->exists = false;
-      markFileChanged(file, now);
+      markFileChanged(view, file, now);
     }
   }
 
@@ -204,12 +211,13 @@ void InMemoryView::markDirDeleted(
     for (auto& it : dir->dirs) {
       auto child = it.second.get();
 
-      markDirDeleted(child, now, true);
+      markDirDeleted(view, child, now, true);
     }
   }
 }
 
 watchman_file* InMemoryView::getOrCreateChildFile(
+    SyncView::LockedPtr& view,
     watchman_dir* dir,
     const w_string& file_name,
     const struct timeval& now) {
@@ -226,7 +234,7 @@ watchman_file* InMemoryView::getOrCreateChildFile(
 
   auto suffix = file_name.suffix();
   if (suffix) {
-    auto& sufhead = view_.suffixes[suffix];
+    auto& sufhead = view->suffixes[suffix];
     if (!sufhead) {
       // Create the list head if we don't already have one for this suffix.
       sufhead.reset(new watchman::InMemoryView::file_list_head);
@@ -278,8 +286,9 @@ void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {
 
   time(&now);
   last_age_out_timestamp = now;
+  auto view = view_.wlock();
 
-  file = view_.latest_file;
+  file = view->latest_file;
   prior = nullptr;
   while (file) {
     ++num_walked;
@@ -300,7 +309,7 @@ void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {
   }
 
   for (auto& name : dirs_to_erase) {
-    auto parent = resolveDir(name.dirName(), false);
+    auto parent = resolveDir(view, name.dirName(), false);
     if (parent) {
       parent->dirs.erase(name.baseName());
     }
@@ -329,7 +338,8 @@ bool InMemoryView::timeGenerator(
   bool result = true;
 
   // Walk back in time until we hit the boundary
-  for (f = view_.latest_file; f; f = f->next) {
+  auto view = view_.rlock();
+  for (f = view->latest_file; f; f = f->next) {
     ++n;
     if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
       break;
@@ -361,10 +371,11 @@ bool InMemoryView::suffixGenerator(
   int64_t n = 0;
   bool result = true;
 
+  auto view = view_.rlock();
   for (const auto& suff : query->suffixes) {
     // Head of suffix index for this suffix
-    auto it = view_.suffixes.find(suff);
-    if (it == view_.suffixes.end()) {
+    auto it = view->suffixes.find(suff);
+    if (it == view->suffixes.end()) {
       continue;
     }
 
@@ -402,6 +413,8 @@ bool InMemoryView::pathGenerator(
     relative_root = root_path;
   }
 
+  auto view = view_.rlock();
+
   for (const auto& path : query->paths) {
     const watchman_dir* dir;
     w_string_t* file_name;
@@ -413,7 +426,7 @@ bool InMemoryView::pathGenerator(
     // special case of root dir itself
     if (w_string_equal(root_path, full_name)) {
       // dirname on the root is outside the root, which is useless
-      dir = resolveDir(full_name);
+      dir = resolveDir(view, full_name);
       goto is_dir;
     }
 
@@ -426,7 +439,7 @@ bool InMemoryView::pathGenerator(
       continue;
     }
 
-    dir = resolveDir(dir_name);
+    dir = resolveDir(view, dir_name);
 
     if (!dir) {
       // Doesn't exist, and never has
@@ -516,8 +529,9 @@ bool InMemoryView::allFilesGenerator(
   struct watchman_file* f;
   int64_t n = 0;
   bool result = true;
+  auto view = view_.rlock();
 
-  for (f = view_.latest_file; f; f = f->next) {
+  for (f = view->latest_file; f; f = f->next) {
     ++n;
     if (!w_query_file_matches_relative_root(ctx, f)) {
       continue;
@@ -586,9 +600,10 @@ void InMemoryView::signalThreads() {
 
 bool InMemoryView::doAnyOfTheseFilesExist(
     const std::vector<w_string>& fileNames) const {
+  auto view = view_.rlock();
   for (auto& name : fileNames) {
     auto fullName = w_string::pathCat({root_path, name});
-    const auto dir = resolveDir(fullName.dirName());
+    const auto dir = resolveDir(view, fullName.dirName());
     if (!dir) {
       continue;
     }

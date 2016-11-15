@@ -17,6 +17,7 @@ static void apply_dir_size_hint(struct watchman_dir *dir,
 namespace watchman {
 void InMemoryView::crawler(
     write_locked_watchman_root* lock,
+    SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
     const w_string& dir_name,
     struct timeval now,
@@ -37,7 +38,7 @@ void InMemoryView::crawler(
     stat_all = false;
   }
 
-  auto dir = resolveDir(dir_name, true);
+  auto dir = resolveDir(view, dir_name, true);
 
   memcpy(path, dir_name.data(), dir_name.size());
   path[dir_name.size()] = 0;
@@ -50,7 +51,7 @@ void InMemoryView::crawler(
    * so the operations are rolled together in our abstraction */
   osdir = watcher_->startWatchDir(lock->root, dir, now, path);
   if (!osdir) {
-    markDirDeleted(dir, now, true);
+    markDirDeleted(view, dir, now, true);
     return;
   }
 
@@ -106,6 +107,7 @@ void InMemoryView::crawler(
           full_path.c_str());
       processPath(
           lock,
+          view,
           coll,
           full_path,
           now,
