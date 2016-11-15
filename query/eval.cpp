@@ -293,8 +293,7 @@ bool w_query_execute_locked(
 
   ctx.clockAtStartOfQuery =
       root->inner.view->getMostRecentRootNumberAndTickValue();
-  res->root_number = ctx.clockAtStartOfQuery.rootNumber;
-  res->ticks = ctx.clockAtStartOfQuery.ticks;
+  res->clockAtStartOfQuery = ctx.clockAtStartOfQuery;
 
   // Evaluate the cursor for this root
   w_clockspec_eval(root, query->since_spec.get(), &ctx.since);
@@ -334,8 +333,7 @@ bool w_query_execute(
 
   ctx.clockAtStartOfQuery =
       root->inner.view->getMostRecentRootNumberAndTickValue();
-  res->root_number = ctx.clockAtStartOfQuery.rootNumber;
-  res->ticks = ctx.clockAtStartOfQuery.ticks;
+  res->clockAtStartOfQuery = ctx.clockAtStartOfQuery;
 
   return execute_common(&ctx, &sample, res, generator);
 }

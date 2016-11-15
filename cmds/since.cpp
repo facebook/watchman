@@ -8,7 +8,6 @@ static void cmd_since(struct watchman_client* client, const json_ref& args) {
   const char *clockspec;
   char *errmsg = NULL;
   w_query_res res;
-  char clockbuf[128];
 
   /* resolve the root */
   if (json_array_size(args) < 3) {
@@ -43,11 +42,10 @@ static void cmd_since(struct watchman_client* client, const json_ref& args) {
   }
 
   auto response = make_response();
-  if (clock_id_string(res.root_number, res.ticks, clockbuf, sizeof(clockbuf))) {
-    response.set("clock", typed_string_to_json(clockbuf, W_STRING_UNICODE));
-  }
-  response.set({{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
-                {"files", std::move(res.resultsArray)}});
+  response.set(
+      {{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
+       {"clock", w_string_to_json(res.clockAtStartOfQuery.toClockString())},
+       {"files", std::move(res.resultsArray)}});
 
   add_root_warnings_to_response(response, root);
   send_and_dispose_response(client, std::move(response));

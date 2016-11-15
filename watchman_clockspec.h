@@ -15,6 +15,8 @@ struct ClockPosition {
   ClockPosition() = default;
   ClockPosition(uint32_t rootNumber, uint32_t ticks)
       : rootNumber(rootNumber), ticks(ticks) {}
+
+  w_string toClockString() const;
 };
 
 enum w_clockspec_tag {
@@ -30,8 +32,7 @@ struct w_clockspec {
     struct {
       uint64_t start_time;
       int pid;
-      uint32_t root_number;
-      uint32_t ticks;
+      ClockPosition position;
     } clock;
     struct {
       w_string cursor;
@@ -39,12 +40,10 @@ struct w_clockspec {
   };
 
   w_clockspec();
+  w_clockspec(const ClockPosition& position);
   ~w_clockspec();
 };
 
-std::unique_ptr<w_clockspec> w_clockspec_new_clock(
-    uint32_t root_number,
-    uint32_t ticks);
 std::unique_ptr<w_clockspec> w_clockspec_parse(const json_ref& value);
 void w_clockspec_eval(
     const std::shared_ptr<w_root_t>& root,

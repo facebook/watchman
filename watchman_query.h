@@ -165,8 +165,7 @@ struct w_query_res {
   json_ref resultsArray;
   // Only populated if the query was set to dedup_results
   std::unordered_set<w_string> dedupedFileNames;
-  uint32_t root_number;
-  uint32_t ticks;
+  ClockPosition clockAtStartOfQuery;
   char* errmsg{nullptr};
 
   ~w_query_res();

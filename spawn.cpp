@@ -101,7 +101,6 @@ static void spawn_command(
   size_t argspace_remaining;
   bool file_overflow = false;
   int result_log_level;
-  char clockbuf[128];
   w_string_t *working_dir = NULL;
 
 #ifdef _WIN32
@@ -144,20 +143,19 @@ static void spawn_command(
   // It is way too much of a hassle to try to recreate the clock value if it's
   // not a relative clock spec, and it's only going to happen on the first run
   // anyway, so just skip doing that entirely.
-  if (since_spec && since_spec->tag == w_cs_clock &&
-      clock_id_string(since_spec->clock.root_number, since_spec->clock.ticks,
-                      clockbuf, sizeof(clockbuf))) {
-    w_envp_set_cstring(cmd->envht, "WATCHMAN_SINCE", clockbuf);
+  if (since_spec && since_spec->tag == w_cs_clock) {
+    w_envp_set_cstring(
+        cmd->envht,
+        "WATCHMAN_SINCE",
+        since_spec->clock.position.toClockString().c_str());
   } else {
     w_envp_unset(cmd->envht, "WATCHMAN_SINCE");
   }
 
-  if (clock_id_string(res->root_number, res->ticks,
-        clockbuf, sizeof(clockbuf))) {
-    w_envp_set_cstring(cmd->envht, "WATCHMAN_CLOCK", clockbuf);
-  } else {
-    w_envp_unset(cmd->envht, "WATCHMAN_CLOCK");
-  }
+  w_envp_set_cstring(
+      cmd->envht,
+      "WATCHMAN_CLOCK",
+      res->clockAtStartOfQuery.toClockString().c_str());
 
   if (cmd->query->relative_root) {
     w_envp_set(cmd->envht, "WATCHMAN_RELATIVE_ROOT", cmd->query->relative_root);
@@ -353,7 +351,7 @@ bool watchman_trigger_command::maybeSpawn(
         W_LOG_DBG,
         "running trigger \"%s\" rules! since %" PRIu32 "\n",
         triggername.c_str(),
-        since_spec->clock.ticks);
+        since_spec->clock.position.ticks);
   } else {
     w_log(W_LOG_DBG, "running trigger \"%s\" rules!\n", triggername.c_str());
   }
@@ -383,14 +381,15 @@ bool watchman_trigger_command::maybeSpawn(
 
   // create a new spec that will be used the next time
   auto saved_spec = std::move(query->since_spec);
-  query->since_spec = w_clockspec_new_clock(res.root_number, res.ticks);
+  query->since_spec =
+      watchman::make_unique<w_clockspec>(res.clockAtStartOfQuery);
 
   watchman::log(
       watchman::DBG,
       "updating trigger \"",
       triggername,
       "\" use ",
-      res.ticks,
+      res.clockAtStartOfQuery.ticks,
       " ticks next time\n");
 
   if (!res.resultsArray.array().empty()) {

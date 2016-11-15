@@ -17,18 +17,6 @@ void w_clockspec_init(void) {
   proc_start_time = (uint64_t)tv.tv_sec;
 }
 
-std::unique_ptr<w_clockspec> w_clockspec_new_clock(
-    uint32_t root_number,
-    uint32_t ticks) {
-  auto spec = watchman::make_unique<w_clockspec>();
-  spec->tag = w_cs_clock;
-  spec->clock.start_time = proc_start_time;
-  spec->clock.pid = proc_pid;
-  spec->clock.root_number = root_number;
-  spec->clock.ticks = ticks;
-  return spec;
-}
-
 std::unique_ptr<w_clockspec> w_clockspec_parse(const json_ref& value) {
   const char *str;
   uint64_t start_time;
@@ -61,8 +49,8 @@ std::unique_ptr<w_clockspec> w_clockspec_parse(const json_ref& value) {
     spec->tag = w_cs_clock;
     spec->clock.start_time = start_time;
     spec->clock.pid = pid;
-    spec->clock.root_number = root_number;
-    spec->clock.ticks = ticks;
+    spec->clock.position.rootNumber = root_number;
+    spec->clock.position.ticks = ticks;
     return spec;
   }
 
@@ -72,8 +60,8 @@ std::unique_ptr<w_clockspec> w_clockspec_parse(const json_ref& value) {
     spec->tag = w_cs_clock;
     spec->clock.start_time = 0;
     spec->clock.pid = pid;
-    spec->clock.root_number = root_number;
-    spec->clock.ticks = ticks;
+    spec->clock.position.rootNumber = root_number;
+    spec->clock.position.ticks = ticks;
     return spec;
   }
 
@@ -137,13 +125,13 @@ void w_clockspec_eval(
   // spec->tag == w_cs_clock
   if (spec->clock.start_time == proc_start_time &&
       spec->clock.pid == proc_pid &&
-      spec->clock.root_number == position.rootNumber) {
+      spec->clock.position.rootNumber == position.rootNumber) {
     since->clock.is_fresh_instance =
-        spec->clock.ticks < root->inner.view->getLastAgeOutTickValue();
+        spec->clock.position.ticks < root->inner.view->getLastAgeOutTickValue();
     if (since->clock.is_fresh_instance) {
       since->clock.ticks = 0;
     } else {
-      since->clock.ticks = spec->clock.ticks;
+      since->clock.ticks = spec->clock.position.ticks;
     }
     return;
   }
@@ -163,6 +151,9 @@ w_clockspec::~w_clockspec() {
   }
 }
 
+w_clockspec::w_clockspec(const ClockPosition& position)
+    : tag(w_cs_clock), clock{proc_start_time, proc_pid, position} {}
+
 bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
                      size_t bufsize) {
   int res = snprintf(buf, bufsize, "c:%" PRIu64 ":%d:%u:%" PRIu32,
@@ -172,6 +163,14 @@ bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
     return false;
   }
   return (size_t)res < bufsize;
+}
+
+w_string ClockPosition::toClockString() const {
+  char clockbuf[128];
+  if (!clock_id_string(rootNumber, ticks, clockbuf, sizeof(clockbuf))) {
+    throw std::runtime_error("clock is too big for clockbuf");
+  }
+  return w_string(clockbuf, W_STRING_UNICODE);
 }
 
 /* Add the current clock value to the response */
