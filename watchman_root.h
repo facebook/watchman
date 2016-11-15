@@ -62,7 +62,7 @@ struct watchman_root {
     int recrawlCount{0};
     /* if true, we've decided that we should re-crawl the root
      * for the sake of ensuring consistency */
-    bool shouldRecrawl{false};
+    bool shouldRecrawl{true};
     // Last ad-hoc warning message
     w_string warning;
   };

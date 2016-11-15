@@ -301,6 +301,7 @@ static void cmd_watch(struct watchman_client* client, const json_ref& args) {
   if (!resolve_root_or_err(client, args, 1, true, &unlocked)) {
     return;
   }
+  unlocked.root->inner.view->waitUntilReadyToQuery(unlocked.root).wait();
 
   auto resp = make_response();
 
@@ -351,6 +352,8 @@ static void cmd_watch_project(
     free(dir_to_watch);
     return;
   }
+
+  unlocked.root->inner.view->waitUntilReadyToQuery(unlocked.root).wait();
 
   auto resp = make_response();
 

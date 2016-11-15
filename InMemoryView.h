@@ -57,6 +57,8 @@ struct InMemoryView : public QueryableView {
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override;
 
+  std::shared_future<void> waitUntilReadyToQuery(w_root_t* root) override;
+
   void startThreads(w_root_t* root) override;
   void signalThreads() override;
   void clientModeCrawl(unlocked_watchman_root* unlocked);
@@ -170,6 +172,19 @@ struct InMemoryView : public QueryableView {
     void insertAtHeadOfFileList(struct watchman_file* file);
   } view_;
   w_string root_path;
+
+  // This allows a client to wait for a recrawl to complete.
+  // The primary use of this is so that "watch-project" doesn't
+  // send its return PDU to the client until after the initial
+  // crawl is complete.  Note that a recrawl can happen at any
+  // point, so this is a bit of a weak promise that a query can
+  // be immediately executed, but is good enough assuming that
+  // the system isn't in a perpetual state of recrawl.
+  struct crawl_state {
+    std::unique_ptr<std::promise<void>> promise;
+    std::shared_future<void> future;
+  };
+  watchman::Synchronized<crawl_state> crawlState_;
 
   // The most recently observed tick value of an item in the view
   std::atomic<uint32_t> mostRecentTick_{0};

@@ -18,8 +18,6 @@ void InMemoryView::handleShouldRecrawl(unlocked_watchman_root* unlocked) {
   if (!root->inner.cancelled) {
     auto info = root->recrawlInfo.wlock();
 
-    info->shouldRecrawl = false;
-
     // be careful, this is a bit of a switcheroo
     root->tearDown();
     try {

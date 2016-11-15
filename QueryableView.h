@@ -5,6 +5,7 @@
 #include "watchman_perf.h"
 #include "watchman_query.h"
 #include "watchman_string.h"
+#include <future>
 #include <vector>
 
 struct watchman_file;
@@ -64,5 +65,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   virtual void signalThreads();
 
   virtual const w_string& getName() const = 0;
+
+  virtual std::shared_future<void> waitUntilReadyToQuery(w_root_t* root) = 0;
 };
 }

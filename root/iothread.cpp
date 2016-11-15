@@ -5,6 +5,28 @@
 #include "InMemoryView.h"
 
 namespace watchman {
+
+std::shared_future<void> InMemoryView::waitUntilReadyToQuery(w_root_t* root) {
+  auto lockPair = acquireLockedPair(root->recrawlInfo, crawlState_);
+
+  if (lockPair.second->promise && lockPair.second->future.valid()) {
+    return lockPair.second->future;
+  }
+
+  if (root->inner.done_initial && !lockPair.first->shouldRecrawl) {
+    // Return an already satisfied future
+    std::promise<void> p;
+    p.set_value();
+    return p.get_future();
+  }
+
+  // Not yet done, so queue up the promise
+  lockPair.second->promise = watchman::make_unique<std::promise<void>>();
+  lockPair.second->future =
+      std::shared_future<void>(lockPair.second->promise->get_future());
+  return lockPair.second->future;
+}
+
 void InMemoryView::fullCrawl(
     unlocked_watchman_root* unlocked,
     PendingCollection::LockedPtr& pending) {
@@ -36,7 +58,15 @@ void InMemoryView::fullCrawl(
       ;
     }
   }
-  lock.root->inner.done_initial = true;
+  {
+    auto lockPair = acquireLockedPair(lock.root->recrawlInfo, crawlState_);
+    lockPair.first->shouldRecrawl = false;
+    if (lockPair.second->promise) {
+      lockPair.second->promise->set_value();
+      lockPair.second->promise.reset();
+    }
+    lock.root->inner.done_initial = true;
+  }
   sample.add_root_meta(lock.root);
   w_root_unlock(&lock, unlocked);
 
