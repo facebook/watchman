@@ -72,8 +72,10 @@ void w_capability_register(const char *name);
 bool w_capability_supported(const w_string& name);
 json_ref w_capability_get_list(void);
 
-void send_error_response(struct watchman_client *client,
-    const char *fmt, ...);
+void send_error_response(
+    struct watchman_client* client,
+    WATCHMAN_FMT_STRING(const char* fmt),
+    ...) WATCHMAN_FMT_ATTR(2, 3);
 void send_and_dispose_response(
     struct watchman_client* client,
     json_ref&& response);

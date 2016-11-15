@@ -140,7 +140,7 @@ bool dispatch_command(
   try {
     // Stash a reference to the current command to make it easier to log
     // the command context in some of the error paths
-    client->current_command = args;
+    client->current_command = args; // FIXME: SCOPE_EXIT to clear this
 
     def = lookup(args, &errmsg, mode);
 
@@ -157,7 +157,7 @@ bool dispatch_command(
     if (!client->client_is_owner && (def->flags & CMD_ALLOW_ANY_USER) == 0) {
       send_error_response(
           client, "you must be the process owner to execute '%s'", def->name);
-      return false;
+      goto done;
     }
 
     // Scope for the perf sample
@@ -166,7 +166,7 @@ bool dispatch_command(
       snprintf(
           sample_name, sizeof(sample_name), "dispatch_command:%s", def->name);
       w_perf_t sample(sample_name);
-      client->perf_sample = &sample;
+      client->perf_sample = &sample; // FIXME: SCOPE_EXIT to clear this
 
       sample.set_wall_time_thresh(
           cfg_get_double("slow_command_log_threshold_seconds", 1.0));
@@ -183,7 +183,8 @@ bool dispatch_command(
     }
 
   } catch (const std::exception& e) {
-    send_error_response(client, e.what());
+    client->perf_sample = nullptr; // FIXME: SCOPE_EXIT to clear this
+    send_error_response(client, "%s", e.what());
     result = false;
   }
 

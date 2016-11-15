@@ -344,7 +344,7 @@ static void cmd_watch_project(
   // free rel_path_from_watch
   dir_to_watch = resolve_projpath(args, &errmsg, &rel_path_from_watch);
   if (!dir_to_watch) {
-    send_error_response(client, errmsg);
+    send_error_response(client, "%s", errmsg);
     free(errmsg);
     return;
   }

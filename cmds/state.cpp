@@ -21,8 +21,9 @@ static bool parse_state_arg(
   parsed->name = nullptr;
 
   if (json_array_size(args) != 3) {
-    send_error_response(client,
-        "invalid number of arguments, expected 3, got %d",
+    send_error_response(
+        client,
+        "invalid number of arguments, expected 3, got %" PRIsize_t,
         json_array_size(args));
     return false;
   }

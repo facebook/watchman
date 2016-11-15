@@ -48,29 +48,32 @@ void send_and_dispose_response(
 void send_error_response(struct watchman_client *client,
     const char *fmt, ...)
 {
-  char buf[WATCHMAN_NAME_MAX];
   va_list ap;
-  auto resp = make_response();
 
   va_start(ap, fmt);
-  vsnprintf(buf, sizeof(buf), fmt, ap);
+  auto errorText = w_string::vprintf(fmt, ap);
   va_end(ap);
 
-  auto errstr = typed_string_to_json(buf, W_STRING_MIXED);
-  resp.set("error", std::move(errstr));
+  auto resp = make_response();
+  resp.set("error", w_string_to_json(errorText));
 
   if (client->perf_sample) {
-    client->perf_sample->add_meta("error", std::move(errstr));
+    client->perf_sample->add_meta("error", w_string_to_json(errorText));
   }
 
   if (client->current_command) {
     char *command = NULL;
     command = json_dumps(client->current_command, 0);
-    w_log(W_LOG_ERR, "send_error_response: %s failed: %s\n",
-        command, buf);
+    watchman::log(
+        watchman::ERR,
+        "send_error_response: ",
+        command,
+        ", failed: ",
+        errorText,
+        "\n");
     free(command);
   } else {
-    w_log(W_LOG_ERR, "send_error_response: %s\n", buf);
+    watchman::log(watchman::ERR, "send_error_response: ", errorText, "\n");
   }
 
   send_and_dispose_response(client, std::move(resp));

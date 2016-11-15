@@ -83,9 +83,11 @@ bool resolve_root_or_err(
 
   root_name = json_string_value(ele);
   if (!root_name) {
-    send_error_response(client, "invalid value for argument %d, expected "
-                                "a string naming the root dir",
-                        root_index);
+    send_error_response(
+        client,
+        "invalid value for argument %" PRIsize_t
+        ", expected a string naming the root dir",
+        root_index);
     return false;
   }
 
