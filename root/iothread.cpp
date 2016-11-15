@@ -41,7 +41,7 @@ void InMemoryView::fullCrawl(
   // Ensure that we observe these files with a new, distinct clock,
   // otherwise a fresh subscription established immediately after a watch
   // can get stuck with an empty view until another change is observed
-  lock.root->inner.ticks++;
+  mostRecentTick_++;
   gettimeofday(&start, NULL);
   pending_.wlock()->add(lock.root->root_path, start, 0);
   // There is the potential for a subtle race condition here.  The boolean
@@ -190,7 +190,7 @@ void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
       continue;
     }
 
-    lock.root->inner.ticks++;
+    mostRecentTick_++;
     // If we're not settled, we need an opportunity to age out
     // dead file nodes.  This happens in the test harness.
     lock.root->considerAgeOut();

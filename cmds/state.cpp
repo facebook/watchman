@@ -118,7 +118,7 @@ static void cmd_state_enter(
     // send
     clock_id_string(
         lock.root->inner.number,
-        lock.root->inner.ticks,
+        lock.root->inner.view->getMostRecentTickValue(),
         clockbuf,
         sizeof(clockbuf));
   }
@@ -160,7 +160,10 @@ static void leave_state(struct watchman_user_client *client,
     struct read_locked_watchman_root lock;
     w_root_read_lock(&unlocked, "state-leave", &lock);
     clock_id_string(
-        lock.root->inner.number, lock.root->inner.ticks, buf, sizeof(buf));
+        lock.root->inner.number,
+        lock.root->inner.view->getMostRecentTickValue(),
+        buf,
+        sizeof(buf));
     w_root_read_unlock(&lock, &unlocked);
 
     clockbuf = buf;
@@ -269,7 +272,7 @@ static void cmd_state_leave(
     // send
     clock_id_string(
         lock.root->inner.number,
-        lock.root->inner.ticks,
+        lock.root->inner.view->getMostRecentTickValue(),
         clockbuf,
         sizeof(clockbuf));
   }

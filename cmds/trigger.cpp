@@ -429,13 +429,6 @@ static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
   }
 
   if (need_save) {
-    struct write_locked_watchman_root lock;
-
-    w_root_lock(&unlocked, "trigger-add", &lock);
-    // Force the trigger to be eligible to run now
-    lock.root->inner.ticks++;
-    w_root_unlock(&lock, &unlocked);
-
     w_state_save();
   }
 

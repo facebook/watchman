@@ -208,7 +208,7 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
 
               auto dumped = json_dumps(item->payload, 0);
               watchman::log(
-                  watchman::ERR,
+                  watchman::DBG,
                   "Unilateral payload for sub ",
                   sub->name,
                   " ",
@@ -246,9 +246,10 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
                 client->enqueueResponse(std::move(resp), false);
 
                 watchman::log(
-                    watchman::ERR,
+                    watchman::DBG,
                     "Fan out subscription state change for ",
-                    sub->name);
+                    sub->name,
+                    "\n");
                 continue;
               }
 

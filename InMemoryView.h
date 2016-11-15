@@ -86,10 +86,7 @@ struct InMemoryView : public QueryableView {
 
   /** Updates the otime for the file and bubbles it to the front of recency
    * index */
-  void markFileChanged(
-      watchman_file* file,
-      const struct timeval& now,
-      uint32_t tick);
+  void markFileChanged(watchman_file* file, const struct timeval& now);
 
   /** Mark a directory as being removed from the view.
    * Marks the contained set of files as deleted.
@@ -97,7 +94,6 @@ struct InMemoryView : public QueryableView {
   void markDirDeleted(
       struct watchman_dir* dir,
       const struct timeval& now,
-      uint32_t tick,
       bool recursive);
 
   watchman_dir* resolveDir(const w_string& dirname, bool create);
@@ -108,8 +104,7 @@ struct InMemoryView : public QueryableView {
   watchman_file* getOrCreateChildFile(
       watchman_dir* dir,
       const w_string& file_name,
-      const struct timeval& now,
-      uint32_t tick);
+      const struct timeval& now);
 
   /** Recursively walks files under a specified dir */
   bool dirGenerator(

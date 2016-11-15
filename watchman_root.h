@@ -85,9 +85,6 @@ struct watchman_root {
 
     std::shared_ptr<watchman::QueryableView> view;
 
-    /* current tick */
-    uint32_t ticks{1};
-
     bool done_initial{0};
     bool cancelled{0};
 

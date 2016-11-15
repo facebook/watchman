@@ -180,7 +180,10 @@ bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
 static bool current_clock_id_string(struct read_locked_watchman_root *lock,
                                     char *buf, size_t bufsize) {
   return clock_id_string(
-      lock->root->inner.number, lock->root->inner.ticks, buf, bufsize);
+      lock->root->inner.number,
+      lock->root->inner.view->getMostRecentTickValue(),
+      buf,
+      bufsize);
 }
 
 /* Add the current clock value to the response.

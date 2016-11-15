@@ -29,14 +29,13 @@ void InMemoryView::view::insertAtHeadOfFileList(struct watchman_file* file) {
 
 void InMemoryView::markFileChanged(
     watchman_file* file,
-    const struct timeval& now,
-    uint32_t tick) {
+    const struct timeval& now) {
   if (file->exists) {
     watcher_->startWatchFile(file);
   }
 
   file->otime.timestamp = now.tv_sec;
-  file->otime.ticks = tick;
+  file->otime.ticks = mostRecentTick_;
 
   if (view_.latest_file != file) {
     // unlink from list
@@ -45,9 +44,6 @@ void InMemoryView::markFileChanged(
     // and move to the head
     view_.insertAtHeadOfFileList(file);
   }
-
-  // Flag that we have pending trigger info
-  mostRecentTick_ = tick;
 }
 
 const watchman_dir* InMemoryView::resolveDir(const w_string& dir_name) const {
@@ -186,7 +182,6 @@ watchman_dir* InMemoryView::resolveDir(const w_string& dir_name, bool create) {
 void InMemoryView::markDirDeleted(
     struct watchman_dir* dir,
     const struct timeval& now,
-    uint32_t tick,
     bool recursive) {
   if (!dir->last_check_existed) {
     // If we know that it doesn't exist, return early
@@ -201,7 +196,7 @@ void InMemoryView::markDirDeleted(
       w_string full_name(w_dir_path_cat_str(dir, file->getName()), false);
       w_log(W_LOG_DBG, "mark_deleted: %s\n", full_name.c_str());
       file->exists = false;
-      markFileChanged(file, now, tick);
+      markFileChanged(file, now);
     }
   }
 
@@ -209,7 +204,7 @@ void InMemoryView::markDirDeleted(
     for (auto& it : dir->dirs) {
       auto child = it.second.get();
 
-      markDirDeleted(child, now, tick, true);
+      markDirDeleted(child, now, true);
     }
   }
 }
@@ -217,8 +212,7 @@ void InMemoryView::markDirDeleted(
 watchman_file* InMemoryView::getOrCreateChildFile(
     watchman_dir* dir,
     const w_string& file_name,
-    const struct timeval& now,
-    uint32_t tick) {
+    const struct timeval& now) {
   auto& file_ptr = dir->files[file_name];
 
   if (file_ptr) {
@@ -227,7 +221,7 @@ watchman_file* InMemoryView::getOrCreateChildFile(
 
   file_ptr = watchman_file::make(file_name, dir);
 
-  file_ptr->ctime.ticks = tick;
+  file_ptr->ctime.ticks = mostRecentTick_;
   file_ptr->ctime.timestamp = now.tv_sec;
 
   auto suffix = file_name.suffix();

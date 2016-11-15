@@ -106,6 +106,8 @@ void watchman_client_subscription::processSubscription() {
     if (drop) {
       // fast-forward over any notifications while in the drop state
       last_sub_tick = lock.root->inner.view->getMostRecentTickValue();
+      query->since_spec =
+          w_clockspec_new_clock(lock.root->inner.number, last_sub_tick);
       watchman::log(
           watchman::DBG,
           "dropping subscription notifications for ",
@@ -142,6 +144,8 @@ void watchman_client_subscription::processSubscription() {
       w_run_subscription_rules(client.get(), this, &lock);
       last_sub_tick = lock.root->inner.view->getMostRecentTickValue();
     }
+  } else {
+    watchman::log(watchman::DBG, "subscription ", name, " is up to date\n");
   }
 
   w_root_read_unlock(&lock, &unlocked);

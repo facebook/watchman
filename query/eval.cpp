@@ -293,7 +293,7 @@ bool w_query_execute_locked(
    */
 
   res->root_number = lock->root->inner.number;
-  res->ticks = lock->root->inner.ticks;
+  res->ticks = lock->root->inner.view->getMostRecentTickValue();
 
   // Evaluate the cursor for this root
   w_clockspec_eval(lock, query->since_spec.get(), &ctx.since);
@@ -347,7 +347,7 @@ bool w_query_execute(
   w_clockspec_eval(&rlock, query->since_spec.get(), &ctx.since);
 
   res->root_number = ctx.lock->root->inner.number;
-  res->ticks = ctx.lock->root->inner.ticks;
+  res->ticks = ctx.lock->root->inner.view->getMostRecentTickValue();
 
   result = execute_common(&ctx, &sample, res, generator);
   // This handles the unlock in both the read and write case, as ctx.lock
