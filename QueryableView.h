@@ -9,13 +9,11 @@
 
 struct watchman_file;
 struct watchman_dir;
-struct Watcher;
 struct watchman_glob_tree;
 
 namespace watchman {
 class QueryableView : public std::enable_shared_from_this<QueryableView> {
  public:
-  std::shared_ptr<Watcher> watcher;
   virtual ~QueryableView();
 
   /** Perform a time-based (since) query and emit results to the supplied
@@ -64,5 +62,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   virtual void startThreads(w_root_t* root);
   // Request that helper threads shutdown (but does not join them)
   virtual void signalThreads();
+
+  virtual const w_string& getName() const = 0;
 };
 }

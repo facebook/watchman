@@ -191,7 +191,7 @@ void InMemoryView::statPath(
           // but do if we're looking at the cookie dir (stat_path is never
           // called for the root itself)
           w_string_equal(full_path, root->cookies.cookieDir())) {
-        if (!(watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)) {
+        if (!(watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)) {
           /* we always need to crawl, but may not need to be fully recursive */
           coll->add(
               full_path,
@@ -214,7 +214,7 @@ void InMemoryView::statPath(
       // our former tree here
       markDirDeleted(dir_ent, now, root->inner.ticks, true);
     }
-    if ((watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
+    if ((watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
         !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&
         dir->last_check_existed) {
       /* Make sure we update the mtime on the parent directory.

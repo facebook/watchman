@@ -3,6 +3,7 @@
 
 #include "make_unique.h"
 #include "watchman.h"
+#include "InMemoryView.h"
 
 #ifdef HAVE_PORT_CREATE
 

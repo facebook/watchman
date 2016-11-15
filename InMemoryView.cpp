@@ -11,14 +11,12 @@ namespace watchman {
 InMemoryView::view::view(const w_string& root_path)
     : root_dir(watchman::make_unique<watchman_dir>(root_path, nullptr)) {}
 
-InMemoryView::InMemoryView(
-    const w_string& root_path,
-    CookieSync& cookies,
-    Configuration& config)
-    : cookies_(cookies),
-      config_(config),
-      view_(root_path),
-      root_path(root_path) {}
+InMemoryView::InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher)
+    : cookies_(root->cookies),
+      config_(root->config),
+      view_(root->root_path),
+      root_path(root->root_path),
+      watcher_(watcher) {}
 
 void InMemoryView::view::insertAtHeadOfFileList(struct watchman_file* file) {
   file->next = latest_file;
@@ -34,7 +32,7 @@ void InMemoryView::markFileChanged(
     const struct timeval& now,
     uint32_t tick) {
   if (file->exists) {
-    watcher->startWatchFile(file);
+    watcher_->startWatchFile(file);
   }
 
   file->otime.timestamp = now.tv_sec;
@@ -248,7 +246,7 @@ watchman_file* InMemoryView::getOrCreateChildFile(
     file_ptr->suffix_prev = &sufhead->head;
   }
 
-  watcher->startWatchFile(file_ptr.get());
+  watcher_->startWatchFile(file_ptr.get());
 
   return file_ptr.get();
 }
@@ -588,7 +586,7 @@ void InMemoryView::startThreads(w_root_t* root) {
 void InMemoryView::signalThreads() {
   w_log(W_LOG_DBG, "signalThreads! %p %s\n", this, root_path.c_str());
   stopThreads_ = true;
-  watcher->signalThreads();
+  watcher_->signalThreads();
   pending_.ping();
 }
 
@@ -610,5 +608,13 @@ bool InMemoryView::doAnyOfTheseFilesExist(
     }
   }
   return false;
+}
+
+const std::shared_ptr<Watcher>& InMemoryView::getWatcher() const {
+  return watcher_;
+}
+
+const w_string& InMemoryView::getName() const {
+  return watcher_->name;
 }
 }

@@ -77,27 +77,21 @@ void watchman_perf_sample::add_root_meta(const w_root_t* root) {
   // Note: if the root lock isn't held, we may read inaccurate numbers for
   // some of these properties.  We're ok with that, and don't want to force
   // the root lock to be re-acquired just for this.
+  auto meta = json_object(
+      {{"path", w_string_to_json(root->root_path)},
+       {"recrawl_count", json_integer(root->recrawlInfo.rlock()->recrawlCount)},
+       {"number", json_integer(root->inner.number)},
+       {"ticks", json_integer(root->inner.ticks)},
+       {"case_sensitive", json_boolean(root->case_sensitive)}});
 
-  add_meta(
-      "root",
-      json_object(
-          {{"path", w_string_to_json(root->root_path)},
-           {"recrawl_count",
-            json_integer(root->recrawlInfo.rlock()->recrawlCount)},
-           {"number", json_integer(root->inner.number)},
-           {"ticks", json_integer(root->inner.ticks)},
-           {"case_sensitive", json_boolean(root->case_sensitive)},
-           // there is potential to race with a concurrent w_root_init in some
-           // recrawl scenarios in the test harness.  In those cases it is
-           // possible that the watcher is briefly set to a NULL pointer.
-           // Since the target of that pointer is always a structure with a
-           // stable address, we can safely deal with reading a stale value, but
-           // we do need to guard against a NULL pointer value.
-           {"watcher",
-            w_string_to_json(w_string(
-                root->inner.view->watcher ? root->inner.view->watcher->name
-                                          : "<recrawling>",
-                W_STRING_UNICODE))}}));
+  // During recrawl, the view may be re-assigned.  Protect against
+  // reading a nullptr.
+  auto view = root->inner.view;
+  if (view) {
+    meta.set({{"watcher", w_string_to_json(root->inner.view->getName())}});
+  }
+
+  add_meta("root", std::move(meta));
 }
 
 void watchman_perf_sample::set_wall_time_thresh(double thresh) {

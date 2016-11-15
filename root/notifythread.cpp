@@ -49,7 +49,7 @@ void InMemoryView::notifyThread(unlocked_watchman_root* unlocked) {
   PendingCollection pending;
   auto localLock = pending.wlock();
 
-  if (!watcher->start(unlocked->root)) {
+  if (!watcher_->start(unlocked->root)) {
     w_log(
         W_LOG_ERR,
         "failed to start root %s, cancelling watch: %s\n",
@@ -66,12 +66,12 @@ void InMemoryView::notifyThread(unlocked_watchman_root* unlocked) {
   while (!stopThreads_) {
     // big number because not all watchers can deal with
     // -1 meaning infinite wait at the moment
-    if (watcher->waitNotify(86400)) {
-      while (watcher->consumeNotify(unlocked->root, localLock)) {
+    if (watcher_->waitNotify(86400)) {
+      while (watcher_->consumeNotify(unlocked->root, localLock)) {
         if (localLock->size() >= WATCHMAN_BATCH_LIMIT) {
           break;
         }
-        if (!watcher->waitNotify(0)) {
+        if (!watcher_->waitNotify(0)) {
           break;
         }
       }

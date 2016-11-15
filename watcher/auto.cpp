@@ -4,7 +4,7 @@
 
 WatcherRegistry::WatcherRegistry(
     const std::string& name,
-    std::function<std::shared_ptr<Watcher>(w_root_t*)> init,
+    std::function<std::shared_ptr<watchman::QueryableView>(w_root_t*)> init,
     int priority)
     : name_(name), init_(init), pri_(priority) {
   registerFactory(*this);
@@ -33,23 +33,24 @@ const WatcherRegistry* WatcherRegistry::getWatcherByName(
 }
 
 // Helper to DRY in the two success paths in the function below
-static inline std::shared_ptr<Watcher> reportWatcher(
+static inline std::shared_ptr<watchman::QueryableView> reportWatcher(
     const std::string& watcherName,
     w_root_t* root,
-    std::shared_ptr<Watcher>&& watcher) {
+    std::shared_ptr<watchman::QueryableView>&& watcher) {
   watchman::log(
       watchman::ERR,
       "root ",
       root->root_path,
       " using watcher mechanism ",
-      watcher->name,
+      watcher->getName(),
       " (",
       watcherName,
       " was requested)\n");
   return std::move(watcher);
 }
 
-std::shared_ptr<Watcher> WatcherRegistry::initWatcher(w_root_t* root) {
+std::shared_ptr<watchman::QueryableView> WatcherRegistry::initWatcher(
+    w_root_t* root) {
   std::string failureReasons;
   std::string watcherName = root->config.getString("watcher", "auto");
 

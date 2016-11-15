@@ -11,6 +11,8 @@
 #include "watchman_query.h"
 #include "watchman_string.h"
 
+struct Watcher;
+
 namespace watchman {
 
 /** Keeps track of the state of the filesystem in-memory. */
@@ -19,10 +21,7 @@ struct InMemoryView : public QueryableView {
   uint32_t getLastAgeOutTickValue() const override;
   time_t getLastAgeOutTimeStamp() const override;
 
-  explicit InMemoryView(
-      const w_string& root_path,
-      CookieSync& cookies,
-      Configuration& config);
+  explicit InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher);
 
   void ageOut(w_perf_t& sample, std::chrono::seconds minAge) override;
 
@@ -61,6 +60,9 @@ struct InMemoryView : public QueryableView {
   void startThreads(w_root_t* root) override;
   void signalThreads() override;
   void clientModeCrawl(unlocked_watchman_root* unlocked);
+
+  const w_string& getName() const override;
+  const std::shared_ptr<Watcher>& getWatcher() const;
 
  private:
   void ageOutFile(
@@ -179,5 +181,6 @@ struct InMemoryView : public QueryableView {
   PendingCollection pending_;
 
   std::atomic<bool> stopThreads_{false};
+  std::shared_ptr<Watcher> watcher_;
 };
 }

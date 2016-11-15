@@ -312,9 +312,7 @@ static void cmd_watch(struct watchman_client* client, const json_ref& args) {
         "error", typed_string_to_json("root was cancelled", W_STRING_UNICODE));
   } else {
     resp.set({{"watch", w_string_to_json(lock.root->root_path)},
-              {"watcher",
-               typed_string_to_json(
-                   lock.root->inner.view->watcher->name, W_STRING_UNICODE)}});
+              {"watcher", w_string_to_json(lock.root->inner.view->getName())}});
   }
   add_root_warnings_to_response(resp, &lock);
   send_and_dispose_response(client, std::move(resp));
@@ -364,8 +362,7 @@ static void cmd_watch_project(
         "error", typed_string_to_json("root was cancelled", W_STRING_UNICODE));
   } else {
     resp.set({{"watch", w_string_to_json(lock.root->root_path)},
-              {"watcher",
-               typed_string_to_json(lock.root->inner.view->watcher->name)}});
+              {"watcher", w_string_to_json(lock.root->inner.view->getName())}});
   }
   add_root_warnings_to_response(resp, &lock);
   if (rel_path_from_watch) {

@@ -195,7 +195,8 @@ void InMemoryView::processPath(
    * The below condition is true for cases 1 and 2 and false for 3 and 4.
    */
   if (w_string_startswith(full_path, cookies_.cookiePrefix())) {
-    bool consider_cookie = (watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)
+    bool consider_cookie =
+        (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)
         ? ((flags & W_PENDING_VIA_NOTIFY) || !lock->root->inner.done_initial)
         : true;
 

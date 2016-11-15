@@ -27,8 +27,8 @@ void InMemoryView::crawler(
   char path[WATCHMAN_NAME_MAX];
   bool stat_all = false;
 
-  if (watcher->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
-    stat_all = watcher->flags & WATCHER_COALESCED_RENAME;
+  if (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
+    stat_all = watcher_->flags & WATCHER_COALESCED_RENAME;
   } else {
     // If the watcher doesn't give us per-file notifications for
     // watched dirs, then we'll end up explicitly tracking them
@@ -48,7 +48,7 @@ void InMemoryView::crawler(
   /* Start watching and open the dir for crawling.
    * Whether we open the dir prior to watching or after is watcher specific,
    * so the operations are rolled together in our abstraction */
-  osdir = watcher->startWatchDir(lock->root, dir, now, path);
+  osdir = watcher_->startWatchDir(lock->root, dir, now, path);
   if (!osdir) {
     markDirDeleted(dir, now, lock->root->inner.ticks, true);
     return;

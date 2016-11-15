@@ -6,6 +6,7 @@
 #include <iterator>
 #include <mutex>
 #include "watchman.h"
+#include "InMemoryView.h"
 
 #if HAVE_FSEVENTS
 
@@ -89,6 +90,16 @@ static struct fse_stream* fse_stream_make(
     w_string& failure_reason);
 static void fse_stream_free(struct fse_stream *fse_stream);
 
+std::shared_ptr<FSEventsWatcher> watcherFromRoot(w_root_t* root) {
+  auto view =
+      std::dynamic_pointer_cast<watchman::InMemoryView>(root->inner.view);
+  if (!view) {
+    return nullptr;
+  }
+
+  return std::dynamic_pointer_cast<FSEventsWatcher>(view->getWatcher());
+}
+
 /** Generate a perf event for the drop */
 static void log_drop_event(w_root_t *root, bool isKernel) {
   w_perf_t sample(isKernel ? "KernelDropped" : "UserDropped");
@@ -110,7 +121,7 @@ static void fse_callback(ConstFSEventStreamRef streamRef,
   auto stream = (fse_stream *)clientCallBackInfo;
   w_root_t *root = stream->root;
   std::deque<watchman_fsevent> items;
-  auto watcher = (FSEventsWatcher*)root->inner.view->watcher.get();
+  auto watcher = watcherFromRoot(root);
 
   unused_parameter(streamRef);
 
@@ -266,7 +277,7 @@ static struct fse_stream* fse_stream_make(
   double latency;
   struct fse_stream *fse_stream = (struct fse_stream*)calloc(1, sizeof(*fse_stream));
   struct stat st;
-  auto watcher = (FSEventsWatcher*)root->inner.view->watcher.get();
+  auto watcher = watcherFromRoot(root);
 
   if (!fse_stream) {
     // Note that w_string_new will terminate the process on OOM
@@ -681,9 +692,7 @@ static void cmd_debug_fsevents_inject_drop(
     return;
   }
 
-  auto watcher =
-      dynamic_cast<FSEventsWatcher*>(unlocked.root->inner.view->watcher.get());
-
+  auto watcher = watcherFromRoot(unlocked.root);
   if (!watcher) {
     send_error_response(client, "root is not using the fsevents watcher");
     w_root_delref(&unlocked);

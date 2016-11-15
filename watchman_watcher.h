@@ -1,10 +1,14 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+namespace watchman {
+class QueryableView;
+struct InMemoryView;
+}
 
 struct Watcher : public std::enable_shared_from_this<Watcher> {
   // What's it called??
-  const char *name;
+  const w_string name;
 
   // if this watcher notifies for individual files contained within
   // a watched dir, false if it only notifies for dirs
@@ -62,15 +66,15 @@ class WatcherRegistry {
  public:
   WatcherRegistry(
       const std::string& name,
-      std::function<std::shared_ptr<Watcher>(w_root_t*)> init,
+      std::function<std::shared_ptr<watchman::QueryableView>(w_root_t*)> init,
       int priority = 0);
 
   /** Locate the appropriate watcher for root and initialize it */
-  static std::shared_ptr<Watcher> initWatcher(w_root_t* root);
+  static std::shared_ptr<watchman::QueryableView> initWatcher(w_root_t* root);
 
  private:
   std::string name_;
-  std::function<std::shared_ptr<Watcher>(w_root_t*)> init_;
+  std::function<std::shared_ptr<watchman::QueryableView>(w_root_t*)> init_;
   int pri_;
 
   static std::unordered_map<std::string, WatcherRegistry>& getRegistry();
@@ -86,6 +90,9 @@ class RegisterWatcher : public WatcherRegistry {
   explicit RegisterWatcher(const std::string& name, int priority = 0)
       : WatcherRegistry(
             name,
-            [](w_root_t* root) { return std::make_shared<WATCHER>(root); },
+            [](w_root_t* root) {
+              return std::make_shared<watchman::InMemoryView>(
+                  root, std::make_shared<WATCHER>(root));
+            },
             priority) {}
 };
