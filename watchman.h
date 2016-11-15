@@ -129,6 +129,16 @@ char** w_argv_copy_from_json(const json_ref& arr, int skip);
 
 const char *get_sock_name(void);
 
+#ifndef _WIN32
+/**
+ * Gets the group struct for the given group name. The return value may point
+ * to a static area so it should be used immediately and not passed to free(3).
+ *
+ * Returns null on failure.
+ */
+const struct group *w_get_group(const char *group_name);
+#endif // ndef WIN32
+
 int w_lstat(const char *path, struct stat *st, bool case_sensitive);
 
 void w_ioprio_set_low(void);

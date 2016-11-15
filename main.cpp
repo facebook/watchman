@@ -682,25 +682,15 @@ static void compute_file_name(char **strp,
       }
 
       if (sock_group_name) {
-        struct group *sock_group;
-        // This explicit errno statement is necessary to distinguish between the
-        // group not existing and an error.
-        errno = 0;
-        sock_group = getgrnam(sock_group_name);
+        const struct group *sock_group = w_get_group(sock_group_name);
         if (!sock_group) {
-          if (errno == 0) {
-            w_log(W_LOG_ERR, "group '%s' does not exist", sock_group_name);
-          } else {
-            w_log(W_LOG_ERR, "getting gid for '%s' failed: %s", sock_group_name,
-                  strerror(errno));
-          }
           ret = 1;
           goto bail;
         }
 
         if (fchown(dir_fd, -1, sock_group->gr_gid) == -1) {
-          w_log(W_LOG_ERR, "setting up group '%s' failed: %s", sock_group_name,
-                strerror(errno));
+          w_log(W_LOG_ERR, "setting up group '%s' failed: %s\n",
+                sock_group_name, strerror(errno));
           ret = 1;
           goto bail;
         }
@@ -711,7 +701,7 @@ static void compute_file_name(char **strp,
       // socket because not all POSIX systems respect permissions on UNIX domain
       // sockets, but all POSIX systems respect permissions on the containing
       // directory.
-      w_log(W_LOG_DBG, "Setting permissions on state dir to 0%o", dir_perms);
+      w_log(W_LOG_DBG, "Setting permissions on state dir to 0%o\n", dir_perms);
       if (fchmod(dir_fd, dir_perms) == -1) {
         w_log(W_LOG_ERR, "fchmod(%s, %#o): %s\n", state_dir, dir_perms,
               strerror(errno));
@@ -751,6 +741,25 @@ static void compute_file_name(char **strp,
 
   *strp = str;
 }
+
+#ifndef _WIN32
+const struct group *w_get_group(const char *group_name) {
+  // This explicit errno statement is necessary to distinguish between the
+  // group not existing and an error.
+  errno = 0;
+  struct group *group = getgrnam(group_name);
+  if (!group) {
+    if (errno == 0) {
+      w_log(W_LOG_ERR, "group '%s' does not exist\n", group_name);
+    } else {
+      w_log(W_LOG_ERR, "getting gid for '%s' failed: %s\n", group_name,
+            strerror(errno));
+    }
+    return nullptr;
+  }
+  return group;
+}
+#endif // ndef _WIN32
 
 static const char *compute_user_name(void) {
   const char *user = get_env_with_fallback("USER", "LOGNAME", NULL);
