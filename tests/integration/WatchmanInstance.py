@@ -121,6 +121,10 @@ class _Instance(object):
         with open(self.cli_log_file_name, 'r') as f:
             return f.read()
 
+    def getServerLogContents(self):
+        with open(self.log_file_name, 'r') as f:
+            return f.read()
+
     def stop(self, kill=True):
         if self.proc:
             if kill:

@@ -385,6 +385,42 @@ static int get_listener_socket(const char *path)
     return -1;
   }
 
+  // Double-check that the socket has the right permissions. This can happen
+  // when the containing directory was created in a previous run, with a group
+  // the user is no longer in.
+  struct stat st;
+  if (lstat(path, &st) == -1) {
+    watchman::log(watchman::ERR, "lstat(", path, "): ", strerror(errno), "\n");
+    close(listener_fd);
+    return -1;
+  }
+
+  // This is for testing only
+  // (test_sock_perms.py:test_user_previously_in_sock_group). Do not document.
+  const char *sock_group_name = cfg_get_string("__sock_file_group", nullptr);
+  if (!sock_group_name) {
+    sock_group_name = cfg_get_string("sock_group", nullptr);
+  }
+
+  if (sock_group_name) {
+    const struct group *sock_group = w_get_group(sock_group_name);
+    if (!sock_group) {
+      close(listener_fd);
+      return -1;
+    }
+    if (st.st_gid != sock_group->gr_gid) {
+      watchman::log(
+        watchman::ERR,
+        "for socket '", path, "', gid ", st.st_gid,
+        " doesn't match expected gid ", sock_group->gr_gid, " (group name ",
+        sock_group_name, "). Ensure that you are still a member of group ",
+        sock_group_name, ".\n");
+      close(listener_fd);
+      return -1;
+    }
+  }
+
+
   if (listen(listener_fd, 200) != 0) {
     w_log(W_LOG_ERR, "listen(%s): %s\n",
         path, strerror(errno));
