@@ -3,7 +3,6 @@ from __future__ import division
 from __future__ import print_function
 # no unicode literals
 
-import unittest
 import os
 import os.path
 import subprocess
@@ -18,6 +17,10 @@ import tempfile
 import TempDir
 import distutils.spawn
 
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 
 WATCHMAN_SRC_DIR = os.environ.get('WATCHMAN_SRC_DIR', os.getcwd())
 THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, 'tests', 'integration')
