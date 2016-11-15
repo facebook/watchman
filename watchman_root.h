@@ -60,7 +60,6 @@ struct watchman_root {
   struct RecrawlInfo {
     /* how many times we've had to recrawl */
     int recrawlCount{0};
-    w_string lastRecrawlReason;
     /* if true, we've decided that we should re-crawl the root
      * for the sake of ensuring consistency */
     bool shouldRecrawl{false};

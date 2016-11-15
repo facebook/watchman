@@ -7,7 +7,16 @@ void watchman_root::scheduleRecrawl(const char* why) {
   auto info = recrawlInfo.wlock();
 
   if (!info->shouldRecrawl) {
-    info->lastRecrawlReason = w_string::build(root_path, ": ", why);
+    if (!config.getBool("suppress_recrawl_warnings", false)) {
+      info->warning = w_string::build(
+          "Recrawled this watch ",
+          ++info->recrawlCount,
+          " times, most recently because:\n",
+          why,
+          "To resolve, please review the information on\n",
+          cfg_get_trouble_url(),
+          "#recrawl");
+    }
 
     watchman::log(
         watchman::ERR, root_path, ": ", why, ": scheduling a tree recrawl\n");

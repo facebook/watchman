@@ -19,48 +19,24 @@ W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON|CMD_POISON_IMMUNE, NULL)
 void add_root_warnings_to_response(
     json_ref& response,
     struct read_locked_watchman_root* lock) {
-  char *str = NULL;
-  char *full = NULL;
   const w_root_t *root = lock->root;
   auto info = lock->root->recrawlInfo.rlock();
 
-  if (!info->lastRecrawlReason && !info->warning) {
+  if (!info->warning) {
     return;
   }
 
-  if (root->config.getBool("suppress_recrawl_warnings", false)) {
-    return;
-  }
-
-  if (info->lastRecrawlReason) {
-    ignore_result(asprintf(
-        &str,
-        "Recrawled this watch %d times, most recently because:\n"
-        "%s\n"
-        "To resolve, please review the information on\n"
-        "%s#recrawl",
-        info->recrawlCount,
-        info->lastRecrawlReason.c_str(),
-        cfg_get_trouble_url()));
-  }
-
-  ignore_result(asprintf(
-      &full,
-      "%s%s" // root->warning
-      "%s\n" // str (last recrawl reason)
-      "To clear this warning, run:\n"
-      "`watchman watch-del %s ; watchman watch-project %s`\n",
-      info->warning ? info->warning.c_str() : "",
-      info->warning && str ? "\n" : "", // newline if we have both strings
-      str ? str : "",
-      root->root_path.c_str(),
-      root->root_path.c_str()));
-
-  if (full) {
-    response.set("warning", typed_string_to_json(full, W_STRING_MIXED));
-  }
-  free(str);
-  free(full);
+  response.set(
+      "warning",
+      w_string_to_json(w_string::build(
+          info->warning,
+          "\n",
+          "To clear this warning, run:\n"
+          "`watchman watch-del ",
+          root->root_path,
+          " ; watchman watch-project ",
+          root->root_path,
+          "`\n")));
 }
 
 bool resolve_root_or_err(
