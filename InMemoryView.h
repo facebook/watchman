@@ -17,9 +17,10 @@ namespace watchman {
 
 /** Keeps track of the state of the filesystem in-memory. */
 struct InMemoryView : public QueryableView {
-  uint32_t getMostRecentTickValue() const override;
+  ClockPosition getMostRecentRootNumberAndTickValue() const override;
   uint32_t getLastAgeOutTickValue() const override;
   time_t getLastAgeOutTimeStamp() const override;
+  w_string getCurrentClockString() const override;
 
   explicit InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher);
 
@@ -81,6 +82,10 @@ struct InMemoryView : public QueryableView {
     std::unordered_map<w_string, std::unique_ptr<file_list_head>> suffixes;
 
     std::unique_ptr<watchman_dir> root_dir;
+    // The most recently observed tick value of an item in the view
+    uint32_t mostRecentTick{1};
+    /* root number */
+    uint32_t rootNumber{0};
 
     explicit view(const w_string& root_path);
 
@@ -196,9 +201,6 @@ struct InMemoryView : public QueryableView {
     std::shared_future<void> future;
   };
   watchman::Synchronized<crawl_state> crawlState_;
-
-  // The most recently observed tick value of an item in the view
-  std::atomic<uint32_t> mostRecentTick_{0};
 
   uint32_t last_age_out_tick{0};
   time_t last_age_out_timestamp{0};

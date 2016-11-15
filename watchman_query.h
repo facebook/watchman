@@ -48,6 +48,8 @@ struct w_query_ctx {
   const watchman_file* file{nullptr};
   w_string wholename;
   struct w_query_since since;
+  // root number, ticks at start of query execution
+  ClockPosition clockAtStartOfQuery;
 
   json_ref resultsArray;
 

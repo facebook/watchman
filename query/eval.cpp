@@ -90,7 +90,10 @@ bool w_query_process_file(
   }
 
   watchman_rule_match match(
-      ctx->root->inner.number, w_query_ctx_get_wholename(ctx), is_new, file);
+      ctx->clockAtStartOfQuery.rootNumber,
+      w_query_ctx_get_wholename(ctx),
+      is_new,
+      file);
 
   json_array_append_new(
       ctx->resultsArray, file_result_to_json(ctx->query->fieldList, match));
@@ -288,8 +291,10 @@ bool w_query_execute_locked(
    * both emit the same file.
    */
 
-  res->root_number = root->inner.number;
-  res->ticks = root->inner.view->getMostRecentTickValue();
+  ctx.clockAtStartOfQuery =
+      root->inner.view->getMostRecentRootNumberAndTickValue();
+  res->root_number = ctx.clockAtStartOfQuery.rootNumber;
+  res->ticks = ctx.clockAtStartOfQuery.ticks;
 
   // Evaluate the cursor for this root
   w_clockspec_eval(root, query->since_spec.get(), &ctx.since);
@@ -327,8 +332,10 @@ bool w_query_execute(
   // Evaluate the cursor for this root
   w_clockspec_eval(root, query->since_spec.get(), &ctx.since);
 
-  res->root_number = ctx.root->inner.number;
-  res->ticks = ctx.root->inner.view->getMostRecentTickValue();
+  ctx.clockAtStartOfQuery =
+      root->inner.view->getMostRecentRootNumberAndTickValue();
+  res->root_number = ctx.clockAtStartOfQuery.rootNumber;
+  res->ticks = ctx.clockAtStartOfQuery.ticks;
 
   return execute_common(&ctx, &sample, res, generator);
 }

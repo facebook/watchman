@@ -37,10 +37,6 @@ bool QueryableView::allFilesGenerator(w_query*, struct w_query_ctx*, int64_t*)
   return false;
 }
 
-uint32_t QueryableView::getMostRecentTickValue() const {
-  return 0;
-}
-
 uint32_t QueryableView::getLastAgeOutTickValue() const {
   return 0;
 }

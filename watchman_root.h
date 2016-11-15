@@ -74,9 +74,6 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
 
   /* --- everything in inner will be reset on w_root_init --- */
   struct Inner {
-    /* root number */
-    uint32_t number{0};
-
     std::shared_ptr<watchman::QueryableView> view;
 
     bool done_initial{0};

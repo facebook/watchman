@@ -16,7 +16,7 @@ python_unittest(
         # We test for this in a test case
         'WATCHMAN_EMPTY_ENV_VAR': '',
         # Uncomment next line to preserve all logs from the test
-        'WATCHMAN_TEST_KEEP': '1',
+        #'WATCHMAN_TEST_KEEP': '1',
     },
     deps=[
       '@/watchman/python/pywatchman:pywatchman',
@@ -31,6 +31,6 @@ python_unittest(
       'serialize_test_cases',
       # we have some pre-buck test runner stuff that makes it cheaper
       # to run our tests in a single bundled invocation, so do that.
-      #'run_as_bundle',
+      'run_as_bundle',
     ],
 )

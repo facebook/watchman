@@ -60,7 +60,6 @@ static void cmd_state_enter(
     struct watchman_client* clientbase,
     const json_ref& args) {
   struct state_arg parsed;
-  char clockbuf[128];
   json_ref response;
   auto client = dynamic_cast<watchman_user_client*>(clientbase);
 
@@ -104,31 +103,24 @@ static void cmd_state_enter(
     client->states[entry->id] = entry.get();
   }
 
-  { // FIXME lock
-    // Sample the clock buf for the subscription PDUs we're going to
-    // send
-    clock_id_string(
-        root->inner.number,
-        root->inner.view->getMostRecentTickValue(),
-        clockbuf,
-        sizeof(clockbuf));
-  }
-
   // We successfully entered the state, this is our response to the
   // state-enter command.  We do this before we send the subscription
   // PDUs in case CLIENT has active subscriptions for this root
   response = make_response();
+
+  auto clock = w_string_to_json(root->inner.view->getCurrentClockString());
+
   response.set({{"root", w_string_to_json(root->root_path)},
                 {"state-enter", w_string_to_json(parsed.name)},
-                {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)}});
+                {"clock", json_ref(clock)}});
   send_and_dispose_response(client, std::move(response));
 
   // Broadcast about the state enter
   {
-    auto payload = json_object(
-        {{"root", w_string_to_json(root->root_path)},
-         {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
-         {"state-enter", w_string_to_json(parsed.name)}});
+    auto payload =
+        json_object({{"root", w_string_to_json(root->root_path)},
+                     {"clock", std::move(clock)},
+                     {"state-enter", w_string_to_json(parsed.name)}});
     if (parsed.metadata) {
       payload.set("metadata", json_ref(parsed.metadata));
     }
@@ -137,26 +129,17 @@ static void cmd_state_enter(
 }
 W_CMD_REG("state-enter", cmd_state_enter, CMD_DAEMON, w_cmd_realpath_root)
 
-static void leave_state(struct watchman_user_client *client,
-    struct watchman_client_state_assertion *assertion,
-    bool abandoned, json_t *metadata, const char *clockbuf) {
-  char buf[128];
-
-  if (!clockbuf) {
-    // FIXME lock
-    clock_id_string(
-        assertion->root->inner.number,
-        assertion->root->inner.view->getMostRecentTickValue(),
-        buf,
-        sizeof(buf));
-    clockbuf = buf;
-  }
-
+static void leave_state(
+    struct watchman_user_client* client,
+    struct watchman_client_state_assertion* assertion,
+    bool abandoned,
+    json_t* metadata) {
   // Broadcast about the state leave
-  auto payload =
-      json_object({{"root", w_string_to_json(assertion->root->root_path)},
-                   {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
-                   {"state-leave", w_string_to_json(assertion->name)}});
+  auto payload = json_object(
+      {{"root", w_string_to_json(assertion->root->root_path)},
+       {"clock",
+        w_string_to_json(assertion->root->inner.view->getCurrentClockString())},
+       {"state-leave", w_string_to_json(assertion->name)}});
   if (metadata) {
     payload.set("metadata", json_ref(metadata));
   }
@@ -194,7 +177,7 @@ void w_client_vacate_states(struct watchman_user_client *client) {
 
     // This will delete the state from client->states and invalidate
     // the iterator.
-    leave_state(client, assertion, true, NULL, NULL);
+    leave_state(client, assertion, true, nullptr);
   }
 }
 
@@ -206,7 +189,6 @@ static void cmd_state_leave(
   // client can delete this assertion, and this function is only executed by
   // the thread that owns this client.
   struct watchman_client_state_assertion *assertion = NULL;
-  char clockbuf[128];
   auto client = dynamic_cast<watchman_user_client*>(clientbase);
   json_ref response;
 
@@ -247,27 +229,18 @@ static void cmd_state_leave(
     }
   }
 
-  { // FIXME: lock
-    // Sample the clock buf for the subscription PDUs we're going to
-    // send
-    clock_id_string(
-        root->inner.number,
-        root->inner.view->getMostRecentTickValue(),
-        clockbuf,
-        sizeof(clockbuf));
-  }
-
   // We're about to successfully leave the state, this is our response to the
   // state-leave command.  We do this before we send the subscription
   // PDUs in case CLIENT has active subscriptions for this root
   response = make_response();
-  response.set({{"root", w_string_to_json(root->root_path)},
-                {"state-leave", w_string_to_json(parsed.name)},
-                {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)}});
+  response.set(
+      {{"root", w_string_to_json(root->root_path)},
+       {"state-leave", w_string_to_json(parsed.name)},
+       {"clock", w_string_to_json(root->inner.view->getCurrentClockString())}});
   send_and_dispose_response(client, std::move(response));
 
   // Notify and exit the state
-  leave_state(client, assertion, false, parsed.metadata, clockbuf);
+  leave_state(client, assertion, false, parsed.metadata);
 }
 W_CMD_REG("state-leave", cmd_state_leave, CMD_DAEMON, w_cmd_realpath_root)
 

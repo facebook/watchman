@@ -212,7 +212,7 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
                   "Unilateral payload for sub ",
                   sub->name,
                   " ",
-                  dumped,
+                  dumped ? dumped : "<<MISSING!!>>",
                   "\n");
               free(dumped);
 

@@ -81,17 +81,16 @@ void watchman_perf_sample::add_root_meta(
   auto meta = json_object(
       {{"path", w_string_to_json(root->root_path)},
        {"recrawl_count", json_integer(root->recrawlInfo.rlock()->recrawlCount)},
-       {"number", json_integer(root->inner.number)},
        {"case_sensitive", json_boolean(root->case_sensitive)}});
 
   // During recrawl, the view may be re-assigned.  Protect against
   // reading a nullptr.
   auto view = root->inner.view;
   if (view) {
-    meta.set({
-        {"watcher", w_string_to_json(root->inner.view->getName())},
-        {"ticks", json_integer(view->getMostRecentTickValue())},
-    });
+    auto position = view->getMostRecentRootNumberAndTickValue();
+    meta.set({{"number", json_integer(position.rootNumber)},
+              {"ticks", json_integer(position.ticks)},
+              {"watcher", w_string_to_json(view->getName())}});
   }
 
   add_meta("root", std::move(meta));

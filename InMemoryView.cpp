@@ -6,10 +6,15 @@
 #include "make_unique.h"
 #include "InMemoryView.h"
 
+// Each root gets a number that uniquely identifies it within the process. This
+// helps avoid confusion if a root is removed and then added again.
+static std::atomic<long> next_root_number{1};
+
 namespace watchman {
 
 InMemoryView::view::view(const w_string& root_path)
-    : root_dir(watchman::make_unique<watchman_dir>(root_path, nullptr)) {}
+    : root_dir(watchman::make_unique<watchman_dir>(root_path, nullptr)),
+      rootNumber(next_root_number++) {}
 
 InMemoryView::InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher)
     : cookies_(root->cookies),
@@ -36,7 +41,7 @@ void InMemoryView::markFileChanged(
   }
 
   file->otime.timestamp = now.tv_sec;
-  file->otime.ticks = mostRecentTick_;
+  file->otime.ticks = view->mostRecentTick;
 
   if (view->latest_file != file) {
     // unlink from list
@@ -229,7 +234,7 @@ watchman_file* InMemoryView::getOrCreateChildFile(
 
   file_ptr = watchman_file::make(file_name, dir);
 
-  file_ptr->ctime.ticks = mostRecentTick_;
+  file_ptr->ctime.ticks = view->mostRecentTick;
   file_ptr->ctime.timestamp = now.tv_sec;
 
   auto suffix = file_name.suffix();
@@ -548,8 +553,19 @@ done:
   return result;
 }
 
-uint32_t InMemoryView::getMostRecentTickValue() const {
-  return mostRecentTick_.load();
+ClockPosition InMemoryView::getMostRecentRootNumberAndTickValue() const {
+  auto view = view_.rlock();
+  return ClockPosition(view->rootNumber, view->mostRecentTick);
+}
+
+w_string InMemoryView::getCurrentClockString() const {
+  auto view = view_.rlock();
+  char clockbuf[128];
+  if (!clock_id_string(
+          view->rootNumber, view->mostRecentTick, clockbuf, sizeof(clockbuf))) {
+    throw std::runtime_error("clock string exceeded clockbuf size");
+  }
+  return w_string(clockbuf, W_STRING_UNICODE);
 }
 
 uint32_t InMemoryView::getLastAgeOutTickValue() const {

@@ -6,10 +6,6 @@
 #include "InMemoryView.h"
 #include "make_unique.h"
 
-// Each root gets a number that uniquely identifies it within the process. This
-// helps avoid confusion if a root is removed and then added again.
-static std::atomic<long> next_root_number{1};
-
 static bool is_case_sensitive_filesystem(const char *path) {
 #ifdef __APPLE__
   return pathconf(path, _PC_CASE_SENSITIVE);
@@ -106,7 +102,6 @@ void watchman_root::tearDown() {
 
 void watchman_root::Inner::init(w_root_t* root) {
   view = WatcherRegistry::initWatcher(root);
-  number = next_root_number++;
 }
 
 watchman_root::watchman_root(const w_string& root_path)

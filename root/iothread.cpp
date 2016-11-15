@@ -42,7 +42,7 @@ void InMemoryView::fullCrawl(
     // Ensure that we observe these files with a new, distinct clock,
     // otherwise a fresh subscription established immediately after a watch
     // can get stuck with an empty view until another change is observed
-    mostRecentTick_++;
+    view->mostRecentTick++;
     gettimeofday(&start, NULL);
     pending_.wlock()->add(root->root_path, start, 0);
     // There is the potential for a subtle race condition here.  The boolean
@@ -68,8 +68,8 @@ void InMemoryView::fullCrawl(
       }
       root->inner.done_initial = true;
     }
-    sample.add_root_meta(root);
   }
+  sample.add_root_meta(root);
 
   if (config_.getBool("iothrottle", false)) {
     w_ioprio_set_normal();
@@ -178,7 +178,7 @@ void InMemoryView::ioThread(const std::shared_ptr<w_root_t>& root) {
         continue;
       }
 
-      mostRecentTick_++;
+      view->mostRecentTick++;
 
       while (processPending(root, view, localPendingLock, false)) {
         ;

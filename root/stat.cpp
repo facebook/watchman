@@ -127,7 +127,7 @@ void InMemoryView::statPath(
     if (!file->exists) {
       /* we're transitioning from deleted to existing,
        * so we're effectively new again */
-      file->ctime.ticks = mostRecentTick_;
+      file->ctime.ticks = view->mostRecentTick;
       file->ctime.timestamp = now.tv_sec;
       /* if a dir was deleted and now exists again, we want
        * to crawl it again */

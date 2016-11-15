@@ -102,6 +102,8 @@ void w_clockspec_eval(
 
   since->is_timestamp = false;
 
+  auto position = root->inner.view->getMostRecentRootNumberAndTickValue();
+
   if (spec->tag == w_cs_named_cursor) {
     w_string cursor = spec->named_cursor.cursor;
 
@@ -121,7 +123,7 @@ void w_clockspec_eval(
 
       // record the current tick value against the cursor so that we use that
       // as the basis for a subsequent query.
-      cursors[cursor] = root->inner.view->getMostRecentTickValue();
+      cursors[cursor] = position.ticks;
     }
 
     w_log(
@@ -135,7 +137,7 @@ void w_clockspec_eval(
   // spec->tag == w_cs_clock
   if (spec->clock.start_time == proc_start_time &&
       spec->clock.pid == proc_pid &&
-      spec->clock.root_number == root->inner.number) {
+      spec->clock.root_number == position.rootNumber) {
     since->clock.is_fresh_instance =
         spec->clock.ticks < root->inner.view->getLastAgeOutTickValue();
     if (since->clock.is_fresh_instance) {
@@ -172,29 +174,12 @@ bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
   return (size_t)res < bufsize;
 }
 
-// Renders the current clock id string to the supplied buffer.
-// Must be called with the root locked. FIXME
-static bool current_clock_id_string(
-    const std::shared_ptr<w_root_t>& root,
-    char* buf,
-    size_t bufsize) {
-  return clock_id_string(
-      root->inner.number,
-      root->inner.view->getMostRecentTickValue(),
-      buf,
-      bufsize);
-}
-
-/* Add the current clock value to the response.
- * must be called with the root locked FIXME */
+/* Add the current clock value to the response */
 void annotate_with_clock(
     const std::shared_ptr<w_root_t>& root,
     json_ref& resp) {
-  char buf[128];
-
-  if (current_clock_id_string(root, buf, sizeof(buf))) {
-    resp.set("clock", typed_string_to_json(buf, W_STRING_UNICODE));
-  }
+  resp.set(
+      "clock", w_string_to_json(root->inner.view->getCurrentClockString()));
 }
 
 /* vim:ts=2:sw=2:et:

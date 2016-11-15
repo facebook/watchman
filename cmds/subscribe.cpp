@@ -54,6 +54,8 @@ void watchman_client_subscription::processSubscription() {
   bool drop = false;
   w_string policy_name;
 
+  auto position = root->inner.view->getMostRecentRootNumberAndTickValue();
+
   watchman::log(
       watchman::DBG,
       "sub=",
@@ -63,10 +65,10 @@ void watchman_client_subscription::processSubscription() {
       ", last=",
       last_sub_tick,
       " pending=",
-      root->inner.view->getMostRecentTickValue(),
+      position.ticks,
       "\n");
 
-  if (last_sub_tick != root->inner.view->getMostRecentTickValue()) {
+  if (last_sub_tick != position.ticks) {
     auto asserted_states = root->asserted_states.rlock();
     if (!asserted_states->empty() && !drop_or_defer.empty()) {
       // There are 1 or more states asserted and this subscription
@@ -101,9 +103,9 @@ void watchman_client_subscription::processSubscription() {
 
     if (drop) {
       // fast-forward over any notifications while in the drop state
-      last_sub_tick = root->inner.view->getMostRecentTickValue();
+      last_sub_tick = position.ticks;
       query->since_spec =
-          w_clockspec_new_clock(root->inner.number, last_sub_tick);
+          w_clockspec_new_clock(position.rootNumber, last_sub_tick);
       watchman::log(
           watchman::DBG,
           "dropping subscription notifications for ",
@@ -138,7 +140,8 @@ void watchman_client_subscription::processSubscription() {
 
     if (executeQuery) {
       w_run_subscription_rules(client.get(), this, root);
-      last_sub_tick = root->inner.view->getMostRecentTickValue();
+      last_sub_tick =
+          position.ticks; // FIXME take this from the subscription results
     }
   } else {
     watchman::log(watchman::DBG, "subscription ", name, " is up to date\n");
@@ -372,7 +375,7 @@ static void cmd_subscribe(
   resp.set("subscribe", json_ref(jname));
 
   add_root_warnings_to_response(resp, root);
-  annotate_with_clock(root, resp);
+  annotate_with_clock(root, resp); // FIXME: take from subscription query
   initial_subscription_results = build_subscription_results(sub.get(), root);
 
   send_and_dispose_response(client, std::move(resp));

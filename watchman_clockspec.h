@@ -8,6 +8,15 @@ struct watchman_clock {
 };
 typedef struct watchman_clock w_clock_t;
 
+struct ClockPosition {
+  uint32_t rootNumber{0};
+  uint32_t ticks{0};
+
+  ClockPosition() = default;
+  ClockPosition(uint32_t rootNumber, uint32_t ticks)
+      : rootNumber(rootNumber), ticks(ticks) {}
+};
+
 enum w_clockspec_tag {
   w_cs_timestamp,
   w_cs_clock,

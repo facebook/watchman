@@ -13,6 +13,7 @@ struct watchman_dir;
 struct watchman_glob_tree;
 
 namespace watchman {
+
 class QueryableView : public std::enable_shared_from_this<QueryableView> {
  public:
   virtual ~QueryableView();
@@ -45,7 +46,8 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
       w_query* query,
       struct w_query_ctx* ctx,
       int64_t* num_walked) const;
-  virtual uint32_t getMostRecentTickValue() const;
+  virtual ClockPosition getMostRecentRootNumberAndTickValue() const = 0;
+  virtual w_string getCurrentClockString() const = 0;
   virtual uint32_t getLastAgeOutTickValue() const;
   virtual time_t getLastAgeOutTimeStamp() const;
   virtual void ageOut(w_perf_t& sample, std::chrono::seconds minAge);
