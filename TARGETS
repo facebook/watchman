@@ -78,12 +78,30 @@ buck_cxx_library(
     ],
 )
 
+cpp_library(
+    name='eden_watcher',
+    supported_platforms_regex='glibc',
+    srcs=[
+      'watcher/eden.cpp',
+    ],
+    deps=[
+      ':headers',
+      ':err',
+      '//eden/fs/service:thrift-cpp2',
+    ],
+    # We use constructors to declare commands rather than maintaining
+    # static tables of things.  Ensure that they don't get stripped
+    # out of the final binary!
+    link_whole=True,
+    compiler_flags=compiler_flags,
+)
+
 # Linux specific watcher module
 cpp_library(
     name='sysdep_watcher',
     supported_platforms_regex='glibc',
     srcs=['watcher/inotify.cpp'],
-    deps=[':headers', ':err'],
+    deps=[':headers', ':err', ':eden_watcher'],
     # We use constructors to declare commands rather than maintaining
     # static tables of things.  Ensure that they don't get stripped
     # out of the final binary!
