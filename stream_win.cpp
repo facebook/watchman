@@ -549,8 +549,7 @@ static bool win_shutdown(w_stm_t stm) {
   return true;
 }
 
-static bool win_peer_is_owner(w_stm_t stm) {
-  unused_parameter(stm);
+static bool win_peer_is_owner(w_stm_t) {
   // TODO: implement this for Windows
   return true;
 }

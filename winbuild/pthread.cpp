@@ -530,9 +530,7 @@ int pthread_attr_init(pthread_attr_t *attr)
   return 0;
 }
 
-int pthread_attr_destroy(pthread_attr_t *attr)
-{
-  unused_parameter(attr);
+int pthread_attr_destroy(pthread_attr_t*) {
   /* No need to do anything */
   return 0;
 }

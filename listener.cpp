@@ -297,10 +297,7 @@ disconnected:
 // This catches SIGUSR1 so we don't terminate.
 // We use this to interrupt blocking syscalls
 // on the worker threads
-static void wakeme(int signo)
-{
-  unused_parameter(signo);
-}
+static void wakeme(int) {}
 
 #if defined(HAVE_KQUEUE) || defined(HAVE_FSEVENTS)
 #ifdef __OpenBSD__

@@ -250,7 +250,6 @@ void WinWatcher::readChangesThread(w_root_t* root) {
 
 bool WinWatcher::start(w_root_t* root) {
   int err;
-  unused_parameter(root);
 
   // Spin up the changes reading thread; it owns a ref on the root
   w_root_addref(root);

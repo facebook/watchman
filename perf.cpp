@@ -102,13 +102,11 @@ void watchman_perf_sample::force_log() {
   will_log = true;
 }
 
-static void *perf_log_thread(void *unused) {
+static void* perf_log_thread(void*) {
   json_ref samples;
   char **envp;
   json_ref perf_cmd;
   int64_t sample_batch;
-
-  unused_parameter(unused);
 
   w_set_thread_name("perflog");
 

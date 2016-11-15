@@ -109,21 +109,19 @@ static void log_drop_event(w_root_t *root, bool isKernel) {
   sample.log();
 }
 
-static void fse_callback(ConstFSEventStreamRef streamRef,
-   void *clientCallBackInfo,
-   size_t numEvents,
-   void *eventPaths,
-   const FSEventStreamEventFlags eventFlags[],
-   const FSEventStreamEventId eventIds[])
-{
+static void fse_callback(
+    ConstFSEventStreamRef,
+    void* clientCallBackInfo,
+    size_t numEvents,
+    void* eventPaths,
+    const FSEventStreamEventFlags eventFlags[],
+    const FSEventStreamEventId eventIds[]) {
   size_t i;
   auto paths = (char**)eventPaths;
   auto stream = (fse_stream *)clientCallBackInfo;
   w_root_t *root = stream->root;
   std::deque<watchman_fsevent> items;
   auto watcher = watcherFromRoot(root);
-
-  unused_parameter(streamRef);
 
   if (!stream->lost_sync) {
     // This is to facilitate testing via debug-fsevents-inject-drop.

@@ -156,9 +156,8 @@ void Log::doLogToStdErr() {
 } // namespace watchman
 
 #ifndef _WIN32
-static void crash_handler(int signo, siginfo_t *si, void *ucontext) {
+static void crash_handler(int signo, siginfo_t* si, void*) {
   const char *reason = "";
-  unused_parameter(ucontext);
   if (si) {
     switch (si->si_signo) {
       case SIGILL:

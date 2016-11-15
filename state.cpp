@@ -20,9 +20,8 @@ static bool need_save = false;
 
 static bool do_state_save(void);
 
-static void *state_saver(void *unused) {
+static void* state_saver(void*) {
   bool do_save;
-  unused_parameter(unused);
 
   w_set_thread_name("statesaver");
 

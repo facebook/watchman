@@ -3,12 +3,10 @@
 
 #include "watchman.h"
 
-int mkdir(const char *path, int mode) {
+int mkdir(const char* path, int) {
   WCHAR *wpath = w_utf8_to_win_unc(path, -1);
   DWORD err;
   BOOL res;
-
-  unused_parameter(mode);
 
   if (!wpath) {
     return -1;

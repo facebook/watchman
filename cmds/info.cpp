@@ -84,9 +84,8 @@ W_CMD_REG("version", cmd_version, CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
 /* list-capabilities */
 static void cmd_list_capabilities(
     struct watchman_client* client,
-    const json_ref& args) {
+    const json_ref&) {
   auto resp = make_response();
-  unused_parameter(args);
 
   resp.set("capabilities", w_capability_get_list());
   send_and_dispose_response(client, std::move(resp));

@@ -22,11 +22,9 @@ class DirNameExpr : public QueryExpr {
       StartsWith startswith)
       : dirname(dirname), depth(depth), startswith(startswith) {}
 
-  bool evaluate(w_query_ctx* ctx, const watchman_file* file) override {
+  bool evaluate(w_query_ctx* ctx, const watchman_file*) override {
     w_string_t* str = w_query_ctx_get_wholename(ctx);
     size_t i;
-
-    unused_parameter(file);
 
     if (str->len <= dirname.size()) {
       // Either it doesn't prefix match, or file name is == dirname.

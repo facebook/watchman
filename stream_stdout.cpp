@@ -4,8 +4,7 @@
 
 static inline int which_fd(w_stm_t stm);
 
-static int stdio_close(w_stm_t stm) {
-  unused_parameter(stm);
+static int stdio_close(w_stm_t) {
   return -1;
 }
 
@@ -17,24 +16,17 @@ static int stdio_write(w_stm_t stm, const void *buf, int size) {
   return write(which_fd(stm), buf, size);
 }
 
-static void stdio_get_events(w_stm_t stm, w_evt_t *readable) {
-  unused_parameter(stm);
-  unused_parameter(readable);
+static void stdio_get_events(w_stm_t, w_evt_t*) {
   w_log(W_LOG_FATAL, "calling get_events on a stdio stm\n");
 }
 
-static void stdio_set_nonb(w_stm_t stm, bool nonb) {
-  unused_parameter(stm);
-  unused_parameter(nonb);
-}
+static void stdio_set_nonb(w_stm_t, bool) {}
 
-static bool stdio_rewind(w_stm_t stm) {
-  unused_parameter(stm);
+static bool stdio_rewind(w_stm_t) {
   return false;
 }
 
-static bool stdio_shutdown(w_stm_t stm) {
-  unused_parameter(stm);
+static bool stdio_shutdown(w_stm_t) {
   return false;
 }
 

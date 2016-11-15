@@ -355,11 +355,9 @@ int w_bser_dump(const bser_ctx_t* ctx, const json_ref& json, void* data) {
   }
 }
 
-static int measure(const char *buffer, size_t size, void *ptr)
-{
+static int measure(const char*, size_t size, void* ptr) {
   auto tot = (json_int_t*)ptr;
   *tot += size;
-  unused_parameter(buffer);
   return 0;
 }
 

@@ -30,11 +30,10 @@ static void timespec_to_timeval(const struct timespec *ts, struct timeval *tv) {
   tv->tv_usec = (long)(ts->tv_nsec / WATCHMAN_NSEC_IN_USEC);
 }
 
-int gettimeofday(struct timeval *tv, void *ignored) {
+int gettimeofday(struct timeval* tv, void*) {
   SYSTEMTIME  system_time;
   FILETIME    file_time;
   struct timespec ts;
-  unused_parameter(ignored);
 
   GetSystemTime( &system_time );
   SystemTimeToFileTime( &system_time, &file_time );

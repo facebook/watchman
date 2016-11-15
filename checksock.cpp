@@ -10,7 +10,7 @@
  * race condition that resulted in multiple instances starting up.
  */
 
-static void *check_my_sock(void *unused) {
+static void* check_my_sock(void*) {
   auto cmd = json_array({typed_string_to_json("get-pid", W_STRING_UNICODE)});
   w_stm_t client = NULL;
   w_jbuffer_t buf;
@@ -18,7 +18,6 @@ static void *check_my_sock(void *unused) {
   json_int_t remote_pid = 0;
   pid_t my_pid = getpid();
 
-  unused_parameter(unused);
   w_set_thread_name("sockcheck");
 
   client = w_stm_connect(get_sock_name(), 6000);
