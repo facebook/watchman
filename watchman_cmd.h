@@ -84,20 +84,17 @@ bool enqueue_response(
     json_ref&& json,
     bool ping);
 
-bool resolve_root_or_err(
+std::shared_ptr<w_root_t> resolve_root_or_err(
     struct watchman_client* client,
     const json_ref& args,
     size_t root_index,
-    bool create,
-    struct unlocked_watchman_root* unlocked);
+    bool create);
 
 json_ref make_response(void);
-void annotate_with_clock(
-    struct read_locked_watchman_root* lock,
-    json_ref& resp);
+void annotate_with_clock(const std::shared_ptr<w_root_t>& root, json_ref& resp);
 void add_root_warnings_to_response(
     json_ref& response,
-    struct read_locked_watchman_root* lock);
+    const std::shared_ptr<w_root_t>& root);
 
 bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
     size_t bufsize);

@@ -5,7 +5,8 @@
 
 #include <vector>
 
-watchman::Synchronized<std::unordered_map<w_string, w_root_t*>> watched_roots;
+watchman::Synchronized<std::unordered_map<w_string, std::shared_ptr<w_root_t>>>
+    watched_roots;
 std::atomic<long> live_roots{0};
 
 bool watchman_root::removeFromWatched() {
@@ -16,9 +17,8 @@ bool watchman_root::removeFromWatched() {
   }
   // it's possible that the root has already been removed and replaced with
   // another, so make sure we're removing the right object
-  if (it->second == this) {
+  if (it->second.get() == this) {
     map->erase(it);
-    w_root_delref_raw(this);
     return true;
   }
   return false;
@@ -32,7 +32,7 @@ bool watchman_root::removeFromWatched() {
 // If multiple watches have the same prefix, it is undefined which one will
 // match.
 char *w_find_enclosing_root(const char *filename, char **relpath) {
-  w_root_t *root = NULL;
+  std::shared_ptr<w_root_t> root;
   w_string name(filename, W_STRING_BYTE);
   char *prefix = NULL;
 
@@ -45,20 +45,19 @@ char *w_find_enclosing_root(const char *filename, char **relpath) {
            is_slash(
                name.data()[root_name.size()]) /* dir container matches */)) {
         root = it.second;
-        w_root_addref(root);
         break;
       }
     }
   }
 
   if (!root) {
-    goto out;
+    return nullptr;
   }
 
   // extract the path portions
   prefix = (char*)malloc(root->root_path.size() + 1);
   if (!prefix) {
-    goto out;
+    return nullptr;
   }
   memcpy(prefix, filename, root->root_path.size());
   prefix[root->root_path.size()] = '\0';
@@ -67,11 +66,6 @@ char *w_find_enclosing_root(const char *filename, char **relpath) {
     *relpath = NULL;
   } else {
     *relpath = strdup(filename + root->root_path.size() + 1);
-  }
-
-out:
-  if (root) {
-    w_root_delref_raw(root);
   }
 
   return prefix;
@@ -86,7 +80,7 @@ json_ref w_root_stop_watch_all(void) {
   // otherwise have held.  Therefore we just loop until the map is
   // empty.
   while (true) {
-    w_root_t* root;
+    std::shared_ptr<w_root_t> root;
 
     {
       auto map = watched_roots.wlock();
@@ -96,12 +90,10 @@ json_ref w_root_stop_watch_all(void) {
 
       auto it = map->begin();
       root = it->second;
-      w_root_addref(root);
     }
 
     root->cancel();
     json_array_append_new(stopped, w_string_to_json(root->root_path));
-    w_root_delref_raw(root);
   }
 
   w_state_save();
@@ -132,17 +124,12 @@ bool w_root_save_state(json_ref& state) {
     auto map = watched_roots.rlock();
     for (const auto& it : *map) {
       auto root = it.second;
-      struct read_locked_watchman_root lock;
-      struct unlocked_watchman_root unlocked = {root};
 
       auto obj = json_object();
 
-      json_object_set_new(
-          obj, "path", w_string_to_json(unlocked.root->root_path));
+      json_object_set_new(obj, "path", w_string_to_json(root->root_path));
 
-      w_root_read_lock(&unlocked, "w_root_save_state", &lock);
-      auto triggers = lock.root->triggerListToJson();
-      w_root_read_unlock(&lock, &unlocked);
+      auto triggers = root->triggerListToJson();
       json_object_set_new(obj, "triggers", std::move(triggers));
 
       json_array_append_new(watched_dirs, std::move(obj));
@@ -185,17 +172,17 @@ bool w_root_load_state(const json_ref& state) {
     const char *filename;
     size_t j;
     char *errmsg = NULL;
-    struct unlocked_watchman_root unlocked;
 
     auto triggers = obj.get_default("triggers");
     filename = json_string_value(json_object_get(obj, "path"));
-    if (!root_resolve(filename, true, &created, &errmsg, &unlocked)) {
+    auto root = root_resolve(filename, true, &created, &errmsg);
+    if (!root) {
       free(errmsg);
       continue;
     }
 
     {
-      auto wlock = unlocked.root->triggers.wlock();
+      auto wlock = root->triggers.wlock();
       auto& map = *wlock;
 
       /* re-create the trigger configuration */
@@ -209,38 +196,38 @@ bool w_root_load_state(const json_ref& state) {
         }
 
         auto cmd = watchman::make_unique<watchman_trigger_command>(
-            unlocked.root, tobj, &errmsg);
+            root, tobj, &errmsg);
         if (errmsg) {
-          w_log(
-              W_LOG_ERR,
-              "loading trigger for %s: %s\n",
-              unlocked.root->root_path.c_str(),
-              errmsg);
+          watchman::log(
+              watchman::ERR,
+              "loading trigger for ",
+              root->root_path,
+              ": ",
+              errmsg,
+              "\n");
           free(errmsg);
           continue;
         }
 
-        cmd->start(unlocked.root);
+        cmd->start(root);
         map[cmd->triggername] = std::move(cmd);
       }
     }
 
     if (created) {
       try {
-        unlocked.root->inner.view->startThreads(unlocked.root);
+        root->inner.view->startThreads(root);
       } catch (const std::exception& e) {
         watchman::log(
             watchman::ERR,
             "root_start(",
-            unlocked.root->root_path,
+            root->root_path,
             ") failed: ",
             e.what(),
             "\n");
-        unlocked.root->cancel();
+        root->cancel();
       }
     }
-
-    w_root_delref(&unlocked);
   }
 
   return true;

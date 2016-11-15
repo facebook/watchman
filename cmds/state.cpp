@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "make_unique.h"
 
 using ms = std::chrono::milliseconds;
 
@@ -51,50 +52,41 @@ static bool parse_state_arg(
 }
 
 watchman_client_state_assertion::watchman_client_state_assertion(
-    w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     const w_string& name)
-    : root(root), name(name), id(0) {
-  w_root_addref(root);
-}
-
-watchman_client_state_assertion::~watchman_client_state_assertion() {
-  w_root_delref_raw(root);
-}
+    : root(root), name(name), id(0) {}
 
 static void cmd_state_enter(
     struct watchman_client* clientbase,
     const json_ref& args) {
   struct state_arg parsed;
-  std::unique_ptr<watchman_client_state_assertion> assertion;
   char clockbuf[128];
   json_ref response;
   auto client = dynamic_cast<watchman_user_client*>(clientbase);
-  struct read_locked_watchman_root lock;
-  struct unlocked_watchman_root unlocked;
 
-  if (!resolve_root_or_err(client, args, 1, true, &unlocked)) {
+  auto root = resolve_root_or_err(client, args, 1, true);
+  if (!root) {
     return;
   }
 
   if (!parse_state_arg(client, args, &parsed)) {
-    goto done;
+    return;
   }
 
-  if (parsed.sync_timeout.count() &&
-      !unlocked.root->syncToNow(parsed.sync_timeout)) {
+  if (parsed.sync_timeout.count() && !root->syncToNow(parsed.sync_timeout)) {
     send_error_response(client, "synchronization failed: %s", strerror(errno));
-    goto done;
+    return;
   }
 
-  assertion.reset(
-      new watchman_client_state_assertion(unlocked.root, parsed.name));
+  auto assertion =
+      watchman::make_unique<watchman_client_state_assertion>(root, parsed.name);
   if (!assertion) {
     send_error_response(client, "out of memory");
-    goto done;
+    return;
   }
 
   {
-    auto wlock = unlocked.root->asserted_states.wlock();
+    auto wlock = root->asserted_states.wlock();
     auto& map = *wlock;
     auto& entry = map[assertion->name];
 
@@ -102,7 +94,7 @@ static void cmd_state_enter(
     if (entry) {
       send_error_response(
           client, "state %s is already asserted", parsed.name.c_str());
-      goto done;
+      return;
     }
     // We're now in this state
     entry = std::move(assertion);
@@ -112,23 +104,21 @@ static void cmd_state_enter(
     client->states[entry->id] = entry.get();
   }
 
-  w_root_read_lock(&unlocked, "state-enter", &lock);
-  {
+  { // FIXME lock
     // Sample the clock buf for the subscription PDUs we're going to
     // send
     clock_id_string(
-        lock.root->inner.number,
-        lock.root->inner.view->getMostRecentTickValue(),
+        root->inner.number,
+        root->inner.view->getMostRecentTickValue(),
         clockbuf,
         sizeof(clockbuf));
   }
-  w_root_read_unlock(&lock, &unlocked);
 
   // We successfully entered the state, this is our response to the
   // state-enter command.  We do this before we send the subscription
   // PDUs in case CLIENT has active subscriptions for this root
   response = make_response();
-  response.set({{"root", w_string_to_json(unlocked.root->root_path)},
+  response.set({{"root", w_string_to_json(root->root_path)},
                 {"state-enter", w_string_to_json(parsed.name)},
                 {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)}});
   send_and_dispose_response(client, std::move(response));
@@ -136,17 +126,14 @@ static void cmd_state_enter(
   // Broadcast about the state enter
   {
     auto payload = json_object(
-        {{"root", w_string_to_json(unlocked.root->root_path)},
+        {{"root", w_string_to_json(root->root_path)},
          {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
          {"state-enter", w_string_to_json(parsed.name)}});
     if (parsed.metadata) {
       payload.set("metadata", json_ref(parsed.metadata));
     }
-    unlocked.root->unilateralResponses->enqueue(std::move(payload));
+    root->unilateralResponses->enqueue(std::move(payload));
   }
-
-done:
-  w_root_delref(&unlocked);
 }
 W_CMD_REG("state-enter", cmd_state_enter, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -154,24 +141,20 @@ static void leave_state(struct watchman_user_client *client,
     struct watchman_client_state_assertion *assertion,
     bool abandoned, json_t *metadata, const char *clockbuf) {
   char buf[128];
-  struct unlocked_watchman_root unlocked = {assertion->root};
 
   if (!clockbuf) {
-    struct read_locked_watchman_root lock;
-    w_root_read_lock(&unlocked, "state-leave", &lock);
+    // FIXME lock
     clock_id_string(
-        lock.root->inner.number,
-        lock.root->inner.view->getMostRecentTickValue(),
+        assertion->root->inner.number,
+        assertion->root->inner.view->getMostRecentTickValue(),
         buf,
         sizeof(buf));
-    w_root_read_unlock(&lock, &unlocked);
-
     clockbuf = buf;
   }
 
   // Broadcast about the state leave
   auto payload =
-      json_object({{"root", w_string_to_json(unlocked.root->root_path)},
+      json_object({{"root", w_string_to_json(assertion->root->root_path)},
                    {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)},
                    {"state-leave", w_string_to_json(assertion->name)}});
   if (metadata) {
@@ -180,7 +163,7 @@ static void leave_state(struct watchman_user_client *client,
   if (abandoned) {
     payload.set("abandoned", json_true());
   }
-  unlocked.root->unilateralResponses->enqueue(std::move(payload));
+  assertion->root->unilateralResponses->enqueue(std::move(payload));
 
   // The erase will delete the assertion pointer, so save these things
   auto id = assertion->id;
@@ -188,7 +171,7 @@ static void leave_state(struct watchman_user_client *client,
 
   // Now remove the state
   {
-    auto map = unlocked.root->asserted_states.wlock();
+    auto map = assertion->root->asserted_states.wlock();
     map->erase(name);
   }
 
@@ -225,33 +208,31 @@ static void cmd_state_leave(
   struct watchman_client_state_assertion *assertion = NULL;
   char clockbuf[128];
   auto client = dynamic_cast<watchman_user_client*>(clientbase);
-  struct read_locked_watchman_root lock;
-  struct unlocked_watchman_root unlocked;
   json_ref response;
 
-  if (!resolve_root_or_err(client, args, 1, true, &unlocked)) {
+  auto root = resolve_root_or_err(client, args, 1, true);
+  if (!root) {
     return;
   }
 
   if (!parse_state_arg(client, args, &parsed)) {
-    goto done;
+    return;
   }
 
-  if (parsed.sync_timeout.count() &&
-      !unlocked.root->syncToNow(parsed.sync_timeout)) {
+  if (parsed.sync_timeout.count() && !root->syncToNow(parsed.sync_timeout)) {
     send_error_response(client, "synchronization failed: %s", strerror(errno));
-    goto done;
+    return;
   }
 
   {
-    auto map = unlocked.root->asserted_states.rlock();
+    auto map = root->asserted_states.rlock();
     // Confirm that this client owns this state
     const auto& it = map->find(parsed.name);
     // If the state is not asserted, we can't leave it
     if (it == map->end()) {
       send_error_response(
           client, "state %s is not asserted", parsed.name.c_str());
-      goto done;
+      return;
     }
 
     assertion = it->second.get();
@@ -262,36 +243,31 @@ static void cmd_state_leave(
           client,
           "state %s was not asserted by this session",
           parsed.name.c_str());
-      goto done;
+      return;
     }
   }
 
-  w_root_read_lock(&unlocked, "state-leave", &lock);
-  {
+  { // FIXME: lock
     // Sample the clock buf for the subscription PDUs we're going to
     // send
     clock_id_string(
-        lock.root->inner.number,
-        lock.root->inner.view->getMostRecentTickValue(),
+        root->inner.number,
+        root->inner.view->getMostRecentTickValue(),
         clockbuf,
         sizeof(clockbuf));
   }
-  w_root_read_unlock(&lock, &unlocked);
 
   // We're about to successfully leave the state, this is our response to the
   // state-leave command.  We do this before we send the subscription
   // PDUs in case CLIENT has active subscriptions for this root
   response = make_response();
-  response.set({{"root", w_string_to_json(unlocked.root->root_path)},
+  response.set({{"root", w_string_to_json(root->root_path)},
                 {"state-leave", w_string_to_json(parsed.name)},
                 {"clock", typed_string_to_json(clockbuf, W_STRING_UNICODE)}});
   send_and_dispose_response(client, std::move(response));
 
   // Notify and exit the state
   leave_state(client, assertion, false, parsed.metadata, clockbuf);
-
-done:
-  w_root_delref(&unlocked);
 }
 W_CMD_REG("state-leave", cmd_state_leave, CMD_DAEMON, w_cmd_realpath_root)
 

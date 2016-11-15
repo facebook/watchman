@@ -6,7 +6,7 @@
 
 namespace watchman {
 void InMemoryView::statPath(
-    read_locked_watchman_root* lock,
+    const std::shared_ptr<w_root_t>& root,
     SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
     const w_string& full_path,
@@ -18,7 +18,6 @@ void InMemoryView::statPath(
   char path[WATCHMAN_NAME_MAX];
   bool recursive = flags & W_PENDING_RECURSIVE;
   bool via_notify = flags & W_PENDING_VIA_NOTIFY;
-  const w_root_t* root = lock->root;
 
   if (root->ignore.isIgnoreDir(full_path)) {
     w_log(
@@ -169,9 +168,7 @@ void InMemoryView::statPath(
         file->symlink_target = new_symlink_target;
 
         if (symlink_changed && root->config.getBool("watch_symlinks", false)) {
-          const_cast<w_root_t*>(root)
-              ->inner.pending_symlink_targets.wlock()
-              ->add(full_path, now, 0);
+          root->inner.pending_symlink_targets.wlock()->add(full_path, now, 0);
         }
       }
     } else {

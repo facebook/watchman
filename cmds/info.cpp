@@ -108,20 +108,20 @@ static void cmd_get_config(
     struct watchman_client* client,
     const json_ref& args) {
   json_ref config;
-  struct unlocked_watchman_root unlocked;
 
   if (json_array_size(args) != 2) {
     send_error_response(client, "wrong number of arguments for 'get-config'");
     return;
   }
 
-  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
+  auto root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
     return;
   }
 
   auto resp = make_response();
 
-  config = unlocked.root->config_file;
+  config = root->config_file;
 
   if (!config) {
     config = json_object();
@@ -129,7 +129,6 @@ static void cmd_get_config(
 
   resp.set("config", std::move(config));
   send_and_dispose_response(client, std::move(resp));
-  w_root_delref(&unlocked);
 }
 W_CMD_REG("get-config", cmd_get_config, CMD_DAEMON, w_cmd_realpath_root)
 

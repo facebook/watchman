@@ -57,11 +57,12 @@ struct InMemoryView : public QueryableView {
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override;
 
-  std::shared_future<void> waitUntilReadyToQuery(w_root_t* root) override;
+  std::shared_future<void> waitUntilReadyToQuery(
+      const std::shared_ptr<w_root_t>& root) override;
 
-  void startThreads(w_root_t* root) override;
+  void startThreads(const std::shared_ptr<w_root_t>& root) override;
   void signalThreads() override;
-  void clientModeCrawl(unlocked_watchman_root* unlocked);
+  void clientModeCrawl(const std::shared_ptr<w_root_t>& root);
 
   const w_string& getName() const override;
   const std::shared_ptr<Watcher>& getWatcher() const;
@@ -93,12 +94,12 @@ struct InMemoryView : public QueryableView {
 
   // Consume entries from pending and apply them to the InMemoryView
   bool processPending(
-      write_locked_watchman_root* lock,
+      const std::shared_ptr<w_root_t>& root,
       SyncView::LockedPtr& view,
       PendingCollection::LockedPtr& pending,
       bool pullFromRoot = false);
   void processPath(
-      write_locked_watchman_root* lock,
+      const std::shared_ptr<w_root_t>& root,
       SyncView::LockedPtr& view,
       PendingCollection::LockedPtr& coll,
       const w_string& full_path,
@@ -156,20 +157,20 @@ struct InMemoryView : public QueryableView {
       const char* dir_name,
       uint32_t dir_name_len) const;
   void crawler(
-      write_locked_watchman_root* lock,
+      const std::shared_ptr<w_root_t>& root,
       SyncView::LockedPtr& view,
       PendingCollection::LockedPtr& coll,
       const w_string& dir_name,
       struct timeval now,
       bool recursive);
-  void notifyThread(unlocked_watchman_root* unlocked);
-  void ioThread(unlocked_watchman_root* unlocked);
-  void handleShouldRecrawl(unlocked_watchman_root* unlocked);
+  void notifyThread(const std::shared_ptr<w_root_t>& root);
+  void ioThread(const std::shared_ptr<w_root_t>& root);
+  void handleShouldRecrawl(const std::shared_ptr<w_root_t>& root);
   void fullCrawl(
-      unlocked_watchman_root* unlocked,
+      const std::shared_ptr<w_root_t>& root,
       PendingCollection::LockedPtr& pending);
   void statPath(
-      read_locked_watchman_root* lock,
+      const std::shared_ptr<w_root_t>& root,
       SyncView::LockedPtr& view,
       PendingCollection::LockedPtr& coll,
       const w_string& full_path,

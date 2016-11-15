@@ -25,16 +25,10 @@ constexpr std::chrono::milliseconds DEFAULT_QUERY_SYNC_MS(60000);
 
 struct watchman_client_state_assertion;
 
-struct watchman_root {
-  std::atomic<long> refcnt{1};
-
+struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   /* path to root */
   w_string root_path;
   bool case_sensitive{false};
-
-  /* our locking granularity is per-root */
-  pthread_rwlock_t lock;
-  const char *lock_reason{nullptr};
 
   /* map of rule id => struct watchman_trigger_command */
   watchman::Synchronized<
@@ -131,98 +125,33 @@ struct watchman_root {
   void applyIgnoreConfiguration();
 };
 
-struct write_locked_watchman_root {
-  w_root_t *root;
-};
+std::shared_ptr<w_root_t>
+w_root_resolve(const char* path, bool auto_watch, char** errmsg);
 
-struct read_locked_watchman_root {
-  const w_root_t *root;
-};
-
-/** Massage a write lock into a read lock.
- * This is suitable for passing a write lock to functions that want a
- * read lock.  It works by simply casting the address of the write lock
- * pointer to a read lock pointer.  Casting in this direction is fine,
- * but not casting in the opposite direction.
- * This is safe for a couple of reasons:
- *
- *  1. The read and write lock holders are binary compatible with each
- *     other; they both simply hold a root pointer.
- *  2. The underlying unlock function pthread_rwlock_unlock works regardless
- *     of the read-ness or write-ness of the lock, even though we have
- *     a separate read and write unlock functions.
- *  3. We're careful to pass a pointer to the existing lock instance
- *     around rather than copying it around; that way don't lose track of
- *     the fact that we unlocked the root.
- */
-static inline struct read_locked_watchman_root *
-w_root_read_lock_from_write(struct write_locked_watchman_root *lock) {
-  return (struct read_locked_watchman_root*)lock;
-}
-
-struct unlocked_watchman_root {
-  w_root_t *root;
-};
-
-bool w_root_resolve(
-    const char* path,
-    bool auto_watch,
-    char** errmsg,
-    struct unlocked_watchman_root* unlocked);
-bool w_root_resolve_for_client_mode(
+std::shared_ptr<w_root_t> w_root_resolve_for_client_mode(
     const char* filename,
-    char** errmsg,
-    struct unlocked_watchman_root* unlocked);
+    char** errmsg);
+
 char* w_find_enclosing_root(const char* filename, char** relpath);
 
 void w_root_free_watched_roots(void);
 json_ref w_root_stop_watch_all(void);
 void w_root_reap(void);
-void w_root_delref(struct unlocked_watchman_root* unlocked);
-void w_root_delref_raw(w_root_t* root);
-void w_root_addref(w_root_t* root);
 
-void w_root_lock(
-    struct unlocked_watchman_root* unlocked,
-    const char* purpose,
-    struct write_locked_watchman_root* locked);
-bool w_root_lock_with_timeout(
-    struct unlocked_watchman_root* unlocked,
-    const char* purpose,
-    int timeoutms,
-    struct write_locked_watchman_root* locked);
-void w_root_unlock(
-    struct write_locked_watchman_root* locked,
-    struct unlocked_watchman_root* unlocked);
-
-void w_root_read_lock(
-    struct unlocked_watchman_root* unlocked,
-    const char* purpose,
-    struct read_locked_watchman_root* locked);
-bool w_root_read_lock_with_timeout(
-    struct unlocked_watchman_root* unlocked,
-    const char* purpose,
-    int timeoutms,
-    struct read_locked_watchman_root* locked);
-void w_root_read_unlock(
-    struct read_locked_watchman_root* locked,
-    struct unlocked_watchman_root* unlocked);
-
-void process_triggers(struct read_locked_watchman_root* lock);
 bool did_file_change(struct watchman_stat *saved, struct watchman_stat *fresh);
 void struct_stat_to_watchman_stat(const struct stat *st,
                                   struct watchman_stat *target);
 extern std::atomic<long> live_roots;
 
-extern watchman::Synchronized<std::unordered_map<w_string, w_root_t*>>
+extern watchman::Synchronized<
+    std::unordered_map<w_string, std::shared_ptr<w_root_t>>>
     watched_roots;
 
-bool root_resolve(
+std::shared_ptr<w_root_t> root_resolve(
     const char* filename,
     bool auto_watch,
     bool* created,
-    char** errmsg,
-    struct unlocked_watchman_root* unlocked);
+    char** errmsg);
 
 void set_poison_state(
     const w_string& dir,
@@ -232,7 +161,7 @@ void set_poison_state(
     const char* reason);
 
 void handle_open_errno(
-    w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* syscall,

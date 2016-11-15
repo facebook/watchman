@@ -102,26 +102,28 @@ static bool check_allowed_fs(const char *filename, char **errmsg) {
   return true;
 }
 
-bool root_resolve(const char *filename, bool auto_watch, bool *created,
-                  char **errmsg, struct unlocked_watchman_root *unlocked) {
-  struct watchman_root* root = nullptr;
+std::shared_ptr<w_root_t> root_resolve(
+    const char* filename,
+    bool auto_watch,
+    bool* created,
+    char** errmsg) {
   char *watch_path;
   int realpath_err;
+  std::shared_ptr<w_root_t> root;
 
   *created = false;
-  unlocked->root = NULL;
 
   // Sanity check that the path is absolute
   if (!w_is_path_absolute_cstr(filename)) {
     ignore_result(asprintf(errmsg, "path \"%s\" must be absolute", filename));
     w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
-    return false;
+    return nullptr;
   }
 
   if (!strcmp(filename, "/")) {
     ignore_result(asprintf(errmsg, "cannot watch \"/\""));
     w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
-    return false;
+    return nullptr;
   }
 
   watch_path = w_realpath(filename);
@@ -138,7 +140,6 @@ bool root_resolve(const char *filename, bool auto_watch, bool *created,
     const auto& it = map->find(root_str);
     if (it != map->end()) {
       root = it->second;
-      w_root_addref(root);
     }
   }
 
@@ -147,7 +148,7 @@ bool root_resolve(const char *filename, bool auto_watch, bool *created,
     ignore_result(asprintf(errmsg,
           "realpath(%s) -> %s", filename, strerror(realpath_err)));
     w_log(W_LOG_ERR, "resolve_root: %s\n", *errmsg);
-    return false;
+    return nullptr;
   }
 
   if (root || !auto_watch) {
@@ -161,22 +162,20 @@ bool root_resolve(const char *filename, bool auto_watch, bool *created,
     }
 
     if (!root) {
-      return false;
+      return nullptr;
     }
 
     // Treat this as new activity for aging purposes; this roughly maps
     // to a client querying something about the root and should extend
     // the lifetime of the root
 
-    unlocked->root = root;
     // Note that this write potentially races with the read in consider_reap
     // but we're "OK" with it because the latter is performed under a write
     // lock and the worst case side effect is that we (safely) decide to reap
     // at the same instant that a new command comes in.  The reap intervals
     // are typically on the order of days.
-    time(&unlocked->root->inner.last_cmd_timestamp);
-    // caller owns a ref
-    return true;
+    time(&root->inner.last_cmd_timestamp);
+    return root;
   }
 
   w_log(W_LOG_DBG, "Want to watch %s -> %s\n", filename, watch_path);
@@ -186,7 +185,7 @@ bool root_resolve(const char *filename, bool auto_watch, bool *created,
     if (watch_path != filename) {
       free(watch_path);
     }
-    return false;
+    return nullptr;
   }
 
   if (!root_check_restrict(watch_path)) {
@@ -199,15 +198,15 @@ bool root_resolve(const char *filename, bool auto_watch, bool *created,
     if (watch_path != filename) {
       free(watch_path);
     }
-    return false;
+    return nullptr;
   }
 
   // created with 1 ref
   try {
-    root = new w_root_t(root_str);
+    root = std::make_shared<w_root_t>(root_str);
   } catch (const std::exception& e) {
+    watchman::log(watchman::ERR, "while making a new root: ", e.what());
     *errmsg = strdup(e.what());
-    root = nullptr;
   }
 
   if (watch_path != filename) {
@@ -215,7 +214,7 @@ bool root_resolve(const char *filename, bool auto_watch, bool *created,
   }
 
   if (!root) {
-    return false;
+    return nullptr;
   }
 
   {
@@ -224,65 +223,58 @@ bool root_resolve(const char *filename, bool auto_watch, bool *created,
     auto& existing = map[root->root_path];
     if (existing) {
       // Someone beat us in this race
-      w_root_addref(existing);
-      w_root_delref_raw(root);
       root = existing;
       *created = false;
     } else {
       existing = root;
-      // map owns a ref
-      w_root_addref(root);
       *created = true;
     }
   }
 
-  // caller owns 1 ref
-  unlocked->root = root;
-  return true;
+  return root;
 }
 
-bool w_root_resolve(const char *filename, bool auto_watch, char **errmsg,
-                    struct unlocked_watchman_root *unlocked) {
+std::shared_ptr<w_root_t>
+w_root_resolve(const char* filename, bool auto_watch, char** errmsg) {
   bool created = false;
-  if (!root_resolve(filename, auto_watch, &created, errmsg, unlocked)) {
-    return false;
-  }
+  auto root = root_resolve(filename, auto_watch, &created, errmsg);
+
   if (created) {
     try {
-      unlocked->root->inner.view->startThreads(unlocked->root);
+      root->inner.view->startThreads(root);
     } catch (const std::exception& e) {
+      watchman::log(
+          watchman::ERR,
+          "w_root_resolve, while calling startThreads: ",
+          e.what());
       *errmsg = strdup(e.what());
-      unlocked->root->cancel();
-      w_root_delref(unlocked);
-      return false;
+      root->cancel();
+      return nullptr;
     }
     w_state_save();
   }
-  return true;
+  return root;
 }
 
-bool w_root_resolve_for_client_mode(const char *filename, char **errmsg,
-                                    struct unlocked_watchman_root *unlocked) {
+std::shared_ptr<w_root_t> w_root_resolve_for_client_mode(
+    const char* filename,
+    char** errmsg) {
   bool created = false;
-
-  if (!root_resolve(filename, true, &created, errmsg, unlocked)) {
-    return false;
-  }
+  auto root = root_resolve(filename, true, &created, errmsg);
 
   if (created) {
-    auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(
-        unlocked->root->inner.view);
+    auto view =
+        std::dynamic_pointer_cast<watchman::InMemoryView>(root->inner.view);
     if (!view) {
       *errmsg = strdup("client mode not available");
-      return false;
+      return nullptr;
     }
 
     /* force a walk now */
-    view->clientModeCrawl(unlocked);
+    view->clientModeCrawl(root);
   }
-  return true;
+  return root;
 }
-
 
 /* vim:ts=2:sw=2:et:
  */

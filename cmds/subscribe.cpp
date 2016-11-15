@@ -4,8 +4,9 @@
 #include "watchman.h"
 
 watchman_client_subscription::watchman_client_subscription(
+    const std::shared_ptr<w_root_t>& root,
     std::weak_ptr<watchman_client> client)
-    : weakClient(client) {}
+    : root(root), weakClient(client) {}
 
 std::shared_ptr<watchman_user_client>
 watchman_client_subscription::lockClient() {
@@ -21,7 +22,6 @@ watchman_client_subscription::~watchman_client_subscription() {
   if (client) {
     client->unsubByName(name);
   }
-  w_root_delref(&unlocked);
 }
 
 bool watchman_user_client::unsubByName(const w_string& name) {
@@ -39,11 +39,9 @@ bool watchman_user_client::unsubByName(const w_string& name) {
 static void w_run_subscription_rules(
     struct watchman_user_client* client,
     struct watchman_client_subscription* sub,
-    struct read_locked_watchman_root* lock);
+    const std::shared_ptr<w_root_t>& root);
 
 void watchman_client_subscription::processSubscription() {
-  read_locked_watchman_root lock;
-
   auto client = lockClient();
   if (!client) {
     watchman::log(
@@ -51,8 +49,6 @@ void watchman_client_subscription::processSubscription() {
         "encountered a vacated client while running subscription rules\n");
     return;
   }
-
-  w_root_read_lock(&unlocked, "subscription query", &lock);
 
   bool defer = false;
   bool drop = false;
@@ -67,11 +63,11 @@ void watchman_client_subscription::processSubscription() {
       ", last=",
       last_sub_tick,
       " pending=",
-      lock.root->inner.view->getMostRecentTickValue(),
+      root->inner.view->getMostRecentTickValue(),
       "\n");
 
-  if (last_sub_tick != lock.root->inner.view->getMostRecentTickValue()) {
-    auto asserted_states = lock.root->asserted_states.rlock();
+  if (last_sub_tick != root->inner.view->getMostRecentTickValue()) {
+    auto asserted_states = root->asserted_states.rlock();
     if (!asserted_states->empty() && !drop_or_defer.empty()) {
       // There are 1 or more states asserted and this subscription
       // has some policy for states.  Figure out what we should do.
@@ -105,9 +101,9 @@ void watchman_client_subscription::processSubscription() {
 
     if (drop) {
       // fast-forward over any notifications while in the drop state
-      last_sub_tick = lock.root->inner.view->getMostRecentTickValue();
+      last_sub_tick = root->inner.view->getMostRecentTickValue();
       query->since_spec =
-          w_clockspec_new_clock(lock.root->inner.number, last_sub_tick);
+          w_clockspec_new_clock(root->inner.number, last_sub_tick);
       watchman::log(
           watchman::DBG,
           "dropping subscription notifications for ",
@@ -131,7 +127,7 @@ void watchman_client_subscription::processSubscription() {
       executeQuery = false;
     }
 
-    if (vcs_defer && lock.root->inner.view->isVCSOperationInProgress()) {
+    if (vcs_defer && root->inner.view->isVCSOperationInProgress()) {
       watchman::log(
           watchman::DBG,
           "deferring subscription notifications for ",
@@ -141,14 +137,12 @@ void watchman_client_subscription::processSubscription() {
     }
 
     if (executeQuery) {
-      w_run_subscription_rules(client.get(), this, &lock);
-      last_sub_tick = lock.root->inner.view->getMostRecentTickValue();
+      w_run_subscription_rules(client.get(), this, root);
+      last_sub_tick = root->inner.view->getMostRecentTickValue();
     }
   } else {
     watchman::log(watchman::DBG, "subscription ", name, " is up to date\n");
   }
-
-  w_root_read_unlock(&lock, &unlocked);
 }
 
 static void update_subscription_ticks(struct watchman_client_subscription *sub,
@@ -159,7 +153,7 @@ static void update_subscription_ticks(struct watchman_client_subscription *sub,
 
 static json_ref build_subscription_results(
     struct watchman_client_subscription* sub,
-    struct read_locked_watchman_root* lock) {
+    const std::shared_ptr<w_root_t>& root) {
   w_query_res res;
   char clockbuf[128];
   auto since_spec = sub->query->since_spec.get();
@@ -184,10 +178,10 @@ static json_ref build_subscription_results(
   // could be legitimately blocked by something else.  That means that we
   // can use a short lock_timeout
   sub->query->lock_timeout =
-      uint32_t(lock->root->config.getInt("subscription_lock_timeout_ms", 100));
+      uint32_t(root->config.getInt("subscription_lock_timeout_ms", 100));
   w_log(W_LOG_DBG, "running subscription %s %p\n", sub->name.c_str(), sub);
 
-  if (!w_query_execute_locked(sub->query.get(), lock, &res, time_generator)) {
+  if (!w_query_execute_locked(sub->query.get(), root, &res, time_generator)) {
     w_log(
         W_LOG_ERR,
         "error running subscription %s query: %s",
@@ -224,7 +218,7 @@ static json_ref build_subscription_results(
 
   response.set({{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
                 {"files", std::move(res.resultsArray)},
-                {"root", w_string_to_json(lock->root->root_path)},
+                {"root", w_string_to_json(root->root_path)},
                 {"subscription", w_string_to_json(sub->name)},
                 {"unilateral", json_true()}});
 
@@ -234,14 +228,14 @@ static json_ref build_subscription_results(
 static void w_run_subscription_rules(
     struct watchman_user_client* client,
     struct watchman_client_subscription* sub,
-    struct read_locked_watchman_root* lock) {
-  auto response = build_subscription_results(sub, lock);
+    const std::shared_ptr<w_root_t>& root) {
+  auto response = build_subscription_results(sub, root);
 
   if (!response) {
     return;
   }
 
-  add_root_warnings_to_response(response, lock);
+  add_root_warnings_to_response(response, root);
 
   client->enqueueResponse(std::move(response), false);
 }
@@ -255,9 +249,9 @@ static void cmd_unsubscribe(
   bool deleted{false};
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
-  struct unlocked_watchman_root unlocked;
 
-  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
+  auto root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
     return;
   }
 
@@ -266,7 +260,6 @@ static void cmd_unsubscribe(
   if (!name) {
     send_error_response(
         client, "expected 2nd parameter to be subscription name");
-    w_root_delref(&unlocked);
     return;
   }
 
@@ -278,7 +271,6 @@ static void cmd_unsubscribe(
             {"deleted", json_boolean(deleted)}});
 
   send_and_dispose_response(client, std::move(resp));
-  w_root_delref(&unlocked);
 }
 W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
           w_cmd_realpath_root)
@@ -300,15 +292,14 @@ static void cmd_subscribe(
   json_ref drop_list;
   struct watchman_user_client *client =
       (struct watchman_user_client *)clientbase;
-  struct unlocked_watchman_root unlocked;
-  struct read_locked_watchman_root lock;
 
   if (json_array_size(args) != 4) {
     send_error_response(client, "wrong number of arguments for subscribe");
     return;
   }
 
-  if (!resolve_root_or_err(client, args, 1, true, &unlocked)) {
+  auto root = resolve_root_or_err(client, args, 1, true);
+  if (!root) {
     return;
   }
 
@@ -316,36 +307,32 @@ static void cmd_subscribe(
   if (!json_is_string(jname)) {
     send_error_response(
         client, "expected 2nd parameter to be subscription name");
-    goto done;
+    return;
   }
 
   query_spec = args.at(3);
 
-  query = w_query_parse(unlocked.root, query_spec, &errmsg);
+  query = w_query_parse(root, query_spec, &errmsg);
   if (!query) {
     send_error_response(client, "failed to parse query: %s", errmsg);
     free(errmsg);
-    goto done;
+    return;
   }
 
   defer_list = query_spec.get_default("defer");
   if (defer_list && !json_is_array(defer_list)) {
     send_error_response(client, "defer field must be an array of strings");
-    goto done;
+    return;
   }
 
   drop_list = query_spec.get_default("drop");
   if (drop_list && !json_is_array(drop_list)) {
     send_error_response(client, "drop field must be an array of strings");
-    goto done;
+    return;
   }
 
   sub = std::make_shared<watchman_client_subscription>(
-      client->shared_from_this());
-  if (!sub) {
-    send_error_response(client, "no memory!");
-    goto done;
-  }
+      root, client->shared_from_this());
 
   sub->name = json_to_w_string(jname);
   sub->query = query;
@@ -370,14 +357,11 @@ static void cmd_subscribe(
     }
   }
 
-  sub->unlocked.root = unlocked.root;
-  w_root_addref(sub->unlocked.root);
-
   // Connect the root to our subscription
   {
     auto clientRef = client->shared_from_this();
     client->unilateralSub.insert(std::make_pair(
-        sub, unlocked.root->unilateralResponses->subscribe([clientRef, sub]() {
+        sub, root->unilateralResponses->subscribe([clientRef, sub]() {
           w_event_set(clientRef->ping);
         })));
   }
@@ -387,19 +371,14 @@ static void cmd_subscribe(
   resp = make_response();
   resp.set("subscribe", json_ref(jname));
 
-  w_root_read_lock(&unlocked, "initial subscription query", &lock);
-
-  add_root_warnings_to_response(resp, &lock);
-  annotate_with_clock(&lock, resp);
-  initial_subscription_results = build_subscription_results(sub.get(), &lock);
-  w_root_read_unlock(&lock, &unlocked);
+  add_root_warnings_to_response(resp, root);
+  annotate_with_clock(root, resp);
+  initial_subscription_results = build_subscription_results(sub.get(), root);
 
   send_and_dispose_response(client, std::move(resp));
   if (initial_subscription_results) {
     send_and_dispose_response(client, std::move(initial_subscription_results));
   }
-done:
-  w_root_delref(&unlocked);
 }
 W_CMD_REG("subscribe", cmd_subscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
           w_cmd_realpath_root)

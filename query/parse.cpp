@@ -175,8 +175,10 @@ static bool parse_paths(w_query* res, const json_ref& query) {
 
 W_CAP_REG("relative_root")
 
-static bool
-parse_relative_root(const w_root_t* root, w_query* res, const json_ref& query) {
+static bool parse_relative_root(
+    const std::shared_ptr<w_root_t>& root,
+    w_query* res,
+    const json_ref& query) {
   auto relative_root = query.get_default("relative_root");
   if (!relative_root) {
     return true;
@@ -277,7 +279,7 @@ static bool parse_empty_on_fresh_instance(w_query* res, const json_ref& query) {
 
 static bool parse_case_sensitive(
     w_query* res,
-    const w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     const json_ref& query) {
   int value = root->case_sensitive;
 
@@ -290,8 +292,10 @@ static bool parse_case_sensitive(
   return true;
 }
 
-std::shared_ptr<w_query>
-w_query_parse(const w_root_t* root, const json_ref& query, char** errmsg) {
+std::shared_ptr<w_query> w_query_parse(
+    const std::shared_ptr<w_root_t>& root,
+    const json_ref& query,
+    char** errmsg) {
   auto result = std::make_shared<w_query>();
   auto res = result.get();
 
@@ -392,7 +396,7 @@ bool w_query_legacy_field_list(w_query_field_list* flist) {
 // delegate to the main parser.
 // We build a big anyof expression
 std::shared_ptr<w_query> w_query_parse_legacy(
-    const w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     const json_ref& args,
     char** errmsg,
     int start,

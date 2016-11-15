@@ -60,12 +60,13 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   bool isVCSOperationInProgress() const;
 
   // Start up any helper threads
-  virtual void startThreads(w_root_t* root);
+  virtual void startThreads(const std::shared_ptr<w_root_t>& root);
   // Request that helper threads shutdown (but does not join them)
   virtual void signalThreads();
 
   virtual const w_string& getName() const = 0;
 
-  virtual std::shared_future<void> waitUntilReadyToQuery(w_root_t* root) = 0;
+  virtual std::shared_future<void> waitUntilReadyToQuery(
+      const std::shared_ptr<w_root_t>& root) = 0;
 };
 }

@@ -83,7 +83,7 @@ std::unique_ptr<w_clockspec> w_clockspec_parse(const json_ref& value) {
 // must be called with the root locked
 // spec can be null, in which case a fresh instance is assumed
 void w_clockspec_eval(
-    struct read_locked_watchman_root* lock,
+    const std::shared_ptr<w_root_t>& root,
     const struct w_clockspec* spec,
     struct w_query_since* since) {
   if (spec == NULL) {
@@ -106,10 +106,7 @@ void w_clockspec_eval(
     w_string cursor = spec->named_cursor.cursor;
 
     {
-      // this const_cast is horrible but don't worry, it's just
-      // transitional until we eliminate write_locked and read_locked
-      // references to w_root_t.
-      auto wlock = const_cast<w_root_t*>(lock->root)->inner.cursors.wlock();
+      auto wlock = root->inner.cursors.wlock();
       auto& cursors = *wlock;
       auto it = cursors.find(cursor);
 
@@ -118,13 +115,13 @@ void w_clockspec_eval(
         since->clock.ticks = 0;
       } else {
         since->clock.ticks = it->second;
-        since->clock.is_fresh_instance = since->clock.ticks <
-            lock->root->inner.view->getLastAgeOutTickValue();
+        since->clock.is_fresh_instance =
+            since->clock.ticks < root->inner.view->getLastAgeOutTickValue();
       }
 
       // record the current tick value against the cursor so that we use that
       // as the basis for a subsequent query.
-      cursors[cursor] = lock->root->inner.view->getMostRecentTickValue();
+      cursors[cursor] = root->inner.view->getMostRecentTickValue();
     }
 
     w_log(
@@ -138,9 +135,9 @@ void w_clockspec_eval(
   // spec->tag == w_cs_clock
   if (spec->clock.start_time == proc_start_time &&
       spec->clock.pid == proc_pid &&
-      spec->clock.root_number == lock->root->inner.number) {
+      spec->clock.root_number == root->inner.number) {
     since->clock.is_fresh_instance =
-        spec->clock.ticks < lock->root->inner.view->getLastAgeOutTickValue();
+        spec->clock.ticks < root->inner.view->getLastAgeOutTickValue();
     if (since->clock.is_fresh_instance) {
       since->clock.ticks = 0;
     } else {
@@ -176,24 +173,26 @@ bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
 }
 
 // Renders the current clock id string to the supplied buffer.
-// Must be called with the root locked.
-static bool current_clock_id_string(struct read_locked_watchman_root *lock,
-                                    char *buf, size_t bufsize) {
+// Must be called with the root locked. FIXME
+static bool current_clock_id_string(
+    const std::shared_ptr<w_root_t>& root,
+    char* buf,
+    size_t bufsize) {
   return clock_id_string(
-      lock->root->inner.number,
-      lock->root->inner.view->getMostRecentTickValue(),
+      root->inner.number,
+      root->inner.view->getMostRecentTickValue(),
       buf,
       bufsize);
 }
 
 /* Add the current clock value to the response.
- * must be called with the root locked */
+ * must be called with the root locked FIXME */
 void annotate_with_clock(
-    struct read_locked_watchman_root* lock,
+    const std::shared_ptr<w_root_t>& root,
     json_ref& resp) {
   char buf[128];
 
-  if (current_clock_id_string(lock, buf, sizeof(buf))) {
+  if (current_clock_id_string(root, buf, sizeof(buf))) {
     resp.set("clock", typed_string_to_json(buf, W_STRING_UNICODE));
   }
 }

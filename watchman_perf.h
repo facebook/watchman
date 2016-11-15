@@ -55,7 +55,7 @@ struct watchman_perf_sample {
   void add_meta(const char* key, json_ref&& val);
 
   // Annotate the sample with some standard metadata taken from a root.
-  void add_root_meta(const w_root_t* root);
+  void add_root_meta(const std::shared_ptr<w_root_t>& root);
 
   // Force the sample to go to the log
   void force_log();

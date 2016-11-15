@@ -81,11 +81,11 @@ static w_stm_t prepare_stdin(
   return stdin_file;
 }
 
-static void spawn_command(w_root_t *root,
-  struct watchman_trigger_command *cmd,
-  w_query_res *res,
-  struct w_clockspec *since_spec)
-{
+static void spawn_command(
+    const std::shared_ptr<w_root_t>& root,
+    struct watchman_trigger_command* cmd,
+    w_query_res* res,
+    struct w_clockspec* since_spec) {
   char **envp = NULL;
   uint32_t i = 0;
   int ret;
@@ -333,77 +333,70 @@ static void spawn_command(w_root_t *root,
   }
 }
 
-bool watchman_trigger_command::maybeSpawn(unlocked_watchman_root* unlocked) {
-  read_locked_watchman_root lock;
+bool watchman_trigger_command::maybeSpawn(
+    const std::shared_ptr<w_root_t>& root) {
   bool didRun = false;
 
   // If it looks like we're in a repo undergoing a rebase or
   // other similar operation, we want to defer triggers until
   // things settle down
-  if (unlocked->root->inner.view->isVCSOperationInProgress()) {
+  if (root->inner.view->isVCSOperationInProgress()) {
     w_log(W_LOG_DBG, "deferring triggers until VCS operations complete\n");
-    return didRun;
+    return false;
   }
 
-  w_root_read_lock(unlocked, "trigger assess", &lock);
-  {
-    w_query_res res;
-    auto since_spec = query->since_spec.get();
+  w_query_res res;
+  auto since_spec = query->since_spec.get();
 
-    if (since_spec && since_spec->tag == w_cs_clock) {
-      w_log(
-          W_LOG_DBG,
-          "running trigger \"%s\" rules! since %" PRIu32 "\n",
-          triggername.c_str(),
-          since_spec->clock.ticks);
-    } else {
-      w_log(W_LOG_DBG, "running trigger \"%s\" rules!\n", triggername.c_str());
-    }
-
-    // Triggers never need to sync explicitly; we are only dispatched
-    // at settle points which are by definition sync'd to the present time
-    query->sync_timeout = std::chrono::milliseconds(0);
-    watchman::log(watchman::DBG, "assessing trigger ", triggername, "\n");
-    if (!w_query_execute_locked(query.get(), &lock, &res, time_generator)) {
-      watchman::log(
-          watchman::ERR,
-          "error running trigger \"",
-          triggername,
-          "\" query: ",
-          res.errmsg,
-          "\n");
-      goto done;
-    }
-
-    watchman::log(
-        watchman::DBG,
-        "trigger \"",
-        triggername,
-        "\" generated ",
-        res.resultsArray.array().size(),
-        " results\n");
-
-    // create a new spec that will be used the next time
-    auto saved_spec = std::move(query->since_spec);
-    query->since_spec = w_clockspec_new_clock(res.root_number, res.ticks);
-
-    watchman::log(
-        watchman::DBG,
-        "updating trigger \"",
-        triggername,
-        "\" use ",
-        res.ticks,
-        " ticks next time\n");
-
-    if (!res.resultsArray.array().empty()) {
-      // transitional const_cast until we remove read_locked refs
-      didRun = true;
-      spawn_command(
-          const_cast<w_root_t*>(lock.root), this, &res, saved_spec.get());
-    }
+  if (since_spec && since_spec->tag == w_cs_clock) {
+    w_log(
+        W_LOG_DBG,
+        "running trigger \"%s\" rules! since %" PRIu32 "\n",
+        triggername.c_str(),
+        since_spec->clock.ticks);
+  } else {
+    w_log(W_LOG_DBG, "running trigger \"%s\" rules!\n", triggername.c_str());
   }
-done:
-  w_root_read_unlock(&lock, unlocked);
+
+  // Triggers never need to sync explicitly; we are only dispatched
+  // at settle points which are by definition sync'd to the present time
+  query->sync_timeout = std::chrono::milliseconds(0);
+  watchman::log(watchman::DBG, "assessing trigger ", triggername, "\n");
+  if (!w_query_execute_locked(query.get(), root, &res, time_generator)) {
+    watchman::log(
+        watchman::ERR,
+        "error running trigger \"",
+        triggername,
+        "\" query: ",
+        res.errmsg,
+        "\n");
+    return false;
+  }
+
+  watchman::log(
+      watchman::DBG,
+      "trigger \"",
+      triggername,
+      "\" generated ",
+      res.resultsArray.array().size(),
+      " results\n");
+
+  // create a new spec that will be used the next time
+  auto saved_spec = std::move(query->since_spec);
+  query->since_spec = w_clockspec_new_clock(res.root_number, res.ticks);
+
+  watchman::log(
+      watchman::DBG,
+      "updating trigger \"",
+      triggername,
+      "\" use ",
+      res.ticks,
+      " ticks next time\n");
+
+  if (!res.resultsArray.array().empty()) {
+    didRun = true;
+    spawn_command(root, this, &res, saved_spec.get());
+  }
   return didRun;
 }
 

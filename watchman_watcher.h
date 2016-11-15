@@ -22,7 +22,7 @@ struct Watcher : public std::enable_shared_from_this<Watcher> {
 
   // Start up threads or similar.  Called in the context of the
   // notify thread
-  virtual bool start(w_root_t* root);
+  virtual bool start(const std::shared_ptr<w_root_t>& root);
 
   // Perform watcher-specific cleanup for a watched root when it is freed
   virtual ~Watcher();
@@ -33,7 +33,7 @@ struct Watcher : public std::enable_shared_from_this<Watcher> {
   // Initiate an OS-level watch on the provided dir, return a DIR
   // handle, or NULL on error
   virtual struct watchman_dir_handle* startWatchDir(
-      w_root_t* root,
+      const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
       struct timeval now,
       const char* path) = 0;
@@ -44,7 +44,7 @@ struct Watcher : public std::enable_shared_from_this<Watcher> {
   // Consume any available notifications.  If there are none pending,
   // does not block.
   virtual bool consumeNotify(
-      w_root_t* root,
+      const std::shared_ptr<w_root_t>& root,
       PendingCollection::LockedPtr& coll) = 0;
 
   // Wait for an inotify event to become available

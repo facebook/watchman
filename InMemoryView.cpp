@@ -560,17 +560,14 @@ time_t InMemoryView::getLastAgeOutTimeStamp() const {
   return last_age_out_timestamp;
 }
 
-void InMemoryView::startThreads(w_root_t* root) {
+void InMemoryView::startThreads(const std::shared_ptr<w_root_t>& root) {
   // Start a thread to call into the watcher API for filesystem notifications
   auto self = std::static_pointer_cast<InMemoryView>(shared_from_this());
   w_log(W_LOG_DBG, "starting threads for %p %s\n", this, root_path.c_str());
-  w_root_addref(root);
   std::thread notifyThreadInstance([self, root]() {
-    unlocked_watchman_root unlocked{root};
     w_set_thread_name("notify %p %s", self.get(), self->root_path.c_str());
-    self->notifyThread(&unlocked);
+    self->notifyThread(root);
     w_log(W_LOG_DBG, "out of loop\n");
-    w_root_delref(&unlocked);
   });
   notifyThreadInstance.detach();
 
@@ -579,14 +576,10 @@ void InMemoryView::startThreads(w_root_t* root) {
   pending_.lockAndWait(std::chrono::milliseconds(-1) /* infinite */, pinged);
 
   // And now start the IO thread
-  w_root_addref(root);
   std::thread ioThreadInstance([self, root]() {
-    unlocked_watchman_root unlocked{root};
-
     w_set_thread_name("io %p %s", self.get(), self->root_path.c_str());
-    self->ioThread(&unlocked);
+    self->ioThread(root);
     w_log(W_LOG_DBG, "out of loop\n");
-    w_root_delref(&unlocked);
   });
   ioThreadInstance.detach();
 }

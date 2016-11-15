@@ -73,7 +73,8 @@ void watchman_perf_sample::add_meta(const char* key, json_ref&& val) {
   meta_data.set(key, std::move(val));
 }
 
-void watchman_perf_sample::add_root_meta(const w_root_t* root) {
+void watchman_perf_sample::add_root_meta(
+    const std::shared_ptr<w_root_t>& root) {
   // Note: if the root lock isn't held, we may read inaccurate numbers for
   // some of these properties.  We're ok with that, and don't want to force
   // the root lock to be re-acquired just for this.

@@ -70,15 +70,16 @@ struct KQueueWatcher : public Watcher {
   ~KQueueWatcher();
 
   struct watchman_dir_handle* startWatchDir(
-      w_root_t* root,
+      const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
       struct timeval now,
       const char* path) override;
 
   bool startWatchFile(struct watchman_file* file) override;
 
-  bool consumeNotify(w_root_t* root, PendingCollection::LockedPtr& coll)
-      override;
+  bool consumeNotify(
+      const std::shared_ptr<w_root_t>& root,
+      PendingCollection::LockedPtr& coll) override;
 
   bool waitNotify(int timeoutms) override;
   void signalThreads() override;
@@ -195,7 +196,7 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
 }
 
 struct watchman_dir_handle* KQueueWatcher::startWatchDir(
-    w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* path) {
@@ -269,7 +270,7 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
 }
 
 bool KQueueWatcher::consumeNotify(
-    w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll) {
   int n;
   int i;

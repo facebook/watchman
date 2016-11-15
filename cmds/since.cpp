@@ -9,7 +9,6 @@ static void cmd_since(struct watchman_client* client, const json_ref& args) {
   char *errmsg = NULL;
   w_query_res res;
   char clockbuf[128];
-  struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
   if (json_array_size(args) < 3) {
@@ -17,7 +16,8 @@ static void cmd_since(struct watchman_client* client, const json_ref& args) {
     return;
   }
 
-  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
+  auto root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
     return;
   }
 
@@ -26,22 +26,19 @@ static void cmd_since(struct watchman_client* client, const json_ref& args) {
   if (!clockspec) {
     send_error_response(client,
         "expected argument 2 to be a valid clockspec");
-    w_root_delref(&unlocked);
     return;
   }
 
-  auto query = w_query_parse_legacy(
-      unlocked.root, args, &errmsg, 3, nullptr, clockspec, nullptr);
+  auto query =
+      w_query_parse_legacy(root, args, &errmsg, 3, nullptr, clockspec, nullptr);
   if (errmsg) {
     send_error_response(client, "%s", errmsg);
     free(errmsg);
-    w_root_delref(&unlocked);
     return;
   }
 
-  if (!w_query_execute(query.get(), &unlocked, &res, nullptr)) {
+  if (!w_query_execute(query.get(), root, &res, nullptr)) {
     send_error_response(client, "query failed: %s", res.errmsg);
-    w_root_delref(&unlocked);
     return;
   }
 
@@ -52,15 +49,8 @@ static void cmd_since(struct watchman_client* client, const json_ref& args) {
   response.set({{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
                 {"files", std::move(res.resultsArray)}});
 
-  {
-    struct read_locked_watchman_root lock;
-    w_root_read_lock(&unlocked, "obtain_warnings", &lock);
-    add_root_warnings_to_response(response, &lock);
-    w_root_read_unlock(&lock, &unlocked);
-  }
-
+  add_root_warnings_to_response(response, root);
   send_and_dispose_response(client, std::move(response));
-  w_root_delref(&unlocked);
 }
 W_CMD_REG("since", cmd_since, CMD_DAEMON | CMD_ALLOW_ANY_USER,
           w_cmd_realpath_root)

@@ -16,7 +16,7 @@ static void apply_dir_size_hint(struct watchman_dir *dir,
 
 namespace watchman {
 void InMemoryView::crawler(
-    write_locked_watchman_root* lock,
+    const std::shared_ptr<w_root_t>& root,
     SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
     const w_string& dir_name,
@@ -49,7 +49,7 @@ void InMemoryView::crawler(
   /* Start watching and open the dir for crawling.
    * Whether we open the dir prior to watching or after is watcher specific,
    * so the operations are rolled together in our abstraction */
-  osdir = watcher_->startWatchDir(lock->root, dir, now, path);
+  osdir = watcher_->startWatchDir(root, dir, now, path);
   if (!osdir) {
     markDirDeleted(view, dir, now, true);
     return;
@@ -73,7 +73,7 @@ void InMemoryView::crawler(
     apply_dir_size_hint(
         dir,
         num_dirs,
-        uint32_t(lock->root->config.getInt("hint_num_files_per_dir", 64)));
+        uint32_t(root->config.getInt("hint_num_files_per_dir", 64)));
   }
 
   /* flag for delete detection */
@@ -106,7 +106,7 @@ void InMemoryView::crawler(
           "in crawler calling process_path on %s\n",
           full_path.c_str());
       processPath(
-          lock,
+          root,
           view,
           coll,
           full_path,

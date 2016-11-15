@@ -62,17 +62,14 @@ static void watch_symlink_target(const w_string& target, json_t* root_files) {
           "watch_symlink_target: No watchable root for %s\n",
           resolved.get());
     } else {
-      struct unlocked_watchman_root unlocked;
-      bool success = w_root_resolve(resolved.get(), true, &errmsg, &unlocked);
+      auto root = w_root_resolve(resolved.get(), true, &errmsg);
 
-      if (!success) {
+      if (!root) {
         w_log(
             W_LOG_ERR,
             "watch_symlink_target: unable to watch %s: %s\n",
             resolved.get(),
             errmsg);
-      } else {
-        w_root_delref(&unlocked);
       }
       free(errmsg);
     }

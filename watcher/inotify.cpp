@@ -69,18 +69,19 @@ struct InotifyWatcher : public Watcher {
   ~InotifyWatcher();
 
   struct watchman_dir_handle* startWatchDir(
-      w_root_t* root,
+      const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
       struct timeval now,
       const char* path) override;
 
-  bool consumeNotify(w_root_t* root, PendingCollection::LockedPtr& coll)
-      override;
+  bool consumeNotify(
+      const std::shared_ptr<w_root_t>& root,
+      PendingCollection::LockedPtr& coll) override;
 
   bool waitNotify(int timeoutms) override;
 
   void process_inotify_event(
-      w_root_t* root,
+      const std::shared_ptr<w_root_t>& root,
       PendingCollection::LockedPtr& coll,
       struct inotify_event* ine,
       struct timeval now);
@@ -149,7 +150,7 @@ InotifyWatcher::~InotifyWatcher() {
 }
 
 struct watchman_dir_handle* InotifyWatcher::startWatchDir(
-    w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* path) {
@@ -195,7 +196,7 @@ struct watchman_dir_handle* InotifyWatcher::startWatchDir(
 }
 
 void InotifyWatcher::process_inotify_event(
-    w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll,
     struct inotify_event* ine,
     struct timeval now) {
@@ -343,7 +344,7 @@ void InotifyWatcher::process_inotify_event(
 }
 
 bool InotifyWatcher::consumeNotify(
-    w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll) {
   struct inotify_event *ine;
   char *iptr;

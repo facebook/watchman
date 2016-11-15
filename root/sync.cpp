@@ -24,7 +24,7 @@ bool watchman_root::syncToNow(std::chrono::milliseconds timeout) {
     sample.force_log();
   }
   if (sample.finish()) {
-    sample.add_root_meta(this);
+    sample.add_root_meta(shared_from_this());
     sample.add_meta(
         "sync_to_now",
         json_object({{"success", json_boolean(res)},

@@ -30,9 +30,7 @@ bool watchman_trigger_command::waitNoIntr() {
   return false;
 }
 
-void watchman_trigger_command::run(const w_root_t* root) {
-  unlocked_watchman_root unlocked{const_cast<w_root_t*>(root)};
-
+void watchman_trigger_command::run(const std::shared_ptr<w_root_t>& root) {
   w_set_thread_name(
       "trigger %s %s", triggername.c_str(), root->root_path.c_str());
 
@@ -51,7 +49,7 @@ void watchman_trigger_command::run(const w_root_t* root) {
         if (!item->payload.get_default("settled")) {
           continue;
         }
-        if (!maybeSpawn(&unlocked)) {
+        if (!maybeSpawn(root)) {
           continue;
         }
         waitNoIntr();
@@ -70,27 +68,25 @@ static void cmd_trigger_delete(
     const json_ref& args) {
   w_string tname;
   bool res;
-  struct unlocked_watchman_root unlocked;
 
-  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
+  auto root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
     return;
   }
 
   if (json_array_size(args) != 3) {
     send_error_response(client, "wrong number of arguments");
-    w_root_delref(&unlocked);
     return;
   }
   auto jname = args.at(2);
   if (!json_is_string(jname)) {
     send_error_response(client, "expected 2nd parameter to be trigger name");
-    w_root_delref(&unlocked);
     return;
   }
   tname = json_to_w_string(jname);
 
   {
-    auto map = unlocked.root->triggers.wlock();
+    auto map = root->triggers.wlock();
     auto it = map->find(tname);
     if (it == map->end()) {
       res = false;
@@ -109,7 +105,6 @@ static void cmd_trigger_delete(
   auto resp = make_response();
   resp.set({{"deleted", json_boolean(res)}, {"trigger", json_ref(jname)}});
   send_and_dispose_response(client, std::move(resp));
-  w_root_delref(&unlocked);
 }
 W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -119,26 +114,21 @@ W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root)
 static void cmd_trigger_list(
     struct watchman_client* client,
     const json_ref& args) {
-  struct read_locked_watchman_root lock;
-  struct unlocked_watchman_root unlocked;
-
-  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
+  auto root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
     return;
   }
 
   auto resp = make_response();
-  w_root_read_lock(&unlocked, "trigger-list", &lock);
-  auto arr = lock.root->triggerListToJson();
-  w_root_read_unlock(&lock, &unlocked);
+  auto arr = root->triggerListToJson();
 
   resp.set("triggers", std::move(arr));
   send_and_dispose_response(client, std::move(resp));
-  w_root_delref(&unlocked);
 }
 W_CMD_REG("trigger-list", cmd_trigger_list, CMD_DAEMON, w_cmd_realpath_root)
 
 static json_ref build_legacy_trigger(
-    w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     struct watchman_client* client,
     const json_ref& args) {
   char *errmsg;
@@ -222,7 +212,7 @@ static bool parse_redirection(const char **name_p, int *flags,
 }
 
 watchman_trigger_command::watchman_trigger_command(
-    const w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     const json_ref& trig,
     char** errmsg)
     : definition(trig),
@@ -346,7 +336,7 @@ watchman_trigger_command::~watchman_trigger_command() {
   w_event_destroy(ping_);
 }
 
-void watchman_trigger_command::start(const w_root_t* root) {
+void watchman_trigger_command::start(const std::shared_ptr<w_root_t>& root) {
   subscriber_ =
       root->unilateralResponses->subscribe([this] { w_event_set(ping_); });
   triggerThread_ = std::thread([this, root] {
@@ -365,12 +355,12 @@ void watchman_trigger_command::start(const w_root_t* root) {
 static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
   char *errmsg = NULL;
   bool need_save = true;
-  struct unlocked_watchman_root unlocked;
   std::unique_ptr<watchman_trigger_command> cmd;
   json_ref trig;
   json_ref resp;
 
-  if (!resolve_root_or_err(client, args, 1, true, &unlocked)) {
+  auto root = resolve_root_or_err(client, args, 1, true);
+  if (!root) {
     return;
   }
 
@@ -381,14 +371,13 @@ static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
 
   trig = args.at(2);
   if (json_is_string(trig)) {
-    trig = build_legacy_trigger(unlocked.root, client, args);
+    trig = build_legacy_trigger(root, client, args);
     if (!trig) {
       goto done;
     }
   }
 
-  cmd = watchman::make_unique<watchman_trigger_command>(
-      unlocked.root, trig, &errmsg);
+  cmd = watchman::make_unique<watchman_trigger_command>(root, trig, &errmsg);
 
   if (errmsg) {
     send_error_response(client, "%s", errmsg);
@@ -399,7 +388,7 @@ static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
   resp.set("triggerid", w_string_to_json(cmd->triggername));
 
   {
-    auto wlock = unlocked.root->triggers.wlock();
+    auto wlock = root->triggers.wlock();
     auto& map = *wlock;
     auto& old = map[cmd->triggername];
 
@@ -421,7 +410,7 @@ static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
         old->stop();
       }
       // Start the new trigger thread
-      cmd->start(unlocked.root);
+      cmd->start(root);
       old = std::move(cmd);
 
       need_save = true;
@@ -438,7 +427,6 @@ done:
   if (errmsg) {
     free(errmsg);
   }
-  w_root_delref(&unlocked);
 }
 W_CMD_REG("trigger", cmd_trigger, CMD_DAEMON, w_cmd_realpath_root)
 

@@ -97,7 +97,6 @@ SRCS_CPP=\
 	root\file.cpp       \
 	root\init.cpp       \
 	root\iothread.cpp       \
-	root\lock.cpp       \
 	root\notifythread.cpp       \
 	root\poison.cpp       \
 	root\reap.cpp       \

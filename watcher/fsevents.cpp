@@ -23,14 +23,18 @@ struct watchman_fsevent {
 };
 
 struct fse_stream {
-  FSEventStreamRef stream;
-  w_root_t *root;
-  FSEventStreamEventId last_good;
-  FSEventStreamEventId since;
-  bool lost_sync;
-  bool inject_drop;
-  bool event_id_wrapped;
+  FSEventStreamRef stream{nullptr};
+  std::shared_ptr<w_root_t> root;
+  FSEventStreamEventId last_good{0};
+  FSEventStreamEventId since{0};
+  bool lost_sync{false};
+  bool inject_drop{false};
+  bool event_id_wrapped{false};
   CFUUIDRef uuid;
+
+  fse_stream(const std::shared_ptr<w_root_t>& root, FSEventStreamEventId since)
+      : root(root), since(since) {}
+  ~fse_stream();
 };
 
 struct FSEventsWatcher : public Watcher {
@@ -45,20 +49,21 @@ struct FSEventsWatcher : public Watcher {
   explicit FSEventsWatcher(w_root_t* root);
   ~FSEventsWatcher();
 
-  bool start(w_root_t* root) override;
+  bool start(const std::shared_ptr<w_root_t>& root) override;
 
   struct watchman_dir_handle* startWatchDir(
-      w_root_t* root,
+      const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
       struct timeval now,
       const char* path) override;
 
-  bool consumeNotify(w_root_t* root, PendingCollection::LockedPtr& coll)
-      override;
+  bool consumeNotify(
+      const std::shared_ptr<w_root_t>& root,
+      PendingCollection::LockedPtr& coll) override;
 
   bool waitNotify(int timeoutms) override;
   void signalThreads() override;
-  void FSEventsThread(w_root_t* root);
+  void FSEventsThread(const std::shared_ptr<w_root_t>& root);
 };
 
 static const struct flag_map kflags[] = {
@@ -85,12 +90,12 @@ static const struct flag_map kflags[] = {
 };
 
 static struct fse_stream* fse_stream_make(
-    w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     FSEventStreamEventId since,
     w_string& failure_reason);
-static void fse_stream_free(struct fse_stream *fse_stream);
 
-std::shared_ptr<FSEventsWatcher> watcherFromRoot(w_root_t* root) {
+std::shared_ptr<FSEventsWatcher> watcherFromRoot(
+    const std::shared_ptr<w_root_t>& root) {
   auto view =
       std::dynamic_pointer_cast<watchman::InMemoryView>(root->inner.view);
   if (!view) {
@@ -101,7 +106,9 @@ std::shared_ptr<FSEventsWatcher> watcherFromRoot(w_root_t* root) {
 }
 
 /** Generate a perf event for the drop */
-static void log_drop_event(w_root_t *root, bool isKernel) {
+static void log_drop_event(
+    const std::shared_ptr<w_root_t>& root,
+    bool isKernel) {
   w_perf_t sample(isKernel ? "KernelDropped" : "UserDropped");
   sample.add_root_meta(root);
   sample.finish();
@@ -119,7 +126,7 @@ static void fse_callback(
   size_t i;
   auto paths = (char**)eventPaths;
   auto stream = (fse_stream *)clientCallBackInfo;
-  w_root_t *root = stream->root;
+  auto root = stream->root;
   std::deque<watchman_fsevent> items;
   auto watcher = watcherFromRoot(root);
 
@@ -190,7 +197,7 @@ static void fse_callback(
             watcher->stream = replacement;
 
             // And tear ourselves down
-            fse_stream_free(stream);
+            delete stream;
 
             // And we're done.
             return;
@@ -254,36 +261,29 @@ static void fse_pipe_callback(CFFileDescriptorRef, CFOptionFlags, void*) {
   CFRunLoopStop(CFRunLoopGetCurrent());
 }
 
-static void fse_stream_free(struct fse_stream *fse_stream) {
-  if (fse_stream->stream) {
-    FSEventStreamStop(fse_stream->stream);
-    FSEventStreamInvalidate(fse_stream->stream);
-    FSEventStreamRelease(fse_stream->stream);
+fse_stream::~fse_stream() {
+  if (stream) {
+    FSEventStreamStop(stream);
+    FSEventStreamInvalidate(stream);
+    FSEventStreamRelease(stream);
   }
-  if (fse_stream->uuid) {
-    CFRelease(fse_stream->uuid);
+  if (uuid) {
+    CFRelease(uuid);
   }
 }
 
-static struct fse_stream* fse_stream_make(
-    w_root_t* root,
+static fse_stream* fse_stream_make(
+    const std::shared_ptr<w_root_t>& root,
     FSEventStreamEventId since,
     w_string& failure_reason) {
   FSEventStreamContext ctx;
   CFMutableArrayRef parray = nullptr;
   CFStringRef cpath = nullptr;
   double latency;
-  struct fse_stream *fse_stream = (struct fse_stream*)calloc(1, sizeof(*fse_stream));
   struct stat st;
   auto watcher = watcherFromRoot(root);
 
-  if (!fse_stream) {
-    // Note that w_string_new will terminate the process on OOM
-    failure_reason = w_string("OOM", W_STRING_UNICODE);
-    goto fail;
-  }
-  fse_stream->root = root;
-  fse_stream->since = since;
+  struct fse_stream* fse_stream = new struct fse_stream(root, since);
 
   // Each device has an optional journal maintained by fseventsd that keeps
   // track of the change events.  The journal may not be available if the
@@ -434,12 +434,12 @@ out:
   return fse_stream;
 
 fail:
-  fse_stream_free(fse_stream);
+  delete fse_stream;
   fse_stream = nullptr;
   goto out;
 }
 
-void FSEventsWatcher::FSEventsThread(w_root_t* root) {
+void FSEventsWatcher::FSEventsThread(const std::shared_ptr<w_root_t>& root) {
   CFFileDescriptorRef fdref;
   CFFileDescriptorContext fdctx;
 
@@ -452,7 +452,7 @@ void FSEventsWatcher::FSEventsThread(w_root_t* root) {
     attempt_resync_on_drop = root->config.getBool("fsevents_try_resync", true);
 
     memset(&fdctx, 0, sizeof(fdctx));
-    fdctx.info = root;
+    fdctx.info = root.get();
 
     fdref = CFFileDescriptorCreate(
         nullptr, fse_pipe[0], true, fse_pipe_callback, &fdctx);
@@ -494,7 +494,7 @@ void FSEventsWatcher::FSEventsThread(w_root_t* root) {
 
 done:
   if (stream) {
-    fse_stream_free(stream);
+    delete stream;
   }
   if (fdref) {
     CFRelease(fdref);
@@ -504,7 +504,7 @@ done:
 }
 
 bool FSEventsWatcher::consumeNotify(
-    w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll) {
   struct timeval now;
   bool recurse;
@@ -598,9 +598,8 @@ void FSEventsWatcher::signalThreads() {
   write(fse_pipe[1], "X", 1);
 }
 
-bool FSEventsWatcher::start(w_root_t* root) {
+bool FSEventsWatcher::start(const std::shared_ptr<w_root_t>& root) {
   // Spin up the fsevents processing thread; it owns a ref on the root
-  w_root_addref(root);
 
   auto self = std::dynamic_pointer_cast<FSEventsWatcher>(shared_from_this());
   try {
@@ -619,7 +618,6 @@ bool FSEventsWatcher::start(w_root_t* root) {
       // finish this thread.  That ensures that don't get stuck
       // waiting in FSEventsWatcher::start if something unexpected happens.
       self->fse_cond.notify_one();
-      w_root_delref_raw(root);
     });
     // We have to detach because the readChangesThread may wind up
     // being the last thread to reference the watcher state and
@@ -639,7 +637,6 @@ bool FSEventsWatcher::start(w_root_t* root) {
 
     return true;
   } catch (const std::exception& e) {
-    w_root_delref_raw(root);
     watchman::log(
         watchman::ERR, "failed to start fsevents thread: ", e.what(), "\n");
     return false;
@@ -654,7 +651,7 @@ bool FSEventsWatcher::waitNotify(int timeoutms) {
 }
 
 struct watchman_dir_handle* FSEventsWatcher::startWatchDir(
-    w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* path) {
@@ -677,7 +674,6 @@ static void cmd_debug_fsevents_inject_drop(
     struct watchman_client* client,
     const json_ref& args) {
   FSEventStreamEventId last_good;
-  struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
   if (json_array_size(args) != 2) {
@@ -686,20 +682,19 @@ static void cmd_debug_fsevents_inject_drop(
     return;
   }
 
-  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
+  auto root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
     return;
   }
 
-  auto watcher = watcherFromRoot(unlocked.root);
+  auto watcher = watcherFromRoot(root);
   if (!watcher) {
     send_error_response(client, "root is not using the fsevents watcher");
-    w_root_delref(&unlocked);
     return;
   }
 
   if (!watcher->attempt_resync_on_drop) {
     send_error_response(client, "fsevents_try_resync is not enabled");
-    w_root_delref(&unlocked);
     return;
   }
 
@@ -712,7 +707,6 @@ static void cmd_debug_fsevents_inject_drop(
   auto resp = make_response();
   resp.set("last_good", json_integer(last_good));
   send_and_dispose_response(client, std::move(resp));
-  w_root_delref(&unlocked);
 }
 W_CMD_REG("debug-fsevents-inject-drop", cmd_debug_fsevents_inject_drop,
           CMD_DAEMON, w_cmd_realpath_root);

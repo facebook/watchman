@@ -6,7 +6,6 @@
 static void cmd_debug_recrawl(
     struct watchman_client* client,
     const json_ref& args) {
-  struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
   if (json_array_size(args) != 2) {
@@ -15,17 +14,17 @@ static void cmd_debug_recrawl(
     return;
   }
 
-  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
+  auto root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
     return;
   }
 
   auto resp = make_response();
 
-  unlocked.root->scheduleRecrawl("debug-recrawl");
+  root->scheduleRecrawl("debug-recrawl");
 
   resp.set("recrawl", json_true());
   send_and_dispose_response(client, std::move(resp));
-  w_root_delref(&unlocked);
 }
 W_CMD_REG("debug-recrawl", cmd_debug_recrawl, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -33,7 +32,6 @@ static void cmd_debug_show_cursors(
     struct watchman_client* client,
     const json_ref& args) {
   json_ref cursors;
-  struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
   if (json_array_size(args) != 2) {
@@ -42,14 +40,15 @@ static void cmd_debug_show_cursors(
     return;
   }
 
-  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
+  auto root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
     return;
   }
 
   auto resp = make_response();
 
   {
-    auto map = unlocked.root->inner.cursors.rlock();
+    auto map = root->inner.cursors.rlock();
     cursors = json_object_of_size(map->size());
     for (const auto& it : *map) {
       const auto& name = it.first;
@@ -60,7 +59,6 @@ static void cmd_debug_show_cursors(
 
   resp.set("cursors", std::move(cursors));
   send_and_dispose_response(client, std::move(resp));
-  w_root_delref(&unlocked);
 }
 W_CMD_REG("debug-show-cursors", cmd_debug_show_cursors,
     CMD_DAEMON, w_cmd_realpath_root)
@@ -69,7 +67,6 @@ W_CMD_REG("debug-show-cursors", cmd_debug_show_cursors,
 static void cmd_debug_ageout(
     struct watchman_client* client,
     const json_ref& args) {
-  struct unlocked_watchman_root unlocked;
 
   /* resolve the root */
   if (json_array_size(args) != 3) {
@@ -78,7 +75,8 @@ static void cmd_debug_ageout(
     return;
   }
 
-  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
+  auto root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
     return;
   }
 
@@ -86,14 +84,10 @@ static void cmd_debug_ageout(
 
   auto resp = make_response();
 
-  write_locked_watchman_root lock;
-  w_root_lock(&unlocked, "debug-ageout", &lock);
-  lock.root->performAgeOut(min_age);
-  w_root_unlock(&lock, &unlocked);
+  root->performAgeOut(min_age);
 
   resp.set("ageout", json_true());
   send_and_dispose_response(client, std::move(resp));
-  w_root_delref(&unlocked);
 }
 W_CMD_REG("debug-ageout", cmd_debug_ageout, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -101,20 +95,19 @@ static void cmd_debug_poison(
     struct watchman_client* client,
     const json_ref& args) {
   struct timeval now;
-  struct unlocked_watchman_root unlocked;
 
-  if (!resolve_root_or_err(client, args, 1, false, &unlocked)) {
+  auto root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
     return;
   }
 
   gettimeofday(&now, NULL);
 
-  set_poison_state(unlocked.root->root_path, now, "debug-poison", ENOMEM, NULL);
+  set_poison_state(root->root_path, now, "debug-poison", ENOMEM, NULL);
 
   auto resp = make_response();
   resp.set("poison", typed_string_to_json(poisoned_reason, W_STRING_UNICODE));
   send_and_dispose_response(client, std::move(resp));
-  w_root_delref(&unlocked);
 }
 W_CMD_REG("debug-poison", cmd_debug_poison, CMD_DAEMON, w_cmd_realpath_root)
 

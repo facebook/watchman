@@ -37,7 +37,7 @@ w_string_t *w_query_ctx_get_wholename(
     // legal
     name_start = ctx->query->relative_root.size() + 1;
   } else {
-    name_start = ctx->lock->root->root_path.size() + 1;
+    name_start = ctx->root->root_path.size() + 1;
   }
 
   auto full_name = w_string::pathCat(
@@ -90,10 +90,7 @@ bool w_query_process_file(
   }
 
   watchman_rule_match match(
-      ctx->lock->root->inner.number,
-      w_query_ctx_get_wholename(ctx),
-      is_new,
-      file);
+      ctx->root->inner.number, w_query_ctx_get_wholename(ctx), is_new, file);
 
   json_array_append_new(
       ctx->resultsArray, file_result_to_json(ctx->query->fieldList, match));
@@ -133,15 +130,15 @@ bool w_query_file_matches_relative_root(
 
 bool time_generator(
     w_query* query,
-    struct read_locked_watchman_root* lock,
+    const std::shared_ptr<w_root_t>& root,
     struct w_query_ctx* ctx,
     int64_t* num_walked) {
-  return lock->root->inner.view->timeGenerator(query, ctx, num_walked);
+  return root->inner.view->timeGenerator(query, ctx, num_walked);
 }
 
 static bool default_generators(
     w_query* query,
-    struct read_locked_watchman_root* lock,
+    const std::shared_ptr<w_root_t>& root,
     struct w_query_ctx* ctx,
     int64_t* num_walked) {
   bool generated = false;
@@ -152,7 +149,7 @@ static bool default_generators(
   // Time based query
   if (ctx->since.is_timestamp || !ctx->since.clock.is_fresh_instance) {
     n = 0;
-    result = time_generator(query, lock, ctx, &n);
+    result = time_generator(query, root, ctx, &n);
     total += n;
     if (!result) {
       goto done;
@@ -163,7 +160,7 @@ static bool default_generators(
   // Suffix
   if (!query->suffixes.empty()) {
     n = 0;
-    result = lock->root->inner.view->suffixGenerator(query, ctx, &n);
+    result = root->inner.view->suffixGenerator(query, ctx, &n);
     total += n;
     if (!result) {
       goto done;
@@ -173,7 +170,7 @@ static bool default_generators(
 
   if (!query->paths.empty()) {
     n = 0;
-    result = lock->root->inner.view->pathGenerator(query, ctx, &n);
+    result = root->inner.view->pathGenerator(query, ctx, &n);
     total += n;
     if (!result) {
       goto done;
@@ -183,7 +180,7 @@ static bool default_generators(
 
   if (query->glob_tree) {
     n = 0;
-    result = lock->root->inner.view->globGenerator(query, ctx, &n);
+    result = root->inner.view->globGenerator(query, ctx, &n);
     total += n;
     if (!result) {
       goto done;
@@ -195,7 +192,7 @@ static bool default_generators(
   // files
   if (!generated) {
     n = 0;
-    result = lock->root->inner.view->allFilesGenerator(query, ctx, &n);
+    result = root->inner.view->allFilesGenerator(query, ctx, &n);
     total += n;
     if (!result) {
       goto done;
@@ -231,7 +228,7 @@ static bool execute_common(
       generator = default_generators;
     }
 
-    if (!generator(ctx->query, ctx->lock, ctx, &num_walked)) {
+    if (!generator(ctx->query, ctx->root, ctx, &num_walked)) {
       res->errmsg = ctx->query->errmsg;
       ctx->query->errmsg = NULL;
       result = false;
@@ -239,7 +236,7 @@ static bool execute_common(
   }
 
   if (sample->finish()) {
-    sample->add_root_meta(ctx->lock->root);
+    sample->add_root_meta(ctx->root);
     sample->add_meta(
         "query_execute",
         json_object(
@@ -257,8 +254,8 @@ static bool execute_common(
   return result;
 }
 
-w_query_ctx::w_query_ctx(w_query* q, read_locked_watchman_root* lock)
-    : query(q), lock(lock), resultsArray(json_array()) {
+w_query_ctx::w_query_ctx(w_query* q, const std::shared_ptr<w_root_t>& root)
+    : query(q), root(root), resultsArray(json_array()) {
   // build a template for the serializer
   if (query->fieldList.size() > 1) {
     json_array_set_template_new(
@@ -274,11 +271,10 @@ w_query_ctx::~w_query_ctx() {
 
 bool w_query_execute_locked(
     w_query* query,
-    struct read_locked_watchman_root* lock,
+    const std::shared_ptr<w_root_t>& root,
     w_query_res* res,
     w_query_generator generator) {
-  w_query_ctx ctx(query, lock);
-
+  w_query_ctx ctx(query, root);
   w_perf_t sample("query_execute");
 
   /* The first stage of execution is generation.
@@ -292,29 +288,25 @@ bool w_query_execute_locked(
    * both emit the same file.
    */
 
-  res->root_number = lock->root->inner.number;
-  res->ticks = lock->root->inner.view->getMostRecentTickValue();
+  res->root_number = root->inner.number;
+  res->ticks = root->inner.view->getMostRecentTickValue();
 
   // Evaluate the cursor for this root
-  w_clockspec_eval(lock, query->since_spec.get(), &ctx.since);
+  w_clockspec_eval(root, query->since_spec.get(), &ctx.since);
 
   return execute_common(&ctx, &sample, res, generator);
 }
 
 bool w_query_execute(
     w_query* query,
-    struct unlocked_watchman_root* unlocked,
+    const std::shared_ptr<w_root_t>& root,
     w_query_res* res,
     w_query_generator generator) {
-  struct read_locked_watchman_root rlock;
-  bool result;
-
   w_query_ctx ctx(query, nullptr);
 
   w_perf_t sample("query_execute");
 
-  if (query->sync_timeout.count() &&
-      !unlocked->root->syncToNow(query->sync_timeout)) {
+  if (query->sync_timeout.count() && !root->syncToNow(query->sync_timeout)) {
     ignore_result(asprintf(&res->errmsg, "synchronization failed: %s\n",
         strerror(errno)));
     return false;
@@ -331,30 +323,14 @@ bool w_query_execute(
    * both emit the same file.
    */
 
-  if (!w_root_read_lock_with_timeout(
-          unlocked, "w_query_execute", query->lock_timeout, &rlock)) {
-    ignore_result(asprintf(
-        &res->errmsg,
-        "couldn't acquire root rdlock within "
-        "lock_timeout of %dms. root is "
-        "currently busy (%s)\n",
-        query->lock_timeout,
-        unlocked->root->lock_reason));
-    return false;
-  }
-  ctx.lock = &rlock;
+  ctx.root = root;
   // Evaluate the cursor for this root
-  w_clockspec_eval(&rlock, query->since_spec.get(), &ctx.since);
+  w_clockspec_eval(root, query->since_spec.get(), &ctx.since);
 
-  res->root_number = ctx.lock->root->inner.number;
-  res->ticks = ctx.lock->root->inner.view->getMostRecentTickValue();
+  res->root_number = ctx.root->inner.number;
+  res->ticks = ctx.root->inner.view->getMostRecentTickValue();
 
-  result = execute_common(&ctx, &sample, res, generator);
-  // This handles the unlock in both the read and write case, as ctx.lock
-  // points to the read or write lock as appropriate, and the underlying
-  // unlock operation is defined to be safe for either.
-  w_root_read_unlock(ctx.lock, unlocked);
-  return result;
+  return execute_common(&ctx, &sample, res, generator);
 }
 
 /* vim:ts=2:sw=2:et:

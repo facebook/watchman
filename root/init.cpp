@@ -87,6 +87,8 @@ void watchman_root::init() {
             strerror(errno));
   }
   w_dir_close(osdir);
+  // We can't use shared_from_this() here as we are being called from
+  // inside the constructor and we'd hit a bad_weak_ptr exception.
   inner.init(this);
 
   time(&inner.last_cmd_timestamp);
@@ -107,25 +109,6 @@ void watchman_root::Inner::init(w_root_t* root) {
   number = next_root_number++;
 }
 
-void w_root_addref(w_root_t *root) {
-  ++root->refcnt;
-}
-
-void w_root_delref(struct unlocked_watchman_root *unlocked) {
-  if (!unlocked->root) {
-    w_log(W_LOG_FATAL, "already released root passed to w_root_delref");
-  }
-  w_root_delref_raw(unlocked->root);
-  unlocked->root = NULL;
-}
-
-void w_root_delref_raw(w_root_t *root) {
-  if (--root->refcnt != 0) {
-    return;
-  }
-  delete root;
-}
-
 watchman_root::watchman_root(const w_string& root_path)
     : root_path(root_path),
       case_sensitive(is_case_sensitive_filesystem(root_path.c_str())),
@@ -139,7 +122,6 @@ watchman_root::watchman_root(const w_string& root_path)
       idle_reap_age(
           int(config.getInt("idle_reap_age_seconds", DEFAULT_REAP_AGE))),
       unilateralResponses(std::make_shared<watchman::Publisher>()) {
-  pthread_rwlock_init(&lock, nullptr);
   ++live_roots;
   applyIgnoreConfiguration();
   applyIgnoreVCSConfiguration();
@@ -148,9 +130,6 @@ watchman_root::watchman_root(const w_string& root_path)
 
 watchman_root::~watchman_root() {
   w_log(W_LOG_DBG, "root: final ref on %s\n", root_path.c_str());
-
-  pthread_rwlock_destroy(&lock);
-
   --live_roots;
 }
 

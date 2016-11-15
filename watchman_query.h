@@ -44,7 +44,7 @@ struct watchman_rule_match {
 // Holds state for the execution of a query
 struct w_query_ctx {
   struct w_query *query;
-  struct read_locked_watchman_root *lock;
+  std::shared_ptr<w_root_t> root;
   const watchman_file* file{nullptr};
   w_string wholename;
   struct w_query_since since;
@@ -62,7 +62,7 @@ struct w_query_ctx {
   // How many times we suppressed a result due to dedup checking
   uint32_t num_deduped{0};
 
-  w_query_ctx(w_query* q, read_locked_watchman_root* lock);
+  w_query_ctx(w_query* q, const std::shared_ptr<w_root_t>& root);
   ~w_query_ctx();
   w_query_ctx(const w_query_ctx&) = delete;
   w_query_ctx& operator=(const w_query_ctx&) = delete;
@@ -125,8 +125,10 @@ bool w_query_register_expression_parser(
     const char *term,
     w_query_expr_parser parser);
 
-std::shared_ptr<w_query>
-w_query_parse(const w_root_t* root, const json_ref& query, char** errmsg);
+std::shared_ptr<w_query> w_query_parse(
+    const std::shared_ptr<w_root_t>& root,
+    const json_ref& query,
+    char** errmsg);
 
 std::unique_ptr<QueryExpr> w_query_expr_parse(
     w_query* query,
@@ -147,12 +149,12 @@ bool w_query_process_file(
 // generator when used in triggers or subscriptions
 using w_query_generator = std::function<bool(
     w_query* query,
-    struct read_locked_watchman_root* lock,
+    const std::shared_ptr<w_root_t>& root,
     struct w_query_ctx* ctx,
     int64_t* num_walked)>;
 bool time_generator(
     w_query* query,
-    struct read_locked_watchman_root* lock,
+    const std::shared_ptr<w_root_t>& root,
     struct w_query_ctx* ctx,
     int64_t* num_walked);
 
@@ -170,13 +172,13 @@ struct w_query_res {
 
 bool w_query_execute(
     w_query* query,
-    struct unlocked_watchman_root* unlocked,
+    const std::shared_ptr<w_root_t>& root,
     w_query_res* results,
     w_query_generator generator);
 
 bool w_query_execute_locked(
     w_query* query,
-    struct read_locked_watchman_root* lock,
+    const std::shared_ptr<w_root_t>& root,
     w_query_res* results,
     w_query_generator generator);
 
@@ -189,7 +191,7 @@ w_string_t *w_query_ctx_get_wholename(
 
 // parse the old style since and find queries
 std::shared_ptr<w_query> w_query_parse_legacy(
-    const w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     const json_ref& args,
     char** errmsg,
     int start,

@@ -110,7 +110,7 @@ bool Watcher::startWatchFile(struct watchman_file*) {
   return true;
 }
 
-bool Watcher::start(w_root_t*) {
+bool Watcher::start(const std::shared_ptr<w_root_t>&) {
   return true;
 }
 

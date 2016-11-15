@@ -26,18 +26,19 @@ struct WinWatcher : public Watcher {
   ~WinWatcher();
 
   struct watchman_dir_handle* startWatchDir(
-      w_root_t* root,
+      const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
       struct timeval now,
       const char* path) override;
 
-  bool consumeNotify(w_root_t* root, PendingCollection::LockedPtr& coll)
-      override;
+  bool consumeNotify(
+      const std::shared_ptr<w_root_t>& root,
+      PendingCollection::LockedPtr& coll) override;
 
   bool waitNotify(int timeoutms) override;
-  bool start(w_root_t* root) override;
+  bool start(const std::shared_ptr<w_root_t>& root) override;
   void signalThreads() override;
-  void readChangesThread(w_root_t* root);
+  void readChangesThread(const std::shared_ptr<w_root_t>& root);
 };
 
 WinWatcher::WinWatcher(w_root_t* root)
@@ -98,7 +99,7 @@ void WinWatcher::signalThreads() {
   SetEvent(ping);
 }
 
-void WinWatcher::readChangesThread(w_root_t* root) {
+void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
   DWORD size = WATCHMAN_BATCH_LIMIT * (sizeof(FILE_NOTIFY_INFORMATION) + 512);
   std::vector<uint8_t> buf;
   DWORD err, filter;
@@ -248,11 +249,10 @@ void WinWatcher::readChangesThread(w_root_t* root) {
   w_log(W_LOG_DBG, "done\n");
 }
 
-bool WinWatcher::start(w_root_t* root) {
+bool WinWatcher::start(const std::shared_ptr<w_root_t>& root) {
   int err;
 
   // Spin up the changes reading thread; it owns a ref on the root
-  w_root_addref(root);
 
   try {
     // Acquire the mutex so thread initialization waits until we release it
@@ -273,8 +273,6 @@ bool WinWatcher::start(w_root_t* root) {
       // waiting in WinWatcher::start if something unexpected happens.
       auto wlock = self->changedItems.wlock();
       self->cond.notify_one();
-
-      w_root_delref_raw(root);
     });
     // We have to detach because the readChangesThread may wind up
     // being the last thread to reference the watcher state and
@@ -299,14 +297,13 @@ bool WinWatcher::start(w_root_t* root) {
     }
     return true;
   } catch (const std::exception& e) {
-    w_root_delref_raw(root);
     w_log(W_LOG_ERR, "failed to start readchanges thread: %s\n", e.what());
     return false;
   }
 }
 
 struct watchman_dir_handle* WinWatcher::startWatchDir(
-    w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* path) {
@@ -322,7 +319,7 @@ struct watchman_dir_handle* WinWatcher::startWatchDir(
 }
 
 bool WinWatcher::consumeNotify(
-    w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll) {
   std::deque<w_string> items;
   struct timeval now;

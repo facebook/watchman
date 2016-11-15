@@ -14,7 +14,7 @@
 #endif
 
 void handle_open_errno(
-    w_root_t* root,
+    const std::shared_ptr<w_root_t>& root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* syscall,

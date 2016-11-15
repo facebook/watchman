@@ -10,12 +10,13 @@
 struct watchman_client_subscription;
 
 struct watchman_client_state_assertion {
-  w_root_t *root; // Holds a ref on the root
+  std::shared_ptr<w_root_t> root; // Holds a ref on the root
   w_string name;
   long id;
 
-  watchman_client_state_assertion(w_root_t* root, const w_string& name);
-  ~watchman_client_state_assertion();
+  watchman_client_state_assertion(
+      const std::shared_ptr<w_root_t>& root,
+      const w_string& name);
 };
 
 struct watchman_client : public std::enable_shared_from_this<watchman_client> {
@@ -52,7 +53,7 @@ struct watchman_user_client;
 
 struct watchman_client_subscription
     : public std::enable_shared_from_this<watchman_client_subscription> {
-  unlocked_watchman_root unlocked;
+  std::shared_ptr<w_root_t> root;
   w_string name;
   std::shared_ptr<w_query> query;
   bool vcs_defer;
@@ -61,7 +62,9 @@ struct watchman_client_subscription
   std::unordered_map<w_string, bool> drop_or_defer;
   std::weak_ptr<watchman_client> weakClient;
 
-  explicit watchman_client_subscription(std::weak_ptr<watchman_client> client);
+  explicit watchman_client_subscription(
+      const std::shared_ptr<w_root_t>& root,
+      std::weak_ptr<watchman_client> client);
   ~watchman_client_subscription();
   void processSubscription();
 

@@ -6,7 +6,8 @@
 
 namespace watchman {
 
-std::shared_future<void> InMemoryView::waitUntilReadyToQuery(w_root_t* root) {
+std::shared_future<void> InMemoryView::waitUntilReadyToQuery(
+    const std::shared_ptr<w_root_t>& root) {
   auto lockPair = acquireLockedPair(root->recrawlInfo, crawlState_);
 
   if (lockPair.second->promise && lockPair.second->future.valid()) {
@@ -28,10 +29,9 @@ std::shared_future<void> InMemoryView::waitUntilReadyToQuery(w_root_t* root) {
 }
 
 void InMemoryView::fullCrawl(
-    unlocked_watchman_root* unlocked,
+    const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& pending) {
   struct timeval start;
-  struct write_locked_watchman_root lock;
 
   w_perf_t sample("full-crawl");
   if (config_.getBool("iothrottle", false)) {
@@ -39,13 +39,12 @@ void InMemoryView::fullCrawl(
   }
   {
     auto view = view_.wlock();
-    w_root_lock(unlocked, "io_thread: bump ticks", &lock);
     // Ensure that we observe these files with a new, distinct clock,
     // otherwise a fresh subscription established immediately after a watch
     // can get stuck with an empty view until another change is observed
     mostRecentTick_++;
     gettimeofday(&start, NULL);
-    pending_.wlock()->add(lock.root->root_path, start, 0);
+    pending_.wlock()->add(root->root_path, start, 0);
     // There is the potential for a subtle race condition here.  The boolean
     // parameter indicates whether we want to merge in the set of
     // notifications pending from the watcher or not.  Since we now coalesce
@@ -55,22 +54,21 @@ void InMemoryView::fullCrawl(
     // translates to a two level loop; the outer loop sweeps in data from
     // inotify, then the inner loop processes it and any dirs that we pick up
     // from recursive processing.
-    while (processPending(&lock, view, pending, true)) {
-      while (processPending(&lock, view, pending, false)) {
+    while (processPending(root, view, pending, true)) {
+      while (processPending(root, view, pending, false)) {
         ;
       }
     }
     {
-      auto lockPair = acquireLockedPair(lock.root->recrawlInfo, crawlState_);
+      auto lockPair = acquireLockedPair(root->recrawlInfo, crawlState_);
       lockPair.first->shouldRecrawl = false;
       if (lockPair.second->promise) {
         lockPair.second->promise->set_value();
         lockPair.second->promise.reset();
       }
-      lock.root->inner.done_initial = true;
+      root->inner.done_initial = true;
     }
-    sample.add_root_meta(lock.root);
-    w_root_unlock(&lock, unlocked);
+    sample.add_root_meta(root);
   }
 
   if (config_.getBool("iothrottle", false)) {
@@ -84,66 +82,53 @@ void InMemoryView::fullCrawl(
   w_log(
       W_LOG_ERR,
       "%scrawl complete\n",
-      unlocked->root->recrawlInfo.rlock()->recrawlCount ? "re" : "");
+      root->recrawlInfo.rlock()->recrawlCount ? "re" : "");
 }
 
 // Performs settle-time actions.
 // Returns true if the root was reaped and the io thread should terminate.
-static bool do_settle_things(struct unlocked_watchman_root* unlocked) {
-  struct read_locked_watchman_root lock;
-
+static bool do_settle_things(const std::shared_ptr<w_root_t>& root) {
   // No new pending items were given to us, so consider that
   // we may now be settled.
 
-  unlocked->root->processPendingSymlinkTargets();
+  root->processPendingSymlinkTargets();
 
-  w_root_read_lock(unlocked, "io_thread: settle out", &lock);
-  if (!lock.root->inner.done_initial) {
+  if (!root->inner.done_initial) {
     // we need to recrawl, stop what we're doing here
-    w_root_read_unlock(&lock, unlocked);
     return false;
   }
 
   auto settledPayload = json_object({{"settled", json_true()}});
-  lock.root->unilateralResponses->enqueue(std::move(settledPayload));
+  root->unilateralResponses->enqueue(std::move(settledPayload));
 
-  if (lock.root->considerReap()) {
-    w_root_read_unlock(&lock, unlocked);
-    unlocked->root->stopWatch();
+  if (root->considerReap()) {
+    root->stopWatch();
     return true;
   }
-  w_root_read_unlock(&lock, unlocked);
 
-  {
-    write_locked_watchman_root lock;
-    w_root_lock(unlocked, "io_thread: considerAgeOut", &lock);
-    lock.root->considerAgeOut();
-    w_root_unlock(&lock, unlocked);
-  }
+  root->considerAgeOut();
   return false;
 }
 
-void InMemoryView::clientModeCrawl(unlocked_watchman_root* unlocked) {
+void InMemoryView::clientModeCrawl(const std::shared_ptr<w_root_t>& root) {
   PendingCollection pending;
 
   auto lock = pending.wlock();
-  fullCrawl(unlocked, lock);
+  fullCrawl(root, lock);
 }
 
-void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
+void InMemoryView::ioThread(const std::shared_ptr<w_root_t>& root) {
   int timeoutms, biggest_timeout;
   PendingCollection pending;
-  struct write_locked_watchman_root lock;
   auto localPendingLock = pending.wlock();
 
-  timeoutms = unlocked->root->trigger_settle;
+  timeoutms = root->trigger_settle;
 
   // Upper bound on sleep delay.  These options are measured in seconds.
-  biggest_timeout = unlocked->root->gc_interval;
+  biggest_timeout = root->gc_interval;
   if (biggest_timeout == 0 ||
-      (unlocked->root->idle_reap_age != 0 &&
-       unlocked->root->idle_reap_age < biggest_timeout)) {
-    biggest_timeout = unlocked->root->idle_reap_age;
+      (root->idle_reap_age != 0 && root->idle_reap_age < biggest_timeout)) {
+    biggest_timeout = root->idle_reap_age;
   }
   if (biggest_timeout == 0) {
     biggest_timeout = 86400;
@@ -154,11 +139,11 @@ void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
   while (!stopThreads_) {
     bool pinged;
 
-    if (!unlocked->root->inner.done_initial) {
+    if (!root->inner.done_initial) {
       /* first order of business is to find all the files under our root */
-      fullCrawl(unlocked, localPendingLock);
+      fullCrawl(root, localPendingLock);
 
-      timeoutms = unlocked->root->trigger_settle;
+      timeoutms = root->trigger_settle;
     }
 
     // Wait for the notify thread to give us pending items, or for
@@ -172,7 +157,7 @@ void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
     }
 
     if (!pinged && localPendingLock->size() == 0) {
-      if (do_settle_things(unlocked)) {
+      if (do_settle_things(root)) {
         break;
       }
       timeoutms = std::min(biggest_timeout, timeoutms * 2);
@@ -183,31 +168,27 @@ void InMemoryView::ioThread(unlocked_watchman_root* unlocked) {
 
     // We are now, by definition, unsettled, so reduce sleep timeout
     // to the settle duration ready for the next loop through
-    timeoutms = unlocked->root->trigger_settle;
+    timeoutms = root->trigger_settle;
 
     {
       auto view = view_.wlock();
-      w_root_lock(unlocked, "io_thread: process notifications", &lock);
-      if (!lock.root->inner.done_initial) {
+      if (!root->inner.done_initial) {
         // we need to recrawl.  Discard these notifications
         localPendingLock->drain();
-        w_root_unlock(&lock, unlocked);
         continue;
       }
 
       mostRecentTick_++;
 
-      while (processPending(&lock, view, localPendingLock, false)) {
+      while (processPending(root, view, localPendingLock, false)) {
         ;
       }
-
-      w_root_unlock(&lock, unlocked);
     }
   }
 }
 
 void InMemoryView::processPath(
-    write_locked_watchman_root* lock,
+    const std::shared_ptr<w_root_t>& root,
     SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
     const w_string& full_path,
@@ -231,7 +212,7 @@ void InMemoryView::processPath(
   if (w_string_startswith(full_path, cookies_.cookiePrefix())) {
     bool consider_cookie =
         (watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS)
-        ? ((flags & W_PENDING_VIA_NOTIFY) || !lock->root->inner.done_initial)
+        ? ((flags & W_PENDING_VIA_NOTIFY) || !root->inner.done_initial)
         : true;
 
     if (consider_cookie) {
@@ -245,26 +226,19 @@ void InMemoryView::processPath(
   if (w_string_equal(full_path, root_path) ||
       (flags & W_PENDING_CRAWL_ONLY) == W_PENDING_CRAWL_ONLY) {
     crawler(
-        lock,
+        root,
         view,
         coll,
         full_path,
         now,
         (flags & W_PENDING_RECURSIVE) == W_PENDING_RECURSIVE);
   } else {
-    statPath(
-        w_root_read_lock_from_write(lock),
-        view,
-        coll,
-        full_path,
-        now,
-        flags,
-        pre_stat);
+    statPath(root, view, coll, full_path, now, flags, pre_stat);
   }
 }
 
 bool InMemoryView::processPending(
-    write_locked_watchman_root* lock,
+    const std::shared_ptr<w_root_t>& root,
     SyncView::LockedPtr& view,
     PendingCollection::LockedPtr& coll,
     bool pullFromRoot) {
@@ -288,7 +262,7 @@ bool InMemoryView::processPending(
   while (pending) {
     if (!stopThreads_) {
       processPath(
-          lock,
+          root,
           view,
           coll,
           pending->path,
