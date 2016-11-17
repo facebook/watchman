@@ -99,7 +99,7 @@ class _Instance(object):
     # overridden global configuration file; you may pass that
     # in to the constructor
 
-    def __init__(self, config={}, start_timeout=1.0, debug_watchman=False):
+    def __init__(self, config={}, start_timeout=5.0, debug_watchman=False):
         self.start_timeout = start_timeout
         self.base_dir = tempfile.mkdtemp(prefix='inst')
         self._init_state()

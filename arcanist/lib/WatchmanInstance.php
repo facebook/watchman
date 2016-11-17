@@ -259,7 +259,8 @@ class WatchmanInstance {
 
   function openSock() {
     $sockname = $this->getFullSockName();
-    $deadline = time() + 5;
+    $timeout = 5;
+    $deadline = time() + $timeout;
     do {
       if (phutil_is_windows()) {
         $this->sock = @fopen($this->sockname, 'r+');
@@ -278,7 +279,8 @@ class WatchmanInstance {
       }
     } while (time() <= $deadline);
     if (!$this->sock) {
-      throw new Exception("Failed to talk to watchman on $sockname");
+      throw new Exception("Failed to talk to watchman within ".
+        "$timeout seconds on $sockname");
     }
     stream_set_timeout($this->sock, self::TIMEOUT);
   }
