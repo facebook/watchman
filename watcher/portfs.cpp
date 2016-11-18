@@ -139,7 +139,6 @@ struct watchman_dir_handle* PortFSWatcher::startWatchDir(
     const char* path) {
   struct watchman_dir_handle *osdir;
   struct stat st;
-  w_string_t *dir_name;
 
   osdir = w_dir_open(path);
   if (!osdir) {
@@ -156,7 +155,7 @@ struct watchman_dir_handle* PortFSWatcher::startWatchDir(
     return nullptr;
   }
 
-  dir_name = w_dir_copy_full_path(dir);
+  auto dir_name = dir->getFullPath();
   if (!do_watch(dir_name, &st)) {
     w_dir_close(osdir);
     w_string_delref(dir_name);

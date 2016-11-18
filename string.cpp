@@ -855,13 +855,13 @@ w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
   return s;
 }
 
-w_string_t* w_dir_path_cat_cstr(
+w_string w_dir_path_cat_cstr(
     const struct watchman_dir* dir,
     const char* extra) {
   return w_dir_path_cat_cstr_len(dir, extra, strlen_uint32(extra));
 }
 
-w_string_t* w_dir_path_cat_cstr_len(
+w_string w_dir_path_cat_cstr_len(
     const struct watchman_dir* dir,
     const char* extra,
     uint32_t extra_len) {
@@ -900,17 +900,13 @@ w_string_t* w_dir_path_cat_cstr_len(
   }
 
   s->buf = buf;
-  return s;
+  return w_string(s, false);
 }
 
-w_string_t* w_dir_copy_full_path(const struct watchman_dir* dir) {
-  return w_dir_path_cat_cstr_len(dir, NULL, 0);
-}
-
-w_string_t* w_dir_path_cat_str(
+w_string w_dir_path_cat_str(
     const struct watchman_dir* dir,
-    w_string_t* str) {
-  return w_dir_path_cat_cstr_len(dir, str->buf, str->len);
+    const w_string& str) {
+  return w_dir_path_cat_cstr_len(dir, str.data(), str.size());
 }
 
 char *w_string_dup_buf(const w_string_t *str)

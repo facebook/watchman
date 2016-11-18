@@ -108,17 +108,6 @@ uint32_t strlen_uint32(const char *str);
 uint32_t w_string_embedded_size(w_string_t *str);
 void w_string_embedded_copy(w_string_t *dest, w_string_t *src);
 
-struct watchman_dir;
-w_string_t *w_dir_copy_full_path(const struct watchman_dir *dir);
-w_string_t* w_dir_path_cat_cstr_len(
-    const struct watchman_dir* dir,
-    const char* extra,
-    uint32_t extra_len);
-w_string_t* w_dir_path_cat_cstr(
-    const struct watchman_dir* dir,
-    const char* extra);
-w_string_t* w_dir_path_cat_str(const struct watchman_dir* dir, w_string_t* str);
-
 bool w_is_path_absolute_cstr(const char *path);
 bool w_is_path_absolute_cstr_len(const char *path, uint32_t len);
 
@@ -131,6 +120,16 @@ inline bool is_slash(char c) {
 }
 
 class w_string;
+
+struct watchman_dir;
+w_string w_dir_path_cat_str(
+    const struct watchman_dir* dir,
+    const w_string& str);
+w_string w_dir_path_cat_cstr_len(
+    const struct watchman_dir* dir,
+    const char* extra,
+    uint32_t extra_len);
+w_string w_dir_path_cat_cstr(const struct watchman_dir* dir, const char* extra);
 
 /** Represents a view over some externally managed string storage.
  * It is simply a pair of pointers that define the start and end

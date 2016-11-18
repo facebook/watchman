@@ -100,7 +100,7 @@ void InMemoryView::crawler(
       file->maybe_deleted = false;
     }
     if (!file || !file->exists || stat_all || recursive) {
-      w_string full_path(w_dir_path_cat_str(dir, name), false);
+      auto full_path = w_dir_path_cat_str(dir, name);
       w_log(
           W_LOG_DBG,
           "in crawler calling process_path on %s\n",

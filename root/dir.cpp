@@ -17,7 +17,7 @@ watchman_dir::~watchman_dir() {
 }
 
 w_string watchman_dir::getFullPath() const {
-  return w_string(w_dir_copy_full_path(this), false);
+  return w_dir_path_cat_cstr_len(this, nullptr, 0);
 }
 
 watchman_file* watchman_dir::getChildFile(w_string name) const {

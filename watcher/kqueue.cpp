@@ -133,7 +133,7 @@ KQueueWatcher::~KQueueWatcher() {
 bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
   struct kevent k;
 
-  w_string full_name(w_dir_path_cat_str(file->parent, file->getName()), false);
+  auto full_name = w_dir_path_cat_str(file->parent, file->getName());
   {
     auto rlock = maps_.rlock();
     if (rlock->name_to_fd.find(full_name) != rlock->name_to_fd.end()) {
@@ -237,7 +237,7 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
   }
 
   memset(&k, 0, sizeof(k));
-  w_string dir_name(w_dir_copy_full_path(dir), false);
+  auto dir_name = dir->getFullPath();
   EV_SET(
       &k,
       rawFd,

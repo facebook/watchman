@@ -5,18 +5,14 @@
 
 /* Query evaluator */
 
-static w_string_t* compute_parent_path(
+static const w_string& compute_parent_path(
     struct w_query_ctx* ctx,
     const watchman_file* file) {
   if (ctx->last_parent == file->parent) {
     return ctx->last_parent_path;
   }
 
-  if (ctx->last_parent_path) {
-    w_string_delref(ctx->last_parent_path);
-  }
-
-  ctx->last_parent_path = w_dir_copy_full_path(file->parent);
+  ctx->last_parent_path = file->parent->getFullPath();
   ctx->last_parent = file->parent;
 
   return ctx->last_parent_path;
@@ -115,14 +111,13 @@ void w_match_results_free(uint32_t num_matches,
 bool w_query_file_matches_relative_root(
     struct w_query_ctx* ctx,
     const watchman_file* f) {
-  w_string_t *parent_path;
   bool result;
 
   if (!ctx->query->relative_root) {
     return true;
   }
 
-  parent_path = compute_parent_path(ctx, f);
+  auto parent_path = compute_parent_path(ctx, f);
   // "in relative root" here does not mean exactly the relative root, so compare
   // against the relative root's parent.
   result = w_string_equal(parent_path, ctx->query->relative_root) ||
@@ -263,12 +258,6 @@ w_query_ctx::w_query_ctx(w_query* q, const std::shared_ptr<w_root_t>& root)
   if (query->fieldList.size() > 1) {
     json_array_set_template_new(
         resultsArray, field_list_to_json_name_array(query->fieldList));
-  }
-}
-
-w_query_ctx::~w_query_ctx() {
-  if (last_parent_path) {
-    w_string_delref(last_parent_path);
   }
 }
 

@@ -55,7 +55,7 @@ struct w_query_ctx {
 
   // Cache for dir name lookups when computing wholename
   watchman_dir* last_parent{nullptr};
-  w_string_t* last_parent_path{nullptr};
+  w_string last_parent_path;
 
   // When deduping the results, set<wholename> of
   // the files held in results
@@ -65,7 +65,6 @@ struct w_query_ctx {
   uint32_t num_deduped{0};
 
   w_query_ctx(w_query* q, const std::shared_ptr<w_root_t>& root);
-  ~w_query_ctx();
   w_query_ctx(const w_query_ctx&) = delete;
   w_query_ctx& operator=(const w_query_ctx&) = delete;
 };
