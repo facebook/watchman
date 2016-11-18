@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "watchman_scopeguard.h"
 
 namespace {
 struct reg {
@@ -134,30 +135,36 @@ bool dispatch_command(
     int mode) {
   struct watchman_command_handler_def *def;
   char *errmsg = NULL;
-  bool result = false;
   char sample_name[128];
+
+  SCOPE_EXIT {
+    free(errmsg);
+  };
 
   try {
     // Stash a reference to the current command to make it easier to log
     // the command context in some of the error paths
-    client->current_command = args; // FIXME: SCOPE_EXIT to clear this
+    client->current_command = args;
+    SCOPE_EXIT {
+      client->current_command = nullptr;
+    };
 
     def = lookup(args, &errmsg, mode);
 
     if (!def) {
       send_error_response(client, "%s", errmsg);
-      goto done;
+      return false;
     }
 
     if (poisoned_reason && (def->flags & CMD_POISON_IMMUNE) == 0) {
       send_error_response(client, "%s", poisoned_reason);
-      goto done;
+      return false;
     }
 
     if (!client->client_is_owner && (def->flags & CMD_ALLOW_ANY_USER) == 0) {
       send_error_response(
           client, "you must be the process owner to execute '%s'", def->name);
-      goto done;
+      return false;
     }
 
     // Scope for the perf sample
@@ -166,12 +173,14 @@ bool dispatch_command(
       snprintf(
           sample_name, sizeof(sample_name), "dispatch_command:%s", def->name);
       w_perf_t sample(sample_name);
-      client->perf_sample = &sample; // FIXME: SCOPE_EXIT to clear this
+      client->perf_sample = &sample;
+      SCOPE_EXIT {
+        client->perf_sample = nullptr;
+      };
 
       sample.set_wall_time_thresh(
           cfg_get_double("slow_command_log_threshold_seconds", 1.0));
 
-      result = true;
       def->func(client, args);
 
       if (sample.finish()) {
@@ -182,17 +191,12 @@ bool dispatch_command(
       }
     }
 
-  } catch (const std::exception& e) {
-    client->perf_sample = nullptr; // FIXME: SCOPE_EXIT to clear this
-    send_error_response(client, "%s", e.what());
-    result = false;
-  }
+    return true;
 
-done:
-  free(errmsg);
-  client->current_command = nullptr;
-  client->perf_sample = nullptr;
-  return result;
+  } catch (const std::exception& e) {
+    send_error_response(client, "%s", e.what());
+    return false;
+  }
 }
 
 void w_capability_register(const char *name) {
