@@ -226,13 +226,18 @@ watchman_file* InMemoryView::getOrCreateChildFile(
     watchman_dir* dir,
     const w_string& file_name,
     const struct timeval& now) {
-  auto& file_ptr = dir->files[file_name];
-
-  if (file_ptr) {
-    return file_ptr.get();
+  // file_name is typically a baseName slice; let's use it as-is
+  // to look up a child...
+  auto it = dir->files.find(file_name);
+  if (it != dir->files.end()) {
+    return it->second.get();
   }
 
-  file_ptr = watchman_file::make(file_name, dir);
+  // ... but take the shorter string from inside the file that
+  // we create as the key.
+  auto file = watchman_file::make(file_name, dir);
+  auto& file_ptr = dir->files[file->getName()];
+  file_ptr = std::move(file);
 
   file_ptr->ctime.ticks = view->mostRecentTick;
   file_ptr->ctime.timestamp = now.tv_sec;
