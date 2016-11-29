@@ -60,7 +60,6 @@ char *w_string_dup_buf(const w_string_t *str);
 w_string_t *w_string_dup_lower(w_string_t *str);
 
 bool w_string_equal(const w_string_t *a, const w_string_t *b);
-bool w_string_equal_caseless(const w_string_t *a, const w_string_t *b);
 bool w_string_equal_cstring(const w_string_t *a, const char *b);
 
 void w_string_in_place_normalize_separators(w_string_t **str, char target_sep);
@@ -97,16 +96,12 @@ bool w_string_startswith_caseless(w_string_t *str, w_string_t *prefix);
 w_string_t *w_string_shell_escape(const w_string_t *str);
 w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len);
 w_string_t *w_string_suffix(w_string_t *str);
-bool w_string_suffix_match(w_string_t *str, w_string_t *suffix);
 
 bool w_string_is_known_unicode(w_string_t *str);
 bool w_string_is_null_terminated(w_string_t *str);
 size_t w_string_strlen(w_string_t *str);
 
 uint32_t strlen_uint32(const char *str);
-
-uint32_t w_string_embedded_size(w_string_t *str);
-void w_string_embedded_copy(w_string_t *dest, w_string_t *src);
 
 bool w_is_path_absolute_cstr(const char *path);
 bool w_is_path_absolute_cstr_len(const char *path, uint32_t len);
@@ -120,16 +115,6 @@ inline bool is_slash(char c) {
 }
 
 class w_string;
-
-struct watchman_dir;
-w_string w_dir_path_cat_str(
-    const struct watchman_dir* dir,
-    const w_string& str);
-w_string w_dir_path_cat_cstr_len(
-    const struct watchman_dir* dir,
-    const char* extra,
-    uint32_t extra_len);
-w_string w_dir_path_cat_cstr(const struct watchman_dir* dir, const char* extra);
 
 /** Represents a view over some externally managed string storage.
  * It is simply a pair of pointers that define the start and end
@@ -158,6 +143,7 @@ class w_string_piece {
       : s_(cstr), e_(cstr + len) {}
 
   w_string_piece(const w_string_piece& other) = default;
+  w_string_piece& operator=(const w_string_piece& other) = default;
   w_string_piece(w_string_piece&& other) noexcept;
 
   inline const char* data() const {
@@ -175,6 +161,14 @@ class w_string_piece {
   /** Return a copy of the string as a w_string */
   w_string asWString(w_string_type_t stringType = W_STRING_BYTE) const;
 
+  /** Return a lowercased copy of the string */
+  w_string asLowerCase(w_string_type_t stringType = W_STRING_BYTE) const;
+
+  /** Returns true if the filename suffix of this string matches
+   * the provided suffix, which must be lower cased.
+   * This string piece lower cased and matched against suffix */
+  bool hasSuffix(w_string_piece suffix) const;
+
   bool pathIsAbsolute() const;
   w_string_piece dirName() const;
   w_string_piece baseName() const;
@@ -183,7 +177,14 @@ class w_string_piece {
 
   bool startsWith(w_string_piece prefix) const;
   bool startsWithCaseInsensitive(w_string_piece prefix) const;
+
+  // Compute a hash value for this piece
+  uint32_t hashValue() const;
 };
+
+bool w_string_equal_caseless(w_string_piece a, w_string_piece b);
+struct watchman_dir;
+w_string w_dir_path_cat_str(const struct watchman_dir* dir, w_string_piece str);
 
 /** A smart pointer class for tracking w_string_t instances */
 class w_string {
@@ -226,6 +227,10 @@ class w_string {
   }
 
   operator w_string_piece() const {
+    return piece();
+  }
+
+  inline w_string_piece piece() const {
     return w_string_piece(data(), size());
   }
 
@@ -256,6 +261,10 @@ class w_string {
   /** Ensure that this instance is referencing a null terminated version
    * of the current string */
   void makeNullTerminated();
+
+  /** Return a possibly new version of this string that has its separators
+   * normalized to unix slashes */
+  w_string normalizeSeparators(char targetSeparator = '/') const;
 
   /** Returns a pointer to a null terminated c-string.
    * If this instance doesn't point to a null terminated c-string, throws
@@ -293,6 +302,12 @@ template <>
 struct hash<w_string> {
   std::size_t operator()(w_string const& str) const {
     return w_string_hval(str);
+  }
+};
+template <>
+struct hash<w_string_piece> {
+  std::size_t operator()(w_string_piece const& str) const {
+    return str.hashValue();
   }
 };
 }

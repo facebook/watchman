@@ -12,7 +12,7 @@ class SuffixExpr : public QueryExpr {
   explicit SuffixExpr(w_string suffix) : suffix(suffix) {}
 
   bool evaluate(struct w_query_ctx*, const watchman_file* file) {
-    return w_string_suffix_match(file->getName(), suffix);
+    return file->getName().hasSuffix(suffix);
   }
 
   static std::unique_ptr<QueryExpr> parse(

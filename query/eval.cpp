@@ -18,10 +18,7 @@ static const w_string& compute_parent_path(
   return ctx->last_parent_path;
 }
 
-w_string_t *w_query_ctx_get_wholename(
-    struct w_query_ctx *ctx
-)
-{
+const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx) {
   uint32_t name_start;
 
   if (ctx->wholename) {

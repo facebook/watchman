@@ -281,10 +281,7 @@ void InMemoryView::ageOutFile(
   // Remove the entry from the containing file hash; this will free it.
   // We don't need to stop watching it, because we already stopped watching it
   // when we marked it as !exists.
-  // We remove using the iterator rather than passing the file name in, because
-  // the file name will be freed as part of the erasure.
-  auto it = parent->files.find(file->getName());
-  parent->files.erase(it);
+  parent->files.erase(file->getName());
 }
 
 void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {

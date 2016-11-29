@@ -127,7 +127,10 @@ void InMemoryView::crawler(
     if (file->exists &&
         (file->maybe_deleted || (S_ISDIR(file->stat.mode) && recursive))) {
       coll->add(
-          dir, file->getName()->buf, now, recursive ? W_PENDING_RECURSIVE : 0);
+          dir,
+          file->getName().data(),
+          now,
+          recursive ? W_PENDING_RECURSIVE : 0);
     }
   }
 }

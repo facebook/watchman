@@ -28,7 +28,7 @@ class WildMatchExpr : public QueryExpr {
         includedotfiles(includedotfiles) {}
 
   bool evaluate(struct w_query_ctx* ctx, const watchman_file* file) override {
-    w_string_t* str;
+    w_string_piece str;
     bool res;
 
     if (wholename) {
@@ -39,19 +39,16 @@ class WildMatchExpr : public QueryExpr {
 
 #ifdef _WIN32
     // Translate to unix style slashes for wildmatch
-    str = w_string_normalize_separators(str, '/');
+    w_string normBuf = str.asWString().normalizeSeparators();
+    str = normBuf;
 #endif
 
     res = wildmatch(
               pattern.c_str(),
-              str->buf,
+              str.data(),
               (includedotfiles ? 0 : WM_PERIOD) | (noescape ? WM_NOESCAPE : 0) |
                   (wholename ? WM_PATHNAME : 0) | (caseless ? WM_CASEFOLD : 0),
               0) == WM_MATCH;
-
-#ifdef _WIN32
-    w_string_delref(str);
-#endif
 
     return res;
   }

@@ -25,7 +25,7 @@ class PcreExpr : public QueryExpr {
   }
 
   bool evaluate(struct w_query_ctx* ctx, const watchman_file* file) override {
-    w_string_t* str;
+    w_string_piece str;
     int rc;
 
     if (wholename) {
@@ -34,7 +34,7 @@ class PcreExpr : public QueryExpr {
       str = file->getName();
     }
 
-    rc = pcre_exec(re, extra, str->buf, str->len, 0, 0, nullptr, 0);
+    rc = pcre_exec(re, extra, str.data(), str.size(), 0, 0, nullptr, 0);
 
     if (rc == PCRE_ERROR_NOMATCH) {
       return false;

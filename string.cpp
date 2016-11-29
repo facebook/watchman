@@ -21,6 +21,31 @@ w_string w_string_piece::asWString(w_string_type_t stringType) const {
   return w_string(data(), size(), stringType);
 }
 
+w_string w_string_piece::asLowerCase(w_string_type_t stringType) const {
+  char* buf;
+  w_string_t* s;
+
+  /* need to make a lowercase version */
+  s = (w_string_t*)(new char[sizeof(*s) + size() + 1]);
+  new (s) watchman_string();
+
+  s->refcnt = 1;
+  s->len = size();
+  buf = (char*)(s + 1);
+  s->buf = buf;
+  s->type = stringType;
+
+  auto cursor = s_;
+  while (cursor < e_) {
+    *buf = (char)tolower((uint8_t)*cursor);
+    ++cursor;
+    ++buf;
+  }
+  *buf = 0;
+
+  return w_string(s, false);
+}
+
 bool w_string_piece::pathIsAbsolute() const {
   return w_is_path_absolute_cstr_len(data(), size());
 }
@@ -177,6 +202,10 @@ w_string w_string::asNullTerminated() const {
   return w_string(str_->buf, str_->len, str_->type);
 }
 
+w_string w_string::normalizeSeparators(char targetSeparator) const {
+  return w_string(w_string_normalize_separators(str_, targetSeparator), false);
+}
+
 void w_string::makeNullTerminated() {
   if (w_string_is_null_terminated(str_)) {
     return;
@@ -245,6 +274,10 @@ uint32_t w_string_compute_hval(w_string_t *str) {
   return str->_hval;
 }
 
+uint32_t w_string_piece::hashValue() const {
+  return w_hash_bytes(data(), size(), 0);
+}
+
 /** An optimization to avoid heap allocations during a lookup, this function
  * creates a string object on the stack.  This object does not own the memory
  * that it references, so it is the responsibility of the caller
@@ -299,28 +332,6 @@ uint32_t strlen_uint32(const char *str) {
   }
 
   return (uint32_t)slen;
-}
-
-// Returns the memory size required to embed str into some other struct
-uint32_t w_string_embedded_size(w_string_t *str) {
-  return sizeof(*str) + str->len + 1;
-}
-
-// Copies src -> dest.  dest is assumed to be some memory of at least
-// w_string_embedded_size().
-void w_string_embedded_copy(w_string_t *dest, w_string_t *src) {
-  char *buf;
-  dest->refcnt = 1;
-  dest->_hval = src->_hval;
-  dest->hval_computed = src->hval_computed;
-  dest->len = src->len;
-  dest->slice = NULL;
-
-  buf = (char*)(dest + 1);
-  memcpy(buf, src->buf, src->len);
-  buf[dest->len] = 0;
-
-  dest->buf = buf;
 }
 
 watchman_string::watchman_string()
@@ -547,13 +558,14 @@ bool w_string_equal(const w_string_t *a, const w_string_t *b)
   return memcmp(a->buf, b->buf, a->len) == 0 ? true : false;
 }
 
-bool w_string_equal_caseless(const w_string_t *a, const w_string_t *b)
-{
+bool w_string_equal_caseless(w_string_piece a, w_string_piece b) {
   uint32_t i;
-  if (a == b) return true;
-  if (a->len != b->len) return false;
-  for (i = 0; i < a->len; i++) {
-    if (tolower((uint8_t)a->buf[i]) != tolower((uint8_t)b->buf[i])) {
+
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (i = 0; i < a.size(); i++) {
+    if (tolower((uint8_t)a[i]) != tolower((uint8_t)b[i])) {
       return false;
     }
   }
@@ -576,22 +588,21 @@ w_string_t *w_string_dirname(w_string_t *str)
   return NULL;
 }
 
-bool w_string_suffix_match(w_string_t *str, w_string_t *suffix)
-{
+bool w_string_piece::hasSuffix(w_string_piece suffix) const {
   unsigned int base, i;
 
-  if (str->len < suffix->len + 1) {
+  if (size() < suffix.size() + 1) {
     return false;
   }
 
-  base = str->len - suffix->len;
+  base = size() - suffix.size();
 
-  if (str->buf[base - 1] != '.') {
+  if (s_[base - 1] != '.') {
     return false;
   }
 
-  for (i = 0; i < suffix->len; i++) {
-    if (tolower((uint8_t)str->buf[base + i]) != suffix->buf[i]) {
+  for (i = 0; i < suffix.size(); i++) {
+    if (tolower((uint8_t)s_[base + i]) != suffix[i]) {
       return false;
     }
   }
@@ -855,23 +866,16 @@ w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
   return s;
 }
 
-w_string w_dir_path_cat_cstr(
+w_string w_dir_path_cat_str(
     const struct watchman_dir* dir,
-    const char* extra) {
-  return w_dir_path_cat_cstr_len(dir, extra, strlen_uint32(extra));
-}
-
-w_string w_dir_path_cat_cstr_len(
-    const struct watchman_dir* dir,
-    const char* extra,
-    uint32_t extra_len) {
+    w_string_piece extra) {
   uint32_t length = 0;
   const struct watchman_dir* d;
   w_string_t *s;
   char *buf, *end;
 
-  if (extra && extra_len) {
-    length = extra_len + 1 /* separator */;
+  if (extra.size()) {
+    length = extra.size() + 1 /* separator */;
   }
   for (d = dir; d; d = d->parent) {
     length += d->name.size() + 1 /* separator OR final NUL terminator */;
@@ -886,12 +890,12 @@ w_string w_dir_path_cat_cstr_len(
   end = buf + s->len;
 
   *end = 0;
-  if (extra && extra_len) {
-    end -= extra_len;
-    memcpy(end, extra, extra_len);
+  if (extra.size()) {
+    end -= extra.size();
+    memcpy(end, extra.data(), extra.size());
   }
   for (d = dir; d; d = d->parent) {
-    if (d != dir || (extra && extra_len)) {
+    if (d != dir || (extra.size())) {
       --end;
       *end = WATCHMAN_DIR_SEP;
     }
@@ -901,12 +905,6 @@ w_string w_dir_path_cat_cstr_len(
 
   s->buf = buf;
   return w_string(s, false);
-}
-
-w_string w_dir_path_cat_str(
-    const struct watchman_dir* dir,
-    const w_string& str) {
-  return w_dir_path_cat_cstr_len(dir, str.data(), str.size());
 }
 
 char *w_string_dup_buf(const w_string_t *str)

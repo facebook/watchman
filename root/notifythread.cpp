@@ -15,7 +15,6 @@ void InMemoryView::handleShouldRecrawl(const std::shared_ptr<w_root_t>& root) {
 
   if (!root->inner.cancelled) {
     auto info = root->recrawlInfo.wlock();
-
     // be careful, this is a bit of a switcheroo
     root->tearDown();
     try {

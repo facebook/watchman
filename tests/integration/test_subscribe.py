@@ -27,6 +27,10 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
     def wlockExists(self, subdata, exists):
         norm_wlock = self.normPath('.hg/wlock')
         for sub in subdata:
+            if 'files' not in sub:
+                # Don't trip over cancellation notices left over from other
+                # tests that ran against this same instance
+                continue
             for f in sub['files']:
                 fname = f['name']
                 if pywatchman.compat.PYTHON3 and \

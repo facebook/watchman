@@ -16,7 +16,26 @@ class NameExpr : public QueryExpr {
 
  public:
   bool evaluate(struct w_query_ctx* ctx, const watchman_file* file) override {
-    w_string_t* str;
+    if (!set.empty()) {
+      bool matched;
+      w_string str;
+
+      if (wholename) {
+        str = w_query_ctx_get_wholename(ctx);
+        if (caseless) {
+          str = str.piece().asLowerCase();
+        }
+      } else {
+        str = caseless ? file->getName().asLowerCase()
+                       : file->getName().asWString();
+      }
+
+      matched = set.find(str) != set.end();
+
+      return matched;
+    }
+
+    w_string_piece str;
 
     if (wholename) {
       str = w_query_ctx_get_wholename(ctx);
@@ -24,29 +43,10 @@ class NameExpr : public QueryExpr {
       str = file->getName();
     }
 
-    if (!set.empty()) {
-      bool matched;
-
-      if (caseless) {
-        str = w_string_dup_lower(str);
-        if (!str) {
-          return false;
-        }
-      }
-
-      matched = set.find(str) != set.end();
-
-      if (caseless) {
-        w_string_delref(str);
-      }
-
-      return matched;
-    }
-
     if (caseless) {
       return w_string_equal_caseless(str, name);
     }
-    return w_string_equal(str, name);
+    return str == name;
   }
 
   static std::unique_ptr<QueryExpr>

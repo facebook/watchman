@@ -185,9 +185,7 @@ bool w_query_execute_locked(
 // Returns a shared reference to the wholename
 // of the file.  The caller must not delref
 // the reference.
-w_string_t *w_query_ctx_get_wholename(
-    struct w_query_ctx *ctx
-);
+const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx);
 
 // parse the old style since and find queries
 std::shared_ptr<w_query> w_query_parse_legacy(

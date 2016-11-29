@@ -103,13 +103,16 @@ std::unique_ptr<watchman_file, watchman_dir::Deleter> watchman_file::make(
     const w_string& name,
     watchman_dir* parent) {
   auto file = (watchman_file*)calloc(
-      1, sizeof(watchman_file) + w_string_embedded_size(name));
+      1, sizeof(watchman_file) + sizeof(uint32_t) + name.size() + 1);
   std::unique_ptr<watchman_file, watchman_dir::Deleter> filePtr(
       file, watchman_dir::Deleter());
 
-  auto targetName = file->getName();
-  w_string_embedded_copy(targetName, name);
-  w_string_addref(targetName);
+  auto lenPtr = (uint32_t*)(file + 1);
+  *lenPtr = name.size();
+
+  auto data = (char*)(lenPtr + 1);
+  memcpy(data, name.data(), name.size());
+  data[name.size()] = 0;
 
   file->parent = parent;
   file->exists = true;

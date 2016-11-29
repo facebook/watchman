@@ -226,7 +226,7 @@ bool InMemoryView::globGeneratorDoublestar(
   // First step is to walk the set of files contained in this node
   for (auto& it : dir->files) {
     auto file = it.second.get();
-    w_string_t* file_name = file->getName();
+    auto file_name = file->getName();
 
     ++n;
 
@@ -235,8 +235,8 @@ bool InMemoryView::globGeneratorDoublestar(
       continue;
     }
 
-    auto subject =
-        make_path_name(dir_name, dir_name_len, file_name->buf, file_name->len);
+    auto subject = make_path_name(
+        dir_name, dir_name_len, file_name.data(), file_name.size());
 
     // Now that we have computed the name of this candidate file node,
     // attempt to match against each of the possible doublestar patterns
@@ -386,7 +386,7 @@ bool InMemoryView::globGeneratorTree(
         for (auto& it : dir->files) {
           // Otherwise we have to walk and match
           auto file = it.second.get();
-          w_string_t* file_name = file->getName();
+          auto file_name = file->getName();
           ++n;
 
           if (!file->exists) {
@@ -396,7 +396,7 @@ bool InMemoryView::globGeneratorTree(
 
           if (wildmatch(
                   child_node->pattern.c_str(),
-                  file_name->buf,
+                  file_name.data(),
                   ctx->query->glob_flags |
                       (ctx->query->case_sensitive ? WM_CASEFOLD : 0),
                   0) == WM_MATCH) {

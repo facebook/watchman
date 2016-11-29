@@ -37,8 +37,10 @@ struct watchman_file {
    * Can be NULL if not a symlink, or we failed to read the target */
   w_string symlink_target;
 
-  inline w_string_t* getName() const {
-    return (w_string_t*)(this + 1);
+  inline w_string_piece getName() const {
+    auto lenPtr = (uint32_t*)(this + 1);
+    auto data = (char*)(lenPtr + 1);
+    return w_string_piece(data, *lenPtr);
   }
 
   void removeFromFileList();
