@@ -7,6 +7,7 @@
 #include <mutex>
 #include "watchman.h"
 #include "InMemoryView.h"
+#include "Pipe.h"
 
 #if HAVE_FSEVENTS
 
@@ -38,7 +39,7 @@ struct fse_stream {
 };
 
 struct FSEventsWatcher : public Watcher {
-  int fse_pipe[2]{-1, -1};
+  watchman::Pipe fse_pipe;
 
   std::condition_variable fse_cond;
   watchman::Synchronized<std::deque<watchman_fsevent>, std::mutex> items_;
@@ -47,7 +48,6 @@ struct FSEventsWatcher : public Watcher {
   bool attempt_resync_on_drop{false};
 
   explicit FSEventsWatcher(w_root_t* root);
-  ~FSEventsWatcher();
 
   bool start(const std::shared_ptr<w_root_t>& root) override;
 
@@ -455,7 +455,7 @@ void FSEventsWatcher::FSEventsThread(const std::shared_ptr<w_root_t>& root) {
     fdctx.info = root.get();
 
     fdref = CFFileDescriptorCreate(
-        nullptr, fse_pipe[0], true, fse_pipe_callback, &fdctx);
+        nullptr, fse_pipe.read.fd(), true, fse_pipe_callback, &fdctx);
     CFFileDescriptorEnableCallBacks(fdref, kCFFileDescriptorReadCallBack);
     {
       CFRunLoopSourceRef fdsrc;
@@ -573,29 +573,10 @@ FSEventsWatcher::FSEventsWatcher(w_root_t*)
     : Watcher(
           "fsevents",
           WATCHER_HAS_PER_FILE_NOTIFICATIONS | WATCHER_COALESCED_RENAME) {
-  if (pipe(fse_pipe)) {
-    throw std::system_error(
-        errno,
-        std::system_category(),
-        std::string("pipe error: ") + strerror(errno));
-  }
-  w_set_cloexec(fse_pipe[0]);
-  w_set_cloexec(fse_pipe[1]);
-}
-
-FSEventsWatcher::~FSEventsWatcher() {
-  if (fse_pipe[0] != -1) {
-    close(fse_pipe[0]);
-    fse_pipe[0] = -1;
-  }
-  if (fse_pipe[1] != -1) {
-    close(fse_pipe[1]);
-    fse_pipe[1] = -1;
-  }
 }
 
 void FSEventsWatcher::signalThreads() {
-  write(fse_pipe[1], "X", 1);
+  write(fse_pipe.write.fd(), "X", 1);
 }
 
 bool FSEventsWatcher::start(const std::shared_ptr<w_root_t>& root) {

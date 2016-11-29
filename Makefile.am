@@ -12,7 +12,9 @@ watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 watchman_LDADD = $(JSON_LIB) libwildmatch.a
 watchman_SOURCES = \
 	CookieSync.cpp \
+	FileDescriptor.cpp \
 	InMemoryView.cpp \
+	Pipe.cpp \
 	PubSub.cpp \
 	QueryableView.cpp \
 	argv.cpp       \

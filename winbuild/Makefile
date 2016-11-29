@@ -23,7 +23,9 @@ SRCS_C=\
 SRCS_CPP=\
 	$(JSON_SRCS) \
 	CookieSync.cpp \
+	FileDescriptor.cpp \
 	InMemoryView.cpp \
+	Pipe.cpp \
 	PubSub.cpp \
 	QueryableView.cpp \
 	winbuild\errmap.cpp \

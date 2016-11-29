@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 #include "InMemoryView.h"
+#include "FileDescriptor.h"
+#include "Pipe.h"
 #include <array>
 
 #ifdef HAVE_KQUEUE
@@ -10,47 +12,12 @@
 # define O_EVTONLY O_RDONLY
 #endif
 
-namespace {
-
-// This just holds a descriptor open, closing it when it is destroyed.
-// It's not a general purpose file descriptor wrapper.
-struct FileDescriptor {
-  int fd;
-
-  explicit FileDescriptor(int fd) : fd(fd) {}
-
-  FileDescriptor() : fd(-1) {}
-
-  // No copying
-  FileDescriptor(const FileDescriptor&) = delete;
-  FileDescriptor& operator=(const FileDescriptor&) = delete;
-
-  FileDescriptor(FileDescriptor&& other) noexcept : fd(other.fd) {
-    other.fd = -1;
-  }
-  FileDescriptor& operator=(FileDescriptor&& other) {
-    reset();
-    fd = other.fd;
-    other.fd = -1;
-    return *this;
-  }
-
-  void reset() {
-    if (fd != -1) {
-      w_log(W_LOG_DBG, "KQ close fd=%d\n", fd);
-      close(fd);
-    }
-  }
-
-  ~FileDescriptor() {
-    reset();
-  }
-};
-}
+using watchman::FileDescriptor;
+using watchman::Pipe;
 
 struct KQueueWatcher : public Watcher {
-  int kq_fd{-1};
-  int terminatePipe_[2]{-1, -1};
+  FileDescriptor kq_fd;
+  Pipe terminatePipe_;
 
   struct maps {
     std::unordered_map<w_string, FileDescriptor> name_to_fd;
@@ -67,7 +34,6 @@ struct KQueueWatcher : public Watcher {
   struct kevent keventbuf[WATCHMAN_BATCH_LIMIT];
 
   explicit KQueueWatcher(w_root_t* root);
-  ~KQueueWatcher();
 
   struct watchman_dir_handle* startWatchDir(
       const std::shared_ptr<w_root_t>& root,
@@ -99,35 +65,8 @@ static const struct flag_map kflags[] = {
 KQueueWatcher::KQueueWatcher(w_root_t* root)
     : Watcher("kqueue", 0),
       maps_(maps(root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS))) {
-  if (pipe(terminatePipe_)) {
-    throw std::system_error(
-        errno,
-        std::system_category(),
-        std::string("pipe error: ") + strerror(errno));
-  }
-  w_set_cloexec(terminatePipe_[0]);
-  w_set_cloexec(terminatePipe_[1]);
-
-  kq_fd = kqueue();
-  if (kq_fd == -1) {
-    throw std::system_error(
-        errno,
-        std::system_category(),
-        std::string("kqueue error: ") + strerror(errno));
-  }
-  w_set_cloexec(kq_fd);
-}
-
-KQueueWatcher::~KQueueWatcher() {
-  if (kq_fd != -1) {
-    close(kq_fd);
-  }
-  if (terminatePipe_[0] != -1) {
-    close(terminatePipe_[0]);
-  }
-  if (terminatePipe_[1] != -1) {
-    close(terminatePipe_[1]);
-  }
+  kq_fd = FileDescriptor(kqueue(), "kqueue");
+  kq_fd.setCloExec();
 }
 
 bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
@@ -146,7 +85,7 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
 
   FileDescriptor fdHolder(open(full_name.c_str(), O_EVTONLY | O_CLOEXEC));
 
-  auto rawFd = fdHolder.fd;
+  auto rawFd = fdHolder.fd();
 
   if (rawFd == -1) {
     watchman::log(
@@ -175,7 +114,7 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
     wlock->fd_to_name[rawFd] = full_name;
   }
 
-  if (kevent(kq_fd, &k, 1, nullptr, 0, 0)) {
+  if (kevent(kq_fd.fd(), &k, 1, nullptr, 0, 0)) {
     watchman::log(
         watchman::DBG,
         "kevent EV_ADD file ",
@@ -211,7 +150,7 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
   }
 
   FileDescriptor fdHolder(open(path, O_NOFOLLOW | O_EVTONLY | O_CLOEXEC));
-  auto rawFd = fdHolder.fd;
+  auto rawFd = fdHolder.fd();
 
   if (rawFd == -1) {
     // directory got deleted between opendir and open
@@ -255,7 +194,7 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
     wlock->fd_to_name[rawFd] = dir_name;
   }
 
-  if (kevent(kq_fd, &k, 1, nullptr, 0, 0)) {
+  if (kevent(kq_fd.fd(), &k, 1, nullptr, 0, 0)) {
     w_log(W_LOG_DBG, "kevent EV_ADD dir %s failed: %s",
         path, strerror(errno));
 
@@ -279,7 +218,7 @@ bool KQueueWatcher::consumeNotify(
 
   errno = 0;
   n = kevent(
-      kq_fd,
+      kq_fd.fd(),
       nullptr,
       0,
       keventbuf,
@@ -338,7 +277,7 @@ bool KQueueWatcher::consumeNotify(
       // Remove our watch bits
       memset(&k, 0, sizeof(k));
       EV_SET(&k, fd, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
-      kevent(kq_fd, &k, 1, nullptr, 0, 0);
+      kevent(kq_fd.fd(), &k, 1, nullptr, 0, 0);
       wlock->name_to_fd.erase(path);
       wlock->fd_to_name.erase(fd);
     }
@@ -354,9 +293,9 @@ bool KQueueWatcher::waitNotify(int timeoutms) {
   int n;
   std::array<struct pollfd, 2> pfd;
 
-  pfd[0].fd = kq_fd;
+  pfd[0].fd = kq_fd.fd();
   pfd[0].events = POLLIN;
-  pfd[1].fd = terminatePipe_[0];
+  pfd[1].fd = terminatePipe_.read.fd();
   pfd[1].events = POLLIN;
 
   n = poll(pfd.data(), pfd.size(), timeoutms);
@@ -372,7 +311,7 @@ bool KQueueWatcher::waitNotify(int timeoutms) {
 }
 
 void KQueueWatcher::signalThreads() {
-  ignore_result(write(terminatePipe_[1], "X", 1));
+  ignore_result(write(terminatePipe_.write.fd(), "X", 1));
 }
 
 static RegisterWatcher<KQueueWatcher> reg(

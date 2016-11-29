@@ -3,8 +3,13 @@
 
 #include "watchman.h"
 #include "InMemoryView.h"
+#include "FileDescriptor.h"
+#include "Pipe.h"
 
 #ifdef HAVE_INOTIFY_INIT
+
+using watchman::FileDescriptor;
+using watchman::Pipe;
 
 #ifndef IN_EXCL_UNLINK
 /* defined in <linux/inotify.h> but we can't include that without
@@ -49,8 +54,8 @@ struct pending_move {
 
 struct InotifyWatcher : public Watcher {
   /* we use one inotify instance per watched root dir */
-  int infd;
-  int terminatePipe_[2]{-1, -1};
+  FileDescriptor infd;
+  Pipe terminatePipe_;
 
   struct maps {
     /* map of active watch descriptor to name of the corresponding dir */
@@ -66,7 +71,6 @@ struct InotifyWatcher : public Watcher {
   char ibuf[WATCHMAN_BATCH_LIMIT * (sizeof(struct inotify_event) + 256)];
 
   explicit InotifyWatcher(w_root_t* root);
-  ~InotifyWatcher();
 
   struct watchman_dir_handle* startWatchDir(
       const std::shared_ptr<w_root_t>& root,
@@ -111,41 +115,22 @@ static const char *inot_strerror(int err) {
 InotifyWatcher::InotifyWatcher(w_root_t* root)
     : Watcher("inotify", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
 #ifdef HAVE_INOTIFY_INIT1
-  infd = inotify_init1(IN_CLOEXEC);
+  infd = FileDescriptor(inotify_init1(IN_CLOEXEC));
 #else
-  infd = inotify_init();
+  infd = FileDescriptor(inotify_init());
 #endif
-  if (infd == -1) {
+  if (infd.fd() == -1) {
     throw std::system_error(
         errno,
         std::system_category(),
         std::string("inotify_init error: ") + inot_strerror(errno));
   }
-  w_set_cloexec(infd);
-
-  if (pipe(terminatePipe_)) {
-    throw std::system_error(
-        errno,
-        std::system_category(),
-        std::string("pipe error: ") + strerror(errno));
-  }
-  w_set_cloexec(terminatePipe_[0]);
-  w_set_cloexec(terminatePipe_[1]);
+  infd.setCloExec();
 
   {
     auto wlock = maps.wlock();
     wlock->wd_to_name.reserve(
         root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS));
-  }
-}
-
-InotifyWatcher::~InotifyWatcher() {
-  close(infd);
-  if (terminatePipe_[0] != -1) {
-    close(terminatePipe_[0]);
-  }
-  if (terminatePipe_[1] != -1) {
-    close(terminatePipe_[1]);
   }
 }
 
@@ -169,7 +154,7 @@ struct watchman_dir_handle* InotifyWatcher::startWatchDir(
 
   // The directory might be different since the last time we looked at it, so
   // call inotify_add_watch unconditionally.
-  newwd = inotify_add_watch(infd, path, WATCHMAN_INOTIFY_MASK);
+  newwd = inotify_add_watch(infd.fd(), path, WATCHMAN_INOTIFY_MASK);
   if (newwd == -1) {
     err = errno;
     if (errno == ENOSPC || errno == ENOMEM) {
@@ -260,7 +245,7 @@ void InotifyWatcher::process_inotify_event(
       auto it = wlock->move_map.find(ine->cookie);
       if (it != wlock->move_map.end()) {
         auto& old = it->second;
-        int wd = inotify_add_watch(infd, name->buf, WATCHMAN_INOTIFY_MASK);
+        int wd = inotify_add_watch(infd.fd(), name->buf, WATCHMAN_INOTIFY_MASK);
         if (wd == -1) {
           if (errno == ENOSPC || errno == ENOMEM) {
             // Limits exceeded, no recovery from our perspective
@@ -351,7 +336,7 @@ bool InotifyWatcher::consumeNotify(
   int n;
   struct timeval now;
 
-  n = read(infd, &ibuf, sizeof(ibuf));
+  n = read(infd.fd(), &ibuf, sizeof(ibuf));
   if (n == -1) {
     if (errno == EINTR) {
       return false;
@@ -359,7 +344,7 @@ bool InotifyWatcher::consumeNotify(
     w_log(
         W_LOG_FATAL,
         "read(%d, %zu): error %s\n",
-        infd,
+        infd.fd(),
         sizeof(ibuf),
         strerror(errno));
   }
@@ -408,9 +393,9 @@ bool InotifyWatcher::waitNotify(int timeoutms) {
   int n;
   std::array<struct pollfd, 2> pfd;
 
-  pfd[0].fd = infd;
+  pfd[0].fd = infd.fd();
   pfd[0].events = POLLIN;
-  pfd[1].fd = terminatePipe_[0];
+  pfd[1].fd = terminatePipe_.read.fd();
   pfd[1].events = POLLIN;
 
   n = poll(pfd.data(), pfd.size(), timeoutms);
@@ -426,7 +411,7 @@ bool InotifyWatcher::waitNotify(int timeoutms) {
 }
 
 void InotifyWatcher::signalThreads() {
-  ignore_result(write(terminatePipe_[1], "X", 1));
+  ignore_result(write(terminatePipe_.write.fd(), "X", 1));
 }
 
 static RegisterWatcher<InotifyWatcher> reg("inotify");

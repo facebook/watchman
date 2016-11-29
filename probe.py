@@ -60,6 +60,7 @@ funcs_to_probe = [
     'memmem',
     'mkostemp',
     'openat',
+    'pipe2',
     'port_create',
     'statfs',
     'strtoll',
