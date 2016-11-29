@@ -100,7 +100,7 @@ that are specific to watchman that might be relevant to your needs:
 
 --without-python        Disable python bindings
 --with-python=PATH      Enable Python bindings. PATH is location of python.
-                          Default is to look for python in your PATH
+                        Default is to look for python in your PATH
 
 --without-pcre       Don't enable pcre support.
 --with-pcre=PATH     Enable pcre support.  PATH is location of pcre-config.
