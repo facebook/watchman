@@ -213,10 +213,10 @@ static void spawn_command(
 
 #ifndef _WIN32
   posix_spawn_file_actions_adddup2(
-      &actions, w_stm_fileno(stdin_file.get()), STDIN_FILENO);
+      &actions, stdin_file->getFileDescriptor(), STDIN_FILENO);
 #else
   posix_spawn_file_actions_adddup2_handle_np(
-      &actions, w_stm_handle(stdin_file.get()), STDIN_FILENO);
+      &actions, stdin_file->getWindowsHandle(), STDIN_FILENO);
 #endif
   if (cmd->stdout_name) {
     posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO,

@@ -72,6 +72,10 @@ class UnixStream : public watchman_stream {
   explicit UnixStream(FileDescriptor&& descriptor)
       : fd(std::move(descriptor)), evt(fd.fd()) {}
 
+  int getFileDescriptor() const override {
+    return fd.fd();
+  }
+
   int read(void* buf, int size) override {
     errno = 0;
     return ::read(fd.fd(), buf, size);
@@ -134,14 +138,6 @@ class UnixStream : public watchman_stream {
 
 std::unique_ptr<watchman_event> w_event_make(void) {
   return watchman::make_unique<PipeEvent>();
-}
-
-int w_stm_fileno(w_stm_t stm) {
-  auto unixStream = dynamic_cast<UnixStream*>(stm);
-  if (!unixStream) {
-    w_log(W_LOG_FATAL, "w_stm_fileno is only supported on a UnixStream\n");
-  }
-  return unixStream->fd.fd();
 }
 
 #define MAX_POLL_EVENTS 63 // Must match MAXIMUM_WAIT_OBJECTS-1 on win

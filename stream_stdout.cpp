@@ -35,6 +35,16 @@ class StdioStream : public watchman_stream {
   bool peerIsOwner() override {
     return false;
   }
+
+#ifndef _WIN32
+  int getFileDescriptor() const override {
+    return fd;
+  }
+#else
+  HANDLE getWindowsHandle() const override {
+    return (HANDLE)_get_osfhandle(fd);
+  }
+#endif
 };
 
 StdioStream stdoutStream(STDOUT_FILENO);

@@ -77,6 +77,9 @@ class win_handle : public watchman_stream {
   bool rewind() override;
   bool shutdown() override;
   bool peerIsOwner() override;
+  HANDLE getWindowsHandle() const override {
+    return h;
+  }
 };
 
 #if 1
@@ -769,12 +772,4 @@ std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...) {
     CloseHandle(h);
   }
   return stm;
-}
-
-HANDLE w_stm_handle(w_stm_t stm) {
-  auto h = dynamic_cast<win_handle*>(stm);
-  if (!h) {
-    w_log(W_LOG_FATAL, "w_stm_handle called on non win_handle stream\n");
-  }
-  return h->h;
 }

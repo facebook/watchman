@@ -27,6 +27,11 @@ class watchman_stream {
   virtual bool rewind() = 0;
   virtual bool shutdown() = 0;
   virtual bool peerIsOwner() = 0;
+#ifndef _WIN32
+  virtual int getFileDescriptor() const = 0;
+#else
+  virtual HANDLE getWindowsHandle() const = 0;
+#endif
 };
 using w_stm_t = watchman_stream*;
 
@@ -54,14 +59,12 @@ std::unique_ptr<watchman_stream> w_stm_connect_unix(
     int timeoutms);
 std::unique_ptr<watchman_stream> w_stm_fdopen(watchman::FileDescriptor&& fd);
 std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...);
-int w_stm_fileno(w_stm_t stm);
 #else
 std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(
     const char* path,
     int timeoutms);
 std::unique_ptr<watchman_stream> w_stm_handleopen(HANDLE h);
 std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...);
-HANDLE w_stm_handle(w_stm_t stm);
 HANDLE w_handle_open(const char *path, int flags);
 #endif
 
