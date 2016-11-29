@@ -142,7 +142,12 @@ struct watchman_dir_handle* PortFSWatcher::startWatchDir(
 
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(root, dir, now, "opendir", errno, nullptr);
+    handle_open_errno(
+        root,
+        dir,
+        now,
+        "opendir",
+        std::error_code(errno, std::generic_category()));
     return nullptr;
   }
 

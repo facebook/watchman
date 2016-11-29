@@ -5,11 +5,13 @@
 #include "InMemoryView.h"
 #include "FileDescriptor.h"
 #include "Pipe.h"
+#include "watchman_error_category.h"
 
 #ifdef HAVE_INOTIFY_INIT
 
 using watchman::FileDescriptor;
 using watchman::Pipe;
+using watchman::inotify_category;
 
 #ifndef IN_EXCL_UNLINK
 /* defined in <linux/inotify.h> but we can't include that without
@@ -93,25 +95,6 @@ struct InotifyWatcher : public Watcher {
   void signalThreads() override;
 };
 
-static const char *inot_strerror(int err) {
-  switch (err) {
-    case EMFILE:
-      return "The user limit on the total number of inotify "
-        "instances has been reached; increase the "
-        "fs.inotify.max_user_instances sysctl";
-    case ENFILE:
-      return "The system limit on the total number of file descriptors "
-        "has been reached";
-    case ENOMEM:
-      return "Insufficient kernel memory is available";
-    case ENOSPC:
-      return "The user limit on the total number of inotify watches "
-        "was reached; increase the fs.inotify.max_user_watches sysctl";
-    default:
-      return strerror(err);
-  }
-}
-
 InotifyWatcher::InotifyWatcher(w_root_t* root)
     : Watcher("inotify", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
 #ifdef HAVE_INOTIFY_INIT1
@@ -120,10 +103,7 @@ InotifyWatcher::InotifyWatcher(w_root_t* root)
   infd = FileDescriptor(inotify_init());
 #endif
   if (infd.fd() == -1) {
-    throw std::system_error(
-        errno,
-        std::system_category(),
-        std::string("inotify_init error: ") + inot_strerror(errno));
+    throw std::system_error(errno, inotify_category(), "inotify_init");
   }
   infd.setCloExec();
 
@@ -146,7 +126,8 @@ struct watchman_dir_handle* InotifyWatcher::startWatchDir(
   // traversing symlinks in the context of this root
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(root, dir, now, "opendir", errno, nullptr);
+    handle_open_errno(
+        root, dir, now, "opendir", std::error_code(errno, inotify_category()));
     return nullptr;
   }
 
@@ -159,11 +140,18 @@ struct watchman_dir_handle* InotifyWatcher::startWatchDir(
     err = errno;
     if (errno == ENOSPC || errno == ENOMEM) {
       // Limits exceeded, no recovery from our perspective
-      set_poison_state(dir_name, now, "inotify-add-watch", errno,
-                       inot_strerror(errno));
+      set_poison_state(
+          dir_name,
+          now,
+          "inotify-add-watch",
+          std::error_code(errno, inotify_category()));
     } else {
       handle_open_errno(
-          root, dir, now, "inotify_add_watch", errno, inot_strerror(errno));
+          root,
+          dir,
+          now,
+          "inotify_add_watch",
+          std::error_code(errno, inotify_category()));
     }
     w_dir_close(osdir);
     errno = err;
@@ -250,13 +238,18 @@ void InotifyWatcher::process_inotify_event(
           if (errno == ENOSPC || errno == ENOMEM) {
             // Limits exceeded, no recovery from our perspective
             set_poison_state(
-                name, now, "inotify-add-watch", errno, inot_strerror(errno));
+                name,
+                now,
+                "inotify-add-watch",
+                std::error_code(errno, inotify_category()));
           } else {
-            w_log(
-                W_LOG_DBG,
-                "add_watch: %s %s\n",
+            watchman::log(
+                watchman::DBG,
+                "add_watch: ",
                 name->buf,
-                inot_strerror(errno));
+                " ",
+                inotify_category().message(errno),
+                "\n");
           }
         } else {
           w_log(W_LOG_DBG, "moved %s -> %s\n", old.name.c_str(), name->buf);

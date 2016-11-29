@@ -103,7 +103,11 @@ static void cmd_debug_poison(
 
   gettimeofday(&now, NULL);
 
-  set_poison_state(root->root_path, now, "debug-poison", ENOMEM, NULL);
+  set_poison_state(
+      root->root_path,
+      now,
+      "debug-poison",
+      std::error_code(ENOMEM, std::generic_category()));
 
   auto resp = make_response();
   resp.set("poison", typed_string_to_json(poisoned_reason, W_STRING_UNICODE));

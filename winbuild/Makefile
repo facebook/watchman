@@ -50,6 +50,7 @@ SRCS_CPP=\
 	cfg.cpp \
 	clockspec.cpp \
 	checksock.cpp \
+	error_category.cpp \
 	fstype.cpp     \
 	log.cpp        \
 	json.cpp       \

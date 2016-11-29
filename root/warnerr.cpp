@@ -3,35 +3,28 @@
 
 #include "watchman.h"
 #include "InMemoryView.h"
-
-// POSIX says open with O_NOFOLLOW should set errno to ELOOP if the path is a
-// symlink. However, FreeBSD (which ironically originated O_NOFOLLOW) sets it to
-// EMLINK.
-#ifdef __FreeBSD__
-#define ENOFOLLOWSYMLINK EMLINK
-#else
-#define ENOFOLLOWSYMLINK ELOOP
-#endif
+#include "watchman_error_category.h"
 
 void handle_open_errno(
     const std::shared_ptr<w_root_t>& root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* syscall,
-    int err,
-    const char* reason) {
+    const std::error_code& err) {
   auto dir_name = dir->getFullPath();
   bool log_warning = true;
   bool transient = false;
 
-  if (err == ENOENT || err == ENOTDIR || err == ENOFOLLOWSYMLINK) {
+  if (err == watchman::error_code::no_such_file_or_directory ||
+      err == watchman::error_code::not_a_directory ||
+      err == watchman::error_code::too_many_symbolic_link_levels) {
     log_warning = false;
     transient = false;
-  } else if (err == EACCES || err == EPERM) {
+  } else if (err == watchman::error_code::permission_denied) {
     log_warning = true;
     transient = false;
-  } else if (err == ENFILE || err == EMFILE) {
-    set_poison_state(dir_name, now, syscall, err, strerror(err));
+  } else if (err == watchman::error_code::system_limits_exceeded) {
+    set_poison_state(dir_name, now, syscall, err);
     return;
   } else {
     log_warning = true;
@@ -40,24 +33,32 @@ void handle_open_errno(
 
   if (w_string_equal(dir_name, root->root_path)) {
     if (!transient) {
-      w_log(
-          W_LOG_ERR,
-          "%s(%s) -> %s. Root was deleted; cancelling watch\n",
+      watchman::log(
+          watchman::ERR,
           syscall,
-          dir_name.c_str(),
-          reason ? reason : strerror(err));
+          "(",
+          dir_name,
+          ") -> ",
+          err.message(),
+          ". Root was deleted; cancelling watch\n");
       root->cancel();
       return;
     }
   }
 
-  auto warn = w_string::printf(
-      "%s(%s) -> %s. Marking this portion of the tree deleted",
+  auto warn = w_string::build(
       syscall,
-      dir_name.c_str(),
-      reason ? reason : strerror(err));
+      "(",
+      dir_name,
+      ") -> ",
+      err.message(),
+      ". Marking this portion of the tree deleted");
 
-  w_log(err == ENOENT ? W_LOG_DBG : W_LOG_ERR, "%s\n", warn.c_str());
+  watchman::log(
+      err == watchman::error_code::no_such_file_or_directory ? watchman::DBG
+                                                             : watchman::ERR,
+      warn,
+      "\n");
   if (log_warning) {
     root->recrawlInfo.wlock()->warning = warn;
   }

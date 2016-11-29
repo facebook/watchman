@@ -145,7 +145,12 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
 
   osdir = w_dir_open(path);
   if (!osdir) {
-    handle_open_errno(root, dir, now, "opendir", errno, nullptr);
+    handle_open_errno(
+        root,
+        dir,
+        now,
+        "opendir",
+        std::error_code(errno, std::generic_category()));
     return nullptr;
   }
 
@@ -154,7 +159,12 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
 
   if (rawFd == -1) {
     // directory got deleted between opendir and open
-    handle_open_errno(root, dir, now, "open", errno, nullptr);
+    handle_open_errno(
+        root,
+        dir,
+        now,
+        "open",
+        std::error_code(errno, std::generic_category()));
     w_dir_close(osdir);
     return nullptr;
   }
@@ -170,7 +180,12 @@ struct watchman_dir_handle* KQueueWatcher::startWatchDir(
   if (st.st_dev != osdirst.st_dev || st.st_ino != osdirst.st_ino) {
     // directory got replaced between opendir and open -- at this point its
     // parent's being watched, so we let filesystem events take care of it
-    handle_open_errno(root, dir, now, "open", ENOTDIR, nullptr);
+    handle_open_errno(
+        root,
+        dir,
+        now,
+        "open",
+        std::error_code(ENOTDIR, std::generic_category()));
     w_dir_close(osdir);
     return nullptr;
   }

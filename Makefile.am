@@ -24,6 +24,7 @@ watchman_SOURCES = \
 	cfg.cpp        \
 	clockspec.cpp  \
 	checksock.cpp  \
+	error_category.cpp  \
 	fstype.cpp     \
 	log.cpp        \
 	ignore.cpp     \

@@ -154,13 +154,11 @@ void set_poison_state(
     const w_string& dir,
     struct timeval now,
     const char* syscall,
-    int err,
-    const char* reason);
+    const std::error_code& err);
 
 void handle_open_errno(
     const std::shared_ptr<w_root_t>& root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* syscall,
-    int err,
-    const char* reason);
+    const std::error_code& err);
