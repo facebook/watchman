@@ -3,6 +3,8 @@
 #ifndef WATCHMAN_STREAM_H
 #define WATCHMAN_STREAM_H
 
+#include "FileDescriptor.h"
+
 // Very limited stream abstraction to make it easier to
 // deal with portability between Windows and POSIX.
 
@@ -50,7 +52,7 @@ w_stm_t w_stm_stdin(void);
 std::unique_ptr<watchman_stream> w_stm_connect_unix(
     const char* path,
     int timeoutms);
-std::unique_ptr<watchman_stream> w_stm_fdopen(int fd);
+std::unique_ptr<watchman_stream> w_stm_fdopen(watchman::FileDescriptor&& fd);
 std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...);
 int w_stm_fileno(w_stm_t stm);
 #else

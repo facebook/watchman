@@ -7,6 +7,8 @@
 #endif
 #include <thread>
 
+using watchman::FileDescriptor;
+
 watchman::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
 static int listener_fd = -1;
@@ -543,7 +545,7 @@ good_client:
 #ifndef _WIN32
 static void accept_loop() {
   while (!stopping) {
-    int client_fd;
+    FileDescriptor client_fd;
     struct pollfd pfd;
     int bufsize;
 
@@ -566,26 +568,23 @@ static void accept_loop() {
     }
 
 #ifdef HAVE_ACCEPT4
-    client_fd = accept4(listener_fd, NULL, 0, SOCK_CLOEXEC);
+    client_fd = FileDescriptor(accept4(listener_fd, nullptr, 0, SOCK_CLOEXEC));
 #else
-    client_fd = accept(listener_fd, NULL, 0);
+    client_fd = FileDescriptor(accept(listener_fd, nullptr, 0));
 #endif
-    if (client_fd == -1) {
+    if (!client_fd) {
       continue;
     }
-    w_set_cloexec(client_fd);
+    client_fd.setCloExec();
     bufsize = WATCHMAN_IO_BUF_SIZE;
-    setsockopt(client_fd, SOL_SOCKET, SO_SNDBUF,
-        (void*)&bufsize, sizeof(bufsize));
+    setsockopt(
+        client_fd.fd(),
+        SOL_SOCKET,
+        SO_SNDBUF,
+        (void*)&bufsize,
+        sizeof(bufsize));
 
-    auto stm = w_stm_fdopen(client_fd);
-    if (!stm) {
-      w_log(W_LOG_ERR, "Failed to allocate stm for fd: %s\n",
-          strerror(errno));
-      close(client_fd);
-      continue;
-    }
-    make_new_client(std::move(stm));
+    make_new_client(w_stm_fdopen(std::move(client_fd)));
   }
 }
 #endif

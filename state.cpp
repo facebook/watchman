@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+using watchman::FileDescriptor;
+
 /** The state saving thread is responsible for writing out the
  * persistent information about the users watches.
  * It runs in its own thread so that we avoid the possibility
@@ -110,21 +112,18 @@ std::unique_ptr<watchman_stream> w_mkstemp(char* templ) {
   }
   return nullptr;
 #else
-  int fd;
+  FileDescriptor fd;
 # ifdef HAVE_MKOSTEMP
-  fd = mkostemp(templ, O_CLOEXEC);
+  fd = FileDescriptor(mkostemp(templ, O_CLOEXEC));
 # else
-  fd = mkstemp(templ);
+  fd = FileDescriptor(mkstemp(templ));
 # endif
-  if (fd != -1) {
-    w_set_cloexec(fd);
+  if (!fd) {
+    return nullptr;
   }
+  fd.setCloExec();
 
-  auto file = w_stm_fdopen(fd);
-  if (!file) {
-    close(fd);
-  }
-  return file;
+  return w_stm_fdopen(std::move(fd));
 #endif
 }
 

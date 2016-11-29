@@ -69,8 +69,8 @@ class UnixStream : public watchman_stream {
   FileDescriptor fd;
   FakeSocketEvent evt;
 
-  explicit UnixStream(int descriptorNumber)
-      : fd(descriptorNumber), evt(descriptorNumber) {}
+  explicit UnixStream(FileDescriptor&& descriptor)
+      : fd(std::move(descriptor)), evt(fd.fd()) {}
 
   int read(void* buf, int size) override {
     errno = 0;
@@ -172,8 +172,11 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
   return res;
 }
 
-std::unique_ptr<watchman_stream> w_stm_fdopen(int fd) {
-  return watchman::make_unique<UnixStream>(fd);
+std::unique_ptr<watchman_stream> w_stm_fdopen(FileDescriptor&& fd) {
+  if (!fd) {
+    return nullptr;
+  }
+  return watchman::make_unique<UnixStream>(std::move(fd));
 }
 
 std::unique_ptr<watchman_stream> w_stm_connect_unix(
@@ -183,7 +186,6 @@ std::unique_ptr<watchman_stream> w_stm_connect_unix(
   int max_attempts = timeoutms / 10;
   int attempts = 0;
   int bufsize = WATCHMAN_IO_BUF_SIZE;
-  int fd;
 
   if (strlen(path) >= sizeof(un.sun_path) - 1) {
     w_log(W_LOG_ERR, "w_stm_connect_unix(%s) path is too long\n", path);
@@ -191,9 +193,9 @@ std::unique_ptr<watchman_stream> w_stm_connect_unix(
     return NULL;
   }
 
-  fd = socket(PF_LOCAL, SOCK_STREAM, 0);
-  if (fd == -1) {
-    return NULL;
+  FileDescriptor fd(socket(PF_LOCAL, SOCK_STREAM, 0));
+  if (!fd) {
+    return nullptr;
   }
 
   memset(&un, 0, sizeof(un));
@@ -202,7 +204,7 @@ std::unique_ptr<watchman_stream> w_stm_connect_unix(
 
 retry_connect:
 
-  if (connect(fd, (struct sockaddr*)&un, sizeof(un))) {
+  if (connect(fd.fd(), (struct sockaddr*)&un, sizeof(un))) {
     int err = errno;
 
     if (err == ECONNREFUSED || err == ENOENT) {
@@ -212,24 +214,17 @@ retry_connect:
       }
     }
 
-    close(fd);
-    return NULL;
+    return nullptr;
   }
 
-  setsockopt(fd, SOL_SOCKET, SO_RCVBUF,
-      (void*)&bufsize, sizeof(bufsize));
+  setsockopt(fd.fd(), SOL_SOCKET, SO_RCVBUF, (void*)&bufsize, sizeof(bufsize));
 
-  auto stm = w_stm_fdopen(fd);
-  if (!stm) {
-    close(fd);
-  }
-  return stm;
+  return w_stm_fdopen(std::move(fd));
 }
 
 std::unique_ptr<watchman_stream>
 w_stm_open(const char* filename, int flags, ...) {
   int mode = 0;
-  int fd;
 
   // If we're creating, pull out the mode flag
   if (flags & O_CREAT) {
@@ -239,14 +234,5 @@ w_stm_open(const char* filename, int flags, ...) {
     va_end(ap);
   }
 
-  fd = open(filename, flags, mode);
-  if (fd == -1) {
-    return NULL;
-  }
-
-  auto stm = w_stm_fdopen(fd);
-  if (!stm) {
-    close(fd);
-  }
-  return stm;
+  return w_stm_fdopen(FileDescriptor(open(filename, flags, mode)));
 }
