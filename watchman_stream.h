@@ -44,14 +44,6 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms);
 // Create a connected unix socket or a named pipe client stream
 std::unique_ptr<watchman_stream> w_stm_connect(const char* path, int timeoutms);
 
-int w_stm_read(w_stm_t stm, void *buf, int size);
-int w_stm_write(w_stm_t stm, const void *buf, int size);
-void w_stm_get_events(w_stm_t stm, w_evt_t *readable);
-void w_stm_set_nonblock(w_stm_t stm, bool nonb);
-bool w_stm_rewind(w_stm_t stm);
-bool w_stm_shutdown(w_stm_t stm);
-bool w_stm_peer_is_owner(w_stm_t stm);
-
 w_stm_t w_stm_stdout(void);
 w_stm_t w_stm_stdin(void);
 #ifndef _WIN32

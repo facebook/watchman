@@ -67,7 +67,7 @@ static bool fill_buffer(w_jbuffer_t *jr, w_stm_t stm)
   }
 
   errno = 0;
-  r = w_stm_read(stm, jr->buf + jr->wpos, avail);
+  r = stm->read(jr->buf + jr->wpos, avail);
   if (r <= 0) {
     return false;
   }
@@ -208,7 +208,7 @@ static json_ref read_bser_pdu(
   jr->rpos += 2;
 
   // We don't handle EAGAIN cleanly in here
-  w_stm_set_nonblock(stm, false);
+  stm->setNonBlock(false);
   if (!w_bser_decode_pdu_info(jr, stm, bser_version, &val, &bser_capabilities,
       jerr)) {
     return nullptr;
@@ -238,7 +238,7 @@ static json_ref read_bser_pdu(
 
   // We have enough room for the whole thing, let's read it in
   while ((jr->wpos - jr->rpos) < val) {
-    r = w_stm_read(stm, jr->buf + jr->wpos, jr->allocd - jr->wpos);
+    r = stm->read(jr->buf + jr->wpos, jr->allocd - jr->wpos);
     if (r <= 0) {
       snprintf(jerr->text, sizeof(jerr->text),
           "error reading PDU: %s",
@@ -253,7 +253,7 @@ static json_ref read_bser_pdu(
   // Ensure that we move the read position to the wpos; we consumed it all
   jr->rpos = jr->wpos;
 
-  w_stm_set_nonblock(stm, true);
+  stm->setNonBlock(true);
   return obj;
 }
 
@@ -365,7 +365,7 @@ static bool stream_n_bytes(w_jbuffer_t *jr, w_stm_t stm, json_int_t len,
     }
 
     avail = std::min((uint32_t)len, shunt_down(jr));
-    r = w_stm_read(stm, jr->buf + jr->wpos, avail);
+    r = stm->read(jr->buf + jr->wpos, avail);
 
     if (r <= 0) {
       snprintf(
@@ -437,7 +437,7 @@ bool w_json_buffer_passthru(w_jbuffer_t *jr,
   json_error_t jerr;
   bool res;
 
-  w_stm_set_nonblock(stm, false);
+  stm->setNonBlock(false);
   if (!read_and_detect_pdu(jr, stm, &jerr)) {
     w_log(W_LOG_ERR, "failed to identify PDU: %s\n",
         jerr.text);
@@ -486,8 +486,8 @@ static bool jbuffer_flush(struct jbuffer_write_data *data)
   int x;
 
   while (data->jr->wpos - data->jr->rpos) {
-    x = w_stm_write(data->stm, data->jr->buf + data->jr->rpos,
-        data->jr->wpos - data->jr->rpos);
+    x = data->stm->write(
+        data->jr->buf + data->jr->rpos, data->jr->wpos - data->jr->rpos);
 
     if (x <= 0) {
       return false;
