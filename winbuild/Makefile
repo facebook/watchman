@@ -270,6 +270,7 @@ tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
 		time.obj \
 		string.obj \
 		stream_win.obj \
+		stream.obj \
 		log.obj \
 		PubSub.obj \
 		tests\log_stub.obj \

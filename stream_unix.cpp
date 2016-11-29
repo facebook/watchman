@@ -8,104 +8,83 @@
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
+#include "FileDescriptor.h"
+
+using watchman::FileDescriptor;
 
 struct watchman_event {
   int fd[2];
   bool is_pipe;
 };
 
-struct unix_handle {
-  int fd;
+class UnixStream : public watchman_stream {
+ public:
+  FileDescriptor fd;
   struct watchman_event evt;
-};
 
-static int unix_close(w_stm_t stm) {
-  auto h = (unix_handle*)stm->handle;
-  int res;
-
-  res = close(h->fd);
-  if (res == 0) {
-    free(h);
-    stm->handle = NULL;
+  explicit UnixStream(int descriptorNumber) : fd(descriptorNumber) {
+    evt.fd[0] = fd.fd();
+    evt.fd[1] = fd.fd();
+    evt.is_pipe = false;
   }
-  return res;
-}
 
-static int unix_read(w_stm_t stm, void *buf, int size) {
-  auto h = (unix_handle*)stm->handle;
-  errno = 0;
-  return read(h->fd, buf, size);
-}
-
-static int unix_write(w_stm_t stm, const void *buf, int size) {
-  auto h = (unix_handle*)stm->handle;
-  errno = 0;
-  return write(h->fd, buf, size);
-}
-
-static void unix_get_events(w_stm_t stm, w_evt_t *readable) {
-  auto h = (unix_handle*)stm->handle;
-  *readable = &h->evt;
-}
-
-static void unix_set_nonb(w_stm_t stm, bool nonb) {
-  auto h = (unix_handle*)stm->handle;
-  if (nonb) {
-    w_set_nonblock(h->fd);
-  } else {
-    w_clear_nonblock(h->fd);
+  int read(void* buf, int size) override {
+    errno = 0;
+    return ::read(fd.fd(), buf, size);
   }
-}
 
-static bool unix_rewind(w_stm_t stm) {
-  auto h = (unix_handle*)stm->handle;
-  return lseek(h->fd, 0, SEEK_SET) == 0;
-}
+  int write(const void* buf, int size) override {
+    errno = 0;
+    return ::write(fd.fd(), buf, size);
+  }
 
-static bool unix_shutdown(w_stm_t stm) {
-  auto h = (unix_handle*)stm->handle;
-  return shutdown(h->fd, SHUT_RDWR);
-}
+  w_evt_t getEvents() override {
+    return &evt;
+  }
 
-static bool unix_peer_is_owner(w_stm_t stm) {
-  auto h = (unix_handle*)stm->handle;
+  void setNonBlock(bool nonb) override {
+    if (nonb) {
+      fd.setNonBlock();
+    } else {
+      fd.clearNonBlock();
+    }
+  }
+
+  bool rewind() override {
+    return lseek(fd.fd(), 0, SEEK_SET) == 0;
+  }
+
+  bool shutdown() override {
+    return ::shutdown(fd.fd(), SHUT_RDWR);
+  }
 
   // For these PEERCRED things, the uid reported is the effective uid of
   // the process, which may have been altered due to setuid or similar
   // mechanisms.  We'll treat the other process as an owner if their
   // effective UID matches ours, or if they are root.
+  bool peerIsOwner() override {
 #ifdef SO_PEERCRED
-  struct ucred cred;
-  socklen_t len = sizeof(cred);
+    struct ucred cred;
+    socklen_t len = sizeof(cred);
 
-  if (getsockopt(h->fd, SOL_SOCKET, SO_PEERCRED, &cred, &len) == 0) {
-    if (cred.uid == getuid() || cred.uid == 0) {
-      return true;
+    if (getsockopt(fd.fd(), SOL_SOCKET, SO_PEERCRED, &cred, &len) == 0) {
+      if (cred.uid == getuid() || cred.uid == 0) {
+        return true;
+      }
     }
-  }
 #elif defined(LOCAL_PEERCRED)
-  struct xucred cred;
-  socklen_t len = sizeof(cred);
+    struct xucred cred;
+    socklen_t len = sizeof(cred);
 
-  if (getsockopt(h->fd, SOL_LOCAL, LOCAL_PEERCRED, &cred, &len) == 0) {
-    if (cred.cr_uid == getuid() || cred.cr_uid == 0) {
-      return true;
+    if (getsockopt(fd.fd(), SOL_LOCAL, LOCAL_PEERCRED, &cred, &len) == 0) {
+      if (cred.cr_uid == getuid() || cred.cr_uid == 0) {
+        return true;
+      }
     }
-  }
 #endif
 
-  return false;
-}
-
-static struct watchman_stream_ops unix_ops = {
-  unix_close,
-  unix_read,
-  unix_write,
-  unix_get_events,
-  unix_set_nonb,
-  unix_rewind,
-  unix_shutdown,
-  unix_peer_is_owner,
+    return false;
+  }
 };
 
 w_evt_t w_event_make(void) {
@@ -154,8 +133,11 @@ bool w_event_test_and_clear(w_evt_t evt) {
 }
 
 int w_stm_fileno(w_stm_t stm) {
-  auto h = (unix_handle*)stm->handle;
-  return h->fd;
+  auto unixStream = dynamic_cast<UnixStream*>(stm);
+  if (!unixStream) {
+    w_log(W_LOG_FATAL, "w_stm_fileno is only supported on a UnixStream\n");
+  }
+  return unixStream->fd.fd();
 }
 
 #define MAX_POLL_EVENTS 63 // Must match MAXIMUM_WAIT_OBJECTS-1 on win
@@ -185,29 +167,7 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
 }
 
 w_stm_t w_stm_fdopen(int fd) {
-  w_stm_t stm;
-  struct unix_handle *h;
-
-  stm = (w_stm_t)calloc(1, sizeof(*stm));
-  if (!stm) {
-    return NULL;
-  }
-
-  h = (unix_handle*)calloc(1, sizeof(*h));
-  if (!h) {
-    free(stm);
-    return NULL;
-  }
-
-  h->fd = fd;
-
-  stm->handle = h;
-  stm->ops = &unix_ops;
-  h->evt.fd[0] = h->fd;
-  h->evt.fd[1] = h->fd;
-  h->evt.is_pipe = false;
-
-  return stm;
+  return new UnixStream(fd);
 }
 
 w_stm_t w_stm_connect_unix(const char *path, int timeoutms) {
@@ -231,7 +191,7 @@ w_stm_t w_stm_connect_unix(const char *path, int timeoutms) {
 
   memset(&un, 0, sizeof(un));
   un.sun_family = PF_LOCAL;
-  strcpy(un.sun_path, path);
+  memcpy(un.sun_path, path, strlen(path));
 
 retry_connect:
 

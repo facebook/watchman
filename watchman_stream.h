@@ -3,34 +3,24 @@
 #ifndef WATCHMAN_STREAM_H
 #define WATCHMAN_STREAM_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // Very limited stream abstraction to make it easier to
 // deal with portability between Windows and POSIX.
-
-struct watchman_stream;
-typedef struct watchman_stream *w_stm_t;
 
 struct watchman_event;
 typedef struct watchman_event *w_evt_t;
 
-struct watchman_stream_ops {
-  int (*op_close)(w_stm_t stm);
-  int (*op_read)(w_stm_t stm, void *buf, int size);
-  int (*op_write)(w_stm_t stm, const void *buf, int size);
-  void (*op_get_events)(w_stm_t stm, w_evt_t *readable);
-  void (*op_set_nonblock)(w_stm_t stm, bool nonb);
-  bool (*op_rewind)(w_stm_t stm);
-  bool (*op_shutdown)(w_stm_t stm);
-  bool (*op_peer_is_owner)(w_stm_t stm);
+class watchman_stream {
+ public:
+  virtual ~watchman_stream();
+  virtual int read(void* buf, int size) = 0;
+  virtual int write(const void* buf, int size) = 0;
+  virtual w_evt_t getEvents() = 0;
+  virtual void setNonBlock(bool nonBlock) = 0;
+  virtual bool rewind() = 0;
+  virtual bool shutdown() = 0;
+  virtual bool peerIsOwner() = 0;
 };
-
-struct watchman_stream {
-  void *handle;
-  struct watchman_stream_ops *ops;
-};
+using w_stm_t = watchman_stream*;
 
 struct watchman_event_poll {
   struct watchman_event *evt;
@@ -74,10 +64,6 @@ w_stm_t w_stm_handleopen(HANDLE h);
 w_stm_t w_stm_open(const char *path, int flags, ...);
 HANDLE w_stm_handle(w_stm_t stm);
 HANDLE w_handle_open(const char *path, int flags);
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif

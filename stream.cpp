@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+watchman_stream::~watchman_stream() {}
+
 w_stm_t w_stm_connect(const char *path, int timeoutms) {
 #ifdef _WIN32
   return w_stm_connect_named_pipe(path, timeoutms);
@@ -12,75 +14,66 @@ w_stm_t w_stm_connect(const char *path, int timeoutms) {
 }
 
 int w_stm_close(w_stm_t stm) {
-  int res;
-  if (!stm || stm->handle == NULL || stm->ops == NULL) {
+  if (!stm) {
     errno = EBADF;
     return -1;
   }
-  res = stm->ops->op_close(stm);
-  if (res == 0) {
-    stm->ops = NULL;
-    stm->handle = NULL;
-    free(stm);
-  }
-  return res;
+  delete stm;
+  return 0;
 }
 
 int w_stm_read(w_stm_t stm, void *buf, int size) {
-  if (!stm || stm->handle == NULL || stm->ops == NULL) {
+  if (!stm) {
     errno = EBADF;
     return -1;
   }
-  return stm->ops->op_read(stm, buf, size);
+  return stm->read(buf, size);
 }
 
 int w_stm_write(w_stm_t stm, const void *buf, int size) {
-  if (!stm || stm->handle == NULL || stm->ops == NULL) {
+  if (!stm) {
     errno = EBADF;
     return -1;
   }
-  return stm->ops->op_write(stm, buf, size);
+  return stm->write(buf, size);
 }
 
 void w_stm_get_events(w_stm_t stm, w_evt_t *readable) {
-  if (!stm || stm->handle == NULL || stm->ops == NULL) {
+  if (!stm) {
     errno = EBADF;
     return;
   }
-  stm->ops->op_get_events(stm, readable);
+  *readable = stm->getEvents();
 }
 
 void w_stm_set_nonblock(w_stm_t stm, bool nonb) {
-  if (!stm || stm->handle == NULL || stm->ops == NULL) {
+  if (!stm) {
     errno = EBADF;
     return;
   }
-  stm->ops->op_set_nonblock(stm, nonb);
+  stm->setNonBlock(nonb);
 }
 
 bool w_stm_rewind(w_stm_t stm) {
-  if (!stm || stm->handle == NULL || stm->ops == NULL) {
+  if (!stm) {
     errno = EBADF;
     return false;
   }
-  return stm->ops->op_rewind(stm);
+  return stm->rewind();
 }
 
 bool w_stm_shutdown(w_stm_t stm) {
-  if (!stm || stm->handle == NULL || stm->ops == NULL) {
+  if (!stm) {
     errno = EBADF;
     return false;
   }
-  return stm->ops->op_shutdown(stm);
+  return stm->shutdown();
 }
 
 bool w_stm_peer_is_owner(w_stm_t stm) {
-  if (!stm || stm->handle == NULL || stm->ops == NULL) {
+  if (!stm) {
     errno = EBADF;
     return false;
   }
-  if (!stm->ops->op_peer_is_owner) {
-    return false;
-  }
-  return stm->ops->op_peer_is_owner(stm);
+  return stm->peerIsOwner();
 }

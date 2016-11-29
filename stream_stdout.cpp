@@ -2,66 +2,49 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
 
-static inline int which_fd(w_stm_t stm);
+namespace {
+class StdioStream : public watchman_stream {
+  int fd;
 
-static int stdio_close(w_stm_t) {
-  return -1;
-}
+ public:
+  explicit StdioStream(int fd) : fd(fd) {}
 
-static int stdio_read(w_stm_t stm, void *buf, int size) {
-  return read(which_fd(stm), buf, size);
-}
-
-static int stdio_write(w_stm_t stm, const void *buf, int size) {
-  return write(which_fd(stm), buf, size);
-}
-
-static void stdio_get_events(w_stm_t, w_evt_t*) {
-  w_log(W_LOG_FATAL, "calling get_events on a stdio stm\n");
-}
-
-static void stdio_set_nonb(w_stm_t, bool) {}
-
-static bool stdio_rewind(w_stm_t) {
-  return false;
-}
-
-static bool stdio_shutdown(w_stm_t) {
-  return false;
-}
-
-static struct watchman_stream_ops stdio_ops = {
-  stdio_close,
-  stdio_read,
-  stdio_write,
-  stdio_get_events,
-  stdio_set_nonb,
-  stdio_rewind,
-  stdio_shutdown,
-  NULL
-};
-
-static struct watchman_stream stm_stdout = {
-  (void*)&stdio_ops,
-  &stdio_ops
-};
-
-static struct watchman_stream stm_stdin = {
-  (void*)&stdio_ops,
-  &stdio_ops
-};
-
-static inline int which_fd(w_stm_t stm) {
-  if (stm == &stm_stdout) {
-    return STDOUT_FILENO;
+  int read(void* buf, int size) override {
+    return ::read(fd, buf, size);
   }
-  return STDIN_FILENO;
+
+  int write(const void* buf, int size) override {
+    return ::write(fd, buf, size);
+  }
+
+  w_evt_t getEvents() override {
+    w_log(W_LOG_FATAL, "calling get_events on a stdio stm\n");
+    return nullptr;
+  }
+
+  void setNonBlock(bool) override {}
+
+  bool rewind() override {
+    return false;
+  }
+
+  bool shutdown() override {
+    return false;
+  }
+
+  bool peerIsOwner() override {
+    return false;
+  }
+};
+
+StdioStream stdoutStream(STDOUT_FILENO);
+StdioStream stdinStream(STDIN_FILENO);
 }
 
 w_stm_t w_stm_stdout(void) {
-  return &stm_stdout;
+  return &stdoutStream;
 }
 
 w_stm_t w_stm_stdin(void) {
-  return &stm_stdin;
+  return &stdinStream;
 }
