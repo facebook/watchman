@@ -28,6 +28,7 @@ SRCS_CPP=\
 	Pipe.cpp \
 	PubSub.cpp \
 	QueryableView.cpp \
+	Win32Handle.cpp \
 	winbuild\errmap.cpp \
 	winbuild\pathmap.cpp \
 	winbuild\stat.cpp \
@@ -273,6 +274,7 @@ tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
 		stream.obj \
 		log.obj \
 		PubSub.obj \
+		Win32Handle.obj \
 		tests\log_stub.obj \
 		winbuild\pathmap.obj \
 		winbuild\stat.obj \

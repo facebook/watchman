@@ -27,7 +27,7 @@ struct _posix_spawn_file_action {
   } action;
   int target_fd;
   union {
-    HANDLE dup_local_handle;
+    intptr_t dup_local_handle;
     int source_fd;
     struct {
       char *name;
@@ -46,8 +46,9 @@ int posix_spawn_file_actions_init(posix_spawn_file_actions_t *actions);
 int posix_spawn_file_actions_adddup2(posix_spawn_file_actions_t *actions,
     int fd, int target_fd);
 int posix_spawn_file_actions_adddup2_handle_np(
-    posix_spawn_file_actions_t *actions,
-    HANDLE handle, int target_fd);
+    posix_spawn_file_actions_t* actions,
+    intptr_t handle,
+    int target_fd);
 int posix_spawn_file_actions_addopen(posix_spawn_file_actions_t *actions,
     int target_fd, const char *name, int flags, int mode);
 int posix_spawn_file_actions_destroy(posix_spawn_file_actions_t *actions);

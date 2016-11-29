@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+using watchman::Win32Handle;
 
 int mkdir(const char* path, int) {
   WCHAR *wpath = w_utf8_to_win_unc(path, -1);
@@ -27,19 +28,20 @@ int mkdir(const char* path, int) {
  * This minimizes the chances that we'll encounter a sharing violation
  * while we try to examine a file. */
 int open_and_share(const char *path, int flags, ...) {
-  HANDLE h;
   int fd;
 
-  h = w_handle_open(path, flags);
-  if (h == INVALID_HANDLE_VALUE) {
+  auto h = w_handle_open(path, flags);
+  if (!h) {
     return -1;
   }
 
-  fd = _open_osfhandle((intptr_t)h, flags);
-
+  fd = _open_osfhandle(h.handle(), flags);
   if (fd == -1) {
-    CloseHandle(h);
+    return -1;
   }
+
+  // fd now owns it
+  h.release();
 
   return fd;
 }
@@ -48,7 +50,6 @@ int lstat(const char *path, struct stat *st) {
   FILE_BASIC_INFO binfo;
   FILE_STANDARD_INFO sinfo;
   WCHAR *wpath = w_utf8_to_win_unc(path, -1);
-  HANDLE h;
   DWORD err;
 
   memset(st, 0, sizeof(*st));
@@ -57,16 +58,18 @@ int lstat(const char *path, struct stat *st) {
     return -1;
   }
 
-  h = CreateFileW(wpath, FILE_READ_ATTRIBUTES,
-        FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
-        NULL,
-        OPEN_EXISTING,
-        FILE_FLAG_OPEN_REPARSE_POINT|FILE_FLAG_BACKUP_SEMANTICS,
-        NULL);
+  Win32Handle h(intptr_t(CreateFileW(
+      wpath,
+      FILE_READ_ATTRIBUTES,
+      FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+      nullptr,
+      OPEN_EXISTING,
+      FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+      nullptr)));
   err = GetLastError();
   free(wpath);
 
-  if (h == INVALID_HANDLE_VALUE) {
+  if (!h) {
     w_log(W_LOG_DBG, "lstat(%s): %s\n", path, win32_strerror(err));
     errno = map_win32_err(err);
     return -1;
@@ -77,7 +80,8 @@ int lstat(const char *path, struct stat *st) {
     st->st_rdev = st->st_dev = drive_letter - 'a';
   }
 
-  if (GetFileInformationByHandleEx(h, FileBasicInfo, &binfo, sizeof(binfo))) {
+  if (GetFileInformationByHandleEx(
+          (HANDLE)h.handle(), FileBasicInfo, &binfo, sizeof(binfo))) {
     FILETIME_LARGE_INTEGER_to_timespec(binfo.CreationTime, &st->st_ctim);
     st->st_ctime = st->st_ctim.tv_sec;
     FILETIME_LARGE_INTEGER_to_timespec(binfo.LastAccessTime, &st->st_atim);
@@ -102,13 +106,11 @@ int lstat(const char *path, struct stat *st) {
     }
   }
 
-  if (GetFileInformationByHandleEx(h, FileStandardInfo,
-        &sinfo, sizeof(sinfo))) {
+  if (GetFileInformationByHandleEx(
+          (HANDLE)h.handle(), FileStandardInfo, &sinfo, sizeof(sinfo))) {
     st->st_size = sinfo.EndOfFile.QuadPart;
     st->st_nlink = sinfo.NumberOfLinks;
   }
-
-  CloseHandle(h);
 
   return 0;
 }

@@ -89,8 +89,9 @@ int posix_spawn_file_actions_adddup2(posix_spawn_file_actions_t *actions,
 }
 
 int posix_spawn_file_actions_adddup2_handle_np(
-    posix_spawn_file_actions_t *actions,
-    HANDLE handle, int target_fd) {
+    posix_spawn_file_actions_t* actions,
+    intptr_t handle,
+    int target_fd) {
   struct _posix_spawn_file_action *acts, *act;
   acts = (_posix_spawn_file_action *)realloc(
       actions->acts, (actions->nacts + 1) * sizeof(*acts));
@@ -319,12 +320,17 @@ static int posix_spawn_common(
         if (!src) {
           src = (HANDLE)_get_osfhandle(act->u.source_fd);
         }
-        act->u.dup_local_handle = src;
+        act->u.dup_local_handle = intptr_t(src);
       }
 
-      if (!DuplicateHandle(GetCurrentProcess(), act->u.dup_local_handle,
-            GetCurrentProcess(), target, 0,
-            TRUE, DUPLICATE_SAME_ACCESS)) {
+      if (!DuplicateHandle(
+              GetCurrentProcess(),
+              (HANDLE)act->u.dup_local_handle,
+              GetCurrentProcess(),
+              target,
+              0,
+              TRUE,
+              DUPLICATE_SAME_ACCESS)) {
         err = GetLastError();
         w_log(W_LOG_ERR, "posix_spawn: failed to duplicate handle: %s\n",
             win32_strerror(err));
@@ -333,11 +339,10 @@ static int posix_spawn_common(
       }
     } else {
       // Process an open(2) action
-      HANDLE h;
 
-      h = w_handle_open(act->u.open_info.name,
-              act->u.open_info.flags & ~O_CLOEXEC);
-      if (h == INVALID_HANDLE_VALUE) {
+      auto h = w_handle_open(
+          act->u.open_info.name, act->u.open_info.flags & ~O_CLOEXEC);
+      if (!h) {
         ret = errno;
         w_log(W_LOG_ERR, "posix_spawn: failed to open %s:\n",
             act->u.open_info.name);
@@ -347,7 +352,7 @@ static int posix_spawn_common(
       if (*target) {
         CloseHandle(*target);
       }
-      *target = h;
+      *target = (HANDLE)h.release();
     }
   }
 

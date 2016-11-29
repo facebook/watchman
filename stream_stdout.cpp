@@ -41,8 +41,8 @@ class StdioStream : public watchman_stream {
     return fd;
   }
 #else
-  HANDLE getWindowsHandle() const override {
-    return (HANDLE)_get_osfhandle(fd);
+  intptr_t getWindowsHandle() const override {
+    return _get_osfhandle(fd);
   }
 #endif
 };

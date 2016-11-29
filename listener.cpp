@@ -8,6 +8,7 @@
 #include <thread>
 
 using watchman::FileDescriptor;
+using watchman::Win32Handle;
 
 watchman::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
@@ -477,67 +478,58 @@ static void named_pipe_accept_loop(const char *path) {
 
   w_log(W_LOG_ERR, "waiting for pipe clients on %s\n", path);
   while (!stopping) {
-    HANDLE client_fd;
+    Win32Handle client_fd;
     DWORD res;
 
-    client_fd = CreateNamedPipe(
+    client_fd = Win32Handle(intptr_t(CreateNamedPipe(
         path,
-        PIPE_ACCESS_DUPLEX|FILE_FLAG_OVERLAPPED,
-        PIPE_TYPE_BYTE|PIPE_READMODE_BYTE|
-        PIPE_REJECT_REMOTE_CLIENTS,
+        PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+        PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_REJECT_REMOTE_CLIENTS,
         PIPE_UNLIMITED_INSTANCES,
         WATCHMAN_IO_BUF_SIZE,
-        512, 0, NULL);
+        512,
+        0,
+        nullptr)));
 
-    if (client_fd == INVALID_HANDLE_VALUE) {
+    if (!client_fd) {
       w_log(W_LOG_ERR, "CreateNamedPipe(%s) failed: %s\n",
           path, win32_strerror(GetLastError()));
       continue;
     }
 
     ResetEvent(connected_event);
-    if (!ConnectNamedPipe(client_fd, &olap)) {
+    if (!ConnectNamedPipe((HANDLE)client_fd.handle(), &olap)) {
       res = GetLastError();
 
       if (res == ERROR_PIPE_CONNECTED) {
-        goto good_client;
+        make_new_client(w_stm_handleopen(std::move(client_fd)));
+        continue;
       }
 
       if (res != ERROR_IO_PENDING) {
         w_log(W_LOG_ERR, "ConnectNamedPipe: %s\n",
             win32_strerror(GetLastError()));
-        CloseHandle(client_fd);
         continue;
       }
 
       res = WaitForMultipleObjectsEx(2, handles, false, INFINITE, true);
       if (res == WAIT_OBJECT_0 + 1) {
         // Signalled to stop
-        CancelIoEx(client_fd, &olap);
-        CloseHandle(client_fd);
+        CancelIoEx((HANDLE)client_fd.handle(), &olap);
         continue;
       }
 
-      if (res == WAIT_OBJECT_0) {
-        goto good_client;
-      }
-
-      w_log(W_LOG_ERR, "WaitForMultipleObjectsEx: ConnectNamedPipe: "
-          "unexpected status %u\n", res);
-      CancelIoEx(client_fd, &olap);
-      CloseHandle(client_fd);
-    } else {
-good_client:
-      auto stm = w_stm_handleopen(client_fd);
-      if (!stm) {
-        w_log(W_LOG_ERR, "Failed to allocate stm for pipe handle: %s\n",
-            strerror(errno));
-        CloseHandle(client_fd);
+      if (res != WAIT_OBJECT_0) {
+        w_log(
+            W_LOG_ERR,
+            "WaitForMultipleObjectsEx: ConnectNamedPipe: "
+            "unexpected status %u\n",
+            res);
+        CancelIoEx((HANDLE)client_fd.handle(), &olap);
         continue;
       }
-
-      make_new_client(std::move(stm));
     }
+    make_new_client(w_stm_handleopen(std::move(client_fd)));
   }
 }
 #endif

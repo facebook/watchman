@@ -4,6 +4,8 @@
 #include "watchman.h"
 #include "make_unique.h"
 
+using watchman::Win32Handle;
+
 // Things are more complicated here than on unix.
 // We maintain an overlapped context for reads and
 // another for writes.  Actual write data is queued
@@ -56,7 +58,7 @@ struct write_buf {
 class win_handle : public watchman_stream {
  public:
   struct overlapped_op *read_pending{nullptr}, *write_pending{nullptr};
-  HANDLE h;
+  Win32Handle h;
   WindowsEvent waitable;
   CRITICAL_SECTION mtx;
   bool error_pending{false};
@@ -68,7 +70,7 @@ class win_handle : public watchman_stream {
   int read_avail{0};
   bool blocking{true};
 
-  explicit win_handle(HANDLE handle);
+  explicit win_handle(Win32Handle&& handle);
   ~win_handle();
   int read(void* buf, int size) override;
   int write(const void* buf, int size) override;
@@ -77,8 +79,13 @@ class win_handle : public watchman_stream {
   bool rewind() override;
   bool shutdown() override;
   bool peerIsOwner() override;
-  HANDLE getWindowsHandle() const override {
-    return h;
+  intptr_t getWindowsHandle() const override {
+    return h.handle();
+  }
+
+  // Helper to avoid sprinkling casts all over this file
+  inline HANDLE handle() const {
+    return (HANDLE)h.handle();
   }
 };
 
@@ -188,13 +195,13 @@ win_handle::~win_handle() {
   EnterCriticalSection(&mtx);
 
   if (read_pending) {
-    if (CancelIoEx(h, &read_pending->olap)) {
+    if (CancelIoEx(handle(), &read_pending->olap)) {
       free(read_pending);
       read_pending = nullptr;
     }
   }
   if (write_pending) {
-    if (CancelIoEx(h, &write_pending->olap)) {
+    if (CancelIoEx(handle(), &write_pending->olap)) {
       free(write_pending);
       write_pending = nullptr;
     }
@@ -206,11 +213,6 @@ win_handle::~win_handle() {
       free(b->data);
       free(b);
     }
-  }
-
-  if (h != INVALID_HANDLE_VALUE) {
-    CloseHandle(h);
-    h = INVALID_HANDLE_VALUE;
   }
 
   DeleteCriticalSection(&mtx);
@@ -261,8 +263,12 @@ again:
 
   // Don't hold the mutex while we're blocked
   LeaveCriticalSection(&h->mtx);
-  olap_res = get_overlapped_result_ex(h->h, &h->read_pending->olap, &bytes,
-      h->blocking ? INFINITE : 0, true);
+  olap_res = get_overlapped_result_ex(
+      h->handle(),
+      &h->read_pending->olap,
+      &bytes,
+      h->blocking ? INFINITE : 0,
+      true);
   err = GetLastError();
   EnterCriticalSection(&h->mtx);
 
@@ -307,7 +313,7 @@ static int win_read_blocking(struct win_handle* h, void* buf, int size) {
   }
 
   stream_debug("blocking read of %d bytes\n", (int)size);
-  if (ReadFile(h->h, buf, size, &bytes, nullptr)) {
+  if (ReadFile(h->handle(), buf, size, &bytes, nullptr)) {
     total_read += bytes;
     stream_debug("blocking read provided %d bytes, total=%d\n",
         (int)bytes, total_read);
@@ -351,7 +357,8 @@ static int win_read_non_blocking(struct win_handle* h, void* buf, int size) {
   h->read_pending->olap.hEvent = h->waitable.hEvent;
   h->read_pending->h = h;
 
-  if (!ReadFile(h->h, target, target_space, nullptr, &h->read_pending->olap)) {
+  if (!ReadFile(
+          h->handle(), target, target_space, nullptr, &h->read_pending->olap)) {
     DWORD err = GetLastError();
 
     if (err != ERROR_IO_PENDING) {
@@ -372,7 +379,7 @@ static int win_read_non_blocking(struct win_handle* h, void* buf, int size) {
   // Note: we obtain the bytes via GetOverlappedResult because the docs for
   // ReadFile warn against passing the pointer to the ReadFile parameter for
   // asynchronouse reads
-  GetOverlappedResult(h->h, &h->read_pending->olap, &bytes, FALSE);
+  GetOverlappedResult(h->handle(), &h->read_pending->olap, &bytes, FALSE);
   stream_debug("olap read succeeded immediately bytes=%d\n", (int)bytes);
 
   h->read_avail += bytes;
@@ -486,8 +493,12 @@ static void initiate_write(struct win_handle *h) {
   stream_debug(
       "Calling WriteFileEx with wbuf=%p wbuf->cursor=%p len=%d olap=%p\n", wbuf,
       wbuf->cursor, wbuf->len, &h->write_pending->olap);
-  if (!WriteFileEx(h->h, wbuf->cursor, wbuf->len, &h->write_pending->olap,
-        write_completed)) {
+  if (!WriteFileEx(
+          h->handle(),
+          wbuf->cursor,
+          wbuf->len,
+          &h->write_pending->olap,
+          write_completed)) {
     stream_debug("WriteFileEx: failed %s\n",
         win32_strerror(GetLastError()));
     free(h->write_pending);
@@ -504,7 +515,7 @@ int win_handle::write(const void* buf, int size) {
   if (file_type != FILE_TYPE_PIPE && blocking && !write_head) {
     DWORD bytes;
     stream_debug("blocking write of %d\n", size);
-    if (WriteFile(h, buf, size, &bytes, nullptr)) {
+    if (WriteFile(handle(), buf, size, &bytes, nullptr)) {
       LeaveCriticalSection(&mtx);
       stream_debug("blocking write wrote %d bytes of %d\n", bytes, size);
       return bytes;
@@ -559,7 +570,7 @@ bool win_handle::rewind() {
   LARGE_INTEGER new_pos;
 
   new_pos.QuadPart = 0;
-  res = SetFilePointerEx(h, new_pos, &new_pos, FILE_BEGIN);
+  res = SetFilePointerEx(handle(), new_pos, &new_pos, FILE_BEGIN);
   errno = map_win32_err(GetLastError());
   return res;
 }
@@ -573,7 +584,7 @@ bool win_handle::shutdown() {
   blocking = true;
   while (write_pending) {
     olap_res = get_overlapped_result_ex(
-        h, &write_pending->olap, &bytes, INFINITE, true);
+        handle(), &write_pending->olap, &bytes, INFINITE, true);
   }
 
   return true;
@@ -588,24 +599,25 @@ std::unique_ptr<watchman_event> w_event_make(void) {
   return watchman::make_unique<WindowsEvent>();
 }
 
-win_handle::win_handle(HANDLE handle)
-    : h(handle),
+win_handle::win_handle(Win32Handle&& handle)
+    : h(std::move(handle)),
       // Initially signalled, meaning that they can try reading
       waitable(true),
-      file_type(GetFileType(handle)) {
+      file_type(GetFileType((HANDLE)h.handle())) {
   InitializeCriticalSection(&mtx);
 }
 
-std::unique_ptr<watchman_stream> w_stm_handleopen(HANDLE handle) {
-  if (handle == INVALID_HANDLE_VALUE || handle == nullptr) {
+std::unique_ptr<watchman_stream> w_stm_handleopen(Win32Handle&& handle) {
+  if (!handle) {
     return nullptr;
   }
 
-  return watchman::make_unique<win_handle>(handle);
+  return watchman::make_unique<win_handle>(std::move(handle));
 }
 
-std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(const char *path, int timeoutms) {
-  HANDLE handle;
+std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(
+    const char* path,
+    int timeoutms) {
   DWORD err;
   DWORD64 deadline = GetTickCount64() + timeoutms;
 
@@ -615,49 +627,44 @@ std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(const char *path, int 
     return nullptr;
   }
 
-retry_connect:
-  handle = CreateFile(
-      path,
-      GENERIC_READ | GENERIC_WRITE,
-      0,
-      nullptr,
-      OPEN_EXISTING,
-      FILE_FLAG_OVERLAPPED,
-      nullptr);
+  while (true) {
+    Win32Handle handle(intptr_t(CreateFile(
+        path,
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_FLAG_OVERLAPPED,
+        nullptr)));
 
-  if (handle != INVALID_HANDLE_VALUE) {
-    auto stm = w_stm_handleopen(handle);
-    if (!stm) {
-      CloseHandle(handle);
+    if (handle) {
+      return w_stm_handleopen(std::move(handle));
     }
-    return stm;
-  }
 
-  err = GetLastError();
-  if (timeoutms > 0) {
-    timeoutms -= (DWORD)(GetTickCount64() - deadline);
-  }
-  if (timeoutms <= 0 || (err != ERROR_PIPE_BUSY &&
-        err != ERROR_FILE_NOT_FOUND)) {
-    // either we're out of time, or retrying won't help with this error
-    errno = map_win32_err(err);
-    return nullptr;
-  }
-
-  // We can retry
-  if (!WaitNamedPipe(path, timeoutms)) {
     err = GetLastError();
-    if (err == ERROR_SEM_TIMEOUT) {
+    if (timeoutms > 0) {
+      timeoutms -= (DWORD)(GetTickCount64() - deadline);
+    }
+    if (timeoutms <= 0 ||
+        (err != ERROR_PIPE_BUSY && err != ERROR_FILE_NOT_FOUND)) {
+      // either we're out of time, or retrying won't help with this error
       errno = map_win32_err(err);
       return nullptr;
     }
-    if (err == ERROR_FILE_NOT_FOUND) {
-      // Grace to allow it to be created
-      SleepEx(10, true);
+
+    // We can retry
+    if (!WaitNamedPipe(path, timeoutms)) {
+      err = GetLastError();
+      if (err == ERROR_SEM_TIMEOUT) {
+        errno = map_win32_err(err);
+        return nullptr;
+      }
+      if (err == ERROR_FILE_NOT_FOUND) {
+        // Grace to allow it to be created
+        SleepEx(10, true);
+      }
     }
   }
-
-  goto retry_connect;
 }
 
 int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
@@ -702,12 +709,11 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
 }
 
 // similar to open(2), but returns a handle
-HANDLE w_handle_open(const char *path, int flags) {
+Win32Handle w_handle_open(const char* path, int flags) {
   DWORD access = 0, share = 0, create = 0, attrs = 0;
   DWORD err;
   SECURITY_ATTRIBUTES sec;
   WCHAR *wpath;
-  HANDLE h;
 
   if (!strcmp(path, "/dev/null")) {
     path = "NUL:";
@@ -715,7 +721,7 @@ HANDLE w_handle_open(const char *path, int flags) {
 
   wpath = w_utf8_to_win_unc(path, -1);
   if (!wpath) {
-    return INVALID_HANDLE_VALUE;
+    return Win32Handle(0);
   }
 
   if (flags & (O_WRONLY|O_RDWR)) {
@@ -752,7 +758,8 @@ HANDLE w_handle_open(const char *path, int flags) {
     attrs |= FILE_FLAG_BACKUP_SEMANTICS;
   }
 
-  h = CreateFileW(wpath, access, share, &sec, create, attrs, nullptr);
+  Win32Handle h(intptr_t(
+      CreateFileW(wpath, access, share, &sec, create, attrs, nullptr)));
   err = GetLastError();
   free(wpath);
 
@@ -761,15 +768,5 @@ HANDLE w_handle_open(const char *path, int flags) {
 }
 
 std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...) {
-  HANDLE h = w_handle_open(path, flags);
-
-  if (h == INVALID_HANDLE_VALUE) {
-    return nullptr;
-  }
-
-  auto stm = w_stm_handleopen(h);
-  if (!stm) {
-    CloseHandle(h);
-  }
-  return stm;
+  return w_stm_handleopen(w_handle_open(path, flags));
 }
