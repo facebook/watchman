@@ -20,7 +20,7 @@ struct watchman_client_state_assertion {
 };
 
 struct watchman_client : public std::enable_shared_from_this<watchman_client> {
-  w_stm_t stm{nullptr};
+  std::unique_ptr<watchman_stream> stm;
   std::unique_ptr<watchman_event> ping;
   w_jbuffer_t reader, writer;
   bool client_mode{false};
@@ -43,7 +43,7 @@ struct watchman_client : public std::enable_shared_from_this<watchman_client> {
   std::shared_ptr<watchman::Publisher::Subscriber> errorSub;
 
   watchman_client();
-  explicit watchman_client(w_stm_t stm);
+  explicit watchman_client(std::unique_ptr<watchman_stream>&& stm);
   virtual ~watchman_client();
 
   void enqueueResponse(json_ref&& resp, bool ping = true);
@@ -89,7 +89,7 @@ struct watchman_user_client : public watchman_client {
       std::shared_ptr<watchman::Publisher::Subscriber>>
       unilateralSub;
 
-  explicit watchman_user_client(w_stm_t stm);
+  explicit watchman_user_client(std::unique_ptr<watchman_stream>&& stm);
   ~watchman_user_client();
 
   bool unsubByName(const w_string& name);

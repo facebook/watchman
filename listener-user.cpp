@@ -93,8 +93,9 @@ std::shared_ptr<w_root_t> resolve_root_or_err(
   return root;
 }
 
-watchman_user_client::watchman_user_client(w_stm_t stm)
-    : watchman_client(stm) {}
+watchman_user_client::watchman_user_client(
+    std::unique_ptr<watchman_stream>&& stm)
+    : watchman_client(std::move(stm)) {}
 
 watchman_user_client::~watchman_user_client() {
   /* cancel subscriptions */

@@ -3,12 +3,10 @@
 
 #include "watchman.h"
 
-static w_stm_t prepare_stdin(
-  struct watchman_trigger_command *cmd,
-  w_query_res *res)
-{
+static std::unique_ptr<watchman_stream> prepare_stdin(
+    struct watchman_trigger_command* cmd,
+    w_query_res* res) {
   char stdin_file_name[WATCHMAN_NAME_MAX];
-  w_stm_t stdin_file = NULL;
 
   if (cmd->stdin_style == trigger_input_style::input_dev_null) {
     return w_stm_open("/dev/null", O_RDONLY|O_CLOEXEC);
@@ -24,7 +22,7 @@ static w_stm_t prepare_stdin(
   /* prepare the input stream for the child process */
   snprintf(stdin_file_name, sizeof(stdin_file_name), "%s%cwmanXXXXXX",
       watchman_tmp_dir, WATCHMAN_DIR_SEP);
-  stdin_file = w_mkstemp(stdin_file_name);
+  auto stdin_file = w_mkstemp(stdin_file_name);
   if (!stdin_file) {
     w_log(W_LOG_ERR, "unable to create a temporary file: %s %s\n",
         stdin_file_name, strerror(errno));
@@ -42,16 +40,15 @@ static w_stm_t prepare_stdin(
 
         if (!w_json_buffer_init(&buffer)) {
           w_log(W_LOG_ERR, "failed to init json buffer\n");
-          w_stm_close(stdin_file);
           return NULL;
         }
 
         w_log(W_LOG_ERR, "input_json: sending json object to stm\n");
-        if (!w_json_buffer_write(&buffer, stdin_file, res->resultsArray, 0)) {
+        if (!w_json_buffer_write(
+                &buffer, stdin_file.get(), res->resultsArray, 0)) {
           w_log(W_LOG_ERR,
               "input_json: failed to write json data to stream: %s\n",
               strerror(errno));
-          w_stm_close(stdin_file);
           return NULL;
         }
         w_json_buffer_free(&buffer);
@@ -60,14 +57,13 @@ static w_stm_t prepare_stdin(
     case input_name_list:
       for (auto& name : res->resultsArray.array()) {
         auto& nameStr = json_to_w_string(name);
-        if (w_stm_write(stdin_file, nameStr.data(), nameStr.size()) !=
+        if (stdin_file->write(nameStr.data(), nameStr.size()) !=
                 (int)nameStr.size() ||
-            w_stm_write(stdin_file, "\n", 1) != 1) {
+            stdin_file->write("\n", 1) != 1) {
           w_log(
               W_LOG_ERR,
               "write failure while producing trigger stdin: %s\n",
               strerror(errno));
-          w_stm_close(stdin_file);
           return nullptr;
         }
       }
@@ -77,7 +73,7 @@ static w_stm_t prepare_stdin(
       break;
   }
 
-  w_stm_rewind(stdin_file);
+  stdin_file->rewind();
   return stdin_file;
 }
 
@@ -89,7 +85,6 @@ static void spawn_command(
   char **envp = NULL;
   uint32_t i = 0;
   int ret;
-  w_stm_t stdin_file = NULL;
   char **argv = NULL;
   uint32_t env_size;
   posix_spawn_file_actions_t actions;
@@ -125,7 +120,7 @@ static void spawn_command(
     file_overflow = true;
   }
 
-  stdin_file = prepare_stdin(cmd, res);
+  auto stdin_file = prepare_stdin(cmd, res);
   if (!stdin_file) {
     w_log(
         W_LOG_ERR,
@@ -217,11 +212,11 @@ static void spawn_command(
   posix_spawn_file_actions_init(&actions);
 
 #ifndef _WIN32
-  posix_spawn_file_actions_adddup2(&actions, w_stm_fileno(stdin_file),
-      STDIN_FILENO);
+  posix_spawn_file_actions_adddup2(
+      &actions, w_stm_fileno(stdin_file.get()), STDIN_FILENO);
 #else
-  posix_spawn_file_actions_adddup2_handle_np(&actions,
-      w_stm_handle(stdin_file), STDIN_FILENO);
+  posix_spawn_file_actions_adddup2_handle_np(
+      &actions, w_stm_handle(stdin_file.get()), STDIN_FILENO);
 #endif
   if (cmd->stdout_name) {
     posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO,
@@ -325,10 +320,6 @@ static void spawn_command(
 
   posix_spawnattr_destroy(&attr);
   posix_spawn_file_actions_destroy(&actions);
-
-  if (stdin_file) {
-    w_stm_close(stdin_file);
-  }
 }
 
 bool watchman_trigger_command::maybeSpawn(

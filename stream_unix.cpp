@@ -172,12 +172,13 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
   return res;
 }
 
-w_stm_t w_stm_fdopen(int fd) {
-  return new UnixStream(fd);
+std::unique_ptr<watchman_stream> w_stm_fdopen(int fd) {
+  return watchman::make_unique<UnixStream>(fd);
 }
 
-w_stm_t w_stm_connect_unix(const char *path, int timeoutms) {
-  w_stm_t stm;
+std::unique_ptr<watchman_stream> w_stm_connect_unix(
+    const char* path,
+    int timeoutms) {
   struct sockaddr_un un;
   int max_attempts = timeoutms / 10;
   int attempts = 0;
@@ -218,17 +219,17 @@ retry_connect:
   setsockopt(fd, SOL_SOCKET, SO_RCVBUF,
       (void*)&bufsize, sizeof(bufsize));
 
-  stm = w_stm_fdopen(fd);
+  auto stm = w_stm_fdopen(fd);
   if (!stm) {
     close(fd);
   }
   return stm;
 }
 
-w_stm_t w_stm_open(const char *filename, int flags, ...) {
+std::unique_ptr<watchman_stream>
+w_stm_open(const char* filename, int flags, ...) {
   int mode = 0;
   int fd;
-  w_stm_t stm;
 
   // If we're creating, pull out the mode flag
   if (flags & O_CREAT) {
@@ -243,7 +244,7 @@ w_stm_t w_stm_open(const char *filename, int flags, ...) {
     return NULL;
   }
 
-  stm = w_stm_fdopen(fd);
+  auto stm = w_stm_fdopen(fd);
   if (!stm) {
     close(fd);
   }

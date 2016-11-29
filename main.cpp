@@ -843,29 +843,26 @@ static bool should_start(int err)
 
 static bool try_command(json_t *cmd, int timeout)
 {
-  w_stm_t client = NULL;
   w_jbuffer_t buffer;
   w_jbuffer_t output_pdu_buffer;
   int err;
 
-  client = w_stm_connect(sock_name, timeout * 1000);
-  if (client == NULL) {
+  auto client = w_stm_connect(sock_name, timeout * 1000);
+  if (!client) {
     return false;
   }
 
   if (!cmd) {
-    w_stm_close(client);
     return true;
   }
 
   w_json_buffer_init(&buffer);
 
   // Send command
-  if (!w_ser_write_pdu(server_pdu, &buffer, client, cmd)) {
+  if (!w_ser_write_pdu(server_pdu, &buffer, client.get(), cmd)) {
     err = errno;
     w_log(W_LOG_ERR, "error sending PDU to server\n");
     w_json_buffer_free(&buffer);
-    w_stm_close(client);
     errno = err;
     return false;
   }
@@ -876,18 +873,16 @@ static bool try_command(json_t *cmd, int timeout)
 
   do {
     if (!w_json_buffer_passthru(
-          &buffer, output_pdu, &output_pdu_buffer, client)) {
+            &buffer, output_pdu, &output_pdu_buffer, client.get())) {
       err = errno;
       w_json_buffer_free(&buffer);
       w_json_buffer_free(&output_pdu_buffer);
-      w_stm_close(client);
       errno = err;
       return false;
     }
   } while (persistent);
   w_json_buffer_free(&buffer);
   w_json_buffer_free(&output_pdu_buffer);
-  w_stm_close(client);
 
   return true;
 }

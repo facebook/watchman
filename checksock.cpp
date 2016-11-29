@@ -12,7 +12,6 @@
 
 static void* check_my_sock(void*) {
   auto cmd = json_array({typed_string_to_json("get-pid", W_STRING_UNICODE)});
-  w_stm_t client = NULL;
   w_jbuffer_t buf;
   json_error_t jerr;
   json_int_t remote_pid = 0;
@@ -20,24 +19,24 @@ static void* check_my_sock(void*) {
 
   w_set_thread_name("sockcheck");
 
-  client = w_stm_connect(get_sock_name(), 6000);
+  auto client = w_stm_connect(get_sock_name(), 6000);
   if (!client) {
     w_log(W_LOG_FATAL, "Failed to connect to myself for get-pid check: %s\n",
         strerror(errno));
     /* NOTREACHED */
   }
 
-  w_stm_set_nonblock(client, false);
+  client->setNonBlock(false);
 
   w_json_buffer_init(&buf);
-  if (!w_ser_write_pdu(is_bser, &buf, client, cmd)) {
+  if (!w_ser_write_pdu(is_bser, &buf, client.get(), cmd)) {
     w_log(W_LOG_FATAL, "Failed to send get-pid PDU: %s\n",
           strerror(errno));
     /* NOTREACHED */
   }
 
   w_json_buffer_reset(&buf);
-  auto result = w_json_buffer_next(&buf, client, &jerr);
+  auto result = w_json_buffer_next(&buf, client.get(), &jerr);
   if (!result) {
     w_log(W_LOG_FATAL, "Failed to decode get-pid response: %s %s\n",
         jerr.text, strerror(errno));
@@ -58,7 +57,6 @@ static void* check_my_sock(void*) {
     /* NOTREACHED */
   }
   w_json_buffer_free(&buf);
-  w_stm_close(client);
   return NULL;
 }
 

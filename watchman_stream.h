@@ -42,9 +42,8 @@ std::unique_ptr<watchman_event> w_event_make(void);
 int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms);
 
 // Create a connected unix socket or a named pipe client stream
-w_stm_t w_stm_connect(const char *path, int timeoutms);
+std::unique_ptr<watchman_stream> w_stm_connect(const char* path, int timeoutms);
 
-int w_stm_close(w_stm_t stm);
 int w_stm_read(w_stm_t stm, void *buf, int size);
 int w_stm_write(w_stm_t stm, const void *buf, int size);
 void w_stm_get_events(w_stm_t stm, w_evt_t *readable);
@@ -56,16 +55,24 @@ bool w_stm_peer_is_owner(w_stm_t stm);
 w_stm_t w_stm_stdout(void);
 w_stm_t w_stm_stdin(void);
 #ifndef _WIN32
-w_stm_t w_stm_connect_unix(const char *path, int timeoutms);
-w_stm_t w_stm_fdopen(int fd);
-w_stm_t w_stm_open(const char *path, int flags, ...);
+std::unique_ptr<watchman_stream> w_stm_connect_unix(
+    const char* path,
+    int timeoutms);
+std::unique_ptr<watchman_stream> w_stm_fdopen(int fd);
+std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...);
 int w_stm_fileno(w_stm_t stm);
 #else
-w_stm_t w_stm_connect_named_pipe(const char *path, int timeoutms);
-w_stm_t w_stm_handleopen(HANDLE h);
-w_stm_t w_stm_open(const char *path, int flags, ...);
+std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(
+    const char* path,
+    int timeoutms);
+std::unique_ptr<watchman_stream> w_stm_handleopen(HANDLE h);
+std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...);
 HANDLE w_stm_handle(w_stm_t stm);
 HANDLE w_handle_open(const char *path, int flags);
 #endif
+
+// Make a temporary file name and open it.
+// Marks the file as CLOEXEC
+std::unique_ptr<watchman_stream> w_mkstemp(char* templ);
 
 #endif

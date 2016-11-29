@@ -73,10 +73,6 @@ static inline void w_clear_nonblock(int fd)
   unused_parameter(fd);
 #endif
 }
-
-// Make a temporary file name and open it.
-// Marks the file as CLOEXEC
-w_stm_t w_mkstemp(char *templ);
 char *w_realpath(const char *filename);
 
 #ifndef _WIN32

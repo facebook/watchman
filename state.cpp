@@ -87,8 +87,7 @@ bool w_state_load(void)
 extern int mkostemp(char *, int);
 #endif
 
-w_stm_t w_mkstemp(char *templ)
-{
+std::unique_ptr<watchman_stream> w_mkstemp(char* templ) {
 #if defined(_WIN32)
   char *name = _mktemp(templ);
   if (!name) {
@@ -111,7 +110,6 @@ w_stm_t w_mkstemp(char *templ)
   }
   return nullptr;
 #else
-  w_stm_t file;
   int fd;
 # ifdef HAVE_MKOSTEMP
   fd = mkostemp(templ, O_CLOEXEC);
@@ -122,7 +120,7 @@ w_stm_t w_mkstemp(char *templ)
     w_set_cloexec(fd);
   }
 
-  file = w_stm_fdopen(fd);
+  auto file = w_stm_fdopen(fd);
   if (!file) {
     close(fd);
   }
@@ -133,7 +131,6 @@ w_stm_t w_mkstemp(char *templ)
 static bool do_state_save(void)
 {
   w_jbuffer_t buffer;
-  w_stm_t file = NULL;
   bool result = false;
 
   auto state = json_object();
@@ -143,31 +140,32 @@ static bool do_state_save(void)
     goto out;
   }
 
-  file = w_stm_open(watchman_state_file, O_WRONLY|O_TRUNC|O_CREAT, 0600);
-  if (!file) {
-    w_log(W_LOG_ERR, "save_state: unable to open %s for write: %s\n",
-        watchman_state_file,
-        strerror(errno));
-    goto out;
+  {
+    auto file =
+        w_stm_open(watchman_state_file, O_WRONLY | O_TRUNC | O_CREAT, 0600);
+    if (!file) {
+      w_log(
+          W_LOG_ERR,
+          "save_state: unable to open %s for write: %s\n",
+          watchman_state_file,
+          strerror(errno));
+      goto out;
+    }
+
+    state.set(
+        "version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE));
+
+    /* now ask the different subsystems to fill out the state */
+    if (!w_root_save_state(state)) {
+      goto out;
+    }
+
+    /* we've prepared what we're going to save, so write it out */
+    w_json_buffer_write(&buffer, file.get(), state, JSON_INDENT(4));
+    result = true;
   }
-
-  state.set("version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE));
-
-  /* now ask the different subsystems to fill out the state */
-  if (!w_root_save_state(state)) {
-    goto out;
-  }
-
-  /* we've prepared what we're going to save, so write it out */
-  w_json_buffer_write(&buffer, file, state, JSON_INDENT(4));
-  w_stm_close(file);
-  file = NULL;
-  result = true;
 
 out:
-  if (file) {
-    w_stm_close(file);
-  }
   w_json_buffer_free(&buffer);
 
   return result;

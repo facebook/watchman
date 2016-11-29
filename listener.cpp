@@ -81,8 +81,9 @@ void send_error_response(struct watchman_client *client,
 
 watchman_client::watchman_client() : watchman_client(nullptr) {}
 
-watchman_client::watchman_client(w_stm_t stm) : stm(stm), ping(w_event_make()) {
-  w_log(W_LOG_DBG, "accepted client:stm=%p\n", stm);
+watchman_client::watchman_client(std::unique_ptr<watchman_stream>&& stm)
+    : stm(std::move(stm)), ping(w_event_make()) {
+  w_log(W_LOG_DBG, "accepted client:stm=%p\n", stm.get());
   if (!w_json_buffer_init(&reader)) {
     // FIXME: error handling
   }
@@ -99,8 +100,7 @@ watchman_client::~watchman_client() {
 
   w_json_buffer_free(&reader);
   w_json_buffer_free(&writer);
-  w_stm_shutdown(stm);
-  w_stm_close(stm);
+  stm->shutdown();
 }
 
 void watchman_client::enqueueResponse(json_ref&& resp, bool ping) {
@@ -130,12 +130,12 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
 
   client->thread_handle = pthread_self();
 
-  w_stm_set_nonblock(client->stm, true);
-  w_set_thread_name("client=%p:stm=%p", client.get(), client->stm);
+  client->stm->setNonBlock(true);
+  w_set_thread_name("client=%p:stm=%p", client.get(), client->stm.get());
 
-  client->client_is_owner = w_stm_peer_is_owner(client->stm);
+  client->client_is_owner = client->stm->peerIsOwner();
 
-  w_stm_get_events(client->stm, &pfd[0].evt);
+  pfd[0].evt = client->stm->getEvents();
   pfd[1].evt = client->ping.get();
 
   while (!stopping) {
@@ -149,7 +149,8 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
     }
 
     if (pfd[0].ready) {
-      auto request = w_json_buffer_next(&client->reader, client->stm, &jerr);
+      auto request =
+          w_json_buffer_next(&client->reader, client->stm.get(), &jerr);
 
       if (!request && errno == EAGAIN) {
         // That's fine
@@ -267,14 +268,17 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
       auto& response_to_send = client->responses.front();
 
       if (send_ok) {
-        w_stm_set_nonblock(client->stm, false);
+        client->stm->setNonBlock(false);
         /* Return the data in the same format that was used to ask for it.
          * Don't bother sending any more messages if the client disconnects,
          * but still free their memory.
          */
         send_ok = w_ser_write_pdu(
-            client->pdu_type, &client->writer, client->stm, response_to_send);
-        w_stm_set_nonblock(client->stm, true);
+            client->pdu_type,
+            &client->writer,
+            client->stm.get(),
+            response_to_send);
+        client->stm->setNonBlock(true);
       }
 
       client->responses.pop_front();
@@ -282,7 +286,8 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
   }
 
 disconnected:
-  w_set_thread_name("NOT_CONN:client=%p:stm=%p", client.get(), client->stm);
+  w_set_thread_name(
+      "NOT_CONN:client=%p:stm=%p", client.get(), client->stm.get());
   // Remove the client from the map before we tear it down, as this makes
   // it easier to flush out pending writes on windows without worrying
   // about w_log_to_clients contending for the write buffers
@@ -427,8 +432,9 @@ static int get_listener_socket(const char *path)
 }
 #endif
 
-static std::shared_ptr<watchman_client> make_new_client(w_stm_t stm) {
-  auto client = std::make_shared<watchman_user_client>(stm);
+static std::shared_ptr<watchman_client> make_new_client(
+    std::unique_ptr<watchman_stream>&& stm) {
+  auto client = std::make_shared<watchman_user_client>(std::move(stm));
 
   clients.wlock()->insert(client);
 
@@ -469,7 +475,6 @@ static void named_pipe_accept_loop(const char *path) {
 
   w_log(W_LOG_ERR, "waiting for pipe clients on %s\n", path);
   while (!stopping) {
-    w_stm_t stm;
     HANDLE client_fd;
     DWORD res;
 
@@ -521,7 +526,7 @@ static void named_pipe_accept_loop(const char *path) {
       CloseHandle(client_fd);
     } else {
 good_client:
-      stm = w_stm_handleopen(client_fd);
+      auto stm = w_stm_handleopen(client_fd);
       if (!stm) {
         w_log(W_LOG_ERR, "Failed to allocate stm for pipe handle: %s\n",
             strerror(errno));
@@ -529,7 +534,7 @@ good_client:
         continue;
       }
 
-      make_new_client(stm);
+      make_new_client(std::move(stm));
     }
   }
 }
@@ -541,7 +546,6 @@ static void accept_loop() {
     int client_fd;
     struct pollfd pfd;
     int bufsize;
-    w_stm_t stm;
 
 #ifdef HAVE_LIBGIMLI_H
     if (hb) {
@@ -574,14 +578,14 @@ static void accept_loop() {
     setsockopt(client_fd, SOL_SOCKET, SO_SNDBUF,
         (void*)&bufsize, sizeof(bufsize));
 
-    stm = w_stm_fdopen(client_fd);
+    auto stm = w_stm_fdopen(client_fd);
     if (!stm) {
       w_log(W_LOG_ERR, "Failed to allocate stm for fd: %s\n",
           strerror(errno));
       close(client_fd);
       continue;
     }
-    make_new_client(stm);
+    make_new_client(std::move(stm));
   }
 }
 #endif

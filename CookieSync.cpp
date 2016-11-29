@@ -27,7 +27,6 @@ void CookieSync::setCookieDir(const w_string& dir) {
 
 bool CookieSync::syncToNow(std::chrono::milliseconds timeout) {
   Cookie cookie;
-  w_stm_t file;
   int errcode = 0;
 
   auto cookie_lock = std::unique_lock<std::mutex>(cookie.mutex);
@@ -50,7 +49,7 @@ bool CookieSync::syncToNow(std::chrono::milliseconds timeout) {
   auto deadline = std::chrono::system_clock::now() + timeout;
 
   /* touch the file */
-  file = w_stm_open(
+  auto file = w_stm_open(
       path_str.c_str(), O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0700);
   if (!file) {
     errcode = errno;
@@ -61,7 +60,7 @@ bool CookieSync::syncToNow(std::chrono::milliseconds timeout) {
         strerror(errcode));
     goto out;
   }
-  w_stm_close(file);
+  file.reset();
 
   w_log(W_LOG_DBG, "sync_to_now [%s] waiting\n", path_str.c_str());
 

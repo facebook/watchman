@@ -3,21 +3,14 @@
 
 #include "watchman.h"
 
-w_stm_t w_stm_connect(const char *path, int timeoutms) {
+std::unique_ptr<watchman_stream> w_stm_connect(
+    const char* path,
+    int timeoutms) {
 #ifdef _WIN32
   return w_stm_connect_named_pipe(path, timeoutms);
 #else
   return w_stm_connect_unix(path, timeoutms);
 #endif
-}
-
-int w_stm_close(w_stm_t stm) {
-  if (!stm) {
-    errno = EBADF;
-    return -1;
-  }
-  delete stm;
-  return 0;
 }
 
 int w_stm_read(w_stm_t stm, void *buf, int size) {

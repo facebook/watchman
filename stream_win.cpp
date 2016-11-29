@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "make_unique.h"
 
 // Things are more complicated here than on unix.
 // We maintain an overlapped context for reads and
@@ -592,16 +593,15 @@ win_handle::win_handle(HANDLE handle)
   InitializeCriticalSection(&mtx);
 }
 
-w_stm_t w_stm_handleopen(HANDLE handle) {
+std::unique_ptr<watchman_stream> w_stm_handleopen(HANDLE handle) {
   if (handle == INVALID_HANDLE_VALUE || handle == nullptr) {
     return nullptr;
   }
 
-  return new win_handle(handle);
+  return watchman::make_unique<win_handle>(handle);
 }
 
-w_stm_t w_stm_connect_named_pipe(const char *path, int timeoutms) {
-  w_stm_t stm = nullptr;
+std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(const char *path, int timeoutms) {
   HANDLE handle;
   DWORD err;
   DWORD64 deadline = GetTickCount64() + timeoutms;
@@ -623,7 +623,7 @@ retry_connect:
       nullptr);
 
   if (handle != INVALID_HANDLE_VALUE) {
-    stm = w_stm_handleopen(handle);
+    auto stm = w_stm_handleopen(handle);
     if (!stm) {
       CloseHandle(handle);
     }
@@ -757,15 +757,14 @@ HANDLE w_handle_open(const char *path, int flags) {
   return h;
 }
 
-w_stm_t w_stm_open(const char *path, int flags, ...) {
-  w_stm_t stm;
+std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...) {
   HANDLE h = w_handle_open(path, flags);
 
   if (h == INVALID_HANDLE_VALUE) {
     return nullptr;
   }
 
-  stm = w_stm_handleopen(h);
+  auto stm = w_stm_handleopen(h);
   if (!stm) {
     CloseHandle(h);
   }
