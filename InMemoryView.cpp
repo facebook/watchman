@@ -587,8 +587,13 @@ void InMemoryView::startThreads(const std::shared_ptr<w_root_t>& root) {
   w_log(W_LOG_DBG, "starting threads for %p %s\n", this, root_path.c_str());
   std::thread notifyThreadInstance([self, root]() {
     w_set_thread_name("notify %p %s", self.get(), self->root_path.c_str());
-    self->notifyThread(root);
-    w_log(W_LOG_DBG, "out of loop\n");
+    try {
+      self->notifyThread(root);
+    } catch (const std::exception& e) {
+      watchman::log(watchman::ERR, "Exception: ", e.what(), " cancel root\n");
+      root->cancel();
+    }
+    watchman::log(watchman::DBG, "out of loop\n");
   });
   notifyThreadInstance.detach();
 
@@ -599,8 +604,13 @@ void InMemoryView::startThreads(const std::shared_ptr<w_root_t>& root) {
   // And now start the IO thread
   std::thread ioThreadInstance([self, root]() {
     w_set_thread_name("io %p %s", self.get(), self->root_path.c_str());
-    self->ioThread(root);
-    w_log(W_LOG_DBG, "out of loop\n");
+    try {
+      self->ioThread(root);
+    } catch (const std::exception& e) {
+      watchman::log(watchman::ERR, "Exception: ", e.what(), " cancel root\n");
+      root->cancel();
+    }
+    watchman::log(watchman::DBG, "out of loop\n");
   });
   ioThreadInstance.detach();
 }
