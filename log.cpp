@@ -2,31 +2,42 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-#include "Logging.h"
+#include <array>
 #include <limits>
+#include "Logging.h"
 
 int log_level = W_LOG_ERR;
 static pthread_key_t thread_name_key;
+static constexpr size_t kMaxFrames = 64;
 
-static void write_str_stderr(const char* str) {
-  ignore_result(write(STDERR_FILENO, str, strlen(str)));
+namespace {
+template <typename String>
+void write_stderr(const String& str) {
+  w_string_piece piece = str;
+  ignore_result(write(STDERR_FILENO, piece.data(), piece.size()));
+}
+
+template <typename String, typename... Strings>
+void write_stderr(const String& str, Strings&&... strings) {
+  write_stderr(str);
+  write_stderr(strings...);
+}
 }
 
 static void log_stack_trace(void) {
 #if defined(HAVE_BACKTRACE) && defined(HAVE_BACKTRACE_SYMBOLS)
-  void *array[24];
+  std::array<void*, kMaxFrames> array;
   size_t size;
   char **strings;
   size_t i;
 
-  size = backtrace(array, sizeof(array)/sizeof(array[0]));
-  strings = backtrace_symbols(array, size);
+  size = backtrace(array.data(), array.size());
+  strings = backtrace_symbols(array.data(), size);
 
-  write_str_stderr("Fatal error detected at:\n");
+  write_stderr("Fatal error detected at:\n");
 
   for (i = 0; i < size; i++) {
-    write_str_stderr(strings[i]);
-    write_str_stderr("\n");
+    write_stderr(strings[i], "\n");
   }
 
   free(strings);
@@ -230,8 +241,37 @@ static void crash_handler(int signo, siginfo_t* si, void*) {
 
 #ifdef _WIN32
 static LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep) {
-  watchman::log(watchman::FATAL, "Unhandled win32 exception\n");
-  return EXCEPTION_CONTINUE_SEARCH; // Terminate the process
+  std::array<void*, kMaxFrames> array;
+  size_t size;
+  char** strings;
+  size_t i;
+  char timebuf[64];
+
+  size = backtrace_from_exception(excep, array.data(), array.size());
+  strings = backtrace_symbols(array.data(), size);
+
+  write_stderr(
+      watchman::Log::currentTimeString(timebuf, sizeof(timebuf)),
+      ": [",
+      watchman::Log::getThreadName(),
+      "] Unhandled win32 exception.  Fatal error detected at:\n");
+
+  for (i = 0; i < size; i++) {
+    write_stderr(strings[i], "\n");
+  }
+  free(strings);
+
+  write_stderr("the stack trace for the exception filter call is:\n");
+  size = backtrace(array.data(), array.size());
+  strings = backtrace_symbols(array.data(), size);
+  for (i = 0; i < size; i++) {
+    write_stderr(strings[i], "\n");
+  }
+  free(strings);
+
+  // Terminate the process
+  abort();
+  return EXCEPTION_CONTINUE_SEARCH;
 }
 #endif
 
@@ -253,6 +293,11 @@ void w_setup_signal_handlers(void) {
 #else
   // Don't show error dialogs for background service failures
   SetErrorMode(SEM_FAILCRITICALERRORS);
+  // also tell the C runtime that we should just abort when
+  // we abort; don't do the crash reporting dialog.
+  _set_abort_behavior(_WRITE_ABORT_MSG, ~0);
+  // Force error output to stderr, don't use a msgbox.
+  _set_error_mode(_OUT_TO_STDERR);
   // bridge OS exceptions into our FATAL logger so that we can
   // capture a stack trace.
   SetUnhandledExceptionFilter(exception_filter);

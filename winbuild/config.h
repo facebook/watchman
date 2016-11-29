@@ -87,6 +87,10 @@ typedef DWORD pid_t;
 #define HAVE_BACKTRACE_SYMBOLS
 size_t backtrace(void **frames, size_t n_frames);
 char **backtrace_symbols(void **array, size_t n_frames);
+size_t backtrace_from_exception(
+    LPEXCEPTION_POINTERS exception,
+    void** frames,
+    size_t n_frames);
 
 #ifdef __cplusplus
 }
