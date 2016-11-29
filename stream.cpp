@@ -75,15 +75,3 @@ bool w_stm_peer_is_owner(w_stm_t stm) {
   }
   return stm->peerIsOwner();
 }
-
-void w_event_set(w_evt_t evt) {
-  evt->notify();
-}
-
-void w_event_destroy(w_evt_t evt) {
-  delete evt;
-}
-
-bool w_event_test_and_clear(w_evt_t evt) {
-  return evt->testAndClear();
-}

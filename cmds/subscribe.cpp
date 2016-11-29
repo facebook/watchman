@@ -366,7 +366,7 @@ static void cmd_subscribe(
     auto clientRef = client->shared_from_this();
     client->unilateralSub.insert(std::make_pair(
         sub, root->unilateralResponses->subscribe([clientRef, sub]() {
-          w_event_set(clientRef->ping);
+          clientRef->ping->notify();
         })));
   }
 

@@ -38,7 +38,7 @@ struct watchman_trigger_command {
  private:
   std::thread triggerThread_;
   std::shared_ptr<watchman::Publisher::Subscriber> subscriber_;
-  w_evt_t ping_;
+  std::unique_ptr<watchman_event> ping_;
   bool stopTrigger_{false};
 
   void run(const std::shared_ptr<w_root_t>& root);

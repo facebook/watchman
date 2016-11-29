@@ -580,8 +580,8 @@ bool win_handle::peerIsOwner() {
   return true;
 }
 
-w_evt_t w_event_make(void) {
-  return new WindowsEvent();
+std::unique_ptr<watchman_event> w_event_make(void) {
+  return watchman::make_unique<WindowsEvent>();
 }
 
 win_handle::win_handle(HANDLE handle)

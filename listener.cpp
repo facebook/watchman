@@ -81,16 +81,12 @@ void send_error_response(struct watchman_client *client,
 
 watchman_client::watchman_client() : watchman_client(nullptr) {}
 
-watchman_client::watchman_client(w_stm_t stm) : stm(stm) {
+watchman_client::watchman_client(w_stm_t stm) : stm(stm), ping(w_event_make()) {
   w_log(W_LOG_DBG, "accepted client:stm=%p\n", stm);
   if (!w_json_buffer_init(&reader)) {
     // FIXME: error handling
   }
   if (!w_json_buffer_init(&writer)) {
-    // FIXME: error handling
-  }
-  ping = w_event_make();
-  if (!ping) {
     // FIXME: error handling
   }
 }
@@ -103,7 +99,6 @@ watchman_client::~watchman_client() {
 
   w_json_buffer_free(&reader);
   w_json_buffer_free(&writer);
-  w_event_destroy(ping);
   w_stm_shutdown(stm);
   w_stm_close(stm);
 }
@@ -112,7 +107,7 @@ void watchman_client::enqueueResponse(json_ref&& resp, bool ping) {
   responses.emplace_back(std::move(resp));
 
   if (ping) {
-    w_event_set(this->ping);
+    this->ping->notify();
   }
 }
 
@@ -141,7 +136,7 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
   client->client_is_owner = w_stm_peer_is_owner(client->stm);
 
   w_stm_get_events(client->stm, &pfd[0].evt);
-  pfd[1].evt = client->ping;
+  pfd[1].evt = client->ping.get();
 
   while (!stopping) {
     // Wait for input from either the client socket or
@@ -180,7 +175,7 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
     }
 
     if (pfd[1].ready) {
-      while (w_event_test_and_clear(client->ping)) {
+      while (client->ping->testAndClear()) {
         // Enqueue refs to pending log payloads
         auto items = watchman::getPending(client->debugSub, client->errorSub);
         for (auto& item : items) {
@@ -725,7 +720,7 @@ bool w_start_listener(const char *path)
         n_clients = clientsLock->size();
 
         for (auto client : *clientsLock) {
-          w_event_set(client->ping);
+          client->ping->notify();
 
 #ifndef _WIN32
           // If we've been waiting around for a while, interrupt

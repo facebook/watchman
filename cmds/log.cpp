@@ -10,7 +10,7 @@ static void cmd_loglevel(struct watchman_client* client, const json_ref& args) {
   const auto& label = json_to_w_string(args.at(1));
   auto level = watchman::logLabelToLevel(label);
   auto clientRef = client->shared_from_this();
-  auto notify = [clientRef]() { w_event_set(clientRef->ping); };
+  auto notify = [clientRef]() { clientRef->ping->notify(); };
   auto& log = watchman::getLog();
 
   switch (level) {

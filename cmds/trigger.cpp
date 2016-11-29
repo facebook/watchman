@@ -35,7 +35,7 @@ void watchman_trigger_command::run(const std::shared_ptr<w_root_t>& root) {
       "trigger %s %s", triggername.c_str(), root->root_path.c_str());
 
   watchman_event_poll pfd[1];
-  pfd[0].evt = ping_;
+  pfd[0].evt = ping_.get();
 
   watchman::log(watchman::DBG, "waiting for settle\n");
 
@@ -44,7 +44,7 @@ void watchman_trigger_command::run(const std::shared_ptr<w_root_t>& root) {
     if (w_is_stopping() || stopTrigger_) {
       break;
     }
-    while (w_event_test_and_clear(ping_)) {
+    while (ping_->testAndClear()) {
       while (auto item = subscriber_->getNext()) {
         if (!item->payload.get_default("settled")) {
           continue;
@@ -321,7 +321,7 @@ watchman_trigger_command::watchman_trigger_command(
 void watchman_trigger_command::stop() {
   stopTrigger_ = true;
   if (triggerThread_.joinable()) {
-    w_event_set(ping_);
+    ping_->notify();
     triggerThread_.join();
   }
 }
@@ -333,12 +333,11 @@ watchman_trigger_command::~watchman_trigger_command() {
     watchman::log(
         watchman::FATAL, "destroying trigger without stopping it first\n");
   }
-  w_event_destroy(ping_);
 }
 
 void watchman_trigger_command::start(const std::shared_ptr<w_root_t>& root) {
   subscriber_ =
-      root->unilateralResponses->subscribe([this] { w_event_set(ping_); });
+      root->unilateralResponses->subscribe([this] { ping_->notify(); });
   triggerThread_ = std::thread([this, root] {
     try {
       run(root);

@@ -34,11 +34,7 @@ struct watchman_event_poll {
 };
 
 // Make a event that can be manually signalled
-w_evt_t w_event_make(void);
-// Manually signal an event
-void w_event_set(w_evt_t evt);
-void w_event_destroy(w_evt_t evt);
-bool w_event_test_and_clear(w_evt_t evt);
+std::unique_ptr<watchman_event> w_event_make(void);
 
 // Go to sleep for up to timeoutms.
 // Returns sooner if any of the watchman_event objects referenced

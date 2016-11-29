@@ -10,6 +10,7 @@
 #endif
 #include "FileDescriptor.h"
 #include "Pipe.h"
+#include "make_unique.h"
 
 using watchman::FileDescriptor;
 using watchman::Pipe;
@@ -131,8 +132,8 @@ class UnixStream : public watchman_stream {
 };
 }
 
-w_evt_t w_event_make(void) {
-  return new PipeEvent();
+std::unique_ptr<watchman_event> w_event_make(void) {
+  return watchman::make_unique<PipeEvent>();
 }
 
 int w_stm_fileno(w_stm_t stm) {

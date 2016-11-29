@@ -21,7 +21,7 @@ struct watchman_client_state_assertion {
 
 struct watchman_client : public std::enable_shared_from_this<watchman_client> {
   w_stm_t stm{nullptr};
-  w_evt_t ping{nullptr};
+  std::unique_ptr<watchman_event> ping;
   w_jbuffer_t reader, writer;
   bool client_mode{false};
   bool client_is_owner{false};
