@@ -1,6 +1,8 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include "watchman_opendir.h"
+
 namespace watchman {
 class QueryableView;
 struct InMemoryView;
@@ -32,7 +34,7 @@ struct Watcher : public std::enable_shared_from_this<Watcher> {
 
   // Initiate an OS-level watch on the provided dir, return a DIR
   // handle, or NULL on error
-  virtual struct watchman_dir_handle* startWatchDir(
+  virtual std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
       struct timeval now,

@@ -23,8 +23,7 @@ void InMemoryView::crawler(
     struct timeval now,
     bool recursive) {
   struct watchman_file *file;
-  struct watchman_dir_handle *osdir;
-  struct watchman_dir_ent *dirent;
+  const watchman_dir_ent* dirent;
   char path[WATCHMAN_NAME_MAX];
   bool stat_all = false;
 
@@ -49,8 +48,12 @@ void InMemoryView::crawler(
   /* Start watching and open the dir for crawling.
    * Whether we open the dir prior to watching or after is watcher specific,
    * so the operations are rolled together in our abstraction */
-  osdir = watcher_->startWatchDir(root, dir, now, path);
-  if (!osdir) {
+  std::unique_ptr<watchman_dir_handle> osdir;
+
+  try {
+    osdir = watcher_->startWatchDir(root, dir, now, path);
+  } catch (const std::system_error& err) {
+    handle_open_errno(root, dir, now, "opendir", err.code());
     markDirDeleted(view, dir, now, true);
     return;
   }
@@ -61,7 +64,7 @@ void InMemoryView::crawler(
     uint32_t num_dirs = 0;
 #ifndef _WIN32
     struct stat st;
-    int dfd = w_dir_fd(osdir);
+    int dfd = osdir->getFd();
     if (dfd != -1 && fstat(dfd, &st) == 0) {
       num_dirs = (uint32_t)st.st_nlink;
     }
@@ -84,7 +87,7 @@ void InMemoryView::crawler(
     }
   }
 
-  while ((dirent = w_dir_read(osdir)) != NULL) {
+  while ((dirent = osdir->readDir()) != nullptr) {
     // Don't follow parent/self links
     if (dirent->d_name[0] == '.' && (
           !strcmp(dirent->d_name, ".") ||
@@ -115,7 +118,7 @@ void InMemoryView::crawler(
           dirent);
     }
   }
-  w_dir_close(osdir);
+  osdir.reset();
 
   // Anything still in maybe_deleted is actually deleted.
   // Arrange to re-process it shortly

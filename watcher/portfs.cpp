@@ -26,7 +26,7 @@ struct PortFSWatcher : public Watcher {
   explicit PortFSWatcher(w_root_t* root);
   ~PortFSWatcher();
 
-  struct watchman_dir_handle* startWatchDir(
+  std::unique_ptr<watchman_dir_handle> startWatchDir(
       w_root_t* root,
       struct watchman_dir* dir,
       struct timeval now,
@@ -38,7 +38,7 @@ struct PortFSWatcher : public Watcher {
       override;
 
   bool waitNotify(int timeoutms) override;
-  bool do_watch(w_string_t* name, struct stat* st);
+  void do_watch(w_string_t* name, struct stat* st);
 };
 
 static const struct flag_map pflags[] = {
@@ -85,13 +85,11 @@ PortFSWatcher::~PortFSWatcher() {
   port_fd = -1;
 }
 
-bool PortFSWatcher::do_watch(w_string_t* name, struct stat* st) {
-  bool success = false;
-
+void PortFSWatcher::do_watch(w_string_t* name, struct stat* st) {
   auto wlock = port_files.wlock();
   if (port_files.find(name) != port_files.end()) {
     // Already watching it
-    return true;
+    return;
   }
 
   auto f = make_port_file(name, st);
@@ -106,16 +104,15 @@ bool PortFSWatcher::do_watch(w_string_t* name, struct stat* st) {
           (uintptr_t)&rawFile->port_file,
           WATCHMAN_PORT_EVENTS,
           (void*)rawFile)) {
+    int err = errno;
     w_log(
         W_LOG_ERR,
         "port_associate %s %s\n",
         rawFile->port_file.fo_name,
         strerror(errno));
     wlock->erase(name);
-    return false;
+    throw std::system_error(err, std::generic_category(), "port_associate");
   }
-
-  return true;
 }
 
 bool PortFSWatcher::startWatchFile(struct watchman_file* file) {
@@ -126,48 +123,33 @@ bool PortFSWatcher::startWatchFile(struct watchman_file* file) {
   if (!name) {
     return false;
   }
-  success = do_watch(name, &file->st);
+  do_watch(name, &file->st);
   w_string_delref(name);
 
   return success;
 }
 
-struct watchman_dir_handle* PortFSWatcher::startWatchDir(
+std::unique_ptr<watchman_dir_handle> PortFSWatcher::startWatchDir(
     w_root_t* root,
     struct watchman_dir* dir,
     struct timeval now,
     const char* path) {
-  struct watchman_dir_handle *osdir;
   struct stat st;
 
-  osdir = w_dir_open(path);
-  if (!osdir) {
-    handle_open_errno(
-        root,
-        dir,
-        now,
-        "opendir",
-        std::error_code(errno, std::generic_category()));
-    return nullptr;
-  }
+  auto osdir = w_dir_open(path);
 
   if (fstat(dirfd(osdir), &st) == -1) {
     // whaaa?
-    w_log(W_LOG_ERR, "fstat on opened dir %s failed: %s\n", path,
-        strerror(errno));
     root->scheduleRecrawl("fstat failed");
-    w_dir_close(osdir);
-    return nullptr;
+    throw std::system_error(
+        errno,
+        std::generic_category(),
+        std::string("fstat failed for dir ") + path);
   }
 
   auto dir_name = dir->getFullPath();
-  if (!do_watch(dir_name, &st)) {
-    w_dir_close(osdir);
-    w_string_delref(dir_name);
-    return nullptr;
-  }
+  do_watch(dir_name, &st);
 
-  w_string_delref(dir_name);
   return osdir;
 }
 

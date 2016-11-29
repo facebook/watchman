@@ -12,7 +12,7 @@ void InMemoryView::statPath(
     const w_string& full_path,
     struct timeval now,
     int flags,
-    struct watchman_dir_ent* pre_stat) {
+    const watchman_dir_ent* pre_stat) {
   struct watchman_stat st;
   int res, err;
   char path[WATCHMAN_NAME_MAX];

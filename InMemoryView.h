@@ -110,7 +110,7 @@ struct InMemoryView : public QueryableView {
       const w_string& full_path,
       struct timeval now,
       int flags,
-      struct watchman_dir_ent* pre_stat);
+      const watchman_dir_ent* pre_stat);
 
   /** Updates the otime for the file and bubbles it to the front of recency
    * index */
@@ -181,7 +181,7 @@ struct InMemoryView : public QueryableView {
       const w_string& full_path,
       struct timeval now,
       int flags,
-      struct watchman_dir_ent* pre_stat);
+      const watchman_dir_ent* pre_stat);
 
   CookieSync& cookies_;
   Configuration& config_;

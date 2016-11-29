@@ -34,7 +34,6 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <sys/types.h>
-#include <dirent.h>
 #include <stdbool.h>
 #include <sys/time.h>
 #include <time.h>

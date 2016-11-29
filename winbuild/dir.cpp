@@ -2,80 +2,98 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "watchman_scopeguard.h"
+#include "Win32Handle.h"
 
-DIR *win_opendir(const char *path, int nofollow) {
-  struct watchman_win32_dir *d = NULL;
-  WCHAR *wpath = NULL;
-  int err = 0;
+using watchman::Win32Handle;
 
-  d = (watchman_win32_dir*)calloc(1, sizeof(*d));
-  if (!d) {
-    err = errno;
-    goto err;
-  }
+namespace {
+class WinDirHandle : public watchman_dir_handle {
+  Win32Handle h_;
+  FILE_FULL_DIR_INFO* info_{nullptr};
+  char __declspec(align(8)) buf_[64 * 1024];
+  char nameBuf_[WATCHMAN_NAME_MAX];
+  struct watchman_dir_ent ent_;
 
-  wpath = w_utf8_to_win_unc(path, -1);
-  if (!path) {
-    err = errno;
-    goto err;
-  }
+ public:
+  explicit WinDirHandle(const char* path) {
+    int err = 0;
 
-  d->h = CreateFileW(wpath, GENERIC_READ,
-      FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
-      NULL,
-      OPEN_EXISTING,
-      (nofollow ? FILE_FLAG_OPEN_REPARSE_POINT : 0)|
-      FILE_FLAG_BACKUP_SEMANTICS,
-      NULL);
-
-  if (d->h == INVALID_HANDLE_VALUE) {
-    err = map_win32_err(GetLastError());
-    goto err;
-  }
-
-  free(wpath);
-  return d;
-
-err:
-  free(wpath);
-  free(d);
-  errno = err;
-  return NULL;
-}
-
-DIR *opendir(const char *path) {
-  return win_opendir(path, 0);
-}
-
-struct dirent *readdir(DIR *d) {
-  if (!d->info) {
-    if (!GetFileInformationByHandleEx(d->h, FileFullDirectoryInfo,
-          d->buf, sizeof(d->buf))) {
-      errno = map_win32_err(GetLastError());
-      return NULL;
+    auto wpath = w_utf8_to_win_unc(path, -1);
+    if (!wpath) {
+      throw std::system_error(
+          errno,
+          std::generic_category(),
+          std::string("convert path to wide chars: ") + path);
     }
-    d->info = (FILE_FULL_DIR_INFO*)d->buf;
+    SCOPE_EXIT {
+      free(wpath);
+    };
+
+    h_ = Win32Handle(intptr_t(CreateFileW(
+        wpath,
+        GENERIC_READ,
+        FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr,
+        OPEN_EXISTING,
+        // Note: FILE_FLAG_OPEN_REPARSE_POINT is equivalent to O_NOFOLLOW,
+        // and FILE_FLAG_BACKUP_SEMANTICS is equivalent to O_DIRECTORY
+        FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+        nullptr)));
+
+    if (!h_) {
+      throw std::system_error(
+          GetLastError(),
+          std::system_category(),
+          std::string("CreateFileW for opendir: ") + path);
+    }
+
+    ent_.d_name = nameBuf_;
+    ent_.has_stat = false;
   }
 
-  // Decode the item currently pointed at
-  DWORD len = WideCharToMultiByte(CP_UTF8, 0, d->info->FileName,
-      d->info->FileNameLength / sizeof(WCHAR), d->ent.d_name,
-      sizeof(d->ent.d_name)-1,
-      NULL, NULL);
+  const watchman_dir_ent* readDir() override {
+    if (!info_) {
+      if (!GetFileInformationByHandleEx(
+              (HANDLE)h_.handle(), FileFullDirectoryInfo, buf_, sizeof(buf_))) {
+        if (GetLastError() == ERROR_NO_MORE_FILES) {
+          return nullptr;
+        }
+        throw std::system_error(
+            GetLastError(),
+            std::system_category(),
+            "GetFileInformationByHandleEx");
+      }
+      info_ = (FILE_FULL_DIR_INFO*)buf_;
+    }
 
-  if (len <= 0) {
-    errno = map_win32_err(GetLastError());
-    return NULL;
+    // Decode the item currently pointed at
+    DWORD len = WideCharToMultiByte(
+        CP_UTF8,
+        0,
+        info_->FileName,
+        info_->FileNameLength / sizeof(WCHAR),
+        nameBuf_,
+        sizeof(nameBuf_) - 1,
+        nullptr,
+        nullptr);
+
+    if (len <= 0) {
+      throw std::system_error(
+          GetLastError(), std::system_category(), "WideCharToMultiByte");
+    }
+
+    nameBuf_[len] = 0;
+
+    // Advance the pointer to the next entry ready for the next read
+    info_ = info_->NextEntryOffset == 0
+        ? nullptr
+        : (FILE_FULL_DIR_INFO*)(((char*)info_) + info_->NextEntryOffset);
+    return &ent_;
   }
-  d->ent.d_name[len] = 0;
-
-  // Advance the pointer to the next entry ready for the next read
-  d->info = d->info->NextEntryOffset == 0 ? NULL :
-    (FILE_FULL_DIR_INFO*)(((char*)d->info) + d->info->NextEntryOffset);
-  return &d->ent;
+};
 }
 
-void closedir(DIR *d) {
-  CloseHandle(d->h);
-  free(d);
+std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path) {
+  return watchman::make_unique<WinDirHandle>(path);
 }

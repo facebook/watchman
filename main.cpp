@@ -633,7 +633,6 @@ static void compute_file_name(char **strp,
 #ifndef _WIN32
       // verify ownership
       struct stat st;
-      DIR *dirp;
       int dir_fd;
       int ret = 0;
       uid_t euid = geteuid();
@@ -646,13 +645,9 @@ static void compute_file_name(char **strp,
               "sock_access", false /* write bits */, true /* execute bits */) |
           S_ISGID;
 
-      dirp = opendir(state_dir);
-      if (!dirp) {
-        w_log(W_LOG_ERR, "opendir(%s): %s\n", state_dir, strerror(errno));
-        exit(1);
-      }
+      auto dirp = w_dir_open(state_dir);
 
-      dir_fd = dirfd(dirp);
+      dir_fd = dirp->getFd();
       if (dir_fd == -1) {
         w_log(W_LOG_ERR, "dirfd(%s): %s\n", state_dir, strerror(errno));
         goto bail;
@@ -710,7 +705,6 @@ static void compute_file_name(char **strp,
       }
 
     bail:
-      closedir(dirp);
       if (ret) {
         exit(ret);
       }

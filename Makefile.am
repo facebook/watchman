@@ -252,6 +252,7 @@ tests_pending_t_LDADD = $(TAP_LIB) $(JSON_LIB)
 tests_pending_t_SOURCES = \
 	tests/pending_test.cpp \
 	tests/log_stub.cpp \
+	FileDescriptor.cpp \
 	PubSub.cpp \
 	hash.cpp \
 	ignore.cpp \

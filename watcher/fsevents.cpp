@@ -51,7 +51,7 @@ struct FSEventsWatcher : public Watcher {
 
   bool start(const std::shared_ptr<w_root_t>& root) override;
 
-  struct watchman_dir_handle* startWatchDir(
+  std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
       struct timeval now,
@@ -631,25 +631,12 @@ bool FSEventsWatcher::waitNotify(int timeoutms) {
   return !wlock->empty();
 }
 
-struct watchman_dir_handle* FSEventsWatcher::startWatchDir(
-    const std::shared_ptr<w_root_t>& root,
-    struct watchman_dir* dir,
-    struct timeval now,
+std::unique_ptr<watchman_dir_handle> FSEventsWatcher::startWatchDir(
+    const std::shared_ptr<w_root_t>&,
+    struct watchman_dir*,
+    struct timeval,
     const char* path) {
-  struct watchman_dir_handle *osdir;
-
-  osdir = w_dir_open(path);
-  if (!osdir) {
-    handle_open_errno(
-        root,
-        dir,
-        now,
-        "opendir",
-        std::error_code(errno, std::generic_category()));
-    return nullptr;
-  }
-
-  return osdir;
+  return w_dir_open(path);
 }
 
 static RegisterWatcher<FSEventsWatcher> reg("fsevents");

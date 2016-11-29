@@ -74,7 +74,7 @@ struct InotifyWatcher : public Watcher {
 
   explicit InotifyWatcher(w_root_t* root);
 
-  struct watchman_dir_handle* startWatchDir(
+  std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
       struct timeval now,
@@ -114,22 +114,16 @@ InotifyWatcher::InotifyWatcher(w_root_t* root)
   }
 }
 
-struct watchman_dir_handle* InotifyWatcher::startWatchDir(
-    const std::shared_ptr<w_root_t>& root,
-    struct watchman_dir* dir,
+std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
+    const std::shared_ptr<w_root_t>&,
+    struct watchman_dir*,
     struct timeval now,
     const char* path) {
-  struct watchman_dir_handle* osdir = nullptr;
   int newwd, err;
 
   // Carry out our very strict opendir first to ensure that we're not
   // traversing symlinks in the context of this root
-  osdir = w_dir_open(path);
-  if (!osdir) {
-    handle_open_errno(
-        root, dir, now, "opendir", std::error_code(errno, inotify_category()));
-    return nullptr;
-  }
+  auto osdir = w_dir_open(path);
 
   w_string dir_name(path, W_STRING_BYTE);
 
@@ -145,17 +139,8 @@ struct watchman_dir_handle* InotifyWatcher::startWatchDir(
           now,
           "inotify-add-watch",
           std::error_code(errno, inotify_category()));
-    } else {
-      handle_open_errno(
-          root,
-          dir,
-          now,
-          "inotify_add_watch",
-          std::error_code(errno, inotify_category()));
     }
-    w_dir_close(osdir);
-    errno = err;
-    return nullptr;
+    throw std::system_error(err, inotify_category(), "inotify_add_watch");
   }
 
   // record mapping

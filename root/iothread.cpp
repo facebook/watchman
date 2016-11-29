@@ -194,7 +194,7 @@ void InMemoryView::processPath(
     const w_string& full_path,
     struct timeval now,
     int flags,
-    struct watchman_dir_ent* pre_stat) {
+    const watchman_dir_ent* pre_stat) {
   /* From a particular query's point of view, there are four sorts of cookies we
    * can observe:
    * 1. Cookies that this query has created. This marks the end of this query's

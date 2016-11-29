@@ -72,17 +72,9 @@ void watchman_root::applyIgnoreConfiguration() {
 
 // internal initialization for root
 void watchman_root::init() {
-  struct watchman_dir_handle *osdir;
-
-  osdir = w_dir_open(root_path.c_str());
-  if (!osdir) {
-    throw std::system_error(
-        errno,
-        std::system_category(),
-        std::string("failed to opendir: ") + root_path.c_str() + ": " +
-            strerror(errno));
-  }
-  w_dir_close(osdir);
+  // This just opens and releases the dir.  If an exception is thrown
+  // it will bubble up.
+  w_dir_open(root_path.c_str());
   // We can't use shared_from_this() here as we are being called from
   // inside the constructor and we'd hit a bad_weak_ptr exception.
   inner.init(this);

@@ -13,16 +13,22 @@ struct watchman_stat {
   nlink_t nlink;
 };
 
-/* opaque (system dependent) type for walking dir contents */
-struct watchman_dir_handle;
-
 struct watchman_dir_ent {
   bool has_stat;
   char *d_name;
   struct watchman_stat stat;
 };
 
-struct watchman_dir_handle *w_dir_open(const char *path);
-struct watchman_dir_ent *w_dir_read(struct watchman_dir_handle *dir);
-void w_dir_close(struct watchman_dir_handle *dir);
-int w_dir_fd(struct watchman_dir_handle *dir);
+class watchman_dir_handle {
+ public:
+  virtual ~watchman_dir_handle() = default;
+  virtual const watchman_dir_ent* readDir() = 0;
+#ifndef _WIN32
+  virtual int getFd() const = 0;
+#endif
+};
+
+// Return a dir handle on path.
+// Does not follow symlinks.
+// Throws std::system_error if the dir could not be opened.
+std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path);

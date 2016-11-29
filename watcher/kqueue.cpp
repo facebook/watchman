@@ -35,7 +35,7 @@ struct KQueueWatcher : public Watcher {
 
   explicit KQueueWatcher(w_root_t* root);
 
-  struct watchman_dir_handle* startWatchDir(
+  std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
       struct timeval now,
@@ -134,60 +134,39 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
   return true;
 }
 
-struct watchman_dir_handle* KQueueWatcher::startWatchDir(
+std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
     const std::shared_ptr<w_root_t>& root,
     struct watchman_dir* dir,
-    struct timeval now,
+    struct timeval,
     const char* path) {
-  struct watchman_dir_handle *osdir;
   struct stat st, osdirst;
   struct kevent k;
 
-  osdir = w_dir_open(path);
-  if (!osdir) {
-    handle_open_errno(
-        root,
-        dir,
-        now,
-        "opendir",
-        std::error_code(errno, std::generic_category()));
-    return nullptr;
-  }
+  auto osdir = w_dir_open(path);
 
   FileDescriptor fdHolder(open(path, O_NOFOLLOW | O_EVTONLY | O_CLOEXEC));
   auto rawFd = fdHolder.fd();
-
   if (rawFd == -1) {
     // directory got deleted between opendir and open
-    handle_open_errno(
-        root,
-        dir,
-        now,
-        "open",
-        std::error_code(errno, std::generic_category()));
-    w_dir_close(osdir);
-    return nullptr;
+    throw std::system_error(
+        errno, std::generic_category(), std::string("open O_EVTONLY: ") + path);
   }
-  if (fstat(rawFd, &st) == -1 || fstat(w_dir_fd(osdir), &osdirst) == -1) {
+  if (fstat(rawFd, &st) == -1 || fstat(osdir->getFd(), &osdirst) == -1) {
     // whaaa?
-    w_log(W_LOG_ERR, "fstat on opened dir %s failed: %s\n", path,
-        strerror(errno));
     root->scheduleRecrawl("fstat failed");
-    w_dir_close(osdir);
-    return nullptr;
+    throw std::system_error(
+        errno,
+        std::generic_category(),
+        std::string("fstat failed for dir ") + path);
   }
 
   if (st.st_dev != osdirst.st_dev || st.st_ino != osdirst.st_ino) {
     // directory got replaced between opendir and open -- at this point its
     // parent's being watched, so we let filesystem events take care of it
-    handle_open_errno(
-        root,
-        dir,
-        now,
-        "open",
-        std::error_code(ENOTDIR, std::generic_category()));
-    w_dir_close(osdir);
-    return nullptr;
+    throw std::system_error(
+        ENOTDIR,
+        std::generic_category(),
+        std::string("directory replaced between opendir and open: ") + path);
   }
 
   memset(&k, 0, sizeof(k));

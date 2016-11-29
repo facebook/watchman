@@ -2,11 +2,18 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <system_error>
+#ifndef _WIN32
+#include <dirent.h>
+#endif
 #ifdef __APPLE__
 # include <sys/utsname.h>
 # include <sys/attr.h>
 # include <sys/vnode.h>
 #endif
+#include "FileDescriptor.h"
+
+using watchman::FileDescriptor;
 
 #ifdef HAVE_GETATTRLISTBULK
 typedef struct {
@@ -36,19 +43,25 @@ typedef struct {
 } __attribute__((packed)) bulk_attr_item;
 #endif
 
-struct watchman_dir_handle {
+#ifndef _WIN32
+class DirHandle : public watchman_dir_handle {
 #ifdef HAVE_GETATTRLISTBULK
-  int fd;
-  struct attrlist attrlist;
-  int retcount;
-  char buf[64 * (sizeof(bulk_attr_item) + NAME_MAX * 3 + 1)];
-  char *cursor;
+  FileDescriptor fd_;
+  struct attrlist attrlist_;
+  int retcount_{0};
+  char buf_[64 * (sizeof(bulk_attr_item) + NAME_MAX * 3 + 1)];
+  char *cursor_{nullptr};
 #endif
-  DIR *d;
-  struct watchman_dir_ent ent;
-};
+  DIR *d_{nullptr};
+  struct watchman_dir_ent ent_;
 
-#ifdef _WIN32
+ public:
+  explicit DirHandle(const char *path);
+  ~DirHandle();
+  const watchman_dir_ent* readDir() override;
+  int getFd() const override;
+};
+#else
 static const char *w_basename(const char *path) {
   const char *last = path + strlen(path) - 1;
   while (last >= path) {
@@ -361,6 +374,7 @@ out:
   return res;
 }
 
+#ifndef _WIN32
 /* Opens a directory making sure it's not a symlink */
 static DIR *opendir_nofollow(const char *path)
 {
@@ -368,10 +382,6 @@ static DIR *opendir_nofollow(const char *path)
   if (fd == -1) {
     return NULL;
   }
-#ifdef _WIN32
-  close(fd);
-  return win_opendir(path, 1 /* no follow */);
-#else
 # if !defined(HAVE_FDOPENDIR) || defined(__APPLE__)
   /* fdopendir doesn't work on earlier versions OS X, and we don't
    * use this function since 10.10, as we prefer to use getattrlistbulk
@@ -382,8 +392,8 @@ static DIR *opendir_nofollow(const char *path)
   // errno should be set appropriately if this is not a directory
   return fdopendir(fd);
 # endif
-#endif
 }
+#endif
 
 #ifdef HAVE_GETATTRLISTBULK
 // I've seen bulkstat report incorrect sizes on kernel version 14.5.0.
@@ -412,42 +422,33 @@ static bool use_bulkstat_by_default(void) {
 }
 #endif
 
-struct watchman_dir_handle *w_dir_open(const char *path) {
-  watchman_dir_handle* dir = (watchman_dir_handle*)calloc(1, sizeof(*dir));
-  int err;
+#ifndef _WIN32
+std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path) {
+  return watchman::make_unique<DirHandle>(path);
+}
 
-  if (!dir) {
-    return NULL;
-  }
+DirHandle::DirHandle(const char *path) {
 #ifdef HAVE_GETATTRLISTBULK
   if (cfg_get_bool("_use_bulkstat", use_bulkstat_by_default())) {
     struct stat st;
 
-    dir->fd = open_strict(path, O_NOFOLLOW | O_CLOEXEC | O_RDONLY);
-    if (dir->fd == -1) {
-      err = errno;
-      free(dir);
-      errno = err;
-      return NULL;
+    fd_ = FileDescriptor(open_strict(path, O_NOFOLLOW | O_CLOEXEC | O_RDONLY));
+    if (!fd_) {
+      throw std::system_error(
+          errno, std::generic_category(), std::string("open_strict ") + path);
     }
 
-    if (fstat(dir->fd, &st)) {
-      err = errno;
-      close(dir->fd);
-      free(dir);
-      errno = err;
-      return NULL;
+    if (fstat(fd_.fd(), &st)) {
+      throw std::system_error(
+          errno, std::generic_category(), std::string("fstat ") + path);
     }
 
     if (!S_ISDIR(st.st_mode)) {
-      close(dir->fd);
-      free(dir);
-      errno = ENOTDIR;
-      return NULL;
+      throw std::system_error(ENOTDIR, std::generic_category(), path);
     }
 
-    dir->attrlist.bitmapcount = ATTR_BIT_MAP_COUNT;
-    dir->attrlist.commonattr = ATTR_CMN_RETURNED_ATTRS |
+    attrlist_.bitmapcount = ATTR_BIT_MAP_COUNT;
+    attrlist_.commonattr = ATTR_CMN_RETURNED_ATTRS |
       ATTR_CMN_ERROR |
       ATTR_CMN_NAME |
       ATTR_CMN_DEVID |
@@ -459,145 +460,136 @@ struct watchman_dir_handle *w_dir_open(const char *path) {
       ATTR_CMN_GRPID |
       ATTR_CMN_ACCESSMASK |
       ATTR_CMN_FILEID;
-    dir->attrlist.dirattr = ATTR_DIR_LINKCOUNT;
-    dir->attrlist.fileattr = ATTR_FILE_TOTALSIZE |
-      ATTR_FILE_LINKCOUNT;
-    return dir;
+    attrlist_.dirattr = ATTR_DIR_LINKCOUNT;
+    attrlist_.fileattr = ATTR_FILE_TOTALSIZE | ATTR_FILE_LINKCOUNT;
+    return;
   }
-  dir->fd = -1;
 #endif
-  dir->d = opendir_nofollow(path);
+  d_ = opendir_nofollow(path);
 
-  if (!dir->d) {
-    err = errno;
-    free(dir);
-    errno = err;
-    return NULL;
+  if (!d_) {
+    throw std::system_error(
+        errno,
+        std::generic_category(),
+        std::string("opendir_nofollow: ") + path);
   }
-
-  return dir;
 }
 
-struct watchman_dir_ent *w_dir_read(struct watchman_dir_handle *dir) {
-  struct dirent *ent;
+const watchman_dir_ent* DirHandle::readDir() {
 #ifdef HAVE_GETATTRLISTBULK
-  if (dir->fd != -1) {
+  if (fd_) {
     bulk_attr_item *item;
 
-    if (!dir->cursor) {
+    if (!cursor_) {
       // Read the next batch of results
       int retcount;
 
-      retcount = getattrlistbulk(dir->fd, &dir->attrlist,
-          dir->buf, sizeof(dir->buf), FSOPT_PACK_INVAL_ATTRS);
+      retcount = getattrlistbulk(
+          fd_.fd(), &attrlist_, buf_, sizeof(buf_), FSOPT_PACK_INVAL_ATTRS);
       if (retcount == -1) {
-        int err = errno;
-        w_log(W_LOG_ERR, "getattrlistbulk: error %d %s\n",
-            errno, strerror(err));
-        errno = err;
-        return NULL;
+        throw std::system_error(
+            errno, std::generic_category(), "getattrlistbulk");
       }
       if (retcount == 0) {
         // End of the stream
-        errno = 0;
-        return NULL;
+        return nullptr;
       }
 
-      dir->retcount = retcount;
-      dir->cursor = dir->buf;
+      retcount_ = retcount;
+      cursor_ = buf_;
     }
 
     // Decode the next item
-    item = (bulk_attr_item*)dir->cursor;
-    dir->cursor += item->len;
-    if (--dir->retcount == 0) {
-      dir->cursor = NULL;
+    item = (bulk_attr_item*)cursor_;
+    cursor_ += item->len;
+    if (--retcount_ == 0) {
+      cursor_ = nullptr;
     }
 
-    dir->ent.d_name = ((char*)&item->name) + item->name.attr_dataoffset;
+    ent_.d_name = ((char*)&item->name) + item->name.attr_dataoffset;
     if (item->err) {
-      w_log(W_LOG_ERR, "item error %s: %d %s\n", dir->ent.d_name,
-          item->err, strerror(item->err));
+      w_log(
+          W_LOG_ERR,
+          "item error %s: %d %s\n",
+          ent_.d_name,
+          item->err,
+          strerror(item->err));
       // We got the name, so we can return something useful
-      dir->ent.has_stat = false;
-      return &dir->ent;
+      ent_.has_stat = false;
+      return &ent_;
     }
 
-    memset(&dir->ent.stat, 0, sizeof(dir->ent.stat));
+    memset(&ent_.stat, 0, sizeof(ent_.stat));
 
-    dir->ent.stat.dev = item->dev;
-    memcpy(&dir->ent.stat.mtime, &item->mtime, sizeof(item->mtime));
-    memcpy(&dir->ent.stat.ctime, &item->ctime, sizeof(item->ctime));
-    memcpy(&dir->ent.stat.atime, &item->atime, sizeof(item->atime));
-    dir->ent.stat.uid = item->uid;
-    dir->ent.stat.gid = item->gid;
-    dir->ent.stat.mode = item->mode & ~S_IFMT;
-    dir->ent.stat.ino = item->ino;
+    ent_.stat.dev = item->dev;
+    memcpy(&ent_.stat.mtime, &item->mtime, sizeof(item->mtime));
+    memcpy(&ent_.stat.ctime, &item->ctime, sizeof(item->ctime));
+    memcpy(&ent_.stat.atime, &item->atime, sizeof(item->atime));
+    ent_.stat.uid = item->uid;
+    ent_.stat.gid = item->gid;
+    ent_.stat.mode = item->mode & ~S_IFMT;
+    ent_.stat.ino = item->ino;
 
     switch (item->objtype) {
       case VREG:
-        dir->ent.stat.mode |= S_IFREG;
-        dir->ent.stat.size = item->file_size;
-        dir->ent.stat.nlink = item->link;
+        ent_.stat.mode |= S_IFREG;
+        ent_.stat.size = item->file_size;
+        ent_.stat.nlink = item->link;
         break;
       case VDIR:
-        dir->ent.stat.mode |= S_IFDIR;
-        dir->ent.stat.nlink = item->link;
+        ent_.stat.mode |= S_IFDIR;
+        ent_.stat.nlink = item->link;
         break;
       case VLNK:
-        dir->ent.stat.mode |= S_IFLNK;
-        dir->ent.stat.size = item->file_size;
+        ent_.stat.mode |= S_IFLNK;
+        ent_.stat.size = item->file_size;
         break;
       case VBLK:
-        dir->ent.stat.mode |= S_IFBLK;
+        ent_.stat.mode |= S_IFBLK;
         break;
       case VCHR:
-        dir->ent.stat.mode |= S_IFCHR;
+        ent_.stat.mode |= S_IFCHR;
         break;
       case VFIFO:
-        dir->ent.stat.mode |= S_IFIFO;
+        ent_.stat.mode |= S_IFIFO;
         break;
       case VSOCK:
-        dir->ent.stat.mode |= S_IFSOCK;
+        ent_.stat.mode |= S_IFSOCK;
         break;
     }
-    dir->ent.has_stat = true;
-    return &dir->ent;
+    ent_.has_stat = true;
+    return &ent_;
   }
 #endif
 
-  if (!dir->d) {
-    return NULL;
+  if (!d_) {
+    return nullptr;
   }
-  ent = readdir(dir->d);
-  if (!ent) {
-    return NULL;
+  errno = 0;
+  auto dent = readdir(d_);
+  if (!dent) {
+    if (errno) {
+      throw std::system_error(errno, std::generic_category(), "readdir");
+    }
+    return nullptr;
   }
 
-  dir->ent.d_name = ent->d_name;
-  dir->ent.has_stat = false;
-  return &dir->ent;
+  ent_.d_name = dent->d_name;
+  ent_.has_stat = false;
+  return &ent_;
 }
 
-void w_dir_close(struct watchman_dir_handle *dir) {
-#ifdef HAVE_GETATTRLISTBULK
-  if (dir->fd != -1) {
-    close(dir->fd);
+DirHandle::~DirHandle() {
+  if (d_) {
+    closedir(d_);
   }
-#endif
-  if (dir->d) {
-    closedir(dir->d);
-    dir->d = NULL;
-  }
-  free(dir);
 }
 
-#ifndef _WIN32
-int w_dir_fd(struct watchman_dir_handle *dir) {
+int DirHandle::getFd() const {
 #ifdef HAVE_GETATTRLISTBULK
-  return dir->fd;
+  return fd_.fd();
 #else
-  return dirfd(dir->d);
+  return dirfd(d_);
 #endif
 }
 #endif
