@@ -9,24 +9,67 @@
 #include <sys/socket.h>
 #endif
 #include "FileDescriptor.h"
+#include "Pipe.h"
 
 using watchman::FileDescriptor;
+using watchman::Pipe;
 
-struct watchman_event {
-  int fd[2];
-  bool is_pipe;
+namespace {
+// This trait allows w_poll_events to wait on either a PipeEvent or
+// a descriptor contained in a UnixStream
+class PollableEvent : public watchman_event {
+ public:
+  virtual int getFd() const = 0;
+};
+
+// The event object, implemented as pipe
+class PipeEvent : public PollableEvent {
+ public:
+  Pipe pipe;
+
+  void notify() override {
+    ignore_result(write(pipe.write.fd(), "a", 1));
+  }
+
+  bool testAndClear() override {
+    char buf[64];
+    bool signalled = false;
+    while (read(pipe.read.fd(), buf, sizeof(buf)) > 0) {
+      signalled = true;
+    }
+    return signalled;
+  }
+
+  int getFd() const override {
+    return pipe.read.fd();
+  }
+};
+
+// Event object that UnixStream returns via getEvents.
+// It cannot be poked by hand; it is just a helper to
+// allow waiting on a socket using w_poll_events.
+class FakeSocketEvent : public PollableEvent {
+ public:
+  int socket;
+
+  explicit FakeSocketEvent(int fd) : socket(fd) {}
+
+  void notify() override {}
+  bool testAndClear() override {
+    return false;
+  }
+  int getFd() const override {
+    return socket;
+  }
 };
 
 class UnixStream : public watchman_stream {
  public:
   FileDescriptor fd;
-  struct watchman_event evt;
+  FakeSocketEvent evt;
 
-  explicit UnixStream(int descriptorNumber) : fd(descriptorNumber) {
-    evt.fd[0] = fd.fd();
-    evt.fd[1] = fd.fd();
-    evt.is_pipe = false;
-  }
+  explicit UnixStream(int descriptorNumber)
+      : fd(descriptorNumber), evt(descriptorNumber) {}
 
   int read(void* buf, int size) override {
     errno = 0;
@@ -86,50 +129,10 @@ class UnixStream : public watchman_stream {
     return false;
   }
 };
+}
 
 w_evt_t w_event_make(void) {
-  w_evt_t evt = (w_evt_t)calloc(1, sizeof(*evt));
-  if (!evt) {
-    return NULL;
-  }
-  if (pipe(evt->fd)) {
-    free(evt);
-    return NULL;
-  }
-  w_set_cloexec(evt->fd[0]);
-  w_set_nonblock(evt->fd[0]);
-  w_set_cloexec(evt->fd[1]);
-  w_set_nonblock(evt->fd[1]);
-  evt->is_pipe = true;
-  return evt;
-}
-
-void w_event_set(w_evt_t evt) {
-  if (!evt->is_pipe) {
-    return;
-  }
-  ignore_result(write(evt->fd[1], "a", 1));
-}
-
-void w_event_destroy(w_evt_t evt) {
-  if (!evt->is_pipe) {
-    return;
-  }
-  close(evt->fd[0]);
-  close(evt->fd[1]);
-  free(evt);
-}
-
-bool w_event_test_and_clear(w_evt_t evt) {
-  char buf[64];
-  bool signalled = false;
-  if (!evt->is_pipe) {
-    return false;
-  }
-  while (read(evt->fd[0], buf, sizeof(buf)) > 0) {
-    signalled = true;
-  }
-  return signalled;
+  return new PipeEvent();
 }
 
 int w_stm_fileno(w_stm_t stm) {
@@ -152,7 +155,9 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
   }
 
   for (i = 0; i < n; i++) {
-    pfds[i].fd = p[i].evt->fd[0];
+    auto pe = dynamic_cast<PollableEvent*>(p[i].evt);
+    w_check(pe != nullptr, "PollableEvent!?");
+    pfds[i].fd = pe->getFd();
     pfds[i].events = POLLIN|POLLHUP|POLLERR;
     pfds[i].revents = 0;
   }

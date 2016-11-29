@@ -3,8 +3,6 @@
 
 #include "watchman.h"
 
-watchman_stream::~watchman_stream() {}
-
 w_stm_t w_stm_connect(const char *path, int timeoutms) {
 #ifdef _WIN32
   return w_stm_connect_named_pipe(path, timeoutms);
@@ -76,4 +74,16 @@ bool w_stm_peer_is_owner(w_stm_t stm) {
     return false;
   }
   return stm->peerIsOwner();
+}
+
+void w_event_set(w_evt_t evt) {
+  evt->notify();
+}
+
+void w_event_destroy(w_evt_t evt) {
+  delete evt;
+}
+
+bool w_event_test_and_clear(w_evt_t evt) {
+  return evt->testAndClear();
 }

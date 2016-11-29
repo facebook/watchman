@@ -6,12 +6,18 @@
 // Very limited stream abstraction to make it easier to
 // deal with portability between Windows and POSIX.
 
-struct watchman_event;
-typedef struct watchman_event *w_evt_t;
+class watchman_event {
+ public:
+  virtual ~watchman_event() = default;
+  virtual void notify() = 0;
+  virtual bool testAndClear() = 0;
+};
+
+using w_evt_t = watchman_event*;
 
 class watchman_stream {
  public:
-  virtual ~watchman_stream();
+  virtual ~watchman_stream() = default;
   virtual int read(void* buf, int size) = 0;
   virtual int write(const void* buf, int size) = 0;
   virtual w_evt_t getEvents() = 0;
@@ -23,7 +29,7 @@ class watchman_stream {
 using w_stm_t = watchman_stream*;
 
 struct watchman_event_poll {
-  struct watchman_event *evt;
+  watchman_event* evt;
   bool ready;
 };
 

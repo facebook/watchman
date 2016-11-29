@@ -11,6 +11,34 @@
 
 struct win_handle;
 
+namespace {
+class WindowsEvent : public watchman_event {
+ public:
+  HANDLE hEvent;
+
+  explicit WindowsEvent(bool initialState = false)
+      : hEvent(CreateEvent(nullptr, TRUE, initialState, nullptr)) {}
+
+  ~WindowsEvent() {
+    CloseHandle(hEvent);
+  }
+
+  void notify() override {
+    SetEvent(hEvent);
+  }
+
+  bool testAndClear() override {
+    bool was_set = WaitForSingleObject(hEvent, 0) == WAIT_OBJECT_0;
+    ResetEvent(hEvent);
+    return was_set;
+  }
+
+  void reset() {
+    ResetEvent(hEvent);
+  }
+};
+}
+
 struct overlapped_op {
   OVERLAPPED olap;
   struct win_handle *h;
@@ -27,7 +55,8 @@ struct write_buf {
 class win_handle : public watchman_stream {
  public:
   struct overlapped_op *read_pending{nullptr}, *write_pending{nullptr};
-  HANDLE h, waitable;
+  HANDLE h;
+  WindowsEvent waitable;
   CRITICAL_SECTION mtx;
   bool error_pending{false};
   DWORD errcode{0};
@@ -180,10 +209,6 @@ win_handle::~win_handle() {
     h = INVALID_HANDLE_VALUE;
   }
 
-  if (waitable) {
-    CloseHandle(waitable);
-  }
-
   DeleteCriticalSection(&mtx);
 }
 
@@ -228,7 +253,7 @@ again:
   }
 
   stream_debug("have read_pending, checking status\n");
-  ResetEvent(h->waitable);
+  h->waitable.reset();
 
   // Don't hold the mutex while we're blocked
   LeaveCriticalSection(&h->mtx);
@@ -259,7 +284,7 @@ again:
       h->errcode = err;
       h->error_pending = true;
       stream_debug("marking read as failed\n");
-      SetEvent(h->waitable);
+      h->waitable.notify();
     }
   }
   LeaveCriticalSection(&h->mtx);
@@ -317,9 +342,9 @@ static int win_read_non_blocking(struct win_handle* h, void* buf, int size) {
   h->read_pending = (overlapped_op*)calloc(1, sizeof(*h->read_pending));
   if (h->read_avail == 0) {
     stream_debug("ResetEvent because there is no read_avail right now\n");
-    ResetEvent(h->waitable);
+    h->waitable.reset();
   }
-  h->read_pending->olap.hEvent = h->waitable;
+  h->read_pending->olap.hEvent = h->waitable.hEvent;
   h->read_pending->h = h;
 
   if (!ReadFile(h->h, target, target_space, nullptr, &h->read_pending->olap)) {
@@ -331,7 +356,7 @@ static int win_read_non_blocking(struct win_handle* h, void* buf, int size) {
 
       stream_debug("olap read failed immediately: %s\n",
           win32_strerror(err));
-      SetEvent(h->waitable);
+      h->waitable.notify();
     } else {
       stream_debug("olap read queued ok\n");
     }
@@ -353,7 +378,7 @@ static int win_read_non_blocking(struct win_handle* h, void* buf, int size) {
   move_from_read_buffer(h, &total_read, (char**)&buf, &size);
 
   stream_debug("read returning %d\n", total_read);
-  SetEvent(h->waitable);
+  h->waitable.notify();
   return total_read;
 }
 
@@ -425,7 +450,7 @@ static void CALLBACK write_completed(DWORD err, DWORD bytes,
   }
 
   stream_debug("SetEvent because WriteFileEx completed\n");
-  SetEvent(h->waitable);
+  h->waitable.notify();
 
   // Send whatever else we have waiting to go
   initiate_write(h);
@@ -484,7 +509,7 @@ int win_handle::write(const void* buf, int size) {
     error_pending = true;
     errno = map_win32_err(errcode);
     stream_debug("SetEvent because blocking write completed (failed)\n");
-    SetEvent(waitable);
+    waitable.notify();
     stream_debug("write failed: %s\n", win32_strerror(errcode));
     LeaveCriticalSection(&mtx);
     return -1;
@@ -518,7 +543,7 @@ int win_handle::write(const void* buf, int size) {
 }
 
 w_evt_t win_handle::getEvents() {
-  return (w_evt_t)waitable;
+  return &waitable;
 }
 
 void win_handle::setNonBlock(bool nonb) {
@@ -556,28 +581,13 @@ bool win_handle::peerIsOwner() {
 }
 
 w_evt_t w_event_make(void) {
-  return (w_evt_t)CreateEvent(nullptr, TRUE, FALSE, nullptr);
-}
-
-void w_event_set(w_evt_t evt) {
-  SetEvent(evt);
-}
-
-void w_event_destroy(w_evt_t evt) {
-  CloseHandle(evt);
-}
-
-bool w_event_test_and_clear(w_evt_t evt) {
-  bool was_set = WaitForSingleObject(evt, 0) == WAIT_OBJECT_0;
-  ResetEvent(evt);
-  return was_set;
+  return new WindowsEvent();
 }
 
 win_handle::win_handle(HANDLE handle)
     : h(handle),
-      waitable(
-          // Initially signalled, meaning that they can try reading
-          CreateEvent(nullptr, TRUE, TRUE, nullptr)),
+      // Initially signalled, meaning that they can try reading
+      waitable(true),
       file_type(GetFileType(handle)) {
   InitializeCriticalSection(&mtx);
 }
@@ -659,7 +669,9 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
   }
 
   for (i = 0; i < n; i++) {
-    handles[i] = p[i].evt;
+    auto evt = dynamic_cast<WindowsEvent*>(p[i].evt);
+    w_check(evt != nullptr, "!WindowsEvent");
+    handles[i] = evt->hEvent;
     p[i].ready = false;
   }
 
