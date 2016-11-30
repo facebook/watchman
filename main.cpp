@@ -848,33 +848,21 @@ static bool try_command(json_t *cmd, int timeout)
     return true;
   }
 
-  w_json_buffer_init(&buffer);
-
   // Send command
-  if (!w_ser_write_pdu(server_pdu, &buffer, client.get(), cmd)) {
+  if (!buffer.pduEncodeToStream(server_pdu, cmd, client.get())) {
     err = errno;
     w_log(W_LOG_ERR, "error sending PDU to server\n");
-    w_json_buffer_free(&buffer);
     errno = err;
     return false;
   }
 
-  w_json_buffer_reset(&buffer);
-
-  w_json_buffer_init(&output_pdu_buffer);
+  buffer.clear();
 
   do {
-    if (!w_json_buffer_passthru(
-            &buffer, output_pdu, &output_pdu_buffer, client.get())) {
-      err = errno;
-      w_json_buffer_free(&buffer);
-      w_json_buffer_free(&output_pdu_buffer);
-      errno = err;
+    if (!buffer.passThru(output_pdu, &output_pdu_buffer, client.get())) {
       return false;
     }
   } while (persistent);
-  w_json_buffer_free(&buffer);
-  w_json_buffer_free(&output_pdu_buffer);
 
   return true;
 }
@@ -959,8 +947,7 @@ static json_ref build_command(int argc, char** argv) {
     w_jbuffer_t buf;
 
     memset(&err, 0, sizeof(err));
-    w_json_buffer_init(&buf);
-    auto cmd = w_json_buffer_next(&buf, w_stm_stdin(), &err);
+    auto cmd = buf.decodeNext(w_stm_stdin(), &err);
 
     if (buf.pdu_type == is_bser) {
       // If they used bser for the input, select bser for output
@@ -981,8 +968,6 @@ static json_ref build_command(int argc, char** argv) {
         output_pdu = is_bser_v2;
       }
     }
-
-    w_json_buffer_free(&buf);
 
     if (!cmd) {
       fprintf(stderr, "failed to parse command from stdin: %s\n",

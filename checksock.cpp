@@ -28,15 +28,14 @@ static void check_my_sock() {
 
   client->setNonBlock(false);
 
-  w_json_buffer_init(&buf);
-  if (!w_ser_write_pdu(is_bser, &buf, client.get(), cmd)) {
+  if (!buf.pduEncodeToStream(is_bser, cmd, client.get())) {
     w_log(W_LOG_FATAL, "Failed to send get-pid PDU: %s\n",
           strerror(errno));
     /* NOTREACHED */
   }
 
-  w_json_buffer_reset(&buf);
-  auto result = w_json_buffer_next(&buf, client.get(), &jerr);
+  buf.clear();
+  auto result = buf.decodeNext(client.get(), &jerr);
   if (!result) {
     w_log(W_LOG_FATAL, "Failed to decode get-pid response: %s %s\n",
         jerr.text, strerror(errno));
@@ -56,7 +55,6 @@ static void check_my_sock() {
         (long)remote_pid, (long)my_pid);
     /* NOTREACHED */
   }
-  w_json_buffer_free(&buf);
 }
 
 void w_check_my_sock(void) {

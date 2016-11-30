@@ -88,12 +88,6 @@ watchman_client::watchman_client() : watchman_client(nullptr) {}
 watchman_client::watchman_client(std::unique_ptr<watchman_stream>&& stm)
     : stm(std::move(stm)), ping(w_event_make()) {
   w_log(W_LOG_DBG, "accepted client:stm=%p\n", stm.get());
-  if (!w_json_buffer_init(&reader)) {
-    // FIXME: error handling
-  }
-  if (!w_json_buffer_init(&writer)) {
-    // FIXME: error handling
-  }
 }
 
 watchman_client::~watchman_client() {
@@ -102,8 +96,6 @@ watchman_client::~watchman_client() {
 
   w_log(W_LOG_DBG, "client_delete %p\n", this);
 
-  w_json_buffer_free(&reader);
-  w_json_buffer_free(&writer);
   stm->shutdown();
 }
 
@@ -153,8 +145,7 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
     }
 
     if (pfd[0].ready) {
-      auto request =
-          w_json_buffer_next(&client->reader, client->stm.get(), &jerr);
+      auto request = client->reader.decodeNext(client->stm.get(), &jerr);
 
       if (!request && errno == EAGAIN) {
         // That's fine
@@ -277,11 +268,8 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
          * Don't bother sending any more messages if the client disconnects,
          * but still free their memory.
          */
-        send_ok = w_ser_write_pdu(
-            client->pdu_type,
-            &client->writer,
-            client->stm.get(),
-            response_to_send);
+        send_ok = client->writer.pduEncodeToStream(
+            client->pdu_type, response_to_send, client->stm.get());
         client->stm->setNonBlock(true);
       }
 

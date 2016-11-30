@@ -15,6 +15,50 @@ struct watchman_json_buffer {
   uint32_t allocd;
   uint32_t rpos, wpos;
   enum w_pdu_type pdu_type;
+
+  ~watchman_json_buffer();
+  watchman_json_buffer();
+  watchman_json_buffer(const watchman_json_buffer&) = delete;
+  watchman_json_buffer& operator=(const watchman_json_buffer&) = delete;
+
+  void clear();
+  bool jsonEncodeToStream(const json_ref& json, w_stm_t stm, int flags);
+  bool bserEncodeToStream(
+      uint32_t bser_version,
+      uint32_t bser_capabilities,
+      const json_ref& json,
+      w_stm_t stm);
+
+  bool pduEncodeToStream(
+      enum w_pdu_type pdu_type,
+      const json_ref& json,
+      w_stm_t stm);
+
+  json_ref decodeNext(w_stm_t stm, json_error_t* jerr);
+
+  bool passThru(
+      enum w_pdu_type output_pdu,
+      watchman_json_buffer* output_pdu_buf,
+      w_stm_t stm);
+
+ private:
+  bool readAndDetectPdu(w_stm_t stm, json_error_t* jerr);
+  inline uint32_t shuntDown();
+  bool fillBuffer(w_stm_t stm);
+  inline enum w_pdu_type detectPdu();
+  json_ref readJsonPrettyPdu(w_stm_t stm, json_error_t* jerr);
+  json_ref readJsonPdu(w_stm_t stm, json_error_t* jerr);
+  json_ref readBserPdu(w_stm_t stm, uint32_t bser_version, json_error_t* jerr);
+  json_ref decodePdu(w_stm_t stm, json_error_t* jerr);
+  bool decodePduInfo(
+      w_stm_t stm,
+      uint32_t bser_version,
+      json_int_t* len,
+      json_int_t* bser_capabilities,
+      json_error_t* jerr);
+  bool streamPdu(w_stm_t stm, json_error_t* jerr);
+  bool streamUntilNewLine(w_stm_t stm);
+  bool streamN(w_stm_t stm, json_int_t len, json_error_t* jerr);
 };
 
 typedef struct bser_ctx {
@@ -24,32 +68,6 @@ typedef struct bser_ctx {
 } bser_ctx_t;
 
 typedef struct watchman_json_buffer w_jbuffer_t;
-
-bool w_json_buffer_init(w_jbuffer_t* jr);
-void w_json_buffer_reset(w_jbuffer_t* jr);
-void w_json_buffer_free(w_jbuffer_t* jr);
-json_ref w_json_buffer_next(w_jbuffer_t* jr, w_stm_t stm, json_error_t* jerr);
-bool w_json_buffer_passthru(
-    w_jbuffer_t* jr,
-    enum w_pdu_type output_pdu,
-    w_jbuffer_t* output_pdu_buf,
-    w_stm_t stm);
-bool w_json_buffer_write(
-    w_jbuffer_t* jr,
-    w_stm_t stm,
-    const json_ref& json,
-    int flags);
-bool w_json_buffer_write_bser(
-    uint32_t bser_version,
-    uint32_t bser_capabilities,
-    w_jbuffer_t* jr,
-    w_stm_t stm,
-    const json_ref& json);
-bool w_ser_write_pdu(
-    enum w_pdu_type pdu_type,
-    w_jbuffer_t* jr,
-    w_stm_t stm,
-    const json_ref& json);
 
 #define BSER_MAGIC "\x00\x01"
 #define BSER_V2_MAGIC "\x00\x02"

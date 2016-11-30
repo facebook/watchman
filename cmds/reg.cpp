@@ -120,9 +120,7 @@ void preprocess_command(json_ref& args, enum w_pdu_type output_pdu) {
          {"version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE)},
          {"cli_validated", json_true()}});
 
-    w_json_buffer_init(&jr);
-    w_ser_write_pdu(output_pdu, &jr, w_stm_stdout(), err);
-    w_json_buffer_free(&jr);
+    jr.pduEncodeToStream(output_pdu, err, w_stm_stdout());
 
     free(errmsg);
     exit(1);

@@ -126,47 +126,32 @@ std::unique_ptr<watchman_stream> w_mkstemp(char* templ) {
 #endif
 }
 
-static bool do_state_save(void)
-{
+static bool do_state_save(void) {
   w_jbuffer_t buffer;
-  bool result = false;
 
   auto state = json_object();
 
-  if (!w_json_buffer_init(&buffer)) {
-    w_log(W_LOG_ERR, "save_state: failed to init json buffer\n");
-    goto out;
+  auto file =
+      w_stm_open(watchman_state_file, O_WRONLY | O_TRUNC | O_CREAT, 0600);
+  if (!file) {
+    w_log(
+        W_LOG_ERR,
+        "save_state: unable to open %s for write: %s\n",
+        watchman_state_file,
+        strerror(errno));
+    return false;
   }
 
-  {
-    auto file =
-        w_stm_open(watchman_state_file, O_WRONLY | O_TRUNC | O_CREAT, 0600);
-    if (!file) {
-      w_log(
-          W_LOG_ERR,
-          "save_state: unable to open %s for write: %s\n",
-          watchman_state_file,
-          strerror(errno));
-      goto out;
-    }
+  state.set("version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE));
 
-    state.set(
-        "version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE));
-
-    /* now ask the different subsystems to fill out the state */
-    if (!w_root_save_state(state)) {
-      goto out;
-    }
-
-    /* we've prepared what we're going to save, so write it out */
-    w_json_buffer_write(&buffer, file.get(), state, JSON_INDENT(4));
-    result = true;
+  /* now ask the different subsystems to fill out the state */
+  if (!w_root_save_state(state)) {
+    return false;
   }
 
-out:
-  w_json_buffer_free(&buffer);
-
-  return result;
+  /* we've prepared what we're going to save, so write it out */
+  buffer.jsonEncodeToStream(state, file.get(), JSON_INDENT(4));
+  return true;
 }
 
 /** Arranges for the state to be saved.

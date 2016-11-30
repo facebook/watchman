@@ -38,20 +38,14 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
       {
         w_jbuffer_t buffer;
 
-        if (!w_json_buffer_init(&buffer)) {
-          w_log(W_LOG_ERR, "failed to init json buffer\n");
-          return NULL;
-        }
-
         w_log(W_LOG_ERR, "input_json: sending json object to stm\n");
-        if (!w_json_buffer_write(
-                &buffer, stdin_file.get(), res->resultsArray, 0)) {
+        if (!buffer.jsonEncodeToStream(
+                res->resultsArray, stdin_file.get(), 0)) {
           w_log(W_LOG_ERR,
               "input_json: failed to write json data to stream: %s\n",
               strerror(errno));
           return NULL;
         }
-        w_json_buffer_free(&buffer);
         break;
       }
     case input_name_list:
