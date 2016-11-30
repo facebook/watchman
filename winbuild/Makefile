@@ -41,7 +41,6 @@ SRCS_CPP=\
 	winbuild\backtrace.cpp \
 	winbuild\getopt_long.cpp \
 	winbuild\posix_spawn.cpp \
-	winbuild\pthread.cpp \
 	argv.cpp \
 	envp.cpp \
 	ignore.cpp \
@@ -123,7 +122,6 @@ TEST_SRCS_CPP=\
 	thirdparty\tap.cpp \
 	winbuild\asprintf.cpp \
 	winbuild\time.cpp \
-	winbuild\pthread.cpp \
 	winbuild\backtrace.cpp \
 	winbuild\errmap.cpp \
 	argv.cpp \

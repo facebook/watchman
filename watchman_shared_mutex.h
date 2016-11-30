@@ -4,6 +4,11 @@
 #include <chrono>
 #include "watchman_log.h"
 #include "watchman_time.h"
+#ifdef _WIN32
+#include <shared_mutex>
+#else
+#include <pthread.h>
+#endif
 
 #ifdef __APPLE__
 // We provide our own implementation of these functions
@@ -20,6 +25,7 @@ int pthread_rwlock_timedrdlock(
 
 namespace watchman {
 
+#ifndef _WIN32
 /* Implements the C++14 shared_timed_mutex API using pthread_rwlock_t.
  * This is present because C++11 is our target environment */
 class shared_timed_mutex {
@@ -160,5 +166,9 @@ class shared_lock {
   mutex_type* m_;
   bool owned_{false};
 };
+#else
+using shared_timed_mutex = std::shared_timed_mutex;
+using shared_lock = std::shared_lock<shared_timed_mutex>;
+#endif
 
 } // namespace watchman
