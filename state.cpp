@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "watchman_synchronized.h"
 
 using watchman::FileDescriptor;
 
@@ -15,43 +16,45 @@ using watchman::FileDescriptor;
  * notified of state changes.
  */
 
-static pthread_t state_saver_thread;
-static pthread_mutex_t state_lock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t state_cond;
-static bool need_save = false;
+namespace {
+struct state {
+  bool needsSave{false};
+};
+watchman::Synchronized<state, std::mutex> saveState;
+std::condition_variable stateCond;
+std::thread state_saver_thread;
+}
 
 static bool do_state_save(void);
 
-static void* state_saver(void*) {
+static void state_saver() {
   bool do_save;
 
   w_set_thread_name("statesaver");
 
   while (!w_is_stopping()) {
-    pthread_mutex_lock(&state_lock);
-    if (!need_save) {
-      pthread_cond_wait(&state_cond, &state_lock);
+    {
+      auto state = saveState.wlock();
+      if (!state->needsSave) {
+        stateCond.wait(state.getUniqueLock());
+      }
+      do_save = state->needsSave;
+      state->needsSave = false;
     }
-    do_save = need_save;
-    need_save = false;
-    pthread_mutex_unlock(&state_lock);
 
     if (do_save) {
       do_state_save();
     }
   }
-  return NULL;
 }
 
 void w_state_shutdown(void) {
-  void *result;
-
   if (dont_save_state) {
     return;
   }
 
-  pthread_cond_signal(&state_cond);
-  pthread_join(state_saver_thread, &result);
+  stateCond.notify_one();
+  state_saver_thread.join();
 }
 
 bool w_state_load(void)
@@ -62,11 +65,7 @@ bool w_state_load(void)
     return true;
   }
 
-  pthread_cond_init(&state_cond, NULL);
-  errno = pthread_create(&state_saver_thread, NULL, state_saver, NULL);
-  if (errno) {
-    w_log(W_LOG_FATAL, "failed to spawn state thread: %s\n", strerror(errno));
-  }
+  state_saver_thread = std::thread(state_saver);
 
   auto state = json_load_file(watchman_state_file, 0, &err);
 
@@ -177,11 +176,8 @@ void w_state_save(void) {
     return;
   }
 
-  pthread_mutex_lock(&state_lock);
-  need_save = true;
-  pthread_mutex_unlock(&state_lock);
-
-  pthread_cond_signal(&state_cond);
+  saveState.wlock()->needsSave = true;
+  stateCond.notify_one();
 }
 
 /* vim:ts=2:sw=2:et:
