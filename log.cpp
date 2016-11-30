@@ -4,10 +4,18 @@
 #include "watchman.h"
 #include <array>
 #include <limits>
+#include <sstream>
+#ifdef __APPLE__
+#include <pthread.h>
+#endif
 #include "Logging.h"
 
 int log_level = W_LOG_ERR;
+#ifdef __APPLE__
 static pthread_key_t thread_name_key;
+#else
+static thread_local char *thread_name = nullptr;
+#endif
 static constexpr size_t kMaxFrames = 64;
 
 namespace {
@@ -112,11 +120,16 @@ char* Log::currentTimeString(char* buf, size_t bufsize) {
 }
 
 const char* Log::getThreadName() {
-  auto name = (const char*)pthread_getspecific(thread_name_key);
-  if (name) {
-    return name;
+#ifdef __APPLE__
+  auto thread_name = (char*)pthread_getspecific(thread_name_key);
+#endif
+
+  if (thread_name) {
+    return thread_name;
   }
-  return w_set_thread_name("%" PRIu32, (uint32_t)(uintptr_t)pthread_self());
+  std::stringstream ss;
+  ss << std::this_thread::get_id();
+  return w_set_thread_name(ss.str().c_str());
 }
 
 void Log::setStdErrLoggingLevel(enum LogLevel level) {
@@ -307,20 +320,30 @@ void w_setup_signal_handlers(void) {
       []() { watchman::log(watchman::FATAL, "std::terminate was called\n"); });
 }
 
+#ifdef __APPLE__
 static w_ctor_fn_type(register_thread_name) {
   pthread_key_create(&thread_name_key, free);
 }
 w_ctor_fn_reg(register_thread_name);
+#endif
 
 const char *w_set_thread_name(const char *fmt, ...) {
-  char *name = NULL;
   va_list ap;
-  free(pthread_getspecific(thread_name_key));
+#ifdef __APPLE__
+  auto thread_name = (char*)pthread_getspecific(thread_name_key);
+#endif
+
+  free(thread_name);
+
   va_start(ap, fmt);
-  ignore_result(vasprintf(&name, fmt, ap));
+  ignore_result(vasprintf(&thread_name, fmt, ap));
   va_end(ap);
-  pthread_setspecific(thread_name_key, name);
-  return name;
+
+#ifdef __APPLE__
+  pthread_setspecific(thread_name_key, thread_name);
+#endif
+
+  return thread_name;
 }
 
 void w_log(int level, WATCHMAN_FMT_STRING(const char *fmt), ...)
