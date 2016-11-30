@@ -61,9 +61,9 @@ $ sudo port install watchman
 ### Installing from source
 
 You can use these steps below to get watchman built.  You will need `autoconf`
-and `automake`.  You may optionally build watchman with `pcre` and `python`
-support.  For python support, you will also need `setuptools` and may need to
-install a `python-dev` or `python-devel` package.
+and `automake`.  You may optionally build watchman without `pcre` and `python`
+support (see configuration options below). For python support, you will also 
+need `setuptools` and may need to install a `python-dev` or `python-devel` package.
 
 See below for some more information on options to configure your build.
 
@@ -98,7 +98,9 @@ that are specific to watchman that might be relevant to your needs:
 --with-buildinfo=TEXT   Include some extra build information that will
                         be reported in the version command output
 
---with-python        Enable python bindings
+--without-python        Disable python bindings
+--with-python=PATH      Enable Python bindings. PATH is location of python.
+                        Default is to look for python in your PATH
 
 --without-pcre       Don't enable pcre support.
 --with-pcre=PATH     Enable pcre support.  PATH is location of pcre-config.
