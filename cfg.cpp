@@ -2,17 +2,23 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "watchman_synchronized.h"
 
-static json_ref global_cfg;
-static json_ref arg_cfg;
-static pthread_rwlock_t cfg_lock = PTHREAD_RWLOCK_INITIALIZER;
+namespace {
+struct config_state {
+  json_ref global_cfg;
+  json_ref arg_cfg;
+};
+watchman::Synchronized<config_state> configState;
+}
 
 /* Called during shutdown to free things so that we run cleanly
  * under valgrind */
 void cfg_shutdown(void)
 {
-  global_cfg.reset();
-  arg_cfg.reset();
+  auto state = configState.wlock();
+  state->global_cfg.reset();
+  state->arg_cfg.reset();
 }
 
 void cfg_load_global_config_file(void)
@@ -40,50 +46,45 @@ void cfg_load_global_config_file(void)
     return;
   }
 
-  global_cfg = config;
+  configState.wlock()->global_cfg = config;
 }
 
 void cfg_set_arg(const char* name, const json_ref& val) {
-  pthread_rwlock_wrlock(&cfg_lock);
-  if (!arg_cfg) {
-    arg_cfg = json_object();
+  auto state = configState.wlock();
+  if (!state->arg_cfg) {
+    state->arg_cfg = json_object();
   }
 
-  arg_cfg.set(name, json_ref(val));
-
-  pthread_rwlock_unlock(&cfg_lock);
+  state->arg_cfg.set(name, json_ref(val));
 }
 
 void cfg_set_global(const char* name, const json_ref& val) {
-  pthread_rwlock_wrlock(&cfg_lock);
-  if (!global_cfg) {
-    global_cfg = json_object();
+  auto state = configState.wlock();
+  if (!state->global_cfg) {
+    state->global_cfg = json_object();
   }
 
-  global_cfg.set(name, json_ref(val));
-
-  pthread_rwlock_unlock(&cfg_lock);
+  state->global_cfg.set(name, json_ref(val));
 }
 
-static json_ref cfg_get_raw(const char* name, json_ref* optr) {
+static json_ref cfg_get_raw(const char* name, const json_ref* optr) {
   json_ref val;
 
-  pthread_rwlock_rdlock(&cfg_lock);
   if (*optr) {
     val = optr->get_default(name);
   }
-  pthread_rwlock_unlock(&cfg_lock);
   return val;
 }
 
 json_ref cfg_get_json(const char* name) {
   json_ref val;
+  auto state = configState.rlock();
 
   // Highest precedence: command line arguments
-  val = cfg_get_raw(name, &arg_cfg);
+  val = cfg_get_raw(name, &state->arg_cfg);
   // then: global config options
   if (!val) {
-    val = cfg_get_raw(name, &global_cfg);
+    val = cfg_get_raw(name, &state->global_cfg);
   }
   return val;
 }
@@ -297,14 +298,19 @@ json_ref Configuration::get(const char* name) const {
   json_ref val;
   if (local_) {
     val = local_.get_default(name);
+    if (val) {
+      return val;
+    }
   }
+  auto state = configState.rlock();
+
   // then: command line arguments
   if (!val) {
-    val = cfg_get_raw(name, &arg_cfg);
+    val = cfg_get_raw(name, &state->arg_cfg);
   }
   // then: global config options
   if (!val) {
-    val = cfg_get_raw(name, &global_cfg);
+    val = cfg_get_raw(name, &state->global_cfg);
   }
   return val;
 }
