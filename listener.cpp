@@ -12,9 +12,10 @@ using watchman::Win32Handle;
 
 watchman::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
-static int listener_fd = -1;
-static pthread_t listener_thread;
-#ifdef _WIN32
+static FileDescriptor listener_fd;
+#ifndef _WIN32
+static std::unique_ptr<watchman_event> listener_thread_event;
+#else
 static HANDLE listener_thread_event;
 #endif
 static volatile bool stopping = false;
@@ -116,9 +117,11 @@ void watchman_client::enqueueResponse(json_ref&& resp, bool ping) {
 
 void w_request_shutdown(void) {
   stopping = true;
-// Knock listener thread out of poll/accept
+  // Knock listener thread out of poll/accept
 #ifndef _WIN32
-  pthread_kill(listener_thread, SIGUSR1);
+  if (listener_thread_event) {
+    listener_thread_event->notify();
+  }
 #else
   SetEvent(listener_thread_event);
 #endif
@@ -130,8 +133,6 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
   struct watchman_event_poll pfd[2];
   json_error_t jerr;
   bool send_ok = true;
-
-  client->thread_handle = pthread_self();
 
   client->stm->setNonBlock(true);
   w_set_thread_name("client=%p:stm=%p", client.get(), client->stm.get());
@@ -319,38 +320,25 @@ static void wakeme(int) {}
 // to move the inetd provided socket descriptor(s) to a new descriptor
 // number and remember that we can just use these when we're starting
 // up the listener.
-bool w_listener_prep_inetd(void) {
-  if (listener_fd != -1) {
-    w_log(W_LOG_ERR,
-          "w_listener_prep_inetd: listener_fd is already assigned\n");
-    return false;
+void w_listener_prep_inetd() {
+  if (listener_fd) {
+    throw std::runtime_error(
+        "w_listener_prep_inetd: listener_fd is already assigned");
   }
 
-  listener_fd = dup(STDIN_FILENO);
-  if (listener_fd == -1) {
-    w_log(W_LOG_ERR, "w_listener_prep_inetd: failed to dup stdin: %s\n",
-          strerror(errno));
-    return false;
-  }
-
-  return true;
+  listener_fd = FileDescriptor(dup(STDIN_FILENO), "dup(stdin) for listener");
 }
 
-static int get_listener_socket(const char *path)
+static FileDescriptor get_listener_socket(const char *path)
 {
   struct sockaddr_un un;
   mode_t perms = cfg_get_perms(
       "sock_access", true /* write bits */, false /* execute bits */);
-
-  if (listener_fd != -1) {
-    // Assume that it was prepped by w_listener_prep_inetd()
-    w_log(W_LOG_ERR, "Using socket from inetd as listening socket\n");
-    return listener_fd;
-  }
+  FileDescriptor listener_fd;
 
 #ifdef __APPLE__
   listener_fd = w_get_listener_socket_from_launchd();
-  if (listener_fd != -1) {
+  if (listener_fd) {
     w_log(W_LOG_ERR, "Using socket from launchd as listening socket\n");
     return listener_fd;
   }
@@ -359,33 +347,26 @@ static int get_listener_socket(const char *path)
   if (strlen(path) >= sizeof(un.sun_path) - 1) {
     w_log(W_LOG_ERR, "%s: path is too long\n",
         path);
-    return -1;
+    return FileDescriptor();
   }
 
-  listener_fd = socket(PF_LOCAL, SOCK_STREAM, 0);
-  if (listener_fd == -1) {
-    w_log(W_LOG_ERR, "socket: %s\n",
-        strerror(errno));
-    return -1;
-  }
+  listener_fd = FileDescriptor(socket(PF_LOCAL, SOCK_STREAM, 0), "socket");
 
   un.sun_family = PF_LOCAL;
   memcpy(un.sun_path, path, strlen(path) + 1);
   unlink(path);
 
-  if (bind(listener_fd, (struct sockaddr*)&un, sizeof(un)) != 0) {
+  if (bind(listener_fd.fd(), (struct sockaddr*)&un, sizeof(un)) != 0) {
     w_log(W_LOG_ERR, "bind(%s): %s\n",
       path, strerror(errno));
-    close(listener_fd);
-    return -1;
+    return FileDescriptor();
   }
 
   // The permissions in the containing directory should be correct, so this
   // should be correct as well. But set the permissions in any case.
   if (chmod(path, perms) == -1) {
     w_log(W_LOG_ERR, "chmod(%s, %#o): %s", path, perms, strerror(errno));
-    close(listener_fd);
-    return -1;
+    return FileDescriptor();
   }
 
   // Double-check that the socket has the right permissions. This can happen
@@ -394,8 +375,7 @@ static int get_listener_socket(const char *path)
   struct stat st;
   if (lstat(path, &st) == -1) {
     watchman::log(watchman::ERR, "lstat(", path, "): ", strerror(errno), "\n");
-    close(listener_fd);
-    return -1;
+    return FileDescriptor();
   }
 
   // This is for testing only
@@ -408,8 +388,7 @@ static int get_listener_socket(const char *path)
   if (sock_group_name) {
     const struct group *sock_group = w_get_group(sock_group_name);
     if (!sock_group) {
-      close(listener_fd);
-      return -1;
+      return FileDescriptor();
     }
     if (st.st_gid != sock_group->gr_gid) {
       watchman::log(
@@ -418,17 +397,14 @@ static int get_listener_socket(const char *path)
         " doesn't match expected gid ", sock_group->gr_gid, " (group name ",
         sock_group_name, "). Ensure that you are still a member of group ",
         sock_group_name, ".\n");
-      close(listener_fd);
-      return -1;
+      return FileDescriptor();
     }
   }
 
-
-  if (listen(listener_fd, 200) != 0) {
+  if (listen(listener_fd.fd(), 200) != 0) {
     w_log(W_LOG_ERR, "listen(%s): %s\n",
         path, strerror(errno));
-    close(listener_fd);
-    return -1;
+    return FileDescriptor();
   }
 
   return listener_fd;
@@ -535,10 +511,11 @@ static void named_pipe_accept_loop(const char *path) {
 #endif
 
 #ifndef _WIN32
-static void accept_loop() {
+static void accept_loop(FileDescriptor&& listenerDescriptor) {
+  auto listener = w_stm_fdopen(std::move(listenerDescriptor));
   while (!stopping) {
     FileDescriptor client_fd;
-    struct pollfd pfd;
+    struct watchman_event_poll pfd[2];
     int bufsize;
 
 #ifdef HAVE_LIBGIMLI_H
@@ -547,9 +524,10 @@ static void accept_loop() {
     }
 #endif
 
-    pfd.events = POLLIN;
-    pfd.fd = listener_fd;
-    if (poll(&pfd, 1, 60000) < 1 || (pfd.revents & POLLIN) == 0) {
+    pfd[0].evt = listener->getEvents();
+    pfd[1].evt = listener_thread_event.get();
+
+    if (w_poll_events(pfd, 2, 60000) == 0) {
       if (stopping) {
         break;
       }
@@ -559,10 +537,16 @@ static void accept_loop() {
       continue;
     }
 
+    if (stopping) {
+      break;
+    }
+
 #ifdef HAVE_ACCEPT4
-    client_fd = FileDescriptor(accept4(listener_fd, nullptr, 0, SOCK_CLOEXEC));
+    client_fd = FileDescriptor(
+        accept4(listener->getFileDescriptor(), nullptr, 0, SOCK_CLOEXEC));
 #else
-    client_fd = FileDescriptor(accept(listener_fd, nullptr, 0));
+    client_fd =
+        FileDescriptor(accept(listener->getFileDescriptor(), nullptr, 0));
 #endif
     if (!client_fd) {
       continue;
@@ -587,8 +571,6 @@ bool w_start_listener(const char *path)
   struct sigaction sa;
   sigset_t sigset;
 #endif
-
-  listener_thread = pthread_self();
 
 #ifdef HAVE_LIBGIMLI_H
   hb = gimli_heartbeat_attach();
@@ -672,11 +654,16 @@ bool w_start_listener(const char *path)
   sigaddset(&sigset, SIGCHLD);
   sigprocmask(SIG_BLOCK, &sigset, NULL);
 
-  listener_fd = get_listener_socket(path);
-  if (listener_fd == -1) {
-    return false;
+  if (listener_fd) {
+    // Assume that it was prepped by w_listener_prep_inetd()
+    w_log(W_LOG_ERR, "Using socket from inetd as listening socket\n");
+  } else {
+    listener_fd = get_listener_socket(path);
+    if (!listener_fd) {
+      return false;
+    }
   }
-  w_set_cloexec(listener_fd);
+  listener_fd.setCloExec();
 #endif
 
 #ifdef HAVE_LIBGIMLI_H
@@ -688,19 +675,14 @@ bool w_start_listener(const char *path)
 #else
   w_setup_signal_handlers();
 #endif
-  w_set_nonblock(listener_fd);
+  listener_fd.setNonBlock();
 
   // Now run the dispatch
 #ifndef _WIN32
-  accept_loop();
+  listener_thread_event = w_event_make();
+  accept_loop(std::move(listener_fd));
 #else
   named_pipe_accept_loop(path);
-#endif
-
-#ifndef _WIN32
-  /* close out some resources to persuade valgrind to run clean */
-  close(listener_fd);
-  listener_fd = -1;
 #endif
 
   // Wait for clients, waking any sleeping clients up in the process
@@ -716,14 +698,6 @@ bool w_start_listener(const char *path)
 
         for (auto client : *clientsLock) {
           client->ping->notify();
-
-#ifndef _WIN32
-          // If we've been waiting around for a while, interrupt
-          // the client thread; it may be blocked on a write
-          if (interval >= max_interval) {
-            pthread_kill(client->thread_handle, SIGUSR1);
-          }
-#endif
         }
       }
 

@@ -106,10 +106,12 @@ bool w_root_save_state(json_ref& state);
 bool w_root_load_state(const json_ref& state);
 json_ref w_root_watch_list_to_json(void);
 
+#include "FileDescriptor.h"
+
 #ifdef __APPLE__
-int w_get_listener_socket_from_launchd(void);
+watchman::FileDescriptor w_get_listener_socket_from_launchd();
 #endif
-bool w_listener_prep_inetd(void);
+void w_listener_prep_inetd();
 bool w_start_listener(const char *socket_path);
 void w_check_my_sock(void);
 char** w_argv_copy_from_json(const json_ref& arr, int skip);

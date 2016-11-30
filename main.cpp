@@ -109,9 +109,7 @@ static void run_service(void)
   // Before we redirect stdin/stdout to the log files, move any inetd-provided
   // socket to a different descriptor number.
   if (inetd_style) {
-    if (!w_listener_prep_inetd()) {
-      return;
-    }
+    w_listener_prep_inetd();
   }
 #endif
 

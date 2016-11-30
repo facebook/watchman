@@ -31,10 +31,6 @@ struct watchman_client : public std::enable_shared_from_this<watchman_client> {
   json_ref current_command;
   w_perf_t* perf_sample{nullptr};
 
-  // This handle is not joinable (CREATE_DETACHED), but can be
-  // used to deliver signals.
-  pthread_t thread_handle;
-
   // Queue of things to send to the client.
   std::deque<json_ref> responses;
 

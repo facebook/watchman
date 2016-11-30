@@ -4,6 +4,8 @@
 #ifdef __APPLE__
 #include <launch.h>
 
+using watchman::FileDescriptor;
+
 /* When running under launchd, we prefer to obtain our listening
  * socket from it.  We don't strictly need to run this way, but if we didn't,
  * when the user runs `watchman shutdown-server` the launchd job is left in
@@ -18,13 +20,13 @@
  * older releases.
  * */
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-int w_get_listener_socket_from_launchd(void) {
+FileDescriptor w_get_listener_socket_from_launchd() {
   launch_data_t req, resp, socks;
 
   req = launch_data_new_string(LAUNCH_KEY_CHECKIN);
   if (req == NULL) {
     w_log(W_LOG_ERR, "unable to create LAUNCH_KEY_CHECKIN\n");
-    return -1;
+    return FileDescriptor();
   }
 
   resp = launch_msg(req);
@@ -32,21 +34,21 @@ int w_get_listener_socket_from_launchd(void) {
 
   if (resp == NULL) {
     w_log(W_LOG_ERR, "launchd checkin failed %s\n", strerror(errno));
-    return -1;
+    return FileDescriptor();
   }
 
   if (launch_data_get_type(resp) == LAUNCH_DATA_ERRNO) {
     w_log(W_LOG_ERR, "launchd checkin failed: %s\n",
           strerror(launch_data_get_errno(resp)));
     launch_data_free(resp);
-    return -1;
+    return FileDescriptor();
   }
 
   socks = launch_data_dict_lookup(resp, LAUNCH_JOBKEY_SOCKETS);
   if (socks == NULL) {
     w_log(W_LOG_ERR, "launchd didn't provide any sockets\n");
     launch_data_free(resp);
-    return -1;
+    return FileDescriptor();
   }
 
   // the "sock" name here is coupled with the plist in main.c
@@ -54,10 +56,11 @@ int w_get_listener_socket_from_launchd(void) {
   if (socks == NULL) {
     w_log(W_LOG_ERR, "launchd: \"sock\" wasn't present in Sockets\n");
     launch_data_free(resp);
-    return -1;
+    return FileDescriptor();
   }
 
-  return launch_data_get_fd(launch_data_array_get_index(socks, 0));
+  return FileDescriptor(
+      launch_data_get_fd(launch_data_array_get_index(socks, 0)));
 }
 #endif
 
