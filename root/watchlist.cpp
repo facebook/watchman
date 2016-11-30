@@ -236,16 +236,27 @@ bool w_root_load_state(const json_ref& state) {
 void w_root_free_watched_roots(void) {
   int last, interval;
   time_t started;
+  std::vector<std::shared_ptr<w_root_t>> roots;
 
+  // We want to cancel the list of roots, but need to be careful to avoid
+  // deadlock; make a copy of the set of roots under the lock...
   {
     auto map = watched_roots.rlock();
     for (const auto& it : *map) {
-      auto root = it.second;
-      if (!root->cancel()) {
-        root->signalThreads();
-      }
+      roots.emplace_back(it.second);
     }
   }
+
+  // ... and cancel them outside of the lock
+  for (auto& root : roots) {
+    if (!root->cancel()) {
+      root->signalThreads();
+    }
+  }
+
+  // release them all so that we don't mess with the number of live_roots
+  // in the code below.
+  roots.clear();
 
   last = live_roots;
   time(&started);
