@@ -592,6 +592,27 @@ w_string w_string::build(Args&&... args) {
   return w_string(s, false);
 }
 
+namespace watchman {
+
+// Helper for building a stringy container of a given type.
+// This is similar in spirit to folly::to<>.  Usage is:
+// auto str = watchman::to<std::string>("foo", 123)
+// and it will return a std::string holding "foo123"
+template <typename Container, typename... Args>
+Container to(Args&&... args) {
+  auto reserved = ::detail::estimateSpaceToReserve(1, args...);
+
+  Container result;
+  result.resize(reserved);
+
+  ::detail::Appender appender(&result[0], reserved);
+  ::detail::appendTo(appender, args...);
+
+  result.resize(reserved - appender.avail());
+  return result;
+}
+}
+
 #endif
 
 /* vim:ts=2:sw=2:et:

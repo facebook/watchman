@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #include "watchman_string.h"
+#include <string>
 #include "thirdparty/tap.h"
 
 void test_integrals() {
@@ -126,14 +127,21 @@ void test_suffix() {
   ok(!str.suffix(), "too long suffix");
 }
 
+void test_to() {
+  auto str = watchman::to<std::string>("foo", 123);
+  ok(str == "foo123", "concatenated to foo123: %s", str.c_str());
+  ok(str.size() == 6, "got size %d", int(str.size()));
+}
+
 int main(int, char**) {
-  plan_tests(46);
+  plan_tests(48);
   test_integrals();
   test_strings();
   test_pointers();
   test_double();
   test_concat();
   test_suffix();
+  test_to();
 
   return exit_status();
 }
