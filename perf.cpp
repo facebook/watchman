@@ -3,12 +3,38 @@
 
 #include "watchman.h"
 #include "watchman_perf.h"
+#include "watchman_synchronized.h"
+#include <condition_variable>
+#include <thread>
 
-static pthread_t perf_log_thr;
-static pthread_mutex_t perf_log_lock = PTHREAD_MUTEX_INITIALIZER;
-static json_ref perf_log_samples;
-static pthread_cond_t perf_log_cond;
-static bool perf_log_thread_started = false;
+namespace {
+class PerfLogThread {
+  watchman::Synchronized<json_ref, std::mutex> samples_;
+  std::thread thread_;
+  std::condition_variable cond_;
+
+  void loop();
+
+ public:
+  PerfLogThread() : thread_([this]() { loop(); }) {}
+
+  ~PerfLogThread() {
+    cond_.notify_all();
+    thread_.join();
+  }
+
+  void addSample(json_ref&& sample) {
+    auto wlock = samples_.wlock();
+    if (!*wlock) {
+      *wlock = json_array();
+    }
+    json_array_append_new(*wlock, std::move(sample));
+    cond_.notify_one();
+  }
+};
+
+watchman::Synchronized<std::unique_ptr<PerfLogThread>> perfThread;
+}
 
 watchman_perf_sample::watchman_perf_sample(const char* description)
     : description(description) {
@@ -104,7 +130,7 @@ void watchman_perf_sample::force_log() {
   will_log = true;
 }
 
-static void* perf_log_thread(void*) {
+void PerfLogThread::loop() {
   json_ref samples;
   char **envp;
   json_ref perf_cmd;
@@ -134,14 +160,16 @@ static void* perf_log_thread(void*) {
 
   sample_batch = cfg_get_int("perf_logger_command_max_samples_per_call", 4);
 
-  while (true) {
-    pthread_mutex_lock(&perf_log_lock);
-    if (!perf_log_samples) {
-      pthread_cond_wait(&perf_log_cond, &perf_log_lock);
+  while (!w_is_stopping()) {
+    {
+      auto wlock = samples_.wlock();
+      if (!*wlock) {
+        cond_.wait(wlock.getUniqueLock());
+      }
+
+      samples = nullptr;
+      std::swap(samples, *wlock);
     }
-    samples = nullptr;
-    std::swap(samples, perf_log_samples);
-    pthread_mutex_unlock(&perf_log_lock);
 
     if (samples) {
       while (json_array_size(samples) > 0) {
@@ -203,8 +231,6 @@ static void* perf_log_thread(void*) {
       }
     }
   }
-
-  return NULL;
 }
 
 void watchman_perf_sample::log() {
@@ -217,7 +243,7 @@ void watchman_perf_sample::log() {
   // Assemble a perf blob
   auto info = json_object(
       {{"description", typed_string_to_json(description)},
-       {"meta", meta_data},
+       {"meta", std::move(meta_data)},
        {"pid", json_integer(getpid())},
        {"version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE)}});
 
@@ -261,20 +287,27 @@ void watchman_perf_sample::log() {
 
   // Send this to our logging thread for async processing
 
-  pthread_mutex_lock(&perf_log_lock);
-  if (!perf_log_thread_started) {
-    pthread_cond_init(&perf_log_cond, NULL);
-    pthread_create(&perf_log_thr, NULL, perf_log_thread, NULL);
-    perf_log_thread_started = true;
+  {
+    // The common case is that we already set up the logging
+    // thread and that we can just log through it.
+    auto rlock = perfThread.rlock();
+    if (rlock->get()) {
+      (*rlock)->addSample(std::move(info));
+      return;
+    }
   }
 
-  if (!perf_log_samples) {
-    perf_log_samples = json_array();
-  }
-  json_array_append_new(perf_log_samples, std::move(info));
-  pthread_mutex_unlock(&perf_log_lock);
+  // If it wasn't set, then we need an exclusive lock to
+  // make sure that we don't spawn multiple instances.
+  {
+    auto wlock = perfThread.wlock();
 
-  pthread_cond_signal(&perf_log_cond);
+    if (!wlock->get()) {
+      *wlock = watchman::make_unique<PerfLogThread>();
+    }
+
+    (*wlock)->addSample(std::move(info));
+  }
 }
 
 /* vim:ts=2:sw=2:et:
