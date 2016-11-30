@@ -123,7 +123,7 @@ libwmanjson_a_SOURCES = \
 
 # bundled testing library
 libtap_a_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-libtap_a_SOURCES = thirdparty/tap.c
+libtap_a_SOURCES = thirdparty/tap.cpp
 TAP_LIB = libtap.a
 
 # pattern matching library

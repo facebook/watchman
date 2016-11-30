@@ -117,10 +117,10 @@ SRCS_CPP=\
 	time.cpp
 
 TEST_SRCS_C=\
-	thirdparty\tap.c \
 	thirdparty\wildmatch\wildmatch.c
 
 TEST_SRCS_CPP=\
+	thirdparty\tap.cpp \
 	winbuild\asprintf.cpp \
 	winbuild\time.cpp \
 	winbuild\pthread.cpp \
@@ -186,9 +186,9 @@ TESTS=tests\argv.exe tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
 	@echo CXX $<
 	$(CC) $(CXXFLAGS) /Fo:thirdparty\jansson\ /c $<
 
-{thirdparty}.c{thirdparty}.obj::
-	@echo CC $<
-	$(CC) $(CFLAGS) /Fo:thirdparty\ /c $<
+{thirdparty}.cpp{thirdparty}.obj::
+	@echo CXX $<
+	$(CC) $(CXXFLAGS) /Fo:thirdparty\ /c $<
 
 all: remove-config-h watchman.exe build-tests susres.exe
 

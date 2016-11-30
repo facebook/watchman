@@ -76,10 +76,6 @@
 
 #define skip_end() } while(0);
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 unsigned int _gen_result(int, const char *, const char *, unsigned int,
                          const char *, ...);
 
@@ -95,7 +91,3 @@ void todo_start(char *, ...);
 void todo_end(void);
 
 int exit_status(void);
-
-#ifdef __cplusplus
-}
-#endif
