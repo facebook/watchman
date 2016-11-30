@@ -10,7 +10,7 @@ var template =  "\x00\x01\x03\x28" +
                 "\x1e\x0c\x03\x19" ;
 
 var val = bser.loadFromBuffer(template);
-assert.deepEqual(val, [
+assert.deepStrictEqual(val, [
   {"name": "fred", "age": 20},
   {"name": "pete", "age": 30},
   {"age": 25}
@@ -19,7 +19,7 @@ assert.deepEqual(val, [
 function roundtrip(val) {
   var encoded = bser.dumpToBuffer(val);
   var decoded = bser.loadFromBuffer(encoded);
-  assert.deepEqual(decoded, val);
+  assert.deepStrictEqual(decoded, val);
 }
 
 var values_to_test = [
@@ -28,7 +28,7 @@ var values_to_test = [
   1.5,
   false,
   true,
-  new Int64('0x0123456789'),
+  new Int64('0x0123456789abcdef'),
   127,
   128,
   129,
@@ -71,4 +71,16 @@ assert.equal(acc.peekString(2), 'lo', 'have the correct remainder');
 
 // Don't include keys that have undefined values
 var res = bser.dumpToBuffer({expression: undefined});
-assert.deepEqual(bser.loadFromBuffer(res), {});
+assert.deepStrictEqual(bser.loadFromBuffer(res), {});
+
+// Dump numbers without fraction to integers
+var buffer;
+buffer = bser.dumpToBuffer(1);
+assert.equal(buffer.toString('hex'), "000105020000000301");
+buffer = bser.dumpToBuffer(1.0);
+assert.equal(buffer.toString('hex'), "000105020000000301");
+
+// Dump numbers with fraction to double
+buffer = bser.dumpToBuffer(1.1);
+assert.equal(buffer.toString('hex'), "00010509000000079a9999999999f13f");
+
