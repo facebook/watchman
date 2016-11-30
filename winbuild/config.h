@@ -60,8 +60,6 @@ typedef ptrdiff_t ssize_t;
 #define WATCHMAN_DIR_DOT '.'
 
 const char *win32_strerror(DWORD err);
-char *w_win_unc_to_utf8(WCHAR *wpath, int pathlen, uint32_t *outlen);
-WCHAR *w_utf8_to_win_unc(const char *path, int pathlen);
 int map_win32_err(DWORD err);
 int map_winsock_err(void);
 

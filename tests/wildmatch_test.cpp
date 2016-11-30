@@ -1,14 +1,15 @@
 /* Copyright 2015-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman_system.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "thirdparty/tap.h"
 #include "thirdparty/jansson/jansson.h"
 #include "thirdparty/wildmatch/wildmatch.h"
+#include "thirdparty/tap.h"
 
 #define WILDMATCH_TEST_JSON_FILE "tests/wildmatch_test.json"
 
@@ -58,15 +59,11 @@ static void run_test(json_t *test_case_data)
   }
 }
 
-int main(int argc, char **argv)
-{
+int main(int, char**) {
   FILE *test_cases_file;
   json_error_t error;
   size_t num_tests;
   size_t index;
-
-  (void)argc;
-  (void)argv;
 
   test_cases_file = fopen(WILDMATCH_TEST_JSON_FILE, "r");
   if (!test_cases_file) {

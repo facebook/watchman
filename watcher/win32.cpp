@@ -43,20 +43,14 @@ struct WinWatcher : public Watcher {
 
 WinWatcher::WinWatcher(w_root_t* root)
     : Watcher("win32", WATCHER_HAS_PER_FILE_NOTIFICATIONS) {
-  WCHAR* wpath;
   int err;
 
-  wpath = w_utf8_to_win_unc(root->root_path.data(), root->root_path.size());
-  if (!wpath) {
-    throw std::runtime_error(
-        std::string("failed to convert root path to WCHAR: ") +
-        win32_strerror(GetLastError()));
-  }
+  auto wpath = root->root_path.piece().asWideUNC();
 
   // Create an overlapped handle so that we can avoid blocking forever
   // in ReadDirectoryChangesW
   dir_handle = CreateFileW(
-      wpath,
+      wpath.c_str(),
       GENERIC_READ,
       FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE,
       nullptr,
@@ -209,14 +203,12 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
 
         while (true) {
           DWORD n_chars;
-          w_string_t* name;
 
           // FileNameLength is in BYTES, but FileName is WCHAR
           n_chars = not->FileNameLength / sizeof(not->FileName[0]);
-          name = w_string_new_wchar_typed(not->FileName, n_chars, W_STRING_BYTE);
+          w_string name(not->FileName, n_chars);
 
           auto full = w_string::pathCat({root->root_path, name});
-          w_string_delref(name);
 
           if (!root->ignore.isIgnored(full.data(), full.size())) {
             items.emplace_back(std::move(full));

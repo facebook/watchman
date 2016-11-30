@@ -5,17 +5,12 @@
 using watchman::Win32Handle;
 
 int mkdir(const char* path, int) {
-  WCHAR *wpath = w_utf8_to_win_unc(path, -1);
+  auto wpath = w_string_piece(path).asWideUNC();
   DWORD err;
   BOOL res;
 
-  if (!wpath) {
-    return -1;
-  }
-
-  res = CreateDirectoryW(wpath, NULL);
+  res = CreateDirectoryW(wpath.c_str(), nullptr);
   err = GetLastError();
-  free(wpath);
 
   if (res) {
     return 0;
@@ -49,17 +44,13 @@ int open_and_share(const char *path, int flags, ...) {
 int lstat(const char *path, struct stat *st) {
   FILE_BASIC_INFO binfo;
   FILE_STANDARD_INFO sinfo;
-  WCHAR *wpath = w_utf8_to_win_unc(path, -1);
+  auto wpath = w_string_piece(path).asWideUNC();
   DWORD err;
 
   memset(st, 0, sizeof(*st));
 
-  if (!wpath) {
-    return -1;
-  }
-
   Win32Handle h(intptr_t(CreateFileW(
-      wpath,
+      wpath.c_str(),
       FILE_READ_ATTRIBUTES,
       FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
       nullptr,
@@ -67,7 +58,6 @@ int lstat(const char *path, struct stat *st) {
       FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
       nullptr)));
   err = GetLastError();
-  free(wpath);
 
   if (!h) {
     w_log(W_LOG_DBG, "lstat(%s): %s\n", path, win32_strerror(err));

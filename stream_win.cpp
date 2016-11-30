@@ -713,16 +713,12 @@ Win32Handle w_handle_open(const char* path, int flags) {
   DWORD access = 0, share = 0, create = 0, attrs = 0;
   DWORD err;
   SECURITY_ATTRIBUTES sec;
-  WCHAR *wpath;
 
   if (!strcmp(path, "/dev/null")) {
     path = "NUL:";
   }
 
-  wpath = w_utf8_to_win_unc(path, -1);
-  if (!wpath) {
-    return Win32Handle(0);
-  }
+  auto wpath = w_string_piece(path).asWideUNC();
 
   if (flags & (O_WRONLY|O_RDWR)) {
     access |= GENERIC_WRITE;
@@ -759,9 +755,8 @@ Win32Handle w_handle_open(const char* path, int flags) {
   }
 
   Win32Handle h(intptr_t(
-      CreateFileW(wpath, access, share, &sec, create, attrs, nullptr)));
+      CreateFileW(wpath.c_str(), access, share, &sec, create, attrs, nullptr)));
   err = GetLastError();
-  free(wpath);
 
   errno = map_win32_err(err);
   return h;

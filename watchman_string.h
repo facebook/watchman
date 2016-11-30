@@ -11,6 +11,9 @@
 #include <initializer_list>
 #include <memory>
 #include "watchman_log.h"
+#ifdef _WIN32
+#include <string>
+#endif
 
 struct watchman_string;
 typedef struct watchman_string w_string_t;
@@ -79,10 +82,6 @@ w_string_t *w_string_new_lower_typed(const char *str,
 void w_string_new_len_typed_stack(w_string_t *into, const char *str,
                                   uint32_t len, w_string_type_t type);
 
-#ifdef _WIN32
-w_string_t *w_string_new_wchar_typed(WCHAR *str, int len,
-    w_string_type_t type);
-#endif
 w_string_t *w_string_normalize_separators(w_string_t *str, char target_sep);
 
 w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
@@ -180,6 +179,11 @@ class w_string_piece {
 
   // Compute a hash value for this piece
   uint32_t hashValue() const;
+
+#ifdef _WIN32
+  // Returns a wide character representation of the piece
+  std::wstring asWideUNC() const;
+#endif
 };
 
 bool w_string_equal_caseless(w_string_piece a, w_string_piece b);
@@ -201,6 +205,11 @@ class w_string {
   /* implicit */ w_string(
       const char* buf,
       w_string_type_t stringType = W_STRING_BYTE);
+
+#ifdef _WIN32
+  /** Convert a wide character path to utf-8 and return it as a w_string */
+  w_string(const WCHAR* wpath, size_t len);
+#endif
 
   /** Initialize, taking a ref on w_string_t */
   /* implicit */ w_string(w_string_t* str, bool addRef = true);

@@ -16,14 +16,10 @@
 #define UNC_PREFIX L"UNC"
 #define UNC_PREFIX_LEN 3
 
-char *w_win_unc_to_utf8(WCHAR *wpath, int pathlen, uint32_t *outlen) {
+w_string::w_string(const WCHAR* wpath, size_t pathlen) {
   int len, res;
-  char *buf;
   bool is_unc = false;
 
-  if (pathlen == -1) {
-    pathlen = (int)wcslen(wpath);
-  }
   if (!wcsncmp(wpath, LEN_ESCAPE, LEN_ESCAPE_LEN)) {
     wpath += LEN_ESCAPE_LEN;
     pathlen -= LEN_ESCAPE_LEN;
@@ -40,24 +36,28 @@ char *w_win_unc_to_utf8(WCHAR *wpath, int pathlen, uint32_t *outlen) {
     }
   }
 
-  len = WideCharToMultiByte(CP_UTF8, 0, wpath, pathlen, NULL, 0, NULL, NULL);
+  len = WideCharToMultiByte(
+      CP_UTF8, 0, wpath, pathlen, nullptr, 0, nullptr, nullptr);
   if (len <= 0) {
-    errno = map_win32_err(GetLastError());
-    return NULL;
+    throw std::system_error(
+        GetLastError(), std::system_category(), "WideCharToMultiByte");
   }
 
-  buf = (char*)malloc(len + 1);
-  if (!buf) {
-    return NULL;
-  }
+  str_ = (w_string_t*)(new char[sizeof(w_string_t) + len + 1]);
+  new (str_) watchman_string();
 
-  res = WideCharToMultiByte(CP_UTF8, 0, wpath, pathlen, buf, len, NULL, NULL);
+  str_->refcnt = 1;
+  str_->len = len;
+  auto buf = (char*)(str_ + 1);
+  str_->buf = buf;
+  str_->type = W_STRING_UNICODE;
+
+  res = WideCharToMultiByte(
+      CP_UTF8, 0, wpath, pathlen, buf, len, nullptr, nullptr);
   if (res != len) {
     // Weird!
-    DWORD err = GetLastError();
-    free(buf);
-    errno = map_win32_err(err);
-    return NULL;
+    throw std::system_error(
+        GetLastError(), std::system_category(), "WideCharToMultiByte");
   }
 
   if (is_unc) {
@@ -66,42 +66,31 @@ char *w_win_unc_to_utf8(WCHAR *wpath, int pathlen, uint32_t *outlen) {
   }
 
   buf[res] = 0;
-  if (outlen) {
-    *outlen = res;
-  }
-  return buf;
 }
 
 bool w_path_exists(const char *path) {
-  WCHAR *wpath = w_utf8_to_win_unc(path, -1);
+  auto wpath = w_string_piece(path).asWideUNC();
   WIN32_FILE_ATTRIBUTE_DATA data;
   DWORD err;
 
-  if (!wpath) {
-    return false;
-  }
-  if (!GetFileAttributesExW(wpath, GetFileExInfoStandard, &data)) {
+  if (!GetFileAttributesExW(wpath.c_str(), GetFileExInfoStandard, &data)) {
     err = GetLastError();
-    free(wpath);
     errno = map_win32_err(err);
     return false;
   }
-  free(wpath);
   return true;
 }
 
-WCHAR *w_utf8_to_win_unc(const char *path, int pathlen) {
-  WCHAR *buf, *target;
+std::wstring w_string_piece::asWideUNC() const {
   int len, res, i, prefix_len;
   bool use_escape = false;
   bool is_unc = false;
 
-  if (pathlen == -1) {
-    pathlen = (int)strlen(path);
-  }
+  // Make a copy of ourselves, as we may mutate
+  w_string_piece path = *this;
 
-  if (pathlen == 0) {
-    return wcsdup(L"");
+  if (path.size() == 0) {
+    return std::wstring(L"");
   }
 
   // We don't want to use the length escape for special filenames like NUL:
@@ -110,7 +99,8 @@ WCHAR *w_utf8_to_win_unc(const char *path, int pathlen) {
   // but since such paths are rare, we want to ensure that we hit any
   // problems with the escape approach on common paths (not all windows
   // API functions apparently support this very well)
-  if (pathlen > 3 && pathlen < MAX_PATH && path[pathlen-1] == ':') {
+  if (path.size() > 3 && path.size() < MAX_PATH &&
+      path[path.size() - 1] == ':') {
     use_escape = false;
     prefix_len = 0;
   } else {
@@ -126,58 +116,49 @@ WCHAR *w_utf8_to_win_unc(const char *path, int pathlen) {
   }
 
   // Step 1, measure up
-  len = MultiByteToWideChar(CP_UTF8, 0, path, pathlen, NULL, 0);
+  len = MultiByteToWideChar(CP_UTF8, 0, path.data(), path.size(), nullptr, 0);
   if (len <= 0) {
-    w_log(W_LOG_ERR, "utf->unc failed to measure up: %s "
-        "pathlen=%d len=%d err=%s\n", path, pathlen, len,
-        win32_strerror(GetLastError()));
-    errno = map_win32_err(GetLastError());
-    return NULL;
+    throw std::system_error(
+        GetLastError(), std::system_category(), "MultiByteToWideChar");
   }
 
   // Step 2, allocate and prepend UNC prefix
-  buf = (WCHAR*)malloc((prefix_len + len + 1) * sizeof(WCHAR));
-  if (!buf) {
-    return NULL;
-  }
+  std::wstring result;
+  result.reserve(prefix_len + len + 1);
 
-  target = buf;
   if (use_escape) {
-    wcscpy(buf, LEN_ESCAPE);
-    target = buf + LEN_ESCAPE_LEN;
+    result.append(LEN_ESCAPE);
 
     // UNC paths need further mangling when using length escapes
     if (is_unc) {
-      wcscpy(target, UNC_PREFIX);
-      target += UNC_PREFIX_LEN;
+      result.append(UNC_PREFIX);
       // "\\server\path" -> "\\?\UNC\server\path"
-      path++; // Skip the first of these two slashes
+      path = w_string_piece(
+          path.data() + 1,
+          path.size() - 1); // Skip the first of these two slashes
     }
   }
 
   // Step 3, convert into the new space
-  res = MultiByteToWideChar(CP_UTF8, 0, path, pathlen, target, len);
+  result.resize(prefix_len + len + 1);
+  res = MultiByteToWideChar(
+      CP_UTF8, 0, path.data(), path.size(), &result[prefix_len], len);
 
   if (res != len) {
-    DWORD err = GetLastError();
     // Something crazy happened
-    free(buf);
-    errno = map_win32_err(err);
-    w_log(W_LOG_ERR, "MultiByteToWideChar: res=%d and len=%d.  wat. %s\n",
-        res, len, win32_strerror(err));
-    return NULL;
+    throw std::system_error(
+        GetLastError(), std::system_category(), "MultiByteToWideChar");
   }
 
   // Replace all forward slashes with backslashes.  This makes things easier
   // for clients that are just jamming paths together using /, but is also
   // required when we are using the long filename escape prefix
-  for (i = 0; i < len; i++) {
-    if (target[i] == '/') {
-      target[i] = '\\';
+  for (auto& c : result) {
+    if (c == '/') {
+      c = '\\';
     }
   }
-  target[len] = 0;
-  return buf;
+  return result;
 }
 
 /* vim:ts=2:sw=2:et:

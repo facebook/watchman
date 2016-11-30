@@ -17,6 +17,7 @@
 #ifdef __linux__
 #include <linux/magic.h>
 #endif
+#include "Win32Handle.h"
 
 // The primary purpose of checking the filesystem type is to prevent
 // watching filesystems that are known to be problematic, such as
@@ -72,24 +73,19 @@ w_string w_fstype(const char *path)
   }
 #endif
 #ifdef _WIN32
-  WCHAR *wpath = w_utf8_to_win_unc(path, -1);
-  w_string_t *fstype_name = NULL;
-  if (wpath) {
-    WCHAR fstype[MAX_PATH+1];
-    HANDLE h = CreateFileW(wpath, GENERIC_READ,
-        FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
-        NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
-    if (h) {
-      if (GetVolumeInformationByHandleW(h, NULL, 0, 0, 0, 0, fstype,
-            MAX_PATH+1)) {
-        fstype_name = w_string_new_wchar_typed(fstype, -1, W_STRING_UNICODE);
-      }
-      CloseHandle(h);
-    }
-    free(wpath);
-  }
-  if (fstype_name) {
-    return w_string(fstype_name, false);
+  auto wpath = w_string_piece(path).asWideUNC();
+  WCHAR fstype[MAX_PATH + 1];
+  watchman::Win32Handle h(intptr_t(CreateFileW(
+      wpath.c_str(),
+      GENERIC_READ,
+      FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+      nullptr,
+      OPEN_EXISTING,
+      FILE_FLAG_BACKUP_SEMANTICS,
+      nullptr)));
+  if (h && GetVolumeInformationByHandleW(
+               (HANDLE)h.handle(), nullptr, 0, 0, 0, 0, fstype, MAX_PATH + 1)) {
+    return w_string(fstype, wcslen(fstype));
   }
   return w_string("unknown", W_STRING_UNICODE);
 #else

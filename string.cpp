@@ -382,33 +382,6 @@ w_string_t *w_string_new_typed(const char *str, w_string_type_t type) {
   return w_string_new_len_typed(str, strlen_uint32(str), type);
 }
 
-#ifdef _WIN32
-w_string_t *w_string_new_wchar_typed(WCHAR *str, int len,
-    w_string_type_t type) {
-  char buf[WATCHMAN_NAME_MAX];
-  int res;
-
-  if (len == 0) {
-    return w_string_new_typed("", type);
-  }
-
-  res = WideCharToMultiByte(CP_UTF8, 0, str, len, buf, sizeof(buf), NULL, NULL);
-  if (res == 0) {
-    char msgbuf[1024];
-    DWORD err = GetLastError();
-    FormatMessageA(
-      FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-      NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-      msgbuf, sizeof(msgbuf)-1, NULL);
-    throw std::runtime_error("WideCharToMultiByte failed");
-  }
-
-  buf[res] = 0;
-  return w_string_new_typed(buf, type);
-}
-
-#endif
-
 w_string w_string::vprintf(const char* format, va_list args) {
   w_string_t *s;
   int len;

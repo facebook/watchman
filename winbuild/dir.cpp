@@ -18,20 +18,10 @@ class WinDirHandle : public watchman_dir_handle {
  public:
   explicit WinDirHandle(const char* path) {
     int err = 0;
-
-    auto wpath = w_utf8_to_win_unc(path, -1);
-    if (!wpath) {
-      throw std::system_error(
-          errno,
-          std::generic_category(),
-          std::string("convert path to wide chars: ") + path);
-    }
-    SCOPE_EXIT {
-      free(wpath);
-    };
+    auto wpath = w_string_piece(path).asWideUNC();
 
     h_ = Win32Handle(intptr_t(CreateFileW(
-        wpath,
+        wpath.c_str(),
         GENERIC_READ,
         FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
         nullptr,

@@ -99,46 +99,38 @@ static bool is_basename_canonical_case(const char *path) {
   name = ((char*)&vomit.ref) + vomit.ref.attr_dataoffset;
   return strcmp(name, base) == 0;
 #elif defined(_WIN32)
-  WCHAR long_buf[WATCHMAN_NAME_MAX];
-  WCHAR *wpath = w_utf8_to_win_unc(path, -1);
+  std::wstring long_buf;
+  auto wpath = w_string_piece(path).asWideUNC();
   DWORD err;
-  char *canon;
   bool result;
-  const char *path_base;
-  const char *canon_base;
 
-  DWORD long_len = GetLongPathNameW(wpath, long_buf,
-                      sizeof(long_buf)/sizeof(long_buf[0]));
+  long_buf.resize(WATCHMAN_NAME_MAX);
+  DWORD long_len =
+      GetLongPathNameW(wpath.c_str(), &long_buf[0], long_buf.size());
   err = GetLastError();
-  free(wpath);
-
-  if (long_len == 0 && err == ERROR_FILE_NOT_FOUND) {
-    // signal to caller that the file has disappeared -- the caller will read
-    // errno and do error handling
-    errno = map_win32_err(err);
-    return false;
-  }
 
   if (long_len == 0) {
-    w_log(W_LOG_ERR, "Failed to canon(%s): %s\n", path, win32_strerror(err));
-    return false;
+    throw std::system_error(err, std::system_category(), "GetLongPathNameW");
   }
 
-  if (long_len > sizeof(long_buf)-1) {
-    w_log(W_LOG_FATAL, "GetLongPathNameW needs %lu chars\n", long_len);
+  if (long_len > long_buf.size()) {
+    long_buf.resize(long_len);
+    long_len = GetLongPathNameW(wpath.c_str(), &long_buf[0], long_buf.size());
+    err = GetLastError();
+    if (long_len == 0) {
+      throw std::system_error(err, std::system_category(), "GetLongPathNameW");
+    }
   }
 
-  canon = w_win_unc_to_utf8(long_buf, long_len, NULL);
-  if (!canon) {
-    return false;
-  }
+  w_string canon(long_buf.data(), long_len);
 
-  path_base = w_basename(path);
-  canon_base = w_basename(canon);
-  if (!path_base || !canon_base) {
+  auto path_base = w_string_piece(path).baseName();
+  auto canon_base = canon.piece().baseName();
+
+  if (!path_base.size() || !canon_base.size()) {
     result = false;
   } else {
-    result = strcmp(path_base, canon_base) == 0;
+    result = path_base == canon_base;
     if (!result) {
       w_log(W_LOG_ERR,
             "is_basename_canonical_case(%s): basename=%s != canonical "
@@ -146,7 +138,6 @@ static bool is_basename_canonical_case(const char *path) {
             path, path_base, canon, canon_base);
     }
   }
-  free(canon);
 
   return result;
 #else
@@ -236,20 +227,14 @@ static int realpath_fd(int fd, char *canon, size_t canon_size) {
     return -1;
   }
   if (len > 0) {
-    uint32_t utf_len;
-    char *utf8 = w_win_unc_to_utf8(final_buf, len, &utf_len);
-    if (!utf8) {
-      return -1;
-    }
+    w_string utf8(final_buf, len);
 
-    if (utf_len + 1 > canon_size) {
-      free(utf8);
+    if (utf8.size() + 1 > canon_size) {
       errno = EOVERFLOW;
       return -1;
     }
 
-    memcpy(canon, utf8, utf_len + 1);
-    free(utf8);
+    memcpy(canon, utf8.data(), utf8.size() + 1);
     return 0;
   }
 
