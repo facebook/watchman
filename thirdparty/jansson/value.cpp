@@ -73,7 +73,7 @@ json_t::json_t(json_type type, json_t::SingletonHack&&)
 
 /*** object ***/
 
-json_object_t::json_object_t(size_t sizeHint) : json(JSON_OBJECT), visited(0) {
+json_object_t::json_object_t(size_t sizeHint) : json(JSON_OBJECT) {
   map.reserve(sizeHint);
 }
 
@@ -317,12 +317,12 @@ static json_ref json_object_deep_copy(json_t* object) {
 
 /*** array ***/
 
-json_array_t::json_array_t(size_t sizeHint) : json(JSON_ARRAY), visited(0) {
+json_array_t::json_array_t(size_t sizeHint) : json(JSON_ARRAY) {
   table.reserve(std::max(sizeHint, size_t(8)));
 }
 
 json_array_t::json_array_t(std::initializer_list<json_ref> values)
-    : json(JSON_ARRAY), table(values), visited(0) {}
+    : json(JSON_ARRAY), table(values) {}
 
 const std::vector<json_ref>& json_ref::array() const {
   if (!json_is_array(ref_)) {

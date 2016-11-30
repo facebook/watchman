@@ -31,7 +31,6 @@
 struct json_object_t {
     json_t json;
     std::unordered_map<w_string, json_ref> map;
-    int visited;
 
     json_object_t(size_t sizeHint = 0);
 
@@ -42,7 +41,6 @@ struct json_object_t {
 struct json_array_t {
     json_t json;
     std::vector<json_ref> table;
-    int visited;
     json_ref templ;
 
     json_array_t(size_t sizeHint = 0);

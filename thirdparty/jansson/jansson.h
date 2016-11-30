@@ -14,6 +14,7 @@
 #include "jansson_config.h"
 #include "watchman_string.h" // Needed for w_string_t
 #include <vector>
+#include <atomic>
 
 /* version */
 
@@ -46,7 +47,7 @@ typedef enum {
 
 struct json_t {
     json_type type;
-    size_t refcount;
+    std::atomic<size_t> refcount;
 
     explicit json_t(json_type type);
 

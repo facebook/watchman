@@ -243,7 +243,7 @@ void watchman_perf_sample::log() {
   // Assemble a perf blob
   auto info = json_object(
       {{"description", typed_string_to_json(description)},
-       {"meta", std::move(meta_data)},
+       {"meta", meta_data},
        {"pid", json_integer(getpid())},
        {"version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE)}});
 
