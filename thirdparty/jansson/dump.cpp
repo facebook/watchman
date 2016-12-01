@@ -208,9 +208,7 @@ static int do_dump(const json_t *json, size_t flags, int depth,
         {
             int i;
             int n;
-            json_array_t *array;
 
-            array = json_to_array(json);
             n = json_array_size(json);
 
             if(dump("[", 1, data)) {
