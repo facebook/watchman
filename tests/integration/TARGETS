@@ -1,5 +1,9 @@
 import os
 
+# we have some pre-buck test runner stuff that makes it cheaper
+# to run our tests in a single bundled invocation, so do that.
+sandcastle_tags = ['run_as_bundle'] if 'SANDCASTLE' in os.environ else []
+
 python_unittest(
     name='test',
     srcs=glob([
@@ -29,8 +33,5 @@ python_unittest(
       # Running too many watchman processes concurrently puts strain
       # on the change notification stuff and results in flakiness.
       'serialize_test_cases',
-      # we have some pre-buck test runner stuff that makes it cheaper
-      # to run our tests in a single bundled invocation, so do that.
-      'run_as_bundle',
-    ],
+    ]+sandcastle_tags,
 )

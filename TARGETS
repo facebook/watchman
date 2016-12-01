@@ -166,6 +166,7 @@ cpp_library(
     deps=[':headers'],
     compiler_flags=['-DHAVE_PCRE_H']+compiler_flags,
     external_deps=['pcre'],
+    link_whole=True,
 )
 
 cpp_library(
