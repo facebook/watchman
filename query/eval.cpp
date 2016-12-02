@@ -33,11 +33,15 @@ const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx) {
     name_start = ctx->root->root_path.size() + 1;
   }
 
-  auto full_name = w_string::pathCat(
-      {compute_parent_path(ctx, ctx->file), ctx->file->getName()});
-
   // Record the name relative to the root
-  ctx->wholename = full_name.slice(name_start, full_name.size() - name_start);
+  auto parent = compute_parent_path(ctx, ctx->file).piece();
+  if (name_start > parent.size()) {
+    ctx->wholename = ctx->file->getName().asWString();
+  } else {
+    parent.advance(name_start);
+    ctx->wholename =
+        w_string::build(parent, WATCHMAN_DIR_SEP_STR, ctx->file->getName());
+  }
 
   return ctx->wholename;
 }
@@ -230,7 +234,7 @@ static bool execute_common(
     }
   }
 
-  if (sample->finish()) {
+  if (sample && sample->finish()) {
     sample->add_root_meta(ctx->root);
     sample->add_meta(
         "query_execute",
@@ -320,6 +324,15 @@ bool w_query_execute(
   ctx.clockAtStartOfQuery =
       root->inner.view->getMostRecentRootNumberAndTickValue();
   res->clockAtStartOfQuery = ctx.clockAtStartOfQuery;
+
+  if (query->query_spec.get_default("bench")) {
+    for (auto i = 0; i < 100; ++i) {
+      w_query_ctx c(query, root);
+      w_query_res r;
+      c.clockAtStartOfQuery = ctx.clockAtStartOfQuery;
+      execute_common(&c, nullptr, &r, generator);
+    }
+  }
 
   return execute_common(&ctx, &sample, res, generator);
 }
