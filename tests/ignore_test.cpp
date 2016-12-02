@@ -109,6 +109,10 @@ std::vector<w_string> build_list_with_prefix(const char* prefix, size_t limit) {
     f = fopen("watchman/thirdparty/libart/tests/words.txt", "r");
   }
 
+  if (!f) {
+    abort ();
+  }
+
   while (fgets(buf, sizeof buf, f)) {
     // Remove newline
     uint32_t len = strlen_uint32(buf);
@@ -124,6 +128,7 @@ std::vector<w_string> build_list_with_prefix(const char* prefix, size_t limit) {
     abort();
   }
 
+  fclose (f);
   return strings;
 }
 
