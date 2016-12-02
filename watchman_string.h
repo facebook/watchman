@@ -14,6 +14,7 @@
 #ifdef _WIN32
 #include <string>
 #endif
+#include <stdexcept>
 
 struct watchman_string;
 typedef struct watchman_string w_string_t;
@@ -157,6 +158,14 @@ class w_string_piece {
     return s_[i];
   }
 
+  /** move the start of the string by n characters, stripping off that prefix */
+  void advance(size_t n) {
+    if (n > size()) {
+      throw std::range_error("index out of range");
+    }
+    s_ += n;
+  }
+
   /** Return a copy of the string as a w_string */
   w_string asWString(w_string_type_t stringType = W_STRING_BYTE) const;
 
@@ -173,6 +182,7 @@ class w_string_piece {
   w_string_piece baseName() const;
 
   bool operator==(w_string_piece other) const;
+  bool operator!=(w_string_piece other) const;
 
   bool startsWith(w_string_piece prefix) const;
   bool startsWithCaseInsensitive(w_string_piece prefix) const;

@@ -81,6 +81,10 @@ bool w_string_piece::operator==(w_string_piece other) const {
   return memcmp(data(), other.data(), size()) == 0;
 }
 
+bool w_string_piece::operator!=(w_string_piece other) const {
+  return !operator==(other);
+}
+
 bool w_string_piece::startsWith(w_string_piece prefix) const {
   if (prefix.size() > size()) {
     return false;
