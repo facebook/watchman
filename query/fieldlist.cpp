@@ -120,36 +120,55 @@ static json_ref make_type_field(const struct watchman_rule_match* match) {
   return typed_string_to_json("?", W_STRING_UNICODE);
 }
 
-static struct w_query_field_renderer {
-  const char *name;
+struct w_query_field_renderer {
+  w_string name;
   json_ref (*make)(const struct watchman_rule_match* match);
-} field_defs[] = {
-  { "name", make_name },
-  { "symlink_target", make_symlink },
-  { "exists", make_exists },
-  { "size", make_size },
-  { "mode", make_mode },
-  { "uid", make_uid },
-  { "gid", make_gid },
-  MAKE_TIME_FIELD_DEFS(a),
-  MAKE_TIME_FIELD_DEFS(m),
-  MAKE_TIME_FIELD_DEFS(c),
-  { "ino", make_ino },
-  { "dev", make_dev },
-  { "nlink", make_nlink },
-  { "new", make_new },
-  { "oclock", make_oclock },
-  { "cclock", make_cclock },
-  { "type", make_type_field },
-  { NULL, NULL }
 };
 
-static w_ctor_fn_type(register_field_capabilities) {
-  int f;
+// Helper to construct the list of field defs
+static std::unordered_map<w_string, w_query_field_renderer> build_defs() {
+  struct {
+    const char* name;
+    json_ref (*make)(const struct watchman_rule_match* match);
+  } defs[] = {
+      {"name", make_name},
+      {"symlink_target", make_symlink},
+      {"exists", make_exists},
+      {"size", make_size},
+      {"mode", make_mode},
+      {"uid", make_uid},
+      {"gid", make_gid},
+      MAKE_TIME_FIELD_DEFS(a),
+      MAKE_TIME_FIELD_DEFS(m),
+      MAKE_TIME_FIELD_DEFS(c),
+      {"ino", make_ino},
+      {"dev", make_dev},
+      {"nlink", make_nlink},
+      {"new", make_new},
+      {"oclock", make_oclock},
+      {"cclock", make_cclock},
+      {"type", make_type_field},
+  };
+  std::unordered_map<w_string, w_query_field_renderer> map;
+  for (auto& def : defs) {
+    w_string name(def.name, W_STRING_UNICODE);
+    map.emplace(name, w_query_field_renderer{name, def.make});
+  }
 
-  for (f = 0; field_defs[f].name; f++) {
+  return map;
+}
+
+// Meyers singleton to avoid SIOF wrt. static constructors in this module
+// and the order that w_ctor_fn callbacks are dispatched.
+static std::unordered_map<w_string, w_query_field_renderer>& field_defs() {
+  static std::unordered_map<w_string, w_query_field_renderer> map(build_defs());
+  return map;
+}
+
+static w_ctor_fn_type(register_field_capabilities) {
+  for (auto& it : field_defs()) {
     char capname[128];
-    snprintf(capname, sizeof(capname), "field-%s", field_defs[f].name);
+    snprintf(capname, sizeof(capname), "field-%s", it.first.c_str());
     w_capability_register(capname);
   }
 }
@@ -159,7 +178,7 @@ json_ref field_list_to_json_name_array(const w_query_field_list& fieldList) {
   auto templ = json_array_of_size(fieldList.size());
 
   for (auto& f : fieldList) {
-    json_array_append_new(templ, typed_string_to_json(f->name, W_STRING_BYTE));
+    json_array_append_new(templ, w_string_to_json(f->name));
   }
 
   return templ;
@@ -184,7 +203,7 @@ bool parse_field_list(
     json_ref field_list,
     w_query_field_list* selected,
     char** errmsg) {
-  uint32_t i, f;
+  uint32_t i;
 
   selected->clear();
 
@@ -204,28 +223,20 @@ bool parse_field_list(
 
   for (i = 0; i < json_array_size(field_list); i++) {
     json_t *jname = json_array_get(field_list, i);
-    const char *name;
-    bool found = false;
 
     if (!json_is_string(jname)) {
       *errmsg = strdup("field list must be an array of strings");
       return false;
     }
 
-    name = json_string_value(jname);
-
-    for (f = 0; field_defs[f].name; f++) {
-      if (!strcmp(name, field_defs[f].name)) {
-        found = true;
-        selected->push_back(&field_defs[f]);
-        break;
-      }
-    }
-
-    if (!found) {
-      ignore_result(asprintf(errmsg, "unknown field name '%s'", name));
+    auto name = json_to_w_string(jname);
+    auto& defs = field_defs();
+    auto it = defs.find(name);
+    if (it == defs.end()) {
+      ignore_result(asprintf(errmsg, "unknown field name '%s'", name.c_str()));
       return false;
     }
+    selected->push_back(&it->second);
   }
 
   return true;

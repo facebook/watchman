@@ -108,6 +108,7 @@ class json_ref {
 
   /** Set key = value */
   void set(const char* key, json_ref&& val);
+  void set(const w_string& key, json_ref&& val);
 
   /** Set a list of key/value pairs */
   inline void set(
@@ -167,7 +168,7 @@ json_ref json_object_of_size(size_t nelems);
 json_ref json_array(void);
 json_ref json_array_of_size(size_t nelems);
 json_ref json_array(std::initializer_list<json_ref> values);
-json_ref w_string_to_json(w_string_t* str);
+json_ref w_string_to_json(const w_string& str);
 
 template <typename... Args>
 json_ref typed_string_to_json(Args&&... args) {

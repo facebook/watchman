@@ -175,6 +175,10 @@ int json_object_set_new_nocheck(
   return 0;
 }
 
+void json_ref::set(const w_string& key, json_ref&& val) {
+  json_to_object(ref_)->map[key] = std::move(val);
+}
+
 void json_ref::set(const char* key, json_ref&& val) {
 #if 0 // circular build dep
   w_assert(key != nullptr, "json_ref::set called with NULL key");
@@ -541,9 +545,10 @@ static json_ref json_array_deep_copy(json_t* array) {
 
 /*** string ***/
 
-json_string_t::json_string_t(w_string_t* str) : json(JSON_STRING), value(str) {}
+json_string_t::json_string_t(const w_string& str)
+    : json(JSON_STRING), value(str) {}
 
-json_ref w_string_to_json(w_string_t* str) {
+json_ref w_string_to_json(const w_string& str) {
   if (!str)
     return nullptr;
 
