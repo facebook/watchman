@@ -120,6 +120,9 @@ Accumulator.prototype.peekInt = function(size) {
 
 Accumulator.prototype.readInt = function(bytes) {
   var ival = this.peekInt(bytes);
+  if (ival instanceof Int64 && isFinite(ival.valueOf())) {
+    ival = ival.valueOf();
+  }
   this.readOffset += bytes;
   return ival;
 }
@@ -207,8 +210,8 @@ var ST_NEED_PDU = 0; // Need to read and decode PDU length
 var ST_FILL_PDU = 1; // Know the length, need to read whole content
 
 var MAX_INT8 = 127;
-var MAX_INT16 = 32768;
-var MAX_INT32 = 2147483648;
+var MAX_INT16 = 32767;
+var MAX_INT32 = 2147483647;
 
 function BunserBuf() {
   EE.call(this);
@@ -490,8 +493,13 @@ function dump_int(buf, val) {
 function dump_any(buf, val) {
   switch (typeof(val)) {
     case 'number':
-      buf.writeByte(BSER_REAL);
-      buf.writeDouble(val);
+      // check if it is an integer or a float
+      if (isFinite(val) && Math.floor(val) === val) {
+        dump_int(buf, val);
+      } else {
+        buf.writeByte(BSER_REAL);
+        buf.writeDouble(val);
+      }
       return;
     case 'string':
       buf.writeByte(BSER_STRING);
