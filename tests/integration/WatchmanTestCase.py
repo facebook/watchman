@@ -22,6 +22,7 @@ import WatchmanInstance
 import TempDir
 import copy
 import sys
+import collections
 
 if pywatchman.compat.PYTHON3:
     STRING_TYPES = (str, bytes)
@@ -72,6 +73,7 @@ class WatchmanTestCase(unittest.TestCase):
     def __init__(self, methodName='run'):
         super(WatchmanTestCase, self).__init__(methodName)
         self.setDefaultConfiguration()
+        self.maxDiff = None
 
     def requiresPersistentSession(self):
         return False
@@ -258,6 +260,31 @@ class WatchmanTestCase(unittest.TestCase):
             files = [pywatchman.encoding.decode_local(f) for f in files]
         return sorted(map(norm_path, files))
 
+    def normRecursive(self, val):
+        '''Normalizes all the stringy keys and values in VAL so that
+           you can compare a watchman response with a pre-built python
+           object and not worry about the b'' or u'' ness of the
+           strings contained therein.'''
+        if pywatchman.compat.PYTHON3 and isinstance(val, str):
+            return val
+        if pywatchman.compat.PYTHON3 and isinstance(val, bytes):
+            return val.decode('utf-8')
+        if isinstance(val, STRING_TYPES):
+            return val
+        if isinstance(val, collections.Mapping) and \
+                isinstance(val, collections.Sized):
+            res = {}
+            for k, v in val.items():
+                res[self.normRecursive(k)] = self.normRecursive(v)
+            return res
+        if isinstance(val, collections.Iterable) and \
+                isinstance(val, collections.Sized):
+            res = []
+            for v in val:
+                res.append(self.normRecursive(v))
+            return res
+        return val
+
     def normFileList(self, files):
         return sorted(map(norm_path, files))
 
@@ -361,6 +388,12 @@ class WatchmanTestCase(unittest.TestCase):
         self.touchRelative(d, 'a')
         self._case_insensitive = os.path.exists(os.path.join(d, 'A'))
         return self._case_insensitive
+
+    def suspendWatchman(self):
+        WatchmanInstance.getSharedInstance().suspend()
+
+    def resumeWatchman(self):
+        WatchmanInstance.getSharedInstance().resume()
 
 
 def expand_matrix(test_class):

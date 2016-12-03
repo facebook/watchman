@@ -11,6 +11,7 @@ import tempfile
 import json
 import os
 import subprocess
+import signal
 try:
     import pwd
 except ImportError:
@@ -188,6 +189,49 @@ class _Instance(object):
             # self.proc didn't come up: wait for it to die
             self.stop(kill=False)
             pywatchman.compat.reraise(t, val, tb)
+
+    def _waitForSuspend(self, suspended, timeout):
+        if os.name == 'nt':
+            # There's no 'ps' equivalent we can use
+            return True
+
+        # Check the information in the 'ps' output
+        deadline = time.time() + timeout
+        state = 's' if sys.platform == 'SunOS' else 'state'
+        while time.time() < deadline:
+            out, err = subprocess.Popen(['ps', '-o', state, '-p',
+                                        str(self.pid)],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE).communicate()
+            status = out.splitlines()[-1]
+            is_suspended = 'T' in status.decode('utf-8', 'surrogateescape')
+            if is_suspended == suspended:
+                return True
+
+            time.sleep(0.03)
+        return False
+
+    def suspend(self):
+        if self.proc.poll():
+            raise Exception("watchman process isn't running")
+        if os.name == 'nt':
+            subprocess.check_call(['susres.exe', 'suspend', str(self.pid)])
+        else:
+            os.kill(self.pid, signal.SIGSTOP)
+
+        if not self._waitForSuspend(True, 5):
+            raise Exception("watchman process didn't stop in 5 seconds")
+
+    def resume(self):
+        if self.proc.poll():
+            raise Exception("watchman process isn't running")
+        if os.name == 'nt':
+            subprocess.check_call(['susres.exe', 'resume', str(self.pid)])
+        else:
+            os.kill(self.pid, signal.SIGCONT)
+
+        if not self._waitForSuspend(False, 5):
+            raise Exception("watchman process didn't resume in 5 seconds")
 
 class Instance(_Instance, InitWithFilesMixin):
     pass

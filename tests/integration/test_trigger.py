@@ -8,6 +8,7 @@ from __future__ import print_function
 # no unicode literals
 
 import WatchmanTestCase
+import json
 import os
 import os.path
 import sys
@@ -18,7 +19,7 @@ THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, 'tests', 'integration')
 
 
 @WatchmanTestCase.expand_matrix
-class TestTriggerIssue141(WatchmanTestCase.WatchmanTestCase):
+class TestTrigger(WatchmanTestCase.WatchmanTestCase):
 
     def requiresPersistentSession(self):
         # cli transport has no log subscriptions
@@ -78,3 +79,155 @@ class TestTriggerIssue141(WatchmanTestCase.WatchmanTestCase):
         self.assertWaitFor(lambda: self.hasTriggerInLogs(root, 'first') and
                            self.hasTriggerInLogs(root, 'second'),
                            message='both triggers fired on update')
+
+    def validate_trigger_output(self, root, files, context):
+        trigger_log = os.path.join(root, 'trigger.log')
+        trigger_json = os.path.join(root, 'trigger.json')
+
+        def files_are_listed():
+            if not os.path.exists(trigger_log):
+                return False
+            with open(trigger_log) as f:
+                n = 0
+                for line in f:
+                    for filename in files:
+                        if filename in line:
+                            n = n + 1
+                return n == len(files)
+
+        self.assertWaitFor(lambda: files_are_listed(),
+                           message='%s should contain %s' % (trigger_log,
+                                                             json.dumps(files)))
+
+        def files_are_listed_json():
+            if not os.path.exists(trigger_json):
+                return False
+            expect = {}
+            for f in files:
+                expect[f] = True
+            with open(trigger_json) as f:
+                result = {}
+                for line in f:
+                    data = json.loads(line)
+                    for item in data:
+                        result[item['name']] = item['exists']
+
+                return result == expect
+
+        self.assertWaitFor(lambda: files_are_listed_json(),
+                           message='%s should contain %s' % (trigger_json,
+                                                             json.dumps(files)))
+
+    def test_legacyTrigger(self):
+        root = self.mkdtemp()
+
+        self.touchRelative(root, 'foo.c')
+        self.touchRelative(root, 'b ar.c')
+        self.touchRelative(root, 'bar.txt')
+
+        with open(os.path.join(root, '.watchmanconfig'), 'w') as f:
+            json.dump({'settle': 200}, f)
+
+        self.watchmanCommand('watch', root)
+
+        self.assertFileList(root, ['.watchmanconfig', 'b ar.c', 'bar.txt', 'foo.c'])
+
+        res = self.watchmanCommand('trigger', root, 'test', '*.c', '--',
+                                   sys.executable,
+                                   os.path.join(THIS_DIR, 'trig.py'),
+                                   os.path.join(root, 'trigger.log'))
+        self.assertEqualUTF8Strings('created', res['disposition'])
+
+        res = self.watchmanCommand('trigger', root, 'other', '*.c', '--',
+                                   sys.executable,
+                                   os.path.join(THIS_DIR, 'trigjson.py'),
+                                   os.path.join(root, 'trigger.json'))
+        self.assertEqualUTF8Strings('created', res['disposition'])
+
+        # check that the legacy parser produced the right trigger def
+        expect = [
+            {'name': 'other',
+             'append_files': True,
+             'command': [sys.executable, os.path.join(THIS_DIR, 'trigjson.py'),
+                         os.path.join(root, 'trigger.json')],
+             'expression': ['anyof', ['match', '*.c', 'wholename']],
+             'stdin': ['name', 'exists', 'new', 'size', 'mode']},
+            {'name': 'test',
+             'append_files': True,
+             'command': [sys.executable, os.path.join(THIS_DIR, 'trig.py'),
+                         os.path.join(root, 'trigger.log')],
+             'expression': ['anyof', ['match', '*.c', 'wholename']],
+             'stdin': ['name', 'exists', 'new', 'size', 'mode']}]
+
+        triggers = self.watchmanCommand('trigger-list', root).get('triggers')
+        self.assertEqual(self.normRecursive(triggers), self.normRecursive(expect))
+
+        # start collecting logs
+        self.watchmanCommand('log-level', 'debug')
+
+        self.suspendWatchman()
+        self.touchRelative(root, 'foo.c')
+        self.touchRelative(root, 'b ar.c')
+        self.resumeWatchman()
+
+        self.assertWaitFor(lambda: self.hasTriggerInLogs(root, 'test') and
+                           self.hasTriggerInLogs(root, 'other'),
+                           message='both triggers fired on update')
+
+        self.watchmanCommand('log-level', 'off')
+
+        self.validate_trigger_output(root, ['foo.c', 'b ar.c'], 'initial')
+
+        def remove_logs():
+            os.unlink(os.path.join(root, 'trigger.log'))
+            os.unlink(os.path.join(root, 'trigger.json'))
+
+        for f in ('foo.c', 'b ar.c'):
+            # Validate that we observe the updates correctly
+            # (that we're handling the since portion of the query)
+            self.suspendWatchman()
+            remove_logs()
+            self.touchRelative(root, f)
+            self.resumeWatchman()
+
+            self.validate_trigger_output(root, [f], 'only %s' % f)
+
+        remove_logs()
+
+        self.watchmanCommand('log-level', 'debug')
+
+        self.watchmanCommand('debug-recrawl', root)
+        # ensure that the triggers don't get deleted
+        triggers = self.watchmanCommand('trigger-list', root).get('triggers')
+        self.assertEqual(self.normRecursive(triggers), self.normRecursive(expect))
+
+        # The recrawl should cause the triggers to run
+        self.assertWaitFor(lambda: self.hasTriggerInLogs(root, 'test') and
+                           self.hasTriggerInLogs(root, 'other'),
+                           message='both triggers fired on update')
+
+        self.watchmanCommand('log-level', 'off')
+
+        self.validate_trigger_output(root, ['foo.c', 'b ar.c'], 'after recrawl')
+
+        # Now test to see how we deal with updating the defs
+        res = self.watchmanCommand('trigger', root, 'other', '*.c', '--', 'true')
+        self.assertEqualUTF8Strings('replaced', res['disposition'])
+
+        res = self.watchmanCommand('trigger', root, 'other', '*.c', '--', 'true')
+        self.assertEqualUTF8Strings('already_defined', res['disposition'])
+
+        # and deletion
+        res = self.watchmanCommand('trigger-del', root, 'test')
+        self.assertTrue(res['deleted'])
+        self.assertEqualUTF8Strings('test', res['trigger'])
+
+        triggers = self.watchmanCommand('trigger-list', root)
+        self.assertEqual(1, len(triggers['triggers']))
+
+        res = self.watchmanCommand('trigger-del', root, 'other')
+        self.assertTrue(res['deleted'])
+        self.assertEqualUTF8Strings('other', res['trigger'])
+
+        triggers = self.watchmanCommand('trigger-list', root)
+        self.assertEqual(0, len(triggers['triggers']))

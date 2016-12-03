@@ -4,6 +4,17 @@ import os
 # to run our tests in a single bundled invocation, so do that.
 sandcastle_tags = ['run_as_bundle'] if 'SANDCASTLE' in os.environ else []
 
+env = {
+    'TESTING_VIA_BUCK': '1',
+    'WATCHMAN_SRC_DIR': os.path.dirname(os.path.dirname(
+                                  os.path.dirname(__file__))),
+    'WATCHMAN_BINARY': '$(location @/watchman:watchman)',
+    # We test for this in a test case
+    'WATCHMAN_EMPTY_ENV_VAR': '',
+    # Uncomment next line to preserve all logs from the test
+    #'WATCHMAN_TEST_KEEP': '1',
+}
+
 python_unittest(
     name='test',
     srcs=glob([
@@ -12,23 +23,38 @@ python_unittest(
         'Wat*.py',
         'test_*.py'
     ]),
-    env = {
-        'TESTING_VIA_BUCK': '1',
-        'WATCHMAN_SRC_DIR': os.path.dirname(os.path.dirname(
-                                  os.path.dirname(__file__))),
-        'WATCHMAN_BINARY': '$(location @/watchman:watchman)',
-        # We test for this in a test case
-        'WATCHMAN_EMPTY_ENV_VAR': '',
-        # Uncomment next line to preserve all logs from the test
-        #'WATCHMAN_TEST_KEEP': '1',
-    },
+    env=env,
     deps=[
       '@/watchman/python/pywatchman:pywatchman',
       '@/watchman:watchman',
     ],
     base_module='',
-    # suppress annoying imp module deprecation notice in our SKIPd tests
     py_version="<3",
+    tags=[
+      # Running too many watchman processes concurrently puts strain
+      # on the change notification stuff and results in flakiness.
+      'serialize_test_cases',
+    ]+sandcastle_tags,
+)
+
+python_unittest(
+    name='test-py3',
+    srcs=glob([
+        'Interrupt.py',
+        'TempDir.py',
+        'Wat*.py',
+        'test_*.py'
+    ],excludes=[
+        'test_nodejs.py',
+        'test_php.py',
+    ]),
+    env=env,
+    deps=[
+      '@/watchman/python/pywatchman:pywatchman',
+      '@/watchman:watchman',
+    ],
+    base_module='',
+    py_version=">=3",
     tags=[
       # Running too many watchman processes concurrently puts strain
       # on the change notification stuff and results in flakiness.
