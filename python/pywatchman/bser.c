@@ -958,7 +958,7 @@ static int _pdu_info_helper(const char *data, const char *end,
     int64_t *expected_len_out, off_t *position_out) {
   uint32_t bser_version;
   int64_t bser_capabilities = 0; // int64 because bunser_int requires it
-  int64_t expected_len, total_len;
+  int64_t expected_len;
 
   const char *start;
   start = data;
@@ -987,8 +987,6 @@ static int _pdu_info_helper(const char *data, const char *end,
   if (!bunser_int(&data, end, &expected_len)) {
     return 0;
   }
-
-  total_len = expected_len + (data - start);
 
   *bser_version_out = bser_version;
   *bser_capabilities_out = (uint32_t) bser_capabilities;
