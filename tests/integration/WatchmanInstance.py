@@ -212,7 +212,7 @@ class _Instance(object):
         return False
 
     def suspend(self):
-        if self.proc.poll():
+        if self.proc.poll() or self.pid <= 1:
             raise Exception("watchman process isn't running")
         if os.name == 'nt':
             subprocess.check_call(['susres.exe', 'suspend', str(self.pid)])
@@ -223,7 +223,7 @@ class _Instance(object):
             raise Exception("watchman process didn't stop in 5 seconds")
 
     def resume(self):
-        if self.proc.poll():
+        if self.proc.poll() or self.pid <= 1:
             raise Exception("watchman process isn't running")
         if os.name == 'nt':
             subprocess.check_call(['susres.exe', 'resume', str(self.pid)])

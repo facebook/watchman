@@ -87,7 +87,7 @@ watchman_client::watchman_client() : watchman_client(nullptr) {}
 
 watchman_client::watchman_client(std::unique_ptr<watchman_stream>&& stm)
     : stm(std::move(stm)), ping(w_event_make()) {
-  w_log(W_LOG_DBG, "accepted client:stm=%p\n", stm.get());
+  w_log(W_LOG_DBG, "accepted client:stm=%p\n", this->stm.get());
 }
 
 watchman_client::~watchman_client() {

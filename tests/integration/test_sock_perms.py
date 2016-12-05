@@ -61,9 +61,12 @@ class TestSockPerms(unittest.TestCase):
         deadline = time.time() + timeout
         res = None
         while time.time() < deadline:
-            res = cond()
-            if res:
-                return [True, res]
+            try:
+                res = cond()
+                if res:
+                    return [True, res]
+            except Exception:
+                pass
             time.sleep(0.03)
         return [False, res]
 

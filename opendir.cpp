@@ -420,7 +420,7 @@ DirHandle::DirHandle(const char *path) {
     fd_ = FileDescriptor(open_strict(path, O_NOFOLLOW | O_CLOEXEC | O_RDONLY));
     if (!fd_) {
       throw std::system_error(
-          errno, std::generic_category(), std::string("open_strict ") + path);
+          errno, std::generic_category(), std::string("opendir ") + path);
     }
 
     if (fstat(fd_.fd(), &st)) {
@@ -432,6 +432,7 @@ DirHandle::DirHandle(const char *path) {
       throw std::system_error(ENOTDIR, std::generic_category(), path);
     }
 
+    memset(&attrlist_, 0, sizeof(attrlist_));
     attrlist_.bitmapcount = ATTR_BIT_MAP_COUNT;
     attrlist_.commonattr = ATTR_CMN_RETURNED_ATTRS |
       ATTR_CMN_ERROR |
@@ -469,6 +470,7 @@ const watchman_dir_ent* DirHandle::readDir() {
       // Read the next batch of results
       int retcount;
 
+      errno = 0;
       retcount = getattrlistbulk(
           fd_.fd(), &attrlist_, buf_, sizeof(buf_), FSOPT_PACK_INVAL_ATTRS);
       if (retcount == -1) {
