@@ -63,7 +63,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         self.assertWaitFor(lambda: self.fileContains(
             os.path.join(root, 'trig.log'),
             'PWD=' + os.path.join(root, 'sub')))
-        self.assertTrue(
+        self.assertWaitFor(lambda:
             self.fileContains(
                 os.path.join(root, 'trig.log'),
                 'WATCHMAN_EMPTY_ENV_VAR='))
@@ -91,12 +91,12 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             os.path.join(root, 'trig.log'),
             'PWD=' + os.path.join(root, 'sub1', 'sub2')))
 
-        self.assertTrue(
-            self.fileContains(
+        self.assertWaitFor(
+            lambda: self.fileContains(
                 os.path.join(root, 'trig.log'),
                 'WATCHMAN_ROOT=' + root))
-        self.assertTrue(
-            self.fileContains(
+        self.assertWaitFor(
+            lambda: self.fileContains(
                 os.path.join(root, 'trig.log'),
                 'WATCHMAN_RELATIVE_ROOT=' + os.path.join(root, 'sub1')))
 
