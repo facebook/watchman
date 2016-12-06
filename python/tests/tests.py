@@ -8,7 +8,10 @@ from __future__ import print_function
 import binascii
 import collections
 import inspect
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import os
 import sys
 
