@@ -56,7 +56,7 @@ class DirHandle : public watchman_dir_handle {
   struct watchman_dir_ent ent_;
 
  public:
-  explicit DirHandle(const char *path);
+  explicit DirHandle(const char* path, bool strict);
   ~DirHandle();
   const watchman_dir_ent* readDir() override;
   int getFd() const override;
@@ -408,16 +408,18 @@ static bool use_bulkstat_by_default(void) {
 #endif
 
 #ifndef _WIN32
-std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path) {
-  return watchman::make_unique<DirHandle>(path);
+std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path, bool strict) {
+  return watchman::make_unique<DirHandle>(path, strict);
 }
 
-DirHandle::DirHandle(const char *path) {
+DirHandle::DirHandle(const char* path, bool strict) {
 #ifdef HAVE_GETATTRLISTBULK
   if (cfg_get_bool("_use_bulkstat", use_bulkstat_by_default())) {
     struct stat st;
 
-    fd_ = FileDescriptor(open_strict(path, O_NOFOLLOW | O_CLOEXEC | O_RDONLY));
+    fd_ = FileDescriptor(
+        strict ? open_strict(path, O_NOFOLLOW | O_CLOEXEC | O_RDONLY)
+               : open(path, O_CLOEXEC | O_RDONLY));
     if (!fd_) {
       throw std::system_error(
           errno, std::generic_category(), std::string("opendir ") + path);
@@ -451,13 +453,13 @@ DirHandle::DirHandle(const char *path) {
     return;
   }
 #endif
-  d_ = opendir_nofollow(path);
+  d_ = strict ? opendir_nofollow(path) : opendir(path);
 
   if (!d_) {
     throw std::system_error(
         errno,
         std::generic_category(),
-        std::string("opendir_nofollow: ") + path);
+        std::string(strict ? "opendir_nofollow: " : "opendir: ") + path);
   }
 }
 

@@ -643,7 +643,8 @@ static void compute_file_name(char **strp,
               "sock_access", false /* write bits */, true /* execute bits */) |
           S_ISGID;
 
-      auto dirp = w_dir_open(state_dir);
+      auto dirp =
+          w_dir_open(state_dir, false /* don't need strict symlink rules */);
 
       dir_fd = dirp->getFd();
       if (dir_fd == -1) {

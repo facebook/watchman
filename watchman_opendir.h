@@ -29,6 +29,8 @@ class watchman_dir_handle {
 };
 
 // Return a dir handle on path.
-// Does not follow symlinks.
+// Does not follow symlinks strict == true.
 // Throws std::system_error if the dir could not be opened.
-std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path);
+std::unique_ptr<watchman_dir_handle> w_dir_open(
+    const char* path,
+    bool strict = true);

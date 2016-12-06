@@ -16,7 +16,7 @@ class WinDirHandle : public watchman_dir_handle {
   struct watchman_dir_ent ent_;
 
  public:
-  explicit WinDirHandle(const char* path) {
+  explicit WinDirHandle(const char* path, bool strict) {
     int err = 0;
     auto wpath = w_string_piece(path).asWideUNC();
 
@@ -28,7 +28,8 @@ class WinDirHandle : public watchman_dir_handle {
         OPEN_EXISTING,
         // Note: FILE_FLAG_OPEN_REPARSE_POINT is equivalent to O_NOFOLLOW,
         // and FILE_FLAG_BACKUP_SEMANTICS is equivalent to O_DIRECTORY
-        FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+        (strict ? FILE_FLAG_OPEN_REPARSE_POINT : 0) |
+            FILE_FLAG_BACKUP_SEMANTICS,
         nullptr)));
 
     if (!h_) {
@@ -84,6 +85,6 @@ class WinDirHandle : public watchman_dir_handle {
 };
 }
 
-std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path) {
-  return watchman::make_unique<WinDirHandle>(path);
+std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path, bool strict) {
+  return watchman::make_unique<WinDirHandle>(path, strict);
 }
