@@ -255,8 +255,8 @@ w_string w_string::pathCat(std::initializer_list<w_string_piece> elems) {
   s->buf = buf;
 
   for (auto &p : elems) {
-    if (p.size() == 0 && buf == s->buf) {
-      // Skip leading empty strings
+    if (p.size() == 0) {
+      // Skip empty strings
       continue;
     }
     if (buf != s->buf) {

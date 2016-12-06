@@ -133,8 +133,25 @@ void test_to() {
   ok(str.size() == 6, "got size %d", int(str.size()));
 }
 
+void test_path_cat() {
+  auto str = w_string::pathCat({"foo", ""});
+  ok(str == "foo", "concat yields %s", str.c_str());
+
+  str = w_string::pathCat({"", "foo"});
+  ok(str == "foo", "concat yields %s", str.c_str());
+
+  str = w_string::pathCat({"foo", "bar"});
+  ok(str == "foo/bar", "concat yields %s", str.c_str());
+
+  str = w_string::pathCat({"foo", "bar", ""});
+  ok(str == "foo/bar", "concat yields %s", str.c_str());
+
+  str = w_string::pathCat({"foo", "", "bar"});
+  ok(str == "foo/bar", "concat yields %s", str.c_str());
+}
+
 int main(int, char**) {
-  plan_tests(48);
+  plan_tests(53);
   test_integrals();
   test_strings();
   test_pointers();
@@ -142,6 +159,7 @@ int main(int, char**) {
   test_concat();
   test_suffix();
   test_to();
+  test_path_cat();
 
   return exit_status();
 }
