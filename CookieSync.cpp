@@ -109,6 +109,7 @@ void CookieSync::notifyCookie(const w_string& path) const {
 
   if (cookie_iter != map->end()) {
     auto cookie = cookie_iter->second;
+    auto cookie_lock = std::unique_lock<std::mutex>(cookie->mutex);
     cookie->seen = true;
     cookie->cond.notify_one();
   }
