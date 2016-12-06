@@ -98,17 +98,6 @@ bool w_query_process_file(
   return true;
 }
 
-void w_match_results_free(uint32_t num_matches,
-    struct watchman_rule_match *matches)
-{
-  uint32_t i;
-
-  for (i = 0; i < num_matches; i++) {
-    w_string_delref(matches[i].relname);
-  }
-  free(matches);
-}
-
 bool w_query_file_matches_relative_root(
     struct w_query_ctx* ctx,
     const watchman_file* f) {
