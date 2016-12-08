@@ -15,6 +15,8 @@
 using watchman::FileDescriptor;
 using watchman::Pipe;
 
+static const int kWriteTimeout = 60000;
+
 namespace {
 // This trait allows w_poll_events to wait on either a PipeEvent or
 // a descriptor contained in a UnixStream
@@ -83,6 +85,31 @@ class UnixStream : public watchman_stream {
 
   int write(const void* buf, int size) override {
     errno = 0;
+    if (!fd.isNonBlock()) {
+      int wrote = 0;
+
+      while (size > 0) {
+        struct pollfd pfd;
+        pfd.fd = fd.fd();
+        pfd.events = POLLOUT;
+        if (poll(&pfd, 1, kWriteTimeout) == 0) {
+          break;
+        }
+        if (pfd.revents & (POLLERR | POLLHUP)) {
+          break;
+        }
+        auto x = ::write(fd.fd(), buf, size);
+        if (x <= 0) {
+          break;
+        }
+
+        wrote += x;
+        size -= x;
+        buf = reinterpret_cast<const void*>(
+            reinterpret_cast<const char*>(buf) + x);
+      }
+      return wrote == 0 ? -1 : wrote;
+    }
     return ::write(fd.fd(), buf, size);
   }
 
