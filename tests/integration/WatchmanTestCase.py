@@ -21,6 +21,7 @@ import os
 import WatchmanInstance
 import TempDir
 import copy
+import ctypes
 import sys
 import collections
 
@@ -29,8 +30,78 @@ if pywatchman.compat.PYTHON3:
 else:
     STRING_TYPES = (str, unicode)
 
+if hasattr(os, 'fsencode'):
+    fsencode = os.fsencode
+else:
+    def fsencode(s):
+        return s
+
+if os.name == 'nt':
+    import msvcrt
+    gfpnbh = ctypes.windll.kernel32.GetFinalPathNameByHandleW
+
+    def system_norm_path(name):
+        fd = os.open(name, 0, 0)
+        try:
+            gfpnbh = ctypes.windll.kernel32.GetFinalPathNameByHandleW
+
+            numwchars = 1024
+            while True:
+                buf = ctypes.create_unicode_buffer(numwchars)
+                result = gfpnbh(msvcrt.get_osfhandle(fd),
+                                buf,
+                                numwchars,
+                                0)
+
+                if result == 0:
+                    raise Exception("unknown error while normalizing path")
+
+                if result <= numwchars:
+                    return fsencode(buf.value)
+
+                # Not big enough; the result is the amount we need
+                numwchars = result + 1
+
+        finally:
+            os.close(fd)
+
+elif sys.platform == 'darwin':
+    import ctypes.util
+
+    F_GETPATH = 50
+    libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
+    getpath_fcntl = libc.fcntl
+    getpath_fcntl.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_char_p]
+    getpath_fcntl.restype = ctypes.c_int
+
+    def system_norm_path(name):
+        fd = os.open(name, os.O_RDONLY, 0)
+        try:
+            numchars = 1024 # MAXPATHLEN
+            # The kernel caps this routine to MAXPATHLEN, so there is no
+            # point in over-allocating or trying again with a larger buffer
+            buf = ctypes.create_string_buffer(numchars)
+            ctypes.set_errno(0)
+            result = getpath_fcntl(fd, F_GETPATH, buf)
+            if result != 0:
+                raise OSError(ctypes.get_errno())
+            return fsencode(buf.value)
+        finally:
+            os.close(fd)
+
+else:
+    def system_norm_path(name):
+        return os.path.normpath(name)
+
 def norm_path(name):
-    return os.path.normcase(os.path.normpath(name))
+    try:
+        return system_norm_path(name)
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            # Sometimes we want to normalize a path before we create it,
+            # so allow this to return the input path.
+            return name
+        raise
 
 # TODO: This normalization will not be needed once we have full unicode support
 # in place as per
