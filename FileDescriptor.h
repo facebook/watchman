@@ -56,5 +56,8 @@ class FileDescriptor {
 
   // Disable non-blocking IO
   void clearNonBlock();
+
+  // Returns true if the FD is in non-blocking mode
+  bool isNonBlock() const;
 };
 }

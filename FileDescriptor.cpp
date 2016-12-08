@@ -63,4 +63,12 @@ void FileDescriptor::clearNonBlock() {
   ignore_result(fcntl(fd_, F_SETFL, fcntl(fd_, F_GETFL) & ~O_NONBLOCK));
 #endif
 }
+
+bool FileDescriptor::isNonBlock() const {
+#ifndef _WIN32
+  return (fcntl(fd_, F_GETFL) & O_NONBLOCK) == O_NONBLOCK;
+#else
+  return false;
+#endif
+}
 }
