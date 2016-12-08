@@ -87,6 +87,10 @@ class win_handle : public watchman_stream {
   inline HANDLE handle() const {
     return (HANDLE)h.handle();
   }
+
+  pid_t getPeerProcessID() const override {
+    return 0;
+  }
 };
 
 #if 1

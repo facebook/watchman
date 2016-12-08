@@ -36,6 +36,10 @@ class StdioStream : public watchman_stream {
     return false;
   }
 
+  pid_t getPeerProcessID() const override {
+    return 0;
+  }
+
 #ifndef _WIN32
   int getFileDescriptor() const override {
     return fd;

@@ -70,9 +70,23 @@ class UnixStream : public watchman_stream {
  public:
   FileDescriptor fd;
   FakeSocketEvent evt;
+#ifdef SO_PEERCRED
+  struct ucred cred;
+#elif defined(LOCAL_PEERCRED)
+  struct xucred cred;
+#endif
+  bool credvalid{false};
 
   explicit UnixStream(FileDescriptor&& descriptor)
-      : fd(std::move(descriptor)), evt(fd.fd()) {}
+      : fd(std::move(descriptor)), evt(fd.fd()) {
+    socklen_t len = sizeof(cred);
+#ifdef SO_PEERCRED
+    credvalid = getsockopt(fd.fd(), SOL_SOCKET, SO_PEERCRED, &cred, &len) == 0;
+#elif defined(LOCAL_PEERCRED)
+    credvalid =
+        getsockopt(fd.fd(), SOL_LOCAL, LOCAL_PEERCRED, &cred, &len) == 0;
+#endif
+  }
 
   int getFileDescriptor() const override {
     return fd.fd();
@@ -138,27 +152,30 @@ class UnixStream : public watchman_stream {
   // mechanisms.  We'll treat the other process as an owner if their
   // effective UID matches ours, or if they are root.
   bool peerIsOwner() override {
+    if (!credvalid) {
+      return false;
+    }
 #ifdef SO_PEERCRED
-    struct ucred cred;
-    socklen_t len = sizeof(cred);
-
-    if (getsockopt(fd.fd(), SOL_SOCKET, SO_PEERCRED, &cred, &len) == 0) {
-      if (cred.uid == getuid() || cred.uid == 0) {
-        return true;
-      }
+    if (cred.uid == getuid() || cred.uid == 0) {
+      return true;
     }
 #elif defined(LOCAL_PEERCRED)
-    struct xucred cred;
-    socklen_t len = sizeof(cred);
-
-    if (getsockopt(fd.fd(), SOL_LOCAL, LOCAL_PEERCRED, &cred, &len) == 0) {
-      if (cred.cr_uid == getuid() || cred.cr_uid == 0) {
-        return true;
-      }
+    if (cred.cr_uid == getuid() || cred.cr_uid == 0) {
+      return true;
     }
 #endif
-
     return false;
+  }
+
+  pid_t getPeerProcessID() const override {
+    if (!credvalid) {
+      return 0;
+    }
+#ifdef SO_PEERCRED
+    return cred.pid;
+#else
+    return 0;
+#endif
   }
 };
 }

@@ -28,6 +28,7 @@ class watchman_stream {
   virtual bool rewind() = 0;
   virtual bool shutdown() = 0;
   virtual bool peerIsOwner() = 0;
+  virtual pid_t getPeerProcessID() const = 0;
 #ifndef _WIN32
   virtual int getFileDescriptor() const = 0;
 #else
