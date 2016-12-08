@@ -183,6 +183,10 @@ bool dispatch_command(
 
       if (sample.finish()) {
         sample.add_meta("args", json_ref(args));
+        sample.add_meta(
+            "client",
+            json_object(
+                {{"pid", json_integer(client->stm->getPeerProcessID())}}));
         sample.log();
       } else {
         w_log(W_LOG_DBG, "dispatch_command: %s (completed)\n", def->name);

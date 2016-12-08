@@ -127,7 +127,11 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
   bool send_ok = true;
 
   client->stm->setNonBlock(true);
-  w_set_thread_name("client=%p:stm=%p", client.get(), client->stm.get());
+  w_set_thread_name(
+      "client=%p:stm=%p:pid=%d",
+      client.get(),
+      client->stm.get(),
+      client->stm->getPeerProcessID());
 
   client->client_is_owner = client->stm->peerIsOwner();
 
@@ -279,7 +283,10 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
 
 disconnected:
   w_set_thread_name(
-      "NOT_CONN:client=%p:stm=%p", client.get(), client->stm.get());
+      "NOT_CONN:client=%p:stm=%p:pid=%d",
+      client.get(),
+      client->stm.get(),
+      client->stm->getPeerProcessID());
   // Remove the client from the map before we tear it down, as this makes
   // it easier to flush out pending writes on windows without worrying
   // about w_log_to_clients contending for the write buffers
