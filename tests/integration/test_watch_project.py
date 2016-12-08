@@ -42,20 +42,18 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
                 else:
                     expect_watch = d
 
-                if expect_rel:
-                    expect_rel = expect_rel.replace('/', os.sep)
-
                 if expect_pass:
                     res = client.query('watch-project', dir_to_watch)
 
-                    self.assertEqualUTF8Strings(
-                        os.path.join(d, expect_watch), res['watch']
+                    self.assertEqual(
+                        self.normAbsolutePath(os.path.join(d, expect_watch)),
+                        self.normAbsolutePath(res['watch'])
                     )
                     if not expect_rel:
-                        self.assertEqual(expect_rel, res.get('relative_path'))
+                        self.assertEqual(None, res.get('relative_path'))
                     else:
-                        self.assertEqualUTF8Strings(expect_rel,
-                                                    res.get('relative_path'))
+                        self.assertEqual(self.normRelativePath(expect_rel),
+                                         self.normRelativePath(res.get('relative_path')))
                 else:
                     with self.assertRaises(pywatchman.WatchmanError) as ctx:
                         client.query('watch-project', dir_to_watch)
@@ -123,8 +121,9 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
         self.touchRelative(abc, '.watchmanconfig')
 
         res = self.watchmanCommand('watch-project', d)
-        self.assertEqualUTF8Strings(d, res['watch'])
+        self.assertEqual(d, self.normAbsolutePath(res['watch']))
 
         res = self.watchmanCommand('watch-project', abc)
-        self.assertEqualUTF8Strings(d, res['watch'])
-        self.assertEqualUTF8Strings(os.path.join('a', 'b', 'c'), res['relative_path'])
+        self.assertEqual(d, self.normAbsolutePath(res['watch']))
+        self.assertEqual('a/b/c',
+                         self.normRelativePath(res['relative_path']))

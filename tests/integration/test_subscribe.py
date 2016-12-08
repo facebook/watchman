@@ -25,20 +25,15 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         return True
 
     def wlockExists(self, subdata, exists):
-        norm_wlock = self.normPath('.hg/wlock')
+        norm_wlock = self.normRelativePath('.hg/wlock')
         for sub in subdata:
             if 'files' not in sub:
                 # Don't trip over cancellation notices left over from other
                 # tests that ran against this same instance
                 continue
             for f in sub['files']:
-                fname = f['name']
-                if pywatchman.compat.PYTHON3 and \
-                    (self.encoding == 'experimental-bser-v2' or \
-                     self.encoding == 'bser'):
-                    fname = pywatchman.encoding.decode_local(fname)
                 if f['exists'] == exists and \
-                        self.normPath(fname) == norm_wlock:
+                        self.normRelativePath(f['name']) == norm_wlock:
                     return True
         return False
 
@@ -155,12 +150,8 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
         dat = self.waitForSub('defer', root)[0]
         self.assertEqual(True, dat['is_fresh_instance'])
-        dot_hg = '.hg'
-        if pywatchman.compat.PYTHON3 and \
-            (self.encoding == 'experimental-bser-v2' or \
-             self.encoding == 'bser'):
-            dot_hg = pywatchman.encoding.encode_local(dot_hg)
-        self.assertEqual([{'name': dot_hg, 'exists': True}], dat['files'])
+        self.assertEqual([{'name': '.hg', 'exists': True}],
+                         self.normRecursive(dat['files']))
 
         # Pretend that hg is update the working copy
         self.touchRelative(root, '.hg', 'wlock')
@@ -193,12 +184,8 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
         dat = self.waitForSub('nodefer', root)[0]
         self.assertEqual(True, dat['is_fresh_instance'])
-        dot_hg = '.hg'
-        if pywatchman.compat.PYTHON3 and \
-            (self.encoding == 'experimental-bser-v2' or \
-             self.encoding == 'bser'):
-            dot_hg = pywatchman.encoding.encode_local(dot_hg)
-        self.assertEqual([{'name': dot_hg, 'exists': True}], dat['files'])
+        self.assertEqual([{'name': '.hg', 'exists': True}],
+                         self.normRecursive(dat['files']))
 
         # Pretend that hg is update the working copy
         self.touchRelative(root, '.hg', 'wlock')

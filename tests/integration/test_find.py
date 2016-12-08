@@ -56,15 +56,10 @@ class TestFind(WatchmanTestCase.WatchmanTestCase):
           'bdir/overhere/file',
           'foo.c'])
 
-        watches = self.watchmanCommand('watch-list')
-        self.assertIn(root, self.normWatchmanFileList(watches['roots']))
+        self.assertTrue(self.rootIsWatched(root))
+
         self.watchmanCommand('watch-del', root)
+        self.waitFor(lambda: not self.rootIsWatched(root))
 
-        def rootIsWatched(r):
-            watches = self.watchmanCommand('watch-list')
-            return r in self.normWatchmanFileList(watches['roots'])
+        self.assertFalse(self.rootIsWatched(root))
 
-        self.waitFor(lambda: not rootIsWatched(root))
-
-        watches = self.watchmanCommand('watch-list')
-        self.assertNotIn(root, self.normWatchmanFileList(watches['roots']))

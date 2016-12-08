@@ -26,26 +26,6 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
             }))
         return root
 
-    def listContains(self, superset, subset):
-        superset = self.normWatchmanFileList(superset)
-        for x in self.normFileList(subset):
-            if x not in superset:
-                return False
-        return True
-
-    def listNotContains(self, superset, subset):
-        superset = self.normWatchmanFileList(superset)
-        for x in self.normFileList(subset):
-            if x in superset:
-                return False
-        return True
-
-    def assertListNotContains(self, superset, subset):
-        if self.listNotContains(superset, subset):
-            return
-        self.assertTrue(
-            False, "superset: %s should not contain any of the elements of %s" % (superset, subset))
-
     def test_watchReap(self):
         root = self.makeRootAndConfig()
         self.watchmanCommand('watch', root)
@@ -58,28 +38,17 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
         # wait long enough for the reap to be considered
         time.sleep(2)
 
-        watch_list = self.watchmanCommand('watch-list')
-        self.assertTrue(self.listContains(watch_list['roots'], [root]))
+        self.assertTrue(self.rootIsWatched(root))
 
         self.watchmanCommand('trigger-del', root, 't')
 
         # Make sure that we don't reap while we hold a subscription
-        res = self.watchmanCommand('subscribe', root, 's', {
-            'fields': ['name']})
+        self.watchmanCommand('subscribe', root, 's', {'fields': ['name']})
 
-        if self.transport == 'cli':
-            # subscription won't stick in cli mode
-            expected = []
-        else:
-            expected = self.normFileList([root])
-
-        self.waitFor(lambda: self.listContains(
-            self.watchmanCommand('watch-list')['roots'], expected))
-
-        watch_list = self.watchmanCommand('watch-list')
-        self.assertTrue(self.listContains(watch_list['roots'], expected))
-
+        # subscription won't stick in cli mode
         if self.transport != 'cli':
+            self.assertWaitFor(lambda: self.rootIsWatched(root))
+
             # let's verify that we can safely reap two roots at once without
             # causing a deadlock
             second = self.makeRootAndConfig()
@@ -89,12 +58,7 @@ class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
             # and unsubscribe from root and allow it to be reaped
             unsub = self.watchmanCommand('unsubscribe', root, 's')
             self.assertTrue(unsub['deleted'], 'deleted subscription %s' % unsub)
-            expected.append(self.normPath(second))
-
-        # and now we should be ready to reap
-        self.waitFor(lambda: self.listNotContains(
-            self.watchmanCommand('watch-list')['roots'], expected))
-
-        self.assertListNotContains(
-            self.watchmanCommand('watch-list')['roots'], expected)
+            # and now we should be ready to reap
+            self.assertWaitFor(lambda: not self.rootIsWatched(
+                root) and not self.rootIsWatched(second))
 
