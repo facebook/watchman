@@ -150,8 +150,36 @@ void test_path_cat() {
   ok(str == "foo/bar", "concat yields %s", str.c_str());
 }
 
+void test_basename_dirname() {
+  auto str = w_string_piece("foo/bar").baseName().asWString();
+  ok(str == "bar", "basename of foo/bar is bar: %s", str.c_str());
+
+  str = w_string_piece("foo/bar").dirName().asWString();
+  ok(str == "foo", "dirname of foo/bar is foo: %s", str.c_str());
+
+  str = w_string_piece("foo").dirName().asWString();
+  ok(str == "", "dirname of foo is nothing: %s", str.c_str());
+
+  str = w_string_piece("foo").baseName().asWString();
+  ok(str == "foo", "basename of foo is foo: %s", str.c_str());
+
+  str = w_string_piece("foo\\bar").baseName().asWString();
+#ifdef _WIN32
+  ok(str == "bar", "basename of foo\\bar is bar: %s", str.c_str());
+#else
+  ok(str == "foo\\bar", "basename of foo\\bar is foo\\bar: %s", str.c_str());
+#endif
+
+  str = w_string_piece("foo\\bar").dirName().asWString();
+#ifdef _WIN32
+  ok(str == "foo", "dirname of foo\\bar is foo: %s", str.c_str());
+#else
+  ok(str == "", "dirname of foo\\bar is nothing: %s", str.c_str());
+#endif
+}
+
 int main(int, char**) {
-  plan_tests(53);
+  plan_tests(59);
   test_integrals();
   test_strings();
   test_pointers();
@@ -160,6 +188,7 @@ int main(int, char**) {
   test_suffix();
   test_to();
   test_path_cat();
+  test_basename_dirname();
 
   return exit_status();
 }

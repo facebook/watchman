@@ -64,7 +64,7 @@ w_string_piece w_string_piece::baseName() const {
   for (auto end = e_; end >= s_; --end) {
     if (is_slash(*end)) {
       /* found the end of the parent dir */
-      return w_string_piece(s_, end - s_);
+      return w_string_piece(end + 1, e_ - (end + 1));
     }
   }
 

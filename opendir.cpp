@@ -132,10 +132,17 @@ static bool is_basename_canonical_case(const char *path) {
   } else {
     result = path_base == canon_base;
     if (!result) {
-      w_log(W_LOG_ERR,
-            "is_basename_canonical_case(%s): basename=%s != canonical "
-            "%s basename of %s\n",
-            path, path_base, canon, canon_base);
+      watchman::log(
+          watchman::ERR,
+          "is_basename_canonical_case(",
+          path,
+          "): basename=",
+          path_base,
+          " != canonical ",
+          canon,
+          " basename of ",
+          canon_base,
+          "\n");
     }
   }
 
