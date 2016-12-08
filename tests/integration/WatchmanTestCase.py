@@ -258,7 +258,7 @@ class WatchmanTestCase(unittest.TestCase):
             (self.encoding == 'experimental-bser-v2' or \
              self.encoding == 'bser'):
             files = [pywatchman.encoding.decode_local(f) for f in files]
-        return sorted(map(norm_path, files))
+        return sorted(list(map(norm_path, files)))
 
     def normRecursive(self, val):
         '''Normalizes all the stringy keys and values in VAL so that
@@ -286,7 +286,7 @@ class WatchmanTestCase(unittest.TestCase):
         return val
 
     def normFileList(self, files):
-        return sorted(map(norm_path, files))
+        return sorted(list(map(norm_path, files)))
 
     def assertFileListsEqual(self, list1, list2, message=None):
         list1 = [conv_path_to_bytes(f) for f in list1]
