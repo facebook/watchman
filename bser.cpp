@@ -180,10 +180,8 @@ static int bser_int(const bser_ctx_t *ctx, json_int_t val, void *data)
   return ctx->dump(iptr, size, data);
 }
 
-static int bser_bytestring(const bser_ctx_t *ctx, const char *str, void *data)
-{
-  size_t len = strlen(str);
-
+static int
+bser_bytestring(const bser_ctx_t* ctx, w_string_piece str, void* data) {
   if (!is_bser_version_supported(ctx)) {
     return -1;
   }
@@ -192,11 +190,11 @@ static int bser_bytestring(const bser_ctx_t *ctx, const char *str, void *data)
     return -1;
   }
 
-  if (bser_int(ctx, len, data)) {
+  if (bser_int(ctx, str.size(), data)) {
     return -1;
   }
 
-  if (ctx->dump(str, len, data)) {
+  if (ctx->dump(str.data(), str.size(), data)) {
     return -1;
   }
 
@@ -344,8 +342,10 @@ int w_bser_dump(const bser_ctx_t* ctx, const json_ref& json, void* data) {
       return bser_real(ctx, json_real_value(json), data);
     case JSON_INTEGER:
       return bser_int(ctx, json_integer_value(json), data);
-    case JSON_STRING:
-      return bser_bytestring(ctx, json_string_value(json), data);
+    case JSON_STRING: {
+      auto& wstr = json_to_w_string(json);
+      return bser_bytestring(ctx, wstr, data);
+    }
     case JSON_ARRAY:
       return bser_array(ctx, json, data);
     case JSON_OBJECT:
