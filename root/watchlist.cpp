@@ -210,7 +210,8 @@ bool w_root_load_state(const json_ref& state) {
         }
 
         cmd->start(root);
-        map[cmd->triggername] = std::move(cmd);
+        auto& mapEntry = map[cmd->triggername];
+        mapEntry = std::move(cmd);
       }
     }
 
