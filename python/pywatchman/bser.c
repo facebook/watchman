@@ -68,6 +68,7 @@ typedef unsigned __int64 uint64_t;
 #define BSER_NULL      0x0a
 #define BSER_TEMPLATE  0x0b
 #define BSER_SKIP      0x0c
+#define BSER_UTF8STRING 0x0d
 // clang-format on
 
 // An immutable object representation of BSER_OBJECT.
@@ -934,6 +935,22 @@ static PyObject* bser_loads_recursive(
       } else {
         return PyBytes_FromStringAndSize(start, (long)len);
       }
+    }
+
+    case BSER_UTF8STRING: {
+      const char* start;
+      int64_t len;
+
+      if (!bunser_bytestring(ptr, end, &start, &len)) {
+        return NULL;
+      }
+
+      if (len > LONG_MAX) {
+        PyErr_Format(PyExc_ValueError, "string too long for python");
+        return NULL;
+      }
+
+      return PyUnicode_Decode(start, (long)len, "utf-8", "strict");
     }
 
     case BSER_ARRAY:
