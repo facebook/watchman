@@ -69,7 +69,7 @@ else:
 # our overall length.  To make things simpler, we'll use an
 # int32 for the header
 EMPTY_HEADER = b"\x00\x01\x05\x00\x00\x00\x00"
-EMPTY_HEADER_V2 = b"\x00\x02\x05\x00\x00\x00\x00\x05\x00\x00\x00\x00"
+EMPTY_HEADER_V2 = b"\x00\x02\x00\x00\x00\x00\x05\x00\x00\x00\x00"
 
 def _int_size(x):
     """Return the smallest size int that can store the value"""
@@ -240,8 +240,8 @@ def dumps(obj, version=1, capabilities=0):
         struct.pack_into(b'=i', bser_buf.buf, 3, obj_len)
     else:
         obj_len = bser_buf.wpos - len(EMPTY_HEADER_V2)
-        struct.pack_into(b'=i', bser_buf.buf, 3, capabilities)
-        struct.pack_into(b'=i', bser_buf.buf, 8, obj_len)
+        struct.pack_into(b'=i', bser_buf.buf, 2, capabilities)
+        struct.pack_into(b'=i', bser_buf.buf, 7, obj_len)
     return bser_buf.buf.raw[:bser_buf.wpos]
 
 # This is a quack-alike with the bserObjectType in bser.c
@@ -423,9 +423,11 @@ def _pdu_info_helper(buf):
         bser_capabilities = 0
         expected_len, pos2 = Bunser.unser_int(buf, 2)
     elif buf[0:2] == EMPTY_HEADER_V2[0:2]:
+        if len(buf) < 8:
+            raise ValueError('Invalid BSER header')
         bser_version = 2
-        bser_capabilities, pos1 = Bunser.unser_int(buf, 2)
-        expected_len, pos2 = Bunser.unser_int(buf, pos1)
+        bser_capabilities = struct.unpack_from("I", buf, 2)[0]
+        expected_len, pos2 = Bunser.unser_int(buf, 6)
     else:
         raise ValueError('Invalid BSER header')
 

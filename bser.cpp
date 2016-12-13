@@ -392,7 +392,8 @@ int w_bser_write_pdu(
   }
 
   if (bser_version == 2) {
-    if (bser_int(&ctx, bser_capabilities, data)) {
+    if (dump(
+            (const char*)&bser_capabilities, sizeof(bser_capabilities), data)) {
       return -1;
     }
   }

@@ -152,20 +152,21 @@ bool watchman_json_buffer::decodePduInfo(
     json_error_t* jerr) {
   json_int_t needed;
   if (bser_version == 2) {
-    while (!bunser_int(buf + rpos, wpos - rpos, &needed, bser_capabilities)) {
-      if (needed == -1) {
-        snprintf(jerr->text, sizeof(jerr->text),
-            "failed to read BSER capabilities");
-        return false;
-      }
+    uint32_t capabilities;
+    while (wpos - rpos < sizeof(capabilities)) {
       if (!fillBuffer(stm)) {
         snprintf(jerr->text, sizeof(jerr->text),
             "unable to fill buffer");
         return false;
       }
     }
-    rpos += (uint32_t)needed;
+    // json_int_t is architecture-dependent, so go through the uint32_t for
+    // safety.
+    memcpy(&capabilities, buf + rpos, sizeof(capabilities));
+    *bser_capabilities = capabilities;
+    rpos += sizeof(capabilities);
   }
+
   while (!bunser_int(buf + rpos, wpos - rpos, &needed, len)) {
     if (needed == -1) {
       snprintf(jerr->text, sizeof(jerr->text),

@@ -292,7 +292,7 @@ static int bser_init(bser_t *bser, uint32_t version, uint32_t capabilities)
 
   // Version 2 also carries an integer indicating the capabilities. The
   // capabilities integer comes before the PDU size.
-#define EMPTY_HEADER_V2 "\x00\x02\x05\x00\x00\x00\x00\x05\x00\x00\x00\x00"
+#define EMPTY_HEADER_V2 "\x00\x02\x00\x00\x00\x00\x05\x00\x00\x00\x00"
   if (version == 2) {
     bser_append(bser, EMPTY_HEADER_V2, sizeof(EMPTY_HEADER_V2)-1);
   } else {
@@ -542,8 +542,8 @@ static PyObject *bser_dumps(PyObject *self, PyObject *args, PyObject *kw)
   } else {
     len = bser.wpos - (sizeof(EMPTY_HEADER_V2) - 1);
     // The BSER capabilities block comes before the PDU length
-    memcpy(bser.buf + 3, &bser_capabilities, sizeof(bser_capabilities));
-    memcpy(bser.buf + 8, &len, sizeof(len));
+    memcpy(bser.buf + 2, &bser_capabilities, sizeof(bser_capabilities));
+    memcpy(bser.buf + 7, &len, sizeof(len));
   }
 
   res = PyBytes_FromStringAndSize(bser.buf, bser.wpos);
@@ -957,7 +957,7 @@ static int _pdu_info_helper(const char *data, const char *end,
     uint32_t *bser_version_out, uint32_t *bser_capabilities_out,
     int64_t *expected_len_out, off_t *position_out) {
   uint32_t bser_version;
-  int64_t bser_capabilities = 0; // int64 because bunser_int requires it
+  uint32_t bser_capabilities = 0;
   int64_t expected_len;
 
   const char *start;
@@ -977,9 +977,10 @@ static int _pdu_info_helper(const char *data, const char *end,
   if (bser_version == 2) {
     // Expect an integer telling us what capabilities are supported by the
     // remote server (currently unused).
-    if (!bunser_int(&data, end, &bser_capabilities)) {
+    if (!memcpy(&bser_capabilities, &data, sizeof(bser_capabilities))) {
       return 0;
     }
+    data += sizeof(bser_capabilities);
   }
 
   // Expect an integer telling us how big the rest of the data
