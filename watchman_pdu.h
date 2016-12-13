@@ -15,6 +15,7 @@ struct watchman_json_buffer {
   uint32_t allocd;
   uint32_t rpos, wpos;
   enum w_pdu_type pdu_type;
+  uint32_t capabilities;
 
   ~watchman_json_buffer();
   watchman_json_buffer();
@@ -31,6 +32,7 @@ struct watchman_json_buffer {
 
   bool pduEncodeToStream(
       enum w_pdu_type pdu_type,
+      uint32_t capabilities,
       const json_ref& json,
       w_stm_t stm);
 
@@ -38,6 +40,7 @@ struct watchman_json_buffer {
 
   bool passThru(
       enum w_pdu_type output_pdu,
+      uint32_t output_capabilities,
       watchman_json_buffer* output_pdu_buf,
       w_stm_t stm);
 

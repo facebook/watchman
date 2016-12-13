@@ -8,7 +8,8 @@ watchman_json_buffer::watchman_json_buffer()
       allocd(WATCHMAN_IO_BUF_SIZE),
       rpos(0),
       wpos(0),
-      pdu_type(need_data) {
+      pdu_type(need_data),
+      capabilities(0) {
   if (!buf) {
     throw std::bad_alloc();
   }
@@ -249,6 +250,9 @@ json_ref watchman_json_buffer::readBserPdu(
 
 bool watchman_json_buffer::readAndDetectPdu(w_stm_t stm, json_error_t* jerr) {
   enum w_pdu_type pdu;
+  // The client might send us different kinds of PDUs over the same connection,
+  // so reset the capabilities.
+  capabilities = 0;
 
   shuntDown();
   pdu = detectPdu();
@@ -262,6 +266,26 @@ bool watchman_json_buffer::readAndDetectPdu(w_stm_t stm, json_error_t* jerr) {
       return false;
     }
     pdu = detectPdu();
+  }
+
+  if (pdu == is_bser_v2) {
+    // read capabilities (since we haven't increased rpos, first two bytes are
+    // still the header)
+    while (wpos - rpos < 2 + sizeof(capabilities)) {
+      if (!fillBuffer(stm)) {
+        if (errno != EAGAIN) {
+          snprintf(
+              jerr->text,
+              sizeof(jerr->text),
+              "fillBuffer: %s",
+              errno ? strerror(errno) : "EOF");
+        }
+        return false;
+      }
+    }
+
+    // Copy the capabilities over. BSER is system-endian so this is safe.
+    memcpy(&capabilities, buf + rpos + 2, sizeof(capabilities));
   }
 
   if (pdu == is_json_compact && stm == w_stm_stdin()) {
@@ -422,6 +446,7 @@ json_ref watchman_json_buffer::decodePdu(w_stm_t stm, json_error_t* jerr) {
 
 bool watchman_json_buffer::passThru(
     enum w_pdu_type output_pdu,
+    uint32_t output_capabilities,
     w_jbuffer_t* output_pdu_buf,
     w_stm_t stm) {
   json_error_t jerr;
@@ -453,7 +478,8 @@ bool watchman_json_buffer::passThru(
 
   output_pdu_buf->clear();
 
-  res = output_pdu_buf->pduEncodeToStream(output_pdu, j, w_stm_stdout());
+  res = output_pdu_buf->pduEncodeToStream(
+      output_pdu, output_capabilities, j, w_stm_stdout());
 
   return res;
 }
@@ -561,6 +587,7 @@ bool watchman_json_buffer::jsonEncodeToStream(
 
 bool watchman_json_buffer::pduEncodeToStream(
     enum w_pdu_type pdu_type,
+    uint32_t capabilities,
     const json_ref& json,
     w_stm_t stm) {
   switch (pdu_type) {
@@ -569,9 +596,9 @@ bool watchman_json_buffer::pduEncodeToStream(
     case is_json_pretty:
       return jsonEncodeToStream(json, stm, JSON_INDENT(4));
     case is_bser:
-      return bserEncodeToStream(1, 0, json, stm);
+      return bserEncodeToStream(1, capabilities, json, stm);
     case is_bser_v2:
-      return bserEncodeToStream(2, 0, json, stm);
+      return bserEncodeToStream(2, capabilities, json, stm);
     case need_data:
     default:
       return false;

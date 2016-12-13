@@ -96,7 +96,10 @@ lookup(const json_ref& args, char** errmsg, int mode) {
   return nullptr;
 }
 
-void preprocess_command(json_ref& args, enum w_pdu_type output_pdu) {
+void preprocess_command(
+    json_ref& args,
+    enum w_pdu_type output_pdu,
+    uint32_t output_capabilities) {
   char *errmsg = NULL;
   struct watchman_command_handler_def *def;
 
@@ -120,7 +123,7 @@ void preprocess_command(json_ref& args, enum w_pdu_type output_pdu) {
          {"version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE)},
          {"cli_validated", json_true()}});
 
-    jr.pduEncodeToStream(output_pdu, err, w_stm_stdout());
+    jr.pduEncodeToStream(output_pdu, output_capabilities, err, w_stm_stdout());
 
     free(errmsg);
     exit(1);

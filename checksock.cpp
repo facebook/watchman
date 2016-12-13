@@ -28,7 +28,7 @@ static void check_my_sock() {
 
   client->setNonBlock(false);
 
-  if (!buf.pduEncodeToStream(is_bser, cmd, client.get())) {
+  if (!buf.pduEncodeToStream(is_bser, 0, cmd, client.get())) {
     w_log(W_LOG_FATAL, "Failed to send get-pid PDU: %s\n",
           strerror(errno));
     /* NOTREACHED */

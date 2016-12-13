@@ -26,6 +26,7 @@ struct watchman_client : public std::enable_shared_from_this<watchman_client> {
   bool client_mode{false};
   bool client_is_owner{false};
   enum w_pdu_type pdu_type;
+  uint32_t capabilities;
 
   // The command currently being processed by dispatch_command
   json_ref current_command;

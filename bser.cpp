@@ -30,6 +30,11 @@
 #define BSER_NULL      0x0a
 #define BSER_TEMPLATE  0x0b
 #define BSER_SKIP      0x0c
+#define BSER_UTF8STRING 0x0d
+
+// BSER capabilities. Must be powers of 2.
+#define BSER_CAP_DISABLE_UNICODE 0x1
+#define BSER_CAP_DISABLE_UNICODE_FOR_ERRORS 0x2
 
 static const char bser_true = BSER_TRUE;
 static const char bser_false = BSER_FALSE;
@@ -38,6 +43,7 @@ static const char bser_bytestring_hdr = BSER_BYTESTRING;
 static const char bser_array_hdr = BSER_ARRAY;
 static const char bser_object_hdr = BSER_OBJECT;
 static const char bser_template_hdr = BSER_TEMPLATE;
+static const char bser_utf8string_hdr = BSER_UTF8STRING;
 static const char bser_skip = BSER_SKIP;
 
 static bool is_bser_version_supported(const bser_ctx_t *ctx) {
@@ -57,9 +63,12 @@ static int bser_real(const bser_ctx_t *ctx, double val, void *data)
   return ctx->dump((char*)&val, sizeof(val), data);
 }
 
-bool bunser_bytestring(const char *buf, json_int_t avail, json_int_t *needed,
-    const char **start, json_int_t *len)
-{
+bool bunser_generic_string(
+    const char* buf,
+    json_int_t avail,
+    json_int_t* needed,
+    const char** start,
+    json_int_t* len) {
   json_int_t ineed;
 
   if (!bunser_int(buf + 1, avail - 1, &ineed, len)) {
@@ -180,13 +189,16 @@ static int bser_int(const bser_ctx_t *ctx, json_int_t val, void *data)
   return ctx->dump(iptr, size, data);
 }
 
-static int
-bser_bytestring(const bser_ctx_t* ctx, w_string_piece str, void* data) {
+static int bser_generic_string(
+    const bser_ctx_t* ctx,
+    w_string_piece str,
+    void* data,
+    const char hdr) {
   if (!is_bser_version_supported(ctx)) {
     return -1;
   }
 
-  if (ctx->dump(&bser_bytestring_hdr, sizeof(bser_bytestring_hdr), data)) {
+  if (ctx->dump(&hdr, sizeof(hdr), data)) {
     return -1;
   }
 
@@ -199,6 +211,26 @@ bser_bytestring(const bser_ctx_t* ctx, w_string_piece str, void* data) {
   }
 
   return 0;
+}
+
+static int
+bser_bytestring(const bser_ctx_t* ctx, w_string_piece str, void* data) {
+  return bser_generic_string(ctx, str, data, bser_bytestring_hdr);
+}
+
+static int
+bser_utf8string(const bser_ctx_t* ctx, w_string_piece str, void* data) {
+  if ((ctx->bser_capabilities & BSER_CAP_DISABLE_UNICODE) ||
+      ctx->bser_version == 1) {
+    return bser_bytestring(ctx, str, data);
+  }
+  return bser_generic_string(ctx, str, data, bser_utf8string_hdr);
+}
+
+static int
+bser_mixedstring(const bser_ctx_t* ctx, w_string_piece str, void* data) {
+  // TODO: Add escaping
+  return bser_generic_string(ctx, str, data, bser_bytestring_hdr);
 }
 
 static int bser_array(const bser_ctx_t *ctx, const json_t *array, void *data);
@@ -344,7 +376,17 @@ int w_bser_dump(const bser_ctx_t* ctx, const json_ref& json, void* data) {
       return bser_int(ctx, json_integer_value(json), data);
     case JSON_STRING: {
       auto& wstr = json_to_w_string(json);
-      return bser_bytestring(ctx, wstr, data);
+      switch (wstr.type()) {
+        case W_STRING_BYTE:
+          return bser_bytestring(ctx, wstr, data);
+        case W_STRING_UNICODE:
+          return bser_utf8string(ctx, wstr, data);
+        case W_STRING_MIXED:
+          return bser_mixedstring(ctx, wstr, data);
+        default:
+          w_assert(false, "unknown string type 0x%02x", wstr.type());
+          return -1;
+      }
     }
     case JSON_ARRAY:
       return bser_array(ctx, json, data);
@@ -568,7 +610,7 @@ static json_ref bunser_object(
     json_int_t slen;
 
     // Read key
-    if (!bunser_bytestring(buf, end - buf, &needed, &start, &slen)) {
+    if (!bunser_generic_string(buf, end - buf, &needed, &start, &slen)) {
       *used = total + needed;
       snprintf(jerr->text, sizeof(jerr->text),
           "invalid bytestring for object key");
@@ -629,17 +671,20 @@ json_ref bunser(
       return json_integer(ival);
 
     case BSER_BYTESTRING:
-    {
+    case BSER_UTF8STRING: {
       const char *start;
       json_int_t len;
 
-      if (!bunser_bytestring(buf, end - buf, needed, &start, &len)) {
+      if (!bunser_generic_string(buf, end - buf, needed, &start, &len)) {
         snprintf(jerr->text, sizeof(jerr->text),
             "invalid bytestring encoding");
         return nullptr;
       }
 
-      return typed_string_to_json(start, len, W_STRING_BYTE);
+      return typed_string_to_json(
+          start,
+          len,
+          buf[0] == BSER_BYTESTRING ? W_STRING_BYTE : W_STRING_UNICODE);
     }
 
     case BSER_REAL:

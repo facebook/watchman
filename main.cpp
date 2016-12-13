@@ -10,6 +10,8 @@ static int show_help = 0;
 static int show_version = 0;
 static enum w_pdu_type server_pdu = is_bser;
 static enum w_pdu_type output_pdu = is_json_pretty;
+static uint32_t server_capabilities = 0;
+static uint32_t output_capabilities = 0;
 static char *server_encoding = NULL;
 static char *output_encoding = NULL;
 static char *test_state_dir = NULL;
@@ -850,7 +852,8 @@ static bool try_command(json_t *cmd, int timeout)
   }
 
   // Send command
-  if (!buffer.pduEncodeToStream(server_pdu, cmd, client.get())) {
+  if (!buffer.pduEncodeToStream(
+          server_pdu, server_capabilities, cmd, client.get())) {
     err = errno;
     w_log(W_LOG_ERR, "error sending PDU to server\n");
     errno = err;
@@ -860,7 +863,11 @@ static bool try_command(json_t *cmd, int timeout)
   buffer.clear();
 
   do {
-    if (!buffer.passThru(output_pdu, &output_pdu_buffer, client.get())) {
+    if (!buffer.passThru(
+            output_pdu,
+            output_capabilities,
+            &output_pdu_buffer,
+            client.get())) {
       return false;
     }
   } while (persistent);
@@ -1034,7 +1041,7 @@ int main(int argc, char **argv)
 
   w_set_thread_name("cli");
   auto cmd = build_command(argc, argv);
-  preprocess_command(cmd, output_pdu);
+  preprocess_command(cmd, output_pdu, output_capabilities);
 
   ran = try_command(cmd, 0);
   if (!ran && should_start(errno)) {

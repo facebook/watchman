@@ -38,7 +38,10 @@ bool find_project_root(
     char* resolved,
     char** relpath);
 
-void preprocess_command(json_ref& args, enum w_pdu_type output_pdu);
+void preprocess_command(
+    json_ref& args,
+    enum w_pdu_type output_pdu,
+    uint32_t output_capabilities);
 bool dispatch_command(
     struct watchman_client* client,
     const json_ref& args,

@@ -170,6 +170,7 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
         goto disconnected;
       } else if (request) {
         client->pdu_type = client->reader.pdu_type;
+        client->capabilities = client->reader.capabilities;
         dispatch_command(client.get(), request, CMD_DAEMON);
       }
     }
@@ -273,7 +274,10 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
          * but still free their memory.
          */
         send_ok = client->writer.pduEncodeToStream(
-            client->pdu_type, response_to_send, client->stm.get());
+            client->pdu_type,
+            client->capabilities,
+            response_to_send,
+            client->stm.get());
         client->stm->setNonBlock(true);
       }
 
