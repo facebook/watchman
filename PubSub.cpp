@@ -40,39 +40,30 @@ std::shared_ptr<const Publisher::Item> Publisher::Subscriber::getNext() {
   return nullptr;
 }
 
-std::vector<std::shared_ptr<const Publisher::Item>>
-Publisher::Subscriber::getPending() {
-  std::vector<std::shared_ptr<const Publisher::Item>> items;
-
-  auto rlock = publisher_->state_.rlock();
-  for (auto& item : rlock->items) {
-    if (item->serial > serial_) {
-      serial_ = item->serial;
-      items.push_back(item);
+void Publisher::Subscriber::getPending(
+    std::vector<std::shared_ptr<const Item>>& pending) {
+  {
+    auto rlock = publisher_->state_.rlock();
+    for (auto& item : rlock->items) {
+      auto serial = item->serial;
+      if (serial > serial_) {
+        pending.emplace_back(item);
+        serial_ = serial;
+      }
     }
   }
-
-  return items;
 }
 
-template <typename Vec>
-void moveVec(Vec& dest, Vec&& src) {
-  std::move(src.begin(), src.end(), std::back_inserter(dest));
-}
-
-std::vector<std::shared_ptr<const Publisher::Item>> getPending(
+void getPending(
+    std::vector<std::shared_ptr<const Publisher::Item>>& items,
     const std::shared_ptr<Publisher::Subscriber>& sub1,
     const std::shared_ptr<Publisher::Subscriber>& sub2) {
-  std::vector<std::shared_ptr<const Publisher::Item>> items;
-
   if (sub1) {
-    moveVec(items, sub1->getPending());
+    sub1->getPending(items);
   }
   if (sub2) {
-    moveVec(items, sub2->getPending());
+    sub2->getPending(items);
   }
-
-  return items;
 }
 
 std::shared_ptr<Publisher::Subscriber> Publisher::subscribe(Notifier notify) {

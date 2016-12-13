@@ -31,6 +31,7 @@ bool watchman_trigger_command::waitNoIntr() {
 }
 
 void watchman_trigger_command::run(const std::shared_ptr<w_root_t>& root) {
+  std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
   w_set_thread_name(
       "trigger %s %s", triggername.c_str(), root->root_path.c_str());
 
@@ -45,10 +46,17 @@ void watchman_trigger_command::run(const std::shared_ptr<w_root_t>& root) {
       break;
     }
     while (ping_->testAndClear()) {
-      while (auto item = subscriber_->getNext()) {
-        if (!item->payload.get_default("settled")) {
-          continue;
+      pending.clear();
+      subscriber_->getPending(pending);
+      bool seenSettle = false;
+      for (auto& item : pending) {
+        if (item->payload.get_default("settled")) {
+          seenSettle = true;
+          break;
         }
+      }
+
+      if (seenSettle) {
         if (!maybeSpawn(root)) {
           continue;
         }

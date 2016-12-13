@@ -157,7 +157,8 @@ void Log::setStdErrLoggingLevel(enum LogLevel level) {
 }
 
 void Log::doLogToStdErr() {
-  auto items = getPending(errorSub_, debugSub_);
+  std::vector<std::shared_ptr<const watchman::Publisher::Item>> items;
+  getPending(items, errorSub_, debugSub_);
 
   bool fatal = false;
   static w_string kFatal("fatal");

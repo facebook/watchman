@@ -47,7 +47,7 @@ class Publisher : public std::enable_shared_from_this<Publisher> {
     // Returns all as yet unseen published items for this subscriber.
     // Equivalent to calling getNext in a loop and sticking the results
     // into a vector.
-    std::vector<std::shared_ptr<const Item>> getPending();
+    void getPending(std::vector<std::shared_ptr<const Item>>& pending);
 
     inline uint64_t getSerial() const {
       return serial_;
@@ -91,7 +91,8 @@ class Publisher : public std::enable_shared_from_this<Publisher> {
 
 // Equivalent to calling getPending on up to two Subscriber and
 // joining the resultant vectors together.
-std::vector<std::shared_ptr<const Publisher::Item>> getPending(
+void getPending(
+    std::vector<std::shared_ptr<const Publisher::Item>>& pending,
     const std::shared_ptr<Publisher::Subscriber>& sub1,
     const std::shared_ptr<Publisher::Subscriber>& sub2);
 }

@@ -125,6 +125,9 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
   struct watchman_event_poll pfd[2];
   json_error_t jerr;
   bool send_ok = true;
+  // Keep a persistent vector around so that we can avoid allocating
+  // and releasing heap memory when we collect items from the publisher
+  std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
 
   client->stm->setNonBlock(true);
   w_set_thread_name(
@@ -178,8 +181,9 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
     if (pfd[1].ready) {
       while (client->ping->testAndClear()) {
         // Enqueue refs to pending log payloads
-        auto items = watchman::getPending(client->debugSub, client->errorSub);
-        for (auto& item : items) {
+        pending.clear();
+        getPending(pending, client->debugSub, client->errorSub);
+        for (auto& item : pending) {
           client->enqueueResponse(json_ref(item->payload), false);
         }
 
@@ -196,12 +200,10 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
             watchman::log(
                 watchman::DBG, "consider fan out sub ", sub->name, "\n");
 
-            while (true) {
-              auto item = subStream->getNext();
-              if (!item) {
-                break;
-              }
-
+            pending.clear();
+            subStream->getPending(pending);
+            bool seenSettle = false;
+            for (auto& item : pending) {
               auto dumped = json_dumps(item->payload, 0);
               watchman::log(
                   watchman::DBG,
@@ -250,9 +252,13 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
               }
 
               if (item->payload.get_default("settled")) {
-                sub->processSubscription();
+                seenSettle = true;
                 continue;
               }
+            }
+
+            if (seenSettle) {
+              sub->processSubscription();
             }
           }
 
