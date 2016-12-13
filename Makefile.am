@@ -1,3 +1,5 @@
+AUTOMAKE_OPTIONS = foreign
+
 bin_PROGRAMS = watchman
 # ensure that we have a reasonable default for the python install
 DESTDIR ?= /
