@@ -41,7 +41,7 @@ static char* bdumps(json_t* json, char** end) {
   bser_ctx_t ctx{1, 0, dump_to_strbuffer};
 
   if (strbuffer_init(&strbuff)) {
-    return NULL;
+    return nullptr;
   }
 
   if (w_bser_dump(&ctx, json, &strbuff) == 0) {
@@ -50,14 +50,14 @@ static char* bdumps(json_t* json, char** end) {
   }
 
   strbuffer_close(&strbuff);
-  return NULL;
+  return nullptr;
 }
 
 static char* bdumps_pdu(json_t* json, char** end) {
   strbuffer_t strbuff;
 
   if (strbuffer_init(&strbuff)) {
-    return NULL;
+    return nullptr;
   }
 
   if (w_bser_write_pdu(1, 0, dump_to_strbuffer, json, &strbuff) == 0) {
@@ -66,7 +66,7 @@ static char* bdumps_pdu(json_t* json, char** end) {
   }
 
   strbuffer_close(&strbuff);
-  return NULL;
+  return nullptr;
 }
 
 static const char* json_inputs[] = {
@@ -107,7 +107,7 @@ static bool check_roundtrip(const char* input, const char* template_text) {
   }
 
   dump_buf = bdumps(expected, &end);
-  ok(dump_buf != NULL, "dumped something");
+  ok(dump_buf != nullptr, "dumped something");
   if (!dump_buf) {
     return false;
   }
@@ -130,7 +130,7 @@ static bool check_roundtrip(const char* input, const char* template_text) {
 
 static void check_serialization(const char* json_in, const char* bser_out) {
   char* bser_in;
-  char* end = NULL;
+  char* end = nullptr;
   json_error_t jerr;
   unsigned int length;
   auto input = json_loads(json_in, 0, &jerr);
