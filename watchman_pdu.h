@@ -74,6 +74,11 @@ typedef struct watchman_json_buffer w_jbuffer_t;
 
 #define BSER_MAGIC "\x00\x01"
 #define BSER_V2_MAGIC "\x00\x02"
+
+// BSERv2 capabilities. Must be powers of 2.
+#define BSER_CAP_DISABLE_UNICODE 0x1
+#define BSER_CAP_DISABLE_UNICODE_FOR_ERRORS 0x2
+
 int w_bser_write_pdu(
     const uint32_t bser_version,
     const uint32_t capabilities,

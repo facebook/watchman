@@ -32,10 +32,6 @@
 #define BSER_SKIP      0x0c
 #define BSER_UTF8STRING 0x0d
 
-// BSER capabilities. Must be powers of 2.
-#define BSER_CAP_DISABLE_UNICODE 0x1
-#define BSER_CAP_DISABLE_UNICODE_FOR_ERRORS 0x2
-
 static const char bser_true = BSER_TRUE;
 static const char bser_false = BSER_FALSE;
 static const char bser_null = BSER_NULL;
