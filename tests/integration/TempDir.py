@@ -8,6 +8,7 @@ import sys
 import tempfile
 import time
 import atexit
+import path_utils as path
 
 global_temp_dir = None
 
@@ -42,8 +43,9 @@ class TempDir(object):
         else:
             prefix = 'watchmantest'
 
-        self.temp_dir = os.path.normcase(os.path.realpath(
-            tempfile.mkdtemp(dir=parent_dir, prefix=prefix)))
+        self.temp_dir = path.get_canonical_filesystem_path(
+            tempfile.mkdtemp(dir=parent_dir, prefix=prefix))
+
         if os.name != 'nt':
             # On some platforms, setting the setgid bit on a directory doesn't
             # work if the user isn't a member of the directory's group. Set the

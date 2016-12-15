@@ -41,8 +41,8 @@ class ignoreTestCase extends WatchmanTestCase {
       file_put_contents("$root/.watchmanconfig", json_encode($cfg));
       $res = $this->watch($root, false);
 
-      $this->assertEqual(
-        "unable to resolve root $root: ignore_vcs must be an array of strings",
+      $this->assertRegex(
+        "/unable to resolve root .*: ignore_vcs must be an array of strings/",
         idx($res, 'error')
       );
     }

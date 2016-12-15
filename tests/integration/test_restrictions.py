@@ -53,13 +53,20 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
               else:
                   with self.assertRaises(pywatchman.WatchmanError) as ctx:
                       client.query('watch', d)
-                  self.assertIn(
-                      ("unable to resolve root " + d +
+                  self.assertRegexpMatches(
+                      str(ctx.exception),
+                      ("unable to resolve root .*"+
                       ": Your watchman administrator has configured watchman "+
                       "to prevent watching this path.  "+
                       "None of the files listed in global config root_files "+
-                      "are present and enforce_root_files is set to true").lower(),
-                      str(ctx.exception).lower())
+                      "are present and enforce_root_files is set to true"))
 
       finally:
           inst.stop()
+
+    def test_invalidRoot(self):
+        d = self.mkdtemp()
+        invalid = os.path.join(d, "invalid")
+        with self.assertRaises(pywatchman.WatchmanError) as ctx:
+            self.watchmanCommand('watch', invalid)
+        self.assertIn('No such file or directory', str(ctx.exception))

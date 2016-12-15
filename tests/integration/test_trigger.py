@@ -29,7 +29,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         r = re.compile(' trigger %s:%s pid=' %
                        (re.escape(root), triggerName), re.I)
         for line in logs:
-            if r.search(line):
+            if r.search(line.replace('\\', '/')):
                 return True
         return False
 

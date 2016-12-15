@@ -21,7 +21,8 @@ python_unittest(
         'Interrupt.py',
         'TempDir.py',
         'Wat*.py',
-        'test_*.py'
+        'test_*.py',
+        'path_utils.py',
     ]),
     env=env,
     deps=[
@@ -43,7 +44,8 @@ python_unittest(
         'Interrupt.py',
         'TempDir.py',
         'Wat*.py',
-        'test_*.py'
+        'test_*.py',
+        'path_utils.py',
     ],excludes=[
         'test_nodejs.py',
         'test_php.py',
