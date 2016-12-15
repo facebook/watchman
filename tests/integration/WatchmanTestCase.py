@@ -184,10 +184,6 @@ class WatchmanTestCase(unittest.TestCase):
     def watchmanCommand(self, *args):
         return self.getClient().query(*args)
 
-    def decodeBSERUTF8(self, s, surrogateescape=False):
-        # TODO(sid0): this is no longer necessary, clean up
-        return s
-
     def normRelativePath(self, path):
         path = conv_path_to_bytes(path)
         path = pywatchman.encoding.decode_local(path)
@@ -204,11 +200,6 @@ class WatchmanTestCase(unittest.TestCase):
         # TODO: in the future we will standardize on `/` as the
         # dir separator so we can remove the replace call.
         return path.replace('\\', '/')
-
-    def assertEqualUTF8Strings(self, expected, actual, surrogateescape=False):
-        '''assert that actual (possibly a UTF-8 encoded byte string) is equal
-        to expected (a Unicode string in Python 3)'''
-        self.assertEqual(expected, self.decodeBSERUTF8(actual))
 
     # Continually invoke `cond` until it returns true or timeout
     # is reached.  Returns a tuple of [bool, result] where the

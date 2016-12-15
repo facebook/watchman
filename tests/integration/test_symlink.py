@@ -45,13 +45,13 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         }
 
         res = self.watchmanCommand('query', root, expr)
-        self.assertEqualUTF8Strings('222', os.path.basename(res['files'][0]['symlink_target']))
+        self.assertEqual('222', os.path.basename(res['files'][0]['symlink_target']))
 
         os.unlink(os.path.join(root, '111'))
         os.symlink(os.path.join(root, '333'), os.path.join(root, '111'))
 
         res = self.watchmanCommand('query', root, expr)
-        self.assertEqualUTF8Strings('333', os.path.basename(res['files'][0]['symlink_target']))
+        self.assertEqual('333', os.path.basename(res['files'][0]['symlink_target']))
 
     # test to see that invalid symbolic link
     # updates are picked up by the symlink_target field
@@ -70,13 +70,17 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         }
 
         res = self.watchmanCommand('query', root, expr)
-        self.assertEqualUTF8Strings('222', os.path.basename(res['files'][0]['symlink_target']))
+        self.assertEqual(
+            '222', os.path.basename(res['files'][0]['symlink_target'])
+        )
 
         os.unlink(os.path.join(root, '111'))
         os.symlink(os.path.join(root, '333'), os.path.join(root, '111'))
 
         res = self.watchmanCommand('query', root, expr)
-        self.assertEqualUTF8Strings('333', os.path.basename(res['files'][0]['symlink_target']))
+        self.assertEqual(
+            '333', os.path.basename(res['files'][0]['symlink_target'])
+        )
 
     # test to see that symbolic link deletes work
     def test_delSymlink(self):
@@ -100,7 +104,7 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         }
 
         res = self.watchmanCommand('query', root, expr)
-        self.assertEqualUTF8Strings('111', res['files'][0]['name'])
+        self.assertEqual('111', res['files'][0]['name'])
         self.assertFalse(res['files'][0]['exists'])
 
     # test to see that when a symbolic link is changed to a file,
@@ -120,22 +124,24 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
 
         res = self.watchmanCommand('query', root, expr)
 
-        self.assertEqualUTF8Strings('222', os.path.basename(res['files'][0]['symlink_target']))
-        self.assertEqualUTF8Strings('l', res['files'][0]['type'])
+        self.assertEqual(
+            '222', os.path.basename(res['files'][0]['symlink_target'])
+        )
+        self.assertEqual('l', res['files'][0]['type'])
 
         os.unlink(os.path.join(root, '111'))
         self.touchRelative(root, '111')
 
         res = self.watchmanCommand('query', root, expr)
         self.assertTrue(res['files'] and ('symlink_target' not in res['files'][0] or res['files'][0]['symlink_target'] is None))
-        self.assertEqualUTF8Strings('f', res['files'][0]['type'])
+        self.assertEqual('f', res['files'][0]['type'])
 
         os.unlink(os.path.join(root, '111'))
         os.mkdir(os.path.join(root, '111'))
 
         res = self.watchmanCommand('query', root, expr)
         self.assertTrue(res['files'] and ('symlink_target' not in res['files'][0] or res['files'][0]['symlink_target'] is None))
-        self.assertEqualUTF8Strings('d', res['files'][0]['type'])
+        self.assertEqual('d', res['files'][0]['type'])
 
     def test_watchSymlinkTarget(self):
         def make_roots():

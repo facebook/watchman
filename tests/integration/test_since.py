@@ -157,8 +157,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         self.assertFreshInstanceForSince(root, 'c:%s:1' % pid, False)
 
         # -- decompose clock and replace elements one by one
-        clock = self.decodeBSERUTF8(
-            self.watchmanCommand('clock', root)['clock'])
+        clock = self.watchmanCommand('clock', root)['clock']
         p = clock.split(':')
         # ['c', startTime, pid, rootNum, ticks]
         self.assertEqual(len(p), 5)
@@ -251,8 +250,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         self.assertTrue(res['is_fresh_instance'])
         self.assertEqual(self.normWatchmanFileList(res['files']),
                          self.normFileList(['222']))
-        warning = self.decodeBSERUTF8(res['warning'])
-        self.assertRegexpMatches(warning, 'Recrawled this watch')
+        self.assertRegexpMatches(res['warning'], 'Recrawled this watch')
 
     def test_recrawlFreshInstanceWarningSuppressed(self):
         root = self.mkdtemp()
@@ -281,4 +279,3 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         self.assertEqual(self.normWatchmanFileList(res['files']),
                          self.normFileList(['.watchmanconfig', '222']))
         self.assertTrue('warning' not in res)
-

@@ -61,11 +61,11 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
 
         res = self.watchmanCommand('trigger', root, 'first', '*.js', '--',
                                    sys.executable, touch, first_log)
-        self.assertEqual(self.decodeBSERUTF8(res['triggerid']), 'first')
+        self.assertEqual(res['triggerid'], 'first')
 
         res = self.watchmanCommand('trigger', root, 'second', '*.js', '--',
                                    sys.executable, touch, second_log)
-        self.assertEqual(self.decodeBSERUTF8(res['triggerid']), 'second')
+        self.assertEqual(res['triggerid'], 'second')
 
         self.assertWaitFor(lambda: os.path.exists(first_log) and
                            os.path.exists(second_log),
@@ -136,13 +136,13 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
                                    sys.executable,
                                    os.path.join(THIS_DIR, 'trig.py'),
                                    os.path.join(root, 'trigger.log'))
-        self.assertEqualUTF8Strings('created', res['disposition'])
+        self.assertEqual('created', res['disposition'])
 
         res = self.watchmanCommand('trigger', root, 'other', '*.c', '--',
                                    sys.executable,
                                    os.path.join(THIS_DIR, 'trigjson.py'),
                                    os.path.join(root, 'trigger.json'))
-        self.assertEqualUTF8Strings('created', res['disposition'])
+        self.assertEqual('created', res['disposition'])
 
         # check that the legacy parser produced the right trigger def
         expect = [
@@ -214,22 +214,22 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
 
         # Now test to see how we deal with updating the defs
         res = self.watchmanCommand('trigger', root, 'other', '*.c', '--', 'true')
-        self.assertEqualUTF8Strings('replaced', res['disposition'])
+        self.assertEqual('replaced', res['disposition'])
 
         res = self.watchmanCommand('trigger', root, 'other', '*.c', '--', 'true')
-        self.assertEqualUTF8Strings('already_defined', res['disposition'])
+        self.assertEqual('already_defined', res['disposition'])
 
         # and deletion
         res = self.watchmanCommand('trigger-del', root, 'test')
         self.assertTrue(res['deleted'])
-        self.assertEqualUTF8Strings('test', res['trigger'])
+        self.assertEqual('test', res['trigger'])
 
         triggers = self.watchmanCommand('trigger-list', root)
         self.assertEqual(1, len(triggers['triggers']))
 
         res = self.watchmanCommand('trigger-del', root, 'other')
         self.assertTrue(res['deleted'])
-        self.assertEqualUTF8Strings('other', res['trigger'])
+        self.assertEqual('other', res['trigger'])
 
         triggers = self.watchmanCommand('trigger-list', root)
         self.assertEqual(0, len(triggers['triggers']))

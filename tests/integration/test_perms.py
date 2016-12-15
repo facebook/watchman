@@ -39,8 +39,7 @@ class TestPerms(WatchmanTestCase.WatchmanTestCase):
         res = self.watchmanCommand('query', root, {
             'expression': ['exists'],
             'fields': ['name']})
-        warning = self.decodeBSERUTF8(res['warning'])
-        self.assertRegexpMatches(warning,
+        self.assertRegexpMatches(res['warning'],
                                  'Marking this portion of the tree deleted')
 
     @unittest.skipIf(is_root(), "N/A if root")

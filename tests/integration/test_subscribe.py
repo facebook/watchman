@@ -56,7 +56,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
         self.watchmanCommand('state-enter', root, 'foo')
         begin = self.waitForSub('defer', root)[0]
-        self.assertEqualUTF8Strings('foo', begin['state-enter'])
+        self.assertEqual('foo', begin['state-enter'])
 
         self.touchRelative(root, 'in-foo')
         # We expect this to timeout because state=foo is asserted
@@ -78,8 +78,8 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
           'name': 'foo',
           'metadata': 'meta!'})
         begin = self.waitForSub('defer', root)[0]
-        self.assertEqualUTF8Strings('foo', begin['state-enter'])
-        self.assertEqualUTF8Strings('meta!', begin['metadata'])
+        self.assertEqual('foo', begin['state-enter'])
+        self.assertEqual('meta!', begin['metadata'])
 
         self.touchRelative(root, 'in-foo-2')
         # We expect this to timeout because state=foo is asserted
@@ -93,7 +93,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         end = self.waitForSub('defer', root,
                 accept=lambda x: self.matchStateSubscription(
                     x, 'state-leave'))[0]
-        self.assertEqualUTF8Strings('leavemeta', end['metadata'])
+        self.assertEqual('leavemeta', end['metadata'])
 
         # and now we should observe the file change
         self.assertNotEqual(None,
@@ -112,7 +112,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
         self.watchmanCommand('state-enter', root, 'foo')
         begin = self.waitForSub('drop', root)[0]
-        self.assertEqualUTF8Strings('foo', begin['state-enter'])
+        self.assertEqual('foo', begin['state-enter'])
 
         self.touchRelative(root, 'in-foo')
         # We expect this to timeout because state=foo is asserted
@@ -295,7 +295,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         warn = None
         for item in dat:
             if 'warning' in item:
-                warn = self.decodeBSERUTF8(item['warning'])
+                warn = item['warning']
                 break
         self.assertRegexpMatches(warn, r'Recrawled this watch')
 
@@ -352,6 +352,6 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         warn = None
         for item in dat:
             if 'warning' in item:
-                warn = self.decodeBSERUTF8(item['warning'])
+                warn = item['warning']
                 break
         self.assertRegexpMatches(warn, r'Recrawled this watch')
