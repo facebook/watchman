@@ -150,8 +150,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
         dat = self.waitForSub('defer', root)[0]
         self.assertEqual(True, dat['is_fresh_instance'])
-        self.assertEqual([{'name': '.hg', 'exists': True}],
-                         self.normRecursive(dat['files']))
+        self.assertEqual([{'name': '.hg', 'exists': True}], dat['files'])
 
         # Pretend that hg is update the working copy
         self.touchRelative(root, '.hg', 'wlock')
@@ -184,8 +183,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
         dat = self.waitForSub('nodefer', root)[0]
         self.assertEqual(True, dat['is_fresh_instance'])
-        self.assertEqual([{'name': '.hg', 'exists': True}],
-                         self.normRecursive(dat['files']))
+        self.assertEqual([{'name': '.hg', 'exists': True}], dat['files'])
 
         # Pretend that hg is update the working copy
         self.touchRelative(root, '.hg', 'wlock')

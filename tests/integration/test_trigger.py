@@ -160,8 +160,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
              'stdin': ['name', 'exists', 'new', 'size', 'mode']}]
 
         triggers = self.watchmanCommand('trigger-list', root).get('triggers')
-        self.assertItemsEqual(self.normRecursive(
-            triggers), self.normRecursive(expect))
+        self.assertItemsEqual(triggers, expect)
 
         # start collecting logs
         self.watchmanCommand('log-level', 'debug')
@@ -200,8 +199,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand('debug-recrawl', root)
         # ensure that the triggers don't get deleted
         triggers = self.watchmanCommand('trigger-list', root).get('triggers')
-        self.assertItemsEqual(self.normRecursive(
-            triggers), self.normRecursive(expect))
+        self.assertItemsEqual(triggers, expect)
 
         # The recrawl should cause the triggers to run
         self.assertWaitFor(lambda: self.hasTriggerInLogs(root, 'test') and

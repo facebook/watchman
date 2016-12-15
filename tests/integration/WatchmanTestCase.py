@@ -253,33 +253,6 @@ class WatchmanTestCase(unittest.TestCase):
     def normWatchmanFileList(self, files):
         return sorted(list(map(self.normRelativePath, files)))
 
-    def normRecursive(self, val):
-        '''Normalizes all the stringy keys and values in VAL so that
-           you can compare a watchman response with a pre-built python
-           object and not worry about the b'' or u'' ness of the
-           strings contained therein.'''
-        if pywatchman.compat.PYTHON3 and isinstance(val, str):
-            return val
-        if pywatchman.compat.PYTHON3 and isinstance(val, bytes):
-            return val.decode('utf-8')
-        if not pywatchman.compat.PYTHON3 and isinstance(val, unicode):
-            return val.encode('utf-8')
-        if isinstance(val, STRING_TYPES):
-            return val
-        if isinstance(val, collections.Mapping) and \
-                isinstance(val, collections.Sized):
-            res = {}
-            for k, v in val.items():
-                res[self.normRecursive(k)] = self.normRecursive(v)
-            return res
-        if isinstance(val, collections.Iterable) and \
-                isinstance(val, collections.Sized):
-            res = []
-            for v in val:
-                res.append(self.normRecursive(v))
-            return res
-        return val
-
     def normFileList(self, files):
         return sorted(list(map(self.normRelativePath, files)))
 
