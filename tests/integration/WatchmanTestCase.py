@@ -7,6 +7,7 @@ from __future__ import division
 from __future__ import print_function
 # no unicode literals
 
+import functools
 import inspect
 import errno
 try:
@@ -20,23 +21,12 @@ import os.path
 import os
 import WatchmanInstance
 import TempDir
-import copy
-import sys
-import collections
 
 if pywatchman.compat.PYTHON3:
     STRING_TYPES = (str, bytes)
 else:
     STRING_TYPES = (str, unicode)
 
-# TODO: This normalization will not be needed once we have full unicode support
-# in place as per
-# https://github.com/facebook/watchman/wiki/Better-Unicode-handling-plan
-def conv_path_to_bytes(path):
-    if isinstance(path, pywatchman.compat.UNICODE):
-        return path.encode('utf8')
-    else:
-        return path
 
 if os.name == 'nt':
     # monkey patch to hopefully minimize test flakiness
@@ -185,8 +175,6 @@ class WatchmanTestCase(unittest.TestCase):
         return self.getClient().query(*args)
 
     def normRelativePath(self, path):
-        path = conv_path_to_bytes(path)
-        path = pywatchman.encoding.decode_local(path)
         # TODO: in the future we will standardize on `/` as the
         # dir separator so we can remove the replace call from here.
         # We do not need to normcase because all of our tests are
@@ -195,8 +183,6 @@ class WatchmanTestCase(unittest.TestCase):
         return path.replace('\\', '/')
 
     def normAbsolutePath(self, path):
-        path = conv_path_to_bytes(path)
-        path = pywatchman.encoding.decode_local(path)
         # TODO: in the future we will standardize on `/` as the
         # dir separator so we can remove the replace call.
         return path.replace('\\', '/')
@@ -367,6 +353,26 @@ class WatchmanTestCase(unittest.TestCase):
         watches = [self.normAbsolutePath(
             root) for root in self.watchmanCommand('watch-list')['roots']]
         return r in watches
+
+
+def skip_for(transports=tuple(), codecs=tuple()):
+    """
+    Decorator to allow skipping tests for particular transports or codecs."""
+    transports = set(transports)
+    codecs = set(codecs)
+
+    def skip(f):
+        @functools.wraps(f)
+        def wrapper(self, *args, **kwargs):
+            if self.transport in transports or self.encoding in codecs:
+                self.skipTest(
+                    'test skipped for transport %s, codec %s' %
+                    (self.transport, self.encoding)
+                )
+            return f(self, *args, **kwargs)
+
+        return wrapper
+    return skip
 
 
 def expand_matrix(test_class):
