@@ -427,6 +427,10 @@ class WindowsNamedPipeTransport(Transport):
             CloseHandle(self._waitable)
         self._waitable = None
 
+    def setTimeout(self, value):
+        # convert to milliseconds
+        self.timeout = int(value * 1000)
+
     def readBytes(self, size):
         """ A read can block for an unbounded amount of time, even if the
             kernel reports that the pipe handle is signalled, so we need to
