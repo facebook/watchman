@@ -17,10 +17,9 @@ void CookieSync::setCookieDir(const w_string& dir) {
   hostname[sizeof(hostname) - 1] = '\0';
 
   cookiePrefix_ = w_string::printf(
-      "%.*s%c" WATCHMAN_COOKIE_PREFIX "%s-%d-",
+      "%.*s/" WATCHMAN_COOKIE_PREFIX "%s-%d-",
       int(cookieDir_.size()),
       cookieDir_.data(),
-      WATCHMAN_DIR_SEP,
       hostname,
       int(getpid()));
 }

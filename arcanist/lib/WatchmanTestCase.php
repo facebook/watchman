@@ -21,7 +21,7 @@ function w_normalize_filename($a) {
   if ($a === null) {
     return null;
   }
-  $a = str_replace('/', DIRECTORY_SEPARATOR, $a);
+  $a = str_replace('\\', '/', $a);
   return $a;
 }
 

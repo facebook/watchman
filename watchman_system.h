@@ -83,17 +83,6 @@
 # define PRIsize_t "zu"
 #endif
 
-#ifndef WATCHMAN_DIR_SEP
-# define WATCHMAN_DIR_SEP '/'
-# define WATCHMAN_DIR_DOT '.'
-#endif
-
-#ifdef _WIN32
-#define WATCHMAN_DIR_SEP_STR "\\"
-#else
-#define WATCHMAN_DIR_SEP_STR "/"
-#endif
-
 #ifdef _WIN32
 # define PRIsize_t "Iu"
 #else

@@ -30,8 +30,7 @@ static bool root_check_restrict(const char *watch_path) {
       continue;
     }
 
-    ignore_result(asprintf(&restrict_path, "%s%c%s", watch_path,
-          WATCHMAN_DIR_SEP, restrict_file));
+    ignore_result(asprintf(&restrict_path, "%s/%s", watch_path, restrict_file));
     rv = w_path_exists(restrict_path);
     free(restrict_path);
     if (rv)

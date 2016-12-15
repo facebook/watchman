@@ -29,12 +29,7 @@ static bool is_path_prefix(const char *path, size_t path_len, const char *other,
     return true;
   }
 
-  return path[common_prefix] == WATCHMAN_DIR_SEP
-#ifdef _WIN32
-         // Windows allows both kinds of slashes
-         || path[common_prefix] == '/'
-#endif
-      ;
+  return is_slash(path[common_prefix]);
 }
 
 // Helper to un-doubly-link a pending item.

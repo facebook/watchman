@@ -266,7 +266,7 @@ w_string w_string::pathCat(std::initializer_list<w_string_piece> elems) {
       continue;
     }
     if (buf != s->buf) {
-      *buf = WATCHMAN_DIR_SEP;
+      *buf = '/';
       ++buf;
     }
     memcpy(buf, p.data(), p.size());
@@ -701,12 +701,6 @@ w_string_t *w_string_canon_path(w_string_t *str)
   return str;
 }
 
-#ifdef _WIN32
-#define WRONG_SEP '/'
-#else
-#define WRONG_SEP '\\'
-#endif
-
 // Normalize directory separators to match the platform.
 // Also trims any trailing directory separators
 w_string_t *w_string_normalize_separators(w_string_t *str, char target_sep) {
@@ -807,7 +801,7 @@ w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
   s->len = len;
   buf = (char*)(s + 1);
   memcpy(buf, parent->buf, parent->len);
-  buf[parent->len] = WATCHMAN_DIR_SEP;
+  buf[parent->len] = '/';
   memcpy(buf + parent->len + 1, rhs->buf, rhs->len);
   buf[parent->len + 1 + rhs->len] = '\0';
   s->buf = buf;
@@ -840,7 +834,7 @@ w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
   s->len = len;
   buf = (char*)(s + 1);
   memcpy(buf, parent->buf, parent->len);
-  buf[parent->len] = WATCHMAN_DIR_SEP;
+  buf[parent->len] = '/';
   memcpy(buf + parent->len + 1, rhs, rhs_len);
   buf[parent->len + 1 + rhs_len] = '\0';
   s->buf = buf;
@@ -880,7 +874,7 @@ w_string w_dir_path_cat_str(
   for (d = dir; d; d = d->parent) {
     if (d != dir || (extra.size())) {
       --end;
-      *end = WATCHMAN_DIR_SEP;
+      *end = '/';
     }
     end -= d->name.size();
     memcpy(end, d->name.data(), d->name.size());

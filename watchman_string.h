@@ -68,7 +68,9 @@ w_string_t *w_string_dup_lower(w_string_t *str);
 bool w_string_equal(const w_string_t *a, const w_string_t *b);
 bool w_string_equal_cstring(const w_string_t *a, const char *b);
 
-void w_string_in_place_normalize_separators(w_string_t **str, char target_sep);
+void w_string_in_place_normalize_separators(
+    w_string_t** str,
+    char target_sep = '/');
 
 /* Typed string creation functions. */
 w_string_t *w_string_new_typed(const char *str,
@@ -85,7 +87,9 @@ w_string_t *w_string_new_lower_typed(const char *str,
 void w_string_new_len_typed_stack(w_string_t *into, const char *str,
                                   uint32_t len, w_string_type_t type);
 
-w_string_t *w_string_normalize_separators(w_string_t *str, char target_sep);
+w_string_t* w_string_normalize_separators(
+    w_string_t* str,
+    char target_sep = '/');
 
 w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
 w_string_t *w_string_path_cat_cstr(w_string_t *parent, const char *rhs);

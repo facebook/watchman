@@ -619,10 +619,7 @@ static void compute_file_name(char **strp,
 #endif
           ;
 
-    ignore_result(asprintf(&state_dir, "%s%c%s-state",
-          state_parent,
-          WATCHMAN_DIR_SEP,
-          user));
+    ignore_result(asprintf(&state_dir, "%s/%s-state", state_parent, user));
 
     if (!state_dir) {
       w_log(W_LOG_ERR, "out of memory computing %s\n", what);
@@ -716,8 +713,7 @@ static void compute_file_name(char **strp,
       exit(1);
     }
 
-    ignore_result(asprintf(&str, "%s%c%s",
-          state_dir, WATCHMAN_DIR_SEP, suffix));
+    ignore_result(asprintf(&str, "%s/%s", state_dir, suffix));
 
     if (!str) {
       w_log(W_LOG_ERR, "out of memory computing %s", what);

@@ -73,8 +73,7 @@ const watchman_dir* InMemoryView::resolveDir(
 
   while (true) {
     w_string_t component;
-    auto sep = (const char*)memchr(
-        dir_component, WATCHMAN_DIR_SEP, dir_end - dir_component);
+    auto sep = (const char*)memchr(dir_component, '/', dir_end - dir_component);
     // Note: if sep is NULL it means that we're looking at the basename
     // component of the input directory name, which is the terminal
     // iteration of this search.
@@ -132,8 +131,7 @@ watchman_dir* InMemoryView::resolveDir(
 
   while (true) {
     w_string_t component;
-    auto sep = (const char*)memchr(
-        dir_component, WATCHMAN_DIR_SEP, dir_end - dir_component);
+    auto sep = (const char*)memchr(dir_component, '/', dir_end - dir_component);
     // Note: if sep is NULL it means that we're looking at the basename
     // component of the input directory name, which is the terminal
     // iteration of this search.

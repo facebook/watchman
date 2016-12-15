@@ -39,8 +39,7 @@ const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx) {
     ctx->wholename = ctx->file->getName().asWString();
   } else {
     parent.advance(name_start);
-    ctx->wholename =
-        w_string::build(parent, WATCHMAN_DIR_SEP_STR, ctx->file->getName());
+    ctx->wholename = w_string::build(parent, "/", ctx->file->getName());
   }
 
   return ctx->wholename;

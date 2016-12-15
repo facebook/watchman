@@ -47,12 +47,7 @@ bool watchman_ignore::isIgnored(const char* path, uint32_t pathlen) const {
   skip_prefix = path + leaf->key.size();
   len = pathlen - leaf->key.size();
 
-  if (*skip_prefix != WATCHMAN_DIR_SEP
-#ifdef _WIN32
-      // On windows, both '/' and '\' are possible
-      && *skip_prefix != '/'
-#endif
-      ) {
+  if (!is_slash(*skip_prefix)) {
     // we wanted "foo/bar" but we matched something like "food"
     // this is not an ignore situation.
     return false;
@@ -79,11 +74,11 @@ bool watchman_ignore::isIgnored(const char* path, uint32_t pathlen) const {
 
 #ifndef _WIN32
   // If we find a '/' from this point, we are ignoring this path.
-  return memchr(skip_prefix, WATCHMAN_DIR_SEP, len) != NULL;
+  return memchr(skip_prefix, '/', len) != nullptr;
 #else
   // On windows, both '/' and '\' are possible.
   while (len > 0) {
-    if (*skip_prefix == WATCHMAN_DIR_SEP || *skip_prefix == '/') {
+    if (is_slash(*skip_prefix)) {
       return true;
     }
     skip_prefix++;

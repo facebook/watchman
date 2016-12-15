@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <algorithm>
 
 // Filename mapping and handling strategy
 // We'll track the utf-8 rendition of the underlying filesystem names
@@ -64,6 +65,13 @@ w_string::w_string(const WCHAR* wpath, size_t pathlen) {
     // Replace the "C" from UNC with a leading slash
     buf[0] = '\\';
   }
+
+  // Normalize directory separators for our internal UTF-8
+  // strings to be forward slashes.  These will get transformed
+  // to backslashes when converting to WCHAR in our counterpart
+  // w_string_piece::asWideUNC()
+  std::transform(
+      buf, buf + len, buf, [](wchar_t c) { return c == '\\' ? '/' : c; });
 
   buf[res] = 0;
 }

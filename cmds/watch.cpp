@@ -133,8 +133,7 @@ static bool find_file_in_dir_tree(const char *root_file, char *candidate_dir,
     char *proj_path;
     int rv;
 
-    ignore_result(asprintf(&proj_path, "%s%c%s", candidate_dir,
-          WATCHMAN_DIR_SEP, root_file));
+    ignore_result(asprintf(&proj_path, "%s/%s", candidate_dir, root_file));
     rv = w_path_exists(proj_path);
     free(proj_path);
 
@@ -150,8 +149,8 @@ static bool find_file_in_dir_tree(const char *root_file, char *candidate_dir,
 
     // Walk up to the next level
 #ifdef _WIN32
-    if (strlen(candidate_dir) == 3 &&
-        candidate_dir[1] == ':' && candidate_dir[2] == '\\') {
+    if (strlen(candidate_dir) == 3 && candidate_dir[1] == ':' &&
+        is_slash(candidate_dir[2])) {
       // Drive letter; is a root
       break;
     }
@@ -166,10 +165,9 @@ static bool find_file_in_dir_tree(const char *root_file, char *candidate_dir,
     }
 #endif
 
-
-    slash = strrchr(candidate_dir, WATCHMAN_DIR_SEP);
+    slash = strrchr(candidate_dir, '/');
     if (restore_slash) {
-      *restore_slash = WATCHMAN_DIR_SEP;
+      *restore_slash = '/';
     }
     if (!slash) {
       break;
@@ -179,7 +177,7 @@ static bool find_file_in_dir_tree(const char *root_file, char *candidate_dir,
   }
 
   if (restore_slash) {
-    *restore_slash = WATCHMAN_DIR_SEP;
+    *restore_slash = '/';
   }
   *relpath = NULL;
   return false;

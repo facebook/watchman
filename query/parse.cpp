@@ -166,7 +166,7 @@ static bool parse_paths(w_query* res, const json_ref& query) {
     }
 
     auto nameCopy = w_string_new_typed(name, W_STRING_BYTE);
-    w_string_in_place_normalize_separators(&nameCopy, WATCHMAN_DIR_SEP);
+    w_string_in_place_normalize_separators(&nameCopy);
     res->paths[i].name = nameCopy;
   }
 
@@ -193,7 +193,7 @@ static bool parse_relative_root(
   w_string canon_path = w_string_canon_path(path);
   res->relative_root = w_string::pathCat({root->root_path, canon_path});
   res->relative_root_slash =
-      w_string::printf("%s%c", res->relative_root.c_str(), WATCHMAN_DIR_SEP);
+      w_string::printf("%s/", res->relative_root.c_str());
 
   return true;
 }

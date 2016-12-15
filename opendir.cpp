@@ -261,6 +261,35 @@ static int realpath_fd(int fd, char *canon, size_t canon_size) {
 #endif
 }
 
+/** Compares two path strings.
+ * They are equal if the case of each character matches.
+ * Directory separator slashes are normalized such that
+ * \ and / are considered equal. */
+static bool paths_are_equal(w_string_piece a, w_string_piece b) {
+#ifdef _WIN32
+  if (a.size() != b.size()) {
+    return false;
+  }
+
+  auto A = a.data();
+  auto B = b.data();
+
+  auto end = A + a.size();
+  for (; A < end; ++A, ++B) {
+    if (*A == *B) {
+      continue;
+    }
+    if (is_slash(*A) && is_slash(*B)) {
+      continue;
+    }
+    return false;
+  }
+  return true;
+#else
+  return a == b;
+#endif
+}
+
 /* Opens a file or directory, strictly prohibiting opening any symlinks
  * in any component of the path, and strictly matching the canonical
  * case of the file for case insensitive filesystems.
@@ -284,7 +313,7 @@ static int open_strict(const char *path, int flags) {
   }
 
   if (realpath_fd(fd, canon, sizeof(canon)) == 0) {
-    if (strcmp(canon, path) == 0) {
+    if (paths_are_equal(canon, path)) {
       return fd;
     }
 

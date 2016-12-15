@@ -22,8 +22,7 @@ static json_ref load_root_config(const char* path) {
   char cfgfilename[WATCHMAN_NAME_MAX];
   json_error_t err;
 
-  snprintf(cfgfilename, sizeof(cfgfilename), "%s%c.watchmanconfig",
-      path, WATCHMAN_DIR_SEP);
+  snprintf(cfgfilename, sizeof(cfgfilename), "%s/.watchmanconfig", path);
 
   if (!w_path_exists(cfgfilename)) {
     if (errno == ENOENT) {

@@ -20,8 +20,11 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
   }
 
   /* prepare the input stream for the child process */
-  snprintf(stdin_file_name, sizeof(stdin_file_name), "%s%cwmanXXXXXX",
-      watchman_tmp_dir, WATCHMAN_DIR_SEP);
+  snprintf(
+      stdin_file_name,
+      sizeof(stdin_file_name),
+      "%s/wmanXXXXXX",
+      watchman_tmp_dir);
   auto stdin_file = w_mkstemp(stdin_file_name);
   if (!stdin_file) {
     w_log(W_LOG_ERR, "unable to create a temporary file: %s %s\n",
