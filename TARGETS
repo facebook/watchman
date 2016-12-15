@@ -151,7 +151,8 @@ cpp_library(name='hash',
 cpp_library(name="string",
             compiler_flags=compiler_flags,
             srcs=["string.cpp"],
-            deps=[':headers', ':hash'], )
+            deps=[':headers', ':hash', '@/watchman/thirdparty/jansson:utf'],
+            )
 
 cpp_library(
     name="err",
