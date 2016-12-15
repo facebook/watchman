@@ -7,14 +7,16 @@
 #ifndef JANSSON_H
 #define JANSSON_H
 
-#include <stdio.h>
-#include <stdlib.h>  /* for size_t */
-#include <stdarg.h>
-
-#include "jansson_config.h"
 #include "watchman_string.h" // Needed for w_string_t
-#include <vector>
+
+#include <stdarg.h>
+#include <stdio.h>
+#include <cstdlib> /* for size_t */
+
 #include <atomic>
+#include <vector>
+#include "jansson_config.h"
+#include "utf.h"
 
 /* version */
 

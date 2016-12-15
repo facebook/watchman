@@ -28,6 +28,8 @@ typedef int int32_t;
 
 #endif /* HAVE_CONFIG_H */
 
+#include <cstdlib> /* for size_t */
+
 int utf8_encode(int codepoint, char *buffer, int *size);
 
 int utf8_check_first(char byte);
@@ -35,5 +37,6 @@ int utf8_check_full(const char *buffer, int size, int32_t *codepoint);
 const char *utf8_iterate(const char *buffer, int32_t *codepoint);
 
 int utf8_check_string(const char *string, int length);
+void utf8_fix_string(char *string, size_t length);
 
 #endif

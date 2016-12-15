@@ -161,3 +161,39 @@ int utf8_check_string(const char* string, int length) {
 
   return 1;
 }
+
+void utf8_fix_string(char* string, size_t length) {
+  auto end = string + length;
+
+  while (string < end) {
+    int count = utf8_check_first(*string);
+    if (count == 0) {
+      // Invalid
+      *string = '?';
+      string++;
+      continue;
+    }
+    if (count == 1) {
+      // Valid ASCII character
+      string++;
+      continue;
+    }
+
+    if (count > end - string) {
+      // UTF-8-encoded string claims to be longer than input. This means the
+      // rest of the string is garbage.
+      memset(string, '?', end - string);
+      return;
+    }
+
+    if (!utf8_check_full(string, count, nullptr)) {
+      // Invalid sequence
+      while (count-- > 0) {
+        *string = '?';
+        string++;
+      }
+    } else {
+      string += count;
+    }
+  }
+}

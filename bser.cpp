@@ -225,8 +225,14 @@ bser_utf8string(const bser_ctx_t* ctx, w_string_piece str, void* data) {
 
 static int
 bser_mixedstring(const bser_ctx_t* ctx, w_string_piece str, void* data) {
-  // TODO: Add escaping
-  return bser_generic_string(ctx, str, data, bser_bytestring_hdr);
+  if (ctx->bser_version != 1 &&
+      !(BSER_CAP_DISABLE_UNICODE_FOR_ERRORS & ctx->bser_capabilities) &&
+      !(BSER_CAP_DISABLE_UNICODE & ctx->bser_capabilities)) {
+    auto utf8_clean = str.asUTF8Clean();
+    return bser_utf8string(ctx, utf8_clean, data);
+  } else {
+    return bser_bytestring(ctx, str, data);
+  }
 }
 
 static int bser_array(const bser_ctx_t *ctx, const json_t *array, void *data);

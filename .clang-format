@@ -45,7 +45,9 @@ DerivePointerAlignment: false
 DisableFormat:   false
 ForEachMacros:   [ FOR_EACH_RANGE, FOR_EACH, ]
 IncludeCategories:
-  - Regex:           '^"watchman.h"'
+  - Regex:           '^"watchman_system.h"'
+    Priority:        -2
+  - Regex:           '^"watchman(|_string).h"'
     Priority:        -1
   - Regex:           '^<.*\.h(pp)?>'
     Priority:        1

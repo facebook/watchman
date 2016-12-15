@@ -4,6 +4,8 @@
 #ifndef WATCHMAN_STRING_H
 #define WATCHMAN_STRING_H
 
+#include "watchman_system.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <atomic>
@@ -171,6 +173,9 @@ class w_string_piece {
 
   /** Return a lowercased copy of the string */
   w_string asLowerCase(w_string_type_t stringType = W_STRING_BYTE) const;
+
+  /** Return a UTF-8-clean copy of the string */
+  w_string asUTF8Clean() const;
 
   /** Returns true if the filename suffix of this string matches
    * the provided suffix, which must be lower cased.

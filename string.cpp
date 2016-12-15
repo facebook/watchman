@@ -46,6 +46,12 @@ w_string w_string_piece::asLowerCase(w_string_type_t stringType) const {
   return w_string(s, false);
 }
 
+w_string w_string_piece::asUTF8Clean() const {
+  w_string s(s_, e_ - s_, W_STRING_UNICODE);
+  utf8_fix_string(const_cast<char*>(s.data()), s.size());
+  return s;
+}
+
 bool w_string_piece::pathIsAbsolute() const {
   return w_is_path_absolute_cstr_len(data(), size());
 }

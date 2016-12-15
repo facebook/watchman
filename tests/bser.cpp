@@ -190,30 +190,75 @@ static void check_serialization(
 // to see how it's constructed.
 // The breaks in the middle of the string literals here are to prevent "\x05f"
 // etc from being treated as a single character.
-static const std::string bser_no_unicode =
-    S("\x00\x03\x02\x02\x03\x05"
-      "foo\xd0\xff\x02\x03\x07"
-      "foo" UTF8_PILE_OF_POO);
+static const std::string bser_typed_intro = S("\x00\x03\x03");
+static const std::string bser_typed_bytestring =
+    S("\x02\x03\x05"
+      "foo\xd0\xff");
+
+static const std::string bser_typed_utf8string_byte =
+    S("\x02\x03\x07"
+      "bar" UTF8_PILE_OF_POO);
+static const std::string bser_typed_utf8string_utf8 =
+    S("\x0d\x03\x07"
+      "bar" UTF8_PILE_OF_POO);
+
+static const std::string bser_typed_mixedstring_byte =
+    S("\x02\x03\x0e"
+      "baz\xb1\xc1\xe0\x90\x40" UTF8_PILE_OF_POO "\xf4\xff");
+static const std::string bser_typed_mixedstring_utf8 =
+    S("\x0d\x03\x0e"
+      "baz?????" UTF8_PILE_OF_POO "??");
 
 // The tuples are (bser version, bser capabilities, expected BSER serialization)
 static std::vector<std::tuple<uint32_t, uint32_t, std::string>>
     typed_string_checks = {
-        std::make_tuple(1, 0, bser_no_unicode),
+        std::make_tuple(
+            1,
+            0,
+            bser_typed_intro + bser_typed_bytestring +
+                bser_typed_utf8string_byte +
+                bser_typed_mixedstring_byte),
         std::make_tuple(
             2,
             0,
-            S("\x00\x03\x02\x02\x03\x05"
-              "foo\xd0\xff\x0d\x03\x07"
-              "foo" UTF8_PILE_OF_POO)),
-        std::make_tuple(2, BSER_CAP_DISABLE_UNICODE, bser_no_unicode)};
+            bser_typed_intro + bser_typed_bytestring +
+                bser_typed_utf8string_utf8 +
+                bser_typed_mixedstring_utf8),
+        std::make_tuple(
+            2,
+            BSER_CAP_DISABLE_UNICODE,
+            bser_typed_intro + bser_typed_bytestring +
+                bser_typed_utf8string_byte +
+                bser_typed_mixedstring_byte),
+        std::make_tuple(
+            2,
+            BSER_CAP_DISABLE_UNICODE_FOR_ERRORS,
+            bser_typed_intro + bser_typed_bytestring +
+                bser_typed_utf8string_utf8 +
+                bser_typed_mixedstring_byte),
+
+        std::make_tuple(
+            2,
+            BSER_CAP_DISABLE_UNICODE | BSER_CAP_DISABLE_UNICODE_FOR_ERRORS,
+            bser_typed_intro + bser_typed_bytestring +
+                bser_typed_utf8string_byte +
+                bser_typed_mixedstring_byte)};
 
 static void check_bser_typed_strings() {
   auto bytestring = typed_string_to_json("foo\xd0\xff", W_STRING_BYTE);
   auto utf8string =
-      typed_string_to_json("foo" UTF8_PILE_OF_POO, W_STRING_UNICODE);
-  // TODO(sid0): add mixed string
+      typed_string_to_json("bar" UTF8_PILE_OF_POO, W_STRING_UNICODE);
+  // This consists of
+  // - ASCII (valid)
+  // - bare continuation byte 0xB1 (invalid)
+  // - overlong encoding of an ASCII byte 0xC1 (invalid)
+  // - 3 byte sequence with valid start (0xE0 0x90) but an invalid byte (0x40)
+  // - 4 byte sequence (valid)
+  // - 4 byte sequence (0xF4) past the end of the string (invalid)
+  auto mixedstring = typed_string_to_json(
+      "baz\xb1\xc1\xe0\x90\x40" UTF8_PILE_OF_POO "\xf4\xff", W_STRING_MIXED);
 
-  auto str_array = json_array({bytestring, utf8string});
+  auto str_array = json_array({bytestring, utf8string, mixedstring});
 
   // check that this gets serialized correctly
   for (const auto& t : typed_string_checks) {
