@@ -110,7 +110,13 @@ static bool is_basename_canonical_case(const char *path) {
   err = GetLastError();
 
   if (long_len == 0) {
-    throw std::system_error(err, std::system_category(), "GetLongPathNameW");
+    watchman::log(
+        watchman::ERR,
+        "GetLongPathNameW(",
+        path,
+        ") failed: ",
+        std::system_category().message(err).c_str());
+    return false;
   }
 
   if (long_len > long_buf.size()) {
