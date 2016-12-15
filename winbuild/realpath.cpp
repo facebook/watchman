@@ -6,7 +6,6 @@
 using watchman::Win32Handle;
 
 char *realpath(const char *filename, char *target) {
-#if 1 /* Requires Vista or later */
   std::wstring wchar;
   DWORD err, len;
   char *utf8;
@@ -70,42 +69,6 @@ char *realpath(const char *filename, char *target) {
 
   w_string result(wchar.data(), len);
   return strdup(result.c_str());
-#else
-  char full_buf[WATCHMAN_NAME_MAX];
-  char long_buf[WATCHMAN_NAME_MAX];
-  char *base = NULL;
-  DWORD full_len, long_len;
-
-  printf("realpath called with '%s'\n", filename);
-
-  if (!strlen(filename)) {
-    // Special case for "" -> cwd
-    full_len = GetCurrentDirectory(sizeof(full_buf), full_buf);
-  } else {
-    full_len = GetFullPathName(filename, sizeof(full_buf), full_buf, &base);
-  }
-  if (full_len > sizeof(full_buf)-1) {
-    w_log(W_LOG_FATAL, "GetFullPathName needs %lu chars\n", full_len);
-  }
-
-  full_buf[full_len] = 0;
-  printf("full: %s\n", full_buf);
-
-  long_len = GetLongPathName(full_buf, long_buf, sizeof(long_buf));
-  if (long_len > sizeof(long_buf)-1) {
-    w_log(W_LOG_FATAL, "GetLongPathName needs %lu chars\n", long_len);
-  }
-
-  long_buf[long_len] = 0;
-  printf("long: %s\n", long_buf);
-
-  if (target) {
-    // Pray they passed in a big enough buffer
-    strcpy(target, long_buf);
-    return target;
-  }
-  return strdup(long_buf);
-#endif
 }
 
 
