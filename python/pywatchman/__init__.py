@@ -898,7 +898,7 @@ class client(object):
             self.subs[sub].append(result)
 
             # also accumulate in {root,sub} keyed store
-            root = os.path.normcase(result['root'])
+            root = os.path.normpath(os.path.normcase(result['root']))
             if not root in self.sub_by_root:
                 self.sub_by_root[root] = {}
             if not sub in self.sub_by_root[root]:
@@ -950,9 +950,10 @@ class client(object):
                 name = name.encode('utf-8')
 
         if root is not None:
-            if not root in self.sub_by_root:
+            root = os.path.normpath(os.path.normcase(root))
+            if root not in self.sub_by_root:
                 return None
-            if not name in self.sub_by_root[root]:
+            if name not in self.sub_by_root[root]:
                 return None
             sub = self.sub_by_root[root][name]
             if remove:
@@ -962,7 +963,7 @@ class client(object):
                     del self.subs[name]
             return sub
 
-        if not (name in self.subs):
+        if name not in self.subs:
             return None
         sub = self.subs[name]
         if remove:
