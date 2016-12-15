@@ -5,12 +5,17 @@
 #include "thirdparty/jansson/jansson_private.h"
 #include "thirdparty/jansson/strbuffer.h"
 #include "thirdparty/tap.h"
+#include "watchman_scopeguard.h"
+
+// Construct a std::string from a literal that may have embedded NUL bytes.
+// The -1 compensates for the NUL terminator that is included in sizeof()
+#define S(str_literal) std::string(str_literal, sizeof(str_literal) - 1)
 
 static int dump_to_strbuffer(const char* buffer, size_t size, void* data) {
   return strbuffer_append_bytes((strbuffer_t*)data, buffer, size);
 }
 
-static void hexdump(char* start, char* end) {
+static void hexdump(const char* start, const char* end) {
   int i;
   int maxbytes = 24;
 
@@ -36,7 +41,7 @@ static void hexdump(char* start, char* end) {
   }
 }
 
-static char* bdumps(json_t* json, char** end) {
+static std::unique_ptr<std::string> bdumps(const json_ref& json) {
   strbuffer_t strbuff;
   bser_ctx_t ctx{1, 0, dump_to_strbuffer};
 
@@ -44,28 +49,32 @@ static char* bdumps(json_t* json, char** end) {
     return nullptr;
   }
 
+  SCOPE_EXIT {
+    strbuffer_close(&strbuff);
+  };
+
   if (w_bser_dump(&ctx, json, &strbuff) == 0) {
-    *end = strbuff.value + strbuff.length;
-    return strbuff.value;
+    return watchman::make_unique<std::string>(strbuff.value, strbuff.length);
   }
 
-  strbuffer_close(&strbuff);
   return nullptr;
 }
 
-static char* bdumps_pdu(json_t* json, char** end) {
+static std::unique_ptr<std::string> bdumps_pdu(const json_ref& json) {
   strbuffer_t strbuff;
 
   if (strbuffer_init(&strbuff)) {
     return nullptr;
   }
 
+  SCOPE_EXIT {
+    strbuffer_close(&strbuff);
+  };
+
   if (w_bser_write_pdu(1, 0, dump_to_strbuffer, json, &strbuff) == 0) {
-    *end = strbuff.value + strbuff.length;
-    return strbuff.value;
+    return watchman::make_unique<std::string>(strbuff.value, strbuff.length);
   }
 
-  strbuffer_close(&strbuff);
   return nullptr;
 }
 
@@ -90,7 +99,6 @@ static struct {
      "[\"name\", \"age\"]"}};
 
 static bool check_roundtrip(const char* input, const char* template_text) {
-  char *dump_buf, *end;
   char* jdump;
   json_ref templ;
   json_error_t jerr;
@@ -106,15 +114,16 @@ static bool check_roundtrip(const char* input, const char* template_text) {
     json_array_set_template(expected, templ);
   }
 
-  dump_buf = bdumps(expected, &end);
+  auto dump_buf = bdumps(expected);
   ok(dump_buf != nullptr, "dumped something");
   if (!dump_buf) {
     return false;
   }
-  hexdump(dump_buf, end);
+  const char* end = dump_buf->data() + dump_buf->size();
+  hexdump(dump_buf->data(), end);
 
   memset(&jerr, 0, sizeof(jerr));
-  auto decoded = bunser(dump_buf, end, &needed, &jerr);
+  auto decoded = bunser(dump_buf->data(), end, &needed, &jerr);
   ok(decoded, "decoded something (err = %s)", jerr.text);
 
   jdump = json_dumps(decoded, JSON_SORT_KEYS);
@@ -124,20 +133,16 @@ static bool check_roundtrip(const char* input, const char* template_text) {
   ok(!strcmp(jdump, input), "round-tripped strcmp");
 
   free(jdump);
-  free(dump_buf);
   return true;
 }
 
-static void check_serialization(const char* json_in, const char* bser_out) {
-  char* bser_in;
-  char* end = nullptr;
+static void check_serialization(
+    const char* json_in,
+    const std::string& bser_out) {
   json_error_t jerr;
-  unsigned int length;
   auto input = json_loads(json_in, 0, &jerr);
-  bser_in = bdumps_pdu(input, &end);
-  length = (unsigned int)(end - bser_in);
-  ok(memcmp(bser_in, bser_out, length) == 0, "raw bser comparison %s", json_in);
-  free(bser_in);
+  auto bser_in = bdumps_pdu(input);
+  ok(*bser_in == bser_out, "raw bser comparison %s", json_in);
 }
 
 int main(int argc, char** argv) {
@@ -163,12 +168,12 @@ int main(int argc, char** argv) {
   }
   check_serialization(
       "[\"Tom\", \"Jerry\"]",
-      "\x00\x01\x03\x11\x00\x03\x02\x02\x03\x03\x54\x6f\x6d\x02\x03\x05\x4a"
-      "\x65\x72\x72\x79");
+      S("\x00\x01\x03\x11\x00\x03\x02\x02\x03\x03\x54\x6f\x6d\x02\x03\x05\x4a"
+        "\x65\x72\x72\x79"));
   check_serialization(
       "[1, 123, 12345, 1234567, 12345678912345678]",
-      "\x00\x01\x03\x18\x00\x03\x05\x03\x01\x03\x7b\x04\x39\x30\x05\x87\xd6"
-      "\x12\x00\x06\x4e\xd6\x14\x5e\x54\xdc\x2b\x00");
+      S("\x00\x01\x03\x18\x00\x03\x05\x03\x01\x03\x7b\x04\x39\x30\x05\x87\xd6"
+        "\x12\x00\x06\x4e\xd6\x14\x5e\x54\xdc\x2b\x00"));
   return exit_status();
 }
 
