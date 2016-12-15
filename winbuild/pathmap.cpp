@@ -140,7 +140,7 @@ std::wstring w_string_piece::asWideUNC() const {
   }
 
   // Step 3, convert into the new space
-  result.resize(prefix_len + len + 1);
+  result.resize(prefix_len + len);
   res = MultiByteToWideChar(
       CP_UTF8, 0, path.data(), path.size(), &result[prefix_len], len);
 
