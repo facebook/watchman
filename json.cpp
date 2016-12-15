@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 
+W_CAP_REG("bser-v2")
 watchman_json_buffer::watchman_json_buffer()
     : buf((char*)malloc(WATCHMAN_IO_BUF_SIZE)),
       allocd(WATCHMAN_IO_BUF_SIZE),

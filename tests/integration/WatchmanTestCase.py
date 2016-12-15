@@ -185,14 +185,7 @@ class WatchmanTestCase(unittest.TestCase):
         return self.getClient().query(*args)
 
     def decodeBSERUTF8(self, s, surrogateescape=False):
-        if pywatchman.compat.PYTHON3 and \
-                (self.encoding == 'experimental-bser-v2' or \
-                 self.encoding == 'bser'):
-            if surrogateescape:
-                errors = 'surrogateescape'
-            else:
-                errors = 'strict'
-            return s.decode('utf-8', errors)
+        # TODO(sid0): this is no longer necessary, clean up
         return s
 
     def normRelativePath(self, path):
@@ -424,11 +417,15 @@ def expand_matrix(test_class):
     '''
 
     matrix = [
-        ('local', 'bser', 'LocalBser'),
-        ('local', 'experimental-bser-v2', 'LocalBser2'),
+        ('local', 'bser', 'LocalBser2'),
         ('local', 'json', 'LocalJson'),
         ('cli', 'json', 'CliJson'),
     ]
+
+    if not pywatchman.compat.PYTHON3:
+        matrix += [
+            ('local', 'bser-v1', 'LocalBser'),
+        ]
 
     # We do some rather hacky things here to define new test class types
     # in our caller's scope.  This is needed so that the unittest TestLoader
