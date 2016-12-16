@@ -8,11 +8,7 @@ import os
 import platform
 import ctypes
 
-if hasattr(os, 'fsencode'):
-    fsencode = os.fsencode
-else:
-    def fsencode(s):
-        return s
+from pywatchman import compat
 
 if os.name == 'nt':
 
@@ -75,7 +71,11 @@ elif platform.system() == 'Darwin':
             result = getpath_fcntl(fd, F_GETPATH, buf)
             if result != 0:
                 raise OSError(ctypes.get_errno())
-            return fsencode(buf.value)
+            # buf is a bytes buffer, so normalize it if necessary
+            ret = buf.value
+            if isinstance(name, compat.UNICODE):
+                ret = os.fsdecode(ret)
+            return ret
         finally:
             os.close(fd)
 
