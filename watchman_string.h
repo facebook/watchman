@@ -138,7 +138,7 @@ class w_string_piece {
   /** Construct from a string-like object */
   template <
       typename String,
-      typename std::enable_if<std::is_class<String>::value>::type = 0>
+      typename std::enable_if<std::is_class<String>::value, int>::type = 0>
   inline /* implicit */ w_string_piece(const String& str)
       : s_(str.data()), e_(str.data() + str.size()) {}
 
