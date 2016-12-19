@@ -41,11 +41,11 @@ void InMemoryView::statPath(
 
   auto dir_name = full_path.dirName();
   auto file_name = full_path.baseName();
-  auto dir = resolveDir(view, dir_name, true);
+  auto parentDir = resolveDir(view, dir_name, true);
 
-  auto file = dir->getChildFile(file_name);
+  auto file = parentDir->getChildFile(file_name);
 
-  auto dir_ent = dir->getChildDir(file_name);
+  auto dir_ent = parentDir->getChildDir(file_name);
 
   if (pre_stat && pre_stat->has_stat) {
     memcpy(&st, &pre_stat->stat, sizeof(st));
@@ -69,13 +69,15 @@ void InMemoryView::statPath(
     /* it's not there, update our state */
     if (dir_ent) {
       markDirDeleted(view, dir_ent, now, true);
-      w_log(
-          W_LOG_DBG,
-          "w_lstat(%s) -> %s so stopping watch on %.*s\n",
+      watchman::log(
+          watchman::DBG,
+          "w_lstat(",
           path,
+          ") -> ",
           strerror(err),
-          int(dir_name.size()),
-          dir_name.data());
+          " so stopping watch on ",
+          file->getName(),
+          "\n");
     }
     if (file) {
       if (file->exists) {
@@ -96,7 +98,7 @@ void InMemoryView::statPath(
       // in the filesystem.  We need to generate a deleted file
       // representation of it now, so that subscription clients can
       // be notified of this event
-      file = getOrCreateChildFile(view, dir, file_name, now);
+      file = getOrCreateChildFile(view, parentDir, file_name, now);
       w_log(W_LOG_DBG, "w_lstat(%s) -> %s and file node was NULL. "
           "Generating a deleted node.\n", path, strerror(err));
       file->exists = false;
@@ -104,7 +106,7 @@ void InMemoryView::statPath(
     }
 
     if (!root->case_sensitive && !w_string_equal(dir_name, root->root_path) &&
-        dir->last_check_existed) {
+        parentDir->last_check_existed) {
       /* If we rejected the name because it wasn't canonical,
        * we need to ensure that we look in the parent dir to discover
        * the new item(s) */
@@ -123,7 +125,7 @@ void InMemoryView::statPath(
         path, err, strerror(err));
   } else {
     if (!file) {
-      file = getOrCreateChildFile(view, dir, file_name, now);
+      file = getOrCreateChildFile(view, parentDir, file_name, now);
     }
 
     if (!file->exists) {
@@ -216,7 +218,7 @@ void InMemoryView::statPath(
     }
     if ((watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
         !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&
-        dir->last_check_existed) {
+        parentDir->last_check_existed) {
       /* Make sure we update the mtime on the parent directory.
        * We're deliberately not propagating any of the flags through; we
        * definitely don't want this to be a recursive evaluation and we
