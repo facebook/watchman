@@ -41,16 +41,20 @@ void PendingCollectionBase::unlinkItem(
   auto prev = p->prev.lock();
 
   if (prev) {
-    prev->next = std::move(p->next);
+    prev->next = p->next;
   }
 
   if (p->next) {
     p->next->prev = prev;
   }
+
+  p->next.reset();
+  p->prev.reset();
 }
 
 // Helper to doubly-link a pending item to the head of a collection.
 void PendingCollectionBase::linkHead(std::shared_ptr<watchman_pending_fs>&& p) {
+  p->prev.reset();
   p->next = pending_;
   if (p->next) {
     p->next->prev = p;
