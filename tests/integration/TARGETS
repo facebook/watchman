@@ -15,16 +15,39 @@ env = {
     #'WATCHMAN_TEST_KEEP': '1',
 }
 
-python_unittest(
-    name='test',
-    srcs=glob([
+srcs = glob(
+    [
         'Interrupt.py',
         'TempDir.py',
         'Wat*.py',
         'test_*.py',
         'path_utils.py',
-    ]),
+    ]
+)
+
+py3_srcs = glob(
+    [
+        'Interrupt.py',
+        'TempDir.py',
+        'Wat*.py',
+        'test_*.py',
+        'path_utils.py',
+    ],
+    excludes=[
+        'test_nodejs.py',
+        'test_php.py',
+    ]
+)
+
+python_library(
+    name='testlib',
+    srcs=srcs,
+)
+
+python_unittest(
+    name='test',
     env=env,
+    srcs=srcs,
     deps=[
       '@/watchman/python/pywatchman:pywatchman',
       '@/watchman:watchman',
@@ -38,20 +61,17 @@ python_unittest(
     ]+sandcastle_tags,
 )
 
+python_library(
+    name='testlib-py3',
+    srcs=py3_srcs,
+)
+
 python_unittest(
     name='test-py3',
-    srcs=glob([
-        'Interrupt.py',
-        'TempDir.py',
-        'Wat*.py',
-        'test_*.py',
-        'path_utils.py',
-    ],excludes=[
-        'test_nodejs.py',
-        'test_php.py',
-    ]),
     env=env,
+    srcs=py3_srcs,
     deps=[
+      ':testlib-py3',
       '@/watchman/python/pywatchman:pywatchman',
       '@/watchman:watchman',
     ],

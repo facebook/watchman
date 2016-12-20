@@ -21,9 +21,14 @@ try:
 except ImportError:
     import unittest
 import sys
-# Ensure that we can find pywatchman
-sys.path.insert(0, os.path.join(os.getcwd(), 'python'))
-sys.path.insert(0, os.path.join(os.getcwd(), 'tests', 'integration'))
+
+# Ensure that we can find pywatchman and integration tests (if we're not the
+# main module, a wrapper is probably loading us up and we shouldn't screw around
+# with sys.path).
+if __name__ == '__main__':
+    sys.path.insert(0, os.path.join(os.getcwd(), 'python'))
+    sys.path.insert(0, os.path.join(os.getcwd(), 'tests', 'integration'))
+
 import tempfile
 import shutil
 import subprocess

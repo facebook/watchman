@@ -230,3 +230,18 @@ cpp_binary(
         ':watchmanlib',
     ]
 )
+
+# This is the custom test runner used by the open source build.
+python_library(
+    name='runtests',
+    srcs=['runtests.py'],
+    deps=['@/watchman/tests/integration:testlib', ':watchman'],
+    py_version='<3',
+)
+
+python_library(
+    name='runtests-py3',
+    srcs=['runtests.py'],
+    deps=['@/watchman/tests/integration:testlib-py3', ':watchman'],
+    py_version='>=3.5',
+)
