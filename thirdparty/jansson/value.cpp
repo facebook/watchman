@@ -73,6 +73,20 @@ json_t::json_t(json_type type, json_t::SingletonHack&&)
 
 /*** object ***/
 
+const std::unordered_map<w_string, json_ref>& json_ref::object() const {
+  if (!json_is_object(ref_)) {
+    throw std::domain_error("json_ref::object() called for non-object");
+  }
+  return json_to_object(ref_)->map;
+}
+
+std::unordered_map<w_string, json_ref>& json_ref::object() {
+  if (!json_is_object(ref_)) {
+    throw std::domain_error("json_ref::object() called for non-object");
+  }
+  return json_to_object(ref_)->map;
+}
+
 json_object_t::json_object_t(size_t sizeHint) : json(JSON_OBJECT) {
   map.reserve(sizeHint);
 }

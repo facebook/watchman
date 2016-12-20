@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <cstdlib> /* for size_t */
+#include <unordered_map>
 
 #include <atomic>
 #include <vector>
@@ -126,6 +127,13 @@ class json_ref {
    * and for returning the size of the array. */
   const std::vector<json_ref>& array() const;
   std::vector<json_ref>& array();
+
+  /** Returns a reference to the underlying map object.
+   * Throws domain_error if this is not an object.
+   * This is useful for iterating over the object contents, etc.
+   */
+  const std::unordered_map<w_string, json_ref>& object() const;
+  std::unordered_map<w_string, json_ref>& object();
 
   /** Returns a reference to the array value at the specified index.
    * Throws out_of_range or domain_error if the index is bad or if
