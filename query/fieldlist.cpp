@@ -222,7 +222,7 @@ bool parse_field_list(
   }
 
   for (i = 0; i < json_array_size(field_list); i++) {
-    json_t *jname = json_array_get(field_list, i);
+    auto jname = json_array_get(field_list, i);
 
     if (!json_is_string(jname)) {
       *errmsg = strdup("field list must be an array of strings");

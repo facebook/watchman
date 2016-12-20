@@ -190,7 +190,7 @@ bool find_project_root(
   uint32_t i;
 
   for (i = 0; i < json_array_size(root_files); i++) {
-    json_t *item = json_array_get(root_files, i);
+    auto item = json_array_get(root_files, i);
     const char *name = json_string_value(item);
 
     if (find_file_in_dir_tree(name, resolved, relpath)) {

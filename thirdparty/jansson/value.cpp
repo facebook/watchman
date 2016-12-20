@@ -385,18 +385,17 @@ size_t json_array_size(const json_t *json)
     return json_to_array(json)->table.size();
 }
 
-json_t *json_array_get(const json_t *json, size_t index)
-{
-    json_array_t *array;
-    if(!json_is_array(json))
-        return NULL;
-    array = json_to_array(json);
+json_ref json_array_get(const json_t* json, size_t index) {
+  if (!json_is_array(json)) {
+    return nullptr;
+  }
+  auto array = json_to_array(json);
 
-    if (index >= array->table.size()) {
-      return nullptr;
-    }
+  if (index >= array->table.size()) {
+    return nullptr;
+  }
 
-    return array->table[index];
+  return array->table[index];
 }
 
 int json_array_set_new(json_t* json, size_t index, json_ref&& value) {

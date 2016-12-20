@@ -75,7 +75,7 @@ static bool check_allowed_fs(const char *filename, char **errmsg) {
   }
 
   for (i = 0; i < json_array_size(illegal_fstypes); i++) {
-    json_t *obj = json_array_get(illegal_fstypes, i);
+    auto obj = json_array_get(illegal_fstypes, i);
     const char *name = json_string_value(obj);
 
     if (!name) {

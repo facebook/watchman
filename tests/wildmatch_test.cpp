@@ -94,7 +94,7 @@ int main(int, char**) {
   num_tests = json_array_size(test_cases);
   plan_tests((unsigned int)num_tests);
   for (index = 0; index < num_tests; index++) {
-    json_t *test_case_data = json_array_get(test_cases, index);
+    auto test_case_data = json_array_get(test_cases, index);
     run_test(test_case_data);
   }
   return exit_status();
