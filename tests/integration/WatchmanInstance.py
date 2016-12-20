@@ -167,10 +167,11 @@ class _Instance(object):
                                      stdin=None,
                                      stdout=self.cli_log_file,
                                      stderr=self.cli_log_file)
-
         if self.debug_watchman:
-            print('Watchman instance PID:' + str(self.proc.pid))
-            raw_input('Press enter to continue...')
+            print('Watchman instance PID: ' + str(self.proc.pid))
+            if not pywatchman.compat.PYTHON3:
+                input = raw_input
+            input('Press any key to continue...')
 
         # wait for it to come up
         deadline = time.time() + self.start_timeout
