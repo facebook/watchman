@@ -52,6 +52,9 @@ struct watchman_client_subscription
     : public std::enable_shared_from_this<watchman_client_subscription> {
   std::shared_ptr<w_root_t> root;
   w_string name;
+  /* whether this subscription is paused */
+  bool debug_paused = false;
+
   std::shared_ptr<w_query> query;
   bool vcs_defer;
   uint32_t last_sub_tick;

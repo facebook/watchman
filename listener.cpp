@@ -251,7 +251,7 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
                 continue;
               }
 
-              if (item->payload.get_default("settled")) {
+              if (!sub->debug_paused && item->payload.get_default("settled")) {
                 seenSettle = true;
                 continue;
               }

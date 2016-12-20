@@ -126,5 +126,52 @@ static void cmd_debug_drop_privs(
 }
 W_CMD_REG("debug-drop-privs", cmd_debug_drop_privs, CMD_DAEMON, NULL);
 
+static void cmd_debug_set_subscriptions_paused(
+    struct watchman_client* clientbase,
+    const json_ref& args) {
+  auto client = (struct watchman_user_client*)clientbase;
+
+  const auto& paused = args.at(1);
+  auto& paused_map = paused.object();
+  for (auto& it : paused_map) {
+    auto sub_iter = client->subscriptions.find(it.first);
+    if (sub_iter == client->subscriptions.end()) {
+      send_error_response(
+          client,
+          "this client does not have a subscription named '%s'",
+          it.first.c_str());
+      return;
+    }
+    if (!json_is_boolean(it.second)) {
+      send_error_response(
+          client,
+          "new value for subscription '%s' not a boolean",
+          it.first.c_str());
+      return;
+    }
+  }
+
+  auto states = json_object();
+
+  for (auto& it : paused_map) {
+    auto sub_iter = client->subscriptions.find(it.first);
+    bool old_paused = sub_iter->second->debug_paused;
+    bool new_paused = json_is_true(it.second);
+    sub_iter->second->debug_paused = new_paused;
+    states.set(
+        it.first,
+        json_object({{"old", json_boolean(old_paused)}, {"new", it.second}}));
+  }
+
+  auto resp = make_response();
+  resp.set("paused", std::move(states));
+  send_and_dispose_response(clientbase, std::move(resp));
+}
+W_CMD_REG(
+    "debug-set-subscriptions-paused",
+    cmd_debug_set_subscriptions_paused,
+    CMD_DAEMON,
+    nullptr)
+
 /* vim:ts=2:sw=2:et:
  */
