@@ -91,10 +91,19 @@ std::shared_ptr<watchman::QueryableView> WatcherRegistry::initWatcher(
   // and then work through them, taking the first one that sticks
   for (auto& watcher : watchers) {
     try {
+      watchman::log(
+          watchman::DBG,
+          "attempting to use watcher ",
+          watcher->getName(),
+          " on ",
+          root->root_path,
+          "\n");
       return reportWatcher(watcherName, root, watcher->init_(root));
     } catch (const std::exception& e) {
+      watchman::log(watchman::DBG, watcher->getName(), ": ", e.what(), ".\n");
       failureReasons.append(
-          watcherName + std::string(": ") + e.what() + std::string(". "));
+          watcher->getName() + std::string(": ") + e.what() +
+          std::string(". "));
     }
   }
 

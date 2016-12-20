@@ -74,6 +74,10 @@ class WatcherRegistry {
   /** Locate the appropriate watcher for root and initialize it */
   static std::shared_ptr<watchman::QueryableView> initWatcher(w_root_t* root);
 
+  const std::string& getName() const {
+    return name_;
+  }
+
  private:
   std::string name_;
   std::function<std::shared_ptr<watchman::QueryableView>(w_root_t*)> init_;

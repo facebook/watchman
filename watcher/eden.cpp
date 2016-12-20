@@ -1,13 +1,46 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include <folly/io/async/EventBase.h>
+#include <folly/io/async/EventBaseManager.h>
+#include <thrift/lib/cpp2/async/HeaderClientChannel.h>
+#include "eden/fs/service/gen-cpp2/EdenService.h"
 #include "watchman.h"
+
 #include "QueryableView.h"
+
+using facebook::eden::EdenServiceAsyncClient;
 
 namespace watchman {
 namespace {
+
+folly::SocketAddress getEdenServerSocketAddress() {
+  folly::SocketAddress addr;
+  // In the future, eden will need to provide a well-supported way to locate
+  // this socket, as the "local" path component here is a FB-specific default.
+  auto path = folly::to<std::string>(getenv("HOME"), "/local/.eden/socket");
+  addr.setFromPath(path);
+  return addr;
+}
+
+/** Create a thrift client that will connect to the eden server associated
+ * with the current user. */
+std::unique_ptr<EdenServiceAsyncClient> getEdenClient(
+    folly::EventBase* eb = folly::EventBaseManager::get()->getEventBase()) {
+  return folly::make_unique<EdenServiceAsyncClient>(
+      apache::thrift::HeaderClientChannel::newChannel(
+          apache::thrift::async::TAsyncSocket::newSocket(
+              eb, getEdenServerSocketAddress())));
+}
+
 class EdenView : public QueryableView {
+  w_string root_path_;
+
  public:
+  explicit EdenView(w_root_t* root) {
+    root_path_ = root->root_path;
+  }
+
   bool timeGenerator(
       w_query* query,
       struct w_query_ctx* ctx,
@@ -84,7 +117,17 @@ class EdenView : public QueryableView {
 };
 
 std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
-  throw std::runtime_error("not an eden mount");
+  // This is mildly ghetto, but the way we figure out if the intended path
+  // is on an eden mount is to ask eden to stat the root of that mount;
+  // if it throws then it is not an eden mount.
+  auto client = getEdenClient();
+
+  std::vector<::facebook::eden::FileInformationOrError> info;
+  static const std::vector<std::string> paths{""};
+  client->sync_getFileInformation(
+      info, std::string(root->root_path.data(), root->root_path.size()), paths);
+
+  return std::make_shared<EdenView>(root);
 }
 
 } // anon namespace
