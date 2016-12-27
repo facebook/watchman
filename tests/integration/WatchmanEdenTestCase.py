@@ -33,7 +33,6 @@ except ImportError:
         return False
 
 
-@unittest.skipIf(not can_run_eden(), "unable to run edenfs")
 class WatchmanEdenTestCase(TestParent):
     def setUp(self):
         # the eden home directory.  We use the global dir for the test runner
