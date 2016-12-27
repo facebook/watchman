@@ -77,6 +77,18 @@ w_string_piece w_string_piece::baseName() const {
   return *this;
 }
 
+bool w_string_piece::operator<(w_string_piece other) const {
+  int res;
+  if (size() < other.size()) {
+    res = memcmp(data(), other.data(), size());
+    return (res == 0 ? -1 : res) < 0;
+  } else if (size() > other.size()) {
+    res = memcmp(data(), other.data(), other.size());
+    return (res == 0 ? +1 : res) < 0;
+  }
+  return memcmp(data(), other.data(), size()) < 0;
+}
+
 bool w_string_piece::operator==(w_string_piece other) const {
   if (s_ == other.s_ && e_ == other.e_) {
     return true;

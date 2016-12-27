@@ -192,6 +192,7 @@ class w_string_piece {
 
   bool operator==(w_string_piece other) const;
   bool operator!=(w_string_piece other) const;
+  bool operator<(w_string_piece other) const;
 
   bool startsWith(w_string_piece prefix) const;
   bool startsWithCaseInsensitive(w_string_piece prefix) const;

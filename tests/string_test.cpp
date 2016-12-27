@@ -178,8 +178,17 @@ void test_basename_dirname() {
 #endif
 }
 
+void test_operator() {
+  ok(w_string_piece("a") < w_string_piece("b"), "a < b");
+  ok(w_string_piece("a") < w_string_piece("ba"), "a < ba");
+  ok(w_string_piece("aa") < w_string_piece("b"), "aa < b");
+  ok(!(w_string_piece("b") < w_string_piece("a")), "b not < a");
+  ok(!(w_string_piece("a") < w_string_piece("a")), "a not < a");
+  ok(w_string_piece("A") < w_string_piece("a"), "A < a");
+}
+
 int main(int, char**) {
-  plan_tests(59);
+  plan_tests(65);
   test_integrals();
   test_strings();
   test_pointers();
@@ -189,6 +198,7 @@ int main(int, char**) {
   test_to();
   test_path_cat();
   test_basename_dirname();
+  test_operator();
 
   return exit_status();
 }
