@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 #include "utf.h"
 #include "watchman_log.h"
@@ -138,7 +139,8 @@ const json_ref& json_ref::get(const char* key) const {
   auto object = json_to_object(ref_);
   auto it = object->findCString(key);
   if (it == object->map.end()) {
-    throw std::range_error("key is not present in this json object");
+    throw std::range_error(
+        std::string("key '") + key + "' is not present in this json object");
   }
   return it->second;
 }

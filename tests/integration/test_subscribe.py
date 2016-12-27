@@ -82,6 +82,22 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.assertEqual('meta!', begin['metadata'])
 
         self.touchRelative(root, 'in-foo-2')
+        # flush-subscriptions should let this come through immediately
+        flush = self.watchmanCommand(
+            'flush-subscriptions', root, {'sync_timeout': 1000}
+        )
+        del flush['version']
+        self.assertDictEqual(
+            {'synced': ['defer'],
+             'no_sync_needed': [],
+             'dropped': []},
+            flush,
+        )
+        sub_data = self.getSubscription('defer', root)
+        self.assertEqual(1, len(sub_data))
+        self.assertFileListsEqual(['in-foo-2'], sub_data[0]['files'])
+
+        self.touchRelative(root, 'in-foo-3')
         # We expect this to timeout because state=foo is asserted
         with self.assertRaises(pywatchman.SocketTimeout):
             self.waitForSub('defer', root, timeout=1)
@@ -115,6 +131,18 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.assertEqual('foo', begin['state-enter'])
 
         self.touchRelative(root, 'in-foo')
+        flush = self.watchmanCommand(
+            'flush-subscriptions', root, {'sync_timeout': 1000}
+        )
+        del flush['version']
+        self.assertDictEqual(
+            {'synced': [],
+             'no_sync_needed': [],
+             'dropped': ['drop']},
+            flush,
+        )
+
+        self.touchRelative(root, 'in-foo-2')
         # We expect this to timeout because state=foo is asserted
         with self.assertRaises(pywatchman.SocketTimeout):
             self.waitForSub('drop', root, timeout=1)
@@ -133,7 +161,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         # let's make sure that we can observe new changes
         self.touchRelative(root, 'out-foo')
 
-        self.assertFileList(root, files=['a', 'in-foo', 'out-foo'])
+        self.assertFileList(root, files=['a', 'in-foo', 'in-foo-2', 'out-foo'])
         self.assertNotEqual(None,
             self.waitForSub('drop', root))
 
@@ -141,20 +169,41 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         root = self.mkdtemp()
         # fake an hg control dir
         os.mkdir(os.path.join(root, '.hg'))
+        # touch another file so that the initial subscription result comes
+        # through
+        self.touchRelative(root, 'foo')
         self.watchmanCommand('watch', root)
-        self.assertFileList(root, files=['.hg'])
+        self.assertFileList(root, files=['.hg', 'foo'])
 
         sub = self.watchmanCommand('subscribe', root, 'defer', {
+            'expression': ['type', 'f'],
             'fields': ['name', 'exists'],
             'defer_vcs': True})
 
         dat = self.waitForSub('defer', root)[0]
         self.assertEqual(True, dat['is_fresh_instance'])
-        self.assertEqual([{'name': '.hg', 'exists': True}], dat['files'])
+        self.assertEqual([{'name': 'foo', 'exists': True}], dat['files'])
 
         # Pretend that hg is update the working copy
         self.touchRelative(root, '.hg', 'wlock')
+        # flush-subscriptions should force the update through
+        flush = self.watchmanCommand(
+            'flush-subscriptions', root, {'sync_timeout': 1000}
+        )
+        del flush['version']
+        self.assertDictEqual(
+            {'synced': ['defer'],
+             'no_sync_needed': [],
+             'dropped': []},
+            flush,
+        )
+        sub_data = self.getSubscription('defer', root)
+        self.assertEqual(1, len(sub_data))
+        self.assertFileListsEqual(
+            ['.hg/wlock'], [d['name'] for d in sub_data[0]['files']]
+        )
 
+        self.touchRelative(root, 'in-foo')
         # We expect this to timeout because the wlock file exists
         with self.assertRaises(pywatchman.SocketTimeout):
             self.waitForSub('defer', root,
@@ -164,7 +213,6 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         # Remove the wlock and allow subscriptions to flow
         os.unlink(os.path.join(root, '.hg', 'wlock'))
 
-        # The events should get coalesced to a delete for wlock
         dat = self.waitForSub('defer', root,
                               timeout=2,
                               accept=lambda x: self.wlockExists(x, False))
@@ -296,6 +344,215 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
                 warn = item['warning']
                 break
         self.assertRegexpMatches(warn, r'Recrawled this watch')
+
+    def test_flush_subscriptions(self):
+        root = self.mkdtemp()
+        a_dir = os.path.join(root, 'a')
+
+        os.mkdir(a_dir)
+        self.touchRelative(a_dir, 'lemon.txt')
+        self.touchRelative(a_dir, 'orange.dat')
+        self.touchRelative(root, 'b')
+
+        self.watchmanCommand('watch', root)
+        self.assertFileList(
+            root, files=['a', 'a/lemon.txt', 'a/orange.dat', 'b']
+        )
+
+        self.watchmanCommand(
+            'subscribe', root, 'sub1', {
+                'fields': ['name'],
+                'expression': ['type', 'f'],
+            }
+        )
+        self.watchmanCommand(
+            'subscribe', root, 'sub2', {
+                'fields': ['name'],
+                'expression': ['allof', ['type', 'f'], ['suffix', 'txt']],
+            }
+        )
+        self.watchmanCommand(
+            'subscribe', root, 'sub3', {
+                'fields': ['name'],
+                'expression': ['allof', ['type', 'f'], ['suffix', 'dat']],
+            }
+        )
+
+        root2 = self.mkdtemp()
+        self.touchRelative(root2, 'banana')
+        self.watchmanCommand('watch', root2)
+        self.assertFileList(root2, files=['banana'])
+        ret = self.watchmanCommand(
+            'subscribe', root2, 'sub-other', {'fields': ['name']}
+        )
+
+        # initial result PDUs
+        clock1 = self.waitForSub('sub1', root=root)[0]['clock']
+        clock2 = self.waitForSub('sub2', root=root)[0]['clock']
+        clock3 = self.waitForSub('sub3', root=root)[0]['clock']
+
+        # pause subscriptions so that the result of flush-subscriptions is
+        # deterministic
+        debug_ret = self.watchmanCommand(
+            'debug-set-subscriptions-paused',
+            {'sub1': True,
+             'sub2': True,
+             'sub3': True},
+        )
+        self.assertDictEqual(
+            {
+                'sub1': {'old': False,
+                         'new': True},
+                'sub2': {'old': False,
+                         'new': True},
+                'sub3': {'old': False,
+                         'new': True},
+            }, debug_ret['paused']
+        )
+
+        self.touchRelative(root, 'c')
+        self.touchRelative(a_dir, 'd.txt')
+        self.touchRelative(a_dir, 'e.dat')
+
+        # test out a few broken flush-subscriptions
+        broken_args = [
+            (tuple(), "wrong number of arguments to 'flush-subscriptions'"),
+            ((root, ), "wrong number of arguments to 'flush-subscriptions'"),
+            (
+                (root, {'subscriptions': ['sub1']}),
+                "key 'sync_timeout' is not present in this json object",
+            ),
+            (
+                (root, {'subscriptions': 'wat',
+                        'sync_timeout': 2000}),
+                "expected 'subscriptions' to be an array of subscription names",
+            ),
+            (
+                (
+                    root,
+                    {'subscriptions': ['sub1', False],
+                     'sync_timeout': 2000}
+                ),
+                "expected 'subscriptions' to be an array of subscription names",
+            ),
+            (
+                (
+                    root,
+                    {'subscriptions': ['sub1', 'notsub'],
+                     'sync_timeout': 2000}
+                ),
+                "this client does not have a subscription named 'notsub'",
+            ),
+            (
+                (
+                    root, {
+                        'subscriptions': ['sub1', 'sub-other'],
+                        'sync_timeout': 2000
+                    }
+                ),
+                "subscription 'sub-other' is on root",
+            ),
+        ]
+
+        for args, err_msg in broken_args:
+            with self.assertRaises(pywatchman.WatchmanError) as ctx:
+                self.watchmanCommand('flush-subscriptions', *args)
+            self.assertIn(err_msg, str(ctx.exception))
+
+        ret = self.watchmanCommand(
+            'flush-subscriptions',
+            root,
+            {'sync_timeout': 1000,
+             'subscriptions': ['sub1', 'sub2']},
+        )
+        version = ret['version']
+        self.assertEqual([], ret['no_sync_needed'])
+        self.assertItemsEqual(['sub1', 'sub2'], ret['synced'])
+
+        # Do not wait for subscription results -- instead, make sure they've
+        # shown up immediately.
+        sub1_data = self.getSubscription('sub1', root)
+        sub2_data = self.getSubscription('sub2', root)
+
+        for sub_name, sub_data in [('sub1', sub1_data), ('sub2', sub2_data)]:
+            self.assertEqual(1, len(sub_data))
+            data = sub_data[0].copy()
+            # we'll verify these below
+            del data['files']
+            del data['since']
+            # this is subject to change so we can't verify it
+            del data['clock']
+
+            self.assertDictEqual(
+                {
+                    'version': version,
+                    'is_fresh_instance': False,
+                    'subscription': sub_name,
+                    'root': root,
+                    'unilateral': True,
+                }, data
+            )
+
+        self.assertEqual(clock1, sub1_data[0]['since'])
+        self.assertEqual(clock2, sub2_data[0]['since'])
+        self.assertFileListsEqual(
+            ['a/d.txt', 'a/e.dat', 'c'], sub1_data[0]['files']
+        )
+        self.assertFileListsEqual(['a/d.txt'], sub2_data[0]['files'])
+
+        # touch another file, make sure the updates come through again
+        self.touchRelative(a_dir, 'f.dat')
+        ret = self.watchmanCommand(
+            'flush-subscriptions',
+            root,
+            # default for subscriptions is to sync all subscriptions matching
+            # root (so sub1, sub2 and sub3, but not sub-other)
+            {'sync_timeout': 1000},
+        )
+        self.assertItemsEqual(['sub2'], ret['no_sync_needed'])
+        self.assertItemsEqual(['sub1', 'sub3'], ret['synced'])
+
+        # again, don't wait for the subscriptions
+        sub1_data2 = self.getSubscription('sub1', root)
+        sub2_data2 = self.getSubscription('sub2', root)
+        sub3_data2 = self.getSubscription('sub3', root)
+
+        self.assertEqual(1, len(sub1_data2))
+        # no updates to sub2, so we expect nothing
+        self.assertIs(None, sub2_data2)
+        self.assertEqual(1, len(sub3_data2))
+
+        # (since we haven't read anything off of sub3 yet)
+        self.assertEqual(clock3, sub3_data2[0]['since'])
+        self.assertEqual(
+            sub1_data[0]['clock'],
+            sub1_data2[0]['since'],
+            'for sub1, previous "clock" should be current "since"',
+        )
+        self.assertFileListsEqual(['a/f.dat'], sub1_data2[0]['files'])
+        self.assertFileListsEqual(
+            ['a/e.dat', 'a/f.dat'], sub3_data2[0]['files']
+        )
+
+        # now resume the subscriptions and make sure future updates (and only
+        # future updates) come through
+        self.watchmanCommand(
+            'debug-set-subscriptions-paused',
+            {'sub1': False,
+             'sub2': False,
+             'sub3': False},
+        )
+
+        self.touchRelative(root, 'newfile.txt')
+        new_sub1 = self.waitForSub('sub1', root=root)[0]
+        new_sub2 = self.waitForSub('sub2', root=root)[0]
+
+        self.assertEqual(sub1_data2[0]['clock'], new_sub1['since'])
+        # for sub2 the clock is different because we've actually forced an
+        # evaluation in between in the second flush-subscriptions call, so we
+        # don't have a reference point
+        self.assertFileListsEqual(['newfile.txt'], new_sub1['files'])
+        self.assertFileListsEqual(['newfile.txt'], new_sub2['files'])
 
     # TODO: Assimilate this test into test_subscribe when Watchman gets
     # unicode support.

@@ -258,6 +258,146 @@ static void w_run_subscription_rules(
   client->enqueueResponse(std::move(response), false);
 }
 
+static void cmd_flush_subscriptions(
+    struct watchman_client* clientbase,
+    const json_ref& args) {
+  auto client = (watchman_user_client*)clientbase;
+
+  int sync_timeout;
+  json_ref subs(nullptr);
+
+  if (json_array_size(args) == 3) {
+    auto& sync_timeout_obj = args.at(2).get("sync_timeout");
+    subs = args.at(2).get_default("subscriptions", nullptr);
+    if (!json_is_integer(sync_timeout_obj)) {
+      send_error_response(client, "'sync_timeout' must be an integer");
+      return;
+    }
+    sync_timeout = json_integer_value(sync_timeout_obj);
+  } else {
+    send_error_response(
+        client, "wrong number of arguments to 'flush-subscriptions'");
+    return;
+  }
+
+  auto root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
+    return;
+  }
+
+  std::vector<w_string> subs_to_sync;
+  if (subs) {
+    if (!json_is_array(subs)) {
+      send_error_response(
+          client,
+          "expected 'subscriptions' to be an array of subscription names");
+      return;
+    }
+
+    for (auto& sub_name : subs.array()) {
+      if (!json_is_string(sub_name)) {
+        send_error_response(
+            client,
+            "expected 'subscriptions' to be an array of subscription names");
+        return;
+      }
+
+      auto& sub_name_str = json_to_w_string(sub_name);
+      auto sub_iter = client->subscriptions.find(sub_name_str);
+      if (sub_iter == client->subscriptions.end()) {
+        send_error_response(
+            client,
+            "this client does not have a subscription named '%s'",
+            sub_name_str.c_str());
+        return;
+      }
+      auto& sub = sub_iter->second;
+      if (sub->root != root) {
+        send_error_response(
+            client,
+            "subscription '%s' is on root '%s' different from command root "
+            "'%s'",
+            sub_name_str.c_str(),
+            sub->root->root_path.c_str(),
+            root->root_path.c_str());
+        return;
+      }
+
+      subs_to_sync.push_back(sub_name_str);
+    }
+  } else {
+    // Look for all subscriptions matching this root.
+    for (auto& sub_iter : client->subscriptions) {
+      if (sub_iter.second->root == root) {
+        subs_to_sync.push_back(sub_iter.first);
+      }
+    }
+  }
+
+  if (!root->syncToNow(std::chrono::milliseconds(sync_timeout))) {
+    send_error_response(client, "sync_timeout expired");
+    return;
+  }
+
+  auto resp = make_response();
+  auto synced = json_array();
+  auto no_sync_needed = json_array();
+  auto dropped = json_array();
+
+  for (auto& sub_name_str : subs_to_sync) {
+    auto sub_iter = client->subscriptions.find(sub_name_str);
+    auto& sub = sub_iter->second;
+
+    sub_action action;
+    w_string policy_name;
+    std::tie(action, policy_name) = get_subscription_action(sub.get(), root);
+
+    if (action == sub_action::drop) {
+      auto position = root->inner.view->getMostRecentRootNumberAndTickValue();
+      sub->last_sub_tick = position.ticks;
+      sub->query->since_spec = watchman::make_unique<w_clockspec>(position);
+      watchman::log(
+          watchman::DBG,
+          "(flush-subscriptions) dropping subscription notifications for ",
+          sub->name,
+          " until state ",
+          policy_name,
+          " is vacated. Advanced ticks to ",
+          sub->last_sub_tick,
+          "\n");
+      json_array_append(dropped, w_string_to_json(sub_name_str));
+    } else {
+      // flush-subscriptions means that we _should NOT defer_ notifications. So
+      // ignore defer and defer_vcs.
+      ClockPosition out_position;
+      watchman::log(
+          watchman::DBG,
+          "(flush-subscriptions) executing subscription ",
+          sub->name,
+          "\n");
+      auto sub_result =
+          build_subscription_results(sub.get(), root, out_position);
+      if (sub_result) {
+        send_and_dispose_response(client, std::move(sub_result));
+        json_array_append(synced, w_string_to_json(sub_name_str));
+      } else {
+        json_array_append(no_sync_needed, w_string_to_json(sub_name_str));
+      }
+    }
+  }
+
+  resp.set({{"synced", std::move(synced)},
+            {"no_sync_needed", std::move(no_sync_needed)},
+            {"dropped", std::move(dropped)}});
+  add_root_warnings_to_response(resp, root);
+  send_and_dispose_response(client, std::move(resp));
+}
+W_CMD_REG(
+    "flush-subscriptions",
+    cmd_flush_subscriptions,
+    CMD_DAEMON | CMD_ALLOW_ANY_USER,
+    w_cmd_realpath_root)
+
 /* unsubscribe /root subname
  * Cancels a subscription */
 static void cmd_unsubscribe(
