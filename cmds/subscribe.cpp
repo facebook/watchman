@@ -36,6 +36,67 @@ bool watchman_user_client::unsubByName(const w_string& name) {
   return true;
 }
 
+enum class sub_action { no_sync_needed, execute, defer, drop };
+
+static std::tuple<sub_action, w_string> get_subscription_action(
+    struct watchman_client_subscription* sub,
+    const std::shared_ptr<w_root_t>& root) {
+  auto action = sub_action::execute;
+  w_string policy_name;
+
+  auto position = root->inner.view->getMostRecentRootNumberAndTickValue();
+
+  watchman::log(
+      watchman::DBG,
+      "sub=",
+      sub,
+      " ",
+      sub->name,
+      ", last=",
+      sub->last_sub_tick,
+      " pending=",
+      position.ticks,
+      "\n");
+
+  if (sub->last_sub_tick != position.ticks) {
+    auto asserted_states = root->asserted_states.rlock();
+    if (!asserted_states->empty() && !sub->drop_or_defer.empty()) {
+      // There are 1 or more states asserted and this subscription
+      // has some policy for states.  Figure out what we should do.
+      for (auto& policy_iter : sub->drop_or_defer) {
+        auto name = policy_iter.first;
+        bool policy_is_drop = policy_iter.second;
+
+        if (asserted_states->find(name) == asserted_states->end()) {
+          continue;
+        }
+
+        if (action != sub_action::defer) {
+          // This policy is active
+          action = sub_action::defer;
+          policy_name = name;
+        }
+
+        if (policy_is_drop) {
+          action = sub_action::drop;
+
+          // If we're dropping, we don't need to look at any
+          // other policies
+          policy_name = name;
+          break;
+        }
+        // Otherwise keep looking until we find a drop
+      }
+    }
+  } else {
+    watchman::log(
+        watchman::DBG, "subscription ", sub->name, " is up to date\n");
+    action = sub_action::no_sync_needed;
+  }
+
+  return std::make_tuple(action, policy_name);
+}
+
 static void w_run_subscription_rules(
     struct watchman_user_client* client,
     struct watchman_client_subscription* sub,
@@ -50,58 +111,15 @@ void watchman_client_subscription::processSubscription() {
     return;
   }
 
-  bool defer = false;
-  bool drop = false;
+  sub_action action;
   w_string policy_name;
+  std::tie(action, policy_name) = get_subscription_action(this, root);
 
-  auto position = root->inner.view->getMostRecentRootNumberAndTickValue();
-
-  watchman::log(
-      watchman::DBG,
-      "sub=",
-      this,
-      " ",
-      name,
-      ", last=",
-      last_sub_tick,
-      " pending=",
-      position.ticks,
-      "\n");
-
-  if (last_sub_tick != position.ticks) {
-    auto asserted_states = root->asserted_states.rlock();
-    if (!asserted_states->empty() && !drop_or_defer.empty()) {
-      // There are 1 or more states asserted and this subscription
-      // has some policy for states.  Figure out what we should do.
-      for (auto& policy_iter : drop_or_defer) {
-        auto name = policy_iter.first;
-        bool policy_is_drop = policy_iter.second;
-
-        if (asserted_states->find(name) == asserted_states->end()) {
-          continue;
-        }
-
-        if (!defer) {
-          // This policy is active
-          defer = true;
-          policy_name = name;
-        }
-
-        if (policy_is_drop) {
-          drop = true;
-
-          // If we're dropping, we don't need to look at any
-          // other policies
-          policy_name = name;
-          break;
-        }
-        // Otherwise keep looking until we find a drop
-      }
-    }
-
+  if (action != sub_action::no_sync_needed) {
+    auto position = root->inner.view->getMostRecentRootNumberAndTickValue();
     bool executeQuery = true;
 
-    if (drop) {
+    if (action == sub_action::drop) {
       // fast-forward over any notifications while in the drop state
       last_sub_tick = position.ticks;
       query->since_spec = watchman::make_unique<w_clockspec>(position);
@@ -115,9 +133,7 @@ void watchman_client_subscription::processSubscription() {
           last_sub_tick,
           "\n");
       executeQuery = false;
-    }
-
-    if (defer) {
+    } else if (action == sub_action::defer) {
       watchman::log(
           watchman::DBG,
           "deferring subscription notifications for ",
@@ -126,9 +142,7 @@ void watchman_client_subscription::processSubscription() {
           policy_name,
           " is vacated\n");
       executeQuery = false;
-    }
-
-    if (vcs_defer && root->inner.view->isVCSOperationInProgress()) {
+    } else if (vcs_defer && root->inner.view->isVCSOperationInProgress()) {
       watchman::log(
           watchman::DBG,
           "deferring subscription notifications for ",
