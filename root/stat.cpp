@@ -75,9 +75,7 @@ void InMemoryView::statPath(
           path,
           ") -> ",
           strerror(err),
-          " so stopping watch on ",
-          file->getName(),
-          "\n");
+          " so stopping watch\n");
     }
     if (file) {
       if (file->exists) {
