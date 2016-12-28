@@ -386,10 +386,10 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
             'subscribe', root2, 'sub-other', {'fields': ['name']}
         )
 
-        # initial result PDUs
-        clock1 = self.waitForSub('sub1', root=root)[0]['clock']
-        clock2 = self.waitForSub('sub2', root=root)[0]['clock']
-        clock3 = self.waitForSub('sub3', root=root)[0]['clock']
+        # discard the initial result PDUs
+        self.waitForSub('sub1', root=root)
+        self.waitForSub('sub2', root=root)
+        self.waitForSub('sub3', root=root)
 
         # pause subscriptions so that the result of flush-subscriptions is
         # deterministic
@@ -493,8 +493,6 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
                 }, data
             )
 
-        self.assertEqual(clock1, sub1_data[0]['since'])
-        self.assertEqual(clock2, sub2_data[0]['since'])
         self.assertFileListsEqual(
             ['a/d.txt', 'a/e.dat', 'c'], sub1_data[0]['files']
         )
@@ -522,8 +520,6 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.assertIs(None, sub2_data2)
         self.assertEqual(1, len(sub3_data2))
 
-        # (since we haven't read anything off of sub3 yet)
-        self.assertEqual(clock3, sub3_data2[0]['since'])
         self.assertEqual(
             sub1_data[0]['clock'],
             sub1_data2[0]['since'],
