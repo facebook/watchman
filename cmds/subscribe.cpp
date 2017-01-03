@@ -517,10 +517,13 @@ static void cmd_subscribe(
 
   // Connect the root to our subscription
   {
-    auto clientRef = client->shared_from_this();
+    std::weak_ptr<watchman_client> clientRef(client->shared_from_this());
     client->unilateralSub.insert(std::make_pair(
         sub, root->unilateralResponses->subscribe([clientRef, sub]() {
-          clientRef->ping->notify();
+          auto client = clientRef.lock();
+          if (client) {
+            client->ping->notify();
+          }
         })));
   }
 
