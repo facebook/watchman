@@ -92,7 +92,7 @@ parser.add_argument(
     '--debug-watchman',
     action='store_true',
     help='Pauses start up and prints out the PID for watchman server process.' +
-    'Use with concurrency set to 1')
+    'Forces concurrency to 1.')
 
 parser.add_argument(
     '--watchman-path',
@@ -348,7 +348,9 @@ def queue_jobs(tests):
         tests_queue.put(test)
 
 all_tests = expand_suite(suite)
-if len(all_tests) < args.concurrency:
+if args.debug_watchman:
+    args.concurrency = 1
+elif len(all_tests) < args.concurrency:
     args.concurrency = len(all_tests)
 queue_jobs(all_tests)
 
