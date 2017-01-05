@@ -53,8 +53,8 @@ public class WatchmanClientTest extends WatchmanTestBase {
   public void setClient() throws IOException {
     withWatchProject = true;
     mClient = new WatchmanClientImpl(
-        mInputSupplier,
-        mOutputStream,
+        mIncomingMessageGetter,
+        mOutgoingMessageStream,
         new Supplier<Boolean>() {
           @Override
           public Boolean get() {
@@ -135,7 +135,7 @@ public class WatchmanClientTest extends WatchmanTestBase {
     mObjectQueue.put(new HashMap<String, Object>()); // response irrelevant
     mClient.watch(Paths.get(PATH)).get();
 
-    ByteArrayInputStream in = new ByteArrayInputStream(mOutputStream.toByteArray());
+    ByteArrayInputStream in = new ByteArrayInputStream(mOutgoingMessageStream.toByteArray());
     BserDeserializer deserializer = new BserDeserializer(BserDeserializer.KeyOrdering.UNSORTED);
     List<Object> request = (List<Object>) deserializer.deserializeBserValue(in);
 
@@ -156,7 +156,7 @@ public class WatchmanClientTest extends WatchmanTestBase {
     mObjectQueue.put(new HashMap<String, Object>()); // response irrelevant
     mClient.watchDel(Paths.get(PATH)).get();
 
-    ByteArrayInputStream in = new ByteArrayInputStream(mOutputStream.toByteArray());
+    ByteArrayInputStream in = new ByteArrayInputStream(mOutgoingMessageStream.toByteArray());
     BserDeserializer deserializer = new BserDeserializer(BserDeserializer.KeyOrdering.UNSORTED);
     List<Object> request = (List<Object>) deserializer.deserializeBserValue(in);
 
@@ -202,7 +202,7 @@ public class WatchmanClientTest extends WatchmanTestBase {
         new HashMap<String, Object>(),
         mockListener).get();
 
-    ByteArrayInputStream in = new ByteArrayInputStream(mOutputStream.toByteArray());
+    ByteArrayInputStream in = new ByteArrayInputStream(mOutgoingMessageStream.toByteArray());
     BserDeserializer deserializer = new BserDeserializer(BserDeserializer.KeyOrdering.UNSORTED);
     List<Object> request = (List<Object>) deserializer.deserializeBserValue(in);
     deepObjectEquals(
@@ -230,10 +230,10 @@ public class WatchmanClientTest extends WatchmanTestBase {
         Paths.get(PATH),
         new HashMap<String, Object>(),
         mockListener).get();
-    mOutputStream.reset(); // ignore the subscribe command
+    mOutgoingMessageStream.reset(); // ignore the subscribe command
     mClient.unsubscribe(descriptor).get();
 
-    ByteArrayInputStream in = new ByteArrayInputStream(mOutputStream.toByteArray());
+    ByteArrayInputStream in = new ByteArrayInputStream(mOutgoingMessageStream.toByteArray());
     BserDeserializer deserializer = new BserDeserializer(BserDeserializer.KeyOrdering.UNSORTED);
     List<Object> request = (List<Object>) deserializer.deserializeBserValue(in);
     deepObjectEquals(
@@ -255,7 +255,7 @@ public class WatchmanClientTest extends WatchmanTestBase {
 
     mClient.clock(Paths.get(PATH)).get();
 
-    ByteArrayInputStream in = new ByteArrayInputStream(mOutputStream.toByteArray());
+    ByteArrayInputStream in = new ByteArrayInputStream(mOutgoingMessageStream.toByteArray());
     BserDeserializer deserializer = new BserDeserializer(BserDeserializer.KeyOrdering.UNSORTED);
     List<Object> request = (List<Object>) deserializer.deserializeBserValue(in);
     deepObjectEquals(
@@ -279,7 +279,7 @@ public class WatchmanClientTest extends WatchmanTestBase {
 
     mClient.clock(Paths.get(PATH), SYNC_TIMEOUT).get();
 
-    ByteArrayInputStream in = new ByteArrayInputStream(mOutputStream.toByteArray());
+    ByteArrayInputStream in = new ByteArrayInputStream(mOutgoingMessageStream.toByteArray());
     BserDeserializer deserializer = new BserDeserializer(BserDeserializer.KeyOrdering.UNSORTED);
     List<Object> request = (List<Object>) deserializer.deserializeBserValue(in);
     deepObjectEquals(
@@ -304,7 +304,7 @@ public class WatchmanClientTest extends WatchmanTestBase {
 
     mClient.version().get();
 
-    ByteArrayInputStream in = new ByteArrayInputStream(mOutputStream.toByteArray());
+    ByteArrayInputStream in = new ByteArrayInputStream(mOutgoingMessageStream.toByteArray());
     BserDeserializer deserializer = new BserDeserializer(BserDeserializer.KeyOrdering.UNSORTED);
     List<Object> request = (List<Object>) deserializer.deserializeBserValue(in);
     deepObjectEquals(
@@ -331,7 +331,7 @@ public class WatchmanClientTest extends WatchmanTestBase {
     expectedCapabilitiesMap.put("optional", optionalCapabilities);
     expectedCapabilitiesMap.put("required", requiredCapabilities);
 
-    ByteArrayInputStream in = new ByteArrayInputStream(mOutputStream.toByteArray());
+    ByteArrayInputStream in = new ByteArrayInputStream(mOutgoingMessageStream.toByteArray());
     BserDeserializer deserializer = new BserDeserializer(BserDeserializer.KeyOrdering.UNSORTED);
     List<Object> request = (List<Object>) deserializer.deserializeBserValue(in);
     deepObjectEquals(

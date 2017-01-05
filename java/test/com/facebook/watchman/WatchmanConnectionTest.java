@@ -24,14 +24,16 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
+import com.facebook.watchman.bser.BserDeserializer;
 import com.facebook.watchman.bser.BserSerializer;
 
 import com.google.common.base.Optional;
@@ -63,7 +65,7 @@ public class WatchmanConnectionTest extends WatchmanTestBase {
     mockResponse.put("clock", CLOCK);
     mObjectQueue.put(mockResponse);
 
-    WatchmanConnection connection = new WatchmanConnection(mInputSupplier, mOutputStream);
+    WatchmanConnection connection = new WatchmanConnection(mIncomingMessageGetter, mOutgoingMessageStream);
     connection.start();
     Map<String, Object> receivedResponse = connection.run(Arrays.asList("clock", "/a/b/c")).get();
 
@@ -83,8 +85,8 @@ public class WatchmanConnectionTest extends WatchmanTestBase {
     final Semaphore commandSentSemaphore = new Semaphore(0);
 
     WatchmanConnection connection = new WatchmanConnection(
-        mInputSupplier,
-        mOutputStream,
+        mIncomingMessageGetter,
+        mOutgoingMessageStream,
         Optional.<WatchmanConnection.WatchmanCommandListener>of(
             new WatchmanConnection.WatchmanCommandListener() {
 
@@ -111,13 +113,13 @@ public class WatchmanConnectionTest extends WatchmanTestBase {
     BserSerializer serializer = new BserSerializer();
     serializer.serializeToStream(firstMessage, expected);
     commandSentSemaphore.acquire();
-    Assert.assertArrayEquals(expected.toByteArray(), this.mOutputStream.toByteArray());
+    Assert.assertArrayEquals(expected.toByteArray(), this.mOutgoingMessageStream.toByteArray());
 
     mObjectQueue.put(new HashMap<String, Object>());
     firstFuture.get();
     serializer.serializeToStream(secondMessage, expected);
     commandSentSemaphore.acquire();
-    Assert.assertArrayEquals(expected.toByteArray(), this.mOutputStream.toByteArray());
+    Assert.assertArrayEquals(expected.toByteArray(), this.mOutgoingMessageStream.toByteArray());
   }
 
   /**
@@ -138,7 +140,7 @@ public class WatchmanConnectionTest extends WatchmanTestBase {
     response.put("error", reason);
     mObjectQueue.put(response);
 
-    WatchmanConnection connection = new WatchmanConnection(mInputSupplier, mOutputStream);
+    WatchmanConnection connection = new WatchmanConnection(mIncomingMessageGetter, mOutgoingMessageStream);
     connection.start();
 
     connection.run(request).get();
@@ -183,8 +185,8 @@ public class WatchmanConnectionTest extends WatchmanTestBase {
     };
 
     WatchmanConnection connection = new WatchmanConnection(
-        mInputSupplier,
-        mOutputStream,
+        mIncomingMessageGetter,
+        mOutgoingMessageStream,
         Optional.<Collection<String>>of(Collections.singletonList(unilateralLabel)),
         Optional.<Callback>of(callbackListener));
     connection.start();
@@ -232,8 +234,8 @@ public class WatchmanConnectionTest extends WatchmanTestBase {
     final Semaphore oneMessageSent = new Semaphore(0);
 
     WatchmanConnection connection = new WatchmanConnection(
-        mInputSupplier,
-        mOutputStream,
+        mIncomingMessageGetter,
+        mOutgoingMessageStream,
         Optional.<WatchmanConnection.WatchmanCommandListener>of(
             new WatchmanConnection.WatchmanCommandListener() {
 
@@ -285,7 +287,7 @@ public class WatchmanConnectionTest extends WatchmanTestBase {
     ByteArrayOutputStream expected = new ByteArrayOutputStream();
     BserSerializer serializer = new BserSerializer();
     serializer.serializeToStream(request, expected);
-    Assert.assertArrayEquals(expected.toByteArray(), this.mOutputStream.toByteArray());
+    Assert.assertArrayEquals(expected.toByteArray(), this.mOutgoingMessageStream.toByteArray());
 
     int entry = 0;
     for (AtomicBoolean condition: conditions) {
@@ -293,6 +295,81 @@ public class WatchmanConnectionTest extends WatchmanTestBase {
           "Asserting condition for request #" + Integer.toString(entry),
           condition.get());
       entry++;
+    }
+  }
+
+  @Test
+  public void propagatesDeserializationException() throws Exception {
+    final AtomicReference<BserDeserializer.BserEofException> expectedExceptionRef = new AtomicReference<>();
+    final Semaphore commandSentSemaphore = new Semaphore(0);
+    WatchmanConnection.WatchmanCommandListener commandListener =
+        new WatchmanConnection.WatchmanCommandListener() {
+          @Override public void onStart() { }
+          @Override public void onSent() { commandSentSemaphore.release(); }
+          @Override public void onReceived() { }
+        };
+    Callable<Map<String, Object>> incomingMessageGetter = new Callable<Map<String, Object>>() {
+      @Override
+      public Map<String, Object> call() throws Exception {
+        commandSentSemaphore.acquire();
+        BserDeserializer.BserEofException e = new BserDeserializer.BserEofException("expected");
+        expectedExceptionRef.set(e);
+        throw e;
+      }
+    };
+    WatchmanConnection connection = new WatchmanConnection(
+        incomingMessageGetter,
+        mOutgoingMessageStream,
+        Optional.<WatchmanConnection.WatchmanCommandListener>of(commandListener));
+    connection.start();
+    ListenableFuture<Map<String, Object>> listenableFuture = connection.run(Arrays.asList("clock", "/a/b/c"));
+    try {
+      Map<String, Object> receivedResponse = listenableFuture.get(5, TimeUnit.SECONDS);
+      Assert.fail("Should not get a response, got " + receivedResponse.toString());
+    } catch (ExecutionException executionException) {
+      Assert.assertSame(expectedExceptionRef.get(), executionException.getCause());
+    }
+  }
+
+  @Test
+  public void propagatesInterruptionException() throws Exception {
+    final Semaphore enteredCallable = new Semaphore(0);
+    final Semaphore exitedCallable = new Semaphore(0);
+    final AtomicReference<Thread> threadRef = new AtomicReference<>();
+    final AtomicReference<InterruptedException> expectedException = new AtomicReference<>();
+    Callable<Map<String, Object>> incomingMessageGetter = new Callable<Map<String, Object>>() {
+      @Override
+      public Map<String, Object> call() throws Exception {
+        try {
+          threadRef.set(Thread.currentThread());
+          enteredCallable.release();
+          new Semaphore(0).acquire(); // wait for interruption
+          return new HashMap<>();
+        } catch (InterruptedException e) {
+          expectedException.set(e);
+          throw e;
+        } finally {
+          exitedCallable.release();
+        }
+      }
+    };
+    WatchmanConnection connection = new WatchmanConnection(incomingMessageGetter, mOutgoingMessageStream);
+    connection.start();
+    ListenableFuture<Map<String, Object>> listenableFuture = connection.run(Arrays.asList("clock", "/a/b/c"));
+    enteredCallable.acquire();
+    threadRef.get().interrupt();
+    Assert.assertTrue("Callable should have exited", exitedCallable.tryAcquire(5, TimeUnit.SECONDS));
+    try {
+      listenableFuture.get(5, TimeUnit.SECONDS);
+      Assert.fail("Should not be able to get a result from an interrupted operation");
+    } catch (InterruptedException e) {
+      // This is reasonable behavior...
+      Assert.assertSame("If InterruptedException, should be the one thrown by thread",
+          expectedException.get(), e);
+    } catch (ExecutionException e) {
+      // ...and this is also reasonable behavior.
+      Assert.assertSame("If ExecutionException, cause should be exception that interrupted thread",
+          expectedException.get(), e.getCause());
     }
   }
 }
