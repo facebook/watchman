@@ -8,8 +8,12 @@ namespace watchman {
 
 Publisher::Subscriber::Subscriber(
     std::shared_ptr<Publisher> pub,
-    Notifier notify)
-    : serial_(0), publisher_(std::move(pub)), notify_(notify) {}
+    Notifier notify,
+    const w_string& info)
+    : serial_(0),
+      publisher_(std::move(pub)),
+      notify_(notify),
+      info_(std::move(info)) {}
 
 Publisher::Subscriber::~Subscriber() {
   auto wlock = publisher_->state_.wlock();
@@ -66,9 +70,11 @@ void getPending(
   }
 }
 
-std::shared_ptr<Publisher::Subscriber> Publisher::subscribe(Notifier notify) {
+std::shared_ptr<Publisher::Subscriber> Publisher::subscribe(
+    Notifier notify,
+    const w_string& info) {
   auto sub =
-      std::make_shared<Publisher::Subscriber>(shared_from_this(), notify);
+      std::make_shared<Publisher::Subscriber>(shared_from_this(), notify, info);
   state_.wlock()->subscribers.emplace_back(sub);
   return sub;
 }
@@ -138,5 +144,42 @@ bool Publisher::enqueue(json_ref&& payload) {
     }
   }
   return true;
+}
+
+json_ref Publisher::getDebugInfo() const {
+  auto ret = json_object();
+
+  auto rlock = state_.rlock();
+  ret.set("next_serial", json_integer(rlock->nextSerial));
+
+  auto subscribers = json_array();
+  auto& subscribers_arr = subscribers.array();
+
+  for (auto& sub_ref : rlock->subscribers) {
+    auto sub = sub_ref.lock();
+    if (sub) {
+      auto sub_json = json_object({{"serial", json_integer(sub->getSerial())},
+                                   {"info", w_string_to_json(sub->getInfo())}});
+      subscribers_arr.emplace_back(sub_json);
+    } else {
+      // This is a subscriber that is now dead. It will be cleaned up the next
+      // time enqueue is called.
+    }
+  }
+
+  ret.set("subscribers", std::move(subscribers));
+
+  auto items = json_array();
+  auto& items_arr = items.array();
+
+  for (auto& item : rlock->items) {
+    auto item_json = json_object(
+        {{"serial", json_integer(item->serial)}, {"payload", item->payload}});
+    items_arr.emplace_back(item_json);
+  }
+
+  ret.set("items", std::move(items));
+
+  return ret;
 }
 }

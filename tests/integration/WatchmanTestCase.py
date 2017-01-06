@@ -187,19 +187,27 @@ class WatchmanTestCase(unittest.TestCase):
         # dir separator so we can remove the replace call.
         return path.replace('\\', '/')
 
+    def _waitForCheck(self, cond, res_check, timeout):
+        deadline = time.time() + timeout
+        res = None
+        while time.time() < deadline:
+            res = cond()
+            if res_check(res):
+                return [True, res]
+            time.sleep(0.03)
+        return [False, res]
+
     # Continually invoke `cond` until it returns true or timeout
     # is reached.  Returns a tuple of [bool, result] where the
     # first element of the tuple indicates success/failure and
     # the second element is the return value from the condition
     def waitFor(self, cond, timeout=10):
-        deadline = time.time() + timeout
-        res = None
-        while time.time() < deadline:
-            res = cond()
-            if res:
-                return [True, res]
-            time.sleep(0.03)
-        return [False, res]
+        return self._waitForCheck(cond, lambda res: res, timeout)
+
+    def waitForEqual(self, expected, actual_cond, timeout=10):
+        return self._waitForCheck(
+            actual_cond, lambda res: res == expected, timeout
+        )
 
     def assertWaitFor(self, cond, timeout=10, message=None):
         status, res = self.waitFor(cond, timeout)
@@ -207,6 +215,19 @@ class WatchmanTestCase(unittest.TestCase):
             return res
         if message is None:
             message = "%s was not met in %s seconds: %s" % (cond, timeout, res)
+        self.fail(message)
+
+    def assertWaitForEqual(
+        self, expected, actual_cond,
+        timeout=10, message=None
+    ):
+        status, res = self.waitForEqual(expected, actual_cond, timeout)
+        if status:
+            return res
+        if message is None:
+            message = "%s was not equal to %s in %s seconds: %s" % (
+                actual_cond, expected, timeout, res
+            )
         self.fail(message)
 
     def getFileList(self, root, cursor=None, relativeRoot=None):

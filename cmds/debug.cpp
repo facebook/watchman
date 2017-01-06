@@ -173,5 +173,24 @@ W_CMD_REG(
     CMD_DAEMON,
     nullptr)
 
+static void cmd_debug_get_subscriptions(
+    struct watchman_client* clientbase,
+    const json_ref& args) {
+  auto client = (watchman_user_client*)clientbase;
+
+  auto root = resolve_root_or_err(client, args, 1, false);
+
+  auto resp = make_response();
+  auto debug_info = root->unilateralResponses->getDebugInfo();
+  // copy over all the key-value pairs from debug_info
+  resp.object().insert(debug_info.object().begin(), debug_info.object().end());
+  send_and_dispose_response(clientbase, std::move(resp));
+}
+W_CMD_REG(
+    "debug-get-subscriptions",
+    cmd_debug_get_subscriptions,
+    CMD_DAEMON,
+    w_cmd_realpath_root)
+
 /* vim:ts=2:sw=2:et:
  */

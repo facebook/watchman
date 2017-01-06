@@ -550,6 +550,66 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.assertFileListsEqual(['newfile.txt'], new_sub1['files'])
         self.assertFileListsEqual(['newfile.txt'], new_sub2['files'])
 
+    def test_subscription_cleanup(self):
+        '''Verify that subscriptions get cleaned up from internal state on
+        unsubscribes and socket disconnects. This test failing usually
+        indicates a reference cycle keeping the subscriber alive.'''
+        root = self.mkdtemp()
+        a_dir = os.path.join(root, 'a')
+
+        os.mkdir(a_dir)
+        self.touchRelative(a_dir, 'lemon.txt')
+        self.touchRelative(a_dir, 'orange.dat')
+        self.touchRelative(root, 'b')
+
+        self.watchmanCommand('watch', root)
+        self.assertFileList(
+            root, files=['a', 'a/lemon.txt', 'a/orange.dat', 'b']
+        )
+
+        self.watchmanCommand(
+            'subscribe', root, 'sub1', {
+                'fields': ['name'],
+                'expression': ['type', 'f'],
+            }
+        )
+
+        self.touchRelative(a_dir, 'wat.txt')
+
+        self.watchmanCommand(
+            'subscribe', root, 'sub2', {
+                'fields': ['name'],
+                'expression': ['type', 'f'],
+            }
+        )
+
+        out = self.watchmanCommand('debug-get-subscriptions', root)
+        subs = set(sub['info'] for sub in out['subscribers'])
+        self.assertItemsEqual(set(['sub1', 'sub2']), subs)
+
+        # this should remove sub1 from the map
+        self.watchmanCommand('unsubscribe', root, 'sub1')
+        out = self.watchmanCommand('debug-get-subscriptions', root)
+        subs = set(sub['info'] for sub in out['subscribers'])
+        self.assertItemsEqual(set(['sub2']), subs)
+
+        # flush sub2 so that there's no reason anything else would be keeping
+        # it around
+        self.watchmanCommand(
+            'flush-subscriptions', root, {'sync_timeout': 1000}
+        )
+        # disconnect from the socket -- the next command will reconnect the
+        # socket, but sub2 should have disappeared
+        self.client.close()
+
+        # It might take a while for watchman to realize its connection has been
+        # reset, so check repeatedly.
+        def checkSubscribers():
+            out = self.watchmanCommand('debug-get-subscriptions', root)
+            return out['subscribers']
+
+        self.assertWaitForEqual([], checkSubscribers)
+
     # TODO: Assimilate this test into test_subscribe when Watchman gets
     # unicode support.
     # TODO: Correctly test subscribe with unicode on Windows.

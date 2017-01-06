@@ -35,10 +35,16 @@ class Publisher : public std::enable_shared_from_this<Publisher> {
     std::shared_ptr<Publisher> publisher_;
     // Advising the subscriber that there may be more items available
     Notifier notify_;
+    // Information for debugging purposes
+    const w_string info_;
 
    public:
     ~Subscriber();
-    Subscriber(std::shared_ptr<Publisher> pub, Notifier notify);
+    Subscriber(
+        std::shared_ptr<Publisher> pub,
+        Notifier notify,
+        const w_string& info);
+    Subscriber(const Subscriber&) = delete;
 
     // Returns the next published item that this subscriber has
     // not yet observed.
@@ -56,12 +62,18 @@ class Publisher : public std::enable_shared_from_this<Publisher> {
     inline Notifier& getNotify() {
       return notify_;
     }
+
+    inline const w_string& getInfo() {
+      return info_;
+    }
   };
 
   // Register a new subscriber.
   // When the Subscriber object is released, the registration is
   // automatically removed.
-  std::shared_ptr<Subscriber> subscribe(Notifier notify);
+  std::shared_ptr<Subscriber> subscribe(
+      Notifier notify,
+      const w_string& info = nullptr);
 
   // Returns true if there are any subscribers.
   // This is racy and intended to be used to gate building a payload
@@ -72,8 +84,13 @@ class Publisher : public std::enable_shared_from_this<Publisher> {
   // Returns true if the item was queued.
   bool enqueue(json_ref&& payload);
 
+  // Return debugging info useful for state inspection.
+  json_ref getDebugInfo() const;
+
  private:
   struct state {
+    state() = default;
+    state(const state&) = delete;
     // Serial number to use for the next Item
     uint64_t nextSerial{1};
     // The stream of Items
