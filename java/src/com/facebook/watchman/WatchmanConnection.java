@@ -16,6 +16,7 @@
 package com.facebook.watchman;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Collection;
@@ -32,7 +33,6 @@ import com.facebook.watchman.bser.BserDeserializer;
 import com.facebook.watchman.bser.BserSerializer;
 
 import com.google.common.base.Optional;
-import com.google.common.base.Supplier;
 import com.google.common.collect.Queues;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
@@ -45,9 +45,9 @@ public class WatchmanConnection {
 
   private final ListeningExecutorService outgoingMessageExecutor;
   private final ExecutorService incomingMessageExecutor;
-  private final Supplier<Map<String, Object>> inputMessageSupplier;
+  private final Callable<Map<String, Object>> incomingMessageGetter;
   private final Optional<Socket> socket;
-  private final OutputStream outputStream;
+  private final OutputStream outgoingMessageStream;
   private final Optional<Callback> unilateralCallback;
   private final Optional<Collection<String>> unilateralLabels;
   private final BlockingQueue<QueuedCommand> commandQueue;
@@ -57,7 +57,7 @@ public class WatchmanConnection {
 
   public WatchmanConnection(Socket socket) throws IOException {
     this(
-        inputSupplierFromSocket(socket),
+        incomingMessageGetterFromSocket(socket),
         socket.getOutputStream(),
         Optional.<Collection<String>>absent(),
         Optional.<Callback>absent(),
@@ -70,7 +70,7 @@ public class WatchmanConnection {
       Optional<Collection<String>> unilateralLabels,
       Optional<Callback> unilateralCallback) throws IOException {
     this(
-        inputSupplierFromSocket(socket),
+        incomingMessageGetterFromSocket(socket),
         socket.getOutputStream(),
         unilateralLabels,
         unilateralCallback,
@@ -84,7 +84,7 @@ public class WatchmanConnection {
       Optional<Callback> unilateralCallback,
       Optional<WatchmanCommandListener> commandListener) throws IOException {
     this(
-        inputSupplierFromSocket(socket),
+        incomingMessageGetterFromSocket(socket),
         socket.getOutputStream(),
         unilateralLabels,
         unilateralCallback,
@@ -93,11 +93,11 @@ public class WatchmanConnection {
   }
 
   public WatchmanConnection(
-      Supplier<Map<String, Object>> inputStream,
-      OutputStream outputStream) {
+      Callable<Map<String, Object>> incomingMessageGetter,
+      OutputStream outgoingMessageStream) {
     this(
-        inputStream,
-        outputStream,
+        incomingMessageGetter,
+        outgoingMessageStream,
         Optional.<Collection<String>>absent(),
         Optional.<Callback>absent(),
         Optional.<WatchmanCommandListener>absent(),
@@ -105,12 +105,12 @@ public class WatchmanConnection {
   }
 
   public WatchmanConnection(
-      Supplier<Map<String, Object>> inputStream,
-      OutputStream outputStream,
+      Callable<Map<String, Object>> incomingMessageGetter,
+      OutputStream outgoingMessageStream,
       Optional<WatchmanCommandListener> commandListener) {
     this(
-        inputStream,
-        outputStream,
+        incomingMessageGetter,
+        outgoingMessageStream,
         Optional.<Collection<String>>absent(),
         Optional.<Callback>absent(),
         commandListener,
@@ -118,13 +118,13 @@ public class WatchmanConnection {
   }
 
   public WatchmanConnection(
-      Supplier<Map<String, Object>> inputStream,
-      OutputStream outputStream,
+      Callable<Map<String, Object>> incomingMessageGetter,
+      OutputStream outgoingMessageStream,
       Optional<Collection<String>> unilateralLabels,
       Optional<Callback> unilateralCallback) {
     this(
-        inputStream,
-        outputStream,
+        incomingMessageGetter,
+        outgoingMessageStream,
         unilateralLabels,
         unilateralCallback,
         Optional.<WatchmanCommandListener>absent(),
@@ -132,14 +132,14 @@ public class WatchmanConnection {
   }
 
   public WatchmanConnection(
-      Supplier<Map<String, Object>> inputStream,
-      OutputStream outputStream,
+      Callable<Map<String, Object>> incomingMessageGetter,
+      OutputStream outgoingMessageStream,
       Optional<Collection<String>> unilateralLabels,
       Optional<Callback> unilateralCallback,
       Optional<WatchmanCommandListener> commandListener,
       Optional<Socket> optionalSocket) {
-    this.inputMessageSupplier = inputStream;
-    this.outputStream = outputStream;
+    this.incomingMessageGetter = incomingMessageGetter;
+    this.outgoingMessageStream = outgoingMessageStream;
     this.unilateralLabels = unilateralLabels;
     this.unilateralCallback = unilateralCallback;
     this.socket = optionalSocket;
@@ -192,7 +192,7 @@ public class WatchmanConnection {
         if (processing.get()) {
           bserSerializer.serializeToStream(
               command,
-              outputStream);
+              outgoingMessageStream);
         }
         if (commandListener.isPresent()) {
           commandListener.get().onSent();
@@ -217,7 +217,7 @@ public class WatchmanConnection {
 
   public void close() throws IOException {
     failAllCommands(new WatchmanException("connection closing down"));
-    outputStream.close();
+    outgoingMessageStream.close();
     incomingMessageExecutor.shutdown();
     outgoingMessageExecutor.shutdown();
 
@@ -236,7 +236,7 @@ public class WatchmanConnection {
     public void run() {
       while (processing.get()) {
         try {
-          Map<String, Object> deserializedResponse = inputMessageSupplier.get();
+          Map<String, Object> deserializedResponse = incomingMessageGetter.call();
           if (deserializedResponse == null) continue;
 
           if (checkMessageUnilateral(deserializedResponse)) {
@@ -292,10 +292,19 @@ public class WatchmanConnection {
     void onReceived();
   }
 
-  private static SerializedStreamMessageSupplier inputSupplierFromSocket(Socket socket)
+  /**
+   * Generates a Callable that can be invoked repeatedly to extract
+   * deserialized messages from watchman's socket.
+   */
+  private static Callable<Map<String, Object>> incomingMessageGetterFromSocket(Socket socket)
       throws IOException {
-    return new SerializedStreamMessageSupplier(
-        socket.getInputStream(),
-        new BserDeserializer(BserDeserializer.KeyOrdering.UNSORTED));
+    final InputStream inputStream = socket.getInputStream();
+    final BserDeserializer deserializer = new BserDeserializer(BserDeserializer.KeyOrdering.UNSORTED);
+    return new Callable<Map<String, Object>>() {
+      @Override
+      public Map<String, Object> call() throws Exception {
+        return deserializer.deserialize(inputStream);
+      }
+    };
   }
 }

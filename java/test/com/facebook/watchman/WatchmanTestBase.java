@@ -22,31 +22,26 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import com.google.common.base.Supplier;
 import org.junit.Assert;
 import org.junit.Before;
 
 public class WatchmanTestBase {
 
-  protected ByteArrayOutputStream mOutputStream;
+  protected ByteArrayOutputStream mOutgoingMessageStream;
   protected BlockingQueue<Map<String, Object>> mObjectQueue;
-  protected Supplier<Map<String, Object>> mInputSupplier;
+  protected Callable<Map<String, Object>> mIncomingMessageGetter;
 
   @Before
   public void setUp() throws IOException {
-    mOutputStream = new ByteArrayOutputStream();
+    mOutgoingMessageStream = new ByteArrayOutputStream();
     mObjectQueue = new LinkedBlockingQueue<>();
-    mInputSupplier = new Supplier<Map<String, Object>>() {
+    mIncomingMessageGetter = new Callable<Map<String, Object>>() {
       @Override
-      public Map<String, Object> get() {
-        try {
-          Map<String, Object> result = mObjectQueue.take();
-          return result;
-        } catch (InterruptedException e) {
-          return null;
-        }
+      public Map<String, Object> call() throws Exception {
+        return mObjectQueue.take();
       }
     };
   }

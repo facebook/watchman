@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -71,12 +72,12 @@ public class WatchmanClientImpl implements WatchmanClient {
 
   @VisibleForTesting
   WatchmanClientImpl(
-      Supplier<Map<String, Object>> inputSupplier,
-      OutputStream outputStream,
+      Callable<Map<String, Object>> incomingMessageGetter,
+      OutputStream outgoingMessageStream,
       Supplier<Boolean> supportsWatchProject) {
     connection = new WatchmanConnection(
-        inputSupplier,
-        outputStream,
+        incomingMessageGetter,
+        outgoingMessageStream,
         Optional.of(UNILATERAL_LABELS),
         Optional.<Callback>of(new UnilateralCallbackImpl()));
 
