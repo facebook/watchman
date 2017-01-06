@@ -255,11 +255,13 @@ public class WatchmanClientImpl implements WatchmanClient {
             .name(subscriptionId)
             .root(root)
             .build();
-        if (!subscriptions.containsKey(subscription)) {
+
+        Callback listener = subscriptions.get(subscription);
+        if (listener == null) {
           // TODO log error?!
           return;
         }
-        subscriptions.get(subscription).call(message);
+        listener.call(message);
       }
     }
   }
