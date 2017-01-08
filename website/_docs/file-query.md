@@ -1,5 +1,5 @@
 ---
-id: file-query
+pageid: file-query
 title: File Queries
 layout: docs
 section: Queries

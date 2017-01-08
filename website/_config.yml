@@ -4,13 +4,24 @@ tagline: A file watching service
 fbappid: "1615782811974223"
 gacode: "UA-44373548-13"
 description:
+url: "https://facebook.github.io"
 baseurl: "/watchman"
 ghrepo: "facebook/watchman"
+logo: /static/logo.png
 
 # Build settings
-markdown: redcarpet
-highlighter: pygments
-lsi: false
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+  syntax_highlighter_opts:
+    css_class: 'rougeHighlight'
+    span:
+      line_numbers: false
+    block:
+      line_numbers: true
+      start_line: 1
 
 exclude: [README.md, publish.sh, Gemfile]
 keep_files: [.git, .hg]
@@ -25,9 +36,6 @@ collections:
 
 sass:
   style: :compressed
-
-redcarpet:
-  extensions: [with_toc_data, no_intra_emphasis, tables, autolink]
 
 color:
   # Provides colour for background of top header of homepage
@@ -48,3 +56,17 @@ color:
   navtext: "#bfc6ff"
   # Color of link underlines in the main body, and hover background color for links
   link: "#4356e6"
+
+# Gems
+gems:
+  - jekyll-feed
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+# Set default open graph image for all pages
+defaults:
+  -
+    scope:
+      path: ""
+    values:
+      image: /static/og_image.png

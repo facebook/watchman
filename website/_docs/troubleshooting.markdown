@@ -1,5 +1,5 @@
 ---
-id: troubleshooting
+pageid: troubleshooting
 title: Troubleshooting
 layout: docs
 section: Troubleshooting

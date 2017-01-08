@@ -1,5 +1,5 @@
 ---
-id: release-notes
+pageid: release-notes
 title: Release Notes
 layout: docs
 section: Installation

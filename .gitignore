@@ -71,3 +71,4 @@ Watchman.vcxproj
 *.sdf
 *.sln
 *.suo
+/website/.jekyll-metadata

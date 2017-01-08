@@ -1,5 +1,5 @@
 ---
-id: install
+pageid: install
 title: Installation
 layout: docs
 section: Installation

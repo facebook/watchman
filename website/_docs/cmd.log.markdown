@@ -1,5 +1,5 @@
 ---
-id: cmd.log
+pageid: cmd.log
 title: log
 layout: docs
 section: Commands

@@ -1,5 +1,5 @@
 ---
-id: expr.allof
+pageid: expr.allof
 title: allof
 layout: docs
 section: Expression Terms

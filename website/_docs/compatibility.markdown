@@ -1,5 +1,5 @@
 ---
-id: compatibility
+pageid: compatibility
 title: Compatibility Rules
 layout: docs
 category: Compatibility

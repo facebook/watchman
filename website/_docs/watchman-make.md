@@ -1,5 +1,5 @@
 ---
-id: watchman-make
+pageid: watchman-make
 title: watchman-make
 layout: docs
 category: Invocation

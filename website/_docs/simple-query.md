@@ -1,5 +1,5 @@
 ---
-id: simple-query
+pageid: simple-query
 title: Simple Pattern Syntax
 layout: docs
 section: Queries

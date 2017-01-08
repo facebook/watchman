@@ -1,5 +1,5 @@
 ---
-id: cmd.flush-subscriptions
+pageid: cmd.flush-subscriptions
 title: flush-subscriptions
 layout: docs
 section: Commands

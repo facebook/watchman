@@ -1,5 +1,5 @@
 ---
-id: expr.pcre
+pageid: expr.pcre
 title: pcre & ipcre
 layout: docs
 section: Expression Terms

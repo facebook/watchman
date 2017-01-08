@@ -1,5 +1,5 @@
 ---
-id: cmd.list-capabilities
+pageid: cmd.list-capabilities
 title: list-capabilities
 layout: docs
 category: Commands

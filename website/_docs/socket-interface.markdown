@@ -1,5 +1,5 @@
 ---
-id: socket-interface
+pageid: socket-interface
 title: Socket Interface
 layout: docs
 section: Invocation

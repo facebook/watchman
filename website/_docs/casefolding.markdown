@@ -1,5 +1,5 @@
 ---
-id: casefolding
+pageid: casefolding
 title: Case-Insensitivity
 layout: docs
 section: Internals

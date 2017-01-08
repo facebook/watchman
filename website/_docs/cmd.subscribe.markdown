@@ -1,5 +1,5 @@
 ---
-id: cmd.subscribe
+pageid: cmd.subscribe
 title: subscribe
 layout: docs
 section: Commands

@@ -1,5 +1,5 @@
 ---
-id: cmd.get-sockname
+pageid: cmd.get-sockname
 title: get-sockname
 layout: docs
 section: Commands

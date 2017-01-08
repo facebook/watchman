@@ -1,5 +1,5 @@
 ---
-id: cmd.find
+pageid: cmd.find
 title: find
 layout: docs
 section: Commands

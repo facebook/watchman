@@ -1,5 +1,5 @@
 ---
-id: cmd.version
+pageid: cmd.version
 title: version
 layout: docs
 section: Commands
