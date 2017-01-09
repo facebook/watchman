@@ -4,33 +4,46 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  
-	<meta property="og:url" content="/watchman/docs/bser.html" />
-	<meta property="og:site_name" content="Watchman"/>
-	<meta property="og:title" content="BSER Binary Protocol" />
-	<meta property="og:image" content="/watchman/static/og_image.png" />
-	<meta property="og:description" content="" />
+
+  <!-- Begin Jekyll SEO tag v2.1.0 -->
+<title>BSER Binary Protocol - Watchman</title>
+<meta property="og:title" content="BSER Binary Protocol" />
+<meta name="description" content="The basic JSON protocol in watchman allows quick and easy integration. Applications with higher performance requirements may want to consider the binary protocol instead." />
+<meta property="og:description" content="The basic JSON protocol in watchman allows quick and easy integration. Applications with higher performance requirements may want to consider the binary protocol instead." />
+<link rel="canonical" href="https://facebook.github.io/watchman/docs/bser.html" />
+<meta property="og:url" content="https://facebook.github.io/watchman/docs/bser.html" />
+<meta property="og:site_name" content="Watchman" />
+<meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2017-01-09T12:29:09-08:00" />
+<script type="application/ld+json">
+{"@context": "http://schema.org",
+"@type": "BlogPosting",
+"headline": "BSER Binary Protocol",
+"image": "https://facebook.github.io/watchman/static/og_image.png",
+"datePublished": "2017-01-09T12:29:09-08:00",
+"description": "The basic JSON protocol in watchman allows quick and easy integration. Applications with higher performance requirements may want to consider the binary protocol instead.",
+"publisher": {"@type": "Organization",
+"logo": {"@type": "ImageObject",
+"url": "https://facebook.github.io/watchman/static/logo.png"}},
+"url": "https://facebook.github.io/watchman/docs/bser.html"}</script>
+<!-- End Jekyll SEO tag -->
+
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  
   <link rel="icon" href="static/favicon.png" type="image/x-icon">
-  
-  <base href="/watchman/" />
-  
+
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
 
-  <title>BSER Binary Protocol</title>
-  <meta name="description" content="">
-
-  <link rel="canonical" href="/watchman/docs/bser.html">
-  <link rel="alternate" type="application/rss+xml" title="Watchman" href="/watchman/feed.xml" />
+  
+  <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
   <body>    
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
       <nav class="navigation">
         <ul>
@@ -162,14 +175,14 @@
       group     : "Installation",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/install.html",
           title : "Installation",
           url : "/watchman/docs/install.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/release-notes.html",
           title : "Release Notes",
@@ -183,42 +196,42 @@
       group     : "Invocation",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/cli-options.html",
           title : "Command Line",
           url : "/watchman/docs/cli-options.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/watchman-make.html",
           title : "watchman-make",
           url : "/watchman/docs/watchman-make.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/watchman-wait.html",
           title : "watchman-wait",
           url : "/watchman/docs/watchman-wait.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/nodejs.html",
           title : "NodeJS",
           url : "/watchman/docs/nodejs.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/config.html",
           title : "Configuration Files",
           url : "/watchman/docs/config.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/socket-interface.html",
           title : "Socket Interface",
@@ -232,14 +245,14 @@
       group     : "Compatibility",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/compatibility.html",
           title : "Compatibility Rules",
           url : "/watchman/docs/compatibility.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/capabilities.html",
           title : "Capabilities",
@@ -253,161 +266,168 @@
       group     : "Commands",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/cmd/clock.html",
           title : "clock",
           url : "/watchman/docs/cmd/clock.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/find.html",
           title : "find",
           url : "/watchman/docs/cmd/find.html",
         },
         
+          
+        {
+          key : "/watchman/docs/cmd/flush-subscriptions.html",
+          title : "flush-subscriptions",
+          url : "/watchman/docs/cmd/flush-subscriptions.html",
+        },
         
+          
         {
           key : "/watchman/docs/cmd/get-config.html",
           title : "get-config",
           url : "/watchman/docs/cmd/get-config.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/get-sockname.html",
           title : "get-sockname",
           url : "/watchman/docs/cmd/get-sockname.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/list-capabilities.html",
           title : "list-capabilities",
           url : "/watchman/docs/cmd/list-capabilities.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/log.html",
           title : "log",
           url : "/watchman/docs/cmd/log.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/log-level.html",
           title : "log-level",
           url : "/watchman/docs/cmd/log-level.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/query.html",
           title : "query",
           url : "/watchman/docs/cmd/query.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/shutdown-server.html",
           title : "shutdown-server",
           url : "/watchman/docs/cmd/shutdown-server.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/since.html",
           title : "since",
           url : "/watchman/docs/cmd/since.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/state-enter.html",
           title : "state-enter",
           url : "/watchman/docs/cmd/state-enter.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/state-leave.html",
           title : "state-leave",
           url : "/watchman/docs/cmd/state-leave.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/subscribe.html",
           title : "subscribe",
           url : "/watchman/docs/cmd/subscribe.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/trigger.html",
           title : "trigger",
           url : "/watchman/docs/cmd/trigger.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/trigger-del.html",
           title : "trigger-del",
           url : "/watchman/docs/cmd/trigger-del.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/trigger-list.html",
           title : "trigger-list",
           url : "/watchman/docs/cmd/trigger-list.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/unsubscribe.html",
           title : "unsubscribe",
           url : "/watchman/docs/cmd/unsubscribe.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/version.html",
           title : "version",
           url : "/watchman/docs/cmd/version.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/watch.html",
           title : "watch",
           url : "/watchman/docs/cmd/watch.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/watch-del.html",
           title : "watch-del",
           url : "/watchman/docs/cmd/watch-del.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/watch-del-all.html",
           title : "watch-del-all",
           url : "/watchman/docs/cmd/watch-del-all.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/watch-list.html",
           title : "watch-list",
           url : "/watchman/docs/cmd/watch-list.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/watch-project.html",
           title : "watch-project",
@@ -421,21 +441,21 @@
       group     : "Queries",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/clockspec.html",
           title : "Clockspec",
           url : "/watchman/docs/clockspec.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/file-query.html",
           title : "File Queries",
           url : "/watchman/docs/file-query.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/simple-query.html",
           title : "Simple Pattern Syntax",
@@ -449,91 +469,91 @@
       group     : "Expression Terms",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/expr/allof.html",
           title : "allof",
           url : "/watchman/docs/expr/allof.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/anyof.html",
           title : "anyof",
           url : "/watchman/docs/expr/anyof.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/dirname.html",
           title : "dirname & idirname",
           url : "/watchman/docs/expr/dirname.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/empty.html",
           title : "empty",
           url : "/watchman/docs/expr/empty.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/exists.html",
           title : "exists",
           url : "/watchman/docs/expr/exists.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/match.html",
           title : "match & imatch",
           url : "/watchman/docs/expr/match.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/name.html",
           title : "name & iname",
           url : "/watchman/docs/expr/name.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/not.html",
           title : "not",
           url : "/watchman/docs/expr/not.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/pcre.html",
           title : "pcre & ipcre",
           url : "/watchman/docs/expr/pcre.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/since.html",
           title : "since",
           url : "/watchman/docs/expr/since.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/size.html",
           title : "size",
           url : "/watchman/docs/expr/size.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/suffix.html",
           title : "suffix",
           url : "/watchman/docs/expr/suffix.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/type.html",
           title : "type",
@@ -547,28 +567,28 @@
       group     : "Internals",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/bser.html",
           title : "BSER Binary Protocol",
           url : "/watchman/docs/bser.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/casefolding.html",
           title : "Case-Insensitivity",
           url : "/watchman/docs/casefolding.html",
         },
         
-        
+          
         {
           key : "/watchman/contributing.html",
           title : "Contributing",
           url : "/watchman/contributing.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cookies.html",
           title : "Query Synchronization",
@@ -582,7 +602,7 @@
       group     : "Troubleshooting",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/troubleshooting.html",
           title : "Troubleshooting",
@@ -594,7 +614,7 @@
     
   ];
 </script>
-<script type="text/javascript">  
+<script type="text/javascript">
 window.addEventListener('load', function() {
   var DocNav = React.createClass({displayName: "DocNav",
     getInitialState: function() {
@@ -624,10 +644,10 @@ window.addEventListener('load', function() {
         'toggleNavActive': this.state.toggleActive,
       });
       return (
-        React.createElement("div", {className: navClasses}, 
-          React.createElement("section", null, 
+        React.createElement("div", {className: navClasses},
+          React.createElement("section", null,
             this.props.data.map(this.renderNavGroups)
-          ), 
+          ),
           React.createElement("div", {className: classes, onClick: this.handleSlide}, React.createElement("i", {className: "fa fa-chevron-circle-down"}))
         )
       );
@@ -638,9 +658,9 @@ window.addEventListener('load', function() {
         'navGroupActive': this.props.currentGroup === child.group,
       });
       return (
-        React.createElement("div", {className: classes, key: index}, 
-          React.createElement("h3", null, child.group), 
-          React.createElement("ul", null, 
+        React.createElement("div", {className: classes, key: index},
+          React.createElement("h3", null, child.group),
+          React.createElement("ul", null,
             child.items.map(this.renderNavItems)
           )
         )
@@ -683,7 +703,7 @@ Applications with higher performance requirements may want to consider the
 binary protocol instead.</p>
 
 <p>The binary protocol is enabled by the client sending the byte sequence
-&quot;\x00x\x01&quot;.</p>
+“\x00x\x01”.</p>
 
 <h2 id="pdu">PDU</h2>
 
@@ -692,18 +712,18 @@ the peer to determine how much storage is required to read and decode it.</p>
 
 <h2 id="arrays">Arrays</h2>
 
-<p>Arrays are indicated by a <code>0x00</code> byte value followed by an integer value to
+<p>Arrays are indicated by a <code class="highlighter-rouge">0x00</code> byte value followed by an integer value to
 indicate how many items follow.  Then each item is encoded one after the other.</p>
 
 <h2 id="objects">Objects</h2>
 
-<p>Objects are indicated by a <code>0x01</code> byte value followed by an integer value to
+<p>Objects are indicated by a <code class="highlighter-rouge">0x01</code> byte value followed by an integer value to
 indicate the number of properties in the object.  Then each key/value pair is
 encoded one after the other.</p>
 
 <h2 id="strings">Strings</h2>
 
-<p>Strings are indicated by a <code>0x02</code> byte value followed by an integer value to
+<p>Strings are indicated by a <code class="highlighter-rouge">0x02</code> byte value followed by an integer value to
 indicate the number of bytes in the string, followed by the bytes of the
 string.</p>
 
@@ -711,7 +731,7 @@ string.</p>
 
 <p>Unlike JSON, strings are not defined as having any particular encoding; they
 are transmitted as binary strings.  This is because the underlying filesystem
-APIs don&#39;t define any particular encoding for names.</p>
+APIs don’t define any particular encoding for names.</p>
 
 <p><em>Exception:</em> Keys in objects that are defined by watchman commands are always
 ASCII. In general, keys in objects are always UTF-8.</p>
@@ -719,7 +739,7 @@ ASCII. In general, keys in objects are always UTF-8.</p>
 <p><em>Rationale:</em> Several programming languages like Python 3 expect all text to be
 in a particular encoding and make it inconvenient to pass in bytestrings or
 other encodings. Also, the primary purpose of not defining an encoding is that
-filenames don&#39;t always have one, and filenames are unlikely to show up as keys.</p>
+filenames don’t always have one, and filenames are unlikely to show up as keys.</p>
 
 <h2 id="integers">Integers</h2>
 
@@ -727,77 +747,117 @@ filenames don&#39;t always have one, and filenames are unlikely to show up as ke
 running the watchman daemon.</p>
 
 <ul>
-<li><code>0x03</code> indicates an int8_t.  It is followed by the int8_t value.</li>
-<li><code>0x04</code> indicates an int16_t. It is followed by the int16_t value.</li>
-<li><code>0x05</code> indicates an int32_t. It is followed by the int32_t value.</li>
-<li><code>0x06</code> indicates an int64_t. It is followed by the int64_t value.</li>
+  <li><code class="highlighter-rouge">0x03</code> indicates an int8_t.  It is followed by the int8_t value.</li>
+  <li><code class="highlighter-rouge">0x04</code> indicates an int16_t. It is followed by the int16_t value.</li>
+  <li><code class="highlighter-rouge">0x05</code> indicates an int32_t. It is followed by the int32_t value.</li>
+  <li><code class="highlighter-rouge">0x06</code> indicates an int64_t. It is followed by the int64_t value.</li>
 </ul>
 
 <h2 id="real">Real</h2>
 
-<p>A real number is indicated by a <code>0x07</code> byte followed by 8 bytes of double value.</p>
+<p>A real number is indicated by a <code class="highlighter-rouge">0x07</code> byte followed by 8 bytes of double value.</p>
 
 <h2 id="boolean">Boolean</h2>
 
 <ul>
-<li><code>0x08</code> indicates boolean true</li>
-<li><code>0x09</code> indicates boolean false</li>
+  <li><code class="highlighter-rouge">0x08</code> indicates boolean true</li>
+  <li><code class="highlighter-rouge">0x09</code> indicates boolean false</li>
 </ul>
 
 <h2 id="null">Null</h2>
 
-<p><code>0x0a</code> indicates the null value</p>
+<p><code class="highlighter-rouge">0x0a</code> indicates the null value</p>
 
 <h2 id="array-of-templated-objects">Array of Templated Objects</h2>
 
-<p><code>0x0b</code> indicates a compact array of objects follows.  Some of the bigger
+<p><code class="highlighter-rouge">0x0b</code> indicates a compact array of objects follows.  Some of the bigger
 datastructures returned by watchman are tabular data expressed as an array
 of objects.  This serialization type factors out the repeated object keys
 into a header array listing the keys, followed by an array containing
 all the values of the objects.</p>
 
-<p>To represent missing keys in templated arrays, the <code>0x0c</code> encoding value may
+<p>To represent missing keys in templated arrays, the <code class="highlighter-rouge">0x0c</code> encoding value may
 be present.  If encountered it is interpreted as meaning that there is no value
 for the key that would have been decoded in this position.  This is distinct
 from the null value.</p>
 
 <p>For example:</p>
-<div class="highlight"><pre><code class="language-text" data-lang="text">[
-   {&quot;name&quot;: &quot;fred&quot;, &quot;age&quot;: 20},
-   {&quot;name&quot;: &quot;pete&quot;, &quot;age&quot;: 30},
-   {&quot;age&quot;: 25 },
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5</pre></td><td class="code"><pre>[
+   {"name": "fred", "age": 20},
+   {"name": "pete", "age": 30},
+   {"age": 25 },
 ]
-</code></pre></div>
+</pre></td></tr></tbody></table>
+</div>
+</div>
+
 <p>is represented similar to:</p>
-<div class="highlight"><pre><code class="language-text" data-lang="text">[&quot;name&quot;, &quot;age&quot;],
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6</pre></td><td class="code"><pre>["name", "age"],
 [
-  &quot;fred&quot;, 20,
-  &quot;pete&quot;, 30,
+  "fred", 20,
+  "pete", 30,
   0x0c,   25
 ]
-</code></pre></div>
+</pre></td></tr></tbody></table>
+</div>
+</div>
+
 <p>The precise sequence is:</p>
-<div class="highlight"><pre><code class="language-text" data-lang="text">0b          template
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20</pre></td><td class="code"><pre>0b          template
 00          array     -- start prop names
 0302        int, 2    -- two prop names
-02          string    -- first prop &quot;name&quot;
+02          string    -- first prop "name"
 0304        int, 4
-6e616d65    &quot;name&quot;
-02          string    -- 2nd prop &quot;age&quot;
+6e616d65    "name"
+02          string    -- 2nd prop "age"
 0303        int, 3
-616765      &quot;age&quot;
+616765      "age"
 0303        int, 3    -- there are 3 objects
 02          string    -- object 1, prop 1 name=fred
 0304        int, 4
-66726564    &quot;fred&quot;
+66726564    "fred"
 0314        int 0x14  -- object 1, prop 2 age=20
 02          string    -- object 2, prop 1 name=pete
 0304        int 4
-70657465    &quot;pete&quot;
+70657465    "pete"
 031e        int, 0x1e -- object 2, prop 2 age=30
 0c          skip      -- object 3, prop 1, not set
 0319        int, 0x19 -- object 3, prop 2 age=25
-</code></pre></div>
+</pre></td></tr></tbody></table>
+</div>
+</div>
+
     
   </article>
 </div>

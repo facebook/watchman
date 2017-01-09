@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- Begin Jekyll SEO tag v2.1.0 -->
-<title>Installation - Watchman</title>
-<meta property="og:title" content="Installation" />
-<meta name="description" content="System Requirements" />
-<meta property="og:description" content="System Requirements" />
-<link rel="canonical" href="https://facebook.github.io/watchman/docs/install.html" />
-<meta property="og:url" content="https://facebook.github.io/watchman/docs/install.html" />
+<title>flush-subscriptions - Watchman</title>
+<meta property="og:title" content="flush-subscriptions" />
+<meta name="description" content="Since 4.8." />
+<meta property="og:description" content="Since 4.8." />
+<link rel="canonical" href="https://facebook.github.io/watchman/docs/cmd/flush-subscriptions.html" />
+<meta property="og:url" content="https://facebook.github.io/watchman/docs/cmd/flush-subscriptions.html" />
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
@@ -19,14 +19,14 @@
 <script type="application/ld+json">
 {"@context": "http://schema.org",
 "@type": "BlogPosting",
-"headline": "Installation",
+"headline": "flush-subscriptions",
 "image": "https://facebook.github.io/watchman/static/og_image.png",
 "datePublished": "2017-01-09T12:29:09-08:00",
-"description": "System Requirements",
+"description": "Since 4.8.",
 "publisher": {"@type": "Organization",
 "logo": {"@type": "ImageObject",
 "url": "https://facebook.github.io/watchman/static/logo.png"}},
-"url": "https://facebook.github.io/watchman/docs/install.html"}</script>
+"url": "https://facebook.github.io/watchman/docs/cmd/flush-subscriptions.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -624,8 +624,8 @@ window.addEventListener('load', function() {
     },
     getDefaultProps: function() {
       return {
-        currentDoc: "Installation",
-        currentGroup: "Installation",
+        currentDoc: "flush-subscriptions",
+        currentGroup: "Commands",
         data: docnavData,
       }
     },
@@ -693,235 +693,108 @@ window.addEventListener('load', function() {
 
     <div class="post">
   <header class="post-header">
-    <h1 class="post-title">Installation</h1>
+    <h1 class="post-title">flush-subscriptions</h1>
   </header>
 
   <article class="post-content">
    
-      <h2 id="system-requirements">System Requirements</h2>
+      <p><em>Since 4.8.</em></p>
 
-<p>Watchman is known to compile and pass its test suite on:</p>
+<p>Flushes buffered updates to subscriptions associated with the current
+session, guaranteeing that they are up-to-date as of the time Watchman
+received the <code class="highlighter-rouge">flush-subscriptions</code> command.</p>
+
+<p>Subscription updates will be interleaved between the <code class="highlighter-rouge">flush-subscriptions</code>
+request and its response. Once the response has been received, subscriptions are
+up-to-date.</p>
+
+<p>This command is designed to be used by interactive programs that have a
+background process or daemon maintaining a subscription to Watchman. The typical
+pattern is for interactive commands to be forwarded to the process, which calls
+<code class="highlighter-rouge">flush-subscriptions</code> and then processes any subscription updates it received.
+This pattern eliminates races with files changed right before the interactive
+command.</p>
+
+<h3 id="arguments">Arguments</h3>
 
 <ul>
-  <li><i class="fa fa-linux"></i> Linux systems with <code class="highlighter-rouge">inotify</code></li>
-  <li><i class="fa fa-apple"></i> OS X (uses <code class="highlighter-rouge">FSEvents</code> on 10.7+,
-<code class="highlighter-rouge">kqueue(2)</code> on earlier versions)</li>
-  <li><i class="fa fa-windows"></i> Windows x64 on Windows Server 2012 R2 and
-later is currently in <strong>alpha</strong> status.  <a href="https://github.com/facebook/watchman/issues/19">More details on alpha testing this
-here</a></li>
+  <li><code class="highlighter-rouge">sync_timeout</code>: Required. The number of milliseconds to wait to observe a
+synchronization cookie. The synchronization cookie is created at the start of
+the <code class="highlighter-rouge">flush-subscriptions</code> call, and once the cookie is observed, means that
+the OS has sent watchman all the updates till at least the start of the
+<code class="highlighter-rouge">flush-subscriptions</code> call.</li>
+  <li><code class="highlighter-rouge">subscriptions</code>: Optional. Which subscriptions to flush. By default this
+flushes all subscriptions associated with this project on this session.</li>
 </ul>
 
-<p>Watchman used to support the following systems, but no one is actively
-maintaining them.  The core of the code should be OK, but they likely don’t
-build.  We’d love it if someone would step forward to maintain them:</p>
+<h3 id="examples">Examples</h3>
 
-<ul>
-  <li>BSDish systems (FreeBSD 9.1, OpenBSD 5.2) that have the
-<code class="highlighter-rouge">kqueue(2)</code> facility</li>
-  <li>Illumos and Solaris style systems that have <code class="highlighter-rouge">port_create(3C)</code></li>
-</ul>
+<p>Assuming subscriptions <code class="highlighter-rouge">sub1</code>, <code class="highlighter-rouge">sub2</code> and <code class="highlighter-rouge">sub3</code> have been established on this
+session, if <code class="highlighter-rouge">sub1</code> has updates pending, <code class="highlighter-rouge">sub2</code> is up-to-date and <code class="highlighter-rouge">sub3</code> is
+currently dropping updates:</p>
 
-<p>Watchman relies on the operating system facilities for file notification,
-which means that you will likely have very poor results using it on any
-kind of remote or distributed filesystem.</p>
-
-<p>Watchman does not currently support any other operating system not covered by
-the list above.</p>
-
-<h2 id="buildinstall">Build/Install</h2>
-
-<h3 id="installing-on-os-x-via-homebrew">Installing on OS X via Homebrew</h3>
-
-<p>To build the most recent release currently tracked by
-<a href="http://brew.sh/">Homebrew</a>:</p>
-
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2</pre></td><td class="code"><pre><span class="gp">$ </span>brew update
-<span class="gp">$ </span>brew install watchman
-</pre></td></tr></tbody></table>
+<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"flush-subscriptions"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="nt">"sync_timeout"</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">}]</span><span class="w">
+</span></pre></td></tr></tbody></table>
 </div>
 </div>
 
-<p>To install the latest build from github:</p>
+<p>In response, Watchman will first emit a unilateral subscription PDU for <code class="highlighter-rouge">sub1</code>,
+then respond with</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>brew install --HEAD watchman
-</pre></td></tr></tbody></table>
-</div>
-</div>
-
-<h3 id="installing-on-os-x-via-macports">Installing on OS X via macports</h3>
-
-<p>To install the package maintained by <a href="https://www.macports.org">MacPorts</a>:</p>
-
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>sudo port install watchman
-</pre></td></tr></tbody></table>
-</div>
-</div>
-
-<h3 id="installing-from-source">Installing from source</h3>
-
-<p>You can use these steps below to get watchman built.  You will need <code class="highlighter-rouge">autoconf</code>
-and <code class="highlighter-rouge">automake</code>.  You may optionally build watchman without <code class="highlighter-rouge">pcre</code> and <code class="highlighter-rouge">python</code>
-support (see configuration options below). For python support, you will also 
-need <code class="highlighter-rouge">setuptools</code> and may need to install a <code class="highlighter-rouge">python-dev</code> or <code class="highlighter-rouge">python-devel</code> package.</p>
-
-<p>See below for some more information on options to configure your build.</p>
-
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
 2
 3
 4
 5
-6
-7</pre></td><td class="code"><pre><span class="gp">$ </span>git clone https://github.com/facebook/watchman.git
-<span class="gp">$ </span><span class="nb">cd </span>watchman
-<span class="gp">$ </span>git checkout v4.7.0  <span class="c"># the latest stable release</span>
-<span class="gp">$ </span>./autogen.sh
-<span class="gp">$ </span>./configure
-<span class="gp">$ </span>make
-<span class="gp">$ </span>sudo make install
-</pre></td></tr></tbody></table>
+6</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
+  </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1446410081:18462:7:135"</span><span class="p">,</span><span class="w">
+  </span><span class="nt">"synced"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"sub1"</span><span class="p">],</span><span class="w">
+  </span><span class="nt">"no_sync_needed"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"sub2"</span><span class="p">],</span><span class="w">
+  </span><span class="nt">"dropped"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"sub3"</span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></pre></td></tr></tbody></table>
 </div>
 </div>
 
-<h3 id="compile-time-configuration-options">Compile Time Configuration Options</h3>
+<p>To flush updates for some but not all subscriptions associated with this
+session:</p>
 
-<p>Our configure script accepts all the standard options, but there are a couple
-that are specific to watchman that might be relevant to your needs:</p>
-
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
 2
 3
 4
 5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26</pre></td><td class="code"><pre>--enable-conffile=PATH  Use PATH as the default configuration file name.
-                        Default is /etc/watchman.json
-
---enable-statedir=PATH  Use PATH as the default for state, log files
-                        and sockets instead of using your system tempdir
-
---enable-lenient  Turn off more pedantic levels of warnings
-                  and compilation checks
-
---enable-stack-protector  Enable stack protection in the same
-                          way that rpmbuild does on some systems.
-
---with-buildinfo=TEXT   Include some extra build information that will
-                        be reported in the version command output
-
---without-python        Disable python bindings
---with-python=PATH      Enable Python bindings. PATH is location of python.
-                        Default is to look for python in your PATH
-
---without-pcre       Don't enable pcre support.
---with-pcre=PATH     Enable pcre support.  PATH is location of pcre-config.
-                     Default is to enable and look for pcre-config in your
-                     $PATH
-
---with-gimli    Enable support for the gimli process monitor
-                https://bitbucket.org/wez/gimli/
-</pre></td></tr></tbody></table>
+6</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"flush-subscriptions"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w">
+  </span><span class="p">{</span><span class="w">
+    </span><span class="nt">"sync_timeout"</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span><span class="w">
+    </span><span class="nt">"subscriptions"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"sub1"</span><span class="p">,</span><span class="w"> </span><span class="s2">"sub2"</span><span class="p">]</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">]</span><span class="w">
+</span></pre></td></tr></tbody></table>
 </div>
 </div>
 
-<p>(Run <code class="highlighter-rouge">./configure --help</code> to get the list for the version you checked out)</p>
+<h3 id="deferred-and-dropped-updates">Deferred and Dropped Updates</h3>
 
-<h3 id="continuous-integration">Continuous Integration</h3>
+<p>Subscriptions will typically buffer individual updates until a <em>settle</em> period
+has expired. <code class="highlighter-rouge">flush-subscriptions</code> will force those updates through immediately.</p>
 
-<p>We use continuous integration to build out every revision and
-pull-request to make sure that it we don’t accidentally break things.  The
-current build status is:</p>
+<p>Subscriptions currently deferring updates because of <code class="highlighter-rouge">defer</code> or <code class="highlighter-rouge">defer_vcs</code>
+are updated immediately, without waiting for the <code class="highlighter-rouge">defer</code> or <code class="highlighter-rouge">defer_vcs</code> to
+end.</p>
 
-<p><a href="https://travis-ci.org/facebook/watchman"><img src="https://travis-ci.org/facebook/watchman.svg?branch=master" alt="Build Status" /></a></p>
+<p>Subscriptions currently dropping updates with a <code class="highlighter-rouge">drop</code> state will not get any
+updates. Their names will be returned in the <code class="highlighter-rouge">dropped</code> field.</p>
 
-<p><a href="https://ci.appveyor.com/project/wez/watchman/branch/master"><img src="https://ci.appveyor.com/api/projects/status/uvafoyc550kg438h/branch/master?svg=true" alt="Build status" />
-</a></p>
-
-<h2 id="system-specific-preparation">System Specific Preparation</h2>
-
-<h3 id="linux-inotify-limits">Linux inotify Limits</h3>
-
-<p>The <code class="highlighter-rouge">inotify(7)</code> subsystem has three important tunings that impact watchman.</p>
+<h3 id="notes">Notes</h3>
 
 <ul>
-  <li><code class="highlighter-rouge">/proc/sys/fs/inotify/max_user_instances</code> impacts how many different
-root dirs you can watch.</li>
-  <li><code class="highlighter-rouge">/proc/sys/fs/inotify/max_user_watches</code> impacts how many dirs you
-can watch across all watched roots.</li>
-  <li><code class="highlighter-rouge">/proc/sys/fs/inotify/max_queued_events</code> impacts how likely it is that
-your system will experience a notification overflow.</li>
+  <li><code class="highlighter-rouge">flush-subscriptions</code> can only be used to flush subscriptions associated with
+the current session.</li>
+  <li>A single session can be subscribed to updates from multiple projects at the
+same time. However, <code class="highlighter-rouge">flush-subscriptions</code> can only flush updates for one
+project at a time.</li>
 </ul>
-
-<p>You obviously need to ensure that <code class="highlighter-rouge">max_user_instances</code> and <code class="highlighter-rouge">max_user_watches</code>
-are set so that the system is capable of keeping track of your files.</p>
-
-<p><code class="highlighter-rouge">max_queued_events</code> is important to size correctly; if it is too small, the
-kernel will drop events and watchman won’t be able to report on them.  Making
-this value bigger reduces the risk of this happening.</p>
-
-<p>Watchman has two simple strategies for mitigating an overflow of
-<code class="highlighter-rouge">max_queued_events</code>:</p>
-
-<ul>
-  <li>It uses a dedicated thread to consume kernel events as quickly as possible</li>
-  <li>When the kernel reports an overflow, watchman will assume that all the files
-have been modified and will re-crawl the directory tree as though it had just
-started watching the dir.</li>
-</ul>
-
-<p>This means that if an overflow does occur, you won’t miss a legitimate change
-notification, but instead will get spurious notifications for files that
-haven’t actually changed.</p>
-
-<h3 id="max-os-file-descriptor-limits">Max OS File Descriptor Limits</h3>
-
-<p><em>Only applicable on OS X 10.6 and earlier</em></p>
-
-<p>The default per-process descriptor limit on OS X is extremely low (256!).</p>
-
-<p>Watchman will attempt to raise its descriptor limit to match
-<code class="highlighter-rouge">kern.maxfilesperproc</code> when it starts up, so you shouldn’t need to mess with
-<code class="highlighter-rouge">ulimit</code>; just raising the sysctl should do the trick.</p>
-
-<p>The following will raise the limits to allow 10 million files total, with 1
-million files per process until your next reboot.</p>
-
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2</pre></td><td class="code"><pre><span class="gp">$ </span>sudo sysctl -w kern.maxfiles<span class="o">=</span>10485760
-<span class="gp">$ </span>sudo sysctl -w kern.maxfilesperproc<span class="o">=</span>1048576
-</pre></td></tr></tbody></table>
-</div>
-</div>
-
-<p>Putting the following into a file named <code class="highlighter-rouge">/etc/sysctl.conf</code> on OS X will cause
-these values to persist across reboots:</p>
-
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2</pre></td><td class="code"><pre>kern.maxfiles=10485760
-kern.maxfilesperproc=1048576
-</pre></td></tr></tbody></table>
-</div>
-</div>
 
     
   </article>
