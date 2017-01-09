@@ -32,29 +32,41 @@ Publisher::Subscriber::~Subscriber() {
   wlock->collectGarbage();
 }
 
-std::shared_ptr<const Publisher::Item> Publisher::Subscriber::getNext() {
-  auto rlock = publisher_->state_.rlock();
-  for (auto& item : rlock->items) {
-    if (item->serial > serial_) {
-      serial_ = item->serial;
-      return item;
-    }
-  }
-
-  return nullptr;
-}
-
 void Publisher::Subscriber::getPending(
     std::vector<std::shared_ptr<const Item>>& pending) {
   {
     auto rlock = publisher_->state_.rlock();
-    for (auto& item : rlock->items) {
-      auto serial = item->serial;
-      if (serial > serial_) {
-        pending.emplace_back(item);
-        serial_ = serial;
+    auto& items = rlock->items;
+
+    if (items.empty()) {
+      return;
+    }
+
+    // First we walk back to find the end of the range that
+    // we have seen previously.
+    int firstIndex;
+    for (firstIndex = int(items.size()) - 1; firstIndex >= 0; --firstIndex) {
+      if (items[firstIndex]->serial <= serial_) {
+        break;
       }
     }
+
+    // We found the item before the one we really want, so
+    // increment the index; we'll copy the remaining items.
+    ++firstIndex;
+    bool updated = false;
+
+    while (firstIndex < int(items.size())) {
+      pending.push_back(items[firstIndex]);
+      ++firstIndex;
+      updated = true;
+    }
+
+    if (updated) {
+      serial_ = pending.back()->serial;
+    }
+
+    return;
   }
 }
 

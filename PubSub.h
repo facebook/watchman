@@ -46,13 +46,7 @@ class Publisher : public std::enable_shared_from_this<Publisher> {
         const w_string& info);
     Subscriber(const Subscriber&) = delete;
 
-    // Returns the next published item that this subscriber has
-    // not yet observed.
-    std::shared_ptr<const Item> getNext();
-
     // Returns all as yet unseen published items for this subscriber.
-    // Equivalent to calling getNext in a loop and sticking the results
-    // into a vector.
     void getPending(std::vector<std::shared_ptr<const Item>>& pending);
 
     inline uint64_t getSerial() const {

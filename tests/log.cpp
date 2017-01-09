@@ -19,8 +19,9 @@ int main(int, char**) {
 
   w_log(W_LOG_DBG, "test %s", huge);
 
-  auto item = sub->getNext();
-  ok(item != nullptr, "got an item from our subscription");
+  std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
+  sub->getPending(pending);
+  ok(!pending.empty(), "got an item from our subscription");
 
   pass("made it to the end");
 
