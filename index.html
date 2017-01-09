@@ -4,40 +4,33 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <!-- Begin Jekyll SEO tag v2.1.0 -->
-<title>Watchman | A file watching service - Watchman</title>
-<meta property="og:title" content="Watchman | A file watching service" />
-<link rel="canonical" href="https://facebook.github.io/watchman/" />
-<meta property="og:url" content="https://facebook.github.io/watchman/" />
-<meta property="og:site_name" content="Watchman" />
-<meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
-<script type="application/ld+json">
-{"@context": "http://schema.org",
-"@type": "WebPage",
-"headline": "Watchman | A file watching service",
-"image": "https://facebook.github.io/watchman/static/og_image.png",
-"publisher": {"@type": "Organization",
-"logo": {"@type": "ImageObject",
-"url": "https://facebook.github.io/watchman/static/logo.png"}},
-"url": "https://facebook.github.io/watchman/"}</script>
-<!-- End Jekyll SEO tag -->
-
+  
+	<meta property="og:url" content="/watchman/" />
+	<meta property="og:site_name" content="Watchman"/>
+	<meta property="og:title" content="Watchman | A file watching service" />
+	<meta property="og:image" content="/watchman/static/og_image.png" />
+	<meta property="og:description" content="" />
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
+  
   <link rel="icon" href="static/favicon.png" type="image/x-icon">
-
+  
+  <base href="/watchman/" />
+  
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
 
-  
-  <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
+  <title>Watchman | A file watching service</title>
+  <meta name="description" content="">
+
+  <link rel="canonical" href="/watchman/">
+  <link rel="alternate" type="application/rss+xml" title="Watchman" href="/watchman/feed.xml" />
 </head>
 
   <body>    
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
       <nav class="navigation">
         <ul>
@@ -190,35 +183,29 @@ also trigger actions (such as rebuilding assets) when matching files change.</p>
 <h3 id="concepts">Concepts</h3>
 
 <ul>
-  <li>Watchman can recursively watch one or more directory trees
+<li>Watchman can recursively watch one or more directory trees
 (we call them <em>roots</em>).</li>
-  <li>Watchman does not follow symlinks.  It knows they exist, but they show up
+<li>Watchman does not follow symlinks.  It knows they exist, but they show up
 the same as any other file in its reporting.</li>
-  <li>Watchman waits for a <em>root</em> to settle down before it will start
+<li>Watchman waits for a <em>root</em> to settle down before it will start
 to trigger notifications or command execution.</li>
-  <li>Watchman is conservative, preferring to err on the side of caution;
+<li>Watchman is conservative, preferring to err on the side of caution;
 it considers files to be freshly changed when you start to
 watch them or when it is unsure.</li>
-  <li>You can query a root for file changes since you last checked, or the
+<li>You can query a root for file changes since you last checked, or the
 current state of the tree</li>
-  <li>You can subscribe to file changes that occur in a root</li>
+<li>You can subscribe to file changes that occur in a root</li>
 </ul>
 
 <h3 id="quickstart">Quickstart</h3>
 
 <p>These two lines establish a watch on a source directory and then set up a
-trigger named <code class="highlighter-rouge">buildme</code> that will run a tool named <code class="highlighter-rouge">minify-css</code> whenever a CSS
+trigger named <code>buildme</code> that will run a tool named <code>minify-css</code> whenever a CSS
 file is changed.  The tool will be passed a list of the changed filenames.</p>
-
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3</pre></td><td class="code"><pre><span class="gp">$ </span>watchman watch ~/src
-<span class="c"># the single quotes around '*.css' are important!</span>
-<span class="gp">$ </span>watchman -- trigger ~/src buildme <span class="s1">'*.css'</span> -- minify-css
-</pre></td></tr></tbody></table>
-</div>
-</div>
-
+<div class="highlight"><pre><code class="language-bash" data-lang="bash"><span class="nv">$ </span>watchman watch ~/src
+<span class="c"># the single quotes around &#39;*.css&#39; are important!</span>
+<span class="nv">$ </span>watchman -- trigger ~/src buildme <span class="s1">&#39;*.css&#39;</span> -- minify-css
+</code></pre></div>
 <p>The output for buildme will land in the Watchman log file unless you send it
 somewhere else.</p>
 
