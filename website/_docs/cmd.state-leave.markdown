@@ -1,5 +1,5 @@
 ---
-id: cmd.state-leave
+pageid: cmd.state-leave
 title: state-leave
 layout: docs
 section: Commands

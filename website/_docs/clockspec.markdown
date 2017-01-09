@@ -1,5 +1,5 @@
 ---
-id: clockspec
+pageid: clockspec
 title: Clockspec
 layout: docs
 section: Queries

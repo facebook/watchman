@@ -1,5 +1,5 @@
 ---
-id: cookies
+pageid: cookies
 title: Query Synchronization
 layout: docs
 category: Internals

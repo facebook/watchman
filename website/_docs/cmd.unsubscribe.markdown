@@ -1,5 +1,5 @@
 ---
-id: cmd.unsubscribe
+pageid: cmd.unsubscribe
 title: unsubscribe
 layout: docs
 section: Commands

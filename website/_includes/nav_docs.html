@@ -8,7 +8,11 @@
       group     : "{{ group.title }}",
       items     : [
         {% for item in group.items %}
-        {% for docitem in site.docs %}{% if docitem.id == item.id %}{% assign doc = docitem %}{% break %}{% endif %}{% endfor %}
+          {% for docitem in site.docs %}
+            {% if docitem.pageid == item.id %}
+              {% assign doc = docitem %}
+            {% endif %}
+          {% endfor %}
         {
           key : "{{ site.baseurl }}{{ doc.url }}",
           title : "{{ doc.title }}",
@@ -20,7 +24,7 @@
     {% endfor %}
   ];
 </script>
-<script type="text/javascript">  
+<script type="text/javascript">
 window.addEventListener('load', function() {
   var DocNav = React.createClass({displayName: "DocNav",
     getInitialState: function() {
@@ -50,10 +54,10 @@ window.addEventListener('load', function() {
         'toggleNavActive': this.state.toggleActive,
       });
       return (
-        React.createElement("div", {className: navClasses}, 
-          React.createElement("section", null, 
+        React.createElement("div", {className: navClasses},
+          React.createElement("section", null,
             this.props.data.map(this.renderNavGroups)
-          ), 
+          ),
           React.createElement("div", {className: classes, onClick: this.handleSlide}, React.createElement("i", {className: "fa fa-chevron-circle-down"}))
         )
       );
@@ -64,9 +68,9 @@ window.addEventListener('load', function() {
         'navGroupActive': this.props.currentGroup === child.group,
       });
       return (
-        React.createElement("div", {className: classes, key: index}, 
-          React.createElement("h3", null, child.group), 
-          React.createElement("ul", null, 
+        React.createElement("div", {className: classes, key: index},
+          React.createElement("h3", null, child.group),
+          React.createElement("ul", null,
             child.items.map(this.renderNavItems)
           )
         )

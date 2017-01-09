@@ -1,5 +1,5 @@
 ---
-id: bser
+pageid: bser
 title: BSER Binary Protocol
 layout: docs
 section: Internals

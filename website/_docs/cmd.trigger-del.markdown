@@ -1,5 +1,5 @@
 ---
-id: cmd.trigger-del
+pageid: cmd.trigger-del
 title: trigger-del
 layout: docs
 section: Commands

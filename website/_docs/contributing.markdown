@@ -1,5 +1,5 @@
 ---
-id: contributing
+pageid: contributing
 title: Contributing
 layout: docs
 permalink: contributing.html

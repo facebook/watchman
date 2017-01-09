@@ -1,5 +1,5 @@
 ---
-id: expr.type
+pageid: expr.type
 title: type
 layout: docs
 section: Expression Terms

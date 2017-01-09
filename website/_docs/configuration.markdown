@@ -1,5 +1,5 @@
 ---
-id: config
+pageid: config
 title: Configuration Files
 layout: docs
 category: Invocation

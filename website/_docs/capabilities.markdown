@@ -1,5 +1,5 @@
 ---
-id: capabilities
+pageid: capabilities
 title: Capabilities
 layout: docs
 category: Compatibility

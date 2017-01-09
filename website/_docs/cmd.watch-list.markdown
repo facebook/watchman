@@ -1,5 +1,5 @@
 ---
-id: cmd.watch-list
+pageid: cmd.watch-list
 title: watch-list
 layout: docs
 section: Commands

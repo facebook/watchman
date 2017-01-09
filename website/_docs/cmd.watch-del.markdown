@@ -1,5 +1,5 @@
 ---
-id: cmd.watch-del
+pageid: cmd.watch-del
 title: watch-del
 layout: docs
 section: Commands

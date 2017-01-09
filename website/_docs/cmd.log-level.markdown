@@ -1,5 +1,5 @@
 ---
-id: cmd.log-level
+pageid: cmd.log-level
 title: log-level
 layout: docs
 section: Commands

@@ -1,5 +1,5 @@
 ---
-id: cmd.query
+pageid: cmd.query
 title: query
 layout: docs
 section: Commands

@@ -1,5 +1,5 @@
 ---
-id: cmd.shutdown-server
+pageid: cmd.shutdown-server
 title: shutdown-server
 layout: docs
 section: Commands

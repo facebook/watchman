@@ -1,5 +1,5 @@
 ---
-id: cmd.trigger-list
+pageid: cmd.trigger-list
 title: trigger-list
 layout: docs
 section: Commands

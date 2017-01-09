@@ -1,5 +1,5 @@
 ---
-id: expr.size
+pageid: expr.size
 title: size
 layout: docs
 section: Expression Terms

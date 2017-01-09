@@ -1,5 +1,5 @@
 ---
-id: cmd.get-config
+pageid: cmd.get-config
 title: get-config
 layout: docs
 section: Commands

@@ -1,5 +1,5 @@
 ---
-id: cmd.trigger
+pageid: cmd.trigger
 title: trigger
 layout: docs
 section: Commands

@@ -1,5 +1,5 @@
 ---
-id: expr.match
+pageid: expr.match
 title: match & imatch
 layout: docs
 section: Expression Terms

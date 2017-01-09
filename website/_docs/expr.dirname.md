@@ -1,5 +1,5 @@
 ---
-id: expr.dirname
+pageid: expr.dirname
 title: dirname & idirname
 layout: docs
 section: Expression Terms

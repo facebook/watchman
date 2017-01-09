@@ -1,5 +1,5 @@
 ---
-id: cmd.clock
+pageid: cmd.clock
 title: clock
 layout: docs
 section: Commands
