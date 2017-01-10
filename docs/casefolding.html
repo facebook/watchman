@@ -4,39 +4,52 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  
-	<meta property="og:url" content="/watchman/docs/casefolding.html" />
-	<meta property="og:site_name" content="Watchman"/>
-	<meta property="og:title" content="Case-Insensitivity" />
-	<meta property="og:image" content="/watchman/static/og_image.png" />
-	<meta property="og:description" content="" />
+
+  <!-- Begin Jekyll SEO tag v2.1.0 -->
+<title>Case-Insensitivity - Watchman</title>
+<meta property="og:title" content="Case-Insensitivity" />
+<meta name="description" content="Watchman is currently completely unaware of case-insensitivity in file systems, and does not attempt to do any case-folding of file names. On a case-insensitive file system like Mac OS X’s HFS+, this can manifest itself in different ways:" />
+<meta property="og:description" content="Watchman is currently completely unaware of case-insensitivity in file systems, and does not attempt to do any case-folding of file names. On a case-insensitive file system like Mac OS X’s HFS+, this can manifest itself in different ways:" />
+<link rel="canonical" href="https://facebook.github.io/watchman/docs/casefolding.html" />
+<meta property="og:url" content="https://facebook.github.io/watchman/docs/casefolding.html" />
+<meta property="og:site_name" content="Watchman" />
+<meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2017-01-09T16:10:54-08:00" />
+<script type="application/ld+json">
+{"@context": "http://schema.org",
+"@type": "BlogPosting",
+"headline": "Case-Insensitivity",
+"image": "https://facebook.github.io/watchman/static/og_image.png",
+"datePublished": "2017-01-09T16:10:54-08:00",
+"description": "Watchman is currently completely unaware of case-insensitivity in file systems, and does not attempt to do any case-folding of file names. On a case-insensitive file system like Mac OS X’s HFS+, this can manifest itself in different ways:",
+"publisher": {"@type": "Organization",
+"logo": {"@type": "ImageObject",
+"url": "https://facebook.github.io/watchman/static/logo.png"}},
+"url": "https://facebook.github.io/watchman/docs/casefolding.html"}</script>
+<!-- End Jekyll SEO tag -->
+
 
   <link rel="stylesheet" type="text/css" media="screen" href="/watchman/css/main.css">
-  
   <link rel="icon" href="static/favicon.png" type="image/x-icon">
-  
-  <base href="/watchman/" />
-  
+
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/react/0.13.3/react-with-addons.min.js"></script>
   <script async defer src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.5/highlight.min.js"></script>
 
-  <title>Case-Insensitivity</title>
-  <meta name="description" content="">
-
-  <link rel="canonical" href="/watchman/docs/casefolding.html">
-  <link rel="alternate" type="application/rss+xml" title="Watchman" href="/watchman/feed.xml" />
+  
+  <link type="application/atom+xml" rel="alternate" href="https://facebook.github.io/watchman/feed.xml" title="Watchman" />
 </head>
 
   <body>    
     <div id="fixed_header" class="fixedHeaderContainer visible">
   <header>
-    <a href="/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
+    <a href="https://facebook.github.io/watchman/"><img src="/watchman/static/logo.png" /><h2>Watchman</h2></a>
     <div class="navigationWrapper navigationFull" id="flat_nav">
       <nav class="navigation">
         <ul>
           
           <li class="navItem navItemActive">
-            <a href=docs/install.html>Docs</a>
+            <a href=/watchman/docs/install.html>Docs</a>
           </li>
           
           <li class="navItem ">
@@ -61,7 +74,7 @@
     var navData = [
       
       {
-        href       : "docs/install.html",
+        href       : "/watchman/docs/install.html",
         text       : "Docs",
       },
       
@@ -162,14 +175,14 @@
       group     : "Installation",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/install.html",
           title : "Installation",
           url : "/watchman/docs/install.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/release-notes.html",
           title : "Release Notes",
@@ -183,42 +196,42 @@
       group     : "Invocation",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/cli-options.html",
           title : "Command Line",
           url : "/watchman/docs/cli-options.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/watchman-make.html",
           title : "watchman-make",
           url : "/watchman/docs/watchman-make.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/watchman-wait.html",
           title : "watchman-wait",
           url : "/watchman/docs/watchman-wait.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/nodejs.html",
           title : "NodeJS",
           url : "/watchman/docs/nodejs.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/config.html",
           title : "Configuration Files",
           url : "/watchman/docs/config.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/socket-interface.html",
           title : "Socket Interface",
@@ -232,14 +245,14 @@
       group     : "Compatibility",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/compatibility.html",
           title : "Compatibility Rules",
           url : "/watchman/docs/compatibility.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/capabilities.html",
           title : "Capabilities",
@@ -253,161 +266,168 @@
       group     : "Commands",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/cmd/clock.html",
           title : "clock",
           url : "/watchman/docs/cmd/clock.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/find.html",
           title : "find",
           url : "/watchman/docs/cmd/find.html",
         },
         
+          
+        {
+          key : "/watchman/docs/cmd/flush-subscriptions.html",
+          title : "flush-subscriptions",
+          url : "/watchman/docs/cmd/flush-subscriptions.html",
+        },
         
+          
         {
           key : "/watchman/docs/cmd/get-config.html",
           title : "get-config",
           url : "/watchman/docs/cmd/get-config.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/get-sockname.html",
           title : "get-sockname",
           url : "/watchman/docs/cmd/get-sockname.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/list-capabilities.html",
           title : "list-capabilities",
           url : "/watchman/docs/cmd/list-capabilities.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/log.html",
           title : "log",
           url : "/watchman/docs/cmd/log.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/log-level.html",
           title : "log-level",
           url : "/watchman/docs/cmd/log-level.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/query.html",
           title : "query",
           url : "/watchman/docs/cmd/query.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/shutdown-server.html",
           title : "shutdown-server",
           url : "/watchman/docs/cmd/shutdown-server.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/since.html",
           title : "since",
           url : "/watchman/docs/cmd/since.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/state-enter.html",
           title : "state-enter",
           url : "/watchman/docs/cmd/state-enter.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/state-leave.html",
           title : "state-leave",
           url : "/watchman/docs/cmd/state-leave.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/subscribe.html",
           title : "subscribe",
           url : "/watchman/docs/cmd/subscribe.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/trigger.html",
           title : "trigger",
           url : "/watchman/docs/cmd/trigger.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/trigger-del.html",
           title : "trigger-del",
           url : "/watchman/docs/cmd/trigger-del.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/trigger-list.html",
           title : "trigger-list",
           url : "/watchman/docs/cmd/trigger-list.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/unsubscribe.html",
           title : "unsubscribe",
           url : "/watchman/docs/cmd/unsubscribe.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/version.html",
           title : "version",
           url : "/watchman/docs/cmd/version.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/watch.html",
           title : "watch",
           url : "/watchman/docs/cmd/watch.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/watch-del.html",
           title : "watch-del",
           url : "/watchman/docs/cmd/watch-del.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/watch-del-all.html",
           title : "watch-del-all",
           url : "/watchman/docs/cmd/watch-del-all.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/watch-list.html",
           title : "watch-list",
           url : "/watchman/docs/cmd/watch-list.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cmd/watch-project.html",
           title : "watch-project",
@@ -421,21 +441,21 @@
       group     : "Queries",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/clockspec.html",
           title : "Clockspec",
           url : "/watchman/docs/clockspec.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/file-query.html",
           title : "File Queries",
           url : "/watchman/docs/file-query.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/simple-query.html",
           title : "Simple Pattern Syntax",
@@ -449,91 +469,91 @@
       group     : "Expression Terms",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/expr/allof.html",
           title : "allof",
           url : "/watchman/docs/expr/allof.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/anyof.html",
           title : "anyof",
           url : "/watchman/docs/expr/anyof.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/dirname.html",
           title : "dirname & idirname",
           url : "/watchman/docs/expr/dirname.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/empty.html",
           title : "empty",
           url : "/watchman/docs/expr/empty.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/exists.html",
           title : "exists",
           url : "/watchman/docs/expr/exists.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/match.html",
           title : "match & imatch",
           url : "/watchman/docs/expr/match.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/name.html",
           title : "name & iname",
           url : "/watchman/docs/expr/name.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/not.html",
           title : "not",
           url : "/watchman/docs/expr/not.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/pcre.html",
           title : "pcre & ipcre",
           url : "/watchman/docs/expr/pcre.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/since.html",
           title : "since",
           url : "/watchman/docs/expr/since.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/size.html",
           title : "size",
           url : "/watchman/docs/expr/size.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/suffix.html",
           title : "suffix",
           url : "/watchman/docs/expr/suffix.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/expr/type.html",
           title : "type",
@@ -547,28 +567,28 @@
       group     : "Internals",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/bser.html",
           title : "BSER Binary Protocol",
           url : "/watchman/docs/bser.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/casefolding.html",
           title : "Case-Insensitivity",
           url : "/watchman/docs/casefolding.html",
         },
         
-        
+          
         {
           key : "/watchman/contributing.html",
           title : "Contributing",
           url : "/watchman/contributing.html",
         },
         
-        
+          
         {
           key : "/watchman/docs/cookies.html",
           title : "Query Synchronization",
@@ -582,7 +602,7 @@
       group     : "Troubleshooting",
       items     : [
         
-        
+          
         {
           key : "/watchman/docs/troubleshooting.html",
           title : "Troubleshooting",
@@ -594,7 +614,7 @@
     
   ];
 </script>
-<script type="text/javascript">  
+<script type="text/javascript">
 window.addEventListener('load', function() {
   var DocNav = React.createClass({displayName: "DocNav",
     getInitialState: function() {
@@ -624,10 +644,10 @@ window.addEventListener('load', function() {
         'toggleNavActive': this.state.toggleActive,
       });
       return (
-        React.createElement("div", {className: navClasses}, 
-          React.createElement("section", null, 
+        React.createElement("div", {className: navClasses},
+          React.createElement("section", null,
             this.props.data.map(this.renderNavGroups)
-          ), 
+          ),
           React.createElement("div", {className: classes, onClick: this.handleSlide}, React.createElement("i", {className: "fa fa-chevron-circle-down"}))
         )
       );
@@ -638,9 +658,9 @@ window.addEventListener('load', function() {
         'navGroupActive': this.props.currentGroup === child.group,
       });
       return (
-        React.createElement("div", {className: classes, key: index}, 
-          React.createElement("h3", null, child.group), 
-          React.createElement("ul", null, 
+        React.createElement("div", {className: classes, key: index},
+          React.createElement("h3", null, child.group),
+          React.createElement("ul", null,
             child.items.map(this.renderNavItems)
           )
         )
@@ -680,36 +700,36 @@ window.addEventListener('load', function() {
    
       <p>Watchman is currently completely unaware of case-insensitivity in file systems,
 and does not attempt to do any case-folding of file names. On a case-insensitive
-file system like Mac OS X&#39;s <a href="https://en.wikipedia.org/wiki/HFS_Plus">HFS+</a>, this
+file system like Mac OS X’s <a href="https://en.wikipedia.org/wiki/HFS_Plus">HFS+</a>, this
 can manifest itself in different ways:</p>
 
 <ul>
-<li>If a file <code>foo.txt</code> is renamed to <code>FOO.txt</code>, Watchman will report <code>FOO.txt</code> as
-created and <code>foo.txt</code> separately as changed.</li>
-<li>If a file <code>foo.txt</code> is removed and another file <code>FOO.txt</code> is later added,
-Watchman will report <code>FOO.txt</code> as added, but it might report <code>foo.txt</code> as
+  <li>If a file <code class="highlighter-rouge">foo.txt</code> is renamed to <code class="highlighter-rouge">FOO.txt</code>, Watchman will report <code class="highlighter-rouge">FOO.txt</code> as
+created and <code class="highlighter-rouge">foo.txt</code> separately as changed.</li>
+  <li>If a file <code class="highlighter-rouge">foo.txt</code> is removed and another file <code class="highlighter-rouge">FOO.txt</code> is later added,
+Watchman will report <code class="highlighter-rouge">FOO.txt</code> as added, but it might report <code class="highlighter-rouge">foo.txt</code> as
 either removed or changed.</li>
 </ul>
 
-<p>In general, both <code>foo.txt</code> and <code>FOO.txt</code> can be reported, sometimes with
+<p>In general, both <code class="highlighter-rouge">foo.txt</code> and <code class="highlighter-rouge">FOO.txt</code> can be reported, sometimes with
 different stat data, sometimes with the same stat data.</p>
 
-<h2 id="why-doesn-39-t-watchman-support-case-folding-properly">Why doesn&#39;t Watchman support case-folding properly?</h2>
+<h2 id="why-doesnt-watchman-support-case-folding-properly">Why doesn’t Watchman support case-folding properly?</h2>
 
-<p>One problem is that &#39;properly&#39; is hard to pin down. There are at least four
+<p>One problem is that ‘properly’ is hard to pin down. There are at least four
 levels of correctness here:</p>
 
 <ul>
-<li>handle ASCII case-folding only (95% solution)</li>
-<li>handle ASCII + accented ASCII case-folding only (98%)</li>
-<li>full handling of current Unicode spec using a Unicode database (99%)</li>
-<li>using the special folding table written to a hidden file on disk at file
-system creation time that matches Apple&#39;s interpretation of Unicode at the time
+  <li>handle ASCII case-folding only (95% solution)</li>
+  <li>handle ASCII + accented ASCII case-folding only (98%)</li>
+  <li>full handling of current Unicode spec using a Unicode database (99%)</li>
+  <li>using the special folding table written to a hidden file on disk at file
+system creation time that matches Apple’s interpretation of Unicode at the time
 of the OS release + their own quirks (100%)</li>
 </ul>
 
 <p>Clients of Watchman might have their own idea of case-folding, which might or
-might not be compatible with Watchman&#39;s idea of it. So far, clients have managed
+might not be compatible with Watchman’s idea of it. So far, clients have managed
 to handle case-folding outside of Watchman, with some success.</p>
 
 <h2 id="does-this-matter">Does this matter?</h2>
@@ -719,32 +739,32 @@ to handle case-folding outside of Watchman, with some success.</p>
 <p><strong>Example 1:</strong> Your application is a build system that has a pre-baked list of
 files. Your application expects files to be on disk in the correct case even on
 case-insensitive file systems, and you declare that the behavior is undefined if
-they aren&#39;t. You invoke Watchman by asking it what files have changed. In this
+they aren’t. You invoke Watchman by asking it what files have changed. In this
 case, Watchman should work without you having to do anything special.</p>
 
 <p><strong>Example 2:</strong> Your application is a build system rule to generate CSS rules
-that is run by a Watchman trigger on <code>*.scss</code>. You expect all files you care
-about to end with the string <code>.scss</code> on case-insensitive file systems, and not
-another variant of it like <code>.SCSS</code>. In this case, Watchman should work fine --
+that is run by a Watchman trigger on <code class="highlighter-rouge">*.scss</code>. You expect all files you care
+about to end with the string <code class="highlighter-rouge">.scss</code> on case-insensitive file systems, and not
+another variant of it like <code class="highlighter-rouge">.SCSS</code>. In this case, Watchman should work fine –
 at most, it will provide you the same file multiple times with different case
 variants. You might be dealing with that in your build system anyway.</p>
 
-<p><strong>Example 3:</strong> Like example 2, except you expect <code>.SCSS</code> and other variants to
+<p><strong>Example 3:</strong> Like example 2, except you expect <code class="highlighter-rouge">.SCSS</code> and other variants to
 work too. In that case the only way is to explicitly add all possible variants
 to the trigger rule.</p>
 
-<p><strong>Example 4:</strong> You&#39;re a source control system that has its own ideas about
-case-folding that might or might not match up with the operating system&#39;s. You
+<p><strong>Example 4:</strong> You’re a source control system that has its own ideas about
+case-folding that might or might not match up with the operating system’s. You
 perform case-folding against an internal data structure, so that if the data
-structure has <code>foo.txt</code> and the file system has <code>FOO.txt</code> you make <code>foo.txt</code>
-take precedence. In that case, Watchman will tell you about both <code>FOO.txt</code> and
-<code>foo.txt</code>, and it&#39;s up to you to perform
+structure has <code class="highlighter-rouge">foo.txt</code> and the file system has <code class="highlighter-rouge">FOO.txt</code> you make <code class="highlighter-rouge">foo.txt</code>
+take precedence. In that case, Watchman will tell you about both <code class="highlighter-rouge">FOO.txt</code> and
+<code class="highlighter-rouge">foo.txt</code>, and it’s up to you to perform
 normalization. <a href="https://bitbucket.org/facebook/hgwatchman">hgwatchman</a> just
 consults the file system in the rare case that a file changes case.</p>
 
 <h2 id="credits">Credits</h2>
 
-<p>The levels of correctness were proposed by Matt Mackall <a href="mailto:mpm@selenic.com">mpm@selenic.com</a>.</p>
+<p>The levels of correctness were proposed by Matt Mackall <a href="&#109;&#097;&#105;&#108;&#116;&#111;:&#109;&#112;&#109;&#064;&#115;&#101;&#108;&#101;&#110;&#105;&#099;&#046;&#099;&#111;&#109;">&#109;&#112;&#109;&#064;&#115;&#101;&#108;&#101;&#110;&#105;&#099;&#046;&#099;&#111;&#109;</a>.</p>
 
     
   </article>

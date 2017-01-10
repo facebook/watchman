@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- Begin Jekyll SEO tag v2.1.0 -->
-<title>Configuration Files - Watchman</title>
-<meta property="og:title" content="Configuration Files" />
-<meta name="description" content="Watchman looks for configuration files in two places:" />
-<meta property="og:description" content="Watchman looks for configuration files in two places:" />
-<link rel="canonical" href="https://facebook.github.io/watchman/docs/config.html" />
-<meta property="og:url" content="https://facebook.github.io/watchman/docs/config.html" />
+<title>flush-subscriptions - Watchman</title>
+<meta property="og:title" content="flush-subscriptions" />
+<meta name="description" content="Since 4.8." />
+<meta property="og:description" content="Since 4.8." />
+<link rel="canonical" href="https://facebook.github.io/watchman/docs/cmd/flush-subscriptions.html" />
+<meta property="og:url" content="https://facebook.github.io/watchman/docs/cmd/flush-subscriptions.html" />
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
@@ -19,14 +19,14 @@
 <script type="application/ld+json">
 {"@context": "http://schema.org",
 "@type": "BlogPosting",
-"headline": "Configuration Files",
+"headline": "flush-subscriptions",
 "image": "https://facebook.github.io/watchman/static/og_image.png",
 "datePublished": "2017-01-09T16:10:54-08:00",
-"description": "Watchman looks for configuration files in two places:",
+"description": "Since 4.8.",
 "publisher": {"@type": "Organization",
 "logo": {"@type": "ImageObject",
 "url": "https://facebook.github.io/watchman/static/logo.png"}},
-"url": "https://facebook.github.io/watchman/docs/config.html"}</script>
+"url": "https://facebook.github.io/watchman/docs/cmd/flush-subscriptions.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -624,8 +624,8 @@ window.addEventListener('load', function() {
     },
     getDefaultProps: function() {
       return {
-        currentDoc: "Configuration Files",
-        currentGroup: "",
+        currentDoc: "flush-subscriptions",
+        currentGroup: "Commands",
         data: docnavData,
       }
     },
@@ -693,421 +693,108 @@ window.addEventListener('load', function() {
 
     <div class="post">
   <header class="post-header">
-    <h1 class="post-title">Configuration Files</h1>
+    <h1 class="post-title">flush-subscriptions</h1>
   </header>
 
   <article class="post-content">
    
-      <p>Watchman looks for configuration files in two places:</p>
+      <p><em>Since 4.8.</em></p>
+
+<p>Flushes buffered updates to subscriptions associated with the current
+session, guaranteeing that they are up-to-date as of the time Watchman
+received the <code class="highlighter-rouge">flush-subscriptions</code> command.</p>
+
+<p>Subscription updates will be interleaved between the <code class="highlighter-rouge">flush-subscriptions</code>
+request and its response. Once the response has been received, subscriptions are
+up-to-date.</p>
+
+<p>This command is designed to be used by interactive programs that have a
+background process or daemon maintaining a subscription to Watchman. The typical
+pattern is for interactive commands to be forwarded to the process, which calls
+<code class="highlighter-rouge">flush-subscriptions</code> and then processes any subscription updates it received.
+This pattern eliminates races with files changed right before the interactive
+command.</p>
+
+<h3 id="arguments">Arguments</h3>
 
 <ul>
-  <li>The global configuration file <code class="highlighter-rouge">/etc/watchman.json</code></li>
-  <li>The root specific configuration file <code class="highlighter-rouge">.watchmanconfig</code></li>
+  <li><code class="highlighter-rouge">sync_timeout</code>: Required. The number of milliseconds to wait to observe a
+synchronization cookie. The synchronization cookie is created at the start of
+the <code class="highlighter-rouge">flush-subscriptions</code> call, and once the cookie is observed, means that
+the OS has sent watchman all the updates till at least the start of the
+<code class="highlighter-rouge">flush-subscriptions</code> call.</li>
+  <li><code class="highlighter-rouge">subscriptions</code>: Optional. Which subscriptions to flush. By default this
+flushes all subscriptions associated with this project on this session.</li>
 </ul>
 
-<p>When watching a root, if a valid JSON file named <code class="highlighter-rouge">.watchmanconfig</code> is present
-in the root directory, watchman will load it and use it as a source of
-configuration information specific to that root.</p>
+<h3 id="examples">Examples</h3>
 
-<p>The global configuration path can be changed by passing the
-<code class="highlighter-rouge">--enable-conffile</code> option to configure when you build watchman.  This
-documentation refers to it as <code class="highlighter-rouge">/etc/watchman.json</code> throughout, just be aware
-that your particular installation may locate it elsewhere.   In addition,
-the environmental variable <code class="highlighter-rouge">$WATCHMAN_CONFIG_FILE</code> will override the
-default location.</p>
+<p>Assuming subscriptions <code class="highlighter-rouge">sub1</code>, <code class="highlighter-rouge">sub2</code> and <code class="highlighter-rouge">sub3</code> have been established on this
+session, if <code class="highlighter-rouge">sub1</code> has updates pending, <code class="highlighter-rouge">sub2</code> is up-to-date and <code class="highlighter-rouge">sub3</code> is
+currently dropping updates:</p>
 
-<p>Changes to the <code class="highlighter-rouge">.watchmanconfig</code> or <code class="highlighter-rouge">/etc/watchman.json</code> files are not picked
-up automatically; you will need to remove and re-add the watch (for
-<code class="highlighter-rouge">.watchmanconfig</code>) or restart watchman (for <code class="highlighter-rouge">/etc/watchman.json</code>) for those
-changes to take effect.</p>
-
-<h3 id="resolution--scoping">Resolution / Scoping</h3>
-
-<p>There are three configuration scopes:</p>
-
-<ul>
-  <li><strong>local</strong> - the option value is read from the <code class="highlighter-rouge">.watchmanconfig</code> file in the
-associated root.</li>
-  <li><strong>global</strong> - the option value is read from the <code class="highlighter-rouge">/etc/watchman.json</code> file</li>
-  <li><strong>fallback</strong> - the option value is read from the <code class="highlighter-rouge">.watchmanconfig</code> file.
-If the option was not present in the <code class="highlighter-rouge">.watchmanconfig</code> file, then read
-it from the <code class="highlighter-rouge">/etc/watchman.json</code> file.</li>
-</ul>
-
-<p>This table shows the scoping and availability of the various options:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Option</th>
-      <th>Scope</th>
-      <th>Since version</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code class="highlighter-rouge">settle</code></td>
-      <td>local</td>
-      <td> </td>
-    </tr>
-    <tr>
-      <td><code class="highlighter-rouge">root_restrict_files</code></td>
-      <td>global</td>
-      <td>deprecated in 3.1</td>
-    </tr>
-    <tr>
-      <td><code class="highlighter-rouge">root_files</code></td>
-      <td>global</td>
-      <td>3.1</td>
-    </tr>
-    <tr>
-      <td><code class="highlighter-rouge">enforce_root_files</code></td>
-      <td>global</td>
-      <td>3.1</td>
-    </tr>
-    <tr>
-      <td><code class="highlighter-rouge">illegal_fstypes</code></td>
-      <td>global</td>
-      <td>2.9.8</td>
-    </tr>
-    <tr>
-      <td><code class="highlighter-rouge">illegal_fstypes_advice</code></td>
-      <td>global</td>
-      <td>2.9.8</td>
-    </tr>
-    <tr>
-      <td><code class="highlighter-rouge">ignore_vcs</code></td>
-      <td>local</td>
-      <td>2.9.3</td>
-    </tr>
-    <tr>
-      <td><code class="highlighter-rouge">ignore_dirs</code></td>
-      <td>local</td>
-      <td>2.9.3</td>
-    </tr>
-    <tr>
-      <td><code class="highlighter-rouge">gc_age_seconds</code></td>
-      <td>local</td>
-      <td>2.9.4</td>
-    </tr>
-    <tr>
-      <td><code class="highlighter-rouge">gc_interval_seconds</code></td>
-      <td>local</td>
-      <td>2.9.4</td>
-    </tr>
-    <tr>
-      <td><code class="highlighter-rouge">fsevents_latency</code></td>
-      <td>fallback</td>
-      <td>3.2</td>
-    </tr>
-    <tr>
-      <td><code class="highlighter-rouge">idle_reap_age_seconds</code></td>
-      <td>local</td>
-      <td>3.7</td>
-    </tr>
-    <tr>
-      <td><code class="highlighter-rouge">hint_num_files_per_dir</code></td>
-      <td>fallback</td>
-      <td>3.9</td>
-    </tr>
-    <tr>
-      <td><code class="highlighter-rouge">hint_num_dirs</code></td>
-      <td>fallback</td>
-      <td>4.6</td>
-    </tr>
-    <tr>
-      <td><code class="highlighter-rouge">suppress_recrawl_warnings</code></td>
-      <td>fallback</td>
-      <td>4.7</td>
-    </tr>
-  </tbody>
-</table>
-
-<h3 id="configuration-options">Configuration Options</h3>
-
-<h3 id="settle">settle</h3>
-
-<p>Specifies the settle period in <em>milliseconds</em>.  This controls how long the
-filesystem should be idle before dispatching triggers.  The default value is 20
-milliseconds.</p>
-
-<h3 id="rootfiles">root_files</h3>
-
-<p><em>Since 3.1.</em></p>
-
-<p>Specifies a list of files that, if present in a directory, identify that
-directory as the root of a project.</p>
-
-<p>If left unspecified, to aid in transitioning between versions, watchman will
-use the value of the now deprecated
-<a href="#root_restrict_files">root_restrict_files</a> configuration setting.</p>
-
-<p>If neither <code class="highlighter-rouge">root_files</code> nor <code class="highlighter-rouge">root_restrict_files</code> is specified in the
-configuration, watchman will use a default value consisting of:</p>
-
-<ul>
-  <li><code class="highlighter-rouge">.git</code></li>
-  <li><code class="highlighter-rouge">.hg</code></li>
-  <li><code class="highlighter-rouge">.svn</code></li>
-  <li><code class="highlighter-rouge">.watchmanconfig</code></li>
-</ul>
-
-<p>Watchman will add <code class="highlighter-rouge">.watchmanconfig</code> to whatever value is specified for
-this configuration value if it is not present.</p>
-
-<p>This example causes only <code class="highlighter-rouge">.watchmanconfig</code> to be considered as a project
-root file:</p>
-
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"root_files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">".watchmanconfig"</span><span class="p">]</span><span class="w">
-</span><span class="p">}</span><span class="w">
+<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"flush-subscriptions"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="nt">"sync_timeout"</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">}]</span><span class="w">
 </span></pre></td></tr></tbody></table>
 </div>
 </div>
 
-<p>See the <a href="cmd/watch-project.html">watch-project</a> command for more information.</p>
-
-<h3 id="enforcerootfiles">enforce_root_files</h3>
-
-<p><em>Since 3.1.</em></p>
-
-<p>This is a boolean option that defaults to <code class="highlighter-rouge">false</code>.  If it is set to <code class="highlighter-rouge">true</code>
-then the <a href="cmd/watch.html">watch</a> command will only succeed if the requested
-directory contains one of the files listed by the <a href="#root_files">root_files</a>
-configuration option, and the <a href="cmd/watch-project.html">watch-project</a> command
-will only succeed if a valid project root is found.</p>
-
-<p>If left unspecified, to aid in transitioning between versions, watchman will
-check to see if the now deprecated <a href="#root_restrict_files">root_restrict_files</a>
-configuration setting is present.  If it is found then the effective value of
-<code class="highlighter-rouge">enforce_root_files</code> is set to <code class="highlighter-rouge">true</code>.</p>
-
-<h3 id="rootrestrictfiles">root_restrict_files</h3>
-
-<p><em>Deprecated starting in version 3.1; use <a href="#root_files">root_files</a> and
-<a href="#enforce_root_files">enforce_root_files</a> to effect the same behavior.</em></p>
-
-<p>Specifies a list of files, at least one of which should be present in a
-directory for watchman to add it as a root. By default there are no
-restrictions.</p>
-
-<p>For example,</p>
-
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"root_restrict_files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">".git"</span><span class="p">,</span><span class="w"> </span><span class="s2">".hg"</span><span class="p">]</span><span class="w">
-</span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
-
-<p>will allow watches only in the top level of Git or Mercurial repositories.</p>
-
-<h3 id="illegalfstypes">illegal_fstypes</h3>
-
-<p>Specifies a list of filesystem types that watchman is prohibited to attempt to
-watch.  Watchman will determine the filesystem type of the root of a watch; if
-the typename is present in the <code class="highlighter-rouge">illegal_fstypes</code> list, the watch will be
-prohibited.  You may also specify <code class="highlighter-rouge">illegal_fstypes_advice</code> as a string with
-additional advice to your user.  The purpose of this configuration option is
-largely to prevent the use of Watchman on network mounted filesystems.  On
-Linux systems, Watchman may not be able to determine the precise type name of a
-mounted filesystem.  If the filesystem type is not known to watchman, it will
-be reported as <code class="highlighter-rouge">unknown</code>.</p>
-
-<p>For example,</p>
+<p>In response, Watchman will first emit a unilateral subscription PDU for <code class="highlighter-rouge">sub1</code>,
+then respond with</p>
 
 <div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
 2
 3
-4</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"illegal_fstypes"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"nfs"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cifs"</span><span class="p">,</span><span class="w"> </span><span class="s2">"smb"</span><span class="p">],</span><span class="w">
-  </span><span class="nt">"illegal_fstypes_advice"</span><span class="p">:</span><span class="w"> </span><span class="s2">"use a local directory"</span><span class="w">
+4
+5
+6</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
+  </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1446410081:18462:7:135"</span><span class="p">,</span><span class="w">
+  </span><span class="nt">"synced"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"sub1"</span><span class="p">],</span><span class="w">
+  </span><span class="nt">"no_sync_needed"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"sub2"</span><span class="p">],</span><span class="w">
+  </span><span class="nt">"dropped"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"sub3"</span><span class="p">]</span><span class="w">
 </span><span class="p">}</span><span class="w">
 </span></pre></td></tr></tbody></table>
 </div>
 </div>
 
-<p>will prevent watching dirs mounted on network filesystems and provide the
-advice to use a local directory.  You may omit the <code class="highlighter-rouge">illegal_fstypes_advice</code>
-setting to use a default suggestion to relocate the directory to local disk.</p>
-
-<h3 id="ignorevcs">ignore_vcs</h3>
-
-<p>Apply special VCS ignore logic to the set of named dirs.  This option has a
-default value of <code class="highlighter-rouge">[".git", ".hg", ".svn"]</code>.  Dirs that match this option are
-observed and watched using special shallow logic.  The shallow watch allows
-watchman to mildly abuse the version control directories to store its query
-cookie files and to observe VCS locking activity without having to watch the
-entire set of VCS data for large trees.</p>
-
-<h3 id="ignoredirs">ignore_dirs</h3>
-
-<p>Dirs that match are completely ignored by watchman.  This is useful to ignore a
-directory that contains only build products and where file change notifications
-are unwanted because of the sheer volume of files.</p>
-
-<p>For example,</p>
+<p>To flush updates for some but not all subscriptions associated with this
+session:</p>
 
 <div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
 2
-3</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-  </span><span class="nt">"ignore_dirs"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"build"</span><span class="p">]</span><span class="w">
-</span><span class="p">}</span><span class="w">
+3
+4
+5
+6</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"flush-subscriptions"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w">
+  </span><span class="p">{</span><span class="w">
+    </span><span class="nt">"sync_timeout"</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span><span class="w">
+    </span><span class="nt">"subscriptions"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"sub1"</span><span class="p">,</span><span class="w"> </span><span class="s2">"sub2"</span><span class="p">]</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">]</span><span class="w">
 </span></pre></td></tr></tbody></table>
 </div>
 </div>
 
-<p>would ignore the <code class="highlighter-rouge">build</code> directory at the top level of the watched tree, and
-everything below it.  It will never appear in the watchman query results for
-the tree.</p>
+<h3 id="deferred-and-dropped-updates">Deferred and Dropped Updates</h3>
 
-<p>On Linux systems, <code class="highlighter-rouge">ignore_dirs</code> is respected at the OS level; the kernel
-simply will not tell watchman about changes to ignored dirs.  macOS and Windows
-have limited or no support for this, so watchman needs to process and ignore
-this class of change.</p>
+<p>Subscriptions will typically buffer individual updates until a <em>settle</em> period
+has expired. <code class="highlighter-rouge">flush-subscriptions</code> will force those updates through immediately.</p>
 
-<p>For large trees or especially busy build dirs, it is recommended that you move
-the busy build dirs out of the tree for more optimal performance.</p>
+<p>Subscriptions currently deferring updates because of <code class="highlighter-rouge">defer</code> or <code class="highlighter-rouge">defer_vcs</code>
+are updated immediately, without waiting for the <code class="highlighter-rouge">defer</code> or <code class="highlighter-rouge">defer_vcs</code> to
+end.</p>
 
-<p>Since version 2.9.9, if you list a dir in <code class="highlighter-rouge">ignore_dirs</code> that is also listed in
-<code class="highlighter-rouge">ignore_vcs</code>, the <code class="highlighter-rouge">ignore_dirs</code> placement will take precedence.  This may not
-sound like a big deal, but since <code class="highlighter-rouge">ignore_vcs</code> is used as a hint to for the
-placement of <a href="/watchman/docs/cookies.html">cookie files</a>, having these two
-options overlap in earlier versions would break watchman queries.</p>
+<p>Subscriptions currently dropping updates with a <code class="highlighter-rouge">drop</code> state will not get any
+updates. Their names will be returned in the <code class="highlighter-rouge">dropped</code> field.</p>
 
-<p><em>Since 4.6.</em></p>
+<h3 id="notes">Notes</h3>
 
-<p>On macOS the first 8 items listed in <code class="highlighter-rouge">ignore_dirs</code> can be accelerated at the
-OS level.  This means that changes to those paths are not even communicated
-to the watchman service.  Entries beyond the first 8 are processed and
-ignored by watchman.  If your workload is prone to recrawl events you will
-want to prioritize your <code class="highlighter-rouge">ignore_dirs</code> list so that the most busy ignored
-locations occupy the first 8 positions in this list.</p>
-
-<h3 id="gcageseconds">gc_age_seconds</h3>
-
-<p>Deleted files (and dirs) older than this are periodically pruned from the
-internal view of the filesystem.  Until they are pruned, they will be visible
-to queries but will have their <code class="highlighter-rouge">exists</code> field set to <code class="highlighter-rouge">false</code>.   Once they are
-pruned, watchman will remember the most recent clock value of the pruned nodes.
-Any since queries based on a clock prior to the last prune clock will be
-treated as a fresh instance query.  This allows a client to detect and choose
-how to handle the case where they have missed changes.  See <code class="highlighter-rouge">is_fresh_instance</code>
-elsewhere in this document for more information.  The default for this is
-<code class="highlighter-rouge">43200</code> (12 hours).</p>
-
-<h3 id="gcintervalseconds">gc_interval_seconds</h3>
-
-<p>How often to check for, and prune out, deleted nodes per the <code class="highlighter-rouge">gc_age_seconds</code>
-option description above.  The default for this is <code class="highlighter-rouge">86400</code> (24 hours).  Set
-this to <code class="highlighter-rouge">0</code> to disable the periodic pruning operation.</p>
-
-<h3 id="fseventslatency">fsevents_latency</h3>
-
-<p>Controls the latency parameter that is passed to <code class="highlighter-rouge">FSEventStreamCreate</code> on OS X.
-The value is measured in seconds.  The fixed value of this parameter prior to
-version 3.2 of watchman was <code class="highlighter-rouge">0.0001</code> seconds.  Starting in version 3.2 of
-watchman, the default is now <code class="highlighter-rouge">0.01</code> seconds and can be controlled on a
-per-root basis.</p>
-
-<p>If you observe problems with <code class="highlighter-rouge">kFSEventStreamEventFlagUserDropped</code> increasing
-the latency parameter will allow the system to batch more change notifications
-together and operate more efficiently.</p>
-
-<h3 id="fseventstryresync">fsevents_try_resync</h3>
-
-<p>This is macOS specific.</p>
-
-<p><em>Since 4.6.</em></p>
-
-<p>Defaults to <code class="highlighter-rouge">false</code>.  If set to <code class="highlighter-rouge">true</code>, if a watch receives a
-<code class="highlighter-rouge">kFSEventStreamEventFlagUserDropped</code> event, attempt to resync from the
-<code class="highlighter-rouge">fsevents</code> journal if it is available.  The journal may not be available if one
-or more volumes are mounted read-only, if the administrator has purged the
-journal, or if the <code class="highlighter-rouge">fsevents</code> id numbers have rolled over.</p>
-
-<p>This resync operation is advantageous because it effectively allows rewinding
-and replaying the event stream from a known point in time and avoids the need
-to recrawl the entire watch.</p>
-
-<p>If this option is set to <code class="highlighter-rouge">false</code>, or if the journal is not available, the
-original strategy of recrawling the watched directory tree is used instead.</p>
-
-<p><em>Since 4.7.</em></p>
-
-<p>The default changed to <code class="highlighter-rouge">true</code>.  In addition, this resync strategy is now
-also applied to <code class="highlighter-rouge">kFSEventStreamEventFlagKernelDropped</code> events.</p>
-
-<h3 id="idlereapageseconds">idle_reap_age_seconds</h3>
-
-<p><em>Since 3.7.</em></p>
-
-<p>How many seconds a watch can remain idle before becoming a candidate for
-reaping, measured in seconds.  The default for this is <code class="highlighter-rouge">432000</code> (5 days).  Set
-this to <code class="highlighter-rouge">0</code> to prevent reaping.</p>
-
-<p>A watch is considered to be idle when it has had no commands that operate on it
-for <code class="highlighter-rouge">idle_reap_age_seconds</code>.   If an idle watch has no triggers and no
-subscriptions then it will be cancelled, releasing the associated operating
-system resources, and removed from the state file.</p>
-
-<h3 id="hintnumfilesperdir">hint_num_files_per_dir</h3>
-
-<p><em>Since 3.9.</em></p>
-
-<p>Used to pre-size hash tables used to track files per directory.  This
-is most impactful during the initial crawl of the filesystem.  Setting
-this too small will increase the chance of a hash insert having a collision
-and drive up the cost of the insert and subsequent gets.</p>
-
-<p>Prior to version 3.9 of watchman this value was fixed at <code class="highlighter-rouge">2</code>.  Starting
-in version 3.9 the default value is <code class="highlighter-rouge">64</code> and can be configured via this
-setting in the <code class="highlighter-rouge">.watchmanconfig</code> or the global <code class="highlighter-rouge">/etc/watchman.json</code>
-configuration file.</p>
-
-<p>Setting this value very large increases the memory overhead per directory in
-the tree; the value is rounded up to the next power of two and pre-allocated
-in an array of pointers.  On a 64-bit system multiply that number by 8 to
-arrive at the number of bytes of overhead (halve this on a 32-bit system).
-The overhead is doubled when using a case insensitive filesystem.</p>
-
-<p>The ideal size from a time complexity perspective is the number of files in
-your largest directory.  From a space complexity perspective, the ideal size
-is 1; you would pay the cost of the collisions during the initial crawl and
-have a more optimal memory usage.  Since watchman is primarily employed as an
-accelerator, we’d recommend biasing towards using more memory and taking less
-time to run.</p>
-
-<h3 id="hintnumdirs">hint_num_dirs</h3>
-
-<p><em>Since 4.6</em></p>
-
-<p>Used to pre-size hash tables that are used to track the total set of files
-in the entire watched tree.  The default value for this is 131072.</p>
-
-<p>The optimal size is a power-of-two larger than the number of directories
-in your tree; running <code class="highlighter-rouge">find . -type d | wc -l</code> will tell you the number
-that you have.</p>
-
-<p>Making this number too large is potentially wasteful of memory.  Making this
-number too small results in increased latency during crawling while the
-hash tables are rebuilt.</p>
-
-<h3 id="suppressrecrawlwarnings">suppress_recrawl_warnings</h3>
-
-<p><em>Since 4.7</em></p>
-
-<p>When set to <code class="highlighter-rouge">true</code>, watchman will not produce recrawl related warning fields in
-the response PDUs of various requests.  The default is <code class="highlighter-rouge">false</code>; the intent is
-that someone in your organization should be aware of recrawls and be able to
-manage the configuration and workload.  Some sites employ an alternative
-mechanism for sampling and reporting this to the right set of people and wish
-to disable the warning so that it doesn’t appear in front of users that are
-unable to make the appropriate configuration changes for themselves.</p>
+<ul>
+  <li><code class="highlighter-rouge">flush-subscriptions</code> can only be used to flush subscriptions associated with
+the current session.</li>
+  <li>A single session can be subscribed to updates from multiple projects at the
+same time. However, <code class="highlighter-rouge">flush-subscriptions</code> can only flush updates for one
+project at a time.</li>
+</ul>
 
     
   </article>
