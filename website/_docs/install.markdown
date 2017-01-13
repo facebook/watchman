@@ -62,7 +62,7 @@ $ sudo port install watchman
 
 You can use these steps below to get watchman built.  You will need `autoconf`
 and `automake`.  You may optionally build watchman without `pcre` and `python`
-support (see configuration options below). For python support, you will also 
+support (see configuration options below). For python support, you will also
 need `setuptools` and may need to install a `python-dev` or `python-devel` package.
 
 See below for some more information on options to configure your build.
@@ -158,7 +158,7 @@ This means that if an overflow does occur, you won't miss a legitimate change
 notification, but instead will get spurious notifications for files that
 haven't actually changed.
 
-### Max OS File Descriptor Limits
+### Mac OS File Descriptor Limits
 
 *Only applicable on OS X 10.6 and earlier*
 
