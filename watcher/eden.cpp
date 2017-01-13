@@ -27,7 +27,7 @@ folly::SocketAddress getEdenServerSocketAddress() {
  * with the current user. */
 std::unique_ptr<EdenServiceAsyncClient> getEdenClient(
     folly::EventBase* eb = folly::EventBaseManager::get()->getEventBase()) {
-  return folly::make_unique<EdenServiceAsyncClient>(
+  return std::make_unique<EdenServiceAsyncClient>(
       apache::thrift::HeaderClientChannel::newChannel(
           apache::thrift::async::TAsyncSocket::newSocket(
               eb, getEdenServerSocketAddress())));
