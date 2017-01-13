@@ -2,6 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+// some versions of dbghelp.h do: typedef enum {}; with no typedef name
+#pragma warning(disable: 4091)
 #include <Dbghelp.h>
 #include <mutex>
 
