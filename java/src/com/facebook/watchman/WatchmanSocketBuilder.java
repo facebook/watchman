@@ -91,12 +91,14 @@ public class WatchmanSocketBuilder {
     Optional<Path> optionalExecutable = ExecutableFinder.getOptionalExecutable(
         Paths.get("watchman"),
         ImmutableMap.copyOf(System.getenv()));
-
     if (!optionalExecutable.isPresent()) {
       throw new WatchmanSocketUnavailableException();
     }
+    return discoverSocket(optionalExecutable.get(), duration, unit);
+  }
 
-    Path watchmanPath = optionalExecutable.get();
+  public static Socket discoverSocket(Path watchmanPath, long duration, TimeUnit unit)
+      throws WatchmanSocketUnavailableException {
     NuProcessBuilder processBuilder = new NuProcessBuilder(
         watchmanPath.toString(),
         "--output-encoding=bser",
