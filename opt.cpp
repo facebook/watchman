@@ -75,13 +75,13 @@ void usage(struct watchman_getopt *opts, FILE *where)
 
   print_command_list_for_help(where);
 
-  fprintf(where,
-"\n"
-"See https://github.com/facebook/watchman#watchman for more help\n"
-"\n"
-"Watchman, by Wez Furlong.\n"
-"Copyright 2012-2015 Facebook, Inc.\n"
-  );
+  fprintf(
+      where,
+      "\n"
+      "See https://github.com/facebook/watchman#watchman for more help\n"
+      "\n"
+      "Watchman, by Wez Furlong.\n"
+      "Copyright 2012-2017 Facebook, Inc.\n");
 
   exit(1);
 }
