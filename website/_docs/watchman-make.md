@@ -6,13 +6,13 @@ category: Invocation
 permalink: docs/watchman-make.html
 ---
 
-`watchman-make` is a convenience tool to help automatically invoke your build
-tool in response to files changing.  It is useful to automate building assets
+`watchman-make` is a convenience tool to help automatically invoke a build
+tool or script in response to files changing.  It is useful to automate building assets
 or running tests as you save files during development.
 
 `watchman-make` will establish a watch on the files you specify and remain
 running in the foreground, waiting for changes to occur.  When a change is
-triggered, your build tool will be run in the foreground with its output being
+triggered, your build tool or script will be run in the foreground with its output being
 passed through to your terminal session (or wherever you may have redirected
 it).
 
@@ -35,7 +35,7 @@ $ watchman-make -p '**/*.c' '**/*.h' 'Makefile*' -t all -p 'tests/**/*.py' 'test
 
 ### Targets
 
-`watchman-make` is target-centric; you tell it about one or more build targets
+You can tell `watchman-make` about one or more build targets
 and their dependencies, and it will then trigger the build for those targets as
 changes are detected.
 
@@ -89,3 +89,21 @@ $ watchman-make -p '*.c' '*.h' 'Makefile*' 'tests/**/*.py' 'tests/**/*.c' -t all
 this will execute `make all integration` if you change any top level `*.c` file
 *or* test source file.
 
+### Run Scripts
+
+*Since 4.8.*
+
+As an alternative to targets, you can provide the path to a script which `watchman-make`
+will execute when changes are detected.
+
+```bash
+$ watchman-make -p '**/*.c' '**/*.h' --run my_script.sh
+```
+
+The above will run the provided script whenever any
+combination of files are changed that have filenames that match either of the
+patterns `*.c` or `*.h` at any level in the directory tree. When it triggers,
+`watchman-make` will execute `my_script.sh`.
+
+You must run `watchman-make` with either `--target` or `--run`, but they cannot
+be run together
