@@ -45,7 +45,7 @@ client.capabilityCheck({optional:[], required:['relative_root']},
       console.error(error);
     }
     // resp will be an extended version response:
-    // {'version': '3.8.0', 'capabilities': {'relative_roots': true}}
+    // {'version': '3.8.0', 'capabilities': {'relative_root': true}}
     console.log(resp);
   });
 ```
@@ -233,7 +233,7 @@ If any of the `required` capabilities are not supported by the server, the
 meaningful error message.
 
 ```js
-client.capabilityCheck({optional:[], required:['relative_roots']},
+client.capabilityCheck({optional:[], required:['relative_root']},
   function (error, resp) {
     if (error) {
       // error will be an Error object if the watchman service is not
@@ -242,7 +242,7 @@ client.capabilityCheck({optional:[], required:['relative_roots']},
       console.error(error);
     }
     // resp will be an extended version response:
-    // {'version': '3.8.0', 'capabilities': {'relative_roots': true}}
+    // {'version': '3.8.0', 'capabilities': {'relative_root': true}}
     console.log(resp);
   });
 ```
@@ -362,4 +362,3 @@ the subscription you want to cancel:
 Note that subscriptions names are scoped to your connection to the watchman
 service; multiple different clients can use the same subscription name without
 fear of colliding.
-
