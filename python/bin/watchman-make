@@ -16,27 +16,20 @@ def patterns_to_terms(pats):
         terms.append(['match', p, 'wholename', {'includedotfiles': True}])
     return terms
 
-
 class Target(object):
-    """ Represents a makefile target that we'd like to build
+    """ Base Class for a Target
 
     We track the patterns that we consider to be the dependencies for
     this target and establish a subscription for them.
 
     When we receive notifications for that subscription, we know that
-    we should execute the command to build this target.
+    we should execute the command.
     """
-
-    def __init__(self, name, make, targets, patterns):
+    def __init__(self, name, patterns, cmd):
         self.name = name
-        self.make = make
-        self.targets = targets
         self.patterns = patterns
+        self.cmd = cmd
         self.triggered = False
-
-    def __repr__(self):
-        return '{make=%r targets=%r pat=%r}' % (
-            self.make, self.targets, self.patterns)
 
     def start(self, client, root):
         query = {
@@ -53,8 +46,8 @@ class Target(object):
         # get the initial clock value so that we only get updates
         query['since'] = client.query('clock', root_dir)['clock']
 
-        print('# Changes to files matching %s will execute `%s %s`' % (
-            ' '.join(self.patterns), self.make, ' '.join(self.targets)),
+        print('# Changes to files matching %s will execute `%s`' % (
+            ' '.join(self.patterns), self.cmd),
             file=sys.stderr)
         sub = client.query('subscribe', root_dir, self.name, query)
 
@@ -68,13 +61,35 @@ class Target(object):
         if not self.triggered:
             return
         self.triggered = False
+        print('# Execute: `%s`' % self.cmd, file=sys.stderr)
+        subprocess.call(self.cmd, shell=True)
+
+
+class MakefileTarget(Target):
+    """ Represents a Makefile target that we'd like to build. """
+    def __init__(self, name, make, targets, patterns):
+        self.make = make
+        self.targets = targets
         cmd = "%s %s" % (self.make, " ".join(self.targets))
-        print('# Execute: `%s`' % cmd, file=sys.stderr)
-        subprocess.call(cmd, shell=True)
+        super(MakefileTarget, self).__init__(name, patterns, cmd)
+
+    def __repr__(self):
+        return '{make=%r targets=%r pat=%r}' % (
+            self.make, self.targets, self.patterns)
+
+class RunTarget(Target):
+    """ Represents a script that we'd like to run. """
+    def __init__(self, name, runfile, patterns):
+        self.runfile = runfile
+        super(RunTarget, self).__init__(name, patterns, self.runfile)
+
+    def __repr__(self):
+        return '{runfile=%r pat=%r}' % (
+            self.runfile, self.patterns)
 
 
 class DefineTarget(argparse.Action):
-    """ argument parser helper to manage defining Target instances. """
+    """ argument parser helper to manage defining MakefileTarget instances. """
 
     def __init__(self, option_strings, dest, **kwargs):
         super(DefineTarget, self).__init__(option_strings, dest, **kwargs)
@@ -93,7 +108,7 @@ class DefineTarget(argparse.Action):
                   values, file=sys.stderr)
             sys.exit(1)
 
-        target = Target('target_%d' % len(targets),
+        target = MakefileTarget('target_%d' % len(targets),
                         namespace.make, values, namespace.pattern)
         targets.append(target)
 
@@ -105,16 +120,17 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
     description="""
 watchman-make waits for changes to files and then invokes a build tool
-(by default, `make`) to process those changes.  It uses the watchman service to
-efficiently watch the appropriate files.
+(by default, `make`) or provided script to process those changes.
+It uses the watchman service to efficiently watch the appropriate files.
 
 Events are consolidated and settled before they are dispatched to your build
 tool, so that it won't start executing until after the files have stopped
 changing.
 
-watchman-make is target-centric; you need to tell it about one or more
-build targets and what the dependencies of those targets are, and it will
-then trigger the build for those targets as changes are detected.
+You can tell watchman-make about one or more build targets and dependencies
+for those targets or provide a script to run.
+watchman-make will then trigger the build for the given targets or
+run the provided script as changes are detected.
 
 """)
 parser.add_argument('-t', '--target', nargs='+', type=str, action=DefineTarget,
@@ -146,13 +162,19 @@ Define the root of the project.  The default is to use the PWD.
 All patterns are considered to be relative to this root, and the build
 tool is executed with this location set as its PWD.
 """)
-
+parser.add_argument('-r', '--run', type=str, help="""
+The script that should be run when changes are detected
+""")
 args = parser.parse_args()
 
-if args.target is None:
-    print('# No targets were specified, nothing to do.', file=sys.stderr)
+if args.target is None and args.run is None:
+    print('# No run script or targets were specified, nothing to do.', file=sys.stderr)
     sys.exit(1)
 
+if args.target is None:
+    args.target = []
+    if args.run is not None:
+        args.target.append(RunTarget('RunTarget', args.run, args.pattern))
 
 def check_root(desired_root):
     try:
@@ -227,3 +249,4 @@ while True:
     except KeyboardInterrupt:
         # suppress ugly stack trace when they Ctrl-C
         break
+
