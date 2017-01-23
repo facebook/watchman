@@ -123,30 +123,24 @@ static void spawn_command(
   }
 
   // Assumption: that only one thread will be executing on a given
-  // cmd instance so that mutation of cmd->envht is safe.
+  // cmd instance so that mutation of cmd->env is safe.
   // This is guaranteed in the current architecture.
 
   // It is way too much of a hassle to try to recreate the clock value if it's
   // not a relative clock spec, and it's only going to happen on the first run
   // anyway, so just skip doing that entirely.
   if (since_spec && since_spec->tag == w_cs_clock) {
-    w_envp_set_cstring(
-        cmd->envht,
-        "WATCHMAN_SINCE",
-        since_spec->clock.position.toClockString().c_str());
+    cmd->env.set("WATCHMAN_SINCE", since_spec->clock.position.toClockString());
   } else {
-    w_envp_unset(cmd->envht, "WATCHMAN_SINCE");
+    cmd->env.unset("WATCHMAN_SINCE");
   }
 
-  w_envp_set_cstring(
-      cmd->envht,
-      "WATCHMAN_CLOCK",
-      res->clockAtStartOfQuery.toClockString().c_str());
+  cmd->env.set("WATCHMAN_CLOCK", res->clockAtStartOfQuery.toClockString());
 
   if (cmd->query->relative_root) {
-    w_envp_set(cmd->envht, "WATCHMAN_RELATIVE_ROOT", cmd->query->relative_root);
+    cmd->env.set("WATCHMAN_RELATIVE_ROOT", cmd->query->relative_root);
   } else {
-    w_envp_unset(cmd->envht, "WATCHMAN_RELATIVE_ROOT");
+    cmd->env.unset("WATCHMAN_RELATIVE_ROOT");
   }
 
   // Compute args
@@ -161,9 +155,8 @@ static void spawn_command(
     }
 
     // Dry run with env to compute space
-    uint32_t env_size;
-    auto envp = w_envp_make_from_ht(cmd->envht, &env_size);
-    free(envp);
+    size_t env_size;
+    cmd->env.asEnviron(&env_size);
     argspace_remaining -= env_size;
 
     for (const auto& item : res->dedupedFileNames) {
@@ -180,10 +173,10 @@ static void spawn_command(
     }
   }
 
-  w_envp_set_bool(cmd->envht, "WATCHMAN_FILES_OVERFLOW", file_overflow);
+  cmd->env.set("WATCHMAN_FILES_OVERFLOW", file_overflow);
 
   Options opts;
-  opts.environment() = cmd->envht;
+  opts.environment() = cmd->env;
 #ifndef _WIN32
   sigset_t mask;
   sigemptyset(&mask);

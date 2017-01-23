@@ -222,7 +222,6 @@ watchman_trigger_command::watchman_trigger_command(
     const json_ref& trig,
     char** errmsg)
     : definition(trig),
-      envht(w_envp_make_ht()),
       append_files(false),
       stdin_style(input_dev_null),
       max_files_stdin(0),
@@ -318,9 +317,9 @@ watchman_trigger_command::watchman_trigger_command(
   }
 
   // Set some standard vars
-  w_envp_set(envht, "WATCHMAN_ROOT", root->root_path);
-  w_envp_set_cstring(envht, "WATCHMAN_SOCK", get_sock_name());
-  w_envp_set(envht, "WATCHMAN_TRIGGER", triggername);
+  env.set({{"WATCHMAN_ROOT", root->root_path},
+           {"WATCHMAN_SOCK", get_sock_name()},
+           {"WATCHMAN_TRIGGER", triggername}});
 }
 
 void watchman_trigger_command::stop() {

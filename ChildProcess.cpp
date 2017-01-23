@@ -30,6 +30,14 @@ void ChildProcess::Environment::set(const w_string& key, const w_string& val) {
   map_[key] = val;
 }
 
+void ChildProcess::Environment::set(const w_string& key, bool bval) {
+  if (bval) {
+    map_[key] = "true";
+  } else {
+    map_.erase(key);
+  }
+}
+
 void ChildProcess::Environment::set(
     std::initializer_list<std::pair<w_string_piece, w_string_piece>> pairs) {
   for (auto& pair : pairs) {

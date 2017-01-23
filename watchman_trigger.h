@@ -11,7 +11,7 @@ struct watchman_trigger_command {
   std::shared_ptr<w_query> query;
   json_ref definition;
   json_ref command;
-  std::unordered_map<w_string, w_string> envht;
+  watchman::ChildProcess::Environment env;
 
   bool append_files;
   enum trigger_input_style stdin_style;
