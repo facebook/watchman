@@ -77,3 +77,11 @@ t_test(
       '@/watchman/thirdparty/wildmatch:wildmatch',
     ],
 )
+
+t_test(
+    name='childproc',
+    srcs=['childproc.cpp', 'log_stub.cpp'],
+    deps=[
+      '@/watchman:testsupport',
+    ],
+)

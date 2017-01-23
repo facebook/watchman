@@ -181,6 +181,9 @@ cpp_library(
         'opendir.cpp',
         'pending.cpp',
         'time.cpp',
+        'ChildProcess.cpp',
+        'Pipe.cpp',
+        'FileDescriptor.cpp',
     ],
     deps=[
         ':headers',

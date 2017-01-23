@@ -375,4 +375,9 @@ void ChildProcess::kill(
   }
 #endif
 }
+
+Pipe& ChildProcess::pipe(int fd) {
+  return *pipes_.at(fd);
+}
+
 }

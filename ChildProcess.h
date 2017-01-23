@@ -144,6 +144,8 @@ class ChildProcess {
 #endif
       );
 
+  Pipe& pipe(int fd);
+
  private:
   pid_t pid_;
   bool waited_{false};
