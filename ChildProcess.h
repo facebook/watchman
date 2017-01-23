@@ -127,6 +127,11 @@ class ChildProcess {
   // immediately returns its exit status.
   int wait();
 
+  // Disassociate from the running process.
+  // We will no longer be able to wait for it to complete.
+  // This causes minor leakage of resources.
+  void disown();
+
   // This mutex is present to avoid fighting over the cwd when multiple
   // process might need to chdir concurrently
   static std::unique_lock<std::mutex> lockCwdMutex();

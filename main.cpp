@@ -1,10 +1,14 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "watchman.h"
+#include "ChildProcess.h"
 #include "Logging.h"
+#include "watchman.h"
 #ifndef _WIN32
 #include <poll.h>
 #endif
+
+using watchman::ChildProcess;
+using Options = ChildProcess::Options;
 
 static int show_help = 0;
 static int show_version = 0;
@@ -251,88 +255,54 @@ static void daemonize(void)
 }
 #endif
 
-#define MAX_DAEMON_ARGS 64
-static void append_argv(char **argv, char *item)
-{
-  int i;
-
-  for (i = 0; argv[i]; i++) {
-    ;
-  }
-  if (i + 1 >= MAX_DAEMON_ARGS) {
-    abort();
-  }
-
-  argv[i] = item;
-  argv[i+1] = NULL;
-}
-
 #ifdef _WIN32
 static void spawn_win32(void) {
   char module_name[WATCHMAN_NAME_MAX];
   GetModuleFileName(NULL, module_name, sizeof(module_name));
-  char *argv[MAX_DAEMON_ARGS] = {
-    module_name,
-    (char*)"--foreground",
-    NULL
-  };
-  posix_spawn_file_actions_t actions;
-  posix_spawnattr_t attr;
-  pid_t pid;
-  int i;
 
-  for (i = 0; daemon_argv[i]; i++) {
-    append_argv(argv, daemon_argv[i]);
+  Options opts;
+  opts.setFlags(POSIX_SPAWN_SETPGROUP);
+  opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
+  opts.open(STDOUT_FILENO, log_name, O_WRONLY | O_CREAT | O_APPEND, 0600);
+  opts.dup2(STDOUT_FILENO, STDERR_FILENO);
+
+  std::vector<w_string_piece> args{module_name, "--foreground"};
+  for (size_t i = 0; daemon_argv[i]; i++) {
+    args.push_back(daemon_argv[i]);
   }
 
-  posix_spawnattr_init(&attr);
-  posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETPGROUP);
-  posix_spawn_file_actions_init(&actions);
-  posix_spawn_file_actions_addopen(&actions,
-      STDIN_FILENO, "/dev/null", O_RDONLY, 0);
-  posix_spawn_file_actions_addopen(&actions,
-      STDOUT_FILENO, log_name, O_WRONLY|O_CREAT|O_APPEND, 0600);
-  posix_spawn_file_actions_adddup2(&actions,
-      STDOUT_FILENO, STDERR_FILENO);
-  posix_spawnp(&pid, argv[0], &actions, &attr, argv, environ);
-  posix_spawnattr_destroy(&attr);
-  posix_spawn_file_actions_destroy(&actions);
+  ChildProcess proc(args, std::move(opts));
+  proc.disown();
 }
 #endif
 
 #ifdef USE_GIMLI
 static void spawn_via_gimli(void)
 {
-  char *argv[MAX_DAEMON_ARGS] = {
-    GIMLI_MONITOR_PATH,
+  std::vector<w_string_piece> args{
+      GIMLI_MONITOR_PATH,
 #ifdef WATCHMAN_STATE_DIR
-    (char*)"--trace-dir=" WATCHMAN_STATE_DIR "/traces",
+      "--trace-dir=" WATCHMAN_STATE_DIR "/traces",
 #endif
-    (char*)"--pidfile", pid_file,
-    (char*)"watchman",
-    (char*)"--foreground",
-    NULL
+      "--pidfile",
+      pid_file,
+      "watchman",
+      "--foreground",
   };
-  posix_spawn_file_actions_t actions;
-  posix_spawnattr_t attr;
-  pid_t pid;
-  int i;
 
-  for (i = 0; daemon_argv[i]; i++) {
-    append_argv(argv, daemon_argv[i]);
+  for (size_t i = 0; daemon_argv[i]; i++) {
+    args.push_back(daemon_argv[i]);
   }
 
   close_random_fds();
 
-  posix_spawnattr_init(&attr);
-  posix_spawn_file_actions_init(&actions);
-  posix_spawn_file_actions_addopen(&actions,
-      STDOUT_FILENO, log_name, O_WRONLY|O_CREAT|O_APPEND, 0600);
-  posix_spawn_file_actions_adddup2(&actions,
-      STDOUT_FILENO, STDERR_FILENO);
-  posix_spawnp(&pid, argv[0], &actions, &attr, argv, environ);
-  posix_spawnattr_destroy(&attr);
-  posix_spawn_file_actions_destroy(&actions);
+  Options opts;
+  opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
+  opts.open(STDOUT_FILENO, log_name, O_WRONLY | O_CREAT | O_APPEND, 0600);
+  opts.dup2(STDOUT_FILENO, STDERR_FILENO);
+
+  ChildProcess proc(args, std::move(opts));
+  proc.disown();
 }
 #endif
 
@@ -342,54 +312,53 @@ static void spawn_via_gimli(void)
 // we noticed during argument parsing.
 static void spawn_site_specific(const char *spawner)
 {
-  char *argv[MAX_DAEMON_ARGS] = {
-    (char*)spawner,
-    NULL
+  std::vector<w_string_piece> args{
+      spawner,
   };
-  posix_spawn_file_actions_t actions;
-  posix_spawnattr_t attr;
-  pid_t pid;
-  int i;
-  int res, err;
 
-  for (i = 0; daemon_argv[i]; i++) {
-    append_argv(argv, daemon_argv[i]);
+  for (size_t i = 0; daemon_argv[i]; i++) {
+    args.push_back(daemon_argv[i]);
   }
 
   close_random_fds();
 
-  posix_spawnattr_init(&attr);
-  posix_spawn_file_actions_init(&actions);
-  posix_spawn_file_actions_addopen(&actions,
-      STDOUT_FILENO, log_name, O_WRONLY|O_CREAT|O_APPEND, 0600);
-  posix_spawn_file_actions_adddup2(&actions,
-      STDOUT_FILENO, STDERR_FILENO);
-  res = posix_spawnp(&pid, argv[0], &actions, &attr, argv, environ);
-  err = errno;
+  Options opts;
+  opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
+  opts.open(STDOUT_FILENO, log_name, O_WRONLY | O_CREAT | O_APPEND, 0600);
+  opts.dup2(STDOUT_FILENO, STDERR_FILENO);
 
-  posix_spawnattr_destroy(&attr);
-  posix_spawn_file_actions_destroy(&actions);
+  try {
+    ChildProcess proc(args, std::move(opts));
 
-  if (res) {
-    w_log(W_LOG_FATAL, "Failed to spawn watchman via `%s': %s\n", spawner,
-          strerror(err));
+    auto res = proc.wait();
+
+    if (WIFEXITED(res) && WEXITSTATUS(res) == 0) {
+      return;
+    }
+
+    if (WIFEXITED(res)) {
+      watchman::log(
+          watchman::FATAL,
+          spawner,
+          ": exited with status ",
+          WEXITSTATUS(res),
+          "\n");
+    } else if (WIFSIGNALED(res)) {
+      watchman::log(
+          watchman::FATAL, spawner, ": signaled with ", WTERMSIG(res), "\n");
+    }
+    watchman::log(
+        watchman::ERR, spawner, ": failed to start, exit status ", res, "\n");
+
+  } catch (const std::exception& exc) {
+    watchman::log(
+        watchman::FATAL,
+        "Failed to spawn watchman via `",
+        spawner,
+        "': ",
+        exc.what(),
+        "\n");
   }
-
-  if (waitpid(pid, &res, 0) == -1) {
-    w_log(W_LOG_FATAL, "Failed waiting for %s: %s\n", spawner, strerror(errno));
-  }
-
-  if (WIFEXITED(res) && WEXITSTATUS(res) == 0) {
-    return;
-  }
-
-  if (WIFEXITED(res)) {
-    w_log(W_LOG_FATAL, "%s: exited with status %d\n", spawner,
-          WEXITSTATUS(res));
-  } else if (WIFSIGNALED(res)) {
-    w_log(W_LOG_FATAL, "%s: signaled with %d\n", spawner, WTERMSIG(res));
-  }
-  w_log(W_LOG_ERR, "%s: failed to start, exit status %d\n", spawner, res);
 }
 #endif
 
@@ -402,15 +371,6 @@ static void spawn_via_launchd(void)
   FILE *fp;
   struct passwd *pw;
   uid_t uid;
-  char *argv[MAX_DAEMON_ARGS] = {
-    (char*)"/bin/launchctl",
-    (char*)"load",
-    (char*)"-F",
-    NULL
-  };
-  posix_spawnattr_t attr;
-  pid_t pid;
-  int res;
 
   close_random_fds();
 
@@ -437,24 +397,10 @@ static void spawn_via_launchd(void)
 
   if (access(plist_path, R_OK) == 0) {
     // Unload any that may already exist, as it is likely wrong
-    char *unload_argv[MAX_DAEMON_ARGS] = {
-      (char*)"/bin/launchctl",
-      (char*)"unload",
-      (char*)"-F",
-      NULL
-    };
-    append_argv(unload_argv, plist_path);
 
-    errno = posix_spawnattr_init(&attr);
-    if (errno != 0) {
-      w_log(W_LOG_FATAL, "posix_spawnattr_init: %s\n", strerror(errno));
-    }
-
-    res = posix_spawnp(&pid, unload_argv[0], NULL, &attr, unload_argv, environ);
-    if (res == 0) {
-      waitpid(pid, &res, 0);
-    }
-    posix_spawnattr_destroy(&attr);
+    ChildProcess unload_proc(
+        {"/bin/launchctl", "unload", "-F", plist_path}, Options());
+    unload_proc.wait();
 
     // Forcibly remove the plist.  In some cases it may have some attributes
     // set that prevent launchd from loading it.  This can happen where
@@ -526,24 +472,9 @@ static void spawn_via_launchd(void)
   // Don't rely on umask, ensure we have the correct perms
   chmod(plist_path, 0644);
 
-  append_argv(argv, plist_path);
-
-  errno = posix_spawnattr_init(&attr);
-  if (errno != 0) {
-    w_log(W_LOG_FATAL, "posix_spawnattr_init: %s\n", strerror(errno));
-  }
-
-  res = posix_spawnp(&pid, argv[0], NULL, &attr, argv, environ);
-  if (res) {
-    w_log(W_LOG_FATAL, "Failed to spawn watchman via launchd: %s\n",
-        strerror(errno));
-  }
-  posix_spawnattr_destroy(&attr);
-
-  if (waitpid(pid, &res, 0) == -1) {
-    w_log(W_LOG_FATAL, "Failed waiting for launchctl load: %s\n",
-        strerror(errno));
-  }
+  ChildProcess load_proc(
+      {"/bin/launchctl", "load", "-F", plist_path}, Options());
+  auto res = load_proc.wait();
 
   if (WIFEXITED(res) && WEXITSTATUS(res) == 0) {
     return;

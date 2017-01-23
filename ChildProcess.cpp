@@ -249,6 +249,10 @@ ChildProcess::~ChildProcess() {
   }
 }
 
+void ChildProcess::disown() {
+  waited_ = true;
+}
+
 bool ChildProcess::terminated() {
   if (waited_) {
     return true;
