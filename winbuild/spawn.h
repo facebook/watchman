@@ -5,15 +5,15 @@
 // Spawn attributes
 
 typedef struct _posix_spawnattr {
-  int flags;
+  short flags;
   char *working_dir;
 } posix_spawnattr_t;
 
-#define POSIX_SPAWN_SETSIGMASK 1
 #define POSIX_SPAWN_SETPGROUP 2
 
 int posix_spawnattr_init(posix_spawnattr_t *attrp);
-int posix_spawnattr_setflags(posix_spawnattr_t *attrp, int flags);
+int posix_spawnattr_setflags(posix_spawnattr_t* attrp, short flags);
+int posix_spawnattr_getflags(posix_spawnattr_t* attrp, short* flags);
 int posix_spawnattr_destroy(posix_spawnattr_t *attrp);
 
 int posix_spawnattr_setcwd_np(posix_spawnattr_t *attrp, const char *path);
@@ -64,4 +64,5 @@ int posix_spawnp(pid_t *pid, const char *file,
     const posix_spawnattr_t *attrp,
     char *const argv[], char *const envp[]);
 
+#define WNOHANG 1
 pid_t waitpid(pid_t pid, int* status, int options);

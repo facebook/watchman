@@ -1,7 +1,13 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman_system.h"
+#include "make_unique.h"
 #include "watchman.h"
+
+using watchman::ChildProcess;
+using Options = watchman::ChildProcess::Options;
+using Environment = watchman::ChildProcess::Environment;
 
 static std::unique_ptr<watchman_stream> prepare_stdin(
     struct watchman_trigger_command* cmd,
@@ -79,21 +85,9 @@ static void spawn_command(
     struct watchman_trigger_command* cmd,
     w_query_res* res,
     struct w_clockspec* since_spec) {
-  char **envp = NULL;
-  uint32_t i = 0;
-  int ret;
-  char **argv = NULL;
-  uint32_t env_size;
-  posix_spawn_file_actions_t actions;
-  posix_spawnattr_t attr;
-#ifndef _WIN32
-  sigset_t mask;
-#endif
   long arg_max;
   size_t argspace_remaining;
   bool file_overflow = false;
-  int result_log_level;
-  w_string_t *working_dir = NULL;
 
 #ifdef _WIN32
   arg_max = 32*1024;
@@ -160,16 +154,16 @@ static void spawn_command(
 
   if (cmd->append_files) {
     // Measure how much space the base args take up
-    for (i = 0; i < json_array_size(args); i++) {
+    for (size_t i = 0; i < json_array_size(args); i++) {
       const char *ele = json_string_value(json_array_get(args, i));
 
       argspace_remaining -= strlen(ele) + 1 + sizeof(char*);
     }
 
     // Dry run with env to compute space
-    envp = w_envp_make_from_ht(cmd->envht, &env_size);
+    uint32_t env_size;
+    auto envp = w_envp_make_from_ht(cmd->envht, &env_size);
     free(envp);
-    envp = NULL;
     argspace_remaining -= env_size;
 
     for (const auto& item : res->dedupedFileNames) {
@@ -186,137 +180,81 @@ static void spawn_command(
     }
   }
 
-  argv = w_argv_copy_from_json(args, 0);
-  args = nullptr;
-
   w_envp_set_bool(cmd->envht, "WATCHMAN_FILES_OVERFLOW", file_overflow);
 
-  envp = w_envp_make_from_ht(cmd->envht, &env_size);
-
-  posix_spawnattr_init(&attr);
+  Options opts;
+  opts.environment() = cmd->envht;
 #ifndef _WIN32
+  sigset_t mask;
   sigemptyset(&mask);
-  posix_spawnattr_setsigmask(&attr, &mask);
+  opts.setSigMask(mask);
 #endif
-  posix_spawnattr_setflags(&attr,
-      POSIX_SPAWN_SETSIGMASK|
-#ifdef POSIX_SPAWN_CLOEXEC_DEFAULT
-      // Darwin: close everything except what we put in file actions
-      POSIX_SPAWN_CLOEXEC_DEFAULT|
-#endif
-      POSIX_SPAWN_SETPGROUP);
+  opts.setFlags(POSIX_SPAWN_SETPGROUP);
 
-  posix_spawn_file_actions_init(&actions);
-
+  opts.dup2(
 #ifndef _WIN32
-  posix_spawn_file_actions_adddup2(
-      &actions, stdin_file->getFileDescriptor(), STDIN_FILENO);
+      stdin_file->getFileDescriptor(),
 #else
-  posix_spawn_file_actions_adddup2_handle_np(
-      &actions, stdin_file->getWindowsHandle(), STDIN_FILENO);
+      stdin_file->getWindowsHandle(),
 #endif
+      STDIN_FILENO);
+
   if (cmd->stdout_name) {
-    posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO,
-        cmd->stdout_name, cmd->stdout_flags, 0666);
+    opts.open(STDOUT_FILENO, cmd->stdout_name, cmd->stdout_flags, 0666);
   } else {
-    posix_spawn_file_actions_adddup2(&actions, STDOUT_FILENO, STDOUT_FILENO);
+    opts.dup2(STDOUT_FILENO, STDOUT_FILENO);
   }
 
   if (cmd->stderr_name) {
-    posix_spawn_file_actions_addopen(&actions, STDERR_FILENO,
-        cmd->stderr_name, cmd->stderr_flags, 0666);
+    opts.open(STDOUT_FILENO, cmd->stderr_name, cmd->stderr_flags, 0666);
   } else {
-    posix_spawn_file_actions_adddup2(&actions, STDERR_FILENO, STDERR_FILENO);
+    opts.dup2(STDERR_FILENO, STDERR_FILENO);
   }
 
   // Figure out the appropriate cwd
-  {
-    const char *cwd = NULL;
-    working_dir = NULL;
+  w_string working_dir(cmd->query->relative_root);
+  if (!working_dir) {
+    working_dir = root->root_path;
+  }
 
-    if (cmd->query->relative_root) {
-      working_dir = cmd->query->relative_root;
+  auto cwd = cmd->definition.get_default("chdir");
+  if (cwd) {
+    auto target = json_to_w_string(cwd);
+    if (w_is_path_absolute_cstr_len(target.data(), target.size())) {
+      working_dir = target;
     } else {
-      working_dir = root->root_path;
+      working_dir = w_string::pathCat({working_dir, target});
     }
-    w_string_addref(working_dir);
+  }
 
-    json_unpack(cmd->definition, "{s:s}", "chdir", &cwd);
-    if (cwd) {
-      w_string_t *cwd_str = w_string_new_typed(cwd, W_STRING_BYTE);
+  watchman::log(watchman::DBG, "using ", working_dir, " for working dir\n");
+  opts.chdir(working_dir.c_str());
 
-      if (w_is_path_absolute_cstr(cwd)) {
-        w_string_delref(working_dir);
-        working_dir = cwd_str;
-      } else {
-        w_string_t *joined;
-
-        joined = w_string_path_cat(working_dir, cwd_str);
-        w_string_delref(cwd_str);
-        w_string_delref(working_dir);
-
-        working_dir = joined;
-      }
+  try {
+    if (cmd->current_proc) {
+      cmd->current_proc->kill();
+      cmd->current_proc->wait();
     }
-
-    w_log(W_LOG_DBG, "using %.*s for working dir\n", working_dir->len,
-          working_dir->buf);
+    cmd->current_proc =
+        watchman::make_unique<ChildProcess>(args, std::move(opts));
+  } catch (const std::exception& exc) {
+    watchman::log(
+        watchman::ERR,
+        "trigger ",
+        root->root_path,
+        ":",
+        cmd->triggername,
+        " failed: ",
+        exc.what(),
+        "\n");
   }
 
-#ifndef _WIN32
-  // This mutex is present to avoid fighting over the cwd when multiple
-  // triggers run at the same time.  It doesn't coordinate with all
-  // possible chdir() calls, but this is the only place that we do this
-  // in the watchman server process.
-  static std::mutex cwdMutex;
-  {
-    std::unique_lock<std::mutex> lock(cwdMutex);
-    ignore_result(chdir(working_dir->buf));
-#else
-    posix_spawnattr_setcwd_np(&attr, working_dir->buf);
-#endif
-    w_string_delref(working_dir);
-    working_dir = nullptr;
-
-    ret =
-        posix_spawnp(&cmd->current_proc, argv[0], &actions, &attr, argv, envp);
-    if (ret != 0) {
-      // On Darwin (at least), posix_spawn can fail but will still populate the
-      // pid.  Since we use the pid to gate future spawns, we need to ensure
-      // that we clear out the pid on failure, otherwise the trigger would be
-      // effectively disabled for the rest of the watch lifetime
-      cmd->current_proc = 0;
-    }
-#ifndef _WIN32
-    ignore_result(chdir("/"));
-  }
-#endif
-
-  // If failed, we want to make sure we log enough info to figure out why
-  result_log_level = res == 0 ? W_LOG_DBG : W_LOG_ERR;
-
-  w_log(result_log_level, "posix_spawnp: %s\n", cmd->triggername.c_str());
-  for (i = 0; argv[i]; i++) {
-    w_log(result_log_level, "argv[%d] %s\n", i, argv[i]);
-  }
-  for (i = 0; envp[i]; i++) {
-    w_log(result_log_level, "envp[%d] %s\n", i, envp[i]);
-  }
-
-  w_log(
-      result_log_level,
-      "trigger %s:%s pid=%d ret=%d %s\n",
-      root->root_path.c_str(),
-      cmd->triggername.c_str(),
-      (int)cmd->current_proc,
-      ret,
-      strerror(ret));
-
-  free(argv);
-  free(envp);
-
-  posix_spawnattr_destroy(&attr);
-  posix_spawn_file_actions_destroy(&actions);
+  // We have integration tests that check for this string
+  watchman::log(
+      cmd->current_proc ? watchman::DBG : watchman::ERR,
+      "posix_spawnp: ",
+      cmd->triggername,
+      "\n");
 }
 
 bool watchman_trigger_command::maybeSpawn(

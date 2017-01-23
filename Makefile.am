@@ -11,6 +11,7 @@ JSON_LIB = -L. libwmanjson.a
 watchman_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 watchman_LDADD = $(JSON_LIB) libwildmatch.a
 watchman_SOURCES = \
+	ChildProcess.cpp \
 	CookieSync.cpp \
 	FileDescriptor.cpp \
 	InMemoryView.cpp \

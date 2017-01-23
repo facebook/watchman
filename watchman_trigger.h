@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <thread>
+#include "ChildProcess.h"
 
 enum trigger_input_style { input_dev_null, input_json, input_name_list };
 
@@ -23,7 +24,7 @@ struct watchman_trigger_command {
 
   /* While we are running, this holds the pid
    * of the running process */
-  pid_t current_proc;
+  std::unique_ptr<watchman::ChildProcess> current_proc;
 
   watchman_trigger_command(
       const std::shared_ptr<w_root_t>& root,

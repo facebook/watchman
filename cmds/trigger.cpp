@@ -6,25 +6,10 @@
 #include "make_unique.h"
 
 bool watchman_trigger_command::waitNoIntr() {
-  while (!w_is_stopping() && !stopTrigger_) {
-    int status;
-    auto pid = waitpid(current_proc, &status, 0);
-    if (pid == current_proc) {
-      current_proc = 0;
+  if (!w_is_stopping() && !stopTrigger_) {
+    if (current_proc && current_proc->terminated()) {
+      current_proc.reset();
       return true;
-    }
-    if (errno != EINTR) {
-      watchman::log(
-          watchman::ERR,
-          "waitpid returned ",
-          errno,
-          strerror(errno),
-          " while waiting for child process pid ",
-          current_proc,
-          " trigger ",
-          triggername,
-          "\n");
-      return false;
     }
   }
   return false;
@@ -35,34 +20,47 @@ void watchman_trigger_command::run(const std::shared_ptr<w_root_t>& root) {
   w_set_thread_name(
       "trigger %s %s", triggername.c_str(), root->root_path.c_str());
 
-  watchman_event_poll pfd[1];
-  pfd[0].evt = ping_.get();
+  try {
+    watchman_event_poll pfd[1];
+    pfd[0].evt = ping_.get();
 
-  watchman::log(watchman::DBG, "waiting for settle\n");
+    watchman::log(watchman::DBG, "waiting for settle\n");
 
-  while (!w_is_stopping() && !stopTrigger_) {
-    ignore_result(w_poll_events(pfd, 1, 86400));
-    if (w_is_stopping() || stopTrigger_) {
-      break;
-    }
-    while (ping_->testAndClear()) {
-      pending.clear();
-      subscriber_->getPending(pending);
-      bool seenSettle = false;
-      for (auto& item : pending) {
-        if (item->payload.get_default("settled")) {
-          seenSettle = true;
-          break;
+    while (!w_is_stopping() && !stopTrigger_) {
+      ignore_result(w_poll_events(pfd, 1, 86400));
+      if (w_is_stopping() || stopTrigger_) {
+        break;
+      }
+      while (ping_->testAndClear()) {
+        pending.clear();
+        subscriber_->getPending(pending);
+        bool seenSettle = false;
+        for (auto& item : pending) {
+          if (item->payload.get_default("settled")) {
+            seenSettle = true;
+            break;
+          }
+        }
+
+        if (seenSettle) {
+          if (!maybeSpawn(root)) {
+            continue;
+          }
+          waitNoIntr();
         }
       }
-
-      if (seenSettle) {
-        if (!maybeSpawn(root)) {
-          continue;
-        }
-        waitNoIntr();
-      }
     }
+
+    if (current_proc) {
+      current_proc->kill();
+      current_proc->wait();
+    }
+  } catch (const std::exception& exc) {
+    watchman::log(
+        watchman::ERR,
+        "Uncaught exception in trigger thread: ",
+        exc.what(),
+        "\n");
   }
 
   watchman::log(watchman::DBG, "out of loop\n");
@@ -232,7 +230,6 @@ watchman_trigger_command::watchman_trigger_command(
       stderr_flags(0),
       stdout_name(nullptr),
       stderr_name(nullptr),
-      current_proc(0),
       ping_(w_event_make()) {
   auto queryDef =
       json_object({{"expression", definition.get_default("expression")}});

@@ -22,6 +22,7 @@ SRCS_C=\
 
 SRCS_CPP=\
 	$(JSON_SRCS) \
+	ChildProcess.cpp \
 	CookieSync.cpp \
 	FileDescriptor.cpp \
 	InMemoryView.cpp \

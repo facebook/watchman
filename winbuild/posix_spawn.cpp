@@ -10,8 +10,6 @@ static watchman::Synchronized<std::unordered_map<DWORD, HANDLE>> child_procs;
 pid_t waitpid(pid_t pid, int* status, int options) {
   HANDLE h;
 
-  w_check(options == 0, "we have a limited waitpid on windows");
-
   {
     auto rlock = child_procs.rlock();
     auto it = rlock->find(pid);
@@ -22,14 +20,16 @@ pid_t waitpid(pid_t pid, int* status, int options) {
     h = it->second;
   }
 
-  auto res = WaitForSingleObject(h, INFINITE);
-  child_procs.wlock()->erase(pid);
+  auto res = WaitForSingleObject(h, options == WNOHANG ? 0 : INFINITE);
 
   switch (res) {
     case WAIT_OBJECT_0:
     case WAIT_ABANDONED_0:
       *status = 0;
+      child_procs.wlock()->erase(pid);
       return pid;
+    case WAIT_TIMEOUT:
+      return 0;
     default:
       errno = EINVAL;
       return -1;
@@ -41,8 +41,13 @@ int posix_spawnattr_init(posix_spawnattr_t *attrp) {
   return 0;
 }
 
-int posix_spawnattr_setflags(posix_spawnattr_t *attrp, int flags) {
+int posix_spawnattr_setflags(posix_spawnattr_t* attrp, short flags) {
   attrp->flags = flags;
+  return 0;
+}
+
+int posix_spawnattr_getflags(posix_spawnattr_t* attrp, short* flags) {
+  *flags = attrp->flags;
   return 0;
 }
 

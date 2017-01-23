@@ -26,7 +26,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         return True
 
     def matchTriggerInLog(self, logs, root, triggerName):
-        r = re.compile(' trigger %s:%s pid=' %
+        r = re.compile('%s.*posix_spawnp: %s' %
                        (re.escape(root), triggerName), re.I)
         for line in logs:
             if r.search(line.replace('\\', '/')):

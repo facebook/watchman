@@ -1,11 +1,17 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman_system.h"
+#include <condition_variable>
+#include <thread>
+#include "ChildProcess.h"
 #include "watchman.h"
 #include "watchman_perf.h"
 #include "watchman_synchronized.h"
-#include <condition_variable>
-#include <thread>
+
+using watchman::ChildProcess;
+using Options = ChildProcess::Options;
+using Environment = ChildProcess::Environment;
 
 namespace {
 class PerfLogThread {
@@ -132,21 +138,12 @@ void watchman_perf_sample::force_log() {
 
 void PerfLogThread::loop() {
   json_ref samples;
-  char **envp;
   json_ref perf_cmd;
   int64_t sample_batch;
 
   w_set_thread_name("perflog");
 
-  // Prep some things that we'll need each time we run a command
-  {
-    uint32_t env_size;
-    auto envpht = w_envp_make_ht();
-    char *statedir = dirname(strdup(watchman_state_file));
-    w_envp_set_cstring(envpht, "WATCHMAN_STATE_DIR", statedir);
-    w_envp_set_cstring(envpht, "WATCHMAN_SOCK", get_sock_name());
-    envp = w_envp_make_from_ht(envpht, &env_size);
-  }
+  auto stateDir = w_string_piece(watchman_state_file).dirName().asWString();
 
   perf_cmd = cfg_get_json("perf_logger_command");
   if (json_is_string(perf_cmd)) {
@@ -175,10 +172,6 @@ void PerfLogThread::loop() {
       while (json_array_size(samples) > 0) {
         int i = 0;
         auto cmd = json_array();
-        posix_spawnattr_t attr;
-        posix_spawn_file_actions_t actions;
-        pid_t pid;
-        char **argv = NULL;
 
         json_array_extend(cmd, perf_cmd);
 
@@ -193,41 +186,20 @@ void PerfLogThread::loop() {
           i++;
         }
 
-        argv = w_argv_copy_from_json(cmd, 0);
-        if (!argv) {
-          char *dumped = json_dumps(cmd, 0);
-          w_log(W_LOG_FATAL, "error converting %s to an argv array\n", dumped);
+        ChildProcess::Options opts;
+        opts.environment().set({{"WATCHMAN_STATE_DIR", stateDir},
+                                {"WATCHMAN_SOCK", get_sock_name()}});
+        opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
+        opts.open(STDOUT_FILENO, "/dev/null", O_WRONLY, 0666);
+        opts.open(STDERR_FILENO, "/dev/null", O_WRONLY, 0666);
+
+        try {
+          ChildProcess proc(cmd, std::move(opts));
+          proc.wait();
+        } catch (const std::exception& exc) {
+          watchman::log(
+              watchman::ERR, "failed to spawn perf logger: ", exc.what(), "\n");
         }
-
-        posix_spawnattr_init(&attr);
-#ifdef POSIX_SPAWN_CLOEXEC_DEFAULT
-        posix_spawnattr_setflags(&attr, POSIX_SPAWN_CLOEXEC_DEFAULT);
-#endif
-        posix_spawn_file_actions_init(&actions);
-        posix_spawn_file_actions_addopen(&actions, STDIN_FILENO, "/dev/null",
-                                         O_RDONLY, 0666);
-        posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, "/dev/null",
-                                         O_WRONLY, 0666);
-        posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, "/dev/null",
-                                         O_WRONLY, 0666);
-
-        if (posix_spawnp(&pid, argv[0], &actions, &attr, argv, envp) == 0) {
-          int status;
-          while (waitpid(pid, &status, 0) != pid) {
-            if (errno != EINTR) {
-              break;
-            }
-          }
-        } else {
-          int err = errno;
-          w_log(W_LOG_ERR, "failed to spawn %s: %s\n", argv[0],
-                strerror(err));
-        }
-
-        posix_spawnattr_destroy(&attr);
-        posix_spawn_file_actions_destroy(&actions);
-
-        free(argv);
       }
     }
   }
