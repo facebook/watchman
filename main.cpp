@@ -449,21 +449,6 @@ static void spawn_via_launchd(void)
       pid_file,
       "</string>\n"
       "    </array>\n"
-      "    <key>Sockets</key>\n"
-      "    <dict>\n"
-      "        <key>sock</key>\n" // coupled with
-      // get_listener_socket_from_launchd
-      "        <dict>\n"
-      "            <key>SockPathName</key>\n"
-      "            <string>",
-      sock_name,
-      "</string>\n"
-      "            <key>SockPathMode</key>\n"
-      "            <integer>",
-      0600,
-      "</integer>\n"
-      "        </dict>\n"
-      "    </dict>\n"
       "    <key>KeepAlive</key>\n"
       "    <dict>\n"
       "        <key>Crashed</key>\n"
