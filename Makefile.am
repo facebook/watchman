@@ -18,7 +18,6 @@ watchman_SOURCES = \
 	Pipe.cpp \
 	PubSub.cpp \
 	QueryableView.cpp \
-	argv.cpp       \
 	envp.cpp       \
 	spawn.cpp       \
 	opt.cpp        \
@@ -134,7 +133,6 @@ WILDMATCH_LIB = libwildmatch.a
 # unit tests
 TESTS = \
 		tests/art.t \
-		tests/argv.t \
 		tests/bser.t \
 		tests/ignore.t \
 		tests/pending.t \
@@ -214,17 +212,6 @@ tests_art_t_SOURCES = \
 	PubSub.cpp \
 	string.cpp \
 	hash.cpp \
-	log.cpp
-
-tests_argv_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
-tests_argv_t_LDADD = $(JSON_LIB) $(TAP_LIB)
-tests_argv_t_SOURCES = \
-	tests/argv.cpp \
-	tests/log_stub.cpp \
-	argv.cpp \
-	string.cpp \
-	hash.cpp \
-	PubSub.cpp \
 	log.cpp
 
 tests_ignore_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@

@@ -114,7 +114,6 @@ watchman::FileDescriptor w_get_listener_socket_from_launchd();
 void w_listener_prep_inetd();
 bool w_start_listener(const char *socket_path);
 void w_check_my_sock(void);
-char** w_argv_copy_from_json(const json_ref& arr, int skip);
 
 #include "watchman_env.h"
 #include "watchman_getopt.h"

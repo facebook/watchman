@@ -27,14 +27,16 @@ size_t backtrace(void **frames, size_t n_frames) {
 }
 
 char **backtrace_symbols(void **array, size_t n_frames) {
-  auto arr = json_array_of_size(n_frames);
-  char **strings;
+  std::vector<std::string> arr;
   size_t i;
   union {
     SYMBOL_INFO info;
     char buf[kMaxSymbolLen];
   } sym;
   IMAGEHLP_LINE64 line;
+  // How much space we need to hold the final argv style
+  // array for the results
+  size_t totalSize = 0;
 
   std::call_once(sym_init_once, sym_init);
 
@@ -66,10 +68,23 @@ char **backtrace_symbols(void **array, size_t n_frames) {
         array[i], sym.info.Name);
     }
 
-    json_array_append_new(arr, typed_string_to_json(str, W_STRING_MIXED));
+    arr.emplace_back(str);
+    // One pointer, the string content and the trailing NUL byte
+    totalSize += sizeof(char*) + arr.back().size() + 1;
   }
 
-  strings = w_argv_copy_from_json(arr, 0);
+  auto strings = (char**)malloc(totalSize + sizeof(char*));
+  if (!strings) {
+    return nullptr;
+  }
+
+  auto buf = (char*)(strings + arr.size() + 1);
+  for (i = 0; i < arr.size(); ++i) {
+    strings[i] = buf;
+    memcpy(buf, arr[i].c_str(), arr[i].size() + 1);
+  }
+  strings[i] = nullptr;
+
   return strings;
 }
 

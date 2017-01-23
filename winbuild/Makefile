@@ -42,7 +42,6 @@ SRCS_CPP=\
 	winbuild\backtrace.cpp \
 	winbuild\getopt_long.cpp \
 	winbuild\posix_spawn.cpp \
-	argv.cpp \
 	envp.cpp \
 	ignore.cpp \
 	spawn.cpp \
@@ -125,14 +124,12 @@ TEST_SRCS_CPP=\
 	winbuild\time.cpp \
 	winbuild\backtrace.cpp \
 	winbuild\errmap.cpp \
-	argv.cpp \
 	$(JSON_SRCS)
 
 TEST_DIR_SRCS=
 
 TEST_DIR_SRCS_CPP=\
 	tests\art_test.cpp \
-	tests\argv.cpp \
 	tests\bser.cpp \
 	tests\ignore_test.cpp \
 	tests\log_stub.cpp \
@@ -141,7 +138,7 @@ TEST_DIR_SRCS_CPP=\
 OBJS=$(SRCS_CPP:.cpp=.obj) $(SRCS_C:.c=.obj)
 TEST_OBJS=$(TEST_SRCS_CPP:.cpp=.obj) $(TEST_SRCS_C:.c=.obj)
 TEST_DIR_OBJS=$(TEST_DIR_SRCS:.c=.obj) $(TEST_DIR_SRCS_CPP:.cpp=.obj)
-TESTS=tests\argv.exe tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
+TESTS=tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
 			tests\art.exe tests\ignore.exe tests\pending.exe \
 			tests\string.exe
 

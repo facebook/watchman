@@ -174,7 +174,6 @@ cpp_library(
     name='testsupport',
     compiler_flags=compiler_flags,
     srcs=[
-        'argv.cpp',
         'bser.cpp',
         'cfg.cpp',
         'expflags.cpp',
