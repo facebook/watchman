@@ -417,57 +417,74 @@ static void spawn_via_launchd(void)
 
   compute_file_name(&pid_file, compute_user_name(), "pid", "pidfile");
 
-  fprintf(fp,
-"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-"<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
-"\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
-"<plist version=\"1.0\">\n"
-"<dict>\n"
-"    <key>Label</key>\n"
-"    <string>com.github.facebook.watchman</string>\n"
-"    <key>Disabled</key>\n"
-"    <false/>\n"
-"    <key>ProgramArguments</key>\n"
-"    <array>\n"
-"        <string>%s</string>\n"
-"        <string>--foreground</string>\n"
-"        <string>--logfile=%s</string>\n"
-"        <string>--log-level=%d</string>\n"
-"        <string>--sockname=%s</string>\n"
-"        <string>--statefile=%s</string>\n"
-"        <string>--pidfile=%s</string>\n"
-"    </array>\n"
-"    <key>Sockets</key>\n"
-"    <dict>\n"
-"        <key>sock</key>\n" // coupled with get_listener_socket_from_launchd
-"        <dict>\n"
-"            <key>SockPathName</key>\n"
-"            <string>%s</string>\n"
-"            <key>SockPathMode</key>\n"
-"            <integer>%d</integer>\n"
-"        </dict>\n"
-"    </dict>\n"
-"    <key>KeepAlive</key>\n"
-"    <dict>\n"
-"        <key>Crashed</key>\n"
-"        <true/>\n"
-"    </dict>\n"
-"    <key>RunAtLoad</key>\n"
-"    <true/>\n"
-"    <key>EnvironmentVariables</key>\n"
-"    <dict>\n"
-"        <key>PATH</key>\n"
-"        <string><![CDATA[%s]]></string>\n"
-"    </dict>\n"
-"    <key>ProcessType</key>\n"
-"    <string>Interactive</string>\n"
-"    <key>Nice</key>\n"
-"    <integer>-5</integer>\n"
-"</dict>\n"
-"</plist>\n",
-    watchman_path, log_name, log_level, sock_name,
-    watchman_state_file, pid_file, sock_name, 0600,
-    getenv("PATH"));
+  auto plist_content = watchman::to<std::string>(
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+      "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
+      "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
+      "<plist version=\"1.0\">\n"
+      "<dict>\n"
+      "    <key>Label</key>\n"
+      "    <string>com.github.facebook.watchman</string>\n"
+      "    <key>Disabled</key>\n"
+      "    <false/>\n"
+      "    <key>ProgramArguments</key>\n"
+      "    <array>\n"
+      "        <string>",
+      watchman_path,
+      "</string>\n"
+      "        <string>--foreground</string>\n"
+      "        <string>--logfile=",
+      log_name,
+      "</string>\n"
+      "        <string>--log-level=",
+      log_level,
+      "</string>\n"
+      "        <string>--sockname=",
+      sock_name,
+      "</string>\n"
+      "        <string>--statefile=",
+      watchman_state_file,
+      "</string>\n"
+      "        <string>--pidfile=",
+      pid_file,
+      "</string>\n"
+      "    </array>\n"
+      "    <key>Sockets</key>\n"
+      "    <dict>\n"
+      "        <key>sock</key>\n" // coupled with
+      // get_listener_socket_from_launchd
+      "        <dict>\n"
+      "            <key>SockPathName</key>\n"
+      "            <string>",
+      sock_name,
+      "</string>\n"
+      "            <key>SockPathMode</key>\n"
+      "            <integer>",
+      0600,
+      "</integer>\n"
+      "        </dict>\n"
+      "    </dict>\n"
+      "    <key>KeepAlive</key>\n"
+      "    <dict>\n"
+      "        <key>Crashed</key>\n"
+      "        <true/>\n"
+      "    </dict>\n"
+      "    <key>RunAtLoad</key>\n"
+      "    <true/>\n"
+      "    <key>EnvironmentVariables</key>\n"
+      "    <dict>\n"
+      "        <key>PATH</key>\n"
+      "        <string><![CDATA[",
+      getenv("PATH"),
+      "]]></string>\n"
+      "    </dict>\n"
+      "    <key>ProcessType</key>\n"
+      "    <string>Interactive</string>\n"
+      "    <key>Nice</key>\n"
+      "    <integer>-5</integer>\n"
+      "</dict>\n"
+      "</plist>\n");
+  fwrite(plist_content.data(), 1, plist_content.size(), fp);
   fclose(fp);
   // Don't rely on umask, ensure we have the correct perms
   chmod(plist_path, 0644);
