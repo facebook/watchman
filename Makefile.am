@@ -18,7 +18,6 @@ watchman_SOURCES = \
 	Pipe.cpp \
 	PubSub.cpp \
 	QueryableView.cpp \
-	envp.cpp       \
 	spawn.cpp       \
 	opt.cpp        \
 	cfg.cpp        \

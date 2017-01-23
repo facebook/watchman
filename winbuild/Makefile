@@ -42,7 +42,6 @@ SRCS_CPP=\
 	winbuild\backtrace.cpp \
 	winbuild\getopt_long.cpp \
 	winbuild\posix_spawn.cpp \
-	envp.cpp \
 	ignore.cpp \
 	spawn.cpp \
 	opt.cpp \

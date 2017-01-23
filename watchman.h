@@ -115,7 +115,6 @@ void w_listener_prep_inetd();
 bool w_start_listener(const char *socket_path);
 void w_check_my_sock(void);
 
-#include "watchman_env.h"
 #include "watchman_getopt.h"
 
 #ifdef HAVE_SYS_SIGLIST

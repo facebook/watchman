@@ -4,24 +4,96 @@
 #include <system_error>
 #include "Logging.h"
 #include "make_unique.h"
-#include "watchman_env.h"
 #include "watchman_scopeguard.h"
 
 namespace watchman {
 
-ChildProcess::Environment::Environment() : map_(w_envp_make_ht()) {}
+ChildProcess::Environment::Environment() {
+  // Construct the map from the current process environment
+  uint32_t nenv, i;
+  const char* eq;
+  const char* ent;
+
+  for (i = 0, nenv = 0; environ[i]; i++) {
+    nenv++;
+  }
+
+  map_.reserve(nenv);
+
+  for (i = 0; environ[i]; i++) {
+    ent = environ[i];
+    eq = strchr(ent, '=');
+    if (!eq) {
+      continue;
+    }
+
+    // slice name=value into a key and a value string
+    w_string str(ent, W_STRING_BYTE);
+    auto key = str.slice(0, (uint32_t)(eq - ent));
+    auto val = str.slice(
+        1 + (uint32_t)(eq - ent), (uint32_t)(str.size() - (key.size() + 1)));
+
+    // Replace rather than set, just in case we somehow have duplicate
+    // keys in our environment array.
+    map_[key] = val;
+  }
+}
 
 ChildProcess::Environment::Environment(
     const std::unordered_map<w_string, w_string>& map)
     : map_(map) {}
 
+/* Constructs an envp array from a hash table.
+ * The returned array occupies a single contiguous block of memory
+ * such that it can be released by a single call to free(3).
+ * The last element of the returned array is set to NULL for compatibility
+ * with posix_spawn() */
 std::unique_ptr<char*, ChildProcess::Deleter>
 ChildProcess::Environment::asEnviron(size_t* env_size) const {
-  uint32_t size = 0;
-  auto result = std::unique_ptr<char*, Deleter>(
-      w_envp_make_from_ht(map_, &size), Deleter());
+  size_t len = (1 + map_.size()) * sizeof(char*);
+
+  // Make a pass through to compute the required memory size
+  for (const auto& it : map_) {
+    const auto& key = it.first;
+    const auto& val = it.second;
+
+    // key=value\0
+    len += key.size() + 1 + val.size() + 1;
+  }
+
+  auto envp = (char**)malloc(len);
+  if (!envp) {
+    throw std::bad_alloc();
+  }
+  auto result = std::unique_ptr<char*, Deleter>(envp, Deleter());
+
+  // Now populate
+  auto buf = (char*)(envp + map_.size() + 1);
+  size_t i = 0;
+  for (const auto& it : map_) {
+    const auto& key = it.first;
+    const auto& val = it.second;
+
+    envp[i++] = buf;
+
+    // key=value\0
+    memcpy(buf, key.data(), key.size());
+    buf += key.size();
+
+    memcpy(buf, "=", 1);
+    buf++;
+
+    memcpy(buf, val.data(), val.size());
+    buf += val.size();
+
+    *buf = 0;
+    buf++;
+  }
+
+  envp[map_.size()] = nullptr;
+
   if (env_size) {
-    *env_size = size;
+    *env_size = len;
   }
   return result;
 }
