@@ -15,3 +15,4 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
         root = self.makeEdenMount()
         res = self.watchmanCommand('watch', root)
         self.assertEqual('eden', res['watcher'])
+        self.assertFileList(root, [])

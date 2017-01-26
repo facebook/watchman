@@ -45,6 +45,7 @@ class EdenView : public QueryableView {
       w_query* query,
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override {
+    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     return false;
   }
 
@@ -52,7 +53,13 @@ class EdenView : public QueryableView {
       w_query* query,
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override {
+    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     return false;
+  }
+
+  bool syncToNow(std::chrono::milliseconds) override {
+    watchman::log(watchman::ERR, __FUNCTION__, "\n");
+    return true;
   }
 
   /** Walks files that match the supplied set of paths */
@@ -60,6 +67,7 @@ class EdenView : public QueryableView {
       w_query* query,
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override {
+    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     return false;
   }
 
@@ -67,6 +75,7 @@ class EdenView : public QueryableView {
       w_query* query,
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override {
+    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     return false;
   }
 
@@ -74,22 +83,28 @@ class EdenView : public QueryableView {
       w_query* query,
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override {
-    return false;
+    watchman::log(watchman::ERR, __FUNCTION__, "\n");
+    *num_walked = 0;
+    return true;
   }
 
   ClockPosition getMostRecentRootNumberAndTickValue() const override {
+    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     return ClockPosition();
   }
 
   w_string getCurrentClockString() const override {
+    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     return ClockPosition().toClockString();
   }
 
   uint32_t getLastAgeOutTickValue() const override {
+    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     return 0;
   }
 
   time_t getLastAgeOutTimeStamp() const override {
+    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     return 0;
   }
 
@@ -97,6 +112,7 @@ class EdenView : public QueryableView {
 
   bool doAnyOfTheseFilesExist(
       const std::vector<w_string>& fileNames) const override {
+    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     return false;
   }
 
@@ -110,6 +126,7 @@ class EdenView : public QueryableView {
 
   std::shared_future<void> waitUntilReadyToQuery(
       const std::shared_ptr<w_root_t>& root) override {
+    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     std::promise<void> p;
     p.set_value();
     return p.get_future();

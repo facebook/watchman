@@ -51,6 +51,7 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   virtual uint32_t getLastAgeOutTickValue() const;
   virtual time_t getLastAgeOutTimeStamp() const;
   virtual void ageOut(w_perf_t& sample, std::chrono::seconds minAge);
+  virtual bool syncToNow(std::chrono::milliseconds timeout) = 0;
 
   // Specialized query function that is used to test whether
   // version control files exist as part of some settling handling.
