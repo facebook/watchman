@@ -166,7 +166,7 @@ Client.prototype.connect = function() {
           'https://facebook.github.io/watchman/docs/install.html ' +
           'for installation instructions';
     }
-    console.log('Watchman: ', error.message);
+    console.error('Watchman: ', error.message);
     self.emit('error', error);
   }
 
@@ -187,7 +187,7 @@ Client.prototype.connect = function() {
   proc.stderr.on('data', function(data) {
     data = data.toString('utf8');
     stderr.push(data);
-    console.log(data);
+    console.error(data);
   });
   proc.on('error', function(error) {
     spawnError(error);
