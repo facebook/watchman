@@ -3,7 +3,6 @@
  * Derived from thirdparty/libart/tests/test_art.c which is
  * Copyright 2012 Armon Dadgar. See thirdparty/libart/LICENSE. */
 #include "watchman_system.h"
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,7 +14,6 @@
 // This has to come after the art.h include because the MSVC
 // runtime gets confused by the #define fail in tap.h
 #include "thirdparty/tap.h"
-#include "thirdparty/libart/src/art.h"
 
 #define stringy2(line)  #line
 #define stringy(line)   stringy2(line)

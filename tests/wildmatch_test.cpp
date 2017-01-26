@@ -2,10 +2,6 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman_system.h"
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include "thirdparty/jansson/jansson.h"
 #include "thirdparty/wildmatch/wildmatch.h"

@@ -11,7 +11,6 @@
 #include <string.h>
 #include <unordered_set>
 #include <string>
-#include "utf.h"
 
 typedef struct {
     const char *start;
