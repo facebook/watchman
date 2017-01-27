@@ -43,8 +43,13 @@ class WatchmanEdenTestCase(TestParent):
         self.eden_home = tempfile.mkdtemp(prefix='eden_home')
         self.eden_dir = os.path.join(self.eden_home, 'local/.eden')
         os.makedirs(self.eden_dir)
-        # the eden system configuration path
-        self.eden_sys_config = self.mkdtemp(prefix='eden_cfg.d')
+
+        self.etc_eden_dir = os.path.join(self.eden_home, 'etc-eden')
+        os.mkdir(self.etc_eden_dir)
+        # The directory holding the system configuration files
+        self.system_config_dir = os.path.join(self.etc_eden_dir, 'config.d')
+        os.mkdir(self.system_config_dir)
+
         # where we'll mount the eden client(s)
         self.mounts_dir = self.mkdtemp(prefix='eden_mounts')
 
@@ -52,7 +57,7 @@ class WatchmanEdenTestCase(TestParent):
         os.environ['HOME'] = self.eden_home
         self.eden = edenclient.EdenFS(
             self.eden_dir,
-            system_config_dir=self.eden_sys_config,
+            etc_eden_dir=self.etc_eden_dir,
             home_dir=self.eden_home
         )
         self.eden.start()
