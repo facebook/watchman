@@ -594,7 +594,7 @@ void appendTo(Appender& result, const T& v, const Args&... args) {
 
 template <typename... Args>
 w_string w_string::build(Args&&... args) {
-  auto reserved = detail::estimateSpaceToReserve(1, args...);
+  auto reserved = ::detail::estimateSpaceToReserve(1, args...);
 
   auto s = (w_string_t*)(new char[sizeof(w_string_t) + reserved]);
   new (s) watchman_string();
@@ -603,8 +603,8 @@ w_string w_string::build(Args&&... args) {
   auto buf = (char*)(s + 1);
   s->buf = buf;
 
-  detail::Appender appender(buf, reserved);
-  detail::appendTo(appender, args...);
+  ::detail::Appender appender(buf, reserved);
+  ::detail::appendTo(appender, args...);
 
   s->len = reserved - appender.avail();
   buf[s->len] = '\0';
