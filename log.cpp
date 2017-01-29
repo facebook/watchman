@@ -158,7 +158,11 @@ void Log::setStdErrLoggingLevel(enum LogLevel level) {
 
 void Log::doLogToStdErr() {
   std::vector<std::shared_ptr<const watchman::Publisher::Item>> items;
-  getPending(items, errorSub_, debugSub_);
+
+  {
+    std::lock_guard<std::mutex> lock(stdErrPrintMutex_);
+    getPending(items, errorSub_, debugSub_);
+  }
 
   bool fatal = false;
   static w_string kFatal("fatal");

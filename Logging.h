@@ -93,6 +93,7 @@ class Log {
   std::shared_ptr<Publisher> debugPub_;
   std::shared_ptr<Publisher::Subscriber> errorSub_;
   std::shared_ptr<Publisher::Subscriber> debugSub_;
+  std::mutex stdErrPrintMutex_;
 
   inline Publisher& levelToPub(enum LogLevel level) {
     return level == DBG ? *debugPub_ : *errorPub_;
