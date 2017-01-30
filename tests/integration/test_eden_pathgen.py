@@ -46,3 +46,24 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
             'fields': ['name']})
         self.assertFileListsEqual(res['files'],
                                   ['noexec.sh', 'test.sh'])
+
+        res = self.watchmanCommand('query', root, {
+            'expression': ['type', 'f'],
+            'fields': ['name'],
+            'glob': ['*.sh']})
+        self.assertFileListsEqual([], res['files'])
+
+        res = self.watchmanCommand('query', root, {
+            'expression': ['type', 'f'],
+            'fields': ['name'],
+            'relative_root': 'bdir',
+            'glob': ['*.sh']})
+        self.assertFileListsEqual(res['files'],
+                                  ['noexec.sh', 'test.sh'])
+
+        res = self.watchmanCommand('query', root, {
+            'expression': ['type', 'f'],
+            'fields': ['name'],
+            'glob': ['**/*.sh']})
+        self.assertFileListsEqual(res['files'],
+                                  ['bdir/noexec.sh', 'bdir/test.sh'])

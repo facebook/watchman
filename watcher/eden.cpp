@@ -119,8 +119,77 @@ class EdenView : public QueryableView {
       w_query* query,
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override {
+    bool result = true;
     watchman::log(watchman::ERR, __FUNCTION__, "\n");
-    return false;
+
+    auto client = getEdenClient();
+
+    // If the query is anchored to a relative_root, use that that
+    // avoid sucking down a massive list of files from eden
+    w_string_piece rel;
+    if (query->relative_root) {
+      rel = query->relative_root;
+      rel.advance(ctx->root->root_path.size() + 1);
+    }
+
+    std::vector<std::string> globStrings;
+    // Use the glob array provided by the query_spec.
+    // The InMemoryView uses the compiled glob tree but we just want to
+    // pass this list through to eden to evaluate.  Note that we're
+    // relying on parse_globs() to have already checked that the glob
+    // looks sane during query parsing, and that eden itself will
+    // sanity check and throw an error if there is still something it
+    // doesn't like about it when we call sync_glob() below.
+    for (auto& glob : query->query_spec.get("glob").array()) {
+      if (query->relative_root) {
+        globStrings.emplace_back(
+            to<std::string>(rel, "/", json_to_w_string(glob)));
+      } else {
+        globStrings.emplace_back(to<std::string>(json_to_w_string(glob)));
+      }
+    }
+
+    // More glob flags/functionality:
+    auto noescape = json_is_true(
+        query->query_spec.get_default("glob_noescape", json_false()));
+    if (noescape) {
+      throw std::runtime_error(
+          "glob_noescape is not supported for the eden watcher");
+    }
+    auto includedotfiles = json_is_true(
+        query->query_spec.get_default("glob_includedotfiles", json_false()));
+    if (includedotfiles) {
+      throw std::runtime_error(
+          "glob_includedotfiles is not supported for the eden watcher");
+    }
+    auto mountPoint = to<std::string>(ctx->root->root_path);
+
+    std::vector<std::string> fileNames;
+    client->sync_glob(fileNames, mountPoint, globStrings);
+
+    std::vector<FileInformationOrError> info;
+    client->sync_getFileInformation(info, mountPoint, fileNames);
+
+    auto nameIter = fileNames.begin();
+    auto infoIter = info.begin();
+    while (nameIter != fileNames.end()) {
+      auto& name = *nameIter;
+      auto& fileInfo = *infoIter;
+
+      auto file = make_unique<EdenFileResult>(
+          fileInfo.get_info(), w_string::pathCat({mountPoint, name}));
+
+      if (!w_query_process_file(ctx->query, ctx, std::move(file))) {
+        result = false;
+        break;
+      }
+
+      ++nameIter;
+      ++infoIter;
+    }
+
+    *num_walked = fileNames.size();
+    return result;
   }
 
   bool allFilesGenerator(
