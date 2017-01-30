@@ -1,6 +1,6 @@
 {
   "name": "fb-watchman",
-  "version": "1.9.0",
+  "version": "2.0.0",
   "description": "Bindings for the Watchman file watching service",
   "main": "index.js",
   "repository": {
@@ -30,6 +30,6 @@
     "index.js"
   ],
   "dependencies": {
-    "bser": "^1.0.2"
+    "bser": "^2.0.0"
   }
 }
