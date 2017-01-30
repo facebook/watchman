@@ -77,6 +77,26 @@ class EdenFileResult : public FileResult {
   watchman_stat stat_;
 };
 
+static std::string escapeGlobSpecialChars(w_string_piece str) {
+  std::string result;
+
+  for (size_t i = 0; i < str.size(); ++i) {
+    auto c = str[i];
+    switch (c) {
+      case '*':
+      case '?':
+      case '[':
+      case ']':
+      case '\\':
+        result.append("\\");
+        break;
+    }
+    result.append(&c, 1);
+  }
+
+  return result;
+}
+
 class EdenView : public QueryableView {
   w_string root_path_;
 
@@ -111,8 +131,71 @@ class EdenView : public QueryableView {
       w_query* query,
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override {
+    bool result = true;
     watchman::log(watchman::ERR, __FUNCTION__, "\n");
-    return false;
+
+    auto client = getEdenClient();
+
+    // If the query is anchored to a relative_root, use that that
+    // avoid sucking down a massive list of files from eden
+    w_string_piece rel;
+    if (query->relative_root) {
+      rel = query->relative_root;
+      rel.advance(ctx->root->root_path.size() + 1);
+    }
+
+    std::vector<std::string> globStrings;
+    // Translate the path list into a list of globs
+    for (auto& path : query->paths) {
+      if (path.depth > 0) {
+        // We don't have an easy way to express depth constraints
+        // in the existing glob API, so we just punt for the moment.
+        // I believe that this sort of query is quite rare anyway.
+        throw std::runtime_error(
+            "the eden watcher only supports depth 0 or depth -1");
+      }
+      // -1 depth is infinite which we can translate to a recursive
+      // glob.  0 depth is direct descendant which we can translate
+      // to a simple * wildcard.
+      auto glob = path.depth == -1 ? "**/*" : "*";
+
+      globStrings.emplace_back(to<std::string>(
+          w_string::pathCat({rel, escapeGlobSpecialChars(path.name), glob})));
+    }
+
+    auto mountPoint = to<std::string>(ctx->root->root_path);
+
+    std::vector<std::string> fileNames;
+    client->sync_glob(fileNames, mountPoint, globStrings);
+
+    std::vector<FileInformationOrError> info;
+    client->sync_getFileInformation(info, mountPoint, fileNames);
+
+    if (info.size() != fileNames.size()) {
+      throw std::runtime_error(
+          "info.size() didn't match fileNames.size(), should be unpossible!");
+    }
+
+    auto nameIter = fileNames.begin();
+    auto infoIter = info.begin();
+    while (nameIter != fileNames.end()) {
+      auto& name = *nameIter;
+      auto& fileInfo = *infoIter;
+
+      auto file = make_unique<EdenFileResult>(
+          fileInfo.get_info(), w_string::pathCat({mountPoint, name}));
+
+      if (!w_query_process_file(ctx->query, ctx, std::move(file))) {
+        result = false;
+        break;
+      }
+
+      ++nameIter;
+      ++infoIter;
+    }
+
+    *num_walked = fileNames.size();
+    return result;
   }
 
   bool globGenerator(
