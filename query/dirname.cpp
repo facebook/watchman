@@ -22,11 +22,11 @@ class DirNameExpr : public QueryExpr {
       StartsWith startswith)
       : dirname(dirname), depth(depth), startswith(startswith) {}
 
-  bool evaluate(w_query_ctx* ctx, const watchman_file*) override {
-    w_string_t* str = w_query_ctx_get_wholename(ctx);
+  bool evaluate(w_query_ctx* ctx, const FileResult*) override {
+    auto& str = w_query_ctx_get_wholename(ctx);
     size_t i;
 
-    if (str->len <= dirname.size()) {
+    if (str.size() <= dirname.size()) {
       // Either it doesn't prefix match, or file name is == dirname.
       // That means that the best case is that the wholename matches.
       // we only want to match if dirname(wholename) matches, so it
@@ -38,7 +38,7 @@ class DirNameExpr : public QueryExpr {
     // Want to make sure that wholename is a child of dirname, so
     // check for a dir separator.  Special case for dirname == '' (the root),
     // which won't have a slash in position 0.
-    if (dirname.size() > 0 && !is_dir_sep(str->buf[dirname.size()])) {
+    if (dirname.size() > 0 && !is_dir_sep(str.data()[dirname.size()])) {
       // may have a common prefix with, but is not a child of dirname
       return false;
     }
@@ -50,8 +50,8 @@ class DirNameExpr : public QueryExpr {
     // Now compute the depth of file from dirname.  We do this by
     // counting dir separators, not including the one we saw above.
     json_int_t actual_depth = 0;
-    for (i = dirname.size() + 1; i < str->len; i++) {
-      if (is_dir_sep(str->buf[i])) {
+    for (i = dirname.size() + 1; i < str.size(); i++) {
+      if (is_dir_sep(str.data()[i])) {
         actual_depth++;
       }
     }

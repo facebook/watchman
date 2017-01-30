@@ -25,8 +25,7 @@ class SinceExpr : public QueryExpr {
   explicit SinceExpr(std::unique_ptr<w_clockspec> spec, enum since_what field)
       : spec(std::move(spec)), field(field) {}
 
-  bool evaluate(struct w_query_ctx* ctx, const watchman_file* file) override {
-    w_clock_t clock;
+  bool evaluate(struct w_query_ctx* ctx, const FileResult* file) override {
     struct w_query_since since;
     time_t tval = 0;
 
@@ -34,20 +33,22 @@ class SinceExpr : public QueryExpr {
 
     switch (field) {
       case since_what::SINCE_OCLOCK:
-      case since_what::SINCE_CCLOCK:
-        clock = (field == since_what::SINCE_OCLOCK) ? file->otime : file->ctime;
+      case since_what::SINCE_CCLOCK: {
+        const auto& clock =
+            (field == since_what::SINCE_OCLOCK) ? file->otime() : file->ctime();
         if (since.is_timestamp) {
           return since.timestamp > clock.timestamp;
         }
         if (since.clock.is_fresh_instance) {
-          return file->exists;
+          return file->exists();
         }
         return clock.ticks > since.clock.ticks;
+      }
       case since_what::SINCE_MTIME:
-        tval = file->stat.mtime.tv_sec;
+        tval = file->stat().mtime.tv_sec;
         break;
       case since_what::SINCE_CTIME:
-        tval = file->stat.ctime.tv_sec;
+        tval = file->stat().ctime.tv_sec;
         break;
     }
 

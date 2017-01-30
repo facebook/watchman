@@ -15,7 +15,7 @@ class NameExpr : public QueryExpr {
       : set(std::move(set)), caseless(caseless), wholename(wholename) {}
 
  public:
-  bool evaluate(struct w_query_ctx* ctx, const watchman_file* file) override {
+  bool evaluate(struct w_query_ctx* ctx, const FileResult* file) override {
     if (!set.empty()) {
       bool matched;
       w_string str;
@@ -26,8 +26,8 @@ class NameExpr : public QueryExpr {
           str = str.piece().asLowerCase();
         }
       } else {
-        str = caseless ? file->getName().asLowerCase()
-                       : file->getName().asWString();
+        str = caseless ? file->baseName().asLowerCase()
+                       : file->baseName().asWString();
       }
 
       matched = set.find(str) != set.end();
@@ -40,7 +40,7 @@ class NameExpr : public QueryExpr {
     if (wholename) {
       str = w_query_ctx_get_wholename(ctx);
     } else {
-      str = file->getName();
+      str = file->baseName();
     }
 
     if (caseless) {

@@ -90,13 +90,13 @@ class SizeExpr : public QueryExpr {
  public:
   explicit SizeExpr(w_query_int_compare comp) : comp(comp) {}
 
-  bool evaluate(struct w_query_ctx*, const watchman_file* file) override {
+  bool evaluate(struct w_query_ctx*, const FileResult* file) override {
     // Removed files never evaluate true
-    if (!file->exists) {
+    if (!file->exists()) {
       return false;
     }
 
-    return eval_int_compare(file->stat.size, &comp);
+    return eval_int_compare(file->stat().size, &comp);
   }
 
   static std::unique_ptr<QueryExpr> parse(

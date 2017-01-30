@@ -24,14 +24,14 @@ class PcreExpr : public QueryExpr {
     }
   }
 
-  bool evaluate(struct w_query_ctx* ctx, const watchman_file* file) override {
+  bool evaluate(struct w_query_ctx* ctx, const FileResult* file) override {
     w_string_piece str;
     int rc;
 
     if (wholename) {
       str = w_query_ctx_get_wholename(ctx);
     } else {
-      str = file->getName();
+      str = file->baseName();
     }
 
     rc = pcre_exec(re, extra, str.data(), str.size(), 0, 0, nullptr, 0);

@@ -12,6 +12,40 @@ static std::atomic<long> next_root_number{1};
 
 namespace watchman {
 
+InMemoryFileResult::InMemoryFileResult(const watchman_file* file)
+    : file_(file) {}
+
+const watchman_stat& InMemoryFileResult::stat() const {
+  return file_->stat;
+}
+
+w_string_piece InMemoryFileResult::baseName() const {
+  return file_->getName();
+}
+
+w_string_piece InMemoryFileResult::dirName() {
+  if (!dirName_) {
+    dirName_ = file_->parent->getFullPath();
+  }
+  return dirName_;
+}
+
+bool InMemoryFileResult::exists() const {
+  return file_->exists;
+}
+
+const w_clock_t& InMemoryFileResult::ctime() const {
+  return file_->ctime;
+}
+
+const w_clock_t& InMemoryFileResult::otime() const {
+  return file_->otime;
+}
+
+w_string InMemoryFileResult::readLink() const {
+  return file_->symlink_target;
+}
+
 InMemoryView::view::view(const w_string& root_path)
     : root_dir(watchman::make_unique<watchman_dir>(root_path, nullptr)),
       rootNumber(next_root_number++) {}
@@ -357,7 +391,8 @@ bool InMemoryView::timeGenerator(
       continue;
     }
 
-    if (!w_query_process_file(query, ctx, f)) {
+    if (!w_query_process_file(
+            query, ctx, watchman::make_unique<InMemoryFileResult>(f))) {
       result = false;
       goto done;
     }
@@ -391,7 +426,8 @@ bool InMemoryView::suffixGenerator(
         continue;
       }
 
-      if (!w_query_process_file(query, ctx, f)) {
+      if (!w_query_process_file(
+              query, ctx, watchman::make_unique<InMemoryFileResult>(f))) {
         result = false;
         goto done;
       }
@@ -459,7 +495,8 @@ bool InMemoryView::pathGenerator(
       // If it's a file (but not an existent dir)
       if (f && (!f->exists || !S_ISDIR(f->stat.mode))) {
         ++n;
-        if (!w_query_process_file(query, ctx, f)) {
+        if (!w_query_process_file(
+                query, ctx, watchman::make_unique<InMemoryFileResult>(f))) {
           result = false;
           goto done;
         }
@@ -503,7 +540,8 @@ bool InMemoryView::dirGenerator(
     auto file = it.second.get();
     ++n;
 
-    if (!w_query_process_file(query, ctx, file)) {
+    if (!w_query_process_file(
+            query, ctx, watchman::make_unique<InMemoryFileResult>(file))) {
       result = false;
       goto done;
     }
@@ -542,7 +580,8 @@ bool InMemoryView::allFilesGenerator(
       continue;
     }
 
-    if (!w_query_process_file(query, ctx, f)) {
+    if (!w_query_process_file(
+            query, ctx, watchman::make_unique<InMemoryFileResult>(f))) {
       result = false;
       goto done;
     }

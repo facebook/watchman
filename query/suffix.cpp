@@ -11,8 +11,8 @@ class SuffixExpr : public QueryExpr {
  public:
   explicit SuffixExpr(w_string suffix) : suffix(suffix) {}
 
-  bool evaluate(struct w_query_ctx*, const watchman_file* file) {
-    return file->getName().hasSuffix(suffix);
+  bool evaluate(struct w_query_ctx*, const FileResult* file) {
+    return file->baseName().hasSuffix(suffix);
   }
 
   static std::unique_ptr<QueryExpr> parse(

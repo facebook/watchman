@@ -27,14 +27,14 @@ class WildMatchExpr : public QueryExpr {
         noescape(noescape),
         includedotfiles(includedotfiles) {}
 
-  bool evaluate(struct w_query_ctx* ctx, const watchman_file* file) override {
+  bool evaluate(struct w_query_ctx* ctx, const FileResult* file) override {
     w_string_piece str;
     bool res;
 
     if (wholename) {
       str = w_query_ctx_get_wholename(ctx);
     } else {
-      str = file->getName();
+      str = file->baseName();
     }
 
 #ifdef _WIN32

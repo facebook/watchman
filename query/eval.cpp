@@ -2,21 +2,11 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "watchman_scopeguard.h"
+
+FileResult::~FileResult() {}
 
 /* Query evaluator */
-
-static const w_string& compute_parent_path(
-    struct w_query_ctx* ctx,
-    const watchman_file* file) {
-  if (ctx->last_parent == file->parent) {
-    return ctx->last_parent_path;
-  }
-
-  ctx->last_parent_path = file->parent->getFullPath();
-  ctx->last_parent = file->parent;
-
-  return ctx->last_parent_path;
-}
 
 const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx) {
   uint32_t name_start;
@@ -34,12 +24,12 @@ const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx) {
   }
 
   // Record the name relative to the root
-  auto parent = compute_parent_path(ctx, ctx->file).piece();
+  auto parent = ctx->file->dirName();
   if (name_start > parent.size()) {
-    ctx->wholename = ctx->file->getName().asWString();
+    ctx->wholename = ctx->file->baseName().asWString();
   } else {
     parent.advance(name_start);
-    ctx->wholename = w_string::build(parent, "/", ctx->file->getName());
+    ctx->wholename = w_string::build(parent, "/", ctx->file->baseName());
   }
 
   return ctx->wholename;
@@ -48,20 +38,23 @@ const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx) {
 bool w_query_process_file(
     w_query* query,
     struct w_query_ctx* ctx,
-    const watchman_file* file) {
+    std::unique_ptr<FileResult> file) {
   ctx->wholename.reset();
-  ctx->file = file;
+  ctx->file = std::move(file);
+  SCOPE_EXIT {
+    ctx->file.reset();
+  };
 
   // For fresh instances, only return files that currently exist.
   if (!ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance &&
-      !file->exists) {
+      !ctx->file->exists()) {
     return true;
   }
 
   // We produce an output for this file if there is no expression,
   // or if the expression matched.
-  if (query->expr && !query->expr->evaluate(ctx, file)) {
-    // No matched
+  if (query->expr && !query->expr->evaluate(ctx, ctx->file.get())) {
+    // Not matched
     return true;
   }
 
@@ -78,18 +71,19 @@ bool w_query_process_file(
 
   bool is_new;
   if (ctx->since.is_timestamp) {
-    is_new = ctx->since.timestamp > file->ctime.timestamp;
+    is_new = ctx->since.timestamp > ctx->file->ctime().timestamp;
   } else if (ctx->since.clock.is_fresh_instance) {
     is_new = true;
   } else {
-    is_new = file->ctime.ticks > ctx->since.clock.ticks;
+    is_new = ctx->file->ctime().ticks > ctx->since.clock.ticks;
   }
 
+  auto wholename = w_query_ctx_get_wholename(ctx);
   watchman_rule_match match(
       ctx->clockAtStartOfQuery.rootNumber,
-      w_query_ctx_get_wholename(ctx),
+      wholename,
       is_new,
-      file);
+      std::move(ctx->file));
 
   json_array_append_new(
       ctx->resultsArray, file_result_to_json(ctx->query->fieldList, match));
@@ -106,7 +100,7 @@ bool w_query_file_matches_relative_root(
     return true;
   }
 
-  auto parent_path = compute_parent_path(ctx, f);
+  auto parent_path = f->parent->getFullPath();
   // "in relative root" here does not mean exactly the relative root, so compare
   // against the relative root's parent.
   result = w_string_equal(parent_path, ctx->query->relative_root) ||

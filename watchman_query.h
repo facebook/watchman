@@ -24,38 +24,56 @@ struct w_query_since {
   w_query_since() : is_timestamp(false), clock{false, 0} {}
 };
 
+// A View-independent way of accessing file properties in the
+// query engine.  A FileResult is not intended to be accessed
+// concurrently from multiple threads and may be unsafe to
+// be used in that manner (there is no implied locking).
+class FileResult {
+ public:
+  virtual ~FileResult();
+  virtual const watchman_stat& stat() const = 0;
+  // Returns the name of the file in its containing dir
+  virtual w_string_piece baseName() const = 0;
+  // Returns the name of the containing dir relative to the
+  // VFS root
+  virtual w_string_piece dirName() = 0;
+  // Returns true if the file currently exists
+  virtual bool exists() const = 0;
+  // Returns the symlink target
+  virtual w_string readLink() const = 0;
+
+  virtual const w_clock_t& ctime() const = 0;
+  virtual const w_clock_t& otime() const = 0;
+};
+
 struct watchman_rule_match {
   uint32_t root_number;
   w_string relname;
   bool is_new;
-  const watchman_file* file;
+  std::unique_ptr<FileResult> file;
 
   watchman_rule_match(
       uint32_t root_number,
       const w_string& relname,
       bool is_new,
-      const watchman_file* file)
+      std::unique_ptr<FileResult>&& file)
       : root_number(root_number),
         relname(relname),
         is_new(is_new),
-        file(file) {}
+        file(std::move(file)) {}
 };
 
 // Holds state for the execution of a query
 struct w_query_ctx {
   struct w_query *query;
   std::shared_ptr<w_root_t> root;
-  const watchman_file* file{nullptr};
+  std::unique_ptr<FileResult> file;
   w_string wholename;
   struct w_query_since since;
   // root number, ticks at start of query execution
   ClockPosition clockAtStartOfQuery;
 
   json_ref resultsArray;
-
-  // Cache for dir name lookups when computing wholename
-  watchman_dir* last_parent{nullptr};
-  w_string last_parent_path;
 
   // When deduping the results, set<wholename> of
   // the files held in results
@@ -77,7 +95,7 @@ struct w_query_path {
 class QueryExpr {
  public:
   virtual ~QueryExpr();
-  virtual bool evaluate(w_query_ctx* ctx, const watchman_file* file) = 0;
+  virtual bool evaluate(w_query_ctx* ctx, const FileResult* file) = 0;
 };
 
 struct watchman_glob_tree;
@@ -144,7 +162,7 @@ bool w_query_file_matches_relative_root(
 bool w_query_process_file(
     w_query* query,
     struct w_query_ctx* ctx,
-    const watchman_file* file);
+    std::unique_ptr<FileResult> file);
 
 // Generator callback, used to plug in an alternate
 // generator when used in triggers or subscriptions

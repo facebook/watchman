@@ -11,6 +11,7 @@
 
 using facebook::eden::EdenServiceAsyncClient;
 using facebook::eden::FileInformationOrError;
+using facebook::eden::FileInformation;
 
 namespace watchman {
 namespace {
@@ -34,69 +35,46 @@ std::unique_ptr<EdenServiceAsyncClient> getEdenClient(
               eb, getEdenServerSocketAddress())));
 }
 
-// This is an ugly shim that allows creating watchman_dir and
-// watchman_file objects to satisfy eden queries.
-class FakeDirs {
+class EdenFileResult : public FileResult {
  public:
-  explicit FakeDirs(const w_string& root_path)
-      : root_(root_path, nullptr), root_path_(root_path) {}
-
-  // Similar to InMemoryView::resolveDir with create=true
-  watchman_dir* resolveDir(w_string_piece dir_name) {
-    if (dir_name.size() == 0) {
-      return &root_;
-    }
-
-    auto dir = &root_;
-    watchman_dir* parent = nullptr;
-
-    while (true) {
-      auto sep = (const char*)memchr(dir_name.data(), '/', dir_name.size());
-      uint32_t child_name_size = sep ? sep - dir_name.data() : dir_name.size();
-      w_string_t component;
-      w_string_new_len_typed_stack(
-          &component, dir_name.data(), child_name_size, W_STRING_BYTE);
-
-      auto child = dir->getChildDir(&component);
-      if (!child) {
-        // We need to create the directory
-        w_string child_name(dir_name.data(), child_name_size);
-        auto& new_child = dir->dirs[child_name];
-        new_child.reset(new watchman_dir(child_name, dir));
-        child = new_child.get();
-      }
-
-      parent = dir;
-      dir = child;
-      if (!sep) {
-        return dir;
-      }
-      dir_name.advance((sep - dir_name.data()) + 1);
-    }
-    // Not reached
+  EdenFileResult(const FileInformation& info, const w_string& fullName)
+      : fullName_(fullName) {
+    stat_.size = info.size;
+    stat_.mode = info.mode;
+    stat_.mtime.tv_sec = info.mtime.seconds;
+    stat_.mtime.tv_nsec = info.mtime.nanoSeconds;
   }
 
-  std::unique_ptr<watchman_file, watchman_dir::Deleter> makeFile(
-      w_string_piece name,
-      const FileInformationOrError& info) {
-    auto dir = resolveDir(name.dirName());
-    auto file = watchman_file::make(name.baseName().asWString(), dir);
+  const watchman_stat& stat() const override {
+    return stat_;
+  }
 
-    if (info.getType() == FileInformationOrError::info) {
-      file->stat.size = info.get_info().size;
-      file->stat.mode = info.get_info().mode;
-      file->stat.mtime.tv_sec = info.get_info().mtime.seconds;
-      file->stat.mtime.tv_nsec = info.get_info().mtime.nanoSeconds;
-    } else {
-      file->exists = false;
-    }
+  w_string_piece baseName() const override {
+    return fullName_.piece().baseName();
+  }
 
-    return file;
+  w_string_piece dirName() override {
+    return fullName_.piece().dirName();
+  }
+
+  bool exists() const override {
+    return true;
+  }
+
+  w_string readLink() const override {
+    return nullptr;
+  }
+
+  const w_clock_t& ctime() const override {
+    throw std::runtime_error("ctime not implemented for eden");
+  }
+  const w_clock_t& otime() const override {
+    throw std::runtime_error("otime not implemented for eden");
   }
 
  private:
-  watchman_dir root_;
-  w_string root_path_;
+  w_string fullName_;
+  watchman_stat stat_;
 };
 
 class EdenView : public QueryableView {
@@ -175,8 +153,6 @@ class EdenView : public QueryableView {
     std::vector<FileInformationOrError> info;
     client->sync_getFileInformation(info, mountPoint, fileNames);
 
-    FakeDirs dirs(ctx->root->root_path);
-
     if (info.size() != fileNames.size()) {
       throw std::runtime_error(
           "info.size() didn't match fileNames.size(), should be unpossible!");
@@ -188,9 +164,10 @@ class EdenView : public QueryableView {
       auto& name = *nameIter;
       auto& fileInfo = *infoIter;
 
-      auto file = dirs.makeFile(name, fileInfo);
+      auto file = make_unique<EdenFileResult>(
+          fileInfo.get_info(), w_string::pathCat({mountPoint, name}));
 
-      if (!w_query_process_file(ctx->query, ctx, file.get())) {
+      if (!w_query_process_file(ctx->query, ctx, std::move(file))) {
         result = false;
         break;
       }

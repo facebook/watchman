@@ -11,25 +11,25 @@ class TypeExpr : public QueryExpr {
  public:
   explicit TypeExpr(char arg) : arg(arg) {}
 
-  bool evaluate(struct w_query_ctx*, const watchman_file* file) override {
+  bool evaluate(struct w_query_ctx*, const FileResult* file) override {
     switch (arg) {
       case 'b':
-        return S_ISBLK(file->stat.mode);
+        return S_ISBLK(file->stat().mode);
       case 'c':
-        return S_ISCHR(file->stat.mode);
+        return S_ISCHR(file->stat().mode);
       case 'd':
-        return S_ISDIR(file->stat.mode);
+        return S_ISDIR(file->stat().mode);
       case 'f':
-        return S_ISREG(file->stat.mode);
+        return S_ISREG(file->stat().mode);
       case 'p':
-        return S_ISFIFO(file->stat.mode);
+        return S_ISFIFO(file->stat().mode);
       case 'l':
-        return S_ISLNK(file->stat.mode);
+        return S_ISLNK(file->stat().mode);
       case 's':
-        return S_ISSOCK(file->stat.mode);
+        return S_ISSOCK(file->stat().mode);
 #ifdef S_ISDOOR
     case 'D':
-      return S_ISDOOR(file->stat.mode);
+      return S_ISDOOR(file->stat().mode);
 #endif
     default:
       return false;

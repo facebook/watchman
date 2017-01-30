@@ -7,8 +7,8 @@
 
 class ExistsExpr : public QueryExpr {
  public:
-  bool evaluate(struct w_query_ctx*, const watchman_file* file) override {
-    return file->exists;
+  bool evaluate(struct w_query_ctx*, const FileResult* file) override {
+    return file->exists();
   }
   static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref&) {
     return watchman::make_unique<ExistsExpr>();
@@ -18,13 +18,13 @@ W_TERM_PARSER("exists", ExistsExpr::parse)
 
 class EmptyExpr : public QueryExpr {
  public:
-  bool evaluate(struct w_query_ctx*, const watchman_file* file) override {
-    if (!file->exists) {
+  bool evaluate(struct w_query_ctx*, const FileResult* file) override {
+    if (!file->exists()) {
       return false;
     }
-
-    if (S_ISDIR(file->stat.mode) || S_ISREG(file->stat.mode)) {
-      return file->stat.size == 0;
+    auto& stat = file->stat();
+    if (S_ISDIR(stat.mode) || S_ISREG(stat.mode)) {
+      return file->stat().size == 0;
     }
 
     return false;

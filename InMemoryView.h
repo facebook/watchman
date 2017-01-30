@@ -15,6 +15,22 @@ struct Watcher;
 
 namespace watchman {
 
+class InMemoryFileResult : public FileResult {
+ public:
+  explicit InMemoryFileResult(const watchman_file* file);
+  const watchman_stat& stat() const override;
+  w_string_piece baseName() const override;
+  w_string_piece dirName() override;
+  bool exists() const override;
+  w_string readLink() const override;
+  const w_clock_t& ctime() const override;
+  const w_clock_t& otime() const override;
+
+ private:
+  const watchman_file* file_;
+  w_string dirName_;
+};
+
 /** Keeps track of the state of the filesystem in-memory. */
 struct InMemoryView : public QueryableView {
   ClockPosition getMostRecentRootNumberAndTickValue() const override;
