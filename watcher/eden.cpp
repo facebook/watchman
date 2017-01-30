@@ -126,16 +126,53 @@ class EdenView : public QueryableView {
     return true;
   }
 
+  bool executeGlobBasedQuery(
+      const std::vector<std::string>& globStrings,
+      w_query* query,
+      struct w_query_ctx* ctx,
+      int64_t* num_walked) const {
+    auto client = getEdenClient();
+    bool result = true;
+    auto mountPoint = to<std::string>(ctx->root->root_path);
+
+    std::vector<std::string> fileNames;
+    client->sync_glob(fileNames, mountPoint, globStrings);
+
+    std::vector<FileInformationOrError> info;
+    client->sync_getFileInformation(info, mountPoint, fileNames);
+
+    if (info.size() != fileNames.size()) {
+      throw std::runtime_error(
+          "info.size() didn't match fileNames.size(), should be unpossible!");
+    }
+
+    auto nameIter = fileNames.begin();
+    auto infoIter = info.begin();
+    while (nameIter != fileNames.end()) {
+      auto& name = *nameIter;
+      auto& fileInfo = *infoIter;
+
+      auto file = make_unique<EdenFileResult>(
+          fileInfo.get_info(), w_string::pathCat({mountPoint, name}));
+
+      if (!w_query_process_file(ctx->query, ctx, std::move(file))) {
+        result = false;
+        break;
+      }
+
+      ++nameIter;
+      ++infoIter;
+    }
+
+    *num_walked = fileNames.size();
+    return result;
+  }
+
   /** Walks files that match the supplied set of paths */
   bool pathGenerator(
       w_query* query,
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override {
-    bool result = true;
-    watchman::log(watchman::ERR, __FUNCTION__, "\n");
-
-    auto client = getEdenClient();
-
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
     w_string_piece rel;
@@ -162,51 +199,13 @@ class EdenView : public QueryableView {
       globStrings.emplace_back(to<std::string>(
           w_string::pathCat({rel, escapeGlobSpecialChars(path.name), glob})));
     }
-
-    auto mountPoint = to<std::string>(ctx->root->root_path);
-
-    std::vector<std::string> fileNames;
-    client->sync_glob(fileNames, mountPoint, globStrings);
-
-    std::vector<FileInformationOrError> info;
-    client->sync_getFileInformation(info, mountPoint, fileNames);
-
-    if (info.size() != fileNames.size()) {
-      throw std::runtime_error(
-          "info.size() didn't match fileNames.size(), should be unpossible!");
-    }
-
-    auto nameIter = fileNames.begin();
-    auto infoIter = info.begin();
-    while (nameIter != fileNames.end()) {
-      auto& name = *nameIter;
-      auto& fileInfo = *infoIter;
-
-      auto file = make_unique<EdenFileResult>(
-          fileInfo.get_info(), w_string::pathCat({mountPoint, name}));
-
-      if (!w_query_process_file(ctx->query, ctx, std::move(file))) {
-        result = false;
-        break;
-      }
-
-      ++nameIter;
-      ++infoIter;
-    }
-
-    *num_walked = fileNames.size();
-    return result;
+    return executeGlobBasedQuery(globStrings, query, ctx, num_walked);
   }
 
   bool globGenerator(
       w_query* query,
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override {
-    bool result = true;
-    watchman::log(watchman::ERR, __FUNCTION__, "\n");
-
-    auto client = getEdenClient();
-
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
     w_string_piece rel;
@@ -224,12 +223,8 @@ class EdenView : public QueryableView {
     // sanity check and throw an error if there is still something it
     // doesn't like about it when we call sync_glob() below.
     for (auto& glob : query->query_spec.get("glob").array()) {
-      if (query->relative_root) {
-        globStrings.emplace_back(
-            to<std::string>(rel, "/", json_to_w_string(glob)));
-      } else {
-        globStrings.emplace_back(to<std::string>(json_to_w_string(glob)));
-      }
+      globStrings.emplace_back(
+          to<std::string>(w_string::pathCat({rel, json_to_w_string(glob)})));
     }
 
     // More glob flags/functionality:
@@ -245,46 +240,13 @@ class EdenView : public QueryableView {
       throw std::runtime_error(
           "glob_includedotfiles is not supported for the eden watcher");
     }
-    auto mountPoint = to<std::string>(ctx->root->root_path);
-
-    std::vector<std::string> fileNames;
-    client->sync_glob(fileNames, mountPoint, globStrings);
-
-    std::vector<FileInformationOrError> info;
-    client->sync_getFileInformation(info, mountPoint, fileNames);
-
-    auto nameIter = fileNames.begin();
-    auto infoIter = info.begin();
-    while (nameIter != fileNames.end()) {
-      auto& name = *nameIter;
-      auto& fileInfo = *infoIter;
-
-      auto file = make_unique<EdenFileResult>(
-          fileInfo.get_info(), w_string::pathCat({mountPoint, name}));
-
-      if (!w_query_process_file(ctx->query, ctx, std::move(file))) {
-        result = false;
-        break;
-      }
-
-      ++nameIter;
-      ++infoIter;
-    }
-
-    *num_walked = fileNames.size();
-    return result;
+    return executeGlobBasedQuery(globStrings, query, ctx, num_walked);
   }
 
   bool allFilesGenerator(
       w_query* query,
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override {
-    bool result = true;
-    watchman::log(watchman::ERR, __FUNCTION__, "\n");
-
-    auto client = getEdenClient();
-    std::vector<std::string> fileNames;
-
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
     std::string globPattern;
@@ -295,41 +257,8 @@ class EdenView : public QueryableView {
       globPattern.append("/");
     }
     globPattern.append("**");
-
-    std::string mountPoint(
-        ctx->root->root_path.data(), ctx->root->root_path.size());
-
-    client->sync_glob(
-        fileNames, mountPoint, std::vector<std::string>{globPattern});
-
-    std::vector<FileInformationOrError> info;
-    client->sync_getFileInformation(info, mountPoint, fileNames);
-
-    if (info.size() != fileNames.size()) {
-      throw std::runtime_error(
-          "info.size() didn't match fileNames.size(), should be unpossible!");
-    }
-
-    auto nameIter = fileNames.begin();
-    auto infoIter = info.begin();
-    while (nameIter != fileNames.end()) {
-      auto& name = *nameIter;
-      auto& fileInfo = *infoIter;
-
-      auto file = make_unique<EdenFileResult>(
-          fileInfo.get_info(), w_string::pathCat({mountPoint, name}));
-
-      if (!w_query_process_file(ctx->query, ctx, std::move(file))) {
-        result = false;
-        break;
-      }
-
-      ++nameIter;
-      ++infoIter;
-    }
-
-    *num_walked = fileNames.size();
-    return result;
+    return executeGlobBasedQuery(
+        std::vector<std::string>{globPattern}, query, ctx, num_walked);
   }
 
   ClockPosition getMostRecentRootNumberAndTickValue() const override {
