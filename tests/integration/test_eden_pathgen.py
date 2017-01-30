@@ -119,3 +119,15 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
         # path query won't yield the correct set of matches
         # in the non-eden case either.
         self.assertFileListsEqual(res['files'], [])
+
+        res = self.watchmanCommand('query', root, {
+            'expression': ['type', 'f'],
+            'fields': ['name'],
+            'suffix': ['sh', 'js']})
+        self.assertFileListsEqual(res['files'],
+                                  ['bdir/noexec.sh', 'bdir/test.sh'])
+
+        res = self.watchmanCommand('query', root, {
+            'expression': ['type', 'f'],
+            'fields': ['name'],
+            'suffix': ['s*']})

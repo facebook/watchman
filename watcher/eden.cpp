@@ -117,8 +117,21 @@ class EdenView : public QueryableView {
       w_query* query,
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override {
-    watchman::log(watchman::ERR, __FUNCTION__, "\n");
-    return false;
+    // If the query is anchored to a relative_root, use that that
+    // avoid sucking down a massive list of files from eden
+    w_string_piece rel;
+    if (query->relative_root) {
+      rel = query->relative_root;
+      rel.advance(ctx->root->root_path.size() + 1);
+    }
+
+    std::vector<std::string> globStrings;
+    // Translate the suffix list into a list of globs
+    for (auto& suff : query->suffixes) {
+      globStrings.emplace_back(to<std::string>(w_string::pathCat(
+          {rel, to<std::string>("**/*.", escapeGlobSpecialChars(suff))})));
+    }
+    return executeGlobBasedQuery(globStrings, query, ctx, num_walked);
   }
 
   bool syncToNow(std::chrono::milliseconds) override {
@@ -168,6 +181,17 @@ class EdenView : public QueryableView {
     return result;
   }
 
+  // Helper for computing a relative path prefix piece.
+  // The returned piece is owned by the supplied context object!
+  w_string_piece computeRelativePathPiece(struct w_query_ctx* ctx) const {
+    w_string_piece rel;
+    if (ctx->query->relative_root) {
+      rel = ctx->query->relative_root;
+      rel.advance(ctx->root->root_path.size() + 1);
+    }
+    return rel;
+  }
+
   /** Walks files that match the supplied set of paths */
   bool pathGenerator(
       w_query* query,
@@ -175,11 +199,7 @@ class EdenView : public QueryableView {
       int64_t* num_walked) const override {
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
-    w_string_piece rel;
-    if (query->relative_root) {
-      rel = query->relative_root;
-      rel.advance(ctx->root->root_path.size() + 1);
-    }
+    auto rel = computeRelativePathPiece(ctx);
 
     std::vector<std::string> globStrings;
     // Translate the path list into a list of globs
@@ -208,11 +228,7 @@ class EdenView : public QueryableView {
       int64_t* num_walked) const override {
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
-    w_string_piece rel;
-    if (query->relative_root) {
-      rel = query->relative_root;
-      rel.advance(ctx->root->root_path.size() + 1);
-    }
+    auto rel = computeRelativePathPiece(ctx);
 
     std::vector<std::string> globStrings;
     // Use the glob array provided by the query_spec.
@@ -250,9 +266,8 @@ class EdenView : public QueryableView {
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
     std::string globPattern;
-    if (query->relative_root) {
-      w_string_piece rel(query->relative_root);
-      rel.advance(ctx->root->root_path.size() + 1);
+    auto rel = computeRelativePathPiece(ctx);
+    if (rel.size() > 0) {
       globPattern.append(rel.data(), rel.size());
       globPattern.append("/");
     }
