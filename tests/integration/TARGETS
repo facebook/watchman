@@ -115,7 +115,7 @@ python_unittest(
       ':testsupport',
       '@/watchman/python/pywatchman:pywatchman',
       '@/watchman:watchman',
-      '@/eden/fs/integration/lib:lib',
+      '@/eden/integration/lib:lib',
       '@/eden/fs/service:edenfs',
       '@/eden/fs/cli:cli',
     ],

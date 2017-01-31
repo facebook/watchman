@@ -18,7 +18,7 @@ except ImportError:
 
 TestParent = object
 try:
-    from eden.fs.integration.lib import (edenclient, hgrepo)
+    from eden.integration.lib import (edenclient, hgrepo)
 
     def is_sandcastle():
         return 'SANDCASTLE' in os.environ
