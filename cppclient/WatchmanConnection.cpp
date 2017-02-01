@@ -66,10 +66,14 @@ folly::Future<std::string> WatchmanConnection::getSockPath() {
         {"watchman", "--output-encoding=bser", "get-sockname"},
         folly::Subprocess::pipeStdout() |
             folly::Subprocess::pipeStderr().usePath());
+    SCOPE_FAIL {
+      // Always clean up to avoid Subprocess asserting on destruction
+      proc.kill();
+      proc.wait();
+    };
     auto out_pair = proc.communicate();
     auto result = parseBser(out_pair.first);
     proc.waitChecked();
-
     return result["sockname"].asString();
   });
 }
@@ -166,7 +170,8 @@ Future<dynamic> WatchmanConnection::run(const dynamic& command) noexcept {
     return cmd->promise.getFuture();
   }
   if (!sock_) {
-    cmd->promise.setException(WatchmanError("No socket (connect() called?)"));
+    cmd->promise.setException(WatchmanError(
+        "No socket (did you call connect() and check result for exceptions?)"));
     return cmd->promise.getFuture();
   }
 
