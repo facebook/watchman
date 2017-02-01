@@ -1,3 +1,5 @@
+ACLOCAL_AMFLAGS=-I m4
+
 bin_PROGRAMS = watchman
 # ensure that we have a reasonable default for the python install
 DESTDIR ?= /
@@ -139,6 +141,37 @@ TESTS = \
 		tests/string.t \
 		tests/log.t \
 		tests/wildmatch.t
+
+if ENABLE_CPPCLIENT
+lib_LTLIBRARIES = libwatchmanclient.la
+libwatchmanclient_ladir = $(includedir)/watchman/
+libwatchmanclient_la_HEADERS = \
+	cppclient/WatchmanClient.h \
+	cppclient/WatchmanConnection.h
+
+TESTS += tests/integration/cppclient.t
+
+# No IRONMANCFLAGS as this is incompatible with Folly
+libwatchmanclient_la_SOURCES = \
+	cppclient/WatchmanClient.cpp \
+	cppclient/WatchmanConnection.cpp \
+	cppclient/WatchmanResponseError.cpp
+libwatchmanclient_la_CPPFLAGS = $(FOLLY_CFLAGS)
+libwatchmanclient_la_LDFLAGS = -version-info 0:0:0 $(FOLLY_LDFLAGS)
+CPPCLIENT_LIB=libwatchmanclient.la
+
+# No IRONMANCFLAGS as this is incompatible with Folly
+tests_integration_cppclient_t_CPPFLAGS = $(FOLLY_CFLAGS) -I cppclient/
+tests_integration_cppclient_t_LDADD = $(CPPCLIENT_LIB) $(FOLLY_LIBS)
+tests_integration_cppclient_t_LDFLAGS = $(FOLLY_LDFLAGS)
+tests_integration_cppclient_t_SOURCES = \
+	tests/integration/cppclient.cpp
+
+# install pkg-config metadata file
+pkgconfigdir = $(libdir)/pkgconfig
+nodist_pkgconfig_DATA = cppclient/watchmanclient.pc
+endif
+
 noinst_PROGRAMS = $(TESTS)
 
 export ARCHFLAGS=@ARCHFLAGS@

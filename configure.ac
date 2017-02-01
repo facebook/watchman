@@ -1,4 +1,5 @@
 AC_INIT([watchman], [4.8.0], [], [watchman])
+AC_CONFIG_MACRO_DIR([m4])
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES(yes)])
@@ -24,10 +25,37 @@ AX_CXX_COMPILE_STDCXX_11([noext],[mandatory])
 AC_PROG_CPP
 AC_C_BIGENDIAN
 AC_C_INLINE
-AC_PROG_RANLIB
+
+LT_INIT
 
 AM_PROG_CC_C_O
 AM_PROG_AS
+
+AC_ARG_ENABLE([cppclient],
+  AS_HELP_STRING([--disable-cppclient], [Disable build of C++ client library]))
+
+AC_ARG_WITH([folly],
+  AS_HELP_STRING([--with-folly=<path to folly>], [Where to find folly]))
+
+AS_IF([test "x$with_folly" != "x"], [
+  folly_config_dir=$with_folly/lib/pkgconfig/
+  AS_IF([test -f "$folly_config_dir/libfolly.pc"],
+    [export PKG_CONFIG_PATH=$folly_config_dir:$PKG_CONFIG_PATH],
+    [AC_MSG_ERROR([cannot find folly config $folly_config_dir/libfolly.pc])]
+	)
+])
+
+
+dnl
+dnl Decide whether to build the C++ client library
+dnl
+PKG_CHECK_MODULES([FOLLY], [libfolly], [folly=yes], [folly=no])
+AS_IF([test "x$enable_cppclient" = "xyes" && test "x$folly" = "xno"],
+  [AC_MSG_ERROR([cppclient requested but libfolly not present])])
+AS_IF([test "x$enable_cppclient" != "xno" && test "x$folly" = "xno"],
+  [enable_cppclient=no])
+AM_CONDITIONAL(ENABLE_CPPCLIENT, [test "x$enable_cppclient" != "xno"])
+
 
 dnl I don't care that this is supposed to be sysconfdir; autoconf doesn't
 dnl allow it to be evaluated sanely from configure, only via Makefile,
@@ -294,7 +322,11 @@ fi
 AC_SUBST(IRONMANCFLAGS)
 
 AC_CONFIG_HEADER([config.h])
-AC_CONFIG_FILES([Makefile thirdparty/jansson/jansson_config.h])
+AC_CONFIG_FILES([
+  Makefile
+  thirdparty/jansson/jansson_config.h
+  cppclient/watchmanclient.pc
+])
 AC_OUTPUT
 
 if test "$WATCHMAN_STATE_DIR" != "no"; then
@@ -320,4 +352,3 @@ Your build configuration:
 EOF
 
 dnl vim:ts=2:sw=2:
-

@@ -45,3 +45,11 @@ website/src/watchman/docs
 website/src/watchman/*.js
 website/core/metadata.js
 npm-debug.log
+m4/
+.libs/
+*.lo
+*.la
+tests/integration/cppclient.t
+cppclient/watchmanclient.pc
+libtool
+ltmain.sh

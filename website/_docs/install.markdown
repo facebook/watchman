@@ -60,10 +60,12 @@ $ sudo port install watchman
 
 ### Installing from source
 
-You can use these steps below to get watchman built.  You will need `autoconf`
-and `automake`.  You may optionally build watchman without `pcre` and `python`
-support (see configuration options below). For python support, you will also
-need `setuptools` and may need to install a `python-dev` or `python-devel` package.
+You can use these steps below to get watchman built.  You will need `autoconf`,
+`automake` and `libtool` (or `glibtool` on OS X).  You may optionally build
+watchman without `pcre` and `python` support (see configuration options below).
+For python support, you will need `setuptools` and may need to install a
+`python-dev` or `python-devel` package. To build the C++ client library you will
+need to install `libfolly`.
 
 See below for some more information on options to configure your build.
 
@@ -95,6 +97,9 @@ that are specific to watchman that might be relevant to your needs:
 --enable-stack-protector  Enable stack protection in the same
                           way that rpmbuild does on some systems.
 
+--enable-cppclient  Enable build of the C++ client library. This is built by
+                    default if Folly is available.
+
 --with-buildinfo=TEXT   Include some extra build information that will
                         be reported in the version command output
 
@@ -109,6 +114,9 @@ that are specific to watchman that might be relevant to your needs:
 
 --with-gimli    Enable support for the gimli process monitor
                 https://bitbucket.org/wez/gimli/
+
+--with-folly=PATH  Specify root for Folly (needed for the C++ client library)
+                   https://github.com/facebook/folly
 ```
 
 (Run `./configure --help` to get the list for the version you checked out)

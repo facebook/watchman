@@ -9,11 +9,23 @@ env = {
     'WATCHMAN_SRC_DIR': os.path.dirname(os.path.dirname(
                                   os.path.dirname(__file__))),
     'WATCHMAN_BINARY': '$(location @/watchman:watchman)',
+    'WATCHMAN_CPPCLIENT_BINARY': '$(location :cppclient)',
     # We test for this in a test case
     'WATCHMAN_EMPTY_ENV_VAR': '',
     # Uncomment next line to preserve all logs from the test
     #'WATCHMAN_TEST_KEEP': '1',
 }
+cpp_binary(
+    name='cppclient',
+    srcs=['cppclient.cpp'],
+    deps=[
+        '@/folly:folly',
+        '@/folly/init:init',
+        '@/folly/io/async:event_base_thread',
+        '@/watchman/cppclient:cppclient',
+        '@/watchman/cppclient:headers',
+    ]
+)
 
 python_library(
     name='testsupport',

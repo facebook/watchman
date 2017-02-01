@@ -1,0 +1,23 @@
+cpp_library(
+    name='cppclient',
+    headers=['WatchmanClient.h', 'WatchmanConnection.h'],
+    srcs=[
+        'WatchmanConnection.cpp',
+        'WatchmanResponseError.cpp',
+        'WatchmanClient.cpp',
+    ],
+    deps=[
+        '@/folly:folly',
+        '@/folly/io/async:async',
+        '@/folly:subprocess',
+        '@/folly/futures:futures',
+        '@/folly/experimental/bser:bser',
+    ]
+)
+
+buck_cxx_library(
+    name='headers',
+    exported_headers=['WatchmanClient.h', 'WatchmanConnection.h'],
+    header_namespace='',
+    visibility=['PUBLIC'],
+)

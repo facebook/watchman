@@ -27,7 +27,9 @@ You will need:
 * python
 * automake
 * autoconf
+* libtool (or glibtool on OS X)
 * libpcre
+* libfolly (only needed if building the cppclient library)
 * nodejs (for fb-watchman)
 
 ```
