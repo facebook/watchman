@@ -244,37 +244,6 @@ w_query_ctx::w_query_ctx(w_query* q, const std::shared_ptr<w_root_t>& root)
   }
 }
 
-bool w_query_execute_locked(
-    w_query* query,
-    const std::shared_ptr<w_root_t>& root,
-    w_query_res* res,
-    w_query_generator generator) {
-  w_query_ctx ctx(query, root);
-  w_perf_t sample("query_execute");
-
-  /* The first stage of execution is generation.
-   * We generate a series of file inputs to pass to
-   * the query executor.
-   *
-   * We evaluate each of the generators one after the
-   * other.  If multiple generators are used, it is
-   * possible and expected that the same file name
-   * will be evaluated multiple times if those generators
-   * both emit the same file.
-   */
-
-  ctx.clockAtStartOfQuery =
-      root->inner.view->getMostRecentRootNumberAndTickValue();
-  res->clockAtStartOfQuery = ctx.clockAtStartOfQuery;
-  ctx.lastAgeOutTickValueAtStartOfQuery =
-      root->inner.view->getLastAgeOutTickValue();
-
-  // Evaluate the cursor for this root
-  w_clockspec_eval(root, query->since_spec.get(), &ctx.since);
-
-  return execute_common(&ctx, &sample, res, generator);
-}
-
 bool w_query_execute(
     w_query* query,
     const std::shared_ptr<w_root_t>& root,
@@ -302,14 +271,20 @@ bool w_query_execute(
    */
 
   ctx.root = root;
-  // Evaluate the cursor for this root
-  w_clockspec_eval(root, query->since_spec.get(), &ctx.since);
 
   ctx.clockAtStartOfQuery =
       root->inner.view->getMostRecentRootNumberAndTickValue();
   ctx.lastAgeOutTickValueAtStartOfQuery =
       root->inner.view->getLastAgeOutTickValue();
   res->clockAtStartOfQuery = ctx.clockAtStartOfQuery;
+
+  // Evaluate the cursor for this root
+  ctx.since = query->since_spec
+      ? query->since_spec->evaluate(
+            ctx.clockAtStartOfQuery,
+            ctx.lastAgeOutTickValueAtStartOfQuery,
+            &root->inner.cursors)
+      : w_query_since();
 
   if (query->query_spec.get_default("bench")) {
     for (auto i = 0; i < 100; ++i) {

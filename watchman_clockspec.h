@@ -1,6 +1,8 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <unordered_map>
+#include "watchman_synchronized.h"
 
 struct watchman_clock {
   uint32_t ticks;
@@ -46,12 +48,16 @@ struct w_clockspec {
   w_clockspec(const ClockPosition& position);
   ~w_clockspec();
 
-  struct w_query_since evaluate(w_query_ctx* ctx) const;
+  /** Evaluate the clockspec against the inputs, returning
+   * the effective since parameter.
+   * If cursorMap is passed in, it MUST be unlocked, as this method
+   * will acquire a lock to evaluate a named cursor. */
+  struct w_query_since evaluate(
+      const ClockPosition& position,
+      const uint32_t lastAgeOutTick,
+      watchman::Synchronized<std::unordered_map<w_string, uint32_t>>*
+          cursorMap = nullptr) const;
 };
 
 std::unique_ptr<w_clockspec> w_clockspec_parse(const json_ref& value);
-void w_clockspec_eval(
-    const std::shared_ptr<w_root_t>& root,
-    const struct w_clockspec* spec,
-    struct w_query_since* since);
 void w_clockspec_init(void);

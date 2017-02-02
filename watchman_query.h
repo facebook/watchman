@@ -21,7 +21,7 @@ struct w_query_since {
     } clock;
   };
 
-  w_query_since() : is_timestamp(false), clock{false, 0} {}
+  w_query_since() : is_timestamp(false), clock{true, 0} {}
 };
 
 // A View-independent way of accessing file properties in the
@@ -190,12 +190,6 @@ struct w_query_res {
 };
 
 bool w_query_execute(
-    w_query* query,
-    const std::shared_ptr<w_root_t>& root,
-    w_query_res* results,
-    w_query_generator generator);
-
-bool w_query_execute_locked(
     w_query* query,
     const std::shared_ptr<w_root_t>& root,
     w_query_res* results,

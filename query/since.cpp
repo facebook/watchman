@@ -28,7 +28,8 @@ class SinceExpr : public QueryExpr {
   bool evaluate(struct w_query_ctx* ctx, const FileResult* file) override {
     time_t tval = 0;
 
-    auto since = spec->evaluate(ctx);
+    auto since = spec->evaluate(
+        ctx->clockAtStartOfQuery, ctx->lastAgeOutTickValueAtStartOfQuery);
 
     switch (field) {
       case since_what::SINCE_OCLOCK:

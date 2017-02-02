@@ -68,81 +68,6 @@ std::unique_ptr<w_clockspec> w_clockspec_parse(const json_ref& value) {
   return nullptr;
 }
 
-// must be called with the root locked
-// spec can be null, in which case a fresh instance is assumed
-void w_clockspec_eval(
-    const std::shared_ptr<w_root_t>& root,
-    const struct w_clockspec* spec,
-    struct w_query_since* since) {
-  if (spec == NULL) {
-    since->is_timestamp = false;
-    since->clock.is_fresh_instance = true;
-    since->clock.ticks = 0;
-    return;
-  }
-
-  if (spec->tag == w_cs_timestamp) {
-    // just copy the values over
-    since->is_timestamp = true;
-    since->timestamp = spec->timestamp;
-    return;
-  }
-
-  since->is_timestamp = false;
-
-  auto position = root->inner.view->getMostRecentRootNumberAndTickValue();
-
-  if (spec->tag == w_cs_named_cursor) {
-    w_string cursor = spec->named_cursor.cursor;
-
-    {
-      auto wlock = root->inner.cursors.wlock();
-      auto& cursors = *wlock;
-      auto it = cursors.find(cursor);
-
-      if (it == cursors.end()) {
-        since->clock.is_fresh_instance = true;
-        since->clock.ticks = 0;
-      } else {
-        since->clock.ticks = it->second;
-        since->clock.is_fresh_instance =
-            since->clock.ticks < root->inner.view->getLastAgeOutTickValue();
-      }
-
-      // record the current tick value against the cursor so that we use that
-      // as the basis for a subsequent query.
-      cursors[cursor] = position.ticks;
-    }
-
-    w_log(
-        W_LOG_DBG,
-        "resolved cursor %s -> %" PRIu32 "\n",
-        cursor.c_str(),
-        since->clock.ticks);
-    return;
-  }
-
-  // spec->tag == w_cs_clock
-  if (spec->clock.start_time == proc_start_time &&
-      spec->clock.pid == proc_pid &&
-      spec->clock.position.rootNumber == position.rootNumber) {
-    since->clock.is_fresh_instance =
-        spec->clock.position.ticks < root->inner.view->getLastAgeOutTickValue();
-    if (since->clock.is_fresh_instance) {
-      since->clock.ticks = 0;
-    } else {
-      since->clock.ticks = spec->clock.position.ticks;
-    }
-    return;
-  }
-
-  // If the pid, start time or root number don't match, they asked a different
-  // incarnation of the server or a different instance of this root, so we treat
-  // them as having never spoken to us before
-  since->clock.is_fresh_instance = true;
-  since->clock.ticks = 0;
-}
-
 w_clockspec::w_clockspec() : tag(w_cs_timestamp), timestamp(0) {}
 
 w_clockspec::~w_clockspec() {
@@ -154,7 +79,11 @@ w_clockspec::~w_clockspec() {
 w_clockspec::w_clockspec(const ClockPosition& position)
     : tag(w_cs_clock), clock{proc_start_time, proc_pid, position} {}
 
-w_query_since w_clockspec::evaluate(struct w_query_ctx* ctx) const {
+w_query_since w_clockspec::evaluate(
+    const ClockPosition& position,
+    const uint32_t lastAgeOutTick,
+    watchman::Synchronized<std::unordered_map<w_string, uint32_t>>* cursorMap)
+    const {
   w_query_since since;
 
   switch (tag) {
@@ -164,18 +93,47 @@ w_query_since w_clockspec::evaluate(struct w_query_ctx* ctx) const {
       since.timestamp = timestamp;
       return since;
 
-    case w_cs_named_cursor:
-      // This is checked for and handled at parse time in SinceExpr::parse,
-      // so this should be impossible to hit.
-      throw std::runtime_error("illegal to use a named cursor in this context");
+    case w_cs_named_cursor: {
+      if (!cursorMap) {
+        // This is checked for and handled at parse time in SinceExpr::parse,
+        // so this should be impossible to hit.
+        throw std::runtime_error(
+            "illegal to use a named cursor in this context");
+      }
+
+      {
+        auto wlock = cursorMap->wlock();
+        auto& cursors = *wlock;
+        auto it = cursors.find(named_cursor.cursor);
+
+        if (it == cursors.end()) {
+          since.clock.is_fresh_instance = true;
+          since.clock.ticks = 0;
+        } else {
+          since.clock.ticks = it->second;
+          since.clock.is_fresh_instance = since.clock.ticks < lastAgeOutTick;
+        }
+
+        // record the current tick value against the cursor so that we use that
+        // as the basis for a subsequent query.
+        cursors[named_cursor.cursor] = position.ticks;
+      }
+
+      watchman::log(
+          watchman::DBG,
+          "resolved cursor ",
+          named_cursor.cursor,
+          " -> ",
+          since.clock.ticks,
+          "\n");
+
+      return since;
+    }
 
     case w_cs_clock: {
-      auto position = ctx->clockAtStartOfQuery;
-
       if (clock.start_time == proc_start_time && clock.pid == proc_pid &&
           clock.position.rootNumber == position.rootNumber) {
-        since.clock.is_fresh_instance =
-            clock.position.ticks < ctx->lastAgeOutTickValueAtStartOfQuery;
+        since.clock.is_fresh_instance = clock.position.ticks < lastAgeOutTick;
         if (since.clock.is_fresh_instance) {
           since.clock.ticks = 0;
         } else {

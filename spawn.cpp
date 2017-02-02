@@ -279,7 +279,7 @@ bool watchman_trigger_command::maybeSpawn(
   // at settle points which are by definition sync'd to the present time
   query->sync_timeout = std::chrono::milliseconds(0);
   watchman::log(watchman::DBG, "assessing trigger ", triggername, "\n");
-  if (!w_query_execute_locked(query.get(), root, &res, time_generator)) {
+  if (!w_query_execute(query.get(), root, &res, time_generator)) {
     watchman::log(
         watchman::ERR,
         "error running trigger \"",
