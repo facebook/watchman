@@ -8,6 +8,9 @@ struct watchman_clock {
 };
 typedef struct watchman_clock w_clock_t;
 
+struct w_query_ctx;
+struct w_query_since;
+
 struct ClockPosition {
   uint32_t rootNumber{0};
   uint32_t ticks{0};
@@ -42,6 +45,8 @@ struct w_clockspec {
   w_clockspec();
   w_clockspec(const ClockPosition& position);
   ~w_clockspec();
+
+  struct w_query_since evaluate(w_query_ctx* ctx) const;
 };
 
 std::unique_ptr<w_clockspec> w_clockspec_parse(const json_ref& value);

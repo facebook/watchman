@@ -154,6 +154,48 @@ w_clockspec::~w_clockspec() {
 w_clockspec::w_clockspec(const ClockPosition& position)
     : tag(w_cs_clock), clock{proc_start_time, proc_pid, position} {}
 
+w_query_since w_clockspec::evaluate(struct w_query_ctx* ctx) const {
+  w_query_since since;
+
+  switch (tag) {
+    case w_cs_timestamp:
+      // just copy the values over
+      since.is_timestamp = true;
+      since.timestamp = timestamp;
+      return since;
+
+    case w_cs_named_cursor:
+      // This is checked for and handled at parse time in SinceExpr::parse,
+      // so this should be impossible to hit.
+      throw std::runtime_error("illegal to use a named cursor in this context");
+
+    case w_cs_clock: {
+      auto position = ctx->clockAtStartOfQuery;
+
+      if (clock.start_time == proc_start_time && clock.pid == proc_pid &&
+          clock.position.rootNumber == position.rootNumber) {
+        since.clock.is_fresh_instance =
+            clock.position.ticks < ctx->lastAgeOutTickValueAtStartOfQuery;
+        if (since.clock.is_fresh_instance) {
+          since.clock.ticks = 0;
+        } else {
+          since.clock.ticks = clock.position.ticks;
+        }
+      } else {
+        // If the pid, start time or root number don't match, they asked a
+        // different incarnation of the server or a different instance of this
+        // root, so we treat them as having never spoken to us before.
+        since.clock.is_fresh_instance = true;
+        since.clock.ticks = 0;
+      }
+      return since;
+    }
+
+    default:
+      throw std::runtime_error("impossible case in w_clockspec::evaluate");
+  }
+}
+
 bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
                      size_t bufsize) {
   int res = snprintf(buf, bufsize, "c:%" PRIu64 ":%d:%u:%" PRIu32,

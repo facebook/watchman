@@ -26,10 +26,9 @@ class SinceExpr : public QueryExpr {
       : spec(std::move(spec)), field(field) {}
 
   bool evaluate(struct w_query_ctx* ctx, const FileResult* file) override {
-    struct w_query_since since;
     time_t tval = 0;
 
-    w_clockspec_eval(ctx->root, spec.get(), &since);
+    auto since = spec->evaluate(ctx);
 
     switch (field) {
       case since_what::SINCE_OCLOCK:

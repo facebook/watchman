@@ -266,6 +266,8 @@ bool w_query_execute_locked(
   ctx.clockAtStartOfQuery =
       root->inner.view->getMostRecentRootNumberAndTickValue();
   res->clockAtStartOfQuery = ctx.clockAtStartOfQuery;
+  ctx.lastAgeOutTickValueAtStartOfQuery =
+      root->inner.view->getLastAgeOutTickValue();
 
   // Evaluate the cursor for this root
   w_clockspec_eval(root, query->since_spec.get(), &ctx.since);
@@ -305,6 +307,8 @@ bool w_query_execute(
 
   ctx.clockAtStartOfQuery =
       root->inner.view->getMostRecentRootNumberAndTickValue();
+  ctx.lastAgeOutTickValueAtStartOfQuery =
+      root->inner.view->getLastAgeOutTickValue();
   res->clockAtStartOfQuery = ctx.clockAtStartOfQuery;
 
   if (query->query_spec.get_default("bench")) {

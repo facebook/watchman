@@ -72,6 +72,7 @@ struct w_query_ctx {
   struct w_query_since since;
   // root number, ticks at start of query execution
   ClockPosition clockAtStartOfQuery;
+  uint32_t lastAgeOutTickValueAtStartOfQuery;
 
   json_ref resultsArray;
 
