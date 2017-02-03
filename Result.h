@@ -9,7 +9,11 @@ namespace watchman {
 
 // To avoid some horrible special casing for the void type in template
 // metaprogramming we use Unit to denote an uninteresting value type.
-struct Unit {};
+struct Unit {
+  // Lift void -> Unit if T is void, else T
+  template <typename T>
+  struct Lift : std::conditional<std::is_same<T, void>::value, Unit, T> {};
+};
 
 // Represents the Result of an operation, and thus can hold either
 // a value or an error, or neither.  This is similar to the folly::Try

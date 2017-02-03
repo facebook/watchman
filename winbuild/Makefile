@@ -141,7 +141,8 @@ TEST_OBJS=$(TEST_SRCS_CPP:.cpp=.obj) $(TEST_SRCS_C:.c=.obj)
 TEST_DIR_OBJS=$(TEST_DIR_SRCS:.c=.obj) $(TEST_DIR_SRCS_CPP:.cpp=.obj)
 TESTS=tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
 			tests\art.exe tests\ignore.exe tests\pending.exe \
-			tests\string.exe tests\childproc.exe tests\result.exe
+			tests\string.exe tests\childproc.exe tests\result.exe \
+			tests\future.exe
 
 {}.cpp{}.obj::
 	@echo CXX $<
@@ -282,6 +283,15 @@ tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
 	$(LINKER) $** $(LIBS)
 
 tests\bser.exe: tests\bser.obj bser.obj $(TEST_OBJS) \
+	tests\log_stub.obj  \
+	string.obj \
+	hash.obj \
+	PubSub.obj \
+	log.obj
+	@echo LINK $@
+	$(LINKER) $** $(LIBS)
+
+tests\future.exe: tests\FutureTest.obj $(TEST_OBJS) \
 	tests\log_stub.obj  \
 	string.obj \
 	hash.obj \

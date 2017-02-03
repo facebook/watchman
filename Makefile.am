@@ -136,6 +136,7 @@ TESTS = \
 		tests/art.t \
 		tests/bser.t \
 		tests/childproc.t \
+		tests/future.t \
 		tests/ignore.t \
 		tests/pending.t \
 		tests/result.t \
@@ -256,6 +257,16 @@ tests_childproc_t_SOURCES = \
 	ChildProcess.cpp \
 	Pipe.cpp \
 	FileDescriptor.cpp \
+	PubSub.cpp \
+	string.cpp \
+	hash.cpp \
+	log.cpp
+
+tests_future_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
+tests_future_t_LDADD = $(TAP_LIB) $(JSON_LIB)
+tests_future_t_SOURCES = \
+	tests/FutureTest.cpp \
+	tests/log_stub.cpp \
 	PubSub.cpp \
 	string.cpp \
 	hash.cpp \
