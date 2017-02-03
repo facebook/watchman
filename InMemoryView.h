@@ -22,7 +22,7 @@ class InMemoryFileResult : public FileResult {
   w_string_piece baseName() const override;
   w_string_piece dirName() override;
   bool exists() const override;
-  w_string readLink() const override;
+  Future<w_string> readLink() const override;
   const w_clock_t& ctime() const override;
   const w_clock_t& otime() const override;
 

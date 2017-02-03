@@ -8,7 +8,7 @@ static json_ref make_name(const struct watchman_rule_match* match) {
 }
 
 static json_ref make_symlink(const struct watchman_rule_match* match) {
-  auto target = match->file->readLink();
+  auto target = match->file->readLink().get();
   return target ? w_string_to_json(target) : json_null();
 }
 

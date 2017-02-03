@@ -8,6 +8,7 @@
 #include "watchman.h"
 
 #include "QueryableView.h"
+#include "ThreadPool.h"
 
 using facebook::eden::EdenServiceAsyncClient;
 using facebook::eden::FileInformationOrError;
@@ -82,8 +83,8 @@ class EdenFileResult : public FileResult {
     return exists_;
   }
 
-  w_string readLink() const override {
-    return nullptr;
+  Future<w_string> readLink() const override {
+    return makeFuture<w_string>(nullptr);
   }
 
   const w_clock_t& ctime() const override {

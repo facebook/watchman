@@ -5,6 +5,7 @@
 #define WATCHMAN_QUERY_H
 #include <string>
 #include <vector>
+#include "Future.h"
 
 struct w_query;
 typedef struct w_query w_query;
@@ -40,7 +41,7 @@ class FileResult {
   // Returns true if the file currently exists
   virtual bool exists() const = 0;
   // Returns the symlink target
-  virtual w_string readLink() const = 0;
+  virtual watchman::Future<w_string> readLink() const = 0;
 
   virtual const w_clock_t& ctime() const = 0;
   virtual const w_clock_t& otime() const = 0;

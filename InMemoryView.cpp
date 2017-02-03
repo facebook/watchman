@@ -5,6 +5,7 @@
 #include <thread>
 #include "make_unique.h"
 #include "InMemoryView.h"
+#include "ThreadPool.h"
 
 // Each root gets a number that uniquely identifies it within the process. This
 // helps avoid confusion if a root is removed and then added again.
@@ -42,8 +43,8 @@ const w_clock_t& InMemoryFileResult::otime() const {
   return file_->otime;
 }
 
-w_string InMemoryFileResult::readLink() const {
-  return file_->symlink_target;
+Future<w_string> InMemoryFileResult::readLink() const {
+  return makeFuture(file_->symlink_target);
 }
 
 InMemoryView::view::view(const w_string& root_path)
