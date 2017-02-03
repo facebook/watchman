@@ -136,6 +136,7 @@ WILDMATCH_LIB = libwildmatch.a
 TESTS = \
 		tests/art.t \
 		tests/bser.t \
+		tests/cache.t \
 		tests/childproc.t \
 		tests/future.t \
 		tests/ignore.t \
@@ -259,6 +260,17 @@ tests_childproc_t_SOURCES = \
 	Pipe.cpp \
 	FileDescriptor.cpp \
 	PubSub.cpp \
+	string.cpp \
+	hash.cpp \
+	log.cpp
+
+tests_cache_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
+tests_cache_t_LDADD = $(TAP_LIB) $(JSON_LIB)
+tests_cache_t_SOURCES = \
+	tests/CacheTest.cpp \
+	tests/log_stub.cpp \
+	PubSub.cpp \
+	ThreadPool.cpp \
 	string.cpp \
 	hash.cpp \
 	log.cpp

@@ -143,7 +143,7 @@ TEST_DIR_OBJS=$(TEST_DIR_SRCS:.c=.obj) $(TEST_DIR_SRCS_CPP:.cpp=.obj)
 TESTS=tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
 			tests\art.exe tests\ignore.exe tests\pending.exe \
 			tests\string.exe tests\childproc.exe tests\result.exe \
-			tests\future.exe
+			tests\future.exe tests\cache.exe
 
 {}.cpp{}.obj::
 	@echo CXX $<
@@ -288,6 +288,16 @@ tests\bser.exe: tests\bser.obj bser.obj $(TEST_OBJS) \
 	string.obj \
 	hash.obj \
 	PubSub.obj \
+	log.obj
+	@echo LINK $@
+	$(LINKER) $** $(LIBS)
+
+tests\cache.exe: tests\CacheTest.obj $(TEST_OBJS) \
+	tests\log_stub.obj  \
+	string.obj \
+	hash.obj \
+	PubSub.obj \
+	ThreadPool.obj \
 	log.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
