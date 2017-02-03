@@ -9,6 +9,15 @@
 
 namespace watchman {
 
+// An executor is a very light abstraction over something that can run
+// some function.  We use this to perform the WaitableResult callback
+// in some other context (eg: ThreadPool).  In practice, this is used
+// to move the execution context for a .then call to a worker thread.
+struct Executor {
+  virtual ~Executor() = default;
+  virtual void run(std::function<void()>&& func) = 0;
+};
+
 // WaitableResult<T> encapsulates a Result<T> and allows waiting and notifying
 // and interested party.  You are not expected to create an instance of this
 // class directly; it is used as the shared state between the Promise and
@@ -55,9 +64,25 @@ class WaitableResult : public std::enable_shared_from_this<WaitableResult<T>> {
   }
 
   // Associate a callback with the result.
+  // This is intended for use by internal plumbing and a casual
+  // user of a Future should not call this method; instead,
+  // you want to use Future::then().
+  //
   // The callback will be dispatched when the assign() method
   // is called.  If the assign() method was called prior to
   // setCallback(), it will be called by setCallback().
+  //
+  // It is possible for the callback to fire twice for the
+  // same Future if setExecutor() was used to assign an
+  // executor that runs immediately, and if the callback
+  // throws an exception. If this happens, callback will be
+  // called a second time with the Result containing the
+  // exception that it called previously.  Throwing an
+  // exception in that context will bubble up to the caller
+  // of assign().
+  //
+  // If you stick to Future::then(), you don't need to
+  // worry about this.
   template <typename Func>
   void setCallback(Func&& func) {
     std::unique_lock<std::mutex> lock(mutex_);
@@ -67,22 +92,70 @@ class WaitableResult : public std::enable_shared_from_this<WaitableResult<T>> {
     }
   }
 
+  // Change the executor associated with the future
+  void setExecutor(Executor* executor) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    executor_ = executor;
+  }
+
  private:
   Result<T> result_;
   mutable std::condition_variable condition_;
   mutable std::mutex mutex_;
   std::function<void(Result<T>&&)> callback_;
+  Executor* executor_{nullptr};
 
   // If a callback is set, call it.
   // Then notify any waiters that the result is available.
   void maybeCallback(std::unique_lock<std::mutex>&& lock) {
+    if (result_.empty()) {
+      return;
+    }
+
     if (callback_) {
       // Ensure that we are kept alive while we dispatch the callback
       auto scope_guard = this->shared_from_this();
+
+      // Steal the callback
       std::function<void(Result<T> &&)> func;
       std::swap(func, callback_);
-      // For safety, ensure that we are unlocked while calling the callback
+
+      // For safety, ensure that we are unlocked while calling the callback.
+      // While the intent is that the executor run the callback in a
+      // different thread context, it may choose to run something
+      // immediately.
       lock.unlock();
+
+      if (executor_) {
+        try {
+          // Unfortunately, have to make a copy of func here in
+          // order to have sane exception handling
+          executor_->run([scope_guard, this, func] {
+            func(std::move(result_));
+          });
+          condition_.notify_all();
+          return;
+        } catch (const std::exception& exc) {
+          // We get here if executor_->run() threw an exception.
+          // This is most likely to happen if the thread pool is
+          // full, but we can't make any assumptions of the nature
+          // of the exception; it may have simply run the callback
+          // immediately, and we're just seeing the exception from
+          // the callback here.
+          // We're really only capturing this so that we can
+          // propagate thread pool errors through the exception
+          // chain.
+
+          // Replace the current value with the exception, and we'll
+          // dispatch the exception to the callback below.
+          result_ = Result<T>(std::current_exception());
+        }
+      }
+
+      // We don't catch and propagate exceptions that this function
+      // throws (like we do in the executor case above), because
+      // the callback is supposed to manage exceptions and do
+      // the right thing for itself.
       func(std::move(result_));
     }
     condition_.notify_all();
@@ -255,6 +328,20 @@ class Future {
     state_->setCallback(std::forward<Func>(func));
   }
 
+  // Returns a future with its execution context switched to the provided
+  // executor.  A subsequent then() call will be dispatched by that
+  // executor.  Note that, depending on timing, this sequence:
+  // makeFuture().via(exec).then(A).then(B)
+  // will execute A in the context of exec, but may execute B either in
+  // exec or the current context.  If you need to ensure the execution
+  // context for a then() call, you must precede it with a via() call
+  // and supply the appropriate executor:
+  // makeFuture().via(exec).then(A).via(exec).then(B)
+  Future<T> via(Executor* executor) && {
+    state_->setExecutor(executor);
+    return std::move(*this);
+  }
+
  private:
   std::shared_ptr<WaitableResult<T>> state_;
 };
@@ -330,6 +417,10 @@ Future<T> makeFuture(Result<T>&& t) {
 template <typename T>
 Future<typename std::decay<T>::type> makeFuture(T&& t) {
   return makeFuture(Result<typename std::decay<T>::type>(std::forward<T>(t)));
+}
+
+inline Future<Unit> makeFuture() {
+  return makeFuture(Result<Unit>(Unit{}));
 }
 
 // Yields a Future holding a vector<Result<T>> for each of the input futures

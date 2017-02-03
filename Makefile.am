@@ -19,6 +19,7 @@ watchman_SOURCES = \
 	InMemoryView.cpp \
 	Pipe.cpp \
 	PubSub.cpp \
+	ThreadPool.cpp \
 	QueryableView.cpp \
 	spawn.cpp       \
 	opt.cpp        \
@@ -268,6 +269,7 @@ tests_future_t_SOURCES = \
 	tests/FutureTest.cpp \
 	tests/log_stub.cpp \
 	PubSub.cpp \
+	ThreadPool.cpp \
 	string.cpp \
 	hash.cpp \
 	log.cpp

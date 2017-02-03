@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "ChildProcess.h"
 #include "Logging.h"
+#include "ThreadPool.h"
 #include "watchman.h"
 #ifndef _WIN32
 #include <poll.h>
@@ -169,6 +170,10 @@ static void run_service(void)
     sigprocmask(SIG_BLOCK, &sigset, NULL);
   }
 #endif
+
+  watchman::getThreadPool().start(
+      cfg_get_int("thread_pool_worker_threads", 16),
+      cfg_get_int("thread_pool_max_items", 1024 * 1024));
 
   w_clockspec_init();
   w_state_load();

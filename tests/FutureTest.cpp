@@ -6,6 +6,7 @@
 #include <string>
 #include <thread>
 #include "Future.h"
+#include "ThreadPool.h"
 #include "thirdparty/tap.h"
 
 using namespace watchman;
@@ -120,11 +121,30 @@ void test_collect() {
   });
 }
 
+void test_via() {
+  ThreadPool pool;
+  pool.start(1, 1024);
+
+  Promise<bool> barrier;
+
+  auto f = makeFuture().via(&pool).then([&barrier](Result<Unit>&&) {
+    diag("waiting for barrier");
+    barrier.getFuture().wait();
+    return 42;
+  });
+
+  ok(!f.isReady(), "hasn't run in the thread yet");
+  barrier.setValue(true);
+
+  ok(f.get() == 42, "came back on the other side");
+}
+
 int main() {
-  plan_tests(18);
+  plan_tests(20);
   test_promise();
   test_thread();
   test_then();
   test_collect();
+  test_via();
   return exit_status();
 }

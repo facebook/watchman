@@ -28,6 +28,7 @@ SRCS_CPP=\
 	InMemoryView.cpp \
 	Pipe.cpp \
 	PubSub.cpp \
+	ThreadPool.cpp \
 	QueryableView.cpp \
 	Win32Handle.cpp \
 	winbuild\errmap.cpp \
@@ -296,6 +297,7 @@ tests\future.exe: tests\FutureTest.obj $(TEST_OBJS) \
 	string.obj \
 	hash.obj \
 	PubSub.obj \
+	ThreadPool.obj \
 	log.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
