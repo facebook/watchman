@@ -138,6 +138,7 @@ TESTS = \
 		tests/childproc.t \
 		tests/ignore.t \
 		tests/pending.t \
+		tests/result.t \
 		tests/string.t \
 		tests/log.t \
 		tests/wildmatch.t
@@ -255,6 +256,16 @@ tests_childproc_t_SOURCES = \
 	ChildProcess.cpp \
 	Pipe.cpp \
 	FileDescriptor.cpp \
+	PubSub.cpp \
+	string.cpp \
+	hash.cpp \
+	log.cpp
+
+tests_result_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
+tests_result_t_LDADD = $(TAP_LIB) $(JSON_LIB)
+tests_result_t_SOURCES = \
+	tests/ResultTest.cpp \
+	tests/log_stub.cpp \
 	PubSub.cpp \
 	string.cpp \
 	hash.cpp \

@@ -85,3 +85,11 @@ t_test(
       '@/watchman:testsupport',
     ],
 )
+
+t_test(
+    name='result',
+    srcs=['ResultTest.cpp', 'log_stub.cpp'],
+    deps=[
+      '@/watchman:testsupport',
+    ],
+)
