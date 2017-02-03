@@ -353,6 +353,13 @@ std::shared_ptr<w_query> w_query_parse(
     goto error;
   }
 
+  for (auto& f : res->fieldList) {
+    if (f->futureMake) {
+      res->renderUsesFutures = true;
+      break;
+    }
+  }
+
   res->query_spec = query;
 
   return result;

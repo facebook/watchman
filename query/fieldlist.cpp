@@ -2,14 +2,19 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "Future.h"
+using namespace watchman;
 
 static json_ref make_name(const struct watchman_rule_match* match) {
   return w_string_to_json(match->relname);
 }
 
-static json_ref make_symlink(const struct watchman_rule_match* match) {
-  auto target = match->file->readLink().get();
-  return target ? w_string_to_json(target) : json_null();
+static watchman::Future<json_ref> make_symlink(
+    const struct watchman_rule_match* match) {
+  return match->file->readLink().then([](Result<w_string>&& result) {
+    auto& target = result.value();
+    return target ? w_string_to_json(target) : json_null();
+  });
 }
 
 static json_ref make_exists(const struct watchman_rule_match* match) {
@@ -83,11 +88,11 @@ MAKE_INT_FIELD(dev, dev)
 MAKE_INT_FIELD(nlink, nlink)
 
 #define MAKE_TIME_FIELD_DEFS(type) \
-  { #type "time", make_##type##time }, \
-  { #type "time_ms", make_##type##time_ms }, \
-  { #type "time_us", make_##type##time_us }, \
-  { #type "time_ns", make_##type##time_ns }, \
-  { #type "time_f", make_##type##time_f }
+  { #type "time", make_##type##time, nullptr }, \
+  { #type "time_ms", make_##type##time_ms, nullptr }, \
+  { #type "time_us", make_##type##time_us, nullptr }, \
+  { #type "time_ns", make_##type##time_ns, nullptr }, \
+  { #type "time_f", make_##type##time_f, nullptr }
 
 static json_ref make_type_field(const struct watchman_rule_match* match) {
   // Bias towards the more common file types first
@@ -121,39 +126,36 @@ static json_ref make_type_field(const struct watchman_rule_match* match) {
   return typed_string_to_json("?", W_STRING_UNICODE);
 }
 
-struct w_query_field_renderer {
-  w_string name;
-  json_ref (*make)(const struct watchman_rule_match* match);
-};
-
 // Helper to construct the list of field defs
 static std::unordered_map<w_string, w_query_field_renderer> build_defs() {
   struct {
     const char* name;
     json_ref (*make)(const struct watchman_rule_match* match);
+    watchman::Future<json_ref> (*futureMake)(
+        const struct watchman_rule_match* match);
   } defs[] = {
-      {"name", make_name},
-      {"symlink_target", make_symlink},
-      {"exists", make_exists},
-      {"size", make_size},
-      {"mode", make_mode},
-      {"uid", make_uid},
-      {"gid", make_gid},
+      {"name", make_name, nullptr},
+      {"symlink_target", nullptr, make_symlink},
+      {"exists", make_exists, nullptr},
+      {"size", make_size, nullptr},
+      {"mode", make_mode, nullptr},
+      {"uid", make_uid, nullptr},
+      {"gid", make_gid, nullptr},
       MAKE_TIME_FIELD_DEFS(a),
       MAKE_TIME_FIELD_DEFS(m),
       MAKE_TIME_FIELD_DEFS(c),
-      {"ino", make_ino},
-      {"dev", make_dev},
-      {"nlink", make_nlink},
-      {"new", make_new},
-      {"oclock", make_oclock},
-      {"cclock", make_cclock},
-      {"type", make_type_field},
+      {"ino", make_ino, nullptr},
+      {"dev", make_dev, nullptr},
+      {"nlink", make_nlink, nullptr},
+      {"new", make_new, nullptr},
+      {"oclock", make_oclock, nullptr},
+      {"cclock", make_cclock, nullptr},
+      {"type", make_type_field, nullptr},
   };
   std::unordered_map<w_string, w_query_field_renderer> map;
   for (auto& def : defs) {
     w_string name(def.name, W_STRING_UNICODE);
-    map.emplace(name, w_query_field_renderer{name, def.make});
+    map.emplace(name, w_query_field_renderer{name, def.make, def.futureMake});
   }
 
   return map;
@@ -198,6 +200,37 @@ json_ref file_result_to_json(
     value.set(f->name, std::move(ele));
   }
   return value;
+}
+
+watchman::Future<json_ref> file_result_to_json_future(
+    const w_query_field_list& fieldList,
+    watchman_rule_match&& match) {
+  auto matchPtr = std::make_shared<watchman_rule_match>(std::move(match));
+
+  std::vector<watchman::Future<json_ref>> futures;
+  for (auto& f : fieldList) {
+    if (f->futureMake) {
+      futures.emplace_back(f->futureMake(matchPtr.get()));
+    } else {
+      futures.emplace_back(makeFuture(f->make(matchPtr.get())));
+    }
+  }
+
+  return collectAll(futures.begin(), futures.end())
+      .then([&fieldList, matchPtr](
+          Result<std::vector<Result<json_ref>>>&& result) {
+        auto& vec = result.value();
+        if (fieldList.size() == 1) {
+          return vec[0].value();
+        }
+
+        auto value = json_object_of_size(vec.size());
+        for (size_t i = 0; i < fieldList.size(); ++i) {
+          auto& f = fieldList[i];
+          value.set(f->name, std::move(vec[i].value()));
+        }
+        return value;
+      });
 }
 
 bool parse_field_list(

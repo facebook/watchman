@@ -9,7 +9,14 @@
 
 struct w_query;
 typedef struct w_query w_query;
-struct w_query_field_renderer;
+
+struct w_query_field_renderer {
+  w_string name;
+  json_ref (*make)(const struct watchman_rule_match* match);
+  watchman::Future<json_ref> (*futureMake)(
+      const struct watchman_rule_match* match);
+};
+
 using w_query_field_list = std::vector<const w_query_field_renderer*>;
 
 struct w_query_since {
@@ -75,7 +82,12 @@ struct w_query_ctx {
   ClockPosition clockAtStartOfQuery;
   uint32_t lastAgeOutTickValueAtStartOfQuery;
 
+  // Rendered results
   json_ref resultsArray;
+
+  // Results that are pending render, eg: pending some
+  // computation that is happening async.
+  std::deque<watchman::Future<json_ref>> resultsToRender;
 
   // When deduping the results, set<wholename> of
   // the files held in results
@@ -87,6 +99,9 @@ struct w_query_ctx {
   w_query_ctx(w_query* q, const std::shared_ptr<w_root_t>& root);
   w_query_ctx(const w_query_ctx&) = delete;
   w_query_ctx& operator=(const w_query_ctx&) = delete;
+
+  // Move any completed items from resultsToRender to resultsArray
+  void speculativeRenderCompletion();
 };
 
 struct w_query_path {
@@ -137,6 +152,8 @@ struct w_query {
   json_ref query_spec;
 
   w_query_field_list fieldList;
+  // True if any entry in fieldList has a non-null futureMake
+  bool renderUsesFutures{false};
 };
 
 typedef std::unique_ptr<QueryExpr> (
@@ -215,6 +232,10 @@ bool w_query_legacy_field_list(w_query_field_list* flist);
 json_ref file_result_to_json(
     const w_query_field_list& fieldList,
     const watchman_rule_match& match);
+
+watchman::Future<json_ref> file_result_to_json_future(
+    const w_query_field_list& fieldList,
+    watchman_rule_match&& match);
 
 void w_query_init_all(void);
 

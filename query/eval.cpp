@@ -3,6 +3,9 @@
 
 #include "watchman.h"
 #include "watchman_scopeguard.h"
+using watchman::Result;
+using watchman::Future;
+using watchman::collectAll;
 
 FileResult::~FileResult() {}
 
@@ -85,10 +88,38 @@ bool w_query_process_file(
       is_new,
       std::move(ctx->file));
 
-  json_array_append_new(
-      ctx->resultsArray, file_result_to_json(ctx->query->fieldList, match));
+  if (ctx->query->renderUsesFutures) {
+    // Conceptually all we need to do here is append the future to
+    // resultsToRender and then collectAll at the end of the query.  That
+    // requires O(num-matches x num-fields) memory usage of the future related
+    // data for the duration of the query.  In order to keep things down to a
+    // more reasonable size, if the future is immediately ready we can append to
+    // the results directly, and we can also speculatively do the same for any
+    // pending items that happen to complete in between matches.  That makes
+    // this code look a little more complex, but it is worth it for very large
+    // result sets.
+    auto future =
+        file_result_to_json_future(ctx->query->fieldList, std::move(match));
+    if (future.isReady()) {
+      json_array_append_new(ctx->resultsArray, std::move(future.get()));
+    } else {
+      ctx->resultsToRender.emplace_back(std::move(future));
+    }
+    ctx->speculativeRenderCompletion();
+  } else {
+    json_array_append_new(
+        ctx->resultsArray, file_result_to_json(ctx->query->fieldList, match));
+  }
 
   return true;
+}
+
+void w_query_ctx::speculativeRenderCompletion() {
+  while (!resultsToRender.empty() && resultsToRender.front().isReady()) {
+    json_array_append_new(
+        resultsArray, std::move(resultsToRender.front().get()));
+    resultsToRender.pop_front();
+  }
 }
 
 bool w_query_file_matches_relative_root(
@@ -214,6 +245,17 @@ static bool execute_common(
       ctx->query->errmsg = NULL;
       result = false;
     }
+  }
+
+  if (!ctx->resultsToRender.empty()) {
+    collectAll(ctx->resultsToRender.begin(), ctx->resultsToRender.end())
+        .then([&](Result<std::vector<Result<json_ref>>>&& results) {
+          auto& vec = results.value();
+          for (auto& item : vec) {
+            json_array_append_new(ctx->resultsArray, std::move(item.value()));
+          }
+        })
+        .get();
   }
 
   if (sample && sample->finish()) {
