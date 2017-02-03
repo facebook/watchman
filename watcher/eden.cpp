@@ -12,6 +12,9 @@
 using facebook::eden::EdenServiceAsyncClient;
 using facebook::eden::FileInformationOrError;
 using facebook::eden::FileInformation;
+using facebook::eden::JournalPosition;
+using facebook::eden::FileDelta;
+using facebook::eden::EdenError;
 
 namespace watchman {
 namespace {
@@ -37,12 +40,30 @@ std::unique_ptr<EdenServiceAsyncClient> getEdenClient(
 
 class EdenFileResult : public FileResult {
  public:
-  EdenFileResult(const FileInformation& info, const w_string& fullName)
+  EdenFileResult(
+      const FileInformationOrError& infoOrErr,
+      const w_string& fullName,
+      JournalPosition* position = nullptr)
       : fullName_(fullName) {
-    stat_.size = info.size;
-    stat_.mode = info.mode;
-    stat_.mtime.tv_sec = info.mtime.seconds;
-    stat_.mtime.tv_nsec = info.mtime.nanoSeconds;
+    otime_.ticks = ctime_.ticks = 0;
+    otime_.timestamp = ctime_.timestamp = 0;
+    if (position) {
+      otime_.ticks = ctime_.ticks = position->sequenceNumber;
+    }
+
+    if (infoOrErr.getType() == FileInformationOrError::Type::info) {
+      stat_.size = infoOrErr.get_info().size;
+      stat_.mode = infoOrErr.get_info().mode;
+      stat_.mtime.tv_sec = infoOrErr.get_info().mtime.seconds;
+      stat_.mtime.tv_nsec = infoOrErr.get_info().mtime.nanoSeconds;
+
+      otime_.timestamp = ctime_.timestamp = stat_.mtime.tv_sec;
+
+      exists_ = true;
+    } else {
+      exists_ = false;
+      memset(&stat_, 0, sizeof(stat_));
+    }
   }
 
   const watchman_stat& stat() const override {
@@ -58,7 +79,7 @@ class EdenFileResult : public FileResult {
   }
 
   bool exists() const override {
-    return true;
+    return exists_;
   }
 
   w_string readLink() const override {
@@ -66,15 +87,18 @@ class EdenFileResult : public FileResult {
   }
 
   const w_clock_t& ctime() const override {
-    throw std::runtime_error("ctime not implemented for eden");
+    return ctime_;
   }
   const w_clock_t& otime() const override {
-    throw std::runtime_error("otime not implemented for eden");
+    return otime_;
   }
 
  private:
   w_string fullName_;
   watchman_stat stat_;
+  bool exists_;
+  w_clock_t ctime_;
+  w_clock_t otime_;
 };
 
 static std::string escapeGlobSpecialChars(w_string_piece str) {
@@ -109,8 +133,113 @@ class EdenView : public QueryableView {
       w_query* query,
       struct w_query_ctx* ctx,
       int64_t* num_walked) const override {
-    watchman::log(watchman::ERR, __FUNCTION__, "\n");
-    return false;
+    auto client = getEdenClient();
+    bool result = true;
+    auto mountPoint = to<std::string>(ctx->root->root_path);
+
+    FileDelta delta;
+    JournalPosition resultPosition;
+
+    if (ctx->since.is_timestamp) {
+      throw std::runtime_error(
+          "timestamp based since queries are not supported with eden");
+    }
+
+    // This is the fall back for a fresh instance result set.
+    // There are two different code paths that may need this, so
+    // it is broken out as a lambda.
+    auto getAllFiles = [ctx, &client, &mountPoint]() {
+      std::vector<std::string> fileNames;
+
+      if (ctx->query->empty_on_fresh_instance) {
+        // Avoid a full tree walk if we don't need it!
+        return fileNames;
+      }
+
+      std::string globPattern;
+      if (ctx->query->relative_root) {
+        w_string_piece rel(ctx->query->relative_root);
+        rel.advance(ctx->root->root_path.size() + 1);
+        globPattern.append(rel.data(), rel.size());
+        globPattern.append("/");
+      }
+      globPattern.append("**");
+      client->sync_glob(
+          fileNames, mountPoint, std::vector<std::string>{globPattern});
+      return fileNames;
+    };
+
+    std::vector<std::string> fileNames;
+    if (ctx->since.clock.is_fresh_instance) {
+      // Earlier in the processing flow, we decided that the rootNumber
+      // didn't match the current root which means that eden was restarted.
+      // We need to translate this to a fresh instance result set and
+      // return a list of all possible matching files.
+      client->sync_getCurrentJournalPosition(resultPosition, mountPoint);
+      fileNames = getAllFiles();
+    } else {
+      // Query eden to fill in the mountGeneration field.
+      JournalPosition position;
+      client->sync_getCurrentJournalPosition(position, mountPoint);
+      // dial back to the sequence number from the query
+      position.sequenceNumber = ctx->since.clock.ticks;
+
+      // Now we can get the change journal from eden
+      try {
+        client->sync_getFilesChangedSince(delta, mountPoint, position);
+        fileNames = std::move(delta.paths);
+        resultPosition = delta.toPosition;
+        watchman::log(
+            watchman::DBG,
+            "wanted from ",
+            position.sequenceNumber,
+            " result delta from ",
+            delta.fromPosition.sequenceNumber,
+            " to ",
+            delta.toPosition.sequenceNumber,
+            " with ",
+            fileNames.size(),
+            " changed files\n");
+      } catch (const EdenError& err) {
+        if (err.errorCode != ERANGE) {
+          throw;
+        }
+        // mountGeneration differs, so treat this as equivalent
+        // to a fresh instance result
+        ctx->since.clock.is_fresh_instance = true;
+        client->sync_getCurrentJournalPosition(resultPosition, mountPoint);
+        fileNames = getAllFiles();
+      }
+    }
+
+    std::vector<FileInformationOrError> info;
+    client->sync_getFileInformation(info, mountPoint, fileNames);
+
+    if (info.size() != fileNames.size()) {
+      throw std::runtime_error(
+          "info.size() didn't match fileNames.size(), should be unpossible!");
+    }
+
+    auto nameIter = fileNames.begin();
+    auto infoIter = info.begin();
+    while (nameIter != fileNames.end()) {
+      auto& name = *nameIter;
+      auto& fileInfo = *infoIter;
+
+      auto file = make_unique<EdenFileResult>(
+          fileInfo, w_string::pathCat({mountPoint, name}), &resultPosition);
+
+      if (!w_query_process_file(ctx->query, ctx, std::move(file))) {
+        result = false;
+        break;
+      }
+
+      ++nameIter;
+      ++infoIter;
+    }
+
+    *num_walked = fileNames.size();
+    return result;
   }
 
   bool suffixGenerator(
@@ -166,7 +295,7 @@ class EdenView : public QueryableView {
       auto& fileInfo = *infoIter;
 
       auto file = make_unique<EdenFileResult>(
-          fileInfo.get_info(), w_string::pathCat({mountPoint, name}));
+          fileInfo, w_string::pathCat({mountPoint, name}));
 
       if (!w_query_process_file(ctx->query, ctx, std::move(file))) {
         result = false;
@@ -277,12 +406,14 @@ class EdenView : public QueryableView {
   }
 
   ClockPosition getMostRecentRootNumberAndTickValue() const override {
-    watchman::log(watchman::ERR, __FUNCTION__, "\n");
-    return ClockPosition();
+    auto client = getEdenClient();
+    JournalPosition position;
+    auto mountPoint = to<std::string>(root_path_);
+    client->sync_getCurrentJournalPosition(position, mountPoint);
+    return ClockPosition(position.mountGeneration, position.sequenceNumber);
   }
 
   w_string getCurrentClockString() const override {
-    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     return ClockPosition().toClockString();
   }
 
