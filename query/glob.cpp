@@ -253,7 +253,9 @@ bool InMemoryView::globGeneratorDoublestar(
 
       if (matched) {
         if (!w_query_process_file(
-                ctx->query, ctx, make_unique<InMemoryFileResult>(file))) {
+                ctx->query,
+                ctx,
+                make_unique<InMemoryFileResult>(file, contentHashCache_))) {
           result = false;
           goto done;
         }
@@ -378,7 +380,9 @@ bool InMemoryView::globGeneratorTree(
           if (file->exists) {
             // Globs can only match files that exist
             result = w_query_process_file(
-                ctx->query, ctx, make_unique<InMemoryFileResult>(file));
+                ctx->query,
+                ctx,
+                make_unique<InMemoryFileResult>(file, contentHashCache_));
             if (!result) {
               goto done;
             }
@@ -403,7 +407,9 @@ bool InMemoryView::globGeneratorTree(
                       (ctx->query->case_sensitive ? WM_CASEFOLD : 0),
                   0) == WM_MATCH) {
             if (!w_query_process_file(
-                    ctx->query, ctx, make_unique<InMemoryFileResult>(file))) {
+                    ctx->query,
+                    ctx,
+                    make_unique<InMemoryFileResult>(file, contentHashCache_))) {
               result = false;
               goto done;
             }

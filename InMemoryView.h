@@ -4,6 +4,7 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include "ContentHash.h"
 #include "CookieSync.h"
 #include "QueryableView.h"
 #include "watchman_config.h"
@@ -17,7 +18,9 @@ namespace watchman {
 
 class InMemoryFileResult : public FileResult {
  public:
-  explicit InMemoryFileResult(const watchman_file* file);
+  explicit InMemoryFileResult(
+      const watchman_file* file,
+      ContentHashCache& contentHashCache);
   const watchman_stat& stat() const override;
   w_string_piece baseName() const override;
   w_string_piece dirName() override;
@@ -25,10 +28,12 @@ class InMemoryFileResult : public FileResult {
   Future<w_string> readLink() const override;
   const w_clock_t& ctime() const override;
   const w_clock_t& otime() const override;
+  watchman::Future<FileResult::ContentHash> getContentSha1() override;
 
  private:
   const watchman_file* file_;
   w_string dirName_;
+  ContentHashCache& contentHashCache_;
 };
 
 /** Keeps track of the state of the filesystem in-memory. */
@@ -227,5 +232,9 @@ struct InMemoryView : public QueryableView {
 
   std::atomic<bool> stopThreads_{false};
   std::shared_ptr<Watcher> watcher_;
+
+  // mutable because we pass a reference to other things from inside
+  // const methods
+  mutable ContentHashCache contentHashCache_;
 };
 }

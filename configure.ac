@@ -270,6 +270,7 @@ AC_ARG_ENABLE(stack-protector, [
 
 AC_SEARCH_LIBS([pthread_create], [pthread])
 AC_SEARCH_LIBS([socket], [socket])
+AC_SEARCH_LIBS([SHA1_Init], [crypto])
 
 AC_CHECK_HEADERS(sys/types.h inttypes.h locale.h port.h sys/inotify.h sys/event.h)
 AC_CHECK_HEADERS(sys/ucred.h sys/socket.h)

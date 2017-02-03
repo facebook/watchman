@@ -13,8 +13,10 @@ static std::atomic<long> next_root_number{1};
 
 namespace watchman {
 
-InMemoryFileResult::InMemoryFileResult(const watchman_file* file)
-    : file_(file) {}
+InMemoryFileResult::InMemoryFileResult(
+    const watchman_file* file,
+    ContentHashCache& contentHashCache)
+    : file_(file), contentHashCache_(contentHashCache) {}
 
 const watchman_stat& InMemoryFileResult::stat() const {
   return file_->stat;
@@ -47,6 +49,26 @@ Future<w_string> InMemoryFileResult::readLink() const {
   return makeFuture(file_->symlink_target);
 }
 
+Future<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
+  auto dir = dirName();
+  dir.advance(contentHashCache_.rootPath().size());
+
+  // If dirName is the root, dir.size() will now be zero
+  if (dir.size() > 0) {
+    // if not at the root, skip the slash character at the
+    // front of dir
+    dir.advance(1);
+  }
+
+  ContentHashCacheKey key{w_string::pathCat({dir, baseName()}),
+                          size_t(file_->stat.size),
+                          file_->stat.mtime};
+
+  return contentHashCache_.get(key).then(
+      [](Result<std::shared_ptr<const ContentHashCache::Node>>&& result)
+          -> FileResult::ContentHash { return result.value()->value(); });
+}
+
 InMemoryView::view::view(const w_string& root_path)
     : root_dir(watchman::make_unique<watchman_dir>(root_path, nullptr)),
       rootNumber(next_root_number++) {}
@@ -56,7 +78,12 @@ InMemoryView::InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher)
       config_(root->config),
       view_(view(root->root_path)),
       root_path(root->root_path),
-      watcher_(watcher) {}
+      watcher_(watcher),
+      contentHashCache_(
+          root->root_path,
+          config_.getInt("content_hash_max_items", 128 * 1024),
+          std::chrono::milliseconds(
+              config_.getInt("content_hash_negative_cache_ttl_ms", 2000))) {}
 
 void InMemoryView::view::insertAtHeadOfFileList(struct watchman_file* file) {
   file->next = latest_file;
@@ -393,7 +420,9 @@ bool InMemoryView::timeGenerator(
     }
 
     if (!w_query_process_file(
-            query, ctx, watchman::make_unique<InMemoryFileResult>(f))) {
+            query,
+            ctx,
+            watchman::make_unique<InMemoryFileResult>(f, contentHashCache_))) {
       result = false;
       goto done;
     }
@@ -428,7 +457,10 @@ bool InMemoryView::suffixGenerator(
       }
 
       if (!w_query_process_file(
-              query, ctx, watchman::make_unique<InMemoryFileResult>(f))) {
+              query,
+              ctx,
+              watchman::make_unique<InMemoryFileResult>(
+                  f, contentHashCache_))) {
         result = false;
         goto done;
       }
@@ -497,7 +529,10 @@ bool InMemoryView::pathGenerator(
       if (f && (!f->exists || !S_ISDIR(f->stat.mode))) {
         ++n;
         if (!w_query_process_file(
-                query, ctx, watchman::make_unique<InMemoryFileResult>(f))) {
+                query,
+                ctx,
+                watchman::make_unique<InMemoryFileResult>(
+                    f, contentHashCache_))) {
           result = false;
           goto done;
         }
@@ -542,7 +577,10 @@ bool InMemoryView::dirGenerator(
     ++n;
 
     if (!w_query_process_file(
-            query, ctx, watchman::make_unique<InMemoryFileResult>(file))) {
+            query,
+            ctx,
+            watchman::make_unique<InMemoryFileResult>(
+                file, contentHashCache_))) {
       result = false;
       goto done;
     }
@@ -582,7 +620,9 @@ bool InMemoryView::allFilesGenerator(
     }
 
     if (!w_query_process_file(
-            query, ctx, watchman::make_unique<InMemoryFileResult>(f))) {
+            query,
+            ctx,
+            watchman::make_unique<InMemoryFileResult>(f, contentHashCache_))) {
       result = false;
       goto done;
     }

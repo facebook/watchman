@@ -3,6 +3,7 @@
 
 #ifndef WATCHMAN_QUERY_H
 #define WATCHMAN_QUERY_H
+#include <array>
 #include <string>
 #include <vector>
 #include "Future.h"
@@ -52,6 +53,10 @@ class FileResult {
 
   virtual const w_clock_t& ctime() const = 0;
   virtual const w_clock_t& otime() const = 0;
+
+  // Returns the SHA-1 hash of the file contents
+  using ContentHash = std::array<uint8_t, 20>;
+  virtual watchman::Future<ContentHash> getContentSha1() = 0;
 };
 
 struct watchman_rule_match {

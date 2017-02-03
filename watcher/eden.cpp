@@ -94,6 +94,12 @@ class EdenFileResult : public FileResult {
     return otime_;
   }
 
+  Future<FileResult::ContentHash> getContentSha1() override {
+    return makeFuture<FileResult::ContentHash>(
+        Result<FileResult::ContentHash>(std::make_exception_ptr(
+            std::runtime_error("content hash not implemented"))));
+  }
+
  private:
   w_string fullName_;
   watchman_stat stat_;

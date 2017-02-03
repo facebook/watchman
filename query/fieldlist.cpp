@@ -17,6 +17,34 @@ static watchman::Future<json_ref> make_symlink(
   });
 }
 
+static watchman::Future<json_ref> make_sha1_hex(
+    const struct watchman_rule_match* match) {
+  if (!S_ISREG(match->file->stat().mode) || !match->file->exists()) {
+    // We return null for items that can't have a content hash
+    return makeFuture(json_null());
+  }
+  return match->file->getContentSha1().then(
+      [](Result<FileResult::ContentHash>&& result) {
+        try {
+          auto& hash = result.value();
+          char buf[40];
+          static const char* hexDigit = "0123456789abcdef";
+          for (size_t i = 0; i < hash.size(); ++i) {
+            auto& digit = hash[i];
+            buf[(i * 2) + 0] = hexDigit[digit >> 4];
+            buf[(i * 2) + 1] = hexDigit[digit & 0xf];
+          }
+          return w_string_to_json(w_string(buf, sizeof(buf), W_STRING_UNICODE));
+        } catch (const std::exception& exc) {
+          // We'll report the error wrapped up in an object so that it can be
+          // distinguished from a valid hash result.
+          return json_object(
+              {{"error",
+                w_string_to_json(w_string(exc.what(), W_STRING_UNICODE))}});
+        }
+      });
+}
+
 static json_ref make_exists(const struct watchman_rule_match* match) {
   return json_boolean(match->file->exists());
 }
@@ -151,6 +179,7 @@ static std::unordered_map<w_string, w_query_field_renderer> build_defs() {
       {"oclock", make_oclock, nullptr},
       {"cclock", make_cclock, nullptr},
       {"type", make_type_field, nullptr},
+      {"content.sha1hex", nullptr, make_sha1_hex},
   };
   std::unordered_map<w_string, w_query_field_renderer> map;
   for (auto& def : defs) {
