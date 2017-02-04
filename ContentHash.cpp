@@ -166,4 +166,8 @@ Future<HashValue> ContentHashCache::computeHash(
 const w_string& ContentHashCache::rootPath() const {
   return rootPath_;
 }
+
+CacheStats ContentHashCache::stats() const {
+  return cache_.stats();
+}
 }

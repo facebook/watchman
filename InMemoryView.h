@@ -90,6 +90,12 @@ struct InMemoryView : public QueryableView {
   const w_string& getName() const override;
   const std::shared_ptr<Watcher>& getWatcher() const;
 
+  // If content cache warming is configured, do the warm up now
+  void warmContentCache();
+  static void debugContentHashCache(
+      struct watchman_client* client,
+      const json_ref& args);
+
  private:
   /* Holds the list head for files of a given suffix */
   struct file_list_head {
@@ -236,5 +242,14 @@ struct InMemoryView : public QueryableView {
   // mutable because we pass a reference to other things from inside
   // const methods
   mutable ContentHashCache contentHashCache_;
+  // Should we warm the cache when we settle?
+  bool enableContentCacheWarming_{false};
+  // How many of the most recent files to warm up when settling?
+  size_t maxFilesToWarmInContentCache_{1024};
+  // If true, we will wait for the items to be hashed before
+  // dispatching the settle to watchman clients
+  bool syncContentCacheWarming_{false};
+  // Remember what we've already warmed up
+  uint32_t lastWarmedTick_{0};
 };
 }

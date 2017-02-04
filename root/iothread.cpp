@@ -98,6 +98,11 @@ static bool do_settle_things(const std::shared_ptr<w_root_t>& root) {
     return false;
   }
 
+  auto view =
+      std::dynamic_pointer_cast<watchman::InMemoryView>(root->inner.view);
+  w_assert(view, "we're called from InMemoryView, wat?");
+  view->warmContentCache();
+
   auto settledPayload = json_object({{"settled", json_true()}});
   root->unilateralResponses->enqueue(std::move(settledPayload));
 

@@ -9,6 +9,7 @@ from __future__ import print_function
 
 import WatchmanTestCase
 import hashlib
+import json
 import os
 
 
@@ -31,11 +32,19 @@ class TestContentHash(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand('watch', root)
         self.assertFileList(root, ['foo'])
 
+        stats = self.watchmanCommand('debug-contenthash', root)
+        self.assertEqual(stats['size'], 0)
+
         res = self.watchmanCommand('query', root, {
             'expression': ["name", "foo"],
             'fields': ['name', 'content.sha1hex']})
         self.assertEqual(expect_hex,
                          res['files'][0]['content.sha1hex'])
+
+        stats = self.watchmanCommand('debug-contenthash', root)
+        self.assertEqual(stats['size'], 1)
+        self.assertEqual(stats['cacheHit'], 0)
+        self.assertEqual(stats['cacheStore'], 1)
 
         # repeated query also works
         res = self.watchmanCommand('query', root, {
@@ -43,6 +52,11 @@ class TestContentHash(WatchmanTestCase.WatchmanTestCase):
             'fields': ['name', 'content.sha1hex']})
         self.assertEqual(expect_hex,
                          res['files'][0]['content.sha1hex'])
+
+        stats = self.watchmanCommand('debug-contenthash', root)
+        self.assertEqual(stats['size'], 1)
+        self.assertEqual(stats['cacheHit'], 1)
+        self.assertEqual(stats['cacheStore'], 1)
 
         # change the content and expect to see that reflected
         # in the subsequent query
@@ -54,6 +68,12 @@ class TestContentHash(WatchmanTestCase.WatchmanTestCase):
             'fields': ['name', 'content.sha1hex']})
         self.assertEqual(expect_hex,
                          res['files'][0]['content.sha1hex'])
+
+        stats = self.watchmanCommand('debug-contenthash', root)
+        self.assertEqual(stats['size'], 2)
+        self.assertEqual(stats['cacheHit'], 1)
+        self.assertEqual(stats['cacheMiss'], 2)
+        self.assertEqual(stats['cacheStore'], 2)
 
         # directories have no content hash
         os.mkdir(os.path.join(root, "dir"))
@@ -72,4 +92,33 @@ class TestContentHash(WatchmanTestCase.WatchmanTestCase):
             'since': res['clock'],
             'fields': ['name', 'content.sha1hex']})
         self.assertEqual(None,
+                         res['files'][0]['content.sha1hex'])
+
+    def test_contentHashWarming(self):
+        root = self.mkdtemp()
+
+        expect_hex = self.write_file_and_hash(
+            os.path.join(root, 'foo'), "hello\n")
+        with open(os.path.join(root, '.watchmanconfig'), 'w') as f:
+            f.write(json.dumps({'content_hash_warming': True,}))
+
+        self.watchmanCommand('watch', root)
+        self.assertFileList(root, ['.watchmanconfig', 'foo'])
+
+        def cachePopulate():
+            return self.watchmanCommand(
+                'debug-contenthash', root)['size'] == 2
+
+        self.waitFor(cachePopulate)
+        stats = self.watchmanCommand('debug-contenthash', root)
+        self.assertEqual(stats['size'], 2)
+        self.assertEqual(stats['cacheHit'], 0)
+        self.assertEqual(stats['cacheMiss'], 2)
+        self.assertEqual(stats['cacheStore'], 2)
+        self.assertEqual(stats['cacheLoad'], 2)
+
+        res = self.watchmanCommand('query', root, {
+            'expression': ["name", "foo"],
+            'fields': ['name', 'content.sha1hex']})
+        self.assertEqual(expect_hex,
                          res['files'][0]['content.sha1hex'])

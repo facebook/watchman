@@ -63,6 +63,9 @@ class ContentHashCache {
   // Returns the root path that this cache is associated with
   const w_string& rootPath() const;
 
+  // Returns cache statistics
+  CacheStats stats() const;
+
  private:
   LRUCache<ContentHashCacheKey, HashValue> cache_;
   w_string rootPath_;

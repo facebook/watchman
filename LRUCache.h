@@ -175,6 +175,36 @@ class TailQHead {
   }
 };
 
+struct Stats {
+  // Number of times that a get resulted in a usable result
+  size_t cacheHit{0};
+  // Number of times that a get resulted in sharing a pending get
+  size_t cacheShare{0};
+  // Number of times that a get resulted in no usable result
+  size_t cacheMiss{0};
+  // Number of times that an item was evicted for any reason
+  size_t cacheEvict{0};
+  // Number of times that an item was inserted or replaced
+  size_t cacheStore{0};
+  // Number of times that a get was attempted
+  size_t cacheLoad{0};
+  // Number of times that an item was erased via erase()
+  size_t cacheErase{0};
+  // Number of times that the cache has been clear()'d
+  size_t clearCount{0};
+
+  void clear() {
+    cacheHit = 0;
+    cacheShare = 0;
+    cacheMiss = 0;
+    cacheEvict = 0;
+    cacheStore = 0;
+    cacheLoad = 0;
+    cacheErase = 0;
+    ++clearCount;
+  }
+};
+
 // Factoring out the internal state struct here, as MSVC
 // has a hard time compiling it otherwise.
 template <typename KeyType, typename ValueType>
@@ -182,6 +212,9 @@ struct InternalState {
   using NodeType = Node<KeyType, ValueType>;
   // This owns the nodes in the map
   std::unordered_map<KeyType, std::shared_ptr<NodeType>> map;
+
+  // Maintain some stats for cache introspection
+  Stats stats;
 
   // To manage eviction we categorize a node into one of
   // three sets and link it into the appropriate tailq
@@ -211,6 +244,11 @@ struct InternalState {
 };
 
 } // namespace lrucache
+
+struct CacheStats : public lrucache::Stats {
+  CacheStats(const lrucache::Stats s, size_t size) : Stats(s), size(size) {}
+  size_t size;
+};
 
 // The cache.  More information on this can be found at the
 // top of this header file!
@@ -246,8 +284,11 @@ class LRUCache {
       std::chrono::steady_clock::time_point now =
           std::chrono::steady_clock::now()) {
     auto state = state_.wlock();
+    ++state->stats.cacheLoad;
+
     auto it = state->map.find(key);
     if (it == state->map.end()) {
+      ++state->stats.cacheMiss;
       return nullptr;
     }
 
@@ -258,6 +299,8 @@ class LRUCache {
     if (node->expired(now)) {
       state->map.erase(it);
       q->remove(node.get());
+      ++state->stats.cacheMiss;
+      ++state->stats.cacheEvict;
       return nullptr;
     }
 
@@ -272,6 +315,7 @@ class LRUCache {
       q->touch(node.get());
     }
 
+    ++state->stats.cacheHit;
     return node;
   }
 
@@ -309,6 +353,8 @@ class LRUCache {
     // Only hold the lock on the state while we set up the map entry.
     {
       auto state = state_.wlock();
+      ++state->stats.cacheLoad;
+
       auto it = state->map.find(key);
       if (it != state->map.end()) {
         node = it->second;
@@ -323,10 +369,12 @@ class LRUCache {
 
           if (node->promises_) {
             // Not yet satisfied, so chain on a promise
+            ++state->stats.cacheShare;
             return node->subscribe();
           }
 
           // Available now
+          ++state->stats.cacheHit;
           return makeFuture<std::shared_ptr<const NodeType>>(node);
         }
 
@@ -335,6 +383,7 @@ class LRUCache {
         // the node itself.
         q->remove(node.get());
         state->map.erase(it);
+        ++state->stats.cacheEvict;
       }
 
       // Try to make a new node; this can fail if we are too full
@@ -344,6 +393,7 @@ class LRUCache {
       state->map.emplace(std::make_pair(node->key_, node));
       state->lookupOrder.insertTail(node.get());
 
+      ++state->stats.cacheMiss;
       // and ensure that we capture a subscription before we release
       // the lock!
       future = node->subscribe();
@@ -366,6 +416,8 @@ class LRUCache {
           // Should never happen...
           abort();
         }
+
+        ++state->stats.cacheStore;
 
         // We're no longer looking this up; we'll put it in the
         // correct bucket just before we release the lock below.
@@ -427,11 +479,13 @@ class LRUCache {
       auto oldNode = it->second;
       whichQ(oldNode.get(), state)->remove(oldNode.get());
       state->map.erase(it);
+      ++state->stats.cacheEvict;
     }
 
     auto node = makeNode(state, now, key, std::move(value));
     state->map.emplace(std::make_pair(node->key_, node));
     whichQ(node.get(), state)->insertTail(node.get());
+    ++state->stats.cacheStore;
 
     return node;
   }
@@ -451,6 +505,7 @@ class LRUCache {
     // caller is deliberately invalidating an errored node.
     whichQ(node.get(), state)->remove(node.get());
     state->map.erase(it);
+    ++state->stats.cacheErase;
 
     return node;
   }
@@ -461,6 +516,12 @@ class LRUCache {
     return state->map.size();
   }
 
+  // Returns cache statistics
+  CacheStats stats() const {
+    auto state = state_.rlock();
+    return CacheStats(state->stats, state->map.size());
+  }
+
   // Purge all of the entries from the cache
   void clear() {
     auto state = state_.wlock();
@@ -468,6 +529,7 @@ class LRUCache {
     state->erroredOrder.clear();
     state->lookupOrder.clear();
     state->map.clear();
+    state->stats.clear();
   }
 
  private:
@@ -515,6 +577,7 @@ class LRUCache {
       state->erroredOrder.remove(node);
       // Erase from the map last, as this will invalidate node
       state->map.erase(node->key_);
+      ++state->stats.cacheEvict;
       return;
     }
 
@@ -524,6 +587,7 @@ class LRUCache {
       state->evictionOrder.remove(node);
       // Erase from the map last, as this will invalidate node
       state->map.erase(node->key_);
+      ++state->stats.cacheEvict;
       return;
     }
 

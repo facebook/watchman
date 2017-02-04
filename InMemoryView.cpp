@@ -83,7 +83,13 @@ InMemoryView::InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher)
           root->root_path,
           config_.getInt("content_hash_max_items", 128 * 1024),
           std::chrono::milliseconds(
-              config_.getInt("content_hash_negative_cache_ttl_ms", 2000))) {}
+              config_.getInt("content_hash_negative_cache_ttl_ms", 2000))),
+      enableContentCacheWarming_(
+          config_.getBool("content_hash_warming", false)),
+      maxFilesToWarmInContentCache_(
+          size_t(config_.getInt("content_hash_max_warm_per_settle", 1024))),
+      syncContentCacheWarming_(
+          config_.getBool("content_hash_warm_wait_before_settle", false)) {}
 
 void InMemoryView::view::insertAtHeadOfFileList(struct watchman_file* file) {
   file->next = latest_file;
@@ -725,4 +731,123 @@ const std::shared_ptr<Watcher>& InMemoryView::getWatcher() const {
 const w_string& InMemoryView::getName() const {
   return watcher_->name;
 }
+
+void InMemoryView::warmContentCache() {
+  if (!enableContentCacheWarming_) {
+    return;
+  }
+
+  watchman::log(
+      watchman::DBG, "considering files for content hash cache warming\n");
+
+  size_t n = 0;
+  std::deque<Future<std::shared_ptr<const ContentHashCache::Node>>> futures;
+
+  {
+    // Walk back in time until we hit the boundary, or hit the limit
+    // on the number of files we should warm up.
+    auto view = view_.rlock();
+    struct watchman_file* f;
+    for (f = view->latest_file; f && n < maxFilesToWarmInContentCache_;
+         f = f->next) {
+      if (f->otime.ticks <= lastWarmedTick_) {
+        watchman::log(
+            watchman::DBG,
+            "warmContentCache: stop because file ticks ",
+            f->otime.ticks,
+            " is <= lastWarmedTick_ ",
+            lastWarmedTick_,
+            "\n");
+        break;
+      }
+
+      if (f->exists && S_ISREG(f->stat.mode)) {
+        // Note: we could also add an expression to further constrain
+        // the things we warm up here.  Let's see if we need it before
+        // going ahead and adding.
+
+        auto dirStr = f->parent->getFullPath();
+        w_string_piece dir(dirStr);
+        dir.advance(contentHashCache_.rootPath().size());
+
+        // If dirName is the root, dir.size() will now be zero
+        if (dir.size() > 0) {
+          // if not at the root, skip the slash character at the
+          // front of dir
+          dir.advance(1);
+        }
+        ContentHashCacheKey key{w_string::pathCat({dir, f->getName()}),
+                                size_t(f->stat.size),
+                                f->stat.mtime};
+
+        watchman::log(
+            watchman::DBG, "warmContentCache: lookup ", key.relativePath, "\n");
+        auto f = contentHashCache_.get(key);
+        if (syncContentCacheWarming_) {
+          futures.emplace_back(std::move(f));
+        }
+        ++n;
+      }
+    }
+
+    lastWarmedTick_ = view->mostRecentTick;
+  }
+
+  watchman::log(
+      watchman::DBG,
+      "warmContentCache, lastWarmedTick_ now ",
+      lastWarmedTick_,
+      " scheduled ",
+      n,
+      " files for hashing, will wait for ",
+      futures.size(),
+      " lookups to finish\n");
+
+  if (syncContentCacheWarming_) {
+    // Wait for them to finish, but don't use get() because we don't
+    // care about any errors that may have occurred.
+    collectAll(futures.begin(), futures.end()).wait();
+    watchman::log(watchman::DBG, "warmContentCache: hashing complete\n");
+  }
+}
+
+void InMemoryView::debugContentHashCache(
+    struct watchman_client* client,
+    const json_ref& args) {
+  /* resolve the root */
+  if (json_array_size(args) != 2) {
+    send_error_response(
+        client, "wrong number of arguments for 'debug-contenthash'");
+    return;
+  }
+
+  auto root = resolve_root_or_err(client, args, 1, false);
+  if (!root) {
+    return;
+  }
+  auto view =
+      std::dynamic_pointer_cast<watchman::InMemoryView>(root->inner.view);
+  if (!view) {
+    send_error_response(client, "root is not an InMemoryView watcher");
+    return;
+  }
+
+  auto stats = view->contentHashCache_.stats();
+  auto resp = make_response();
+  resp.set({{"cacheHit", json_integer(stats.cacheHit)},
+            {"cacheShare", json_integer(stats.cacheShare)},
+            {"cacheMiss", json_integer(stats.cacheMiss)},
+            {"cacheEvict", json_integer(stats.cacheEvict)},
+            {"cacheStore", json_integer(stats.cacheStore)},
+            {"cacheLoad", json_integer(stats.cacheLoad)},
+            {"cacheErase", json_integer(stats.cacheErase)},
+            {"clearCount", json_integer(stats.clearCount)},
+            {"size", json_integer(stats.size)}});
+  send_and_dispose_response(client, std::move(resp));
+}
+W_CMD_REG(
+    "debug-contenthash",
+    InMemoryView::debugContentHashCache,
+    CMD_DAEMON,
+    w_cmd_realpath_root);
 }
