@@ -1,4 +1,4 @@
-AC_INIT([watchman], [4.8.0], [], [watchman])
+AC_INIT([watchman], [4.9.0], [], [watchman])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([dist-bzip2 subdir-objects])

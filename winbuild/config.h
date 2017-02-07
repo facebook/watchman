@@ -143,7 +143,7 @@ size_t backtrace_from_exception(
 #define PACKAGE_NAME "watchman"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "4.8.0"
+#define PACKAGE_VERSION "4.9.0"
 
 /* Version number of package */
 #define VERSION PACKAGE_VERSION
