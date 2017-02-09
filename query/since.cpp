@@ -37,7 +37,7 @@ class SinceExpr : public QueryExpr {
         const auto& clock =
             (field == since_what::SINCE_OCLOCK) ? file->otime() : file->ctime();
         if (since.is_timestamp) {
-          return since.timestamp > clock.timestamp;
+          return clock.timestamp > since.timestamp;
         }
         if (since.clock.is_fresh_instance) {
           return file->exists();

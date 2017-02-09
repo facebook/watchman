@@ -90,6 +90,22 @@ class SinceExprTestCase extends WatchmanTestCase {
     ));
     $this->assertEqual(array('foo.c'), $res['files']);
 
+    // If using a timestamp against the oclock, ensure that
+    // we're comparing in the correct order.  We need to force
+    // a 2 second sleep here so that the timestamp moves forward
+    // by at least 1 increment for this test to work correctly
+    sleep(2);
+    $res = $this->watchmanCommand('query', $root, array(
+      'expression' => array(
+        'allof',
+        array('since', time()),
+        array('name', 'foo.c'),
+      ),
+      'fields' => array('name'),
+    ));
+    // Should see no changes since the now current timestamp
+    $this->assertEqual(array(), $res['files']);
+
     // try with a fresh clock instance -- make sure that this only returns
     // files that exist
     unlink("$root/subdir/bar.txt");
