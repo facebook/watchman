@@ -81,6 +81,7 @@ python_unittest(
     env=env,
     srcs=srcs,
     deps=[
+      ':cppclient',
       ':testsupport',
     ],
     base_module='',
@@ -99,6 +100,7 @@ python_unittest(
     deps=[
       '@/watchman/python/pywatchman:pywatchman',
       '@/watchman:watchman',
+      ':cppclient',
       ':testsupport',
     ],
     base_module='',
