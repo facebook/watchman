@@ -19,9 +19,6 @@ struct watchman_pending_fs;
 struct watchman_trigger_command;
 typedef struct watchman_root w_root_t;
 
-// Per-watch state for the selected watcher
-typedef void *watchman_watcher_t;
-
 #include "watchman_clockspec.h"
 #include "watchman_pending.h"
 #include "watchman_dir.h"
@@ -47,32 +44,6 @@ w_string w_fstype(const char *path);
 
 extern char *poisoned_reason;
 
-static inline void w_set_cloexec(int fd)
-{
-#ifndef _WIN32
-  ignore_result(fcntl(fd, F_SETFD, FD_CLOEXEC));
-#else
-  unused_parameter(fd);
-#endif
-}
-
-static inline void w_set_nonblock(int fd)
-{
-#ifndef _WIN32
-  ignore_result(fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK));
-#else
-  unused_parameter(fd);
-#endif
-}
-
-static inline void w_clear_nonblock(int fd)
-{
-#ifndef _WIN32
-  ignore_result(fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) & ~O_NONBLOCK));
-#else
-  unused_parameter(fd);
-#endif
-}
 char *w_realpath(const char *filename);
 
 #ifndef _WIN32

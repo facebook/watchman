@@ -16,7 +16,7 @@ struct watchman_port_file {
 };
 
 struct PortFSWatcher : public Watcher {
-  int port_fd;
+  FileDescriptor port_fd;
   /* map of file name to watchman_port_file */
   watchman::Synchronized<
       std::unordered_map<w_string, std::unique_ptr<watchman_port_file>>>
@@ -24,7 +24,6 @@ struct PortFSWatcher : public Watcher {
   port_event_t portevents[WATCHMAN_BATCH_LIMIT];
 
   explicit PortFSWatcher(w_root_t* root);
-  ~PortFSWatcher();
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
       w_root_t* root,
@@ -67,22 +66,10 @@ static std::unique_ptr<watchman_port_file> make_port_file(
   return f;
 }
 
-PortFSWatcher::PortFSWatcher(w_root_t* root) : Watcher("portfs", 0) {
+PortFSWatcher::PortFSWatcher(w_root_t* root)
+    : Watcher("portfs", 0), port_fd(port_create(), "port_create()") {
   port_files.reserve(root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS));
-
-  port_fd = port_create();
-  if (port_fd == -1) {
-    throw std::system_error(
-        errno,
-        std::system_category(),
-        std::string("port_create() error: ") + strerror(errno));
-  }
-  w_set_cloexec(port_fd);
-}
-
-PortFSWatcher::~PortFSWatcher() {
-  close(port_fd);
-  port_fd = -1;
+  port_fd.setCloExec();
 }
 
 void PortFSWatcher::do_watch(w_string_t* name, struct stat* st) {
@@ -99,7 +86,7 @@ void PortFSWatcher::do_watch(w_string_t* name, struct stat* st) {
   w_log(W_LOG_DBG, "watching %s\n", name->buf);
   errno = 0;
   if (port_associate(
-          port_fd,
+          port_fd.fd(),
           PORT_SOURCE_FILE,
           (uintptr_t)&rawFile->port_file,
           WATCHMAN_PORT_EVENTS,
@@ -163,7 +150,7 @@ bool PortFSWatcher::consumeNotify(
 
   n = 1;
   if (port_getn(
-          port_fd,
+          port_fd.fd(),
           portevents,
           sizeof(portevents) / sizeof(portevents[0]),
           &n,
@@ -221,7 +208,7 @@ bool PortFSWatcher::waitNotify(int timeoutms) {
   int n;
   struct pollfd pfd;
 
-  pfd.fd = port_fd;
+  pfd.fd = port_fd.fd();
   pfd.events = POLLIN;
 
   n = poll(&pfd, 1, timeoutms);

@@ -9,6 +9,7 @@
 #endif
 
 using watchman::ChildProcess;
+using watchman::FileDescriptor;
 using Options = ChildProcess::Options;
 
 static int show_help = 0;
@@ -50,7 +51,6 @@ static bool lock_pidfile(void) {
 #if !defined(USE_GIMLI) && !defined(_WIN32)
   struct flock lock;
   pid_t mypid;
-  int fd;
 
   // We defer computing this path until we're in the server context because
   // eager evaluation can trigger integration test failures unless all clients
@@ -64,20 +64,21 @@ static bool lock_pidfile(void) {
   lock.l_whence = SEEK_SET;
   lock.l_len = 0;
 
-  fd = open(pid_file, O_RDWR | O_CREAT, 0644);
-  if (fd == -1) {
+  FileDescriptor fd(open(pid_file, O_RDWR | O_CREAT, 0644));
+
+  if (!fd) {
     w_log(W_LOG_ERR, "Failed to open pidfile %s for write: %s\n", pid_file,
           strerror(errno));
     return false;
   }
   // Ensure that no children inherit the locked pidfile descriptor
-  w_set_cloexec(fd);
+  fd.setCloExec();
 
-  if (fcntl(fd, F_SETLK, &lock) != 0) {
+  if (fcntl(fd.fd(), F_SETLK, &lock) != 0) {
     char pidstr[32];
     int len;
 
-    len = read(fd, pidstr, sizeof(pidstr) - 1);
+    len = read(fd.fd(), pidstr, sizeof(pidstr) - 1);
     pidstr[len] = '\0';
 
     w_log(W_LOG_ERR, "Failed to lock pidfile %s: process %s owns it: %s\n",
@@ -86,20 +87,21 @@ static bool lock_pidfile(void) {
   }
 
   // Replace contents of the pidfile with our pid string
-  if (ftruncate(fd, 0)) {
+  if (ftruncate(fd.fd(), 0)) {
     w_log(W_LOG_ERR, "Failed to truncate pidfile %s: %s\n",
         pid_file, strerror(errno));
     return false;
   }
 
-  dprintf(fd, "%d", mypid);
-  fsync(fd);
+  dprintf(fd.fd(), "%d", mypid);
+  fsync(fd.fd());
 
   /* We are intentionally not closing the fd and intentionally not storing
    * a reference to it anywhere: the intention is that it remain locked
    * for the rest of the lifetime of our process.
    * close(fd); // NOPE!
    */
+  fd.release();
   return true;
 #else
   // ze-googles, they do nothing!!
