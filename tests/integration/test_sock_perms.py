@@ -31,11 +31,11 @@ import pywatchman
 class TestSockPerms(unittest.TestCase):
     def _new_instance(self, config, expect_success=True):
         if expect_success:
-            start_timeout = 1.0
+            start_timeout = 10
         else:
             # If the instance is going to fail anyway then there's no point
             # waiting so long
-            start_timeout = 0.2
+            start_timeout = 0.5
         return WatchmanInstance.InstanceWithStateDir(
             config=config, start_timeout=start_timeout)
 
