@@ -1,11 +1,12 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "watchman.h"
+#include "InMemoryView.h"
 #include <algorithm>
 #include <thread>
-#include "make_unique.h"
-#include "InMemoryView.h"
 #include "ThreadPool.h"
+#include "make_unique.h"
+#include "watchman.h"
+#include "watchman_scopeguard.h"
 
 // Each root gets a number that uniquely identifies it within the process. This
 // helps avoid confusion if a root is removed and then added again.
@@ -402,18 +403,14 @@ void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {
                    {"dirs", json_integer(dirs_to_erase.size())}}));
 }
 
-bool InMemoryView::timeGenerator(
-    w_query* query,
-    struct w_query_ctx* ctx,
-    int64_t* num_walked) const {
+void InMemoryView::timeGenerator(w_query* query, struct w_query_ctx* ctx)
+    const {
   struct watchman_file* f;
-  int64_t n = 0;
-  bool result = true;
 
   // Walk back in time until we hit the boundary
   auto view = view_.rlock();
   for (f = view->latest_file; f; f = f->next) {
-    ++n;
+    ctx->bumpNumWalked();
     if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
       break;
     }
@@ -425,27 +422,16 @@ bool InMemoryView::timeGenerator(
       continue;
     }
 
-    if (!w_query_process_file(
-            query,
-            ctx,
-            watchman::make_unique<InMemoryFileResult>(f, contentHashCache_))) {
-      result = false;
-      goto done;
-    }
+    w_query_process_file(
+        query,
+        ctx,
+        watchman::make_unique<InMemoryFileResult>(f, contentHashCache_));
   }
-
-done:
-  *num_walked = n;
-  return result;
 }
 
-bool InMemoryView::suffixGenerator(
-    w_query* query,
-    struct w_query_ctx* ctx,
-    int64_t* num_walked) const {
+void InMemoryView::suffixGenerator(w_query* query, struct w_query_ctx* ctx)
+    const {
   struct watchman_file* f;
-  int64_t n = 0;
-  bool result = true;
 
   auto view = view_.rlock();
   for (const auto& suff : query->suffixes) {
@@ -457,35 +443,23 @@ bool InMemoryView::suffixGenerator(
 
     // Walk and process
     for (f = it->second->head; f; f = f->suffix_next) {
-      ++n;
+      ctx->bumpNumWalked();
       if (!w_query_file_matches_relative_root(ctx, f)) {
         continue;
       }
 
-      if (!w_query_process_file(
-              query,
-              ctx,
-              watchman::make_unique<InMemoryFileResult>(
-                  f, contentHashCache_))) {
-        result = false;
-        goto done;
-      }
+      w_query_process_file(
+          query,
+          ctx,
+          watchman::make_unique<InMemoryFileResult>(f, contentHashCache_));
     }
   }
-
-done:
-  *num_walked = n;
-  return result;
 }
 
-bool InMemoryView::pathGenerator(
-    w_query* query,
-    struct w_query_ctx* ctx,
-    int64_t* num_walked) const {
+void InMemoryView::pathGenerator(w_query* query, struct w_query_ctx* ctx)
+    const {
   w_string_t* relative_root;
   struct watchman_file* f;
-  int64_t n = 0;
-  bool result = true;
 
   if (query->relative_root) {
     relative_root = query->relative_root;
@@ -533,15 +507,11 @@ bool InMemoryView::pathGenerator(
 
       // If it's a file (but not an existent dir)
       if (f && (!f->exists || !S_ISDIR(f->stat.mode))) {
-        ++n;
-        if (!w_query_process_file(
-                query,
-                ctx,
-                watchman::make_unique<InMemoryFileResult>(
-                    f, contentHashCache_))) {
-          result = false;
-          goto done;
-        }
+        ctx->bumpNumWalked();
+        w_query_process_file(
+            query,
+            ctx,
+            watchman::make_unique<InMemoryFileResult>(f, contentHashCache_));
         continue;
       }
     }
@@ -555,88 +525,51 @@ bool InMemoryView::pathGenerator(
   is_dir:
     // We got a dir; process recursively to specified depth
     if (dir) {
-      int64_t child_walked = 0;
-      result = dirGenerator(query, ctx, dir, path.depth, &child_walked);
-      n += child_walked;
-      if (!result) {
-        goto done;
-      }
+      dirGenerator(query, ctx, dir, path.depth);
     }
   }
-
-done:
-  *num_walked = n;
-  return result;
 }
 
-bool InMemoryView::dirGenerator(
+void InMemoryView::dirGenerator(
     w_query* query,
     struct w_query_ctx* ctx,
     const watchman_dir* dir,
-    uint32_t depth,
-    int64_t* num_walked) const {
-  int64_t n = 0;
-  bool result = true;
-
+    uint32_t depth) const {
   for (auto& it : dir->files) {
     auto file = it.second.get();
-    ++n;
+    ctx->bumpNumWalked();
 
-    if (!w_query_process_file(
-            query,
-            ctx,
-            watchman::make_unique<InMemoryFileResult>(
-                file, contentHashCache_))) {
-      result = false;
-      goto done;
-    }
+    w_query_process_file(
+        query,
+        ctx,
+        watchman::make_unique<InMemoryFileResult>(file, contentHashCache_));
   }
 
   if (depth > 0) {
     for (auto& it : dir->dirs) {
       const auto child = it.second.get();
-      int64_t child_walked = 0;
 
-      result = dirGenerator(query, ctx, child, depth - 1, &child_walked);
-      n += child_walked;
-      if (!result) {
-        goto done;
-      }
+      dirGenerator(query, ctx, child, depth - 1);
     }
   }
-
-done:
-  *num_walked = n;
-  return result;
 }
 
-bool InMemoryView::allFilesGenerator(
-    w_query* query,
-    struct w_query_ctx* ctx,
-    int64_t* num_walked) const {
+void InMemoryView::allFilesGenerator(w_query* query, struct w_query_ctx* ctx)
+    const {
   struct watchman_file* f;
-  int64_t n = 0;
-  bool result = true;
   auto view = view_.rlock();
 
   for (f = view->latest_file; f; f = f->next) {
-    ++n;
+    ctx->bumpNumWalked();
     if (!w_query_file_matches_relative_root(ctx, f)) {
       continue;
     }
 
-    if (!w_query_process_file(
-            query,
-            ctx,
-            watchman::make_unique<InMemoryFileResult>(f, contentHashCache_))) {
-      result = false;
-      goto done;
-    }
+    w_query_process_file(
+        query,
+        ctx,
+        watchman::make_unique<InMemoryFileResult>(f, contentHashCache_));
   }
-
-done:
-  *num_walked = n;
-  return result;
 }
 
 ClockPosition InMemoryView::getMostRecentRootNumberAndTickValue() const {

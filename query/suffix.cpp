@@ -15,22 +15,14 @@ class SuffixExpr : public QueryExpr {
     return file->baseName().hasSuffix(suffix);
   }
 
-  static std::unique_ptr<QueryExpr> parse(
-      w_query* query,
-      const json_ref& term) {
+  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {
     const char *ignore, *suffix;
 
     if (json_unpack(term, "[s,s]", &ignore, &suffix) != 0) {
-      query->errmsg = strdup("must use [\"suffix\", \"suffixstring\"]");
-      return nullptr;
+      throw QueryParseError("must use [\"suffix\", \"suffixstring\"]");
     }
 
     w_string str(w_string_new_lower_typed(suffix, W_STRING_BYTE), false);
-    if (!str) {
-      query->errmsg = strdup("out of memory");
-      return nullptr;
-    }
-
     return watchman::make_unique<SuffixExpr>(str);
   }
 };

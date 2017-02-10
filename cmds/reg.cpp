@@ -197,7 +197,6 @@ bool dispatch_command(
     }
 
     return true;
-
   } catch (const std::exception& e) {
     send_error_response(client, "%s", e.what());
     return false;

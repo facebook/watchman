@@ -262,7 +262,6 @@ bool watchman_trigger_command::maybeSpawn(
     return false;
   }
 
-  w_query_res res;
   auto since_spec = query->since_spec.get();
 
   if (since_spec && since_spec->tag == w_cs_clock) {
@@ -279,43 +278,45 @@ bool watchman_trigger_command::maybeSpawn(
   // at settle points which are by definition sync'd to the present time
   query->sync_timeout = std::chrono::milliseconds(0);
   watchman::log(watchman::DBG, "assessing trigger ", triggername, "\n");
-  if (!w_query_execute(query.get(), root, &res, time_generator)) {
+  try {
+    auto res = w_query_execute(query.get(), root, time_generator);
+
+    watchman::log(
+        watchman::DBG,
+        "trigger \"",
+        triggername,
+        "\" generated ",
+        res.resultsArray.array().size(),
+        " results\n");
+
+    // create a new spec that will be used the next time
+    auto saved_spec = std::move(query->since_spec);
+    query->since_spec =
+        watchman::make_unique<w_clockspec>(res.clockAtStartOfQuery);
+
+    watchman::log(
+        watchman::DBG,
+        "updating trigger \"",
+        triggername,
+        "\" use ",
+        res.clockAtStartOfQuery.ticks,
+        " ticks next time\n");
+
+    if (!res.resultsArray.array().empty()) {
+      didRun = true;
+      spawn_command(root, this, &res, saved_spec.get());
+    }
+    return didRun;
+  } catch (const QueryExecError& e) {
     watchman::log(
         watchman::ERR,
         "error running trigger \"",
         triggername,
         "\" query: ",
-        res.errmsg,
+        e.what(),
         "\n");
     return false;
   }
-
-  watchman::log(
-      watchman::DBG,
-      "trigger \"",
-      triggername,
-      "\" generated ",
-      res.resultsArray.array().size(),
-      " results\n");
-
-  // create a new spec that will be used the next time
-  auto saved_spec = std::move(query->since_spec);
-  query->since_spec =
-      watchman::make_unique<w_clockspec>(res.clockAtStartOfQuery);
-
-  watchman::log(
-      watchman::DBG,
-      "updating trigger \"",
-      triggername,
-      "\" use ",
-      res.clockAtStartOfQuery.ticks,
-      " ticks next time\n");
-
-  if (!res.resultsArray.array().empty()) {
-    didRun = true;
-    spawn_command(root, this, &res, saved_spec.get());
-  }
-  return didRun;
 }
 
 /* vim:ts=2:sw=2:et:

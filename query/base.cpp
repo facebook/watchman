@@ -23,17 +23,11 @@ class NotExpr : public QueryExpr {
       const json_ref& term) {
     /* rigidly require ["not", expr] */
     if (!json_is_array(term) || json_array_size(term) != 2) {
-      query->errmsg = strdup("must use [\"not\", expr]");
-      return nullptr;
+      throw QueryParseError("must use [\"not\", expr]");
     }
 
     const auto& other = term.at(1);
     auto other_expr = w_query_expr_parse(query, other);
-    if (!other_expr) {
-      // other expr sets errmsg
-      return nullptr;
-    }
-
     return watchman::make_unique<NotExpr>(std::move(other_expr));
   }
 };
@@ -96,11 +90,9 @@ class ListExpr : public QueryExpr {
     /* don't allow "allof" on its own */
     if (!json_is_array(term) || json_array_size(term) < 2) {
       if (allof) {
-        query->errmsg = strdup("must use [\"allof\", expr...]");
-      } else {
-        query->errmsg = strdup("must use [\"anyof\", expr...]");
+        throw QueryParseError("must use [\"allof\", expr...]");
       }
-      return nullptr;
+      throw QueryParseError("must use [\"anyof\", expr...]");
     }
 
     auto n = json_array_size(term) - 1;
@@ -110,11 +102,6 @@ class ListExpr : public QueryExpr {
       const auto& exp = term.at(i + 1);
 
       auto parsed = w_query_expr_parse(query, exp);
-      if (!parsed) {
-        // other expression parser sets errmsg
-        return nullptr;
-      }
-
       list.emplace_back(std::move(parsed));
     }
 

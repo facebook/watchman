@@ -54,7 +54,7 @@ class WildMatchExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query* query, const json_ref& term, bool caseless) {
+  parse(w_query*, const json_ref& term, bool caseless) {
     const char *ignore, *pattern, *scope = "basename";
     const char* which = caseless ? "imatch" : "match";
     int noescape = 0;
@@ -72,18 +72,13 @@ class WildMatchExpr : public QueryExpr {
             &includedotfiles) != 0 &&
         json_unpack(term, "[s,s,s]", &ignore, &pattern, &scope) != 0 &&
         json_unpack(term, "[s,s]", &ignore, &pattern) != 0) {
-      ignore_result(asprintf(
-          &query->errmsg, "Expected [\"%s\", \"pattern\", \"scope\"?]", which));
-      return nullptr;
+      throw QueryParseError(
+          "Expected [\"", which, "\", \"pattern\", \"scope\"?]");
     }
 
     if (strcmp(scope, "basename") && strcmp(scope, "wholename")) {
-      ignore_result(asprintf(
-          &query->errmsg,
-          "Invalid scope '%s' for %s expression",
-          scope,
-          which));
-      return nullptr;
+      throw QueryParseError(
+          "Invalid scope '", scope, "' for ", which, " expression");
     }
 
     return watchman::make_unique<WildMatchExpr>(

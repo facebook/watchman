@@ -137,7 +137,6 @@ static json_ref build_legacy_trigger(
     const std::shared_ptr<w_root_t>& root,
     struct watchman_client* client,
     const json_ref& args) {
-  char *errmsg;
   uint32_t next_arg = 0;
   uint32_t i;
   size_t n;
@@ -152,13 +151,7 @@ static json_ref build_legacy_trigger(
                                         typed_string_to_json("mode")})}});
 
   json_ref expr;
-  auto query =
-      w_query_parse_legacy(root, args, &errmsg, 3, &next_arg, nullptr, &expr);
-  if (!query) {
-    send_error_response(client, "invalid rule spec: %s", errmsg);
-    free(errmsg);
-    return nullptr;
-  }
+  auto query = w_query_parse_legacy(root, args, 3, &next_arg, nullptr, &expr);
 
   json_object_set(trig, "expression", expr.get_default("expression"));
 
@@ -237,7 +230,7 @@ watchman_trigger_command::watchman_trigger_command(
     json_object_set_nocheck(queryDef, "relative_root", relative_root);
   }
 
-  query = w_query_parse(root, queryDef, errmsg);
+  query = w_query_parse(root, queryDef);
   if (!query) {
     return;
   }
@@ -272,21 +265,15 @@ watchman_trigger_command::watchman_trigger_command(
     stdin_style = input_dev_null;
   } else if (json_is_array(ele)) {
     stdin_style = input_json;
-    if (!parse_field_list(ele, &query->fieldList, errmsg)) {
-      return;
-    }
+    parse_field_list(ele, &query->fieldList);
   } else if (json_is_string(ele)) {
     const char *str = json_string_value(ele);
     if (!strcmp(str, "/dev/null")) {
       stdin_style = input_dev_null;
     } else if (!strcmp(str, "NAME_PER_LINE")) {
       stdin_style = input_name_list;
-      if (!parse_field_list(
-              json_array({typed_string_to_json("name")}),
-              &query->fieldList,
-              errmsg)) {
-        return;
-      }
+      parse_field_list(
+          json_array({typed_string_to_json("name")}), &query->fieldList);
     } else {
       ignore_result(asprintf(errmsg, "invalid stdin value %s", str));
       return;

@@ -20,32 +20,17 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
 
   /** Perform a time-based (since) query and emit results to the supplied
   * query context */
-  virtual bool timeGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const;
+  virtual void timeGenerator(w_query* query, struct w_query_ctx* ctx) const;
 
   /** Walks all files with the suffix(es) configured in the query */
-  virtual bool suffixGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const;
+  virtual void suffixGenerator(w_query* query, struct w_query_ctx* ctx) const;
 
   /** Walks files that match the supplied set of paths */
-  virtual bool pathGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const;
+  virtual void pathGenerator(w_query* query, struct w_query_ctx* ctx) const;
 
-  virtual bool globGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const;
+  virtual void globGenerator(w_query* query, struct w_query_ctx* ctx) const;
 
-  virtual bool allFilesGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const;
+  virtual void allFilesGenerator(w_query* query, struct w_query_ctx* ctx) const;
   virtual ClockPosition getMostRecentRootNumberAndTickValue() const = 0;
   virtual w_string getCurrentClockString() const = 0;
   virtual uint32_t getLastAgeOutTickValue() const;

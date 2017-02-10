@@ -42,21 +42,17 @@ std::unique_ptr<QueryExpr> w_query_expr_parse(
     const auto& first = exp.at(0);
 
     if (!json_is_string(first)) {
-      query->errmsg = strdup(
-          "first element of an expression must be a string");
-      return NULL;
+      throw QueryParseError("first element of an expression must be a string");
     }
     name = json_to_w_string(first);
   } else {
-    query->errmsg = strdup("expected array or string for an expression");
-    return NULL;
+    throw QueryParseError("expected array or string for an expression");
   }
 
   auto it = term_hash().find(name);
   if (it == term_hash().end()) {
-    ignore_result(
-        asprintf(&query->errmsg, "unknown expression term '%s'", name.c_str()));
-    return NULL;
+    throw QueryParseError(
+        watchman::to<std::string>("unknown expression term '", name, "'"));
   }
   return it->second(query, exp);
 }
@@ -74,15 +70,12 @@ static bool parse_since(w_query* res, const json_ref& query) {
     return true;
   }
 
-  res->errmsg = strdup("invalid value for 'since'");
-
-  return false;
+  throw QueryParseError("invalid value for 'since'");
 }
 
-static w_string parse_suffix(w_query* res, const json_ref& ele) {
+static w_string parse_suffix(const json_ref& ele) {
   if (!json_is_string(ele)) {
-    res->errmsg = strdup("'suffix' must be a string or an array of strings");
-    return nullptr;
+    throw QueryParseError("'suffix' must be a string or an array of strings");
   }
 
   auto str = json_to_w_string(ele);
@@ -90,26 +83,22 @@ static w_string parse_suffix(w_query* res, const json_ref& ele) {
   return w_string(w_string_new_lower_typed(str.c_str(), str.type()), false);
 }
 
-static bool parse_suffixes(w_query* res, const json_ref& query) {
+static void parse_suffixes(w_query* res, const json_ref& query) {
   size_t i;
 
   auto suffixes = query.get_default("suffix");
   if (!suffixes) {
-    return true;
+    return;
   }
 
   if (json_is_string(suffixes)) {
-    auto suff = parse_suffix(res, suffixes);
-    if (!suff) {
-      return false;
-    }
+    auto suff = parse_suffix(suffixes);
     res->suffixes.emplace_back(std::move(suff));
-    return true;
+    return;
   }
 
   if (!json_is_array(suffixes)) {
-    res->errmsg = strdup("'suffix' must be a string or an array of strings");
-    return false;
+    throw QueryParseError("'suffix' must be a string or an array of strings");
   }
 
   res->suffixes.reserve(json_array_size(suffixes));
@@ -118,18 +107,12 @@ static bool parse_suffixes(w_query* res, const json_ref& query) {
     const auto& ele = suffixes.at(i);
 
     if (!json_is_string(ele)) {
-      res->errmsg = strdup("'suffix' must be a string or an array of strings");
-      return false;
+      throw QueryParseError("'suffix' must be a string or an array of strings");
     }
 
-    auto suff = parse_suffix(res, ele);
-    if (!suff) {
-      return false;
-    }
+    auto suff = parse_suffix(ele);
     res->suffixes.emplace_back(std::move(suff));
   }
-
-  return true;
 }
 
 static bool parse_paths(w_query* res, const json_ref& query) {
@@ -141,8 +124,7 @@ static bool parse_paths(w_query* res, const json_ref& query) {
   }
 
   if (!json_is_array(paths)) {
-    res->errmsg = strdup("'path' must be an array");
-    return false;
+    throw QueryParseError("'path' must be an array");
   }
 
   res->paths.resize(json_array_size(paths));
@@ -159,10 +141,8 @@ static bool parse_paths(w_query* res, const json_ref& query) {
           "path", &name,
           "depth", &res->paths[i].depth
           ) != 0) {
-      res->errmsg = strdup(
-          "expected object with 'path' and 'depth' properties"
-          );
-      return false;
+      throw QueryParseError(
+          "expected object with 'path' and 'depth' properties");
     }
 
     auto nameCopy = w_string_new_typed(name, W_STRING_BYTE);
@@ -175,18 +155,17 @@ static bool parse_paths(w_query* res, const json_ref& query) {
 
 W_CAP_REG("relative_root")
 
-static bool parse_relative_root(
+static void parse_relative_root(
     const std::shared_ptr<w_root_t>& root,
     w_query* res,
     const json_ref& query) {
   auto relative_root = query.get_default("relative_root");
   if (!relative_root) {
-    return true;
+    return;
   }
 
   if (!json_is_string(relative_root)) {
-    res->errmsg = strdup("'relative_root' must be a string");
-    return false;
+    throw QueryParseError("'relative_root' must be a string");
   }
 
   w_string path = json_to_w_string(relative_root);
@@ -194,164 +173,115 @@ static bool parse_relative_root(
   res->relative_root = w_string::pathCat({root->root_path, canon_path});
   res->relative_root_slash =
       w_string::printf("%s/", res->relative_root.c_str());
-
-  return true;
 }
 
-static bool parse_query_expression(w_query* res, const json_ref& query) {
+static void parse_query_expression(w_query* res, const json_ref& query) {
   auto exp = query.get_default("expression");
   if (!exp) {
     // Empty expression means that we emit all generated files
-    return true;
+    return;
   }
 
   res->expr = w_query_expr_parse(res, exp);
-  if (!res->expr) {
-    return false;
-  }
 
-  return true;
+  return;
 }
 
-static bool parse_sync(w_query* res, const json_ref& query) {
+static void parse_sync(w_query* res, const json_ref& query) {
   int value = DEFAULT_QUERY_SYNC_MS.count();
 
   if (query &&
       json_unpack(query, "{s?:i*}", "sync_timeout", &value) != 0) {
-    res->errmsg = strdup("sync_timeout must be an integer value >= 0");
-    return false;
+    throw QueryParseError("sync_timeout must be an integer value >= 0");
   }
 
   if (value < 0) {
-    res->errmsg = strdup("sync_timeout must be an integer value >= 0");
-    return false;
+    throw QueryParseError("sync_timeout must be an integer value >= 0");
   }
 
   res->sync_timeout = std::chrono::milliseconds(value);
-  return true;
 }
 
-static bool parse_lock_timeout(w_query* res, const json_ref& query) {
+static void parse_lock_timeout(w_query* res, const json_ref& query) {
   int value = DEFAULT_QUERY_SYNC_MS.count();
 
   if (query &&
       json_unpack(query, "{s?:i*}", "lock_timeout", &value) != 0) {
-    res->errmsg = strdup("lock_timeout must be an integer value >= 0");
-    return false;
+    throw QueryParseError("lock_timeout must be an integer value >= 0");
   }
 
   if (value < 0) {
-    res->errmsg = strdup("lock_timeout must be an integer value >= 0");
-    return false;
+    throw QueryParseError("lock_timeout must be an integer value >= 0");
   }
 
   res->lock_timeout = value;
-  return true;
 }
 
 W_CAP_REG("dedup_results")
 
-static bool parse_dedup(w_query* res, const json_ref& query) {
+static void parse_dedup(w_query* res, const json_ref& query) {
   int value = 0;
 
   if (query &&
       json_unpack(query, "{s?:b*}", "dedup_results", &value) != 0) {
-    res->errmsg = strdup("dedup_results must be a boolean");
-    return false;
+    throw QueryParseError("dedup_results must be a boolean");
   }
 
   res->dedup_results = (bool) value;
-  return true;
 }
 
-static bool parse_empty_on_fresh_instance(w_query* res, const json_ref& query) {
+static void parse_empty_on_fresh_instance(w_query* res, const json_ref& query) {
   int value = 0;
 
   if (query &&
       json_unpack(query, "{s?:b*}", "empty_on_fresh_instance", &value) != 0) {
-    res->errmsg = strdup("empty_on_fresh_instance must be a boolean");
-    return false;
+    throw QueryParseError("empty_on_fresh_instance must be a boolean");
   }
 
   res->empty_on_fresh_instance = (bool) value;
-  return true;
 }
 
-static bool parse_case_sensitive(
+static void parse_case_sensitive(
     w_query* res,
     const std::shared_ptr<w_root_t>& root,
     const json_ref& query) {
   int value = root->case_sensitive;
 
   if (query && json_unpack(query, "{s?:b*}", "case_sensitive", &value) != 0) {
-    res->errmsg = strdup("case_sensitive must be a boolean");
-    return false;
+    throw QueryParseError("case_sensitive must be a boolean");
   }
 
   res->case_sensitive = (bool) value;
-  return true;
 }
 
 std::shared_ptr<w_query> w_query_parse(
     const std::shared_ptr<w_root_t>& root,
-    const json_ref& query,
-    char** errmsg) {
+    const json_ref& query) {
   auto result = std::make_shared<w_query>();
   auto res = result.get();
 
-  *errmsg = NULL;
-
-  if (!parse_case_sensitive(res, root, query)) {
-    goto error;
-  }
-
-  if (!parse_sync(res, query)) {
-    goto error;
-  }
-
-  if (!parse_dedup(res, query)) {
-    goto error;
-  }
-
-  if (!parse_lock_timeout(res, query)) {
-    goto error;
-  }
-
-  if (!parse_relative_root(root, res, query)) {
-    goto error;
-  }
-
-  if (!parse_empty_on_fresh_instance(res, query)) {
-    goto error;
-  }
+  parse_case_sensitive(res, root, query);
+  parse_sync(res, query);
+  parse_dedup(res, query);
+  parse_lock_timeout(res, query);
+  parse_relative_root(root, res, query);
+  parse_empty_on_fresh_instance(res, query);
 
   /* Look for path generators */
-  if (!parse_paths(res, query)) {
-    goto error;
-  }
+  parse_paths(res, query);
 
   /* Look for glob generators */
-  if (!parse_globs(res, query)) {
-    goto error;
-  }
+  parse_globs(res, query);
 
   /* Look for suffix generators */
-  if (!parse_suffixes(res, query)) {
-    goto error;
-  }
+  parse_suffixes(res, query);
 
   /* Look for since generator */
-  if (!parse_since(res, query)) {
-    goto error;
-  }
+  parse_since(res, query);
 
-  if (!parse_query_expression(res, query)) {
-    goto error;
-  }
+  parse_query_expression(res, query);
 
-  if (!parse_field_list(query.get_default("fields"), &res->fieldList, errmsg)) {
-    goto error;
-  }
+  parse_field_list(query.get_default("fields"), &res->fieldList);
 
   for (auto& f : res->fieldList) {
     if (f->futureMake) {
@@ -363,40 +293,22 @@ std::shared_ptr<w_query> w_query_parse(
   res->query_spec = query;
 
   return result;
-error:
-  if (res) {
-    *errmsg = res->errmsg;
-    res->errmsg = NULL;
-  }
-  if (!*errmsg) {
-    *errmsg = strdup("unspecified error");
-  }
-
-  return nullptr;
 }
 
-bool w_query_legacy_field_list(w_query_field_list* flist) {
+void w_query_legacy_field_list(w_query_field_list* flist) {
   static const char *names[] = {
     "name", "exists", "size", "mode", "uid", "gid", "mtime",
     "ctime", "ino", "dev", "nlink", "new", "cclock", "oclock"
   };
   uint8_t i;
   auto list = json_array();
-  bool res;
-  char *errmsg = NULL;
 
   for (i = 0; i < sizeof(names)/sizeof(names[0]); i++) {
     json_array_append_new(list, typed_string_to_json(names[i],
         W_STRING_UNICODE));
   }
 
-  res = parse_field_list(list, flist, &errmsg);
-
-  if (errmsg) {
-    w_log(W_LOG_FATAL, "should never happen: %s\n", errmsg);
-  }
-
-  return res;
+  parse_field_list(list, flist);
 }
 
 // Translate from the legacy array into the new style, then
@@ -405,7 +317,6 @@ bool w_query_legacy_field_list(w_query_field_list* flist) {
 std::shared_ptr<w_query> w_query_parse_legacy(
     const std::shared_ptr<w_root_t>& root,
     const json_ref& args,
-    char** errmsg,
     int start,
     uint32_t* next_arg,
     const char* clockspec,
@@ -418,17 +329,15 @@ std::shared_ptr<w_query> w_query_parse_legacy(
   auto query_obj = json_object();
 
   if (!json_is_array(args)) {
-    *errmsg = strdup("Expected an array");
-    return NULL;
+    throw QueryParseError("Expected an array");
   }
 
   for (i = start; i < json_array_size(args); i++) {
     const char *arg = json_string_value(json_array_get(args, i));
     if (!arg) {
       /* not a string value! */
-      ignore_result(asprintf(errmsg,
-          "rule @ position %d is not a string value", i));
-      return NULL;
+      throw QueryParseError(watchman::to<std::string>(
+          "rule @ position ", i, " is not a string value"));
     }
   }
 
@@ -522,7 +431,7 @@ std::shared_ptr<w_query> w_query_parse_legacy(
   }
 
   /* compose the query with the field list */
-  auto query = w_query_parse(root, query_obj, errmsg);
+  auto query = w_query_parse(root, query_obj);
 
   if (expr_p) {
     *expr_p = query_obj;

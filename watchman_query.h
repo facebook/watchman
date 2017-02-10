@@ -4,9 +4,16 @@
 #ifndef WATCHMAN_QUERY_H
 #define WATCHMAN_QUERY_H
 #include <array>
+#include <deque>
+#include <stdexcept>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "Future.h"
+#include "watchman_clockspec.h"
+
+struct watchman_stat;
+struct watchman_file;
 
 struct w_query;
 typedef struct w_query w_query;
@@ -107,6 +114,19 @@ struct w_query_ctx {
 
   // Move any completed items from resultsToRender to resultsArray
   void speculativeRenderCompletion();
+
+  // Increment numWalked_ by the specified amount
+  inline void bumpNumWalked(int64_t amount = 1) {
+    numWalked_ += amount;
+  }
+
+  int64_t getNumWalked() const {
+    return numWalked_;
+  }
+
+ private:
+  // Number of files considered as part of running this query
+  int64_t numWalked_;
 };
 
 struct w_query_path {
@@ -121,6 +141,26 @@ class QueryExpr {
 };
 
 struct watchman_glob_tree;
+
+// represents an error parsing a query
+class QueryParseError : public std::runtime_error {
+ public:
+  template <typename... Args>
+  explicit QueryParseError(Args&&... args)
+      : std::runtime_error(watchman::to<std::string>(
+            "failed to parse query: ",
+            std::forward<Args>(args)...)) {}
+};
+
+// represents an error executing a query
+class QueryExecError : public std::runtime_error {
+ public:
+  template <typename... Args>
+  explicit QueryExecError(Args&&... args)
+      : std::runtime_error(watchman::to<std::string>(
+            "query failed: ",
+            std::forward<Args>(args)...)) {}
+};
 
 struct w_query {
   bool case_sensitive{false};
@@ -150,9 +190,6 @@ struct w_query {
 
   std::unique_ptr<QueryExpr> expr;
 
-  // Error message placeholder while parsing
-  char* errmsg{nullptr};
-
   // The query that we parsed into this struct
   json_ref query_spec;
 
@@ -170,8 +207,7 @@ bool w_query_register_expression_parser(
 
 std::shared_ptr<w_query> w_query_parse(
     const std::shared_ptr<w_root_t>& root,
-    const json_ref& query,
-    char** errmsg);
+    const json_ref& query);
 
 std::unique_ptr<QueryExpr> w_query_expr_parse(
     w_query* query,
@@ -183,23 +219,21 @@ bool w_query_file_matches_relative_root(
 
 // Allows a generator to process a file node
 // through the query engine
-bool w_query_process_file(
+void w_query_process_file(
     w_query* query,
     struct w_query_ctx* ctx,
     std::unique_ptr<FileResult> file);
 
 // Generator callback, used to plug in an alternate
 // generator when used in triggers or subscriptions
-using w_query_generator = std::function<bool(
+using w_query_generator = std::function<void(
     w_query* query,
     const std::shared_ptr<w_root_t>& root,
-    struct w_query_ctx* ctx,
-    int64_t* num_walked)>;
-bool time_generator(
+    struct w_query_ctx* ctx)>;
+void time_generator(
     w_query* query,
     const std::shared_ptr<w_root_t>& root,
-    struct w_query_ctx* ctx,
-    int64_t* num_walked);
+    struct w_query_ctx* ctx);
 
 struct w_query_res {
   bool is_fresh_instance;
@@ -207,15 +241,11 @@ struct w_query_res {
   // Only populated if the query was set to dedup_results
   std::unordered_set<w_string> dedupedFileNames;
   ClockPosition clockAtStartOfQuery;
-  char* errmsg{nullptr};
-
-  ~w_query_res();
 };
 
-bool w_query_execute(
+w_query_res w_query_execute(
     w_query* query,
     const std::shared_ptr<w_root_t>& root,
-    w_query_res* results,
     w_query_generator generator);
 
 // Returns a shared reference to the wholename
@@ -227,12 +257,11 @@ const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx);
 std::shared_ptr<w_query> w_query_parse_legacy(
     const std::shared_ptr<w_root_t>& root,
     const json_ref& args,
-    char** errmsg,
     int start,
     uint32_t* next_arg,
     const char* clockspec,
     json_ref* expr_p);
-bool w_query_legacy_field_list(w_query_field_list* flist);
+void w_query_legacy_field_list(w_query_field_list* flist);
 
 json_ref file_result_to_json(
     const w_query_field_list& fieldList,
@@ -256,19 +285,13 @@ struct w_query_int_compare {
   enum w_query_icmp_op op;
   json_int_t operand;
 };
-bool parse_int_compare(
-    const json_ref& term,
-    struct w_query_int_compare* comp,
-    char** errmsg);
+void parse_int_compare(const json_ref& term, struct w_query_int_compare* comp);
 bool eval_int_compare(json_int_t ival, struct w_query_int_compare *comp);
 
-bool parse_field_list(
-    json_ref field_list,
-    w_query_field_list* selected,
-    char** errmsg);
+void parse_field_list(json_ref field_list, w_query_field_list* selected);
 json_ref field_list_to_json_name_array(const w_query_field_list& fieldList);
 
-bool parse_globs(w_query* res, const json_ref& query);
+void parse_globs(w_query* res, const json_ref& query);
 // A node in the tree of node matching rules
 struct watchman_glob_tree {
   std::string pattern;

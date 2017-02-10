@@ -262,10 +262,7 @@ watchman::Future<json_ref> file_result_to_json_future(
       });
 }
 
-bool parse_field_list(
-    json_ref field_list,
-    w_query_field_list* selected,
-    char** errmsg) {
+void parse_field_list(json_ref field_list, w_query_field_list* selected) {
   uint32_t i;
 
   selected->clear();
@@ -280,29 +277,24 @@ bool parse_field_list(
   }
 
   if (!json_is_array(field_list)) {
-    *errmsg = strdup("field list must be an array of strings");
-    return false;
+    throw QueryParseError("field list must be an array of strings");
   }
 
   for (i = 0; i < json_array_size(field_list); i++) {
     auto jname = json_array_get(field_list, i);
 
     if (!json_is_string(jname)) {
-      *errmsg = strdup("field list must be an array of strings");
-      return false;
+      throw QueryParseError("field list must be an array of strings");
     }
 
     auto name = json_to_w_string(jname);
     auto& defs = field_defs();
     auto it = defs.find(name);
     if (it == defs.end()) {
-      ignore_result(asprintf(errmsg, "unknown field name '%s'", name.c_str()));
-      return false;
+      throw QueryParseError("unknown field name '", name, "'");
     }
     selected->push_back(&it->second);
   }
-
-  return true;
 }
 
 /* vim:ts=2:sw=2:et:

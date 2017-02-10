@@ -6,8 +6,6 @@
 /* since /root <timestamp> [patterns] */
 static void cmd_since(struct watchman_client* client, const json_ref& args) {
   const char *clockspec;
-  char *errmsg = NULL;
-  w_query_res res;
 
   /* resolve the root */
   if (json_array_size(args) < 3) {
@@ -28,19 +26,9 @@ static void cmd_since(struct watchman_client* client, const json_ref& args) {
     return;
   }
 
-  auto query =
-      w_query_parse_legacy(root, args, &errmsg, 3, nullptr, clockspec, nullptr);
-  if (errmsg) {
-    send_error_response(client, "%s", errmsg);
-    free(errmsg);
-    return;
-  }
+  auto query = w_query_parse_legacy(root, args, 3, nullptr, clockspec, nullptr);
 
-  if (!w_query_execute(query.get(), root, &res, nullptr)) {
-    send_error_response(client, "query failed: %s", res.errmsg);
-    return;
-  }
-
+  auto res = w_query_execute(query.get(), root, nullptr);
   auto response = make_response();
   response.set(
       {{"is_fresh_instance", json_boolean(res.is_fresh_instance)},

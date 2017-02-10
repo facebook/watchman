@@ -56,33 +56,26 @@ class SinceExpr : public QueryExpr {
     return tval > since.timestamp;
   }
 
-  static std::unique_ptr<QueryExpr> parse(
-      w_query* query,
-      const json_ref& term) {
+  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {
     std::unique_ptr<w_clockspec> spec;
     auto selected_field = since_what::SINCE_OCLOCK;
     const char* fieldname = "oclock";
 
     if (!json_is_array(term)) {
-      query->errmsg = strdup("\"since\" term must be an array");
-      return nullptr;
+      throw QueryParseError("\"since\" term must be an array");
     }
 
     if (json_array_size(term) < 2 || json_array_size(term) > 3) {
-      query->errmsg = strdup("\"since\" term has invalid number of parameters");
-      return nullptr;
+      throw QueryParseError("\"since\" term has invalid number of parameters");
     }
 
     const auto& jval = term.at(1);
     spec = w_clockspec_parse(jval);
     if (!spec) {
-      query->errmsg = strdup("invalid clockspec for \"since\" term");
-      return nullptr;
+      throw QueryParseError("invalid clockspec for \"since\" term");
     }
     if (spec->tag == w_cs_named_cursor) {
-      query->errmsg =
-          strdup("named cursors are not allowed in \"since\" terms");
-      return nullptr;
+      throw QueryParseError("named cursors are not allowed in \"since\" terms");
     }
 
     if (term.array().size() == 3) {
@@ -92,9 +85,7 @@ class SinceExpr : public QueryExpr {
 
       fieldname = json_string_value(field);
       if (!fieldname) {
-        query->errmsg =
-            strdup("field name for \"since\" term must be a string");
-        return nullptr;
+        throw QueryParseError("field name for \"since\" term must be a string");
       }
 
       for (i = 0; i < sizeof(allowed_fields) / sizeof(allowed_fields[0]); ++i) {
@@ -106,11 +97,8 @@ class SinceExpr : public QueryExpr {
       }
 
       if (!valid) {
-        ignore_result(asprintf(
-            &query->errmsg,
-            "invalid field name \"%s\" for \"since\" term",
-            fieldname));
-        return nullptr;
+        throw QueryParseError(
+            "invalid field name \"", fieldname, "\" for \"since\" term");
       }
     }
 
@@ -118,12 +106,10 @@ class SinceExpr : public QueryExpr {
       case since_what::SINCE_CTIME:
       case since_what::SINCE_MTIME:
         if (spec->tag != w_cs_timestamp) {
-          ignore_result(asprintf(
-              &query->errmsg,
-              "field \"%s\" requires a timestamp value "
-              "for comparison in \"since\" term",
-              fieldname));
-          return nullptr;
+          throw QueryParseError(
+              "field \"",
+              fieldname,
+              "\" requires a timestamp value for comparison in \"since\" term");
         }
         break;
       case since_what::SINCE_OCLOCK:

@@ -171,7 +171,6 @@ static json_ref build_subscription_results(
     struct watchman_client_subscription* sub,
     const std::shared_ptr<w_root_t>& root,
     ClockPosition& position) {
-  w_query_res res;
   auto since_spec = sub->query->since_spec.get();
 
   if (since_spec && since_spec->tag == w_cs_clock) {
@@ -197,48 +196,52 @@ static json_ref build_subscription_results(
       uint32_t(root->config.getInt("subscription_lock_timeout_ms", 100));
   w_log(W_LOG_DBG, "running subscription %s %p\n", sub->name.c_str(), sub);
 
-  if (!w_query_execute(sub->query.get(), root, &res, time_generator)) {
+  try {
+    auto res = w_query_execute(sub->query.get(), root, time_generator);
+
     w_log(
-        W_LOG_ERR,
-        "error running subscription %s query: %s",
+        W_LOG_DBG,
+        "subscription %s generated %" PRIu32 " results\n",
         sub->name.c_str(),
-        res.errmsg);
-    return nullptr;
-  }
+        uint32_t(res.resultsArray.array().size()));
 
-  w_log(
-      W_LOG_DBG,
-      "subscription %s generated %" PRIu32 " results\n",
-      sub->name.c_str(),
-      uint32_t(res.resultsArray.array().size()));
+    position = res.clockAtStartOfQuery;
 
-  position = res.clockAtStartOfQuery;
+    if (res.resultsArray.array().empty()) {
+      update_subscription_ticks(sub, &res);
+      return nullptr;
+    }
 
-  if (res.resultsArray.array().empty()) {
+    auto response = make_response();
+
+    // It is way too much of a hassle to try to recreate the clock value if it's
+    // not a relative clock spec, and it's only going to happen on the first run
+    // anyway, so just skip doing that entirely.
+    if (since_spec && since_spec->tag == w_cs_clock) {
+      response.set(
+          "since",
+          w_string_to_json(since_spec->clock.position.toClockString()));
+    }
     update_subscription_ticks(sub, &res);
+
+    response.set(
+        {{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
+         {"clock", w_string_to_json(res.clockAtStartOfQuery.toClockString())},
+         {"files", std::move(res.resultsArray)},
+         {"root", w_string_to_json(root->root_path)},
+         {"subscription", w_string_to_json(sub->name)},
+         {"unilateral", json_true()}});
+
+    return response;
+  } catch (const QueryExecError& e) {
+    watchman::log(
+        watchman::ERR,
+        "error running subscription ",
+        sub->name,
+        " query: ",
+        e.what());
     return nullptr;
   }
-
-  auto response = make_response();
-
-  // It is way too much of a hassle to try to recreate the clock value if it's
-  // not a relative clock spec, and it's only going to happen on the first run
-  // anyway, so just skip doing that entirely.
-  if (since_spec && since_spec->tag == w_cs_clock) {
-    response.set(
-        "since", w_string_to_json(since_spec->clock.position.toClockString()));
-  }
-  update_subscription_ticks(sub, &res);
-
-  response.set(
-      {{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
-       {"clock", w_string_to_json(res.clockAtStartOfQuery.toClockString())},
-       {"files", std::move(res.resultsArray)},
-       {"root", w_string_to_json(root->root_path)},
-       {"subscription", w_string_to_json(sub->name)},
-       {"unilateral", json_true()}});
-
-  return response;
 }
 
 static void w_run_subscription_rules(
@@ -444,7 +447,6 @@ static void cmd_subscribe(
   json_ref jname;
   std::shared_ptr<w_query> query;
   json_ref query_spec;
-  char *errmsg;
   int defer = true; /* can't use bool because json_unpack requires int */
   json_ref defer_list;
   json_ref drop_list;
@@ -470,12 +472,7 @@ static void cmd_subscribe(
 
   query_spec = args.at(3);
 
-  query = w_query_parse(root, query_spec, &errmsg);
-  if (!query) {
-    send_error_response(client, "failed to parse query: %s", errmsg);
-    free(errmsg);
-    return;
-  }
+  query = w_query_parse(root, query_spec);
 
   defer_list = query_spec.get_default("defer");
   if (defer_list && !json_is_array(defer_list)) {

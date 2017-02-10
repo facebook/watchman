@@ -136,19 +136,15 @@ class EdenView : public QueryableView {
     root_path_ = root->root_path;
   }
 
-  bool timeGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const override {
+  void timeGenerator(w_query* query, struct w_query_ctx* ctx) const override {
     auto client = getEdenClient();
-    bool result = true;
     auto mountPoint = to<std::string>(ctx->root->root_path);
 
     FileDelta delta;
     JournalPosition resultPosition;
 
     if (ctx->since.is_timestamp) {
-      throw std::runtime_error(
+      throw QueryExecError(
           "timestamp based since queries are not supported with eden");
     }
 
@@ -223,7 +219,7 @@ class EdenView : public QueryableView {
     client->sync_getFileInformation(info, mountPoint, fileNames);
 
     if (info.size() != fileNames.size()) {
-      throw std::runtime_error(
+      throw QueryExecError(
           "info.size() didn't match fileNames.size(), should be unpossible!");
     }
 
@@ -236,23 +232,16 @@ class EdenView : public QueryableView {
       auto file = make_unique<EdenFileResult>(
           fileInfo, w_string::pathCat({mountPoint, name}), &resultPosition);
 
-      if (!w_query_process_file(ctx->query, ctx, std::move(file))) {
-        result = false;
-        break;
-      }
+      w_query_process_file(ctx->query, ctx, std::move(file));
 
       ++nameIter;
       ++infoIter;
     }
 
-    *num_walked = fileNames.size();
-    return result;
+    ctx->bumpNumWalked(fileNames.size());
   }
 
-  bool suffixGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const override {
+  void suffixGenerator(w_query* query, struct w_query_ctx* ctx) const override {
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
     w_string_piece rel;
@@ -267,7 +256,7 @@ class EdenView : public QueryableView {
       globStrings.emplace_back(to<std::string>(w_string::pathCat(
           {rel, to<std::string>("**/*.", escapeGlobSpecialChars(suff))})));
     }
-    return executeGlobBasedQuery(globStrings, query, ctx, num_walked);
+    executeGlobBasedQuery(globStrings, query, ctx);
   }
 
   bool syncToNow(std::chrono::milliseconds) override {
@@ -275,13 +264,11 @@ class EdenView : public QueryableView {
     return true;
   }
 
-  bool executeGlobBasedQuery(
+  void executeGlobBasedQuery(
       const std::vector<std::string>& globStrings,
       w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const {
+      struct w_query_ctx* ctx) const {
     auto client = getEdenClient();
-    bool result = true;
     auto mountPoint = to<std::string>(ctx->root->root_path);
 
     std::vector<std::string> fileNames;
@@ -291,7 +278,7 @@ class EdenView : public QueryableView {
     client->sync_getFileInformation(info, mountPoint, fileNames);
 
     if (info.size() != fileNames.size()) {
-      throw std::runtime_error(
+      throw QueryExecError(
           "info.size() didn't match fileNames.size(), should be unpossible!");
     }
 
@@ -304,17 +291,13 @@ class EdenView : public QueryableView {
       auto file = make_unique<EdenFileResult>(
           fileInfo, w_string::pathCat({mountPoint, name}));
 
-      if (!w_query_process_file(ctx->query, ctx, std::move(file))) {
-        result = false;
-        break;
-      }
+      w_query_process_file(ctx->query, ctx, std::move(file));
 
       ++nameIter;
       ++infoIter;
     }
 
-    *num_walked = fileNames.size();
-    return result;
+    ctx->bumpNumWalked(fileNames.size());
   }
 
   // Helper for computing a relative path prefix piece.
@@ -329,10 +312,7 @@ class EdenView : public QueryableView {
   }
 
   /** Walks files that match the supplied set of paths */
-  bool pathGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const override {
+  void pathGenerator(w_query* query, struct w_query_ctx* ctx) const override {
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
     auto rel = computeRelativePathPiece(ctx);
@@ -344,7 +324,7 @@ class EdenView : public QueryableView {
         // We don't have an easy way to express depth constraints
         // in the existing glob API, so we just punt for the moment.
         // I believe that this sort of query is quite rare anyway.
-        throw std::runtime_error(
+        throw QueryExecError(
             "the eden watcher only supports depth 0 or depth -1");
       }
       // -1 depth is infinite which we can translate to a recursive
@@ -355,13 +335,10 @@ class EdenView : public QueryableView {
       globStrings.emplace_back(to<std::string>(
           w_string::pathCat({rel, escapeGlobSpecialChars(path.name), glob})));
     }
-    return executeGlobBasedQuery(globStrings, query, ctx, num_walked);
+    executeGlobBasedQuery(globStrings, query, ctx);
   }
 
-  bool globGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const override {
+  void globGenerator(w_query* query, struct w_query_ctx* ctx) const override {
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
     auto rel = computeRelativePathPiece(ctx);
@@ -383,22 +360,20 @@ class EdenView : public QueryableView {
     auto noescape = json_is_true(
         query->query_spec.get_default("glob_noescape", json_false()));
     if (noescape) {
-      throw std::runtime_error(
+      throw QueryExecError(
           "glob_noescape is not supported for the eden watcher");
     }
     auto includedotfiles = json_is_true(
         query->query_spec.get_default("glob_includedotfiles", json_false()));
     if (includedotfiles) {
-      throw std::runtime_error(
+      throw QueryExecError(
           "glob_includedotfiles is not supported for the eden watcher");
     }
-    return executeGlobBasedQuery(globStrings, query, ctx, num_walked);
+    executeGlobBasedQuery(globStrings, query, ctx);
   }
 
-  bool allFilesGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const override {
+  void allFilesGenerator(w_query* query, struct w_query_ctx* ctx)
+      const override {
     // If the query is anchored to a relative_root, use that that
     // avoid sucking down a massive list of files from eden
     std::string globPattern;
@@ -408,8 +383,7 @@ class EdenView : public QueryableView {
       globPattern.append("/");
     }
     globPattern.append("**");
-    return executeGlobBasedQuery(
-        std::vector<std::string>{globPattern}, query, ctx, num_walked);
+    executeGlobBasedQuery(std::vector<std::string>{globPattern}, query, ctx);
   }
 
   ClockPosition getMostRecentRootNumberAndTickValue() const override {

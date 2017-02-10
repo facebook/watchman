@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include "watchman_system.h"
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -8,11 +9,14 @@
 #include "CookieSync.h"
 #include "QueryableView.h"
 #include "watchman_config.h"
+#include "watchman_opendir.h"
+#include "watchman_pending.h"
 #include "watchman_perf.h"
 #include "watchman_query.h"
 #include "watchman_string.h"
 
 struct Watcher;
+struct watchman_client;
 
 namespace watchman {
 
@@ -53,32 +57,18 @@ struct InMemoryView : public QueryableView {
 
   /** Perform a time-based (since) query and emit results to the supplied
    * query context */
-  bool timeGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const override;
+  void timeGenerator(w_query* query, struct w_query_ctx* ctx) const override;
 
   /** Walks all files with the suffix(es) configured in the query */
-  bool suffixGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const override;
+  void suffixGenerator(w_query* query, struct w_query_ctx* ctx) const override;
 
   /** Walks files that match the supplied set of paths */
-  bool pathGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const override;
+  void pathGenerator(w_query* query, struct w_query_ctx* ctx) const override;
 
-  bool globGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const override;
+  void globGenerator(w_query* query, struct w_query_ctx* ctx) const override;
 
-  bool allFilesGenerator(
-      w_query* query,
-      struct w_query_ctx* ctx,
-      int64_t* num_walked) const override;
+  void allFilesGenerator(w_query* query, struct w_query_ctx* ctx)
+      const override;
 
   std::shared_future<void> waitUntilReadyToQuery(
       const std::shared_ptr<w_root_t>& root) override;
@@ -171,20 +161,17 @@ struct InMemoryView : public QueryableView {
       const struct timeval& now);
 
   /** Recursively walks files under a specified dir */
-  bool dirGenerator(
+  void dirGenerator(
       w_query* query,
       struct w_query_ctx* ctx,
       const watchman_dir* dir,
-      uint32_t depth,
-      int64_t* num_walked) const;
-  bool globGeneratorTree(
+      uint32_t depth) const;
+  void globGeneratorTree(
       struct w_query_ctx* ctx,
-      int64_t* num_walked,
       const struct watchman_glob_tree* node,
       const struct watchman_dir* dir) const;
-  bool globGeneratorDoublestar(
+  void globGeneratorDoublestar(
       struct w_query_ctx* ctx,
-      int64_t* num_walked,
       const struct watchman_dir* dir,
       const struct watchman_glob_tree* node,
       const char* dir_name,

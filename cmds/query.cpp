@@ -5,9 +5,6 @@
 
 /* query /root {query} */
 static void cmd_query(struct watchman_client* client, const json_ref& args) {
-  char *errmsg = NULL;
-  w_query_res res;
-
   if (json_array_size(args) != 3) {
     send_error_response(client, "wrong number of arguments for 'query'");
     return;
@@ -19,22 +16,13 @@ static void cmd_query(struct watchman_client* client, const json_ref& args) {
   }
 
   const auto& query_spec = args.at(2);
-  auto query = w_query_parse(root, query_spec, &errmsg);
-  if (!query) {
-    send_error_response(client, "failed to parse query: %s", errmsg);
-    free(errmsg);
-    return;
-  }
+  auto query = w_query_parse(root, query_spec);
 
   if (client->client_mode) {
     query->sync_timeout = std::chrono::milliseconds(0);
   }
 
-  if (!w_query_execute(query.get(), root, &res, nullptr)) {
-    send_error_response(client, "query failed: %s", res.errmsg);
-    return;
-  }
-
+  auto res = w_query_execute(query.get(), root, nullptr);
   auto response = make_response();
   response.set(
       {{"is_fresh_instance", json_boolean(res.is_fresh_instance)},

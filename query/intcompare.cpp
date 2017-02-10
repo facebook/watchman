@@ -21,26 +21,19 @@ static const struct {
 
 // term is a json array that looks like:
 // ["size", "eq", 1024]
-bool parse_int_compare(
-    const json_ref& term,
-    struct w_query_int_compare* comp,
-    char** errmsg) {
+void parse_int_compare(const json_ref& term, struct w_query_int_compare* comp) {
   const char *opname;
   size_t i;
   bool found = false;
 
   if (json_array_size(term) != 3) {
-    ignore_result(asprintf(errmsg, "integer comparator must have 3 elements"));
-    return false;
+    throw QueryParseError("integer comparator must have 3 elements");
   }
   if (!json_is_string(json_array_get(term, 1))) {
-    ignore_result(asprintf(errmsg, "integer comparator op must be a string"));
-    return false;
+    throw QueryParseError("integer comparator op must be a string");
   }
   if (!json_is_integer(json_array_get(term, 2))) {
-    ignore_result(asprintf(errmsg,
-          "integer comparator operand must be an integer"));
-    return false;
+    throw QueryParseError("integer comparator operand must be an integer");
   }
 
   opname = json_string_value(json_array_get(term, 1));
@@ -53,15 +46,12 @@ bool parse_int_compare(
   }
 
   if (!found) {
-    ignore_result(asprintf(errmsg,
-          "integer comparator opname `%s' is invalid",
-          opname));
-    return false;
+    throw QueryParseError(watchman::to<std::string>(
+        "integer comparator opname `", opname, "' is invalid"));
   }
 
 
   comp->operand = json_integer_value(json_array_get(term, 2));
-  return true;
 }
 
 bool eval_int_compare(json_int_t ival, struct w_query_int_compare *comp) {
@@ -99,19 +89,13 @@ class SizeExpr : public QueryExpr {
     return eval_int_compare(file->stat().size, &comp);
   }
 
-  static std::unique_ptr<QueryExpr> parse(
-      w_query* query,
-      const json_ref& term) {
+  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {
     if (!json_is_array(term)) {
-      ignore_result(asprintf(&query->errmsg, "Expected array for 'size' term"));
-      return nullptr;
+      throw QueryParseError("Expected array for 'size' term");
     }
 
     w_query_int_compare comp;
-
-    if (!parse_int_compare(term, &comp, &query->errmsg)) {
-      return nullptr;
-    }
+    parse_int_compare(term, &comp);
 
     return watchman::make_unique<SizeExpr>(comp);
   }

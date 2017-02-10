@@ -3,6 +3,9 @@
 
 #ifndef WATCHMAN_PERF_H
 #define WATCHMAN_PERF_H
+#include "thirdparty/jansson/jansson.h"
+struct watchman_root;
+typedef struct watchman_root w_root_t;
 
 // Performance metrics sampling
 

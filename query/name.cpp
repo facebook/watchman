@@ -50,40 +50,31 @@ class NameExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query* query, const json_ref& term, bool caseless) {
+  parse(w_query*, const json_ref& term, bool caseless) {
     const char *pattern = nullptr, *scope = "basename";
     const char* which = caseless ? "iname" : "name";
     std::unordered_set<w_string> set;
 
     if (!json_is_array(term)) {
-      ignore_result(
-          asprintf(&query->errmsg, "Expected array for '%s' term", which));
-      return nullptr;
+      throw QueryParseError("Expected array for '", which, "' term");
     }
 
     if (json_array_size(term) > 3) {
-      ignore_result(asprintf(
-          &query->errmsg, "Invalid number of arguments for '%s' term", which));
-      return nullptr;
+      throw QueryParseError(
+          "Invalid number of arguments for '", which, "' term");
     }
 
     if (json_array_size(term) == 3) {
       const auto& jscope = term.at(2);
       if (!json_is_string(jscope)) {
-        ignore_result(asprintf(
-            &query->errmsg, "Argument 3 to '%s' must be a string", which));
-        return nullptr;
+        throw QueryParseError("Argument 3 to '", which, "' must be a string");
       }
 
       scope = json_string_value(jscope);
 
       if (strcmp(scope, "basename") && strcmp(scope, "wholename")) {
-        ignore_result(asprintf(
-            &query->errmsg,
-            "Invalid scope '%s' for %s expression",
-            scope,
-            which));
-        return nullptr;
+        throw QueryParseError(
+            "Invalid scope '", scope, "' for ", which, " expression");
       }
     }
 
@@ -94,13 +85,10 @@ class NameExpr : public QueryExpr {
 
       for (i = 0; i < json_array_size(name); i++) {
         if (!json_is_string(json_array_get(name, i))) {
-          ignore_result(asprintf(
-              &query->errmsg,
-              "Argument 2 to '%s' must be "
-              "either a string or an "
-              "array of string",
-              which));
-          return nullptr;
+          throw QueryParseError(
+              "Argument 2 to '",
+              which,
+              "' must be either a string or an array of string");
         }
       }
 
@@ -128,11 +116,10 @@ class NameExpr : public QueryExpr {
     } else if (json_is_string(name)) {
       pattern = json_string_value(name);
     } else {
-      ignore_result(asprintf(
-          &query->errmsg,
-          "Argument 2 to '%s' must be either a string or an array of string",
-          which));
-      return nullptr;
+      throw QueryParseError(
+          "Argument 2 to '",
+          which,
+          "' must be either a string or an array of string");
     }
 
     auto data =

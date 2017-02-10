@@ -47,7 +47,7 @@ class PcreExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query* query, const json_ref& term, bool caseless) {
+  parse(w_query*, const json_ref& term, bool caseless) {
     const char *ignore, *pattern, *scope = "basename";
     const char* which = caseless ? "ipcre" : "pcre";
     pcre* re;
@@ -57,18 +57,13 @@ class PcreExpr : public QueryExpr {
 
     if (json_unpack(term, "[s,s,s]", &ignore, &pattern, &scope) != 0 &&
         json_unpack(term, "[s,s]", &ignore, &pattern) != 0) {
-      ignore_result(asprintf(
-          &query->errmsg, "Expected [\"%s\", \"pattern\", \"scope\"?]", which));
-      return nullptr;
+      throw QueryParseError(watchman::to<std::string>(
+          "Expected [\"", which, "\", \"pattern\", \"scope\"?]"));
     }
 
     if (strcmp(scope, "basename") && strcmp(scope, "wholename")) {
-      ignore_result(asprintf(
-          &query->errmsg,
-          "Invalid scope '%s' for %s expression",
-          scope,
-          which));
-      return nullptr;
+      throw QueryParseError(watchman::to<std::string>(
+          "Invalid scope '", scope, "' for ", which, " expression"));
     }
 
     re = pcre_compile2(
@@ -79,15 +74,17 @@ class PcreExpr : public QueryExpr {
         &erroff,
         nullptr);
     if (!re) {
-      ignore_result(asprintf(
-          &query->errmsg,
-          "invalid %s: code %d %s at offset %d in %s",
+      throw QueryParseError(watchman::to<std::string>(
+          "invalid ",
           which,
+          ": code ",
           errcode,
+          " ",
           errptr,
+          " at offset ",
           erroff,
+          " in ",
           pattern));
-      return nullptr;
     }
 
     return watchman::make_unique<PcreExpr>(

@@ -3,6 +3,7 @@
 #pragma once
 #include <chrono>
 #include <condition_variable>
+#include "thirdparty/libart/src/art.h"
 #include "watchman_synchronized.h"
 
 #define W_PENDING_RECURSIVE 1

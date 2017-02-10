@@ -36,22 +36,17 @@ class TypeExpr : public QueryExpr {
     }
   }
 
-  static std::unique_ptr<QueryExpr> parse(
-      w_query* query,
-      const json_ref& term) {
+  static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {
     const char *ignore, *typestr, *found;
     char arg;
 
     if (json_unpack(term, "[s,u]", &ignore, &typestr) != 0) {
-      query->errmsg = strdup("must use [\"type\", \"typestr\"]");
-      return nullptr;
+      throw QueryParseError("must use [\"type\", \"typestr\"]");
     }
 
     found = strpbrk(typestr, "bcdfplsD");
     if (!found || strlen(typestr) > 1) {
-      ignore_result(
-          asprintf(&query->errmsg, "invalid type string '%s'", typestr));
-      return nullptr;
+      throw QueryParseError("invalid type string '", typestr, "'");
     }
 
     arg = *found;

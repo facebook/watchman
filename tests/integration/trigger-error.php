@@ -33,7 +33,7 @@ class triggerErrorsTestCase extends WatchmanTestCase {
     );
 
     $this->assertTriggerRegError(
-      'invalid rule spec: rule @ position 4 is not a string value',
+      'failed to parse query: rule @ position 4 is not a string value',
       'trigger', $root, 'oink', '--', 123
     );
 

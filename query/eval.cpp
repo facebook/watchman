@@ -38,7 +38,7 @@ const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx) {
   return ctx->wholename;
 }
 
-bool w_query_process_file(
+void w_query_process_file(
     w_query* query,
     struct w_query_ctx* ctx,
     std::unique_ptr<FileResult> file) {
@@ -51,14 +51,14 @@ bool w_query_process_file(
   // For fresh instances, only return files that currently exist.
   if (!ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance &&
       !ctx->file->exists()) {
-    return true;
+    return;
   }
 
   // We produce an output for this file if there is no expression,
   // or if the expression matched.
   if (query->expr && !query->expr->evaluate(ctx, ctx->file.get())) {
     // Not matched
-    return true;
+    return;
   }
 
   if (ctx->query->dedup_results) {
@@ -68,7 +68,7 @@ bool w_query_process_file(
     if (!inserted.second) {
       // Already present in the results, no need to emit it again
       ctx->num_deduped++;
-      return true;
+      return;
     }
   }
 
@@ -110,8 +110,6 @@ bool w_query_process_file(
     json_array_append_new(
         ctx->resultsArray, file_result_to_json(ctx->query->fieldList, match));
   }
-
-  return true;
 }
 
 void w_query_ctx::speculativeRenderCompletion() {
@@ -140,94 +138,53 @@ bool w_query_file_matches_relative_root(
   return result;
 }
 
-bool time_generator(
+void time_generator(
     w_query* query,
     const std::shared_ptr<w_root_t>& root,
-    struct w_query_ctx* ctx,
-    int64_t* num_walked) {
-  return root->inner.view->timeGenerator(query, ctx, num_walked);
+    struct w_query_ctx* ctx) {
+  root->inner.view->timeGenerator(query, ctx);
 }
 
-static bool default_generators(
+static void default_generators(
     w_query* query,
     const std::shared_ptr<w_root_t>& root,
-    struct w_query_ctx* ctx,
-    int64_t* num_walked) {
+    struct w_query_ctx* ctx) {
   bool generated = false;
-  int64_t n = 0;
-  int64_t total = 0;
-  bool result = true;
 
   // Time based query
   if (ctx->since.is_timestamp || !ctx->since.clock.is_fresh_instance) {
-    n = 0;
-    result = time_generator(query, root, ctx, &n);
-    total += n;
-    if (!result) {
-      goto done;
-    }
+    time_generator(query, root, ctx);
     generated = true;
   }
 
   // Suffix
   if (!query->suffixes.empty()) {
-    n = 0;
-    result = root->inner.view->suffixGenerator(query, ctx, &n);
-    total += n;
-    if (!result) {
-      goto done;
-    }
+    root->inner.view->suffixGenerator(query, ctx);
     generated = true;
   }
 
   if (!query->paths.empty()) {
-    n = 0;
-    result = root->inner.view->pathGenerator(query, ctx, &n);
-    total += n;
-    if (!result) {
-      goto done;
-    }
+    root->inner.view->pathGenerator(query, ctx);
     generated = true;
   }
 
   if (query->glob_tree) {
-    n = 0;
-    result = root->inner.view->globGenerator(query, ctx, &n);
-    total += n;
-    if (!result) {
-      goto done;
-    }
+    root->inner.view->globGenerator(query, ctx);
     generated = true;
   }
 
   // And finally, if there were no other generators, we walk all known
   // files
   if (!generated) {
-    n = 0;
-    result = root->inner.view->allFilesGenerator(query, ctx, &n);
-    total += n;
-    if (!result) {
-      goto done;
-    }
+    root->inner.view->allFilesGenerator(query, ctx);
   }
-
-done:
-  *num_walked = total;
-  return result;
 }
 
-w_query_res::~w_query_res() {
-  free(errmsg);
-}
-
-static bool execute_common(
+static void execute_common(
     struct w_query_ctx* ctx,
     w_perf_t* sample,
     w_query_res* res,
     w_query_generator generator) {
-  int64_t num_walked = 0;
-  bool result = true;
-
   if (ctx->query->dedup_results) {
     ctx->dedup.reserve(64);
   }
@@ -240,11 +197,7 @@ static bool execute_common(
       generator = default_generators;
     }
 
-    if (!generator(ctx->query, ctx->root, ctx, &num_walked)) {
-      res->errmsg = ctx->query->errmsg;
-      ctx->query->errmsg = NULL;
-      result = false;
-    }
+    generator(ctx->query, ctx->root, ctx);
   }
 
   if (!ctx->resultsToRender.empty()) {
@@ -266,15 +219,13 @@ static bool execute_common(
             {{"fresh_instance", json_boolean(res->is_fresh_instance)},
              {"num_deduped", json_integer(ctx->num_deduped)},
              {"num_results", json_integer(json_array_size(ctx->resultsArray))},
-             {"num_walked", json_integer(num_walked)},
+             {"num_walked", json_integer(ctx->getNumWalked())},
              {"query", ctx->query->query_spec}}));
     sample->log();
   }
 
   res->resultsArray = ctx->resultsArray;
   res->dedupedFileNames = std::move(ctx->dedup);
-
-  return result;
 }
 
 w_query_ctx::w_query_ctx(w_query* q, const std::shared_ptr<w_root_t>& root)
@@ -286,19 +237,17 @@ w_query_ctx::w_query_ctx(w_query* q, const std::shared_ptr<w_root_t>& root)
   }
 }
 
-bool w_query_execute(
+w_query_res w_query_execute(
     w_query* query,
     const std::shared_ptr<w_root_t>& root,
-    w_query_res* res,
     w_query_generator generator) {
+  w_query_res res;
   w_query_ctx ctx(query, nullptr);
 
   w_perf_t sample("query_execute");
 
   if (query->sync_timeout.count() && !root->syncToNow(query->sync_timeout)) {
-    ignore_result(asprintf(&res->errmsg, "synchronization failed: %s\n",
-        strerror(errno)));
-    return false;
+    throw QueryExecError("synchronization failed: ", strerror(errno));
   }
 
   /* The first stage of execution is generation.
@@ -318,7 +267,7 @@ bool w_query_execute(
       root->inner.view->getMostRecentRootNumberAndTickValue();
   ctx.lastAgeOutTickValueAtStartOfQuery =
       root->inner.view->getLastAgeOutTickValue();
-  res->clockAtStartOfQuery = ctx.clockAtStartOfQuery;
+  res.clockAtStartOfQuery = ctx.clockAtStartOfQuery;
 
   // Evaluate the cursor for this root
   ctx.since = query->since_spec
@@ -337,7 +286,8 @@ bool w_query_execute(
     }
   }
 
-  return execute_common(&ctx, &sample, res, generator);
+  execute_common(&ctx, &sample, &res, generator);
+  return res;
 }
 
 /* vim:ts=2:sw=2:et:

@@ -1,10 +1,11 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
-#include "thirdparty/wildmatch/wildmatch.h"
 #include "InMemoryView.h"
 #include "make_unique.h"
+#include "thirdparty/wildmatch/wildmatch.h"
+#include "watchman.h"
+#include "watchman_scopeguard.h"
 
 /* The glob generator.
  * The user can specify a list of globs as the set of candidate nodes
@@ -132,33 +133,30 @@ static bool add_glob(struct watchman_glob_tree *tree, w_string_t *glob_str) {
   return true;
 }
 
-bool parse_globs(w_query* res, const json_ref& query) {
+void parse_globs(w_query* res, const json_ref& query) {
   size_t i;
   int noescape = 0;
   int includedotfiles = 0;
 
   auto globs = query.get_default("glob");
   if (!globs) {
-    return true;
+    return;
   }
 
   if (!json_is_array(globs)) {
-    res->errmsg = strdup("'glob' must be an array");
-    return false;
+    throw QueryParseError("'glob' must be an array");
   }
 
   // Globs implicitly enable dedup_results mode
   res->dedup_results = true;
 
   if (json_unpack(query, "{s?b}", "glob_noescape", &noescape) != 0) {
-    res->errmsg = strdup("glob_noescape must be a boolean");
-    return false;
+    throw QueryParseError("glob_noescape must be a boolean");
   }
 
   if (json_unpack(query, "{s?b}", "glob_includedotfiles", &includedotfiles) !=
       0) {
-    res->errmsg = strdup("glob_includedotfiles must be a boolean");
-    return false;
+    throw QueryParseError("glob_includedotfiles must be a boolean");
   }
 
   res->glob_flags =
@@ -170,12 +168,9 @@ bool parse_globs(w_query* res, const json_ref& query) {
     const auto& pattern = json_to_w_string(ele);
 
     if (!add_glob(res->glob_tree.get(), pattern)) {
-      res->errmsg = strdup("failed to compile multi-glob");
-      return false;
+      throw QueryParseError("failed to compile multi-glob");
     }
   }
-
-  return true;
 }
 
 /** Concatenate dir_name and name around a unix style directory
@@ -212,15 +207,12 @@ namespace watchman {
  * file against the list of patterns, terminating that match as soon
  * as any one of them matches the file node.
  */
-bool InMemoryView::globGeneratorDoublestar(
+void InMemoryView::globGeneratorDoublestar(
     struct w_query_ctx* ctx,
-    int64_t* num_walked,
     const struct watchman_dir* dir,
     const struct watchman_glob_tree* node,
     const char* dir_name,
     uint32_t dir_name_len) const {
-  int64_t n = 0;
-  bool result = true;
   bool matched;
 
   // First step is to walk the set of files contained in this node
@@ -228,7 +220,7 @@ bool InMemoryView::globGeneratorDoublestar(
     auto file = it.second.get();
     auto file_name = file->getName();
 
-    ++n;
+    ctx->bumpNumWalked();
 
     if (!file->exists) {
       // Globs can only match files that exist
@@ -252,13 +244,10 @@ bool InMemoryView::globGeneratorDoublestar(
                     0) == WM_MATCH;
 
       if (matched) {
-        if (!w_query_process_file(
-                ctx->query,
-                ctx,
-                make_unique<InMemoryFileResult>(file, contentHashCache_))) {
-          result = false;
-          goto done;
-        }
+        w_query_process_file(
+            ctx->query,
+            ctx,
+            make_unique<InMemoryFileResult>(file, contentHashCache_));
         // No sense running multiple matches for this same file node
         // if this one succeeded.
         break;
@@ -269,7 +258,6 @@ bool InMemoryView::globGeneratorDoublestar(
   // And now walk down to any dirs; all dirs are eligible
   for (auto& it : dir->dirs) {
     const auto child = it.second.get();
-    int64_t child_walked = 0;
 
     if (!child->last_check_existed) {
       // Globs can only match files in dirs that exist
@@ -278,36 +266,19 @@ bool InMemoryView::globGeneratorDoublestar(
 
     auto subject = make_path_name(
         dir_name, dir_name_len, child->name.data(), child->name.size());
-    result = globGeneratorDoublestar(
-        ctx, &child_walked, child, node, subject.data(), subject.size());
-    n += child_walked;
-    if (!result) {
-      goto done;
-    }
+    globGeneratorDoublestar(ctx, child, node, subject.data(), subject.size());
   }
-
-done:
-  *num_walked = n;
-  return result;
 }
 
 /* Match each child of node against the children of dir */
-bool InMemoryView::globGeneratorTree(
+void InMemoryView::globGeneratorTree(
     struct w_query_ctx* ctx,
-    int64_t* num_walked,
     const struct watchman_glob_tree* node,
     const struct watchman_dir* dir) const {
   w_string_t component;
-  bool result = true;
-  int64_t n = 0;
 
   if (!node->doublestar_children.empty()) {
-    int64_t child_walked = 0;
-    result = globGeneratorDoublestar(ctx, &child_walked, dir, node, nullptr, 0);
-    n += child_walked;
-    if (!result) {
-      goto done;
-    }
+    globGeneratorDoublestar(ctx, dir, node, nullptr, 0);
   }
 
   for (const auto& child_node : node->children) {
@@ -328,13 +299,7 @@ bool InMemoryView::globGeneratorTree(
         const auto child_dir = dir->getChildDir(&component);
 
         if (child_dir) {
-          int64_t child_walked = 0;
-          result = globGeneratorTree(
-              ctx, &child_walked, child_node.get(), child_dir);
-          n += child_walked;
-          if (!result) {
-            goto done;
-          }
+          globGeneratorTree(ctx, child_node.get(), child_dir);
         }
       } else {
         // Otherwise we have to walk and match
@@ -352,13 +317,7 @@ bool InMemoryView::globGeneratorTree(
                   ctx->query->glob_flags |
                       (ctx->query->case_sensitive ? 0 : WM_CASEFOLD),
                   0) == WM_MATCH) {
-            int64_t child_walked = 0;
-            result = globGeneratorTree(
-                ctx, &child_walked, child_node.get(), child_dir);
-            n += child_walked;
-            if (!result) {
-              goto done;
-            }
+            globGeneratorTree(ctx, child_node.get(), child_dir);
           }
         }
       }
@@ -376,16 +335,13 @@ bool InMemoryView::globGeneratorTree(
         auto file = dir->getChildFile(&component);
 
         if (file) {
-          ++n;
+          ctx->bumpNumWalked();
           if (file->exists) {
             // Globs can only match files that exist
-            result = w_query_process_file(
+            w_query_process_file(
                 ctx->query,
                 ctx,
                 make_unique<InMemoryFileResult>(file, contentHashCache_));
-            if (!result) {
-              goto done;
-            }
           }
         }
       } else {
@@ -393,7 +349,7 @@ bool InMemoryView::globGeneratorTree(
           // Otherwise we have to walk and match
           auto file = it.second.get();
           auto file_name = file->getName();
-          ++n;
+          ctx->bumpNumWalked();
 
           if (!file->exists) {
             // Globs can only match files that exist
@@ -406,28 +362,19 @@ bool InMemoryView::globGeneratorTree(
                   ctx->query->glob_flags |
                       (ctx->query->case_sensitive ? WM_CASEFOLD : 0),
                   0) == WM_MATCH) {
-            if (!w_query_process_file(
-                    ctx->query,
-                    ctx,
-                    make_unique<InMemoryFileResult>(file, contentHashCache_))) {
-              result = false;
-              goto done;
-            }
+            w_query_process_file(
+                ctx->query,
+                ctx,
+                make_unique<InMemoryFileResult>(file, contentHashCache_));
           }
         }
       }
     }
   }
-
-done:
-  *num_walked = n;
-  return result;
 }
 
-bool InMemoryView::globGenerator(
-    w_query* query,
-    struct w_query_ctx* ctx,
-    int64_t* num_walked) const {
+void InMemoryView::globGenerator(w_query* query, struct w_query_ctx* ctx)
+    const {
   w_string_t *relative_root;
 
   if (query->relative_root) {
@@ -440,16 +387,14 @@ bool InMemoryView::globGenerator(
 
   const auto dir = resolveDir(view, relative_root);
   if (!dir) {
-    ignore_result(asprintf(
-        &query->errmsg,
-        "glob_generator could not resolve %.*s, check your "
-        "relative_root parameter!\n",
-        relative_root->len,
-        relative_root->buf));
-    return false;
+    throw QueryExecError(watchman::to<std::string>(
+        "glob_generator could not resolve ",
+        w_string_piece(relative_root),
+        ", check your "
+        "relative_root parameter!"));
   }
 
-  return globGeneratorTree(ctx, num_walked, query->glob_tree.get(), dir);
+  globGeneratorTree(ctx, query->glob_tree.get(), dir);
 }
 }
 

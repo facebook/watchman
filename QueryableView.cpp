@@ -1,8 +1,6 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
-
 #include "QueryableView.h"
 
 namespace watchman {
@@ -10,31 +8,26 @@ QueryableView::~QueryableView() {}
 
 /** Perform a time-based (since) query and emit results to the supplied
    * query context */
-bool QueryableView::timeGenerator(w_query*, struct w_query_ctx*, int64_t*)
-    const {
-  return false;
+void QueryableView::timeGenerator(w_query*, struct w_query_ctx*) const {
+  throw QueryExecError("timeGenerator not implemented");
 }
 
 /** Walks all files with the suffix(es) configured in the query */
-bool QueryableView::suffixGenerator(w_query*, struct w_query_ctx*, int64_t*)
-    const {
-  return false;
+void QueryableView::suffixGenerator(w_query*, struct w_query_ctx*) const {
+  throw QueryExecError("suffixGenerator not implemented");
 }
 
 /** Walks files that match the supplied set of paths */
-bool QueryableView::pathGenerator(w_query*, struct w_query_ctx*, int64_t*)
-    const {
-  return false;
+void QueryableView::pathGenerator(w_query*, struct w_query_ctx*) const {
+  throw QueryExecError("pathGenerator not implemented");
 }
 
-bool QueryableView::globGenerator(w_query*, struct w_query_ctx*, int64_t*)
-    const {
-  return false;
+void QueryableView::globGenerator(w_query*, struct w_query_ctx*) const {
+  throw QueryExecError("globGenerator not implemented");
 }
 
-bool QueryableView::allFilesGenerator(w_query*, struct w_query_ctx*, int64_t*)
-    const {
-  return false;
+void QueryableView::allFilesGenerator(w_query*, struct w_query_ctx*) const {
+  throw QueryExecError("allFilesGenerator not implemented");
 }
 
 uint32_t QueryableView::getLastAgeOutTickValue() const {

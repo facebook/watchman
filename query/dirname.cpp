@@ -61,55 +61,43 @@ class DirNameExpr : public QueryExpr {
 
   // ["dirname", "foo"] -> ["dirname", "foo", ["depth", "ge", 0]]
   static std::unique_ptr<QueryExpr>
-  parse(w_query* query, const json_ref& term, bool caseless) {
+  parse(w_query*, const json_ref& term, bool caseless) {
     const char* which = caseless ? "idirname" : "dirname";
     struct w_query_int_compare depth_comp;
 
     if (!json_is_array(term)) {
-      ignore_result(
-          asprintf(&query->errmsg, "Expected array for '%s' term", which));
-      return nullptr;
+      throw QueryParseError("Expected array for '", which, "' term");
     }
 
     if (json_array_size(term) < 2) {
-      ignore_result(asprintf(
-          &query->errmsg, "Invalid number of arguments for '%s' term", which));
-      return nullptr;
+      throw QueryParseError(
+          "Invalid number of arguments for '", which, "' term");
     }
 
     if (json_array_size(term) > 3) {
-      ignore_result(asprintf(
-          &query->errmsg, "Invalid number of arguments for '%s' term", which));
-      return nullptr;
+      throw QueryParseError(
+          "Invalid number of arguments for '", which, "' term");
     }
 
     const auto& name = term.at(1);
     if (!json_is_string(name)) {
-      ignore_result(asprintf(
-          &query->errmsg, "Argument 2 to '%s' must be a string", which));
-      return nullptr;
+      throw QueryParseError("Argument 2 to '", which, "' must be a string");
     }
 
     if (json_array_size(term) == 3) {
       const auto& depth = term.at(2);
       if (!json_is_array(depth)) {
-        ignore_result(asprintf(
-            &query->errmsg,
-            "Invalid number of arguments for '%s' term",
-            which));
-        return nullptr;
+        throw QueryParseError(
+            "Invalid number of arguments for '", which, "' term");
       }
 
-      if (!parse_int_compare(depth, &depth_comp, &query->errmsg)) {
-        return nullptr;
-      }
+      parse_int_compare(depth, &depth_comp);
 
       if (strcmp("depth", json_string_value(json_array_get(depth, 0)))) {
-        ignore_result(asprintf(
-            &query->errmsg,
-            "Third parameter to '%s' should be a relational depth term",
-            which));
-        return nullptr;
+        throw QueryParseError(
+            "Third parameter to '",
+            which,
+            "' should be a relational depth term");
       }
     } else {
       depth_comp.operand = 0;
