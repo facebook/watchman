@@ -569,6 +569,7 @@ class CLIProcessTransport(Transport):
                 self.proc.kill()
             self.proc.stdin.close()
             self.proc.stdout.close()
+            self.proc.wait()
             self.proc = None
 
     def _connect(self):

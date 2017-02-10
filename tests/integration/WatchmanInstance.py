@@ -126,10 +126,10 @@ class _Instance(object):
         with open(self.log_file_name, 'r') as f:
             return f.read()
 
-    def stop(self, kill=True):
+    def stop(self):
         if self.proc:
-            if kill:
-                self.proc.kill()
+            self.proc.kill()
+            self.proc.wait()
             self.proc = None
         self.cli_log_file.close()
 
@@ -190,7 +190,7 @@ class _Instance(object):
 
         if self.pid is None:
             # self.proc didn't come up: wait for it to die
-            self.stop(kill=False)
+            self.stop()
             pywatchman.compat.reraise(t, val, tb)
 
     def _waitForSuspend(self, suspended, timeout):
