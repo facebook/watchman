@@ -78,7 +78,7 @@ static void cmd_state_enter(
   }
 
   auto assertion =
-      watchman::make_unique<watchman_client_state_assertion>(root, parsed.name);
+      std::make_shared<watchman_client_state_assertion>(root, parsed.name);
   if (!assertion) {
     send_error_response(client, "out of memory");
     return;
@@ -96,11 +96,11 @@ static void cmd_state_enter(
       return;
     }
     // We're now in this state
-    entry = std::move(assertion);
+    entry = assertion;
 
     // Record the state assertion in the client
     entry->id = ++client->next_state_id;
-    client->states[entry->id] = entry.get();
+    client->states[entry->id] = entry;
   }
 
   // We successfully entered the state, this is our response to the
@@ -131,7 +131,7 @@ W_CMD_REG("state-enter", cmd_state_enter, CMD_DAEMON, w_cmd_realpath_root)
 
 static void leave_state(
     struct watchman_user_client* client,
-    struct watchman_client_state_assertion* assertion,
+    std::shared_ptr<watchman_client_state_assertion> assertion,
     bool abandoned,
     json_t* metadata) {
   // Broadcast about the state leave
@@ -166,7 +166,13 @@ static void leave_state(
 // Abandon any states that haven't been explicitly vacated
 void w_client_vacate_states(struct watchman_user_client *client) {
   while (!client->states.empty()) {
-    auto assertion = client->states.begin()->second;
+    auto assertion = client->states.begin()->second.lock();
+
+    if (!assertion) {
+      client->states.erase(client->states.begin()->first);
+      continue;
+    }
+
     auto root = assertion->root;
 
     w_log(
@@ -188,7 +194,7 @@ static void cmd_state_leave(
   // This is a weak reference to the assertion.  This is safe because only this
   // client can delete this assertion, and this function is only executed by
   // the thread that owns this client.
-  struct watchman_client_state_assertion *assertion = NULL;
+  std::shared_ptr<watchman_client_state_assertion> assertion;
   auto client = dynamic_cast<watchman_user_client*>(clientbase);
   json_ref response;
 
@@ -217,10 +223,10 @@ static void cmd_state_leave(
       return;
     }
 
-    assertion = it->second.get();
+    assertion = it->second;
 
     // Sanity check ownership
-    if (client->states[assertion->id] != assertion) {
+    if (client->states[assertion->id].lock() != assertion) {
       send_error_response(
           client,
           "state %s was not asserted by this session",

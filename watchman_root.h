@@ -69,7 +69,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   // asserted states
   watchman::Synchronized<std::unordered_map<
       w_string,
-      std::unique_ptr<watchman_client_state_assertion>>>
+      std::shared_ptr<watchman_client_state_assertion>>>
       asserted_states;
 
   /* --- everything in inner will be reset on w_root_init --- */

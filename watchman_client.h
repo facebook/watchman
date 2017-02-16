@@ -80,7 +80,8 @@ struct watchman_user_client : public watchman_client {
 
   /* map of unique id => watchman_client_state_assertion.
    * The values are owned by root::asserted_states */
-  std::unordered_map<long, watchman_client_state_assertion*> states;
+  std::unordered_map<long, std::weak_ptr<watchman_client_state_assertion>>
+      states;
   long next_state_id{0};
 
   // Subscriber to root::unilateralResponses

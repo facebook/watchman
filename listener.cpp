@@ -96,7 +96,9 @@ watchman_client::~watchman_client() {
 
   w_log(W_LOG_DBG, "client_delete %p\n", this);
 
-  stm->shutdown();
+  if (stm) {
+    stm->shutdown();
+  }
 }
 
 void watchman_client::enqueueResponse(json_ref&& resp, bool ping) {
