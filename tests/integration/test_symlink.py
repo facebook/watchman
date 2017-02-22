@@ -13,6 +13,16 @@ except ImportError:
     import unittest
 
 
+def buggy_fsevents():
+    ''' older versions of macOS had some problems reporting changes
+        when a symlink was updated to a dangling value.  This was
+        fixed in macOS 10.12 '''
+    if sys.platform != 'darwin':
+        return False
+    # look at the kernel release; it is fixed in 16+
+    return int(os.uname()[2].split('.')[0]) < 16
+
+
 @WatchmanTestCase.expand_matrix
 class TestSymlink(WatchmanTestCase.WatchmanTestCase):
 
@@ -56,7 +66,7 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
     # test to see that invalid symbolic link
     # updates are picked up by the symlink_target field
     # Skipping this test on mac due to the dangling symlink bug in fsevents
-    @unittest.skipIf(sys.platform == 'darwin', 'known fsevents bug')
+    @unittest.skipIf(buggy_fsevents(), 'known fsevents bug')
     def test_invalidSymlink(self):
         root = self.mkdtemp()
         os.symlink(os.path.join(root, '222'), os.path.join(root, '111'))
