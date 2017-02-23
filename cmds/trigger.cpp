@@ -223,8 +223,11 @@ watchman_trigger_command::watchman_trigger_command(
       stdout_name(nullptr),
       stderr_name(nullptr),
       ping_(w_event_make()) {
-  auto queryDef =
-      json_object({{"expression", definition.get_default("expression")}});
+  auto queryDef = json_object();
+  auto expr = definition.get_default("expression");
+  if (expr) {
+    queryDef.set("expression", json_ref(expr));
+  }
   auto relative_root = definition.get_default("relative_root");
   if (relative_root) {
     json_object_set_nocheck(queryDef, "relative_root", relative_root);
