@@ -217,9 +217,9 @@ int json_object_set_new_nocheck(
     json_ref&& value);
 int json_object_del(json_t *object, const char *key);
 int json_object_clear(json_t *object);
-int json_object_update(json_t *object, json_t *other);
-int json_object_update_existing(json_t *object, json_t *other);
-int json_object_update_missing(json_t *object, json_t *other);
+int json_object_update(const json_t* src, json_t* target);
+int json_object_update_existing(const json_t* src, json_t* target);
+int json_object_update_missing(const json_t* src, json_t* target);
 
 static JSON_INLINE
 int json_object_set(json_t *object, const char *key, json_t *value)
@@ -287,8 +287,8 @@ int json_equal(json_t *value1, json_t *value2);
 
 /* copying */
 
-json_ref json_copy(json_t* value);
-json_ref json_deep_copy(json_t* value);
+json_ref json_copy(const json_t* value);
+json_ref json_deep_copy(const json_t* value);
 
 /* decoding */
 

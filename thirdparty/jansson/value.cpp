@@ -244,49 +244,46 @@ int json_object_clear(json_t *json)
     return 0;
 }
 
-int json_object_update(json_t *object, json_t *other)
-{
-    if(!json_is_object(object) || !json_is_object(other))
-        return -1;
+int json_object_update(const json_t* src, json_t* target) {
+  if (!json_is_object(src) || !json_is_object(src))
+    return -1;
 
-    auto target_obj = json_to_object(other);
-    for (auto& it : json_to_object(object)->map) {
+  auto target_obj = json_to_object(target);
+  for (auto& it : json_to_object(src)->map) {
+    target_obj->map[it.first] = it.second;
+  }
+
+  return 0;
+}
+
+int json_object_update_existing(const json_t* src, json_t* target) {
+  if (!json_is_object(src) || !json_is_object(target))
+    return -1;
+
+  auto target_obj = json_to_object(target);
+  for (auto& it : json_to_object(src)->map) {
+    auto find = target_obj->map.find(it.first);
+    if (find != target_obj->map.end()) {
       target_obj->map[it.first] = it.second;
     }
+  }
 
-    return 0;
+  return 0;
 }
 
-int json_object_update_existing(json_t *object, json_t *other)
-{
-    if(!json_is_object(object) || !json_is_object(other))
-        return -1;
+int json_object_update_missing(const json_t* src, json_t* target) {
+  if (!json_is_object(src) || !json_is_object(target))
+    return -1;
 
-    auto target_obj = json_to_object(other);
-    for (auto& it : json_to_object(object)->map) {
-      auto find = target_obj->map.find(it.first);
-      if (find != target_obj->map.end()) {
-        target_obj->map[it.first] = it.second;
-      }
+  auto target_obj = json_to_object(target);
+  for (auto& it : json_to_object(src)->map) {
+    auto find = target_obj->map.find(it.first);
+    if (find == target_obj->map.end()) {
+      target_obj->map[it.first] = it.second;
     }
+  }
 
-    return 0;
-}
-
-int json_object_update_missing(json_t *object, json_t *other)
-{
-    if(!json_is_object(object) || !json_is_object(other))
-        return -1;
-
-    auto target_obj = json_to_object(other);
-    for (auto& it : json_to_object(object)->map) {
-      auto find = target_obj->map.find(it.first);
-      if (find == target_obj->map.end()) {
-        target_obj->map[it.first] = it.second;
-      }
-    }
-
-    return 0;
+  return 0;
 }
 
 static int json_object_equal(json_t* object1, json_t* object2) {
@@ -309,17 +306,17 @@ static int json_object_equal(json_t* object1, json_t* object2) {
   return 1;
 }
 
-static json_ref json_object_copy(json_t* object) {
+static json_ref json_object_copy(const json_t* object) {
   auto result = json_object();
   if (!result)
     return nullptr;
 
-  json_object_update(result, object);
+  json_object_update(object, result);
 
   return result;
 }
 
-static json_ref json_object_deep_copy(json_t* object) {
+static json_ref json_object_deep_copy(const json_t* object) {
   json_t* result;
 
   result = json_object();
@@ -531,7 +528,7 @@ static int json_array_equal(json_t *array1, json_t *array2)
     return 1;
 }
 
-static json_ref json_array_copy(json_t* array) {
+static json_ref json_array_copy(const json_t* array) {
   auto result = json_array();
   if (!result)
     return nullptr;
@@ -545,7 +542,7 @@ static json_ref json_array_copy(json_t* array) {
   return result;
 }
 
-static json_ref json_array_deep_copy(json_t* array) {
+static json_ref json_array_deep_copy(const json_t* array) {
   size_t i;
 
   auto result = json_array();
@@ -595,7 +592,7 @@ static int json_string_equal(json_t *string1, json_t *string2)
   return json_to_string(string1)->value == json_to_string(string2)->value;
 }
 
-static json_ref json_string_copy(json_t* string) {
+static json_ref json_string_copy(const json_t* string) {
   return w_string_to_json(json_to_w_string(string));
 }
 
@@ -632,9 +629,8 @@ static int json_integer_equal(json_t *integer1, json_t *integer2)
     return json_integer_value(integer1) == json_integer_value(integer2);
 }
 
-static json_t *json_integer_copy(json_t *integer)
-{
-    return json_integer(json_integer_value(integer));
+static json_t* json_integer_copy(const json_t* integer) {
+  return json_integer(json_integer_value(integer));
 }
 
 
@@ -673,9 +669,8 @@ static int json_real_equal(json_t *real1, json_t *real2)
     return json_real_value(real1) == json_real_value(real2);
 }
 
-static json_t *json_real_copy(json_t *real)
-{
-    return json_real(json_real_value(real));
+static json_t* json_real_copy(const json_t* real) {
+  return json_real(json_real_value(real));
 }
 
 
@@ -772,7 +767,7 @@ int json_equal(json_t *json1, json_t *json2)
 
 /*** copying ***/
 
-json_ref json_copy(json_t* json) {
+json_ref json_copy(const json_t* json) {
   if (!json)
     return nullptr;
 
@@ -791,13 +786,14 @@ json_ref json_copy(json_t* json) {
   if (json_is_real(json))
     return json_real_copy(json);
 
-  if (json_is_true(json) || json_is_false(json) || json_is_null(json))
-    return json;
+  if (json_is_true(json) || json_is_false(json) || json_is_null(json)) {
+    return const_cast<json_t*>(json);
+  }
 
   return nullptr;
 }
 
-json_ref json_deep_copy(json_t* json) {
+json_ref json_deep_copy(const json_t* json) {
   if (!json)
     return nullptr;
 
@@ -819,8 +815,9 @@ json_ref json_deep_copy(json_t* json) {
   if (json_is_real(json))
     return json_real_copy(json);
 
-  if (json_is_true(json) || json_is_false(json) || json_is_null(json))
-    return json;
+  if (json_is_true(json) || json_is_false(json) || json_is_null(json)) {
+    return const_cast<json_t*>(json);
+  }
 
   return nullptr;
 }
