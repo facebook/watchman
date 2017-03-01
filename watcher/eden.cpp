@@ -416,6 +416,13 @@ class EdenView : public QueryableView {
     return false;
   }
 
+  SCM* getSCM() const override {
+    // We're going to return an eden aware implementation when we
+    // get around to hooking this up.  For now, pretend there is
+    // no source control.
+    return nullptr;
+  }
+
   void startThreads(const std::shared_ptr<w_root_t>& root) override {}
   void signalThreads() override {}
 

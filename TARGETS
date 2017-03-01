@@ -199,8 +199,13 @@ cpp_library(
 cpp_library(
     name="watchmanlib",
     compiler_flags=compiler_flags,
-    srcs=glob(
-        ["*.cpp", "query/*.cpp", "watcher/auto.cpp", "root/*.cpp", "cmds/*.cpp"],
+    srcs=glob([
+        "*.cpp",
+        "query/*.cpp",
+        "watcher/auto.cpp",
+        "root/*.cpp",
+        "cmds/*.cpp",
+        "scm/*.cpp"],
         excludes=[
             'main.cpp', 'stream_win.cpp', 'log.cpp', 'query/pcre.cpp', 'root/warnerr.cpp',
             'root/poison.cpp'

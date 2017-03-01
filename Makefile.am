@@ -95,6 +95,8 @@ watchman_SOURCES = \
 	root/vcs.cpp       \
 	root/warnerr.cpp       \
 	root/watchlist.cpp       \
+	scm/Mercurial.cpp \
+	scm/SCM.cpp \
 	state.cpp      \
 	string.cpp     \
 	time.cpp

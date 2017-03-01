@@ -90,7 +90,8 @@ InMemoryView::InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher)
       maxFilesToWarmInContentCache_(
           size_t(config_.getInt("content_hash_max_warm_per_settle", 1024))),
       syncContentCacheWarming_(
-          config_.getBool("content_hash_warm_wait_before_settle", false)) {}
+          config_.getBool("content_hash_warm_wait_before_settle", false)),
+      scm_(SCM::scmForPath(root->root_path)) {}
 
 void InMemoryView::view::insertAtHeadOfFileList(struct watchman_file* file) {
   file->next = latest_file;
@@ -663,6 +664,10 @@ const std::shared_ptr<Watcher>& InMemoryView::getWatcher() const {
 
 const w_string& InMemoryView::getName() const {
   return watcher_->name;
+}
+
+SCM* InMemoryView::getSCM() const {
+  return scm_.get();
 }
 
 void InMemoryView::warmContentCache() {

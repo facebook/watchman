@@ -2,11 +2,13 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 
+#include "watchman_system.h"
+#include <future>
+#include <vector>
+#include "scm/SCM.h"
 #include "watchman_perf.h"
 #include "watchman_query.h"
 #include "watchman_string.h"
-#include <future>
-#include <vector>
 
 struct watchman_file;
 struct watchman_dir;
@@ -56,5 +58,8 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
 
   virtual std::shared_future<void> waitUntilReadyToQuery(
       const std::shared_ptr<w_root_t>& root) = 0;
+
+  // Return the SCM detected for this watched root
+  virtual SCM* getSCM() const = 0;
 };
 }

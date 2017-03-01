@@ -18,16 +18,72 @@ void ClockSpec::init() {
 }
 
 ClockSpec::ClockSpec(const json_ref& value) {
+  auto parseClockString = [=](const char* str) {
+    uint64_t start_time;
+    int pid;
+    uint32_t root_number;
+    uint32_t ticks;
+    // Parse a >= 2.8.2 version clock string
+    if (sscanf(
+            str,
+            "c:%" PRIu64 ":%d:%" PRIu32 ":%" PRIu32,
+            &start_time,
+            &pid,
+            &root_number,
+            &ticks) == 4) {
+      tag = w_cs_clock;
+      clock.start_time = start_time;
+      clock.pid = pid;
+      clock.position.rootNumber = root_number;
+      clock.position.ticks = ticks;
+      return true;
+    }
+
+    if (sscanf(str, "c:%d:%" PRIu32, &pid, &ticks) == 2) {
+      // old-style clock value (<= 2.8.2) -- by setting clock time and root
+      // number to 0 we guarantee that this is treated as a fresh instance
+      tag = w_cs_clock;
+      clock.start_time = 0;
+      clock.pid = pid;
+      clock.position.rootNumber = root_number;
+      clock.position.ticks = ticks;
+      return true;
+    }
+
+    return false;
+  };
+
   switch (json_typeof(value)) {
     case JSON_INTEGER:
       tag = w_cs_timestamp;
       timestamp = (time_t)json_integer_value(value);
       return;
+
+    case JSON_OBJECT: {
+      auto clockStr = value.get_default("clock");
+      if (clockStr) {
+        if (!parseClockString(json_string_value(clockStr))) {
+          throw std::domain_error("invalid clockspec");
+        }
+      } else {
+        tag = w_cs_clock;
+        clock.start_time = 0;
+        clock.pid = 0;
+        clock.position.rootNumber = 0;
+        clock.position.ticks = 0;
+      }
+
+      auto scm = value.get_default("scm");
+      if (scm) {
+        scmMergeBase = json_to_w_string(
+            scm.get_default("mergebase", w_string_to_json("")));
+        scmMergeBaseWith = json_to_w_string(scm.get("mergebase-with"));
+      }
+
+      return;
+    }
+
     case JSON_STRING: {
-      uint64_t start_time;
-      int pid;
-      uint32_t root_number;
-      uint32_t ticks;
       auto str = json_string_value(value);
 
       if (str[0] == 'n' && str[1] == ':') {
@@ -36,30 +92,7 @@ ClockSpec::ClockSpec(const json_ref& value) {
         return;
       }
 
-      if (sscanf(
-              str,
-              "c:%" PRIu64 ":%d:%" PRIu32 ":%" PRIu32,
-              &start_time,
-              &pid,
-              &root_number,
-              &ticks) == 4) {
-        tag = w_cs_clock;
-        clock.start_time = start_time;
-        clock.pid = pid;
-        clock.position.rootNumber = root_number;
-        clock.position.ticks = ticks;
-        return;
-      }
-
-      if (sscanf(str, "c:%d:%" PRIu32, &pid, &ticks) == 2) {
-        // old-style clock value (<= 2.8.2) -- by setting clock time and root
-        // number
-        // to 0 we guarantee that this is treated as a fresh instance
-        tag = w_cs_clock;
-        clock.start_time = 0;
-        clock.pid = pid;
-        clock.position.rootNumber = root_number;
-        clock.position.ticks = ticks;
+      if (parseClockString(str)) {
         return;
       }
 
@@ -187,7 +220,19 @@ void annotate_with_clock(
 }
 
 json_ref ClockSpec::toJson() const {
+  if (hasScmParams()) {
+    return json_object(
+        {{"clock", w_string_to_json(position().toClockString())},
+         {"scm",
+          json_object(
+              {{"mergebase", w_string_to_json(scmMergeBase)},
+               {"mergebase-with", w_string_to_json(scmMergeBaseWith)}})}});
+  }
   return w_string_to_json(position().toClockString());
+}
+
+bool ClockSpec::hasScmParams() const {
+  return scmMergeBase;
 }
 
 /* vim:ts=2:sw=2:et:

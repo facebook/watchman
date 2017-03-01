@@ -242,10 +242,47 @@ w_query_res w_query_execute(
     const std::shared_ptr<w_root_t>& root,
     w_query_generator generator) {
   w_query_res res;
-  w_query_ctx ctx(query, nullptr);
+  std::shared_ptr<w_query> altQuery;
+  ClockSpec resultClock(ClockPosition{});
 
   w_perf_t sample("query_execute");
 
+  // We want to check this before we sync, as the SCM may generate changes
+  // in the filesystem when running the underlying commands to query it.
+  if (query->since_spec && query->since_spec->hasScmParams()) {
+    auto scm = root->inner.view->getSCM();
+
+    resultClock.scmMergeBaseWith = query->since_spec->scmMergeBaseWith;
+    resultClock.scmMergeBase = scm->mergeBaseWith(resultClock.scmMergeBaseWith);
+
+    if (resultClock.scmMergeBase != query->since_spec->scmMergeBase) {
+      // The merge base is different, so on the assumption that a lot of
+      // things have changed between the prior and current state of
+      // the world, we're just going to ask the SCM to tell us about
+      // the changes, then we're going to feed that change list through
+      // a simpler watchman query.
+
+      auto changedFiles =
+          scm->getFilesChangedSinceMergeBaseWith(resultClock.scmMergeBase);
+
+      auto pathList = json_array_of_size(changedFiles.size());
+      for (auto& f : changedFiles) {
+        json_array_append_new(pathList, w_string_to_json(f));
+      }
+
+      // Re-cast this as a path-generator query
+      auto altQuerySpec = json_copy(query->query_spec);
+
+      altQuerySpec.object().erase("since");
+      altQuerySpec.set("path", std::move(pathList));
+
+      // And switch us over to run the rest of the query on this one
+      altQuery = w_query_parse(root, altQuerySpec);
+      query = altQuery.get();
+    }
+  }
+
+  w_query_ctx ctx(query, root);
   if (query->sync_timeout.count() && !root->syncToNow(query->sync_timeout)) {
     throw QueryExecError("synchronization failed: ", strerror(errno));
   }
@@ -261,13 +298,15 @@ w_query_res w_query_execute(
    * both emit the same file.
    */
 
-  ctx.root = root;
-
   ctx.clockAtStartOfQuery =
       ClockSpec(root->inner.view->getMostRecentRootNumberAndTickValue());
   ctx.lastAgeOutTickValueAtStartOfQuery =
       root->inner.view->getLastAgeOutTickValue();
-  res.clockAtStartOfQuery = ctx.clockAtStartOfQuery;
+
+  // Copy in any scm parameters
+  res.clockAtStartOfQuery = resultClock;
+  // then update the clock position portion
+  res.clockAtStartOfQuery.clock = ctx.clockAtStartOfQuery.clock;
 
   // Evaluate the cursor for this root
   ctx.since = query->since_spec

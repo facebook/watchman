@@ -42,6 +42,10 @@ struct ClockSpec {
     w_string cursor;
   } named_cursor;
 
+  // Optional SCM merge base parameters
+  w_string scmMergeBase;
+  w_string scmMergeBaseWith;
+
   ClockSpec();
   explicit ClockSpec(const ClockPosition& position);
   explicit ClockSpec(const json_ref& value);
@@ -71,6 +75,8 @@ struct ClockSpec {
     w_check(tag == w_cs_clock, "position() called for non-clock clockspec");
     return clock.position;
   }
+
+  bool hasScmParams() const;
 
   /** Returns a json value representing the current state of this ClockSpec
    * that can be parsed by the ClockSpec(const json_ref&)

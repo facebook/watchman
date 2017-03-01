@@ -112,6 +112,8 @@ SRCS_CPP=\
 	root\vcs.cpp       \
 	root\warnerr.cpp       \
 	root\watchlist.cpp       \
+	scm\Mercurial.cpp \
+	scm\SCM.cpp \
 	state.cpp      \
 	string.cpp     \
 	time.cpp
@@ -177,6 +179,10 @@ TESTS=tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
 {root}.cpp{root}.obj::
 	@echo CXX $<
 	$(CC) $(CXXFLAGS) $(PEDANTIC) /Fo:root\ /c $<
+
+{scm}.cpp{scm}.obj::
+	@echo CXX $<
+	$(CC) $(CXXFLAGS) $(PEDANTIC) /Fo:scm\ /c $<
 
 {thirdparty\wildmatch}.c{thirdparty\wildmatch}.obj::
 	@echo CC $<

@@ -86,6 +86,8 @@ struct InMemoryView : public QueryableView {
       struct watchman_client* client,
       const json_ref& args);
 
+  SCM* getSCM() const override;
+
  private:
   /* Holds the list head for files of a given suffix */
   struct file_list_head {
@@ -238,5 +240,8 @@ struct InMemoryView : public QueryableView {
   bool syncContentCacheWarming_{false};
   // Remember what we've already warmed up
   uint32_t lastWarmedTick_{0};
+
+  // The source control system that we detected during initialization
+  std::unique_ptr<SCM> scm_;
 };
 }
