@@ -32,21 +32,18 @@ enum w_clockspec_tag {
 
 struct ClockSpec {
   enum w_clockspec_tag tag;
-  union {
-    time_t timestamp;
-    struct {
-      uint64_t start_time;
-      int pid;
-      ClockPosition position;
-    } clock;
-    struct {
-      w_string cursor;
-    } named_cursor;
-  };
+  time_t timestamp;
+  struct {
+    uint64_t start_time;
+    int pid;
+    ClockPosition position;
+  } clock;
+  struct {
+    w_string cursor;
+  } named_cursor;
 
   ClockSpec();
   explicit ClockSpec(const ClockPosition& position);
-  ~ClockSpec();
 
   /** Evaluate the clockspec against the inputs, returning
    * the effective since parameter.

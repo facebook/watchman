@@ -70,12 +70,6 @@ std::unique_ptr<ClockSpec> w_clockspec_parse(const json_ref& value) {
 
 ClockSpec::ClockSpec() : tag(w_cs_timestamp), timestamp(0) {}
 
-ClockSpec::~ClockSpec() {
-  if (tag == w_cs_named_cursor) {
-    named_cursor.cursor.reset();
-  }
-}
-
 ClockSpec::ClockSpec(const ClockPosition& position)
     : tag(w_cs_clock), clock{proc_start_time, proc_pid, position} {}
 
