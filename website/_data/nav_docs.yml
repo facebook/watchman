@@ -46,6 +46,7 @@
   - id: clockspec
   - id: file-query
   - id: simple-query
+  - id: scm-query
 - title: Expression Terms
   items:
   - id: expr.allof

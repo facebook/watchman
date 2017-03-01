@@ -71,10 +71,10 @@ struct watchman_client_subscription
   std::shared_ptr<watchman_user_client> lockClient();
   json_ref buildSubscriptionResults(
       const std::shared_ptr<w_root_t>& root,
-      ClockPosition& position);
+      ClockSpec& position);
 
  private:
-  void runSubscriptionRules(
+  ClockSpec runSubscriptionRules(
       watchman_user_client* client,
       const std::shared_ptr<w_root_t>& root);
   void updateSubscriptionTicks(w_query_res* res);

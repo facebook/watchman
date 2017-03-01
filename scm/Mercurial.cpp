@@ -2,6 +2,11 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "Mercurial.h"
 #include "ChildProcess.h"
+#include "watchman.h"
+
+// Capability indicating support for the mercurial SCM
+W_CAP_REG("scm-hg")
+
 namespace watchman {
 
 using Options = ChildProcess::Options;

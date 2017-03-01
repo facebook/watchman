@@ -111,11 +111,11 @@ void watchman_client_subscription::processSubscription() {
   std::tie(action, policy_name) = get_subscription_action(this, root);
 
   if (action != sub_action::no_sync_needed) {
-    auto position = root->inner.view->getMostRecentRootNumberAndTickValue();
     bool executeQuery = true;
 
     if (action == sub_action::drop) {
       // fast-forward over any notifications while in the drop state
+      auto position = root->inner.view->getMostRecentRootNumberAndTickValue();
       last_sub_tick = position.ticks;
       query->since_spec = watchman::make_unique<ClockSpec>(position);
       watchman::log(
@@ -147,8 +147,7 @@ void watchman_client_subscription::processSubscription() {
     }
 
     if (executeQuery) {
-      runSubscriptionRules(client.get(), root);
-      last_sub_tick = position.ticks;
+      last_sub_tick = runSubscriptionRules(client.get(), root).position().ticks;
     }
   } else {
     watchman::log(watchman::DBG, "subscription ", name, " is up to date\n");
@@ -163,7 +162,7 @@ void watchman_client_subscription::updateSubscriptionTicks(w_query_res* res) {
 
 json_ref watchman_client_subscription::buildSubscriptionResults(
     const std::shared_ptr<w_root_t>& root,
-    ClockPosition& position) {
+    ClockSpec& position) {
   auto since_spec = query->since_spec.get();
 
   if (since_spec && since_spec->tag == w_cs_clock) {
@@ -198,7 +197,7 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
         name.c_str(),
         uint32_t(res.resultsArray.array().size()));
 
-    position = res.clockAtStartOfQuery.position();
+    position = res.clockAtStartOfQuery;
 
     if (res.resultsArray.array().empty()) {
       updateSubscriptionTicks(&res);
@@ -234,20 +233,18 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
   }
 }
 
-void watchman_client_subscription::runSubscriptionRules(
+ClockSpec watchman_client_subscription::runSubscriptionRules(
     watchman_user_client* client,
     const std::shared_ptr<w_root_t>& root) {
-  ClockPosition position;
+  ClockSpec position;
 
   auto response = buildSubscriptionResults(root, position);
 
-  if (!response) {
-    return;
+  if (response) {
+    add_root_warnings_to_response(response, root);
+    client->enqueueResponse(std::move(response), false);
   }
-
-  add_root_warnings_to_response(response, root);
-
-  client->enqueueResponse(std::move(response), false);
+  return position;
 }
 
 static void cmd_flush_subscriptions(
@@ -361,7 +358,7 @@ static void cmd_flush_subscriptions(
     } else {
       // flush-subscriptions means that we _should NOT defer_ notifications. So
       // ignore defer and defer_vcs.
-      ClockPosition out_position;
+      ClockSpec out_position;
       watchman::log(
           watchman::DBG,
           "(flush-subscriptions) executing subscription ",
@@ -500,6 +497,18 @@ static void cmd_subscribe(
     }
   }
 
+  // If they want SCM aware results we should wait for SCM events to finish
+  // before dispatching subscriptions
+  if (query->since_spec && query->since_spec->hasScmParams()) {
+    sub->vcs_defer = true;
+
+    // If they didn't specify any drop/defer behavior, default to a reasonable
+    // setting that works together with the fsmonitor extension for hg.
+    if (sub->drop_or_defer.find("hg.update") == sub->drop_or_defer.end()) {
+      sub->drop_or_defer["hg.update"] = false; // defer
+    }
+  }
+
   // Connect the root to our subscription
   {
     std::weak_ptr<watchman_client> clientRef(client->shared_from_this());
@@ -521,9 +530,9 @@ static void cmd_subscribe(
   resp.set("subscribe", json_ref(jname));
 
   add_root_warnings_to_response(resp, root);
-  ClockPosition position;
+  ClockSpec position;
   initial_subscription_results = sub->buildSubscriptionResults(root, position);
-  resp.set("clock", w_string_to_json(position.toClockString()));
+  resp.set("clock", position.toJson());
 
   send_and_dispose_response(client, std::move(resp));
   if (initial_subscription_results) {

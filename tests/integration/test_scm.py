@@ -15,11 +15,27 @@ import subprocess
 
 @WatchmanTestCase.expand_matrix
 class TestScm(WatchmanTestCase.WatchmanTestCase):
+    def requiresPersistentSession(self):
+        return True
+
+    def skipIfNoFSMonitor(self):
+        ''' cause the test to skip if fsmonitor is not available.
+            We don't call this via unittest.skip because we want
+            to have the skip message show the context '''
+        try:
+            self.hg(['help', '--extension', 'fsmonitor'])
+        except Exception as e:
+            self.skipTest('fsmonitor is not available: %s' % str(e))
+
     def hg(self, args=None, cwd=None):
         env = dict(os.environ)
         env['HGPLAIN'] = '1'
         p = subprocess.Popen(
-            ['hg'] + args,
+            # we force the extension on.  This is a soft error for
+            # mercurial if it is not available, so we also employ
+            # the skipIfNoFSMonitor() test above to make sure the
+            # environment is sane.
+            ['hg', '--config', 'extensions.fsmonitor='] + args,
             env=env,
             cwd=cwd,
             stdout=subprocess.PIPE,
@@ -27,9 +43,12 @@ class TestScm(WatchmanTestCase.WatchmanTestCase):
         out, err = p.communicate()
         if p.returncode != 0:
             raise Exception("hg %r failed: %s, %s" % (args, out, err))
+
         return out, err
 
     def test_scmHg(self):
+        self.skipIfNoFSMonitor()
+
         root = self.mkdtemp()
         ''' Set up a repo with a DAG like this:
 @  changeset:   4:6c38b3c78a62
@@ -106,6 +125,21 @@ o  changeset:   0:b08db10380dd
         # The only file changed between TheMaster and feature2 is m2
         self.assertFileListsEqual(res['files'], ['m2'])
 
+        # Let's also set up a subscription for the same query
+        sub = self.watchmanCommand('subscribe', root, 'scmsub', {
+            'expression': ['not', ['anyof', ['name', '.hg'], ['dirname', '.hg']]],
+            'fields': ['name'],
+            'since': {
+                'scm': {
+                    'mergebase-with': 'TheMaster'}}})
+
+        self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
+        dat = self.waitForSub('scmsub', root=root)
+
+        # compare with the query results that we got
+        self.assertEqual(sub['clock']['scm'], res['clock']['scm'])
+        self.assertFileListsEqual(res['files'], dat[0]['files'])
+
         mergeBase = res['clock']['scm']['mergebase']
 
         # Ensure that we can see a file that isn't tracked show up
@@ -121,10 +155,21 @@ o  changeset:   0:b08db10380dd
         self.assertEqual(res['clock']['scm']['mergebase'], mergeBase)
         self.assertFileListsEqual(res['files'], ['w00t'])
 
+        # and check that subscription results are consistent with it
+        self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
+        dat = self.waitForSub('scmsub', root=root)
+        self.assertEqual(dat[0]['clock']['scm'], res['clock']['scm'])
+        self.assertFileListsEqual(res['files'], dat[0]['files'])
+
         # Going back to the merge base, we should get a regular looking incremental
         # list of the files as we would from a since query; we expect to see
         # the removal of w00t and m2
         os.unlink(os.path.join(root, 'w00t'))
+
+        self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
+        dat = self.waitForSub('scmsub', root=root)
+        self.assertFileListsEqual(['w00t'], dat[0]['files'])
+
         self.hg(['co', '-C', 'TheMaster'], cwd=root)
         res = self.watchmanCommand('query', root, {
             'expression': ['not', ['anyof', ['name', '.hg'], ['dirname', '.hg']]],
@@ -132,6 +177,13 @@ o  changeset:   0:b08db10380dd
             'since': res['clock']})
         self.assertEqual(res['clock']['scm']['mergebase'], mergeBase)
         self.assertFileListsEqual(res['files'], ['w00t', 'm2'])
+
+        self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
+        dat = self.waitForSub('scmsub', root=root)
+        self.assertEqual(dat[0]['clock']['scm'], res['clock']['scm'])
+        # we already observed the w00t update above, so we expect to see just the
+        # file(s) that changed in the update operation
+        self.assertFileListsEqual(['m2'], dat[0]['files'])
 
         # Now we're going to move to another branch with a different mergebase.
         self.hg(['co', '-C', 'feature1'], cwd=root)
@@ -144,3 +196,9 @@ o  changeset:   0:b08db10380dd
         self.assertNotEqual(res['clock']['scm']['mergebase'], mergeBase)
         # and only the file that changed since that new mergebase
         self.assertFileListsEqual(res['files'], ['f1'])
+
+        # check again that subscription results are consistent with it.
+        self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
+        dat = self.waitForSub('scmsub', root=root)
+        self.assertEqual(dat[0]['clock']['scm'], res['clock']['scm'])
+        self.assertFileListsEqual(res['files'], dat[0]['files'])
