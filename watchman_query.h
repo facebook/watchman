@@ -91,7 +91,7 @@ struct w_query_ctx {
   w_string wholename;
   struct w_query_since since;
   // root number, ticks at start of query execution
-  ClockPosition clockAtStartOfQuery;
+  ClockSpec clockAtStartOfQuery;
   uint32_t lastAgeOutTickValueAtStartOfQuery;
 
   // Rendered results
@@ -240,7 +240,7 @@ struct w_query_res {
   json_ref resultsArray;
   // Only populated if the query was set to dedup_results
   std::unordered_set<w_string> dedupedFileNames;
-  ClockPosition clockAtStartOfQuery;
+  ClockSpec clockAtStartOfQuery;
 };
 
 w_query_res w_query_execute(

@@ -186,5 +186,9 @@ void annotate_with_clock(
       "clock", w_string_to_json(root->inner.view->getCurrentClockString()));
 }
 
+json_ref ClockSpec::toJson() const {
+  return w_string_to_json(position().toClockString());
+}
+
 /* vim:ts=2:sw=2:et:
  */

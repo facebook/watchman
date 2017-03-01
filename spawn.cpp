@@ -135,7 +135,8 @@ static void spawn_command(
     cmd->env.unset("WATCHMAN_SINCE");
   }
 
-  cmd->env.set("WATCHMAN_CLOCK", res->clockAtStartOfQuery.toClockString());
+  cmd->env.set(
+      "WATCHMAN_CLOCK", res->clockAtStartOfQuery.position().toClockString());
 
   if (cmd->query->relative_root) {
     cmd->env.set("WATCHMAN_RELATIVE_ROOT", cmd->query->relative_root);
@@ -299,7 +300,7 @@ bool watchman_trigger_command::maybeSpawn(
         "updating trigger \"",
         triggername,
         "\" use ",
-        res.clockAtStartOfQuery.ticks,
+        res.clockAtStartOfQuery.position().ticks,
         " ticks next time\n");
 
     if (!res.resultsArray.array().empty()) {

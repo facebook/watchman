@@ -24,9 +24,8 @@ static void cmd_find(struct watchman_client* client, const json_ref& args) {
 
   auto res = w_query_execute(query.get(), root, nullptr);
   auto response = make_response();
-  response.set(
-      {{"clock", w_string_to_json(res.clockAtStartOfQuery.toClockString())},
-       {"files", std::move(res.resultsArray)}});
+  response.set({{"clock", res.clockAtStartOfQuery.toJson()},
+                {"files", std::move(res.resultsArray)}});
 
   send_and_dispose_response(client, std::move(response));
 }

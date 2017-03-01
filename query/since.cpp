@@ -29,7 +29,8 @@ class SinceExpr : public QueryExpr {
     time_t tval = 0;
 
     auto since = spec->evaluate(
-        ctx->clockAtStartOfQuery, ctx->lastAgeOutTickValueAtStartOfQuery);
+        ctx->clockAtStartOfQuery.position(),
+        ctx->lastAgeOutTickValueAtStartOfQuery);
 
     switch (field) {
       case since_what::SINCE_OCLOCK:

@@ -83,7 +83,7 @@ void w_query_process_file(
 
   auto wholename = w_query_ctx_get_wholename(ctx);
   watchman_rule_match match(
-      ctx->clockAtStartOfQuery.rootNumber,
+      ctx->clockAtStartOfQuery.position().rootNumber,
       wholename,
       is_new,
       std::move(ctx->file));
@@ -264,7 +264,7 @@ w_query_res w_query_execute(
   ctx.root = root;
 
   ctx.clockAtStartOfQuery =
-      root->inner.view->getMostRecentRootNumberAndTickValue();
+      ClockSpec(root->inner.view->getMostRecentRootNumberAndTickValue());
   ctx.lastAgeOutTickValueAtStartOfQuery =
       root->inner.view->getLastAgeOutTickValue();
   res.clockAtStartOfQuery = ctx.clockAtStartOfQuery;
@@ -272,7 +272,7 @@ w_query_res w_query_execute(
   // Evaluate the cursor for this root
   ctx.since = query->since_spec
       ? query->since_spec->evaluate(
-            ctx.clockAtStartOfQuery,
+            ctx.clockAtStartOfQuery.position(),
             ctx.lastAgeOutTickValueAtStartOfQuery,
             &root->inner.cursors)
       : w_query_since();

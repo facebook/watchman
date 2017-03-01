@@ -66,4 +66,14 @@ struct ClockSpec {
 
   /** Initializes some global state needed for clockspec evaluation */
   static void init();
+
+  inline const ClockPosition& position() const {
+    w_check(tag == w_cs_clock, "position() called for non-clock clockspec");
+    return clock.position;
+  }
+
+  /** Returns a json value representing the current state of this ClockSpec
+   * that can be parsed by the ClockSpec(const json_ref&)
+   * constructor of this class */
+  json_ref toJson() const;
 };

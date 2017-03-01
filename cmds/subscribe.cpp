@@ -198,7 +198,7 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
         name.c_str(),
         uint32_t(res.resultsArray.array().size()));
 
-    position = res.clockAtStartOfQuery;
+    position = res.clockAtStartOfQuery.position();
 
     if (res.resultsArray.array().empty()) {
       updateSubscriptionTicks(&res);
@@ -211,19 +211,16 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
     // not a relative clock spec, and it's only going to happen on the first run
     // anyway, so just skip doing that entirely.
     if (since_spec && since_spec->tag == w_cs_clock) {
-      response.set(
-          "since",
-          w_string_to_json(since_spec->clock.position.toClockString()));
+      response.set("since", since_spec->toJson());
     }
     updateSubscriptionTicks(&res);
 
-    response.set(
-        {{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
-         {"clock", w_string_to_json(res.clockAtStartOfQuery.toClockString())},
-         {"files", std::move(res.resultsArray)},
-         {"root", w_string_to_json(root->root_path)},
-         {"subscription", w_string_to_json(name)},
-         {"unilateral", json_true()}});
+    response.set({{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
+                  {"clock", res.clockAtStartOfQuery.toJson()},
+                  {"files", std::move(res.resultsArray)},
+                  {"root", w_string_to_json(root->root_path)},
+                  {"subscription", w_string_to_json(name)},
+                  {"unilateral", json_true()}});
 
     return response;
   } catch (const QueryExecError& e) {
