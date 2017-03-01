@@ -97,11 +97,6 @@ static std::tuple<sub_action, w_string> get_subscription_action(
   return std::make_tuple(action, policy_name);
 }
 
-static void w_run_subscription_rules(
-    struct watchman_user_client* client,
-    struct watchman_client_subscription* sub,
-    const std::shared_ptr<w_root_t>& root);
-
 void watchman_client_subscription::processSubscription() {
   auto client = lockClient();
   if (!client) {
@@ -152,7 +147,7 @@ void watchman_client_subscription::processSubscription() {
     }
 
     if (executeQuery) {
-      w_run_subscription_rules(client.get(), this, root);
+      runSubscriptionRules(client.get(), root);
       last_sub_tick = position.ticks;
     }
   } else {
@@ -160,55 +155,53 @@ void watchman_client_subscription::processSubscription() {
   }
 }
 
-static void update_subscription_ticks(struct watchman_client_subscription *sub,
-    w_query_res *res) {
+void watchman_client_subscription::updateSubscriptionTicks(w_query_res* res) {
   // create a new spec that will be used the next time
-  sub->query->since_spec =
+  query->since_spec =
       watchman::make_unique<w_clockspec>(res->clockAtStartOfQuery);
 }
 
-static json_ref build_subscription_results(
-    struct watchman_client_subscription* sub,
+json_ref watchman_client_subscription::buildSubscriptionResults(
     const std::shared_ptr<w_root_t>& root,
     ClockPosition& position) {
-  auto since_spec = sub->query->since_spec.get();
+  auto since_spec = query->since_spec.get();
 
   if (since_spec && since_spec->tag == w_cs_clock) {
-    w_log(
-        W_LOG_DBG,
-        "running subscription %s rules since %" PRIu32 "\n",
-        sub->name.c_str(),
-        since_spec->clock.position.ticks);
+    watchman::log(
+        watchman::DBG,
+        "running subscription ",
+        name,
+        " rules since ",
+        since_spec->clock.position.ticks,
+        "\n");
   } else {
-    w_log(
-        W_LOG_DBG,
-        "running subscription %s rules (no since)\n",
-        sub->name.c_str());
+    watchman::log(
+        watchman::DBG, "running subscription ", name, " rules (no since)\n");
   }
 
   // Subscriptions never need to sync explicitly; we are only dispatched
   // at settle points which are by definition sync'd to the present time
-  sub->query->sync_timeout = std::chrono::milliseconds(0);
+  query->sync_timeout = std::chrono::milliseconds(0);
   // We're called by the io thread, so there's little chance that the root
   // could be legitimately blocked by something else.  That means that we
   // can use a short lock_timeout
-  sub->query->lock_timeout =
+  query->lock_timeout =
       uint32_t(root->config.getInt("subscription_lock_timeout_ms", 100));
-  w_log(W_LOG_DBG, "running subscription %s %p\n", sub->name.c_str(), sub);
+  w_log(W_LOG_DBG, "running subscription %s %p\n", name.c_str(), this);
 
   try {
-    auto res = w_query_execute(sub->query.get(), root, time_generator);
+    auto res = w_query_execute(query.get(), root, time_generator);
 
     w_log(
         W_LOG_DBG,
         "subscription %s generated %" PRIu32 " results\n",
-        sub->name.c_str(),
+        name.c_str(),
         uint32_t(res.resultsArray.array().size()));
 
     position = res.clockAtStartOfQuery;
 
     if (res.resultsArray.array().empty()) {
-      update_subscription_ticks(sub, &res);
+      updateSubscriptionTicks(&res);
       return nullptr;
     }
 
@@ -222,14 +215,14 @@ static json_ref build_subscription_results(
           "since",
           w_string_to_json(since_spec->clock.position.toClockString()));
     }
-    update_subscription_ticks(sub, &res);
+    updateSubscriptionTicks(&res);
 
     response.set(
         {{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
          {"clock", w_string_to_json(res.clockAtStartOfQuery.toClockString())},
          {"files", std::move(res.resultsArray)},
          {"root", w_string_to_json(root->root_path)},
-         {"subscription", w_string_to_json(sub->name)},
+         {"subscription", w_string_to_json(name)},
          {"unilateral", json_true()}});
 
     return response;
@@ -237,20 +230,19 @@ static json_ref build_subscription_results(
     watchman::log(
         watchman::ERR,
         "error running subscription ",
-        sub->name,
+        name,
         " query: ",
         e.what());
     return nullptr;
   }
 }
 
-static void w_run_subscription_rules(
-    struct watchman_user_client* client,
-    struct watchman_client_subscription* sub,
+void watchman_client_subscription::runSubscriptionRules(
+    watchman_user_client* client,
     const std::shared_ptr<w_root_t>& root) {
   ClockPosition position;
 
-  auto response = build_subscription_results(sub, root, position);
+  auto response = buildSubscriptionResults(root, position);
 
   if (!response) {
     return;
@@ -378,8 +370,7 @@ static void cmd_flush_subscriptions(
           "(flush-subscriptions) executing subscription ",
           sub->name,
           "\n");
-      auto sub_result =
-          build_subscription_results(sub.get(), root, out_position);
+      auto sub_result = sub->buildSubscriptionResults(root, out_position);
       if (sub_result) {
         send_and_dispose_response(client, std::move(sub_result));
         json_array_append(synced, w_string_to_json(sub_name_str));
@@ -534,8 +525,7 @@ static void cmd_subscribe(
 
   add_root_warnings_to_response(resp, root);
   ClockPosition position;
-  initial_subscription_results =
-      build_subscription_results(sub.get(), root, position);
+  initial_subscription_results = sub->buildSubscriptionResults(root, position);
   resp.set("clock", w_string_to_json(position.toClockString()));
 
   send_and_dispose_response(client, std::move(resp));

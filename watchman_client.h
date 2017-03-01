@@ -69,6 +69,15 @@ struct watchman_client_subscription
   void processSubscription();
 
   std::shared_ptr<watchman_user_client> lockClient();
+  json_ref buildSubscriptionResults(
+      const std::shared_ptr<w_root_t>& root,
+      ClockPosition& position);
+
+ private:
+  void runSubscriptionRules(
+      watchman_user_client* client,
+      const std::shared_ptr<w_root_t>& root);
+  void updateSubscriptionTicks(w_query_res* res);
 };
 
 // Represents the server side session maintained for a client of
