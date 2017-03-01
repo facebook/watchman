@@ -18,11 +18,11 @@ static struct {
 };
 
 class SinceExpr : public QueryExpr {
-  std::unique_ptr<w_clockspec> spec;
+  std::unique_ptr<ClockSpec> spec;
   enum since_what field;
 
  public:
-  explicit SinceExpr(std::unique_ptr<w_clockspec> spec, enum since_what field)
+  explicit SinceExpr(std::unique_ptr<ClockSpec> spec, enum since_what field)
       : spec(std::move(spec)), field(field) {}
 
   bool evaluate(struct w_query_ctx* ctx, const FileResult* file) override {
@@ -57,7 +57,6 @@ class SinceExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {
-    std::unique_ptr<w_clockspec> spec;
     auto selected_field = since_what::SINCE_OCLOCK;
     const char* fieldname = "oclock";
 
@@ -70,7 +69,7 @@ class SinceExpr : public QueryExpr {
     }
 
     const auto& jval = term.at(1);
-    spec = w_clockspec_parse(jval);
+    auto spec = w_clockspec_parse(jval);
     if (!spec) {
       throw QueryParseError("invalid clockspec for \"since\" term");
     }

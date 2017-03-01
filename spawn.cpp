@@ -84,7 +84,7 @@ static void spawn_command(
     const std::shared_ptr<w_root_t>& root,
     struct watchman_trigger_command* cmd,
     w_query_res* res,
-    struct w_clockspec* since_spec) {
+    struct ClockSpec* since_spec) {
   long arg_max;
   size_t argspace_remaining;
   bool file_overflow = false;
@@ -292,7 +292,7 @@ bool watchman_trigger_command::maybeSpawn(
     // create a new spec that will be used the next time
     auto saved_spec = std::move(query->since_spec);
     query->since_spec =
-        watchman::make_unique<w_clockspec>(res.clockAtStartOfQuery);
+        watchman::make_unique<ClockSpec>(res.clockAtStartOfQuery);
 
     watchman::log(
         watchman::DBG,

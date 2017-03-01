@@ -30,7 +30,7 @@ enum w_clockspec_tag {
   w_cs_named_cursor
 };
 
-struct w_clockspec {
+struct ClockSpec {
   enum w_clockspec_tag tag;
   union {
     time_t timestamp;
@@ -44,9 +44,9 @@ struct w_clockspec {
     } named_cursor;
   };
 
-  w_clockspec();
-  w_clockspec(const ClockPosition& position);
-  ~w_clockspec();
+  ClockSpec();
+  explicit ClockSpec(const ClockPosition& position);
+  ~ClockSpec();
 
   /** Evaluate the clockspec against the inputs, returning
    * the effective since parameter.
@@ -57,7 +57,9 @@ struct w_clockspec {
       const uint32_t lastAgeOutTick,
       watchman::Synchronized<std::unordered_map<w_string, uint32_t>>*
           cursorMap = nullptr) const;
+
+  /** Initializes some global state needed for clockspec evaluation */
+  static void init();
 };
 
-std::unique_ptr<w_clockspec> w_clockspec_parse(const json_ref& value);
-void w_clockspec_init(void);
+std::unique_ptr<ClockSpec> w_clockspec_parse(const json_ref& value);

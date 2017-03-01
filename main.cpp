@@ -177,7 +177,7 @@ static void run_service(void)
       cfg_get_int("thread_pool_worker_threads", 16),
       cfg_get_int("thread_pool_max_items", 1024 * 1024));
 
-  w_clockspec_init();
+  ClockSpec::init();
   w_state_load();
   res = w_start_listener(sock_name);
   w_root_free_watched_roots();

@@ -186,7 +186,7 @@ struct w_query {
   // fully until we execute query, because we have
   // to evaluate named cursors and determine fresh
   // instance at the time we execute
-  std::unique_ptr<w_clockspec> since_spec;
+  std::unique_ptr<ClockSpec> since_spec;
 
   std::unique_ptr<QueryExpr> expr;
 

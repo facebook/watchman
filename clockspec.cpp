@@ -7,7 +7,7 @@
 static int proc_pid;
 static uint64_t proc_start_time;
 
-void w_clockspec_init(void) {
+void ClockSpec::init() {
   struct timeval tv;
 
   proc_pid = (int)getpid();
@@ -17,14 +17,14 @@ void w_clockspec_init(void) {
   proc_start_time = (uint64_t)tv.tv_sec;
 }
 
-std::unique_ptr<w_clockspec> w_clockspec_parse(const json_ref& value) {
+std::unique_ptr<ClockSpec> w_clockspec_parse(const json_ref& value) {
   const char *str;
   uint64_t start_time;
   int pid;
   uint32_t root_number;
   uint32_t ticks;
 
-  auto spec = watchman::make_unique<w_clockspec>();
+  auto spec = watchman::make_unique<ClockSpec>();
 
   if (json_is_integer(value)) {
     spec->tag = w_cs_timestamp;
@@ -68,18 +68,18 @@ std::unique_ptr<w_clockspec> w_clockspec_parse(const json_ref& value) {
   return nullptr;
 }
 
-w_clockspec::w_clockspec() : tag(w_cs_timestamp), timestamp(0) {}
+ClockSpec::ClockSpec() : tag(w_cs_timestamp), timestamp(0) {}
 
-w_clockspec::~w_clockspec() {
+ClockSpec::~ClockSpec() {
   if (tag == w_cs_named_cursor) {
     named_cursor.cursor.reset();
   }
 }
 
-w_clockspec::w_clockspec(const ClockPosition& position)
+ClockSpec::ClockSpec(const ClockPosition& position)
     : tag(w_cs_clock), clock{proc_start_time, proc_pid, position} {}
 
-w_query_since w_clockspec::evaluate(
+w_query_since ClockSpec::evaluate(
     const ClockPosition& position,
     const uint32_t lastAgeOutTick,
     watchman::Synchronized<std::unordered_map<w_string, uint32_t>>* cursorMap)
@@ -150,7 +150,7 @@ w_query_since w_clockspec::evaluate(
     }
 
     default:
-      throw std::runtime_error("impossible case in w_clockspec::evaluate");
+      throw std::runtime_error("impossible case in ClockSpec::evaluate");
   }
 }
 
