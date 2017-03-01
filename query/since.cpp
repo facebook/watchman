@@ -69,7 +69,7 @@ class SinceExpr : public QueryExpr {
     }
 
     const auto& jval = term.at(1);
-    auto spec = w_clockspec_parse(jval);
+    auto spec = ClockSpec::parseOptionalClockSpec(jval);
     if (!spec) {
       throw QueryParseError("invalid clockspec for \"since\" term");
     }

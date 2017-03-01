@@ -44,6 +44,15 @@ struct ClockSpec {
 
   ClockSpec();
   explicit ClockSpec(const ClockPosition& position);
+  explicit ClockSpec(const json_ref& value);
+
+  /** Given a json value, parse out a clockspec.
+   * Will return nullptr if the input was json null, indicating
+   * an absence of a specified clock value.
+   * Throws std::domain_error for badly formed clockspec value.
+   */
+  static std::unique_ptr<ClockSpec> parseOptionalClockSpec(
+      const json_ref& value);
 
   /** Evaluate the clockspec against the inputs, returning
    * the effective since parameter.
@@ -58,5 +67,3 @@ struct ClockSpec {
   /** Initializes some global state needed for clockspec evaluation */
   static void init();
 };
-
-std::unique_ptr<ClockSpec> w_clockspec_parse(const json_ref& value);

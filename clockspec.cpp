@@ -17,55 +17,66 @@ void ClockSpec::init() {
   proc_start_time = (uint64_t)tv.tv_sec;
 }
 
-std::unique_ptr<ClockSpec> w_clockspec_parse(const json_ref& value) {
-  const char *str;
-  uint64_t start_time;
-  int pid;
-  uint32_t root_number;
-  uint32_t ticks;
+ClockSpec::ClockSpec(const json_ref& value) {
+  switch (json_typeof(value)) {
+    case JSON_INTEGER:
+      tag = w_cs_timestamp;
+      timestamp = (time_t)json_integer_value(value);
+      return;
+    case JSON_STRING: {
+      uint64_t start_time;
+      int pid;
+      uint32_t root_number;
+      uint32_t ticks;
+      auto str = json_string_value(value);
 
-  auto spec = watchman::make_unique<ClockSpec>();
+      if (str[0] == 'n' && str[1] == ':') {
+        tag = w_cs_named_cursor;
+        named_cursor.cursor = json_to_w_string(value);
+        return;
+      }
 
-  if (json_is_integer(value)) {
-    spec->tag = w_cs_timestamp;
-    spec->timestamp = (time_t)json_integer_value(value);
-    return spec;
+      if (sscanf(
+              str,
+              "c:%" PRIu64 ":%d:%" PRIu32 ":%" PRIu32,
+              &start_time,
+              &pid,
+              &root_number,
+              &ticks) == 4) {
+        tag = w_cs_clock;
+        clock.start_time = start_time;
+        clock.pid = pid;
+        clock.position.rootNumber = root_number;
+        clock.position.ticks = ticks;
+        return;
+      }
+
+      if (sscanf(str, "c:%d:%" PRIu32, &pid, &ticks) == 2) {
+        // old-style clock value (<= 2.8.2) -- by setting clock time and root
+        // number
+        // to 0 we guarantee that this is treated as a fresh instance
+        tag = w_cs_clock;
+        clock.start_time = 0;
+        clock.pid = pid;
+        clock.position.rootNumber = root_number;
+        clock.position.ticks = ticks;
+        return;
+      }
+
+      /* fall through to default case and throw error */
+    }
+
+    default:
+      throw std::domain_error("invalid clockspec");
   }
+}
 
-  str = json_string_value(value);
-  if (!str) {
+std::unique_ptr<ClockSpec> ClockSpec::parseOptionalClockSpec(
+    const json_ref& value) {
+  if (json_is_null(value)) {
     return nullptr;
   }
-
-  if (str[0] == 'n' && str[1] == ':') {
-    spec->tag = w_cs_named_cursor;
-    // spec owns the ref to the string
-    spec->named_cursor.cursor = json_to_w_string(value);
-    return spec;
-  }
-
-  if (sscanf(str, "c:%" PRIu64 ":%d:%" PRIu32 ":%" PRIu32,
-             &start_time, &pid, &root_number, &ticks) == 4) {
-    spec->tag = w_cs_clock;
-    spec->clock.start_time = start_time;
-    spec->clock.pid = pid;
-    spec->clock.position.rootNumber = root_number;
-    spec->clock.position.ticks = ticks;
-    return spec;
-  }
-
-  if (sscanf(str, "c:%d:%" PRIu32, &pid, &ticks) == 2) {
-    // old-style clock value (<= 2.8.2) -- by setting clock time and root number
-    // to 0 we guarantee that this is treated as a fresh instance
-    spec->tag = w_cs_clock;
-    spec->clock.start_time = 0;
-    spec->clock.pid = pid;
-    spec->clock.position.rootNumber = root_number;
-    spec->clock.position.ticks = ticks;
-    return spec;
-  }
-
-  return nullptr;
+  return watchman::make_unique<ClockSpec>(value);
 }
 
 ClockSpec::ClockSpec() : tag(w_cs_timestamp), timestamp(0) {}

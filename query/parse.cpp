@@ -63,7 +63,7 @@ static bool parse_since(w_query* res, const json_ref& query) {
     return true;
   }
 
-  auto spec = w_clockspec_parse(since);
+  auto spec = ClockSpec::parseOptionalClockSpec(since);
   if (spec) {
     // res owns the ref to spec
     res->since_spec = std::move(spec);
