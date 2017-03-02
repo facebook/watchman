@@ -127,6 +127,7 @@ python_unittest(
     env=eden_env,
     deps=[
       ':testsupport',
+      ':cppclient',
       '@/watchman/python/pywatchman:pywatchman',
       '@/watchman:watchman',
       '@/eden/integration/lib:lib',
