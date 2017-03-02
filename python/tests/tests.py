@@ -327,6 +327,14 @@ class TestBSERDump(unittest.TestCase):
         self.assertRaises(ValueError, self.bser_mod.pdu_info,
                           b'\x00\x02')
 
+    def test_bser_load_without_default_args(self):
+        val = {u'hello': u'there'}
+        enc = self.bser_mod.dumps(val)
+        fp = FakeFile(enc)
+        dec = self.bser_mod.load(fp)
+        self.assertEqual(val, dec)
+
+
 if __name__ == '__main__':
     suite = load_tests(unittest.TestLoader())
     unittest.TextTestRunner().run(suite)
