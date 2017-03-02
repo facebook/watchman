@@ -202,3 +202,14 @@ o  changeset:   0:b08db10380dd
         dat = self.waitForSub('scmsub', root=root)
         self.assertEqual(dat[0]['clock']['scm'], res['clock']['scm'])
         self.assertFileListsEqual(res['files'], dat[0]['files'])
+
+        # and to check whether our dirstate caching code is reasonable,
+        # run a query that should be able to hit the cache
+        clock = res['clock']
+        res = self.watchmanCommand('query', root, {
+            'expression': ['not', ['anyof', ['name', '.hg'], ['dirname', '.hg']]],
+            'fields': ['name'],
+            'since': {
+                'scm': {
+                    'mergebase-with': 'TheMaster'}}})
+        self.assertEqual(clock['scm'], res['clock']['scm'])
