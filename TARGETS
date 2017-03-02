@@ -87,7 +87,7 @@ cpp_library(
     deps=[
       ':headers',
       ':err',
-      '@/eden/fs/service:thrift-cpp2',
+      '@/eden/fs/service:thrift-streaming-cpp2',
     ],
     # We use constructors to declare commands rather than maintaining
     # static tables of things.  Ensure that they don't get stripped
