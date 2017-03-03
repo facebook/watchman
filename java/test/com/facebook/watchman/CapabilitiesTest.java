@@ -110,9 +110,9 @@ public class CapabilitiesTest {
    * Add @Test to this method to check if the methods work fine with your local Watchman install.
    */
   @Test
-  public void testIntegration() throws WatchmanSocketUnavailableException, IOException {
+  public void testIntegration() throws WatchmanTransportUnavailableException, IOException {
     for (int i = 0; i < 100; i++) {
-      WatchmanClient client = new WatchmanClientImpl(WatchmanSocketBuilder.discoverSocket());
+      WatchmanClient client = new WatchmanClientImpl(WatchmanTransportBuilder.discoverSocket());
       client.start();
       Assert.assertTrue(CapabilitiesStrategy.checkWatchProjectCapability(client));
       client.close();
