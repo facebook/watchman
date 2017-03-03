@@ -32,8 +32,10 @@ import com.facebook.watchman.bser.BserDeserializer;
 import com.facebook.watchman.environment.ExecutableFinder;
 import com.facebook.watchman.unixsocket.UnixDomainSocket;
 
+import com.facebook.watchman.windowspipe.WindowsNamedPipe;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
+import com.sun.jna.Platform;
 import com.zaxxer.nuprocess.NuAbstractProcessHandler;
 import com.zaxxer.nuprocess.NuProcess;
 import com.zaxxer.nuprocess.NuProcessBuilder;
@@ -141,9 +143,13 @@ public class WatchmanTransportBuilder {
     }
 
     checkArgument(deserializedValue.containsKey("sockname"));
+    String sockname = String.valueOf(deserializedValue.get("sockname"));
     try {
-      return UnixDomainSocket.createSocketWithPath(
-          Paths.get(String.valueOf(deserializedValue.get("sockname"))));
+      if (Platform.isWindows()) {
+        return new WindowsNamedPipe(sockname);
+      } else {
+        return UnixDomainSocket.createSocketWithPath(Paths.get(sockname));
+      }
     } catch (IOException e) {
       throw new WatchmanTransportUnavailableException("Could not create Unix socket to resulting path", e);
     }
