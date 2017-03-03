@@ -20,7 +20,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
@@ -82,11 +81,11 @@ public class WatchmanSocketBuilder {
     }
   }
 
-  public static Socket discoverSocket() throws WatchmanSocketUnavailableException {
+  public static WatchmanTransport discoverSocket() throws WatchmanSocketUnavailableException {
     return discoverSocket(0, TimeUnit.SECONDS); // forever
   }
 
-  public static Socket discoverSocket(long duration, TimeUnit unit)
+  public static WatchmanTransport discoverSocket(long duration, TimeUnit unit)
       throws WatchmanSocketUnavailableException {
     Optional<Path> optionalExecutable = ExecutableFinder.getOptionalExecutable(
         Paths.get("watchman"),
@@ -97,7 +96,7 @@ public class WatchmanSocketBuilder {
     return discoverSocket(optionalExecutable.get(), duration, unit);
   }
 
-  public static Socket discoverSocket(Path watchmanPath, long duration, TimeUnit unit)
+  public static WatchmanTransport discoverSocket(Path watchmanPath, long duration, TimeUnit unit)
       throws WatchmanSocketUnavailableException {
     NuProcessBuilder processBuilder = new NuProcessBuilder(
         watchmanPath.toString(),

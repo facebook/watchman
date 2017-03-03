@@ -34,6 +34,7 @@
 
 package com.facebook.watchman.unixsocket;
 
+import com.facebook.watchman.WatchmanTransport;
 import com.sun.jna.LastErrorException;
 
 import java.io.IOException;
@@ -57,7 +58,7 @@ import java.net.Socket;
  * Caller is responsible for closing the streams returned from
  * {@link #getInputStream()} and {@link #getOutputStream()}.
  */
-public class UnixDomainSocket extends Socket {
+public class UnixDomainSocket extends Socket implements WatchmanTransport {
   private final ReferenceCountedFileDescriptor fd;
   private final InputStream is;
   private final OutputStream os;
