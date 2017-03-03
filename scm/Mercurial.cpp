@@ -39,7 +39,7 @@ bool Mercurial::infoCache::dotChanged() {
   struct stat st;
   bool result;
 
-  if (stat(dirStatePath.c_str(), &st)) {
+  if (lstat(dirStatePath.c_str(), &st)) {
     memset(&st, 0, sizeof(st));
     // Failed to stat, so assume that it changed
     watchman::log(
