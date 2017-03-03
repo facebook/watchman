@@ -27,9 +27,14 @@ class TestScm(WatchmanTestCase.WatchmanTestCase):
         except Exception as e:
             self.skipTest('fsmonitor is not available: %s' % str(e))
 
+    def checkOSApplicability(self):
+        if os.name == 'nt':
+            self.skipTest('The order of events on Windows is funky')
+
     def hg(self, args=None, cwd=None):
         env = dict(os.environ)
         env['HGPLAIN'] = '1'
+        env['HGUSER'] = 'John Smith <smith@example.com>'
         p = subprocess.Popen(
             # we force the extension on.  This is a soft error for
             # mercurial if it is not available, so we also employ
