@@ -118,13 +118,9 @@ class FakeFile(object):
     def __init__(self, data):
         self._data = data
         self._ptr = 0
-        print("# FakeFile(%s): %d" % (
-            binascii.hexlify(data).decode('ascii'),
-            len(data)))
 
     def readinto(self, buf):
         l = len(buf)
-        print("# buf: %d" % (l))
         if len(self._data) - self._ptr < l:
             return None
         buf[:] = self._data[self._ptr:self._ptr + l]
@@ -143,8 +139,8 @@ class TestBSERDump(unittest.TestCase):
     def roundtrip(self, val, mutable=True, value_encoding=None,
                   value_errors=None):
         enc = self.bser_mod.dumps(val)
-        print("# %s  -->  %s" % (repr(val),
-                                 binascii.hexlify(enc).decode('ascii')))
+        #print("# %s  -->  %s" % (repr(val),
+        #                         binascii.hexlify(enc).decode('ascii')))
         dec = self.bser_mod.loads(enc, mutable, value_encoding=value_encoding,
                                   value_errors=value_errors)
         self.assertEqual(val, dec)
@@ -156,8 +152,8 @@ class TestBSERDump(unittest.TestCase):
 
     def munged(self, val, munged, value_encoding=None, value_errors=None):
         enc = self.bser_mod.dumps(val)
-        print("# %s  -->  %s" % (repr(val),
-                                 binascii.hexlify(enc).decode('ascii')))
+        #print("# %s  -->  %s" % (repr(val),
+        #                         binascii.hexlify(enc).decode('ascii')))
         dec = self.bser_mod.loads(enc, value_encoding=value_encoding,
                                   value_errors=value_errors)
         self.assertEqual(munged, dec)

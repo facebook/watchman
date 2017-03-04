@@ -23,7 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
+#define COMPILING_TAP_CPP 1
 #include "watchman_system.h"
 #include <ctype.h>
 #include <stdio.h>
@@ -96,8 +96,8 @@ _gen_result(int ok, const char *func, const char *file, unsigned int line,
 			}
 
 			if(name_is_digits) {
-				diag("    You named your test '%s'.  You shouldn't use numbers for your test names.", local_test_name);
-				diag("    Very confusing.");
+				printf("# You named your test '%s'.  You shouldn't use numbers "
+            "for your test names.\n", local_test_name);
 			}
 		}
 	}
@@ -146,7 +146,7 @@ _gen_result(int ok, const char *func, const char *file, unsigned int line,
 		if(getenv("HARNESS_ACTIVE") != NULL)
 			fputs("\n", stderr);
 
-		diag("    Failed %stest (%s:%s() at line %d)",
+		printf("#    Failed %stest (%s:%s() at line %d)\n",
 		     todo ? "(TODO) " : "", file, func, line);
 	}
 	free(local_test_name);
@@ -268,6 +268,10 @@ unsigned int
 diag(const char *fmt, ...)
 {
 	va_list ap;
+
+  if (!getenv("TAP_SHOW_DIAG")) {
+    return 0;
+  }
 
 	fputs("# ", stdout);
 
@@ -395,13 +399,13 @@ _cleanup(void)
 	   and we're not skipping everything, then something happened
 	   before we could produce any output */
 	if(!no_plan && !have_plan && !skip_all) {
-		diag("Looks like your test died before it could output anything.");
+		printf("# Looks like your test died before it could output anything.\n");
 		UNLOCK;
 		return;
 	}
 
 	if(test_died) {
-		diag("Looks like your test died just after %d.", test_count);
+		printf("# Looks like your test died just after %d.\n", test_count);
 		UNLOCK;
 		return;
 	}
@@ -414,24 +418,24 @@ _cleanup(void)
 	}
 
 	if((have_plan && !no_plan) && e_tests < test_count) {
-		diag("Looks like you planned %d %s but ran %d extra.",
+		printf("# Looks like you planned %d %s but ran %d extra.\n",
 		     e_tests, e_tests == 1 ? "test" : "tests", test_count - e_tests);
 		UNLOCK;
 		return;
 	}
 
 	if((have_plan || !no_plan) && e_tests > test_count) {
-		diag("Looks like you planned %d %s but only ran %d.",
+		printf("# Looks like you planned %d %s but only ran %d.\n",
 		     e_tests, e_tests == 1 ? "test" : "tests", test_count);
 		UNLOCK;
 		return;
 	}
 
 	if(failures)
-		diag("Looks like you failed %d %s of %d.",
+		printf("# Looks like you failed %d %s of %d.\n",
 		     failures, failures == 1 ? "test" : "tests", test_count);
 
-	diag("ELAPSED: %" PRIu64 "ms\n", ms);
+	printf("# ELAPSED: %" PRIu64 "ms\n", ms);
 
 	UNLOCK;
 }
