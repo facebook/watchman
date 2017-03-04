@@ -90,7 +90,7 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId) const {
   Options opt;
   // Ensure that the hgrc doesn't mess with the behavior
   // of the commands that we're runing.
-  opt.environment().set("HGPLAIN", "1");
+  opt.environment().set("HGPLAIN", w_string("1"));
   opt.pipeStdout();
   opt.chdir(getRootPath());
 
@@ -129,7 +129,7 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
   Options opt;
   // Ensure that the hgrc doesn't mess with the behavior
   // of the commands that we're runing.
-  opt.environment().set("HGPLAIN", "1");
+  opt.environment().set("HGPLAIN", w_string("1"));
   opt.pipeStdout();
   opt.chdir(getRootPath());
 

@@ -7,10 +7,16 @@ from __future__ import division
 from __future__ import print_function
 # no unicode literals
 
+import WatchmanInstance
 import WatchmanTestCase
 import pywatchman
 import os
 import subprocess
+
+if pywatchman.compat.PYTHON3:
+    STRING_TYPES = (str, bytes)
+else:
+    STRING_TYPES = (str, unicode)
 
 
 @WatchmanTestCase.expand_matrix
@@ -35,6 +41,9 @@ class TestScm(WatchmanTestCase.WatchmanTestCase):
         env = dict(os.environ)
         env['HGPLAIN'] = '1'
         env['HGUSER'] = 'John Smith <smith@example.com>'
+        env['NOSCMLOG'] = '1'  # disable some instrumentation at FB
+        env['WATCHMAN_SOCK'] = \
+                WatchmanInstance.getSharedInstance().getSockPath()
         p = subprocess.Popen(
             # we force the extension on.  This is a soft error for
             # mercurial if it is not available, so we also employ
@@ -139,7 +148,7 @@ o  changeset:   0:b08db10380dd
                     'mergebase-with': 'TheMaster'}}})
 
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
-        dat = self.waitForSub('scmsub', root=root)
+        dat = self.getSubFatClocksOnly('scmsub', root=root)
 
         # compare with the query results that we got
         self.assertEqual(sub['clock']['scm'], res['clock']['scm'])
@@ -162,7 +171,7 @@ o  changeset:   0:b08db10380dd
 
         # and check that subscription results are consistent with it
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
-        dat = self.waitForSub('scmsub', root=root)
+        dat = self.getSubFatClocksOnly('scmsub', root=root)
         self.assertEqual(dat[0]['clock']['scm'], res['clock']['scm'])
         self.assertFileListsEqual(res['files'], dat[0]['files'])
 
@@ -172,7 +181,7 @@ o  changeset:   0:b08db10380dd
         os.unlink(os.path.join(root, 'w00t'))
 
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
-        dat = self.waitForSub('scmsub', root=root)
+        dat = self.getSubFatClocksOnly('scmsub', root=root)
         self.assertFileListsEqual(['w00t'], dat[0]['files'])
 
         self.hg(['co', '-C', 'TheMaster'], cwd=root)
@@ -184,7 +193,7 @@ o  changeset:   0:b08db10380dd
         self.assertFileListsEqual(res['files'], ['w00t', 'm2'])
 
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
-        dat = self.waitForSub('scmsub', root=root)
+        dat = self.getSubFatClocksOnly('scmsub', root=root)
         self.assertEqual(dat[0]['clock']['scm'], res['clock']['scm'])
         # we already observed the w00t update above, so we expect to see just the
         # file(s) that changed in the update operation
@@ -204,7 +213,7 @@ o  changeset:   0:b08db10380dd
 
         # check again that subscription results are consistent with it.
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
-        dat = self.waitForSub('scmsub', root=root)
+        dat = self.getSubFatClocksOnly('scmsub', root=root)
         self.assertEqual(dat[0]['clock']['scm'], res['clock']['scm'])
         self.assertFileListsEqual(res['files'], dat[0]['files'])
 
@@ -218,3 +227,9 @@ o  changeset:   0:b08db10380dd
                 'scm': {
                     'mergebase-with': 'TheMaster'}}})
         self.assertEqual(clock['scm'], res['clock']['scm'])
+
+    def getSubFatClocksOnly(self, subname, root):
+        dat = self.waitForSub(subname, root=root)
+        return [
+            item for item in dat if not isinstance(item['clock'], STRING_TYPES)
+        ]
