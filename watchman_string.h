@@ -17,6 +17,7 @@
 #include <string>
 #endif
 #include <stdexcept>
+#include <vector>
 
 struct watchman_string;
 typedef struct watchman_string w_string_t;
@@ -190,6 +191,25 @@ class w_string_piece {
   w_string_piece dirName() const;
   w_string_piece baseName() const;
 
+  /** Split the string by delimiter and emit to the provided vector */
+  template <typename Vector>
+  void split(Vector& result, char delim) const {
+    const char* begin = s_;
+    const char* it = begin;
+    while (it != e_) {
+      if (*it == delim) {
+        result.emplace_back(begin, it - begin);
+        begin = ++it;
+        continue;
+      }
+      ++it;
+    }
+
+    if (begin != e_) {
+      result.emplace_back(begin, e_ - begin);
+    }
+  }
+
   bool operator==(w_string_piece other) const;
   bool operator!=(w_string_piece other) const;
   bool operator<(w_string_piece other) const;
@@ -220,7 +240,7 @@ class w_string {
   /** Make a new string from some bytes and a type */
   w_string(
       const char* buf,
-      uint32_t len,
+      size_t len,
       w_string_type_t stringType = W_STRING_BYTE);
   /* implicit */ w_string(
       const char* buf,

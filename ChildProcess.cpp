@@ -2,6 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "ChildProcess.h"
 #include <system_error>
+#include <thread>
+#include "Future.h"
 #include "Logging.h"
 #include "make_unique.h"
 #include "watchman_scopeguard.h"
@@ -203,6 +205,8 @@ void ChildProcess::Options::pipe(int targetFd, bool childRead) {
 
   auto result = pipes_.emplace(std::make_pair(targetFd, make_unique<Pipe>()));
   auto pipe = result.first->second.get();
+  pipe->read.clearNonBlock();
+  pipe->write.clearNonBlock();
 
   dup2(childRead ? pipe->read.fd() : pipe->write.fd(), targetFd);
 }
@@ -306,6 +310,15 @@ ChildProcess::ChildProcess(std::vector<w_string_piece> args, Options&& options)
     watchman::log(level, "envp[", i, "] ", envp.get()[i], "\n");
   }
 
+  // Close the other ends of the pipes
+  for (auto& it : pipes_) {
+    if (it.first == STDIN_FILENO) {
+      it.second->read.close();
+    } else {
+      it.second->write.close();
+    }
+  }
+
   if (ret) {
     throw std::system_error(ret, std::generic_category(), "posix_spawnp");
   }
@@ -376,8 +389,231 @@ void ChildProcess::kill(
 #endif
 }
 
-Pipe& ChildProcess::pipe(int fd) {
-  return *pipes_.at(fd);
+std::pair<w_string, w_string> ChildProcess::communicate(
+    pipeWriteCallback writeCallback) {
+#ifdef _WIN32
+  return threadedCommunicate(writeCallback);
+#else
+  return pollingCommunicate(writeCallback);
+#endif
+}
+
+#ifndef _WIN32
+std::pair<w_string, w_string> ChildProcess::pollingCommunicate(
+    pipeWriteCallback writeCallback) {
+  std::unordered_map<int, std::string> outputs;
+
+  for (auto& it : pipes_) {
+    if (it.first != STDIN_FILENO) {
+      // We only want output streams here
+      continue;
+    }
+    watchman::log(
+        watchman::DBG, "Setting up output buffer for fd ", it.first, "\n");
+    outputs.emplace(std::make_pair(it.first, ""));
+  }
+
+  std::vector<pollfd> pfds;
+  std::unordered_map<int, int> revmap;
+  pfds.reserve(pipes_.size());
+  revmap.reserve(pipes_.size());
+
+  while (!pipes_.empty()) {
+    revmap.clear();
+    pfds.clear();
+
+    watchman::log(
+        watchman::DBG, "Setting up pollfds for ", pipes_.size(), " fds\n");
+
+    for (auto& it : pipes_) {
+      pollfd pfd;
+      if (it.first == STDIN_FILENO) {
+        pfd.fd = it.second->write.fd();
+        pfd.events = POLLOUT;
+      } else {
+        pfd.fd = it.second->read.fd();
+        pfd.events = POLLIN;
+      }
+      pfds.emplace_back(std::move(pfd));
+      revmap[pfd.fd] = it.first;
+    }
+
+    int r;
+    do {
+      watchman::log(watchman::DBG, "waiting for ", pfds.size(), " fds\n");
+      r = ::poll(pfds.data(), pfds.size(), -1);
+    } while (r == -1 && errno == EINTR);
+    if (r == -1) {
+      watchman::log(watchman::ERR, "poll error\n");
+      throw std::system_error(errno, std::generic_category(), "poll");
+    }
+
+    for (auto& pfd : pfds) {
+      watchman::log(
+          watchman::DBG,
+          "fd ",
+          pfd.fd,
+          " revmap to ",
+          revmap[pfd.fd],
+          " has events ",
+          pfd.revents,
+          "\n");
+      if ((pfd.revents & (POLLHUP | POLLIN)) &&
+          revmap[pfd.fd] != STDIN_FILENO) {
+        watchman::log(
+            watchman::DBG,
+            "fd ",
+            pfd.fd,
+            " rev=",
+            revmap[pfd.fd],
+            " is readable\n");
+        char buf[BUFSIZ];
+        auto l = ::read(pfd.fd, buf, sizeof(buf));
+        if (l == -1 && (errno == EAGAIN || errno == EINTR)) {
+          watchman::log(
+              watchman::DBG,
+              "fd ",
+              pfd.fd,
+              " rev=",
+              revmap[pfd.fd],
+              " read give EAGAIN\n");
+          continue;
+        }
+        if (l == -1) {
+          int err = errno;
+          watchman::log(
+              watchman::ERR,
+              "failed to read from pipe fd ",
+              pfd.fd,
+              " err ",
+              strerror(err),
+              "\n");
+          throw std::system_error(
+              err, std::generic_category(), "reading from child process");
+        }
+        watchman::log(
+            watchman::DBG,
+            "fd ",
+            pfd.fd,
+            " rev=",
+            revmap[pfd.fd],
+            " read ",
+            l,
+            " bytes\n");
+        if (l == 0) {
+          // Stream is done; close it out.
+          pipes_.erase(revmap[pfd.fd]);
+          continue;
+        }
+        outputs[revmap[pfd.fd]].append(buf, l);
+      }
+
+      if ((pfd.revents & POLLOUT) && revmap[pfd.fd] == STDIN_FILENO &&
+          writeCallback(pipes_.at(revmap[pfd.fd])->write)) {
+        // We should close it
+        watchman::log(
+            watchman::DBG,
+            "fd ",
+            pfd.fd,
+            " rev ",
+            revmap[pfd.fd],
+            " writer says to close\n");
+        pipes_.erase(revmap[pfd.fd]);
+        continue;
+      }
+
+      if (pfd.revents & (POLLHUP | POLLERR)) {
+        // Something wrong with it, so close it
+        pipes_.erase(revmap[pfd.fd]);
+        watchman::log(
+            watchman::DBG,
+            "fd ",
+            pfd.fd,
+            " rev ",
+            revmap[pfd.fd],
+            " error status, so closing\n");
+        continue;
+      }
+    }
+
+    watchman::log(watchman::DBG, "remaining pipes ", pipes_.size(), "\n");
+  }
+
+  auto optBuffer = [&](int fd) -> w_string {
+    auto it = outputs.find(fd);
+    if (it == outputs.end()) {
+      watchman::log(watchman::DBG, "communicate fd ", fd, " nullptr\n");
+      return nullptr;
+    }
+    watchman::log(
+        watchman::DBG, "communicate fd ", fd, " gives ", it->second, "\n");
+    return w_string(it->second.data(), it->second.size());
+  };
+
+  return std::make_pair(optBuffer(STDOUT_FILENO), optBuffer(STDERR_FILENO));
+}
+#endif
+
+/** Spawn a thread to read from the pipe connected to the specified fd.
+ * Returns a Future that will hold a string with the entire output from
+ * that stream. */
+Future<w_string> ChildProcess::readPipe(int fd) {
+  auto it = pipes_.find(fd);
+  if (it == pipes_.end()) {
+    return makeFuture(w_string(nullptr));
+  }
+
+  auto p = std::make_shared<Promise<w_string>>();
+  std::thread thr([this, fd, p] {
+    std::string result;
+    try {
+      auto& pipe = pipes_[fd];
+      while (true) {
+        char buf[4096];
+        auto x = read(pipe->read.fd(), buf, sizeof(buf));
+        if (x == 0) {
+          // all done
+          break;
+        }
+        if (x == -1) {
+          p->setException(std::make_exception_ptr(std::system_error(
+              errno, std::generic_category(), "reading from child process")));
+          return;
+        }
+        result.append(buf, x);
+      }
+      p->setValue(w_string(result.data(), result.size()));
+    } catch (const std::exception& exc) {
+      p->setException(std::current_exception());
+    }
+  });
+
+  thr.detach();
+  return p->getFuture();
+}
+
+/** threadedCommunicate uses threads to read from the output streams.
+ * It is intended to be used on Windows where there is no reasonable
+ * way to carry out a non-blocking read on a pipe.  We compile and
+ * test it on all platforms to make it easier to avoid regressions. */
+std::pair<w_string, w_string> ChildProcess::threadedCommunicate(
+    pipeWriteCallback writeCallback) {
+  auto outFuture = readPipe(STDOUT_FILENO);
+  auto errFuture = readPipe(STDERR_FILENO);
+
+  auto it = pipes_.find(STDIN_FILENO);
+  if (it != pipes_.end()) {
+    auto& inPipe = pipes_[STDIN_FILENO];
+    while (!writeCallback(inPipe->write)) {
+      ; // keep trying to greedily write to the pipe
+    }
+    // Close the input stream; this typically signals the child
+    // process that we're done and allows us to safely block
+    // on the reads below.
+    pipes_.erase(STDIN_FILENO);
+  }
+
+  return std::make_pair(outFuture.get(), errFuture.get());
 }
 
 }

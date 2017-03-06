@@ -196,8 +196,17 @@ w_string_t *w_string::release() {
   return res;
 }
 
-w_string::w_string(const char* buf, uint32_t len, w_string_type_t stringType)
-    : w_string(w_string_new_len_typed(buf, len, stringType), false) {}
+static inline uint32_t checked_len(size_t len) {
+  if (len > UINT32_MAX) {
+    throw std::range_error("string length exceeds UINT32_MAX");
+  }
+  return len;
+}
+
+w_string::w_string(const char* buf, size_t len, w_string_type_t stringType)
+    : w_string(
+          w_string_new_len_typed(buf, checked_len(len), stringType),
+          false) {}
 
 w_string::w_string(const char* buf, w_string_type_t stringType)
     : w_string(

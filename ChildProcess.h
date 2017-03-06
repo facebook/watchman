@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "Future.h"
 #include "Pipe.h"
 #include "thirdparty/jansson/jansson.h"
 #include "watchman_string.h"
@@ -144,12 +145,38 @@ class ChildProcess {
 #endif
       );
 
-  Pipe& pipe(int fd);
+  // The pipeWriteCallback is called by communicate when it is safe to write
+  // data to the pipe.  The callback should then attempt to write to it.
+  // The callback must return true when it has nothing more
+  // to write to the input of the child.  This will cause the
+  // pipe to be closed.
+  // Note that the pipe may be non-blocking, and you must not loop attempting
+  // to write data to the pipe - the caller will arrange to call you again
+  // if you return false (e.g. after a partial write).
+  using pipeWriteCallback = std::function<bool(FileDescriptor&)>;
+
+  /** ChildProcess::communicate() performs a read/write operation.
+   * The provided pipeWriteCallback allows sending data to the input stream.
+   * communicate() will return with the pair of output and error streams once
+   * they have been completely consumed. */
+  std::pair<w_string, w_string> communicate(
+      pipeWriteCallback writeCallback = [](FileDescriptor&) {
+        // If not provided by the caller, we're just going to close the input
+        // stream
+        return true;
+      });
+
+  // these are public for the sake of testing.  You should use the
+  // communicate() method instead of calling these directly.
+  std::pair<w_string, w_string> pollingCommunicate(pipeWriteCallback writable);
+  std::pair<w_string, w_string> threadedCommunicate(pipeWriteCallback writable);
 
  private:
   pid_t pid_;
   bool waited_{false};
   int status_;
   std::unordered_map<int, std::unique_ptr<Pipe>> pipes_;
+
+  Future<w_string> readPipe(int fd);
 };
 }

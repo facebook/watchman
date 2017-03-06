@@ -92,36 +92,37 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId) const {
   // of the commands that we're runing.
   opt.environment().set("HGPLAIN", w_string("1"));
   opt.pipeStdout();
+  opt.pipeStderr();
   opt.chdir(getRootPath());
 
   auto revset = to<std::string>("ancestor(.,", commitId, ")");
   ChildProcess proc(
       {"hg", "log", "-T", "{node}", "-r", revset}, std::move(opt));
 
-  proc.pipe(STDOUT_FILENO).read.clearNonBlock();
+  auto outputs = proc.communicate();
   auto status = proc.wait();
 
   if (status) {
     throw std::runtime_error(to<std::string>(
         "failed query for the merge base; command returned with status ",
-        status));
+        status,
+        ", output=",
+        outputs.first,
+        " error=",
+        outputs.second));
   }
 
-  char buf[128];
-  auto len = read(proc.pipe(STDOUT_FILENO).read.fd(), buf, sizeof(buf));
-
-  if (len != 40) {
+  if (outputs.first.size() != 40) {
     throw std::runtime_error(to<std::string>(
         "expected merge base to be a 40 character string, got ",
-        w_string_piece(buf, len)));
+        outputs.first));
   }
 
-  auto result = w_string(buf, len);
   {
     auto cache = cache_.wlock();
-    cache->mergeBases[idString] = result;
+    cache->mergeBases[idString] = outputs.first;
   }
-  return result;
+  return outputs.first;
 }
 
 std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
@@ -131,6 +132,7 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
   // of the commands that we're runing.
   opt.environment().set("HGPLAIN", w_string("1"));
   opt.pipeStdout();
+  opt.pipeStderr();
   opt.chdir(getRootPath());
 
   auto revset = to<std::string>("ancestor(.,", commitId, ")");
@@ -138,59 +140,22 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
       {"hg", "status", "-n", "--root-relative", "--rev", commitId},
       std::move(opt));
 
-  proc.pipe(STDOUT_FILENO).read.clearNonBlock();
-  std::vector<w_string> res;
+  auto outputs = proc.communicate();
 
-  std::string line;
-  char buf[512];
-
-  while (true) {
-    auto len = read(proc.pipe(STDOUT_FILENO).read.fd(), buf, sizeof(buf));
-    if (len == 0) {
-      break;
-    }
-    if (len < 0) {
-      throw std::system_error(
-          errno,
-          std::generic_category(),
-          "error while reading from hg status pipe");
-    }
-    auto shortRead = len < int(sizeof(buf));
-
-    line.append(buf, len);
-
-    // Note: mercurial always ends the last line with a newline,
-    // so we only need do line splitting here.
-    size_t start = 0;
-    for (size_t i = 0; i < line.size(); ++i) {
-      if (line[i] == '\n') {
-        len = i - start;
-        if (len > 0) {
-          res.emplace_back(&line[start], len);
-        }
-        start = i + 1;
-      }
-    }
-
-    if (start > 0) {
-      line.erase(0, start);
-    }
-
-    if (shortRead) {
-      // A short read means that we got to the end of the pipe data
-      break;
-    }
-  }
-
-  w_check(line.empty(), "we should have consumed all the data");
+  std::vector<w_string> lines;
+  w_string_piece(outputs.first).split(lines, '\n');
 
   auto status = proc.wait();
   if (status) {
     throw std::runtime_error(to<std::string>(
         "failed query for the hg status; command returned with status ",
-        status));
+        status,
+        " out=",
+        outputs.first,
+        " err=",
+        outputs.second));
   }
 
-  return res;
+  return lines;
 }
 }

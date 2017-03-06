@@ -187,8 +187,42 @@ void test_operator() {
   ok(w_string_piece("A") < w_string_piece("a"), "A < a");
 }
 
+void test_split() {
+  {
+    std::vector<std::string> expected{"a", "b", "c"};
+    std::vector<std::string> result;
+    w_string_piece("a:b:c").split(result, ':');
+
+    ok(expected == result, "split ok");
+  }
+
+  {
+    std::vector<w_string> expected{"a", "b", "c"};
+    std::vector<w_string> result;
+    w_string_piece("a:b:c").split(result, ':');
+
+    ok(expected == result, "split ok (w_string)");
+  }
+
+  {
+    std::vector<std::string> expected{"a", "b", "c"};
+    std::vector<std::string> result;
+    w_string_piece("a:b:c:").split(result, ':');
+
+    ok(expected == result, "split doesn't create empty last element");
+  }
+
+  {
+    std::vector<std::string> expected{"a", "b", "", "c"};
+    std::vector<std::string> result;
+    w_string_piece("a:b::c:").split(result, ':');
+
+    ok(expected == result, "split does create empty element");
+  }
+}
+
 int main(int, char**) {
-  plan_tests(65);
+  plan_tests(69);
   test_integrals();
   test_strings();
   test_pointers();
@@ -199,6 +233,7 @@ int main(int, char**) {
   test_path_cat();
   test_basename_dirname();
   test_operator();
+  test_split();
 
   return exit_status();
 }

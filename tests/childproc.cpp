@@ -1,6 +1,7 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0. */
 #include "watchman_system.h"
+#include <list>
 #include "ChildProcess.h"
 #include "thirdparty/tap.h"
 
@@ -23,26 +24,58 @@ void test_pipe() {
           "hello"},
       std::move(opts));
 
-  echo.pipe(STDOUT_FILENO).read.clearNonBlock();
+  auto outputs = echo.communicate();
   echo.wait();
 
-  char buf[128];
-  auto len = read(echo.pipe(STDOUT_FILENO).read.fd(), buf, sizeof(buf));
-
-  ok(len >= 0,
-     "read from pipe was successful: len=%d err=%s",
-     len,
-     strerror(errno));
-  w_string_piece line(buf, len);
+  w_string_piece line(outputs.first);
   ok(line.startsWith("hello"), "starts with hello");
+}
+
+void test_pipe_input(bool threaded) {
+#ifndef _WIN32
+  Options opts;
+  opts.pipeStdout();
+  opts.pipeStdin();
+  ChildProcess cat({"/bin/cat", "-"}, std::move(opts));
+
+  std::vector<std::string> expected{"one", "two", "three"};
+  std::list<std::string> lines{"one\n", "two\n", "three\n"};
+
+  auto writable = [&lines](watchman::FileDescriptor& fd) {
+    if (lines.empty()) {
+      return true;
+    }
+    auto str = lines.front();
+    if (write(fd.fd(), str.data(), str.size()) == -1) {
+      throw std::runtime_error("write to child failed");
+    }
+    lines.pop_front();
+    return false;
+  };
+
+  auto outputs =
+      threaded ? cat.threadedCommunicate(writable) : cat.communicate(writable);
+  cat.wait();
+
+  std::vector<std::string> resultLines;
+  w_string_piece(outputs.first).split(resultLines, '\n');
+  ok(resultLines.size() == 3, "got three lines of output");
+  ok(resultLines == expected, "got all input lines");
+#else
+  (void)threaded;
+  pass("dummy1");
+  pass("dummy2");
+#endif
 }
 
 int main(int argc, char **argv) {
   (void)argc;
   (void)argv;
 
-  plan_tests(2);
+  plan_tests(5);
   test_pipe();
+  test_pipe_input(true);
+  test_pipe_input(false);
 
   return exit_status();
 }
