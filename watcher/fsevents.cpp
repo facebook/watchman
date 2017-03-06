@@ -96,8 +96,7 @@ static struct fse_stream* fse_stream_make(
 
 std::shared_ptr<FSEventsWatcher> watcherFromRoot(
     const std::shared_ptr<w_root_t>& root) {
-  auto view =
-      std::dynamic_pointer_cast<watchman::InMemoryView>(root->inner.view);
+  auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
   if (!view) {
     return nullptr;
   }

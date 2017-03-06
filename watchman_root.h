@@ -74,7 +74,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
 
   /* --- everything in inner will be reset on w_root_init --- */
   struct Inner {
-    std::shared_ptr<watchman::QueryableView> view;
+    std::shared_ptr<watchman::QueryableView> view_;
 
     bool done_initial{0};
     bool cancelled{0};
@@ -92,6 +92,10 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
 
     void init(w_root_t* root);
   } inner;
+
+  // Obtain the current view pointer.
+  // This is safe wrt. a concurrent recrawl operation
+  std::shared_ptr<watchman::QueryableView> view();
 
   explicit watchman_root(const w_string& root_path);
   ~watchman_root();

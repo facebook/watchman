@@ -98,8 +98,7 @@ static bool do_settle_things(const std::shared_ptr<w_root_t>& root) {
     return false;
   }
 
-  auto view =
-      std::dynamic_pointer_cast<watchman::InMemoryView>(root->inner.view);
+  auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
   w_assert(view, "we're called from InMemoryView, wat?");
   view->warmContentCache();
 

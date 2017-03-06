@@ -6,7 +6,9 @@
 
 bool watchman_root::syncToNow(std::chrono::milliseconds timeout) {
   w_perf_t sample("sync_to_now");
-  auto res = inner.view->syncToNow(timeout);
+
+  auto res = view()->syncToNow(timeout);
+
   // We want to know about all timeouts
   if (!res) {
     sample.force_log();

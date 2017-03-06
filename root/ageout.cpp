@@ -12,7 +12,7 @@ void watchman_root::considerAgeOut() {
 
   time(&now);
 
-  if (now <= inner.view->getLastAgeOutTimeStamp() + gc_interval) {
+  if (now <= view()->getLastAgeOutTimeStamp() + gc_interval) {
     // Don't check too often
     return;
   }
@@ -28,14 +28,14 @@ void watchman_root::performAgeOut(std::chrono::seconds min_age) {
   // of build tooling or atomic renames)
   w_perf_t sample("age_out");
 
-  inner.view->ageOut(sample, std::chrono::seconds(min_age));
+  view()->ageOut(sample, std::chrono::seconds(min_age));
 
   // Age out cursors too.
   {
     auto cursors = inner.cursors.wlock();
     auto it = cursors->begin();
     while (it != cursors->end()) {
-      if (it->second < inner.view->getLastAgeOutTickValue()) {
+      if (it->second < view()->getLastAgeOutTickValue()) {
         it = cursors->erase(it);
       } else {
         ++it;

@@ -142,7 +142,7 @@ void time_generator(
     w_query* query,
     const std::shared_ptr<w_root_t>& root,
     struct w_query_ctx* ctx) {
-  root->inner.view->timeGenerator(query, ctx);
+  root->view()->timeGenerator(query, ctx);
 }
 
 static void default_generators(
@@ -159,24 +159,24 @@ static void default_generators(
 
   // Suffix
   if (!query->suffixes.empty()) {
-    root->inner.view->suffixGenerator(query, ctx);
+    root->view()->suffixGenerator(query, ctx);
     generated = true;
   }
 
   if (!query->paths.empty()) {
-    root->inner.view->pathGenerator(query, ctx);
+    root->view()->pathGenerator(query, ctx);
     generated = true;
   }
 
   if (query->glob_tree) {
-    root->inner.view->globGenerator(query, ctx);
+    root->view()->globGenerator(query, ctx);
     generated = true;
   }
 
   // And finally, if there were no other generators, we walk all known
   // files
   if (!generated) {
-    root->inner.view->allFilesGenerator(query, ctx);
+    root->view()->allFilesGenerator(query, ctx);
   }
 }
 
@@ -253,7 +253,7 @@ w_query_res w_query_execute(
   // We want to check this before we sync, as the SCM may generate changes
   // in the filesystem when running the underlying commands to query it.
   if (query->since_spec && query->since_spec->hasScmParams()) {
-    auto scm = root->inner.view->getSCM();
+    auto scm = root->view()->getSCM();
 
     resultClock.scmMergeBaseWith = query->since_spec->scmMergeBaseWith;
     resultClock.scmMergeBase = scm->mergeBaseWith(resultClock.scmMergeBaseWith);
@@ -306,9 +306,9 @@ w_query_res w_query_execute(
    */
 
   ctx.clockAtStartOfQuery =
-      ClockSpec(root->inner.view->getMostRecentRootNumberAndTickValue());
+      ClockSpec(root->view()->getMostRecentRootNumberAndTickValue());
   ctx.lastAgeOutTickValueAtStartOfQuery =
-      root->inner.view->getLastAgeOutTickValue();
+      root->view()->getLastAgeOutTickValue();
 
   // Copy in any scm parameters
   res.clockAtStartOfQuery = resultClock;

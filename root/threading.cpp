@@ -3,30 +3,40 @@
 
 #include "watchman.h"
 
+std::shared_ptr<watchman::QueryableView> watchman_root::view() {
+  // We grab a read lock on the recrawl info to ensure that we
+  // can't race with scheduleRecrawl and observe a nullptr for
+  // the view_.
+  auto info = recrawlInfo.rlock();
+  return inner.view_;
+}
+
 void watchman_root::scheduleRecrawl(const char* why) {
-  auto info = recrawlInfo.wlock();
+  {
+    auto info = recrawlInfo.wlock();
 
-  if (!info->shouldRecrawl) {
-    if (!config.getBool("suppress_recrawl_warnings", false)) {
-      info->warning = w_string::build(
-          "Recrawled this watch ",
-          ++info->recrawlCount,
-          " times, most recently because:\n",
-          why,
-          "To resolve, please review the information on\n",
-          cfg_get_trouble_url(),
-          "#recrawl");
+    if (!info->shouldRecrawl) {
+      if (!config.getBool("suppress_recrawl_warnings", false)) {
+        info->warning = w_string::build(
+            "Recrawled this watch ",
+            ++info->recrawlCount,
+            " times, most recently because:\n",
+            why,
+            "To resolve, please review the information on\n",
+            cfg_get_trouble_url(),
+            "#recrawl");
+      }
+
+      watchman::log(
+          watchman::ERR, root_path, ": ", why, ": scheduling a tree recrawl\n");
     }
-
-    watchman::log(
-        watchman::ERR, root_path, ": ", why, ": scheduling a tree recrawl\n");
+    info->shouldRecrawl = true;
   }
-  info->shouldRecrawl = true;
   signalThreads();
 }
 
 void watchman_root::signalThreads() {
-  inner.view->signalThreads();
+  view()->signalThreads();
 }
 
 // Cancels a watch.

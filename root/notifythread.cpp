@@ -14,23 +14,26 @@ void InMemoryView::handleShouldRecrawl(const std::shared_ptr<w_root_t>& root) {
   }
 
   if (!root->inner.cancelled) {
-    auto info = root->recrawlInfo.wlock();
-    // be careful, this is a bit of a switcheroo
-    root->tearDown();
-    try {
-      root->init();
-    } catch (const std::exception& e) {
-      w_log(
-          W_LOG_ERR,
-          "failed to init root %s, cancelling watch: %s\n",
-          root->root_path.c_str(),
-          e.what());
-      // this should cause us to exit from the notify loop
-      root->cancel();
+    {
+      auto info = root->recrawlInfo.wlock();
+      // be careful, this is a bit of a switcheroo
+      root->tearDown();
+      try {
+        root->init();
+      } catch (const std::exception& e) {
+        w_log(
+            W_LOG_ERR,
+            "failed to init root %s, cancelling watch: %s\n",
+            root->root_path.c_str(),
+            e.what());
+        // this should cause us to exit from the notify loop
+        root->cancel();
+      }
+      info->recrawlCount++;
     }
-    info->recrawlCount++;
-    // Tell the new view instance to start up
-    root->inner.view->startThreads(root);
+    // Tell the new view instance to start up.  Note that
+    // root->view() != this
+    root->view()->startThreads(root);
     pending_.wlock()->ping();
   }
 }

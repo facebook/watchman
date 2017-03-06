@@ -117,7 +117,7 @@ void watchman_perf_sample::add_root_meta(
 
   // During recrawl, the view may be re-assigned.  Protect against
   // reading a nullptr.
-  auto view = root->inner.view;
+  auto view = root->view();
   if (view) {
     auto position = view->getMostRecentRootNumberAndTickValue();
     meta.set({{"number", json_integer(position.rootNumber)},

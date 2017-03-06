@@ -92,7 +92,7 @@ void watchman_root::tearDown() {
 }
 
 void watchman_root::Inner::init(w_root_t* root) {
-  view = WatcherRegistry::initWatcher(root);
+  view_ = WatcherRegistry::initWatcher(root);
 }
 
 watchman_root::watchman_root(const w_string& root_path)

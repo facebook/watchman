@@ -215,8 +215,7 @@ w_string ClockPosition::toClockString() const {
 void annotate_with_clock(
     const std::shared_ptr<w_root_t>& root,
     json_ref& resp) {
-  resp.set(
-      "clock", w_string_to_json(root->inner.view->getCurrentClockString()));
+  resp.set("clock", w_string_to_json(root->view()->getCurrentClockString()));
 }
 
 json_ref ClockSpec::toJson() const {

@@ -44,7 +44,7 @@ static std::tuple<sub_action, w_string> get_subscription_action(
   auto action = sub_action::execute;
   w_string policy_name;
 
-  auto position = root->inner.view->getMostRecentRootNumberAndTickValue();
+  auto position = root->view()->getMostRecentRootNumberAndTickValue();
 
   watchman::log(
       watchman::DBG,
@@ -115,7 +115,7 @@ void watchman_client_subscription::processSubscription() {
 
     if (action == sub_action::drop) {
       // fast-forward over any notifications while in the drop state
-      auto position = root->inner.view->getMostRecentRootNumberAndTickValue();
+      auto position = root->view()->getMostRecentRootNumberAndTickValue();
       last_sub_tick = position.ticks;
       query->since_spec = watchman::make_unique<ClockSpec>(position);
       watchman::log(
@@ -137,7 +137,7 @@ void watchman_client_subscription::processSubscription() {
           policy_name,
           " is vacated\n");
       executeQuery = false;
-    } else if (vcs_defer && root->inner.view->isVCSOperationInProgress()) {
+    } else if (vcs_defer && root->view()->isVCSOperationInProgress()) {
       watchman::log(
           watchman::DBG,
           "deferring subscription notifications for ",
@@ -342,7 +342,7 @@ static void cmd_flush_subscriptions(
     std::tie(action, policy_name) = get_subscription_action(sub.get(), root);
 
     if (action == sub_action::drop) {
-      auto position = root->inner.view->getMostRecentRootNumberAndTickValue();
+      auto position = root->view()->getMostRecentRootNumberAndTickValue();
       sub->last_sub_tick = position.ticks;
       sub->query->since_spec = watchman::make_unique<ClockSpec>(position);
       watchman::log(

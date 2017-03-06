@@ -108,7 +108,7 @@ static void cmd_state_enter(
   // PDUs in case CLIENT has active subscriptions for this root
   response = make_response();
 
-  auto clock = w_string_to_json(root->inner.view->getCurrentClockString());
+  auto clock = w_string_to_json(root->view()->getCurrentClockString());
 
   response.set({{"root", w_string_to_json(root->root_path)},
                 {"state-enter", w_string_to_json(parsed.name)},
@@ -138,7 +138,7 @@ static void leave_state(
   auto payload = json_object(
       {{"root", w_string_to_json(assertion->root->root_path)},
        {"clock",
-        w_string_to_json(assertion->root->inner.view->getCurrentClockString())},
+        w_string_to_json(assertion->root->view()->getCurrentClockString())},
        {"state-leave", w_string_to_json(assertion->name)}});
   if (metadata) {
     payload.set("metadata", json_ref(metadata));
@@ -242,7 +242,7 @@ static void cmd_state_leave(
   response.set(
       {{"root", w_string_to_json(root->root_path)},
        {"state-leave", w_string_to_json(parsed.name)},
-       {"clock", w_string_to_json(root->inner.view->getCurrentClockString())}});
+       {"clock", w_string_to_json(root->view()->getCurrentClockString())}});
   send_and_dispose_response(client, std::move(response));
 
   // Notify and exit the state

@@ -291,7 +291,7 @@ static void cmd_watch(struct watchman_client* client, const json_ref& args) {
   if (!root) {
     return;
   }
-  root->inner.view->waitUntilReadyToQuery(root).wait();
+  root->view()->waitUntilReadyToQuery(root).wait();
 
   auto resp = make_response();
 
@@ -302,7 +302,7 @@ static void cmd_watch(struct watchman_client* client, const json_ref& args) {
         "error", typed_string_to_json("root was cancelled", W_STRING_UNICODE));
   } else {
     resp.set({{"watch", w_string_to_json(root->root_path)},
-              {"watcher", w_string_to_json(root->inner.view->getName())}});
+              {"watcher", w_string_to_json(root->view()->getName())}});
   }
   add_root_warnings_to_response(resp, root);
   send_and_dispose_response(client, std::move(resp));
@@ -339,7 +339,7 @@ static void cmd_watch_project(
     return;
   }
 
-  root->inner.view->waitUntilReadyToQuery(root).wait();
+  root->view()->waitUntilReadyToQuery(root).wait();
 
   auto resp = make_response();
 
@@ -350,7 +350,7 @@ static void cmd_watch_project(
         "error", typed_string_to_json("root was cancelled", W_STRING_UNICODE));
   } else {
     resp.set({{"watch", w_string_to_json(root->root_path)},
-              {"watcher", w_string_to_json(root->inner.view->getName())}});
+              {"watcher", w_string_to_json(root->view()->getName())}});
   }
   add_root_warnings_to_response(resp, root);
   if (rel_path_from_watch) {

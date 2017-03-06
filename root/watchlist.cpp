@@ -217,7 +217,7 @@ bool w_root_load_state(const json_ref& state) {
 
     if (created) {
       try {
-        root->inner.view->startThreads(root);
+        root->view()->startThreads(root);
       } catch (const std::exception& e) {
         watchman::log(
             watchman::ERR,

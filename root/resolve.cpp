@@ -264,7 +264,7 @@ w_root_resolve(const char* filename, bool auto_watch, char** errmsg) {
 
   if (created) {
     try {
-      root->inner.view->startThreads(root);
+      root->view()->startThreads(root);
     } catch (const std::exception& e) {
       watchman::log(
           watchman::ERR,
@@ -286,8 +286,7 @@ std::shared_ptr<w_root_t> w_root_resolve_for_client_mode(
   auto root = root_resolve(filename, true, &created, errmsg);
 
   if (created) {
-    auto view =
-        std::dynamic_pointer_cast<watchman::InMemoryView>(root->inner.view);
+    auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
     if (!view) {
       *errmsg = strdup("client mode not available");
       return nullptr;
