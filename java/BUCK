@@ -15,6 +15,7 @@ java_library(
     '//third-party/guava:guava',
     '//third-party/immutables:value',
     '//third-party/jna:jna',
+    '//third-party/jna:jna-platform',
     '//third-party/jsr-305:jsr-305',
     '//third-party/nuprocess:nuprocess',
   ],

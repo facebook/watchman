@@ -20,7 +20,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
@@ -33,15 +32,17 @@ import com.facebook.watchman.bser.BserDeserializer;
 import com.facebook.watchman.environment.ExecutableFinder;
 import com.facebook.watchman.unixsocket.UnixDomainSocket;
 
+import com.facebook.watchman.windowspipe.WindowsNamedPipe;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
+import com.sun.jna.Platform;
 import com.zaxxer.nuprocess.NuAbstractProcessHandler;
 import com.zaxxer.nuprocess.NuProcess;
 import com.zaxxer.nuprocess.NuProcessBuilder;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class WatchmanSocketBuilder {
+public class WatchmanTransportBuilder {
   private static class BufferingOutputHandler extends NuAbstractProcessHandler {
 
     private final ByteArrayOutputStream buffer;
@@ -82,23 +83,23 @@ public class WatchmanSocketBuilder {
     }
   }
 
-  public static Socket discoverSocket() throws WatchmanSocketUnavailableException {
+  public static WatchmanTransport discoverSocket() throws WatchmanTransportUnavailableException {
     return discoverSocket(0, TimeUnit.SECONDS); // forever
   }
 
-  public static Socket discoverSocket(long duration, TimeUnit unit)
-      throws WatchmanSocketUnavailableException {
+  public static WatchmanTransport discoverSocket(long duration, TimeUnit unit)
+      throws WatchmanTransportUnavailableException {
     Optional<Path> optionalExecutable = ExecutableFinder.getOptionalExecutable(
         Paths.get("watchman"),
         ImmutableMap.copyOf(System.getenv()));
     if (!optionalExecutable.isPresent()) {
-      throw new WatchmanSocketUnavailableException();
+      throw new WatchmanTransportUnavailableException();
     }
     return discoverSocket(optionalExecutable.get(), duration, unit);
   }
 
-  public static Socket discoverSocket(Path watchmanPath, long duration, TimeUnit unit)
-      throws WatchmanSocketUnavailableException {
+  public static WatchmanTransport discoverSocket(Path watchmanPath, long duration, TimeUnit unit)
+      throws WatchmanTransportUnavailableException {
     NuProcessBuilder processBuilder = new NuProcessBuilder(
         watchmanPath.toString(),
         "--output-encoding=bser",
@@ -108,20 +109,20 @@ public class WatchmanSocketBuilder {
     processBuilder.setProcessListener(outputHandler);
     NuProcess process = processBuilder.start();
     if (process == null) {
-      throw new WatchmanSocketUnavailableException("Could not create process");
+      throw new WatchmanTransportUnavailableException("Could not create process");
     }
     int exitCode;
     try {
       exitCode = process.waitFor(duration, unit);
     } catch (InterruptedException e) {
-      throw new WatchmanSocketUnavailableException("Subprocess interrupted", e);
+      throw new WatchmanTransportUnavailableException("Subprocess interrupted", e);
     }
 
     if (exitCode == Integer.MIN_VALUE) {
-      throw new WatchmanSocketUnavailableException("Subprocess timed out");
+      throw new WatchmanTransportUnavailableException("Subprocess timed out");
     }
     if (exitCode != 0) {
-      throw new WatchmanSocketUnavailableException(
+      throw new WatchmanTransportUnavailableException(
           "Subprocess non-zero exit status: " + String.valueOf(exitCode));
     }
 
@@ -129,7 +130,7 @@ public class WatchmanSocketBuilder {
     try {
       output = outputHandler.getOutput();
     } catch (IOException e) {
-      throw new WatchmanSocketUnavailableException("Could not read subprocess output", e);
+      throw new WatchmanTransportUnavailableException("Could not read subprocess output", e);
     }
 
     InputStream stream = new ByteArrayInputStream(output.array());
@@ -138,15 +139,19 @@ public class WatchmanSocketBuilder {
     try {
       deserializedValue = deserializer.deserialize(stream);
     } catch (IOException e) {
-      throw new WatchmanSocketUnavailableException("Could not deserialize BSER output", e);
+      throw new WatchmanTransportUnavailableException("Could not deserialize BSER output", e);
     }
 
     checkArgument(deserializedValue.containsKey("sockname"));
+    String sockname = String.valueOf(deserializedValue.get("sockname"));
     try {
-      return UnixDomainSocket.createSocketWithPath(
-          Paths.get(String.valueOf(deserializedValue.get("sockname"))));
+      if (Platform.isWindows()) {
+        return new WindowsNamedPipe(sockname);
+      } else {
+        return UnixDomainSocket.createSocketWithPath(Paths.get(sockname));
+      }
     } catch (IOException e) {
-      throw new WatchmanSocketUnavailableException("Could not create Unix socket to resulting path", e);
+      throw new WatchmanTransportUnavailableException("Could not create Unix socket to resulting path", e);
     }
   }
 

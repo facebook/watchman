@@ -27,19 +27,24 @@ import com.google.common.util.concurrent.ListenableFuture;
  */
 public class CapabilitiesStrategy {
 
+  private final static String CMD_WATCH_PROJECT = "cmd-watch-project";
+
   /**
    * Tests if a client supports the "watch-project" command or not.
    */
   public static boolean checkWatchProjectCapability(WatchmanClient client) {
+
     ListenableFuture<Map<String, Object>> future = client.version(
         Collections.<String>emptyList(),
-        Collections.singletonList("cmd-watch-project"));
+        Collections.singletonList(CMD_WATCH_PROJECT));
     try {
       Map<String, Object> response = future.get();
-      return response.containsKey("capabilities");
-    } catch (InterruptedException e) {
+      if (response.containsKey("capabilities")) {
+        Map<String, Object> capabilities = (Map<String, Object>) response.get("capabilities");
+        return Boolean.TRUE.equals(capabilities.get(CMD_WATCH_PROJECT));
+      }
       return false;
-    } catch (ExecutionException e) {
+    } catch (InterruptedException | ExecutionException e) {
       return false;
     }
   }
