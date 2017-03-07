@@ -18,7 +18,6 @@ package com.facebook.watchman;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.Socket;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -46,7 +45,7 @@ public class WatchmanConnection {
   private final ListeningExecutorService outgoingMessageExecutor;
   private final ExecutorService incomingMessageExecutor;
   private final Callable<Map<String, Object>> incomingMessageGetter;
-  private final Optional<Socket> socket;
+  private final Optional<WatchmanTransport> transport;
   private final OutputStream outgoingMessageStream;
   private final Optional<Callback> unilateralCallback;
   private final Optional<Collection<String>> unilateralLabels;
@@ -55,41 +54,41 @@ public class WatchmanConnection {
   private final BserSerializer bserSerializer;
   private final Optional<WatchmanCommandListener> commandListener;
 
-  public WatchmanConnection(Socket socket) throws IOException {
+  public WatchmanConnection(WatchmanTransport transport) throws IOException {
     this(
-        incomingMessageGetterFromSocket(socket),
-        socket.getOutputStream(),
+        incomingMessageGetterFromTransport(transport),
+        transport.getOutputStream(),
         Optional.<Collection<String>>absent(),
         Optional.<Callback>absent(),
         Optional.<WatchmanCommandListener>absent(),
-        Optional.<Socket>of(socket));
+        Optional.<WatchmanTransport>of(transport));
   }
 
   public WatchmanConnection(
-      final Socket socket,
+      final WatchmanTransport transport,
       Optional<Collection<String>> unilateralLabels,
       Optional<Callback> unilateralCallback) throws IOException {
     this(
-        incomingMessageGetterFromSocket(socket),
-        socket.getOutputStream(),
+        incomingMessageGetterFromTransport(transport),
+        transport.getOutputStream(),
         unilateralLabels,
         unilateralCallback,
         Optional.<WatchmanCommandListener>absent(),
-        Optional.<Socket>of(socket));
+        Optional.<WatchmanTransport>of(transport));
   }
 
   public WatchmanConnection(
-      final Socket socket,
+      final WatchmanTransport transport,
       Optional<Collection<String>> unilateralLabels,
       Optional<Callback> unilateralCallback,
       Optional<WatchmanCommandListener> commandListener) throws IOException {
     this(
-        incomingMessageGetterFromSocket(socket),
-        socket.getOutputStream(),
+        incomingMessageGetterFromTransport(transport),
+        transport.getOutputStream(),
         unilateralLabels,
         unilateralCallback,
         commandListener,
-        Optional.<Socket>of(socket));
+        Optional.<WatchmanTransport>of(transport));
   }
 
   public WatchmanConnection(
@@ -101,7 +100,7 @@ public class WatchmanConnection {
         Optional.<Collection<String>>absent(),
         Optional.<Callback>absent(),
         Optional.<WatchmanCommandListener>absent(),
-        Optional.<Socket>absent());
+        Optional.<WatchmanTransport>absent());
   }
 
   public WatchmanConnection(
@@ -114,7 +113,7 @@ public class WatchmanConnection {
         Optional.<Collection<String>>absent(),
         Optional.<Callback>absent(),
         commandListener,
-        Optional.<Socket>absent());
+        Optional.<WatchmanTransport>absent());
   }
 
   public WatchmanConnection(
@@ -128,7 +127,7 @@ public class WatchmanConnection {
         unilateralLabels,
         unilateralCallback,
         Optional.<WatchmanCommandListener>absent(),
-        Optional.<Socket>absent());
+        Optional.<WatchmanTransport>absent());
   }
 
   public WatchmanConnection(
@@ -137,12 +136,12 @@ public class WatchmanConnection {
       Optional<Collection<String>> unilateralLabels,
       Optional<Callback> unilateralCallback,
       Optional<WatchmanCommandListener> commandListener,
-      Optional<Socket> optionalSocket) {
+      Optional<WatchmanTransport> optionalTransport) {
     this.incomingMessageGetter = incomingMessageGetter;
     this.outgoingMessageStream = outgoingMessageStream;
     this.unilateralLabels = unilateralLabels;
     this.unilateralCallback = unilateralCallback;
-    this.socket = optionalSocket;
+    this.transport = optionalTransport;
     this.processing = new AtomicBoolean(true);
     this.outgoingMessageExecutor = MoreExecutors.listeningDecorator(
         Executors.newSingleThreadExecutor(
@@ -221,8 +220,8 @@ public class WatchmanConnection {
     incomingMessageExecutor.shutdown();
     outgoingMessageExecutor.shutdown();
 
-    if (socket.isPresent()) {
-      socket.get().close();
+    if (transport.isPresent()) {
+      transport.get().close();
     }
   }
 
@@ -294,11 +293,11 @@ public class WatchmanConnection {
 
   /**
    * Generates a Callable that can be invoked repeatedly to extract
-   * deserialized messages from watchman's socket.
+   * deserialized messages from watchman's transport.
    */
-  private static Callable<Map<String, Object>> incomingMessageGetterFromSocket(Socket socket)
+  private static Callable<Map<String, Object>> incomingMessageGetterFromTransport(WatchmanTransport transport)
       throws IOException {
-    final InputStream inputStream = socket.getInputStream();
+    final InputStream inputStream = transport.getInputStream();
     final BserDeserializer deserializer = new BserDeserializer(BserDeserializer.KeyOrdering.UNSORTED);
     return new Callable<Map<String, Object>>() {
       @Override

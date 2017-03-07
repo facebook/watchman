@@ -19,7 +19,6 @@ import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.Socket;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
@@ -56,9 +55,9 @@ public class WatchmanClientImpl implements WatchmanClient {
 
   private final Supplier<Boolean> supportsWatchProject;
 
-  public WatchmanClientImpl(Socket socket) throws IOException {
+  public WatchmanClientImpl(WatchmanTransport transport) throws IOException {
     connection = new WatchmanConnection(
-        socket,
+        transport,
         Optional.of(UNILATERAL_LABELS),
         Optional.<Callback>of(new UnilateralCallbackImpl()));
 

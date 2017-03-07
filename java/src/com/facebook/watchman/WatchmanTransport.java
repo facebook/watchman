@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-present Facebook. All Rights Reserved.
+ * Copyright 2017-present Facebook. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may
  * not use this file except in compliance with the License. You may obtain
@@ -16,20 +16,11 @@
 
 package com.facebook.watchman;
 
-/**
- * Created by cotizo on 5/31/16.
- */
-public class WatchmanSocketUnavailableException extends Exception {
+import java.io.Closeable;
+import java.io.InputStream;
+import java.io.OutputStream;
 
-  public WatchmanSocketUnavailableException() {
-    super();
-  }
-
-  public WatchmanSocketUnavailableException(String message) {
-    super(message);
-  }
-
-  public WatchmanSocketUnavailableException(String message, Throwable cause) {
-    super(message, cause);
-  }
+public interface WatchmanTransport extends Closeable {
+  InputStream getInputStream();
+  OutputStream getOutputStream();
 }
