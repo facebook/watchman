@@ -89,6 +89,9 @@ class ChildProcess {
     // Set up stderr with a pipe
     void pipeStderr();
 
+    // Set up stdin with a null device
+    void nullStdin();
+
     // Arrange to open(2) a file for the child process and make
     // it available as targetFd
     void open(int targetFd, const char* path, int flags, int mode);

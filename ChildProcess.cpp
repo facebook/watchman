@@ -223,6 +223,14 @@ void ChildProcess::Options::pipeStderr() {
   pipe(STDERR_FILENO, false);
 }
 
+void ChildProcess::Options::nullStdin() {
+#ifdef _WIN32
+  open(STDIN_FILENO, "NUL", O_RDONLY, 0);
+#else
+  open(STDIN_FILENO, "/dev/null", O_RDONLY, 0);
+#endif
+}
+
 void ChildProcess::Options::chdir(w_string_piece path) {
   cwd_ = std::string(path.data(), path.size());
 #ifdef _WIN32
