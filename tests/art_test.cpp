@@ -208,16 +208,16 @@ void test_art_insert_iter(void) {
   FILE *f = open_test_file("thirdparty/libart/tests/words.txt");
 
   uint64_t xor_mask = 0;
-  uintptr_t line = 1, nlines;
+  uintptr_t lineno = 1, nlines;
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
-    t.insert(buf, line);
+    t.insert(buf, lineno);
 
-    xor_mask ^= (line * (buf[0] + len - 1));
-    line++;
+    xor_mask ^= (lineno * (buf[0] + len - 1));
+    lineno++;
   }
-  nlines = line - 1;
+  nlines = lineno - 1;
 
   {
     uint64_t out[] = {0, 0};
