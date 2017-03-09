@@ -305,11 +305,11 @@ class Future {
     auto state = std::make_shared<thenState>(std::forward<Func>(func));
     auto result = state->promise.getFuture();
 
-    state_->setCallback([state](Result<T>&& result) {
+    state_->setCallback([state](Result<T>&& res) {
       try {
-        auto future = state->func(std::move(result));
-        future.setCallback([state](Result<InnerRet>&& result) {
-          state->promise.setResult(std::move(result));
+        auto future = state->func(std::move(res));
+        future.setCallback([state](Result<InnerRet>&& res2) {
+          state->promise.setResult(std::move(res2));
         });
       } catch (const std::exception& exc) {
         state->promise.setException(std::current_exception());
