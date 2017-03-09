@@ -462,7 +462,6 @@ static int lex_scan_number(lex_t *lex, int c, json_error_t *error)
 {
     const char *saved_text;
     char *end;
-    double value;
 
     lex->token = TOKEN_INVALID;
 
@@ -540,6 +539,7 @@ static int lex_scan_number(lex_t *lex, int c, json_error_t *error)
 
     lex_unget_unsave(lex, c);
 
+    double value;
     if(jsonp_strtod(&lex->saved_text, &value)) {
         error_set(error, lex, "real number overflow");
         goto out;
