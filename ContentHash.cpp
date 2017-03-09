@@ -43,7 +43,7 @@ ContentHashCache::ContentHashCache(
 Future<std::shared_ptr<const Node>> ContentHashCache::get(
     const ContentHashCacheKey& key) {
   return cache_.get(
-      key, [this](const ContentHashCacheKey& key) { return computeHash(key); });
+      key, [this](const ContentHashCacheKey& k) { return computeHash(k); });
 }
 
 HashValue ContentHashCache::computeHashImmediate(
