@@ -4,13 +4,13 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseManager.h>
 #include <thrift/lib/cpp2/async/HeaderClientChannel.h>
-#include "eden/fs/service/gen-cpp2/EdenService.h"
+#include "eden/fs/service/gen-cpp2/StreamingEdenService.h"
 #include "watchman.h"
 
 #include "QueryableView.h"
 #include "ThreadPool.h"
 
-using facebook::eden::EdenServiceAsyncClient;
+using facebook::eden::StreamingEdenServiceAsyncClient;
 using facebook::eden::FileInformationOrError;
 using facebook::eden::FileInformation;
 using facebook::eden::JournalPosition;
@@ -19,6 +19,41 @@ using facebook::eden::EdenError;
 
 namespace watchman {
 namespace {
+
+/** This is a helper for settling out subscription events.
+ * We have a single instance of the callback object that we schedule
+ * each time we get an update from the eden server.  If we are already
+ * scheduled we will cancel it and reschedule it.
+ */
+class SettleCallback : public folly::HHWheelTimer::Callback {
+ public:
+  SettleCallback(folly::EventBase* eventBase, std::shared_ptr<w_root_t> root)
+      : eventBase_(eventBase), root_(std::move(root)) {}
+
+  void timeoutExpired() noexcept override {
+    try {
+      auto settledPayload = json_object({{"settled", json_true()}});
+      root_->unilateralResponses->enqueue(std::move(settledPayload));
+    } catch (const std::exception& exc) {
+      watchman::log(
+          watchman::ERR,
+          "error while dispatching settle payload; cancel watch: ",
+          exc.what(),
+          "\n");
+      eventBase_->terminateLoopSoon();
+    }
+  }
+
+  void callbackCanceled() noexcept override {
+    // We must override this because the default is to call timeoutExpired().
+    // We don't want that to happen because we're only canceled in the case
+    // where we want to delay the timeoutExpired() callback.
+  }
+
+ private:
+  folly::EventBase* eventBase_;
+  std::shared_ptr<w_root_t> root_;
+};
 
 folly::SocketAddress getEdenServerSocketAddress() {
   folly::SocketAddress addr;
@@ -31,9 +66,9 @@ folly::SocketAddress getEdenServerSocketAddress() {
 
 /** Create a thrift client that will connect to the eden server associated
  * with the current user. */
-std::unique_ptr<EdenServiceAsyncClient> getEdenClient(
+std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
     folly::EventBase* eb = folly::EventBaseManager::get()->getEventBase()) {
-  return std::make_unique<EdenServiceAsyncClient>(
+  return std::make_unique<StreamingEdenServiceAsyncClient>(
       apache::thrift::HeaderClientChannel::newChannel(
           apache::thrift::async::TAsyncSocket::newSocket(
               eb, getEdenServerSocketAddress())));
@@ -130,6 +165,7 @@ static std::string escapeGlobSpecialChars(w_string_piece str) {
 
 class EdenView : public QueryableView {
   w_string root_path_;
+  folly::EventBase subscriberEventBase_;
 
  public:
   explicit EdenView(w_root_t* root) {
@@ -423,8 +459,89 @@ class EdenView : public QueryableView {
     return nullptr;
   }
 
-  void startThreads(const std::shared_ptr<w_root_t>& root) override {}
-  void signalThreads() override {}
+  void startThreads(const std::shared_ptr<w_root_t>& root) override {
+    auto self = shared_from_this();
+    std::thread thr([self, this, root]() { subscriberThread(root); });
+    thr.detach();
+  }
+
+  void signalThreads() override {
+    subscriberEventBase_.terminateLoopSoon();
+  }
+
+  // This is the thread that we use to listen to the stream of
+  // changes coming in from the Eden server
+  void subscriberThread(std::shared_ptr<w_root_t> root) {
+    SCOPE_EXIT {
+      // ensure that the root gets torn down,
+      // otherwise we'd leave it in a broken state.
+      root->cancel();
+    };
+
+    w_set_thread_name("edensub %s", root->root_path.c_str());
+    watchman::log(watchman::DBG, "Started subscription thread\n");
+
+    try {
+      // Prepare the callback
+      SettleCallback settleCallback(&subscriberEventBase_, root);
+      // Figure out the correct value for settling
+      std::chrono::milliseconds settleTimeout(root->trigger_settle);
+
+      // Connect up the client
+      auto client = getEdenClient(&subscriberEventBase_);
+
+      // This is called each time we get pushed an update by the eden server
+      auto onUpdate = [&](apache::thrift::ClientReceiveState&& state) mutable {
+        if (!state.isStreamEnd()) {
+          try {
+            JournalPosition pos;
+            StreamingEdenServiceAsyncClient::recv_subscribe(pos, state);
+
+            if (settleCallback.isScheduled()) {
+              watchman::log(watchman::DBG, "reschedule settle timeout\n");
+              settleCallback.cancelTimeout();
+            }
+            subscriberEventBase_.timer().scheduleTimeout(
+                &settleCallback, settleTimeout);
+
+          } catch (const std::exception& exc) {
+            watchman::log(
+                watchman::ERR,
+                "error while receiving subscription; cancel watch: ",
+                exc.what(),
+                "\n");
+            // make sure we don't get called again
+            subscriberEventBase_.terminateLoopSoon();
+            return;
+          }
+        }
+
+        if (state.isStreamEnd()) {
+          watchman::log(
+              watchman::ERR, "subscription stream ended, cancel watch\n");
+          // We won't be called again, but we terminate the loop just
+          // to make sure.
+          subscriberEventBase_.terminateLoopSoon();
+          return;
+        }
+      };
+
+      // Establish the subscription stream
+      client->subscribe(
+          onUpdate,
+          std::string(root->root_path.data(), root->root_path.size()));
+
+      // This will run until the stream ends
+      subscriberEventBase_.loop();
+
+    } catch (const std::exception& exc) {
+      watchman::log(
+          watchman::ERR,
+          "uncaught exception in subscription thread, cancel watch:",
+          exc.what(),
+          "\n");
+    }
+  }
 
   const w_string& getName() const override {
     static w_string name("eden");
