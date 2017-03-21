@@ -441,6 +441,12 @@ class EdenView : public QueryableView {
 };
 
 std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
+  // Watchman doesn't depend on folly, so we have to put this call here, instead
+  // of watchman's main().
+  static folly::once_flag reg_;
+  folly::call_once(
+      reg_, [] { folly::SingletonVault::singleton()->registrationComplete(); });
+
   // This is mildly ghetto, but the way we figure out if the intended path
   // is on an eden mount is to ask eden to stat the root of that mount;
   // if it throws then it is not an eden mount.
