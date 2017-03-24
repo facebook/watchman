@@ -70,7 +70,8 @@ struct InotifyWatcher : public Watcher {
 
   // Make the buffer big enough for 16k entries, which
   // happens to be the default fs.inotify.max_queued_events
-  char ibuf[WATCHMAN_BATCH_LIMIT * (sizeof(struct inotify_event) + 256)];
+  char ibuf
+      [WATCHMAN_BATCH_LIMIT * (sizeof(struct inotify_event) + (NAME_MAX + 1))];
 
   explicit InotifyWatcher(w_root_t* root);
 
