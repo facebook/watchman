@@ -64,14 +64,46 @@ folly::SocketAddress getEdenServerSocketAddress() {
   return addr;
 }
 
+std::string readLink(const std::string& path) {
+  struct stat st;
+  if (lstat(path.c_str(), &st)) {
+    throw std::system_error(
+        errno,
+        std::generic_category(),
+        watchman::to<std::string>("lstat(", path, ") failed"));
+  }
+  std::string result(st.st_size + 1, '\0');
+  auto len = ::readlink(path.c_str(), &result[0], result.size());
+  if (len >= 0) {
+    result.resize(len);
+    return result;
+  }
+
+  throw std::system_error(
+      errno,
+      std::generic_category(),
+      watchman::to<std::string>("readlink(", path, ") failed"));
+}
+
 /** Create a thrift client that will connect to the eden server associated
  * with the current user. */
 std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
+    w_string_piece rootPath,
     folly::EventBase* eb = folly::EventBaseManager::get()->getEventBase()) {
+  // Resolve the eden socket; we use the .eden dir that is present in
+  // every dir of an eden mount.
+  folly::SocketAddress addr;
+  auto path = watchman::to<std::string>(rootPath, "/.eden/socket");
+
+  // It is important to resolve the link because the path in the eden mount
+  // may exceed the maximum permitted unix domain socket path length.
+  // This is actually how things our in our integration test environment.
+  auto socketPath = readLink(path);
+  addr.setFromPath(socketPath);
+
   return std::make_unique<StreamingEdenServiceAsyncClient>(
       apache::thrift::HeaderClientChannel::newChannel(
-          apache::thrift::async::TAsyncSocket::newSocket(
-              eb, getEdenServerSocketAddress())));
+          apache::thrift::async::TAsyncSocket::newSocket(eb, addr)));
 }
 
 class EdenFileResult : public FileResult {
@@ -173,7 +205,7 @@ class EdenView : public QueryableView {
   }
 
   void timeGenerator(w_query* query, struct w_query_ctx* ctx) const override {
-    auto client = getEdenClient();
+    auto client = getEdenClient(root_path_);
     auto mountPoint = to<std::string>(ctx->root->root_path);
 
     FileDelta delta;
@@ -304,7 +336,7 @@ class EdenView : public QueryableView {
       const std::vector<std::string>& globStrings,
       w_query* query,
       struct w_query_ctx* ctx) const {
-    auto client = getEdenClient();
+    auto client = getEdenClient(ctx->root->root_path);
     auto mountPoint = to<std::string>(ctx->root->root_path);
 
     std::vector<std::string> fileNames;
@@ -423,7 +455,7 @@ class EdenView : public QueryableView {
   }
 
   ClockPosition getMostRecentRootNumberAndTickValue() const override {
-    auto client = getEdenClient();
+    auto client = getEdenClient(root_path_);
     JournalPosition position;
     auto mountPoint = to<std::string>(root_path_);
     client->sync_getCurrentJournalPosition(position, mountPoint);
@@ -488,7 +520,7 @@ class EdenView : public QueryableView {
       std::chrono::milliseconds settleTimeout(root->trigger_settle);
 
       // Connect up the client
-      auto client = getEdenClient(&subscriberEventBase_);
+      auto client = getEdenClient(root->root_path, &subscriberEventBase_);
 
       // This is called each time we get pushed an update by the eden server
       auto onUpdate = [&](apache::thrift::ClientReceiveState&& state) mutable {
@@ -564,11 +596,20 @@ std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
   folly::call_once(
       reg_, [] { folly::SingletonVault::singleton()->registrationComplete(); });
 
-  // This is mildly ghetto, but the way we figure out if the intended path
-  // is on an eden mount is to ask eden to stat the root of that mount;
-  // if it throws then it is not an eden mount.
-  auto client = getEdenClient();
+  auto edenRoot =
+      readLink(watchman::to<std::string>(root->root_path, "/.eden/root"));
+  if (w_string_piece(edenRoot) != root->root_path) {
+    // We aren't at the root of the eden mount
+    return nullptr;
+  }
 
+  auto client = getEdenClient(root->root_path);
+
+  // We don't strictly need to do this, since we just verified that the root
+  // matches our expectations, but it can't hurt to attempt to talk to the
+  // daemon directly, just in case it is broken for some reason, or in
+  // case someone is trolling us with a directory structure that looks
+  // like an eden mount.
   std::vector<FileInformationOrError> info;
   static const std::vector<std::string> paths{""};
   client->sync_getFileInformation(

@@ -28,7 +28,8 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
         res = self.watchmanCommand('watch', root)
         self.assertEqual('eden', res['watcher'])
-        self.assertFileList(root, ['adir', 'adir/file', 'bdir',
+        self.assertFileList(root, ['.eden', '.eden/root', '.eden/socket',
+                                   'adir', 'adir/file', 'bdir',
                                    'bdir/noexec.sh', 'bdir/test.sh', 'b*ir',
                                    'b*ir/star', 'b\\*ir', 'b\\*ir/foo',
                                    'hello', 'slink'])
@@ -43,7 +44,8 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
         res = self.watchmanCommand('query', root, {
             'expression': ['type', 'l'],
             'fields': ['name']})
-        self.assertFileListsEqual(res['files'], ['slink'])
+        self.assertFileListsEqual(res['files'],
+                                  ['.eden/root', '.eden/socket', 'slink'])
 
         res = self.watchmanCommand('query', root, {
             'expression': ['type', 'f'],
@@ -77,7 +79,8 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
             'path': [''],
             'fields': ['name']})
         self.assertFileListsEqual(res['files'],
-                                  ['adir', 'adir/file', 'b*ir', 'b*ir/star',
+                                  ['.eden', '.eden/root', '.eden/socket',
+                                   'adir', 'adir/file', 'b*ir', 'b*ir/star',
                                    'bdir', 'bdir/noexec.sh', 'bdir/test.sh',
                                    'b\\*ir', 'b\\*ir/foo', 'hello',
                                    'slink'])
