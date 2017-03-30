@@ -987,7 +987,21 @@ int main(int argc, char **argv)
       }
     } else {
       spawn_watchman();
-      ran = try_command(cmd, 10);
+      // Some site spawner scripts will asynchronously launch the service.
+      // When that happens we may encounter ECONNREFUSED.  We need to
+      // tolerate this, so we add some retries.
+      int attempts = 10;
+      std::chrono::milliseconds interval(10);
+      while (true) {
+        ran = try_command(cmd, 10);
+        if (!ran && should_start(errno) && attempts-- > 0) {
+          /* sleep override */ std::this_thread::sleep_for(interval);
+          interval *= 2;
+          continue;
+        }
+        // Success or terminal failure
+        break;
+      }
     }
   }
 
