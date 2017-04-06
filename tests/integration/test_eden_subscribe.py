@@ -30,6 +30,7 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertTrue(dat['is_fresh_instance'])
         self.assertFileListsEqual(self.normWatchmanFileList(dat['files']),
                                   self.normFileList(['.eden', '.eden/socket',
+                                                     '.eden/client',
                                                      '.eden/root', 'hello']))
 
         self.touchRelative(root, 'w0000t')
@@ -53,5 +54,6 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertEqual(True, dat['is_fresh_instance'])
         self.assertFileListsEqual(self.normWatchmanFileList(dat['files']),
                                   self.normFileList(['.eden', '.eden/socket',
+                                                     '.eden/client',
                                                      '.eden/root', 'hello',
                                                      'w0000t']))
