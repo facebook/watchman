@@ -64,8 +64,7 @@ folly::Future<std::string> WatchmanConnection::getSockPath() {
     // Else discover it from the CLI
     folly::Subprocess proc(
         {"watchman", "--output-encoding=bser", "get-sockname"},
-        folly::Subprocess::pipeStdout() |
-            folly::Subprocess::pipeStderr().usePath());
+        folly::Subprocess::Options().pipeStdout().pipeStderr().usePath());
     SCOPE_FAIL {
       // Always clean up to avoid Subprocess asserting on destruction
       proc.kill();
