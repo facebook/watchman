@@ -114,7 +114,7 @@ python_unittest(
 
 eden_env = env.copy()
 eden_env.update({
-    'EDENFS_CLI_PATH': '$(location @/eden/fs/cli:cli)',
+    'EDENFS_CLI_PATH': '$(location @/eden/cli:cli)',
     'EDENFS_SERVER_PATH': '$(location @/eden/fs/service:edenfs)',
 })
 
@@ -132,7 +132,7 @@ python_unittest(
       '@/watchman:watchman',
       '@/eden/integration/lib:lib',
       '@/eden/fs/service:edenfs',
-      '@/eden/fs/cli:cli',
+      '@/eden/cli:cli',
     ],
     base_module='',
     py_version=">=3",
