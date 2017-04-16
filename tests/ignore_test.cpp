@@ -124,6 +124,7 @@ std::vector<w_string> build_list_with_prefix(const char* prefix, size_t limit) {
     abort();
   }
 
+  f.close ();
   return strings;
 }
 
