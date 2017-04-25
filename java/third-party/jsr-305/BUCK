@@ -12,8 +12,3 @@ prebuilt_jar(
     'PUBLIC',
   ],
 )
-
-project_config(
-  src_target = ':jsr-305',
-  src_roots = ['src'],
-)

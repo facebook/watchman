@@ -43,9 +43,3 @@ java_test(
     '//third-party/mockito:mockito',
   ],
 )
-
-project_config(
-  src_target = ':watchman',
-  src_roots = ['src'],
-  test_roots = ['test'],
-)
