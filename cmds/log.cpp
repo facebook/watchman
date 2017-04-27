@@ -36,7 +36,19 @@ W_CMD_REG("log-level", cmd_loglevel, CMD_DAEMON, NULL)
 
 // log "debug" "text to log"
 static void cmd_log(struct watchman_client* client, const json_ref& args) {
-  auto level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
+  if (json_array_size(args) != 3) {
+    send_error_response(client, "wrong number of arguments to 'log'");
+    return;
+  }
+
+  watchman::LogLevel level;
+  try {
+    level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
+  } catch(std::out_of_range &e) {
+    send_error_response(client, "invalid log level for 'log'");
+    return;
+  }
+
   auto text = json_to_w_string(args.at(2));
 
   watchman::log(level, text, "\n");
