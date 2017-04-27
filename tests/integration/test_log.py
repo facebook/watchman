@@ -10,6 +10,22 @@ import pywatchman
 @WatchmanTestCase.expand_matrix
 class TestLog(WatchmanTestCase.WatchmanTestCase):
 
+    def test_invalidNumArgsLogLevel(self):
+        for params in [
+            ['log-level'],
+            ['log-level', 'debug', 'extra'],
+        ]:
+            with self.assertRaises(pywatchman.WatchmanError) as ctx:
+                self.watchmanCommand(*params)
+
+            self.assertIn('wrong number of arguments', str(ctx.exception))
+
+    def test_invalidLevelLogLevel(self):
+        with self.assertRaises(pywatchman.WatchmanError) as ctx:
+            self.watchmanCommand('log-level', 'invalid')
+
+        self.assertIn('invalid log level', str(ctx.exception))
+
     def test_invalidNumArgsLog(self):
         for params in [
             ['log'],
