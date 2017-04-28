@@ -97,7 +97,7 @@ $ watchman watch-project ~/www/some/child/dir
 {
   "version": "3.0.1",
   "watch": "/Users/wez/www",
-  "relative_path": "www"
+  "relative_path": "some/child/dir"
 }
 ```
 
