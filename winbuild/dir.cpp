@@ -9,19 +9,21 @@ using watchman::Win32Handle;
 
 namespace {
 class WinDirHandle : public watchman_dir_handle {
+  std::wstring dirWPath_;
   Win32Handle h_;
   FILE_FULL_DIR_INFO* info_{nullptr};
   char __declspec(align(8)) buf_[64 * 1024];
+  HANDLE hDirFind_{nullptr};
   char nameBuf_[WATCHMAN_NAME_MAX];
   struct watchman_dir_ent ent_;
 
  public:
   explicit WinDirHandle(const char* path, bool strict) {
     int err = 0;
-    auto wpath = w_string_piece(path).asWideUNC();
+    dirWPath_ = w_string_piece(path).asWideUNC();
 
     h_ = Win32Handle(intptr_t(CreateFileW(
-        wpath.c_str(),
+        dirWPath_.c_str(),
         GENERIC_READ,
         FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
         nullptr,
@@ -48,22 +50,104 @@ class WinDirHandle : public watchman_dir_handle {
   }
 
   const watchman_dir_ent* readDir() override {
-    if (!info_) {
-      if (!GetFileInformationByHandleEx(
-              (HANDLE)h_.handle(), FileFullDirectoryInfo, buf_, sizeof(buf_))) {
-        if (GetLastError() == ERROR_NO_MORE_FILES) {
-          return nullptr;
+    if ((getenv("WATCHMAN_WIN7_COMPAT") && 
+         getenv("WATCHMAN_WIN7_COMPAT")[0] == '1')) {
+      // Before Windows 8, the FileFullDirectoryInfo parameter is not supported when 
+      WIN32_FIND_DATAW findFileData;
+      if (!hDirFind_) { 
+        std::wstring strWPath(dirWPath_);
+        strWPath += L"\\*";
+        if ((hDirFind_ = FindFirstFileW(strWPath.c_str(), &findFileData)) == INVALID_HANDLE_VALUE) {          
+          if (GetLastError() == ERROR_NO_MORE_FILES) {
+            FindClose(hDirFind_);
+            return nullptr;
+          }
+
+          throw std::system_error(
+            GetLastError(),
+            std::system_category(),
+            "FindFirstFileW");
         }
+      }
+      else
+      {
+        if (!FindNextFileW(hDirFind_, &findFileData)) {
+          if (GetLastError() == ERROR_NO_MORE_FILES) {
+            FindClose(hDirFind_);
+            return nullptr;
+          }
+
+          throw std::system_error(
+            GetLastError(),
+            std::system_category(),
+            "FindNextFileW");
+        }
+      }
+
+      DWORD len = WideCharToMultiByte(
+        CP_UTF8,
+        0,
+        findFileData.cFileName,
+        -1,
+        nameBuf_,
+        sizeof(nameBuf_) - 1,
+        NULL,
+        NULL);
+
+      if (len <= 0) {
         throw std::system_error(
+          GetLastError(), std::system_category(), "WideCharToMultiByte");
+      }
+
+      nameBuf_[len] = 0;
+
+      //// Populate stat info to speed up the crawler() routine
+      FILETIME_to_timespec(&findFileData.ftCreationTime, &ent_.stat.ctime);
+      FILETIME_to_timespec(&findFileData.ftLastAccessTime, &ent_.stat.atime);
+      FILETIME_to_timespec(&findFileData.ftLastWriteTime, &ent_.stat.mtime);
+
+      LARGE_INTEGER fileSize;
+      fileSize.HighPart = findFileData.nFileSizeHigh;
+      fileSize.LowPart = findFileData.nFileSizeLow;
+      ent_.stat.size = fileSize.QuadPart;
+
+      if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+        // This is a symlink, but msvcrt has no way to indicate that.
+        // We'll treat it as a regular file until we have a better
+        // representation :-/
+        ent_.stat.mode = _S_IFREG;
+      }
+      else if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+        ent_.stat.mode = _S_IFDIR | S_IEXEC | S_IXGRP | S_IXOTH;
+      }
+      else {
+        ent_.stat.mode = _S_IFREG;
+      }
+      if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
+        ent_.stat.mode |= 0444;
+      }
+      else {
+        ent_.stat.mode |= 0666;
+      }
+    }
+    else
+    {
+      if (!info_) {
+        if (!GetFileInformationByHandleEx(
+          (HANDLE)h_.handle(), FileFullDirectoryInfo, buf_, sizeof(buf_))) {
+          if (GetLastError() == ERROR_NO_MORE_FILES) {
+            return nullptr;
+          }
+          throw std::system_error(
             GetLastError(),
             std::system_category(),
             "GetFileInformationByHandleEx");
+        }
+        info_ = (FILE_FULL_DIR_INFO*)buf_;
       }
-      info_ = (FILE_FULL_DIR_INFO*)buf_;
-    }
 
-    // Decode the item currently pointed at
-    DWORD len = WideCharToMultiByte(
+      // Decode the item currently pointed at
+      DWORD len = WideCharToMultiByte(
         CP_UTF8,
         0,
         info_->FileName,
@@ -73,39 +157,44 @@ class WinDirHandle : public watchman_dir_handle {
         nullptr,
         nullptr);
 
-    if (len <= 0) {
-      throw std::system_error(
+      if (len <= 0) {
+        throw std::system_error(
           GetLastError(), std::system_category(), "WideCharToMultiByte");
-    }
+      }
 
-    nameBuf_[len] = 0;
+      nameBuf_[len] = 0;
 
-    // Populate stat info to speed up the crawler() routine
-    FILETIME_LARGE_INTEGER_to_timespec(info_->CreationTime, &ent_.stat.ctime);
-    FILETIME_LARGE_INTEGER_to_timespec(info_->LastAccessTime, &ent_.stat.atime);
-    FILETIME_LARGE_INTEGER_to_timespec(info_->LastWriteTime, &ent_.stat.mtime);
-    ent_.stat.size = info_->EndOfFile.QuadPart;
+      // Populate stat info to speed up the crawler() routine
+      FILETIME_LARGE_INTEGER_to_timespec(info_->CreationTime, &ent_.stat.ctime);
+      FILETIME_LARGE_INTEGER_to_timespec(info_->LastAccessTime, &ent_.stat.atime);
+      FILETIME_LARGE_INTEGER_to_timespec(info_->LastWriteTime, &ent_.stat.mtime);
+      ent_.stat.size = info_->EndOfFile.QuadPart;
 
-    if (info_->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
-      // This is a symlink, but msvcrt has no way to indicate that.
-      // We'll treat it as a regular file until we have a better
-      // representation :-/
-      ent_.stat.mode = _S_IFREG;
-    } else if (info_->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-      ent_.stat.mode = _S_IFDIR | S_IEXEC | S_IXGRP | S_IXOTH;
-    } else {
-      ent_.stat.mode = _S_IFREG;
-    }
-    if (info_->FileAttributes & FILE_ATTRIBUTE_READONLY) {
-      ent_.stat.mode |= 0444;
-    } else {
-      ent_.stat.mode |= 0666;
-    }
+      if (info_->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+        // This is a symlink, but msvcrt has no way to indicate that.
+        // We'll treat it as a regular file until we have a better
+        // representation :-/
+        ent_.stat.mode = _S_IFREG;
+      }
+      else if (info_->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+        ent_.stat.mode = _S_IFDIR | S_IEXEC | S_IXGRP | S_IXOTH;
+      }
+      else {
+        ent_.stat.mode = _S_IFREG;
+      }
+      if (info_->FileAttributes & FILE_ATTRIBUTE_READONLY) {
+        ent_.stat.mode |= 0444;
+      }
+      else {
+        ent_.stat.mode |= 0666;
+      }
 
-    // Advance the pointer to the next entry ready for the next read
-    info_ = info_->NextEntryOffset == 0
+      // Advance the pointer to the next entry ready for the next read
+      info_ = info_->NextEntryOffset == 0
         ? nullptr
         : (FILE_FULL_DIR_INFO*)(((char*)info_) + info_->NextEntryOffset);
+    }
+
     return &ent_;
   }
 };
