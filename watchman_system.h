@@ -83,12 +83,6 @@
 # define PRIsize_t "zu"
 #endif
 
-#ifdef _WIN32
-# define PRIsize_t "Iu"
-#else
-# define PRIsize_t "zu"
-#endif
-
 #if defined(__clang__)
 # if __has_feature(address_sanitizer)
 #  define WATCHMAN_ASAN 1
