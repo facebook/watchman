@@ -1,3 +1,5 @@
+set need_setup=0
+
 @rem if we don't have nmake in the path, we need to run setup
 where nmake.exe 2> NUL
 if %ERRORLEVEL% GTR 0 set need_setup=1
