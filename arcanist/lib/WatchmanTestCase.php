@@ -520,7 +520,8 @@ class WatchmanTestCase {
     sort($a);
     $b = w_normalize_file_list($b);
     sort($b);
-    $this->assertEqual($a, $b, $message);
+    $this->assertEqual($a, $b, $message . " " . json_encode($s) .
+                               " vs " .json_encode($b));
   }
 
   function assertFileList($root, array $files, $message = null) {

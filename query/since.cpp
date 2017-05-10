@@ -32,13 +32,19 @@ class SinceExpr : public QueryExpr {
         ctx->clockAtStartOfQuery.position(),
         ctx->lastAgeOutTickValueAtStartOfQuery);
 
+    // Note that we use >= for the time comparisons in here so that we
+    // report the things that changed inclusive of the boundary presented.
+    // This is especially important for clients using the coarse unix
+    // timestamp as the since basis, as they would be much more
+    // likely to miss out on changes if we didn't.
+
     switch (field) {
       case since_what::SINCE_OCLOCK:
       case since_what::SINCE_CCLOCK: {
         const auto& clock =
             (field == since_what::SINCE_OCLOCK) ? file->otime() : file->ctime();
         if (since.is_timestamp) {
-          return clock.timestamp > since.timestamp;
+          return clock.timestamp >= since.timestamp;
         }
         if (since.clock.is_fresh_instance) {
           return file->exists();
@@ -54,7 +60,7 @@ class SinceExpr : public QueryExpr {
     }
 
     assert(since.is_timestamp);
-    return tval > since.timestamp;
+    return tval >= since.timestamp;
   }
 
   static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {

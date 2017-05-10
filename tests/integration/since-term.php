@@ -30,7 +30,8 @@ class SinceExprTestCase extends WatchmanTestCase {
       'expression' => array('since', $base, 'mtime'),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array(), $res['files']);
+    $this->assertEqualFileList(array("foo.c", "subdir", "subdir/bar.txt"),
+                               $res['files']);
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array(
@@ -40,7 +41,7 @@ class SinceExprTestCase extends WatchmanTestCase {
       ),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array('foo.c'), $res['files']);
+    $this->assertEqualFileList(array('foo.c'), $res['files']);
 
     if ($this->isCaseInsensitive()) {
       $res = $this->watchmanCommand('query', $root, array(
@@ -51,7 +52,7 @@ class SinceExprTestCase extends WatchmanTestCase {
         ),
         'fields' => array('name'),
       ));
-      $this->assertEqual(array('foo.c'), $res['files']);
+      $this->assertEqualFileList(array('foo.c'), $res['files']);
     }
 
     // try with a clock
@@ -59,7 +60,7 @@ class SinceExprTestCase extends WatchmanTestCase {
       'expression' => array('since', $first_clock),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array(), $res['files']);
+    $this->assertEqualFileList(array(), $res['files']);
 
     $target = $base + 15;
     touch("$root/foo.c", $target);
@@ -72,13 +73,13 @@ class SinceExprTestCase extends WatchmanTestCase {
       'expression' => array('since', $first_clock),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array('foo.c'), $res['files']);
+    $this->assertEqualFileList(array('foo.c'), $res['files']);
 
     $res = $this->watchmanCommand('query', $root, array(
-      'expression' => array('since', $foo_data['ctime'], 'ctime'),
+      'expression' => array('since', $foo_data['mtime'], 'mtime'),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array(), $res['files']);
+    $this->assertEqualFileList(array('foo.c'), $res['files']);
 
     $res = $this->watchmanCommand('query', $root, array(
       'expression' => array(
@@ -88,7 +89,7 @@ class SinceExprTestCase extends WatchmanTestCase {
       ),
       'fields' => array('name'),
     ));
-    $this->assertEqual(array('foo.c'), $res['files']);
+    $this->assertEqualFileList(array('foo.c'), $res['files']);
 
     // If using a timestamp against the oclock, ensure that
     // we're comparing in the correct order.  We need to force
@@ -104,7 +105,7 @@ class SinceExprTestCase extends WatchmanTestCase {
       'fields' => array('name'),
     ));
     // Should see no changes since the now current timestamp
-    $this->assertEqual(array(), $res['files']);
+    $this->assertEqualFileList(array(), $res['files']);
 
     // try with a fresh clock instance -- make sure that this only returns
     // files that exist
@@ -115,7 +116,7 @@ class SinceExprTestCase extends WatchmanTestCase {
     ));
     $files = $res['files'];
     sort($files);
-    $this->assertEqual(array('foo.c', 'subdir'), $files);
+    $this->assertEqualFileList(array('foo.c', 'subdir'), $files);
   }
 }
 

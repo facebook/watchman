@@ -412,7 +412,12 @@ void InMemoryView::timeGenerator(w_query* query, struct w_query_ctx* ctx)
   auto view = view_.rlock();
   for (f = view->latest_file; f; f = f->next) {
     ctx->bumpNumWalked();
-    if (ctx->since.is_timestamp && f->otime.timestamp < ctx->since.timestamp) {
+    // Note that we use <= for the time comparisons in here so that we
+    // report the things that changed inclusive of the boundary presented.
+    // This is especially important for clients using the coarse unix
+    // timestamp as the since basis, as they would be much more
+    // likely to miss out on changes if we didn't.
+    if (ctx->since.is_timestamp && f->otime.timestamp <= ctx->since.timestamp) {
       break;
     }
     if (!ctx->since.is_timestamp && f->otime.ticks <= ctx->since.clock.ticks) {
