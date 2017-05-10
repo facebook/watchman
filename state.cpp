@@ -92,14 +92,14 @@ std::unique_ptr<watchman_stream> w_mkstemp(char* templ) {
 #if defined(_WIN32)
   char *name = _mktemp(templ);
   if (!name) {
-    return NULL;
+    return nullptr;
   }
   // Most annoying aspect of windows is the latency around
   // file handle exclusivity.  We could avoid this dumb loop
   // by implementing our own mkostemp, but this is the most
   // expedient option for the moment.
   for (size_t attempts = 0; attempts < 10; ++attempts) {
-    auto stm = w_stm_open(name, O_RDWR | O_CLOEXEC | O_CREAT | O_TRUNC);
+    auto stm = w_stm_open(name, O_RDWR | O_CLOEXEC | O_CREAT | O_TRUNC, 0600);
     if (stm) {
       return stm;
     }
