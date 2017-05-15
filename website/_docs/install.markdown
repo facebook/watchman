@@ -124,7 +124,7 @@ that are specific to watchman that might be relevant to your needs:
 ### Continuous Integration
 
 We use continuous integration to build out every revision and
-pull-request to make sure that it we don't accidentally break things.  The
+pull-request to make sure that we don't accidentally break things.  The
 current build status is:
 
 [![Build Status](https://travis-ci.org/facebook/watchman.svg?branch=master)](
