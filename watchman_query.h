@@ -126,7 +126,7 @@ struct w_query_ctx {
 
  private:
   // Number of files considered as part of running this query
-  int64_t numWalked_;
+  int64_t numWalked_{0};
 };
 
 struct w_query_path {
