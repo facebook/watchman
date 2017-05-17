@@ -9,19 +9,28 @@ using watchman::Win32Handle;
 
 namespace {
 class WinDirHandle : public watchman_dir_handle {
+  std::wstring dirWPath_;
   Win32Handle h_;
+  bool win7_{false};
   FILE_FULL_DIR_INFO* info_{nullptr};
   char __declspec(align(8)) buf_[64 * 1024];
+  HANDLE hDirFind_{nullptr};
   char nameBuf_[WATCHMAN_NAME_MAX];
   struct watchman_dir_ent ent_;
 
  public:
+  ~WinDirHandle() {
+    if (hDirFind_) {
+      FindClose(hDirFind_);
+    }
+  }
+
   explicit WinDirHandle(const char* path, bool strict) {
     int err = 0;
-    auto wpath = w_string_piece(path).asWideUNC();
+    dirWPath_ = w_string_piece(path).asWideUNC();
 
     h_ = Win32Handle(intptr_t(CreateFileW(
-        wpath.c_str(),
+        dirWPath_.c_str(),
         GENERIC_READ,
         FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
         nullptr,
@@ -39,6 +48,12 @@ class WinDirHandle : public watchman_dir_handle {
           std::string("CreateFileW for opendir: ") + path);
     }
 
+    // Use Win7 compatibility mode for readDir()
+    if (getenv("WATCHMAN_WIN7_COMPAT") &&
+        getenv("WATCHMAN_WIN7_COMPAT")[0] == '1') {
+      win7_ = true;
+    }
+
     memset(&ent_, 0, sizeof(ent_));
     ent_.d_name = nameBuf_;
     ent_.has_stat = true;
@@ -48,6 +63,24 @@ class WinDirHandle : public watchman_dir_handle {
   }
 
   const watchman_dir_ent* readDir() override {
+    if (win7_) {
+      return readDirWin7();
+    }
+    try {
+      return readDirWin8();
+    } catch (const std::system_error& err) {
+      if (err.code().value() != ERROR_INVALID_PARAMETER) {
+        throw;
+      }
+      // Fallback on Win7 implementation. FileFullDirectoryInfo
+      // parameter is not supported before Win8
+      win7_ = true;
+      return readDirWin7();
+    }
+  }
+
+ private:
+  const watchman_dir_ent* readDirWin8() {
     if (!info_) {
       if (!GetFileInformationByHandleEx(
               (HANDLE)h_.handle(), FileFullDirectoryInfo, buf_, sizeof(buf_))) {
@@ -106,6 +139,75 @@ class WinDirHandle : public watchman_dir_handle {
     info_ = info_->NextEntryOffset == 0
         ? nullptr
         : (FILE_FULL_DIR_INFO*)(((char*)info_) + info_->NextEntryOffset);
+
+    return &ent_;
+  }
+
+  const watchman_dir_ent* readDirWin7() {
+    // FileFullDirectoryInfo is not supported prior to Windows 8
+    WIN32_FIND_DATAW findFileData;
+    bool success;
+
+    if (!hDirFind_) {
+      std::wstring strWPath(dirWPath_);
+      strWPath += L"\\*";
+
+      hDirFind_ = FindFirstFileW(strWPath.c_str(), &findFileData);
+      success = hDirFind_ != INVALID_HANDLE_VALUE;
+    } else {
+      success = FindNextFileW(hDirFind_, &findFileData);
+    }
+    if (!success) {
+      if (GetLastError() == ERROR_NO_MORE_FILES) {
+        return nullptr;
+      }
+
+      throw std::system_error(
+          GetLastError(),
+          std::system_category(),
+          hDirFind_ ? "FindNextFileW" : "FindFirstFileW");
+    }
+
+    DWORD len = WideCharToMultiByte(
+        CP_UTF8,
+        0,
+        findFileData.cFileName,
+        -1,
+        nameBuf_,
+        sizeof(nameBuf_) - 1,
+        nullptr,
+        nullptr);
+
+    if (len <= 0) {
+      throw std::system_error(
+          GetLastError(), std::system_category(), "WideCharToMultiByte");
+    }
+
+    nameBuf_[len] = 0;
+
+    // Populate stat info to speed up the crawler() routine
+    FILETIME_to_timespec(&findFileData.ftCreationTime, &ent_.stat.ctime);
+    FILETIME_to_timespec(&findFileData.ftLastAccessTime, &ent_.stat.atime);
+    FILETIME_to_timespec(&findFileData.ftLastWriteTime, &ent_.stat.mtime);
+
+    LARGE_INTEGER fileSize;
+    fileSize.HighPart = findFileData.nFileSizeHigh;
+    fileSize.LowPart = findFileData.nFileSizeLow;
+    ent_.stat.size = fileSize.QuadPart;
+
+    if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+      ent_.stat.mode = _S_IFREG;
+    } else if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+      ent_.stat.mode = _S_IFDIR | S_IEXEC | S_IXGRP | S_IXOTH;
+    } else {
+      ent_.stat.mode = _S_IFREG;
+    }
+    if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
+      ent_.stat.mode |= 0444;
+    } else {
+      ent_.stat.mode |= 0666;
+    }
+
     return &ent_;
   }
 };

@@ -99,10 +99,18 @@ parser.add_argument(
     action='store',
     help='Specify the path to the watchman binary')
 
+parser.add_argument(
+    '--win7',
+    action='store_true',
+    help='Set env to force win7 compatibility tests')
+
 args = parser.parse_args()
 
 # We test for this in a test case
 os.environ['WATCHMAN_EMPTY_ENV_VAR'] = ''
+
+if args.win7:
+    os.environ['WATCHMAN_WIN7_COMPAT'] = '1'
 
 # Ensure that we find the watchman we built in the tests
 if args.watchman_path:

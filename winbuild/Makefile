@@ -223,6 +223,10 @@ susres.exe: winbuild\susres.cpp
 	$(CC) /Fesusres.exe winbuild\susres.cpp
 
 integration: build-tests susres.exe py-integration
+	python -u runtests.py --keep-if-fail --concurrency=1
+
+integration-win7: build-tests susres.exe py-build
+	python -u runtests.py --keep-if-fail --concurrency=1 --win7
 
 build-tests: $(TESTS)
 
