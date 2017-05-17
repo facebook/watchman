@@ -209,7 +209,11 @@ class WinDirHandle : public watchman_dir_handle {
       return readDirWin8();
     }
     catch (const std::system_error& err) {
-      // Fallback on Win7 implementation
+      if (err.code().value() != ERROR_INVALID_PARAMETER) {
+        throw;
+      }
+      // Fallback on Win7 implementation. FileFullDirectoryInfo
+      // parameter is not supported before Win8
       win7_ = true;
       return readDirWin7();
     }
