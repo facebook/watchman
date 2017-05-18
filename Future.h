@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <condition_variable>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <vector>

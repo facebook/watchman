@@ -96,8 +96,11 @@ ClockSpec::ClockSpec(const json_ref& value) {
         return;
       }
 
-      /* fall through to default case and throw error */
+      /* fall through to default case and throw error.
+       * The redundant looking comment below is a hint to
+       * gcc that it is ok to fall through. */
     }
+    /* fall through */
 
     default:
       throw std::domain_error("invalid clockspec");

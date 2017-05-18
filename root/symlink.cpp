@@ -1,8 +1,10 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
+#include "watchman_system.h"
 #include <memory>
+#include "watchman.h"
+#include "watchman_scopeguard.h"
 
 #ifndef _WIN32
 // Given a target of the form "absolute_path/filename", return
@@ -17,12 +19,15 @@ static w_string get_normalized_target(const w_string& target) {
       target.asNullTerminated().c_str());
 
   auto dir_name = target.dirName().asNullTerminated();
-  auto dir_name_real = autofree(w_realpath(dir_name.c_str()));
+  auto dir_name_real = w_realpath(dir_name.c_str());
+  SCOPE_EXIT {
+    free(dir_name_real);
+  };
   err = errno;
 
   if (dir_name_real) {
     auto file_name = target.baseName();
-    return w_string::pathCat({dir_name_real.get(), file_name});
+    return w_string::pathCat({dir_name_real, file_name});
   }
 
   errno = err;
@@ -52,23 +57,29 @@ static void watch_symlink_target(const w_string& target, json_t* root_files) {
 
   char *relpath = nullptr;
   auto watched_root =
-      autofree(w_find_enclosing_root(normalized_target.c_str(), &relpath));
+      w_find_enclosing_root(normalized_target.c_str(), &relpath);
+  SCOPE_EXIT {
+    free(watched_root);
+  };
   if (!watched_root) {
     char *errmsg = NULL;
-    auto resolved = autofree(w_string_dup_buf(normalized_target));
-    if (!find_project_root(root_files, resolved.get(), &relpath)) {
+    auto resolved = w_string_dup_buf(normalized_target);
+    SCOPE_EXIT {
+      free(resolved);
+    };
+    if (!find_project_root(root_files, resolved, &relpath)) {
       w_log(
           W_LOG_ERR,
           "watch_symlink_target: No watchable root for %s\n",
-          resolved.get());
+          resolved);
     } else {
-      auto root = w_root_resolve(resolved.get(), true, &errmsg);
+      auto root = w_root_resolve(resolved, true, &errmsg);
 
       if (!root) {
         w_log(
             W_LOG_ERR,
             "watch_symlink_target: unable to watch %s: %s\n",
-            resolved.get(),
+            resolved,
             errmsg);
       }
       free(errmsg);

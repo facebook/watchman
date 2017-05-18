@@ -7,6 +7,7 @@
 #include "thirdparty/jansson/jansson.h"
 
 #include <deque>
+#include <functional>
 #include <vector>
 
 namespace watchman {

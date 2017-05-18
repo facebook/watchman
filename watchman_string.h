@@ -361,18 +361,6 @@ struct hash<w_string_piece> {
 };
 }
 
-/** helper for automatically releasing malloc'd memory.
- *
- * auto s = autofree(strdup("something"));
- * printf("%s\n", s.get());
- *
- * The implementation returns a unique_ptr that will free()
- * the memory when it falls out of scope. */
-template <typename T>
-std::unique_ptr<T, decltype(free) *> autofree(T* mem) {
-  return std::unique_ptr<T, decltype(free)*>{mem, free};
-}
-
 namespace detail {
 
 // Testing whether something is a known stringy type

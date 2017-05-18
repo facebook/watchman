@@ -275,10 +275,10 @@ ChildProcess::ChildProcess(std::vector<w_string_piece> args, Options&& options)
   SCOPE_EXIT {
     if (!options.cwd_.empty()) {
       if (chdir(savedCwd) != 0) {
-        throw std::system_error(
-            errno,
-            std::generic_category(),
-            watchman::to<std::string>("failed to chdir to ", savedCwd));
+        // log(FATAL) rather than throw because SCOPE_EXIT is
+        // a noexcept destructor and will call std::terminate
+        // in this case anyway.
+        log(FATAL, "failed to restore cwd of ", savedCwd);
       }
     }
   };
