@@ -131,11 +131,7 @@ Perhaps you should use the --pattern option?""" % (path, self.path), file=sys.st
 
         self.root = watch['watch']
         if 'relative_path' in watch:
-            self.relpath = watch['relative_path']
-            expr = ['allof',
-                    ['dirname', self.relpath],
-                    expr
-                    ]
+            query['relative_root'] = watch['relative_path']
 
         # get the initial clock value so that we only get updates
         query['since'] = client.query('clock', self.root)['clock']
