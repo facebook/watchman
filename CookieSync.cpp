@@ -52,30 +52,31 @@ bool CookieSync::syncToNow(std::chrono::milliseconds timeout) {
       path_str.c_str(), O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0700);
   if (!file) {
     errcode = errno;
-    w_log(
-        W_LOG_ERR,
-        "sync_to_now: creat(%s) failed: %s\n",
-        path_str.c_str(),
-        strerror(errcode));
+    log(ERR,
+        "syncToNow: creat(",
+        path_str,
+        ") failed: ",
+        strerror(errcode),
+        "\n");
     goto out;
   }
   file.reset();
 
-  w_log(W_LOG_DBG, "sync_to_now [%s] waiting\n", path_str.c_str());
+  log(DBG, "syncToNow [", path_str, "] waiting\n");
 
   /* timed cond wait (unlocks cookie lock, reacquires) */
   if (!cookie.cond.wait_until(
           cookie_lock, deadline, [&] { return cookie.seen; })) {
-    w_log(
-        W_LOG_ERR,
-        "sync_to_now: %s timedwait failed: %d: istimeout=%d %s\n",
-        path_str.c_str(),
-        errcode,
-        errcode == ETIMEDOUT,
-        strerror(errcode));
+    log(ERR,
+        "syncToNow: timed out waiting for cookie file ",
+        path_str,
+        " to be observed by watcher within ",
+        timeout.count(),
+        " milliseconds\n");
+    errcode = ETIMEDOUT;
     goto out;
   }
-  w_log(W_LOG_DBG, "sync_to_now [%s] done\n", path_str.c_str());
+  log(DBG, "syncToNow [", path_str, "] done\n");
 
 out:
   cookie_lock.unlock();
