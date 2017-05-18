@@ -45,8 +45,10 @@ int apply(DWORD pid, BOOL suspend) {
 
   res = func(proc);
 
-  printf("%s(%d) returns %x: %s\n",
-      name, pid, res, win32_strerror(res));
+  if (res) {
+    printf("%s(%d) returns %x: %s\n",
+        name, pid, res, win32_strerror(res));
+  }
 
   CloseHandle(proc);
 
