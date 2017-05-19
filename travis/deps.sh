@@ -27,6 +27,9 @@ case `uname` in
         pyenv install 3.5.2
         pyenv global 3.5.2
         ;;
+      python3.6)
+        pyenv install 3.6.1
+        pyenv global 3.6.1
     esac
     ;;
 esac
