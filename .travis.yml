@@ -1,6 +1,7 @@
 language: c
 
 # use container infra for linux
+dist: trusty
 sudo: false
 
 addons:
