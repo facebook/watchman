@@ -138,8 +138,10 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
   opt.chdir(getRootPath());
 
   auto revset = to<std::string>("ancestor(.,", commitId, ")");
+  // The "" argument at the end causes paths to be printed out relative to the
+  // cwd (set to root path above).
   ChildProcess proc(
-      {"hg", "status", "-n", "--root-relative", "--rev", commitId},
+      {"hg", "status", "-n", "--rev", commitId, ""},
       std::move(opt));
 
   auto outputs = proc.communicate();
