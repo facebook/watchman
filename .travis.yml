@@ -41,7 +41,7 @@ matrix:
     - os: osx
       env: TRAVIS_PYTHON=python2.6
     - os: osx
-      env: TRAVIS_PYTHON=python2.7 BUILD_JAVA_CLIENT=1
+      env: TRAVIS_PYTHON=python2.7
     - os: osx
       env: TRAVIS_PYTHON=python3.5
     - os: osx
