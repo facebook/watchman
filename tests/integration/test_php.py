@@ -75,6 +75,11 @@ def find_php_tests(test_class):
 
 @find_php_tests
 class PHPTestCase(unittest.TestCase):
+    attempt = 0
+
+    def setAttemptNumber(self, attempt):
+        ''' enable flaky test retry '''
+        self.attempt = attempt
 
     @unittest.skipIf(php_bin is None, 'php not installed')
     def runTest(self):
@@ -90,6 +95,10 @@ class PHPTestCase(unittest.TestCase):
             return name
 
         dotted = clean_file_name(os.path.normpath(self.id()))
+
+        if self.attempt > 0:
+            dotted += "-%d" % self.attempt
+
         env['TMPDIR'] = os.path.join(TempDir.get_temp_dir().get_dir(), dotted)
         if os.name != 'nt' and len(env['TMPDIR']) > 94:
             self.fail('temp dir name %s is too long for unix domain sockets' %
