@@ -18,6 +18,7 @@ import os
 import random
 import stat
 import string
+import sys
 import tempfile
 import time
 try:
@@ -27,7 +28,9 @@ except ImportError:
 
 import pywatchman
 
-@unittest.skipIf(os.name == 'nt' or os.geteuid() == 0, "win or root")
+@unittest.skipIf(os.name == 'nt' or \
+                 sys.platform == 'darwin' or \
+                 os.geteuid() == 0, "win or root or bad ldap")
 class TestSockPerms(unittest.TestCase):
     def _new_instance(self, config, expect_success=True):
         if expect_success:
