@@ -19,6 +19,7 @@ import time
 import tempfile
 import os.path
 import os
+import subprocess
 import WatchmanInstance
 import TempDir
 
@@ -147,6 +148,19 @@ class WatchmanTestCase(unittest.TestCase):
                 delattr(self, 'client')
 
         return result
+
+    def dumpLogs(self):
+        ''' used in travis CI to show the hopefully relevant log snippets '''
+        inst = WatchmanInstance.getSharedInstance()
+
+        def tail(logstr, n):
+            lines = logstr.split('\n')[-n:]
+            return '\n'.join(lines)
+
+        print('CLI logs')
+        print(tail(inst.getCLILogContents(), 500))
+        print('Server logs')
+        print(tail(inst.getServerLogContents(), 500))
 
     def setConfiguration(self, transport, encoding):
         self.transport = transport

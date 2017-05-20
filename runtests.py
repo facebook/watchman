@@ -373,6 +373,11 @@ def runner():
                         # Facilitate retrying this possibly flaky test
                         continue
 
+            if not result.wasSuccessful() and \
+                    'TRAVIS' in os.environ and \
+                    hasattr(test, 'dumpLogs'):
+                test.dumpLogs()
+
             results_queue.put(result)
 
         finally:
