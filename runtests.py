@@ -76,9 +76,17 @@ parser.add_argument(
     action='append',
     help='specify which python test method names to run')
 
+def default_concurrency():
+    level = min(4, math.ceil(1.5 * multiprocessing.cpu_count()))
+    if 'CIRCLECI' in os.environ:
+        # Use fewer cores in circle CI because the inotify sysctls
+        # are pretty low, and we sometimes hit those limits.
+        level = level / 2
+    return int(level)
+
 parser.add_argument(
     '--concurrency',
-    default=int(min(4, math.ceil(1.5 * multiprocessing.cpu_count()))),
+    default=default_concurrency(),
     type=int,
     help='How many tests to run at once')
 
