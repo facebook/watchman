@@ -1,7 +1,6 @@
 #!/bin/sh
 set -x
 uname -a
-
 # Speculatively fulfil any node deps before we turn on hard errors
 cd node
 npm install
@@ -37,14 +36,14 @@ set +e
 rm -rf /tmp/watchman*
 rm -rf /var/tmp/watchmantest*
 TMP=/var/tmp
-if test "$CIRCLECI" == "true" ; then
+if test "$CIRCLECI" = "true" ; then
   TMP=$CIRCLE_ARTIFACTS
 fi
 TMPDIR=$TMP
 export TMPDIR TMP
 
 if ! make integration ; then
-  if test "$CIRCLECI" == "true" ; then
+  if test "$CIRCLECI" = "true" ; then
     # runtests.py already copied the logs to the artifact store
     exit 1
   fi
