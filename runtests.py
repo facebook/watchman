@@ -441,6 +441,14 @@ if 'APPVEYOR' in os.environ:
     subprocess.call(['7z', 'a', 'logs.zip', 'logs'])
     subprocess.call(['appveyor', 'PushArtifact', 'logs.zip'])
 
+if 'CIRCLE_ARTIFACTS' in os.environ:
+    print('Creating %s/logs.zip' % os.environ['CIRCLE_ARTIFACTS'])
+    subprocess.call(['zip',
+                    '-q',
+                     '-r',
+                     '%s/logs.zip' % os.environ['CIRCLE_ARTIFACTS'],
+                     temp_dir.get_dir()])
+
 if tests_failed or (tests_run == 0):
     if args.keep_if_fail:
         temp_dir.set_keep(True)

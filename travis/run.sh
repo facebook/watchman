@@ -36,9 +36,6 @@ set +e
 rm -rf /tmp/watchman*
 rm -rf /var/tmp/watchmantest*
 TMP=/var/tmp
-if test "$CIRCLECI" = "true" ; then
-  TMP=$CIRCLE_ARTIFACTS
-fi
 TMPDIR=$TMP
 export TMPDIR TMP
 
@@ -47,6 +44,9 @@ if ! make integration ; then
 fi
 
 INST_TEST=/tmp/install-test
+if test "$CIRCLE" = "true" ; then
+  INST_TEST="$CIRCLE_ARTIFACTS/install-test"
+fi
 test -d $INST_TEST && rm -rf $INST_TEST
 make DESTDIR=$INST_TEST install
 find $INST_TEST
