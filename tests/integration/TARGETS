@@ -1,3 +1,5 @@
+# @nolint TODO(#18457353): https://fburl.com/auto-format-build-files
+
 import os
 
 # we have some pre-buck test runner stuff that makes it cheaper
