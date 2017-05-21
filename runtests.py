@@ -76,9 +76,17 @@ parser.add_argument(
     action='append',
     help='specify which python test method names to run')
 
+def default_concurrency():
+    level = min(4, math.ceil(1.5 * multiprocessing.cpu_count()))
+    if 'CIRCLECI' in os.environ:
+        # Use fewer cores in circle CI because the inotify sysctls
+        # are pretty low, and we sometimes hit those limits.
+        level = level / 2
+    return int(level)
+
 parser.add_argument(
     '--concurrency',
-    default=int(min(4, math.ceil(1.5 * multiprocessing.cpu_count()))),
+    default=default_concurrency(),
     type=int,
     help='How many tests to run at once')
 
@@ -103,6 +111,13 @@ parser.add_argument(
     '--win7',
     action='store_true',
     help='Set env to force win7 compatibility tests')
+
+parser.add_argument(
+    '--retry-flaky',
+    action='store',
+    type=int,
+    default=2,
+    help='How many additional times to retry flaky tests.')
 
 args = parser.parse_args()
 
@@ -137,6 +152,7 @@ class Result(unittest.TestResult):
     # also print the elapsed time per test
     transport = None
     encoding = None
+    attempt = 0
 
     def shouldStop(self):
         if Interrupt.wasInterrupted():
@@ -150,7 +166,8 @@ class Result(unittest.TestResult):
     def addSuccess(self, test):
         elapsed = time.time() - self.startTime
         super(Result, self).addSuccess(test)
-        print('\033[32mPASS\033[0m %s (%.3fs)' % (test.id(), elapsed))
+        print('\033[32mPASS\033[0m %s (%.3fs)%s' % (
+            test.id(), elapsed, self._attempts()))
 
     def addSkip(self, test, reason):
         elapsed = time.time() - self.startTime
@@ -161,9 +178,10 @@ class Result(unittest.TestResult):
     def __printFail(self, test, err):
         elapsed = time.time() - self.startTime
         t, val, trace = err
-        print('\033[31mFAIL\033[0m %s (%.3fs)\n%s' % (
+        print('\033[31mFAIL\033[0m %s (%.3fs)%s\n%s' % (
             test.id(),
             elapsed,
+            self._attempts(),
             ''.join(traceback.format_exception(t, val, trace))))
 
     def addFailure(self, test, err):
@@ -173,6 +191,14 @@ class Result(unittest.TestResult):
     def addError(self, test, err):
         self.__printFail(test, err)
         super(Result, self).addError(test, err)
+
+    def setAttemptNumber(self, attempt):
+        self.attempt = attempt
+
+    def _attempts(self):
+        if self.attempt > 0:
+            return ' (%d attempts)' % self.attempt
+        return ''
 
 
 def expandFilesList(files):
@@ -322,12 +348,37 @@ def runner():
             if Interrupt.wasInterrupted() or broken:
                 continue
 
-            try:
-                result = Result()
-                test.run(result)
-                results_queue.put(result)
-            except Exception as e:
-                print(e)
+            result = None
+            for attempt in range(0, args.retry_flaky + 1):
+                try:
+                    result = Result()
+                    result.setAttemptNumber(attempt)
+
+                    if hasattr(test, 'setAttemptNumber'):
+                        test.setAttemptNumber(attempt)
+
+                    test.run(result)
+
+                    if hasattr(test, 'setAttemptNumber') and \
+                            not result.wasSuccessful():
+                        # Facilitate retrying this possibly flaky test
+                        continue
+
+                    break
+                except Exception as e:
+                    print(e)
+
+                    if hasattr(test, 'setAttemptNumber') and \
+                            not result.wasSuccessful():
+                        # Facilitate retrying this possibly flaky test
+                        continue
+
+            if not result.wasSuccessful() and \
+                    'TRAVIS' in os.environ and \
+                    hasattr(test, 'dumpLogs'):
+                test.dumpLogs()
+
+            results_queue.put(result)
 
         finally:
             tests_queue.task_done()
@@ -389,6 +440,14 @@ if 'APPVEYOR' in os.environ:
     shutil.copytree(temp_dir.get_dir(), 'logs')
     subprocess.call(['7z', 'a', 'logs.zip', 'logs'])
     subprocess.call(['appveyor', 'PushArtifact', 'logs.zip'])
+
+if 'CIRCLE_ARTIFACTS' in os.environ:
+    print('Creating %s/logs.zip' % os.environ['CIRCLE_ARTIFACTS'])
+    subprocess.call(['zip',
+                    '-q',
+                     '-r',
+                     '%s/logs.zip' % os.environ['CIRCLE_ARTIFACTS'],
+                     temp_dir.get_dir()])
 
 if tests_failed or (tests_run == 0):
     if args.keep_if_fail:

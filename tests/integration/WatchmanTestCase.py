@@ -61,6 +61,7 @@ class WatchmanTestCase(unittest.TestCase):
         super(WatchmanTestCase, self).__init__(methodName)
         self.setDefaultConfiguration()
         self.maxDiff = None
+        self.attempt = 0
 
         if pywatchman.compat.PYTHON3:
             self.assertItemsEqual = self.assertCountEqual
@@ -115,14 +116,20 @@ class WatchmanTestCase(unittest.TestCase):
         os.close(f)
         return name
 
+    def setAttemptNumber(self, attempt):
+        self.attempt = attempt
+
     def run(self, result):
         if result is None:
             raise Exception('MUST be a runtests.py:Result instance')
+
         # Arrange for any temporary stuff we create to go under
         # our global tempdir and put it in a dir named for the test
         id = '%s.%s.%s' % (self.id(), self.transport, self.encoding)
         try:
             self.tempdir = os.path.join(TempDir.get_temp_dir().get_dir(), id)
+            if self.attempt > 0:
+                self.tempdir += "-%d" % self.attempt
             os.mkdir(self.tempdir)
 
             self.__logTestInfo(id, 'BEGIN')
@@ -140,6 +147,19 @@ class WatchmanTestCase(unittest.TestCase):
                 delattr(self, 'client')
 
         return result
+
+    def dumpLogs(self):
+        ''' used in travis CI to show the hopefully relevant log snippets '''
+        inst = WatchmanInstance.getSharedInstance()
+
+        def tail(logstr, n):
+            lines = logstr.split('\n')[-n:]
+            return '\n'.join(lines)
+
+        print('CLI logs')
+        print(tail(inst.getCLILogContents(), 500))
+        print('Server logs')
+        print(tail(inst.getServerLogContents(), 500))
 
     def setConfiguration(self, transport, encoding):
         self.transport = transport
