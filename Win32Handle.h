@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <cstdint>
+#include "FileInformation.h"
 
 namespace watchman {
 
@@ -49,5 +50,8 @@ class Win32Handle {
   inline intptr_t handle() const {
     return h_;
   }
+
+  /** equivalent to fstat(2) */
+  FileInformation getInfo() const;
 };
 }

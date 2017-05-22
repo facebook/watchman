@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #include "FileDescriptor.h"
+#include "FileSystem.h"
 
 #include <system_error>
 
@@ -71,4 +72,40 @@ bool FileDescriptor::isNonBlock() const {
   return false;
 #endif
 }
+
+#ifndef _WIN32
+FileHandleType openFileHandle(const char *path,
+                              const OpenFileHandleOptions &opts) {
+  int flags = (!opts.followSymlinks ? O_NOFOLLOW : 0) |
+              (opts.closeOnExec ? O_CLOEXEC : 0) |
+#ifdef O_PATH
+              (opts.metaDataOnly ? O_PATH : 0) |
+#endif
+              ((opts.readContents && opts.writeContents)
+                   ? O_RDWR
+                   : (opts.writeContents ? O_WRONLY
+                                         : opts.readContents ? O_RDONLY : 0)) |
+              (opts.create ? O_CREAT : 0) |
+              (opts.exclusiveCreate ? O_EXCL : 0) |
+              (opts.truncate ? O_TRUNC : 0);
+
+  auto fd = open(path, flags);
+  if (fd == -1) {
+    int err = errno;
+    throw std::system_error(
+        err, std::generic_category(), to<std::string>("open: ", path));
+  }
+  return FileDescriptor(fd);
+}
+
+FileInformation FileDescriptor::getInfo() const {
+  struct stat st;
+  if (fstat(fd_, &st)) {
+    int err = errno;
+    throw std::system_error(err, std::generic_category(), "fstat");
+  }
+  return FileInformation(st);
+}
+#endif
+
 }

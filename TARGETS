@@ -184,6 +184,7 @@ cpp_library(
         'ChildProcess.cpp',
         'Pipe.cpp',
         'FileDescriptor.cpp',
+        'FileInformation.cpp',
         'ThreadPool.cpp',
     ],
     deps=[

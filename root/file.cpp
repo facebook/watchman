@@ -6,10 +6,12 @@
 # include <sys/attr.h>
 #endif
 
-bool did_file_change(struct watchman_stat *saved, struct watchman_stat *fresh) {
-  /* we have to compare this way because the stat structure
-   * may contain fields that vary and that don't impact our
-   * understanding of the file */
+bool did_file_change(
+    const watchman::FileInformation* saved,
+    const watchman::FileInformation* fresh) {
+/* we have to compare this way because the stat structure
+ * may contain fields that vary and that don't impact our
+ * understanding of the file */
 
 #define FIELD_CHG(name) \
   if (saved->name != fresh->name) { \
@@ -28,7 +30,7 @@ bool did_file_change(struct watchman_stat *saved, struct watchman_stat *fresh) {
 
   FIELD_CHG(mode);
 
-  if (!S_ISDIR(saved->mode)) {
+  if (!saved->isDir()) {
     FIELD_CHG(size);
     FIELD_CHG(nlink);
   }
@@ -43,23 +45,6 @@ bool did_file_change(struct watchman_stat *saved, struct watchman_stat *fresh) {
   TIMESPEC_FIELD_CHG(c);
 
   return false;
-}
-
-void struct_stat_to_watchman_stat(const struct stat *st,
-                                  struct watchman_stat *target) {
-  target->size = (off_t)st->st_size;
-  target->mode = st->st_mode;
-  target->uid = st->st_uid;
-  target->gid = st->st_gid;
-  target->ino = st->st_ino;
-  target->dev = st->st_dev;
-  target->nlink = st->st_nlink;
-  memcpy(&target->atime, &st->WATCHMAN_ST_TIMESPEC(a),
-      sizeof(target->atime));
-  memcpy(&target->mtime, &st->WATCHMAN_ST_TIMESPEC(m),
-      sizeof(target->mtime));
-  memcpy(&target->ctime, &st->WATCHMAN_ST_TIMESPEC(c),
-      sizeof(target->ctime));
 }
 
 void watchman_file::removeFromFileList() {

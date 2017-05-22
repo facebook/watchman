@@ -18,13 +18,13 @@ class TypeExpr : public QueryExpr {
       case 'c':
         return S_ISCHR(file->stat().mode);
       case 'd':
-        return S_ISDIR(file->stat().mode);
+        return file->stat().isDir();
       case 'f':
-        return S_ISREG(file->stat().mode);
+        return file->stat().isFile();
       case 'p':
         return S_ISFIFO(file->stat().mode);
       case 'l':
-        return S_ISLNK(file->stat().mode);
+        return file->stat().isSymlink();
       case 's':
         return S_ISSOCK(file->stat().mode);
 #ifdef S_ISDOOR

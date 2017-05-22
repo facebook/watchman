@@ -12,7 +12,9 @@
 #include "Future.h"
 #include "watchman_clockspec.h"
 
-struct watchman_stat;
+namespace watchman {
+  struct FileInformation;
+}
 struct watchman_file;
 
 struct w_query;
@@ -47,7 +49,7 @@ struct w_query_since {
 class FileResult {
  public:
   virtual ~FileResult();
-  virtual const watchman_stat& stat() const = 0;
+  virtual const watchman::FileInformation& stat() const = 0;
   // Returns the name of the file in its containing dir
   virtual w_string_piece baseName() const = 0;
   // Returns the name of the containing dir relative to the

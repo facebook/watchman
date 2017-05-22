@@ -134,7 +134,7 @@ class EdenFileResult : public FileResult {
     }
   }
 
-  const watchman_stat& stat() const override {
+  const watchman::FileInformation& stat() const override {
     return stat_;
   }
 
@@ -169,7 +169,7 @@ class EdenFileResult : public FileResult {
 
  private:
   w_string fullName_;
-  watchman_stat stat_;
+  watchman::FileInformation stat_;
   bool exists_;
   w_clock_t ctime_;
   w_clock_t otime_;

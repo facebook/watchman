@@ -6,6 +6,7 @@
 #include "Win32Handle.h"
 
 using watchman::Win32Handle;
+using watchman::FileInformation;
 
 namespace {
 class WinDirHandle : public watchman_dir_handle {
@@ -114,26 +115,11 @@ class WinDirHandle : public watchman_dir_handle {
     nameBuf_[len] = 0;
 
     // Populate stat info to speed up the crawler() routine
+    ent_.stat = FileInformation(info_->FileAttributes);
     FILETIME_LARGE_INTEGER_to_timespec(info_->CreationTime, &ent_.stat.ctime);
     FILETIME_LARGE_INTEGER_to_timespec(info_->LastAccessTime, &ent_.stat.atime);
     FILETIME_LARGE_INTEGER_to_timespec(info_->LastWriteTime, &ent_.stat.mtime);
     ent_.stat.size = info_->EndOfFile.QuadPart;
-
-    if (info_->FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
-      // This is a symlink, but msvcrt has no way to indicate that.
-      // We'll treat it as a regular file until we have a better
-      // representation :-/
-      ent_.stat.mode = _S_IFREG;
-    } else if (info_->FileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-      ent_.stat.mode = _S_IFDIR | S_IEXEC | S_IXGRP | S_IXOTH;
-    } else {
-      ent_.stat.mode = _S_IFREG;
-    }
-    if (info_->FileAttributes & FILE_ATTRIBUTE_READONLY) {
-      ent_.stat.mode |= 0444;
-    } else {
-      ent_.stat.mode |= 0666;
-    }
 
     // Advance the pointer to the next entry ready for the next read
     info_ = info_->NextEntryOffset == 0
@@ -186,6 +172,7 @@ class WinDirHandle : public watchman_dir_handle {
     nameBuf_[len] = 0;
 
     // Populate stat info to speed up the crawler() routine
+    ent_.stat = FileInformation(findFileData.dwFileAttributes);
     FILETIME_to_timespec(&findFileData.ftCreationTime, &ent_.stat.ctime);
     FILETIME_to_timespec(&findFileData.ftLastAccessTime, &ent_.stat.atime);
     FILETIME_to_timespec(&findFileData.ftLastWriteTime, &ent_.stat.mtime);
@@ -194,19 +181,6 @@ class WinDirHandle : public watchman_dir_handle {
     fileSize.HighPart = findFileData.nFileSizeHigh;
     fileSize.LowPart = findFileData.nFileSizeLow;
     ent_.stat.size = fileSize.QuadPart;
-
-    if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
-      ent_.stat.mode = _S_IFREG;
-    } else if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-      ent_.stat.mode = _S_IFDIR | S_IEXEC | S_IXGRP | S_IXOTH;
-    } else {
-      ent_.stat.mode = _S_IFREG;
-    }
-    if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
-      ent_.stat.mode |= 0444;
-    } else {
-      ent_.stat.mode |= 0666;
-    }
 
     return &ent_;
   }

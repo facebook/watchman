@@ -125,7 +125,7 @@ void InMemoryView::crawler(
   for (auto& it : dir->files) {
     auto file = it.second.get();
     if (file->exists &&
-        (file->maybe_deleted || (S_ISDIR(file->stat.mode) && recursive))) {
+        (file->maybe_deleted || (file->stat.isDir() && recursive))) {
       coll->add(
           dir,
           file->getName().data(),

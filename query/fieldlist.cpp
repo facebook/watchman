@@ -125,13 +125,13 @@ MAKE_INT_FIELD(nlink, nlink)
 static json_ref make_type_field(const struct watchman_rule_match* match) {
   // Bias towards the more common file types first
   auto& stat = match->file->stat();
-  if (S_ISREG(stat.mode)) {
+  if (stat.isFile()) {
     return typed_string_to_json("f", W_STRING_UNICODE);
   }
-  if (S_ISDIR(stat.mode)) {
+  if (stat.isDir()) {
     return typed_string_to_json("d", W_STRING_UNICODE);
   }
-  if (S_ISLNK(stat.mode)) {
+  if (stat.isSymlink()) {
     return typed_string_to_json("l", W_STRING_UNICODE);
   }
   if (S_ISBLK(stat.mode)) {

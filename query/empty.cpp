@@ -23,8 +23,8 @@ class EmptyExpr : public QueryExpr {
       return false;
     }
     auto& stat = file->stat();
-    if (S_ISDIR(stat.mode) || S_ISREG(stat.mode)) {
-      return file->stat().size == 0;
+    if (stat.isDir() || stat.isFile()) {
+      return stat.size == 0;
     }
 
     return false;

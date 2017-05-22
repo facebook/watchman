@@ -142,8 +142,7 @@ HashValue ContentHashCache::computeHashImmediate(
         std::generic_category(),
         "unable to stat after hashing; query again to get latest status");
   }
-  watchman_stat stat;
-  struct_stat_to_watchman_stat(&st, &stat);
+  FileInformation stat(st);
   if (size_t(stat.size) != key.fileSize ||
       stat.mtime.tv_sec != key.mtime.tv_sec ||
       stat.mtime.tv_nsec != key.mtime.tv_nsec) {

@@ -1,22 +1,12 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
-
-struct watchman_stat {
-  struct timespec atime, mtime, ctime;
-  off_t size;
-  mode_t mode;
-  uid_t uid;
-  gid_t gid;
-  ino_t ino;
-  dev_t dev;
-  nlink_t nlink;
-};
+#include "FileInformation.h"
 
 struct watchman_dir_ent {
   bool has_stat;
   char *d_name;
-  struct watchman_stat stat;
+  watchman::FileInformation stat;
 };
 
 class watchman_dir_handle {

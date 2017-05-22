@@ -17,6 +17,7 @@ watchman_SOURCES = \
 	ContentHash.cpp \
 	CookieSync.cpp \
 	FileDescriptor.cpp \
+	FileInformation.cpp \
 	InMemoryView.cpp \
 	Pipe.cpp \
 	PubSub.cpp \
@@ -262,6 +263,7 @@ tests_childproc_t_SOURCES = \
 	ChildProcess.cpp \
 	Pipe.cpp \
 	FileDescriptor.cpp \
+	FileInformation.cpp \
 	PubSub.cpp \
 	string.cpp \
 	hash.cpp \
@@ -326,6 +328,7 @@ tests_pending_t_SOURCES = \
 	tests/pending_test.cpp \
 	tests/log_stub.cpp \
 	FileDescriptor.cpp \
+	FileInformation.cpp \
 	PubSub.cpp \
 	hash.cpp \
 	ignore.cpp \

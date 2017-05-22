@@ -26,6 +26,7 @@ SRCS_CPP=\
 	ContentHash.cpp \
 	CookieSync.cpp \
 	FileDescriptor.cpp \
+	FileInformation.cpp \
 	InMemoryView.cpp \
 	Pipe.cpp \
 	PubSub.cpp \
@@ -285,6 +286,7 @@ tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
 		log.obj \
 		PubSub.obj \
 		Win32Handle.obj \
+		FileInformation.obj \
 		tests\log_stub.obj \
 		winbuild\pathmap.obj \
 		winbuild\stat.obj \
@@ -338,6 +340,7 @@ tests\childproc.exe: tests\childproc.obj $(TEST_OBJS) \
 	winbuild\pathmap.obj \
 	Pipe.obj \
 	FileDescriptor.obj \
+	FileInformation.obj \
 	Win32Handle.obj \
 	string.obj \
 	stream_win.obj \

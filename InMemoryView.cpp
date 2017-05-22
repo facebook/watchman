@@ -19,7 +19,7 @@ InMemoryFileResult::InMemoryFileResult(
     ContentHashCache& contentHashCache)
     : file_(file), contentHashCache_(contentHashCache) {}
 
-const watchman_stat& InMemoryFileResult::stat() const {
+const FileInformation& InMemoryFileResult::stat() const {
   return file_->stat;
 }
 

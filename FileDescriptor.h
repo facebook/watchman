@@ -1,7 +1,10 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+
 namespace watchman {
+
+struct FileInformation;
 
 // Manages the lifetime of a file descriptor.
 // It will close() the descriptor when it is destroyed.
@@ -59,5 +62,8 @@ class FileDescriptor {
 
   // Returns true if the FD is in non-blocking mode
   bool isNonBlock() const;
+
+  /** equivalent to fstat(2) */
+  FileInformation getInfo() const;
 };
 }

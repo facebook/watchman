@@ -139,9 +139,9 @@ void w_root_free_watched_roots(void);
 json_ref w_root_stop_watch_all(void);
 void w_root_reap(void);
 
-bool did_file_change(struct watchman_stat *saved, struct watchman_stat *fresh);
-void struct_stat_to_watchman_stat(const struct stat *st,
-                                  struct watchman_stat *target);
+bool did_file_change(
+    const watchman::FileInformation* saved,
+    const watchman::FileInformation* fresh);
 extern std::atomic<long> live_roots;
 
 extern watchman::Synchronized<

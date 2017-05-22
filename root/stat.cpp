@@ -13,7 +13,7 @@ void InMemoryView::statPath(
     struct timeval now,
     int flags,
     const watchman_dir_ent* pre_stat) {
-  struct watchman_stat st;
+  watchman::FileInformation st;
   int res, err;
   char path[WATCHMAN_NAME_MAX];
   bool recursive = flags & W_PENDING_RECURSIVE;
@@ -58,7 +58,7 @@ void InMemoryView::statPath(
     w_log(W_LOG_DBG, "w_lstat(%s) file=%p dir=%p res=%d %s\n",
         path, file, dir_ent, res, strerror(err));
     if (err == 0) {
-      struct_stat_to_watchman_stat(&struct_stat, &st);
+      st = watchman::FileInformation(struct_stat);
     } else {
       // To suppress warning on win32
       memset(&st, 0, sizeof(st));
@@ -136,14 +136,14 @@ void InMemoryView::statPath(
       recursive = true;
     }
     if (!file->exists || via_notify || did_file_change(&file->stat, &st)) {
-      w_log(W_LOG_DBG,
+      w_log(
+          W_LOG_DBG,
           "file changed exists=%d via_notify=%d stat-changed=%d isdir=%d %s\n",
           (int)file->exists,
           (int)via_notify,
           (int)(file->exists && !via_notify),
-          S_ISDIR(st.mode),
-          path
-      );
+          st.isDir(),
+          path);
       file->exists = true;
       markFileChanged(view, file, now);
     }
@@ -152,7 +152,7 @@ void InMemoryView::statPath(
 
 #ifndef _WIN32
     // check for symbolic link
-    if (S_ISLNK(st.mode)) {
+    if (st.isSymlink()) {
       char link_target_path[WATCHMAN_NAME_MAX];
       ssize_t tlen = 0;
 
@@ -178,7 +178,7 @@ void InMemoryView::statPath(
     }
 #endif
 
-    if (S_ISDIR(st.mode)) {
+    if (st.isDir()) {
       if (dir_ent == NULL) {
         recursive = true;
       } else {
@@ -214,8 +214,8 @@ void InMemoryView::statPath(
       // our former tree here
       markDirDeleted(view, dir_ent, now, true);
     }
-    if ((watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
-        !S_ISDIR(st.mode) && !w_string_equal(dir_name, root->root_path) &&
+    if ((watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) && !st.isDir() &&
+        !w_string_equal(dir_name, root->root_path) &&
         parentDir->last_check_existed) {
       /* Make sure we update the mtime on the parent directory.
        * We're deliberately not propagating any of the flags through; we

@@ -25,7 +25,7 @@ class InMemoryFileResult : public FileResult {
   explicit InMemoryFileResult(
       const watchman_file* file,
       ContentHashCache& contentHashCache);
-  const watchman_stat& stat() const override;
+  const FileInformation& stat() const override;
   w_string_piece baseName() const override;
   w_string_piece dirName() override;
   bool exists() const override;
