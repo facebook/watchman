@@ -2,6 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 
+class w_string;
+
 namespace watchman {
 
 struct FileInformation;
@@ -65,5 +67,8 @@ class FileDescriptor {
 
   /** equivalent to fstat(2) */
   FileInformation getInfo() const;
+
+  /** Returns the filename associated with the file handle */
+  w_string getOpenedPath() const;
 };
 }

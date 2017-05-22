@@ -3,6 +3,7 @@
 #pragma once
 #include <cstdint>
 #include "FileInformation.h"
+#include "watchman_string.h"
 
 namespace watchman {
 
@@ -53,5 +54,8 @@ class Win32Handle {
 
   /** equivalent to fstat(2) */
   FileInformation getInfo() const;
+
+  /** Returns the filename associated with the file handle */
+  w_string getOpenedPath() const;
 };
 }

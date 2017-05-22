@@ -106,6 +106,61 @@ FileInformation FileDescriptor::getInfo() const {
   }
   return FileInformation(st);
 }
+
 #endif
 
+w_string FileDescriptor::getOpenedPath() const {
+#if defined(F_GETPATH)
+  // macOS.  The kernel interface only allows MAXPATHLEN
+  char buf[MAXPATHLEN + 1];
+  if (fcntl(fd_, F_GETPATH, buf) == -1) {
+    throw std::system_error(errno, std::generic_category(),
+                            "fcntl for getOpenedPath");
+  }
+  return w_string(buf);
+#elif defined(__linux__)
+  char procpath[1024];
+  snprintf(procpath, sizeof(procpath), "/proc/%d/fd/%d", getpid(), fd_);
+
+  // Avoid an extra stat by speculatively attempting to read into
+  // a reasonably sized buffer.
+  char buf[WATCHMAN_NAME_MAX];
+  auto len = readlink(procpath, buf, sizeof(buf));
+  if (len >= 0) {
+    return w_string(buf, len);
+  }
+
+  if (errno == ENOENT) {
+    // For this path to not exist must mean that /proc is not mounted.
+    // Report this with an actionable message
+    throw std::system_error(ENOSYS, std::generic_category(),
+                            "getOpenedPath: need /proc to be mounted!");
+  }
+
+  if (errno != ENAMETOOLONG) {
+    throw std::system_error(errno, std::generic_category(),
+                            "readlink for getOpenedPath");
+  }
+
+  // Figure out how much space we need
+  struct stat st;
+  if (fstat(fd_, &st)) {
+    throw std::system_error(errno, std::generic_category(),
+                            "fstat for getOpenedPath");
+  }
+  std::string result;
+  result.resize(st.st_size, 0);
+
+  len = readlink(procpath, &result[0], result.size() + 1);
+  if (len >= 0) {
+    return w_string(&result[0], len);
+  }
+
+  throw std::system_error(errno, std::generic_category(),
+                          "readlink for getOpenedPath");
+#else
+  throw std::system_error(ENOSYS, std::generic_category(),
+                          "getOpenedPath not implemented on this platform");
+#endif
+}
 }

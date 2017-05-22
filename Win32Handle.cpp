@@ -137,5 +137,36 @@ FileInformation Win32Handle::getInfo() const {
   return info;
 }
 
+w_string Win32Handle::getOpenedPath() const {
+  std::wstring wchar;
+  wchar.resize(WATCHMAN_NAME_MAX);
+  auto len = GetFinalPathNameByHandleW(
+      (HANDLE)h_,
+      &wchar[0],
+      wchar.size(),
+      FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+  auto err = GetLastError();
+
+  if (len >= wchar.size()) {
+    // Grow it
+    wchar.resize(len);
+    len = GetFinalPathNameByHandleW(
+        (HANDLE)h_,
+        &wchar[0],
+        len,
+        FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+    err = GetLastError();
+  }
+
+  if (len == 0) {
+    throw std::system_error(
+        GetLastError(),
+        std::system_category(),
+        "GetFinalPathNameByHandleW");
+  }
+
+  return w_string (wchar.data(), len);
+}
+
 }
 #endif // _WIN32
