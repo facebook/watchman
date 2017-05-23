@@ -23,7 +23,7 @@ namespace watchman {
 class ThreadPool : public Executor {
  public:
   ThreadPool() = default;
-  ~ThreadPool();
+  ~ThreadPool() override;
 
   // Start a thread pool with the specified number of worker threads
   // and the specified upper bound on the number of queued jobs.

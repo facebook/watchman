@@ -100,7 +100,7 @@ struct watchman_user_client : public watchman_client {
       unilateralSub;
 
   explicit watchman_user_client(std::unique_ptr<watchman_stream>&& stm);
-  ~watchman_user_client();
+  ~watchman_user_client() override;
 
   bool unsubByName(const w_string& name);
 };

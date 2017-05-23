@@ -50,7 +50,7 @@ class WatchmanConnection : folly::AsyncSocket::ConnectCallback,
       // You really should provide an executor that runs in a different
       // thread to avoid blocking your event base for large responses
       folly::Executor* cpuExecutor = nullptr);
-  ~WatchmanConnection();
+  ~WatchmanConnection() override;
 
   // Initiate a connection.  Yields the version information for the
   // service at a later time.  You need to call connect once before

@@ -57,7 +57,7 @@ class DirHandle : public watchman_dir_handle {
 
  public:
   explicit DirHandle(const char* path, bool strict);
-  ~DirHandle();
+  ~DirHandle() override;
   const watchman_dir_ent* readDir() override;
   int getFd() const override;
 };

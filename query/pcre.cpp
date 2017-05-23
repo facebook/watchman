@@ -15,7 +15,7 @@ class PcreExpr : public QueryExpr {
   explicit PcreExpr(pcre* re, pcre_extra* extra, bool wholename)
       : re(re), extra(extra), wholename(wholename) {}
 
-  ~PcreExpr() {
+  ~PcreExpr() override {
     if (re) {
       pcre_free(re);
     }

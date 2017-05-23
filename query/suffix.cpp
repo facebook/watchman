@@ -11,7 +11,7 @@ class SuffixExpr : public QueryExpr {
  public:
   explicit SuffixExpr(w_string suffix) : suffix(suffix) {}
 
-  bool evaluate(struct w_query_ctx*, const FileResult* file) {
+  bool evaluate(struct w_query_ctx*, const FileResult* file) override {
     return file->baseName().hasSuffix(suffix);
   }
 
