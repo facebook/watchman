@@ -11,6 +11,13 @@
 #define __STDC_FORMAT_MACROS
 #include "config.h"
 
+#ifdef WATCHMAN_FACEBOOK_INTERNAL
+#include "common/base/BuildInfo.h"
+#undef PACKAGE_VERSION
+#define PACKAGE_VERSION BuildInfo_kTimeISO8601
+#define WATCHMAN_BUILD_INFO BuildInfo_kUpstreamRevision
+#endif
+
 #include <assert.h>
 #if HAVE_UNISTD_H
 #include <unistd.h>

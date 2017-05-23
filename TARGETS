@@ -2,7 +2,7 @@
 # we need to preserve how things build in the autoconf and windows
 # builds for watchman.
 
-compiler_flags=["-Wunused-variable"]
+compiler_flags=["-Wunused-variable", '-DWATCHMAN_FACEBOOK_INTERNAL']
 
 # Generates 'config.h' by probing for system capabilities
 def prober():
@@ -74,7 +74,9 @@ buck_cxx_library(
     header_namespace="",
     visibility=["PUBLIC"],
     exported_deps=[
-        ':config_h', '//watchman/thirdparty/jansson:config_h'
+        ':config_h',
+        '//watchman/thirdparty/jansson:config_h',
+        '//common/base:build_info',
     ],
 )
 
