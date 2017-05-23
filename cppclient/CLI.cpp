@@ -17,6 +17,7 @@
 #include <watchman/WatchmanConnection.h>
 
 #include <iostream>
+#include <memory>
 
 #include <folly/init/Init.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
@@ -36,12 +37,12 @@ int main(int argc, char** argv) {
     cmd.push_back(std::string(argv[i]));
   }
 
-  WatchmanConnection c(eb);
-  c.connect()
+  auto c = std::make_shared<WatchmanConnection>(eb);
+  c->connect()
       .then([&](folly::dynamic version) {
         std::cout << "Connected to watchman: " << version << std::endl;
         std::cout << "Going to run " << cmd << std::endl;
-        return c.run(cmd);
+        return c->run(cmd);
       })
       .then([](folly::dynamic result) { LOG(INFO) << "Result: " << result; })
       .onError([](const folly::exception_wrapper& ex) {
@@ -49,10 +50,10 @@ int main(int argc, char** argv) {
       })
       .wait();
 
-  c.run(folly::dynamic::array("watch-list"))
+  c->run(folly::dynamic::array("watch-list"))
       .then([](folly::dynamic res) { std::cout << res << std::endl; })
       .wait();
-  c.close();
+  c->close();
 
   return 0;
 }

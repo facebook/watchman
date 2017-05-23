@@ -130,7 +130,7 @@ struct WatchmanClient {
    * Returns true if the underlying connection is closed or broken.
    */
   bool isDead() {
-    return conn_.isDead();
+    return conn_->isDead();
   }
 
   /**
@@ -183,13 +183,13 @@ struct WatchmanClient {
 
   /** Intended for test only. */
   WatchmanConnection& getConnection() {
-    return conn_;
+    return *conn_;
   }
 
  private:
   void connectionCallback(folly::Try<folly::dynamic>&& try_data);
 
-  WatchmanConnection conn_;
+  std::shared_ptr<WatchmanConnection> conn_;
   ErrorCallback errorCallback_;
   std::unordered_map<std::string, SubscriptionPtr> subscriptionMap_;
   std::mutex mutex_;

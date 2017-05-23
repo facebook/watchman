@@ -15,14 +15,14 @@ WatchmanClient::WatchmanClient(
     Optional<std::string>&& socketPath,
     folly::Executor* cpuExecutor,
     ErrorCallback errorCallback)
-    : conn_(
+    : conn_(std::make_shared<WatchmanConnection>(
           eventBase,
           std::move(socketPath),
           Optional<WatchmanConnection::Callback>(
           [this](Try<dynamic>&& data) {
             connectionCallback(std::move(data));
           }),
-          cpuExecutor),
+          cpuExecutor)),
       errorCallback_(errorCallback) {}
 
 void WatchmanClient::connectionCallback(Try<dynamic>&& try_data) {
@@ -65,19 +65,19 @@ void WatchmanClient::connectionCallback(Try<dynamic>&& try_data) {
 }
 
 Future<dynamic> WatchmanClient::connect(dynamic versionArgs) {
-  return conn_.connect(versionArgs);
+  return conn_->connect(versionArgs);
 }
 
 void WatchmanClient::close() {
-  return conn_.close();
+  return conn_->close();
 }
 
 Future<dynamic> WatchmanClient::run(const dynamic& cmd) {
-  return conn_.run(cmd);
+  return conn_->run(cmd);
 }
 
 Future<WatchPathPtr> WatchmanClient::watch(StringPiece path) {
-  return conn_.run(dynamic::array("watch-project", path))
+  return conn_->run(dynamic::array("watch-project", path))
       .then([=](dynamic& data) {
         auto relativePath = data["relativePath"];
         Optional<std::string> relativePath_optional;

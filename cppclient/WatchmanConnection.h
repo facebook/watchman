@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <deque>
+#include <memory>
 
 #include <folly/ExceptionWrapper.h>
 #include <folly/Optional.h>
@@ -37,7 +38,8 @@ class WatchmanResponseError : public WatchmanError {
 // Represents a raw connection to the watchman service
 class WatchmanConnection : folly::AsyncSocket::ConnectCallback,
                            folly::AsyncReader::ReadCallback,
-                           folly::AsyncWriter::WriteCallback {
+                           folly::AsyncWriter::WriteCallback,
+                           public std::enable_shared_from_this<WatchmanConnection> {
  public:
   using Callback = std::function<void(folly::Try<folly::dynamic>)>;
 
@@ -79,34 +81,6 @@ class WatchmanConnection : folly::AsyncSocket::ConnectCallback,
   }
 
  private:
-  struct WatchmanConnectionGuard {
-    explicit WatchmanConnectionGuard(WatchmanConnection& conn) : conn_(&conn) {
-      conn_->incDestructorGuardRefCount();
-    }
-
-    explicit WatchmanConnectionGuard(const WatchmanConnectionGuard& other) :
-      conn_(other.conn_)
-    {
-      conn_->incDestructorGuardRefCount();
-    }
-
-    ~WatchmanConnectionGuard() {
-      conn_->decDestructorGuardRefCount();
-    }
-
-    WatchmanConnectionGuard& operator=(const WatchmanConnectionGuard& other) {
-      conn_ = other.conn_;
-      return *this;
-    }
-
-    WatchmanConnectionGuard(WatchmanConnectionGuard&& other) = delete;
-    WatchmanConnectionGuard& operator=(
-      const WatchmanConnectionGuard&& other) = delete;
-
-   private:
-      WatchmanConnection* conn_;
-  };
-
   // Represents a command queued up by the run() function
   struct QueuedCommand {
     folly::dynamic cmd;
@@ -139,14 +113,6 @@ class WatchmanConnection : folly::AsyncSocket::ConnectCallback,
   void readEOF() noexcept override;
   void readErr(const folly::AsyncSocketException& ex) noexcept override;
 
-  // Manage the this refs counts
-  inline void incDestructorGuardRefCount() {
-    ++destructorGuardRefCount_;
-  }
-  inline void decDestructorGuardRefCount() {
-    --destructorGuardRefCount_;
-  }
-
   folly::EventBase* eventBase_{};
   folly::Optional<std::string> sockPath_;
   folly::Optional<Callback> callback_;
@@ -157,7 +123,6 @@ class WatchmanConnection : folly::AsyncSocket::ConnectCallback,
   std::mutex mutex_;
   std::deque<std::shared_ptr<QueuedCommand>> commandQ_;
   folly::IOBufQueue bufQ_{folly::IOBufQueue::cacheChainLength()};
-  std::atomic<unsigned int> destructorGuardRefCount_{0};
   bool broken_{false};
   bool closing_{false};
   bool decoding_{false};

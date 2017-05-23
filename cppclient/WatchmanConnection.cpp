@@ -40,11 +40,6 @@ WatchmanConnection::WatchmanConnection(
 
 WatchmanConnection::~WatchmanConnection() {
   close();
-  // If there are outstanding references to 'this' in callbacks they are about
-  // to become invalid. The correct way to avoid this is to close() the
-  // WatchmanConnection explicitly and then flush the event base for the
-  // cpuExecutor_ before allowing destruction.
-  CHECK_EQ(destructorGuardRefCount_, 0);
 }
 
 folly::Future<std::string> WatchmanConnection::getSockPath() {
@@ -83,17 +78,19 @@ Future<dynamic> WatchmanConnection::connect(folly::dynamic versionArgs) {
   }
   versionCmd_ = folly::dynamic::array("version", versionArgs);
 
-  WatchmanConnectionGuard guard(*this);
-  auto res = getSockPath().then([this, guard](std::string&& path) {
-    eventBase_->runInEventBaseThread([=] {
-      folly::SocketAddress addr;
-      addr.setFromPath(path);
+  auto res = getSockPath().then(
+    [shared_this=shared_from_this()] (std::string&& path) {
+      shared_this->eventBase_->runInEventBaseThread([=] {
+        folly::SocketAddress addr;
+        addr.setFromPath(path);
 
-      sock_ = folly::AsyncSocket::newSocket(eventBase_);
-      sock_->connect(this, addr);
-    });
+        shared_this->sock_ =
+          folly::AsyncSocket::newSocket(shared_this->eventBase_);
+        shared_this->sock_->connect(shared_this.get(), addr);
+      }
+    );
 
-    return connectPromise_.getFuture();
+    return shared_this->connectPromise_.getFuture();
   });
   return res;
 }
@@ -130,21 +127,26 @@ void WatchmanConnection::connectSuccess() noexcept {
     sock_->setReadCB(this);
     sock_->setCloseOnExec();
 
-    WatchmanConnectionGuard guard(*this);
-    run(versionCmd_).then([this, guard](dynamic&& result) {
-      // If there is no "capabilities" key then the version of
-      // watchman is too old; treat this as an error
-      if (!result.get_ptr(kCapabilities)) {
-        result["error"] =
-            "This watchman server has no support for capabilities, "
-            "please upgrade to the current stable version of watchman";
-        connectPromise_.setTry(watchmanResponseToTry(std::move(result)));
-        return;
+    run(versionCmd_).then(
+      [shared_this=shared_from_this()] (dynamic&& result) {
+        // If there is no "capabilities" key then the version of
+        // watchman is too old; treat this as an error
+        if (!result.get_ptr(kCapabilities)) {
+          result["error"] =
+              "This watchman server has no support for capabilities, "
+              "please upgrade to the current stable version of watchman";
+          shared_this->connectPromise_.setTry(
+            shared_this->watchmanResponseToTry(std::move(result)));
+          return;
+        }
+        shared_this->connectPromise_.setValue(std::move(result));
       }
-      connectPromise_.setValue(std::move(result));
-    }).onError([this, guard](const folly::exception_wrapper& e) {
-      connectPromise_.setException(e);
-    });
+    ).onError(
+      [shared_this=shared_from_this()]
+      (const folly::exception_wrapper& e) {
+        shared_this->connectPromise_.setException(e);
+      }
+    );
   } catch(const std::exception& e) {
     connectPromise_.setException(
       folly::exception_wrapper(std::current_exception(), e));
@@ -185,8 +187,11 @@ Future<dynamic> WatchmanConnection::run(const dynamic& command) noexcept {
   }
 
   if (shouldWrite) {
-    WatchmanConnectionGuard guard(*this);
-    eventBase_->runInEventBaseThread([this, guard] { sendCommand(); });
+    eventBase_->runInEventBaseThread(
+      [shared_this=shared_from_this()] {
+        shared_this->sendCommand();
+      }
+    );
   }
 
   return cmd->promise.getFuture();
@@ -208,9 +213,8 @@ void WatchmanConnection::failQueuedCommands(
 
   // If the user has explicitly closed the connection no need for callback
   if (callback_ && !closing_) {
-    WatchmanConnectionGuard guard(*this);
-    cpuExecutor_->add([this, guard, ex] {
-      (*callback_)(folly::Try<folly::dynamic>(ex));
+    cpuExecutor_->add([shared_this=shared_from_this(), ex] {
+      (*(shared_this->callback_))(folly::Try<folly::dynamic>(ex));
     });
   }
 }
@@ -266,8 +270,9 @@ void WatchmanConnection::readDataAvailable(size_t len) noexcept {
     std::lock_guard<std::mutex> g(mutex_);
     bufQ_.postallocate(len);
   }
-  WatchmanConnectionGuard guard(*this);
-  cpuExecutor_->add([this, guard] { decodeNextResponse(); });
+  cpuExecutor_->add([shared_this=shared_from_this()] {
+    shared_this->decodeNextResponse();
+  });
 }
 
 std::unique_ptr<folly::IOBuf> WatchmanConnection::splitNextPdu() {
