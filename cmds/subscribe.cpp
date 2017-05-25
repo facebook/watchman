@@ -59,33 +59,35 @@ static std::tuple<sub_action, w_string> get_subscription_action(
       "\n");
 
   if (sub->last_sub_tick != position.ticks) {
-    auto asserted_states = root->asserted_states.rlock();
-    if (!asserted_states->empty() && !sub->drop_or_defer.empty()) {
-      // There are 1 or more states asserted and this subscription
-      // has some policy for states.  Figure out what we should do.
-      for (auto& policy_iter : sub->drop_or_defer) {
-        auto name = policy_iter.first;
-        bool policy_is_drop = policy_iter.second;
+    if (!sub->drop_or_defer.empty()) {
+      auto asserted_states = root->asserted_states.rlock();
+      if (!asserted_states->empty()) {
+        // There are 1 or more states asserted and this subscription
+        // has some policy for states.  Figure out what we should do.
+        for (auto& policy_iter : sub->drop_or_defer) {
+          auto name = policy_iter.first;
+          bool policy_is_drop = policy_iter.second;
 
-        if (asserted_states->find(name) == asserted_states->end()) {
-          continue;
+          if (asserted_states->find(name) == asserted_states->end()) {
+            continue;
+          }
+
+          if (action != sub_action::defer) {
+            // This policy is active
+            action = sub_action::defer;
+            policy_name = name;
+          }
+
+          if (policy_is_drop) {
+            action = sub_action::drop;
+
+            // If we're dropping, we don't need to look at any
+            // other policies
+            policy_name = name;
+            break;
+          }
+          // Otherwise keep looking until we find a drop
         }
-
-        if (action != sub_action::defer) {
-          // This policy is active
-          action = sub_action::defer;
-          policy_name = name;
-        }
-
-        if (policy_is_drop) {
-          action = sub_action::drop;
-
-          // If we're dropping, we don't need to look at any
-          // other policies
-          policy_name = name;
-          break;
-        }
-        // Otherwise keep looking until we find a drop
       }
     }
   } else {
