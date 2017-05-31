@@ -188,6 +188,7 @@ class w_string_piece {
   bool hasSuffix(w_string_piece suffix) const;
 
   bool pathIsAbsolute() const;
+  bool pathIsEqual(w_string_piece other) const;
   w_string_piece dirName() const;
   w_string_piece baseName() const;
 

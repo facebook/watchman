@@ -56,6 +56,36 @@ bool w_string_piece::pathIsAbsolute() const {
   return w_is_path_absolute_cstr_len(data(), size());
 }
 
+/** Compares two path strings.
+ * They are equal if the case of each character matches.
+ * Directory separator slashes are normalized such that
+ * \ and / are considered equal. */
+bool w_string_piece::pathIsEqual(w_string_piece other) const {
+#ifdef _WIN32
+  if (size() != other.size()) {
+    return false;
+  }
+
+  auto A = data();
+  auto B = other.data();
+
+  auto end = A + size();
+  for (; A < end; ++A, ++B) {
+    if (*A == *B) {
+      continue;
+    }
+    if (is_slash(*A) && is_slash(*B)) {
+      continue;
+    }
+    return false;
+  }
+  return true;
+#else
+  return *this == other;
+#endif
+}
+
+
 w_string_piece w_string_piece::dirName() const {
   for (auto end = e_; end >= s_; --end) {
     if (is_slash(*end)) {

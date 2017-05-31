@@ -104,6 +104,22 @@ Win32Handle openFileHandle(const char *path,
                             std::string("CreateFileW for openFileHandle: ") +
                                 path);
   }
+
+  if (!opts.strictNameChecks) {
+    return h;
+  }
+
+  auto opened = h.getOpenedPath();
+  if (w_string_piece(opened).pathIsEqual(path)) {
+    return h;
+  }
+
+  throw std::system_error(
+      ENOENT, std::generic_category(),
+      to<std::string>("openFileHandle(", path,
+                      "): opened path doesn't match canonical path ", opened));
+
+
   return h;
 }
 

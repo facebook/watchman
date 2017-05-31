@@ -38,10 +38,12 @@ struct OpenFileHandleOptions {
   unsigned create : 1;           // O_CREAT
   unsigned exclusiveCreate : 1;  // O_EXCL
   unsigned truncate : 1;         // O_TRUNC
+  unsigned strictNameChecks : 1;
 
   OpenFileHandleOptions()
       : followSymlinks(0), closeOnExec(1), metaDataOnly(0), readContents(0),
-        writeContents(0), create(0), exclusiveCreate(0), truncate(0) {}
+        writeContents(0), create(0), exclusiveCreate(0), truncate(0),
+        strictNameChecks(1) {}
 
   static inline OpenFileHandleOptions queryFileInfo() {
     OpenFileHandleOptions opts;
@@ -55,4 +57,7 @@ struct OpenFileHandleOptions {
  * just to open a file handle to query its metadata */
 FileHandleType openFileHandle(const char *path,
                               const OpenFileHandleOptions &opts);
+
+/** equivalent to lstat(2), but performs strict name checking */
+FileInformation getFileInformation(const char *path);
 }

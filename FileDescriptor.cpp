@@ -74,7 +74,7 @@ bool FileDescriptor::isNonBlock() const {
 }
 
 #ifndef _WIN32
-FileHandleType openFileHandle(const char *path,
+FileDescriptor openFileHandle(const char *path,
                               const OpenFileHandleOptions &opts) {
   int flags = (!opts.followSymlinks ? O_NOFOLLOW : 0) |
               (opts.closeOnExec ? O_CLOEXEC : 0) |
@@ -95,7 +95,21 @@ FileHandleType openFileHandle(const char *path,
     throw std::system_error(
         err, std::generic_category(), to<std::string>("open: ", path));
   }
-  return FileDescriptor(fd);
+  FileDescriptor file(fd);
+
+  if (!opts.strictNameChecks) {
+    return file;
+  }
+
+  auto opened = file.getOpenedPath();
+  if (w_string_piece(opened).pathIsEqual(path)) {
+    return file;
+  }
+
+  throw std::system_error(
+      ENOENT, std::generic_category(),
+      to<std::string>("open(", path,
+                      "): opened path doesn't match canonical path ", opened));
 }
 
 FileInformation FileDescriptor::getInfo() const {
@@ -222,5 +236,29 @@ w_string FileDescriptor::readSymbolicLink() const {
       errno, std::generic_category(), "readlink for readSymbolicLink");
 }
 #endif
+
+FileInformation getFileInformation(const char *path) {
+#if defined(_WIN32) || defined(O_PATH)
+  // These operating systems allow opening symlink nodes and querying them
+  // for stat information
+  auto handle = openFileHandle(path, OpenFileHandleOptions::queryFileInfo());
+  auto info = handle.getInfo();
+  return info;
+#else
+  // Since the leaf of the path may be a symlink, and this system doesn't
+  // allow opening symlinks for stat purposes, we have to resort to performing
+  // a relative fstatat() from the parent dir.
+  w_string_piece pathPiece(path);
+  auto parent = pathPiece.dirName().asWString();
+  auto handle = openFileHandle(
+      parent.c_str(), OpenFileHandleOptions::queryFileInfo());
+  struct stat st;
+  if (fstatat(
+        handle.fd(), pathPiece.baseName().data(), &st, AT_SYMLINK_NOFOLLOW)) {
+    throw std::system_error(errno, std::generic_category(), "fstatat");
+  }
+  return FileInformation(st);
+#endif
+}
 
 }
