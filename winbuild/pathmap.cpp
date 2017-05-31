@@ -16,10 +16,19 @@
 #define LEN_ESCAPE_LEN 4
 #define UNC_PREFIX L"UNC"
 #define UNC_PREFIX_LEN 3
+// We see this escape come back from reparse points when reading
+// junctions/symlinks
+#define SYMLINK_ESCAPE L"\\??\\"
+#define SYMLINK_ESCAPE_LEN 4
 
 w_string::w_string(const WCHAR* wpath, size_t pathlen) {
   int len, res;
   bool is_unc = false;
+
+  if (!wcsncmp(wpath, SYMLINK_ESCAPE, SYMLINK_ESCAPE_LEN)) {
+    wpath += SYMLINK_ESCAPE_LEN;
+    pathlen -= SYMLINK_ESCAPE_LEN;
+  }
 
   if (!wcsncmp(wpath, LEN_ESCAPE, LEN_ESCAPE_LEN)) {
     wpath += LEN_ESCAPE_LEN;

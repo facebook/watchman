@@ -57,5 +57,8 @@ class Win32Handle {
 
   /** Returns the filename associated with the file handle */
   w_string getOpenedPath() const;
+
+  /** Returns the symbolic link target */
+  w_string readSymbolicLink() const;
 };
 }

@@ -2,8 +2,10 @@
  * Licensed under the Apache License, Version 2.0 */
 #ifdef _WIN32
 #include "Win32Handle.h"
+#include "WinIoCtl.h"
 #include "watchman.h"
 #include "FileSystem.h"
+#include "watchman_scopeguard.h"
 
 namespace watchman {
 
@@ -166,6 +168,107 @@ w_string Win32Handle::getOpenedPath() const {
   }
 
   return w_string (wchar.data(), len);
+}
+
+// We declare our own copy here because Ntifs.h is not included in the
+// standard install of the Visual Studio Community compiler.
+namespace {
+struct REPARSE_DATA_BUFFER {
+  ULONG ReparseTag;
+  USHORT ReparseDataLength;
+  USHORT Reserved;
+  union {
+    struct {
+      USHORT SubstituteNameOffset;
+      USHORT SubstituteNameLength;
+      USHORT PrintNameOffset;
+      USHORT PrintNameLength;
+      ULONG Flags;
+      WCHAR PathBuffer[1];
+    } SymbolicLinkReparseBuffer;
+    struct {
+      USHORT SubstituteNameOffset;
+      USHORT SubstituteNameLength;
+      USHORT PrintNameOffset;
+      USHORT PrintNameLength;
+      WCHAR PathBuffer[1];
+    } MountPointReparseBuffer;
+    struct {
+      UCHAR DataBuffer[1];
+    } GenericReparseBuffer;
+  };
+};
+}
+
+w_string Win32Handle::readSymbolicLink() const {
+  DWORD len = 64 * 1024;
+  auto buf = malloc(len);
+  if (!buf) {
+    throw std::bad_alloc();
+  }
+  SCOPE_EXIT {
+    free(buf);
+  };
+  WCHAR* target;
+  USHORT targetlen;
+
+  auto result = DeviceIoControl(
+      (HANDLE)h_,
+      FSCTL_GET_REPARSE_POINT,
+      nullptr,
+      0,
+      buf,
+      len,
+      &len,
+      nullptr);
+
+  // We only give one retry; if the size changed again already, we'll
+  // have another pending notify from the OS to go look at it again
+  // later, and it's totally fine to give up here for now.
+  if (!result && GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
+    free(buf);
+    buf = malloc(len);
+    if (!buf) {
+      throw std::bad_alloc();
+    }
+
+    result = DeviceIoControl(
+        (HANDLE)h_,
+        FSCTL_GET_REPARSE_POINT,
+        nullptr,
+        0,
+        buf,
+        len,
+        &len,
+        nullptr);
+  }
+
+  if (!result) {
+    throw std::system_error(
+        GetLastError(), std::system_category(), "FSCTL_GET_REPARSE_POINT");
+  }
+
+  auto rep = reinterpret_cast<REPARSE_DATA_BUFFER*>(buf);
+
+  switch (rep->ReparseTag) {
+    case IO_REPARSE_TAG_SYMLINK:
+      target = rep->SymbolicLinkReparseBuffer.PathBuffer +
+        (rep->SymbolicLinkReparseBuffer.SubstituteNameOffset /
+         sizeof(WCHAR));
+      targetlen = rep->SymbolicLinkReparseBuffer.SubstituteNameLength / sizeof(WCHAR);
+      break;
+
+    case IO_REPARSE_TAG_MOUNT_POINT:
+      target = rep->MountPointReparseBuffer.PathBuffer +
+        (rep->MountPointReparseBuffer.SubstituteNameOffset / sizeof(WCHAR));
+      targetlen = rep->MountPointReparseBuffer.SubstituteNameLength / sizeof(WCHAR);
+      break;
+    default:
+      throw std::system_error(
+          ENOSYS, std::generic_category(), "Unsupported ReparseTag");
+  }
+
+  return w_string(target, targetlen);
 }
 
 }

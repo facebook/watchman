@@ -126,6 +126,12 @@ w_string FileDescriptor::getOpenedPath() const {
   // a reasonably sized buffer.
   char buf[WATCHMAN_NAME_MAX];
   auto len = readlink(procpath, buf, sizeof(buf));
+  if (len == sizeof(buf)) {
+    len = -1;
+    // We need to stat it to discover the required length
+    errno = ENAMETOOLONG;
+  }
+
   if (len >= 0) {
     return w_string(buf, len);
   }
@@ -149,9 +155,15 @@ w_string FileDescriptor::getOpenedPath() const {
                             "fstat for getOpenedPath");
   }
   std::string result;
-  result.resize(st.st_size, 0);
+  result.resize(st.st_size + 1, 0);
 
-  len = readlink(procpath, &result[0], result.size() + 1);
+  len = readlink(procpath, &result[0], result.size());
+  if (len == int(result.size())) {
+    // It's longer than we expected; TOCTOU detected!
+    throw std::system_error(
+        ENAMETOOLONG, std::generic_category(),
+        "readlinkat: link contents grew while examining file");
+  }
   if (len >= 0) {
     return w_string(&result[0], len);
   }
@@ -163,4 +175,52 @@ w_string FileDescriptor::getOpenedPath() const {
                           "getOpenedPath not implemented on this platform");
 #endif
 }
+
+#ifndef _WIN32
+w_string FileDescriptor::readSymbolicLink() const {
+  struct stat st;
+  if (fstat(fd_, &st)) {
+    throw std::system_error(
+        errno, std::generic_category(), "fstat for readSymbolicLink");
+  }
+  std::string result;
+  result.resize(st.st_size + 1, 0);
+
+#ifdef __linux__
+  // Linux 2.6.39 and later provide this interface
+  auto atlen = readlinkat(fd_, "", &result[0], result.size());
+  if (atlen == int(result.size())) {
+    // It's longer than we expected; TOCTOU detected!
+    throw std::system_error(
+        ENAMETOOLONG, std::generic_category(),
+        "readlinkat: link contents grew while examining file");
+  }
+  if (atlen >= 0) {
+    return w_string(result.data(), atlen);
+  }
+  // if we get ENOTDIR back then we're probably on an older linux and
+  // should fall back to the technique used below.
+  if (errno != ENOTDIR) {
+    throw std::system_error(
+        errno, std::generic_category(), "readlinkat for readSymbolicLink");
+  }
+#endif
+
+  auto myName = getOpenedPath();
+  auto len = readlink(myName.c_str(), &result[0], result.size());
+  if (len == int(result.size())) {
+    // It's longer than we expected; TOCTOU detected!
+    throw std::system_error(
+        ENAMETOOLONG, std::generic_category(),
+        "readlink: link contents grew while examining file");
+  }
+  if (len >= 0) {
+    return w_string(result.data(), len);
+  }
+
+  throw std::system_error(
+      errno, std::generic_category(), "readlink for readSymbolicLink");
+}
+#endif
+
 }

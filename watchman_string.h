@@ -247,7 +247,11 @@ class w_string {
       w_string_type_t stringType = W_STRING_BYTE);
 
 #ifdef _WIN32
-  /** Convert a wide character path to utf-8 and return it as a w_string */
+  /** Convert a wide character path to utf-8 and return it as a w_string.
+   * This constructor is intended only for path names and not as a general
+   * WCHAR -> w_string constructor; it will always apply path mapping
+   * logic to the result and may mangle non-pathname strings if they
+   * are passed to it. */
   w_string(const WCHAR* wpath, size_t len);
 #endif
 
