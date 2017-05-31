@@ -4,8 +4,18 @@
 #include "watchman.h"
 #include "FileDescriptor.h"
 #include "FileSystem.h"
-
+#ifdef __APPLE__
+#include <sys/attr.h>
+#include <sys/utsname.h>
+#include <sys/vnode.h>
+#endif
 #include <system_error>
+
+#if defined(_WIN32) || defined(O_PATH)
+#define CAN_OPEN_SYMLINKS 1
+#else
+#define CAN_OPEN_SYMLINKS 0
+#endif
 
 namespace watchman {
 
@@ -73,6 +83,73 @@ bool FileDescriptor::isNonBlock() const {
 #endif
 }
 
+#if !CAN_OPEN_SYMLINKS
+/** Checks that the basename component of the input path exactly
+ * matches the canonical case of the path on disk.
+ * It only makes sense to call this function on a case insensitive filesystem.
+ * If the case does not match, throws an exception. */
+static void checkCanonicalBaseName(const char *path) {
+#ifdef __APPLE__
+  struct attrlist attrlist;
+  struct {
+    uint32_t len;
+    attrreference_t ref;
+    char canonical_name[WATCHMAN_NAME_MAX];
+  } vomit;
+  w_string_piece pathPiece(path);
+  auto base = pathPiece.baseName();
+
+  memset(&attrlist, 0, sizeof(attrlist));
+  attrlist.bitmapcount = ATTR_BIT_MAP_COUNT;
+  attrlist.commonattr = ATTR_CMN_NAME;
+
+  if (getattrlist(path, &attrlist, &vomit, sizeof(vomit), FSOPT_NOFOLLOW) ==
+      -1) {
+    throw std::system_error(errno, std::generic_category(),
+                            to<std::string>("checkCanonicalBaseName(", path,
+                                            "): getattrlist failed"));
+  }
+
+  w_string_piece name(((char *)&vomit.ref) + vomit.ref.attr_dataoffset);
+  if (name != base) {
+    throw std::system_error(
+        ENOENT, std::generic_category(),
+        to<std::string>("checkCanonicalBaseName(", path, "): (", name,
+                        ") doesn't match canonical base (", base, ")"));
+  }
+#else
+  // Older Linux and BSDish systems are in this category.
+  // This is the awful portable fallback used in the absence of
+  // a system specific way to detect this.
+  w_string_piece pathPiece(path);
+  auto parent = pathPiece.dirName().asWString();
+  auto dir = w_dir_open(parent.c_str());
+  auto base = pathPiece.baseName();
+
+  while (true) {
+    auto ent = dir->readDir();
+    if (!ent) {
+      // We didn't find an entry that exactly matched -> fail
+      throw std::system_error(
+          ENOENT, std::generic_category(),
+          to<std::string>("checkCanonicalBaseName(", path,
+                          "): no match found in parent dir"));
+    }
+    // Note: we don't break out early if we get a case-insensitive match
+    // because the dir may contain multiple representations of the same
+    // name.  For example, Bash-for-Windows has dirs that contain both
+    // "pod" and "Pod" dirs in its perl installation.  We want to make
+    // sure that we've observed all of the entries in the dir before
+    // giving up.
+    if (w_string_piece(ent->d_name) == base) {
+      // Exact match; all is good!
+      return;
+    }
+  }
+#endif
+}
+#endif
+
 #ifndef _WIN32
 FileDescriptor openFileHandle(const char *path,
                               const OpenFileHandleOptions &opts) {
@@ -103,6 +180,18 @@ FileDescriptor openFileHandle(const char *path,
 
   auto opened = file.getOpenedPath();
   if (w_string_piece(opened).pathIsEqual(path)) {
+#if !CAN_OPEN_SYMLINKS
+    CaseSensitivity caseSensitive = opts.caseSensitive;
+    if (caseSensitive == CaseSensitivity::Unknown) {
+      caseSensitive = getCaseSensitivityForPath(path);
+    }
+    if (caseSensitive == CaseSensitivity::CaseInSensitive) {
+      // We need to perform one extra check for case-insensitive
+      // paths to make sure that we didn't accidentally open
+      // the wrong case name.
+      checkCanonicalBaseName(path);
+    }
+#endif
     return file;
   }
 
