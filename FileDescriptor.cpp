@@ -237,11 +237,14 @@ w_string FileDescriptor::readSymbolicLink() const {
 }
 #endif
 
-FileInformation getFileInformation(const char *path) {
+FileInformation getFileInformation(const char *path,
+                                   CaseSensitivity caseSensitive) {
+  auto options = OpenFileHandleOptions::queryFileInfo();
+  options.caseSensitive = caseSensitive;
 #if defined(_WIN32) || defined(O_PATH)
   // These operating systems allow opening symlink nodes and querying them
   // for stat information
-  auto handle = openFileHandle(path, OpenFileHandleOptions::queryFileInfo());
+  auto handle = openFileHandle(path, options);
   auto info = handle.getInfo();
   return info;
 #else
@@ -250,8 +253,7 @@ FileInformation getFileInformation(const char *path) {
   // a relative fstatat() from the parent dir.
   w_string_piece pathPiece(path);
   auto parent = pathPiece.dirName().asWString();
-  auto handle = openFileHandle(
-      parent.c_str(), OpenFileHandleOptions::queryFileInfo());
+  auto handle = openFileHandle(parent.c_str(), options);
   struct stat st;
   if (fstatat(
         handle.fd(), pathPiece.baseName().data(), &st, AT_SYMLINK_NOFOLLOW)) {

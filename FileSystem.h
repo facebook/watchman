@@ -54,11 +54,12 @@ struct OpenFileHandleOptions {
   unsigned exclusiveCreate : 1;  // O_EXCL
   unsigned truncate : 1;         // O_TRUNC
   unsigned strictNameChecks : 1;
+  CaseSensitivity caseSensitive;
 
   OpenFileHandleOptions()
       : followSymlinks(0), closeOnExec(1), metaDataOnly(0), readContents(0),
         writeContents(0), create(0), exclusiveCreate(0), truncate(0),
-        strictNameChecks(1) {}
+        strictNameChecks(1), caseSensitive(CaseSensitivity::Unknown) {}
 
   static inline OpenFileHandleOptions queryFileInfo() {
     OpenFileHandleOptions opts;
@@ -74,5 +75,7 @@ FileHandleType openFileHandle(const char *path,
                               const OpenFileHandleOptions &opts);
 
 /** equivalent to lstat(2), but performs strict name checking */
-FileInformation getFileInformation(const char *path);
+FileInformation
+getFileInformation(const char *path,
+                   CaseSensitivity caseSensitive = CaseSensitivity::Unknown);
 }
