@@ -14,7 +14,7 @@
 #endif
 #include <string>
 #include "Logging.h"
-#include "watchman.h" // for w_lstat
+#include "FileSystem.h"
 #include "watchman_scopeguard.h"
 
 namespace watchman {
@@ -135,14 +135,7 @@ HashValue ContentHashCache::computeHashImmediate(
   // the file looks like we were expecting at the start.  If it isn't, then
   // we want to throw an exception and avoid associating the hash of whatever
   // state we just read with this cache key.
-  struct stat st;
-  if (w_lstat(fullPath.c_str(), &st, false)) {
-    throw std::system_error(
-        errno,
-        std::generic_category(),
-        "unable to stat after hashing; query again to get latest status");
-  }
-  FileInformation stat(st);
+  auto stat = getFileInformation(fullPath.c_str());
   if (size_t(stat.size) != key.fileSize ||
       stat.mtime.tv_sec != key.mtime.tv_sec ||
       stat.mtime.tv_nsec != key.mtime.tv_nsec) {

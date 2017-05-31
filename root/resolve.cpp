@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 #include "InMemoryView.h"
+#include "FileSystem.h"
+#include "watchman_error_category.h"
 
 /* Returns true if the global config root_restrict_files is not defined or if
  * one of the files in root_restrict_files exists, false otherwise. */
@@ -129,26 +131,27 @@ std::shared_ptr<w_root_t> root_resolve(
   realpath_err = errno;
 
   if (watch_path) {
-    struct stat st;
-    int res = w_lstat(filename, &st, true);
-
-    if (res != 0 && errno == ENOENT) {
-      ignore_result(asprintf(
-          errmsg,
-          "\"%s\" resolved to \"%s\" but we were unable to examine \"%s\" using strict "
-          "case sensitive rules.  Please check each component of the path and make "
-          "sure that that path exactly matches the correct case of the files on your "
-          "filesystem.",
-          filename,
-          watch_path,
-          filename));
-      w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
-      return nullptr;
-    } else if (res != 0) {
-      ignore_result(
-          asprintf(errmsg, "unable to lstat \"%s\" %d", filename, errno));
-      w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
-      return nullptr;
+    try {
+      watchman::getFileInformation(filename);
+    } catch (const std::system_error& exc) {
+      if (exc.code() == watchman::error_code::no_such_file_or_directory) {
+        ignore_result(asprintf(
+              errmsg,
+              "\"%s\" resolved to \"%s\" but we were unable to examine \"%s\" using strict "
+              "case sensitive rules.  Please check each component of the path and make "
+              "sure that that path exactly matches the correct case of the files on your "
+              "filesystem.",
+              filename,
+              watch_path,
+              filename));
+        w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
+        return nullptr;
+      } else {
+        ignore_result(
+            asprintf(errmsg, "unable to lstat \"%s\" %s", filename, exc.what()));
+        w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
+        return nullptr;
+      }
     }
   }
 
