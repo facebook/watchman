@@ -2,17 +2,18 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+using watchman::CaseSensitivity;
 
 class NameExpr : public QueryExpr {
   w_string name;
   std::unordered_set<w_string> set;
-  bool caseless;
+  CaseSensitivity caseSensitive;
   bool wholename;
   explicit NameExpr(
       std::unordered_set<w_string>&& set,
-      bool caseless,
+      CaseSensitivity caseSensitive,
       bool wholename)
-      : set(std::move(set)), caseless(caseless), wholename(wholename) {}
+      : set(std::move(set)), caseSensitive(caseSensitive), wholename(wholename) {}
 
  public:
   bool evaluate(struct w_query_ctx* ctx, const FileResult* file) override {
@@ -22,12 +23,13 @@ class NameExpr : public QueryExpr {
 
       if (wholename) {
         str = w_query_ctx_get_wholename(ctx);
-        if (caseless) {
+        if (caseSensitive == CaseSensitivity::CaseInSensitive) {
           str = str.piece().asLowerCase();
         }
       } else {
-        str = caseless ? file->baseName().asLowerCase()
-                       : file->baseName().asWString();
+        str = caseSensitive == CaseSensitivity::CaseInSensitive
+                  ? file->baseName().asLowerCase()
+                  : file->baseName().asWString();
       }
 
       matched = set.find(str) != set.end();
@@ -43,16 +45,17 @@ class NameExpr : public QueryExpr {
       str = file->baseName();
     }
 
-    if (caseless) {
+    if (caseSensitive == CaseSensitivity::CaseInSensitive) {
       return w_string_equal_caseless(str, name);
     }
     return str == name;
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query*, const json_ref& term, bool caseless) {
+  parse(w_query*, const json_ref& term, CaseSensitivity caseSensitive) {
     const char *pattern = nullptr, *scope = "basename";
-    const char* which = caseless ? "iname" : "name";
+    const char *which =
+        caseSensitive == CaseSensitivity::CaseInSensitive ? "iname" : "name";
     std::unordered_set<w_string> set;
 
     if (!json_is_array(term)) {
@@ -100,7 +103,7 @@ class NameExpr : public QueryExpr {
         ele = json_string_value(jele);
         // We need to make a copy of the string since we do in-place separator
         // normalization on the paths.
-        if (caseless) {
+        if (caseSensitive == CaseSensitivity::CaseInSensitive) {
           element =
               w_string_new_lower_typed(ele, json_to_w_string(jele).type());
         } else {
@@ -122,8 +125,8 @@ class NameExpr : public QueryExpr {
           "' must be either a string or an array of string");
     }
 
-    auto data =
-        new NameExpr(std::move(set), caseless, !strcmp(scope, "wholename"));
+    auto data = new NameExpr(std::move(set), caseSensitive,
+                             !strcmp(scope, "wholename"));
 
     if (pattern) {
       // We need to make a copy of the string since we do in-place separator
@@ -138,12 +141,12 @@ class NameExpr : public QueryExpr {
   static std::unique_ptr<QueryExpr> parseName(
       w_query* query,
       const json_ref& term) {
-    return parse(query, term, !query->case_sensitive);
+    return parse(query, term, query->case_sensitive);
   }
   static std::unique_ptr<QueryExpr> parseIName(
       w_query* query,
       const json_ref& term) {
-    return parse(query, term, true);
+    return parse(query, term, CaseSensitivity::CaseInSensitive);
   }
 };
 

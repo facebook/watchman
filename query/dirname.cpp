@@ -5,6 +5,8 @@
 
 #include "make_unique.h"
 
+using watchman::CaseSensitivity;
+
 static inline bool is_dir_sep(int c) {
   return c == '/' || c == '\\';
 }
@@ -61,8 +63,10 @@ class DirNameExpr : public QueryExpr {
 
   // ["dirname", "foo"] -> ["dirname", "foo", ["depth", "ge", 0]]
   static std::unique_ptr<QueryExpr>
-  parse(w_query*, const json_ref& term, bool caseless) {
-    const char* which = caseless ? "idirname" : "dirname";
+  parse(w_query*, const json_ref& term, CaseSensitivity case_sensitive) {
+    const char *which = case_sensitive == CaseSensitivity::CaseInSensitive
+                            ? "idirname"
+                            : "dirname";
     struct w_query_int_compare depth_comp;
 
     if (!json_is_array(term)) {
@@ -105,19 +109,20 @@ class DirNameExpr : public QueryExpr {
     }
 
     return watchman::make_unique<DirNameExpr>(
-        json_to_w_string(name),
-        depth_comp,
-        caseless ? w_string_startswith_caseless : w_string_startswith);
+        json_to_w_string(name), depth_comp,
+        case_sensitive == CaseSensitivity::CaseInSensitive
+            ? w_string_startswith_caseless
+            : w_string_startswith);
   }
   static std::unique_ptr<QueryExpr> parseDirName(
       w_query* query,
       const json_ref& term) {
-    return parse(query, term, !query->case_sensitive);
+    return parse(query, term, query->case_sensitive);
   }
   static std::unique_ptr<QueryExpr> parseIDirName(
       w_query* query,
       const json_ref& term) {
-    return parse(query, term, false);
+    return parse(query, term, CaseSensitivity::CaseInSensitive);
   }
 };
 

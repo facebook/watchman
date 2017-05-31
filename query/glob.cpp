@@ -7,6 +7,8 @@
 #include "watchman.h"
 #include "watchman_scopeguard.h"
 
+using watchman::CaseSensitivity;
+
 /* The glob generator.
  * The user can specify a list of globs as the set of candidate nodes
  * for their query expression.
@@ -236,12 +238,13 @@ void InMemoryView::globGeneratorDoublestar(
     // as it doesn't make a lot of sense to yield multiple results for
     // the same file.
     for (const auto& child_node : node->doublestar_children) {
-      matched = wildmatch(
-                    child_node->pattern.c_str(),
-                    subject.c_str(),
-                    ctx->query->glob_flags | WM_PATHNAME |
-                        (ctx->query->case_sensitive ? 0 : WM_CASEFOLD),
-                    0) == WM_MATCH;
+      matched = wildmatch(child_node->pattern.c_str(), subject.c_str(),
+                          ctx->query->glob_flags | WM_PATHNAME |
+                              (ctx->query->case_sensitive ==
+                                       CaseSensitivity::CaseSensitive
+                                   ? 0
+                                   : WM_CASEFOLD),
+                          0) == WM_MATCH;
 
       if (matched) {
         w_query_process_file(
@@ -290,7 +293,8 @@ void InMemoryView::globGeneratorTree(
     // and we don't want to preclude matching the latter.
     if (!dir->dirs.empty()) {
       // Attempt direct lookup if possible
-      if (!child_node->had_specials && ctx->query->case_sensitive) {
+      if (!child_node->had_specials &&
+          ctx->query->case_sensitive == CaseSensitivity::CaseSensitive) {
         w_string_new_len_typed_stack(
             &component,
             child_node->pattern.data(),
@@ -311,12 +315,13 @@ void InMemoryView::globGeneratorTree(
             continue;
           }
 
-          if (wildmatch(
-                  child_node->pattern.c_str(),
-                  child_dir->name.c_str(),
-                  ctx->query->glob_flags |
-                      (ctx->query->case_sensitive ? 0 : WM_CASEFOLD),
-                  0) == WM_MATCH) {
+          if (wildmatch(child_node->pattern.c_str(), child_dir->name.c_str(),
+                        ctx->query->glob_flags |
+                            (ctx->query->case_sensitive ==
+                                     CaseSensitivity::CaseSensitive
+                                 ? 0
+                                 : WM_CASEFOLD),
+                        0) == WM_MATCH) {
             globGeneratorTree(ctx, child_node.get(), child_dir);
           }
         }
@@ -326,7 +331,8 @@ void InMemoryView::globGeneratorTree(
     // If the node is a leaf we are in a position to match files.
     if (child_node->is_leaf && !dir->files.empty()) {
       // Attempt direct lookup if possible
-      if (!child_node->had_specials && ctx->query->case_sensitive) {
+      if (!child_node->had_specials &&
+          ctx->query->case_sensitive == CaseSensitivity::CaseSensitive) {
         w_string_new_len_typed_stack(
             &component,
             child_node->pattern.data(),
@@ -356,12 +362,13 @@ void InMemoryView::globGeneratorTree(
             continue;
           }
 
-          if (wildmatch(
-                  child_node->pattern.c_str(),
-                  file_name.data(),
-                  ctx->query->glob_flags |
-                      (ctx->query->case_sensitive ? WM_CASEFOLD : 0),
-                  0) == WM_MATCH) {
+          if (wildmatch(child_node->pattern.c_str(), file_name.data(),
+                        ctx->query->glob_flags |
+                            (ctx->query->case_sensitive ==
+                                     CaseSensitivity::CaseSensitive
+                                 ? WM_CASEFOLD
+                                 : 0),
+                        0) == WM_MATCH) {
             w_query_process_file(
                 ctx->query,
                 ctx,

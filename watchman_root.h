@@ -9,6 +9,7 @@
 #include "watchman_config.h"
 #include "watchman_shared_mutex.h"
 #include "watchman_synchronized.h"
+#include "FileSystem.h"
 
 #define HINT_NUM_DIRS 128*1024
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
@@ -28,7 +29,7 @@ struct watchman_client_state_assertion;
 struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   /* path to root */
   w_string root_path;
-  bool case_sensitive{false};
+  watchman::CaseSensitivity case_sensitive;
 
   /* map of rule id => struct watchman_trigger_command */
   watchman::Synchronized<

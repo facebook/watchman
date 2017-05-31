@@ -11,6 +11,7 @@
 #include <vector>
 #include "Future.h"
 #include "watchman_clockspec.h"
+#include "FileSystem.h"
 
 namespace watchman {
   struct FileInformation;
@@ -165,7 +166,7 @@ class QueryExecError : public std::runtime_error {
 };
 
 struct w_query {
-  bool case_sensitive{false};
+  watchman::CaseSensitivity case_sensitive{watchman::CaseSensitivity::CaseInSensitive};
   bool empty_on_fresh_instance{false};
   bool dedup_results{false};
 

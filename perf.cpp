@@ -12,6 +12,7 @@
 using watchman::ChildProcess;
 using Options = ChildProcess::Options;
 using Environment = ChildProcess::Environment;
+using CaseSensitivity = watchman::CaseSensitivity;
 
 namespace {
 class PerfLogThread {
@@ -113,7 +114,7 @@ void watchman_perf_sample::add_root_meta(
   auto meta = json_object(
       {{"path", w_string_to_json(root->root_path)},
        {"recrawl_count", json_integer(root->recrawlInfo.rlock()->recrawlCount)},
-       {"case_sensitive", json_boolean(root->case_sensitive)}});
+       {"case_sensitive", json_boolean(root->case_sensitive == CaseSensitivity::CaseSensitive)}});
 
   // During recrawl, the view may be re-assigned.  Protect against
   // reading a nullptr.

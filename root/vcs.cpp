@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #include "InMemoryView.h"
+using watchman::CaseSensitivity;
 
 static json_ref config_get_ignore_vcs(w_root_t* root) {
   json_ref ignores = root->config.get("ignore_vcs");
@@ -48,7 +49,8 @@ void watchman_root::applyIgnoreVCSConfiguration() {
     // While we're at it, see if we can find out where to put our
     // query cookie information
     if (cookies.cookieDir() == root_path &&
-        w_lstat(fullname.c_str(), &st, case_sensitive) == 0 &&
+        w_lstat(fullname.c_str(), &st,
+                case_sensitive == CaseSensitivity::CaseSensitive) == 0 &&
         S_ISDIR(st.st_mode)) {
       // root/{.hg,.git,.svn}
       cookies.setCookieDir(fullname);

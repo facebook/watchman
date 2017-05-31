@@ -6,10 +6,11 @@
 #include "make_unique.h"
 #include "thirdparty/wildmatch/wildmatch.h"
 #include <string>
+using watchman::CaseSensitivity;
 
 class WildMatchExpr : public QueryExpr {
   std::string pattern;
-  bool caseless;
+  CaseSensitivity caseSensitive;
   bool wholename;
   bool noescape;
   bool includedotfiles;
@@ -17,12 +18,12 @@ class WildMatchExpr : public QueryExpr {
  public:
   WildMatchExpr(
       const char* pat,
-      bool caseless,
+      CaseSensitivity caseSensitive,
       bool wholename,
       bool noescape,
       bool includedotfiles)
       : pattern(pat),
-        caseless(caseless),
+        caseSensitive(caseSensitive),
         wholename(wholename),
         noescape(noescape),
         includedotfiles(includedotfiles) {}
@@ -43,20 +44,23 @@ class WildMatchExpr : public QueryExpr {
     str = normBuf;
 #endif
 
-    res = wildmatch(
-              pattern.c_str(),
-              str.data(),
-              (includedotfiles ? 0 : WM_PERIOD) | (noescape ? WM_NOESCAPE : 0) |
-                  (wholename ? WM_PATHNAME : 0) | (caseless ? WM_CASEFOLD : 0),
-              0) == WM_MATCH;
+    res = wildmatch(pattern.c_str(), str.data(),
+                    (includedotfiles ? 0 : WM_PERIOD) |
+                        (noescape ? WM_NOESCAPE : 0) |
+                        (wholename ? WM_PATHNAME : 0) |
+                        (caseSensitive == CaseSensitivity::CaseInSensitive
+                             ? WM_CASEFOLD
+                             : 0),
+                    0) == WM_MATCH;
 
     return res;
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query*, const json_ref& term, bool caseless) {
+  parse(w_query*, const json_ref& term, CaseSensitivity case_sensitive) {
     const char *ignore, *pattern, *scope = "basename";
-    const char* which = caseless ? "imatch" : "match";
+    const char *which =
+        case_sensitive == CaseSensitivity::CaseInSensitive ? "imatch" : "match";
     int noescape = 0;
     int includedotfiles = 0;
 
@@ -83,7 +87,7 @@ class WildMatchExpr : public QueryExpr {
 
     return watchman::make_unique<WildMatchExpr>(
         pattern,
-        caseless,
+        case_sensitive,
         !strcmp(scope, "wholename"),
         noescape,
         includedotfiles);
@@ -91,12 +95,12 @@ class WildMatchExpr : public QueryExpr {
   static std::unique_ptr<QueryExpr> parseMatch(
       w_query* query,
       const json_ref& term) {
-    return parse(query, term, !query->case_sensitive);
+    return parse(query, term, query->case_sensitive);
   }
   static std::unique_ptr<QueryExpr> parseIMatch(
       w_query* query,
       const json_ref& term) {
-    return parse(query, term, true);
+    return parse(query, term, CaseSensitivity::CaseInSensitive);
   }
 };
 W_TERM_PARSER("match", WildMatchExpr::parseMatch)

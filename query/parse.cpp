@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+using CaseSensitivity = watchman::CaseSensitivity;
 
 // This can't be a simple global because other compilation units
 // may try to mutate it before this compilation unit has had its
@@ -245,13 +246,14 @@ static void parse_case_sensitive(
     w_query* res,
     const std::shared_ptr<w_root_t>& root,
     const json_ref& query) {
-  int value = root->case_sensitive;
+  int value = root->case_sensitive == CaseSensitivity::CaseSensitive;
 
   if (query && json_unpack(query, "{s?:b*}", "case_sensitive", &value) != 0) {
     throw QueryParseError("case_sensitive must be a boolean");
   }
 
-  res->case_sensitive = (bool) value;
+  res->case_sensitive = value ? CaseSensitivity::CaseSensitive
+                              : CaseSensitivity::CaseInSensitive;
 }
 
 std::shared_ptr<w_query> w_query_parse(

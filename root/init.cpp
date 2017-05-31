@@ -6,18 +6,6 @@
 #include "InMemoryView.h"
 #include "make_unique.h"
 
-static bool is_case_sensitive_filesystem(const char *path) {
-#ifdef __APPLE__
-  return pathconf(path, _PC_CASE_SENSITIVE);
-#elif defined(_WIN32)
-  unused_parameter(path);
-  return false;
-#else
-  unused_parameter(path);
-  return true;
-#endif
-}
-
 static json_ref load_root_config(const char* path) {
   char cfgfilename[WATCHMAN_NAME_MAX];
   json_error_t err;
@@ -97,7 +85,7 @@ void watchman_root::Inner::init(w_root_t* root) {
 
 watchman_root::watchman_root(const w_string& root_path)
     : root_path(root_path),
-      case_sensitive(is_case_sensitive_filesystem(root_path.c_str())),
+      case_sensitive(watchman::getCaseSensitivityForPath(root_path.c_str())),
       cookies(root_path),
       config_file(load_root_config(root_path.c_str())),
       config(config_file),

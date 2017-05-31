@@ -53,7 +53,8 @@ void InMemoryView::statPath(
     err = 0;
   } else {
     struct stat struct_stat;
-    res = w_lstat(path, &struct_stat, root->case_sensitive);
+    res = w_lstat(path, &struct_stat,
+                  root->case_sensitive == CaseSensitivity::CaseSensitive);
     err = res == 0 ? 0 : errno;
     w_log(W_LOG_DBG, "w_lstat(%s) file=%p dir=%p res=%d %s\n",
         path, file, dir_ent, res, strerror(err));
@@ -103,7 +104,8 @@ void InMemoryView::statPath(
       markFileChanged(view, file, now);
     }
 
-    if (!root->case_sensitive && !w_string_equal(dir_name, root->root_path) &&
+    if (root->case_sensitive == CaseSensitivity::CaseInSensitive &&
+        !w_string_equal(dir_name, root->root_path) &&
         parentDir->last_check_existed) {
       /* If we rejected the name because it wasn't canonical,
        * we need to ensure that we look in the parent dir to discover

@@ -27,6 +27,21 @@ using FileHandleType = FileDescriptor;
 using FileHandleType = Win32Handle;
 #endif
 
+enum class CaseSensitivity {
+  // The caller knows that the filesystem path(s) in question are
+  // case insensitive.
+  CaseInSensitive,
+  // The caller knows that the filesystem path(s) in question are
+  // case sensitive.
+  CaseSensitive,
+  // The caller does not know if the path(s) are case sensitive
+  Unknown,
+};
+
+/** Returns CaseSensitive or CaseInSensitive depending on the
+ * case sensitivity of the input path. */
+CaseSensitivity getCaseSensitivityForPath(const char *path);
+
 /** Windows doesn't have equivalent bits for all of the various
  * open(2) flags, so we abstract it out here */
 struct OpenFileHandleOptions {

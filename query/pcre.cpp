@@ -6,6 +6,9 @@
 #include "make_unique.h"
 
 #ifdef HAVE_PCRE_H
+
+using watchman::CaseSensitivity;
+
 class PcreExpr : public QueryExpr {
   pcre *re;
   pcre_extra *extra;
@@ -47,9 +50,10 @@ class PcreExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr>
-  parse(w_query*, const json_ref& term, bool caseless) {
+  parse(w_query*, const json_ref& term, CaseSensitivity caseSensitive) {
     const char *ignore, *pattern, *scope = "basename";
-    const char* which = caseless ? "ipcre" : "pcre";
+    const char *which =
+        caseSensitive == CaseSensitivity::CaseInSensitive ? "ipcre" : "pcre";
     pcre* re;
     const char* errptr = nullptr;
     int erroff = 0;
@@ -68,7 +72,7 @@ class PcreExpr : public QueryExpr {
 
     re = pcre_compile2(
         pattern,
-        caseless ? PCRE_CASELESS : 0,
+        caseSensitive == CaseSensitivity::CaseInSensitive ? PCRE_CASELESS : 0,
         &errcode,
         &errptr,
         &erroff,
@@ -93,12 +97,12 @@ class PcreExpr : public QueryExpr {
   static std::unique_ptr<QueryExpr> parsePcre(
       w_query* query,
       const json_ref& term) {
-    return parse(query, term, !query->case_sensitive);
+    return parse(query, term, query->case_sensitive);
   }
   static std::unique_ptr<QueryExpr> parseIPcre(
       w_query* query,
       const json_ref& term) {
-    return parse(query, term, true);
+    return parse(query, term, CaseSensitivity::CaseInSensitive);
   }
 };
 W_TERM_PARSER("pcre", PcreExpr::parsePcre)
