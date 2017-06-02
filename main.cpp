@@ -914,7 +914,13 @@ static json_ref build_command(int argc, char** argv) {
     }
 
     if (!cmd) {
-      fprintf(stderr, "failed to parse command from stdin: %s\n",
+      fprintf(
+          stderr,
+          "failed to parse command from stdin: "
+          "line %d, column %d, position %d: %s\n",
+          err.line,
+          err.column,
+          err.position,
           err.text);
       exit(1);
     }

@@ -214,7 +214,6 @@ win_handle::~win_handle() {
       struct write_buf* b = write_head;
       write_head = b->next;
 
-      free(b->data);
       free(b);
     }
   }

@@ -94,7 +94,7 @@ json_ref watchman_json_buffer::readJsonPrettyPdu(
   nl = buf + wpos;
   r = (int)(nl - (buf + rpos));
   res = json_loadb(buf + rpos, r, 0, jerr);
-  if (!res) {
+  while (!res) {
     // Maybe we can fill more data into the buffer and retry?
     if (!fillBuffer(stm)) {
       // No, then error is terminal
@@ -194,7 +194,6 @@ json_ref watchman_json_buffer::readBserPdu(
   json_int_t val;
   json_int_t bser_capabilities;
   uint32_t ideal;
-  json_int_t need;
   int r;
   json_ref obj;
 
@@ -207,10 +206,9 @@ json_ref watchman_json_buffer::readBserPdu(
   }
 
   // val tells us exactly how much storage we need for this PDU
-  need = val - (allocd - wpos);
-  if (need > 0) {
+  if (val > allocd - wpos) {
     ideal = allocd;
-    while (ideal < (uint32_t)need) {
+    while ((ideal - wpos) < (uint32_t)val) {
       ideal *= 2;
     }
     if (ideal > allocd) {
@@ -232,8 +230,16 @@ json_ref watchman_json_buffer::readBserPdu(
   while ((wpos - rpos) < val) {
     r = stm->read(buf + wpos, allocd - wpos);
     if (r <= 0) {
-      snprintf(jerr->text, sizeof(jerr->text),
-          "error reading PDU: %s",
+      jerr->position = wpos - rpos;
+      snprintf(
+          jerr->text,
+          sizeof(jerr->text),
+          "error reading %" PRIu32 " bytes val=%" PRIu64
+          " wpos=%" PRIu32 " rpos=%" PRIu32 " for PDU: %s",
+          uint32_t(allocd - wpos),
+          int64_t(val),
+          wpos,
+          rpos,
           strerror(errno));
       return nullptr;
     }
