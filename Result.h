@@ -182,9 +182,27 @@ class Result {
   }
 
   // If Result does not contain a valid Value, throw a logic error.
-  // This variant is used when Error is not std::exception_ptr.
+  // This variant is used when Error is std::error_code.
   template <typename E = Error>
-  typename std::enable_if<!std::is_same<E, std::exception_ptr>::value>::type
+  typename std::enable_if<std::is_same<E, std::error_code>::value>::type
+  throwIfError() const {
+    switch (state_) {
+      case State::kVALUE:
+        return;
+      case State::kEMPTY:
+        throw std::logic_error("Uninitialized Result");
+      case State::kERROR:
+        throw std::system_error(error_);
+    }
+  }
+
+  // If Result does not contain a valid Value, throw a logic error.
+  // This variant is used when Error is not std::exception_ptr or
+  // std::error_code.
+  template <typename E = Error>
+  typename std::enable_if<
+      !std::is_same<E, std::exception_ptr>::value &&
+      !std::is_same<E, std::error_code>::value>::type
   throwIfError() const {
     switch (state_) {
       case State::kVALUE:

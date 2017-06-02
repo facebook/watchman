@@ -7,13 +7,25 @@
 
 namespace watchman {
 
-#ifdef _WIN32
-static inline int pipe(int fd[2]) {
-  return _pipe(fd, 64 * 1024, O_BINARY);
-}
-#endif
-
 Pipe::Pipe() {
+#ifdef _WIN32
+  HANDLE readPipe;
+  HANDLE writePipe;
+  SECURITY_ATTRIBUTES sec;
+
+  memset(&sec, 0, sizeof(sec));
+  sec.nLength = sizeof(sec);
+  sec.bInheritHandle = FALSE; // O_CLOEXEC equivalent
+  constexpr DWORD kPipeSize = 64 * 1024;
+
+  if (!CreatePipe(&readPipe, &writePipe, &sec, kPipeSize)) {
+    throw std::system_error(
+        GetLastError(), std::system_category(), "CreatePipe failed");
+  }
+  read = Win32Handle(intptr_t(readPipe));
+  write = Win32Handle(intptr_t(writePipe));
+
+#else
   int fds[2];
   int res;
 #if HAVE_PIPE2
@@ -36,6 +48,7 @@ Pipe::Pipe() {
   read.setNonBlock();
   write.setCloExec();
   write.setNonBlock();
+#endif
 #endif
 }
 }

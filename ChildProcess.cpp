@@ -172,6 +172,10 @@ void ChildProcess::Options::dup2(int fd, int targetFd) {
   }
 }
 
+void ChildProcess::Options::dup2(const FileDescriptor& fd, int targetFd) {
+  dup2(fd.fd(), targetFd);
+}
+
 #ifdef _WIN32
 void ChildProcess::Options::dup2(intptr_t handle, int targetFd) {
   auto err = posix_spawn_file_actions_adddup2_handle_np(
@@ -182,6 +186,10 @@ void ChildProcess::Options::dup2(intptr_t handle, int targetFd) {
         std::generic_category(),
         "posix_spawn_file_actions_adddup2_handle_np");
   }
+}
+
+void ChildProcess::Options::dup2(const Win32Handle& handle, int targetFd) {
+  dup2(handle.handle(), targetFd);
 }
 #endif
 
@@ -205,10 +213,13 @@ void ChildProcess::Options::pipe(int targetFd, bool childRead) {
 
   auto result = pipes_.emplace(std::make_pair(targetFd, make_unique<Pipe>()));
   auto pipe = result.first->second.get();
+
+#ifndef _WIN32
   pipe->read.clearNonBlock();
   pipe->write.clearNonBlock();
+#endif
 
-  dup2(childRead ? pipe->read.fd() : pipe->write.fd(), targetFd);
+  dup2(childRead ? pipe->read : pipe->write, targetFd);
 }
 
 void ChildProcess::Options::pipeStdin() {
@@ -578,17 +589,18 @@ Future<w_string> ChildProcess::readPipe(int fd) {
       auto& pipe = pipes_[fd];
       while (true) {
         char buf[4096];
-        auto x = read(pipe->read.fd(), buf, sizeof(buf));
-        if (x == 0) {
+        auto readResult = pipe->read.read(buf, sizeof(buf));
+        if (readResult.hasError()) {
+          p->setException(
+              std::make_exception_ptr(std::system_error(readResult.error())));
+          return;
+        }
+        auto len = readResult.value();
+        if (len == 0) {
           // all done
           break;
         }
-        if (x == -1) {
-          p->setException(std::make_exception_ptr(std::system_error(
-              errno, std::generic_category(), "reading from child process")));
-          return;
-        }
-        result.append(buf, x);
+        result.append(buf, len);
       }
       p->setValue(w_string(result.data(), result.size()));
     } catch (const std::exception& exc) {
