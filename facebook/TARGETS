@@ -1,34 +1,34 @@
 python_binary(
-  name='watchman-diag',
-  srcs={'watchman-diag': 'watchman_diag.py'},
-  main_module='watchman_diag',
-  base_module='',
-  py_version='<3',
-  deps=['@/watchman/python/pywatchman:pywatchman'],
+    name = "watchman-diag",
+    srcs = {"watchman-diag": "watchman_diag.py"},
+    base_module = "",
+    main_module = "watchman_diag",
+    py_version = "<3",
+    deps = ["@/watchman/python/pywatchman:pywatchman"],
 )
 
 # XXX for some reason this hangs as soon as it tries to start the Python
 # subprocess. Not clear why -- runtests-py3 works, though.
 python_binary(
-    name='runtests',
-    srcs=['runtests_wrapper.py'],
-    main_module='watchman.facebook.runtests_wrapper',
-    py_version='<3',
-    deps=[
-        '@/libfb/py:pathutils',
-        '@/watchman/python/pywatchman:pywatchman',
-        '@/watchman:runtests',
+    name = "runtests",
+    srcs = ["runtests_wrapper.py"],
+    main_module = "watchman.facebook.runtests_wrapper",
+    py_version = "<3",
+    deps = [
+        "@/libfb/py:pathutils",
+        "@/watchman:runtests",
+        "@/watchman/python/pywatchman:pywatchman",
     ],
 )
 
 python_binary(
-    name='runtests-py3',
-    srcs=['runtests_wrapper.py'],
-    main_module='watchman.facebook.runtests_wrapper',
-    py_version='>=3.5',
-    deps=[
-        '@/libfb/py:pathutils',
-        '@/watchman/python/pywatchman:pywatchman',
-        '@/watchman:runtests-py3',
+    name = "runtests-py3",
+    srcs = ["runtests_wrapper.py"],
+    main_module = "watchman.facebook.runtests_wrapper",
+    py_version = ">=3.5",
+    deps = [
+        "@/libfb/py:pathutils",
+        "@/watchman:runtests-py3",
+        "@/watchman/python/pywatchman:pywatchman",
     ],
 )

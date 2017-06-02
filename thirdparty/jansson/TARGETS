@@ -1,49 +1,49 @@
 buck_genrule(
-  name='generate_config_h',
-  srcs=[
-    'jansson_config.h.in',
-  ],
-  cmd='cp $SRCDIR/jansson_config.h.in $OUT',
-  out='jansson_config.h',
+    name = "generate_config_h",
+    srcs = [
+        "jansson_config.h.in",
+    ],
+    out = "jansson_config.h",
+    cmd = "cp $SRCDIR/jansson_config.h.in $OUT",
 )
 
 buck_cxx_library(
-  name='config_h',
-  exported_headers=[
-    ':generate_config_h',
-  ],
-  header_namespace="",
-  visibility=["PUBLIC"],
+    name = "config_h",
+    header_namespace = "",
+    exported_headers = [
+        ":generate_config_h",
+    ],
+    visibility = ["PUBLIC"],
 )
 
 cpp_library(
-    name='utf',
-    srcs=['utf.cpp'],
-    deps=[':config_h'],
-    headers=['utf.h'],
+    name = "utf",
+    srcs = ["utf.cpp"],
+    headers = ["utf.h"],
+    deps = [":config_h"],
 )
 
 cpp_library(
-    name='jansson',
-    srcs=[
-        'dump.cpp',
-        'error.cpp',
-        'load.cpp',
-        'memory.cpp',
-        'pack_unpack.cpp',
-        'strbuffer.cpp',
-        'strconv.cpp',
-        'value.cpp',
+    name = "jansson",
+    srcs = [
+        "dump.cpp",
+        "error.cpp",
+        "load.cpp",
+        "memory.cpp",
+        "pack_unpack.cpp",
+        "strbuffer.cpp",
+        "strconv.cpp",
+        "value.cpp",
     ],
-    deps=[
-        ':config_h',
-        ':utf',
-        '@/watchman:headers',
-        '@/watchman:string',
+    headers = [
+        "jansson.h",
+        "jansson_private.h",
+        "strbuffer.h",
     ],
-    headers=[
-        'jansson.h',
-        'jansson_private.h',
-        'strbuffer.h',
+    deps = [
+        ":config_h",
+        ":utf",
+        "@/watchman:headers",
+        "@/watchman:string",
     ],
 )

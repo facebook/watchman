@@ -2,7 +2,10 @@
 # we need to preserve how things build in the autoconf and windows
 # builds for watchman.
 
-compiler_flags=["-Wunused-variable", '-DWATCHMAN_FACEBOOK_INTERNAL']
+compiler_flags = [
+    "-Wunused-variable",
+    "-DWATCHMAN_FACEBOOK_INTERNAL",
+]
 
 # Generates 'config.h' by probing for system capabilities
 def prober():
@@ -58,201 +61,235 @@ config_h()
 # Wraps the generated config.h file in a library rule that we can
 # depend upon.
 buck_cxx_library(
-    name='config_h',
-    exported_headers=[
-        ':generate_config_h',
+    name = "config_h",
+    header_namespace = "",
+    exported_headers = [
+        ":generate_config_h",
     ],
-    header_namespace="",
-    visibility=["PUBLIC"],
+    visibility = ["PUBLIC"],
 )
 
 # Exports all watchman headers without the 'watchman/' prefix that
 # they would otherwise have in our build tree.
 buck_cxx_library(
-    name='headers',
-    exported_headers=glob(['**/*.h']),
-    header_namespace="",
-    visibility=["PUBLIC"],
-    exported_deps=[
-        ':config_h',
-        '//watchman/thirdparty/jansson:config_h',
-        '//common/base:build_info',
+    name = "headers",
+    header_namespace = "",
+    exported_headers = glob(["**/*.h"]),
+    exported_deps = [
+        ":config_h",
+        "//common/base:build_info",
+        "//watchman/thirdparty/jansson:config_h",
     ],
+    visibility = ["PUBLIC"],
 )
 
 cpp_library(
-    name='eden_watcher',
-    supported_platforms_regex='glibc',
-    srcs=[
-      'watcher/eden.cpp',
+    name = "eden_watcher",
+    srcs = [
+        "watcher/eden.cpp",
     ],
-    deps=[
-      ':headers',
-      ':err',
-      '@/eden/fs/service:thrift-streaming-cpp2',
-    ],
+    compiler_flags = compiler_flags,
     # We use constructors to declare commands rather than maintaining
     # static tables of things.  Ensure that they don't get stripped
     # out of the final binary!
-    link_whole=True,
-    compiler_flags=compiler_flags,
+    link_whole = True,
+    supported_platforms_regex = "glibc",
+    deps = [
+        ":err",
+        ":headers",
+        "@/eden/fs/service:thrift-streaming-cpp2",
+    ],
 )
 
 # Linux specific watcher module
 cpp_library(
-    name='sysdep_watcher',
-    supported_platforms_regex='glibc',
-    srcs=['watcher/inotify.cpp'],
-    deps=[':headers', ':err', ':eden_watcher'],
+    name = "sysdep_watcher",
+    srcs = ["watcher/inotify.cpp"],
+    compiler_flags = compiler_flags,
     # We use constructors to declare commands rather than maintaining
     # static tables of things.  Ensure that they don't get stripped
     # out of the final binary!
-    link_whole=True,
-    compiler_flags=compiler_flags,
+    link_whole = True,
+    supported_platforms_regex = "glibc",
+    deps = [
+        ":eden_watcher",
+        ":err",
+        ":headers",
+    ],
 )
 
 # mac specific watcher module
 cpp_library(
-    name='sysdep_watcher',
-    supported_platforms_regex='macos',
-    srcs=['watcher/fsevents.cpp', 'watcher/kqueue.cpp'],
-    deps=[':headers'],
+    name = "sysdep_watcher",
+    srcs = [
+        "watcher/fsevents.cpp",
+        "watcher/kqueue.cpp",
+    ],
+    compiler_flags = compiler_flags,
     # We use constructors to declare commands rather than maintaining
     # static tables of things.  Ensure that they don't get stripped
     # out of the final binary!
-    link_whole=True,
-    compiler_flags=compiler_flags,
+    link_whole = True,
+    supported_platforms_regex = "macos",
+    deps = [":headers"],
 )
 
 # windows specific watcher module
 cpp_library(
-    name='sysdep_watcher',
-    supported_platforms_regex='windows',
-    srcs=['watcher/win32.cpp'],
-    deps=[':headers'],
+    name = "sysdep_watcher",
+    srcs = ["watcher/win32.cpp"],
+    compiler_flags = compiler_flags,
     # We use constructors to declare commands rather than maintaining
     # static tables of things.  Ensure that they don't get stripped
     # out of the final binary!
-    link_whole=True,
-    compiler_flags=compiler_flags,
-)
-
-cpp_library(name="log",
-            compiler_flags=compiler_flags,
-            srcs=["log.cpp", "PubSub.cpp"],
-            deps=[
-                ':headers',
-                '@/watchman/thirdparty/jansson:jansson',
-            ], )
-
-cpp_library(name='hash',
-            compiler_flags=compiler_flags,
-            srcs=['hash.cpp'],
-            deps=[':headers'], )
-
-cpp_library(name="string",
-            compiler_flags=compiler_flags,
-            srcs=["string.cpp"],
-            deps=[':headers', ':hash', '@/watchman/thirdparty/jansson:utf'],
-            )
-
-cpp_library(
-    name="err",
-    compiler_flags=compiler_flags,
-    srcs=["root/warnerr.cpp", "root/poison.cpp"],
-    deps=[':headers'],
+    link_whole = True,
+    supported_platforms_regex = "windows",
+    deps = [":headers"],
 )
 
 cpp_library(
-    name='pcre',
-    srcs=['query/pcre.cpp'],
-    deps=[':headers'],
-    compiler_flags=['-DHAVE_PCRE_H']+compiler_flags,
-    external_deps=['pcre'],
-    link_whole=True,
-)
-
-cpp_library(
-    name='testsupport',
-    compiler_flags=compiler_flags,
-    srcs=[
-        'bser.cpp',
-        'cfg.cpp',
-        'expflags.cpp',
-        'ignore.cpp',
-        'opendir.cpp',
-        'pending.cpp',
-        'time.cpp',
-        'ChildProcess.cpp',
-        'Pipe.cpp',
-        'FileDescriptor.cpp',
-        'FileInformation.cpp',
-        'ThreadPool.cpp',
+    name = "log",
+    srcs = [
+        "PubSub.cpp",
+        "log.cpp",
     ],
-    deps=[
-        ':headers',
-        ':log',
-        ':string',
-        '@/watchman/thirdparty/jansson:jansson',
-        '@/watchman/thirdparty/libart/src:art',
+    compiler_flags = compiler_flags,
+    deps = [
+        ":headers",
+        "@/watchman/thirdparty/jansson:jansson",
+    ],
+)
+
+cpp_library(
+    name = "hash",
+    srcs = ["hash.cpp"],
+    compiler_flags = compiler_flags,
+    deps = [":headers"],
+)
+
+cpp_library(
+    name = "string",
+    srcs = ["string.cpp"],
+    compiler_flags = compiler_flags,
+    deps = [
+        ":hash",
+        ":headers",
+        "@/watchman/thirdparty/jansson:utf",
+    ],
+)
+
+cpp_library(
+    name = "err",
+    srcs = [
+        "root/poison.cpp",
+        "root/warnerr.cpp",
+    ],
+    compiler_flags = compiler_flags,
+    deps = [":headers"],
+)
+
+cpp_library(
+    name = "pcre",
+    srcs = ["query/pcre.cpp"],
+    compiler_flags = ["-DHAVE_PCRE_H"] + compiler_flags,
+    link_whole = True,
+    deps = [":headers"],
+    external_deps = ["pcre"],
+)
+
+cpp_library(
+    name = "testsupport",
+    srcs = [
+        "ChildProcess.cpp",
+        "FileDescriptor.cpp",
+        "FileInformation.cpp",
+        "Pipe.cpp",
+        "ThreadPool.cpp",
+        "bser.cpp",
+        "cfg.cpp",
+        "expflags.cpp",
+        "ignore.cpp",
+        "opendir.cpp",
+        "pending.cpp",
+        "time.cpp",
+    ],
+    compiler_flags = compiler_flags,
+    deps = [
+        ":headers",
+        ":log",
+        ":string",
+        "@/watchman/thirdparty/jansson:jansson",
+        "@/watchman/thirdparty/libart/src:art",
     ],
 )
 
 # The bulk of the watchman implementation lives in this library
 cpp_library(
-    name="watchmanlib",
-    compiler_flags=compiler_flags,
-    srcs=glob([
-        "*.cpp",
-        "query/*.cpp",
-        "watcher/auto.cpp",
-        "root/*.cpp",
-        "cmds/*.cpp",
-        "scm/*.cpp"],
-        excludes=[
-            'main.cpp', 'stream_win.cpp', 'log.cpp', 'query/pcre.cpp', 'root/warnerr.cpp',
-            'root/poison.cpp'
-        ]
+    name = "watchmanlib",
+    srcs = glob(
+        [
+            "*.cpp",
+            "query/*.cpp",
+            "watcher/auto.cpp",
+            "root/*.cpp",
+            "cmds/*.cpp",
+            "scm/*.cpp",
+        ],
+        excludes = [
+            "main.cpp",
+            "stream_win.cpp",
+            "log.cpp",
+            "query/pcre.cpp",
+            "root/warnerr.cpp",
+            "root/poison.cpp",
+        ],
     ),
+    compiler_flags = compiler_flags,
     # We use constructors to declare commands rather than maintaining
     # static tables of things.  Ensure that they don't get stripped
     # out of the final binary!
-    link_whole=True,
-    deps=[
-        ':headers',
-        '@/watchman/thirdparty/jansson:jansson',
-        '@/watchman/thirdparty/libart/src:art',
-        '@/watchman/thirdparty/wildmatch:wildmatch',
-        ':sysdep_watcher',
-        ':log',
-        ':pcre',
-        ':string',
-        ':err',
+    link_whole = True,
+    deps = [
+        ":err",
+        ":headers",
+        ":log",
+        ":pcre",
+        ":string",
+        ":sysdep_watcher",
+        "@/watchman/thirdparty/jansson:jansson",
+        "@/watchman/thirdparty/libart/src:art",
+        "@/watchman/thirdparty/wildmatch:wildmatch",
     ],
 )
 
 # and the watchman binary itself
 cpp_binary(
-    name="watchman",
-    compiler_flags=compiler_flags,
-    srcs=["main.cpp"],
-    deps=[
-        ':headers',
-        ':watchmanlib',
-    ]
+    name = "watchman",
+    srcs = ["main.cpp"],
+    compiler_flags = compiler_flags,
+    deps = [
+        ":headers",
+        ":watchmanlib",
+    ],
 )
 
 # This is the custom test runner used by the open source build.
 python_library(
-    name='runtests',
-    srcs=['runtests.py'],
-    deps=['@/watchman/tests/integration:testlib', ':watchman'],
-    py_version='<3',
+    name = "runtests",
+    srcs = ["runtests.py"],
+    py_version = "<3",
+    deps = [
+        ":watchman",
+        "@/watchman/tests/integration:testlib",
+    ],
 )
 
 python_library(
-    name='runtests-py3',
-    srcs=['runtests.py'],
-    deps=['@/watchman/tests/integration:testlib-py3', ':watchman'],
-    py_version='>=3.5',
+    name = "runtests-py3",
+    srcs = ["runtests.py"],
+    py_version = ">=3.5",
+    deps = [
+        ":watchman",
+        "@/watchman/tests/integration:testlib-py3",
+    ],
 )

@@ -1,14 +1,15 @@
 cpp_python_extension(
-  name='bser',
-  base_module='pywatchman',
-  # https://osdir.com/ml/python.cython.devel/2008-04/msg00080.html
-  # This triggers for us calling Py_INCREF(Py_True)
-  compiler_flags=['-fno-strict-aliasing'],
-  srcs=['bser.c'],
+    name = "bser",
+    srcs = ["bser.c"],
+    base_module = "pywatchman",
+    # https://osdir.com/ml/python.cython.devel/2008-04/msg00080.html
+    # This triggers for us calling Py_INCREF(Py_True)
+    compiler_flags = ["-fno-strict-aliasing"],
 )
+
 python_library(
-  name='pywatchman',
-  srcs=glob(['*.py']),
-  base_module='pywatchman',
-  deps=[':bser'],
+    name = "pywatchman",
+    srcs = glob(["*.py"]),
+    base_module = "pywatchman",
+    deps = [":bser"],
 )
