@@ -2,8 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-#include "Win32Handle.h"
-using watchman::Win32Handle;
+#include "FileDescriptor.h"
+using watchman::FileDescriptor;
 
 char *realpath(const char *filename, char *target) {
   std::wstring wchar;
@@ -28,7 +28,7 @@ char *realpath(const char *filename, char *target) {
     auto wfilename = w_string_piece(filename, filename_len).asWideUNC();
 
     func_name = "CreateFileW";
-    Win32Handle h(intptr_t(CreateFileW(
+    FileDescriptor h(intptr_t(CreateFileW(
         wfilename.c_str(),
         0 /* query metadata */,
         FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,

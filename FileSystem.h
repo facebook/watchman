@@ -3,7 +3,6 @@
 #pragma once
 #include "FileInformation.h"
 #include "FileDescriptor.h"
-#include "Win32Handle.h"
 #include "Result.h"
 
 /** This header defines platform independent helper functions for
@@ -20,12 +19,6 @@
  */
 
 namespace watchman {
-
-#ifndef _WIN32
-using FileHandleType = FileDescriptor;
-#else
-using FileHandleType = Win32Handle;
-#endif
 
 enum class CaseSensitivity {
   // The caller knows that the filesystem path(s) in question are
@@ -86,8 +79,9 @@ struct OpenFileHandleOptions {
 /** equivalent to open(2)
  * This function is not intended to be used to create files,
  * just to open a file handle to query its metadata */
-FileHandleType openFileHandle(const char *path,
-                              const OpenFileHandleOptions &opts);
+FileDescriptor openFileHandle(
+    const char* path,
+    const OpenFileHandleOptions& opts);
 
 /** equivalent to lstat(2), but performs strict name checking */
 FileInformation

@@ -17,7 +17,7 @@
 #ifdef __linux__
 #include <linux/magic.h>
 #endif
-#include "Win32Handle.h"
+#include "FileDescriptor.h"
 
 // The primary purpose of checking the filesystem type is to prevent
 // watching filesystems that are known to be problematic, such as
@@ -75,7 +75,7 @@ w_string w_fstype(const char *path)
 #ifdef _WIN32
   auto wpath = w_string_piece(path).asWideUNC();
   WCHAR fstype[MAX_PATH + 1];
-  watchman::Win32Handle h(intptr_t(CreateFileW(
+  watchman::FileDescriptor h(intptr_t(CreateFileW(
       wpath.c_str(),
       GENERIC_READ,
       FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,

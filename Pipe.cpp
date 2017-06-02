@@ -22,8 +22,8 @@ Pipe::Pipe() {
     throw std::system_error(
         GetLastError(), std::system_category(), "CreatePipe failed");
   }
-  read = Win32Handle(intptr_t(readPipe));
-  write = Win32Handle(intptr_t(writePipe));
+  read = FileDescriptor(intptr_t(readPipe));
+  write = FileDescriptor(intptr_t(writePipe));
 
 #else
   int fds[2];

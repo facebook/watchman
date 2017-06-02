@@ -2,19 +2,39 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
 
+using watchman::FileDescriptor;
+
 namespace {
 class StdioStream : public watchman_stream {
-  int fd;
+  const FileDescriptor& fd_;
 
  public:
-  explicit StdioStream(int fd) : fd(fd) {}
+  explicit StdioStream(const FileDescriptor& fd) : fd_(fd) {}
 
   int read(void* buf, int size) override {
-    return ::read(fd, buf, size);
+    auto result = fd_.read(buf, size);
+    if (result.hasError()) {
+      errno = result.error().value();
+#ifdef _WIN32
+      // TODO: propagate Result<int, std::error_code> as return type
+      errno = map_win32_err(errno);
+#endif
+      return -1;
+    }
+    return result.value();
   }
 
   int write(const void* buf, int size) override {
-    return ::write(fd, buf, size);
+    auto result = fd_.write(buf, size);
+    if (result.hasError()) {
+      errno = result.error().value();
+#ifdef _WIN32
+      // TODO: propagate Result<int, std::error_code> as return type
+      errno = map_win32_err(errno);
+#endif
+      return -1;
+    }
+    return result.value();
   }
 
   w_evt_t getEvents() override {
@@ -40,25 +60,18 @@ class StdioStream : public watchman_stream {
     return 0;
   }
 
-#ifndef _WIN32
-  int getFileDescriptor() const override {
-    return fd;
+  const watchman::FileDescriptor& getFileDescriptor() const override {
+    return fd_;
   }
-#else
-  intptr_t getWindowsHandle() const override {
-    return _get_osfhandle(fd);
-  }
-#endif
 };
-
-StdioStream stdoutStream(STDOUT_FILENO);
-StdioStream stdinStream(STDIN_FILENO);
 }
 
 w_stm_t w_stm_stdout(void) {
+  static StdioStream stdoutStream(FileDescriptor::stdOut());
   return &stdoutStream;
 }
 
 w_stm_t w_stm_stdin(void) {
+  static StdioStream stdinStream(FileDescriptor::stdIn());
   return &stdinStream;
 }

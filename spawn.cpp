@@ -6,6 +6,7 @@
 #include "watchman.h"
 
 using watchman::ChildProcess;
+using watchman::FileDescriptor;
 using Options = watchman::ChildProcess::Options;
 using Environment = watchman::ChildProcess::Environment;
 
@@ -185,24 +186,18 @@ static void spawn_command(
 #endif
   opts.setFlags(POSIX_SPAWN_SETPGROUP);
 
-  opts.dup2(
-#ifndef _WIN32
-      stdin_file->getFileDescriptor(),
-#else
-      stdin_file->getWindowsHandle(),
-#endif
-      STDIN_FILENO);
+  opts.dup2(stdin_file->getFileDescriptor(), STDIN_FILENO);
 
   if (cmd->stdout_name) {
     opts.open(STDOUT_FILENO, cmd->stdout_name, cmd->stdout_flags, 0666);
   } else {
-    opts.dup2(STDOUT_FILENO, STDOUT_FILENO);
+    opts.dup2(FileDescriptor::stdOut(), STDOUT_FILENO);
   }
 
   if (cmd->stderr_name) {
     opts.open(STDOUT_FILENO, cmd->stderr_name, cmd->stderr_flags, 0666);
   } else {
-    opts.dup2(STDERR_FILENO, STDERR_FILENO);
+    opts.dup2(FileDescriptor::stdErr(), STDERR_FILENO);
   }
 
   // Figure out the appropriate cwd

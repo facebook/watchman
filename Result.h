@@ -3,6 +3,7 @@
 #pragma once
 #include <exception>
 #include <stdexcept>
+#include <system_error>
 #include <type_traits>
 
 namespace watchman {

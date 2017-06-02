@@ -1,49 +1,23 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #ifdef _WIN32
-#include "Win32Handle.h"
+#include "watchman_system.h"
+#include "FileDescriptor.h"
+#include "FileSystem.h"
 #include "WinIoCtl.h"
 #include "watchman.h"
-#include "FileSystem.h"
 #include "watchman_scopeguard.h"
+
+// TODO: migrate the contents of this file into FileDescriptor.cpp.
+// I'm holding off on this until the current stack of diffs
+// has landed to minimize headaches with bubbling up changes
+// from earlier in the stack as review comments are surfaced.
 
 namespace watchman {
 
-Win32Handle::~Win32Handle() {
-  close();
-}
-
-Win32Handle::Win32Handle(intptr_t h) : h_(h) {
-  // Normalize to a single invalid value for validity checks
-  if (h_ == intptr_t(INVALID_HANDLE_VALUE)) {
-    h_ = 0;
-  }
-}
-
-Win32Handle::Win32Handle(Win32Handle&& other) noexcept : h_(other.release()) {}
-
-Win32Handle& Win32Handle::operator=(Win32Handle&& other) noexcept {
-  close();
-  h_ = other.h_;
-  other.h_ = 0;
-  return *this;
-}
-
-void Win32Handle::close() {
-  if (h_) {
-    CloseHandle((HANDLE)h_);
-    h_ = 0;
-  }
-}
-
-intptr_t Win32Handle::release() {
-  intptr_t res = h_;
-  h_ = 0;
-  return res;
-}
-
-Win32Handle openFileHandle(const char *path,
-                           const OpenFileHandleOptions &opts) {
+FileDescriptor openFileHandle(
+    const char* path,
+    const OpenFileHandleOptions& opts) {
   DWORD access = 0, share = 0, create = 0, attrs = 0;
   DWORD err;
   SECURITY_ATTRIBUTES sec;
@@ -92,7 +66,7 @@ Win32Handle openFileHandle(const char *path,
     attrs |= FILE_FLAG_OPEN_REPARSE_POINT;
   }
 
-  Win32Handle h(intptr_t(
+  FileDescriptor h(intptr_t(
       CreateFileW(wpath.c_str(), access, share, &sec, create, attrs, nullptr)));
   err = GetLastError();
 
@@ -120,7 +94,7 @@ Win32Handle openFileHandle(const char *path,
   return h;
 }
 
-FileInformation Win32Handle::getInfo() const {
+FileInformation FileDescriptor::getInfo() const {
   FILE_BASIC_INFO binfo;
   FILE_STANDARD_INFO sinfo;
 
@@ -152,11 +126,11 @@ FileInformation Win32Handle::getInfo() const {
   return info;
 }
 
-w_string Win32Handle::getOpenedPath() const {
+w_string FileDescriptor::getOpenedPath() const {
   std::wstring wchar;
   wchar.resize(WATCHMAN_NAME_MAX);
   auto len = GetFinalPathNameByHandleW(
-      (HANDLE)h_,
+      (HANDLE)fd_,
       &wchar[0],
       wchar.size(),
       FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
@@ -166,10 +140,7 @@ w_string Win32Handle::getOpenedPath() const {
     // Grow it
     wchar.resize(len);
     len = GetFinalPathNameByHandleW(
-        (HANDLE)h_,
-        &wchar[0],
-        len,
-        FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+        (HANDLE)fd_, &wchar[0], len, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
     err = GetLastError();
   }
 
@@ -213,7 +184,7 @@ struct REPARSE_DATA_BUFFER {
 };
 }
 
-w_string Win32Handle::readSymbolicLink() const {
+w_string FileDescriptor::readSymbolicLink() const {
   DWORD len = 64 * 1024;
   auto buf = malloc(len);
   if (!buf) {
@@ -226,7 +197,7 @@ w_string Win32Handle::readSymbolicLink() const {
   USHORT targetlen;
 
   auto result = DeviceIoControl(
-      (HANDLE)h_,
+      (HANDLE)fd_,
       FSCTL_GET_REPARSE_POINT,
       nullptr,
       0,
@@ -246,7 +217,7 @@ w_string Win32Handle::readSymbolicLink() const {
     }
 
     result = DeviceIoControl(
-        (HANDLE)h_,
+        (HANDLE)fd_,
         FSCTL_GET_REPARSE_POINT,
         nullptr,
         0,
@@ -289,19 +260,19 @@ w_string readSymbolicLink(const char* path) {
       .readSymbolicLink();
 }
 
-Result<int, std::error_code> Win32Handle::read(void* buf, int size) const {
+Result<int, std::error_code> FileDescriptor::read(void* buf, int size) const {
   DWORD result = 0;
-  if (!ReadFile((HANDLE)h_, buf, size, &result, nullptr)) {
+  if (!ReadFile((HANDLE)fd_, buf, size, &result, nullptr)) {
     return Result<int, std::error_code>(
         std::error_code(GetLastError(), std::system_category()));
   }
   return Result<int, std::error_code>(result);
 }
 
-Result<int, std::error_code> Win32Handle::write(const void* buf, int size)
+Result<int, std::error_code> FileDescriptor::write(const void* buf, int size)
     const {
   DWORD result = 0;
-  if (!WriteFile((HANDLE)h_, buf, size, &result, nullptr)) {
+  if (!WriteFile((HANDLE)fd_, buf, size, &result, nullptr)) {
     return Result<int, std::error_code>(
         std::error_code(GetLastError(), std::system_category()));
   }

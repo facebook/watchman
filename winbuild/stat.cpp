@@ -2,7 +2,6 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-using watchman::Win32Handle;
 
 int mkdir(const char* path, int) {
   auto wpath = w_string_piece(path).asWideUNC();

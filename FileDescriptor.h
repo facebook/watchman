@@ -10,25 +10,48 @@ namespace watchman {
 
 struct FileInformation;
 
-// Manages the lifetime of a file descriptor.
+// Manages the lifetime of a system independent file descriptor.
+// On POSIX systems this is a posix file descriptor.
+// On Win32 systems this is a Win32 HANDLE object.
 // It will close() the descriptor when it is destroyed.
 class FileDescriptor {
-  int fd_{-1};
-
  public:
+  using system_handle_type =
+#ifdef _WIN32
+      // We track the HANDLE value as intptr_t to avoid needing
+      // to pull in the windows header files all over the place;
+      // this is consistent with the _get_osfhandle function in
+      // the msvcrt library.
+      intptr_t
+#else
+      int
+#endif
+      ;
+
+  // A value representing the canonical invalid handle
+  // value for the system.
+  static constexpr system_handle_type kInvalid = -1;
+
+  // Normalizes invalid handle values to our canonical invalid handle value.
+  // Otherwise, just returns the handle as-is.
+  static system_handle_type normalizeHandleValue(system_handle_type h);
+
   ~FileDescriptor();
 
   // Default construct to an empty instance
   FileDescriptor() = default;
 
   // Construct a file descriptor object from an fd.
-  // Will happily accept an fd of value -1 with no error.
-  explicit FileDescriptor(int fd);
+  // Will happily accept an invalid handle value without
+  // raising an error; the FileDescriptor will simply evaluate as
+  // false in a boolean context.
+  explicit FileDescriptor(system_handle_type fd);
 
   // Construct a file descriptor object from an fd.
-  // If fd is -1 will throw a system error with a message
-  // constructed from the provided operation name.
-  FileDescriptor(int fd, const char* operation);
+  // If fd is invalid will throw a generic error with a message
+  // constructed from the provided operation name and the current
+  // errno value.
+  FileDescriptor(system_handle_type fd, const char* operation);
 
   // No copying
   FileDescriptor(const FileDescriptor&) = delete;
@@ -42,18 +65,34 @@ class FileDescriptor {
 
   // Stops tracking the descriptor, returning it to the caller.
   // The caller is then responsible for closing it.
-  int release();
+  system_handle_type release();
 
   // In a boolean context, returns true if this object owns
   // a valid descriptor.
   explicit operator bool() const {
-    return fd_ != -1;
+    return fd_ != kInvalid;
   }
 
-  // Returns the descriptor value
+  // Returns the underlying descriptor value
+  inline system_handle_type system_handle() const {
+    return fd_;
+  }
+
+#ifndef _WIN32
+  // Returns the descriptor value as a file descriptor.
+  // This method is only present on posix systems to aid in
+  // detecting non-portable use at compile time.
   inline int fd() const {
     return fd_;
   }
+#else
+  // Returns the descriptor value as a file handle.
+  // This method is only present on win32 systems to aid in
+  // detecting non-portable use at compile time.
+  inline intptr_t handle() const {
+    return fd_;
+  }
+#endif
 
   // Set the close-on-exec bit
   void setCloExec();
@@ -81,5 +120,13 @@ class FileDescriptor {
 
   /** write(2), but yielding a Result for system independent error reporting */
   Result<int, std::error_code> write(const void* buf, int size) const;
+
+  // Return a global handle to one of the standard IO stream descriptors
+  static const FileDescriptor& stdIn();
+  static const FileDescriptor& stdOut();
+  static const FileDescriptor& stdErr();
+
+ private:
+  system_handle_type fd_{kInvalid};
 };
 }

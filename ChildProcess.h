@@ -68,14 +68,8 @@ class ChildProcess {
 
     // Arranges to duplicate an fd from the parent as targetFd in
     // the child process.
-    void dup2(int fd, int targetFd);
+    void dup2(int sourceFd, int targetFd);
     void dup2(const FileDescriptor& fd, int targetFd);
-#ifdef _WIN32
-    // Arranges to duplicate a windows handle from the parent as targetFd in
-    // the child process.
-    void dup2(intptr_t handle, int targetFd);
-    void dup2(const Win32Handle& handle, int targetFd);
-#endif
 
     // Arranges to create a pipe for communicating between the
     // parent and child process and setting it as targetFd in
@@ -158,26 +152,14 @@ class ChildProcess {
   // Note that the pipe may be non-blocking, and you must not loop attempting
   // to write data to the pipe - the caller will arrange to call you again
   // if you return false (e.g. after a partial write).
-  using pipeWriteCallback = std::function<bool(
-#ifdef _WIN32
-      Win32Handle
-#else
-      FileDescriptor
-#endif
-          &)>;
+  using pipeWriteCallback = std::function<bool(FileDescriptor&)>;
 
   /** ChildProcess::communicate() performs a read/write operation.
    * The provided pipeWriteCallback allows sending data to the input stream.
    * communicate() will return with the pair of output and error streams once
    * they have been completely consumed. */
   std::pair<w_string, w_string> communicate(
-      pipeWriteCallback writeCallback = [](
-#ifdef _WIN32
-                                            Win32Handle
-#else
-        FileDescriptor
-#endif
-                                                &) {
+      pipeWriteCallback writeCallback = [](FileDescriptor&) {
         // If not provided by the caller, we're just going to close the input
         // stream
         return true;

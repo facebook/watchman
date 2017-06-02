@@ -88,8 +88,8 @@ class UnixStream : public watchman_stream {
 #endif
   }
 
-  int getFileDescriptor() const override {
-    return fd.fd();
+  const FileDescriptor& getFileDescriptor() const override {
+    return fd;
   }
 
   int read(void* buf, int size) override {

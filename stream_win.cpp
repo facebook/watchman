@@ -4,7 +4,7 @@
 #include "watchman.h"
 #include "make_unique.h"
 
-using watchman::Win32Handle;
+using watchman::FileDescriptor;
 
 // Things are more complicated here than on unix.
 // We maintain an overlapped context for reads and
@@ -58,7 +58,7 @@ struct write_buf {
 class win_handle : public watchman_stream {
  public:
   struct overlapped_op *read_pending{nullptr}, *write_pending{nullptr};
-  Win32Handle h;
+  FileDescriptor h;
   WindowsEvent waitable;
   CRITICAL_SECTION mtx;
   bool error_pending{false};
@@ -70,7 +70,7 @@ class win_handle : public watchman_stream {
   int read_avail{0};
   bool blocking{true};
 
-  explicit win_handle(Win32Handle&& handle);
+  explicit win_handle(FileDescriptor&& handle);
   ~win_handle();
   int read(void* buf, int size) override;
   int write(const void* buf, int size) override;
@@ -79,8 +79,8 @@ class win_handle : public watchman_stream {
   bool rewind() override;
   bool shutdown() override;
   bool peerIsOwner() override;
-  intptr_t getWindowsHandle() const override {
-    return h.handle();
+  const FileDescriptor& getFileDescriptor() const override {
+    return h;
   }
 
   // Helper to avoid sprinkling casts all over this file
@@ -602,7 +602,7 @@ std::unique_ptr<watchman_event> w_event_make(void) {
   return watchman::make_unique<WindowsEvent>();
 }
 
-win_handle::win_handle(Win32Handle&& handle)
+win_handle::win_handle(FileDescriptor&& handle)
     : h(std::move(handle)),
       // Initially signalled, meaning that they can try reading
       waitable(true),
@@ -610,7 +610,7 @@ win_handle::win_handle(Win32Handle&& handle)
   InitializeCriticalSection(&mtx);
 }
 
-std::unique_ptr<watchman_stream> w_stm_handleopen(Win32Handle&& handle) {
+std::unique_ptr<watchman_stream> w_stm_handleopen(FileDescriptor&& handle) {
   if (!handle) {
     return nullptr;
   }
@@ -631,7 +631,7 @@ std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(
   }
 
   while (true) {
-    Win32Handle handle(intptr_t(CreateFile(
+    FileDescriptor handle(intptr_t(CreateFile(
         path,
         GENERIC_READ | GENERIC_WRITE,
         0,
@@ -712,7 +712,7 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
 }
 
 // similar to open(2), but returns a handle
-Win32Handle w_handle_open(const char* path, int flags) {
+FileDescriptor w_handle_open(const char* path, int flags) {
   DWORD access = 0, share = 0, create = 0, attrs = 0;
   DWORD err;
   SECURITY_ATTRIBUTES sec;
@@ -757,7 +757,7 @@ Win32Handle w_handle_open(const char* path, int flags) {
     attrs |= FILE_FLAG_BACKUP_SEMANTICS;
   }
 
-  Win32Handle h(intptr_t(
+  FileDescriptor h(intptr_t(
       CreateFileW(wpath.c_str(), access, share, &sec, create, attrs, nullptr)));
   err = GetLastError();
 

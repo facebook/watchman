@@ -23,13 +23,34 @@ FileDescriptor::~FileDescriptor() {
   close();
 }
 
-FileDescriptor::FileDescriptor(int fd) : fd_(fd) {}
+FileDescriptor::system_handle_type FileDescriptor::normalizeHandleValue(
+    system_handle_type h) {
+#ifdef _WIN32
+  // Windows uses both 0 and INVALID_HANDLE_VALUE as invalid handle values.
+  if (h == intptr_t(INVALID_HANDLE_VALUE) || h == 0) {
+    return FileDescriptor::kInvalid;
+  }
+#else
+  // Posix defines -1 to be an invalid value, but we'll also recognize and
+  // normalize any negative descriptor value.
+  if (h < 0) {
+    return FileDescriptor::kInvalid;
+  }
+#endif
+  return h;
+}
 
-FileDescriptor::FileDescriptor(int fd, const char* operation) : fd_(fd) {
-  if (fd_ == -1) {
+FileDescriptor::FileDescriptor(FileDescriptor::system_handle_type fd)
+    : fd_(normalizeHandleValue(fd)) {}
+
+FileDescriptor::FileDescriptor(
+    FileDescriptor::system_handle_type fd,
+    const char* operation)
+    : fd_(normalizeHandleValue(fd)) {
+  if (fd_ == kInvalid) {
     throw std::system_error(
         errno,
-        std::system_category(),
+        std::generic_category(),
         std::string(operation) + ": " + strerror(errno));
   }
 }
@@ -40,20 +61,24 @@ FileDescriptor::FileDescriptor(FileDescriptor&& other) noexcept
 FileDescriptor& FileDescriptor::operator=(FileDescriptor&& other) noexcept {
   close();
   fd_ = other.fd_;
-  other.fd_ = -1;
+  other.fd_ = kInvalid;
   return *this;
 }
 
 void FileDescriptor::close() {
-  if (fd_ != -1) {
+  if (fd_ != kInvalid) {
+#ifndef _WIN32
     ::close(fd_);
-    fd_ = -1;
+#else
+    CloseHandle((HANDLE)fd_);
+#endif
+    fd_ = kInvalid;
   }
 }
 
-int FileDescriptor::release() {
-  int result = fd_;
-  fd_ = -1;
+FileDescriptor::system_handle_type FileDescriptor::release() {
+  system_handle_type result = fd_;
+  fd_ = kInvalid;
   return result;
 }
 
@@ -212,6 +237,7 @@ FileInformation FileDescriptor::getInfo() const {
 
 #endif
 
+#ifndef _WIN32
 w_string FileDescriptor::getOpenedPath() const {
 #if defined(F_GETPATH)
   // macOS.  The kernel interface only allows MAXPATHLEN
@@ -278,6 +304,7 @@ w_string FileDescriptor::getOpenedPath() const {
                           "getOpenedPath not implemented on this platform");
 #endif
 }
+#endif
 
 #ifndef _WIN32
 w_string readSymbolicLink(const char* path) {
@@ -441,6 +468,7 @@ CaseSensitivity getCaseSensitivityForPath(const char *path) {
 
 }
 
+#ifndef _WIN32
 Result<int, std::error_code> FileDescriptor::read(void* buf, int size) const {
   auto result = ::read(fd_, buf, size);
   if (result == -1) {
@@ -460,5 +488,39 @@ Result<int, std::error_code> FileDescriptor::write(const void* buf, int size)
         std::error_code(errcode, std::generic_category()));
   }
   return Result<int, std::error_code>(result);
+}
+#endif
+
+const FileDescriptor& FileDescriptor::stdIn() {
+  static FileDescriptor f(
+#ifdef _WIN32
+      intptr_t(GetStdHandle(STD_INPUT_HANDLE))
+#else
+      STDIN_FILENO
+#endif
+          );
+  return f;
+}
+
+const FileDescriptor& FileDescriptor::stdOut() {
+  static FileDescriptor f(
+#ifdef _WIN32
+      intptr_t(GetStdHandle(STD_OUTPUT_HANDLE))
+#else
+      STDOUT_FILENO
+#endif
+          );
+  return f;
+}
+
+const FileDescriptor& FileDescriptor::stdErr() {
+  static FileDescriptor f(
+#ifdef _WIN32
+      intptr_t(GetStdHandle(STD_ERROR_HANDLE))
+#else
+      STDERR_FILENO
+#endif
+          );
+  return f;
 }
 }

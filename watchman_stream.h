@@ -4,7 +4,6 @@
 #define WATCHMAN_STREAM_H
 
 #include "FileDescriptor.h"
-#include "Win32Handle.h"
 
 // Very limited stream abstraction to make it easier to
 // deal with portability between Windows and POSIX.
@@ -29,11 +28,7 @@ class watchman_stream {
   virtual bool shutdown() = 0;
   virtual bool peerIsOwner() = 0;
   virtual pid_t getPeerProcessID() const = 0;
-#ifndef _WIN32
-  virtual int getFileDescriptor() const = 0;
-#else
-  virtual intptr_t getWindowsHandle() const = 0;
-#endif
+  virtual const watchman::FileDescriptor& getFileDescriptor() const = 0;
 };
 using w_stm_t = watchman_stream*;
 
@@ -65,9 +60,9 @@ std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...);
 std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(
     const char* path,
     int timeoutms);
-std::unique_ptr<watchman_stream> w_stm_handleopen(watchman::Win32Handle&& h);
+std::unique_ptr<watchman_stream> w_stm_handleopen(watchman::FileDescriptor&& h);
 std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...);
-watchman::Win32Handle w_handle_open(const char* path, int flags);
+watchman::FileDescriptor w_handle_open(const char* path, int flags);
 #endif
 
 // Make a temporary file name and open it.

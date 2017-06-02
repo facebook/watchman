@@ -8,7 +8,6 @@
 #include <thread>
 
 using watchman::FileDescriptor;
-using watchman::Win32Handle;
 
 watchman::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
@@ -461,10 +460,10 @@ static void named_pipe_accept_loop(const char *path) {
 
   w_log(W_LOG_ERR, "waiting for pipe clients on %s\n", path);
   while (!stopping) {
-    Win32Handle client_fd;
+    FileDescriptor client_fd;
     DWORD res;
 
-    client_fd = Win32Handle(intptr_t(CreateNamedPipe(
+    client_fd = FileDescriptor(intptr_t(CreateNamedPipe(
         path,
         PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
         PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_REJECT_REMOTE_CLIENTS,
@@ -550,10 +549,10 @@ static void accept_loop(FileDescriptor&& listenerDescriptor) {
 
 #ifdef HAVE_ACCEPT4
     client_fd = FileDescriptor(
-        accept4(listener->getFileDescriptor(), nullptr, 0, SOCK_CLOEXEC));
+        accept4(listener->getFileDescriptor().fd(), nullptr, 0, SOCK_CLOEXEC));
 #else
     client_fd =
-        FileDescriptor(accept(listener->getFileDescriptor(), nullptr, 0));
+        FileDescriptor(accept(listener->getFileDescriptor().fd(), nullptr, 0));
 #endif
     if (!client_fd) {
       continue;

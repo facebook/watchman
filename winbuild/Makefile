@@ -284,6 +284,7 @@ tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
 		stream_win.obj \
 		stream.obj \
 		log.obj \
+		FileDescriptor.obj \
 		PubSub.obj \
 		Win32Handle.obj \
 		FileInformation.obj \

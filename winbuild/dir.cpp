@@ -1,18 +1,19 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman_system.h"
+#include "FileDescriptor.h"
 #include "watchman.h"
 #include "watchman_scopeguard.h"
-#include "Win32Handle.h"
 
-using watchman::Win32Handle;
+using watchman::FileDescriptor;
 using watchman::FileInformation;
 using watchman::OpenFileHandleOptions;
 
 namespace {
 class WinDirHandle : public watchman_dir_handle {
   std::wstring dirWPath_;
-  Win32Handle h_;
+  FileDescriptor h_;
   bool win7_{false};
   FILE_FULL_DIR_INFO* info_{nullptr};
   char __declspec(align(8)) buf_[64 * 1024];

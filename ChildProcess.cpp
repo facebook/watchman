@@ -173,25 +173,24 @@ void ChildProcess::Options::dup2(int fd, int targetFd) {
 }
 
 void ChildProcess::Options::dup2(const FileDescriptor& fd, int targetFd) {
-  dup2(fd.fd(), targetFd);
-}
-
 #ifdef _WIN32
-void ChildProcess::Options::dup2(intptr_t handle, int targetFd) {
   auto err = posix_spawn_file_actions_adddup2_handle_np(
-      &inner_->actions, handle, targetFd);
+      &inner_->actions, fd.handle(), targetFd);
   if (err) {
     throw std::system_error(
         err,
         std::generic_category(),
         "posix_spawn_file_actions_adddup2_handle_np");
   }
-}
-
-void ChildProcess::Options::dup2(const Win32Handle& handle, int targetFd) {
-  dup2(handle.handle(), targetFd);
-}
+#else
+  auto err =
+      posix_spawn_file_actions_adddup2(&inner_->actions, fd.fd(), targetFd);
+  if (err) {
+    throw std::system_error(
+        err, std::generic_category(), "posix_spawn_file_actions_adddup2");
+  }
 #endif
+}
 
 void ChildProcess::Options::open(
     int targetFd,
