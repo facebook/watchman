@@ -149,33 +149,26 @@ void InMemoryView::statPath(
 
     memcpy(&file->stat, &st, sizeof(file->stat));
 
-#ifndef _WIN32
     // check for symbolic link
     if (st.isSymlink()) {
-      char link_target_path[WATCHMAN_NAME_MAX];
-      ssize_t tlen = 0;
-
-      tlen = readlink(path, link_target_path, sizeof(link_target_path));
-      if (tlen < 0 || tlen >= WATCHMAN_NAME_MAX) {
-        w_log(W_LOG_ERR,
-            "readlink(%s) errno=%d tlen=%d\n", path, errno, (int)tlen);
-        file->symlink_target.reset();
-      } else {
+      try {
+        auto target = readSymbolicLink(path);
         bool symlink_changed = false;
-        w_string new_symlink_target(link_target_path, tlen, W_STRING_BYTE);
-        if (file->symlink_target != new_symlink_target) {
+        if (file->symlink_target != target) {
           symlink_changed = true;
         }
-        file->symlink_target = new_symlink_target;
+        file->symlink_target = target;
 
         if (symlink_changed && root->config.getBool("watch_symlinks", false)) {
           root->inner.pending_symlink_targets.wlock()->add(full_path, now, 0);
         }
+      } catch (const std::system_error& exc) {
+        log(ERR, "readlink(", path, ") failed: ", exc.what(), "\n");
+        file->symlink_target.reset();
       }
     } else {
       file->symlink_target.reset();
     }
-#endif
 
     if (st.isDir()) {
       if (dir_ent == NULL) {

@@ -97,6 +97,8 @@ getFileInformation(const char *path,
 /** equivalent to realpath() */
 w_string realPath(const char *path);
 
+/** equivalent to readlink() */
+w_string readSymbolicLink(const char* path);
 }
 
 #ifdef _WIN32

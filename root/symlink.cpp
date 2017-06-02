@@ -3,12 +3,14 @@
 
 #include "watchman_system.h"
 #include <memory>
+#include "FileSystem.h"
 #include "watchman.h"
+#include "watchman_error_category.h"
 #include "watchman_scopeguard.h"
 
 using watchman::realPath;
+using watchman::readSymbolicLink;
 
-#ifndef _WIN32
 // Given a target of the form "absolute_path/filename", return
 // realpath(absolute_path) + filename, where realpath(absolute_path) resolves
 // all the symlinks in absolute_path.
@@ -92,54 +94,28 @@ static void watch_symlink_target(const w_string& target, json_t* root_files) {
  * are themselves symlinks, this function gets called recursively on all the
  * components of path. */
 static void watch_symlinks(const w_string& inputPath, json_t* root_files) {
-  char link_target_path[WATCHMAN_NAME_MAX];
-  ssize_t tlen = 0;
+  w_string_piece pathPiece(inputPath);
+  auto parentPiece = pathPiece.dirName();
 
-  // We do not currently support symlinks on Windows, so comparing path to "/"
-  // is ok
-  if (!inputPath || w_string_strlen(inputPath) == 0 ||
-      w_string_equal_cstring(inputPath, "/")) {
+  if (parentPiece == pathPiece) {
+    // We've reached the root of the VFS; we're either "/" on unix,
+    // or something like "C:\" on windows
+    return;
+  }
+  if (!pathPiece.pathIsAbsolute()) {
     return;
   }
 
   // ensure that buffer is null-terminated
   auto path = inputPath.asNullTerminated();
 
-  w_assert(
-      w_string_path_is_absolute(path),
-      "watch_symlinks: path %s is not absolute\n",
-      path.c_str());
-
   auto dir_name = path.dirName();
   auto file_name = path.baseName();
-  tlen = readlink(path.c_str(), link_target_path, sizeof(link_target_path));
 
-  if (tlen >= (ssize_t)sizeof(link_target_path)) {
-    w_log(
-        W_LOG_ERR,
-        "watch_symlinks: readlink(%s), symlink target is too "
-        "long: %d chars >= %d chars\n",
-        path.c_str(),
-        (int)tlen,
-        (int)sizeof(link_target_path));
-  } else if (tlen < 0) {
-    if (errno == EINVAL) {
-      // The final component of path is not a symbolic link, but other
-      // components in the path might be symbolic links
-      watch_symlinks(dir_name, root_files);
-    } else {
-      w_log(
-          W_LOG_ERR,
-          "watch_symlinks: readlink(%s) errno=%d %s tlen=%d\n",
-          path.c_str(),
-          errno,
-          strerror(errno),
-          (int)tlen);
-    }
-  } else {
-    w_string target(link_target_path, tlen, W_STRING_BYTE);
+  try {
+    auto target = readSymbolicLink(path.c_str());
 
-    if (w_string_path_is_absolute(target)) {
+    if (w_string_piece(target).pathIsAbsolute()) {
       watch_symlink_target(target, root_files);
       watch_symlinks(target, root_files);
       watch_symlinks(dir_name, root_files);
@@ -151,14 +127,26 @@ static void watch_symlinks(const w_string& inputPath, json_t* root_files) {
       // No need to watch_symlinks(dir_name), since
       // watch_symlinks(absolute_target) will eventually have the same effect
     }
+  } catch (const std::system_error& exc) {
+    if (exc.code() == watchman::error_code::not_a_symlink) {
+      // The final component of path is not a symbolic link, but other
+      // components in the path might be symbolic links
+      watch_symlinks(dir_name, root_files);
+    } else {
+      watchman::log(
+          watchman::ERR,
+          "watch_symlinks: readSymbolicLink(",
+          path,
+          ") ",
+          exc.what(),
+          "\n");
+    }
   }
 }
-#endif  // Symlink-related function definitions excluded for _WIN32
 
 /** Process the list of observed changed symlinks and arrange to establish
  * watches for their new targets */
 void watchman_root::processPendingSymlinkTargets() {
-#ifndef _WIN32
   bool enforcing;
 
   auto pendingLock = inner.pending_symlink_targets.wlock();
@@ -180,7 +168,6 @@ void watchman_root::processPendingSymlinkTargets() {
     watch_symlinks(p->path, root_files);
     p = std::move(p->next);
   }
-#endif
 }
 
 

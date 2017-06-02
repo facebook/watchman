@@ -22,6 +22,7 @@ enum class error_code {
   permission_denied,
   system_limits_exceeded,
   timed_out,
+  not_a_symlink,
 };
 
 // An error category implementation that is present for comparison purposes

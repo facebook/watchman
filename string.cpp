@@ -87,9 +87,17 @@ bool w_string_piece::pathIsEqual(w_string_piece other) const {
 
 
 w_string_piece w_string_piece::dirName() const {
-  for (auto end = e_; end >= s_; --end) {
+  for (auto end = e_ - 1; end >= s_; --end) {
     if (is_slash(*end)) {
       /* found the end of the parent dir */
+#ifdef _WIN32
+      if (end > s_ && end[-1] == ':') {
+        // Special case for "C:\"; we want to keep the
+        // trailing slash for this case so that we continue
+        // to consider it an absolute path
+        return w_string_piece(s_, 1 + end - s_);
+      }
+#endif
       return w_string_piece(s_, end - s_);
     }
   }
@@ -97,9 +105,17 @@ w_string_piece w_string_piece::dirName() const {
 }
 
 w_string_piece w_string_piece::baseName() const {
-  for (auto end = e_; end >= s_; --end) {
+  for (auto end = e_ - 1; end >= s_; --end) {
     if (is_slash(*end)) {
       /* found the end of the parent dir */
+#ifdef _WIN32
+      if (end == e_ && end > s_ && end[-1] == ':') {
+        // Special case for "C:\"; we want the baseName to
+        // be this same component so that we continue
+        // to consider it an absolute path
+        return *this;
+      }
+#endif
       return w_string_piece(end + 1, e_ - (end + 1));
     }
   }
@@ -244,11 +260,11 @@ w_string::w_string(const char* buf, w_string_type_t stringType)
           false) {}
 
 w_string w_string::dirName() const {
-  return w_string(w_string_dirname(str_), false);
+  return w_string_piece(*this).dirName().asWString();
 }
 
 w_string w_string::baseName() const {
-  return w_string(w_string_basename(str_), false);
+  return w_string_piece(*this).baseName().asWString();
 }
 
 w_string w_string::suffix() const {

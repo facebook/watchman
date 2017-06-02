@@ -284,5 +284,9 @@ w_string Win32Handle::readSymbolicLink() const {
   return w_string(target, targetlen);
 }
 
+w_string readSymbolicLink(const char* path) {
+  return openFileHandle(path, OpenFileHandleOptions::queryFileInfo())
+      .readSymbolicLink();
+}
 }
 #endif // _WIN32

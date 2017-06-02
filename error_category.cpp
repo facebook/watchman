@@ -108,6 +108,13 @@ bool error_category::equivalent(const std::error_code& code, int condition)
 #endif
           code == std::errc::timed_out;
 
+    case error_code::not_a_symlink:
+      return
+#ifdef _WIN32
+          code == windows_error_code(ERROR_NOT_A_REPARSE_POINT) ||
+#endif
+          code == std::errc::invalid_argument;
+
     default:
       return false;
   }

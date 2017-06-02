@@ -176,6 +176,31 @@ void test_basename_dirname() {
 #else
   ok(str == "", "dirname of foo\\bar is nothing: %s", str.c_str());
 #endif
+
+#ifdef _WIN32
+  w_string_piece winFoo("C:\\foo");
+
+  str = winFoo.baseName().asWString();
+  ok(str == "foo", "basename of winfoo is %s", str.c_str());
+
+  str = winFoo.dirName().asWString();
+  ok(str == "C:\\", "dirname of winfoo is %s", str.c_str());
+
+  str = winFoo.dirName().dirName().asWString();
+  ok(str == "C:\\", "dirname of dirname winfoo is %s", str.c_str());
+#endif
+
+  // This is testing that we don't walk off the end of the string.
+  // We had a bug where if the buffer had a slash as the character
+  // after the end of the string, baseName and dirName could incorrectly
+  // match that position and trigger a string range check.
+  // The endSlash string below has 7 characters, with the 8th byte
+  // as a slash to trigger this condition.
+  w_string_piece endSlash("dir/foo/", 7);
+  str = endSlash.baseName().asWString();
+  ok(str == "foo", "basename is %s", str.c_str());
+  str = endSlash.dirName().asWString();
+  ok(str == "dir", "dirname is %s", str.c_str());
 }
 
 void test_operator() {
@@ -222,7 +247,13 @@ void test_split() {
 }
 
 int main(int, char**) {
-  plan_tests(69);
+  plan_tests(
+      71
+#ifdef _WIN32
+      // extra basename tests
+      + 3
+#endif
+      );
   test_integrals();
   test_strings();
   test_pointers();
