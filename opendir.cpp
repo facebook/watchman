@@ -14,6 +14,7 @@
 #include "FileDescriptor.h"
 
 using watchman::FileDescriptor;
+using watchman::OpenFileHandleOptions;
 
 #ifdef HAVE_GETATTRLISTBULK
 typedef struct {
@@ -111,155 +112,23 @@ char *w_realpath(const char *filename) {
 #endif
 }
 
-/* Extract the canonical path of an open file descriptor and store
- * it into the provided buffer.
- * Unlike w_realpath, which will return an allocated buffer of the correct
- * size, this will indicate EOVERFLOW if the buffer is too small.
- * For our purposes this is fine: if the canonical name is larger than
- * the input buffer it means that it does not match the path that we
- * wanted to open; we don't care what the actual canonical path really is.
- */
-static int realpath_fd(int fd, char *canon, size_t canon_size) {
-#if defined(F_GETPATH)
-  unused_parameter(canon_size);
-  return fcntl(fd, F_GETPATH, canon);
-#elif defined(__linux__)
-  char procpath[1024];
-  int len;
-
-  snprintf(procpath, sizeof(procpath), "/proc/%d/fd/%d", getpid(), fd);
-  len = readlink(procpath, canon, canon_size);
-  if (len > 0) {
-    canon[len] = 0;
-    return 0;
-  }
-  if (errno == ENOENT) {
-    // procfs is likely not mounted, let caller fall back to realpath()
-    errno = ENOSYS;
-  }
-  return -1;
-#elif defined(_WIN32)
-  HANDLE h = (HANDLE)_get_osfhandle(fd);
-  WCHAR final_buf[WATCHMAN_NAME_MAX];
-  DWORD len, err;
-  DWORD nchars = sizeof(final_buf) / sizeof(WCHAR);
-
-  if (h == INVALID_HANDLE_VALUE) {
-    return -1;
-  }
-
-  len = GetFinalPathNameByHandleW(h, final_buf, nchars, FILE_NAME_NORMALIZED);
-  err = GetLastError();
-  if (len >= nchars) {
-    errno = EOVERFLOW;
-    return -1;
-  }
-  if (len > 0) {
-    w_string utf8(final_buf, len);
-
-    if (utf8.size() + 1 > canon_size) {
-      errno = EOVERFLOW;
-      return -1;
-    }
-
-    memcpy(canon, utf8.data(), utf8.size() + 1);
-    return 0;
-  }
-
-  errno = map_win32_err(err);
-  return -1;
-#else
-  unused_parameter(canon);
-  unused_parameter(canon_size);
-  errno = ENOSYS;
-  return -1;
-#endif
-}
-
-/* Opens a file or directory, strictly prohibiting opening any symlinks
- * in any component of the path, and strictly matching the canonical
- * case of the file for case insensitive filesystems.
- */
-static int open_strict(const char *path, int flags) {
-  int fd;
-  char canon[WATCHMAN_NAME_MAX];
-  int err = 0;
-  char *pathcopy = NULL;
-
-  if (strlen(path) >= sizeof(canon)) {
-    w_log(W_LOG_ERR, "open_strict(%s): path is larger than WATCHMAN_NAME_MAX\n",
-          path);
-    errno = EOVERFLOW;
-    return -1;
-  }
-
-  fd = open(path, flags);
-  if (fd == -1) {
-    return -1;
-  }
-
-  if (realpath_fd(fd, canon, sizeof(canon)) == 0) {
-    if (w_string_piece(canon).pathIsEqual(path)) {
-      return fd;
-    }
-
-    w_log(W_LOG_DBG, "open_strict(%s): doesn't match canon path %s\n",
-        path, canon);
-    close(fd);
-    errno = ENOENT;
-    return -1;
-  }
-
-  if (errno != ENOSYS) {
-    err = errno;
-    w_log(W_LOG_ERR, "open_strict(%s): realpath_fd failed: %s\n", path,
-          strerror(err));
-    close(fd);
-    errno = err;
-    return -1;
-  }
-
-  // Fall back to realpath
-  pathcopy = w_realpath(path);
-  if (!pathcopy) {
-    err = errno;
-    w_log(W_LOG_ERR, "open_strict(%s): realpath failed: %s\n", path,
-          strerror(err));
-    close(fd);
-    errno = err;
-    return -1;
-  }
-
-  if (strcmp(pathcopy, path)) {
-    // Doesn't match canonical case or the path we were expecting
-    w_log(W_LOG_ERR, "open_strict(%s): canonical path is %s\n",
-        path, pathcopy);
-    free(pathcopy);
-    close(fd);
-    errno = ENOENT;
-    return -1;
-  }
-  free(pathcopy);
-  return fd;
-}
-
 #ifndef _WIN32
 /* Opens a directory making sure it's not a symlink */
 static DIR *opendir_nofollow(const char *path)
 {
-  int fd = open_strict(path, O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
-  if (fd == -1) {
-    return NULL;
-  }
+  auto fd = openFileHandle(path, OpenFileHandleOptions::strictOpenDir());
 # if !defined(HAVE_FDOPENDIR) || defined(__APPLE__)
   /* fdopendir doesn't work on earlier versions OS X, and we don't
    * use this function since 10.10, as we prefer to use getattrlistbulk
    * in that case */
-  close(fd);
   return opendir(path);
 # else
   // errno should be set appropriately if this is not a directory
-  return fdopendir(fd);
+  auto d = fdopendir(fd.fd());
+  if (d) {
+    fd.release();
+  }
+  return d;
 # endif
 }
 #endif
@@ -299,22 +168,14 @@ std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path, bool strict) {
 DirHandle::DirHandle(const char* path, bool strict) {
 #ifdef HAVE_GETATTRLISTBULK
   if (cfg_get_bool("_use_bulkstat", use_bulkstat_by_default())) {
-    struct stat st;
+    auto opts = strict ? OpenFileHandleOptions::strictOpenDir()
+                       : OpenFileHandleOptions::openDir();
 
-    fd_ = FileDescriptor(
-        strict ? open_strict(path, O_NOFOLLOW | O_CLOEXEC | O_RDONLY)
-               : open(path, O_CLOEXEC | O_RDONLY));
-    if (!fd_) {
-      throw std::system_error(
-          errno, std::generic_category(), std::string("opendir ") + path);
-    }
+    fd_ = openFileHandle(path, opts);
 
-    if (fstat(fd_.fd(), &st)) {
-      throw std::system_error(
-          errno, std::generic_category(), std::string("fstat ") + path);
-    }
+    auto info = fd_.getInfo();
 
-    if (!S_ISDIR(st.st_mode)) {
+    if (!info.isDir()) {
       throw std::system_error(ENOTDIR, std::generic_category(), path);
     }
 

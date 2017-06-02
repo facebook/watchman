@@ -66,6 +66,21 @@ struct OpenFileHandleOptions {
     opts.metaDataOnly = 1;
     return opts;
   }
+
+  static inline OpenFileHandleOptions openDir() {
+    OpenFileHandleOptions opts;
+    opts.readContents = 1;
+    opts.followSymlinks = 1;
+    return opts;
+  }
+
+  static inline OpenFileHandleOptions strictOpenDir() {
+    OpenFileHandleOptions opts;
+    opts.readContents = 1;
+    opts.strictNameChecks = true;
+    opts.followSymlinks = 0;
+    return opts;
+  }
 };
 
 /** equivalent to open(2)

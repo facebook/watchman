@@ -7,6 +7,7 @@
 
 using watchman::Win32Handle;
 using watchman::FileInformation;
+using watchman::OpenFileHandleOptions;
 
 namespace {
 class WinDirHandle : public watchman_dir_handle {
@@ -30,24 +31,8 @@ class WinDirHandle : public watchman_dir_handle {
     int err = 0;
     dirWPath_ = w_string_piece(path).asWideUNC();
 
-    h_ = Win32Handle(intptr_t(CreateFileW(
-        dirWPath_.c_str(),
-        GENERIC_READ,
-        FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-        nullptr,
-        OPEN_EXISTING,
-        // Note: FILE_FLAG_OPEN_REPARSE_POINT is equivalent to O_NOFOLLOW,
-        // and FILE_FLAG_BACKUP_SEMANTICS is equivalent to O_DIRECTORY
-        (strict ? FILE_FLAG_OPEN_REPARSE_POINT : 0) |
-            FILE_FLAG_BACKUP_SEMANTICS,
-        nullptr)));
-
-    if (!h_) {
-      throw std::system_error(
-          GetLastError(),
-          std::system_category(),
-          std::string("CreateFileW for opendir: ") + path);
-    }
+    h_ = openFileHandle(path, strict ? OpenFileHandleOptions::strictOpenDir()
+                                     : OpenFileHandleOptions::openDir());
 
     // Use Win7 compatibility mode for readDir()
     if (getenv("WATCHMAN_WIN7_COMPAT") &&

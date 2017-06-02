@@ -87,10 +87,7 @@ Win32Handle openFileHandle(const char *path,
     create = OPEN_EXISTING;
   }
 
-  attrs = FILE_FLAG_POSIX_SEMANTICS;
-  if (opts.metaDataOnly) {
-    attrs |= FILE_FLAG_BACKUP_SEMANTICS;
-  }
+  attrs = FILE_FLAG_POSIX_SEMANTICS | FILE_FLAG_BACKUP_SEMANTICS;
   if (!opts.followSymlinks) {
     attrs |= FILE_FLAG_OPEN_REPARSE_POINT;
   }
