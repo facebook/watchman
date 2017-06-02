@@ -35,7 +35,7 @@ SRCS_CPP=\
 	Win32Handle.cpp \
 	winbuild\errmap.cpp \
 	winbuild\pathmap.cpp \
-	winbuild\stat.cpp \
+	winbuild\mkdir.cpp \
 	winbuild\dir.cpp \
 	winbuild\asprintf.cpp \
 	winbuild\hostname.cpp \
@@ -288,7 +288,7 @@ tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
 		FileInformation.obj \
 		tests\log_stub.obj \
 		winbuild\pathmap.obj \
-		winbuild\stat.obj \
+		winbuild\mkdir.obj \
 		winbuild\dir.obj
 	@echo LINK $@
 	$(LINKER) $** $(LIBS)
