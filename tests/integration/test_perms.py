@@ -46,5 +46,6 @@ class TestPerms(WatchmanTestCase.WatchmanTestCase):
     def test_permDeniedRoot(self):
         root = self.mkdtemp()
         os.chmod(root, 0)
-        with self.assertRaisesRegexp(pywatchman.CommandError, 'opendir'):
+        with self.assertRaisesRegexp(pywatchman.CommandError,
+                '(open|opendir|realpath)'):
             self.watchmanCommand('watch', root)

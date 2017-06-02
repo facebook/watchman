@@ -69,4 +69,11 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
         invalid = os.path.join(d, "invalid")
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             self.watchmanCommand('watch', invalid)
-        self.assertIn('No such file or directory', str(ctx.exception))
+        msg = str(ctx.exception)
+        if 'No such file or directory' in msg:
+            # unix
+            return
+        if 'The system cannot find the file specified' in msg:
+            # windows
+            return
+        self.assertTrue(False, msg)

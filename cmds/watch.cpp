@@ -2,10 +2,10 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+using watchman::realPath;
 
 bool w_cmd_realpath_root(json_ref& args, char** errmsg) {
   const char *path;
-  char *resolved;
 
   if (json_array_size(args) < 2) {
     ignore_result(asprintf(errmsg, "wrong number of arguments"));
@@ -18,14 +18,17 @@ bool w_cmd_realpath_root(json_ref& args, char** errmsg) {
     return false;
   }
 
-  resolved = w_realpath(path);
-  if (resolved) {
-    json_array_set_new(args, 1, typed_string_to_json(resolved,
-          W_STRING_BYTE));
-    free(resolved);
+  try {
+    auto resolved = realPath(path);
+    args.array()[1] = w_string_to_json(resolved);
+    return true;
+  } catch (const std::exception &exc) {
+    watchman::log(watchman::DBG, "w_cmd_realpath_root: path ", path,
+                  " does not resolve: ", exc.what(), "\n");
+    // We don't treat this as an error; the caller will subsequently
+    // fail and perform their usual error handling
+    return true;
   }
-
-  return true;
 }
 W_CAP_REG("clock-sync-timeout")
 
@@ -227,10 +230,12 @@ resolve_projpath(const json_ref& args, char** errmsg, char** relpath) {
     return nullptr;
   }
 
-  resolved = w_realpath(path);
-  if (!resolved) {
+  try {
+    auto real = realPath(path);
+    resolved = strdup(real.c_str());
+  } catch (const std::exception &exc) {
     ignore_result(asprintf(errmsg,
-          "resolve_projpath: path `%s` does not exist", path));
+          "resolve_projpath: path `%s`: %s", path, exc.what()));
     return nullptr;
   }
 

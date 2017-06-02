@@ -78,6 +78,10 @@ FileHandleType openFileHandle(const char *path,
 FileInformation
 getFileInformation(const char *path,
                    CaseSensitivity caseSensitive = CaseSensitivity::Unknown);
+
+/** equivalent to realpath() */
+w_string realPath(const char *path);
+
 }
 
 #ifdef _WIN32

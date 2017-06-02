@@ -326,6 +326,37 @@ w_string FileDescriptor::readSymbolicLink() const {
 }
 #endif
 
+w_string realPath(const char *path) {
+  auto options = OpenFileHandleOptions::queryFileInfo();
+  // Follow symlinks, because that's really the point of this function
+  options.followSymlinks = 1;
+  options.strictNameChecks = 0;
+
+#ifdef _WIN32
+  // Special cases for cwd
+  w_string_piece pathPiece(path);
+  // On Windows, "" is used to refer to the CWD.
+  // We also allow using "." for parity with unix, even though that
+  // doesn't generally work for that purpose on windows.
+  // This allows `watchman watch-project .` to succeeed on windows.
+  if (pathPiece.size() == 0 || pathPiece == ".") {
+    std::wstring wchar;
+    wchar.resize(WATCHMAN_NAME_MAX);
+    auto len = GetCurrentDirectoryW(wchar.size(), &wchar[0]);
+    auto err = GetLastError();
+    if (len == 0) {
+      throw std::system_error(err, std::system_category(),
+                              "GetCurrentDirectoryW");
+    }
+    // Assumption: that the OS maintains the CWD in canonical form
+    return w_string(wchar.data(), len);
+  }
+#endif
+
+  auto handle = openFileHandle(path, options);
+  return handle.getOpenedPath();
+}
+
 FileInformation getFileInformation(const char *path,
                                    CaseSensitivity caseSensitive) {
   auto options = OpenFileHandleOptions::queryFileInfo();
