@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #include "InMemoryView.h"
+#include "watchman_error_category.h"
 
 static void apply_dir_size_hint(struct watchman_dir *dir,
     uint32_t ndirs, uint32_t nfiles) {
@@ -87,36 +88,44 @@ void InMemoryView::crawler(
     }
   }
 
-  while ((dirent = osdir->readDir()) != nullptr) {
-    // Don't follow parent/self links
-    if (dirent->d_name[0] == '.' && (
-          !strcmp(dirent->d_name, ".") ||
-          !strcmp(dirent->d_name, "..")
-        )) {
-      continue;
-    }
+  try {
+    while ((dirent = osdir->readDir()) != nullptr) {
+      // Don't follow parent/self links
+      if (dirent->d_name[0] == '.' &&
+          (!strcmp(dirent->d_name, ".") || !strcmp(dirent->d_name, ".."))) {
+        continue;
+      }
 
-    // Queue it up for analysis if the file is newly existing
-    w_string name(dirent->d_name, W_STRING_BYTE);
-    file = dir->getChildFile(name);
-    if (file) {
-      file->maybe_deleted = false;
+      // Queue it up for analysis if the file is newly existing
+      w_string name(dirent->d_name, W_STRING_BYTE);
+      file = dir->getChildFile(name);
+      if (file) {
+        file->maybe_deleted = false;
+      }
+      if (!file || !file->exists || stat_all || recursive) {
+        auto full_path = w_dir_path_cat_str(dir, name);
+        w_log(
+            W_LOG_DBG,
+            "in crawler calling process_path on %s\n",
+            full_path.c_str());
+        processPath(
+            root,
+            view,
+            coll,
+            full_path,
+            now,
+            ((recursive || !file || !file->exists) ? W_PENDING_RECURSIVE : 0),
+            dirent);
+      }
     }
-    if (!file || !file->exists || stat_all || recursive) {
-      auto full_path = w_dir_path_cat_str(dir, name);
-      w_log(
-          W_LOG_DBG,
-          "in crawler calling process_path on %s\n",
-          full_path.c_str());
-      processPath(
-          root,
-          view,
-          coll,
-          full_path,
-          now,
-          ((recursive || !file || !file->exists) ? W_PENDING_RECURSIVE : 0),
-          dirent);
-    }
+  } catch (const std::system_error& exc) {
+    log(ERR,
+        "Error while reading dir ",
+        path,
+        ": ",
+        exc.what(),
+        ", re-adding to pending list to re-assess\n");
+    coll->add(path, now, 0);
   }
   osdir.reset();
 
