@@ -29,18 +29,10 @@ static void build_list(
 
 size_t process_items(PendingCollection::LockedPtr& coll) {
   size_t drained = 0;
-  struct stat st;
 
   auto item = coll->stealItems();
   while (item) {
-    // To simulate looking at the file, we're just going to stat
-    // ourselves over and over, as the path we put in the list
-    // doesn't exist on the filesystem.  We're measuring hot cache
-    // (best case) stat performance here.
-    w_lstat(__FILE__, &st, true);
-
     drained++;
-
     item = std::move(item->next);
   }
   return drained;

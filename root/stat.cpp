@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #include "InMemoryView.h"
+#include "watchman_error_category.h"
 
 namespace watchman {
 void InMemoryView::statPath(
@@ -14,7 +15,7 @@ void InMemoryView::statPath(
     int flags,
     const watchman_dir_ent* pre_stat) {
   watchman::FileInformation st;
-  int res, err;
+  std::error_code errcode;
   char path[WATCHMAN_NAME_MAX];
   bool recursive = flags & W_PENDING_RECURSIVE;
   bool via_notify = flags & W_PENDING_VIA_NOTIFY;
@@ -48,44 +49,40 @@ void InMemoryView::statPath(
   auto dir_ent = parentDir->getChildDir(file_name);
 
   if (pre_stat && pre_stat->has_stat) {
-    memcpy(&st, &pre_stat->stat, sizeof(st));
-    res = 0;
-    err = 0;
+    st = pre_stat->stat;
   } else {
-    struct stat struct_stat;
-    res = w_lstat(path, &struct_stat,
-                  root->case_sensitive == CaseSensitivity::CaseSensitive);
-    err = res == 0 ? 0 : errno;
-    w_log(W_LOG_DBG, "w_lstat(%s) file=%p dir=%p res=%d %s\n",
-        path, file, dir_ent, res, strerror(err));
-    if (err == 0) {
-      st = watchman::FileInformation(struct_stat);
-    } else {
-      // To suppress warning on win32
-      memset(&st, 0, sizeof(st));
+    try {
+      st = getFileInformation(path, root->case_sensitive);
+      log(DBG, "getFileInformation(", path, ") file=", file, " dir=", dir_ent,
+          "\n");
+    } catch (const std::system_error &exc) {
+      errcode = exc.code();
+      log(DBG, "getFileInformation(", path, ") file=", file, " dir=", dir_ent,
+          " failed: ", exc.what(), "\n");
     }
   }
 
-  if (res && (err == ENOENT || err == ENOTDIR)) {
+  if (errcode == watchman::error_code::no_such_file_or_directory ||
+      errcode == watchman::error_code::not_a_directory) {
     /* it's not there, update our state */
     if (dir_ent) {
       markDirDeleted(view, dir_ent, now, true);
       watchman::log(
           watchman::DBG,
-          "w_lstat(",
+          "getFileInformation(",
           path,
           ") -> ",
-          strerror(err),
+          errcode.message(),
           " so stopping watch\n");
     }
     if (file) {
       if (file->exists) {
         watchman::log(
             watchman::DBG,
-            "w_lstat(",
+            "getFileInformation(",
             path,
             ") -> ",
-            strerror(err),
+            errcode.message(),
             " so marking ",
             file->getName(),
             " deleted\n");
@@ -98,8 +95,9 @@ void InMemoryView::statPath(
       // representation of it now, so that subscription clients can
       // be notified of this event
       file = getOrCreateChildFile(view, parentDir, file_name, now);
-      w_log(W_LOG_DBG, "w_lstat(%s) -> %s and file node was NULL. "
-          "Generating a deleted node.\n", path, strerror(err));
+      log(DBG, "getFileInformation(", path, ") -> ",
+          errcode.message(), " and file node was NULL. "
+                             "Generating a deleted node.\n");
       file->exists = false;
       markFileChanged(view, file, now);
     }
@@ -120,9 +118,8 @@ void InMemoryView::statPath(
       coll->add(dir_name, now, W_PENDING_CRAWL_ONLY);
     }
 
-  } else if (res) {
-    w_log(W_LOG_ERR, "w_lstat(%s) %d %s\n",
-        path, err, strerror(err));
+  } else if (errcode.value()) {
+    log(ERR, "getFileInformation(", path, ") -> ", errcode.message(), "\n");
   } else {
     if (!file) {
       file = getOrCreateChildFile(view, parentDir, file_name, now);

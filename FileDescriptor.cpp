@@ -348,6 +348,17 @@ FileInformation getFileInformation(const char *path,
         handle.fd(), pathPiece.baseName().data(), &st, AT_SYMLINK_NOFOLLOW)) {
     throw std::system_error(errno, std::generic_category(), "fstatat");
   }
+
+  if (caseSensitive == CaseSensitivity::Unknown) {
+    caseSensitive = getCaseSensitivityForPath(path);
+  }
+  if (caseSensitive == CaseSensitivity::CaseInSensitive) {
+    // We need to perform one extra check for case-insensitive
+    // paths to make sure that we didn't accidentally open
+    // the wrong case name.
+    checkCanonicalBaseName(path);
+  }
+
   return FileInformation(st);
 #endif
 }

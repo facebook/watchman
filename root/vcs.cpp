@@ -22,7 +22,6 @@ static json_ref config_get_ignore_vcs(w_root_t* root) {
 
 void watchman_root::applyIgnoreVCSConfiguration() {
   uint8_t i;
-  struct stat st;
 
   auto ignores = config_get_ignore_vcs(this);
   if (!ignores) {
@@ -48,12 +47,16 @@ void watchman_root::applyIgnoreVCSConfiguration() {
 
     // While we're at it, see if we can find out where to put our
     // query cookie information
-    if (cookies.cookieDir() == root_path &&
-        w_lstat(fullname.c_str(), &st,
-                case_sensitive == CaseSensitivity::CaseSensitive) == 0 &&
-        S_ISDIR(st.st_mode)) {
-      // root/{.hg,.git,.svn}
-      cookies.setCookieDir(fullname);
+    if (cookies.cookieDir() == root_path) {
+      try {
+        auto info = getFileInformation(fullname.c_str(), case_sensitive);
+        if (info.isDir()) {
+          // root/{.hg,.git,.svn}
+          cookies.setCookieDir(fullname);
+        }
+      } catch (...) {
+        // Don't care
+      }
     }
   }
 }

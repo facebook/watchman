@@ -37,8 +37,7 @@ class movereaddTestCase extends WatchmanTestCase {
     mkdir("$root/foo/bar");
 
     $since = array('foo/bar');
-    if (in_array($watch['watcher'], array('win32', 'portfs',
-        'kqueue'))) {
+    if (in_array($watch['watcher'], array('portfs', 'kqueue'))) {
       // the parent dir reflects as changed when we mkdir within it
       array_unshift($since, 'foo');
     }
