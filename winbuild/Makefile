@@ -37,7 +37,6 @@ SRCS_CPP=\
 	winbuild\pathmap.cpp \
 	winbuild\stat.cpp \
 	winbuild\dir.cpp \
-	winbuild\dirname.cpp \
 	winbuild\asprintf.cpp \
 	winbuild\hostname.cpp \
 	winbuild\time.cpp \
