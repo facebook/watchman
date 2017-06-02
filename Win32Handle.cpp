@@ -288,5 +288,24 @@ w_string readSymbolicLink(const char* path) {
   return openFileHandle(path, OpenFileHandleOptions::queryFileInfo())
       .readSymbolicLink();
 }
+
+Result<int, std::error_code> Win32Handle::read(void* buf, int size) const {
+  DWORD result = 0;
+  if (!ReadFile((HANDLE)h_, buf, size, &result, nullptr)) {
+    return Result<int, std::error_code>(
+        std::error_code(GetLastError(), std::system_category()));
+  }
+  return Result<int, std::error_code>(result);
+}
+
+Result<int, std::error_code> Win32Handle::write(const void* buf, int size)
+    const {
+  DWORD result = 0;
+  if (!WriteFile((HANDLE)h_, buf, size, &result, nullptr)) {
+    return Result<int, std::error_code>(
+        std::error_code(GetLastError(), std::system_category()));
+  }
+  return Result<int, std::error_code>(result);
+}
 }
 #endif // _WIN32

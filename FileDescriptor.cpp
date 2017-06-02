@@ -441,4 +441,24 @@ CaseSensitivity getCaseSensitivityForPath(const char *path) {
 
 }
 
+Result<int, std::error_code> FileDescriptor::read(void* buf, int size) const {
+  auto result = ::read(fd_, buf, size);
+  if (result == -1) {
+    int errcode = errno;
+    return Result<int, std::error_code>(
+        std::error_code(errcode, std::generic_category()));
+  }
+  return Result<int, std::error_code>(result);
+}
+
+Result<int, std::error_code> FileDescriptor::write(const void* buf, int size)
+    const {
+  auto result = ::write(fd_, buf, size);
+  if (result == -1) {
+    int errcode = errno;
+    return Result<int, std::error_code>(
+        std::error_code(errcode, std::generic_category()));
+  }
+  return Result<int, std::error_code>(result);
+}
 }

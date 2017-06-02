@@ -2,7 +2,9 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <cstdint>
+#include <system_error>
 #include "FileInformation.h"
+#include "Result.h"
 #include "watchman_string.h"
 
 namespace watchman {
@@ -60,5 +62,11 @@ class Win32Handle {
 
   /** Returns the symbolic link target */
   w_string readSymbolicLink() const;
+
+  /** read(2), but yielding a Result for system independent error reporting */
+  Result<int, std::error_code> read(void* buf, int size) const;
+
+  /** write(2), but yielding a Result for system independent error reporting */
+  Result<int, std::error_code> write(const void* buf, int size) const;
 };
 }
