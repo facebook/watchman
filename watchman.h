@@ -106,8 +106,6 @@ const char *get_sock_name(void);
 const struct group *w_get_group(const char *group_name);
 #endif // ndef WIN32
 
-int w_lstat(const char *path, struct stat *st, bool case_sensitive);
-
 void w_ioprio_set_low(void);
 void w_ioprio_set_normal(void);
 
