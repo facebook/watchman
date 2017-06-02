@@ -44,8 +44,6 @@ w_string w_fstype(const char *path);
 
 extern char *poisoned_reason;
 
-char *w_realpath(const char *filename);
-
 #ifndef _WIN32
 static inline bool w_path_exists(const char *path) {
   return access(path, F_OK) == 0;

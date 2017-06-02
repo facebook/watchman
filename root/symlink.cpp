@@ -6,6 +6,8 @@
 #include "watchman.h"
 #include "watchman_scopeguard.h"
 
+using watchman::realPath;
+
 #ifndef _WIN32
 // Given a target of the form "absolute_path/filename", return
 // realpath(absolute_path) + filename, where realpath(absolute_path) resolves
@@ -19,10 +21,7 @@ static w_string get_normalized_target(const w_string& target) {
       target.asNullTerminated().c_str());
 
   auto dir_name = target.dirName().asNullTerminated();
-  auto dir_name_real = w_realpath(dir_name.c_str());
-  SCOPE_EXIT {
-    free(dir_name_real);
-  };
+  auto dir_name_real = realPath(dir_name.c_str());
   err = errno;
 
   if (dir_name_real) {
@@ -42,16 +41,17 @@ static void watch_symlink_target(const w_string& target, json_t* root_files) {
       "watch_symlink_target: path %s is not absolute\n",
       target.c_str());
 
-  auto normalized_target = get_normalized_target(target);
-  if (!normalized_target) {
-    w_log(
-        W_LOG_ERR,
-        "watch_symlink_target: "
-        "unable to get normalized version of target `%s`; "
-        "realpath errno %d %s\n",
-        target.asNullTerminated().c_str(),
-        errno,
-        strerror(errno));
+  w_string normalized_target;
+  try {
+    normalized_target = get_normalized_target(target);
+  } catch (const std::system_error& exc) {
+    watchman::log(
+        watchman::ERR,
+        "watch_symlink_target: unable to get normalized version of target `",
+        target,
+        "`; realpath ",
+        exc.what(),
+        "\n");
     return;
   }
 
