@@ -19,7 +19,7 @@ static watchman::Future<json_ref> make_symlink(
 
 static watchman::Future<json_ref> make_sha1_hex(
     const struct watchman_rule_match* match) {
-  if (!S_ISREG(match->file->stat().mode) || !match->file->exists()) {
+  if (!match->file->stat().isFile() || !match->file->exists()) {
     // We return null for items that can't have a content hash
     return makeFuture(json_null());
   }
@@ -134,6 +134,7 @@ static json_ref make_type_field(const struct watchman_rule_match* match) {
   if (stat.isSymlink()) {
     return typed_string_to_json("l", W_STRING_UNICODE);
   }
+#ifndef _WIN32
   if (S_ISBLK(stat.mode)) {
     return typed_string_to_json("b", W_STRING_UNICODE);
   }
@@ -146,6 +147,7 @@ static json_ref make_type_field(const struct watchman_rule_match* match) {
   if (S_ISSOCK(stat.mode)) {
     return typed_string_to_json("s", W_STRING_UNICODE);
   }
+#endif
 #ifdef S_ISDOOR
   if (S_ISDOOR(stat.mode)) {
     return typed_string_to_json("D", W_STRING_UNICODE);

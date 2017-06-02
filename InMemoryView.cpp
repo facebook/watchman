@@ -512,7 +512,7 @@ void InMemoryView::pathGenerator(w_query* query, struct w_query_ctx* ctx)
       w_string_delref(file_name);
 
       // If it's a file (but not an existent dir)
-      if (f && (!f->exists || !S_ISDIR(f->stat.mode))) {
+      if (f && (!f->exists || !f->stat.isDir())) {
         ctx->bumpNumWalked();
         w_query_process_file(
             query,
@@ -704,7 +704,7 @@ void InMemoryView::warmContentCache() {
         break;
       }
 
-      if (f->exists && S_ISREG(f->stat.mode)) {
+      if (f->exists && f->stat.isFile()) {
         // Note: we could also add an expression to further constrain
         // the things we warm up here.  Let's see if we need it before
         // going ahead and adding.

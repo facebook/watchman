@@ -231,6 +231,7 @@ double cfg_get_double(const char* name, double defval) {
   return defval;
 }
 
+#ifndef _WIN32
 #define MAKE_GET_PERM(PROP, SUFFIX)                                 \
   static mode_t get_##PROP##_perm(                                  \
       const char* name,                                             \
@@ -284,6 +285,7 @@ mode_t cfg_get_perms(const char* name, bool write_bits, bool execute_bits) {
 
   return ret;
 }
+#endif
 
 const char *cfg_get_trouble_url(void) {
   return cfg_get_string(

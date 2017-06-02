@@ -13,23 +13,25 @@ class TypeExpr : public QueryExpr {
 
   bool evaluate(struct w_query_ctx*, const FileResult* file) override {
     switch (arg) {
+#ifndef _WIN32
       case 'b':
         return S_ISBLK(file->stat().mode);
       case 'c':
         return S_ISCHR(file->stat().mode);
+      case 'p':
+        return S_ISFIFO(file->stat().mode);
+      case 's':
+        return S_ISSOCK(file->stat().mode);
+#endif
       case 'd':
         return file->stat().isDir();
       case 'f':
         return file->stat().isFile();
-      case 'p':
-        return S_ISFIFO(file->stat().mode);
       case 'l':
         return file->stat().isSymlink();
-      case 's':
-        return S_ISSOCK(file->stat().mode);
 #ifdef S_ISDOOR
-    case 'D':
-      return S_ISDOOR(file->stat().mode);
+      case 'D':
+        return S_ISDOOR(file->stat().mode);
 #endif
     default:
       return false;

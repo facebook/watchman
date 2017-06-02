@@ -79,3 +79,7 @@ FileInformation
 getFileInformation(const char *path,
                    CaseSensitivity caseSensitive = CaseSensitivity::Unknown);
 }
+
+#ifdef _WIN32
+int mkdir(const char* path, int);
+#endif

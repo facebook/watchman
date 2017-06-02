@@ -5,6 +5,7 @@
 
 namespace watchman {
 
+#ifndef _WIN32
 FileInformation::FileInformation(const struct stat& st)
     : mode(st.st_mode),
       size(off_t(st.st_size)),
@@ -16,25 +17,27 @@ FileInformation::FileInformation(const struct stat& st)
   memcpy(&atime, &st.WATCHMAN_ST_TIMESPEC(a), sizeof(atime));
   memcpy(&mtime, &st.WATCHMAN_ST_TIMESPEC(m), sizeof(mtime));
   memcpy(&ctime, &st.WATCHMAN_ST_TIMESPEC(c), sizeof(ctime));
-#ifdef _WIN32
-  // Make sure that we set the windows equivalent of the mode,
-  // as the accessor methods only look at fileAttributes!
-  fileAttributes = S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : 0;
-#endif
 }
+#endif
 
 #ifdef _WIN32
 FileInformation::FileInformation(uint32_t dwFileAttributes)
     : fileAttributes(dwFileAttributes) {
-  if (fileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-    mode = _S_IFDIR | S_IEXEC | S_IXGRP | S_IXOTH;
-  } else {
-    mode = _S_IFREG;
-  }
   if (fileAttributes & FILE_ATTRIBUTE_READONLY) {
-    mode |= 0444;
+    mode = 0444;
   } else {
-    mode |= 0666;
+    mode = 0666;
+  }
+  if (fileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+    // It's a symlink, but to be msvc compatible, we report
+    // this as a file.  Note that a reparse point can also
+    // have FILE_ATTRIBUTE_DIRECTORY set if the symlink was
+    // created with the intention of it appearing as a file.
+    mode |= _S_IFREG;
+  } else if (fileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+    mode |= _S_IFDIR | 0111 /* executable/searchable */;
+  } else {
+    mode |= _S_IFREG;
   }
 }
 #endif

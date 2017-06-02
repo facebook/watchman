@@ -36,32 +36,29 @@ w_string Mercurial::infoCache::lookupMergeBase(const std::string& commitId) {
 }
 
 bool Mercurial::infoCache::dotChanged() {
-  struct stat st;
   bool result;
 
-  if (lstat(dirStatePath.c_str(), &st)) {
-    memset(&st, 0, sizeof(st));
+  try {
+    auto info = getFileInformation(dirStatePath.c_str(),
+                                   CaseSensitivity::CaseSensitive);
+
+    if (info.size != dirstate.size ||
+        info.mtime.tv_sec != dirstate.mtime.tv_sec ||
+        info.mtime.tv_nsec != dirstate.mtime.tv_nsec) {
+      log(DBG, "mergeBases stat(", dirStatePath, ") info differs\n");
+      result = true;
+    } else {
+      result = false;
+      log(DBG, "mergeBases stat(", dirStatePath, ") info same\n");
+    }
+
+    dirstate = info;
+
+  } catch (const std::system_error &exc) {
     // Failed to stat, so assume that it changed
-    watchman::log(
-        watchman::DBG, "mergeBases stat(", dirStatePath, ") failed\n");
+    log(DBG, "mergeBases stat(", dirStatePath, ") failed: ", exc.what(), "\n");
     result = true;
-  } else if (
-      st.st_size != dirstate.st_size ||
-      st.WATCHMAN_ST_TIMESPEC(m).tv_sec !=
-          dirstate.WATCHMAN_ST_TIMESPEC(m).tv_sec ||
-      st.WATCHMAN_ST_TIMESPEC(m).tv_nsec !=
-          dirstate.WATCHMAN_ST_TIMESPEC(m).tv_nsec) {
-    watchman::log(
-        watchman::DBG, "mergeBases stat(", dirStatePath, ") info differs\n");
-    result = true;
-  } else {
-    result = false;
-    watchman::log(
-        watchman::DBG, "mergeBases stat(", dirStatePath, ") info same\n");
   }
-
-  memcpy(&dirstate, &st, sizeof(st));
-
   return result;
 }
 

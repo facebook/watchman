@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include "SCM.h"
 #include "watchman_synchronized.h"
+#include "FileInformation.h"
 
 namespace watchman {
 
@@ -20,7 +21,7 @@ class Mercurial : public SCM {
  private:
   struct infoCache {
     std::string dirStatePath;
-    struct stat dirstate;
+    FileInformation dirstate;
     std::unordered_map<std::string, w_string> mergeBases;
 
     explicit infoCache(std::string path);

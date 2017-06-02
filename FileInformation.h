@@ -6,6 +6,15 @@
 
 namespace watchman {
 
+#ifdef _WIN32
+using mode_t = int;
+using dev_t = int;
+using gid_t = int;
+using uid_t = int;
+using ino_t = unsigned int;
+using nlink_t = unsigned int;
+#endif
+
 struct FileInformation {
   // On POSIX systems, the complete mode information.
   // On Windows, this is lossy wrt. symlink information,
@@ -50,8 +59,9 @@ struct FileInformation {
   // a regular file, false otherwise.
   bool isFile() const;
 
+#ifndef _WIN32
   explicit FileInformation(const struct stat& st);
-#ifdef _WIN32
+#else
   // Partially initialize the common fields.
   // There are a number of different forms of windows specific data
   // types that hold the rest of the information and we don't want
