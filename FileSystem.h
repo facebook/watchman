@@ -63,6 +63,7 @@ struct OpenFileHandleOptions {
   static inline OpenFileHandleOptions openDir() {
     OpenFileHandleOptions opts;
     opts.readContents = 1;
+    opts.strictNameChecks = false;
     opts.followSymlinks = 1;
     return opts;
   }
