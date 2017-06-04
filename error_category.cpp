@@ -72,6 +72,7 @@ bool error_category::equivalent(const std::error_code& code, int condition)
       return
 #ifdef _WIN32
           code == windows_error_code(ERROR_PATH_NOT_FOUND) ||
+          code == windows_error_code(ERROR_DIRECTORY) ||
 #endif
           code == make_error_code(std::errc::not_a_directory);
 
