@@ -66,21 +66,22 @@ bool error_category::equivalent(const std::error_code& code, int condition)
           code == windows_error_code(ERROR_FILE_NOT_FOUND) ||
           code == windows_error_code(ERROR_DEV_NOT_EXIST) ||
 #endif
-          code == std::errc::no_such_file_or_directory;
+          code == make_error_code(std::errc::no_such_file_or_directory);
 
     case error_code::not_a_directory:
       return
 #ifdef _WIN32
           code == windows_error_code(ERROR_PATH_NOT_FOUND) ||
 #endif
-          code == std::errc::not_a_directory;
+          code == make_error_code(std::errc::not_a_directory);
 
     case error_code::too_many_symbolic_link_levels:
       // POSIX says open with O_NOFOLLOW should set errno to ELOOP if the path
       // is a symlink. However, FreeBSD (which ironically originated O_NOFOLLOW)
       // sets it to EMLINK.  So we check for either condition here.
-      return code == std::errc::too_many_symbolic_link_levels ||
-          code == std::errc::too_many_links;
+      return code ==
+          make_error_code(std::errc::too_many_symbolic_link_levels) ||
+          code == make_error_code(std::errc::too_many_links);
 
     case error_code::permission_denied:
       return
@@ -89,16 +90,16 @@ bool error_category::equivalent(const std::error_code& code, int condition)
           code == windows_error_code(ERROR_INVALID_ACCESS) ||
           code == windows_error_code(ERROR_WRITE_PROTECT) ||
 #endif
-          code == std::errc::permission_denied ||
-          code == std::errc::operation_not_permitted;
+          code == make_error_code(std::errc::permission_denied) ||
+          code == make_error_code(std::errc::operation_not_permitted);
 
     case error_code::system_limits_exceeded:
       return
 #ifdef _WIN32
           code == windows_error_code(ERROR_TOO_MANY_OPEN_FILES) ||
 #endif
-          code == std::errc::too_many_files_open_in_system ||
-          code == std::errc::too_many_files_open;
+          code == make_error_code(std::errc::too_many_files_open_in_system) ||
+          code == make_error_code(std::errc::too_many_files_open);
 
     case error_code::timed_out:
       return
@@ -106,14 +107,14 @@ bool error_category::equivalent(const std::error_code& code, int condition)
           code == windows_error_code(ERROR_TIMEOUT) ||
           code == windows_error_code(WAIT_TIMEOUT) ||
 #endif
-          code == std::errc::timed_out;
+          code == make_error_code(std::errc::timed_out);
 
     case error_code::not_a_symlink:
       return
 #ifdef _WIN32
           code == windows_error_code(ERROR_NOT_A_REPARSE_POINT) ||
 #endif
-          code == std::errc::invalid_argument;
+          code == make_error_code(std::errc::invalid_argument);
 
     default:
       return false;

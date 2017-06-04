@@ -119,7 +119,16 @@ void InMemoryView::statPath(
     }
 
   } else if (errcode.value()) {
-    log(ERR, "getFileInformation(", path, ") -> ", errcode.message(), "\n");
+    log(ERR,
+        "getFileInformation(",
+        path,
+        ") failed and not handled! -> ",
+        errcode.message(),
+        " value=",
+        errcode.value(),
+        " category=",
+        errcode.category().name(),
+        "\n");
   } else {
     if (!file) {
       file = getOrCreateChildFile(view, parentDir, file_name, now);
