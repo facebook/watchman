@@ -19,6 +19,7 @@ import time
 import tempfile
 import os.path
 import os
+import subprocess
 import WatchmanInstance
 import TempDir
 
