@@ -179,8 +179,19 @@ limits for the number of files.
 
 ### How do I resolve this?
 
-[Follow these directions](
-/watchman/docs/troubleshooting.html#i-39-ve-changed-my-limits-how-can-i-clear-the-error)
+If the problem is due to trying to watch too many files (this can happen easily in
+a project with a `node_modules` folder, for example), you should instruct watchman
+to ignore folders that you don't want to watch. Add a [Watchman config file](https://facebook.github.io/watchman/docs/config.html) and specify what to ignore.
+An example `.watchmanconfig` at the root of your project could look like this:
+
+```
+{
+  "ignore_dirs": ["build", "node_modules"]
+}
+```
+
+To clear the error, [follow these directions](
+/watchman/docs/troubleshooting.html#ive-changed-my-limits-how-can-i-clear-the-warning)
 
 If the issue persists, consult your system administrator to identify what
 is consuming these resources and remediate it, or to increase your system
