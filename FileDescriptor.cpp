@@ -1,20 +1,56 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
 #include "FileDescriptor.h"
 #include "FileSystem.h"
+#include "watchman.h"
 #ifdef __APPLE__
 #include <sys/attr.h>
 #include <sys/utsname.h>
 #include <sys/vnode.h>
 #endif
 #include <system_error>
+#ifdef _WIN32
+#include "WinIoCtl.h"
+#endif
+#include "watchman_scopeguard.h"
 
 #if defined(_WIN32) || defined(O_PATH)
 #define CAN_OPEN_SYMLINKS 1
 #else
 #define CAN_OPEN_SYMLINKS 0
+#endif
+
+#ifdef _WIN32
+// We declare our own copy here because Ntifs.h is not included in the
+// standard install of the Visual Studio Community compiler.
+namespace {
+struct REPARSE_DATA_BUFFER {
+  ULONG ReparseTag;
+  USHORT ReparseDataLength;
+  USHORT Reserved;
+  union {
+    struct {
+      USHORT SubstituteNameOffset;
+      USHORT SubstituteNameLength;
+      USHORT PrintNameOffset;
+      USHORT PrintNameLength;
+      ULONG Flags;
+      WCHAR PathBuffer[1];
+    } SymbolicLinkReparseBuffer;
+    struct {
+      USHORT SubstituteNameOffset;
+      USHORT SubstituteNameLength;
+      USHORT PrintNameOffset;
+      USHORT PrintNameLength;
+      WCHAR PathBuffer[1];
+    } MountPointReparseBuffer;
+    struct {
+      UCHAR DataBuffer[1];
+    } GenericReparseBuffer;
+  };
+};
+}
 #endif
 
 namespace watchman {
@@ -175,9 +211,9 @@ static void checkCanonicalBaseName(const char *path) {
 }
 #endif
 
-#ifndef _WIN32
 FileDescriptor openFileHandle(const char *path,
                               const OpenFileHandleOptions &opts) {
+#ifndef _WIN32
   int flags = (!opts.followSymlinks ? O_NOFOLLOW : 0) |
               (opts.closeOnExec ? O_CLOEXEC : 0) |
 #ifdef O_PATH
@@ -198,6 +234,66 @@ FileDescriptor openFileHandle(const char *path,
         err, std::generic_category(), to<std::string>("open: ", path));
   }
   FileDescriptor file(fd);
+#else // _WIN32
+  DWORD access = 0, share = 0, create = 0, attrs = 0;
+  DWORD err;
+  SECURITY_ATTRIBUTES sec;
+
+  if (!strcmp(path, "/dev/null")) {
+    path = "NUL:";
+  }
+
+  auto wpath = w_string_piece(path).asWideUNC();
+
+  if (opts.metaDataOnly) {
+    access = 0;
+  } else {
+    if (opts.writeContents) {
+      access |= GENERIC_WRITE;
+    }
+    if (opts.readContents) {
+      access |= GENERIC_READ;
+    }
+  }
+
+  // We want more posix-y behavior by default
+  share = FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE;
+
+  memset(&sec, 0, sizeof(sec));
+  sec.nLength = sizeof(sec);
+  sec.bInheritHandle = TRUE;
+  if (opts.closeOnExec) {
+    sec.bInheritHandle = FALSE;
+  }
+
+  if (opts.create && opts.exclusiveCreate) {
+    create = CREATE_NEW;
+  } else if (opts.create && opts.truncate) {
+    create = CREATE_ALWAYS;
+  } else if (opts.create) {
+    create = OPEN_ALWAYS;
+  } else if (opts.truncate) {
+    create = TRUNCATE_EXISTING;
+  } else {
+    create = OPEN_EXISTING;
+  }
+
+  attrs = FILE_FLAG_POSIX_SEMANTICS | FILE_FLAG_BACKUP_SEMANTICS;
+  if (!opts.followSymlinks) {
+    attrs |= FILE_FLAG_OPEN_REPARSE_POINT;
+  }
+
+  FileDescriptor file(intptr_t(
+      CreateFileW(wpath.c_str(), access, share, &sec, create, attrs, nullptr)));
+  err = GetLastError();
+  if (!file) {
+    throw std::system_error(
+        err,
+        std::system_category(),
+        std::string("CreateFileW for openFileHandle: ") + path);
+  }
+
+#endif
 
   if (!opts.strictNameChecks) {
     return file;
@@ -227,17 +323,47 @@ FileDescriptor openFileHandle(const char *path,
 }
 
 FileInformation FileDescriptor::getInfo() const {
+#ifndef _WIN32
   struct stat st;
   if (fstat(fd_, &st)) {
     int err = errno;
     throw std::system_error(err, std::generic_category(), "fstat");
   }
   return FileInformation(st);
+#else // _WIN32
+  FILE_BASIC_INFO binfo;
+  FILE_STANDARD_INFO sinfo;
+
+  if (!GetFileInformationByHandleEx(
+          (HANDLE)handle(), FileBasicInfo, &binfo, sizeof(binfo))) {
+    throw std::system_error(
+        GetLastError(),
+        std::system_category(),
+        "GetFileInformationByHandleEx FileBasicInfo");
+  }
+
+  FileInformation info(binfo.FileAttributes);
+
+  FILETIME_LARGE_INTEGER_to_timespec(binfo.CreationTime, &info.ctime);
+  FILETIME_LARGE_INTEGER_to_timespec(binfo.LastAccessTime, &info.atime);
+  FILETIME_LARGE_INTEGER_to_timespec(binfo.LastWriteTime, &info.mtime);
+
+  if (!GetFileInformationByHandleEx(
+          (HANDLE)handle(), FileStandardInfo, &sinfo, sizeof(sinfo))) {
+    throw std::system_error(
+        GetLastError(),
+        std::system_category(),
+        "GetFileInformationByHandleEx FileStandardInfo");
+  }
+
+  info.size = sinfo.EndOfFile.QuadPart;
+  info.nlink = sinfo.NumberOfLinks;
+
+  return info;
+#endif
 }
 
-#endif
 
-#ifndef _WIN32
 w_string FileDescriptor::getOpenedPath() const {
 #if defined(F_GETPATH)
   // macOS.  The kernel interface only allows MAXPATHLEN
@@ -299,15 +425,38 @@ w_string FileDescriptor::getOpenedPath() const {
 
   throw std::system_error(errno, std::generic_category(),
                           "readlink for getOpenedPath");
+#elif defined(_WIN32)
+  std::wstring wchar;
+  wchar.resize(WATCHMAN_NAME_MAX);
+  auto len = GetFinalPathNameByHandleW(
+      (HANDLE)fd_,
+      &wchar[0],
+      wchar.size(),
+      FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+  auto err = GetLastError();
+
+  if (len >= wchar.size()) {
+    // Grow it
+    wchar.resize(len);
+    len = GetFinalPathNameByHandleW(
+        (HANDLE)fd_, &wchar[0], len, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+    err = GetLastError();
+  }
+
+  if (len == 0) {
+    throw std::system_error(
+        GetLastError(), std::system_category(), "GetFinalPathNameByHandleW");
+  }
+
+  return w_string(wchar.data(), len);
 #else
   throw std::system_error(ENOSYS, std::generic_category(),
                           "getOpenedPath not implemented on this platform");
 #endif
 }
-#endif
 
-#ifndef _WIN32
 w_string readSymbolicLink(const char* path) {
+#ifndef _WIN32
   std::string result;
 
   // Speculatively assume that this is large enough to read the
@@ -338,9 +487,14 @@ w_string readSymbolicLink(const char* path) {
       E2BIG,
       std::generic_category(),
       "readlink for readSymbolicLink: symlink changed while reading it");
+#else
+  return openFileHandle(path, OpenFileHandleOptions::queryFileInfo())
+      .readSymbolicLink();
+#endif
 }
 
 w_string FileDescriptor::readSymbolicLink() const {
+#ifndef _WIN32
   struct stat st;
   if (fstat(fd_, &st)) {
     throw std::system_error(
@@ -383,8 +537,78 @@ w_string FileDescriptor::readSymbolicLink() const {
 
   throw std::system_error(
       errno, std::generic_category(), "readlink for readSymbolicLink");
-}
+#else // _WIN32
+  DWORD len = 64 * 1024;
+  auto buf = malloc(len);
+  if (!buf) {
+    throw std::bad_alloc();
+  }
+  SCOPE_EXIT {
+    free(buf);
+  };
+  WCHAR* target;
+  USHORT targetlen;
+
+  auto result = DeviceIoControl(
+      (HANDLE)fd_,
+      FSCTL_GET_REPARSE_POINT,
+      nullptr,
+      0,
+      buf,
+      len,
+      &len,
+      nullptr);
+
+  // We only give one retry; if the size changed again already, we'll
+  // have another pending notify from the OS to go look at it again
+  // later, and it's totally fine to give up here for now.
+  if (!result && GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
+    free(buf);
+    buf = malloc(len);
+    if (!buf) {
+      throw std::bad_alloc();
+    }
+
+    result = DeviceIoControl(
+        (HANDLE)fd_,
+        FSCTL_GET_REPARSE_POINT,
+        nullptr,
+        0,
+        buf,
+        len,
+        &len,
+        nullptr);
+  }
+
+  if (!result) {
+    throw std::system_error(
+        GetLastError(), std::system_category(), "FSCTL_GET_REPARSE_POINT");
+  }
+
+  auto rep = reinterpret_cast<REPARSE_DATA_BUFFER*>(buf);
+
+  switch (rep->ReparseTag) {
+    case IO_REPARSE_TAG_SYMLINK:
+      target = rep->SymbolicLinkReparseBuffer.PathBuffer +
+          (rep->SymbolicLinkReparseBuffer.SubstituteNameOffset / sizeof(WCHAR));
+      targetlen =
+          rep->SymbolicLinkReparseBuffer.SubstituteNameLength / sizeof(WCHAR);
+      break;
+
+    case IO_REPARSE_TAG_MOUNT_POINT:
+      target = rep->MountPointReparseBuffer.PathBuffer +
+          (rep->MountPointReparseBuffer.SubstituteNameOffset / sizeof(WCHAR));
+      targetlen =
+          rep->MountPointReparseBuffer.SubstituteNameLength / sizeof(WCHAR);
+      break;
+    default:
+      throw std::system_error(
+          ENOSYS, std::generic_category(), "Unsupported ReparseTag");
+  }
+
+  return w_string(target, targetlen);
 #endif
+}
 
 w_string realPath(const char *path) {
   auto options = OpenFileHandleOptions::queryFileInfo();
@@ -468,8 +692,8 @@ CaseSensitivity getCaseSensitivityForPath(const char *path) {
 
 }
 
-#ifndef _WIN32
 Result<int, std::error_code> FileDescriptor::read(void* buf, int size) const {
+#ifndef _WIN32
   auto result = ::read(fd_, buf, size);
   if (result == -1) {
     int errcode = errno;
@@ -477,10 +701,19 @@ Result<int, std::error_code> FileDescriptor::read(void* buf, int size) const {
         std::error_code(errcode, std::generic_category()));
   }
   return Result<int, std::error_code>(result);
+#else
+  DWORD result = 0;
+  if (!ReadFile((HANDLE)fd_, buf, size, &result, nullptr)) {
+    return Result<int, std::error_code>(
+        std::error_code(GetLastError(), std::system_category()));
+  }
+  return Result<int, std::error_code>(result);
+#endif
 }
 
 Result<int, std::error_code> FileDescriptor::write(const void* buf, int size)
     const {
+#ifndef _WIN32
   auto result = ::write(fd_, buf, size);
   if (result == -1) {
     int errcode = errno;
@@ -488,8 +721,15 @@ Result<int, std::error_code> FileDescriptor::write(const void* buf, int size)
         std::error_code(errcode, std::generic_category()));
   }
   return Result<int, std::error_code>(result);
-}
+#else
+  DWORD result = 0;
+  if (!WriteFile((HANDLE)fd_, buf, size, &result, nullptr)) {
+    return Result<int, std::error_code>(
+        std::error_code(GetLastError(), std::system_category()));
+  }
+  return Result<int, std::error_code>(result);
 #endif
+}
 
 const FileDescriptor& FileDescriptor::stdIn() {
   static FileDescriptor f(

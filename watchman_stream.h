@@ -54,16 +54,14 @@ w_stm_t w_stm_stdin(void);
 std::unique_ptr<watchman_stream> w_stm_connect_unix(
     const char* path,
     int timeoutms);
-std::unique_ptr<watchman_stream> w_stm_fdopen(watchman::FileDescriptor&& fd);
-std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...);
 #else
 std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(
     const char* path,
     int timeoutms);
-std::unique_ptr<watchman_stream> w_stm_handleopen(watchman::FileDescriptor&& h);
-std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...);
 watchman::FileDescriptor w_handle_open(const char* path, int flags);
 #endif
+std::unique_ptr<watchman_stream> w_stm_fdopen(watchman::FileDescriptor&& fd);
+std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...);
 
 // Make a temporary file name and open it.
 // Marks the file as CLOEXEC

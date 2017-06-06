@@ -610,7 +610,7 @@ win_handle::win_handle(FileDescriptor&& handle)
   InitializeCriticalSection(&mtx);
 }
 
-std::unique_ptr<watchman_stream> w_stm_handleopen(FileDescriptor&& handle) {
+std::unique_ptr<watchman_stream> w_stm_fdopen(FileDescriptor&& handle) {
   if (!handle) {
     return nullptr;
   }
@@ -641,7 +641,7 @@ std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(
         nullptr)));
 
     if (handle) {
-      return w_stm_handleopen(std::move(handle));
+      return w_stm_fdopen(std::move(handle));
     }
 
     err = GetLastError();
@@ -766,5 +766,5 @@ FileDescriptor w_handle_open(const char* path, int flags) {
 }
 
 std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...) {
-  return w_stm_handleopen(w_handle_open(path, flags));
+  return w_stm_fdopen(w_handle_open(path, flags));
 }

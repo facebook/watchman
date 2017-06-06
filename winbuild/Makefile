@@ -32,7 +32,6 @@ SRCS_CPP=\
 	PubSub.cpp \
 	ThreadPool.cpp \
 	QueryableView.cpp \
-	Win32Handle.cpp \
 	winbuild\errmap.cpp \
 	winbuild\pathmap.cpp \
 	winbuild\mkdir.cpp \
@@ -284,7 +283,6 @@ tests\pending.exe: tests\pending_test.obj $(TEST_OBJS) \
 		log.obj \
 		FileDescriptor.obj \
 		PubSub.obj \
-		Win32Handle.obj \
 		FileInformation.obj \
 		tests\log_stub.obj \
 		winbuild\pathmap.obj \
@@ -339,7 +337,6 @@ tests\childproc.exe: tests\childproc.obj $(TEST_OBJS) \
 	Pipe.obj \
 	FileDescriptor.obj \
 	FileInformation.obj \
-	Win32Handle.obj \
 	string.obj \
 	stream_win.obj \
 	hash.obj \

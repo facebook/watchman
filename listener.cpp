@@ -484,7 +484,7 @@ static void named_pipe_accept_loop(const char *path) {
       res = GetLastError();
 
       if (res == ERROR_PIPE_CONNECTED) {
-        make_new_client(w_stm_handleopen(std::move(client_fd)));
+        make_new_client(w_stm_fdopen(std::move(client_fd)));
         continue;
       }
 
@@ -511,7 +511,7 @@ static void named_pipe_accept_loop(const char *path) {
         continue;
       }
     }
-    make_new_client(w_stm_handleopen(std::move(client_fd)));
+    make_new_client(w_stm_fdopen(std::move(client_fd)));
   }
 }
 #endif
