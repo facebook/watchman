@@ -268,10 +268,12 @@ w_string w_string::baseName() const {
 }
 
 w_string w_string::suffix() const {
+  ensureNotNull();
   return w_string(w_string_suffix(str_), false);
 }
 
 w_string w_string::asNullTerminated() const {
+  ensureNotNull();
   if (w_string_is_null_terminated(str_)) {
     return *this;
   }

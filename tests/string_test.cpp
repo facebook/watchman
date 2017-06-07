@@ -244,11 +244,23 @@ void test_split() {
 
     ok(expected == result, "split does create empty element");
   }
+
+  {
+    std::vector<std::string> result;
+    w_string_piece().split(result, ':');
+    ok(result.size() == 0, "split as 0 elements, got %d", int(result.size()));
+
+    w_string_piece(w_string()).split(result, ':');
+    ok(result.size() == 0, "split as 0 elements, got %d", int(result.size()));
+
+    w_string_piece(w_string(nullptr)).split(result, ':');
+    ok(result.size() == 0, "split as 0 elements, got %d", int(result.size()));
+  }
 }
 
 int main(int, char**) {
   plan_tests(
-      71
+      74
 #ifdef _WIN32
       // extra basename tests
       + 3

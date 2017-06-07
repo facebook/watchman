@@ -139,9 +139,29 @@ class w_string_piece {
   /** Construct from a string-like object */
   template <
       typename String,
-      typename std::enable_if<std::is_class<String>::value, int>::type = 0>
+      typename std::enable_if<
+          std::is_class<String>::value &&
+              !std::is_same<String, w_string>::value,
+          int>::type = 0>
   inline /* implicit */ w_string_piece(const String& str)
       : s_(str.data()), e_(str.data() + str.size()) {}
+
+  /** Construct from w_string.  This is almost the same as
+   * the string like object constructor above, but we need a nullptr check
+   */
+  template <
+      typename String,
+      typename std::enable_if<std::is_same<String, w_string>::value, int>::
+          type = 0>
+  inline /* implicit */ w_string_piece(const String& str) {
+    if (!str) {
+      s_ = nullptr;
+      e_ = nullptr;
+    } else {
+      s_ = str.data();
+      e_ = str.data() + str.size();
+    }
+  }
 
   inline /* implicit */ w_string_piece(const char* cstr)
       : s_(cstr), e_(cstr + strlen(cstr)) {}
@@ -285,6 +305,9 @@ class w_string {
   }
 
   inline w_string_piece piece() const {
+    if (str_ == nullptr) {
+      return w_string_piece();
+    }
     return w_string_piece(data(), size());
   }
 
@@ -320,19 +343,26 @@ class w_string {
    * normalized to unix slashes */
   w_string normalizeSeparators(char targetSeparator = '/') const;
 
+  inline void ensureNotNull() const {
+    w_assert(str_ != nullptr, "w_string is nullptr!");
+  }
+
   /** Returns a pointer to a null terminated c-string.
    * If this instance doesn't point to a null terminated c-string, throws
    * an exception that tells you to use asNullTerminated or makeNullTerminated
    * first. */
   const char* c_str() const;
   const char* data() const {
+    ensureNotNull();
     return str_->buf;
   }
   size_t size() const {
+    ensureNotNull();
     return str_->len;
   }
 
   w_string_type_t type() const {
+    ensureNotNull();
     return str_->type;
   }
 
