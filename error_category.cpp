@@ -51,6 +51,14 @@ const std::error_category& inotify_category() {
 
 bool error_category::equivalent(const std::error_code& code, int condition)
     const noexcept {
+  log(DBG,
+      "error_category::equivalent? code={",
+      code.category().name(),
+      ", ",
+      code.value(),
+      "} condition=",
+      condition,
+      "\n");
   if (code.category() == inotify_category()) {
     // Treat inotify the same as the generic category for the purposes of
     // equivalence; it is the same namespace, we just provide different
