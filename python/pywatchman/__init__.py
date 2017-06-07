@@ -593,7 +593,7 @@ class CLIProcessTransport(Transport):
     def readBytes(self, size):
         self._connect()
         res = self.proc.stdout.read(size)
-        if res == '':
+        if not res:
             raise WatchmanError('EOF on CLI process transport')
         return res
 
