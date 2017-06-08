@@ -87,6 +87,9 @@ bool w_string_piece::pathIsEqual(w_string_piece other) const {
 
 
 w_string_piece w_string_piece::dirName() const {
+  if (e_ == s_) {
+    return nullptr;
+  }
   for (auto end = e_ - 1; end >= s_; --end) {
     if (is_slash(*end)) {
       /* found the end of the parent dir */
@@ -105,6 +108,9 @@ w_string_piece w_string_piece::dirName() const {
 }
 
 w_string_piece w_string_piece::baseName() const {
+  if (e_ == s_) {
+    return *this;
+  }
   for (auto end = e_ - 1; end >= s_; --end) {
     if (is_slash(*end)) {
       /* found the end of the parent dir */

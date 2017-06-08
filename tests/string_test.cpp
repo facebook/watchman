@@ -157,8 +157,22 @@ void test_basename_dirname() {
   str = w_string_piece("foo/bar").dirName().asWString();
   ok(str == "foo", "dirname of foo/bar is foo: %s", str.c_str());
 
+  str = w_string_piece("").baseName().asWString();
+  ok(str == "", "basename of empty string is empty: %s", str.c_str());
+
+  str = w_string_piece("").dirName().asWString();
+  ok(str == "", "dirname of empty string is empty: %s", str.c_str());
+
   str = w_string_piece("foo").dirName().asWString();
   ok(str == "", "dirname of foo is nothing: %s", str.c_str());
+
+  str = w_string("f/b/z");
+  auto piece = str.piece().dirName();
+  auto str2 = piece.baseName().asWString();
+  ok(str2 == "b", "basename of dirname of f/b/z is b: %s", str.c_str());
+
+  str = w_string_piece("foo/bar/baz").dirName().dirName().asWString();
+  ok(str == "foo", "dirname of dirname of foo/bar/baz is foo: %s", str.c_str());
 
   str = w_string_piece("foo").baseName().asWString();
   ok(str == "foo", "basename of foo is foo: %s", str.c_str());
@@ -260,7 +274,7 @@ void test_split() {
 
 int main(int, char**) {
   plan_tests(
-      74
+      78
 #ifdef _WIN32
       // extra basename tests
       + 3
