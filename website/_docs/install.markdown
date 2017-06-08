@@ -13,9 +13,8 @@ Watchman is known to compile and pass its test suite on:
  * <i class="fa fa-linux"></i> Linux systems with `inotify`
  * <i class="fa fa-apple"></i> OS X (uses `FSEvents` on 10.7+,
    `kqueue(2)` on earlier versions)
- * <i class="fa fa-windows"></i> Windows x64 on Windows Server 2012 R2 and
-   later is currently in **alpha** status.  [More details on alpha testing this
-   here](https://github.com/facebook/watchman/issues/19)
+ * <i class="fa fa-windows"></i> Windows x64 on Windows 7,
+   Windows Server 2012 R2 and later is currently in **beta** status.
 
 Watchman used to support the following systems, but no one is actively
 maintaining them.  The core of the code should be OK, but they likely don't
@@ -31,6 +30,27 @@ kind of remote or distributed filesystem.
 
 Watchman does not currently support any other operating system not covered by
 the list above.
+
+## Download for Windows (Beta)
+
+Watchman is considered to be in **beta** status for Windows but is has
+a reasonably sized group of users depending on it already, and we expect
+to remove the beta label in the coming months.
+
+Watchman was built to support Windows Server 2012 R2 and later, but has
+had community provided patches that enable support for Windows 7 and later.
+
+At this time, we recommend running the latest master build of watchman on
+Windows.
+
+* [Download latest watchman.zip](https://ci.appveyor.com/api/projects/wez/watchman/artifacts/watchman.zip?branch=master&job=Environment:+WATCHMAN_WIN7_COMPAT%3D)
+
+Extract the zip file and make sure that `watchman.exe` is located in a directory
+that is in your `PATH`.
+
+If you encounter issues with the Windows version of watchman, please report
+them via GitHub!  [You can find the list of known Windows issues here](
+https://github.com/facebook/watchman/labels/windows).
 
 ## Build/Install
 

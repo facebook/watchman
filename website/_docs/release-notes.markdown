@@ -10,6 +10,75 @@ We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on
 GitHub](https://github.com/facebook/watchman/commits/master).
 
+### Watchman 4.9.0 (not yet released)
+
+* New field: `content.sha1hex`.  This field expands to the SHA1 hash of
+  the file contents, expressed in hex digits (40 character hex string).
+  Watchman maintains a cache of the content hashes and can compute the
+  hash on demand and also heuristically as files are changed.  This is
+  useful for tooling that wants to perform more intelligent cache invalidation
+  or build artifact fetching from content addressed storage.
+* New feature: Source Control Aware query mode.  Currently supports only
+  Mercurial (patches to add Git support are welcomed!).  SCM aware query
+  mode helps to keep response sizes closer to `O(what-you-changed)` than
+  to `O(all-repo-changes)` when rebasing your code.  Using this feature
+  effectively may require some additional infrastructure to compute and
+  associate data with revisions from your repo.
+* Windows: promoted from alpha to beta status!
+* Windows: fixed some performance and reliability issues
+* Windows: now operates correctly on Windows 7
+* Windows: can now see and report symlinks and junction points
+* Fixed an issue where queries larger than 1MB would likely result in
+  a PDU error response.
+* Improved performance of handling changes on case insensitive filesystems
+* Reduced lock contention for subscriptions that do no use the advanced
+  settling (`drop`, `defer`) options.
+* Fixed since generator behavior when using unix timestamps rather than
+  the preferred clock string syntax
+
+### Watchman 4.8.0 (never formally released)
+
+Whoops, we never got around to tagging this beyond a release candidate tag!
+
+* New command `flush-subscriptions` to synchronize subscriptions associated
+  with the current session.
+* On Windows, return `/` as the directory separator.  Previously we used `\`.
+  This change should be pretty neutral for clients, and makes it easier to work
+  with both the internals and the integration test infrastructure.
+* Enforce socket Unix groups more strongly — Watchman will now refuse to start
+  if it couldn't gain the right group memberships, as can happen for sites that
+  are experiencing intermittent LDAP connectivity problems.
+* pywatchman now officially supports Python 3. pywatchman will return Unicode
+  strings (possibly with surrogate escapes) by default, but can optionally return
+  bytestrings. Note that on Python 3, pywatchman requires Watchman 4.8 and above.
+  The Python 2 interface and requirements remain unchanged.
+* Prior to 4.8, methods on the Java WatchmanClient that returned
+	ListenableFutures would swallow exceptions and hang in an unfinished state
+	under situations like socket closure or thread death.  This has been fixed, and
+	now ListenableFutures propagate exception conditions immediately.  (Note that
+	this is typically unrecoverable, and users should create a new WatchmanClient
+	to re-establish communication with Watchman.)  See #412.
+* The minimum Java version for the Watchman Java client has always been 1.7,
+	but it was incorrectly described to be 1.6.  The Java client's build file has
+	been fixed accordingly.
+* Watchman was converted from C to C++.  The conversion exposed several
+	concurrency bugs, all of which have now been fixed.
+* Subscription queries are now executed in the context of the client thread,
+	which means that subscriptions are dispatched in parallel.  Previously,
+	subscriptions would be serially dispatched and block the disk IO thread.
+* Triggers are now dispatched in parallel and waits are managed in their own
+	threads (one thread per trigger).  This improves concurrency and resolves a
+	couple of waitpid related issues where watchman may not reap spawned children
+	in a timely fashion, or may spin on CPU until another child is spawned.
+* Fixed an object lifecycle management issue that could cause a crash when
+  aging out old/transient files.
+* Implement an upgraded wire protocol, BSERv2, on the server and in pywatchman.
+	BSERv2 can carry information about string encoding over the wire. This lets
+	pywatchman convert to Unicode strings on Python 3. Clients and servers know how
+	to  transparently fall back to BSERv1.
+* macOS: we no longer use socket activation when registering with launchd.
+  This was the source of some upgrade problems for mac Homebrew users.
+
 ### Watchman 4.7.0 (2016-09-10)
 
 * Reduced memory usage by 40%
