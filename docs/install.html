@@ -5,9 +5,10 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.1.0 -->
-<title>Installation - Watchman</title>
+  <!-- Begin Jekyll SEO tag v2.2.3 -->
+<title>Installation | Watchman</title>
 <meta property="og:title" content="Installation" />
+<meta property="og:locale" content="en_US" />
 <meta name="description" content="System Requirements" />
 <meta property="og:description" content="System Requirements" />
 <link rel="canonical" href="https://facebook.github.io/watchman/docs/install.html" />
@@ -15,18 +16,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2017-01-09T16:11:57-08:00" />
+<meta property="article:published_time" content="2017-06-08T15:19:02-07:00" />
 <script type="application/ld+json">
-{"@context": "http://schema.org",
-"@type": "BlogPosting",
-"headline": "Installation",
-"image": "https://facebook.github.io/watchman/static/og_image.png",
-"datePublished": "2017-01-09T16:11:57-08:00",
-"description": "System Requirements",
-"publisher": {"@type": "Organization",
-"logo": {"@type": "ImageObject",
-"url": "https://facebook.github.io/watchman/static/logo.png"}},
-"url": "https://facebook.github.io/watchman/docs/install.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"Installation","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-06-08T15:19:02-07:00","dateModified":"2017-06-08T15:19:02-07:00","description":"System Requirements","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/install.html"},"url":"https://facebook.github.io/watchman/docs/install.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -53,7 +45,7 @@
           </li>
           
           <li class="navItem ">
-            <a href=support.html>Support</a>
+            <a href=/watchman/support.html>Support</a>
           </li>
           
           <li class="navItem ">
@@ -79,7 +71,7 @@
       },
       
       {
-        href       : "support.html",
+        href       : "/watchman/support.html",
         text       : "Support",
       },
       
@@ -208,6 +200,13 @@
           key : "/watchman/docs/watchman-make.html",
           title : "watchman-make",
           url : "/watchman/docs/watchman-make.html",
+        },
+        
+          
+        {
+          key : "/watchman/docs/watchman-wait.html",
+          title : "watchman-wait",
+          url : "/watchman/docs/watchman-wait.html",
         },
         
           
@@ -460,6 +459,13 @@
           key : "/watchman/docs/simple-query.html",
           title : "Simple Pattern Syntax",
           url : "/watchman/docs/simple-query.html",
+        },
+        
+          
+        {
+          key : "/watchman/docs/file-query.html",
+          title : "Source Control Aware Queries",
+          url : "/watchman/docs/file-query.html",
         }
         
       ],
@@ -706,9 +712,8 @@ window.addEventListener('load', function() {
   <li><i class="fa fa-linux"></i> Linux systems with <code class="highlighter-rouge">inotify</code></li>
   <li><i class="fa fa-apple"></i> OS X (uses <code class="highlighter-rouge">FSEvents</code> on 10.7+,
 <code class="highlighter-rouge">kqueue(2)</code> on earlier versions)</li>
-  <li><i class="fa fa-windows"></i> Windows x64 on Windows Server 2012 R2 and
-later is currently in <strong>alpha</strong> status.  <a href="https://github.com/facebook/watchman/issues/19">More details on alpha testing this
-here</a></li>
+  <li><i class="fa fa-windows"></i> Windows x64 on Windows 7,
+Windows Server 2012 R2 and later is currently in <strong>beta</strong> status.</li>
 </ul>
 
 <p>Watchman used to support the following systems, but no one is actively
@@ -727,6 +732,28 @@ kind of remote or distributed filesystem.</p>
 
 <p>Watchman does not currently support any other operating system not covered by
 the list above.</p>
+
+<h2 id="download-for-windows-beta">Download for Windows (Beta)</h2>
+
+<p>Watchman is considered to be in <strong>beta</strong> status for Windows but is has
+a reasonably sized group of users depending on it already, and we expect
+to remove the beta label in the coming months.</p>
+
+<p>Watchman was built to support Windows Server 2012 R2 and later, but has
+had community provided patches that enable support for Windows 7 and later.</p>
+
+<p>At this time, we recommend running the latest master build of watchman on
+Windows.</p>
+
+<ul>
+  <li><a href="https://ci.appveyor.com/api/projects/wez/watchman/artifacts/watchman.zip?branch=master&amp;job=Environment:+WATCHMAN_WIN7_COMPAT%3D">Download latest watchman.zip</a></li>
+</ul>
+
+<p>Extract the zip file and make sure that <code class="highlighter-rouge">watchman.exe</code> is located in a directory
+that is in your <code class="highlighter-rouge">PATH</code>.</p>
+
+<p>If you encounter issues with the Windows version of watchman, please report
+them via GitHub!  <a href="https://github.com/facebook/watchman/labels/windows">You can find the list of known Windows issues here</a>.</p>
 
 <h2 id="buildinstall">Build/Install</h2>
 
@@ -760,10 +787,12 @@ the list above.</p>
 
 <h3 id="installing-from-source">Installing from source</h3>
 
-<p>You can use these steps below to get watchman built.  You will need <code class="highlighter-rouge">autoconf</code>
-and <code class="highlighter-rouge">automake</code>.  You may optionally build watchman without <code class="highlighter-rouge">pcre</code> and <code class="highlighter-rouge">python</code>
-support (see configuration options below). For python support, you will also 
-need <code class="highlighter-rouge">setuptools</code> and may need to install a <code class="highlighter-rouge">python-dev</code> or <code class="highlighter-rouge">python-devel</code> package.</p>
+<p>You can use these steps below to get watchman built.  You will need <code class="highlighter-rouge">autoconf</code>,
+<code class="highlighter-rouge">automake</code> and <code class="highlighter-rouge">libtool</code> (or <code class="highlighter-rouge">glibtool</code> on OS X).  You may optionally build
+watchman without <code class="highlighter-rouge">pcre</code> and <code class="highlighter-rouge">python</code> support (see configuration options below).
+For python support, you will need <code class="highlighter-rouge">setuptools</code> and may need to install a
+<code class="highlighter-rouge">python-dev</code> or <code class="highlighter-rouge">python-devel</code> package. To build the C++ client library you will
+need to install <code class="highlighter-rouge">libfolly</code>.</p>
 
 <p>See below for some more information on options to configure your build.</p>
 
@@ -814,7 +843,13 @@ that are specific to watchman that might be relevant to your needs:</p>
 23
 24
 25
-26</pre></td><td class="code"><pre>--enable-conffile=PATH  Use PATH as the default configuration file name.
+26
+27
+28
+29
+30
+31
+32</pre></td><td class="code"><pre>--enable-conffile=PATH  Use PATH as the default configuration file name.
                         Default is /etc/watchman.json
 
 --enable-statedir=PATH  Use PATH as the default for state, log files
@@ -825,6 +860,9 @@ that are specific to watchman that might be relevant to your needs:</p>
 
 --enable-stack-protector  Enable stack protection in the same
                           way that rpmbuild does on some systems.
+
+--enable-cppclient  Enable build of the C++ client library. This is built by
+                    default if Folly is available.
 
 --with-buildinfo=TEXT   Include some extra build information that will
                         be reported in the version command output
@@ -840,6 +878,9 @@ that are specific to watchman that might be relevant to your needs:</p>
 
 --with-gimli    Enable support for the gimli process monitor
                 https://bitbucket.org/wez/gimli/
+
+--with-folly=PATH  Specify root for Folly (needed for the C++ client library)
+                   https://github.com/facebook/folly
 </pre></td></tr></tbody></table>
 </div>
 </div>
@@ -849,7 +890,7 @@ that are specific to watchman that might be relevant to your needs:</p>
 <h3 id="continuous-integration">Continuous Integration</h3>
 
 <p>We use continuous integration to build out every revision and
-pull-request to make sure that it we don’t accidentally break things.  The
+pull-request to make sure that we don’t accidentally break things.  The
 current build status is:</p>
 
 <p><a href="https://travis-ci.org/facebook/watchman"><img src="https://travis-ci.org/facebook/watchman.svg?branch=master" alt="Build Status" /></a></p>
@@ -893,7 +934,7 @@ started watching the dir.</li>
 notification, but instead will get spurious notifications for files that
 haven’t actually changed.</p>
 
-<h3 id="max-os-file-descriptor-limits">Max OS File Descriptor Limits</h3>
+<h3 id="mac-os-file-descriptor-limits">Mac OS File Descriptor Limits</h3>
 
 <p><em>Only applicable on OS X 10.6 and earlier</em></p>
 

@@ -5,9 +5,10 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.1.0 -->
-<title>Configuration Files - Watchman</title>
+  <!-- Begin Jekyll SEO tag v2.2.3 -->
+<title>Configuration Files | Watchman</title>
 <meta property="og:title" content="Configuration Files" />
+<meta property="og:locale" content="en_US" />
 <meta name="description" content="Watchman looks for configuration files in two places:" />
 <meta property="og:description" content="Watchman looks for configuration files in two places:" />
 <link rel="canonical" href="https://facebook.github.io/watchman/docs/config.html" />
@@ -15,18 +16,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2017-01-09T16:11:57-08:00" />
+<meta property="article:published_time" content="2017-06-08T15:19:02-07:00" />
 <script type="application/ld+json">
-{"@context": "http://schema.org",
-"@type": "BlogPosting",
-"headline": "Configuration Files",
-"image": "https://facebook.github.io/watchman/static/og_image.png",
-"datePublished": "2017-01-09T16:11:57-08:00",
-"description": "Watchman looks for configuration files in two places:",
-"publisher": {"@type": "Organization",
-"logo": {"@type": "ImageObject",
-"url": "https://facebook.github.io/watchman/static/logo.png"}},
-"url": "https://facebook.github.io/watchman/docs/config.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"Configuration Files","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-06-08T15:19:02-07:00","dateModified":"2017-06-08T15:19:02-07:00","description":"Watchman looks for configuration files in two places:","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/config.html"},"url":"https://facebook.github.io/watchman/docs/config.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -53,7 +45,7 @@
           </li>
           
           <li class="navItem ">
-            <a href=support.html>Support</a>
+            <a href=/watchman/support.html>Support</a>
           </li>
           
           <li class="navItem ">
@@ -79,7 +71,7 @@
       },
       
       {
-        href       : "support.html",
+        href       : "/watchman/support.html",
         text       : "Support",
       },
       
@@ -208,6 +200,13 @@
           key : "/watchman/docs/watchman-make.html",
           title : "watchman-make",
           url : "/watchman/docs/watchman-make.html",
+        },
+        
+          
+        {
+          key : "/watchman/docs/watchman-wait.html",
+          title : "watchman-wait",
+          url : "/watchman/docs/watchman-wait.html",
         },
         
           
@@ -460,6 +459,13 @@
           key : "/watchman/docs/simple-query.html",
           title : "Simple Pattern Syntax",
           url : "/watchman/docs/simple-query.html",
+        },
+        
+          
+        {
+          key : "/watchman/docs/file-query.html",
+          title : "Source Control Aware Queries",
+          url : "/watchman/docs/file-query.html",
         }
         
       ],
@@ -831,7 +837,7 @@ it from the <code class="highlighter-rouge">/etc/watchman.json</code> file.</li>
 filesystem should be idle before dispatching triggers.  The default value is 20
 milliseconds.</p>
 
-<h3 id="rootfiles">root_files</h3>
+<h3 id="root_files">root_files</h3>
 
 <p><em>Since 3.1.</em></p>
 
@@ -869,7 +875,7 @@ root file:</p>
 
 <p>See the <a href="cmd/watch-project.html">watch-project</a> command for more information.</p>
 
-<h3 id="enforcerootfiles">enforce_root_files</h3>
+<h3 id="enforce_root_files">enforce_root_files</h3>
 
 <p><em>Since 3.1.</em></p>
 
@@ -884,7 +890,7 @@ check to see if the now deprecated <a href="#root_restrict_files">root_restrict_
 configuration setting is present.  If it is found then the effective value of
 <code class="highlighter-rouge">enforce_root_files</code> is set to <code class="highlighter-rouge">true</code>.</p>
 
-<h3 id="rootrestrictfiles">root_restrict_files</h3>
+<h3 id="root_restrict_files">root_restrict_files</h3>
 
 <p><em>Deprecated starting in version 3.1; use <a href="#root_files">root_files</a> and
 <a href="#enforce_root_files">enforce_root_files</a> to effect the same behavior.</em></p>
@@ -906,7 +912,7 @@ restrictions.</p>
 
 <p>will allow watches only in the top level of Git or Mercurial repositories.</p>
 
-<h3 id="illegalfstypes">illegal_fstypes</h3>
+<h3 id="illegal_fstypes">illegal_fstypes</h3>
 
 <p>Specifies a list of filesystem types that watchman is prohibited to attempt to
 watch.  Watchman will determine the filesystem type of the root of a watch; if
@@ -935,7 +941,7 @@ be reported as <code class="highlighter-rouge">unknown</code>.</p>
 advice to use a local directory.  You may omit the <code class="highlighter-rouge">illegal_fstypes_advice</code>
 setting to use a default suggestion to relocate the directory to local disk.</p>
 
-<h3 id="ignorevcs">ignore_vcs</h3>
+<h3 id="ignore_vcs">ignore_vcs</h3>
 
 <p>Apply special VCS ignore logic to the set of named dirs.  This option has a
 default value of <code class="highlighter-rouge">[".git", ".hg", ".svn"]</code>.  Dirs that match this option are
@@ -944,7 +950,7 @@ watchman to mildly abuse the version control directories to store its query
 cookie files and to observe VCS locking activity without having to watch the
 entire set of VCS data for large trees.</p>
 
-<h3 id="ignoredirs">ignore_dirs</h3>
+<h3 id="ignore_dirs">ignore_dirs</h3>
 
 <p>Dirs that match are completely ignored by watchman.  This is useful to ignore a
 directory that contains only build products and where file change notifications
@@ -988,7 +994,7 @@ ignored by watchman.  If your workload is prone to recrawl events you will
 want to prioritize your <code class="highlighter-rouge">ignore_dirs</code> list so that the most busy ignored
 locations occupy the first 8 positions in this list.</p>
 
-<h3 id="gcageseconds">gc_age_seconds</h3>
+<h3 id="gc_age_seconds">gc_age_seconds</h3>
 
 <p>Deleted files (and dirs) older than this are periodically pruned from the
 internal view of the filesystem.  Until they are pruned, they will be visible
@@ -1000,13 +1006,13 @@ how to handle the case where they have missed changes.  See <code class="highlig
 elsewhere in this document for more information.  The default for this is
 <code class="highlighter-rouge">43200</code> (12 hours).</p>
 
-<h3 id="gcintervalseconds">gc_interval_seconds</h3>
+<h3 id="gc_interval_seconds">gc_interval_seconds</h3>
 
 <p>How often to check for, and prune out, deleted nodes per the <code class="highlighter-rouge">gc_age_seconds</code>
 option description above.  The default for this is <code class="highlighter-rouge">86400</code> (24 hours).  Set
 this to <code class="highlighter-rouge">0</code> to disable the periodic pruning operation.</p>
 
-<h3 id="fseventslatency">fsevents_latency</h3>
+<h3 id="fsevents_latency">fsevents_latency</h3>
 
 <p>Controls the latency parameter that is passed to <code class="highlighter-rouge">FSEventStreamCreate</code> on OS X.
 The value is measured in seconds.  The fixed value of this parameter prior to
@@ -1018,7 +1024,7 @@ per-root basis.</p>
 the latency parameter will allow the system to batch more change notifications
 together and operate more efficiently.</p>
 
-<h3 id="fseventstryresync">fsevents_try_resync</h3>
+<h3 id="fsevents_try_resync">fsevents_try_resync</h3>
 
 <p>This is macOS specific.</p>
 
@@ -1042,7 +1048,7 @@ original strategy of recrawling the watched directory tree is used instead.</p>
 <p>The default changed to <code class="highlighter-rouge">true</code>.  In addition, this resync strategy is now
 also applied to <code class="highlighter-rouge">kFSEventStreamEventFlagKernelDropped</code> events.</p>
 
-<h3 id="idlereapageseconds">idle_reap_age_seconds</h3>
+<h3 id="idle_reap_age_seconds">idle_reap_age_seconds</h3>
 
 <p><em>Since 3.7.</em></p>
 
@@ -1055,7 +1061,7 @@ for <code class="highlighter-rouge">idle_reap_age_seconds</code>.   If an idle w
 subscriptions then it will be cancelled, releasing the associated operating
 system resources, and removed from the state file.</p>
 
-<h3 id="hintnumfilesperdir">hint_num_files_per_dir</h3>
+<h3 id="hint_num_files_per_dir">hint_num_files_per_dir</h3>
 
 <p><em>Since 3.9.</em></p>
 
@@ -1082,7 +1088,7 @@ have a more optimal memory usage.  Since watchman is primarily employed as an
 accelerator, we’d recommend biasing towards using more memory and taking less
 time to run.</p>
 
-<h3 id="hintnumdirs">hint_num_dirs</h3>
+<h3 id="hint_num_dirs">hint_num_dirs</h3>
 
 <p><em>Since 4.6</em></p>
 
@@ -1097,7 +1103,7 @@ that you have.</p>
 number too small results in increased latency during crawling while the
 hash tables are rebuilt.</p>
 
-<h3 id="suppressrecrawlwarnings">suppress_recrawl_warnings</h3>
+<h3 id="suppress_recrawl_warnings">suppress_recrawl_warnings</h3>
 
 <p><em>Since 4.7</em></p>
 

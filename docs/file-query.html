@@ -5,28 +5,20 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.1.0 -->
-<title>File Queries - Watchman</title>
-<meta property="og:title" content="File Queries" />
-<meta name="description" content="Watchman file queries consist of 1 or more generators that feed files through the expression evaluator." />
-<meta property="og:description" content="Watchman file queries consist of 1 or more generators that feed files through the expression evaluator." />
+  <!-- Begin Jekyll SEO tag v2.2.3 -->
+<title>Source Control Aware Queries | Watchman</title>
+<meta property="og:title" content="Source Control Aware Queries" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Since 4.9." />
+<meta property="og:description" content="Since 4.9." />
 <link rel="canonical" href="https://facebook.github.io/watchman/docs/file-query.html" />
 <meta property="og:url" content="https://facebook.github.io/watchman/docs/file-query.html" />
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2017-01-09T16:11:57-08:00" />
+<meta property="article:published_time" content="2017-06-08T15:19:02-07:00" />
 <script type="application/ld+json">
-{"@context": "http://schema.org",
-"@type": "BlogPosting",
-"headline": "File Queries",
-"image": "https://facebook.github.io/watchman/static/og_image.png",
-"datePublished": "2017-01-09T16:11:57-08:00",
-"description": "Watchman file queries consist of 1 or more generators that feed files through the expression evaluator.",
-"publisher": {"@type": "Organization",
-"logo": {"@type": "ImageObject",
-"url": "https://facebook.github.io/watchman/static/logo.png"}},
-"url": "https://facebook.github.io/watchman/docs/file-query.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"Source Control Aware Queries","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-06-08T15:19:02-07:00","dateModified":"2017-06-08T15:19:02-07:00","description":"Since 4.9.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/file-query.html"},"url":"https://facebook.github.io/watchman/docs/file-query.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -53,7 +45,7 @@
           </li>
           
           <li class="navItem ">
-            <a href=support.html>Support</a>
+            <a href=/watchman/support.html>Support</a>
           </li>
           
           <li class="navItem ">
@@ -79,7 +71,7 @@
       },
       
       {
-        href       : "support.html",
+        href       : "/watchman/support.html",
         text       : "Support",
       },
       
@@ -208,6 +200,13 @@
           key : "/watchman/docs/watchman-make.html",
           title : "watchman-make",
           url : "/watchman/docs/watchman-make.html",
+        },
+        
+          
+        {
+          key : "/watchman/docs/watchman-wait.html",
+          title : "watchman-wait",
+          url : "/watchman/docs/watchman-wait.html",
         },
         
           
@@ -460,6 +459,13 @@
           key : "/watchman/docs/simple-query.html",
           title : "Simple Pattern Syntax",
           url : "/watchman/docs/simple-query.html",
+        },
+        
+          
+        {
+          key : "/watchman/docs/file-query.html",
+          title : "Source Control Aware Queries",
+          url : "/watchman/docs/file-query.html",
         }
         
       ],
@@ -624,7 +630,7 @@ window.addEventListener('load', function() {
     },
     getDefaultProps: function() {
       return {
-        currentDoc: "File Queries",
+        currentDoc: "Source Control Aware Queries",
         currentGroup: "Queries",
         data: docnavData,
       }
@@ -693,314 +699,412 @@ window.addEventListener('load', function() {
 
     <div class="post">
   <header class="post-header">
-    <h1 class="post-title">File Queries</h1>
+    <h1 class="post-title">Source Control Aware Queries</h1>
   </header>
 
   <article class="post-content">
    
-      <p>Watchman file queries consist of 1 or more <em>generators</em> that feed files through
-the <em>expression evaluator</em>.</p>
+      <p><em>Since 4.9.</em></p>
 
-<h3 id="generators">Generators</h3>
+<p><em>The <a href="/watchman/docs/capabilities.html">capability</a> name associated with this
+enhanced functionality is <code class="highlighter-rouge">scm-since</code>.</em></p>
 
-<p>Generators are analogous to the list of <em>paths</em> that you specify when using the
-<code class="highlighter-rouge">find(1)</code> utility, but are implemented in watchman with a bit of a twist
-because watchman doesn’t need to crawl the filesystem in realtime and instead
-maintains a couple of indexes over the tree.</p>
+<p>At the time of writing, only Mercurial is supported.  The capability name for
+this is <code class="highlighter-rouge">scm-hg</code>.  The internal architecture allows supporting other source
+control systems quite easily; it just needs someone to implement and test them!</p>
 
-<p>A query may specify any number of generators; each generator will emit its list
-of files and this may mean that you see the same file output more than once if
-you specified the use of multiple generators that all produce the same file.</p>
+<p>A common pattern for tools that consume watchman is wanting to reason about
+the changes in a version controlled repository.  For most repos it is fine
+to simply receive information about all changed files as they are updated,
+even during a rebase over several days of work by others.</p>
 
-<p>Watchman provides 5 generators:</p>
+<p>For very large or very busy repositories, where a great many files can change
+over a short period of time, it can be desirable to get a minimized set of
+information about the changes.</p>
+
+<p>For example, if your tool has the ability to load some pre-built data from
+some artifact storage, rather than processing many hundreds of changed
+files incrementally you may want to take the merge base of local changes
+and use that to locate the pre-built data and process only the delta
+between that state and the current state of the repo.</p>
+
+<p>An illustration may help.  Here we see that a user has a stack of two commits
+based off the symbolic <code class="highlighter-rouge">master</code> commit.  In this scenario, <code class="highlighter-rouge">master</code> is tracking
+the tip of the repo to which the local repo is published, and the user is
+checked out at the 6b38a5 commit:</p>
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7</pre></td><td class="code"><pre>| @  6b38a5  wez
+| |  Add cats.cpp
+| |
+| o  fa2e92  wez
+|/   Add cat.jpg
+|
+o f12345 master
+</pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>Now the user synchronizes their repo with the remote, fetching the commits but
+not changing their work yet.   This is often combined with the step that follows,
+but we are breaking it out here for the purposes of illustration.  This is
+equivalent to running <code class="highlighter-rouge">hg pull</code> or <code class="highlighter-rouge">git fetch</code>:</p>
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10</pre></td><td class="code"><pre>o  fabf87  coworker     master
+.  Amazing new feature
+.
+| @  6b38a5  wez
+| |  Add cats.cpp
+| |
+| o  fa2e92  wez
+|/   Add cat.jpg
+|
+o
+</pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>The ellipsis portion of the DAG represents uninteresting commits to <code class="highlighter-rouge">wez</code>; there
+may be hundreds of files changed by those commits, but <code class="highlighter-rouge">wez</code> only cares about the
+work in their local branch of the DAG.</p>
+
+<p>Now <code class="highlighter-rouge">wez</code> wants to rebase their work on master.  This would be done using
+a command like <code class="highlighter-rouge">hg rebase -d master -s fa2e92</code>:</p>
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9</pre></td><td class="code"><pre>| @  bbbbbb  wez
+| |  Add cats.cpp
+| |
+| o  aaaaaa  wez
+|/   Add cat.jpg
+|
+o  fabf87  coworker     master
+.  Amazing new feature
+.
+</pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>The crucial part of this is what happens to the working copy; assuming that we now land
+on commit <code class="highlighter-rouge">bbbbbb</code>, Watchman will observe changes for all of the hundreds of files that
+changed across the rebase and pass this information on to the tools that are subscribed
+or are querying for this information.</p>
+
+<p>If your tooling is source control aware then you can ask watchman to run since queries
+in a mode where it will return you information about the merge base with <code class="highlighter-rouge">master</code> and
+the minimized set of files that changed.</p>
+
+<p>To enable this mode you issue a query using a new <em>fat clock</em> as the <code class="highlighter-rouge">since</code> parameter
+for the query:</p>
+
+<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
+["query", "/path/to/root", {
+  "since": {
+      scm: {
+        "mergebase-with": "master"
+      }
+  },
+  "expression": ["type", "f"],
+  "fields": ["name"]
+}]
+EOT
+</span></pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>This particular <code class="highlighter-rouge">since</code> value starts with an unspecified clock value and requests that
+watchman run the query in source control aware mode, using the symbolic name <code class="highlighter-rouge">master</code>
+to compute the merge base for the commit graph.</p>
+
+<p>If we look back to the illustrations above and rewind to the first scenario,
+the results of this query will look something like this:</p>
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
+   </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+       </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:123:123"</span><span class="p">,</span><span class="w">
+       </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"f12345"</span><span class="p">,</span><span class="w">
+            </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
+       </span><span class="p">}</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="nt">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"cat.jpg"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cats.cpp"</span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>This result informs the client of the merge base with master (which happens to
+be master itself) and the list of changes since that merge base.</p>
+
+<p>To get the next incremental change the client feeds that clock value back in to its
+next query.  Looking back to the second illustration above, if we were to run this query
+after the running <code class="highlighter-rouge">hg pull</code> (note that this doesn’t change the working copy):</p>
+
+<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
+["query", "/path/to/root", {
+  "since": {
+       "clock": "c:123:123",
+       "scm": {
+            "mergebase": "f12345",
+            "mergebase-with": "master"
+       }
+  },
+  "expression": ["type", "f"],
+  "fields": ["name"]
+}]
+EOT
+</span></pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>we’d get this result:</p>
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
+   </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+       </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:123:124"</span><span class="p">,</span><span class="w">
+       </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"f12345"</span><span class="p">,</span><span class="w">
+            </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
+       </span><span class="p">}</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="nt">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>Note that the <code class="highlighter-rouge">files</code> list is empty because we didn’t change any files, and
+note that one of the numeric portions of the clock string has changed.</p>
+
+<p>Also note that the mergebase revision remains the same because we also didn’t
+rebase the commit yet.</p>
+
+<p>This is a little white lie: the reality is that some files did change in the
+version control system, and with the expression we’re using we would see them,
+but they are not part of the working copy so we’re omitting them for the clarity
+of this example.</p>
+
+<p>Now if we rebase and update to the rebased revision (taking us to the last of the
+illustrations from above), we’d run this query, feeding in the clock from the last
+query to get the correct incremental result:</p>
+
+<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
+["query", "/path/to/root", {
+  "since": {
+       "clock": "c:123:124",
+       "scm": {
+            "mergebase": "f12345",
+            "mergebase-with": "master"
+       }
+  },
+  "expression": ["type", "f"],
+  "fields": ["name"]
+}]
+EOT
+</span></pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>we’d get this result:</p>
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
+   </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+       </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:123:125"</span><span class="p">,</span><span class="w">
+       </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"fabf87"</span><span class="p">,</span><span class="w">
+            </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
+       </span><span class="p">}</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="nt">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"cat.jpg"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cats.cpp"</span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>Note that the mergebase reported in the clock has changed and note that the
+list of files reported is just the two from our commit stack despite there
+being hundreds of files that were physically updated on the disk.</p>
+
+<p>Your client can now lookup some state based on the <code class="highlighter-rouge">fabf87</code> revision and
+download it, and can then incrementally apply the computation for <code class="highlighter-rouge">cat.jpg</code> and
+<code class="highlighter-rouge">cats.cpp</code> on top of that state.</p>
+
+<p>If your client doesn’t know how to do this, then you shouldn’t use this
+source control aware query mode!</p>
+
+<h2 id="source-control-aware-subscriptions">Source Control Aware Subscriptions</h2>
+
+<p>You can also use the same source control awareness in your subscriptions.  This
+is basically the same procedure as making queries above, but there are some
+preconditions and things to note:</p>
 
 <ul>
-  <li><strong>since</strong>: produces a list of files that were modified since a specific
-clockspec.</li>
-  <li><strong>suffix</strong>: produces a list of files that have a particular suffix.</li>
-  <li><strong>glob</strong>: efficiently pattern match a list of files based on their names.</li>
-  <li><strong>path</strong>: produces a list of files based on their path and depth.</li>
-  <li><strong>all</strong>: produces a list of all known files</li>
+  <li>Watchman needs the cooperation of the source control system to know when
+it should defer events.  At the time of writing this is only possible when
+using Mercurial with the <code class="highlighter-rouge">fsmonitor</code> extension enabled.</li>
+  <li>Source control aware subscriptions implicitly enable <code class="highlighter-rouge">defer_vcs</code> and
+<code class="highlighter-rouge">defer:["hg.update"]</code>.  As with the point above, this is to ensure that
+you don’t get notified about files changing during the working copy update
+operation; that would defeat the point of using source control awareness.</li>
 </ul>
 
-<h3 id="de-duplicating-results">De-duplicating results</h3>
-
-<p><em>Since 4.7.</em></p>
-
-<p>If your query uses multiple generators, or configures the <code class="highlighter-rouge">path</code> generator with
-paths that yield multiple results, the default behavior (for backwards
-compatibility reasons) is to emit those duplicate results in the query output.</p>
-
-<p>You may ask Watchman to de-duplicate results for you by enabling the
-<code class="highlighter-rouge">dedup_results</code> boolean in your query:</p>
-
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6</pre></td><td class="code"><pre>$ watchman -j &lt;&lt;-EOT
-["query", "/path/to/root", {
-  "path": ["bar", "bar"],
-  "dedup_results": true
-}]
-EOT
-</pre></td></tr></tbody></table>
-</div>
-</div>
-
-<p>You may test for this feature using an extended version command and requesting
-the capability name <code class="highlighter-rouge">dedup_results</code>.</p>
-
-<h3 id="since-generator">Since Generator</h3>
-
-<p>The <code class="highlighter-rouge">since</code> generator produces a list of files that were modified since a
-specific <a href="../docs/clockspec.html">clockspec</a>.</p>
-
-<p>The following query will consider the set of files changed since the last
-query using the named cursor <code class="highlighter-rouge">mycursor</code> and then pass them to the expression
-evaluator to be filtered to just those that are files:</p>
-
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
-["query", "/path/to/root", {
-  "since": "n:mycursor",
-  "expression": ["type", "f"]
-}]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
-
-<p>If the <code class="highlighter-rouge">since</code> parameter value is blank, was produced by a different watchman
-process (in other words, the watchman process was restarted between the time
-that the value was obtained and the time the query was issued) or is a named
-cursor that has not yet been used in a query, the <code class="highlighter-rouge">since</code> generator will
-consider the state to be a <em>fresh instance</em> and its behavior is modified:</p>
-
-<p>A <em>fresh instance</em> result set will only include files that currently exist
-and will generate file nodes that are always considered to be <code class="highlighter-rouge">new</code>.</p>
-
-<p>If the query was configured with the <code class="highlighter-rouge">empty_on_fresh_instance</code> property set to
-<code class="highlighter-rouge">true</code> then the result set will be empty and the <code class="highlighter-rouge">is_fresh_instance</code> property
-will be set to <code class="highlighter-rouge">true</code> in the result object.</p>
-
-<h3 id="suffix-generator">Suffix Generator</h3>
-
-<p>The <code class="highlighter-rouge">suffix</code> generator produces a list of files that have a particular suffix
-or set of suffixes.  The value can be either a string or an array of strings.</p>
-
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
-["query", "/path/to/root", {
-  "suffix": "js"
-}]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
-
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
-["query", "/path/to/root", {
-  "suffix": ["js", "css"]
-}]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
-
-<h3 id="glob-generator">Glob Generator</h3>
-
-<p><em>Since 4.7.</em></p>
-
-<p>The <code class="highlighter-rouge">glob</code> generator produces a list of files by matching against your
-input list of patterns.  It does this by building a tree from the glob
-expression(s) and walking both the expression and the in-memory filesystem
-tree concurrently.</p>
-
-<p>This query will yield a list of all of the C source and header files found
-directly in the <code class="highlighter-rouge">src</code> dir:</p>
-
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre>$ watchman -j &lt;&lt;-EOT
-["query", "/path/to/root", {
-  "glob": ["src/*.c", "src/*.h"],
-  "fields": ["name"]
-}]
-</pre></td></tr></tbody></table>
-</div>
-</div>
-
-<p>This query will yield a list of all of the C source and header files found
-in any subdirectories of the root:</p>
-
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre>$ watchman -j &lt;&lt;-EOT
-["query", "/path/to/root", {
-  "glob": ["**/*.c", "**/*.h"],
-  "fields": ["name"]
-}]
-</pre></td></tr></tbody></table>
-</div>
-</div>
-
-<p>Note that it is more efficient to use the <code class="highlighter-rouge">suffix</code> generator together with a
-<code class="highlighter-rouge">dirname</code> expression term for such a broadly scoped query as it results in
-fewer comparisons.  This example is included as an illustration of recursive
-globbing.</p>
-
-<p>The glob generator implicitly enables <code class="highlighter-rouge">dedup_results</code> mode.</p>
-
-<h3 id="path-generator">Path Generator</h3>
-
-<p>The <code class="highlighter-rouge">path</code> generator produces a list of files based on their path and depth.
-Depth controls how far watchman will search down the directory tree for files.</p>
-
-<p>The <code class="highlighter-rouge">path</code> generator expects an array of path specifiers.  Each path specifier
-can be either a string or an object and each will produce a set of files.</p>
-
-<p>If it is a string then it is treated as the value for <code class="highlighter-rouge">path</code> with <code class="highlighter-rouge">depth</code> set
-to infinite.  If an object, the fields <code class="highlighter-rouge">path</code> (a string) and <code class="highlighter-rouge">depth</code> (an
-integer) must be supplied.</p>
-
-<p>Paths are relative to the root, so if watchman is watching <code class="highlighter-rouge">/foo/</code>, path <code class="highlighter-rouge">bar</code>
-refers to <code class="highlighter-rouge">/foo/bar</code>.</p>
-
-<p>A <code class="highlighter-rouge">depth</code> value of <code class="highlighter-rouge">0</code> means only files and directories which are contained in
-this path.  A <code class="highlighter-rouge">depth</code> value of <code class="highlighter-rouge">-1</code> means no limit on the depth.</p>
-
-<p>The following <code class="highlighter-rouge">path</code> generators are equivalent:</p>
-
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre>$ watchman -j &lt;&lt;-EOT
-["query", "/path/to/root", {
-  "path": ["bar"]
-}]
-EOT
-</pre></td></tr></tbody></table>
-</div>
-</div>
-
-<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5</pre></td><td class="code"><pre>$ watchman -j &lt;&lt;-EOT
-["query", "/path/to/root", {
-  "path": [{"path": "bar", "depth": -1}]
-}]
-EOT
-</pre></td></tr></tbody></table>
-</div>
-</div>
-
-<h3 id="all-generator">All Generator</h3>
-
-<p>The <code class="highlighter-rouge">all</code> generator produces a list of all file nodes.  It is the default
-generator and is used in the case where no other generators were explicitly
-specified.</p>
-
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
-["query", "/path/to/root", {
-}]
-EOT
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
-
-<h3 id="expressions">Expressions</h3>
-
-<p>A watchman query expression consists of 0 or more expression terms.  If no
-terms are provided then each file evaluated is considered a match (equivalent
-to specifying a single <code class="highlighter-rouge">true</code> expression term).</p>
-
-<p>Otherwise, the expression is evaluated against the file and produces a boolean
-result.  If that result is true then the file is considered a match and is
-added to the output set.</p>
-
-<p>An expression term is canonically represented as a JSON array whose zeroth
-element is a string containing the term name.</p>
-
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"termname"</span><span class="p">,</span><span class="w"> </span><span class="err">arg</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="err">arg</span><span class="mi">2</span><span class="p">]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
-
-<p>If the term accepts no arguments you may use a short form that consists of just
-the term name expressed as a string:</p>
-
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="s2">"true"</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
-
-<p>Expressions that match against file names may match against either the
-<em>basename</em> or the <em>wholename</em> of the file.  The basename is the name of the
-file within its containing directory.  The wholename is the name of the file
-relative to the watched root.</p>
-
-<p>You can find a list of all possible expression terms in the sidebar on the left
-of this page.</p>
-
-<h3 id="relative-roots">Relative roots</h3>
-
-<p><em>Since 3.3.</em></p>
-
-<p>Watchman supports optionally evaluating queries with respect to a path within a
-watched root. This is used with the <code class="highlighter-rouge">relative_root</code> parameter:</p>
+<p>To initiate a source control aware subscription:</p>
 
 <div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
 2
-3</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"query"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/watched/root"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
-  </span><span class="nt">"relative_root"</span><span class="p">:</span><span class="w"> </span><span class="s2">"project1"</span><span class="p">,</span><span class="w">
-</span><span class="err">}</span><span class="p">]</span><span class="w">
+3
+4
+5
+6
+7
+8</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"subscribe"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="nt">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span><span class="w">
+  </span><span class="nt">"since"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}]</span><span class="w">
 </span></pre></td></tr></tbody></table>
 </div>
 </div>
 
-<p>Setting a relative root results in the following modifications to queries:</p>
+<p>You’ll then receive subscription responses as files change; those responses
+will contain <em>fat clock</em> values for the <code class="highlighter-rouge">since</code> and <code class="highlighter-rouge">clock</code> fields:</p>
 
-<ul>
-  <li>The <code class="highlighter-rouge">path</code> generator is evaluated with respect to the relative root. In the
-above example, <code class="highlighter-rouge">"path": ["dir"]</code> will return all files inside
-<code class="highlighter-rouge">/path/to/watched/root/project1/dir</code>.</li>
-  <li>The input expression is evaluated with respect to the relative root. In the
-above example, <code class="highlighter-rouge">"expression": ["match", "dir/*.txt", "wholename"]</code> will return
-all files inside <code class="highlighter-rouge">/path/to/watched/root/project1/dir/</code> that match the glob
-<code class="highlighter-rouge">*.txt</code>.</li>
-  <li>Paths inside the relative root are returned with the relative root stripped
-off. For example, a path <code class="highlighter-rouge">project1/dir/file.txt</code> would be returned as
-<code class="highlighter-rouge">dir/file.txt</code>.</li>
-  <li>Paths outside the relative root are not returned.</li>
-</ul>
+<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
+  </span><span class="nt">"subscription"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w">
+  </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1234:125"</span><span class="p">,</span><span class="w">
+    </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"fabf87"</span><span class="p">,</span><span class="w">
+      </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="p">,</span><span class="w">
+    </span><span class="err">}</span><span class="w">
+  </span><span class="p">},</span><span class="w">
+  </span><span class="nt">"since"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1234:123"</span><span class="p">,</span><span class="w">
+    </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"f12345"</span><span class="p">,</span><span class="w">
+      </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="p">,</span><span class="w">
+    </span><span class="err">}</span><span class="w">
+  </span><span class="p">},</span><span class="w">
+  </span><span class="nt">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"cat.jpg"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cats.cpp"</span><span class="p">],</span><span class="w">
+  </span><span class="nt">"root"</span><span class="p">:</span><span class="w">  </span><span class="s2">"/path/to/root"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></pre></td></tr></tbody></table>
+</div>
+</div>
 
-<p>Relative roots behave similarly to a separate Watchman watch on the
-subdirectory, without any of the system overhead that that imposes. This is
-useful for large repositories, where your script or tool is only interested in a
-particular directory inside the repository.</p>
+<p>The <code class="highlighter-rouge">clock</code> field holds the value of the clock and the merge base as of the subscription
+notification.</p>
+
+<p>The <code class="highlighter-rouge">since</code> field holds the <em>fat clock</em> that was returned in the <code class="highlighter-rouge">clock</code> field from
+the prior subscription update.  It is present as a convenience for you; you can compare
+the <code class="highlighter-rouge">mergebase</code> fields between the two to determine that the merge base changed in
+this update.  This is an important detail because more files in the working copy have
+been physically changed than are reflected in the <code class="highlighter-rouge">files</code> list; your tooling will need
+to so something appropriate to ensure that it computes a consistent and correct result.</p>
+
 
     
   </article>

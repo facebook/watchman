@@ -5,9 +5,10 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.1.0 -->
-<title>Troubleshooting - Watchman</title>
+  <!-- Begin Jekyll SEO tag v2.2.3 -->
+<title>Troubleshooting | Watchman</title>
 <meta property="og:title" content="Troubleshooting" />
+<meta property="og:locale" content="en_US" />
 <meta name="description" content="We try to give directed advice in Watchman error diagnostics, which means that we will show a link to a section on this page with some context and advice where we have enough information to do so. Some operating systems provide richer diagnostic information than others, so we have to resort to more generic advice in some cases." />
 <meta property="og:description" content="We try to give directed advice in Watchman error diagnostics, which means that we will show a link to a section on this page with some context and advice where we have enough information to do so. Some operating systems provide richer diagnostic information than others, so we have to resort to more generic advice in some cases." />
 <link rel="canonical" href="https://facebook.github.io/watchman/docs/troubleshooting.html" />
@@ -15,18 +16,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2017-01-09T16:11:57-08:00" />
+<meta property="article:published_time" content="2017-06-08T15:19:02-07:00" />
 <script type="application/ld+json">
-{"@context": "http://schema.org",
-"@type": "BlogPosting",
-"headline": "Troubleshooting",
-"image": "https://facebook.github.io/watchman/static/og_image.png",
-"datePublished": "2017-01-09T16:11:57-08:00",
-"description": "We try to give directed advice in Watchman error diagnostics, which means that we will show a link to a section on this page with some context and advice where we have enough information to do so. Some operating systems provide richer diagnostic information than others, so we have to resort to more generic advice in some cases.",
-"publisher": {"@type": "Organization",
-"logo": {"@type": "ImageObject",
-"url": "https://facebook.github.io/watchman/static/logo.png"}},
-"url": "https://facebook.github.io/watchman/docs/troubleshooting.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"Troubleshooting","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-06-08T15:19:02-07:00","dateModified":"2017-06-08T15:19:02-07:00","description":"We try to give directed advice in Watchman error diagnostics, which means that we will show a link to a section on this page with some context and advice where we have enough information to do so. Some operating systems provide richer diagnostic information than others, so we have to resort to more generic advice in some cases.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/troubleshooting.html"},"url":"https://facebook.github.io/watchman/docs/troubleshooting.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -53,7 +45,7 @@
           </li>
           
           <li class="navItem ">
-            <a href=support.html>Support</a>
+            <a href=/watchman/support.html>Support</a>
           </li>
           
           <li class="navItem ">
@@ -79,7 +71,7 @@
       },
       
       {
-        href       : "support.html",
+        href       : "/watchman/support.html",
         text       : "Support",
       },
       
@@ -208,6 +200,13 @@
           key : "/watchman/docs/watchman-make.html",
           title : "watchman-make",
           url : "/watchman/docs/watchman-make.html",
+        },
+        
+          
+        {
+          key : "/watchman/docs/watchman-wait.html",
+          title : "watchman-wait",
+          url : "/watchman/docs/watchman-wait.html",
         },
         
           
@@ -460,6 +459,13 @@
           key : "/watchman/docs/simple-query.html",
           title : "Simple Pattern Syntax",
           url : "/watchman/docs/simple-query.html",
+        },
+        
+          
+        {
+          key : "/watchman/docs/file-query.html",
+          title : "Source Control Aware Queries",
+          url : "/watchman/docs/file-query.html",
         }
         
       ],
@@ -793,7 +799,7 @@ typically be a location like <code class="highlighter-rouge">&lt;PREFIX&gt;/var/
 <p><a href="/watchman/docs/cli-options.html#quick-note-on-default-locations">Quick note on default locations</a> explains what
 we mean by <code class="highlighter-rouge">&lt;STATEDIR&gt;</code>, <code class="highlighter-rouge">&lt;TMPDIR&gt;</code>, <code class="highlighter-rouge">&lt;USER&gt;</code> and so on.</p>
 
-<h2 id="a-idpoison-inotify-add-watchapoison-inotifyaddwatch"><a id="poison-inotify-add-watch"></a>Poison: inotify_add_watch</h2>
+<h2 id="poison-inotify_add_watch"><a id="poison-inotify-add-watch"></a>Poison: inotify_add_watch</h2>
 
 <div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
 2
@@ -905,7 +911,7 @@ older version of watchman and encounter the error message
 <a href="#where-are-the-logs">Where are the logs?</a> above) and look for lines
 that mention FSEvents and then consult the information below.</p>
 
-<h3 id="fseventstreamstart-registerwithserver-error-f2dregisterrpc--null--21">FSEventStreamStart: register_with_server: ERROR: f2d_register_rpc() =&gt; (null) (-21)</h3>
+<h3 id="fseventstreamstart-register_with_server-error-f2d_register_rpc--null--21">FSEventStreamStart: register_with_server: ERROR: f2d_register_rpc() =&gt; (null) (-21)</h3>
 
 <p>Nobody outside of Apple is sure what precisely this means, but it indicates
 that the fsevents service has gotten in a bad state.  Possible reasons for

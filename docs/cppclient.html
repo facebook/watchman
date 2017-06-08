@@ -6,19 +6,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- Begin Jekyll SEO tag v2.2.3 -->
-<title>watch-list | Watchman</title>
-<meta property="og:title" content="watch-list" />
+<title>C++ Client | Watchman</title>
+<meta property="og:title" content="C++ Client" />
 <meta property="og:locale" content="en_US" />
-<meta name="description" content="Returns a list of watched dirs." />
-<meta property="og:description" content="Returns a list of watched dirs." />
-<link rel="canonical" href="https://facebook.github.io/watchman/docs/cmd/watch-list.html" />
-<meta property="og:url" content="https://facebook.github.io/watchman/docs/cmd/watch-list.html" />
+<meta name="description" content="Since 4.8." />
+<meta property="og:description" content="Since 4.8." />
+<link rel="canonical" href="https://facebook.github.io/watchman/docs/cppclient.html" />
+<meta property="og:url" content="https://facebook.github.io/watchman/docs/cppclient.html" />
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
 <meta property="article:published_time" content="2017-06-08T15:19:02-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"watch-list","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-06-08T15:19:02-07:00","dateModified":"2017-06-08T15:19:02-07:00","description":"Returns a list of watched dirs.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cmd/watch-list.html"},"url":"https://facebook.github.io/watchman/docs/cmd/watch-list.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"C++ Client","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-06-08T15:19:02-07:00","dateModified":"2017-06-08T15:19:02-07:00","description":"Since 4.8.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cppclient.html"},"url":"https://facebook.github.io/watchman/docs/cppclient.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -630,8 +630,8 @@ window.addEventListener('load', function() {
     },
     getDefaultProps: function() {
       return {
-        currentDoc: "watch-list",
-        currentGroup: "Commands",
+        currentDoc: "C++ Client",
+        currentGroup: "Invocation",
         data: docnavData,
       }
     },
@@ -699,41 +699,66 @@ window.addEventListener('load', function() {
 
     <div class="post">
   <header class="post-header">
-    <h1 class="post-title">watch-list</h1>
+    <h1 class="post-title">C++ Client</h1>
   </header>
 
   <article class="post-content">
    
-      <p>Returns a list of watched dirs.</p>
+      <p><em>Since 4.8.</em></p>
 
-<p>From the command line:</p>
+<p>Watchman includes a C++ client library to facilitate easy access to Watchman
+data from C++ applications. This library provides APIs for:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>watchman watch-list
+<ul>
+  <li>Opening and maintaining a connection to a local Watchman server.</li>
+  <li>Executing request-response Watchman commands.</li>
+  <li>Subscribing to updates with in directory trees.</li>
+</ul>
+
+<h2 id="installation">Installation</h2>
+
+<p>Provided the Folly library is present when Watchman is built, the C++ client
+library is automatically built and installed. For details on building Watchman
+see <a href="/watchman/docs/install.html">Installation</a>.</p>
+
+<h2 id="api">API</h2>
+
+<p>The public Watchman C++ client API is entirely covered in the installed
+<code class="highlighter-rouge">watchman/WatchmanClient.h</code> header file. This header contains a usage synopsis
+and notes on the public API features.</p>
+
+<p>For a simple example of API usage, sending simple request-response commands
+to Watchman, see <code class="highlighter-rouge">cppclient/CLI.cpp</code> in the Watchman source tree. For a more
+extensive example of the API including use of subscriptions, see the integration
+test <code class="highlighter-rouge">tests/integration/cppclient.cpp</code> also in the Watchman source.</p>
+
+<p>The C++ client library and its API make heavy use of the Folly library and as
+such familiarity with this is highly recommended. Specifically, the client
+library makes extensive use of <a href="https://github.com/facebook/folly/blob/master/folly/io/async/README.md">Folly’s async features</a>
+to provide high-performance asynchronous I/O, and <a href="https://github.com/facebook/folly/blob/master/folly/docs/Dynamic.md">Folly’s dynamics</a>
+to avoid needing to construct/process raw JSON in C++.</p>
+
+<h2 id="using-the-c-client-in-your-applications-build">Using the C++ client in your application’s build</h2>
+
+<p>To facilitate integration into your application’s build, the Watchman C++ client
+library provides support for <a href="https://www.freedesktop.org/wiki/Software/pkg-config/">pkg-config</a>.</p>
+
+<p>For example, if your application was contained entirely in one C++ file called
+<code class="highlighter-rouge">app.cpp</code> the following would be sufficient for build on a system with GNU Make:</p>
+
+<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2</pre></td><td class="code"><pre>make <span class="nv">LDFLAGS</span><span class="o">=</span><span class="k">$(</span>pkg-config watchmanclient --libs<span class="k">)</span> <span class="nv">CPPFLAGS</span><span class="o">=</span><span class="k">$(</span>pkg-config watchmanclient --cflags<span class="k">)</span> app
+
 </pre></td></tr></tbody></table>
 </div>
 </div>
 
-<p>JSON:</p>
+<p>If Watchman is installed in a location <code class="highlighter-rouge">pkg-config</code> does not search for packages
+by default, you may need to modify the <code class="highlighter-rouge">PKG_CONFIG_PATH</code> environment
+variable. For example:</p>
 
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"watch-list"</span><span class="p">]</span><span class="w">
-</span></pre></td></tr></tbody></table>
-</div>
-</div>
-
-<p>Result:</p>
-
-<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2
-3
-4
-5
-6</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
-    </span><span class="nt">"version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1.9"</span><span class="p">,</span><span class="w">
-    </span><span class="nt">"roots"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
-        </span><span class="s2">"/home/wez/watchman"</span><span class="w">
-    </span><span class="p">]</span><span class="w">
-</span><span class="p">}</span><span class="w">
-</span></pre></td></tr></tbody></table>
+<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="nb">export </span><span class="nv">PKG_CONFIG_PATH</span><span class="o">=</span>&lt;watchman path&gt;/lib/pkgconfig:<span class="nv">$PKG_CONFIG_PATH</span>
+</pre></td></tr></tbody></table>
 </div>
 </div>
 

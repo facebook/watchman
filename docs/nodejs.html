@@ -5,9 +5,10 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Begin Jekyll SEO tag v2.1.0 -->
-<title>NodeJS - Watchman</title>
+  <!-- Begin Jekyll SEO tag v2.2.3 -->
+<title>NodeJS | Watchman</title>
 <meta property="og:title" content="NodeJS" />
+<meta property="og:locale" content="en_US" />
 <meta name="description" content="To install the nodejs client:" />
 <meta property="og:description" content="To install the nodejs client:" />
 <link rel="canonical" href="https://facebook.github.io/watchman/docs/nodejs.html" />
@@ -15,18 +16,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2017-01-09T16:11:57-08:00" />
+<meta property="article:published_time" content="2017-06-08T15:19:02-07:00" />
 <script type="application/ld+json">
-{"@context": "http://schema.org",
-"@type": "BlogPosting",
-"headline": "NodeJS",
-"image": "https://facebook.github.io/watchman/static/og_image.png",
-"datePublished": "2017-01-09T16:11:57-08:00",
-"description": "To install the nodejs client:",
-"publisher": {"@type": "Organization",
-"logo": {"@type": "ImageObject",
-"url": "https://facebook.github.io/watchman/static/logo.png"}},
-"url": "https://facebook.github.io/watchman/docs/nodejs.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"NodeJS","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-06-08T15:19:02-07:00","dateModified":"2017-06-08T15:19:02-07:00","description":"To install the nodejs client:","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/nodejs.html"},"url":"https://facebook.github.io/watchman/docs/nodejs.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -53,7 +45,7 @@
           </li>
           
           <li class="navItem ">
-            <a href=support.html>Support</a>
+            <a href=/watchman/support.html>Support</a>
           </li>
           
           <li class="navItem ">
@@ -79,7 +71,7 @@
       },
       
       {
-        href       : "support.html",
+        href       : "/watchman/support.html",
         text       : "Support",
       },
       
@@ -208,6 +200,13 @@
           key : "/watchman/docs/watchman-make.html",
           title : "watchman-make",
           url : "/watchman/docs/watchman-make.html",
+        },
+        
+          
+        {
+          key : "/watchman/docs/watchman-wait.html",
+          title : "watchman-wait",
+          url : "/watchman/docs/watchman-wait.html",
         },
         
           
@@ -460,6 +459,13 @@
           key : "/watchman/docs/simple-query.html",
           title : "Simple Pattern Syntax",
           url : "/watchman/docs/simple-query.html",
+        },
+        
+          
+        {
+          key : "/watchman/docs/file-query.html",
+          title : "Source Control Aware Queries",
+          url : "/watchman/docs/file-query.html",
         }
         
       ],
@@ -751,7 +757,7 @@ server.</p>
       <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="nx">error</span><span class="p">);</span>
     <span class="p">}</span>
     <span class="c1">// resp will be an extended version response:</span>
-    <span class="c1">// {'version': '3.8.0', 'capabilities': {'relative_roots': true}}</span>
+    <span class="c1">// {'version': '3.8.0', 'capabilities': {'relative_root': true}}</span>
     <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">resp</span><span class="p">);</span>
   <span class="p">});</span>
 </pre></td></tr></tbody></table>
@@ -1061,7 +1067,7 @@ meaningful error message.</p>
 9
 10
 11
-12</pre></td><td class="code"><pre><span class="nx">client</span><span class="p">.</span><span class="nx">capabilityCheck</span><span class="p">({</span><span class="na">optional</span><span class="p">:[],</span> <span class="na">required</span><span class="p">:[</span><span class="s1">'relative_roots'</span><span class="p">]},</span>
+12</pre></td><td class="code"><pre><span class="nx">client</span><span class="p">.</span><span class="nx">capabilityCheck</span><span class="p">({</span><span class="na">optional</span><span class="p">:[],</span> <span class="na">required</span><span class="p">:[</span><span class="s1">'relative_root'</span><span class="p">]},</span>
   <span class="kd">function</span> <span class="p">(</span><span class="nx">error</span><span class="p">,</span> <span class="nx">resp</span><span class="p">)</span> <span class="p">{</span>
     <span class="k">if</span> <span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
       <span class="c1">// error will be an Error object if the watchman service is not</span>
@@ -1070,7 +1076,7 @@ meaningful error message.</p>
       <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="nx">error</span><span class="p">);</span>
     <span class="p">}</span>
     <span class="c1">// resp will be an extended version response:</span>
-    <span class="c1">// {'version': '3.8.0', 'capabilities': {'relative_roots': true}}</span>
+    <span class="c1">// {'version': '3.8.0', 'capabilities': {'relative_root': true}}</span>
     <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">resp</span><span class="p">);</span>
   <span class="p">});</span>
 </pre></td></tr></tbody></table>
@@ -1235,7 +1241,6 @@ the subscription you want to cancel:</p>
 <p>Note that subscriptions names are scoped to your connection to the watchman
 service; multiple different clients can use the same subscription name without
 fear of colliding.</p>
-
 
     
   </article>
