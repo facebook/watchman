@@ -82,6 +82,7 @@ char **backtrace_symbols(void **array, size_t n_frames) {
   for (i = 0; i < arr.size(); ++i) {
     strings[i] = buf;
     memcpy(buf, arr[i].c_str(), arr[i].size() + 1);
+    buf += arr[i].size() + 1;
   }
   strings[i] = nullptr;
 
