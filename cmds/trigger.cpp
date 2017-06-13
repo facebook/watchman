@@ -91,17 +91,23 @@ static void cmd_trigger_delete(
   }
   tname = json_to_w_string(jname);
 
+  std::unique_ptr<watchman_trigger_command> cmd;
+
   {
     auto map = root->triggers.wlock();
     auto it = map->find(tname);
     if (it == map->end()) {
       res = false;
     } else {
-      // Stop the thread and erase it
-      it->second->stop();
+      std::swap(cmd, it->second);
       map->erase(it);
       res = true;
     }
+  }
+
+  if (cmd) {
+    // Stop the thread
+    cmd->stop();
   }
 
   if (res) {
