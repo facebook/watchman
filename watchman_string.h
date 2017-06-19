@@ -177,6 +177,10 @@ class w_string_piece {
     return s_;
   }
 
+  inline bool empty() const {
+    return size() == 0;
+  }
+
   inline size_t size() const {
     return e_ - s_;
   }
@@ -356,6 +360,14 @@ class w_string {
     ensureNotNull();
     return str_->buf;
   }
+
+  bool empty() const {
+    if (str_) {
+      return str_->len == 0;
+    }
+    return true;
+  }
+
   size_t size() const {
     ensureNotNull();
     return str_->len;
@@ -566,14 +578,19 @@ template <typename T>
 typename std::enable_if<IsStringSrc<T>::value, size_t>::type
 estimateSpaceNeeded(const T& src) {
   // For known stringy types, we call the size method
-  return src.size();
+  if (!src.empty()) {
+    return src.size();
+  }
+  return 0;
 }
 
 template <typename T>
 typename std::enable_if<IsStringSrc<T>::value>::type toAppend(
     const T& src,
     Appender& result) {
-  result.append(src.data(), src.size());
+  if (!src.empty()) {
+    result.append(src.data(), src.size());
+  }
 }
 
 // If we can convert it to a string piece, we can call its size() method

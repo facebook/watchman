@@ -56,8 +56,12 @@ void test_strings() {
     char foo[] = "foo";
     auto str = w_string::build(foo);
     ok(str.size() == 3, "foo has 3 char size");
+    ok(!str.empty(), "foo is not empty");
     ok(!strcmp("foo", foo), "foo matches");
   }
+
+  ok(w_string().empty(), "nullptr string is empty");
+  ok(w_string::build("").empty(), "empty string is empty");
 }
 
 void test_pointers() {
@@ -100,7 +104,7 @@ void test_double() {
 }
 
 void test_concat() {
-  auto str = w_string::build("one", 2, "three", 1.2, false);
+  auto str = w_string::build("one", 2, "three", 1.2, false, w_string(nullptr));
   ok(str == w_string("one2three1.2000000"), "concatenated to %s", str.c_str());
 }
 
@@ -274,7 +278,7 @@ void test_split() {
 
 int main(int, char**) {
   plan_tests(
-      78
+      81
 #ifdef _WIN32
       // extra basename tests
       + 3
