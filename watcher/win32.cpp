@@ -117,6 +117,12 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
   w_set_thread_name("readchange %s", root->root_path.c_str());
   watchman::log(watchman::DBG, "initializing\n");
 
+  // Artificial extra latency to impose around processing changes.
+  // This is needed to avoid trying to access files and dirs too
+  // soon after a change is noticed, as this can cause recursive
+  // deletes to fail.
+  auto extraLatency = root->config.getInt("win32_batch_latency_ms", 30);
+
   // Block until winmatch_root_st is waiting for our initialization
   {
     auto wlock = changedItems.wlock();
@@ -176,14 +182,16 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
 
     watchman::log(watchman::DBG, "waiting for change notifications\n");
     DWORD status = WaitForMultipleObjects(
-        2, handles, FALSE,
+        2,
+        handles,
+        FALSE,
         // We use a 10 second timeout by default until we start accumulating a
         // batch.  Once we have a batch we prefer to add more to it than notify
         // immediately, so we introduce a 30ms latency.  Without this artificial
         // latency we'll wake up and start trying to look at a directory that
         // may be in the process of being recursively deleted and that act can
         // block the recursive delete.
-        items.empty() ? 10000 : 30);
+        items.empty() ? 10000 : extraLatency);
     watchman::log(watchman::DBG, "wait returned with status ", status, "\n");
 
     if (status == WAIT_OBJECT_0) {
