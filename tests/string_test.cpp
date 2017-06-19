@@ -276,12 +276,25 @@ void test_split() {
   }
 }
 
+void test_path_equal() {
+  ok(w_string_piece("/foo/bar").pathIsEqual("/foo/bar"), "/foo/bar");
+  ok(!w_string_piece("/foo/bar").pathIsEqual("/Foo/bar"), "/foo/bar");
+#ifdef _WIN32
+  ok(w_string_piece("c:/foo/bar").pathIsEqual("C:/foo/bar"),
+     "allow different case for drive letter only c:/foo/bar");
+  ok(w_string_piece("c:/foo\\bar").pathIsEqual("C:/foo/bar"),
+     "allow different slashes c:/foo\\bar");
+  ok(!w_string_piece("c:/Foo/bar").pathIsEqual("C:/foo/bar"),
+     "strict case in the other positions c:/Foo/bar");
+#endif
+}
+
 int main(int, char**) {
   plan_tests(
-      81
+      83
 #ifdef _WIN32
       // extra basename tests
-      + 3
+      + 6
 #endif
       );
   test_integrals();
@@ -295,6 +308,7 @@ int main(int, char**) {
   test_basename_dirname();
   test_operator();
   test_split();
+  test_path_equal();
 
   return exit_status();
 }

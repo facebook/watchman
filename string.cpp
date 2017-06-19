@@ -74,6 +74,22 @@ bool w_string_piece::pathIsEqual(w_string_piece other) const {
     if (*A == *B) {
       continue;
     }
+    if (A == data()) {
+      // This is a bit awful, but msys and other similar software
+      // can set the cwd to a lowercase drive letter.  Since we
+      // can't ever watch at a level higher than drive letters,
+      // we really shouldn't care about a case difference there
+      // so we relax the strictness of the check here.
+      // This case only triggers for the first character of the
+      // path.  Paths evaluated with this method are always
+      // absolute.  In theory, we should also do something
+      // reasonable for UNC paths, but folks shouldn't be
+      // watching those with watchman anyway.
+      if (tolower(*A) == tolower(*B)) {
+        continue;
+      }
+    }
+
     if (is_slash(*A) && is_slash(*B)) {
       continue;
     }
