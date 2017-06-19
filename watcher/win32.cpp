@@ -7,20 +7,32 @@
 
 #include <algorithm>
 #include <condition_variable>
-#include <deque>
+#include <list>
 #include <iterator>
+#include <tuple>
 #include <mutex>
 
 #ifdef _WIN32
 
 #define NETWORK_BUF_SIZE (64*1024)
 
+namespace {
+
+struct Item {
+  w_string path;
+  int flags;
+
+  Item(w_string &&path, int flags) : path(std::move(path)), flags(flags) {}
+};
+
+}
+
 struct WinWatcher : public Watcher {
   HANDLE ping{INVALID_HANDLE_VALUE}, olapEvent{INVALID_HANDLE_VALUE};
   HANDLE dir_handle{INVALID_HANDLE_VALUE};
 
   std::condition_variable cond;
-  watchman::Synchronized<std::deque<w_string>, std::mutex> changedItems;
+  watchman::Synchronized<std::list<Item>, std::mutex> changedItems;
 
   explicit WinWatcher(w_root_t* root);
   ~WinWatcher();
@@ -137,6 +149,8 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
   }
   initiate_read = false;
 
+  std::list<Item> items;
+
   // The mutex must not be held when we enter the loop
   while (!root->inner.cancelled) {
     if (initiate_read) {
@@ -161,7 +175,15 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
     }
 
     watchman::log(watchman::DBG, "waiting for change notifications\n");
-    DWORD status = WaitForMultipleObjects(2, handles, FALSE, 10000);
+    DWORD status = WaitForMultipleObjects(
+        2, handles, FALSE,
+        // We use a 10 second timeout by default until we start accumulating a
+        // batch.  Once we have a batch we prefer to add more to it than notify
+        // immediately, so we introduce a 30ms latency.  Without this artificial
+        // latency we'll wake up and start trying to look at a directory that
+        // may be in the process of being recursively deleted and that act can
+        // block the recursive delete.
+        items.empty() ? 10000 : 30);
     watchman::log(watchman::DBG, "wait returned with status ", status, "\n");
 
     if (status == WAIT_OBJECT_0) {
@@ -199,7 +221,6 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
         }
       } else {
         PFILE_NOTIFY_INFORMATION not = (PFILE_NOTIFY_INFORMATION)buf.data();
-        std::deque<w_string> items;
 
         while (true) {
           DWORD n_chars;
@@ -211,7 +232,21 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
           auto full = w_string::pathCat({root->root_path, name});
 
           if (!root->ignore.isIgnored(full.data(), full.size())) {
-            items.emplace_back(std::move(full));
+            // If we have a delete or rename-away it may be part of
+            // a recursive tree remove or rename.  In that situation
+            // the notifications that we'll receive from the OS will
+            // be from the leaves and bubble up to the root of the
+            // delete/rename.  We want to flag those paths for recursive
+            // analysis so that we can prune children from the trie
+            // that is built when we pass this to the pending list
+            // later.  We don't do that here in this thread because
+            // we're trying to minimize latency in this context.
+            items.emplace_back(
+                std::move(full),
+                (not->Action &
+                 (FILE_ACTION_REMOVED | FILE_ACTION_RENAMED_OLD_NAME)) != 0
+                    ? W_PENDING_RECURSIVE
+                    : 0);
           }
 
           // Advance to next item
@@ -221,18 +256,22 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
           not = (PFILE_NOTIFY_INFORMATION)(not->NextEntryOffset + (char*)not);
         }
 
-        if (!items.empty()) {
-          auto wlock = changedItems.wlock();
-          std::move(items.begin(), items.end(), std::back_inserter(*wlock));
-          cond.notify_one();
-        }
         ResetEvent(olapEvent);
         initiate_read = true;
       }
     } else if (status == WAIT_OBJECT_0 + 1) {
       w_log(W_LOG_ERR, "signalled\n");
       break;
-    } else if (status != WAIT_TIMEOUT) {
+    } else if (status == WAIT_TIMEOUT) {
+      if (!items.empty()) {
+        watchman::log(watchman::DBG,
+                      "timed out waiting for changes, and we have ",
+                      items.size(), " items; move and notify\n");
+        auto wlock = changedItems.wlock();
+        wlock->splice(wlock->end(), items);
+        cond.notify_one();
+      }
+    } else {
       w_log(W_LOG_ERR, "impossible wait status=%d\n", status);
       break;
     }
@@ -305,7 +344,7 @@ std::unique_ptr<watchman_dir_handle> WinWatcher::startWatchDir(
 bool WinWatcher::consumeNotify(
     const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll) {
-  std::deque<w_string> items;
+  std::list<Item> items;
   struct timeval now;
 
   {
@@ -316,8 +355,9 @@ bool WinWatcher::consumeNotify(
   gettimeofday(&now, nullptr);
 
   for (auto& item : items) {
-    watchman::log(watchman::DBG, "readchanges: add pending ", item, "\n");
-    coll->add(item, now, W_PENDING_VIA_NOTIFY);
+    watchman::log(watchman::DBG, "readchanges: add pending ", item.path, " ",
+                  item.flags, "\n");
+    coll->add(item.path, now, W_PENDING_VIA_NOTIFY | item.flags);
   }
 
   return !items.empty();

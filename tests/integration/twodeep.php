@@ -37,15 +37,18 @@ class twodeepTestCase extends WatchmanTestCase {
     $this->watchmanCommand('log', 'debug', 'XXX: perform assertions');
 
     $compare_fields = array('size', 'mode', 'uid', 'gid',
-                            'nlink', 'mtime', 'ctime');
+                            'mtime', 'ctime');
     if (!phutil_is_windows()) {
       // These are meaningless in msvcrt, so no sense in comparing them
       $compare_fields[] = 'dev';
       $compare_fields[] = 'ino';
+      // We can only get this by directly examining a file, but not implicitly
+      // when crawling the dir
+      $compare_fields[] = 'nlink';
     }
     foreach ($compare_fields as $field) {
       $this->assertEqual($sfile[$field], $wfile[$field],
-        "file: $field {$sfile[$field]} vs watchman {$wfile[$field]}");
+        "file: $field {$sfile[$field]} vs watchman {$wfile[$field]} " . json_encode($wfile));
       $this->assertEqual($sdir[$field], $wdir[$field],
         "dir: $field {$sdir[$field]} vs watchman {$wdir[$field]}");
     }
