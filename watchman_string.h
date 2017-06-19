@@ -178,7 +178,7 @@ class w_string_piece {
   }
 
   inline bool empty() const {
-    return size() == 0;
+    return e_ == s_;
   }
 
   inline size_t size() const {

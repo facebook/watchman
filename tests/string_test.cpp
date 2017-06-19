@@ -60,8 +60,21 @@ void test_strings() {
     ok(!strcmp("foo", foo), "foo matches");
   }
 
-  ok(w_string().empty(), "nullptr string is empty");
-  ok(w_string::build("").empty(), "empty string is empty");
+  {
+    w_string defaultStr;
+    ok(defaultStr.empty(), "default constructed string should be empty");
+
+    w_string nullStr(nullptr);
+    ok(nullStr.empty(), "nullptr string should be empty");
+
+    ok(w_string_piece().empty(),
+       "default constructed string piece shouldbe empty");
+
+    ok(w_string_piece(nullptr).empty(),
+       "nullptr string piece shouldbe empty");
+
+    ok(w_string::build("").empty(), "empty string is empty");
+  }
 }
 
 void test_pointers() {
@@ -291,7 +304,7 @@ void test_path_equal() {
 
 int main(int, char**) {
   plan_tests(
-      83
+      86
 #ifdef _WIN32
       // extra basename tests
       + 6
