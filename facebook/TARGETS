@@ -7,8 +7,6 @@ python_binary(
     deps = ["@/watchman/python/pywatchman:pywatchman"],
 )
 
-# XXX for some reason this hangs as soon as it tries to start the Python
-# subprocess. Not clear why -- runtests-py3 works, though.
 python_binary(
     name = "runtests",
     srcs = ["runtests_wrapper.py"],
@@ -27,6 +25,9 @@ python_binary(
     main_module = "watchman.facebook.runtests_wrapper",
     py_version = ">=3.5",
     deps = [
+        "@/eden/cli:cli",
+        "@/eden/fs/service:edenfs",
+        "@/eden/integration/lib:lib",
         "@/libfb/py:pathutils",
         "@/watchman:runtests-py3",
         "@/watchman/python/pywatchman:pywatchman",

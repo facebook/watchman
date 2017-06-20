@@ -1,146 +1,63 @@
-# @nolint TODO(#18457353): https://fburl.com/auto-format-build-files
-
-import os
-
-# we have some pre-buck test runner stuff that makes it cheaper
-# to run our tests in a single bundled invocation, so do that.
-sandcastle_tags = ['run_as_bundle'] if 'SANDCASTLE' in os.environ else []
-
-env = {
-    'TESTING_VIA_BUCK': '1',
-    'WATCHMAN_SRC_DIR': os.path.dirname(os.path.dirname(
-                                  os.path.dirname(__file__))),
-    'WATCHMAN_BINARY': '$(location @/watchman:watchman)',
-    'WATCHMAN_CPPCLIENT_BINARY': '$(location :cppclient)',
-    # We test for this in a test case
-    'WATCHMAN_EMPTY_ENV_VAR': '',
-    # Uncomment next line to preserve all logs from the test
-    #'WATCHMAN_TEST_KEEP': '1',
-}
 cpp_binary(
-    name='cppclient',
-    srcs=['cppclient.cpp'],
-    deps=[
-        '@/folly:folly',
-        '@/folly/init:init',
-        '@/folly/io/async:event_base_thread',
-        '@/watchman/cppclient:cppclient',
-        '@/watchman/cppclient:headers',
-    ]
+    name = "cppclient",
+    srcs = ["cppclient.cpp"],
+    deps = [
+        "@/folly:folly",
+        "@/folly/init:init",
+        "@/folly/io/async:event_base_thread",
+        "@/watchman/cppclient:cppclient",
+        "@/watchman/cppclient:headers",
+    ],
 )
 
 python_library(
-    name='testsupport',
-    base_module='',
-    srcs=glob([
-        'Interrupt.py',
-        'TempDir.py',
-        'Wat*.py',
-        'path_utils.py',
-    ],excludes=[
-        'WatchmanEdenTestCase.py',
-    ]),
-    deps=[
-      '@/watchman/python/pywatchman:pywatchman',
-      '@/watchman:watchman',
+    name = "testsupport",
+    srcs = glob(
+        [
+            "Interrupt.py",
+            "TempDir.py",
+            "Wat*.py",
+            "path_utils.py",
+        ],
+        excludes = [
+            "WatchmanEdenTestCase.py",
+        ],
+    ),
+    base_module = "",
+    deps = [
+        "@/watchman:watchman",
+        "@/watchman/python/pywatchman:pywatchman",
     ],
 )
 
 srcs = glob(
     [
-        'test_*.py',
+        "test_*.py",
     ],
-    excludes=[
-        'test_eden*.py',
-    ]
+    excludes = [
+        "test_eden*.py",
+    ],
 )
 
 py3_srcs = glob(
     [
-        'test_*.py',
+        "test_*.py",
     ],
-    excludes=[
-        'test_nodejs.py',
-        'test_php.py',
-        'test_eden*.py',
-    ]
+    excludes = [
+        "test_nodejs.py",
+        "test_php.py",
+        "test_eden*.py",
+    ],
 )
 
 python_library(
-    name='testlib',
-    srcs=srcs,
-    deps=[':testsupport'],
+    name = "testlib",
+    srcs = srcs,
+    deps = [":testsupport"],
 )
 
 python_library(
-    name='testlib-py3',
-    srcs=py3_srcs,
-    deps=[':testsupport'],
-)
-
-python_unittest(
-    name='test',
-    env=env,
-    srcs=srcs,
-    deps=[
-      ':cppclient',
-      ':testsupport',
-    ],
-    base_module='',
-    py_version="<3",
-    tags=[
-      # Running too many watchman processes concurrently puts strain
-      # on the change notification stuff and results in flakiness.
-      'serialize_test_cases',
-    ]+sandcastle_tags,
-)
-
-python_unittest(
-    name='test-py3',
-    srcs=py3_srcs,
-    env=env,
-    deps=[
-      '@/watchman/python/pywatchman:pywatchman',
-      '@/watchman:watchman',
-      ':cppclient',
-      ':testsupport',
-    ],
-    base_module='',
-    py_version=">=3",
-    tags=[
-      # Running too many watchman processes concurrently puts strain
-      # on the change notification stuff and results in flakiness.
-      'serialize_test_cases',
-    ]+sandcastle_tags,
-)
-
-eden_env = env.copy()
-eden_env.update({
-    'EDENFS_CLI_PATH': '$(location @/eden/cli:cli)',
-    'EDENFS_SERVER_PATH': '$(location @/eden/fs/service:edenfs)',
-})
-
-python_unittest(
-    name='eden',
-    srcs=glob([
-        'WatchmanEdenTestCase.py',
-        'test_eden*.py',
-    ]),
-    env=eden_env,
-    deps=[
-      ':testsupport',
-      ':cppclient',
-      '@/watchman/python/pywatchman:pywatchman',
-      '@/watchman:watchman',
-      '@/eden/integration/lib:lib',
-      '@/eden/fs/service:edenfs',
-      '@/eden/cli:cli',
-    ],
-    base_module='',
-    py_version=">=3",
-    tags=[
-      # Running too many watchman processes concurrently puts strain
-      # on the change notification stuff and results in flakiness.
-      'serialize_test_cases',
-    ]+sandcastle_tags,
+    name = "testlib-py3",
+    srcs = py3_srcs,
+    deps = [":testsupport"],
 )

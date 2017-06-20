@@ -29,17 +29,14 @@ if __name__ == '__main__':
     sys.path.insert(0, os.path.join(os.getcwd(), 'python'))
     sys.path.insert(0, os.path.join(os.getcwd(), 'tests', 'integration'))
 
-import tempfile
+import json
 import shutil
 import subprocess
 import traceback
 import time
 import argparse
-import atexit
 import WatchmanInstance
-import WatchmanTestCase
 import TempDir
-import glob
 import threading
 import multiprocessing
 import math
@@ -77,12 +74,17 @@ parser.add_argument(
     help='specify which python test method names to run')
 
 def default_concurrency():
-    level = min(4, math.ceil(1.5 * multiprocessing.cpu_count()))
-    if 'CIRCLECI' in os.environ:
-        # Use fewer cores in circle CI because the inotify sysctls
-        # are pretty low, and we sometimes hit those limits.
-        level = level / 2
-    return int(level)
+    # Python 2.7 hangs when we use threads, so avoid it
+    # https://bugs.python.org/issue20318
+    if sys.version_info >= (3, 0):
+        level = min(4, math.ceil(1.5 * multiprocessing.cpu_count()))
+        if 'CIRCLECI' in os.environ:
+            # Use fewer cores in circle CI because the inotify sysctls
+            # are pretty low, and we sometimes hit those limits.
+            level = level / 2
+        return int(level)
+
+    return 1
 
 parser.add_argument(
     '--concurrency',
@@ -118,6 +120,11 @@ parser.add_argument(
     type=int,
     default=2,
     help='How many additional times to retry flaky tests.')
+
+parser.add_argument(
+    '--testpilot-json',
+    action='store_true',
+    help='Output test results in Test Pilot JSON format')
 
 args = parser.parse_args()
 
@@ -166,23 +173,49 @@ class Result(unittest.TestResult):
     def addSuccess(self, test):
         elapsed = time.time() - self.startTime
         super(Result, self).addSuccess(test)
-        print('\033[32mPASS\033[0m %s (%.3fs)%s' % (
-            test.id(), elapsed, self._attempts()))
+        if args.testpilot_json:
+            print(json.dumps({
+                'op': 'test_done',
+                'status': 'passed',
+                'test': test.id(),
+                'start_time': self.startTime,
+                'end_time': time.time()}))
+        else:
+            print('\033[32mPASS\033[0m %s (%.3fs)%s' % (
+                test.id(), elapsed, self._attempts()))
 
     def addSkip(self, test, reason):
         elapsed = time.time() - self.startTime
         super(Result, self).addSkip(test, reason)
-        print('\033[33mSKIP\033[0m %s (%.3fs) %s' %
-              (test.id(), elapsed, reason))
+        if args.testpilot_json:
+            print(json.dumps({
+                'op': 'test_done',
+                'status': 'skipped',
+                'test': test.id(),
+                'details': reason,
+                'start_time': self.startTime,
+                'end_time': time.time()}))
+        else:
+            print('\033[33mSKIP\033[0m %s (%.3fs) %s' %
+                  (test.id(), elapsed, reason))
 
     def __printFail(self, test, err):
         elapsed = time.time() - self.startTime
         t, val, trace = err
-        print('\033[31mFAIL\033[0m %s (%.3fs)%s\n%s' % (
-            test.id(),
-            elapsed,
-            self._attempts(),
-            ''.join(traceback.format_exception(t, val, trace))))
+        if args.testpilot_json:
+            print(json.dumps({
+                'op': 'test_done',
+                'status': 'failed',
+                'test': test.id(),
+                'details': ''.join(traceback.format_exception(t, val, trace)),
+                'start_time': self.startTime,
+                'end_time': time.time()}))
+        else:
+            print('\033[31mFAIL\033[0m %s (%.3fs)%s\n%s' % (
+                  test.id(),
+                  elapsed,
+                  self._attempts(),
+                  ''.join(traceback.format_exception(t, val, trace))))
 
     def addFailure(self, test, err):
         self.__printFail(test, err)
@@ -206,7 +239,7 @@ def expandFilesList(files):
     res = []
     for g in args.files:
         if os.path.isdir(g):
-            for dirname, dirs, files in os.walk(g):
+            for dirname, _dirs, files in os.walk(g):
                 for f in files:
                     if not f.startswith('.'):
                         res.append(os.path.normpath(os.path.join(dirname, f)))
@@ -275,6 +308,8 @@ if os.name == 'nt':
 else:
     t_globs = 'tests/*.t'
 
+tls = threading.local()
+
 # Manage printing from concurrent threads
 # http://stackoverflow.com/a/3030755/149111
 class ThreadSafeFile(object):
@@ -290,7 +325,7 @@ class ThreadSafeFile(object):
     def _droplock(self):
         nesting = self.nesting
         self.nesting = 0
-        for i in range(nesting):
+        for _ in range(nesting):
             self.lock.release()
 
     def __getattr__(self, name):
@@ -390,7 +425,7 @@ def expand_suite(suite, target=None):
     """ recursively expand a TestSuite into a list of TestCase """
     if target is None:
         target = []
-    for i, test in enumerate(suite):
+    for test in suite:
         if isinstance(test, unittest.TestSuite):
             expand_suite(test, target)
         else:
@@ -413,15 +448,20 @@ elif len(all_tests) < args.concurrency:
     args.concurrency = len(all_tests)
 queue_jobs(all_tests)
 
-for i in range(args.concurrency):
-    t = threading.Thread(target=runner)
-    t.daemon = True
-    t.start()
-    # also send a termination sentinel
-    tests_queue.put('terminate')
+if args.concurrency > 1:
+    for _ in range(args.concurrency):
+        t = threading.Thread(target=runner)
+        t.daemon = True
+        t.start()
+        # also send a termination sentinel
+        tests_queue.put('terminate')
 
-# Wait for all tests to have been dispatched
-tests_queue.join()
+    # Wait for all tests to have been dispatched
+    tests_queue.join()
+else:
+    # add a termination sentinel
+    tests_queue.put('terminate')
+    runner()
 
 # Now pull out and aggregate the results
 tests_run = 0
@@ -433,8 +473,9 @@ while not results_queue.empty():
     tests_failed = tests_failed + len(res.errors) + len(res.failures)
     tests_skipped = tests_skipped + len(res.skipped)
 
-print('Ran %d, failed %d, skipped %d, concurrency %d' % (
-    tests_run, tests_failed, tests_skipped, args.concurrency))
+if not args.testpilot_json:
+    print('Ran %d, failed %d, skipped %d, concurrency %d' % (
+        tests_run, tests_failed, tests_skipped, args.concurrency))
 
 if 'APPVEYOR' in os.environ:
     shutil.copytree(temp_dir.get_dir(), 'logs')

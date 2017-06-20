@@ -41,4 +41,7 @@ class TestBig(WatchmanTestCase.WatchmanTestCase):
                 # it is too long, instead, replace it with
                 # a summary of the size that we picked
                 e.cmd = 'big query with size %d' % size
+
+                if self.transport == 'cli':
+                    e.cmd = '%s\n%s' % (e.cmd, self.getLogSample())
                 raise

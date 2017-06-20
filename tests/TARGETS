@@ -1,3 +1,36 @@
+# @nolint TODO(#18457353): https://fburl.com/auto-format-build-files
+import os
+
+if 'SANDCASTLE' in os.environ:
+    # We don't run this by default on devservers, because python 2.x has a bug
+    # that breaks subprocess when threading is used, so we have to run the
+    # tests with concurrency=1 and it takes a bit longer.
+    custom_unittest(
+        name = "runtests-py2",
+        command = [
+            "$(location @/watchman/facebook:runtests)",
+            "--testpilot-json",
+        ],
+        tags = ["run_as_bundle"],
+        type = "json",
+        deps = [
+            "@/watchman/facebook:runtests",
+        ],
+    )
+
+custom_unittest(
+    name = "runtests-py3",
+    command = [
+        "$(location @/watchman/facebook:runtests-py3)",
+        "--testpilot-json",
+    ],
+    tags = ["run_as_bundle"],
+    type = "json",
+    deps = [
+        "@/watchman/facebook:runtests-py3",
+    ],
+)
+
 def t_test(name, srcs=None, deps=None, extra_args=None):
     tname = '{}.t'.format(name)
     actual_deps=['@/watchman/thirdparty:tap']
