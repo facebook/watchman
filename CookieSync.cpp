@@ -5,6 +5,15 @@
 
 namespace watchman {
 
+CookieSync::Cookie::Cookie(w_string name) : fileName(name) {}
+
+CookieSync::Cookie::~Cookie() {
+  // The file may not exist at this point; we're just taking this
+  // opportunity to remove it if nothing else has done so already.
+  // We don't care about the return code; best effort is fine.
+  unlink(fileName.c_str());
+}
+
 CookieSync::CookieSync(const w_string& dir) {
   setCookieDir(dir);
 }
@@ -24,12 +33,7 @@ void CookieSync::setCookieDir(const w_string& dir) {
       int(getpid()));
 }
 
-bool CookieSync::syncToNow(std::chrono::milliseconds timeout) {
-  Cookie cookie;
-  int errcode = 0;
-
-  auto cookie_lock = std::unique_lock<std::mutex>(cookie.mutex);
-
+Future<Unit> CookieSync::sync() {
   /* generate a cookie name: cookie prefix + id */
   auto path_str = w_string::printf(
       "%.*s%" PRIu32,
@@ -37,81 +41,72 @@ bool CookieSync::syncToNow(std::chrono::milliseconds timeout) {
       cookiePrefix_.data(),
       serial_++);
 
+  auto cookie = make_unique<Cookie>(path_str);
+  auto future = cookie->promise.getFuture();
+
   /* insert our cookie in the map */
   {
     auto wlock = cookies_.wlock();
     auto& map = *wlock;
-    map[path_str] = &cookie;
+    map[path_str] = std::move(cookie);
   }
 
-  /* compute deadline */
-  auto deadline = std::chrono::system_clock::now() + timeout;
-
-  /* touch the file */
+  /* then touch the file */
   auto file = w_stm_open(
       path_str.c_str(), O_CREAT | O_TRUNC | O_WRONLY | O_CLOEXEC, 0700);
   if (!file) {
-    errcode = errno;
-    log(ERR,
-        "syncToNow: creat(",
-        path_str,
-        ") failed: ",
-        strerror(errcode),
-        "\n");
-    goto out;
+    auto errcode = errno;
+    // The erase will unlink the file
+    cookies_.wlock()->erase(path_str);
+
+    throw std::system_error(
+        errcode,
+        std::generic_category(),
+        to<std::string>(
+            "sync: creat(", path_str, ") failed: ", strerror(errcode)));
   }
-  file.reset();
+  log(DBG, "sync created cookie file ", path_str, "\n");
+  return future;
+}
 
-  log(DBG, "syncToNow [", path_str, "] waiting\n");
+bool CookieSync::syncToNow(std::chrono::milliseconds timeout) {
+  auto cookie = sync();
 
-  /* timed cond wait (unlocks cookie lock, reacquires) */
-  if (!cookie.cond.wait_until(
-          cookie_lock, deadline, [&] { return cookie.seen; })) {
+  if (!cookie.wait_for(timeout)) {
     log(ERR,
-        "syncToNow: timed out waiting for cookie file ",
-        path_str,
-        " to be observed by watcher within ",
+        "syncToNow: timed out waiting for cookie file to be "
+        "observed by watcher within ",
         timeout.count(),
         " milliseconds\n");
-    errcode = ETIMEDOUT;
-    goto out;
-  }
-  log(DBG, "syncToNow [", path_str, "] done\n");
-
-out:
-  cookie_lock.unlock();
-
-  // can't unlink the file until after the cookie has been observed because
-  // we don't know which file got changed until we look in the cookie dir
-  unlink(path_str.c_str());
-
-  {
-    auto map = cookies_.wlock();
-    map->erase(path_str);
-  }
-
-  if (!cookie.seen) {
-    errno = errcode;
+    errno = ETIMEDOUT;
     return false;
   }
 
   return true;
 }
 
-void CookieSync::notifyCookie(const w_string& path) const {
-  auto map = cookies_.rlock();
-  auto cookie_iter = map->find(path);
-  w_log(
-      W_LOG_DBG,
-      "cookie for %s? %s\n",
-      path.c_str(),
-      cookie_iter != map->end() ? "yes" : "no");
+void CookieSync::notifyCookie(const w_string& path) {
+  std::unique_ptr<Cookie> cookie;
 
-  if (cookie_iter != map->end()) {
-    auto cookie = cookie_iter->second;
-    auto cookie_lock = std::unique_lock<std::mutex>(cookie->mutex);
-    cookie->seen = true;
-    cookie->cond.notify_one();
+  {
+    auto map = cookies_.wlock();
+    auto cookie_iter = map->find(path);
+    log(DBG,
+        "cookie for ",
+        path,
+        "? ",
+        cookie_iter != map->end() ? "yes" : "no",
+        "\n");
+
+    if (cookie_iter != map->end()) {
+      cookie = std::move(cookie_iter->second);
+      map->erase(cookie_iter);
+    }
+  }
+
+  if (cookie) {
+    cookie->promise.setValue(Unit{});
+    // cookie file will be unlinked when we exit this scope
   }
 }
 }

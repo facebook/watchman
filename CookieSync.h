@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include "Future.h"
 #include "watchman_synchronized.h"
 #define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"
 
@@ -21,12 +22,22 @@ class CookieSync {
    * time, false otherwise. */
   bool syncToNow(std::chrono::milliseconds timeout);
 
+  /** Touches a cookie file and returns a Future that will
+   * be ready when that cookie file is processed by the IO
+   * thread at some future time.
+   * Important: if you chain a lambda onto the future, it
+   * will execute in the context of the IO thread.
+   * It is recommended that you minimize the actions performed
+   * in that context to avoid holding up the IO thread.
+   **/
+  Future<Unit> sync();
+
   /* If path is a valid cookie in the map, notify the waiter.
    * Returns true if the path matches the cookie prefix (not just
    * whether the cookie is currently valid).
    * Returns false if the path does not match our cookie prefix.
    */
-  void notifyCookie(const w_string& path) const;
+  void notifyCookie(const w_string& path);
 
   // We need to guarantee that we never collapse a cookie notification
   // out of the pending list, because we absolutely must observe it coming
@@ -50,9 +61,11 @@ class CookieSync {
 
  private:
   struct Cookie {
-    std::condition_variable cond;
-    std::mutex mutex;
-    bool seen{false};
+    Promise<Unit> promise;
+    w_string fileName;
+
+    explicit Cookie(w_string name);
+    ~Cookie();
   };
 
   // path to the query cookie dir
@@ -61,6 +74,6 @@ class CookieSync {
   w_string cookiePrefix_;
   // Serial number for cookie filename
   std::atomic<uint32_t> serial_{0};
-  Synchronized<std::unordered_map<w_string, Cookie*>> cookies_;
+  Synchronized<std::unordered_map<w_string, std::unique_ptr<Cookie>>> cookies_;
 };
 }
