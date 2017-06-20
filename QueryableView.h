@@ -53,6 +53,8 @@ class QueryableView : public std::enable_shared_from_this<QueryableView> {
   virtual void startThreads(const std::shared_ptr<w_root_t>& root);
   // Request that helper threads shutdown (but does not join them)
   virtual void signalThreads();
+  // Request that helper threads wake up and re-evaluate their state
+  virtual void wakeThreads();
 
   virtual const w_string& getName() const = 0;
 

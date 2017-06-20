@@ -7,9 +7,13 @@
 
 namespace watchman {
 
+class CookieSyncAborted : public std::exception {};
+
 class CookieSync {
  public:
   explicit CookieSync(const w_string& dir);
+  ~CookieSync();
+
   void setCookieDir(const w_string& dir);
 
   /* Ensure that we're synchronized with the state of the
@@ -38,6 +42,10 @@ class CookieSync {
    * Returns false if the path does not match our cookie prefix.
    */
   void notifyCookie(const w_string& path);
+
+  /* Cause all pending cookie sync promises to complete immediately
+   * with a CookieSyncAborted exception */
+  void abortAllCookies();
 
   // We need to guarantee that we never collapse a cookie notification
   // out of the pending list, because we absolutely must observe it coming

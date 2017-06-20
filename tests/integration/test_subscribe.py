@@ -8,7 +8,6 @@ from __future__ import print_function
 # no unicode literals
 
 import WatchmanTestCase
-import tempfile
 import os
 import os.path
 try:
@@ -175,7 +174,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand('watch', root)
         self.assertFileList(root, files=['.hg', 'foo'])
 
-        sub = self.watchmanCommand('subscribe', root, 'defer', {
+        self.watchmanCommand('subscribe', root, 'defer', {
             'expression': ['type', 'f'],
             'fields': ['name', 'exists'],
             'defer_vcs': True})
@@ -225,7 +224,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand('watch', root)
         self.assertFileList(root, files=['.hg'])
 
-        sub = self.watchmanCommand('subscribe', root, 'nodefer', {
+        self.watchmanCommand('subscribe', root, 'nodefer', {
             'fields': ['name', 'exists'],
             'defer_vcs': False})
 
@@ -288,10 +287,10 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand('watch', root)
         self.assertFileList(root, files=['a', 'a/lemon', 'b'])
 
-        sub = self.watchmanCommand('subscribe', root, 'myname', {
+        self.watchmanCommand('subscribe', root, 'myname', {
             'fields': ['name']})
 
-        rel_sub = self.watchmanCommand('subscribe', root, 'relative', {
+        self.watchmanCommand('subscribe', root, 'relative', {
             'fields': ['name'],
             'relative_root': 'a'})
 
@@ -322,17 +321,14 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         # Trigger a recrawl and ensure that the subscription isn't lost
         self.watchmanCommand('debug-recrawl', root)
 
-        ab = self.normFileList(['a', 'b'])
-
         def matchesRecrawledDir(subdata):
             for sub in subdata:
-                if not sub['is_fresh_instance']:
-                    continue
-                files = self.normWatchmanFileList(sub['files'])
-                if self.fileListsEqual(files, ab):
+                if 'warning' in sub:
                     return True
             return False
 
+        # ensure that there is at least one change to broadcast
+        self.touchRelative(root, 'a')
         dat = self.waitForSub('myname', root=root,
                               accept=matchesRecrawledDir)
         self.assertNotEqual(None, dat)
@@ -631,10 +627,10 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
             unicode_filename = unicode_filename.encode('utf-8')
         self.assertFileList(root, files=['a', 'a/lemon', 'b', unicode_filename])
 
-        sub = self.watchmanCommand('subscribe', root, 'myname', {
+        self.watchmanCommand('subscribe', root, 'myname', {
             'fields': ['name']})
 
-        rel_sub = self.watchmanCommand('subscribe', root, 'relative', {
+        self.watchmanCommand('subscribe', root, 'relative', {
             'fields': ['name'],
             'relative_root': 'a'})
 
@@ -649,17 +645,14 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         # Trigger a recrawl and ensure that the subscription isn't lost
         self.watchmanCommand('debug-recrawl', root)
 
-        abu = self.normFileList(['a', 'b', unicode_filename])
-
         def matchesRecrawledDir(subdata):
             for sub in subdata:
-                if not sub['is_fresh_instance']:
-                    continue
-                files = self.normWatchmanFileList(sub['files'])
-                if self.fileListsEqual(files, abu):
+                if 'warning' in sub:
                     return True
             return False
 
+        # ensure that there is at least one change to broadcast
+        self.touchRelative(root, 'a')
         dat = self.waitForSub('myname', root=root,
                               accept=matchesRecrawledDir)
         self.assertNotEqual(None, dat)

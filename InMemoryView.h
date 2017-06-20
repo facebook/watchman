@@ -75,6 +75,7 @@ struct InMemoryView : public QueryableView {
 
   void startThreads(const std::shared_ptr<w_root_t>& root) override;
   void signalThreads() override;
+  void wakeThreads() override;
   void clientModeCrawl(const std::shared_ptr<w_root_t>& root);
 
   const w_string& getName() const override;
@@ -187,7 +188,7 @@ struct InMemoryView : public QueryableView {
       bool recursive);
   void notifyThread(const std::shared_ptr<w_root_t>& root);
   void ioThread(const std::shared_ptr<w_root_t>& root);
-  void handleShouldRecrawl(const std::shared_ptr<w_root_t>& root);
+  bool handleShouldRecrawl(const std::shared_ptr<w_root_t>& root);
   void fullCrawl(
       const std::shared_ptr<w_root_t>& root,
       PendingCollection::LockedPtr& pending);

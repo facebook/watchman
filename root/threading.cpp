@@ -32,7 +32,7 @@ void watchman_root::scheduleRecrawl(const char* why) {
     }
     info->shouldRecrawl = true;
   }
-  signalThreads();
+  view()->wakeThreads();
 }
 
 void watchman_root::signalThreads() {

@@ -1,6 +1,8 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman_system.h"
+#include <exception>
 #include "watchman.h"
 
 namespace watchman {
@@ -16,6 +18,11 @@ CookieSync::Cookie::~Cookie() {
 
 CookieSync::CookieSync(const w_string& dir) {
   setCookieDir(dir);
+}
+
+CookieSync::~CookieSync() {
+  // Wake up anyone that might have been waiting on us
+  abortAllCookies();
 }
 
 void CookieSync::setCookieDir(const w_string& dir) {
@@ -70,19 +77,54 @@ Future<Unit> CookieSync::sync() {
 }
 
 bool CookieSync::syncToNow(std::chrono::milliseconds timeout) {
-  auto cookie = sync();
+  /* compute deadline */
+  using namespace std::chrono;
+  auto deadline = system_clock::now() + timeout;
 
-  if (!cookie.wait_for(timeout)) {
-    log(ERR,
-        "syncToNow: timed out waiting for cookie file to be "
-        "observed by watcher within ",
-        timeout.count(),
-        " milliseconds\n");
-    errno = ETIMEDOUT;
-    return false;
+  while (true) {
+    auto cookie = sync();
+
+    if (!cookie.wait_for(timeout)) {
+      log(ERR,
+          "syncToNow: timed out waiting for cookie file to be "
+          "observed by watcher within ",
+          timeout.count(),
+          " milliseconds\n");
+      errno = ETIMEDOUT;
+      return false;
+    }
+
+    if (cookie.result().hasError()) {
+      // Sync was aborted by a recrawl; recompute the timeout
+      // and wait again if we still have time
+      timeout = duration_cast<milliseconds>(deadline - system_clock::now());
+      if (timeout.count() <= 0) {
+        errno = ETIMEDOUT;
+        return false;
+      }
+
+      // wait again
+      continue;
+    }
+
+    // Success!
+    return true;
+  }
+}
+
+void CookieSync::abortAllCookies() {
+  std::unordered_map<w_string, std::unique_ptr<Cookie>> cookies;
+
+  {
+    auto map = cookies_.wlock();
+    std::swap(*map, cookies);
   }
 
-  return true;
+  for (auto& it : cookies) {
+    log(ERR, "syncToNow: aborting cookie ", it.first, "\n");
+    it.second->promise.setException(
+        std::make_exception_ptr(CookieSyncAborted()));
+  }
 }
 
 void CookieSync::notifyCookie(const w_string& path) {

@@ -69,16 +69,6 @@ void watchman_root::init() {
   time(&inner.last_cmd_timestamp);
 }
 
-void watchman_root::tearDown() {
-  // Placement delete and then new to re-init the storage.
-  // We can't just delete because we need to leave things
-  // in a well defined state for when we subsequently
-  // delete the containing root (that will call the Inner
-  // destructor).
-  inner.~Inner();
-  new (&inner) watchman_root::Inner();
-}
-
 void watchman_root::Inner::init(w_root_t* root) {
   view_ = WatcherRegistry::initWatcher(root);
 }

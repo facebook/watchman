@@ -73,7 +73,6 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
       std::shared_ptr<watchman_client_state_assertion>>>
       asserted_states;
 
-  /* --- everything in inner will be reset on w_root_init --- */
   struct Inner {
     std::shared_ptr<watchman::QueryableView> view_;
 
@@ -115,7 +114,6 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
 
   // Returns true if the caller should stop the watch.
   bool considerReap() const;
-  void tearDown();
   void init();
   bool removeFromWatched();
   void applyIgnoreVCSConfiguration();

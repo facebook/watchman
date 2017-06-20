@@ -642,6 +642,10 @@ void InMemoryView::signalThreads() {
   pending_.ping();
 }
 
+void InMemoryView::wakeThreads() {
+  pending_.ping();
+}
+
 bool InMemoryView::doAnyOfTheseFilesExist(
     const std::vector<w_string>& fileNames) const {
   auto view = view_.rlock();

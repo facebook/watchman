@@ -201,14 +201,10 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         triggers = self.watchmanCommand('trigger-list', root).get('triggers')
         self.assertItemsEqual(triggers, expect)
 
-        # The recrawl should cause the triggers to run
-        self.assertWaitFor(lambda: self.hasTriggerInLogs(root, 'test') and
-                           self.hasTriggerInLogs(root, 'other'),
-                           message='both triggers fired on update')
-
         self.watchmanCommand('log-level', 'off')
 
-        self.validate_trigger_output(root, ['foo.c', 'b ar.c'], 'after recrawl')
+        self.touchRelative(root, 'foo.c')
+        self.validate_trigger_output(root, ['foo.c'], 'after recrawl')
 
         # Now test to see how we deal with updating the defs
         res = self.watchmanCommand('trigger', root, 'other', '*.c', '--', 'true')

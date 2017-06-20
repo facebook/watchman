@@ -9,7 +9,6 @@ from __future__ import print_function
 
 import WatchmanTestCase
 import json
-import tempfile
 import os
 import os.path
 
@@ -247,9 +246,11 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         res = self.watchmanCommand('query', root, {
             'since': clock,
             'fields': ['name']})
-        self.assertTrue(res['is_fresh_instance'])
+        # In earlier versions of the server, the recrawl would always
+        # generate a fresh instance result set.  This is no longer true.
+        self.assertFalse(res['is_fresh_instance'])
         self.assertEqual(self.normWatchmanFileList(res['files']),
-                         self.normFileList(['222']))
+                         self.normFileList(['111', '222']))
         self.assertRegexpMatches(res['warning'], 'Recrawled this watch')
 
     def test_recrawlFreshInstanceWarningSuppressed(self):
@@ -275,7 +276,9 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         res = self.watchmanCommand('query', root, {
             'since': clock,
             'fields': ['name']})
-        self.assertTrue(res['is_fresh_instance'])
+        # In earlier versions of the server, the recrawl would always
+        # generate a fresh instance result set.  This is no longer true.
+        self.assertFalse(res['is_fresh_instance'])
         self.assertEqual(self.normWatchmanFileList(res['files']),
-                         self.normFileList(['.watchmanconfig', '222']))
+                         self.normFileList(['111', '222']))
         self.assertTrue('warning' not in res)

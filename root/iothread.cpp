@@ -44,7 +44,7 @@ void InMemoryView::fullCrawl(
     // can get stuck with an empty view until another change is observed
     view->mostRecentTick++;
     gettimeofday(&start, NULL);
-    pending_.wlock()->add(root->root_path, start, 0);
+    pending_.wlock()->add(root->root_path, start, W_PENDING_RECURSIVE);
     // There is the potential for a subtle race condition here.  The boolean
     // parameter indicates whether we want to merge in the set of
     // notifications pending from the watcher or not.  Since we now coalesce
@@ -68,6 +68,7 @@ void InMemoryView::fullCrawl(
       }
       root->inner.done_initial = true;
     }
+    root->cookies.abortAllCookies();
   }
   sample.add_root_meta(root);
 
@@ -121,6 +122,23 @@ void InMemoryView::clientModeCrawl(const std::shared_ptr<w_root_t>& root) {
   fullCrawl(root, lock);
 }
 
+bool InMemoryView::handleShouldRecrawl(const std::shared_ptr<w_root_t>& root) {
+  {
+    auto info = root->recrawlInfo.rlock();
+    if (!info->shouldRecrawl) {
+      return false;
+    }
+  }
+
+  if (!root->inner.cancelled) {
+    auto info = root->recrawlInfo.wlock();
+    info->recrawlCount++;
+    root->inner.done_initial = false;
+  }
+
+  return true;
+}
+
 void InMemoryView::ioThread(const std::shared_ptr<w_root_t>& root) {
   int timeoutms, biggest_timeout;
   PendingCollection pending;
@@ -158,6 +176,12 @@ void InMemoryView::ioThread(const std::shared_ptr<w_root_t>& root) {
           pending_.lockAndWait(std::chrono::milliseconds(timeoutms), pinged);
       w_log(W_LOG_DBG, " ... wake up (pinged=%s)\n", pinged ? "true" : "false");
       localPendingLock->append(&*targetPendingLock);
+    }
+
+    if (handleShouldRecrawl(root)) {
+      fullCrawl(root, localPendingLock);
+      timeoutms = root->trigger_settle;
+      continue;
     }
 
     if (!pinged && localPendingLock->size() == 0) {
