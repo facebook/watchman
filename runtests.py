@@ -493,4 +493,9 @@ if 'CIRCLE_ARTIFACTS' in os.environ:
 if tests_failed or (tests_run == 0):
     if args.keep_if_fail:
         temp_dir.set_keep(True)
+    if args.testpilot_json:
+        # When outputting JSON, our return code indicates if we successfully
+        # produced output or not, not whether the tests passed.  The JSON
+        # output contains the detailed test pass/failure information.
+        sys.exit(0)
     sys.exit(1)
