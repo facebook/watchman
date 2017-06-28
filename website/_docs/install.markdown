@@ -83,9 +83,11 @@ $ sudo port install watchman
 You can use these steps below to get watchman built.  You will need `autoconf`,
 `automake` and `libtool` (or `glibtool` on OS X).  You may optionally build
 watchman without `pcre` and `python` support (see configuration options below).
-For python support, you will need `setuptools` and may need to install a
-`python-dev` or `python-devel` package. To build the C++ client library you will
-need to install `libfolly`.
+For python support, you will need `setuptools` and may need to install:
+ * `python-dev` or `python-devel`
+ * `redhat-rpm-config` (Fedora only)
+
+To build the C++ client library you will need to install `libfolly`.
 
 See below for some more information on options to configure your build.
 
