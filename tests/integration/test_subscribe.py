@@ -8,6 +8,7 @@ from __future__ import print_function
 # no unicode literals
 
 import WatchmanTestCase
+import json
 import os
 import os.path
 try:
@@ -343,6 +344,12 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
     def test_flush_subscriptions(self):
         root = self.mkdtemp()
+
+        with open(os.path.join(root, '.watchmanconfig'), 'w') as f:
+            f.write(json.dumps({
+                'win32_batch_latency_ms': 0
+            }))
+
         a_dir = os.path.join(root, 'a')
 
         os.mkdir(a_dir)
@@ -352,7 +359,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
         self.watchmanCommand('watch', root)
         self.assertFileList(
-            root, files=['a', 'a/lemon.txt', 'a/orange.dat', 'b']
+            root, files=['.watchmanconfig', 'a', 'a/lemon.txt', 'a/orange.dat', 'b']
         )
 
         self.watchmanCommand(
