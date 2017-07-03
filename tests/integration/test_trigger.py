@@ -128,7 +128,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         with open(os.path.join(root, '.watchmanconfig'), 'w') as f:
             json.dump({'settle': 200}, f)
 
-        self.watchmanCommand('watch', root)
+        watch = self.watchmanCommand('watch', root)
 
         self.assertFileList(root, ['.watchmanconfig', 'b ar.c', 'bar.txt', 'foo.c'])
 
@@ -204,7 +204,16 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand('log-level', 'off')
 
         self.touchRelative(root, 'foo.c')
-        self.validate_trigger_output(root, ['foo.c'], 'after recrawl')
+        expect = ['foo.c']
+        if watch['watcher'] == 'win32':
+            # We end up re-scanning the root here and noticing that
+            # b ar.c has changed.  What we're testing here is that
+            # the trigger is run again, and it is ok if it notifies
+            # about more files on win32, so just adjust expec:tations
+            # here in the test to accomodate that difference.
+            expect = ['foo.c', 'b ar.c']
+
+        self.validate_trigger_output(root, expect, 'after recrawl')
 
         # Now test to see how we deal with updating the defs
         res = self.watchmanCommand('trigger', root, 'other', '*.c', '--', 'true')
