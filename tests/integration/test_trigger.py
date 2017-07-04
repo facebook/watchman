@@ -13,6 +13,7 @@ import os
 import os.path
 import sys
 import re
+import time
 
 WATCHMAN_SRC_DIR = os.environ.get('WATCHMAN_SRC_DIR', os.getcwd())
 THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, 'tests', 'integration')
@@ -84,6 +85,10 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         trigger_log = os.path.join(root, 'trigger.log')
         trigger_json = os.path.join(root, 'trigger.json')
 
+        def contents(name):
+            with open(name, 'rb') as f:
+                return f.read()
+
         def files_are_listed():
             if not os.path.exists(trigger_log):
                 return False
@@ -115,8 +120,9 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
                 return result == expect
 
         self.assertWaitFor(lambda: files_are_listed_json(),
-                           message='%s should contain %s' % (trigger_json,
-                                                             json.dumps(files)))
+                           message='%s should contain %s but has %s' % (trigger_json,
+                                                                        json.dumps(files),
+                                                                        contents(trigger_json)))
 
     def test_legacyTrigger(self):
         root = self.mkdtemp()
@@ -203,6 +209,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
 
         self.watchmanCommand('log-level', 'off')
 
+        time.sleep(1)
         self.touchRelative(root, 'foo.c')
         expect = ['foo.c']
         if watch['watcher'] == 'win32':
