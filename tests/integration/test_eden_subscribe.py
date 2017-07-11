@@ -8,7 +8,7 @@ from __future__ import print_function
 # no unicode literals
 
 import WatchmanEdenTestCase
-
+import os
 
 class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
     def requiresPersistentSession(self):
@@ -16,6 +16,7 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
     def test_eden_subscribe(self):
         def populate(repo):
+            repo.write_file('.watchmanconfig', '{"ignore_dirs":[".buckd"]}')
             repo.write_file('hello', 'hola\n')
             repo.commit('initial commit.')
 
@@ -31,6 +32,7 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertFileListsEqual(self.normWatchmanFileList(dat['files']),
                                   self.normFileList(['.eden', '.eden/socket',
                                                      '.eden/client',
+                                                     '.watchmanconfig',
                                                      '.eden/root', 'hello']))
 
         self.touchRelative(root, 'w0000t')
@@ -38,6 +40,10 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertEqual(False, dat['is_fresh_instance'])
         self.assertFileListsEqual(self.normWatchmanFileList(dat['files']),
                                   self.normFileList(['w0000t']))
+
+        # we should not observe .buckd in the subscription results
+        # because it is listed in the ignore_dirs config section.
+        os.mkdir(os.path.join(root, '.buckd'))
 
         self.touchRelative(root, 'hello')
         dat = self.waitForSub('myname', root=root)[0]
@@ -55,5 +61,6 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertFileListsEqual(self.normWatchmanFileList(dat['files']),
                                   self.normFileList(['.eden', '.eden/socket',
                                                      '.eden/client',
+                                                     '.watchmanconfig',
                                                      '.eden/root', 'hello',
                                                      'w0000t']))

@@ -9,11 +9,13 @@ from __future__ import print_function
 
 import WatchmanEdenTestCase
 import pywatchman
+import os
 
 
 class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
     def test_eden_watch(self):
         def populate(repo):
+            repo.write_file('.watchmanconfig', '{"ignore_dirs":[".buckd"]}')
             repo.write_file('hello', 'hola\n')
             repo.write_file('adir/file', 'foo!\n')
             repo.write_file('bdir/test.sh', '#!/bin/bash\necho test\n',
@@ -26,10 +28,15 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
         root = self.makeEdenMount(populate)
 
+        # make sure this exists; we should not observe it in any of the results
+        # that we get back from watchman because it is listed in the ignore_dirs
+        # config section.
+        os.mkdir(os.path.join(root, '.buckd'))
+
         res = self.watchmanCommand('watch', root)
         self.assertEqual('eden', res['watcher'])
         self.assertFileList(root, ['.eden', '.eden/root', '.eden/socket',
-                                   '.eden/client',
+                                   '.eden/client', '.watchmanconfig',
                                    'adir', 'adir/file', 'bdir',
                                    'bdir/noexec.sh', 'bdir/test.sh', 'b*ir',
                                    'b*ir/star', 'b\\*ir', 'b\\*ir/foo',
@@ -39,7 +46,8 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
             'expression': ['type', 'f'],
             'fields': ['name']})
         self.assertFileListsEqual(res['files'],
-                                  ['adir/file', 'bdir/noexec.sh', 'bdir/test.sh',
+                                  ['.watchmanconfig',
+                                   'adir/file', 'bdir/noexec.sh', 'bdir/test.sh',
                                    'b*ir/star', 'b\\*ir/foo', 'hello'])
 
         res = self.watchmanCommand('query', root, {
@@ -82,7 +90,7 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
             'fields': ['name']})
         self.assertFileListsEqual(res['files'],
                                   ['.eden', '.eden/root', '.eden/socket',
-                                   '.eden/client',
+                                   '.eden/client', '.watchmanconfig',
                                    'adir', 'adir/file', 'b*ir', 'b*ir/star',
                                    'bdir', 'bdir/noexec.sh', 'bdir/test.sh',
                                    'b\\*ir', 'b\\*ir/foo', 'hello',

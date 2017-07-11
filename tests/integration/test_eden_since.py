@@ -34,6 +34,17 @@ class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertTrue(res['is_fresh_instance'])
         self.assertFileListsEqual(
             res['files'], ['hello', 'adir/file', 'bdir/test.sh', 'bdir/noexec.sh'])
+
+        res = self.watchmanCommand('query', root, {
+            'expression': ['type', 'f'],
+            'relative_root': 'adir',
+            'fields': ['name'],
+            'since': 'c:0:0'})
+
+        self.assertFileListsEqual(
+            res['files'], ['file'],
+            message='should only return adir/file with no adir prefix')
+
         clock = res['clock']
 
         self.touchRelative(root, 'hello')

@@ -4,6 +4,7 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseManager.h>
 #include <thrift/lib/cpp2/async/HeaderClientChannel.h>
+#include <algorithm>
 #include "eden/fs/service/gen-cpp2/StreamingEdenService.h"
 #include "watchman.h"
 
@@ -195,6 +196,43 @@ static std::string escapeGlobSpecialChars(w_string_piece str) {
   return result;
 }
 
+/** filter out paths that are ignored or that are not part of the
+ * relative_root restriction in a query.
+ * Ideally we'd pass this information into eden so that it doesn't
+ * have to walk those paths and return the data to us, but for the
+ * moment we have to filter it out of the results.
+ * We need to respect the ignore_dirs configuration setting and
+ * also remove anything that doesn't match the relative_root constraint
+ * in the query.  The InMemoryView uses w_query_file_matches_relative_root()
+ * for that purpose, but it cannot be re-used here because it operates
+ * on the InMemoryView specific file representation that we can't recreate
+ * here because of fundamental differences between the two watchers, and
+ * also because we want to avoid materializing more information about the
+ * file if we're just going to filter it out anyway.
+ */
+void filterOutPaths(std::vector<std::string>& fileNames, w_query_ctx* ctx) {
+  fileNames.erase(
+      std::remove_if(
+          fileNames.begin(),
+          fileNames.end(),
+          [ctx](const std::string& name) {
+            auto full = w_string::pathCat({ctx->root->root_path, name});
+
+            if (ctx->query->relative_root) {
+              auto parentPath = w_string_piece(full).dirName();
+
+              if (!(parentPath == ctx->query->relative_root ||
+                    parentPath.startsWith(ctx->query->relative_root_slash))) {
+                // Not in the desired area, so filter it out
+                return true;
+              }
+            }
+
+            return ctx->root->ignore.isIgnored(full.data(), full.size());
+          }),
+      fileNames.end());
+}
+
 class EdenView : public QueryableView {
   w_string root_path_;
   folly::EventBase subscriberEventBase_;
@@ -283,6 +321,9 @@ class EdenView : public QueryableView {
       }
     }
 
+    // Filter out any ignored files
+    filterOutPaths(fileNames, ctx);
+
     std::vector<FileInformationOrError> info;
     client->sync_getFileInformation(info, mountPoint, fileNames);
 
@@ -341,6 +382,9 @@ class EdenView : public QueryableView {
 
     std::vector<std::string> fileNames;
     client->sync_glob(fileNames, mountPoint, globStrings);
+
+    // Filter out any ignored files
+    filterOutPaths(fileNames, ctx);
 
     std::vector<FileInformationOrError> info;
     client->sync_getFileInformation(info, mountPoint, fileNames);
