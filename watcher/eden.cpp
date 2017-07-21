@@ -242,7 +242,8 @@ class EdenView : public QueryableView {
     root_path_ = root->root_path;
   }
 
-  void timeGenerator(w_query* query, struct w_query_ctx* ctx) const override {
+  void timeGenerator(w_query* /*query*/, struct w_query_ctx* ctx)
+      const override {
     auto client = getEdenClient(root_path_);
     auto mountPoint = to<std::string>(ctx->root->root_path);
 
@@ -375,7 +376,7 @@ class EdenView : public QueryableView {
 
   void executeGlobBasedQuery(
       const std::vector<std::string>& globStrings,
-      w_query* query,
+      w_query* /*query*/,
       struct w_query_ctx* ctx) const {
     auto client = getEdenClient(ctx->root->root_path);
     auto mountPoint = to<std::string>(ctx->root->root_path);
@@ -520,10 +521,10 @@ class EdenView : public QueryableView {
     return 0;
   }
 
-  void ageOut(w_perf_t& sample, std::chrono::seconds minAge) override {}
+  void ageOut(w_perf_t& /*sample*/, std::chrono::seconds /*minAge*/) override {}
 
   bool doAnyOfTheseFilesExist(
-      const std::vector<w_string>& fileNames) const override {
+      const std::vector<w_string>& /*fileNames*/) const override {
     watchman::log(watchman::ERR, __FUNCTION__, "\n");
     return false;
   }
@@ -625,7 +626,7 @@ class EdenView : public QueryableView {
   }
 
   std::shared_future<void> waitUntilReadyToQuery(
-      const std::shared_ptr<w_root_t>& root) override {
+      const std::shared_ptr<w_root_t>& /*root*/) override {
     watchman::log(watchman::ERR, __FUNCTION__, "\n");
     std::promise<void> p;
     p.set_value();
