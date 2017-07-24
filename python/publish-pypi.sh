@@ -20,4 +20,4 @@
 #    password: <pypi_password>
 #
 
-python setup.py sdist upload -r pypi
+python setup.py sdist bdist_wheel upload -r pypi
