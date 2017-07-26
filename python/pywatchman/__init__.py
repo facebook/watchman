@@ -559,9 +559,10 @@ class CLIProcessTransport(Transport):
     proc = None
     closed = True
 
-    def __init__(self, sockpath, timeout):
+    def __init__(self, sockpath, timeout, binpath='watchman'):
         self.sockpath = sockpath
         self.timeout = timeout
+        self.binpath = binpath
 
     def close(self):
         if self.proc:
@@ -576,7 +577,7 @@ class CLIProcessTransport(Transport):
         if self.proc:
             return self.proc
         args = [
-            'watchman',
+            self.binpath,
             '--sockname={0}'.format(self.sockpath),
             '--logfile=/BOGUS',
             '--statefile=/BOGUS',
@@ -786,13 +787,15 @@ class client(object):
                  sendEncoding=None,
                  recvEncoding=None,
                  useImmutableBser=False,
-                 # use False for these last two because None has a special
+                 # use False for these two because None has a special
                  # meaning
                  valueEncoding=False,
-                 valueErrors=False):
+                 valueErrors=False,
+                 binpath='watchman'):
         self.sockpath = sockpath
         self.timeout = timeout
         self.useImmutableBser = useImmutableBser
+        self.binpath = binpath
 
         if inspect.isclass(transport) and issubclass(transport, Transport):
             self.transport = transport
@@ -873,7 +876,7 @@ class client(object):
         if path:
             return path
 
-        cmd = ['watchman', '--output-encoding=bser', 'get-sockname']
+        cmd = [self.binpath, '--output-encoding=bser', 'get-sockname']
         try:
             args = dict(stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE,
@@ -913,7 +916,11 @@ class client(object):
         if self.sockpath is None:
             self.sockpath = self._resolvesockname()
 
-        self.tport = self.transport(self.sockpath, self.timeout)
+        kwargs = {}
+        if self.transport == CLIProcessTransport:
+            kwargs['binpath'] = self.binpath
+
+        self.tport = self.transport(self.sockpath, self.timeout, **kwargs)
         self.sendConn = self.sendCodec(self.tport)
         self.recvConn = self.recvCodec(self.tport)
 
