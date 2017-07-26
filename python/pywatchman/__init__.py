@@ -927,6 +927,13 @@ class client(object):
     def __del__(self):
         self.close()
 
+    def __enter__(self):
+        self._connect()
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.close()
+
     def close(self):
         if self.tport:
             self.tport.close()
