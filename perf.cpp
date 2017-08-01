@@ -40,7 +40,12 @@ class PerfLogThread {
   }
 };
 
-watchman::Synchronized<std::unique_ptr<PerfLogThread>> perfThread;
+PerfLogThread& getPerfThread() {
+  // Get the perf logging thread, starting it on the first call.
+  // Meyer's singleton!
+  static PerfLogThread perfThread;
+  return perfThread;
+}
 }
 
 watchman_perf_sample::watchman_perf_sample(const char* description)
@@ -259,28 +264,8 @@ void watchman_perf_sample::log() {
   }
 
   // Send this to our logging thread for async processing
-
-  {
-    // The common case is that we already set up the logging
-    // thread and that we can just log through it.
-    auto rlock = perfThread.rlock();
-    if (rlock->get()) {
-      (*rlock)->addSample(std::move(info));
-      return;
-    }
-  }
-
-  // If it wasn't set, then we need an exclusive lock to
-  // make sure that we don't spawn multiple instances.
-  {
-    auto wlock = perfThread.wlock();
-
-    if (!wlock->get()) {
-      *wlock = watchman::make_unique<PerfLogThread>();
-    }
-
-    (*wlock)->addSample(std::move(info));
-  }
+  auto& perfThread = getPerfThread();
+  perfThread.addSample(std::move(info));
 }
 
 /* vim:ts=2:sw=2:et:
