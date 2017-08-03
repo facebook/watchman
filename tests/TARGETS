@@ -1,7 +1,6 @@
-# @nolint TODO(#18457353): https://fburl.com/auto-format-build-files
-import os
+include_defs("//common/defs/environment")
 
-if 'SANDCASTLE' in os.environ:
+if os_getenv('SANDCASTLE') is not None:
     # We don't run this by default on devservers, because python 2.x has a bug
     # that breaks subprocess when threading is used, so we have to run the
     # tests with concurrency=1 and it takes a bit longer.
