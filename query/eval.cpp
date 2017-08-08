@@ -48,9 +48,9 @@ void w_query_process_file(
     ctx->file.reset();
   };
 
-  // For fresh instances, only return files that currently exist.
-  if (!ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance &&
-      !ctx->file->exists()) {
+  // For fresh instances, only return files that currently exist
+  if (!ctx->disableFreshInstance && !ctx->since.is_timestamp &&
+      ctx->since.clock.is_fresh_instance && !ctx->file->exists()) {
     return;
   }
 
@@ -62,7 +62,7 @@ void w_query_process_file(
   }
 
   if (ctx->query->dedup_results) {
-    w_string_t *name = w_query_ctx_get_wholename(ctx);
+    w_string_t* name = w_query_ctx_get_wholename(ctx);
 
     auto inserted = ctx->dedup.insert(name);
     if (!inserted.second) {
@@ -133,7 +133,7 @@ bool w_query_file_matches_relative_root(
   // "in relative root" here does not mean exactly the relative root, so compare
   // against the relative root's parent.
   result = w_string_equal(parent_path, ctx->query->relative_root) ||
-           w_string_startswith(parent_path, ctx->query->relative_root_slash);
+      w_string_startswith(parent_path, ctx->query->relative_root_slash);
 
   return result;
 }
@@ -189,8 +189,8 @@ static void execute_common(
     ctx->dedup.reserve(64);
   }
 
-  res->is_fresh_instance = !ctx->since.is_timestamp &&
-    ctx->since.clock.is_fresh_instance;
+  res->is_fresh_instance =
+      !ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance;
 
   if (!(res->is_fresh_instance && ctx->query->empty_on_fresh_instance)) {
     if (!generator) {
@@ -228,8 +228,14 @@ static void execute_common(
   res->dedupedFileNames = std::move(ctx->dedup);
 }
 
-w_query_ctx::w_query_ctx(w_query* q, const std::shared_ptr<w_root_t>& root)
-    : query(q), root(root), resultsArray(json_array()) {
+w_query_ctx::w_query_ctx(
+    w_query* q,
+    const std::shared_ptr<w_root_t>& root,
+    bool disableFreshInstance)
+    : query(q),
+      root(root),
+      resultsArray(json_array()),
+      disableFreshInstance{disableFreshInstance} {
   // build a template for the serializer
   if (query->fieldList.size() > 1) {
     json_array_set_template_new(
@@ -247,6 +253,7 @@ w_query_res w_query_execute(
   w_query_res res;
   std::shared_ptr<w_query> altQuery;
   ClockSpec resultClock(ClockPosition{});
+  bool disableFreshInstance{false};
 
   w_perf_t sample("query_execute");
 
@@ -282,6 +289,7 @@ w_query_res w_query_execute(
       // And switch us over to run the rest of the query on this one
       altQuery = w_query_parse(root, altQuerySpec);
       query = altQuery.get();
+      disableFreshInstance = true;
       // We may have been called with a custom generator; we don't need to use
       // that for this case, so make sure that we use the default generator
       // so that it will actually execute using the pathGenerator.
@@ -289,7 +297,7 @@ w_query_res w_query_execute(
     }
   }
 
-  w_query_ctx ctx(query, root);
+  w_query_ctx ctx(query, root, disableFreshInstance);
   if (query->sync_timeout.count() && !root->syncToNow(query->sync_timeout)) {
     throw QueryExecError("synchronization failed: ", strerror(errno));
   }
@@ -316,16 +324,15 @@ w_query_res w_query_execute(
   res.clockAtStartOfQuery.clock = ctx.clockAtStartOfQuery.clock;
 
   // Evaluate the cursor for this root
-  ctx.since = query->since_spec
-      ? query->since_spec->evaluate(
-            ctx.clockAtStartOfQuery.position(),
-            ctx.lastAgeOutTickValueAtStartOfQuery,
-            &root->inner.cursors)
-      : w_query_since();
+  ctx.since = query->since_spec ? query->since_spec->evaluate(
+                                      ctx.clockAtStartOfQuery.position(),
+                                      ctx.lastAgeOutTickValueAtStartOfQuery,
+                                      &root->inner.cursors)
+                                : w_query_since();
 
   if (query->query_spec.get_default("bench")) {
     for (auto i = 0; i < 100; ++i) {
-      w_query_ctx c(query, root);
+      w_query_ctx c(query, root, false);
       w_query_res r;
       c.clockAtStartOfQuery = ctx.clockAtStartOfQuery;
       execute_common(&c, nullptr, &r, generator);

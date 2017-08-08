@@ -111,7 +111,13 @@ struct w_query_ctx {
   // How many times we suppressed a result due to dedup checking
   uint32_t num_deduped{0};
 
-  w_query_ctx(w_query* q, const std::shared_ptr<w_root_t>& root);
+  // Disable fresh instance queries
+  bool disableFreshInstance{false};
+
+  w_query_ctx(
+      w_query* q,
+      const std::shared_ptr<w_root_t>& root,
+      bool disableFreshInstance);
   w_query_ctx(const w_query_ctx&) = delete;
   w_query_ctx& operator=(const w_query_ctx&) = delete;
 
