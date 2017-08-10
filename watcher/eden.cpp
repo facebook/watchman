@@ -645,7 +645,10 @@ std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
       readLink(watchman::to<std::string>(root->root_path, "/.eden/root"));
   if (w_string_piece(edenRoot) != root->root_path) {
     // We aren't at the root of the eden mount
-    return nullptr;
+    throw TerminalWatcherError(to<std::string>(
+        "you may only watch from the root of an eden mount point. "
+        "Try again using ",
+        edenRoot));
   }
 
   auto client = getEdenClient(root->root_path);

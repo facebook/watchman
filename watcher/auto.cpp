@@ -37,6 +37,13 @@ static inline std::shared_ptr<watchman::QueryableView> reportWatcher(
     const std::string& watcherName,
     w_root_t* root,
     std::shared_ptr<watchman::QueryableView>&& watcher) {
+  if (!watcher) {
+    throw std::runtime_error(watchman::to<std::string>(
+        "watcher ",
+        watcherName,
+        " returned nullptr, but should throw an exception"
+        " to correctly report initialization issues"));
+  }
   watchman::log(
       watchman::ERR,
       "root ",
@@ -99,6 +106,13 @@ std::shared_ptr<watchman::QueryableView> WatcherRegistry::initWatcher(
           root->root_path,
           "\n");
       return reportWatcher(watcherName, root, watcher->init_(root));
+    } catch (const watchman::TerminalWatcherError& e) {
+      failureReasons.append(
+          watcher->getName() + std::string(": ") + e.what() +
+          std::string(". "));
+      // Don't continue our attempt to use other registered watchers
+      // in this case
+      break;
     } catch (const std::exception& e) {
       watchman::log(watchman::DBG, watcher->getName(), ": ", e.what(), ".\n");
       failureReasons.append(
