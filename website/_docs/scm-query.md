@@ -3,7 +3,7 @@ pageid: scm-query
 title: Source Control Aware Queries
 layout: docs
 section: Queries
-permalink: docs/file-query.html
+permalink: docs/scm-query.html
 ---
 
 *Since 4.9.*
@@ -287,3 +287,9 @@ this update.  This is an important detail because more files in the working copy
 been physically changed than are reflected in the `files` list; your tooling will need
 to so something appropriate to ensure that it computes a consistent and correct result.
 
+### `state-enter` & `state-leave`
+
+Source control aware subscriptions will always include a *fat clock* in their responses, however,
+only the regular clock is provided in `state-enter` and `state-leave` notifications.
+This is because computing the source control information is a non-trivial operation and
+could increase latency.

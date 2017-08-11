@@ -240,6 +240,10 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
                   item->payload.get_default("state-leave")) {
                 auto resp = make_response();
                 json_object_update(item->payload, resp);
+                // We have the opportunity to populate additional response
+                // fields here (since we don't want to block the command).
+                // We don't populate the fat clock for SCM aware queries
+                // because determination of mergeBase could add latency.
                 resp.set({{"unilateral", json_true()},
                           {"subscription", w_string_to_json(sub->name)}});
                 client->enqueueResponse(std::move(resp), false);
