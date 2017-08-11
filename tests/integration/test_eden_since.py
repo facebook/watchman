@@ -56,6 +56,19 @@ class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
         res = self.watchmanCommand('query', root, {
             'expression': ['type', 'f'],
+            'fields': ['name', 'new'],
+            'since': clock})
+        self.assertEqual([{'name': 'hello', 'new': False}], res['files'])
+        self.touchRelative(root, 'hello')
+
+        res = self.watchmanCommand('query', root, {
+            'expression': ['type', 'f'],
+            'fields': ['name', 'new'],
+            'since': res['clock']})
+        self.assertEqual([{'name': 'hello', 'new': False}], res['files'])
+
+        res = self.watchmanCommand('query', root, {
+            'expression': ['type', 'f'],
             'fields': ['name'],
             'since': res['clock']})
         self.assertFileListsEqual(res['files'], [])
@@ -79,3 +92,17 @@ class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
             'fields': ['name'],
             'since': res['clock']})
         self.assertFileListsEqual(res['files'], [])
+
+        self.touchRelative(root, 'newfile')
+        res = self.watchmanCommand('query', root, {
+            'expression': ['type', 'f'],
+            'fields': ['name', 'new'],
+            'since': res['clock']})
+        self.assertEqual([{'name': 'newfile', 'new': True}], res['files'])
+
+        self.touchRelative(root, 'newfile')
+        res = self.watchmanCommand('query', root, {
+            'expression': ['type', 'f'],
+            'fields': ['name', 'new'],
+            'since': res['clock']})
+        self.assertEqual([{'name': 'newfile', 'new': False}], res['files'])

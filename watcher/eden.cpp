@@ -112,12 +112,28 @@ class EdenFileResult : public FileResult {
   EdenFileResult(
       const FileInformationOrError& infoOrErr,
       const w_string& fullName,
-      JournalPosition* position = nullptr)
+      JournalPosition* position = nullptr,
+      bool isNew = false)
       : fullName_(fullName) {
     otime_.ticks = ctime_.ticks = 0;
     otime_.timestamp = ctime_.timestamp = 0;
     if (position) {
-      otime_.ticks = ctime_.ticks = position->sequenceNumber;
+      otime_.ticks = position->sequenceNumber;
+      if (isNew) {
+        // the "ctime" in the context of FileResult represents the point
+        // in time that we saw the file transition !exists -> exists.
+        // We don't strictly know the point at which that happened for results
+        // returned from eden, but it will tell us whether that happened in
+        // a given since query window by listing the file in the created files
+        // set.  We set the isNew flag in this case.  The goal here is to
+        // ensure that the code in query/eval.cpp considers us to be new too,
+        // and that works because we set the created time ticks == the last
+        // change tick.  The logic in query/eval.cpp will consider this to
+        // be new because the ctime > lower bound in the since query.
+        // When isNew is not set our ctime tick value is initialized to
+        // zero which always fails that is_new check.
+        ctime_.ticks = otime_.ticks;
+      }
     }
 
     if (infoOrErr.getType() == FileInformationOrError::Type::info) {
@@ -280,6 +296,10 @@ class EdenView : public QueryableView {
     };
 
     std::vector<std::string> fileNames;
+    // We use the list of created files to synthesize the "new" field
+    // in the file results
+    std::unordered_set<std::string> createdFileNames;
+
     if (ctx->since.clock.is_fresh_instance) {
       // Earlier in the processing flow, we decided that the rootNumber
       // didn't match the current root which means that eden was restarted.
@@ -297,7 +317,22 @@ class EdenView : public QueryableView {
       // Now we can get the change journal from eden
       try {
         client->sync_getFilesChangedSince(delta, mountPoint, position);
-        fileNames = std::move(delta.paths);
+
+        createdFileNames.insert(
+            delta.createdPaths.begin(), delta.createdPaths.end());
+
+        // The list of changed files is the union of the created, added,
+        // and removed sets returned from eden in list form.
+        fileNames = std::move(delta.changedPaths);
+        fileNames.insert(
+            fileNames.end(),
+            std::make_move_iterator(delta.removedPaths.begin()),
+            std::make_move_iterator(delta.removedPaths.end()));
+        fileNames.insert(
+            fileNames.end(),
+            std::make_move_iterator(delta.createdPaths.begin()),
+            std::make_move_iterator(delta.createdPaths.end()));
+
         resultPosition = delta.toPosition;
         watchman::log(
             watchman::DBG,
@@ -338,9 +373,15 @@ class EdenView : public QueryableView {
     while (nameIter != fileNames.end()) {
       auto& name = *nameIter;
       auto& fileInfo = *infoIter;
+      // a file is considered new if it was present in the created files
+      // set returned from eden.
+      bool isNew = createdFileNames.find(name) != createdFileNames.end();
 
       auto file = make_unique<EdenFileResult>(
-          fileInfo, w_string::pathCat({mountPoint, name}), &resultPosition);
+          fileInfo,
+          w_string::pathCat({mountPoint, name}),
+          &resultPosition,
+          isNew);
 
       w_query_process_file(ctx->query, ctx, std::move(file));
 
