@@ -6,19 +6,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- Begin Jekyll SEO tag v2.2.3 -->
-<title>C++ Client | Watchman</title>
-<meta property="og:title" content="C++ Client" />
+<title>Source Control Aware Queries | Watchman</title>
+<meta property="og:title" content="Source Control Aware Queries" />
 <meta property="og:locale" content="en_US" />
-<meta name="description" content="Since 4.8." />
-<meta property="og:description" content="Since 4.8." />
-<link rel="canonical" href="https://facebook.github.io/watchman/docs/cppclient.html" />
-<meta property="og:url" content="https://facebook.github.io/watchman/docs/cppclient.html" />
+<meta name="description" content="Since 4.9." />
+<meta property="og:description" content="Since 4.9." />
+<link rel="canonical" href="https://facebook.github.io/watchman/docs/scm-query.html" />
+<meta property="og:url" content="https://facebook.github.io/watchman/docs/scm-query.html" />
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
 <meta property="article:published_time" content="2017-08-11T17:21:48-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"C++ Client","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-08-11T17:21:48-07:00","dateModified":"2017-08-11T17:21:48-07:00","description":"Since 4.8.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cppclient.html"},"url":"https://facebook.github.io/watchman/docs/cppclient.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"Source Control Aware Queries","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-08-11T17:21:48-07:00","dateModified":"2017-08-11T17:21:48-07:00","description":"Since 4.9.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/scm-query.html"},"url":"https://facebook.github.io/watchman/docs/scm-query.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -630,8 +630,8 @@ window.addEventListener('load', function() {
     },
     getDefaultProps: function() {
       return {
-        currentDoc: "C++ Client",
-        currentGroup: "Invocation",
+        currentDoc: "Source Control Aware Queries",
+        currentGroup: "Queries",
         data: docnavData,
       }
     },
@@ -699,68 +699,418 @@ window.addEventListener('load', function() {
 
     <div class="post">
   <header class="post-header">
-    <h1 class="post-title">C++ Client</h1>
+    <h1 class="post-title">Source Control Aware Queries</h1>
   </header>
 
   <article class="post-content">
    
-      <p><em>Since 4.8.</em></p>
+      <p><em>Since 4.9.</em></p>
 
-<p>Watchman includes a C++ client library to facilitate easy access to Watchman
-data from C++ applications. This library provides APIs for:</p>
+<p><em>The <a href="/watchman/docs/capabilities.html">capability</a> name associated with this
+enhanced functionality is <code class="highlighter-rouge">scm-since</code>.</em></p>
 
-<ul>
-  <li>Opening and maintaining a connection to a local Watchman server.</li>
-  <li>Executing request-response Watchman commands.</li>
-  <li>Subscribing to updates with in directory trees.</li>
-</ul>
+<p>At the time of writing, only Mercurial is supported.  The capability name for
+this is <code class="highlighter-rouge">scm-hg</code>.  The internal architecture allows supporting other source
+control systems quite easily; it just needs someone to implement and test them!</p>
 
-<h2 id="installation">Installation</h2>
+<p>A common pattern for tools that consume watchman is wanting to reason about
+the changes in a version controlled repository.  For most repos it is fine
+to simply receive information about all changed files as they are updated,
+even during a rebase over several days of work by others.</p>
 
-<p>Provided the Folly library is present when Watchman is built, the C++ client
-library is automatically built and installed. For details on building Watchman
-see <a href="/watchman/docs/install.html">Installation</a>.</p>
+<p>For very large or very busy repositories, where a great many files can change
+over a short period of time, it can be desirable to get a minimized set of
+information about the changes.</p>
 
-<h2 id="api">API</h2>
+<p>For example, if your tool has the ability to load some pre-built data from
+some artifact storage, rather than processing many hundreds of changed
+files incrementally you may want to take the merge base of local changes
+and use that to locate the pre-built data and process only the delta
+between that state and the current state of the repo.</p>
 
-<p>The public Watchman C++ client API is entirely covered in the installed
-<code class="highlighter-rouge">watchman/WatchmanClient.h</code> header file. This header contains a usage synopsis
-and notes on the public API features.</p>
+<p>An illustration may help.  Here we see that a user has a stack of two commits
+based off the symbolic <code class="highlighter-rouge">master</code> commit.  In this scenario, <code class="highlighter-rouge">master</code> is tracking
+the tip of the repo to which the local repo is published, and the user is
+checked out at the 6b38a5 commit:</p>
 
-<p>For a simple example of API usage, sending simple request-response commands
-to Watchman, see <code class="highlighter-rouge">cppclient/CLI.cpp</code> in the Watchman source tree. For a more
-extensive example of the API including use of subscriptions, see the integration
-test <code class="highlighter-rouge">tests/integration/cppclient.cpp</code> also in the Watchman source.</p>
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7</pre></td><td class="code"><pre>| @  6b38a5  wez
+| |  Add cats.cpp
+| |
+| o  fa2e92  wez
+|/   Add cat.jpg
+|
+o f12345 master
+</pre></td></tr></tbody></table>
+</div>
+</div>
 
-<p>The C++ client library and its API make heavy use of the Folly library and as
-such familiarity with this is highly recommended. Specifically, the client
-library makes extensive use of <a href="https://github.com/facebook/folly/blob/master/folly/io/async/README.md">Folly’s async features</a>
-to provide high-performance asynchronous I/O, and <a href="https://github.com/facebook/folly/blob/master/folly/docs/Dynamic.md">Folly’s dynamics</a>
-to avoid needing to construct/process raw JSON in C++.</p>
+<p>Now the user synchronizes their repo with the remote, fetching the commits but
+not changing their work yet.   This is often combined with the step that follows,
+but we are breaking it out here for the purposes of illustration.  This is
+equivalent to running <code class="highlighter-rouge">hg pull</code> or <code class="highlighter-rouge">git fetch</code>:</p>
 
-<h2 id="using-the-c-client-in-your-applications-build">Using the C++ client in your application’s build</h2>
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10</pre></td><td class="code"><pre>o  fabf87  coworker     master
+.  Amazing new feature
+.
+| @  6b38a5  wez
+| |  Add cats.cpp
+| |
+| o  fa2e92  wez
+|/   Add cat.jpg
+|
+o
+</pre></td></tr></tbody></table>
+</div>
+</div>
 
-<p>To facilitate integration into your application’s build, the Watchman C++ client
-library provides support for <a href="https://www.freedesktop.org/wiki/Software/pkg-config/">pkg-config</a>.</p>
+<p>The ellipsis portion of the DAG represents uninteresting commits to <code class="highlighter-rouge">wez</code>; there
+may be hundreds of files changed by those commits, but <code class="highlighter-rouge">wez</code> only cares about the
+work in their local branch of the DAG.</p>
 
-<p>For example, if your application was contained entirely in one C++ file called
-<code class="highlighter-rouge">app.cpp</code> the following would be sufficient for build on a system with GNU Make:</p>
+<p>Now <code class="highlighter-rouge">wez</code> wants to rebase their work on master.  This would be done using
+a command like <code class="highlighter-rouge">hg rebase -d master -s fa2e92</code>:</p>
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9</pre></td><td class="code"><pre>| @  bbbbbb  wez
+| |  Add cats.cpp
+| |
+| o  aaaaaa  wez
+|/   Add cat.jpg
+|
+o  fabf87  coworker     master
+.  Amazing new feature
+.
+</pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>The crucial part of this is what happens to the working copy; assuming that we now land
+on commit <code class="highlighter-rouge">bbbbbb</code>, Watchman will observe changes for all of the hundreds of files that
+changed across the rebase and pass this information on to the tools that are subscribed
+or are querying for this information.</p>
+
+<p>If your tooling is source control aware then you can ask watchman to run since queries
+in a mode where it will return you information about the merge base with <code class="highlighter-rouge">master</code> and
+the minimized set of files that changed.</p>
+
+<p>To enable this mode you issue a query using a new <em>fat clock</em> as the <code class="highlighter-rouge">since</code> parameter
+for the query:</p>
 
 <div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
-2</pre></td><td class="code"><pre>make <span class="nv">LDFLAGS</span><span class="o">=</span><span class="k">$(</span>pkg-config watchmanclient --libs<span class="k">)</span> <span class="nv">CPPFLAGS</span><span class="o">=</span><span class="k">$(</span>pkg-config watchmanclient --cflags<span class="k">)</span> app
-
-</pre></td></tr></tbody></table>
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
+["query", "/path/to/root", {
+  "since": {
+      scm: {
+        "mergebase-with": "master"
+      }
+  },
+  "expression": ["type", "f"],
+  "fields": ["name"]
+}]
+EOT
+</span></pre></td></tr></tbody></table>
 </div>
 </div>
 
-<p>If Watchman is installed in a location <code class="highlighter-rouge">pkg-config</code> does not search for packages
-by default, you may need to modify the <code class="highlighter-rouge">PKG_CONFIG_PATH</code> environment
-variable. For example:</p>
+<p>This particular <code class="highlighter-rouge">since</code> value starts with an unspecified clock value and requests that
+watchman run the query in source control aware mode, using the symbolic name <code class="highlighter-rouge">master</code>
+to compute the merge base for the commit graph.</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="nb">export </span><span class="nv">PKG_CONFIG_PATH</span><span class="o">=</span>&lt;watchman path&gt;/lib/pkgconfig:<span class="nv">$PKG_CONFIG_PATH</span>
-</pre></td></tr></tbody></table>
+<p>If we look back to the illustrations above and rewind to the first scenario,
+the results of this query will look something like this:</p>
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
+   </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+       </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:123:123"</span><span class="p">,</span><span class="w">
+       </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"f12345"</span><span class="p">,</span><span class="w">
+            </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
+       </span><span class="p">}</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="nt">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"cat.jpg"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cats.cpp"</span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></pre></td></tr></tbody></table>
 </div>
 </div>
+
+<p>This result informs the client of the merge base with master (which happens to
+be master itself) and the list of changes since that merge base.</p>
+
+<p>To get the next incremental change the client feeds that clock value back in to its
+next query.  Looking back to the second illustration above, if we were to run this query
+after the running <code class="highlighter-rouge">hg pull</code> (note that this doesn’t change the working copy):</p>
+
+<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
+["query", "/path/to/root", {
+  "since": {
+       "clock": "c:123:123",
+       "scm": {
+            "mergebase": "f12345",
+            "mergebase-with": "master"
+       }
+  },
+  "expression": ["type", "f"],
+  "fields": ["name"]
+}]
+EOT
+</span></pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>we’d get this result:</p>
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
+   </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+       </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:123:124"</span><span class="p">,</span><span class="w">
+       </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"f12345"</span><span class="p">,</span><span class="w">
+            </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
+       </span><span class="p">}</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="nt">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>Note that the <code class="highlighter-rouge">files</code> list is empty because we didn’t change any files, and
+note that one of the numeric portions of the clock string has changed.</p>
+
+<p>Also note that the mergebase revision remains the same because we also didn’t
+rebase the commit yet.</p>
+
+<p>This is a little white lie: the reality is that some files did change in the
+version control system, and with the expression we’re using we would see them,
+but they are not part of the working copy so we’re omitting them for the clarity
+of this example.</p>
+
+<p>Now if we rebase and update to the rebased revision (taking us to the last of the
+illustrations from above), we’d run this query, feeding in the clock from the last
+query to get the correct incremental result:</p>
+
+<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13</pre></td><td class="code"><pre><span class="gp">$ </span>watchman -j <span class="sh">&lt;&lt;-EOT
+["query", "/path/to/root", {
+  "since": {
+       "clock": "c:123:124",
+       "scm": {
+            "mergebase": "f12345",
+            "mergebase-with": "master"
+       }
+  },
+  "expression": ["type", "f"],
+  "fields": ["name"]
+}]
+EOT
+</span></pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>we’d get this result:</p>
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
+   </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+       </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:123:125"</span><span class="p">,</span><span class="w">
+       </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"fabf87"</span><span class="p">,</span><span class="w">
+            </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
+       </span><span class="p">}</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="nt">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"cat.jpg"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cats.cpp"</span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>Note that the mergebase reported in the clock has changed and note that the
+list of files reported is just the two from our commit stack despite there
+being hundreds of files that were physically updated on the disk.</p>
+
+<p>Your client can now lookup some state based on the <code class="highlighter-rouge">fabf87</code> revision and
+download it, and can then incrementally apply the computation for <code class="highlighter-rouge">cat.jpg</code> and
+<code class="highlighter-rouge">cats.cpp</code> on top of that state.</p>
+
+<p>If your client doesn’t know how to do this, then you shouldn’t use this
+source control aware query mode!</p>
+
+<h2 id="source-control-aware-subscriptions">Source Control Aware Subscriptions</h2>
+
+<p>You can also use the same source control awareness in your subscriptions.  This
+is basically the same procedure as making queries above, but there are some
+preconditions and things to note:</p>
+
+<ul>
+  <li>Watchman needs the cooperation of the source control system to know when
+it should defer events.  At the time of writing this is only possible when
+using Mercurial with the <code class="highlighter-rouge">fsmonitor</code> extension enabled.</li>
+  <li>Source control aware subscriptions implicitly enable <code class="highlighter-rouge">defer_vcs</code> and
+<code class="highlighter-rouge">defer:["hg.update"]</code>.  As with the point above, this is to ensure that
+you don’t get notified about files changing during the working copy update
+operation; that would defeat the point of using source control awareness.</li>
+</ul>
+
+<p>To initiate a source control aware subscription:</p>
+
+<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8</pre></td><td class="code"><pre><span class="p">[</span><span class="s2">"subscribe"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/path/to/root"</span><span class="p">,</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="nt">"fields"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span><span class="w">
+  </span><span class="nt">"since"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}]</span><span class="w">
+</span></pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>You’ll then receive subscription responses as files change; those responses
+will contain <em>fat clock</em> values for the <code class="highlighter-rouge">since</code> and <code class="highlighter-rouge">clock</code> fields:</p>
+
+<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
+  </span><span class="nt">"subscription"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mysubscriptionname"</span><span class="p">,</span><span class="w">
+  </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1234:125"</span><span class="p">,</span><span class="w">
+    </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"fabf87"</span><span class="p">,</span><span class="w">
+      </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="p">,</span><span class="w">
+    </span><span class="err">}</span><span class="w">
+  </span><span class="p">},</span><span class="w">
+  </span><span class="nt">"since"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1234:123"</span><span class="p">,</span><span class="w">
+    </span><span class="nt">"scm"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nt">"mergebase"</span><span class="p">:</span><span class="w"> </span><span class="s2">"f12345"</span><span class="p">,</span><span class="w">
+      </span><span class="nt">"mergebase-with"</span><span class="p">:</span><span class="w"> </span><span class="s2">"master"</span><span class="p">,</span><span class="w">
+    </span><span class="err">}</span><span class="w">
+  </span><span class="p">},</span><span class="w">
+  </span><span class="nt">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"cat.jpg"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cats.cpp"</span><span class="p">],</span><span class="w">
+  </span><span class="nt">"root"</span><span class="p">:</span><span class="w">  </span><span class="s2">"/path/to/root"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>The <code class="highlighter-rouge">clock</code> field holds the value of the clock and the merge base as of the subscription
+notification.</p>
+
+<p>The <code class="highlighter-rouge">since</code> field holds the <em>fat clock</em> that was returned in the <code class="highlighter-rouge">clock</code> field from
+the prior subscription update.  It is present as a convenience for you; you can compare
+the <code class="highlighter-rouge">mergebase</code> fields between the two to determine that the merge base changed in
+this update.  This is an important detail because more files in the working copy have
+been physically changed than are reflected in the <code class="highlighter-rouge">files</code> list; your tooling will need
+to so something appropriate to ensure that it computes a consistent and correct result.</p>
+
+<h3 id="state-enter--state-leave"><code class="highlighter-rouge">state-enter</code> &amp; <code class="highlighter-rouge">state-leave</code></h3>
+
+<p>Source control aware subscriptions will always include a <em>fat clock</em> in their responses, however,
+only the regular clock is provided in <code class="highlighter-rouge">state-enter</code> and <code class="highlighter-rouge">state-leave</code> notifications.
+This is because computing the source control information is a non-trivial operation and
+could increase latency.</p>
 
     
   </article>
