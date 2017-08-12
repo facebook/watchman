@@ -4,7 +4,7 @@ bin_PROGRAMS = watchman
 # ensure that we have a reasonable default for the python install
 DESTDIR ?= /
 
-doc_DATA = README.markdown
+doc_DATA = README.markdown LICENSE
 docdir = ${prefix}/share/doc/watchman-$(VERSION)
 
 THIRDPARTY_CPPFLAGS = -I$(top_srcdir)/thirdparty/jansson -I$(top_builddir)/thirdparty/jansson
