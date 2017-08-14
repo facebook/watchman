@@ -44,6 +44,11 @@ import signal
 import Interrupt
 import random
 
+if sys.version_info >= (3, 5): # Only Python 3.5+ supports native asyncio
+    sys.path.insert(0, os.path.join(os.getcwd(), 'tests', 'async'))
+    import AsyncWatchmanTestCase
+    import asyncio
+
 try:
     import queue
 except Exception:
@@ -300,7 +305,15 @@ class Loader(unittest.TestLoader):
 
 loader = Loader()
 suite = unittest.TestSuite()
-for d in ['python/tests', 'tests/integration']:
+
+directories = ['python/tests', 'tests/integration']
+
+if sys.version_info >= (3, 5): # Only Python 3.5+ supports native asyncio
+    directories += ['tests/async']
+else:
+    print('Skipping asyncio')
+
+for d in directories:
     suite.addTests(loader.discover(d, top_level_dir=d))
 
 if os.name == 'nt':
@@ -369,6 +382,10 @@ def runner():
         inst.start()
         # Allow tests to locate this default instance
         WatchmanInstance.setSharedInstance(inst)
+
+        # Each thread will have its own event loop
+        if sys.version_info >= (3, 5): # Only Python 3.5+ supports native asyncio
+            asyncio.set_event_loop(asyncio.new_event_loop())
     except Exception as e:
         print('while starting watchman: %s' % str(e))
         traceback.print_exc()
