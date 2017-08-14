@@ -120,7 +120,7 @@ o  changeset:   0:b08db10380dd
         self.watchmanCommand('watch', root)
 
         res = self.watchmanCommand('query', root, {
-            'expression': ['not', ['anyof', ['name', '.hg'], ['dirname', '.hg']]],
+            'expression': ['not', ['anyof', ['name', '.hg'], ['match', 'hg-check*'], ['dirname', '.hg']]],
             'fields': ['name']})
         self.assertFileListsEqual(
             res['files'], ['foo', 'bar', 'car', 'm1', 'm2'])
@@ -128,7 +128,7 @@ o  changeset:   0:b08db10380dd
         # Verify behavior with badly formed queries
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             self.watchmanCommand('query', root, {
-                'expression': ['not', ['anyof', ['name', '.hg'], ['dirname', '.hg']]],
+                'expression': ['not', ['anyof', ['name', '.hg'], ['match', 'hg-check*'], ['dirname', '.hg']]],
                 'since': {'scm': {}}})
         self.assertIn(
             "key 'mergebase-with' is not present in this json object",
@@ -137,7 +137,7 @@ o  changeset:   0:b08db10380dd
         # When the client doesn't know the merge base, we should give
         # them the current status and merge base
         res = self.watchmanCommand('query', root, {
-            'expression': ['not', ['anyof', ['name', '.hg'], ['dirname', '.hg']]],
+            'expression': ['not', ['anyof', ['name', '.hg'], ['match', 'hg-check*'], ['dirname', '.hg']]],
             'fields': ['name'],
             'since': {
                 'scm': {
@@ -150,7 +150,7 @@ o  changeset:   0:b08db10380dd
 
         # Let's also set up a subscription for the same query
         sub = self.watchmanCommand('subscribe', root, 'scmsub', {
-            'expression': ['not', ['anyof', ['name', '.hg'], ['dirname', '.hg']]],
+            'expression': ['not', ['anyof', ['name', '.hg'], ['match', 'hg-check*'], ['dirname', '.hg']]],
             'fields': ['name'],
             'since': {
                 'scm': {
@@ -172,7 +172,7 @@ o  changeset:   0:b08db10380dd
         # since query.
         self.touchRelative(root, 'w00t')
         res = self.watchmanCommand('query', root, {
-            'expression': ['not', ['anyof', ['name', '.hg'], ['dirname', '.hg']]],
+            'expression': ['not', ['anyof', ['name', '.hg'], ['match', 'hg-check*'], ['dirname', '.hg']]],
             'fields': ['name'],
             'since': res['clock']})
         self.assertEqual(res['clock']['scm']['mergebase'], mergeBase)
@@ -195,7 +195,7 @@ o  changeset:   0:b08db10380dd
 
         self.hg(['co', '-C', 'TheMaster'], cwd=root)
         res = self.watchmanCommand('query', root, {
-            'expression': ['not', ['anyof', ['name', '.hg'], ['dirname', '.hg']]],
+            'expression': ['not', ['anyof', ['name', '.hg'], ['match', 'hg-check*'], ['dirname', '.hg']]],
             'fields': ['name'],
             'since': res['clock']})
         self.assertEqual(res['clock']['scm']['mergebase'], mergeBase)
@@ -211,7 +211,7 @@ o  changeset:   0:b08db10380dd
         # Now we're going to move to another branch with a different mergebase.
         self.hg(['co', '-C', 'feature1'], cwd=root)
         res = self.watchmanCommand('query', root, {
-            'expression': ['not', ['anyof', ['name', '.hg'], ['dirname', '.hg']]],
+            'expression': ['not', ['anyof', ['name', '.hg'], ['match', 'hg-check*'], ['dirname', '.hg']]],
             'fields': ['name'],
             'since': res['clock']})
 
@@ -230,7 +230,7 @@ o  changeset:   0:b08db10380dd
         # run a query that should be able to hit the cache
         clock = res['clock']
         res = self.watchmanCommand('query', root, {
-            'expression': ['not', ['anyof', ['name', '.hg'], ['dirname', '.hg']]],
+            'expression': ['not', ['anyof', ['name', '.hg'], ['match', 'hg-check*'], ['dirname', '.hg']]],
             'fields': ['name'],
             'since': {
                 'scm': {
@@ -238,18 +238,18 @@ o  changeset:   0:b08db10380dd
         self.assertEqual(clock['scm'], res['clock']['scm'])
 
         # Fresh instance queries return the complete set of changes (so there is
-        # no need to provide information on deleted files).  In contrast, SCM
+        # no need to provide information on deleted files). # In contrast, SCM
         # aware queries must contain the deleted files in the result list. Check
         # that the deleted file is part of the result set for feature3.
         self.hg(['co', '-C', 'feature3'], cwd=root)
         res = self.watchmanCommand('query', root, {
-            'expression': ['not', ['anyof', ['name', '.hg'], ['dirname', '.hg']]],
+            'expression': ['not', ['anyof', ['name', '.hg'], ['match', 'hg-check*'], ['dirname', '.hg']]],
             'fields': ['name'],
             'since': res['clock']})
         self.assertFileListsEqual(res['files'], ['f1', 'car'])
 
         res = self.watchmanCommand('query', root, {
-            'expression': ['not', ['anyof', ['name', '.hg'], ['dirname', '.hg']]],
+            'expression': ['not', ['anyof', ['name', '.hg'], ['match', 'hg-check*'], ['dirname', '.hg']]],
             'fields': ['name'],
             'since': {
                 'scm': {
