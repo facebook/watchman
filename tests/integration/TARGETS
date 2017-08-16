@@ -10,23 +10,35 @@ cpp_binary(
     ],
 )
 
+testsupport_srcs = glob(
+    [
+        "Interrupt.py",
+        "TempDir.py",
+        "Wat*.py",
+        "path_utils.py",
+    ],
+    excludes = [
+        "WatchmanEdenTestCase.py",
+    ],
+)
+
 python_library(
     name = "testsupport",
-    srcs = glob(
-        [
-            "Interrupt.py",
-            "TempDir.py",
-            "Wat*.py",
-            "path_utils.py",
-        ],
-        excludes = [
-            "WatchmanEdenTestCase.py",
-        ],
-    ),
+    srcs = testsupport_srcs,
     base_module = "",
     deps = [
         "@/watchman:watchman",
         "@/watchman/python/pywatchman:pywatchman",
+    ],
+)
+
+python_library(
+    name = "testsupport3",
+    srcs = testsupport_srcs,
+    base_module = "",
+    deps = [
+        "@/watchman:watchman",
+        "@/watchman/python/pywatchman:pywatchman-aio",
     ],
 )
 
@@ -59,5 +71,5 @@ python_library(
 python_library(
     name = "testlib-py3",
     srcs = py3_srcs,
-    deps = [":testsupport"],
+    deps = [":testsupport3"],
 )

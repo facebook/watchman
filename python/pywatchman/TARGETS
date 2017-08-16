@@ -9,7 +9,18 @@ cpp_python_extension(
 
 python_library(
     name = "pywatchman",
+    srcs = glob(
+        ["*.py"],
+        excludes = ["aioclient.py"],
+    ),
+    base_module = "pywatchman",
+    deps = [":bser"],
+)
+
+python_library(
+    name = "pywatchman-aio",
     srcs = glob(["*.py"]),
     base_module = "pywatchman",
+    py_version = 3,
     deps = [":bser"],
 )
