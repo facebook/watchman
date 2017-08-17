@@ -33,7 +33,8 @@ class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
             'since': 'c:0:0'})
         self.assertTrue(res['is_fresh_instance'])
         self.assertFileListsEqual(
-            res['files'], ['hello', 'adir/file', 'bdir/test.sh', 'bdir/noexec.sh'])
+            res['files'],
+            ['hello', 'adir/file', 'bdir/test.sh', 'bdir/noexec.sh'])
 
         res = self.watchmanCommand('query', root, {
             'expression': ['type', 'f'],
@@ -106,3 +107,13 @@ class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
             'fields': ['name', 'new'],
             'since': res['clock']})
         self.assertEqual([{'name': 'newfile', 'new': False}], res['files'])
+
+        adir_file = os.path.join(root, 'adir/file')
+        os.unlink(adir_file)
+        with open(adir_file, 'w') as f:
+            f.write('new contents\n')
+        res = self.watchmanCommand('query', root, {
+            'expression': ['type', 'f'],
+            'fields': ['name', 'new'],
+            'since': res['clock']})
+        self.assertEqual([{'name': 'adir/file', 'new': False}], res['files'])
