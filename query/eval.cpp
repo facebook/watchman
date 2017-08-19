@@ -293,7 +293,9 @@ w_query_res w_query_execute(
       // We may have been called with a custom generator; we don't need to use
       // that for this case, so make sure that we use the default generator
       // so that it will actually execute using the pathGenerator.
-      generator = nullptr;
+      generator = [](w_query* q,
+                     const std::shared_ptr<w_root_t>& r,
+                     struct w_query_ctx* c) { r->view()->pathGenerator(q, c); };
     }
   }
 

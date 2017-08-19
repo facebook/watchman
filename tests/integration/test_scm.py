@@ -257,6 +257,17 @@ o  changeset:   0:b08db10380dd
                     'mergebase-with': 'TheMaster'}}})
         self.assertFileListsEqual(res['files'], ['car'])
 
+        # Go to the 'initial' bookmark, and query for changes since 'initial'
+        # We should ideally not see any changes ...
+        self.hg(['co', '-C', 'initial'], cwd=root)
+        res = self.watchmanCommand('query', root, {
+            'expression': ['not', ['anyof', ['name', '.hg'], ['dirname', '.hg']]],
+            'fields': ['name'],
+            'since': {
+                'scm': {
+                    'mergebase-with': 'initial'}}})
+        self.assertFileListsEqual(res['files'], [])
+
     def getSubFatClocksOnly(self, subname, root):
         dat = self.waitForSub(subname, root=root)
         return [
