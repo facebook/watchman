@@ -17,10 +17,3 @@ python_library(
     deps = [":bser"],
 )
 
-python_library(
-    name = "pywatchman-aio",
-    srcs = glob(["*.py"]),
-    base_module = "pywatchman",
-    py_version = 3,
-    deps = [":bser"],
-)

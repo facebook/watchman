@@ -36,12 +36,12 @@ import os
 import subprocess
 
 try:
-    from . import bser
+    from pywatchman import bser
 except ImportError:
-    from . import pybser as bser
+    from pywatchman import pybser as bser
 
-from . import encoding
-from . import CommandError, WatchmanError
+from pywatchman import encoding
+from pywatchman import CommandError, WatchmanError
 
 
 # 2 bytes marker, 1 byte int size, 8 bytes int64 value

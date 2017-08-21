@@ -1,0 +1,10 @@
+python_library(
+    name = "pywatchman-aio",
+    srcs = glob(["*.py"]),
+    base_module = "pywatchman_aio",
+    py_version = 3,
+    deps = [
+        "@/watchman/python/pywatchman:bser",
+        "@/watchman/python/pywatchman:pywatchman",
+    ],
+)

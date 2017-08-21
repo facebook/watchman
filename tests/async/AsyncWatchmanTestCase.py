@@ -12,7 +12,7 @@ import os
 import asyncio
 import WatchmanInstance
 
-from pywatchman.aioclient import AIOClient as WatchmanClient
+from pywatchman_aio import AIOClient as WatchmanClient
 
 
 class AsyncWatchmanTestCase(unittest.TestCase):
