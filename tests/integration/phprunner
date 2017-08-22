@@ -2,9 +2,9 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-require_once 'arcanist/lib/WatchmanTestCase.php';
-require_once 'arcanist/lib/WatchmanInstance.php';
-require_once 'arcanist/lib/WatchmanDirectoryFixture.php';
+require_once dirname(__FILE__).'/WatchmanTestCase.php';
+require_once dirname(__FILE__).'/WatchmanInstance.php';
+require_once dirname(__FILE__).'/WatchmanDirectoryFixture.php';
 
 function phutil_is_windows() {
   return DIRECTORY_SEPARATOR != '/';

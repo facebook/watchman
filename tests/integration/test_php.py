@@ -23,6 +23,11 @@ except ImportError:
 
 WATCHMAN_SRC_DIR = os.environ.get('WATCHMAN_SRC_DIR', os.getcwd())
 THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, 'tests', 'integration')
+PHP_LIBS = [
+    'WatchmanTestCase.php',
+    'WatchmanInstance.php',
+    'WatchmanDirectoryFixture.php',
+]
 php_bin = distutils.spawn.find_executable('php')
 
 
@@ -39,7 +44,7 @@ def find_php_tests(test_class):
 
     for php in glob.glob(os.path.join(THIS_DIR, '*.php')):
         base = os.path.basename(php)
-        if base.startswith('.') or base.startswith('_'):
+        if base in PHP_LIBS or base.startswith('.') or base.startswith('_'):
             continue
 
         subclass_name = base.replace('.', '_').replace('-', '_')
