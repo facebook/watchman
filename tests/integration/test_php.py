@@ -13,7 +13,6 @@ import WatchmanInstance
 import signal
 import sys
 import Interrupt
-import tempfile
 import TempDir
 import distutils.spawn
 
@@ -82,7 +81,7 @@ class PHPTestCase(unittest.TestCase):
         self.attempt = attempt
 
     @unittest.skipIf(php_bin is None, 'php not installed')
-    def runTest(self):
+    def test_run(self):
         env = os.environ.copy()
         env['WATCHMAN_SOCK'] = WatchmanInstance.getSharedInstance().getSockPath()
 
@@ -157,7 +156,6 @@ class PHPTestCase(unittest.TestCase):
                     if diags is not None:
                         msg = msg + b'\n' + b'\n'.join(diags)
                     self.fail(msg.decode('utf-8'))
-                    failed
 
                 diags = None
                 continue
