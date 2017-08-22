@@ -189,7 +189,6 @@ py-build:
 py-install:
 	cd python && $(PYTHON) ./setup.py install --prefix ${prefix} --root $(DESTDIR)
 
-# This is invoked via WatchmanIntegrationEngine
 py-tests:
 	$(PYTHON) $(TESTNAME)
 

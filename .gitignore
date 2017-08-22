@@ -20,7 +20,6 @@ buck-cache
 *.o
 /config.status
 /watchman
-/arcanist/.phutil_module_cache
 *.swp
 /compile
 /stamp-h1

@@ -63,8 +63,6 @@ class TestSkipException extends Exception {}
 class WatchmanTestCase {
   protected $root;
   protected $watchman_instance;
-  private $use_cli = false;
-  private $cli_args = null;
   private $watches = array();
   static $test_number = 1;
 
@@ -72,15 +70,6 @@ class WatchmanTestCase {
   // the CLI instead of via a unix socket
   function needsLiveConnection() {
     return false;
-  }
-
-  function isUsingCLI() {
-    return $this->use_cli;
-  }
-
-  function useCLI($args) {
-    $this->use_cli = true;
-    $this->cli_args = $args;
   }
 
   function setRoot($root) {
@@ -177,9 +166,7 @@ class WatchmanTestCase {
   }
 
   function didRunOneTest($test_method_name) {
-    if (!$this->use_cli) {
-      $this->watchman_instance->stopLogging();
-    }
+    $this->watchman_instance->stopLogging();
     chdir($this->root);
     $this->logTestInfo('end', $test_method_name);
   }
@@ -207,17 +194,6 @@ class WatchmanTestCase {
 
   function watchmanCommand() {
     $args = func_get_args();
-
-    if ($this->use_cli) {
-      $future = new WatchmanQueryFuture(
-        $this->watchman_instance->getFullSockName(),
-        $this->root,
-        $this->cli_args,
-        $args
-      );
-      return $future->resolve();
-    }
-
     return call_user_func_array(
       array($this->watchman_instance, 'request'),
       $args);
