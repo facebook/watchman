@@ -74,8 +74,10 @@ m4/
 .libs/
 *.lo
 *.la
-tests/integration/cppclient.t
+/tests/integration/cppclient.t
 libtool
 ltmain.sh
 cppclient/watchmanclient.pc
 /website/.jekyll-metadata
+/rust/**/Cargo.lock
+/rust/**/target/

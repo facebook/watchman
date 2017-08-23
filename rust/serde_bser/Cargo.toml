@@ -1,0 +1,12 @@
+[package]
+name = "serde_bser"
+version = "0.1.0"
+authors = ["Siddharth Agarwal <sid0@fb.com>"]
+
+[dependencies]
+byteorder = "1.0"
+bytes = "0.4"
+error-chain = "*"
+serde = "1"
+serde_bytes = "0.10"
+serde_derive = "1"

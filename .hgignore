@@ -53,3 +53,5 @@ tests/integration/cppclient.t
 cppclient/watchmanclient.pc
 libtool
 ltmain.sh
+re:^rust/.+/target/
+re:^rust/.+/Cargo.lock

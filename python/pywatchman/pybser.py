@@ -304,8 +304,8 @@ class Bunser(object):
             needed = 9
             fmt = b'=q'
         else:
-            raise ValueError('Invalid bser int encoding 0x%s' %
-                             binascii.hexlify(int_type).decode('ascii'))
+            raise ValueError('Invalid bser int encoding 0x%s at position %s' %
+                             (binascii.hexlify(int_type).decode('ascii'), pos))
         int_val = struct.unpack_from(fmt, buf, pos + 1)[0]
         return (int_val, pos + needed)
 
@@ -471,7 +471,8 @@ def loads(buf, mutable=True, value_encoding=None, value_errors=None):
     pos = info[3]
 
     if len(buf) != expected_len + pos:
-        raise ValueError('bser data len != header len')
+        raise ValueError('bser data len %d != header len %d'
+                         % (expected_len + pos, len(buf)))
 
     bunser = Bunser(mutable=mutable, value_encoding=value_encoding,
                     value_errors=value_errors)
