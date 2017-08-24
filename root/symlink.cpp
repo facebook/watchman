@@ -57,34 +57,29 @@ static void watch_symlink_target(const w_string& target, json_t* root_files) {
     return;
   }
 
-  char *relpath = nullptr;
-  auto watched_root =
-      w_find_enclosing_root(normalized_target.c_str(), &relpath);
-  SCOPE_EXIT {
-    free(watched_root);
-  };
-  if (!watched_root) {
-    char *errmsg = NULL;
-    auto resolved = w_string_dup_buf(normalized_target);
-    SCOPE_EXIT {
-      free(resolved);
-    };
-    if (!find_project_root(root_files, resolved, &relpath)) {
-      w_log(
-          W_LOG_ERR,
-          "watch_symlink_target: No watchable root for %s\n",
-          resolved);
-    } else {
-      auto root = w_root_resolve(resolved, true, &errmsg);
+  w_string_piece relpath;
+  w_string_piece watched_root;
+  bool enclosing = findEnclosingRoot(normalized_target, watched_root, relpath);
+  if (!enclosing) {
+    w_string_piece resolved(normalized_target);
 
+    if (!find_project_root(root_files, resolved, relpath)) {
+      watchman::log(
+          watchman::ERR,
+          "watch_symlink_target: No watchable root for ",
+          resolved, "\n");
+    } else {
+      char* errmsg = nullptr;
+      SCOPE_EXIT{
+        free(errmsg);
+      };
+      auto root = w_root_resolve(resolved.asWString().c_str(), true, &errmsg);
       if (!root) {
-        w_log(
-            W_LOG_ERR,
-            "watch_symlink_target: unable to watch %s: %s\n",
-            resolved,
-            errmsg);
+        watchman::log(
+            watchman::ERR,
+            "watch_symlink_target: unable to watch ",
+            resolved, ": ", errmsg, "\n");
       }
-      free(errmsg);
     }
   }
 }
@@ -157,9 +152,13 @@ void watchman_root::processPendingSymlinkTargets() {
 
   auto root_files = cfg_compute_root_files(&enforcing);
   if (!root_files) {
-    w_log(W_LOG_ERR,
-          "watch_symlink_target: error computing root_files configuration "
-          "value, consult your log file at %s for more details\n", log_name);
+    watchman::log(
+        watchman::ERR,
+        "watch_symlink_target: error computing root_files configuration "
+        "value, consult your log file at ",
+        log_name,
+        " for more details\n"
+        );
     return;
   }
 

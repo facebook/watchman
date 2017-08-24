@@ -35,8 +35,8 @@ bool w_cmd_realpath_root(json_ref& args, char** errmsg);
 // definitive indicator for the location of the project root.
 bool find_project_root(
     const json_ref& root_files,
-    char* resolved,
-    char** relpath);
+    w_string_piece& resolved,
+    w_string_piece& relpath);
 
 void preprocess_command(
     json_ref& args,

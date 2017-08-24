@@ -31,44 +31,32 @@ bool watchman_root::removeFromWatched() {
 // Returns NULL if there were no matches.
 // If multiple watches have the same prefix, it is undefined which one will
 // match.
-char *w_find_enclosing_root(const char *filename, char **relpath) {
+bool findEnclosingRoot(
+    const w_string& fileName,
+    w_string_piece& prefix,
+    w_string_piece& relativePath) {
   std::shared_ptr<w_root_t> root;
-  w_string name(filename, W_STRING_BYTE);
-  char *prefix = NULL;
-
+  auto name = fileName.piece();
   {
     auto map = watched_roots.rlock();
     for (const auto& it : *map) {
       auto root_name = it.first;
-      if (w_string_startswith(name, root_name) &&
+      if (name.startsWith(root_name.piece()) &&
           (name.size() == root_name.size() /* exact match */ ||
-           is_slash(
-               name.data()[root_name.size()]) /* dir container matches */)) {
+           is_slash(name[root_name.size()] /* dir container matches */))) {
         root = it.second;
-        break;
+        prefix = root_name.piece();
+        if (name.size() == root_name.size()) {
+          relativePath = w_string_piece();
+        } else {
+          relativePath = name;
+          relativePath.advance(root_name.size() + 1);
+        }
+        return true;
       }
     }
   }
-
-  if (!root) {
-    return nullptr;
-  }
-
-  // extract the path portions
-  prefix = (char*)malloc(root->root_path.size() + 1);
-  if (!prefix) {
-    return nullptr;
-  }
-  memcpy(prefix, filename, root->root_path.size());
-  prefix[root->root_path.size()] = '\0';
-
-  if (root->root_path.size() == name.size()) {
-    *relpath = NULL;
-  } else {
-    *relpath = strdup(filename + root->root_path.size() + 1);
-  }
-
-  return prefix;
+  return false;
 }
 
 json_ref w_root_stop_watch_all(void) {

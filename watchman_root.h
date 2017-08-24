@@ -131,8 +131,10 @@ w_root_resolve(const char* path, bool auto_watch, char** errmsg);
 std::shared_ptr<w_root_t> w_root_resolve_for_client_mode(
     const char* filename,
     char** errmsg);
-
-char* w_find_enclosing_root(const char* filename, char** relpath);
+bool findEnclosingRoot(
+    const w_string& fileName,
+    w_string_piece& prefix,
+    w_string_piece& relativePath);
 
 void w_root_free_watched_roots(void);
 json_ref w_root_stop_watch_all(void);
