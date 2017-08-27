@@ -101,8 +101,19 @@ class ListExpr : public QueryExpr {
     for (size_t i = 0; i < n; i++) {
       const auto& exp = term.at(i + 1);
 
+      auto op = allof ? AggregateOp::AllOf : AggregateOp::AnyOf;
       auto parsed = w_query_expr_parse(query, exp);
-      list.emplace_back(std::move(parsed));
+      if (list.empty()) {
+        list.emplace_back(std::move(parsed));
+      } else {
+        // Try to aggregate with previous expression
+        auto aggExpr = list.back().get()->aggregate(parsed.get(), op);
+        if (aggExpr) {
+          list.back() = std::move(aggExpr);
+        } else {
+          list.emplace_back(std::move(parsed));
+        }
+      }
     }
 
     return watchman::make_unique<ListExpr>(allof, std::move(list));

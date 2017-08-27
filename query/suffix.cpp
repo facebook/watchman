@@ -58,6 +58,24 @@ class SuffixExpr : public QueryExpr {
     }
     return watchman::make_unique<SuffixExpr>(std::move(suffixSet));
   }
+
+  std::unique_ptr<QueryExpr> aggregate(
+      const QueryExpr* other,
+      const AggregateOp op) const override {
+    if (op != AggregateOp::AnyOf) {
+      return nullptr;
+    }
+    const SuffixExpr* otherExpr = dynamic_cast<const SuffixExpr*>(other);
+    if (otherExpr == nullptr) {
+      return nullptr;
+    }
+    std::unordered_set<w_string> suffixSet;
+    suffixSet.reserve(suffixSet_.size() + otherExpr->suffixSet_.size());
+    suffixSet.insert(
+        otherExpr->suffixSet_.begin(), otherExpr->suffixSet_.end());
+    suffixSet.insert(suffixSet_.begin(), suffixSet_.end());
+    return watchman::make_unique<SuffixExpr>(std::move(suffixSet));
+  }
 };
 W_TERM_PARSER("suffix", SuffixExpr::parse)
 W_CAP_REG("suffix-set")

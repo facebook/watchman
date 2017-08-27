@@ -143,10 +143,24 @@ struct w_query_path {
   int depth;
 };
 
+// Describes how terms are being aggregated
+enum AggregateOp {
+  AnyOf,
+  AllOf,
+};
+
 class QueryExpr {
  public:
   virtual ~QueryExpr();
   virtual bool evaluate(w_query_ctx* ctx, const FileResult* file) = 0;
+
+  // If OTHER can be aggregated with THIS, returns a new expression instance
+  // representing the combined state.  Op provides information on the containing
+  // query and can be used to determine how aggregation is done.
+  // returns nullptr if no aggregation was performed.
+  virtual std::unique_ptr<QueryExpr> aggregate(
+      const QueryExpr* other,
+      const AggregateOp op) const;
 };
 
 struct watchman_glob_tree;

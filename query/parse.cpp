@@ -14,6 +14,13 @@ static std::unordered_map<w_string, w_query_expr_parser>& term_hash() {
 
 QueryExpr::~QueryExpr() {}
 
+// Default is not support query expression aggregation.
+std::unique_ptr<QueryExpr> QueryExpr::aggregate(
+    const QueryExpr*,
+    const AggregateOp) const {
+  return nullptr;
+}
+
 bool w_query_register_expression_parser(
     const char *term,
     w_query_expr_parser parser)
