@@ -9,7 +9,7 @@ namespace watchman {
 Publisher::Subscriber::Subscriber(
     std::shared_ptr<Publisher> pub,
     Notifier notify,
-    const w_string& info)
+    const json_ref& info)
     : serial_(0),
       publisher_(std::move(pub)),
       notify_(notify),
@@ -84,7 +84,7 @@ void getPending(
 
 std::shared_ptr<Publisher::Subscriber> Publisher::subscribe(
     Notifier notify,
-    const w_string& info) {
+    const json_ref& info) {
   auto sub =
       std::make_shared<Publisher::Subscriber>(shared_from_this(), notify, info);
   state_.wlock()->subscribers.emplace_back(sub);
@@ -171,7 +171,7 @@ json_ref Publisher::getDebugInfo() const {
     auto sub = sub_ref.lock();
     if (sub) {
       auto sub_json = json_object({{"serial", json_integer(sub->getSerial())},
-                                   {"info", w_string_to_json(sub->getInfo())}});
+                                   {"info", sub->getInfo()}});
       subscribers_arr.emplace_back(sub_json);
     } else {
       // This is a subscriber that is now dead. It will be cleaned up the next

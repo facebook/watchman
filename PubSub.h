@@ -37,14 +37,14 @@ class Publisher : public std::enable_shared_from_this<Publisher> {
     // Advising the subscriber that there may be more items available
     Notifier notify_;
     // Information for debugging purposes
-    const w_string info_;
+    const json_ref info_;
 
    public:
     ~Subscriber();
     Subscriber(
         std::shared_ptr<Publisher> pub,
         Notifier notify,
-        const w_string& info);
+        const json_ref& info);
     Subscriber(const Subscriber&) = delete;
 
     // Returns all as yet unseen published items for this subscriber.
@@ -58,7 +58,7 @@ class Publisher : public std::enable_shared_from_this<Publisher> {
       return notify_;
     }
 
-    inline const w_string& getInfo() {
+    inline const json_ref& getInfo() {
       return info_;
     }
   };
@@ -68,7 +68,7 @@ class Publisher : public std::enable_shared_from_this<Publisher> {
   // automatically removed.
   std::shared_ptr<Subscriber> subscribe(
       Notifier notify,
-      const w_string& info = nullptr);
+      const json_ref& info = nullptr);
 
   // Returns true if there are any subscribers.
   // This is racy and intended to be used to gate building a payload

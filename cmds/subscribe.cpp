@@ -393,10 +393,10 @@ W_CMD_REG(
 static void cmd_unsubscribe(
     struct watchman_client* clientbase,
     const json_ref& args) {
-  const char *name;
+  const char* name;
   bool deleted{false};
-  struct watchman_user_client *client =
-      (struct watchman_user_client *)clientbase;
+  struct watchman_user_client* client =
+      (struct watchman_user_client*)clientbase;
 
   auto root = resolve_root_or_err(client, args, 1, false);
   if (!root) {
@@ -420,8 +420,11 @@ static void cmd_unsubscribe(
 
   send_and_dispose_response(client, std::move(resp));
 }
-W_CMD_REG("unsubscribe", cmd_unsubscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
-          w_cmd_realpath_root)
+W_CMD_REG(
+    "unsubscribe",
+    cmd_unsubscribe,
+    CMD_DAEMON | CMD_ALLOW_ANY_USER,
+    w_cmd_realpath_root)
 
 /* subscribe /root subname {query}
  * Subscribes the client connection to the specified root. */
@@ -437,8 +440,8 @@ static void cmd_subscribe(
   int defer = true; /* can't use bool because json_unpack requires int */
   json_ref defer_list;
   json_ref drop_list;
-  struct watchman_user_client *client =
-      (struct watchman_user_client *)clientbase;
+  struct watchman_user_client* client =
+      (struct watchman_user_client*)clientbase;
 
   if (json_array_size(args) != 4) {
     send_error_response(client, "wrong number of arguments for subscribe");
@@ -513,6 +516,19 @@ static void cmd_subscribe(
 
   // Connect the root to our subscription
   {
+    auto client_id = watchman::to<std::string>(client);
+    auto client_stream = watchman::to<std::string>(client->stm.get());
+    auto info_json = json_object(
+        {{"name", w_string_to_json(sub->name)},
+         {"query", sub->query->query_spec},
+         {"client",
+          w_string_to_json(w_string(client_id.data(), client_id.size()))},
+         {"stm",
+          w_string_to_json(
+              w_string(client_stream.data(), client_stream.size()))},
+         {"is_owner", json_boolean(client->stm->peerIsOwner())},
+         {"pid", json_integer(client->stm->getPeerProcessID())}});
+
     std::weak_ptr<watchman_client> clientRef(client->shared_from_this());
     client->unilateralSub.insert(std::make_pair(
         sub,
@@ -523,7 +539,7 @@ static void cmd_subscribe(
                 client->ping->notify();
               }
             },
-            sub->name)));
+            info_json)));
   }
 
   client->subscriptions[sub->name] = sub;
@@ -541,8 +557,11 @@ static void cmd_subscribe(
     send_and_dispose_response(client, std::move(initial_subscription_results));
   }
 }
-W_CMD_REG("subscribe", cmd_subscribe, CMD_DAEMON | CMD_ALLOW_ANY_USER,
-          w_cmd_realpath_root)
+W_CMD_REG(
+    "subscribe",
+    cmd_subscribe,
+    CMD_DAEMON | CMD_ALLOW_ANY_USER,
+    w_cmd_realpath_root)
 
 /* vim:ts=2:sw=2:et:
  */
