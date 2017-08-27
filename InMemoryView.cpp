@@ -310,7 +310,7 @@ watchman_file* InMemoryView::getOrCreateChildFile(
   file_ptr->ctime.ticks = view->mostRecentTick;
   file_ptr->ctime.timestamp = now.tv_sec;
 
-  auto suffix = file_name.suffix();
+  auto suffix = file_name.asLowerCaseSuffix();
   if (suffix) {
     auto& sufhead = view->suffixes[suffix];
     if (!sufhead) {

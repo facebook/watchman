@@ -46,6 +46,36 @@ w_string w_string_piece::asLowerCase(w_string_type_t stringType) const {
   return w_string(s, false);
 }
 
+w_string w_string_piece::asLowerCaseSuffix(w_string_type_t stringType) const {
+  char* buf;
+  w_string_t* s;
+
+  w_string_piece suffixPiece = this->suffix();
+  if (suffixPiece == nullptr) {
+    return nullptr;
+  }
+
+  /* need to make a lowercase version */
+  s = (w_string_t*)(new char[sizeof(*s) + suffixPiece.size() + 1]);
+  new (s) watchman_string();
+
+  s->refcnt = 1;
+  s->len = suffixPiece.size();
+  buf = (char*)(s + 1);
+  s->buf = buf;
+  s->type = stringType;
+
+  auto cursor = suffixPiece.s_;
+  while (cursor < suffixPiece.e_) {
+    *buf = (char)tolower((uint8_t)*cursor);
+    ++cursor;
+    ++buf;
+  }
+  *buf = 0;
+
+  return w_string(s, false);
+}
+
 w_string w_string_piece::asUTF8Clean() const {
   w_string s(s_, e_ - s_, W_STRING_UNICODE);
   utf8_fix_string(const_cast<char*>(s.data()), s.size());
@@ -143,6 +173,21 @@ w_string_piece w_string_piece::baseName() const {
   }
 
   return *this;
+}
+
+w_string_piece w_string_piece::suffix() const {
+  if (e_ == s_) {
+    return nullptr;
+  }
+  for (auto end = e_ - 1; end >= s_; --end) {
+    if (is_slash(*end)) {
+      return nullptr;
+    }
+    if (*end == '.') {
+      return w_string_piece(end + 1, e_ - (end + 1));
+    }
+  }
+  return nullptr;
 }
 
 bool w_string_piece::operator<(w_string_piece other) const {
@@ -289,9 +334,9 @@ w_string w_string::baseName() const {
   return w_string_piece(*this).baseName().asWString();
 }
 
-w_string w_string::suffix() const {
+w_string w_string::asLowerCaseSuffix() const {
   ensureNotNull();
-  return w_string(w_string_suffix(str_), false);
+  return w_string_piece(*this).asLowerCaseSuffix();
 }
 
 w_string w_string::asNullTerminated() const {
@@ -682,47 +727,6 @@ bool w_string_piece::hasSuffix(w_string_piece suffix) const {
   }
 
   return true;
-}
-
-// Return the normalized (lowercase) filename suffix
-w_string_t *w_string_suffix(w_string_t *str)
-{
-  int end;
-  char name_buf[128];
-  char *buf;
-
-  /* can't use libc strXXX functions because we may be operating
-   * on a slice */
-  for (end = str->len - 1; end >= 0; end--) {
-    if (str->buf[end] == '.') {
-      if (str->len - end > sizeof(name_buf)) {
-        // Too long
-        return NULL;
-      }
-
-      buf = name_buf;
-      end++;
-      while ((unsigned)end < str->len) {
-        *buf = (char)tolower((uint8_t)str->buf[end]);
-        end++;
-        buf++;
-      }
-      *buf = '\0';
-      return w_string_new_typed(name_buf, str->type);
-    } else if (str->len - end >= sizeof(name_buf)) {
-      // We haven't found the '.' yet but the suffix will never fit in our local
-      // buffer
-      return nullptr;
-    }
-
-    if (is_slash(str->buf[end])) {
-      // No suffix
-      return NULL;
-    }
-  }
-
-  // Has no suffix
-  return NULL;
 }
 
 bool w_string_startswith(w_string_t *str, w_string_t *prefix)

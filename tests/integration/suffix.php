@@ -24,7 +24,7 @@ class SuffixExprTestCase extends WatchmanTestCase {
       'fields' => array('name'),
     ));
     $this->assertEqual(
-      'failed to parse query: must use ["suffix", "suffixstring"]',
+      'failed to parse query: Expected array for \'suffix\' term',
       $res['error']
     );
 

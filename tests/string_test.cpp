@@ -121,27 +121,90 @@ void test_concat() {
   ok(str == w_string("one2three1.2000000"), "concatenated to %s", str.c_str());
 }
 
-void test_suffix() {
-  ok(!w_string("").suffix(), "empty string suffix");
-  ok(w_string(".").suffix() == w_string(""), "only one dot suffix");
-  ok(w_string("endwithdot.").suffix() == w_string(""), "end with dot");
-  ok(!w_string("nosuffix").suffix(), "no suffix");
-  ok(w_string(".beginwithdot").suffix() == w_string("beginwithdot"),
+void test_lowercase_suffix() {
+  ok(!w_string("").asLowerCaseSuffix(), "empty string suffix");
+  ok(w_string(".").asLowerCaseSuffix() == w_string(nullptr), "only one dot suffix");
+  ok(w_string("endwithdot.").asLowerCaseSuffix() == w_string(nullptr), "end with dot");
+  ok(!w_string("nosuffix").asLowerCaseSuffix(), "no suffix");
+  ok(w_string(".beginwithdot").asLowerCaseSuffix() == w_string("beginwithdot"),
      "begin with dot");
-  ok(w_string("MainActivity.java").suffix() == w_string("java"), "java suffix");
+  ok(w_string("MainActivity.java").asLowerCaseSuffix() == w_string("java"), "java suffix");
+  ok(w_string("README.TXT").asLowerCaseSuffix() == w_string("txt"), "TXT suffix");
+  ok(w_string("README.camelCaseSuffix").asLowerCaseSuffix() == w_string("camelcasesuffix"), "camelCaseSuffix suffix");
+  ok(w_string("foo/bar").asLowerCaseSuffix() == w_string(nullptr), "slash test no ext");
+  ok(w_string("foo.wat/bar").asLowerCaseSuffix() == w_string(nullptr), "slash test no file ext");
+  ok(w_string("foo.wat/bar.xml").asLowerCaseSuffix() == w_string("xml"), "slash test ext");
+  ok(w_string("foo\\bar").asLowerCaseSuffix() == w_string(nullptr), "back slash test no ext");
+  ok(w_string("foo\\bar.lU").asLowerCaseSuffix() == w_string("lu"), "back slash test file ext");
 
-  std::string longName(128, 'a');
-  auto str = w_string::build(".", longName.c_str());
-  ok(!str.suffix(), "too long suffix");
-
-  std::string nearlongName(127, 'a');
-  str = w_string::build("I am not long enough.", nearlongName.c_str());
-  ok(str.suffix().size() == 127, "nearly too long suffix");
+#ifdef _WIN32
+  ok(w_string("foo.wat\\bar").asLowerCaseSuffix() == w_string(nullptr), "win back slash test no file ext");
+#else
+  ok(w_string("foo.wat\\bar").asLowerCaseSuffix() == w_string("wat\\bar"), "nix back slash test file ext");
+#endif
 
   // 255 is the longest suffix among some systems
-  std::string toolongName(255, 'a');
-  str = w_string::build(".", toolongName.c_str());
-  ok(!str.suffix(), "too long suffix");
+  std::string longName(255, 'a');
+  auto str = w_string::build(".", longName.c_str());
+  ok(str.asLowerCaseSuffix().size() == 255, "length 255");
+}
+
+void test_string_piece_suffix() {
+  ok(w_string_piece().suffix() == nullptr, "null string piece");
+  ok(w_string_piece("").suffix() == nullptr, "piece empty string suffix");
+  ok(w_string_piece(".").suffix() == nullptr, "piece only one dot suffix");
+  ok(w_string_piece("endwithdot.").suffix() == nullptr, "piece end with dot");
+  ok(w_string_piece("nosuffix").suffix() == nullptr, "piece no suffix");
+  ok(w_string_piece(".beginwithdot").suffix() == w_string_piece("beginwithdot"), "piece begin with dot");
+  ok(w_string_piece("MainActivity.java").suffix() == w_string_piece("java"), "piece java suffix");
+  ok(w_string_piece("README.TXT").suffix() == w_string_piece("TXT"), "piece TXT suffix");
+  ok(w_string_piece("README.camelCaseSuffix").suffix() == w_string_piece("camelCaseSuffix"), "piece camelCaseSuffix suffix");
+  ok(w_string_piece("foo/bar").suffix() == w_string_piece(nullptr), "piece slash test no ext");
+  ok(w_string_piece("foo.wat/bar").suffix() == w_string_piece(nullptr), "piece slash test no file ext");
+  ok(w_string_piece("foo.wat/bar.xml").suffix() == w_string_piece("xml"), "piece slash test ext");
+  ok(w_string_piece("foo\\bar").suffix() == w_string_piece(nullptr), "piece back slash test no ext");
+  ok(w_string_piece("foo\\bar.lU").suffix() == w_string_piece("lU"), "piece back slash test file ext");
+
+#ifdef _WIN32
+  ok(w_string_piece("foo.wat\\bar").suffix() == w_string_piece(nullptr), "win piece back slash test no file ext");
+#else
+  ok(w_string_piece("foo.wat\\bar").suffix() == w_string_piece("wat\\bar"), "nix piece back slash test no file ext");
+#endif
+
+  // 255 is the longest suffix among some systems
+  std::string longName(255, 'a');
+  auto str = w_string::build(".", longName.c_str());
+  auto sp = w_string_piece(str.data(), str.size());
+  ok(sp.asLowerCaseSuffix().size() == 255, "piece length 255");
+}
+
+void test_string_piece_lowercase_suffix() {
+  ok(w_string_piece().asLowerCaseSuffix() == w_string(nullptr), "piece lc null string piece");
+  ok(w_string_piece("").asLowerCaseSuffix() == w_string(nullptr), "piece lc empty string suffix");
+  ok(w_string_piece(".").asLowerCaseSuffix() == w_string(nullptr), "piece lc only one dot suffix");
+  ok(w_string_piece("endwithdot.").asLowerCaseSuffix() == w_string(nullptr), "piece lc end with dot");
+  ok(!w_string_piece("nosuffix").asLowerCaseSuffix(), "piece lc no suffix");
+  ok(w_string_piece(".beginwithdot").asLowerCaseSuffix() == w_string("beginwithdot"), "piece lc begin with dot");
+  ok(w_string_piece("MainActivity.java").asLowerCaseSuffix() == w_string("java"), "piece lc java suffix");
+  ok(w_string_piece("README.TXT").asLowerCaseSuffix() == w_string("txt"), "piece lc TXT suffix");
+  ok(w_string_piece("README.camelCaseSuffix").asLowerCaseSuffix() == w_string("camelcasesuffix"), "piece lc camelCaseSuffix suffix");
+  ok(w_string_piece("foo/bar").asLowerCaseSuffix() == w_string(nullptr), "piece lc slash test no ext");
+  ok(w_string_piece("foo.wat/bar").asLowerCaseSuffix() == w_string(nullptr), "piece lc slash test no file ext");
+  ok(w_string_piece("foo.wat/bar.xml").asLowerCaseSuffix() == w_string("xml"), "piece lc slash test ext");
+  ok(w_string_piece("foo\\bar").asLowerCaseSuffix() == w_string(nullptr), "piece lc back slash test no ext");
+  ok(w_string_piece("foo\\bar.lU").asLowerCaseSuffix() == w_string("lu"), "piece lc back slash test file ext");
+
+#ifdef _WIN32
+  ok(w_string_piece("foo.wat\\bar").asLowerCaseSuffix() == w_string(nullptr), "win piece lc back slash test no file ext");
+#else
+  ok(w_string_piece("foo.wat\\bar").asLowerCaseSuffix() == w_string("wat\\bar"), "nix piece lc back slash test no file ext");
+#endif
+
+  // 255 is the longest suffix among some systems
+  std::string longName(255, 'a');
+  auto str = w_string::build(".", longName.c_str());
+  auto sp = w_string_piece(str.c_str(), str.size());
+  ok(sp.asLowerCaseSuffix().size() == 255, "piece lc length 255");
 }
 
 void test_to() {
@@ -304,9 +367,8 @@ void test_path_equal() {
 
 int main(int, char**) {
   plan_tests(
-      86
+      124
 #ifdef _WIN32
-      // extra basename tests
       + 6
 #endif
       );
@@ -315,7 +377,9 @@ int main(int, char**) {
   test_pointers();
   test_double();
   test_concat();
-  test_suffix();
+  test_lowercase_suffix();
+  test_string_piece_suffix();
+  test_string_piece_lowercase_suffix();
   test_to();
   test_path_cat();
   test_basename_dirname();

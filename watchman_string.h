@@ -203,6 +203,9 @@ class w_string_piece {
   /** Return a lowercased copy of the string */
   w_string asLowerCase(w_string_type_t stringType = W_STRING_BYTE) const;
 
+  /** Return a lowercased copy of the suffix */
+  w_string asLowerCaseSuffix(w_string_type_t stringType = W_STRING_BYTE) const;
+
   /** Return a UTF-8-clean copy of the string */
   w_string asUTF8Clean() const;
 
@@ -215,6 +218,7 @@ class w_string_piece {
   bool pathIsEqual(w_string_piece other) const;
   w_string_piece dirName() const;
   w_string_piece baseName() const;
+  w_string_piece suffix() const;
 
   /** Split the string by delimiter and emit to the provided vector */
   template <typename Vector>
@@ -383,7 +387,7 @@ class w_string {
   /** Returns the file name component of the string, assuming a path string */
   w_string baseName() const;
   /** Returns the filename suffix of a path string */
-  w_string suffix() const;
+  w_string asLowerCaseSuffix() const;
 
   /** Returns a slice of this string */
   w_string slice(uint32_t start, uint32_t len) const;
