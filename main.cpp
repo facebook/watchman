@@ -8,6 +8,8 @@
 #include <poll.h>
 #endif
 
+#include <sstream>
+
 using watchman::ChildProcess;
 using watchman::FileDescriptor;
 using Options = ChildProcess::Options;
@@ -93,7 +95,10 @@ static bool lock_pidfile(void) {
     return false;
   }
 
-  dprintf(fd.fd(), "%d", mypid);
+  std::ostringstream oss;
+  oss << mypid;
+  std::string os = oss.str();
+  write(fd.fd(), os.data(), os.size());
   fsync(fd.fd());
 
   /* We are intentionally not closing the fd and intentionally not storing
