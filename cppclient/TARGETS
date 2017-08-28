@@ -11,6 +11,7 @@ cpp_library(
     ],
     deps = [
         "@/folly:folly",
+        "@/folly:network_address",
         "@/folly:subprocess",
         "@/folly/experimental/bser:bser",
         "@/folly/futures:futures",
