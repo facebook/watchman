@@ -79,10 +79,11 @@ class UnixStream : public watchman_stream {
 
   explicit UnixStream(FileDescriptor&& descriptor)
       : fd(std::move(descriptor)), evt(fd.fd()) {
-    socklen_t len = sizeof(cred);
 #ifdef SO_PEERCRED
+    socklen_t len = sizeof(cred);
     credvalid = getsockopt(fd.fd(), SOL_SOCKET, SO_PEERCRED, &cred, &len) == 0;
 #elif defined(LOCAL_PEERCRED)
+    socklen_t len = sizeof(cred);
     credvalid =
         getsockopt(fd.fd(), SOL_LOCAL, LOCAL_PEERCRED, &cred, &len) == 0;
 #endif
