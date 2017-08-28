@@ -1,5 +1,5 @@
 python_library(
-    name = "pywatchman-aio",
+    name = "pywatchman_aio",
     srcs = glob(["*.py"]),
     base_module = "pywatchman_aio",
     py_version = 3,

@@ -38,7 +38,7 @@ python_library(
     base_module = "",
     deps = [
         "@/watchman:watchman",
-        "@/watchman/python/pywatchman-aio:pywatchman-aio",
+        "@/watchman/python/pywatchman_aio:pywatchman_aio",
     ],
 )
 
