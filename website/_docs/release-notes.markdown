@@ -10,7 +10,15 @@ We focus on the highlights only in these release notes.  For a full history
 that includes all of the gory details, please see [the commit history on
 GitHub](https://github.com/facebook/watchman/commits/master).
 
-### Watchman 4.9.0 (not yet released)
+### Watchman 5.0.0 (not yet released)
+
+* Added support for suffix sets in suffix expressions.  You now can specify
+  multiple suffixes to match against by setting the second argument to a list
+  of suffixes. See `suffix-set` documentation for
+  [more details](/watchman/docs/expr/suffix.html#suffix-set)
+* pywatchman: introduced new pywatchman_aio client for python
+
+### Watchman 4.9.0 (2017-08-24)
 
 * New field: `content.sha1hex`.  This field expands to the SHA1 hash of
   the file contents, expressed in hex digits (40 character hex string).
@@ -18,23 +26,35 @@ GitHub](https://github.com/facebook/watchman/commits/master).
   hash on demand and also heuristically as files are changed.  This is
   useful for tooling that wants to perform more intelligent cache invalidation
   or build artifact fetching from content addressed storage.
-* New feature: Source Control Aware query mode.  Currently supports only
-  Mercurial (patches to add Git support are welcomed!).  SCM aware query
+* Experimental feature: Source Control Aware query mode.  Currently supports
+  only Mercurial (patches to add Git support are welcomed!).  SCM aware query
   mode helps to keep response sizes closer to `O(what-you-changed)` than
   to `O(all-repo-changes)` when rebasing your code.  Using this feature
   effectively may require some additional infrastructure to compute and
   associate data with revisions from your repo.
+* Fixed an issue that resulted in the perf logging thread deadlocking when
+  `perf_logger_command` is enabled in the global configuration
+* Fixed an issue where queries larger than 1MB would likely result in
+  a PDU error response.
+* Reduced lock contention for subscriptions that do no use the advanced
+  settling (`drop`, `defer`) options.
+* Fixed `since` generator behavior when using unix timestamps rather than
+  the preferred clock string syntax
+* Improved the reporting of "new" files in watchman results
+* Improved performance of handling changes on case insensitive filesystems
 * Windows: promoted from alpha to beta status!
 * Windows: fixed some performance and reliability issues
 * Windows: now operates correctly on Windows 7
 * Windows: can now see and report symlinks and junction points
-* Fixed an issue where queries larger than 1MB would likely result in
-  a PDU error response.
-* Improved performance of handling changes on case insensitive filesystems
-* Reduced lock contention for subscriptions that do no use the advanced
-  settling (`drop`, `defer`) options.
-* Fixed since generator behavior when using unix timestamps rather than
-  the preferred clock string syntax
+* Windows: fixed potential deadlock in trigger deletion
+* Windows: fixed stack trace rendering on win32
+* Windows: improved IO scheduling around deletes on win32
+* Windows: improved handling of case insensitive win32 driver letters
+* pywatchman: the python wheel format is used for publishing watchman pypi package
+* pywatchman: now watchman path is configurable in python client
+* pywatchman: now python client can be used as a context manager
+* Solaris: support for Solaris has been removed. If you'd like to commit to
+  testing and maintaining Solaris support, we'd love to hear from you!
 
 ### Watchman 4.8.0 (never formally released)
 
