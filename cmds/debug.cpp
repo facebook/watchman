@@ -6,11 +6,10 @@
 static void cmd_debug_recrawl(
     struct watchman_client* client,
     const json_ref& args) {
-
   /* resolve the root */
   if (json_array_size(args) != 2) {
-    send_error_response(client,
-                        "wrong number of arguments for 'debug-recrawl'");
+    send_error_response(
+        client, "wrong number of arguments for 'debug-recrawl'");
     return;
   }
 
@@ -35,8 +34,8 @@ static void cmd_debug_show_cursors(
 
   /* resolve the root */
   if (json_array_size(args) != 2) {
-    send_error_response(client,
-                        "wrong number of arguments for 'debug-show-cursors'");
+    send_error_response(
+        client, "wrong number of arguments for 'debug-show-cursors'");
     return;
   }
 
@@ -60,18 +59,19 @@ static void cmd_debug_show_cursors(
   resp.set("cursors", std::move(cursors));
   send_and_dispose_response(client, std::move(resp));
 }
-W_CMD_REG("debug-show-cursors", cmd_debug_show_cursors,
-    CMD_DAEMON, w_cmd_realpath_root)
+W_CMD_REG(
+    "debug-show-cursors",
+    cmd_debug_show_cursors,
+    CMD_DAEMON,
+    w_cmd_realpath_root)
 
 /* debug-ageout */
 static void cmd_debug_ageout(
     struct watchman_client* client,
     const json_ref& args) {
-
   /* resolve the root */
   if (json_array_size(args) != 3) {
-    send_error_response(client,
-                        "wrong number of arguments for 'debug-ageout'");
+    send_error_response(client, "wrong number of arguments for 'debug-ageout'");
     return;
   }
 
@@ -179,6 +179,10 @@ static void cmd_debug_get_subscriptions(
   auto client = (watchman_user_client*)clientbase;
 
   auto root = resolve_root_or_err(client, args, 1, false);
+
+  if (!root) {
+    return;
+  }
 
   auto resp = make_response();
   auto debug_info = root->unilateralResponses->getDebugInfo();
