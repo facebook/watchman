@@ -182,7 +182,7 @@ client = pywatchman.client()
 try:
     client.capabilityCheck(
         required=['term-dirname', 'cmd-watch-project', 'wildmatch'])
-    for _, sub in subscriptions.iteritems():
+    for _, sub in subscriptions.items():
         sub.start(client)
 
 except pywatchman.CommandError as ex:
@@ -200,7 +200,7 @@ while deadline is None or time.time() < deadline:
         # the client object will accumulate all subscription results
         # over time, so we ask it to remove and return those values
         # for each of the subscriptions
-        for _, sub in subscriptions.iteritems():
+        for _, sub in subscriptions.items():
             sub.emit(client)
 
     except pywatchman.SocketTimeout as ex:

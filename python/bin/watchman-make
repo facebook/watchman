@@ -209,7 +209,7 @@ while True:
         client.setTimeout(600)
 
         result = client.receive()
-        for _, t in targets.iteritems():
+        for _, t in targets.items():
             t.consumeEvents(client)
 
         # Now we wait for events to settle
@@ -218,7 +218,7 @@ while True:
         while not settled:
             try:
                 result = client.receive()
-                for _, t in targets.iteritems():
+                for _, t in targets.items():
                     t.consumeEvents(client)
             except pywatchman.SocketTimeout as ex:
                 # Our short settle timeout hit, so we're now settled
@@ -226,7 +226,7 @@ while True:
                 break
 
         # Now we can work on executing the targets
-        for _, t in targets.iteritems():
+        for _, t in targets.items():
             t.execute()
 
         # Print this at the bottom of the loop rather than the top
