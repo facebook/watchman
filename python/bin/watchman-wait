@@ -141,7 +141,7 @@ Perhaps you should use the --pattern option?""" % (path, self.path), file=sys.st
     def formatField(self, fname, val):
         if fname == 'name':
             # Respect the --relative path printing option
-            return os.path.relpath(val, args.relative)
+            return os.path.relpath(os.path.join(self.name, val), args.relative)
         # otherwise just make sure it's a string so that we can join it
         return str(val)
 
