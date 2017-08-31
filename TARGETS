@@ -4,7 +4,16 @@
 
 compiler_flags = [
     "-Wunused-variable",
-    "-DWATCHMAN_FACEBOOK_INTERNAL",
+]
+
+os_linker_flags = [
+    (
+        "macos",
+        [
+            "-framework",
+            "CoreServices",
+        ],
+    ),
 ]
 
 # Generates 'config.h' by probing for system capabilities
@@ -26,7 +35,7 @@ def prober():
         '--cwd=%s' % os.getcwd()]
 
     for name, key in config_flags.iteritems():
-        val = read_config('cxx', key)
+        val = read_config('cxx', key, read_config('cxx', name, ''))
         probe_cmd.append("--%s='%s'" % (name, val))
 
     probe_cmd.append('> $OUT')
@@ -46,6 +55,10 @@ def config_h():
     # we are building in the internal fb repo or in the opensourced project(s).
     if read_config('codebase', 'mode') == 'public':
         prober()
+        cpp_library(
+            name='fb_deps',
+            srcs=[],
+        )
     else:
         # Just copy the pre-configured linux attributes so that we have
         # know precisely what the characteristics will be for this build.
@@ -54,6 +67,14 @@ def config_h():
             srcs=['facebook/linux_config.h'],
             cmd='cp $SRCDIR/facebook/linux_config.h $OUT',
             out='config.h',
+        )
+        cpp_library(
+            name='fb_deps',
+            srcs=[],
+            compiler_flags=['-DWATCHMAN_FACEBOOK_INTERNAL'],
+            deps=[
+                "@/common/base:build_info",
+            ],
         )
 
 config_h()
@@ -77,7 +98,7 @@ buck_cxx_library(
     exported_headers = glob(["**/*.h"]),
     exported_deps = [
         ":config_h",
-        "//common/base:build_info",
+        ":fb_deps",
         "//watchman/thirdparty/jansson:config_h",
     ],
     visibility = ["PUBLIC"],
@@ -249,6 +270,7 @@ cpp_library(
     # static tables of things.  Ensure that they don't get stripped
     # out of the final binary!
     link_whole = True,
+    os_linker_flags = os_linker_flags,
     deps = [
         ":err",
         ":headers",
