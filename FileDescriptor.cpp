@@ -373,9 +373,13 @@ w_string FileDescriptor::getOpenedPath() const {
                             "fcntl for getOpenedPath");
   }
   return w_string(buf);
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__sun)
   char procpath[1024];
+#if defined(__linux__)
   snprintf(procpath, sizeof(procpath), "/proc/%d/fd/%d", getpid(), fd_);
+#elif defined(__sun)
+  snprintf(procpath, sizeof(procpath), "/proc/%d/path/%d", getpid(), fd_);
+#endif
 
   // Avoid an extra stat by speculatively attempting to read into
   // a reasonably sized buffer.
