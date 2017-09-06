@@ -29,4 +29,6 @@ case `uname` in
         pyenv global 3.6.1
     esac
     ;;
+  Linux)
+    apt-get install libtool m4 automake npm -y
 esac
