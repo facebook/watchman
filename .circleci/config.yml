@@ -4,7 +4,7 @@ defaults: &defaults
     - checkout
     - run:
         name: Install dependencies
-        command: apt-get update && ./travis/deps.sh
+        command: apt-get update && apt-get install libtool m4 automake npm -y
     - run: ./travis/run.sh
 
 version: 2
