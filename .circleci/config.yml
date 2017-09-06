@@ -9,9 +9,4 @@ jobs:
        - run:
            name: Install dependencies
            command: apt-get update && apt-get install libtool m4 automake npm -y
-       - run:
-           name: System Information
-           command: |
-             python -V
-             node -v
        - run: ./travis/run.sh
