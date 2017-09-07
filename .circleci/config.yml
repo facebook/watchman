@@ -1,0 +1,26 @@
+defaults: &defaults
+  working_directory: ~/repo
+  steps:
+    - checkout
+    - run:
+        name: Install dependencies
+        command: apt-get update && apt-get install libtool m4 automake npm -y
+    - run: ./travis/run.sh
+
+version: 2
+jobs:
+  build-python27:
+    <<: *defaults
+    docker:
+      - image: python:2.7
+  build-python36:
+    <<: *defaults
+    docker:
+      - image: python:3.6
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - build-python27
+      - build-python36
