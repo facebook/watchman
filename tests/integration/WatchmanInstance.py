@@ -200,7 +200,7 @@ class _Instance(object):
 
         # Check the information in the 'ps' output
         deadline = time.time() + timeout
-        state = 's' if sys.platform == 'SunOS' else 'state'
+        state = 's' if sys.platform.startswith('sunos') else 'state'
         while time.time() < deadline:
             out, err = subprocess.Popen(['ps', '-o', state, '-p',
                                         str(self.pid)],
