@@ -78,7 +78,10 @@ class UnixStream : public watchman_stream {
 #elif defined(LOCAL_PEERCRED)
   struct xucred cred;
 #elif defined(SO_RECVUCRED)
-  ucred_t* cred;
+  struct ucred_deleter {
+    void operator()(ucred_t *utp) {ucred_free(utp);}
+  };
+  std::unique_ptr<ucred_t, ucred_deleter> cred;
 #endif
   bool credvalid{false};
 
@@ -92,16 +95,11 @@ class UnixStream : public watchman_stream {
     credvalid =
         getsockopt(fd.fd(), SOL_LOCAL, LOCAL_PEERCRED, &cred, &len) == 0;
 #elif defined(SO_RECVUCRED)
-    cred = nullptr;
-    credvalid = getpeerucred(fd.fd(), &cred) == 0;
+    ucred_t *peer_cred{nullptr};
+    credvalid = getpeerucred(fd.fd(), &peer_cred) == 0;
+    cred.reset(peer_cred);
 #endif
   }
-
-#ifdef SO_RECVUCRED
-  ~UnixStream() {
-    ucred_free(cred);
-  }
-#endif
 
   const FileDescriptor& getFileDescriptor() const override {
     return fd;
@@ -179,7 +177,7 @@ class UnixStream : public watchman_stream {
       return true;
     }
 #elif defined(SO_RECVUCRED)
-    uid_t ucreduid = ucred_getruid(cred);
+    uid_t ucreduid = ucred_getruid(cred.get());
     if (ucreduid == getuid() || ucreduid == 0) {
       return true;
     }
@@ -194,7 +192,7 @@ class UnixStream : public watchman_stream {
 #ifdef SO_PEERCRED
     return cred.pid;
 #elif defined(SO_RECVUCRED)
-    pid_t ucredpid = ucred_getpid(cred);
+    pid_t ucredpid = ucred_getpid(cred.get());
     if (ucredpid == (pid_t)-1) {
       return 0;
     }
