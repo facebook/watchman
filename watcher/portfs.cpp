@@ -44,7 +44,10 @@ struct PortFSWatcher : public Watcher {
 
   bool waitNotify(int timeoutms) override;
   void signalThreads() override;
-  bool do_watch(const w_string& name, const watchman::FileInformation& finfo);
+  bool do_watch(
+      const w_string& name,
+      const watchman::FileInformation& finfo,
+      bool throw_on_error);
 };
 
 static const struct flag_map pflags[] = {
@@ -82,7 +85,8 @@ PortFSWatcher::PortFSWatcher(w_root_t* root)
 
 bool PortFSWatcher::do_watch(
     const w_string& name,
-    const watchman::FileInformation& finfo) {
+    const watchman::FileInformation& finfo,
+    bool throw_on_error) {
   auto wlock = port_files.wlock();
   if (wlock->find(name) != wlock->end()) {
     // Already watching it
@@ -108,7 +112,9 @@ bool PortFSWatcher::do_watch(
         rawFile->port_file.fo_name,
         strerror(errno));
     wlock->erase(name);
-    throw std::system_error(err, std::generic_category(), "port_associate");
+    if (throw_on_error) {
+      throw std::system_error(err, std::generic_category(), "port_associate");
+    }
     return false;
   }
 
@@ -116,17 +122,12 @@ bool PortFSWatcher::do_watch(
 }
 
 bool PortFSWatcher::startWatchFile(struct watchman_file* file) {
-  w_string name;
-  bool success = false;
-
-  name = w_dir_path_cat_str(file->parent, file->getName());
+  auto name = w_dir_path_cat_str(file->parent, file->getName());
   if (!name) {
     return false;
   }
-  success = do_watch(name, file->stat);
-  w_string_delref(name);
 
-  return success;
+  return do_watch(name, file->stat, false);
 }
 
 std::unique_ptr<watchman_dir_handle> PortFSWatcher::startWatchDir(
@@ -148,9 +149,7 @@ std::unique_ptr<watchman_dir_handle> PortFSWatcher::startWatchDir(
   }
 
   auto dir_name = dir->getFullPath();
-  if (!do_watch(dir_name, watchman::FileInformation(st))) {
-    return nullptr;
-  }
+  do_watch(dir_name, watchman::FileInformation(st), true);
 
   return osdir;
 }
