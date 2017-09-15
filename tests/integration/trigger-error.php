@@ -15,7 +15,7 @@ class triggerErrorsTestCase extends WatchmanTestCase {
     $root = $dir->getPath();
     $this->watch($root);
 
-    $this->assertTriggerRegError('wrong number of arguments', 'trigger');
+    $this->assertTriggerRegError('RootResolveError: wrong number of arguments', 'trigger');
 
     $this->assertTriggerRegError(
       'not enough arguments',

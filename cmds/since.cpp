@@ -13,10 +13,7 @@ static void cmd_since(struct watchman_client* client, const json_ref& args) {
     return;
   }
 
-  auto root = resolve_root_or_err(client, args, 1, false);
-  if (!root) {
-    return;
-  }
+  auto root = resolve_root(client, args, 1, false);
 
   auto clock_ele = json_array_get(args, 2);
   clockspec = json_string_value(clock_ele);

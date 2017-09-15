@@ -87,7 +87,9 @@ bool enqueue_response(
     json_ref&& json,
     bool ping);
 
-std::shared_ptr<w_root_t> resolve_root_or_err(
+// Resolve the root.  If the root cannot be resolved,
+// a RootResolveError will be thrown
+std::shared_ptr<w_root_t> resolve_root(
     struct watchman_client* client,
     const json_ref& args,
     size_t root_index,

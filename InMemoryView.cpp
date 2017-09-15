@@ -768,10 +768,8 @@ void InMemoryView::debugContentHashCache(
     return;
   }
 
-  auto root = resolve_root_or_err(client, args, 1, false);
-  if (!root) {
-    return;
-  }
+  auto root = resolve_root(client, args, 1, false);
+
   auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
   if (!view) {
     send_error_response(client, "root is not an InMemoryView watcher");

@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include "watchman_scopeguard.h"
 
 // Functions relating to the per-user service
 
@@ -38,29 +39,30 @@ void add_root_warnings_to_response(
           "`\n")));
 }
 
-std::shared_ptr<w_root_t> resolve_root_or_err(
+std::shared_ptr<w_root_t> resolve_root(
     struct watchman_client* client,
     const json_ref& args,
     size_t root_index,
     bool create) {
   const char *root_name;
-  char *errmsg = NULL;
+  char* errmsg = nullptr;
+
+  SCOPE_EXIT {
+    free(errmsg);
+  };
 
   if (args.array().size() <= root_index) {
-    send_error_response(client, "wrong number of arguments");
-    return nullptr;
+    throw RootResolveError("wrong number of arguments");
   }
 
   const auto& ele = args.at(root_index);
 
   root_name = json_string_value(ele);
   if (!root_name) {
-    send_error_response(
-        client,
-        "invalid value for argument %" PRIsize_t
-        ", expected a string naming the root dir",
-        root_index);
-    return nullptr;
+    throw RootResolveError(
+        "invalid value for argument ",
+        root_index,
+        ", expected a string naming the root dir");
   }
 
   std::shared_ptr<w_root_t> root;
@@ -76,15 +78,16 @@ std::shared_ptr<w_root_t> resolve_root_or_err(
 
   if (!root) {
     if (!client->client_is_owner) {
-      send_error_response(client, "unable to resolve root %s: %s (this may be "
-                                  "because you are not the process owner)",
-                          root_name, errmsg);
+      throw RootResolveError(
+          "unable to resolve root ",
+          root_name,
+          ": ",
+          errmsg ? errmsg : "",
+          " (this may be because you are not the process owner)");
     } else {
-      send_error_response(client, "unable to resolve root %s: %s", root_name,
-                          errmsg);
+      throw RootResolveError(
+          "unable to resolve root ", root_name, ": ", errmsg ? errmsg : "");
     }
-    free(errmsg);
-    return nullptr;
   }
 
   if (client->perf_sample) {

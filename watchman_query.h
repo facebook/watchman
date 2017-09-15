@@ -185,6 +185,16 @@ class QueryExecError : public std::runtime_error {
             std::forward<Args>(args)...)) {}
 };
 
+// represents an error resolving the root
+class RootResolveError : public std::runtime_error {
+ public:
+  template <typename... Args>
+  explicit RootResolveError(Args&&... args)
+      : std::runtime_error(watchman::to<std::string>(
+            "RootResolveError: ",
+            std::forward<Args>(args)...)) {}
+};
+
 struct w_query {
   watchman::CaseSensitivity case_sensitive{watchman::CaseSensitivity::CaseInSensitive};
   bool empty_on_fresh_instance{false};

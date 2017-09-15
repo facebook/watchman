@@ -55,10 +55,7 @@ static void cmd_clock(struct watchman_client* client, const json_ref& args) {
   }
 
   /* resolve the root */
-  auto root = resolve_root_or_err(client, args, 1, false);
-  if (!root) {
-    return;
-  }
+  auto root = resolve_root(client, args, 1, false);
 
   if (sync_timeout &&
       !root->syncToNow(std::chrono::milliseconds(sync_timeout))) {
@@ -86,10 +83,7 @@ static void cmd_watch_delete(
     return;
   }
 
-  auto root = resolve_root_or_err(client, args, 1, false);
-  if (!root) {
-    return;
-  }
+  auto root = resolve_root(client, args, 1, false);
 
   auto resp = make_response();
   resp.set({{"watch-del", json_boolean(root->stopWatch())},
@@ -239,10 +233,7 @@ static void cmd_watch(struct watchman_client* client, const json_ref& args) {
     return;
   }
 
-  auto root = resolve_root_or_err(client, args, 1, true);
-  if (!root) {
-    return;
-  }
+  auto root = resolve_root(client, args, 1, true);
   root->view()->waitUntilReadyToQuery(root).wait();
 
   auto resp = make_response();
@@ -281,10 +272,7 @@ static void cmd_watch_project(
     return;
   }
 
-  auto root = resolve_root_or_err(client, args, 1, true);
-  if (!root) {
-    return;
-  }
+  auto root = resolve_root(client, args, 1, true);
 
   root->view()->waitUntilReadyToQuery(root).wait();
 
