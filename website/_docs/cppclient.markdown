@@ -1,5 +1,5 @@
 ---
-id: cppclient
+pageid: cppclient
 title: C++ Client
 layout: docs
 section: Invocation
