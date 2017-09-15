@@ -10,7 +10,7 @@ static void cmd_query(struct watchman_client* client, const json_ref& args) {
     return;
   }
 
-  auto root = resolve_root(client, args, 1, false);
+  auto root = resolveRoot(client, args);
 
   const auto& query_spec = args.at(2);
   auto query = w_query_parse(root, query_spec);

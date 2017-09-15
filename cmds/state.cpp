@@ -63,7 +63,7 @@ static void cmd_state_enter(
   json_ref response;
   auto client = dynamic_cast<watchman_user_client*>(clientbase);
 
-  auto root = resolve_root(client, args, 1, true);
+  auto root = resolveRoot(client, args);
 
   if (!parse_state_arg(client, args, &parsed)) {
     return;
@@ -195,7 +195,7 @@ static void cmd_state_leave(
   auto client = dynamic_cast<watchman_user_client*>(clientbase);
   json_ref response;
 
-  auto root = resolve_root(client, args, 1, true);
+  auto root = resolveRoot(client, args);
 
   if (!parse_state_arg(client, args, &parsed)) {
     return;

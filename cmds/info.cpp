@@ -114,7 +114,7 @@ static void cmd_get_config(
     return;
   }
 
-  auto root = resolve_root(client, args, 1, false);
+  auto root = resolveRoot(client, args);
 
   auto resp = make_response();
 

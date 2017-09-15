@@ -75,7 +75,7 @@ static void cmd_trigger_delete(
   w_string tname;
   bool res;
 
-  auto root = resolve_root(client, args, 1, false);
+  auto root = resolveRoot(client, args);
 
   if (json_array_size(args) != 3) {
     send_error_response(client, "wrong number of arguments");
@@ -123,7 +123,7 @@ W_CMD_REG("trigger-del", cmd_trigger_delete, CMD_DAEMON, w_cmd_realpath_root)
 static void cmd_trigger_list(
     struct watchman_client* client,
     const json_ref& args) {
-  auto root = resolve_root(client, args, 1, false);
+  auto root = resolveRoot(client, args);
 
   auto resp = make_response();
   auto arr = root->triggerListToJson();
@@ -352,7 +352,7 @@ static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
   json_ref trig;
   json_ref resp;
 
-  auto root = resolve_root(client, args, 1, true);
+  auto root = resolveRoot(client, args);
 
   if (json_array_size(args) < 3) {
     send_error_response(client, "not enough arguments");

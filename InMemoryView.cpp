@@ -768,7 +768,7 @@ void InMemoryView::debugContentHashCache(
     return;
   }
 
-  auto root = resolve_root(client, args, 1, false);
+  auto root = resolveRoot(client, args);
 
   auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
   if (!view) {

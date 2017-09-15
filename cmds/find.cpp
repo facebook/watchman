@@ -12,7 +12,7 @@ static void cmd_find(struct watchman_client* client, const json_ref& args) {
     return;
   }
 
-  auto root = resolve_root(client, args, 1, false);
+  auto root = resolveRoot(client, args);
 
   auto query = w_query_parse_legacy(root, args, 2, nullptr, nullptr, nullptr);
   if (client->client_mode) {

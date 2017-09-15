@@ -39,10 +39,9 @@ void add_root_warnings_to_response(
           "`\n")));
 }
 
-std::shared_ptr<w_root_t> resolve_root(
+std::shared_ptr<w_root_t> doResolveOrCreateRoot(
     struct watchman_client* client,
     const json_ref& args,
-    size_t root_index,
     bool create) {
   const char *root_name;
   char* errmsg = nullptr;
@@ -51,10 +50,11 @@ std::shared_ptr<w_root_t> resolve_root(
     free(errmsg);
   };
 
+  // Assume root is first element
+  size_t root_index = 1;
   if (args.array().size() <= root_index) {
     throw RootResolveError("wrong number of arguments");
   }
-
   const auto& ele = args.at(root_index);
 
   root_name = json_string_value(ele);
@@ -94,6 +94,18 @@ std::shared_ptr<w_root_t> resolve_root(
     client->perf_sample->add_root_meta(root);
   }
   return root;
+}
+
+std::shared_ptr<w_root_t> resolveRoot(
+    struct watchman_client* client,
+    const json_ref& args) {
+  return doResolveOrCreateRoot(client, args, false);
+}
+
+std::shared_ptr<w_root_t> resolveOrCreateRoot(
+    struct watchman_client* client,
+    const json_ref& args) {
+  return doResolveOrCreateRoot(client, args, true);
 }
 
 watchman_user_client::watchman_user_client(

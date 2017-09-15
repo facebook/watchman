@@ -271,7 +271,7 @@ static void cmd_flush_subscriptions(
     return;
   }
 
-  auto root = resolve_root(client, args, 1, false);
+  auto root = resolveRoot(client, args);
 
   std::vector<w_string> subs_to_sync;
   if (subs) {
@@ -395,7 +395,7 @@ static void cmd_unsubscribe(
   struct watchman_user_client* client =
       (struct watchman_user_client*)clientbase;
 
-  auto root = resolve_root(client, args, 1, false);
+  auto root = resolveRoot(client, args);
 
   auto jstr = json_array_get(args, 2);
   name = json_string_value(jstr);
@@ -442,7 +442,7 @@ static void cmd_subscribe(
     return;
   }
 
-  auto root = resolve_root(client, args, 1, true);
+  auto root = resolveRoot(client, args);
 
   jname = args.at(2);
   if (!json_is_string(jname)) {

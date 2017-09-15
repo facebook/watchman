@@ -13,7 +13,7 @@ static void cmd_debug_recrawl(
     return;
   }
 
-  auto root = resolve_root(client, args, 1, false);
+  auto root = resolveRoot(client, args);
 
   auto resp = make_response();
 
@@ -36,7 +36,7 @@ static void cmd_debug_show_cursors(
     return;
   }
 
-  auto root = resolve_root(client, args, 1, false);
+  auto root = resolveRoot(client, args);
 
   auto resp = make_response();
 
@@ -69,7 +69,7 @@ static void cmd_debug_ageout(
     return;
   }
 
-  auto root = resolve_root(client, args, 1, false);
+  auto root = resolveRoot(client, args);
 
   std::chrono::seconds min_age(json_integer_value(json_array_get(args, 2)));
 
@@ -87,7 +87,7 @@ static void cmd_debug_poison(
     const json_ref& args) {
   struct timeval now;
 
-  auto root = resolve_root(client, args, 1, false);
+  auto root = resolveRoot(client, args);
 
   gettimeofday(&now, NULL);
 
@@ -166,7 +166,7 @@ static void cmd_debug_get_subscriptions(
     const json_ref& args) {
   auto client = (watchman_user_client*)clientbase;
 
-  auto root = resolve_root(client, args, 1, false);
+  auto root = resolveRoot(client, args);
 
   auto resp = make_response();
   auto debug_info = root->unilateralResponses->getDebugInfo();

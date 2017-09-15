@@ -87,13 +87,16 @@ bool enqueue_response(
     json_ref&& json,
     bool ping);
 
-// Resolve the root.  If the root cannot be resolved,
-// a RootResolveError will be thrown
-std::shared_ptr<w_root_t> resolve_root(
+// Resolve the root. Failure will throw a RootResolveError exception
+std::shared_ptr<w_root_t> resolveRoot(
     struct watchman_client* client,
-    const json_ref& args,
-    size_t root_index,
-    bool create);
+    const json_ref& args);
+
+// Resolve the root, or if not found and the configuration permits,
+// attempt to create it. throws RootResolveError on failure.
+std::shared_ptr<w_root_t> resolveOrCreateRoot(
+    struct watchman_client* client,
+    const json_ref& args);
 
 json_ref make_response(void);
 void annotate_with_clock(const std::shared_ptr<w_root_t>& root, json_ref& resp);

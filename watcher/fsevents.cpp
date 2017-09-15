@@ -654,7 +654,7 @@ static void cmd_debug_fsevents_inject_drop(
     return;
   }
 
-  auto root = resolve_root(client, args, 1, false);
+  auto root = resolveRoot(client, args);
 
   auto watcher = watcherFromRoot(root);
   if (!watcher) {
