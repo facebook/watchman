@@ -12,6 +12,9 @@ GitHub](https://github.com/facebook/watchman/commits/master).
 
 ### Watchman 5.0.0 (not yet released)
 
+* Added script `watchman-replicate-subscription`. It can replicate an 
+  existing watchman subscription. Integrators can use this script to validate
+  watchman notifications their client is receiving.
 * Added support for suffix sets in suffix expressions.  You now can specify
   multiple suffixes to match against by setting the second argument to a list
   of suffixes. See `suffix-set` documentation for

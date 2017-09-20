@@ -7,6 +7,7 @@
   - id: cli-options
   - id: watchman-make
   - id: watchman-wait
+  - id: watchman-replicate-subscription
   - id: cppclient
   - id: nodejs
   - id: config

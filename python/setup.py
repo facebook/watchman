@@ -39,6 +39,10 @@ setup(
         'Programming Language :: Python :: 3.6',
     ],
     zip_safe = True,
-    scripts=['bin/watchman-wait', 'bin/watchman-make'],
+    scripts=[
+        'bin/watchman-make',
+        'bin/watchman-wait',
+        'bin/watchman-replicate-subscription'
+    ],
     test_suite = 'tests',
 )

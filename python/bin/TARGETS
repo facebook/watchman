@@ -15,3 +15,12 @@ python_binary(
     py_version = "<3",
     deps = ["@/watchman/python/pywatchman:pywatchman"],
 )
+
+python_binary(
+    name = "watchman-replicate-subscription",
+    srcs = {"watchman-replicate-subscription": "watchman_replicate_subscription.py"},
+    base_module = "",
+    main_module = "watchman_replicate_subscription",
+    py_version = "<3",
+    deps = ["@/watchman/python/pywatchman:pywatchman"],
+)
