@@ -56,15 +56,6 @@ class SettleCallback : public folly::HHWheelTimer::Callback {
   std::shared_ptr<w_root_t> root_;
 };
 
-folly::SocketAddress getEdenServerSocketAddress() {
-  folly::SocketAddress addr;
-  // In the future, eden will need to provide a well-supported way to locate
-  // this socket, as the "local" path component here is a FB-specific default.
-  auto path = folly::to<std::string>(getenv("HOME"), "/local/.eden/socket");
-  addr.setFromPath(path);
-  return addr;
-}
-
 std::string readLink(const std::string& path) {
   struct stat st;
   if (lstat(path.c_str(), &st)) {
