@@ -30,6 +30,7 @@ python_binary(
         "@/eden/integration/lib:lib",
         "@/libfb/py:pathutils",
         "@/watchman:runtests-py3",
+        "@/watchman/python/bin:watchman-wait",
         "@/watchman/python/pywatchman:pywatchman",
     ],
 )

@@ -177,6 +177,10 @@ class WatchmanTestCase(unittest.TestCase):
         self.transport = transport
         self.encoding = encoding
 
+    def removeRelative(self, base, *fname):
+        fname = os.path.join(base, *fname)
+        os.remove(fname)
+
     def touch(self, fname, times=None):
         try:
             os.utime(fname, times)

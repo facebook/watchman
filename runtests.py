@@ -146,6 +146,9 @@ if args.watchman_path:
 else:
     bin_dir = os.path.dirname(__file__)
 
+os.environ['PYWATCHMAN_PATH'] = os.path.join(os.getcwd(), 'python')
+os.environ['WATCHMAN_PYTHON_BIN'] = \
+    os.path.abspath(os.path.join(os.getcwd(), 'python', 'bin'))
 os.environ['PATH'] = '%s%s%s' % (os.path.abspath(bin_dir),
                                  os.pathsep,
                                  os.environ['PATH'])
