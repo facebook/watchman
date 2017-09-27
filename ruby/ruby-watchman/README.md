@@ -1,8 +1,8 @@
 # RubyWatchman
 
 RubyWatchman is a gem that implements the [Watchman binary
-protocol](https://github.com/facebook/watchman/blob/master/BSER.markdown). It is
-implemented in C for speed, and is much faster than talking to
+protocol](https://github.com/facebook/watchman/blob/master/website/_docs/BSER.markdown).
+It is implemented in C for speed, and is much faster than talking to
 [Watchman](https://github.com/facebook/watchman) using the JSON protocol.
 
 ## Installation
