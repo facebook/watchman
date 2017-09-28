@@ -16,9 +16,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2017-09-28T08:31:38-07:00" />
+<meta property="article:published_time" content="2017-09-28T08:49:53-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"watchman-replicate-subscription","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-09-28T08:31:38-07:00","dateModified":"2017-09-28T08:31:38-07:00","description":"Since 5.0","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/watchman-replicate-subscription.html"},"url":"https://facebook.github.io/watchman/docs/watchman-replicate-subscription.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"watchman-replicate-subscription","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-09-28T08:49:53-07:00","dateModified":"2017-09-28T08:49:53-07:00","description":"Since 5.0","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/watchman-replicate-subscription.html"},"url":"https://facebook.github.io/watchman/docs/watchman-replicate-subscription.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -207,6 +207,13 @@
           key : "/watchman/docs/watchman-wait.html",
           title : "watchman-wait",
           url : "/watchman/docs/watchman-wait.html",
+        },
+        
+          
+        {
+          key : "/watchman/docs/watchman-replicate-subscription.html",
+          title : "watchman-replicate-subscription",
+          url : "/watchman/docs/watchman-replicate-subscription.html",
         },
         
           
@@ -716,8 +723,8 @@ client is receiving to localize anomalous behavior.</p>
 
 <p>The source subscription is identified using any combination of the ‘name’,
 ‘pid’, and ‘client’ arguments. The provided combination must uniquely identify
-a subscription. Valid values for these fields can be retrieved by running the
-command ‘watchman-replicate-subscription path’.</p>
+a subscription. Source subscription details for a watched root can be
+retrieved by running the command ‘watchman-replicate-subscription –list PATH’.</p>
 
 <p>By default, the replicated subscription will take the source subscription
 name and prepend the substring ‘replicate: ‘ to it. The ‘qname’ option can be
@@ -739,23 +746,23 @@ python) as well as watchman.</p>
 
 <h3 id="source-subscription">Source subscription</h3>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>watchman-replicate-subscription path -n name
+<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>watchman-replicate-subscription PATH -n NAME
 </pre></td></tr></tbody></table>
 </div>
 </div>
 <p>The source subscription must be an existing subscription for the provided path.
 Any combination of the ‘name’, ‘pid’, and ‘client’ arguments can be used provided
-they uniquely identify a subscription. The list of existing subscriptions can be
-retrieved as follows:</p>
+they uniquely identify a subscription. Source subscription details for a watched
+root can be retrieved as follows:</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>watchman-replicate-subscriptions path
+<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>watchman-replicate-subscriptions PATH --list
 </pre></td></tr></tbody></table>
 </div>
 </div>
 
 <p>The subscription name, pid and client can then used to replicate the subscription.</p>
 
-<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>watchman-replicate-subscription path -n name -c client -p pid
+<div class="language-bash highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>watchman-replicate-subscription PATH -n NAME -c CLIENT -p PID
 </pre></td></tr></tbody></table>
 </div>
 </div>
@@ -794,7 +801,8 @@ print the fields with spaces between them.</li>
 <code class="highlighter-rouge">watchman-replicate-subscription</code> to exit:</p>
 
 <ul>
-  <li><code class="highlighter-rouge">0</code> is returned after successfully waiting for event(s)</li>
+  <li><code class="highlighter-rouge">0</code> is returned after successfully waiting for event(s) or listing matching
+ subscriptions</li>
   <li><code class="highlighter-rouge">1</code> in case of a runtime error of some kind</li>
   <li><code class="highlighter-rouge">2</code> the <code class="highlighter-rouge">-t</code>/<code class="highlighter-rouge">--timeout</code> option was used and that amount of time passed
  before an event was received</li>
