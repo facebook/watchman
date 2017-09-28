@@ -16,9 +16,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2017-08-11T17:21:48-07:00" />
+<meta property="article:published_time" content="2017-09-28T08:19:36-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"suffix","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-08-11T17:21:48-07:00","dateModified":"2017-08-11T17:21:48-07:00","description":"The suffix expression evaluates true if the file suffix matches the second argument. This matches files name foo.php and foo.PHP but not foophp:","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/expr/suffix.html"},"url":"https://facebook.github.io/watchman/docs/expr/suffix.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"suffix","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-09-28T08:19:36-07:00","dateModified":"2017-09-28T08:19:36-07:00","description":"The suffix expression evaluates true if the file suffix matches the second argument. This matches files name foo.php and foo.PHP but not foophp:","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/expr/suffix.html"},"url":"https://facebook.github.io/watchman/docs/expr/suffix.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -211,9 +211,9 @@
         
           
         {
-          key : "/watchman/docs/watchman-wait.html",
-          title : "watchman-wait",
-          url : "/watchman/docs/watchman-wait.html",
+          key : "/watchman/docs/cppclient.html",
+          title : "C++ Client",
+          url : "/watchman/docs/cppclient.html",
         },
         
           
@@ -713,6 +713,34 @@ argument.  This matches files name <code class="highlighter-rouge">foo.php</code
 </div>
 
 <p>Suffix expression matches are case insensitive.</p>
+
+<h2 id="suffix-set">suffix-set</h2>
+
+<p><em>Since 5.0</em></p>
+
+<p>You may specify multiple suffixes to match against by setting the second argument
+to an array:</p>
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre>["suffix", ["php", "css", "html"]]
+</pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>This second form can be accelerated and is preferred over an <code class="highlighter-rouge">anyof</code>
+construction.  In the following example the two terms are functionally
+equivalent but the set form has a more efficient and thus faster runtime:</p>
+
+<div class="highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3</pre></td><td class="code"><pre>["anyof", ["suffix", "php"], ["suffix", "html"]]
+
+["suffix", ["php", "html"]]
+</pre></td></tr></tbody></table>
+</div>
+</div>
+
+<p>The <a href="/watchman/docs/capabilities.html">capability</a> name associated with this
+enhanced functionality is <code class="highlighter-rouge">suffix-set</code>.</p>
 
     
   </article>

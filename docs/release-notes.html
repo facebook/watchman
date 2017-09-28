@@ -16,9 +16,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2017-08-11T17:21:48-07:00" />
+<meta property="article:published_time" content="2017-09-28T08:19:36-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"Release Notes","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-08-11T17:21:48-07:00","dateModified":"2017-08-11T17:21:48-07:00","description":"We focus on the highlights only in these release notes. For a full history that includes all of the gory details, please see the commit history on GitHub.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/release-notes.html"},"url":"https://facebook.github.io/watchman/docs/release-notes.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"Release Notes","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-09-28T08:19:36-07:00","dateModified":"2017-09-28T08:19:36-07:00","description":"We focus on the highlights only in these release notes. For a full history that includes all of the gory details, please see the commit history on GitHub.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/release-notes.html"},"url":"https://facebook.github.io/watchman/docs/release-notes.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -211,9 +211,9 @@
         
           
         {
-          key : "/watchman/docs/watchman-wait.html",
-          title : "watchman-wait",
-          url : "/watchman/docs/watchman-wait.html",
+          key : "/watchman/docs/cppclient.html",
+          title : "C++ Client",
+          url : "/watchman/docs/cppclient.html",
         },
         
           
@@ -708,7 +708,17 @@ window.addEventListener('load', function() {
 that includes all of the gory details, please see <a href="https://github.com/facebook/watchman/commits/master">the commit history on
 GitHub</a>.</p>
 
-<h3 id="watchman-490-not-yet-released">Watchman 4.9.0 (not yet released)</h3>
+<h3 id="watchman-500-not-yet-released">Watchman 5.0.0 (not yet released)</h3>
+
+<ul>
+  <li>Added support for suffix sets in suffix expressions.  You now can specify
+multiple suffixes to match against by setting the second argument to a list
+of suffixes. See <code class="highlighter-rouge">suffix-set</code> documentation for
+<a href="/watchman/docs/expr/suffix.html#suffix-set">more details</a></li>
+  <li>pywatchman: introduced new pywatchman_aio client for python</li>
+</ul>
+
+<h3 id="watchman-490-2017-08-24">Watchman 4.9.0 (2017-08-24)</h3>
 
 <ul>
   <li>New field: <code class="highlighter-rouge">content.sha1hex</code>.  This field expands to the SHA1 hash of
@@ -717,23 +727,35 @@ Watchman maintains a cache of the content hashes and can compute the
 hash on demand and also heuristically as files are changed.  This is
 useful for tooling that wants to perform more intelligent cache invalidation
 or build artifact fetching from content addressed storage.</li>
-  <li>New feature: Source Control Aware query mode.  Currently supports only
-Mercurial (patches to add Git support are welcomed!).  SCM aware query
+  <li>Experimental feature: Source Control Aware query mode.  Currently supports
+only Mercurial (patches to add Git support are welcomed!).  SCM aware query
 mode helps to keep response sizes closer to <code class="highlighter-rouge">O(what-you-changed)</code> than
 to <code class="highlighter-rouge">O(all-repo-changes)</code> when rebasing your code.  Using this feature
 effectively may require some additional infrastructure to compute and
 associate data with revisions from your repo.</li>
+  <li>Fixed an issue that resulted in the perf logging thread deadlocking when
+<code class="highlighter-rouge">perf_logger_command</code> is enabled in the global configuration</li>
+  <li>Fixed an issue where queries larger than 1MB would likely result in
+a PDU error response.</li>
+  <li>Reduced lock contention for subscriptions that do no use the advanced
+settling (<code class="highlighter-rouge">drop</code>, <code class="highlighter-rouge">defer</code>) options.</li>
+  <li>Fixed <code class="highlighter-rouge">since</code> generator behavior when using unix timestamps rather than
+the preferred clock string syntax</li>
+  <li>Improved the reporting of “new” files in watchman results</li>
+  <li>Improved performance of handling changes on case insensitive filesystems</li>
   <li>Windows: promoted from alpha to beta status!</li>
   <li>Windows: fixed some performance and reliability issues</li>
   <li>Windows: now operates correctly on Windows 7</li>
   <li>Windows: can now see and report symlinks and junction points</li>
-  <li>Fixed an issue where queries larger than 1MB would likely result in
-a PDU error response.</li>
-  <li>Improved performance of handling changes on case insensitive filesystems</li>
-  <li>Reduced lock contention for subscriptions that do no use the advanced
-settling (<code class="highlighter-rouge">drop</code>, <code class="highlighter-rouge">defer</code>) options.</li>
-  <li>Fixed since generator behavior when using unix timestamps rather than
-the preferred clock string syntax</li>
+  <li>Windows: fixed potential deadlock in trigger deletion</li>
+  <li>Windows: fixed stack trace rendering on win32</li>
+  <li>Windows: improved IO scheduling around deletes on win32</li>
+  <li>Windows: improved handling of case insensitive win32 driver letters</li>
+  <li>pywatchman: the python wheel format is used for publishing watchman pypi package</li>
+  <li>pywatchman: now watchman path is configurable in python client</li>
+  <li>pywatchman: now python client can be used as a context manager</li>
+  <li>Solaris: support for Solaris has been removed. If you’d like to commit to
+testing and maintaining Solaris support, we’d love to hear from you!</li>
 </ul>
 
 <h3 id="watchman-480-never-formally-released">Watchman 4.8.0 (never formally released)</h3>
