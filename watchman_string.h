@@ -352,7 +352,9 @@ class w_string {
   w_string normalizeSeparators(char targetSeparator = '/') const;
 
   inline void ensureNotNull() const {
-    w_assert(str_ != nullptr, "w_string is nullptr!");
+    if (!str_) {
+      throw std::runtime_error("failed assertion w_string::ensureNotNull");
+    }
   }
 
   /** Returns a pointer to a null terminated c-string.
