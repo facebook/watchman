@@ -69,11 +69,6 @@ static void cmd_state_enter(
     return;
   }
 
-  if (parsed.sync_timeout.count() && !root->syncToNow(parsed.sync_timeout)) {
-    send_error_response(client, "synchronization failed: %s", strerror(errno));
-    return;
-  }
-
   auto assertion =
       std::make_shared<watchman_client_state_assertion>(root, parsed.name);
   if (!assertion) {
@@ -198,11 +193,6 @@ static void cmd_state_leave(
   auto root = resolveRoot(client, args);
 
   if (!parse_state_arg(client, args, &parsed)) {
-    return;
-  }
-
-  if (parsed.sync_timeout.count() && !root->syncToNow(parsed.sync_timeout)) {
-    send_error_response(client, "synchronization failed: %s", strerror(errno));
     return;
   }
 
