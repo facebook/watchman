@@ -45,6 +45,10 @@ AS_IF([test "x$with_folly" != "x"], [
 	)
 ])
 
+dnl Openssl headers are required.
+AC_CHECK_HEADER([openssl/sha.h], [], [
+  AC_MSG_FAILURE([openssl/sha.h is required.  Try e.g. "dnf install openssl-devel"])
+])
 
 dnl
 dnl Decide whether to build the C++ client library
@@ -55,7 +59,6 @@ AS_IF([test "x$enable_cppclient" = "xyes" && test "x$folly" = "xno"],
 AS_IF([test "x$enable_cppclient" != "xno" && test "x$folly" = "xno"],
   [enable_cppclient=no])
 AM_CONDITIONAL(ENABLE_CPPCLIENT, [test "x$enable_cppclient" != "xno"])
-
 
 dnl I don't care that this is supposed to be sysconfdir; autoconf doesn't
 dnl allow it to be evaluated sanely from configure, only via Makefile,
