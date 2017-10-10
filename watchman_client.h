@@ -9,15 +9,19 @@
 
 struct watchman_client_subscription;
 
-struct watchman_client_state_assertion {
-  std::shared_ptr<w_root_t> root; // Holds a ref on the root
-  w_string name;
-  long id;
+namespace watchman {
 
-  watchman_client_state_assertion(
+class ClientStateAssertion {
+ public:
+  const std::shared_ptr<w_root_t> root; // Holds a ref on the root
+  const w_string name;
+
+  ClientStateAssertion(
       const std::shared_ptr<w_root_t>& root,
-      const w_string& name);
+      const w_string& name)
+      : root(root), name(name) {}
 };
+} // namespace watchman
 
 struct watchman_client : public std::enable_shared_from_this<watchman_client> {
   std::unique_ptr<watchman_stream> stm;
@@ -87,11 +91,10 @@ struct watchman_user_client : public watchman_client {
   std::unordered_map<w_string, std::shared_ptr<watchman_client_subscription>>
       subscriptions;
 
-  /* map of unique id => watchman_client_state_assertion.
-   * The values are owned by root::asserted_states */
-  std::unordered_map<long, std::weak_ptr<watchman_client_state_assertion>>
+  /* map of state-name => ClientStateAssertion
+   * The values are owned by root::assertedStates */
+  std::unordered_map<w_string, std::weak_ptr<watchman::ClientStateAssertion>>
       states;
-  long next_state_id{0};
 
   // Subscriber to root::unilateralResponses
   std::unordered_map<

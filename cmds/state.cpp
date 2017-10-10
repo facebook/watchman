@@ -1,10 +1,12 @@
 /* Copyright 2015-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
+#include "MapUtil.h"
 #include "make_unique.h"
+#include "watchman.h"
 
 using ms = std::chrono::milliseconds;
+using watchman::ClientStateAssertion;
 
 struct state_arg {
   w_string name;
@@ -51,16 +53,10 @@ static bool parse_state_arg(
   return true;
 }
 
-watchman_client_state_assertion::watchman_client_state_assertion(
-    const std::shared_ptr<w_root_t>& root,
-    const w_string& name)
-    : root(root), name(name), id(0) {}
-
 static void cmd_state_enter(
     struct watchman_client* clientbase,
     const json_ref& args) {
   struct state_arg parsed;
-  json_ref response;
   auto client = dynamic_cast<watchman_user_client*>(clientbase);
 
   auto root = resolveRoot(client, args);
@@ -69,36 +65,21 @@ static void cmd_state_enter(
     return;
   }
 
-  auto assertion =
-      std::make_shared<watchman_client_state_assertion>(root, parsed.name);
-  if (!assertion) {
-    send_error_response(client, "out of memory");
+  auto assertion = std::make_shared<ClientStateAssertion>(root, parsed.name);
+
+  if (!mapInsert(*root->assertedStates.wlock(), assertion->name, assertion)) {
+    send_error_response(
+        client, "state %s is already asserted", parsed.name.c_str());
     return;
   }
 
-  {
-    auto wlock = root->asserted_states.wlock();
-    auto& map = *wlock;
-    auto& entry = map[assertion->name];
-
-    // If the state is already asserted, we can't re-assert it
-    if (entry) {
-      send_error_response(
-          client, "state %s is already asserted", parsed.name.c_str());
-      return;
-    }
-    // We're now in this state
-    entry = assertion;
-
-    // Record the state assertion in the client
-    entry->id = ++client->next_state_id;
-    client->states[entry->id] = entry;
-  }
+  // Record the state assertion in the client
+  client->states[parsed.name] = assertion;
 
   // We successfully entered the state, this is our response to the
   // state-enter command.  We do this before we send the subscription
   // PDUs in case CLIENT has active subscriptions for this root
-  response = make_response();
+  auto response = make_response();
 
   auto clock = w_string_to_json(root->view()->getCurrentClockString());
 
@@ -123,7 +104,7 @@ W_CMD_REG("state-enter", cmd_state_enter, CMD_DAEMON, w_cmd_realpath_root)
 
 static void leave_state(
     struct watchman_user_client* client,
-    std::shared_ptr<watchman_client_state_assertion> assertion,
+    std::shared_ptr<ClientStateAssertion> assertion,
     bool abandoned,
     json_t* metadata) {
   // Broadcast about the state leave
@@ -140,28 +121,22 @@ static void leave_state(
   }
   assertion->root->unilateralResponses->enqueue(std::move(payload));
 
-  // The erase will delete the assertion pointer, so save these things
-  auto id = assertion->id;
-  w_string name = assertion->name;
-
-  // Now remove the state
-  {
-    auto map = assertion->root->asserted_states.wlock();
-    map->erase(name);
-  }
+  // Now remove the state assertion
+  mapRemove(*assertion->root->assertedStates.wlock(), assertion->name);
 
   if (client) {
-    client->states.erase(id);
+    mapRemove(client->states, assertion->name);
   }
 }
 
 // Abandon any states that haven't been explicitly vacated
 void w_client_vacate_states(struct watchman_user_client *client) {
   while (!client->states.empty()) {
-    auto assertion = client->states.begin()->second.lock();
+    auto it = client->states.begin();
+    auto assertion = it->second.lock();
 
     if (!assertion) {
-      client->states.erase(client->states.begin()->first);
+      client->states.erase(it->first);
       continue;
     }
 
@@ -186,9 +161,8 @@ static void cmd_state_leave(
   // This is a weak reference to the assertion.  This is safe because only this
   // client can delete this assertion, and this function is only executed by
   // the thread that owns this client.
-  std::shared_ptr<watchman_client_state_assertion> assertion;
+  std::shared_ptr<ClientStateAssertion> assertion;
   auto client = dynamic_cast<watchman_user_client*>(clientbase);
-  json_ref response;
 
   auto root = resolveRoot(client, args);
 
@@ -196,33 +170,28 @@ static void cmd_state_leave(
     return;
   }
 
-  {
-    auto map = root->asserted_states.rlock();
-    // Confirm that this client owns this state
-    const auto& it = map->find(parsed.name);
-    // If the state is not asserted, we can't leave it
-    if (it == map->end()) {
-      send_error_response(
-          client, "state %s is not asserted", parsed.name.c_str());
-      return;
-    }
+  // mapGetDefault will return a nullptr assertion as the default value, if
+  // the entry is missing
+  assertion = mapGetDefault(*root->assertedStates.rlock(), parsed.name);
+  if (!assertion) {
+    send_error_response(
+        client, "state %s is not asserted", parsed.name.c_str());
+    return;
+  }
 
-    assertion = it->second;
-
-    // Sanity check ownership
-    if (client->states[assertion->id].lock() != assertion) {
-      send_error_response(
-          client,
-          "state %s was not asserted by this session",
-          parsed.name.c_str());
-      return;
-    }
+  // Sanity check ownership
+  if (mapGetDefault(client->states, parsed.name).lock() != assertion) {
+    send_error_response(
+        client,
+        "state %s was not asserted by this session",
+        parsed.name.c_str());
+    return;
   }
 
   // We're about to successfully leave the state, this is our response to the
   // state-leave command.  We do this before we send the subscription
   // PDUs in case CLIENT has active subscriptions for this root
-  response = make_response();
+  auto response = make_response();
   response.set(
       {{"root", w_string_to_json(root->root_path)},
        {"state-leave", w_string_to_json(parsed.name)},

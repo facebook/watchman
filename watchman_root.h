@@ -4,12 +4,12 @@
 #include <condition_variable>
 #include <unordered_map>
 #include "CookieSync.h"
+#include "FileSystem.h"
 #include "PubSub.h"
 #include "QueryableView.h"
 #include "watchman_config.h"
 #include "watchman_shared_mutex.h"
 #include "watchman_synchronized.h"
-#include "FileSystem.h"
 
 #define HINT_NUM_DIRS 128*1024
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
@@ -24,7 +24,9 @@ constexpr std::chrono::milliseconds DEFAULT_QUERY_SYNC_MS(60000);
 /* Idle out watches that haven't had activity in several days */
 #define DEFAULT_REAP_AGE (86400*5)
 
-struct watchman_client_state_assertion;
+namespace watchman {
+class ClientStateAssertion;
+}; // namespace watchman
 
 struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   /* path to root */
@@ -66,12 +68,10 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   // Why we failed to watch
   w_string failure_reason;
 
-  // map of state name => watchman_client_state_assertion for
-  // asserted states
   watchman::Synchronized<std::unordered_map<
       w_string,
-      std::shared_ptr<watchman_client_state_assertion>>>
-      asserted_states;
+      std::shared_ptr<watchman::ClientStateAssertion>>>
+      assertedStates;
 
   struct Inner {
     std::shared_ptr<watchman::QueryableView> view_;
