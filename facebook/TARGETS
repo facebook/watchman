@@ -1,3 +1,5 @@
+include_defs("//eden/DEFS")
+
 python_binary(
     name = "watchman-diag",
     srcs = {"watchman-diag": "watchman_diag.py"},
@@ -27,6 +29,9 @@ python_binary(
     deps = [
         "@/eden/cli:cli",
         "@/eden/fs/service:edenfs",
+        "@/eden/hg/eden:eden",
+        "@/eden/hooks/hg:post-clone",
+        "@/eden/integration/hg/lib:testutil",
         "@/eden/integration/lib:lib",
         "@/libfb/py:pathutils",
         "@/watchman:runtests-py3",

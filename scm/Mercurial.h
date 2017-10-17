@@ -5,9 +5,10 @@
 
 #include <string>
 #include <unordered_map>
+#include "ChildProcess.h"
+#include "FileInformation.h"
 #include "SCM.h"
 #include "watchman_synchronized.h"
-#include "FileInformation.h"
 
 namespace watchman {
 
@@ -17,8 +18,14 @@ class Mercurial : public SCM {
   w_string mergeBaseWith(w_string_piece commitId) const override;
   std::vector<w_string> getFilesChangedSinceMergeBaseWith(
       w_string_piece commitId) const override;
+  SCM::StatusResult getFilesChangedBetweenCommits(
+      w_string_piece commitA,
+      w_string_piece commitB) const override;
 
  private:
+  // Returns options for invoking hg
+  ChildProcess::Options makeHgOptions() const;
+
   struct infoCache {
     std::string dirStatePath;
     FileInformation dirstate;

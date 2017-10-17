@@ -45,6 +45,19 @@ class SCM {
   virtual std::vector<w_string> getFilesChangedSinceMergeBaseWith(
       w_string_piece commitId) const = 0;
 
+  struct StatusResult {
+    std::vector<w_string> changedFiles;
+    std::vector<w_string> addedFiles;
+    std::vector<w_string> removedFiles;
+  };
+
+  // Compute the set of paths that have changed between the two
+  // specified commits.  This is purely a history operation and
+  // does not consider the working copy status.
+  virtual StatusResult getFilesChangedBetweenCommits(
+      w_string_piece commitA,
+      w_string_piece commitB) const = 0;
+
  private:
   w_string rootPath_;
   w_string scmRoot_;

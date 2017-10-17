@@ -10,7 +10,23 @@ W_CAP_REG("scm-hg")
 
 namespace watchman {
 
-using Options = ChildProcess::Options;
+ChildProcess::Options Mercurial::makeHgOptions() const {
+  ChildProcess::Options opt;
+  // Ensure that the hgrc doesn't mess with the behavior
+  // of the commands that we're runing.
+  opt.environment().set("HGPLAIN", w_string("1"));
+  // This method is called from the eden watcher and can trigger before
+  // mercurial has finalized writing out its history data.  Setting this
+  // environmental variable allows us to break the view isolation and read
+  // information about the commit before the transaction is complete.
+  opt.environment().set("HG_PENDING", getRootPath());
+  opt.nullStdin();
+  opt.pipeStdout();
+  opt.pipeStderr();
+  opt.chdir(getRootPath());
+
+  return opt;
+}
 
 Mercurial::infoCache::infoCache(std::string path) : dirStatePath(path) {
   memset(&dirstate, 0, sizeof(dirstate));
@@ -84,18 +100,9 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId) const {
     }
   }
 
-  Options opt;
-  // Ensure that the hgrc doesn't mess with the behavior
-  // of the commands that we're runing.
-  opt.environment().set("HGPLAIN", w_string("1"));
-  opt.nullStdin();
-  opt.pipeStdout();
-  opt.pipeStderr();
-  opt.chdir(getRootPath());
-
   auto revset = to<std::string>("ancestor(.,", commitId, ")");
   ChildProcess proc(
-      {"hg", "log", "-T", "{node}", "-r", revset}, std::move(opt));
+      {"hg", "log", "-T", "{node}", "-r", revset}, makeHgOptions());
 
   auto outputs = proc.communicate();
   auto status = proc.wait();
@@ -125,19 +132,10 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId) const {
 
 std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
     w_string_piece commitId) const {
-  Options opt;
-  // Ensure that the hgrc doesn't mess with the behavior
-  // of the commands that we're runing.
-  opt.environment().set("HGPLAIN", w_string("1"));
-  opt.nullStdin();
-  opt.pipeStdout();
-  opt.pipeStderr();
-  opt.chdir(getRootPath());
-
   // The "" argument at the end causes paths to be printed out relative to the
   // cwd (set to root path above).
   ChildProcess proc(
-      {"hg", "status", "-n", "--rev", commitId, ""}, std::move(opt));
+      {"hg", "status", "-n", "--rev", commitId, ""}, makeHgOptions());
 
   auto outputs = proc.communicate();
 
@@ -157,4 +155,51 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
 
   return lines;
 }
+
+SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
+    w_string_piece commitA,
+    w_string_piece commitB) const {
+  // The "" argument at the end causes paths to be printed out relative to the
+  // cwd (set to root path above).
+  ChildProcess proc(
+      {"hg", "status", "--print0", "--rev", commitA, "--rev", commitB, ""},
+      makeHgOptions());
+
+  auto outputs = proc.communicate();
+
+  std::vector<w_string> lines;
+  w_string_piece(outputs.first).split(lines, '\0');
+
+  auto status = proc.wait();
+  if (status) {
+    throw std::runtime_error(to<std::string>(
+        "failed query for the hg status; command returned with status ",
+        status,
+        " out=",
+        outputs.first,
+        " err=",
+        outputs.second));
+  }
+
+  SCM::StatusResult result;
+  log(ERR, "processing ", lines.size(), " status lines\n");
+  for (auto& line : lines) {
+    if (line.size() < 3) {
+      continue;
+    }
+    w_string fileName(line.data() + 2, line.size() - 2);
+    switch (line.data()[0]) {
+      case 'A':
+        result.addedFiles.emplace_back(std::move(fileName));
+        break;
+      case 'D':
+        result.removedFiles.emplace_back(std::move(fileName));
+        break;
+      default:
+        result.changedFiles.emplace_back(std::move(fileName));
+    }
+  }
+
+  return result;
 }
+} // namespace watchman

@@ -1,3 +1,5 @@
+include_defs("//eden/DEFS")
+
 include_defs("//common/defs/environment")
 
 if os_getenv('SANDCASTLE') is not None:
@@ -17,15 +19,23 @@ if os_getenv('SANDCASTLE') is not None:
         ],
     )
 
+# We test only with the oss version of eden because it builds faster
+# and we do not expect that testing against the internal version
+# will provide any additional signal.
+oss_suffix = get_oss_suffix()
+
+artifacts = get_test_env_and_deps(oss_suffix)
+
 custom_unittest(
     name = "runtests-py3",
     command = [
         "$(location @/watchman/facebook:runtests-py3)",
         "--testpilot-json",
     ],
+    env = artifacts["env"],
     tags = ["run_as_bundle"],
     type = "json",
-    deps = [
+    deps = artifacts["deps"] + [
         "@/watchman/facebook:runtests-py3",
     ],
 )

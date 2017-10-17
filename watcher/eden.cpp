@@ -1,6 +1,7 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include <folly/String.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseManager.h>
 #include <thrift/lib/cpp2/async/HeaderClientChannel.h>
@@ -8,6 +9,7 @@
 #include "eden/fs/service/gen-cpp2/StreamingEdenService.h"
 #include "watchman.h"
 
+#include "ChildProcess.h"
 #include "QueryableView.h"
 #include "ThreadPool.h"
 
@@ -242,12 +244,13 @@ void filterOutPaths(std::vector<std::string>& fileNames, w_query_ctx* ctx) {
 
 class EdenView : public QueryableView {
   w_string root_path_;
+  // The source control system that we detected during initialization
+  std::unique_ptr<SCM> scm_;
   folly::EventBase subscriberEventBase_;
 
  public:
-  explicit EdenView(w_root_t* root) {
-    root_path_ = root->root_path;
-  }
+  explicit EdenView(w_root_t* root)
+      : root_path_(root->root_path), scm_(SCM::scmForPath(root->root_path)) {}
 
   void timeGenerator(w_query* /*query*/, struct w_query_ctx* ctx)
       const override {
@@ -323,6 +326,58 @@ class EdenView : public QueryableView {
             fileNames.end(),
             std::make_move_iterator(delta.createdPaths.begin()),
             std::make_move_iterator(delta.createdPaths.end()));
+
+        if (scm_ &&
+            delta.fromPosition.snapshotHash != delta.toPosition.snapshotHash) {
+          // Either they checked out a new commit or reset the commit to
+          // a different hash.  We interrogate source control to discover
+          // the set of changed files between those hashes, and then
+          // add in any paths that may have changed around snapshot hash
+          // changes events;  These are files whose status cannot be
+          // determined purely from source control operations
+
+          std::unordered_set<std::string> mergedFileList(
+              fileNames.begin(), fileNames.end());
+
+          auto fromHash = folly::hexlify(delta.fromPosition.snapshotHash);
+          auto toHash = folly::hexlify(delta.toPosition.snapshotHash);
+          log(ERR,
+              "since ",
+              position.sequenceNumber,
+              " we changed commit hashes from ",
+              fromHash,
+              " to ",
+              toHash,
+              "\n");
+
+          auto changedBetweenCommits =
+              scm_->getFilesChangedBetweenCommits(fromHash, toHash);
+
+          for (auto& fileName : changedBetweenCommits.changedFiles) {
+            mergedFileList.insert(to<std::string>(fileName));
+          }
+          for (auto& fileName : changedBetweenCommits.removedFiles) {
+            mergedFileList.insert(to<std::string>(fileName));
+          }
+          for (auto& fileName : changedBetweenCommits.addedFiles) {
+            mergedFileList.insert(to<std::string>(fileName));
+            createdFileNames.insert(to<std::string>(fileName));
+          }
+
+          // We don't know whether the unclean paths are added, removed
+          // or just changed.  We're going to treat them as changed.
+          mergedFileList.insert(
+              std::make_move_iterator(delta.uncleanPaths.begin()),
+              std::make_move_iterator(delta.uncleanPaths.end()));
+
+          // Replace the list of fileNames with the de-duped set
+          // of names we've extracted from source control
+          fileNames.clear();
+          fileNames.insert(
+              fileNames.end(),
+              std::make_move_iterator(mergedFileList.begin()),
+              std::make_move_iterator(mergedFileList.end()));
+        }
 
         resultPosition = delta.toPosition;
         watchman::log(
@@ -540,7 +595,7 @@ class EdenView : public QueryableView {
   }
 
   w_string getCurrentClockString() const override {
-    return ClockPosition().toClockString();
+    return getMostRecentRootNumberAndTickValue().toClockString();
   }
 
   uint32_t getLastAgeOutTickValue() const override {
@@ -562,10 +617,7 @@ class EdenView : public QueryableView {
   }
 
   SCM* getSCM() const override {
-    // We're going to return an eden aware implementation when we
-    // get around to hooking this up.  For now, pretend there is
-    // no source control.
-    return nullptr;
+    return scm_.get();
   }
 
   void startThreads(const std::shared_ptr<w_root_t>& root) override {
