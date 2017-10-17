@@ -22,6 +22,7 @@ class TestIllegalFSType(WatchmanTestCase.WatchmanTestCase):
                 # "path /var/tmp/a3osdzvzqnco0sok is on filesystem type zfs"
                 # then add the type name to this list, in sorted order
                 'NTFS',
+                'apfs',
                 'cifs',
                 'hfs',
                 'nfs',
