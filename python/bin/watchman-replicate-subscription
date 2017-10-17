@@ -102,6 +102,9 @@ parser.add_argument('-f', '--full', action='store_true', help="""
 Use with '--list' to print complete subscription information, including the
 query.
 """)
+parser.add_argument('--state-only', action='store_true', help="""
+Print only the subscription state-enter and state-leave PDUs.
+""")
 args = parser.parse_args()
 
 # Running total of individual file events we've seen
@@ -182,6 +185,8 @@ class Subscription(object):
                 total_events = total_events + 1
                 if args.max_events > 0 and total_events >= args.max_events:
                     sys.exit(0)
+            if args.state_only:
+                continue
             for f in dat.get('files', []):
                 out = []
                 if len(repFields) == 1:
@@ -190,8 +195,8 @@ class Subscription(object):
                     out.append(self.formatField(repFields[0], f))
                 else:
                     # Otherwise it is a list of objects
-                    for fname in repFields:
-                        out.append(self.formatField(fname, f[fname]))
+                    for fname, val in f.items():
+                        out.append(self.formatField(fname, val))
                 print(args.separator.join(out))
                 sys.stdout.flush()
                 total_events = total_events + 1
@@ -273,7 +278,14 @@ if len(matchSubs) > 1:
 
 matchSub = matchSubs[0]
 repQuery = matchSubs[0]['info']['query']
-repFields = matchSubs[0]['info']['query']['fields']
+
+# Subscriptions with no fields specified, will get watchman default
+# and will describe themselves in the response.  If they specified
+# just a single field then we'd like to know what it is because we
+# won't know the name from the `files` list so we make an attempt
+# to capture the field definition here and use it only in the case
+# that it is a single field name,
+repFields = matchSubs[0]['info']['query'].get('fields', [])
 repName = args.qname if args.qname else "replicate: " + \
     matchSub['info']['name']
 
