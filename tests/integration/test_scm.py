@@ -60,6 +60,11 @@ class TestScm(WatchmanTestCase.WatchmanTestCase):
 
         return out, err
 
+    def resolveCommitHash(self, revset, cwd=None):
+        return self.hg(
+            args=['log', '-T', '{node}', '-r', revset], cwd=cwd
+        )[0].decode('utf-8')
+
     def test_scmHg(self):
         self.skipIfNoFSMonitor()
 
@@ -267,6 +272,31 @@ o  changeset:   0:b08db10380dd
                 'scm': {
                     'mergebase-with': 'initial'}}})
         self.assertFileListsEqual(res['files'], [])
+
+        # Determine the bookmark hashes
+        mergeBaseMaster = self.resolveCommitHash('TheMaster', cwd=root)
+        mergeBaseInitial = self.resolveCommitHash('initial', cwd=root)
+
+        # Flush subscription
+        self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
+        dat = self.getSubFatClocksOnly('scmsub', root=root)
+
+        # Checkout master - verify merge base change and empty file list
+        self.hg(['co', '-C', 'TheMaster'], cwd=root)
+        self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
+        dat = self.getSubFatClocksOnly('scmsub', root=root)
+        self.assertEqual(len(dat), 1)
+        self.assertEqual(dat[0]['clock']['scm']['mergebase'], mergeBaseMaster)
+        self.assertFileListsEqual(dat[0]['files'], [])
+
+        # Checkout initial - verify merge base change and empty file list
+        self.hg(['co', '-C', 'initial'], cwd=root)
+        self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
+        dat = self.getSubFatClocksOnly('scmsub', root=root)
+        self.assertEqual(len(dat), 1)
+        self.assertEqual(dat[0]['clock']['scm']['mergebase'], mergeBaseInitial)
+        self.assertFileListsEqual(dat[0]['files'], [])
+
 
     def getSubFatClocksOnly(self, subname, root):
         dat = self.waitForSub(subname, root=root)

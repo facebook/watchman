@@ -201,7 +201,11 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
 
     position = res.clockAtStartOfQuery;
 
-    if (res.resultsArray.array().empty()) {
+    // We can suppress empty results, unless this is a source code aware query
+    // and the mergeBase has changed.
+    bool mergeBaseChanged = since_spec && since_spec->hasScmParams() &&
+        res.clockAtStartOfQuery.scmMergeBase != query->since_spec->scmMergeBase;
+    if (res.resultsArray.array().empty() && !mergeBaseChanged) {
       updateSubscriptionTicks(&res);
       return nullptr;
     }
