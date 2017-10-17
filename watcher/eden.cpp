@@ -4,6 +4,7 @@
 #include <folly/String.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseManager.h>
+#include <thrift/lib/cpp/async/TAsyncSocket.h>
 #include <thrift/lib/cpp2/async/HeaderClientChannel.h>
 #include <algorithm>
 #include "eden/fs/service/gen-cpp2/StreamingEdenService.h"
