@@ -165,6 +165,11 @@ tool is executed with this location set as its PWD.
 parser.add_argument('-r', '--run', type=str, help="""
 The script that should be run when changes are detected
 """)
+parser.add_argument('--connect-timeout', type=float, default=600, help="""
+Initial watchman client connection timeout. It should be sufficiently large to
+prevent timeouts when watchman is busy (eg. performing a crawl). The default
+value is 600 seconds.
+""")
 args = parser.parse_args()
 
 if args.target is None and args.run is None:
@@ -187,7 +192,7 @@ def check_root(desired_root):
         sys.exit(1)
 
 targets = {}
-client = pywatchman.client(timeout=600)
+client = pywatchman.client(timeout=args.connect_timeout)
 try:
     client.capabilityCheck(
         required=['cmd-watch-project', 'wildmatch'])
@@ -249,4 +254,3 @@ while True:
     except KeyboardInterrupt:
         # suppress ugly stack trace when they Ctrl-C
         break
-
