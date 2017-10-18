@@ -76,6 +76,11 @@ parser.add_argument('-t', '--timeout', type=float, default=0, help="""
 Exit if no events trigger within the specified timeout.  If timeout is
 zero (the default) then keep running indefinitely.
 """)
+parser.add_argument('--connect-timeout', type=float, default=100, help="""
+Initial watchman client connection timeout. It should be sufficiently large to
+prevent timeouts when watchman is busy (eg. performing a crawl). The default
+value is 100 seconds.
+""")
 args = parser.parse_args()
 
 
@@ -173,12 +178,13 @@ Perhaps you should use the --pattern option?""" % (path, self.path), file=sys.st
 for path in args.path:
     sub = Subscription(path)
 
+# and start up the client + subscriptions
+client = pywatchman.client(timeout=args.connect_timeout)
+
 deadline = None
 if args.timeout > 0:
     deadline = time.time() + args.timeout
 
-# and start up the client + subscriptions
-client = pywatchman.client()
 try:
     client.capabilityCheck(
         required=['term-dirname', 'cmd-watch-project', 'wildmatch'])
