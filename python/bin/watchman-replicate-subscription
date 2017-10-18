@@ -95,6 +95,11 @@ parser.add_argument('-t', '--timeout', type=float, default=0, help="""
 Exit if no events trigger within the specified timeout.  If timeout is
 zero (the default) then keep running indefinitely.
 """)
+parser.add_argument('--connect-timeout', type=float, default=100, help="""
+Initial watchman client connection timeout. It should be sufficiently large to
+prevent timeouts when watchman is busy (eg. performing a crawl). The default
+value is 100 seconds.
+""")
 parser.add_argument('-l', '--list', action='store_true', help="""
 Print the matching subscription list and exit.
 """)
@@ -231,7 +236,7 @@ path = args.path
 subName = args.name
 subPid = args.pid
 subClient = args.client
-client = pywatchman.client()
+client = pywatchman.client(timeout=args.connect_timeout)
 
 # We use debug-get-subscriptions to get subscription information.  Note:
 # the debug commands are not stable/supported, so we are susceptible to breakage
