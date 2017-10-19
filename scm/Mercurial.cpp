@@ -51,6 +51,12 @@ w_string Mercurial::infoCache::lookupMergeBase(const std::string& commitId) {
   return nullptr;
 }
 
+bool fileTimeEqual(const FileInformation& info1, const FileInformation& info2) {
+  return (
+      info1.size == info2.size && info1.mtime.tv_sec == info2.mtime.tv_sec &&
+      info1.mtime.tv_nsec == info2.mtime.tv_nsec);
+}
+
 bool Mercurial::infoCache::dotChanged() {
   bool result;
 
@@ -58,9 +64,7 @@ bool Mercurial::infoCache::dotChanged() {
     auto info = getFileInformation(dirStatePath.c_str(),
                                    CaseSensitivity::CaseSensitive);
 
-    if (info.size != dirstate.size ||
-        info.mtime.tv_sec != dirstate.mtime.tv_sec ||
-        info.mtime.tv_nsec != dirstate.mtime.tv_nsec) {
+    if (!fileTimeEqual(info, dirstate)) {
       log(DBG, "mergeBases stat(", dirStatePath, ") info differs\n");
       result = true;
     } else {
@@ -85,6 +89,7 @@ Mercurial::Mercurial(w_string_piece rootPath, w_string_piece scmRoot)
 w_string Mercurial::mergeBaseWith(w_string_piece commitId) const {
   std::string idString(commitId.data(), commitId.size());
 
+  FileInformation startDirState;
   {
     auto cache = cache_.wlock();
     auto result = cache->lookupMergeBase(idString);
@@ -98,6 +103,7 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId) const {
           " because dirstate file is unchanged\n");
       return result;
     }
+    startDirState = cache->dirstate;
   }
 
   auto revset = to<std::string>("ancestor(.,", commitId, ")");
@@ -124,8 +130,16 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId) const {
   }
 
   {
+    // Check that the dirState did not change, if it did it means that we raced
+    // with another actor and that it is unsafe to blindly replace the cached
+    // value with what we just computed, which we know would be stale
+    // information for later consumers.  It is fine to continue using the data
+    // we collected because we know that a pending change will advise clients of
+    // the new state
     auto cache = cache_.wlock();
-    cache->mergeBases[idString] = outputs.first;
+    if (!fileTimeEqual(startDirState, cache->dirstate)) {
+      cache->mergeBases[idString] = outputs.first;
+    }
   }
   return outputs.first;
 }
