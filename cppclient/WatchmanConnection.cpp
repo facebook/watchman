@@ -6,8 +6,8 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/SocketAddress.h>
 #include <folly/Subprocess.h>
+#include <folly/executors/InlineExecutor.h>
 #include <folly/experimental/bser/Bser.h>
-#include <folly/futures/InlineExecutor.h>
 
 namespace watchman {
 
