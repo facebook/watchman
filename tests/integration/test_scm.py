@@ -166,7 +166,7 @@ o  changeset:   0:b08db10380dd
 
         # compare with the query results that we got
         self.assertEqual(sub['clock']['scm'], res['clock']['scm'])
-        self.assertFileListsEqual(res['files'], dat[0]['files'])
+        self.assertFileListsEqual(res['files'], self.getConsolidatedFileList(dat))
 
         mergeBase = res['clock']['scm']['mergebase']
 
@@ -186,8 +186,8 @@ o  changeset:   0:b08db10380dd
         # and check that subscription results are consistent with it
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
         dat = self.getSubFatClocksOnly('scmsub', root=root)
-        self.assertEqual(dat[0]['clock']['scm'], res['clock']['scm'])
-        self.assertFileListsEqual(res['files'], dat[0]['files'])
+        self.assertEqual(dat[-1]['clock']['scm'], res['clock']['scm'])
+        self.assertFileListsEqual(res['files'], self.getConsolidatedFileList(dat))
 
         # Going back to the merge base, we should get a regular looking incremental
         # list of the files as we would from a since query; we expect to see
@@ -196,7 +196,7 @@ o  changeset:   0:b08db10380dd
 
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
         dat = self.getSubFatClocksOnly('scmsub', root=root)
-        self.assertFileListsEqual(['w00t'], dat[0]['files'])
+        self.assertFileListsEqual(['w00t'], self.getConsolidatedFileList(dat))
 
         self.hg(['co', '-C', 'TheMaster'], cwd=root)
         res = self.watchmanCommand('query', root, {
@@ -211,7 +211,7 @@ o  changeset:   0:b08db10380dd
         self.assertEqual(dat[0]['clock']['scm'], res['clock']['scm'])
         # we already observed the w00t update above, so we expect to see just the
         # file(s) that changed in the update operation
-        self.assertFileListsEqual(['m2'], dat[0]['files'])
+        self.assertFileListsEqual(['m2'], self.getConsolidatedFileList(dat))
 
         # Now we're going to move to another branch with a different mergebase.
         self.hg(['co', '-C', 'feature1'], cwd=root)
@@ -228,8 +228,8 @@ o  changeset:   0:b08db10380dd
         # check again that subscription results are consistent with it.
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
         dat = self.getSubFatClocksOnly('scmsub', root=root)
-        self.assertEqual(dat[0]['clock']['scm'], res['clock']['scm'])
-        self.assertFileListsEqual(res['files'], dat[0]['files'])
+        self.assertEqual(dat[-1]['clock']['scm'], res['clock']['scm'])
+        self.assertFileListsEqual(res['files'], self.getConsolidatedFileList(dat))
 
         # and to check whether our dirstate caching code is reasonable,
         # run a query that should be able to hit the cache
@@ -277,26 +277,29 @@ o  changeset:   0:b08db10380dd
         mergeBaseMaster = self.resolveCommitHash('TheMaster', cwd=root)
         mergeBaseInitial = self.resolveCommitHash('initial', cwd=root)
 
-        # Flush subscription
+        # Checkout initial
+        self.hg(['co', '-C', 'initial'], cwd=root)
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
         dat = self.getSubFatClocksOnly('scmsub', root=root)
 
         # Checkout master - verify merge base change and empty file list
         self.hg(['co', '-C', 'TheMaster'], cwd=root)
+
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
         dat = self.getSubFatClocksOnly('scmsub', root=root)
-        self.assertEqual(len(dat), 1)
-        self.assertEqual(dat[0]['clock']['scm']['mergebase'], mergeBaseMaster)
-        self.assertFileListsEqual(dat[0]['files'], [])
+        self.assertEqual(dat[-1]['clock']['scm']['mergebase'], mergeBaseMaster)
 
         # Checkout initial - verify merge base change and empty file list
         self.hg(['co', '-C', 'initial'], cwd=root)
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
         dat = self.getSubFatClocksOnly('scmsub', root=root)
-        self.assertEqual(len(dat), 1)
-        self.assertEqual(dat[0]['clock']['scm']['mergebase'], mergeBaseInitial)
-        self.assertFileListsEqual(dat[0]['files'], [])
+        self.assertEqual(dat[-1]['clock']['scm']['mergebase'], mergeBaseInitial)
 
+    def getConsolidatedFileList(self, dat):
+        fset = set()
+        for _ in dat:
+            fset.update(_.get('files', []))
+        return fset
 
     def getSubFatClocksOnly(self, subname, root):
         dat = self.waitForSub(subname, root=root)
