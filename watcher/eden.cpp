@@ -736,19 +736,26 @@ std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
         edenRoot));
   }
 
-  auto client = getEdenClient(root->root_path);
+  try {
+    auto client = getEdenClient(root->root_path);
 
-  // We don't strictly need to do this, since we just verified that the root
-  // matches our expectations, but it can't hurt to attempt to talk to the
-  // daemon directly, just in case it is broken for some reason, or in
-  // case someone is trolling us with a directory structure that looks
-  // like an eden mount.
-  std::vector<FileInformationOrError> info;
-  static const std::vector<std::string> paths{""};
-  client->sync_getFileInformation(
-      info, std::string(root->root_path.data(), root->root_path.size()), paths);
+    // We don't strictly need to do this, since we just verified that the root
+    // matches our expectations, but it can't hurt to attempt to talk to the
+    // daemon directly, just in case it is broken for some reason, or in
+    // case someone is trolling us with a directory structure that looks
+    // like an eden mount.
+    std::vector<FileInformationOrError> info;
+    static const std::vector<std::string> paths{""};
+    client->sync_getFileInformation(
+        info,
+        std::string(root->root_path.data(), root->root_path.size()),
+        paths);
 
-  return std::make_shared<EdenView>(root);
+    return std::make_shared<EdenView>(root);
+  } catch (const std::exception& exc) {
+    throw TerminalWatcherError(to<std::string>(
+        "failed to communicate with eden mount ", edenRoot, ": ", exc.what()));
+  }
 }
 
 } // anon namespace
