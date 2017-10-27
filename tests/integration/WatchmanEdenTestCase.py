@@ -61,6 +61,8 @@ class WatchmanEdenTestCase(TestParent):
 
         self.save_home = os.environ['HOME']
         os.environ['HOME'] = self.eden_home
+        # chg can interfere with eden, so disable it up front
+        os.environ['CHGDISABLE'] = '1'
         self.eden = edenclient.EdenFS(
             self.eden_dir,
             etc_eden_dir=self.etc_eden_dir,

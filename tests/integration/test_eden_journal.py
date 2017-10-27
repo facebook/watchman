@@ -7,6 +7,7 @@ from __future__ import division
 from __future__ import print_function
 # no unicode literals
 
+import time
 import WatchmanEdenTestCase
 
 
@@ -60,3 +61,17 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
             'unclean'],
             message=('We expect to report the file changed in the commit '
                      'as well as the unclean file'))
+
+        # make sure that we detect eden getting unmounted.  This sleep is unfortunate
+        # and ugly.  Without it, the unmount will fail because something is accessing
+        # the filesystem.  I haven't been able to find out what it is because fuser
+        # takes too long to run and by the time it has run, whatever that blocker
+        # was is not longer there.  Ordinarily I'd prefer to poll on some condition
+        # in a loop rather than just sleeping an arbitrary amount, but I just don't
+        # know what the offending thing is and running the unmount in a loop is prone
+        # to false negatives.
+        time.sleep(1)
+
+        self.eden.unmount(root)
+        watches = self.watchmanCommand('watch-list')
+        self.assertNotIn(root, watches['roots'])
