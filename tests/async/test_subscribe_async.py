@@ -57,7 +57,7 @@ class TestSubscribe(AsyncWatchmanTestCase.AsyncWatchmanTestCase):
 
         # Trigger a recrawl and ensure that the subscription isn't lost
         self.watchman_command('debug-recrawl', root)
-        # Touch a file to make sure clock increases and subscribtion event.
+        # Touch a file to make sure clock increases and subscription event.
         # This prevents test failure on some platforms
         self.touch_relative(root, 'c')
 

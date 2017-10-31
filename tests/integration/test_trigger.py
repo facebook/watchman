@@ -210,7 +210,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
             # b ar.c has changed.  What we're testing here is that
             # the trigger is run again, and it is ok if it notifies
             # about more files on win32, so just adjust expec:tations
-            # here in the test to accomodate that difference.
+            # here in the test to accommodate that difference.
             expect = ['foo.c', 'b ar.c']
 
         self.validate_trigger_output(root, expect, 'after recrawl')
