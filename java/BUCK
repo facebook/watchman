@@ -5,9 +5,22 @@ java_binary(
     ],
 )
 
+zip_file(
+    name = "watchman-lib.src",
+    srcs = glob(["src/**/*.java"]),
+    licenses = [
+        "LICENSE",
+    ],
+    visibility = [
+        "PUBLIC",
+    ],
+)
+
 java_library(
     name = "watchman-lib",
-    srcs = glob(["src/**/*.java"]),
+    srcs = [
+        ":watchman-lib.src",
+    ],
     annotation_processor_deps = [
         "//third-party/guava:guava",
         "//third-party/immutables:generator",
