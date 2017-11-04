@@ -1,45 +1,49 @@
 java_binary(
-  name = 'watchman',
-  deps = [
-    ':watchman-lib',
-  ]
+    name = "watchman",
+    deps = [
+        ":watchman-lib",
+    ],
 )
 
 java_library(
-  name = 'watchman-lib',
-  srcs = glob(['src/**/*.java']),
-  source = '7',
-  target = '7',
-  visibility = ['PUBLIC'],
-  deps = [
-    '//third-party/guava:guava',
-    '//third-party/immutables:value',
-    '//third-party/jna:jna',
-    '//third-party/jna:jna-platform',
-    '//third-party/jsr-305:jsr-305',
-    '//third-party/nuprocess:nuprocess',
-  ],
-  annotation_processors = [
-    'org.immutables.value.processor.Processor'
-  ],
-  annotation_processor_deps = [
-    '//third-party/guava:guava',
-    '//third-party/immutables:generator',
-    '//third-party/immutables:value-processor',
-  ],
-  tests = [':watchman-tests'],
+    name = "watchman-lib",
+    srcs = glob(["src/**/*.java"]),
+    annotation_processor_deps = [
+        "//third-party/guava:guava",
+        "//third-party/immutables:generator",
+        "//third-party/immutables:value-processor",
+    ],
+    annotation_processors = [
+        "org.immutables.value.processor.Processor",
+    ],
+    source = "7",
+    target = "7",
+    tests = [
+        ":watchman-tests",
+    ],
+    visibility = [
+        "PUBLIC",
+    ],
+    deps = [
+        "//third-party/guava:guava",
+        "//third-party/immutables:value",
+        "//third-party/jna:jna",
+        "//third-party/jna:jna-platform",
+        "//third-party/jsr-305:jsr-305",
+        "//third-party/nuprocess:nuprocess",
+    ],
 )
 
 java_test(
-  name = 'watchman-tests',
-  srcs = glob(['test/**/*.java']),
-  source = '7',
-  target = '7',
-  deps = [
-    ':watchman-lib',
-    '//third-party/guava:guava',
-    '//third-party/hamcrest:hamcrest-2',
-    '//third-party/junit:junit',
-    '//third-party/mockito:mockito',
-  ],
+    name = "watchman-tests",
+    srcs = glob(["test/**/*.java"]),
+    source = "7",
+    target = "7",
+    deps = [
+        ":watchman-lib",
+        "//third-party/guava:guava",
+        "//third-party/hamcrest:hamcrest-2",
+        "//third-party/junit:junit",
+        "//third-party/mockito:mockito",
+    ],
 )
