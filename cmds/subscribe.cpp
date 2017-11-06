@@ -1,6 +1,7 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "MapUtil.h"
 #include "watchman.h"
 
 watchman_client_subscription::watchman_client_subscription(
@@ -504,8 +505,14 @@ static void cmd_subscribe(
 
     // If they didn't specify any drop/defer behavior, default to a reasonable
     // setting that works together with the fsmonitor extension for hg.
-    if (sub->drop_or_defer.find("hg.update") == sub->drop_or_defer.end()) {
+    if (watchman::mapContainsAny(
+            sub->drop_or_defer,
+            "hg.update",
+            "hg.wc_change",
+            "hg.transaction")) {
       sub->drop_or_defer["hg.update"] = false; // defer
+      sub->drop_or_defer["hg.wc_change"] = false; // defer
+      sub->drop_or_defer["hg.transaction"] = false; // defer
     }
   }
 

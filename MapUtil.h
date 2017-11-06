@@ -18,6 +18,18 @@ bool mapInsert(Map& map, const Key& key, const Value& value) {
   return pair.second;
 }
 
+// Returns true if the map contains any of the passed keys
+template <typename Map, typename Key>
+bool mapContainsAny(const Map& map, const Key& key) {
+  return map.find(key) != map.end();
+}
+
+// Returns true if the map contains any of the passed keys
+template <typename Map, typename Key, typename... Args>
+bool mapContainsAny(const Map& map, const Key& firstKey, Args... args) {
+  return mapContainsAny(map, firstKey) || mapContainsAny(map, args...);
+}
+
 // Returns Map[Key] or if it isn't present, returns a default value.
 // if the default isn't specified, returns a default-constructed value.
 template <class Map, typename Key = typename Map::key_type>

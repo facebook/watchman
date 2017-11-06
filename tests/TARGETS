@@ -181,3 +181,14 @@ t_test(
         "@/watchman:testsupport",
     ],
 )
+
+t_test(
+    name = "mapUtilTest",
+    srcs = [
+        "MapUtilTest.cpp",
+        "log_stub.cpp",
+    ],
+    deps = [
+        "@/watchman:testsupport",
+    ],
+)
