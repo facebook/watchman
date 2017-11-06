@@ -65,6 +65,13 @@ class TestScm(WatchmanTestCase.WatchmanTestCase):
             args=['log', '-T', '{node}', '-r', revset], cwd=cwd
         )[0].decode('utf-8')
 
+    def waitForStatesToVacate(self, root):
+        # Wait for all states to vacate (check repeatedly)
+        def checkAssertedStates():
+            result = self.watchmanCommand('debug-get-asserted-states', root)
+            return result['states']
+        self.assertWaitForEqual([], checkAssertedStates)
+
     def test_scmHg(self):
         self.skipIfNoFSMonitor()
 
@@ -161,6 +168,7 @@ o  changeset:   0:b08db10380dd
                 'scm': {
                     'mergebase-with': 'TheMaster'}}})
 
+        self.waitForStatesToVacate(root)
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
         dat = self.getSubFatClocksOnly('scmsub', root=root)
 
@@ -184,6 +192,7 @@ o  changeset:   0:b08db10380dd
         self.assertFileListsEqual(res['files'], ['w00t'])
 
         # and check that subscription results are consistent with it
+        self.waitForStatesToVacate(root)
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
         dat = self.getSubFatClocksOnly('scmsub', root=root)
         self.assertEqual(dat[-1]['clock']['scm'], res['clock']['scm'])
@@ -194,6 +203,7 @@ o  changeset:   0:b08db10380dd
         # the removal of w00t and m2
         os.unlink(os.path.join(root, 'w00t'))
 
+        self.waitForStatesToVacate(root)
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
         dat = self.getSubFatClocksOnly('scmsub', root=root)
         self.assertFileListsEqual(['w00t'], self.getConsolidatedFileList(dat))
@@ -206,6 +216,7 @@ o  changeset:   0:b08db10380dd
         self.assertEqual(res['clock']['scm']['mergebase'], mergeBase)
         self.assertFileListsEqual(res['files'], ['w00t', 'm2'])
 
+        self.waitForStatesToVacate(root)
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
         dat = self.getSubFatClocksOnly('scmsub', root=root)
         self.assertEqual(dat[0]['clock']['scm'], res['clock']['scm'])
@@ -226,6 +237,7 @@ o  changeset:   0:b08db10380dd
         self.assertFileListsEqual(res['files'], ['f1'])
 
         # check again that subscription results are consistent with it.
+        self.waitForStatesToVacate(root)
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
         dat = self.getSubFatClocksOnly('scmsub', root=root)
         self.assertEqual(dat[-1]['clock']['scm'], res['clock']['scm'])
@@ -285,15 +297,20 @@ o  changeset:   0:b08db10380dd
         # Checkout master - verify merge base change and empty file list
         self.hg(['co', '-C', 'TheMaster'], cwd=root)
 
+        self.waitForStatesToVacate(root)
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
         dat = self.getSubFatClocksOnly('scmsub', root=root)
         self.assertEqual(dat[-1]['clock']['scm']['mergebase'], mergeBaseMaster)
+        self.assertFileListsEqual(self.getConsolidatedFileList(dat), [])
 
         # Checkout initial - verify merge base change and empty file list
         self.hg(['co', '-C', 'initial'], cwd=root)
+
+        self.waitForStatesToVacate(root)
         self.watchmanCommand('flush-subscriptions', root, {'sync_timeout': 1000})
         dat = self.getSubFatClocksOnly('scmsub', root=root)
         self.assertEqual(dat[-1]['clock']['scm']['mergebase'], mergeBaseInitial)
+        self.assertFileListsEqual(self.getConsolidatedFileList(dat), [])
 
     def getConsolidatedFileList(self, dat):
         fset = set()
