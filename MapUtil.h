@@ -30,6 +30,17 @@ bool mapContainsAny(const Map& map, const Key& firstKey, Args... args) {
   return mapContainsAny(map, firstKey) || mapContainsAny(map, args...);
 }
 
+// Returns true if the map contains any of a list of passed keys
+template <typename Map, typename Iterator>
+bool mapContainsAnyOf(const Map& map, Iterator first, Iterator last) {
+  for (auto it = first; it != last; ++it) {
+    if (map.find(*it) != map.end()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Returns Map[Key] or if it isn't present, returns a default value.
 // if the default isn't specified, returns a default-constructed value.
 template <class Map, typename Key = typename Map::key_type>
