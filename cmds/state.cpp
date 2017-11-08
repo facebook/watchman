@@ -78,6 +78,9 @@ static void cmd_state_enter(
     return;
   }
 
+  // Increment state transition counter for this root
+  root->stateTransCount++;
+
   // Record the state assertion in the client
   client->states[parsed.name] = assertion;
 
@@ -128,6 +131,9 @@ static void leave_state(
 
   // Now remove the state assertion
   mapRemove(*assertion->root->assertedStates.wlock(), assertion->name);
+
+  // Increment state transition counter for this root
+  assertion->root->stateTransCount++;
 
   if (client) {
     mapRemove(client->states, assertion->name);

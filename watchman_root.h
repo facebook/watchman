@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <atomic>
 #include <condition_variable>
 #include <unordered_map>
 #include "CookieSync.h"
@@ -72,6 +73,10 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
       w_string,
       std::shared_ptr<watchman::ClientStateAssertion>>>
       assertedStates;
+
+  // State transition counter to allow identification of concurrent state
+  // transitions
+  std::atomic<uint32_t> stateTransCount{0};
 
   struct Inner {
     std::shared_ptr<watchman::QueryableView> view_;

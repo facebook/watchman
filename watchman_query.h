@@ -274,6 +274,7 @@ struct w_query_res {
   // Only populated if the query was set to dedup_results
   std::unordered_set<w_string> dedupedFileNames;
   ClockSpec clockAtStartOfQuery;
+  uint32_t stateTransCountAtStartOfQuery;
 };
 
 w_query_res w_query_execute(

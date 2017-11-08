@@ -262,6 +262,9 @@ w_query_res w_query_execute(
   if (query->since_spec && query->since_spec->hasScmParams()) {
     auto scm = root->view()->getSCM();
 
+    // Populate transition counter at start of query. This allows us to
+    // determine if SCM operations ocurred concurrent with query execution.
+    res.stateTransCountAtStartOfQuery = root->stateTransCount.load();
     resultClock.scmMergeBaseWith = query->since_spec->scmMergeBaseWith;
     resultClock.scmMergeBase = scm->mergeBaseWith(resultClock.scmMergeBaseWith);
 

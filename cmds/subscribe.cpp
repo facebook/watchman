@@ -165,7 +165,8 @@ void watchman_client_subscription::updateSubscriptionTicks(w_query_res* res) {
 
 json_ref watchman_client_subscription::buildSubscriptionResults(
     const std::shared_ptr<w_root_t>& root,
-    ClockSpec& position) {
+    ClockSpec& position,
+    bool ignoreStateTransitions) {
   auto since_spec = query->since_spec.get();
 
   if (since_spec && since_spec->tag == w_cs_clock) {
@@ -202,9 +203,23 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
 
     position = res.clockAtStartOfQuery;
 
+    // An SCM operation was interleaved with the query execution. This could
+    // result in over-reporing query results. Discard our results but, do not
+    // update the clock in order to allow changes to be reported the next time
+    // the query is run.
+    bool scmAwareQuery = since_spec && since_spec->hasScmParams();
+    if (!ignoreStateTransitions && scmAwareQuery) {
+      if (root->stateTransCount.load() != res.stateTransCountAtStartOfQuery) {
+        watchman::log(
+            watchman::DBG,
+            "discarding SCM aware query results, SCM activity interleaved\n");
+        return nullptr;
+      }
+    }
+
     // We can suppress empty results, unless this is a source code aware query
     // and the mergeBase has changed.
-    bool mergeBaseChanged = since_spec && since_spec->hasScmParams() &&
+    bool mergeBaseChanged = scmAwareQuery &&
         res.clockAtStartOfQuery.scmMergeBase != query->since_spec->scmMergeBase;
     if (res.resultsArray.array().empty() && !mergeBaseChanged) {
       updateSubscriptionTicks(&res);
@@ -368,7 +383,7 @@ static void cmd_flush_subscriptions(
           "(flush-subscriptions) executing subscription ",
           sub->name,
           "\n");
-      auto sub_result = sub->buildSubscriptionResults(root, out_position);
+      auto sub_result = sub->buildSubscriptionResults(root, out_position, true);
       if (sub_result) {
         send_and_dispose_response(client, std::move(sub_result));
         json_array_append(synced, w_string_to_json(sub_name_str));
