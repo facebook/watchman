@@ -43,6 +43,22 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
                 return sub
         return None
 
+    def test_state_enter_leave(self):
+        root = self.mkdtemp()
+        self.watchmanCommand('watch', root)
+        result = self.watchmanCommand('debug-get-asserted-states', root)
+        self.assertEqual([], result['states'])
+
+        self.watchmanCommand('state-enter', root, 'foo')
+        self.watchmanCommand('state-enter', root, 'bar')
+        result = self.watchmanCommand('debug-get-asserted-states', root)
+        self.assertEqual(['bar', 'foo'], sorted(result['states']))
+
+        self.watchmanCommand('state-leave', root, 'foo')
+        self.watchmanCommand('state-leave', root, 'bar')
+        result = self.watchmanCommand('debug-get-asserted-states', root)
+        self.assertEqual([], result['states'])
+
     def test_defer_state(self):
         root = self.mkdtemp()
         self.watchmanCommand('watch', root)
