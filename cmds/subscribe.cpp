@@ -166,7 +166,7 @@ void watchman_client_subscription::updateSubscriptionTicks(w_query_res* res) {
 json_ref watchman_client_subscription::buildSubscriptionResults(
     const std::shared_ptr<w_root_t>& root,
     ClockSpec& position,
-    bool ignoreStateTransitions) {
+    OnStateTransition onStateTransition) {
   auto since_spec = query->since_spec.get();
 
   if (since_spec && since_spec->tag == w_cs_clock) {
@@ -208,7 +208,7 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
     // update the clock in order to allow changes to be reported the next time
     // the query is run.
     bool scmAwareQuery = since_spec && since_spec->hasScmParams();
-    if (!ignoreStateTransitions && scmAwareQuery) {
+    if (onStateTransition == OnStateTransition::DontAdvance && scmAwareQuery) {
       if (root->stateTransCount.load() != res.stateTransCountAtStartOfQuery) {
         watchman::log(
             watchman::DBG,
@@ -260,7 +260,8 @@ ClockSpec watchman_client_subscription::runSubscriptionRules(
     const std::shared_ptr<w_root_t>& root) {
   ClockSpec position;
 
-  auto response = buildSubscriptionResults(root, position);
+  auto response =
+      buildSubscriptionResults(root, position, OnStateTransition::DontAdvance);
 
   if (response) {
     add_root_warnings_to_response(response, root);
@@ -383,7 +384,8 @@ static void cmd_flush_subscriptions(
           "(flush-subscriptions) executing subscription ",
           sub->name,
           "\n");
-      auto sub_result = sub->buildSubscriptionResults(root, out_position, true);
+      auto sub_result = sub->buildSubscriptionResults(
+          root, out_position, OnStateTransition::QueryAnyway);
       if (sub_result) {
         send_and_dispose_response(client, std::move(sub_result));
         json_array_append(synced, w_string_to_json(sub_name_str));
@@ -566,7 +568,8 @@ static void cmd_subscribe(
 
   add_root_warnings_to_response(resp, root);
   ClockSpec position;
-  initial_subscription_results = sub->buildSubscriptionResults(root, position);
+  initial_subscription_results = sub->buildSubscriptionResults(
+      root, position, OnStateTransition::DontAdvance);
   resp.set("clock", position.toJson());
 
   send_and_dispose_response(client, std::move(resp));

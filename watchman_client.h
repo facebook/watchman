@@ -52,6 +52,8 @@ struct watchman_client : public std::enable_shared_from_this<watchman_client> {
 
 struct watchman_user_client;
 
+enum class OnStateTransition { QueryAnyway, DontAdvance };
+
 struct watchman_client_subscription
     : public std::enable_shared_from_this<watchman_client_subscription> {
   std::shared_ptr<w_root_t> root;
@@ -76,7 +78,7 @@ struct watchman_client_subscription
   json_ref buildSubscriptionResults(
       const std::shared_ptr<w_root_t>& root,
       ClockSpec& position,
-      bool ignoreStateTransitions = false);
+      OnStateTransition onStateTransition);
 
  private:
   ClockSpec runSubscriptionRules(
