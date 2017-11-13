@@ -147,6 +147,7 @@ public class WatchmanConnection {
         Executors.newSingleThreadExecutor(
             new ThreadFactoryBuilder()
                 .setNameFormat("[watchman] Outgoing Message Executor")
+                .setDaemon(true)
                 .build()));
     this.commandQueue = Queues.newLinkedBlockingDeque();
     this.bserSerializer = new BserSerializer();
@@ -154,6 +155,7 @@ public class WatchmanConnection {
     this.incomingMessageExecutor = Executors.newSingleThreadExecutor(
         new ThreadFactoryBuilder()
             .setNameFormat("[watchman] Incoming Message Executor")
+            .setDaemon(true)
             .build());
   }
 
