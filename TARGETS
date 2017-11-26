@@ -99,6 +99,7 @@ buck_cxx_library(
     exported_deps = [
         ":config_h",
         ":fb_deps",
+        "//folly:optional",
         "//watchman/thirdparty/jansson:config_h",
     ],
     visibility = ["PUBLIC"],

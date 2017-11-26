@@ -12,6 +12,7 @@ cpp_library(
     deps = [
         "@/folly:folly",
         "@/folly:network_address",
+        "@/folly:optional",
         "@/folly:subprocess",
         "@/folly/experimental/bser:bser",
         "@/folly/futures:futures",
@@ -27,4 +28,5 @@ buck_cxx_library(
         "WatchmanConnection.h",
     ],
     visibility = ["PUBLIC"],
+    exported_deps = ["//folly:optional"],
 )
