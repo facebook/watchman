@@ -120,6 +120,7 @@ cpp_library(
         ":err",
         ":headers",
         "@/eden/fs/service:thrift-streaming-cpp2",
+        "@/folly:string",
     ],
 )
 
