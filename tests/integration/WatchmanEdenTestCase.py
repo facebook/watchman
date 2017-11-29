@@ -82,10 +82,20 @@ class WatchmanEdenTestCase(TestParent):
             os.environ['HOME'] = self.save_home
 
         if self.eden:
+            self.cleanUpWatches()
             self.eden.cleanup()
 
         if self.eden_watchman:
             self.eden_watchman.stop()
+
+    def cleanUpWatches(self):
+        roots = self.watchmanCommand('watch-list')['roots']
+        self.watchmanCommand('watch-del-all')
+        for root in roots:
+            try:
+                self.eden.unmount(root)
+            except Exception:
+                pass
 
     def makeEdenMount(self, populate_fn=None, enable_hg=False):
         ''' populate_fn is a function that accepts a repo object and
