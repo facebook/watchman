@@ -279,11 +279,13 @@ void filterOutPaths(std::vector<std::string>& fileNames, w_query_ctx* ctx) {
  */
 class EdenWrappedSCM : public SCM {
   std::unique_ptr<SCM> inner_;
+  std::string mountPoint_;
 
  public:
   explicit EdenWrappedSCM(std::unique_ptr<SCM> inner)
       : SCM(inner->getRootPath(), inner->getSCMRoot()),
-        inner_(std::move(inner)) {}
+        inner_(std::move(inner)),
+        mountPoint_(to<std::string>(getRootPath())) {}
 
   w_string mergeBaseWith(w_string_piece commitId) const override {
     return inner_->mergeBaseWith(commitId);
@@ -296,6 +298,57 @@ class EdenWrappedSCM : public SCM {
   SCM::StatusResult getFilesChangedBetweenCommits(
       w_string_piece commitA,
       w_string_piece commitB) const override {
+    auto hashA = to<std::string>(commitA);
+    auto hashB = to<std::string>(commitB);
+
+    auto edenFuture =
+        makeFuture()
+            .via(&getThreadPool())
+            .then([this, hashA, hashB](Result<Unit>) {
+              return getFilesChangedBetweenCommitsFromEden(hashA, hashB);
+            });
+
+    auto hgFuture =
+        makeFuture()
+            .via(&getThreadPool())
+            .then([this, hashA, hashB](Result<Unit>) {
+              return inner_->getFilesChangedBetweenCommits(hashA, hashB);
+            });
+
+    return selectWinner(std::move(edenFuture), std::move(hgFuture)).get();
+  }
+
+  SCM::StatusResult getFilesChangedBetweenCommitsFromEden(
+      const std::string& commitA,
+      const std::string& commitB) const {
+    using facebook::eden::BinaryHash;
+    using facebook::eden::ScmFileStatus;
+    using facebook::eden::ScmStatus;
+    auto client = getEdenClient(getRootPath());
+    ScmStatus status;
+    client->sync_getScmStatusBetweenRevisions(
+        status,
+        mountPoint_,
+        BinaryHash{to<std::string>(commitA)},
+        BinaryHash{to<std::string>(commitB)});
+    SCM::StatusResult result;
+    for (const auto& it : status.entries) {
+      w_string name(it.first.data(), it.first.size());
+      switch (it.second) {
+        case ScmFileStatus::ADDED:
+          result.addedFiles.emplace_back(name);
+          break;
+        case ScmFileStatus::REMOVED:
+          result.removedFiles.emplace_back(name);
+          break;
+        case ScmFileStatus::MODIFIED:
+          result.changedFiles.emplace_back(name);
+          break;
+        case ScmFileStatus::IGNORED:
+          /* impossible */
+          break;
+      }
+    }
     return inner_->getFilesChangedBetweenCommits(commitA, commitB);
   }
 

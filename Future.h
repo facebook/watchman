@@ -1,6 +1,7 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <memory>
@@ -457,4 +458,48 @@ collectAll(InputIterator first, InputIterator last) {
 
   return state->p.getFuture();
 }
+
+/** Given a pair of Futures racing to yield the same logical value
+ * through different means, return a new Future that will yield
+ * success as soon as the first of the pair yields success, or
+ * yield an error once both have failed. */
+template <typename T>
+Future<T> selectWinner(Future<T> first, Future<T> second) {
+  struct Select {
+    Promise<T> promise;
+    std::atomic<size_t> ok{0};
+    std::atomic<size_t> error{0};
+
+    void maybeFinish(Result<T> result) {
+      if (result.hasValue()) {
+        // We were successful, but do we need to report it?
+        size_t current = ok.load();
+
+        if (current == 0 && ok.compare_exchange_strong(current, 1)) {
+          promise.setResult(std::move(result));
+        }
+        return;
+      }
+
+      size_t current = error.load();
+      if (current == 0 && error.compare_exchange_strong(current, 1)) {
+        // We were the first to fail; nothing more to do
+        return;
+      }
+
+      // We're the loser of the race; the other guy failed and we did
+      // also so we need to report the failure.
+      promise.setResult(std::move(result));
+    }
+  };
+
+  auto state = std::make_shared<Select>();
+
+  first.then(
+      [state](Result<T> result) { state->maybeFinish(std::move(result)); });
+  second.then(
+      [state](Result<T> result) { state->maybeFinish(std::move(result)); });
+
+  return state->promise.getFuture();
+};
 }
