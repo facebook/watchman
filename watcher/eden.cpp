@@ -275,10 +275,42 @@ void filterOutPaths(std::vector<std::string>& fileNames, w_query_ctx* ctx) {
       fileNames.end());
 }
 
+/** Wraps around the raw SCM to acclerate certain things for Eden
+ */
+class EdenWrappedSCM : public SCM {
+  std::unique_ptr<SCM> inner_;
+
+ public:
+  explicit EdenWrappedSCM(std::unique_ptr<SCM> inner)
+      : SCM(inner->getRootPath(), inner->getSCMRoot()),
+        inner_(std::move(inner)) {}
+
+  w_string mergeBaseWith(w_string_piece commitId) const override {
+    return inner_->mergeBaseWith(commitId);
+  }
+  std::vector<w_string> getFilesChangedSinceMergeBaseWith(
+      w_string_piece commitId) const override {
+    return inner_->getFilesChangedSinceMergeBaseWith(commitId);
+  }
+
+  SCM::StatusResult getFilesChangedBetweenCommits(
+      w_string_piece commitA,
+      w_string_piece commitB) const override {
+    return inner_->getFilesChangedBetweenCommits(commitA, commitB);
+  }
+
+  static std::unique_ptr<EdenWrappedSCM> wrap(std::unique_ptr<SCM> inner) {
+    if (!inner) {
+      return nullptr;
+    }
+    return std::make_unique<EdenWrappedSCM>(std::move(inner));
+  }
+};
+
 class EdenView : public QueryableView {
   w_string root_path_;
   // The source control system that we detected during initialization
-  std::unique_ptr<SCM> scm_;
+  mutable std::unique_ptr<EdenWrappedSCM> scm_;
   folly::EventBase subscriberEventBase_;
   mutable LRUCache<BetweenCommitKey, SCM::StatusResult>
       filesBetweenCommitCache_;
@@ -286,7 +318,7 @@ class EdenView : public QueryableView {
  public:
   explicit EdenView(w_root_t* root)
       : root_path_(root->root_path),
-        scm_(SCM::scmForPath(root->root_path)),
+        scm_(EdenWrappedSCM::wrap(SCM::scmForPath(root->root_path))),
         // Allow for 32 pairs of revs, with errors cached for 10 seconds
         filesBetweenCommitCache_(32, std::chrono::seconds(10)) {}
 
