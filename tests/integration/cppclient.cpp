@@ -82,6 +82,18 @@ int main(int argc, char** argv) {
   }
   hit = false;
 
+  LOG(INFO) << "Flushing subscription";
+  auto flush_res =
+      c.flushSubscription(sub, std::chrono::milliseconds(1000)).wait().value();
+  if (flush_res.find("no_sync_needed") == flush_res.items().end() ||
+      !flush_res.find("no_sync_needed")->second.isArray() ||
+      !(flush_res.find("no_sync_needed")->second.size() == 1) ||
+      !(flush_res.find("no_sync_needed")->second[0] == "sub1")) {
+    LOG(ERROR) << "FAIL: unexpected flush result " << toJson(flush_res);
+    return 1;
+  }
+  LOG(INFO) << "PASS: flush response looks okay";
+
   LOG(INFO) << "Unsubscribing";
   c.unsubscribe(sub).wait();
   LOG(INFO) << "Trying to falsely trigger subscription";

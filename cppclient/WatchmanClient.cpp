@@ -124,6 +124,18 @@ Future<SubscriptionPtr> WatchmanClient::subscribe(
       });
 }
 
+Future<dynamic> WatchmanClient::flushSubscription(
+    SubscriptionPtr sub,
+    std::chrono::milliseconds timeout) {
+  CHECK(sub->active_) << "Not subscribed.";
+
+  dynamic args = dynamic::object;
+  args["sync_timeout"] = timeout.count();
+  args["subscriptions"] = dynamic::array(sub->name_);
+  return run(
+      dynamic::array("flush-subscriptions", sub->watchPath_->root_, args));
+}
+
 Future<dynamic> WatchmanClient::unsubscribe(SubscriptionPtr sub) {
   CHECK(sub->active_) << "Already unsubscribed.";
 

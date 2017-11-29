@@ -51,6 +51,7 @@
 
 #include "WatchmanConnection.h"
 
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -177,6 +178,15 @@ struct WatchmanClient {
       folly::StringPiece path,
       folly::Executor* executor,
       SubscriptionCallback&& callback);
+
+  /**
+   * Returns a future which completes when all outstanding Watchman updates have
+   * been received or a timeout occurs.
+   * See https://facebook.github.io/watchman/docs/cmd/flush-subscriptions.html
+   */
+  folly::Future<folly::dynamic> flushSubscription(
+      SubscriptionPtr subscription,
+      std::chrono::milliseconds timeout);
 
   /** Cancels an existing subscription. */
   folly::Future<folly::dynamic> unsubscribe(SubscriptionPtr subscription);
