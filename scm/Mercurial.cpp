@@ -173,8 +173,8 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
 SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
     w_string_piece commitA,
     w_string_piece commitB) const {
-  // The "" argument at the end causes paths to be printed out relative to the
-  // cwd (set to root path above).
+  // The "" argument at the end causes paths to be printed out
+  // relative to the cwd (set to root path above).
   ChildProcess proc(
       {"hg", "status", "--print0", "--rev", commitA, "--rev", commitB, ""},
       makeHgOptions());
@@ -196,7 +196,7 @@ SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
   }
 
   SCM::StatusResult result;
-  log(ERR, "processing ", lines.size(), " status lines\n");
+  log(DBG, "processing ", lines.size(), " status lines\n");
   for (auto& line : lines) {
     if (line.size() < 3) {
       continue;
@@ -216,4 +216,5 @@ SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
 
   return result;
 }
+
 } // namespace watchman

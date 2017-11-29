@@ -11,6 +11,7 @@
 #include "watchman.h"
 
 #include "ChildProcess.h"
+#include "LRUCache.h"
 #include "QueryableView.h"
 #include "ThreadPool.h"
 
@@ -20,6 +21,37 @@ using facebook::eden::FileInformation;
 using facebook::eden::JournalPosition;
 using facebook::eden::FileDelta;
 using facebook::eden::EdenError;
+
+namespace {
+/** Represents a cache key for getFilesChangedBetweenCommits()
+ * It is unfortunately a bit boilerplate-y due to the requirements
+ * of unordered_map<>. */
+struct BetweenCommitKey {
+  std::string sinceCommit;
+  std::string toCommit;
+
+  bool operator==(const BetweenCommitKey& other) const {
+    return sinceCommit == other.sinceCommit && toCommit == other.toCommit;
+  }
+
+  std::size_t hashValue() const {
+    using namespace watchman;
+    return hash_128_to_64(
+        w_hash_bytes(sinceCommit.data(), sinceCommit.size(), 0),
+        w_hash_bytes(toCommit.data(), toCommit.size(), 0));
+  }
+};
+} // namespace
+
+namespace std {
+/** Ugly glue for unordered_map to hash BetweenCommitKey items */
+template <>
+struct hash<BetweenCommitKey> {
+  std::size_t operator()(BetweenCommitKey const& key) const {
+    return key.hashValue();
+  }
+};
+} // namespace std
 
 namespace watchman {
 namespace {
@@ -248,10 +280,15 @@ class EdenView : public QueryableView {
   // The source control system that we detected during initialization
   std::unique_ptr<SCM> scm_;
   folly::EventBase subscriberEventBase_;
+  mutable LRUCache<BetweenCommitKey, SCM::StatusResult>
+      filesBetweenCommitCache_;
 
  public:
   explicit EdenView(w_root_t* root)
-      : root_path_(root->root_path), scm_(SCM::scmForPath(root->root_path)) {}
+      : root_path_(root->root_path),
+        scm_(SCM::scmForPath(root->root_path)),
+        // Allow for 32 pairs of revs, with errors cached for 10 seconds
+        filesBetweenCommitCache_(32, std::chrono::seconds(10)) {}
 
   void timeGenerator(w_query* /*query*/, struct w_query_ctx* ctx)
       const override {
@@ -352,7 +389,7 @@ class EdenView : public QueryableView {
               "\n");
 
           auto changedBetweenCommits =
-              scm_->getFilesChangedBetweenCommits(fromHash, toHash);
+              getFilesChangedBetweenCommits(fromHash, toHash);
 
           for (auto& fileName : changedBetweenCommits.changedFiles) {
             mergedFileList.insert(to<std::string>(fileName));
@@ -619,6 +656,22 @@ class EdenView : public QueryableView {
 
   SCM* getSCM() const override {
     return scm_.get();
+  }
+
+  SCM::StatusResult getFilesChangedBetweenCommits(
+      w_string_piece commitA,
+      w_string_piece commitB) const {
+    BetweenCommitKey key{to<std::string>(commitA), to<std::string>(commitB)};
+    auto result =
+        filesBetweenCommitCache_
+            .get(
+                key,
+                [this](const BetweenCommitKey& cacheKey) {
+                  return makeFuture(getSCM()->getFilesChangedBetweenCommits(
+                      cacheKey.sinceCommit, cacheKey.toCommit));
+                })
+            .get();
+    return result->value();
   }
 
   void startThreads(const std::shared_ptr<w_root_t>& root) override {
