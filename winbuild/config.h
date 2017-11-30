@@ -143,7 +143,7 @@ size_t backtrace_from_exception(
 #define PACKAGE_NAME "watchman"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "4.9.0"
+#define PACKAGE_VERSION "4.9.1"
 
 /* Version number of package */
 #define VERSION PACKAGE_VERSION
@@ -170,7 +170,7 @@ size_t backtrace_from_exception(
 /* #undef WATCHMAN_BUILD_INFO */
 
 /* system configuration file path */
-#define WATCHMAN_CONFIG_FILE "/etc/watchman.json"
+#define WATCHMAN_CONFIG_FILE "C:/ProgramData/facebook/watchman.json"
 
 /* default location for state */
 /* #undef WATCHMAN_STATE_DIR */

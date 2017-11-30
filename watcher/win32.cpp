@@ -106,7 +106,6 @@ void WinWatcher::signalThreads() {
 }
 
 void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
-  DWORD size = WATCHMAN_BATCH_LIMIT * (sizeof(FILE_NOTIFY_INFORMATION) + 512);
   std::vector<uint8_t> buf;
   DWORD err, filter;
   OVERLAPPED olap;
@@ -122,6 +121,8 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
   // soon after a change is noticed, as this can cause recursive
   // deletes to fail.
   auto extraLatency = root->config.getInt("win32_batch_latency_ms", 30);
+
+  DWORD size = root->config.getInt("win32_rdcw_buf_size", 16384);
 
   // Block until winmatch_root_st is waiting for our initialization
   {
