@@ -116,6 +116,7 @@ cpp_library(
     # out of the final binary!
     link_whole = True,
     supported_platforms_regex = "glibc",
+    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [
         ":err",
         ":headers",
@@ -134,6 +135,7 @@ cpp_library(
     # out of the final binary!
     link_whole = True,
     supported_platforms_regex = "glibc",
+    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [
         ":eden_watcher",
         ":err",
@@ -177,6 +179,7 @@ cpp_library(
         "log.cpp",
     ],
     compiler_flags = compiler_flags,
+    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [
         ":headers",
         "@/watchman/thirdparty/jansson:jansson",
@@ -208,6 +211,7 @@ cpp_library(
         "root/warnerr.cpp",
     ],
     compiler_flags = compiler_flags,
+    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [":headers"],
 )
 
@@ -216,6 +220,7 @@ cpp_library(
     srcs = ["query/pcre.cpp"],
     compiler_flags = ["-DHAVE_PCRE_H"] + compiler_flags,
     link_whole = True,
+    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [":headers"],
     external_deps = ["pcre"],
 )
@@ -273,6 +278,7 @@ cpp_library(
     # out of the final binary!
     link_whole = True,
     os_linker_flags = os_linker_flags,
+    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [
         ":err",
         ":headers",
