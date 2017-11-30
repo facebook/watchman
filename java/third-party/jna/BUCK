@@ -1,25 +1,25 @@
 remote_file(
-  name = 'jna-jar',
-  out = 'jna-4.2.0.jar',
-  url = 'http://central.maven.org/maven2/net/java/dev/jna/jna/4.2.0/jna-4.2.0.jar',
-  sha1 = '812b976ed15bb1b0b3fc059fae927b0f76b39585',
+    name = "jna-jar",
+    out = "jna-4.2.0.jar",
+    sha1 = "812b976ed15bb1b0b3fc059fae927b0f76b39585",
+    url = "http://central.maven.org/maven2/net/java/dev/jna/jna/4.2.0/jna-4.2.0.jar",
 )
 
 remote_file(
-  name = 'jna-platform-jar',
-  out = 'jna-platform-4.2.0.jar',
-  url = 'http://central.maven.org/maven2/net/java/dev/jna/jna-platform/4.2.0/jna-platform-4.2.0.jar',
-  sha1 = '4a04d34615d534f273f7b8bd30d75304efe4ab04',
+    name = "jna-platform-jar",
+    out = "jna-platform-4.2.0.jar",
+    sha1 = "4a04d34615d534f273f7b8bd30d75304efe4ab04",
+    url = "http://central.maven.org/maven2/net/java/dev/jna/jna-platform/4.2.0/jna-platform-4.2.0.jar",
 )
 
 prebuilt_jar(
-  name = 'jna',
-  binary_jar = ':jna-jar',
-  visibility = ['PUBLIC'],
+    name = "jna",
+    binary_jar = ":jna-jar",
+    visibility = ["PUBLIC"],
 )
 
 prebuilt_jar(
-  name = 'jna-platform',
-  binary_jar = ':jna-platform-jar',
-  visibility = ['PUBLIC'],
+    name = "jna-platform",
+    binary_jar = ":jna-platform-jar",
+    visibility = ["PUBLIC"],
 )

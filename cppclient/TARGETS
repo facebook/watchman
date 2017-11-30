@@ -27,6 +27,6 @@ buck_cxx_library(
         "WatchmanClient.h",
         "WatchmanConnection.h",
     ],
-    visibility = ["PUBLIC"],
     exported_deps = ["//folly:optional"],
+    visibility = ["PUBLIC"],
 )

@@ -16,4 +16,3 @@ python_library(
     base_module = "pywatchman",
     deps = [":bser"],
 )
-
