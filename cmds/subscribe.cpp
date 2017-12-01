@@ -525,10 +525,8 @@ static void cmd_subscribe(
     if (watchman::mapContainsAny(
             sub->drop_or_defer,
             "hg.update",
-            "hg.wc_change",
             "hg.transaction")) {
       sub->drop_or_defer["hg.update"] = false; // defer
-      sub->drop_or_defer["hg.wc_change"] = false; // defer
       sub->drop_or_defer["hg.transaction"] = false; // defer
     }
   }
