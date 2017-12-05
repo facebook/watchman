@@ -337,9 +337,10 @@ w_query_res w_query_execute(
 
   if (query->query_spec.get_default("bench")) {
     for (auto i = 0; i < 100; ++i) {
-      w_query_ctx c(query, root, false);
+      w_query_ctx c(query, root, ctx.disableFreshInstance);
       w_query_res r;
       c.clockAtStartOfQuery = ctx.clockAtStartOfQuery;
+      c.since = ctx.since;
       execute_common(&c, nullptr, &r, generator);
     }
   }
