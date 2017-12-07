@@ -245,7 +245,7 @@ int json_object_clear(json_t *json)
 }
 
 int json_object_update(const json_t* src, json_t* target) {
-  if (!json_is_object(src) || !json_is_object(src))
+  if (!json_is_object(src) || !json_is_object(target))
     return -1;
 
   auto target_obj = json_to_object(target);
