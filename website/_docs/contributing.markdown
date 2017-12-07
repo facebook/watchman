@@ -19,6 +19,10 @@ If we ask you to fill out a CLA we'll direct you to [our online CLA
 page](https://code.facebook.com/cla) where you can complete it
 easily.  We use the same form as the Apache CLA so that friction is minimal.
 
+Facebook Open Source provides a Code of Conduct statement for all
+projects to follow, to promote a welcoming and safe open source community.
+Please [read the full text](https://code.facebook.com/codeofconduct) so that you can understand what actions will and will not be tolerated.
+
 ### Getting Started
 
 You need to be able to build watchman from source and run its test suite.
