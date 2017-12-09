@@ -10,6 +10,7 @@ cpp_library(
         "WatchmanConnection.h",
     ],
     deps = [
+        "@/folly:dynamic",
         "@/folly:folly",
         "@/folly:network_address",
         "@/folly:optional",
@@ -27,6 +28,9 @@ buck_cxx_library(
         "WatchmanClient.h",
         "WatchmanConnection.h",
     ],
-    exported_deps = ["//folly:optional"],
+    exported_deps = [
+        "//folly:dynamic",
+        "//folly:optional",
+    ],
     visibility = ["PUBLIC"],
 )
