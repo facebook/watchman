@@ -101,6 +101,7 @@ buck_cxx_library(
         ":fb_deps",
         "//folly:dynamic",
         "//folly:exception_wrapper",
+        "//folly:executor",
         "//folly:optional",
         "//watchman/thirdparty/jansson:config_h",
     ],
