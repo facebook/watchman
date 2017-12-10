@@ -11,6 +11,7 @@ cpp_library(
     ],
     deps = [
         "@/folly:dynamic",
+        "@/folly:exception_wrapper",
         "@/folly:folly",
         "@/folly:network_address",
         "@/folly:optional",
@@ -30,6 +31,7 @@ buck_cxx_library(
     ],
     exported_deps = [
         "//folly:dynamic",
+        "//folly:exception_wrapper",
         "//folly:optional",
     ],
     visibility = ["PUBLIC"],
