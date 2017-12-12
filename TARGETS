@@ -103,6 +103,7 @@ buck_cxx_library(
         "//folly:exception_wrapper",
         "//folly:executor",
         "//folly:optional",
+        "//folly/io:iobuf",
         "//watchman/thirdparty/jansson:config_h",
     ],
     visibility = ["PUBLIC"],

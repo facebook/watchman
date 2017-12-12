@@ -20,6 +20,7 @@ cpp_library(
         "@/folly:subprocess",
         "@/folly/experimental/bser:bser",
         "@/folly/futures:futures",
+        "@/folly/io:iobuf",
         "@/folly/io/async:async",
     ],
 )
@@ -36,6 +37,7 @@ buck_cxx_library(
         "//folly:exception_wrapper",
         "//folly:executor",
         "//folly:optional",
+        "//folly/io:iobuf",
     ],
     visibility = ["PUBLIC"],
 )
