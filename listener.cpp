@@ -444,13 +444,15 @@ static std::shared_ptr<watchman_client> make_new_client(
 }
 
 #ifdef _WIN32
-static void named_pipe_accept_loop(const char *path) {
+static void named_pipe_accept_loop_internal(const char* path) {
   HANDLE handles[2];
   OVERLAPPED olap;
   HANDLE connected_event = CreateEvent(NULL, FALSE, TRUE, NULL);
 
   if (!connected_event) {
-    w_log(W_LOG_ERR, "named_pipe_accept_loop: CreateEvent failed: %s\n",
+    w_log(
+        W_LOG_ERR,
+        "named_pipe_accept_loop_internal: CreateEvent failed: %s\n",
         win32_strerror(GetLastError()));
     return;
   }
@@ -516,6 +518,17 @@ static void named_pipe_accept_loop(const char *path) {
       }
     }
     make_new_client(w_stm_fdopen(std::move(client_fd)));
+  }
+}
+
+static void named_pipe_accept_loop(const char* path) {
+  std::vector<std::thread> acceptors;
+  for (json_int_t i = 0; i < cfg_get_int("win32_concurrent_accepts", 32); ++i) {
+    acceptors.push_back(
+        std::thread([path]() { named_pipe_accept_loop_internal(path); }));
+  }
+  for (auto& thr : acceptors) {
+    thr.join();
   }
 }
 #endif
