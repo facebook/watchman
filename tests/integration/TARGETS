@@ -9,6 +9,7 @@ cpp_binary(
         "@/watchman/cppclient:cppclient",
         "@/watchman/cppclient:headers",
     ],
+    external_deps = ["glog"],
 )
 
 testsupport_srcs = glob(

@@ -23,6 +23,7 @@ cpp_library(
         "@/folly/io:iobuf",
         "@/folly/io/async:async",
     ],
+    external_deps = ["glog"],
 )
 
 buck_cxx_library(
