@@ -2,7 +2,6 @@ cpp_binary(
     name = "cppclient",
     srcs = ["cppclient.cpp"],
     deps = [
-        "@/folly:folly",
         "@/folly:json",
         "@/folly/init:init",
         "@/folly/io/async:event_base_thread",

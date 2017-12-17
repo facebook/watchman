@@ -13,7 +13,6 @@ cpp_library(
         "@/folly:dynamic",
         "@/folly:exception_wrapper",
         "@/folly:executor",
-        "@/folly:folly",
         "@/folly:format",
         "@/folly:network_address",
         "@/folly:optional",
