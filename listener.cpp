@@ -457,8 +457,6 @@ static void named_pipe_accept_loop_internal(const char* path) {
     return;
   }
 
-  listener_thread_event = CreateEvent(NULL, FALSE, TRUE, NULL);
-
   handles[0] = connected_event;
   handles[1] = listener_thread_event;
   memset(&olap, 0, sizeof(olap));
@@ -523,6 +521,8 @@ static void named_pipe_accept_loop_internal(const char* path) {
 
 static void named_pipe_accept_loop(const char* path) {
   std::vector<std::thread> acceptors;
+
+  listener_thread_event = CreateEvent(NULL, TRUE, FALSE, NULL);
   for (json_int_t i = 0; i < cfg_get_int("win32_concurrent_accepts", 32); ++i) {
     acceptors.push_back(
         std::thread([path]() { named_pipe_accept_loop_internal(path); }));

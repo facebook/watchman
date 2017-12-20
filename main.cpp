@@ -48,14 +48,14 @@ static void compute_file_name(char **strp, const char *user, const char *suffix,
                               const char *what);
 
 static bool lock_pidfile(void) {
-#if !defined(USE_GIMLI) && !defined(_WIN32)
-  struct flock lock;
-  pid_t mypid;
-
   // We defer computing this path until we're in the server context because
   // eager evaluation can trigger integration test failures unless all clients
   // are aware of both the pidfile and the sockpath being used in the tests.
   compute_file_name(&pid_file, compute_user_name(), "pid", "pidfile");
+
+#if !defined(USE_GIMLI) && !defined(_WIN32)
+  struct flock lock;
+  pid_t mypid;
 
   mypid = getpid();
   memset(&lock, 0, sizeof(lock));
@@ -104,7 +104,70 @@ static bool lock_pidfile(void) {
   fd.release();
   return true;
 #else
-  // ze-googles, they do nothing!!
+  // One does not simply, and without risk of races, write a pidfile
+  // on win32.  Instead we're using a named mutex in the global namespace.
+  // This gives us a very simple way to exclusively claim ownership of
+  // the lock for this user.  To make things a little more complicated,
+  // since we scope our locks based on the state dir location and require
+  // this to work for our integration tests, we need to create a unique
+  // name per state dir.  This is made even more interesting because
+  // we are forbidden from using windows directory separator characters
+  // in the name, so we cannot simply concatenate the state dir path
+  // with a watchman specific prefix.  Instead we iterate the path
+  // and rewrite any backslashes with forward slashes and use that
+  // for the name.
+  // Using a mutex for this does make it more awkward to discover
+  // the process id of the exclusive owner, but that's not critically
+  // important; it is possible to connect to the instance and issue
+  // a get-pid command if that is needed.
+
+  // We use the global namespace so that we ensure that we have one
+  // watchman process per user per state dir location.  If we didn't
+  // use the Global namespace we'd end using a local namespace scoped
+  // to the user session and that might cause confusion/insanity if
+  // they are doing something elaborate like being logged in via
+  // ssh in multiple sessions and expecting to share state.
+  std::string name("Global\\Watchman-");
+  const auto* it = pid_file;
+  while (*it != 0) {
+    if (*it == '\\') {
+      // We're not allowed to use backslash in the name, so normalize
+      // to forward slashes.
+      name.append("/");
+    } else {
+      name.append(it, 1);
+    }
+    ++it;
+  }
+
+  auto mutex = CreateMutexA(nullptr, true, name.c_str());
+
+  if (!mutex) {
+    watchman::log(
+        watchman::ERR,
+        "Failed to create mutex named: ",
+        name,
+        ": ",
+        GetLastError(),
+        "\n");
+    return false;
+  }
+
+  if (GetLastError() == ERROR_ALREADY_EXISTS) {
+    watchman::log(
+        watchman::ERR,
+        "Failed to acquire mutex named: ",
+        name,
+        "; watchman is already running for this context\n");
+    return false;
+  }
+
+  /* We are intentionally not closing the mutex and intentionally not storing
+   * a reference to it anywhere: the intention is that it remain locked
+   * for the rest of the lifetime of our process.
+   * CloseHandle(mutex); // NOPE!
+   */
+
   return true;
 #endif
 }
