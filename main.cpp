@@ -1025,19 +1025,21 @@ static void spawn_watchman(void) {
   }
 #endif
 
+#ifdef USE_GIMLI
+  spawn_via_gimli();
+#elif defined(_WIN32)
+  spawn_win32();
+#else
   if (no_system_spawner) {
     daemonize();
   } else {
-#ifdef USE_GIMLI
-    spawn_via_gimli();
-#elif defined(__APPLE__)
+#ifdef __APPLE__
     spawn_via_launchd();
-#elif defined(_WIN32)
-    spawn_win32();
 #else
     daemonize();
 #endif
   }
+#endif
 }
 
 int main(int argc, char **argv)
