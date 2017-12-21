@@ -20,7 +20,7 @@ if (platform == 'darwin' || platform == 'win32') {
       assert.equal(err_mk_dir_bar, null, 'no errors');
 
       client.command(['watch', bar], function (error, resp) {
-        assert.equal('unable to resolve root ' + bar
+        assert.equal('RootResolveError: unable to resolve root ' + bar
                       + ": \"" + bar + "\" resolved to \"" + BAR
                       + "\" but we were unable to examine \""
                       + bar + "\" using strict "

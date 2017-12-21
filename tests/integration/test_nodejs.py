@@ -21,7 +21,8 @@ import shutil
 import tempfile
 import distutils.spawn
 
-node_bin = distutils.spawn.find_executable('node')
+node_bin = distutils.spawn.find_executable('node') or \
+                distutils.spawn.find_executable('nodejs')
 npm_bin = distutils.spawn.find_executable('npm')
 
 WATCHMAN_SRC_DIR = os.environ.get('WATCHMAN_SRC_DIR', os.getcwd())
@@ -68,6 +69,11 @@ def find_js_tests(test_class):
 
 @find_js_tests
 class NodeTestCase(unittest.TestCase):
+    attempt = 0
+
+    def setAttemptNumber(self, attempt):
+        ''' enable flaky test retry '''
+        self.attempt = attempt
 
     @unittest.skipIf(node_bin is None or npm_bin is None, 'node not installed')
     def runTest(self):
@@ -75,6 +81,8 @@ class NodeTestCase(unittest.TestCase):
         env['WATCHMAN_SOCK'] = WatchmanInstance.getSharedInstance().getSockPath()
         dotted = os.path.normpath(self.id()).replace(os.sep, '.').replace(
             'tests.integration.', '').replace('.php', '')
+        if self.attempt > 0:
+            dotted += "-%d" % self.attempt
         env['TMPDIR'] = os.path.join(TempDir.get_temp_dir().get_dir(), dotted)
         os.mkdir(env['TMPDIR'])
 
@@ -105,5 +113,3 @@ class NodeTestCase(unittest.TestCase):
                       (status, stdout.decode('utf-8'), stderr.decode('utf-8')))
             return
         self.assertTrue(True, self.getCommandArgs())
-
-
