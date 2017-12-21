@@ -2,5 +2,5 @@ cpp_library(
     name = "tap",
     srcs = ["tap.cpp"],
     headers = ["tap.h"],
-    deps = ["@/watchman:headers"],
+    deps = ["//watchman:headers"],
 )

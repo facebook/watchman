@@ -4,7 +4,7 @@ python_library(
     base_module = "pywatchman_aio",
     py_version = 3,
     deps = [
-        "@/watchman/python/pywatchman:bser",
-        "@/watchman/python/pywatchman:pywatchman",
+        "//watchman/python/pywatchman:bser",
+        "//watchman/python/pywatchman:pywatchman",
     ],
 )

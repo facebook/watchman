@@ -6,6 +6,6 @@ cpp_library(
         "art-inl.h",
     ],
     deps = [
-        "@/watchman:headers",
+        "//watchman:headers",
     ],
 )

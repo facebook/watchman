@@ -3,6 +3,6 @@ python_unittest(
     srcs = glob(["*.py"]),
     base_module = "python/tests",
     deps = [
-        "@/watchman/python/pywatchman:pywatchman",
+        "//watchman/python/pywatchman:pywatchman",
     ],
 )

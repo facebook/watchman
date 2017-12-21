@@ -73,7 +73,7 @@ def config_h():
             srcs=[],
             compiler_flags=['-DWATCHMAN_FACEBOOK_INTERNAL'],
             deps=[
-                "@/common/base:build_info",
+                "//common/base:build_info",
             ],
         )
 
@@ -124,8 +124,8 @@ cpp_library(
     deps = [
         ":err",
         ":headers",
-        "@/eden/fs/service:thrift-streaming-cpp2",
-        "@/folly:string",
+        "//eden/fs/service:thrift-streaming-cpp2",
+        "//folly:string",
     ],
 )
 
@@ -186,7 +186,7 @@ cpp_library(
     undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [
         ":headers",
-        "@/watchman/thirdparty/jansson:jansson",
+        "//watchman/thirdparty/jansson:jansson",
     ],
 )
 
@@ -204,7 +204,7 @@ cpp_library(
     deps = [
         ":hash",
         ":headers",
-        "@/watchman/thirdparty/jansson:utf",
+        "//watchman/thirdparty/jansson:utf",
     ],
 )
 
@@ -250,8 +250,8 @@ cpp_library(
         ":headers",
         ":log",
         ":string",
-        "@/watchman/thirdparty/jansson:jansson",
-        "@/watchman/thirdparty/libart/src:art",
+        "//watchman/thirdparty/jansson:jansson",
+        "//watchman/thirdparty/libart/src:art",
     ],
 )
 
@@ -290,9 +290,9 @@ cpp_library(
         ":pcre",
         ":string",
         ":sysdep_watcher",
-        "@/watchman/thirdparty/jansson:jansson",
-        "@/watchman/thirdparty/libart/src:art",
-        "@/watchman/thirdparty/wildmatch:wildmatch",
+        "//watchman/thirdparty/jansson:jansson",
+        "//watchman/thirdparty/libart/src:art",
+        "//watchman/thirdparty/wildmatch:wildmatch",
     ],
 )
 
@@ -314,7 +314,7 @@ python_library(
     py_version = "<3",
     deps = [
         ":watchman",
-        "@/watchman/tests/integration:testlib",
+        "//watchman/tests/integration:testlib",
     ],
 )
 
@@ -324,6 +324,6 @@ python_library(
     py_version = ">=3.5",
     deps = [
         ":watchman",
-        "@/watchman/tests/integration:testlib-py3",
+        "//watchman/tests/integration:testlib-py3",
     ],
 )

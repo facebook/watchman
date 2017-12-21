@@ -3,6 +3,6 @@ cpp_library(
     srcs = ["wildmatch.c"],
     headers = ["wildmatch.h"],
     deps = [
-        "@/watchman:headers",
+        "//watchman:headers",
     ],
 )

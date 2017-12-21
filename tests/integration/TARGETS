@@ -2,11 +2,11 @@ cpp_binary(
     name = "cppclient",
     srcs = ["cppclient.cpp"],
     deps = [
-        "@/folly:json",
-        "@/folly/init:init",
-        "@/folly/io/async:event_base_thread",
-        "@/watchman/cppclient:cppclient",
-        "@/watchman/cppclient:headers",
+        "//folly:json",
+        "//folly/init:init",
+        "//folly/io/async:event_base_thread",
+        "//watchman/cppclient:cppclient",
+        "//watchman/cppclient:headers",
     ],
     external_deps = ["glog"],
 )
@@ -28,8 +28,8 @@ python_library(
     srcs = testsupport_srcs,
     base_module = "",
     deps = [
-        "@/watchman:watchman",
-        "@/watchman/python/pywatchman:pywatchman",
+        "//watchman:watchman",
+        "//watchman/python/pywatchman:pywatchman",
     ],
 )
 
@@ -38,8 +38,8 @@ python_library(
     srcs = testsupport_srcs,
     base_module = "",
     deps = [
-        "@/watchman:watchman",
-        "@/watchman/python/pywatchman_aio:pywatchman_aio",
+        "//watchman:watchman",
+        "//watchman/python/pywatchman_aio:pywatchman_aio",
     ],
 )
 

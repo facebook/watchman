@@ -43,7 +43,7 @@ cpp_library(
     deps = [
         ":config_h",
         ":utf",
-        "@/watchman:headers",
-        "@/watchman:string",
+        "//watchman:headers",
+        "//watchman:string",
     ],
 )
