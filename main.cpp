@@ -882,7 +882,7 @@ static struct watchman_getopt opts[] = {
   { "inetd",    0,   "Spawning from an inetd style supervisor",
     OPT_NONE,   &inetd_style, NULL, IS_DAEMON },
 #endif
-  { "no-system-spawner", 'S', "Don't use the system spawner (e.g. launchd on OSX).",
+  { "no-system-spawner", 'S', "Don't use the system spawner (e.g. launchd on OSX)",
     OPT_NONE, &no_system_spawner, NULL, IS_DAEMON },
   { "version",  'v', "Show version number",
     OPT_NONE,   &show_version, NULL, NOT_DAEMON },
