@@ -33,6 +33,7 @@ static int foreground = 0;
 static int no_pretty = 0;
 static int no_spawn = 0;
 static int no_local = 0;
+static int no_system_spawner = 0;
 #ifndef _WIN32
 static int inetd_style = 0;
 static struct sockaddr_un un;
@@ -881,6 +882,8 @@ static struct watchman_getopt opts[] = {
   { "inetd",    0,   "Spawning from an inetd style supervisor",
     OPT_NONE,   &inetd_style, NULL, IS_DAEMON },
 #endif
+  { "no-system-spawner", 'S', "Don't use the system spawner (e.g. launchd on OSX).",
+    OPT_NONE, &no_system_spawner, NULL, IS_DAEMON },
   { "version",  'v', "Show version number",
     OPT_NONE,   &show_version, NULL, NOT_DAEMON },
   { "sockname", 'U', "Specify alternate sockname",
@@ -1022,15 +1025,19 @@ static void spawn_watchman(void) {
   }
 #endif
 
+  if (no_system_spawner) {
+    daemonize();
+  } else {
 #ifdef USE_GIMLI
-  spawn_via_gimli();
+    spawn_via_gimli();
 #elif defined(__APPLE__)
-  spawn_via_launchd();
+    spawn_via_launchd();
 #elif defined(_WIN32)
-  spawn_win32();
+    spawn_win32();
 #else
-  daemonize();
+    daemonize();
 #endif
+  }
 }
 
 int main(int argc, char **argv)
