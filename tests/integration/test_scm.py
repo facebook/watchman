@@ -29,9 +29,15 @@ class TestScm(WatchmanTestCase.WatchmanTestCase):
             We don't call this via unittest.skip because we want
             to have the skip message show the context '''
         try:
-            self.hg(['help', '--extension', 'fsmonitor'])
+            out, err = self.hg(['help', '--extension', 'fsmonitor'])
         except Exception as e:
             self.skipTest('fsmonitor is not available: %s' % str(e))
+        else:
+            out = out.decode('utf-8')
+            err = err.decode('utf-8')
+            fail_str = 'failed to import extension'
+            if (fail_str in out) or (fail_str in err):
+                self.skipTest('hg configuration is broken: %s %s' % (out, err))
 
     def checkOSApplicability(self):
         if os.name == 'nt':
