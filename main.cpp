@@ -33,7 +33,7 @@ static int foreground = 0;
 static int no_pretty = 0;
 static int no_spawn = 0;
 static int no_local = 0;
-static int no_system_spawner = 0;
+static int no_site_spawner = 0;
 #ifndef _WIN32
 static int inetd_style = 0;
 static struct sockaddr_un un;
@@ -882,8 +882,8 @@ static struct watchman_getopt opts[] = {
   { "inetd",    0,   "Spawning from an inetd style supervisor",
     OPT_NONE,   &inetd_style, NULL, IS_DAEMON },
 #endif
-  { "no-system-spawner", 'S', "Don't use the system spawner (e.g. launchd on OSX)",
-    OPT_NONE, &no_system_spawner, NULL, IS_DAEMON },
+  { "no-site-spawner", 'S', "Don't use the site or system spawner",
+    OPT_NONE, &no_site_spawner, NULL, IS_DAEMON },
   { "version",  'v', "Show version number",
     OPT_NONE,   &show_version, NULL, NOT_DAEMON },
   { "sockname", 'U', "Specify alternate sockname",
@@ -1015,29 +1015,30 @@ const char *get_sock_name(void)
 
 static void spawn_watchman(void) {
 #ifndef _WIN32
-  // If we have a site-specific spawning requirement, then we'll
-  // invoke that spawner rather than using any of the built-in
-  // spawning functionality.
-  const char* site_spawn = cfg_get_string("spawn_watchman_service", nullptr);
-  if (site_spawn) {
-    spawn_site_specific(site_spawn);
-    return;
-  }
+  if (no_site_spawner) {
+    daemonize();
+  } else {
+    // If we have a site-specific spawning requirement, then we'll
+    // invoke that spawner rather than using any of the built-in
+    // spawning functionality.
+    const char* site_spawn = cfg_get_string("spawn_watchman_service", nullptr);
+    if (site_spawn) {
+      spawn_site_specific(site_spawn);
+      return;
+    }
 #endif
 
 #ifdef USE_GIMLI
-  spawn_via_gimli();
+    spawn_via_gimli();
 #elif defined(_WIN32)
-  spawn_win32();
-#else
-  if (no_system_spawner) {
-    daemonize();
-  } else {
-#ifdef __APPLE__
+    spawn_win32();
+#elif defined(__APPLE__)
     spawn_via_launchd();
 #else
     daemonize();
 #endif
+
+#ifndef _WIN32
   }
 #endif
 }
