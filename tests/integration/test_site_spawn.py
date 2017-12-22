@@ -36,6 +36,21 @@ class TestSiteSpawn(unittest.TestCase):
       with open(inst.log_file_name, 'r') as f:
           self.assertEqual('failed to start\n', f.read())
 
+    def test_no_site_spawner(self):
+      """With a site spawner configured to otherwise fail, pass
+      `--no-site-spawner` and ensure that a failure didn't occur."""
+      config = {
+          'spawn_watchman_service': os.path.join(THIS_DIR, 'site_spawn_fail.py')
+      }
+
+      inst = WatchmanInstance.Instance(config=config)
+      stdout, stderr = inst.commandViaCLI(['version', '--no-site-spawner'])
+
+      parsed = json.loads(stdout.decode('ascii'))
+      self.assertTrue('version' in parsed)
+
+      inst.commandViaCLI(['--no-spawn', '--no-local', 'shutdown-server'])
+
     def test_spawner(self):
       config = {
           'spawn_watchman_service': os.path.join(THIS_DIR, 'site_spawn.py')
