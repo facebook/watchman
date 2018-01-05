@@ -263,9 +263,11 @@ tests_childproc_t_SOURCES = \
 	FileDescriptor.cpp \
 	FileInformation.cpp \
 	PubSub.cpp \
+	cfg.cpp \
 	string.cpp \
 	hash.cpp \
-	log.cpp
+	log.cpp \
+	opendir.cpp
 
 tests_cache_t_CPPFLAGS = $(THIRDPARTY_CPPFLAGS) @IRONMANCFLAGS@
 tests_cache_t_LDADD = $(TAP_LIB) $(JSON_LIB)
