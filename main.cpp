@@ -33,6 +33,7 @@ static int foreground = 0;
 static int no_pretty = 0;
 static int no_spawn = 0;
 static int no_local = 0;
+static int no_site_spawner = 0;
 #ifndef _WIN32
 static int inetd_style = 0;
 static struct sockaddr_un un;
@@ -881,6 +882,8 @@ static struct watchman_getopt opts[] = {
   { "inetd",    0,   "Spawning from an inetd style supervisor",
     OPT_NONE,   &inetd_style, NULL, IS_DAEMON },
 #endif
+  { "no-site-spawner", 'S', "Don't use the site or system spawner",
+    OPT_NONE, &no_site_spawner, NULL, IS_DAEMON },
   { "version",  'v', "Show version number",
     OPT_NONE,   &show_version, NULL, NOT_DAEMON },
   { "sockname", 'U', "Specify alternate sockname",
@@ -1012,6 +1015,17 @@ const char *get_sock_name(void)
 
 static void spawn_watchman(void) {
 #ifndef _WIN32
+  if (no_site_spawner) {
+    // The astute reader will notice this we're calling daemonize() here
+    // and not the various other platform spawning functions in the block
+    // further below in this function.  This is deliberate: we want
+    // to do the most simple background running possible when the
+    // no_site_spawner flag is used.   In the future we plan to
+    // migrate the platform spawning functions to use the site_spawn
+    // functionality.
+    daemonize();
+    return;
+  }
   // If we have a site-specific spawning requirement, then we'll
   // invoke that spawner rather than using any of the built-in
   // spawning functionality.
