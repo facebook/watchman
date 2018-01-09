@@ -760,7 +760,7 @@ art_tree<ValueType, KeyType>::Node::maximum() const {
 template <typename ValueType, typename KeyType>
 typename art_tree<ValueType, KeyType>::Leaf*
 art_tree<ValueType, KeyType>::minimum() const {
-  return root_->minimum();
+  return root_ ? root_->minimum() : nullptr;
 }
 
 /**
@@ -769,7 +769,7 @@ art_tree<ValueType, KeyType>::minimum() const {
 template <typename ValueType, typename KeyType>
 typename art_tree<ValueType, KeyType>::Leaf*
 art_tree<ValueType, KeyType>::maximum() const {
-  return root_->maximum();
+  return root_ ? root_->maximum() : nullptr;
 }
 
 template <typename ValueType, typename KeyType>
