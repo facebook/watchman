@@ -23,14 +23,14 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
 
         for _ in range(maxTries):
             self.touchRelative(root, cookie)
-            res = wi.readLine(timeout=2)
+            res = wi.readLine(timeout=10)
             if res and cookie in res:
                 break
         if not res:
             raise Exception("Failed to communicate with watchman-watch")
 
         # Read any remaining notifications (clear the buffer for tests)
-        wi.readLines(count=5, timeout=2)
+        wi.readLines(count=5, timeout=5)
 
     def assertWaitedFileList(self, wi, expected, msg=None):
         res = wi.readLines(count=len(expected))
