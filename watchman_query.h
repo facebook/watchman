@@ -199,6 +199,7 @@ struct w_query {
   watchman::CaseSensitivity case_sensitive{watchman::CaseSensitivity::CaseInSensitive};
   bool empty_on_fresh_instance{false};
   bool dedup_results{false};
+  uint32_t bench_iterations{0};
 
   /* optional full path to relative root, without and with trailing slash */
   w_string relative_root;

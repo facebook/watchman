@@ -335,8 +335,8 @@ w_query_res w_query_execute(
                                       &root->inner.cursors)
                                 : w_query_since();
 
-  if (query->query_spec.get_default("bench")) {
-    for (auto i = 0; i < 100; ++i) {
+  if (query->bench_iterations > 0) {
+    for (uint32_t i = 0; i < query->bench_iterations; ++i) {
       w_query_ctx c(query, root, ctx.disableFreshInstance);
       w_query_res r;
       c.clockAtStartOfQuery = ctx.clockAtStartOfQuery;

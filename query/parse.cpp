@@ -249,6 +249,18 @@ static void parse_empty_on_fresh_instance(w_query* res, const json_ref& query) {
   res->empty_on_fresh_instance = (bool) value;
 }
 
+static void parse_benchmark(w_query* res, const json_ref& query) {
+  // Preserve behavior by supporting a boolean value. Also support int values.
+  auto bench = query.get_default("bench");
+  if (bench) {
+    if (json_is_boolean(bench)) {
+      res->bench_iterations = 100;
+    } else {
+      res->bench_iterations = json_integer_value(bench);
+    }
+  }
+}
+
 static void parse_case_sensitive(
     w_query* res,
     const std::shared_ptr<w_root_t>& root,
@@ -269,6 +281,7 @@ std::shared_ptr<w_query> w_query_parse(
   auto result = std::make_shared<w_query>();
   auto res = result.get();
 
+  parse_benchmark(res, query);
   parse_case_sensitive(res, root, query);
   parse_sync(res, query);
   parse_dedup(res, query);
