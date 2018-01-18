@@ -375,7 +375,8 @@ void WatchmanConnection::decodeNextResponse() {
       // is responsible for sending the next queued command here
       popAndSendCommand();
     } catch (const std::exception& ex) {
-      failQueuedCommands(ex);
+      failQueuedCommands(
+          folly::exception_wrapper{std::current_exception(), ex});
       return;
     }
   }
