@@ -492,7 +492,7 @@ bool watchman_json_buffer::passThru(
 }
 
 json_ref watchman_json_buffer::decodeNext(w_stm_t stm, json_error_t* jerr) {
-  memset(jerr, 0, sizeof(*jerr));
+  *jerr = json_error_t();
   if (!readAndDetectPdu(stm, jerr)) {
     return nullptr;
   }

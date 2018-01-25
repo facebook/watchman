@@ -40,7 +40,7 @@ char **backtrace_symbols(void **array, size_t n_frames) {
 
   std::call_once(sym_init_once, sym_init);
 
-  memset(&sym.info, 0, sizeof(sym.info));
+  sym.info = SYMBOL_INFO();
   sym.info.MaxNameLen = sizeof(sym) - sizeof(sym.info);
   sym.info.SizeOfStruct = sizeof(sym.info);
 

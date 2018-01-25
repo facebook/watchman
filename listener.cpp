@@ -446,7 +446,7 @@ static std::shared_ptr<watchman_client> make_new_client(
 #ifdef _WIN32
 static void named_pipe_accept_loop_internal(const char* path) {
   HANDLE handles[2];
-  OVERLAPPED olap;
+  OVERLAPPED olap = {};
   HANDLE connected_event = CreateEvent(NULL, FALSE, TRUE, NULL);
 
   if (!connected_event) {
@@ -459,7 +459,6 @@ static void named_pipe_accept_loop_internal(const char* path) {
 
   handles[0] = connected_event;
   handles[1] = listener_thread_event;
-  memset(&olap, 0, sizeof(olap));
   olap.hEvent = connected_event;
 
   w_log(W_LOG_ERR, "waiting for pipe clients on %s\n", path);
@@ -592,7 +591,7 @@ static void accept_loop(FileDescriptor&& listenerDescriptor) {
 bool w_start_listener(const char *path)
 {
 #ifndef _WIN32
-  struct sigaction sa;
+  struct sigaction sa = {};
   sigset_t sigset;
 #endif
 
@@ -667,7 +666,6 @@ bool w_start_listener(const char *path)
 
   /* allow SIGUSR1 and SIGCHLD to wake up a blocked thread, without restarting
    * syscalls */
-  memset(&sa, 0, sizeof(sa));
   sa.sa_handler = wakeme;
   sa.sa_flags = 0;
   sigaction(SIGUSR1, &sa, NULL);

@@ -55,11 +55,10 @@ static bool lock_pidfile(void) {
   compute_file_name(&pid_file, compute_user_name(), "pid", "pidfile");
 
 #if !defined(USE_GIMLI) && !defined(_WIN32)
-  struct flock lock;
+  struct flock lock = {};
   pid_t mypid;
 
   mypid = getpid();
-  memset(&lock, 0, sizeof(lock));
   lock.l_type = F_WRLCK;
   lock.l_start = 0;
   lock.l_whence = SEEK_SET;
@@ -1041,10 +1040,9 @@ static json_ref build_command(int argc, char** argv) {
 
   // Read blob from stdin
   if (json_input_arg) {
-    json_error_t err;
+    json_error_t err = {};
     w_jbuffer_t buf;
 
-    memset(&err, 0, sizeof(err));
     auto cmd = buf.decodeNext(w_stm_stdin(), &err);
 
     if (buf.pdu_type == is_bser) {

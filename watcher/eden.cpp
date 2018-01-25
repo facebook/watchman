@@ -173,7 +173,7 @@ class EdenFileResult : public FileResult {
       exists_ = true;
     } else {
       exists_ = false;
-      memset(&stat_, 0, sizeof(stat_));
+      stat_ = watchman::FileInformation();
     }
   }
 

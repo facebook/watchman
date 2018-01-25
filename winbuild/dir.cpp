@@ -41,7 +41,7 @@ class WinDirHandle : public watchman_dir_handle {
       win7_ = true;
     }
 
-    memset(&ent_, 0, sizeof(ent_));
+    ent_ = watchman_dir_ent();
     ent_.d_name = nameBuf_;
     ent_.has_stat = true;
     if (path[1] == ':') {

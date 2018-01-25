@@ -155,7 +155,7 @@ static bool check_roundtrip(
   const char* end = dump_buf->data() + dump_buf->size();
   hexdump(dump_buf->data(), end);
 
-  memset(&jerr, 0, sizeof(jerr));
+  jerr = json_error_t();
   auto decoded = bunser(dump_buf->data(), end, &needed, &jerr);
   ok(decoded, "decoded something (err = %s)", jerr.text);
 

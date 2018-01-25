@@ -37,7 +37,7 @@ pid_t waitpid(pid_t pid, int* status, int options) {
 }
 
 int posix_spawnattr_init(posix_spawnattr_t *attrp) {
-  memset(attrp, 0, sizeof(*attrp));
+  *attrp = posix_spawnattr_t();
   return 0;
 }
 
@@ -72,7 +72,7 @@ int posix_spawnattr_destroy(posix_spawnattr_t *attrp) {
 }
 
 int posix_spawn_file_actions_init(posix_spawn_file_actions_t *actions) {
-  memset(actions, 0, sizeof(*actions));
+  *actions = posix_spawn_file_actions_t();
   return 0;
 }
 
@@ -242,9 +242,9 @@ static int posix_spawn_common(
     const posix_spawn_file_actions_t *file_actions,
     const posix_spawnattr_t *attrp,
     char *const argv[], char *const envp[]) {
-  STARTUPINFOEX sinfo;
-  SECURITY_ATTRIBUTES sec;
-  PROCESS_INFORMATION pinfo;
+  STARTUPINFOEX sinfo = {};
+  SECURITY_ATTRIBUTES sec = {};
+  PROCESS_INFORMATION pinfo = {};
   char *cmdbuf;
   char *env_block;
   DWORD create_flags = CREATE_NO_WINDOW|EXTENDED_STARTUPINFO_PRESENT;
@@ -263,16 +263,12 @@ static int posix_spawn_common(
     return ENOMEM;
   }
 
-  memset(&sinfo, 0, sizeof(sinfo));
   sinfo.StartupInfo.cb = sizeof(sinfo);
   sinfo.StartupInfo.dwFlags = STARTF_USESTDHANDLES|STARTF_USESHOWWINDOW;
   sinfo.StartupInfo.wShowWindow = SW_HIDE;
 
-  memset(&sec, 0, sizeof(sec));
   sec.nLength = sizeof(sec);
   sec.bInheritHandle = TRUE;
-
-  memset(&pinfo, 0, sizeof(pinfo));
 
   if (attrp->flags & POSIX_SPAWN_SETPGROUP) {
     create_flags |= CREATE_NEW_PROCESS_GROUP;

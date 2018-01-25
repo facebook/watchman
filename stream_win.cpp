@@ -715,7 +715,7 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
 FileDescriptor w_handle_open(const char* path, int flags) {
   DWORD access = 0, share = 0, create = 0, attrs = 0;
   DWORD err;
-  SECURITY_ATTRIBUTES sec;
+  SECURITY_ATTRIBUTES sec = {};
 
   if (!strcmp(path, "/dev/null")) {
     path = "NUL:";
@@ -733,7 +733,6 @@ FileDescriptor w_handle_open(const char* path, int flags) {
   // We want more posix-y behavior by default
   share = FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE;
 
-  memset(&sec, 0, sizeof(sec));
   sec.nLength = sizeof(sec);
   sec.bInheritHandle = TRUE;
   if (flags & O_CLOEXEC) {

@@ -275,7 +275,7 @@ static fse_stream* fse_stream_make(
     const std::shared_ptr<w_root_t>& root,
     FSEventStreamEventId since,
     w_string& failure_reason) {
-  FSEventStreamContext ctx;
+  FSEventStreamContext ctx = {};
   CFMutableArrayRef parray = nullptr;
   CFStringRef cpath = nullptr;
   double latency;
@@ -328,7 +328,6 @@ static fse_stream* fse_stream_make(
     }
   }
 
-  memset(&ctx, 0, sizeof(ctx));
   ctx.info = fse_stream;
 
   parray = CFArrayCreateMutable(nullptr, 0, &kCFTypeArrayCallBacks);
@@ -440,7 +439,7 @@ fail:
 
 void FSEventsWatcher::FSEventsThread(const std::shared_ptr<w_root_t>& root) {
   CFFileDescriptorRef fdref;
-  CFFileDescriptorContext fdctx;
+  CFFileDescriptorContext fdctx = {};
 
   w_set_thread_name("fsevents %s", root->root_path.c_str());
 
@@ -450,7 +449,6 @@ void FSEventsWatcher::FSEventsThread(const std::shared_ptr<w_root_t>& root) {
 
     attempt_resync_on_drop = root->config.getBool("fsevents_try_resync", true);
 
-    memset(&fdctx, 0, sizeof(fdctx));
     fdctx.info = root.get();
 
     fdref = CFFileDescriptorCreate(

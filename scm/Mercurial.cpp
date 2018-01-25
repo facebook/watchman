@@ -29,7 +29,7 @@ ChildProcess::Options Mercurial::makeHgOptions() const {
 }
 
 Mercurial::infoCache::infoCache(std::string path) : dirStatePath(path) {
-  memset(&dirstate, 0, sizeof(dirstate));
+  dirstate = FileInformation();
 }
 
 w_string Mercurial::infoCache::lookupMergeBase(const std::string& commitId) {

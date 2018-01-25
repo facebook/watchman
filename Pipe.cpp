@@ -11,9 +11,8 @@ Pipe::Pipe() {
 #ifdef _WIN32
   HANDLE readPipe;
   HANDLE writePipe;
-  SECURITY_ATTRIBUTES sec;
+  SECURITY_ATTRIBUTES sec = {};
 
-  memset(&sec, 0, sizeof(sec));
   sec.nLength = sizeof(sec);
   sec.bInheritHandle = FALSE; // O_CLOEXEC equivalent
   constexpr DWORD kPipeSize = 64 * 1024;

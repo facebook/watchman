@@ -142,7 +142,7 @@ DirHandle::DirHandle(const char* path, bool strict) {
       throw std::system_error(ENOTDIR, std::generic_category(), path);
     }
 
-    memset(&attrlist_, 0, sizeof(attrlist_));
+    attrlist_ = attrlist();
     attrlist_.bitmapcount = ATTR_BIT_MAP_COUNT;
     attrlist_.commonattr = ATTR_CMN_RETURNED_ATTRS |
       ATTR_CMN_ERROR |
@@ -216,7 +216,7 @@ const watchman_dir_ent* DirHandle::readDir() {
       return &ent_;
     }
 
-    memset(&ent_.stat, 0, sizeof(ent_.stat));
+    ent_.stat = watchman::FileInformation();
 
     ent_.stat.dev = item->dev;
     memcpy(&ent_.stat.mtime, &item->mtime, sizeof(item->mtime));

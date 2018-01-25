@@ -298,9 +298,8 @@ static LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep) {
 
 void w_setup_signal_handlers(void) {
 #ifndef _WIN32
-  struct sigaction sa;
+  struct sigaction sa = {};
 
-  memset(&sa, 0, sizeof(sa));
   sa.sa_sigaction = crash_handler;
   sa.sa_flags = SA_SIGINFO|SA_RESETHAND;
 
