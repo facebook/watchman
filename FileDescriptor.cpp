@@ -151,7 +151,7 @@ bool FileDescriptor::isNonBlock() const {
  * If the case does not match, throws an exception. */
 static void checkCanonicalBaseName(const char *path) {
 #ifdef __APPLE__
-  struct attrlist attrlist = {};
+  struct attrlist attrlist;
   struct {
     uint32_t len;
     attrreference_t ref;
@@ -160,6 +160,7 @@ static void checkCanonicalBaseName(const char *path) {
   w_string_piece pathPiece(path);
   auto base = pathPiece.baseName();
 
+  memset(&attrlist, 0, sizeof(attrlist));
   attrlist.bitmapcount = ATTR_BIT_MAP_COUNT;
   attrlist.commonattr = ATTR_CMN_NAME;
 
@@ -236,7 +237,7 @@ FileDescriptor openFileHandle(const char *path,
 #else // _WIN32
   DWORD access = 0, share = 0, create = 0, attrs = 0;
   DWORD err;
-  SECURITY_ATTRIBUTES sec = {};
+  auto sec = SECURITY_ATTRIBUTES();
 
   if (!strcmp(path, "/dev/null")) {
     path = "NUL:";

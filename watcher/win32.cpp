@@ -108,7 +108,7 @@ void WinWatcher::signalThreads() {
 void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
   std::vector<uint8_t> buf;
   DWORD err, filter;
-  OVERLAPPED olap = {};
+  auto olap = OVERLAPPED();
   BOOL initiate_read = true;
   HANDLE handles[2] = {olapEvent, ping};
   DWORD bytes;
