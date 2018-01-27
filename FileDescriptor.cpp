@@ -237,7 +237,7 @@ FileDescriptor openFileHandle(const char *path,
 #else // _WIN32
   DWORD access = 0, share = 0, create = 0, attrs = 0;
   DWORD err;
-  SECURITY_ATTRIBUTES sec;
+  auto sec = SECURITY_ATTRIBUTES();
 
   if (!strcmp(path, "/dev/null")) {
     path = "NUL:";
@@ -259,7 +259,6 @@ FileDescriptor openFileHandle(const char *path,
   // We want more posix-y behavior by default
   share = FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE;
 
-  memset(&sec, 0, sizeof(sec));
   sec.nLength = sizeof(sec);
   sec.bInheritHandle = TRUE;
   if (opts.closeOnExec) {

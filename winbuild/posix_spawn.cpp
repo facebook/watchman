@@ -242,9 +242,9 @@ static int posix_spawn_common(
     const posix_spawn_file_actions_t *file_actions,
     const posix_spawnattr_t *attrp,
     char *const argv[], char *const envp[]) {
-   auto sinfo = STARTUPINFOEX();
-   auto sec = SECURITY_ATTRIBUTES();
-   auto pinfo = PROCESS_INFORMATION();
+  auto sinfo = STARTUPINFOEX();
+  auto sec = SECURITY_ATTRIBUTES();
+  auto pinfo = PROCESS_INFORMATION();
   char *cmdbuf;
   char *env_block;
   DWORD create_flags = CREATE_NO_WINDOW|EXTENDED_STARTUPINFO_PRESENT;

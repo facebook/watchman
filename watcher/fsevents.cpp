@@ -439,7 +439,7 @@ fail:
 
 void FSEventsWatcher::FSEventsThread(const std::shared_ptr<w_root_t>& root) {
   CFFileDescriptorRef fdref;
-  fdctx = CFFileDescriptorContext();
+  auto fdctx = CFFileDescriptorContext();
 
   w_set_thread_name("fsevents %s", root->root_path.c_str());
 
