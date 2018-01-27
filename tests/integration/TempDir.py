@@ -76,7 +76,7 @@ class TempDir(object):
     def _retry_rmtree(self, top):
         # Keep trying to remove it; on Windows it may take a few moments
         # for any outstanding locks/handles to be released
-        for i in range(1, 10):
+        for _ in range(1, 10):
             shutil.rmtree(top, ignore_errors=True)
             if not os.path.isdir(top):
                 return

@@ -13,7 +13,6 @@ import os
 import os.path
 import time
 import shutil
-import time
 
 
 @WatchmanTestCase.expand_matrix
@@ -54,7 +53,6 @@ class TestDirMove(WatchmanTestCase.WatchmanTestCase):
         root = self.mkdtemp()
 
         dir_of_interest = os.path.join(root, 'dir')
-        alt_dir = os.path.join(root, 'alt')
 
         self.build_under(root, 'dir')
         self.watchmanCommand('watch', root)

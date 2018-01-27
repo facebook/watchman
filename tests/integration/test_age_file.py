@@ -89,7 +89,7 @@ class TestAgeOutFile(WatchmanTestCase.WatchmanTestCase):
         )
 
         # Stress the aging a bit
-        for i in range(3):
+        for _ in range(3):
             os.mkdir(os.path.join(root, 'dir'))
             for j in range(100):
                 self.touchRelative(root, 'stress-%d' % j)

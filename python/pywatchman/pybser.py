@@ -201,7 +201,7 @@ class _bser_buffer(object):
             if compat.PYTHON3:
                 iteritems = val.items()
             else:
-                iteritems = val.iteritems()
+                iteritems = val.iteritems()  # noqa: B301 Checked version above
             for k, v in iteritems:
                 self.append_string(k)
                 self.append_recursive(v)
@@ -267,7 +267,7 @@ class _BunserDict(object):
             key = key[3:]
         try:
             return self._values[self._keys.index(key)]
-        except ValueError as ex:
+        except ValueError:
             raise KeyError('_BunserDict has no key %s' % key)
 
     def __len__(self):
@@ -325,7 +325,7 @@ class Bunser(object):
     def unser_array(self, buf, pos):
         arr_len, pos = self.unser_int(buf, pos + 1)
         arr = []
-        for i in range(arr_len):
+        for _ in range(arr_len):
             arr_item, pos = self.loads_recursive(buf, pos)
             arr.append(arr_item)
 
@@ -342,7 +342,7 @@ class Bunser(object):
             keys = []
             vals = []
 
-        for i in range(obj_len):
+        for _ in range(obj_len):
             key, pos = self.unser_utf8_string(buf, pos)
             val, pos = self.loads_recursive(buf, pos)
             if self.mutable:
@@ -365,7 +365,7 @@ class Bunser(object):
         keys, pos = keys_bunser.unser_array(buf, pos + 1)
         nitems, pos = self.unser_int(buf, pos)
         arr = []
-        for i in range(nitems):
+        for _ in range(nitems):
             if self.mutable:
                 obj = {}
             else:
