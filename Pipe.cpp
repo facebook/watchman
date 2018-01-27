@@ -11,7 +11,7 @@ Pipe::Pipe() {
 #ifdef _WIN32
   HANDLE readPipe;
   HANDLE writePipe;
-  SECURITY_ATTRIBUTES sec = {};
+  auto sec = SECURITY_ATTRIBUTES();
 
   sec.nLength = sizeof(sec);
   sec.bInheritHandle = FALSE; // O_CLOEXEC equivalent

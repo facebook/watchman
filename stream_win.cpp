@@ -715,7 +715,7 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
 FileDescriptor w_handle_open(const char* path, int flags) {
   DWORD access = 0, share = 0, create = 0, attrs = 0;
   DWORD err;
-  SECURITY_ATTRIBUTES sec = {};
+  auto sec = SECURITY_ATTRIBUTES();
 
   if (!strcmp(path, "/dev/null")) {
     path = "NUL:";

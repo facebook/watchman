@@ -275,7 +275,7 @@ static fse_stream* fse_stream_make(
     const std::shared_ptr<w_root_t>& root,
     FSEventStreamEventId since,
     w_string& failure_reason) {
-  FSEventStreamContext ctx = {};
+  auto ctx = FSEventStreamContext();
   CFMutableArrayRef parray = nullptr;
   CFStringRef cpath = nullptr;
   double latency;
@@ -439,7 +439,7 @@ fail:
 
 void FSEventsWatcher::FSEventsThread(const std::shared_ptr<w_root_t>& root) {
   CFFileDescriptorRef fdref;
-  CFFileDescriptorContext fdctx = {};
+  fdctx = CFFileDescriptorContext();
 
   w_set_thread_name("fsevents %s", root->root_path.c_str());
 

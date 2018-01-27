@@ -70,7 +70,7 @@ KQueueWatcher::KQueueWatcher(w_root_t* root)
 }
 
 bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
-  struct kevent k = {};
+  struct kevent k;
 
   auto full_name = w_dir_path_cat_str(file->parent, file->getName());
   {
@@ -98,6 +98,7 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
     return false;
   }
 
+  memset(&k, 0, sizeof(k));
   EV_SET(
       &k,
       rawFd,
@@ -139,7 +140,7 @@ std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
     struct timeval,
     const char* path) {
   struct stat st, osdirst;
-  struct kevent k = {};
+  struct kevent k;
 
   auto osdir = w_dir_open(path);
 
@@ -168,6 +169,7 @@ std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
         std::string("directory replaced between opendir and open: ") + path);
   }
 
+  memset(&k, 0, sizeof(k));
   auto dir_name = dir->getFullPath();
   EV_SET(
       &k,
@@ -254,7 +256,7 @@ bool KQueueWatcher::consumeNotify(
         fflags,
         flags_label);
     if ((fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE))) {
-      struct kevent k = {};
+      struct kevent k;
 
       if (w_string_equal(path, root->root_path)) {
         w_log(
@@ -267,6 +269,7 @@ bool KQueueWatcher::consumeNotify(
       }
 
       // Remove our watch bits
+      memset(&k, 0, sizeof(k));
       EV_SET(&k, fd, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
       kevent(kq_fd.fd(), &k, 1, nullptr, 0, 0);
       wlock->name_to_fd.erase(path);
