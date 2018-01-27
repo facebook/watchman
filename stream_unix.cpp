@@ -222,7 +222,7 @@ std::unique_ptr<watchman_stream> w_stm_fdopen(FileDescriptor&& fd) {
 std::unique_ptr<watchman_stream> w_stm_connect_unix(
     const char* path,
     int timeoutms) {
-  struct sockaddr_un un = {};
+  struct sockaddr_un un;
   int max_attempts = timeoutms / 10;
   int attempts = 0;
   int bufsize = WATCHMAN_IO_BUF_SIZE;
@@ -238,6 +238,7 @@ std::unique_ptr<watchman_stream> w_stm_connect_unix(
     return nullptr;
   }
 
+  memset(&un, 0, sizeof(un));
   un.sun_family = PF_LOCAL;
   memcpy(un.sun_path, path, strlen(path));
 
