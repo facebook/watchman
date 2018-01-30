@@ -284,10 +284,11 @@ DirHandle::~DirHandle() {
 
 int DirHandle::getFd() const {
 #ifdef HAVE_GETATTRLISTBULK
-  return fd_.fd();
-#else
-  return dirfd(d_);
+  if (cfg_get_bool("_use_bulkstat", use_bulkstat_by_default())) {
+    return fd_.fd();
+  }
 #endif
+  return dirfd(d_);
 }
 #endif
 
