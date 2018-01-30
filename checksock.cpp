@@ -3,62 +3,175 @@
 
 #include "watchman.h"
 
+namespace watchman {
+namespace {
+
+// Work-around decodeNext which implictly resets to non-blocking
+json_ref
+decodeNext(watchman_stream* client, w_jbuffer_t& buf, json_error_t& jerr) {
+  client->setNonBlock(false);
+  return buf.decodeNext(client, &jerr);
+}
+
 /* Periodically connect to our endpoint and verify that we're talking
  * to ourselves.  This is normally a sign of madness, but if we don't
  * get an answer, or get a reply from someone else, we know things
  * are bad; someone removed our socket file or there was some kind of
  * race condition that resulted in multiple instances starting up.
  */
-
-static void check_my_sock() {
+void check_my_sock(watchman_stream* client) {
   auto cmd = json_array({typed_string_to_json("get-pid", W_STRING_UNICODE)});
   w_jbuffer_t buf;
   json_error_t jerr;
-  json_int_t remote_pid = 0;
   pid_t my_pid = getpid();
 
-  w_set_thread_name("sockcheck");
-
-  auto client = w_stm_connect(get_sock_name(), 6000);
-  if (!client) {
-    w_log(W_LOG_FATAL, "Failed to connect to myself for get-pid check: %s\n",
-        strerror(errno));
-    /* NOTREACHED */
-  }
-
-  client->setNonBlock(false);
-
-  if (!buf.pduEncodeToStream(is_bser, 0, cmd, client.get())) {
-    w_log(W_LOG_FATAL, "Failed to send get-pid PDU: %s\n",
-          strerror(errno));
+  if (!buf.pduEncodeToStream(is_bser, 0, cmd, client)) {
+    log(watchman::FATAL, "Failed to send get-pid PDU: ", strerror(errno), "\n");
     /* NOTREACHED */
   }
 
   buf.clear();
-  auto result = buf.decodeNext(client.get(), &jerr);
+  auto result = decodeNext(client, buf, jerr);
   if (!result) {
-    w_log(W_LOG_FATAL, "Failed to decode get-pid response: %s %s\n",
-        jerr.text, strerror(errno));
+    log(watchman::FATAL,
+        "Failed to decode get-pid response: ",
+        jerr.text,
+        " ",
+        strerror(errno),
+        "\n");
     /* NOTREACHED */
   }
 
-  if (json_unpack_ex(result, &jerr, 0, "{s:i}",
-        "pid", &remote_pid) != 0) {
-    w_log(W_LOG_FATAL, "Failed to extract pid from get-pid response: %s\n",
-        jerr.text);
+  auto pid = result.get_default("pid");
+  if (!pid) {
+    log(watchman::FATAL,
+        "Failed to get pid from get-pid response: ",
+        jerr.text,
+        "\n");
     /* NOTREACHED */
   }
+  auto remote_pid = json_integer_value(pid);
 
   if (remote_pid != my_pid) {
-    w_log(W_LOG_FATAL,
-        "remote pid from get-pid (%ld) doesn't match my pid (%ld)\n",
-        (long)remote_pid, (long)my_pid);
+    log(watchman::FATAL,
+        "remote pid from get-pid ",
+        long(remote_pid),
+        " doesn't match my pid (",
+        (long)my_pid,
+        "\n");
     /* NOTREACHED */
   }
 }
 
+/**
+ * Run clock command for the specified root. Useful for getting time
+ * information.
+ */
+void check_clock_command(watchman_stream* client, json_ref& root) {
+  w_jbuffer_t buf;
+  json_error_t jerr;
+
+  auto cmd = json_array({typed_string_to_json("clock", W_STRING_UNICODE),
+                         root,
+                         json_object({{"sync_timeout", json_integer(20000)}})});
+  if (!buf.pduEncodeToStream(is_bser, 0, cmd, client)) {
+    throw std::runtime_error(watchman::to<std::string>(
+        "Failed to send clock PDU: ", strerror(errno)));
+  }
+
+  buf.clear();
+  auto result = decodeNext(client, buf, jerr);
+  if (!result) {
+    throw std::runtime_error(watchman::to<std::string>(
+        "Failed to decode clock response: ", jerr.text, " ", strerror(errno)));
+  }
+
+  // Check for error in the response
+  auto error = result.get_default("error");
+  if (error) {
+    throw std::runtime_error(
+        watchman::to<std::string>("Clock error : ", json_to_w_string(error)));
+  }
+
+  // We use presence of "clock" as success
+  auto clock = result.get_default("clock");
+  if (!clock) {
+    throw std::runtime_error("Failed to get clock in response");
+  }
+}
+
+/**
+ * Runs watch-list command and returns a json_ref that contains a list of roots.
+ */
+json_ref get_watch_list(watchman_stream* client) {
+  auto cmd = json_array({typed_string_to_json("watch-list", W_STRING_UNICODE)});
+  w_jbuffer_t buf;
+  json_error_t jerr;
+
+  if (!buf.pduEncodeToStream(is_bser, 0, cmd, client)) {
+    throw std::runtime_error(watchman::to<std::string>(
+        "Failed to send watch-list PDU: ", strerror(errno)));
+  }
+
+  buf.clear();
+  auto result = decodeNext(client, buf, jerr);
+  if (!result) {
+    throw std::runtime_error(watchman::to<std::string>(
+        "Failed to decode watch-list response: ",
+        jerr.text,
+        " error:  ",
+        strerror(errno)));
+  }
+  return result.get_default("roots");
+}
+
+/**
+ * Run watch-list to get the list of watched roots. Then, run 'clock' on each
+ * watched root. We perf log the time taken to get the clock.
+ */
+void do_clock_check(watchman_stream* client) {
+  // We don't expect errors in these calls. However, we do want to make sure
+  // they are not fatal.
+  try {
+    auto roots = get_watch_list(client);
+    for (auto& r : roots.array()) {
+      w_perf_t sample("clock-test");
+      sample.add_meta("root", json_object({{"path", r}}));
+      try {
+        check_clock_command(client, r);
+      } catch (const std::exception& ex) {
+        log(watchman::ERR, "Failed do_clock_check : ", ex.what(), "\n");
+        sample.add_meta("error", w_string_to_json(ex.what()));
+        sample.force_log();
+      }
+      sample.finish();
+      sample.log();
+    }
+  } catch (const std::exception& ex) {
+    // Catch std::domain_error and std::runtime_error
+    log(watchman::ERR, "Failed get_watch_list : ", ex.what(), "\n");
+  }
+}
+
+void do_sanity_checks() {
+  w_set_thread_name("sanitychecks");
+
+  auto client = w_stm_connect(get_sock_name(), 6000);
+  if (!client) {
+    log(watchman::FATAL,
+        "Failed to connect to myself for sanity check: ",
+        strerror(errno),
+        "\n");
+    /* NOTREACHED */
+  }
+  check_my_sock(client.get());
+  do_clock_check(client.get());
+}
+}; // namespace
+} // namespace watchman
+
 void w_check_my_sock(void) {
-  std::thread thr(check_my_sock);
+  std::thread thr(watchman::do_sanity_checks);
   thr.detach();
 }
 
