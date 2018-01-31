@@ -1,0 +1,32 @@
+include_defs("//eden/DEFS")
+
+include_defs("xplat//configurations/buck/py_sdk")
+
+# We test only with the oss version of eden because it builds faster
+# and we do not expect that testing against the internal version
+# will provide any additional signal.
+oss_suffix = get_oss_suffix()
+
+artifacts = get_test_env_and_deps(oss_suffix)
+
+# We only need the rule below to trigger integration tests on
+# the SANDCASTLE system.  On devservers, users have the required
+# rights to run eden as part of the normal test run.
+if py_sdk.os.getenv('SANDCASTLE') is not None:
+    custom_unittest(
+        name = "watchman-eden-integration",
+        command = [
+            "$(location //watchman/facebook:runtests-py3)",
+            "--testpilot-json",
+            "--method",
+            "Eden",
+            "--method",
+            "eden",
+        ],
+        env = artifacts["env"],
+        tags = ["run_as_bundle"],
+        type = "json",
+        deps = artifacts["deps"] + [
+            "//watchman/facebook:runtests-py3",
+        ],
+    )

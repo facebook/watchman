@@ -24,7 +24,7 @@ try:
     def is_sandcastle():
         return 'SANDCASTLE' in os.environ
 
-    if not is_sandcastle() and edenclient.can_run_eden():
+    if edenclient.can_run_eden():
         TestParent = WatchmanTestCase.WatchmanTestCase
 
     can_run_eden = edenclient.can_run_eden

@@ -281,9 +281,12 @@ def shouldIncludeTestName(name):
     """ used by our loader to respect the set of tests to run """
     global args
     if args.method:
-        method = name.split('.').pop()
         for f in args.method:
-            if method == f:
+            if f in name:
+                # the strict original interpretation of this flag
+                # was pretty difficult to use in practice, so we
+                # now also allow substring matches against the
+                # entire test name.
                 return True
         return False
     return True
