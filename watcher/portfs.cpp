@@ -12,6 +12,7 @@
 struct watchman_port_file {
   file_obj_t port_file;
   w_string name;
+  bool is_dir;
 };
 
 using watchman::FileDescriptor;
@@ -19,6 +20,7 @@ using watchman::Pipe;
 
 struct PortFSWatcher : public Watcher {
   FileDescriptor port_fd;
+  FileDescriptor port_delete_fd;
   Pipe terminatePipe_;
 
   /* map of file name to watchman_port_file */
@@ -26,9 +28,14 @@ struct PortFSWatcher : public Watcher {
       std::unordered_map<w_string, std::unique_ptr<watchman_port_file>>>
       port_files;
 
+  std::unique_ptr<watchman_port_file> root_delete_w_port_file;
+  bool root_deleted;
+
   port_event_t portevents[WATCHMAN_BATCH_LIMIT];
 
   explicit PortFSWatcher(w_root_t* root);
+
+  bool start(const std::shared_ptr<w_root_t>& root) override;
 
   std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<w_root_t>& root,
@@ -72,15 +79,20 @@ static std::unique_ptr<watchman_port_file> make_port_file(
   f->port_file.fo_atime = finfo.atime;
   f->port_file.fo_mtime = finfo.mtime;
   f->port_file.fo_ctime = finfo.ctime;
+  f->is_dir = finfo.isDir();
 
   return f;
 }
 
 PortFSWatcher::PortFSWatcher(w_root_t* root)
-    : Watcher("portfs", 0), port_fd(port_create(), "port_create()") {
+    : Watcher("portfs", 0),
+      port_fd(port_create(), "port_create()"),
+      port_delete_fd(port_create(), "port_create()"),
+      root_deleted(false) {
   auto wlock = port_files.wlock();
   wlock->reserve(root->config.getInt(CFG_HINT_NUM_DIRS, HINT_NUM_DIRS));
   port_fd.setCloExec();
+  port_delete_fd.setCloExec();
 }
 
 bool PortFSWatcher::do_watch(
@@ -121,6 +133,40 @@ bool PortFSWatcher::do_watch(
   return true;
 }
 
+/*
+ * We need to have an extra port the catches the delete event on the root.
+ * The reason for this is that the creation or delete of one of the
+ * files/directories directly under the root will cause an FILE_MODIFIED,
+ * FILE_ATTRIB event on the root, because just one event can be generated
+ * per file_obj the delete event coming afterwards is not seen.
+ */
+bool PortFSWatcher::start(const std::shared_ptr<w_root_t>& root) {
+  struct stat st;
+  if (stat(root->root_path.c_str(), &st)) {
+    watchman::log(watchman::ERR, "stat failed in PortFS root delete watch");
+    root->cancel();
+    return false;
+  }
+
+  auto f = make_port_file(root->root_path, watchman::FileInformation(st));
+  auto rawFile = f.get();
+  root_delete_w_port_file = std::move(f);
+
+  w_log(W_LOG_DBG, "watching %s\n for delete events", root->root_path.c_str());
+  errno = 0;
+  if (port_associate(
+          port_delete_fd.fd(),
+          PORT_SOURCE_FILE,
+          (uintptr_t)&rawFile->port_file,
+          0, // we only want the delete events
+          (void*)rawFile)) {
+    watchman::log(
+        watchman::ERR, "port_associate failed in PortFS root delete watch");
+    return false;
+  }
+  return true;
+}
+
 bool PortFSWatcher::startWatchFile(struct watchman_file* file) {
   auto name = w_dir_path_cat_str(file->parent, file->getName());
   if (!name) {
@@ -140,16 +186,19 @@ std::unique_ptr<watchman_dir_handle> PortFSWatcher::startWatchDir(
   auto osdir = w_dir_open(path);
 
   if (fstat(osdir->getFd(), &st) == -1) {
-    // whaaa?
-    root->scheduleRecrawl("fstat failed");
+    if (w_string_equal(dir->getFullPath(), root->root_path)) {
+      root->cancel();
+    } else {
+      // whaaa?
+      root->scheduleRecrawl("fstat failed");
+    }
     throw std::system_error(
         errno,
         std::generic_category(),
         std::string("fstat failed for dir ") + path);
   }
 
-  auto dir_name = dir->getFullPath();
-  do_watch(dir_name, watchman::FileInformation(st), true);
+  do_watch(dir->getFullPath(), watchman::FileInformation(st), true);
 
   return osdir;
 }
@@ -159,6 +208,12 @@ bool PortFSWatcher::consumeNotify(
     PendingCollection::LockedPtr& coll) {
   uint_t i, n;
   struct timeval now;
+
+  // root got deleted, cancel the watch
+  if (root_deleted) {
+    root->cancel();
+    return false;
+  }
 
   errno = 0;
 
@@ -210,7 +265,10 @@ bool PortFSWatcher::consumeNotify(
       root->cancel();
       return false;
     }
-    coll->add(f->name, now, W_PENDING_RECURSIVE | W_PENDING_VIA_NOTIFY);
+    coll->add(
+        f->name,
+        now,
+        (f->is_dir ? W_PENDING_RECURSIVE : 0) | W_PENDING_VIA_NOTIFY);
 
     // It was port_dissociate'd implicitly.  We'll re-establish a
     // watch later when portfs_root_start_watch_(file|dir) are called again
@@ -222,25 +280,32 @@ bool PortFSWatcher::consumeNotify(
 
 bool PortFSWatcher::waitNotify(int timeoutms) {
   int n;
-  std::array<struct pollfd, 2> pfd;
+  std::array<struct pollfd, 3> pfd;
 
   pfd[0].fd = port_fd.fd();
   pfd[0].events = POLLIN;
-  pfd[1].fd = terminatePipe_.read.fd();
+  pfd[1].fd = port_delete_fd.fd();
   pfd[1].events = POLLIN;
+  pfd[2].fd = terminatePipe_.read.fd();
+  pfd[2].events = POLLIN;
 
   n = poll(pfd.data(), pfd.size(), timeoutms);
 
   if (n > 0) {
-    if (pfd[1].revents) {
+    if (pfd[2].revents) {
       // We were signalled via signalThreads
       return false;
     }
-    return pfd[0].revents != 0;
+    if (pfd[1].revents) {
+      // An exceptional event (delete) occured on the root so delete it
+      root_deleted = true;
+      return true;
+    }
+    return (pfd[0].revents != 0);
   }
-  return n == 1;
-}
 
+  return false;
+}
 void PortFSWatcher::signalThreads() {
   ignore_result(write(terminatePipe_.write.fd(), "X", 1));
 }
