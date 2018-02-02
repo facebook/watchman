@@ -112,9 +112,10 @@ buck_cxx_library(
 cpp_library(
     name = "eden_watcher",
     srcs = [
+        "cmds/heapprof.cpp",
         "watcher/eden.cpp",
     ],
-    compiler_flags = compiler_flags,
+    compiler_flags = compiler_flags + ["-DUSE_JEMALLOC"],
     # We use constructors to declare commands rather than maintaining
     # static tables of things.  Ensure that they don't get stripped
     # out of the final binary!
@@ -274,6 +275,7 @@ cpp_library(
             "query/pcre.cpp",
             "root/warnerr.cpp",
             "root/poison.cpp",
+            "cmds/heapprof.cpp",
         ],
     ),
     compiler_flags = compiler_flags,
