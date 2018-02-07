@@ -82,7 +82,10 @@ class WatchmanTestCase(unittest.TestCase):
         self.checkPersistentSession()
         self.checkOSApplicability()
 
-    def getClient(self, inst=None):
+    def tearDown(self):
+        self.__clearClient()
+
+    def getClient(self, inst=None, replace_cached=False):
         if inst or not hasattr(self, 'client'):
             client = pywatchman.client(
                 # ASAN-enabled builds can be slower enough that we hit timeouts
@@ -93,7 +96,7 @@ class WatchmanTestCase(unittest.TestCase):
                 recvEncoding=self.encoding,
                 sockpath=(inst or
                           WatchmanInstance.getSharedInstance()).getSockPath())
-            if not inst:
+            if not inst or replace_cached:
                 # only cache the client if it points to the shared instance
                 self.client = client
             return client
@@ -119,6 +122,11 @@ class WatchmanTestCase(unittest.TestCase):
     def setAttemptNumber(self, attempt):
         self.attempt = attempt
 
+    def __clearClient(self):
+        if hasattr(self, 'client'):
+            self.client.close()
+            delattr(self, 'client')
+
     def run(self, result):
         if result is None:
             raise Exception('MUST be a runtests.py:Result instance')
@@ -142,9 +150,7 @@ class WatchmanTestCase(unittest.TestCase):
                 pass
             self.__logTestInfo(id, 'END')
             self.__clearWatches()
-            if hasattr(self, 'client'):
-                self.client.close()
-                delattr(self, 'client')
+            self.__clearClient()
 
         return result
 
