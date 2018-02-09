@@ -62,7 +62,8 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
                             'none of the files listed in global config ' +
                             'root_files are present in path `' + os.path.join(
                                 d, 'a', 'b', 'c'
-                            ) + ' or any of its parent directories'
+                            ) + '` or any of its parent directories. ' +
+                            'root_files is defined by the'
                         ), str(ctx.exception)
                     )
         finally:
@@ -98,21 +99,21 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
             touch_watchmanconfig=True
         )
 
-        def test_watchProjectEnforcing(self):
-            config = {
-                'root_files': ['.git', '.hg', '.foo', '.bar'],
-                'enforce_root_files': True,
-            }
-            expect = [
-                ("a/b/c/.git", "a/b/c", None, True),
-                ("a/b/.hg", "a/b", "c", True),
-                ("a/.foo", "a", "b/c", True),
-                (".bar", None, "a/b/c", True),
-                ("a/.bar", "a", "b/c", True),
-                (".svn", None, None, False),
-                ("a/baz", None, None, False),
-            ]
-            self.runProjectTests(config=config, expect=expect)
+    def test_watchProjectEnforcing(self):
+        config = {
+            'root_files': ['.git', '.hg', '.foo', '.bar'],
+            'enforce_root_files': True,
+        }
+        expect = [
+            ("a/b/c/.git", "a/b/c", None, True),
+            ("a/b/.hg", "a/b", "c", True),
+            ("a/.foo", "a", "b/c", True),
+            (".bar", None, "a/b/c", True),
+            ("a/.bar", "a", "b/c", True),
+            (".svn", None, None, False),
+            ("a/baz", None, None, False),
+        ]
+        self.runProjectTests(config=config, expect=expect)
 
     def test_reUseNestedWatch(self):
         d = self.mkdtemp()
