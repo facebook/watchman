@@ -13,14 +13,20 @@
 #endif
 #include "FileDescriptor.h"
 
+using namespace watchman;
 using watchman::FileDescriptor;
 using watchman::OpenFileHandleOptions;
 
 #ifdef HAVE_GETATTRLISTBULK
+// The ordering of these fields is defined by the ordering of the
+// corresponding ATTR_XXX flags that are listed after each item.
+// Those flags appear in a specific order in the getattrlist()
+// man page.  We use FSOPT_PACK_INVAL_ATTRS to ensure that the
+// kernel won't omit a field that it didn't return to us.
 typedef struct {
   uint32_t len;
-  attribute_set_t returned;
-  uint32_t err;
+  attribute_set_t returned; // ATTR_CMN_RETURNED_ATTRS
+  uint32_t err; // ATTR_CMN_ERROR
 
   /* The attribute data length will not be greater than NAME_MAX + 1
    * characters, which is NAME_MAX * 3 + 1 bytes (as one UTF-8-encoded
@@ -144,6 +150,10 @@ DirHandle::DirHandle(const char* path, bool strict) {
 
     attrlist_ = attrlist();
     attrlist_.bitmapcount = ATTR_BIT_MAP_COUNT;
+    // These field flags are listed here in the same order that they
+    // are listed in the getattrlist() manpage, which is also the
+    // same order that they will be emitted into the buffer, which
+    // is thus the order that they must appear in bulk_attr_item.
     attrlist_.commonattr = ATTR_CMN_RETURNED_ATTRS |
       ATTR_CMN_ERROR |
       ATTR_CMN_NAME |
@@ -182,7 +192,15 @@ const watchman_dir_ent* DirHandle::readDir() {
 
       errno = 0;
       retcount = getattrlistbulk(
-          fd_.fd(), &attrlist_, buf_, sizeof(buf_), FSOPT_PACK_INVAL_ATTRS);
+          fd_.fd(),
+          &attrlist_,
+          buf_,
+          sizeof(buf_),
+          // FSOPT_PACK_INVAL_ATTRS informs the kernel that we want to
+          // include attrs in our buffer even if it doesn't return them
+          // to us; we want this because we took pains to craft our
+          // bulk_attr_item struct to avoid pointer math.
+          FSOPT_PACK_INVAL_ATTRS);
       if (retcount == -1) {
         throw std::system_error(
             errno, std::generic_category(), "getattrlistbulk");
@@ -203,15 +221,44 @@ const watchman_dir_ent* DirHandle::readDir() {
       cursor_ = nullptr;
     }
 
-    ent_.d_name = ((char*)&item->name) + item->name.attr_dataoffset;
-    if (item->err) {
-      w_log(
-          W_LOG_ERR,
-          "item error %s: %d %s\n",
-          ent_.d_name,
-          item->err,
+    w_string_piece name{};
+
+    if (item->returned.commonattr & ATTR_CMN_NAME) {
+      ent_.d_name = ((char*)&item->name) + item->name.attr_dataoffset;
+      name = w_string_piece(ent_.d_name);
+    }
+
+    if (item->returned.commonattr & ATTR_CMN_ERROR) {
+      log(ERR,
+          "getattrlistbulk: error while reading dir: entry ",
+          name,
           strerror(item->err));
-      // We got the name, so we can return something useful
+
+      // No name means we've got nothing useful to go on
+      if (name.empty()) {
+        throw std::system_error(
+            item->err, std::generic_category(), "getattrlistbulk");
+      }
+
+      // Getting the name means that we can at least enumerate the dir
+      // contents.
+      ent_.has_stat = false;
+      return &ent_;
+    }
+
+    if (name.empty()) {
+      throw std::system_error(
+          EIO,
+          std::generic_category(),
+          "getattrlistbulk didn't return a name for a directory entry!?");
+    }
+
+    if (item->returned.commonattr != (attrlist_.commonattr & ~ATTR_CMN_ERROR)) {
+      log(ERR,
+          "getattrlistbulk didn't return all useful stat data! returned=",
+          item->returned.commonattr);
+      // We can still yield the name, so we don't need to throw an exception
+      // in this case.
       ent_.has_stat = false;
       return &ent_;
     }
