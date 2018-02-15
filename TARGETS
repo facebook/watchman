@@ -314,10 +314,8 @@ python_library(
     name = "runtests",
     srcs = ["runtests.py"],
     py_version = "<3",
-    runtime_deps = [
-        ":watchman",
-    ],
     deps = [
+        ":watchman",
         "//watchman/tests/integration:testlib",
     ],
 )
@@ -326,10 +324,8 @@ python_library(
     name = "runtests-py3",
     srcs = ["runtests.py"],
     py_version = ">=3.5",
-    runtime_deps = [
-        ":watchman",
-    ],
     deps = [
+        ":watchman",
         "//watchman/tests/integration:testlib-py3",
     ],
 )

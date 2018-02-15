@@ -27,10 +27,8 @@ python_library(
     name = "testsupport",
     srcs = testsupport_srcs,
     base_module = "",
-    runtime_deps = [
-        "//watchman:watchman",
-    ],
     deps = [
+        "//watchman:watchman",
         "//watchman/python/pywatchman:pywatchman",
     ],
 )
@@ -39,10 +37,8 @@ python_library(
     name = "testsupport3",
     srcs = testsupport_srcs,
     base_module = "",
-    runtime_deps = [
-        "//watchman:watchman",
-    ],
     deps = [
+        "//watchman:watchman",
         "//watchman/python/pywatchman_aio:pywatchman_aio",
     ],
 )
