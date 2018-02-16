@@ -59,8 +59,6 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
                            os.path.exists(second_log),
                            message='both triggers fire at start')
 
-        # start collecting logs
-        self.watchmanCommand('log-level', 'debug')
         # touch the file, should run both triggers
         self.touchRelative(root, 'foo.js')
 
@@ -150,9 +148,6 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         triggers = self.watchmanCommand('trigger-list', root).get('triggers')
         self.assertItemsEqual(triggers, expect)
 
-        # start collecting logs
-        self.watchmanCommand('log-level', 'debug')
-
         self.suspendWatchman()
         self.touchRelative(root, 'foo.c')
         self.touchRelative(root, 'b ar.c')
@@ -161,8 +156,6 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         self.assertWaitFor(lambda: self.hasTriggerInLogs(root, 'test') and
                            self.hasTriggerInLogs(root, 'other'),
                            message='both triggers fired on update')
-
-        self.watchmanCommand('log-level', 'off')
 
         self.validate_trigger_output(root, ['foo.c', 'b ar.c'], 'initial')
 
@@ -182,14 +175,10 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
 
         remove_logs()
 
-        self.watchmanCommand('log-level', 'debug')
-
         self.watchmanCommand('debug-recrawl', root)
         # ensure that the triggers don't get deleted
         triggers = self.watchmanCommand('trigger-list', root).get('triggers')
         self.assertItemsEqual(triggers, expect)
-
-        self.watchmanCommand('log-level', 'off')
 
         self.touchRelative(root, 'foo.c')
         expect = ['foo.c']
