@@ -166,7 +166,6 @@ class WatchmanTestCase {
   }
 
   function didRunOneTest($test_method_name) {
-    $this->watchman_instance->stopLogging();
     chdir($this->root);
     $this->logTestInfo('end', $test_method_name);
   }
@@ -229,18 +228,6 @@ class WatchmanTestCase {
       $this->needsLiveConnection(),
       "you must override needsLiveConnection and make it return true"
     );
-  }
-
-  function startLogging($level) {
-    $this->assertLiveConnection();
-    $out = $this->watchman_instance->startLogging($level);
-    $this->assertEqual($level, $out['log_level'], "set log level to $level");
-  }
-
-  function stopLogging() {
-    $this->assertLiveConnection();
-    $out = $this->watchman_instance->stopLogging();
-    $this->assertEqual('off', $out['log_level'], "set log level to 'off'");
   }
 
   function waitForSub($subname, $callable, $timeout = 15) {
