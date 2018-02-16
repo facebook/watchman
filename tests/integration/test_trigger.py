@@ -25,25 +25,13 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         # cli transport has no log subscriptions
         return True
 
-    def matchTriggerInLog(self, logs, root, triggerName):
-        r = re.compile('%s.*posix_spawnp: %s' %
-                       (re.escape(root), triggerName), re.I)
-        for line in logs:
-            if r.search(line.replace('\\', '/')):
-                return True
-        return False
-
     def hasTriggerInLogs(self, root, triggerName):
-        client = self.getClient()
-        logs = client.getLog(remove=False)
-        if self.matchTriggerInLog(logs, root, triggerName):
-            return True
-        res = client.receive()
-        while client.isUnilateralResponse(res):
-            logs = client.getLog(remove=False)
-            if self.matchTriggerInLog(logs, root, triggerName):
+        pat = '%s.*posix_spawnp: %s' % (re.escape(root), triggerName)
+        r = re.compile(pat, re.I)
+        for line in self.getServerLogContents():
+            line = line.replace('\\', '/')
+            if r.search(line):
                 return True
-            res = client.receive()
         return False
 
     # https://github.com/facebook/watchman/issues/141

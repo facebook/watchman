@@ -19,6 +19,7 @@ import time
 import tempfile
 import os.path
 import os
+import Interrupt
 import WatchmanInstance
 import TempDir
 
@@ -107,7 +108,7 @@ class WatchmanTestCase(unittest.TestCase):
             try:
                 self.getClient().query('log', 'debug',
                                        'TEST: %s %s\n\n' % (test, msg))
-            except Exception as e:
+            except Exception:
                 pass
 
     def mkdtemp(self, **kwargs):
@@ -146,7 +147,7 @@ class WatchmanTestCase(unittest.TestCase):
             try:
                 self.watchmanCommand('log-level', 'off')
                 self.getClient().getLog(remove=True)
-            except:
+            except Exception:
                 pass
             self.__logTestInfo(id, 'END')
             self.__clearWatches()
@@ -156,7 +157,6 @@ class WatchmanTestCase(unittest.TestCase):
 
     def dumpLogs(self):
         ''' used in travis CI to show the hopefully relevant log snippets '''
-        inst = WatchmanInstance.getSharedInstance()
 
         def tail(logstr, n):
             lines = logstr.split('\n')[-n:]
@@ -178,6 +178,14 @@ class WatchmanTestCase(unittest.TestCase):
             'Server logs',
             tail(inst.getServerLogContents(), 500),
         ])
+
+    def getServerLogContents(self):
+        '''
+        Returns the contents of the server log file as an array
+        that has already been split by line.
+        '''
+        return WatchmanInstance.getSharedInstance().\
+            getServerLogContents().split('\n')
 
     def setConfiguration(self, transport, encoding):
         self.transport = transport
@@ -207,7 +215,7 @@ class WatchmanTestCase(unittest.TestCase):
                 self.client.subs = {}
                 self.client.sub_by_root = {}
                 self.watchmanCommand('watch-del-all')
-            except Exception as e:
+            except Exception:
                 pass
 
     def __del__(self):
@@ -233,6 +241,7 @@ class WatchmanTestCase(unittest.TestCase):
         deadline = time.time() + timeout
         res = None
         while time.time() < deadline:
+            Interrupt.checkInterrupt()
             res = cond()
             if res_check(res):
                 return [True, res]
@@ -357,6 +366,7 @@ class WatchmanTestCase(unittest.TestCase):
 
         deadline = time.time() + timeout
         while time.time() < deadline:
+            Interrupt.checkInterrupt()
             sub = self.getSubscription(name, root=root, remove=False)
             if sub is not None:
                 res = accept(sub)
