@@ -68,17 +68,6 @@ class DirHandle : public watchman_dir_handle {
   const watchman_dir_ent* readDir() override;
   int getFd() const override;
 };
-#else
-static const char *w_basename(const char *path) {
-  const char *last = path + strlen(path) - 1;
-  while (last >= path) {
-    if (*last == '/' || *last == '\\') {
-      return last + 1;
-    }
-    --last;
-  }
-  return NULL;
-}
 #endif
 
 #ifndef _WIN32
