@@ -33,6 +33,7 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
 
                 dir_to_watch = os.path.join(d, 'a', 'b', 'c')
                 os.makedirs(dir_to_watch, 0o777)
+                dir_to_watch = self.normAbsolutePath(dir_to_watch)
                 self.touchRelative(d, touch)
                 if touch_watchmanconfig:
                     self.touchRelative(d, '.watchmanconfig')
@@ -60,9 +61,9 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
                     self.assertIn(
                         (
                             'none of the files listed in global config ' +
-                            'root_files are present in path `' + os.path.join(
-                                d, 'a', 'b', 'c'
-                            ) + '` or any of its parent directories. ' +
+                            'root_files are present in path `' +
+                            dir_to_watch +
+                            '` or any of its parent directories. ' +
                             'root_files is defined by the'
                         ), str(ctx.exception)
                     )
