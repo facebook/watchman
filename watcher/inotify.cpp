@@ -263,13 +263,12 @@ void InotifyWatcher::process_inotify_event(
           return;
         }
 
-        // We need to examine the parent and crawl down
+        // We need to examine the parent and potentially crawl down
         pname = w_string_dirname(name);
         w_log(W_LOG_DBG, "mask=%x, focus on parent: %.*s\n",
             ine->mask, pname->len, pname->buf);
         w_string_delref(name);
         name = pname;
-        pending_flags |= W_PENDING_RECURSIVE;
       }
 
       if (ine->mask & (IN_CREATE|IN_DELETE)) {
