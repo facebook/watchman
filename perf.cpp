@@ -236,22 +236,7 @@ void watchman_perf_sample::log() {
 #ifdef HAVE_SYS_RESOURCE_H
   ADDTV("user_time", usage.ru_utime);
   ADDTV("system_time", usage.ru_stime);
-#define ADDU(n) info.set(#n, json_integer(usage.n))
-  ADDU(ru_maxrss);
-  ADDU(ru_ixrss);
-  ADDU(ru_idrss);
-  ADDU(ru_minflt);
-  ADDU(ru_majflt);
-  ADDU(ru_nswap);
-  ADDU(ru_inblock);
-  ADDU(ru_oublock);
-  ADDU(ru_msgsnd);
-  ADDU(ru_msgrcv);
-  ADDU(ru_nsignals);
-  ADDU(ru_nvcsw);
-  ADDU(ru_nivcsw);
 #endif // HAVE_SYS_RESOURCE_H
-#undef ADDU
 #undef ADDTV
 
   // Log to the log file
