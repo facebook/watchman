@@ -53,6 +53,7 @@ typedef struct {
 #ifndef _WIN32
 class DirHandle : public watchman_dir_handle {
 #ifdef HAVE_GETATTRLISTBULK
+  std::string dirName_;
   FileDescriptor fd_;
   struct attrlist attrlist_;
   int retcount_{0};
@@ -123,8 +124,53 @@ std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path, bool strict) {
   return watchman::make_unique<DirHandle>(path, strict);
 }
 
-DirHandle::DirHandle(const char* path, bool strict) {
 #ifdef HAVE_GETATTRLISTBULK
+static std::string flagsToLabel(
+    const std::unordered_map<uint32_t, const char*>& labels,
+    uint32_t flags) {
+  std::string str;
+  for (const auto& it : labels) {
+    if (it.first == 0) {
+      // Sometimes a define evaluates to zero; it's not useful so skip it
+      continue;
+    }
+    if ((flags & it.first) == it.first) {
+      if (!str.empty()) {
+        str.append(" ");
+      }
+      str.append(it.second);
+      flags &= ~it.first;
+    }
+  }
+  if (flags == 0) {
+    return str;
+  }
+  return to<std::string>(str, " unknown:", flags);
+}
+
+static const std::unordered_map<uint32_t, const char*> commonLabels = {
+    {ATTR_CMN_RETURNED_ATTRS, "ATTR_CMN_RETURNED_ATTRS"},
+    {ATTR_CMN_ERROR, "ATTR_CMN_ERROR"},
+    {ATTR_CMN_NAME, "ATTR_CMN_NAME"},
+    {ATTR_CMN_DEVID, "ATTR_CMN_DEVID"},
+    {ATTR_CMN_OBJTYPE, "ATTR_CMN_OBJTYPE"},
+    {ATTR_CMN_MODTIME, "ATTR_CMN_MODTIME"},
+    {ATTR_CMN_CHGTIME, "ATTR_CMN_CHGTIME"},
+    {ATTR_CMN_ACCTIME, "ATTR_CMN_ACCTIME"},
+    {ATTR_CMN_OWNERID, "ATTR_CMN_OWNERID"},
+    {ATTR_CMN_GRPID, "ATTR_CMN_GRPID"},
+    {ATTR_CMN_ACCESSMASK, "ATTR_CMN_ACCESSMASK"},
+    {ATTR_CMN_FILEID, "ATTR_CMN_FILEID"},
+};
+#endif
+
+DirHandle::DirHandle(const char* path, bool strict)
+#ifdef HAVE_GETATTRLISTBULK
+    : dirName_(path)
+#endif
+{
+#ifdef HAVE_GETATTRLISTBULK
+  dirName_ = path;
   if (cfg_get_bool("_use_bulkstat", use_bulkstat_by_default())) {
     auto opts = strict ? OpenFileHandleOptions::strictOpenDir()
                        : OpenFileHandleOptions::openDir();
@@ -155,6 +201,7 @@ DirHandle::DirHandle(const char* path, bool strict) {
       ATTR_CMN_GRPID |
       ATTR_CMN_ACCESSMASK |
       ATTR_CMN_FILEID;
+
     attrlist_.dirattr = ATTR_DIR_LINKCOUNT;
     attrlist_.fileattr = ATTR_FILE_TOTALSIZE | ATTR_FILE_LINKCOUNT;
     return;
@@ -217,11 +264,17 @@ const watchman_dir_ent* DirHandle::readDir() {
       name = w_string_piece(ent_.d_name);
     }
 
-    if (item->returned.commonattr & ATTR_CMN_ERROR) {
+    if ((item->returned.commonattr & ATTR_CMN_ERROR) && item->err != 0) {
       log(ERR,
-          "getattrlistbulk: error while reading dir: entry ",
+          "getattrlistbulk: error while reading dir: ",
+          dirName_,
+          "/",
           name,
-          strerror(item->err));
+          ": ",
+          item->err,
+          " ",
+          strerror(item->err),
+          "\n");
 
       // No name means we've got nothing useful to go on
       if (name.empty()) {
@@ -239,13 +292,21 @@ const watchman_dir_ent* DirHandle::readDir() {
       throw std::system_error(
           EIO,
           std::generic_category(),
-          "getattrlistbulk didn't return a name for a directory entry!?");
+          to<std::string>(
+              "getattrlistbulk didn't return a name for a directory entry under ",
+              dirName_,
+              "!?"));
     }
 
-    if (item->returned.commonattr != (attrlist_.commonattr & ~ATTR_CMN_ERROR)) {
+    if (item->returned.commonattr != attrlist_.commonattr) {
       log(ERR,
-          "getattrlistbulk didn't return all useful stat data! returned=",
-          item->returned.commonattr);
+          "getattrlistbulk didn't return all useful stat data for ",
+          dirName_,
+          "/",
+          name,
+          " returned=",
+          flagsToLabel(commonLabels, item->returned.commonattr),
+          "\n");
       // We can still yield the name, so we don't need to throw an exception
       // in this case.
       ent_.has_stat = false;
