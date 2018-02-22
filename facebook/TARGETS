@@ -26,16 +26,18 @@ python_binary(
     srcs = ["runtests_wrapper.py"],
     main_module = "watchman.facebook.runtests_wrapper",
     py_version = ">=3.5",
-    deps = [
+    runtime_deps = [
         "//eden/cli:cli",
         "//eden/fs/service:edenfs",
         "//eden/hg/eden:eden",
         "//eden/hooks/hg:post-clone",
+        "//watchman/python/bin:watchman-wait",
+    ],
+    deps = [
         "//eden/integration/hg/lib:testutil",
         "//eden/integration/lib:lib",
         "//libfb/py:pathutils",
         "//watchman:runtests-py3",
-        "//watchman/python/bin:watchman-wait",
         "//watchman/python/pywatchman:pywatchman",
     ],
 )
