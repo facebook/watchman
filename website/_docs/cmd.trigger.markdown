@@ -140,12 +140,12 @@ The possible trigger object properties are:
   typically means that the command output/error stream will show up in the
   Watchman log file.  If specified, the value must be a string:
 
-    * `>path/to/file` - causes output to redirected to the specifie file.
+    * `>path/to/file` - causes output to redirected to the specified file.
       The path is relative to the watched root, and will be truncated
       prior to being written to, if it exists, or created if it does not
       exist.
 
-    * `>>path/to/file` - causes output to redirected to the specifie file.
+    * `>>path/to/file` - causes output to redirected to the specified file.
       The path is relative to the watched root.  If the file already exists
       then it will be appended to.  The file will be created if it does not
       exist.
