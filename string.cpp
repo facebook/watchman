@@ -540,11 +540,6 @@ w_string w_string::vprintf(const char* format, va_list args) {
   va_end(args_copy);
 
   s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
-  if (!s) {
-    perror("no memory available");
-    abort();
-  }
-
   new (s) watchman_string();
 
   s->refcnt = 1;

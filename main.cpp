@@ -11,6 +11,7 @@
 using watchman::ChildProcess;
 using watchman::FileDescriptor;
 using Options = ChildProcess::Options;
+using namespace watchman;
 
 static int show_help = 0;
 static int show_version = 0;
@@ -446,16 +447,18 @@ static void spawn_via_launchd(void)
   close_random_fds();
 
   if (_NSGetExecutablePath(watchman_path, &size) == -1) {
-    w_log(W_LOG_ERR, "_NSGetExecutablePath: path too long; size %u\n", size);
-    abort();
+    log(FATAL, "_NSGetExecutablePath: path too long; size ", size, "\n");
   }
 
   uid = getuid();
   pw = getpwuid(uid);
   if (!pw) {
-    w_log(W_LOG_ERR, "getpwuid(%d) failed: %s.  I don't know who you are\n",
-        uid, strerror(errno));
-    abort();
+    log(FATAL,
+        "getpwuid(",
+        uid,
+        ") failed: ",
+        strerror(errno),
+        ".  I don't know who you are\n");
   }
 
   snprintf(plist_path, sizeof(plist_path),
@@ -481,9 +484,12 @@ static void spawn_via_launchd(void)
 
   fp = fopen(plist_path, "w");
   if (!fp) {
-    w_log(W_LOG_ERR, "Failed to open %s for write: %s\n",
-        plist_path, strerror(errno));
-    abort();
+    log(FATAL,
+        "Failed to open ",
+        plist_path,
+        " for write: ",
+        strerror(errno),
+        "\n");
   }
 
   compute_file_name(&pid_file, compute_user_name(), "pid", "pidfile");
@@ -626,8 +632,7 @@ static void compute_file_name(char **strp,
     ignore_result(asprintf(&state_dir, "%s/%s-state", state_parent, user));
 
     if (!state_dir) {
-      w_log(W_LOG_ERR, "out of memory computing %s\n", what);
-      exit(1);
+      log(FATAL, "out of memory computing ", what, "\n");
     }
 
     if (mkdir(state_dir, 0700) == 0 || errno == EEXIST) {
@@ -720,8 +725,7 @@ static void compute_file_name(char **strp,
     ignore_result(asprintf(&str, "%s/%s", state_dir, suffix));
 
     if (!str) {
-      w_log(W_LOG_ERR, "out of memory computing %s", what);
-      abort();
+      log(FATAL, "out of memory computing ", what, "\n");
     }
 
     free(state_dir);
@@ -729,8 +733,7 @@ static void compute_file_name(char **strp,
 
 #ifndef _WIN32
   if (str[0] != '/') {
-    w_log(W_LOG_ERR, "invalid %s: %s", what, str);
-    abort();
+    log(FATAL, "invalid ", what, ": ", str, "\n");
   }
 #endif
 
@@ -769,8 +772,10 @@ static const char *compute_user_name(void) {
       user_buf[size] = 0;
       user = user_buf;
     } else {
-      w_log(W_LOG_FATAL, "GetUserName failed: %s. I don't know who you are\n",
-          win32_strerror(GetLastError()));
+      log(FATAL,
+          "GetUserName failed: ",
+          win32_strerror(GetLastError()),
+          ". I don't know who you are\n");
     }
 #else
     uid_t uid = getuid();
@@ -778,16 +783,19 @@ static const char *compute_user_name(void) {
 
     pw = getpwuid(uid);
     if (!pw) {
-      w_log(W_LOG_FATAL, "getpwuid(%d) failed: %s. I don't know who you are\n",
-          uid, strerror(errno));
+      log(FATAL,
+          "getpwuid(",
+          uid,
+          ") failed: ",
+          strerror(errno),
+          ". I don't know who you are\n");
     }
 
     user = pw->pw_name;
 #endif
 
     if (!user) {
-      w_log(W_LOG_ERR, "watchman requires that you set $USER in your env\n");
-      abort();
+      log(FATAL, "watchman requires that you set $USER in your env\n");
     }
   }
 
@@ -815,9 +823,7 @@ static void setup_sock_name(void)
 
 #ifndef _WIN32
   if (strlen(sock_name) >= sizeof(un.sun_path) - 1) {
-    w_log(W_LOG_ERR, "%s: path is too long\n",
-        sock_name);
-    abort();
+    log(FATAL, sock_name, ": path is too long\n");
   }
 
   un.sun_family = PF_LOCAL;

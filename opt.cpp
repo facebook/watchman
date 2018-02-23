@@ -4,6 +4,8 @@
 #include "watchman.h"
 #include <getopt.h>
 
+using namespace watchman;
+
 #define IS_REQUIRED(x)  (x) == REQ_STRING
 
 /* One does not simply use getopt_long() */
@@ -105,23 +107,20 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
   /* to hold the args we pass to the daemon */
   auto daemon_argv = (char**)calloc(num_opts + 1, sizeof(char*));
   if (!daemon_argv) {
-    perror("calloc daemon opts");
-    abort();
+    log(FATAL, "calloc daemon opts\n");
   }
   *daemon_argvp = daemon_argv;
 
   /* something to hold the long options */
   auto long_opts = (option*)calloc(num_opts + 1, sizeof(struct option));
   if (!long_opts) {
-    perror("calloc struct option");
-    abort();
+    log(FATAL, "calloc struct option\n");
   }
 
   /* and the short options */
   auto shortopts = (char*)malloc((1 + num_opts) * 2);
   if (!shortopts) {
-    perror("malloc shortopts");
-    abort();
+    log(FATAL, "malloc shortopts\n");
   }
   nextshort = shortopts;
   nextshort[0] = ':';

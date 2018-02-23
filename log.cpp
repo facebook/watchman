@@ -181,7 +181,7 @@ void Log::doLogToStdErr() {
 
   if (fatal) {
     log_stack_trace();
-    abort();
+    exit(1);
   }
 }
 
@@ -256,7 +256,10 @@ static void crash_handler(int signo, siginfo_t* si, void*) {
     w_request_shutdown();
     return;
   }
-  abort();
+  // Resend the signal to terminate ourselves with it.
+  // We register crash_handler with SA_RESETHAND so it will
+  // not be invoked a second time.
+  kill(getpid(), signo);
 }
 #endif
 
@@ -290,8 +293,9 @@ static LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep) {
   }
   free(strings);
 
-  // Terminate the process
-  abort();
+  // Terminate the process.
+  // msvcrt abort() ultimately calls exit(3), so we shortcut that.
+  exit(3);
   return EXCEPTION_CONTINUE_SEARCH;
 }
 #endif
