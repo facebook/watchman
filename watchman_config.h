@@ -16,6 +16,9 @@ mode_t cfg_get_perms(const char* name, bool write_bits, bool execute_bits);
 const char *cfg_get_trouble_url(void);
 json_ref cfg_compute_root_files(bool* enforcing);
 
+// Convert root files to comma delimited string for error message
+std::string cfg_pretty_print_root_files(const json_ref& root_files);
+
 class Configuration {
   json_ref local_;
 

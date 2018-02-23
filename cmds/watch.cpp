@@ -219,25 +219,19 @@ resolve_projpath(const json_ref& args, char** errmsg, w_string& relpath) {
   }
 
   // Convert root files to comma delimited string for error message
-  std::string rfs;
-  for (auto& r : root_files.array()) {
-    if (!rfs.empty()) {
-      rfs += ", ";
-    }
-    rfs += json_string_value(r);
-  }
+  auto root_files_list = cfg_pretty_print_root_files(root_files);
 
   ignore_result(asprintf(
       errmsg,
-      "resolve_projpath: none of the files listed in global config "
+      "resolve_projpath:  None of the files listed in global config "
       "root_files are present in path `%s` or any of its "
-      "parent directories. root_files is defined by the "
-      "`%s` config file and includes `%s`. "
+      "parent directories.  root_files is defined by the "
+      "`%s` config file and includes %s.  "
       "One or more of these files must be present in order to allow "
       "a watch. Try pulling and checking out a newer version of the project?",
       path,
       WATCHMAN_CONFIG_FILE,
-      rfs.c_str()));
+      root_files_list.c_str()));
 
   return nullptr;
 }

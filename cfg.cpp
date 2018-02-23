@@ -192,6 +192,24 @@ json_ref cfg_compute_root_files(bool* enforcing) {
                      typed_string_to_json(".svn")});
 }
 
+// Produces a string like:  "`foo`, `bar`, and `baz`"
+std::string cfg_pretty_print_root_files(const json_ref& root_files) {
+  std::string result;
+  for (unsigned int i = 0; i < root_files.array().size(); ++i) {
+    const auto& r = root_files.array()[i];
+    if (i > 1 && i == root_files.array().size() - 1) {
+      // We are last in a list of multiple items
+      result.append(", and ");
+    } else if (i > 0) {
+      result.append(", ");
+    }
+    result.append("`");
+    result.append(json_string_value(r));
+    result.append("`");
+  }
+  return result;
+}
+
 json_int_t cfg_get_int(const char* name, json_int_t defval) {
   auto val = cfg_get_json(name);
 

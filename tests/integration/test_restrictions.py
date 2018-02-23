@@ -55,11 +55,16 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
                       client.query('watch', d)
                   self.assertRegexpMatches(
                       str(ctx.exception),
-                      ("unable to resolve root .*"+
-                      ": Your watchman administrator has configured watchman "+
-                      "to prevent watching this path.  "+
-                      "None of the files listed in global config root_files "+
-                      "are present and enforce_root_files is set to true"))
+                      ("unable to resolve root .*" +
+                      ": Your watchman administrator has configured watchman " +
+                      "to prevent watching path `.*`.  " +
+                      "None of the files listed in global config root_files " +
+                      "are present and enforce_root_files is set to true.  " +
+                      "root_files is defined by the `.*` config file and " +
+                      "includes `.watchmanconfig`, `.git`, `.hg`, `.foo`, " +
+                      "and `.bar`.  One or more of these files must be " +
+                      "present in order to allow a watch.  Try pulling " +
+                      "and checking out a newer version of the project?"))
 
       finally:
           inst.stop()

@@ -60,10 +60,10 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
                         client.query('watch-project', dir_to_watch)
                     self.assertIn(
                         (
-                            'none of the files listed in global config ' +
+                            'None of the files listed in global config ' +
                             'root_files are present in path `' +
                             dir_to_watch +
-                            '` or any of its parent directories. ' +
+                            '` or any of its parent directories.  ' +
                             'root_files is defined by the'
                         ), str(ctx.exception)
                     )

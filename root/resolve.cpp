@@ -203,11 +203,22 @@ std::shared_ptr<w_root_t> root_resolve(
   }
 
   if (!root_check_restrict(root_str.c_str())) {
-    ignore_result(
-        asprintf(errmsg, "Your watchman administrator has configured watchman "
-                         "to prevent watching this path.  None of the files "
-                         "listed in global config root_files are "
-                         "present and enforce_root_files is set to true"));
+    bool enforcing;
+    auto root_files = cfg_compute_root_files(&enforcing);
+    auto root_files_list = cfg_pretty_print_root_files(root_files);
+    ignore_result(asprintf(
+        errmsg,
+        "Your watchman administrator has configured watchman "
+        "to prevent watching path `%s`.  None of the files "
+        "listed in global config root_files are "
+        "present and enforce_root_files is set to true.  "
+        "root_files is defined by the `%s` config file and "
+        "includes %s.  One or more of these files must be "
+        "present in order to allow a watch.  Try pulling "
+        "and checking out a newer version of the project?",
+        root_str.c_str(),
+        WATCHMAN_CONFIG_FILE,
+        root_files_list.c_str()));
     w_log(W_LOG_ERR, "resolve_root: %s\n", *errmsg);
     return nullptr;
   }
