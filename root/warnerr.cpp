@@ -5,6 +5,8 @@
 #include "InMemoryView.h"
 #include "watchman_error_category.h"
 
+using namespace watchman;
+
 void handle_open_errno(
     const std::shared_ptr<w_root_t>& root,
     struct watchman_dir* dir,
@@ -13,37 +15,37 @@ void handle_open_errno(
     const std::error_code& err) {
   auto dir_name = dir->getFullPath();
   bool log_warning = true;
-  bool transient = false;
 
   if (err == watchman::error_code::no_such_file_or_directory ||
       err == watchman::error_code::not_a_directory ||
       err == watchman::error_code::too_many_symbolic_link_levels) {
     log_warning = false;
-    transient = false;
   } else if (err == watchman::error_code::permission_denied) {
     log_warning = true;
-    transient = false;
   } else if (err == watchman::error_code::system_limits_exceeded) {
     set_poison_state(dir_name, now, syscall, err);
+    if (!root->failure_reason) {
+      root->failure_reason = poisoned_reason;
+    }
     return;
   } else {
     log_warning = true;
-    transient = true;
   }
 
   if (w_string_equal(dir_name, root->root_path)) {
-    if (!transient) {
-      watchman::log(
-          watchman::ERR,
-          syscall,
-          "(",
-          dir_name,
-          ") -> ",
-          err.message(),
-          ". Root was deleted; cancelling watch\n");
-      root->cancel();
-      return;
+    auto warn = w_string::build(
+        syscall,
+        "(",
+        dir_name,
+        ") -> ",
+        err.message(),
+        ". Root is inaccessible; cancelling watch\n");
+    log(ERR, warn);
+    if (!root->failure_reason) {
+      root->failure_reason = warn;
     }
+    root->cancel();
+    return;
   }
 
   auto warn = w_string::build(

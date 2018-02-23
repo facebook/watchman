@@ -42,7 +42,6 @@ struct Watcher : public std::enable_shared_from_this<Watcher> {
   virtual std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
-      struct timeval now,
       const char* path) = 0;
 
   // Signal any threads to terminate.  Do not join them here.

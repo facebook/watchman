@@ -40,7 +40,6 @@ struct WinWatcher : public Watcher {
   std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
-      struct timeval now,
       const char* path) override;
 
   bool consumeNotify(
@@ -344,7 +343,6 @@ bool WinWatcher::start(const std::shared_ptr<w_root_t>& root) {
 std::unique_ptr<watchman_dir_handle> WinWatcher::startWatchDir(
     const std::shared_ptr<w_root_t>& root,
     struct watchman_dir* dir,
-    struct timeval now,
     const char* path) {
   return w_dir_open(path);
 }

@@ -101,6 +101,8 @@ bool error_category::equivalent(const std::error_code& code, int condition)
           code == windows_error_code(ERROR_TOO_MANY_OPEN_FILES) ||
 #endif
           code == make_error_code(std::errc::too_many_files_open_in_system) ||
+          code == make_error_code(std::errc::no_space_on_device) ||
+          code == make_error_code(std::errc::not_enough_memory) ||
           code == make_error_code(std::errc::too_many_files_open);
 
     case error_code::timed_out:

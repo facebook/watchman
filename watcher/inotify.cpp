@@ -78,7 +78,6 @@ struct InotifyWatcher : public Watcher {
   std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
-      struct timeval now,
       const char* path) override;
 
   bool consumeNotify(
@@ -118,7 +117,6 @@ InotifyWatcher::InotifyWatcher(w_root_t* root)
 std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
     const std::shared_ptr<w_root_t>&,
     struct watchman_dir*,
-    struct timeval now,
     const char* path) {
   int newwd, err;
 
@@ -133,14 +131,6 @@ std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
   newwd = inotify_add_watch(infd.fd(), path, WATCHMAN_INOTIFY_MASK);
   if (newwd == -1) {
     err = errno;
-    if (errno == ENOSPC || errno == ENOMEM) {
-      // Limits exceeded, no recovery from our perspective
-      set_poison_state(
-          dir_name,
-          now,
-          "inotify-add-watch",
-          std::error_code(errno, inotify_category()));
-    }
     throw std::system_error(err, inotify_category(), "inotify_add_watch");
   }
 

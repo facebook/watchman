@@ -53,7 +53,7 @@ void InMemoryView::crawler(
   std::unique_ptr<watchman_dir_handle> osdir;
 
   try {
-    osdir = watcher_->startWatchDir(root, dir, now, path);
+    osdir = watcher_->startWatchDir(root, dir, path);
   } catch (const std::system_error& err) {
     handle_open_errno(root, dir, now, "opendir", err.code());
     markDirDeleted(view, dir, now, true);

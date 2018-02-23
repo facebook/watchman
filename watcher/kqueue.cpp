@@ -38,7 +38,6 @@ struct KQueueWatcher : public Watcher {
   std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
-      struct timeval now,
       const char* path) override;
 
   bool startWatchFile(struct watchman_file* file) override;
@@ -137,7 +136,6 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
 std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
     const std::shared_ptr<w_root_t>& root,
     struct watchman_dir* dir,
-    struct timeval,
     const char* path) {
   struct stat st, osdirst;
   struct kevent k;

@@ -54,7 +54,6 @@ struct FSEventsWatcher : public Watcher {
   std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
-      struct timeval now,
       const char* path) override;
 
   bool consumeNotify(
@@ -631,7 +630,6 @@ bool FSEventsWatcher::waitNotify(int timeoutms) {
 std::unique_ptr<watchman_dir_handle> FSEventsWatcher::startWatchDir(
     const std::shared_ptr<w_root_t>&,
     struct watchman_dir*,
-    struct timeval,
     const char* path) {
   return w_dir_open(path);
 }
