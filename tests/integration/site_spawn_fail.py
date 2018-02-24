@@ -6,4 +6,5 @@ from __future__ import print_function
 # no unicode literals
 import sys
 print('failed to start')
+sys.stdout.flush()
 sys.exit(1)

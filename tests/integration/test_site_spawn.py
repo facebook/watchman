@@ -22,18 +22,19 @@ THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, 'tests', 'integration')
 @unittest.skipIf(os.name == 'nt', "not supported on windows")
 class TestSiteSpawn(unittest.TestCase):
     def test_failingSpawner(self):
-      config = {
-          'spawn_watchman_service': os.path.join(THIS_DIR, 'site_spawn_fail.py')
-      }
+        config = {
+            'spawn_watchman_service': os.path.join(THIS_DIR, 'site_spawn_fail.py')
+        }
 
-      inst = WatchmanInstance.Instance(config=config)
-      stdout, stderr = inst.commandViaCLI(['version'])
-
-      self.assertEqual(b'', stdout)
-      self.assertRegexpMatches(stderr.decode('ascii'),
-            'site_spawn_fail.py: exited with status 1')
-      with open(inst.log_file_name, 'r') as f:
-          self.assertEqual('failed to start\n', f.read())
+        inst = WatchmanInstance.Instance(config=config)
+        stdout, stderr = inst.commandViaCLI(['version'])
+        print('stdout', stdout)
+        print('stderr', stderr)
+        stderr = stderr.decode('ascii')
+        self.assertEqual(b'', stdout)
+        self.assertRegexpMatches(stderr, 'failed to start\n')
+        self.assertRegexpMatches(stderr,
+                'site_spawn_fail.py: exited with status 1')
 
     def test_no_site_spawner(self):
         """With a site spawner configured to otherwise fail, pass

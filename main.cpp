@@ -394,10 +394,19 @@ static void spawn_site_specific(const char *spawner)
 
   close_random_fds();
 
+  // Note that we're not setting up the output to go to the log files
+  // here.  This is intentional; we'd like any failures in the spawner
+  // to bubble up to the user as having things silently fail and get
+  // logged to the server log doesn't provide any obvious cues to the
+  // user about what went wrong.  Watchman will open and redirect output
+  // to its log files when it ultimately is launched and enters the
+  // run_service() function above.
+  // However, we do need to make sure that any output from both stdout
+  // and stderr goes to stderr of the end user.
   Options opts;
   opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
-  opts.open(STDOUT_FILENO, log_name, O_WRONLY | O_CREAT | O_APPEND, 0600);
-  opts.dup2(STDOUT_FILENO, STDERR_FILENO);
+  opts.dup2(STDERR_FILENO, STDOUT_FILENO);
+  opts.dup2(STDERR_FILENO, STDERR_FILENO);
 
   try {
     ChildProcess proc(args, std::move(opts));
@@ -409,22 +418,14 @@ static void spawn_site_specific(const char *spawner)
     }
 
     if (WIFEXITED(res)) {
-      watchman::log(
-          watchman::FATAL,
-          spawner,
-          ": exited with status ",
-          WEXITSTATUS(res),
-          "\n");
+      log(FATAL, spawner, ": exited with status ", WEXITSTATUS(res), "\n");
     } else if (WIFSIGNALED(res)) {
-      watchman::log(
-          watchman::FATAL, spawner, ": signaled with ", WTERMSIG(res), "\n");
+      log(FATAL, spawner, ": signaled with ", WTERMSIG(res), "\n");
     }
-    watchman::log(
-        watchman::ERR, spawner, ": failed to start, exit status ", res, "\n");
+    log(FATAL, spawner, ": failed to start, exit status ", res, "\n");
 
   } catch (const std::exception& exc) {
-    watchman::log(
-        watchman::FATAL,
+    log(FATAL,
         "Failed to spawn watchman via `",
         spawner,
         "': ",
