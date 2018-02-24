@@ -50,7 +50,9 @@ struct InMemoryView : public QueryableView {
   explicit InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher);
 
   void ageOut(w_perf_t& sample, std::chrono::seconds minAge) override;
-  bool syncToNow(std::chrono::milliseconds timeout) override;
+  void syncToNow(
+      const std::shared_ptr<w_root_t>& root,
+      std::chrono::milliseconds timeout) override;
 
   bool doAnyOfTheseFilesExist(
       const std::vector<w_string>& fileNames) const override;

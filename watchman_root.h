@@ -107,7 +107,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
 
   void considerAgeOut();
   void performAgeOut(std::chrono::seconds min_age);
-  bool syncToNow(std::chrono::milliseconds timeout);
+  void syncToNow(std::chrono::milliseconds timeout);
   void scheduleRecrawl(const char* why);
 
   // Requests cancellation of the root.

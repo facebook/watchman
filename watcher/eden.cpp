@@ -579,10 +579,8 @@ class EdenView : public QueryableView {
     executeGlobBasedQuery(globStrings, query, ctx);
   }
 
-  bool syncToNow(std::chrono::milliseconds) override {
-    watchman::log(watchman::ERR, __FUNCTION__, "\n");
-    return true;
-  }
+  void syncToNow(const std::shared_ptr<w_root_t>&, std::chrono::milliseconds)
+      override {}
 
   void executeGlobBasedQuery(
       const std::vector<std::string>& globStrings,

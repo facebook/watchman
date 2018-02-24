@@ -125,10 +125,7 @@ void watchman_perf_sample::add_root_meta(
   // reading a nullptr.
   auto view = root->view();
   if (view) {
-    auto position = view->getMostRecentRootNumberAndTickValue();
-    meta.set({{"number", json_integer(position.rootNumber)},
-              {"ticks", json_integer(position.ticks)},
-              {"watcher", w_string_to_json(view->getName())}});
+    meta.set({{"watcher", w_string_to_json(view->getName())}});
   }
 
   add_meta("root", std::move(meta));

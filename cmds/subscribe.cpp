@@ -343,10 +343,7 @@ static void cmd_flush_subscriptions(
     }
   }
 
-  if (!root->syncToNow(std::chrono::milliseconds(sync_timeout))) {
-    send_error_response(client, "sync_timeout expired");
-    return;
-  }
+  root->syncToNow(std::chrono::milliseconds(sync_timeout));
 
   auto resp = make_response();
   auto synced = json_array();

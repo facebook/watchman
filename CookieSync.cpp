@@ -76,7 +76,7 @@ Future<Unit> CookieSync::sync() {
   return future;
 }
 
-bool CookieSync::syncToNow(std::chrono::milliseconds timeout) {
+void CookieSync::syncToNow(std::chrono::milliseconds timeout) {
   /* compute deadline */
   using namespace std::chrono;
   auto deadline = system_clock::now() + timeout;
@@ -85,30 +85,26 @@ bool CookieSync::syncToNow(std::chrono::milliseconds timeout) {
     auto cookie = sync();
 
     if (!cookie.wait_for(timeout)) {
-      log(ERR,
+      auto why = to<std::string>(
           "syncToNow: timed out waiting for cookie file to be "
           "observed by watcher within ",
           timeout.count(),
-          " milliseconds\n");
-      errno = ETIMEDOUT;
-      return false;
+          " milliseconds");
+      log(ERR, why, "\n");
+      throw std::system_error(ETIMEDOUT, std::generic_category(), why);
     }
 
-    if (cookie.result().hasError()) {
-      // Sync was aborted by a recrawl; recompute the timeout
-      // and wait again if we still have time
-      timeout = duration_cast<milliseconds>(deadline - system_clock::now());
-      if (timeout.count() <= 0) {
-        errno = ETIMEDOUT;
-        return false;
-      }
-
-      // wait again
-      continue;
+    if (cookie.result().hasValue()) {
+      // Success!
+      return;
     }
 
-    // Success!
-    return true;
+    // Sync was aborted by a recrawl; recompute the timeout
+    // and wait again if we still have time
+    timeout = duration_cast<milliseconds>(deadline - system_clock::now());
+    if (timeout.count() <= 0) {
+      cookie.result().throwIfError();
+    }
   }
 }
 

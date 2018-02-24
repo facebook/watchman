@@ -303,8 +303,12 @@ w_query_res w_query_execute(
   }
 
   w_query_ctx ctx(query, root, disableFreshInstance);
-  if (query->sync_timeout.count() && !root->syncToNow(query->sync_timeout)) {
-    throw QueryExecError("synchronization failed: ", strerror(errno));
+  if (query->sync_timeout.count()) {
+    try {
+      root->syncToNow(query->sync_timeout);
+    } catch (const std::exception& exc) {
+      throw QueryExecError("synchronization failed: ", exc.what());
+    }
   }
 
   /* The first stage of execution is generation.

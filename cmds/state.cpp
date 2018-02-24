@@ -65,9 +65,8 @@ static void cmd_state_enter(
     return;
   }
 
-  if (parsed.sync_timeout.count() && !root->syncToNow(parsed.sync_timeout)) {
-    send_error_response(client, "synchronization failed: %s", strerror(errno));
-    return;
+  if (parsed.sync_timeout.count()) {
+    root->syncToNow(parsed.sync_timeout);
   }
 
   auto assertion = std::make_shared<ClientStateAssertion>(root, parsed.name);
@@ -181,9 +180,8 @@ static void cmd_state_leave(
     return;
   }
 
-  if (parsed.sync_timeout.count() && !root->syncToNow(parsed.sync_timeout)) {
-    send_error_response(client, "synchronization failed: %s", strerror(errno));
-    return;
+  if (parsed.sync_timeout.count()) {
+    root->syncToNow(parsed.sync_timeout);
   }
 
   // mapGetDefault will return a nullptr assertion as the default value, if

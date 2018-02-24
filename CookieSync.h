@@ -22,9 +22,11 @@ class CookieSync {
    * observe it via inotify.  When we see it we know that
    * we've seen everything up to the point in time at which
    * we're asking questions.
-   * Returns true if we observe the change within the requested
-   * time, false otherwise. */
-  bool syncToNow(std::chrono::milliseconds timeout);
+   * Throws a std::system_error with an ETIMEDOUT error if
+   * the timeout expires before we observe the change, or
+   * a runtime_error if the root has been deleted or rendered
+   * inaccessible. */
+  void syncToNow(std::chrono::milliseconds timeout);
 
   /** Touches a cookie file and returns a Future that will
    * be ready when that cookie file is processed by the IO

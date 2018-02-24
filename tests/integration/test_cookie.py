@@ -30,9 +30,12 @@ class TestCookie(WatchmanTestCase.WatchmanTestCase):
         self.assertFileList(root, files=[])
         os.rmdir(root)
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
-            self.assertFileList(root, files=[])
+            result = self.assertFileList(root, files=[])
+            print('Should not have gotten here, but the result was:', result)
+
         reason = str(ctx.exception)
         self.assertTrue(
             ('No such file' in reason) or
+            ('root dir was removed' in reason) or
             ('unable to resolve root' in reason),
             msg=reason)
