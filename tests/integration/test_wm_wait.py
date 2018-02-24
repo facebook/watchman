@@ -8,8 +8,8 @@ from __future__ import print_function
 
 import WatchmanTestCase
 import os
-import os.path
-import WatchmanWaitInstance
+import subprocess
+import sys
 import WatchmanInstance
 
 
@@ -18,51 +18,70 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
     def requiresPersistentSession(self):
         return True
 
-    def assertSyncWatchmanWait(self, wi, root, maxTries=4):
-        cookie = '.watchmanWaitCookie'
+    def spawnWatchmanWait(self, cmdArgs):
+        wait_script = os.environ.get('WATCHMAN_WAIT_PATH')
+        if wait_script:
+            args = [
+                wait_script,
+            ]
+        else:
+            args = [
+                sys.executable,
+                os.path.join(
+                    os.environ['WATCHMAN_PYTHON_BIN'],
+                    'watchman-wait'),
+            ]
+        args.extend(cmdArgs)
 
-        for _ in range(maxTries):
-            self.touchRelative(root, cookie)
-            res = wi.readLine(timeout=10)
-            if res and cookie in res:
-                break
-        if not res:
-            raise Exception("Failed to communicate with watchman-watch")
+        env = os.environ.copy()
+        sock_path = WatchmanInstance.getSharedInstance().getSockPath()
+        env["WATCHMAN_SOCK"] = sock_path
+        env["PYTHONPATH"] = env["PYWATCHMAN_PATH"]
+        return subprocess.Popen(args,
+                                env=env,
+                                stdin=None,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
 
-        # Read any remaining notifications (clear the buffer for tests)
-        wi.readLines(count=5, timeout=5)
-
-    def assertWaitedFileList(self, wi, expected, msg=None):
-        res = wi.readLines(count=len(expected))
-        self.assertFileListsEqual(res, expected, message=msg)
+    def assertWaitedFileList(self, stdout, expected):
+        stdout = stdout.decode('utf-8').rstrip()
+        files = [f.rstrip() for f in stdout.split('\n')]
+        files = set(self.normFileList(files))
+        self.assertFileListsEqual(files, expected)
 
     def test_wait(self):
-
         root = self.mkdtemp()
         self.touchRelative(root, 'foo')
         a_dir = os.path.join(root, 'a')
         os.mkdir(a_dir)
         self.touchRelative(a_dir, 'foo')
 
-        wi = WatchmanWaitInstance.Instance(
-            sock_path=WatchmanInstance.getSharedInstance().getSockPath()
-        )
-        wi.start(paths=[root], cmdArgs=['--relative', root])
-        self.assertSyncWatchmanWait(wi, root)
+        wmwait = self.spawnWatchmanWait(['--relative', root,
+                                         '-m', '8', '-t', '3', root])
+
+        # watchman-wait will establish the watch, so we need to wait for that
+        # to complete before we start making the changes that we want to
+        # observe through it.
+        self.assertWaitFor(lambda: self.rootIsWatched(root))
 
         self.touchRelative(root, 'bar')
         self.removeRelative(root, 'foo')
-        self.assertWaitedFileList(wi, ['foo', 'bar'], msg="wait, create files")
-
         self.touchRelative(a_dir, 'bar')
         self.removeRelative(a_dir, 'foo')
-        self.assertWaitedFileList(
-            wi, ['a/bar', 'a/foo', 'a'], msg="wait, create dir")
 
         b_dir = os.path.join(root, 'b')
         os.mkdir(b_dir)
         self.touchRelative(b_dir, 'foo')
-        self.assertWaitedFileList(wi, ['b', 'b/foo'], msg=None)
+
+        (stdout, stderr) = wmwait.communicate()
+        self.assertWaitedFileList(stdout, [
+            'a',
+            'a/bar',
+            'a/foo',
+            'b',
+            'b/foo',
+            'bar',
+            'foo'])
 
     def test_rel_root(self):
         root = self.mkdtemp()
@@ -72,20 +91,26 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         b_dir = os.path.join(root, 'b')
         os.mkdir(b_dir)
 
-        wi = WatchmanWaitInstance.Instance(
-            sock_path=WatchmanInstance.getSharedInstance().getSockPath()
-        )
-        wi.start(paths=[a_dir, b_dir], cmdArgs=['--relative', b_dir])
+        wmwait = self.spawnWatchmanWait(['--relative', b_dir,
+                                         '-m', '6', '-t', '2', a_dir, b_dir])
 
-        self.assertSyncWatchmanWait(wi, a_dir)
+        # watchman-wait will establish the watches, so we need to wait for that
+        # to complete before we start making the changes that we want to
+        # observe through it.
+        self.assertWaitFor(lambda: self.rootIsWatched(b_dir))
+        self.assertWaitFor(lambda: self.rootIsWatched(a_dir))
+
         self.touchRelative(a_dir, 'afoo')
         self.touchRelative(b_dir, 'bfoo')
-        self.assertWaitedFileList(
-            wi, ['../a/afoo', 'bfoo'], msg="wait, relative create files")
 
         a_sub_dir = os.path.join(a_dir, 'asub')
         os.mkdir(a_sub_dir)
         b_sub_dir = os.path.join(b_dir, 'bsub')
         os.mkdir(b_sub_dir)
-        self.assertWaitedFileList(
-            wi, ['../a/asub', 'bsub'], msg="wait, relative create directories")
+
+        (stdout, stderr) = wmwait.communicate()
+        self.assertWaitedFileList(stdout, [
+            '../a/afoo',
+            '../a/asub',
+            'bfoo',
+            'bsub'])

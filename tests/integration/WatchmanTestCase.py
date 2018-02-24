@@ -332,6 +332,8 @@ class WatchmanTestCase(unittest.TestCase):
 
     def assertFileListContains(self, list1, list2, message=None):
         if not self.fileListContains(list1, list2):
+            message = 'list1 %r should contain %r: %s' % (
+                list1, list2, message)
             self.fail(message)
 
     # Wait for the file list to match the input set
@@ -423,6 +425,7 @@ class WatchmanTestCase(unittest.TestCase):
         WatchmanInstance.getSharedInstance().resume()
 
     def rootIsWatched(self, r):
+        r = self.normAbsolutePath(r)
         watches = [self.normAbsolutePath(
             root) for root in self.watchmanCommand('watch-list')['roots']]
         return r in watches
