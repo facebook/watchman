@@ -47,7 +47,7 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         stdout = stdout.decode('utf-8').rstrip()
         files = [f.rstrip() for f in stdout.split('\n')]
         files = set(self.normFileList(files))
-        self.assertFileListsEqual(files, expected)
+        self.assertFileListContains(files, expected)
 
     def test_wait(self):
         root = self.mkdtemp()
@@ -75,10 +75,8 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
 
         (stdout, stderr) = wmwait.communicate()
         self.assertWaitedFileList(stdout, [
-            'a',
             'a/bar',
             'a/foo',
-            'b',
             'b/foo',
             'bar',
             'foo'])
@@ -92,7 +90,7 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         os.mkdir(b_dir)
 
         wmwait = self.spawnWatchmanWait(['--relative', b_dir,
-                                         '-m', '6', '-t', '2', a_dir, b_dir])
+                                         '-m', '8', '-t', '6', a_dir, b_dir])
 
         # watchman-wait will establish the watches, so we need to wait for that
         # to complete before we start making the changes that we want to

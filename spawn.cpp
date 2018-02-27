@@ -195,7 +195,7 @@ static void spawn_command(
   }
 
   if (cmd->stderr_name) {
-    opts.open(STDOUT_FILENO, cmd->stderr_name, cmd->stderr_flags, 0666);
+    opts.open(STDERR_FILENO, cmd->stderr_name, cmd->stderr_flags, 0666);
   } else {
     opts.dup2(FileDescriptor::stdErr(), STDERR_FILENO);
   }
