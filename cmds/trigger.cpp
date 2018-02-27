@@ -191,7 +191,7 @@ static bool parse_redirection(const char **name_p, int *flags,
     return false;
   }
 
-  *flags = O_CREAT|O_CLOEXEC|O_WRONLY;
+  *flags = O_CREAT|O_WRONLY;
 
   if (name[1] == '>') {
 #ifdef _WIN32
