@@ -208,6 +208,8 @@ bool w_string_piece::operator==(w_string_piece other) const {
   }
   if (size() != other.size()) {
     return false;
+  } else if (size() == 0) {
+    return true;
   }
   return memcmp(data(), other.data(), size()) == 0;
 }
@@ -506,7 +508,9 @@ w_string_t *w_string_new_len_with_refcnt_typed(const char* str,
   s->refcnt = refcnt;
   s->len = len;
   buf = (char*)(s + 1);
-  memcpy(buf, str, len);
+  if (str) {
+    memcpy(buf, str, len);
+  }
   buf[len] = 0;
   s->buf = buf;
   s->type = type;
