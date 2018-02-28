@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
                  .wait()
                  .value();
 
-  LOG(INFO) << "Triggering subscritpion";
+  LOG(INFO) << "Triggering subscription";
   system("touch hit");
   LOG(INFO) << "Waiting for hit.";
   std::unique_lock<std::mutex> lock(mutex);
