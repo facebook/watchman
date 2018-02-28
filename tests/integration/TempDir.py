@@ -27,21 +27,8 @@ class TempDir(object):
         # We'll put all our temporary stuff under one dir so that we
         # can clean it all up at the end.
 
-        # If we're running under an internal test runner, we prefer to put
-        # things in a dir relating to that runner.
         parent_dir = tempfile.tempdir or os.environ.get('TMP', '/tmp')
-
-        if 'TESTPILOT_PROCESS_GROUP' in os.environ:
-            parent_dir = os.path.join(
-                parent_dir,
-                'watchmantest-%s' % (os.environ['TESTPILOT_PROCESS_GROUP'])
-            )
-            if not os.path.exists(parent_dir):
-                os.mkdir(parent_dir)
-
-            prefix = ''
-        else:
-            prefix = 'watchmantest'
+        prefix = 'watchmantest'
 
         self.temp_dir = path.get_canonical_filesystem_path(
             tempfile.mkdtemp(dir=parent_dir, prefix=prefix))
