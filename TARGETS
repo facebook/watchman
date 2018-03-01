@@ -109,73 +109,73 @@ buck_cxx_library(
     visibility = ["PUBLIC"],
 )
 
-cpp_library(
-    name = "eden_watcher",
-    srcs = [
-        "cmds/heapprof.cpp",
-        "watcher/eden.cpp",
-    ],
-    compiler_flags = compiler_flags + ["-DUSE_JEMALLOC"],
-    # We use constructors to declare commands rather than maintaining
-    # static tables of things.  Ensure that they don't get stripped
-    # out of the final binary!
-    link_whole = True,
-    supported_platforms_regex = "glibc",
-    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
-    deps = [
-        ":err",
-        ":headers",
-        "//eden/fs/service:thrift-streaming-cpp2",
-        "//folly:string",
-    ],
-)
+def sysdep_watcher():
+    if host_info().os.is_linux:
+        cpp_library(
+            name = "eden_watcher",
+            srcs = [
+                "cmds/heapprof.cpp",
+                "watcher/eden.cpp",
+            ],
+            compiler_flags = compiler_flags + ["-DUSE_JEMALLOC"],
+            # We use constructors to declare commands rather than maintaining
+            # static tables of things.  Ensure that they don't get stripped
+            # out of the final binary!
+            link_whole = True,
+            undefined_symbols = True,  # TODO(T23121628): fix deps and remove
+            deps = [
+                ":err",
+                ":headers",
+                "//eden/fs/service:thrift-streaming-cpp2",
+                "//folly:string",
+            ],
+        )
+        
+        # Linux specific watcher module
+        cpp_library(
+            name = "sysdep_watcher",
+            srcs = ["watcher/inotify.cpp"],
+            compiler_flags = compiler_flags,
+            # We use constructors to declare commands rather than maintaining
+            # static tables of things.  Ensure that they don't get stripped
+            # out of the final binary!
+            link_whole = True,
+            undefined_symbols = True,  # TODO(T23121628): fix deps and remove
+            deps = [
+                ":eden_watcher",
+                ":err",
+                ":headers",
+            ],
+        )
+    elif host_info().os.is_mac:
+        # mac specific watcher module
+        cpp_library(
+            name = "sysdep_watcher",
+            srcs = [
+                "watcher/fsevents.cpp",
+                "watcher/kqueue.cpp",
+            ],
+            compiler_flags = compiler_flags,
+            # We use constructors to declare commands rather than maintaining
+            # static tables of things.  Ensure that they don't get stripped
+            # out of the final binary!
+            link_whole = True,
+            deps = [":headers"],
+        )
+    elif host_info().os.is_windows:
+        # windows specific watcher module
+        cpp_library(
+            name = "sysdep_watcher",
+            srcs = ["watcher/win32.cpp"],
+            compiler_flags = compiler_flags,
+            # We use constructors to declare commands rather than maintaining
+            # static tables of things.  Ensure that they don't get stripped
+            # out of the final binary!
+            link_whole = True,
+            deps = [":headers"],
+        )
 
-# Linux specific watcher module
-cpp_library(
-    name = "sysdep_watcher",
-    srcs = ["watcher/inotify.cpp"],
-    compiler_flags = compiler_flags,
-    # We use constructors to declare commands rather than maintaining
-    # static tables of things.  Ensure that they don't get stripped
-    # out of the final binary!
-    link_whole = True,
-    supported_platforms_regex = "glibc",
-    undefined_symbols = True,  # TODO(T23121628): fix deps and remove
-    deps = [
-        ":eden_watcher",
-        ":err",
-        ":headers",
-    ],
-)
-
-# mac specific watcher module
-cpp_library(
-    name = "sysdep_watcher",
-    srcs = [
-        "watcher/fsevents.cpp",
-        "watcher/kqueue.cpp",
-    ],
-    compiler_flags = compiler_flags,
-    # We use constructors to declare commands rather than maintaining
-    # static tables of things.  Ensure that they don't get stripped
-    # out of the final binary!
-    link_whole = True,
-    supported_platforms_regex = "macos",
-    deps = [":headers"],
-)
-
-# windows specific watcher module
-cpp_library(
-    name = "sysdep_watcher",
-    srcs = ["watcher/win32.cpp"],
-    compiler_flags = compiler_flags,
-    # We use constructors to declare commands rather than maintaining
-    # static tables of things.  Ensure that they don't get stripped
-    # out of the final binary!
-    link_whole = True,
-    supported_platforms_regex = "windows",
-    deps = [":headers"],
-)
+sysdep_watcher()
 
 cpp_library(
     name = "log",
