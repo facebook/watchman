@@ -372,5 +372,5 @@ tests_wildmatch_t_SOURCES = \
 
 watch:
 	PYTHONPATH=python python/bin/watchman-make \
-			-p '**/*.[ch]' 'Makefile*' '**/*.py' '**/*.php' \
+			-p '**/*.[ch]' 'Makefile*' '**/*.py' \
 			-t integration

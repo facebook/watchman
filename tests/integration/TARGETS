@@ -62,7 +62,6 @@ py3_srcs = glob(
     ],
     excludes = [
         "test_nodejs.py",
-        "test_php.py",
         "test_eden*.py",
     ],
 )

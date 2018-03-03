@@ -21,9 +21,6 @@ SET VS90COMNTOOLS=%VS140COMNTOOLS%
 where python.exe 2> NUL
 if %ERRORLEVEL% GTR 0 set PATH=c:\Python27;%PATH%
 
-where php.exe 2> NUL
-if %ERRORLEVEL% GTR 0 set PATH=c:\php;%PATH%
-
 @rem finally, run make
 nmake /nologo /s /f winbuild\Makefile %1 %2 %3 %4
 

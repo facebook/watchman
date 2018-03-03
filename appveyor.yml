@@ -7,16 +7,13 @@ branches:
     - gh-pages
 
 init:
-  - SET PATH=C:\Program Files\OpenSSL;c:\tools\php;%PATH%
+  - SET PATH=C:\Program Files\OpenSSL;%PATH%
   - SET COMPOSER_NO_INTERACTION=1
   - SET PHP=1
   - SET ANSICON=121x90 (121x90)
 
 install:
   - python -V
-  - IF EXIST c:\tools\php (SET PHP=0)
-  - ps: appveyor-retry cinst --params '""/InstallDir:C:\tools\php""' --ignore-checksums -y php --version 5.6.30
-  - php -v
 
 build_script:
   - cmd: call make.bat
@@ -25,7 +22,6 @@ after_build:
   - make dist
 
 test_script:
-  - PATH=C:\tools\php;%PATH%
   - "cd node && npm install"
   - cmd: make integration
 
