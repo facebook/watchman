@@ -8,8 +8,8 @@ from __future__ import print_function
 # no unicode literals
 
 import WatchmanTestCase
+import pywatchman
 import os
-import os.path
 
 
 @WatchmanTestCase.expand_matrix
@@ -136,3 +136,25 @@ class TestMatch(WatchmanTestCase.WatchmanTestCase):
         )
         self.assertEqual(self.normWatchmanFileList(res1['files']),
                          self.normWatchmanFileList(res2['files']))
+
+    def test_suffix_expr(self):
+        root = self.mkdtemp()
+
+        self.touchRelative(root, 'foo.c')
+        os.mkdir(os.path.join(root, 'subdir'))
+        self.touchRelative(root, 'subdir', 'bar.txt')
+
+        self.watchmanCommand('watch', root)
+        self.assertFileListsEqual(
+            self.watchmanCommand('query', root, {
+                'expression': ['suffix', 'c'],
+                'fields': ['name']})['files'],
+            ['foo.c'])
+
+        with self.assertRaises(pywatchman.WatchmanError) as ctx:
+            self.watchmanCommand('query', root, {
+                'expression': 'suffix'})
+
+        self.assertRegexpMatches(
+            str(ctx.exception),
+            "Expected array for 'suffix' term")
