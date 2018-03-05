@@ -58,12 +58,13 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         self.touchRelative(a_dir, 'foo')
 
         wmwait = self.spawnWatchmanWait(['--relative', root,
-                                         '-m', '8', '-t', '3', root])
+                                         '-m', '8', '-t', '10', root])
 
         # watchman-wait will establish the watch, so we need to wait for that
         # to complete before we start making the changes that we want to
         # observe through it.
         self.assertWaitFor(lambda: self.rootIsWatched(root))
+        self.watchmanCommand('watch', root)
 
         self.touchRelative(root, 'bar')
         self.removeRelative(root, 'foo')
@@ -92,13 +93,15 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         os.mkdir(b_dir)
 
         wmwait = self.spawnWatchmanWait(['--relative', b_dir,
-                                         '-m', '8', '-t', '6', a_dir, b_dir])
+                                         '-m', '8', '-t', '10', a_dir, b_dir])
 
         # watchman-wait will establish the watches, so we need to wait for that
         # to complete before we start making the changes that we want to
         # observe through it.
         self.assertWaitFor(lambda: self.rootIsWatched(b_dir))
         self.assertWaitFor(lambda: self.rootIsWatched(a_dir))
+        self.watchmanCommand('watch', a_dir)
+        self.watchmanCommand('watch', b_dir)
 
         self.touchRelative(a_dir, 'afoo')
         self.touchRelative(b_dir, 'bfoo')
