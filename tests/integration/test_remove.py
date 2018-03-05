@@ -62,4 +62,5 @@ class TestRemove(WatchmanTestCase.WatchmanTestCase):
         shutil.rmtree(root)
         retry_makedirs(os.path.join(root, 'notme'))
 
-        self.assertWaitFor(lambda: not self.rootIsWatched(root))
+        self.assertWaitFor(lambda: not self.rootIsWatched(root),
+            message="%s should be cancelled" % root)

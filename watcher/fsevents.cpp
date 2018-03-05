@@ -542,6 +542,13 @@ bool FSEventsWatcher::consumeNotify(
       break;
     }
 
+    if ((item.flags & kFSEventStreamEventFlagItemRemoved) &&
+        item.path == root->root_path) {
+      log(ERR, "Root directory removed, cancel watch\n");
+      root->cancel();
+      break;
+    }
+
     if (item.flags & kFSEventStreamEventFlagRootChanged) {
       w_log(
           W_LOG_ERR,
