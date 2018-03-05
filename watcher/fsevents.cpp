@@ -11,6 +11,8 @@
 
 #if HAVE_FSEVENTS
 
+using namespace watchman;
+
 // The FSEventStreamSetExclusionPaths API has a limit of 8 items.
 // If that limit is exceeded, it will fail.
 #define MAX_EXCLUSIONS size_t(8)

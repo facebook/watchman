@@ -44,6 +44,7 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
                                 stderr=subprocess.PIPE)
 
     def assertWaitedFileList(self, stdout, expected):
+        print('stdout=%r' % stdout)
         stdout = stdout.decode('utf-8').rstrip()
         files = [f.rstrip() for f in stdout.split('\n')]
         files = set(self.normFileList(files))
@@ -74,6 +75,7 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         self.touchRelative(b_dir, 'foo')
 
         (stdout, stderr) = wmwait.communicate()
+        print('stderr=%s' % stderr)
         self.assertWaitedFileList(stdout, [
             'a/bar',
             'a/foo',
