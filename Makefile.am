@@ -18,6 +18,7 @@ watchman_SOURCES = \
 	CookieSync.cpp \
 	FileDescriptor.cpp \
 	FileInformation.cpp \
+	LocalFileResult.cpp \
 	InMemoryView.cpp \
 	Pipe.cpp \
 	PubSub.cpp \

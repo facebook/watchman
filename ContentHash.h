@@ -56,6 +56,11 @@ class ContentHashCache {
   // Throws exceptions for any errors that may occur.
   HashValue computeHashImmediate(const ContentHashCacheKey& key) const;
 
+  // Compute the hash value for a given input.
+  // This will block the calling thread while the I/O is performed.
+  // Throws exceptions for any errors that may occur.
+  static HashValue computeHashImmediate(const char* fullPath);
+
   // Compute the hash value for a given input via the thread pool.
   // Returns a future to operate on the result of this async operation
   Future<HashValue> computeHash(const ContentHashCacheKey& key) const;

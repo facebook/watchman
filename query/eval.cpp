@@ -2,7 +2,11 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+
+#include "LocalFileResult.h"
 #include "watchman_scopeguard.h"
+
+using namespace watchman;
 using watchman::Result;
 using watchman::Future;
 using watchman::collectAll;
@@ -283,22 +287,21 @@ w_query_res w_query_execute(
         json_array_append_new(pathList, w_string_to_json(f));
       }
 
-      // Re-cast this as a path-generator query
-      auto altQuerySpec = json_copy(query->query_spec);
-
-      altQuerySpec.object().erase("since");
-      altQuerySpec.set("path", std::move(pathList));
-
-      // And switch us over to run the rest of the query on this one
-      altQuery = w_query_parse(root, altQuerySpec);
-      query = altQuery.get();
       disableFreshInstance = true;
-      // We may have been called with a custom generator; we don't need to use
-      // that for this case, so make sure that we use the default generator
-      // so that it will actually execute using the pathGenerator.
-      generator = [](w_query* q,
-                     const std::shared_ptr<w_root_t>& r,
-                     struct w_query_ctx* c) { r->view()->pathGenerator(q, c); };
+      generator = [pathList](
+                      w_query* q,
+                      const std::shared_ptr<w_root_t>& r,
+                      struct w_query_ctx* c) {
+        auto spec = r->view()->getMostRecentRootNumberAndTickValue();
+        w_clock_t clock{};
+        clock.ticks = spec.ticks;
+        time(&clock.timestamp);
+        for (auto& pathEntry : pathList.array()) {
+          auto path = json_to_w_string(pathEntry);
+          w_query_process_file(
+              q, c, watchman::make_unique<LocalFileResult>(r, path, clock));
+        }
+      };
     }
   }
 

@@ -46,13 +46,11 @@ Future<std::shared_ptr<const Node>> ContentHashCache::get(
       key, [this](const ContentHashCacheKey& k) { return computeHash(k); });
 }
 
-HashValue ContentHashCache::computeHashImmediate(
-    const ContentHashCacheKey& key) const {
+HashValue ContentHashCache::computeHashImmediate(const char* fullPath) {
   HashValue result;
   uint8_t buf[8192];
 
-  auto fullPath = w_string::pathCat({rootPath_, key.relativePath});
-  auto stm = w_stm_open(fullPath.c_str(), O_RDONLY);
+  auto stm = w_stm_open(fullPath, O_RDONLY);
   if (!stm) {
     throw std::system_error(
         errno,
@@ -130,6 +128,13 @@ HashValue ContentHashCache::computeHashImmediate(
         GetLastError(), std::system_category(), "CryptGetHashParam HP_HASHVAL");
   }
 #endif
+  return result;
+}
+
+HashValue ContentHashCache::computeHashImmediate(
+    const ContentHashCacheKey& key) const {
+  auto fullPath = w_string::pathCat({rootPath_, key.relativePath});
+  auto result = computeHashImmediate(fullPath.c_str());
 
   // Since TOCTOU is everywhere and everything, double check to make sure that
   // the file looks like we were expecting at the start.  If it isn't, then

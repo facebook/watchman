@@ -16,7 +16,7 @@ import subprocess
 if pywatchman.compat.PYTHON3:
     STRING_TYPES = (str, bytes)
 else:
-    STRING_TYPES = (str, unicode)
+    STRING_TYPES = (str, unicode)  # noqa: F821
 
 
 @WatchmanTestCase.expand_matrix
@@ -317,6 +317,27 @@ o  changeset:   0:b08db10380dd
         dat = self.getSubFatClocksOnly('scmsub', root=root)
         self.assertEqual(dat[-1]['clock']['scm']['mergebase'], mergeBaseInitial)
         self.assertFileListsEqual(self.getConsolidatedFileList(dat), [])
+
+        # Ensure that we reported deleted files correctly, even
+        # if we've never seen the files before.  To do this, we're
+        # going to cancel the watch and restart it, so this is broken
+        # out separately from the earlier tests against feature3
+        self.hg(['co', '-C', 'feature3'], cwd=root)
+        self.watchmanCommand('watch-del', root)
+        self.watchmanCommand('watch', root)
+        res = self.watchmanCommand('query', root, {
+            'expression': ['not',
+                            ['anyof',
+                                ['name', '.hg'],
+                                ['match', 'hg-check*'],
+                                ['dirname', '.hg']]],
+            'fields': ['name'],
+            'since': {
+                'scm': {
+                    'mergebase': '',
+                    'mergebase-with': 'TheMaster'}}})
+        self.assertFileListsEqual(res['files'], ['car'])
+
 
     def getConsolidatedFileList(self, dat):
         fset = set()
