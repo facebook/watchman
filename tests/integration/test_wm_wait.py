@@ -49,6 +49,22 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         files = set(self.normFileList(files))
         self.assertFileListContains(files, expected)
 
+    def assertWaitForWmWaitWatch(self, root):
+        ''' Wait for the specified root to appear in the watch list;
+        watchman-wait will initiate that asynchronously and we have
+        to wait for that before proceeding.
+        Then wait for the watch to be ready to query, otherwise the
+        test expectations will not be reliably met. '''
+
+        # wait for the watch to appear
+        self.assertWaitFor(lambda: self.rootIsWatched(root),
+            message='%s was not watched by watchman-wait' % root)
+
+        # now wait for it to be ready to query.  The easiest way
+        # to do this is to ask for the watch ourselves, as that
+        # will block us until it is ready
+        self.watchmanCommand('watch', root)
+
     def test_wait(self):
         root = self.mkdtemp()
         self.touchRelative(root, 'foo')
@@ -58,11 +74,7 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
 
         wmwait = self.spawnWatchmanWait(['--relative', root,
                                          '-m', '8', '-t', '3', root])
-
-        # watchman-wait will establish the watch, so we need to wait for that
-        # to complete before we start making the changes that we want to
-        # observe through it.
-        self.assertWaitFor(lambda: self.rootIsWatched(root))
+        self.assertWaitForWmWaitWatch(root)
 
         self.touchRelative(root, 'bar')
         self.removeRelative(root, 'foo')
@@ -92,11 +104,8 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         wmwait = self.spawnWatchmanWait(['--relative', b_dir,
                                          '-m', '8', '-t', '6', a_dir, b_dir])
 
-        # watchman-wait will establish the watches, so we need to wait for that
-        # to complete before we start making the changes that we want to
-        # observe through it.
-        self.assertWaitFor(lambda: self.rootIsWatched(b_dir))
-        self.assertWaitFor(lambda: self.rootIsWatched(a_dir))
+        self.assertWaitForWmWaitWatch(b_dir)
+        self.assertWaitForWmWaitWatch(a_dir)
 
         self.touchRelative(a_dir, 'afoo')
         self.touchRelative(b_dir, 'bfoo')
