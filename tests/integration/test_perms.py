@@ -39,13 +39,13 @@ class TestPerms(WatchmanTestCase.WatchmanTestCase):
         res = self.watchmanCommand('query', root, {
             'expression': ['exists'],
             'fields': ['name']})
-        self.assertRegexpMatches(res['warning'],
+        self.assertRegex(res['warning'],
                                  'Marking this portion of the tree deleted')
 
     @unittest.skipIf(is_root(), "N/A if root")
     def test_permDeniedRoot(self):
         root = self.mkdtemp()
         os.chmod(root, 0)
-        with self.assertRaisesRegexp(pywatchman.CommandError,
+        with self.assertRaisesRegex(pywatchman.CommandError,
                 '(open|opendir|realpath)'):
             self.watchmanCommand('watch', root)

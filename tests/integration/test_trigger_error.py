@@ -16,7 +16,7 @@ class TestTriggerError(WatchmanTestCase.WatchmanTestCase):
     def assertTriggerRegError(self, err, *args):
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             self.watchmanCommand(*args)
-        self.assertRegexpMatches(str(ctx.exception), err)
+        self.assertRegex(str(ctx.exception), err)
 
     def test_bad_args(self):
         root = self.mkdtemp()

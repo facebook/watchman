@@ -146,7 +146,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
              'stdin': ['name', 'exists', 'new', 'size', 'mode']}]
 
         triggers = self.watchmanCommand('trigger-list', root).get('triggers')
-        self.assertItemsEqual(triggers, expect)
+        self.assertCountEqual(triggers, expect)
 
         self.suspendWatchman()
         self.touchRelative(root, 'foo.c')
@@ -178,7 +178,7 @@ class TestTrigger(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand('debug-recrawl', root)
         # ensure that the triggers don't get deleted
         triggers = self.watchmanCommand('trigger-list', root).get('triggers')
-        self.assertItemsEqual(triggers, expect)
+        self.assertCountEqual(triggers, expect)
 
         self.touchRelative(root, 'foo.c')
         expect = ['foo.c']

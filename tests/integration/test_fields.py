@@ -78,4 +78,4 @@ class TestFields(WatchmanTestCase.WatchmanTestCase):
             self.assertEqual(ns // 1000, us)
 
         for field in ['cclock', 'oclock']:
-            self.assertRegexpMatches(file[field], '^c:\d+:\d+:\d+:\d+$')
+            self.assertRegex(file[field], '^c:\d+:\d+:\d+:\d+$')

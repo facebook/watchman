@@ -32,8 +32,8 @@ class TestSiteSpawn(unittest.TestCase):
         print('stderr', stderr)
         stderr = stderr.decode('ascii')
         self.assertEqual(b'', stdout)
-        self.assertRegexpMatches(stderr, 'failed to start\n')
-        self.assertRegexpMatches(stderr,
+        self.assertRegex(stderr, 'failed to start\n')
+        self.assertRegex(stderr,
                 'site_spawn_fail.py: exited with status 1')
 
     def test_no_site_spawner(self):

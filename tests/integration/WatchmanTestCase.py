@@ -26,7 +26,7 @@ import TempDir
 if pywatchman.compat.PYTHON3:
     STRING_TYPES = (str, bytes)
 else:
-    STRING_TYPES = (str, unicode)
+    STRING_TYPES = (str, unicode)  # noqa: F821
 
 
 if os.name == 'nt':
@@ -53,8 +53,15 @@ if os.name == 'nt':
 
         return wrapper
 
-    for name in ['rename', 'unlink', 'remove', 'rmdir']:
+    for name in ['rename', 'unlink', 'remove', 'rmdir', 'makedirs']:
         setattr(os, name, wrap_with_backoff(getattr(os, name)))
+
+
+if not pywatchman.compat.PYTHON3:
+    unittest.TestCase.assertCountEqual = unittest.TestCase.assertItemsEqual
+    unittest.TestCase.assertRegex = unittest.TestCase.assertRegexpMatches
+    unittest.TestCase.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
+
 
 class WatchmanTestCase(unittest.TestCase):
 
@@ -63,9 +70,6 @@ class WatchmanTestCase(unittest.TestCase):
         self.setDefaultConfiguration()
         self.maxDiff = None
         self.attempt = 0
-
-        if pywatchman.compat.PYTHON3:
-            self.assertItemsEqual = self.assertCountEqual
 
     def requiresPersistentSession(self):
         return False
@@ -317,7 +321,7 @@ class WatchmanTestCase(unittest.TestCase):
     def assertFileListsEqual(self, list1, list2, message=None):
         list1 = [self.normRelativePath(f) for f in list1]
         list2 = [self.normRelativePath(f) for f in list2]
-        self.assertItemsEqual(list1, list2, message)
+        self.assertCountEqual(list1, list2, message)
 
     def fileListsEqual(self, list1, list2):
         list1 = [self.normRelativePath(f) for f in list1]
@@ -337,8 +341,9 @@ class WatchmanTestCase(unittest.TestCase):
             self.fail(message)
 
     # Wait for the file list to match the input set
-    def assertFileList(self, root, files=[], cursor=None,
+    def assertFileList(self, root, files=None, cursor=None,
                        relativeRoot=None, message=None):
+        files = files or []
         expected_files = self.normFileList(files)
         if (cursor is not None) and cursor[0:2] == 'n:':
             # it doesn't make sense to repeat named cursor queries, as
@@ -431,11 +436,11 @@ class WatchmanTestCase(unittest.TestCase):
         return r in watches
 
 
-def skip_for(transports=tuple(), codecs=tuple()):
+def skip_for(transports=None, codecs=None):
     """
     Decorator to allow skipping tests for particular transports or codecs."""
-    transports = set(transports)
-    codecs = set(codecs)
+    transports = set(transports or ())
+    codecs = set(codecs or ())
 
     def skip(f):
         @functools.wraps(f)

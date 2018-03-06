@@ -356,7 +356,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
             if 'warning' in item:
                 warn = item['warning']
                 break
-        self.assertRegexpMatches(warn, r'Recrawled this watch')
+        self.assertRegex(warn, r'Recrawled this watch')
 
     def test_flush_subscriptions(self):
         root = self.mkdtemp()
@@ -486,7 +486,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         )
         version = ret['version']
         self.assertEqual([], ret['no_sync_needed'])
-        self.assertItemsEqual(['sub1', 'sub2'], ret['synced'])
+        self.assertCountEqual(['sub1', 'sub2'], ret['synced'])
 
         # Do not wait for subscription results -- instead, make sure they've
         # shown up immediately.
@@ -526,8 +526,8 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
             # root (so sub1, sub2 and sub3, but not sub-other)
             {'sync_timeout': 1000},
         )
-        self.assertItemsEqual(['sub2'], ret['no_sync_needed'])
-        self.assertItemsEqual(['sub1', 'sub3'], ret['synced'])
+        self.assertCountEqual(['sub2'], ret['no_sync_needed'])
+        self.assertCountEqual(['sub1', 'sub3'], ret['synced'])
 
         # again, don't wait for the subscriptions
         sub1_data2 = self.getSubscription('sub1', root)
@@ -622,13 +622,13 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
         out = self.watchmanCommand('debug-get-subscriptions', root)
         subs = set(sub['info']['name'] for sub in out['subscribers'])
-        self.assertItemsEqual(set(['sub1', 'sub2']), subs)
+        self.assertCountEqual({'sub1', 'sub2'}, subs)
 
         # this should remove sub1 from the map
         self.watchmanCommand('unsubscribe', root, 'sub1')
         out = self.watchmanCommand('debug-get-subscriptions', root)
         subs = set(sub['info']['name'] for sub in out['subscribers'])
-        self.assertItemsEqual(set(['sub2']), subs)
+        self.assertCountEqual({'sub2'}, subs)
 
         # flush sub2 so that there's no reason anything else would be keeping
         # it around
@@ -704,4 +704,4 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
             if 'warning' in item:
                 warn = item['warning']
                 break
-        self.assertRegexpMatches(warn, r'Recrawled this watch')
+        self.assertRegex(warn, r'Recrawled this watch')

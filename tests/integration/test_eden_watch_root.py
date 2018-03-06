@@ -22,7 +22,7 @@ class TestEdenWatchRoot(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             self.watchmanCommand('watch', os.path.join(root, 'adir'))
-        self.assertRegexpMatches(
+        self.assertRegex(
             str(ctx.exception),
             ("unable to resolve root .*: eden: you may only watch " +
              "from the root of an eden mount point."))

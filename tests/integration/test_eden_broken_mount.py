@@ -29,6 +29,6 @@ class TestBrokenEden(WatchmanTestCase.WatchmanTestCase):
 
         with self.assertRaises(pywatchman.CommandError) as ctx:
             self.watchmanCommand('watch', root)
-        self.assertRegexpMatches(
+        self.assertRegex(
             str(ctx.exception),
             'failed to communicate with eden mount')

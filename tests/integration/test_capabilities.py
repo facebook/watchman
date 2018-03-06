@@ -34,9 +34,9 @@ class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
             'will-never-exist': False})
         self.assertFalse('error' in res, 'no error for missing optional')
 
-        with self.assertRaisesRegexp(pywatchman.CommandError,
-                                     'client required capability `will-never-exist` is not ' +
-                                     'supported by this server'):
+        with self.assertRaisesRegex(pywatchman.CommandError,
+                'client required capability `will-never-exist` is not ' +
+                'supported by this server'):
             client.query('version', {
                 'required': ['term-match', 'will-never-exist']})
 
@@ -56,9 +56,9 @@ class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
             'term-match': True,
             'will-never-exist': False})
 
-        with self.assertRaisesRegexp(pywatchman.CommandError,
-                                     'client required capability `will-never-exist` is not ' +
-                                     'supported by this server'):
+        with self.assertRaisesRegex(pywatchman.CommandError,
+                'client required capability `will-never-exist` is not ' +
+                'supported by this server'):
             client.capabilityCheck(required=['term-match', 'will-never-exist'])
 
     def test_capabilitySynth(self):

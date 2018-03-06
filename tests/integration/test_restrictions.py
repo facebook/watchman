@@ -18,56 +18,56 @@ import WatchmanTestCase
 @WatchmanTestCase.expand_matrix
 class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
     def test_rootRestrict(self):
-      config = {
-          'root_restrict_files': ['.git', '.hg', '.foo', '.bar']
-      }
+        config = {
+            'root_restrict_files': ['.git', '.hg', '.foo', '.bar']
+        }
 
-      inst = WatchmanInstance.Instance(config=config)
-      try:
-          inst.start()
-          client = self.getClient(inst)
+        inst = WatchmanInstance.Instance(config=config)
+        try:
+            inst.start()
+            client = self.getClient(inst)
 
-          expect = [
-              ('directory', '.git', True),
-              ('directory', '.hg', True),
-              ('file', '.foo', True),
-              ('file', '.bar', True),
-              ('directory', '.bar', True),
-              (None, None, False),
-              ('directory', '.svn', False),
-              ('file', 'baz', False),
-          ]
+            expect = [
+                ('directory', '.git', True),
+                ('directory', '.hg', True),
+                ('file', '.foo', True),
+                ('file', '.bar', True),
+                ('directory', '.bar', True),
+                (None, None, False),
+                ('directory', '.svn', False),
+                ('file', 'baz', False),
+            ]
 
-          for filetype, name, expect_pass in expect:
-              # encode the test criteria in the dirname so that we can
-              # figure out which test scenario failed more easily
-              d = self.mkdtemp(suffix='-%s-%s-%s' % (
-                               filetype, name, expect_pass))
-              if filetype == 'directory':
-                  os.mkdir(os.path.join(d, name))
-              elif filetype == 'file':
-                  self.touchRelative(d, name)
+            for filetype, name, expect_pass in expect:
+                # encode the test criteria in the dirname so that we can
+                # figure out which test scenario failed more easily
+                d = self.mkdtemp(suffix='-%s-%s-%s' % (
+                                 filetype, name, expect_pass))
+                if filetype == 'directory':
+                    os.mkdir(os.path.join(d, name))
+                elif filetype == 'file':
+                    self.touchRelative(d, name)
 
-              if expect_pass:
-                  client.query('watch', d)
-              else:
-                  with self.assertRaises(pywatchman.WatchmanError) as ctx:
-                      client.query('watch', d)
-                  self.assertRegexpMatches(
-                      str(ctx.exception),
-                      ("unable to resolve root .*" +
-                      ": Your watchman administrator has configured watchman " +
-                      "to prevent watching path `.*`.  " +
-                      "None of the files listed in global config root_files " +
-                      "are present and enforce_root_files is set to true.  " +
-                      "root_files is defined by the `.*` config file and " +
-                      "includes `.watchmanconfig`, `.git`, `.hg`, `.foo`, " +
-                      "and `.bar`.  One or more of these files must be " +
-                      "present in order to allow a watch.  Try pulling " +
-                      "and checking out a newer version of the project?"))
+                if expect_pass:
+                    client.query('watch', d)
+                else:
+                    with self.assertRaises(pywatchman.WatchmanError) as ctx:
+                        client.query('watch', d)
+                    self.assertRegex(
+                        str(ctx.exception),
+                        ("unable to resolve root .*" +
+                        ": Your watchman administrator has configured watchman " +
+                        "to prevent watching path `.*`.  " +
+                        "None of the files listed in global config root_files " +
+                        "are present and enforce_root_files is set to true.  " +
+                        "root_files is defined by the `.*` config file and " +
+                        "includes `.watchmanconfig`, `.git`, `.hg`, `.foo`, " +
+                        "and `.bar`.  One or more of these files must be " +
+                        "present in order to allow a watch.  Try pulling " +
+                        "and checking out a newer version of the project?"))
 
-      finally:
-          inst.stop()
+        finally:
+            inst.stop()
 
     def test_invalidRoot(self):
         d = self.mkdtemp()

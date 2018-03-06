@@ -251,7 +251,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         self.assertFalse(res['is_fresh_instance'])
         self.assertEqual(self.normWatchmanFileList(res['files']),
                          self.normFileList(['111', '222']))
-        self.assertRegexpMatches(res['warning'], 'Recrawled this watch')
+        self.assertRegex(res['warning'], 'Recrawled this watch')
 
     def test_recrawlFreshInstanceWarningSuppressed(self):
         root = self.mkdtemp()

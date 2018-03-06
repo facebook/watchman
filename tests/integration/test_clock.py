@@ -18,15 +18,15 @@ class TestClock(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand('watch', root)
         clock = self.watchmanCommand('clock', root)
 
-        self.assertRegexpMatches(clock['clock'], '^c:\d+:\d+:\d+:\d+$')
+        self.assertRegex(clock['clock'], '^c:\d+:\d+:\d+:\d+$')
 
     def test_clock_sync(self):
         root = self.mkdtemp()
         self.watchmanCommand('watch', root)
         clock1 = self.watchmanCommand('clock', root, {'sync_timeout': 100})
-        self.assertRegexpMatches(clock1['clock'], '^c:\d+:\d+:\d+:\d+$')
+        self.assertRegex(clock1['clock'], '^c:\d+:\d+:\d+:\d+$')
 
         clock2 = self.watchmanCommand('clock', root, {'sync_timeout': 100})
-        self.assertRegexpMatches(clock2['clock'], '^c:\d+:\d+:\d+:\d+$')
+        self.assertRegex(clock2['clock'], '^c:\d+:\d+:\d+:\d+$')
 
         self.assertNotEqual(clock1, clock2)

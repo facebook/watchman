@@ -46,6 +46,6 @@ class TestSuffixGenerator(WatchmanTestCase.WatchmanTestCase):
             self.watchmanCommand('query', root, {
                 'suffix': {'a': 'b'}})
 
-        self.assertRegexpMatches(
+        self.assertRegex(
             str(ctx.exception),
             "'suffix' must be a string or an array of strings")

@@ -155,6 +155,6 @@ class TestMatch(WatchmanTestCase.WatchmanTestCase):
             self.watchmanCommand('query', root, {
                 'expression': 'suffix'})
 
-        self.assertRegexpMatches(
+        self.assertRegex(
             str(ctx.exception),
             "Expected array for 'suffix' term")

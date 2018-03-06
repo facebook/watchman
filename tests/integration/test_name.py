@@ -85,7 +85,7 @@ class TestNameExpr(WatchmanTestCase.WatchmanTestCase):
             self.watchmanCommand('query', root, {
                 'expression': 'name'})
 
-        self.assertRegexpMatches(
+        self.assertRegex(
             str(ctx.exception),
             "Expected array for 'i?name' term")
 
@@ -93,7 +93,7 @@ class TestNameExpr(WatchmanTestCase.WatchmanTestCase):
             self.watchmanCommand('query', root, {
                 'expression': ['name', 'one', 'two', 'three']})
 
-        self.assertRegexpMatches(
+        self.assertRegex(
             str(ctx.exception),
             "Invalid number of arguments for 'i?name' term")
 
@@ -101,7 +101,7 @@ class TestNameExpr(WatchmanTestCase.WatchmanTestCase):
             self.watchmanCommand('query', root, {
                 'expression': ['name', 2]})
 
-        self.assertRegexpMatches(
+        self.assertRegex(
             str(ctx.exception),
             ("Argument 2 to 'i?name' must be either a string "
             "or an array of string"))
@@ -110,7 +110,7 @@ class TestNameExpr(WatchmanTestCase.WatchmanTestCase):
             self.watchmanCommand('query', root, {
                 'expression': ['name', 'one', 2]})
 
-        self.assertRegexpMatches(
+        self.assertRegex(
             str(ctx.exception),
             "Argument 3 to 'i?name' must be a string")
 
@@ -118,6 +118,6 @@ class TestNameExpr(WatchmanTestCase.WatchmanTestCase):
             self.watchmanCommand('query', root, {
                 'expression': ['name', 'one', 'invalid']})
 
-        self.assertRegexpMatches(
+        self.assertRegex(
             str(ctx.exception),
             "Invalid scope 'invalid' for i?name expression")
