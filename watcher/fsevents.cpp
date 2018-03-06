@@ -11,6 +11,8 @@
 
 #if HAVE_FSEVENTS
 
+using namespace watchman;
+
 // The FSEventStreamSetExclusionPaths API has a limit of 8 items.
 // If that limit is exceeded, it will fail.
 #define MAX_EXCLUSIONS size_t(8)
@@ -538,6 +540,13 @@ bool FSEventsWatcher::consumeNotify(
           W_LOG_ERR,
           "kFSEventStreamEventFlagUnmount %s, cancel watch\n",
           item.path.c_str());
+      root->cancel();
+      break;
+    }
+
+    if ((item.flags & kFSEventStreamEventFlagItemRemoved) &&
+        item.path == root->root_path) {
+      log(ERR, "Root directory removed, cancel watch\n");
       root->cancel();
       break;
     }
