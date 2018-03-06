@@ -293,7 +293,7 @@ w_query_res w_query_execute(
                       const std::shared_ptr<w_root_t>& r,
                       struct w_query_ctx* c) {
         auto spec = r->view()->getMostRecentRootNumberAndTickValue();
-        w_clock_t clock{};
+        w_clock_t clock{0, 0};
         clock.ticks = spec.ticks;
         time(&clock.timestamp);
         for (auto& pathEntry : pathList.array()) {
