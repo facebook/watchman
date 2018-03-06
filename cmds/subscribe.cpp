@@ -31,6 +31,9 @@ bool watchman_user_client::unsubByName(const w_string& name) {
     return false;
   }
 
+  // Break the weakClient pointer so that ~watchman_client_subscription()
+  // cannot successfully lockClient and recursively call us.
+  subIter->second->weakClient.reset();
   unilateralSub.erase(subIter->second);
   subscriptions.erase(subIter);
 

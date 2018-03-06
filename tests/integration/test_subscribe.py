@@ -569,6 +569,24 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.assertFileListsEqual(['newfile.txt'], new_sub1['files'])
         self.assertFileListsEqual(['newfile.txt'], new_sub2['files'])
 
+    def test_unsub_deadlock(self):
+        ''' I saw a stack trace of a lock assertion that seemed to originate
+        in the unsubByName() method.  It looks possible for this to call
+        itself recursively and this test was intended to try to tickle this,
+        but I was unable to get the deadlock check to trigger :-/ '''
+        root = self.mkdtemp()
+        self.watchmanCommand('watch', root)
+        clock = self.watchmanCommand('clock', root)['clock']
+        for _ in range(0, 100):
+            self.watchmanCommand(
+                'subscribe', root, 'sub1', {
+                    'fields': ['name'],
+                    'since': clock
+                }
+            )
+            self.watchmanCommand('unsubscribe', root, 'sub1')
+
+
     def test_subscription_cleanup(self):
         '''Verify that subscriptions get cleaned up from internal state on
         unsubscribes and socket disconnects. This test failing usually
