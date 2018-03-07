@@ -572,19 +572,26 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
     def test_unsub_deadlock(self):
         ''' I saw a stack trace of a lock assertion that seemed to originate
         in the unsubByName() method.  It looks possible for this to call
-        itself recursively and this test was intended to try to tickle this,
-        but I was unable to get the deadlock check to trigger :-/ '''
+        itself recursively and this test exercises that code path.  It
+        also exercises a similar deadlock where multiple subscriptions from
+        multiple connections are torn down around the same time. '''
         root = self.mkdtemp()
         self.watchmanCommand('watch', root)
         clock = self.watchmanCommand('clock', root)['clock']
         for _ in range(0, 100):
-            self.watchmanCommand(
-                'subscribe', root, 'sub1', {
-                    'fields': ['name'],
-                    'since': clock
-                }
-            )
-            self.watchmanCommand('unsubscribe', root, 'sub1')
+            clients = []
+            for i in range(0, 20):
+                client = self.getClient(no_cache=True)
+                client.query(
+                    'subscribe', root, 'sub%s' % i, {
+                        'fields': ['name'],
+                        'since': clock
+                    }
+                )
+                self.touchRelative(root, 'a')
+                clients.append(client)
+            for client in clients:
+                client.close()
 
 
     def test_subscription_cleanup(self):

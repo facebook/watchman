@@ -16,20 +16,37 @@ Publisher::Subscriber::Subscriber(
       info_(std::move(info)) {}
 
 Publisher::Subscriber::~Subscriber() {
-  auto wlock = publisher_->state_.wlock();
-  auto it = wlock->subscribers.begin();
-  while (it != wlock->subscribers.end()) {
-    auto sub = it->lock();
-    // Prune vacated weak_ptr's or those that point to us
-    if (!sub || sub.get() == this) {
-      it = wlock->subscribers.erase(it);
-    } else {
-      ++it;
+  // In the loop below we may own a reference to some other
+  // Subscriber instance.  That is fine, but we need to take
+  // care: if we end up with the last reference to that subscriber
+  // we will end up calling its destructor and effective recurse
+  // and attempt to acquire the wlock.   We therefore need to
+  // defer releasing any of the shared_ptr's that we lock in
+  // the loop below until after we have released the wlock.
+  std::vector<std::shared_ptr<Subscriber>> subscribers;
+
+  {
+    auto wlock = publisher_->state_.wlock();
+    auto it = wlock->subscribers.begin();
+    while (it != wlock->subscribers.end()) {
+      auto sub = it->lock();
+      // Prune vacated weak_ptr's or those that point to us
+      if (!sub || sub.get() == this) {
+        it = wlock->subscribers.erase(it);
+      } else {
+        ++it;
+        // Defer releasing the sub reference until after we've
+        // release the wlock!
+        subscribers.emplace_back(std::move(sub));
+      }
     }
+    // Take this opportunity to reap anything that is no longer
+    // referenced now that we've removed some subscriber(s)
+    wlock->collectGarbage();
   }
-  // Take this opportunity to reap anything that is no longer
-  // referenced now that we've removed some subscriber(s)
-  wlock->collectGarbage();
+
+  // It is now safe for subscribers to be torn down and release
+  // any references we took ownership of in the loop above.
 }
 
 void Publisher::Subscriber::getPending(
