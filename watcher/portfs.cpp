@@ -1,6 +1,9 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+/* TODO:
+ * This watcher fails with the scm tests */
+
 #include "InMemoryView.h"
 #include "make_unique.h"
 #include "watchman.h"
