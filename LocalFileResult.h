@@ -24,7 +24,15 @@ class LocalFileResult : public FileResult {
       const std::shared_ptr<w_root_t>& root_,
       w_string_piece path,
       w_clock_t clock);
+
+  // Returns stat-like information about this file.  If the file doesn't
+  // exist the stat information will be largely useless (it will be zeroed
+  // out), but will report itself as being a regular file.  This is fine
+  // today because the only source of LocalFileResult instances today is
+  // based on the list of files returned from source control, and scm
+  // of today only reports files, never dirs.
   const watchman::FileInformation& stat() const override;
+
   // Returns the name of the file in its containing dir
   w_string_piece baseName() const override;
   // Returns the name of the containing dir relative to the
@@ -43,11 +51,13 @@ class LocalFileResult : public FileResult {
 
  private:
   void getInfo() const;
+  w_string getFullPath() const;
+
   mutable bool needInfo_{true};
   mutable bool exists_{true};
   mutable FileInformation info_;
   std::shared_ptr<w_root_t> root_;
-  w_string path_;
+  w_string fullPath_;
   w_clock_t clock_;
 };
 

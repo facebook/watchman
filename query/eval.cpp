@@ -298,6 +298,13 @@ w_query_res w_query_execute(
         time(&clock.timestamp);
         for (auto& pathEntry : pathList.array()) {
           auto path = json_to_w_string(pathEntry);
+          // Note well!  At the time of writing the LocalFileResult class
+          // assumes that removed entries must have been regular files.
+          // We don't have enough information returned from
+          // getFilesChangedSinceMergeBaseWith() to distinguish between
+          // deleted files and deleted symlinks.  Also, it is not possible
+          // to see a directory returned from that call; we're only going
+          // to enumerate !dirs for this case.
           w_query_process_file(
               q, c, watchman::make_unique<LocalFileResult>(r, path, clock));
         }

@@ -7,7 +7,9 @@ LocalFileResult::LocalFileResult(
     const std::shared_ptr<w_root_t>& root,
     w_string_piece path,
     w_clock_t clock)
-    : root_(root), path_(path.asWString()), clock_(clock) {}
+    : root_(root),
+      fullPath_(w_string::pathCat({root_->root_path, path})),
+      clock_(clock) {}
 
 void LocalFileResult::getInfo() const {
   if (!needInfo_) {
@@ -15,11 +17,12 @@ void LocalFileResult::getInfo() const {
   }
   needInfo_ = false;
   try {
-    info_ = getFileInformation(path_.c_str(), root_->case_sensitive);
+    info_ = getFileInformation(fullPath_.c_str(), root_->case_sensitive);
     exists_ = true;
   } catch (const std::exception&) {
     // Treat any error as effectively deleted
     exists_ = false;
+    info_ = FileInformation::makeDeletedFileInformation();
   }
 }
 
@@ -29,11 +32,11 @@ const watchman::FileInformation& LocalFileResult::stat() const {
 }
 
 w_string_piece LocalFileResult::baseName() const {
-  return w_string_piece(path_).baseName();
+  return w_string_piece(fullPath_).baseName();
 }
 
 w_string_piece LocalFileResult::dirName() {
-  return w_string_piece(path_).dirName();
+  return w_string_piece(fullPath_).dirName();
 }
 
 bool LocalFileResult::exists() const {
@@ -42,8 +45,7 @@ bool LocalFileResult::exists() const {
 }
 
 watchman::Future<w_string> LocalFileResult::readLink() const {
-  auto absPath = w_string::pathCat({root_->root_path, path_});
-  return makeFuture(readSymbolicLink(absPath.c_str()));
+  return makeFuture(readSymbolicLink(fullPath_.c_str()));
 }
 
 const w_clock_t& LocalFileResult::ctime() const {
@@ -58,8 +60,7 @@ watchman::Future<FileResult::ContentHash> LocalFileResult::getContentSha1() {
   // TODO: find a way to reference a ContentHashCache instance
   // that will work with !InMemoryView based views.
   return makeFuture(makeResultWith([&] {
-    auto absPath = w_string::pathCat({root_->root_path, path_});
-    return ContentHashCache::computeHashImmediate(absPath.c_str());
+    return ContentHashCache::computeHashImmediate(fullPath_.c_str());
   }));
 }
 } // namespace watchman

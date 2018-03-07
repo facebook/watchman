@@ -76,4 +76,14 @@ bool FileInformation::isFile() const {
   return S_ISREG(mode);
 #endif
 }
+
+FileInformation FileInformation::makeDeletedFileInformation() {
+  FileInformation info;
+#ifndef _WIN32
+  info.mode = S_IFREG;
+#else
+  info.mode = _S_IFREG;
+#endif
+  return info;
+}
 }

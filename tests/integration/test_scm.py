@@ -119,7 +119,8 @@ o  changeset:   0:b08db10380dd
         self.hg(['addremove'], cwd=root)
         self.hg(['commit', '-m', 'add bar and car'], cwd=root)
         self.hg(['book', 'feature1'], cwd=root)
-        self.touchRelative(root, 'f1')
+        os.makedirs(os.path.join(root, 'a', 'b', 'c'))
+        self.touchRelative(root, 'a', 'b', 'c', 'f1')
         self.hg(['addremove'], cwd=root)
         self.hg(['commit', '-m', 'add f1'], cwd=root)
         self.hg(['co', 'TheMaster'], cwd=root)
@@ -240,7 +241,7 @@ o  changeset:   0:b08db10380dd
         # We expect to observe the changed merged base
         self.assertNotEqual(res['clock']['scm']['mergebase'], mergeBase)
         # and only the file that changed since that new mergebase
-        self.assertFileListsEqual(res['files'], ['f1'])
+        self.assertFileListsEqual(res['files'], ['a/b/c/f1'])
 
         # check again that subscription results are consistent with it.
         self.waitForStatesToVacate(root)
@@ -269,7 +270,8 @@ o  changeset:   0:b08db10380dd
             'expression': ['not', ['anyof', ['name', '.hg'], ['match', 'hg-check*'], ['dirname', '.hg']]],
             'fields': ['name'],
             'since': res['clock']})
-        self.assertFileListsEqual(res['files'], ['f1', 'car'])
+        self.assertFileListsEqual(res['files'],
+            ['a', 'a/b', 'a/b/c', 'a/b/c/f1', 'car'])
 
         res = self.watchmanCommand('query', root, {
             'expression': ['not', ['anyof', ['name', '.hg'], ['match', 'hg-check*'], ['dirname', '.hg']]],
@@ -326,11 +328,13 @@ o  changeset:   0:b08db10380dd
         self.watchmanCommand('watch-del', root)
         self.watchmanCommand('watch', root)
         res = self.watchmanCommand('query', root, {
-            'expression': ['not',
-                            ['anyof',
+            'expression': ['allof',
+                            ['type', 'f'],
+                            ['not',
+                                ['anyof',
                                 ['name', '.hg'],
                                 ['match', 'hg-check*'],
-                                ['dirname', '.hg']]],
+                                ['dirname', '.hg']]]],
             'fields': ['name'],
             'since': {
                 'scm': {
@@ -338,6 +342,23 @@ o  changeset:   0:b08db10380dd
                     'mergebase-with': 'TheMaster'}}})
         self.assertFileListsEqual(res['files'], ['car'])
 
+        self.hg(['co', '-C', 'feature1'], cwd=root)
+        self.watchmanCommand('watch-del', root)
+        self.watchmanCommand('watch', root)
+        res = self.watchmanCommand('query', root, {
+            'expression': ['allof',
+                            ['type', 'f'],
+                            ['not',
+                                ['anyof',
+                                ['name', '.hg'],
+                                ['match', 'hg-check*'],
+                                ['dirname', '.hg']]]],
+            'fields': ['name'],
+            'since': {
+                'scm': {
+                    'mergebase': '',
+                    'mergebase-with': 'TheMaster'}}})
+        self.assertFileListsEqual(res['files'], ['a/b/c/f1'])
 
     def getConsolidatedFileList(self, dat):
         fset = set()

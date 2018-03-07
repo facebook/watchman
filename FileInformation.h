@@ -70,5 +70,11 @@ struct FileInformation {
   explicit FileInformation(uint32_t dwFileAttributes);
 #endif
   FileInformation() = default;
+
+  // Construct a placeholder FileInformation instance that represents
+  // a file that has been deleted.  This is used in a very specific
+  // circumstance in Source Control Aware query responses to represent
+  // files that were deleted between two revisions.
+  static FileInformation makeDeletedFileInformation();
 };
 }
