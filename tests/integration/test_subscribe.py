@@ -629,13 +629,13 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
         out = self.watchmanCommand('debug-get-subscriptions', root)
         subs = set(sub['info']['name'] for sub in out['subscribers'])
-        self.assertCountEqual({'sub1', 'sub2'}, subs)
+        self.assertCountEqual(set(['sub1', 'sub2']), subs)
 
         # this should remove sub1 from the map
         self.watchmanCommand('unsubscribe', root, 'sub1')
         out = self.watchmanCommand('debug-get-subscriptions', root)
         subs = set(sub['info']['name'] for sub in out['subscribers'])
-        self.assertCountEqual({'sub2'}, subs)
+        self.assertCountEqual(set(['sub2']), subs)
 
         # flush sub2 so that there's no reason anything else would be keeping
         # it around
