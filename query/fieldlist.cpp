@@ -248,8 +248,8 @@ watchman::Future<json_ref> file_result_to_json_future(
   }
 
   return collectAll(futures.begin(), futures.end())
-      .then([&fieldList, matchPtr](
-          Result<std::vector<Result<json_ref>>>&& result) {
+      .then([fieldList,
+             matchPtr](Result<std::vector<Result<json_ref>>>&& result) {
         auto& vec = result.value();
         if (fieldList.size() == 1) {
           return vec[0].value();
