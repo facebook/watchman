@@ -97,23 +97,17 @@ class NameExpr : public QueryExpr {
 
       set.reserve(json_array_size(name));
       for (i = 0; i < json_array_size(name); i++) {
-        w_string_t* element;
-        const char* ele;
+        w_string element;
         const auto& jele = name.at(i);
-        ele = json_string_value(jele);
-        // We need to make a copy of the string since we do in-place separator
-        // normalization on the paths.
+        auto ele = json_to_w_string(jele);
+
         if (caseSensitive == CaseSensitivity::CaseInSensitive) {
-          element =
-              w_string_new_lower_typed(ele, json_to_w_string(jele).type());
+          element = ele.piece().asLowerCase(ele.type()).normalizeSeparators();
         } else {
-          element = w_string_new_typed(ele, json_to_w_string(jele).type());
+          element = ele.normalizeSeparators();
         }
 
-        w_string_in_place_normalize_separators(&element);
-
         set.insert(element);
-        w_string_delref(element);
       }
 
     } else if (json_is_string(name)) {

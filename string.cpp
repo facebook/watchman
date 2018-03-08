@@ -6,6 +6,9 @@
 #include <new>
 #include <stdexcept>
 
+static void w_string_addref(w_string_t* str);
+static void w_string_delref(w_string_t* str);
+
 // string piece
 
 w_string_piece::w_string_piece() : s_(nullptr), e_(nullptr) {}
@@ -499,69 +502,6 @@ w_string w_string::printf(WATCHMAN_FMT_STRING(const char* format), ...) {
   return res;
 }
 
-/* return a reference to a lowercased version of a string */
-w_string_t *w_string_dup_lower(w_string_t *str)
-{
-  bool is_lower = true;
-  char *buf;
-  uint32_t i;
-  w_string_t *s;
-
-  for (i = 0; i < str->len; i++) {
-    if (tolower((uint8_t)str->buf[i]) != str->buf[i]) {
-      is_lower = false;
-      break;
-    }
-  }
-
-  if (is_lower) {
-    w_string_addref(str);
-    return str;
-  }
-
-  /* need to make a lowercase version */
-
-  s = (w_string_t*)(new char[sizeof(*s) + str->len + 1]);
-  new (s) watchman_string();
-
-  s->refcnt = 1;
-  s->len = str->len;
-  buf = (char*)(s + 1);
-  for (i = 0; i < str->len; i++) {
-    buf[i] = (char)tolower((uint8_t)str->buf[i]);
-  }
-  buf[str->len] = 0;
-  s->buf = buf;
-
-  return s;
-}
-
-/* make a lowercased copy of string */
-w_string_t *w_string_new_lower_typed(const char *str,
-    w_string_type_t type)
-{
-  w_string_t *s;
-  uint32_t len = strlen_uint32(str);
-  char *buf;
-  uint32_t i;
-
-  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
-  new (s) watchman_string();
-
-  s->refcnt = 1;
-  s->len = len;
-  buf = (char*)(s + 1);
-  // TODO: optionally use ICU
-  for (i = 0; i < len; i++) {
-    buf[i] = (char)tolower((uint8_t)str[i]);
-  }
-  buf[len] = 0;
-  s->buf = buf;
-  s->type = type;
-
-  return s;
-}
-
 void w_string_addref(w_string_t *str)
 {
   ++str->refcnt;
@@ -759,12 +699,6 @@ w_string_t *w_string_normalize_separators(w_string_t *str, char target_sep) {
   return s;
 }
 
-void w_string_in_place_normalize_separators(w_string_t **str, char target_sep) {
-  w_string_t *norm = w_string_normalize_separators(*str, target_sep);
-  w_string_delref(*str);
-  *str = norm;
-}
-
 // Compute the basename of path, return that as a string
 w_string_t *w_string_new_basename_typed(const char *path,
     w_string_type_t type) {
@@ -878,22 +812,6 @@ w_string w_dir_path_cat_str(
   s->buf = buf;
   return w_string(s, false);
 }
-
-char *w_string_dup_buf(const w_string_t *str)
-{
-  char *buf;
-
-  buf = (char*)malloc(str->len + 1);
-  if (!buf) {
-    return NULL;
-  }
-
-  memcpy(buf, str->buf, str->len);
-  buf[str->len] = 0;
-
-  return buf;
-}
-
 
 // Given a string, return a shell-escaped copy
 w_string_t *w_string_shell_escape(const w_string_t *str)

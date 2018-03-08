@@ -88,7 +88,7 @@ static w_string parse_suffix(const json_ref& ele) {
 
   auto str = json_to_w_string(ele);
 
-  return w_string(w_string_new_lower_typed(str.c_str(), str.type()), false);
+  return str.piece().asLowerCase(str.type());
 }
 
 static void parse_suffixes(w_query* res, const json_ref& query) {
@@ -139,12 +139,12 @@ static bool parse_paths(w_query* res, const json_ref& query) {
 
   for (i = 0; i < json_array_size(paths); i++) {
     const auto& ele = paths.at(i);
-    const char *name = NULL;
+    w_string name;
 
     res->paths[i].depth = -1;
 
     if (json_is_string(ele)) {
-      name = json_string_value(ele);
+      name = json_to_w_string(ele);
     } else if (json_unpack(ele, "{s:s, s:i}",
           "path", &name,
           "depth", &res->paths[i].depth
@@ -153,9 +153,7 @@ static bool parse_paths(w_query* res, const json_ref& query) {
           "expected object with 'path' and 'depth' properties");
     }
 
-    auto nameCopy = w_string_new_typed(name, W_STRING_BYTE);
-    w_string_in_place_normalize_separators(&nameCopy);
-    res->paths[i].name = nameCopy;
+    res->paths[i].name = name.normalizeSeparators();
   }
 
   return true;

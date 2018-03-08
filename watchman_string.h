@@ -49,8 +49,6 @@ static inline uint32_t w_string_hval(w_string_t *str) {
   return w_string_compute_hval(str);
 }
 
-void w_string_addref(w_string_t *str);
-
 w_string_piece w_string_canon_path(w_string_t* str);
 int w_string_compare(const w_string_t *a, const w_string_t *b);
 bool w_string_contains_cstr_len(
@@ -58,16 +56,8 @@ bool w_string_contains_cstr_len(
     const char* needle,
     uint32_t nlen);
 
-void w_string_delref(w_string_t *str);
-char *w_string_dup_buf(const w_string_t *str);
-w_string_t *w_string_dup_lower(w_string_t *str);
-
 bool w_string_equal(const w_string_t *a, const w_string_t *b);
 bool w_string_equal_cstring(const w_string_t *a, const char *b);
-
-void w_string_in_place_normalize_separators(
-    w_string_t** str,
-    char target_sep = '/');
 
 /* Typed string creation functions. */
 w_string_t *w_string_new_typed(const char *str,
@@ -77,8 +67,6 @@ w_string_t *w_string_new_len_typed(const char *str, uint32_t len,
 w_string_t *w_string_new_len_no_ref_typed(const char *str, uint32_t len,
     w_string_type_t type);
 w_string_t *w_string_new_basename_typed(const char *path,
-    w_string_type_t type);
-w_string_t *w_string_new_lower_typed(const char *str,
     w_string_type_t type);
 
 void w_string_new_len_typed_stack(w_string_t *into, const char *str,
