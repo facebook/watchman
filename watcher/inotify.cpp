@@ -9,6 +9,7 @@
 
 #ifdef HAVE_INOTIFY_INIT
 
+using namespace watchman;
 using watchman::FileDescriptor;
 using watchman::Pipe;
 using watchman::inotify_category;
@@ -159,7 +160,7 @@ void InotifyWatcher::process_inotify_event(
     /* we missed something, will need to re-crawl */
     root->scheduleRecrawl("IN_Q_OVERFLOW");
   } else if (ine->wd != -1) {
-    w_string_t* name = nullptr;
+    w_string name;
     char buf[WATCHMAN_NAME_MAX];
     int pending_flags = W_PENDING_VIA_NOTIFY;
     w_string dir_name;
@@ -181,10 +182,9 @@ void InotifyWatcher::process_inotify_event(
             int(dir_name.size()),
             dir_name.data(),
             ine->name);
-        name = w_string_new_typed(buf, W_STRING_BYTE);
+        name = w_string(buf, W_STRING_BYTE);
       } else {
         name = dir_name;
-        w_string_addref(name);
       }
     }
 
@@ -198,9 +198,7 @@ void InotifyWatcher::process_inotify_event(
         wlock->move_map.emplace(ine->cookie, pending_move(now.tv_sec, name));
       }
 
-      w_log(W_LOG_DBG,
-          "recording move_from %" PRIx32 " %s\n", ine->cookie,
-          name->buf);
+      log(DBG, "recording move_from ", ine->cookie, " ", name, "\n");
     }
 
     if (ine->len > 0 &&
@@ -209,7 +207,8 @@ void InotifyWatcher::process_inotify_event(
       auto it = wlock->move_map.find(ine->cookie);
       if (it != wlock->move_map.end()) {
         auto& old = it->second;
-        int wd = inotify_add_watch(infd.fd(), name->buf, WATCHMAN_INOTIFY_MASK);
+        int wd =
+            inotify_add_watch(infd.fd(), name.c_str(), WATCHMAN_INOTIFY_MASK);
         if (wd == -1) {
           if (errno == ENOSPC || errno == ENOMEM) {
             // Limits exceeded, no recovery from our perspective
@@ -222,13 +221,13 @@ void InotifyWatcher::process_inotify_event(
             watchman::log(
                 watchman::DBG,
                 "add_watch: ",
-                name->buf,
+                name,
                 " ",
                 inotify_category().message(errno),
                 "\n");
           }
         } else {
-          w_log(W_LOG_DBG, "moved %s -> %s\n", old.name.c_str(), name->buf);
+          w_log(W_LOG_DBG, "moved %s -> %s\n", old.name.c_str(), name.c_str());
           wlock->wd_to_name[wd] = name;
         }
       } else {
@@ -236,28 +235,27 @@ void InotifyWatcher::process_inotify_event(
             W_LOG_DBG,
             "move: cookie=%" PRIx32 " not found in move map %s\n",
             ine->cookie,
-            name->buf);
+            name.c_str());
       }
     }
 
     if (dir_name) {
       if ((ine->mask & (IN_UNMOUNT|IN_IGNORED|IN_DELETE_SELF|IN_MOVE_SELF))) {
-        w_string_t *pname;
-
         if (w_string_equal(root->root_path, name)) {
           w_log(W_LOG_ERR,
               "root dir %s has been (re)moved, canceling watch\n",
               root->root_path.c_str());
-          w_string_delref(name);
           root->cancel();
           return;
         }
 
         // We need to examine the parent and potentially crawl down
-        pname = w_string_dirname(name);
-        w_log(W_LOG_DBG, "mask=%x, focus on parent: %.*s\n",
-            ine->mask, pname->len, pname->buf);
-        w_string_delref(name);
+        auto pname = name.dirName();
+        w_log(
+            W_LOG_DBG,
+            "mask=%x, focus on parent: %s\n",
+            ine->mask,
+            pname.c_str());
         name = pname;
       }
 
@@ -265,11 +263,12 @@ void InotifyWatcher::process_inotify_event(
         pending_flags |= W_PENDING_RECURSIVE;
       }
 
-      w_log(W_LOG_DBG, "add_pending for inotify mask=%x %.*s\n",
-          ine->mask, name->len, name->buf);
+      w_log(
+          W_LOG_DBG,
+          "add_pending for inotify mask=%x %s\n",
+          ine->mask,
+          name.c_str());
       coll->add(name, now, pending_flags);
-
-      w_string_delref(name);
 
       // The kernel removed the wd -> name mapping, so let's update
       // our state here also

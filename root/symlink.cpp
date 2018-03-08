@@ -20,9 +20,9 @@ static w_string get_normalized_target(const w_string& target) {
   w_assert(
       w_string_path_is_absolute(target),
       "get_normalized_target: path %s is not absolute\n",
-      target.asNullTerminated().c_str());
+      target.c_str());
 
-  auto dir_name = target.dirName().asNullTerminated();
+  auto dir_name = target.dirName();
   auto dir_name_real = realPath(dir_name.c_str());
   err = errno;
 
@@ -88,8 +88,8 @@ static void watch_symlink_target(const w_string& target, json_t* root_files) {
  * Since the target of a symbolic link might contain several components that
  * are themselves symlinks, this function gets called recursively on all the
  * components of path. */
-static void watch_symlinks(const w_string& inputPath, json_t* root_files) {
-  w_string_piece pathPiece(inputPath);
+static void watch_symlinks(const w_string& path, json_t* root_files) {
+  w_string_piece pathPiece(path);
   auto parentPiece = pathPiece.dirName();
 
   if (parentPiece == pathPiece) {
@@ -100,9 +100,6 @@ static void watch_symlinks(const w_string& inputPath, json_t* root_files) {
   if (!pathPiece.pathIsAbsolute()) {
     return;
   }
-
-  // ensure that buffer is null-terminated
-  auto path = inputPath.asNullTerminated();
 
   auto dir_name = path.dirName();
   auto file_name = path.baseName();

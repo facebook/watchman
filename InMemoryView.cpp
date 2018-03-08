@@ -477,7 +477,6 @@ void InMemoryView::pathGenerator(w_query* query, struct w_query_ctx* ctx)
 
   for (const auto& path : query->paths) {
     const watchman_dir* dir;
-    w_string_t* file_name;
     w_string dir_name;
 
     // Compose path with root
@@ -507,9 +506,8 @@ void InMemoryView::pathGenerator(w_query* query, struct w_query_ctx* ctx)
     }
 
     if (!dir->files.empty()) {
-      file_name = w_string_basename(path.name);
+      auto file_name = path.name.baseName();
       f = dir->getChildFile(file_name);
-      w_string_delref(file_name);
 
       // If it's a file (but not an existent dir)
       if (f && (!f->exists || !f->stat.isDir())) {

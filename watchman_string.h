@@ -21,6 +21,7 @@
 
 struct watchman_string;
 typedef struct watchman_string w_string_t;
+class w_string_piece;
 
 typedef enum {
   W_STRING_BYTE,
@@ -32,13 +33,11 @@ struct watchman_string {
   std::atomic<long> refcnt;
   uint32_t _hval;
   uint32_t len;
-  w_string_t *slice;
   const char *buf;
   w_string_type_t type:3;
   unsigned hval_computed:1;
 
   watchman_string();
-  ~watchman_string();
 };
 
 uint32_t w_string_compute_hval(w_string_t *str);
@@ -52,9 +51,7 @@ static inline uint32_t w_string_hval(w_string_t *str) {
 
 void w_string_addref(w_string_t *str);
 
-w_string_t *w_string_basename(w_string_t *str);
-
-w_string_t *w_string_canon_path(w_string_t *str);
+w_string_piece w_string_canon_path(w_string_t* str);
 int w_string_compare(const w_string_t *a, const w_string_t *b);
 bool w_string_contains_cstr_len(
     const w_string_t* str,
@@ -62,7 +59,6 @@ bool w_string_contains_cstr_len(
     uint32_t nlen);
 
 void w_string_delref(w_string_t *str);
-w_string_t *w_string_dirname(w_string_t *str);
 char *w_string_dup_buf(const w_string_t *str);
 w_string_t *w_string_dup_lower(w_string_t *str);
 
@@ -101,7 +97,6 @@ bool w_string_path_is_absolute(const w_string_t *str);
 bool w_string_startswith(w_string_t *str, w_string_t *prefix);
 bool w_string_startswith_caseless(w_string_t *str, w_string_t *prefix);
 w_string_t *w_string_shell_escape(const w_string_t *str);
-w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len);
 w_string_t *w_string_suffix(w_string_t *str);
 
 bool w_string_is_known_unicode(w_string_t *str);
@@ -340,13 +335,6 @@ class w_string {
   template <typename... Args>
   static w_string build(Args&&... args);
 
-  /** Return a possibly new version of this string that is null terminated */
-  w_string asNullTerminated() const;
-
-  /** Ensure that this instance is referencing a null terminated version
-   * of the current string */
-  void makeNullTerminated();
-
   /** Return a possibly new version of this string that has its separators
    * normalized to unix slashes */
   w_string normalizeSeparators(char targetSeparator = '/') const;
@@ -357,11 +345,10 @@ class w_string {
     }
   }
 
-  /** Returns a pointer to a null terminated c-string.
-   * If this instance doesn't point to a null terminated c-string, throws
-   * an exception that tells you to use asNullTerminated or makeNullTerminated
-   * first. */
-  const char* c_str() const;
+  /** Returns a pointer to a null terminated c-string. */
+  const char* c_str() const {
+    return data();
+  }
   const char* data() const {
     ensureNotNull();
     return str_->buf;
@@ -390,10 +377,6 @@ class w_string {
   w_string baseName() const;
   /** Returns the filename suffix of a path string */
   w_string asLowerCaseSuffix() const;
-
-  /** Returns a slice of this string */
-  w_string slice(uint32_t start, uint32_t len) const;
-
  private:
   w_string_t* str_{nullptr};
 };

@@ -575,7 +575,6 @@ const char* json_string_value(const json_t* json) {
     return NULL;
 
   jstr = json_to_string(json);
-  jstr->value.makeNullTerminated();
   return jstr->value.c_str();
 }
 

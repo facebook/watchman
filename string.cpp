@@ -341,33 +341,8 @@ w_string w_string::asLowerCaseSuffix() const {
   return w_string_piece(*this).asLowerCaseSuffix();
 }
 
-w_string w_string::asNullTerminated() const {
-  ensureNotNull();
-  if (w_string_is_null_terminated(str_)) {
-    return *this;
-  }
-
-  return w_string(str_->buf, str_->len, str_->type);
-}
-
 w_string w_string::normalizeSeparators(char targetSeparator) const {
   return w_string(w_string_normalize_separators(str_, targetSeparator), false);
-}
-
-void w_string::makeNullTerminated() {
-  if (w_string_is_null_terminated(str_)) {
-    return;
-  }
-
-  *this = asNullTerminated();
-}
-
-const char* w_string::c_str() const {
-  if (!w_string_is_null_terminated(str_)) {
-    throw std::runtime_error(
-        "string is not NULL terminated, use asNullTerminated() or makeNullTerminated()!");
-  }
-  return str_->buf;
 }
 
 bool w_string::operator<(const w_string& other) const {
@@ -435,42 +410,10 @@ uint32_t w_string_piece::hashValue() const {
 void w_string_new_len_typed_stack(w_string_t *into, const char *str,
                                   uint32_t len, w_string_type_t type) {
   into->refcnt = 1;
-  into->slice = NULL;
   into->len = len;
   into->buf = str;
   into->hval_computed = 0;
   into->type = type;
-}
-
-w_string_t *w_string_slice(w_string_t *str, uint32_t start, uint32_t len)
-{
-  if (start == 0 && len == str->len) {
-    w_string_addref(str);
-    return str;
-  }
-
-  if (start > str->len || start + len > str->len) {
-    errno = EINVAL;
-    throw std::range_error("illegal string slice");
-  }
-
-  // Can't just new w_string_t because the delref has to call delete[]
-  // in most cases.
-  auto slice = (w_string_t*)(new char[sizeof(w_string_t)]);
-  new (slice) watchman_string();
-
-  slice->refcnt = 1;
-  slice->len = len;
-  slice->buf = str->buf + start;
-  slice->slice = str;
-  slice->type = str->type;
-
-  w_string_addref(str);
-  return slice;
-}
-
-w_string w_string::slice(uint32_t start, uint32_t len) const {
-  return w_string(w_string_slice(str_, start, len), false);
 }
 
 uint32_t strlen_uint32(const char *str) {
@@ -485,16 +428,9 @@ uint32_t strlen_uint32(const char *str) {
 watchman_string::watchman_string()
     : refcnt(0),
       len(0),
-      slice(nullptr),
       buf(nullptr),
       type(W_STRING_BYTE),
       hval_computed(0) {}
-
-watchman_string::~watchman_string() {
-  if (slice) {
-    w_string_delref(slice);
-  }
-}
 
 w_string_t *w_string_new_len_with_refcnt_typed(const char* str,
     uint32_t len, long refcnt, w_string_type_t type) {
@@ -690,22 +626,6 @@ bool w_string_equal_caseless(w_string_piece a, w_string_piece b) {
   return true;
 }
 
-w_string_t *w_string_dirname(w_string_t *str)
-{
-  int end;
-
-  /* can't use libc strXXX functions because we may be operating
-   * on a slice */
-  for (end = str->len - 1; end >= 0; end--) {
-    if (is_slash(str->buf[end])) {
-      /* found the end of the parent dir */
-      return w_string_slice(str, 0, end);
-    }
-  }
-
-  return NULL;
-}
-
 bool w_string_piece::hasSuffix(w_string_piece suffix) const {
   unsigned int base, i;
 
@@ -780,8 +700,7 @@ bool w_string_contains_cstr_len(
 #endif
 }
 
-w_string_t *w_string_canon_path(w_string_t *str)
-{
+w_string_piece w_string_canon_path(w_string_t* str) {
   int end;
   int trim = 0;
 
@@ -789,10 +708,9 @@ w_string_t *w_string_canon_path(w_string_t *str)
     trim++;
   }
   if (trim) {
-    return w_string_slice(str, 0, str->len - trim);
+    return w_string_piece(str->buf, str->len - trim);
   }
-  w_string_addref(str);
-  return str;
+  return w_string_piece(str);
 }
 
 // Normalize directory separators to match the platform.
@@ -856,23 +774,6 @@ w_string_t *w_string_new_basename_typed(const char *path,
     base--;
   }
   return w_string_new_typed(base, type);
-}
-
-w_string_t *w_string_basename(w_string_t *str)
-{
-  int end;
-
-  /* can't use libc strXXX functions because we may be operating
-   * on a slice */
-  for (end = str->len - 1; end >= 0; end--) {
-    if (is_slash(str->buf[end])) {
-      /* found the end of the parent dir */
-      return w_string_slice(str, end + 1, str->len - (end + 1));
-    }
-  }
-
-  w_string_addref(str);
-  return str;
 }
 
 w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
@@ -1036,12 +937,6 @@ w_string_t *w_string_shell_escape(const w_string_t *str)
 
 bool w_string_is_known_unicode(w_string_t *str) {
   return str->type == W_STRING_UNICODE;
-}
-
-bool w_string_is_null_terminated(w_string_t *str) {
-  return !str->slice ||
-    (str->buf + str->len == str->slice->buf + str->slice->len &&
-     w_string_is_null_terminated(str->slice));
 }
 
 size_t w_string_strlen(w_string_t *str) {

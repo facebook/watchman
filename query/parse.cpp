@@ -177,7 +177,7 @@ static void parse_relative_root(
   }
 
   w_string path = json_to_w_string(relative_root);
-  w_string canon_path = w_string_canon_path(path);
+  auto canon_path = w_string_canon_path(path);
   res->relative_root = w_string::pathCat({root->root_path, canon_path});
   res->relative_root_slash =
       w_string::printf("%s/", res->relative_root.c_str());

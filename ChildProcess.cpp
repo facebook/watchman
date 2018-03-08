@@ -30,14 +30,12 @@ ChildProcess::Environment::Environment() {
     }
 
     // slice name=value into a key and a value string
-    w_string str(ent, W_STRING_BYTE);
-    auto key = str.slice(0, (uint32_t)(eq - ent));
-    auto val = str.slice(
-        1 + (uint32_t)(eq - ent), (uint32_t)(str.size() - (key.size() + 1)));
+    auto key = w_string_piece(ent, eq - ent);
+    auto val = w_string_piece(eq + 1);
 
     // Replace rather than set, just in case we somehow have duplicate
     // keys in our environment array.
-    map_[key] = val;
+    map_[key.asWString()] = val.asWString();
   }
 }
 
