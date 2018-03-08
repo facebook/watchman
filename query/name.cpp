@@ -123,10 +123,7 @@ class NameExpr : public QueryExpr {
                              !strcmp(scope, "wholename"));
 
     if (pattern) {
-      // We need to make a copy of the string since we do in-place separator
-      // normalization on the paths.
-      w_string pat(pattern, json_to_w_string(name).type());
-      data->name = w_string_normalize_separators(pat);
+      data->name = json_to_w_string(name).normalizeSeparators();
     }
 
     return std::unique_ptr<QueryExpr>(data);

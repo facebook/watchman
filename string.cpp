@@ -345,7 +345,46 @@ w_string w_string::asLowerCaseSuffix() const {
 }
 
 w_string w_string::normalizeSeparators(char targetSeparator) const {
-  return w_string(w_string_normalize_separators(str_, targetSeparator), false);
+  w_string_t* s;
+  char* buf;
+  uint32_t i, len;
+
+  len = str_->len;
+
+  if (len == 0) {
+    return *this;
+  }
+
+  // This doesn't do any special UNC or path len escape prefix handling
+  // on windows.  We don't currently use it in a way that would require it.
+
+  // Trim any trailing dir seps
+  while (len > 0) {
+    if (str_->buf[len - 1] == '/' || str_->buf[len - 1] == '\\') {
+      --len;
+    } else {
+      break;
+    }
+  }
+
+  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
+  new (s) watchman_string();
+
+  s->refcnt = 1;
+  s->len = len;
+  buf = (char*)(s + 1);
+
+  for (i = 0; i < len; i++) {
+    if (str_->buf[i] == '/' || str_->buf[i] == '\\') {
+      buf[i] = targetSeparator;
+    } else {
+      buf[i] = str_->buf[i];
+    }
+  }
+  buf[len] = 0;
+  s->buf = buf;
+
+  return s;
 }
 
 bool w_string::operator<(const w_string& other) const {
@@ -651,52 +690,6 @@ w_string_piece w_string_canon_path(w_string_t* str) {
     return w_string_piece(str->buf, str->len - trim);
   }
   return w_string_piece(str);
-}
-
-// Normalize directory separators to match the platform.
-// Also trims any trailing directory separators
-w_string_t *w_string_normalize_separators(w_string_t *str, char target_sep) {
-  w_string_t *s;
-  char *buf;
-  uint32_t i, len;
-
-  len = str->len;
-
-  if (len == 0) {
-    w_string_addref(str);
-    return str;
-  }
-
-  // This doesn't do any special UNC or path len escape prefix handling
-  // on windows.  We don't currently use it in a way that would require it.
-
-  // Trim any trailing dir seps
-  while (len > 0) {
-    if (str->buf[len-1] == '/' || str->buf[len-1] == '\\') {
-      --len;
-    } else {
-      break;
-    }
-  }
-
-  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
-  new (s) watchman_string();
-
-  s->refcnt = 1;
-  s->len = len;
-  buf = (char*)(s + 1);
-
-  for (i = 0; i < len; i++) {
-    if (str->buf[i] == '/' || str->buf[i] == '\\') {
-      buf[i] = target_sep;
-    } else {
-      buf[i] = str->buf[i];
-    }
-  }
-  buf[len] = 0;
-  s->buf = buf;
-
-  return s;
 }
 
 // Compute the basename of path, return that as a string
