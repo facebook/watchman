@@ -226,6 +226,9 @@ watchman_dir* InMemoryView::resolveDir(
       // later.
       w_string child_name(dir_component, (uint32_t)(sep - dir_component));
 
+      // Careful! dir->dirs is keyed by non-owning string pieces so the
+      // child_name MUST be stored or otherwise kept alive by the watchman_dir
+      // instance constructed below!
       auto& new_child = dir->dirs[child_name];
       new_child.reset(new watchman_dir(child_name, dir));
 
@@ -250,6 +253,9 @@ watchman_dir* InMemoryView::resolveDir(
   }
 
   w_string child_name(dir_component, (uint32_t)(dir_end - dir_component));
+  // Careful! parent->dirs is keyed by non-owning string pieces so the
+  // child_name MUST be stored or otherwise kept alive by the watchman_dir
+  // instance constructed below!
   auto& new_child = parent->dirs[child_name];
   new_child.reset(new watchman_dir(child_name, parent));
 

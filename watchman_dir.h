@@ -16,15 +16,15 @@ struct watchman_dir {
   std::unordered_map<w_string_piece, std::unique_ptr<watchman_file, Deleter>>
       files;
 
-  /* child dirs contained in this dir (keyed by dir->path) */
-  std::unordered_map<w_string, std::unique_ptr<watchman_dir>> dirs;
+  /* child dirs contained in this dir (keyed by dir->name) */
+  std::unordered_map<w_string_piece, std::unique_ptr<watchman_dir>> dirs;
 
   // If we think this dir was deleted, we'll avoid recursing
   // to its children when processing deletes
   bool last_check_existed{true};
 
   watchman_dir(w_string name, watchman_dir* parent);
-  watchman_dir* getChildDir(w_string name) const;
+  watchman_dir* getChildDir(w_string_piece name) const;
 
   /** Returns the direct child file named name, or nullptr
    * if there is no such entry */

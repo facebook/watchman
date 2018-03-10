@@ -22,7 +22,7 @@ watchman_file* watchman_dir::getChildFile(w_string_piece name) const {
   return it->second.get();
 }
 
-watchman_dir* watchman_dir::getChildDir(w_string name) const {
+watchman_dir* watchman_dir::getChildDir(w_string_piece name) const {
   auto it = dirs.find(name);
   if (it == dirs.end()) {
     return nullptr;
