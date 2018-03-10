@@ -278,7 +278,6 @@ void InMemoryView::globGeneratorTree(
     struct w_query_ctx* ctx,
     const struct watchman_glob_tree* node,
     const struct watchman_dir* dir) const {
-  w_string_t component;
 
   if (!node->doublestar_children.empty()) {
     globGeneratorDoublestar(ctx, dir, node, nullptr, 0);
@@ -295,12 +294,9 @@ void InMemoryView::globGeneratorTree(
       // Attempt direct lookup if possible
       if (!child_node->had_specials &&
           ctx->query->case_sensitive == CaseSensitivity::CaseSensitive) {
-        w_string_new_len_typed_stack(
-            &component,
-            child_node->pattern.data(),
-            child_node->pattern.size(),
-            W_STRING_BYTE);
-        const auto child_dir = dir->getChildDir(&component);
+        w_string_piece component(
+            child_node->pattern.data(), child_node->pattern.size());
+        const auto child_dir = dir->getChildDir(component);
 
         if (child_dir) {
           globGeneratorTree(ctx, child_node.get(), child_dir);
@@ -333,12 +329,9 @@ void InMemoryView::globGeneratorTree(
       // Attempt direct lookup if possible
       if (!child_node->had_specials &&
           ctx->query->case_sensitive == CaseSensitivity::CaseSensitive) {
-        w_string_new_len_typed_stack(
-            &component,
-            child_node->pattern.data(),
-            child_node->pattern.size(),
-            W_STRING_BYTE);
-        auto file = dir->getChildFile(&component);
+        w_string_piece component(
+            child_node->pattern.data(), child_node->pattern.size());
+        auto file = dir->getChildFile(component);
 
         if (file) {
           ctx->bumpNumWalked();

@@ -125,11 +125,8 @@ size_t json_object_size(const json_t *json)
 
 typename std::unordered_map<w_string, json_ref>::iterator
 json_object_t::findCString(const char* key) {
-  // Avoid making a copy of the string for this lookup
-  w_string_t key_string;
-  w_string_new_len_typed_stack(
-      &key_string, key, strlen_uint32(key), W_STRING_BYTE);
-  return map.find(w_string(&key_string));
+  w_string key_string(key, W_STRING_BYTE);
+  return map.find(key_string);
 }
 
 const json_ref& json_ref::get(const char* key) const {

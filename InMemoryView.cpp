@@ -142,20 +142,15 @@ const watchman_dir* InMemoryView::resolveDir(
   w_assert(dir_component <= dir_end, "impossible file name");
 
   while (true) {
-    w_string_t component;
     auto sep = (const char*)memchr(dir_component, '/', dir_end - dir_component);
     // Note: if sep is NULL it means that we're looking at the basename
     // component of the input directory name, which is the terminal
     // iteration of this search.
 
-    w_string_new_len_typed_stack(
-        &component,
-        dir_component,
-        sep ? (uint32_t)(sep - dir_component)
-            : (uint32_t)(dir_end - dir_component),
-        W_STRING_BYTE);
+    w_string_piece component(
+        dir_component, sep ? (sep - dir_component) : (dir_end - dir_component));
 
-    auto child = dir->getChildDir(&component);
+    auto child = dir->getChildDir(component);
     if (!child) {
       return nullptr;
     }
@@ -200,20 +195,15 @@ watchman_dir* InMemoryView::resolveDir(
   w_assert(dir_component <= dir_end, "impossible file name");
 
   while (true) {
-    w_string_t component;
     auto sep = (const char*)memchr(dir_component, '/', dir_end - dir_component);
     // Note: if sep is NULL it means that we're looking at the basename
     // component of the input directory name, which is the terminal
     // iteration of this search.
 
-    w_string_new_len_typed_stack(
-        &component,
-        dir_component,
-        sep ? (uint32_t)(sep - dir_component)
-            : (uint32_t)(dir_end - dir_component),
-        W_STRING_BYTE);
+    w_string_piece component(
+        dir_component, sep ? (sep - dir_component) : (dir_end - dir_component));
 
-    auto child = dir->getChildDir(&component);
+    auto child = dir->getChildDir(component);
 
     if (!child && !create) {
       return nullptr;

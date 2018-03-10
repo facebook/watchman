@@ -443,21 +443,6 @@ uint32_t w_string_piece::hashValue() const {
   return w_hash_bytes(data(), size(), 0);
 }
 
-/** An optimization to avoid heap allocations during a lookup, this function
- * creates a string object on the stack.  This object does not own the memory
- * that it references, so it is the responsibility of the caller
- * to ensure that that memory is live for the duration of use of this string.
- * It is therefore invalid to add a reference or take a slice of this stack
- * string as the lifetime guarantees are not upheld. */
-void w_string_new_len_typed_stack(w_string_t *into, const char *str,
-                                  uint32_t len, w_string_type_t type) {
-  into->refcnt = 1;
-  into->len = len;
-  into->buf = str;
-  into->hval_computed = 0;
-  into->type = type;
-}
-
 uint32_t strlen_uint32(const char *str) {
   size_t slen = strlen(str);
   if (slen > UINT32_MAX) {
