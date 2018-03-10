@@ -28,7 +28,7 @@ struct watchman_dir {
 
   /** Returns the direct child file named name, or nullptr
    * if there is no such entry */
-  watchman_file* getChildFile(w_string name) const;
+  watchman_file* getChildFile(w_string_piece name) const;
   w_string getFullPath() const;
 };
 void delete_dir(struct watchman_dir* dir);

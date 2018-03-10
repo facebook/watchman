@@ -14,8 +14,8 @@ w_string watchman_dir::getFullPath() const {
   return w_dir_path_cat_str(this, w_string_piece());
 }
 
-watchman_file* watchman_dir::getChildFile(w_string name) const {
-  auto it = files.find(name.piece());
+watchman_file* watchman_dir::getChildFile(w_string_piece name) const {
+  auto it = files.find(name);
   if (it == files.end()) {
     return nullptr;
   }
