@@ -2,8 +2,7 @@
 set -x
 case `uname` in
   Darwin)
-    brew tap facebook/fb
-    brew install wget pcre ruby openssl readline buck pyenv
+    brew install cmake wget pcre ruby openssl readline pyenv
     # avoid snafu with OS X and python builds
     ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future
     CFLAGS="$CFLAGS $ARCHFLAGS"

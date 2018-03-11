@@ -27,6 +27,7 @@ buck-cache
 /thirdparty/jansson/jansson_config.h
 /compile
 /tests/*.t
+/*.t
 .dirstamp
 *.a
 /tests/integration/.watchman.*
@@ -79,3 +80,15 @@ libtool
 ltmain.sh
 cppclient/watchmanclient.pc
 /website/.jekyll-metadata
+/CMakeCache.txt
+/CMakeFiles
+/*.cmake
+/Testing
+/install_manifest.txt
+*.vcxproj
+*.dir
+/x64
+/Release
+/Debug
+*.filters
+/.vs

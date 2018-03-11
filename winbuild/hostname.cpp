@@ -1,6 +1,7 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#ifdef _WIN32
 #include "watchman.h"
 
 int gethostname(char *buf, int bufsize) {
@@ -13,3 +14,4 @@ int gethostname(char *buf, int bufsize) {
   errno = map_win32_err(GetLastError());
   return -1;
 }
+#endif

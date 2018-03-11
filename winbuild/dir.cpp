@@ -1,6 +1,7 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#ifdef _WIN32
 #include "watchman_system.h"
 #include "FileDescriptor.h"
 #include "watchman.h"
@@ -176,3 +177,4 @@ class WinDirHandle : public watchman_dir_handle {
 std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path, bool strict) {
   return watchman::make_unique<WinDirHandle>(path, strict);
 }
+#endif

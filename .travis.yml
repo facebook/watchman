@@ -10,22 +10,19 @@ addons:
       - deadsnakes
       - ubuntu-toolchain-r-test
     packages:
-      - php5-cli
+      - cmake
       - python2.7
       - python2.7-dev
       - python3.5
       - python3.5-dev
       - python3.6
       - python3.6-dev
-      - gcc-4.8
-      - g++-4.8
       - gcc-5
       - g++-5
       - gcc-6
       - g++-6
 #      - ruby
 #      - rubygems
-#      - valgrind
 
 branches:
   only:
@@ -44,38 +41,23 @@ branches:
 matrix:
   include:
     - os: osx
-      env: TRAVIS_PYTHON=python2.6
-    - os: osx
       env: TRAVIS_PYTHON=python2.7
     - os: osx
-      env: TRAVIS_PYTHON=python3.5
+      env: TRAVIS_PYTHON=python2.6 OPENSSL_ROOT_DIR=/usr/local/opt/openssl/ USE_CMAKE=1
     - os: osx
-      osx_image: xcode7.3
-      env: TRAVIS_PYTHON=python2.7 ENABLE_ASAN=1
-    - os: osx
-      osx_image: xcode7.3
-      env: TRAVIS_PYTHON=python3.5 ENABLE_ASAN=1
-    - os: osx
-      osx_image: xcode8.3
-      env: TRAVIS_PYTHON=python3.6 ENABLE_ASAN=1
+      env: TRAVIS_PYTHON=python3.5 OPENSSL_ROOT_DIR=/usr/local/opt/openssl/ USE_CMAKE=1
     - os: linux
-      env: TRAVIS_PYTHON=python2.7 ENABLE_ASAN=1 CXX=g++-5
-      compiler: gcc-5
-    - os: linux
-      env: TRAVIS_PYTHON=python3.5 ENABLE_ASAN=1 CXX=g++-5
-      compiler: gcc-5
-    - os: linux
-      env: TRAVIS_PYTHON=python3.6 ENABLE_ASAN=1 CXX=g++-6
+      env: USE_CMAKE=1 CXX=g++-6 TRAVIS_PYTHON=python3.6
       compiler: gcc-6
     - os: linux
-      env: TRAVIS_PYTHON=python2.7 CXX=g++-4.8
-      compiler: gcc-4.8
+      env: USE_CMAKE=1 CXX=g++-5 TRAVIS_PYTHON=python3.5
+      compiler: gcc-5
     - os: linux
-      env: TRAVIS_PYTHON=python3.5 CXX=g++-4.8
-      compiler: gcc-4.8
+      env: USE_CMAKE=1 CXX=g++-6 TRAVIS_PYTHON=python2.7
+      compiler: gcc-6
     - os: linux
-      env: TRAVIS_PYTHON=python3.6 CXX=g++-4.8
-      compiler: gcc-4.8
+      env: USE_CMAKE=0 CXX=g++-6 TRAVIS_PYTHON=python3.6
+      compiler: gcc-6
 
 before_script: ./travis/deps.sh
 script: ./travis/run.sh

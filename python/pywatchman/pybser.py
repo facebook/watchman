@@ -89,7 +89,7 @@ def _buf_pos(buf, pos):
     ret = buf[pos]
     # In Python 2, buf is a str array so buf[pos] is a string. In Python 3, buf
     # is a bytes array and buf[pos] is an integer.
-    if compat.PYTHON3:
+    if compat.PYTHON3 and not isinstance(ret, bytes):
         ret = bytes((ret,))
     return ret
 

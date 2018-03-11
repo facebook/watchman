@@ -62,6 +62,11 @@ int main(int, char**) {
   size_t index;
 
   test_cases_file = fopen(WILDMATCH_TEST_JSON_FILE, "r");
+#ifdef WATCHMAN_TEST_SRC_DIR
+  if (!test_cases_file) {
+    test_cases_file = fopen(WATCHMAN_TEST_SRC_DIR "/" WILDMATCH_TEST_JSON_FILE, "r");
+  }
+#endif
   if (!test_cases_file) {
     test_cases_file = fopen("watchman/" WILDMATCH_TEST_JSON_FILE, "r");
   }

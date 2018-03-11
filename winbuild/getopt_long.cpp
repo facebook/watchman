@@ -32,6 +32,7 @@
  * SUCH DAMAGE.
  */
 
+#ifdef _WIN32
 #include "getopt.h"
 
 #include <stdio.h>
@@ -194,3 +195,4 @@ getopt_long(int argc, char *const argv[],
   }
   return optopt;
 }
+#endif
