@@ -474,11 +474,6 @@ w_string_t *w_string_new_len_typed(const char *str, uint32_t len,
   return w_string_new_len_with_refcnt_typed(str, len, 1, type);
 }
 
-w_string_t *w_string_new_len_no_ref_typed(const char *str, uint32_t len,
-    w_string_type_t type) {
-  return w_string_new_len_with_refcnt_typed(str, len, 0, type);
-}
-
 w_string_t *w_string_new_typed(const char *str, w_string_type_t type) {
   return w_string_new_len_typed(str, strlen_uint32(str), type);
 }
@@ -662,17 +657,6 @@ w_string_piece w_string_canon_path(w_string_t* str) {
     return w_string_piece(str->buf, str->len - trim);
   }
   return w_string_piece(str);
-}
-
-// Compute the basename of path, return that as a string
-w_string_t *w_string_new_basename_typed(const char *path,
-    w_string_type_t type) {
-  const char *base;
-  base = path + strlen(path);
-  while (base > path && !is_slash(base[-1])) {
-    base--;
-  }
-  return w_string_new_typed(base, type);
 }
 
 w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)

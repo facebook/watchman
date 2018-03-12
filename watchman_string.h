@@ -70,11 +70,6 @@ w_string_t *w_string_new_typed(const char *str,
     w_string_type_t type);
 w_string_t *w_string_new_len_typed(const char *str, uint32_t len,
     w_string_type_t type);
-w_string_t *w_string_new_len_no_ref_typed(const char *str, uint32_t len,
-    w_string_type_t type);
-w_string_t *w_string_new_basename_typed(const char *path,
-    w_string_type_t type);
-
 w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
 w_string_t *w_string_path_cat_cstr(w_string_t *parent, const char *rhs);
 w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
