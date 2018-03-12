@@ -689,51 +689,8 @@ w_string watchman_dir::getFullPathToChild(w_string_piece extra) const {
   return w_string(s, false);
 }
 
-// Given a string, return a shell-escaped copy
-w_string_t *w_string_shell_escape(const w_string_t *str)
-{
-  // Worst case expansion for a char is 4x, plus quoting either end
-  uint32_t len = 2 + (str->len * 4);
-  w_string_t *s;
-  char *buf;
-  const char *src, *end;
-
-  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
-  new (s) watchman_string();
-
-  s->refcnt = 1;
-  buf = const_cast<char*>(s->buf);
-
-  src = str->buf;
-  end = src + str->len;
-
-  *buf = '\'';
-  buf++;
-  while (src < end) {
-    if (*src == '\'') {
-      memcpy(buf, "'\\''", 4);
-      buf += 4;
-    } else {
-      *buf = *src;
-      buf++;
-    }
-    src++;
-  }
-  *buf = '\'';
-  buf++;
-  *buf = 0;
-  s->len = (uint32_t)(buf - s->buf);
-  s->type = str->type;
-
-  return s;
-}
-
 bool w_string_is_known_unicode(w_string_t *str) {
   return str->type == W_STRING_UNICODE;
-}
-
-size_t w_string_strlen(w_string_t *str) {
-  return str->len;
 }
 
 bool w_string_path_is_absolute(const w_string_t *str) {

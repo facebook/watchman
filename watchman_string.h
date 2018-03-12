@@ -69,12 +69,9 @@ bool w_string_path_is_absolute(const w_string_t *str);
 
 bool w_string_startswith(w_string_t *str, w_string_t *prefix);
 bool w_string_startswith_caseless(w_string_t *str, w_string_t *prefix);
-w_string_t *w_string_shell_escape(const w_string_t *str);
-w_string_t *w_string_suffix(w_string_t *str);
 
 bool w_string_is_known_unicode(w_string_t *str);
 bool w_string_is_null_terminated(w_string_t *str);
-size_t w_string_strlen(w_string_t *str);
 
 uint32_t strlen_uint32(const char *str);
 
