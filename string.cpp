@@ -719,9 +719,7 @@ w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
   return s;
 }
 
-w_string w_dir_path_cat_str(
-    const struct watchman_dir* dir,
-    w_string_piece extra) {
+w_string watchman_dir::getFullPathToChild(w_string_piece extra) const {
   uint32_t length = 0;
   const struct watchman_dir* d;
   w_string_t *s;
@@ -730,7 +728,7 @@ w_string w_dir_path_cat_str(
   if (extra.size()) {
     length = extra.size() + 1 /* separator */;
   }
-  for (d = dir; d; d = d->parent) {
+  for (d = this; d; d = d->parent) {
     length += d->name.size() + 1 /* separator OR final NUL terminator */;
   }
 
@@ -747,8 +745,8 @@ w_string w_dir_path_cat_str(
     end -= extra.size();
     memcpy(end, extra.data(), extra.size());
   }
-  for (d = dir; d; d = d->parent) {
-    if (d != dir || (extra.size())) {
+  for (d = this; d; d = d->parent) {
+    if (d != this || (extra.size())) {
       --end;
       *end = '/';
     }

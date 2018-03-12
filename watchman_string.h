@@ -233,8 +233,6 @@ class w_string_piece {
 };
 
 bool w_string_equal_caseless(w_string_piece a, w_string_piece b);
-struct watchman_dir;
-w_string w_dir_path_cat_str(const struct watchman_dir* dir, w_string_piece str);
 
 /** A smart pointer class for tracking w_string_t instances */
 class w_string {

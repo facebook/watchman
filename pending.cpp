@@ -274,7 +274,7 @@ bool PendingCollectionBase::add(
     const char* name,
     struct timeval now,
     int flags) {
-  return add(w_dir_path_cat_str(dir, name), now, flags);
+  return add(dir->getFullPathToChild(name), now, flags);
 }
 
 /* Append the contents of src to target, consolidating in target.

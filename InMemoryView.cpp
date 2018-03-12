@@ -269,7 +269,7 @@ void InMemoryView::markDirDeleted(
     auto file = it.second.get();
 
     if (file->exists) {
-      auto full_name = w_dir_path_cat_str(dir, file->getName());
+      auto full_name = dir->getFullPathToChild(file->getName());
       w_log(W_LOG_DBG, "mark_deleted: %s\n", full_name.c_str());
       file->exists = false;
       markFileChanged(view, file, now);
@@ -332,7 +332,7 @@ void InMemoryView::ageOutFile(
     watchman_file* file) {
   auto parent = file->parent;
 
-  auto full_name = w_dir_path_cat_str(parent, file->getName());
+  auto full_name = parent->getFullPathToChild(file->getName());
   w_log(W_LOG_DBG, "age_out file=%s\n", full_name.c_str());
 
   // Revise tick for fresh instance reporting

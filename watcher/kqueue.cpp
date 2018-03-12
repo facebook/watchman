@@ -71,7 +71,7 @@ KQueueWatcher::KQueueWatcher(w_root_t* root)
 bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
   struct kevent k;
 
-  auto full_name = w_dir_path_cat_str(file->parent, file->getName());
+  auto full_name = file->parent->getFullPathToChild(file->getName());
   {
     auto rlock = maps_.rlock();
     if (rlock->name_to_fd.find(full_name) != rlock->name_to_fd.end()) {

@@ -11,7 +11,7 @@ watchman_dir::watchman_dir(w_string name, watchman_dir* parent)
     : name(name), parent(parent) {}
 
 w_string watchman_dir::getFullPath() const {
-  return w_dir_path_cat_str(this, w_string_piece());
+  return getFullPathToChild(w_string_piece());
 }
 
 watchman_file* watchman_dir::getChildFile(w_string_piece name) const {
