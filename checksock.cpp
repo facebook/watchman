@@ -153,27 +153,46 @@ void do_clock_check(watchman_stream* client) {
   }
 }
 
-void do_sanity_checks() {
+void sanityCheckThread() {
   w_set_thread_name("sanitychecks");
 
-  auto client = w_stm_connect(get_sock_name(), 6000);
-  if (!client) {
-    log(watchman::FATAL,
-        "Failed to connect to myself for sanity check: ",
-        strerror(errno),
-        "\n");
-    /* NOTREACHED */
+  auto lastCheck = std::chrono::steady_clock::now();
+  auto interval = std::chrono::minutes(1);
+
+  log(ERR, "starting sanityCheckThread\n");
+  // we want to try the checks in here once per minute, but since
+  // this is mildly ghetto we don't have a way to directly signal
+  // this thread when we're shutting down.  So we sleep for a second
+  // at a time and then check to see if a shutdown is in progress
+  // so that we can shutdown with a slightly lower latency than
+  // if we were to sleep for a minute at a time.
+  while (!w_is_stopping()) {
+    auto now = std::chrono::steady_clock::now();
+    if (now - lastCheck < interval) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+      continue;
+    }
+
+    lastCheck = now;
+    log(DBG, "running sanity checks\n");
+
+    auto client = w_stm_connect(get_sock_name(), 6000);
+    if (!client) {
+      log(watchman::FATAL,
+          "Failed to connect to myself for sanity check: ",
+          strerror(errno),
+          "\n");
+      /* NOTREACHED */
+    }
+    check_my_sock(client.get());
+    do_clock_check(client.get());
   }
-  check_my_sock(client.get());
-  do_clock_check(client.get());
+  log(ERR, "done with sanityCheckThread\n");
 }
 }; // namespace
-} // namespace watchman
 
-void w_check_my_sock(void) {
-  std::thread thr(watchman::do_sanity_checks);
+void startSanityCheckThread(void) {
+  std::thread thr(sanityCheckThread);
   thr.detach();
 }
-
-/* vim:ts=2:sw=2:et:
- */
+} // namespace watchman

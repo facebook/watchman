@@ -82,7 +82,9 @@ watchman::FileDescriptor w_get_listener_socket_from_launchd();
 #endif
 void w_listener_prep_inetd();
 bool w_start_listener(const char *socket_path);
-void w_check_my_sock(void);
+namespace watchman {
+void startSanityCheckThread(void);
+}
 
 #include "watchman_getopt.h"
 

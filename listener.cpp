@@ -7,6 +7,7 @@
 #endif
 #include <thread>
 
+using namespace watchman;
 using watchman::FileDescriptor;
 
 watchman::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
@@ -555,8 +556,6 @@ static void accept_loop(FileDescriptor&& listenerDescriptor) {
         break;
       }
       // Timed out, or error.
-      // Arrange to sanity check that we're working
-      w_check_my_sock();
       continue;
     }
 
@@ -699,6 +698,8 @@ bool w_start_listener(const char *path)
   w_setup_signal_handlers();
 #endif
   listener_fd.setNonBlock();
+
+  startSanityCheckThread();
 
   // Now run the dispatch
 #ifndef _WIN32
