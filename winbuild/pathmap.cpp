@@ -58,8 +58,7 @@ w_string::w_string(const WCHAR* wpath, size_t pathlen) {
 
   str_->refcnt = 1;
   str_->len = len;
-  auto buf = (char*)(str_ + 1);
-  str_->buf = buf;
+  auto buf = const_cast<char*>(str_->buf);
   str_->type = W_STRING_UNICODE;
 
   res = WideCharToMultiByte(

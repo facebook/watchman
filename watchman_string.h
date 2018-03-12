@@ -33,11 +33,17 @@ struct watchman_string {
   std::atomic<long> refcnt;
   uint32_t _hval;
   uint32_t len;
-  const char *buf;
   w_string_type_t type:3;
   unsigned hval_computed:1;
 
-  watchman_string();
+  // This holds the character data.  This is a variable
+  // sized member and we have to specify at least 1 byte
+  // for the compiler to accept this.
+  // This must be the last element of this struct.
+  const char buf[1];
+
+  inline watchman_string()
+      : refcnt(0), len(0), type(W_STRING_BYTE), hval_computed(0), buf{0} {}
 };
 
 uint32_t w_string_compute_hval(w_string_t *str);
@@ -630,8 +636,7 @@ w_string w_string::build(Args&&... args) {
   new (s) watchman_string();
 
   s->refcnt = 1;
-  auto buf = (char*)(s + 1);
-  s->buf = buf;
+  auto buf = (char*)(s->buf);
 
   ::detail::Appender appender(buf, reserved);
   ::detail::appendTo(appender, args...);

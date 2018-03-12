@@ -34,8 +34,7 @@ w_string w_string_piece::asLowerCase(w_string_type_t stringType) const {
 
   s->refcnt = 1;
   s->len = size();
-  buf = (char*)(s + 1);
-  s->buf = buf;
+  buf = const_cast<char*>(s->buf);
   s->type = stringType;
 
   auto cursor = s_;
@@ -64,8 +63,7 @@ w_string w_string_piece::asLowerCaseSuffix(w_string_type_t stringType) const {
 
   s->refcnt = 1;
   s->len = suffixPiece.size();
-  buf = (char*)(s + 1);
-  s->buf = buf;
+  buf = const_cast<char*>(s->buf);
   s->type = stringType;
 
   auto cursor = suffixPiece.s_;
@@ -372,7 +370,7 @@ w_string w_string::normalizeSeparators(char targetSeparator) const {
 
   s->refcnt = 1;
   s->len = len;
-  buf = (char*)(s + 1);
+  buf = const_cast<char*>(s->buf);
 
   for (i = 0; i < len; i++) {
     if (str_->buf[i] == '/' || str_->buf[i] == '\\') {
@@ -382,7 +380,6 @@ w_string w_string::normalizeSeparators(char targetSeparator) const {
     }
   }
   buf[len] = 0;
-  s->buf = buf;
 
   return s;
 }
@@ -412,8 +409,7 @@ w_string w_string::pathCat(std::initializer_list<w_string_piece> elems) {
   new (s) watchman_string();
 
   s->refcnt = 1;
-  buf = (char *)(s + 1);
-  s->buf = buf;
+  buf = const_cast<char*>(s->buf);
 
   for (auto &p : elems) {
     if (p.size() == 0) {
@@ -452,13 +448,6 @@ uint32_t strlen_uint32(const char *str) {
   return (uint32_t)slen;
 }
 
-watchman_string::watchman_string()
-    : refcnt(0),
-      len(0),
-      buf(nullptr),
-      type(W_STRING_BYTE),
-      hval_computed(0) {}
-
 w_string_t *w_string_new_len_with_refcnt_typed(const char* str,
     uint32_t len, long refcnt, w_string_type_t type) {
 
@@ -470,12 +459,11 @@ w_string_t *w_string_new_len_with_refcnt_typed(const char* str,
 
   s->refcnt = refcnt;
   s->len = len;
-  buf = (char*)(s + 1);
+  buf = const_cast<char*>(s->buf);
   if (str) {
     memcpy(buf, str, len);
   }
   buf[len] = 0;
-  s->buf = buf;
   s->type = type;
 
   return s;
@@ -511,9 +499,8 @@ w_string w_string::vprintf(const char* format, va_list args) {
 
   s->refcnt = 1;
   s->len = len;
-  buf = (char*)(s + 1);
+  buf = const_cast<char*>(s->buf);
   vsnprintf(buf, len + 1, format, args);
-  s->buf = buf;
 
   return w_string(s, false);
 }
@@ -706,12 +693,11 @@ w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
 
   s->refcnt = 1;
   s->len = len;
-  buf = (char*)(s + 1);
+  buf = const_cast<char*>(s->buf);
   memcpy(buf, parent->buf, parent->len);
   buf[parent->len] = '/';
   memcpy(buf + parent->len + 1, rhs->buf, rhs->len);
   buf[parent->len + 1 + rhs->len] = '\0';
-  s->buf = buf;
   s->type = parent->type;
 
   return s;
@@ -739,12 +725,11 @@ w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
 
   s->refcnt = 1;
   s->len = len;
-  buf = (char*)(s + 1);
+  buf = const_cast<char*>(s->buf);
   memcpy(buf, parent->buf, parent->len);
   buf[parent->len] = '/';
   memcpy(buf + parent->len + 1, rhs, rhs_len);
   buf[parent->len + 1 + rhs_len] = '\0';
-  s->buf = buf;
   s->type = parent->type;
 
   return s;
@@ -770,7 +755,7 @@ w_string w_dir_path_cat_str(
 
   s->refcnt = 1;
   s->len = length - 1;
-  buf = (char *)(s + 1);
+  buf = const_cast<char*>(s->buf);
   end = buf + s->len;
 
   *end = 0;
@@ -787,7 +772,6 @@ w_string w_dir_path_cat_str(
     memcpy(end, d->name.data(), d->name.size());
   }
 
-  s->buf = buf;
   return w_string(s, false);
 }
 
@@ -804,8 +788,7 @@ w_string_t *w_string_shell_escape(const w_string_t *str)
   new (s) watchman_string();
 
   s->refcnt = 1;
-  buf = (char*)(s + 1);
-  s->buf = buf;
+  buf = const_cast<char*>(s->buf);
 
   src = str->buf;
   end = src + str->len;
