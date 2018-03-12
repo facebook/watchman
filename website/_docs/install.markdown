@@ -43,7 +43,7 @@ had community provided patches that enable support for Windows 7 and later.
 At this time, we recommend running the latest master build of watchman on
 Windows.
 
-* [Download latest watchman.zip](https://ci.appveyor.com/api/projects/wez/watchman/artifacts/watchman.zip?branch=master&job=Environment:+WATCHMAN_WIN7_COMPAT%3D)
+* [Download latest watchman.zip](https://ci.appveyor.com/api/projects/wez/watchman/artifacts/watchman.zip?branch=master&job=Environment:+WATCHMAN_WIN7_COMPAT%3D&pr=false)
 
 Extract the zip file and make sure that `watchman.exe` is located in a directory
 that is in your `PATH`.
@@ -80,9 +80,12 @@ $ sudo port install watchman
 
 ### Installing from source
 
-You can use these steps below to get watchman built.  You will need `autoconf`,
-`automake` and `libtool` (or `glibtool` on OS X).  You may optionally build
-watchman without `pcre` and `python` support (see configuration options below).
+You can use these steps below to get watchman built.  You will need `libssl-dev`,
+`autoconf`, `automake` and `libtool` (or `glibtool` on OS X).
+
+You may optionally build watchman without `pcre` and `python` support (see
+configuration options below).
+
 For python support, you will need `setuptools` and may need to install a
 `python-dev` or `python-devel` package. To build the C++ client library you will
 need to install `libfolly`.
