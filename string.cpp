@@ -474,10 +474,6 @@ w_string_t *w_string_new_len_typed(const char *str, uint32_t len,
   return w_string_new_len_with_refcnt_typed(str, len, 1, type);
 }
 
-w_string_t *w_string_new_typed(const char *str, w_string_type_t type) {
-  return w_string_new_len_typed(str, strlen_uint32(str), type);
-}
-
 w_string w_string::vprintf(const char* format, va_list args) {
   w_string_t *s;
   int len;

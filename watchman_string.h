@@ -66,8 +66,6 @@ bool w_string_equal(const w_string_t *a, const w_string_t *b);
 bool w_string_equal_cstring(const w_string_t *a, const char *b);
 
 /* Typed string creation functions. */
-w_string_t *w_string_new_typed(const char *str,
-    w_string_type_t type);
 w_string_t *w_string_new_len_typed(const char *str, uint32_t len,
     w_string_type_t type);
 bool w_string_path_is_absolute(const w_string_t *str);

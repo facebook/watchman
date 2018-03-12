@@ -460,7 +460,7 @@ void FSEventsWatcher::FSEventsThread(const std::shared_ptr<w_root_t>& root) {
 
       fdsrc = CFFileDescriptorCreateRunLoopSource(nullptr, fdref, 0);
       if (!fdsrc) {
-        root->failure_reason = w_string_new_typed(
+        root->failure_reason = w_string(
             "CFFileDescriptorCreateRunLoopSource failed", W_STRING_UNICODE);
         goto done;
       }
