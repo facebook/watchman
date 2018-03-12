@@ -43,7 +43,7 @@ had community provided patches that enable support for Windows 7 and later.
 At this time, we recommend running the latest master build of watchman on
 Windows.
 
-* [Download latest watchman.zip](https://ci.appveyor.com/api/projects/wez/watchman/artifacts/watchman.zip?branch=master&job=Environment:+WATCHMAN_WIN7_COMPAT%3D)
+* [Download latest watchman.zip](https://ci.appveyor.com/api/projects/wez/watchman/artifacts/watchman.zip?branch=master&job=Environment:+WATCHMAN_WIN7_COMPAT%3D&pr=false)
 
 Extract the zip file and make sure that `watchman.exe` is located in a directory
 that is in your `PATH`.
