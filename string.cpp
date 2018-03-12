@@ -659,66 +659,6 @@ w_string_piece w_string_canon_path(w_string_t* str) {
   return w_string_piece(str);
 }
 
-w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs)
-{
-  w_string_t *s;
-  int len;
-  char *buf;
-
-  if (rhs->len == 0) {
-    w_string_addref(parent);
-    return parent;
-  }
-
-  len = parent->len + rhs->len + 1;
-
-  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
-  new (s) watchman_string();
-
-  s->refcnt = 1;
-  s->len = len;
-  buf = const_cast<char*>(s->buf);
-  memcpy(buf, parent->buf, parent->len);
-  buf[parent->len] = '/';
-  memcpy(buf + parent->len + 1, rhs->buf, rhs->len);
-  buf[parent->len + 1 + rhs->len] = '\0';
-  s->type = parent->type;
-
-  return s;
-}
-
-w_string_t *w_string_path_cat_cstr(w_string_t *parent, const char *rhs) {
-  return w_string_path_cat_cstr_len(parent, rhs, strlen_uint32(rhs));
-}
-
-w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
-                                       uint32_t rhs_len) {
-  w_string_t *s;
-  int len;
-  char *buf;
-
-  if (rhs_len == 0) {
-    w_string_addref(parent);
-    return parent;
-  }
-
-  len = parent->len + rhs_len + 1;
-
-  s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
-  new (s) watchman_string();
-
-  s->refcnt = 1;
-  s->len = len;
-  buf = const_cast<char*>(s->buf);
-  memcpy(buf, parent->buf, parent->len);
-  buf[parent->len] = '/';
-  memcpy(buf + parent->len + 1, rhs, rhs_len);
-  buf[parent->len + 1 + rhs_len] = '\0';
-  s->type = parent->type;
-
-  return s;
-}
-
 w_string watchman_dir::getFullPathToChild(w_string_piece extra) const {
   uint32_t length = 0;
   const struct watchman_dir* d;

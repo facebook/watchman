@@ -70,10 +70,6 @@ w_string_t *w_string_new_typed(const char *str,
     w_string_type_t type);
 w_string_t *w_string_new_len_typed(const char *str, uint32_t len,
     w_string_type_t type);
-w_string_t *w_string_path_cat(w_string_t *parent, w_string_t *rhs);
-w_string_t *w_string_path_cat_cstr(w_string_t *parent, const char *rhs);
-w_string_t *w_string_path_cat_cstr_len(w_string_t *parent, const char *rhs,
-                                       uint32_t rhs_len);
 bool w_string_path_is_absolute(const w_string_t *str);
 
 bool w_string_startswith(w_string_t *str, w_string_t *prefix);
