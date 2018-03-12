@@ -8,6 +8,8 @@
 
 static void w_string_addref(w_string_t* str);
 static void w_string_delref(w_string_t* str);
+static w_string_t*
+w_string_new_len_typed(const char* str, uint32_t len, w_string_type_t type);
 
 // string piece
 
@@ -448,16 +450,15 @@ uint32_t strlen_uint32(const char *str) {
   return (uint32_t)slen;
 }
 
-w_string_t *w_string_new_len_with_refcnt_typed(const char* str,
-    uint32_t len, long refcnt, w_string_type_t type) {
-
+static w_string_t*
+w_string_new_len_typed(const char* str, uint32_t len, w_string_type_t type) {
   w_string_t *s;
   char *buf;
 
   s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
   new (s) watchman_string();
 
-  s->refcnt = refcnt;
+  s->refcnt = 1;
   s->len = len;
   buf = const_cast<char*>(s->buf);
   if (str) {
@@ -467,11 +468,6 @@ w_string_t *w_string_new_len_with_refcnt_typed(const char* str,
   s->type = type;
 
   return s;
-}
-
-w_string_t *w_string_new_len_typed(const char *str, uint32_t len,
-    w_string_type_t type) {
-  return w_string_new_len_with_refcnt_typed(str, len, 1, type);
 }
 
 w_string w_string::vprintf(const char* format, va_list args) {
