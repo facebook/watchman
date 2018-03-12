@@ -16,9 +16,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2017-12-07T09:31:36-08:00" />
+<meta property="article:published_time" content="2018-03-12T13:06:35-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"Installation","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2017-12-07T09:31:36-08:00","dateModified":"2017-12-07T09:31:36-08:00","description":"System Requirements","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/install.html"},"url":"https://facebook.github.io/watchman/docs/install.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"Installation","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2018-03-12T13:06:35-07:00","dateModified":"2018-03-12T13:06:35-07:00","description":"System Requirements","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/install.html"},"url":"https://facebook.github.io/watchman/docs/install.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -753,7 +753,7 @@ had community provided patches that enable support for Windows 7 and later.</p>
 Windows.</p>
 
 <ul>
-  <li><a href="https://ci.appveyor.com/api/projects/wez/watchman/artifacts/watchman.zip?branch=master&amp;job=Environment:+WATCHMAN_WIN7_COMPAT%3D">Download latest watchman.zip</a></li>
+  <li><a href="https://ci.appveyor.com/api/projects/wez/watchman/artifacts/watchman.zip?branch=master&amp;job=Environment:+WATCHMAN_WIN7_COMPAT%3D&amp;pr=false">Download latest watchman.zip</a></li>
 </ul>
 
 <p>Extract the zip file and make sure that <code class="highlighter-rouge">watchman.exe</code> is located in a directory
@@ -794,10 +794,13 @@ them via GitHub!  <a href="https://github.com/facebook/watchman/labels/windows">
 
 <h3 id="installing-from-source">Installing from source</h3>
 
-<p>You can use these steps below to get watchman built.  You will need <code class="highlighter-rouge">autoconf</code>,
-<code class="highlighter-rouge">automake</code> and <code class="highlighter-rouge">libtool</code> (or <code class="highlighter-rouge">glibtool</code> on OS X).  You may optionally build
-watchman without <code class="highlighter-rouge">pcre</code> and <code class="highlighter-rouge">python</code> support (see configuration options below).
-For python support, you will need <code class="highlighter-rouge">setuptools</code> and may need to install a
+<p>You can use these steps below to get watchman built.  You will need <code class="highlighter-rouge">libssl-dev</code>,
+<code class="highlighter-rouge">autoconf</code>, <code class="highlighter-rouge">automake</code> and <code class="highlighter-rouge">libtool</code> (or <code class="highlighter-rouge">glibtool</code> on OS X).</p>
+
+<p>You may optionally build watchman without <code class="highlighter-rouge">pcre</code> and <code class="highlighter-rouge">python</code> support (see
+configuration options below).</p>
+
+<p>For python support, you will need <code class="highlighter-rouge">setuptools</code> and may need to install a
 <code class="highlighter-rouge">python-dev</code> or <code class="highlighter-rouge">python-devel</code> package. To build the C++ client library you will
 need to install <code class="highlighter-rouge">libfolly</code>.</p>
 
