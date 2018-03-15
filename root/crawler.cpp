@@ -6,6 +6,8 @@
 #include "watchman.h"
 #include "watchman_error_category.h"
 
+using namespace watchman;
+
 static void apply_dir_size_hint(struct watchman_dir *dir,
     uint32_t ndirs, uint32_t nfiles) {
   if (dir->files.empty() && nfiles > 0) {
@@ -40,6 +42,40 @@ void InMemoryView::crawler(
   }
 
   auto dir = resolveDir(view, dir_name, true);
+
+  // Detect root directory replacement.
+  // The inode number check is handled more generally by the sister code
+  // in stat.cpp.  We need to special case it for the root because we never
+  // generate a watchman_file node for the root and thus never call
+  // InMemoryView::statPath (we'll fault if we do!).
+  // Ideally the kernel would have given us a signal when we've been replaced
+  // but some filesystems (eg: BTRFS) do not emit appropriate inotify events
+  // for things like subvolume deletes.  We've seen situations where the
+  // root has been replaced and we got no notifications at all and this has
+  // left the cookie sync mechanism broken forever.
+  if (dir_name == root->root_path) {
+    try {
+      auto st = getFileInformation(dir_name.c_str(), root->case_sensitive);
+      if (st.ino != view->rootInode) {
+        // If it still exists and the inode doesn't match, then we need
+        // to force recrawl to make sure we're in sync.
+        // We're lazily initializing the rootInode to 0 here, so we don't
+        // need to do this the first time through (we're already crawling
+        // everything in that case).
+        if (view->rootInode != 0) {
+          root->scheduleRecrawl(
+              "root was replaced and we didn't get notified by the kernel");
+          return;
+        }
+        recursive = true;
+        view->rootInode = st.ino;
+      }
+    } catch (const std::system_error& err) {
+      handle_open_errno(root, dir, now, "getFileInformation", err.code());
+      markDirDeleted(view, dir, now, true);
+      return;
+    }
+  }
 
   memcpy(path, dir_name.data(), dir_name.size());
   path[dir_name.size()] = 0;

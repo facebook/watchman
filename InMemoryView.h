@@ -110,6 +110,11 @@ struct InMemoryView : public QueryableView {
     /* root number */
     uint32_t rootNumber{0};
 
+    // Inode number for the root dir.  This is used to detect what should
+    // be impossible situations, but is needed in practice to workaround
+    // eg: BTRFS not delivering all events for subvolumes
+    ino_t rootInode{0};
+
     explicit view(const w_string& root_path);
 
     void insertAtHeadOfFileList(struct watchman_file* file);

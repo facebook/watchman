@@ -154,6 +154,14 @@ void InMemoryView::statPath(
           path);
       file->exists = true;
       markFileChanged(view, file, now);
+
+      // If the inode number changed then we definitely need to recursively
+      // examine any children because we cannot assume that the kernel will
+      // have given us the correct hints about this change.  BTRFS is one
+      // example of a filesystem where this has been observed to happen.
+      if (file->stat.ino != st.ino) {
+        recursive = true;
+      }
     }
 
     memcpy(&file->stat, &st, sizeof(file->stat));

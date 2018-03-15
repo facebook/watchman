@@ -85,6 +85,20 @@ void watchman::InMemoryView::syncToNow(
       }
     }
 
+    // On BTRFS we're not guaranteed to get notified about all classes
+    // of replacement so we make a best effort attempt to do something
+    // reasonable.   Let's pretend that we got notified about the cookie
+    // dir changing and schedule the IO thread to look at it.
+    // If it observes a change it will do the right thing.
+    {
+      struct timeval now;
+      gettimeofday(&now, nullptr);
+
+      auto lock = pending_.wlock();
+      lock->add(cookies_.cookieDir(), now, W_PENDING_CRAWL_ONLY);
+      lock->ping();
+    }
+
     // We didn't have any useful additional contextual information
     // to add so let's just bubble up the exception.
     throw;
