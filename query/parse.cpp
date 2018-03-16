@@ -145,10 +145,16 @@ static bool parse_paths(w_query* res, const json_ref& query) {
 
     if (json_is_string(ele)) {
       name = json_to_w_string(ele);
-    } else if (json_unpack(ele, "{s:s, s:i}",
-          "path", &name,
-          "depth", &res->paths[i].depth
-          ) != 0) {
+    } else if (json_is_object(ele)) {
+      name = json_to_w_string(ele.get("path"));
+
+      auto depth = ele.get("depth");
+      if (!json_is_integer(depth)) {
+        throw QueryParseError("path.depth must be an integer");
+      }
+
+      res->paths[i].depth = json_integer_value(depth);
+    } else {
       throw QueryParseError(
           "expected object with 'path' and 'depth' properties");
     }

@@ -67,6 +67,13 @@ class TestPathGenerator(WatchmanTestCase.WatchmanTestCase):
                 'path': ['bar']})['files'],
             ['bar'])
 
+        self.assertFileListsEqual(
+            self.watchmanCommand('query', root, {
+                'fields': ['name'],
+                'relative_root': 'foo',
+                'path': [{'path': 'bar', 'depth': -1}]})['files'],
+            ['bar'])
+
         if self.isCaseInsensitive():
             os.rename(os.path.join(root, 'foo'), os.path.join(root, 'Foo'))
 
