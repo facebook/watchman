@@ -42,7 +42,7 @@ void InMemoryView::fullCrawl(
     // Ensure that we observe these files with a new, distinct clock,
     // otherwise a fresh subscription established immediately after a watch
     // can get stuck with an empty view until another change is observed
-    view->mostRecentTick++;
+    mostRecentTick_++;
     gettimeofday(&start, NULL);
     pending_.wlock()->add(root->root_path, start, W_PENDING_RECURSIVE);
     // There is the potential for a subtle race condition here.  The boolean
@@ -206,7 +206,7 @@ void InMemoryView::ioThread(const std::shared_ptr<w_root_t>& root) {
         continue;
       }
 
-      view->mostRecentTick++;
+      mostRecentTick_++;
 
       while (processPending(root, view, localPendingLock, false)) {
         ;

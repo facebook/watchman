@@ -105,10 +105,6 @@ struct InMemoryView : public QueryableView {
     std::unordered_map<w_string, std::unique_ptr<file_list_head>> suffixes;
 
     std::unique_ptr<watchman_dir> root_dir;
-    // The most recently observed tick value of an item in the view
-    uint32_t mostRecentTick{1};
-    /* root number */
-    uint32_t rootNumber{0};
 
     // Inode number for the root dir.  This is used to detect what should
     // be impossible situations, but is needed in practice to workaround
@@ -212,6 +208,10 @@ struct InMemoryView : public QueryableView {
   Configuration& config_;
 
   SyncView view_;
+  // The most recently observed tick value of an item in the view
+  std::atomic<uint32_t> mostRecentTick_{1};
+  /* root number */
+  std::atomic<uint32_t> rootNumber_{0};
   w_string root_path;
 
   // This allows a client to wait for a recrawl to complete.

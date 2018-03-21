@@ -71,13 +71,13 @@ Future<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
 }
 
 InMemoryView::view::view(const w_string& root_path)
-    : root_dir(watchman::make_unique<watchman_dir>(root_path, nullptr)),
-      rootNumber(next_root_number++) {}
+    : root_dir(watchman::make_unique<watchman_dir>(root_path, nullptr)) {}
 
 InMemoryView::InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher)
     : cookies_(root->cookies),
       config_(root->config),
       view_(view(root->root_path)),
+      rootNumber_(next_root_number++),
       root_path(root->root_path),
       watcher_(watcher),
       contentHashCache_(
@@ -111,7 +111,7 @@ void InMemoryView::markFileChanged(
   }
 
   file->otime.timestamp = now.tv_sec;
-  file->otime.ticks = view->mostRecentTick;
+  file->otime.ticks = mostRecentTick_;
 
   if (view->latest_file != file) {
     // unlink from list
@@ -303,7 +303,7 @@ watchman_file* InMemoryView::getOrCreateChildFile(
   auto& file_ptr = dir->files[file->getName()];
   file_ptr = std::move(file);
 
-  file_ptr->ctime.ticks = view->mostRecentTick;
+  file_ptr->ctime.ticks = mostRecentTick_;
   file_ptr->ctime.timestamp = now.tv_sec;
 
   auto suffix = file_name.asLowerCaseSuffix();
@@ -573,15 +573,13 @@ void InMemoryView::allFilesGenerator(w_query* query, struct w_query_ctx* ctx)
 }
 
 ClockPosition InMemoryView::getMostRecentRootNumberAndTickValue() const {
-  auto view = view_.rlock();
-  return ClockPosition(view->rootNumber, view->mostRecentTick);
+  return ClockPosition(rootNumber_, mostRecentTick_);
 }
 
 w_string InMemoryView::getCurrentClockString() const {
-  auto view = view_.rlock();
   char clockbuf[128];
   if (!clock_id_string(
-          view->rootNumber, view->mostRecentTick, clockbuf, sizeof(clockbuf))) {
+          rootNumber_, mostRecentTick_, clockbuf, sizeof(clockbuf))) {
     throw std::runtime_error("clock string exceeded clockbuf size");
   }
   return w_string(clockbuf, W_STRING_UNICODE);
@@ -731,7 +729,7 @@ void InMemoryView::warmContentCache() {
       }
     }
 
-    lastWarmedTick_ = view->mostRecentTick;
+    lastWarmedTick_ = mostRecentTick_;
   }
 
   watchman::log(
