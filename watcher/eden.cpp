@@ -193,7 +193,7 @@ class EdenFileResult : public FileResult {
     return exists_;
   }
 
-  Future<w_string> readLink() const override {
+  Future<w_string> readLink() override {
     return makeFuture<w_string>(nullptr);
   }
 

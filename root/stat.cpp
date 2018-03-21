@@ -167,24 +167,8 @@ void InMemoryView::statPath(
     memcpy(&file->stat, &st, sizeof(file->stat));
 
     // check for symbolic link
-    if (st.isSymlink()) {
-      try {
-        auto target = readSymbolicLink(path);
-        bool symlink_changed = false;
-        if (file->symlink_target != target) {
-          symlink_changed = true;
-        }
-        file->symlink_target = target;
-
-        if (symlink_changed && root->config.getBool("watch_symlinks", false)) {
-          root->inner.pending_symlink_targets.wlock()->add(full_path, now, 0);
-        }
-      } catch (const std::system_error& exc) {
-        log(ERR, "readlink(", path, ") failed: ", exc.what(), "\n");
-        file->symlink_target.reset();
-      }
-    } else {
-      file->symlink_target.reset();
+    if (st.isSymlink() && root->config.getBool("watch_symlinks", false)) {
+      root->inner.pending_symlink_targets.wlock()->add(full_path, now, 0);
     }
 
     if (st.isDir()) {

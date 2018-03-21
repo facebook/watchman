@@ -44,7 +44,7 @@ bool LocalFileResult::exists() const {
   return exists_;
 }
 
-watchman::Future<w_string> LocalFileResult::readLink() const {
+watchman::Future<w_string> LocalFileResult::readLink() {
   return makeFuture(readSymbolicLink(fullPath_.c_str()));
 }
 

@@ -248,9 +248,7 @@ void InMemoryView::globGeneratorDoublestar(
 
       if (matched) {
         w_query_process_file(
-            ctx->query,
-            ctx,
-            make_unique<InMemoryFileResult>(file, contentHashCache_));
+            ctx->query, ctx, make_unique<InMemoryFileResult>(file, caches_));
         // No sense running multiple matches for this same file node
         // if this one succeeded.
         break;
@@ -340,7 +338,7 @@ void InMemoryView::globGeneratorTree(
             w_query_process_file(
                 ctx->query,
                 ctx,
-                make_unique<InMemoryFileResult>(file, contentHashCache_));
+                make_unique<InMemoryFileResult>(file, caches_));
           }
         }
       } else {
@@ -365,7 +363,7 @@ void InMemoryView::globGeneratorTree(
             w_query_process_file(
                 ctx->query,
                 ctx,
-                make_unique<InMemoryFileResult>(file, contentHashCache_));
+                make_unique<InMemoryFileResult>(file, caches_));
           }
         }
       }

@@ -41,7 +41,7 @@ class LocalFileResult : public FileResult {
   // Returns true if the file currently exists
   bool exists() const override;
   // Returns the symlink target
-  watchman::Future<w_string> readLink() const override;
+  watchman::Future<w_string> readLink() override;
 
   const w_clock_t& ctime() const override;
   const w_clock_t& otime() const override;

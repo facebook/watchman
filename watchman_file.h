@@ -33,10 +33,6 @@ struct watchman_file {
    * changed */
   watchman::FileInformation stat;
 
-  /* the symbolic link target of this file.
-   * Can be NULL if not a symlink, or we failed to read the target */
-  w_string symlink_target;
-
   inline w_string_piece getName() const {
     auto lenPtr = (uint32_t*)(this + 1);
     auto data = (char*)(lenPtr + 1);

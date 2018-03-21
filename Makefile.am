@@ -24,6 +24,7 @@ watchman_SOURCES = \
 	PubSub.cpp \
 	ThreadPool.cpp \
 	QueryableView.cpp \
+	SymlinkTargets.cpp \
 	spawn.cpp       \
 	opt.cpp        \
 	cfg.cpp        \

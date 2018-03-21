@@ -5,9 +5,11 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include "ContentHash.h"
 #include "CookieSync.h"
 #include "QueryableView.h"
+#include "SymlinkTargets.h"
 #include "watchman_config.h"
 #include "watchman_opendir.h"
 #include "watchman_pending.h"
@@ -20,16 +22,28 @@ struct watchman_client;
 
 namespace watchman {
 
+// Helper struct to hold caches used by the InMemoryView
+struct InMemoryViewCaches {
+  ContentHashCache contentHashCache;
+  SymlinkTargetCache symlinkTargetCache;
+
+  InMemoryViewCaches(
+      const w_string& rootPath,
+      size_t maxHashes,
+      size_t maxSymlinks,
+      std::chrono::milliseconds errorTTL);
+};
+
 class InMemoryFileResult : public FileResult {
  public:
   explicit InMemoryFileResult(
       const watchman_file* file,
-      ContentHashCache& contentHashCache);
+      InMemoryViewCaches& caches);
   const FileInformation& stat() const override;
   w_string_piece baseName() const override;
   w_string_piece dirName() override;
   bool exists() const override;
-  Future<w_string> readLink() const override;
+  Future<w_string> readLink() override;
   const w_clock_t& ctime() const override;
   const w_clock_t& otime() const override;
   watchman::Future<FileResult::ContentHash> getContentSha1() override;
@@ -37,7 +51,7 @@ class InMemoryFileResult : public FileResult {
  private:
   const watchman_file* file_;
   w_string dirName_;
-  ContentHashCache& contentHashCache_;
+  InMemoryViewCaches& caches_;
 };
 
 /** Keeps track of the state of the filesystem in-memory. */
@@ -86,6 +100,9 @@ struct InMemoryView : public QueryableView {
   // If content cache warming is configured, do the warm up now
   void warmContentCache();
   static void debugContentHashCache(
+      struct watchman_client* client,
+      const json_ref& args);
+  static void debugSymlinkTargetCache(
       struct watchman_client* client,
       const json_ref& args);
 
@@ -238,7 +255,8 @@ struct InMemoryView : public QueryableView {
 
   // mutable because we pass a reference to other things from inside
   // const methods
-  mutable ContentHashCache contentHashCache_;
+  mutable InMemoryViewCaches caches_;
+
   // Should we warm the cache when we settle?
   bool enableContentCacheWarming_{false};
   // How many of the most recent files to warm up when settling?

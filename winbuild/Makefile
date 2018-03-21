@@ -36,6 +36,7 @@ SRCS_CPP=\
 	InMemoryView.cpp \
 	Pipe.cpp \
 	PubSub.cpp \
+	SymlinkTargets.cpp \
 	ThreadPool.cpp \
 	QueryableView.cpp \
 	winbuild\errmap.cpp \

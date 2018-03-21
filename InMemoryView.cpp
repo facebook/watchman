@@ -14,10 +14,18 @@ static std::atomic<long> next_root_number{1};
 
 namespace watchman {
 
+InMemoryViewCaches::InMemoryViewCaches(
+    const w_string& rootPath,
+    size_t maxHashes,
+    size_t maxSymlinks,
+    std::chrono::milliseconds errorTTL)
+    : contentHashCache(rootPath, maxHashes, errorTTL),
+      symlinkTargetCache(rootPath, maxSymlinks, errorTTL) {}
+
 InMemoryFileResult::InMemoryFileResult(
     const watchman_file* file,
-    ContentHashCache& contentHashCache)
-    : file_(file), contentHashCache_(contentHashCache) {}
+    InMemoryViewCaches& caches)
+    : file_(file), caches_(caches) {}
 
 const FileInformation& InMemoryFileResult::stat() const {
   return file_->stat;
@@ -46,13 +54,37 @@ const w_clock_t& InMemoryFileResult::otime() const {
   return file_->otime;
 }
 
-Future<w_string> InMemoryFileResult::readLink() const {
-  return makeFuture(file_->symlink_target);
+Future<w_string> InMemoryFileResult::readLink() {
+  if (!stat().isSymlink()) {
+    // If this file is not a symlink then we immediately yield
+    // a nullptr w_string instance rather than propagating an error.
+    // This behavior is relied upon by the field rendering code and
+    // checked in test_symlink.py.
+    return makeFuture(w_string());
+  }
+
+  auto dir = dirName();
+  dir.advance(caches_.symlinkTargetCache.rootPath().size());
+
+  // If dirName is the root, dir.size() will now be zero
+  if (dir.size() > 0) {
+    // if not at the root, skip the slash character at the
+    // front of dir
+    dir.advance(1);
+  }
+
+  SymlinkTargetCacheKey key{w_string::pathCat({dir, baseName()}),
+                            size_t(file_->stat.size),
+                            file_->stat.mtime};
+
+  return caches_.symlinkTargetCache.get(key).then(
+      [](Result<std::shared_ptr<const SymlinkTargetCache::Node>>&& result)
+          -> w_string { return result.value()->value(); });
 }
 
 Future<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
   auto dir = dirName();
-  dir.advance(contentHashCache_.rootPath().size());
+  dir.advance(caches_.contentHashCache.rootPath().size());
 
   // If dirName is the root, dir.size() will now be zero
   if (dir.size() > 0) {
@@ -65,7 +97,7 @@ Future<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
                           size_t(file_->stat.size),
                           file_->stat.mtime};
 
-  return contentHashCache_.get(key).then(
+  return caches_.contentHashCache.get(key).then(
       [](Result<std::shared_ptr<const ContentHashCache::Node>>&& result)
           -> FileResult::ContentHash { return result.value()->value(); });
 }
@@ -80,9 +112,10 @@ InMemoryView::InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher)
       rootNumber_(next_root_number++),
       root_path(root->root_path),
       watcher_(watcher),
-      contentHashCache_(
+      caches_(
           root->root_path,
           config_.getInt("content_hash_max_items", 128 * 1024),
+          config_.getInt("symlink_target_max_items", 32 * 1024),
           std::chrono::milliseconds(
               config_.getInt("content_hash_negative_cache_ttl_ms", 2000))),
       enableContentCacheWarming_(
@@ -425,9 +458,7 @@ void InMemoryView::timeGenerator(w_query* query, struct w_query_ctx* ctx)
     }
 
     w_query_process_file(
-        query,
-        ctx,
-        watchman::make_unique<InMemoryFileResult>(f, contentHashCache_));
+        query, ctx, watchman::make_unique<InMemoryFileResult>(f, caches_));
   }
 }
 
@@ -451,9 +482,7 @@ void InMemoryView::suffixGenerator(w_query* query, struct w_query_ctx* ctx)
       }
 
       w_query_process_file(
-          query,
-          ctx,
-          watchman::make_unique<InMemoryFileResult>(f, contentHashCache_));
+          query, ctx, watchman::make_unique<InMemoryFileResult>(f, caches_));
     }
   }
 }
@@ -509,9 +538,7 @@ void InMemoryView::pathGenerator(w_query* query, struct w_query_ctx* ctx)
       if (f && (!f->exists || !f->stat.isDir())) {
         ctx->bumpNumWalked();
         w_query_process_file(
-            query,
-            ctx,
-            watchman::make_unique<InMemoryFileResult>(f, contentHashCache_));
+            query, ctx, watchman::make_unique<InMemoryFileResult>(f, caches_));
         continue;
       }
     }
@@ -540,9 +567,7 @@ void InMemoryView::dirGenerator(
     ctx->bumpNumWalked();
 
     w_query_process_file(
-        query,
-        ctx,
-        watchman::make_unique<InMemoryFileResult>(file, contentHashCache_));
+        query, ctx, watchman::make_unique<InMemoryFileResult>(file, caches_));
   }
 
   if (depth > 0) {
@@ -566,9 +591,7 @@ void InMemoryView::allFilesGenerator(w_query* query, struct w_query_ctx* ctx)
     }
 
     w_query_process_file(
-        query,
-        ctx,
-        watchman::make_unique<InMemoryFileResult>(f, contentHashCache_));
+        query, ctx, watchman::make_unique<InMemoryFileResult>(f, caches_));
   }
 }
 
@@ -707,7 +730,7 @@ void InMemoryView::warmContentCache() {
 
         auto dirStr = f->parent->getFullPath();
         w_string_piece dir(dirStr);
-        dir.advance(contentHashCache_.rootPath().size());
+        dir.advance(caches_.contentHashCache.rootPath().size());
 
         // If dirName is the root, dir.size() will now be zero
         if (dir.size() > 0) {
@@ -721,7 +744,7 @@ void InMemoryView::warmContentCache() {
 
         watchman::log(
             watchman::DBG, "warmContentCache: lookup ", key.relativePath, "\n");
-        auto f = contentHashCache_.get(key);
+        auto f = caches_.contentHashCache.get(key);
         if (syncContentCacheWarming_) {
           futures.emplace_back(std::move(f));
         }
@@ -750,6 +773,21 @@ void InMemoryView::warmContentCache() {
   }
 }
 
+namespace {
+void addCacheStats(json_ref& resp, const CacheStats& stats) {
+  resp.set({{"cacheHit", json_integer(stats.cacheHit)},
+            {"cacheShare", json_integer(stats.cacheShare)},
+            {"cacheMiss", json_integer(stats.cacheMiss)},
+            {"cacheEvict", json_integer(stats.cacheEvict)},
+            {"cacheStore", json_integer(stats.cacheStore)},
+            {"cacheLoad", json_integer(stats.cacheLoad)},
+            {"cacheErase", json_integer(stats.cacheErase)},
+            {"clearCount", json_integer(stats.clearCount)},
+            {"size", json_integer(stats.size)}});
+}
+
+} // namespace
+
 void InMemoryView::debugContentHashCache(
     struct watchman_client* client,
     const json_ref& args) {
@@ -768,22 +806,43 @@ void InMemoryView::debugContentHashCache(
     return;
   }
 
-  auto stats = view->contentHashCache_.stats();
+  auto stats = view->caches_.contentHashCache.stats();
   auto resp = make_response();
-  resp.set({{"cacheHit", json_integer(stats.cacheHit)},
-            {"cacheShare", json_integer(stats.cacheShare)},
-            {"cacheMiss", json_integer(stats.cacheMiss)},
-            {"cacheEvict", json_integer(stats.cacheEvict)},
-            {"cacheStore", json_integer(stats.cacheStore)},
-            {"cacheLoad", json_integer(stats.cacheLoad)},
-            {"cacheErase", json_integer(stats.cacheErase)},
-            {"clearCount", json_integer(stats.clearCount)},
-            {"size", json_integer(stats.size)}});
+  addCacheStats(resp, stats);
   send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG(
     "debug-contenthash",
     InMemoryView::debugContentHashCache,
+    CMD_DAEMON,
+    w_cmd_realpath_root);
+
+void InMemoryView::debugSymlinkTargetCache(
+    struct watchman_client* client,
+    const json_ref& args) {
+  /* resolve the root */
+  if (json_array_size(args) != 2) {
+    send_error_response(
+        client, "wrong number of arguments for 'debug-symlink-target-cache'");
+    return;
+  }
+
+  auto root = resolveRoot(client, args);
+
+  auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
+  if (!view) {
+    send_error_response(client, "root is not an InMemoryView watcher");
+    return;
+  }
+
+  auto stats = view->caches_.symlinkTargetCache.stats();
+  auto resp = make_response();
+  addCacheStats(resp, stats);
+  send_and_dispose_response(client, std::move(resp));
+}
+W_CMD_REG(
+    "debug-symlink-target-cache",
+    InMemoryView::debugSymlinkTargetCache,
     CMD_DAEMON,
     w_cmd_realpath_root);
 }

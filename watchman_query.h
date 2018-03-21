@@ -59,7 +59,7 @@ class FileResult {
   // Returns true if the file currently exists
   virtual bool exists() const = 0;
   // Returns the symlink target
-  virtual watchman::Future<w_string> readLink() const = 0;
+  virtual watchman::Future<w_string> readLink() = 0;
 
   virtual const w_clock_t& ctime() const = 0;
   virtual const w_clock_t& otime() const = 0;
