@@ -189,13 +189,7 @@ static void cmd_debug_get_asserted_states(
   auto response = make_response();
 
   // copy over all the key-value pairs to stateSet and release lock
-  auto states = json_array();
-  {
-    auto assertedStates = root->assertedStates.rlock();
-    for (const auto& state : *assertedStates) {
-      json_array_append(states, w_string_to_json(state.first));
-    }
-  }
+  auto states = root->assertedStates.rlock()->debugStates();
   response.set({{"root", w_string_to_json(root->root_path)},
                 {"states", std::move(states)}});
   send_and_dispose_response(clientbase, std::move(response));

@@ -11,10 +11,24 @@ struct watchman_client_subscription;
 
 namespace watchman {
 
+enum ClientStateDisposition {
+  PendingEnter,
+  Asserted,
+  PendingLeave,
+  Done,
+};
+
 class ClientStateAssertion {
  public:
   const std::shared_ptr<w_root_t> root; // Holds a ref on the root
   const w_string name;
+  // locking: You must hold root->assertedStates lock to access this member
+  ClientStateDisposition disposition{PendingEnter};
+
+  // Deferred payload to send when this assertion makes it to the front
+  // of the queue.
+  // locking: You must hold root->assertedStates lock to access this member.
+  json_ref enterPayload;
 
   ClientStateAssertion(
       const std::shared_ptr<w_root_t>& root,

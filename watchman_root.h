@@ -27,6 +27,41 @@ constexpr std::chrono::milliseconds DEFAULT_QUERY_SYNC_MS(60000);
 
 namespace watchman {
 class ClientStateAssertion;
+
+class ClientStateAssertions {
+ public:
+  /** Returns true if `assertion` is the front instance in the queue
+   * of assertions that match assertion->name */
+  bool isFront(const std::shared_ptr<ClientStateAssertion>& assertion) const;
+
+  /** Returns true if `assertion` currently has an Asserted disposition */
+  bool isStateAsserted(w_string stateName) const;
+
+  /** Add assertion to the queue of assertions for assertion->name.
+   * Throws if the named state is already asserted or if there is
+   * a pending assertion for that state. */
+  void queueAssertion(std::shared_ptr<ClientStateAssertion> assertion);
+
+  /** remove assertion from the queue of assertions for assertion->name.
+   * If no more assertions remain in that named queue then the queue is
+   * removed.
+   * If the removal of an assertion causes the new front of that queue
+   * to occupied by an assertion with Asserted disposition, generates a
+   * broadcast of its enterPayload.
+   */
+  bool removeAssertion(const std::shared_ptr<ClientStateAssertion>& assertion);
+
+  /** Returns some diagnostic information that is used by
+   * the integration tests. */
+  json_ref debugStates() const;
+
+ private:
+  /** states_ maps from a state name to a queue of assertions with
+   * various dispositions */
+  std::
+      unordered_map<w_string, std::deque<std::shared_ptr<ClientStateAssertion>>>
+          states_;
+};
 }; // namespace watchman
 
 struct watchman_root : public std::enable_shared_from_this<watchman_root> {
@@ -69,14 +104,10 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   // Why we failed to watch
   w_string failure_reason;
 
-  watchman::Synchronized<std::unordered_map<
-      w_string,
-      std::shared_ptr<watchman::ClientStateAssertion>>>
-      assertedStates;
-
   // State transition counter to allow identification of concurrent state
   // transitions
   std::atomic<uint32_t> stateTransCount{0};
+  watchman::Synchronized<watchman::ClientStateAssertions> assertedStates;
 
   struct Inner {
     std::shared_ptr<watchman::QueryableView> view_;

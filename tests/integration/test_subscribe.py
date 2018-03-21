@@ -43,6 +43,21 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
                 return sub
         return None
 
+    def assertWaitForAssertedStates(self, root, states):
+        def sortStates(states):
+            ''' Deterministically sort the states for comparison.
+            We sort by name and rely on the sort being stable as the
+            relative ordering of the potentially multiple queueued
+            entries per name is important to preserve '''
+            return sorted(states, key=lambda x: x['name'])
+        states = sortStates(states)
+
+        def getStates():
+            res = self.watchmanCommand('debug-get-asserted-states', root)
+            return sortStates(res['states'])
+
+        self.assertWaitForEqual(states, getStates)
+
     def test_state_enter_leave(self):
         root = self.mkdtemp()
         self.watchmanCommand('watch', root)
@@ -51,13 +66,16 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
 
         self.watchmanCommand('state-enter', root, 'foo')
         self.watchmanCommand('state-enter', root, 'bar')
-        result = self.watchmanCommand('debug-get-asserted-states', root)
-        self.assertEqual(['bar', 'foo'], sorted(result['states']))
+        self.assertWaitForAssertedStates(root, [
+            {'name': 'bar', 'state': 'Asserted'},
+            {'name': 'foo', 'state': 'Asserted'}])
 
         self.watchmanCommand('state-leave', root, 'foo')
+        self.assertWaitForAssertedStates(root, [
+            {'name': 'bar', 'state': 'Asserted'}])
+
         self.watchmanCommand('state-leave', root, 'bar')
-        result = self.watchmanCommand('debug-get-asserted-states', root)
-        self.assertEqual([], result['states'])
+        self.assertWaitForAssertedStates(root, [])
 
     def test_defer_state(self):
         root = self.mkdtemp()

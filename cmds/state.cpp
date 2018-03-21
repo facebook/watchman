@@ -1,12 +1,16 @@
 /* Copyright 2015-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman_system.h"
 #include "MapUtil.h"
+#include "ThreadPool.h"
 #include "make_unique.h"
 #include "watchman.h"
 
+using namespace watchman;
 using ms = std::chrono::milliseconds;
 using watchman::ClientStateAssertion;
+using watchman::ClientStateDisposition;
 
 struct state_arg {
   w_string name;
@@ -53,6 +57,118 @@ static bool parse_state_arg(
   return true;
 }
 
+namespace watchman {
+
+void ClientStateAssertions::queueAssertion(
+    std::shared_ptr<ClientStateAssertion> assertion) {
+  // Check to see if someone else has or had a pending claim for this
+  // state and reject the attempt in that case
+  auto state_q = states_.find(assertion->name);
+  if (state_q != states_.end() && !state_q->second.empty()) {
+    auto disp = state_q->second.back()->disposition;
+    if (disp == ClientStateDisposition::PendingEnter ||
+        disp == ClientStateDisposition::Asserted) {
+      throw std::runtime_error(to<std::string>(
+          "state ", assertion->name, " is already Asserted or PendingEnter"));
+    }
+  }
+  states_[assertion->name].push_back(assertion);
+}
+
+json_ref ClientStateAssertions::debugStates() const {
+  auto states = json_array();
+  for (const auto& state_q : states_) {
+    for (const auto& state : state_q.second) {
+      auto obj = json_object();
+      obj.set("name", w_string_to_json(state->name));
+      switch (state->disposition) {
+        case ClientStateDisposition::PendingEnter:
+          obj.set("state", w_string_to_json("PendingEnter"));
+          break;
+        case ClientStateDisposition::Asserted:
+          obj.set("state", w_string_to_json("Asserted"));
+          break;
+        case ClientStateDisposition::PendingLeave:
+          obj.set("state", w_string_to_json("PendingLeave"));
+          break;
+        case ClientStateDisposition::Done:
+          obj.set("state", w_string_to_json("Done"));
+          break;
+      }
+      json_array_append(states, obj);
+    }
+  }
+  return states;
+}
+
+bool ClientStateAssertions::removeAssertion(
+    const std::shared_ptr<ClientStateAssertion>& assertion) {
+  auto it = states_.find(assertion->name);
+  if (it == states_.end()) {
+    return false;
+  }
+
+  auto& queue = it->second;
+  for (auto assertionIter = queue.begin(); assertionIter != queue.end();
+       ++assertionIter) {
+    if (*assertionIter == assertion) {
+      assertion->disposition = ClientStateDisposition::Done;
+      queue.erase(assertionIter);
+
+      // If there are no more entries queued with this name, remove
+      // the name from the states map.
+      if (queue.empty()) {
+        states_.erase(it);
+      } else {
+        // Now check to see who is at the front of the queue.  If
+        // they are set to asserted and have a payload assigned, they
+        // are a state-enter that is pending broadcast of the assertion.
+        // We couldn't send it earlier without risking out of order
+        // delivery wrt. vacating states.
+        auto front = queue.front();
+        if (front->disposition == ClientStateDisposition::Asserted &&
+            front->enterPayload) {
+          front->root->unilateralResponses->enqueue(
+              std::move(front->enterPayload));
+          front->enterPayload = nullptr;
+        }
+      }
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool ClientStateAssertions::isFront(
+    const std::shared_ptr<ClientStateAssertion>& assertion) const {
+  auto it = states_.find(assertion->name);
+  if (it == states_.end()) {
+    return false;
+  }
+  auto& queue = it->second;
+  if (queue.empty()) {
+    return false;
+  }
+  return queue.front() == assertion;
+}
+
+bool ClientStateAssertions::isStateAsserted(w_string stateName) const {
+  auto it = states_.find(stateName);
+  if (it == states_.end()) {
+    return false;
+  }
+  auto& queue = it->second;
+  for (auto& state : queue) {
+    if (state->disposition == Asserted) {
+      return true;
+    }
+  }
+  return false;
+}
+
+} // namespace watchman
+
 static void cmd_state_enter(
     struct watchman_client* clientbase,
     const json_ref& args) {
@@ -65,21 +181,21 @@ static void cmd_state_enter(
     return;
   }
 
-  if (parsed.sync_timeout.count()) {
-    root->syncToNow(parsed.sync_timeout);
-  }
-
-  auto assertion = std::make_shared<ClientStateAssertion>(root, parsed.name);
-
-  if (!mapInsert(*root->assertedStates.wlock(), assertion->name, assertion)) {
+  if (client->states.find(parsed.name) != client->states.end()) {
     send_error_response(
         client, "state %s is already asserted", parsed.name.c_str());
     return;
   }
 
+  auto assertion = std::make_shared<ClientStateAssertion>(root, parsed.name);
+
+  // Ask the root to track the assertion and maintain ordering.
+  // This will throw if the state is already asserted or pending assertion
+  // so we do this prior to linking it in to the client.
+  root->assertedStates.wlock()->queueAssertion(assertion);
+
   // Increment state transition counter for this root
   root->stateTransCount++;
-
   // Record the state assertion in the client
   client->states[parsed.name] = assertion;
 
@@ -88,24 +204,55 @@ static void cmd_state_enter(
   // PDUs in case CLIENT has active subscriptions for this root
   auto response = make_response();
 
-  auto clock = w_string_to_json(root->view()->getCurrentClockString());
-
   response.set({{"root", w_string_to_json(root->root_path)},
-                {"state-enter", w_string_to_json(parsed.name)},
-                {"clock", json_ref(clock)}});
+                {"state-enter", w_string_to_json(parsed.name)}});
   send_and_dispose_response(client, std::move(response));
 
-  // Broadcast about the state enter
-  {
-    auto payload =
-        json_object({{"root", w_string_to_json(root->root_path)},
-                     {"clock", std::move(clock)},
-                     {"state-enter", w_string_to_json(parsed.name)}});
-    if (parsed.metadata) {
-      payload.set("metadata", json_ref(parsed.metadata));
-    }
-    root->unilateralResponses->enqueue(std::move(payload));
-  }
+  root->cookies
+      .sync()
+      // Note that it is possible that the sync()
+      // might throw.  If that happens the exception will bubble back
+      // to the client as an error PDU.
+      // after this point, any errors are async and the client is
+      // unaware of them.
+      .then([assertion, parsed, root](
+                watchman::Result<watchman::Unit>&& result) {
+        try {
+          result.throwIfError();
+        } catch (const std::exception& exc) {
+          // The sync failed for whatever reason; log it.
+          log(ERR, "state-enter sync failed: ", exc.what(), "\n");
+          // Don't allow this assertion to clog up and block further
+          // attempts.  Mark it as done and remove it from the root.
+          // The client side of this will get removed when the client
+          // disconnects or attempts to leave the state.
+          root->assertedStates.wlock()->removeAssertion(assertion);
+          return;
+        }
+        auto clock = w_string_to_json(root->view()->getCurrentClockString());
+        auto payload =
+            json_object({{"root", w_string_to_json(root->root_path)},
+                         {"clock", std::move(clock)},
+                         {"state-enter", w_string_to_json(parsed.name)}});
+        if (parsed.metadata) {
+          payload.set("metadata", json_ref(parsed.metadata));
+        }
+
+        {
+          auto wlock = root->assertedStates.wlock();
+          assertion->disposition = ClientStateDisposition::Asserted;
+
+          if (wlock->isFront(assertion)) {
+            // Broadcast about the state enter
+            root->unilateralResponses->enqueue(std::move(payload));
+          } else {
+            // Defer the broadcast until we are at the front of the queue.
+            // removeAssertion() will take care of sending this when this
+            // assertion makes it to the front of the queue.
+            assertion->enterPayload = payload;
+          }
+        }
+      });
 }
 W_CMD_REG("state-enter", cmd_state_enter, CMD_DAEMON, w_cmd_realpath_root)
 
@@ -129,8 +276,7 @@ static void leave_state(
   assertion->root->unilateralResponses->enqueue(std::move(payload));
 
   // Now remove the state assertion
-  mapRemove(*assertion->root->assertedStates.wlock(), assertion->name);
-
+  assertion->root->assertedStates.wlock()->removeAssertion(assertion);
   // Increment state transition counter for this root
   assertion->root->stateTransCount++;
 
@@ -180,16 +326,17 @@ static void cmd_state_leave(
     return;
   }
 
-  if (parsed.sync_timeout.count()) {
-    root->syncToNow(parsed.sync_timeout);
-  }
-
-  // mapGetDefault will return a nullptr assertion as the default value, if
-  // the entry is missing
-  assertion = mapGetDefault(*root->assertedStates.rlock(), parsed.name);
-  if (!assertion) {
+  auto it = client->states.find(parsed.name);
+  if (it == client->states.end()) {
     send_error_response(
         client, "state %s is not asserted", parsed.name.c_str());
+    return;
+  }
+
+  assertion = it->second.lock();
+  if (!assertion) {
+    send_error_response(
+        client, "state %s was implicitly vacated", parsed.name.c_str());
     return;
   }
 
@@ -202,18 +349,50 @@ static void cmd_state_leave(
     return;
   }
 
+  // Mark as pending leave; we haven't vacated the state until we've
+  // seen the sync cookie.
+  {
+    auto assertedStates = root->assertedStates.wlock();
+    if (assertion->disposition == ClientStateDisposition::Done) {
+      send_error_response(
+          client, "state %s was implicitly vacated", parsed.name.c_str());
+      return;
+    }
+    // Note that there is a potential race here wrt. this state being
+    // asserted again by another client and the broadcast
+    // of the payload below, because the asserted states lock in
+    // scope here cannot be held that long.  We address that race
+    // by only broadcasting the enter assertion when it reaches
+    // the front of the queue.  That happens in removeAssertion()
+    // and also in the post-sync portion of the code in cmd_state_enter().
+    assertion->disposition = ClientStateDisposition::PendingLeave;
+  }
+
+  // Remove the association from the client.  We'll remove it from the
+  // root on the other side of the sync.
+  client->states.erase(it);
+
   // We're about to successfully leave the state, this is our response to the
   // state-leave command.  We do this before we send the subscription
   // PDUs in case CLIENT has active subscriptions for this root
   auto response = make_response();
-  response.set(
-      {{"root", w_string_to_json(root->root_path)},
-       {"state-leave", w_string_to_json(parsed.name)},
-       {"clock", w_string_to_json(root->view()->getCurrentClockString())}});
+  response.set({{"root", w_string_to_json(root->root_path)},
+                {"state-leave", w_string_to_json(parsed.name)}});
   send_and_dispose_response(client, std::move(response));
 
-  // Notify and exit the state
-  leave_state(client, assertion, false, parsed.metadata);
+  root->cookies.sync().then(
+      [assertion, parsed, root](watchman::Result<watchman::Unit>&& result) {
+        try {
+          result.throwIfError();
+        } catch (const std::exception& exc) {
+          // The sync failed for whatever reason; log it and take no futher
+          // action
+          log(ERR, "state-leave sync failed: ", exc.what(), "\n");
+          return;
+        }
+        // Notify and exit the state
+        leave_state(nullptr, assertion, false, parsed.metadata);
+      });
 }
 W_CMD_REG("state-leave", cmd_state_leave, CMD_DAEMON, w_cmd_realpath_root)
 
