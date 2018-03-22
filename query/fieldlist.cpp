@@ -71,6 +71,10 @@ MAKE_CLOCK_FIELD(oclock, otime)
 // Note: our JSON library supports 64-bit integers, but this may
 // pose a compatibility issue for others.  We'll see if anyone
 // runs into an issue and deal with it then...
+static_assert(
+    sizeof(json_int_t) >= sizeof(time_t),
+    "json_int_t isn't large enough to hold a time_t");
+
 #define MAKE_INT_FIELD(name, member)                                     \
   static json_ref make_##name(const struct watchman_rule_match* match) { \
     return json_integer(match->file->stat().member);                     \
