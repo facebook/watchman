@@ -1,6 +1,7 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#ifndef _WIN32
 #include "watchman.h"
 #ifdef HAVE_SYS_UCRED_H
 #include <sys/ucred.h>
@@ -276,3 +277,4 @@ w_stm_open(const char* filename, int flags, ...) {
 
   return w_stm_fdopen(FileDescriptor(open(filename, flags, mode)));
 }
+#endif

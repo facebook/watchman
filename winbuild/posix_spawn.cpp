@@ -1,5 +1,6 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
+#ifdef _WIN32
 #include "watchman.h"
 #include "watchman_synchronized.h"
 
@@ -437,3 +438,4 @@ int posix_spawnp(pid_t *pid, const char *file,
 
   return posix_spawn_common(true, pid, file, file_actions, attrp, argv, envp);
 }
+#endif

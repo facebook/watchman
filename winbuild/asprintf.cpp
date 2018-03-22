@@ -1,6 +1,6 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-
+#ifdef _WIN32
 #include "watchman.h"
 
 // Poor-mans asprintf
@@ -50,3 +50,4 @@ int asprintf(char **out, WATCHMAN_FMT_STRING(const char *fmt), ...) {
 
   return len;
 }
+#endif

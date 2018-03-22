@@ -35,13 +35,10 @@ import subprocess
 import traceback
 import time
 import argparse
-import WatchmanInstance
-import TempDir
 import threading
 import multiprocessing
 import math
 import signal
-import Interrupt
 import random
 
 # Only Python 3.5+ supports native asyncio
@@ -132,7 +129,21 @@ parser.add_argument(
     action='store_true',
     help='Output test results in Test Pilot JSON format')
 
+parser.add_argument(
+    '--pybuild-dir',
+    action='store',
+    help='For out-of-src-tree builds, where the generated python lives')
+
 args = parser.parse_args()
+
+if args.pybuild_dir is not None:
+    sys.path.insert(0, args.pybuild_dir)
+
+# Import our local stuff after we've had a chance to look at args.pybuild_dir
+import WatchmanInstance
+import TempDir
+import Interrupt
+
 
 # We test for this in a test case
 os.environ['WATCHMAN_EMPTY_ENV_VAR'] = ''

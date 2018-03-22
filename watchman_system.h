@@ -11,6 +11,82 @@
 #define __STDC_FORMAT_MACROS
 #include "config.h"
 
+#ifdef _WIN32
+#define _CRT_SECURE_NO_WARNINGS 1
+
+#define _ALLOW_KEYWORD_MACROS
+#ifndef __cplusplus
+#define inline __inline
+#endif
+
+// Tell windows.h not to #define min/max
+#define NOMINMAX
+
+#define WIN32_LEAN_AND_MEAN
+#define EX_USAGE 1
+#include <errno.h>
+#include <io.h>
+#include <process.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <time.h>
+#include <windows.h>
+
+#if _MSC_VER >= 1400
+# include <sal.h>
+# if _MSC_VER > 1400
+#  define WATCHMAN_FMT_STRING(x) _Printf_format_string_ x
+# else
+#  define WATCHMAN_FMT_STRING(x) __format_string x
+# endif
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef ptrdiff_t ssize_t;
+
+const char *win32_strerror(DWORD err);
+int map_win32_err(DWORD err);
+int map_winsock_err(void);
+
+#define snprintf _snprintf
+int asprintf(char **out, WATCHMAN_FMT_STRING(const char *fmt), ...);
+int vasprintf(char **out, WATCHMAN_FMT_STRING(const char *fmt), va_list ap);
+char *dirname(char *path);
+
+#define STDIN_FILENO  0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+
+int gethostname(char *buf, int size);
+char *realpath(const char *filename, char *target);
+
+#define O_DIRECTORY _O_OBTAIN_DIR
+#define O_CLOEXEC _O_NOINHERIT
+#define O_NOFOLLOW 0 /* clowny, but there's no translation */
+
+typedef DWORD pid_t;
+
+#define HAVE_BACKTRACE
+#define HAVE_BACKTRACE_SYMBOLS
+size_t backtrace(void **frames, size_t n_frames);
+char **backtrace_symbols(void **array, size_t n_frames);
+size_t backtrace_from_exception(
+    LPEXCEPTION_POINTERS exception,
+    void** frames,
+    size_t n_frames);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // WIN32
+
 #ifdef WATCHMAN_FACEBOOK_INTERNAL
 #include "common/base/BuildInfo.h"
 #undef PACKAGE_VERSION
@@ -118,11 +194,18 @@
 // configuration.  These are helpers to make this work
 // more portably
 #ifdef _WIN32
-#pragma section(".CRT$XCU", read)
-# define w_ctor_fn_type(sym) void __cdecl sym(void)
+# define w_ctor_fn_type(sym) void sym(void)
+// Define a helper struct and its constructor; the constructor
+// will call the function symbol we desire.  Also emit an
+// instance of this struct as a global.  It will be triggered
+// prior to main() being invoked.
 # define w_ctor_fn_reg(sym) \
-  static __declspec(allocate(".CRT$XCU")) \
-    void (__cdecl * w_paste1(sym, _reg))(void) = sym;
+  static struct w_paste1(sym, _reg) { \
+    w_paste1(sym, _reg)(void) { \
+      sym(); \
+    } \
+  } w_paste1(sym, _reg_inst);
+
 #else
 # define w_ctor_fn_type(sym) \
   __attribute__((constructor)) void sym(void)

@@ -1,6 +1,6 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-
+#ifdef _WIN32
 #include "watchman.h"
 
 // 100's of nanoseconds since the FILETIME epoch
@@ -62,3 +62,4 @@ void usleep(int64_t usec) {
 void sleep(int sec) {
   SleepEx(sec * 1000, true);
 }
+#endif

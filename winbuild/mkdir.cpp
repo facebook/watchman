@@ -1,6 +1,7 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#ifdef _WIN32
 #include "watchman.h"
 
 int mkdir(const char* path, int) {
@@ -17,6 +18,4 @@ int mkdir(const char* path, int) {
   errno = map_win32_err(err);
   return -1;
 }
-
-/* vim:ts=2:sw=2:et:
- */
+#endif

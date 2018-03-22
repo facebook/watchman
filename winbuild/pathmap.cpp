@@ -1,6 +1,6 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-
+#ifdef _WIN32
 #include "watchman.h"
 #include <algorithm>
 
@@ -177,5 +177,4 @@ std::wstring w_string_piece::asWideUNC() const {
   return result;
 }
 
-/* vim:ts=2:sw=2:et:
- */
+#endif

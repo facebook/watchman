@@ -1,6 +1,6 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-
+#ifdef _WIN32
 #include "watchman.h"
 
 const char *win32_strerror(DWORD err) {
@@ -44,3 +44,4 @@ int map_win32_err(DWORD err) {
     default: return EINVAL;
   }
 }
+#endif

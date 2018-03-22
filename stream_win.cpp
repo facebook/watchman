@@ -1,6 +1,7 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#ifdef _WIN32
 #include "watchman.h"
 #include "make_unique.h"
 
@@ -767,3 +768,4 @@ FileDescriptor w_handle_open(const char* path, int flags) {
 std::unique_ptr<watchman_stream> w_stm_open(const char* path, int flags, ...) {
   return w_stm_fdopen(w_handle_open(path, flags));
 }
+#endif

@@ -1,6 +1,6 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-
+#ifdef _WIN32
 #include "watchman.h"
 // some versions of dbghelp.h do: typedef enum {}; with no typedef name
 #pragma warning(disable: 4091)
@@ -143,3 +143,4 @@ size_t backtrace_from_exception(
   }
   return i;
 }
+#endif

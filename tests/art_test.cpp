@@ -27,6 +27,14 @@ static FILE *open_test_file(const char *name) {
     return f;
   }
 
+#ifdef WATCHMAN_TEST_SRC_DIR
+  snprintf(altname, sizeof(altname), "%s/%s", WATCHMAN_TEST_SRC_DIR, name);
+  f = fopen(altname, "r");
+  if (f) {
+    return f;
+  }
+#endif
+
   snprintf(altname, sizeof(altname), "watchman/%s", name);
   f = fopen(altname, "r");
   if (f) {

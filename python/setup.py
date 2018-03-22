@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # vim:ts=4:sw=4:et:
 
+import os
+os.chdir(os.path.dirname(__file__))
+
 try:
     from setuptools import setup, Extension
 except:
