@@ -298,7 +298,7 @@ bool WinWatcher::start(const std::shared_ptr<w_root_t>& root) {
 
     watchman::log(watchman::DBG, "starting readChangesThread\n");
     auto self = std::dynamic_pointer_cast<WinWatcher>(shared_from_this());
-    std::thread thread([self, root]() {
+    std::thread thread([ self, root ]() noexcept {
       try {
         self->readChangesThread(root);
       } catch (const std::exception& e) {

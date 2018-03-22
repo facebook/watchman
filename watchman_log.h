@@ -13,6 +13,7 @@
 #define W_LOG_ERR 1
 #define W_LOG_DBG 2
 #define W_LOG_FATAL -1
+#define W_LOG_ABORT -2
 
 #include "watchman_preprocessor.h"
 

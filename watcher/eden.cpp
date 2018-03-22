@@ -769,7 +769,7 @@ class EdenView : public QueryableView {
 
   // This is the thread that we use to listen to the stream of
   // changes coming in from the Eden server
-  void subscriberThread(std::shared_ptr<w_root_t> root) {
+  void subscriberThread(std::shared_ptr<w_root_t> root) noexcept {
     SCOPE_EXIT {
       // ensure that the root gets torn down,
       // otherwise we'd leave it in a broken state.

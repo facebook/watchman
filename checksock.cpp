@@ -153,9 +153,8 @@ void do_clock_check(watchman_stream* client) {
   }
 }
 
-void sanityCheckThread() {
+void sanityCheckThread() noexcept {
   w_set_thread_name("sanitychecks");
-
   auto lastCheck = std::chrono::steady_clock::now();
   auto interval = std::chrono::minutes(1);
 

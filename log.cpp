@@ -11,6 +11,8 @@
 #include "Logging.h"
 #include "watchman_scopeguard.h"
 
+using namespace watchman;
+
 int log_level = W_LOG_ERR;
 #ifdef __APPLE__
 static pthread_key_t thread_name_key;
@@ -63,7 +65,8 @@ struct levelMaps {
   std::unordered_map<w_string, enum LogLevel> labelToLevel;
 
   levelMaps()
-      : levelToLabel{{FATAL, "fatal"},
+      : levelToLabel{{ABORT, "abort"},
+                     {FATAL, "fatal"},
                      {ERR, "error"},
                      {OFF, "off"},
                      {DBG, "debug"}} {
@@ -167,21 +170,30 @@ void Log::doLogToStdErr() {
     getPending(items, errorSub_, debugSub_);
   }
 
-  bool fatal = false;
+  bool doFatal = false;
+  bool doAbort = false;
   static w_string kFatal("fatal");
+  static w_string kAbort("abort");
 
   for (auto& item : items) {
     auto& log = json_to_w_string(item->payload.get("log"));
     ignore_result(write(STDERR_FILENO, log.data(), log.size()));
 
-    if (json_to_w_string(item->payload.get("level")) == kFatal) {
-      fatal = true;
+    auto level = json_to_w_string(item->payload.get("level"));
+    if (level == kFatal) {
+      doFatal = true;
+    } else if (level == kAbort) {
+      doAbort = true;
     }
   }
 
-  if (fatal) {
+  if (doFatal || doAbort) {
     log_stack_trace();
-    exit(1);
+    if (doAbort) {
+      abort();
+    } else {
+      _exit(1);
+    }
   }
 }
 
@@ -300,6 +312,24 @@ static LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep) {
 }
 #endif
 
+namespace {
+void terminationHandler() {
+  auto eptr = std::current_exception();
+  if (eptr) {
+    try {
+      std::rethrow_exception(eptr);
+    } catch (const std::exception& exc) {
+      log(ABORT, "std::terminate was called. Exception: ", exc.what(), ".\n");
+    } catch (...) {
+      log(ABORT,
+          "std::terminate was called. Exception is not a std::exception.\n");
+    }
+  } else {
+    log(ABORT, "std::terminate was called. There is no current exception.\n");
+  }
+}
+} // namespace
+
 void w_setup_signal_handlers(void) {
 #ifndef _WIN32
   struct sigaction sa;
@@ -328,8 +358,7 @@ void w_setup_signal_handlers(void) {
   SetUnhandledExceptionFilter(exception_filter);
 #endif
 
-  std::set_terminate(
-      []() { watchman::log(watchman::FATAL, "std::terminate was called\n"); });
+  std::set_terminate(terminationHandler);
 }
 
 #ifdef __APPLE__

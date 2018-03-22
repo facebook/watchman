@@ -8,7 +8,7 @@
 namespace watchman {
 
 // Coupled with the defines in watchman_log.h
-enum LogLevel { FATAL = -1, OFF = 0, ERR = 1, DBG = 2 };
+enum LogLevel { ABORT = -2, FATAL = -1, OFF = 0, ERR = 1, DBG = 2 };
 
 const w_string& logLevelToLabel(enum LogLevel level);
 enum LogLevel logLabelToLevel(const w_string& label);

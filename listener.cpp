@@ -123,10 +123,10 @@ void w_request_shutdown(void) {
 
 // The client thread reads and decodes json packets,
 // then dispatches the commands that it finds
-static void client_thread(std::shared_ptr<watchman_client> client) {
+static void client_thread(std::shared_ptr<watchman_client> client) noexcept {
   struct watchman_event_poll pfd[2];
   json_error_t jerr;
-  bool send_ok = true;
+  bool client_alive = true;
   // Keep a persistent vector around so that we can avoid allocating
   // and releasing heap memory when we collect items from the publisher
   std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
@@ -143,7 +143,7 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
   pfd[0].evt = client->stm->getEvents();
   pfd[1].evt = client->ping.get();
 
-  while (!stopping) {
+  while (!stopping && client_alive) {
     // Wait for input from either the client socket or
     // via the ping pipe, which signals that some other
     // thread wants to unilaterally send data to the client
@@ -276,23 +276,19 @@ static void client_thread(std::shared_ptr<watchman_client> client) {
     }
 
     /* now send our response(s) */
-    while (!client->responses.empty()) {
+    while (!client->responses.empty() && client_alive) {
       auto& response_to_send = client->responses.front();
 
-      if (send_ok) {
-        client->stm->setNonBlock(false);
-        /* Return the data in the same format that was used to ask for it.
-         * Don't bother sending any more messages if the client disconnects,
-         * but still free their memory.
-         */
-        send_ok = client->writer.pduEncodeToStream(
-            client->pdu_type,
-            client->capabilities,
-            response_to_send,
-            client->stm.get());
-        client->stm->setNonBlock(true);
-      }
-
+      client->stm->setNonBlock(false);
+      /* Return the data in the same format that was used to ask for it.
+       * Update client liveness based on send success.
+       */
+      client_alive = client->writer.pduEncodeToStream(
+          client->pdu_type,
+          client->capabilities,
+          response_to_send,
+          client->stm.get());
+      client->stm->setNonBlock(true);
       client->responses.pop_front();
     }
   }
@@ -434,7 +430,8 @@ static std::shared_ptr<watchman_client> make_new_client(
   // parse/encode APIs are not easily used in a non-blocking
   // server architecture.
   try {
-    std::thread thr([client]() { client_thread(client); });
+    std::thread thr([client] { client_thread(client); });
+
     thr.detach();
   } catch (const std::exception& e) {
     clients.wlock()->erase(client);

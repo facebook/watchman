@@ -580,7 +580,7 @@ Future<w_string> ChildProcess::readPipe(int fd) {
   }
 
   auto p = std::make_shared<Promise<w_string>>();
-  std::thread thr([this, fd, p] {
+  std::thread thr([ this, fd, p ]() noexcept {
     std::string result;
     try {
       auto& pipe = pipes_[fd];

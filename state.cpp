@@ -1,10 +1,11 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "Logging.h"
 #include "watchman.h"
 #include "watchman_synchronized.h"
 
-using watchman::FileDescriptor;
+using namespace watchman;
 
 /** The state saving thread is responsible for writing out the
  * persistent information about the users watches.
@@ -27,7 +28,7 @@ std::thread state_saver_thread;
 
 static bool do_state_save(void);
 
-static void state_saver() {
+static void state_saver() noexcept {
   bool do_save;
 
   w_set_thread_name("statesaver");

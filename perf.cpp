@@ -5,14 +5,14 @@
 #include <condition_variable>
 #include <thread>
 #include "ChildProcess.h"
+#include "Logging.h"
 #include "watchman.h"
 #include "watchman_perf.h"
 #include "watchman_synchronized.h"
 
-using watchman::ChildProcess;
+using namespace watchman;
 using Options = ChildProcess::Options;
 using Environment = ChildProcess::Environment;
-using CaseSensitivity = watchman::CaseSensitivity;
 
 namespace {
 class PerfLogThread {
@@ -20,10 +20,10 @@ class PerfLogThread {
   std::thread thread_;
   std::condition_variable cond_;
 
-  void loop();
+  void loop() noexcept;
 
  public:
-  PerfLogThread() : thread_([this]() { loop(); }) {}
+  PerfLogThread() : thread_([this] { loop(); }) {}
 
   ~PerfLogThread() {
     cond_.notify_all();
@@ -139,7 +139,7 @@ void watchman_perf_sample::force_log() {
   will_log = true;
 }
 
-void PerfLogThread::loop() {
+void PerfLogThread::loop() noexcept {
   json_ref samples;
   json_ref perf_cmd;
   int64_t sample_batch;

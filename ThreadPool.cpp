@@ -1,6 +1,7 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "ThreadPool.h"
+#include "Logging.h"
 #include "watchman_log.h"
 
 namespace watchman {
@@ -25,7 +26,7 @@ void ThreadPool::start(size_t numWorkers, size_t maxItems) {
   maxItems_ = maxItems;
 
   for (auto i = 0U; i < numWorkers; ++i) {
-    workers_.emplace_back([this, i] {
+    workers_.emplace_back([ this, i ]() noexcept {
       w_set_thread_name("ThreadPool-%i", i);
       runWorker();
     });
