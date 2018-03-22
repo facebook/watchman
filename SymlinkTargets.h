@@ -3,15 +3,15 @@
 #include <string>
 #include "LRUCache.h"
 #include "watchman_string.h"
+#include "thirdparty/jansson/jansson.h"
+#include "watchman_clockspec.h"
 
 namespace watchman {
 struct SymlinkTargetCacheKey {
   // Path relative to the watched root
   w_string relativePath;
-  // file size in bytes
-  size_t fileSize;
   // The modification time
-  struct timespec mtime;
+  w_clock_t otime;
 
   // Computes a hash value for use in the cache map
   std::size_t hashValue() const;

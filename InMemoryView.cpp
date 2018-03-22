@@ -74,8 +74,7 @@ Future<w_string> InMemoryFileResult::readLink() {
   }
 
   SymlinkTargetCacheKey key{w_string::pathCat({dir, baseName()}),
-                            size_t(file_->stat.size),
-                            file_->stat.mtime};
+                            file_->otime};
 
   return caches_.symlinkTargetCache.get(key).then(
       [](Result<std::shared_ptr<const SymlinkTargetCache::Node>>&& result)
