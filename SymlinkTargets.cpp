@@ -12,15 +12,12 @@ using Node = typename SymlinkTargetCache::Node;
 
 bool SymlinkTargetCacheKey::operator==(
     const SymlinkTargetCacheKey& other) const {
-  return fileSize == other.fileSize && mtime.tv_sec == other.mtime.tv_sec &&
-      mtime.tv_nsec == other.mtime.tv_nsec &&
+  return otime.ticks == other.otime.ticks &&
       relativePath == other.relativePath;
 }
 
 std::size_t SymlinkTargetCacheKey::hashValue() const {
-  return hash_128_to_64(
-      w_string_hval(relativePath),
-      hash_128_to_64(fileSize, hash_128_to_64(mtime.tv_sec, mtime.tv_nsec)));
+  return hash_128_to_64(w_string_hval(relativePath), otime.ticks);
 }
 
 SymlinkTargetCache::SymlinkTargetCache(
