@@ -48,7 +48,7 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
       {
         w_jbuffer_t buffer;
 
-        w_log(W_LOG_ERR, "input_json: sending json object to stm\n");
+        w_log(W_LOG_DBG, "input_json: sending json object to stm\n");
         if (!buffer.jsonEncodeToStream(
                 res->resultsArray, stdin_file.get(), 0)) {
           w_log(W_LOG_ERR,
