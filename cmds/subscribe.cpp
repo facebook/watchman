@@ -4,6 +4,8 @@
 #include "MapUtil.h"
 #include "watchman.h"
 
+using namespace watchman;
+
 watchman_client_subscription::watchman_client_subscription(
     const std::shared_ptr<w_root_t>& root,
     std::weak_ptr<watchman_client> client)
@@ -151,7 +153,24 @@ void watchman_client_subscription::processSubscription() {
     }
 
     if (executeQuery) {
-      last_sub_tick = runSubscriptionRules(client.get(), root).position().ticks;
+      try {
+        last_sub_tick =
+            runSubscriptionRules(client.get(), root).position().ticks;
+      } catch (const std::exception& exc) {
+        // This may happen if an SCM aware query fails to run hg for
+        // whatever reason.  Since last_sub_tick is not advanced,
+        // we haven't missed any results and will re-evaluate with
+        // the same basis the next time a file is changed.  Due to
+        // the way that hg works, it is quite likely that it has
+        // touched some files already and that we'll get called
+        // again almost immediately.
+        log(ERR,
+            "Error while performing query for subscription ",
+            name,
+            ": ",
+            exc.what(),
+            ". Deferring until next change.\n");
+      }
     }
   } else {
     watchman::log(watchman::DBG, "subscription ", name, " is up to date\n");

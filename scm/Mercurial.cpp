@@ -15,6 +15,13 @@ ChildProcess::Options Mercurial::makeHgOptions() const {
   // Ensure that the hgrc doesn't mess with the behavior
   // of the commands that we're runing.
   opt.environment().set("HGPLAIN", w_string("1"));
+  // chg can elect to kill all children if an error occurs in any child.
+  // This can cause commands we spawn to fail transiently.  While we'd
+  // love to have the lowest latency, the transient failure causes problems
+  // with our ability to deliver notifications to our clients in a timely
+  // manner, so we disable the use of chg for the mercurial processes
+  // that we spawn.
+  opt.environment().set("CHGDISABLE", w_string("1"));
   // This method is called from the eden watcher and can trigger before
   // mercurial has finalized writing out its history data.  Setting this
   // environmental variable allows us to break the view isolation and read
