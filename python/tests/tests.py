@@ -15,6 +15,7 @@ except ImportError:
 import os
 import sys
 
+
 from pywatchman import (
     bser,
     compat,
@@ -25,6 +26,10 @@ from pywatchman import (
     Transport,
     WatchmanError,
 )
+
+if os.path.basename(bser.__file__) == 'pybser.py':
+    print(sys.path)
+    raise Exception("bser module resolved to pybser! Something is broken in your build")
 
 PILE_OF_POO = u"\U0001F4A9"
 NON_UTF8_STRING = b'\xff\xff\xff'
