@@ -703,8 +703,14 @@ Result<int, std::error_code> FileDescriptor::read(void* buf, int size) const {
 #else
   DWORD result = 0;
   if (!ReadFile((HANDLE)fd_, buf, size, &result, nullptr)) {
-    return Result<int, std::error_code>(
-        std::error_code(GetLastError(), std::system_category()));
+    auto err = GetLastError();
+    if (err == ERROR_BROKEN_PIPE) {
+      // Translate broken pipe on read to EOF
+      result = 0;
+    } else {
+      return Result<int, std::error_code>(
+          std::error_code(err, std::system_category()));
+    }
   }
   return Result<int, std::error_code>(result);
 #endif
