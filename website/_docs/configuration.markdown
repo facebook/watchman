@@ -29,31 +29,29 @@ changes to take effect.
 
 ### Resolution / Scoping
 
-There are three configuration scopes:
+There are two configuration scopes:
 
- * **local** - the option value is read from the `.watchmanconfig` file in the
-   associated root.
  * **global** - the option value is read from the `/etc/watchman.json` file
  * **fallback** - the option value is read from the `.watchmanconfig` file.
    If the option was not present in the `.watchmanconfig` file, then read
-   it from the `/etc/watchman.json` file.
+   it from the `/etc/watchman.json` file. Note that arrays are not merged.
 
 This table shows the scoping and availability of the various options:
 
 Option | Scope | Since version
 -------|-------|--------------
-`settle` | local |
+`settle` | fallback |
 `root_restrict_files` | global | deprecated in 3.1
 `root_files` | global | 3.1
 `enforce_root_files` | global | 3.1
 `illegal_fstypes` | global | 2.9.8
 `illegal_fstypes_advice` | global | 2.9.8
-`ignore_vcs` | local | 2.9.3
-`ignore_dirs` | local | 2.9.3
-`gc_age_seconds` | local | 2.9.4
-`gc_interval_seconds` | local | 2.9.4
+`ignore_vcs` | fallback | 2.9.3
+`ignore_dirs` | fallback | 2.9.3
+`gc_age_seconds` | fallback | 2.9.4
+`gc_interval_seconds` | fallback | 2.9.4
 `fsevents_latency` | fallback | 3.2
-`idle_reap_age_seconds` | local | 3.7
+`idle_reap_age_seconds` | fallback | 3.7
 `hint_num_files_per_dir` | fallback | 3.9
 `hint_num_dirs` | fallback | 4.6
 `suppress_recrawl_warnings` | fallback | 4.7
