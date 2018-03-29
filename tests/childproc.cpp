@@ -16,7 +16,17 @@ void test_pipe() {
       {
 #ifndef _WIN32
           "/bin/echo",
+#elif defined(CMAKE_INTDIR)
+          // If we're being built via cmake we know that we
+          // have the cmake executable on hand to invoke its
+          // echo program
+          "cmake",
+          "-E",
+          "echo",
 #else
+          // Hope that we have echo.exe in the path, otherwise
+          // this fails because we end up quoting "echo" and
+          // that caused cmd not to resole its builtin.
           "cmd",
           "/c",
           "echo",

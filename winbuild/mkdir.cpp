@@ -17,6 +17,3 @@ int mkdir(const char* path, int) {
   errno = map_win32_err(err);
   return -1;
 }
-
-/* vim:ts=2:sw=2:et:
- */

@@ -1,7 +1,7 @@
 set need_setup=0
 
-@rem if we don't have nmake in the path, we need to run setup
-where nmake.exe 2> NUL
+@rem if we don't have msbuild in the path, we need to run setup
+where msbuild.exe 2> NUL
 if %ERRORLEVEL% GTR 0 set need_setup=1
 
 @rem if we don't have the include path set, we need to run setup
@@ -22,7 +22,7 @@ where python.exe 2> NUL
 if %ERRORLEVEL% GTR 0 set PATH=c:\Python27;%PATH%
 
 @rem finally, run make
-nmake /nologo /s /f winbuild\Makefile %1 %2 %3 %4
+msbuild.exe ALL_BUILD.vcxproj /nologo /p:Configuration=Release
 
 SET RETURN_CODE=%ERRORLEVEL%
 

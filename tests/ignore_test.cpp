@@ -105,6 +105,12 @@ std::vector<w_string> build_list_with_prefix(const char* prefix, size_t limit) {
   char buf[512];
   FILE *f = fopen("thirdparty/libart/tests/words.txt", "r");
 
+#ifdef WATCHMAN_TEST_SRC_DIR
+  if (!f) {
+    f = fopen(WATCHMAN_TEST_SRC_DIR "/thirdparty/libart/tests/words.txt", "r");
+  }
+#endif
+
   if (!f) {
     f = fopen("watchman/thirdparty/libart/tests/words.txt", "r");
   }

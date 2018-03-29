@@ -4,8 +4,15 @@ defaults: &defaults
     - checkout
     - run:
         name: Install dependencies
-        command: apt-get update && apt-get install libtool m4 automake npm -y
-    - run: ./travis/run.sh
+        command: apt-get update && apt-get install cmake libtool m4 automake npm -y
+    - run:
+        environment:
+          USE_CMAKE: 1
+        command: ./travis/run.sh
+    - run:
+        environment:
+          USE_CMAKE: 0
+        command: ./travis/run.sh
 
 version: 2
 jobs:

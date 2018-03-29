@@ -1,4 +1,6 @@
 version: b{build}
+configuration:
+  - Release
 
 os: Visual Studio 2015
 
@@ -8,29 +10,38 @@ branches:
 
 init:
   - SET PATH=C:\Program Files\OpenSSL;%PATH%
-  - SET COMPOSER_NO_INTERACTION=1
-  - SET PHP=1
   - SET ANSICON=121x90 (121x90)
 
 install:
   - python -V
 
-build_script:
-  - cmd: call make.bat
+before_build:
+  - cmd: git clean -dfx
+  - cmd: cmake -G "Visual Studio 14 2015 Win64" .
+  - cmd: git status -u --ignored
 
-after_build:
-  - make dist
+build:
+  project: ALL_BUILD.vcxproj
+  parallel: true
 
 test_script:
   - "cd node && npm install"
-  - cmd: make integration
+  - cmd: git status -u --ignored
+  - cmd: mkdir Watchman
+  - cmd: copy Release\watchman.exe Watchman
+  - cmd: copy Release\watchman.pdb Watchman
+  - cmd: copy LICENSE Watchman/LICENSE.txt
+  - cmd: copy README.markdown Watchman
+  - cmd: c:\python27\python.exe runtests.py --keep-if-fail --watchman-path Release\watchman.exe
+  - cmd: ctest -C Release --output-on-failure
 
 artifacts:
-  - path: Watchman
+  - path: watchman
     name: watchman
     type: zip
 
 environment:
+  WATCHMAN_BINARY: Release/watchman.exe
   matrix:
     - WATCHMAN_WIN7_COMPAT: 1
     - WATCHMAN_WIN7_COMPAT:

@@ -176,6 +176,3 @@ std::wstring w_string_piece::asWideUNC() const {
   }
   return result;
 }
-
-/* vim:ts=2:sw=2:et:
- */
