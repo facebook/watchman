@@ -1,0 +1,14 @@
+rust_library(
+    name = "serde_bser",
+    srcs = glob(["src/**/*.rs"]),
+    preferred_linkage = "static",
+    deps = [],
+    external_deps = [
+        ("rust-crates-io", None, "byteorder"),
+        ("rust-crates-io", None, "bytes"),
+        ("rust-crates-io", None, "error-chain"),
+        ("rust-crates-io", None, "serde"),
+        ("rust-crates-io", None, "serde_bytes"),
+        ("rust-crates-io", None, "serde_derive"),
+    ],
+)
