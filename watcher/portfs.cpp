@@ -43,7 +43,6 @@ struct PortFSWatcher : public Watcher {
   std::unique_ptr<watchman_dir_handle> startWatchDir(
       const std::shared_ptr<w_root_t>& root,
       struct watchman_dir* dir,
-      struct timeval now,
       const char* path) override;
 
   bool startWatchFile(struct watchman_file* file) override;
@@ -171,7 +170,7 @@ bool PortFSWatcher::start(const std::shared_ptr<w_root_t>& root) {
 }
 
 bool PortFSWatcher::startWatchFile(struct watchman_file* file) {
-  auto name = w_dir_path_cat_str(file->parent, file->getName());
+  auto name = file->parent->getFullPathToChild(file->getName());
   if (!name) {
     return false;
   }
@@ -182,14 +181,13 @@ bool PortFSWatcher::startWatchFile(struct watchman_file* file) {
 std::unique_ptr<watchman_dir_handle> PortFSWatcher::startWatchDir(
     const std::shared_ptr<w_root_t>& root,
     struct watchman_dir* dir,
-    struct timeval,
     const char* path) {
   struct stat st;
 
   auto osdir = w_dir_open(path);
 
   if (fstat(osdir->getFd(), &st) == -1) {
-    if (w_string_equal(dir->getFullPath(), root->root_path)) {
+    if (dir->getFullPath() == root->root_path) {
       root->cancel();
     } else {
       // whaaa?
@@ -257,7 +255,7 @@ bool PortFSWatcher::consumeNotify(
         flags_label);
 
     if ((pe & (FILE_RENAME_FROM | UNMOUNTED | MOUNTEDOVER | FILE_DELETE)) &&
-        w_string_equal(f->name, root->root_path)) {
+        (f->name == root->root_path)) {
       w_log(
           W_LOG_ERR,
           "root dir %s has been (re)moved (code 0x%x %s), canceling watch\n",
