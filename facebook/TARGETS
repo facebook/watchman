@@ -27,7 +27,7 @@ python_binary(
     main_module = "watchman.facebook.runtests_wrapper",
     py_version = ">=3.5",
     runtime_deps = [
-        "//eden/cli:cli",
+        "//eden/cli:eden",
         "//eden/fs/service:edenfs",
         "//eden/hg/eden:eden",
         "//eden/hooks/hg:post-clone",
