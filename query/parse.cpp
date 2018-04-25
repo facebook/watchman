@@ -180,7 +180,7 @@ static void parse_relative_root(
     throw QueryParseError("'relative_root' must be a string");
   }
 
-  w_string path = json_to_w_string(relative_root);
+  auto path = json_to_w_string(relative_root).normalizeSeparators();
   auto canon_path = w_string_canon_path(path);
   res->relative_root = w_string::pathCat({root->root_path, canon_path});
   res->relative_root_slash =

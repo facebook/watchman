@@ -58,6 +58,22 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
 
         res = self.watchmanCommand('query', root, {
             'glob': ['**/*.h'],
+            'relative_root': 'includes/second',
+            'fields': ['name']})
+        self.assertEqual(self.normFileList(['bar.h', 'foo.h']),
+                         self.normWatchmanFileList(res['files']))
+
+        # check that a windows style path separator is normalized when
+        # present in relative_root
+        res = self.watchmanCommand('query', root, {
+            'glob': ['**/*.h'],
+            'relative_root': 'includes\\second',
+            'fields': ['name']})
+        self.assertEqual(self.normFileList(['bar.h', 'foo.h']),
+                         self.normWatchmanFileList(res['files']))
+
+        res = self.watchmanCommand('query', root, {
+            'glob': ['**/*.h'],
             'relative_root': 'includes',
             'fields': ['name']})
         self.assertEqual(self.normFileList(['a.h', 'b.h',
