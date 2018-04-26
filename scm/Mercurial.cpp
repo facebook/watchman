@@ -10,6 +10,14 @@ W_CAP_REG("scm-hg")
 
 namespace watchman {
 
+std::string hgExecutablePath() {
+  auto hg = getenv("EDEN_HG_BINARY");
+  if (hg && strlen(hg) > 0) {
+    return hg;
+  }
+  return "hg";
+}
+
 ChildProcess::Options Mercurial::makeHgOptions() const {
   ChildProcess::Options opt;
   // Ensure that the hgrc doesn't mess with the behavior
@@ -115,7 +123,8 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId) const {
 
   auto revset = to<std::string>("ancestor(.,", commitId, ")");
   ChildProcess proc(
-      {"hg", "log", "-T", "{node}", "-r", revset}, makeHgOptions());
+      {hgExecutablePath(), "log", "-T", "{node}", "-r", revset},
+      makeHgOptions());
 
   auto outputs = proc.communicate();
   auto status = proc.wait();
@@ -156,7 +165,8 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
   // The "" argument at the end causes paths to be printed out relative to the
   // cwd (set to root path above).
   ChildProcess proc(
-      {"hg", "status", "-n", "--rev", commitId, ""}, makeHgOptions());
+      {hgExecutablePath(), "status", "-n", "--rev", commitId, ""},
+      makeHgOptions());
 
   auto outputs = proc.communicate();
 
@@ -166,7 +176,9 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
   auto status = proc.wait();
   if (status) {
     throw std::runtime_error(to<std::string>(
-        "failed query for the hg status; command returned with status ",
+        "failed query for the ",
+        hgExecutablePath(),
+        " status; command returned with status ",
         status,
         " out=",
         outputs.first,
@@ -183,7 +195,14 @@ SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
   // The "" argument at the end causes paths to be printed out
   // relative to the cwd (set to root path above).
   ChildProcess proc(
-      {"hg", "status", "--print0", "--rev", commitA, "--rev", commitB, ""},
+      {hgExecutablePath(),
+       "status",
+       "--print0",
+       "--rev",
+       commitA,
+       "--rev",
+       commitB,
+       ""},
       makeHgOptions());
 
   auto outputs = proc.communicate();

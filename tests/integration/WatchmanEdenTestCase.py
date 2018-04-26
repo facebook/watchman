@@ -17,7 +17,6 @@ try:
     import configparser  # python3
     from eden.integration.lib import (edenclient, hgrepo)
     from eden.integration.hg.lib.hg_extension_test_base import (
-        EDEN_EXT_DIR,
         POST_CLONE,
     )
 
@@ -29,7 +28,8 @@ try:
 
     can_run_eden = edenclient.can_run_eden
 
-except ImportError:
+except ImportError as e:
+    print('Eden not available because: %s' % str(e))
     def can_run_eden():
         return False
 
@@ -121,7 +121,7 @@ class WatchmanEdenTestCase(TestParent):
             config = configparser.ConfigParser()
             config.read(self.edenrc)
             config['hooks'] = {}
-            config['hooks']['hg.edenextension'] = EDEN_EXT_DIR
+            config['hooks']['hg.edenextension'] = ''
             config['repository %s' % repo_name]['hooks'] = self.hooks_dir
             post_clone_hook = os.path.join(self.hooks_dir, 'post-clone')
             os.symlink(POST_CLONE, post_clone_hook)
