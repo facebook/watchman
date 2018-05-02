@@ -68,7 +68,9 @@ typedef struct {
     } value;
 } lex_t;
 
-#define stream_to_lex(stream) container_of(stream, lex_t, stream)
+inline lex_t* stream_to_lex(stream_t* stream) {
+  return reinterpret_cast<lex_t*>(stream);
+}
 
 
 /*** error reporting ***/

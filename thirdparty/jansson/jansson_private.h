@@ -15,9 +15,6 @@
 #include <unordered_map>
 #include <vector>
 
-#define container_of(ptr_, type_, member_)  \
-    ((type_ *)((char *)ptr_ - offsetof(type_, member_)))
-
 /* va_copy is a C99 feature. In C89 implementations, it's sometimes
    available as __va_copy. If not, memcpy() should do the trick. */
 #ifndef va_copy
@@ -68,11 +65,25 @@ struct json_integer_t {
   json_integer_t(json_int_t value);
 };
 
-#define json_to_object(json_)  container_of((json_t*)json_, json_object_t, json)
-#define json_to_array(json_)   container_of((json_t*)json_, json_array_t, json)
-#define json_to_string(json_)  container_of((json_t*)json_, json_string_t, json)
-#define json_to_real(json_)   container_of((json_t*)json_, json_real_t, json)
-#define json_to_integer(json_) container_of((json_t*)json_, json_integer_t, json)
+inline json_object_t* json_to_object(const json_t* json) {
+  return reinterpret_cast<json_object_t*>(const_cast<json_t*>(json));
+}
+
+inline json_array_t* json_to_array(const json_t* json) {
+  return reinterpret_cast<json_array_t*>(const_cast<json_t*>(json));
+}
+
+inline json_string_t* json_to_string(const json_t* json) {
+  return reinterpret_cast<json_string_t*>(const_cast<json_t*>(json));
+}
+
+inline json_real_t* json_to_real(const json_t* json) {
+  return reinterpret_cast<json_real_t*>(const_cast<json_t*>(json));
+}
+
+inline json_integer_t* json_to_integer(const json_t* json) {
+  return reinterpret_cast<json_integer_t*>(const_cast<json_t*>(json));
+}
 
 void jsonp_error_init(json_error_t *error, const char *source);
 void jsonp_error_set_source(json_error_t *error, const char *source);

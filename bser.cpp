@@ -342,8 +342,7 @@ static int bser_object(const bser_ctx_t* ctx, const json_ref& obj, void* data) {
     return -1;
   }
 
-  auto object = json_to_object(obj);
-  for (auto& it : object->map) {
+  for (auto& it : obj.object()) {
     auto &key = it.first;
     auto &val = it.second;
 
