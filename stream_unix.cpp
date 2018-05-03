@@ -2,6 +2,9 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#ifdef HAVE_UCRED_H
+#include <ucred.h>
+#endif
 #ifdef HAVE_SYS_UCRED_H
 #include <sys/ucred.h>
 #endif
@@ -74,17 +77,27 @@ class UnixStream : public watchman_stream {
   struct ucred cred;
 #elif defined(LOCAL_PEERCRED)
   struct xucred cred;
+#elif defined(SO_RECVUCRED)
+  struct ucred_deleter {
+    void operator()(ucred_t *utp) {ucred_free(utp);}
+  };
+  std::unique_ptr<ucred_t, ucred_deleter> cred;
 #endif
   bool credvalid{false};
 
   explicit UnixStream(FileDescriptor&& descriptor)
       : fd(std::move(descriptor)), evt(fd.fd()) {
-    socklen_t len = sizeof(cred);
 #ifdef SO_PEERCRED
+    socklen_t len = sizeof(cred);
     credvalid = getsockopt(fd.fd(), SOL_SOCKET, SO_PEERCRED, &cred, &len) == 0;
 #elif defined(LOCAL_PEERCRED)
+    socklen_t len = sizeof(cred);
     credvalid =
         getsockopt(fd.fd(), SOL_LOCAL, LOCAL_PEERCRED, &cred, &len) == 0;
+#elif defined(SO_RECVUCRED)
+    ucred_t *peer_cred{nullptr};
+    credvalid = getpeerucred(fd.fd(), &peer_cred) == 0;
+    cred.reset(peer_cred);
 #endif
   }
 
@@ -163,6 +176,11 @@ class UnixStream : public watchman_stream {
     if (cred.cr_uid == getuid() || cred.cr_uid == 0) {
       return true;
     }
+#elif defined(SO_RECVUCRED)
+    uid_t ucreduid = ucred_getruid(cred.get());
+    if (ucreduid == getuid() || ucreduid == 0) {
+      return true;
+    }
 #endif
     return false;
   }
@@ -173,6 +191,12 @@ class UnixStream : public watchman_stream {
     }
 #ifdef SO_PEERCRED
     return cred.pid;
+#elif defined(SO_RECVUCRED)
+    pid_t ucredpid = ucred_getpid(cred.get());
+    if (ucredpid == (pid_t)-1) {
+      return 0;
+    }
+    return ucredpid;
 #else
     return 0;
 #endif
