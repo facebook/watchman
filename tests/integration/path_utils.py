@@ -1,16 +1,15 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 # no unicode literals
+from __future__ import absolute_import, division, print_function
 
-import os.path
-import os
-import platform
 import ctypes
+import os
+import os.path
+import platform
 
 from pywatchman import compat
 
-if os.name == 'nt':
+
+if os.name == "nt":
 
     def open_file_win(path):
 
@@ -44,18 +43,19 @@ if os.name == 'nt':
 
                 # The first four chars are //?/
                 if result <= numwchars:
-                    return buf.value[4:].replace('\\', '/').encode('utf8')
+                    return buf.value[4:].replace("\\", "/").encode("utf8")
 
                 # Not big enough; the result is the amount we need
                 numwchars = result + 1
         finally:
             close_handle(h)
 
-elif platform.system() == 'Darwin':
+
+elif platform.system() == "Darwin":
     import ctypes.util
 
     F_GETPATH = 50
-    libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
+    libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
     getpath_fcntl = libc.fcntl
     getpath_fcntl.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_char_p]
     getpath_fcntl.restype = ctypes.c_int
@@ -79,6 +79,8 @@ elif platform.system() == 'Darwin':
         finally:
             os.close(fd)
 
+
 else:
+
     def get_canonical_filesystem_path(name):
         return os.path.normpath(name)

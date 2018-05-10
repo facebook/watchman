@@ -1,17 +1,16 @@
 # Copyright 2012-present Facebook, Inc.
 # Licensed under the Apache License, Version 2.0
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 # no unicode literals
-import errno
-import unittest
-import os.path
-import os
-import asyncio
-import WatchmanInstance
+from __future__ import absolute_import, division, print_function
 
+import asyncio
+import errno
+import os
+import os.path
+import unittest
+
+import WatchmanInstance
 from pywatchman_aio import AIOClient as WatchmanClient
 
 
@@ -35,7 +34,7 @@ class AsyncWatchmanTestCase(unittest.TestCase):
             os.utime(fname, times)
         except OSError as e:
             if e.errno == errno.ENOENT:
-                with open(fname, 'a'):
+                with open(fname, "a"):
                     os.utime(fname, times)
             else:
                 raise
@@ -50,18 +49,15 @@ class AsyncWatchmanTestCase(unittest.TestCase):
         return self.loop.run_until_complete(task)
 
     def get_file_list(self, root):
-        expr = {
-            "expression": ["exists"],
-            "fields": ["name"],
-        }
-        res = self.watchman_command('query', root, expr)['files']
+        expr = {"expression": ["exists"], "fields": ["name"]}
+        res = self.watchman_command("query", root, expr)["files"]
         return res
 
     def assert_sub_contains_all(self, sub, what):
-        files = set(f for f in sub['files'])
+        files = set(f for f in sub["files"])
         what = [f for f in what]
         for obj in what:
-            assert obj in files, str(obj) + ' was not in subscription ' + repr(sub)
+            assert obj in files, str(obj) + " was not in subscription " + repr(sub)
 
     def assert_file_sets_equal(self, iter1, iter2, message=None):
         set1 = set(f for f in iter1)

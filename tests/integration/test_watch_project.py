@@ -2,19 +2,19 @@
 # Copyright 2015-present Facebook, Inc.
 # Licensed under the Apache License, Version 2.0
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 # no unicode literals
-import os
-import pywatchman
+from __future__ import absolute_import, division, print_function
 
+import os
+
+import pywatchman
 import WatchmanInstance
 import WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix
 class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
+
     def runProjectTests(self, config, expect, touch_watchmanconfig=False):
         inst = WatchmanInstance.Instance(config=config)
         try:
@@ -25,18 +25,16 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
                 # encode the test criteria in the dirname so that we can
                 # figure out which test scenario failed more easily
 
-                suffix = '-%s-%s-%s-%s' % (
-                    touch, expect_watch, expect_rel, expect_pass
-                )
-                suffix = suffix.replace('/', 'Z')
+                suffix = "-%s-%s-%s-%s" % (touch, expect_watch, expect_rel, expect_pass)
+                suffix = suffix.replace("/", "Z")
                 d = self.mkdtemp(suffix=suffix)
 
-                dir_to_watch = os.path.join(d, 'a', 'b', 'c')
+                dir_to_watch = os.path.join(d, "a", "b", "c")
                 os.makedirs(dir_to_watch, 0o777)
                 dir_to_watch = self.normAbsolutePath(dir_to_watch)
                 self.touchRelative(d, touch)
                 if touch_watchmanconfig:
-                    self.touchRelative(d, '.watchmanconfig')
+                    self.touchRelative(d, ".watchmanconfig")
 
                 if expect_watch:
                     expect_watch = os.path.join(d, expect_watch)
@@ -44,35 +42,38 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
                     expect_watch = d
 
                 if expect_pass:
-                    res = client.query('watch-project', dir_to_watch)
+                    res = client.query("watch-project", dir_to_watch)
 
                     self.assertEqual(
                         self.normAbsolutePath(os.path.join(d, expect_watch)),
-                        self.normAbsolutePath(res['watch'])
+                        self.normAbsolutePath(res["watch"]),
                     )
                     if not expect_rel:
-                        self.assertEqual(None, res.get('relative_path'))
+                        self.assertEqual(None, res.get("relative_path"))
                     else:
-                        self.assertEqual(self.normRelativePath(expect_rel),
-                                         self.normRelativePath(res.get('relative_path')))
+                        self.assertEqual(
+                            self.normRelativePath(expect_rel),
+                            self.normRelativePath(res.get("relative_path")),
+                        )
                 else:
                     with self.assertRaises(pywatchman.WatchmanError) as ctx:
-                        client.query('watch-project', dir_to_watch)
+                        client.query("watch-project", dir_to_watch)
                     self.assertIn(
                         (
-                            'None of the files listed in global config ' +
-                            'root_files are present in path `' +
-                            dir_to_watch +
-                            '` or any of its parent directories.  ' +
-                            'root_files is defined by the'
-                        ), str(ctx.exception)
+                            "None of the files listed in global config "
+                            + "root_files are present in path `"
+                            + dir_to_watch
+                            + "` or any of its parent directories.  "
+                            + "root_files is defined by the"
+                        ),
+                        str(ctx.exception),
                     )
         finally:
             inst.stop()
 
     def test_watchProject(self):
         expect = [
-            ('a/b/c/.git', 'a/b/c', None, True),
+            ("a/b/c/.git", "a/b/c", None, True),
             ("a/b/.hg", "a/b", "c", True),
             ("a/.foo", "a", "b/c", True),
             (".bar", None, "a/b/c", True),
@@ -80,13 +81,11 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
             (".svn", "a/b/c", None, True),
             ("a/baz", "a/b/c", None, True),
         ]
-        self.runProjectTests(
-            {'root_files': ['.git', '.hg', '.foo', '.bar']}, expect
-        )
+        self.runProjectTests({"root_files": [".git", ".hg", ".foo", ".bar"]}, expect)
 
     def test_watchProjectWatchmanConfig(self):
         expect = [
-            ('a/b/c/.git', None, 'a/b/c', True),
+            ("a/b/c/.git", None, "a/b/c", True),
             ("a/b/.hg", None, "a/b/c", True),
             ("a/.foo", None, "a/b/c", True),
             (".bar", None, "a/b/c", True),
@@ -95,15 +94,14 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
             ("a/baz", None, "a/b/c", True),
         ]
         self.runProjectTests(
-            {'root_files': ['.git', '.hg', '.foo', '.bar']},
+            {"root_files": [".git", ".hg", ".foo", ".bar"]},
             expect,
-            touch_watchmanconfig=True
+            touch_watchmanconfig=True,
         )
 
     def test_watchProjectEnforcing(self):
         config = {
-            'root_files': ['.git', '.hg', '.foo', '.bar'],
-            'enforce_root_files': True,
+            "root_files": [".git", ".hg", ".foo", ".bar"], "enforce_root_files": True
         }
         expect = [
             ("a/b/c/.git", "a/b/c", None, True),
@@ -118,14 +116,13 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
 
     def test_reUseNestedWatch(self):
         d = self.mkdtemp()
-        abc = os.path.join(d, 'a', 'b', 'c')
+        abc = os.path.join(d, "a", "b", "c")
         os.makedirs(abc, 0o777)
-        self.touchRelative(abc, '.watchmanconfig')
+        self.touchRelative(abc, ".watchmanconfig")
 
-        res = self.watchmanCommand('watch-project', d)
-        self.assertEqual(d, self.normAbsolutePath(res['watch']))
+        res = self.watchmanCommand("watch-project", d)
+        self.assertEqual(d, self.normAbsolutePath(res["watch"]))
 
-        res = self.watchmanCommand('watch-project', abc)
-        self.assertEqual(d, self.normAbsolutePath(res['watch']))
-        self.assertEqual('a/b/c',
-                         self.normRelativePath(res['relative_path']))
+        res = self.watchmanCommand("watch-project", abc)
+        self.assertEqual(d, self.normAbsolutePath(res["watch"]))
+        self.assertEqual("a/b/c", self.normRelativePath(res["relative_path"]))

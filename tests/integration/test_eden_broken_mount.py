@@ -2,19 +2,19 @@
 # Copyright 2012-present Facebook, Inc.
 # Licensed under the Apache License, Version 2.0
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 # no unicode literals
+from __future__ import absolute_import, division, print_function
 
-import WatchmanTestCase
-import WatchmanEdenTestCase
 import os
+
 import pywatchman
+import WatchmanEdenTestCase
+import WatchmanTestCase
 
 
 @WatchmanTestCase.expand_matrix
 class TestBrokenEden(WatchmanTestCase.WatchmanTestCase):
+
     def test_broken_eden(self):
         if not WatchmanEdenTestCase.can_run_eden():
             self.skipTest("eden not available")
@@ -28,7 +28,5 @@ class TestBrokenEden(WatchmanTestCase.WatchmanTestCase):
         os.symlink("fake!", os.path.join(dot_eden, "socket"))
 
         with self.assertRaises(pywatchman.CommandError) as ctx:
-            self.watchmanCommand('watch', root)
-        self.assertRegex(
-            str(ctx.exception),
-            'failed to communicate with eden mount')
+            self.watchmanCommand("watch", root)
+        self.assertRegex(str(ctx.exception), "failed to communicate with eden mount")

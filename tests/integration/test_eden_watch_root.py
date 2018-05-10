@@ -2,27 +2,31 @@
 # Copyright 2017-present Facebook, Inc.
 # Licensed under the Apache License, Version 2.0
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 # no unicode literals
+from __future__ import absolute_import, division, print_function
 
-import WatchmanEdenTestCase
 import os
+
 import pywatchman
+import WatchmanEdenTestCase
 
 
 class TestEdenWatchRoot(WatchmanEdenTestCase.WatchmanEdenTestCase):
+
     def test_eden_watch_root(self):
+
         def populate(repo):
-            repo.write_file('adir/file', 'foo!\n')
-            repo.commit('initial commit.')
+            repo.write_file("adir/file", "foo!\n")
+            repo.commit("initial commit.")
 
         root = self.makeEdenMount(populate)
 
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
-            self.watchmanCommand('watch', os.path.join(root, 'adir'))
+            self.watchmanCommand("watch", os.path.join(root, "adir"))
         self.assertRegex(
             str(ctx.exception),
-            ("unable to resolve root .*: eden: you may only watch " +
-             "from the root of an eden mount point."))
+            (
+                "unable to resolve root .*: eden: you may only watch "
+                + "from the root of an eden mount point."
+            ),
+        )

@@ -2,26 +2,24 @@
 # Copyright 2016-present Facebook, Inc.
 # Licensed under the Apache License, Version 2.0
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 # no unicode literals
+from __future__ import absolute_import, division, print_function
 
-import WatchmanTestCase
-import WatchmanInstance
 import os
 import tempfile
+
+import WatchmanInstance
+import WatchmanTestCase
+
 
 TestParent = object
 try:
     import configparser  # python3
-    from eden.integration.lib import (edenclient, hgrepo)
-    from eden.integration.hg.lib.hg_extension_test_base import (
-        POST_CLONE,
-    )
+    from eden.integration.lib import edenclient, hgrepo
+    from eden.integration.hg.lib.hg_extension_test_base import POST_CLONE
 
     def is_sandcastle():
-        return 'SANDCASTLE' in os.environ
+        return "SANDCASTLE" in os.environ
 
     if edenclient.can_run_eden():
         TestParent = WatchmanTestCase.WatchmanTestCase
@@ -29,44 +27,44 @@ try:
     can_run_eden = edenclient.can_run_eden
 
 except ImportError as e:
-    print('Eden not available because: %s' % str(e))
+    print("Eden not available because: %s" % str(e))
+
     def can_run_eden():
         return False
 
 
 class WatchmanEdenTestCase(TestParent):
+
     def setUp(self):
         # the eden home directory.  We use the global dir for the test runner
         # rather than one scoped to the test because we have very real length
         # limits on the socket path name that we're likely to hit otherwise.
         # fake a home dir so that eden is isolated from the settings
         # of the user running these tests.
-        self.eden_home = tempfile.mkdtemp(prefix='eden_home')
-        self.eden_dir = os.path.join(self.eden_home, 'local/.eden')
+        self.eden_home = tempfile.mkdtemp(prefix="eden_home")
+        self.eden_dir = os.path.join(self.eden_home, "local/.eden")
         os.makedirs(self.eden_dir)
 
-        self.etc_eden_dir = os.path.join(self.eden_home, 'etc-eden')
+        self.etc_eden_dir = os.path.join(self.eden_home, "etc-eden")
         os.mkdir(self.etc_eden_dir)
         # The directory holding the system configuration files
-        self.system_config_dir = os.path.join(self.etc_eden_dir, 'config.d')
+        self.system_config_dir = os.path.join(self.etc_eden_dir, "config.d")
         os.mkdir(self.system_config_dir)
 
-        self.hooks_dir = os.path.join(self.etc_eden_dir, 'hooks')
+        self.hooks_dir = os.path.join(self.etc_eden_dir, "hooks")
         os.mkdir(self.hooks_dir)
 
-        self.edenrc = os.path.join(self.eden_home, '.edenrc')
+        self.edenrc = os.path.join(self.eden_home, ".edenrc")
 
         # where we'll mount the eden client(s)
-        self.mounts_dir = self.mkdtemp(prefix='eden_mounts')
+        self.mounts_dir = self.mkdtemp(prefix="eden_mounts")
 
-        self.save_home = os.environ['HOME']
-        os.environ['HOME'] = self.eden_home
+        self.save_home = os.environ["HOME"]
+        os.environ["HOME"] = self.eden_home
         # chg can interfere with eden, so disable it up front
-        os.environ['CHGDISABLE'] = '1'
+        os.environ["CHGDISABLE"] = "1"
         self.eden = edenclient.EdenFS(
-            self.eden_dir,
-            etc_eden_dir=self.etc_eden_dir,
-            home_dir=self.eden_home
+            self.eden_dir, etc_eden_dir=self.etc_eden_dir, home_dir=self.eden_home
         )
         self.eden.start()
 
@@ -79,7 +77,7 @@ class WatchmanEdenTestCase(TestParent):
 
     def tearDown(self):
         if self.save_home:
-            os.environ['HOME'] = self.save_home
+            os.environ["HOME"] = self.save_home
 
         if self.eden:
             self.cleanUpWatches()
@@ -89,8 +87,8 @@ class WatchmanEdenTestCase(TestParent):
             self.eden_watchman.stop()
 
     def cleanUpWatches(self):
-        roots = self.watchmanCommand('watch-list')['roots']
-        self.watchmanCommand('watch-del-all')
+        roots = self.watchmanCommand("watch-list")["roots"]
+        self.watchmanCommand("watch-del-all")
         for root in roots:
             try:
                 self.eden.unmount(root)
@@ -98,14 +96,14 @@ class WatchmanEdenTestCase(TestParent):
                 pass
 
     def makeEdenMount(self, populate_fn=None, enable_hg=False):
-        ''' populate_fn is a function that accepts a repo object and
+        """ populate_fn is a function that accepts a repo object and
             that is expected to populate it as a pre-requisite to
             starting up the eden mount for it.
             if enable_hg is True then we enable the hg extension
             and post-clone hooks to populate the .hg control dir.
-        '''
+        """
 
-        repo_path = self.mkdtemp(prefix='eden_repo_')
+        repo_path = self.mkdtemp(prefix="eden_repo_")
         repo_name = os.path.basename(repo_path)
         repo = self.repoForPath(repo_path)
         repo.init()
@@ -120,13 +118,13 @@ class WatchmanEdenTestCase(TestParent):
         if enable_hg:
             config = configparser.ConfigParser()
             config.read(self.edenrc)
-            config['hooks'] = {}
-            config['hooks']['hg.edenextension'] = ''
-            config['repository %s' % repo_name]['hooks'] = self.hooks_dir
-            post_clone_hook = os.path.join(self.hooks_dir, 'post-clone')
+            config["hooks"] = {}
+            config["hooks"]["hg.edenextension"] = ""
+            config["repository %s" % repo_name]["hooks"] = self.hooks_dir
+            post_clone_hook = os.path.join(self.hooks_dir, "post-clone")
             os.symlink(POST_CLONE, post_clone_hook)
 
-            with open(self.edenrc, 'w') as f:
+            with open(self.edenrc, "w") as f:
                 config.write(f)
 
         self.eden.clone(repo_name, mount_path)
@@ -136,4 +134,4 @@ class WatchmanEdenTestCase(TestParent):
         return hgrepo.HgRepository(path)
 
     def setDefaultConfiguration(self):
-        self.setConfiguration('local', 'bser')
+        self.setConfiguration("local", "bser")

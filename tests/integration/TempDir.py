@@ -1,39 +1,41 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 # no unicode literals
+from __future__ import absolute_import, division, print_function
+
+import atexit
 import os
 import shutil
 import sys
 import tempfile
 import time
-import atexit
+
 import path_utils as path
+
 
 global_temp_dir = None
 
 
 class TempDir(object):
-    '''
+    """
     This is a helper for locating a reasonable place for temporary files.
     When run in the watchman test suite, we compute this up-front and then
     store everything under that temporary directory.
     When run under the FB internal test runner, we infer a reasonable grouped
     location from the process group environmental variable exported by the
     test runner.
-    '''
+    """
 
     def __init__(self, keepAtShutdown=False):
         # We'll put all our temporary stuff under one dir so that we
         # can clean it all up at the end.
 
-        parent_dir = tempfile.tempdir or os.environ.get('TMP', '/tmp')
-        prefix = 'watchmantest'
+        parent_dir = tempfile.tempdir or os.environ.get("TMP", "/tmp")
+        prefix = "watchmantest"
 
         self.temp_dir = path.get_canonical_filesystem_path(
-            tempfile.mkdtemp(dir=parent_dir, prefix=prefix))
+            tempfile.mkdtemp(dir=parent_dir, prefix=prefix)
+        )
 
-        if os.name != 'nt':
+        if os.name != "nt":
             # On some platforms, setting the setgid bit on a directory doesn't
             # work if the user isn't a member of the directory's group. Set the
             # group explicitly to avoid this.
@@ -48,7 +50,7 @@ class TempDir(object):
 
         def cleanup():
             if self.keep:
-                sys.stdout.write('Preserving output in %s\n' % self.temp_dir)
+                sys.stdout.write("Preserving output in %s\n" % self.temp_dir)
                 return
             self._retry_rmtree(self.temp_dir)
 
@@ -68,7 +70,7 @@ class TempDir(object):
             if not os.path.isdir(top):
                 return
             time.sleep(0.2)
-        sys.stdout.write('Failed to completely remove ' + top)
+        sys.stdout.write("Failed to completely remove " + top)
 
 
 def get_temp_dir(keep=None):
@@ -76,6 +78,6 @@ def get_temp_dir(keep=None):
     if global_temp_dir:
         return global_temp_dir
     if keep is None:
-        keep = os.environ.get('WATCHMAN_TEST_KEEP', '0') == '1'
+        keep = os.environ.get("WATCHMAN_TEST_KEEP", "0") == "1"
     global_temp_dir = TempDir(keep)
     return global_temp_dir

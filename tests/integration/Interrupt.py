@@ -1,8 +1,7 @@
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 # no unicode literals
+from __future__ import absolute_import, division, print_function
+
 
 interrupted = False
 
@@ -18,10 +17,10 @@ def setInterrupted():
 
 
 def checkInterrupt():
-    '''
+    """
     If an interrupt was detected, raise it now.
     We use this to defer interrupt processing until we're
     in the right place to handle it.
-    '''
+    """
     if wasInterrupted():
         raise KeyboardInterrupt()

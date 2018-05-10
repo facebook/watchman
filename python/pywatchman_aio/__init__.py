@@ -27,21 +27,20 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
+
 # no unicode literals
 import asyncio
 import os
 import subprocess
 
+from pywatchman import CommandError, WatchmanError, encoding
+
+
 try:
     from pywatchman import bser
 except ImportError:
     from pywatchman import pybser as bser
-
-from pywatchman import encoding
-from pywatchman import CommandError, WatchmanError
 
 
 # 2 bytes marker, 1 byte int size, 8 bytes int64 value
@@ -56,17 +55,19 @@ SNIFF_LEN = 13
 def _resolve_sockname_helper():
     # if invoked via a trigger, watchman will set this env var; we
     # should use it unless explicitly set otherwise
-    path = os.getenv('WATCHMAN_SOCK')
+    path = os.getenv("WATCHMAN_SOCK")
     if path:
         return path
 
-    cmd = ['watchman', '--output-encoding=bser', 'get-sockname']
+    cmd = ["watchman", "--output-encoding=bser", "get-sockname"]
 
     try:
-        p = subprocess.Popen(cmd,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             close_fds=os.name != 'nt')
+        p = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            close_fds=os.name != "nt",
+        )
     except OSError as e:
         raise WatchmanError('"watchman" executable not in PATH (%s)', e)
 
@@ -74,44 +75,44 @@ def _resolve_sockname_helper():
     exitcode = p.poll()
 
     if exitcode:
-        raise WatchmanError('watchman exited with code %d' % exitcode)
+        raise WatchmanError("watchman exited with code %d" % exitcode)
 
     result = bser.loads(stdout)
 
-    if 'error' in result:
-        raise WatchmanError(str(result['error']))
+    if "error" in result:
+        raise WatchmanError(str(result["error"]))
 
-    return result['sockname']
+    return result["sockname"]
 
 
 async def _resolve_sockname():
-    '''Find the Unix socket path to the global Watchman instance.'''
+    """Find the Unix socket path to the global Watchman instance."""
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, _resolve_sockname_helper)
 
 
 class AsyncTransport(object):
-    '''Communication transport to the Watchman Service.'''
+    """Communication transport to the Watchman Service."""
 
     async def activate(self, **kwargs):
-        '''Make the transport ready for use. Optional for subclasses.'''
+        """Make the transport ready for use. Optional for subclasses."""
         pass
 
     async def read(self, size):
-        '''Read 'size' bytes from the transport.'''
+        """Read 'size' bytes from the transport."""
         raise NotImplementedError()
 
     async def write(self, buf):
-        '''Write 'buf' bytes to the transport.'''
+        """Write 'buf' bytes to the transport."""
         raise NotImplementedError()
 
     def close(self):
-        '''Close the transport. Optional for subclasses.'''
+        """Close the transport. Optional for subclasses."""
         pass
 
 
 class AsyncUnixSocketTransport(AsyncTransport):
-    '''Local Unix domain socket transport supporting asyncio.'''
+    """Local Unix domain socket transport supporting asyncio."""
 
     def __init__(self):
         self.sockname = None
@@ -120,7 +121,7 @@ class AsyncUnixSocketTransport(AsyncTransport):
 
     async def activate(self, **kwargs):
         # Requires keyword-argument 'sockname'
-        reader, writer = await asyncio.open_unix_connection(kwargs['sockname'])
+        reader, writer = await asyncio.open_unix_connection(kwargs["sockname"])
         self.reader = reader
         self.writer = writer
 
@@ -138,58 +139,60 @@ class AsyncUnixSocketTransport(AsyncTransport):
 
 
 class AsyncCodec(object):
-    '''Communication encoding for the Watchman service.'''
+    """Communication encoding for the Watchman service."""
 
     def __init__(self, transport):
         self.transport = transport
 
     async def receive(self):
-        '''Read from the underlying transport, parse and return the message.'''
+        """Read from the underlying transport, parse and return the message."""
         raise NotImplementedError()
 
     async def send(self, *args):
-        '''Send the given message via the underlying transport.'''
+        """Send the given message via the underlying transport."""
         raise NotImplementedError()
 
     def close(self):
-        '''Close the underlying transport.'''
+        """Close the underlying transport."""
         self.transport.close()
 
 
 # This requires BSERv2 support of the server, but doesn't gracefully check
 # for the requisite capability being present in older versions.
 class AsyncBserCodec(AsyncCodec):
-    '''Use the BSER encoding.'''
+    """Use the BSER encoding."""
 
     async def receive(self):
         sniff = await self.transport.read(SNIFF_LEN)
         if not sniff:
-            raise WatchmanError('empty watchman response')
+            raise WatchmanError("empty watchman response")
         _1, _2, elen = bser.pdu_info(sniff)
         rlen = len(sniff)
         buf = bytearray(elen)
         buf[:rlen] = sniff
         while elen > rlen:
             b = await self.transport.read(elen - rlen)
-            buf[rlen:rlen + len(b)] = b
+            buf[rlen : rlen + len(b)] = b
             rlen += len(b)
         response = bytes(buf)
         try:
             res = self._loads(response)
             return res
         except ValueError as e:
-            raise WatchmanError('watchman response decode error: %s' % e)
+            raise WatchmanError("watchman response decode error: %s" % e)
 
     async def send(self, *args):
         cmd = bser.dumps(*args, version=2, capabilities=0)
         await self.transport.write(cmd)
 
     def _loads(self, response):
-        ''' Parse the BSER packet '''
-        return bser.loads(response,
-                          True,
-                          value_encoding=encoding.get_local_encoding(),
-                          value_errors=encoding.default_local_errors)
+        """ Parse the BSER packet """
+        return bser.loads(
+            response,
+            True,
+            value_encoding=encoding.get_local_encoding(),
+            value_errors=encoding.default_local_errors,
+        )
 
 
 class ReceiveLoopError(Exception):
@@ -210,7 +213,7 @@ class AIOClient(object):
         self.should_stop = True
 
     async def receive_bilateral_response(self):
-        '''Receive the response to a request made to the Watchman service.'''
+        """Receive the response to a request made to the Watchman service."""
 
         self._check_receive_loop()
         resp = await self.bilateral_response_queue.get()
@@ -218,7 +221,7 @@ class AIOClient(object):
         return resp
 
     async def query(self, *args):
-        '''Send a query to the Watchman service and return the response.'''
+        """Send a query to the Watchman service and return the response."""
 
         self._check_receive_loop()
         try:
@@ -229,17 +232,16 @@ class AIOClient(object):
             raise ex
 
     async def capability_check(self, optional=None, required=None):
-        '''Perform a server capability check.'''
+        """Perform a server capability check."""
 
         self._check_receive_loop()
         # If the returned response is an error, self.query will raise an error
-        await self.query('version', {
-            'optional': optional or [],
-            'required': required or []
-        })
+        await self.query(
+            "version", {"optional": optional or [], "required": required or []}
+        )
 
     async def get_subscription(self, name, root):
-        ''' Retrieve the data associated with a named subscription
+        """ Retrieve the data associated with a named subscription
 
         Returns None if there is no data associated with `name`
 
@@ -247,27 +249,26 @@ class AIOClient(object):
         data that matches both root and name.  When used in this way,
         remove processing impacts both the unscoped and scoped stores
         for the subscription data.
-        '''
+        """
         self._check_receive_loop()
         self._ensure_subscription_queue_exists(name, root)
         return await self.sub_by_root[root][name].get()
 
     async def pop_log(self):
-        '''Get one log from the log queue.'''
+        """Get one log from the log queue."""
         self._check_receive_loop()
         return await self.log_queue.get()
 
     def close(self):
-        '''Close the underlying connection.'''
+        """Close the underlying connection."""
         if self.receive_task:
             self.receive_task.cancel()
         if self.connection:
             self.connection.close()
 
     def enable_receiving(self, loop=None):
-        '''Schedules the receive loop to run on the given loop.'''
-        self.receive_task = asyncio.ensure_future(self._receive_loop(),
-                                                  loop=loop)
+        """Schedules the receive loop to run on the given loop."""
+        self.receive_task = asyncio.ensure_future(self._receive_loop(), loop=loop)
 
         def do_if_done(fut):
             try:
@@ -281,13 +282,13 @@ class AIOClient(object):
 
     @classmethod
     async def from_socket(cls, sockname=None):
-        '''Create a new AIOClient using Unix transport and BSER Codec
+        """Create a new AIOClient using Unix transport and BSER Codec
         connecting to the specified socket. If the specified socket is None,
         then resolve the socket path automatically.
 
         This method also schedules the receive loop to run on the event loop.
 
-        This method is a coroutine.'''
+        This method is a coroutine."""
         if not sockname:
             sockname = await _resolve_sockname()
         transport = AsyncUnixSocketTransport()
@@ -298,12 +299,12 @@ class AIOClient(object):
         return obj
 
     async def _receive_loop(self):
-        '''Receive the response to a request made to the Watchman service.
+        """Receive the response to a request made to the Watchman service.
 
         Note that when trying to receive a PDU from the Watchman service,
         we might get a unilateral response to a subscription or log, so these
         are processed and queued up for later retrieval. This function only
-        returns when a non-unilateral response is received.'''
+        returns when a non-unilateral response is received."""
 
         while True:
             response = await self.connection.receive()
@@ -313,15 +314,15 @@ class AIOClient(object):
                 await self.bilateral_response_queue.put(response)
 
     def _check_error(self, res):
-        if 'error' in res:
-            raise CommandError(res['error'])
+        if "error" in res:
+            raise CommandError(res["error"])
 
     def _check_receive_loop(self):
         if self.receive_task is None:
-            raise ReceiveLoopError('Receive loop was not started.')
+            raise ReceiveLoopError("Receive loop was not started.")
 
     def _is_unilateral(self, res):
-        return res.get('unilateral') or 'subscription' in res or 'log' in res
+        return res.get("unilateral") or "subscription" in res or "log" in res
 
     def _ensure_subscription_queue_exists(self, name, root):
         # Note this function must be called from an async function on only one
@@ -329,19 +330,17 @@ class AIOClient(object):
         self.sub_by_root.setdefault(root, {}).setdefault(name, asyncio.Queue())
 
     async def _process_unilateral_response(self, response):
-        if 'log' in response:
-            await self.logs.put(response['log'])
+        if "log" in response:
+            await self.logs.put(response["log"])
 
-        elif 'subscription' in response:
-            sub = response['subscription']
-            root = os.path.normcase(response['root'])
+        elif "subscription" in response:
+            sub = response["subscription"]
+            root = os.path.normcase(response["root"])
             self._ensure_subscription_queue_exists(sub, root)
             await self.sub_by_root[root][sub].put(response)
 
         elif self._is_unilateral(response):
-            raise WatchmanError('Unknown unilateral response: ' +
-                                str(response))
+            raise WatchmanError("Unknown unilateral response: " + str(response))
 
         else:
-            raise WatchmanError('Not a unilateral response: ' +
-                                str(response))
+            raise WatchmanError("Not a unilateral response: " + str(response))

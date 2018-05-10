@@ -26,37 +26,32 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 # no unicode literals
+from __future__ import absolute_import, division, print_function
 
 import inspect
-import os
 import math
+import os
 import socket
 import subprocess
 import time
+
+from . import capabilities, compat, encoding, load
+
 
 # Sometimes it's really hard to get Python extensions to compile,
 # so fall back to a pure Python implementation.
 try:
     from . import bser
+
     # Demandimport causes modules to be loaded lazily. Force the load now
     # so that we can fall back on pybser if bser doesn't exist
     bser.pdu_info
 except ImportError:
     from . import pybser as bser
 
-from . import (
-    capabilities,
-    compat,
-    encoding,
-    load,
-)
 
-
-if os.name == 'nt':
+if os.name == "nt":
     import ctypes
     import ctypes.wintypes
 
@@ -84,9 +79,11 @@ if os.name == 'nt':
 
     class OVERLAPPED(ctypes.Structure):
         _fields_ = [
-            ("Internal", ULONG_PTR), ("InternalHigh", ULONG_PTR),
-            ("Offset", wintypes.DWORD), ("OffsetHigh", wintypes.DWORD),
-            ("hEvent", wintypes.HANDLE)
+            ("Internal", ULONG_PTR),
+            ("InternalHigh", ULONG_PTR),
+            ("Offset", wintypes.DWORD),
+            ("OffsetHigh", wintypes.DWORD),
+            ("hEvent", wintypes.HANDLE),
         ]
 
         def __init__(self):
@@ -99,9 +96,15 @@ if os.name == 'nt':
     LPDWORD = ctypes.POINTER(wintypes.DWORD)
 
     CreateFile = ctypes.windll.kernel32.CreateFileA
-    CreateFile.argtypes = [wintypes.LPSTR, wintypes.DWORD, wintypes.DWORD,
-                           wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD,
-                           wintypes.HANDLE]
+    CreateFile.argtypes = [
+        wintypes.LPSTR,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.HANDLE,
+    ]
     CreateFile.restype = wintypes.HANDLE
 
     CloseHandle = ctypes.windll.kernel32.CloseHandle
@@ -109,13 +112,23 @@ if os.name == 'nt':
     CloseHandle.restype = wintypes.BOOL
 
     ReadFile = ctypes.windll.kernel32.ReadFile
-    ReadFile.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD,
-                         LPDWORD, ctypes.POINTER(OVERLAPPED)]
+    ReadFile.argtypes = [
+        wintypes.HANDLE,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        LPDWORD,
+        ctypes.POINTER(OVERLAPPED),
+    ]
     ReadFile.restype = wintypes.BOOL
 
     WriteFile = ctypes.windll.kernel32.WriteFile
-    WriteFile.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD,
-                          LPDWORD, ctypes.POINTER(OVERLAPPED)]
+    WriteFile.argtypes = [
+        wintypes.HANDLE,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        LPDWORD,
+        ctypes.POINTER(OVERLAPPED),
+    ]
     WriteFile.restype = wintypes.BOOL
 
     GetLastError = ctypes.windll.kernel32.GetLastError
@@ -127,25 +140,36 @@ if os.name == 'nt':
     SetLastError.restype = None
 
     FormatMessage = ctypes.windll.kernel32.FormatMessageA
-    FormatMessage.argtypes = [wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD,
-                              wintypes.DWORD, ctypes.POINTER(wintypes.LPSTR),
-                              wintypes.DWORD, wintypes.LPVOID]
+    FormatMessage.argtypes = [
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.LPSTR),
+        wintypes.DWORD,
+        wintypes.LPVOID,
+    ]
     FormatMessage.restype = wintypes.DWORD
 
     LocalFree = ctypes.windll.kernel32.LocalFree
 
     GetOverlappedResult = ctypes.windll.kernel32.GetOverlappedResult
-    GetOverlappedResult.argtypes = [wintypes.HANDLE,
-                                    ctypes.POINTER(OVERLAPPED), LPDWORD,
-                                    wintypes.BOOL]
+    GetOverlappedResult.argtypes = [
+        wintypes.HANDLE, ctypes.POINTER(OVERLAPPED), LPDWORD, wintypes.BOOL
+    ]
     GetOverlappedResult.restype = wintypes.BOOL
 
-    GetOverlappedResultEx = getattr(ctypes.windll.kernel32,
-                                    'GetOverlappedResultEx', None)
+    GetOverlappedResultEx = getattr(
+        ctypes.windll.kernel32, "GetOverlappedResultEx", None
+    )
     if GetOverlappedResultEx is not None:
-        GetOverlappedResultEx.argtypes = [wintypes.HANDLE,
-                                          ctypes.POINTER(OVERLAPPED), LPDWORD,
-                                          wintypes.DWORD, wintypes.BOOL]
+        GetOverlappedResultEx.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(OVERLAPPED),
+            LPDWORD,
+            wintypes.DWORD,
+            wintypes.BOOL,
+        ]
         GetOverlappedResultEx.restype = wintypes.BOOL
 
     WaitForSingleObjectEx = ctypes.windll.kernel32.WaitForSingleObjectEx
@@ -153,8 +177,7 @@ if os.name == 'nt':
     WaitForSingleObjectEx.restype = wintypes.DWORD
 
     CreateEvent = ctypes.windll.kernel32.CreateEventA
-    CreateEvent.argtypes = [LPDWORD, wintypes.BOOL, wintypes.BOOL,
-                            wintypes.LPSTR]
+    CreateEvent.argtypes = [LPDWORD, wintypes.BOOL, wintypes.BOOL, wintypes.LPSTR]
     CreateEvent.restype = wintypes.HANDLE
 
     # Windows Vista is the minimum supported client for CancelIoEx.
@@ -170,9 +193,12 @@ _debugging = False
 if _debugging:
 
     def log(fmt, *args):
-        print('[%s] %s' %
-              (time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime()),
-               fmt % args[:]))
+        print(
+            "[%s] %s"
+            % (time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime()), fmt % args[:])
+        )
+
+
 else:
 
     def log(fmt, *args):
@@ -185,8 +211,16 @@ def _win32_strerror(err):
     # FormatMessage will allocate memory and assign it here
     buf = ctypes.c_char_p()
     FormatMessage(
-        FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER
-        | FORMAT_MESSAGE_IGNORE_INSERTS, None, err, 0, buf, 0, None)
+        FORMAT_MESSAGE_FROM_SYSTEM
+        | FORMAT_MESSAGE_ALLOCATE_BUFFER
+        | FORMAT_MESSAGE_IGNORE_INSERTS,
+        None,
+        err,
+        0,
+        buf,
+        0,
+        None,
+    )
     try:
         return buf.value
     finally:
@@ -194,6 +228,7 @@ def _win32_strerror(err):
 
 
 class WatchmanError(Exception):
+
     def __init__(self, msg=None, cmd=None):
         self.msg = msg
         self.cmd = cmd
@@ -203,7 +238,7 @@ class WatchmanError(Exception):
 
     def __str__(self):
         if self.cmd:
-            return '%s, while executing %s' % (self.msg, self.cmd)
+            return "%s, while executing %s" % (self.msg, self.cmd)
         return self.msg
 
 
@@ -212,16 +247,19 @@ class BSERv1Unsupported(WatchmanError):
 
 
 class WatchmanEnvironmentError(WatchmanError):
+
     def __init__(self, msg, errno, errmsg, cmd=None):
         super(WatchmanEnvironmentError, self).__init__(
-            '{0}: errno={1} errmsg={2}'.format(msg, errno, errmsg),
-            cmd)
+            "{0}: errno={1} errmsg={2}".format(msg, errno, errmsg), cmd
+        )
 
 
 class SocketConnectError(WatchmanError):
+
     def __init__(self, sockpath, exc):
         super(SocketConnectError, self).__init__(
-            'unable to connect to %s: %s' % (sockpath, exc))
+            "unable to connect to %s: %s" % (sockpath, exc)
+        )
         self.sockpath = sockpath
         self.exc = exc
 
@@ -241,11 +279,9 @@ class CommandError(WatchmanError):
 
     self.msg is the message returned by watchman.
     """
+
     def __init__(self, msg, cmd=None):
-        super(CommandError, self).__init__(
-            'watchman command error: %s' % (msg, ),
-            cmd,
-        )
+        super(CommandError, self).__init__("watchman command error: %s" % (msg,), cmd)
 
 
 class Transport(object):
@@ -285,7 +321,7 @@ class Transport(object):
         while True:
             b = self.readBytes(4096)
             if b"\n" in b:
-                result = b''.join(self.buf)
+                result = b"".join(self.buf)
                 (line, b) = b.split(b"\n", 1)
                 self.buf = [b]
                 return result + line
@@ -338,16 +374,16 @@ class UnixSocketTransport(Transport):
         try:
             buf = [self.sock.recv(size)]
             if not buf[0]:
-                raise WatchmanError('empty watchman response')
+                raise WatchmanError("empty watchman response")
             return buf[0]
         except socket.timeout:
-            raise SocketTimeout('timed out waiting for response')
+            raise SocketTimeout("timed out waiting for response")
 
     def write(self, data):
         try:
             self.sock.sendall(data)
         except socket.timeout:
-            raise SocketTimeout('timed out sending query command')
+            raise SocketTimeout("timed out sending query command")
 
 
 def _get_overlapped_result_ex_impl(pipe, olap, nbytes, millis, alertable):
@@ -360,7 +396,7 @@ def _get_overlapped_result_ex_impl(pipe, olap, nbytes, millis, alertable):
     source code (see get_overlapped_result_ex_impl in stream_win.c). This
     way, maintenance should be simplified.
     """
-    log('Preparing to wait for maximum %dms', millis )
+    log("Preparing to wait for maximum %dms", millis)
     if millis != 0:
         waitReturnCode = WaitForSingleObjectEx(olap.hEvent, millis, alertable)
         if waitReturnCode == WAIT_OBJECT_0:
@@ -379,12 +415,12 @@ def _get_overlapped_result_ex_impl(pipe, olap, nbytes, millis, alertable):
         elif waitReturnCode == WAIT_FAILED:
             # something went wrong calling WaitForSingleObjectEx
             err = GetLastError()
-            log('WaitForSingleObjectEx failed: %s', _win32_strerror(err))
+            log("WaitForSingleObjectEx failed: %s", _win32_strerror(err))
             return False
         else:
             # unexpected situation deserving investigation.
             err = GetLastError()
-            log('Unexpected error: %s', _win32_strerror(err))
+            log("Unexpected error: %s", _win32_strerror(err))
             return False
 
     return GetOverlappedResult(pipe, olap, nbytes, False)
@@ -398,31 +434,38 @@ class WindowsNamedPipeTransport(Transport):
         self.timeout = int(math.ceil(timeout * 1000))
         self._iobuf = None
 
-        self.pipe = CreateFile(sockpath, GENERIC_READ | GENERIC_WRITE, 0, None,
-                               OPEN_EXISTING, FILE_FLAG_OVERLAPPED, None)
+        self.pipe = CreateFile(
+            sockpath,
+            GENERIC_READ | GENERIC_WRITE,
+            0,
+            None,
+            OPEN_EXISTING,
+            FILE_FLAG_OVERLAPPED,
+            None,
+        )
 
         if self.pipe == INVALID_HANDLE_VALUE:
             self.pipe = None
-            self._raise_win_err('failed to open pipe %s' % sockpath,
-                                GetLastError())
+            self._raise_win_err("failed to open pipe %s" % sockpath, GetLastError())
 
         # event for the overlapped I/O operations
         self._waitable = CreateEvent(None, True, False, None)
         if self._waitable is None:
-            self._raise_win_err('CreateEvent failed', GetLastError())
+            self._raise_win_err("CreateEvent failed", GetLastError())
 
         self._get_overlapped_result_ex = GetOverlappedResultEx
-        if (os.getenv('WATCHMAN_WIN7_COMPAT') == '1' or
-            self._get_overlapped_result_ex is None):
+        if (
+            os.getenv("WATCHMAN_WIN7_COMPAT") == "1"
+            or self._get_overlapped_result_ex is None
+        ):
             self._get_overlapped_result_ex = _get_overlapped_result_ex_impl
 
     def _raise_win_err(self, msg, err):
-        raise IOError('%s win32 error code: %d %s' %
-                      (msg, err, _win32_strerror(err)))
+        raise IOError("%s win32 error code: %d %s" % (msg, err, _win32_strerror(err)))
 
     def close(self):
         if self.pipe:
-            log('Closing pipe')
+            log("Closing pipe")
             CloseHandle(self.pipe)
         self.pipe = None
 
@@ -456,7 +499,7 @@ class WindowsNamedPipeTransport(Transport):
         olap = OVERLAPPED()
         olap.hEvent = self._waitable
 
-        log('made read buff of size %d', size)
+        log("made read buff of size %d", size)
 
         # ReadFile docs warn against sending in the nread parameter for async
         # operations, so we always collect it via GetOverlappedResultEx
@@ -465,23 +508,23 @@ class WindowsNamedPipeTransport(Transport):
         if not immediate:
             err = GetLastError()
             if err != ERROR_IO_PENDING:
-                self._raise_win_err('failed to read %d bytes' % size,
-                                    GetLastError())
+                self._raise_win_err("failed to read %d bytes" % size, GetLastError())
 
         nread = wintypes.DWORD()
-        if not self._get_overlapped_result_ex(self.pipe, olap, nread,
-                                              0 if immediate else self.timeout,
-                                              True):
+        if not self._get_overlapped_result_ex(
+            self.pipe, olap, nread, 0 if immediate else self.timeout, True
+        ):
             err = GetLastError()
             CancelIoEx(self.pipe, olap)
 
             if err == WAIT_TIMEOUT:
-                log('GetOverlappedResultEx timedout')
-                raise SocketTimeout('timed out after waiting %dms for read' %
-                                    self.timeout)
+                log("GetOverlappedResultEx timedout")
+                raise SocketTimeout(
+                    "timed out after waiting %dms for read" % self.timeout
+                )
 
-            log('GetOverlappedResultEx reports error %d', err)
-            self._raise_win_err('error while waiting for read', err)
+            log("GetOverlappedResultEx reports error %d", err)
+            self._raise_win_err("error while waiting for read", err)
 
         nread = nread.value
         if nread == 0:
@@ -490,7 +533,7 @@ class WindowsNamedPipeTransport(Transport):
             # other way this shows up is if the client has gotten in a weird
             # state, so let's bail out
             CancelIoEx(self.pipe, olap)
-            raise IOError('Async read yielded 0 bytes; unpossible!')
+            raise IOError("Async read yielded 0 bytes; unpossible!")
 
         # Holds precisely the bytes that we read from the prior request
         buf = buf[:nread]
@@ -507,21 +550,21 @@ class WindowsNamedPipeTransport(Transport):
         olap = OVERLAPPED()
         olap.hEvent = self._waitable
 
-        immediate = WriteFile(self.pipe, ctypes.c_char_p(data), len(data),
-                              None, olap)
+        immediate = WriteFile(self.pipe, ctypes.c_char_p(data), len(data), None, olap)
 
         if not immediate:
             err = GetLastError()
             if err != ERROR_IO_PENDING:
-                self._raise_win_err('failed to write %d bytes' % len(data),
-                                    GetLastError())
+                self._raise_win_err(
+                    "failed to write %d bytes" % len(data), GetLastError()
+                )
 
         # Obtain results, waiting if needed
         nwrote = wintypes.DWORD()
-        if self._get_overlapped_result_ex(self.pipe, olap, nwrote,
-                                          0 if immediate else self.timeout,
-                                          True):
-            log('made write of %d bytes', nwrote.value)
+        if self._get_overlapped_result_ex(
+            self.pipe, olap, nwrote, 0 if immediate else self.timeout, True
+        ):
+            log("made write of %d bytes", nwrote.value)
             return nwrote.value
 
         err = GetLastError()
@@ -531,10 +574,10 @@ class WindowsNamedPipeTransport(Transport):
         CancelIoEx(self.pipe, olap)
 
         if err == WAIT_TIMEOUT:
-            raise SocketTimeout('timed out after waiting %dms for write' %
-                                self.timeout)
-        self._raise_win_err('error while waiting for write of %d bytes' %
-                            len(data), err)
+            raise SocketTimeout("timed out after waiting %dms for write" % self.timeout)
+        self._raise_win_err(
+            "error while waiting for write of %d bytes" % len(data), err
+        )
 
 
 class CLIProcessTransport(Transport):
@@ -559,7 +602,7 @@ class CLIProcessTransport(Transport):
     proc = None
     closed = True
 
-    def __init__(self, sockpath, timeout, binpath='watchman'):
+    def __init__(self, sockpath, timeout, binpath="watchman"):
         self.sockpath = sockpath
         self.timeout = timeout
         self.binpath = binpath
@@ -578,24 +621,24 @@ class CLIProcessTransport(Transport):
             return self.proc
         args = [
             self.binpath,
-            '--sockname={0}'.format(self.sockpath),
-            '--logfile=/BOGUS',
-            '--statefile=/BOGUS',
-            '--no-spawn',
-            '--no-local',
-            '--no-pretty',
-            '-j',
+            "--sockname={0}".format(self.sockpath),
+            "--logfile=/BOGUS",
+            "--statefile=/BOGUS",
+            "--no-spawn",
+            "--no-local",
+            "--no-pretty",
+            "-j",
         ]
-        self.proc = subprocess.Popen(args,
-                                     stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE)
+        self.proc = subprocess.Popen(
+            args, stdin=subprocess.PIPE, stdout=subprocess.PIPE
+        )
         return self.proc
 
     def readBytes(self, size):
         self._connect()
         res = self.proc.stdout.read(size)
         if not res:
-            raise WatchmanError('EOF on CLI process transport')
+            raise WatchmanError("EOF on CLI process transport")
         return res
 
     def write(self, data):
@@ -627,7 +670,7 @@ class BserCodec(Codec):
     def receive(self):
         buf = [self.transport.readBytes(sniff_len)]
         if not buf[0]:
-            raise WatchmanError('empty watchman response')
+            raise WatchmanError("empty watchman response")
 
         _1, _2, elen = bser.pdu_info(buf[0])
 
@@ -636,15 +679,15 @@ class BserCodec(Codec):
             buf.append(self.transport.readBytes(elen - rlen))
             rlen += len(buf[-1])
 
-        response = b''.join(buf)
+        response = b"".join(buf)
         try:
             res = self._loads(response)
             return res
         except ValueError as e:
-            raise WatchmanError('watchman response decode error: %s' % e)
+            raise WatchmanError("watchman response decode error: %s" % e)
 
     def send(self, *args):
-        cmd = bser.dumps(*args) # Defaults to BSER v1
+        cmd = bser.dumps(*args)  # Defaults to BSER v1
         self.transport.write(cmd)
 
 
@@ -660,31 +703,30 @@ class ImmutableBserCodec(BserCodec):
             value_errors=self._value_errors,
         )
 
+
 class Bser2WithFallbackCodec(BserCodec):
     """ use BSER v2 encoding """
 
     def __init__(self, transport, value_encoding, value_errors):
         super(Bser2WithFallbackCodec, self).__init__(
-            transport,
-            value_encoding,
-            value_errors,
+            transport, value_encoding, value_errors
         )
         if compat.PYTHON3:
-            bserv2_key = 'required'
+            bserv2_key = "required"
         else:
-            bserv2_key = 'optional'
+            bserv2_key = "optional"
 
         self.send(["version", {bserv2_key: ["bser-v2"]}])
 
         capabilities = self.receive()
 
-        if 'error' in capabilities:
+        if "error" in capabilities:
             raise BSERv1Unsupported(
-                'The watchman server version does not support Python 3. Please '
-                'upgrade your watchman server.'
+                "The watchman server version does not support Python 3. Please "
+                "upgrade your watchman server."
             )
 
-        if capabilities['capabilities']['bser-v2']:
+        if capabilities["capabilities"]["bser-v2"]:
             self.bser_version = 2
             self.bser_capabilities = 0
         else:
@@ -694,11 +736,11 @@ class Bser2WithFallbackCodec(BserCodec):
     def receive(self):
         buf = [self.transport.readBytes(sniff_len)]
         if not buf[0]:
-            raise WatchmanError('empty watchman response')
+            raise WatchmanError("empty watchman response")
 
         recv_bser_version, recv_bser_capabilities, elen = bser.pdu_info(buf[0])
 
-        if hasattr(self, 'bser_version'):
+        if hasattr(self, "bser_version"):
             # Readjust BSER version and capabilities if necessary
             self.bser_version = max(self.bser_version, recv_bser_version)
             self.capabilities = self.bser_capabilities & recv_bser_capabilities
@@ -708,17 +750,18 @@ class Bser2WithFallbackCodec(BserCodec):
             buf.append(self.transport.readBytes(elen - rlen))
             rlen += len(buf[-1])
 
-        response = b''.join(buf)
+        response = b"".join(buf)
         try:
             res = self._loads(response)
             return res
         except ValueError as e:
-            raise WatchmanError('watchman response decode error: %s' % e)
+            raise WatchmanError("watchman response decode error: %s" % e)
 
     def send(self, *args):
-        if hasattr(self, 'bser_version'):
-            cmd = bser.dumps(*args, version=self.bser_version,
-                capabilities=self.bser_capabilities)
+        if hasattr(self, "bser_version"):
+            cmd = bser.dumps(
+                *args, version=self.bser_version, capabilities=self.bser_capabilities
+            )
         else:
             cmd = bser.dumps(*args)
         self.transport.write(cmd)
@@ -738,6 +781,7 @@ class JsonCodec(Codec):
         super(JsonCodec, self).__init__(transport)
         # optional dep on json, only if JsonCodec is used
         import json
+
         self.json = json
 
     def receive(self):
@@ -749,7 +793,7 @@ class JsonCodec(Codec):
             # but it's possible we might get non-ASCII bytes that are valid
             # UTF-8.
             if compat.PYTHON3:
-                line = line.decode('utf-8')
+                line = line.decode("utf-8")
             return self.json.loads(line)
         except Exception as e:
             print(e, line)
@@ -761,7 +805,7 @@ class JsonCodec(Codec):
         # containing Unicode strings to Unicode string. Even with (the default)
         # ensure_ascii=True, dumps returns a Unicode string.
         if compat.PYTHON3:
-            cmd = cmd.encode('ascii')
+            cmd = cmd.encode("ascii")
         self.transport.write(cmd + b"\n")
 
 
@@ -776,22 +820,24 @@ class client(object):
     subs = {}  # Keyed by subscription name
     sub_by_root = {}  # Keyed by root, then by subscription name
     logs = []  # When log level is raised
-    unilateral = ['log', 'subscription']
+    unilateral = ["log", "subscription"]
     tport = None
     useImmutableBser = None
 
-    def __init__(self,
-                 sockpath=None,
-                 timeout=1.0,
-                 transport=None,
-                 sendEncoding=None,
-                 recvEncoding=None,
-                 useImmutableBser=False,
-                 # use False for these two because None has a special
-                 # meaning
-                 valueEncoding=False,
-                 valueErrors=False,
-                 binpath='watchman'):
+    def __init__(
+        self,
+        sockpath=None,
+        timeout=1.0,
+        transport=None,
+        sendEncoding=None,
+        recvEncoding=None,
+        useImmutableBser=False,
+        # use False for these two because None has a special
+        # meaning
+        valueEncoding=False,
+        valueErrors=False,
+        binpath="watchman",
+    ):
         self.sockpath = sockpath
         self.timeout = timeout
         self.useImmutableBser = useImmutableBser
@@ -800,24 +846,22 @@ class client(object):
         if inspect.isclass(transport) and issubclass(transport, Transport):
             self.transport = transport
         else:
-            transport = transport or os.getenv('WATCHMAN_TRANSPORT') or 'local'
-            if transport == 'local' and os.name == 'nt':
+            transport = transport or os.getenv("WATCHMAN_TRANSPORT") or "local"
+            if transport == "local" and os.name == "nt":
                 self.transport = WindowsNamedPipeTransport
-            elif transport == 'local':
+            elif transport == "local":
                 self.transport = UnixSocketTransport
-            elif transport == 'cli':
+            elif transport == "cli":
                 self.transport = CLIProcessTransport
                 if sendEncoding is None:
-                    sendEncoding = 'json'
+                    sendEncoding = "json"
                 if recvEncoding is None:
                     recvEncoding = sendEncoding
             else:
-                raise WatchmanError('invalid transport %s' % transport)
+                raise WatchmanError("invalid transport %s" % transport)
 
-        sendEncoding = str(sendEncoding or os.getenv('WATCHMAN_ENCODING') or
-                           'bser')
-        recvEncoding = str(recvEncoding or os.getenv('WATCHMAN_ENCODING') or
-                           'bser')
+        sendEncoding = str(sendEncoding or os.getenv("WATCHMAN_ENCODING") or "bser")
+        recvEncoding = str(recvEncoding or os.getenv("WATCHMAN_ENCODING") or "bser")
 
         self.recvCodec = self._parseEncoding(recvEncoding)
         self.sendCodec = self._parseEncoding(sendEncoding)
@@ -841,28 +885,31 @@ class client(object):
                 self.valueErrors = valueErrors
 
     def _makeBSERCodec(self, codec):
+
         def make_codec(transport):
             return codec(transport, self.valueEncoding, self.valueErrors)
+
         return make_codec
 
     def _parseEncoding(self, enc):
-        if enc == 'bser':
+        if enc == "bser":
             if self.useImmutableBser:
                 return self._makeBSERCodec(ImmutableBser2Codec)
             return self._makeBSERCodec(Bser2WithFallbackCodec)
-        elif enc == 'bser-v1':
+        elif enc == "bser-v1":
             if compat.PYTHON3:
                 raise BSERv1Unsupported(
-                    'Python 3 does not support the BSER v1 encoding: specify '
+                    "Python 3 does not support the BSER v1 encoding: specify "
                     '"bser" or omit the sendEncoding and recvEncoding '
-                    'arguments')
+                    "arguments"
+                )
             if self.useImmutableBser:
                 return self._makeBSERCodec(ImmutableBserCodec)
             return self._makeBSERCodec(BserCodec)
-        elif enc == 'json':
+        elif enc == "json":
             return JsonCodec
         else:
-            raise WatchmanError('invalid encoding %s' % enc)
+            raise WatchmanError("invalid encoding %s" % enc)
 
     def _hasprop(self, result, name):
         if self.useImmutableBser:
@@ -872,23 +919,26 @@ class client(object):
     def _resolvesockname(self):
         # if invoked via a trigger, watchman will set this env var; we
         # should use it unless explicitly set otherwise
-        path = os.getenv('WATCHMAN_SOCK')
+        path = os.getenv("WATCHMAN_SOCK")
         if path:
             return path
 
-        cmd = [self.binpath, '--output-encoding=bser', 'get-sockname']
+        cmd = [self.binpath, "--output-encoding=bser", "get-sockname"]
         try:
-            args = dict(stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        close_fds=os.name != 'nt')
+            # noqa: C408
+            args = dict(
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                close_fds=os.name != "nt",
+            )
 
-            if os.name == 'nt':
+            if os.name == "nt":
                 # if invoked via an application with graphical user interface,
                 # this call will cause a brief command window pop-up.
                 # Using the flag STARTF_USESHOWWINDOW to avoid this behavior.
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                args['startupinfo'] = startupinfo
+                args["startupinfo"] = startupinfo
 
             p = subprocess.Popen(cmd, **args)
 
@@ -902,10 +952,10 @@ class client(object):
             raise WatchmanError("watchman exited with code %d" % exitcode)
 
         result = bser.loads(stdout)
-        if 'error' in result:
-            raise WatchmanError('get-sockname error: %s' % result['error'])
+        if "error" in result:
+            raise WatchmanError("get-sockname error: %s" % result["error"])
 
-        return result['sockname']
+        return result["sockname"]
 
     def _connect(self):
         """ establish transport connection """
@@ -918,7 +968,7 @@ class client(object):
 
         kwargs = {}
         if self.transport == CLIProcessTransport:
-            kwargs['binpath'] = self.binpath
+            kwargs["binpath"] = self.binpath
 
         self.tport = self.transport(self.sockpath, self.timeout, **kwargs)
         self.sendConn = self.sendCodec(self.tport)
@@ -958,20 +1008,20 @@ class client(object):
 
         self._connect()
         result = self.recvConn.receive()
-        if self._hasprop(result, 'error'):
-            raise CommandError(result['error'])
+        if self._hasprop(result, "error"):
+            raise CommandError(result["error"])
 
-        if self._hasprop(result, 'log'):
-            self.logs.append(result['log'])
+        if self._hasprop(result, "log"):
+            self.logs.append(result["log"])
 
-        if self._hasprop(result, 'subscription'):
-            sub = result['subscription']
+        if self._hasprop(result, "subscription"):
+            sub = result["subscription"]
             if not (sub in self.subs):
                 self.subs[sub] = []
             self.subs[sub].append(result)
 
             # also accumulate in {root,sub} keyed store
-            root = os.path.normpath(os.path.normcase(result['root']))
+            root = os.path.normpath(os.path.normcase(result["root"]))
             if not root in self.sub_by_root:
                 self.sub_by_root[root] = {}
             if not sub in self.sub_by_root[root]:
@@ -981,7 +1031,7 @@ class client(object):
         return result
 
     def isUnilateralResponse(self, res):
-        if 'unilateral' in res and res['unilateral']:
+        if "unilateral" in res and res["unilateral"]:
             return True
         # Fall back to checking for known unilateral responses
         for k in self.unilateral:
@@ -1044,7 +1094,7 @@ class client(object):
         and NOT returned via this method.
         """
 
-        log('calling client.query')
+        log("calling client.query")
         self._connect()
         try:
             self.sendConn.send(args)
@@ -1058,27 +1108,27 @@ class client(object):
             # When we can depend on Python 3, we can use PEP 3134
             # exception chaining here.
             raise WatchmanEnvironmentError(
-                'I/O error communicating with watchman daemon',
+                "I/O error communicating with watchman daemon",
                 ee.errno,
                 ee.strerror,
-                args)
+                args,
+            )
         except WatchmanError as ex:
             ex.setCommand(args)
             raise
 
     def capabilityCheck(self, optional=None, required=None):
         """ Perform a server capability check """
-        res = self.query('version', {
-            'optional': optional or [],
-            'required': required or []
-        })
+        res = self.query(
+            "version", {"optional": optional or [], "required": required or []}
+        )
 
-        if not self._hasprop(res, 'capabilities'):
+        if not self._hasprop(res, "capabilities"):
             # Server doesn't support capabilities, so we need to
             # synthesize the results based on the version
             capabilities.synthesize(res, optional)
-            if 'error' in res:
-                raise CommandError(res['error'])
+            if "error" in res:
+                raise CommandError(res["error"])
 
         return res
 

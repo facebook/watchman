@@ -1,87 +1,87 @@
 #!/usr/bin/env python
 # vim:ts=4:sw=4:et:
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 # no unicode literals
+from __future__ import absolute_import, division, print_function
+
+import argparse
+import json
+import math
+import multiprocessing
 import os
 import os.path
+import random
+import shutil
+import signal
+import subprocess
+import sys
+import threading
+import time
+import traceback
+
 
 # in the FB internal test infra, ensure that we are running from the
 # dir that houses this script rather than some other higher level dir
 # in the containing tree.  We can't use __file__ to determine this
 # because our PAR machinery can generate a name like /proc/self/fd/3/foo
 # which won't resolve to anything useful by the time we get here.
-if not os.path.exists('runtests.py') and os.path.exists('watchman/runtests.py'):
-    os.chdir('watchman')
+if not os.path.exists("runtests.py") and os.path.exists("watchman/runtests.py"):
+    os.chdir("watchman")
 
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
-import sys
 
 # Ensure that we can find pywatchman and integration tests (if we're not the
 # main module, a wrapper is probably loading us up and we shouldn't screw around
 # with sys.path).
-if __name__ == '__main__':
-    sys.path.insert(0, os.path.join(os.getcwd(), 'python'))
-    sys.path.insert(0, os.path.join(os.getcwd(), 'tests', 'integration'))
+if __name__ == "__main__":
+    sys.path.insert(0, os.path.join(os.getcwd(), "python"))
+    sys.path.insert(0, os.path.join(os.getcwd(), "tests", "integration"))
 
-import json
-import shutil
-import subprocess
-import traceback
-import time
-import argparse
-import threading
-import multiprocessing
-import math
-import signal
-import random
 
 # Only Python 3.5+ supports native asyncio
 has_asyncio = sys.version_info >= (3, 5)
 if has_asyncio:
-    sys.path.insert(0, os.path.join(os.getcwd(), 'tests', 'async'))
+    sys.path.insert(0, os.path.join(os.getcwd(), "tests", "async"))
     import asyncio
 
 try:
     import queue
 except Exception:
     import Queue
+
     queue = Queue
 
 parser = argparse.ArgumentParser(
-    description="Run the watchman unit and integration tests")
-parser.add_argument('-v', '--verbosity', default=2,
-                    help="test runner verbosity")
+    description="Run the watchman unit and integration tests"
+)
+parser.add_argument("-v", "--verbosity", default=2, help="test runner verbosity")
 parser.add_argument(
     "--keep",
-    action='store_true',
-    help="preserve all temporary files created during test execution")
+    action="store_true",
+    help="preserve all temporary files created during test execution",
+)
 parser.add_argument(
     "--keep-if-fail",
-    action='store_true',
-    help="preserve all temporary files created during test execution if failed")
+    action="store_true",
+    help="preserve all temporary files created during test execution if failed",
+)
+
+parser.add_argument("files", nargs="*", help="specify which test files to run")
 
 parser.add_argument(
-    "files",
-    nargs='*',
-    help='specify which test files to run')
+    "--method", action="append", help="specify which python test method names to run"
+)
 
-parser.add_argument(
-    '--method',
-    action='append',
-    help='specify which python test method names to run')
 
 def default_concurrency():
     # Python 2.7 hangs when we use threads, so avoid it
     # https://bugs.python.org/issue20318
     if sys.version_info >= (3, 0):
         level = min(4, math.ceil(1.5 * multiprocessing.cpu_count()))
-        if 'CIRCLECI' in os.environ:
+        if "CIRCLECI" in os.environ:
             # Use fewer cores in circle CI because the inotify sysctls
             # are pretty low, and we sometimes hit those limits.
             level = level / 2
@@ -89,68 +89,76 @@ def default_concurrency():
 
     return 1
 
+
 parser.add_argument(
-    '--concurrency',
+    "--concurrency",
     default=default_concurrency(),
     type=int,
-    help='How many tests to run at once')
+    help="How many tests to run at once",
+)
 
 parser.add_argument(
-    '--watcher',
-    action='store',
-    default='auto',
-    help='Specify which watcher should be used to run the tests')
+    "--watcher",
+    action="store",
+    default="auto",
+    help="Specify which watcher should be used to run the tests",
+)
 
 parser.add_argument(
-    '--debug-watchman',
-    action='store_true',
-    help='Pauses start up and prints out the PID for watchman server process.' +
-    'Forces concurrency to 1.')
+    "--debug-watchman",
+    action="store_true",
+    help="Pauses start up and prints out the PID for watchman server process."
+    + "Forces concurrency to 1.",
+)
 
 parser.add_argument(
-    '--watchman-path',
-    action='store',
-    help='Specify the path to the watchman binary')
+    "--watchman-path", action="store", help="Specify the path to the watchman binary"
+)
 
 parser.add_argument(
-    '--win7',
-    action='store_true',
-    help='Set env to force win7 compatibility tests')
+    "--win7", action="store_true", help="Set env to force win7 compatibility tests"
+)
 
 parser.add_argument(
-    '--retry-flaky',
-    action='store',
+    "--retry-flaky",
+    action="store",
     type=int,
     default=2,
-    help='How many additional times to retry flaky tests.')
+    help="How many additional times to retry flaky tests.",
+)
 
 parser.add_argument(
-    '--testpilot-json',
-    action='store_true',
-    help='Output test results in Test Pilot JSON format')
+    "--testpilot-json",
+    action="store_true",
+    help="Output test results in Test Pilot JSON format",
+)
 
 parser.add_argument(
-    '--pybuild-dir',
-    action='store',
-    help='For out-of-src-tree builds, where the generated python lives')
+    "--pybuild-dir",
+    action="store",
+    help="For out-of-src-tree builds, where the generated python lives",
+)
 
 args = parser.parse_args()
 
 if args.pybuild_dir is not None:
     sys.path.insert(0, args.pybuild_dir)
 
-# Import our local stuff after we've had a chance to look at args.pybuild_dir
-import WatchmanInstance
-import TempDir
-import Interrupt
-
+# Import our local stuff after we've had a chance to look at args.pybuild_dir.
+# The `try` block prevents the imports from being reordered
+try:
+    import Interrupt
+    import TempDir
+    import WatchmanInstance
+except ImportError:
+    raise
 
 # We test for this in a test case
-os.environ['WATCHMAN_EMPTY_ENV_VAR'] = ''
-os.environ['HGUSER'] = 'John Smith <smith@example.com>'
+os.environ["WATCHMAN_EMPTY_ENV_VAR"] = ""
+os.environ["HGUSER"] = "John Smith <smith@example.com>"
 
 if args.win7:
-    os.environ['WATCHMAN_WIN7_COMPAT'] = '1'
+    os.environ["WATCHMAN_WIN7_COMPAT"] = "1"
 
 # Ensure that we find the watchman we built in the tests
 if args.watchman_path:
@@ -158,19 +166,23 @@ if args.watchman_path:
 else:
     bin_dir = os.path.dirname(__file__)
 
-os.environ['PYWATCHMAN_PATH'] = os.path.join(os.getcwd(), 'python')
-os.environ['WATCHMAN_PYTHON_BIN'] = \
-    os.path.abspath(os.path.join(os.getcwd(), 'python', 'bin'))
-os.environ['PATH'] = '%s%s%s' % (os.path.abspath(bin_dir),
-                                 os.pathsep,
-                                 os.environ['PATH'])
+os.environ["PYWATCHMAN_PATH"] = os.path.join(os.getcwd(), "python")
+os.environ["WATCHMAN_PYTHON_BIN"] = os.path.abspath(
+    os.path.join(os.getcwd(), "python", "bin")
+)
+os.environ["PATH"] = "%s%s%s" % (
+    os.path.abspath(bin_dir), os.pathsep, os.environ["PATH"]
+)
 
 # We'll put all our temporary stuff under one dir so that we
 # can clean it all up at the end
 temp_dir = TempDir.get_temp_dir(args.keep)
 
+
 def interrupt_handler(signo, frame):
     Interrupt.setInterrupted()
+
+
 signal.signal(signal.SIGINT, interrupt_handler)
 
 
@@ -195,48 +207,68 @@ class Result(unittest.TestResult):
         elapsed = time.time() - self.startTime
         super(Result, self).addSuccess(test)
         if args.testpilot_json:
-            print(json.dumps({
-                'op': 'test_done',
-                'status': 'passed',
-                'test': test.id(),
-                'start_time': self.startTime,
-                'end_time': time.time()}))
+            print(
+                json.dumps(
+                    {
+                        "op": "test_done",
+                        "status": "passed",
+                        "test": test.id(),
+                        "start_time": self.startTime,
+                        "end_time": time.time(),
+                    }
+                )
+            )
         else:
-            print('\033[32mPASS\033[0m %s (%.3fs)%s' % (
-                test.id(), elapsed, self._attempts()))
+            print(
+                "\033[32mPASS\033[0m %s (%.3fs)%s"
+                % (test.id(), elapsed, self._attempts())
+            )
 
     def addSkip(self, test, reason):
         elapsed = time.time() - self.startTime
         super(Result, self).addSkip(test, reason)
         if args.testpilot_json:
-            print(json.dumps({
-                'op': 'test_done',
-                'status': 'skipped',
-                'test': test.id(),
-                'details': reason,
-                'start_time': self.startTime,
-                'end_time': time.time()}))
+            print(
+                json.dumps(
+                    {
+                        "op": "test_done",
+                        "status": "skipped",
+                        "test": test.id(),
+                        "details": reason,
+                        "start_time": self.startTime,
+                        "end_time": time.time(),
+                    }
+                )
+            )
         else:
-            print('\033[33mSKIP\033[0m %s (%.3fs) %s' %
-                  (test.id(), elapsed, reason))
+            print("\033[33mSKIP\033[0m %s (%.3fs) %s" % (test.id(), elapsed, reason))
 
     def __printFail(self, test, err):
         elapsed = time.time() - self.startTime
         t, val, trace = err
         if args.testpilot_json:
-            print(json.dumps({
-                'op': 'test_done',
-                'status': 'failed',
-                'test': test.id(),
-                'details': ''.join(traceback.format_exception(t, val, trace)),
-                'start_time': self.startTime,
-                'end_time': time.time()}))
+            print(
+                json.dumps(
+                    {
+                        "op": "test_done",
+                        "status": "failed",
+                        "test": test.id(),
+                        "details": "".join(traceback.format_exception(t, val, trace)),
+                        "start_time": self.startTime,
+                        "end_time": time.time(),
+                    }
+                )
+            )
         else:
-            print('\033[31mFAIL\033[0m %s (%.3fs)%s\n%s' % (
-                  test.id(),
-                  elapsed,
-                  self._attempts(),
-                  ''.join(traceback.format_exception(t, val, trace))))
+            print(
+                "\033[31mFAIL\033[0m %s (%.3fs)%s\n%s"
+                % (
+                    test.id(),
+                    elapsed,
+                    self._attempts(),
+                    "".join(traceback.format_exception(t, val, trace)),
+                )
+            )
 
     def addFailure(self, test, err):
         self.__printFail(test, err)
@@ -251,8 +283,8 @@ class Result(unittest.TestResult):
 
     def _attempts(self):
         if self.attempt > 0:
-            return ' (%d attempts)' % self.attempt
-        return ''
+            return " (%d attempts)" % self.attempt
+        return ""
 
 
 def expandFilesList(files):
@@ -262,11 +294,12 @@ def expandFilesList(files):
         if os.path.isdir(g):
             for dirname, _dirs, files in os.walk(g):
                 for f in files:
-                    if not f.startswith('.'):
+                    if not f.startswith("."):
                         res.append(os.path.normpath(os.path.join(dirname, f)))
         else:
             res.append(os.path.normpath(g))
     return res
+
 
 if args.files:
     args.files = expandFilesList(args.files)
@@ -275,7 +308,7 @@ if args.files:
 def shouldIncludeTestFile(filename):
     """ used by our loader to respect the set of tests to run """
     global args
-    fname = os.path.relpath(filename.replace('.pyc', '.py'))
+    fname = os.path.relpath(filename.replace(".pyc", ".py"))
     if args.files:
         for f in args.files:
             if f == fname:
@@ -284,10 +317,11 @@ def shouldIncludeTestFile(filename):
 
     if args.method:
         # implies python tests only
-        if not fname.endswith('.py'):
+        if not fname.endswith(".py"):
             return False
 
     return True
+
 
 def shouldIncludeTestName(name):
     """ used by our loader to respect the set of tests to run """
@@ -322,27 +356,29 @@ class Loader(unittest.TestLoader):
             return unittest.TestSuite()
         return super(Loader, self).loadTestsFromModule(module, *args, **kw)
 
+
 loader = Loader()
 suite = unittest.TestSuite()
 
-directories = ['python/tests', 'tests/integration']
+directories = ["python/tests", "tests/integration"]
 
 if has_asyncio:
-    directories += ['tests/async']
+    directories += ["tests/async"]
 
 for d in directories:
     suite.addTests(loader.discover(d, top_level_dir=d))
 
-if os.name == 'nt':
-    t_globs = 'tests/*.exe'
+if os.name == "nt":
+    t_globs = "tests/*.exe"
 else:
-    t_globs = 'tests/*.t'
+    t_globs = "tests/*.t"
 
 tls = threading.local()
 
 # Manage printing from concurrent threads
 # http://stackoverflow.com/a/3030755/149111
 class ThreadSafeFile(object):
+
     def __init__(self, f):
         self.f = f
         self.lock = threading.RLock()
@@ -359,13 +395,13 @@ class ThreadSafeFile(object):
             self.lock.release()
 
     def __getattr__(self, name):
-        if name == 'softspace':
+        if name == "softspace":
             return tls.softspace
         else:
             raise AttributeError(name)
 
     def __setattr__(self, name, value):
-        if name == 'softspace':
+        if name == "softspace":
             tls.softspace = value
         else:
             return object.__setattr__(self, name, value)
@@ -373,7 +409,7 @@ class ThreadSafeFile(object):
     def write(self, data):
         self._getlock()
         self.f.write(data)
-        if data == '\n':
+        if data == "\n":
             self._droplock()
 
     def flush(self):
@@ -381,10 +417,12 @@ class ThreadSafeFile(object):
         self.f.flush()
         self._droplock()
 
+
 sys.stdout = ThreadSafeFile(sys.stdout)
 
 tests_queue = queue.Queue()
 results_queue = queue.Queue()
+
 
 def runner():
     global results_queue
@@ -393,9 +431,9 @@ def runner():
     broken = False
     try:
         # Start up a shared watchman instance for the tests.
-        inst = WatchmanInstance.Instance({
-            "watcher": args.watcher
-        }, debug_watchman=args.debug_watchman)
+        inst = WatchmanInstance.Instance(
+            {"watcher": args.watcher}, debug_watchman=args.debug_watchman
+        )
         inst.start()
         # Allow tests to locate this default instance
         WatchmanInstance.setSharedInstance(inst)
@@ -405,14 +443,14 @@ def runner():
             asyncio.set_event_loop(asyncio.new_event_loop())
 
     except Exception as e:
-        print('while starting watchman: %s' % str(e))
+        print("while starting watchman: %s" % str(e))
         traceback.print_exc()
         broken = True
 
     while not broken:
         test = tests_queue.get()
         try:
-            if test == 'terminate':
+            if test == "terminate":
                 break
 
             if Interrupt.wasInterrupted() or broken:
@@ -424,13 +462,12 @@ def runner():
                     result = Result()
                     result.setAttemptNumber(attempt)
 
-                    if hasattr(test, 'setAttemptNumber'):
+                    if hasattr(test, "setAttemptNumber"):
                         test.setAttemptNumber(attempt)
 
                     test.run(result)
 
-                    if hasattr(test, 'setAttemptNumber') and \
-                            not result.wasSuccessful():
+                    if hasattr(test, "setAttemptNumber") and not result.wasSuccessful():
                         # Facilitate retrying this possibly flaky test
                         continue
 
@@ -438,14 +475,15 @@ def runner():
                 except Exception as e:
                     print(e)
 
-                    if hasattr(test, 'setAttemptNumber') and \
-                            not result.wasSuccessful():
+                    if hasattr(test, "setAttemptNumber") and not result.wasSuccessful():
                         # Facilitate retrying this possibly flaky test
                         continue
 
-            if not result.wasSuccessful() and \
-                    'TRAVIS' in os.environ and \
-                    hasattr(test, 'dumpLogs'):
+            if (
+                not result.wasSuccessful()
+                and "TRAVIS" in os.environ
+                and hasattr(test, "dumpLogs")
+            ):
                 test.dumpLogs()
 
             results_queue.put(result)
@@ -455,6 +493,7 @@ def runner():
 
     if not broken:
         inst.stop()
+
 
 def expand_suite(suite, target=None):
     """ recursively expand a TestSuite into a list of TestCase """
@@ -472,9 +511,11 @@ def expand_suite(suite, target=None):
     random.shuffle(target)
     return target
 
+
 def queue_jobs(tests):
     for test in tests:
         tests_queue.put(test)
+
 
 all_tests = expand_suite(suite)
 if args.debug_watchman:
@@ -489,13 +530,13 @@ if args.concurrency > 1:
         t.daemon = True
         t.start()
         # also send a termination sentinel
-        tests_queue.put('terminate')
+        tests_queue.put("terminate")
 
     # Wait for all tests to have been dispatched
     tests_queue.join()
 else:
     # add a termination sentinel
-    tests_queue.put('terminate')
+    tests_queue.put("terminate")
     runner()
 
 # Now pull out and aggregate the results
@@ -509,21 +550,27 @@ while not results_queue.empty():
     tests_skipped = tests_skipped + len(res.skipped)
 
 if not args.testpilot_json:
-    print('Ran %d, failed %d, skipped %d, concurrency %d' % (
-        tests_run, tests_failed, tests_skipped, args.concurrency))
+    print(
+        "Ran %d, failed %d, skipped %d, concurrency %d"
+        % (tests_run, tests_failed, tests_skipped, args.concurrency)
+    )
 
-if 'APPVEYOR' in os.environ:
-    shutil.copytree(temp_dir.get_dir(), 'logs')
-    subprocess.call(['7z', 'a', 'logs.zip', 'logs'])
-    subprocess.call(['appveyor', 'PushArtifact', 'logs.zip'])
+if "APPVEYOR" in os.environ:
+    shutil.copytree(temp_dir.get_dir(), "logs")
+    subprocess.call(["7z", "a", "logs.zip", "logs"])
+    subprocess.call(["appveyor", "PushArtifact", "logs.zip"])
 
-if 'CIRCLE_ARTIFACTS' in os.environ:
-    print('Creating %s/logs.zip' % os.environ['CIRCLE_ARTIFACTS'])
-    subprocess.call(['zip',
-                    '-q',
-                     '-r',
-                     '%s/logs.zip' % os.environ['CIRCLE_ARTIFACTS'],
-                     temp_dir.get_dir()])
+if "CIRCLE_ARTIFACTS" in os.environ:
+    print("Creating %s/logs.zip" % os.environ["CIRCLE_ARTIFACTS"])
+    subprocess.call(
+        [
+            "zip",
+            "-q",
+            "-r",
+            "%s/logs.zip" % os.environ["CIRCLE_ARTIFACTS"],
+            temp_dir.get_dir(),
+        ]
+    )
 
 if tests_failed or (tests_run == 0):
     if args.keep_if_fail:

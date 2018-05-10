@@ -2,26 +2,27 @@
 # Copyright 2012-present Facebook, Inc.
 # Licensed under the Apache License, Version 2.0
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 # no unicode literals
+from __future__ import absolute_import, division, print_function
 
+import errno
 import functools
 import inspect
-import errno
+import os
+import os.path
+import tempfile
+import time
+
+import Interrupt
+import pywatchman
+import TempDir
+import WatchmanInstance
+
+
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
-import pywatchman
-import time
-import tempfile
-import os.path
-import os
-import Interrupt
-import WatchmanInstance
-import TempDir
 
 if pywatchman.compat.PYTHON3:
     STRING_TYPES = (str, bytes)
@@ -29,9 +30,10 @@ else:
     STRING_TYPES = (str, unicode)  # noqa: F821
 
 
-if os.name == 'nt':
+if os.name == "nt":
     # monkey patch to hopefully minimize test flakiness
     def wrap_with_backoff(fn):
+
         def wrapper(*args, **kwargs):
             delay = 0.01
             attempts = 10
@@ -53,7 +55,7 @@ if os.name == 'nt':
 
         return wrapper
 
-    for name in ['rename', 'unlink', 'remove', 'rmdir', 'makedirs']:
+    for name in ["rename", "unlink", "remove", "rmdir", "makedirs"]:
         setattr(os, name, wrap_with_backoff(getattr(os, name)))
 
 
@@ -65,7 +67,7 @@ if not pywatchman.compat.PYTHON3:
 
 class WatchmanTestCase(unittest.TestCase):
 
-    def __init__(self, methodName='run'):
+    def __init__(self, methodName="run"):
         super(WatchmanTestCase, self).__init__(methodName)
         self.setDefaultConfiguration()
         self.maxDiff = None
@@ -75,8 +77,8 @@ class WatchmanTestCase(unittest.TestCase):
         return False
 
     def checkPersistentSession(self):
-        if self.requiresPersistentSession() and self.transport == 'cli':
-            self.skipTest('need persistent session')
+        if self.requiresPersistentSession() and self.transport == "cli":
+            self.skipTest("need persistent session")
 
     def checkOSApplicability(self):
         # override this to call self.skipTest if this test class should skip
@@ -91,7 +93,7 @@ class WatchmanTestCase(unittest.TestCase):
         self.__clearClient()
 
     def getClient(self, inst=None, replace_cached=False, no_cache=False):
-        if inst or not hasattr(self, 'client') or no_cache:
+        if inst or not hasattr(self, "client") or no_cache:
             client = pywatchman.client(
                 # ASAN-enabled builds can be slower enough that we hit timeouts
                 # with the default of 1 second
@@ -99,8 +101,8 @@ class WatchmanTestCase(unittest.TestCase):
                 transport=self.transport,
                 sendEncoding=self.encoding,
                 recvEncoding=self.encoding,
-                sockpath=(inst or
-                          WatchmanInstance.getSharedInstance()).getSockPath())
+                sockpath=(inst or WatchmanInstance.getSharedInstance()).getSockPath(),
+            )
             if (not inst or replace_cached) and not no_cache:
                 # only cache the client if it points to the shared instance
                 self.client = client
@@ -108,18 +110,16 @@ class WatchmanTestCase(unittest.TestCase):
         return self.client
 
     def __logTestInfo(self, test, msg):
-        if hasattr(self, 'client'):
+        if hasattr(self, "client"):
             try:
-                self.getClient().query('log', 'debug',
-                                       'TEST: %s %s\n\n' % (test, msg))
+                self.getClient().query("log", "debug", "TEST: %s %s\n\n" % (test, msg))
             except Exception:
                 pass
 
     def mkdtemp(self, **kwargs):
-        return self.normAbsolutePath(tempfile.mkdtemp(dir=self.tempdir,
-                                                      **kwargs))
+        return self.normAbsolutePath(tempfile.mkdtemp(dir=self.tempdir, **kwargs))
 
-    def mktemp(self, prefix=''):
+    def mktemp(self, prefix=""):
         f, name = tempfile.mkstemp(prefix=prefix, dir=self.tempdir)
         os.close(f)
         return name
@@ -128,68 +128,69 @@ class WatchmanTestCase(unittest.TestCase):
         self.attempt = attempt
 
     def __clearClient(self):
-        if hasattr(self, 'client'):
+        if hasattr(self, "client"):
             self.client.close()
-            delattr(self, 'client')
+            delattr(self, "client")
 
     def run(self, result):
         if result is None:
-            raise Exception('MUST be a runtests.py:Result instance')
+            raise Exception("MUST be a runtests.py:Result instance")
 
         # Arrange for any temporary stuff we create to go under
         # our global tempdir and put it in a dir named for the test
-        id = '%s.%s.%s' % (self.id(), self.transport, self.encoding)
+        id = "%s.%s.%s" % (self.id(), self.transport, self.encoding)
         try:
             self.tempdir = os.path.join(TempDir.get_temp_dir().get_dir(), id)
             if self.attempt > 0:
                 self.tempdir += "-%d" % self.attempt
             os.mkdir(self.tempdir)
 
-            self.__logTestInfo(id, 'BEGIN')
+            self.__logTestInfo(id, "BEGIN")
             super(WatchmanTestCase, self).run(result)
         finally:
             try:
-                self.watchmanCommand('log-level', 'off')
+                self.watchmanCommand("log-level", "off")
                 self.getClient().getLog(remove=True)
             except Exception:
                 pass
-            self.__logTestInfo(id, 'END')
+            self.__logTestInfo(id, "END")
             self.__clearWatches()
             self.__clearClient()
 
         return result
 
     def dumpLogs(self):
-        ''' used in travis CI to show the hopefully relevant log snippets '''
+        """ used in travis CI to show the hopefully relevant log snippets """
 
         def tail(logstr, n):
-            lines = logstr.split('\n')[-n:]
-            return '\n'.join(lines)
+            lines = logstr.split("\n")[-n:]
+            return "\n".join(lines)
 
         print(self.getLogSample())
 
     def getLogSample(self):
-        ''' used in CI to show the hopefully relevant log snippets '''
+        """ used in CI to show the hopefully relevant log snippets """
         inst = WatchmanInstance.getSharedInstance()
 
         def tail(logstr, n):
-            lines = logstr.split('\n')[-n:]
-            return '\n'.join(lines)
+            lines = logstr.split("\n")[-n:]
+            return "\n".join(lines)
 
-        return '\n'.join([
-            'CLI logs',
-            tail(inst.getCLILogContents(), 500),
-            'Server logs',
-            tail(inst.getServerLogContents(), 500),
-        ])
+        return "\n".join(
+            [
+                "CLI logs",
+                tail(inst.getCLILogContents(), 500),
+                "Server logs",
+                tail(inst.getServerLogContents(), 500),
+            ]
+        )
 
     def getServerLogContents(self):
-        '''
+        """
         Returns the contents of the server log file as an array
         that has already been split by line.
-        '''
-        return WatchmanInstance.getSharedInstance().\
-            getServerLogContents().split('\n')
+        """
+        return WatchmanInstance.getSharedInstance().getServerLogContents().split("\n")
 
     def setConfiguration(self, transport, encoding):
         self.transport = transport
@@ -204,7 +205,7 @@ class WatchmanTestCase(unittest.TestCase):
             os.utime(fname, times)
         except OSError as e:
             if e.errno == errno.ENOENT:
-                with open(fname, 'a'):
+                with open(fname, "a"):
                     os.utime(fname, times)
             else:
                 raise
@@ -214,11 +215,11 @@ class WatchmanTestCase(unittest.TestCase):
         self.touch(fname, None)
 
     def __clearWatches(self):
-        if hasattr(self, 'client'):
+        if hasattr(self, "client"):
             try:
                 self.client.subs = {}
                 self.client.sub_by_root = {}
-                self.watchmanCommand('watch-del-all')
+                self.watchmanCommand("watch-del-all")
             except Exception:
                 pass
 
@@ -234,12 +235,12 @@ class WatchmanTestCase(unittest.TestCase):
         # We do not need to normcase because all of our tests are
         # using the appropriate case already, and watchman returns
         # paths in the canonical file replace case anyway.
-        return path.replace('\\', '/')
+        return path.replace("\\", "/")
 
     def normAbsolutePath(self, path):
         # TODO: in the future we will standardize on `/` as the
         # dir separator so we can remove the replace call.
-        return path.replace('\\', '/')
+        return path.replace("\\", "/")
 
     def _waitForCheck(self, cond, res_check, timeout):
         deadline = time.time() + timeout
@@ -260,9 +261,7 @@ class WatchmanTestCase(unittest.TestCase):
         return self._waitForCheck(cond, lambda res: res, timeout)
 
     def waitForEqual(self, expected, actual_cond, timeout=10):
-        return self._waitForCheck(
-            actual_cond, lambda res: res == expected, timeout
-        )
+        return self._waitForCheck(actual_cond, lambda res: res == expected, timeout)
 
     def assertWaitFor(self, cond, timeout=10, message=None):
         status, res = self.waitFor(cond, timeout)
@@ -272,10 +271,7 @@ class WatchmanTestCase(unittest.TestCase):
             message = "%s was not met in %s seconds: %s" % (cond, timeout, res)
         self.fail(message)
 
-    def assertWaitForEqual(
-        self, expected, actual_cond,
-        timeout=10, message=None
-    ):
+    def assertWaitForEqual(self, expected, actual_cond, timeout=10, message=None):
         status, res = self.waitForEqual(expected, actual_cond, timeout)
         if status:
             return res
@@ -286,29 +282,27 @@ class WatchmanTestCase(unittest.TestCase):
         self.fail(message)
 
     def getFileList(self, root, cursor=None, relativeRoot=None):
-        expr = {
-            "expression": ["exists"],
-            "fields": ["name"],
-        }
+        expr = {"expression": ["exists"], "fields": ["name"]}
         if cursor:
-            expr['since'] = cursor
+            expr["since"] = cursor
         if relativeRoot:
-            expr['relative_root'] = relativeRoot
-        res = self.watchmanCommand('query', root, expr)
-        files = self.normWatchmanFileList(res['files'])
+            expr["relative_root"] = relativeRoot
+        res = self.watchmanCommand("query", root, expr)
+        files = self.normWatchmanFileList(res["files"])
         self.last_file_list = files
         return files
+
     def waitForSync(self, root):
         """ ensure that watchman has observed any pending file changes
             This is most useful after mutating the filesystem and before
             attempting to perform a since query
         """
-        self.watchmanCommand('query', root, {
-            'expression': ['name', '_bogus_'],
-            'fields': ['name']})
+        self.watchmanCommand(
+            "query", root, {"expression": ["name", "_bogus_"], "fields": ["name"]}
+        )
 
     def getWatchList(self):
-        watch_list = self.watchmanCommand('watch-list')['roots']
+        watch_list = self.watchmanCommand("watch-list")["roots"]
         self.last_root_list = watch_list
         return watch_list
 
@@ -336,30 +330,33 @@ class WatchmanTestCase(unittest.TestCase):
 
     def assertFileListContains(self, list1, list2, message=None):
         if not self.fileListContains(list1, list2):
-            message = 'list1 %r should contain %r: %s' % (
-                list1, list2, message)
+            message = "list1 %r should contain %r: %s" % (list1, list2, message)
             self.fail(message)
 
     # Wait for the file list to match the input set
-    def assertFileList(self, root, files=None, cursor=None,
-                       relativeRoot=None, message=None):
+    def assertFileList(
+        self, root, files=None, cursor=None, relativeRoot=None, message=None
+    ):
         files = files or []
         expected_files = self.normFileList(files)
-        if (cursor is not None) and cursor[0:2] == 'n:':
+        if (cursor is not None) and cursor[0:2] == "n:":
             # it doesn't make sense to repeat named cursor queries, as
             # the cursor moves each time
             self.getFileList(root, cursor=cursor, relativeRoot=relativeRoot)
         else:
             st, res = self.waitFor(
-                lambda: self.fileListsEqual(self.getFileList(root, cursor=cursor,
-                                            relativeRoot=relativeRoot
-                                            ), expected_files))
+                lambda: self.fileListsEqual(
+                    self.getFileList(root, cursor=cursor, relativeRoot=relativeRoot),
+                    expected_files,
+                )
+            )
         self.assertFileListsEqual(self.last_file_list, expected_files, message)
 
     # Wait for the list of watched roots to match the input set
     def assertWatchListContains(self, roots, message=None):
         st, res = self.waitFor(
-            lambda: self.fileListContains(self.getWatchList(), roots))
+            lambda: self.fileListContains(self.getWatchList(), roots)
+        )
         self.assertFileListContains(self.last_root_list, roots, message)
 
     def waitForSub(self, name, root, accept=None, timeout=10, remove=True):
@@ -394,15 +391,15 @@ class WatchmanTestCase(unittest.TestCase):
         def norm_sub_item(item):
             if isinstance(item, STRING_TYPES):
                 return self.normRelativePath(item)
-            item['name'] = self.normRelativePath(item['name'])
+            item["name"] = self.normRelativePath(item["name"])
             return item
 
         def norm_sub(sub):
-            if 'files' in sub:
+            if "files" in sub:
                 files = []
-                for item in sub['files']:
+                for item in sub["files"]:
                     files.append(norm_sub_item(item))
-                sub['files'] = files
+                sub["files"] = files
             return sub
 
         return list(map(norm_sub, data))
@@ -410,17 +407,16 @@ class WatchmanTestCase(unittest.TestCase):
     def findSubscriptionContainingFile(self, subdata, filename):
         filename = self.normRelativePath(filename)
         for dat in subdata:
-            if ('files' in dat and
-                filename in self.normWatchmanFileList(dat['files'])):
+            if "files" in dat and filename in self.normWatchmanFileList(dat["files"]):
                 return dat
         return None
 
     def isCaseInsensitive(self):
-        if hasattr(self, '_case_insensitive'):
+        if hasattr(self, "_case_insensitive"):
             return self._case_insensitive
         d = self.mkdtemp()
-        self.touchRelative(d, 'a')
-        self._case_insensitive = os.path.exists(os.path.join(d, 'A'))
+        self.touchRelative(d, "a")
+        self._case_insensitive = os.path.exists(os.path.join(d, "A"))
         return self._case_insensitive
 
     def suspendWatchman(self):
@@ -431,8 +427,10 @@ class WatchmanTestCase(unittest.TestCase):
 
     def rootIsWatched(self, r):
         r = self.normAbsolutePath(r)
-        watches = [self.normAbsolutePath(
-            root) for root in self.watchmanCommand('watch-list')['roots']]
+        watches = [
+            self.normAbsolutePath(root)
+            for root in self.watchmanCommand("watch-list")["roots"]
+        ]
         return r in watches
 
 
@@ -443,21 +441,23 @@ def skip_for(transports=None, codecs=None):
     codecs = set(codecs or ())
 
     def skip(f):
+
         @functools.wraps(f)
         def wrapper(self, *args, **kwargs):
             if self.transport in transports or self.encoding in codecs:
                 self.skipTest(
-                    'test skipped for transport %s, codec %s' %
-                    (self.transport, self.encoding)
+                    "test skipped for transport %s, codec %s"
+                    % (self.transport, self.encoding)
                 )
             return f(self, *args, **kwargs)
 
         return wrapper
+
     return skip
 
 
 def expand_matrix(test_class):
-    '''
+    """
     A decorator function used to create different permutations from
     a given input test class.
 
@@ -465,18 +465,16 @@ def expand_matrix(test_class):
     classes named "MyTestLocalBser", "MyTestLocalBser2",
     "MyTestLocalJson" and "MyTestCliJson" that will exercise the
     different transport and encoding options implied by their names.
-    '''
+    """
 
     matrix = [
-        ('local', 'bser', 'LocalBser2'),
-        ('local', 'json', 'LocalJson'),
-        ('cli', 'json', 'CliJson'),
+        ("local", "bser", "LocalBser2"),
+        ("local", "json", "LocalJson"),
+        ("cli", "json", "CliJson"),
     ]
 
     if not pywatchman.compat.PYTHON3:
-        matrix += [
-            ('local', 'bser-v1', 'LocalBser'),
-        ]
+        matrix += [("local", "bser-v1", "LocalBser")]
 
     # We do some rather hacky things here to define new test class types
     # in our caller's scope.  This is needed so that the unittest TestLoader
@@ -484,11 +482,13 @@ def expand_matrix(test_class):
     caller_scope = inspect.currentframe().f_back.f_locals
 
     for (transport, encoding, suffix) in matrix:
+
         def make_class(transport, encoding, suffix):
             subclass_name = test_class.__name__ + suffix
 
             # Define a new class that derives from the input class
             class MatrixTest(test_class):
+
                 def setDefaultConfiguration(self):
                     self.setConfiguration(transport, encoding)
 

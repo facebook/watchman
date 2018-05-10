@@ -26,20 +26,21 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 # no unicode literals
-
-'''Compatibility module across Python 2 and 3.'''
+from __future__ import absolute_import, division, print_function
 
 import sys
+
+
+"""Compatibility module across Python 2 and 3."""
+
 
 PYTHON3 = sys.version_info >= (3, 0)
 
 # This is adapted from https://bitbucket.org/gutworth/six, and used under the
 # MIT license. See LICENSE for a full copyright notice.
 if PYTHON3:
+
     def reraise(tp, value, tb=None):
         try:
             if value is None:
@@ -50,14 +51,18 @@ if PYTHON3:
         finally:
             value = None
             tb = None
+
+
 else:
-    exec('''
+    exec(
+        """
 def reraise(tp, value, tb=None):
     try:
         raise tp, value, tb
     finally:
         tb = None
-'''.strip())
+""".strip()
+    )
 
 if PYTHON3:
     UNICODE = str
