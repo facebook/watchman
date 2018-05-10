@@ -8,6 +8,7 @@
 #include <thrift/lib/cpp2/async/HeaderClientChannel.h>
 #include <algorithm>
 #include "eden/fs/service/gen-cpp2/StreamingEdenService.h"
+#include "thirdparty/wildmatch/wildmatch.h"
 #include "watchman.h"
 
 #include "ChildProcess.h"
@@ -15,12 +16,14 @@
 #include "QueryableView.h"
 #include "ThreadPool.h"
 
-using facebook::eden::StreamingEdenServiceAsyncClient;
-using facebook::eden::FileInformationOrError;
-using facebook::eden::FileInformation;
-using facebook::eden::JournalPosition;
-using facebook::eden::FileDelta;
 using facebook::eden::EdenError;
+using facebook::eden::FileDelta;
+using facebook::eden::FileInformation;
+using facebook::eden::FileInformationOrError;
+using facebook::eden::Glob;
+using facebook::eden::GlobParams;
+using facebook::eden::JournalPosition;
+using facebook::eden::StreamingEdenServiceAsyncClient;
 
 namespace {
 /** Represents a cache key for getFilesChangedBetweenCommits()
@@ -360,6 +363,42 @@ class EdenWrappedSCM : public SCM {
   }
 };
 
+/** Returns the files that match the glob. */
+std::vector<std::string> callEdenGlobViaThrift(
+    StreamingEdenServiceAsyncClient* client,
+    const std::string& mountPoint,
+    const std::vector<std::string>& globPatterns,
+    bool includeDotfiles) {
+  // Eden's Thrift API has an new Thrift API, globFiles(), and a deprecated
+  // Thrift API, glob(). Because Thrift does not provide a way to dynamically
+  // check which methods are available, we try globFiles() first and then fall
+  // back to glob() if it fails. We should delete this code once we are
+  // confident Eden instances in the wild have been updated to support
+  // globFiles().
+  try {
+    GlobParams params;
+    params.set_mountPoint(mountPoint);
+    params.set_globs(globPatterns);
+    params.set_includeDotfiles(includeDotfiles);
+
+    Glob glob;
+    client->sync_globFiles(glob, params);
+    return glob.get_matchingFiles();
+  } catch (std::runtime_error& e) {
+    // Note that the old API assumes includeDotfiles=true, so this will not
+    // return the correct result if the caller specified includeDotfiles=false.
+    if (!includeDotfiles) {
+      throw std::runtime_error(
+          "Run `eden restart` to pick up a new version of Eden "
+          "so glob(includeDotfiles=false) is handled correctly.");
+    }
+
+    std::vector<std::string> fileNames;
+    client->sync_glob(fileNames, mountPoint, globPatterns);
+    return fileNames;
+  }
+}
+
 class EdenView : public QueryableView {
   w_string root_path_;
   // The source control system that we detected during initialization
@@ -375,8 +414,7 @@ class EdenView : public QueryableView {
         // Allow for 32 pairs of revs, with errors cached for 10 seconds
         filesBetweenCommitCache_(32, std::chrono::seconds(10)) {}
 
-  void timeGenerator(w_query* /*query*/, struct w_query_ctx* ctx)
-      const override {
+  void timeGenerator(w_query* query, struct w_query_ctx* ctx) const override {
     auto client = getEdenClient(root_path_);
     auto mountPoint = to<std::string>(ctx->root->root_path);
 
@@ -391,12 +429,14 @@ class EdenView : public QueryableView {
     // This is the fall back for a fresh instance result set.
     // There are two different code paths that may need this, so
     // it is broken out as a lambda.
-    auto getAllFiles = [ctx, &client, &mountPoint]() {
-      std::vector<std::string> fileNames;
-
+    auto getAllFiles = [ctx,
+                        &client,
+                        &mountPoint,
+                        includeDotfiles =
+                            (query->glob_flags & WM_PERIOD) == 0]() {
       if (ctx->query->empty_on_fresh_instance) {
         // Avoid a full tree walk if we don't need it!
-        return fileNames;
+        return std::vector<std::string>();
       }
 
       std::string globPattern;
@@ -407,9 +447,11 @@ class EdenView : public QueryableView {
         globPattern.append("/");
       }
       globPattern.append("**");
-      client->sync_glob(
-          fileNames, mountPoint, std::vector<std::string>{globPattern});
-      return fileNames;
+      return callEdenGlobViaThrift(
+          client.get(),
+          mountPoint,
+          std::vector<std::string>{globPattern},
+          includeDotfiles);
     };
 
     std::vector<std::string> fileNames;
@@ -584,13 +626,14 @@ class EdenView : public QueryableView {
 
   void executeGlobBasedQuery(
       const std::vector<std::string>& globStrings,
-      w_query* /*query*/,
+      w_query* query,
       struct w_query_ctx* ctx) const {
     auto client = getEdenClient(ctx->root->root_path);
     auto mountPoint = to<std::string>(ctx->root->root_path);
 
-    std::vector<std::string> fileNames;
-    client->sync_glob(fileNames, mountPoint, globStrings);
+    auto includeDotfiles = (query->glob_flags & WM_PERIOD) == 0;
+    auto fileNames = callEdenGlobViaThrift(
+        client.get(), mountPoint, globStrings, includeDotfiles);
 
     // Filter out any ignored files
     filterOutPaths(fileNames, ctx);
@@ -683,12 +726,6 @@ class EdenView : public QueryableView {
     if (noescape) {
       throw QueryExecError(
           "glob_noescape is not supported for the eden watcher");
-    }
-    auto includedotfiles = json_is_true(
-        query->query_spec.get_default("glob_includedotfiles", json_false()));
-    if (includedotfiles) {
-      throw QueryExecError(
-          "glob_includedotfiles is not supported for the eden watcher");
     }
     executeGlobBasedQuery(globStrings, query, ctx);
   }
@@ -894,8 +931,8 @@ std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
   }
 }
 
-} // anon namespace
+} // namespace
 
 static WatcherRegistry
     reg("eden", detectEden, 100 /* prefer eden above others */);
-} // watchman namespace
+} // namespace watchman

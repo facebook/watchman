@@ -85,6 +85,19 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertFileListsEqual(res['files'],
                                   ['bdir/noexec.sh', 'bdir/test.sh'])
 
+        # glob_includedotfiles should be False by default.
+        res = self.watchmanCommand('query', root, {
+            'fields': ['name'],
+            'glob': ['**/root']})
+        self.assertFileListsEqual(res['files'], [])
+
+        # Verify glob_includedotfiles=True is honored in Eden.
+        res = self.watchmanCommand('query', root, {
+            'fields': ['name'],
+            'glob': ['**/root'],
+            'glob_includedotfiles': True})
+        self.assertFileListsEqual(res['files'], ['.eden/root'])
+
         res = self.watchmanCommand('query', root, {
             'path': [''],
             'fields': ['name']})

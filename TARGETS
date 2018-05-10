@@ -75,9 +75,10 @@ def sysdep_watcher():
                 ":headers",
                 "//eden/fs/service:thrift-streaming-cpp2",
                 "//folly:string",
+                "//watchman/thirdparty/wildmatch:wildmatch",
             ],
         )
-        
+
         # Linux specific watcher module
         cpp_library(
             name = "sysdep_watcher",
