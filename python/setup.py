@@ -4,7 +4,7 @@
 import os
 
 
-os.chdir(os.path.dirname(__file__))
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 try:
     from setuptools import setup, Extension
