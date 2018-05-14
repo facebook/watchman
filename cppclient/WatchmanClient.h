@@ -23,9 +23,18 @@
  *    return client.watch("/some/path").then([](WatchPathPtr watch) {
  *      folly::dynamic query = folly::dynamic::object("fields", {"name"});
  *
- *      return client.subscribe(query, watch, &eb, [](folly::dynamic&& data) {
- *        std::cout << "Got file update data: " << data << std::endl;
- *      });
+ *      return client.subscribe(
+ *          query,
+ *          watch,
+ *          &eb,
+ *          [](folly::Try<folly::dynamic>&& data) {
+ *            if (data.hasValue()) {
+ *              std::cout << "Got file update data: " << data << std::endl;
+ *            } else {
+ *              std::cout << "subscribe() failed with: " << data.exception()
+ *                        << std::endl;
+ *            }
+ *          });
  *    });
  *  });
  *
