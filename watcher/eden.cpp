@@ -23,6 +23,7 @@ using facebook::eden::FileInformationOrError;
 using facebook::eden::Glob;
 using facebook::eden::GlobParams;
 using facebook::eden::JournalPosition;
+using facebook::eden::SHA1Result;
 using facebook::eden::StreamingEdenServiceAsyncClient;
 
 namespace {
@@ -139,11 +140,12 @@ std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
 class EdenFileResult : public FileResult {
  public:
   EdenFileResult(
+      const w_string& rootPath,
       const FileInformationOrError& infoOrErr,
       const w_string& fullName,
       JournalPosition* position = nullptr,
       bool isNew = false)
-      : fullName_(fullName) {
+      : root_path_(rootPath), fullName_(fullName) {
     otime_.ticks = ctime_.ticks = 0;
     otime_.timestamp = ctime_.timestamp = 0;
     if (position) {
@@ -208,12 +210,56 @@ class EdenFileResult : public FileResult {
   }
 
   Future<FileResult::ContentHash> getContentSha1() override {
-    return makeFuture<FileResult::ContentHash>(
-        Result<FileResult::ContentHash>(std::make_exception_ptr(
-            std::runtime_error("content hash not implemented"))));
+    // Get eden thrift client
+    auto client = getEdenClient(root_path_);
+    auto mountPoint = to<std::string>(root_path_);
+
+    // Truncate root_path from fullName
+    auto relativeName = fullName_.piece();
+    relativeName.advance(root_path_.size() + 1);
+
+    // Query thrift client for sha hash
+    std::vector<SHA1Result> result;
+    client->sync_getSHA1(
+        result, to<std::string>(root_path_), {to<std::string>(relativeName)});
+
+    // Validate thrift response
+    if (result.size() != 1) {
+      return makeFuture<FileResult::ContentHash>(
+          Result<FileResult::ContentHash>(
+              std::make_exception_ptr(std::runtime_error(
+                  "Unexpected number of files returned by thrift call"))));
+    }
+
+    // Parse thrift response
+    auto& item = result[0];
+    switch (item.getType()) {
+      // Copy thrift SHA1Result aka (std::string) into
+      // watchman FileResult::ContentHash aka (std::array<uint8_t, 20>)
+      case SHA1Result::Type::sha1: {
+        auto& hash = item.get_sha1();
+        ContentHash hashData;
+        std::copy(hash.begin(), hash.end(), hashData.begin());
+
+        return makeFuture<FileResult::ContentHash>(makeResult(hashData));
+      }
+
+      // Thrift error occured
+      case SHA1Result::Type::error:
+        return makeFuture<FileResult::ContentHash>(
+            Result<FileResult::ContentHash>(std::make_exception_ptr(
+                std::runtime_error(item.get_error().message))));
+
+      // Something is wrong with type union
+      default:
+        return makeFuture<FileResult::ContentHash>(
+            Result<FileResult::ContentHash>(std::make_exception_ptr(
+                std::runtime_error("Unknown thrift data"))));
+    }
   }
 
  private:
+  w_string root_path_;
   w_string fullName_;
   watchman::FileInformation stat_;
   bool exists_;
@@ -589,6 +635,7 @@ class EdenView : public QueryableView {
       bool isNew = createdFileNames.find(name) != createdFileNames.end();
 
       auto file = make_unique<EdenFileResult>(
+          root_path_,
           fileInfo,
           w_string::pathCat({mountPoint, name}),
           &resultPosition,
@@ -653,7 +700,7 @@ class EdenView : public QueryableView {
       auto& fileInfo = *infoIter;
 
       auto file = make_unique<EdenFileResult>(
-          fileInfo, w_string::pathCat({mountPoint, name}));
+          root_path_, fileInfo, w_string::pathCat({mountPoint, name}));
 
       w_query_process_file(ctx->query, ctx, std::move(file));
 
