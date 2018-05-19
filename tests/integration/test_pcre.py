@@ -24,9 +24,11 @@ class TestPcre(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand("watch", root)
 
         fill = "lemon\\.php" * 3600
-        pcre = "^(" + "|".join(
-            [fill[i : i + 100] for i in range(0, len(fill), 100)]
-        ) + "sss)"
+        pcre = (
+            "^("
+            + "|".join([fill[i : i + 100] for i in range(0, len(fill), 100)])
+            + "sss)"
+        )
 
         try:
             self.watchmanCommand(

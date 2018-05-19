@@ -171,7 +171,9 @@ os.environ["WATCHMAN_PYTHON_BIN"] = os.path.abspath(
     os.path.join(os.getcwd(), "python", "bin")
 )
 os.environ["PATH"] = "%s%s%s" % (
-    os.path.abspath(bin_dir), os.pathsep, os.environ["PATH"]
+    os.path.abspath(bin_dir),
+    os.pathsep,
+    os.environ["PATH"],
 )
 
 # We'll put all our temporary stuff under one dir so that we

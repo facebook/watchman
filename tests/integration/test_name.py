@@ -26,9 +26,7 @@ class TestNameExpr(WatchmanTestCase.WatchmanTestCase):
         self.assertFileListsEqual(
             self.watchmanCommand(
                 "query", root, {"expression": ["iname", "FOO.c"], "fields": ["name"]}
-            )[
-                "files"
-            ],
+            )["files"],
             ["foo.c"],
         )
 
@@ -37,18 +35,14 @@ class TestNameExpr(WatchmanTestCase.WatchmanTestCase):
                 "query",
                 root,
                 {"expression": ["iname", ["FOO.c", "INVALID.txt"]], "fields": ["name"]},
-            )[
-                "files"
-            ],
+            )["files"],
             ["foo.c"],
         )
 
         self.assertFileListsEqual(
             self.watchmanCommand(
                 "query", root, {"expression": ["name", "foo.c"], "fields": ["name"]}
-            )[
-                "files"
-            ],
+            )["files"],
             ["foo.c"],
         )
 
@@ -57,9 +51,7 @@ class TestNameExpr(WatchmanTestCase.WatchmanTestCase):
                 "query",
                 root,
                 {"expression": ["name", ["foo.c", "invalid"]], "fields": ["name"]},
-            )[
-                "files"
-            ],
+            )["files"],
             ["foo.c"],
         )
 
@@ -68,9 +60,7 @@ class TestNameExpr(WatchmanTestCase.WatchmanTestCase):
                 "query",
                 root,
                 {"expression": ["name", "foo.c", "wholename"], "fields": ["name"]},
-            )[
-                "files"
-            ],
+            )["files"],
             ["foo.c"],
         )
 
@@ -80,9 +70,7 @@ class TestNameExpr(WatchmanTestCase.WatchmanTestCase):
                     "query",
                     root,
                     {"expression": ["name", "Foo.c", "wholename"], "fields": ["name"]},
-                )[
-                    "files"
-                ],
+                )["files"],
                 ["foo.c"],
             )
 
@@ -91,9 +79,7 @@ class TestNameExpr(WatchmanTestCase.WatchmanTestCase):
                 "query",
                 root,
                 {"expression": ["name", "bar.txt", "wholename"], "fields": ["name"]},
-            )[
-                "files"
-            ],
+            )["files"],
             [],
         )
 
@@ -106,9 +92,7 @@ class TestNameExpr(WatchmanTestCase.WatchmanTestCase):
                     "relative_root": "subdir",
                     "fields": ["name"],
                 },
-            )[
-                "files"
-            ],
+            )["files"],
             ["bar.txt"],
         )
 
@@ -122,9 +106,7 @@ class TestNameExpr(WatchmanTestCase.WatchmanTestCase):
                     "relative_root": "subdir",
                     "fields": ["name"],
                 },
-            )[
-                "files"
-            ],
+            )["files"],
             [],
         )
 

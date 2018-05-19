@@ -69,7 +69,9 @@ def synthesize(vers, opts):
         have = check(parsed_version, name)
         vers["capabilities"][name] = have
         if not have:
-            vers[
-                "error"
-            ] = "client required capability `" + name + "` is not supported by this server"
+            vers["error"] = (
+                "client required capability `"
+                + name
+                + "` is not supported by this server"
+            )
     return vers

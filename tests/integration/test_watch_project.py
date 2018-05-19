@@ -101,7 +101,8 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
 
     def test_watchProjectEnforcing(self):
         config = {
-            "root_files": [".git", ".hg", ".foo", ".bar"], "enforce_root_files": True
+            "root_files": [".git", ".hg", ".foo", ".bar"],
+            "enforce_root_files": True,
         }
         expect = [
             ("a/b/c/.git", "a/b/c", None, True),

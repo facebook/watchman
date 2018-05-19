@@ -49,7 +49,10 @@ class TestMatch(WatchmanTestCase.WatchmanTestCase):
             root,
             {
                 "expression": [
-                    "anyof", ["suffix", "pdf"], ["suffix", "nomatch"], ["suffix", "dll"]
+                    "anyof",
+                    ["suffix", "pdf"],
+                    ["suffix", "nomatch"],
+                    ["suffix", "dll"],
                 ],
                 "fields": ["name"],
             },
@@ -162,9 +165,7 @@ class TestMatch(WatchmanTestCase.WatchmanTestCase):
         self.assertFileListsEqual(
             self.watchmanCommand(
                 "query", root, {"expression": ["suffix", "c"], "fields": ["name"]}
-            )[
-                "files"
-            ],
+            )["files"],
             ["foo.c"],
         )
 

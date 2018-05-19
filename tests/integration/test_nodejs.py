@@ -81,10 +81,11 @@ class NodeTestCase(unittest.TestCase):
     def runTest(self):
         env = os.environ.copy()
         env["WATCHMAN_SOCK"] = WatchmanInstance.getSharedInstance().getSockPath()
-        dotted = os.path.normpath(self.id()).replace(os.sep, ".").replace(
-            "tests.integration.", ""
-        ).replace(
-            ".php", ""
+        dotted = (
+            os.path.normpath(self.id())
+            .replace(os.sep, ".")
+            .replace("tests.integration.", "")
+            .replace(".php", "")
         )
         if self.attempt > 0:
             dotted += "-%d" % self.attempt

@@ -78,7 +78,10 @@ class TestMatch(WatchmanTestCase.WatchmanTestCase):
             root,
             {
                 "expression": [
-                    "match", "**/*.c", "wholename", {"includedotfiles": True}
+                    "match",
+                    "**/*.c",
+                    "wholename",
+                    {"includedotfiles": True},
                 ],
                 "fields": ["name"],
             },

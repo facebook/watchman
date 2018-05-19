@@ -40,7 +40,9 @@ class TestSinceTerm(WatchmanTestCase.WatchmanTestCase):
             root,
             {
                 "expression": [
-                    "allof", ["since", base_mtime - 1, "mtime"], ["name", "foo.c"]
+                    "allof",
+                    ["since", base_mtime - 1, "mtime"],
+                    ["name", "foo.c"],
                 ],
                 "fields": ["name"],
             },
@@ -53,7 +55,9 @@ class TestSinceTerm(WatchmanTestCase.WatchmanTestCase):
                 root,
                 {
                     "expression": [
-                        "allof", ["since", base_mtime - 1, "mtime"], ["name", "FOO.c"]
+                        "allof",
+                        ["since", base_mtime - 1, "mtime"],
+                        ["name", "FOO.c"],
                     ],
                     "fields": ["name"],
                 },

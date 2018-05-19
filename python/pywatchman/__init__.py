@@ -155,7 +155,10 @@ if os.name == "nt":
 
     GetOverlappedResult = ctypes.windll.kernel32.GetOverlappedResult
     GetOverlappedResult.argtypes = [
-        wintypes.HANDLE, ctypes.POINTER(OVERLAPPED), LPDWORD, wintypes.BOOL
+        wintypes.HANDLE,
+        ctypes.POINTER(OVERLAPPED),
+        LPDWORD,
+        wintypes.BOOL,
     ]
     GetOverlappedResult.restype = wintypes.BOOL
 

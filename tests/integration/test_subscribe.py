@@ -151,9 +151,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
             "defer",
             root,
             accept=lambda x: self.matchStateSubscription(x, "state-leave"),
-        )[
-            0
-        ]
+        )[0]
         self.assertEqual("leavemeta", end["metadata"])
 
         # and now we should observe the file change

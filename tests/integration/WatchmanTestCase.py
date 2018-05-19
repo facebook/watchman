@@ -277,7 +277,10 @@ class WatchmanTestCase(unittest.TestCase):
             return res
         if message is None:
             message = "%s was not equal to %s in %s seconds: %s" % (
-                actual_cond, expected, timeout, res
+                actual_cond,
+                expected,
+                timeout,
+                res,
             )
         self.fail(message)
 

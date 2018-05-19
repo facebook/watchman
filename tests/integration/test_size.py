@@ -48,9 +48,7 @@ class TestSizeExpr(WatchmanTestCase.WatchmanTestCase):
         self.assertFileListsEqual(
             self.watchmanCommand(
                 "query", root, {"expression": ["size", "gt", 100], "fields": ["name"]}
-            )[
-                "files"
-            ],
+            )["files"],
             [],
             message="removed file is not matched",
         )

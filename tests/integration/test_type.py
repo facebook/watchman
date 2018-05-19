@@ -26,18 +26,14 @@ class TestTypeExpr(WatchmanTestCase.WatchmanTestCase):
         self.assertFileListsEqual(
             self.watchmanCommand(
                 "query", root, {"expression": ["type", "f"], "fields": ["name"]}
-            )[
-                "files"
-            ],
+            )["files"],
             ["foo.c", "subdir/bar.txt"],
         )
 
         self.assertEqual(
             self.watchmanCommand(
                 "query", root, {"expression": ["type", "d"], "fields": ["name", "type"]}
-            )[
-                "files"
-            ],
+            )["files"],
             [{"name": "subdir", "type": "d"}],
         )
 

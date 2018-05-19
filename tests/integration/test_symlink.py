@@ -102,7 +102,9 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         os.unlink(os.path.join(root, "111"))
 
         expr = {
-            "expression": ["name", "111"], "fields": ["name", "exists"], "since": clock
+            "expression": ["name", "111"],
+            "fields": ["name", "exists"],
+            "since": clock,
         }
 
         res = self.watchmanCommand("query", root, expr)
@@ -120,7 +122,8 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.assertFileList(root, ["111", "222"])
 
         expr = {
-            "expression": ["name", "111"], "fields": ["name", "symlink_target", "type"]
+            "expression": ["name", "111"],
+            "fields": ["name", "symlink_target", "type"],
         }
 
         res = self.watchmanCommand("query", root, expr)

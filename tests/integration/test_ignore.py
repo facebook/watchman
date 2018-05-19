@@ -80,6 +80,11 @@ class TestIgnore(WatchmanTestCase.WatchmanTestCase):
         self.assertFileList(
             root,
             files=[
-                ".watchmanconfig", "buil", "builda", "builda/hello", "buildfile", "foo"
+                ".watchmanconfig",
+                "buil",
+                "builda",
+                "builda/hello",
+                "buildfile",
+                "foo",
             ],
         )

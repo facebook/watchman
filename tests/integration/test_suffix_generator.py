@@ -33,9 +33,7 @@ class TestSuffixGenerator(WatchmanTestCase.WatchmanTestCase):
         self.assertFileListsEqual(
             self.watchmanCommand(
                 "query", root, {"suffix": ["c", "txt"], "fields": ["name"]}
-            )[
-                "files"
-            ],
+            )["files"],
             ["foo.c", "subdir/bar.txt"],
         )
 
@@ -44,9 +42,7 @@ class TestSuffixGenerator(WatchmanTestCase.WatchmanTestCase):
                 "query",
                 root,
                 {"suffix": ["c", "txt"], "relative_root": "subdir", "fields": ["name"]},
-            )[
-                "files"
-            ],
+            )["files"],
             ["bar.txt"],
         )
 
