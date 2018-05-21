@@ -111,8 +111,8 @@ where
             BSER_TRUE => self.visit_bool(visitor, true),
             BSER_FALSE => self.visit_bool(visitor, false),
             BSER_NULL => self.visit_unit(visitor),
-            BSER_BYTESTRING => self.visit_utf8string(visitor),
-            BSER_UTF8STRING => self.visit_bytestring(visitor),
+            BSER_BYTESTRING => self.visit_bytestring(visitor),
+            BSER_UTF8STRING => self.visit_utf8string(visitor),
             BSER_TEMPLATE => {
                 let guard = self.remaining_depth.acquire("template")?;
                 self.bunser.discard();

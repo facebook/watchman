@@ -1,6 +1,7 @@
 use serde::de;
 
 use errors::*;
+use header::*;
 
 use super::Deserializer;
 use super::read::DeRead;
@@ -40,8 +41,7 @@ where
             Ok(None)
         } else {
             self.remaining -= 1;
-            // TODO: must only allow string keys
-            let key = seed.deserialize(&mut *self.de)?;
+            let key = seed.deserialize(MapKey { de: &mut *self.de })?;
             Ok(Some(key))
         }
     }
@@ -51,5 +51,82 @@ where
         V: de::DeserializeSeed<'de>,
     {
         seed.deserialize(&mut *self.de)
+    }
+}
+
+/// A deserializer that is specialized to deal with map keys. Specifically, map keys are always
+/// strings.
+struct MapKey<'a, R: 'a> {
+    de: &'a mut Deserializer<R>,
+}
+
+impl<'a, 'de, R> de::Deserializer<'de> for MapKey<'a, R>
+where
+    R: DeRead<'de>,
+{
+    type Error = Error;
+
+    #[inline]
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        match self.de.bunser.peek()? {
+            // Both bytestrings and UTF-8 strings are treated as Unicode strings, since field
+            // identifiers must be Unicode strings.
+            BSER_BYTESTRING | BSER_UTF8STRING => self.de.visit_utf8string(visitor),
+            other => bail!(ErrorKind::DeInvalidStartByte("map key".into(), other)),
+        }
+    }
+
+    #[inline]
+    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        // Map keys cannot be null.
+        visitor.visit_some(self)
+    }
+
+    #[inline]
+    fn deserialize_newtype_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        visitor.visit_newtype_struct(self)
+    }
+
+    #[inline]
+    fn deserialize_enum<V>(
+        self,
+        name: &'static str,
+        variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.de.deserialize_enum(name, variants, visitor)
+    }
+
+    #[inline]
+    fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.de.deserialize_bytes(visitor)
+    }
+
+    #[inline]
+    fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.de.deserialize_bytes(visitor)
+    }
+
+    forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string unit unit_struct
+        seq tuple tuple_struct map struct identifier ignored_any
     }
 }
