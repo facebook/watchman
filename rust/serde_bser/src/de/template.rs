@@ -13,8 +13,12 @@ use super::reentrant::ReentrantGuard;
 // This is ugly because #[serde(borrow)] can't be used with collections directly
 // at the moment. See
 // https://github.com/serde-rs/serde/issues/914#issuecomment-298801226 for more.
+// Note that keys are always ASCII, so treating them as str is fine, even if they're
+// serialized as BSER_BYTESTRING instances. (These keys are used as struct field
+// identifiers, which are Unicode strings so can't be directly matched up with
+// bytestrings.)
 #[derive(Clone, Debug, Deserialize)]
-pub struct Key<'a>(#[serde(borrow)] Cow<'a, [u8]>);
+pub struct Key<'a>(#[serde(borrow)] Cow<'a, str>);
 
 /// A BSER template is logically an array of objects, all with the same or
 /// similar keys.
@@ -192,8 +196,8 @@ impl<'a, 'de: 'a> de::Deserializer<'de> for KeyDeserializer<'a, 'de> {
         V: de::Visitor<'de>,
     {
         match self.key.0 {
-            Cow::Borrowed(s) => visitor.visit_borrowed_bytes(s),
-            Cow::Owned(ref s) => visitor.visit_bytes(s),
+            Cow::Borrowed(s) => visitor.visit_borrowed_str(s),
+            Cow::Owned(ref s) => visitor.visit_str(s),
         }
     }
 
