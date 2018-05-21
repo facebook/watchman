@@ -251,3 +251,246 @@ fn test_template() {
         ]
     );
 }
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum RequestResult<T, E> {
+    Error(E),
+    Ok(T),
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct FileInfo {
+    name: String,
+    size: u32,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct Files {
+    files: Vec<FileInfo>,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct RequestError {
+    error: String,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct BytestringFileInfo<'a> {
+    #[serde(borrow)]
+    name: Bytestring<'a>,
+    size: u32,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct BytestringFiles<'a> {
+    #[serde(borrow)]
+    files: Vec<BytestringFileInfo<'a>>,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct BytestringRequestError<'a> {
+    #[serde(borrow)]
+    error: Bytestring<'a>,
+}
+
+#[test]
+fn test_compact_arrays() {
+    // {
+    //  "files": [
+    //      {
+    //          "name": "fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug",
+    //          "size": 384
+    //      },
+    //      {
+    //          "name": "fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug/deps",
+    //          "size": 3200
+    //      },
+    //   ]
+    // }
+
+    let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x04\xeb\x00\x01\x03\x04\x02\x03\x05files\x0b\x00\x03\x02\x0d\x03\x04name\x0d\x03\x04size\x03\x02\x02\x038fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug\x04\x80\x01\x02\x03\x3dfbcode/scm/hg/lib/hg_watchman_client/tester/target/debug/deps\x04\x80\x0c\x02\x03\x05clock\x0d\x03\x19c\x3a1525428959\x3a45796\x3a2\x3a7717\x02\x03\x11is_fresh_instance\x09\x02\x03\x07version\x0d\x03\x054.9.1";
+
+    let decoded = from_slice::<BytestringFiles>(bser_v2).unwrap();
+
+    assert_eq!(
+        decoded,
+        BytestringFiles {
+            files: vec![
+                BytestringFileInfo {
+                    name: (&b"fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug"[..]).into(),
+                    size: 384,
+                },
+                BytestringFileInfo {
+                    name: (&b"fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug/deps"[..])
+                        .into(),
+                    size: 3200,
+                },
+            ],
+        }
+    );
+
+    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let decoded: Files = from_reader(reader).unwrap();
+
+    assert_eq!(
+        decoded,
+        Files {
+            files: vec![
+                FileInfo {
+                    name: "fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug".into(),
+                    size: 384,
+                },
+                FileInfo {
+                    name: "fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug/deps".into(),
+                    size: 3200,
+                },
+            ],
+        }
+    );
+}
+
+#[test]
+fn test_compact_arrays_untagged_enum() {
+    let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x04\xeb\x00\x01\x03\x04\x02\x03\x05files\x0b\x00\x03\x02\x0d\x03\x04name\x0d\x03\x04size\x03\x02\x02\x038fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug\x04\x80\x01\x02\x03\x3dfbcode/scm/hg/lib/hg_watchman_client/tester/target/debug/deps\x04\x80\x0c\x02\x03\x05clock\x0d\x03\x19c\x3a1525428959\x3a45796\x3a2\x3a7717\x02\x03\x11is_fresh_instance\x09\x02\x03\x07version\x0d\x03\x054.9.1";
+
+    let decoded =
+        from_slice::<RequestResult<BytestringFiles, BytestringRequestError>>(bser_v2).unwrap();
+
+    assert_eq!(
+        decoded,
+        RequestResult::Ok(BytestringFiles {
+            files: vec![
+                BytestringFileInfo {
+                    name: (&b"fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug"[..]).into(),
+                    size: 384,
+                },
+                BytestringFileInfo {
+                    name: (&b"fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug/deps"[..])
+                        .into(),
+                    size: 3200,
+                },
+            ],
+        })
+    );
+
+    let reader = Cursor::new(bser_v2.to_vec()).reader();
+
+    let decoded: RequestResult<Files, RequestError> = from_reader(reader).unwrap();
+
+    assert_eq!(
+        decoded,
+        RequestResult::Ok(Files {
+            files: vec![
+                FileInfo {
+                    name: "fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug".into(),
+                    size: 384,
+                },
+                FileInfo {
+                    name: "fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug/deps".into(),
+                    size: 3200,
+                },
+            ],
+        })
+    );
+}
+
+#[test]
+// non compact arrays
+fn test_arrays() {
+    // {
+    //    "files": [
+    //      {
+    //          "name": "fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug",
+    //          "size": 384
+    //      },
+    //      {
+    //          "name": "fbcode/scm/hg/lib/hg_watchman_client/tester",
+    //          "size": 224
+    //      }
+    //    ]
+    // }
+
+    let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x04\xea\x00\x01\x03\x04\x02\x03\x07version\x02\x03\x054.9.1\x02\x03\x11is_fresh_instance\x09\x02\x03\x05clock\x02\x03\x19c\x3a1525428959\x3a45796\x3a2\x3a9642\x02\x03\x05files\x00\x03\x02\x01\x03\x02\x02\x03\x04size\x04\x80\x01\x02\x03\x04name\x02\x038fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug\x01\x03\x02\x02\x03\x04size\x04\xe0\x00\x02\x03\x04name\x02\x03\x2bfbcode/scm/hg/lib/hg_watchman_client/tester";
+
+    let decoded = from_slice::<BytestringFiles>(bser_v2).unwrap();
+
+    assert_eq!(
+        decoded,
+        BytestringFiles {
+            files: vec![
+                BytestringFileInfo {
+                    name: (&b"fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug"[..]).into(),
+                    size: 384,
+                },
+                BytestringFileInfo {
+                    name: (&b"fbcode/scm/hg/lib/hg_watchman_client/tester"[..]).into(),
+                    size: 224,
+                },
+            ],
+        }
+    );
+
+    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let decoded: Files = from_reader(reader).unwrap();
+
+    assert_eq!(
+        decoded,
+        Files {
+            files: vec![
+                FileInfo {
+                    name: "fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug".into(),
+                    size: 384,
+                },
+                FileInfo {
+                    name: "fbcode/scm/hg/lib/hg_watchman_client/tester".into(),
+                    size: 224,
+                },
+            ],
+        }
+    );
+}
+
+#[test]
+// non compact arrays
+fn test_arrays_untagged_enum() {
+    let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x04\xea\x00\x01\x03\x04\x02\x03\x07version\x02\x03\x054.9.1\x02\x03\x11is_fresh_instance\x09\x02\x03\x05clock\x02\x03\x19c\x3a1525428959\x3a45796\x3a2\x3a9642\x02\x03\x05files\x00\x03\x02\x01\x03\x02\x02\x03\x04size\x04\x80\x01\x02\x03\x04name\x02\x038fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug\x01\x03\x02\x02\x03\x04size\x04\xe0\x00\x02\x03\x04name\x02\x03\x2bfbcode/scm/hg/lib/hg_watchman_client/tester";
+
+    let decoded =
+        from_slice::<RequestResult<BytestringFiles, BytestringRequestError>>(bser_v2).unwrap();
+
+    assert_eq!(
+        decoded,
+        RequestResult::Ok(BytestringFiles {
+            files: vec![
+                BytestringFileInfo {
+                    name: (&b"fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug"[..]).into(),
+                    size: 384,
+                },
+                BytestringFileInfo {
+                    name: (&b"fbcode/scm/hg/lib/hg_watchman_client/tester"[..]).into(),
+                    size: 224,
+                },
+            ],
+        })
+    );
+
+    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let decoded: RequestResult<Files, RequestError> = from_reader(reader).unwrap();
+
+    assert_eq!(
+        decoded,
+        RequestResult::Ok(Files {
+            files: vec![
+                FileInfo {
+                    name: "fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug".into(),
+                    size: 384,
+                },
+                FileInfo {
+                    name: "fbcode/scm/hg/lib/hg_watchman_client/tester".into(),
+                    size: 224,
+                },
+            ],
+        })
+    );
+}
