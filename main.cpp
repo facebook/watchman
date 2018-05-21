@@ -95,7 +95,8 @@ static bool lock_pidfile(void) {
     return false;
   }
 
-  dprintf(fd.fd(), "%d", mypid);
+  auto pidString = watchman::to<std::string>(mypid);
+  ignore_result(write(fd.fd(), pidString.data(), pidString.size()));
   fsync(fd.fd());
 
   /* We are intentionally not closing the fd and intentionally not storing

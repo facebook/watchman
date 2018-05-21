@@ -352,6 +352,7 @@ watcher/auto.cpp
 watcher/fsevents.cpp
 watcher/inotify.cpp
 watcher/kqueue.cpp
+watcher/portfs.cpp
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
