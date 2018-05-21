@@ -1,7 +1,12 @@
+use bytes::Buf;
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::io::Cursor;
 
+use from_reader;
 use from_slice;
+
+// For "from_reader" data in owned and for "from_slice" data is borrowed
 
 #[derive(Debug, Deserialize, Eq, Hash, PartialEq)]
 struct Bytestring<'a>(#[serde(borrow)] Cow<'a, [u8]>);
@@ -46,12 +51,25 @@ enum BytestringVariant<'a> {
     },
 }
 
+#[derive(Debug, Deserialize, Eq, PartialEq)]
+enum StringVariant {
+    TestUnit,
+    TestNewtype(String),
+    TestTuple(String, String),
+    TestStruct { abc: String, def: String },
+}
+
 #[test]
 fn test_basic_array() {
     let bser_v2 =
         b"\x00\x02\x00\x00\x00\x00\x05\x11\x00\x00\x00\x00\x03\x02\x02\x03\x03Tom\x02\x03\x05Jerry";
     let decoded = from_slice::<BytestringArray>(bser_v2).unwrap();
     assert_eq!(decoded.0, vec![&b"Tom"[..], &b"Jerry"[..]]);
+
+    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let decoded: Vec<String> = from_reader(reader).unwrap();
+    let expected = vec!["Tom", "Jerry"];
+    assert_eq!(decoded, expected);
 }
 
 #[test]
@@ -59,9 +77,17 @@ fn test_basic_object() {
     let bser_v2 =
         b"\x00\x02\x00\x00\x00\x00\x05\x0f\x00\x00\x00\x01\x03\x01\x02\x03\x03abc\x02\x03\x03def";
     let decoded = from_slice::<BytestringObject>(bser_v2).unwrap();
-    let mut expected = HashMap::new();
-    expected.insert(Bytestring::from(&b"abc"[..]), Bytestring::from(&b"def"[..]));
+    let expected = hashmap! {
+        Bytestring::from(&b"abc"[..]) => Bytestring::from(&b"def"[..])
+    };
     assert_eq!(decoded.0, expected);
+
+    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let decoded: HashMap<String, String> = from_reader(reader).unwrap();
+    let expected = hashmap! {
+        "abc".into() => "def".into()
+    };
+    assert_eq!(decoded, expected);
 }
 
 #[test]
@@ -71,6 +97,11 @@ fn test_basic_tuple() {
     let decoded = from_slice::<TwoBytestrings>(bser_v2).unwrap();
     assert_eq!(decoded.0, &b"Tom"[..]);
     assert_eq!(decoded.1, &b"Jerry"[..]);
+
+    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let decoded: (String, String) = from_reader(reader).unwrap();
+    let expected: (String, String) = ("Tom".into(), "Jerry".into());
+    assert_eq!(decoded, expected);
 }
 
 #[test]
@@ -79,6 +110,10 @@ fn test_bare_variant() {
     let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x05\x0b\x00\x00\x00\x02\x03\x08TestUnit";
     let decoded = from_slice::<BytestringVariant>(bser_v2).unwrap();
     assert_eq!(decoded, BytestringVariant::TestUnit);
+
+    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let decoded: StringVariant = from_reader(reader).unwrap();
+    assert_eq!(decoded, StringVariant::TestUnit);
 }
 
 #[test]
@@ -87,6 +122,10 @@ fn test_unit_variant() {
     let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x05\x0f\x00\x00\x00\x01\x03\x01\x02\x03\x08TestUnit\n";
     let decoded = from_slice::<BytestringVariant>(bser_v2).unwrap();
     assert_eq!(decoded, BytestringVariant::TestUnit);
+
+    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let decoded: StringVariant = from_reader(reader).unwrap();
+    assert_eq!(decoded, StringVariant::TestUnit);
 }
 
 #[test]
@@ -100,6 +139,10 @@ fn test_newtype_variant() {
         decoded,
         BytestringVariant::TestNewtype((&b"foobar"[..]).into())
     );
+
+    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let decoded: StringVariant = from_reader(reader).unwrap();
+    assert_eq!(decoded, StringVariant::TestNewtype("foobar".into()));
 }
 
 #[test]
@@ -111,6 +154,13 @@ fn test_tuple_variant() {
     assert_eq!(
         decoded,
         BytestringVariant::TestTuple((&b"foo"[..]).into(), (&b"bar"[..]).into())
+    );
+
+    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let decoded: StringVariant = from_reader(reader).unwrap();
+    assert_eq!(
+        decoded,
+        StringVariant::TestTuple("foo".into(), "bar".into())
     );
 }
 
@@ -127,13 +177,30 @@ fn test_struct_variant() {
             def: (&b"bar"[..]).into(),
         }
     );
+
+    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let decoded: StringVariant = from_reader(reader).unwrap();
+    assert_eq!(
+        decoded,
+        StringVariant::TestStruct {
+            abc: "foo".into(),
+            def: "bar".into(),
+        }
+    );
 }
 
 #[derive(Debug, Deserialize, Eq, PartialEq)]
-struct TemplateObject<'a> {
+struct BytestringTemplateObject<'a> {
     abc: i32,
     #[serde(borrow)]
     def: Option<Bytestring<'a>>,
+    ghi: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, Eq, PartialEq)]
+struct TemplateObject {
+    abc: i32,
+    def: Option<String>,
     ghi: Option<i64>,
 }
 
@@ -149,13 +216,31 @@ fn test_template() {
     let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x05(\x00\x00\x00\x0b\x00\x03\x03\x02\x03\x03abc\x02\
                     \x03\x03def\x02\x03\x03ghi\x03\x02\x03{\x02\x03\x03bar\n\x04\xc8\x01\x0c\x04\
                     \x15\x03";
-    let decoded = from_slice::<Vec<TemplateObject>>(bser_v2).unwrap();
+    let decoded = from_slice::<Vec<BytestringTemplateObject>>(bser_v2).unwrap();
+    assert_eq!(
+        decoded,
+        vec![
+            BytestringTemplateObject {
+                abc: 123,
+                def: Some((&b"bar"[..]).into()),
+                ghi: None,
+            },
+            BytestringTemplateObject {
+                abc: 456,
+                def: None,
+                ghi: Some(789),
+            },
+        ]
+    );
+
+    let reader = Cursor::new(bser_v2.to_vec()).reader();
+    let decoded: Vec<TemplateObject> = from_reader(reader).unwrap();
     assert_eq!(
         decoded,
         vec![
             TemplateObject {
                 abc: 123,
-                def: Some((&b"bar"[..]).into()),
+                def: Some("bar".into()),
                 ghi: None,
             },
             TemplateObject {

@@ -110,12 +110,22 @@ where
         visitor.visit_newtype_struct(self)
     }
 
-    // TODO: enum?
+    fn deserialize_enum<V>(
+        self,
+        _name: &'static str,
+        _variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value>
+    where
+        V: de::Visitor<'de>,
+    {
+        visitor.visit_map(TemplateObject::new(&mut *self.de, self.keys))
+    }
 
     forward_to_deserialize_any! {
         bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
         byte_buf unit unit_struct seq tuple tuple_struct map struct identifier
-        ignored_any option enum
+        ignored_any option
     }
 }
 

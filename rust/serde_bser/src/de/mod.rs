@@ -8,6 +8,7 @@ mod template;
 mod test;
 mod variant;
 
+use std::io;
 use std::str;
 
 use serde::de;
@@ -54,6 +55,14 @@ where
     T: de::Deserialize<'de>,
 {
     from_trait(SliceRead::new(slice))
+}
+
+pub fn from_reader<R, T>(rdr: R) -> Result<T>
+where
+    R: io::Read,
+    T: de::DeserializeOwned,
+{
+    from_trait(read::IoRead::new(rdr))
 }
 
 impl<'de, R> Deserializer<R>

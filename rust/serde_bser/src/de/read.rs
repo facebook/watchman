@@ -1,37 +1,71 @@
-use std::fmt;
+use std::io;
 use std::result;
-use std::str;
 
 use byteorder::{ByteOrder, NativeEndian};
 use errors::*;
 
-pub trait DeRead<'de>: fmt::Debug {
+#[cfg(feature = "debug_bytes")]
+use std::fmt;
+
+#[cfg(feature = "debug_bytes")]
+macro_rules! debug_bytes {
+    ($($arg:tt)*) => {
+       eprint!($($arg)*);
+    }
+}
+
+#[cfg(not(feature = "debug_bytes"))]
+macro_rules! debug_bytes {
+    ($($arg:tt)*) => {};
+}
+
+#[cfg(feature = "debug_bytes")]
+struct ByteBuf<'a>(&'a [u8]);
+#[cfg(feature = "debug_bytes")]
+impl<'a> fmt::LowerHex for ByteBuf<'a> {
+    fn fmt(&self, fmtr: &mut fmt::Formatter) -> result::Result<(), fmt::Error> {
+        for byte in self.0 {
+            let val = byte.clone();
+            if (val >= b'-' && val <= b'9')
+                || (val >= b'A' && val <= b'Z')
+                || (val >= b'a' && val <= b'z')
+                || val == b'_'
+            {
+                fmtr.write_fmt(format_args!("{}", val as char))?;
+            } else {
+                fmtr.write_fmt(format_args!(r"\x{:02x}", byte))?;
+            }
+        }
+        Ok(())
+    }
+}
+
+pub trait DeRead<'de> {
+    /// read next byte (if peeked byte not discarded return it)
     fn next(&mut self) -> Result<u8>;
+    /// peek next byte (peeked byte should come in next and next_bytes unless discarded)
     fn peek(&mut self) -> Result<u8>;
-    /// Verify that at least `len` bytes are available, if possible.
-    fn verify_remaining(&self, len: usize) -> Result<()>;
-    /// Verify that exactly `len` bytes have been read.
-    fn verify_read_count(&self, len: usize) -> Result<()>;
-    /// How many bytes have been read so far.
+    /// how many bytes have been read so far.
+    /// this doesn't include the peeked byte
     fn read_count(&self) -> usize;
-
+    /// discard peeked byte
     fn discard(&mut self);
-
+    /// read next byte (if peeked byte not discarded include it)
     fn next_bytes<'s>(
         &'s mut self,
         len: usize,
         scratch: &'s mut Vec<u8>,
     ) -> Result<Reference<'de, 's, [u8]>>;
-
+    /// read u32 as native endian
     fn next_u32(&mut self, scratch: &mut Vec<u8>) -> Result<u32> {
-        let bytes = self.next_bytes(4, scratch)
+        let bytes = self
+            .next_bytes(4, scratch)
             .chain_err(|| "error while parsing u32")?
             .get_ref();
         Ok(NativeEndian::read_u32(bytes))
     }
 }
 
-#[derive(Debug)]
 pub struct SliceRead<'a> {
     slice: &'a [u8],
     index: usize,
@@ -43,6 +77,39 @@ impl<'a> SliceRead<'a> {
             slice: slice,
             index: 0,
         }
+    }
+}
+
+pub struct IoRead<R>
+where
+    R: io::Read,
+{
+    reader: R,
+    read_count: usize,
+    /// Temporary storage of peeked byte.
+    peeked: Option<u8>,
+}
+
+impl<R> IoRead<R>
+where
+    R: io::Read,
+{
+    pub fn new(reader: R) -> Self {
+        debug_bytes!("Read bytes:\n");
+        IoRead {
+            reader,
+            read_count: 0,
+            peeked: None,
+        }
+    }
+}
+
+impl<R> Drop for IoRead<R>
+where
+    R: io::Read,
+{
+    fn drop(&mut self) {
+        debug_bytes!("\n");
     }
 }
 
@@ -63,29 +130,7 @@ impl<'a> DeRead<'a> for SliceRead<'a> {
         Ok(self.slice[self.index])
     }
 
-    fn verify_remaining(&self, len: usize) -> Result<()> {
-        let actual_len = self.slice.len() - self.index;
-        if actual_len < len {
-            bail!(
-                "Expected at least {} bytes, but only {} bytes remain in slice",
-                len,
-                actual_len
-            );
-        }
-        Ok(())
-    }
-
-    fn verify_read_count(&self, len: usize) -> Result<()> {
-        if self.index != len {
-            bail!(
-                "Expected {} bytes read, but only read {} bytes",
-                len,
-                self.index
-            );
-        }
-        Ok(())
-    }
-
+    #[inline]
     fn read_count(&self) -> usize {
         self.index
     }
@@ -108,6 +153,72 @@ impl<'a> DeRead<'a> for SliceRead<'a> {
         let borrowed = &self.slice[self.index..(self.index + len)];
         self.index += len;
         Ok(Reference::Borrowed(borrowed))
+    }
+}
+
+impl<'de, R> DeRead<'de> for IoRead<R>
+where
+    R: io::Read,
+{
+    fn next(&mut self) -> Result<u8> {
+        match self.peeked.take() {
+            Some(peeked) => Ok(peeked),
+            None => {
+                let mut buffer = [0; 1];
+                self.reader.read_exact(&mut buffer)?;
+                debug_bytes!("{:x}", ByteBuf(&buffer));
+                self.read_count += 1;
+                Ok(buffer[0])
+            }
+        }
+    }
+
+    fn peek(&mut self) -> Result<u8> {
+        match self.peeked {
+            Some(peeked) => Ok(peeked),
+            None => {
+                let mut buffer = [0; 1];
+                self.reader.read_exact(&mut buffer)?;
+                debug_bytes!("{:x}", ByteBuf(&buffer));
+                self.peeked = Some(buffer[0]);
+                self.read_count += 1;
+                Ok(buffer[0])
+            }
+        }
+    }
+
+    #[inline]
+    fn read_count(&self) -> usize {
+        match self.peeked {
+            Some(_) => self.read_count - 1,
+            None => self.read_count,
+        }
+    }
+
+    #[inline]
+    fn discard(&mut self) {
+        self.peeked = None
+    }
+
+    fn next_bytes<'s>(
+        &'s mut self,
+        len: usize,
+        scratch: &'s mut Vec<u8>,
+    ) -> Result<Reference<'de, 's, [u8]>> {
+        scratch.resize(len, 0);
+        let mut idx = 0;
+        if self.peeked.is_some() {
+            idx += 1;
+        }
+        if idx < len {
+            self.reader.read_exact(&mut scratch[idx..len])?;
+            debug_bytes!("{:x}", ByteBuf(&scratch[idx..len]));
+            self.read_count += len - idx;
+        }
+        if let Some(peeked) = self.peeked.take() {
+            scratch[0] = peeked;
+        }
+        Ok(Reference::Copied(&scratch[0..len]))
     }
 }
 

@@ -10,3 +10,10 @@ error-chain = "*"
 serde = "1"
 serde_bytes = "0.10"
 serde_derive = "1"
+
+[features]
+default = []
+debug_bytes = []
+
+[dev-dependencies]
+maplit = "1.0"

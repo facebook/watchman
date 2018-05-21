@@ -10,5 +10,6 @@ rust_library(
         ("rust-crates-io", None, "serde"),
         ("rust-crates-io", None, "serde_bytes"),
         ("rust-crates-io", None, "serde_derive"),
+        ("rust-crates-io", None, "maplit"),
     ],
 )

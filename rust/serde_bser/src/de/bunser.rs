@@ -52,8 +52,15 @@ where
     }
 
     pub fn end(&self, pdu_info: &PduInfo) -> Result<()> {
-        self.read
-            .verify_read_count((pdu_info.start + pdu_info.len) as usize)
+        let expected = (pdu_info.start + pdu_info.len) as usize;
+        if self.read.read_count() != expected {
+            bail!(
+                "Expected {} bytes read, but only read {} bytes",
+                expected,
+                self.read.read_count()
+            );
+        }
+        Ok(())
     }
 
     #[inline]
