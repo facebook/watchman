@@ -279,19 +279,21 @@ w_query_res w_query_execute(
       // the changes, then we're going to feed that change list through
       // a simpler watchman query.
 
-      auto changedFiles =
-          scm->getFilesChangedSinceMergeBaseWith(resultClock.scmMergeBase);
-
-      auto pathList = json_array_of_size(changedFiles.size());
-      for (auto& f : changedFiles) {
-        json_array_append_new(pathList, w_string_to_json(f));
-      }
-
+      auto scmMergeBase = resultClock.scmMergeBase;
       disableFreshInstance = true;
-      generator = [pathList](
+      generator = [root, scmMergeBase](
                       w_query* q,
                       const std::shared_ptr<w_root_t>& r,
                       struct w_query_ctx* c) {
+        auto changedFiles =
+            root->view()->getSCM()->getFilesChangedSinceMergeBaseWith(
+                scmMergeBase);
+
+        auto pathList = json_array_of_size(changedFiles.size());
+        for (auto& f : changedFiles) {
+          json_array_append_new(pathList, w_string_to_json(f));
+        }
+
         auto spec = r->view()->getMostRecentRootNumberAndTickValue();
         w_clock_t clock{0, 0};
         clock.ticks = spec.ticks;
