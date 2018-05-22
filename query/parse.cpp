@@ -195,8 +195,19 @@ static void parse_query_expression(w_query* res, const json_ref& query) {
   }
 
   res->expr = w_query_expr_parse(res, exp);
+}
 
-  return;
+static void parse_request_id(w_query* res, const json_ref& query) {
+  auto request_id = query.get_default("request_id");
+  if (!request_id) {
+    return;
+  }
+
+  if (!json_is_string(request_id)) {
+    throw QueryParseError("'request_id' must be a string");
+  }
+
+  res->request_id = json_to_w_string(request_id);
 }
 
 static void parse_sync(w_query* res, const json_ref& query) {
@@ -306,6 +317,8 @@ std::shared_ptr<w_query> w_query_parse(
   parse_since(res, query);
 
   parse_query_expression(res, query);
+
+  parse_request_id(res, query);
 
   parse_field_list(query.get_default("fields"), &res->fieldList);
 

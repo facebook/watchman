@@ -230,6 +230,8 @@ struct w_query {
   w_query_field_list fieldList;
   // True if any entry in fieldList has a non-null futureMake
   bool renderUsesFutures{false};
+
+  w_string request_id;
 };
 
 typedef std::unique_ptr<QueryExpr> (

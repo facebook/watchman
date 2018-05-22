@@ -258,8 +258,13 @@ w_query_res w_query_execute(
   std::shared_ptr<w_query> altQuery;
   ClockSpec resultClock(ClockPosition{});
   bool disableFreshInstance{false};
+  auto requestId = query->request_id;
 
   w_perf_t sample("query_execute");
+  if (requestId && !requestId.empty()) {
+    log(DBG, "request_id = ", requestId, "\n");
+    sample.add_meta("request_id", w_string_to_json(requestId));
+  }
 
   // We want to check this before we sync, as the SCM may generate changes
   // in the filesystem when running the underlying commands to query it.
