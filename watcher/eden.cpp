@@ -336,17 +336,20 @@ class EdenWrappedSCM : public SCM {
         inner_(std::move(inner)),
         mountPoint_(to<std::string>(getRootPath())) {}
 
-  w_string mergeBaseWith(w_string_piece commitId) const override {
-    return inner_->mergeBaseWith(commitId);
+  w_string mergeBaseWith(w_string_piece commitId, w_string requestId = nullptr)
+      const override {
+    return inner_->mergeBaseWith(commitId, requestId);
   }
   std::vector<w_string> getFilesChangedSinceMergeBaseWith(
-      w_string_piece commitId) const override {
-    return inner_->getFilesChangedSinceMergeBaseWith(commitId);
+      w_string_piece commitId,
+      w_string requestId = nullptr) const override {
+    return inner_->getFilesChangedSinceMergeBaseWith(commitId, requestId);
   }
 
   SCM::StatusResult getFilesChangedBetweenCommits(
       w_string_piece commitA,
-      w_string_piece commitB) const override {
+      w_string_piece commitB,
+      w_string /* requestId */ = nullptr) const override {
     auto hashA = to<std::string>(commitA);
     auto hashB = to<std::string>(commitB);
 

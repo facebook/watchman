@@ -35,7 +35,9 @@ class SCM {
 
   // Compute the merge base between the working copy revision and the
   // specified commitId.  The commitId is typically something like "master".
-  virtual w_string mergeBaseWith(w_string_piece commitId) const = 0;
+  virtual w_string mergeBaseWith(
+      w_string_piece commitId,
+      w_string requestId = nullptr) const = 0;
 
   // Compute the set of paths that have changed in the commits
   // starting in the working copy and going back to the merge base
@@ -43,7 +45,8 @@ class SCM {
   // set of files that show as modified in the "status" output,
   // but NOT those that are ignored.
   virtual std::vector<w_string> getFilesChangedSinceMergeBaseWith(
-      w_string_piece commitId) const = 0;
+      w_string_piece commitId,
+      w_string requestId = nullptr) const = 0;
 
   struct StatusResult {
     std::vector<w_string> changedFiles;
@@ -56,7 +59,8 @@ class SCM {
   // does not consider the working copy status.
   virtual StatusResult getFilesChangedBetweenCommits(
       w_string_piece commitA,
-      w_string_piece commitB) const = 0;
+      w_string_piece commitB,
+      w_string requestId = nullptr) const = 0;
 
  private:
   w_string rootPath_;

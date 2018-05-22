@@ -15,16 +15,19 @@ namespace watchman {
 class Mercurial : public SCM {
  public:
   Mercurial(w_string_piece rootPath, w_string_piece scmRoot);
-  w_string mergeBaseWith(w_string_piece commitId) const override;
+  w_string mergeBaseWith(w_string_piece commitId, w_string requestId = nullptr)
+      const override;
   std::vector<w_string> getFilesChangedSinceMergeBaseWith(
-      w_string_piece commitId) const override;
+      w_string_piece commitId,
+      w_string requestId = nullptr) const override;
   SCM::StatusResult getFilesChangedBetweenCommits(
       w_string_piece commitA,
-      w_string_piece commitB) const override;
+      w_string_piece commitB,
+      w_string requestId = nullptr) const override;
 
  private:
   // Returns options for invoking hg
-  ChildProcess::Options makeHgOptions() const;
+  ChildProcess::Options makeHgOptions(w_string requestId) const;
 
   struct infoCache {
     std::string dirStatePath;

@@ -18,7 +18,7 @@ std::string hgExecutablePath() {
   return "hg";
 }
 
-ChildProcess::Options Mercurial::makeHgOptions() const {
+ChildProcess::Options Mercurial::makeHgOptions(w_string /* requestId */) const {
   ChildProcess::Options opt;
   // Ensure that the hgrc doesn't mess with the behavior
   // of the commands that we're runing.
@@ -101,7 +101,8 @@ Mercurial::Mercurial(w_string_piece rootPath, w_string_piece scmRoot)
     : SCM(rootPath, scmRoot),
       cache_(infoCache(to<std::string>(getSCMRoot(), "/.hg/dirstate"))) {}
 
-w_string Mercurial::mergeBaseWith(w_string_piece commitId) const {
+w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
+    const {
   std::string idString(commitId.data(), commitId.size());
 
   FileInformation startDirState;
@@ -124,7 +125,7 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId) const {
   auto revset = to<std::string>("ancestor(.,", commitId, ")");
   ChildProcess proc(
       {hgExecutablePath(), "log", "-T", "{node}", "-r", revset},
-      makeHgOptions());
+      makeHgOptions(requestId));
 
   auto outputs = proc.communicate();
   auto status = proc.wait();
@@ -161,12 +162,13 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId) const {
 }
 
 std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
-    w_string_piece commitId) const {
+    w_string_piece commitId,
+    w_string requestId) const {
   // The "" argument at the end causes paths to be printed out relative to the
   // cwd (set to root path above).
   ChildProcess proc(
       {hgExecutablePath(), "status", "-n", "--rev", commitId, ""},
-      makeHgOptions());
+      makeHgOptions(requestId));
 
   auto outputs = proc.communicate();
 
@@ -191,7 +193,8 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
 
 SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
     w_string_piece commitA,
-    w_string_piece commitB) const {
+    w_string_piece commitB,
+    w_string requestId) const {
   // The "" argument at the end causes paths to be printed out
   // relative to the cwd (set to root path above).
   ChildProcess proc(
@@ -203,7 +206,7 @@ SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
        "--rev",
        commitB,
        ""},
-      makeHgOptions());
+      makeHgOptions(requestId));
 
   auto outputs = proc.communicate();
 
