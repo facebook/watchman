@@ -18,7 +18,7 @@ std::string hgExecutablePath() {
   return "hg";
 }
 
-ChildProcess::Options Mercurial::makeHgOptions(w_string /* requestId */) const {
+ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
   ChildProcess::Options opt;
   // Ensure that the hgrc doesn't mess with the behavior
   // of the commands that we're runing.
@@ -35,6 +35,9 @@ ChildProcess::Options Mercurial::makeHgOptions(w_string /* requestId */) const {
   // environmental variable allows us to break the view isolation and read
   // information about the commit before the transaction is complete.
   opt.environment().set("HG_PENDING", getRootPath());
+  if (requestId && !requestId.empty()) {
+    opt.environment().set("HGREQUESTID", requestId);
+  }
   opt.nullStdin();
   opt.pipeStdout();
   opt.pipeStderr();

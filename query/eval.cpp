@@ -275,7 +275,8 @@ w_query_res w_query_execute(
     // determine if SCM operations ocurred concurrent with query execution.
     res.stateTransCountAtStartOfQuery = root->stateTransCount.load();
     resultClock.scmMergeBaseWith = query->since_spec->scmMergeBaseWith;
-    resultClock.scmMergeBase = scm->mergeBaseWith(resultClock.scmMergeBaseWith);
+    resultClock.scmMergeBase =
+        scm->mergeBaseWith(resultClock.scmMergeBaseWith, requestId);
 
     if (resultClock.scmMergeBase != query->since_spec->scmMergeBase) {
       // The merge base is different, so on the assumption that a lot of
@@ -286,13 +287,13 @@ w_query_res w_query_execute(
 
       auto scmMergeBase = resultClock.scmMergeBase;
       disableFreshInstance = true;
-      generator = [root, scmMergeBase](
+      generator = [root, scmMergeBase, requestId](
                       w_query* q,
                       const std::shared_ptr<w_root_t>& r,
                       struct w_query_ctx* c) {
         auto changedFiles =
             root->view()->getSCM()->getFilesChangedSinceMergeBaseWith(
-                scmMergeBase);
+                scmMergeBase, requestId);
 
         auto pathList = json_array_of_size(changedFiles.size());
         for (auto& f : changedFiles) {

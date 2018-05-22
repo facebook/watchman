@@ -5,7 +5,9 @@
 # no unicode literals
 from __future__ import absolute_import, division, print_function
 
+import os
 import re
+import subprocess
 
 import WatchmanTestCase
 
@@ -27,4 +29,77 @@ class TestRequestId(WatchmanTestCase.WatchmanTestCase):
         self.assertWaitFor(
             lambda: any(pat.match(l) for l in self.getServerLogContents()),
             message="request_id logged",
+        )
+
+    def skipIfNoHgRequestIdSupport(self):
+        root = self.mkdtemp()
+        request_id = "bf8a47014bd1b66103a8ab0aece4be7ada871660"
+
+        env = os.environ.copy()
+        env["HGPLAIN"] = "1"
+        env["HGREQUESTID"] = request_id
+
+        subprocess.call(["hg", "init"], env=env, cwd=root)
+        subprocess.call(["hg", "log"], env=env, cwd=root)
+
+        try:
+            with open(os.path.join(root, ".hg/blackbox.log")) as f:
+                if request_id in f.read():
+                    return
+        except IOError:
+            pass
+
+        self.skipTest("HGREQUESTID is not supported")
+
+    def test_scmHgRequestId(self):
+        self.skipIfNoHgRequestIdSupport()
+
+        root = self.mkdtemp()
+
+        # In this test, the repo does not necessarily need fsmonitor enabled,
+        # since watchman calls HGREQUESTID=... hg status and that would also
+        # have request_id logged without fsmonitor.
+        env = os.environ.copy()
+        env["HGPLAIN"] = "1"
+        subprocess.call(["hg", "init"], env=env, cwd=root)
+        subprocess.call(
+            [
+                "hg",
+                "commit",
+                "-mempty",
+                "-utest",
+                "-d0 0",
+                "--config=ui.allowemptycommit=1",
+            ],
+            env=env,
+            cwd=root,
+        )
+        commit_hash = subprocess.check_output(
+            ["hg", "log", "-r.", "-T{node}"], env=env, cwd=root
+        ).decode("utf-8")
+
+        # Must watch the directory after it's an HG repo to perform scm-aware
+        # queries.
+        self.watchmanCommand("watch", root)
+        request_id = "4c05a798ea1acc7c97b75e61fec5f640d90f8209"
+
+        params = {
+            "fields": ["name"],
+            "request_id": request_id,
+            "since": {"scm": {"mergebase-with": commit_hash}},
+        }
+        self.watchmanCommand("query", root, params)
+
+        blackbox_path = os.path.join(root, ".hg", "blackbox.log")
+
+        def try_read_blackbox():
+            try:
+                with open(blackbox_path) as f:
+                    return f.read()
+            except IOError:
+                return ""
+
+        self.assertWaitFor(
+            lambda: request_id in try_read_blackbox(),
+            message="request_id passed to and logged by hg",
         )
