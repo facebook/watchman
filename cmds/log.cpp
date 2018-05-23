@@ -68,7 +68,7 @@ static void cmd_log(struct watchman_client* client, const json_ref& args) {
   resp.set("logged", json_true());
   send_and_dispose_response(client, std::move(resp));
 }
-W_CMD_REG("log", cmd_log, CMD_DAEMON, NULL)
+W_CMD_REG("log", cmd_log, CMD_DAEMON | CMD_ALLOW_ANY_USER, NULL)
 
 /* vim:ts=2:sw=2:et:
  */
