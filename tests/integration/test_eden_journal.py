@@ -85,6 +85,6 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
         # to false negatives.
         time.sleep(1)
 
-        self.eden.unmount(root)
+        self.eden.remove(root)
         watches = self.watchmanCommand("watch-list")
         self.assertNotIn(root, watches["roots"])
