@@ -1,4 +1,4 @@
-AC_INIT([watchman], [4.9.1], [], [watchman])
+AC_INIT([watchman], [4.9.4], [], [watchman])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CANONICAL_TARGET
