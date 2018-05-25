@@ -35,6 +35,7 @@ buck_cxx_library(
         "WatchmanClient.h",
         "WatchmanConnection.h",
     ],
+    visibility = ["PUBLIC"],
     exported_deps = [
         "//folly:dynamic",
         "//folly:exception_wrapper",
@@ -42,5 +43,4 @@ buck_cxx_library(
         "//folly:optional",
         "//folly/io:iobuf",
     ],
-    visibility = ["PUBLIC"],
 )

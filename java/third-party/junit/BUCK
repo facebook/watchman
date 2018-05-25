@@ -12,9 +12,9 @@ prebuilt_jar(
 
 java_library(
     name = "junit",
+    visibility = ["PUBLIC"],
     exported_deps = [
         ":junit-jar",
         "//third-party/hamcrest:hamcrest-2",
     ],
-    visibility = ["PUBLIC"],
 )

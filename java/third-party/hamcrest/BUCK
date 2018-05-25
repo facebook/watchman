@@ -14,12 +14,12 @@ remote_file(
 
 java_library(
     name = "hamcrest-2",
+    visibility = ["PUBLIC"],
+    deps = [],
     exported_deps = [
         ":hamcrest-junit-2",
         ":java-hamcrest-2",
     ],
-    visibility = ["PUBLIC"],
-    deps = [],
 )
 
 prebuilt_jar(

@@ -43,6 +43,7 @@ buck_cxx_library(
     name = "headers",
     header_namespace = "",
     exported_headers = glob(["**/*.h"]),
+    visibility = ["PUBLIC"],
     exported_deps = [
         ":config_h",
         "//common/base:build_info",
@@ -53,7 +54,6 @@ buck_cxx_library(
         "//folly/io:iobuf",
         "//watchman/thirdparty/jansson:config_h",
     ],
-    visibility = ["PUBLIC"],
 )
 
 def sysdep_watcher():
