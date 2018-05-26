@@ -83,3 +83,53 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
                 ]
             ),
         )
+
+    def assertWaitForAssertedStates(self, root, states):
+
+        def sortStates(states):
+            """ Deterministically sort the states for comparison.
+            We sort by name and rely on the sort being stable as the
+            relative ordering of the potentially multiple queueued
+            entries per name is important to preserve """
+            return sorted(states, key=lambda x: x["name"])
+
+        states = sortStates(states)
+
+        def getStates():
+            res = self.watchmanCommand("debug-get-asserted-states", root)
+            return sortStates(res["states"])
+
+        self.assertWaitForEqual(states, getStates)
+
+    def test_state_enter_leave(self):
+        """ Check that state-enter and state-leave are basically working.
+        This is a subset of the tests that are performed in test_subscribe.py;
+        we only strictly need to check the basic plumbing here and need not
+        replicate the entire set of tests"""
+
+        def populate(repo):
+            repo.write_file("hello", "hola\n")
+            repo.commit("initial commit.")
+
+        root = self.makeEdenMount(populate)
+        res = self.watchmanCommand("watch", root)
+        self.assertEqual("eden", res["watcher"])
+
+        result = self.watchmanCommand("debug-get-asserted-states", root)
+        self.assertEqual([], result["states"])
+
+        self.watchmanCommand("state-enter", root, "foo")
+        self.watchmanCommand("state-enter", root, "bar")
+        self.assertWaitForAssertedStates(
+            root,
+            [
+                {"name": "bar", "state": "Asserted"},
+                {"name": "foo", "state": "Asserted"},
+            ],
+        )
+
+        self.watchmanCommand("state-leave", root, "foo")
+        self.assertWaitForAssertedStates(root, [{"name": "bar", "state": "Asserted"}])
+
+        self.watchmanCommand("state-leave", root, "bar")
+        self.assertWaitForAssertedStates(root, [])

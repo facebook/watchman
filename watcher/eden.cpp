@@ -455,17 +455,24 @@ class EdenView : public QueryableView {
   folly::EventBase subscriberEventBase_;
   mutable LRUCache<BetweenCommitKey, SCM::StatusResult>
       filesBetweenCommitCache_;
+  JournalPosition lastCookiePosition_;
+  std::string mountPoint_;
 
  public:
   explicit EdenView(w_root_t* root)
       : root_path_(root->root_path),
         scm_(EdenWrappedSCM::wrap(SCM::scmForPath(root->root_path))),
         // Allow for 32 pairs of revs, with errors cached for 10 seconds
-        filesBetweenCommitCache_(32, std::chrono::seconds(10)) {}
+        filesBetweenCommitCache_(32, std::chrono::seconds(10)),
+        mountPoint_(to<std::string>(root->root_path)) {
+    // Get the current journal position so that we can keep track of
+    // cookie file changes
+    auto client = getEdenClient(root_path_);
+    client->sync_getCurrentJournalPosition(lastCookiePosition_, mountPoint_);
+  }
 
   void timeGenerator(w_query* query, struct w_query_ctx* ctx) const override {
     auto client = getEdenClient(root_path_);
-    auto mountPoint = to<std::string>(ctx->root->root_path);
 
     FileDelta delta;
     JournalPosition resultPosition;
@@ -478,9 +485,9 @@ class EdenView : public QueryableView {
     // This is the fall back for a fresh instance result set.
     // There are two different code paths that may need this, so
     // it is broken out as a lambda.
-    auto getAllFiles = [ctx,
+    auto getAllFiles = [this,
+                        ctx,
                         &client,
-                        &mountPoint,
                         includeDotfiles =
                             (query->glob_flags & WM_PERIOD) == 0]() {
       if (ctx->query->empty_on_fresh_instance) {
@@ -498,7 +505,7 @@ class EdenView : public QueryableView {
       globPattern.append("**");
       return callEdenGlobViaThrift(
           client.get(),
-          mountPoint,
+          mountPoint_,
           std::vector<std::string>{globPattern},
           includeDotfiles);
     };
@@ -513,18 +520,18 @@ class EdenView : public QueryableView {
       // didn't match the current root which means that eden was restarted.
       // We need to translate this to a fresh instance result set and
       // return a list of all possible matching files.
-      client->sync_getCurrentJournalPosition(resultPosition, mountPoint);
+      client->sync_getCurrentJournalPosition(resultPosition, mountPoint_);
       fileNames = getAllFiles();
     } else {
       // Query eden to fill in the mountGeneration field.
       JournalPosition position;
-      client->sync_getCurrentJournalPosition(position, mountPoint);
+      client->sync_getCurrentJournalPosition(position, mountPoint_);
       // dial back to the sequence number from the query
       position.sequenceNumber = ctx->since.clock.ticks;
 
       // Now we can get the change journal from eden
       try {
-        client->sync_getFilesChangedSince(delta, mountPoint, position);
+        client->sync_getFilesChangedSince(delta, mountPoint_, position);
 
         createdFileNames.insert(
             delta.createdPaths.begin(), delta.createdPaths.end());
@@ -612,7 +619,7 @@ class EdenView : public QueryableView {
         // mountGeneration differs, so treat this as equivalent
         // to a fresh instance result
         ctx->since.clock.is_fresh_instance = true;
-        client->sync_getCurrentJournalPosition(resultPosition, mountPoint);
+        client->sync_getCurrentJournalPosition(resultPosition, mountPoint_);
         fileNames = getAllFiles();
       }
     }
@@ -621,7 +628,7 @@ class EdenView : public QueryableView {
     filterOutPaths(fileNames, ctx);
 
     std::vector<FileInformationOrError> info;
-    client->sync_getFileInformation(info, mountPoint, fileNames);
+    client->sync_getFileInformation(info, mountPoint_, fileNames);
 
     if (info.size() != fileNames.size()) {
       throw QueryExecError(
@@ -640,7 +647,7 @@ class EdenView : public QueryableView {
       auto file = make_unique<EdenFileResult>(
           root_path_,
           fileInfo,
-          w_string::pathCat({mountPoint, name}),
+          w_string::pathCat({mountPoint_, name}),
           &resultPosition,
           isNew);
 
@@ -679,17 +686,16 @@ class EdenView : public QueryableView {
       w_query* query,
       struct w_query_ctx* ctx) const {
     auto client = getEdenClient(ctx->root->root_path);
-    auto mountPoint = to<std::string>(ctx->root->root_path);
 
     auto includeDotfiles = (query->glob_flags & WM_PERIOD) == 0;
     auto fileNames = callEdenGlobViaThrift(
-        client.get(), mountPoint, globStrings, includeDotfiles);
+        client.get(), mountPoint_, globStrings, includeDotfiles);
 
     // Filter out any ignored files
     filterOutPaths(fileNames, ctx);
 
     std::vector<FileInformationOrError> info;
-    client->sync_getFileInformation(info, mountPoint, fileNames);
+    client->sync_getFileInformation(info, mountPoint_, fileNames);
 
     if (info.size() != fileNames.size()) {
       throw QueryExecError(
@@ -703,7 +709,7 @@ class EdenView : public QueryableView {
       auto& fileInfo = *infoIter;
 
       auto file = make_unique<EdenFileResult>(
-          root_path_, fileInfo, w_string::pathCat({mountPoint, name}));
+          root_path_, fileInfo, w_string::pathCat({mountPoint_, name}));
 
       w_query_process_file(ctx->query, ctx, std::move(file));
 
@@ -797,8 +803,7 @@ class EdenView : public QueryableView {
   ClockPosition getMostRecentRootNumberAndTickValue() const override {
     auto client = getEdenClient(root_path_);
     JournalPosition position;
-    auto mountPoint = to<std::string>(root_path_);
-    client->sync_getCurrentJournalPosition(position, mountPoint);
+    client->sync_getCurrentJournalPosition(position, mountPoint_);
     return ClockPosition(position.mountGeneration, position.sequenceNumber);
   }
 
@@ -854,6 +859,29 @@ class EdenView : public QueryableView {
     subscriberEventBase_.terminateLoopSoon();
   }
 
+  // Called by the subscriberThread to scan for cookie file creation
+  // events.  These are used to manage sequencing for state-enter and
+  // state-leave in eden.
+  void checkCookies(const std::shared_ptr<w_root_t>& root) {
+    // Obtain the list of changes since our last request, or since we started
+    // up the watcher (we set the initial value of lastCookiePosition_ during
+    // construction).
+    FileDelta delta;
+    auto client = getEdenClient(root_path_);
+    client->sync_getFilesChangedSince(delta, mountPoint_, lastCookiePosition_);
+
+    // TODO: in the future it would be nice to compute the paths in a loop
+    // first, and then add a bulk CookieSync::notifyCookies() method to avoid
+    // locking and unlocking its internal mutex so frequently.
+    for (auto& file : delta.createdPaths) {
+      auto full = w_string::pathCat({root_path_, file});
+      root->cookies.notifyCookie(full);
+    }
+
+    // Remember this position for subsequent calls
+    lastCookiePosition_ = delta.toPosition;
+  }
+
   // This is the thread that we use to listen to the stream of
   // changes coming in from the Eden server
   void subscriberThread(std::shared_ptr<w_root_t> root) noexcept {
@@ -888,6 +916,10 @@ class EdenView : public QueryableView {
             }
             subscriberEventBase_.timer().scheduleTimeout(
                 &settleCallback, settleTimeout);
+
+            // We need to process cookie files with the lowest possible
+            // latency, so we consume that information now
+            checkCookies(root);
 
           } catch (const std::exception& exc) {
             watchman::log(
