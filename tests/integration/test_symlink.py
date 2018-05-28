@@ -65,13 +65,14 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
 
     # test to see that invalid symbolic link
     # updates are picked up by the symlink_target field
-    # Skipping this test on mac due to the dangling symlink bug in fsevents
-    @unittest.skipIf(buggy_fsevents(), "known fsevents bug")
     def test_invalidSymlink(self):
         root = self.mkdtemp()
         os.symlink(os.path.join(root, "222"), os.path.join(root, "111"))
 
-        self.watchmanCommand("watch", root)
+        watch = self.watchmanCommand("watch", root)
+        if watch["watcher"] == "fsevents" and buggy_fsevents():
+            # Skipping this test on mac due to the dangling symlink bug in fsevents
+            self.skipTest("known fsevents bug")
         self.assertFileList(root, ["111"])
 
         expr = {"expression": ["name", "111"], "fields": ["name", "symlink_target"]}
