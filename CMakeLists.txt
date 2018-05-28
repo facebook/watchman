@@ -15,6 +15,7 @@ project(${PACKAGE_NAME} CXX C)
 include(CheckFunctionExists)
 include(CheckIncludeFiles)
 include(CheckStructHasMember)
+include(CheckSymbolExists)
 
 # configure_file wants us to define a separate file.  I'd rather not
 # have boilerplate for the same thing in two difference files, so we
@@ -72,6 +73,7 @@ endforeach(wat_func)
 foreach(wat_header
     CoreServices/CoreServices.h
     execinfo.h
+    fcntl.h
     inttypes.h
     locale.h
     port.h
@@ -107,6 +109,14 @@ CHECK_STRUCT_HAS_MEMBER(statvfs f_basetype sys/statvfs.h
   HAVE_STRUCT_STATVFS_F_BASETYPE)
 if (HAVE_STRUCT_STATVFS_F_BASETYPE)
   config_h("define HAVE_STRUCT_STATVFS_F_BASETYPE 1")
+endif()
+
+# @nocommit verify this manually
+if(have_FCNTL_H)
+  CHECK_SYMBOL_EXISTS(O_SYMLINK fcntl.h HAVE_DECL_O_SYMLINK)
+  if(HAVE_DECL_O_SYMLINK)
+    config_h("#define HAVE_DECL_O_SYMLINK 1")
+  endif()
 endif()
 
 # Now close out config.h.  We only want to touch the file if the contents are

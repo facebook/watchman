@@ -292,6 +292,11 @@ AC_CHECK_FUNCS(backtrace backtrace_symbols backtrace_symbols_fd)
 AC_CHECK_FUNCS(sys_siglist)
 AC_CHECK_FUNCS(memmem)
 
+AC_CHECK_HEADERS([fcntl.h])
+if test -n "ac_cv_header_fcntl_h"; then
+  AC_CHECK_DECLS([O_SYMLINK], [], [], [[#include <fcntl.h>]])
+fi
+
 if test -n "$ac_cv_header_sys_statvfs_h"; then
 AC_CHECK_MEMBERS([struct statvfs.f_fstypename,struct statvfs.f_basetype],
   [AC_DEFINE([STATVFS_HAS_FSTYPE_AS_STRING], [1],[if statvfs holds fstype as string])],[],[[#include <sys/statvfs.h>]])
