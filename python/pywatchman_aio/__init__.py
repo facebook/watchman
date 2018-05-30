@@ -200,7 +200,6 @@ class ReceiveLoopError(Exception):
 
 
 class AIOClient(object):
-
     def __init__(self, connection):
         self.connection = connection
         self.log_queue = asyncio.Queue()

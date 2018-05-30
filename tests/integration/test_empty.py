@@ -12,7 +12,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestEmpty(WatchmanTestCase.WatchmanTestCase):
-
     def test_empty(self):
         root = self.mkdtemp()
         self.touchRelative(root, "empty")

@@ -12,7 +12,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestSizeExpr(WatchmanTestCase.WatchmanTestCase):
-
     def test_size_expr(self):
         root = self.mkdtemp()
 

@@ -15,7 +15,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestGlob(WatchmanTestCase.WatchmanTestCase):
-
     def test_glob(self):
         root = self.mkdtemp()
         self.touchRelative(root, "a.c")

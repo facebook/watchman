@@ -14,7 +14,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestIgnore(WatchmanTestCase.WatchmanTestCase):
-
     def test_ignore_git(self):
         root = self.mkdtemp()
         os.mkdir(os.path.join(root, ".git"))

@@ -95,7 +95,6 @@ def _buf_pos(buf, pos):
 
 
 class _bser_buffer(object):
-
     def __init__(self, version):
         self.bser_version = version
         self.buf = ctypes.create_string_buffer(8192)
@@ -315,7 +314,6 @@ class _BunserDict(object):
 
 
 class Bunser(object):
-
     def __init__(self, mutable=True, value_encoding=None, value_errors=None):
         self.mutable = mutable
         self.value_encoding = value_encoding

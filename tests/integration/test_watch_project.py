@@ -14,7 +14,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
-
     def runProjectTests(self, config, expect, touch_watchmanconfig=False):
         inst = WatchmanInstance.Instance(config=config)
         try:

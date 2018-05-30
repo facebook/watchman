@@ -33,7 +33,6 @@ else:
 if os.name == "nt":
     # monkey patch to hopefully minimize test flakiness
     def wrap_with_backoff(fn):
-
         def wrapper(*args, **kwargs):
             delay = 0.01
             attempts = 10
@@ -66,7 +65,6 @@ if not pywatchman.compat.PYTHON3:
 
 
 class WatchmanTestCase(unittest.TestCase):
-
     def __init__(self, methodName="run"):
         super(WatchmanTestCase, self).__init__(methodName)
         self.setDefaultConfiguration()
@@ -444,7 +442,6 @@ def skip_for(transports=None, codecs=None):
     codecs = set(codecs or ())
 
     def skip(f):
-
         @functools.wraps(f)
         def wrapper(self, *args, **kwargs):
             if self.transport in transports or self.encoding in codecs:
@@ -491,7 +488,6 @@ def expand_matrix(test_class):
 
             # Define a new class that derives from the input class
             class MatrixTest(test_class):
-
                 def setDefaultConfiguration(self):
                     self.setConfiguration(transport, encoding)
 

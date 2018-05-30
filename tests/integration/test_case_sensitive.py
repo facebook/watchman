@@ -11,7 +11,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestCaseSensitive(WatchmanTestCase.WatchmanTestCase):
-
     def test_changeCase(self):
         root = self.mkdtemp()
         os.mkdir(os.path.join(root, "foo"))

@@ -14,7 +14,6 @@ import AsyncWatchmanTestCase
 
 
 class TestSubscribe(AsyncWatchmanTestCase.AsyncWatchmanTestCase):
-
     def test_subscribe(self):
         root = tempfile.mkdtemp()
         a_dir = os.path.join(root, "a")

@@ -14,7 +14,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestRemove(WatchmanTestCase.WatchmanTestCase):
-
     def test_remove(self):
         root = self.mkdtemp()
         os.makedirs(os.path.join(root, "one", "two"))

@@ -12,9 +12,7 @@ import WatchmanEdenTestCase
 
 
 class TestEdenWatchRoot(WatchmanEdenTestCase.WatchmanEdenTestCase):
-
     def test_eden_watch_root(self):
-
         def populate(repo):
             repo.write_file("adir/file", "foo!\n")
             repo.commit("initial commit.")

@@ -13,7 +13,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestRemoveThenAdd(WatchmanTestCase.WatchmanTestCase):
-
     def checkOSApplicability(self):
         if os.name == "linux" and os.getenv("TRAVIS"):
             self.skipTest("openvz and inotify unlinks == bad time")

@@ -12,7 +12,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestCapabilities(WatchmanTestCase.WatchmanTestCase):
-
     def test_capabilities(self):
         client = self.getClient()
         res = client.query("version")

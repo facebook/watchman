@@ -231,7 +231,6 @@ def _win32_strerror(err):
 
 
 class WatchmanError(Exception):
-
     def __init__(self, msg=None, cmd=None):
         self.msg = msg
         self.cmd = cmd
@@ -250,7 +249,6 @@ class BSERv1Unsupported(WatchmanError):
 
 
 class WatchmanEnvironmentError(WatchmanError):
-
     def __init__(self, msg, errno, errmsg, cmd=None):
         super(WatchmanEnvironmentError, self).__init__(
             "{0}: errno={1} errmsg={2}".format(msg, errno, errmsg), cmd
@@ -258,7 +256,6 @@ class WatchmanEnvironmentError(WatchmanError):
 
 
 class SocketConnectError(WatchmanError):
-
     def __init__(self, sockpath, exc):
         super(SocketConnectError, self).__init__(
             "unable to connect to %s: %s" % (sockpath, exc)
@@ -289,6 +286,7 @@ class CommandError(WatchmanError):
 
 class Transport(object):
     """ communication transport to the watchman server """
+
     buf = None
 
     def close(self):
@@ -333,6 +331,7 @@ class Transport(object):
 
 class Codec(object):
     """ communication encoding for the watchman server """
+
     transport = None
 
     def __init__(self, transport):
@@ -350,6 +349,7 @@ class Codec(object):
 
 class UnixSocketTransport(Transport):
     """ local unix domain socket transport """
+
     sock = None
 
     def __init__(self, sockpath, timeout):
@@ -602,6 +602,7 @@ class CLIProcessTransport(Transport):
     It is the responsibility of the caller to set the send and
     receive codecs appropriately.
     """
+
     proc = None
     closed = True
 
@@ -773,11 +774,13 @@ class Bser2WithFallbackCodec(BserCodec):
 class ImmutableBser2Codec(Bser2WithFallbackCodec, ImmutableBserCodec):
     """ use the BSER encoding, decoding values using the newer
         immutable object support """
+
     pass
 
 
 class JsonCodec(Codec):
     """ Use json codec.  This is here primarily for testing purposes """
+
     json = None
 
     def __init__(self, transport):
@@ -814,6 +817,7 @@ class JsonCodec(Codec):
 
 class client(object):
     """ Handles the communication with the watchman service """
+
     sockpath = None
     transport = None
     sendCodec = None
@@ -888,7 +892,6 @@ class client(object):
                 self.valueErrors = valueErrors
 
     def _makeBSERCodec(self, codec):
-
         def make_codec(transport):
             return codec(transport, self.valueEncoding, self.valueErrors)
 

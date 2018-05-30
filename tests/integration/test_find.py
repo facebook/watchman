@@ -14,7 +14,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestFind(WatchmanTestCase.WatchmanTestCase):
-
     def test_find(self):
         root = self.mkdtemp()
         self.touchRelative(root, "foo.c")

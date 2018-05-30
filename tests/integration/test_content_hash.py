@@ -14,7 +14,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestContentHash(WatchmanTestCase.WatchmanTestCase):
-
     def write_file_and_hash(self, filename, content):
         content = content.encode("utf-8")
         with open(filename, "wb") as f:

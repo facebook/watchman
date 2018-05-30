@@ -15,7 +15,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
-
     def test_rootRestrict(self):
         config = {"root_restrict_files": [".git", ".hg", ".foo", ".bar"]}
 

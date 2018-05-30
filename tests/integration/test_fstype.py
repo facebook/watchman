@@ -12,7 +12,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestIllegalFSType(WatchmanTestCase.WatchmanTestCase):
-
     def test_Illegal(self):
         config = {
             "illegal_fstypes": [

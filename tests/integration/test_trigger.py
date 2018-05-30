@@ -20,7 +20,6 @@ THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "tests", "integration")
 
 @WatchmanTestCase.expand_matrix
 class TestTrigger(WatchmanTestCase.WatchmanTestCase):
-
     def requiresPersistentSession(self):
         # cli transport has no log subscriptions
         return True

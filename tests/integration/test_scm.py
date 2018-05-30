@@ -21,7 +21,6 @@ else:
 
 @WatchmanTestCase.expand_matrix
 class TestScm(WatchmanTestCase.WatchmanTestCase):
-
     def requiresPersistentSession(self):
         return True
 

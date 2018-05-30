@@ -14,7 +14,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestBrokenEden(WatchmanTestCase.WatchmanTestCase):
-
     def test_broken_eden(self):
         if not WatchmanEdenTestCase.can_run_eden():
             self.skipTest("eden not available")

@@ -38,7 +38,6 @@ NON_UTF8_STRING = b"\xff\xff\xff"
 
 
 class TestSocketTimeout(unittest.TestCase):
-
     def test_exception_handling(self):
         try:
             raise SocketTimeout("should not raise")
@@ -47,13 +46,11 @@ class TestSocketTimeout(unittest.TestCase):
 
 
 class TestTransportErrorHandling(unittest.TestCase):
-
     def test_transport_error(self):
         buf = '{"foo":"bar"}'
         failAfterBytesRead = 5
 
         class FakeFailingTransport(Transport):
-
             def __init__(self, sockpath, timeout):
                 self.readBuf = buf
                 self.readBufPos = 0
@@ -115,7 +112,6 @@ def expand_bser_mods(test_class):
 
             # Define a new class that derives from the input class
             class MatrixTest(test_class):
-
                 def init_bser_mod(self):
                     self.bser_mod = mod
 
@@ -130,7 +126,6 @@ def expand_bser_mods(test_class):
 
 
 class FakeFile(object):
-
     def __init__(self, data):
         self._data = data
         self._ptr = 0
@@ -146,7 +141,6 @@ class FakeFile(object):
 
 @expand_bser_mods
 class TestBSERDump(unittest.TestCase):
-
     def setUp(self):
         self.init_bser_mod()
 

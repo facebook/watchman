@@ -34,7 +34,6 @@ except ImportError:
     "win or root or bad ldap",
 )
 class TestSockPerms(unittest.TestCase):
-
     def _new_instance(self, config, expect_success=True):
         if expect_success:
             start_timeout = 10

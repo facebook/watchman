@@ -11,7 +11,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestInvalidExpr(WatchmanTestCase.WatchmanTestCase):
-
     def test_invalid_expr_term(self):
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)

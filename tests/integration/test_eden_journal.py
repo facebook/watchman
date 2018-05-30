@@ -11,9 +11,7 @@ import WatchmanEdenTestCase
 
 
 class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
-
     def test_eden_journal(self):
-
         def populate(repo):
             repo.write_file("hello", "hola\n")
             repo.commit("initial commit.")

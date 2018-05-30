@@ -21,7 +21,6 @@ except ImportError:
 
 @WatchmanTestCase.expand_matrix
 class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
-
     def requiresPersistentSession(self):
         return True
 
@@ -47,7 +46,6 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         return None
 
     def assertWaitForAssertedStates(self, root, states):
-
         def sortStates(states):
             """ Deterministically sort the states for comparison.
             We sort by name and rely on the sort being stable as the

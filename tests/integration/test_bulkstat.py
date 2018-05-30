@@ -10,7 +10,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestBulkStat(WatchmanTestCase.WatchmanTestCase):
-
     def test_bulkstat_on(self):
         config = {"_use_bulkstat": True}
         inst = WatchmanInstance.Instance(config=config)

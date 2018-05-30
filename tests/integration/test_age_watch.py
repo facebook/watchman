@@ -15,7 +15,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestAgeOutWatch(WatchmanTestCase.WatchmanTestCase):
-
     def makeRootAndConfig(self):
         root = self.mkdtemp()
         with open(os.path.join(root, ".watchmanconfig"), "w") as f:

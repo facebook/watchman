@@ -11,12 +11,10 @@ import WatchmanEdenTestCase
 
 
 class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
-
     def requiresPersistentSession(self):
         return True
 
     def test_eden_subscribe(self):
-
         def populate(repo):
             repo.write_file(".watchmanconfig", '{"ignore_dirs":[".buckd"]}')
             repo.write_file("hello", "hola\n")
@@ -85,7 +83,6 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         )
 
     def assertWaitForAssertedStates(self, root, states):
-
         def sortStates(states):
             """ Deterministically sort the states for comparison.
             We sort by name and rely on the sort being stable as the

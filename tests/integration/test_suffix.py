@@ -13,7 +13,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestMatch(WatchmanTestCase.WatchmanTestCase):
-
     def test_match_suffix(self):
         root = self.mkdtemp()
         self.touchRelative(root, "foo.c")

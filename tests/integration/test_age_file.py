@@ -14,7 +14,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestAgeOutFile(WatchmanTestCase.WatchmanTestCase):
-
     def test_age_file(self):
         root = self.mkdtemp()
 

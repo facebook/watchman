@@ -52,7 +52,6 @@ def hasSharedInstance():
 
 
 class InitWithFilesMixin(object):
-
     def _init_state(self):
         self.base_dir = tempfile.mkdtemp(prefix="inst")
         # no separate user directory here -- that's only in InitWithDirMixin

@@ -13,7 +13,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestTwoDeep(WatchmanTestCase.WatchmanTestCase):
-
     def test_two_deep(self):
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)

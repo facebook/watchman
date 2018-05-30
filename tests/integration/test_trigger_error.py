@@ -11,7 +11,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestTriggerError(WatchmanTestCase.WatchmanTestCase):
-
     def assertTriggerRegError(self, err, *args):
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             self.watchmanCommand(*args)

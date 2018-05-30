@@ -14,7 +14,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestCookie(WatchmanTestCase.WatchmanTestCase):
-
     def test_delete_cookie_dir(self):
         root = self.mkdtemp()
         cookie_dir = os.path.join(root, ".hg")

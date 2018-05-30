@@ -19,7 +19,6 @@ except ImportError:
 
 @WatchmanTestCase.expand_matrix
 class TestFishy(WatchmanTestCase.WatchmanTestCase):
-
     def checkOSApplicability(self):
         if os.name == "nt":
             self.skipTest("non admin symlinks and unix userland not available")

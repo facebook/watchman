@@ -11,7 +11,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestAuth(WatchmanTestCase.WatchmanTestCase):
-
     def requiresPersistentSession(self):
         return True
 

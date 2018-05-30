@@ -14,7 +14,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
-
     def requiresPersistentSession(self):
         return True
 

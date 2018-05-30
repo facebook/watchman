@@ -11,7 +11,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestPcre(WatchmanTestCase.WatchmanTestCase):
-
     def check_pcre(self):
         res = self.watchmanCommand("version", {"optional": ["term-pcre"]})
         if not res["capabilities"]["term-pcre"]:

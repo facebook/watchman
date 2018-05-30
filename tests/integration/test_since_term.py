@@ -13,7 +13,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestSinceTerm(WatchmanTestCase.WatchmanTestCase):
-
     def test_since_term(self):
         root = self.mkdtemp()
 

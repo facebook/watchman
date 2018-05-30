@@ -23,7 +23,6 @@ def is_root():
 
 @WatchmanTestCase.expand_matrix
 class TestPerms(WatchmanTestCase.WatchmanTestCase):
-
     def checkOSApplicability(self):
         if os.name == "nt":
             self.skipTest("N/A on Windows")

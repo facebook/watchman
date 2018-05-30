@@ -17,7 +17,6 @@ from pywatchman import bser, compat, encoding
 
 
 class TestDashJCliOption(unittest.TestCase):
-
     def getSockPath(self):
         return WatchmanInstance.getSharedInstance().getSockPath()
 

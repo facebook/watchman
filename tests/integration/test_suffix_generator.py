@@ -13,7 +13,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestSuffixGenerator(WatchmanTestCase.WatchmanTestCase):
-
     def test_suffix_generator(self):
         root = self.mkdtemp()
 

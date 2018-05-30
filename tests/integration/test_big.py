@@ -13,7 +13,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestBig(WatchmanTestCase.WatchmanTestCase):
-
     def checkOSApplicability(self):
         if os.name == "nt":
             self.skipTest("Windows has problems with this test")

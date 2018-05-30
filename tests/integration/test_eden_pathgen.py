@@ -12,9 +12,7 @@ import WatchmanEdenTestCase
 
 
 class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
-
     def test_eden_watch(self):
-
         def populate(repo):
             repo.write_file(".watchmanconfig", '{"ignore_dirs":[".buckd"]}')
             repo.write_file("hello", "hola\n")

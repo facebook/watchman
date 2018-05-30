@@ -34,7 +34,6 @@ except ImportError as e:
 
 
 class WatchmanEdenTestCase(TestParent):
-
     def setUp(self):
         # the eden home directory.  We use the global dir for the test runner
         # rather than one scoped to the test because we have very real length

@@ -15,7 +15,6 @@ from pywatchman_aio import AIOClient as WatchmanClient
 
 
 class AsyncWatchmanTestCase(unittest.TestCase):
-
     def setUp(self):
         self.loop = asyncio.get_event_loop()
         sockpath = WatchmanInstance.getSharedInstance().getSockPath()

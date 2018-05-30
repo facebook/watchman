@@ -12,7 +12,6 @@ import WatchmanEdenTestCase
 
 
 class TestEdenSha1(WatchmanEdenTestCase.WatchmanEdenTestCase):
-
     def write_file_and_hash(self, filename, content):
         content = content.encode("utf-8")
         with open(filename, "wb") as f:
@@ -23,7 +22,6 @@ class TestEdenSha1(WatchmanEdenTestCase.WatchmanEdenTestCase):
         return sha.hexdigest()
 
     def test_eden_sha1(self):
-
         def populate(repo):
             repo.write_file("hello", "hola\n")
             repo.write_file("adir/file", "foo!\n")

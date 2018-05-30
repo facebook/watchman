@@ -11,9 +11,7 @@ import WatchmanEdenTestCase
 
 
 class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
-
     def test_eden_since(self):
-
         def populate(repo):
             repo.write_file("hello", "hola\n")
             repo.write_file("adir/file", "foo!\n")

@@ -23,7 +23,6 @@ THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "tests", "integration")
 
 @unittest.skipIf(os.name == "nt", "not supported on windows")
 class TestSiteSpawn(unittest.TestCase):
-
     def test_failingSpawner(self):
         config = {
             "spawn_watchman_service": os.path.join(THIS_DIR, "site_spawn_fail.py")

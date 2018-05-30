@@ -12,7 +12,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestCursor(WatchmanTestCase.WatchmanTestCase):
-
     def test_cursor(self):
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)

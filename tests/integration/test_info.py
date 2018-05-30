@@ -14,7 +14,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestInfo(WatchmanTestCase.WatchmanTestCase):
-
     def test_sock_name(self):
         resp = self.watchmanCommand("get-sockname")
         self.assertEqual(

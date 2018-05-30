@@ -31,7 +31,6 @@ def buggy_fsevents():
 
 @WatchmanTestCase.expand_matrix
 class TestSymlink(WatchmanTestCase.WatchmanTestCase):
-
     def checkOSApplicability(self):
         if os.name == "nt":
             self.skipTest("N/A on Windows")
@@ -158,7 +157,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.assertEqual("d", res["files"][0]["type"])
 
     def test_watchSymlinkTarget(self):
-
         def make_roots():
             # B/link -> C/file
             # A/link -> B/file
@@ -185,7 +183,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.assertFileList(root1prime, [".watchmanconfig", "file", "link"])
 
     def test_watchSymlinkTargetLinkToLink(self):
-
         def make_roots():
             # B/link -> C/file
             # A/link -> B/link
@@ -211,7 +208,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.assertFileList(root1prime, [".watchmanconfig", "file", "link"])
 
     def test_watchRelativeSymlinkTarget(self):
-
         def make_roots():
             # A/link --relative-link--> B/file
             # So, the target of A/link is "../B/file"
@@ -238,7 +234,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.assertFileList(root1prime, [".watchmanconfig", "file", "link"])
 
     def test_watchRelativeSymlinkTargetOneHop(self):
-
         def make_roots():
             # A/dir/link --relative-link--> B/file
             # So, the target of A/dir/link is "../../B/file"
@@ -268,7 +263,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.assertFileList(root1prime, [".watchmanconfig", "file", "dir", "dir/link"])
 
     def test_watchSymlinkToDir(self):
-
         def make_roots():
             # A/link -> B/dir
             rootA = self.makeRootAndConfig()
@@ -294,7 +288,6 @@ class TestSymlink(WatchmanTestCase.WatchmanTestCase):
         self.assertFileList(root1prime, [".watchmanconfig", "file", "linkToDir"])
 
     def test_watchSymlinkToDirContainsSymlink(self):
-
         def make_roots():
             # B/dir/link -> C/file
             # A/link -> B/dir

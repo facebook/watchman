@@ -12,7 +12,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestWatchDelAll(WatchmanTestCase.WatchmanTestCase):
-
     def test_watch_del_all(self):
         root = self.mkdtemp()
 

@@ -10,7 +10,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestClock(WatchmanTestCase.WatchmanTestCase):
-
     def test_clock(self):
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)

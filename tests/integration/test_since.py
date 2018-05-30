@@ -14,7 +14,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestSince(WatchmanTestCase.WatchmanTestCase):
-
     def test_sinceIssue1(self):
         root = self.mkdtemp()
         self.touchRelative(root, "111")

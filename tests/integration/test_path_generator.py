@@ -12,7 +12,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestPathGenerator(WatchmanTestCase.WatchmanTestCase):
-
     def test_path_generator_dot(self):
         root = self.mkdtemp()
 

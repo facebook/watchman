@@ -12,7 +12,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestBSDish(WatchmanTestCase.WatchmanTestCase):
-
     def test_bsdish_toplevel(self):
         root = self.mkdtemp()
         os.mkdir(os.path.join(root, "lower"))

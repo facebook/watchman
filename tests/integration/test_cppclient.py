@@ -28,7 +28,6 @@ TEST_BINARY = (
 
 
 class TestCppClient(unittest.TestCase):
-
     @unittest.skipIf(not os.path.isfile(TEST_BINARY), "test binary not built")
     def test_cppclient(self):
         env = os.environ.copy()

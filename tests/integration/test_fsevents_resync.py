@@ -15,7 +15,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestFSEventsResync(WatchmanTestCase.WatchmanTestCase):
-
     def checkOSApplicability(self):
         if sys.platform != "darwin":
             self.skipTest("N/A unless macOS")

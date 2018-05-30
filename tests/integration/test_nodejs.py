@@ -53,7 +53,6 @@ def find_js_tests(test_class):
             # the value from the last iteration of the glob loop.
 
             class JSTest(test_class):
-
                 def getCommandArgs(self):
                     return [node_bin, jsfile]
 

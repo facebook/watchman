@@ -12,7 +12,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestFields(WatchmanTestCase.WatchmanTestCase):
-
     def test_fields(self):
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)

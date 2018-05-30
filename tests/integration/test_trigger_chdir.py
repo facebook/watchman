@@ -20,7 +20,6 @@ THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "tests", "integration")
 
 @WatchmanTestCase.expand_matrix
 class TestTrigger(WatchmanTestCase.WatchmanTestCase):
-
     def fileContains(self, file_name, thing):
         if not os.path.exists(file_name):
             return False

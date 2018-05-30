@@ -14,7 +14,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestRequestId(WatchmanTestCase.WatchmanTestCase):
-
     def test_queryRequestId(self):
         root = self.mkdtemp()
         self.watchmanCommand("watch", root)

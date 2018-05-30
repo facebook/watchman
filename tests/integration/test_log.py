@@ -11,7 +11,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestLog(WatchmanTestCase.WatchmanTestCase):
-
     def test_invalidNumArgsLogLevel(self):
         for params in [["log-level"], ["log-level", "debug", "extra"]]:
             with self.assertRaises(pywatchman.WatchmanError) as ctx:

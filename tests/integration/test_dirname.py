@@ -12,7 +12,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestDirName(WatchmanTestCase.WatchmanTestCase):
-
     def test_dirname(self):
         root = self.mkdtemp()
         for i in range(0, 5):

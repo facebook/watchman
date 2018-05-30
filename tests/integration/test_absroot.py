@@ -14,7 +14,6 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestAbsoluteRoot(WatchmanTestCase.WatchmanTestCase):
-
     def test_dot(self):
         root = self.mkdtemp()
 
