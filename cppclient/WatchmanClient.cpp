@@ -78,7 +78,7 @@ Future<dynamic> WatchmanClient::run(const dynamic& cmd) {
 
 Future<WatchPathPtr> WatchmanClient::watch(StringPiece path) {
   return conn_->run(dynamic::array("watch-project", path))
-      .then([=](dynamic& data) {
+      .then([=](dynamic&& data) {
         auto relativePath = data["relativePath"];
         Optional<std::string> relativePath_optional;
         if (relativePath != nullptr) {
