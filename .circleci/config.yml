@@ -19,11 +19,11 @@ jobs:
   build-python27:
     <<: *defaults
     docker:
-      - image: python:2.7
+      - image: python:2.7-jessie
   build-python36:
     <<: *defaults
     docker:
-      - image: python:3.6
+      - image: python:3.6-jessie
 
 workflows:
   version: 2
