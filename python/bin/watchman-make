@@ -1,20 +1,23 @@
 #!/usr/bin/env python
 from __future__ import print_function
-import pywatchman
+
 import argparse
 import os
-import sys
 import subprocess
+import sys
+
+import pywatchman
 
 
 def patterns_to_terms(pats):
     # convert a list of globs into the equivalent watchman expression term
     if pats is None or len(pats) == 0:
-        return ['true']
-    terms = ['anyof']
+        return ["true"]
+    terms = ["anyof"]
     for p in pats:
-        terms.append(['match', p, 'wholename', {'includedotfiles': True}])
+        terms.append(["match", p, "wholename", {"includedotfiles": True}])
     return terms
+
 
 class Target(object):
     """ Base Class for a Target
@@ -25,6 +28,7 @@ class Target(object):
     When we receive notifications for that subscription, we know that
     we should execute the command.
     """
+
     def __init__(self, name, patterns, cmd):
         self.name = name
         self.patterns = patterns
@@ -32,24 +36,23 @@ class Target(object):
         self.triggered = False
 
     def start(self, client, root):
-        query = {
-            'expression': patterns_to_terms(self.patterns),
-            'fields': ['name']
-        }
-        watch = client.query('watch-project', root)
-        if 'warning' in watch:
-            print('WARNING: ', watch['warning'], file=sys.stderr)
-        root_dir = watch['watch']
-        if 'relative_path' in watch:
-            query['relative_root'] = watch['relative_path']
+        query = {"expression": patterns_to_terms(self.patterns), "fields": ["name"]}
+        watch = client.query("watch-project", root)
+        if "warning" in watch:
+            print("WARNING: ", watch["warning"], file=sys.stderr)
+        root_dir = watch["watch"]
+        if "relative_path" in watch:
+            query["relative_root"] = watch["relative_path"]
 
         # get the initial clock value so that we only get updates
-        query['since'] = client.query('clock', root_dir)['clock']
+        query["since"] = client.query("clock", root_dir)["clock"]
 
-        print('# Changes to files matching %s will execute `%s`' % (
-            ' '.join(self.patterns), self.cmd),
-            file=sys.stderr)
-        sub = client.query('subscribe', root_dir, self.name, query)
+        print(
+            "# Changes to files matching %s will execute `%s`"
+            % (" ".join(self.patterns), self.cmd),
+            file=sys.stderr,
+        )
+        sub = client.query("subscribe", root_dir, self.name, query)
 
     def consumeEvents(self, client):
         data = client.getSubscription(self.name)
@@ -61,12 +64,13 @@ class Target(object):
         if not self.triggered:
             return
         self.triggered = False
-        print('# Execute: `%s`' % self.cmd, file=sys.stderr)
+        print("# Execute: `%s`" % self.cmd, file=sys.stderr)
         subprocess.call(self.cmd, shell=True)
 
 
 class MakefileTarget(Target):
     """ Represents a Makefile target that we'd like to build. """
+
     def __init__(self, name, make, targets, patterns):
         self.make = make
         self.targets = targets
@@ -74,18 +78,18 @@ class MakefileTarget(Target):
         super(MakefileTarget, self).__init__(name, patterns, cmd)
 
     def __repr__(self):
-        return '{make=%r targets=%r pat=%r}' % (
-            self.make, self.targets, self.patterns)
+        return "{make=%r targets=%r pat=%r}" % (self.make, self.targets, self.patterns)
+
 
 class RunTarget(Target):
     """ Represents a script that we'd like to run. """
+
     def __init__(self, name, runfile, patterns):
         self.runfile = runfile
         super(RunTarget, self).__init__(name, patterns, self.runfile)
 
     def __repr__(self):
-        return '{runfile=%r pat=%r}' % (
-            self.runfile, self.patterns)
+        return "{runfile=%r pat=%r}" % (self.runfile, self.patterns)
 
 
 class DefineTarget(argparse.Action):
@@ -104,12 +108,12 @@ class DefineTarget(argparse.Action):
             values = [values]
 
         if namespace.pattern is None or len(namespace.pattern) == 0:
-            print('no patterns were specified for target %s' %
-                  values, file=sys.stderr)
+            print("no patterns were specified for target %s" % values, file=sys.stderr)
             sys.exit(1)
 
-        target = MakefileTarget('target_%d' % len(targets),
-                        namespace.make, values, namespace.pattern)
+        target = MakefileTarget(
+            "target_%d" % len(targets), namespace.make, values, namespace.pattern
+        )
         targets.append(target)
 
         # Clear out patterns between targets
@@ -132,23 +136,43 @@ for those targets or provide a script to run.
 watchman-make will then trigger the build for the given targets or
 run the provided script as changes are detected.
 
-""")
-parser.add_argument('-t', '--target', nargs='+', type=str, action=DefineTarget,
-                    help="""
+""",
+)
+parser.add_argument(
+    "-t",
+    "--target",
+    nargs="+",
+    type=str,
+    action=DefineTarget,
+    help="""
 Specify a list of target(s) to pass to the make tool.  The --make and
 --pattern options that precede --target are used to define the trigger
 condition.
-""")
-parser.add_argument('-s', '--settle', type=float, default=0.2,
-                    help='How long to wait to allow changes to settle before invoking targets')
-parser.add_argument('--make', type=str, default='make',
-                    help="""
+""",
+)
+parser.add_argument(
+    "-s",
+    "--settle",
+    type=float,
+    default=0.2,
+    help="How long to wait to allow changes to settle before invoking targets",
+)
+parser.add_argument(
+    "--make",
+    type=str,
+    default="make",
+    help="""
 The name of the make tool to use for the next --target.  The default is `make`.
 You may include additional arguments; you are not limited to just the
 path to a tool or script.
-""")
-parser.add_argument('-p', '--pattern', type=str, nargs='+',
-                    help="""
+""",
+)
+parser.add_argument(
+    "-p",
+    "--pattern",
+    type=str,
+    nargs="+",
+    help="""
 Define filename matching patterns that will be used to trigger the next
 --target definition.
 
@@ -156,30 +180,47 @@ The pattern syntax is wildmatch style; globbing with recursive matching
 via '**'.
 
 --pattern is reset to empty after each --target argument.
-""")
-parser.add_argument('--root', type=str, default='.', help="""
+""",
+)
+parser.add_argument(
+    "--root",
+    type=str,
+    default=".",
+    help="""
 Define the root of the project.  The default is to use the PWD.
 All patterns are considered to be relative to this root, and the build
 tool is executed with this location set as its PWD.
-""")
-parser.add_argument('-r', '--run', type=str, help="""
+""",
+)
+parser.add_argument(
+    "-r",
+    "--run",
+    type=str,
+    help="""
 The script that should be run when changes are detected
-""")
-parser.add_argument('--connect-timeout', type=float, default=600, help="""
+""",
+)
+parser.add_argument(
+    "--connect-timeout",
+    type=float,
+    default=600,
+    help="""
 Initial watchman client connection timeout. It should be sufficiently large to
 prevent timeouts when watchman is busy (eg. performing a crawl). The default
 value is 600 seconds.
-""")
+""",
+)
 args = parser.parse_args()
 
 if args.target is None and args.run is None:
-    print('# No run script or targets were specified, nothing to do.', file=sys.stderr)
+    print("# No run script or targets were specified, nothing to do.", file=sys.stderr)
     sys.exit(1)
 
 if args.target is None:
     args.target = []
     if args.run is not None:
-        args.target.append(RunTarget('RunTarget', args.run, args.pattern))
+        args.target.append(RunTarget("RunTarget", args.run, args.pattern))
+
 
 def check_root(desired_root):
     try:
@@ -187,26 +228,28 @@ def check_root(desired_root):
         os.chdir(root)
         return root
     except Exception as ex:
-        print('--root=%s: specified path is invalid: %s' % (
-            desired_root, ex), file=sys.stderr)
+        print(
+            "--root=%s: specified path is invalid: %s" % (desired_root, ex),
+            file=sys.stderr,
+        )
         sys.exit(1)
+
 
 targets = {}
 client = pywatchman.client(timeout=args.connect_timeout)
 try:
-    client.capabilityCheck(
-        required=['cmd-watch-project', 'wildmatch'])
+    client.capabilityCheck(required=["cmd-watch-project", "wildmatch"])
     root = check_root(args.root)
-    print('# Relative to %s' % root, file=sys.stderr)
+    print("# Relative to %s" % root, file=sys.stderr)
     for t in args.target:
         t.start(client, root)
         targets[t.name] = t
 
 except pywatchman.CommandError as ex:
-    print('watchman:', str(ex), file=sys.stderr)
+    print("watchman:", str(ex), file=sys.stderr)
     sys.exit(1)
 
-print('# waiting for changes', file=sys.stderr)
+print("# waiting for changes", file=sys.stderr)
 while True:
     try:
         # Wait for changes to start to occur.  We're happy to wait
@@ -237,18 +280,18 @@ while True:
         # Print this at the bottom of the loop rather than the top
         # because we may timeout every so often and it looks weird
         # to keep printing 'waiting for changes' each time we do.
-        print('# waiting for changes', file=sys.stderr)
+        print("# waiting for changes", file=sys.stderr)
 
     except pywatchman.SocketTimeout as ex:
         # Let's check to see if we're still functional
         try:
-            vers = client.query('version')
+            vers = client.query("version")
         except Exception as ex:
-            print('watchman:', str(ex), file=sys.stderr)
+            print("watchman:", str(ex), file=sys.stderr)
             sys.exit(1)
 
     except pywatchman.WatchmanError as ex:
-        print('watchman:', str(ex), file=sys.stderr)
+        print("watchman:", str(ex), file=sys.stderr)
         sys.exit(1)
 
     except KeyboardInterrupt:

@@ -1,16 +1,18 @@
 #!/usr/bin/env python
 from __future__ import print_function
-import pywatchman
+
 import argparse
+import json
 import os
 import sys
 import time
-import json
+
+import pywatchman
 
 
 def fieldlist(s):
     # helper for splitting a list of fields by comma
-    return s.split(',')
+    return s.split(",")
 
 
 parser = argparse.ArgumentParser(
@@ -60,56 +62,115 @@ watchman-wait to exit:
    before an event was received
 3  Execution was interrupted (Ctrl-C)
 
-""")
-parser.add_argument('path', type=str,
-                    help="""
+""",
+)
+parser.add_argument(
+    "path",
+    type=str,
+    help="""
 The path to a watched root whose subscription we'd like to replicate. The list
 of watched roots can be retrieved by running 'watchman watch-list'.
-""")
-parser.add_argument('-s', '--separator', type=str, default=' ',
-                    help='String to use as field separator for event output.')
-parser.add_argument('-q', '--qname', type=str, default=None,
-                    help="""
+""",
+)
+parser.add_argument(
+    "-s",
+    "--separator",
+    type=str,
+    default=" ",
+    help="String to use as field separator for event output.",
+)
+parser.add_argument(
+    "-q",
+    "--qname",
+    type=str,
+    default=None,
+    help="""
 The replicated subscription name. The default will be the source subscription
 with the string 'replicate: ' prepended to it.
-""")
-parser.add_argument('-n', '--name', type=str, default=None,
-                    help="""
+""",
+)
+parser.add_argument(
+    "-n",
+    "--name",
+    type=str,
+    default=None,
+    help="""
 The name of the subscription to replicate.
-""")
-parser.add_argument('-c', '--client', type=str, default=None,
-                    help="""
+""",
+)
+parser.add_argument(
+    "-c",
+    "--client",
+    type=str,
+    default=None,
+    help="""
 The client id of the subscription to replicate.
-""")
-parser.add_argument('-p', '--pid', type=str, default=None,
-                    help="""
+""",
+)
+parser.add_argument(
+    "-p",
+    "--pid",
+    type=str,
+    default=None,
+    help="""
 The process id of the subscription to replicate.
-""")
-parser.add_argument('-m', '--max-events', type=int, default=1,
-                    help="""
+""",
+)
+parser.add_argument(
+    "-m",
+    "--max-events",
+    type=int,
+    default=1,
+    help="""
 Set the maximum number of events that will be processed.  When the limit
 is reached, watchman-replicate-subscription exit.  The default is 1.  Setting
 the limit to 0 removes the limit, causing watchman-wait to execute indefinitely.
-""")
-parser.add_argument('-t', '--timeout', type=float, default=0, help="""
+""",
+)
+parser.add_argument(
+    "-t",
+    "--timeout",
+    type=float,
+    default=0,
+    help="""
 Exit if no events trigger within the specified timeout.  If timeout is
 zero (the default) then keep running indefinitely.
-""")
-parser.add_argument('--connect-timeout', type=float, default=100, help="""
+""",
+)
+parser.add_argument(
+    "--connect-timeout",
+    type=float,
+    default=100,
+    help="""
 Initial watchman client connection timeout. It should be sufficiently large to
 prevent timeouts when watchman is busy (eg. performing a crawl). The default
 value is 100 seconds.
-""")
-parser.add_argument('-l', '--list', action='store_true', help="""
+""",
+)
+parser.add_argument(
+    "-l",
+    "--list",
+    action="store_true",
+    help="""
 Print the matching subscription list and exit.
-""")
-parser.add_argument('-f', '--full', action='store_true', help="""
+""",
+)
+parser.add_argument(
+    "-f",
+    "--full",
+    action="store_true",
+    help="""
 Use with '--list' to print complete subscription information, including the
 query.
-""")
-parser.add_argument('--state-only', action='store_true', help="""
+""",
+)
+parser.add_argument(
+    "--state-only",
+    action="store_true",
+    help="""
 Print only the subscription state-enter and state-leave PDUs.
-""")
+""",
+)
 args = parser.parse_args()
 
 # Running total of individual file events we've seen
@@ -117,8 +178,8 @@ total_events = 0
 
 
 class Subscription(object):
-    root = None     # Watched root
-    name = None     # Our name for this subscription
+    root = None  # Watched root
+    name = None  # Our name for this subscription
     path = None
 
     def __init__(self, path, name, query):
@@ -126,52 +187,52 @@ class Subscription(object):
         self.query = query
         self.path = os.path.abspath(path)
         if not os.path.exists(self.path):
-            print(
-                'path %s (%s) does not exist.' %
-                (path, self.path), file=sys.stderr)
+            print("path %s (%s) does not exist." % (path, self.path), file=sys.stderr)
             sys.exit(1)
 
     def __repr__(self):
-        return 'Subscription(path=%s, name=%s, query=%s)' % (
-            self.path, self.name, json.dumps(self.query))
+        return "Subscription(path=%s, name=%s, query=%s)" % (
+            self.path,
+            self.name,
+            json.dumps(self.query),
+        )
 
     def start(self, client):
-        watch = client.query('watch-project', self.path)
-        if 'warning' in watch:
-            print('WARNING: ', watch['warning'], file=sys.stderr)
-        self.root = watch['watch']
+        watch = client.query("watch-project", self.path)
+        if "warning" in watch:
+            print("WARNING: ", watch["warning"], file=sys.stderr)
+        self.root = watch["watch"]
 
         # get the initial clock value so that we only get updates
-        self.query['since'] = client.query('clock', self.root)['clock']
-        sub = client.query('subscribe', self.root, self.name, self.query)
+        self.query["since"] = client.query("clock", self.root)["clock"]
+        sub = client.query("subscribe", self.root, self.name, self.query)
 
     def formatField(self, fname, val):
         return str(val)
 
     def formatFsmonitorSubPdu(self, sub):
         out = []
-        keys = ['state-enter', 'state-leave']
+        keys = ["state-enter", "state-leave"]
         for key in keys:
             if key in sub:
                 out.append(key)
                 out.append(sub[key])
-        keys = ['abandoned']
+        keys = ["abandoned"]
         for key in keys:
             if key in sub:
                 out.append(key)
-        if 'metadata' in sub:
-            metadata = sub['metadata']
-            keys = ['status', 'rev', 'partial', 'distance']
+        if "metadata" in sub:
+            metadata = sub["metadata"]
+            keys = ["status", "rev", "partial", "distance"]
             for key in keys:
                 if key in keys:
                     out.append(str(metadata[key]))
-        return '[ %s ]'% (' '.join(out))
+        return "[ %s ]" % (" ".join(out))
 
     def formatSubPdu(self, sub):
         # If fsmonitor metadata fields present, pretty-print
-        if 'metadata' in sub and all(
-            key in sub['metadata']
-            for key in ['status', 'rev', 'partial', 'distance']
+        if "metadata" in sub and all(
+            key in sub["metadata"] for key in ["status", "rev", "partial", "distance"]
         ):
             return self.formatFsmonitorSubPdu(sub)
         return json.dumps(sub, indent=2)
@@ -182,9 +243,7 @@ class Subscription(object):
         if data is None:
             return False
         for dat in data:
-            if any(
-                key in dat.keys() for key in ['state-enter', 'state-leave']
-            ):
+            if any(key in dat.keys() for key in ["state-enter", "state-leave"]):
                 print(self.formatSubPdu(dat))
                 sys.stdout.flush()
                 total_events = total_events + 1
@@ -192,7 +251,7 @@ class Subscription(object):
                     sys.exit(0)
             if args.state_only:
                 continue
-            for f in dat.get('files', []):
+            for f in dat.get("files", []):
                 out = []
                 if len(repFields) == 1:
                     # When only 1 field is specified, the result is a
@@ -211,23 +270,23 @@ class Subscription(object):
 
 
 def getSubIdInfo(subName, subClient, subPid):
-    return '(name=\'%s\', pid=\'%s\' client=\'%s\')' % (
+    return "(name='%s', pid='%s' client='%s')" % (
         "Any" if subName is None else subName,
         "Any" if subPid is None else subPid,
-        "Any" if subClient is None else subClient
+        "Any" if subClient is None else subClient,
     )
 
 
-def getSubInfo(sub,keys=None):
+def getSubInfo(sub, keys=None):
     rslt = {}
     if keys is None:
-        keys = ['name', 'pid', 'client', 'query']
-    subInfo = sub['info'] if 'info' in sub else {}
+        keys = ["name", "pid", "client", "query"]
+    subInfo = sub["info"] if "info" in sub else {}
     for key in keys:
         if key in subInfo:
             rslt[key] = subInfo[key]
         else:
-            rslt[key] = ''
+            rslt[key] = ""
             keyWarn = true
     return rslt
 
@@ -241,48 +300,52 @@ client = pywatchman.client(timeout=args.connect_timeout)
 # We use debug-get-subscriptions to get subscription information.  Note:
 # the debug commands are not stable/supported, so we are susceptible to breakage
 # if they change.  Do not copy this approach without understanding this risk.
-subs = client.query('debug-get-subscriptions', path)
+subs = client.query("debug-get-subscriptions", path)
 matchSubs = []
-for sub in subs['subscribers']:
-    info = sub['info']
-    if (subName is None or sub['info']['name'] == subName) and (
-        subPid is None or str(sub['info']['pid']) == subPid
-    ) and (subClient is None or str(sub['info']['client']) == subClient):
+for sub in subs["subscribers"]:
+    info = sub["info"]
+    if (
+        (subName is None or sub["info"]["name"] == subName)
+        and (subPid is None or str(sub["info"]["pid"]) == subPid)
+        and (subClient is None or str(sub["info"]["client"]) == subClient)
+    ):
         matchSubs.append(sub)
 
 if args.list:
     if len(matchSubs) == 0:
-        print('No matching subscriptions')
+        print("No matching subscriptions")
     for sub in matchSubs:
-        keys = None if args.full else ['name', 'pid', 'client']
+        keys = None if args.full else ["name", "pid", "client"]
         print(json.dumps(getSubInfo(sub, keys=keys), indent=2), file=sys.stdout)
     sys.exit(0)
 
 if len(matchSubs) == 0:
     print(
-        'Error, no matching subscriptions:\n'
-        '\tcriteria: %s\n'
-        '\tpath: %s\n'
-        'To get a list of subscriptions for a watched root, use:\n'
-        '\twatchman-replicate-subscription PATH --list' %
-        (getSubIdInfo(subName, subClient, subPid), path), file=sys.stderr
+        "Error, no matching subscriptions:\n"
+        "\tcriteria: %s\n"
+        "\tpath: %s\n"
+        "To get a list of subscriptions for a watched root, use:\n"
+        "\twatchman-replicate-subscription PATH --list"
+        % (getSubIdInfo(subName, subClient, subPid), path),
+        file=sys.stderr,
     )
     sys.exit(1)
 
 if len(matchSubs) > 1:
     print(
-        'Error, found multiple matching subscriptions:\n'
-        '\tcriteria: %s\n'
-        '\tpath: %s\n'
-        'Use the \'--name\', \'--client\' and \'--pid\' options to identify a subscription.\n'
-        'To get a list of subscriptions for a watched root, use:\n'
-        '\twatchman-replicate-subscription PATH --list' %
-        (getSubIdInfo(subName, subClient, subPid), path), file=sys.stderr
+        "Error, found multiple matching subscriptions:\n"
+        "\tcriteria: %s\n"
+        "\tpath: %s\n"
+        "Use the '--name', '--client' and '--pid' options to identify a subscription.\n"
+        "To get a list of subscriptions for a watched root, use:\n"
+        "\twatchman-replicate-subscription PATH --list"
+        % (getSubIdInfo(subName, subClient, subPid), path),
+        file=sys.stderr,
     )
     sys.exit(1)
 
 matchSub = matchSubs[0]
-repQuery = matchSubs[0]['info']['query']
+repQuery = matchSubs[0]["info"]["query"]
 
 # Subscriptions with no fields specified, will get watchman default
 # and will describe themselves in the response.  If they specified
@@ -290,9 +353,8 @@ repQuery = matchSubs[0]['info']['query']
 # won't know the name from the `files` list so we make an attempt
 # to capture the field definition here and use it only in the case
 # that it is a single field name,
-repFields = matchSubs[0]['info']['query'].get('fields', [])
-repName = args.qname if args.qname else "replicate: " + \
-    matchSub['info']['name']
+repFields = matchSubs[0]["info"]["query"].get("fields", [])
+repName = args.qname if args.qname else "replicate: " + matchSub["info"]["name"]
 
 repSub = Subscription(name=repName, path=path, query=repQuery)
 print("%s" % (repSub))
@@ -305,7 +367,7 @@ try:
     repSub.start(client)
 
 except pywatchman.CommandError as ex:
-    print('watchman:', ex.msg, file=sys.stderr)
+    print("watchman:", ex.msg, file=sys.stderr)
     sys.exit(1)
 
 while deadline is None or time.time() < deadline:
@@ -327,9 +389,9 @@ while deadline is None or time.time() < deadline:
 
         # Let's check to see if we're still functional
         try:
-            vers = client.query('version')
+            vers = client.query("version")
         except Exception as ex:
-            print('watchman:', str(ex), file=sys.stderr)
+            print("watchman:", str(ex), file=sys.stderr)
             sys.exit(1)
 
     except KeyboardInterrupt:

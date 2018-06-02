@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 from __future__ import print_function
-import pywatchman
+
 import argparse
 import os
 import sys
 import time
 
+import pywatchman
+
 
 def fieldlist(s):
     # helper for splitting a list of fields by comma
-    return s.split(',')
+    return s.split(",")
+
 
 parser = argparse.ArgumentParser(
     formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -41,27 +44,49 @@ watchman-wait to exit:
    before an event was received
 3  Execution was interrupted (Ctrl-C)
 
-""")
-parser.add_argument('path', type=str, nargs='+',
-                    help='path(s) to watch')
-parser.add_argument('--relative', type=str, default='.',
-                    help='print paths relative to this dir (default=PWD)')
-parser.add_argument('--fields', type=fieldlist, default=['name'],
-                    help="""
+""",
+)
+parser.add_argument("path", type=str, nargs="+", help="path(s) to watch")
+parser.add_argument(
+    "--relative",
+    type=str,
+    default=".",
+    help="print paths relative to this dir (default=PWD)",
+)
+parser.add_argument(
+    "--fields",
+    type=fieldlist,
+    default=["name"],
+    help="""
 Comma separated list of file information fields to return.
 The default is just the name.  For a list of possible fields, see:
 https://facebook.github.io/watchman/docs/cmd/query.html#available-fields
-""")
-parser.add_argument('-s', '--separator', type=str, default=' ',
-                    help='String to use as field separator for event output.')
-parser.add_argument('-m', '--max-events', type=int, default=1,
-                    help="""
+""",
+)
+parser.add_argument(
+    "-s",
+    "--separator",
+    type=str,
+    default=" ",
+    help="String to use as field separator for event output.",
+)
+parser.add_argument(
+    "-m",
+    "--max-events",
+    type=int,
+    default=1,
+    help="""
 Set the maximum number of events that will be processed.  When the limit
 is reached, watchman-wait will exit.  The default is 1.  Setting the
 limit to 0 removes the limit, causing watchman-wait to execute indefinitely.
-""")
-parser.add_argument('-p', '--pattern', type=str, nargs='+',
-                    help="""
+""",
+)
+parser.add_argument(
+    "-p",
+    "--pattern",
+    type=str,
+    nargs="+",
+    help="""
 Only emit paths that match this list of patterns.  Patterns are
 applied by the watchman server and are matched against the root-relative
 paths.
@@ -71,16 +96,28 @@ so that your shell doesn't interpret the pattern.
 
 The pattern syntax is wildmatch style; globbing with recursive matching
 via '**'.
-""")
-parser.add_argument('-t', '--timeout', type=float, default=0, help="""
+""",
+)
+parser.add_argument(
+    "-t",
+    "--timeout",
+    type=float,
+    default=0,
+    help="""
 Exit if no events trigger within the specified timeout.  If timeout is
 zero (the default) then keep running indefinitely.
-""")
-parser.add_argument('--connect-timeout', type=float, default=100, help="""
+""",
+)
+parser.add_argument(
+    "--connect-timeout",
+    type=float,
+    default=100,
+    help="""
 Initial watchman client connection timeout. It should be sufficiently large to
 prevent timeouts when watchman is busy (eg. performing a crawl). The default
 value is 100 seconds.
-""")
+""",
+)
 args = parser.parse_args()
 
 
@@ -92,59 +129,62 @@ total_events = 0
 
 
 class Subscription(object):
-    root = None     # Watched root
+    root = None  # Watched root
     relpath = None  # Offset to dir of interest
-    name = None     # Our name for this subscription
+    name = None  # Our name for this subscription
     path = None
 
     def __init__(self, path):
         if path in subscriptions:
-            raise ValueError('path %s already specified' % path)
+            raise ValueError("path %s already specified" % path)
         self.name = path
         self.path = os.path.abspath(path)
         if not os.path.exists(self.path):
-            print("""path %s (%s) does not exist.
-Perhaps you should use the --pattern option?""" % (path, self.path), file=sys.stderr)
+            print(
+                """path %s (%s) does not exist.
+Perhaps you should use the --pattern option?"""
+                % (path, self.path),
+                file=sys.stderr,
+            )
             sys.exit(1)
         subscriptions[self.name] = self
 
     def __repr__(self):
-        return 'Subscription(root=%s, rel=%s, name=%s)' % (
-            self.root, self.relpath, self.name)
+        return "Subscription(root=%s, rel=%s, name=%s)" % (
+            self.root,
+            self.relpath,
+            self.name,
+        )
 
     def start(self, client):
         dir_to_watch = self.path
         if args.pattern:
-            expr = ['anyof']
+            expr = ["anyof"]
             for p in args.pattern:
-                expr.append(['match', p, 'wholename', {
-                    'includedotfiles': True}])
+                expr.append(["match", p, "wholename", {"includedotfiles": True}])
         else:
-            expr = ['true']
+            expr = ["true"]
         if not os.path.isdir(self.path):
             # Need to watch its parent
             dir_to_watch = os.path.dirname(self.path)
-            expr = ['name', os.path.basename(self.path)]
+            expr = ["name", os.path.basename(self.path)]
 
-        query = {
-            'expression': expr,
-            'fields': args.fields,
-        }
-        watch = client.query('watch-project', dir_to_watch)
-        if 'warning' in watch:
-            print('WARNING: ', watch['warning'], file=sys.stderr)
+        query = {"expression": expr, "fields": args.fields}
+        watch = client.query("watch-project", dir_to_watch)
+        if "warning" in watch:
+            print("WARNING: ", watch["warning"], file=sys.stderr)
 
-        self.root = watch['watch']
-        if 'relative_path' in watch:
-            query['relative_root'] = watch['relative_path']
+        self.root = watch["watch"]
+        if "relative_path" in watch:
+            query["relative_root"] = watch["relative_path"]
 
         # get the initial clock value so that we only get updates
-        query['since'] = client.query('clock', self.root)['clock']
+        query["since"] = client.query("clock", self.root)["clock"]
 
-        sub = client.query('subscribe', self.root, self.name, query)
+        sub = client.query("subscribe", self.root, self.name, query)
 
     def formatField(self, fname, val):
-        if fname == 'name':
+        if fname == "name":
             # Respect the --relative path printing option
             return os.path.relpath(os.path.join(self.name, val), args.relative)
         # otherwise just make sure it's a string so that we can join it
@@ -156,7 +196,7 @@ Perhaps you should use the --pattern option?""" % (path, self.path), file=sys.st
         if data is None:
             return False
         for dat in data:
-            for f in dat.get('files', []):
+            for f in dat.get("files", []):
                 out = []
                 if len(args.fields) == 1:
                     # When only 1 field is specified, the result is a
@@ -186,13 +226,12 @@ if args.timeout > 0:
     deadline = time.time() + args.timeout
 
 try:
-    client.capabilityCheck(
-        required=['term-dirname', 'cmd-watch-project', 'wildmatch'])
+    client.capabilityCheck(required=["term-dirname", "cmd-watch-project", "wildmatch"])
     for _, sub in subscriptions.items():
         sub.start(client)
 
 except pywatchman.CommandError as ex:
-    print('watchman:', ex.msg, file=sys.stderr)
+    print("watchman:", ex.msg, file=sys.stderr)
     sys.exit(1)
 
 while deadline is None or time.time() < deadline:
@@ -215,9 +254,9 @@ while deadline is None or time.time() < deadline:
 
         # Let's check to see if we're still functional
         try:
-            vers = client.query('version')
+            vers = client.query("version")
         except Exception as ex:
-            print('watchman:', str(ex), file=sys.stderr)
+            print("watchman:", str(ex), file=sys.stderr)
             sys.exit(1)
 
     except KeyboardInterrupt:
