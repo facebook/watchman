@@ -430,6 +430,14 @@ std::vector<std::string> callEdenGlobViaThrift(
     params.set_globs(globPatterns);
     params.set_includeDotfiles(includeDotfiles);
 
+    // Turn on prefetching for file results.  Ideally we'd only do this
+    // if we know that we need more than just the filenames, however,
+    // since we unconditionally call getFileInformation() on each match
+    // when producing the result objects, we'll always need the size
+    // so unconditionally prefetching here should wind up being more
+    // efficient.
+    params.set_prefetchFiles(true);
+
     Glob glob;
     client->sync_globFiles(glob, params);
     return glob.get_matchingFiles();
