@@ -334,6 +334,15 @@ std::shared_ptr<w_query> w_query_parse(
   return result;
 }
 
+bool w_query::isFieldRequested(w_string_piece name) const {
+  for (auto& f : fieldList) {
+    if (f->name.piece() == name) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void w_query_legacy_field_list(w_query_field_list* flist) {
   static const char *names[] = {
     "name", "exists", "size", "mode", "uid", "gid", "mtime",

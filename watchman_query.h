@@ -232,6 +232,10 @@ struct w_query {
   bool renderUsesFutures{false};
 
   w_string request_id;
+
+  /** Returns true if the supplied name is contained in
+   * the parsed fieldList in this query */
+  bool isFieldRequested(w_string_piece name) const;
 };
 
 typedef std::unique_ptr<QueryExpr> (
