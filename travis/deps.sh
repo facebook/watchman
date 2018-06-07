@@ -1,8 +1,61 @@
 #!/bin/bash
 set -x
+
+brew_install_latest_stable() {
+  local packages=("${@}")
+  set +x
+  local packages_to_install=()
+  local packages_to_upgrade=()
+  for package in "${packages[@]}"; do
+    case "$(brew_package_installed_status "${package}")" in
+      not_installed)
+        packages_to_install+=("${package}")
+        ;;
+      installed_but_outdated)
+        packages_to_upgrade+=("${package}")
+        ;;
+      installed_and_up_to_date)
+        ;;
+      *)
+        printf 'error: unknown package installed status\n' >&2
+        return 1
+        ;;
+    esac
+  done
+  set -x
+  if [ "${#packages_to_upgrade[@]}" -gt 0 ]; then
+    brew upgrade "${packages_to_upgrade[@]}"
+  fi
+  if [ "${#packages_to_install[@]}" -gt 0 ]; then
+    brew install "${packages_to_install[@]}"
+  fi
+}
+
+brew_package_installed_status() {
+  local package="${1}"
+  if ! brew_package_is_installed "${package}"; then
+    echo not_installed
+    return
+  fi
+  local outdated_packages=($(brew outdated --quiet))
+  for outdated_package in "${outdated_packages[@]:+${outdated_packages[@]}}"; do
+    if [ "${package}" = "${outdated_package}" ]; then
+      echo installed_but_outdated
+      return
+    fi
+  done
+  echo installed_and_up_to_date
+}
+
+brew_package_is_installed() {
+  local package="${1}"
+  brew list --versions "${package}" >/dev/null
+}
+
 case `uname` in
   Darwin)
-    brew install cmake wget pcre ruby openssl readline pyenv
+    brew update >/dev/null
+    HOMEBREW_NO_AUTO_UPDATE=1 brew_install_latest_stable cmake wget pcre ruby openssl readline pyenv
     # avoid snafu with OS X and python builds
     ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future
     CFLAGS="$CFLAGS $ARCHFLAGS"
