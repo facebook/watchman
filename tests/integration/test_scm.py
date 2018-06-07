@@ -54,7 +54,8 @@ class TestScm(WatchmanTestCase.WatchmanTestCase):
             # mercurial if it is not available, so we also employ
             # the skipIfNoFSMonitor() test above to make sure the
             # environment is sane.
-            ["hg", "--config", "extensions.fsmonitor="] + args,
+            [env.get("EDEN_HG_BINARY", "hg"), "--config", "extensions.fsmonitor="]
+            + args,
             env=env,
             cwd=cwd,
             stdout=subprocess.PIPE,
