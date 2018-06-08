@@ -1,7 +1,7 @@
 [package]
 name = "serde_bser"
 version = "0.1.0"
-authors = ["Siddharth Agarwal <sid0@fb.com>"]
+authors = ["Rain <rain1@fb.com>"]
 
 [dependencies]
 byteorder = "1.0"

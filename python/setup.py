@@ -15,7 +15,7 @@ setup(
     name="pywatchman",
     version="1.4.1",
     description="Watchman client for python",
-    author="Wez Furlong, Siddharth Agarwal",
+    author="Wez Furlong, Rain",
     author_email="wez@fb.com",
     maintainer="Wez Furlong",
     maintainer_email="wez@fb.com",
