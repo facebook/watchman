@@ -157,7 +157,7 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
     // we collected because we know that a pending change will advise clients of
     // the new state
     auto cache = cache_.wlock();
-    if (!fileTimeEqual(startDirState, cache->dirstate)) {
+    if (fileTimeEqual(startDirState, cache->dirstate)) {
       cache->mergeBases[idString] = outputs.first;
     }
   }

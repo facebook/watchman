@@ -504,6 +504,21 @@ o  changeset:   0:b08db10380dd
         )
         self.assertFileListsEqual(res["files"], ["a/b/c/f1"])
 
+        # Sanity check that the mergebase cache is basically working.
+        # Ideally we'd check for a single miss in the server instance log, but
+        # since we may run variations on this same test against the same instance,
+        # it is hard to guarantee that the count would be meaningful here.  So
+        # instead we look at the volume of log calls and check that it is below
+        # a reasonable threshold.
+        blackbox = os.path.join(root, ".hg", "blackbox.log")
+        if os.path.exists(blackbox):
+            misses = 0
+            with open(blackbox) as f:
+                for line in f:
+                    if "'ancestor(.,TheMaster)' exited" in line:
+                        misses += 1
+            self.assertLessEqual(misses, 20)
+
     def getConsolidatedFileList(self, dat):
         fset = set()
         for _ in dat:
