@@ -1,4 +1,4 @@
-include_defs("//eden/DEFS")
+load("//eden:defs.bzl", "get_oss_suffix", "get_daemon_versions", "get_test_env_and_deps")
 
 include_defs("xplat//configurations/buck/py_sdk")
 
