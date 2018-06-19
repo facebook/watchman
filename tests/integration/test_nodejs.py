@@ -32,7 +32,7 @@ THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "tests", "integration")
 
 def find_js_tests(test_class):
     """
-    A decorator function used to create a class per legacy PHP test
+    A decorator function used to create a class per JavaScript test script
     """
 
     # We do some rather hacky things here to define new test class types
