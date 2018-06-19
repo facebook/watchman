@@ -12,6 +12,9 @@ python_binary(
     srcs = ["runtests_wrapper.py"],
     main_module = "watchman.facebook.runtests_wrapper",
     py_version = "<3",
+    runtime_deps = [
+        "//watchman/python/bin:watchman-wait",
+    ],
     deps = [
         "//libfb/py:pathutils",
         "//watchman:runtests",
