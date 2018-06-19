@@ -42,28 +42,34 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
                     self.touchRelative(d, name)
 
                 if expect_pass:
-                    client.query("watch", d)
+                    self.assertWatchSucceeds(client, d)
                 else:
-                    with self.assertRaises(pywatchman.WatchmanError) as ctx:
-                        client.query("watch", d)
-                    self.assertRegex(
-                        str(ctx.exception),
-                        (
-                            "unable to resolve root .*"
-                            + ": Your watchman administrator has configured watchman "
-                            + "to prevent watching path `.*`.  "
-                            + "None of the files listed in global config root_files "
-                            + "are present and enforce_root_files is set to true.  "
-                            + "root_files is defined by the `.*` config file and "
-                            + "includes `.watchmanconfig`, `.git`, and "
-                            + "`.foo`.  One or more of these files must be "
-                            + "present in order to allow a watch.  Try pulling "
-                            + "and checking out a newer version of the project?"
-                        ),
-                    )
+                    self.assertWatchIsRestricted(client, d)
 
         finally:
             inst.stop()
+
+    def assertWatchSucceeds(self, client, path):
+        client.query("watch", path)
+
+    def assertWatchIsRestricted(self, client, path):
+        with self.assertRaises(pywatchman.WatchmanError) as ctx:
+            client.query("watch", path)
+        self.assertRegex(
+            str(ctx.exception),
+            (
+                "unable to resolve root .*"
+                + ": Your watchman administrator has configured watchman "
+                + "to prevent watching path `.*`.  "
+                + "None of the files listed in global config root_files "
+                + "are present and enforce_root_files is set to true.  "
+                + "root_files is defined by the `.*` config file and "
+                + "includes `.watchmanconfig`, `.git`, and "
+                + "`.foo`.  One or more of these files must be "
+                + "present in order to allow a watch.  Try pulling "
+                + "and checking out a newer version of the project?"
+            ),
+        )
 
     def test_invalidRoot(self):
         d = self.mkdtemp()
