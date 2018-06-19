@@ -16,7 +16,7 @@ import WatchmanTestCase
 @WatchmanTestCase.expand_matrix
 class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
     def test_rootRestrict(self):
-        config = {"root_restrict_files": [".git", ".hg", ".foo", ".bar"]}
+        config = {"root_restrict_files": [".git", ".foo"]}
 
         inst = WatchmanInstance.Instance(config=config)
         try:
@@ -25,10 +25,8 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
 
             expect = [
                 ("directory", ".git", True),
-                ("directory", ".hg", True),
                 ("file", ".foo", True),
-                ("file", ".bar", True),
-                ("directory", ".bar", True),
+                ("directory", ".foo", True),
                 (None, None, False),
                 ("directory", ".svn", False),
                 ("file", "baz", False),
@@ -57,8 +55,8 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
                             + "None of the files listed in global config root_files "
                             + "are present and enforce_root_files is set to true.  "
                             + "root_files is defined by the `.*` config file and "
-                            + "includes `.watchmanconfig`, `.git`, `.hg`, `.foo`, "
-                            + "and `.bar`.  One or more of these files must be "
+                            + "includes `.watchmanconfig`, `.git`, and "
+                            + "`.foo`.  One or more of these files must be "
                             + "present in order to allow a watch.  Try pulling "
                             + "and checking out a newer version of the project?"
                         ),
