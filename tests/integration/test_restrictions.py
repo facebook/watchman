@@ -55,20 +55,27 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
     def assertWatchIsRestricted(self, client, path):
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             client.query("watch", path)
+        message = str(ctx.exception)
+        self.assertRegex(message, "unable to resolve root .*?:", message)
         self.assertRegex(
-            str(ctx.exception),
-            (
-                "unable to resolve root .*"
-                + ": Your watchman administrator has configured watchman "
-                + "to prevent watching path `.*`.  "
-                + "None of the files listed in global config root_files "
-                + "are present and enforce_root_files is set to true.  "
-                + "root_files is defined by the `.*` config file and "
-                + "includes `.watchmanconfig`, `.git`, and "
-                + "`.foo`.  One or more of these files must be "
-                + "present in order to allow a watch.  Try pulling "
-                + "and checking out a newer version of the project?"
-            ),
+            message,
+            "Your watchman administrator has configured watchman to prevent "
+            + "watching path `.*?`",
+        )
+        self.assertIn(
+            "None of the files listed in global config root_files are present "
+            + "and enforce_root_files is set to true.",
+            message,
+        )
+        self.assertRegex(message, "root_files is defined by the `.*?` config file")
+        self.assertIn(
+            "config file and includes `.watchmanconfig`, `.git`, and `.foo`.", message
+        )
+        self.assertIn(
+            "One or more of these files must be present in order to allow a "
+            + "watch.  Try pulling and checking out a newer version of the "
+            + "project?",
+            message,
         )
 
     def test_invalidRoot(self):
