@@ -56,11 +56,13 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             client.query("watch", path)
         message = str(ctx.exception)
-        self.assertRegex(message, "unable to resolve root .*?:", message)
-        self.assertRegex(
+        self.assertIn("unable to resolve root {}".format(path), message)
+        self.assertIn(
+            (
+                "Your watchman administrator has configured watchman to "
+                + "prevent watching path `{}`"
+            ).format(path),
             message,
-            "Your watchman administrator has configured watchman to prevent "
-            + "watching path `.*?`",
         )
         self.assertIn(
             "None of the files listed in global config root_files are present "
