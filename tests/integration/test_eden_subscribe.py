@@ -30,25 +30,21 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         dat = self.waitForSub("myname", root=root)[0]
         self.assertTrue(dat["is_fresh_instance"])
         self.assertFileListsEqual(
-            self.normFileList(dat["files"]),
-            self.normFileList(
-                [
-                    ".eden",
-                    ".eden/socket",
-                    ".eden/client",
-                    ".watchmanconfig",
-                    ".eden/root",
-                    "hello",
-                ]
-            ),
+            dat["files"],
+            [
+                ".eden",
+                ".eden/socket",
+                ".eden/client",
+                ".watchmanconfig",
+                ".eden/root",
+                "hello",
+            ],
         )
 
         self.touchRelative(root, "w0000t")
         dat = self.waitForSub("myname", root=root)[0]
         self.assertEqual(False, dat["is_fresh_instance"])
-        self.assertFileListsEqual(
-            self.normFileList(dat["files"]), self.normFileList(["w0000t"])
-        )
+        self.assertFileListsEqual(dat["files"], ["w0000t"])
 
         # we should not observe .buckd in the subscription results
         # because it is listed in the ignore_dirs config section.
@@ -57,9 +53,7 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.touchRelative(root, "hello")
         dat = self.waitForSub("myname", root=root)[0]
         self.assertEqual(False, dat["is_fresh_instance"])
-        self.assertFileListsEqual(
-            self.normFileList(dat["files"]), self.normFileList(["hello"])
-        )
+        self.assertFileListsEqual(dat["files"], ["hello"])
 
         # make another subscription and assert that we get a fresh
         # instance result with all the files in it
@@ -68,18 +62,16 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         dat = self.waitForSub("othersub", root=root)[0]
         self.assertEqual(True, dat["is_fresh_instance"])
         self.assertFileListsEqual(
-            self.normFileList(dat["files"]),
-            self.normFileList(
-                [
-                    ".eden",
-                    ".eden/socket",
-                    ".eden/client",
-                    ".watchmanconfig",
-                    ".eden/root",
-                    "hello",
-                    "w0000t",
-                ]
-            ),
+            dat["files"],
+            [
+                ".eden",
+                ".eden/socket",
+                ".eden/client",
+                ".watchmanconfig",
+                ".eden/root",
+                "hello",
+                "w0000t",
+            ],
         )
 
     def assertWaitForAssertedStates(self, root, states):

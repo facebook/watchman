@@ -72,7 +72,7 @@ class TestAgeOutFile(WatchmanTestCase.WatchmanTestCase):
         res = self.watchmanCommand(
             "query", root, {"expression": ["suffix", "txt"], "fields": ["name"]}
         )
-        self.assertFileListsEqual(["b.txt", "c.txt"], self.normFileList(res["files"]))
+        self.assertFileListsEqual(["b.txt", "c.txt"], res["files"])
 
         # Stress the aging a bit
         for _ in range(3):

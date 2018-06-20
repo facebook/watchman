@@ -311,9 +311,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
             dat = self.waitForSub(sub_name, root, remove=True)
             self.assertEqual(len(dat), 1)
             dat = dat[0]
-            self.assertFileListsEqual(
-                self.normFileList(dat["files"]), self.normFileList(["lemon"])
-            )
+            self.assertFileListsEqual(dat["files"], ["lemon"])
 
         self.watchmanCommand("watch-del", root)
 
@@ -344,16 +342,12 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         # prove initial results come through
         dat = self.waitForSub("myname", root=root)[0]
         self.assertEqual(True, dat["is_fresh_instance"])
-        self.assertFileListsEqual(
-            self.normFileList(dat["files"]), self.normFileList(["a", "a/lemon", "b"])
-        )
+        self.assertFileListsEqual(dat["files"], ["a", "a/lemon", "b"])
 
         # and that relative_root adapts the path name
         dat = self.waitForSub("relative", root=root)[0]
         self.assertEqual(True, dat["is_fresh_instance"])
-        self.assertFileListsEqual(
-            self.normFileList(dat["files"]), self.normFileList(["lemon"])
-        )
+        self.assertFileListsEqual(dat["files"], ["lemon"])
 
         # check that deletes show up in the subscription results
         os.unlink(os.path.join(root, "a", "lemon"))
@@ -683,10 +677,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         # prove initial results come through
         dat = self.waitForSub("myname", root=root)[0]
         self.assertEqual(True, dat["is_fresh_instance"])
-        self.assertFileListsEqual(
-            self.normFileList(dat["files"]),
-            self.normFileList(["a", "a/lemon", "b", unicode_filename]),
-        )
+        self.assertFileListsEqual(dat["files"], ["a", "a/lemon", "b", unicode_filename])
 
         os.unlink(os.path.join(root, "a", "lemon"))
 
