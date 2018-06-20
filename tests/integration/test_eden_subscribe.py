@@ -30,7 +30,7 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         dat = self.waitForSub("myname", root=root)[0]
         self.assertTrue(dat["is_fresh_instance"])
         self.assertFileListsEqual(
-            self.normWatchmanFileList(dat["files"]),
+            self.normFileList(dat["files"]),
             self.normFileList(
                 [
                     ".eden",
@@ -47,7 +47,7 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         dat = self.waitForSub("myname", root=root)[0]
         self.assertEqual(False, dat["is_fresh_instance"])
         self.assertFileListsEqual(
-            self.normWatchmanFileList(dat["files"]), self.normFileList(["w0000t"])
+            self.normFileList(dat["files"]), self.normFileList(["w0000t"])
         )
 
         # we should not observe .buckd in the subscription results
@@ -58,7 +58,7 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         dat = self.waitForSub("myname", root=root)[0]
         self.assertEqual(False, dat["is_fresh_instance"])
         self.assertFileListsEqual(
-            self.normWatchmanFileList(dat["files"]), self.normFileList(["hello"])
+            self.normFileList(dat["files"]), self.normFileList(["hello"])
         )
 
         # make another subscription and assert that we get a fresh
@@ -68,7 +68,7 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         dat = self.waitForSub("othersub", root=root)[0]
         self.assertEqual(True, dat["is_fresh_instance"])
         self.assertFileListsEqual(
-            self.normWatchmanFileList(dat["files"]),
+            self.normFileList(dat["files"]),
             self.normFileList(
                 [
                     ".eden",

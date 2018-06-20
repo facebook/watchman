@@ -74,9 +74,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
             root,
             {"since": clock, "relative_root": "subdir", "fields": ["name"]},
         )
-        self.assertEqual(
-            self.normWatchmanFileList(res["files"]), self.normFileList(["foo"])
-        )
+        self.assertEqual(self.normFileList(res["files"]), self.normFileList(["foo"]))
 
         # touch a file outside the relative root
         self.touchRelative(root, "b")
@@ -101,7 +99,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
             root,
             {"since": res["clock"], "relative_root": "subdir", "fields": ["name"]},
         )
-        self.assertEqual(self.normWatchmanFileList(res["files"]), [])
+        self.assertEqual(self.normFileList(res["files"]), [])
 
         # touching a new file inside the subdir should cause it to show up
         dir2 = os.path.join(root, "subdir", "dir2")
@@ -114,8 +112,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
             {"since": res["clock"], "relative_root": "subdir", "fields": ["name"]},
         )
         self.assertEqual(
-            self.normWatchmanFileList(res["files"]),
-            self.normFileList(["dir2", "dir2/bar"]),
+            self.normFileList(res["files"]), self.normFileList(["dir2", "dir2/bar"])
         )
 
     def assertFreshInstanceForSince(self, root, cursor, empty=False):
@@ -126,10 +123,10 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         )
         self.assertTrue(res["is_fresh_instance"])
         if empty:
-            self.assertEqual(self.normWatchmanFileList(res["files"]), [])
+            self.assertEqual(self.normFileList(res["files"]), [])
         else:
             self.assertEqual(
-                self.normWatchmanFileList(res["files"]), self.normFileList(["111"])
+                self.normFileList(res["files"]), self.normFileList(["111"])
             )
 
     def test_sinceFreshInstance(self):
@@ -140,9 +137,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
 
         res = self.watchmanCommand("query", root, {"fields": ["name"]})
         self.assertTrue(res["is_fresh_instance"])
-        self.assertEqual(
-            self.normWatchmanFileList(res["files"]), self.normFileList(["111"])
-        )
+        self.assertEqual(self.normFileList(res["files"]), self.normFileList(["111"]))
 
         # relative clock value, fresh instance
         self.assertFreshInstanceForSince(root, "c:0:1:0:1", False)
@@ -181,9 +176,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
             {"since": clock, "fields": ["name"], "empty_on_fresh_instance": True},
         )
         self.assertFalse(res["is_fresh_instance"])
-        self.assertEqual(
-            self.normWatchmanFileList(res["files"]), self.normFileList(["222"])
-        )
+        self.assertEqual(self.normFileList(res["files"]), self.normFileList(["222"]))
 
         # fresh instance results should omit deleted files
         os.unlink(os.path.join(root, "111"))
@@ -191,9 +184,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
             "query", root, {"since": "c:0:1:0:1", "fields": ["name"]}
         )
         self.assertTrue(res["is_fresh_instance"])
-        self.assertEqual(
-            self.normWatchmanFileList(res["files"]), self.normFileList(["222"])
-        )
+        self.assertEqual(self.normFileList(res["files"]), self.normFileList(["222"]))
 
     def test_reAddWatchFreshInstance(self):
         root = self.mkdtemp()
@@ -203,9 +194,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
 
         res = self.watchmanCommand("query", root, {"fields": ["name"]})
         self.assertTrue(res["is_fresh_instance"])
-        self.assertEqual(
-            self.normWatchmanFileList(res["files"]), self.normFileList(["111"])
-        )
+        self.assertEqual(self.normFileList(res["files"]), self.normFileList(["111"]))
 
         clock = res["clock"]
         os.unlink(os.path.join(root, "111"))
@@ -220,9 +209,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         # ensure that our since query is a fresh instance
         res = self.watchmanCommand("query", root, {"since": clock, "fields": ["name"]})
         self.assertTrue(res["is_fresh_instance"])
-        self.assertEqual(
-            self.normWatchmanFileList(res["files"]), self.normFileList(["222"])
-        )
+        self.assertEqual(self.normFileList(res["files"]), self.normFileList(["222"]))
 
     def test_recrawlFreshInstance(self):
         root = self.mkdtemp()
@@ -243,7 +230,7 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         # generate a fresh instance result set.  This is no longer true.
         self.assertFalse(res["is_fresh_instance"])
         self.assertEqual(
-            self.normWatchmanFileList(res["files"]), self.normFileList(["111", "222"])
+            self.normFileList(res["files"]), self.normFileList(["111", "222"])
         )
         self.assertRegex(res["warning"], "Recrawled this watch")
 
@@ -269,6 +256,6 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
         # generate a fresh instance result set.  This is no longer true.
         self.assertFalse(res["is_fresh_instance"])
         self.assertEqual(
-            self.normWatchmanFileList(res["files"]), self.normFileList(["111", "222"])
+            self.normFileList(res["files"]), self.normFileList(["111", "222"])
         )
         self.assertTrue("warning" not in res)

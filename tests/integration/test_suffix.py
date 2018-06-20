@@ -57,7 +57,7 @@ class TestMatch(WatchmanTestCase.WatchmanTestCase):
             },
         )
         self.assertEqual(
-            self.normWatchmanFileList(res1["files"]),
+            self.normFileList(res1["files"]),
             self.normFileList(["README.pdf", "win/ms.dll"]),
         )
         # User constructed anyof query with suffix array. This should give
@@ -71,8 +71,7 @@ class TestMatch(WatchmanTestCase.WatchmanTestCase):
             },
         )
         self.assertEqual(
-            self.normWatchmanFileList(res1["files"]),
-            self.normWatchmanFileList(res2["files"]),
+            self.normFileList(res1["files"]), self.normFileList(res2["files"])
         )
         # Another anyof suffix query that watchman can convert to suffix array.
         # This will check boundary (empty result set)
@@ -84,9 +83,7 @@ class TestMatch(WatchmanTestCase.WatchmanTestCase):
                 "fields": ["name"],
             },
         )
-        self.assertEqual(
-            self.normWatchmanFileList(res1["files"]), self.normFileList([])
-        )
+        self.assertEqual(self.normFileList(res1["files"]), self.normFileList([]))
         # User constructed anyof query with suffix array. This should give
         # same results as above query with suffix array.
         res2 = self.watchmanCommand(
@@ -98,8 +95,7 @@ class TestMatch(WatchmanTestCase.WatchmanTestCase):
             },
         )
         self.assertEqual(
-            self.normWatchmanFileList(res1["files"]),
-            self.normWatchmanFileList(res2["files"]),
+            self.normFileList(res1["files"]), self.normFileList(res2["files"])
         )
         # Compound anyof suffix query that watchman can convert to suffix array.
         # We will compare results against suffix array query.
@@ -126,8 +122,7 @@ class TestMatch(WatchmanTestCase.WatchmanTestCase):
             },
         )
         self.assertEqual(
-            self.normWatchmanFileList(res1["files"]),
-            self.normFileList(["html/frames.html"]),
+            self.normFileList(res1["files"]), self.normFileList(["html/frames.html"])
         )
         # User constructed anyof suffix query. This should give same results
         # as above query with suffix array.
@@ -149,8 +144,7 @@ class TestMatch(WatchmanTestCase.WatchmanTestCase):
             },
         )
         self.assertEqual(
-            self.normWatchmanFileList(res1["files"]),
-            self.normWatchmanFileList(res2["files"]),
+            self.normFileList(res1["files"]), self.normFileList(res2["files"])
         )
 
     def test_suffix_expr(self):
