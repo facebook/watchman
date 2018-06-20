@@ -17,19 +17,20 @@ import WatchmanTestCase
 class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
     def test_rootRestrict(self):
         config = {"root_restrict_files": [".git", ".foo"]}
+        expect = [
+            ("directory", ".git", True),
+            ("file", ".foo", True),
+            ("directory", ".foo", True),
+            (None, None, False),
+            ("directory", ".svn", False),
+            ("file", "baz", False),
+        ]
+        self.runWatchTests(config=config, expect=expect)
 
+    def runWatchTests(self, config, expect):
         with WatchmanInstance.Instance(config=config) as inst:
             inst.start()
             client = self.getClient(inst)
-
-            expect = [
-                ("directory", ".git", True),
-                ("file", ".foo", True),
-                ("directory", ".foo", True),
-                (None, None, False),
-                ("directory", ".svn", False),
-                ("file", "baz", False),
-            ]
 
             for filetype, name, expect_pass in expect:
                 # encode the test criteria in the dirname so that we can
