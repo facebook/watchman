@@ -289,7 +289,7 @@ class WatchmanTestCase(unittest.TestCase):
         if relativeRoot:
             expr["relative_root"] = relativeRoot
         res = self.watchmanCommand("query", root, expr)
-        files = self.normFileList(res["files"])
+        files = res["files"]
         self.last_file_list = files
         return files
 
@@ -335,8 +335,7 @@ class WatchmanTestCase(unittest.TestCase):
     def assertFileList(
         self, root, files=None, cursor=None, relativeRoot=None, message=None
     ):
-        files = files or []
-        expected_files = self.normFileList(files)
+        expected_files = files or []
         if (cursor is not None) and cursor[0:2] == "n:":
             # it doesn't make sense to repeat named cursor queries, as
             # the cursor moves each time

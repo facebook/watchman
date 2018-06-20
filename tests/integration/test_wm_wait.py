@@ -39,7 +39,6 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
     def assertWaitedFileList(self, stdout, expected):
         stdout = stdout.decode("utf-8").rstrip()
         files = [f.rstrip() for f in stdout.split("\n")]
-        files = set(self.normFileList(files))
         self.assertFileListContains(files, expected)
 
     def assertWaitForWmWaitWatch(self, root):
