@@ -15,8 +15,7 @@ import WatchmanTestCase
 @WatchmanTestCase.expand_matrix
 class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
     def runProjectTests(self, config, expect, touch_watchmanconfig=False):
-        inst = WatchmanInstance.Instance(config=config)
-        try:
+        with WatchmanInstance.Instance(config=config) as inst:
             inst.start()
             client = self.getClient(inst)
 
@@ -67,8 +66,6 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
                         ),
                         str(ctx.exception),
                     )
-        finally:
-            inst.stop()
 
     def test_watchProject(self):
         expect = [

@@ -33,8 +33,7 @@ class TestIllegalFSType(WatchmanTestCase.WatchmanTestCase):
             "illegal_fstypes_advice": "just cos",
         }
 
-        inst = WatchmanInstance.Instance(config=config)
-        try:
+        with WatchmanInstance.Instance(config=config) as inst:
             inst.start()
             client = self.getClient(inst)
 
@@ -48,6 +47,3 @@ class TestIllegalFSType(WatchmanTestCase.WatchmanTestCase):
                 ),
                 str(ctx.exception),
             )
-
-        finally:
-            inst.stop()

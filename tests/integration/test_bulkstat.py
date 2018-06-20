@@ -12,8 +12,7 @@ import WatchmanTestCase
 class TestBulkStat(WatchmanTestCase.WatchmanTestCase):
     def test_bulkstat_on(self):
         config = {"_use_bulkstat": True}
-        inst = WatchmanInstance.Instance(config=config)
-        try:
+        with WatchmanInstance.Instance(config=config) as inst:
             inst.start()
             self.getClient(inst, replace_cached=True)
 
@@ -23,14 +22,10 @@ class TestBulkStat(WatchmanTestCase.WatchmanTestCase):
             self.touchRelative(root, "foo")
             self.touchRelative(root, "bar")
             self.assertFileList(root, ["foo", "bar"])
-
-        finally:
-            inst.stop()
 
     def test_bulkstat_off(self):
         config = {"_use_bulkstat": False}
-        inst = WatchmanInstance.Instance(config=config)
-        try:
+        with WatchmanInstance.Instance(config=config) as inst:
             inst.start()
             self.getClient(inst, replace_cached=True)
 
@@ -40,6 +35,3 @@ class TestBulkStat(WatchmanTestCase.WatchmanTestCase):
             self.touchRelative(root, "foo")
             self.touchRelative(root, "bar")
             self.assertFileList(root, ["foo", "bar"])
-
-        finally:
-            inst.stop()

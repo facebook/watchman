@@ -120,6 +120,12 @@ class _Instance(object):
     def __del__(self):
         self.stop()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        self.stop()
+
     def getSockPath(self):
         return self.sock_file
 

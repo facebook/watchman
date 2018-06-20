@@ -18,8 +18,7 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
     def test_rootRestrict(self):
         config = {"root_restrict_files": [".git", ".foo"]}
 
-        inst = WatchmanInstance.Instance(config=config)
-        try:
+        with WatchmanInstance.Instance(config=config) as inst:
             inst.start()
             client = self.getClient(inst)
 
@@ -45,9 +44,6 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
                     self.assertWatchSucceeds(client, d)
                 else:
                     self.assertWatchIsRestricted(client, d)
-
-        finally:
-            inst.stop()
 
     def assertWatchSucceeds(self, client, path):
         client.query("watch", path)
