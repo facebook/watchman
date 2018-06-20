@@ -41,23 +41,19 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
             root,
             {"glob": ["*.h"], "relative_root": "includes", "fields": ["name"]},
         )
-        self.assertEqual(
-            self.normFileList(["a.h", "b.h"]), self.normFileList(res["files"])
-        )
+        self.assertFileListsEqual(["a.h", "b.h"], res["files"])
 
         res = self.watchmanCommand(
             "query", root, {"glob": ["**/*.h"], "fields": ["name"]}
         )
-        self.assertEqual(
-            self.normFileList(
-                [
-                    "includes/a.h",
-                    "includes/b.h",
-                    "includes/second/bar.h",
-                    "includes/second/foo.h",
-                ]
-            ),
-            self.normFileList(res["files"]),
+        self.assertFileListsEqual(
+            [
+                "includes/a.h",
+                "includes/b.h",
+                "includes/second/bar.h",
+                "includes/second/foo.h",
+            ],
+            res["files"],
         )
 
         res = self.watchmanCommand(
@@ -69,9 +65,7 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
                 "fields": ["name"],
             },
         )
-        self.assertEqual(
-            self.normFileList(["bar.h", "foo.h"]), self.normFileList(res["files"])
-        )
+        self.assertFileListsEqual(["bar.h", "foo.h"], res["files"])
 
         # check that a windows style path separator is normalized when
         # present in relative_root
@@ -84,47 +78,38 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
                 "fields": ["name"],
             },
         )
-        self.assertEqual(
-            self.normFileList(["bar.h", "foo.h"]), self.normFileList(res["files"])
-        )
+        self.assertFileListsEqual(["bar.h", "foo.h"], res["files"])
 
         res = self.watchmanCommand(
             "query",
             root,
             {"glob": ["**/*.h"], "relative_root": "includes", "fields": ["name"]},
         )
-        self.assertEqual(
-            self.normFileList(["a.h", "b.h", "second/bar.h", "second/foo.h"]),
-            self.normFileList(res["files"]),
+        self.assertFileListsEqual(
+            ["a.h", "b.h", "second/bar.h", "second/foo.h"], res["files"]
         )
 
         res = self.watchmanCommand("query", root, {"glob": ["*.c"], "fields": ["name"]})
-        self.assertEqual(
-            self.normFileList(res["files"]), self.normFileList(["a.c", "b.c"])
-        )
+        self.assertFileListsEqual(res["files"], ["a.c", "b.c"])
 
         res = self.watchmanCommand(
             "query",
             root,
             {"glob": ["*.c"], "glob_includedotfiles": True, "fields": ["name"]},
         )
-        self.assertEqual(
-            self.normFileList(res["files"]), self.normFileList([".a.c", "a.c", "b.c"])
-        )
+        self.assertFileListsEqual(res["files"], [".a.c", "a.c", "b.c"])
 
         res = self.watchmanCommand(
             "query", root, {"glob": ["**/*.h", "**/**/*.h"], "fields": ["name"]}
         )
-        self.assertEqual(
-            self.normFileList(
-                [
-                    "includes/a.h",
-                    "includes/b.h",
-                    "includes/second/bar.h",
-                    "includes/second/foo.h",
-                ]
-            ),
-            self.normFileList(res["files"]),
+        self.assertFileListsEqual(
+            [
+                "includes/a.h",
+                "includes/b.h",
+                "includes/second/bar.h",
+                "includes/second/foo.h",
+            ],
+            res["files"],
         )
 
         # check that dedup is happening
@@ -133,16 +118,14 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
             root,
             {"glob": ["**/*.h", "**/**/*.h", "includes/*.h"], "fields": ["name"]},
         )
-        self.assertEqual(
-            self.normFileList(
-                [
-                    "includes/a.h",
-                    "includes/b.h",
-                    "includes/second/bar.h",
-                    "includes/second/foo.h",
-                ]
-            ),
-            self.normFileList(res["files"]),
+        self.assertFileListsEqual(
+            [
+                "includes/a.h",
+                "includes/b.h",
+                "includes/second/bar.h",
+                "includes/second/foo.h",
+            ],
+            res["files"],
         )
 
         shutil.rmtree(second_inc_dir)
@@ -150,27 +133,19 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
         res = self.watchmanCommand(
             "query", root, {"glob": ["**/*.h", "**/**/*.h"], "fields": ["name"]}
         )
-        self.assertEqual(
-            self.normFileList(["includes/a.h", "includes/b.h"]),
-            self.normFileList(res["files"]),
-        )
+        self.assertFileListsEqual(["includes/a.h", "includes/b.h"], res["files"])
 
         res = self.watchmanCommand(
             "query", root, {"glob": ["*/*.h"], "fields": ["name"]}
         )
-        self.assertEqual(
-            self.normFileList(["includes/a.h", "includes/b.h"]),
-            self.normFileList(res["files"]),
-        )
+        self.assertFileListsEqual(["includes/a.h", "includes/b.h"], res["files"])
 
         os.unlink(os.path.join(inc_dir, "a.h"))
 
         res = self.watchmanCommand(
             "query", root, {"glob": ["*/*.h"], "fields": ["name"]}
         )
-        self.assertEqual(
-            self.normFileList(["includes/b.h"]), self.normFileList(res["files"])
-        )
+        self.assertFileListsEqual(["includes/b.h"], res["files"])
 
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             self.watchmanCommand(
