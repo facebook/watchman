@@ -65,7 +65,34 @@ if not pywatchman.compat.PYTHON3:
     unittest.TestCase.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
 
 
-class WatchmanTestCase(unittest.TestCase):
+class TempDirPerTestMixin(unittest.TestCase):
+    def __init__(self, *args, **kwargs):
+        super(TempDirPerTestMixin, self).__init__(*args, **kwargs)
+        self.tempdir = None
+
+    def setUp(self):
+        super(TempDirPerTestMixin, self).setUp()
+
+        id = self._getTempDirName()
+
+        # Arrange for any temporary stuff we create to go under
+        # our global tempdir and put it in a dir named for the test
+        self.tempdir = os.path.join(TempDir.get_temp_dir().get_dir(), id)
+        os.mkdir(self.tempdir)
+
+    def _getTempDirName(self):
+        return self.id()
+
+    def mkdtemp(self, **kwargs):
+        return norm_absolute_path(tempfile.mkdtemp(dir=self.tempdir, **kwargs))
+
+    def mktemp(self, prefix=""):
+        f, name = tempfile.mkstemp(prefix=prefix, dir=self.tempdir)
+        os.close(f)
+        return name
+
+
+class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
     def __init__(self, methodName="run"):
         super(WatchmanTestCase, self).__init__(methodName)
         self.setDefaultConfiguration()
@@ -115,14 +142,6 @@ class WatchmanTestCase(unittest.TestCase):
             except Exception:
                 pass
 
-    def mkdtemp(self, **kwargs):
-        return norm_absolute_path(tempfile.mkdtemp(dir=self.tempdir, **kwargs))
-
-    def mktemp(self, prefix=""):
-        f, name = tempfile.mkstemp(prefix=prefix, dir=self.tempdir)
-        os.close(f)
-        return name
-
     def setAttemptNumber(self, attempt):
         self.attempt = attempt
 
@@ -131,19 +150,21 @@ class WatchmanTestCase(unittest.TestCase):
             self.client.close()
             delattr(self, "client")
 
+    def _getTempDirName(self):
+        name = self._getLongTestID()
+        if self.attempt > 0:
+            name += "-%d" % self.attempt
+        return name
+
+    def _getLongTestID(self):
+        return "%s.%s.%s" % (self.id(), self.transport, self.encoding)
+
     def run(self, result):
         if result is None:
             raise Exception("MUST be a runtests.py:Result instance")
 
-        # Arrange for any temporary stuff we create to go under
-        # our global tempdir and put it in a dir named for the test
-        id = "%s.%s.%s" % (self.id(), self.transport, self.encoding)
+        id = self._getLongTestID()
         try:
-            self.tempdir = os.path.join(TempDir.get_temp_dir().get_dir(), id)
-            if self.attempt > 0:
-                self.tempdir += "-%d" % self.attempt
-            os.mkdir(self.tempdir)
-
             self.__logTestInfo(id, "BEGIN")
             super(WatchmanTestCase, self).run(result)
         finally:
