@@ -10,6 +10,7 @@ import os
 import pywatchman
 import WatchmanInstance
 import WatchmanTestCase
+from path_utils import norm_absolute_path, norm_relative_path
 
 
 @WatchmanTestCase.expand_matrix
@@ -29,7 +30,7 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
 
                 dir_to_watch = os.path.join(d, "a", "b", "c")
                 os.makedirs(dir_to_watch, 0o777)
-                dir_to_watch = self.normAbsolutePath(dir_to_watch)
+                dir_to_watch = norm_absolute_path(dir_to_watch)
                 self.touchRelative(d, touch)
                 if touch_watchmanconfig:
                     self.touchRelative(d, ".watchmanconfig")
@@ -43,15 +44,15 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
                     res = client.query("watch-project", dir_to_watch)
 
                     self.assertEqual(
-                        self.normAbsolutePath(os.path.join(d, expect_watch)),
-                        self.normAbsolutePath(res["watch"]),
+                        norm_absolute_path(os.path.join(d, expect_watch)),
+                        norm_absolute_path(res["watch"]),
                     )
                     if not expect_rel:
                         self.assertEqual(None, res.get("relative_path"))
                     else:
                         self.assertEqual(
-                            self.normRelativePath(expect_rel),
-                            self.normRelativePath(res.get("relative_path")),
+                            norm_relative_path(expect_rel),
+                            norm_relative_path(res.get("relative_path")),
                         )
                 else:
                     with self.assertRaises(pywatchman.WatchmanError) as ctx:
@@ -118,8 +119,8 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
         self.touchRelative(abc, ".watchmanconfig")
 
         res = self.watchmanCommand("watch-project", d)
-        self.assertEqual(d, self.normAbsolutePath(res["watch"]))
+        self.assertEqual(d, norm_absolute_path(res["watch"]))
 
         res = self.watchmanCommand("watch-project", abc)
-        self.assertEqual(d, self.normAbsolutePath(res["watch"]))
-        self.assertEqual("a/b/c", self.normRelativePath(res["relative_path"]))
+        self.assertEqual(d, norm_absolute_path(res["watch"]))
+        self.assertEqual("a/b/c", norm_relative_path(res["relative_path"]))

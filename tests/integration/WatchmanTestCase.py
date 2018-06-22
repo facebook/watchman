@@ -17,6 +17,7 @@ import Interrupt
 import pywatchman
 import TempDir
 import WatchmanInstance
+from path_utils import norm_absolute_path, norm_relative_path
 
 
 try:
@@ -115,7 +116,7 @@ class WatchmanTestCase(unittest.TestCase):
                 pass
 
     def mkdtemp(self, **kwargs):
-        return self.normAbsolutePath(tempfile.mkdtemp(dir=self.tempdir, **kwargs))
+        return norm_absolute_path(tempfile.mkdtemp(dir=self.tempdir, **kwargs))
 
     def mktemp(self, prefix=""):
         f, name = tempfile.mkstemp(prefix=prefix, dir=self.tempdir)
@@ -227,19 +228,6 @@ class WatchmanTestCase(unittest.TestCase):
     def watchmanCommand(self, *args):
         return self.getClient().query(*args)
 
-    def normRelativePath(self, path):
-        # TODO: in the future we will standardize on `/` as the
-        # dir separator so we can remove the replace call from here.
-        # We do not need to normcase because all of our tests are
-        # using the appropriate case already, and watchman returns
-        # paths in the canonical file replace case anyway.
-        return path.replace("\\", "/")
-
-    def normAbsolutePath(self, path):
-        # TODO: in the future we will standardize on `/` as the
-        # dir separator so we can remove the replace call.
-        return path.replace("\\", "/")
-
     def _waitForCheck(self, cond, res_check, timeout):
         deadline = time.time() + timeout
         res = None
@@ -308,22 +296,22 @@ class WatchmanTestCase(unittest.TestCase):
         return watch_list
 
     def normFileList(self, files):
-        return sorted(list(map(self.normRelativePath, files)))
+        return sorted(list(map(norm_relative_path, files)))
 
     def assertFileListsEqual(self, list1, list2, message=None):
-        list1 = [self.normRelativePath(f) for f in list1]
-        list2 = [self.normRelativePath(f) for f in list2]
+        list1 = [norm_relative_path(f) for f in list1]
+        list2 = [norm_relative_path(f) for f in list2]
         self.assertCountEqual(list1, list2, message)
 
     def fileListsEqual(self, list1, list2):
-        list1 = [self.normRelativePath(f) for f in list1]
-        list2 = [self.normRelativePath(f) for f in list2]
+        list1 = [norm_relative_path(f) for f in list1]
+        list2 = [norm_relative_path(f) for f in list2]
         return sorted(list1) == sorted(list2)
 
     def fileListContains(self, list1, list2):
         """ return true if list1 contains each unique element in list2 """
-        set1 = set([self.normRelativePath(f) for f in list1])
-        list2 = [self.normRelativePath(f) for f in list2]
+        set1 = set([norm_relative_path(f) for f in list1])
+        list2 = [norm_relative_path(f) for f in list2]
         return set1.issuperset(list2)
 
     def assertFileListContains(self, list1, list2, message=None):
@@ -387,8 +375,8 @@ class WatchmanTestCase(unittest.TestCase):
 
         def norm_sub_item(item):
             if isinstance(item, STRING_TYPES):
-                return self.normRelativePath(item)
-            item["name"] = self.normRelativePath(item["name"])
+                return norm_relative_path(item)
+            item["name"] = norm_relative_path(item["name"])
             return item
 
         def norm_sub(sub):
@@ -402,7 +390,7 @@ class WatchmanTestCase(unittest.TestCase):
         return list(map(norm_sub, data))
 
     def findSubscriptionContainingFile(self, subdata, filename):
-        filename = self.normRelativePath(filename)
+        filename = norm_relative_path(filename)
         for dat in subdata:
             if "files" in dat and filename in self.normFileList(dat["files"]):
                 return dat
@@ -423,9 +411,9 @@ class WatchmanTestCase(unittest.TestCase):
         WatchmanInstance.getSharedInstance().resume()
 
     def rootIsWatched(self, r):
-        r = self.normAbsolutePath(r)
+        r = norm_absolute_path(r)
         watches = [
-            self.normAbsolutePath(root)
+            norm_absolute_path(root)
             for root in self.watchmanCommand("watch-list")["roots"]
         ]
         return r in watches

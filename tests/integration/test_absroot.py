@@ -10,6 +10,7 @@ import os.path
 
 import pywatchman
 import WatchmanTestCase
+from path_utils import norm_absolute_path
 
 
 @WatchmanTestCase.expand_matrix
@@ -25,7 +26,7 @@ class TestAbsoluteRoot(WatchmanTestCase.WatchmanTestCase):
 
             if self.transport == "cli":
                 res = self.watchmanCommand("watch", dot)
-                self.assertEqual(root, self.normAbsolutePath(res["watch"]))
+                self.assertEqual(root, norm_absolute_path(res["watch"]))
             else:
                 with self.assertRaises(pywatchman.WatchmanError) as ctx:
                     self.watchmanCommand("watch", dot)

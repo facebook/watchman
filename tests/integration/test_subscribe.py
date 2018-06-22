@@ -11,6 +11,7 @@ import os.path
 
 import pywatchman
 import WatchmanTestCase
+from path_utils import norm_relative_path
 
 
 try:
@@ -25,7 +26,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         return True
 
     def wlockExists(self, subdata, exists):
-        norm_wlock = self.normRelativePath(".hg/wlock")
+        norm_wlock = norm_relative_path(".hg/wlock")
         for sub in subdata:
             if "files" not in sub:
                 # Don't trip over cancellation notices left over from other
@@ -34,7 +35,7 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
             for f in sub["files"]:
                 if (
                     f["exists"] == exists
-                    and self.normRelativePath(f["name"]) == norm_wlock
+                    and norm_relative_path(f["name"]) == norm_wlock
                 ):
                     return True
         return False

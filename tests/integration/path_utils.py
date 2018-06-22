@@ -84,3 +84,18 @@ else:
 
     def get_canonical_filesystem_path(name):
         return os.path.normpath(name)
+
+
+def norm_relative_path(path):
+    # TODO: in the future we will standardize on `/` as the
+    # dir separator so we can remove the replace call from here.
+    # We do not need to normcase because all of our tests are
+    # using the appropriate case already, and watchman returns
+    # paths in the canonical file replace case anyway.
+    return path.replace("\\", "/")
+
+
+def norm_absolute_path(path):
+    # TODO: in the future we will standardize on `/` as the
+    # dir separator so we can remove the replace call.
+    return path.replace("\\", "/")
