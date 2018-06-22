@@ -12,8 +12,8 @@ import signal
 import subprocess
 
 import Interrupt
-import TempDir
 import WatchmanInstance
+import WatchmanTestCase
 
 
 try:
@@ -69,7 +69,7 @@ def find_js_tests(test_class):
 
 
 @find_js_tests
-class NodeTestCase(unittest.TestCase):
+class NodeTestCase(WatchmanTestCase.TempDirPerTestMixin, unittest.TestCase):
     attempt = 0
 
     def setAttemptNumber(self, attempt):
@@ -80,16 +80,7 @@ class NodeTestCase(unittest.TestCase):
     def runTest(self):
         env = os.environ.copy()
         env["WATCHMAN_SOCK"] = WatchmanInstance.getSharedInstance().getSockPath()
-        dotted = (
-            os.path.normpath(self.id())
-            .replace(os.sep, ".")
-            .replace("tests.integration.", "")
-            .replace(".php", "")
-        )
-        if self.attempt > 0:
-            dotted += "-%d" % self.attempt
-        env["TMPDIR"] = os.path.join(TempDir.get_temp_dir().get_dir(), dotted)
-        os.mkdir(env["TMPDIR"])
+        env["TMPDIR"] = self.tempdir
 
         # build the node module with npm
         node_dir = os.path.join(env["TMPDIR"], "fb-watchman")
@@ -121,3 +112,14 @@ class NodeTestCase(unittest.TestCase):
             )
             return
         self.assertTrue(True, self.getCommandArgs())
+
+    def _getTempDirName(self):
+        dotted = (
+            os.path.normpath(self.id())
+            .replace(os.sep, ".")
+            .replace("tests.integration.", "")
+            .replace(".php", "")
+        )
+        if self.attempt > 0:
+            dotted += "-%d" % self.attempt
+        return dotted
