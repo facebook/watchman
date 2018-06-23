@@ -703,3 +703,13 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
                 warn = item["warning"]
                 break
         self.assertRegex(warn, r"Recrawled this watch")
+
+    def findSubscriptionContainingFile(self, subdata, filename):
+        filename = norm_relative_path(filename)
+        for dat in subdata:
+            if "files" in dat and filename in self.normFileList(dat["files"]):
+                return dat
+        return None
+
+    def normFileList(self, files):
+        return sorted(list(map(norm_relative_path, files)))
