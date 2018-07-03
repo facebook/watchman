@@ -21,6 +21,8 @@ static thread_local std::string thread_name_str;
 #endif
 static constexpr size_t kMaxFrames = 64;
 
+char* log_name = NULL;
+
 namespace {
 template <typename String>
 void write_stderr(const String& str) {

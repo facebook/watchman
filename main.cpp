@@ -23,7 +23,6 @@ static char *server_encoding = NULL;
 static char *output_encoding = NULL;
 static char *test_state_dir = NULL;
 static char *sock_name = NULL;
-char *log_name = NULL;
 static char *pid_file = NULL;
 char *watchman_state_file = NULL;
 static char **daemon_argv = NULL;
