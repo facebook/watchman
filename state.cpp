@@ -7,6 +7,9 @@
 
 using namespace watchman;
 
+char* watchman_state_file = NULL;
+int dont_save_state = 0;
+
 /** The state saving thread is responsible for writing out the
  * persistent information about the users watches.
  * It runs in its own thread so that we avoid the possibility
