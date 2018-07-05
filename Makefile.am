@@ -37,6 +37,7 @@ watchman_SOURCES = \
 	json.cpp       \
 	bser.cpp       \
 	expflags.cpp   \
+	groups.cpp     \
 	hash.cpp       \
 	ioprio.cpp        \
 	opendir.cpp       \

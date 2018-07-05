@@ -283,6 +283,7 @@ clockspec.cpp
 error_category.cpp
 expflags.cpp
 fstype.cpp
+groups.cpp
 # hash.cpp (in libhash)
 ignore.cpp
 ioprio.cpp

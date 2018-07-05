@@ -737,25 +737,6 @@ static void compute_file_name(char **strp,
   *strp = str;
 }
 
-#ifndef _WIN32
-const struct group *w_get_group(const char *group_name) {
-  // This explicit errno statement is necessary to distinguish between the
-  // group not existing and an error.
-  errno = 0;
-  struct group *group = getgrnam(group_name);
-  if (!group) {
-    if (errno == 0) {
-      w_log(W_LOG_ERR, "group '%s' does not exist\n", group_name);
-    } else {
-      w_log(W_LOG_ERR, "getting gid for '%s' failed: %s\n", group_name,
-            strerror(errno));
-    }
-    return nullptr;
-  }
-  return group;
-}
-#endif // ndef _WIN32
-
 static const char *compute_user_name(void) {
   const char *user = get_env_with_fallback("USER", "LOGNAME", NULL);
 #ifdef _WIN32
