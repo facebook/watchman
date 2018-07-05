@@ -38,4 +38,3 @@ struct watchman_dir {
    * with it, to produce the path to the child */
   w_string getFullPathToChild(w_string_piece child) const;
 };
-void delete_dir(struct watchman_dir* dir);
