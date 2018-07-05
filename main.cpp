@@ -24,7 +24,6 @@ static char *output_encoding = NULL;
 static char *test_state_dir = NULL;
 static char *pid_file = NULL;
 static char **daemon_argv = NULL;
-const char *watchman_tmp_dir = NULL;
 static int persistent = 0;
 static int foreground = 0;
 static int no_pretty = 0;

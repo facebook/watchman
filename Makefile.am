@@ -103,7 +103,8 @@ watchman_SOURCES = \
 	sockname.cpp \
 	state.cpp      \
 	string.cpp     \
-	time.cpp
+	time.cpp \
+	tmp.cpp
 
 noinst_HEADERS =   \
 	watchman.h       \
