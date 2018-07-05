@@ -295,6 +295,7 @@ opendir.cpp
 opt.cpp
 pending.cpp
 perf.cpp
+sockname.cpp
 spawn.cpp
 state.cpp
 stream.cpp

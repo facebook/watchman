@@ -100,6 +100,7 @@ watchman_SOURCES = \
 	root/watchlist.cpp       \
 	scm/Mercurial.cpp \
 	scm/SCM.cpp \
+	sockname.cpp \
 	state.cpp      \
 	string.cpp     \
 	time.cpp

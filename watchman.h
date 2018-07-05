@@ -94,6 +94,7 @@ void startSanityCheckThread(void);
 # define w_strsignal(val) strsignal((val))
 #endif
 
+extern char* sock_name;
 const char *get_sock_name(void);
 
 #ifndef _WIN32
