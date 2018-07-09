@@ -53,11 +53,11 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             client.query("watch", path)
         message = str(ctx.exception)
-        self.assertIn("unable to resolve root {}".format(path), message)
+        self.assertIn("unable to resolve root {0}".format(path), message)
         self.assertIn(
             (
                 "Your watchman administrator has configured watchman to "
-                + "prevent watching path `{}`"
+                + "prevent watching path `{0}`"
             ).format(path),
             message,
         )
