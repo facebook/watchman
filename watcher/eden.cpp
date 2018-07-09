@@ -833,12 +833,10 @@ class EdenView : public QueryableView {
   }
 
   uint32_t getLastAgeOutTickValue() const override {
-    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     return 0;
   }
 
   time_t getLastAgeOutTimeStamp() const override {
-    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     return 0;
   }
 
@@ -846,7 +844,6 @@ class EdenView : public QueryableView {
 
   bool doAnyOfTheseFilesExist(
       const std::vector<w_string>& /*fileNames*/) const override {
-    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     return false;
   }
 
@@ -988,7 +985,6 @@ class EdenView : public QueryableView {
 
   std::shared_future<void> waitUntilReadyToQuery(
       const std::shared_ptr<w_root_t>& /*root*/) override {
-    watchman::log(watchman::ERR, __FUNCTION__, "\n");
     std::promise<void> p;
     p.set_value();
     return p.get_future();
