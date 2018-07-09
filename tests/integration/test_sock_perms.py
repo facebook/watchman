@@ -40,7 +40,7 @@ class TestSockPerms(unittest.TestCase):
         else:
             # If the instance is going to fail anyway then there's no point
             # waiting so long
-            start_timeout = 0.5
+            start_timeout = 2
         return WatchmanInstance.InstanceWithStateDir(
             config=config, start_timeout=start_timeout
         )

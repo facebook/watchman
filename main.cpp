@@ -7,6 +7,9 @@
 #ifndef _WIN32
 #include <poll.h>
 #endif
+#ifdef WATCHMAN_FACEBOOK_INTERNAL
+#include <folly/Singleton.h>
+#endif
 
 using watchman::ChildProcess;
 using watchman::FileDescriptor;
@@ -1116,6 +1119,15 @@ static void spawn_watchman(void) {
 int main(int argc, char **argv)
 {
   bool ran;
+
+#ifdef WATCHMAN_FACEBOOK_INTERNAL
+  // Since we don't fully integrate with folly, but may pull
+  // in dependencies that do, we need to perform a little bit
+  // of bootstrapping.  We don't want to run the full folly
+  // init today because it will interfere with our own signal
+  // handling.  In the future we will integrate this properly.
+  folly::SingletonVault::singleton()->registrationComplete();
+#endif
 
   parse_cmdline(&argc, &argv);
 

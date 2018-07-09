@@ -992,12 +992,6 @@ class EdenView : public QueryableView {
 };
 
 std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
-  // Watchman doesn't depend on folly, so we have to put this call here, instead
-  // of watchman's main().
-  static folly::once_flag reg_;
-  folly::call_once(
-      reg_, [] { folly::SingletonVault::singleton()->registrationComplete(); });
-
   auto edenRoot =
       readLink(watchman::to<std::string>(root->root_path, "/.eden/root"));
   if (w_string_piece(edenRoot) != root->root_path) {
