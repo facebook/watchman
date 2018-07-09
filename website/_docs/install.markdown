@@ -33,7 +33,7 @@ the list above.
 
 ## Download for Windows (Beta)
 
-Watchman is considered to be in **beta** status for Windows but is has
+Watchman is considered to be in **beta** status for Windows but has
 a reasonably sized group of users depending on it already, and we expect
 to remove the beta label in the coming months.
 
