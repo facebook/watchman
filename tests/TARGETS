@@ -161,6 +161,17 @@ t_test(
 )
 
 t_test(
+    name = "optional",
+    srcs = [
+        "OptionalTest.cpp",
+        "log_stub.cpp",
+    ],
+    deps = [
+        "//watchman:testsupport",
+    ],
+)
+
+t_test(
     name = "future",
     srcs = [
         "FutureTest.cpp",
