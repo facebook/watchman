@@ -27,7 +27,7 @@ class PcreExpr : public QueryExpr {
     }
   }
 
-  bool evaluate(struct w_query_ctx* ctx, FileResult* file) override {
+  EvaluateResult evaluate(struct w_query_ctx* ctx, FileResult* file) override {
     w_string_piece str;
     int rc;
 

@@ -9,9 +9,10 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "Future.h"
-#include "watchman_clockspec.h"
 #include "FileSystem.h"
+#include "Future.h"
+#include "Optional.h"
+#include "watchman_clockspec.h"
 
 namespace watchman {
   struct FileInformation;
@@ -205,10 +206,12 @@ enum AggregateOp {
   AllOf,
 };
 
+using EvaluateResult = watchman::Optional<bool>;
+
 class QueryExpr {
  public:
   virtual ~QueryExpr();
-  virtual bool evaluate(w_query_ctx* ctx, FileResult* file) = 0;
+  virtual EvaluateResult evaluate(w_query_ctx* ctx, FileResult* file) = 0;
 
   // If OTHER can be aggregated with THIS, returns a new expression instance
   // representing the combined state.  Op provides information on the containing

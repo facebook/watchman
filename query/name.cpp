@@ -16,7 +16,7 @@ class NameExpr : public QueryExpr {
       : set(std::move(set)), caseSensitive(caseSensitive), wholename(wholename) {}
 
  public:
-  bool evaluate(struct w_query_ctx* ctx, FileResult* file) override {
+  EvaluateResult evaluate(struct w_query_ctx* ctx, FileResult* file) override {
     if (!set.empty()) {
       bool matched;
       w_string str;

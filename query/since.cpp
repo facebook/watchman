@@ -25,7 +25,7 @@ class SinceExpr : public QueryExpr {
   explicit SinceExpr(std::unique_ptr<ClockSpec> spec, enum since_what field)
       : spec(std::move(spec)), field(field) {}
 
-  bool evaluate(struct w_query_ctx* ctx, FileResult* file) override {
+  EvaluateResult evaluate(struct w_query_ctx* ctx, FileResult* file) override {
     time_t tval = 0;
 
     auto since = spec->evaluate(

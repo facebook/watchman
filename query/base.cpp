@@ -15,9 +15,14 @@ class NotExpr : public QueryExpr {
   explicit NotExpr(std::unique_ptr<QueryExpr> other_expr)
       : expr(std::move(other_expr)) {}
 
-  bool evaluate(w_query_ctx* ctx, FileResult* file) override {
-    return !expr->evaluate(ctx, file);
+  EvaluateResult evaluate(w_query_ctx* ctx, FileResult* file) override {
+    auto res = expr->evaluate(ctx, file);
+    if (!res.has_value()) {
+      return res;
+    }
+    return !*res;
   }
+
   static std::unique_ptr<QueryExpr> parse(
       w_query* query,
       const json_ref& term) {
@@ -36,7 +41,7 @@ W_TERM_PARSER("not", NotExpr::parse)
 
 class TrueExpr : public QueryExpr {
  public:
-  bool evaluate(w_query_ctx*, FileResult*) override {
+  EvaluateResult evaluate(w_query_ctx*, FileResult*) override {
     return true;
   }
 
@@ -49,7 +54,7 @@ W_TERM_PARSER("true", TrueExpr::parse)
 
 class FalseExpr : public QueryExpr {
  public:
-  bool evaluate(w_query_ctx*, FileResult*) override {
+  EvaluateResult evaluate(w_query_ctx*, FileResult*) override {
     return false;
   }
 
@@ -68,17 +73,36 @@ class ListExpr : public QueryExpr {
   ListExpr(bool isAll, std::vector<std::unique_ptr<QueryExpr>> exprs)
       : allof(isAll), exprs(std::move(exprs)) {}
 
-  bool evaluate(w_query_ctx* ctx, FileResult* file) override {
+  EvaluateResult evaluate(w_query_ctx* ctx, FileResult* file) override {
+    bool needData = false;
+
     for (auto& expr : exprs) {
-      bool res = expr->evaluate(ctx, file);
+      auto res = expr->evaluate(ctx, file);
 
-      if (!res && allof) {
-        return false;
-      }
+      if (!res.has_value()) {
+        needData = true;
+      } else if (!*res) {
+        if (allof) {
+          // Return NoMatch even if we have needData set, as allof
+          // requires that all terms match and this one doesn't,
+          // so we can avoid loading the data for prior terms
+          // in this list
+          return false;
+        }
+      } else {
+        // Matched
 
-      if (res && !allof) {
-        return true;
+        if (!allof) {
+          // Similar to the condition above, we can short circuit loading
+          // other data if this one matches for the anyof case.
+          return true;
+        }
       }
+    }
+
+    if (needData) {
+      // We're not sure yet
+      return watchman::nullopt;
     }
     return allof;
   }

@@ -60,9 +60,14 @@ void w_query_process_file(
 
   // We produce an output for this file if there is no expression,
   // or if the expression matched.
-  if (query->expr && !query->expr->evaluate(ctx, ctx->file.get())) {
-    // Not matched
-    return;
+  if (query->expr) {
+    auto match = query->expr->evaluate(ctx, ctx->file.get());
+
+    // Note: throws if no match.  This isn't currently possible,
+    // and the error will be handled later in this diff stack.
+    if (!*match) {
+      return;
+    }
   }
 
   if (ctx->query->dedup_results) {

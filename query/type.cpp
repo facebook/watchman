@@ -11,7 +11,7 @@ class TypeExpr : public QueryExpr {
  public:
   explicit TypeExpr(char arg) : arg(arg) {}
 
-  bool evaluate(struct w_query_ctx*, FileResult* file) override {
+  EvaluateResult evaluate(struct w_query_ctx*, FileResult* file) override {
     switch (arg) {
 #ifndef _WIN32
       case 'b':
