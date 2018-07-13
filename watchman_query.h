@@ -67,6 +67,62 @@ class FileResult {
   // Returns the SHA-1 hash of the file contents
   using ContentHash = std::array<uint8_t, 20>;
   virtual watchman::Future<ContentHash> getContentSha1() = 0;
+
+  // A bitset of Property values
+  using Properties = uint_least16_t;
+
+  // Represents one of the FileResult fields.
+  // Values are such that these can be bitwise OR'd to
+  // produce a value of type `Properties` representing
+  // multiple properties
+  enum Property : Properties {
+    // No specific fields required
+    None = 0,
+    // The dirName() and/or baseName() methods will be called
+    Name = 1 << 0,
+    // Need the mtime/ctime data returned by stat(2).
+    StatTimeStamps = 1 << 1,
+    // Need only enough information to distinguish between
+    // file types, not the full mode information.
+    FileDType = 1 << 2,
+    // The ctime() method will be called
+    CTime = 1 << 3,
+    // The otime() method will be called
+    OTime = 1 << 4,
+    // The getContentSha1() method will be called
+    ContentSha1 = 1 << 5,
+    // The exists() method will be called
+    Exists = 1 << 6,
+    // Will need size information.
+    Size = 1 << 7,
+    // the readLink() method will be called
+    SymlinkTarget = 1 << 8,
+    // Need full stat metadata
+    FullFileInformation = 1 << 9,
+  };
+
+ protected:
+  // To be called by one of the FileResult accessors when it needs
+  // to record which properties are required to satisfy the request.
+  void accessorNeedsProperties(Properties properties) {
+    neededProperties_ |= properties;
+  }
+
+  // Clear any recorded needed properties
+  void clearNeededProperties() {
+    neededProperties_ = Property::None;
+  }
+
+  // Return the set of needed properties
+  Properties neededProperties() const {
+    return neededProperties_;
+  }
+
+ private:
+  // The implementation of FileResult will set appropriate
+  // bits in neededProperties_ when its accessors are called
+  // and the associated data is not available.
+  Properties neededProperties_{Property::None};
 };
 
 struct watchman_rule_match {
