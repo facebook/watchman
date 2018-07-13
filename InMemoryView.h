@@ -59,7 +59,7 @@ class InMemoryFileResult : public FileResult {
   w_string dirName_;
   InMemoryViewCaches& caches_;
   Optional<w_string> symlinkTarget_;
-  Optional<FileResult::ContentHash> contentSha1_;
+  Result<FileResult::ContentHash> contentSha1_;
 };
 
 /** Keeps track of the state of the filesystem in-memory. */

@@ -1,8 +1,10 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "watchman.h"
 #include "Future.h"
+#include "watchman.h"
+#include "watchman_error_category.h"
+
 using namespace watchman;
 
 static Optional<json_ref> make_name(FileResult* file, const w_query_ctx* ctx) {
@@ -18,22 +20,6 @@ static Optional<json_ref> make_symlink(FileResult* file, const w_query_ctx*) {
 }
 
 static Optional<json_ref> make_sha1_hex(FileResult* file, const w_query_ctx*) {
-  auto stat = file->stat();
-  auto exists = file->exists();
-
-  if ((exists.has_value() && !exists.value()) ||
-      (stat.has_value() && !stat->isFile())) {
-    // We know immediately that this file can't have a content
-    // hash, so return early without fetching anything more
-    return json_null();
-  }
-  if (!exists.has_value() || !stat.has_value()) {
-    // We don't know for sure if this can legitimately have
-    // a content hash, so indicate that we need some data
-    // to be loaded.
-    return nullopt;
-  }
-
   try {
     auto hash = file->getContentSha1();
     if (!hash.has_value()) {
@@ -48,6 +34,17 @@ static Optional<json_ref> make_sha1_hex(FileResult* file, const w_query_ctx*) {
       buf[(i * 2) + 1] = hexDigit[digit & 0xf];
     }
     return w_string_to_json(w_string(buf, sizeof(buf), W_STRING_UNICODE));
+  } catch (const std::system_error& exc) {
+    auto errcode = exc.code();
+    if (errcode == watchman::error_code::no_such_file_or_directory ||
+        errcode == watchman::error_code::is_a_directory) {
+      // Deleted files, or (currently existing) directories have no hash
+      return json_null();
+    }
+    // We'll report the error wrapped up in an object so that it can be
+    // distinguished from a valid hash result.
+    return json_object(
+        {{"error", w_string_to_json(w_string(exc.what(), W_STRING_UNICODE))}});
   } catch (const std::exception& exc) {
     // We'll report the error wrapped up in an object so that it can be
     // distinguished from a valid hash result.

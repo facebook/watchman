@@ -84,7 +84,8 @@ void InMemoryFileResult::batchFetchProperties(
       sha1Futures.emplace_back(caches_.contentHashCache.get(key).then(
           [file](
               Result<std::shared_ptr<const ContentHashCache::Node>>&& result) {
-            file->contentSha1_ = result.value()->value();
+            file->contentSha1_ =
+                makeResultWith([&] { return result.value()->value(); });
           }));
     }
 
@@ -161,11 +162,22 @@ Optional<w_string> InMemoryFileResult::readLink() {
 }
 
 Optional<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
-  if (!contentSha1_.has_value()) {
+  if (!file_->exists) {
+    // Don't return hashes for files that we believe to be deleted.
+    throw std::system_error(
+        std::make_error_code(std::errc::no_such_file_or_directory));
+  }
+
+  if (!file_->stat.isFile()) {
+    // We only want to compute the hash for regular files
+    throw std::system_error(std::make_error_code(std::errc::is_a_directory));
+  }
+
+  if (!contentSha1_.hasValue()) {
     accessorNeedsProperties(FileResult::Property::ContentSha1);
     return nullopt;
   }
-  return contentSha1_;
+  return contentSha1_.value();
 }
 
 InMemoryView::view::view(const w_string& root_path)

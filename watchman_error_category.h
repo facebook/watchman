@@ -23,6 +23,7 @@ enum class error_code {
   system_limits_exceeded,
   timed_out,
   not_a_symlink,
+  is_a_directory,
 };
 
 // An error category implementation that is present for comparison purposes

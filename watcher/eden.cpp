@@ -268,8 +268,11 @@ class EdenFileResult : public FileResult {
       }
 
       // Thrift error occured
-      case SHA1Result::Type::error:
-        throw std::runtime_error(sha1_->get_error().message);
+      case SHA1Result::Type::error: {
+        auto& err = sha1_->get_error();
+        throw std::system_error(
+            err.errorCode, std::generic_category(), err.message);
+      }
 
       // Something is wrong with type union
       default:

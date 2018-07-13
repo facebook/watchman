@@ -76,6 +76,9 @@ bool error_category::equivalent(const std::error_code& code, int condition)
 #endif
           code == make_error_code(std::errc::not_a_directory);
 
+    case error_code::is_a_directory:
+      return code == make_error_code(std::errc::is_a_directory);
+
     case error_code::too_many_symbolic_link_levels:
       // POSIX says open with O_NOFOLLOW should set errno to ELOOP if the path
       // is a symlink. However, FreeBSD (which ironically originated O_NOFOLLOW)
