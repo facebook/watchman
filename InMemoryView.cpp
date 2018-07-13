@@ -27,6 +27,9 @@ InMemoryFileResult::InMemoryFileResult(
     InMemoryViewCaches& caches)
     : file_(file), caches_(caches) {}
 
+void InMemoryFileResult::batchFetchProperties(
+    const std::vector<std::unique_ptr<FileResult>>&) {}
+
 const FileInformation& InMemoryFileResult::stat() {
   return file_->stat;
 }

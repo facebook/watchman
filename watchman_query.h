@@ -102,6 +102,25 @@ class FileResult {
     FullFileInformation = 1 << 9,
   };
 
+  // Perform a batch fetch to fill in some missing data.
+  // `files` is the set of FileResult instances that need more
+  // data; their individual neededProperties_ values describes
+  // the set of data that is needed.
+  // `files` are assumed to all be of the same FileResult descendant,
+  // and this is guaranteed by the current implementation.
+  // When batchFetchProperties is called, it is invoked on one of
+  // the elements of `files`.
+  // The expectation is that the implementation of `batchFetchProperties`
+  // will perform whatever actions are necessary to ensure that
+  // a subsequent attempt to evaluate `neededProperties_` against each
+  // member of `files` will not result in adding any of
+  // those `FileResult` instances in being added to a deferred
+  // batch.
+  // The implementation of batchFetchProperties must clear
+  // neededProperties_ to None.
+  virtual void batchFetchProperties(
+      const std::vector<std::unique_ptr<FileResult>>& files) = 0;
+
  protected:
   // To be called by one of the FileResult accessors when it needs
   // to record which properties are required to satisfy the request.
@@ -190,9 +209,26 @@ struct w_query_ctx {
     return numWalked_;
   }
 
+  // Adds `file` to the currently accumulating batch of files
+  // that require data to be loaded.
+  // If the batch is large enough, this will trigger `fetchEvalBatchNow()`.
+  // This is intended to be called for files that still having
+  // their expression cause evaluated during w_query_process_file().
+  void addToEvalBatch(std::unique_ptr<FileResult>&& file);
+
+  // Perform an immediate fetch of data for the items in the
+  // evalBatch_ set, and then re-evaluate each of them by passing
+  // them to w_query_process_file().
+  void fetchEvalBatchNow();
+
  private:
   // Number of files considered as part of running this query
   int64_t numWalked_{0};
+
+  // Files for which we encountered NeedMoreData and that we
+  // will re-evaluate once we have enough of them accumulated
+  // to batch fetch the required data
+  std::vector<std::unique_ptr<FileResult>> evalBatch_;
 };
 
 struct w_query_path {

@@ -49,6 +49,9 @@ class LocalFileResult : public FileResult {
   // Returns the SHA-1 hash of the file contents
   watchman::Future<FileResult::ContentHash> getContentSha1() override;
 
+  void batchFetchProperties(
+      const std::vector<std::unique_ptr<FileResult>>& files) override;
+
  private:
   void getInfo();
   w_string getFullPath();

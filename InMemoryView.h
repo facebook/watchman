@@ -47,6 +47,8 @@ class InMemoryFileResult : public FileResult {
   const w_clock_t& ctime() override;
   const w_clock_t& otime() override;
   watchman::Future<FileResult::ContentHash> getContentSha1() override;
+  void batchFetchProperties(
+      const std::vector<std::unique_ptr<FileResult>>& files) override;
 
  private:
   const watchman_file* file_;

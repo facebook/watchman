@@ -63,9 +63,11 @@ void w_query_process_file(
   if (query->expr) {
     auto match = query->expr->evaluate(ctx, ctx->file.get());
 
-    // Note: throws if no match.  This isn't currently possible,
-    // and the error will be handled later in this diff stack.
-    if (!*match) {
+    if (!match.has_value()) {
+      // Reconsider this one later
+      ctx->addToEvalBatch(std::move(ctx->file));
+      return;
+    } else if (!*match) {
       return;
     }
   }
@@ -209,6 +211,11 @@ static void execute_common(
     generator(ctx->query, ctx->root, ctx);
   }
 
+  // We may have some file results pending re-evaluation,
+  // so make sure that we process them before we get to
+  // the render phase below.
+  ctx->fetchEvalBatchNow();
+
   if (!ctx->resultsToRender.empty()) {
     collectAll(ctx->resultsToRender.begin(), ctx->resultsToRender.end())
         .then([&](Result<std::vector<Result<json_ref>>>&& results) {
@@ -250,6 +257,32 @@ w_query_ctx::w_query_ctx(
     json_array_set_template_new(
         resultsArray, field_list_to_json_name_array(query->fieldList));
   }
+}
+
+void w_query_ctx::addToEvalBatch(std::unique_ptr<FileResult>&& file) {
+  evalBatch_.emplace_back(std::move(file));
+
+  // Find a balance between local memory usage, latency in fetching
+  // and the cost of fetching the data needed to re-evaluate this batch.
+  // TODO: maybe allow passing this number in via the query?
+  if (evalBatch_.size() >= 20480) {
+    fetchEvalBatchNow();
+  }
+}
+
+void w_query_ctx::fetchEvalBatchNow() {
+  if (evalBatch_.empty()) {
+    return;
+  }
+  evalBatch_.front()->batchFetchProperties(evalBatch_);
+
+  auto toProcess = std::move(evalBatch_);
+
+  for (auto& file : toProcess) {
+    w_query_process_file(query, this, std::move(file));
+  }
+
+  w_assert(evalBatch_.empty(), "should have no files that NeedDataLoad");
 }
 
 // Capability indicating support for scm-aware since queries

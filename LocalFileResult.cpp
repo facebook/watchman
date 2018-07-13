@@ -63,4 +63,8 @@ watchman::Future<FileResult::ContentHash> LocalFileResult::getContentSha1() {
     return ContentHashCache::computeHashImmediate(fullPath_.c_str());
   }));
 }
+
+void LocalFileResult::batchFetchProperties(
+    const std::vector<std::unique_ptr<FileResult>>&) {}
+
 } // namespace watchman

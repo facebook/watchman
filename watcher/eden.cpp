@@ -240,6 +240,9 @@ class EdenFileResult : public FileResult {
     }
   }
 
+  void batchFetchProperties(
+      const std::vector<std::unique_ptr<FileResult>>&) override {}
+
  private:
   w_string root_path_;
   w_string fullName_;
