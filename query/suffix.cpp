@@ -12,7 +12,7 @@ class SuffixExpr : public QueryExpr {
   explicit SuffixExpr(std::unordered_set<w_string>&& suffixSet)
       : suffixSet_(std::move(suffixSet)) {}
 
-  bool evaluate(struct w_query_ctx*, const FileResult* file) override {
+  bool evaluate(struct w_query_ctx*, FileResult* file) override {
     if (suffixSet_.size() < 3) {
       // For small suffix sets, benchmarks indicated that iteration provides
       // better performance since no suffix allocation is necessary.

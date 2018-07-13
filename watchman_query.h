@@ -50,19 +50,19 @@ struct w_query_since {
 class FileResult {
  public:
   virtual ~FileResult();
-  virtual const watchman::FileInformation& stat() const = 0;
+  virtual const watchman::FileInformation& stat() = 0;
   // Returns the name of the file in its containing dir
-  virtual w_string_piece baseName() const = 0;
+  virtual w_string_piece baseName() = 0;
   // Returns the name of the containing dir relative to the
   // VFS root
   virtual w_string_piece dirName() = 0;
   // Returns true if the file currently exists
-  virtual bool exists() const = 0;
+  virtual bool exists() = 0;
   // Returns the symlink target
   virtual watchman::Future<w_string> readLink() = 0;
 
-  virtual const w_clock_t& ctime() const = 0;
-  virtual const w_clock_t& otime() const = 0;
+  virtual const w_clock_t& ctime() = 0;
+  virtual const w_clock_t& otime() = 0;
 
   // Returns the SHA-1 hash of the file contents
   using ContentHash = std::array<uint8_t, 20>;
@@ -152,7 +152,7 @@ enum AggregateOp {
 class QueryExpr {
  public:
   virtual ~QueryExpr();
-  virtual bool evaluate(w_query_ctx* ctx, const FileResult* file) = 0;
+  virtual bool evaluate(w_query_ctx* ctx, FileResult* file) = 0;
 
   // If OTHER can be aggregated with THIS, returns a new expression instance
   // representing the combined state.  Op provides information on the containing

@@ -31,31 +31,31 @@ class LocalFileResult : public FileResult {
   // today because the only source of LocalFileResult instances today is
   // based on the list of files returned from source control, and scm
   // of today only reports files, never dirs.
-  const watchman::FileInformation& stat() const override;
+  const watchman::FileInformation& stat() override;
 
   // Returns the name of the file in its containing dir
-  w_string_piece baseName() const override;
+  w_string_piece baseName() override;
   // Returns the name of the containing dir relative to the
   // VFS root
   w_string_piece dirName() override;
   // Returns true if the file currently exists
-  bool exists() const override;
+  bool exists() override;
   // Returns the symlink target
   watchman::Future<w_string> readLink() override;
 
-  const w_clock_t& ctime() const override;
-  const w_clock_t& otime() const override;
+  const w_clock_t& ctime() override;
+  const w_clock_t& otime() override;
 
   // Returns the SHA-1 hash of the file contents
   watchman::Future<FileResult::ContentHash> getContentSha1() override;
 
  private:
-  void getInfo() const;
-  w_string getFullPath() const;
+  void getInfo();
+  w_string getFullPath();
 
-  mutable bool needInfo_{true};
-  mutable bool exists_{true};
-  mutable FileInformation info_;
+  bool needInfo_{true};
+  bool exists_{true};
+  FileInformation info_;
   std::shared_ptr<w_root_t> root_;
   w_string fullPath_;
   w_clock_t clock_;

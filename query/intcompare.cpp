@@ -80,7 +80,7 @@ class SizeExpr : public QueryExpr {
  public:
   explicit SizeExpr(w_query_int_compare comp) : comp(comp) {}
 
-  bool evaluate(struct w_query_ctx*, const FileResult* file) override {
+  bool evaluate(struct w_query_ctx*, FileResult* file) override {
     // Removed files never evaluate true
     if (!file->exists()) {
       return false;

@@ -11,7 +11,7 @@ LocalFileResult::LocalFileResult(
       fullPath_(w_string::pathCat({root_->root_path, path})),
       clock_(clock) {}
 
-void LocalFileResult::getInfo() const {
+void LocalFileResult::getInfo() {
   if (!needInfo_) {
     return;
   }
@@ -26,12 +26,12 @@ void LocalFileResult::getInfo() const {
   }
 }
 
-const watchman::FileInformation& LocalFileResult::stat() const {
+const watchman::FileInformation& LocalFileResult::stat() {
   getInfo();
   return info_;
 }
 
-w_string_piece LocalFileResult::baseName() const {
+w_string_piece LocalFileResult::baseName() {
   return w_string_piece(fullPath_).baseName();
 }
 
@@ -39,7 +39,7 @@ w_string_piece LocalFileResult::dirName() {
   return w_string_piece(fullPath_).dirName();
 }
 
-bool LocalFileResult::exists() const {
+bool LocalFileResult::exists() {
   getInfo();
   return exists_;
 }
@@ -48,11 +48,11 @@ watchman::Future<w_string> LocalFileResult::readLink() {
   return makeFuture(readSymbolicLink(fullPath_.c_str()));
 }
 
-const w_clock_t& LocalFileResult::ctime() const {
+const w_clock_t& LocalFileResult::ctime() {
   return clock_;
 }
 
-const w_clock_t& LocalFileResult::otime() const {
+const w_clock_t& LocalFileResult::otime() {
   return clock_;
 }
 

@@ -27,11 +27,11 @@ InMemoryFileResult::InMemoryFileResult(
     InMemoryViewCaches& caches)
     : file_(file), caches_(caches) {}
 
-const FileInformation& InMemoryFileResult::stat() const {
+const FileInformation& InMemoryFileResult::stat() {
   return file_->stat;
 }
 
-w_string_piece InMemoryFileResult::baseName() const {
+w_string_piece InMemoryFileResult::baseName() {
   return file_->getName();
 }
 
@@ -42,15 +42,15 @@ w_string_piece InMemoryFileResult::dirName() {
   return dirName_;
 }
 
-bool InMemoryFileResult::exists() const {
+bool InMemoryFileResult::exists() {
   return file_->exists;
 }
 
-const w_clock_t& InMemoryFileResult::ctime() const {
+const w_clock_t& InMemoryFileResult::ctime() {
   return file_->ctime;
 }
 
-const w_clock_t& InMemoryFileResult::otime() const {
+const w_clock_t& InMemoryFileResult::otime() {
   return file_->otime;
 }
 

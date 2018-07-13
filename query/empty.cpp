@@ -7,7 +7,7 @@
 
 class ExistsExpr : public QueryExpr {
  public:
-  bool evaluate(struct w_query_ctx*, const FileResult* file) override {
+  bool evaluate(struct w_query_ctx*, FileResult* file) override {
     return file->exists();
   }
   static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref&) {
@@ -18,7 +18,7 @@ W_TERM_PARSER("exists", ExistsExpr::parse)
 
 class EmptyExpr : public QueryExpr {
  public:
-  bool evaluate(struct w_query_ctx*, const FileResult* file) override {
+  bool evaluate(struct w_query_ctx*, FileResult* file) override {
     if (!file->exists()) {
       return false;
     }
