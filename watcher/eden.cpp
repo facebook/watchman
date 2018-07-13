@@ -183,8 +183,12 @@ class EdenFileResult : public FileResult {
     return fullName_.piece().dirName();
   }
 
+  void setExists(bool exists) noexcept {
+    exists_ = exists;
+  }
+
   Optional<bool> exists() override {
-    if (!stat_.has_value()) {
+    if (!exists_.has_value()) {
       accessorNeedsProperties(FileResult::Property::Exists);
       return nullopt;
     }
@@ -312,7 +316,7 @@ class EdenFileResult : public FileResult {
   w_string root_path_;
   w_string fullName_;
   Optional<FileInformation> stat_;
-  bool exists_;
+  Optional<bool> exists_;
   w_clock_t ctime_;
   w_clock_t otime_;
   Optional<SHA1Result> sha1_;
@@ -377,11 +381,10 @@ class EdenFileResult : public FileResult {
       otime_.timestamp = ctime_.timestamp = stat.mtime.tv_sec;
 
       stat_ = std::move(stat);
-      exists_ = true;
-
+      setExists(true);
     } else {
-      exists_ = false;
       stat_.reset();
+      setExists(false);
     }
   }
 };
@@ -767,6 +770,14 @@ class EdenView : public QueryableView {
           &resultPosition,
           isNew);
 
+      if (ctx->since.clock.is_fresh_instance) {
+        // Fresh instance queries only return data about files
+        // that currently exist, and we know this to be true
+        // here because our list of files comes from evaluating
+        // a glob.
+        file->setExists(true);
+      }
+
       w_query_process_file(ctx->query, ctx, std::move(file));
 
       ++nameIter;
@@ -815,6 +826,9 @@ class EdenView : public QueryableView {
 
       auto file = make_unique<EdenFileResult>(
           root_path_, w_string::pathCat({mountPoint_, name}));
+
+      // The results of a glob are known to exist
+      file->setExists(true);
 
       w_query_process_file(ctx->query, ctx, std::move(file));
 
