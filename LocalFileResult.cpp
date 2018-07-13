@@ -26,7 +26,10 @@ void LocalFileResult::getInfo() {
 }
 
 Optional<FileInformation> LocalFileResult::stat() {
-  getInfo();
+  if (!info_.has_value()) {
+    accessorNeedsProperties(FileResult::Property::FullFileInformation);
+    return nullopt;
+  }
   return info_;
 }
 
@@ -39,7 +42,10 @@ w_string_piece LocalFileResult::dirName() {
 }
 
 Optional<bool> LocalFileResult::exists() {
-  getInfo();
+  if (!info_.has_value()) {
+    accessorNeedsProperties(FileResult::Property::Exists);
+    return nullopt;
+  }
   return exists_;
 }
 
@@ -64,6 +70,12 @@ watchman::Future<FileResult::ContentHash> LocalFileResult::getContentSha1() {
 }
 
 void LocalFileResult::batchFetchProperties(
-    const std::vector<std::unique_ptr<FileResult>>&) {}
+    const std::vector<std::unique_ptr<FileResult>>& files) {
+  for (auto& f : files) {
+    auto localFile = dynamic_cast<LocalFileResult*>(f.get());
+    localFile->getInfo();
+    localFile->clearNeededProperties();
+  }
+}
 
 } // namespace watchman
