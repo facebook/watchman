@@ -175,6 +175,14 @@ class EdenFileResult : public FileResult {
     return stat_;
   }
 
+  Optional<size_t> size() override {
+    if (!stat_.has_value()) {
+      accessorNeedsProperties(FileResult::Property::Size);
+      return nullopt;
+    }
+    return stat_->size;
+  }
+
   Optional<struct timespec> accessedTime() override {
     if (!stat_.has_value()) {
       accessorNeedsProperties(FileResult::Property::StatTimeStamps);

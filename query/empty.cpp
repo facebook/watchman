@@ -22,6 +22,7 @@ class EmptyExpr : public QueryExpr {
   EvaluateResult evaluate(struct w_query_ctx*, FileResult* file) override {
     auto exists = file->exists();
     auto stat = file->stat();
+    auto size = file->size();
 
     if (!exists.has_value()) {
       return watchman::nullopt;
@@ -34,8 +35,12 @@ class EmptyExpr : public QueryExpr {
       return watchman::nullopt;
     }
 
+    if (!size.has_value()) {
+      return watchman::nullopt;
+    }
+
     if (stat->isDir() || stat->isFile()) {
-      return stat->size == 0;
+      return size.value() == 0;
     }
 
     return false;

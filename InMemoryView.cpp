@@ -104,6 +104,10 @@ Optional<FileInformation> InMemoryFileResult::stat() {
   return file_->stat;
 }
 
+Optional<size_t> InMemoryFileResult::size() {
+  return file_->stat.size;
+}
+
 Optional<struct timespec> InMemoryFileResult::accessedTime() {
   return file_->stat.atime;
 }

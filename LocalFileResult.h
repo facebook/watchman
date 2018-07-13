@@ -35,6 +35,7 @@ class LocalFileResult : public FileResult {
   Optional<struct timespec> accessedTime() override;
   Optional<struct timespec> modifiedTime() override;
   Optional<struct timespec> changedTime() override;
+  Optional<size_t> size() override;
 
   // Returns the name of the file in its containing dir
   w_string_piece baseName() override;

@@ -65,6 +65,9 @@ class FileResult {
   // Returns the stat.st_ctime field
   virtual watchman::Optional<struct timespec> changedTime() = 0;
 
+  // Returns the size of the file
+  virtual watchman::Optional<size_t> size() = 0;
+
   // Returns the name of the file in its containing dir
   virtual w_string_piece baseName() = 0;
   // Returns the name of the containing dir relative to the

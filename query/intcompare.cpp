@@ -82,6 +82,7 @@ class SizeExpr : public QueryExpr {
 
   EvaluateResult evaluate(struct w_query_ctx*, FileResult* file) override {
     auto exists = file->exists();
+    auto size = file->size();
 
     if (!exists.has_value()) {
       return watchman::nullopt;
@@ -92,12 +93,11 @@ class SizeExpr : public QueryExpr {
       return false;
     }
 
-    auto stat = file->stat();
-    if (!stat.has_value()) {
+    if (!size.has_value()) {
       return watchman::nullopt;
     }
 
-    return eval_int_compare(stat.value().size, &comp);
+    return eval_int_compare(size.value(), &comp);
   }
 
   static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {

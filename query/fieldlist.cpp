@@ -56,6 +56,14 @@ static Optional<json_ref> make_sha1_hex(FileResult* file, const w_query_ctx*) {
   }
 }
 
+static Optional<json_ref> make_size(FileResult* file, const w_query_ctx*) {
+  auto size = file->size();
+  if (!size.has_value()) {
+    return nullopt;
+  }
+  return json_integer(size.value());
+}
+
 static Optional<json_ref> make_exists(FileResult* file, const w_query_ctx*) {
   auto exists = file->exists();
   if (!exists.has_value()) {
@@ -162,7 +170,6 @@ static_assert(
   MAKE_TIME_INT_FIELD(type##time_ns, member, 1000 * 1000 * 1000) \
   MAKE_TIME_DOUBLE_FIELD(type##time_f, member)
 
-MAKE_INT_FIELD(size, size)
 MAKE_INT_FIELD(mode, mode)
 MAKE_INT_FIELD(uid, uid)
 MAKE_INT_FIELD(gid, gid)

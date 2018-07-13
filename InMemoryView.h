@@ -43,6 +43,7 @@ class InMemoryFileResult : public FileResult {
   Optional<struct timespec> accessedTime() override;
   Optional<struct timespec> modifiedTime() override;
   Optional<struct timespec> changedTime() override;
+  Optional<size_t> size() override;
   w_string_piece baseName() override;
   w_string_piece dirName() override;
   Optional<bool> exists() override;

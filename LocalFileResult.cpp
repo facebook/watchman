@@ -33,6 +33,14 @@ Optional<FileInformation> LocalFileResult::stat() {
   return info_;
 }
 
+Optional<size_t> LocalFileResult::size() {
+  if (!info_.has_value()) {
+    accessorNeedsProperties(FileResult::Property::Size);
+    return nullopt;
+  }
+  return info_->size;
+}
+
 Optional<struct timespec> LocalFileResult::accessedTime() {
   if (info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::StatTimeStamps);
