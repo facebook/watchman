@@ -40,6 +40,9 @@ class InMemoryFileResult : public FileResult {
       const watchman_file* file,
       InMemoryViewCaches& caches);
   Optional<FileInformation> stat() override;
+  Optional<struct timespec> accessedTime() override;
+  Optional<struct timespec> modifiedTime() override;
+  Optional<struct timespec> changedTime() override;
   w_string_piece baseName() override;
   w_string_piece dirName() override;
   Optional<bool> exists() override;

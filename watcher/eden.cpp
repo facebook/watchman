@@ -175,6 +175,30 @@ class EdenFileResult : public FileResult {
     return stat_;
   }
 
+  Optional<struct timespec> accessedTime() override {
+    if (!stat_.has_value()) {
+      accessorNeedsProperties(FileResult::Property::StatTimeStamps);
+      return nullopt;
+    }
+    return stat_->atime;
+  }
+
+  Optional<struct timespec> modifiedTime() override {
+    if (!stat_.has_value()) {
+      accessorNeedsProperties(FileResult::Property::StatTimeStamps);
+      return nullopt;
+    }
+    return stat_->mtime;
+  }
+
+  Optional<struct timespec> changedTime() override {
+    if (!stat_.has_value()) {
+      accessorNeedsProperties(FileResult::Property::StatTimeStamps);
+      return nullopt;
+    }
+    return stat_->ctime;
+  }
+
   w_string_piece baseName() override {
     return fullName_.piece().baseName();
   }
@@ -270,7 +294,7 @@ class EdenFileResult : public FileResult {
       if (edenFile.neededProperties() &
           (FileResult::Property::FileDType | FileResult::Property::CTime |
            FileResult::Property::OTime | FileResult::Property::Exists |
-           FileResult::Property::Size |
+           FileResult::Property::Size | FileResult::Property::StatTimeStamps |
            FileResult::Property::FullFileInformation)) {
         getFileInformationFiles.emplace_back(&edenFile);
         getFileInformationNames.emplace_back(relName.data(), relName.size());

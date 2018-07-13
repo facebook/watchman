@@ -104,6 +104,18 @@ Optional<FileInformation> InMemoryFileResult::stat() {
   return file_->stat;
 }
 
+Optional<struct timespec> InMemoryFileResult::accessedTime() {
+  return file_->stat.atime;
+}
+
+Optional<struct timespec> InMemoryFileResult::modifiedTime() {
+  return file_->stat.mtime;
+}
+
+Optional<struct timespec> InMemoryFileResult::changedTime() {
+  return file_->stat.ctime;
+}
+
 w_string_piece InMemoryFileResult::baseName() {
   return file_->getName();
 }

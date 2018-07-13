@@ -33,6 +33,30 @@ Optional<FileInformation> LocalFileResult::stat() {
   return info_;
 }
 
+Optional<struct timespec> LocalFileResult::accessedTime() {
+  if (info_.has_value()) {
+    accessorNeedsProperties(FileResult::Property::StatTimeStamps);
+    return nullopt;
+  }
+  return info_->atime;
+}
+
+Optional<struct timespec> LocalFileResult::modifiedTime() {
+  if (info_.has_value()) {
+    accessorNeedsProperties(FileResult::Property::StatTimeStamps);
+    return nullopt;
+  }
+  return info_->mtime;
+}
+
+Optional<struct timespec> LocalFileResult::changedTime() {
+  if (info_.has_value()) {
+    accessorNeedsProperties(FileResult::Property::StatTimeStamps);
+    return nullopt;
+  }
+  return info_->ctime;
+}
+
 w_string_piece LocalFileResult::baseName() {
   return w_string_piece(fullPath_).baseName();
 }

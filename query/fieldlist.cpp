@@ -124,30 +124,28 @@ static_assert(
     return json_integer(stat->member);        \
   }
 
-#define MAKE_TIME_INT_FIELD(name, type, scale)                   \
-  static Optional<json_ref> make_##name(                         \
-      FileResult* file, const w_query_ctx*) {                    \
-    auto stat = file->stat();                                    \
-    if (!stat.has_value()) {                                     \
-      /* need to load data */                                    \
-      return nullopt;                                            \
-    }                                                            \
-    struct timespec spec = stat->type##time;                     \
-    return json_integer(                                         \
-        ((int64_t)spec.tv_sec * scale) +                         \
-        ((int64_t)spec.tv_nsec * scale / WATCHMAN_NSEC_IN_SEC)); \
+#define MAKE_TIME_INT_FIELD(name, member, scale)                  \
+  static Optional<json_ref> make_##name(                          \
+      FileResult* file, const w_query_ctx*) {                     \
+    auto spec = file->member();                                   \
+    if (!spec.has_value()) {                                      \
+      /* need to load data */                                     \
+      return nullopt;                                             \
+    }                                                             \
+    return json_integer(                                          \
+        ((int64_t)spec->tv_sec * scale) +                         \
+        ((int64_t)spec->tv_nsec * scale / WATCHMAN_NSEC_IN_SEC)); \
   }
 
-#define MAKE_TIME_DOUBLE_FIELD(name, type)               \
-  static Optional<json_ref> make_##name(                 \
-      FileResult* file, const w_query_ctx*) {            \
-    auto stat = file->stat();                            \
-    if (!stat.has_value()) {                             \
-      /* need to load data */                            \
-      return nullopt;                                    \
-    }                                                    \
-    struct timespec spec = stat->type##time;             \
-    return json_real(spec.tv_sec + 1e-9 * spec.tv_nsec); \
+#define MAKE_TIME_DOUBLE_FIELD(name, member)               \
+  static Optional<json_ref> make_##name(                   \
+      FileResult* file, const w_query_ctx*) {              \
+    auto spec = file->member();                            \
+    if (!spec.has_value()) {                               \
+      /* need to load data */                              \
+      return nullopt;                                      \
+    }                                                      \
+    return json_real(spec->tv_sec + 1e-9 * spec->tv_nsec); \
   }
 
 /* For each type (e.g. "m"), define fields
@@ -157,20 +155,20 @@ static_assert(
  * - mtime_ns: mtime in nanoseconds
  * - mtime_f: mtime as a double
  */
-#define MAKE_TIME_FIELDS(type) \
-  MAKE_INT_FIELD(type##time, type##time.tv_sec) \
-  MAKE_TIME_INT_FIELD(type##time_ms, type, 1000) \
-  MAKE_TIME_INT_FIELD(type##time_us, type, 1000 * 1000) \
-  MAKE_TIME_INT_FIELD(type##time_ns, type, 1000 * 1000 * 1000) \
-  MAKE_TIME_DOUBLE_FIELD(type##time_f, type)
+#define MAKE_TIME_FIELDS(type, member)                           \
+  MAKE_TIME_INT_FIELD(type##time, member, 1)                     \
+  MAKE_TIME_INT_FIELD(type##time_ms, member, 1000)               \
+  MAKE_TIME_INT_FIELD(type##time_us, member, 1000 * 1000)        \
+  MAKE_TIME_INT_FIELD(type##time_ns, member, 1000 * 1000 * 1000) \
+  MAKE_TIME_DOUBLE_FIELD(type##time_f, member)
 
 MAKE_INT_FIELD(size, size)
 MAKE_INT_FIELD(mode, mode)
 MAKE_INT_FIELD(uid, uid)
 MAKE_INT_FIELD(gid, gid)
-MAKE_TIME_FIELDS(a)
-MAKE_TIME_FIELDS(m)
-MAKE_TIME_FIELDS(c)
+MAKE_TIME_FIELDS(a, accessedTime)
+MAKE_TIME_FIELDS(m, modifiedTime)
+MAKE_TIME_FIELDS(c, changedTime)
 MAKE_INT_FIELD(ino, ino)
 MAKE_INT_FIELD(dev, dev)
 MAKE_INT_FIELD(nlink, nlink)

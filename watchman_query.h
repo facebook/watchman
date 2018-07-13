@@ -56,6 +56,15 @@ class FileResult {
   // Returns nullopt if the file information is not yet known.
   virtual watchman::Optional<watchman::FileInformation> stat() = 0;
 
+  // Returns the stat.st_atime field
+  virtual watchman::Optional<struct timespec> accessedTime() = 0;
+
+  // Returns the stat.st_mtime field
+  virtual watchman::Optional<struct timespec> modifiedTime() = 0;
+
+  // Returns the stat.st_ctime field
+  virtual watchman::Optional<struct timespec> changedTime() = 0;
+
   // Returns the name of the file in its containing dir
   virtual w_string_piece baseName() = 0;
   // Returns the name of the containing dir relative to the

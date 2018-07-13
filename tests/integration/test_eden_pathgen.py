@@ -11,19 +11,34 @@ import pywatchman
 import WatchmanEdenTestCase
 
 
-class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
-    def test_eden_watch(self):
-        def populate(repo):
-            repo.write_file(".watchmanconfig", '{"ignore_dirs":[".buckd"]}')
-            repo.write_file("hello", "hola\n")
-            repo.write_file("adir/file", "foo!\n")
-            repo.write_file("bdir/test.sh", "#!/bin/bash\necho test\n", mode=0o755)
-            repo.write_file("bdir/noexec.sh", "#!/bin/bash\necho test\n")
-            repo.write_file("b*ir/star", "star")
-            repo.write_file("b\\*ir/foo", "foo")
-            repo.symlink("slink", "hello")
-            repo.commit("initial commit.")
+def populate(repo):
+    repo.write_file(".watchmanconfig", '{"ignore_dirs":[".buckd"]}')
+    repo.write_file("hello", "hola\n")
+    repo.write_file("adir/file", "foo!\n")
+    repo.write_file("bdir/test.sh", "#!/bin/bash\necho test\n", mode=0o755)
+    repo.write_file("bdir/noexec.sh", "#!/bin/bash\necho test\n")
+    repo.write_file("b*ir/star", "star")
+    repo.write_file("b\\*ir/foo", "foo")
+    repo.symlink("slink", "hello")
+    repo.commit("initial commit.")
 
+
+class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
+    def test_defer_mtime(self):
+        root = self.makeEdenMount(populate)
+        res = self.watchmanCommand("watch", root)
+        self.assertEqual("eden", res["watcher"])
+
+        # Ensure that the mtime field is loaded for rendering.
+        # The expression doesn't use timestamps but the field list does.
+        res = self.watchmanCommand(
+            "query", root, {"glob": ["bdir/noexec.sh"], "fields": ["name", "mtime"]}
+        )
+        print(res)
+        self.assertEqual(res["files"][0]["name"], "bdir/noexec.sh")
+        self.assertGreater(res["files"][0]["mtime"], 0)
+
+    def test_eden_watch(self):
         root = self.makeEdenMount(populate)
 
         # make sure this exists; we should not observe it in any of the results

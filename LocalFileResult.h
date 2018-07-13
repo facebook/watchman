@@ -32,6 +32,9 @@ class LocalFileResult : public FileResult {
   // based on the list of files returned from source control, and scm
   // of today only reports files, never dirs.
   watchman::Optional<watchman::FileInformation> stat() override;
+  Optional<struct timespec> accessedTime() override;
+  Optional<struct timespec> modifiedTime() override;
+  Optional<struct timespec> changedTime() override;
 
   // Returns the name of the file in its containing dir
   w_string_piece baseName() override;
