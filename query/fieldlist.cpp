@@ -5,26 +5,41 @@
 #include "Future.h"
 using namespace watchman;
 
-static json_ref make_name(const struct watchman_rule_match* match) {
-  return w_string_to_json(match->relname);
+static Optional<json_ref> make_name(FileResult* file, const w_query_ctx* ctx) {
+  return w_string_to_json(ctx->computeWholeName(file));
 }
 
-static watchman::Future<json_ref> make_symlink(
-    const struct watchman_rule_match* match) {
-  return match->file->readLink().then([](Result<w_string>&& result) {
-    auto& target = result.value();
-    return target ? w_string_to_json(target) : json_null();
-  });
+static watchman::Future<Optional<json_ref>> make_symlink(
+    FileResult* file,
+    const w_query_ctx*) {
+  return file->readLink().then(
+      [](Result<w_string>&& result) -> Optional<json_ref> {
+        auto& target = result.value();
+        return target ? w_string_to_json(target) : json_null();
+      });
 }
 
-static watchman::Future<json_ref> make_sha1_hex(
-    const struct watchman_rule_match* match) {
-  if (!match->file->stat()->isFile() || !match->file->exists().value()) {
-    // We return null for items that can't have a content hash
-    return makeFuture(json_null());
+static watchman::Future<Optional<json_ref>> make_sha1_hex(
+    FileResult* file,
+    const w_query_ctx*) {
+  auto stat = file->stat();
+  auto exists = file->exists();
+
+  if ((exists.has_value() && !exists.value()) ||
+      (stat.has_value() && !stat->isFile())) {
+    // We know immediately that this file can't have a content
+    // hash, so return early without fetching anything more
+    return makeFuture(Optional<json_ref>(json_null()));
   }
-  return match->file->getContentSha1().then(
-      [](Result<FileResult::ContentHash>&& result) {
+  if (!exists.has_value() || !stat.has_value()) {
+    // We don't know for sure if this can legitimately have
+    // a content hash, so indicate that we need some data
+    // to be loaded.  The empty ref is distinct from json_null().
+    return makeFuture(Optional<json_ref>());
+  }
+
+  return file->getContentSha1().then(
+      [](Result<FileResult::ContentHash>&& result) -> Optional<json_ref> {
         try {
           auto& hash = result.value();
           char buf[40];
@@ -45,25 +60,52 @@ static watchman::Future<json_ref> make_sha1_hex(
       });
 }
 
-static json_ref make_exists(const struct watchman_rule_match* match) {
-  return json_boolean(match->file->exists().value());
+static Optional<json_ref> make_exists(FileResult* file, const w_query_ctx*) {
+  auto exists = file->exists();
+  if (!exists.has_value()) {
+    return nullopt;
+  }
+  return json_boolean(exists.value());
 }
 
-static json_ref make_new(const struct watchman_rule_match* match) {
-  return json_boolean(match->is_new);
+static Optional<json_ref> make_new(FileResult* file, const w_query_ctx* ctx) {
+  bool is_new = false;
+
+  if (!ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance) {
+    is_new = true;
+  } else {
+    auto ctime = file->ctime();
+    if (!ctime.has_value()) {
+      // Reconsider this one later
+      return nullopt;
+    }
+    if (ctx->since.is_timestamp) {
+      is_new = ctx->since.timestamp > ctime->timestamp;
+    } else {
+      is_new = ctime->ticks > ctx->since.clock.ticks;
+    }
+  }
+
+  return json_boolean(is_new);
 }
 
-#define MAKE_CLOCK_FIELD(name, member)                                   \
-  static json_ref make_##name(const struct watchman_rule_match* match) { \
-    char buf[128];                                                       \
-    if (clock_id_string(                                                 \
-            match->root_number,                                          \
-            match->file->member().value().ticks,                         \
-            buf,                                                         \
-            sizeof(buf))) {                                              \
-      return typed_string_to_json(buf, W_STRING_UNICODE);                \
-    }                                                                    \
-    return nullptr;                                                      \
+#define MAKE_CLOCK_FIELD(name, member)                      \
+  static Optional<json_ref> make_##name(                    \
+      FileResult* file, const w_query_ctx* ctx) {           \
+    char buf[128];                                          \
+    auto clock = file->member();                            \
+    if (!clock.has_value()) {                               \
+      /* need to load data */                               \
+      return nullopt;                                       \
+    }                                                       \
+    if (clock_id_string(                                    \
+            ctx->clockAtStartOfQuery.position().rootNumber, \
+            clock->ticks,                                   \
+            buf,                                            \
+            sizeof(buf))) {                                 \
+      return typed_string_to_json(buf, W_STRING_UNICODE);   \
+    }                                                       \
+    return json_null();                                     \
   }
 MAKE_CLOCK_FIELD(cclock, ctime)
 MAKE_CLOCK_FIELD(oclock, otime)
@@ -75,23 +117,41 @@ static_assert(
     sizeof(json_int_t) >= sizeof(time_t),
     "json_int_t isn't large enough to hold a time_t");
 
-#define MAKE_INT_FIELD(name, member)                                     \
-  static json_ref make_##name(const struct watchman_rule_match* match) { \
-    return json_integer(match->file->stat()->member);                    \
+#define MAKE_INT_FIELD(name, member)          \
+  static Optional<json_ref> make_##name(      \
+      FileResult* file, const w_query_ctx*) { \
+    auto stat = file->stat();                 \
+    if (!stat.has_value()) {                  \
+      /* need to load data */                 \
+      return nullopt;                         \
+    }                                         \
+    return json_integer(stat->member);        \
   }
 
-#define MAKE_TIME_INT_FIELD(name, type, scale)                           \
-  static json_ref make_##name(const struct watchman_rule_match* match) { \
-    struct timespec spec = match->file->stat()->type##time;              \
-    return json_integer(                                                 \
-        ((int64_t)spec.tv_sec * scale) +                                 \
-        ((int64_t)spec.tv_nsec * scale / WATCHMAN_NSEC_IN_SEC));         \
+#define MAKE_TIME_INT_FIELD(name, type, scale)                   \
+  static Optional<json_ref> make_##name(                         \
+      FileResult* file, const w_query_ctx*) {                    \
+    auto stat = file->stat();                                    \
+    if (!stat.has_value()) {                                     \
+      /* need to load data */                                    \
+      return nullopt;                                            \
+    }                                                            \
+    struct timespec spec = stat->type##time;                     \
+    return json_integer(                                         \
+        ((int64_t)spec.tv_sec * scale) +                         \
+        ((int64_t)spec.tv_nsec * scale / WATCHMAN_NSEC_IN_SEC)); \
   }
 
-#define MAKE_TIME_DOUBLE_FIELD(name, type)                               \
-  static json_ref make_##name(const struct watchman_rule_match* match) { \
-    struct timespec spec = match->file->stat()->type##time;              \
-    return json_real(spec.tv_sec + 1e-9 * spec.tv_nsec);                 \
+#define MAKE_TIME_DOUBLE_FIELD(name, type)               \
+  static Optional<json_ref> make_##name(                 \
+      FileResult* file, const w_query_ctx*) {            \
+    auto stat = file->stat();                            \
+    if (!stat.has_value()) {                             \
+      /* need to load data */                            \
+      return nullopt;                                    \
+    }                                                    \
+    struct timespec spec = stat->type##time;             \
+    return json_real(spec.tv_sec + 1e-9 * spec.tv_nsec); \
   }
 
 /* For each type (e.g. "m"), define fields
@@ -119,16 +179,25 @@ MAKE_INT_FIELD(ino, ino)
 MAKE_INT_FIELD(dev, dev)
 MAKE_INT_FIELD(nlink, nlink)
 
+// clang-format off
 #define MAKE_TIME_FIELD_DEFS(type) \
-  { #type "time", make_##type##time, nullptr }, \
-  { #type "time_ms", make_##type##time_ms, nullptr }, \
-  { #type "time_us", make_##type##time_us, nullptr }, \
-  { #type "time_ns", make_##type##time_ns, nullptr }, \
-  { #type "time_f", make_##type##time_f, nullptr }
+  { #type "time", make_##type##time, nullptr}, \
+  { #type "time_ms", make_##type##time_ms, nullptr},\
+  { #type "time_us", make_##type##time_us, nullptr}, \
+  { #type "time_ns", make_##type##time_ns, nullptr}, \
+  { #type "time_f", make_##type##time_f, nullptr}
+// clang-format on
 
-static json_ref make_type_field(const struct watchman_rule_match* match) {
+static Optional<json_ref> make_type_field(
+    FileResult* file,
+    const w_query_ctx*) {
   // Bias towards the more common file types first
-  auto stat = match->file->stat().value();
+  auto optionalStat = file->stat();
+  if (!optionalStat.has_value()) {
+    return nullopt;
+  }
+
+  auto stat = optionalStat.value();
   if (stat.isFile()) {
     return typed_string_to_json("f", W_STRING_UNICODE);
   }
@@ -164,9 +233,9 @@ static json_ref make_type_field(const struct watchman_rule_match* match) {
 static std::unordered_map<w_string, w_query_field_renderer> build_defs() {
   struct {
     const char* name;
-    json_ref (*make)(const struct watchman_rule_match* match);
-    watchman::Future<json_ref> (*futureMake)(
-        const struct watchman_rule_match* match);
+    Optional<json_ref> (*make)(FileResult* file, const w_query_ctx* ctx);
+    watchman::Future<Optional<json_ref>> (
+        *futureMake)(FileResult* file, const w_query_ctx* ctx);
   } defs[] = {
       {"name", make_name, nullptr},
       {"symlink_target", nullptr, make_symlink},
@@ -203,15 +272,6 @@ static std::unordered_map<w_string, w_query_field_renderer>& field_defs() {
   return map;
 }
 
-static w_ctor_fn_type(register_field_capabilities) {
-  for (auto& it : field_defs()) {
-    char capname[128];
-    snprintf(capname, sizeof(capname), "field-%s", it.first.c_str());
-    w_capability_register(capname);
-  }
-}
-w_ctor_fn_reg(register_field_capabilities)
-
 json_ref field_list_to_json_name_array(const w_query_field_list& fieldList) {
   auto templ = json_array_of_size(fieldList.size());
 
@@ -222,50 +282,69 @@ json_ref field_list_to_json_name_array(const w_query_field_list& fieldList) {
   return templ;
 }
 
-json_ref file_result_to_json(
+Optional<json_ref> file_result_to_json(
     const w_query_field_list& fieldList,
-    const watchman_rule_match& match) {
+    const std::unique_ptr<FileResult>& file,
+    const w_query_ctx* ctx) {
   if (fieldList.size() == 1) {
-    return fieldList.front()->make(&match);
+    return fieldList.front()->make(file.get(), ctx);
   }
   auto value = json_object_of_size(fieldList.size());
 
   for (auto& f : fieldList) {
-    auto ele = f->make(&match);
-    value.set(f->name, std::move(ele));
+    auto ele = f->make(file.get(), ctx);
+    if (!ele.has_value()) {
+      // Need data to be loaded
+      return nullopt;
+    }
+    value.set(f->name, std::move(ele.value()));
   }
   return value;
 }
 
-watchman::Future<json_ref> file_result_to_json_future(
+watchman::Future<Optional<json_ref>> file_result_to_json_future(
     const w_query_field_list& fieldList,
-    watchman_rule_match&& match) {
-  auto matchPtr = std::make_shared<watchman_rule_match>(std::move(match));
+    std::unique_ptr<FileResult>&& file,
+    const w_query_ctx* ctx) {
+  std::shared_ptr<FileResult> filePtr(std::move(file));
 
-  std::vector<watchman::Future<json_ref>> futures;
+  std::vector<watchman::Future<Optional<json_ref>>> futures;
   for (auto& f : fieldList) {
     if (f->futureMake) {
-      futures.emplace_back(f->futureMake(matchPtr.get()));
+      futures.emplace_back(f->futureMake(filePtr.get(), ctx));
     } else {
-      futures.emplace_back(makeFuture(f->make(matchPtr.get())));
+      futures.emplace_back(makeFuture(f->make(filePtr.get(), ctx)));
     }
   }
 
   return collectAll(futures.begin(), futures.end())
-      .then([fieldList,
-             matchPtr](Result<std::vector<Result<json_ref>>>&& result) {
-        auto& vec = result.value();
-        if (fieldList.size() == 1) {
-          return vec[0].value();
-        }
+      .then(
+          [fieldList,
+           filePtr](Result<std::vector<Result<Optional<json_ref>>>>&& result)
+              -> Optional<json_ref> {
+            auto& vec = result.value();
+            if (fieldList.size() == 1) {
+              return vec[0].value();
+            }
 
-        auto value = json_object_of_size(vec.size());
-        for (size_t i = 0; i < fieldList.size(); ++i) {
-          auto& f = fieldList[i];
-          value.set(f->name, std::move(vec[i].value()));
-        }
-        return value;
-      });
+            auto value = json_object_of_size(vec.size());
+            bool needData = false;
+
+            for (size_t i = 0; i < fieldList.size(); ++i) {
+              auto& f = fieldList[i];
+              auto maybeFieldValue = vec[i].value();
+              if (!maybeFieldValue.has_value()) {
+                // Need data to be loaded.
+                needData = true;
+                continue;
+              }
+              value.set(f->name, std::move(maybeFieldValue.value()));
+            }
+            if (needData) {
+              return nullopt;
+            }
+            return value;
+          });
 }
 
 void parse_field_list(json_ref field_list, w_query_field_list* selected) {
@@ -303,5 +382,13 @@ void parse_field_list(json_ref field_list, w_query_field_list* selected) {
   }
 }
 
-/* vim:ts=2:sw=2:et:
- */
+static w_ctor_fn_type(register_field_capabilities) {
+  for (auto& it : field_defs()) {
+    char capname[128];
+    snprintf(capname, sizeof(capname), "field-%s", it.first.c_str());
+    w_capability_register(capname);
+  }
+}
+
+// This is at the bottom because it confuses clang-format for things that follow
+w_ctor_fn_reg(register_field_capabilities)

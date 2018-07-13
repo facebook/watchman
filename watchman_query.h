@@ -21,12 +21,14 @@ struct watchman_file;
 
 struct w_query;
 typedef struct w_query w_query;
+class FileResult;
 
 struct w_query_field_renderer {
   w_string name;
-  json_ref (*make)(const struct watchman_rule_match* match);
-  watchman::Future<json_ref> (*futureMake)(
-      const struct watchman_rule_match* match);
+  watchman::Optional<json_ref> (
+      *make)(FileResult* file, const w_query_ctx* ctx);
+  watchman::Future<watchman::Optional<json_ref>> (
+      *futureMake)(FileResult* file, const w_query_ctx* ctx);
 };
 
 using w_query_field_list = std::vector<const w_query_field_renderer*>;
@@ -157,23 +159,6 @@ class FileResult {
   Properties neededProperties_{Property::None};
 };
 
-struct watchman_rule_match {
-  uint32_t root_number;
-  w_string relname;
-  bool is_new;
-  std::unique_ptr<FileResult> file;
-
-  watchman_rule_match(
-      uint32_t root_number,
-      const w_string& relname,
-      bool is_new,
-      std::unique_ptr<FileResult>&& file)
-      : root_number(root_number),
-        relname(relname),
-        is_new(is_new),
-        file(std::move(file)) {}
-};
-
 // Holds state for the execution of a query
 struct w_query_ctx {
   struct w_query *query;
@@ -190,7 +175,7 @@ struct w_query_ctx {
 
   // Results that are pending render, eg: pending some
   // computation that is happening async.
-  std::deque<watchman::Future<json_ref>> resultsToRender;
+  std::deque<watchman::Future<watchman::Optional<json_ref>>> resultsToRender;
 
   // When deduping the results, set<wholename> of
   // the files held in results
@@ -233,6 +218,16 @@ struct w_query_ctx {
   // them to w_query_process_file().
   void fetchEvalBatchNow();
 
+  void addToRenderBatch(std::unique_ptr<FileResult>&& file);
+
+  // Perform a batch load of the items in the render batch,
+  // and attempt to render those items again.
+  // Returns true if the render batch is empty after rendering
+  // the items, false if still more data is needed.
+  bool fetchRenderBatchNow();
+
+  w_string computeWholeName(FileResult* file) const;
+
  private:
   // Number of files considered as part of running this query
   int64_t numWalked_{0};
@@ -241,6 +236,12 @@ struct w_query_ctx {
   // will re-evaluate once we have enough of them accumulated
   // to batch fetch the required data
   std::vector<std::unique_ptr<FileResult>> evalBatch_;
+
+  // Similar to needBatchFetch_ above, except that the files
+  // in this batch have been successfully matched by the
+  // expression and are just pending data to be loaded
+  // for rendering the result fields.
+  std::vector<std::unique_ptr<FileResult>> renderBatch_;
 };
 
 struct w_query_path {
@@ -335,6 +336,7 @@ struct w_query {
   json_ref query_spec;
 
   w_query_field_list fieldList;
+
   // True if any entry in fieldList has a non-null futureMake
   bool renderUsesFutures{false};
 
@@ -411,13 +413,15 @@ std::shared_ptr<w_query> w_query_parse_legacy(
     json_ref* expr_p);
 void w_query_legacy_field_list(w_query_field_list* flist);
 
-json_ref file_result_to_json(
+watchman::Optional<json_ref> file_result_to_json(
     const w_query_field_list& fieldList,
-    const watchman_rule_match& match);
+    const std::unique_ptr<FileResult>& file,
+    const w_query_ctx* ctx);
 
-watchman::Future<json_ref> file_result_to_json_future(
+watchman::Future<watchman::Optional<json_ref>> file_result_to_json_future(
     const w_query_field_list& fieldList,
-    watchman_rule_match&& match);
+    std::unique_ptr<FileResult>&& file,
+    const w_query_ctx* ctx);
 
 void w_query_init_all(void);
 

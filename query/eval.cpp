@@ -13,35 +13,36 @@ using watchman::collectAll;
 
 FileResult::~FileResult() {}
 
-/* Query evaluator */
-
-const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx) {
+w_string w_query_ctx::computeWholeName(FileResult* file) const {
   uint32_t name_start;
 
+  if (query->relative_root) {
+    // At this point every path should start with the relative root, so this is
+    // legal
+    name_start = query->relative_root.size() + 1;
+  } else {
+    name_start = root->root_path.size() + 1;
+  }
+
+  // Record the name relative to the root
+  auto parent = file->dirName();
+  if (name_start > parent.size()) {
+    return file->baseName().asWString();
+  }
+  parent.advance(name_start);
+  return w_string::build(parent, "/", file->baseName());
+}
+
+const w_string& w_query_ctx_get_wholename(struct w_query_ctx* ctx) {
   if (ctx->wholename) {
     return ctx->wholename;
   }
 
-  if (ctx->query->relative_root) {
-    // At this point every path should start with the relative root, so this is
-    // legal
-    name_start = ctx->query->relative_root.size() + 1;
-  } else {
-    name_start = ctx->root->root_path.size() + 1;
-  }
-
-  // Record the name relative to the root
-  auto parent = ctx->file->dirName();
-  if (name_start > parent.size()) {
-    ctx->wholename = ctx->file->baseName().asWString();
-  } else {
-    parent.advance(name_start);
-    ctx->wholename = w_string::build(parent, "/", ctx->file->baseName());
-  }
-
+  ctx->wholename = ctx->computeWholeName(ctx->file.get());
   return ctx->wholename;
 }
 
+/* Query evaluator */
 void w_query_process_file(
     w_query* query,
     struct w_query_ctx* ctx,
@@ -53,6 +54,11 @@ void w_query_process_file(
   };
 
   // For fresh instances, only return files that currently exist
+  // TODO: shift this clause to execute_common and generate
+  // a wrapped query: ["allof", "exists", EXPR] and execute that
+  // instead of query->expr so that the lazy evaluation logic can
+  // be automatically applied and avoid fetching the exists flag
+  // for every file.  See also related TODO in batchFetchNow.
   if (!ctx->disableFreshInstance && !ctx->since.is_timestamp &&
       ctx->since.clock.is_fresh_instance) {
     auto exists = ctx->file->exists();
@@ -91,60 +97,13 @@ void w_query_process_file(
     }
   }
 
-  bool is_new = false;
-  if (ctx->query->isFieldRequested("new")) {
-    if (!ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance) {
-      is_new = true;
-    } else {
-      auto ctime = ctx->file->ctime();
-      if (!ctime.has_value()) {
-        // Reconsider this one later
-        ctx->addToEvalBatch(std::move(ctx->file));
-        return;
-      }
-      if (ctx->since.is_timestamp) {
-        is_new = ctx->since.timestamp > ctime->timestamp;
-      } else {
-        is_new = ctime->ticks > ctx->since.clock.ticks;
-      }
-    }
-  }
-
-  auto wholename = w_query_ctx_get_wholename(ctx);
-  watchman_rule_match match(
-      ctx->clockAtStartOfQuery.position().rootNumber,
-      wholename,
-      is_new,
-      std::move(ctx->file));
-
-  if (ctx->query->renderUsesFutures) {
-    // Conceptually all we need to do here is append the future to
-    // resultsToRender and then collectAll at the end of the query.  That
-    // requires O(num-matches x num-fields) memory usage of the future related
-    // data for the duration of the query.  In order to keep things down to a
-    // more reasonable size, if the future is immediately ready we can append to
-    // the results directly, and we can also speculatively do the same for any
-    // pending items that happen to complete in between matches.  That makes
-    // this code look a little more complex, but it is worth it for very large
-    // result sets.
-    auto future =
-        file_result_to_json_future(ctx->query->fieldList, std::move(match));
-    if (future.isReady()) {
-      json_array_append_new(ctx->resultsArray, std::move(future.get()));
-    } else {
-      ctx->resultsToRender.emplace_back(std::move(future));
-    }
-    ctx->speculativeRenderCompletion();
-  } else {
-    json_array_append_new(
-        ctx->resultsArray, file_result_to_json(ctx->query->fieldList, match));
-  }
+  ctx->addToRenderBatch(std::move(ctx->file));
 }
 
 void w_query_ctx::speculativeRenderCompletion() {
   while (!resultsToRender.empty() && resultsToRender.front().isReady()) {
     json_array_append_new(
-        resultsArray, std::move(resultsToRender.front().get()));
+        resultsArray, std::move(resultsToRender.front().get().value()));
     resultsToRender.pop_front();
   }
 }
@@ -233,13 +192,19 @@ static void execute_common(
   // so make sure that we process them before we get to
   // the render phase below.
   ctx->fetchEvalBatchNow();
+  while (!ctx->fetchRenderBatchNow()) {
+    // Depending on the implementation of the query terms and
+    // the field renderers, we may need to do a couple of fetches
+    // to get all that we need, so we loop until we get them all.
+  }
 
   if (!ctx->resultsToRender.empty()) {
     collectAll(ctx->resultsToRender.begin(), ctx->resultsToRender.end())
-        .then([&](Result<std::vector<Result<json_ref>>>&& results) {
+        .then([&](Result<std::vector<Result<Optional<json_ref>>>>&& results) {
           auto& vec = results.value();
           for (auto& item : vec) {
-            json_array_append_new(ctx->resultsArray, std::move(item.value()));
+            json_array_append_new(
+                ctx->resultsArray, std::move(item.value().value()));
           }
         })
         .get();
@@ -301,6 +266,52 @@ void w_query_ctx::fetchEvalBatchNow() {
   }
 
   w_assert(evalBatch_.empty(), "should have no files that NeedDataLoad");
+}
+
+void w_query_ctx::addToRenderBatch(std::unique_ptr<FileResult>&& file) {
+  renderBatch_.emplace_back(std::move(file));
+  // TODO: maybe allow passing this number in via the query?
+  if (renderBatch_.size() >= 1024) {
+    fetchRenderBatchNow();
+  }
+}
+
+bool w_query_ctx::fetchRenderBatchNow() {
+  if (renderBatch_.empty()) {
+    return true;
+  }
+  renderBatch_.front()->batchFetchProperties(renderBatch_);
+
+  auto toProcess = std::move(renderBatch_);
+
+  for (auto& file : toProcess) {
+    if (query->renderUsesFutures) {
+      // Conceptually all we need to do here is append the future to
+      // resultsToRender and then collectAll at the end of the query.  That
+      // requires O(num-matches x num-fields) memory usage of the future related
+      // data for the duration of the query.  In order to keep things down to a
+      // more reasonable size, if the future is immediately ready we can append
+      // to the results directly, and we can also speculatively do the same for
+      // any pending items that happen to complete in between matches.  That
+      // makes this code look a little more complex, but it is worth it for very
+      // large result sets.
+      auto future =
+          file_result_to_json_future(query->fieldList, std::move(file), this);
+      if (future.isReady()) {
+        json_array_append_new(resultsArray, std::move(future.get().value()));
+      } else {
+        resultsToRender.emplace_back(std::move(future));
+      }
+      speculativeRenderCompletion();
+    } else {
+      auto maybeRendered = file_result_to_json(query->fieldList, file, this);
+      w_assert(
+          maybeRendered.has_value(), "should have no files that NeedDataLoad");
+      json_array_append_new(resultsArray, std::move(maybeRendered.value()));
+    }
+  }
+
+  return renderBatch_.empty();
 }
 
 // Capability indicating support for scm-aware since queries
