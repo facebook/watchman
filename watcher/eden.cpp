@@ -196,8 +196,12 @@ class EdenFileResult : public FileResult {
     return exists_;
   }
 
-  Future<w_string> readLink() override {
-    return makeFuture<w_string>(nullptr);
+  Optional<w_string> readLink() override {
+    if (symlinkTarget_.has_value()) {
+      return symlinkTarget_;
+    }
+    accessorNeedsProperties(FileResult::Property::SymlinkTarget);
+    return nullopt;
   }
 
   Optional<w_clock_t> ctime() override {
@@ -255,6 +259,11 @@ class EdenFileResult : public FileResult {
       // to pass to eden.  The +1 is its trailing slash.
       relName.advance(root_path_.size() + 1);
 
+      if (edenFile.neededProperties() & FileResult::Property::SymlinkTarget) {
+        // We need to know if the node is a symlink
+        edenFile.accessorNeedsProperties(FileResult::Property::FileDType);
+      }
+
       if (edenFile.neededProperties() &
           (FileResult::Property::FileDType | FileResult::Property::CTime |
            FileResult::Property::OTime | FileResult::Property::Exists |
@@ -274,6 +283,9 @@ class EdenFileResult : public FileResult {
     auto client = getEdenClient(root_path_);
     loadFileInformation(
         client.get(), getFileInformationNames, getFileInformationFiles);
+
+    // TODO: add eden bulk readlink call
+    loadSymlinkTargets(client.get(), files);
   }
 
  private:
@@ -284,6 +296,28 @@ class EdenFileResult : public FileResult {
   w_clock_t ctime_;
   w_clock_t otime_;
   SHA1Result sha1_;
+  Optional<w_string> symlinkTarget_;
+
+  void loadSymlinkTargets(
+      StreamingEdenServiceAsyncClient* client,
+      const std::vector<std::unique_ptr<FileResult>>& files) {
+    for (auto& f : files) {
+      auto edenFile = dynamic_cast<EdenFileResult*>(f.get());
+
+      if (edenFile->neededProperties() & FileResult::Property::SymlinkTarget) {
+        if (!edenFile->stat_->isSymlink()) {
+          // If this file is not a symlink then we immediately yield
+          // a nullptr w_string instance rather than propagating an error.
+          // This behavior is relied upon by the field rendering code and
+          // checked in test_symlink.py.
+          edenFile->symlinkTarget_ = w_string();
+          continue;
+        }
+        edenFile->symlinkTarget_ =
+            readSymbolicLink(edenFile->fullName_.c_str());
+      }
+    }
+  }
 
   void loadFileInformation(
       StreamingEdenServiceAsyncClient* client,

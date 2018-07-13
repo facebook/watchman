@@ -49,8 +49,12 @@ Optional<bool> LocalFileResult::exists() {
   return exists_;
 }
 
-watchman::Future<w_string> LocalFileResult::readLink() {
-  return makeFuture(readSymbolicLink(fullPath_.c_str()));
+Optional<w_string> LocalFileResult::readLink() {
+  if (symlinkTarget_.has_value()) {
+    return symlinkTarget_;
+  }
+  accessorNeedsProperties(FileResult::Property::SymlinkTarget);
+  return nullopt;
 }
 
 Optional<w_clock_t> LocalFileResult::ctime() {
@@ -74,6 +78,20 @@ void LocalFileResult::batchFetchProperties(
   for (auto& f : files) {
     auto localFile = dynamic_cast<LocalFileResult*>(f.get());
     localFile->getInfo();
+
+    if (localFile->neededProperties() & FileResult::Property::SymlinkTarget) {
+      if (!localFile->info_->isSymlink()) {
+        // If this file is not a symlink then we immediately yield
+        // a nullptr w_string instance rather than propagating an error.
+        // This behavior is relied upon by the field rendering code and
+        // checked in test_symlink.py.
+        localFile->symlinkTarget_ = w_string();
+      } else {
+        localFile->symlinkTarget_ =
+            readSymbolicLink(localFile->fullPath_.c_str());
+      }
+    }
+
     localFile->clearNeededProperties();
   }
 }

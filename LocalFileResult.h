@@ -41,7 +41,7 @@ class LocalFileResult : public FileResult {
   // Returns true if the file currently exists
   watchman::Optional<bool> exists() override;
   // Returns the symlink target
-  watchman::Future<w_string> readLink() override;
+  watchman::Optional<w_string> readLink() override;
 
   watchman::Optional<w_clock_t> ctime() override;
   watchman::Optional<w_clock_t> otime() override;
@@ -61,6 +61,7 @@ class LocalFileResult : public FileResult {
   std::shared_ptr<w_root_t> root_;
   w_string fullPath_;
   w_clock_t clock_;
+  Optional<w_string> symlinkTarget_;
 };
 
 } // namespace watchman

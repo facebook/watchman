@@ -9,14 +9,12 @@ static Optional<json_ref> make_name(FileResult* file, const w_query_ctx* ctx) {
   return w_string_to_json(ctx->computeWholeName(file));
 }
 
-static watchman::Future<Optional<json_ref>> make_symlink(
-    FileResult* file,
-    const w_query_ctx*) {
-  return file->readLink().then(
-      [](Result<w_string>&& result) -> Optional<json_ref> {
-        auto& target = result.value();
-        return target ? w_string_to_json(target) : json_null();
-      });
+static Optional<json_ref> make_symlink(FileResult* file, const w_query_ctx*) {
+  auto target = file->readLink();
+  if (!target.has_value()) {
+    return nullopt;
+  }
+  return *target ? w_string_to_json(*target) : json_null();
 }
 
 static watchman::Future<Optional<json_ref>> make_sha1_hex(
@@ -238,7 +236,7 @@ static std::unordered_map<w_string, w_query_field_renderer> build_defs() {
         *futureMake)(FileResult* file, const w_query_ctx* ctx);
   } defs[] = {
       {"name", make_name, nullptr},
-      {"symlink_target", nullptr, make_symlink},
+      {"symlink_target", make_symlink, nullptr},
       {"exists", make_exists, nullptr},
       {"size", make_size, nullptr},
       {"mode", make_mode, nullptr},

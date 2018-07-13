@@ -43,7 +43,7 @@ class InMemoryFileResult : public FileResult {
   w_string_piece baseName() override;
   w_string_piece dirName() override;
   Optional<bool> exists() override;
-  Future<w_string> readLink() override;
+  Optional<w_string> readLink() override;
   Optional<w_clock_t> ctime() override;
   Optional<w_clock_t> otime() override;
   watchman::Future<FileResult::ContentHash> getContentSha1() override;
@@ -54,6 +54,7 @@ class InMemoryFileResult : public FileResult {
   const watchman_file* file_;
   w_string dirName_;
   InMemoryViewCaches& caches_;
+  Optional<w_string> symlinkTarget_;
 };
 
 /** Keeps track of the state of the filesystem in-memory. */

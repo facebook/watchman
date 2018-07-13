@@ -69,7 +69,7 @@ class FileResult {
   virtual watchman::Optional<bool> exists() = 0;
 
   // Returns the symlink target
-  virtual watchman::Future<w_string> readLink() = 0;
+  virtual watchman::Optional<w_string> readLink() = 0;
 
   // Maybe return the change time.
   // Returns nullopt if ctime is not currently known

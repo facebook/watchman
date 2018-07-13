@@ -28,7 +28,50 @@ InMemoryFileResult::InMemoryFileResult(
     : file_(file), caches_(caches) {}
 
 void InMemoryFileResult::batchFetchProperties(
-    const std::vector<std::unique_ptr<FileResult>>&) {}
+    const std::vector<std::unique_ptr<FileResult>>& files) {
+  std::vector<Future<Unit>> readlinkFutures;
+
+  for (auto& f : files) {
+    auto* file = dynamic_cast<InMemoryFileResult*>(f.get());
+
+    if (file->neededProperties() & FileResult::Property::SymlinkTarget) {
+      if (!file->file_->stat.isSymlink()) {
+        // If this file is not a symlink then we yield
+        // a nullptr w_string instance rather than propagating an error.
+        // This behavior is relied upon by the field rendering code and
+        // checked in test_symlink.py.
+        file->symlinkTarget_ = w_string();
+      } else {
+        auto dir = file->dirName();
+        dir.advance(file->caches_.symlinkTargetCache.rootPath().size());
+
+        // If dirName is the root, dir.size() will now be zero
+        if (dir.size() > 0) {
+          // if not at the root, skip the slash character at the
+          // front of dir
+          dir.advance(1);
+        }
+
+        SymlinkTargetCacheKey key{w_string::pathCat({dir, baseName()}),
+                                  file->file_->otime};
+
+        readlinkFutures.emplace_back(caches_.symlinkTargetCache.get(key).then(
+            [file](Result<std::shared_ptr<const SymlinkTargetCache::Node>>&&
+                       result) {
+              if (result.hasValue()) {
+                file->symlinkTarget_ = result.value()->value();
+              }
+            }));
+      }
+    }
+
+    file->clearNeededProperties();
+  }
+
+  if (!readlinkFutures.empty()) {
+    collectAll(readlinkFutures.begin(), readlinkFutures.end()).wait();
+  }
+}
 
 Optional<FileInformation> InMemoryFileResult::stat() {
   return file_->stat;
@@ -57,31 +100,21 @@ Optional<w_clock_t> InMemoryFileResult::otime() {
   return file_->otime;
 }
 
-Future<w_string> InMemoryFileResult::readLink() {
-  if (!file_->stat.isSymlink()) {
-    // If this file is not a symlink then we immediately yield
-    // a nullptr w_string instance rather than propagating an error.
-    // This behavior is relied upon by the field rendering code and
-    // checked in test_symlink.py.
-    return makeFuture(w_string());
+Optional<w_string> InMemoryFileResult::readLink() {
+  if (!symlinkTarget_.has_value()) {
+    if (!file_->stat.isSymlink()) {
+      // If this file is not a symlink then we immediately yield
+      // a nullptr w_string instance rather than propagating an error.
+      // This behavior is relied upon by the field rendering code and
+      // checked in test_symlink.py.
+      symlinkTarget_ = w_string();
+      return symlinkTarget_;
+    }
+    // Need to load the symlink target; batch that up
+    accessorNeedsProperties(FileResult::Property::SymlinkTarget);
+    return nullopt;
   }
-
-  auto dir = dirName();
-  dir.advance(caches_.symlinkTargetCache.rootPath().size());
-
-  // If dirName is the root, dir.size() will now be zero
-  if (dir.size() > 0) {
-    // if not at the root, skip the slash character at the
-    // front of dir
-    dir.advance(1);
-  }
-
-  SymlinkTargetCacheKey key{w_string::pathCat({dir, baseName()}),
-                            file_->otime};
-
-  return caches_.symlinkTargetCache.get(key).then(
-      [](Result<std::shared_ptr<const SymlinkTargetCache::Node>>&& result)
-          -> w_string { return result.value()->value(); });
+  return symlinkTarget_;
 }
 
 Future<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
