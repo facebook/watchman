@@ -30,6 +30,7 @@ InMemoryFileResult::InMemoryFileResult(
 void InMemoryFileResult::batchFetchProperties(
     const std::vector<std::unique_ptr<FileResult>>& files) {
   std::vector<Future<Unit>> readlinkFutures;
+  std::vector<Future<Unit>> sha1Futures;
 
   for (auto& f : files) {
     auto* file = dynamic_cast<InMemoryFileResult*>(f.get());
@@ -65,11 +66,37 @@ void InMemoryFileResult::batchFetchProperties(
       }
     }
 
+    if (file->neededProperties() & FileResult::Property::ContentSha1) {
+      auto dir = file->dirName();
+      dir.advance(file->caches_.contentHashCache.rootPath().size());
+
+      // If dirName is the root, dir.size() will now be zero
+      if (dir.size() > 0) {
+        // if not at the root, skip the slash character at the
+        // front of dir
+        dir.advance(1);
+      }
+
+      ContentHashCacheKey key{w_string::pathCat({dir, baseName()}),
+                              size_t(file->file_->stat.size),
+                              file->file_->stat.mtime};
+
+      sha1Futures.emplace_back(caches_.contentHashCache.get(key).then(
+          [file](
+              Result<std::shared_ptr<const ContentHashCache::Node>>&& result) {
+            file->contentSha1_ = result.value()->value();
+          }));
+    }
+
     file->clearNeededProperties();
   }
 
   if (!readlinkFutures.empty()) {
     collectAll(readlinkFutures.begin(), readlinkFutures.end()).wait();
+  }
+
+  if (!sha1Futures.empty()) {
+    collectAll(sha1Futures.begin(), sha1Futures.end()).wait();
   }
 }
 
@@ -117,24 +144,12 @@ Optional<w_string> InMemoryFileResult::readLink() {
   return symlinkTarget_;
 }
 
-Future<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
-  auto dir = dirName();
-  dir.advance(caches_.contentHashCache.rootPath().size());
-
-  // If dirName is the root, dir.size() will now be zero
-  if (dir.size() > 0) {
-    // if not at the root, skip the slash character at the
-    // front of dir
-    dir.advance(1);
+Optional<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
+  if (!contentSha1_.has_value()) {
+    accessorNeedsProperties(FileResult::Property::ContentSha1);
+    return nullopt;
   }
-
-  ContentHashCacheKey key{w_string::pathCat({dir, baseName()}),
-                          size_t(file_->stat.size),
-                          file_->stat.mtime};
-
-  return caches_.contentHashCache.get(key).then(
-      [](Result<std::shared_ptr<const ContentHashCache::Node>>&& result)
-          -> FileResult::ContentHash { return result.value()->value(); });
+  return contentSha1_;
 }
 
 InMemoryView::view::view(const w_string& root_path)

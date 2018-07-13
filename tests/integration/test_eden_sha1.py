@@ -22,8 +22,6 @@ class TestEdenSha1(WatchmanEdenTestCase.WatchmanEdenTestCase):
         return sha.hexdigest()
 
     def test_eden_sha1(self):
-        self.skipTest("rendering of sha1 is broken until later in this stack")
-
         def populate(repo):
             repo.write_file("hello", "hola\n")
             repo.write_file("adir/file", "foo!\n")

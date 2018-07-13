@@ -47,7 +47,7 @@ class LocalFileResult : public FileResult {
   watchman::Optional<w_clock_t> otime() override;
 
   // Returns the SHA-1 hash of the file contents
-  watchman::Future<FileResult::ContentHash> getContentSha1() override;
+  Optional<FileResult::ContentHash> getContentSha1() override;
 
   void batchFetchProperties(
       const std::vector<std::unique_ptr<FileResult>>& files) override;
@@ -62,6 +62,7 @@ class LocalFileResult : public FileResult {
   w_string fullPath_;
   w_clock_t clock_;
   Optional<w_string> symlinkTarget_;
+  Optional<FileResult::ContentHash> contentSha1_;
 };
 
 } // namespace watchman

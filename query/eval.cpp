@@ -97,15 +97,7 @@ void w_query_process_file(
     }
   }
 
-  ctx->addToRenderBatch(std::move(ctx->file));
-}
-
-void w_query_ctx::speculativeRenderCompletion() {
-  while (!resultsToRender.empty() && resultsToRender.front().isReady()) {
-    json_array_append_new(
-        resultsArray, std::move(resultsToRender.front().get().value()));
-    resultsToRender.pop_front();
-  }
+  ctx->maybeRender(std::move(ctx->file));
 }
 
 bool w_query_file_matches_relative_root(
@@ -198,18 +190,6 @@ static void execute_common(
     // to get all that we need, so we loop until we get them all.
   }
 
-  if (!ctx->resultsToRender.empty()) {
-    collectAll(ctx->resultsToRender.begin(), ctx->resultsToRender.end())
-        .then([&](Result<std::vector<Result<Optional<json_ref>>>>&& results) {
-          auto& vec = results.value();
-          for (auto& item : vec) {
-            json_array_append_new(
-                ctx->resultsArray, std::move(item.value().value()));
-          }
-        })
-        .get();
-  }
-
   if (sample && sample->finish()) {
     sample->add_root_meta(ctx->root);
     sample->add_meta(
@@ -268,6 +248,16 @@ void w_query_ctx::fetchEvalBatchNow() {
   w_assert(evalBatch_.empty(), "should have no files that NeedDataLoad");
 }
 
+void w_query_ctx::maybeRender(std::unique_ptr<FileResult>&& file) {
+  auto maybeRendered = file_result_to_json(query->fieldList, file, this);
+  if (maybeRendered.has_value()) {
+    json_array_append_new(resultsArray, std::move(maybeRendered.value()));
+    return;
+  }
+
+  addToRenderBatch(std::move(file));
+}
+
 void w_query_ctx::addToRenderBatch(std::unique_ptr<FileResult>&& file) {
   renderBatch_.emplace_back(std::move(file));
   // TODO: maybe allow passing this number in via the query?
@@ -285,29 +275,11 @@ bool w_query_ctx::fetchRenderBatchNow() {
   auto toProcess = std::move(renderBatch_);
 
   for (auto& file : toProcess) {
-    if (query->renderUsesFutures) {
-      // Conceptually all we need to do here is append the future to
-      // resultsToRender and then collectAll at the end of the query.  That
-      // requires O(num-matches x num-fields) memory usage of the future related
-      // data for the duration of the query.  In order to keep things down to a
-      // more reasonable size, if the future is immediately ready we can append
-      // to the results directly, and we can also speculatively do the same for
-      // any pending items that happen to complete in between matches.  That
-      // makes this code look a little more complex, but it is worth it for very
-      // large result sets.
-      auto future =
-          file_result_to_json_future(query->fieldList, std::move(file), this);
-      if (future.isReady()) {
-        json_array_append_new(resultsArray, std::move(future.get().value()));
-      } else {
-        resultsToRender.emplace_back(std::move(future));
-      }
-      speculativeRenderCompletion();
-    } else {
-      auto maybeRendered = file_result_to_json(query->fieldList, file, this);
-      w_assert(
-          maybeRendered.has_value(), "should have no files that NeedDataLoad");
+    auto maybeRendered = file_result_to_json(query->fieldList, file, this);
+    if (maybeRendered.has_value()) {
       json_array_append_new(resultsArray, std::move(maybeRendered.value()));
+    } else {
+      renderBatch_.emplace_back(std::move(file));
     }
   }
 

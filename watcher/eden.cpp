@@ -142,7 +142,6 @@ class EdenFileResult : public FileResult {
   EdenFileResult(
       const w_string& rootPath,
       const w_string& fullName,
-      const SHA1Result* sha1 = nullptr,
       JournalPosition* position = nullptr,
       bool isNew = false)
       : root_path_(rootPath), fullName_(fullName) {
@@ -165,10 +164,6 @@ class EdenFileResult : public FileResult {
         // zero which always fails that is_new check.
         ctime_.ticks = otime_.ticks;
       }
-    }
-
-    if (sha1) {
-      sha1_ = *sha1;
     }
   }
 
@@ -220,29 +215,30 @@ class EdenFileResult : public FileResult {
     return otime_;
   }
 
-  Future<FileResult::ContentHash> getContentSha1() override {
-    switch (sha1_.getType()) {
+  Optional<FileResult::ContentHash> getContentSha1() override {
+    if (!sha1_.has_value()) {
+      accessorNeedsProperties(FileResult::Property::ContentSha1);
+      return nullopt;
+    }
+    switch (sha1_->getType()) {
       // Copy thrift SHA1Result aka (std::string) into
       // watchman FileResult::ContentHash aka (std::array<uint8_t, 20>)
       case SHA1Result::Type::sha1: {
-        auto& hash = sha1_.get_sha1();
-        ContentHash hashData;
-        std::copy(hash.begin(), hash.end(), hashData.begin());
+        auto& hash = sha1_->get_sha1();
+        FileResult::ContentHash result;
+        std::copy(hash.begin(), hash.end(), result.begin());
 
-        return makeFuture<FileResult::ContentHash>(makeResult(hashData));
+        return result;
       }
 
       // Thrift error occured
       case SHA1Result::Type::error:
-        return makeFuture<FileResult::ContentHash>(
-            Result<FileResult::ContentHash>(std::make_exception_ptr(
-                std::runtime_error(sha1_.get_error().message))));
+        throw std::runtime_error(sha1_->get_error().message);
 
       // Something is wrong with type union
       default:
-        return makeFuture<FileResult::ContentHash>(
-            Result<FileResult::ContentHash>(std::make_exception_ptr(
-                std::runtime_error("Unknown thrift data"))));
+        throw std::runtime_error(
+            "Unknown thrift data for EdenFileResult::getContentSha1");
     }
   }
 
@@ -250,6 +246,9 @@ class EdenFileResult : public FileResult {
       const std::vector<std::unique_ptr<FileResult>>& files) override {
     std::vector<EdenFileResult*> getFileInformationFiles;
     std::vector<std::string> getFileInformationNames;
+
+    std::vector<EdenFileResult*> getShaFiles;
+    std::vector<std::string> getShaNames;
 
     for (auto& f : files) {
       auto& edenFile = dynamic_cast<EdenFileResult&>(*f.get());
@@ -273,6 +272,11 @@ class EdenFileResult : public FileResult {
         getFileInformationNames.emplace_back(relName.data(), relName.size());
       }
 
+      if (edenFile.neededProperties() & FileResult::Property::ContentSha1) {
+        getShaFiles.emplace_back(&edenFile);
+        getShaNames.emplace_back(relName.data(), relName.size());
+      }
+
       // If we were to throw later in this method, we will have forgotten
       // the input set of properties, but it is ok: if we do decide to
       // re-evaluate after throwing, the accessors will set the mask up
@@ -286,6 +290,22 @@ class EdenFileResult : public FileResult {
 
     // TODO: add eden bulk readlink call
     loadSymlinkTargets(client.get(), files);
+
+    if (!getShaFiles.empty()) {
+      std::vector<SHA1Result> sha1s;
+      client->sync_getSHA1(sha1s, to<std::string>(root_path_), getShaNames);
+
+      auto shaIter = sha1s.begin();
+      auto fileIter = getShaFiles.begin();
+      while (fileIter != getShaFiles.end()) {
+        auto* edenFile = *fileIter;
+
+        edenFile->sha1_ = *shaIter;
+
+        ++fileIter;
+        ++shaIter;
+      }
+    }
   }
 
  private:
@@ -295,7 +315,7 @@ class EdenFileResult : public FileResult {
   bool exists_;
   w_clock_t ctime_;
   w_clock_t otime_;
-  SHA1Result sha1_;
+  Optional<SHA1Result> sha1_;
   Optional<w_string> symlinkTarget_;
 
   void loadSymlinkTargets(
@@ -734,19 +754,7 @@ class EdenView : public QueryableView {
     // Filter out any ignored files
     filterOutPaths(fileNames, ctx);
 
-    // If the query requires content.sha1hex, fetch those in a batch now
-    std::vector<SHA1Result> sha1s;
-    auto sha1Requested = query->isFieldRequested("content.sha1hex");
-    if (sha1Requested) {
-      client->sync_getSHA1(sha1s, mountPoint_, fileNames);
-      if (sha1s.size() != fileNames.size()) {
-        throw QueryExecError(
-            "sha1s.size() didn't match fileNames.size(), should be unpossible!");
-      }
-    }
-
     auto nameIter = fileNames.begin();
-    auto shaIter = sha1s.begin();
     while (nameIter != fileNames.end()) {
       auto& name = *nameIter;
       // a file is considered new if it was present in the created files
@@ -756,14 +764,12 @@ class EdenView : public QueryableView {
       auto file = make_unique<EdenFileResult>(
           root_path_,
           w_string::pathCat({mountPoint_, name}),
-          sha1Requested ? &*shaIter : nullptr,
           &resultPosition,
           isNew);
 
       w_query_process_file(ctx->query, ctx, std::move(file));
 
       ++nameIter;
-      ++shaIter;
     }
 
     ctx->bumpNumWalked(fileNames.size());
@@ -803,31 +809,16 @@ class EdenView : public QueryableView {
     // Filter out any ignored files
     filterOutPaths(fileNames, ctx);
 
-    // If the query requires content.sha1hex, fetch those in a batch now
-    std::vector<SHA1Result> sha1s;
-    auto sha1Requested = query->isFieldRequested("content.sha1hex");
-    if (sha1Requested) {
-      client->sync_getSHA1(sha1s, mountPoint_, fileNames);
-      if (sha1s.size() != fileNames.size()) {
-        throw QueryExecError(
-            "sha1s.size() didn't match fileNames.size(), should be unpossible!");
-      }
-    }
-
     auto nameIter = fileNames.begin();
-    auto shaIter = sha1s.begin();
     while (nameIter != fileNames.end()) {
       auto& name = *nameIter;
 
       auto file = make_unique<EdenFileResult>(
-          root_path_,
-          w_string::pathCat({mountPoint_, name}),
-          sha1Requested ? &*shaIter : nullptr);
+          root_path_, w_string::pathCat({mountPoint_, name}));
 
       w_query_process_file(ctx->query, ctx, std::move(file));
 
       ++nameIter;
-      ++shaIter;
     }
 
     ctx->bumpNumWalked(fileNames.size());

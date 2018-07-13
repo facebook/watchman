@@ -322,13 +322,6 @@ std::shared_ptr<w_query> w_query_parse(
 
   parse_field_list(query.get_default("fields"), &res->fieldList);
 
-  for (auto& f : res->fieldList) {
-    if (f->futureMake) {
-      res->renderUsesFutures = true;
-      break;
-    }
-  }
-
   res->query_spec = query;
 
   return result;

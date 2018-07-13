@@ -27,8 +27,6 @@ struct w_query_field_renderer {
   w_string name;
   watchman::Optional<json_ref> (
       *make)(FileResult* file, const w_query_ctx* ctx);
-  watchman::Future<watchman::Optional<json_ref>> (
-      *futureMake)(FileResult* file, const w_query_ctx* ctx);
 };
 
 using w_query_field_list = std::vector<const w_query_field_renderer*>;
@@ -81,7 +79,7 @@ class FileResult {
 
   // Returns the SHA-1 hash of the file contents
   using ContentHash = std::array<uint8_t, 20>;
-  virtual watchman::Future<ContentHash> getContentSha1() = 0;
+  virtual watchman::Optional<ContentHash> getContentSha1() = 0;
 
   // A bitset of Property values
   using Properties = uint_least16_t;
@@ -173,10 +171,6 @@ struct w_query_ctx {
   // Rendered results
   json_ref resultsArray;
 
-  // Results that are pending render, eg: pending some
-  // computation that is happening async.
-  std::deque<watchman::Future<watchman::Optional<json_ref>>> resultsToRender;
-
   // When deduping the results, set<wholename> of
   // the files held in results
   std::unordered_set<w_string> dedup;
@@ -193,9 +187,6 @@ struct w_query_ctx {
       bool disableFreshInstance);
   w_query_ctx(const w_query_ctx&) = delete;
   w_query_ctx& operator=(const w_query_ctx&) = delete;
-
-  // Move any completed items from resultsToRender to resultsArray
-  void speculativeRenderCompletion();
 
   // Increment numWalked_ by the specified amount
   inline void bumpNumWalked(int64_t amount = 1) {
@@ -218,6 +209,7 @@ struct w_query_ctx {
   // them to w_query_process_file().
   void fetchEvalBatchNow();
 
+  void maybeRender(std::unique_ptr<FileResult>&& file);
   void addToRenderBatch(std::unique_ptr<FileResult>&& file);
 
   // Perform a batch load of the items in the render batch,
@@ -337,9 +329,6 @@ struct w_query {
 
   w_query_field_list fieldList;
 
-  // True if any entry in fieldList has a non-null futureMake
-  bool renderUsesFutures{false};
-
   w_string request_id;
 
   /** Returns true if the supplied name is contained in
@@ -416,11 +405,6 @@ void w_query_legacy_field_list(w_query_field_list* flist);
 watchman::Optional<json_ref> file_result_to_json(
     const w_query_field_list& fieldList,
     const std::unique_ptr<FileResult>& file,
-    const w_query_ctx* ctx);
-
-watchman::Future<watchman::Optional<json_ref>> file_result_to_json_future(
-    const w_query_field_list& fieldList,
-    std::unique_ptr<FileResult>&& file,
     const w_query_ctx* ctx);
 
 void w_query_init_all(void);

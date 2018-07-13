@@ -65,12 +65,12 @@ Optional<w_clock_t> LocalFileResult::otime() {
   return clock_;
 }
 
-watchman::Future<FileResult::ContentHash> LocalFileResult::getContentSha1() {
-  // TODO: find a way to reference a ContentHashCache instance
-  // that will work with !InMemoryView based views.
-  return makeFuture(makeResultWith([&] {
-    return ContentHashCache::computeHashImmediate(fullPath_.c_str());
-  }));
+Optional<FileResult::ContentHash> LocalFileResult::getContentSha1() {
+  if (!contentSha1_.has_value()) {
+    accessorNeedsProperties(FileResult::Property::ContentSha1);
+    return nullopt;
+  }
+  return contentSha1_;
 }
 
 void LocalFileResult::batchFetchProperties(
@@ -90,6 +90,13 @@ void LocalFileResult::batchFetchProperties(
         localFile->symlinkTarget_ =
             readSymbolicLink(localFile->fullPath_.c_str());
       }
+    }
+
+    if (localFile->neededProperties() & FileResult::Property::ContentSha1) {
+      // TODO: find a way to reference a ContentHashCache instance
+      // that will work with !InMemoryView based views.
+      localFile->contentSha1_ =
+          ContentHashCache::computeHashImmediate(localFile->fullPath_.c_str());
     }
 
     localFile->clearNeededProperties();

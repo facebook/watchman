@@ -46,7 +46,7 @@ class InMemoryFileResult : public FileResult {
   Optional<w_string> readLink() override;
   Optional<w_clock_t> ctime() override;
   Optional<w_clock_t> otime() override;
-  watchman::Future<FileResult::ContentHash> getContentSha1() override;
+  Optional<FileResult::ContentHash> getContentSha1() override;
   void batchFetchProperties(
       const std::vector<std::unique_ptr<FileResult>>& files) override;
 
@@ -55,6 +55,7 @@ class InMemoryFileResult : public FileResult {
   w_string dirName_;
   InMemoryViewCaches& caches_;
   Optional<w_string> symlinkTarget_;
+  Optional<FileResult::ContentHash> contentSha1_;
 };
 
 /** Keeps track of the state of the filesystem in-memory. */
