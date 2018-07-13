@@ -54,8 +54,16 @@ void w_query_process_file(
 
   // For fresh instances, only return files that currently exist
   if (!ctx->disableFreshInstance && !ctx->since.is_timestamp &&
-      ctx->since.clock.is_fresh_instance && !ctx->file->exists().value()) {
-    return;
+      ctx->since.clock.is_fresh_instance) {
+    auto exists = ctx->file->exists();
+    if (!exists.has_value()) {
+      // Reconsider this one later
+      ctx->addToEvalBatch(std::move(ctx->file));
+      return;
+    }
+    if (!exists.value()) {
+      return;
+    }
   }
 
   // We produce an output for this file if there is no expression,
@@ -83,13 +91,23 @@ void w_query_process_file(
     }
   }
 
-  bool is_new;
-  if (ctx->since.is_timestamp) {
-    is_new = ctx->since.timestamp > ctx->file->ctime()->timestamp;
-  } else if (ctx->since.clock.is_fresh_instance) {
-    is_new = true;
-  } else {
-    is_new = ctx->file->ctime()->ticks > ctx->since.clock.ticks;
+  bool is_new = false;
+  if (ctx->query->isFieldRequested("new")) {
+    if (!ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance) {
+      is_new = true;
+    } else {
+      auto ctime = ctx->file->ctime();
+      if (!ctime.has_value()) {
+        // Reconsider this one later
+        ctx->addToEvalBatch(std::move(ctx->file));
+        return;
+      }
+      if (ctx->since.is_timestamp) {
+        is_new = ctx->since.timestamp > ctime->timestamp;
+      } else {
+        is_new = ctime->ticks > ctx->since.clock.ticks;
+      }
+    }
   }
 
   auto wholename = w_query_ctx_get_wholename(ctx);

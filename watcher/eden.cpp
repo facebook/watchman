@@ -141,7 +141,6 @@ class EdenFileResult : public FileResult {
  public:
   EdenFileResult(
       const w_string& rootPath,
-      const FileInformationOrError& infoOrErr,
       const w_string& fullName,
       const SHA1Result* sha1 = nullptr,
       JournalPosition* position = nullptr,
@@ -168,26 +167,16 @@ class EdenFileResult : public FileResult {
       }
     }
 
-    if (infoOrErr.getType() == FileInformationOrError::Type::info) {
-      stat_.size = infoOrErr.get_info().size;
-      stat_.mode = infoOrErr.get_info().mode;
-      stat_.mtime.tv_sec = infoOrErr.get_info().mtime.seconds;
-      stat_.mtime.tv_nsec = infoOrErr.get_info().mtime.nanoSeconds;
-
-      otime_.timestamp = ctime_.timestamp = stat_.mtime.tv_sec;
-
-      exists_ = true;
-
-      if (sha1) {
-        sha1_ = *sha1;
-      }
-    } else {
-      exists_ = false;
-      stat_ = watchman::FileInformation();
+    if (sha1) {
+      sha1_ = *sha1;
     }
   }
 
   Optional<FileInformation> stat() override {
+    if (!stat_.has_value()) {
+      accessorNeedsProperties(FileResult::Property::FullFileInformation);
+      return nullopt;
+    }
     return stat_;
   }
 
@@ -200,6 +189,10 @@ class EdenFileResult : public FileResult {
   }
 
   Optional<bool> exists() override {
+    if (!stat_.has_value()) {
+      accessorNeedsProperties(FileResult::Property::Exists);
+      return nullopt;
+    }
     return exists_;
   }
 
@@ -208,10 +201,18 @@ class EdenFileResult : public FileResult {
   }
 
   Optional<w_clock_t> ctime() override {
+    if (!stat_.has_value()) {
+      accessorNeedsProperties(FileResult::Property::CTime);
+      return nullopt;
+    }
     return ctime_;
   }
 
   Optional<w_clock_t> otime() override {
+    if (!stat_.has_value()) {
+      accessorNeedsProperties(FileResult::Property::OTime);
+      return nullopt;
+    }
     return otime_;
   }
 
@@ -242,16 +243,93 @@ class EdenFileResult : public FileResult {
   }
 
   void batchFetchProperties(
-      const std::vector<std::unique_ptr<FileResult>>&) override {}
+      const std::vector<std::unique_ptr<FileResult>>& files) override {
+    std::vector<EdenFileResult*> getFileInformationFiles;
+    std::vector<std::string> getFileInformationNames;
+
+    for (auto& f : files) {
+      auto& edenFile = dynamic_cast<EdenFileResult&>(*f.get());
+
+      auto relName = edenFile.fullName_.piece();
+      // Strip off the mount point prefix for the names we're going
+      // to pass to eden.  The +1 is its trailing slash.
+      relName.advance(root_path_.size() + 1);
+
+      if (edenFile.neededProperties() &
+          (FileResult::Property::FileDType | FileResult::Property::CTime |
+           FileResult::Property::OTime | FileResult::Property::Exists |
+           FileResult::Property::Size |
+           FileResult::Property::FullFileInformation)) {
+        getFileInformationFiles.emplace_back(&edenFile);
+        getFileInformationNames.emplace_back(relName.data(), relName.size());
+      }
+
+      // If we were to throw later in this method, we will have forgotten
+      // the input set of properties, but it is ok: if we do decide to
+      // re-evaluate after throwing, the accessors will set the mask up
+      // accordingly and we'll end up calling back in here if needed.
+      edenFile.clearNeededProperties();
+    }
+
+    auto client = getEdenClient(root_path_);
+    loadFileInformation(
+        client.get(), getFileInformationNames, getFileInformationFiles);
+  }
 
  private:
   w_string root_path_;
   w_string fullName_;
-  watchman::FileInformation stat_;
+  Optional<FileInformation> stat_;
   bool exists_;
   w_clock_t ctime_;
   w_clock_t otime_;
   SHA1Result sha1_;
+
+  void loadFileInformation(
+      StreamingEdenServiceAsyncClient* client,
+      const std::vector<std::string>& names,
+      const std::vector<EdenFileResult*>& outFiles) {
+    w_assert(
+        names.size() == outFiles.size(), "names.size must == outFiles.size");
+    if (names.empty()) {
+      return;
+    }
+
+    std::vector<FileInformationOrError> info;
+    client->sync_getFileInformation(info, to<std::string>(root_path_), names);
+
+    auto infoIter = info.begin();
+    auto fileIter = outFiles.begin();
+    while (fileIter != outFiles.end()) {
+      auto* edenFile = *fileIter;
+      auto& fileInfo = *infoIter;
+
+      edenFile->applyFileInformationOrError(fileInfo);
+
+      ++fileIter;
+      ++infoIter;
+    }
+  }
+
+  void applyFileInformationOrError(const FileInformationOrError& infoOrErr) {
+    if (infoOrErr.getType() == FileInformationOrError::Type::info) {
+      FileInformation stat;
+
+      stat.size = infoOrErr.get_info().size;
+      stat.mode = infoOrErr.get_info().mode;
+      stat.mtime.tv_sec = infoOrErr.get_info().mtime.seconds;
+      stat.mtime.tv_nsec = infoOrErr.get_info().mtime.nanoSeconds;
+
+      otime_.timestamp = ctime_.timestamp = stat.mtime.tv_sec;
+
+      stat_ = std::move(stat);
+      exists_ = true;
+
+    } else {
+      exists_ = false;
+      stat_.reset();
+    }
+  }
 };
 
 static std::string escapeGlobSpecialChars(w_string_piece str) {
@@ -622,14 +700,6 @@ class EdenView : public QueryableView {
     // Filter out any ignored files
     filterOutPaths(fileNames, ctx);
 
-    std::vector<FileInformationOrError> info;
-    client->sync_getFileInformation(info, mountPoint_, fileNames);
-
-    if (info.size() != fileNames.size()) {
-      throw QueryExecError(
-          "info.size() didn't match fileNames.size(), should be unpossible!");
-    }
-
     // If the query requires content.sha1hex, fetch those in a batch now
     std::vector<SHA1Result> sha1s;
     auto sha1Requested = query->isFieldRequested("content.sha1hex");
@@ -642,18 +712,15 @@ class EdenView : public QueryableView {
     }
 
     auto nameIter = fileNames.begin();
-    auto infoIter = info.begin();
     auto shaIter = sha1s.begin();
     while (nameIter != fileNames.end()) {
       auto& name = *nameIter;
-      auto& fileInfo = *infoIter;
       // a file is considered new if it was present in the created files
       // set returned from eden.
       bool isNew = createdFileNames.find(name) != createdFileNames.end();
 
       auto file = make_unique<EdenFileResult>(
           root_path_,
-          fileInfo,
           w_string::pathCat({mountPoint_, name}),
           sha1Requested ? &*shaIter : nullptr,
           &resultPosition,
@@ -662,7 +729,6 @@ class EdenView : public QueryableView {
       w_query_process_file(ctx->query, ctx, std::move(file));
 
       ++nameIter;
-      ++infoIter;
       ++shaIter;
     }
 
@@ -703,14 +769,6 @@ class EdenView : public QueryableView {
     // Filter out any ignored files
     filterOutPaths(fileNames, ctx);
 
-    std::vector<FileInformationOrError> info;
-    client->sync_getFileInformation(info, mountPoint_, fileNames);
-
-    if (info.size() != fileNames.size()) {
-      throw QueryExecError(
-          "info.size() didn't match fileNames.size(), should be unpossible!");
-    }
-
     // If the query requires content.sha1hex, fetch those in a batch now
     std::vector<SHA1Result> sha1s;
     auto sha1Requested = query->isFieldRequested("content.sha1hex");
@@ -723,22 +781,18 @@ class EdenView : public QueryableView {
     }
 
     auto nameIter = fileNames.begin();
-    auto infoIter = info.begin();
     auto shaIter = sha1s.begin();
     while (nameIter != fileNames.end()) {
       auto& name = *nameIter;
-      auto& fileInfo = *infoIter;
 
       auto file = make_unique<EdenFileResult>(
           root_path_,
-          fileInfo,
           w_string::pathCat({mountPoint_, name}),
           sha1Requested ? &*shaIter : nullptr);
 
       w_query_process_file(ctx->query, ctx, std::move(file));
 
       ++nameIter;
-      ++infoIter;
       ++shaIter;
     }
 

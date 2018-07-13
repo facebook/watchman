@@ -10,18 +10,34 @@ import os
 import WatchmanEdenTestCase
 
 
+def populate(repo):
+    repo.write_file("hello", "hola\n")
+    repo.write_file("adir/file", "foo!\n")
+    repo.write_file("bdir/test.sh", "#!/bin/bash\necho test\n", mode=0o755)
+    repo.write_file("bdir/noexec.sh", "#!/bin/bash\necho test\n")
+    repo.symlink("slink", "hello")
+    repo.commit("initial commit.")
+
+
 class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
-    def test_eden_since(self):
-        def populate(repo):
-            repo.write_file("hello", "hola\n")
-            repo.write_file("adir/file", "foo!\n")
-            repo.write_file("bdir/test.sh", "#!/bin/bash\necho test\n", mode=0o755)
-            repo.write_file("bdir/noexec.sh", "#!/bin/bash\necho test\n")
-            repo.symlink("slink", "hello")
-            repo.commit("initial commit.")
-
+    def test_eden_lazy_eval(self):
         root = self.makeEdenMount(populate)
+        res = self.watchmanCommand("watch", root)
+        self.assertEqual("eden", res["watcher"])
 
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {
+                "expression": ["allof", ["type", "f"], ["match", "*.sh"]],
+                "fields": ["name"],
+                "since": "c:0:0",
+            },
+        )
+        self.assertFileListsEqual(res["files"], ["bdir/test.sh", "bdir/noexec.sh"])
+
+    def test_eden_since(self):
+        root = self.makeEdenMount(populate)
         res = self.watchmanCommand("watch", root)
         self.assertEqual("eden", res["watcher"])
 
