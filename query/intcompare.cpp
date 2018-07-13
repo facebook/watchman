@@ -81,12 +81,23 @@ class SizeExpr : public QueryExpr {
   explicit SizeExpr(w_query_int_compare comp) : comp(comp) {}
 
   EvaluateResult evaluate(struct w_query_ctx*, FileResult* file) override {
+    auto exists = file->exists();
+
+    if (!exists.has_value()) {
+      return watchman::nullopt;
+    }
+
     // Removed files never match
-    if (!file->exists()) {
+    if (!exists.value()) {
       return false;
     }
 
-    return eval_int_compare(file->stat().size, &comp);
+    auto stat = file->stat();
+    if (!stat.has_value()) {
+      return watchman::nullopt;
+    }
+
+    return eval_int_compare(stat.value().size, &comp);
   }
 
   static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {

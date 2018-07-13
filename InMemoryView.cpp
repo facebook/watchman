@@ -30,7 +30,7 @@ InMemoryFileResult::InMemoryFileResult(
 void InMemoryFileResult::batchFetchProperties(
     const std::vector<std::unique_ptr<FileResult>>&) {}
 
-const FileInformation& InMemoryFileResult::stat() {
+Optional<FileInformation> InMemoryFileResult::stat() {
   return file_->stat;
 }
 
@@ -45,20 +45,20 @@ w_string_piece InMemoryFileResult::dirName() {
   return dirName_;
 }
 
-bool InMemoryFileResult::exists() {
+Optional<bool> InMemoryFileResult::exists() {
   return file_->exists;
 }
 
-const w_clock_t& InMemoryFileResult::ctime() {
+Optional<w_clock_t> InMemoryFileResult::ctime() {
   return file_->ctime;
 }
 
-const w_clock_t& InMemoryFileResult::otime() {
+Optional<w_clock_t> InMemoryFileResult::otime() {
   return file_->otime;
 }
 
 Future<w_string> InMemoryFileResult::readLink() {
-  if (!stat().isSymlink()) {
+  if (!file_->stat.isSymlink()) {
     // If this file is not a symlink then we immediately yield
     // a nullptr w_string instance rather than propagating an error.
     // This behavior is relied upon by the field rendering code and

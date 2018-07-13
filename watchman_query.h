@@ -51,19 +51,31 @@ struct w_query_since {
 class FileResult {
  public:
   virtual ~FileResult();
-  virtual const watchman::FileInformation& stat() = 0;
+
+  // Maybe returns the file information.
+  // Returns nullopt if the file information is not yet known.
+  virtual watchman::Optional<watchman::FileInformation> stat() = 0;
+
   // Returns the name of the file in its containing dir
   virtual w_string_piece baseName() = 0;
   // Returns the name of the containing dir relative to the
   // VFS root
   virtual w_string_piece dirName() = 0;
-  // Returns true if the file currently exists
-  virtual bool exists() = 0;
+
+  // Maybe return the file existence status.
+  // Returns nullopt if the information is not currently known.
+  virtual watchman::Optional<bool> exists() = 0;
+
   // Returns the symlink target
   virtual watchman::Future<w_string> readLink() = 0;
 
-  virtual const w_clock_t& ctime() = 0;
-  virtual const w_clock_t& otime() = 0;
+  // Maybe return the change time.
+  // Returns nullopt if ctime is not currently known
+  virtual watchman::Optional<w_clock_t> ctime() = 0;
+
+  // Maybe return the observed time.
+  // Returns nullopt if otime is not currently known
+  virtual watchman::Optional<w_clock_t> otime() = 0;
 
   // Returns the SHA-1 hash of the file contents
   using ContentHash = std::array<uint8_t, 20>;

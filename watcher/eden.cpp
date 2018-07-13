@@ -187,7 +187,7 @@ class EdenFileResult : public FileResult {
     }
   }
 
-  const watchman::FileInformation& stat() override {
+  Optional<FileInformation> stat() override {
     return stat_;
   }
 
@@ -199,7 +199,7 @@ class EdenFileResult : public FileResult {
     return fullName_.piece().dirName();
   }
 
-  bool exists() override {
+  Optional<bool> exists() override {
     return exists_;
   }
 
@@ -207,10 +207,11 @@ class EdenFileResult : public FileResult {
     return makeFuture<w_string>(nullptr);
   }
 
-  const w_clock_t& ctime() override {
+  Optional<w_clock_t> ctime() override {
     return ctime_;
   }
-  const w_clock_t& otime() override {
+
+  Optional<w_clock_t> otime() override {
     return otime_;
   }
 

@@ -39,13 +39,13 @@ class InMemoryFileResult : public FileResult {
   explicit InMemoryFileResult(
       const watchman_file* file,
       InMemoryViewCaches& caches);
-  const FileInformation& stat() override;
+  Optional<FileInformation> stat() override;
   w_string_piece baseName() override;
   w_string_piece dirName() override;
-  bool exists() override;
+  Optional<bool> exists() override;
   Future<w_string> readLink() override;
-  const w_clock_t& ctime() override;
-  const w_clock_t& otime() override;
+  Optional<w_clock_t> ctime() override;
+  Optional<w_clock_t> otime() override;
   watchman::Future<FileResult::ContentHash> getContentSha1() override;
   void batchFetchProperties(
       const std::vector<std::unique_ptr<FileResult>>& files) override;

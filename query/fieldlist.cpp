@@ -19,7 +19,7 @@ static watchman::Future<json_ref> make_symlink(
 
 static watchman::Future<json_ref> make_sha1_hex(
     const struct watchman_rule_match* match) {
-  if (!match->file->stat().isFile() || !match->file->exists()) {
+  if (!match->file->stat()->isFile() || !match->file->exists().value()) {
     // We return null for items that can't have a content hash
     return makeFuture(json_null());
   }
@@ -46,7 +46,7 @@ static watchman::Future<json_ref> make_sha1_hex(
 }
 
 static json_ref make_exists(const struct watchman_rule_match* match) {
-  return json_boolean(match->file->exists());
+  return json_boolean(match->file->exists().value());
 }
 
 static json_ref make_new(const struct watchman_rule_match* match) {
@@ -58,7 +58,7 @@ static json_ref make_new(const struct watchman_rule_match* match) {
     char buf[128];                                                       \
     if (clock_id_string(                                                 \
             match->root_number,                                          \
-            match->file->member().ticks,                                 \
+            match->file->member().value().ticks,                         \
             buf,                                                         \
             sizeof(buf))) {                                              \
       return typed_string_to_json(buf, W_STRING_UNICODE);                \
@@ -77,12 +77,12 @@ static_assert(
 
 #define MAKE_INT_FIELD(name, member)                                     \
   static json_ref make_##name(const struct watchman_rule_match* match) { \
-    return json_integer(match->file->stat().member);                     \
+    return json_integer(match->file->stat()->member);                    \
   }
 
 #define MAKE_TIME_INT_FIELD(name, type, scale)                           \
   static json_ref make_##name(const struct watchman_rule_match* match) { \
-    struct timespec spec = match->file->stat().type##time;               \
+    struct timespec spec = match->file->stat()->type##time;              \
     return json_integer(                                                 \
         ((int64_t)spec.tv_sec * scale) +                                 \
         ((int64_t)spec.tv_nsec * scale / WATCHMAN_NSEC_IN_SEC));         \
@@ -90,7 +90,7 @@ static_assert(
 
 #define MAKE_TIME_DOUBLE_FIELD(name, type)                               \
   static json_ref make_##name(const struct watchman_rule_match* match) { \
-    struct timespec spec = match->file->stat().type##time;               \
+    struct timespec spec = match->file->stat()->type##time;              \
     return json_real(spec.tv_sec + 1e-9 * spec.tv_nsec);                 \
   }
 
@@ -128,7 +128,7 @@ MAKE_INT_FIELD(nlink, nlink)
 
 static json_ref make_type_field(const struct watchman_rule_match* match) {
   // Bias towards the more common file types first
-  auto& stat = match->file->stat();
+  auto stat = match->file->stat().value();
   if (stat.isFile()) {
     return typed_string_to_json("f", W_STRING_UNICODE);
   }

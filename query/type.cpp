@@ -12,26 +12,31 @@ class TypeExpr : public QueryExpr {
   explicit TypeExpr(char arg) : arg(arg) {}
 
   EvaluateResult evaluate(struct w_query_ctx*, FileResult* file) override {
+    auto stat = file->stat();
+    if (!stat.has_value()) {
+      return watchman::nullopt;
+    }
+
     switch (arg) {
 #ifndef _WIN32
       case 'b':
-        return S_ISBLK(file->stat().mode);
+        return S_ISBLK(stat->mode);
       case 'c':
-        return S_ISCHR(file->stat().mode);
+        return S_ISCHR(stat->mode);
       case 'p':
-        return S_ISFIFO(file->stat().mode);
+        return S_ISFIFO(stat->mode);
       case 's':
-        return S_ISSOCK(file->stat().mode);
+        return S_ISSOCK(stat->mode);
 #endif
       case 'd':
-        return file->stat().isDir();
+        return stat->isDir();
       case 'f':
-        return file->stat().isFile();
+        return stat->isFile();
       case 'l':
-        return file->stat().isSymlink();
+        return stat->isSymlink();
 #ifdef S_ISDOOR
       case 'D':
-        return S_ISDOOR(file->stat().mode);
+        return S_ISDOOR(stat->mode);
 #endif
     default:
       return false;

@@ -20,12 +20,22 @@ W_TERM_PARSER("exists", ExistsExpr::parse)
 class EmptyExpr : public QueryExpr {
  public:
   EvaluateResult evaluate(struct w_query_ctx*, FileResult* file) override {
-    if (!file->exists()) {
+    auto exists = file->exists();
+    auto stat = file->stat();
+
+    if (!exists.has_value()) {
+      return watchman::nullopt;
+    }
+    if (!exists.value()) {
       return false;
     }
-    auto& stat = file->stat();
-    if (stat.isDir() || stat.isFile()) {
-      return stat.size == 0;
+
+    if (!stat.has_value()) {
+      return watchman::nullopt;
+    }
+
+    if (stat->isDir() || stat->isFile()) {
+      return stat->size == 0;
     }
 
     return false;

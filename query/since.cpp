@@ -41,22 +41,36 @@ class SinceExpr : public QueryExpr {
     switch (field) {
       case since_what::SINCE_OCLOCK:
       case since_what::SINCE_CCLOCK: {
-        const auto& clock =
+        const auto clock =
             (field == since_what::SINCE_OCLOCK) ? file->otime() : file->ctime();
+        if (!clock.has_value()) {
+          return watchman::nullopt;
+        }
+
         if (since.is_timestamp) {
-          return clock.timestamp >= since.timestamp;
+          return clock->timestamp >= since.timestamp;
         }
         if (since.clock.is_fresh_instance) {
           return file->exists();
         }
-        return clock.ticks > since.clock.ticks;
+        return clock->ticks > since.clock.ticks;
       }
-      case since_what::SINCE_MTIME:
-        tval = file->stat().mtime.tv_sec;
+      case since_what::SINCE_MTIME: {
+        auto stat = file->stat();
+        if (!stat.has_value()) {
+          return watchman::nullopt;
+        }
+        tval = stat->mtime.tv_sec;
         break;
-      case since_what::SINCE_CTIME:
-        tval = file->stat().ctime.tv_sec;
+      }
+      case since_what::SINCE_CTIME: {
+        auto stat = file->stat();
+        if (!stat.has_value()) {
+          return watchman::nullopt;
+        }
+        tval = stat->ctime.tv_sec;
         break;
+      }
     }
 
     assert(since.is_timestamp);

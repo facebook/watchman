@@ -12,10 +12,9 @@ LocalFileResult::LocalFileResult(
       clock_(clock) {}
 
 void LocalFileResult::getInfo() {
-  if (!needInfo_) {
+  if (info_.has_value()) {
     return;
   }
-  needInfo_ = false;
   try {
     info_ = getFileInformation(fullPath_.c_str(), root_->case_sensitive);
     exists_ = true;
@@ -26,7 +25,7 @@ void LocalFileResult::getInfo() {
   }
 }
 
-const watchman::FileInformation& LocalFileResult::stat() {
+Optional<FileInformation> LocalFileResult::stat() {
   getInfo();
   return info_;
 }
@@ -39,7 +38,7 @@ w_string_piece LocalFileResult::dirName() {
   return w_string_piece(fullPath_).dirName();
 }
 
-bool LocalFileResult::exists() {
+Optional<bool> LocalFileResult::exists() {
   getInfo();
   return exists_;
 }
@@ -48,11 +47,11 @@ watchman::Future<w_string> LocalFileResult::readLink() {
   return makeFuture(readSymbolicLink(fullPath_.c_str()));
 }
 
-const w_clock_t& LocalFileResult::ctime() {
+Optional<w_clock_t> LocalFileResult::ctime() {
   return clock_;
 }
 
-const w_clock_t& LocalFileResult::otime() {
+Optional<w_clock_t> LocalFileResult::otime() {
   return clock_;
 }
 

@@ -54,7 +54,7 @@ void w_query_process_file(
 
   // For fresh instances, only return files that currently exist
   if (!ctx->disableFreshInstance && !ctx->since.is_timestamp &&
-      ctx->since.clock.is_fresh_instance && !ctx->file->exists()) {
+      ctx->since.clock.is_fresh_instance && !ctx->file->exists().value()) {
     return;
   }
 
@@ -85,11 +85,11 @@ void w_query_process_file(
 
   bool is_new;
   if (ctx->since.is_timestamp) {
-    is_new = ctx->since.timestamp > ctx->file->ctime().timestamp;
+    is_new = ctx->since.timestamp > ctx->file->ctime()->timestamp;
   } else if (ctx->since.clock.is_fresh_instance) {
     is_new = true;
   } else {
-    is_new = ctx->file->ctime().ticks > ctx->since.clock.ticks;
+    is_new = ctx->file->ctime()->ticks > ctx->since.clock.ticks;
   }
 
   auto wholename = w_query_ctx_get_wholename(ctx);
