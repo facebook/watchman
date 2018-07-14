@@ -102,13 +102,13 @@ endforeach(wat_header)
 CHECK_STRUCT_HAS_MEMBER(statvfs f_fstypename sys/statvfs.h
   HAVE_STRUCT_STATVFS_F_FSTYPENAME)
 if (HAVE_STRUCT_STATVFS_F_BASETYPE)
-  config_h("define HAVE_STRUCT_STATVFS_F_FSTYPENAME 1")
+  config_h("#define HAVE_STRUCT_STATVFS_F_FSTYPENAME 1")
 endif()
 
 CHECK_STRUCT_HAS_MEMBER(statvfs f_basetype sys/statvfs.h
   HAVE_STRUCT_STATVFS_F_BASETYPE)
 if (HAVE_STRUCT_STATVFS_F_BASETYPE)
-  config_h("define HAVE_STRUCT_STATVFS_F_BASETYPE 1")
+  config_h("#define HAVE_STRUCT_STATVFS_F_BASETYPE 1")
 endif()
 
 # @nocommit verify this manually
