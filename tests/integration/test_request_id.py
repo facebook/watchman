@@ -5,11 +5,31 @@
 # no unicode literals
 from __future__ import absolute_import, division, print_function
 
+import errno
 import os
 import re
 import subprocess
 
 import WatchmanTestCase
+
+
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+
+
+def is_hg_installed():
+    with open(os.devnull, "wb") as devnull:
+        try:
+            exit_code = subprocess.call(
+                ["hg", "--version"], stdout=devnull, stderr=devnull
+            )
+            return exit_code == 0
+        except OSError as e:
+            if e.errno == errno.ENOENT:
+                return False
+            raise
 
 
 @WatchmanTestCase.expand_matrix
@@ -50,6 +70,7 @@ class TestRequestId(WatchmanTestCase.WatchmanTestCase):
 
         self.skipTest("HGREQUESTID is not supported")
 
+    @unittest.skipIf(not is_hg_installed(), "Hg not installed")
     def test_scmHgRequestId(self):
         self.skipIfNoHgRequestIdSupport()
 
