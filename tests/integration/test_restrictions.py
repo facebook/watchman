@@ -33,21 +33,32 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
             client = self.getClient(inst)
 
             for filetype, name, expect_pass in expect:
-                # encode the test criteria in the dirname so that we can
-                # figure out which test scenario failed more easily
-                d = self.mkdtemp(suffix="-%s-%s-%s" % (filetype, name, expect_pass))
-                if filetype == "directory":
-                    os.mkdir(os.path.join(d, name))
-                elif filetype == "file":
-                    self.touchRelative(d, name)
+                for watch_type in ["watch", "watch-project"]:
+                    # encode the test criteria in the dirname so that we can
+                    # figure out which test scenario failed more easily
+                    d = self.mkdtemp(
+                        suffix="-%s-%s-%s-%s"
+                        % (filetype, name, expect_pass, watch_type)
+                    )
+                    if filetype == "directory":
+                        os.mkdir(os.path.join(d, name))
+                    elif filetype == "file":
+                        self.touchRelative(d, name)
 
-                if expect_pass:
-                    self.assertWatchSucceeds(client, d)
-                else:
-                    self.assertWatchIsRestricted(client, d)
+                    assert_functions = {
+                        (True, "watch"): self.assertWatchSucceeds,
+                        (True, "watch-project"): self.assertWatchProjectSucceeds,
+                        (False, "watch"): self.assertWatchIsRestricted,
+                        (False, "watch-project"): self.assertWatchProjectIsRestricted,
+                    }
+                    assert_function = assert_functions[(expect_pass, watch_type)]
+                    assert_function(client, d)
 
     def assertWatchSucceeds(self, client, path):
         client.query("watch", path)
+
+    def assertWatchProjectSucceeds(self, client, path):
+        client.query("watch-project", path)
 
     def assertWatchIsRestricted(self, client, path):
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
@@ -73,6 +84,28 @@ class TestWatchRestrictions(WatchmanTestCase.WatchmanTestCase):
         self.assertIn(
             "One or more of these files must be present in order to allow a "
             + "watch.  Try pulling and checking out a newer version of the "
+            + "project?",
+            message,
+        )
+
+    def assertWatchProjectIsRestricted(self, client, path):
+        with self.assertRaises(pywatchman.WatchmanError) as ctx:
+            client.query("watch-project", path)
+        message = str(ctx.exception)
+        self.assertIn(
+            (
+                "None of the files listed in global config root_files are "
+                + "present in path `{0}` or any of its parent directories."
+            ).format(path),
+            message,
+        )
+        self.assertRegex(message, "root_files is defined by the `.*` config file")
+        self.assertIn(
+            "config file and includes `.watchmanconfig`, `.git`, and `.foo`.", message
+        )
+        self.assertIn(
+            "One or more of these files must be present in order to allow a "
+            + "watch. Try pulling and checking out a newer version of the "
             + "project?",
             message,
         )
