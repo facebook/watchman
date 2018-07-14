@@ -38,6 +38,17 @@ ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
   if (requestId && !requestId.empty()) {
     opt.environment().set("HGREQUESTID", requestId);
   }
+
+  // Default to strict hg status.  HGDETECTRACE is used by some deployments
+  // of mercurial to cause `hg status` to error out if it detects mutation
+  // of the working copy that is happening currently with the status call.
+  // This has to be opt-in behavior as it changes the semantics of the status
+  // CLI invocation.  Watchman is ready to handle this case in a reasonably
+  // defined manner, so we are safe to enable it.
+  if (cfg_get_bool("fsmonitor.detectrace", true)) {
+    opt.environment().set("HGDETECTRACE", w_string("1"));
+  }
+
   opt.nullStdin();
   opt.pipeStdout();
   opt.pipeStderr();
