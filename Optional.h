@@ -2,22 +2,36 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <stdexcept>
+#include <folly/Optional.h>
 
 namespace watchman {
 
+#if 1
+using nullopt_t = folly::None;
+static const auto nullopt = folly::none;
+#else
 /** placeholder type used to indicate that an optional
  * holds no value */
 struct nullopt_t {};
 /** placeholder value for initializing optionals empty */
 static constexpr nullopt_t nullopt{};
+#endif
 
+#if 1
+using BadOptionalAccess = folly::OptionalEmptyException;
+#else
 class BadOptionalAccess : public std::exception {
  public:
   const char* what() const noexcept override {
     return "bad optional access";
   }
 };
+#endif
 
+#if 1
+template <typename T>
+using Optional = folly::Optional<T>;
+#else
 /** A lightweight stand-in for std::optional */
 template <typename T>
 class Optional {
@@ -118,5 +132,6 @@ class Optional {
     return value();
   }
 };
+#endif
 
 } // namespace watchman

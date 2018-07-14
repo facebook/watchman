@@ -71,7 +71,6 @@ Watchman.vcxproj
 *.sdf
 *.sln
 *.suo
-m4/
 .libs/
 *.lo
 *.la
