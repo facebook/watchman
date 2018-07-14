@@ -228,7 +228,7 @@ resolve_projpath(const json_ref& args, char** errmsg, w_string& relpath) {
       "One or more of these files must be present in order to allow "
       "a watch. Try pulling and checking out a newer version of the project?",
       path,
-      WATCHMAN_CONFIG_FILE,
+      cfg_get_global_config_file_path().c_str(),
       root_files_list.c_str()));
 
   return nullptr;

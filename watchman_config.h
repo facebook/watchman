@@ -2,9 +2,12 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 
+class w_string;
+
 void cfg_shutdown(void);
 void cfg_set_arg(const char* name, const json_ref& val);
 void cfg_load_global_config_file(void);
+w_string cfg_get_global_config_file_path(void);
 json_ref cfg_get_json(const char* name);
 const char* cfg_get_string(const char* name, const char* defval);
 json_int_t cfg_get_int(const char* name, json_int_t defval);

@@ -7,6 +7,7 @@
 namespace {
 struct config_state {
   json_ref global_cfg;
+  w_string global_config_file_path;
   json_ref arg_cfg;
 };
 watchman::Synchronized<config_state> configState;
@@ -19,6 +20,10 @@ void cfg_shutdown(void)
   auto state = configState.wlock();
   state->global_cfg.reset();
   state->arg_cfg.reset();
+}
+
+w_string cfg_get_global_config_file_path(void) {
+  return configState.rlock()->global_config_file_path;
 }
 
 void cfg_load_global_config_file(void)
@@ -46,7 +51,9 @@ void cfg_load_global_config_file(void)
     return;
   }
 
-  configState.wlock()->global_cfg = config;
+  auto lockedState = configState.wlock();
+  lockedState->global_cfg = config;
+  lockedState->global_config_file_path = cfg_file;
 }
 
 void cfg_set_arg(const char* name, const json_ref& val) {

@@ -217,7 +217,7 @@ std::shared_ptr<w_root_t> root_resolve(
         "present in order to allow a watch.  Try pulling "
         "and checking out a newer version of the project?",
         root_str.c_str(),
-        WATCHMAN_CONFIG_FILE,
+        cfg_get_global_config_file_path().c_str(),
         root_files_list.c_str()));
     w_log(W_LOG_ERR, "resolve_root: %s\n", *errmsg);
     return nullptr;
