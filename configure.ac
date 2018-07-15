@@ -18,11 +18,14 @@ case $target_os in
     dnl avoid compilation failure on OS X when building with python
     ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future
     AC_SUBST(ARCHFLAGS)
+
+    dnl Avoid `#define check` from <AssertMacros.h> from CoreServices.
+    CPPFLAGS="$CPPFLAGS -D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=0"
     ;;
 esac
 AC_PROG_CC
 AC_PROG_CXX
-AX_CXX_COMPILE_STDCXX_11([noext],[mandatory])
+AX_CXX_COMPILE_STDCXX_14([noext],[mandatory])
 AC_PROG_CPP
 AC_C_BIGENDIAN
 AC_C_INLINE
@@ -291,6 +294,11 @@ AC_CHECK_FUNCS(FSEventStreamSetExclusionPaths)
 AC_CHECK_FUNCS(backtrace backtrace_symbols backtrace_symbols_fd)
 AC_CHECK_FUNCS(sys_siglist)
 AC_CHECK_FUNCS(memmem)
+
+AC_CHECK_HEADERS([fcntl.h])
+if test -n "ac_cv_header_fcntl_h"; then
+  AC_CHECK_DECLS([O_SYMLINK], [], [], [[#include <fcntl.h>]])
+fi
 
 if test -n "$ac_cv_header_sys_statvfs_h"; then
 AC_CHECK_MEMBERS([struct statvfs.f_fstypename,struct statvfs.f_basetype],
