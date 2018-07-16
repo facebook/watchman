@@ -77,7 +77,7 @@ struct watchman_client_subscription
 
   std::shared_ptr<w_query> query;
   bool vcs_defer;
-  uint32_t last_sub_tick;
+  uint32_t last_sub_tick{0};
   // map of statename => bool.  If true, policy is drop, else defer
   std::unordered_map<w_string, bool> drop_or_defer;
   std::weak_ptr<watchman_client> weakClient;
