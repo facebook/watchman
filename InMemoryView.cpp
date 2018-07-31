@@ -53,7 +53,7 @@ void InMemoryFileResult::batchFetchProperties(
           dir.advance(1);
         }
 
-        SymlinkTargetCacheKey key{w_string::pathCat({dir, baseName()}),
+        SymlinkTargetCacheKey key{w_string::pathCat({dir, file->baseName()}),
                                   file->file_->otime};
 
         readlinkFutures.emplace_back(caches_.symlinkTargetCache.get(key).then(
@@ -61,6 +61,11 @@ void InMemoryFileResult::batchFetchProperties(
                        result) {
               if (result.hasValue()) {
                 file->symlinkTarget_ = result.value()->value();
+              } else {
+                // we don't have a way to report the error for readlink
+                // due to legacy requirements in the interface, so we
+                // just set it to empty.
+                file->symlinkTarget_ = w_string();
               }
             }));
       }
@@ -77,7 +82,7 @@ void InMemoryFileResult::batchFetchProperties(
         dir.advance(1);
       }
 
-      ContentHashCacheKey key{w_string::pathCat({dir, baseName()}),
+      ContentHashCacheKey key{w_string::pathCat({dir, file->baseName()}),
                               size_t(file->file_->stat.size),
                               file->file_->stat.mtime};
 
@@ -173,7 +178,7 @@ Optional<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
     throw std::system_error(std::make_error_code(std::errc::is_a_directory));
   }
 
-  if (!contentSha1_.hasValue()) {
+  if (contentSha1_.empty()) {
     accessorNeedsProperties(FileResult::Property::ContentSha1);
     return nullopt;
   }

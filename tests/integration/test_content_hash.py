@@ -59,21 +59,32 @@ class TestContentHash(WatchmanTestCase.WatchmanTestCase):
         self.assertEqual(stats["cacheStore"], 1)
 
         # change the content and expect to see that reflected
-        # in the subsequent query
+        # in the subsequent query.  We query two at the same time to ensure that
+        # exercise the batch fetching code and that we get sane results for both
+        # entries.
         expect_hex = self.write_file_and_hash(os.path.join(root, "foo"), "goodbye\n")
+        expect_bar_hex = self.write_file_and_hash(
+            os.path.join(root, "bar"), "different\n"
+        )
 
         res = self.watchmanCommand(
             "query",
             root,
-            {"expression": ["name", "foo"], "fields": ["name", "content.sha1hex"]},
+            {"paths": ["foo", "bar"], "fields": ["name", "content.sha1hex"]},
         )
-        self.assertEqual(expect_hex, res["files"][0]["content.sha1hex"])
+        self.assertEqual(
+            [
+                {"name": "bar", "content.sha1hex": expect_bar_hex},
+                {"name": "foo", "content.sha1hex": expect_hex},
+            ],
+            sorted(res["files"], key=lambda k: k["name"]),
+        )
 
         stats = self.watchmanCommand("debug-contenthash", root)
-        self.assertEqual(stats["size"], 2)
+        self.assertEqual(stats["size"], 3)
         self.assertEqual(stats["cacheHit"], 1)
-        self.assertEqual(stats["cacheMiss"], 2)
-        self.assertEqual(stats["cacheStore"], 2)
+        self.assertEqual(stats["cacheMiss"], 3)
+        self.assertEqual(stats["cacheStore"], 3)
 
         # directories have no content hash
         os.mkdir(os.path.join(root, "dir"))
