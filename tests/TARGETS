@@ -1,8 +1,7 @@
 load("//eden:defs.bzl", "get_oss_suffix", "get_daemon_versions", "get_test_env_and_deps")
+load("xplat//configurations/buck/sandcastle:sandcastle_defs.bzl", "is_sandcastle_machine")
 
-include_defs("xplat//configurations/buck/py_sdk")
-
-if py_sdk.os.getenv('SANDCASTLE') != None:
+if is_sandcastle_machine():
     # We don't run this by default on devservers, because python 2.x has a bug
     # that breaks subprocess when threading is used, so we have to run the
     # tests with concurrency=1 and it takes a bit longer.
