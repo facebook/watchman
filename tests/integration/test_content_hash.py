@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 
+import pywatchman
 import WatchmanTestCase
 
 
@@ -137,3 +138,36 @@ class TestContentHash(WatchmanTestCase.WatchmanTestCase):
             {"expression": ["name", "foo"], "fields": ["name", "content.sha1hex"]},
         )
         self.assertEqual(expect_hex, res["files"][0]["content.sha1hex"])
+
+    def test_cacheLimit(self):
+        root = self.mkdtemp()
+
+        expect_hex = self.write_file_and_hash(os.path.join(root, "foo"), "hello\n")
+        expect_bar_hex = self.write_file_and_hash(
+            os.path.join(root, "bar"), "different\n"
+        )
+
+        with open(os.path.join(root, ".watchmanconfig"), "w") as f:
+            f.write(json.dumps({"content_hash_max_items": 1}))
+
+        self.watchmanCommand("watch", root)
+        self.assertFileList(root, [".watchmanconfig", "foo", "bar"])
+
+        with self.assertRaises(pywatchman.WatchmanError) as ctx:
+            res = self.watchmanCommand(
+                "query",
+                root,
+                {"paths": ["foo", "bar"], "fields": ["name", "content.sha1hex"]},
+            )
+
+            # TODO: we expect the query to yield these results, but at the
+            # time of writing, a limitation in the LRUCache code prevents
+            # us from generating the results
+            self.assertEqual(
+                [
+                    {"name": "bar", "content.sha1hex": expect_bar_hex},
+                    {"name": "foo", "content.sha1hex": expect_hex},
+                ],
+                sorted(res["files"], key=lambda k: k["name"]),
+            )
+        self.assertIn("pending cache", str(ctx.exception))

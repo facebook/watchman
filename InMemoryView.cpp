@@ -32,6 +32,20 @@ void InMemoryFileResult::batchFetchProperties(
   std::vector<Future<Unit>> readlinkFutures;
   std::vector<Future<Unit>> sha1Futures;
 
+  // Since we may initiate some async work in the body of the function
+  // below, we need to ensure that we wait for it to complete before
+  // we return from this scope, even if we are throwing an exception.
+  // If we fail to do so, the continuation on the futures that we
+  // schedule will access invalid memory and we'll all feel bad.
+  SCOPE_EXIT {
+    if (!readlinkFutures.empty()) {
+      collectAll(readlinkFutures.begin(), readlinkFutures.end()).wait();
+    }
+    if (!sha1Futures.empty()) {
+      collectAll(sha1Futures.begin(), sha1Futures.end()).wait();
+    }
+  };
+
   for (auto& f : files) {
     auto* file = dynamic_cast<InMemoryFileResult*>(f.get());
 
@@ -95,14 +109,6 @@ void InMemoryFileResult::batchFetchProperties(
     }
 
     file->clearNeededProperties();
-  }
-
-  if (!readlinkFutures.empty()) {
-    collectAll(readlinkFutures.begin(), readlinkFutures.end()).wait();
-  }
-
-  if (!sha1Futures.empty()) {
-    collectAll(sha1Futures.begin(), sha1Futures.end()).wait();
   }
 }
 
