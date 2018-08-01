@@ -41,17 +41,7 @@ class Result {
   Result() : state_(State::kEMPTY) {}
 
   ~Result() {
-    // value_/error_ is a union, thus manual call of destructors
-    switch (state_) {
-      case State::kEMPTY:
-        break;
-      case State::kVALUE:
-        value_.~Value();
-        break;
-      case State::kERROR:
-        error_.~Error();
-        break;
-    }
+    reset();
   }
 
   // Copy a value into the result
@@ -69,28 +59,16 @@ class Result {
       : state_(State::kERROR), error_(std::move(error)) {}
 
   // Move construct
-  explicit Result(Result&& other) noexcept : state_(other.state_) {
-    switch (state_) {
-      case State::kEMPTY:
-        break;
-      case State::kVALUE:
-        new (&value_) Value(std::move(other.value_));
-        break;
-      case State::kERROR:
-        new (&error_) Error(std::move(other.error_));
-        break;
-    }
-    other.~Result();
-    other.state_ = State::kEMPTY;
+  explicit Result(Result&& other) noexcept {
+    *this = std::move(other);
   }
 
   // Move assign
   Result& operator=(Result&& other) noexcept {
     if (&other != this) {
-      this->~Result();
+      reset();
 
-      state_ = other.state_;
-      switch (state_) {
+      switch (other.state_) {
         case State::kEMPTY:
           break;
         case State::kVALUE:
@@ -100,32 +78,15 @@ class Result {
           new (&error_) Error(std::move(other.error_));
           break;
       }
-
-      other.~Result();
-      other.state_ = State::kEMPTY;
+      state_ = other.state_;
+      other.reset();
     }
     return *this;
   }
 
   // Copy construct
   Result(const Result& other) {
-    static_assert(
-        std::is_copy_constructible<Value>::value &&
-            std::is_copy_constructible<Error>::value,
-        "Value and Error must be copyable for "
-        "Result<Value,Error> to be copyable");
-
-    state_ = other.state_;
-    switch (state_) {
-      case State::kEMPTY:
-        break;
-      case State::kVALUE:
-        new (&value_) Value(other.value_);
-        break;
-      case State::kERROR:
-        new (&error_) Error(other.error_);
-        break;
-    }
+    *this = other;
   }
 
   // Copy assign
@@ -137,9 +98,8 @@ class Result {
         "Result<Value,Error> to be copyable");
 
     if (&other != this) {
-      this->~Result();
-      state_ = other.state_;
-      switch (state_) {
+      reset();
+      switch (other.state_) {
         case State::kEMPTY:
           break;
         case State::kVALUE:
@@ -149,6 +109,7 @@ class Result {
           new (&error_) Error(other.error_);
           break;
       }
+      state_ = other.state_;
     }
     return *this;
   }
@@ -270,11 +231,27 @@ class Result {
   }
 
  private:
-  State state_;
+  State state_{State::kEMPTY};
   union {
     Value value_;
     Error error_;
   };
+
+  void reset() noexcept {
+    // value_/error_ is a union, thus manual call of destructors
+    switch (state_) {
+      case State::kEMPTY:
+        break;
+      case State::kVALUE:
+        value_.~Value();
+        state_ = State::kEMPTY;
+        break;
+      case State::kERROR:
+        error_.~Error();
+        state_ = State::kEMPTY;
+        break;
+    }
+  }
 };
 
 // Helper for making a Result from a value; auto-deduces the Value type.
