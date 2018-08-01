@@ -127,25 +127,17 @@ void test_future() {
 
   cache.clear();
   std::vector<Future<std::shared_ptr<const Node>>> futures;
-  for (size_t i = 1; i < 6; ++i) {
+  for (size_t i = 1; i < 7; ++i) {
     futures.emplace_back(
         cache.get(i, failGetter, now + std::chrono::milliseconds(i)));
   }
 
-  // And one more to check that we'll throw for exceeding capacity
-  try {
-    cache.get(7, failGetter, now);
-    ok(false, "should throw");
-  } catch (const std::runtime_error&) {
-    ok(true, "threw error for exceeding pending capacity");
-  }
-
-  ok(exec.size() == 5, "should be 5 things pending");
+  ok(exec.size() == 6, "should be 6 things pending, but have %d", exec.size());
 
   // Let them make progress
   exec.runAll();
 
-  ok(cache.size() == 5, "cache should be full");
+  ok(cache.size() == 5, "cache should be full, but has %d", cache.size());
 
   collectAll(futures.begin(), futures.end())
       .then([](
@@ -157,28 +149,25 @@ void test_future() {
       })
       .wait();
 
-  ok(cache.size() == 5, "cache should still be full");
+  ok(cache.size() == 5,
+     "cache should still be full (no excess) but has %d",
+     cache.size());
 
   ok(cache.get(42, now) == nullptr, "we don't have 42 yet");
-
-  // Because we are saturated with error results, an explicit set
-  // should fail
-  try {
-    cache.set(42, 42, now);
-    ok(false, "should throw");
-  } catch (const std::runtime_error&) {
-    ok(true, "threw error for exceeding pending capacity");
-  }
 
   // Now if we "sleep" for long enough, we should be able to evict
   // the error nodes and allow the insert to happen.
   ok(cache.get(42, now) == nullptr, "we don't have 42 yet");
   ok(cache.set(42, 42, now + kErrorTTL + std::chrono::milliseconds(1)),
      "inserted");
+  ok(cache.get(42, now) != nullptr, "we found 42 in the cache");
+  ok(cache.size() == 5,
+     "cache should still be full (no excess) but has %d",
+     cache.size());
 }
 
 int main() {
-  plan_tests(53);
+  plan_tests(54);
   test_basics();
   test_future();
   return exit_status();

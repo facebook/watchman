@@ -9,7 +9,6 @@ import hashlib
 import json
 import os
 
-import pywatchman
 import WatchmanTestCase
 
 
@@ -71,7 +70,7 @@ class TestContentHash(WatchmanTestCase.WatchmanTestCase):
         res = self.watchmanCommand(
             "query",
             root,
-            {"paths": ["foo", "bar"], "fields": ["name", "content.sha1hex"]},
+            {"path": ["foo", "bar"], "fields": ["name", "content.sha1hex"]},
         )
         self.assertEqual(
             [
@@ -153,21 +152,23 @@ class TestContentHash(WatchmanTestCase.WatchmanTestCase):
         self.watchmanCommand("watch", root)
         self.assertFileList(root, [".watchmanconfig", "foo", "bar"])
 
-        with self.assertRaises(pywatchman.WatchmanError) as ctx:
-            res = self.watchmanCommand(
-                "query",
-                root,
-                {"paths": ["foo", "bar"], "fields": ["name", "content.sha1hex"]},
-            )
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {"path": ["foo", "bar"], "fields": ["name", "content.sha1hex"]},
+        )
 
-            # TODO: we expect the query to yield these results, but at the
-            # time of writing, a limitation in the LRUCache code prevents
-            # us from generating the results
-            self.assertEqual(
-                [
-                    {"name": "bar", "content.sha1hex": expect_bar_hex},
-                    {"name": "foo", "content.sha1hex": expect_hex},
-                ],
-                sorted(res["files"], key=lambda k: k["name"]),
-            )
-        self.assertIn("pending cache", str(ctx.exception))
+        self.assertEqual(
+            [
+                {"name": "bar", "content.sha1hex": expect_bar_hex},
+                {"name": "foo", "content.sha1hex": expect_hex},
+            ],
+            sorted(res["files"], key=lambda k: k["name"]),
+        )
+        stats = self.watchmanCommand("debug-contenthash", root)
+        # ensure that we pruned the cache back to match the content_hash_max_items
+        self.assertEqual(stats["size"], 1)
+        self.assertEqual(stats["cacheHit"], 0)
+        self.assertEqual(stats["cacheMiss"], 2)
+        self.assertEqual(stats["cacheStore"], 2)
+        self.assertEqual(stats["cacheLoad"], 2)

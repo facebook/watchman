@@ -444,6 +444,20 @@ class LRUCache {
         // Now that the promises have been stolen, insert into
         // the appropriate queue.
         whichQ(node.get(), state)->insertTail(node.get());
+
+        // If we were saturated at the start of the query, we may
+        // not have been able to make room and may have taken on
+        // more requests than the cache limits allow.  Now that we're
+        // done we should be able to free up some of those entries,
+        // so take a stab at that now.
+        while (state->map.size() > maxItems_) {
+          if (!evictOne(state, now, true)) {
+            // We were not able to evict anything, so stop
+            // trying.  We'll be over our cache size limit,
+            // but there's not much more we can do.
+            break;
+          }
+        }
       }
 
       // Wake up all waiters
@@ -545,7 +559,7 @@ class LRUCache {
     // If we are too full, try to evict an item; this may throw if there are no
     // evictable items!
     if (state->map.size() + 1 > maxItems_) {
-      evictOne(state, now);
+      evictOne(state, now, true);
     }
 
     return std::make_shared<NodeType>(std::forward<Args>(args)...);
@@ -566,36 +580,49 @@ class LRUCache {
   }
 
   // Attempt to evict a single item to make space for a new Node.
-  // May throw if there are too many errored or pending lookups.
-  void evictOne(LockedState& state, std::chrono::steady_clock::time_point now) {
+  // if `forceRemoval` is true, then we're being called to flush
+  // out any excess items that we were forced to absorb earlier,
+  // so we can consider flushing out the error entries.
+  bool evictOne(
+      LockedState& state,
+      std::chrono::steady_clock::time_point now,
+      bool forceRemoval) {
     // Since errors have a TTL (as opposed to infinite), try to
     // evict one of those first.  That keeps the cache focused
     // on usable items rather than prematurely evicting something
     // that might be useful again in the future.
-    auto node = state->erroredOrder.head();
-    if (node && node->expired(now)) {
-      state->erroredOrder.remove(node);
+    auto errorNode = state->erroredOrder.head();
+    if (errorNode && errorNode->expired(now)) {
+      state->erroredOrder.remove(errorNode);
       // Erase from the map last, as this will invalidate node
-      state->map.erase(node->key_);
+      state->map.erase(errorNode->key_);
       ++state->stats.cacheEvict;
-      return;
+      return true;
     }
 
     // Second choice is to evict a successful item
-    node = state->evictionOrder.head();
+    auto node = state->evictionOrder.head();
     if (node) {
       state->evictionOrder.remove(node);
       // Erase from the map last, as this will invalidate node
       state->map.erase(node->key_);
       ++state->stats.cacheEvict;
-      return;
+      return true;
+    }
+
+    // We couldn't find any other options and it is important
+    // to remove something, so let's eliminate an error item
+    // that we found earlier.
+    if (forceRemoval && errorNode) {
+      state->erroredOrder.remove(errorNode);
+      // Erase from the map last, as this will invalidate node
+      state->map.erase(errorNode->key_);
+      ++state->stats.cacheEvict;
+      return true;
     }
 
     // There are no evictable items to purge, so we are too full.
-    // This is a signal that there is a throughput problem.  Rather than
-    // queueing up some more work, we just fail this request; this acts a
-    // brake when the system is swamped.
-    throw std::runtime_error("too many pending cache jobs");
+    return false;
   }
 
   // The maximum allowed capacity
