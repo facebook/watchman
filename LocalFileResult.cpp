@@ -42,7 +42,7 @@ Optional<size_t> LocalFileResult::size() {
 }
 
 Optional<struct timespec> LocalFileResult::accessedTime() {
-  if (info_.has_value()) {
+  if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::StatTimeStamps);
     return nullopt;
   }
@@ -50,7 +50,7 @@ Optional<struct timespec> LocalFileResult::accessedTime() {
 }
 
 Optional<struct timespec> LocalFileResult::modifiedTime() {
-  if (info_.has_value()) {
+  if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::StatTimeStamps);
     return nullopt;
   }
@@ -58,7 +58,7 @@ Optional<struct timespec> LocalFileResult::modifiedTime() {
 }
 
 Optional<struct timespec> LocalFileResult::changedTime() {
-  if (info_.has_value()) {
+  if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::StatTimeStamps);
     return nullopt;
   }

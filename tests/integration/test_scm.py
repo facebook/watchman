@@ -407,6 +407,34 @@ o  changeset:   0:b08db10380dd
         )
         self.assertFileListsEqual(res["files"], ["car"])
 
+        # Make sure that LocalFileResult can render timestamps in the results
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {
+                "expression": ["name", "car"],
+                "fields": ["name", "mtime", "atime", "ctime"],
+                "since": {"scm": {"mergebase": "", "mergebase-with": "TheMaster"}},
+            },
+        )
+        # Since 'car' was deleted, its timestamps are reported as 0
+        for ts in ["mtime", "atime", "ctime"]:
+            self.assertEqual(res["files"][0][ts], 0)
+
+        # Check again with a file that exists
+        self.hg(["co", "-C", "feature2"], cwd=root)
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {
+                "expression": ["name", "m2"],
+                "fields": ["name", "mtime", "atime", "ctime"],
+                "since": {"scm": {"mergebase": "", "mergebase-with": "TheMaster"}},
+            },
+        )
+        for ts in ["mtime", "atime", "ctime"]:
+            self.assertGreater(res["files"][0][ts], 0)
+
         # Go to the 'initial' bookmark, and query for changes since 'initial'
         # We should ideally not see any changes ...
         self.hg(["co", "-C", "initial"], cwd=root)
