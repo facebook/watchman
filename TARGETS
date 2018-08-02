@@ -210,6 +210,8 @@ cpp_library(
     compiler_flags = compiler_flags,
     deps = [
         "//common/db/mysql_client:mysql_client",
+        "//manifold/blobstore/if:blobstore-cpp2",
+        "//servicerouter/client/cpp2:cpp2",
     ],
 )
 
