@@ -69,6 +69,14 @@ class SCM {
       w_string_piece commitId,
       w_string requestId = nullptr) const = 0;
 
+  // Compute the numCommits commits prior to and including the specified commit
+  // in source control history. Returns an ordered list with the most recent
+  // commit (the one specified) first.
+  virtual std::vector<w_string> getCommitsPriorToAndIncluding(
+      w_string_piece commitId,
+      int numCommits,
+      w_string requestId = nullptr) const = 0;
+
  private:
   w_string rootPath_;
   w_string scmRoot_;

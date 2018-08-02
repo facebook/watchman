@@ -30,6 +30,10 @@ class Mercurial : public SCM {
   // public for testing
   static std::chrono::time_point<std::chrono::system_clock> convertCommitDate(
       const char* commitDate);
+  std::vector<w_string> getCommitsPriorToAndIncluding(
+      w_string_piece commitId,
+      int numCommits,
+      w_string requestId = nullptr) const override;
 
  private:
   // Returns options for invoking hg

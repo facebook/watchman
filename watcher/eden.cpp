@@ -567,6 +567,14 @@ class EdenWrappedSCM : public SCM {
     return inner_->getCommitDate(commitId, requestId);
   }
 
+  std::vector<w_string> getCommitsPriorToAndIncluding(
+      w_string_piece commitId,
+      int numCommits,
+      w_string requestId = nullptr) const override {
+    return inner_->getCommitsPriorToAndIncluding(
+        commitId, numCommits, requestId);
+  }
+
   static std::unique_ptr<EdenWrappedSCM> wrap(std::unique_ptr<SCM> inner) {
     if (!inner) {
       return nullptr;

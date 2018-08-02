@@ -293,4 +293,29 @@ time_point<system_clock> Mercurial::convertCommitDate(const char* commitDate) {
   }
   return system_clock::from_time_t(date);
 }
+
+std::vector<w_string> Mercurial::getCommitsPriorToAndIncluding(
+    w_string_piece commitId,
+    int numCommits,
+    w_string requestId) const {
+  auto revset = to<std::string>(
+      "reverse(last(_firstancestors(", commitId, "), ", numCommits, "))\n");
+  ChildProcess proc(
+      {hgExecutablePath(), "log", "-r", revset, "-T", "{node}\n"},
+      makeHgOptions(requestId));
+  auto outputs = proc.communicate();
+  auto status = proc.wait();
+  if (status) {
+    throw std::runtime_error(to<std::string>(
+        "failed query for hg log; command returned with status ",
+        status,
+        " out=",
+        outputs.first,
+        " err=",
+        outputs.second));
+  }
+  std::vector<w_string> lines;
+  w_string_piece(outputs.first).split(lines, '\n');
+  return lines;
+}
 } // namespace watchman
