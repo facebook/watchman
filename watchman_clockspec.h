@@ -45,6 +45,10 @@ struct ClockSpec {
   // Optional SCM merge base parameters
   w_string scmMergeBase;
   w_string scmMergeBaseWith;
+  // Optional saved state parameters
+  json_ref savedStateConfig;
+  w_string savedStateStorageType;
+  w_string savedStateCommitId;
 
   ClockSpec();
   explicit ClockSpec(const ClockPosition& position);
@@ -77,6 +81,7 @@ struct ClockSpec {
   }
 
   bool hasScmParams() const;
+  bool hasSavedStateParams() const;
 
   /** Returns a json value representing the current state of this ClockSpec
    * that can be parsed by the ClockSpec(const json_ref&)

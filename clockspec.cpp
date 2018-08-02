@@ -78,6 +78,17 @@ ClockSpec::ClockSpec(const json_ref& value) {
         scmMergeBase = json_to_w_string(
             scm.get_default("mergebase", w_string_to_json("")));
         scmMergeBaseWith = json_to_w_string(scm.get("mergebase-with"));
+        auto savedState = scm.get_default("saved-state");
+        if (savedState) {
+          savedStateConfig = savedState.get("config");
+          savedStateStorageType = json_to_w_string(savedState.get("storage"));
+          auto commitId = savedState.get_default("commit-id");
+          if (commitId) {
+            savedStateCommitId = json_to_w_string(commitId);
+          } else {
+            savedStateCommitId = w_string();
+          }
+        }
       }
 
       return;
@@ -223,18 +234,31 @@ void annotate_with_clock(
 
 json_ref ClockSpec::toJson() const {
   if (hasScmParams()) {
-    return json_object(
-        {{"clock", w_string_to_json(position().toClockString())},
-         {"scm",
-          json_object(
-              {{"mergebase", w_string_to_json(scmMergeBase)},
-               {"mergebase-with", w_string_to_json(scmMergeBaseWith)}})}});
+    auto scm =
+        json_object({{"mergebase", w_string_to_json(scmMergeBase)},
+                     {"mergebase-with", w_string_to_json(scmMergeBaseWith)}});
+    if (hasSavedStateParams()) {
+      auto savedState =
+          json_object({{"storage", w_string_to_json(savedStateStorageType)},
+                       {"config", savedStateConfig}});
+      if (savedStateCommitId != w_string()) {
+        json_object_set(
+            savedState, "commit-id", w_string_to_json(savedStateCommitId));
+      }
+      json_object_set(scm, "saved-state", savedState);
+    }
+    return json_object({{"clock", w_string_to_json(position().toClockString())},
+                        {"scm", scm}});
   }
   return w_string_to_json(position().toClockString());
 }
 
 bool ClockSpec::hasScmParams() const {
   return scmMergeBase;
+}
+
+bool ClockSpec::hasSavedStateParams() const {
+  return savedStateStorageType;
 }
 
 /* vim:ts=2:sw=2:et:
