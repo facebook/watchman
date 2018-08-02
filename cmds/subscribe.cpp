@@ -262,6 +262,9 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
                   {"root", w_string_to_json(root->root_path)},
                   {"subscription", w_string_to_json(name)},
                   {"unilateral", json_true()}});
+    if (res.savedStateInfo) {
+      response.set({{"saved-state-info", std::move(res.savedStateInfo)}});
+    }
 
     return response;
   } catch (const QueryExecError& e) {
@@ -586,6 +589,11 @@ static void cmd_subscribe(
   initial_subscription_results = sub->buildSubscriptionResults(
       root, position, OnStateTransition::DontAdvance);
   resp.set("clock", position.toJson());
+  auto saved_state_info =
+      initial_subscription_results.get_default("saved-state-info");
+  if (saved_state_info) {
+    resp.set("saved-state-info", std::move(saved_state_info));
+  }
 
   send_and_dispose_response(client, std::move(resp));
   if (initial_subscription_results) {

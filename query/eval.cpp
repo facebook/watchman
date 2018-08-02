@@ -4,6 +4,7 @@
 #include "watchman.h"
 
 #include "LocalFileResult.h"
+#include "saved_state/SavedStateInterface.h"
 #include "watchman_scopeguard.h"
 
 using namespace watchman;
@@ -316,6 +317,14 @@ w_query_res w_query_execute(
     resultClock.scmMergeBaseWith = query->since_spec->scmMergeBaseWith;
     resultClock.scmMergeBase =
         scm->mergeBaseWith(resultClock.scmMergeBaseWith, requestId);
+    // Always update the saved state storage type and key, but conditionally
+    // update the saved state commit id below based on wether the mergebase has
+    // changed.
+    if (query->since_spec->hasSavedStateParams()) {
+      resultClock.savedStateStorageType =
+          query->since_spec->savedStateStorageType;
+      resultClock.savedStateConfig = query->since_spec->savedStateConfig;
+    }
 
     if (resultClock.scmMergeBase != query->since_spec->scmMergeBase) {
       // The merge base is different, so on the assumption that a lot of
@@ -323,39 +332,76 @@ w_query_res w_query_execute(
       // the world, we're just going to ask the SCM to tell us about
       // the changes, then we're going to feed that change list through
       // a simpler watchman query.
-
-      auto scmMergeBase = resultClock.scmMergeBase;
-      disableFreshInstance = true;
-      generator = [root, scmMergeBase, requestId](
-                      w_query* q,
-                      const std::shared_ptr<w_root_t>& r,
-                      struct w_query_ctx* c) {
-        auto changedFiles =
-            root->view()->getSCM()->getFilesChangedSinceMergeBaseWith(
-                scmMergeBase, requestId);
-
-        auto pathList = json_array_of_size(changedFiles.size());
-        for (auto& f : changedFiles) {
-          json_array_append_new(pathList, w_string_to_json(f));
+      auto modifiedMergebase = resultClock.scmMergeBase;
+      if (query->since_spec->hasSavedStateParams()) {
+        // Find the most recent saved state to the new mergebase and return
+        // changed files since that saved state, if available.
+        auto savedStateInterface = SavedStateInterface::getInterface(
+            query->since_spec->savedStateStorageType,
+            query->since_spec->savedStateConfig,
+            scm,
+            root);
+        auto savedStateResult = savedStateInterface->getMostRecentSavedState(
+            resultClock.scmMergeBase);
+        res.savedStateInfo = savedStateResult.savedStateInfo;
+        if (savedStateResult.commitId) {
+          resultClock.savedStateCommitId = savedStateResult.commitId;
+          // Modify the mergebase to be the saved state mergebase so we can
+          // return changed files since the saved state.
+          modifiedMergebase = savedStateResult.commitId;
+        } else {
+          // Setting the saved state commit id to the empty string alerts the
+          // client that the mergebase changed, yet no saved state was
+          // available. The changed files list will be relative to the prior
+          // clock as if scm-aware queries were not being used at all, to ensure
+          // clients have all changed files they need.
+          resultClock.savedStateCommitId = w_string();
+          modifiedMergebase = nullptr;
         }
+      }
+      // If the modified mergebase is null then we had no saved state available
+      // so we need to fall back to the normal behavior of returning all changes
+      // since the prior clock, so we should not update the generator in that
+      // case.
+      if (modifiedMergebase) {
+        disableFreshInstance = true;
+        generator = [root, modifiedMergebase, requestId](
+                        w_query* q,
+                        const std::shared_ptr<w_root_t>& r,
+                        struct w_query_ctx* c) {
+          auto changedFiles =
+              root->view()->getSCM()->getFilesChangedSinceMergeBaseWith(
+                  modifiedMergebase, requestId);
 
-        auto spec = r->view()->getMostRecentRootNumberAndTickValue();
-        w_clock_t clock{0, 0};
-        clock.ticks = spec.ticks;
-        time(&clock.timestamp);
-        for (auto& pathEntry : pathList.array()) {
-          auto path = json_to_w_string(pathEntry);
-          // Note well!  At the time of writing the LocalFileResult class
-          // assumes that removed entries must have been regular files.
-          // We don't have enough information returned from
-          // getFilesChangedSinceMergeBaseWith() to distinguish between
-          // deleted files and deleted symlinks.  Also, it is not possible
-          // to see a directory returned from that call; we're only going
-          // to enumerate !dirs for this case.
-          w_query_process_file(
-              q, c, watchman::make_unique<LocalFileResult>(r, path, clock));
-        }
-      };
+          auto pathList = json_array_of_size(changedFiles.size());
+          for (auto& f : changedFiles) {
+            json_array_append_new(pathList, w_string_to_json(f));
+          }
+
+          auto spec = r->view()->getMostRecentRootNumberAndTickValue();
+          w_clock_t clock{0, 0};
+          clock.ticks = spec.ticks;
+          time(&clock.timestamp);
+          for (auto& pathEntry : pathList.array()) {
+            auto path = json_to_w_string(pathEntry);
+            // Note well!  At the time of writing the LocalFileResult class
+            // assumes that removed entries must have been regular files.
+            // We don't have enough information returned from
+            // getFilesChangedSinceMergeBaseWith() to distinguish between
+            // deleted files and deleted symlinks.  Also, it is not possible
+            // to see a directory returned from that call; we're only going
+            // to enumerate !dirs for this case.
+            w_query_process_file(
+                q, c, watchman::make_unique<LocalFileResult>(r, path, clock));
+          }
+        };
+      }
+    } else {
+      if (query->since_spec->hasSavedStateParams()) {
+        // If the mergebase has not changed, then preserve the input value for
+        // the saved state commit id so it will be accurate in subscriptions.
+        resultClock.savedStateCommitId = query->since_spec->savedStateCommitId;
+      }
     }
   }
 

@@ -393,6 +393,7 @@ struct w_query_res {
   std::unordered_set<w_string> dedupedFileNames;
   ClockSpec clockAtStartOfQuery;
   uint32_t stateTransCountAtStartOfQuery;
+  json_ref savedStateInfo;
 };
 
 w_query_res w_query_execute(

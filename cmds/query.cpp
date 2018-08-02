@@ -24,6 +24,9 @@ static void cmd_query(struct watchman_client* client, const json_ref& args) {
   response.set({{"is_fresh_instance", json_boolean(res.is_fresh_instance)},
                 {"clock", res.clockAtStartOfQuery.toJson()},
                 {"files", std::move(res.resultsArray)}});
+  if (res.savedStateInfo) {
+    response.set({{"saved-state-info", std::move(res.savedStateInfo)}});
+  }
 
   add_root_warnings_to_response(response, root);
 
