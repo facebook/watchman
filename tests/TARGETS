@@ -212,3 +212,13 @@ t_test(
         "//watchman:watchmanlib",
     ],
 )
+
+t_test(
+    name = "localSavedStateInterfaceTest",
+    srcs = [
+        "LocalSavedStateInterfaceTest.cpp",
+    ],
+    deps = [
+        "//watchman:watchmanlib",
+    ],
+)

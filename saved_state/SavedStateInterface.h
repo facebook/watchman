@@ -22,9 +22,13 @@ class SavedStateInterface {
 
   // Returns an appropriate SavedStateInterface implementation for the
   // specified storage type. Returns a managed pointer to the saved state
-  // interface if successful. Throws if the storage type is not recognized.
+  // interface if successful. Throws if the storage type is not recognized, or
+  // if the saved state interface does not successfully parse the saved state
+  // config.
   static std::unique_ptr<SavedStateInterface> getInterface(
-      w_string_piece storageType);
+      w_string_piece storageType,
+      const json_ref& savedStateConfig,
+      const SCM* scm);
 
   // The commit ID of a saved state and a JSON blob of information clients can
   // use to access the saved state.  The contents of the info varies with the

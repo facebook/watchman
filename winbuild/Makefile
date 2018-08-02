@@ -117,6 +117,7 @@ SRCS_CPP=\
 	root\vcs.cpp       \
 	root\warnerr.cpp       \
 	root\watchlist.cpp       \
+	saved_state\LocalSavedStateInterface.cpp \
 	saved_state\SavedStateInterface.cpp \
 	scm\Mercurial.cpp \
 	scm\SCM.cpp \
