@@ -40,5 +40,6 @@ python_binary(
         "//libfb/py:pathutils",
         "//watchman:runtests-py3",
         "//watchman/python/pywatchman:pywatchman",
+        "//watchman/tests/integration/facebook:testlib-py3",
     ],
 )

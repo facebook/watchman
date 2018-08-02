@@ -363,6 +363,11 @@ loader = Loader()
 suite = unittest.TestSuite()
 
 directories = ["python/tests", "tests/integration"]
+facebook_directory = "tests/integration/facebook"
+if os.path.exists(facebook_directory):
+    # the facebook dir isn't sync'd to github, but it
+    # is present internally, so it should remain in this list
+    directories += [facebook_directory]
 
 if has_asyncio:
     directories += ["tests/async"]
