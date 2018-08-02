@@ -561,6 +561,12 @@ class EdenWrappedSCM : public SCM {
     return inner_->getFilesChangedBetweenCommits(commitA, commitB);
   }
 
+  std::chrono::time_point<std::chrono::system_clock> getCommitDate(
+      w_string_piece commitId,
+      w_string requestId = nullptr) const override {
+    return inner_->getCommitDate(commitId, requestId);
+  }
+
   static std::unique_ptr<EdenWrappedSCM> wrap(std::unique_ptr<SCM> inner) {
     if (!inner) {
       return nullptr;

@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include "watchman_system.h"
+#include <chrono>
 #include <memory>
 #include <vector>
 #include "watchman_string.h"
@@ -60,6 +61,12 @@ class SCM {
   virtual StatusResult getFilesChangedBetweenCommits(
       w_string_piece commitA,
       w_string_piece commitB,
+      w_string requestId = nullptr) const = 0;
+
+  // Compute the source control date associated with the specified
+  // commit.
+  virtual std::chrono::time_point<std::chrono::system_clock> getCommitDate(
+      w_string_piece commitId,
       w_string requestId = nullptr) const = 0;
 
  private:

@@ -24,6 +24,12 @@ class Mercurial : public SCM {
       w_string_piece commitA,
       w_string_piece commitB,
       w_string requestId = nullptr) const override;
+  std::chrono::time_point<std::chrono::system_clock> getCommitDate(
+      w_string_piece commitId,
+      w_string requestId = nullptr) const override;
+  // public for testing
+  static std::chrono::time_point<std::chrono::system_clock> convertCommitDate(
+      const char* commitDate);
 
  private:
   // Returns options for invoking hg

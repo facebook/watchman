@@ -1,12 +1,17 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "Mercurial.h"
+#include <chrono>
+#include <cmath>
+#include <cstdio>
 #include "ChildProcess.h"
 #include "Logging.h"
 #include "watchman.h"
 
 // Capability indicating support for the mercurial SCM
 W_CAP_REG("scm-hg")
+
+using namespace std::chrono;
 
 namespace watchman {
 
@@ -260,4 +265,32 @@ SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
   return result;
 }
 
+time_point<system_clock> Mercurial::getCommitDate(
+    w_string_piece commitId,
+    w_string requestId) const {
+  ChildProcess proc(
+      {hgExecutablePath(), "log", "-r", commitId.data(), "-T", "{date}\n"},
+      makeHgOptions(requestId));
+  auto outputs = proc.communicate();
+  auto status = proc.wait();
+  if (status) {
+    throw std::runtime_error(to<std::string>(
+        "failed query for hg log; command returned with status ",
+        status,
+        " out=",
+        outputs.first,
+        " err=",
+        outputs.second));
+  }
+  return Mercurial::convertCommitDate(outputs.first.c_str());
+}
+
+time_point<system_clock> Mercurial::convertCommitDate(const char* commitDate) {
+  double date;
+  if (std::sscanf(commitDate, "%lf", &date) != 1) {
+    throw std::runtime_error(to<std::string>(
+        "failed to parse date value `", commitDate, "` into a double"));
+  }
+  return system_clock::from_time_t(date);
+}
 } // namespace watchman
