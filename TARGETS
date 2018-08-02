@@ -204,6 +204,15 @@ cpp_library(
     ],
 )
 
+cpp_library(
+    name = "manifold_saved_state_deps",
+    srcs = [],
+    compiler_flags = compiler_flags,
+    deps = [
+        "//common/db/mysql_client:mysql_client",
+    ],
+)
+
 # The bulk of the watchman implementation lives in this library
 cpp_library(
     name = "watchmanlib",
@@ -216,6 +225,7 @@ cpp_library(
             "cmds/*.cpp",
             "scm/*.cpp",
             "saved_state/*.cpp",
+            "facebook/saved_state/*.cpp",
         ],
         excludes = [
             "main.cpp",
@@ -238,6 +248,7 @@ cpp_library(
         ":err",
         ":headers",
         ":log",
+        ":manifold_saved_state_deps",
         ":pcre",
         ":string",
         ":sysdep_watcher",
