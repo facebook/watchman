@@ -6,10 +6,10 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import subprocess
 
 import pywatchman
 import WatchmanInstance
+import WatchmanSCMTestCase
 import WatchmanTestCase
 
 
@@ -20,66 +20,7 @@ else:
 
 
 @WatchmanTestCase.expand_matrix
-class TestScm(WatchmanTestCase.WatchmanTestCase):
-    def requiresPersistentSession(self):
-        return True
-
-    def skipIfNoFSMonitor(self):
-        """ cause the test to skip if fsmonitor is not available.
-            We don't call this via unittest.skip because we want
-            to have the skip message show the context """
-        try:
-            out, err = self.hg(["help", "--extension", "fsmonitor"])
-        except Exception as e:
-            self.skipTest("fsmonitor is not available: %s" % str(e))
-        else:
-            out = out.decode("utf-8")
-            err = err.decode("utf-8")
-            fail_str = "failed to import extension"
-            if (fail_str in out) or (fail_str in err):
-                self.skipTest("hg configuration is broken: %s %s" % (out, err))
-
-    def checkOSApplicability(self):
-        if os.name == "nt":
-            self.skipTest("The order of events on Windows is funky")
-
-    def hg(self, args=None, cwd=None):
-        env = dict(os.environ)
-        env["HGPLAIN"] = "1"
-        env["HGUSER"] = "John Smith <smith@example.com>"
-        env["NOSCMLOG"] = "1"  # disable some instrumentation at FB
-        env["WATCHMAN_SOCK"] = WatchmanInstance.getSharedInstance().getSockPath()
-        p = subprocess.Popen(
-            # we force the extension on.  This is a soft error for
-            # mercurial if it is not available, so we also employ
-            # the skipIfNoFSMonitor() test above to make sure the
-            # environment is sane.
-            [env.get("EDEN_HG_BINARY", "hg"), "--config", "extensions.fsmonitor="]
-            + args,
-            env=env,
-            cwd=cwd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        out, err = p.communicate()
-        if p.returncode != 0:
-            raise Exception("hg %r failed: %s, %s" % (args, out, err))
-
-        return out, err
-
-    def resolveCommitHash(self, revset, cwd=None):
-        return self.hg(args=["log", "-T", "{node}", "-r", revset], cwd=cwd)[0].decode(
-            "utf-8"
-        )
-
-    def waitForStatesToVacate(self, root):
-        # Wait for all states to vacate (check repeatedly)
-        def checkAssertedStates():
-            result = self.watchmanCommand("debug-get-asserted-states", root)
-            return result["states"]
-
-        self.assertWaitForEqual([], checkAssertedStates)
-
+class TestScm(WatchmanSCMTestCase.WatchmanSCMTestCase):
     def test_scmHg(self):
         self.skipIfNoFSMonitor()
 
@@ -546,13 +487,3 @@ o  changeset:   0:b08db10380dd
                     if "'ancestor(.,TheMaster)' exited" in line:
                         misses += 1
             self.assertLessEqual(misses, 20)
-
-    def getConsolidatedFileList(self, dat):
-        fset = set()
-        for _ in dat:
-            fset.update(_.get("files", []))
-        return fset
-
-    def getSubFatClocksOnly(self, subname, root):
-        dat = self.waitForSub(subname, root=root)
-        return [item for item in dat if not isinstance(item["clock"], STRING_TYPES)]

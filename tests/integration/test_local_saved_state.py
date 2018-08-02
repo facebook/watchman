@@ -1,0 +1,305 @@
+# vim:ts=4:sw=4:et:
+# Copyright 2017-present Facebook, Inc.
+# Licensed under the Apache License, Version 2.0
+
+# no unicode literals
+from __future__ import absolute_import, division, print_function
+
+import os
+
+import pywatchman
+import WatchmanSCMTestCase
+import WatchmanTestCase
+
+
+@WatchmanTestCase.expand_matrix
+class TestSavedState(WatchmanSCMTestCase.WatchmanSCMTestCase):
+    def setUp(self):
+        # The hg log operations to get the most recent n revs are slow, so we
+        # need a longer timeout. They should only occur when the mergebase
+        # changes, however.
+        self.socketTimeout = 5.0
+        self.skipIfNoFSMonitor()
+        self.root = self.mkdtemp()
+        """ Set up a repo with a DAG like this:
+@  changeset:
+|  bookmark:    feature4
+|  tag:         tip
+|  summary:     add f1
+|
+| o  changeset:
+|/   bookmark:    feature2
+|    summary:     remove car
+|
+o  changeset:
+|  bookmark:    TheMaster
+|  summary:     add bar and car
+|
+o  changeset:
+|  bookmark:    feature3
+|  summary:     add m2
+|
+| o  changeset:
+|/   bookmark:    feature1
+|    summary:     add m1
+|
+o  changeset:
+|  bookmark:   feature0
+|  summary:    add p1
+|
+o  changeset:
+   bookmark:    initial
+   summary:     add foo
+        """
+        self.hg(["init"], cwd=self.root)
+        self.touchRelative(self.root, "foo")
+        self.hg(["book", "initial"], cwd=self.root)
+        self.hg(["addremove"], cwd=self.root)
+        self.hg(["commit", "-m", "initial"], cwd=self.root)
+        self.hg(["book", "feature0"], cwd=self.root)
+        self.touchRelative(self.root, "p1")
+        self.hg(["addremove"], cwd=self.root)
+        self.hg(["commit", "-m", "add p1"], cwd=self.root)
+        self.hg(["book", "feature1"], cwd=self.root)
+        self.touchRelative(self.root, "m1")
+        self.hg(["addremove"], cwd=self.root)
+        self.hg(["commit", "-m", "add m1"], cwd=self.root)
+        self.hg(["co", "feature0"], cwd=self.root)
+        self.hg(["book", "feature3"], cwd=self.root)
+        self.touchRelative(self.root, "m2")
+        self.hg(["addremove"], cwd=self.root)
+        self.hg(["commit", "-m", "add m2"], cwd=self.root)
+        # Some environments prohibit locally creating "master",
+        # so we use an alternative similar name.
+        self.hg(["book", "TheMaster"], cwd=self.root)
+        self.touchRelative(self.root, "bar")
+        self.touchRelative(self.root, "car")
+        self.hg(["addremove"], cwd=self.root)
+        self.hg(["commit", "-m", "add bar and car"], cwd=self.root)
+        self.hg(["book", "feature2"], cwd=self.root)
+        self.hg(["rm", "car"], cwd=self.root)
+        self.hg(["commit", "-m", "remove car"], cwd=self.root)
+        self.hg(["co", "TheMaster"], cwd=self.root)
+        self.hg(["book", "feature4"], cwd=self.root)
+        self.touchRelative(self.root, "f1")
+        self.hg(["addremove"], cwd=self.root)
+        self.hg(["commit", "-m", "add f1"], cwd=self.root)
+        self.watchmanCommand("watch", self.root)
+
+    def getQuery(self, config):
+        return {
+            "expression": [
+                "not",
+                ["anyof", ["name", ".hg"], ["match", "hg-check*"], ["dirname", ".hg"]],
+            ],
+            "fields": ["name"],
+            "since": {
+                "scm": {
+                    "mergebase-with": "TheMaster",
+                    "saved-state": {"storage": "local", "config": config},
+                }
+            },
+        }
+
+    # Creates a saved state (with no content) for the specified project at the
+    # specified bookmark within the specified local storage path.
+    def saveState(self, project, bookmark, local_storage):
+        saved_state_rev = self.resolveCommitHash(bookmark, cwd=self.root)
+        project_dir = os.path.join(local_storage, project)
+        if not os.path.isdir(project_dir):
+            os.mkdir(project_dir)
+        self.touchRelative(project_dir, saved_state_rev)
+        return saved_state_rev
+
+    def getConfig(self, result):
+        return result["clock"]["scm"]["saved-state"]["config"]
+
+    def assertStorageTypeLocal(self, result):
+        self.assertEqual(result["clock"]["scm"]["saved-state"]["storage"], "local")
+
+    def assertCommitIDEquals(self, result, commit_id):
+        self.assertEqual(result["clock"]["scm"]["saved-state"]["commit-id"], commit_id)
+
+    def assertCommitIDNotPresent(self, result):
+        self.assertTrue("commit-id" not in result["clock"]["scm"]["saved-state"])
+
+    def assertSavedStateErrorEquals(self, result, error_string):
+        self.assertEqual(result["saved-state-info"]["error"], error_string)
+
+    def assertSavedStateInfo(self, result, path, commit_id):
+        self.assertEqual(
+            result["saved-state-info"], {"local-path": path, "commit-id": commit_id}
+        )
+
+    def assertMergebaseEquals(self, result, mergebase):
+        self.assertEqual(result["clock"]["scm"]["mergebase"], mergebase)
+
+    def test_localSavedStateErrorHandling(self):
+        # Local storage should throw if config does not include
+        # local-storage-path. Unit tests more extensively test all possible
+        # error cases, this just confirms that an example error propagates end
+        # to end properly.
+        config = {"config": {"project": "test"}}
+        test_query = self.getQuery(config)
+        with self.assertRaises(pywatchman.WatchmanError) as ctx:
+            self.watchmanCommand("query", self.root, test_query)
+        self.assertIn(
+            "'local-storage-path' must be present in saved state config",
+            str(ctx.exception),
+        )
+
+    def test_localSavedStateNoStateFound(self):
+        # Local saved state should return no commit id and error message if no
+        # valid state found (project does not match states saved above)
+        local_storage = self.mkdtemp()
+        self.saveState("example_project", "feature3", local_storage)
+        self.saveState("example_project", "feature0", local_storage)
+        config = {"local-storage-path": local_storage, "project": "does-not-exist"}
+        test_query = self.getQuery(config)
+        res = self.watchmanCommand("query", self.root, test_query)
+        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        self.assertMergebaseEquals(res, expected_mergebase)
+        self.assertCommitIDNotPresent(res)
+        self.assertEqual(self.getConfig(res), config)
+        self.assertStorageTypeLocal(res)
+        self.assertSavedStateErrorEquals(res, "No suitable saved state found")
+        self.assertFileListsEqual(res["files"], ["foo", "p1", "m2", "bar", "car", "f1"])
+
+    def test_localSavedStateNotWithinLimit(self):
+        # Local saved state should return an empty commit id, error message,
+        # and changed files since prior clock if the first available saved
+        # state is not within the limit
+        local_storage = self.mkdtemp()
+        self.saveState("example_project", "feature3", local_storage)
+        self.saveState("example_project", "feature0", local_storage)
+        config = {
+            "local-storage-path": local_storage,
+            "project": "example_project",
+            "max-commits": 1,
+        }
+        test_query = self.getQuery(config)
+        res = self.watchmanCommand("query", self.root, test_query)
+        self.assertSavedStateErrorEquals(res, "No suitable saved state found")
+        self.assertEqual(self.getConfig(res), config)
+        self.assertStorageTypeLocal(res)
+        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        self.assertMergebaseEquals(res, expected_mergebase)
+        self.assertFileListsEqual(res["files"], ["foo", "p1", "m2", "bar", "car", "f1"])
+
+    def test_localSavedStateLookupSuccess(self):
+        # Local saved state should return the saved state commit id, info, and
+        # changed files since the saved state if valid state found within limit
+        local_storage = self.mkdtemp()
+        saved_state_rev_feature3 = self.saveState(
+            "example_project", "feature3", local_storage
+        )
+        self.saveState("example_project", "feature0", local_storage)
+        config = {
+            "local-storage-path": local_storage,
+            "project": "example_project",
+            "max-commits": 10,
+        }
+        test_query = self.getQuery(config)
+        res = self.watchmanCommand("query", self.root, test_query)
+        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        self.assertMergebaseEquals(res, expected_mergebase)
+        self.assertStorageTypeLocal(res)
+        self.assertCommitIDEquals(res, saved_state_rev_feature3)
+        self.assertEqual(self.getConfig(res), config)
+        project_dir = os.path.join(local_storage, "example_project")
+        expected_path = os.path.join(project_dir, saved_state_rev_feature3)
+        self.assertSavedStateInfo(res, expected_path, saved_state_rev_feature3)
+        self.assertFileListsEqual(res["files"], ["f1", "bar", "car"])
+
+    def test_localSavedStateSubscription(self):
+        local_storage = self.mkdtemp()
+        saved_state_rev_feature3 = self.saveState(
+            "example_project", "feature3", local_storage
+        )
+        saved_state_rev_feature0 = self.saveState(
+            "example_project", "feature0", local_storage
+        )
+        # Set up a subscription for the successful query and confirm that the
+        # subscription response contains the most recent saved state to the
+        # current rev's mergebase, and the changed files since that rev
+        config = {
+            "local-storage-path": local_storage,
+            "project": "example_project",
+            "max-commits": 10,
+        }
+        test_query = self.getQuery(config)
+        sub = self.watchmanCommand("subscribe", self.root, "scmsub", test_query)
+        self.waitForStatesToVacate(self.root)
+        syncTimeout = {"sync_timeout": 1000}
+        self.watchmanCommand("flush-subscriptions", self.root, syncTimeout)
+        dat = self.getSubFatClocksOnly("scmsub", root=self.root)
+        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        self.assertMergebaseEquals(sub, expected_mergebase)
+        self.assertStorageTypeLocal(sub)
+        self.assertEqual(self.getConfig(sub), config)
+        self.assertCommitIDEquals(sub, saved_state_rev_feature3)
+        project_dir = os.path.join(local_storage, "example_project")
+        expected_path = os.path.join(project_dir, saved_state_rev_feature3)
+        self.assertSavedStateInfo(sub, expected_path, saved_state_rev_feature3)
+        self.assertFileListsEqual(
+            self.getConsolidatedFileList(dat), ["f1", "bar", "car"]
+        )
+        # Check out a rev with the same merge base and confirm saved state
+        # commit id is unchanged, info is not present, and file list is updated
+        self.hg(["co", "-C", "feature2"], cwd=self.root)
+        self.waitForStatesToVacate(self.root)
+        self.watchmanCommand("flush-subscriptions", self.root, syncTimeout)
+        dat = self.getSubFatClocksOnly("scmsub", root=self.root)
+        self.assertFileListsEqual(self.getConsolidatedFileList(dat), ["f1", "car"])
+        last_res = dat[-1]
+        self.assertTrue("saved-state-info" not in last_res)
+        self.assertStorageTypeLocal(last_res)
+        self.assertEqual(self.getConfig(last_res), config)
+        self.assertMergebaseEquals(last_res, expected_mergebase)
+        self.assertCommitIDEquals(last_res, saved_state_rev_feature3)
+        # Check out rev with a different mergebase and confirm mergebase
+        # changes, new saved state info is returned, and file list is relative
+        # to the new mergebase
+        self.hg(["co", "-C", "feature1"], cwd=self.root)
+        self.waitForStatesToVacate(self.root)
+        self.watchmanCommand("flush-subscriptions", self.root, syncTimeout)
+        dat = self.getSubFatClocksOnly("scmsub", root=self.root)
+        self.assertFileListsEqual(self.getConsolidatedFileList(dat), ["m1"])
+        last_res = dat[-1]
+        self.assertStorageTypeLocal(last_res)
+        self.assertEqual(self.getConfig(last_res), config)
+        expected_path = os.path.join(project_dir, saved_state_rev_feature0)
+        self.assertSavedStateInfo(last_res, expected_path, saved_state_rev_feature0)
+        expected_mergebase = self.resolveCommitHash("feature0", cwd=self.root)
+        self.assertMergebaseEquals(last_res, expected_mergebase)
+        self.assertCommitIDEquals(last_res, saved_state_rev_feature0)
+        # Switch to a commit with saved state for that actual commit and ensure
+        # file list is empty
+        self.hg(["co", "-C", "feature3"], cwd=self.root)
+        self.waitForStatesToVacate(self.root)
+        self.watchmanCommand("flush-subscriptions", self.root, syncTimeout)
+        dat = self.getSubFatClocksOnly("scmsub", root=self.root)
+        self.assertFileListsEqual(self.getConsolidatedFileList(dat), [])
+        last_res = dat[-1]
+        self.assertStorageTypeLocal(last_res)
+        self.assertEqual(self.getConfig(last_res), config)
+        expected_path = os.path.join(project_dir, saved_state_rev_feature3)
+        self.assertSavedStateInfo(last_res, expected_path, saved_state_rev_feature3)
+        expected_mergebase = self.resolveCommitHash("feature3", cwd=self.root)
+        self.assertMergebaseEquals(last_res, expected_mergebase)
+        self.assertCommitIDEquals(last_res, saved_state_rev_feature3)
+        # Make sure that without any saved state available we get a saved state
+        # error message, no commit ID is specified, but the subscription
+        # otherwise succeeds, and we get all changes since the prior clock
+        self.hg(["co", "-C", "initial"], cwd=self.root)
+        self.waitForStatesToVacate(self.root)
+        self.watchmanCommand("flush-subscriptions", self.root, syncTimeout)
+        dat = self.getSubFatClocksOnly("scmsub", root=self.root)
+        self.assertFileListsEqual(self.getConsolidatedFileList(dat), ["m2", "p1"])
+        last_res = dat[-1]
+        self.assertStorageTypeLocal(last_res)
+        self.assertEqual(self.getConfig(last_res), config)
+        self.assertSavedStateErrorEquals(last_res, "No suitable saved state found")
+        expected_mergebase = self.resolveCommitHash("initial", cwd=self.root)
+        self.assertMergebaseEquals(last_res, expected_mergebase)
+        self.assertCommitIDNotPresent(last_res)

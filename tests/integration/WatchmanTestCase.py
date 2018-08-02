@@ -98,6 +98,9 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         self.setDefaultConfiguration()
         self.maxDiff = None
         self.attempt = 0
+        # ASAN-enabled builds can be slower enough that we hit timeouts
+        # with the default of 1 second
+        self.socketTimeout = 3.0
 
     def requiresPersistentSession(self):
         return False
@@ -121,9 +124,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
     def getClient(self, inst=None, replace_cached=False, no_cache=False):
         if inst or not hasattr(self, "client") or no_cache:
             client = pywatchman.client(
-                # ASAN-enabled builds can be slower enough that we hit timeouts
-                # with the default of 1 second
-                timeout=3.0,
+                timeout=self.socketTimeout,
                 transport=self.transport,
                 sendEncoding=self.encoding,
                 recvEncoding=self.encoding,
