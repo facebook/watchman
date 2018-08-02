@@ -117,6 +117,7 @@ SRCS_CPP=\
 	root\vcs.cpp       \
 	root\warnerr.cpp       \
 	root\watchlist.cpp       \
+	saved_state\SavedStateInterface.cpp \
 	scm\Mercurial.cpp \
 	scm\SCM.cpp \
 	state.cpp      \
@@ -184,6 +185,10 @@ TESTS=tests\log.exe tests\bser.exe tests\wildmatch_test.exe \
 {root}.cpp{root}.obj::
 	@echo CXX $<
 	$(CC) $(CXXFLAGS) $(PEDANTIC) /Fo:root\ /c $<
+
+{saved_state}.cpp{saved_state}.obj::
+	@echo CXX $<
+	$(CC) $(CXXFLAGS) $(PEDANTIC) /Fo:saved_state\ /c $<
 
 {scm}.cpp{scm}.obj::
 	@echo CXX $<

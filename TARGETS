@@ -215,6 +215,7 @@ cpp_library(
             "root/*.cpp",
             "cmds/*.cpp",
             "scm/*.cpp",
+            "saved_state/*.cpp",
         ],
         excludes = [
             "main.cpp",
