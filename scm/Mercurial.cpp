@@ -28,6 +28,12 @@ ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
   // Ensure that the hgrc doesn't mess with the behavior
   // of the commands that we're runing.
   opt.environment().set("HGPLAIN", w_string("1"));
+  // Ensure that we do not telemetry log profiling data for the commands we are
+  // running by default. This is to avoid a significant increase in the rate of
+  // logging.
+  if (!cfg_get_bool("enable_hg_telemetry_logging", false)) {
+    opt.environment().set("NOSCMLOG", w_string("1"));
+  }
   // chg can elect to kill all children if an error occurs in any child.
   // This can cause commands we spawn to fail transiently.  While we'd
   // love to have the lowest latency, the transient failure causes problems
