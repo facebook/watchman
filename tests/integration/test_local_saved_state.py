@@ -18,7 +18,7 @@ class TestSavedState(WatchmanSCMTestCase.WatchmanSCMTestCase):
         # The hg log operations to get the most recent n revs are slow, so we
         # need a longer timeout. They should only occur when the mergebase
         # changes, however.
-        self.socketTimeout = 5.0
+        self.socketTimeout = 10.0
         self.skipIfNoFSMonitor()
         self.root = self.mkdtemp()
         """ Set up a repo with a DAG like this:
