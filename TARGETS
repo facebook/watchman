@@ -2,10 +2,7 @@
 # we need to preserve how things build in the autoconf and windows
 # builds for watchman.
 
-compiler_flags = [
-    "-Wunused-variable",
-    "-DWATCHMAN_FACEBOOK_INTERNAL",
-]
+load(":defs.bzl", "sysdep_watcher", "COMPILER_FLAGS")
 
 os_linker_flags = [
     (
@@ -56,73 +53,6 @@ buck_cxx_library(
     ],
 )
 
-def sysdep_watcher():
-    if host_info().os.is_linux:
-        cpp_library(
-            name = "eden_watcher",
-            srcs = [
-                "cmds/heapprof.cpp",
-                "watcher/eden.cpp",
-            ],
-            compiler_flags = compiler_flags + ["-DUSE_JEMALLOC"],
-            # We use constructors to declare commands rather than maintaining
-            # static tables of things.  Ensure that they don't get stripped
-            # out of the final binary!
-            link_whole = True,
-            undefined_symbols = True,  # TODO(T23121628): fix deps and remove
-            deps = [
-                ":err",
-                ":headers",
-                "//eden/fs/service:thrift-streaming-cpp2",
-                "//folly:string",
-                "//watchman/thirdparty/wildmatch:wildmatch",
-            ],
-        )
-
-        # Linux specific watcher module
-        cpp_library(
-            name = "sysdep_watcher",
-            srcs = ["watcher/inotify.cpp"],
-            compiler_flags = compiler_flags,
-            # We use constructors to declare commands rather than maintaining
-            # static tables of things.  Ensure that they don't get stripped
-            # out of the final binary!
-            link_whole = True,
-            undefined_symbols = True,  # TODO(T23121628): fix deps and remove
-            deps = [
-                ":eden_watcher",
-                ":err",
-                ":headers",
-            ],
-        )
-    elif host_info().os.is_mac:
-        # mac specific watcher module
-        cpp_library(
-            name = "sysdep_watcher",
-            srcs = [
-                "watcher/fsevents.cpp",
-                "watcher/kqueue.cpp",
-            ],
-            compiler_flags = compiler_flags,
-            # We use constructors to declare commands rather than maintaining
-            # static tables of things.  Ensure that they don't get stripped
-            # out of the final binary!
-            link_whole = True,
-            deps = [":headers"],
-        )
-    elif host_info().os.is_windows:
-        # windows specific watcher module
-        cpp_library(
-            name = "sysdep_watcher",
-            srcs = ["watcher/win32.cpp"],
-            compiler_flags = compiler_flags,
-            # We use constructors to declare commands rather than maintaining
-            # static tables of things.  Ensure that they don't get stripped
-            # out of the final binary!
-            link_whole = True,
-            deps = [":headers"],
-        )
-
 sysdep_watcher()
 
 cpp_library(
@@ -131,7 +61,7 @@ cpp_library(
         "PubSub.cpp",
         "log.cpp",
     ],
-    compiler_flags = compiler_flags,
+    compiler_flags = COMPILER_FLAGS,
     undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [
         ":headers",
@@ -142,14 +72,14 @@ cpp_library(
 cpp_library(
     name = "hash",
     srcs = ["hash.cpp"],
-    compiler_flags = compiler_flags,
+    compiler_flags = COMPILER_FLAGS,
     deps = [":headers"],
 )
 
 cpp_library(
     name = "string",
     srcs = ["string.cpp"],
-    compiler_flags = compiler_flags,
+    compiler_flags = COMPILER_FLAGS,
     deps = [
         ":hash",
         ":headers",
@@ -163,7 +93,7 @@ cpp_library(
         "root/poison.cpp",
         "root/warnerr.cpp",
     ],
-    compiler_flags = compiler_flags,
+    compiler_flags = COMPILER_FLAGS,
     undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [":headers"],
 )
@@ -171,7 +101,7 @@ cpp_library(
 cpp_library(
     name = "pcre",
     srcs = ["query/pcre.cpp"],
-    compiler_flags = ["-DHAVE_PCRE_H"] + compiler_flags,
+    compiler_flags = ["-DHAVE_PCRE_H"] + COMPILER_FLAGS,
     link_whole = True,
     undefined_symbols = True,  # TODO(T23121628): fix deps and remove
     deps = [":headers"],
@@ -194,7 +124,7 @@ cpp_library(
         "pending.cpp",
         "time.cpp",
     ],
-    compiler_flags = compiler_flags,
+    compiler_flags = COMPILER_FLAGS,
     deps = [
         ":headers",
         ":log",
@@ -207,7 +137,7 @@ cpp_library(
 cpp_library(
     name = "manifold_saved_state_deps",
     srcs = [],
-    compiler_flags = compiler_flags,
+    compiler_flags = COMPILER_FLAGS,
     deps = [
         "//common/db/mysql_client:mysql_client",
         "//manifold/blobstore/if:blobstore-cpp2",
@@ -239,7 +169,7 @@ cpp_library(
             "cmds/heapprof.cpp",
         ],
     ),
-    compiler_flags = compiler_flags,
+    compiler_flags = COMPILER_FLAGS,
     # We use constructors to declare commands rather than maintaining
     # static tables of things.  Ensure that they don't get stripped
     # out of the final binary!
@@ -264,7 +194,7 @@ cpp_library(
 cpp_binary(
     name = "watchman",
     srcs = ["main.cpp"],
-    compiler_flags = compiler_flags,
+    compiler_flags = COMPILER_FLAGS,
     deps = [
         ":headers",
         ":watchmanlib",
