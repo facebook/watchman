@@ -334,15 +334,19 @@ class EdenFileResult : public FileResult {
       std::vector<SHA1Result> sha1s;
       client->sync_getSHA1(sha1s, to<std::string>(root_path_), getShaNames);
 
-      auto shaIter = sha1s.begin();
-      auto fileIter = getShaFiles.begin();
-      while (fileIter != getShaFiles.end()) {
-        auto* edenFile = *fileIter;
-
-        edenFile->sha1_ = *shaIter;
-
-        ++fileIter;
-        ++shaIter;
+      if (sha1s.size() != getShaFiles.size()) {
+        watchman::log(
+            ERR,
+            "Requested SHA-1 of ",
+            getShaFiles.size(),
+            " but Eden returned ",
+            sha1s.size(),
+            " results -- ignoring");
+      } else {
+        auto sha1Iter = sha1s.begin();
+        for (auto& edenFile : getShaFiles) {
+          edenFile->sha1_ = *sha1Iter++;
+        }
       }
     }
   }
@@ -391,16 +395,26 @@ class EdenFileResult : public FileResult {
     std::vector<FileInformationOrError> info;
     client->sync_getFileInformation(info, to<std::string>(root_path_), names);
 
+    if (names.size() != info.size()) {
+      watchman::log(
+          ERR,
+          "Requested file information of ",
+          names.size(),
+          " files but Eden returned information for ",
+          info.size(),
+          " files. Treating missing entries as missing files.");
+    }
+
     auto infoIter = info.begin();
-    auto fileIter = outFiles.begin();
-    while (fileIter != outFiles.end()) {
-      auto* edenFile = *fileIter;
-      auto& fileInfo = *infoIter;
-
-      edenFile->applyFileInformationOrError(fileInfo);
-
-      ++fileIter;
-      ++infoIter;
+    for (auto& edenFileResult : outFiles) {
+      if (infoIter == info.end()) {
+        FileInformationOrError missingInfo;
+        missingInfo.set_error(EdenError("Missing info"));
+        edenFileResult->applyFileInformationOrError(missingInfo);
+      } else {
+        edenFileResult->applyFileInformationOrError(*infoIter);
+        infoIter++;
+      }
     }
   }
 
@@ -798,9 +812,7 @@ class EdenView : public QueryableView {
     // Filter out any ignored files
     filterOutPaths(fileNames, ctx);
 
-    auto nameIter = fileNames.begin();
-    while (nameIter != fileNames.end()) {
-      auto& name = *nameIter;
+    for (auto& name : fileNames) {
       // a file is considered new if it was present in the created files
       // set returned from eden.
       bool isNew = createdFileNames.find(name) != createdFileNames.end();
@@ -820,8 +832,6 @@ class EdenView : public QueryableView {
       }
 
       w_query_process_file(ctx->query, ctx, std::move(file));
-
-      ++nameIter;
     }
 
     ctx->bumpNumWalked(fileNames.size());
@@ -861,10 +871,7 @@ class EdenView : public QueryableView {
     // Filter out any ignored files
     filterOutPaths(fileNames, ctx);
 
-    auto nameIter = fileNames.begin();
-    while (nameIter != fileNames.end()) {
-      auto& name = *nameIter;
-
+    for (auto& name : fileNames) {
       auto file = make_unique<EdenFileResult>(
           root_path_, w_string::pathCat({mountPoint_, name}));
 
@@ -872,8 +879,6 @@ class EdenView : public QueryableView {
       file->setExists(true);
 
       w_query_process_file(ctx->query, ctx, std::move(file));
-
-      ++nameIter;
     }
 
     ctx->bumpNumWalked(fileNames.size());
