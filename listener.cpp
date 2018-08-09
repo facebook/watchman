@@ -5,6 +5,7 @@
 #ifdef HAVE_LIBGIMLI_H
 # include <libgimli.h>
 #endif
+#include <chrono>
 #include <thread>
 
 using namespace watchman;
@@ -708,11 +709,14 @@ bool w_start_listener(const char *path)
 
   // Wait for clients, waking any sleeping clients up in the process
   {
-    int interval = 2000;
-    int last_count = 0, n_clients = 0;
-    const int max_interval = 1000000; // 1 second
+    auto interval = std::chrono::microseconds(2000);
+    const auto max_interval = std::chrono::seconds(1);
+    const auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(10);
 
-    do {
+    int last_count = 0, n_clients = 0;
+
+    while (true) {
       {
         auto clientsLock = clients.rlock();
         n_clients = clientsLock->size();
@@ -722,12 +726,26 @@ bool w_start_listener(const char *path)
         }
       }
 
-      if (n_clients != last_count) {
-        w_log(W_LOG_ERR, "waiting for %d clients to terminate\n", n_clients);
+      if (n_clients == 0) {
+        break;
       }
-      usleep(interval);
-      interval = std::min(interval * 2, max_interval);
-    } while (n_clients > 0);
+
+      if (std::chrono::steady_clock::now() >= deadline) {
+        log(ERR, "Abandoning wait for ", n_clients, " outstanding clients\n");
+        break;
+      }
+
+      if (n_clients != last_count) {
+        log(ERR, "waiting for ", n_clients, " clients to terminate\n");
+      }
+
+      /* sleep override */
+      std::this_thread::sleep_for(interval);
+      interval *= 2;
+      if (interval > max_interval) {
+        interval = max_interval;
+      }
+    }
   }
 
   w_state_shutdown();
