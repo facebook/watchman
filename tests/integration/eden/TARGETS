@@ -1,5 +1,5 @@
 load("//eden:defs.bzl", "get_oss_suffix", "get_daemon_versions", "get_test_env_and_deps")
-load("xplat//configurations/buck/sandcastle:sandcastle_defs.bzl", "is_sandcastle_machine")
+load("@xplat//configurations/buck/sandcastle:sandcastle_defs.bzl", "is_sandcastle_machine")
 
 # We test only with the oss version of eden because it builds faster
 # and we do not expect that testing against the internal version
