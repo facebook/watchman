@@ -102,7 +102,10 @@ void WatchmanConnection::close() {
   closing_ = true;
   if (sock_) {
     eventBase_->runImmediatelyOrRunInEventBaseThreadAndWait([this] {
-      sock_->close();
+      // This implicitly closes the connection without flushing outstanding
+      // writes. Should be fine as Watchman is mostly just providing info, so
+      // an incomplete partial write isn't a problem. Doing a fully flushing
+      // close here might be the cause a deadlock accessing the event base.
       sock_.reset();
     });
   }
