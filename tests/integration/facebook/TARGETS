@@ -1,9 +1,0 @@
-python_library(
-    name = "testlib-py3",
-    srcs = glob(
-        [
-            "test_*.py",
-        ],
-    ),
-    deps = ["//watchman/tests/integration:testsupport3"],
-)
