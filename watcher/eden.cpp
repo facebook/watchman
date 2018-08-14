@@ -217,6 +217,9 @@ class EdenFileResult : public FileResult {
 
   void setExists(bool exists) noexcept {
     exists_ = exists;
+    if (!exists) {
+      stat_ = FileInformation::makeDeletedFileInformation();
+    }
   }
 
   Optional<bool> exists() override {
@@ -435,7 +438,6 @@ class EdenFileResult : public FileResult {
       stat_ = std::move(stat);
       setExists(true);
     } else {
-      stat_.reset();
       setExists(false);
     }
   }

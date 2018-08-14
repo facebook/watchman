@@ -50,6 +50,37 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
         print(res)
         self.assertEqual(res["files"][0], {"name": "slink", "symlink_target": "hello"})
 
+    def test_non_existent_file(self):
+        root = self.makeEdenMount(populate)
+        res = self.watchmanCommand("watch", root)
+        self.assertEqual("eden", res["watcher"])
+        clock = self.watchmanCommand("clock", root)["clock"]
+
+        # Create the file that we want to remove
+        self.touchRelative(root, "111")
+
+        # We need to observe this file prior to deletion, otherwise
+        # eden will optimize it out of the results after the delete
+        res = self.watchmanCommand(
+            "query", root, {"since": clock, "fields": ["name", "mode"]}
+        )
+        clock = res["clock"]
+
+        os.unlink(os.path.join(root, "111"))
+        res = self.watchmanCommand(
+            "query", root, {"since": clock, "fields": ["name", "mode"]}
+        )
+
+        # Clunky piecemeal checks here because the `mode` value is set
+        # to something, even though it is deleted, but we cannot portably
+        # test the values from python land, so we want to check that it
+        # is non-zero
+        files = res["files"]
+        self.assertEqual(len(files), 1)
+        f = files[0]
+        self.assertEqual(f["name"], "111")
+        self.assertGreater(f["mode"], 0)
+
     def test_eden_watch(self):
         root = self.makeEdenMount(populate)
 
