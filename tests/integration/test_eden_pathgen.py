@@ -38,6 +38,18 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertEqual(res["files"][0]["name"], "bdir/noexec.sh")
         self.assertGreater(res["files"][0]["mtime"], 0)
 
+    def test_eden_readlink(self):
+        root = self.makeEdenMount(populate)
+        res = self.watchmanCommand("watch", root)
+        self.assertEqual("eden", res["watcher"])
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {"expression": ["type", "l"], "fields": ["name", "symlink_target"]},
+        )
+        print(res)
+        self.assertEqual(res["files"][0], {"name": "slink", "symlink_target": "hello"})
+
     def test_eden_watch(self):
         root = self.makeEdenMount(populate)
 

@@ -289,6 +289,8 @@ class EdenFileResult : public FileResult {
     std::vector<EdenFileResult*> getShaFiles;
     std::vector<std::string> getShaNames;
 
+    std::vector<EdenFileResult*> getSymlinkFiles;
+
     for (auto& f : files) {
       auto& edenFile = dynamic_cast<EdenFileResult&>(*f.get());
 
@@ -300,6 +302,8 @@ class EdenFileResult : public FileResult {
       if (edenFile.neededProperties() & FileResult::Property::SymlinkTarget) {
         // We need to know if the node is a symlink
         edenFile.accessorNeedsProperties(FileResult::Property::FileDType);
+
+        getSymlinkFiles.emplace_back(&edenFile);
       }
 
       if (edenFile.neededProperties() &
@@ -328,7 +332,7 @@ class EdenFileResult : public FileResult {
         client.get(), getFileInformationNames, getFileInformationFiles);
 
     // TODO: add eden bulk readlink call
-    loadSymlinkTargets(client.get(), files);
+    loadSymlinkTargets(client.get(), getSymlinkFiles);
 
     if (!getShaFiles.empty()) {
       std::vector<SHA1Result> sha1s;
@@ -361,24 +365,23 @@ class EdenFileResult : public FileResult {
   Optional<SHA1Result> sha1_;
   Optional<w_string> symlinkTarget_;
 
+  // Read the symlink targets for each of the provided `files`.  The files
+  // had SymlinkTarget set in neededProperties prior to clearing it in
+  // the batchFetchProperties() method that calls us, so we know that
+  // we unconditionally need to read these links.
   void loadSymlinkTargets(
       StreamingEdenServiceAsyncClient* client,
-      const std::vector<std::unique_ptr<FileResult>>& files) {
-    for (auto& f : files) {
-      auto edenFile = dynamic_cast<EdenFileResult*>(f.get());
-
-      if (edenFile->neededProperties() & FileResult::Property::SymlinkTarget) {
-        if (!edenFile->stat_->isSymlink()) {
-          // If this file is not a symlink then we immediately yield
-          // a nullptr w_string instance rather than propagating an error.
-          // This behavior is relied upon by the field rendering code and
-          // checked in test_symlink.py.
-          edenFile->symlinkTarget_ = w_string();
-          continue;
-        }
-        edenFile->symlinkTarget_ =
-            readSymbolicLink(edenFile->fullName_.c_str());
+      const std::vector<EdenFileResult*>& files) {
+    for (auto& edenFile : files) {
+      if (!edenFile->stat_->isSymlink()) {
+        // If this file is not a symlink then we immediately yield
+        // a nullptr w_string instance rather than propagating an error.
+        // This behavior is relied upon by the field rendering code and
+        // checked in test_symlink.py.
+        edenFile->symlinkTarget_ = w_string();
+        continue;
       }
+      edenFile->symlinkTarget_ = readSymbolicLink(edenFile->fullName_.c_str());
     }
   }
 
