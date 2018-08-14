@@ -66,7 +66,7 @@ class LocalFileResult : public FileResult {
   w_string fullPath_;
   w_clock_t clock_;
   Optional<w_string> symlinkTarget_;
-  Optional<FileResult::ContentHash> contentSha1_;
+  Result<FileResult::ContentHash> contentSha1_;
 };
 
 } // namespace watchman

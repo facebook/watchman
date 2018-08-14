@@ -98,11 +98,11 @@ Optional<w_clock_t> LocalFileResult::otime() {
 }
 
 Optional<FileResult::ContentHash> LocalFileResult::getContentSha1() {
-  if (!contentSha1_.has_value()) {
+  if (contentSha1_.empty()) {
     accessorNeedsProperties(FileResult::Property::ContentSha1);
     return nullopt;
   }
-  return contentSha1_;
+  return contentSha1_.value();
 }
 
 void LocalFileResult::batchFetchProperties(
@@ -127,8 +127,10 @@ void LocalFileResult::batchFetchProperties(
     if (localFile->neededProperties() & FileResult::Property::ContentSha1) {
       // TODO: find a way to reference a ContentHashCache instance
       // that will work with !InMemoryView based views.
-      localFile->contentSha1_ =
-          ContentHashCache::computeHashImmediate(localFile->fullPath_.c_str());
+      localFile->contentSha1_ = makeResultWith([&] {
+        return ContentHashCache::computeHashImmediate(
+            localFile->fullPath_.c_str());
+      });
     }
 
     localFile->clearNeededProperties();

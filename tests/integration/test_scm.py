@@ -354,13 +354,14 @@ o  changeset:   0:b08db10380dd
             root,
             {
                 "expression": ["name", "car"],
-                "fields": ["name", "mtime", "atime", "ctime"],
+                "fields": ["name", "mtime", "atime", "ctime", "content.sha1hex"],
                 "since": {"scm": {"mergebase": "", "mergebase-with": "TheMaster"}},
             },
         )
         # Since 'car' was deleted, its timestamps are reported as 0
         for ts in ["mtime", "atime", "ctime"]:
             self.assertEqual(res["files"][0][ts], 0)
+        self.assertEqual(res["files"][0]["content.sha1hex"], None)
 
         # Check again with a file that exists
         self.hg(["co", "-C", "feature2"], cwd=root)
@@ -369,12 +370,16 @@ o  changeset:   0:b08db10380dd
             root,
             {
                 "expression": ["name", "m2"],
-                "fields": ["name", "mtime", "atime", "ctime"],
+                "fields": ["name", "mtime", "atime", "ctime", "content.sha1hex"],
                 "since": {"scm": {"mergebase": "", "mergebase-with": "TheMaster"}},
             },
         )
         for ts in ["mtime", "atime", "ctime"]:
             self.assertGreater(res["files"][0][ts], 0)
+        self.assertEqual(
+            res["files"][0]["content.sha1hex"],
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        )
 
         # Go to the 'initial' bookmark, and query for changes since 'initial'
         # We should ideally not see any changes ...
