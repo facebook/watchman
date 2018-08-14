@@ -114,6 +114,11 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         # on the current OS
         pass
 
+    def skipIfCapabilityMissing(self, cap, reason):
+        res = self.getClient().capabilityCheck([cap])
+        if not res["capabilities"][cap]:
+            self.skipTest(reason)
+
     def setUp(self):
         self.checkPersistentSession()
         self.checkOSApplicability()

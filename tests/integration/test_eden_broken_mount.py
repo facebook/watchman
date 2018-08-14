@@ -15,6 +15,10 @@ import WatchmanTestCase
 @WatchmanTestCase.expand_matrix
 class TestBrokenEden(WatchmanTestCase.WatchmanTestCase):
     def test_broken_eden(self):
+        self.skipIfCapabilityMissing(
+            "watcher-eden", "eden support not compiled into watchman server"
+        )
+
         root = self.mkdtemp()
 
         # fake up a .eden dir

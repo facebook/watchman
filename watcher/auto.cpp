@@ -20,6 +20,9 @@ WatcherRegistry::getRegistry() {
 void WatcherRegistry::registerFactory(const WatcherRegistry& factory) {
   auto& reg = getRegistry();
   reg.emplace(factory.name_, factory);
+
+  auto capname = watchman::to<std::string>("watcher-", factory.name_);
+  w_capability_register(capname.c_str());
 }
 
 const WatcherRegistry* WatcherRegistry::getWatcherByName(
