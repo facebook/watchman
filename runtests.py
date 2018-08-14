@@ -38,7 +38,8 @@ except ImportError:
 # with sys.path).
 if __name__ == "__main__":
     sys.path.insert(0, os.path.join(os.getcwd(), "python"))
-    sys.path.insert(0, os.path.join(os.getcwd(), "tests", "integration"))
+    sys.path.insert(1, os.path.join(os.getcwd(), "tests", "integration"))
+    sys.path.insert(1, os.path.join(os.getcwd(), "tests", "integration", "facebook"))
 
 
 # Only Python 3.5+ supports native asyncio
