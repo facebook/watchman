@@ -9,6 +9,12 @@ import sys
 import pywatchman
 
 
+if pywatchman.compat.PYTHON3:
+    STRING_TYPES = (str, bytes)
+else:
+    STRING_TYPES = (str, unicode)  # noqa: F821
+
+
 def patterns_to_terms(pats):
     # convert a list of globs into the equivalent watchman expression term
     if pats is None or len(pats) == 0:
@@ -104,7 +110,7 @@ class DefineTarget(argparse.Action):
             targets = []
             setattr(namespace, self.dest, targets)
 
-        if isinstance(values, basestring):
+        if isinstance(values, STRING_TYPES):
             values = [values]
 
         if namespace.pattern is None or len(namespace.pattern) == 0:
