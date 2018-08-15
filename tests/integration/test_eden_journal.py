@@ -37,7 +37,15 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
             "query",
             root,
             {
-                "expression": ["not", ["dirname", ".hg"]],
+                "expression": [
+                    "not",
+                    [
+                        "anyof",
+                        ["dirname", ".hg"],
+                        ["match", "checklink*"],
+                        ["match", "hg-check*"],
+                    ],
+                ],
                 "fields": ["name"],
                 "since": clock,
             },
