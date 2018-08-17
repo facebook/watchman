@@ -1,5 +1,6 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
+
 #include "FileDescriptor.h"
 #include "FileSystem.h"
 #include "watchman.h"
@@ -177,7 +178,7 @@ static void checkCanonicalBaseName(const char *path) {
         to<std::string>("checkCanonicalBaseName(", path, "): (", name,
                         ") doesn't match canonical base (", base, ")"));
   }
-else
+#else
   // Older Linux and BSDish systems are in this category.
   // This is the awful portable fallback used in the absence of
   // a system specific way to detect this.

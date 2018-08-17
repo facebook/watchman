@@ -77,7 +77,6 @@ class UnixStream : public watchman_stream {
   struct ucred cred;
 #elif defined(LOCAL_PEERCRED)
   struct xucred cred;
-  int SOL_LOCAL = 0;
 #elif defined(SO_RECVUCRED)
   struct ucred_deleter {
     void operator()(ucred_t* utp) {
