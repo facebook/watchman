@@ -100,7 +100,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         self.attempt = 0
         # ASAN-enabled builds can be slower enough that we hit timeouts
         # with the default of 1 second
-        self.socketTimeout = 3.0
+        self.socketTimeout = 10.0
 
     def requiresPersistentSession(self):
         return False

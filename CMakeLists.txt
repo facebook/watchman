@@ -2,9 +2,16 @@
 # available in the configure script!  At this time you should prefer to
 # use the configure script to build and install watchman!
 cmake_minimum_required(VERSION 3.0.2 FATAL_ERROR)
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
+
+# Tell CMake to also look in the directories where getdeps.py installs
+# our third-party dependencies.
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/external/install")
+
 enable_testing()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/install/include")
 
 set(PACKAGE_NAME      "watchman")
 set(PACKAGE_VERSION   "4.9.4")
@@ -109,6 +116,11 @@ if (HAVE_STRUCT_STATVFS_F_BASETYPE)
   config_h("define HAVE_STRUCT_STATVFS_F_BASETYPE 1")
 endif()
 
+find_package(PCRE)
+if(PCRE_FOUND)
+  config_h("#define HAVE_PCRE_H 1")
+endif()
+
 # Now close out config.h.  We only want to touch the file if the contents are
 # different, so do a little dance to figure that out.
 if(EXISTS "${CMAKE_CURRENT_BINARY_DIR}/config.h")
@@ -163,7 +175,18 @@ if(OPENSSL_FOUND AND NOT TARGET OpenSSL::Crypto)
     endif()
 endif()
 
+find_package(Folly REQUIRED)
+
+# We indirectly depend on libevent.  Folly pulls in linkage to
+# event.lib, but on my system it does so as simply "event.lib"
+# and that fails linking.  Let's probe for the library and force
+# in the library directory for the linker. :-/
+find_package(LibEvent REQUIRED)
+get_filename_component(LIBEVENT_LIBDIR "${LIBEVENT_LIB}" DIRECTORY)
+link_directories(${LIBEVENT_LIBDIR})
+
 find_package(PythonInterp REQUIRED)
+message(STATUS "Found python ${PYTHON_VERSION_STRING}")
 
 if(PYTHONINTERP_FOUND)
   set(PYOUT "${CMAKE_CURRENT_BINARY_DIR}/build/pytimestamp")
@@ -315,7 +338,7 @@ query/intcompare.cpp
 query/match.cpp
 query/name.cpp
 query/parse.cpp
-# query/pcre.cpp
+query/pcre.cpp
 query/since.cpp
 query/suffix.cpp
 query/type.cpp
@@ -369,7 +392,7 @@ winbuild/pathmap.cpp
 winbuild/mkdir.cpp
 winbuild/dir.cpp
 winbuild/asprintf.cpp
-winbuild/hostname.cpp
+# winbuild/hostname.cpp
 winbuild/time.cpp
 winbuild/backtrace.cpp
 winbuild/getopt_long.cpp
@@ -382,12 +405,17 @@ stream_unix.cpp
 endif()
 
 add_executable(watchman ${watchman_sources})
-target_link_libraries(watchman log hash string err jansson wildmatch)
+target_link_libraries(watchman log hash string err jansson wildmatch Folly::folly)
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   target_link_libraries(watchman "-framework CoreServices")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(watchman shlwapi.lib advapi32.lib dbghelp.lib)
 endif()
+if(PCRE_FOUND)
+  target_link_libraries(watchman ${PCRE_LIBRARY})
+  target_include_directories(watchman PUBLIC ${PCRE_INCLUDE_DIR})
+endif()
+
 
 target_link_libraries(watchman Threads::Threads)
 if(TARGET OpenSSL::Crypto)
@@ -407,7 +435,7 @@ set(tests)
 # Helper function to define a unit test executable
 function(t_test NAME)
   add_executable(${NAME}.t ${ARGN})
-  target_link_libraries(${NAME}.t testsupport tap Threads::Threads wildmatch)
+  target_link_libraries(${NAME}.t testsupport tap Threads::Threads wildmatch Folly::folly)
   if(TARGET OpenSSL::Crypto)
     target_link_libraries(${NAME}.t OpenSSL::Crypto)
   endif()

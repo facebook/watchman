@@ -9,6 +9,7 @@ import tempfile
 import time
 
 import path_utils as path
+import pywatchman
 
 
 global_temp_dir = None
@@ -44,7 +45,10 @@ class TempDir(object):
             # directories too open and break tests.
             os.umask(0o022)
         # Redirect all temporary files to that location
-        tempfile.tempdir = self.temp_dir
+        if pywatchman.compat.PYTHON3:
+            tempfile.tempdir = os.fsdecode(self.temp_dir)
+        else:
+            tempfile.tempdir = self.temp_dir
 
         self.keep = keepAtShutdown
 
@@ -69,8 +73,9 @@ class TempDir(object):
             shutil.rmtree(top, ignore_errors=True)
             if not os.path.isdir(top):
                 return
+            sys.stdout.write("Waiting to remove temp data under %s\n" % top)
             time.sleep(0.2)
-        sys.stdout.write("Failed to completely remove " + top)
+        sys.stdout.write("Failed to completely remove %s\n" % top)
 
 
 def get_temp_dir(keep=None):

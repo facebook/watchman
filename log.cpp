@@ -114,7 +114,8 @@ char* Log::currentTimeString(char* buf, size_t bufsize) {
 
   gettimeofday(&tv, NULL);
 #ifdef _WIN32
-  tm = *localtime(&tv.tv_sec);
+  time_t seconds = (time_t)tv.tv_sec;
+  tm = *localtime(&seconds);
 #else
   localtime_r(&tv.tv_sec, &tm);
 #endif

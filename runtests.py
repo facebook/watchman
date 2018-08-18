@@ -15,6 +15,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import traceback
@@ -151,12 +152,15 @@ try:
     import Interrupt
     import TempDir
     import WatchmanInstance
+    import pywatchman
 except ImportError:
     raise
 
 # We test for this in a test case
 os.environ["WATCHMAN_EMPTY_ENV_VAR"] = ""
 os.environ["HGUSER"] = "John Smith <smith@example.com>"
+os.environ["NOSCMLOG"] = "1"
+os.environ["WATCHMAN_NO_SPAWN"] = "1"
 
 if args.win7:
     os.environ["WATCHMAN_WIN7_COMPAT"] = "1"
@@ -465,6 +469,32 @@ def runner():
 
             result = None
             for attempt in range(0, args.retry_flaky + 1):
+                # Check liveness of the server
+                try:
+                    client = pywatchman.client(timeout=3.0, sockpath=inst.getSockPath())
+                    client.query("version")
+                    client.close()
+                except Exception as exc:
+                    print("Failed to connect to watchman server: %s; starting a new one" % exc)
+
+                    try:
+                        inst.stop()
+                    except:
+                        pass
+
+                    try:
+                        inst = WatchmanInstance.Instance(
+                            {"watcher": args.watcher}, debug_watchman=args.debug_watchman
+                        )
+                        inst.start()
+                        # Allow tests to locate this default instance
+                        WatchmanInstance.setSharedInstance(inst)
+                    except Exception as e:
+                        print("while starting watchman: %s" % str(e))
+                        traceback.print_exc()
+                        broken = True
+                        continue
+
                 try:
                     result = Result()
                     result.setAttemptNumber(attempt)
@@ -563,9 +593,11 @@ if not args.testpilot_json:
     )
 
 if "APPVEYOR" in os.environ:
-    shutil.copytree(temp_dir.get_dir(), "logs")
-    subprocess.call(["7z", "a", "logs.zip", "logs"])
-    subprocess.call(["appveyor", "PushArtifact", "logs.zip"])
+    logdir = "logs7" if args.win7 else "logs"
+    logzip = "%s.zip" % logdir
+    shutil.copytree(tempfile.tempdir, logdir)
+    subprocess.call(["7z", "a", logzip, logdir])
+    subprocess.call(["appveyor", "PushArtifact", logzip])
 
 if "CIRCLE_ARTIFACTS" in os.environ:
     print("Creating %s/logs.zip" % os.environ["CIRCLE_ARTIFACTS"])

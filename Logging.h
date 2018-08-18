@@ -1,6 +1,8 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+// Avoid a conflict with google logging on Windows
+#define GLOB_NO_ABBREVIATED_SEVERITIES 1
 #include "PubSub.h"
 #include "watchman_preprocessor.h"
 #include "watchman_string.h"

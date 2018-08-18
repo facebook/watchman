@@ -52,7 +52,7 @@ getopt_long(int argc, char *const argv[],
             const char *optstring,
             const struct option * longopts, int *longindex)
 {
-  static char *place = EMSG; /* option letter processing */
+  static const char *place = EMSG; /* option letter processing */
   const char *oli;           /* option letter list index */
 
   if (!*place)
@@ -97,7 +97,7 @@ getopt_long(int argc, char *const argv[],
           if (longopts[i].has_arg)
           {
             if (place[namelen] == '=')
-              optarg = place + namelen + 1;
+              optarg = (char*)place + namelen + 1;
             else if (optind < argc - 1)
             {
               optind++;
@@ -174,7 +174,7 @@ getopt_long(int argc, char *const argv[],
   else
   { /* need an argument */
     if (*place) /* no white space */
-      optarg = place;
+      optarg = (char*)place;
     else if (argc <= ++optind)
     { /* no arg */
       place = EMSG;

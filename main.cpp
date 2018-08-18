@@ -7,9 +7,7 @@
 #ifndef _WIN32
 #include <poll.h>
 #endif
-#ifdef WATCHMAN_FACEBOOK_INTERNAL
 #include <folly/Singleton.h>
-#endif
 
 using watchman::ChildProcess;
 using watchman::FileDescriptor;
@@ -189,14 +187,14 @@ static void run_service(void)
   // redirect std{in,out,err}
   fd = open("/dev/null", O_RDONLY);
   if (fd != -1) {
-    ignore_result(dup2(fd, STDIN_FILENO));
-    close(fd);
+    ignore_result(::dup2(fd, STDIN_FILENO));
+    ::close(fd);
   }
   fd = open(log_name, O_WRONLY|O_APPEND|O_CREAT, 0600);
   if (fd != -1) {
-    ignore_result(dup2(fd, STDOUT_FILENO));
-    ignore_result(dup2(fd, STDERR_FILENO));
-    close(fd);
+    ignore_result(::dup2(fd, STDOUT_FILENO));
+    ignore_result(::dup2(fd, STDERR_FILENO));
+    ::close(fd);
   }
 
   if (!lock_pidfile()) {
@@ -1021,6 +1019,12 @@ static void parse_cmdline(int *argcp, char ***argvp)
   if (!output_encoding) {
     output_pdu = no_pretty ? is_json_compact : is_json_pretty;
   }
+
+  // Prevent integration tests that call the watchman cli from
+  // accidentally spawning a server.
+  if (getenv("WATCHMAN_NO_SPAWN")) {
+    no_spawn = true;
+  }
 }
 
 static json_ref build_command(int argc, char** argv) {
@@ -1120,14 +1124,15 @@ int main(int argc, char **argv)
 {
   bool ran;
 
-#ifdef WATCHMAN_FACEBOOK_INTERNAL
   // Since we don't fully integrate with folly, but may pull
   // in dependencies that do, we need to perform a little bit
   // of bootstrapping.  We don't want to run the full folly
   // init today because it will interfere with our own signal
   // handling.  In the future we will integrate this properly.
   folly::SingletonVault::singleton()->registrationComplete();
-#endif
+  SCOPE_EXIT {
+    folly::SingletonVault::singleton()->destroyInstances();
+  };
 
   parse_cmdline(&argc, &argv);
 

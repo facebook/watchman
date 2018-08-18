@@ -4,14 +4,15 @@ defaults: &defaults
     - checkout
     - run:
         name: Install dependencies
-        command: apt-get update && apt-get install cmake libtool m4 automake npm -y
+        command: apt-get update && apt-get install sudo python build-essential nodejs cmake libtool m4 automake -y
     - run:
-        environment:
-          USE_CMAKE: 1
-        command: ./travis/run.sh
+        name: Run getdeps.py
+        command: python ./getdeps.py --install-deps -j2
     - run:
-        environment:
-          USE_CMAKE: 0
+        name: Python version
+        command: python -V && env
+    - run:
+        name: Build and test
         command: ./travis/run.sh
 
 version: 2
@@ -19,11 +20,28 @@ jobs:
   build-python27:
     <<: *defaults
     docker:
-      - image: python:2.7-jessie
+      - image: python:2.7-stretch
   build-python36:
     <<: *defaults
     docker:
-      - image: python:3.6-jessie
+      - image: python:3.6-stretch
+  ubuntu-18.04:
+    <<: *defaults
+    docker:
+      - image: ubuntu:18.04
+  mac-python26:
+    macos:
+      xcode: "9.0"
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - run:
+          name: Install deps
+          command: TRAVIS_PYTHON=python2.6 ./travis/deps.sh
+      - run:
+          name: Buid and test
+          command: TRAVIS_PYTHON=python2.6 PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig ./travis/run.sh
+
 
 workflows:
   version: 2
@@ -31,3 +49,5 @@ workflows:
     jobs:
       - build-python27
       - build-python36
+      - ubuntu-18.04
+#      - mac-python26

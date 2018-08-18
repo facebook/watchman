@@ -5,6 +5,7 @@
 # no unicode literals
 from __future__ import absolute_import, division, print_function
 
+import atexit
 import json
 import os
 import signal
@@ -32,6 +33,7 @@ tls = threading.local()
 def setSharedInstance(inst):
     global tls
     tls.instance = inst
+    atexit.register(lambda: inst.stop())
 
 
 def getSharedInstance():
@@ -43,6 +45,7 @@ def getSharedInstance():
         TempDir.get_temp_dir().get_dir()
         tls.instance = Instance()
         tls.instance.start()
+        atexit.register(lambda: inst.stop())
     return tls.instance
 
 
@@ -61,7 +64,7 @@ class InitWithFilesMixin(object):
         self.cli_log_file_name = os.path.join(self.base_dir, "cli-log")
         self.pid_file = os.path.join(self.base_dir, "pid")
         if os.name == "nt":
-            self.sock_file = "\\\\.\\pipe\\watchman-test-%s" % uuid.uuid4().hex
+            self.sock_file = "\\\\.\\pipe\\watchman-test-%s" % uuid.uuid5(uuid.NAMESPACE_URL, self.base_dir).hex
         else:
             self.sock_file = os.path.join(self.base_dir, "sock")
         self.state_file = os.path.join(self.base_dir, "state")
@@ -114,8 +117,6 @@ class _Instance(object):
         self.debug_watchman = debug_watchman
         with open(self.cfg_file, "w") as f:
             f.write(json.dumps(config))
-        # The log file doesn't exist right now, so we can't open it.
-        self.cli_log_file = open(self.cli_log_file_name, "w+")
 
     def __del__(self):
         self.stop()
@@ -142,7 +143,6 @@ class _Instance(object):
             self.proc.kill()
             self.proc.wait()
             self.proc = None
-        self.cli_log_file.close()
 
     def watchmanBinary(self):
         return os.environ.get("WATCHMAN_BINARY", "watchman")
@@ -154,6 +154,7 @@ class _Instance(object):
         args.extend(cmd)
         env = os.environ.copy()
         env["WATCHMAN_CONFIG_FILE"] = self.cfg_file
+        del env["WATCHMAN_NO_SPAWN"]
         proc = subprocess.Popen(
             args, env=env, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
@@ -164,12 +165,13 @@ class _Instance(object):
         args.extend(self.get_state_args())
         env = os.environ.copy()
         env["WATCHMAN_CONFIG_FILE"] = self.cfg_file
+        cli_log_file = open(self.cli_log_file_name, "w+")
         self.proc = subprocess.Popen(
             args,
             env=env,
             stdin=None,
-            stdout=self.cli_log_file,
-            stderr=self.cli_log_file,
+            stdout=cli_log_file,
+            stderr=cli_log_file,
         )
         if self.debug_watchman:
             print("Watchman instance PID: " + str(self.proc.pid))

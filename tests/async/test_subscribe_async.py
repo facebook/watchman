@@ -7,13 +7,14 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import os.path
 import tempfile
+import unittest
 
 import AsyncWatchmanTestCase
 
 
 class TestSubscribe(AsyncWatchmanTestCase.AsyncWatchmanTestCase):
+    @unittest.skipIf(os.name == "nt", "not supported on windows")
     def test_subscribe(self):
         root = tempfile.mkdtemp()
         a_dir = os.path.join(root, "a")

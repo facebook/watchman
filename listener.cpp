@@ -520,6 +520,23 @@ static void named_pipe_accept_loop_internal(const char* path) {
 static void named_pipe_accept_loop(const char* path) {
   std::vector<std::thread> acceptors;
   listener_thread_event = CreateEvent(NULL, TRUE, FALSE, NULL);
+
+  // Since we don't re-use pipe handles, it is possible for a client
+  // to attempt a connection when all of the server handles have been
+  // closed and before their next loop iteration has had the chance
+  // to create a new pipe.  When this happens, the pipe client gets
+  // a ERROR_FILE_NOT_FOUND response.  To avoid this, we park a
+  // handle here and don't service it.
+  auto placeholder = FileDescriptor(intptr_t(CreateNamedPipe(
+      path,
+      PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+      PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_REJECT_REMOTE_CLIENTS,
+      PIPE_UNLIMITED_INSTANCES,
+      WATCHMAN_IO_BUF_SIZE,
+      512,
+      0,
+      nullptr)));
+
   for (json_int_t i = 0; i < cfg_get_int("win32_concurrent_accepts", 32); ++i) {
     acceptors.push_back(std::thread([path, i]() {
       w_set_thread_name("accept%d", i);

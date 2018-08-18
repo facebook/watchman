@@ -55,7 +55,7 @@ brew_package_is_installed() {
 case `uname` in
   Darwin)
     brew update >/dev/null
-    HOMEBREW_NO_AUTO_UPDATE=1 brew_install_latest_stable cmake wget pcre ruby openssl readline pyenv
+    HOMEBREW_NO_AUTO_UPDATE=1 brew_install_latest_stable cmake wget pcre ruby openssl readline pyenv boost double-conversion glog gflags libevent xz snappy lz4
     # avoid snafu with OS X and python builds
     ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future
     CFLAGS="$CFLAGS $ARCHFLAGS"
