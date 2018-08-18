@@ -14,10 +14,14 @@ init:
 
 install:
   - python -V
+  - vcpkg update
+  - vcpkg install folly:x64-windows --head
+
+cache: c:\tools\vcpkg\installed\
 
 before_build:
   - cmd: git clean -dfx
-  - cmd: cmake -G "Visual Studio 14 2015 Win64" .
+  - cmd: cmake -G "Visual Studio 14 2015 Win64" -DCMAKE_TOOLCHAIN_FILE=c:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake .
   - cmd: git status -u --ignored
 
 build:
