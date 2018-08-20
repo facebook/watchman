@@ -12,7 +12,7 @@ using watchman::FileDescriptor;
 // and dispatched to the underlying handle as prior
 // writes complete.
 
-struct win_handle;
+class win_handle;
 
 namespace {
 class WindowsEvent : public watchman_event {
@@ -44,7 +44,7 @@ class WindowsEvent : public watchman_event {
 
 struct overlapped_op {
   OVERLAPPED olap;
-  struct win_handle *h;
+  class win_handle* h;
   struct write_buf *wbuf;
 };
 
@@ -221,10 +221,11 @@ win_handle::~win_handle() {
   DeleteCriticalSection(&mtx);
 }
 
-static void move_from_read_buffer(struct win_handle *h,
-    int *total_read_ptr,
-    char **target_buf_ptr,
-    int *size_ptr) {
+static void move_from_read_buffer(
+    class win_handle* h,
+    int* total_read_ptr,
+    char** target_buf_ptr,
+    int* size_ptr) {
   int nread = std::min(*size_ptr, h->read_avail);
   size_t wasted;
 
@@ -249,7 +250,7 @@ static void move_from_read_buffer(struct win_handle *h,
   }
 }
 
-static bool win_read_handle_completion(struct win_handle *h) {
+static bool win_read_handle_completion(class win_handle* h) {
   BOOL olap_res;
   DWORD bytes, err;
 
@@ -305,7 +306,7 @@ again:
   return h->read_pending != nullptr;
 }
 
-static int win_read_blocking(struct win_handle* h, void* buf, int size) {
+static int win_read_blocking(class win_handle* h, void* buf, int size) {
   int total_read = 0;
   DWORD bytes, err;
 
@@ -336,7 +337,7 @@ static int win_read_blocking(struct win_handle* h, void* buf, int size) {
   return -1;
 }
 
-static int win_read_non_blocking(struct win_handle* h, void* buf, int size) {
+static int win_read_non_blocking(class win_handle* h, void* buf, int size) {
   int total_read = 0;
   char *target;
   DWORD target_space;
@@ -421,13 +422,13 @@ int win_handle::read(void* buf, int size) {
   return win_read_non_blocking(this, buf, size);
 }
 
-static void initiate_write(struct win_handle *h);
+static void initiate_write(class win_handle* h);
 
 static void CALLBACK write_completed(DWORD err, DWORD bytes,
     LPOVERLAPPED olap) {
   // Reverse engineer our handle from the olap pointer
   struct overlapped_op *op = (overlapped_op*)olap;
-  struct win_handle *h = op->h;
+  class win_handle* h = op->h;
   struct write_buf *wbuf = op->wbuf;
 
   stream_debug("WriteFileEx: completion callback invoked: bytes=%d %s\n",
@@ -478,7 +479,7 @@ static void CALLBACK write_completed(DWORD err, DWORD bytes,
 }
 
 // Must be called with the mutex held
-static void initiate_write(struct win_handle *h) {
+static void initiate_write(class win_handle* h) {
   struct write_buf *wbuf = h->write_head;
   if (h->write_pending || !wbuf) {
     return;
