@@ -8,6 +8,7 @@
 #include <poll.h>
 #endif
 #ifdef WATCHMAN_FACEBOOK_INTERNAL
+#include <folly/ScopeGuard.h>
 #include <folly/Singleton.h>
 #endif
 
@@ -1127,6 +1128,9 @@ int main(int argc, char **argv)
   // init today because it will interfere with our own signal
   // handling.  In the future we will integrate this properly.
   folly::SingletonVault::singleton()->registrationComplete();
+  SCOPE_EXIT {
+    folly::SingletonVault::singleton()->destroyInstances();
+  };
 #endif
 
   parse_cmdline(&argc, &argv);
