@@ -3,6 +3,18 @@
 #include "watchman.h"
 // some versions of dbghelp.h do: typedef enum {}; with no typedef name
 #pragma warning(disable: 4091)
+
+// dbghelp.h relies on these symbols being defined by its user
+#ifndef IN
+#define IN
+#endif
+#ifndef OUT
+#define OUT
+#endif
+#ifndef OPTIONAL
+#define OPTIONAL
+#endif
+
 #include <Dbghelp.h>
 #include <mutex>
 
