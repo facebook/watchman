@@ -61,7 +61,10 @@ class InitWithFilesMixin(object):
         self.cli_log_file_name = os.path.join(self.base_dir, "cli-log")
         self.pid_file = os.path.join(self.base_dir, "pid")
         if os.name == "nt":
-            self.sock_file = "\\\\.\\pipe\\watchman-test-%s" % uuid.uuid4().hex
+            self.sock_file = (
+                "\\\\.\\pipe\\watchman-test-%s"
+                % uuid.uuid5(uuid.NAMESPACE_URL, self.base_dir).hex
+            )
         else:
             self.sock_file = os.path.join(self.base_dir, "sock")
         self.state_file = os.path.join(self.base_dir, "state")
