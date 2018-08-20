@@ -120,8 +120,6 @@ class _Instance(object):
         self.debug_watchman = debug_watchman
         with open(self.cfg_file, "w") as f:
             f.write(json.dumps(config or {}))
-        # The log file doesn't exist right now, so we can't open it.
-        self.cli_log_file = open(self.cli_log_file_name, "w+")
 
     def __del__(self):
         self.stop()
@@ -148,7 +146,6 @@ class _Instance(object):
             self.proc.kill()
             self.proc.wait()
             self.proc = None
-        self.cli_log_file.close()
 
     def watchmanBinary(self):
         return os.environ.get("WATCHMAN_BINARY", "watchman")
@@ -170,13 +167,10 @@ class _Instance(object):
         args.extend(self.get_state_args())
         env = os.environ.copy()
         env["WATCHMAN_CONFIG_FILE"] = self.cfg_file
-        self.proc = subprocess.Popen(
-            args,
-            env=env,
-            stdin=None,
-            stdout=self.cli_log_file,
-            stderr=self.cli_log_file,
-        )
+        with open(self.cli_log_file_name, "w+") as cli_log_file:
+            self.proc = subprocess.Popen(
+                args, env=env, stdin=None, stdout=cli_log_file, stderr=cli_log_file
+            )
         if self.debug_watchman:
             print("Watchman instance PID: " + str(self.proc.pid))
             if pywatchman.compat.PYTHON3:
