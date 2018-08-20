@@ -60,7 +60,7 @@ if os.name == "nt":
     GENERIC_WRITE = 0x40000000
     FILE_FLAG_OVERLAPPED = 0x40000000
     OPEN_EXISTING = 3
-    INVALID_HANDLE_VALUE = -1
+    INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
     FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
     FORMAT_MESSAGE_ALLOCATE_BUFFER = 0x00000100
     FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200
@@ -366,8 +366,9 @@ class UnixSocketTransport(Transport):
             raise SocketConnectError(self.sockpath, e)
 
     def close(self):
-        self.sock.close()
-        self.sock = None
+        if self.sock:
+            self.sock.close()
+            self.sock = None
 
     def setTimeout(self, value):
         self.timeout = value
@@ -437,6 +438,8 @@ class WindowsNamedPipeTransport(Transport):
         self.timeout = int(math.ceil(timeout * 1000))
         self._iobuf = None
 
+        if compat.PYTHON3:
+            sockpath = os.fsencode(sockpath)
         self.pipe = CreateFile(
             sockpath,
             GENERIC_READ | GENERIC_WRITE,
@@ -447,14 +450,16 @@ class WindowsNamedPipeTransport(Transport):
             None,
         )
 
-        if self.pipe == INVALID_HANDLE_VALUE:
+        err = GetLastError()
+        if self.pipe == INVALID_HANDLE_VALUE or self.pipe == 0:
             self.pipe = None
-            self._raise_win_err("failed to open pipe %s" % sockpath, GetLastError())
+            self._raise_win_err("failed to open pipe %s" % sockpath, err)
 
         # event for the overlapped I/O operations
         self._waitable = CreateEvent(None, True, False, None)
+        err = GetLastError()
         if self._waitable is None:
-            self._raise_win_err("CreateEvent failed", GetLastError())
+            self._raise_win_err("CreateEvent failed", err)
 
         self._get_overlapped_result_ex = GetOverlappedResultEx
         if (
@@ -511,7 +516,7 @@ class WindowsNamedPipeTransport(Transport):
         if not immediate:
             err = GetLastError()
             if err != ERROR_IO_PENDING:
-                self._raise_win_err("failed to read %d bytes" % size, GetLastError())
+                self._raise_win_err("failed to read %d bytes" % size, err)
 
         nread = wintypes.DWORD()
         if not self._get_overlapped_result_ex(
@@ -559,7 +564,8 @@ class WindowsNamedPipeTransport(Transport):
             err = GetLastError()
             if err != ERROR_IO_PENDING:
                 self._raise_win_err(
-                    "failed to write %d bytes" % len(data), GetLastError()
+                    "failed to write %d bytes to handle %r" % (len(data), self.pipe),
+                    err,
                 )
 
         # Obtain results, waiting if needed
