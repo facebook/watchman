@@ -655,6 +655,11 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
     @WatchmanTestCase.skip_for(codecs=["json"])
     def test_subscribe_unicode(self):
         unicode_filename = u"\u263a"
+        # On Python 2, pywatchman returns bytestrings by default. On Python 3
+        # it returns Unicode strings. So we need to take care of that.
+        if not pywatchman.compat.PYTHON3:
+            unicode_filename = unicode_filename.encode("utf-8")
+
         root = self.mkdtemp()
         a_dir = os.path.join(root, "a")
         os.mkdir(a_dir)
@@ -663,10 +668,6 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.touchRelative(root, unicode_filename)
 
         self.watchmanCommand("watch", root)
-        # On Python 2, pywatchman returns bytestrings by default. On Python 3
-        # it returns Unicode strings. So we need to take care of that.
-        if not pywatchman.compat.PYTHON3:
-            unicode_filename = unicode_filename.encode("utf-8")
         self.assertFileList(root, files=["a", "a/lemon", "b", unicode_filename])
 
         self.watchmanCommand("subscribe", root, "myname", {"fields": ["name"]})
