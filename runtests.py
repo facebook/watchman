@@ -597,9 +597,11 @@ if not args.testpilot_json:
     )
 
 if "APPVEYOR" in os.environ:
-    shutil.copytree(temp_dir.get_dir(), "logs")
-    subprocess.call(["7z", "a", "logs.zip", "logs"])
-    subprocess.call(["appveyor", "PushArtifact", "logs.zip"])
+    logdir = "logs7" if args.win7 else "logs"
+    logzip = "%s.zip" % logdir
+    shutil.copytree(tempfile.tempdir, logdir)
+    subprocess.call(["7z", "a", logzip, logdir])
+    subprocess.call(["appveyor", "PushArtifact", logzip])
 
 if "CIRCLE_ARTIFACTS" in os.environ:
     print("Creating %s/logs.zip" % os.environ["CIRCLE_ARTIFACTS"])
