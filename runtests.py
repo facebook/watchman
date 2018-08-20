@@ -15,6 +15,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import traceback
@@ -151,6 +152,7 @@ try:
     import Interrupt
     import TempDir
     import WatchmanInstance
+    import pywatchman
 except ImportError:
     raise
 
@@ -467,6 +469,36 @@ def runner():
 
             result = None
             for attempt in range(0, args.retry_flaky + 1):
+                # Check liveness of the server
+                try:
+                    client = pywatchman.client(timeout=3.0, sockpath=inst.getSockPath())
+                    client.query("version")
+                    client.close()
+                except Exception as exc:
+                    print(
+                        "Failed to connect to watchman server: %s; starting a new one"
+                        % exc
+                    )
+
+                    try:
+                        inst.stop()
+                    except Exception:
+                        pass
+
+                    try:
+                        inst = WatchmanInstance.Instance(
+                            {"watcher": args.watcher},
+                            debug_watchman=args.debug_watchman,
+                        )
+                        inst.start()
+                        # Allow tests to locate this default instance
+                        WatchmanInstance.setSharedInstance(inst)
+                    except Exception as e:
+                        print("while starting watchman: %s" % str(e))
+                        traceback.print_exc()
+                        broken = True
+                        continue
+
                 try:
                     result = Result()
                     result.setAttemptNumber(attempt)
