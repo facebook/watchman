@@ -157,6 +157,7 @@ class _Instance(object):
         args.extend(cmd)
         env = os.environ.copy()
         env["WATCHMAN_CONFIG_FILE"] = self.cfg_file
+        del env["WATCHMAN_NO_SPAWN"]
         proc = subprocess.Popen(
             args, env=env, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )

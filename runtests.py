@@ -158,6 +158,7 @@ except ImportError:
 os.environ["WATCHMAN_EMPTY_ENV_VAR"] = ""
 os.environ["HGUSER"] = "John Smith <smith@example.com>"
 os.environ["NOSCMLOG"] = "1"
+os.environ["WATCHMAN_NO_SPAWN"] = "1"
 
 if args.win7:
     os.environ["WATCHMAN_WIN7_COMPAT"] = "1"

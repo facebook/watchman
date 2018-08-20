@@ -1022,6 +1022,12 @@ static void parse_cmdline(int *argcp, char ***argvp)
   if (!output_encoding) {
     output_pdu = no_pretty ? is_json_compact : is_json_pretty;
   }
+
+  // Prevent integration tests that call the watchman cli from
+  // accidentally spawning a server.
+  if (getenv("WATCHMAN_NO_SPAWN")) {
+    no_spawn = true;
+  }
 }
 
 static json_ref build_command(int argc, char** argv) {
