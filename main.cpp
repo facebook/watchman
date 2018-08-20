@@ -190,14 +190,14 @@ static void run_service(void)
   // redirect std{in,out,err}
   fd = open("/dev/null", O_RDONLY);
   if (fd != -1) {
-    ignore_result(dup2(fd, STDIN_FILENO));
-    close(fd);
+    ignore_result(::dup2(fd, STDIN_FILENO));
+    ::close(fd);
   }
   fd = open(log_name, O_WRONLY|O_APPEND|O_CREAT, 0600);
   if (fd != -1) {
-    ignore_result(dup2(fd, STDOUT_FILENO));
-    ignore_result(dup2(fd, STDERR_FILENO));
-    close(fd);
+    ignore_result(::dup2(fd, STDOUT_FILENO));
+    ignore_result(::dup2(fd, STDERR_FILENO));
+    ::close(fd);
   }
 
   if (!lock_pidfile()) {
