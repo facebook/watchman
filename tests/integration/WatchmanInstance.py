@@ -5,6 +5,7 @@
 # no unicode literals
 from __future__ import absolute_import, division, print_function
 
+import atexit
 import json
 import os
 import signal
@@ -32,6 +33,7 @@ tls = threading.local()
 def setSharedInstance(inst):
     global tls
     tls.instance = inst
+    atexit.register(lambda: inst.stop())
 
 
 def getSharedInstance():
@@ -41,8 +43,9 @@ def getSharedInstance():
     if os.environ.get("TESTING_VIA_BUCK", "0") == "1":
         # Ensure that the temporary dir is configured
         TempDir.get_temp_dir().get_dir()
-        tls.instance = Instance()
-        tls.instance.start()
+        inst = Instance()
+        inst.start()
+        setSharedInstance(inst)
     return tls.instance
 
 
