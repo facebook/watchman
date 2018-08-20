@@ -105,7 +105,7 @@ class _Instance(object):
     # overridden global configuration file; you may pass that
     # in to the constructor
 
-    def __init__(self, config={}, start_timeout=5.0, debug_watchman=False):
+    def __init__(self, config=None, start_timeout=5.0, debug_watchman=False):
         self.start_timeout = start_timeout
         self.base_dir = tempfile.mkdtemp(prefix="inst")
         self._init_state()
@@ -113,7 +113,7 @@ class _Instance(object):
         self.pid = None
         self.debug_watchman = debug_watchman
         with open(self.cfg_file, "w") as f:
-            f.write(json.dumps(config))
+            f.write(json.dumps(config or {}))
         # The log file doesn't exist right now, so we can't open it.
         self.cli_log_file = open(self.cli_log_file_name, "w+")
 
@@ -176,7 +176,7 @@ class _Instance(object):
             if pywatchman.compat.PYTHON3:
                 user_input = input
             else:
-                user_input = raw_input
+                user_input = raw_input  # noqa:F821
             user_input("Press Enter to continue...")
 
         # wait for it to come up
@@ -186,7 +186,7 @@ class _Instance(object):
                 client = pywatchman.client(sockpath=self.sock_file)
                 self.pid = client.query("get-pid")["pid"]
                 break
-            except Exception as e:
+            except Exception:
                 t, val, tb = sys.exc_info()
                 time.sleep(0.1)
             finally:
