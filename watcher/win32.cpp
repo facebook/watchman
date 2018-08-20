@@ -227,14 +227,14 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
           break;
         }
       } else {
-        PFILE_NOTIFY_INFORMATION not = (PFILE_NOTIFY_INFORMATION)buf.data();
+        PFILE_NOTIFY_INFORMATION notify = (PFILE_NOTIFY_INFORMATION)buf.data();
 
         while (true) {
           DWORD n_chars;
 
           // FileNameLength is in BYTES, but FileName is WCHAR
-          n_chars = not->FileNameLength / sizeof(not->FileName[0]);
-          w_string name(not->FileName, n_chars);
+          n_chars = notify->FileNameLength / sizeof(notify->FileName[0]);
+          w_string name(notify->FileName, n_chars);
 
           auto full = w_string::pathCat({root->root_path, name});
 
@@ -250,17 +250,18 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
             // we're trying to minimize latency in this context.
             items.emplace_back(
                 std::move(full),
-                (not->Action &
+                (notify->Action &
                  (FILE_ACTION_REMOVED | FILE_ACTION_RENAMED_OLD_NAME)) != 0
                     ? W_PENDING_RECURSIVE
                     : 0);
           }
 
           // Advance to next item
-          if (not->NextEntryOffset == 0) {
+          if (notify->NextEntryOffset == 0) {
             break;
           }
-          not = (PFILE_NOTIFY_INFORMATION)(not->NextEntryOffset + (char*)not);
+          notify = (PFILE_NOTIFY_INFORMATION)(
+              notify->NextEntryOffset + (char*)notify);
         }
 
         ResetEvent(olapEvent);
