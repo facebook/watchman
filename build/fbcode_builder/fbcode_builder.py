@@ -201,6 +201,7 @@ class FBCodeBuilder(object):
                 'libgflags-dev '
                 'libgoogle-glog-dev '
                 'libkrb5-dev '
+                'libpcre3-dev '
                 'libnuma-dev '
                 'libsasl2-dev '
                 'libsnappy-dev '
