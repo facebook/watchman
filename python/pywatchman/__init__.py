@@ -248,6 +248,10 @@ class BSERv1Unsupported(WatchmanError):
     pass
 
 
+class UseAfterFork(WatchmanError):
+    pass
+
+
 class WatchmanEnvironmentError(WatchmanError):
     def __init__(self, msg, errno, errmsg, cmd=None):
         super(WatchmanEnvironmentError, self).__init__(
@@ -836,6 +840,7 @@ class client(object):
     unilateral = ["log", "subscription"]
     tport = None
     useImmutableBser = None
+    pid = None
 
     def __init__(
         self,
@@ -973,6 +978,10 @@ class client(object):
         """ establish transport connection """
 
         if self.recvConn:
+            if self.pid != os.getpid():
+                raise UseAfterFork(
+                    "do not re-use a connection after fork; open a new client instead"
+                )
             return
 
         if self.sockpath is None:
@@ -985,6 +994,7 @@ class client(object):
         self.tport = self.transport(self.sockpath, self.timeout, **kwargs)
         self.sendConn = self.sendCodec(self.tport)
         self.recvConn = self.recvCodec(self.tport)
+        self.pid = os.getpid()
 
     def __del__(self):
         self.close()
