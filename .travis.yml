@@ -21,6 +21,36 @@ addons:
       - g++-5
       - gcc-6
       - g++-6
+      - autoconf-archive
+      - bison
+      - build-essential
+      - ccache
+      - cmake
+      - curl
+      - flex
+      - git
+      - gperf
+      - joe
+      - libboost-all-dev
+      - libcap-dev
+      - libdouble-conversion-dev
+      - libevent-dev
+      - libgflags-dev
+      - libgoogle-glog-dev
+      - libpthread-stubs0-dev
+      - libkrb5-dev
+      - libpcre3-dev
+      - libnuma-dev
+      - libsasl2-dev
+      - libsnappy-dev
+      - libsqlite3-dev
+      - libssl-dev
+      - libtool
+      - netcat-openbsd
+      - pkg-config
+      - sudo
+      - unzip
+      - wget
 #      - ruby
 #      - rubygems
 
@@ -41,23 +71,17 @@ branches:
 matrix:
   include:
     - os: osx
-      env: TRAVIS_PYTHON=python2.7
-    - os: osx
-      env: TRAVIS_PYTHON=python2.6 OPENSSL_ROOT_DIR=/usr/local/opt/openssl/ USE_CMAKE=1
-    - os: osx
-      env: TRAVIS_PYTHON=python3.5 OPENSSL_ROOT_DIR=/usr/local/opt/openssl/ USE_CMAKE=1
+      env: TRAVIS_PYTHON=python2.6 OPENSSL_ROOT_DIR=/usr/local/opt/openssl/
     - os: linux
-      env: USE_CMAKE=1 CXX=g++-6 TRAVIS_PYTHON=python3.6
+      env: CXX=g++-6 TRAVIS_PYTHON=python3.6
       compiler: gcc-6
     - os: linux
-      env: USE_CMAKE=1 CXX=g++-5 TRAVIS_PYTHON=python3.5
+      env: CXX=g++-5 TRAVIS_PYTHON=python3.5
       compiler: gcc-5
     - os: linux
-      env: USE_CMAKE=1 CXX=g++-6 TRAVIS_PYTHON=python2.7
-      compiler: gcc-6
-    - os: linux
-      env: USE_CMAKE=0 CXX=g++-6 TRAVIS_PYTHON=python3.6
+      env: CXX=g++-6 TRAVIS_PYTHON=python2.7
       compiler: gcc-6
 
 before_script: ./travis/deps.sh
-script: ./travis/run.sh
+
+script: "cd build && python fbcode_builder/shell_builder.py > ~/run.sh && bash ~/run.sh"
