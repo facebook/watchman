@@ -154,8 +154,9 @@ class FBCodeBuilder(object):
         return self.step('Diagnostics', [
             self.comment('Builder {0}'.format(repr(self))),
             self.run(ShellQuoted('hostname')),
-            self.run(ShellQuoted('cat /etc/issue')),
+            self.run(ShellQuoted('cat /etc/issue || echo no /etc/issue')),
             self.run(ShellQuoted('g++ --version || echo g++ not installed')),
+            self.run(ShellQuoted('cmake --version || echo cmake not installed')),
         ])
 
     def step(self, name, actions):
@@ -177,6 +178,39 @@ class FBCodeBuilder(object):
         '''
         raise NotImplementedError
 
+    def debian_deps(self):
+        return [
+            'autoconf-archive',
+            'bison',
+            'build-essential',
+            'cmake',
+            'curl',
+            'flex',
+            'git',
+            'gperf',
+            'joe',
+            'libboost-all-dev',
+            'libcap-dev',
+            'libdouble-conversion-dev',
+            'libevent-dev',
+            'libgflags-dev',
+            'libgoogle-glog-dev',
+            'libkrb5-dev',
+            'libpcre3-dev',
+            'libpthread-stubs0-dev',
+            'libnuma-dev',
+            'libsasl2-dev',
+            'libsnappy-dev',
+            'libsqlite3-dev',
+            'libssl-dev',
+            'libtool',
+            'netcat-openbsd',
+            'pkg-config',
+            'sudo',
+            'unzip',
+            'wget',
+        ]
+
     #
     # Specific build helpers
     #
@@ -184,34 +218,8 @@ class FBCodeBuilder(object):
     def install_debian_deps(self):
         actions = [
             self.run(ShellQuoted(
-                'apt-get update && apt-get install -yq '
-                'autoconf-archive '
-                'bison '
-                'build-essential '
-                'cmake '
-                'curl '
-                'flex '
-                'git '
-                'gperf '
-                'joe '
-                'libboost-all-dev '
-                'libcap-dev '
-                'libdouble-conversion-dev '
-                'libevent-dev '
-                'libgflags-dev '
-                'libgoogle-glog-dev '
-                'libkrb5-dev '
-                'libnuma-dev '
-                'libsasl2-dev '
-                'libsnappy-dev '
-                'libsqlite3-dev '
-                'libssl-dev '
-                'libtool '
-                'netcat-openbsd '
-                'pkg-config '
-                'sudo '
-                'unzip '
-                'wget'
+                'apt-get update && apt-get install -yq ' +
+                ' '.join(self.debian_deps())
             )),
         ]
         gcc_version = self.option('gcc_version')
@@ -258,7 +266,7 @@ class FBCodeBuilder(object):
         return self.step('Check out {0}, workdir {1}'.format(project, path), [
             self.workdir(base_dir),
             self.run(
-                ShellQuoted('git clone https://github.com/{p}').format(p=project)
+                ShellQuoted('[[ ! -d {d} ]] && git clone --depth=50 https://github.com/{p}').format(p=project, d=os.path.basename(project))
             ) if not local_repo_dir else self.copy_local_repo(
                 local_repo_dir, os.path.basename(project)
             ),
