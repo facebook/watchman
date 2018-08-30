@@ -15,8 +15,8 @@ import WatchmanTestCase
 @WatchmanTestCase.expand_matrix
 class TestSavedState(WatchmanSCMTestCase.WatchmanSCMTestCase):
     def checkOSApplicability(self):
-        if "CIRCLECI" in os.environ:
-            self.skipTest("consistently fails on circle!?")
+        if "CIRCLECI" in os.environ or "TRAVIS" in os.environ:
+            self.skipTest("consistently fails on single core machines!")
         if os.name == "nt":
             self.skipTest("The order of events on Windows is funky")
 
