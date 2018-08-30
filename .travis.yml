@@ -21,6 +21,36 @@ addons:
       - g++-5
       - gcc-6
       - g++-6
+      - autoconf-archive
+      - bison
+      - build-essential
+      - ccache
+      - cmake
+      - curl
+      - flex
+      - git
+      - gperf
+      - joe
+      - libboost-all-dev
+      - libcap-dev
+      - libdouble-conversion-dev
+      - libevent-dev
+      - libgflags-dev
+      - libgoogle-glog-dev
+      - libpthread-stubs0-dev
+      - libkrb5-dev
+      - libpcre3-dev
+      - libnuma-dev
+      - libsasl2-dev
+      - libsnappy-dev
+      - libsqlite3-dev
+      - libssl-dev
+      - libtool
+      - netcat-openbsd
+      - pkg-config
+      - sudo
+      - unzip
+      - wget
 #      - ruby
 #      - rubygems
 
