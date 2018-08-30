@@ -167,7 +167,9 @@ if args.win7:
 
 # Ensure that we find the watchman we built in the tests
 if args.watchman_path:
+    args.watchman_path = os.path.realpath(args.watchman_path)
     bin_dir = os.path.dirname(args.watchman_path)
+    os.environ["WATCHMAN_BINARY"] = args.watchman_path
 else:
     bin_dir = os.path.dirname(__file__)
 
