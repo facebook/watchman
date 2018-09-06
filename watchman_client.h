@@ -5,8 +5,12 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "Logging.h"
+#include "watchman_pdu.h"
+#include "watchman_perf.h"
 #include "watchman_synchronized.h"
 
+struct w_query;
+struct w_query_res;
 struct watchman_client_subscription;
 
 namespace watchman {

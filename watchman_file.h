@@ -2,6 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 
+#include "FileInformation.h"
+
 struct watchman_file {
   /* the parent dir */
   watchman_dir *parent;
