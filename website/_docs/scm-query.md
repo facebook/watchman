@@ -99,7 +99,7 @@ for the query:
 $ watchman -j <<-EOT
 ["query", "/path/to/root", {
   "since": {
-      scm: {
+      "scm": {
         "mergebase-with": "master"
       }
   },
