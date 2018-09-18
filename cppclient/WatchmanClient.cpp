@@ -105,8 +105,8 @@ Future<SubscriptionPtr> WatchmanClient::subscribe(
     query["relative_root"] = *(path->relativePath_);
   }
   return run(dynamic::array("subscribe", path->root_, name, query))
-      .then([subscription = std::move(subscription), name = name]
-          (dynamic data) {
+      .thenValue([subscription = std::move(subscription),
+                  name = name](dynamic data) {
         CHECK(data["subscribe"] == name)
             << "Unexpected response to subscribe request " << data;
         return subscription;

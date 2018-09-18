@@ -130,26 +130,24 @@ void WatchmanConnection::connectSuccess() noexcept {
     sock_->setReadCB(this);
     sock_->setCloseOnExec();
 
-    run(versionCmd_).then(
-      [shared_this=shared_from_this()] (dynamic&& result) {
-        // If there is no "capabilities" key then the version of
-        // watchman is too old; treat this as an error
-        if (!result.get_ptr(kCapabilities)) {
-          result["error"] =
-              "This watchman server has no support for capabilities, "
-              "please upgrade to the current stable version of watchman";
-          shared_this->connectPromise_.setTry(
-            shared_this->watchmanResponseToTry(std::move(result)));
-          return;
-        }
-        shared_this->connectPromise_.setValue(std::move(result));
-      }
-    ).onError(
-      [shared_this=shared_from_this()]
-      (const folly::exception_wrapper& e) {
-        shared_this->connectPromise_.setException(e);
-      }
-    );
+    run(versionCmd_)
+        .thenValue([shared_this = shared_from_this()](dynamic&& result) {
+          // If there is no "capabilities" key then the version of
+          // watchman is too old; treat this as an error
+          if (!result.get_ptr(kCapabilities)) {
+            result["error"] =
+                "This watchman server has no support for capabilities, "
+                "please upgrade to the current stable version of watchman";
+            shared_this->connectPromise_.setTry(
+                shared_this->watchmanResponseToTry(std::move(result)));
+            return;
+          }
+          shared_this->connectPromise_.setValue(std::move(result));
+        })
+        .onError([shared_this =
+                      shared_from_this()](const folly::exception_wrapper& e) {
+          shared_this->connectPromise_.setException(e);
+        });
   } catch(const std::exception& e) {
     connectPromise_.setException(
       folly::exception_wrapper(std::current_exception(), e));
