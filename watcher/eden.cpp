@@ -1,15 +1,18 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman.h"
 #include <folly/String.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseManager.h>
 #include <thrift/lib/cpp/async/TAsyncSocket.h>
 #include <thrift/lib/cpp2/async/HeaderClientChannel.h>
 #include <algorithm>
+#include <chrono>
+#include <thread>
 #include "eden/fs/service/gen-cpp2/StreamingEdenService.h"
 #include "thirdparty/wildmatch/wildmatch.h"
-#include "watchman.h"
+#include "watchman_error_category.h"
 
 #include "ChildProcess.h"
 #include "LRUCache.h"
@@ -116,6 +119,40 @@ std::string readLink(const std::string& path) {
       watchman::to<std::string>("readlink(", path, ") failed"));
 }
 
+/** Execute a functor, retrying it if we encounter an ESTALE exception.
+ * Ideally ESTALE wouldn't happen but we've been unable to figure out
+ * exactly what is happening on the Eden side so far, and it is more
+ * expedient to add a basic retry to ensure smoother operation
+ * for watchman clients. */
+template <typename FUNC>
+auto retryEStale(FUNC&& func) {
+  constexpr size_t kNumRetries = 5;
+  std::chrono::milliseconds backoff(1);
+  for (size_t retryAttemptsRemaining = kNumRetries; retryAttemptsRemaining >= 0;
+       --retryAttemptsRemaining) {
+    try {
+      return func();
+    } catch (const std::system_error& exc) {
+      if (exc.code() != error_code::stale_file_handle ||
+          retryAttemptsRemaining == 0) {
+        throw;
+      }
+      // Try again
+      log(ERR,
+          "Got ESTALE error from eden; will retry ",
+          retryAttemptsRemaining,
+          " more times. (",
+          exc.what(),
+          ")\n");
+      /* sleep override */ std::this_thread::sleep_for(backoff);
+      backoff *= 2;
+      continue;
+    }
+  }
+  throw std::runtime_error(
+      "unreachable line reached; should have thrown an ESTALE");
+}
+
 /** Create a thrift client that will connect to the eden server associated
  * with the current user. */
 std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
@@ -126,15 +163,17 @@ std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
   folly::SocketAddress addr;
   auto path = watchman::to<std::string>(rootPath, "/.eden/socket");
 
-  // It is important to resolve the link because the path in the eden mount
-  // may exceed the maximum permitted unix domain socket path length.
-  // This is actually how things our in our integration test environment.
-  auto socketPath = readLink(path);
-  addr.setFromPath(socketPath);
+  return retryEStale([&] {
+    // It is important to resolve the link because the path in the eden mount
+    // may exceed the maximum permitted unix domain socket path length.
+    // This is actually how things our in our integration test environment.
+    auto socketPath = readLink(path);
+    addr.setFromPath(socketPath);
 
-  return std::make_unique<StreamingEdenServiceAsyncClient>(
-      apache::thrift::HeaderClientChannel::newChannel(
-          apache::thrift::async::TAsyncSocket::newSocket(eb, addr)));
+    return std::make_unique<StreamingEdenServiceAsyncClient>(
+        apache::thrift::HeaderClientChannel::newChannel(
+            apache::thrift::async::TAsyncSocket::newSocket(eb, addr)));
+  });
 }
 
 class EdenFileResult : public FileResult {
