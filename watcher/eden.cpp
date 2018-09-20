@@ -7,6 +7,7 @@
 #include <folly/io/async/EventBaseManager.h>
 #include <thrift/lib/cpp/async/TAsyncSocket.h>
 #include <thrift/lib/cpp2/async/HeaderClientChannel.h>
+#include <thrift/lib/cpp2/async/RSocketClientChannel.h>
 #include <algorithm>
 #include <chrono>
 #include <thread>
@@ -19,6 +20,7 @@
 #include "QueryableView.h"
 #include "ThreadPool.h"
 
+using apache::thrift::async::TAsyncSocket;
 using facebook::eden::EdenError;
 using facebook::eden::FileDelta;
 using facebook::eden::FileInformation;
@@ -153,26 +155,47 @@ auto retryEStale(FUNC&& func) {
       "unreachable line reached; should have thrown an ESTALE");
 }
 
-/** Create a thrift client that will connect to the eden server associated
- * with the current user. */
-std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
-    w_string_piece rootPath,
-    folly::EventBase* eb = folly::EventBaseManager::get()->getEventBase()) {
+folly::SocketAddress getEdenSocketAddress(w_string_piece rootPath) {
   // Resolve the eden socket; we use the .eden dir that is present in
   // every dir of an eden mount.
   folly::SocketAddress addr;
   auto path = watchman::to<std::string>(rootPath, "/.eden/socket");
 
+  // It is important to resolve the link because the path in the eden mount
+  // may exceed the maximum permitted unix domain socket path length.
+  // This is actually how things our in our integration test environment.
+  auto socketPath = readLink(path);
+  addr.setFromPath(socketPath);
+  return addr;
+}
+
+/** Create a thrift client that will connect to the eden server associated
+ * with the current user. */
+std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
+    w_string_piece rootPath,
+    folly::EventBase* eb = folly::EventBaseManager::get()->getEventBase()) {
   return retryEStale([&] {
-    // It is important to resolve the link because the path in the eden mount
-    // may exceed the maximum permitted unix domain socket path length.
-    // This is actually how things our in our integration test environment.
-    auto socketPath = readLink(path);
-    addr.setFromPath(socketPath);
+    auto addr = getEdenSocketAddress(rootPath);
 
     return std::make_unique<StreamingEdenServiceAsyncClient>(
         apache::thrift::HeaderClientChannel::newChannel(
-            apache::thrift::async::TAsyncSocket::newSocket(eb, addr)));
+            TAsyncSocket::newSocket(eb, addr)));
+  });
+}
+
+/** Create a thrift client that will connect to the eden server associated
+ * with the current user.
+ * This particular client uses the RSocketClientChannel channel that
+ * is required to use the new thrift streaming protocol. */
+std::unique_ptr<StreamingEdenServiceAsyncClient> getRSocketEdenClient(
+    w_string_piece rootPath,
+    folly::EventBase* eb = folly::EventBaseManager::get()->getEventBase()) {
+  return retryEStale([&] {
+    auto addr = getEdenSocketAddress(rootPath);
+
+    return std::make_unique<StreamingEdenServiceAsyncClient>(
+        apache::thrift::RSocketClientChannel::newChannel(
+            TAsyncSocket::UniquePtr(new TAsyncSocket(eb, addr))));
   });
 }
 
@@ -1087,6 +1110,98 @@ class EdenView : public QueryableView {
     lastCookiePosition_ = delta.toPosition;
   }
 
+  std::unique_ptr<StreamingEdenServiceAsyncClient> legacySubscribe(
+      std::shared_ptr<w_root_t> root,
+      SettleCallback& settleCallback,
+      std::chrono::milliseconds& settleTimeout) {
+    // Connect up the client
+    auto client = getEdenClient(root->root_path, &subscriberEventBase_);
+
+    // This is called each time we get pushed an update by the eden server
+    auto onUpdate = [&](apache::thrift::ClientReceiveState&& state) mutable {
+      if (!state.isStreamEnd()) {
+        try {
+          JournalPosition pos;
+          StreamingEdenServiceAsyncClient::recv_subscribe(pos, state);
+
+          if (settleCallback.isScheduled()) {
+            watchman::log(watchman::DBG, "reschedule settle timeout\n");
+            settleCallback.cancelTimeout();
+          }
+          subscriberEventBase_.timer().scheduleTimeout(
+              &settleCallback, settleTimeout);
+
+          // We need to process cookie files with the lowest possible
+          // latency, so we consume that information now
+          checkCookies(root);
+
+        } catch (const std::exception& exc) {
+          watchman::log(
+              watchman::ERR,
+              "error while receiving subscription; cancel watch: ",
+              exc.what(),
+              "\n");
+          // make sure we don't get called again
+          subscriberEventBase_.terminateLoopSoon();
+          return;
+        }
+      }
+
+      if (state.isStreamEnd()) {
+        watchman::log(
+            watchman::ERR, "subscription stream ended, cancel watch\n");
+        // We won't be called again, but we terminate the loop just
+        // to make sure.
+        subscriberEventBase_.terminateLoopSoon();
+        return;
+      }
+    };
+
+    // Establish the subscription stream
+    client->subscribe(
+        onUpdate, std::string(root->root_path.data(), root->root_path.size()));
+
+    return client;
+  }
+
+  std::unique_ptr<StreamingEdenServiceAsyncClient> rSocketSubscribe(
+      std::shared_ptr<w_root_t> root,
+      SettleCallback& settleCallback,
+      std::chrono::milliseconds& settleTimeout) {
+    auto client = getRSocketEdenClient(root->root_path, &subscriberEventBase_);
+    auto stream = client->sync_subscribeStreamTemporary(
+        std::string(root->root_path.data(), root->root_path.size()));
+    auto streamFuture =
+        std::move(stream)
+            .via(&subscriberEventBase_)
+            .subscribe(
+                [&](const JournalPosition&) {
+                  if (settleCallback.isScheduled()) {
+                    watchman::log(DBG, "reschedule settle timeout\n");
+                    settleCallback.cancelTimeout();
+                  }
+                  subscriberEventBase_.timer().scheduleTimeout(
+                      &settleCallback, settleTimeout);
+
+                  // We need to process cookie files with the lowest
+                  // possible latency, so we consume that information now
+                  checkCookies(root);
+                },
+                [&](folly::exception_wrapper e) {
+                  auto reason = folly::exceptionStr(std::move(e));
+                  watchman::log(
+                      ERR,
+                      "subscription stream ended: ",
+                      w_string_piece(reason.data(), reason.size()),
+                      ", cancel watch\n");
+                  // We won't be called again, but we terminate the loop
+                  // just to make sure.
+                  subscriberEventBase_.terminateLoopSoon();
+                })
+            .futureJoin();
+    return client;
+  }
+
   // This is the thread that we use to listen to the stream of
   // changes coming in from the Eden server
   void subscriberThread(std::shared_ptr<w_root_t> root) noexcept {
@@ -1104,54 +1219,24 @@ class EdenView : public QueryableView {
       SettleCallback settleCallback(&subscriberEventBase_, root);
       // Figure out the correct value for settling
       std::chrono::milliseconds settleTimeout(root->trigger_settle);
+      std::unique_ptr<StreamingEdenServiceAsyncClient> client;
 
-      // Connect up the client
-      auto client = getEdenClient(root->root_path, &subscriberEventBase_);
-
-      // This is called each time we get pushed an update by the eden server
-      auto onUpdate = [&](apache::thrift::ClientReceiveState&& state) mutable {
-        if (!state.isStreamEnd()) {
-          try {
-            JournalPosition pos;
-            StreamingEdenServiceAsyncClient::recv_subscribe(pos, state);
-
-            if (settleCallback.isScheduled()) {
-              watchman::log(watchman::DBG, "reschedule settle timeout\n");
-              settleCallback.cancelTimeout();
-            }
-            subscriberEventBase_.timer().scheduleTimeout(
-                &settleCallback, settleTimeout);
-
-            // We need to process cookie files with the lowest possible
-            // latency, so we consume that information now
-            checkCookies(root);
-
-          } catch (const std::exception& exc) {
-            watchman::log(
-                watchman::ERR,
-                "error while receiving subscription; cancel watch: ",
-                exc.what(),
-                "\n");
-            // make sure we don't get called again
-            subscriberEventBase_.terminateLoopSoon();
-            return;
-          }
-        }
-
-        if (state.isStreamEnd()) {
+      try {
+        client = rSocketSubscribe(root, settleCallback, settleTimeout);
+      } catch (const apache::thrift::TApplicationException& exc) {
+        if (exc.getType() ==
+            apache::thrift::TApplicationException::UNKNOWN_METHOD) {
+          // Fall back to the older subscription stuff
           watchman::log(
-              watchman::ERR, "subscription stream ended, cancel watch\n");
-          // We won't be called again, but we terminate the loop just
-          // to make sure.
-          subscriberEventBase_.terminateLoopSoon();
-          return;
+              watchman::ERR,
+              "Error while establishing rsocket subscription: ",
+              exc.what(),
+              ", falling back on legacy subscription\n");
+          client = legacySubscribe(root, settleCallback, settleTimeout);
+        } else {
+          throw;
         }
-      };
-
-      // Establish the subscription stream
-      client->subscribe(
-          onUpdate,
-          std::string(root->root_path.data(), root->root_path.size()));
+      }
 
       // This will run until the stream ends
       subscriberEventBase_.loop();
