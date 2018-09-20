@@ -24,6 +24,7 @@ enum class error_code {
   timed_out,
   not_a_symlink,
   is_a_directory,
+  stale_file_handle,
 };
 
 // An error category implementation that is present for comparison purposes
