@@ -46,11 +46,10 @@ enum class sub_action { no_sync_needed, execute, defer, drop };
 
 static std::tuple<sub_action, w_string> get_subscription_action(
     struct watchman_client_subscription* sub,
-    const std::shared_ptr<w_root_t>& root) {
+    const std::shared_ptr<w_root_t>& root,
+    ClockPosition position) {
   auto action = sub_action::execute;
   w_string policy_name;
-
-  auto position = root->view()->getMostRecentRootNumberAndTickValue();
 
   watchman::log(
       watchman::DBG,
@@ -114,14 +113,14 @@ void watchman_client_subscription::processSubscription() {
 
   sub_action action;
   w_string policy_name;
-  std::tie(action, policy_name) = get_subscription_action(this, root);
+  auto position = root->view()->getMostRecentRootNumberAndTickValue();
+  std::tie(action, policy_name) = get_subscription_action(this, root, position);
 
   if (action != sub_action::no_sync_needed) {
     bool executeQuery = true;
 
     if (action == sub_action::drop) {
       // fast-forward over any notifications while in the drop state
-      auto position = root->view()->getMostRecentRootNumberAndTickValue();
       last_sub_tick = position.ticks;
       query->since_spec = watchman::make_unique<ClockSpec>(position);
       watchman::log(
@@ -379,10 +378,11 @@ static void cmd_flush_subscriptions(
 
     sub_action action;
     w_string policy_name;
-    std::tie(action, policy_name) = get_subscription_action(sub.get(), root);
+    auto position = root->view()->getMostRecentRootNumberAndTickValue();
+    std::tie(action, policy_name) =
+        get_subscription_action(sub.get(), root, position);
 
     if (action == sub_action::drop) {
-      auto position = root->view()->getMostRecentRootNumberAndTickValue();
       sub->last_sub_tick = position.ticks;
       sub->query->since_spec = watchman::make_unique<ClockSpec>(position);
       watchman::log(
