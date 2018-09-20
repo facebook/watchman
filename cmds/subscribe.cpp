@@ -1,8 +1,9 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "MapUtil.h"
 #include "watchman.h"
+#include "MapUtil.h"
+#include "watchman_error_category.h"
 
 using namespace watchman;
 
@@ -103,6 +104,28 @@ static std::tuple<sub_action, w_string> get_subscription_action(
 }
 
 void watchman_client_subscription::processSubscription() {
+  try {
+    processSubscriptionImpl();
+  } catch (const std::system_error& exc) {
+    if (exc.code() == error_code::stale_file_handle) {
+      // This can happen if, for example, the Eden filesystem got into
+      // a weird state without fully unmounting from the VFS.
+      // In this situation we're getting a signal that the root is no longer
+      // valid so the correct action is to cancel the watch.
+      log(ERR,
+          "While processing subscriptions for ",
+          root->root_path,
+          " got: ",
+          exc.what(),
+          ".  Cancel watch\n");
+      root->cancel();
+    } else {
+      throw;
+    }
+  }
+}
+
+void watchman_client_subscription::processSubscriptionImpl() {
   auto client = lockClient();
   if (!client) {
     watchman::log(

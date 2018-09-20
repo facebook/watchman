@@ -103,6 +103,7 @@ struct watchman_client_subscription
       watchman_user_client* client,
       const std::shared_ptr<w_root_t>& root);
   void updateSubscriptionTicks(w_query_res* res);
+  void processSubscriptionImpl();
 };
 
 // Represents the server side session maintained for a client of
