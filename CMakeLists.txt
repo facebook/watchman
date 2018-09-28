@@ -6,8 +6,14 @@ enable_testing()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
+set(PACKAGE_VERSION "4.9.4")
+set(WATCHMAN_VERSION_OVERRIDE "" CACHE STRING "Use this version code for \
+Watchman instead of the default (${PACKAGE_VERSION})")
+if (WATCHMAN_VERSION_OVERRIDE)
+  set(PACKAGE_VERSION "${WATCHMAN_VERSION_OVERRIDE}")
+endif ()
+
 set(PACKAGE_NAME      "watchman")
-set(PACKAGE_VERSION   "4.9.4")
 set(PACKAGE_STRING    "${PACKAGE_NAME} ${PACKAGE_VERSION}")
 set(PACKAGE_TARNAME   "${PACKAGE_NAME}-${PACKAGE_VERSION}")
 set(PACKAGE_BUGREPORT "https://github.com/facebook/watchman/issues")
