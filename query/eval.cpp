@@ -101,20 +101,36 @@ void w_query_process_file(
   ctx->maybeRender(std::move(ctx->file));
 }
 
-bool w_query_ctx::fileMatchesRelativeRoot(const watchman_file* f) {
-  bool result;
-
+bool w_query_ctx::dirMatchesRelativeRoot(w_string_piece fullDirectoryPath) {
   if (!query->relative_root) {
     return true;
   }
 
-  auto parent_path = f->parent->getFullPath();
-  // "matches relative root" here does not mean exactly the relative root, so
-  // compare against the relative root's parent.
-  result = parent_path == query->relative_root ||
-      w_string_startswith(parent_path, query->relative_root_slash);
+  // "matches relative root" here can be either an exact match for
+  // the relative root, or some path below it, so we compare against
+  // both.  relative_root_slash is a precomputed version of relative_root
+  // with the trailing slash to make this comparison very slightly cheaper
+  // and less awkward to express in code.
+  return fullDirectoryPath == query->relative_root ||
+      fullDirectoryPath.startsWith(query->relative_root_slash);
+}
 
-  return result;
+bool w_query_ctx::fileMatchesRelativeRoot(w_string_piece fullFilePath) {
+  // dirName() scans the string contents; avoid it with this cheap test
+  if (!query->relative_root) {
+    return true;
+  }
+
+  return dirMatchesRelativeRoot(fullFilePath.dirName());
+}
+
+bool w_query_ctx::fileMatchesRelativeRoot(const watchman_file* f) {
+  // getFullPath() allocates memory; avoid it with this cheap test
+  if (!query->relative_root) {
+    return true;
+  }
+
+  return dirMatchesRelativeRoot(f->parent->getFullPath());
 }
 
 void time_generator(

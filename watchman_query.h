@@ -234,9 +234,21 @@ struct w_query_ctx {
   w_string computeWholeName(FileResult* file) const;
 
   // Returns true if the filename associated with `f` matches
-  // the relative_root constraint set on the query.  If no
-  // relative_root is set, always returns true.
+  // the relative_root constraint set on the query.
+  // Delegates to dirMatchesRelativeRoot().
   bool fileMatchesRelativeRoot(const watchman_file* f);
+
+  // Returns true if the path to the specified file matches the
+  // relative_root constraint set on the query.  fullFilePath is
+  // a fully qualified absolute path to the file.
+  // Delegates to dirMatchesRelativeRoot.
+  bool fileMatchesRelativeRoot(w_string_piece fullFilePath);
+
+  // Returns true if the directory path matches the relative_root
+  // constraint set on the query.  fullDirectoryPath is a fully
+  // qualified absolute path to a directory.
+  // If relative_root is not set, always returns true.
+  bool dirMatchesRelativeRoot(w_string_piece fullDirectoryPath);
 
  private:
   // Number of files considered as part of running this query

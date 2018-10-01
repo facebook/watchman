@@ -532,13 +532,7 @@ static std::string escapeGlobSpecialChars(w_string_piece str) {
  * moment we have to filter it out of the results.
  * We need to respect the ignore_dirs configuration setting and
  * also remove anything that doesn't match the relative_root constraint
- * in the query.  The InMemoryView uses w_query_file_matches_relative_root()
- * for that purpose, but it cannot be re-used here because it operates
- * on the InMemoryView specific file representation that we can't recreate
- * here because of fundamental differences between the two watchers, and
- * also because we want to avoid materializing more information about the
- * file if we're just going to filter it out anyway.
- */
+ * in the query. */
 void filterOutPaths(std::vector<std::string>& fileNames, w_query_ctx* ctx) {
   fileNames.erase(
       std::remove_if(
@@ -547,14 +541,9 @@ void filterOutPaths(std::vector<std::string>& fileNames, w_query_ctx* ctx) {
           [ctx](const std::string& name) {
             auto full = w_string::pathCat({ctx->root->root_path, name});
 
-            if (ctx->query->relative_root) {
-              auto parentPath = w_string_piece(full).dirName();
-
-              if (!(parentPath == ctx->query->relative_root ||
-                    parentPath.startsWith(ctx->query->relative_root_slash))) {
-                // Not in the desired area, so filter it out
-                return true;
-              }
+            if (!ctx->fileMatchesRelativeRoot(full)) {
+              // Not in the desired area, so filter it out
+              return true;
             }
 
             return ctx->root->ignore.isIgnored(full.data(), full.size());
