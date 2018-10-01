@@ -1234,10 +1234,30 @@ class EdenView : public QueryableView {
               "Error while establishing rsocket subscription: ",
               exc.what(),
               ", falling back on legacy subscription\n");
-          client = legacySubscribe(root, settleCallback, settleTimeout);
         } else {
           throw;
         }
+      } catch (const apache::thrift::transport::TTransportException& exc) {
+        if (exc.getType() !=
+            apache::thrift::transport::TTransportException::TIMED_OUT) {
+          throw;
+        }
+        // This can happen when the running eden server is the -oss flavor
+        // of the build.  rSocket doesn't appear to respond except with a
+        // timeout, even if we retry or increase the timeout.  We have no
+        // choice but to use the legacy subscription stream.
+        watchman::log(
+            watchman::ERR,
+            "Error while establishing rsocket subscription; "
+            "server does not appear to support rSocket: ",
+            exc.what(),
+            ", falling back on legacy subscription\n");
+      }
+
+      // Client should only be nullptr if we hit one of the fallback cases
+      // above.
+      if (!client) {
+        client = legacySubscribe(root, settleCallback, settleTimeout);
       }
 
       // This will run until the stream ends
