@@ -101,20 +101,18 @@ void w_query_process_file(
   ctx->maybeRender(std::move(ctx->file));
 }
 
-bool w_query_file_matches_relative_root(
-    struct w_query_ctx* ctx,
-    const watchman_file* f) {
+bool w_query_ctx::fileMatchesRelativeRoot(const watchman_file* f) {
   bool result;
 
-  if (!ctx->query->relative_root) {
+  if (!query->relative_root) {
     return true;
   }
 
   auto parent_path = f->parent->getFullPath();
-  // "in relative root" here does not mean exactly the relative root, so compare
-  // against the relative root's parent.
-  result = w_string_equal(parent_path, ctx->query->relative_root) ||
-      w_string_startswith(parent_path, ctx->query->relative_root_slash);
+  // "matches relative root" here does not mean exactly the relative root, so
+  // compare against the relative root's parent.
+  result = parent_path == query->relative_root ||
+      w_string_startswith(parent_path, query->relative_root_slash);
 
   return result;
 }

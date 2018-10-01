@@ -233,6 +233,11 @@ struct w_query_ctx {
 
   w_string computeWholeName(FileResult* file) const;
 
+  // Returns true if the filename associated with `f` matches
+  // the relative_root constraint set on the query.  If no
+  // relative_root is set, always returns true.
+  bool fileMatchesRelativeRoot(const watchman_file* f);
+
  private:
   // Number of files considered as part of running this query
   int64_t numWalked_{0};
@@ -363,10 +368,6 @@ std::shared_ptr<w_query> w_query_parse(
 std::unique_ptr<QueryExpr> w_query_expr_parse(
     w_query* query,
     const json_ref& term);
-
-bool w_query_file_matches_relative_root(
-    struct w_query_ctx* ctx,
-    const watchman_file* file);
 
 // Allows a generator to process a file node
 // through the query engine

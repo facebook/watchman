@@ -542,7 +542,7 @@ void InMemoryView::timeGenerator(w_query* query, struct w_query_ctx* ctx)
       break;
     }
 
-    if (!w_query_file_matches_relative_root(ctx, f)) {
+    if (!ctx->fileMatchesRelativeRoot(f)) {
       continue;
     }
 
@@ -566,7 +566,7 @@ void InMemoryView::suffixGenerator(w_query* query, struct w_query_ctx* ctx)
     // Walk and process
     for (f = it->second->head; f; f = f->suffix_next) {
       ctx->bumpNumWalked();
-      if (!w_query_file_matches_relative_root(ctx, f)) {
+      if (!ctx->fileMatchesRelativeRoot(f)) {
         continue;
       }
 
@@ -675,7 +675,7 @@ void InMemoryView::allFilesGenerator(w_query* query, struct w_query_ctx* ctx)
 
   for (f = view->latest_file; f; f = f->next) {
     ctx->bumpNumWalked();
-    if (!w_query_file_matches_relative_root(ctx, f)) {
+    if (!ctx->fileMatchesRelativeRoot(f)) {
       continue;
     }
 
