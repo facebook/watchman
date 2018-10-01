@@ -5,11 +5,9 @@ namespace watchman {
 
 LocalFileResult::LocalFileResult(
     const std::shared_ptr<w_root_t>& root,
-    w_string_piece path,
+    w_string fullPath,
     w_clock_t clock)
-    : root_(root),
-      fullPath_(w_string::pathCat({root_->root_path, path})),
-      clock_(clock) {}
+    : root_(root), fullPath_(fullPath), clock_(clock) {}
 
 void LocalFileResult::getInfo() {
   if (info_.has_value()) {

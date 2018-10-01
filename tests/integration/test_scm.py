@@ -478,6 +478,30 @@ o  changeset:   0:b08db10380dd
         )
         self.assertFileListsEqual(res["files"], ["a/b/c/f1"])
 
+        # verify behavior of relative_root with a bogus prefix
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {
+                "relative_root": "bogus",
+                "fields": ["name"],
+                "since": {"scm": {"mergebase": "", "mergebase-with": "TheMaster"}},
+            },
+        )
+        self.assertFileListsEqual(res["files"], [])
+
+        # verify behavior of relative_root with a matching prefix
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {
+                "relative_root": "a",
+                "fields": ["name"],
+                "since": {"scm": {"mergebase": "", "mergebase-with": "TheMaster"}},
+            },
+        )
+        self.assertFileListsEqual(res["files"], ["b/c/f1"])
+
         # Sanity check that the mergebase cache is basically working.
         # Ideally we'd check for a single miss in the server instance log, but
         # since we may run variations on this same test against the same instance,

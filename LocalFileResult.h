@@ -22,7 +22,7 @@ class LocalFileResult : public FileResult {
  public:
   LocalFileResult(
       const std::shared_ptr<w_root_t>& root_,
-      w_string_piece path,
+      w_string fullPath,
       w_clock_t clock);
 
   // Returns stat-like information about this file.  If the file doesn't

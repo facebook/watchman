@@ -398,6 +398,11 @@ w_query_res w_query_execute(
           time(&clock.timestamp);
           for (auto& pathEntry : pathList.array()) {
             auto path = json_to_w_string(pathEntry);
+
+            auto fullPath = w_string::pathCat({r->root_path, path});
+            if (!c->fileMatchesRelativeRoot(fullPath)) {
+              continue;
+            }
             // Note well!  At the time of writing the LocalFileResult class
             // assumes that removed entries must have been regular files.
             // We don't have enough information returned from
@@ -406,7 +411,9 @@ w_query_res w_query_execute(
             // to see a directory returned from that call; we're only going
             // to enumerate !dirs for this case.
             w_query_process_file(
-                q, c, watchman::make_unique<LocalFileResult>(r, path, clock));
+                q,
+                c,
+                watchman::make_unique<LocalFileResult>(r, fullPath, clock));
           }
         };
       }
