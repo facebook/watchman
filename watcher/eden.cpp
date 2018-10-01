@@ -1175,7 +1175,9 @@ class EdenView : public QueryableView {
         std::move(stream)
             .via(&subscriberEventBase_)
             .subscribe(
-                [&](const JournalPosition&) {
+                [&settleCallback, this, root, settleTimeout](
+                    const JournalPosition&) {
+                  watchman::log(DBG, "Got subscription push from eden\n");
                   if (settleCallback.isScheduled()) {
                     watchman::log(DBG, "reschedule settle timeout\n");
                     settleCallback.cancelTimeout();
@@ -1187,7 +1189,7 @@ class EdenView : public QueryableView {
                   // possible latency, so we consume that information now
                   checkCookies(root);
                 },
-                [&](folly::exception_wrapper e) {
+                [this](folly::exception_wrapper e) {
                   auto reason = folly::exceptionStr(std::move(e));
                   watchman::log(
                       ERR,
