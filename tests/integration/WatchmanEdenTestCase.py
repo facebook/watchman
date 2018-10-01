@@ -35,6 +35,8 @@ except ImportError as e:
 
 class WatchmanEdenTestCase(TestParent):
     def setUp(self):
+        super(WatchmanEdenTestCase, self).setUp()
+
         # the eden home directory.  We use the global dir for the test runner
         # rather than one scoped to the test because we have very real length
         # limits on the socket path name that we're likely to hit otherwise.
@@ -84,6 +86,8 @@ class WatchmanEdenTestCase(TestParent):
 
         if self.eden_watchman:
             self.eden_watchman.stop()
+
+        super(WatchmanEdenTestCase, self).tearDown()
 
     def cleanUpWatches(self):
         roots = self.watchmanCommand("watch-list")["roots"]

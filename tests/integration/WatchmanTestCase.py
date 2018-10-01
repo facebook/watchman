@@ -120,11 +120,13 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
             self.skipTest(reason)
 
     def setUp(self):
+        super(WatchmanTestCase, self).setUp()
         self.checkPersistentSession()
         self.checkOSApplicability()
 
     def tearDown(self):
         self.__clearClient()
+        super(WatchmanTestCase, self).tearDown()
 
     def getClient(self, inst=None, replace_cached=False, no_cache=False):
         if inst or not hasattr(self, "client") or no_cache:
