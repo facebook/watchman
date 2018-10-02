@@ -31,7 +31,9 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
         env = os.environ.copy()
         sock_path = WatchmanInstance.getSharedInstance().getSockPath()
         env["WATCHMAN_SOCK"] = sock_path
-        env["PYTHONPATH"] = env["PYWATCHMAN_PATH"]
+        pywatchman_path = env.get("PYWATCHMAN_PATH")
+        if pywatchman_path:
+            env["PYTHONPATH"] = pywatchman_path
         return subprocess.Popen(
             args, env=env, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
