@@ -1,18 +1,46 @@
 defaults: &defaults
   working_directory: ~/repo
   steps:
-    - checkout
     - run:
         name: Install dependencies
-        command: apt-get update && apt-get install cmake libtool m4 automake npm -y
+        command: |
+          apt-get update
+          apt-get install -yq ccache libtool m4 python openssh-client git autoconf-archive bison build-essential cmake curl flex git gperf joe libboost-all-dev libcap-dev libdouble-conversion-dev libevent-dev libgflags-dev libgoogle-glog-dev libkrb5-dev libpcre3-dev libnuma-dev libsasl2-dev libsnappy-dev libsqlite3-dev libssl-dev libtool netcat-openbsd pkg-config sudo unzip wget libpthread-stubs0-dev
+    - restore_cache:
+        keys:
+          - build-linux-debug-{{ arch }}-{{ .Branch }}-
+          - build-linux-debug-{{ arch }}-
+          - build-linux-debug-
+        paths:
+          - ~/.ccache
+          - ~/cmake-3.6.2-Linux-x86_64
     - run:
-        environment:
-          USE_CMAKE: 1
-        command: ./travis/run.sh
+        name: Get newer cmake
+        command: |
+            if [ ! -d ~/cmake-3.6.2-Linux-x86_64 ]; then
+              echo "No cache - building CMake"
+              cd ~
+              wget --quiet https://cmake.org/files/v3.6/cmake-3.6.2-Linux-x86_64.tar.gz
+              tar -xvf cmake-3.6.2-Linux-x86_64.tar.gz
+            else
+              echo "Cached CMake found"
+            fi
+    - checkout
     - run:
-        environment:
-          USE_CMAKE: 0
-        command: ./travis/run.sh
+        name: Run build
+        command: |
+          export PATH=$HOME/cmake-3.6.2-Linux-x86_64/bin:$PATH
+          export CCACHE_DIR=$HOME/.ccache
+          mkdir -p $CCACHE_DIR
+          cd build
+          python fbcode_builder/shell_builder.py > ~/run.sh
+          bash ~/run.sh
+    - save_cache:
+        key: build-linux-debug-{{ arch }}-{{ .Branch }}-{{ epoch }}
+        paths:
+          - ~/.ccache
+          - ~/cmake-3.6.2-Linux-x86_64
+        when: always
 
 version: 2
 jobs:
