@@ -19,7 +19,9 @@ pub const BSER_UTF8STRING: u8 = 0x0d;
 
 // Capabilities (we would ideally want to use EnumSet here, but
 // https://github.com/contain-rs/enum-set/issues/21 stops us)
+#[allow(unused)]
 pub const BSER_CAP_DISABLE_UNICODE: u8 = 0x01;
+#[allow(unused)]
 pub const BSER_CAP_DISABLE_UNICODE_FOR_ERRORS: u8 = 0x02;
 
 pub fn header_byte_desc(byte: u8) -> String {

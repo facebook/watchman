@@ -4,7 +4,6 @@ mod test;
 
 use std::io;
 
-use byteorder::NativeEndian;
 use bytes::BufMut;
 use serde::ser::{self, Serialize};
 
@@ -124,21 +123,30 @@ where
     fn put_i16(&mut self, v: i16) {
         maybe_put_int!(self, v, i8, put_i8);
         self.scratch.push(BSER_INT16);
-        self.scratch.put_i16::<NativeEndian>(v);
+        #[cfg(target_endian = "little")]
+        self.scratch.put_i16_le(v);
+        #[cfg(target_endian = "big")]
+        self.scratch.put_i16_be(v);
     }
 
     #[inline]
     fn put_i32(&mut self, v: i32) {
         maybe_put_int!(self, v, i16, put_i16);
         self.scratch.push(BSER_INT32);
-        self.scratch.put_i32::<NativeEndian>(v);
+        #[cfg(target_endian = "little")]
+        self.scratch.put_i32_le(v);
+        #[cfg(target_endian = "big")]
+        self.scratch.put_i32_be(v);
     }
 
     #[inline]
     fn put_i64(&mut self, v: i64) {
         maybe_put_int!(self, v, i32, put_i32);
         self.scratch.push(BSER_INT64);
-        self.scratch.put_i64::<NativeEndian>(v);
+        #[cfg(target_endian = "little")]
+        self.scratch.put_i64_le(v);
+        #[cfg(target_endian = "big")]
+        self.scratch.put_i64_be(v);
     }
 }
 
@@ -237,7 +245,10 @@ where
     fn serialize_f64(self, v: f64) -> Result<()> {
         self.maybe_flush()?;
         self.scratch.push(BSER_REAL);
-        self.scratch.put_f64::<NativeEndian>(v);
+        #[cfg(target_endian = "little")]
+        self.scratch.put_f64_le(v);
+        #[cfg(target_endian = "big")]
+        self.scratch.put_f64_be(v);
         Ok(())
     }
 
