@@ -131,6 +131,8 @@ class AsyncUnixSocketTransport(AsyncTransport):
 
     async def read(self, size):
         res = await self.reader.read(size)
+        if not len(res):
+            raise ConnectionResetError("connection closed")
         return res
 
     def close(self):
@@ -200,6 +202,24 @@ class ReceiveLoopError(Exception):
 
 
 class AIOClient(object):
+    """Create and manage an asyncio Watchman connection.
+
+       Example usage:
+        with await AIOClient.from_socket() as client:
+            res = await client.query(...)
+            # ... use res ...
+            await client.query(
+                'subscribe',
+                root_dir,
+                sub_name,
+                {expression: ..., ...},
+            )
+            while True:
+                sub_update = await client.get_subscription(sub_name, root_dir)
+                # ... process sub_update ...
+    """
+
+    # Don't call this directly use ::from_socket() instead.
     def __init__(self, connection):
         self.connection = connection
         self.log_queue = asyncio.Queue()
@@ -207,9 +227,14 @@ class AIOClient(object):
         self.bilateral_response_queue = asyncio.Queue()
         self.recieive_task = None
         self.receive_task_exception = None
+        self._closed = False
 
-    def stop(self):
-        self.should_stop = True
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+        return False
 
     async def receive_bilateral_response(self):
         """Receive the response to a request made to the Watchman service."""
@@ -251,15 +276,20 @@ class AIOClient(object):
         """
         self._check_receive_loop()
         self._ensure_subscription_queue_exists(name, root)
-        return await self.sub_by_root[root][name].get()
+        res = await self.sub_by_root[root][name].get()
+        self._check_error(res)
+        return res
 
     async def pop_log(self):
         """Get one log from the log queue."""
         self._check_receive_loop()
-        return await self.log_queue.get()
+        res = self.log_queue.get()
+        self._check_error(res)
+        return res
 
     def close(self):
         """Close the underlying connection."""
+        self._closed = True
         if self.receive_task:
             self.receive_task.cancel()
         if self.connection:
@@ -276,6 +306,7 @@ class AIOClient(object):
                 pass
             except Exception as ex:
                 self.receive_task_exception = ex
+            self.receive_task = None
 
         self.receive_task.add_done_callback(do_if_done)
 
@@ -305,18 +336,35 @@ class AIOClient(object):
         are processed and queued up for later retrieval. This function only
         returns when a non-unilateral response is received."""
 
-        while True:
-            response = await self.connection.receive()
-            if self._is_unilateral(response):
-                await self._process_unilateral_response(response)
-            else:
-                await self.bilateral_response_queue.put(response)
+        try:
+            while True:
+                response = await self.connection.receive()
+                if self._is_unilateral(response):
+                    await self._process_unilateral_response(response)
+                else:
+                    await self.bilateral_response_queue.put(response)
+        except Exception as ex:
+            await self._broadcast_exception(ex)
+            # We may get a cancel exception on close, so don't close again.
+            if not self._closed:
+                self.close()
+
+    async def _broadcast_exception(self, ex):
+        self.bilateral_response_queue.put(ex)
+        self.log_queue.put(ex)
+        for root in self.sub_by_root.values():
+            for sub_queue in root.values():
+                await sub_queue.put(ex)
 
     def _check_error(self, res):
+        if isinstance(res, Exception):
+            raise res
         if "error" in res:
             raise CommandError(res["error"])
 
     def _check_receive_loop(self):
+        if self._closed:
+            raise Exception("Connection has been closed, make a new one to reconnect.")
         if self.receive_task is None:
             raise ReceiveLoopError("Receive loop was not started.")
 
@@ -330,7 +378,7 @@ class AIOClient(object):
 
     async def _process_unilateral_response(self, response):
         if "log" in response:
-            await self.logs.put(response["log"])
+            await self.log_queue.put(response["log"])
 
         elif "subscription" in response:
             sub = response["subscription"]

@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+# vim:ts=4:sw=4:et:
+
+import asyncio
+import os
+import unittest
+
+import pywatchman_aio
+import WatchmanInstance
+
+
+# Note this does not extend AsyncWatchmanTestCase as it wants to start its
+# own Watchman server instances per test.
+class TestDeadSocket(unittest.TestCase):
+    def test_query_dead_socket(self):
+        async def test_core(wminst):
+            with await pywatchman_aio.AIOClient.from_socket(
+                sockname=wminst.getSockPath()
+            ) as client:
+                wminst.stop()
+                with self.assertRaises(ConnectionResetError):
+                    await client.query("version")
+
+        self._async_runner(test_core)
+
+    def test_subscription_dead_socket(self):
+        async def test_core(wminst):
+            with await pywatchman_aio.AIOClient.from_socket(
+                sockname=wminst.getSockPath()
+            ) as client:
+                root = f"{wminst.base_dir}/work"
+                os.makedirs(root)
+                await client.query("watch", root)
+                await client.query("subscribe", root, "sub", {"expression": ["exists"]})
+                wminst.stop()
+                with self.assertRaises(ConnectionResetError):
+                    await client.get_subscription("sub", root)
+
+        self._async_runner(test_core)
+
+    def _async_runner(self, test_core):
+        wminst = WatchmanInstance.Instance()
+        wminst.start()
+        try:
+            return asyncio.new_event_loop().run_until_complete(test_core(wminst))
+        finally:
+            wminst.stop()
