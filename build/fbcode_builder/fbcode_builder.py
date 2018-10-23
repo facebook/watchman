@@ -328,7 +328,7 @@ class FBCodeBuilder(object):
 
     def cmake_configure(self, name, cmake_path='..'):
         cmake_defines = {
-            'BUILD_SHARED_LIBS': 'ON',
+            'BUILD_SHARED_LIBS': 'OFF',
             'CMAKE_INSTALL_PREFIX': self.option('prefix'),
         }
         cmake_defines.update(
@@ -352,7 +352,8 @@ class FBCodeBuilder(object):
     def cmake_install(self, name, cmake_path='..'):
         return self.step(
             'Build and install {0}'.format(name),
-            self.cmake_configure(name, cmake_path) + self.make_and_install()
+            [self.run(ShellQuoted('mkdir _build && cd _build')) ]+
+            self.cmake_configure(name, os.path.join(cmake_path, '..')) + self.make_and_install()
         )
 
     def fb_github_autoconf_install(self, project_and_path, github_org='facebook'):
