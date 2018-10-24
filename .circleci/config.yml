@@ -5,12 +5,10 @@ defaults: &defaults
         name: Install dependencies
         command: |
           apt-get update
-          apt-get install -yq ccache libtool m4 python openssh-client git autoconf-archive bison build-essential cmake curl flex git gperf joe libboost-all-dev libcap-dev libdouble-conversion-dev libevent-dev libgflags-dev libgoogle-glog-dev libkrb5-dev libpcre3-dev libnuma-dev libsasl2-dev libsnappy-dev libsqlite3-dev libssl-dev libtool netcat-openbsd pkg-config sudo unzip wget libpthread-stubs0-dev
+          apt-get install -yq ccache libtool m4 python openssh-client git autoconf-archive bison build-essential curl flex git gperf joe libboost-all-dev libcap-dev libdouble-conversion-dev libevent-dev libgflags-dev libgoogle-glog-dev libkrb5-dev libpcre3-dev libnuma-dev libsasl2-dev libsnappy-dev libsqlite3-dev libssl-dev libtool netcat-openbsd pkg-config sudo unzip wget libpthread-stubs0-dev libidn11
     - restore_cache:
         keys:
-          - build-linux-debug-{{ arch }}-{{ .Branch }}-
-          - build-linux-debug-{{ arch }}-
-          - build-linux-debug-
+          - build-linux-debug-{{ arch }}-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}
         paths:
           - ~/.ccache
           - ~/cmake-3.6.2-Linux-x86_64
@@ -20,6 +18,7 @@ defaults: &defaults
             if [ ! -d ~/cmake-3.6.2-Linux-x86_64 ]; then
               echo "No cache - building CMake"
               cd ~
+              # Note that this requires libidn.so.11
               wget --quiet https://cmake.org/files/v3.6/cmake-3.6.2-Linux-x86_64.tar.gz
               tar -xvf cmake-3.6.2-Linux-x86_64.tar.gz
             else
@@ -36,7 +35,7 @@ defaults: &defaults
           python fbcode_builder/shell_builder.py > ~/run.sh
           bash ~/run.sh
     - save_cache:
-        key: build-linux-debug-{{ arch }}-{{ .Branch }}-{{ epoch }}
+        key: build-linux-debug-{{ arch }}-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}
         paths:
           - ~/.ccache
           - ~/cmake-3.6.2-Linux-x86_64
@@ -47,11 +46,15 @@ jobs:
   build-python27:
     <<: *defaults
     docker:
-      - image: python:2.7-jessie
+      - image: python:2.7-stretch
   build-python36:
     <<: *defaults
     docker:
-      - image: python:3.6-jessie
+      - image: python:3.6-stretch
+  ubuntu-18.04:
+    <<: *defaults
+    docker:
+      - image: ubuntu:18.04
 
 workflows:
   version: 2
@@ -59,3 +62,4 @@ workflows:
     jobs:
       - build-python27
       - build-python36
+      - ubuntu-18.04
