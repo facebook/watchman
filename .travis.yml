@@ -71,6 +71,7 @@ branches:
 matrix:
   include:
     - os: osx
+      osx_image: xcode10
       env: TRAVIS_PYTHON=python2.6 OPENSSL_ROOT_DIR=/usr/local/opt/openssl/
     - os: linux
       env: CXX=g++-6 TRAVIS_PYTHON=python3.6
