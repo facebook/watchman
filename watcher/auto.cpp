@@ -117,7 +117,13 @@ std::shared_ptr<watchman::QueryableView> WatcherRegistry::initWatcher(
       // in this case
       break;
     } catch (const std::exception& e) {
-      watchman::log(watchman::DBG, watcher->getName(), ": ", e.what(), ".\n");
+      watchman::log(
+          watchman::ERR,
+          "failed to use watcher ",
+          watcher->getName(),
+          ": ",
+          e.what(),
+          ".\n");
       failureReasons.append(
           watcher->getName() + std::string(": ") + e.what() +
           std::string(". "));
