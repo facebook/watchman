@@ -78,20 +78,19 @@ Future<dynamic> WatchmanConnection::connect(folly::dynamic versionArgs) {
   }
   versionCmd_ = folly::dynamic::array("version", versionArgs);
 
-  auto res = getSockPath().then(
-    [shared_this=shared_from_this()] (std::string&& path) {
-      shared_this->eventBase_->runInEventBaseThread([=] {
-        folly::SocketAddress addr;
-        addr.setFromPath(path);
+  auto res = getSockPath().thenValue(
+      [shared_this = shared_from_this()](std::string&& path) {
+        shared_this->eventBase_->runInEventBaseThread([=] {
+          folly::SocketAddress addr;
+          addr.setFromPath(path);
 
-        shared_this->sock_ =
-          folly::AsyncSocket::newSocket(shared_this->eventBase_);
-        shared_this->sock_->connect(shared_this.get(), addr);
-      }
-    );
+          shared_this->sock_ =
+              folly::AsyncSocket::newSocket(shared_this->eventBase_);
+          shared_this->sock_->connect(shared_this.get(), addr);
+        });
 
-    return shared_this->connectPromise_.getFuture();
-  });
+        return shared_this->connectPromise_.getFuture();
+      });
   return res;
 }
 

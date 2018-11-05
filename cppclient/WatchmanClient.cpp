@@ -118,8 +118,8 @@ Future<SubscriptionPtr> WatchmanClient::subscribe(
     StringPiece path,
     Executor* executor,
     SubscriptionCallback&& callback) {
-  return watch(path).then(
-      [ =, callback = std::move(callback) ](WatchPathPtr watch_path) mutable {
+  return watch(path).thenValue(
+      [=, callback = std::move(callback)](WatchPathPtr watch_path) mutable {
         return subscribe(query, watch_path, executor, std::move(callback));
       });
 }

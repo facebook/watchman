@@ -94,8 +94,10 @@ void test_then() {
   ok(f3.get() == "done!", ".then worked across threads");
   thr.join();
 
-  auto f4 = makeFuture<std::string>("foo").then([](
-      Result<std::string>&& result) { return makeFuture(std::move(result)); });
+  auto f4 =
+      makeFuture<std::string>("foo").then([](Result<std::string>&& result) {
+        return makeFuture(std::move(result));
+      });
   ok(f4.get() == "foo", "unwrapped future in .then chain");
 }
 
