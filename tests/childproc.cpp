@@ -78,14 +78,35 @@ void test_pipe_input(bool threaded) {
 #endif
 }
 
+void stresstest_pipe_output() {
+  bool okay = true;
+#ifndef _WIN32
+  for (int i = 0; i < 3000; ++i) {
+    Options opts;
+    opts.pipeStdout();
+    ChildProcess proc(
+        {"/usr/bin/head", "-n20", "/dev/urandom"}, std::move(opts));
+    auto outputs = proc.communicate();
+    w_string_piece out(outputs.first);
+    proc.wait();
+    if (out.empty() || out[out.size() - 1] != '\n') {
+      okay = false;
+      break;
+    }
+  }
+#endif
+  ok(okay, "pipe output looks sane");
+}
+
 int main(int argc, char **argv) {
   (void)argc;
   (void)argv;
 
-  plan_tests(5);
+  plan_tests(6);
   test_pipe();
   test_pipe_input(true);
   test_pipe_input(false);
+  stresstest_pipe_output();
 
   return exit_status();
 }

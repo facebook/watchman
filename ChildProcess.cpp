@@ -524,6 +524,17 @@ std::pair<w_string, w_string> ChildProcess::pollingCommunicate(
         outputs[revmap[pfd.fd]].append(buf, l);
       }
 
+      if ((pfd.revents & POLLHUP) && revmap[pfd.fd] == STDIN_FILENO) {
+        watchman::log(
+            watchman::DBG,
+            "fd ",
+            pfd.fd,
+            " rev ",
+            revmap[pfd.fd],
+            " closed by the other side\n");
+        pipes_.erase(revmap[pfd.fd]);
+        continue;
+      }
       if ((pfd.revents & POLLOUT) && revmap[pfd.fd] == STDIN_FILENO &&
           writeCallback(pipes_.at(revmap[pfd.fd])->write)) {
         // We should close it
@@ -538,7 +549,7 @@ std::pair<w_string, w_string> ChildProcess::pollingCommunicate(
         continue;
       }
 
-      if (pfd.revents & (POLLHUP | POLLERR)) {
+      if (pfd.revents & POLLERR) {
         // Something wrong with it, so close it
         pipes_.erase(revmap[pfd.fd]);
         watchman::log(
