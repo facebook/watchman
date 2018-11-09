@@ -26,7 +26,15 @@ try:
     can_run_eden = edenclient.can_run_eden
 
 except ImportError as e:
-    print("Eden not available because: %s" % str(e))
+
+    def is_buck_build():
+        return "BUCK_BUILD_ID" in os.environ
+
+    # We want import failures to hard fail the build when using buck internally
+    # because it means we overlooked something, but we want it to be a soft
+    # fail when we run our opensource build
+    if is_buck_build():
+        raise
 
     def can_run_eden():
         return False
