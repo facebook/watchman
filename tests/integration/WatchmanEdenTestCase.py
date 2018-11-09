@@ -15,8 +15,7 @@ import WatchmanTestCase
 TestParent = object
 try:
     import configparser  # python3
-    from eden.integration.lib import edenclient, hgrepo
-    from eden.integration.hg.lib.hg_extension_test_base import POST_CLONE
+    from eden.integration.lib import edenclient, hgrepo, find_executables
 
     def is_sandcastle():
         return "SANDCASTLE" in os.environ
@@ -125,7 +124,7 @@ class WatchmanEdenTestCase(TestParent):
             config["hooks"]["hg.edenextension"] = ""
             config["repository %s" % repo_name]["hooks"] = self.hooks_dir
             post_clone_hook = os.path.join(self.hooks_dir, "post-clone")
-            os.symlink(POST_CLONE, post_clone_hook)
+            os.symlink(find_executables.FindExe.EDEN_POST_CLONE_HOOK, post_clone_hook)
 
             with open(self.edenrc, "w") as f:
                 config.write(f)
