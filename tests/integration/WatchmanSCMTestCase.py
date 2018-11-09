@@ -45,7 +45,7 @@ class WatchmanSCMTestCase(WatchmanTestCase.WatchmanTestCase):
         if os.name == "nt":
             self.skipTest("The order of events on Windows is funky")
 
-    def hg(self, args=None, cwd=None):
+    def hg(self, args, cwd=None):
         env = dict(os.environ)
         env["HGPLAIN"] = "1"
         env["HGUSER"] = "John Smith <smith@example.com>"
