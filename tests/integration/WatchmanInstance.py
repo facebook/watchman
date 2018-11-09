@@ -187,7 +187,7 @@ class _Instance(object):
                 client = pywatchman.client(sockpath=self.sock_file)
                 self.pid = client.query("get-pid")["pid"]
                 break
-            except Exception:
+            except pywatchman.SocketConnectError:
                 t, val, tb = sys.exc_info()
                 time.sleep(0.1)
             finally:

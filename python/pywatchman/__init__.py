@@ -457,7 +457,7 @@ class WindowsNamedPipeTransport(Transport):
         err = GetLastError()
         if self.pipe == INVALID_HANDLE_VALUE or self.pipe == 0:
             self.pipe = None
-            self._raise_win_err("failed to open pipe %s" % sockpath, err)
+            raise SocketConnectError(self.sockpath, self._make_win_err("", err))
 
         # event for the overlapped I/O operations
         self._waitable = CreateEvent(None, True, False, None)
@@ -473,7 +473,10 @@ class WindowsNamedPipeTransport(Transport):
             self._get_overlapped_result_ex = _get_overlapped_result_ex_impl
 
     def _raise_win_err(self, msg, err):
-        raise IOError("%s win32 error code: %d %s" % (msg, err, _win32_strerror(err)))
+        raise self._make_win_err(msg, err)
+
+    def _make_win_err(self, msg, err):
+        return IOError("%s win32 error code: %d %s" % (msg, err, _win32_strerror(err)))
 
     def close(self):
         if self.pipe:

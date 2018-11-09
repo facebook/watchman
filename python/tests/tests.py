@@ -7,8 +7,11 @@ import collections
 import inspect
 import os
 import sys
+import tempfile
+import uuid
 
 from pywatchman import (
+    SocketConnectError,
     SocketTimeout,
     Transport,
     WatchmanError,
@@ -91,6 +94,30 @@ class TestTransportErrorHandling(unittest.TestCase):
             )
         except Exception as e:
             self.assertTrue(False, "expected a WatchmanError, but got " + str(e))
+
+
+class TestLocalTransport(unittest.TestCase):
+    def test_missing_socket_file_raises_connect_error(self):
+        socket_path = self.make_deleted_socket_path()
+        c = client(sockpath=socket_path, transport="local")
+        with self.assertRaises(SocketConnectError):
+            with c:
+                pass
+
+    def make_deleted_socket_path(self):
+        if os.name == "nt":
+            path = self.make_deleted_windows_socket_path()
+        else:
+            path = self.make_deleted_unix_socket_path()
+        self.assertFalse(os.path.exists(path))
+        return path
+
+    def make_deleted_windows_socket_path(self):
+        return "\\\\.\\pipe\\pywatchman-test-{}".format(uuid.uuid1().hex)
+
+    def make_deleted_unix_socket_path(self):
+        temp_dir = tempfile.mkdtemp()
+        return os.path.join(temp_dir, "socket")
 
 
 def expand_bser_mods(test_class):
