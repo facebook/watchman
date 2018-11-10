@@ -13,12 +13,6 @@ import WatchmanSCMTestCase
 import WatchmanTestCase
 
 
-if pywatchman.compat.PYTHON3:
-    STRING_TYPES = (str, bytes)
-else:
-    STRING_TYPES = (str, unicode)  # noqa: F821
-
-
 @WatchmanTestCase.expand_matrix
 class TestScm(WatchmanSCMTestCase.WatchmanSCMTestCase):
     def test_scmHg(self):
