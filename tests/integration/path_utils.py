@@ -43,7 +43,10 @@ if os.name == "nt":
 
                 # The first four chars are //?/
                 if result <= numwchars:
-                    return buf.value[4:].replace("\\", "/").encode("utf8")
+                    path = buf.value[4:].replace("\\", "/")
+                    if compat.PYTHON2:
+                        path = path.encode("utf8")
+                    return path
 
                 # Not big enough; the result is the amount we need
                 numwchars = result + 1

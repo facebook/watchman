@@ -35,6 +35,7 @@ import sys
 """Compatibility module across Python 2 and 3."""
 
 
+PYTHON2 = sys.version_info < (3, 0)
 PYTHON3 = sys.version_info >= (3, 0)
 
 # This is adapted from https://bitbucket.org/gutworth/six, and used under the
