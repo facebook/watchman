@@ -6,6 +6,7 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import unittest
 
 import pywatchman
 import WatchmanInstance
@@ -15,6 +16,10 @@ import WatchmanTestCase
 
 @WatchmanTestCase.expand_matrix
 class TestScm(WatchmanSCMTestCase.WatchmanSCMTestCase):
+    @unittest.skipIf(
+        "WATCHMAN_WORK_AROUND_T36574087" in os.environ,
+        "Test is flaky. See Facebook task T36574087.",
+    )
     def test_scmHg(self):
         self.skipIfNoFSMonitor()
 
