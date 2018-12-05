@@ -31,6 +31,10 @@ w_string w_fstype(const char *path)
   struct statfs sfs;
   const char *name = "unknown";
 
+  // Unfortunately the FUSE magic number is not defined in linux/magic.h,
+  // and is only available in the Linux source code in fs/fuse/inode.c
+  constexpr __fsword_t FUSE_MAGIC_NUMBER = 0x65735546;
+
   if (statfs(path, &sfs) == 0) {
     switch (sfs.f_type) {
 #ifdef CIFS_MAGIC_NUMBER
@@ -48,6 +52,9 @@ w_string w_fstype(const char *path)
         name = "smb";
         break;
 #endif
+      case FUSE_MAGIC_NUMBER:
+        name = "fuse";
+        break;
       default:
         name = "unknown";
     }

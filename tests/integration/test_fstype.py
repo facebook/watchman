@@ -22,6 +22,7 @@ class TestIllegalFSType(WatchmanTestCase.WatchmanTestCase):
                 "NTFS",
                 "apfs",
                 "cifs",
+                "fuse",
                 "hfs",
                 "nfs",
                 "smb",
