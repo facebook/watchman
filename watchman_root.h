@@ -67,6 +67,8 @@ class ClientStateAssertions {
 struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   /* path to root */
   w_string root_path;
+  /* filesystem type name, as returned by w_fstype() */
+  const w_string fs_type;
   watchman::CaseSensitivity case_sensitive;
 
   /* map of rule id => struct watchman_trigger_command */
@@ -133,7 +135,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   // This is safe wrt. a concurrent recrawl operation
   std::shared_ptr<watchman::QueryableView> view();
 
-  explicit watchman_root(const w_string& root_path);
+  explicit watchman_root(const w_string& root_path, const w_string& fs_type);
   ~watchman_root();
 
   void considerAgeOut();

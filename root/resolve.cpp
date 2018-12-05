@@ -42,8 +42,8 @@ static bool root_check_restrict(const char *watch_path) {
   return false;
 }
 
-static bool check_allowed_fs(const char *filename, char **errmsg) {
-  auto fs_type = w_fstype(filename);
+static bool
+check_allowed_fs(const char* filename, const w_string& fs_type, char** errmsg) {
   json_t *illegal_fstypes = NULL;
   json_t *advice_string;
   uint32_t i;
@@ -197,7 +197,8 @@ std::shared_ptr<w_root_t> root_resolve(
 
   w_log(W_LOG_DBG, "Want to watch %s -> %s\n", filename, root_str.c_str());
 
-  if (!check_allowed_fs(root_str.c_str(), errmsg)) {
+  auto fs_type = w_fstype(filename);
+  if (!check_allowed_fs(root_str.c_str(), fs_type, errmsg)) {
     w_log(W_LOG_ERR, "resolve_root: %s\n", *errmsg);
     return nullptr;
   }
@@ -225,7 +226,7 @@ std::shared_ptr<w_root_t> root_resolve(
 
   // created with 1 ref
   try {
-    root = std::make_shared<w_root_t>(root_str);
+    root = std::make_shared<w_root_t>(root_str, fs_type);
   } catch (const std::exception& e) {
     watchman::log(watchman::ERR, "while making a new root: ", e.what());
     *errmsg = strdup(e.what());

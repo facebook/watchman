@@ -73,8 +73,9 @@ void watchman_root::Inner::init(w_root_t* root) {
   view_ = WatcherRegistry::initWatcher(root);
 }
 
-watchman_root::watchman_root(const w_string& root_path)
+watchman_root::watchman_root(const w_string& root_path, const w_string& fs_type)
     : root_path(root_path),
+      fs_type(fs_type),
       case_sensitive(watchman::getCaseSensitivityForPath(root_path.c_str())),
       cookies(root_path),
       config_file(load_root_config(root_path.c_str())),
