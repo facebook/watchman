@@ -381,7 +381,18 @@ void InotifyWatcher::signalThreads() {
   ignore_result(write(terminatePipe_.write.fd(), "X", 1));
 }
 
-static RegisterWatcher<InotifyWatcher> reg("inotify");
+namespace {
+std::shared_ptr<watchman::QueryableView> detectInotify(w_root_t* root) {
+  if (root->fs_type == "fuse") {
+    // Linux FUSE filesystems do not support inotify.
+    throw std::runtime_error("cannot watch FUSE file systems with inotify");
+  }
+  return std::make_shared<watchman::InMemoryView>(
+      root, std::make_shared<InotifyWatcher>(root));
+}
+} // namespace
+
+static WatcherRegistry reg("inotify", detectInotify);
 
 #endif // HAVE_INOTIFY_INIT
 
