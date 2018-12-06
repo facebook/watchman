@@ -1275,36 +1275,25 @@ class EdenView : public QueryableView {
 };
 
 std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
+  if (root->fs_type != "fuse") {
+    throw std::runtime_error(to<std::string>("not a FUSE file system"));
+  }
+
   auto edenRoot =
       readLink(watchman::to<std::string>(root->root_path, "/.eden/root"));
   if (w_string_piece(edenRoot) != root->root_path) {
-    // We aren't at the root of the eden mount
+    // We aren't at the root of the eden mount.
+    // Throw a TerminalWatcherError to indicate that the Eden watcher is the
+    // correct watcher type for this directory (so don't try other watcher
+    // types), but that it can't be used due to an error.
     throw TerminalWatcherError(to<std::string>(
         "you may only watch from the root of an eden mount point. "
         "Try again using ",
         edenRoot));
   }
 
-  try {
-    auto client = getEdenClient(root->root_path);
-
-    // We don't strictly need to do this, since we just verified that the root
-    // matches our expectations, but it can't hurt to attempt to talk to the
-    // daemon directly, just in case it is broken for some reason, or in
-    // case someone is trolling us with a directory structure that looks
-    // like an eden mount.
-    std::vector<FileInformationOrError> info;
-    static const std::vector<std::string> paths{""};
-    client->sync_getFileInformation(
-        info,
-        std::string(root->root_path.data(), root->root_path.size()),
-        paths);
-
-    return std::make_shared<EdenView>(root);
-  } catch (const std::exception& exc) {
-    throw TerminalWatcherError(to<std::string>(
-        "failed to communicate with eden mount ", edenRoot, ": ", exc.what()));
-  }
+  // Given that the readlink() succeeded, assume this is an Eden mount.
+  return std::make_shared<EdenView>(root);
 }
 
 } // namespace
