@@ -41,6 +41,10 @@ except ImportError as e:
 
 
 class WatchmanEdenTestCase(TestParent):
+    # The contents of the .eden directory
+    # This is used by several tests when checking reported file lists
+    eden_dir_entries = [".eden/root", ".eden/socket", ".eden/client", ".eden/this-dir"]
+
     def setUp(self):
         super(WatchmanEdenTestCase, self).setUp()
 

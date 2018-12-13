@@ -30,15 +30,7 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         dat = self.waitForSub("myname", root=root)[0]
         self.assertTrue(dat["is_fresh_instance"])
         self.assertFileListsEqual(
-            dat["files"],
-            [
-                ".eden",
-                ".eden/socket",
-                ".eden/client",
-                ".watchmanconfig",
-                ".eden/root",
-                "hello",
-            ],
+            dat["files"], self.eden_dir_entries + [".eden", ".watchmanconfig", "hello"]
         )
 
         self.touchRelative(root, "w0000t")
@@ -63,15 +55,7 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertEqual(True, dat["is_fresh_instance"])
         self.assertFileListsEqual(
             dat["files"],
-            [
-                ".eden",
-                ".eden/socket",
-                ".eden/client",
-                ".watchmanconfig",
-                ".eden/root",
-                "hello",
-                "w0000t",
-            ],
+            self.eden_dir_entries + [".eden", ".watchmanconfig", "hello", "w0000t"],
         )
 
     def assertWaitForAssertedStates(self, root, states):

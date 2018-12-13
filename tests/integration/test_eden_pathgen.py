@@ -93,11 +93,9 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertEqual("eden", res["watcher"])
         self.assertFileList(
             root,
-            [
+            self.eden_dir_entries
+            + [
                 ".eden",
-                ".eden/root",
-                ".eden/socket",
-                ".eden/client",
                 ".watchmanconfig",
                 "adir",
                 "adir/file",
@@ -132,9 +130,7 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
         res = self.watchmanCommand(
             "query", root, {"expression": ["type", "l"], "fields": ["name"]}
         )
-        self.assertFileListsEqual(
-            res["files"], [".eden/root", ".eden/socket", ".eden/client", "slink"]
-        )
+        self.assertFileListsEqual(res["files"], self.eden_dir_entries + ["slink"])
 
         res = self.watchmanCommand(
             "query",
@@ -186,11 +182,9 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
         res = self.watchmanCommand("query", root, {"path": [""], "fields": ["name"]})
         self.assertFileListsEqual(
             res["files"],
-            [
+            self.eden_dir_entries
+            + [
                 ".eden",
-                ".eden/root",
-                ".eden/socket",
-                ".eden/client",
                 ".watchmanconfig",
                 "adir",
                 "adir/file",
