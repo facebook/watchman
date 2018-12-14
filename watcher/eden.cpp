@@ -698,6 +698,8 @@ class EdenView : public QueryableView {
       filesBetweenCommitCache_;
   JournalPosition lastCookiePosition_;
   std::string mountPoint_;
+  std::promise<void> subscribeReadyPromise_;
+  std::shared_future<void> subscribeReadyFuture_;
 
  public:
   explicit EdenView(w_root_t* root)
@@ -705,7 +707,8 @@ class EdenView : public QueryableView {
         scm_(EdenWrappedSCM::wrap(SCM::scmForPath(root->root_path))),
         // Allow for 32 pairs of revs, with errors cached for 10 seconds
         filesBetweenCommitCache_(32, std::chrono::seconds(10)),
-        mountPoint_(to<std::string>(root->root_path)) {
+        mountPoint_(to<std::string>(root->root_path)),
+        subscribeReadyFuture_(subscribeReadyPromise_.get_future()) {
     // Get the current journal position so that we can keep track of
     // cookie file changes
     auto client = getEdenClient(root_path_);
@@ -1250,6 +1253,8 @@ class EdenView : public QueryableView {
       }
 
       // This will run until the stream ends
+      watchman::log(watchman::DBG, "Started subscription thread loop\n");
+      subscribeReadyPromise_.set_value();
       subscriberEventBase_.loop();
 
     } catch (const std::exception& exc) {
@@ -1268,9 +1273,7 @@ class EdenView : public QueryableView {
 
   std::shared_future<void> waitUntilReadyToQuery(
       const std::shared_ptr<w_root_t>& /*root*/) override {
-    std::promise<void> p;
-    p.set_value();
-    return p.get_future();
+    return subscribeReadyFuture_;
   }
 };
 
