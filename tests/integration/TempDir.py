@@ -2,6 +2,7 @@
 from __future__ import absolute_import, division, print_function
 
 import atexit
+import errno
 import os
 import shutil
 import sys
@@ -70,12 +71,34 @@ class TempDir(object):
         # Keep trying to remove it; on Windows it may take a few moments
         # for any outstanding locks/handles to be released
         for _ in range(1, 10):
-            shutil.rmtree(top, ignore_errors=True)
+            shutil.rmtree(top, onerror=_remove_readonly)
             if not os.path.isdir(top):
                 return
             sys.stdout.write("Waiting to remove temp data under %s\n" % top)
             time.sleep(0.2)
         sys.stdout.write("Failed to completely remove %s\n" % top)
+
+
+def _remove_readonly(func, path, exc_info):
+    # If we encounter an EPERM or EACCESS error removing a file try making its parent
+    # directory writable and then retry the removal.  This is necessary to clean up
+    # eden mount point directories after the checkout is unmounted, as these directories
+    # are made read-only by "eden clone"
+    _ex_type, ex, _traceback = exc_info
+    if not (
+        isinstance(ex, EnvironmentError) and ex.errno in (errno.EACCES, errno.EPERM)
+    ):
+        # Just ignore other errors.  This will be retried by _retry_rmtree()
+        return
+
+    try:
+        parent_dir = os.path.dirname(path)
+        os.chmod(parent_dir, 0o755)
+        # func() is the function that failed.
+        # This is usually os.unlink() or os.rmdir().
+        func(path)
+    except OSError as ex:
+        return
 
 
 def get_temp_dir(keep=None):
