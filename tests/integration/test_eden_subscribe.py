@@ -16,7 +16,10 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
     def test_eden_subscribe(self):
         def populate(repo):
-            repo.write_file(".watchmanconfig", '{"ignore_dirs":[".buckd"]}')
+            # We ignore ".hg" here just so some of the tests that list files don't have
+            # to explicitly filter out the contents of this directory.  However, in most
+            # situations the .hg directory normally should not be ignored.
+            repo.write_file(".watchmanconfig", '{"ignore_dirs":[".buckd", ".hg"]}')
             repo.write_file("hello", "hola\n")
             repo.commit("initial commit.")
 

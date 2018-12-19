@@ -16,7 +16,7 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
             repo.write_file("hello", "hola\n")
             repo.commit("initial commit.")
 
-        root = self.makeEdenMount(populate, enable_hg=True)
+        root = self.makeEdenMount(populate)
         repo = self.repoForPath(root)
         initial_commit = repo.get_head_hash()
 
