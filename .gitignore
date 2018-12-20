@@ -94,3 +94,4 @@ cppclient/watchmanclient.pc
 /Debug
 *.filters
 /.vs
+/external
