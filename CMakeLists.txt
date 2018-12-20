@@ -3,9 +3,15 @@
 # use the configure script to build and install watchman!
 cmake_minimum_required(VERSION 3.0.2 FATAL_ERROR)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
+
+# Tell CMake to also look in the directories where getdeps.py installs
+# our third-party dependencies.
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/external/install")
+
 enable_testing()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/install/include")
 
 set(PACKAGE_VERSION "4.9.4")
 set(WATCHMAN_VERSION_OVERRIDE "" CACHE STRING "Use this version code for \
