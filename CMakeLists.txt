@@ -2,6 +2,7 @@
 # available in the configure script!  At this time you should prefer to
 # use the configure script to build and install watchman!
 cmake_minimum_required(VERSION 3.0.2 FATAL_ERROR)
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
 enable_testing()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -122,6 +123,10 @@ if(have_fcntl.h)
   if(HAVE_DECL_O_SYMLINK)
     config_h("#define HAVE_DECL_O_SYMLINK 1")
   endif()
+endif()
+find_package(PCRE)
+if(PCRE_FOUND)
+  config_h("#define HAVE_PCRE_H 1")
 endif()
 
 # Now close out config.h.  We only want to touch the file if the contents are
@@ -330,7 +335,7 @@ query/intcompare.cpp
 query/match.cpp
 query/name.cpp
 query/parse.cpp
-# query/pcre.cpp
+query/pcre.cpp
 query/since.cpp
 query/suffix.cpp
 query/type.cpp
@@ -403,6 +408,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(watchman shlwapi.lib advapi32.lib dbghelp.lib)
 endif()
+if(PCRE_FOUND)
+  target_link_libraries(watchman ${PCRE_LIBRARY})
+  target_include_directories(watchman PUBLIC ${PCRE_INCLUDE_DIR})
+endif()
+
 
 target_link_libraries(watchman Threads::Threads)
 if(TARGET OpenSSL::Crypto)
