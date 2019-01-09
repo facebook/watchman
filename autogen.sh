@@ -8,7 +8,7 @@ if test -d config.status ; then
 fi
 
 for p in libtoolize glibtoolize FAIL; do
-  test "$p" = FAIL && { echo "your system lacks libtoolize" 1>&2; exit 1; } || :
+  test "$p" = FAIL && { echo -e "your system lacks libtoolize\nplease install the libtool package for your system. " 1>&2; exit 1; } || :
   ( $p --version ) > /dev/null 2>&1 && { eval "libtoolize() { env $p; }"; break; } || :
 done
 libtoolize --no-warn -i -f
