@@ -189,7 +189,20 @@ if(OPENSSL_FOUND AND NOT TARGET OpenSSL::Crypto)
     endif()
 endif()
 
+find_package(Glog REQUIRED)
+
+# We indirectly depend on libevent.  Folly pulls in linkage to
+# event.lib, but on my system it does so as simply "event.lib"
+# and that fails linking.  Let's probe for the library and force
+# in the library directory for the linker. :-/
+find_package(LibEvent REQUIRED)
+get_filename_component(LIBEVENT_LIBDIR "${LIBEVENT_LIB}" DIRECTORY)
+link_directories(${LIBEVENT_LIBDIR})
+
+find_package(folly CONFIG REQUIRED)
+
 find_package(PythonInterp REQUIRED)
+message(STATUS "Found python ${PYTHON_VERSION_STRING}")
 
 if(PYTHONINTERP_FOUND)
   set(PYOUT "${CMAKE_CURRENT_BINARY_DIR}/build/pytimestamp")
@@ -395,7 +408,6 @@ winbuild/pathmap.cpp
 winbuild/mkdir.cpp
 winbuild/dir.cpp
 winbuild/asprintf.cpp
-winbuild/hostname.cpp
 winbuild/time.cpp
 winbuild/backtrace.cpp
 winbuild/getopt_long.cpp
@@ -408,7 +420,7 @@ stream_unix.cpp
 endif()
 
 add_executable(watchman ${watchman_sources})
-target_link_libraries(watchman log hash string err jansson wildmatch)
+target_link_libraries(watchman log hash string err jansson wildmatch Folly::folly)
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   target_link_libraries(watchman "-framework CoreServices")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -438,7 +450,7 @@ set(tests)
 # Helper function to define a unit test executable
 function(t_test NAME)
   add_executable(${NAME}.t ${ARGN})
-  target_link_libraries(${NAME}.t testsupport tap Threads::Threads wildmatch)
+  target_link_libraries(${NAME}.t testsupport tap Threads::Threads wildmatch Folly::folly)
   if(TARGET OpenSSL::Crypto)
     target_link_libraries(${NAME}.t OpenSSL::Crypto)
   endif()

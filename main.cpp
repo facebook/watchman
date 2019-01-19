@@ -7,10 +7,8 @@
 #ifndef _WIN32
 #include <poll.h>
 #endif
-#ifdef WATCHMAN_FACEBOOK_INTERNAL
 #include <folly/ScopeGuard.h>
 #include <folly/Singleton.h>
-#endif
 
 using watchman::ChildProcess;
 using watchman::FileDescriptor;
@@ -1127,7 +1125,6 @@ int main(int argc, char **argv)
 {
   bool ran;
 
-#ifdef WATCHMAN_FACEBOOK_INTERNAL
   // Since we don't fully integrate with folly, but may pull
   // in dependencies that do, we need to perform a little bit
   // of bootstrapping.  We don't want to run the full folly
@@ -1137,7 +1134,6 @@ int main(int argc, char **argv)
   SCOPE_EXIT {
     folly::SingletonVault::singleton()->destroyInstances();
   };
-#endif
 
   parse_cmdline(&argc, &argv);
 

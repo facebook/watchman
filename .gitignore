@@ -1,4 +1,4 @@
-# If you make a change to this file, make sure to also make it to .hgignore.
+/external
 buck-out
 buck-cache
 .buckd
@@ -50,6 +50,7 @@ buck-cache
 /tests/*.trs
 /a
 /arc
+/node/package-lock.json
 /node/node_modules
 /node/bser/node_modules
 /website/node_modules

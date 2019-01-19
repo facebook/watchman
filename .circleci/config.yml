@@ -26,6 +26,12 @@ defaults: &defaults
             fi
     - checkout
     - run:
+        name: Run getdeps.py
+        command: python ./getdeps.py --install-deps -j2
+    - run:
+        name: Python version
+        command: python -V && env
+    - run:
         name: Run build
         command: |
           export PATH=$HOME/cmake-3.6.2-Linux-x86_64/bin:$PATH

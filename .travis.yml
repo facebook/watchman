@@ -58,16 +58,9 @@ branches:
   only:
     - master
 
-# for the ruby-watchman gem
-#gemfile: ruby/ruby-watchman/Gemfile
-#rvm:
-#  - "2.0.0"
+os: osx
 
-# TODO: On Linux we currently use system versions of Python. That makes it
-# somewhat annoying to get third-party dependencies in, since sudo isn't
-# available. We should figure out how to solve this for real, either with
-# virtualenv or with the pyenv mechanism Hypothesis uses:
-# http://www.drmaciver.com/2015/10/a-whirlwind-tour-of-the-hypothesis-build/
+
 matrix:
   include:
     - os: osx

@@ -10,6 +10,7 @@
 #define __STDC_LIMIT_MACROS
 #define __STDC_FORMAT_MACROS
 #include "config.h"
+#include <folly/portability/SysTypes.h>
 
 #ifdef _WIN32
 #define _CRT_SECURE_NO_WARNINGS 1
@@ -22,7 +23,9 @@
 // Tell windows.h not to #define min/max
 #define NOMINMAX
 
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #define EX_USAGE 1
 #include <errno.h>
 #include <io.h>
@@ -63,14 +66,11 @@ char* dirname(char* path);
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2
 
-int gethostname(char* buf, int size);
 char* realpath(const char* filename, char* target);
 
 #define O_DIRECTORY _O_OBTAIN_DIR
 #define O_CLOEXEC _O_NOINHERIT
 #define O_NOFOLLOW 0 /* clowny, but there's no translation */
-
-typedef DWORD pid_t;
 
 #define HAVE_BACKTRACE
 #define HAVE_BACKTRACE_SYMBOLS

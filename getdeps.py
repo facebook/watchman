@@ -104,6 +104,11 @@ class GitUpdater(object):
         run_cmd(["git", "-C", project.path, "clean", "-fxd"])
 
 
+def homebrew_prefix():
+    """ returns the homebrew installation prefix """
+    return subprocess.check_output(["brew", "--prefix"]).strip()
+
+
 def fixup_env_for_darwin(env):
     def add_flag(name, item, separator, append=True):
         val = env.get(name, "").split(separator)
@@ -116,15 +121,16 @@ def fixup_env_for_darwin(env):
     # The brew/openssl installation situation is a bit too weird for vanilla
     # cmake logic to find, and most packages don't deal with this correctly,
     # so inject these into the environment to give them a hand
-    add_flag("PKG_CONFIG_PATH", "/usr/local/opt/openssl/lib/pkgconfig", ":")
-    add_flag("LDFLAGS", "-L/usr/local/opt/openssl/lib", " ")
-    add_flag("CPPFLAGS", "-I/usr/local/opt/openssl/include", " ")
+    p = homebrew_prefix()
+    add_flag("PKG_CONFIG_PATH", "%s/opt/openssl/lib/pkgconfig" % p, ":")
+    add_flag("LDFLAGS", "-L%s/opt/openssl/lib" % p, " ")
+    add_flag("CPPFLAGS", "-I%s/opt/openssl/include" % p, " ")
 
     # system bison is ancient, so ensure that the brew installed one takes
     # precedence.  Brew refuses to to install or link bison into /usr/local/bin,
     # so we have to insert this opt path instead.  Likewise for flex.
-    add_flag("PATH", "/usr/local/opt/bison/bin", ":", append=False)
-    add_flag("PATH", "/usr/local/opt/flex/bin", ":", append=False)
+    add_flag("PATH", "%s/opt/bison/bin" % p, ":", append=False)
+    add_flag("PATH", "%s/opt/flex/bin" % p, ":", append=False)
 
     # flex generates code that sprinkles the `register` keyword liberally
     # and the thrift compilation flags hate that in C++17 code.  Disable
@@ -197,6 +203,19 @@ class AutoconfBuilder(BuilderBase):
         self._run_cmd(["make", "install"])
 
 
+class JeMallocBuilder(BuilderBase):
+    def __init__(self, subdir=None, env=None, args=None):
+        super(JeMallocBuilder, self).__init__(subdir=subdir, env=env)
+        self.args = args or []
+
+    def _build(self, project):
+        self._run_cmd(
+            ["./autogen.sh"] + ["--prefix=" + project.opts.install_dir] + self.args
+        )
+        self._run_cmd(["make", "-j%s" % project.opts.num_jobs])
+        self._run_cmd(["make", "install_bin", "install_include", "install_lib"])
+
+
 class CMakeBuilder(BuilderBase):
     def __init__(self, subdir=None, env=None, defines=None):
         super(CMakeBuilder, self).__init__(subdir=subdir, env=env, build_dir="_build")
@@ -214,6 +233,7 @@ class CMakeBuilder(BuilderBase):
             "BOOST_ROOT",
             "LIBEVENT_INCLUDE_DIR",
             "LIBEVENT_LIB",
+            "CMAKE_SYSTEM_PREFIX_PATH",
         ]:
             var = os.environ.get(e, None)
             if var:
@@ -234,9 +254,24 @@ class CMakeBuilder(BuilderBase):
 
         if is_win():
             self._run_cmd(
-                ["msbuild", "INSTALL.vcxproj", "/nologo", "/p:Configuration=Release"]
+                [
+                    "cmake",
+                    "--build",
+                    self._build_path,
+                    "--target",
+                    "install",
+                    "--config",
+                    "Release",
+                    # With a sufficiently new cmake available, we could
+                    # ask for concurrency, but for now we don't have it.
+                    # "-j", str(project.opts.num_jobs),
+                ]
             )
         else:
+            # The only thing stopping us from using the same cmake --build
+            # approach as above is that the cmake that ships with ubuntu 16
+            # is too old and doesn't know about the -j flag, so we do this
+            # bit the old fashioned way
             self._run_cmd(["make", "-j%s" % project.opts.num_jobs])
             self._run_cmd(["make", "install"])
 
@@ -256,8 +291,9 @@ def vcpkg_dir():
     """ Figure out where vcpkg is installed.
     C:/tools/vcpkg is the appveyor location.
     C:/open/vcpkg is my local location.
+    D:/edenwin64/vcpkg is for some flavor of FB internal machines
     """
-    for p in ["C:/tools/vcpkg", "C:/open/vcpkg"]:
+    for p in ["C:/tools/vcpkg", "C:/open/vcpkg", "D:/edenwin64/vcpkg"]:
         if os.path.isdir(p):
             return p
     raise Exception("cannot find vcpkg")
@@ -269,7 +305,24 @@ def install_vcpkg(pkgs):
 
 
 def get_projects(opts):
-    return [
+    projects = []
+    if os.path.exists("/usr/include/jemalloc/jemalloc.h"):
+        # ubuntu 16 has a very old jemalloc installed, and folly doesn't
+        # currently have a way to be told not to try linking against it.
+        # To workaround this snafu, we build our own current version
+        # of jemalloc for folly to find and use.
+        # If we don't have jemalloc installed we don't need to install it.
+        # Confusing!
+        projects.append(
+            Project(
+                "jemalloc",
+                opts,
+                GitUpdater("https://github.com/jemalloc/jemalloc.git"),
+                JeMallocBuilder(),
+            )
+        )
+
+    projects += [
         Project(
             "mstch",
             opts,
@@ -282,6 +335,22 @@ def get_projects(opts):
             GitUpdater("https://github.com/google/googletest.git"),
             CMakeBuilder(),
         ),
+    ]
+
+    if not is_win():
+        # Ubuntu 16 also has an old version of zstd, so build our own.
+        # We can't use the MakeBuilder on windows, but we can get zstd
+        # from vcpkg so we're ok there.
+        projects.append(
+            Project(
+                "zstd",
+                opts,
+                GitUpdater("https://github.com/facebook/zstd.git"),
+                MakeBuilder(),
+            )
+        )
+
+    projects += [
         # TODO: see if we can get get a faster and/or static build working
         # by building things ourselves.
         #        Project(
@@ -301,40 +370,51 @@ def get_projects(opts):
             opts,
             GitUpdater("https://github.com/facebook/folly.git"),
             CMakeBuilder(),
-        ),
-        Project(
-            "libsodium",
-            opts,
-            GitUpdater("https://github.com/jedisct1/libsodium.git"),
-            AutoconfBuilder(),
-        ),
-        Project(
-            "fizz",
-            opts,
-            GitUpdater("https://github.com/facebookincubator/fizz.git"),
-            CMakeBuilder(
-                subdir="fizz", defines={"BUILD_EXAMPLES": "OFF", "BUILD_TESTS": "OFF"}
-            ),
-        ),
-        Project(
-            "wangle",
-            opts,
-            GitUpdater("https://github.com/facebook/wangle.git"),
-            CMakeBuilder(subdir="wangle", defines={"BUILD_TESTS": "OFF"}),
-        ),
-        Project(
-            "rsocket-cpp",
-            opts,
-            GitUpdater("https://github.com/rsocket/rsocket-cpp.git"),
-            CMakeBuilder(defines={"BUILD_EXAMPLES": "OFF", "BUILD_BENCHMARKS": "OFF"}),
-        ),
-        Project(
-            "fbthrift",
-            opts,
-            GitUpdater("https://github.com/facebook/fbthrift.git"),
-            CMakeBuilder(),
-        ),
+        )
     ]
+
+    # We'll add this in a later diff; there are some glog issues in these
+    # projects that need to be resolved before we can guarantee success
+    need_thrift = False
+    if need_thrift:
+        projects += [
+            Project(
+                "libsodium",
+                opts,
+                GitUpdater("https://github.com/jedisct1/libsodium.git"),
+                AutoconfBuilder(),
+            ),
+            Project(
+                "fizz",
+                opts,
+                GitUpdater("https://github.com/facebookincubator/fizz.git"),
+                CMakeBuilder(
+                    subdir="fizz",
+                    defines={"BUILD_EXAMPLES": "OFF", "BUILD_TESTS": "OFF"},
+                ),
+            ),
+            Project(
+                "wangle",
+                opts,
+                GitUpdater("https://github.com/facebook/wangle.git"),
+                CMakeBuilder(subdir="wangle", defines={"BUILD_TESTS": "OFF"}),
+            ),
+            Project(
+                "rsocket-cpp",
+                opts,
+                GitUpdater("https://github.com/rsocket/rsocket-cpp.git"),
+                CMakeBuilder(
+                    defines={"BUILD_EXAMPLES": "OFF", "BUILD_BENCHMARKS": "OFF"}
+                ),
+            ),
+            Project(
+                "fbthrift",
+                opts,
+                GitUpdater("https://github.com/facebook/fbthrift.git"),
+                CMakeBuilder(),
+            ),
+        ]
+    return projects
 
 
 def get_linux_type():
@@ -399,7 +479,8 @@ def install_platform_deps():
             "libssl-dev make zip git libtool g++ libboost-all-dev "
             "libevent-dev flex bison libgoogle-glog-dev libkrb5-dev "
             "libsnappy-dev libsasl2-dev libnuma-dev libcurl4-gnutls-dev "
-            "libpcap-dev libdb5.3-dev cmake pkg-config python-dev libpcre3-dev"
+            "libpcap-dev libdb5.3-dev cmake pkg-config python-dev "
+            "libpcre3-dev "
         ).split()
         install_apt(ubuntu_pkgs)
     elif os_name == "windows":

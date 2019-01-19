@@ -24,17 +24,12 @@ case $(uname) in
     ;;
 esac
 
-if [ "${ENABLE_ASAN-0}" -eq 1 ]; then
-  CONFIGARGS="--enable-asan --disable-opt"
-  export CONFIGARGS
-fi
-
 INST_TEST=/tmp/install-test
 if test "$CIRCLE" = "true" ; then
   INST_TEST="$CIRCLE_ARTIFACTS/install-test"
 fi
 
-rm -rf /tmp/watchman* /tmp/watbuild $INST_TEST
+rm -rf /tmp/watchman* $INST_TEST
 rm -rf /var/tmp/watchmantest*
 TMP=/var/tmp
 TMPDIR=$TMP
@@ -43,18 +38,12 @@ export TMPDIR TMP
 set +e
 
 WAT_SRC=$PWD
+python getdeps.py -j2 || exit 1
 
-if [ "${USE_CMAKE-0}" -eq 1 ]; then
-  mkdir /tmp/watbuild
-  cd /tmp/watbuild
-  if [ -n "${TRAVIS_PYTHON}" ]; then
-    cmake "$WAT_SRC" -DPYTHON_EXECUTABLE="$(which $TRAVIS_PYTHON)"
-  else
-    cmake "$WAT_SRC"
-  fi
+if [ -n "${TRAVIS_PYTHON}" ]; then
+  cmake "$WAT_SRC" -DPYTHON_EXECUTABLE="$(which $TRAVIS_PYTHON)"
 else
-  ./autogen.sh
-  ./configure --with-pcre --with-python="$TRAVIS_PYTHON" --without-ruby $CONFIGARGS
+  cmake "$WAT_SRC"
 fi
 
 make clean

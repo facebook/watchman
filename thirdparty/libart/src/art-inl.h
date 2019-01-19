@@ -16,15 +16,6 @@
 # define ART_SANITIZE_ADDRESS 1
 #endif
 
-#ifdef _MSC_VER
-#include <intrin.h>
-uint32_t inline __builtin_ctz(uint32_t x) {
-  DWORD r = 0;
-  _BitScanForward(&r, x);
-  return (uint32_t)r;
-}
-#endif
-
 // The ART implementation requires that no key be a full prefix of an existing
 // key during insertion.  In practice this means that each key must have a
 // terminator character.  One approach is to ensure that the key and key_len
