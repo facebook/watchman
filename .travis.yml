@@ -1,7 +1,7 @@
 language: c
 
 # use container infra for linux
-dist: trusty
+dist: xenial
 sudo: false
 
 addons:
@@ -64,8 +64,8 @@ os: osx
 matrix:
   include:
     - os: osx
-      osx_image: xcode10
-      env: TRAVIS_PYTHON=python2.6 OPENSSL_ROOT_DIR=/usr/local/opt/openssl/
+      osx_image: xcode10.1
+      env: TRAVIS_PYTHON=python2.7
     - os: linux
       env: CXX=g++-6 TRAVIS_PYTHON=python3.6
       compiler: gcc-6
@@ -78,4 +78,4 @@ matrix:
 
 before_script: ./travis/deps.sh
 
-script: "cd build && python fbcode_builder/shell_builder.py > ~/run.sh && bash ~/run.sh"
+script: ./travis/run.sh

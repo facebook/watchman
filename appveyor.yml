@@ -24,7 +24,7 @@ before_build:
   - .\bootstrap-vcpkg.bat
   - cmd: vcpkg version
   - cmd: cd c:\projects\watchman
-  - cmd: python getdeps.py --install-deps --update --no-clean -j2
+  - cmd: python getdeps.py --install-deps -j2
   - cmd: cmake -G "Visual Studio 15 2017 Win64" -DCMAKE_TOOLCHAIN_FILE=c:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake .
 
 build:
@@ -33,7 +33,6 @@ build:
 
 cache:
   - c:\tools\vcpkg\installed\
-  - external
 
 test_script:
   - "cd node && npm install"
