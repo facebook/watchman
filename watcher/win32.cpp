@@ -68,7 +68,7 @@ WinWatcher::WinWatcher(w_root_t* root)
       OPEN_EXISTING,
       FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
       nullptr);
-  if (!dir_handle) {
+  if (dir_handle == INVALID_HANDLE_VALUE) {
     throw std::runtime_error(
         std::string("failed to open dir ") + root->root_path.c_str() + ": " +
         win32_strerror(GetLastError()));
