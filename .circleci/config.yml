@@ -37,9 +37,9 @@ defaults: &defaults
           export PATH=$HOME/cmake-3.6.2-Linux-x86_64/bin:$PATH
           export CCACHE_DIR=$HOME/.ccache
           mkdir -p $CCACHE_DIR
-          cd build
-          python fbcode_builder/shell_builder.py > ~/run.sh
-          bash ~/run.sh
+          cmake .
+          make VERBOSE=1 -j2
+          make integration VERBOSE=1 -j2
     - save_cache:
         key: build-linux-debug-{{ arch }}-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}
         paths:
@@ -66,6 +66,6 @@ workflows:
   version: 2
   build:
     jobs:
-      - build-python27
-      - build-python36
+      #- build-python27
+      #- build-python36
       - ubuntu-18.04

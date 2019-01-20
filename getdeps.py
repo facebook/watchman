@@ -276,10 +276,13 @@ class CMakeBuilder(BuilderBase):
             self._run_cmd(["make", "install"])
 
 
-def run_cmd(cmd, env=None, cwd=None):
+def run_cmd(cmd, env=None, cwd=None, allow_fail=False):
     cmd_str = " ".join(shellquote(arg) for arg in cmd)
     print("+ " + cmd_str)
-    subprocess.check_call(cmd, env=env, cwd=cwd)
+    if allow_fail:
+        subprocess.call(cmd, env=env, cwd=cwd)
+    else:
+        subprocess.check_call(cmd, env=env, cwd=cwd)
 
 
 def install_apt(pkgs):
@@ -530,7 +533,8 @@ def install_platform_deps():
                 "snappy",
                 "xz",
                 "zstd",
-            ]
+            ],
+            allow_fail=True,
         )
 
     else:

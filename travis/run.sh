@@ -37,16 +37,6 @@ export TMPDIR TMP
 
 set +e
 
-WAT_SRC=$PWD
-python getdeps.py -j2 || exit 1
-
-if [ -n "${TRAVIS_PYTHON}" ]; then
-  cmake "$WAT_SRC" -DPYTHON_EXECUTABLE="$(which $TRAVIS_PYTHON)"
-else
-  cmake "$WAT_SRC"
-fi
-
-make clean
 make VERBOSE=1
 
 if ! make integration VERBOSE=1 ; then
@@ -55,17 +45,6 @@ fi
 
 make DESTDIR=$INST_TEST install
 find $INST_TEST
-
-case $(uname) in
-  Darwin)
-    if [[ "$BUILD_JAVA_CLIENT" != "" ]] && [ "${BUILD_JAVA_CLIENT-0}" -eq 1 ]; then
-      pushd "$WAT_SRC/java"
-      buck fetch :watchman :watchman-tests || exit 1
-      buck test :watchman-lib || exit 1
-      popd
-    fi
-    ;;
-esac
 
 exit 0
 

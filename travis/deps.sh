@@ -1,65 +1,21 @@
 #!/bin/bash
-set -x
+set -ex
 
-brew_install_latest_stable() {
-  local packages=("${@}")
-  set +x
-  local packages_to_install=()
-  local packages_to_upgrade=()
-  for package in "${packages[@]}"; do
-    case "$(brew_package_installed_status "${package}")" in
-      not_installed)
-        packages_to_install+=("${package}")
-        ;;
-      installed_but_outdated)
-        packages_to_upgrade+=("${package}")
-        ;;
-      installed_and_up_to_date)
-        ;;
-      *)
-        printf 'error: unknown package installed status\n' >&2
-        return 1
-        ;;
-    esac
-  done
-  set -x
-  if [ "${#packages_to_upgrade[@]}" -gt 0 ]; then
-    brew upgrade "${packages_to_upgrade[@]}"
-  fi
-  if [ "${#packages_to_install[@]}" -gt 0 ]; then
-    brew install "${packages_to_install[@]}"
-  fi
-}
-
-brew_package_installed_status() {
-  local package="${1}"
-  if ! brew_package_is_installed "${package}"; then
-    echo not_installed
-    return
-  fi
-  local outdated_packages=($(brew outdated --quiet))
-  for outdated_package in "${outdated_packages[@]:+${outdated_packages[@]}}"; do
-    if [ "${package}" = "${outdated_package}" ]; then
-      echo installed_but_outdated
-      return
-    fi
-  done
-  echo installed_and_up_to_date
-}
-
-brew_package_is_installed() {
-  local package="${1}"
-  brew list --versions "${package}" >/dev/null
-}
-
-case `uname` in
-  Darwin)
+case "$OSTYPE" in
+  darwin*)
+    # Ensure that we pick up the homebrew openssl installation
+    export PKG_CONFIG_PATH="$(brew --prefix)/opt/openssl/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
     brew update >/dev/null
-    HOMEBREW_NO_AUTO_UPDATE=1 brew_install_latest_stable cmake wget pcre ruby openssl readline pyenv boost double-conversion glog gflags libevent xz snappy lz4 pkg-config
+    # getdeps.py installs deps for the watchman service, but we do try to test
+    # our nodejs at runtime.  The boost dependency of folly causes icu4c to be
+    # installed and there appears to be some version weirdo wrt. node and icu4c,
+    # so let's force nodejs to be reinstalled and see if that helps.
+    brew install nodejs || brew upgrade nodejs || true
+
     # avoid snafu with OS X and python builds
-    ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future
-    CFLAGS="$CFLAGS $ARCHFLAGS"
-    export ARCHFLAGS CFLAGS
+    #ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future
+    #CFLAGS="$CFLAGS $ARCHFLAGS"
+    #export ARCHFLAGS CFLAGS
     case "$TRAVIS_PYTHON" in
       python2.6)
         pyenv install 2.6.9
@@ -80,5 +36,11 @@ case `uname` in
         pyenv install 3.6.1
         pyenv global 3.6.1
     esac
+
+    HOMEBREW_NO_AUTO_UPDATE=1 ./getdeps.py --install-deps
+    ;;
+  *)
+    ./getdeps.py
     ;;
 esac
+cmake .
