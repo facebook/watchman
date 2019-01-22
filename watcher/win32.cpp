@@ -32,7 +32,7 @@ struct Item {
 
 struct WinWatcher : public Watcher {
   HANDLE ping{INVALID_HANDLE_VALUE}, olapEvent{INVALID_HANDLE_VALUE};
-  HANDLE dir_handle{INVALID_HANDLE_VALUE};
+  FileDescriptor dir_handle(INVALID_HANDLE_VALUE);
 
   std::condition_variable cond;
   watchman::Synchronized<std::list<Item>, std::mutex> changedItems;
@@ -63,7 +63,7 @@ WinWatcher::WinWatcher(w_root_t* root)
 
   // Create an overlapped handle so that we can avoid blocking forever
   // in ReadDirectoryChangesW
-  FileDescriptor dir_handle(intptr_t(CreateFileW(
+  dir_handle = intptr_t(CreateFileW(
     wpath.c_str(),
     GENERIC_READ,
     FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE,
@@ -71,7 +71,7 @@ WinWatcher::WinWatcher(w_root_t* root)
     OPEN_EXISTING,
     FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
     nullptr
-  )));
+  ));
 
   if (!dir_handle) {
     throw std::runtime_error(
