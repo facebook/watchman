@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #include "InMemoryView.h"
+#include "FileDescriptor.h"
 #include "watchman_synchronized.h"
 
 #include <algorithm>
@@ -11,6 +12,8 @@
 #include <iterator>
 #include <tuple>
 #include <mutex>
+
+using watchman::FileDescriptor;
 
 #ifdef _WIN32
 
