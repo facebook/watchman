@@ -70,7 +70,7 @@ WinWatcher::WinWatcher(w_root_t* root)
     nullptr
   )));
 
-  if (dir_handle == INVALID_HANDLE_VALUE) {
+  if (!dir_handle) {
     throw std::runtime_error(
         std::string("failed to open dir ") + root->root_path.c_str() + ": " +
         win32_strerror(GetLastError()));
