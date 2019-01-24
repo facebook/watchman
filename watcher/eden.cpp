@@ -336,7 +336,9 @@ class EdenFileResult : public FileResult {
       case SHA1Result::Type::error: {
         auto& err = sha1_->get_error();
         throw std::system_error(
-            err.errorCode, std::generic_category(), err.message);
+            err.errorCode_ref().value_unchecked(),
+            std::generic_category(),
+            err.message);
       }
 
       // Something is wrong with type union
@@ -857,7 +859,7 @@ class EdenView : public QueryableView {
             fileNames.size(),
             " changed files\n");
       } catch (const EdenError& err) {
-        if (err.errorCode != ERANGE) {
+        if (err.errorCode_ref().value_unchecked() != ERANGE) {
           throw;
         }
         // mountGeneration differs, so treat this as equivalent
