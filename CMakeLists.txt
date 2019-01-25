@@ -280,13 +280,17 @@ add_library(wildmatch STATIC
   thirdparty/wildmatch/wildmatch.h
 )
 add_library(tap STATIC thirdparty/tap.cpp thirdparty/tap.h)
+target_link_libraries(tap Folly::folly glog::glog)
 add_library(log STATIC PubSub.cpp log.cpp)
+target_link_libraries(log Folly::folly glog::glog)
 add_library(hash STATIC hash.cpp)
+target_link_libraries(hash Folly::folly glog::glog)
 add_library(err STATIC root/poison.cpp root/warnerr.cpp)
+target_link_libraries(err Folly::folly glog::glog)
 add_library(jansson_utf STATIC thirdparty/jansson/utf.cpp)
 
 add_library(string STATIC string.cpp)
-target_link_libraries(string jansson_utf hash)
+target_link_libraries(string jansson_utf hash Folly::folly glog::glog)
 
 add_library(jansson STATIC
 thirdparty/jansson/dump.cpp
@@ -298,7 +302,7 @@ thirdparty/jansson/strbuffer.cpp
 thirdparty/jansson/strconv.cpp
 thirdparty/jansson/value.cpp
 )
-target_link_libraries(jansson string)
+target_link_libraries(jansson string Folly::folly glog::glog)
 
 list(APPEND testsupport_sources
 ChildProcess.cpp
@@ -329,9 +333,7 @@ stream_win.cpp
 endif()
 
 add_library(testsupport STATIC ${testsupport_sources})
-
-
-target_link_libraries(testsupport log string jansson)
+target_link_libraries(testsupport log string jansson Folly::folly glog::glog)
 
 list(APPEND watchman_sources
 ChildProcess.cpp
@@ -452,7 +454,9 @@ stream_unix.cpp
 endif()
 
 add_executable(watchman ${watchman_sources})
-target_link_libraries(watchman log hash string err jansson wildmatch Folly::folly)
+target_link_libraries(
+  watchman
+  log hash string err jansson wildmatch Folly::folly glog::glog)
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   target_link_libraries(watchman "-framework CoreServices")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -475,7 +479,9 @@ set(tests)
 # Helper function to define a unit test executable
 function(t_test NAME)
   add_executable(${NAME}.t ${ARGN})
-  target_link_libraries(${NAME}.t testsupport tap Threads::Threads wildmatch Folly::folly)
+  target_link_libraries(
+    ${NAME}.t
+    testsupport tap Threads::Threads wildmatch Folly::folly glog::glog)
   if(TARGET OpenSSL::Crypto)
     target_link_libraries(${NAME}.t OpenSSL::Crypto)
   endif()
