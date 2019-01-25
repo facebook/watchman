@@ -2,9 +2,9 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman_system.h"
-#include "FileDescriptor.h"
 #include "watchman.h"
-#include "watchman_scopeguard.h"
+#include <folly/ScopeGuard.h>
+#include "FileDescriptor.h"
 
 using watchman::FileDescriptor;
 using watchman::FileInformation;

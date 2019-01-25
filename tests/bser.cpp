@@ -2,10 +2,10 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/ScopeGuard.h>
 #include "thirdparty/jansson/jansson_private.h"
 #include "thirdparty/jansson/strbuffer.h"
 #include "thirdparty/tap.h"
-#include "watchman_scopeguard.h"
 
 #define UTF8_PILE_OF_POO "\xf0\x9f\x92\xa9"
 

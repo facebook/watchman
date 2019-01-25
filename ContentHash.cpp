@@ -12,10 +12,10 @@
 #else
 #include <openssl/sha.h>
 #endif
+#include <folly/ScopeGuard.h>
 #include <string>
-#include "Logging.h"
 #include "FileSystem.h"
-#include "watchman_scopeguard.h"
+#include "Logging.h"
 
 namespace watchman {
 

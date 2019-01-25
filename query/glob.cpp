@@ -1,11 +1,11 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman.h"
+#include <folly/ScopeGuard.h>
 #include "InMemoryView.h"
 #include "make_unique.h"
 #include "thirdparty/wildmatch/wildmatch.h"
-#include "watchman.h"
-#include "watchman_scopeguard.h"
 
 using watchman::CaseSensitivity;
 

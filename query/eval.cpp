@@ -3,9 +3,9 @@
 
 #include "watchman.h"
 
+#include <folly/ScopeGuard.h>
 #include "LocalFileResult.h"
 #include "saved_state/SavedStateInterface.h"
-#include "watchman_scopeguard.h"
 
 using namespace watchman;
 using watchman::Result;

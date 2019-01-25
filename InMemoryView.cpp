@@ -1,12 +1,12 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
+#include "watchman.h"
 #include "InMemoryView.h"
+#include <folly/ScopeGuard.h>
 #include <algorithm>
 #include <thread>
 #include "ThreadPool.h"
 #include "make_unique.h"
-#include "watchman.h"
-#include "watchman_scopeguard.h"
 
 // Each root gets a number that uniquely identifies it within the process. This
 // helps avoid confusion if a root is removed and then added again.

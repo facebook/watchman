@@ -2,11 +2,11 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman_system.h"
+#include "watchman.h"
+#include <folly/ScopeGuard.h>
 #include <memory>
 #include "FileSystem.h"
-#include "watchman.h"
 #include "watchman_error_category.h"
-#include "watchman_scopeguard.h"
 
 using watchman::realPath;
 using watchman::readSymbolicLink;

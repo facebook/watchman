@@ -13,7 +13,7 @@
 #ifdef _WIN32
 #include "WinIoCtl.h"
 #endif
-#include "watchman_scopeguard.h"
+#include <folly/ScopeGuard.h>
 
 #if defined(_WIN32) || defined(O_PATH)
 #define CAN_OPEN_SYMLINKS 1

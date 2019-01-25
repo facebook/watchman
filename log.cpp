@@ -8,8 +8,8 @@
 #ifdef __APPLE__
 #include <pthread.h>
 #endif
+#include <folly/ScopeGuard.h>
 #include "Logging.h"
-#include "watchman_scopeguard.h"
 
 using namespace watchman;
 

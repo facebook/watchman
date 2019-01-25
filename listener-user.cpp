@@ -2,7 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-#include "watchman_scopeguard.h"
+#include <folly/ScopeGuard.h>
 
 // Functions relating to the per-user service
 

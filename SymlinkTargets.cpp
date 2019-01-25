@@ -1,10 +1,10 @@
 #include "SymlinkTargets.h"
+#include <folly/ScopeGuard.h>
 #include <string>
 #include "FileSystem.h"
 #include "Logging.h"
 #include "ThreadPool.h"
 #include "watchman_hash.h"
-#include "watchman_scopeguard.h"
 
 namespace watchman {
 

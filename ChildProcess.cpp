@@ -1,12 +1,12 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "ChildProcess.h"
+#include <folly/ScopeGuard.h>
 #include <system_error>
 #include <thread>
 #include "Future.h"
 #include "Logging.h"
 #include "make_unique.h"
-#include "watchman_scopeguard.h"
 
 namespace watchman {
 
