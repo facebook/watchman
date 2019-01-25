@@ -11,7 +11,6 @@
 #include <unordered_set>
 #include <vector>
 #include "FileSystem.h"
-#include "Future.h"
 #include "watchman_clockspec.h"
 
 namespace watchman {
