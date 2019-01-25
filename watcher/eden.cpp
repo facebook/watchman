@@ -585,21 +585,17 @@ class EdenWrappedSCM : public SCM {
     auto hashA = to<std::string>(commitA);
     auto hashB = to<std::string>(commitB);
 
-    auto edenFuture =
-        makeFuture()
-            .via(&getThreadPool())
-            .then([this, hashA, hashB](Result<Unit>) {
+    std::array<folly::Future<SCM::StatusResult>, 2> futures{
+        folly::via(
+            &getThreadPool(),
+            [this, hashA, hashB] {
               return getFilesChangedBetweenCommitsFromEden(hashA, hashB);
-            });
-
-    auto hgFuture =
-        makeFuture()
-            .via(&getThreadPool())
-            .then([this, hashA, hashB](Result<Unit>) {
-              return inner_->getFilesChangedBetweenCommits(hashA, hashB);
-            });
-
-    return selectWinner(std::move(edenFuture), std::move(hgFuture)).get();
+            }),
+        folly::via(&getThreadPool(), [this, hashA, hashB] {
+          return inner_->getFilesChangedBetweenCommits(hashA, hashB);
+        })};
+    auto resultPair = folly::collectAny(futures).get();
+    return resultPair.second.value();
   }
 
   SCM::StatusResult getFilesChangedBetweenCommitsFromEden(
