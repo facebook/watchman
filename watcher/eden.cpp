@@ -30,6 +30,7 @@ using facebook::eden::GlobParams;
 using facebook::eden::JournalPosition;
 using facebook::eden::SHA1Result;
 using facebook::eden::StreamingEdenServiceAsyncClient;
+using folly::Optional;
 
 namespace {
 /** Represents a cache key for getFilesChangedBetweenCommits()
@@ -232,7 +233,7 @@ class EdenFileResult : public FileResult {
   Optional<FileInformation> stat() override {
     if (!stat_.has_value()) {
       accessorNeedsProperties(FileResult::Property::FullFileInformation);
-      return nullopt;
+      return folly::none;
     }
     return stat_;
   }
@@ -240,7 +241,7 @@ class EdenFileResult : public FileResult {
   Optional<size_t> size() override {
     if (!stat_.has_value()) {
       accessorNeedsProperties(FileResult::Property::Size);
-      return nullopt;
+      return folly::none;
     }
     return stat_->size;
   }
@@ -248,7 +249,7 @@ class EdenFileResult : public FileResult {
   Optional<struct timespec> accessedTime() override {
     if (!stat_.has_value()) {
       accessorNeedsProperties(FileResult::Property::StatTimeStamps);
-      return nullopt;
+      return folly::none;
     }
     return stat_->atime;
   }
@@ -256,7 +257,7 @@ class EdenFileResult : public FileResult {
   Optional<struct timespec> modifiedTime() override {
     if (!stat_.has_value()) {
       accessorNeedsProperties(FileResult::Property::StatTimeStamps);
-      return nullopt;
+      return folly::none;
     }
     return stat_->mtime;
   }
@@ -264,7 +265,7 @@ class EdenFileResult : public FileResult {
   Optional<struct timespec> changedTime() override {
     if (!stat_.has_value()) {
       accessorNeedsProperties(FileResult::Property::StatTimeStamps);
-      return nullopt;
+      return folly::none;
     }
     return stat_->ctime;
   }
@@ -287,7 +288,7 @@ class EdenFileResult : public FileResult {
   Optional<bool> exists() override {
     if (!exists_.has_value()) {
       accessorNeedsProperties(FileResult::Property::Exists);
-      return nullopt;
+      return folly::none;
     }
     return exists_;
   }
@@ -297,13 +298,13 @@ class EdenFileResult : public FileResult {
       return symlinkTarget_;
     }
     accessorNeedsProperties(FileResult::Property::SymlinkTarget);
-    return nullopt;
+    return folly::none;
   }
 
   Optional<w_clock_t> ctime() override {
     if (!stat_.has_value()) {
       accessorNeedsProperties(FileResult::Property::CTime);
-      return nullopt;
+      return folly::none;
     }
     return ctime_;
   }
@@ -311,7 +312,7 @@ class EdenFileResult : public FileResult {
   Optional<w_clock_t> otime() override {
     if (!stat_.has_value()) {
       accessorNeedsProperties(FileResult::Property::OTime);
-      return nullopt;
+      return folly::none;
     }
     return otime_;
   }
@@ -319,7 +320,7 @@ class EdenFileResult : public FileResult {
   Optional<FileResult::ContentHash> getContentSha1() override {
     if (!sha1_.has_value()) {
       accessorNeedsProperties(FileResult::Property::ContentSha1);
-      return nullopt;
+      return folly::none;
     }
     switch (sha1_->getType()) {
       // Copy thrift SHA1Result aka (std::string) into

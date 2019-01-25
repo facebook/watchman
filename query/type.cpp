@@ -14,7 +14,7 @@ class TypeExpr : public QueryExpr {
   EvaluateResult evaluate(struct w_query_ctx*, FileResult* file) override {
     auto stat = file->stat();
     if (!stat.has_value()) {
-      return watchman::nullopt;
+      return folly::none;
     }
 
     switch (arg) {

@@ -1,6 +1,9 @@
 #include "LocalFileResult.h"
 #include "ContentHash.h"
 #include "watchman_error_category.h"
+
+using folly::Optional;
+
 namespace watchman {
 
 LocalFileResult::LocalFileResult(
@@ -26,7 +29,7 @@ void LocalFileResult::getInfo() {
 Optional<FileInformation> LocalFileResult::stat() {
   if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::FullFileInformation);
-    return nullopt;
+    return folly::none;
   }
   return info_;
 }
@@ -34,7 +37,7 @@ Optional<FileInformation> LocalFileResult::stat() {
 Optional<size_t> LocalFileResult::size() {
   if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::Size);
-    return nullopt;
+    return folly::none;
   }
   return info_->size;
 }
@@ -42,7 +45,7 @@ Optional<size_t> LocalFileResult::size() {
 Optional<struct timespec> LocalFileResult::accessedTime() {
   if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::StatTimeStamps);
-    return nullopt;
+    return folly::none;
   }
   return info_->atime;
 }
@@ -50,7 +53,7 @@ Optional<struct timespec> LocalFileResult::accessedTime() {
 Optional<struct timespec> LocalFileResult::modifiedTime() {
   if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::StatTimeStamps);
-    return nullopt;
+    return folly::none;
   }
   return info_->mtime;
 }
@@ -58,7 +61,7 @@ Optional<struct timespec> LocalFileResult::modifiedTime() {
 Optional<struct timespec> LocalFileResult::changedTime() {
   if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::StatTimeStamps);
-    return nullopt;
+    return folly::none;
   }
   return info_->ctime;
 }
@@ -74,7 +77,7 @@ w_string_piece LocalFileResult::dirName() {
 Optional<bool> LocalFileResult::exists() {
   if (!info_.has_value()) {
     accessorNeedsProperties(FileResult::Property::Exists);
-    return nullopt;
+    return folly::none;
   }
   return exists_;
 }
@@ -84,7 +87,7 @@ Optional<w_string> LocalFileResult::readLink() {
     return symlinkTarget_;
   }
   accessorNeedsProperties(FileResult::Property::SymlinkTarget);
-  return nullopt;
+  return folly::none;
 }
 
 Optional<w_clock_t> LocalFileResult::ctime() {
@@ -98,7 +101,7 @@ Optional<w_clock_t> LocalFileResult::otime() {
 Optional<FileResult::ContentHash> LocalFileResult::getContentSha1() {
   if (contentSha1_.empty()) {
     accessorNeedsProperties(FileResult::Property::ContentSha1);
-    return nullopt;
+    return folly::none;
   }
   return contentSha1_.value();
 }

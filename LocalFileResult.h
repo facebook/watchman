@@ -31,11 +31,11 @@ class LocalFileResult : public FileResult {
   // today because the only source of LocalFileResult instances today is
   // based on the list of files returned from source control, and scm
   // of today only reports files, never dirs.
-  watchman::Optional<watchman::FileInformation> stat() override;
-  Optional<struct timespec> accessedTime() override;
-  Optional<struct timespec> modifiedTime() override;
-  Optional<struct timespec> changedTime() override;
-  Optional<size_t> size() override;
+  folly::Optional<watchman::FileInformation> stat() override;
+  folly::Optional<struct timespec> accessedTime() override;
+  folly::Optional<struct timespec> modifiedTime() override;
+  folly::Optional<struct timespec> changedTime() override;
+  folly::Optional<size_t> size() override;
 
   // Returns the name of the file in its containing dir
   w_string_piece baseName() override;
@@ -43,15 +43,15 @@ class LocalFileResult : public FileResult {
   // VFS root
   w_string_piece dirName() override;
   // Returns true if the file currently exists
-  watchman::Optional<bool> exists() override;
+  folly::Optional<bool> exists() override;
   // Returns the symlink target
-  watchman::Optional<w_string> readLink() override;
+  folly::Optional<w_string> readLink() override;
 
-  watchman::Optional<w_clock_t> ctime() override;
-  watchman::Optional<w_clock_t> otime() override;
+  folly::Optional<w_clock_t> ctime() override;
+  folly::Optional<w_clock_t> otime() override;
 
   // Returns the SHA-1 hash of the file contents
-  Optional<FileResult::ContentHash> getContentSha1() override;
+  folly::Optional<FileResult::ContentHash> getContentSha1() override;
 
   void batchFetchProperties(
       const std::vector<std::unique_ptr<FileResult>>& files) override;
@@ -61,11 +61,11 @@ class LocalFileResult : public FileResult {
   w_string getFullPath();
 
   bool exists_{true};
-  Optional<FileInformation> info_;
+  folly::Optional<FileInformation> info_;
   std::shared_ptr<w_root_t> root_;
   w_string fullPath_;
   w_clock_t clock_;
-  Optional<w_string> symlinkTarget_;
+  folly::Optional<w_string> symlinkTarget_;
   Result<FileResult::ContentHash> contentSha1_;
 };
 

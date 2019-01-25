@@ -85,7 +85,7 @@ class SizeExpr : public QueryExpr {
     auto size = file->size();
 
     if (!exists.has_value()) {
-      return watchman::nullopt;
+      return folly::none;
     }
 
     // Removed files never match
@@ -94,7 +94,7 @@ class SizeExpr : public QueryExpr {
     }
 
     if (!size.has_value()) {
-      return watchman::nullopt;
+      return folly::none;
     }
 
     return eval_int_compare(size.value(), &comp);

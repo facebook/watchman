@@ -39,18 +39,18 @@ class InMemoryFileResult : public FileResult {
   explicit InMemoryFileResult(
       const watchman_file* file,
       InMemoryViewCaches& caches);
-  Optional<FileInformation> stat() override;
-  Optional<struct timespec> accessedTime() override;
-  Optional<struct timespec> modifiedTime() override;
-  Optional<struct timespec> changedTime() override;
-  Optional<size_t> size() override;
+  folly::Optional<FileInformation> stat() override;
+  folly::Optional<struct timespec> accessedTime() override;
+  folly::Optional<struct timespec> modifiedTime() override;
+  folly::Optional<struct timespec> changedTime() override;
+  folly::Optional<size_t> size() override;
   w_string_piece baseName() override;
   w_string_piece dirName() override;
-  Optional<bool> exists() override;
-  Optional<w_string> readLink() override;
-  Optional<w_clock_t> ctime() override;
-  Optional<w_clock_t> otime() override;
-  Optional<FileResult::ContentHash> getContentSha1() override;
+  folly::Optional<bool> exists() override;
+  folly::Optional<w_string> readLink() override;
+  folly::Optional<w_clock_t> ctime() override;
+  folly::Optional<w_clock_t> otime() override;
+  folly::Optional<FileResult::ContentHash> getContentSha1() override;
   void batchFetchProperties(
       const std::vector<std::unique_ptr<FileResult>>& files) override;
 
@@ -58,7 +58,7 @@ class InMemoryFileResult : public FileResult {
   const watchman_file* file_;
   w_string dirName_;
   InMemoryViewCaches& caches_;
-  Optional<w_string> symlinkTarget_;
+  folly::Optional<w_string> symlinkTarget_;
   Result<FileResult::ContentHash> contentSha1_;
 };
 

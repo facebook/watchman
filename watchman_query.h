@@ -3,6 +3,7 @@
 
 #ifndef WATCHMAN_QUERY_H
 #define WATCHMAN_QUERY_H
+#include <folly/Optional.h>
 #include <array>
 #include <deque>
 #include <stdexcept>
@@ -11,7 +12,6 @@
 #include <vector>
 #include "FileSystem.h"
 #include "Future.h"
-#include "Optional.h"
 #include "watchman_clockspec.h"
 
 namespace watchman {
@@ -25,8 +25,7 @@ class FileResult;
 
 struct w_query_field_renderer {
   w_string name;
-  watchman::Optional<json_ref> (
-      *make)(FileResult* file, const w_query_ctx* ctx);
+  folly::Optional<json_ref> (*make)(FileResult* file, const w_query_ctx* ctx);
 };
 
 using w_query_field_list = std::vector<const w_query_field_renderer*>;
@@ -53,21 +52,21 @@ class FileResult {
   virtual ~FileResult();
 
   // Maybe returns the file information.
-  // Returns nullopt if the file information is not yet known.
-  virtual watchman::Optional<watchman::FileInformation> stat() = 0;
+  // Returns folly::none if the file information is not yet known.
+  virtual folly::Optional<watchman::FileInformation> stat() = 0;
 
   // Returns the stat.st_atime field
-  virtual watchman::Optional<struct timespec> accessedTime() = 0;
+  virtual folly::Optional<struct timespec> accessedTime() = 0;
 
   // Returns the stat.st_mtime field
-  virtual watchman::Optional<struct timespec> modifiedTime() = 0;
+  virtual folly::Optional<struct timespec> modifiedTime() = 0;
 
   // Returns the stat.st_ctime field
-  virtual watchman::Optional<struct timespec> changedTime() = 0;
+  virtual folly::Optional<struct timespec> changedTime() = 0;
 
   // Returns the size of the file in bytes, as reported in
   // the stat.st_size field.
-  virtual watchman::Optional<size_t> size() = 0;
+  virtual folly::Optional<size_t> size() = 0;
 
   // Returns the name of the file in its containing dir
   virtual w_string_piece baseName() = 0;
@@ -76,23 +75,23 @@ class FileResult {
   virtual w_string_piece dirName() = 0;
 
   // Maybe return the file existence status.
-  // Returns nullopt if the information is not currently known.
-  virtual watchman::Optional<bool> exists() = 0;
+  // Returns folly::none if the information is not currently known.
+  virtual folly::Optional<bool> exists() = 0;
 
   // Returns the symlink target
-  virtual watchman::Optional<w_string> readLink() = 0;
+  virtual folly::Optional<w_string> readLink() = 0;
 
   // Maybe return the change time.
-  // Returns nullopt if ctime is not currently known
-  virtual watchman::Optional<w_clock_t> ctime() = 0;
+  // Returns folly::none if ctime is not currently known
+  virtual folly::Optional<w_clock_t> ctime() = 0;
 
   // Maybe return the observed time.
-  // Returns nullopt if otime is not currently known
-  virtual watchman::Optional<w_clock_t> otime() = 0;
+  // Returns folly::none if otime is not currently known
+  virtual folly::Optional<w_clock_t> otime() = 0;
 
   // Returns the SHA-1 hash of the file contents
   using ContentHash = std::array<uint8_t, 20>;
-  virtual watchman::Optional<ContentHash> getContentSha1() = 0;
+  virtual folly::Optional<ContentHash> getContentSha1() = 0;
 
   // A bitset of Property values
   using Properties = uint_least16_t;
@@ -277,7 +276,7 @@ enum AggregateOp {
   AllOf,
 };
 
-using EvaluateResult = watchman::Optional<bool>;
+using EvaluateResult = folly::Optional<bool>;
 
 class QueryExpr {
  public:
@@ -429,7 +428,7 @@ std::shared_ptr<w_query> w_query_parse_legacy(
     json_ref* expr_p);
 void w_query_legacy_field_list(w_query_field_list* flist);
 
-watchman::Optional<json_ref> file_result_to_json(
+folly::Optional<json_ref> file_result_to_json(
     const w_query_field_list& fieldList,
     const std::unique_ptr<FileResult>& file,
     const w_query_ctx* ctx);

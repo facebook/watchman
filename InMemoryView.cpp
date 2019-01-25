@@ -8,6 +8,8 @@
 #include "ThreadPool.h"
 #include "make_unique.h"
 
+using folly::Optional;
+
 // Each root gets a number that uniquely identifies it within the process. This
 // helps avoid confusion if a root is removed and then added again.
 static std::atomic<long> next_root_number{1};
@@ -167,7 +169,7 @@ Optional<w_string> InMemoryFileResult::readLink() {
     }
     // Need to load the symlink target; batch that up
     accessorNeedsProperties(FileResult::Property::SymlinkTarget);
-    return nullopt;
+    return folly::none;
   }
   return symlinkTarget_;
 }
@@ -186,7 +188,7 @@ Optional<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
 
   if (contentSha1_.empty()) {
     accessorNeedsProperties(FileResult::Property::ContentSha1);
-    return nullopt;
+    return folly::none;
   }
   return contentSha1_.value();
 }

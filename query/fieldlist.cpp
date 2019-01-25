@@ -6,6 +6,7 @@
 #include "watchman_error_category.h"
 
 using namespace watchman;
+using folly::Optional;
 
 static Optional<json_ref> make_name(FileResult* file, const w_query_ctx* ctx) {
   return w_string_to_json(ctx->computeWholeName(file));
@@ -14,7 +15,7 @@ static Optional<json_ref> make_name(FileResult* file, const w_query_ctx* ctx) {
 static Optional<json_ref> make_symlink(FileResult* file, const w_query_ctx*) {
   auto target = file->readLink();
   if (!target.has_value()) {
-    return nullopt;
+    return folly::none;
   }
   return *target ? w_string_to_json(*target) : json_null();
 }
@@ -24,7 +25,7 @@ static Optional<json_ref> make_sha1_hex(FileResult* file, const w_query_ctx*) {
     auto hash = file->getContentSha1();
     if (!hash.has_value()) {
       // Need to load it still
-      return nullopt;
+      return folly::none;
     }
     char buf[40];
     static const char* hexDigit = "0123456789abcdef";
@@ -56,7 +57,7 @@ static Optional<json_ref> make_sha1_hex(FileResult* file, const w_query_ctx*) {
 static Optional<json_ref> make_size(FileResult* file, const w_query_ctx*) {
   auto size = file->size();
   if (!size.has_value()) {
-    return nullopt;
+    return folly::none;
   }
   return json_integer(size.value());
 }
@@ -64,7 +65,7 @@ static Optional<json_ref> make_size(FileResult* file, const w_query_ctx*) {
 static Optional<json_ref> make_exists(FileResult* file, const w_query_ctx*) {
   auto exists = file->exists();
   if (!exists.has_value()) {
-    return nullopt;
+    return folly::none;
   }
   return json_boolean(exists.value());
 }
@@ -78,7 +79,7 @@ static Optional<json_ref> make_new(FileResult* file, const w_query_ctx* ctx) {
     auto ctime = file->ctime();
     if (!ctime.has_value()) {
       // Reconsider this one later
-      return nullopt;
+      return folly::none;
     }
     if (ctx->since.is_timestamp) {
       is_new = ctx->since.timestamp > ctime->timestamp;
@@ -97,7 +98,7 @@ static Optional<json_ref> make_new(FileResult* file, const w_query_ctx* ctx) {
     auto clock = file->member();                            \
     if (!clock.has_value()) {                               \
       /* need to load data */                               \
-      return nullopt;                                       \
+      return folly::none;                                   \
     }                                                       \
     if (clock_id_string(                                    \
             ctx->clockAtStartOfQuery.position().rootNumber, \
@@ -124,7 +125,7 @@ static_assert(
     auto stat = file->stat();                 \
     if (!stat.has_value()) {                  \
       /* need to load data */                 \
-      return nullopt;                         \
+      return folly::none;                     \
     }                                         \
     return json_integer(stat->member);        \
   }
@@ -135,7 +136,7 @@ static_assert(
     auto spec = file->member();                                   \
     if (!spec.has_value()) {                                      \
       /* need to load data */                                     \
-      return nullopt;                                             \
+      return folly::none;                                         \
     }                                                             \
     return json_integer(                                          \
         ((int64_t)spec->tv_sec * scale) +                         \
@@ -148,7 +149,7 @@ static_assert(
     auto spec = file->member();                            \
     if (!spec.has_value()) {                               \
       /* need to load data */                              \
-      return nullopt;                                      \
+      return folly::none;                                  \
     }                                                      \
     return json_real(spec->tv_sec + 1e-9 * spec->tv_nsec); \
   }
@@ -192,7 +193,7 @@ static Optional<json_ref> make_type_field(
   // Bias towards the more common file types first
   auto optionalStat = file->stat();
   if (!optionalStat.has_value()) {
-    return nullopt;
+    return folly::none;
   }
 
   auto stat = optionalStat.value();
@@ -291,7 +292,7 @@ Optional<json_ref> file_result_to_json(
     auto ele = f->make(file.get(), ctx);
     if (!ele.has_value()) {
       // Need data to be loaded
-      return nullopt;
+      return folly::none;
     }
     value.set(f->name, std::move(ele.value()));
   }

@@ -102,7 +102,7 @@ class ListExpr : public QueryExpr {
 
     if (needData) {
       // We're not sure yet
-      return watchman::nullopt;
+      return folly::none;
     }
     return allof;
   }
