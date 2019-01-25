@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #include <folly/Synchronized.h>
+#include "FileDescriptor.h"
 #include "InMemoryView.h"
 
 #include <algorithm>
@@ -11,6 +12,8 @@
 #include <iterator>
 #include <tuple>
 #include <mutex>
+
+using watchman::FileDescriptor;
 
 #ifdef _WIN32
 
@@ -29,7 +32,7 @@ struct Item {
 
 struct WinWatcher : public Watcher {
   HANDLE ping{INVALID_HANDLE_VALUE}, olapEvent{INVALID_HANDLE_VALUE};
-  HANDLE dir_handle{INVALID_HANDLE_VALUE};
+  FileDescriptor dir_handle;
 
   std::condition_variable cond;
   folly::Synchronized<std::list<Item>, std::mutex> changedItems;
@@ -60,14 +63,15 @@ WinWatcher::WinWatcher(w_root_t* root)
 
   // Create an overlapped handle so that we can avoid blocking forever
   // in ReadDirectoryChangesW
-  dir_handle = CreateFileW(
+  dir_handle = FileDescriptor(intptr_t(CreateFileW(
       wpath.c_str(),
       GENERIC_READ,
       FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE,
       nullptr,
       OPEN_EXISTING,
       FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-      nullptr);
+      nullptr)));
+
   if (!dir_handle) {
     throw std::runtime_error(
         std::string("failed to open dir ") + root->root_path.c_str() + ": " +
@@ -94,9 +98,6 @@ WinWatcher::~WinWatcher() {
   }
   if (olapEvent != INVALID_HANDLE_VALUE) {
     CloseHandle(olapEvent);
-  }
-  if (dir_handle != INVALID_HANDLE_VALUE) {
-    CloseHandle(dir_handle);
   }
 }
 
@@ -136,7 +137,14 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
     buf.resize(size);
 
     if (!ReadDirectoryChangesW(
-            dir_handle, &buf[0], size, TRUE, filter, nullptr, &olap, nullptr)) {
+            (HANDLE)dir_handle.handle(),
+            &buf[0],
+            size,
+            TRUE,
+            filter,
+            nullptr,
+            &olap,
+            nullptr)) {
       err = GetLastError();
       w_log(
           W_LOG_ERR,
@@ -160,7 +168,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
   while (!root->inner.cancelled) {
     if (initiate_read) {
       if (!ReadDirectoryChangesW(
-              dir_handle,
+              (HANDLE)dir_handle.handle(),
               &buf[0],
               size,
               TRUE,
@@ -195,7 +203,8 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
 
     if (status == WAIT_OBJECT_0) {
       bytes = 0;
-      if (!GetOverlappedResult(dir_handle, &olap, &bytes, FALSE)) {
+      if (!GetOverlappedResult(
+              (HANDLE)dir_handle.handle(), &olap, &bytes, FALSE)) {
         err = GetLastError();
         w_log(
             W_LOG_ERR,
