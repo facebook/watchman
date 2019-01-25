@@ -1,7 +1,6 @@
 /* Copyright 2013-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "Future.h"
 #include "watchman.h"
 #include "watchman_error_category.h"
 

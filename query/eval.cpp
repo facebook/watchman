@@ -8,9 +8,6 @@
 #include "saved_state/SavedStateInterface.h"
 
 using namespace watchman;
-using watchman::Result;
-using watchman::Future;
-using watchman::collectAll;
 
 FileResult::~FileResult() {}
 

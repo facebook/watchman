@@ -16,6 +16,7 @@
 #include "watchman_error_category.h"
 
 #include "ChildProcess.h"
+#include "Future.h"
 #include "LRUCache.h"
 #include "QueryableView.h"
 #include "ThreadPool.h"
