@@ -2,11 +2,11 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <folly/Synchronized.h>
+#include <folly/futures/Future.h>
 #include <chrono>
 #include <deque>
 #include <memory>
 #include <unordered_map>
-#include "Future.h"
 
 namespace watchman {
 
@@ -66,7 +66,7 @@ class Node {
   friend class LRUCache<KeyType, ValueType>;
 
  public:
-  using PromiseList = std::deque<Promise<std::shared_ptr<const Node>>>;
+  using PromiseList = std::deque<folly::Promise<std::shared_ptr<const Node>>>;
 
   // Construct a node via LRUCache::set()
   Node(const KeyType& key, ValueType&& value)
@@ -84,21 +84,21 @@ class Node {
 
   // Returns the underlying value container.
   // This is useful if you want to test for an error in a Future<> get.
-  const Result<ValueType>& result() const {
+  const folly::Try<ValueType>& result() const {
     return value_;
   }
 
  private:
   // Obtain a future that will be ready when the pending
   // fetches are complete.
-  Future<std::shared_ptr<const Node>> subscribe() {
+  folly::Future<std::shared_ptr<const Node>> subscribe() {
     promises_->emplace_back();
     return promises_->back().getFuture();
   }
 
   // Test whether an error result can be evicted
   bool expired(std::chrono::steady_clock::time_point now) const {
-    return value_.hasError() && now >= deadline_;
+    return value_.hasException() && now >= deadline_;
   }
 
   // Address of next element
@@ -109,7 +109,7 @@ class Node {
   // The key
   KeyType key_;
   // The stored value
-  Result<ValueType> value_;
+  folly::Try<ValueType> value_;
 
   // The collection of clients waiting for this node to be available.
   // This is a pointer so that we can minimize the space usage once
@@ -342,13 +342,13 @@ class LRUCache {
   // getter calls.  It is the responsibility of the caller to ensure
   // that this does not happen.
   template <typename Func>
-  Future<std::shared_ptr<const NodeType>> get(
+  folly::Future<std::shared_ptr<const NodeType>> get(
       const KeyType& key,
       Func&& getter,
       std::chrono::steady_clock::time_point now =
           std::chrono::steady_clock::now()) {
     std::shared_ptr<NodeType> node;
-    Future<std::shared_ptr<const NodeType>> future;
+    auto future = folly::Future<std::shared_ptr<const NodeType>>::makeEmpty();
 
     // Only hold the lock on the state while we set up the map entry.
     {
@@ -375,7 +375,7 @@ class LRUCache {
 
           // Available now
           ++state->stats.cacheHit;
-          return makeFuture<std::shared_ptr<const NodeType>>(node);
+          return folly::makeFuture<std::shared_ptr<const NodeType>>(node);
         }
 
         // Remove invalid node.
@@ -404,7 +404,7 @@ class LRUCache {
     // simple callback that executes immediately in our context;
     // if that were to then try to operate on the cache, it would
     // deadlock.
-    getter(key).then([node, this, now](Result<ValueType>&& result) {
+    getter(key).thenTry([node, this, now](folly::Try<ValueType>&& result) {
       // We're going to steal the promises so that we can fulfil
       // them outside of the lock
       std::unique_ptr<typename NodeType::PromiseList> promises;
@@ -424,7 +424,7 @@ class LRUCache {
         state->lookupOrder.remove(node.get());
 
         // We only need a TTL for errors
-        if (node->value_.hasError()) {
+        if (node->value_.hasException()) {
           // Note that we don't account for the time it takes to
           // arrive at the error condition in this TTL.  This
           // is semi-deliberate; the for the sake of testing we

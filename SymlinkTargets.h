@@ -46,7 +46,8 @@ class SymlinkTargetCache {
   // holding the result.  Otherwise, computeHash will be invoked
   // to populate the cache.  Returns a future with the result
   // of the lookup.
-  Future<std::shared_ptr<const Node>> get(const SymlinkTargetCacheKey& key);
+  folly::Future<std::shared_ptr<const Node>> get(
+      const SymlinkTargetCacheKey& key);
 
   // Read the symlink target.
   // This will block the calling thread while the I/O is performed.
@@ -55,7 +56,7 @@ class SymlinkTargetCache {
 
   // Read the symlink target for a given input via the thread pool.
   // Returns a future to operate on the result of this async operation
-  Future<w_string> readLink(const SymlinkTargetCacheKey& key) const;
+  folly::Future<w_string> readLink(const SymlinkTargetCacheKey& key) const;
 
   // Returns the root path that this cache is associated with
   const w_string& rootPath() const;

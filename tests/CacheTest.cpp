@@ -4,7 +4,6 @@
 #include <folly/executors/ManualExecutor.h>
 #include <deque>
 #include <string>
-#include "Future.h"
 #include "LRUCache.h"
 #include "thirdparty/tap.h"
 
@@ -64,13 +63,13 @@ void test_future() {
   auto now = std::chrono::steady_clock::now();
 
   auto okGetter = [&exec](int k) {
-    return makeFuture(k).via(&exec).then(
-        [](Result<int>&& key) { return (1 + key.value()) * 2; });
+    return folly::makeFuture(k).via(&exec).thenTry(
+        [](folly::Try<int>&& key) { return (1 + key.value()) * 2; });
   };
 
   auto failGetter = [&exec](int k) {
-    return makeFuture(k).via(&exec).then(
-        [](Result<int> &&) -> int { throw std::runtime_error("bleet"); });
+    return folly::makeFuture(k).via(&exec).thenTry(
+        [](folly::Try<int> &&) -> int { throw std::runtime_error("bleet"); });
   };
 
   // Queue up a get via a getter that will succeed
@@ -93,34 +92,34 @@ void test_future() {
   ok(f.isReady(), "first is ready");
   ok(f2.isReady(), "second is ready");
 
-  ok(f.get()->value() == 2, "got correct value for first");
-  ok(f2.get() == f.get(), "got same value for second");
+  ok(f.value()->value() == 2, "got correct value for first");
+  ok(f.value()->value() == f2.value()->value(), "got same value for second");
 
   // Now to saturate the cache with failed lookups
 
   cache.clear();
-  std::vector<Future<std::shared_ptr<const Node>>> futures;
+  std::vector<folly::Future<std::shared_ptr<const Node>>> futures;
   for (size_t i = 1; i < 7; ++i) {
     futures.emplace_back(
         cache.get(i, failGetter, now + std::chrono::milliseconds(i)));
   }
 
   auto drained = exec.drain();
-  ok(drained == 6, "should be 6 things pending, but have %d", drained);
+  ok(drained == 12, "should be 12 things pending, but have %d", drained);
 
   // Let them make progress
   exec.drain();
 
   ok(cache.size() == 5, "cache should be full, but has %d", cache.size());
 
-  collectAll(futures.begin(), futures.end())
-      .then([](
-          Result<std::vector<Result<std::shared_ptr<const Node>>>>&& result) {
-
-        for (auto& r : result.value()) {
-          ok(r.value()->result().hasError(), "should be an error node");
-        }
-      })
+  folly::collectAll(futures.begin(), futures.end())
+      .thenTry(
+          [](folly::Try<std::vector<folly::Try<std::shared_ptr<const Node>>>>&&
+                 result) {
+            for (auto& r : result.value()) {
+              ok(r.value()->result().hasException(), "should be an error node");
+            }
+          })
       .wait();
 
   ok(cache.size() == 5,

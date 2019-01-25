@@ -40,7 +40,7 @@ ContentHashCache::ContentHashCache(
     std::chrono::milliseconds errorTTL)
     : cache_(maxItems, errorTTL), rootPath_(rootPath) {}
 
-Future<std::shared_ptr<const Node>> ContentHashCache::get(
+folly::Future<std::shared_ptr<const Node>> ContentHashCache::get(
     const ContentHashCacheKey& key) {
   return cache_.get(
       key, [this](const ContentHashCacheKey& k) { return computeHash(k); });
@@ -151,13 +151,10 @@ HashValue ContentHashCache::computeHashImmediate(
   return result;
 }
 
-Future<HashValue> ContentHashCache::computeHash(
+folly::Future<HashValue> ContentHashCache::computeHash(
     const ContentHashCacheKey& key) const {
-  return makeFuture(key)
-      .via(&getThreadPool())
-      .then([this](Result<ContentHashCacheKey>&& key) {
-        return computeHashImmediate(key.value());
-      });
+  return folly::via(
+      &getThreadPool(), [key, this] { return computeHashImmediate(key); });
 }
 
 const w_string& ContentHashCache::rootPath() const {

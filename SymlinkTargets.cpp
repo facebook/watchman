@@ -26,7 +26,7 @@ SymlinkTargetCache::SymlinkTargetCache(
     std::chrono::milliseconds errorTTL)
     : cache_(maxItems, errorTTL), rootPath_(rootPath) {}
 
-Future<std::shared_ptr<const Node>> SymlinkTargetCache::get(
+folly::Future<std::shared_ptr<const Node>> SymlinkTargetCache::get(
     const SymlinkTargetCacheKey& key) {
   return cache_.get(
       key, [this](const SymlinkTargetCacheKey& k) { return readLink(k); });
@@ -38,13 +38,12 @@ w_string SymlinkTargetCache::readLinkImmediate(
   return readSymbolicLink(fullPath.c_str());
 }
 
-Future<w_string> SymlinkTargetCache::readLink(
+folly::Future<w_string> SymlinkTargetCache::readLink(
     const SymlinkTargetCacheKey& key) const {
-  return makeFuture(key)
+  return folly::makeFuture(key)
       .via(&getThreadPool())
-      .then([this](Result<SymlinkTargetCacheKey>&& key) {
-        return readLinkImmediate(key.value());
-      });
+      .thenValue(
+          [this](SymlinkTargetCacheKey key) { return readLinkImmediate(key); });
 }
 
 const w_string& SymlinkTargetCache::rootPath() const {

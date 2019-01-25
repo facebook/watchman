@@ -49,7 +49,8 @@ class ContentHashCache {
   // holding the result.  Otherwise, computeHash will be invoked
   // to populate the cache.  Returns a future with the result
   // of the lookup.
-  Future<std::shared_ptr<const Node>> get(const ContentHashCacheKey& key);
+  folly::Future<std::shared_ptr<const Node>> get(
+      const ContentHashCacheKey& key);
 
   // Compute the hash value for a given input.
   // This will block the calling thread while the I/O is performed.
@@ -63,7 +64,7 @@ class ContentHashCache {
 
   // Compute the hash value for a given input via the thread pool.
   // Returns a future to operate on the result of this async operation
-  Future<HashValue> computeHash(const ContentHashCacheKey& key) const;
+  folly::Future<HashValue> computeHash(const ContentHashCacheKey& key) const;
 
   // Returns the root path that this cache is associated with
   const w_string& rootPath() const;

@@ -1061,15 +1061,15 @@ class EdenView : public QueryableView {
       w_string_piece commitA,
       w_string_piece commitB) const {
     BetweenCommitKey key{to<std::string>(commitA), to<std::string>(commitB)};
-    auto result =
-        filesBetweenCommitCache_
-            .get(
-                key,
-                [this](const BetweenCommitKey& cacheKey) {
-                  return makeFuture(getSCM()->getFilesChangedBetweenCommits(
-                      cacheKey.sinceCommit, cacheKey.toCommit));
-                })
-            .get();
+    auto result = filesBetweenCommitCache_
+                      .get(
+                          key,
+                          [this](const BetweenCommitKey& cacheKey) {
+                            return folly::makeFuture(
+                                getSCM()->getFilesChangedBetweenCommits(
+                                    cacheKey.sinceCommit, cacheKey.toCommit));
+                          })
+                      .get();
     return result->value();
   }
 

@@ -31,8 +31,8 @@ InMemoryFileResult::InMemoryFileResult(
 
 void InMemoryFileResult::batchFetchProperties(
     const std::vector<std::unique_ptr<FileResult>>& files) {
-  std::vector<Future<Unit>> readlinkFutures;
-  std::vector<Future<Unit>> sha1Futures;
+  std::vector<folly::Future<folly::Unit>> readlinkFutures;
+  std::vector<folly::Future<folly::Unit>> sha1Futures;
 
   // Since we may initiate some async work in the body of the function
   // below, we need to ensure that we wait for it to complete before
@@ -41,10 +41,10 @@ void InMemoryFileResult::batchFetchProperties(
   // schedule will access invalid memory and we'll all feel bad.
   SCOPE_EXIT {
     if (!readlinkFutures.empty()) {
-      collectAll(readlinkFutures.begin(), readlinkFutures.end()).wait();
+      folly::collectAll(readlinkFutures.begin(), readlinkFutures.end()).wait();
     }
     if (!sha1Futures.empty()) {
-      collectAll(sha1Futures.begin(), sha1Futures.end()).wait();
+      folly::collectAll(sha1Futures.begin(), sha1Futures.end()).wait();
     }
   };
 
@@ -72,18 +72,19 @@ void InMemoryFileResult::batchFetchProperties(
         SymlinkTargetCacheKey key{w_string::pathCat({dir, file->baseName()}),
                                   file->file_->otime};
 
-        readlinkFutures.emplace_back(caches_.symlinkTargetCache.get(key).then(
-            [file](Result<std::shared_ptr<const SymlinkTargetCache::Node>>&&
-                       result) {
-              if (result.hasValue()) {
-                file->symlinkTarget_ = result.value()->value();
-              } else {
-                // we don't have a way to report the error for readlink
-                // due to legacy requirements in the interface, so we
-                // just set it to empty.
-                file->symlinkTarget_ = w_string();
-              }
-            }));
+        readlinkFutures.emplace_back(
+            caches_.symlinkTargetCache.get(key).thenTry(
+                [file](folly::Try<std::shared_ptr<
+                           const SymlinkTargetCache::Node>>&& result) {
+                  if (result.hasValue()) {
+                    file->symlinkTarget_ = result.value()->value();
+                  } else {
+                    // we don't have a way to report the error for readlink
+                    // due to legacy requirements in the interface, so we
+                    // just set it to empty.
+                    file->symlinkTarget_ = w_string();
+                  }
+                }));
       }
     }
 
@@ -102,9 +103,9 @@ void InMemoryFileResult::batchFetchProperties(
                               size_t(file->file_->stat.size),
                               file->file_->stat.mtime};
 
-      sha1Futures.emplace_back(caches_.contentHashCache.get(key).then(
-          [file](
-              Result<std::shared_ptr<const ContentHashCache::Node>>&& result) {
+      sha1Futures.emplace_back(caches_.contentHashCache.get(key).thenTry(
+          [file](folly::Try<std::shared_ptr<const ContentHashCache::Node>>&&
+                     result) {
             file->contentSha1_ =
                 makeResultWith([&] { return result.value()->value(); });
           }));
@@ -794,7 +795,8 @@ void InMemoryView::warmContentCache() {
       watchman::DBG, "considering files for content hash cache warming\n");
 
   size_t n = 0;
-  std::deque<Future<std::shared_ptr<const ContentHashCache::Node>>> futures;
+  std::deque<folly::Future<std::shared_ptr<const ContentHashCache::Node>>>
+      futures;
 
   {
     // Walk back in time until we hit the boundary, or hit the limit
@@ -859,7 +861,7 @@ void InMemoryView::warmContentCache() {
   if (syncContentCacheWarming_) {
     // Wait for them to finish, but don't use get() because we don't
     // care about any errors that may have occurred.
-    collectAll(futures.begin(), futures.end()).wait();
+    folly::collectAll(futures.begin(), futures.end()).wait();
     watchman::log(watchman::DBG, "warmContentCache: hashing complete\n");
   }
 }
