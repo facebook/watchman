@@ -12,8 +12,6 @@ extern "C" {
 
 void FILETIME_to_timespec(const FILETIME *ft, struct timespec *ts);
 void FILETIME_LARGE_INTEGER_to_timespec(LARGE_INTEGER ft, struct timespec *ts);
-void usleep(int64_t usec);
-void sleep(int sec);
 
 #ifdef __cplusplus
 }

@@ -275,7 +275,8 @@ retry_connect:
 
     if (err == ECONNREFUSED || err == ENOENT) {
       if (attempts++ < max_attempts) {
-        usleep(10000);
+        /* sleep override */ std::this_thread::sleep_for(
+            std::chrono::microseconds(10000));
         goto retry_connect;
       }
     }

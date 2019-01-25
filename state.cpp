@@ -108,7 +108,8 @@ std::unique_ptr<watchman_stream> w_mkstemp(char* templ) {
       return stm;
     }
     if (errno == EACCES) {
-      /* sleep override */ ::usleep(2000);
+      /* sleep override */ std::this_thread::sleep_for(
+          std::chrono::microseconds(2000));
       continue;
     }
     return nullptr;

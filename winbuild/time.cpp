@@ -29,24 +29,3 @@ static void timespec_to_timeval(const struct timespec *ts, struct timeval *tv) {
   tv->tv_sec = (long)ts->tv_sec;
   tv->tv_usec = (long)(ts->tv_nsec / WATCHMAN_NSEC_IN_USEC);
 }
-
-void usleep(int64_t usec) {
-  HANDLE timer;
-  LARGE_INTEGER ft;
-
-  // Convert to 100 nanosecond interval, negative value indicates relative time
-  ft.QuadPart = -(10*usec);
-
-  timer = CreateWaitableTimer(NULL, TRUE, NULL);
-  if (!timer) {
-    return;
-  }
-  SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
-  // Use an alertable wait to play well with our stream implementation
-  WaitForSingleObjectEx(timer, INFINITE, true);
-  CloseHandle(timer);
-}
-
-void sleep(int sec) {
-  SleepEx(sec * 1000, true);
-}

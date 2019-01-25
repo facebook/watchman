@@ -98,8 +98,7 @@ int main(int argc, char** argv) {
   c.unsubscribe(sub).wait();
   LOG(INFO) << "Trying to falsely trigger subscription";
   system("rm hit");
-  /* sleep override */
-  sleep(3);
+  /* sleep override */ std::this_thread::sleep_for(std::chrono::seconds(3));
   if (hit) {
     LOG(ERROR) << "FAIL: still got a hit";
     return 1;

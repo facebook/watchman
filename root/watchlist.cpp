@@ -265,7 +265,8 @@ void w_root_free_watched_roots(void) {
       w_log(W_LOG_DBG, "waiting: %ld live\n", current);
       last = current;
     }
-    /* sleep override */ ::usleep(interval);
+    /* sleep override */ std::this_thread::sleep_for(
+        std::chrono::microseconds(interval));
     interval = std::min(interval * 2, 1000000);
   }
 
