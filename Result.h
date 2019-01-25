@@ -1,6 +1,7 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <folly/Unit.h>
 #include <exception>
 #include <stdexcept>
 #include <system_error>
@@ -8,13 +9,6 @@
 
 namespace watchman {
 
-// To avoid some horrible special casing for the void type in template
-// metaprogramming we use Unit to denote an uninteresting value type.
-struct Unit {
-  // Lift void -> Unit if T is void, else T
-  template <typename T>
-  struct Lift : std::conditional<std::is_same<T, void>::value, Unit, T> {};
-};
 
 // Represents the Result of an operation, and thus can hold either
 // a value or an error, or neither.  This is similar to the folly::Try
@@ -285,13 +279,13 @@ makeResultWith(Func&& func) {
 template <typename Func>
 typename std::enable_if<
     std::is_same<typename std::result_of<Func()>::type, void>::value,
-    Result<Unit>>::type
+    Result<folly::Unit>>::type
 makeResultWith(Func&& func) {
   try {
     func();
-    return Result<Unit>(Unit{});
+    return Result<folly::Unit>(folly::Unit{});
   } catch (const std::exception& e) {
-    return Result<Unit>(std::current_exception());
+    return Result<folly::Unit>(std::current_exception());
   }
 }
 }

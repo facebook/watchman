@@ -89,7 +89,7 @@ void test_error() {
   }
 
   using btype = decltype(b);
-  auto is_unit = std::is_same<typename btype::value_type, Unit>::value;
+  auto is_unit = std::is_same<typename btype::value_type, folly::Unit>::value;
   ok(is_unit, "b has Unit as a value type");
 
   auto c = makeResultWith([] {
