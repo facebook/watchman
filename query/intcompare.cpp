@@ -3,7 +3,7 @@
 
 #include "watchman.h"
 
-#include "make_unique.h"
+#include <memory>
 
 // Helper functions for integer comparisons in query expressions
 
@@ -108,7 +108,7 @@ class SizeExpr : public QueryExpr {
     w_query_int_compare comp;
     parse_int_compare(term, &comp);
 
-    return watchman::make_unique<SizeExpr>(comp);
+    return std::make_unique<SizeExpr>(comp);
   }
 };
 W_TERM_PARSER("size", SizeExpr::parse)

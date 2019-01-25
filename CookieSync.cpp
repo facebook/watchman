@@ -48,7 +48,7 @@ Future<Unit> CookieSync::sync() {
       cookiePrefix_.data(),
       serial_++);
 
-  auto cookie = make_unique<Cookie>(path_str);
+  auto cookie = std::make_unique<Cookie>(path_str);
   auto future = cookie->promise.getFuture();
 
   /* insert our cookie in the map */

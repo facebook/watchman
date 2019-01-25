@@ -3,9 +3,9 @@
 #pragma once
 #include <chrono>
 #include <deque>
+#include <memory>
 #include <unordered_map>
 #include "Future.h"
-#include "make_unique.h"
 #include "watchman_synchronized.h"
 
 namespace watchman {
@@ -75,7 +75,7 @@ class Node {
   // Construct a node using a getter function.
   // The value is empty and the promise list is initialized.
   explicit Node(const KeyType& key)
-      : key_(key), promises_(make_unique<PromiseList>()) {}
+      : key_(key), promises_(std::make_unique<PromiseList>()) {}
 
   // Returns the underlying value.
   const ValueType& value() const {

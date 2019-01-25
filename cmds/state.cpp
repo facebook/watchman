@@ -4,7 +4,6 @@
 #include "watchman_system.h"
 #include "MapUtil.h"
 #include "ThreadPool.h"
-#include "make_unique.h"
 #include "watchman.h"
 
 using namespace watchman;

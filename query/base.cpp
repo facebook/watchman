@@ -3,8 +3,8 @@
 
 #include "watchman.h"
 
+#include <memory>
 #include <vector>
-#include "make_unique.h"
 
 /* Basic boolean and compound expressions */
 
@@ -33,7 +33,7 @@ class NotExpr : public QueryExpr {
 
     const auto& other = term.at(1);
     auto other_expr = w_query_expr_parse(query, other);
-    return watchman::make_unique<NotExpr>(std::move(other_expr));
+    return std::make_unique<NotExpr>(std::move(other_expr));
   }
 };
 
@@ -46,7 +46,7 @@ class TrueExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref&) {
-    return watchman::make_unique<TrueExpr>();
+    return std::make_unique<TrueExpr>();
   }
 };
 
@@ -59,7 +59,7 @@ class FalseExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref&) {
-    return watchman::make_unique<FalseExpr>();
+    return std::make_unique<FalseExpr>();
   }
 };
 
@@ -140,7 +140,7 @@ class ListExpr : public QueryExpr {
       }
     }
 
-    return watchman::make_unique<ListExpr>(allof, std::move(list));
+    return std::make_unique<ListExpr>(allof, std::move(list));
   }
 
   static std::unique_ptr<QueryExpr> parseAllOf(

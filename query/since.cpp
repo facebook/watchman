@@ -3,7 +3,7 @@
 
 #include "watchman.h"
 
-#include "make_unique.h"
+#include <memory>
 
 enum since_what { SINCE_OCLOCK, SINCE_CCLOCK, SINCE_MTIME, SINCE_CTIME };
 
@@ -138,7 +138,7 @@ class SinceExpr : public QueryExpr {
         break;
     }
 
-    return watchman::make_unique<SinceExpr>(std::move(spec), selected_field);
+    return std::make_unique<SinceExpr>(std::move(spec), selected_field);
   }
 };
 W_TERM_PARSER("since", SinceExpr::parse)

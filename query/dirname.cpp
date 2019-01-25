@@ -3,7 +3,7 @@
 
 #include "watchman.h"
 
-#include "make_unique.h"
+#include <memory>
 
 using watchman::CaseSensitivity;
 
@@ -108,8 +108,9 @@ class DirNameExpr : public QueryExpr {
       depth_comp.op = W_QUERY_ICMP_GE;
     }
 
-    return watchman::make_unique<DirNameExpr>(
-        json_to_w_string(name), depth_comp,
+    return std::make_unique<DirNameExpr>(
+        json_to_w_string(name),
+        depth_comp,
         case_sensitive == CaseSensitivity::CaseInSensitive
             ? w_string_startswith_caseless
             : w_string_startswith);

@@ -145,7 +145,7 @@ void watchman_client_subscription::processSubscriptionImpl() {
     if (action == sub_action::drop) {
       // fast-forward over any notifications while in the drop state
       last_sub_tick = position.ticks;
-      query->since_spec = watchman::make_unique<ClockSpec>(position);
+      query->since_spec = std::make_unique<ClockSpec>(position);
       watchman::log(
           watchman::DBG,
           "dropping subscription notifications for ",
@@ -201,8 +201,7 @@ void watchman_client_subscription::processSubscriptionImpl() {
 
 void watchman_client_subscription::updateSubscriptionTicks(w_query_res* res) {
   // create a new spec that will be used the next time
-  query->since_spec =
-      watchman::make_unique<ClockSpec>(res->clockAtStartOfQuery);
+  query->since_spec = std::make_unique<ClockSpec>(res->clockAtStartOfQuery);
 }
 
 json_ref watchman_client_subscription::buildSubscriptionResults(
@@ -407,7 +406,7 @@ static void cmd_flush_subscriptions(
 
     if (action == sub_action::drop) {
       sub->last_sub_tick = position.ticks;
-      sub->query->since_spec = watchman::make_unique<ClockSpec>(position);
+      sub->query->since_spec = std::make_unique<ClockSpec>(position);
       watchman::log(
           watchman::DBG,
           "(flush-subscriptions) dropping subscription notifications for ",

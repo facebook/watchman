@@ -4,7 +4,6 @@
 #include "watchman.h"
 
 #include "InMemoryView.h"
-#include "make_unique.h"
 
 static json_ref load_root_config(const char* path) {
   char cfgfilename[WATCHMAN_NAME_MAX];

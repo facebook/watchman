@@ -1,8 +1,9 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "SavedStateInterface.h"
-#include "LocalSavedStateInterface.h"
 #include "watchman.h"
+#include "SavedStateInterface.h"
+#include <memory>
+#include "LocalSavedStateInterface.h"
 #ifdef WATCHMAN_FACEBOOK_INTERNAL
 #include "facebook/saved_state/ManifoldSavedStateInterface.h"
 #endif
@@ -19,13 +20,12 @@ std::unique_ptr<SavedStateInterface> SavedStateInterface::getInterface(
   unused_parameter(root);
 #ifdef WATCHMAN_FACEBOOK_INTERNAL
   if (storageType == "manifold") {
-    return watchman::make_unique<ManifoldSavedStateInterface>(
+    return std::make_unique<ManifoldSavedStateInterface>(
         savedStateConfig, scm, root);
   }
 #endif
   if (storageType == "local") {
-    return watchman::make_unique<LocalSavedStateInterface>(
-        savedStateConfig, scm);
+    return std::make_unique<LocalSavedStateInterface>(savedStateConfig, scm);
   }
   throw QueryParseError("invalid storage type '", storageType, "'");
 }

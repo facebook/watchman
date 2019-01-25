@@ -411,9 +411,7 @@ w_query_res w_query_execute(
             // to see a directory returned from that call; we're only going
             // to enumerate !dirs for this case.
             w_query_process_file(
-                q,
-                c,
-                watchman::make_unique<LocalFileResult>(r, fullPath, clock));
+                q, c, std::make_unique<LocalFileResult>(r, fullPath, clock));
           }
         };
       }

@@ -2,8 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman_system.h"
-#include "make_unique.h"
 #include "watchman.h"
+#include <memory>
 
 using watchman::ChildProcess;
 using watchman::FileDescriptor;
@@ -224,8 +224,7 @@ static void spawn_command(
       cmd->current_proc->kill();
       cmd->current_proc->wait();
     }
-    cmd->current_proc =
-        watchman::make_unique<ChildProcess>(args, std::move(opts));
+    cmd->current_proc = std::make_unique<ChildProcess>(args, std::move(opts));
   } catch (const std::exception& exc) {
     watchman::log(
         watchman::ERR,
@@ -287,8 +286,7 @@ bool watchman_trigger_command::maybeSpawn(
 
     // create a new spec that will be used the next time
     auto saved_spec = std::move(query->since_spec);
-    query->since_spec =
-        watchman::make_unique<ClockSpec>(res.clockAtStartOfQuery);
+    query->since_spec = std::make_unique<ClockSpec>(res.clockAtStartOfQuery);
 
     watchman::log(
         watchman::DBG,

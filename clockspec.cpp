@@ -2,7 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-#include "make_unique.h"
+#include <memory>
 
 static int proc_pid;
 static uint64_t proc_start_time;
@@ -123,7 +123,7 @@ std::unique_ptr<ClockSpec> ClockSpec::parseOptionalClockSpec(
   if (json_is_null(value)) {
     return nullptr;
   }
-  return watchman::make_unique<ClockSpec>(value);
+  return std::make_unique<ClockSpec>(value);
 }
 
 ClockSpec::ClockSpec() : tag(w_cs_timestamp), timestamp(0) {}

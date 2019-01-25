@@ -57,7 +57,7 @@ bdumps(uint32_t version, uint32_t capabilities, const json_ref& json) {
   };
 
   if (w_bser_dump(&ctx, json, &strbuff) == 0) {
-    return watchman::make_unique<std::string>(strbuff.value, strbuff.length);
+    return std::make_unique<std::string>(strbuff.value, strbuff.length);
   }
 
   return nullptr;
@@ -77,7 +77,7 @@ bdumps_pdu(uint32_t version, uint32_t capabilities, const json_ref& json) {
 
   if (w_bser_write_pdu(
           version, capabilities, dump_to_strbuffer, json, &strbuff) == 0) {
-    return watchman::make_unique<std::string>(strbuff.value, strbuff.length);
+    return std::make_unique<std::string>(strbuff.value, strbuff.length);
   }
 
   return nullptr;

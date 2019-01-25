@@ -4,9 +4,9 @@
 /* TODO:
  * This watcher fails with the scm tests */
 
-#include "InMemoryView.h"
-#include "make_unique.h"
 #include "watchman.h"
+#include <memory>
+#include "InMemoryView.h"
 
 #ifdef HAVE_PORT_CREATE
 
@@ -74,7 +74,7 @@ static const struct flag_map pflags[] = {
 static std::unique_ptr<watchman_port_file> make_port_file(
     const w_string& name,
     const watchman::FileInformation& finfo) {
-  auto f = watchman::make_unique<watchman_port_file>();
+  auto f = std::make_unique<watchman_port_file>();
 
   f->name = name;
   f->port_file.fo_name = (char*)name.c_str();

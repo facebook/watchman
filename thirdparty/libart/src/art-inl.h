@@ -1,4 +1,4 @@
-#include "make_unique.h"
+#include <memory>
 
 #ifdef __SSE__
 #include <emmintrin.h>
@@ -15,6 +15,13 @@
       __SANITIZE_ADDRESS__
 # define ART_SANITIZE_ADDRESS 1
 #endif
+
+namespace detail {
+template <typename T, typename Deleter, typename... Args>
+std::unique_ptr<T, Deleter> make_unique_with_deleter(Args&&... args) {
+  return std::unique_ptr<T, Deleter>(new T(std::forward<Args>(args)...));
+}
+}
 
 // The ART implementation requires that no key be a full prefix of an existing
 // key during insertion.  In practice this means that each key must have a
@@ -136,7 +143,7 @@ void art_tree<ValueType, KeyType>::Node4::addChild(
     this->num_children++;
 
   } else {
-    ref = watchman::make_unique<Node16, Deleter>(std::move(*this));
+    ref = detail::make_unique_with_deleter<Node16, Deleter>(std::move(*this));
     ref->addChild(ref, c, std::move(child));
   }
 }
@@ -286,7 +293,7 @@ void art_tree<ValueType, KeyType>::Node16::addChild(
     this->num_children++;
 
   } else {
-    ref = watchman::make_unique<Node48, Deleter>(std::move(*this));
+    ref = detail::make_unique_with_deleter<Node48, Deleter>(std::move(*this));
     ref->addChild(ref, c, std::move(child));
   }
 }
@@ -342,7 +349,7 @@ art_tree<ValueType, KeyType>::Node16::removeChild(
   this->num_children--;
 
   if (this->num_children == 3) {
-    ref = watchman::make_unique<Node4, Deleter>(std::move(*this));
+    ref = detail::make_unique_with_deleter<Node4, Deleter>(std::move(*this));
   }
 
   return result;
@@ -403,7 +410,7 @@ void art_tree<ValueType, KeyType>::Node48::addChild(
     keys[c] = pos + 1;
     this->num_children++;
   } else {
-    ref = watchman::make_unique<Node256, Deleter>(std::move(*this));
+    ref = detail::make_unique_with_deleter<Node256, Deleter>(std::move(*this));
     ref->addChild(ref, c, std::move(child));
   }
 }
@@ -431,7 +438,7 @@ art_tree<ValueType, KeyType>::Node48::removeChild(
   this->num_children--;
 
   if (this->num_children == 12) {
-    ref = watchman::make_unique<Node16, Deleter>(std::move(*this));
+    ref = detail::make_unique_with_deleter<Node16, Deleter>(std::move(*this));
   }
 
   return result;
@@ -482,7 +489,7 @@ art_tree<ValueType, KeyType>::Node256::removeChild(
   // Resize to a node48 on underflow, not immediately to prevent
   // trashing if we sit on the 48/49 boundary
   if (this->num_children == 37) {
-    ref = watchman::make_unique<Node48, Deleter>(std::move(*this));
+    ref = detail::make_unique_with_deleter<Node48, Deleter>(std::move(*this));
   }
 
   return result;
@@ -825,7 +832,7 @@ void art_tree<ValueType, KeyType>::recursiveInsert(
   // If we are at a NULL node, inject a leaf
   if (!ref) {
     ref = LeafToNode(
-        watchman::make_unique<Leaf>(key, std::forward<Args>(args)...));
+        std::make_unique<Leaf>(key, std::forward<Args>(args)...));
     return;
   }
 
@@ -841,10 +848,10 @@ void art_tree<ValueType, KeyType>::recursiveInsert(
     }
 
     // New value, we must split the leaf into a node4
-    NodePtr new_node = watchman::make_unique<Node4, Deleter>();
+    NodePtr new_node = detail::make_unique_with_deleter<Node4, Deleter>();
 
     // Create a new leaf
-    auto l2 = watchman::make_unique<Leaf>(key, std::forward<Args>(args)...);
+    auto l2 = std::make_unique<Leaf>(key, std::forward<Args>(args)...);
 
     // Determine longest prefix
     auto longest_prefix = l->longestCommonPrefix(l2.get(), depth);
@@ -882,7 +889,7 @@ void art_tree<ValueType, KeyType>::recursiveInsert(
     auto origNode = ref.get();
 
     // Create a new node
-    NodePtr new_node = watchman::make_unique<Node4, Deleter>();
+    NodePtr new_node = detail::make_unique_with_deleter<Node4, Deleter>();
     new_node->partial_len = prefix_diff;
     memcpy(
         new_node->partial,
@@ -910,7 +917,7 @@ void art_tree<ValueType, KeyType>::recursiveInsert(
     }
 
     // Insert the new leaf
-    auto l = watchman::make_unique<Leaf>(key, std::forward<Args>(args)...);
+    auto l = std::make_unique<Leaf>(key, std::forward<Args>(args)...);
     auto leafWeak = l.get();
     new_node->addChild(
         new_node,
@@ -932,7 +939,7 @@ RECURSE_SEARCH:;
     }
 
     // No child, node goes within us
-    auto l = watchman::make_unique<Leaf>(key, std::forward<Args>(args)...);
+    auto l = std::make_unique<Leaf>(key, std::forward<Args>(args)...);
     auto leafWeak = l.get();
     ref->addChild(ref, leafWeak->keyAt(depth), LeafToNode(std::move(l)));
   }

@@ -3,7 +3,7 @@
 
 #include "watchman.h"
 
-#include "make_unique.h"
+#include <memory>
 
 #ifdef HAVE_PCRE_H
 
@@ -91,7 +91,7 @@ class PcreExpr : public QueryExpr {
           pattern));
     }
 
-    return watchman::make_unique<PcreExpr>(
+    return std::make_unique<PcreExpr>(
         re, pcre_study(re, 0, &errptr), !strcmp(scope, "wholename"));
   }
   static std::unique_ptr<QueryExpr> parsePcre(

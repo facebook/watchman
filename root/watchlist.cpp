@@ -183,8 +183,8 @@ bool w_root_load_state(const json_ref& state) {
           continue;
         }
 
-        auto cmd = watchman::make_unique<watchman_trigger_command>(
-            root, tobj, &errmsg);
+        auto cmd =
+            std::make_unique<watchman_trigger_command>(root, tobj, &errmsg);
         if (errmsg) {
           watchman::log(
               watchman::ERR,

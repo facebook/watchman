@@ -3,7 +3,7 @@
 
 #include "watchman.h"
 
-#include "make_unique.h"
+#include <memory>
 
 bool watchman_trigger_command::waitNoIntr() {
   if (!w_is_stopping() && !stopTrigger_) {
@@ -367,7 +367,7 @@ static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
     }
   }
 
-  cmd = watchman::make_unique<watchman_trigger_command>(root, trig, &errmsg);
+  cmd = std::make_unique<watchman_trigger_command>(root, trig, &errmsg);
 
   if (errmsg) {
     send_error_response(client, "%s", errmsg);

@@ -3,10 +3,11 @@
 
 #include "watchman.h"
 #include <folly/ScopeGuard.h>
+#include <memory>
 #include "InMemoryView.h"
-#include "make_unique.h"
 #include "thirdparty/wildmatch/wildmatch.h"
 
+using std::make_unique;
 using watchman::CaseSensitivity;
 
 /* The glob generator.
@@ -113,8 +114,8 @@ static bool add_glob(struct watchman_glob_tree *tree, w_string_t *glob_str) {
     node = lookup_node_child(container, pattern, (uint32_t)(end - pattern));
     if (!node) {
       // This is a new matching possibility.
-      container->emplace_back(watchman::make_unique<watchman_glob_tree>(
-          pattern, (uint32_t)(end - pattern)));
+      container->emplace_back(
+          make_unique<watchman_glob_tree>(pattern, (uint32_t)(end - pattern)));
       node = container->back().get();
       node->had_specials = had_specials;
       node->is_doublestar = is_doublestar;
@@ -164,7 +165,7 @@ void parse_globs(w_query* res, const json_ref& query) {
   res->glob_flags =
       (includedotfiles ? 0 : WM_PERIOD) | (noescape ? WM_NOESCAPE : 0);
 
-  res->glob_tree = watchman::make_unique<watchman_glob_tree>("", 0);
+  res->glob_tree = make_unique<watchman_glob_tree>("", 0);
   for (i = 0; i < json_array_size(globs); i++) {
     const auto& ele = globs.at(i);
     const auto& pattern = json_to_w_string(ele);

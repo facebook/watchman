@@ -3,7 +3,7 @@
 
 #include "watchman.h"
 
-#include "make_unique.h"
+#include <memory>
 
 class TypeExpr : public QueryExpr {
   char arg;
@@ -58,7 +58,7 @@ class TypeExpr : public QueryExpr {
 
     arg = *found;
 
-    return watchman::make_unique<TypeExpr>(arg);
+    return std::make_unique<TypeExpr>(arg);
   }
 };
 W_TERM_PARSER("type", TypeExpr::parse)

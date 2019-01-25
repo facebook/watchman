@@ -31,6 +31,7 @@ using facebook::eden::JournalPosition;
 using facebook::eden::SHA1Result;
 using facebook::eden::StreamingEdenServiceAsyncClient;
 using folly::Optional;
+using std::make_unique;
 
 namespace {
 /** Represents a cache key for getFilesChangedBetweenCommits()
@@ -178,7 +179,7 @@ std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
   return retryEStale([&] {
     auto addr = getEdenSocketAddress(rootPath);
 
-    return std::make_unique<StreamingEdenServiceAsyncClient>(
+    return make_unique<StreamingEdenServiceAsyncClient>(
         apache::thrift::HeaderClientChannel::newChannel(
             TAsyncSocket::newSocket(eb, addr)));
   });
@@ -194,7 +195,7 @@ std::unique_ptr<StreamingEdenServiceAsyncClient> getRSocketEdenClient(
   return retryEStale([&] {
     auto addr = getEdenSocketAddress(rootPath);
 
-    return std::make_unique<StreamingEdenServiceAsyncClient>(
+    return make_unique<StreamingEdenServiceAsyncClient>(
         apache::thrift::RSocketClientChannel::newChannel(
             TAsyncSocket::UniquePtr(new TAsyncSocket(eb, addr))));
   });
@@ -652,7 +653,7 @@ class EdenWrappedSCM : public SCM {
     if (!inner) {
       return nullptr;
     }
-    return std::make_unique<EdenWrappedSCM>(std::move(inner));
+    return make_unique<EdenWrappedSCM>(std::move(inner));
   }
 };
 

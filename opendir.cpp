@@ -121,7 +121,7 @@ static bool use_bulkstat_by_default(void) {
 
 #ifndef _WIN32
 std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path, bool strict) {
-  return watchman::make_unique<DirHandle>(path, strict);
+  return std::make_unique<DirHandle>(path, strict);
 }
 
 #ifdef HAVE_GETATTRLISTBULK

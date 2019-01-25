@@ -3,9 +3,9 @@
 
 #include "watchman.h"
 
-#include "make_unique.h"
-#include "thirdparty/wildmatch/wildmatch.h"
+#include <memory>
 #include <string>
+#include "thirdparty/wildmatch/wildmatch.h"
 using watchman::CaseSensitivity;
 
 class WildMatchExpr : public QueryExpr {
@@ -85,7 +85,7 @@ class WildMatchExpr : public QueryExpr {
           "Invalid scope '", scope, "' for ", which, " expression");
     }
 
-    return watchman::make_unique<WildMatchExpr>(
+    return std::make_unique<WildMatchExpr>(
         pattern,
         case_sensitive,
         !strcmp(scope, "wholename"),

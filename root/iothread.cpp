@@ -22,7 +22,7 @@ std::shared_future<void> InMemoryView::waitUntilReadyToQuery(
   }
 
   // Not yet done, so queue up the promise
-  lockPair.second->promise = watchman::make_unique<std::promise<void>>();
+  lockPair.second->promise = std::make_unique<std::promise<void>>();
   lockPair.second->future =
       std::shared_future<void>(lockPair.second->promise->get_future());
   return lockPair.second->future;

@@ -3,7 +3,7 @@
 
 #include "watchman.h"
 
-#include "make_unique.h"
+#include <memory>
 
 class SuffixExpr : public QueryExpr {
   std::unordered_set<w_string> suffixSet_;
@@ -56,7 +56,7 @@ class SuffixExpr : public QueryExpr {
       throw QueryParseError(
           "Argument 2 to 'suffix' must be either a string or an array of string");
     }
-    return watchman::make_unique<SuffixExpr>(std::move(suffixSet));
+    return std::make_unique<SuffixExpr>(std::move(suffixSet));
   }
 
   std::unique_ptr<QueryExpr> aggregate(
@@ -74,7 +74,7 @@ class SuffixExpr : public QueryExpr {
     suffixSet.insert(
         otherExpr->suffixSet_.begin(), otherExpr->suffixSet_.end());
     suffixSet.insert(suffixSet_.begin(), suffixSet_.end());
-    return watchman::make_unique<SuffixExpr>(std::move(suffixSet));
+    return std::make_unique<SuffixExpr>(std::move(suffixSet));
   }
 };
 W_TERM_PARSER("suffix", SuffixExpr::parse)

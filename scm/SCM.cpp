@@ -1,9 +1,9 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
-#include "SCM.h"
-#include "Mercurial.h"
-#include "make_unique.h"
 #include "watchman.h"
+#include "SCM.h"
+#include <memory>
+#include "Mercurial.h"
 
 namespace watchman {
 
@@ -63,7 +63,7 @@ std::unique_ptr<SCM> SCM::scmForPath(w_string_piece rootPath) {
   auto base = scmRoot.piece().baseName();
 
   if (base == kHg) {
-    return make_unique<Mercurial>(rootPath, scmRoot.piece().dirName());
+    return std::make_unique<Mercurial>(rootPath, scmRoot.piece().dirName());
   }
 
   if (base == kGit) {

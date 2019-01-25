@@ -4,9 +4,9 @@
 #include "InMemoryView.h"
 #include <folly/ScopeGuard.h>
 #include <algorithm>
+#include <memory>
 #include <thread>
 #include "ThreadPool.h"
-#include "make_unique.h"
 
 using folly::Optional;
 
@@ -194,7 +194,7 @@ Optional<FileResult::ContentHash> InMemoryFileResult::getContentSha1() {
 }
 
 InMemoryView::view::view(const w_string& root_path)
-    : root_dir(watchman::make_unique<watchman_dir>(root_path, nullptr)) {}
+    : root_dir(std::make_unique<watchman_dir>(root_path, nullptr)) {}
 
 InMemoryView::InMemoryView(w_root_t* root, std::shared_ptr<Watcher> watcher)
     : cookies_(root->cookies),
@@ -549,7 +549,7 @@ void InMemoryView::timeGenerator(w_query* query, struct w_query_ctx* ctx)
     }
 
     w_query_process_file(
-        query, ctx, watchman::make_unique<InMemoryFileResult>(f, caches_));
+        query, ctx, std::make_unique<InMemoryFileResult>(f, caches_));
   }
 }
 
@@ -573,7 +573,7 @@ void InMemoryView::suffixGenerator(w_query* query, struct w_query_ctx* ctx)
       }
 
       w_query_process_file(
-          query, ctx, watchman::make_unique<InMemoryFileResult>(f, caches_));
+          query, ctx, std::make_unique<InMemoryFileResult>(f, caches_));
     }
   }
 }
@@ -629,7 +629,7 @@ void InMemoryView::pathGenerator(w_query* query, struct w_query_ctx* ctx)
       if (f && (!f->exists || !f->stat.isDir())) {
         ctx->bumpNumWalked();
         w_query_process_file(
-            query, ctx, watchman::make_unique<InMemoryFileResult>(f, caches_));
+            query, ctx, std::make_unique<InMemoryFileResult>(f, caches_));
         continue;
       }
     }
@@ -658,7 +658,7 @@ void InMemoryView::dirGenerator(
     ctx->bumpNumWalked();
 
     w_query_process_file(
-        query, ctx, watchman::make_unique<InMemoryFileResult>(file, caches_));
+        query, ctx, std::make_unique<InMemoryFileResult>(file, caches_));
   }
 
   if (depth > 0) {
@@ -682,7 +682,7 @@ void InMemoryView::allFilesGenerator(w_query* query, struct w_query_ctx* ctx)
     }
 
     w_query_process_file(
-        query, ctx, watchman::make_unique<InMemoryFileResult>(f, caches_));
+        query, ctx, std::make_unique<InMemoryFileResult>(f, caches_));
   }
 }
 

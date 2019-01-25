@@ -3,7 +3,7 @@
 
 #include "watchman.h"
 
-#include "make_unique.h"
+#include <memory>
 
 class ExistsExpr : public QueryExpr {
  public:
@@ -12,7 +12,7 @@ class ExistsExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref&) {
-    return watchman::make_unique<ExistsExpr>();
+    return std::make_unique<ExistsExpr>();
   }
 };
 W_TERM_PARSER("exists", ExistsExpr::parse)
@@ -47,7 +47,7 @@ class EmptyExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref&) {
-    return watchman::make_unique<EmptyExpr>();
+    return std::make_unique<EmptyExpr>();
   }
 };
 W_TERM_PARSER("empty", EmptyExpr::parse)

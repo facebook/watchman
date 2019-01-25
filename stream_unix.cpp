@@ -11,9 +11,9 @@
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
+#include <memory>
 #include "FileDescriptor.h"
 #include "Pipe.h"
-#include "make_unique.h"
 
 using watchman::FileDescriptor;
 using watchman::Pipe;
@@ -207,7 +207,7 @@ class UnixStream : public watchman_stream {
 }
 
 std::unique_ptr<watchman_event> w_event_make(void) {
-  return watchman::make_unique<PipeEvent>();
+  return std::make_unique<PipeEvent>();
 }
 
 #define MAX_POLL_EVENTS 63 // Must match MAXIMUM_WAIT_OBJECTS-1 on win
@@ -242,7 +242,7 @@ std::unique_ptr<watchman_stream> w_stm_fdopen(FileDescriptor&& fd) {
   if (!fd) {
     return nullptr;
   }
-  return watchman::make_unique<UnixStream>(std::move(fd));
+  return std::make_unique<UnixStream>(std::move(fd));
 }
 
 std::unique_ptr<watchman_stream> w_stm_connect_unix(

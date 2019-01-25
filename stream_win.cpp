@@ -2,7 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-#include "make_unique.h"
+#include <memory>
 
 using watchman::FileDescriptor;
 
@@ -600,7 +600,7 @@ bool win_handle::peerIsOwner() {
 }
 
 std::unique_ptr<watchman_event> w_event_make(void) {
-  return watchman::make_unique<WindowsEvent>();
+  return std::make_unique<WindowsEvent>();
 }
 
 win_handle::win_handle(FileDescriptor&& handle)
@@ -616,7 +616,7 @@ std::unique_ptr<watchman_stream> w_stm_fdopen(FileDescriptor&& handle) {
     return nullptr;
   }
 
-  return watchman::make_unique<win_handle>(std::move(handle));
+  return std::make_unique<win_handle>(std::move(handle));
 }
 
 std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(

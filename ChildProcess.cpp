@@ -2,11 +2,11 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "ChildProcess.h"
 #include <folly/ScopeGuard.h>
+#include <memory>
 #include <system_error>
 #include <thread>
 #include "Future.h"
 #include "Logging.h"
-#include "make_unique.h"
 
 namespace watchman {
 
@@ -121,7 +121,7 @@ void ChildProcess::Environment::unset(const w_string& key) {
   map_.erase(key);
 }
 
-ChildProcess::Options::Options() : inner_(make_unique<Inner>()) {
+ChildProcess::Options::Options() : inner_(std::make_unique<Inner>()) {
 #ifdef POSIX_SPAWN_CLOEXEC_DEFAULT
   setFlags(POSIX_SPAWN_CLOEXEC_DEFAULT);
 #endif
@@ -208,7 +208,8 @@ void ChildProcess::Options::pipe(int targetFd, bool childRead) {
     throw std::runtime_error("targetFd is already present in pipes map");
   }
 
-  auto result = pipes_.emplace(std::make_pair(targetFd, make_unique<Pipe>()));
+  auto result =
+      pipes_.emplace(std::make_pair(targetFd, std::make_unique<Pipe>()));
   auto pipe = result.first->second.get();
 
 #ifndef _WIN32
