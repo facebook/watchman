@@ -31,16 +31,19 @@ You will need:
 * python
 * automake
 * autoconf
+* cmake
 * libtool (or glibtool on OS X)
 * libpcre
 * libfolly (only needed if building the cppclient library)
 * nodejs (for fb-watchman)
 
+The build time dependencies can be installed by running `getdeps.py --install-deps`.
+This is run for you when you run `autogen.sh` in the example below:
+
 ```
 $ git clone https://github.com/facebook/watchman.git
 $ cd watchman
 $ ./autogen.sh
-$ ./configure
 $ make
 ```
 
