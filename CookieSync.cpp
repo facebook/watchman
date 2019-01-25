@@ -40,7 +40,7 @@ void CookieSync::setCookieDir(const w_string& dir) {
       int(::getpid()));
 }
 
-Future<Unit> CookieSync::sync() {
+folly::Future<folly::Unit> CookieSync::sync() {
   /* generate a cookie name: cookie prefix + id */
   auto path_str = w_string::printf(
       "%.*s%" PRIu32,
@@ -84,7 +84,7 @@ void CookieSync::syncToNow(std::chrono::milliseconds timeout) {
   while (true) {
     auto cookie = sync();
 
-    if (!cookie.wait_for(timeout)) {
+    if (!cookie.wait(timeout).isReady()) {
       auto why = to<std::string>(
           "syncToNow: timed out waiting for cookie file to be "
           "observed by watcher within ",
@@ -103,7 +103,7 @@ void CookieSync::syncToNow(std::chrono::milliseconds timeout) {
     // and wait again if we still have time
     timeout = duration_cast<milliseconds>(deadline - system_clock::now());
     if (timeout.count() <= 0) {
-      cookie.result().throwIfError();
+      cookie.result().throwIfFailed();
     }
   }
 }
@@ -119,7 +119,7 @@ void CookieSync::abortAllCookies() {
   for (auto& it : cookies) {
     log(ERR, "syncToNow: aborting cookie ", it.first, "\n");
     it.second->promise.setException(
-        std::make_exception_ptr(CookieSyncAborted()));
+        folly::make_exception_wrapper<CookieSyncAborted>());
   }
 }
 
@@ -143,7 +143,7 @@ void CookieSync::notifyCookie(const w_string& path) {
   }
 
   if (cookie) {
-    cookie->promise.setValue(Unit{});
+    cookie->promise.setValue();
     // cookie file will be unlinked when we exit this scope
   }
 }

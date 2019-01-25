@@ -186,7 +186,7 @@ static void run_service(void)
 #endif
 
   // redirect std{in,out,err}
-  fd = open("/dev/null", O_RDONLY);
+  fd = ::open("/dev/null", O_RDONLY);
   if (fd != -1) {
     ignore_result(::dup2(fd, STDIN_FILENO));
     ::close(fd);

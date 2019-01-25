@@ -2,7 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include <folly/Synchronized.h>
-#include "Future.h"
+#include <folly/futures/Future.h>
 #define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"
 
 namespace watchman {
@@ -36,7 +36,7 @@ class CookieSync {
    * It is recommended that you minimize the actions performed
    * in that context to avoid holding up the IO thread.
    **/
-  Future<Unit> sync();
+  folly::Future<folly::Unit> sync();
 
   /* If path is a valid cookie in the map, notify the waiter.
    * Returns true if the path matches the cookie prefix (not just
@@ -71,7 +71,7 @@ class CookieSync {
 
  private:
   struct Cookie {
-    Promise<Unit> promise;
+    folly::Promise<folly::Unit> promise;
     w_string fileName;
 
     explicit Cookie(w_string name);

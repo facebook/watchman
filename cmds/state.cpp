@@ -214,10 +214,9 @@ static void cmd_state_enter(
       // to the client as an error PDU.
       // after this point, any errors are async and the client is
       // unaware of them.
-      .then([assertion, parsed, root](
-                watchman::Result<watchman::Unit>&& result) {
+      .thenTry([assertion, parsed, root](folly::Try<folly::Unit>&& result) {
         try {
-          result.throwIfError();
+          result.throwIfFailed();
         } catch (const std::exception& exc) {
           // The sync failed for whatever reason; log it.
           log(ERR, "state-enter sync failed: ", exc.what(), "\n");
@@ -379,10 +378,10 @@ static void cmd_state_leave(
                 {"state-leave", w_string_to_json(parsed.name)}});
   send_and_dispose_response(client, std::move(response));
 
-  root->cookies.sync().then(
-      [assertion, parsed, root](watchman::Result<watchman::Unit>&& result) {
+  root->cookies.sync().thenTry(
+      [assertion, parsed, root](folly::Try<folly::Unit>&& result) {
         try {
-          result.throwIfError();
+          result.throwIfFailed();
         } catch (const std::exception& exc) {
           // The sync failed for whatever reason; log it and take no futher
           // action
