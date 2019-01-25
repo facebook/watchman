@@ -1,6 +1,7 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <folly/Executor.h>
 #include <atomic>
 #include <condition_variable>
 #include <functional>
@@ -10,15 +11,6 @@
 #include "Result.h"
 
 namespace watchman {
-
-// An executor is a very light abstraction over something that can run
-// some function.  We use this to perform the WaitableResult callback
-// in some other context (eg: ThreadPool).  In practice, this is used
-// to move the execution context for a .then call to a worker thread.
-struct Executor {
-  virtual ~Executor() = default;
-  virtual void run(std::function<void()>&& func) = 0;
-};
 
 // WaitableResult<T> encapsulates a Result<T> and allows waiting and notifying
 // and interested party.  You are not expected to create an instance of this
@@ -95,7 +87,7 @@ class WaitableResult : public std::enable_shared_from_this<WaitableResult<T>> {
   }
 
   // Change the executor associated with the future
-  void setExecutor(Executor* executor) {
+  void setExecutor(folly::Executor* executor) {
     std::unique_lock<std::mutex> lock(mutex_);
     executor_ = executor;
   }
@@ -105,7 +97,7 @@ class WaitableResult : public std::enable_shared_from_this<WaitableResult<T>> {
   mutable std::condition_variable condition_;
   mutable std::mutex mutex_;
   std::function<void(Result<T>&&)> callback_;
-  Executor* executor_{nullptr};
+  folly::Executor* executor_{nullptr};
 
   // If a callback is set, call it.
   // Then notify any waiters that the result is available.
@@ -132,13 +124,12 @@ class WaitableResult : public std::enable_shared_from_this<WaitableResult<T>> {
         try {
           // Unfortunately, have to make a copy of func here in
           // order to have sane exception handling
-          executor_->run([scope_guard, this, func] {
-            func(std::move(result_));
-          });
+          executor_->add(
+              [scope_guard, this, func] { func(std::move(result_)); });
           condition_.notify_all();
           return;
         } catch (const std::exception& exc) {
-          // We get here if executor_->run() threw an exception.
+          // We get here if executor_->add() threw an exception.
           // This is most likely to happen if the thread pool is
           // full, but we can't make any assumptions of the nature
           // of the exception; it may have simply run the callback
@@ -339,7 +330,7 @@ class Future {
   // context for a then() call, you must precede it with a via() call
   // and supply the appropriate executor:
   // makeFuture().via(exec).then(A).via(exec).then(B)
-  Future<T> via(Executor* executor) && {
+  Future<T> via(folly::Executor* executor) && {
     state_->setExecutor(executor);
     return std::move(*this);
   }

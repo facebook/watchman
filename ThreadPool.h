@@ -20,7 +20,7 @@ namespace watchman {
 // Constraining the concurrency is important for watchman so
 // that we can limit the amount of I/O that we might induce.
 
-class ThreadPool : public Executor {
+class ThreadPool : public folly::Executor {
  public:
   ThreadPool() = default;
   ~ThreadPool() override;
@@ -42,11 +42,11 @@ class ThreadPool : public Executor {
   // This queues up the function for asynchronous execution and
   // may return before func has been executed.
   // If the thread pool has been stopped, throws a runtime_error.
-  void run(std::function<void()>&& func) override;
+  void add(folly::Func func) override;
 
  private:
   std::vector<std::thread> workers_;
-  std::deque<std::function<void()>> tasks_;
+  std::deque<folly::Func> tasks_;
 
   std::mutex mutex_;
   std::condition_variable condition_;

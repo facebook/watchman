@@ -1,6 +1,7 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman_system.h"
+#include <folly/executors/ManualExecutor.h>
 #include <deque>
 #include <string>
 #include "Future.h"
@@ -54,38 +55,11 @@ void test_basics() {
   ok(cache.size() == 0, "cleared out and have zero items");
 }
 
-// Helper for deferring execution of a future during tests
-class ManualExecutor : public Executor {
- public:
-  void run(std::function<void()>&& func) override {
-    funcs_.emplace_back(std::move(func));
-  }
-
-  void runNext() {
-    auto& f = funcs_.front();
-    f();
-    funcs_.pop_front();
-  }
-
-  size_t size() const {
-    return funcs_.size();
-  }
-
-  void runAll() {
-    while (!funcs_.empty()) {
-      runNext();
-    }
-  }
-
- private:
-  std::deque<std::function<void()>> funcs_;
-};
-
 void test_future() {
   using Cache = LRUCache<int, int>;
   using Node = typename Cache::NodeType;
   Cache cache(5, kErrorTTL);
-  ManualExecutor exec;
+  folly::ManualExecutor exec;
 
   auto now = std::chrono::steady_clock::now();
 
@@ -114,8 +88,7 @@ void test_future() {
   auto f2 = cache.get(0, okGetter, now);
   ok(!f2.isReady(), "also not ready");
 
-  ok(exec.size() == 1, "only scheduled a single call to getter");
-  exec.runNext();
+  exec.drain();
 
   ok(f.isReady(), "first is ready");
   ok(f2.isReady(), "second is ready");
@@ -132,10 +105,11 @@ void test_future() {
         cache.get(i, failGetter, now + std::chrono::milliseconds(i)));
   }
 
-  ok(exec.size() == 6, "should be 6 things pending, but have %d", exec.size());
+  auto drained = exec.drain();
+  ok(drained == 6, "should be 6 things pending, but have %d", drained);
 
   // Let them make progress
-  exec.runAll();
+  exec.drain();
 
   ok(cache.size() == 5, "cache should be full, but has %d", cache.size());
 
@@ -167,7 +141,7 @@ void test_future() {
 }
 
 int main() {
-  plan_tests(54);
+  plan_tests(53);
   test_basics();
   test_future();
   return exit_status();

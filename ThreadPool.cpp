@@ -35,7 +35,7 @@ void ThreadPool::start(size_t numWorkers, size_t maxItems) {
 
 void ThreadPool::runWorker() {
   while (true) {
-    std::function<void()> task;
+    folly::Func task;
 
     {
       std::unique_lock<std::mutex> lock(mutex_);
@@ -65,7 +65,7 @@ void ThreadPool::stop(bool join) {
   }
 }
 
-void ThreadPool::run(std::function<void()>&& func) {
+void ThreadPool::add(folly::Func func) {
   {
     std::unique_lock<std::mutex> lock(mutex_);
     if (stopping_) {
