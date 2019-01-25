@@ -5,7 +5,6 @@
 #include <memory>
 #include <system_error>
 #include <thread>
-#include "Future.h"
 #include "Logging.h"
 
 namespace watchman {
@@ -585,25 +584,21 @@ std::pair<w_string, w_string> ChildProcess::pollingCommunicate(
 /** Spawn a thread to read from the pipe connected to the specified fd.
  * Returns a Future that will hold a string with the entire output from
  * that stream. */
-Future<w_string> ChildProcess::readPipe(int fd) {
+folly::Future<w_string> ChildProcess::readPipe(int fd) {
   auto it = pipes_.find(fd);
   if (it == pipes_.end()) {
-    return makeFuture(w_string(nullptr));
+    return folly::makeFuture(w_string(nullptr));
   }
 
-  auto p = std::make_shared<Promise<w_string>>();
+  auto p = std::make_shared<folly::Promise<w_string>>();
   std::thread thr([ this, fd, p ]() noexcept {
     std::string result;
-    try {
+    p->setWith([&] {
       auto& pipe = pipes_[fd];
       while (true) {
         char buf[4096];
         auto readResult = pipe->read.read(buf, sizeof(buf));
-        if (readResult.hasError()) {
-          p->setException(
-              std::make_exception_ptr(std::system_error(readResult.error())));
-          return;
-        }
+        readResult.throwIfError();
         auto len = readResult.value();
         if (len == 0) {
           // all done
@@ -611,10 +606,8 @@ Future<w_string> ChildProcess::readPipe(int fd) {
         }
         result.append(buf, len);
       }
-      p->setValue(w_string(result.data(), result.size()));
-    } catch (const std::exception& exc) {
-      p->setException(std::current_exception());
-    }
+      return w_string(result.data(), result.size());
+    });
   });
 
   thr.detach();
@@ -642,7 +635,7 @@ std::pair<w_string, w_string> ChildProcess::threadedCommunicate(
     pipes_.erase(STDIN_FILENO);
   }
 
-  return std::make_pair(outFuture.get(), errFuture.get());
+  return std::make_pair(std::move(outFuture).get(), std::move(errFuture).get());
 }
 
 }

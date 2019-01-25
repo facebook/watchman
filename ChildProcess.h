@@ -2,15 +2,15 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include "watchman_system.h"
+#include "watchman_string.h"
+#include <folly/futures/Future.h>
 #include <spawn.h>
 #include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "Future.h"
 #include "Pipe.h"
 #include "thirdparty/jansson/jansson.h"
-#include "watchman_string.h"
 
 namespace watchman {
 
@@ -176,6 +176,6 @@ class ChildProcess {
   int status_;
   std::unordered_map<int, std::unique_ptr<Pipe>> pipes_;
 
-  Future<w_string> readPipe(int fd);
+  folly::Future<w_string> readPipe(int fd);
 };
 }
