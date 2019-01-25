@@ -2,13 +2,13 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman_system.h"
+#include "watchman.h"
+#include <folly/Synchronized.h>
 #include <condition_variable>
 #include <thread>
 #include "ChildProcess.h"
 #include "Logging.h"
-#include "watchman.h"
 #include "watchman_perf.h"
-#include "watchman_synchronized.h"
 
 using namespace watchman;
 using Options = ChildProcess::Options;
@@ -16,7 +16,7 @@ using Environment = ChildProcess::Environment;
 
 namespace {
 class PerfLogThread {
-  watchman::Synchronized<json_ref, std::mutex> samples_;
+  folly::Synchronized<json_ref, std::mutex> samples_;
   std::thread thread_;
   std::condition_variable cond_;
 
@@ -31,7 +31,7 @@ class PerfLogThread {
   }
 
   void addSample(json_ref&& sample) {
-    auto wlock = samples_.wlock();
+    auto wlock = samples_.lock();
     if (!*wlock) {
       *wlock = json_array();
     }
@@ -162,7 +162,7 @@ void PerfLogThread::loop() noexcept {
 
   while (!w_is_stopping()) {
     {
-      auto wlock = samples_.wlock();
+      auto wlock = samples_.lock();
       if (!*wlock) {
         cond_.wait(wlock.getUniqueLock());
       }
@@ -219,7 +219,7 @@ void watchman_perf_sample::log() {
   auto info = json_object(
       {{"description", typed_string_to_json(description)},
        {"meta", meta_data},
-       {"pid", json_integer(getpid())},
+       {"pid", json_integer(::getpid())},
        {"version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE)}});
 
 #ifdef WATCHMAN_BUILD_INFO

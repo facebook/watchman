@@ -1,13 +1,13 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <folly/Synchronized.h>
 #include <deque>
 #include <unordered_map>
 #include <unordered_set>
 #include "Logging.h"
 #include "watchman_pdu.h"
 #include "watchman_perf.h"
-#include "watchman_synchronized.h"
 
 struct w_query;
 struct w_query_res;
@@ -130,8 +130,7 @@ struct watchman_user_client : public watchman_client {
   bool unsubByName(const w_string& name);
 };
 
-extern watchman::Synchronized<
-    std::unordered_set<std::shared_ptr<watchman_client>>>
+extern folly::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
 
 void w_client_vacate_states(struct watchman_user_client *client);

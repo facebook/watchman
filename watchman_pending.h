@@ -1,10 +1,10 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <folly/Synchronized.h>
 #include <chrono>
 #include <condition_variable>
 #include "thirdparty/libart/src/art.h"
-#include "watchman_synchronized.h"
 
 #define W_PENDING_RECURSIVE 1
 #define W_PENDING_VIA_NOTIFY 2
@@ -76,7 +76,7 @@ struct PendingCollectionBase {
 };
 
 class PendingCollection
-    : public watchman::Synchronized<PendingCollectionBase, std::mutex> {
+    : public folly::Synchronized<PendingCollectionBase, std::mutex> {
   std::condition_variable cond_;
   std::atomic<bool> pinged_;
 

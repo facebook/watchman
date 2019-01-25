@@ -5,6 +5,7 @@
  * This watcher fails with the scm tests */
 
 #include "watchman.h"
+#include <folly/Synchronized.h>
 #include <memory>
 #include "InMemoryView.h"
 
@@ -27,7 +28,7 @@ struct PortFSWatcher : public Watcher {
   Pipe terminatePipe_;
 
   /* map of file name to watchman_port_file */
-  watchman::Synchronized<
+  folly::Synchronized<
       std::unordered_map<w_string, std::unique_ptr<watchman_port_file>>>
       port_files;
 

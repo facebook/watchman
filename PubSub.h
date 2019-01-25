@@ -2,8 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include "watchman_system.h"
-#include "watchman_synchronized.h"
 #include "watchman_string.h"
+#include <folly/Synchronized.h>
 #include "thirdparty/jansson/jansson.h"
 
 #include <deque>
@@ -96,7 +96,7 @@ class Publisher : public std::enable_shared_from_this<Publisher> {
     void collectGarbage();
     void enqueue(json_ref&& payload);
   };
-  Synchronized<state> state_;
+  folly::Synchronized<state> state_;
 
   friend class Subscriber;
 };

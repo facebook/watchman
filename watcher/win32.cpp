@@ -2,8 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/Synchronized.h>
 #include "InMemoryView.h"
-#include "watchman_synchronized.h"
 
 #include <algorithm>
 #include <condition_variable>
@@ -32,7 +32,7 @@ struct WinWatcher : public Watcher {
   HANDLE dir_handle{INVALID_HANDLE_VALUE};
 
   std::condition_variable cond;
-  watchman::Synchronized<std::list<Item>, std::mutex> changedItems;
+  folly::Synchronized<std::list<Item>, std::mutex> changedItems;
 
   explicit WinWatcher(w_root_t* root);
   ~WinWatcher();
@@ -125,7 +125,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
 
   // Block until winmatch_root_st is waiting for our initialization
   {
-    auto wlock = changedItems.wlock();
+    auto wlock = changedItems.lock();
 
     filter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
         FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE |
@@ -275,7 +275,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
         watchman::log(watchman::DBG,
                       "timed out waiting for changes, and we have ",
                       items.size(), " items; move and notify\n");
-        auto wlock = changedItems.wlock();
+        auto wlock = changedItems.lock();
         wlock->splice(wlock->end(), items);
         cond.notify_one();
       }
@@ -295,7 +295,7 @@ bool WinWatcher::start(const std::shared_ptr<w_root_t>& root) {
 
   try {
     // Acquire the mutex so thread initialization waits until we release it
-    auto wlock = changedItems.wlock();
+    auto wlock = changedItems.lock();
 
     watchman::log(watchman::DBG, "starting readChangesThread\n");
     auto self = std::dynamic_pointer_cast<WinWatcher>(shared_from_this());
@@ -310,7 +310,7 @@ bool WinWatcher::start(const std::shared_ptr<w_root_t>& root) {
       // Ensure that we signal the condition variable before we
       // finish this thread.  That ensures that don't get stuck
       // waiting in WinWatcher::start if something unexpected happens.
-      auto wlock = self->changedItems.wlock();
+      auto wlock = self->changedItems.lock();
       self->cond.notify_one();
     });
     // We have to detach because the readChangesThread may wind up
@@ -355,7 +355,7 @@ bool WinWatcher::consumeNotify(
   struct timeval now;
 
   {
-    auto wlock = changedItems.wlock();
+    auto wlock = changedItems.lock();
     std::swap(items, *wlock);
   }
 
@@ -371,7 +371,7 @@ bool WinWatcher::consumeNotify(
 }
 
 bool WinWatcher::waitNotify(int timeoutms) {
-  auto wlock = changedItems.wlock();
+  auto wlock = changedItems.lock();
   cond.wait_for(wlock.getUniqueLock(), std::chrono::milliseconds(timeoutms));
   return !wlock->empty();
 }

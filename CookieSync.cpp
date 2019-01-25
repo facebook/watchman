@@ -37,7 +37,7 @@ void CookieSync::setCookieDir(const w_string& dir) {
       int(cookieDir_.size()),
       cookieDir_.data(),
       hostname,
-      int(getpid()));
+      int(::getpid()));
 }
 
 Future<Unit> CookieSync::sync() {

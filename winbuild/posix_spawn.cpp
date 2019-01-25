@@ -1,11 +1,11 @@
 /* Copyright 2014-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
-#include "watchman_synchronized.h"
+#include <folly/Synchronized.h>
 
 // Maps pid => process handle
 // This is so that we can wait/poll/query the termination status
-static watchman::Synchronized<std::unordered_map<DWORD, HANDLE>> child_procs;
+static folly::Synchronized<std::unordered_map<DWORD, HANDLE>> child_procs;
 
 pid_t waitpid(pid_t pid, int* status, int options) {
   HANDLE h;

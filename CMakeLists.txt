@@ -376,7 +376,6 @@ stream.cpp
 stream_stdout.cpp
 # string.cpp (in libstring)
 time.cpp
-timedlock.cpp
 tmp.cpp
 query/base.cpp
 query/dirname.cpp

@@ -13,7 +13,7 @@ namespace watchman {
 // we have drained the inotify descriptor
 void InMemoryView::notifyThread(const std::shared_ptr<w_root_t>& root) {
   PendingCollection pending;
-  auto localLock = pending.wlock();
+  auto localLock = pending.lock();
 
   if (!watcher_->start(root)) {
     w_log(
@@ -27,7 +27,7 @@ void InMemoryView::notifyThread(const std::shared_ptr<w_root_t>& root) {
 
   // signal that we're done here, so that we can start the
   // io thread after this point
-  pending_.wlock()->ping();
+  pending_.lock()->ping();
 
   while (!stopThreads_) {
     // big number because not all watchers can deal with
@@ -42,7 +42,7 @@ void InMemoryView::notifyThread(const std::shared_ptr<w_root_t>& root) {
         }
       }
       if (localLock->size() > 0) {
-        auto lock = pending_.wlock();
+        auto lock = pending_.lock();
         lock->append(&*localLock);
         lock->ping();
       }

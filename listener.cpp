@@ -5,13 +5,14 @@
 #ifdef HAVE_LIBGIMLI_H
 # include <libgimli.h>
 #endif
+#include <folly/Synchronized.h>
 #include <chrono>
 #include <thread>
 
 using namespace watchman;
 using watchman::FileDescriptor;
 
-watchman::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
+folly::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
 static FileDescriptor listener_fd;
 #ifndef _WIN32
@@ -761,7 +762,7 @@ bool w_start_listener(const char *path)
 static void cmd_get_pid(struct watchman_client* client, const json_ref&) {
   auto resp = make_response();
 
-  resp.set("pid", json_integer(getpid()));
+  resp.set("pid", json_integer(::getpid()));
 
   send_and_dispose_response(client, std::move(resp));
 }

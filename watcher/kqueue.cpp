@@ -2,10 +2,11 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-#include "InMemoryView.h"
-#include "FileDescriptor.h"
-#include "Pipe.h"
+#include <folly/Synchronized.h>
 #include <array>
+#include "FileDescriptor.h"
+#include "InMemoryView.h"
+#include "Pipe.h"
 
 #ifdef HAVE_KQUEUE
 #if !defined(O_EVTONLY)
@@ -29,7 +30,7 @@ struct KQueueWatcher : public Watcher {
       fd_to_name.reserve(sizeHint);
     }
   };
-  watchman::Synchronized<maps> maps_;
+  folly::Synchronized<maps> maps_;
 
   struct kevent keventbuf[WATCHMAN_BATCH_LIMIT];
 

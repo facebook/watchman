@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/Synchronized.h>
 
 static const struct flag_map kflags[] = {
   {W_PENDING_CRAWL_ONLY, "CRAWL_ONLY"},
@@ -325,14 +326,14 @@ bool PendingCollectionBase::checkAndResetPinged() {
 }
 
 PendingCollection::PendingCollection()
-    : watchman::Synchronized<PendingCollectionBase, std::mutex>(
+    : folly::Synchronized<PendingCollectionBase, std::mutex>(
           PendingCollectionBase(cond_, pinged_)),
       pinged_(false) {}
 
 PendingCollection::LockedPtr PendingCollection::lockAndWait(
     std::chrono::milliseconds timeoutms,
     bool& pinged) {
-  auto lock = wlock();
+  auto lock = this->lock();
 
   if (lock->checkAndResetPinged()) {
     pinged = true;

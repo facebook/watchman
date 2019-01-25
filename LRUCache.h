@@ -1,12 +1,12 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <folly/Synchronized.h>
 #include <chrono>
 #include <deque>
 #include <memory>
 #include <unordered_map>
 #include "Future.h"
-#include "watchman_synchronized.h"
 
 namespace watchman {
 
@@ -259,7 +259,7 @@ class LRUCache {
 
  private:
   using State = lrucache::InternalState<KeyType, ValueType>;
-  using LockedState = typename Synchronized<State>::LockedPtr;
+  using LockedState = typename folly::Synchronized<State>::LockedPtr;
 
  public:
   // Construct a cache with a defined limit and the specified
@@ -629,6 +629,6 @@ class LRUCache {
   const size_t maxItems_;
   // How long to cache items that have an error Result
   const std::chrono::milliseconds errorTTL_;
-  Synchronized<State> state_;
+  folly::Synchronized<State> state_;
 };
 }

@@ -2,6 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include "watchman_system.h"
+#include "watchman_string.h"
+#include <folly/Synchronized.h>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -15,7 +17,6 @@
 #include "watchman_pending.h"
 #include "watchman_perf.h"
 #include "watchman_query.h"
-#include "watchman_string.h"
 
 struct Watcher;
 struct watchman_client;
@@ -140,7 +141,7 @@ struct InMemoryView : public QueryableView {
 
     void insertAtHeadOfFileList(struct watchman_file* file);
   };
-  using SyncView = watchman::Synchronized<view>;
+  using SyncView = folly::Synchronized<view>;
 
   void ageOutFile(
       std::unordered_set<w_string>& dirs_to_erase,
@@ -250,7 +251,7 @@ struct InMemoryView : public QueryableView {
     std::unique_ptr<std::promise<void>> promise;
     std::shared_future<void> future;
   };
-  watchman::Synchronized<crawl_state> crawlState_;
+  folly::Synchronized<crawl_state> crawlState_;
 
   uint32_t last_age_out_tick{0};
   time_t last_age_out_timestamp{0};

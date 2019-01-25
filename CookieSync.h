@@ -1,8 +1,8 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <folly/Synchronized.h>
 #include "Future.h"
-#include "watchman_synchronized.h"
 #define WATCHMAN_COOKIE_PREFIX ".watchman-cookie-"
 
 namespace watchman {
@@ -84,6 +84,7 @@ class CookieSync {
   w_string cookiePrefix_;
   // Serial number for cookie filename
   std::atomic<uint32_t> serial_{0};
-  Synchronized<std::unordered_map<w_string, std::unique_ptr<Cookie>>> cookies_;
+  folly::Synchronized<std::unordered_map<w_string, std::unique_ptr<Cookie>>>
+      cookies_;
 };
 }

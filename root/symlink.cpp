@@ -141,7 +141,7 @@ static void watch_symlinks(const w_string& path, json_t* root_files) {
 void watchman_root::processPendingSymlinkTargets() {
   bool enforcing;
 
-  auto pendingLock = inner.pending_symlink_targets.wlock();
+  auto pendingLock = inner.pending_symlink_targets.lock();
 
   if (!pendingLock->size()) {
     return;

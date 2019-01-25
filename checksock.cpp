@@ -23,7 +23,7 @@ void check_my_sock(watchman_stream* client) {
   auto cmd = json_array({typed_string_to_json("get-pid", W_STRING_UNICODE)});
   w_jbuffer_t buf;
   json_error_t jerr;
-  pid_t my_pid = getpid();
+  pid_t my_pid = ::getpid();
 
   if (!buf.pduEncodeToStream(is_bser, 0, cmd, client)) {
     log(watchman::FATAL, "Failed to send get-pid PDU: ", strerror(errno), "\n");

@@ -1,9 +1,9 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "Logging.h"
 #include "watchman.h"
-#include "watchman_synchronized.h"
+#include <folly/Synchronized.h>
+#include "Logging.h"
 
 using namespace watchman;
 
@@ -24,7 +24,7 @@ namespace {
 struct state {
   bool needsSave{false};
 };
-watchman::Synchronized<state, std::mutex> saveState;
+folly::Synchronized<state, std::mutex> saveState;
 std::condition_variable stateCond;
 std::thread state_saver_thread;
 }
@@ -38,7 +38,7 @@ static void state_saver() noexcept {
 
   while (!w_is_stopping()) {
     {
-      auto state = saveState.wlock();
+      auto state = saveState.lock();
       if (!state->needsSave) {
         stateCond.wait(state.getUniqueLock());
       }
@@ -108,7 +108,7 @@ std::unique_ptr<watchman_stream> w_mkstemp(char* templ) {
       return stm;
     }
     if (errno == EACCES) {
-      /* sleep override */ usleep(2000);
+      /* sleep override */ ::usleep(2000);
       continue;
     }
     return nullptr;
@@ -165,7 +165,7 @@ void w_state_save(void) {
     return;
   }
 
-  saveState.wlock()->needsSave = true;
+  saveState.lock()->needsSave = true;
   stateCond.notify_one();
 }
 

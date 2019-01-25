@@ -1,11 +1,12 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman.h"
+#include <folly/Synchronized.h>
 #include <condition_variable>
 #include <deque>
 #include <iterator>
 #include <mutex>
-#include "watchman.h"
 #include "InMemoryView.h"
 #include "Pipe.h"
 
@@ -44,7 +45,7 @@ struct FSEventsWatcher : public Watcher {
   watchman::Pipe fse_pipe;
 
   std::condition_variable fse_cond;
-  watchman::Synchronized<std::deque<watchman_fsevent>, std::mutex> items_;
+  folly::Synchronized<std::deque<watchman_fsevent>, std::mutex> items_;
 
   struct fse_stream* stream{nullptr};
   bool attempt_resync_on_drop{false};
@@ -250,7 +251,7 @@ propagate:
   }
 
   if (!items.empty()) {
-    auto wlock = watcher->items_.wlock();
+    auto wlock = watcher->items_.lock();
     std::move(items.begin(), items.end(), std::back_inserter(*wlock));
     watcher->fse_cond.notify_one();
   }
@@ -446,7 +447,7 @@ void FSEventsWatcher::FSEventsThread(const std::shared_ptr<w_root_t>& root) {
 
   {
     // Block until fsevents_root_start is waiting for our initialization
-    auto wlock = items_.wlock();
+    auto wlock = items_.lock();
 
     attempt_resync_on_drop = root->config.getBool("fsevents_try_resync", true);
 
@@ -510,7 +511,7 @@ bool FSEventsWatcher::consumeNotify(
   std::deque<watchman_fsevent> items;
 
   {
-    auto wlock = items_.wlock();
+    auto wlock = items_.lock();
     std::swap(items, *wlock);
   }
 
@@ -590,7 +591,7 @@ bool FSEventsWatcher::start(const std::shared_ptr<w_root_t>& root) {
   auto self = std::dynamic_pointer_cast<FSEventsWatcher>(shared_from_this());
   try {
     // Acquire the mutex so thread initialization waits until we release it
-    auto wlock = items_.wlock();
+    auto wlock = items_.lock();
 
     std::thread thread([self, root]() {
       try {
@@ -630,7 +631,7 @@ bool FSEventsWatcher::start(const std::shared_ptr<w_root_t>& root) {
 }
 
 bool FSEventsWatcher::waitNotify(int timeoutms) {
-  auto wlock = items_.wlock();
+  auto wlock = items_.lock();
   fse_cond.wait_for(
       wlock.getUniqueLock(), std::chrono::milliseconds(timeoutms));
   return !wlock->empty();
@@ -673,7 +674,7 @@ static void cmd_debug_fsevents_inject_drop(
   }
 
   {
-    auto wlock = watcher->items_.wlock();
+    auto wlock = watcher->items_.lock();
     last_good = watcher->stream->last_good;
     watcher->stream->inject_drop = true;
   }

@@ -3,12 +3,12 @@
 #pragma once
 #include "watchman_system.h"
 
+#include <folly/Synchronized.h>
 #include <string>
 #include <unordered_map>
 #include "ChildProcess.h"
 #include "FileInformation.h"
 #include "SCM.h"
-#include "watchman_synchronized.h"
 
 namespace watchman {
 
@@ -49,6 +49,6 @@ class Mercurial : public SCM {
 
     w_string lookupMergeBase(const std::string& commitId);
   };
-  mutable Synchronized<infoCache> cache_;
+  mutable folly::Synchronized<infoCache> cache_;
 };
 }

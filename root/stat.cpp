@@ -168,7 +168,7 @@ void InMemoryView::statPath(
 
     // check for symbolic link
     if (st.isSymlink() && root->config.getBool("watch_symlinks", false)) {
-      root->inner.pending_symlink_targets.wlock()->add(full_path, now, 0);
+      root->inner.pending_symlink_targets.lock()->add(full_path, now, 0);
     }
 
     if (st.isDir()) {

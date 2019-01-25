@@ -2,7 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-#include "watchman_synchronized.h"
+#include <folly/Synchronized.h>
 
 namespace {
 struct config_state {
@@ -10,7 +10,7 @@ struct config_state {
   w_string global_config_file_path;
   json_ref arg_cfg;
 };
-watchman::Synchronized<config_state> configState;
+folly::Synchronized<config_state> configState;
 }
 
 /* Called during shutdown to free things so that we run cleanly

@@ -44,7 +44,7 @@ void InMemoryView::fullCrawl(
     // can get stuck with an empty view until another change is observed
     mostRecentTick_++;
     gettimeofday(&start, NULL);
-    pending_.wlock()->add(root->root_path, start, W_PENDING_RECURSIVE);
+    pending_.lock()->add(root->root_path, start, W_PENDING_RECURSIVE);
     // There is the potential for a subtle race condition here.  The boolean
     // parameter indicates whether we want to merge in the set of
     // notifications pending from the watcher or not.  Since we now coalesce
@@ -118,7 +118,7 @@ static bool do_settle_things(const std::shared_ptr<w_root_t>& root) {
 void InMemoryView::clientModeCrawl(const std::shared_ptr<w_root_t>& root) {
   PendingCollection pending;
 
-  auto lock = pending.wlock();
+  auto lock = pending.lock();
   fullCrawl(root, lock);
 }
 
@@ -142,7 +142,7 @@ bool InMemoryView::handleShouldRecrawl(const std::shared_ptr<w_root_t>& root) {
 void InMemoryView::ioThread(const std::shared_ptr<w_root_t>& root) {
   int timeoutms, biggest_timeout;
   PendingCollection pending;
-  auto localPendingLock = pending.wlock();
+  auto localPendingLock = pending.lock();
 
   timeoutms = root->trigger_settle;
 
@@ -271,7 +271,7 @@ bool InMemoryView::processPending(
     PendingCollection::LockedPtr& coll,
     bool pullFromRoot) {
   if (pullFromRoot) {
-    auto srcLock = pending_.wlock();
+    auto srcLock = pending_.lock();
     coll->append(&*srcLock);
   }
 

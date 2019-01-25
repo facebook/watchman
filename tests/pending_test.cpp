@@ -66,7 +66,7 @@ static void bench_pending(void) {
   {
     PendingCollection coll;
     size_t drained = 0;
-    auto lock = coll.wlock();
+    auto lock = coll.lock();
 
     gettimeofday(&start, NULL);
     for (auto& item : list) {
@@ -85,7 +85,7 @@ static void bench_pending(void) {
   {
     PendingCollection coll;
     size_t drained = 0;
-    auto lock = coll.wlock();
+    auto lock = coll.lock();
 
     gettimeofday(&start, NULL);
     for (auto it = list.rbegin(); it != list.rend(); ++it) {

@@ -94,7 +94,7 @@ void watchman::InMemoryView::syncToNow(
       struct timeval now;
       gettimeofday(&now, nullptr);
 
-      auto lock = pending_.wlock();
+      auto lock = pending_.lock();
       lock->add(cookies_.cookieDir(), now, W_PENDING_CRAWL_ONLY);
       lock->ping();
     }

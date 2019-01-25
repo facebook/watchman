@@ -1,8 +1,8 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <folly/Synchronized.h>
 #include <unordered_map>
-#include "watchman_synchronized.h"
 
 struct watchman_clock {
   uint32_t ticks;
@@ -69,8 +69,8 @@ struct ClockSpec {
   struct w_query_since evaluate(
       const ClockPosition& position,
       const uint32_t lastAgeOutTick,
-      watchman::Synchronized<std::unordered_map<w_string, uint32_t>>*
-          cursorMap = nullptr) const;
+      folly::Synchronized<std::unordered_map<w_string, uint32_t>>* cursorMap =
+          nullptr) const;
 
   /** Initializes some global state needed for clockspec evaluation */
   static void init();

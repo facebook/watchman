@@ -3,9 +3,10 @@
 
 #include "watchman.h"
 
+#include <folly/Synchronized.h>
 #include <vector>
 
-watchman::Synchronized<std::unordered_map<w_string, std::shared_ptr<w_root_t>>>
+folly::Synchronized<std::unordered_map<w_string, std::shared_ptr<w_root_t>>>
     watched_roots;
 std::atomic<long> live_roots{0};
 
@@ -264,7 +265,7 @@ void w_root_free_watched_roots(void) {
       w_log(W_LOG_DBG, "waiting: %ld live\n", current);
       last = current;
     }
-    usleep(interval);
+    /* sleep override */ ::usleep(interval);
     interval = std::min(interval * 2, 1000000);
   }
 

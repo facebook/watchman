@@ -1,6 +1,7 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include <folly/Synchronized.h>
 #include <atomic>
 #include <condition_variable>
 #include <unordered_map>
@@ -9,8 +10,6 @@
 #include "PubSub.h"
 #include "QueryableView.h"
 #include "watchman_config.h"
-#include "watchman_shared_mutex.h"
-#include "watchman_synchronized.h"
 
 #define HINT_NUM_DIRS 128*1024
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
@@ -72,7 +71,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   watchman::CaseSensitivity case_sensitive;
 
   /* map of rule id => struct watchman_trigger_command */
-  watchman::Synchronized<
+  folly::Synchronized<
       std::unordered_map<w_string, std::unique_ptr<watchman_trigger_command>>>
       triggers;
 
@@ -101,7 +100,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
     // Last ad-hoc warning message
     w_string warning;
   };
-  watchman::Synchronized<RecrawlInfo> recrawlInfo;
+  folly::Synchronized<RecrawlInfo> recrawlInfo;
 
   // Why we failed to watch
   w_string failure_reason;
@@ -109,7 +108,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   // State transition counter to allow identification of concurrent state
   // transitions
   std::atomic<uint32_t> stateTransCount{0};
-  watchman::Synchronized<watchman::ClientStateAssertions> assertedStates;
+  folly::Synchronized<watchman::ClientStateAssertions> assertedStates;
 
   struct Inner {
     std::shared_ptr<watchman::QueryableView> view_;
@@ -118,7 +117,7 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
     bool cancelled{0};
 
     /* map of cursor name => last observed tick value */
-    watchman::Synchronized<std::unordered_map<w_string, uint32_t>> cursors;
+    folly::Synchronized<std::unordered_map<w_string, uint32_t>> cursors;
 
     /* Collection of symlink targets that we try to watch.
      * Reads and writes on this collection are only safe if done from the IO
@@ -183,7 +182,7 @@ bool did_file_change(
     const watchman::FileInformation* fresh);
 extern std::atomic<long> live_roots;
 
-extern watchman::Synchronized<
+extern folly::Synchronized<
     std::unordered_map<w_string, std::shared_ptr<w_root_t>>>
     watched_roots;
 

@@ -2,8 +2,9 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-#include "InMemoryView.h"
+#include <folly/Synchronized.h>
 #include "FileDescriptor.h"
+#include "InMemoryView.h"
 #include "Pipe.h"
 #include "watchman_error_category.h"
 
@@ -67,7 +68,7 @@ struct InotifyWatcher : public Watcher {
     std::unordered_map<uint32_t, pending_move> move_map;
   };
 
-  watchman::Synchronized<maps> maps;
+  folly::Synchronized<maps> maps;
 
   // Make the buffer big enough for 16k entries, which
   // happens to be the default fs.inotify.max_queued_events

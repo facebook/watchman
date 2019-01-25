@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/Synchronized.h>
 #include <memory>
 
 static int proc_pid;
@@ -10,7 +11,7 @@ static uint64_t proc_start_time;
 void ClockSpec::init() {
   struct timeval tv;
 
-  proc_pid = (int)getpid();
+  proc_pid = (int)::getpid();
   if (gettimeofday(&tv, NULL) == -1) {
     w_log(W_LOG_FATAL, "gettimeofday failed: %s\n", strerror(errno));
   }
@@ -134,7 +135,7 @@ ClockSpec::ClockSpec(const ClockPosition& position)
 w_query_since ClockSpec::evaluate(
     const ClockPosition& position,
     const uint32_t lastAgeOutTick,
-    watchman::Synchronized<std::unordered_map<w_string, uint32_t>>* cursorMap)
+    folly::Synchronized<std::unordered_map<w_string, uint32_t>>* cursorMap)
     const {
   w_query_since since;
 
