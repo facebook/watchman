@@ -5,7 +5,7 @@ import os
 
 import specs.folly as folly
 import specs.gmock as gmock
-from shell_quoting import ShellQuoted
+from shell_quoting import ShellQuoted, path_join
 
 
 "fbcode_builder steps to build & test watchman"
@@ -34,7 +34,9 @@ def fbcode_builder_spec(builder):
                             "--watchman-path _build/watchman --pybuild-dir {p}"
                         ).format(
                             n=builder.option("make_parallelism"),
-                            p=os.path.join(projects, "watchman/_build/python"),
+                            p=path_join(
+                                projects, "../shipit_projects/watchman/_build/python"
+                            ),
                         )
                     ),
                 ],

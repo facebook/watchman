@@ -33,8 +33,10 @@ except ImportError:
 
 
 if os.path.basename(bser.__file__) == "pybser.py":
-    print(sys.path)
-    raise Exception("bser module resolved to pybser! Something is broken in your build")
+    raise Exception(
+        "bser module resolved to pybser! Something is broken in your build. sys.path=%r"
+        % sys.path
+    )
 
 PILE_OF_POO = u"\U0001F4A9"
 NON_UTF8_STRING = b"\xff\xff\xff"
