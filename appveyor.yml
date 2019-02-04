@@ -41,6 +41,7 @@ test_script:
   - cmd: copy Release\watchman.pdb Watchman
   - cmd: copy LICENSE Watchman/LICENSE.txt
   - cmd: copy README.markdown Watchman
+  - cmd: python winbuild\copy-dyn-deps.py Release\watchman.exe Release c:\tools\vcpkg\installed\x64-windows\bin external\install\bin external\install\lib
   - cmd: python runtests.py --watchman-path Release\watchman.exe --concurrency=1
   - cmd: ctest -C Release --output-on-failure
   - cmd: python runtests.py --watchman-path Release\watchman.exe --concurrency=1 --win7
