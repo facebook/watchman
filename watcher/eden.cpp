@@ -1278,7 +1278,7 @@ class EdenView : public QueryableView {
 };
 
 std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
-  if (root->fs_type != "fuse") {
+  if (root->fs_type != "fuse" && root->fs_type != "osxfuse_eden") {
     throw std::runtime_error(to<std::string>("not a FUSE file system"));
   }
 

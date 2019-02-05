@@ -1,8 +1,11 @@
 # This is an experimental cmakefile and doesn't offer all of the options
 # available in the configure script!  At this time you should prefer to
 # use the configure script to build and install watchman!
-cmake_minimum_required(VERSION 3.0.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.1.3 FATAL_ERROR)
+
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
+
+set(CMAKE_CXX_STANDARD 14)
 
 # Tell CMake to also look in the directories where getdeps.py installs
 # our third-party dependencies.
@@ -23,6 +26,54 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/install/include")
 
+if (NOT WIN32)
+  set(WANT_THRIFT ON)
+else()
+  set(WANT_THRIFT OFF)
+endif()
+
+# Determine whether we are the git repo produced by shipit, a staging
+# area produced by shipit in the FB internal CI, or whether
+# we are building in the source monorepo.
+# For the FB internal CI flavor running shipit, CMAKE_CURRENT_SOURCE_DIR
+# will have a value like "..../shipit_projects/watchman".
+if (IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/.git" OR
+    "${CMAKE_CURRENT_SOURCE_DIR}" MATCHES "shipit_projects")
+  set(IS_SHIPPED_IT TRUE)
+else()
+  set(IS_SHIPPED_IT FALSE)
+endif()
+
+# If we're building from inside the monorepo, make the local directory
+# look like the shipit-transformed source in the git repo.
+# On windows we do a dumb recursive copy of the files because we cannot
+# guarantee that we'll be successful in setting up a symlink.
+# On everything else we set up a simple symlink.
+# In theory we can tell cmake to add a non-child subdir and avoid the
+# copy/symlink thing, but we'd need to teach various targets how to resolve
+# the path and that is rather a lot of work (I spent a couple of hours on this
+# before throwing in the towel).
+function(maybe_shipit_dir MONOREPO_RELATIVE_PATH)
+  get_filename_component(base "${MONOREPO_RELATIVE_PATH}" NAME)
+  if (NOT IS_SHIPPED_IT AND
+      NOT IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${base})
+    if (WIN32)
+      file(COPY
+        "${CMAKE_CURRENT_SOURCE_DIR}/${MONOREPO_RELATIVE_PATH}"
+        DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
+    else()
+      execute_process(COMMAND
+        ln -s ${MONOREPO_RELATIVE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/${base})
+    endif()
+  endif()
+endfunction()
+
+if (WANT_THRIFT)
+  # We use shipit to mirror in these locations from the monorepo
+  maybe_shipit_dir("../fboss/common")
+  maybe_shipit_dir("../eden")
+endif()
+
 set(PACKAGE_VERSION "4.9.4")
 set(WATCHMAN_VERSION_OVERRIDE "" CACHE STRING "Use this version code for \
 Watchman instead of the default (${PACKAGE_VERSION})")
@@ -35,6 +86,7 @@ set(PACKAGE_STRING    "${PACKAGE_NAME} ${PACKAGE_VERSION}")
 set(PACKAGE_TARNAME   "${PACKAGE_NAME}-${PACKAGE_VERSION}")
 set(PACKAGE_BUGREPORT "https://github.com/facebook/watchman/issues")
 project(${PACKAGE_NAME} CXX C)
+include(ThriftCppLibrary)
 include(CheckFunctionExists)
 include(CheckIncludeFiles)
 include(CheckStructHasMember)
@@ -189,7 +241,6 @@ if(THREADS_FOUND AND NOT TARGET Threads::Threads)
   endif()
 endif()
 
-
 find_package(OpenSSL)
 
 # This block is for cmake 3.0 which doesn't define the OpenSSL::Crypto
@@ -214,8 +265,16 @@ find_package(Glog REQUIRED)
 find_package(LibEvent REQUIRED)
 get_filename_component(LIBEVENT_LIBDIR "${LIBEVENT_LIB}" DIRECTORY)
 link_directories(${LIBEVENT_LIBDIR})
-
 find_package(folly CONFIG REQUIRED)
+
+
+if (WANT_THRIFT)
+  find_package(fizz CONFIG REQUIRED)
+  find_package(wangle CONFIG REQUIRED)
+  find_package(FBThrift CONFIG REQUIRED)
+  find_package(yarpl CONFIG REQUIRED)
+  find_package(rsocket CONFIG REQUIRED)
+endif()
 
 find_package(PythonInterp REQUIRED)
 message(STATUS "Found python ${PYTHON_VERSION_STRING}")
@@ -273,6 +332,10 @@ else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_COMMON}")  # for cmake 3.0
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_COMMON}")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_COMMON} -O3")
+endif()
+
+if (WANT_THRIFT)
+add_subdirectory(common)
 endif()
 
 add_library(wildmatch STATIC
@@ -334,6 +397,25 @@ endif()
 
 add_library(testsupport STATIC ${testsupport_sources})
 target_link_libraries(testsupport log string jansson Folly::folly glog::glog)
+
+if (WANT_THRIFT)
+  add_thrift_cpp2_library(
+    eden_service_thrift
+    eden/fs/service/eden.thrift
+    SERVICES
+      EdenService
+    DEPENDS
+      fb303_thrift_cpp2
+  )
+  add_thrift_cpp2_library(
+    streamingeden_thrift
+    eden/fs/service/streamingeden.thrift
+    SERVICES
+      StreamingEdenService
+    DEPENDS
+      eden_service_thrift
+  )
+endif()
 
 list(APPEND watchman_sources
 ChildProcess.cpp
@@ -425,14 +507,18 @@ saved_state/SavedStateInterface.cpp
 scm/Mercurial.cpp
 scm/SCM.cpp
 watcher/auto.cpp
-# watcher/eden.cpp
 watcher/fsevents.cpp
 watcher/inotify.cpp
 watcher/kqueue.cpp
 watcher/portfs.cpp
 )
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if (WANT_THRIFT)
+  # We currently only support talking to eden on posix systems
+  list(APPEND watchman_sources watcher/eden.cpp)
+endif()
+
+if (WIN32)
   list(APPEND watchman_sources
 stream_win.cpp
 watcher/win32.cpp
@@ -455,7 +541,26 @@ endif()
 add_executable(watchman ${watchman_sources})
 target_link_libraries(
   watchman
-  log hash string err jansson wildmatch Folly::folly glog::glog)
+  log
+  hash
+  string
+  err
+  jansson
+  wildmatch
+  Folly::folly
+  glog::glog
+)
+
+if (WANT_THRIFT)
+  target_link_libraries(
+    watchman
+    streamingeden_thrift
+    ${YARPL_LIBRARIES}
+    rsocket::ReactiveSocket
+    FBThrift::thriftcpp2
+  )
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   target_link_libraries(watchman "-framework CoreServices")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")

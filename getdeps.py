@@ -203,19 +203,6 @@ class AutoconfBuilder(BuilderBase):
         self._run_cmd(["make", "install"])
 
 
-class JeMallocBuilder(BuilderBase):
-    def __init__(self, subdir=None, env=None, args=None):
-        super(JeMallocBuilder, self).__init__(subdir=subdir, env=env)
-        self.args = args or []
-
-    def _build(self, project):
-        self._run_cmd(
-            ["./autogen.sh"] + ["--prefix=" + project.opts.install_dir] + self.args
-        )
-        self._run_cmd(["make", "-j%s" % project.opts.num_jobs])
-        self._run_cmd(["make", "install_bin", "install_include", "install_lib"])
-
-
 class CMakeBuilder(BuilderBase):
     def __init__(self, subdir=None, env=None, defines=None):
         super(CMakeBuilder, self).__init__(subdir=subdir, env=env, build_dir="_build")
@@ -225,6 +212,11 @@ class CMakeBuilder(BuilderBase):
         defines = {
             "CMAKE_INSTALL_PREFIX": project.opts.install_dir,
             "BUILD_SHARED_LIBS": "OFF",
+            # Some of the deps (rsocket) default to UBSAN enabled if left
+            # unspecified.  Some of the deps fail to compile in release mode
+            # due to warning->error promotion.  RelWithDebInfo is the happy
+            # medium.
+            "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         }
 
         # If any of these env vars are set, set the corresponding cmake def.
@@ -308,24 +300,7 @@ def install_vcpkg(pkgs):
 
 
 def get_projects(opts):
-    projects = []
-    if os.path.exists("/usr/include/jemalloc/jemalloc.h"):
-        # ubuntu 16 has a very old jemalloc installed, and folly doesn't
-        # currently have a way to be told not to try linking against it.
-        # To workaround this snafu, we build our own current version
-        # of jemalloc for folly to find and use.
-        # If we don't have jemalloc installed we don't need to install it.
-        # Confusing!
-        projects.append(
-            Project(
-                "jemalloc",
-                opts,
-                GitUpdater("https://github.com/jemalloc/jemalloc.git"),
-                JeMallocBuilder(),
-            )
-        )
-
-    projects += [
+    projects = [
         Project(
             "mstch",
             opts,
@@ -341,17 +316,17 @@ def get_projects(opts):
     ]
 
     if not is_win():
-        # Ubuntu 16 also has an old version of zstd, so build our own.
+        # Ubuntu 16 has an old version of zstd, so build our own.
         # We can't use the MakeBuilder on windows, but we can get zstd
         # from vcpkg so we're ok there.
-        projects.append(
+        projects += [
             Project(
                 "zstd",
                 opts,
                 GitUpdater("https://github.com/facebook/zstd.git"),
                 MakeBuilder(),
             )
-        )
+        ]
 
     projects += [
         # TODO: see if we can get get a faster and/or static build working
@@ -376,16 +351,14 @@ def get_projects(opts):
         )
     ]
 
-    # We'll add this in a later diff; there are some glog issues in these
-    # projects that need to be resolved before we can guarantee success
-    need_thrift = False
+    need_thrift = not is_win()
     if need_thrift:
         projects += [
             Project(
                 "libsodium",
                 opts,
                 GitUpdater("https://github.com/jedisct1/libsodium.git"),
-                AutoconfBuilder(),
+                AutoconfBuilder(args=["--disable-shared"]),
             ),
             Project(
                 "fizz",

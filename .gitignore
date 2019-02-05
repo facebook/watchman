@@ -96,3 +96,5 @@ cppclient/watchmanclient.pc
 *.filters
 /.vs
 /external
+/common
+/eden

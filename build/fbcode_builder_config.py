@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import os
 
+import specs.fbthrift as fbthrift
 import specs.folly as folly
 import specs.gmock as gmock
 from shell_quoting import ShellQuoted, path_join
@@ -17,7 +18,7 @@ def fbcode_builder_spec(builder):
     projects = builder.option("projects_dir")
 
     return {
-        "depends_on": [gmock, folly],
+        "depends_on": [gmock, folly, fbthrift],
         "steps": [
             builder.fb_github_cmake_install("watchman/_build", ".."),
             builder.step(
