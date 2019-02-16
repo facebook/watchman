@@ -524,6 +524,32 @@ struct TracePoint {
   6: TracePointEvent event,
 }
 
+struct FaultDefinition {
+  1: string keyClass
+  2: string keyValueRegex
+  // If count is non-zero this fault will automatically expire after it has
+  // been hit count times.
+  3: i64 count
+  // If block is true the fault will block until explicitly unblocked later.
+  // delayMilliseconds and errorMessage will be ignored if block is true
+  4: bool block
+  5: i64 delayMilliseconds
+  6: optional string errorType
+  7: optional string errorMessage
+}
+
+struct RemoveFaultArg {
+  1: string keyClass
+  2: string keyValueRegex
+}
+
+struct UnblockFaultArg {
+  1: optional string keyClass
+  2: optional string keyValueRegex
+  3: optional string errorType
+  4: optional string errorMessage
+}
+
 service EdenService extends fb303.FacebookService {
   list<MountInfo> listMounts() throws (1: EdenError ex)
   void mount(1: MountArgument info) throws (1: EdenError ex)
@@ -866,6 +892,29 @@ service EdenService extends fb303.FacebookService {
   void enableTracing()
   void disableTracing()
   list<TracePoint> getTracePoints()
+
+  /**
+   * Configure a new fault in Eden's fault injection framework.
+   *
+   * This throws an exception if the fault injection framework was not enabled
+   * when edenfs was started.
+   */
+  void injectFault(1: FaultDefinition fault) throws (1: EdenError ex)
+
+  /**
+   * Remove a fault previously defined with injectFault()
+   *
+   * Returns true if a matching fault was found and remove, and false
+   * if no matching fault was found.
+   */
+  bool removeFault(1: RemoveFaultArg fault) throws (1: EdenError ex)
+
+  /**
+   * Unblock fault injection checks pending on a block fault.
+   *
+   * Returns the number of pending calls that were unblocked
+   */
+  i64 unblockFault(1: UnblockFaultArg info) throws (1: EdenError ex)
 
   /**
    * Ask the server to shutdown and provide it some context for its logs
