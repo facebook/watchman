@@ -144,7 +144,7 @@ static void cmd_debug_set_subscriptions_paused(
   for (auto& it : paused_map) {
     auto sub_iter = client->subscriptions.find(it.first);
     bool old_paused = sub_iter->second->debug_paused;
-    bool new_paused = json_is_true(it.second);
+    bool new_paused = it.second.asBool();
     sub_iter->second->debug_paused = new_paused;
     states.set(
         it.first,

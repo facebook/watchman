@@ -72,6 +72,17 @@ json_t::json_t(json_type type) : type(type), refcount(1) {}
 json_t::json_t(json_type type, json_t::SingletonHack&&)
     : type(type), refcount(-1) {}
 
+bool json_ref::asBool() const {
+  switch (type()) {
+    case JSON_TRUE:
+      return true;
+    case JSON_FALSE:
+      return false;
+    default:
+      throw std::domain_error("asBool called on non-boolean");
+  }
+}
+
 /*** object ***/
 
 const std::unordered_map<w_string, json_ref>& json_ref::object() const {

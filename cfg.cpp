@@ -161,7 +161,7 @@ json_ref cfg_compute_root_files(bool* enforcing) {
       w_log(W_LOG_FATAL,
           "Expected config value enforce_root_files to be boolean\n");
     }
-    *enforcing = json_is_true(ref);
+    *enforcing = ref.asBool();
   }
 
   ref = cfg_get_json("root_files");
@@ -237,7 +237,7 @@ bool cfg_get_bool(const char* name, bool defval) {
     if (!val.isBool()) {
       w_log(W_LOG_FATAL, "Expected config value %s to be a boolean\n", name);
     }
-    return json_is_true(val);
+    return val.asBool();
   }
 
   return defval;
@@ -272,7 +272,7 @@ double cfg_get_double(const char* name, double defval) {
             "Expected config value %s." #PROP " to be a boolean\n", \
             name);                                                  \
       }                                                             \
-      if (json_is_true(perm)) {                                     \
+      if (perm.asBool()) {                                          \
         ret |= S_IR##SUFFIX;                                        \
         if (write_bits) {                                           \
           ret |= S_IW##SUFFIX;                                      \
@@ -376,7 +376,7 @@ bool Configuration::getBool(const char* name, bool defval) const {
     if (!val.isBool()) {
       w_log(W_LOG_FATAL, "Expected config value %s to be a boolean\n", name);
     }
-    return json_is_true(val);
+    return val.asBool();
   }
 
   return defval;

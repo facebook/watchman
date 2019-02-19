@@ -251,7 +251,7 @@ watchman_trigger_command::watchman_trigger_command(
     return;
   }
 
-  append_files = json_is_true(trig.get_default("append_files", json_false()));
+  append_files = trig.get_default("append_files", json_false()).asBool();
   if (append_files) {
     // This is unfortunately a bit of a hack.  When appending files to the
     // command line we need a list of just the file names.  We would normally

@@ -980,8 +980,8 @@ class EdenView : public QueryableView {
     }
 
     // More glob flags/functionality:
-    auto noescape = json_is_true(
-        query->query_spec.get_default("glob_noescape", json_false()));
+    auto noescape =
+        query->query_spec.get_default("glob_noescape", json_false()).asBool();
     if (noescape) {
       throw QueryExecError(
           "glob_noescape is not supported for the eden watcher");

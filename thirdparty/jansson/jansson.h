@@ -171,6 +171,8 @@ class json_ref {
   inline bool isDouble() const {
     return type() == JSON_REAL;
   }
+
+  bool asBool() const;
 };
 
 #if JSON_INTEGER_IS_LONG_LONG
