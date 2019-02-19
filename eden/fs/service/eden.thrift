@@ -462,6 +462,13 @@ struct FuseCall {
   7: pid_t pid
 }
 
+/** A representation of the system-dependent dirent::d_type field.
+ * The bits and their interpretation is system dependent.
+ * This value is u8 on all systems that implement it.  We
+ * use i16 to pass this through thrift, which doesn't have unsigned
+ * numbers */
+typedef i16 DType
+
 /** Params for globFiles(). */
 struct GlobParams {
   1: PathString mountPoint,
@@ -472,6 +479,7 @@ struct GlobParams {
   // if true, don't populate matchingFiles in the Glob
   // results.  This only really makes sense with prefetchFiles.
   5: bool suppressFileList,
+  6: bool wantDtype,
 }
 
 struct Glob {
@@ -480,6 +488,7 @@ struct Glob {
    * sorted.
    */
   1: list<PathString> matchingFiles,
+  2: list<DType> dtypes,
 }
 
 struct AccessCount {
