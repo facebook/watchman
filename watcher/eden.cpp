@@ -659,34 +659,14 @@ std::vector<std::string> callEdenGlobViaThrift(
     const std::string& mountPoint,
     const std::vector<std::string>& globPatterns,
     bool includeDotfiles) {
-  // Eden's Thrift API has an new Thrift API, globFiles(), and a deprecated
-  // Thrift API, glob(). Because Thrift does not provide a way to dynamically
-  // check which methods are available, we try globFiles() first and then fall
-  // back to glob() if it fails. We should delete this code once we are
-  // confident Eden instances in the wild have been updated to support
-  // globFiles().
-  try {
-    GlobParams params;
-    params.set_mountPoint(mountPoint);
-    params.set_globs(globPatterns);
-    params.set_includeDotfiles(includeDotfiles);
+  GlobParams params;
+  params.set_mountPoint(mountPoint);
+  params.set_globs(globPatterns);
+  params.set_includeDotfiles(includeDotfiles);
 
-    Glob glob;
-    client->sync_globFiles(glob, params);
-    return glob.get_matchingFiles();
-  } catch (std::runtime_error& e) {
-    // Note that the old API assumes includeDotfiles=true, so this will not
-    // return the correct result if the caller specified includeDotfiles=false.
-    if (!includeDotfiles) {
-      throw std::runtime_error(
-          "Run `eden restart` to pick up a new version of Eden "
-          "so glob(includeDotfiles=false) is handled correctly.");
-    }
-
-    std::vector<std::string> fileNames;
-    client->sync_glob(fileNames, mountPoint, globPatterns);
-    return fileNames;
-  }
+  Glob glob;
+  client->sync_globFiles(glob, params);
+  return glob.get_matchingFiles();
 }
 
 class EdenView : public QueryableView {
