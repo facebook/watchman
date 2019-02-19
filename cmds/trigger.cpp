@@ -82,7 +82,7 @@ static void cmd_trigger_delete(
     return;
   }
   auto jname = args.at(2);
-  if (!json_is_string(jname)) {
+  if (!jname.isString()) {
     send_error_response(client, "expected 2nd parameter to be trigger name");
     return;
   }
@@ -164,7 +164,7 @@ static json_ref build_legacy_trigger(
   auto command = json_array_of_size(n);
   for (i = 0; i < n; i++) {
     auto ele = args.at(i + next_arg);
-    if (!json_is_string(ele)) {
+    if (!ele.isString()) {
       send_error_response(client, "expected argument %d to be a string", i);
       return nullptr;
     }
@@ -239,14 +239,14 @@ watchman_trigger_command::watchman_trigger_command(
   }
 
   auto name = trig.get_default("name");
-  if (!name || !json_is_string(name)) {
+  if (!name || !name.isString()) {
     *errmsg = strdup("invalid or missing name");
     return;
   }
   triggername = json_to_w_string(name);
 
   command = definition.get_default("command");
-  if (!command || !json_is_array(command) || !json_array_size(command)) {
+  if (!command || !command.isArray() || !json_array_size(command)) {
     *errmsg = strdup("invalid command array");
     return;
   }
@@ -266,10 +266,10 @@ watchman_trigger_command::watchman_trigger_command(
   auto ele = definition.get_default("stdin");
   if (!ele) {
     stdin_style = input_dev_null;
-  } else if (json_is_array(ele)) {
+  } else if (ele.isArray()) {
     stdin_style = input_json;
     parse_field_list(ele, &query->fieldList);
-  } else if (json_is_string(ele)) {
+  } else if (ele.isString()) {
     const char *str = json_string_value(ele);
     if (!strcmp(str, "/dev/null")) {
       stdin_style = input_dev_null;
@@ -360,7 +360,7 @@ static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
   }
 
   trig = args.at(2);
-  if (json_is_string(trig)) {
+  if (trig.isString()) {
     trig = build_legacy_trigger(root, client, args);
     if (!trig) {
       goto done;

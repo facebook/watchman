@@ -81,7 +81,7 @@ class SinceExpr : public QueryExpr {
     auto selected_field = since_what::SINCE_OCLOCK;
     const char* fieldname = "oclock";
 
-    if (!json_is_array(term)) {
+    if (!term.isArray()) {
       throw QueryParseError("\"since\" term must be an array");
     }
 

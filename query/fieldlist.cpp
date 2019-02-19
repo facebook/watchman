@@ -312,14 +312,14 @@ void parse_field_list(json_ref field_list, w_query_field_list* selected) {
                              typed_string_to_json("mode", W_STRING_UNICODE)});
   }
 
-  if (!json_is_array(field_list)) {
+  if (!field_list.isArray()) {
     throw QueryParseError("field list must be an array of strings");
   }
 
   for (i = 0; i < json_array_size(field_list); i++) {
     auto jname = json_array_get(field_list, i);
 
-    if (!json_is_string(jname)) {
+    if (!jname.isString()) {
       throw QueryParseError("field list must be an array of strings");
     }
 

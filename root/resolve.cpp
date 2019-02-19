@@ -68,7 +68,7 @@ check_allowed_fs(const char* filename, const w_string& fs_type, char** errmsg) {
     advice = "relocate the dir to an allowed filesystem type";
   }
 
-  if (!json_is_array(illegal_fstypes)) {
+  if (!illegal_fstypes.isArray()) {
     w_log(W_LOG_ERR,
           "resolve_root: global config illegal_fstypes is not an array\n");
     return true;

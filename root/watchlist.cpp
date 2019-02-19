@@ -151,7 +151,7 @@ bool w_root_load_state(const json_ref& state) {
     return true;
   }
 
-  if (!json_is_array(watched)) {
+  if (!watched.isArray()) {
     return false;
   }
 

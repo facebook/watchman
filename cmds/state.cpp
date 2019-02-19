@@ -37,7 +37,7 @@ static bool parse_state_arg(
   const auto& state_args = args.at(2);
 
   // [cmd, root, statename]
-  if (json_is_string(state_args)) {
+  if (state_args.isString()) {
     parsed->name = json_to_w_string(state_args);
     return true;
   }

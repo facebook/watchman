@@ -7,7 +7,7 @@ using watchman::CaseSensitivity;
 
 static json_ref config_get_ignore_vcs(w_root_t* root) {
   json_ref ignores = root->config.get("ignore_vcs");
-  if (ignores && !json_is_array(ignores)) {
+  if (ignores && !ignores.isArray()) {
     return nullptr;
   }
 
@@ -27,7 +27,7 @@ void watchman_root::applyIgnoreVCSConfiguration() {
   }
 
   for (auto& jignore : ignores.array()) {
-    if (!json_is_string(jignore)) {
+    if (!jignore.isString()) {
       throw std::runtime_error("ignore_vcs must be an array of strings");
     }
 

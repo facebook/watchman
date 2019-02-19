@@ -18,7 +18,7 @@ LocalSavedStateInterface::LocalSavedStateInterface(
   // Max commits to search in source control history for a saved state
   auto maxCommits = savedStateConfig.get_default("max-commits");
   if (maxCommits) {
-    if (!json_is_integer(maxCommits)) {
+    if (!maxCommits.isInt()) {
       throw QueryParseError("'max-commits' must be an integer");
     }
     maxCommits_ = json_integer_value(maxCommits);
@@ -35,7 +35,7 @@ LocalSavedStateInterface::LocalSavedStateInterface(
     throw QueryParseError(
         "'local-storage-path' must be present in saved state config");
   }
-  if (!json_is_string(localStoragePath)) {
+  if (!localStoragePath.isString()) {
     throw QueryParseError("'local-storage-path' must be a string");
   }
   localStoragePath_ = json_to_w_string(localStoragePath);
@@ -48,7 +48,7 @@ LocalSavedStateInterface::LocalSavedStateInterface(
   if (!project) {
     throw QueryParseError("'project' must be present in saved state config");
   }
-  if (!json_is_string(project)) {
+  if (!project.isString()) {
     throw QueryParseError("'project' must be a string");
   }
   project_ = json_to_w_string(project);

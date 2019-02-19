@@ -325,7 +325,7 @@ static void cmd_flush_subscriptions(
   if (json_array_size(args) == 3) {
     auto& sync_timeout_obj = args.at(2).get("sync_timeout");
     subs = args.at(2).get_default("subscriptions", nullptr);
-    if (!json_is_integer(sync_timeout_obj)) {
+    if (!sync_timeout_obj.isInt()) {
       send_error_response(client, "'sync_timeout' must be an integer");
       return;
     }
@@ -340,7 +340,7 @@ static void cmd_flush_subscriptions(
 
   std::vector<w_string> subs_to_sync;
   if (subs) {
-    if (!json_is_array(subs)) {
+    if (!subs.isArray()) {
       send_error_response(
           client,
           "expected 'subscriptions' to be an array of subscription names");
@@ -348,7 +348,7 @@ static void cmd_flush_subscriptions(
     }
 
     for (auto& sub_name : subs.array()) {
-      if (!json_is_string(sub_name)) {
+      if (!sub_name.isString()) {
         send_error_response(
             client,
             "expected 'subscriptions' to be an array of subscription names");
@@ -509,7 +509,7 @@ static void cmd_subscribe(
   auto root = resolveRoot(client, args);
 
   jname = args.at(2);
-  if (!json_is_string(jname)) {
+  if (!jname.isString()) {
     send_error_response(
         client, "expected 2nd parameter to be subscription name");
     return;
@@ -520,13 +520,13 @@ static void cmd_subscribe(
   query = w_query_parse(root, query_spec);
 
   defer_list = query_spec.get_default("defer");
-  if (defer_list && !json_is_array(defer_list)) {
+  if (defer_list && !defer_list.isArray()) {
     send_error_response(client, "defer field must be an array of strings");
     return;
   }
 
   drop_list = query_spec.get_default("drop");
-  if (drop_list && !json_is_array(drop_list)) {
+  if (drop_list && !drop_list.isArray()) {
     send_error_response(client, "drop field must be an array of strings");
     return;
   }

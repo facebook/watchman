@@ -130,7 +130,7 @@ static void cmd_debug_set_subscriptions_paused(
           it.first.c_str());
       return;
     }
-    if (!json_is_boolean(it.second)) {
+    if (!it.second.isBool()) {
       send_error_response(
           client,
           "new value for subscription '%s' not a boolean",

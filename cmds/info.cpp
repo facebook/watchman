@@ -66,10 +66,10 @@ static void cmd_version(struct watchman_client* client, const json_ref& args) {
         (opt_cap ? json_array_size(opt_cap) : 0) +
         (req_cap ? json_array_size(req_cap) : 0));
 
-    if (opt_cap && json_is_array(opt_cap)) {
+    if (opt_cap && opt_cap.isArray()) {
       query_caps(resp, cap_res, opt_cap, false);
     }
-    if (req_cap && json_is_array(req_cap)) {
+    if (req_cap && req_cap.isArray()) {
       query_caps(resp, cap_res, req_cap, true);
     }
 

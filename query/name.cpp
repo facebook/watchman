@@ -58,7 +58,7 @@ class NameExpr : public QueryExpr {
         caseSensitive == CaseSensitivity::CaseInSensitive ? "iname" : "name";
     std::unordered_set<w_string> set;
 
-    if (!json_is_array(term)) {
+    if (!term.isArray()) {
       throw QueryParseError("Expected array for '", which, "' term");
     }
 
@@ -69,7 +69,7 @@ class NameExpr : public QueryExpr {
 
     if (json_array_size(term) == 3) {
       const auto& jscope = term.at(2);
-      if (!json_is_string(jscope)) {
+      if (!jscope.isString()) {
         throw QueryParseError("Argument 3 to '", which, "' must be a string");
       }
 
@@ -83,11 +83,11 @@ class NameExpr : public QueryExpr {
 
     const auto& name = term.at(1);
 
-    if (json_is_array(name)) {
+    if (name.isArray()) {
       uint32_t i;
 
       for (i = 0; i < json_array_size(name); i++) {
-        if (!json_is_string(json_array_get(name, i))) {
+        if (!json_array_get(name, i).isString()) {
           throw QueryParseError(
               "Argument 2 to '",
               which,
@@ -110,7 +110,7 @@ class NameExpr : public QueryExpr {
         set.insert(element);
       }
 
-    } else if (json_is_string(name)) {
+    } else if (name.isString()) {
       pattern = json_string_value(name);
     } else {
       throw QueryParseError(

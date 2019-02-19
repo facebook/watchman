@@ -146,7 +146,7 @@ void parse_globs(w_query* res, const json_ref& query) {
     return;
   }
 
-  if (!json_is_array(globs)) {
+  if (!globs.isArray()) {
     throw QueryParseError("'glob' must be an array");
   }
 

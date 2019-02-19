@@ -121,7 +121,7 @@ ClockSpec::ClockSpec(const json_ref& value) {
 
 std::unique_ptr<ClockSpec> ClockSpec::parseOptionalClockSpec(
     const json_ref& value) {
-  if (json_is_null(value)) {
+  if (value.isNull()) {
     return nullptr;
   }
   return std::make_unique<ClockSpec>(value);

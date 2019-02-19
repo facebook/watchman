@@ -89,7 +89,7 @@ int main(int, char**) {
     diag("Error closing %s: %s\n", WILDMATCH_TEST_JSON_FILE, strerror(errno));
     abort();
   }
-  if (!json_is_array(test_cases)) {
+  if (!test_cases.isArray()) {
     diag("Expected JSON in %s to be an array\n", WILDMATCH_TEST_JSON_FILE);
     abort();
   }

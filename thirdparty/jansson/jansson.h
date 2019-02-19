@@ -141,6 +141,36 @@ class json_ref {
   inline const json_ref& at(std::size_t idx) const {
     return array().at(idx);
   }
+
+  inline json_type type() const {
+    assert(ref_ != nullptr);
+    return ref_->type;
+  }
+
+  inline bool isObject() const {
+    return type() == JSON_OBJECT;
+  }
+  inline bool isArray() const {
+    return type() == JSON_ARRAY;
+  }
+  inline bool isString() const {
+    return type() == JSON_STRING;
+  }
+  inline bool isBool() const {
+    return (type() == JSON_TRUE || type() == JSON_FALSE);
+  }
+  inline bool isNull() const {
+    return type() == JSON_NULL;
+  }
+  inline bool isNumber() const {
+    return isInt() || isDouble();
+  }
+  inline bool isInt() const {
+    return type() == JSON_INTEGER;
+  }
+  inline bool isDouble() const {
+    return type() == JSON_REAL;
+  }
 };
 
 #if JSON_INTEGER_IS_LONG_LONG

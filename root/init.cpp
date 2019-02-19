@@ -35,7 +35,7 @@ void watchman_root::applyIgnoreConfiguration() {
   if (!ignores) {
     return;
   }
-  if (!json_is_array(ignores)) {
+  if (!ignores.isArray()) {
     w_log(W_LOG_ERR, "ignore_dirs must be an array of strings\n");
     return;
   }
@@ -43,7 +43,7 @@ void watchman_root::applyIgnoreConfiguration() {
   for (i = 0; i < json_array_size(ignores); i++) {
     auto jignore = json_array_get(ignores, i);
 
-    if (!json_is_string(jignore)) {
+    if (!jignore.isString()) {
       w_log(W_LOG_ERR, "ignore_dirs must be an array of strings\n");
       continue;
     }

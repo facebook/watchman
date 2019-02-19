@@ -100,7 +100,7 @@ const char* cfg_get_string(const char* name, const char* defval) {
   auto val = cfg_get_json(name);
 
   if (val) {
-    if (!json_is_string(val)) {
+    if (!val.isString()) {
       w_log(W_LOG_FATAL, "Expected config value %s to be a string\n", name);
     }
     return json_string_value(val);
@@ -113,12 +113,12 @@ const char* cfg_get_string(const char* name, const char* defval) {
 static bool is_array_of_strings(const json_ref& ref) {
   uint32_t i;
 
-  if (!json_is_array(ref)) {
+  if (!ref.isArray()) {
     return false;
   }
 
   for (i = 0; i < json_array_size(ref); i++) {
-    if (!json_is_string(json_array_get(ref, i))) {
+    if (!json_array_get(ref, i).isString()) {
       return false;
     }
   }
@@ -157,7 +157,7 @@ json_ref cfg_compute_root_files(bool* enforcing) {
 
   json_ref ref = cfg_get_json("enforce_root_files");
   if (ref) {
-    if (!json_is_boolean(ref)) {
+    if (!ref.isBool()) {
       w_log(W_LOG_FATAL,
           "Expected config value enforce_root_files to be boolean\n");
     }
@@ -221,7 +221,7 @@ json_int_t cfg_get_int(const char* name, json_int_t defval) {
   auto val = cfg_get_json(name);
 
   if (val) {
-    if (!json_is_integer(val)) {
+    if (!val.isInt()) {
       w_log(W_LOG_FATAL, "Expected config value %s to be an integer\n", name);
     }
     return json_integer_value(val);
@@ -234,7 +234,7 @@ bool cfg_get_bool(const char* name, bool defval) {
   auto val = cfg_get_json(name);
 
   if (val) {
-    if (!json_is_boolean(val)) {
+    if (!val.isBool()) {
       w_log(W_LOG_FATAL, "Expected config value %s to be a boolean\n", name);
     }
     return json_is_true(val);
@@ -247,7 +247,7 @@ double cfg_get_double(const char* name, double defval) {
   auto val = cfg_get_json(name);
 
   if (val) {
-    if (!json_is_number(val)) {
+    if (!val.isNumber()) {
       w_log(W_LOG_FATAL, "Expected config value %s to be a number\n", name);
     }
     return json_real_value(val);
@@ -266,7 +266,7 @@ double cfg_get_double(const char* name, double defval) {
     mode_t ret = 0;                                                 \
     auto perm = val.get_default(#PROP);                             \
     if (perm) {                                                     \
-      if (!json_is_boolean(perm)) {                                 \
+      if (!perm.isBool()) {                                         \
         w_log(                                                      \
             W_LOG_FATAL,                                            \
             "Expected config value %s." #PROP " to be a boolean\n", \
@@ -300,7 +300,7 @@ mode_t cfg_get_perms(const char* name, bool write_bits, bool execute_bits) {
   }
 
   if (val) {
-    if (!json_is_object(val)) {
+    if (!val.isObject()) {
       w_log(W_LOG_FATAL, "Expected config value %s to be an object\n", name);
     }
 
@@ -347,7 +347,7 @@ const char* Configuration::getString(const char* name, const char* defval)
   auto val = get(name);
 
   if (val) {
-    if (!json_is_string(val)) {
+    if (!val.isString()) {
       w_log(W_LOG_FATAL, "Expected config value %s to be a string\n", name);
     }
     return json_string_value(val);
@@ -360,7 +360,7 @@ json_int_t Configuration::getInt(const char* name, json_int_t defval) const {
   auto val = get(name);
 
   if (val) {
-    if (!json_is_integer(val)) {
+    if (!val.isInt()) {
       w_log(W_LOG_FATAL, "Expected config value %s to be an integer\n", name);
     }
     return json_integer_value(val);
@@ -373,7 +373,7 @@ bool Configuration::getBool(const char* name, bool defval) const {
   auto val = get(name);
 
   if (val) {
-    if (!json_is_boolean(val)) {
+    if (!val.isBool()) {
       w_log(W_LOG_FATAL, "Expected config value %s to be a boolean\n", name);
     }
     return json_is_true(val);
@@ -386,7 +386,7 @@ double Configuration::getDouble(const char* name, double defval) const {
   auto val = get(name);
 
   if (val) {
-    if (!json_is_number(val)) {
+    if (!val.isNumber()) {
       w_log(W_LOG_FATAL, "Expected config value %s to be a number\n", name);
     }
     return json_real_value(val);

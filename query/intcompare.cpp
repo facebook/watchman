@@ -29,10 +29,10 @@ void parse_int_compare(const json_ref& term, struct w_query_int_compare* comp) {
   if (json_array_size(term) != 3) {
     throw QueryParseError("integer comparator must have 3 elements");
   }
-  if (!json_is_string(json_array_get(term, 1))) {
+  if (!json_array_get(term, 1).isString()) {
     throw QueryParseError("integer comparator op must be a string");
   }
-  if (!json_is_integer(json_array_get(term, 2))) {
+  if (!json_array_get(term, 2).isInt()) {
     throw QueryParseError("integer comparator operand must be an integer");
   }
 
@@ -101,7 +101,7 @@ class SizeExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {
-    if (!json_is_array(term)) {
+    if (!term.isArray()) {
       throw QueryParseError("Expected array for 'size' term");
     }
 

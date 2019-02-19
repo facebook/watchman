@@ -27,7 +27,7 @@ class NotExpr : public QueryExpr {
       w_query* query,
       const json_ref& term) {
     /* rigidly require ["not", expr] */
-    if (!json_is_array(term) || json_array_size(term) != 2) {
+    if (!term.isArray() || json_array_size(term) != 2) {
       throw QueryParseError("must use [\"not\", expr]");
     }
 
@@ -112,7 +112,7 @@ class ListExpr : public QueryExpr {
     std::vector<std::unique_ptr<QueryExpr>> list;
 
     /* don't allow "allof" on its own */
-    if (!json_is_array(term) || json_array_size(term) < 2) {
+    if (!term.isArray() || json_array_size(term) < 2) {
       if (allof) {
         throw QueryParseError("must use [\"allof\", expr...]");
       }

@@ -30,7 +30,7 @@ class SuffixExpr : public QueryExpr {
   static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {
     std::unordered_set<w_string> suffixSet;
 
-    if (!json_is_array(term)) {
+    if (!term.isArray()) {
       throw QueryParseError("Expected array for 'suffix' term");
     }
 
@@ -41,16 +41,16 @@ class SuffixExpr : public QueryExpr {
     const auto& suffix = term.at(1);
 
     // Suffix match supports array or single suffix string
-    if (json_is_array(suffix)) {
+    if (suffix.isArray()) {
       suffixSet.reserve(json_array_size(suffix));
       for (const auto& ele : suffix.array()) {
-        if (!json_is_string(ele)) {
+        if (!ele.isString()) {
           throw QueryParseError(
               "Argument 2 to 'suffix' must be either a string or an array of string");
         }
         suffixSet.insert(json_to_w_string(ele).piece().asLowerCase());
       }
-    } else if (json_is_string(suffix)) {
+    } else if (suffix.isString()) {
       suffixSet.insert(json_to_w_string(suffix).piece().asLowerCase());
     } else {
       throw QueryParseError(

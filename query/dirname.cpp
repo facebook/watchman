@@ -69,7 +69,7 @@ class DirNameExpr : public QueryExpr {
                             : "dirname";
     struct w_query_int_compare depth_comp;
 
-    if (!json_is_array(term)) {
+    if (!term.isArray()) {
       throw QueryParseError("Expected array for '", which, "' term");
     }
 
@@ -84,13 +84,13 @@ class DirNameExpr : public QueryExpr {
     }
 
     const auto& name = term.at(1);
-    if (!json_is_string(name)) {
+    if (!name.isString()) {
       throw QueryParseError("Argument 2 to '", which, "' must be a string");
     }
 
     if (json_array_size(term) == 3) {
       const auto& depth = term.at(2);
-      if (!json_is_array(depth)) {
+      if (!depth.isArray()) {
         throw QueryParseError(
             "Invalid number of arguments for '", which, "' term");
       }

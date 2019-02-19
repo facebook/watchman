@@ -44,12 +44,12 @@ std::unique_ptr<QueryExpr> w_query_expr_parse(
     const json_ref& exp) {
   w_string name;
 
-  if (json_is_string(exp)) {
+  if (exp.isString()) {
     name = json_to_w_string(exp);
-  } else if (json_is_array(exp) && json_array_size(exp) > 0) {
+  } else if (exp.isArray() && json_array_size(exp) > 0) {
     const auto& first = exp.at(0);
 
-    if (!json_is_string(first)) {
+    if (!first.isString()) {
       throw QueryParseError("first element of an expression must be a string");
     }
     name = json_to_w_string(first);
@@ -82,7 +82,7 @@ static bool parse_since(w_query* res, const json_ref& query) {
 }
 
 static w_string parse_suffix(const json_ref& ele) {
-  if (!json_is_string(ele)) {
+  if (!ele.isString()) {
     throw QueryParseError("'suffix' must be a string or an array of strings");
   }
 
@@ -99,13 +99,13 @@ static void parse_suffixes(w_query* res, const json_ref& query) {
     return;
   }
 
-  if (json_is_string(suffixes)) {
+  if (suffixes.isString()) {
     auto suff = parse_suffix(suffixes);
     res->suffixes.emplace_back(std::move(suff));
     return;
   }
 
-  if (!json_is_array(suffixes)) {
+  if (!suffixes.isArray()) {
     throw QueryParseError("'suffix' must be a string or an array of strings");
   }
 
@@ -114,7 +114,7 @@ static void parse_suffixes(w_query* res, const json_ref& query) {
   for (i = 0; i < json_array_size(suffixes); i++) {
     const auto& ele = suffixes.at(i);
 
-    if (!json_is_string(ele)) {
+    if (!ele.isString()) {
       throw QueryParseError("'suffix' must be a string or an array of strings");
     }
 
@@ -131,7 +131,7 @@ static bool parse_paths(w_query* res, const json_ref& query) {
     return true;
   }
 
-  if (!json_is_array(paths)) {
+  if (!paths.isArray()) {
     throw QueryParseError("'path' must be an array");
   }
 
@@ -143,13 +143,13 @@ static bool parse_paths(w_query* res, const json_ref& query) {
 
     res->paths[i].depth = -1;
 
-    if (json_is_string(ele)) {
+    if (ele.isString()) {
       name = json_to_w_string(ele);
-    } else if (json_is_object(ele)) {
+    } else if (ele.isObject()) {
       name = json_to_w_string(ele.get("path"));
 
       auto depth = ele.get("depth");
-      if (!json_is_integer(depth)) {
+      if (!depth.isInt()) {
         throw QueryParseError("path.depth must be an integer");
       }
 
@@ -176,7 +176,7 @@ static void parse_relative_root(
     return;
   }
 
-  if (!json_is_string(relative_root)) {
+  if (!relative_root.isString()) {
     throw QueryParseError("'relative_root' must be a string");
   }
 
@@ -203,7 +203,7 @@ static void parse_request_id(w_query* res, const json_ref& query) {
     return;
   }
 
-  if (!json_is_string(request_id)) {
+  if (!request_id.isString()) {
     throw QueryParseError("'request_id' must be a string");
   }
 
@@ -268,7 +268,7 @@ static void parse_benchmark(w_query* res, const json_ref& query) {
   // Preserve behavior by supporting a boolean value. Also support int values.
   auto bench = query.get_default("bench");
   if (bench) {
-    if (json_is_boolean(bench)) {
+    if (bench.isBool()) {
       res->bench_iterations = 100;
     } else {
       res->bench_iterations = json_integer_value(bench);
@@ -369,7 +369,7 @@ std::shared_ptr<w_query> w_query_parse_legacy(
   json_ref included, excluded;
   auto query_obj = json_object();
 
-  if (!json_is_array(args)) {
+  if (!args.isArray()) {
     throw QueryParseError("Expected an array");
   }
 

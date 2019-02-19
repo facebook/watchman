@@ -87,7 +87,7 @@ bool watchman_perf_sample::finish() {
     if (wall_time_elapsed_thresh == 0) {
       auto thresh = cfg_get_json("perf_sampling_thresh");
       if (thresh) {
-        if (json_is_number(thresh)) {
+        if (thresh.isNumber()) {
           wall_time_elapsed_thresh = json_number_value(thresh);
         } else {
           json_unpack(thresh, "{s:f}", description, &wall_time_elapsed_thresh);
@@ -149,10 +149,10 @@ void PerfLogThread::loop() noexcept {
   auto stateDir = w_string_piece(watchman_state_file).dirName().asWString();
 
   perf_cmd = cfg_get_json("perf_logger_command");
-  if (json_is_string(perf_cmd)) {
+  if (perf_cmd.isString()) {
     perf_cmd = json_array({perf_cmd});
   }
-  if (!json_is_array(perf_cmd)) {
+  if (!perf_cmd.isArray()) {
     w_log(
         W_LOG_FATAL,
         "perf_logger_command must be either a string or an array of strings\n");
