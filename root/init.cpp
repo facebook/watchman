@@ -30,9 +30,8 @@ static json_ref load_root_config(const char* path) {
 
 void watchman_root::applyIgnoreConfiguration() {
   uint8_t i;
-  json_t *ignores;
 
-  ignores = config.get("ignore_dirs");
+  auto ignores = config.get("ignore_dirs");
   if (!ignores) {
     return;
   }

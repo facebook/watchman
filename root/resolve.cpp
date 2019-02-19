@@ -44,8 +44,6 @@ static bool root_check_restrict(const char *watch_path) {
 
 static bool
 check_allowed_fs(const char* filename, const w_string& fs_type, char** errmsg) {
-  json_t *illegal_fstypes = NULL;
-  json_t *advice_string;
   uint32_t i;
   const char *advice = NULL;
 
@@ -57,12 +55,12 @@ check_allowed_fs(const char* filename, const w_string& fs_type, char** errmsg) {
       filename,
       fs_type.c_str());
 
-  illegal_fstypes = cfg_get_json("illegal_fstypes");
+  auto illegal_fstypes = cfg_get_json("illegal_fstypes");
   if (!illegal_fstypes) {
     return true;
   }
 
-  advice_string = cfg_get_json("illegal_fstypes_advice");
+  auto advice_string = cfg_get_json("illegal_fstypes_advice");
   if (advice_string) {
     advice = json_string_value(advice_string);
   }

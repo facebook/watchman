@@ -21,16 +21,12 @@ static json_ref config_get_ignore_vcs(w_root_t* root) {
 }
 
 void watchman_root::applyIgnoreVCSConfiguration() {
-  uint8_t i;
-
   auto ignores = config_get_ignore_vcs(this);
   if (!ignores) {
     throw std::runtime_error("ignore_vcs must be an array of strings");
   }
 
-  for (i = 0; i < json_array_size(ignores); i++) {
-    const json_t *jignore = json_array_get(ignores, i);
-
+  for (auto& jignore : ignores.array()) {
     if (!json_is_string(jignore)) {
       throw std::runtime_error("ignore_vcs must be an array of strings");
     }
