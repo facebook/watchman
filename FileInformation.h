@@ -3,6 +3,9 @@
 #pragma once
 #include "watchman_system.h"
 #include <sys/stat.h>
+#ifndef _WIN32
+#include <dirent.h>
+#endif
 
 namespace watchman {
 
@@ -14,6 +17,42 @@ using uid_t = int;
 using ino_t = unsigned int;
 using nlink_t = unsigned int;
 #endif
+
+/** Represents the type of a filesystem entry.
+ *
+ * This is the same type and intent as the d_type field of a dirent struct.
+ *
+ * We provide an explicit type to make it clearer when we're working
+ * with this value.
+ *
+ * https://www.daemon-systems.org/man/DTTOIF.3.html
+ *
+ * Not all systems have a dtype concept so we have some conditional
+ * code here to compensate.
+ */
+enum class DType {
+#ifdef DTTOIF
+  Unknown = DT_UNKNOWN,
+  Fifo = DT_FIFO,
+  Char = DT_CHR,
+  Dir = DT_DIR,
+  Block = DT_BLK,
+  Regular = DT_REG,
+  Symlink = DT_LNK,
+  Socket = DT_SOCK,
+  Whiteout = DT_WHT,
+#else
+  Unknown,
+  Fifo,
+  Char,
+  Dir,
+  Block,
+  Regular,
+  Symlink,
+  Socket,
+  Whiteout,
+#endif
+};
 
 struct FileInformation {
   // On POSIX systems, the complete mode information.
@@ -46,6 +85,9 @@ struct FileInformation {
   struct timespec ctime {
     0, 0
   };
+
+  // Returns the directory entry type for the file.
+  DType dtype() const;
 
   // Returns true if this file information references
   // a symlink, false otherwise.

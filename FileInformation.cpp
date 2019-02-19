@@ -42,6 +42,24 @@ FileInformation::FileInformation(uint32_t dwFileAttributes)
 }
 #endif
 
+DType FileInformation::dtype() const {
+#ifdef DTTOIF
+  return static_cast<DType>(IFTODT(mode));
+#else
+  // Windows, Solaris
+  if (isSymlink()) {
+    return DType::Symlink;
+  }
+  if (isDir()) {
+    return DType::Dir;
+  }
+  if (isFile()) {
+    return DType::Regular;
+  }
+  return DType::Unknown;
+#endif
+}
+
 bool FileInformation::isSymlink() const {
 #ifdef _WIN32
   // We treat all reparse points as equivalent to symlinks
