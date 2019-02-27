@@ -138,8 +138,6 @@ static bool add_glob(struct watchman_glob_tree *tree, w_string_t *glob_str) {
 
 void parse_globs(w_query* res, const json_ref& query) {
   size_t i;
-  int noescape = 0;
-  int includedotfiles = 0;
 
   auto globs = query.get_default("glob");
   if (!globs) {
@@ -153,17 +151,19 @@ void parse_globs(w_query* res, const json_ref& query) {
   // Globs implicitly enable dedup_results mode
   res->dedup_results = true;
 
-  if (json_unpack(query, "{s?b}", "glob_noescape", &noescape) != 0) {
+  auto noescape = query.get_default("glob_noescape", json_false());
+  if (!noescape.isBool()) {
     throw QueryParseError("glob_noescape must be a boolean");
   }
 
-  if (json_unpack(query, "{s?b}", "glob_includedotfiles", &includedotfiles) !=
-      0) {
+  auto includedotfiles =
+      query.get_default("glob_includedotfiles", json_false());
+  if (!includedotfiles.isBool()) {
     throw QueryParseError("glob_includedotfiles must be a boolean");
   }
 
-  res->glob_flags =
-      (includedotfiles ? 0 : WM_PERIOD) | (noescape ? WM_NOESCAPE : 0);
+  res->glob_flags = (includedotfiles.asBool() ? 0 : WM_PERIOD) |
+      (noescape.asBool() ? WM_NOESCAPE : 0);
 
   res->glob_tree = make_unique<watchman_glob_tree>("", 0);
   for (i = 0; i < json_array_size(globs); i++) {

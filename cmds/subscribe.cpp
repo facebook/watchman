@@ -495,7 +495,6 @@ static void cmd_subscribe(
   json_ref jname;
   std::shared_ptr<w_query> query;
   json_ref query_spec;
-  int defer = true; /* can't use bool because json_unpack requires int */
   json_ref defer_list;
   json_ref drop_list;
   struct watchman_user_client* client =
@@ -537,8 +536,12 @@ static void cmd_subscribe(
   sub->name = json_to_w_string(jname);
   sub->query = query;
 
-  json_unpack(query_spec, "{s?:b}", "defer_vcs", &defer);
-  sub->vcs_defer = defer;
+  auto defer = query_spec.get_default("defer_vcs", json_true());
+  if (!defer.isBool()) {
+    send_error_response(client, "defer_vcs must be boolean");
+    return;
+  }
+  sub->vcs_defer = defer.asBool();
 
   if (drop_list || defer_list) {
     size_t i;

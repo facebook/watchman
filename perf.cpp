@@ -90,7 +90,8 @@ bool watchman_perf_sample::finish() {
         if (thresh.isNumber()) {
           wall_time_elapsed_thresh = json_number_value(thresh);
         } else {
-          json_unpack(thresh, "{s:f}", description, &wall_time_elapsed_thresh);
+          wall_time_elapsed_thresh = json_number_value(
+              thresh.get_default(description, json_real(0.0)));
         }
       }
     }
