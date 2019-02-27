@@ -189,6 +189,35 @@ MAKE_INT_FIELD(nlink, nlink)
 static Optional<json_ref> make_type_field(
     FileResult* file,
     const w_query_ctx*) {
+  auto dtype = file->dtype();
+  if (dtype.has_value()) {
+    switch (*dtype) {
+      case DType::Regular:
+        return typed_string_to_json("f", W_STRING_UNICODE);
+      case DType::Dir:
+        return typed_string_to_json("d", W_STRING_UNICODE);
+      case DType::Symlink:
+        return typed_string_to_json("l", W_STRING_UNICODE);
+      case DType::Block:
+        return typed_string_to_json("b", W_STRING_UNICODE);
+      case DType::Char:
+        return typed_string_to_json("c", W_STRING_UNICODE);
+      case DType::Fifo:
+        return typed_string_to_json("p", W_STRING_UNICODE);
+      case DType::Socket:
+        return typed_string_to_json("s", W_STRING_UNICODE);
+      case DType::Whiteout:
+        // Whiteout shouldn't generally be visible to userspace,
+        // and we don't have a defined letter code for it, so
+        // treat it as "who knows!?"
+        return typed_string_to_json("?", W_STRING_UNICODE);
+      case DType::Unknown:
+      default:
+          // Not enough info; fall through and use the full stat data
+          ;
+    }
+  }
+
   // Bias towards the more common file types first
   auto optionalStat = file->stat();
   if (!optionalStat.has_value()) {

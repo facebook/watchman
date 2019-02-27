@@ -5,6 +5,8 @@
 
 #include <memory>
 
+using watchman::DType;
+
 class TypeExpr : public QueryExpr {
   char arg;
 
@@ -12,6 +14,30 @@ class TypeExpr : public QueryExpr {
   explicit TypeExpr(char arg) : arg(arg) {}
 
   EvaluateResult evaluate(struct w_query_ctx*, FileResult* file) override {
+    auto optionalDtype = file->dtype();
+    if (!optionalDtype.has_value()) {
+      return folly::none;
+    }
+    auto dtype = *optionalDtype;
+    if (dtype != DType::Unknown) {
+      switch (arg) {
+        case 'b':
+          return dtype == DType::Block;
+        case 'c':
+          return dtype == DType::Char;
+        case 'p':
+          return dtype == DType::Fifo;
+        case 's':
+          return dtype == DType::Socket;
+        case 'd':
+          return dtype == DType::Dir;
+        case 'f':
+          return dtype == DType::Regular;
+        case 'l':
+          return dtype == DType::Symlink;
+      }
+    }
+
     auto stat = file->stat();
     if (!stat.has_value()) {
       return folly::none;

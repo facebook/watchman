@@ -92,6 +92,13 @@ class FileResult {
   using ContentHash = std::array<uint8_t, 20>;
   virtual folly::Optional<ContentHash> getContentSha1() = 0;
 
+  // Maybe return the dtype.
+  // Returns folly::none if the dtype is not currently known.
+  // Returns DType::Unknown if we have dtype data but it doesn't
+  // tell us the dtype (this is common on some older filesystems
+  // on linux).
+  virtual folly::Optional<watchman::DType> dtype();
+
   // A bitset of Property values
   using Properties = uint_least16_t;
 

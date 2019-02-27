@@ -11,6 +11,14 @@ using namespace watchman;
 
 FileResult::~FileResult() {}
 
+folly::Optional<DType> FileResult::dtype() {
+  auto statInfo = stat();
+  if (!statInfo.has_value()) {
+    return folly::none;
+  }
+  return statInfo->dtype();
+}
+
 w_string w_query_ctx::computeWholeName(FileResult* file) const {
   uint32_t name_start;
 
