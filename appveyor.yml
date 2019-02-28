@@ -42,9 +42,9 @@ test_script:
   - cmd: copy LICENSE Watchman/LICENSE.txt
   - cmd: copy README.markdown Watchman
   - cmd: python winbuild\copy-dyn-deps.py Release\watchman.exe Watchman c:\tools\vcpkg\installed\x64-windows\bin external\install\bin external\install\lib
-  - cmd: python runtests.py --watchman-path Release\watchman.exe --concurrency=1
+  - cmd: python runtests.py --watchman-path Release\watchman.exe
   - cmd: ctest -C Release --output-on-failure
-  - cmd: python runtests.py --watchman-path Release\watchman.exe --concurrency=1 --win7
+  - cmd: python runtests.py --watchman-path Release\watchman.exe --win7
 
 artifacts:
   - path: watchman
@@ -54,14 +54,6 @@ artifacts:
 environment:
   global:
     WATCHMAN_BINARY: Release/watchman.exe
-    #BOOST_ROOT: C:/Libraries/boost_1_67_0
-    #LIBEVENT_INCLUDE_DIR: C:/projects/watchman/external/install/include
-    #LIBEVENT_LIB: C:/projects/watchman/external/install/lib
-  # We don't really need the matrix any more, but the windows download link
-  # from the web site references this particular build flavor.  So we keep
-  # this one here until we've landed this and cut over the download URL.
-  matrix:
-    - WATCHMAN_WIN7_COMPAT:
 
 platform:
   - x64
