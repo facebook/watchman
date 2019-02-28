@@ -256,6 +256,8 @@ if(OPENSSL_FOUND AND NOT TARGET OpenSSL::Crypto)
     endif()
 endif()
 
+find_package(Gflags REQUIRED)
+include_directories(SYSTEM ${GFLAGS_INCLUDE_DIR})
 find_package(Glog REQUIRED)
 
 # We indirectly depend on libevent.  Folly pulls in linkage to
@@ -343,17 +345,17 @@ add_library(wildmatch STATIC
   thirdparty/wildmatch/wildmatch.h
 )
 add_library(tap STATIC thirdparty/tap.cpp thirdparty/tap.h)
-target_link_libraries(tap Folly::folly glog::glog)
+target_link_libraries(tap Folly::folly glog::glog gflags)
 add_library(log STATIC PubSub.cpp log.cpp)
-target_link_libraries(log Folly::folly glog::glog)
+target_link_libraries(log Folly::folly glog::glog gflags)
 add_library(hash STATIC hash.cpp)
-target_link_libraries(hash Folly::folly glog::glog)
+target_link_libraries(hash Folly::folly glog::glog gflags)
 add_library(err STATIC root/poison.cpp root/warnerr.cpp)
-target_link_libraries(err Folly::folly glog::glog)
+target_link_libraries(err Folly::folly glog::glog gflags)
 add_library(jansson_utf STATIC thirdparty/jansson/utf.cpp)
 
 add_library(string STATIC string.cpp)
-target_link_libraries(string jansson_utf hash Folly::folly glog::glog)
+target_link_libraries(string jansson_utf hash Folly::folly glog::glog gflags)
 
 add_library(jansson STATIC
 thirdparty/jansson/dump.cpp
@@ -365,7 +367,7 @@ thirdparty/jansson/strbuffer.cpp
 thirdparty/jansson/strconv.cpp
 thirdparty/jansson/value.cpp
 )
-target_link_libraries(jansson string Folly::folly glog::glog)
+target_link_libraries(jansson string Folly::folly glog::glog gflags)
 
 list(APPEND testsupport_sources
 ChildProcess.cpp
@@ -396,7 +398,7 @@ stream_win.cpp
 endif()
 
 add_library(testsupport STATIC ${testsupport_sources})
-target_link_libraries(testsupport log string jansson Folly::folly glog::glog)
+target_link_libraries(testsupport log string jansson Folly::folly glog::glog gflags)
 
 if (WANT_THRIFT)
   add_thrift_cpp2_library(
@@ -548,7 +550,7 @@ target_link_libraries(
   jansson
   wildmatch
   Folly::folly
-  glog::glog
+  glog::glog gflags
 )
 
 if (WANT_THRIFT)
@@ -585,7 +587,7 @@ function(t_test NAME)
   add_executable(${NAME}.t ${ARGN})
   target_link_libraries(
     ${NAME}.t
-    testsupport tap Threads::Threads wildmatch Folly::folly glog::glog)
+    testsupport tap Threads::Threads wildmatch Folly::folly glog::glog gflags)
   if(TARGET OpenSSL::Crypto)
     target_link_libraries(${NAME}.t OpenSSL::Crypto)
   endif()
