@@ -1,6 +1,6 @@
 version: b{build}
 configuration:
-  - Release
+  - Debug
 
 os: Visual Studio 2017
 
