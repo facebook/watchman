@@ -11,6 +11,10 @@ branches:
 init:
   - SET PATH=c:\python37-x64;C:\OpenSSL-win64;%PATH%
   - SET ANSICON=121x90 (121x90)
+  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+
+#on_finish:
+#  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
 install:
   - python -V
@@ -56,6 +60,7 @@ artifacts:
 environment:
   global:
     WATCHMAN_BINARY: Release/watchman.exe
+    APPVEYOR_RDP_PASSWORD: booHoo212
 
 platform:
   - x64
