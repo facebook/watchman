@@ -16,15 +16,16 @@ install:
   - python -V
 
 before_build:
-  - cmd: git clean -dfx
-  - cmd: cd c:\tools\vcpkg
-  - cmd: git pull
+  #- cmd: git clean -dfx
+  #- cmd: cd c:\tools\vcpkg
+  #- cmd: git fetch
+  #- cmd: git checkout 8564602d06d7c4ce236f96a4f0f3ba7c2d769cb0
   # don't spend time and energy building debug builds
-  - echo.set(VCPKG_BUILD_TYPE release)>> triplets\x64-windows.cmake
-  - .\bootstrap-vcpkg.bat
-  - cmd: vcpkg version
-  - cmd: cd c:\projects\watchman
-  - cmd: python getdeps.py --install-deps -j2
+  #- echo.set(VCPKG_BUILD_TYPE release)>> triplets\x64-windows.cmake
+  #- .\bootstrap-vcpkg.bat
+  #- cmd: vcpkg version
+  #- cmd: cd c:\projects\watchman
+  - cmd: python getdeps.py --install-deps -j2 -u
   - cmd: cmake -G "Visual Studio 15 2017 Win64" -DCMAKE_TOOLCHAIN_FILE=c:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake .
 
 build:
@@ -33,6 +34,7 @@ build:
 
 cache:
   - c:\tools\vcpkg\installed\
+  - c:\projects\watchman\external\
 
 test_script:
   - "cd node && npm install"
@@ -42,9 +44,9 @@ test_script:
   - cmd: copy LICENSE Watchman/LICENSE.txt
   - cmd: copy README.markdown Watchman
   - cmd: python winbuild\copy-dyn-deps.py Release\watchman.exe Watchman c:\tools\vcpkg\installed\x64-windows\bin external\install\bin external\install\lib
-  - cmd: python runtests.py --watchman-path Release\watchman.exe
+  #- cmd: python runtests.py --watchman-path Release\watchman.exe
   - cmd: ctest -C Release --output-on-failure
-  - cmd: python runtests.py --watchman-path Release\watchman.exe --win7
+  #- cmd: python runtests.py --watchman-path Release\watchman.exe --win7
 
 artifacts:
   - path: watchman

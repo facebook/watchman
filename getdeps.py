@@ -61,7 +61,11 @@ class Project(object):
 
 
 class GitUpdater(object):
-    def __init__(self, repo, branch="master"):
+    def __init__(self, repo, branch="master", rev=None, pinned_hash_filename=None):
+        if pinned_hash_filename is not None:
+            with open(pinned_hash_filename, 'r') as f:
+                (_subproject, _commit, rev) = f.read().strip().split(' ')
+        self.rev = rev
         self.origin_repo = repo
         self.branch = branch
 
@@ -69,20 +73,24 @@ class GitUpdater(object):
         if not os.path.exists(project.path):
             self._checkout(project)
 
+    def _update(self, project):
+        commit = self.rev if self.rev else "origin/%s" % self.branch
+        print("Updating %s -> %s" % (project.name, commit))
+        run_cmd(["git", "-C", project.path, "fetch", "origin"])
+        run_cmd(
+            [
+                "git",
+                "-C",
+                project.path,
+                "merge",
+                "--ff-only",
+                commit
+            ]
+        )
+
     def update(self, project):
         if os.path.exists(project.path):
-            print("Updating %s..." % project.name)
-            run_cmd(["git", "-C", project.path, "fetch", "origin"])
-            run_cmd(
-                [
-                    "git",
-                    "-C",
-                    project.path,
-                    "merge",
-                    "--ff-only",
-                    "origin/%s" % self.branch,
-                ]
-            )
+            self._update(project)
         else:
             self._checkout(project)
 
@@ -99,6 +107,8 @@ class GitUpdater(object):
                 self.branch,
             ]
         )
+        if self.rev:
+            self._update(project)
 
     def clean(self, project):
         run_cmd(["git", "-C", project.path, "clean", "-fxd"])
@@ -310,7 +320,8 @@ def get_projects(opts):
         Project(
             "googletest",
             opts,
-            GitUpdater("https://github.com/google/googletest.git"),
+            GitUpdater("https://github.com/google/googletest.git",
+                rev="efecb0bfa687cf87836494f5d62868485c00fb66"),
             CMakeBuilder(),
         ),
     ]
@@ -346,7 +357,8 @@ def get_projects(opts):
         Project(
             "folly",
             opts,
-            GitUpdater("https://github.com/facebook/folly.git"),
+            GitUpdater("https://github.com/facebook/folly.git",
+                pinned_hash_filename="build/deps/github_hashes/facebook/folly-rev.txt"),
             CMakeBuilder(),
         )
     ]
@@ -372,7 +384,8 @@ def get_projects(opts):
             Project(
                 "wangle",
                 opts,
-                GitUpdater("https://github.com/facebook/wangle.git"),
+                GitUpdater("https://github.com/facebook/wangle.git",
+                    pinned_hash_filename="build/deps/github_hashes/facebook/wangle-rev.txt"),
                 CMakeBuilder(subdir="wangle", defines={"BUILD_TESTS": "OFF"}),
             ),
             Project(
@@ -386,7 +399,8 @@ def get_projects(opts):
             Project(
                 "fbthrift",
                 opts,
-                GitUpdater("https://github.com/facebook/fbthrift.git"),
+                GitUpdater("https://github.com/facebook/fbthrift.git",
+                    pinned_hash_filename="build/deps/github_hashes/facebook/fbthrift-rev.txt"),
                 CMakeBuilder(),
             ),
         ]
