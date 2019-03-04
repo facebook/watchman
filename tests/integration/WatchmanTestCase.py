@@ -190,10 +190,6 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
     def dumpLogs(self):
         """ used in travis CI to show the hopefully relevant log snippets """
 
-        def tail(logstr, n):
-            lines = logstr.split("\n")[-n:]
-            return "\n".join(lines)
-
         print(self.getLogSample())
 
     def getLogSample(self):
