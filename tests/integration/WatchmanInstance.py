@@ -113,7 +113,6 @@ class _Instance(object):
 
     def __init__(self, config=None, start_timeout=60.0, debug_watchman=False):
         self.start_timeout = start_timeout
-        self.base_dir = tempfile.mkdtemp(prefix="inst")
         self._init_state()
         self.proc = None
         self.pid = None
