@@ -284,13 +284,13 @@ def install_apt(pkgs):
 
 def vcpkg_dir():
     """ Figure out where vcpkg is installed.
+    vcpkg-exported is populated in some flavors of FB internal builds.
     C:/tools/vcpkg is the appveyor location.
     C:/open/vcpkg is my local location.
-    D:/edenwin64/vcpkg is for some flavor of FB internal machines
     """
-    for p in ["C:/tools/vcpkg", "C:/open/vcpkg", "D:/edenwin64/vcpkg"]:
+    for p in ["vcpkg-exported", "C:/tools/vcpkg", "C:/open/vcpkg"]:
         if os.path.isdir(p):
-            return p
+            return os.path.realpath(p)
     raise Exception("cannot find vcpkg")
 
 
