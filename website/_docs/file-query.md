@@ -87,6 +87,16 @@ will be set to `true` in the result object.
 The since generator also knows how to talk to source control;
 [you can read more about that here](/watchman/docs/scm-query.html).
 
+The `since` generator does not consider the targets of symlinks. In particular,
+the `since` generator may *not* produce a symlink in the following cases:
+
+* The symlink's target was a file, and the file is since modified.
+* The symlink's target was a file, and the file is since deleted or replaced
+  with a different file.
+* An ancestor of the symlink's target was created or deleted or modified.
+* The symlink's target was a directory, and a file is since added or removed
+  from that directory.
+
 ### Suffix Generator
 
 The `suffix` generator produces a list of files that have a particular suffix
@@ -107,6 +117,12 @@ $ watchman -j <<-EOT
 }]
 EOT
 ```
+
+The `suffix` generator can produce symlinks.
+
+The `suffix` generator does not follow symlinks. For example, a symlink to
+`/etc` will not cause a `"suffix": "conf"` query to search within `/etc` and
+produce `/etc/resolv.conf`.
 
 ### Glob Generator
 
@@ -146,6 +162,12 @@ globbing.
 
 The glob generator implicitly enables `dedup_results` mode.
 
+The `glob` generator can produce symlinks.
+
+The `glob` generator does not follow symlinks. For example, a symlink to `/etc`
+will not cause a `"glob": ["**/resolv.conf"]` query to search within `/etc` and
+produce `/etc/resolv.conf`.
+
 ### Path Generator
 
 The `path` generator produces a list of files based on their path and depth.
@@ -182,6 +204,10 @@ $ watchman -j <<-EOT
 EOT
 ```
 
+The `path` generator can produce symlinks.
+
+The `path` generator does not follow symlinks.
+
 ### All Generator
 
 The `all` generator produces a list of all file nodes.  It is the default
@@ -194,6 +220,10 @@ $ watchman -j <<-EOT
 }]
 EOT
 ```
+
+The `all` generator can produce symlinks.
+
+The `all` generator does not follow symlinks.
 
 ### Expressions
 
