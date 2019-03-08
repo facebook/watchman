@@ -124,10 +124,6 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
         self.checkPersistentSession()
         self.checkOSApplicability()
 
-    def tearDown(self):
-        self.__clearClient()
-        super(WatchmanTestCase, self).tearDown()
-
     def getClient(self, inst=None, replace_cached=False, no_cache=False):
         if inst or not hasattr(self, "client") or no_cache:
             client = pywatchman.client(
@@ -140,6 +136,7 @@ class WatchmanTestCase(TempDirPerTestMixin, unittest.TestCase):
             if (not inst or replace_cached) and not no_cache:
                 # only cache the client if it points to the shared instance
                 self.client = client
+                self.addCleanup(lambda: self.__clearClient())
             return client
         return self.client
 

@@ -68,11 +68,13 @@ class WatchmanEdenTestCase(TestParent):
 
         self.save_home = os.environ["HOME"]
         os.environ["HOME"] = self.eden_home
+        self.addCleanup(lambda: self._restoreHome())
 
         # Watchman needs to start up with the same HOME as eden, otherwise
         # it won't be able to locate the eden socket
         self.eden_watchman = WatchmanInstance.Instance()
         self.eden_watchman.start()
+        self.addCleanup(lambda: self.eden_watchman.stop())
 
         self.client = self.getClient(self.eden_watchman)
 
@@ -82,19 +84,19 @@ class WatchmanEdenTestCase(TestParent):
             self.eden_dir, etc_eden_dir=self.etc_eden_dir, home_dir=self.eden_home
         )
         self.eden.start()
+        self.addCleanup(lambda: self.cleanUpEden())
 
-    def tearDown(self):
-        if self.eden:
-            self.cleanUpWatches()
-            self.eden.cleanup()
+    def _restoreHome(self):
+        # type: () -> None
+        assert self.save_home is not None
+        os.environ["HOME"] = self.save_home
 
-        super(WatchmanEdenTestCase, self).tearDown()
-
-        if self.eden_watchman:
-            self.eden_watchman.stop()
-
-        if self.save_home:
-            os.environ["HOME"] = self.save_home
+    def cleanUpEden(self):
+        # type: () -> None
+        assert self.eden is not None
+        self.cleanUpWatches()
+        self.eden.cleanup()
+        self.eden = None
 
     def cleanUpWatches(self):
         roots = self.watchmanCommand("watch-list")["roots"]
