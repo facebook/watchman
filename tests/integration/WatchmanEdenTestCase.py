@@ -68,6 +68,14 @@ class WatchmanEdenTestCase(TestParent):
 
         self.save_home = os.environ["HOME"]
         os.environ["HOME"] = self.eden_home
+
+        # Watchman needs to start up with the same HOME as eden, otherwise
+        # it won't be able to locate the eden socket
+        self.eden_watchman = WatchmanInstance.Instance()
+        self.eden_watchman.start()
+
+        self.client = self.getClient(self.eden_watchman)
+
         # chg can interfere with eden, so disable it up front
         os.environ["CHGDISABLE"] = "1"
         self.eden = edenclient.EdenFS(
@@ -75,25 +83,18 @@ class WatchmanEdenTestCase(TestParent):
         )
         self.eden.start()
 
-        # Watchman also needs to start up with the same HOME, otherwise
-        # it won't be able to locate the eden socket
-        self.eden_watchman = WatchmanInstance.Instance()
-        self.eden_watchman.start()
-
-        self.client = self.getClient(self.eden_watchman)
-
     def tearDown(self):
-        if self.save_home:
-            os.environ["HOME"] = self.save_home
-
         if self.eden:
             self.cleanUpWatches()
             self.eden.cleanup()
 
+        super(WatchmanEdenTestCase, self).tearDown()
+
         if self.eden_watchman:
             self.eden_watchman.stop()
 
-        super(WatchmanEdenTestCase, self).tearDown()
+        if self.save_home:
+            os.environ["HOME"] = self.save_home
 
     def cleanUpWatches(self):
         roots = self.watchmanCommand("watch-list")["roots"]
