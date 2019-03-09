@@ -52,11 +52,9 @@ public:
     static ThreadLocalStatsMap it;
     return &it;
   }
-  bool publishThreadRunning() const {
-    return false;
-  }
-  void publishStats() {
-  }
+
+  void publishStats() {}
+  void startPublishThread(std::chrono::milliseconds /*interval*/) {}
 
   void addStatValue(const std::string& key, int64_t value = 1) {}
   void addStatValue(
