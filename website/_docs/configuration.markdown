@@ -16,7 +16,7 @@ in the root directory, watchman will load it and use it as a source of
 configuration information specific to that root.
 
 The global configuration path can be changed by passing the
-`--enable-conffile` option to configure when you build watchman.  This
+`-DWATCHMAN_CONFIG_FILE` option to CMake when you build watchman.  This
 documentation refers to it as `/etc/watchman.json` throughout, just be aware
 that your particular installation may locate it elsewhere.   In addition,
 the environmental variable `$WATCHMAN_CONFIG_FILE` will override the
