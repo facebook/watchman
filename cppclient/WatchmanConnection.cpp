@@ -143,8 +143,8 @@ void WatchmanConnection::connectSuccess() noexcept {
           }
           shared_this->connectPromise_.setValue(std::move(result));
         })
-        .onError([shared_this =
-                      shared_from_this()](const folly::exception_wrapper& e) {
+        .thenError([shared_this =
+                        shared_from_this()](const folly::exception_wrapper& e) {
           shared_this->connectPromise_.setException(e);
         });
   } catch(const std::exception& e) {
