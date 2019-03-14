@@ -14,12 +14,19 @@ import WatchmanSCMTestCase
 import WatchmanTestCase
 
 
+def is_ubuntu():
+    try:
+        with open("/etc/lsb-release") as f:
+            if "Ubuntu" in f.read():
+                return True
+    except Exception:
+        pass
+    return False
+
+
 @WatchmanTestCase.expand_matrix
 class TestScm(WatchmanSCMTestCase.WatchmanSCMTestCase):
-    @unittest.skipIf(
-        "WATCHMAN_WORK_AROUND_T36574087" in os.environ,
-        "Test is flaky. See Facebook task T36574087.",
-    )
+    @unittest.skipIf(is_ubuntu(), "Test is flaky. See Facebook task T36574087.")
     def test_scmHg(self):
         self.skipIfNoFSMonitor()
 
