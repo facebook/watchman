@@ -12,9 +12,21 @@ import WatchmanSCMTestCase
 import WatchmanTestCase
 
 
+def is_ubuntu():
+    try:
+        with open("/etc/lsb-release") as f:
+            if "Ubuntu" in f.read():
+                return True
+    except Exception:
+        pass
+    return False
+
+
 @WatchmanTestCase.expand_matrix
 class TestSavedState(WatchmanSCMTestCase.WatchmanSCMTestCase):
     def checkOSApplicability(self):
+        if is_ubuntu():
+            self.skipTest("Test is flaky. See Facebook task T36574087.")
         if "CIRCLECI" in os.environ or "TRAVIS" in os.environ:
             self.skipTest("consistently fails on single core machines!")
         if os.name == "nt":
