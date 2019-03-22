@@ -3,7 +3,12 @@
 # use the configure script to build and install watchman!
 cmake_minimum_required(VERSION 3.1.3 FATAL_ERROR)
 
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH
+  # For in-fbsource builds on mac
+  "${CMAKE_CURRENT_SOURCE_DIR}/../opensource/fbcode_builder/CMake"
+  # For shipit-transformed builds
+  "${CMAKE_CURRENT_SOURCE_DIR}/build/fbcode_builder/CMake"
+  ${CMAKE_MODULE_PATH})
 
 set(CMAKE_CXX_STANDARD 14)
 
