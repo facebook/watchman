@@ -10,6 +10,8 @@
 #include <thread>
 #include <unistd.h>
 
+#include <folly/experimental/TestUtil.h>
+#include <folly/experimental/io/FsUtil.h>
 #include <folly/init/Init.h>
 #include <folly/io/async/EventBaseThread.h>
 #include <folly/json.h>
@@ -47,8 +49,7 @@ int main(int argc, char** argv) {
   std::condition_variable cv;
   std::atomic_bool hit(false);
 
-  char current_dir[PATH_MAX];
-  CHECK(getcwd(current_dir, PATH_MAX)) << "Error getting current dir";
+  auto current_dir = fs::current_path().string();
   WatchPathPtr current_dir_ptr = c.watch(current_dir).get();
   dynamic query = dynamic::object("fields", dynamic::array("name"))(
       "expression", dynamic::array("name", "hit"));
@@ -71,6 +72,45 @@ int main(int argc, char** argv) {
                   })
                  .wait()
                  .value();
+
+  {
+    // By creating a subscription above, we ensured that Watchman is already
+    // watching the current directory. Now create and watch a subdirectory.
+    // Watchman will reuse the watch root, but return results as though it were
+    // watching only the subdirectory.
+    LOG(INFO) << "Testing relative paths";
+    auto subdir = folly::test::TemporaryDirectory{/*namePrefix=*/"",
+                                                  /*dir=*/current_dir};
+    LOG(INFO) << "Created " << subdir.path();
+    auto empty_file_path = subdir.path() / "empty_file";
+    auto empty_file_relative_path =
+        fs::relative(empty_file_path, subdir.path());
+    {
+      auto empty_file = fs::ofstream{empty_file_path};
+      if (!empty_file) {
+        LOG(ERROR) << "Failed to create " << empty_file_path;
+        return 1;
+      }
+      LOG(INFO) << "Created " << empty_file_path;
+    }
+    dynamic relative_query = dynamic::object("fields", dynamic::array("name"))(
+        "expression",
+        dynamic::array("name", empty_file_relative_path.native()));
+    auto subdir_ptr = c.watch(subdir.path().native()).get();
+    auto result = c.query(relative_query, subdir_ptr).get();
+    if (result.raw_["files"].empty()) {
+      LOG(ERROR) << "FAIL: No files found in " << folly::toJson(result.raw_);
+      return 1;
+    }
+    if (result.raw_["files"][0].getString() != empty_file_relative_path) {
+      LOG(ERROR) << "FAIL: Expected a file named " << empty_file_relative_path
+                 << ", got " << fs::path{result.raw_["files"][0].getString()}
+                 << " in " << folly::toJson(result.raw_);
+      return 1;
+    }
+    LOG(INFO) << "PASS: Watchman returned " << empty_file_relative_path
+              << " and not " << fs::relative(empty_file_path, current_dir);
+  }
 
   LOG(INFO) << "Triggering subscription";
   auto clock_before_hit = c.getClock(current_dir_ptr).get();
