@@ -90,10 +90,17 @@ struct WatchPath {
   const folly::Optional<std::string> relativePath_;
 };
 
+using Clock = std::string;
 using WatchPathPtr = std::shared_ptr<WatchPath>;
 
 using SubscriptionCallback = std::function<void(folly::Try<folly::dynamic>&&)>;
 using ErrorCallback = std::function<void(folly::exception_wrapper&)>;
+
+struct QueryResult {
+  QueryResult(folly::dynamic raw) : raw_{std::move(raw)} {}
+
+  folly::dynamic raw_;
+};
 
 struct Subscription {
   friend WatchmanClient;
@@ -167,6 +174,17 @@ struct WatchmanClient {
    * details.
    */
   folly::Future<WatchPathPtr> watch(folly::StringPiece path);
+
+  /**
+   * Ask Watchman for its current clock in a given root.
+   */
+  folly::Future<Clock> getClock(WatchPathPtr path);
+
+  /**
+   * Send a single query to Watchman. queryObj is an object rather than an
+   * array.
+   */
+  folly::Future<QueryResult> query(folly::dynamic queryObj, WatchPathPtr path);
 
   /**
    * Establishes a subscription that will trigger callback (via your specified

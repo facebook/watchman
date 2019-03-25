@@ -49,6 +49,7 @@ int main(int argc, char** argv) {
 
   char current_dir[PATH_MAX];
   CHECK(getcwd(current_dir, PATH_MAX)) << "Error getting current dir";
+  WatchPathPtr current_dir_ptr = c.watch(current_dir).get();
   dynamic query = dynamic::object("fields", dynamic::array("name"))(
       "expression", dynamic::array("name", "hit"));
   auto sub = c.subscribe(
@@ -72,6 +73,7 @@ int main(int argc, char** argv) {
                  .value();
 
   LOG(INFO) << "Triggering subscription";
+  auto clock_before_hit = c.getClock(current_dir_ptr).get();
   system("touch hit");
   LOG(INFO) << "Waiting for hit.";
   std::unique_lock<std::mutex> lock(mutex);
@@ -81,6 +83,20 @@ int main(int argc, char** argv) {
     return 1;
   }
   hit = false;
+
+  LOG(INFO) << "Testing one-off query";
+  auto data =
+      c.query(
+           dynamic::object("expression", dynamic::array("name", "hit"))(
+               "fields", dynamic::array("name"))("since", clock_before_hit),
+           current_dir_ptr)
+          .get();
+  if (data.raw_["files"][0].getString().find("hit") == std::string::npos) {
+    LOG(ERROR) << "FAIL: one-off query missed the hit file";
+    return 1;
+  } else {
+    LOG(INFO) << "PASS: one-off query saw the touched hit file";
+  }
 
   LOG(INFO) << "Flushing subscription";
   auto flush_res =

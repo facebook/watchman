@@ -89,6 +89,19 @@ Future<WatchPathPtr> WatchmanClient::watch(StringPiece path) {
       });
 }
 
+Future<std::string> WatchmanClient::getClock(WatchPathPtr path) {
+  return conn_->run(dynamic::array("clock", path->root_))
+      .thenValue([](dynamic data) { return data["clock"].asString(); });
+}
+
+Future<QueryResult> WatchmanClient::query(dynamic queryObj, WatchPathPtr path) {
+  if (path->relativePath_) {
+    queryObj["relative_root"] = *path->relativePath_;
+  }
+  return {
+      conn_->run(dynamic::array("query", path->root_, std::move(queryObj)))};
+}
+
 Future<SubscriptionPtr> WatchmanClient::subscribe(
     dynamic query,
     WatchPathPtr path,
