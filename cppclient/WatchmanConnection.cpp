@@ -310,17 +310,11 @@ std::unique_ptr<folly::IOBuf> WatchmanConnection::splitNextPdu() {
 // small one to finish decoding before the large one, so we must
 // serialize the dispatching.
 void WatchmanConnection::decodeNextResponse() {
-  {
-    std::lock_guard<std::mutex> g(mutex_);
-    if (decoding_) {
-      return;
-    }
-    decoding_ = true;
+  if (decoding_.exchange(true)) {
+    return;
   }
-
   SCOPE_EXIT {
-    std::lock_guard<std::mutex> g(mutex_);
-    decoding_ = false;
+    decoding_.store(false);
   };
 
   while (true) {

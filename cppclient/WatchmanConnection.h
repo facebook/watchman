@@ -125,6 +125,6 @@ class WatchmanConnection : folly::AsyncSocket::ConnectCallback,
   folly::IOBufQueue bufQ_{folly::IOBufQueue::cacheChainLength()};
   bool broken_{false};
   bool closing_{false};
-  bool decoding_{false};
+  std::atomic<bool> decoding_{false};
 };
 } // namespace watchman
