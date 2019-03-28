@@ -33,6 +33,7 @@ from __future__ import absolute_import, division, print_function
 import asyncio
 import os
 import subprocess
+import typing
 
 from pywatchman import CommandError, WatchmanError, encoding
 
@@ -311,7 +312,7 @@ class AIOClient(object):
         self.receive_task.add_done_callback(do_if_done)
 
     @classmethod
-    async def from_socket(cls, sockname=None):
+    async def from_socket(cls, sockname: typing.Optional[str] = None) -> "AIOClient":
         """Create a new AIOClient using Unix transport and BSER Codec
         connecting to the specified socket. If the specified socket is None,
         then resolve the socket path automatically.
