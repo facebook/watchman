@@ -206,6 +206,7 @@ endif()
 find_package(PCRE)
 if(PCRE_FOUND)
   config_h("#define HAVE_PCRE_H 1")
+  include_directories(${PCRE_INCLUDE_DIR})
 endif()
 
 # Now close out config.h.  We only want to touch the file if the contents are
