@@ -102,27 +102,6 @@ class SettleCallback : public folly::HHWheelTimer::Callback {
   std::shared_ptr<w_root_t> root_;
 };
 
-std::string readLink(const std::string& path) {
-  struct stat st;
-  if (lstat(path.c_str(), &st)) {
-    throw std::system_error(
-        errno,
-        std::generic_category(),
-        watchman::to<std::string>("lstat(", path, ") failed"));
-  }
-  std::string result(st.st_size + 1, '\0');
-  auto len = ::readlink(path.c_str(), &result[0], result.size());
-  if (len >= 0) {
-    result.resize(len);
-    return result;
-  }
-
-  throw std::system_error(
-      errno,
-      std::generic_category(),
-      watchman::to<std::string>("readlink(", path, ") failed"));
-}
-
 /** Execute a functor, retrying it if we encounter an ESTALE exception.
  * Ideally ESTALE wouldn't happen but we've been unable to figure out
  * exactly what is happening on the Eden side so far, and it is more
@@ -166,8 +145,8 @@ folly::SocketAddress getEdenSocketAddress(w_string_piece rootPath) {
   // It is important to resolve the link because the path in the eden mount
   // may exceed the maximum permitted unix domain socket path length.
   // This is actually how things our in our integration test environment.
-  auto socketPath = readLink(path);
-  addr.setFromPath(socketPath);
+  auto socketPath = readSymbolicLink(path.c_str());
+  addr.setFromPath(watchman::to<std::string>(socketPath));
   return addr;
 }
 
@@ -1262,9 +1241,9 @@ std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
     throw std::runtime_error(to<std::string>("not a FUSE file system"));
   }
 
-  auto edenRoot =
-      readLink(watchman::to<std::string>(root->root_path, "/.eden/root"));
-  if (w_string_piece(edenRoot) != root->root_path) {
+  auto edenRoot = readSymbolicLink(
+      watchman::to<std::string>(root->root_path, "/.eden/root").c_str());
+  if (edenRoot != root->root_path) {
     // We aren't at the root of the eden mount.
     // Throw a TerminalWatcherError to indicate that the Eden watcher is the
     // correct watcher type for this directory (so don't try other watcher
