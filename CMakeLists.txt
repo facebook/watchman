@@ -285,10 +285,10 @@ if (WANT_THRIFT)
   find_package(rsocket CONFIG REQUIRED)
 endif()
 
-find_package(PythonInterp REQUIRED)
-message(STATUS "Found python ${PYTHON_VERSION_STRING}")
+find_package(PythonInterp)
 
 if(PYTHONINTERP_FOUND)
+  message(STATUS "Found python ${PYTHON_VERSION_STRING}")
   set(PYOUT "${CMAKE_CURRENT_BINARY_DIR}/build/pytimestamp")
   set(PYSETUP "${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py")
   add_custom_command(
