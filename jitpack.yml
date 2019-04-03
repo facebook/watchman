@@ -1,0 +1,9 @@
+before_install:
+  - apt-get update
+  - apt-get install -y libssl-dev autoconf automake libtool
+
+install:
+  - ./autogen.sh
+  - ./configure
+  - make
+  - make install
