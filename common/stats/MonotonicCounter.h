@@ -19,6 +19,9 @@ public:
   MonotonicCounter(folly::StringPiece, ExportType, ExportType) {}
   void updateValue(std::chrono::seconds, int64_t) {}
   void swap(MonotonicCounter& counter) {}
+  std::string getName() {
+    return {};
+  }
 };
 
 }}
