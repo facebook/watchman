@@ -279,6 +279,7 @@ find_package(folly CONFIG REQUIRED)
 
 if (WANT_THRIFT)
   find_package(fizz CONFIG REQUIRED)
+  find_package(fmt CONFIG REQUIRED)
   find_package(wangle CONFIG REQUIRED)
   find_package(FBThrift CONFIG REQUIRED)
   find_package(yarpl CONFIG REQUIRED)

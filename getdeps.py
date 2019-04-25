@@ -370,6 +370,12 @@ def get_projects(opts):
                 ),
             ),
             Project(
+                "fmt",
+                opts,
+                GitUpdater("https://github.com/fmtlib/fmt.git"),
+                CMakeBuilder(),
+            ),
+            Project(
                 "wangle",
                 opts,
                 GitUpdater("https://github.com/facebook/wangle.git"),
