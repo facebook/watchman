@@ -1,4 +1,4 @@
-// Copyright (c) 2007- Facebook.
+// Copyright (c) 2007-present, Facebook, Inc.
 //
 // High resolution timers for wall clock and CPU time.
 

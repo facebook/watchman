@@ -1,3 +1,6 @@
+/**
+ * Copyright (c) 2013-present, Facebook, Inc.
+ */
 namespace cpp2 facebook.network.thrift
 namespace cpp facebook.network.thrift
 namespace py facebook.network.Address

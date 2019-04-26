@@ -1,7 +1,7 @@
 /**
  * fb303.thrift
  *
- * Copyright (c) 2006- Facebook
+ * Copyright (c) 2006-present, Facebook, Inc.
  * Distributed under the Thrift Software License
  *
  * See accompanying file LICENSE or visit the Thrift site at:
