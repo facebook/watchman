@@ -314,24 +314,36 @@ if(PYTHONINTERP_FOUND)
                 -t ${CMAKE_CURRENT_BINARY_DIR}/python/build/temp
   )
   add_custom_target(pybuild ALL DEPENDS ${PYOUT})
-  # Since we cannot portably or reliably reference DESTDIR here, and because
-  # the cmake documentation is unclear about whether it allows expanding
-  # DESTDIR on windows, we ask python to install to the binary dir, and
-  # then manually mirror that directory structure out to the install location.
-  install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} \
-    ${PYSETUP} install \
-    --root ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/python.install \
-    --prefix ${CMAKE_INSTALL_PREFIX})")
-  # The use of `.` here for the destination causes cmake to use the
-  # DESTDIR-modified CMAKE_INSTALL_PREFIX
-  install(DIRECTORY
-    "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/python.install/${CMAKE_INSTALL_PREFIX}/bin"
-    DESTINATION .
-    USE_SOURCE_PERMISSIONS)
-  install(DIRECTORY
-    "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/python.install/${CMAKE_INSTALL_PREFIX}/lib"
-    DESTINATION .
-    USE_SOURCE_PERMISSIONS)
+  # We cannot use the trick we use below on windows because paths like
+  # c:/something/c:/somethingelse are invalid
+  if (NOT WIN32)
+    # Since we cannot portably or reliably reference DESTDIR here, and because
+    # the cmake documentation is unclear about whether it allows expanding
+    # DESTDIR on windows, we ask python to install to the binary dir, and
+    # then manually mirror that directory structure out to the install location.
+    install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} \
+      ${PYSETUP} install \
+      --root ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/python.install \
+      --prefix ${CMAKE_INSTALL_PREFIX})")
+    # The use of `.` here for the destination causes cmake to use the
+    # DESTDIR-modified CMAKE_INSTALL_PREFIX
+    install(DIRECTORY
+      "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/python.install/${CMAKE_INSTALL_PREFIX}/bin"
+      DESTINATION .
+      USE_SOURCE_PERMISSIONS)
+    # On Linux python may be installed in either `lib` or `lib64`, so
+    # optionally install both locations and take whatever we get.
+    install(DIRECTORY
+      "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/python.install/${CMAKE_INSTALL_PREFIX}/lib"
+      OPTIONAL
+      DESTINATION .
+      USE_SOURCE_PERMISSIONS)
+    install(DIRECTORY
+      "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/python.install/${CMAKE_INSTALL_PREFIX}/lib64"
+      OPTIONAL
+      DESTINATION .
+      USE_SOURCE_PERMISSIONS)
+  endif()
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
