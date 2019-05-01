@@ -267,6 +267,19 @@ include_directories(SYSTEM ${GFLAGS_INCLUDE_DIR})
 
 find_package(Glog REQUIRED)
 
+# We indirectly depend on boost.  This logic needs to match
+# the same criteria used in thrift, which wants static libs
+# on windows.
+if(MSVC)
+  set(Boost_USE_STATIC_LIBS ON) #Force static lib in msvc
+endif(MSVC)
+find_package(
+  Boost 1.54.0 REQUIRED #1.54.0 or greater
+  COMPONENTS
+    context
+    thread
+)
+
 # We indirectly depend on libevent.  Folly pulls in linkage to
 # event.lib, but on my system it does so as simply "event.lib"
 # and that fails linking.  Let's probe for the library and force
