@@ -206,7 +206,6 @@ endif()
 find_package(PCRE)
 if(PCRE_FOUND)
   config_h("#define HAVE_PCRE_H 1")
-  include_directories(${PCRE_INCLUDE_DIR})
 endif()
 
 # Now close out config.h.  We only want to touch the file if the contents are
@@ -373,22 +372,68 @@ if (WANT_THRIFT)
 add_subdirectory(common)
 endif()
 
+add_library(third_party_deps INTERFACE)
+target_link_libraries(third_party_deps INTERFACE
+  Folly::folly
+  glog::glog
+  gflags
+  ${Boost_LIBRARIES}
+)
+target_include_directories(third_party_deps INTERFACE
+  ${FOLLY_INCLUDE_DIR}
+  ${GLOG_INCLUDE_DIR}
+  ${GFLAGS_INCLUDE_DIR}
+  ${Boost_INCLUDE_DIRS}
+)
+if (WANT_THRIFT)
+  target_link_libraries(
+    third_party_deps
+    INTERFACE
+    ${YARPL_LIBRARIES}
+    rsocket::ReactiveSocket
+    FBThrift::thriftcpp2
+  )
+endif()
+if(PCRE_FOUND)
+  target_link_libraries(third_party_deps INTERFACE ${PCRE_LIBRARY})
+  target_include_directories(third_party_deps INTERFACE ${PCRE_INCLUDE_DIR})
+  if (WIN32)
+    # The pcre headers assume that the library is a dll by default
+    # but our preferred build environment only builds them as
+    # static, so be sure to ask for static pcre linkage
+    target_compile_definitions(third_party_deps INTERFACE PCRE_STATIC)
+  endif()
+endif()
+target_link_libraries(third_party_deps INTERFACE Threads::Threads)
+if(TARGET OpenSSL::Crypto)
+  target_link_libraries(third_party_deps INTERFACE OpenSSL::Crypto)
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  target_link_libraries(third_party_deps INTERFACE "-framework CoreServices")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  target_link_libraries(third_party_deps INTERFACE
+    advapi32.lib
+    dbghelp.lib
+    shlwapi.lib
+  )
+endif()
+
 add_library(wildmatch STATIC
   thirdparty/wildmatch/wildmatch.c
   thirdparty/wildmatch/wildmatch.h
 )
 add_library(tap STATIC thirdparty/tap.cpp thirdparty/tap.h)
-target_link_libraries(tap Folly::folly glog::glog gflags)
+target_link_libraries(tap third_party_deps)
 add_library(log STATIC PubSub.cpp log.cpp)
-target_link_libraries(log Folly::folly glog::glog gflags)
+target_link_libraries(log third_party_deps)
 add_library(hash STATIC hash.cpp)
-target_link_libraries(hash Folly::folly glog::glog gflags)
+target_link_libraries(hash third_party_deps)
 add_library(err STATIC root/poison.cpp root/warnerr.cpp)
-target_link_libraries(err Folly::folly glog::glog gflags)
+target_link_libraries(err third_party_deps)
 add_library(jansson_utf STATIC thirdparty/jansson/utf.cpp)
 
 add_library(string STATIC string.cpp)
-target_link_libraries(string jansson_utf hash Folly::folly glog::glog gflags)
+target_link_libraries(string jansson_utf hash third_party_deps)
 
 add_library(jansson STATIC
 thirdparty/jansson/dump.cpp
@@ -400,7 +445,7 @@ thirdparty/jansson/strbuffer.cpp
 thirdparty/jansson/strconv.cpp
 thirdparty/jansson/value.cpp
 )
-target_link_libraries(jansson string Folly::folly glog::glog gflags)
+target_link_libraries(jansson string third_party_deps)
 
 list(APPEND testsupport_sources
 ChildProcess.cpp
@@ -431,7 +476,7 @@ stream_win.cpp
 endif()
 
 add_library(testsupport STATIC ${testsupport_sources})
-target_link_libraries(testsupport log string jansson Folly::folly glog::glog gflags)
+target_link_libraries(testsupport log string jansson third_party_deps)
 
 if (WANT_THRIFT)
   add_thrift_cpp2_library(
@@ -582,34 +627,14 @@ target_link_libraries(
   err
   jansson
   wildmatch
-  Folly::folly
-  glog::glog gflags
+  third_party_deps
 )
 
 if (WANT_THRIFT)
   target_link_libraries(
     watchman
     streamingeden_thrift
-    ${YARPL_LIBRARIES}
-    rsocket::ReactiveSocket
-    FBThrift::thriftcpp2
   )
-endif()
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  target_link_libraries(watchman "-framework CoreServices")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  target_link_libraries(watchman shlwapi.lib advapi32.lib dbghelp.lib)
-endif()
-if(PCRE_FOUND)
-  target_link_libraries(watchman ${PCRE_LIBRARY})
-  target_include_directories(watchman PUBLIC ${PCRE_INCLUDE_DIR})
-endif()
-
-
-target_link_libraries(watchman Threads::Threads)
-if(TARGET OpenSSL::Crypto)
-  target_link_libraries(watchman OpenSSL::Crypto)
 endif()
 
 install(TARGETS watchman RUNTIME DESTINATION bin)
@@ -620,13 +645,7 @@ function(t_test NAME)
   add_executable(${NAME}.t ${ARGN})
   target_link_libraries(
     ${NAME}.t
-    testsupport tap Threads::Threads wildmatch Folly::folly glog::glog gflags)
-  if(TARGET OpenSSL::Crypto)
-    target_link_libraries(${NAME}.t OpenSSL::Crypto)
-  endif()
-  if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_link_libraries(${NAME}.t shlwapi.lib advapi32.lib dbghelp.lib)
-  endif()
+    testsupport tap wildmatch third_party_deps)
   target_compile_definitions(${NAME}.t
     PUBLIC WATCHMAN_TEST_SRC_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
   add_test(NAME ${NAME} COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${NAME}.t)
