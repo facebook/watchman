@@ -89,6 +89,21 @@ void test_project() {
   ok(true, "expected constructor to succeed");
 }
 
+void test_project_metadata() {
+  auto localStoragePath = w_string_to_json("/absolute/path");
+  expect_query_parse_error(
+      json_object({{"local-storage-path", localStoragePath},
+                   {"project", w_string_to_json("relative/path")},
+                   {"project-metadata", json_integer(5)}}),
+      "failed to parse query: 'project-metadata' must be a string");
+  LocalSavedStateInterface interface(
+      json_object({{"local-storage-path", localStoragePath},
+                   {"project", w_string_to_json("foo")},
+                   {"project-metadata", w_string_to_json("meta")}}),
+      nullptr);
+  ok(true, "expected constructor to succeed");
+}
+
 void test_path() {
   auto localStoragePath = w_string_to_json("/absolute/path");
   LocalSavedStateInterface interface(
@@ -101,13 +116,25 @@ void test_path() {
      "Expected path to be \"%s\" but observed \"%s\"",
      expectedPath,
      path.c_str());
+  interface = LocalSavedStateInterface(
+      json_object({{"local-storage-path", localStoragePath},
+                   {"project", w_string_to_json("foo")},
+                   {"project-metadata", w_string_to_json("meta")}}),
+      nullptr);
+  path = interface.getLocalPath("hash");
+  expectedPath = "/absolute/path/foo/hash_meta";
+  ok(!strcmp(path.c_str(), expectedPath),
+     "Expected path to be \"%s\" but observed \"%s\"",
+     expectedPath,
+     path.c_str());
 }
 
 int main(int, char**) {
-  plan_tests(22);
+  plan_tests(26);
   test_max_commits();
   test_localStoragePath();
   test_project();
+  test_project_metadata();
   test_path();
 
   return exit_status();

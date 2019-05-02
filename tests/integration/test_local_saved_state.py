@@ -119,14 +119,20 @@ o  changeset:
             },
         }
 
+    def getLocalFilename(self, saved_state_rev, metadata):
+        if metadata:
+            return saved_state_rev + "_" + metadata
+        return saved_state_rev
+
     # Creates a saved state (with no content) for the specified project at the
     # specified bookmark within the specified local storage path.
-    def saveState(self, project, bookmark, local_storage):
+    def saveState(self, project, bookmark, local_storage, metadata=None):
         saved_state_rev = self.resolveCommitHash(bookmark, cwd=self.root)
         project_dir = os.path.join(local_storage, project)
         if not os.path.isdir(project_dir):
             os.mkdir(project_dir)
-        self.touchRelative(project_dir, saved_state_rev)
+        filename = self.getLocalFilename(saved_state_rev, metadata)
+        self.touchRelative(project_dir, filename)
         return saved_state_rev
 
     def getConfig(self, result):
@@ -228,6 +234,70 @@ o  changeset:
         expected_path = os.path.join(project_dir, saved_state_rev_feature3)
         self.assertSavedStateInfo(res, expected_path, saved_state_rev_feature3)
         self.assertFileListsEqual(res["files"], ["f1", "bar", "car"])
+
+    def test_localSavedStateLookupSuccessWithMetadata(self):
+        local_storage = self.mkdtemp()
+        metadata = "metadata"
+        saved_state_rev_feature3 = self.saveState(
+            "example_project", "feature3", local_storage, metadata
+        )
+        self.saveState("example_project", "feature0", local_storage, metadata)
+        config = {
+            "local-storage-path": local_storage,
+            "project": "example_project",
+            "project-metadata": metadata,
+            "max-commits": 10,
+        }
+        test_query = self.getQuery(config)
+        res = self.watchmanCommand("query", self.root, test_query)
+        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        self.assertMergebaseEquals(res, expected_mergebase)
+        self.assertStorageTypeLocal(res)
+        self.assertCommitIDEquals(res, saved_state_rev_feature3)
+        self.assertEqual(self.getConfig(res), config)
+        project_dir = os.path.join(local_storage, "example_project")
+        filepath = self.getLocalFilename(saved_state_rev_feature3, metadata)
+        expected_path = os.path.join(project_dir, filepath)
+        self.assertSavedStateInfo(res, expected_path, saved_state_rev_feature3)
+        self.assertFileListsEqual(res["files"], ["f1", "bar", "car"])
+
+    def test_localSavedStateFailureIfMetadataDoesNotMatch(self):
+        local_storage = self.mkdtemp()
+        self.saveState("example_project", "feature3", local_storage)
+        self.saveState("example_project", "feature0", local_storage)
+        config = {
+            "local-storage-path": local_storage,
+            "project": "example_project",
+            "project-metadata": "meta",
+            "max-commits": 10,
+        }
+        test_query = self.getQuery(config)
+        res = self.watchmanCommand("query", self.root, test_query)
+        self.assertSavedStateErrorEquals(res, "No suitable saved state found")
+        self.assertEqual(self.getConfig(res), config)
+        self.assertStorageTypeLocal(res)
+        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        self.assertMergebaseEquals(res, expected_mergebase)
+        self.assertFileListsEqual(res["files"], ["foo", "p1", "m2", "bar", "car", "f1"])
+
+    def test_localSavedStateFailureIfNoMetadataForFileThatHasIt(self):
+        local_storage = self.mkdtemp()
+        metadata = "metadata"
+        self.saveState("example_project", "feature3", local_storage, metadata)
+        self.saveState("example_project", "feature0", local_storage, metadata)
+        config = {
+            "local-storage-path": local_storage,
+            "project": "example_project",
+            "max-commits": 10,
+        }
+        test_query = self.getQuery(config)
+        res = self.watchmanCommand("query", self.root, test_query)
+        self.assertSavedStateErrorEquals(res, "No suitable saved state found")
+        self.assertEqual(self.getConfig(res), config)
+        self.assertStorageTypeLocal(res)
+        expected_mergebase = self.resolveCommitHash("TheMaster", cwd=self.root)
+        self.assertMergebaseEquals(res, expected_mergebase)
+        self.assertFileListsEqual(res["files"], ["foo", "p1", "m2", "bar", "car", "f1"])
 
     def test_localSavedStateSubscription(self):
         local_storage = self.mkdtemp()

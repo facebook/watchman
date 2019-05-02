@@ -46,6 +46,7 @@ class SavedStateInterface {
 
  protected:
   w_string project_;
+  w_string projectMetadata_;
 
   explicit SavedStateInterface(const json_ref& savedStateConfig);
   virtual SavedStateResult getMostRecentSavedStateImpl(

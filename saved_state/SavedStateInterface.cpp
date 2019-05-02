@@ -39,6 +39,15 @@ SavedStateInterface::SavedStateInterface(const json_ref& savedStateConfig) {
     throw QueryParseError("'project' must be a string");
   }
   project_ = json_to_w_string(project);
+  auto projectMetadata = savedStateConfig.get_default("project-metadata");
+  if (projectMetadata) {
+    if (!projectMetadata.isString()) {
+      throw QueryParseError("'project-metadata' must be a string");
+    }
+    projectMetadata_ = json_to_w_string(projectMetadata);
+  } else {
+    projectMetadata_ = w_string();
+  }
 }
 
 SavedStateInterface::SavedStateResult

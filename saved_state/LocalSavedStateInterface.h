@@ -10,7 +10,10 @@ namespace watchman {
 // stored on the local filesystem. The local storage path must contain a
 // subdirectory for the project, and within the project directory the saved
 // state for a given commit must be in a file whose name is the source control
-// commit hash.
+// commit hash. If project metadata is not specified, then only saved states
+// with no project metadata will be returned. If project metadata is specified,
+// then the most recent saved state with the specified project metadata will be
+// returned.
 //
 // Checks the most recent n commits to find a saved state, if available. If a
 // saved state is not available, returns an error message in the saved state
