@@ -101,7 +101,8 @@ const char* cfg_get_string(const char* name, const char* defval) {
 
   if (val) {
     if (!val.isString()) {
-      w_log(W_LOG_FATAL, "Expected config value %s to be a string\n", name);
+      throw std::runtime_error(watchman::to<std::string>(
+          "Expected config value ", name, " to be a string"));
     }
     return json_string_value(val);
   }
@@ -222,7 +223,8 @@ json_int_t cfg_get_int(const char* name, json_int_t defval) {
 
   if (val) {
     if (!val.isInt()) {
-      w_log(W_LOG_FATAL, "Expected config value %s to be an integer\n", name);
+      throw std::runtime_error(watchman::to<std::string>(
+          "Expected config value ", name, " to be an integer"));
     }
     return json_integer_value(val);
   }
@@ -235,7 +237,8 @@ bool cfg_get_bool(const char* name, bool defval) {
 
   if (val) {
     if (!val.isBool()) {
-      w_log(W_LOG_FATAL, "Expected config value %s to be a boolean\n", name);
+      throw std::runtime_error(watchman::to<std::string>(
+          "Expected config value ", name, " to be a boolean"));
     }
     return val.asBool();
   }
@@ -248,7 +251,8 @@ double cfg_get_double(const char* name, double defval) {
 
   if (val) {
     if (!val.isNumber()) {
-      w_log(W_LOG_FATAL, "Expected config value %s to be a number\n", name);
+      throw std::runtime_error(watchman::to<std::string>(
+          "Expected config value ", name, " to be a number"));
     }
     return json_real_value(val);
   }
@@ -348,7 +352,8 @@ const char* Configuration::getString(const char* name, const char* defval)
 
   if (val) {
     if (!val.isString()) {
-      w_log(W_LOG_FATAL, "Expected config value %s to be a string\n", name);
+      throw std::runtime_error(watchman::to<std::string>(
+          "Expected config value ", name, " to be a string"));
     }
     return json_string_value(val);
   }
@@ -361,7 +366,8 @@ json_int_t Configuration::getInt(const char* name, json_int_t defval) const {
 
   if (val) {
     if (!val.isInt()) {
-      w_log(W_LOG_FATAL, "Expected config value %s to be an integer\n", name);
+      throw std::runtime_error(watchman::to<std::string>(
+          "Expected config value ", name, " to be an integer"));
     }
     return json_integer_value(val);
   }
@@ -374,7 +380,8 @@ bool Configuration::getBool(const char* name, bool defval) const {
 
   if (val) {
     if (!val.isBool()) {
-      w_log(W_LOG_FATAL, "Expected config value %s to be a boolean\n", name);
+      throw std::runtime_error(watchman::to<std::string>(
+          "Expected config value ", name, " to be a boolean"));
     }
     return val.asBool();
   }
@@ -387,7 +394,8 @@ double Configuration::getDouble(const char* name, double defval) const {
 
   if (val) {
     if (!val.isNumber()) {
-      w_log(W_LOG_FATAL, "Expected config value %s to be a number\n", name);
+      throw std::runtime_error(watchman::to<std::string>(
+          "Expected config value ", name, " to be a number"));
     }
     return json_real_value(val);
   }
