@@ -55,7 +55,7 @@ LocalSavedStateInterface::getMostRecentSavedStateImpl(
   auto commitIds =
       scm_->getCommitsPriorToAndIncluding(lookupCommitId, maxCommits_);
   for (auto& commitId : commitIds) {
-    auto path = w_string::pathCat({localStoragePath_, project_, commitId});
+    auto path = getLocalPath(commitId);
     // We could return a path that no longer exists if the path is removed
     // (for example by saved state GC) after we check that the path exists
     // here, but before the client reads the state. We've explicitly chosen to
@@ -77,5 +77,9 @@ LocalSavedStateInterface::getMostRecentSavedStateImpl(
   result.savedStateInfo = json_object(
       {{"error", w_string_to_json("No suitable saved state found")}});
   return result;
+}
+
+w_string LocalSavedStateInterface::getLocalPath(w_string_piece commitId) const {
+  return w_string::pathCat({localStoragePath_, project_, commitId});
 }
 } // namespace watchman

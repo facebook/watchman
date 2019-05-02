@@ -22,6 +22,7 @@ class LocalSavedStateInterface : public SavedStateInterface {
 
   SavedStateInterface::SavedStateResult getMostRecentSavedStateImpl(
       w_string_piece lookupCommitId) const override;
+  w_string getLocalPath(w_string_piece commitId) const;
 
  private:
   json_int_t maxCommits_;

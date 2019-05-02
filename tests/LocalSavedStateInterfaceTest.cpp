@@ -89,13 +89,26 @@ void test_project() {
   ok(true, "expected constructor to succeed");
 }
 
-void test_invalid_localStoragePath() {}
+void test_path() {
+  auto localStoragePath = w_string_to_json("/absolute/path");
+  LocalSavedStateInterface interface(
+      json_object({{"local-storage-path", localStoragePath},
+                   {"project", w_string_to_json("foo")}}),
+      nullptr);
+  auto path = interface.getLocalPath("hash");
+  auto expectedPath = "/absolute/path/foo/hash";
+  ok(!strcmp(path.c_str(), expectedPath),
+     "Expected path to be \"%s\" but observed \"%s\"",
+     expectedPath,
+     path.c_str());
+}
 
 int main(int, char**) {
-  plan_tests(21);
+  plan_tests(22);
   test_max_commits();
   test_localStoragePath();
   test_project();
+  test_path();
 
   return exit_status();
 }
