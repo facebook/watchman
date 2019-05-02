@@ -58,49 +58,32 @@ LocalSavedStateInterface::LocalSavedStateInterface(
 }
 
 SavedStateInterface::SavedStateResult
-LocalSavedStateInterface::getMostRecentSavedState(
+LocalSavedStateInterface::getMostRecentSavedStateImpl(
     w_string_piece lookupCommitId) const {
-  try {
-    auto commitIds =
-        scm_->getCommitsPriorToAndIncluding(lookupCommitId, maxCommits_);
-    for (auto& commitId : commitIds) {
-      auto path = w_string::pathCat({localStoragePath_, project_, commitId});
-      // We could return a path that no longer exists if the path is removed
-      // (for example by saved state GC) after we check that the path exists
-      // here, but before the client reads the state. We've explicitly chosen to
-      // return the state without additional safety guarantees, and leave it to
-      // the client to ensure GC happens only after states are no longer likely
-      // to be used.
-      if (w_path_exists(path.c_str())) {
-        log(DBG, "Found saved state for commit ", commitId, "\n");
-        SavedStateInterface::SavedStateResult result;
-        result.commitId = commitId;
-        result.savedStateInfo =
-            json_object({{"local-path", w_string_to_json(path)},
-                         {"commit-id", w_string_to_json(commitId)}});
-        return result;
-      }
+  auto commitIds =
+      scm_->getCommitsPriorToAndIncluding(lookupCommitId, maxCommits_);
+  for (auto& commitId : commitIds) {
+    auto path = w_string::pathCat({localStoragePath_, project_, commitId});
+    // We could return a path that no longer exists if the path is removed
+    // (for example by saved state GC) after we check that the path exists
+    // here, but before the client reads the state. We've explicitly chosen to
+    // return the state without additional safety guarantees, and leave it to
+    // the client to ensure GC happens only after states are no longer likely
+    // to be used.
+    if (w_path_exists(path.c_str())) {
+      log(DBG, "Found saved state for commit ", commitId, "\n");
+      SavedStateInterface::SavedStateResult result;
+      result.commitId = commitId;
+      result.savedStateInfo =
+          json_object({{"local-path", w_string_to_json(path)},
+                       {"commit-id", w_string_to_json(commitId)}});
+      return result;
     }
-    SavedStateInterface::SavedStateResult result;
-    result.commitId = w_string();
-    result.savedStateInfo = json_object(
-        {{"error", w_string_to_json("No suitable saved state found")}});
-    return result;
-  } catch (const std::exception& ex) {
-    // This is a performance optimization only so return an error message on
-    // failure but do not throw.
-    auto reason = ex.what();
-    log(ERR,
-        "Exception while finding most recent saved state for project=",
-        project_,
-        " error=",
-        reason,
-        "\n");
-    SavedStateInterface::SavedStateResult result;
-    result.commitId = w_string();
-    result.savedStateInfo = json_object(
-        {{"error", w_string_to_json("Error while finding saved state")}});
-    return result;
   }
+  SavedStateInterface::SavedStateResult result;
+  result.commitId = w_string();
+  result.savedStateInfo = json_object(
+      {{"error", w_string_to_json("No suitable saved state found")}});
+  return result;
 }
 } // namespace watchman

@@ -29,4 +29,22 @@ std::unique_ptr<SavedStateInterface> SavedStateInterface::getInterface(
   }
   throw QueryParseError("invalid storage type '", storageType, "'");
 }
+
+SavedStateInterface::SavedStateResult
+SavedStateInterface::getMostRecentSavedState(
+    w_string_piece lookupCommitId) const {
+  try {
+    return getMostRecentSavedStateImpl(lookupCommitId);
+  } catch (const std::exception& ex) {
+    // This is a performance optimization only so return an error message on
+    // failure but do not throw.
+    auto reason = ex.what();
+    log(ERR, "Exception while finding most recent saved state: ", reason, "\n");
+    SavedStateInterface::SavedStateResult result;
+    result.commitId = w_string();
+    result.savedStateInfo = json_object(
+        {{"error", w_string_to_json("Error while finding saved state")}});
+    return result;
+  }
+}
 } // namespace watchman

@@ -42,7 +42,10 @@ class SavedStateInterface {
   // including lookupCommitId that has a valid saved state for the specified
   // storage key. The contents of the storage key and the return value vary with
   // the storage type.
-  virtual SavedStateResult getMostRecentSavedState(
+  SavedStateResult getMostRecentSavedState(w_string_piece lookupCommitId) const;
+
+ protected:
+  virtual SavedStateResult getMostRecentSavedStateImpl(
       w_string_piece lookupCommitId) const = 0;
 };
 } // namespace watchman

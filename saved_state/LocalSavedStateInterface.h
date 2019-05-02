@@ -20,7 +20,7 @@ class LocalSavedStateInterface : public SavedStateInterface {
  public:
   LocalSavedStateInterface(const json_ref& savedStateConfig, const SCM* scm);
 
-  SavedStateInterface::SavedStateResult getMostRecentSavedState(
+  SavedStateInterface::SavedStateResult getMostRecentSavedStateImpl(
       w_string_piece lookupCommitId) const override;
 
  private:
