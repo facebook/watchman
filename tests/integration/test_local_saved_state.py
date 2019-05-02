@@ -157,7 +157,7 @@ o  changeset:
         # local-storage-path. Unit tests more extensively test all possible
         # error cases, this just confirms that an example error propagates end
         # to end properly.
-        config = {"config": {"project": "test"}}
+        config = {"project": "test"}
         test_query = self.getQuery(config)
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             self.watchmanCommand("query", self.root, test_query)

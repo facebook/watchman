@@ -14,7 +14,7 @@ namespace watchman {
 LocalSavedStateInterface::LocalSavedStateInterface(
     const json_ref& savedStateConfig,
     const SCM* scm)
-    : SavedStateInterface(), scm_(scm) {
+    : SavedStateInterface(savedStateConfig), scm_(scm) {
   // Max commits to search in source control history for a saved state
   auto maxCommits = savedStateConfig.get_default("max-commits");
   if (maxCommits) {
@@ -42,16 +42,8 @@ LocalSavedStateInterface::LocalSavedStateInterface(
   if (!w_string_path_is_absolute(localStoragePath_)) {
     throw QueryParseError("'local-storage-path' must be an absolute path");
   }
-  // The saved state project, which must be a sub-directory in the local storage
+  // The saved state project must be a sub-directory in the local storage
   // path.
-  auto project = savedStateConfig.get_default("project");
-  if (!project) {
-    throw QueryParseError("'project' must be present in saved state config");
-  }
-  if (!project.isString()) {
-    throw QueryParseError("'project' must be a string");
-  }
-  project_ = json_to_w_string(project);
   if (w_string_path_is_absolute(project_)) {
     throw QueryParseError("'project' must be a relative path");
   }

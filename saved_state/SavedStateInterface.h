@@ -45,6 +45,9 @@ class SavedStateInterface {
   SavedStateResult getMostRecentSavedState(w_string_piece lookupCommitId) const;
 
  protected:
+  w_string project_;
+
+  explicit SavedStateInterface(const json_ref& savedStateConfig);
   virtual SavedStateResult getMostRecentSavedStateImpl(
       w_string_piece lookupCommitId) const = 0;
 };

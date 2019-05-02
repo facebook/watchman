@@ -26,7 +26,6 @@ class LocalSavedStateInterface : public SavedStateInterface {
  private:
   json_int_t maxCommits_;
   w_string localStoragePath_;
-  w_string project_;
   const SCM* scm_;
 };
 } // namespace watchman

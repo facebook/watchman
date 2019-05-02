@@ -30,6 +30,17 @@ std::unique_ptr<SavedStateInterface> SavedStateInterface::getInterface(
   throw QueryParseError("invalid storage type '", storageType, "'");
 }
 
+SavedStateInterface::SavedStateInterface(const json_ref& savedStateConfig) {
+  auto project = savedStateConfig.get_default("project");
+  if (!project) {
+    throw QueryParseError("'project' must be present in saved state config");
+  }
+  if (!project.isString()) {
+    throw QueryParseError("'project' must be a string");
+  }
+  project_ = json_to_w_string(project);
+}
+
 SavedStateInterface::SavedStateResult
 SavedStateInterface::getMostRecentSavedState(
     w_string_piece lookupCommitId) const {
