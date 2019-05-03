@@ -31,11 +31,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/external/install/include")
 
-if (NOT WIN32)
-  set(WANT_THRIFT ON)
-else()
-  set(WANT_THRIFT OFF)
-endif()
+option(ENABLE_EDEN_SUPPORT "If enabled, add support for the Eden \
+  virtual filesystem.  That requires fbthrift."
+  OFF)
 
 # Determine whether we are the git repo produced by shipit, a staging
 # area produced by shipit in the FB internal CI, or whether
@@ -73,7 +71,7 @@ function(maybe_shipit_dir MONOREPO_RELATIVE_PATH)
   endif()
 endfunction()
 
-if (WANT_THRIFT)
+if (ENABLE_EDEN_SUPPORT)
   # We use shipit to mirror in these locations from the monorepo
   maybe_shipit_dir("../fboss/common")
   maybe_shipit_dir("../eden")
@@ -289,7 +287,7 @@ link_directories(${LIBEVENT_LIBDIR})
 find_package(folly CONFIG REQUIRED)
 
 
-if (WANT_THRIFT)
+if (ENABLE_EDEN_SUPPORT)
   find_package(fizz CONFIG REQUIRED)
   find_package(fmt CONFIG REQUIRED)
   find_package(wangle CONFIG REQUIRED)
@@ -368,7 +366,7 @@ else()
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_COMMON} -O3")
 endif()
 
-if (WANT_THRIFT)
+if (ENABLE_EDEN_SUPPORT)
 add_subdirectory(common)
 endif()
 
@@ -385,7 +383,7 @@ target_include_directories(third_party_deps INTERFACE
   ${GFLAGS_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
 )
-if (WANT_THRIFT)
+if (ENABLE_EDEN_SUPPORT)
   target_link_libraries(
     third_party_deps
     INTERFACE
@@ -478,7 +476,7 @@ endif()
 add_library(testsupport STATIC ${testsupport_sources})
 target_link_libraries(testsupport log string jansson third_party_deps)
 
-if (WANT_THRIFT)
+if (ENABLE_EDEN_SUPPORT)
   add_thrift_cpp2_library(
     eden_service_thrift
     eden/fs/service/eden.thrift
@@ -593,7 +591,7 @@ watcher/kqueue.cpp
 watcher/portfs.cpp
 )
 
-if (WANT_THRIFT)
+if (ENABLE_EDEN_SUPPORT)
   # We currently only support talking to eden on posix systems
   list(APPEND watchman_sources watcher/eden.cpp)
 endif()
@@ -630,7 +628,7 @@ target_link_libraries(
   third_party_deps
 )
 
-if (WANT_THRIFT)
+if (ENABLE_EDEN_SUPPORT)
   target_link_libraries(
     watchman
     streamingeden_thrift
