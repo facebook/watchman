@@ -92,3 +92,32 @@ class TestFishy(WatchmanTestCase.WatchmanTestCase):
         )
         self.resumeWatchman()
         self.assertFileList(root, files=["d1", "d2", "d2/a", "d3"], cursor=clock)
+
+    def test_notify_dir(self):
+        root = self.mkdtemp()
+        self.watchmanCommand("watch", root)
+        os.mkdir(os.path.join(root, "wtest"))
+        os.mkdir(os.path.join(root, "wtest", "dir"))
+        self.touchRelative(root, "wtest", "1")
+        self.touchRelative(root, "wtest", "2")
+        self.assertFileList(
+            root, ["wtest", "wtest/1", "wtest/2", "wtest/dir"], cursor="n:foo"
+        )
+
+        os.rmdir(os.path.join(root, "wtest/dir"))
+        files = self.watchmanCommand(
+            "query", root, {"fields": ["name"], "since": "n:foo"}
+        )["files"]
+        self.assertFileListsEqual(files, ["wtest", "wtest/dir"])
+
+        os.unlink(os.path.join(root, "wtest/2"))
+        files = self.watchmanCommand(
+            "query", root, {"fields": ["name"], "since": "n:foo"}
+        )["files"]
+        self.assertFileListsEqual(files, ["wtest", "wtest/2"])
+
+        os.unlink(os.path.join(root, "wtest/1"))
+        files = self.watchmanCommand(
+            "query", root, {"fields": ["name"], "since": "n:foo"}
+        )["files"]
+        self.assertFileListsEqual(files, ["wtest", "wtest/1"])

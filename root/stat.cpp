@@ -6,6 +6,47 @@
 #include "watchman_error_category.h"
 
 namespace watchman {
+
+/* The purpose of this function is to help us decide whether we should
+ * update the parent directory when a non-directory directory entry
+ * is changed.  If so, we schedule re-examining the parent.
+ * Not all systems report the containing directory as changed in that
+ * situation, so we decide this based on the capabilities of the watcher.
+ */
+void InMemoryView::propagateToParentDirIfAppropriate(
+    const std::shared_ptr<w_root_t>& root,
+    PendingCollection::LockedPtr& coll,
+    struct timeval now,
+    const FileInformation& entryStat,
+    const w_string& dirName,
+    const watchman_dir* parentDir,
+    bool isUnlink) {
+  if ((watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) &&
+      dirName != root->root_path && !entryStat.isDir() &&
+      parentDir->last_check_existed) {
+    /* We're deliberately not propagating any of the flags through
+     * from statPath() (which calls us); we
+     * definitely don't want this to be a recursive evaluation.
+     * Previously, we took pains to avoid turning on VIA_NOTIFY
+     * here to avoid spuriously marking the node as changed when
+     * only its atime was changed to avoid tickling some behavior
+     * in the Pants build system:
+     * https://github.com/facebook/watchman/issues/305 and
+     * https://github.com/facebook/watchman/issues/307, but
+     * unfortunately we do need to set it here because eg:
+     * Linux doesn't send an inotify event for the parent
+     * directory for an unlink, and if we rely on stat()
+     * alone, the filesystem mtime granularity may be too
+     * low for us to detect that the parent has changed.
+     * As a compromize, if we're told that the change was due
+     * to an unlink, then we force delivery of a change event,
+     * otherwise we'll only do so if the directory has
+     * observably changed via stat().
+     */
+    coll->add(dirName, now, isUnlink ? W_PENDING_VIA_NOTIFY : 0);
+  }
+}
+
 void InMemoryView::statPath(
     const std::shared_ptr<w_root_t>& root,
     SyncView::LockedPtr& view,
@@ -116,6 +157,15 @@ void InMemoryView::statPath(
           int(dir_name.size()),
           dir_name.data());
       coll->add(dir_name, now, W_PENDING_CRAWL_ONLY);
+    } else {
+      propagateToParentDirIfAppropriate(
+          root,
+          coll,
+          now,
+          file->stat,
+          dir_name,
+          parentDir,
+          /* isUnlink= */ true);
     }
 
   } else if (errcode.value()) {
@@ -207,20 +257,8 @@ void InMemoryView::statPath(
       // our former tree here
       markDirDeleted(view, dir_ent, now, true);
     }
-    if ((watcher_->flags & WATCHER_HAS_PER_FILE_NOTIFICATIONS) && !st.isDir() &&
-        !w_string_equal(dir_name, root->root_path) &&
-        parentDir->last_check_existed) {
-      /* Make sure we update the mtime on the parent directory.
-       * We're deliberately not propagating any of the flags through; we
-       * definitely don't want this to be a recursive evaluation and we
-       * won'd want to treat this as VIA_NOTIFY to avoid spuriously
-       * marking the node as changed when only its atime was changed.
-       * https://github.com/facebook/watchman/issues/305 and
-       * https://github.com/facebook/watchman/issues/307 have more
-       * context on why this is.
-       */
-      coll->add(dir_name, now, 0);
-    }
+    propagateToParentDirIfAppropriate(
+        root, coll, now, st, dir_name, parentDir, /* isUnlink= */ false);
   }
 }
 }

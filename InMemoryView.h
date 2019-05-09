@@ -229,6 +229,14 @@ struct InMemoryView : public QueryableView {
       struct timeval now,
       int flags,
       const watchman_dir_ent* pre_stat);
+  void propagateToParentDirIfAppropriate(
+      const std::shared_ptr<w_root_t>& root,
+      PendingCollection::LockedPtr& coll,
+      struct timeval now,
+      const FileInformation& entryStat,
+      const w_string& dirName,
+      const watchman_dir* parentDir,
+      bool isUnlink);
 
   CookieSync& cookies_;
   Configuration& config_;
