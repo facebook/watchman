@@ -94,12 +94,26 @@ void InMemoryView::statPath(
   } else {
     try {
       st = getFileInformation(path, root->case_sensitive);
-      log(DBG, "getFileInformation(", path, ") file=", file, " dir=", dir_ent,
+      log(DBG,
+          "getFileInformation(",
+          path,
+          ") file=",
+          file,
+          " dir=",
+          dir_ent,
           "\n");
-    } catch (const std::system_error &exc) {
+    } catch (const std::system_error& exc) {
       errcode = exc.code();
-      log(DBG, "getFileInformation(", path, ") file=", file, " dir=", dir_ent,
-          " failed: ", exc.what(), "\n");
+      log(DBG,
+          "getFileInformation(",
+          path,
+          ") file=",
+          file,
+          " dir=",
+          dir_ent,
+          " failed: ",
+          exc.what(),
+          "\n");
     }
   }
 
@@ -136,9 +150,13 @@ void InMemoryView::statPath(
       // representation of it now, so that subscription clients can
       // be notified of this event
       file = getOrCreateChildFile(view, parentDir, file_name, now);
-      log(DBG, "getFileInformation(", path, ") -> ",
-          errcode.message(), " and file node was NULL. "
-                             "Generating a deleted node.\n");
+      log(DBG,
+          "getFileInformation(",
+          path,
+          ") -> ",
+          errcode.message(),
+          " and file node was NULL. "
+          "Generating a deleted node.\n");
       file->exists = false;
       markFileChanged(view, file, now);
     }
@@ -261,7 +279,7 @@ void InMemoryView::statPath(
         root, coll, now, st, dir_name, parentDir, /* isUnlink= */ false);
   }
 }
-}
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */
