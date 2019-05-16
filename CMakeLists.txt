@@ -519,7 +519,6 @@ fstype.cpp
 groups.cpp
 # hash.cpp (in libhash)
 ignore.cpp
-ioprio.cpp
 json.cpp
 launchd.cpp
 listener-user.cpp

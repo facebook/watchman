@@ -34,9 +34,6 @@ void InMemoryView::fullCrawl(
   struct timeval start;
 
   w_perf_t sample("full-crawl");
-  if (config_.getBool("iothrottle", false)) {
-    w_ioprio_set_low();
-  }
   {
     auto view = view_.wlock();
     // Ensure that we observe these files with a new, distinct clock,
@@ -71,10 +68,6 @@ void InMemoryView::fullCrawl(
     root->cookies.abortAllCookies();
   }
   sample.add_root_meta(root);
-
-  if (config_.getBool("iothrottle", false)) {
-    w_ioprio_set_normal();
-  }
 
   sample.finish();
   sample.force_log();
