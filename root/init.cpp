@@ -22,8 +22,8 @@ static json_ref load_root_config(const char* path) {
 
   auto res = json_load_file(cfgfilename, 0, &err);
   if (!res) {
-    w_log(W_LOG_ERR, "failed to parse json from %s: %s\n",
-        cfgfilename, err.text);
+    throw std::runtime_error(watchman::to<std::string>(
+        "failed to parse json from ", cfgfilename, ": ", err.text));
   }
   return res;
 }

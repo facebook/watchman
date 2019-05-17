@@ -13,6 +13,11 @@ import WatchmanTestCase
 from path_utils import norm_absolute_path, norm_relative_path
 
 
+def make_empty_watchmanconfig(dir):
+    with open(os.path.join(dir, ".watchmanconfig"), "w") as f:
+        f.write("{}")
+
+
 @WatchmanTestCase.expand_matrix
 class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
     def runProjectTests(self, config, expect, touch_watchmanconfig=False):
@@ -33,7 +38,7 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
                 dir_to_watch = norm_absolute_path(dir_to_watch)
                 self.touchRelative(d, touch)
                 if touch_watchmanconfig:
-                    self.touchRelative(d, ".watchmanconfig")
+                    make_empty_watchmanconfig(d)
 
                 if expect_watch:
                     expect_watch = os.path.join(d, expect_watch)
@@ -116,7 +121,7 @@ class TestWatchProject(WatchmanTestCase.WatchmanTestCase):
         d = self.mkdtemp()
         abc = os.path.join(d, "a", "b", "c")
         os.makedirs(abc, 0o777)
-        self.touchRelative(abc, ".watchmanconfig")
+        make_empty_watchmanconfig(abc)
 
         res = self.watchmanCommand("watch-project", d)
         self.assertEqual(d, norm_absolute_path(res["watch"]))
