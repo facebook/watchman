@@ -105,7 +105,7 @@ void test_future() {
   }
 
   auto drained = exec.drain();
-  ok(drained == 12, "should be 12 things pending, but have %d", drained);
+  ok(drained == 13, "should be 13 things pending, but have %d", drained);
 
   // Let them make progress
   exec.drain();
