@@ -149,11 +149,13 @@ class _Instance(object):
     def watchmanBinary(self):
         return os.environ.get("WATCHMAN_BINARY", "watchman")
 
-    def commandViaCLI(self, cmd):
+    def commandViaCLI(self, cmd, prefix=None):
         """a very bare bones helper to test the site spawner functionality"""
-        args = [self.watchmanBinary(), "--log-level=2"]
+        args = prefix or []
+        args.extend([self.watchmanBinary(), "--log-level=2"])
         args.extend(self.get_state_args())
         args.extend(cmd)
+
         env = os.environ.copy()
         env["WATCHMAN_CONFIG_FILE"] = self.cfg_file
         del env["WATCHMAN_NO_SPAWN"]

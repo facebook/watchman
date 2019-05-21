@@ -7,6 +7,7 @@
 #ifndef _WIN32
 #include <poll.h>
 #endif
+#include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Singleton.h>
 
@@ -172,6 +173,29 @@ static bool lock_pidfile(void) {
 #endif
 }
 
+#ifndef _WIN32
+// Returns the current process priority aka `nice` level.
+// Since `-1` is a valid nice level, in order to detect an
+// error we clear errno first and then test whether it is
+// non-zero after we have retrieved the nice value.
+static int get_nice_value() {
+  errno = 0;
+  auto value = nice(0);
+  folly::checkPosixError(errno, "failed to get `nice` value");
+  return value;
+}
+
+static void check_nice_value() {
+  if (get_nice_value() > cfg_get_int("min_acceptable_nice_value", 0)) {
+    watchman::log(
+        watchman::FATAL,
+        "Watchman is running at a lower than normal priority. Since that "
+        "results in poor performance that is otherwise very difficult to "
+        "trace, diagnose and debug, Watchman is refusing to start.\n");
+  }
+}
+#endif
+
 static void run_service(void)
 {
   int fd;
@@ -182,6 +206,12 @@ static void run_service(void)
   // socket to a different descriptor number.
   if (inetd_style) {
     w_listener_prep_inetd();
+  }
+  if (isatty(0)) {
+    // This case can happen when a user is running watchman using
+    // the `--foreground` switch.
+    // Check and raise this error before we detach from the terminal
+    check_nice_value();
   }
 #endif
 
@@ -197,6 +227,12 @@ static void run_service(void)
     ignore_result(::dup2(fd, STDERR_FILENO));
     ::close(fd);
   }
+
+#ifndef _WIN32
+  // If we weren't attached to a tty, check this now that we've opened
+  // the log files so that we can log the problem there.
+  check_nice_value();
+#endif
 
   if (!lock_pidfile()) {
     return;
@@ -298,6 +334,8 @@ static void close_random_fds(void) {
 #if !defined(USE_GIMLI) && !defined(_WIN32)
 static void daemonize(void)
 {
+  // Make sure we're not about to inherit an undesirable nice value
+  check_nice_value();
   close_random_fds();
 
   // the double-fork-and-setsid trick establishes a
