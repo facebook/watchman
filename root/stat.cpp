@@ -12,8 +12,10 @@ namespace watchman {
  * is changed.  If so, we schedule re-examining the parent.
  * Not all systems report the containing directory as changed in that
  * situation, so we decide this based on the capabilities of the watcher.
+ * If the directory is added to the PendingCollection, this function
+ * returns true. Otherwise, this function returns false.
  */
-void InMemoryView::propagateToParentDirIfAppropriate(
+bool InMemoryView::propagateToParentDirIfAppropriate(
     const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll,
     struct timeval now,
@@ -44,7 +46,9 @@ void InMemoryView::propagateToParentDirIfAppropriate(
      * observably changed via stat().
      */
     coll->add(dirName, now, isUnlink ? W_PENDING_VIA_NOTIFY : 0);
+    return true;
   }
+  return false;
 }
 
 void InMemoryView::statPath(
@@ -161,7 +165,15 @@ void InMemoryView::statPath(
       markFileChanged(view, file, now);
     }
 
-    if (root->case_sensitive == CaseSensitivity::CaseInSensitive &&
+    if (!propagateToParentDirIfAppropriate(
+            root,
+            coll,
+            now,
+            file->stat,
+            dir_name,
+            parentDir,
+            /* isUnlink= */ true) &&
+        root->case_sensitive == CaseSensitivity::CaseInSensitive &&
         !w_string_equal(dir_name, root->root_path) &&
         parentDir->last_check_existed) {
       /* If we rejected the name because it wasn't canonical,
@@ -175,15 +187,6 @@ void InMemoryView::statPath(
           int(dir_name.size()),
           dir_name.data());
       coll->add(dir_name, now, W_PENDING_CRAWL_ONLY);
-    } else {
-      propagateToParentDirIfAppropriate(
-          root,
-          coll,
-          now,
-          file->stat,
-          dir_name,
-          parentDir,
-          /* isUnlink= */ true);
     }
 
   } else if (errcode.value()) {
