@@ -301,46 +301,31 @@ message(STATUS "Found python ${PYTHON_VERSION_STRING}")
 
 if(PYTHONINTERP_FOUND)
   set(PYOUT "${CMAKE_CURRENT_BINARY_DIR}/build/pytimestamp")
-  set(PYSETUP "${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py")
+  set(SETUP_PY "${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py")
+  file(GLOB PYWATCHMAN_PY_SRCS "python/pywatchman/*.py")
   add_custom_command(
+    COMMENT "Building pywatchman"
     OUTPUT ${PYOUT}
-    # DEPENDS "python/pywatchman/*.py"
-    COMMAND ${PYTHON_EXECUTABLE} ${PYSETUP} clean
-      build_py -c -d ${CMAKE_CURRENT_BINARY_DIR}/python
-      build_ext -b ${CMAKE_CURRENT_BINARY_DIR}/python
-                -t ${CMAKE_CURRENT_BINARY_DIR}/python/build/temp
+    DEPENDS ${PYWATCHMAN_PY_SRCS} "python/pywatchman/bser.c"
+    COMMAND ${CMAKE_COMMAND} -E env
+      CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+      CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
+      ${PYTHON_EXECUTABLE} ${SETUP_PY} build
+    COMMAND ${CMAKE_COMMAND} -E touch ${PYOUT}
   )
   add_custom_target(pybuild ALL DEPENDS ${PYOUT})
-  # We cannot use the trick we use below on windows because paths like
-  # c:/something/c:/somethingelse are invalid
-  if (NOT WIN32)
-    # Since we cannot portably or reliably reference DESTDIR here, and because
-    # the cmake documentation is unclear about whether it allows expanding
-    # DESTDIR on windows, we ask python to install to the binary dir, and
-    # then manually mirror that directory structure out to the install location.
-    install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} \
-      ${PYSETUP} install \
-      --root ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/python.install \
-      --prefix ${CMAKE_INSTALL_PREFIX})")
-    # The use of `.` here for the destination causes cmake to use the
-    # DESTDIR-modified CMAKE_INSTALL_PREFIX
-    install(DIRECTORY
-      "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/python.install/${CMAKE_INSTALL_PREFIX}/bin"
-      DESTINATION .
-      USE_SOURCE_PERMISSIONS)
-    # On Linux python may be installed in either `lib` or `lib64`, so
-    # optionally install both locations and take whatever we get.
-    install(DIRECTORY
-      "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/python.install/${CMAKE_INSTALL_PREFIX}/lib"
-      OPTIONAL
-      DESTINATION .
-      USE_SOURCE_PERMISSIONS)
-    install(DIRECTORY
-      "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/python.install/${CMAKE_INSTALL_PREFIX}/lib64"
-      OPTIONAL
-      DESTINATION .
-      USE_SOURCE_PERMISSIONS)
-  endif()
+  install(CODE "
+    execute_process(COMMAND
+      ${CMAKE_COMMAND} -E env
+        CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+        CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
+      ${PYTHON_EXECUTABLE} ${SETUP_PY} install
+      --root ${CMAKE_INSTALL_PREFIX}
+      RESULT_VARIABLE STATUS)
+    if (NOT STATUS STREQUAL 0)
+      message(FATAL_ERROR \"pywatchman install failed\")
+    endif()
+  ")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
