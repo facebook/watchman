@@ -1,7 +1,4 @@
-# This is an experimental cmakefile and doesn't offer all of the options
-# available in the configure script!  At this time you should prefer to
-# use the configure script to build and install watchman!
-cmake_minimum_required(VERSION 3.1.3 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 set(CMAKE_MODULE_PATH
   # For in-fbsource builds on mac
@@ -10,7 +7,7 @@ set(CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/build/fbcode_builder/CMake"
   ${CMAKE_MODULE_PATH})
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 # Tell CMake to also look in the directories where getdeps.py installs
 # our third-party dependencies.
@@ -361,7 +358,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(CMAKE_STATIC_LIBRARY_FLAGS
     "${CMAKE_STATIC_LIBRARY_FLAGS} /DEBUG /MT /OPT:NOREF")
 else()
-  set(CMAKE_CXX_FLAGS_COMMON "-g -Wall -Wextra -std=gnu++14")
+  set(CMAKE_CXX_FLAGS_COMMON "-g -Wall -Wextra -std=gnu++17")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_COMMON}")  # for cmake 3.0
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_COMMON}")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_COMMON} -O3")
