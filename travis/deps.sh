@@ -12,18 +12,7 @@ case "$OSTYPE" in
     # so let's force nodejs to be reinstalled and see if that helps.
     brew install nodejs || brew upgrade nodejs || true
 
-    # avoid snafu with OS X and python builds
-    #ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future
-    #CFLAGS="$CFLAGS $ARCHFLAGS"
-    #export ARCHFLAGS CFLAGS
     case "$TRAVIS_PYTHON" in
-      python2.6)
-        pyenv install 2.6.9
-        eval "$(pyenv init -)"
-        pyenv global 2.6.9
-        # install some other required dependencies
-        pip2.6 install unittest2==1.1.0 argparse
-        ;;
       python2.7)
         pyenv install 2.7.11
         pyenv global 2.7.11
@@ -37,7 +26,8 @@ case "$OSTYPE" in
         pyenv global 3.6.1
     esac
 
-    HOMEBREW_NO_AUTO_UPDATE=1 ./getdeps.py --install-deps
+    #HOMEBREW_NO_AUTO_UPDATE=1 ./getdeps.py --install-deps
+    ./build/fbcode_builder/getdeps.py build watchman
     ;;
   *)
     ./getdeps.py

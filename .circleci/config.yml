@@ -11,40 +11,27 @@ defaults: &defaults
           - build-linux-debug-{{ arch }}-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}
         paths:
           - ~/.ccache
-          - ~/cmake-3.6.2-Linux-x86_64
-    - run:
-        name: Get newer cmake
-        command: |
-            if [ ! -d ~/cmake-3.6.2-Linux-x86_64 ]; then
-              echo "No cache - building CMake"
-              cd ~
-              # Note that this requires libidn.so.11
-              wget --quiet https://cmake.org/files/v3.6/cmake-3.6.2-Linux-x86_64.tar.gz
-              tar -xvf cmake-3.6.2-Linux-x86_64.tar.gz
-            else
-              echo "Cached CMake found"
-            fi
     - checkout
-    - run:
-        name: Run getdeps.py
-        command: python ./getdeps.py --install-deps -j2
     - run:
         name: Python version
         command: python -V && env
     - run:
         name: Run build
         command: |
-          export PATH=$HOME/cmake-3.6.2-Linux-x86_64/bin:$PATH
           export CCACHE_DIR=$HOME/.ccache
           mkdir -p $CCACHE_DIR
-          cmake .
-          make VERBOSE=1 -j2
-          make integration VERBOSE=1 -j2
+          GETDEPS="build/fbcode_builder/getdeps.py"
+          "$GETDEPS" build --enable-tests watchman
+          "$GETDEPS" test watchman
+          inst_dir=$("$GETDEPS" show-inst-dir watchman)
+          src_dir=$("$GETDEPS" show-source-dir watchman)
+          python "${src_dir}/runtests.py" \
+            --pybuild-dir="${inst_dir}/../../build/watchman/python/build" \
+            --watchman-path="${inst_dir}/bin/watchman"
     - save_cache:
         key: build-linux-debug-{{ arch }}-{{ .Branch }}-{{ .Environment.CIRCLE_JOB }}
         paths:
           - ~/.ccache
-          - ~/cmake-3.6.2-Linux-x86_64
         when: always
 
 version: 2

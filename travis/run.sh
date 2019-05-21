@@ -37,14 +37,17 @@ export TMPDIR TMP
 
 set +e
 
-make VERBOSE=1
+GETDEPS="build/fbcode_builder/getdeps.py"
 
-if ! make integration VERBOSE=1 ; then
-  exit 1
-fi
+"$GETDEPS" build --enable-tests watchman
+"$GETDEPS" test watchman
 
-make DESTDIR=$INST_TEST install
-find $INST_TEST
+inst_dir=$("$GETDEPS" show-inst-dir watchman)
+src_dir=$("$GETDEPS" show-source-dir watchman)
+
+python "${src_dir}/runtests.py" \
+  --pybuild-dir="${inst_dir}/../../build/watchman/python/build" \
+  --watchman-path="${inst_dir}/bin/watchman"
 
 exit 0
 
