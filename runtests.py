@@ -144,7 +144,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 if args.pybuild_dir is not None:
-    sys.path.insert(0, args.pybuild_dir)
+    sys.path.insert(0, os.path.realpath(args.pybuild_dir))
 
 # Import our local stuff after we've had a chance to look at args.pybuild_dir.
 # The `try` block prevents the imports from being reordered
