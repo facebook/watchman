@@ -25,12 +25,7 @@ case "$OSTYPE" in
         pyenv install 3.6.1
         pyenv global 3.6.1
     esac
-
-    #HOMEBREW_NO_AUTO_UPDATE=1 ./getdeps.py --install-deps
-    ./build/fbcode_builder/getdeps.py build watchman
     ;;
   *)
-    ./getdeps.py
     ;;
 esac
-cmake .

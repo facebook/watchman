@@ -46,7 +46,7 @@ def _print_env_diff(env):
             print("+ %s=%s \\" % (k, shellquote(env[k])))
 
 
-def run_cmd(cmd, env=None, cwd=None, allow_fail=False):
+def run_cmd(cmd, env=None, cwd=None, allow_fail=False, log_file_name=None):
     print("---")
     try:
         cmd_str = " \\\n+      ".join(shellquote(arg) for arg in cmd)
@@ -73,15 +73,24 @@ def run_cmd(cmd, env=None, cwd=None, allow_fail=False):
         if is_windows() and (len(cwd) < 250) and cwd.startswith("\\\\?\\"):
             cwd = cwd[4:]
 
-    print("+ %s" % cmd_str)
-
-    if allow_fail:
-        return subprocess.call(cmd, env=env, cwd=cwd)
+    log_file = None
+    if log_file_name:
+        cmd_str += " >%s" % log_file_name
+        log_file = open(log_file_name, "wb")
 
     try:
-        return subprocess.check_call(cmd, env=env, cwd=cwd)
-    except (TypeError, ValueError, OSError) as exc:
-        raise RunCommandError(
-            "%s while running `%s` with env=%r\nos.environ=%r"
-            % (str(exc), cmd_str, env, os.environ)
-        )
+        print("+ %s" % cmd_str)
+
+        if allow_fail:
+            return subprocess.call(cmd, env=env, cwd=cwd, stdout=log_file, stderr=log_file)
+
+        try:
+            return subprocess.check_call(cmd, env=env, cwd=cwd, stdout=log_file, stderr=log_file)
+        except (TypeError, ValueError, OSError) as exc:
+            raise RunCommandError(
+                "%s while running `%s` with env=%r\nos.environ=%r"
+                % (str(exc), cmd_str, env, os.environ)
+            )
+    finally:
+        if log_file:
+            log_file.close()

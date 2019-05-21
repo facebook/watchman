@@ -51,7 +51,7 @@ class BuilderBase(object):
                 return [vcvarsall, "amd64", "&&"]
         return []
 
-    def _run_cmd(self, cmd, cwd=None, env=None):
+    def _run_cmd(self, cmd, cwd=None, env=None, log_file_name=None):
         if env:
             e = self.env.copy()
             e.update(env)
@@ -63,7 +63,7 @@ class BuilderBase(object):
         if cmd_prefix:
             cmd = cmd_prefix + cmd
 
-        run_cmd(cmd=cmd, env=env, cwd=cwd or self.build_dir)
+        run_cmd(cmd=cmd, env=env, cwd=cwd or self.build_dir, log_file_name=log_file_name)
 
     def build(self, install_dirs, reconfigure):
         print("Building %s..." % self.manifest.name)
@@ -596,7 +596,7 @@ class OpenSSLBuilder(BuilderBase):
                 "no-tests",
             ]
         )
-        self._run_cmd([make, "install_sw", "install_ssldirs"])
+        self._run_cmd([make, "install_sw", "install_ssldirs"], log_file_name=os.path.join(self.build_dir, "build.log"))
 
 
 class Boost(BuilderBase):
@@ -646,6 +646,7 @@ class Boost(BuilderBase):
                     "install",
                 ],
                 cwd=self.src_dir,
+                log_file_name=os.path.join(self.build_dir, "build.log"),
             )
 
 
