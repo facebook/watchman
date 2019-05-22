@@ -22,6 +22,7 @@ def populate(repo):
     repo.write_file("bdir/noexec.sh", "#!/bin/bash\necho test\n")
     repo.write_file("b*ir/star", "star")
     repo.write_file("b\\*ir/foo", "foo")
+    repo.write_file("cdir/sub/file", "")
     repo.symlink("slink", "hello")
     repo.commit("initial commit.")
 
@@ -109,6 +110,9 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
                 "b*ir/star",
                 "b\\*ir",
                 "b\\*ir/foo",
+                "cdir",
+                "cdir/sub",
+                "cdir/sub/file",
                 "hello",
                 "slink",
             ],
@@ -126,6 +130,7 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
                 "bdir/test.sh",
                 "b*ir/star",
                 "b\\*ir/foo",
+                "cdir/sub/file",
                 "hello",
             ],
         )
@@ -198,6 +203,9 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
                 "bdir/test.sh",
                 "b\\*ir",
                 "b\\*ir/foo",
+                "cdir",
+                "cdir/sub",
+                "cdir/sub/file",
                 "hello",
                 "slink",
             ],
@@ -255,3 +263,22 @@ class TestEdenPathGenerator(WatchmanEdenTestCase.WatchmanEdenTestCase):
             root,
             {"expression": ["type", "f"], "fields": ["name"], "suffix": ["s*"]},
         )
+
+        # With overlapping glob patterns in the same generator, Watchman should
+        # not return duplicate results.
+        res = self.watchmanCommand(
+            "query", root, {"fields": ["name"], "glob": ["bdir/*.sh", "bdir/test*"]}
+        )
+        files = res["files"]
+        self.assertFileListsEqual(
+            files,
+            ["bdir/noexec.sh", "bdir/test.sh"],
+            "Overlapping patterns should yield no duplicates",
+        )
+
+        # edenfs had a bug where a globFiles request like ["foo/*", "foo/*/*"] would
+        # effectively ignore the second pattern. Ensure that bug has been fixed.
+        res = self.watchmanCommand(
+            "query", root, {"fields": ["name"], "glob": ["cdir/*", "cdir/*/*"]}
+        )
+        self.assertFileListsEqual(res["files"], ["cdir/sub", "cdir/sub/file"])

@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #include <folly/String.h>
+#include <folly/futures/Future.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventBaseManager.h>
 #include <thrift/lib/cpp/async/TAsyncSocket.h>
@@ -10,6 +11,7 @@
 #include <thrift/lib/cpp2/async/RSocketClientChannel.h>
 #include <algorithm>
 #include <chrono>
+#include <iterator>
 #include <thread>
 #include "eden/fs/service/gen-cpp2/StreamingEdenService.h"
 #include "thirdparty/wildmatch/wildmatch.h"
@@ -638,14 +640,50 @@ std::vector<std::string> callEdenGlobViaThrift(
     const std::string& mountPoint,
     const std::vector<std::string>& globPatterns,
     bool includeDotfiles) {
-  GlobParams params;
-  params.set_mountPoint(mountPoint);
-  params.set_globs(globPatterns);
-  params.set_includeDotfiles(includeDotfiles);
+  // edenfs had a bug where, for a globFiles request like ["foo/*", "foo/*/*"],
+  // edenfs would effectively ignore the second pattern. edenfs diff D15078089
+  // fixed this bug, but that diff hasn't been deployed widely yet. Work around
+  // this bug here by not calling globFiles with more than one pattern.
+  // TODO(T44365385): Remove this workaround when a newer version of edenfs is
+  // deployed everywhere.
+  bool isEdenFSGlobFilesBuggy = true;
 
-  Glob glob;
-  client->sync_globFiles(glob, params);
-  return glob.get_matchingFiles();
+  if (isEdenFSGlobFilesBuggy && globPatterns.size() > 1) {
+    folly::DrivableExecutor* executor =
+        folly::EventBaseManager::get()->getEventBase();
+
+    std::vector<folly::Future<Glob>> globFutures;
+    globFutures.reserve(globPatterns.size());
+    for (const std::string& globPattern : globPatterns) {
+      GlobParams params;
+      params.set_mountPoint(mountPoint);
+      params.set_globs(std::vector<std::string>{globPattern});
+      params.set_includeDotfiles(includeDotfiles);
+
+      globFutures.emplace_back(
+          client->semifuture_globFiles(params).via(executor));
+    }
+
+    std::vector<std::string> allResults;
+    for (folly::Future<Glob>& globFuture : globFutures) {
+      std::vector<std::string> matchingFiles =
+          std::move(globFuture).getVia(executor).get_matchingFiles();
+      allResults.insert(
+          allResults.end(),
+          std::make_move_iterator(matchingFiles.begin()),
+          std::make_move_iterator(matchingFiles.end()));
+    }
+    return allResults;
+  } else {
+    GlobParams params;
+    params.set_mountPoint(mountPoint);
+    params.set_globs(globPatterns);
+    params.set_includeDotfiles(includeDotfiles);
+
+    Glob glob;
+    client->sync_globFiles(glob, params);
+    return glob.get_matchingFiles();
+  }
 }
 
 class EdenView : public QueryableView {
