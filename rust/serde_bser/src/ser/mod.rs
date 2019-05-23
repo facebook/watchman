@@ -7,8 +7,8 @@ use std::io;
 use bytes::BufMut;
 use serde::ser::{self, Serialize};
 
-use errors::*;
-use header::*;
+use crate::errors::*;
+use crate::header::*;
 
 use self::count_write::CountWrite;
 
@@ -55,7 +55,7 @@ macro_rules! maybe_put_int {
         if val >= min && val <= max {
             return $self.$put($val as $to);
         }
-    }
+    };
 }
 
 impl<W> Serializer<W>
@@ -65,7 +65,7 @@ where
     // Create a new BSER serializer without leading PDU info.
     fn new(writer: W) -> Self {
         Serializer {
-            writer: writer,
+            writer,
             scratch: Vec::with_capacity(HIGHWATER * 2),
             offset: 0,
         }
@@ -412,7 +412,7 @@ where
 }
 
 #[doc(hidden)]
-pub struct Compound<'a, W: 'a> {
+pub struct Compound<'a, W> {
     ser: &'a mut Serializer<W>,
 }
 
@@ -450,14 +450,16 @@ impl_compound!(ser::SerializeMap, [serialize_key, serialize_value]);
 macro_rules! impl_compound_struct {
     ($trait:ty) => {
         impl<'a, W> $trait for Compound<'a, W>
-            where W: io::Write
+        where
+            W: io::Write,
         {
             type Ok = ();
             type Error = Error;
 
             #[inline]
             fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
-                where T: ?Sized + ser::Serialize
+            where
+                T: ?Sized + ser::Serialize,
             {
                 // TODO: this can go wrong if writing out the key succeeds but
                 // writing the value fails.
@@ -470,7 +472,7 @@ macro_rules! impl_compound_struct {
                 ser::SerializeMap::end(self)
             }
         }
-    }
+    };
 }
 
 impl_compound_struct!(ser::SerializeStruct);

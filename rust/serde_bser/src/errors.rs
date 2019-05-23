@@ -2,7 +2,7 @@ use std::fmt;
 
 use serde::{de, ser};
 
-use header::header_byte_desc;
+use crate::header::header_byte_desc;
 
 error_chain! {
     errors {

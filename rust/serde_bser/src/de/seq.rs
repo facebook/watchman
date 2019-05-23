@@ -1,12 +1,12 @@
 use serde::de;
 
-use errors::*;
+use crate::errors::*;
 
-use super::Deserializer;
 use super::read::DeRead;
 use super::reentrant::ReentrantGuard;
+use super::Deserializer;
 
-pub struct SeqAccess<'a, R: 'a> {
+pub struct SeqAccess<'a, R> {
     de: &'a mut Deserializer<R>,
     remaining: usize,
 }
@@ -20,7 +20,7 @@ where
     /// `_guard` makes sure the caller is accounting for the recursion limit.
     pub fn new(de: &'a mut Deserializer<R>, nitems: usize, _guard: &ReentrantGuard) -> Self {
         SeqAccess {
-            de: de,
+            de,
             remaining: nitems,
         }
     }

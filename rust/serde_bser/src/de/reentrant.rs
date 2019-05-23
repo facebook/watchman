@@ -3,7 +3,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use errors::*;
+use crate::errors::*;
 
 /// Sets a limit on the amount of recursion during deserialization. This does
 /// not do any synchronization -- it is intended purely for single-threaded use.

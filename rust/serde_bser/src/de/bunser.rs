@@ -2,9 +2,9 @@
 
 use byteorder::{ByteOrder, NativeEndian};
 
-use de::read::{DeRead, Reference};
-use errors::*;
-use header::*;
+use crate::de::read::{DeRead, Reference};
+use crate::errors::*;
+use crate::header::*;
 
 #[derive(Debug)]
 pub struct Bunser<R> {
@@ -84,7 +84,8 @@ where
     /// value is an i8.
     pub fn next_i8(&mut self) -> Result<i8> {
         self.read.discard();
-        let bytes = self.read_bytes(1)
+        let bytes = self
+            .read_bytes(1)
             .chain_err(|| "error while reading i8")?
             .get_ref();
         Ok(bytes[0] as i8)
@@ -94,7 +95,8 @@ where
     /// next value is an i16.
     pub fn next_i16(&mut self) -> Result<i16> {
         self.read.discard();
-        let bytes = self.read_bytes(2)
+        let bytes = self
+            .read_bytes(2)
             .chain_err(|| "error while reading i16")?
             .get_ref();
         Ok(NativeEndian::read_i16(bytes))
@@ -104,7 +106,8 @@ where
     /// next value is an i32.
     pub fn next_i32(&mut self) -> Result<i32> {
         self.read.discard();
-        let bytes = self.read_bytes(4)
+        let bytes = self
+            .read_bytes(4)
             .chain_err(|| "error while reading i32")?
             .get_ref();
         Ok(NativeEndian::read_i32(bytes))
@@ -114,7 +117,8 @@ where
     /// next value is an i64.
     pub fn next_i64(&mut self) -> Result<i64> {
         self.read.discard();
-        let bytes = self.read_bytes(8)
+        let bytes = self
+            .read_bytes(8)
             .chain_err(|| "error while reading i64")?
             .get_ref();
         Ok(NativeEndian::read_i64(bytes))
@@ -136,7 +140,8 @@ where
 
     pub fn next_f64(&mut self) -> Result<f64> {
         self.read.discard();
-        let bytes = self.read_bytes(8)
+        let bytes = self
+            .read_bytes(8)
             .chain_err(|| "error while reading f64")?
             .get_ref();
         Ok(NativeEndian::read_f64(bytes))

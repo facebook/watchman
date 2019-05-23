@@ -13,8 +13,8 @@ use std::str;
 
 use serde::de;
 
-use errors::*;
-use header::*;
+use crate::errors::*;
+use crate::header::*;
 
 use self::bunser::{Bunser, PduInfo};
 use self::read::{DeRead, Reference, SliceRead};
@@ -163,7 +163,8 @@ where
     {
         self.bunser.discard();
         let len = self.bunser.check_next_int()?;
-        match self.bunser
+        match self
+            .bunser
             .read_bytes(len)?
             .map_result(|x| str::from_utf8(x))?
         {
@@ -246,7 +247,8 @@ where
                 visitor.visit_enum(variant::UnitVariantAccess::new(self))
             }
             BSER_OBJECT => {
-                let guard = self.remaining_depth
+                let guard = self
+                    .remaining_depth
                     .acquire(format!("object-like enum '{}'", name))?;
                 self.bunser.discard();
                 // For enum variants the object must have exactly one entry

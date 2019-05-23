@@ -1,8 +1,8 @@
 use std::io;
 use std::result;
 
+use crate::errors::*;
 use byteorder::{ByteOrder, NativeEndian};
-use errors::*;
 
 #[cfg(feature = "debug_bytes")]
 use std::fmt;
@@ -73,10 +73,7 @@ pub struct SliceRead<'a> {
 
 impl<'a> SliceRead<'a> {
     pub fn new(slice: &'a [u8]) -> Self {
-        SliceRead {
-            slice: slice,
-            index: 0,
-        }
+        SliceRead { slice, index: 0 }
     }
 }
 

@@ -1,13 +1,13 @@
 use serde::de;
 
-use errors::*;
-use header::*;
+use crate::errors::*;
+use crate::header::*;
 
-use super::Deserializer;
 use super::read::DeRead;
 use super::reentrant::ReentrantGuard;
+use super::Deserializer;
 
-pub struct MapAccess<'a, R: 'a> {
+pub struct MapAccess<'a, R> {
     de: &'a mut Deserializer<R>,
     remaining: usize,
 }
@@ -21,7 +21,7 @@ where
     /// `_guard` makes sure the caller is accounting for the recursion limit.
     pub fn new(de: &'a mut Deserializer<R>, nitems: usize, _guard: &ReentrantGuard) -> Self {
         MapAccess {
-            de: de,
+            de,
             remaining: nitems,
         }
     }
@@ -56,7 +56,7 @@ where
 
 /// A deserializer that is specialized to deal with map keys. Specifically, map keys are always
 /// strings.
-struct MapKey<'a, R: 'a> {
+struct MapKey<'a, R> {
     de: &'a mut Deserializer<R>,
 }
 

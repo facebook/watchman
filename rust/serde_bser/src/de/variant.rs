@@ -1,31 +1,33 @@
 use serde::de;
 
-use errors::*;
+use crate::errors::*;
 
-use super::Deserializer;
 use super::read::DeRead;
 use super::reentrant::ReentrantGuard;
+use super::Deserializer;
 
 macro_rules! impl_enum_access {
     ($type:ident) => {
         impl<'a, 'de, R> de::EnumAccess<'de> for $type<'a, R>
-            where R: 'a + DeRead<'de>
+        where
+            R: 'a + DeRead<'de>,
         {
             type Error = Error;
             type Variant = Self;
 
             fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self)>
-                where V: de::DeserializeSeed<'de>
+            where
+                V: de::DeserializeSeed<'de>,
             {
                 let val = seed.deserialize(&mut *self.de)?;
                 Ok((val, self))
             }
         }
-    }
+    };
 }
 
 /// Deserialize access for unit, struct and tuple variants.
-pub struct VariantAccess<'a, R: 'a> {
+pub struct VariantAccess<'a, R> {
     de: &'a mut Deserializer<R>,
 }
 
@@ -37,7 +39,7 @@ where
     ///
     /// `_guard` makes sure the caller is accounting for the recursion limit.
     pub fn new(de: &'a mut Deserializer<R>, _guard: &ReentrantGuard) -> Self {
-        VariantAccess { de: de }
+        VariantAccess { de }
     }
 }
 
@@ -76,7 +78,7 @@ where
 }
 
 /// Deserialize access for plain unit variants.
-pub struct UnitVariantAccess<'a, R: 'a> {
+pub struct UnitVariantAccess<'a, R> {
     de: &'a mut Deserializer<R>,
 }
 
@@ -85,7 +87,7 @@ where
     R: 'a + DeRead<'de>,
 {
     pub fn new(de: &'a mut Deserializer<R>) -> Self {
-        UnitVariantAccess { de: de }
+        UnitVariantAccess { de }
     }
 }
 

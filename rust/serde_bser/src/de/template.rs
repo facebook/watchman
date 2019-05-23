@@ -3,12 +3,12 @@ use std::rc::Rc;
 
 use serde::de;
 
-use errors::*;
-use header::*;
+use crate::errors::*;
+use crate::header::*;
 
-use super::Deserializer;
 use super::read::DeRead;
 use super::reentrant::ReentrantGuard;
+use super::Deserializer;
 
 // This is ugly because #[serde(borrow)] can't be used with collections directly
 // at the moment. See
@@ -38,7 +38,7 @@ pub struct Key<'a>(#[serde(borrow)] Cow<'a, str>);
 ///
 /// The special value BSER_SKIP is used if a particular object doesn't have a
 /// key.
-pub struct Template<'a, 'de, R: 'a> {
+pub struct Template<'a, 'de, R> {
     de: &'a mut Deserializer<R>,
     keys: Rc<Vec<Key<'de>>>,
     remaining: usize,
@@ -55,7 +55,7 @@ impl<'a, 'de, R: 'a> Template<'a, 'de, R> {
         _guard: &ReentrantGuard,
     ) -> Self {
         Template {
-            de: de,
+            de,
             keys: Rc::new(keys),
             remaining: nitems,
         }
@@ -86,7 +86,7 @@ where
     }
 }
 
-struct ObjectDeserializer<'a, 'de, R: 'a> {
+struct ObjectDeserializer<'a, 'de, R> {
     de: &'a mut Deserializer<R>,
     keys: Rc<Vec<Key<'de>>>,
 }
@@ -133,7 +133,7 @@ where
     }
 }
 
-struct TemplateObject<'a, 'de, R: 'a> {
+struct TemplateObject<'a, 'de, R> {
     de: &'a mut Deserializer<R>,
     keys: Rc<Vec<Key<'de>>>,
     cur: usize,
@@ -144,11 +144,7 @@ where
     R: 'a + DeRead<'de>,
 {
     fn new(de: &'a mut Deserializer<R>, keys: Rc<Vec<Key<'de>>>) -> Self {
-        TemplateObject {
-            de: de,
-            keys: keys,
-            cur: 0,
-        }
+        TemplateObject { de, keys, cur: 0 }
     }
 }
 
@@ -208,7 +204,7 @@ impl<'a, 'de: 'a> de::Deserializer<'de> for KeyDeserializer<'a, 'de> {
     }
 }
 
-struct ValueDeserializer<'a, R: 'a> {
+struct ValueDeserializer<'a, R> {
     de: &'a mut Deserializer<R>,
 }
 

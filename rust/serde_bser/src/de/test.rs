@@ -3,8 +3,8 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Cursor;
 
-use from_reader;
-use from_slice;
+use crate::from_reader;
+use crate::from_slice;
 
 // For "from_reader" data in owned and for "from_slice" data is borrowed
 
@@ -63,7 +63,7 @@ enum StringVariant {
 fn test_basic_array() {
     let bser_v2 =
         b"\x00\x02\x00\x00\x00\x00\x05\x11\x00\x00\x00\x00\x03\x02\x02\x03\x03Tom\x02\x03\x05Jerry";
-    let decoded = from_slice::<BytestringArray>(bser_v2).unwrap();
+    let decoded = from_slice::<BytestringArray<'_>>(bser_v2).unwrap();
     assert_eq!(decoded.0, vec![&b"Tom"[..], &b"Jerry"[..]]);
 
     let reader = Cursor::new(bser_v2.to_vec()).reader();
@@ -76,7 +76,7 @@ fn test_basic_array() {
 fn test_basic_object() {
     let bser_v2 =
         b"\x00\x02\x00\x00\x00\x00\x05\x0f\x00\x00\x00\x01\x03\x01\x02\x03\x03abc\x02\x03\x03def";
-    let decoded = from_slice::<BytestringObject>(bser_v2).unwrap();
+    let decoded = from_slice::<BytestringObject<'_>>(bser_v2).unwrap();
     let expected = hashmap! {
         Bytestring::from(&b"abc"[..]) => Bytestring::from(&b"def"[..])
     };
@@ -94,7 +94,7 @@ fn test_basic_object() {
 fn test_basic_tuple() {
     let bser_v2 =
         b"\x00\x02\x00\x00\x00\x00\x05\x11\x00\x00\x00\x00\x03\x02\x02\x03\x03Tom\x02\x03\x05Jerry";
-    let decoded = from_slice::<TwoBytestrings>(bser_v2).unwrap();
+    let decoded = from_slice::<TwoBytestrings<'_>>(bser_v2).unwrap();
     assert_eq!(decoded.0, &b"Tom"[..]);
     assert_eq!(decoded.1, &b"Jerry"[..]);
 
@@ -108,7 +108,7 @@ fn test_basic_tuple() {
 fn test_bare_variant() {
     // "TestUnit"
     let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x05\x0b\x00\x00\x00\x02\x03\x08TestUnit";
-    let decoded = from_slice::<BytestringVariant>(bser_v2).unwrap();
+    let decoded = from_slice::<BytestringVariant<'_>>(bser_v2).unwrap();
     assert_eq!(decoded, BytestringVariant::TestUnit);
 
     let reader = Cursor::new(bser_v2.to_vec()).reader();
@@ -120,7 +120,7 @@ fn test_bare_variant() {
 fn test_unit_variant() {
     // {"TestUnit": null}
     let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x05\x0f\x00\x00\x00\x01\x03\x01\x02\x03\x08TestUnit\n";
-    let decoded = from_slice::<BytestringVariant>(bser_v2).unwrap();
+    let decoded = from_slice::<BytestringVariant<'_>>(bser_v2).unwrap();
     assert_eq!(decoded, BytestringVariant::TestUnit);
 
     let reader = Cursor::new(bser_v2.to_vec()).reader();
@@ -134,7 +134,7 @@ fn test_newtype_variant() {
     let bser_v2 =
         b"\x00\x02\x00\x00\x00\x00\x05\x1a\x00\x00\x00\x01\x03\x01\x02\x03\x0bTestNewtype\
                     \x02\x03\x06foobar";
-    let decoded = from_slice::<BytestringVariant>(bser_v2).unwrap();
+    let decoded = from_slice::<BytestringVariant<'_>>(bser_v2).unwrap();
     assert_eq!(
         decoded,
         BytestringVariant::TestNewtype((&b"foobar"[..]).into())
@@ -150,7 +150,7 @@ fn test_tuple_variant() {
     // {"TestTuple": ["foo", "bar"]}
     let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x05\x1e\x00\x00\x00\x01\x03\x01\x02\x03\tTestTuple\
                     \x00\x03\x02\x02\x03\x03foo\x02\x03\x03bar";
-    let decoded = from_slice::<BytestringVariant>(bser_v2).unwrap();
+    let decoded = from_slice::<BytestringVariant<'_>>(bser_v2).unwrap();
     assert_eq!(
         decoded,
         BytestringVariant::TestTuple((&b"foo"[..]).into(), (&b"bar"[..]).into())
@@ -169,7 +169,7 @@ fn test_struct_variant() {
     // {"TestStruct": {"abc": "foo", "def": "bar"}}
     let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x05+\x00\x00\x00\x01\x03\x01\x02\x03\nTestStruct\
                     \x01\x03\x02\x02\x03\x03abc\x02\x03\x03foo\x02\x03\x03def\x02\x03\x03bar";
-    let decoded = from_slice::<BytestringVariant>(bser_v2).unwrap();
+    let decoded = from_slice::<BytestringVariant<'_>>(bser_v2).unwrap();
     assert_eq!(
         decoded,
         BytestringVariant::TestStruct {
@@ -216,7 +216,7 @@ fn test_template() {
     let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x05(\x00\x00\x00\x0b\x00\x03\x03\x02\x03\x03abc\x02\
                     \x03\x03def\x02\x03\x03ghi\x03\x02\x03{\x02\x03\x03bar\n\x04\xc8\x01\x0c\x04\
                     \x15\x03";
-    let decoded = from_slice::<Vec<BytestringTemplateObject>>(bser_v2).unwrap();
+    let decoded = from_slice::<Vec<BytestringTemplateObject<'_>>>(bser_v2).unwrap();
     assert_eq!(
         decoded,
         vec![
@@ -311,7 +311,7 @@ fn test_compact_arrays() {
 
     let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x04\xeb\x00\x01\x03\x04\x02\x03\x05files\x0b\x00\x03\x02\x0d\x03\x04name\x0d\x03\x04size\x03\x02\x02\x038fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug\x04\x80\x01\x02\x03\x3dfbcode/scm/hg/lib/hg_watchman_client/tester/target/debug/deps\x04\x80\x0c\x02\x03\x05clock\x0d\x03\x19c\x3a1525428959\x3a45796\x3a2\x3a7717\x02\x03\x11is_fresh_instance\x09\x02\x03\x07version\x0d\x03\x054.9.1";
 
-    let decoded = from_slice::<BytestringFiles>(bser_v2).unwrap();
+    let decoded = from_slice::<BytestringFiles<'_>>(bser_v2).unwrap();
 
     assert_eq!(
         decoded,
@@ -355,7 +355,8 @@ fn test_compact_arrays_untagged_enum() {
     let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x04\xeb\x00\x01\x03\x04\x02\x03\x05files\x0b\x00\x03\x02\x0d\x03\x04name\x0d\x03\x04size\x03\x02\x02\x038fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug\x04\x80\x01\x02\x03\x3dfbcode/scm/hg/lib/hg_watchman_client/tester/target/debug/deps\x04\x80\x0c\x02\x03\x05clock\x0d\x03\x19c\x3a1525428959\x3a45796\x3a2\x3a7717\x02\x03\x11is_fresh_instance\x09\x02\x03\x07version\x0d\x03\x054.9.1";
 
     let decoded =
-        from_slice::<RequestResult<BytestringFiles, BytestringRequestError>>(bser_v2).unwrap();
+        from_slice::<RequestResult<BytestringFiles<'_>, BytestringRequestError<'_>>>(bser_v2)
+            .unwrap();
 
     assert_eq!(
         decoded,
@@ -413,7 +414,7 @@ fn test_arrays() {
 
     let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x04\xea\x00\x01\x03\x04\x02\x03\x07version\x02\x03\x054.9.1\x02\x03\x11is_fresh_instance\x09\x02\x03\x05clock\x02\x03\x19c\x3a1525428959\x3a45796\x3a2\x3a9642\x02\x03\x05files\x00\x03\x02\x01\x03\x02\x02\x03\x04size\x04\x80\x01\x02\x03\x04name\x02\x038fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug\x01\x03\x02\x02\x03\x04size\x04\xe0\x00\x02\x03\x04name\x02\x03\x2bfbcode/scm/hg/lib/hg_watchman_client/tester";
 
-    let decoded = from_slice::<BytestringFiles>(bser_v2).unwrap();
+    let decoded = from_slice::<BytestringFiles<'_>>(bser_v2).unwrap();
 
     assert_eq!(
         decoded,
@@ -457,7 +458,8 @@ fn test_arrays_untagged_enum() {
     let bser_v2 = b"\x00\x02\x00\x00\x00\x00\x04\xea\x00\x01\x03\x04\x02\x03\x07version\x02\x03\x054.9.1\x02\x03\x11is_fresh_instance\x09\x02\x03\x05clock\x02\x03\x19c\x3a1525428959\x3a45796\x3a2\x3a9642\x02\x03\x05files\x00\x03\x02\x01\x03\x02\x02\x03\x04size\x04\x80\x01\x02\x03\x04name\x02\x038fbcode/scm/hg/lib/hg_watchman_client/tester/target/debug\x01\x03\x02\x02\x03\x04size\x04\xe0\x00\x02\x03\x04name\x02\x03\x2bfbcode/scm/hg/lib/hg_watchman_client/tester";
 
     let decoded =
-        from_slice::<RequestResult<BytestringFiles, BytestringRequestError>>(bser_v2).unwrap();
+        from_slice::<RequestResult<BytestringFiles<'_>, BytestringRequestError<'_>>>(bser_v2)
+            .unwrap();
 
     assert_eq!(
         decoded,
