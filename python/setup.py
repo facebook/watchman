@@ -8,9 +8,10 @@ import os
 # dir and the source dir.  The watchman cmake file arranges to
 # export the source and binary dirs when it invokes us.  If they're
 # not set then we assume that the build dir == source dir.
-src_dir = os.path.dirname(os.path.realpath(__file__))
-build_dir = os.environ.get("CMAKE_CURRENT_BINARY_DIR", src_dir)
-src_dir = os.environ.get("CMAKE_CURRENT_SOURCE_DIR", src_dir)
+guessed_py_dir = os.path.dirname(os.path.realpath(__file__))
+guessed_watchman_src_dir = os.path.join(guessed_py_dir, "..")
+build_dir = os.environ.get("CMAKE_CURRENT_BINARY_DIR", guessed_watchman_src_dir)
+src_dir = os.environ.get("CMAKE_CURRENT_SOURCE_DIR", guessed_watchman_src_dir)
 
 # Execute from the build dir
 os.chdir(build_dir)
