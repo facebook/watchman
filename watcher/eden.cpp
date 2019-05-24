@@ -68,6 +68,13 @@ struct hash<BetweenCommitKey> {
 
 namespace watchman {
 namespace {
+struct NameAndDType {
+  std::string name;
+  DType dtype;
+
+  explicit NameAndDType(const std::string& name, DType dtype = DType::Unknown)
+      : name(name), dtype(dtype) {}
+};
 
 /** This is a helper for settling out subscription events.
  * We have a single instance of the callback object that we schedule
@@ -188,8 +195,9 @@ class EdenFileResult : public FileResult {
       const w_string& rootPath,
       const w_string& fullName,
       JournalPosition* position = nullptr,
-      bool isNew = false)
-      : root_path_(rootPath), fullName_(fullName) {
+      bool isNew = false,
+      DType dtype = DType::Unknown)
+      : root_path_(rootPath), fullName_(fullName), dtype_(dtype) {
     otime_.ticks = ctime_.ticks = 0;
     otime_.timestamp = ctime_.timestamp = 0;
     if (position) {
@@ -218,6 +226,22 @@ class EdenFileResult : public FileResult {
       return folly::none;
     }
     return stat_;
+  }
+
+  Optional<watchman::DType> dtype() override {
+    // We're using Unknown as the default value to avoid also wrapping
+    // this value up in an Optional in our internal storage.
+    // In theory this is ambiguous, but in practice Eden will never
+    // return Unknown for dtype values so this is safe to use with
+    // impunity.
+    if (dtype_ != DType::Unknown) {
+      return dtype_;
+    }
+    if (stat_.has_value()) {
+      return stat_->dtype();
+    }
+    accessorNeedsProperties(FileResult::Property::FileDType);
+    return folly::none;
   }
 
   Optional<size_t> size() override {
@@ -414,6 +438,7 @@ class EdenFileResult : public FileResult {
   w_clock_t otime_;
   Optional<SHA1Result> sha1_;
   Optional<w_string> symlinkTarget_;
+  DType dtype_{DType::Unknown};
 
   // Read the symlink targets for each of the provided `files`.  The files
   // had SymlinkTarget set in neededProperties prior to clearing it in
@@ -518,13 +543,13 @@ static std::string escapeGlobSpecialChars(w_string_piece str) {
  * We need to respect the ignore_dirs configuration setting and
  * also remove anything that doesn't match the relative_root constraint
  * in the query. */
-void filterOutPaths(std::vector<std::string>& fileNames, w_query_ctx* ctx) {
-  fileNames.erase(
+void filterOutPaths(std::vector<NameAndDType>& files, w_query_ctx* ctx) {
+  files.erase(
       std::remove_if(
-          fileNames.begin(),
-          fileNames.end(),
-          [ctx](const std::string& name) {
-            auto full = w_string::pathCat({ctx->root->root_path, name});
+          files.begin(),
+          files.end(),
+          [ctx](const NameAndDType& item) {
+            auto full = w_string::pathCat({ctx->root->root_path, item.name});
 
             if (!ctx->fileMatchesRelativeRoot(full)) {
               // Not in the desired area, so filter it out
@@ -533,7 +558,7 @@ void filterOutPaths(std::vector<std::string>& fileNames, w_query_ctx* ctx) {
 
             return ctx->root->ignore.isIgnored(full.data(), full.size());
           }),
-      fileNames.end());
+      files.end());
 }
 
 /** Wraps around the raw SCM to acclerate certain things for Eden
@@ -634,8 +659,25 @@ class EdenWrappedSCM : public SCM {
   }
 };
 
+void appendGlobResultToNameAndDTypeVec(
+    std::vector<NameAndDType>& results,
+    Glob&& glob) {
+  size_t i = 0;
+  size_t numDTypes = glob.get_dtypes().size();
+
+  for (auto& name : glob.get_matchingFiles()) {
+    // The server may not support dtypes, so this list may be empty.
+    // This cast is OK because eden returns the system dependent bits to us, and
+    // our DType enum is declared in terms of those bits
+    auto dtype = i < numDTypes ? static_cast<DType>(glob.get_dtypes()[i])
+                               : DType::Unknown;
+    results.emplace_back(name, dtype);
+    ++i;
+  }
+}
+
 /** Returns the files that match the glob. */
-std::vector<std::string> callEdenGlobViaThrift(
+std::vector<NameAndDType> globNameAndDType(
     StreamingEdenServiceAsyncClient* client,
     const std::string& mountPoint,
     const std::vector<std::string>& globPatterns,
@@ -659,19 +701,16 @@ std::vector<std::string> callEdenGlobViaThrift(
       params.set_mountPoint(mountPoint);
       params.set_globs(std::vector<std::string>{globPattern});
       params.set_includeDotfiles(includeDotfiles);
+      params.set_wantDtype(true);
 
       globFutures.emplace_back(
           client->semifuture_globFiles(params).via(executor));
     }
 
-    std::vector<std::string> allResults;
+    std::vector<NameAndDType> allResults;
     for (folly::Future<Glob>& globFuture : globFutures) {
-      std::vector<std::string> matchingFiles =
-          std::move(globFuture).getVia(executor).get_matchingFiles();
-      allResults.insert(
-          allResults.end(),
-          std::make_move_iterator(matchingFiles.begin()),
-          std::make_move_iterator(matchingFiles.end()));
+      appendGlobResultToNameAndDTypeVec(
+          allResults, std::move(globFuture).getVia(executor));
     }
     return allResults;
   } else {
@@ -679,10 +718,13 @@ std::vector<std::string> callEdenGlobViaThrift(
     params.set_mountPoint(mountPoint);
     params.set_globs(globPatterns);
     params.set_includeDotfiles(includeDotfiles);
+    params.set_wantDtype(true);
 
     Glob glob;
     client->sync_globFiles(glob, params);
-    return glob.get_matchingFiles();
+    std::vector<NameAndDType> result;
+    appendGlobResultToNameAndDTypeVec(result, std::move(glob));
+    return result;
   }
 }
 
@@ -733,7 +775,7 @@ class EdenView : public QueryableView {
                             (query->glob_flags & WM_PERIOD) == 0]() {
       if (ctx->query->empty_on_fresh_instance) {
         // Avoid a full tree walk if we don't need it!
-        return std::vector<std::string>();
+        return std::vector<NameAndDType>();
       }
 
       std::string globPattern;
@@ -744,14 +786,14 @@ class EdenView : public QueryableView {
         globPattern.append("/");
       }
       globPattern.append("**");
-      return callEdenGlobViaThrift(
+      return globNameAndDType(
           client.get(),
           mountPoint_,
           std::vector<std::string>{globPattern},
           includeDotfiles);
     };
 
-    std::vector<std::string> fileNames;
+    std::vector<NameAndDType> fileInfo;
     // We use the list of created files to synthesize the "new" field
     // in the file results
     std::unordered_set<std::string> createdFileNames;
@@ -762,7 +804,7 @@ class EdenView : public QueryableView {
       // We need to translate this to a fresh instance result set and
       // return a list of all possible matching files.
       client->sync_getCurrentJournalPosition(resultPosition, mountPoint_);
-      fileNames = getAllFiles();
+      fileInfo = getAllFiles();
     } else {
       // Query eden to fill in the mountGeneration field.
       JournalPosition position;
@@ -779,15 +821,15 @@ class EdenView : public QueryableView {
 
         // The list of changed files is the union of the created, added,
         // and removed sets returned from eden in list form.
-        fileNames = std::move(delta.changedPaths);
-        fileNames.insert(
-            fileNames.end(),
-            std::make_move_iterator(delta.removedPaths.begin()),
-            std::make_move_iterator(delta.removedPaths.end()));
-        fileNames.insert(
-            fileNames.end(),
-            std::make_move_iterator(delta.createdPaths.begin()),
-            std::make_move_iterator(delta.createdPaths.end()));
+        for (auto& name : delta.changedPaths) {
+          fileInfo.emplace_back(NameAndDType(std::move(name)));
+        }
+        for (auto& name : delta.removedPaths) {
+          fileInfo.emplace_back(NameAndDType(std::move(name)));
+        }
+        for (auto& name : delta.createdPaths) {
+          fileInfo.emplace_back(NameAndDType(std::move(name)));
+        }
 
         if (scm_ &&
             delta.fromPosition.snapshotHash != delta.toPosition.snapshotHash) {
@@ -798,8 +840,10 @@ class EdenView : public QueryableView {
           // changes events;  These are files whose status cannot be
           // determined purely from source control operations
 
-          std::unordered_set<std::string> mergedFileList(
-              fileNames.begin(), fileNames.end());
+          std::unordered_set<std::string> mergedFileList;
+          for (auto& info : fileInfo) {
+            mergedFileList.insert(info.name);
+          }
 
           auto fromHash = folly::hexlify(delta.fromPosition.snapshotHash);
           auto toHash = folly::hexlify(delta.toPosition.snapshotHash);
@@ -834,11 +878,10 @@ class EdenView : public QueryableView {
 
           // Replace the list of fileNames with the de-duped set
           // of names we've extracted from source control
-          fileNames.clear();
-          fileNames.insert(
-              fileNames.end(),
-              std::make_move_iterator(mergedFileList.begin()),
-              std::make_move_iterator(mergedFileList.end()));
+          fileInfo.clear();
+          for (auto name : mergedFileList) {
+            fileInfo.emplace_back(std::move(name));
+          }
         }
 
         resultPosition = delta.toPosition;
@@ -851,7 +894,7 @@ class EdenView : public QueryableView {
             " to ",
             delta.toPosition.sequenceNumber,
             " with ",
-            fileNames.size(),
+            fileInfo.size(),
             " changed files\n");
       } catch (const EdenError& err) {
         if (err.errorCode_ref().value_unchecked() != ERANGE) {
@@ -861,23 +904,24 @@ class EdenView : public QueryableView {
         // to a fresh instance result
         ctx->since.clock.is_fresh_instance = true;
         client->sync_getCurrentJournalPosition(resultPosition, mountPoint_);
-        fileNames = getAllFiles();
+        fileInfo = getAllFiles();
       }
     }
 
     // Filter out any ignored files
-    filterOutPaths(fileNames, ctx);
+    filterOutPaths(fileInfo, ctx);
 
-    for (auto& name : fileNames) {
+    for (auto& item : fileInfo) {
       // a file is considered new if it was present in the created files
       // set returned from eden.
-      bool isNew = createdFileNames.find(name) != createdFileNames.end();
+      bool isNew = createdFileNames.find(item.name) != createdFileNames.end();
 
       auto file = make_unique<EdenFileResult>(
           root_path_,
-          w_string::pathCat({mountPoint_, name}),
+          w_string::pathCat({mountPoint_, item.name}),
           &resultPosition,
-          isNew);
+          isNew,
+          item.dtype);
 
       if (ctx->since.clock.is_fresh_instance) {
         // Fresh instance queries only return data about files
@@ -890,7 +934,7 @@ class EdenView : public QueryableView {
       w_query_process_file(ctx->query, ctx, std::move(file));
     }
 
-    ctx->bumpNumWalked(fileNames.size());
+    ctx->bumpNumWalked(fileInfo.size());
   }
 
   void suffixGenerator(w_query* query, struct w_query_ctx* ctx) const override {
@@ -921,15 +965,19 @@ class EdenView : public QueryableView {
     auto client = getEdenClient(ctx->root->root_path);
 
     auto includeDotfiles = (query->glob_flags & WM_PERIOD) == 0;
-    auto fileNames = callEdenGlobViaThrift(
+    auto fileInfo = globNameAndDType(
         client.get(), mountPoint_, globStrings, includeDotfiles);
 
     // Filter out any ignored files
-    filterOutPaths(fileNames, ctx);
+    filterOutPaths(fileInfo, ctx);
 
-    for (auto& name : fileNames) {
+    for (auto& item : fileInfo) {
       auto file = make_unique<EdenFileResult>(
-          root_path_, w_string::pathCat({mountPoint_, name}));
+          root_path_,
+          w_string::pathCat({mountPoint_, item.name}),
+          /* position=*/nullptr,
+          /*isNew=*/false,
+          item.dtype);
 
       // The results of a glob are known to exist
       file->setExists(true);
@@ -937,7 +985,7 @@ class EdenView : public QueryableView {
       w_query_process_file(ctx->query, ctx, std::move(file));
     }
 
-    ctx->bumpNumWalked(fileNames.size());
+    ctx->bumpNumWalked(fileInfo.size());
   }
 
   // Helper for computing a relative path prefix piece.
