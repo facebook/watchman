@@ -4,24 +4,16 @@
 import os
 
 
-# To support out-of-source builds, we distinguish between the build
-# dir and the source dir.  The watchman cmake file arranges to
-# export the source and binary dirs when it invokes us.  If they're
-# not set then we assume that the build dir == source dir.
-guessed_py_dir = os.path.dirname(os.path.realpath(__file__))
-guessed_watchman_src_dir = os.path.join(guessed_py_dir, "..")
-build_dir = os.environ.get("CMAKE_CURRENT_BINARY_DIR", guessed_watchman_src_dir)
-src_dir = os.environ.get("CMAKE_CURRENT_SOURCE_DIR", guessed_watchman_src_dir)
-
-# Execute from the build dir
-os.chdir(build_dir)
+watchman_src_dir = os.environ.get("CMAKE_CURRENT_SOURCE_DIR")
+if watchman_src_dir is None:
+    watchman_src_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 
 # The python source dir.
 # On Windows, this has to be relative to the cwd otherwise something
 # in the setuptools machinery does the wrong thing and produces a
 # path like `Z:blah` which on windows resolves ambiguously depending
 # on the cwd.
-py_dir = os.path.join(src_dir, "python")
+py_dir = os.path.join(watchman_src_dir, "python")
 if os.name == "nt":
     py_dir = os.path.relpath(py_dir)
 
