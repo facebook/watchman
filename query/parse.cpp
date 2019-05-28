@@ -101,7 +101,8 @@ static void parse_suffixes(w_query* res, const json_ref& query) {
 
   if (suffixes.isString()) {
     auto suff = parse_suffix(suffixes);
-    res->suffixes.emplace_back(std::move(suff));
+    res->suffixes.emplace();
+    res->suffixes->emplace_back(std::move(suff));
     return;
   }
 
@@ -109,7 +110,9 @@ static void parse_suffixes(w_query* res, const json_ref& query) {
     throw QueryParseError("'suffix' must be a string or an array of strings");
   }
 
-  res->suffixes.reserve(json_array_size(suffixes));
+  res->suffixes.emplace();
+  std::vector<w_string>& res_suffixes = *res->suffixes;
+  res_suffixes.reserve(json_array_size(suffixes));
 
   for (i = 0; i < json_array_size(suffixes); i++) {
     const auto& ele = suffixes.at(i);
@@ -119,7 +122,7 @@ static void parse_suffixes(w_query* res, const json_ref& query) {
     }
 
     auto suff = parse_suffix(ele);
-    res->suffixes.emplace_back(std::move(suff));
+    res_suffixes.emplace_back(std::move(suff));
   }
 }
 
@@ -135,13 +138,17 @@ static bool parse_paths(w_query* res, const json_ref& query) {
     throw QueryParseError("'path' must be an array");
   }
 
-  res->paths.resize(json_array_size(paths));
+  auto size = json_array_size(paths);
 
-  for (i = 0; i < json_array_size(paths); i++) {
+  res->paths.emplace();
+  std::vector<w_query_path>& res_paths = *res->paths;
+  res_paths.resize(size);
+
+  for (i = 0; i < size; i++) {
     const auto& ele = paths.at(i);
     w_string name;
 
-    res->paths[i].depth = -1;
+    res_paths[i].depth = -1;
 
     if (ele.isString()) {
       name = json_to_w_string(ele);
@@ -153,13 +160,13 @@ static bool parse_paths(w_query* res, const json_ref& query) {
         throw QueryParseError("path.depth must be an integer");
       }
 
-      res->paths[i].depth = json_integer_value(depth);
+      res_paths[i].depth = json_integer_value(depth);
     } else {
       throw QueryParseError(
           "expected object with 'path' and 'depth' properties");
     }
 
-    res->paths[i].name = name.normalizeSeparators();
+    res_paths[i].name = name.normalizeSeparators();
   }
 
   return true;

@@ -948,7 +948,7 @@ class EdenView : public QueryableView {
 
     std::vector<std::string> globStrings;
     // Translate the suffix list into a list of globs
-    for (auto& suff : query->suffixes) {
+    for (auto& suff : *query->suffixes) {
       globStrings.emplace_back(to<std::string>(w_string::pathCat(
           {rel, to<std::string>("**/*.", escapeGlobSpecialChars(suff))})));
     }
@@ -1007,7 +1007,7 @@ class EdenView : public QueryableView {
 
     std::vector<std::string> globStrings;
     // Translate the path list into a list of globs
-    for (auto& path : query->paths) {
+    for (auto& path : *query->paths) {
       if (path.depth > 0) {
         // We don't have an easy way to express depth constraints
         // in the existing glob API, so we just punt for the moment.

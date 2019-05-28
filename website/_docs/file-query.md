@@ -118,6 +118,8 @@ $ watchman -j <<-EOT
 EOT
 ```
 
+If the `suffix` generator is given an empty array, it produces no files.
+
 The `suffix` generator can produce symlinks.
 
 The `suffix` generator does not follow symlinks. For example, a symlink to
@@ -162,6 +164,8 @@ globbing.
 
 The glob generator implicitly enables `dedup_results` mode.
 
+If the `glob` generator is given an empty array, it produces no files.
+
 The `glob` generator can produce symlinks.
 
 The `glob` generator does not follow symlinks. For example, a symlink to `/etc`
@@ -203,6 +207,8 @@ $ watchman -j <<-EOT
 }]
 EOT
 ```
+
+If the `path` generator is given an empty array, it produces no files.
 
 The `path` generator can produce symlinks.
 

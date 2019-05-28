@@ -93,3 +93,19 @@ class TestPathGenerator(WatchmanTestCase.WatchmanTestCase):
                 message="Case insensitive matching not implemented \
                         for path relative_root",
             )
+
+    def test_path_generator_empty(self):
+        """Specifying no input paths should return no results.
+        """
+        root = self.mkdtemp()
+
+        os.mkdir(os.path.join(root, "mydir"))
+        self.touchRelative(root, "myfile")
+        self.watchmanCommand("watch", root)
+
+        self.assertFileListsEqual(
+            self.watchmanCommand("query", root, {"fields": ["name"], "path": []})[
+                "files"
+            ],
+            [],
+        )

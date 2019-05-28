@@ -559,7 +559,7 @@ void InMemoryView::suffixGenerator(w_query* query, struct w_query_ctx* ctx)
   struct watchman_file* f;
 
   auto view = view_.rlock();
-  for (const auto& suff : query->suffixes) {
+  for (const auto& suff : *query->suffixes) {
     // Head of suffix index for this suffix
     auto it = view->suffixes.find(suff);
     if (it == view->suffixes.end()) {
@@ -592,7 +592,7 @@ void InMemoryView::pathGenerator(w_query* query, struct w_query_ctx* ctx)
 
   auto view = view_.rlock();
 
-  for (const auto& path : query->paths) {
+  for (const auto& path : *query->paths) {
     const watchman_dir* dir;
     w_string dir_name;
 

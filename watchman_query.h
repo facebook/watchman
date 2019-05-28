@@ -340,13 +340,13 @@ struct w_query {
   w_string relative_root;
   w_string relative_root_slash;
 
-  std::vector<w_query_path> paths;
+  folly::Optional<std::vector<w_query_path>> paths;
 
   std::unique_ptr<watchman_glob_tree> glob_tree;
   // Additional flags to pass to wildmatch in the glob_generator
   int glob_flags{0};
 
-  std::vector<w_string> suffixes;
+  folly::Optional<std::vector<w_string>> suffixes;
 
   std::chrono::milliseconds sync_timeout{0};
   uint32_t lock_timeout{0};

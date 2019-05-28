@@ -156,3 +156,15 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             self.watchmanCommand("query", root, {"glob": [12345]})
         self.assertIn("expected json string object", str(ctx.exception))
+
+    def test_glob_generator_empty(self):
+        """Specifying no input patterns should return no results.
+        """
+        root = self.mkdtemp()
+
+        os.mkdir(os.path.join(root, "mydir"))
+        self.touchRelative(root, "myfile")
+        self.watchmanCommand("watch", root)
+
+        res = self.watchmanCommand("query", root, {"fields": ["name"], "glob": []})
+        self.assertFileListsEqual(res["files"], [])

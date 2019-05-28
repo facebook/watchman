@@ -158,12 +158,12 @@ static void default_generators(
   }
 
   // Suffix
-  if (!query->suffixes.empty()) {
+  if (query->suffixes.has_value()) {
     root->view()->suffixGenerator(query, ctx);
     generated = true;
   }
 
-  if (!query->paths.empty()) {
+  if (query->paths.has_value()) {
     root->view()->pathGenerator(query, ctx);
     generated = true;
   }

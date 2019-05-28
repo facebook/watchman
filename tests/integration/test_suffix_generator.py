@@ -51,3 +51,21 @@ class TestSuffixGenerator(WatchmanTestCase.WatchmanTestCase):
         self.assertRegex(
             str(ctx.exception), "'suffix' must be a string or an array of strings"
         )
+
+    def test_suffix_generator_empty(self):
+        """Specifying no input suffixes should return no results.
+        """
+        root = self.mkdtemp()
+
+        os.mkdir(os.path.join(root, "mydir"))
+        os.mkdir(os.path.join(root, "mydir.dir"))
+        self.touchRelative(root, "myfile")
+        self.touchRelative(root, "myfile.txt")
+        self.watchmanCommand("watch", root)
+
+        self.assertFileListsEqual(
+            self.watchmanCommand("query", root, {"fields": ["name"], "suffix": []})[
+                "files"
+            ],
+            [],
+        )
