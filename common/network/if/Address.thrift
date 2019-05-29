@@ -4,7 +4,6 @@
 namespace cpp2 facebook.network.thrift
 namespace cpp facebook.network.thrift
 namespace py facebook.network.Address
-namespace d facebook.network.Address
 
 # fbstring uses the small internal buffer to store the data
 # if the data is small enough (< 24 bytes).
