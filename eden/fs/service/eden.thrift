@@ -736,6 +736,13 @@ service EdenService extends fb303.FacebookService {
     2: NoValueForKeyError noValueForKeyError
   )
 
+  //////// Administrative APIs ////////
+
+  /**
+   * Ask the server to shutdown and provide it some context for its logs
+   */
+  void initiateShutdown(1: string reason) throws (1: EdenError ex)
+
   //////// Debugging APIs ////////
 
   /**
@@ -934,9 +941,4 @@ service EdenService extends fb303.FacebookService {
    * Returns the number of pending calls that were unblocked
    */
   i64 unblockFault(1: UnblockFaultArg info) throws (1: EdenError ex)
-
-  /**
-   * Ask the server to shutdown and provide it some context for its logs
-   */
-  void initiateShutdown(1: string reason);
 }
