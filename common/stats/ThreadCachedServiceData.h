@@ -9,9 +9,11 @@
  */
 #pragma once
 
-#include <cstdint>
 #include <folly/Range.h>
+#include <cstdint>
+#include "common/stats/ExportedHistogramMapImpl.h"
 #include "common/stats/ExportedStatMap.h"
+#include "common/stats/ExportedStatMapImpl.h"
 
 namespace facebook { namespace stats {
 
