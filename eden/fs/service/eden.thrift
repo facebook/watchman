@@ -400,6 +400,11 @@ struct SetLogLevelResult {
   1: bool categoryCreated
 }
 
+struct JournalInfo {
+  1: i64 entryCount
+  2: i64 memoryUsage
+}
+
 /**
  * Struct to store Information about inodes in a mount point.
  */
@@ -455,6 +460,11 @@ struct InternalStats {
    * Statistics about the in-memory blob cache.
    */
   7: CacheStats blobCacheStats
+  /**
+   * mountPointJournalInfo is a map whose key is the path of the mount point
+   * and whose value is information about the journal on that mount
+   */
+  8: map<PathString, JournalInfo> mountPointJournalInfo
 }
 
 struct ManifestEntry {
