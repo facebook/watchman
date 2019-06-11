@@ -475,11 +475,16 @@ target_link_libraries(testsupport log string jansson third_party_deps)
 
 if (ENABLE_EDEN_SUPPORT)
   add_thrift_cpp2_library(
+    eden_config_thrift
+    eden/fs/config/eden_config.thrift
+  )
+  add_thrift_cpp2_library(
     eden_service_thrift
     eden/fs/service/eden.thrift
     SERVICES
       EdenService
     DEPENDS
+      eden_config_thrift
       fb303_thrift_cpp2
   )
   add_thrift_cpp2_library(

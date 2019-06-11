@@ -9,6 +9,7 @@
  */
 
 include "common/fb303/if/fb303.thrift"
+include "eden/fs/config/eden_config.thrift"
 
 namespace cpp2 facebook.eden
 namespace java com.facebook.eden.thrift
@@ -482,6 +483,12 @@ struct FuseCall {
   7: pid_t pid
 }
 
+struct GetConfigParams {
+  // Whether to reload the config from disk to make sure it is up-to-date
+  1: eden_config.ConfigReloadBehavior reload =
+    eden_config.ConfigReloadBehavior.AutoReload
+}
+
 /** A representation of the system-dependent dirent::d_type field.
  * The bits and their interpretation is system dependent.
  * This value is u8 on all systems that implement it.  We
@@ -752,6 +759,12 @@ service EdenService extends fb303.FacebookService {
    * Ask the server to shutdown and provide it some context for its logs
    */
   void initiateShutdown(1: string reason) throws (1: EdenError ex)
+
+  /**
+   * Get the current configuration settings
+   */
+  eden_config.EdenConfigData getConfig(1: GetConfigParams params)
+  throws (1: EdenError ex)
 
   //////// Debugging APIs ////////
 
