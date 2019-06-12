@@ -25,7 +25,7 @@ try:
 
     can_run_eden = edenclient.can_run_eden
 
-except ImportError as e:
+except ImportError:
 
     def is_buck_build():
         return "BUCK_BUILD_ID" in os.environ
@@ -48,43 +48,33 @@ class WatchmanEdenTestCase(TestParent):
     def setUp(self):
         super(WatchmanEdenTestCase, self).setUp()
 
-        # the eden home directory.  We use the global dir for the test runner
-        # rather than one scoped to the test because we have very real length
-        # limits on the socket path name that we're likely to hit otherwise.
-        # fake a home dir so that eden is isolated from the settings
-        # of the user running these tests.
-        self.eden_home = tempfile.mkdtemp(prefix="eden_home")
-        self.eden_dir = os.path.join(self.eden_home, "local/.eden")
-        os.makedirs(self.eden_dir)
-
-        self.etc_eden_dir = os.path.join(self.eden_home, "etc-eden")
-        os.mkdir(self.etc_eden_dir)
-        # The directory holding the system configuration files
-        self.system_config_dir = os.path.join(self.etc_eden_dir, "config.d")
-        os.mkdir(self.system_config_dir)
+        # The test EdenFS instance.
+        # We let it create and manage its own temporary test directory, rather than
+        # using the one scoped to the test because we have very real length limits on
+        # the socket path name that we're likely to hit otherwise.
+        self.eden = edenclient.EdenFS()
+        self.addCleanup(lambda: self.cleanUpEden())
 
         # where we'll mount the eden client(s)
         self.mounts_dir = self.mkdtemp(prefix="eden_mounts")
 
-        self.save_home = os.environ["HOME"]
-        os.environ["HOME"] = self.eden_home
-        self.addCleanup(lambda: self._restoreHome())
-
         # Watchman needs to start up with the same HOME as eden, otherwise
         # it won't be able to locate the eden socket
+        self.save_home = os.environ["HOME"]
+        os.environ["HOME"] = str(self.eden.home_dir)
+        self.addCleanup(lambda: self._restoreHome())
+
         self.eden_watchman = WatchmanInstance.Instance()
         self.eden_watchman.start()
-        self.addCleanup(lambda: self.eden_watchman.stop())
+        self.addCleanup(self.cleanUpWatchman)
 
         self.client = self.getClient(self.eden_watchman)
 
         # chg can interfere with eden, so disable it up front
         os.environ["CHGDISABLE"] = "1"
-        self.eden = edenclient.EdenFS(
-            self.eden_dir, etc_eden_dir=self.etc_eden_dir, home_dir=self.eden_home
-        )
+
+        # Start the EdenFS instance
         self.eden.start()
-        self.addCleanup(lambda: self.cleanUpEden())
 
     def _restoreHome(self):
         # type: () -> None
@@ -94,11 +84,10 @@ class WatchmanEdenTestCase(TestParent):
     def cleanUpEden(self):
         # type: () -> None
         assert self.eden is not None
-        self.cleanUpWatches()
         self.eden.cleanup()
         self.eden = None
 
-    def cleanUpWatches(self):
+    def cleanUpWatchman(self):
         roots = self.watchmanCommand("watch-list")["roots"]
         self.watchmanCommand("watch-del-all")
         for root in roots:
@@ -106,6 +95,9 @@ class WatchmanEdenTestCase(TestParent):
                 self.eden.unmount(root)
             except Exception:
                 pass
+
+        self.eden_watchman.stop()
+        self.eden_watchman = None
 
     def makeEdenMount(self, populate_fn=None):
         """ populate_fn is a function that accepts a repo object and
