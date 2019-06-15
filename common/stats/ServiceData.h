@@ -36,6 +36,9 @@ class ServiceData {
   long getCounter(folly::StringPiece) const { return 0; };
   long clearCounter(folly::StringPiece) { return 0; };
   void setUseOptionsAsFlags(bool) {}
+  int64_t incrementCounter(folly::StringPiece, int64_t amount = 1) {
+    return amount;
+  }
   void setCounter(folly::StringPiece, uint32_t) {}
   DynamicCounters *getDynamicCounters() {
     return &counters_;
