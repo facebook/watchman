@@ -766,6 +766,11 @@ service EdenService extends fb303.FacebookService {
   eden_config.EdenConfigData getConfig(1: GetConfigParams params)
   throws (1: EdenError ex)
 
+  /**
+   * Ask eden to reload its configuration data from disk.
+   */
+  void reloadConfig() throws (1: EdenError ex)
+
   //////// Debugging APIs ////////
 
   /**
