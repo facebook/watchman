@@ -587,53 +587,6 @@ class EdenWrappedSCM : public SCM {
       w_string_piece commitA,
       w_string_piece commitB,
       w_string /* requestId */ = nullptr) const override {
-    auto hashA = to<std::string>(commitA);
-    auto hashB = to<std::string>(commitB);
-
-    std::array<folly::Future<SCM::StatusResult>, 2> futures{
-        folly::via(
-            &getThreadPool(),
-            [this, hashA, hashB] {
-              return getFilesChangedBetweenCommitsFromEden(hashA, hashB);
-            }),
-        folly::via(&getThreadPool(), [this, hashA, hashB] {
-          return inner_->getFilesChangedBetweenCommits(hashA, hashB);
-        })};
-    auto resultPair = folly::collectAny(futures).get();
-    return resultPair.second.value();
-  }
-
-  SCM::StatusResult getFilesChangedBetweenCommitsFromEden(
-      const std::string& commitA,
-      const std::string& commitB) const {
-    using facebook::eden::BinaryHash;
-    using facebook::eden::ScmFileStatus;
-    using facebook::eden::ScmStatus;
-    auto client = getEdenClient(getRootPath());
-    ScmStatus status;
-    client->sync_getScmStatusBetweenRevisions(
-        status,
-        mountPoint_,
-        BinaryHash{to<std::string>(commitA)},
-        BinaryHash{to<std::string>(commitB)});
-    SCM::StatusResult result;
-    for (const auto& it : status.entries) {
-      w_string name(it.first.data(), it.first.size());
-      switch (it.second) {
-        case ScmFileStatus::ADDED:
-          result.addedFiles.emplace_back(name);
-          break;
-        case ScmFileStatus::REMOVED:
-          result.removedFiles.emplace_back(name);
-          break;
-        case ScmFileStatus::MODIFIED:
-          result.changedFiles.emplace_back(name);
-          break;
-        case ScmFileStatus::IGNORED:
-          /* impossible */
-          break;
-      }
-    }
     return inner_->getFilesChangedBetweenCommits(commitA, commitB);
   }
 
