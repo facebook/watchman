@@ -19,7 +19,7 @@ function nextPow2(size) {
 
 // Expandable buffer that we can provide a size hint for
 function Accumulator(initsize) {
-  this.buf = new Buffer(nextPow2(initsize || 8192));
+  this.buf = Buffer.alloc(nextPow2(initsize || 8192));
   this.readOffset = 0;
   this.writeOffset = 0;
 }
@@ -55,7 +55,7 @@ Accumulator.prototype.reserve = function(size) {
   }
 
   // Allocate a replacement and copy it in
-  var buf = new Buffer(nextPow2(this.buf.length + size - this.writeAvail()));
+  var buf = Buffer.alloc(nextPow2(this.buf.length + size - this.writeAvail()));
   this.buf.copy(buf);
   this.buf = buf;
 }
@@ -450,7 +450,7 @@ exports.loadFromBuffer = loadFromBuffer
 // Byteswap an arbitrary buffer, flipping from one endian
 // to the other, returning a new buffer with the resultant data
 function byteswap64(buf) {
-  var swap = new Buffer(buf.length);
+  var swap = Buffer.alloc(buf.length);
   for (var i = 0; i < buf.length; i++) {
     swap[i] = buf[buf.length -1 - i];
   }
