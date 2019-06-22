@@ -94,8 +94,13 @@ class UnixStream : public watchman_stream {
     credvalid = getsockopt(fd.fd(), SOL_SOCKET, SO_PEERCRED, &cred, &len) == 0;
 #elif defined(LOCAL_PEERCRED)
     socklen_t len = sizeof(cred);
+#if defined(__FreeBSD__) || defined (__DragonFly__)
+    credvalid =
+        getsockopt(fd.fd(), 0, LOCAL_PEERCRED, &cred, &len) == 0;
+#else
     credvalid =
         getsockopt(fd.fd(), SOL_LOCAL, LOCAL_PEERCRED, &cred, &len) == 0;
+#endif
 #elif defined(SO_RECVUCRED)
     ucred_t* peer_cred{nullptr};
     credvalid = getpeerucred(fd.fd(), &peer_cred) == 0;
