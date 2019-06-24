@@ -19,11 +19,8 @@ service StreamingEdenService extends eden.EdenService {
    * be pushed to the client in near-real-time.
    * The client may then use methods like getFilesChangedSince()
    * to determine the precise nature of the changes.
-   */
-  stream<eden.JournalPosition> subscribe(
-    1: string mountPoint)
-
-  /** This is an implementation of the subscribe API using the
+   *
+   * This is an implementation of the subscribe API using the
    * new rsocket based streaming thrift protocol.
    * The name is temporary: we want to make some API changes
    * but want to start pushing out an implementation now because

@@ -1100,60 +1100,6 @@ class EdenView : public QueryableView {
     lastCookiePosition_ = delta.toPosition;
   }
 
-  std::unique_ptr<StreamingEdenServiceAsyncClient> legacySubscribe(
-      std::shared_ptr<w_root_t> root,
-      SettleCallback& settleCallback,
-      std::chrono::milliseconds& settleTimeout) {
-    // Connect up the client
-    auto client = getEdenClient(root->root_path, &subscriberEventBase_);
-
-    // This is called each time we get pushed an update by the eden server
-    auto onUpdate = [&](apache::thrift::ClientReceiveState&& state) mutable {
-      if (!state.isStreamEnd()) {
-        try {
-          JournalPosition pos;
-          StreamingEdenServiceAsyncClient::recv_subscribe(pos, state);
-
-          if (settleCallback.isScheduled()) {
-            watchman::log(watchman::DBG, "reschedule settle timeout\n");
-            settleCallback.cancelTimeout();
-          }
-          subscriberEventBase_.timer().scheduleTimeout(
-              &settleCallback, settleTimeout);
-
-          // We need to process cookie files with the lowest possible
-          // latency, so we consume that information now
-          checkCookies(root);
-
-        } catch (const std::exception& exc) {
-          watchman::log(
-              watchman::ERR,
-              "error while receiving subscription; cancel watch: ",
-              exc.what(),
-              "\n");
-          // make sure we don't get called again
-          subscriberEventBase_.terminateLoopSoon();
-          return;
-        }
-      }
-
-      if (state.isStreamEnd()) {
-        watchman::log(
-            watchman::ERR, "subscription stream ended, cancel watch\n");
-        // We won't be called again, but we terminate the loop just
-        // to make sure.
-        subscriberEventBase_.terminateLoopSoon();
-        return;
-      }
-    };
-
-    // Establish the subscription stream
-    client->subscribe(
-        onUpdate, std::string(root->root_path.data(), root->root_path.size()));
-
-    return client;
-  }
-
   std::unique_ptr<StreamingEdenServiceAsyncClient> rSocketSubscribe(
       std::shared_ptr<w_root_t> root,
       SettleCallback& settleCallback,
@@ -1213,42 +1159,7 @@ class EdenView : public QueryableView {
       std::chrono::milliseconds settleTimeout(root->trigger_settle);
       std::unique_ptr<StreamingEdenServiceAsyncClient> client;
 
-      try {
-        client = rSocketSubscribe(root, settleCallback, settleTimeout);
-      } catch (const apache::thrift::TApplicationException& exc) {
-        if (exc.getType() ==
-            apache::thrift::TApplicationException::UNKNOWN_METHOD) {
-          // Fall back to the older subscription stuff
-          watchman::log(
-              watchman::ERR,
-              "Error while establishing rsocket subscription: ",
-              exc.what(),
-              ", falling back on legacy subscription\n");
-        } else {
-          throw;
-        }
-      } catch (const apache::thrift::transport::TTransportException& exc) {
-        if (exc.getType() !=
-            apache::thrift::transport::TTransportException::TIMED_OUT) {
-          throw;
-        }
-        // This can happen when the running eden server is the -oss flavor
-        // of the build.  rSocket doesn't appear to respond except with a
-        // timeout, even if we retry or increase the timeout.  We have no
-        // choice but to use the legacy subscription stream.
-        watchman::log(
-            watchman::ERR,
-            "Error while establishing rsocket subscription; "
-            "server does not appear to support rSocket: ",
-            exc.what(),
-            ", falling back on legacy subscription\n");
-      }
-
-      // Client should only be nullptr if we hit one of the fallback cases
-      // above.
-      if (!client) {
-        client = legacySubscribe(root, settleCallback, settleTimeout);
-      }
+      client = rSocketSubscribe(root, settleCallback, settleTimeout);
 
       // This will run until the stream ends
       watchman::log(watchman::DBG, "Started subscription thread loop\n");
