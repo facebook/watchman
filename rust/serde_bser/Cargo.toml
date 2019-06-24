@@ -2,6 +2,7 @@
 name = "serde_bser"
 version = "0.1.0"
 authors = ["Rain <rain1@fb.com>"]
+edition = "2018"
 
 [dependencies]
 byteorder = "1.0"
