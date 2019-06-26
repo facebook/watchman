@@ -200,8 +200,7 @@ struct FileDelta {
 
 struct DebugGetRawJournalParams {
   1: PathString mountPoint
-  2: JournalPosition fromPosition
-  3: JournalPosition toPosition
+  2: i32 limit
 }
 
 struct DebugPathChangeInfo {
