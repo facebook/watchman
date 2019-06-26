@@ -643,6 +643,31 @@ service EdenService extends fb303.FacebookService {
   list<PathString> getBindMounts(1: PathString mountPoint)
     throws (1: EdenError ex)
 
+  /**
+   * On systems that support bind mounts, establish a bind mount within the
+   * repo such that `mountPoint / repoPath` is redirected to `targetPath`.
+   * If `repoPath` is already a bind mount managed by eden, this function
+   * will throw an error.
+   * If `repoPath` is not a directory then it will be created similar to
+   * running `mkdir -p mountPoint/repoPath` and then the bind mount
+   * will be established.
+   * If `repoPath` exists and is not a directory, an error will be thrown.
+   * If the bind mount cannot be set up, an error will be thrown.
+   */
+  void addBindMount(1: PathString mountPoint,
+    2: PathString repoPath,
+    3: PathString targetPath) throws (1: EdenError ex)
+
+  /**
+   * Removes the bind mount specified by `repoPath` from the set of managed
+   * bind mounts.
+   * If `repoPath` is not a bind mount managed by eden, this function
+   * will throw an error.
+   * If the bind mount cannot be removed, an error will be thrown.
+   */
+  void removeBindMount(1: PathString mountPoint, 2: PathString repoPath)
+    throws (1: EdenError ex)
+
   /** Returns the sequence position at the time the method is called.
    * Returns the instantaneous value of the journal sequence number.
    */
