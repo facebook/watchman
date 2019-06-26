@@ -453,7 +453,7 @@ def install_platform_deps():
         ).split()
         run_cmd(["yum", "install"] + pkgs)
         raise Exception("implement me")
-    elif os_name == "Ubuntu" or os_name.startswith("Debian"):
+    elif os_name == "Ubuntu" or os_name.startswith("Debian") or os_name.startswith("KDE neon"):
         # These dependencies have been tested on Ubuntu 16.04
         print("Installing necessary Ubuntu packages...")
         ubuntu_pkgs = (
