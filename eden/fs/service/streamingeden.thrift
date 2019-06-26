@@ -26,6 +26,6 @@ service StreamingEdenService extends eden.EdenService {
    * but want to start pushing out an implementation now because
    * we've seen inflated memory usage for the older `subscribe`
    * method above. */
-  stream eden.JournalPosition subscribeStreamTemporary(
+  stream<eden.JournalPosition> subscribeStreamTemporary(
     1: string mountPoint)
 }
