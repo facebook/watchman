@@ -398,7 +398,10 @@ struct SetLogLevelResult {
 
 struct JournalInfo {
   1: i64 entryCount
+  // The estimated memory used by the journal in bytes
   2: i64 memoryUsage
+  // The duration of the journal in seconds
+  3: i64 durationSeconds
 }
 
 /**
