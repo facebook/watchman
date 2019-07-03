@@ -189,6 +189,7 @@ static void execute_common(
     ctx->dedup.reserve(64);
   }
 
+  // is_fresh_instance is also later set by the value in ctx after generator
   res->is_fresh_instance =
       !ctx->since.is_timestamp && ctx->since.clock.is_fresh_instance;
 
@@ -209,6 +210,11 @@ static void execute_common(
     // the field renderers, we may need to do a couple of fetches
     // to get all that we need, so we loop until we get them all.
   }
+
+  // For Eden instances it is possible that when running the query it was
+  // discovered that it is actually a fresh instance [e.g. mount generation
+  // changes or journal truncation]; update res to match
+  res->is_fresh_instance |= ctx->since.clock.is_fresh_instance;
 
   if (sample && sample->finish()) {
     sample->add_root_meta(ctx->root);
