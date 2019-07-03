@@ -688,6 +688,20 @@ service EdenService extends fb303.FacebookService {
     2: JournalPosition fromPosition)
       throws (1: EdenError ex)
 
+  /** Sets the memory limit on the journal such that the journal will forget
+   * old data to keep itself under a certain estimated memory use.
+   */
+  void setJournalMemoryLimit(
+    1: PathString mountPoint,
+    2: i64 limit)
+      throws (1: EdenError ex)
+
+  /** Gets the memory limit on the journal
+   */
+  i64 getJournalMemoryLimit(
+    1: PathString mountPoint,
+  ) throws (1: EdenError ex)
+
   /**
    * Returns the journal entries for the specified params. Useful for auditing
    * the changes that Eden has sent to Watchman. Note that the most recent
