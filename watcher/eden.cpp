@@ -850,11 +850,15 @@ class EdenView : public QueryableView {
             fileInfo.size(),
             " changed files\n");
       } catch (const EdenError& err) {
-        if (err.errorCode_ref().value_unchecked() != ERANGE) {
+        // ERANGE: mountGeneration differs
+        // EDOM: journal was truncated.
+        // For other situations we let the error propagate.
+        if (err.errorCode_ref().value_unchecked() != ERANGE &&
+            err.errorCode_ref().value_unchecked() != EDOM) {
           throw;
         }
-        // mountGeneration differs, so treat this as equivalent
-        // to a fresh instance result
+        // mountGeneration differs, or journal was truncated,
+        // so treat this as equivalent to a fresh instance result
         ctx->since.clock.is_fresh_instance = true;
         client->sync_getCurrentJournalPosition(resultPosition, mountPoint_);
         fileInfo = getAllFiles();
@@ -1084,20 +1088,36 @@ class EdenView : public QueryableView {
     // Obtain the list of changes since our last request, or since we started
     // up the watcher (we set the initial value of lastCookiePosition_ during
     // construction).
-    FileDelta delta;
-    auto client = getEdenClient(root_path_);
-    client->sync_getFilesChangedSince(delta, mountPoint_, lastCookiePosition_);
+    try {
+      FileDelta delta;
+      auto client = getEdenClient(root_path_);
+      client->sync_getFilesChangedSince(
+          delta, mountPoint_, lastCookiePosition_);
 
-    // TODO: in the future it would be nice to compute the paths in a loop
-    // first, and then add a bulk CookieSync::notifyCookies() method to avoid
-    // locking and unlocking its internal mutex so frequently.
-    for (auto& file : delta.createdPaths) {
-      auto full = w_string::pathCat({root_path_, file});
-      root->cookies.notifyCookie(full);
+      // TODO: in the future it would be nice to compute the paths in a loop
+      // first, and then add a bulk CookieSync::notifyCookies() method to avoid
+      // locking and unlocking its internal mutex so frequently.
+      for (auto& file : delta.createdPaths) {
+        auto full = w_string::pathCat({root_path_, file});
+        root->cookies.notifyCookie(full);
+      }
+
+      // Remember this position for subsequent calls
+      lastCookiePosition_ = delta.toPosition;
+    } catch (const EdenError& err) {
+      // EDOM is journal truncation, which we can recover from.
+      // Other errors (including ERANGE/mountGeneration changed)
+      // are not recoverable, so let them propagate.
+      if (err.errorCode_ref().value_unchecked() != EDOM) {
+        throw;
+      }
+      // Journal was truncated: we can remain connected and have continuity
+      // with the Journal sequence numbers, but we may have missed cookie
+      // file events, so let's abort all currently outstanding cookies. The
+      // cookie sync mechanism will retry if there is sufficient time remaining
+      // in their individual retry schedule(s).
+      root->cookies.abortAllCookies();
     }
-
-    // Remember this position for subsequent calls
-    lastCookiePosition_ = delta.toPosition;
   }
 
   std::unique_ptr<StreamingEdenServiceAsyncClient> rSocketSubscribe(
