@@ -200,7 +200,8 @@ struct FileDelta {
 
 struct DebugGetRawJournalParams {
   1: PathString mountPoint
-  2: i32 limit
+  2: optional i32 limit
+  3: i32 fromSequenceNumber
 }
 
 struct DebugPathChangeInfo {
