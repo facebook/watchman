@@ -8,7 +8,7 @@
 #include <folly/io/async/EventBaseManager.h>
 #include <thrift/lib/cpp/async/TAsyncSocket.h>
 #include <thrift/lib/cpp2/async/HeaderClientChannel.h>
-#include <thrift/lib/cpp2/async/RSocketClientChannel.h>
+#include <thrift/lib/cpp2/async/RocketClientChannel.h>
 #include <algorithm>
 #include <chrono>
 #include <iterator>
@@ -175,16 +175,16 @@ std::unique_ptr<StreamingEdenServiceAsyncClient> getEdenClient(
 
 /** Create a thrift client that will connect to the eden server associated
  * with the current user.
- * This particular client uses the RSocketClientChannel channel that
+ * This particular client uses the RocketClientChannel channel that
  * is required to use the new thrift streaming protocol. */
-std::unique_ptr<StreamingEdenServiceAsyncClient> getRSocketEdenClient(
+std::unique_ptr<StreamingEdenServiceAsyncClient> getRocketEdenClient(
     w_string_piece rootPath,
     folly::EventBase* eb = folly::EventBaseManager::get()->getEventBase()) {
   return retryEStale([&] {
     auto addr = getEdenSocketAddress(rootPath);
 
     return make_unique<StreamingEdenServiceAsyncClient>(
-        apache::thrift::RSocketClientChannel::newChannel(
+        apache::thrift::RocketClientChannel::newChannel(
             TAsyncSocket::UniquePtr(new TAsyncSocket(eb, addr))));
   });
 }
@@ -1120,11 +1120,11 @@ class EdenView : public QueryableView {
     }
   }
 
-  std::unique_ptr<StreamingEdenServiceAsyncClient> rSocketSubscribe(
+  std::unique_ptr<StreamingEdenServiceAsyncClient> rocketSubscribe(
       std::shared_ptr<w_root_t> root,
       SettleCallback& settleCallback,
       std::chrono::milliseconds& settleTimeout) {
-    auto client = getRSocketEdenClient(root->root_path, &subscriberEventBase_);
+    auto client = getRocketEdenClient(root->root_path, &subscriberEventBase_);
     auto stream = client->sync_subscribeStreamTemporary(
         std::string(root->root_path.data(), root->root_path.size()));
     auto streamFuture =
@@ -1179,7 +1179,7 @@ class EdenView : public QueryableView {
       std::chrono::milliseconds settleTimeout(root->trigger_settle);
       std::unique_ptr<StreamingEdenServiceAsyncClient> client;
 
-      client = rSocketSubscribe(root, settleCallback, settleTimeout);
+      client = rocketSubscribe(root, settleCallback, settleTimeout);
 
       // This will run until the stream ends
       watchman::log(watchman::DBG, "Started subscription thread loop\n");
