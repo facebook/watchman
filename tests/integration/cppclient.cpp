@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
         LOG(INFO) << "Expected global error caught";
         errorCallbackTrigger.setValue();
       });
-  c.connect().wait();
+  c.connect().get();
   LOG(INFO) << "Connected to watchman";
   SCOPE_EXIT {
     c.close(); // must close before the EventBase is terminated

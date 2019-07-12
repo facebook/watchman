@@ -60,14 +60,18 @@ folly::Future<std::string> WatchmanConnection::getSockPath() {
     folly::Subprocess proc(
         {"watchman", "--output-encoding=bser", "get-sockname"},
         folly::Subprocess::Options().pipeStdout().pipeStderr().usePath());
-    SCOPE_FAIL {
-      // Always clean up to avoid Subprocess asserting on destruction
-      proc.kill();
-      proc.wait();
-    };
     auto out_pair = proc.communicate();
+    auto returnCode = proc.wait();
+    if (returnCode.exitStatus() != 0) {
+      throw WatchmanError{folly::to<std::string>(
+          "`watchman get-sockname` returned error code ",
+          returnCode.exitStatus(),
+          " when called as user ",
+          geteuid(),
+          ". Error: ",
+          out_pair.second)};
+    }
     auto result = parseBser(out_pair.first);
-    proc.waitChecked();
     return result["sockname"].asString();
   });
 }
