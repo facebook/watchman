@@ -259,10 +259,11 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
     }
 
     // We can suppress empty results, unless this is a source code aware query
-    // and the mergeBase has changed.
+    // and the mergeBase has changed or this is a fresh instance.
     bool mergeBaseChanged = scmAwareQuery &&
         res.clockAtStartOfQuery.scmMergeBase != query->since_spec->scmMergeBase;
-    if (res.resultsArray.array().empty() && !mergeBaseChanged) {
+    if (res.resultsArray.array().empty() && !mergeBaseChanged &&
+        !res.is_fresh_instance) {
       updateSubscriptionTicks(&res);
       return nullptr;
     }
@@ -568,9 +569,7 @@ static void cmd_subscribe(
     // If they didn't specify any drop/defer behavior, default to a reasonable
     // setting that works together with the fsmonitor extension for hg.
     if (watchman::mapContainsAny(
-            sub->drop_or_defer,
-            "hg.update",
-            "hg.transaction")) {
+            sub->drop_or_defer, "hg.update", "hg.transaction")) {
       sub->drop_or_defer["hg.update"] = false; // defer
       sub->drop_or_defer["hg.transaction"] = false; // defer
     }
