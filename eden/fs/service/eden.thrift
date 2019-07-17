@@ -54,6 +54,18 @@ exception NoValueForKeyError {
 }
 
 /**
+ * Information about the running edenfs daemon.
+ */
+struct DaemonInfo {
+  1: i32 pid
+  /**
+   * List of command line arguments, including the executable name,
+   * given to the edenfs process.
+   */
+  2: list<string> commandLine
+}
+
+/**
  * The current running state of an EdenMount.
  */
 enum MountState {
@@ -792,6 +804,12 @@ service EdenService extends fb303.FacebookService {
   )
 
   //////// Administrative APIs ////////
+
+  /**
+   * Returns information about the running process, including pid and command
+   * line.
+   */
+  DaemonInfo getDaemonInfo() throws (1: EdenError ex)
 
   /**
    * Ask the server to shutdown and provide it some context for its logs
