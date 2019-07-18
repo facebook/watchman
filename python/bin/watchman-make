@@ -260,7 +260,12 @@ while True:
     try:
         # Wait for changes to start to occur.  We're happy to wait
         # quite some time for this
-        client.setTimeout(600)
+        if sys.platform == "win32":
+            # On Windows the way the socket is read a CTRL-C it takes this much
+            # time for a CTRL+C to get back out to us.
+            client.setTimeout(3)
+        else:
+            client.setTimeout(600)
 
         result = client.receive()
         for _, t in targets.items():
