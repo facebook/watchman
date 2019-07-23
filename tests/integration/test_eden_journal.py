@@ -94,3 +94,60 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.eden.remove(root)
         watches = self.watchmanCommand("watch-list")
         self.assertNotIn(root, watches["roots"])
+
+    def test_querying_with_truncated_journal_returns_fresh_instance(self):
+        def populate(repo):
+            repo.write_file("hello", "hola\n")
+            repo.commit("initial commit.")
+
+        root = self.makeEdenMount(populate)
+
+        res = self.watchmanCommand("watch", root)
+        self.assertEqual("eden", res["watcher"])
+
+        clock = self.watchmanCommand("clock", root)
+
+        with self.eden.get_thrift_client() as thrift_client:
+            thrift_client.setJournalMemoryLimit(root, 0)
+            self.assertEqual(0, thrift_client.getJournalMemoryLimit(root))
+
+        # Eden's Journal always remembers at least one entry so we will
+        # do things in twos
+
+        self.touchRelative(root, "newfile")
+        self.touchRelative(root, "newfile2")
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {
+                "expression": [
+                    "not",
+                    ["anyof", ["dirname", ".hg"], ["dirname", ".eden"]],
+                ],
+                "fields": ["name"],
+                "since": clock,
+            },
+        )
+        clock = res["clock"]
+        self.assertTrue(res["is_fresh_instance"])
+        self.assertFileListsEqual(
+            res["files"], ["hello", "newfile", "newfile2", ".hg", ".eden"]
+        )
+
+        self.removeRelative(root, "newfile")
+        self.removeRelative(root, "newfile2")
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {
+                "expression": [
+                    "not",
+                    ["anyof", ["dirname", ".hg"], ["dirname", ".eden"]],
+                ],
+                "fields": ["name"],
+                "since": clock,
+            },
+        )
+        clock = res["clock"]
+        self.assertTrue(res["is_fresh_instance"])
+        self.assertFileListsEqual(res["files"], ["hello", ".hg", ".eden"])

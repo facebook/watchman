@@ -692,6 +692,8 @@ service EdenService extends fb303.FacebookService {
   /** Returns the set of files (and dirs) that changed since a prior point.
    * If fromPosition.mountGeneration is mismatched with the current
    * mountGeneration, throws an EdenError with errorCode = ERANGE.
+   * If the domain required by fromPosition goes past the Journal's memory,
+   * throws an EdenError with errorCode = EDOM.
    * This indicates that eden cannot compute the delta for the requested
    * range.  The client will need to recompute a new baseline using
    * other available functions in EdenService.
