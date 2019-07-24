@@ -76,12 +76,14 @@ class TestSockPerms(unittest.TestCase):
             time.sleep(0.03)
         return [False, res]
 
-    def assertWaitFor(self, cond, timeout=10, message=None):
+    def assertWaitFor(self, cond, timeout=10, message=None, get_debug_output=None):
         status, res = self.waitFor(cond, timeout)
         if status:
             return res
         if message is None:
             message = "%s was not met in %s seconds: %s" % (cond, timeout, res)
+        if get_debug_output is not None:
+            message += "\ndebug output:\n%s" % get_debug_output()
         self.fail(message)
 
     def test_too_open_user_dir(self):
@@ -95,7 +97,10 @@ class TestSockPerms(unittest.TestCase):
         wanted = "the permissions on %s allow others to write to it" % (
             instance.user_dir
         )
-        self.assertWaitFor(lambda: wanted in instance.getCLILogContents())
+        self.assertWaitFor(
+            lambda: wanted in instance.getCLILogContents(),
+            get_debug_output=lambda: instance.getCLILogContents(),
+        )
 
     def test_invalid_sock_group(self):
         # create a random group name
@@ -113,7 +118,10 @@ class TestSockPerms(unittest.TestCase):
             instance.start()
         self.assertEqual(ctx.exception.sockpath, instance.getSockPath())
         wanted = "group '%s' does not exist" % group_name
-        self.assertWaitFor(lambda: wanted in instance.getCLILogContents())
+        self.assertWaitFor(
+            lambda: wanted in instance.getCLILogContents(),
+            get_debug_output=lambda: instance.getCLILogContents(),
+        )
 
     def test_user_not_in_sock_group(self):
         group = self._get_non_member_group()
@@ -124,7 +132,10 @@ class TestSockPerms(unittest.TestCase):
             instance.start()
         self.assertEqual(ctx.exception.sockpath, instance.getSockPath())
         wanted = "setting up group '%s' failed" % group.gr_name
-        self.assertWaitFor(lambda: wanted in instance.getCLILogContents())
+        self.assertWaitFor(
+            lambda: wanted in instance.getCLILogContents(),
+            get_debug_output=lambda: instance.getCLILogContents(),
+        )
 
     def test_default_sock_group(self):
         # By default the socket group should be the effective gid of the process
@@ -182,7 +193,10 @@ class TestSockPerms(unittest.TestCase):
             instance.start()
         self.assertEqual(ctx.exception.sockpath, instance.getSockPath())
         wanted = "Expected config value sock_access to be an object"
-        self.assertWaitFor(lambda: wanted in instance.getCLILogContents())
+        self.assertWaitFor(
+            lambda: wanted in instance.getCLILogContents(),
+            get_debug_output=lambda: instance.getCLILogContents(),
+        )
 
         instance = self._new_instance(
             {"sock_access": {"group": "oui"}}, expect_success=False
@@ -191,7 +205,10 @@ class TestSockPerms(unittest.TestCase):
             instance.start()
         self.assertEqual(ctx.exception.sockpath, instance.getSockPath())
         wanted = "Expected config value sock_access.group to be a boolean"
-        self.assertWaitFor(lambda: wanted in instance.getCLILogContents())
+        self.assertWaitFor(
+            lambda: wanted in instance.getCLILogContents(),
+            get_debug_output=lambda: instance.getCLILogContents(),
+        )
 
     def test_default_sock_access(self):
         instance = self._new_instance({})
