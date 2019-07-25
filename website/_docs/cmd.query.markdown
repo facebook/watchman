@@ -115,6 +115,12 @@ microseconds, nanoseconds or floating point seconds respectively.
  * `symlink_target` - string: the target of a symbolic link if the file is a
    symbolic link
 
+*Since 4.9.*
+
+ * `content.sha1hex` - string: the SHA-1 digest of the file's byte content,
+encoded as 40 hexidecimal digits (e.g.
+`"da39a3ee5e6b4b0d3255bfef95601890afd80709"` for an empty file)
+
 ### Synchronization timeout (since 2.1)
 
 By default a `query` will wait for up to 60 seconds for the view of the
