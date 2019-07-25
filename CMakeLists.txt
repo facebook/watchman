@@ -307,6 +307,8 @@ if (ENABLE_EDEN_SUPPORT)
   find_package(FBThrift CONFIG REQUIRED)
   find_package(yarpl CONFIG REQUIRED)
   find_package(rsocket CONFIG REQUIRED)
+  find_package(fb303 CONFIG REQUIRED)
+  include_directories(${FB303_INCLUDE_DIR})
 endif()
 
 find_package(PythonInterp REQUIRED)
@@ -485,7 +487,7 @@ if (ENABLE_EDEN_SUPPORT)
       EdenService
     DEPENDS
       eden_config_thrift
-      fb303_thrift_cpp2
+      fb303::fb303_thrift_cpp2
   )
   add_thrift_cpp2_library(
     streamingeden_thrift
@@ -494,6 +496,7 @@ if (ENABLE_EDEN_SUPPORT)
       StreamingEdenService
     DEPENDS
       eden_service_thrift
+      fb303::fb303_thrift_cpp2
   )
 endif()
 

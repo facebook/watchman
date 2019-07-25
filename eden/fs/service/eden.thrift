@@ -4,8 +4,8 @@
  * This software may be used and distributed according to the terms of the
  * GNU General Public License version 2.
  */
-include "common/fb303/if/fb303.thrift"
 include "eden/fs/config/eden_config.thrift"
+include "fb303/thrift/fb303_core.thrift"
 
 namespace cpp2 facebook.eden
 namespace java com.facebook.eden.thrift
@@ -597,7 +597,7 @@ struct UnblockFaultArg {
   4: optional string errorMessage
 }
 
-service EdenService extends fb303.FacebookService {
+service EdenService extends fb303_core.BaseService {
   list<MountInfo> listMounts() throws (1: EdenError ex)
   void mount(1: MountArgument info) throws (1: EdenError ex)
   void unmount(1: PathString mountPoint) throws (1: EdenError ex)
@@ -812,6 +812,15 @@ service EdenService extends fb303.FacebookService {
    * line.
    */
   DaemonInfo getDaemonInfo() throws (1: EdenError ex)
+
+  /**
+   * DEPRECATED
+   *
+   * Returns the pid of the running edenfs daemon. New code should call
+   * getDaemonInfo instead. This method exists for Thrift clients that
+   * predate getDaemonInfo, such as older versions of the CLI.
+   */
+  i32 getPid() throws (1: EdenError ex)
 
   /**
    * Ask the server to shutdown and provide it some context for its logs
