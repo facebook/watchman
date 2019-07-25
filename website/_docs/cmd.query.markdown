@@ -62,6 +62,33 @@ fields will return a response something like this:
 }
 ```
 
+If a field's value cannot be computed, a field's value may be `null`, or may
+be an object with an `error` key containing a descriptive message string:
+
+```json
+{
+    "version": "2019-07-22T13:50:36Z",
+    "is_fresh_instance": false,
+    "clock": "c:1563834049:1830370:791543813:2257494",
+    "files": [
+        {
+            "content.sha1hex": null,
+            "name": "docs"
+            "symlink_target": null,
+            "type": "d",
+        },
+        {
+            "content.sha1hex": {
+                "error": "eloop: file is a symlink: Invalid argument: Invalid argument"
+            },
+            "type": "l",
+            "symlink_target": "eloop",
+            "name": "eloop"
+        }
+    ]
+}
+```
+
 For queries using the `since` generator, the `is_fresh_instance` member is true
 if the particular clock value indicates that it was returned by a different
 instance of watchman, or a named cursor hasn't been seen before. In that case,
