@@ -529,12 +529,14 @@ struct Glob {
   2: list<DType> dtypes,
 }
 
-struct AccessCount {
-  1: i64 count
+struct AccessCounts {
+  1: i64 total
+  2: i64 reads
+  3: i64 writes
 }
 
 struct FuseMountAccesses {
-  1: map<pid_t, AccessCount> fuseAccesses
+  1: map<pid_t, AccessCounts> fuseAccesses
 }
 
 struct GetAccessCountsResult {
