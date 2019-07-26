@@ -822,7 +822,7 @@ service EdenService extends fb303_core.BaseService {
    * getDaemonInfo instead. This method exists for Thrift clients that
    * predate getDaemonInfo, such as older versions of the CLI.
    */
-  i32 getPid() throws (1: EdenError ex)
+  i64 getPid() throws (1: EdenError ex)
 
   /**
    * Ask the server to shutdown and provide it some context for its logs
