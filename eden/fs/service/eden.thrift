@@ -719,6 +719,12 @@ service EdenService extends fb303_core.BaseService {
     1: PathString mountPoint,
   ) throws (1: EdenError ex)
 
+  /** Forces the journal to flush, sending a truncated result to subscribers
+   */
+  void flushJournal(
+    1: PathString mountPoint,
+  ) throws (1: EdenError ex)
+
   /**
    * Returns the journal entries for the specified params. Useful for auditing
    * the changes that Eden has sent to Watchman. Note that the most recent
