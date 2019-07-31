@@ -113,10 +113,10 @@ class WatchmanConnection : folly::AsyncSocket::ConnectCallback,
   void readEOF() noexcept override;
   void readErr(const folly::AsyncSocketException& ex) noexcept override;
 
-  folly::EventBase* eventBase_{};
+  folly::Executor::KeepAlive<folly::EventBase> eventBase_;
   folly::Optional<std::string> sockPath_;
   folly::Optional<Callback> callback_;
-  folly::Executor* cpuExecutor_{};
+  folly::Executor::KeepAlive<folly::Executor> cpuExecutor_;
   folly::Promise<folly::dynamic> connectPromise_;
   folly::dynamic versionCmd_;
   std::shared_ptr<folly::AsyncSocket> sock_;

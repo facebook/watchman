@@ -89,7 +89,7 @@ Future<dynamic> WatchmanConnection::connect(folly::dynamic versionArgs) {
           addr.setFromPath(path);
 
           shared_this->sock_ =
-              folly::AsyncSocket::newSocket(shared_this->eventBase_);
+              folly::AsyncSocket::newSocket(shared_this->eventBase_.get());
           shared_this->sock_->connect(shared_this.get(), addr);
         });
 

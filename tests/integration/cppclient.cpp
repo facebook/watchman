@@ -40,10 +40,6 @@ int main(int argc, char** argv) {
       });
   c.connect().get();
   LOG(INFO) << "Connected to watchman";
-  SCOPE_EXIT {
-    c.close(); // must close before the EventBase is terminated
-    ebt.stop();
-  };
 
   std::mutex mutex;
   std::condition_variable cv;

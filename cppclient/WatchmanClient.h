@@ -52,9 +52,7 @@
  *  client.unsubscribe(subscription);
  *
  *  // Close connection. Note again this is not strictly needed as
- *  // deconstruction will also cause the connection to close. An explicit
- *  // close() call may be needed for example to ensure disconnection happens
- *  // before the EventBase is destroyed.
+ *  // deconstruction will also cause the connection to close.
  *  client.close();
  */
 
@@ -112,7 +110,7 @@ struct Subscription {
       WatchPathPtr watchPath);
 
  private:
-  folly::Executor* executor_;
+  folly::Executor::KeepAlive<folly::Executor> executor_;
   SubscriptionCallback callback_;
   const std::string name_;
   WatchPathPtr watchPath_;
