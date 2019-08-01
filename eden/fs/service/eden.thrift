@@ -537,18 +537,19 @@ struct Glob {
 }
 
 struct AccessCounts {
-  1: i64 total
-  2: i64 reads
-  3: i64 writes
+  1: i64 fuseTotal
+  2: i64 fuseReads
+  3: i64 fuseWrites
+  4: i64 fuseBackingStoreImports
 }
 
-struct FuseMountAccesses {
-  1: map<pid_t, AccessCounts> fuseAccesses
+struct MountAccesses {
+  1: map<pid_t, AccessCounts> accessCountsByPid
 }
 
 struct GetAccessCountsResult {
-  1: map<pid_t, binary> exeNamesByPid
-  2: map<PathString, FuseMountAccesses> fuseAccessesByMount
+  1: map<pid_t, binary> cmdsByPid
+  2: map<PathString, MountAccesses> accessesByMount
   // TODO: Count the number of thrift requests
   // 3: map<pid_t, AccessCount> thriftAccesses
 }
