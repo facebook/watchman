@@ -115,6 +115,13 @@ enum MountState {
    * so when the shutdown completes it will be automatically destroyed.
    */
   DESTROYING = 8,
+  /**
+   * An error occurred during mount initialization.
+   *
+   * This state is used for errors that occur during the INITIALIZING phase,
+   * before we have attempted to start the FUSE mount.
+   */
+  INIT_ERROR = 9,
 } (cpp2.enum_type = 'uint32_t')
 
 struct MountInfo {
