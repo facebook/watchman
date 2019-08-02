@@ -541,6 +541,7 @@ struct AccessCounts {
   2: i64 fuseReads
   3: i64 fuseWrites
   4: i64 fuseBackingStoreImports
+  5: i64 fuseDurationNs
 }
 
 struct MountAccesses {
