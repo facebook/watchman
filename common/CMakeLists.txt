@@ -1,5 +1,5 @@
 add_thrift_cpp2_library(
-  fb303_thrift_cpp2
+  fb303_thrift_cpp
   fb303/if/fb303.thrift
   SERVICES
     FacebookService
