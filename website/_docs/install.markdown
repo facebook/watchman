@@ -81,7 +81,7 @@ $ sudo port install watchman
 ### Installing from source
 
 You can use these steps below to get watchman built.  You will need `libssl-dev`,
-`autoconf`, `automake` and `libtool` (or `glibtool` on OS X).
+`autoconf`, `automake`, `pkg-config` and `libtool` (or `glibtool` on OS X).
 
 You may optionally build watchman without `pcre` and `python` support (see
 configuration options below).
