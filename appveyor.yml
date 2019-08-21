@@ -15,7 +15,7 @@ init:
 install:
   - python -V
 
-build:
+build_script:
   - cmd: python build/fbcode_builder/getdeps.py build watchman -j2
 
 test_script:
