@@ -39,7 +39,7 @@ set +e
 
 GETDEPS="build/fbcode_builder/getdeps.py"
 
-"$GETDEPS" build --enable-tests watchman
+"$GETDEPS" build watchman
 "$GETDEPS" test watchman
 
 inst_dir=$("$GETDEPS" show-inst-dir watchman)
