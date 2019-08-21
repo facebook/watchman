@@ -16,11 +16,11 @@ install:
   - python -V
 
 build_script:
-  - cmd: python build/fbcode_builder/getdeps.py build watchman -j2
+  - cmd: python build/fbcode_builder/getdeps.py build watchman --num_jobs=2
 
 test_script:
   - "cd node && npm install"
-  - cmd: python build/fbcode_builder/getdeps.py test watchman -j2
+  - cmd: python build/fbcode_builder/getdeps.py test watchman --num-jobs=2
 #  - cmd: mkdir Watchman
 #  - cmd: copy Release\watchman.exe Watchman
 #  - cmd: copy Release\watchman.pdb Watchman
