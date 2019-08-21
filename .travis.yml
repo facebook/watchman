@@ -78,4 +78,4 @@ matrix:
 
 before_script: ./travis/deps.sh
 
-script: travis_wait 60 ./travis/run.sh
+script: ./travis/run.sh
