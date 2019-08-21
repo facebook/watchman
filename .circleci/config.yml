@@ -27,6 +27,7 @@ defaults: &defaults
           inst_dir=$("$GETDEPS" show-inst-dir watchman)
           src_dir=$("$GETDEPS" show-source-dir watchman)
           python "${src_dir}/runtests.py" \
+            --num-jobs=4 \
             --pybuild-dir="${inst_dir}/../../build/watchman/python/build" \
             --watchman-path="${inst_dir}/bin/watchman"
     - save_cache:
