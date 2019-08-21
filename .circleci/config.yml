@@ -21,7 +21,7 @@ defaults: &defaults
           export CCACHE_DIR=$HOME/.ccache
           mkdir -p $CCACHE_DIR
           GETDEPS="build/fbcode_builder/getdeps.py"
-          "$GETDEPS" build --enable-tests watchman
+          "$GETDEPS" build watchman
           "$GETDEPS" test watchman
           inst_dir=$("$GETDEPS" show-inst-dir watchman)
           src_dir=$("$GETDEPS" show-source-dir watchman)
@@ -48,6 +48,11 @@ jobs:
     <<: *defaults
     docker:
       - image: ubuntu:18.04
+  mac:
+    <<: *defaults
+    macos:
+      - image: "10.0.0"
+
 
 workflows:
   version: 2
@@ -56,3 +61,4 @@ workflows:
       #- build-python27
       #- build-python36
       - ubuntu-18.04
+      - mac
