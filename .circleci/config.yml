@@ -49,9 +49,24 @@ jobs:
     docker:
       - image: ubuntu:18.04
   mac:
-    <<: *defaults
     macos:
-      - image: "10.0.0"
+      - xcode: "10.0.0"
+    steps:
+      - checkout
+      - run:
+          name: Python version
+          command: python -V && env
+      - run:
+          name: Run build
+          command: |
+            GETDEPS="build/fbcode_builder/getdeps.py"
+            "$GETDEPS" build watchman
+            "$GETDEPS" test watchman
+            inst_dir=$("$GETDEPS" show-inst-dir watchman)
+            src_dir=$("$GETDEPS" show-source-dir watchman)
+            python "${src_dir}/runtests.py" \
+              --pybuild-dir="${inst_dir}/../../build/watchman/python/build" \
+              --watchman-path="${inst_dir}/bin/watchman"
 
 
 workflows:
