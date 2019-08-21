@@ -16,7 +16,7 @@ install:
   - python -V
 
 build_script:
-  - cmd: python build/fbcode_builder/getdeps.py build watchman --num_jobs=2
+  - cmd: python build/fbcode_builder/getdeps.py build watchman --num-jobs=2
 
 test_script:
   - "cd node && npm install"
