@@ -17,6 +17,7 @@ defaults: &defaults
         command: python -V && env
     - run:
         name: Run build
+        no_output_timeout: 86400
         command: |
           export CCACHE_DIR=$HOME/.ccache
           mkdir -p $CCACHE_DIR
@@ -58,6 +59,7 @@ jobs:
           command: python -V && env
       - run:
           name: Run build
+          no_output_timeout: 86400
           command: |
             GETDEPS="build/fbcode_builder/getdeps.py"
             "$GETDEPS" build watchman
