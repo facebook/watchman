@@ -10,15 +10,16 @@
 #pragma once
 
 #include <folly/Range.h>
-#include "common/stats/ExportedHistogramMap.h"
-#include "common/stats/ExportedHistogramMapImpl.h"
-#include "common/stats/ExportedStatMapImpl.h"
+#include <fb303/ExportedHistogramMap.h>
+#include <fb303/ExportedHistogramMapImpl.h>
+#include <fb303/ExportedStatMapImpl.h>
+
 
 namespace facebook { namespace stats {
 
 class MonotonicCounter {
 public:
-  MonotonicCounter(folly::StringPiece, ExportType, ExportType) {}
+  MonotonicCounter(folly::StringPiece, fb303::ExportType, fb303::ExportType) {}
   void updateValue(std::chrono::seconds, int64_t) {}
   void swap(MonotonicCounter& counter) {}
   std::string getName() {
