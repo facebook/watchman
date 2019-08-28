@@ -9,11 +9,10 @@
  */
 #pragma once
 
-#include <folly/Range.h>
 #include <fb303/ExportedHistogramMap.h>
 #include <fb303/ExportedHistogramMapImpl.h>
 #include <fb303/ExportedStatMapImpl.h>
-
+#include <folly/Range.h>
 
 namespace facebook { namespace stats {
 
