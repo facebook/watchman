@@ -70,7 +70,6 @@ endfunction()
 
 if (ENABLE_EDEN_SUPPORT)
   # We use shipit to mirror in these locations from the monorepo
-  maybe_shipit_dir("../fboss/common")
   maybe_shipit_dir("../eden")
 endif()
 
@@ -363,10 +362,6 @@ else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_COMMON}")  # for cmake 3.0
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_COMMON}")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_COMMON} -O3")
-endif()
-
-if (ENABLE_EDEN_SUPPORT)
-add_subdirectory(common)
 endif()
 
 add_library(third_party_deps INTERFACE)
