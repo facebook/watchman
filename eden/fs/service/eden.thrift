@@ -390,6 +390,10 @@ struct TreeInodeEntryDebugInfo {
    * control Blob or Tree.
    */
   6: BinaryHash hash
+  /**
+   * Size of the file in bytes, won't be set for directories
+  */
+  7: optional i64 fileSize
 }
 
 struct WorkingDirectoryParents {
