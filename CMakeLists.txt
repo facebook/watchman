@@ -85,7 +85,7 @@ set(PACKAGE_STRING    "${PACKAGE_NAME} ${PACKAGE_VERSION}")
 set(PACKAGE_TARNAME   "${PACKAGE_NAME}-${PACKAGE_VERSION}")
 set(PACKAGE_BUGREPORT "https://github.com/facebook/watchman/issues")
 project(${PACKAGE_NAME} CXX C)
-include(ThriftCppLibrary)
+include(FBThriftCppLibrary)
 include(CheckFunctionExists)
 include(CheckIncludeFiles)
 include(CheckStructHasMember)
@@ -471,11 +471,11 @@ add_library(testsupport STATIC ${testsupport_sources})
 target_link_libraries(testsupport log string jansson third_party_deps)
 
 if (ENABLE_EDEN_SUPPORT)
-  add_thrift_cpp2_library(
+  add_fbthrift_cpp_library(
     eden_config_thrift
     eden/fs/config/eden_config.thrift
   )
-  add_thrift_cpp2_library(
+  add_fbthrift_cpp_library(
     eden_service_thrift
     eden/fs/service/eden.thrift
     SERVICES
@@ -484,7 +484,7 @@ if (ENABLE_EDEN_SUPPORT)
       eden_config_thrift
       fb303::fb303_thrift_cpp
   )
-  add_thrift_cpp2_library(
+  add_fbthrift_cpp_library(
     streamingeden_thrift
     eden/fs/service/streamingeden.thrift
     SERVICES
