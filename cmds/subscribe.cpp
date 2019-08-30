@@ -619,6 +619,15 @@ static void cmd_subscribe(
     resp.set("saved-state-info", std::move(saved_state_info));
   }
 
+  auto asserted_states = json_array();
+  for (const auto& key : sub->drop_or_defer) {
+    if (root->assertedStates->isStateAsserted(key.first)) {
+      // Not sure what to do in case of failure here. -jupi
+      json_array_append(asserted_states, w_string_to_json(key.first));
+    }
+  }
+  resp.set("asserted-states", json_ref(asserted_states));
+
   send_and_dispose_response(client, std::move(resp));
   if (initial_subscription_results) {
     send_and_dispose_response(client, std::move(initial_subscription_results));

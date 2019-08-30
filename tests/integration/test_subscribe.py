@@ -78,6 +78,18 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
             ],
         )
 
+        self.assertListEqual(
+            [u"bar", u"foo"],
+            sorted(
+                self.watchmanCommand(
+                    "subscribe",
+                    root,
+                    "defer",
+                    {"fields": ["name"], "defer": ["foo", "bar"]},
+                ).get("asserted-states")
+            ),
+        )
+
         self.watchmanCommand("state-leave", root, "foo")
         self.assertWaitForAssertedStates(root, [{"name": "bar", "state": "Asserted"}])
 
