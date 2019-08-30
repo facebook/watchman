@@ -64,7 +64,7 @@ void WatchmanClient::connectionCallback(Try<dynamic>&& try_data) {
   }
 }
 
-Future<dynamic> WatchmanClient::connect(dynamic versionArgs) {
+SemiFuture<dynamic> WatchmanClient::connect(dynamic versionArgs) {
   return conn_->connect(versionArgs);
 }
 
@@ -72,11 +72,11 @@ void WatchmanClient::close() {
   return conn_->close();
 }
 
-Future<dynamic> WatchmanClient::run(const dynamic& cmd) {
+SemiFuture<dynamic> WatchmanClient::run(const dynamic& cmd) {
   return conn_->run(cmd);
 }
 
-Future<WatchPathPtr> WatchmanClient::watch(StringPiece path) {
+Future<WatchPathPtr> WatchmanClient::watchImpl(StringPiece path) {
   return conn_->run(dynamic::array("watch-project", path))
       .thenValue([=](dynamic&& data) {
         auto relative_path = data["relative_path"];
@@ -89,20 +89,27 @@ Future<WatchPathPtr> WatchmanClient::watch(StringPiece path) {
       });
 }
 
-Future<std::string> WatchmanClient::getClock(WatchPathPtr path) {
+SemiFuture<WatchPathPtr> WatchmanClient::watch(StringPiece path) {
+  return watchImpl(path).semi();
+}
+
+SemiFuture<std::string> WatchmanClient::getClock(WatchPathPtr path) {
   return conn_->run(dynamic::array("clock", path->root_))
       .thenValue([](dynamic data) { return data["clock"].asString(); });
 }
 
-Future<QueryResult> WatchmanClient::query(dynamic queryObj, WatchPathPtr path) {
+SemiFuture<QueryResult> WatchmanClient::query(
+    dynamic queryObj,
+    WatchPathPtr path) {
   if (path->relativePath_) {
     queryObj["relative_root"] = *path->relativePath_;
   }
-  return {
-      conn_->run(dynamic::array("query", path->root_, std::move(queryObj)))};
+  return run(dynamic::array("query", path->root_, std::move(queryObj)))
+      .deferValue(
+          [](folly::dynamic&& res) { return QueryResult{std::move(res)}; });
 }
 
-Future<SubscriptionPtr> WatchmanClient::subscribe(
+SemiFuture<SubscriptionPtr> WatchmanClient::subscribe(
     dynamic query,
     WatchPathPtr path,
     Executor* executor,
@@ -118,26 +125,26 @@ Future<SubscriptionPtr> WatchmanClient::subscribe(
     query["relative_root"] = *(path->relativePath_);
   }
   return run(dynamic::array("subscribe", path->root_, name, query))
-      .thenValue([subscription = std::move(subscription),
-                  name = name](dynamic data) {
+      .deferValue([subscription = std::move(subscription),
+                   name = name](const dynamic& data) {
         CHECK(data["subscribe"] == name)
             << "Unexpected response to subscribe request " << data;
         return subscription;
       });
 }
 
-Future<SubscriptionPtr> WatchmanClient::subscribe(
+SemiFuture<SubscriptionPtr> WatchmanClient::subscribe(
     const dynamic& query,
     StringPiece path,
     Executor* executor,
     SubscriptionCallback&& callback) {
-  return watch(path).thenValue(
+  return watchImpl(path).thenValue(
       [=, callback = std::move(callback)](WatchPathPtr watch_path) mutable {
         return subscribe(query, watch_path, executor, std::move(callback));
       });
 }
 
-Future<dynamic> WatchmanClient::flushSubscription(
+SemiFuture<dynamic> WatchmanClient::flushSubscription(
     SubscriptionPtr sub,
     std::chrono::milliseconds timeout) {
   CHECK(sub->active_) << "Not subscribed.";
@@ -149,15 +156,17 @@ Future<dynamic> WatchmanClient::flushSubscription(
       dynamic::array("flush-subscriptions", sub->watchPath_->root_, args));
 }
 
-Future<dynamic> WatchmanClient::unsubscribe(SubscriptionPtr sub) {
+SemiFuture<dynamic> WatchmanClient::unsubscribe(SubscriptionPtr sub) {
   CHECK(sub->active_) << "Already unsubscribed.";
 
   sub->active_ = false;
-  return run(dynamic::array("unsubscribe", sub->watchPath_->root_, sub->name_))
+  return conn_
+      ->run(dynamic::array("unsubscribe", sub->watchPath_->root_, sub->name_))
       .ensure([=] {
         std::lock_guard<std::mutex> guard(mutex_);
         subscriptionMap_.erase(sub->name_);
-      });
+      })
+      .semi();
 }
 
 Subscription::Subscription(

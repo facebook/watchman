@@ -130,7 +130,7 @@ struct WatchmanClient {
    * Establishes a connection, returning version and capability information per
    * https://facebook.github.io/watchman/docs/cmd/version.html#capabilities
    */
-  folly::Future<folly::dynamic> connect(
+  folly::SemiFuture<folly::dynamic> connect(
       folly::dynamic versionArgs = folly::dynamic::object()(
           "required",
           folly::dynamic::array("relative_root")));
@@ -160,7 +160,7 @@ struct WatchmanClient {
    * as exceptions. Watchman protocol response errors are represented by the
    * WatchmanResponseError type.
    */
-  folly::Future<folly::dynamic> run(const folly::dynamic& cmd);
+  folly::SemiFuture<folly::dynamic> run(const folly::dynamic& cmd);
 
   /**
    * Create a watch for a path, automatically sharing scarce OS resources
@@ -171,24 +171,26 @@ struct WatchmanClient {
    * See https://facebook.github.io/watchman/docs/cmd/watch-project.html for
    * details.
    */
-  folly::Future<WatchPathPtr> watch(folly::StringPiece path);
+  folly::SemiFuture<WatchPathPtr> watch(folly::StringPiece path);
 
   /**
    * Ask Watchman for its current clock in a given root.
    */
-  folly::Future<Clock> getClock(WatchPathPtr path);
+  folly::SemiFuture<Clock> getClock(WatchPathPtr path);
 
   /**
    * Send a single query to Watchman. queryObj is an object rather than an
    * array.
    */
-  folly::Future<QueryResult> query(folly::dynamic queryObj, WatchPathPtr path);
+  folly::SemiFuture<QueryResult> query(
+      folly::dynamic queryObj,
+      WatchPathPtr path);
 
   /**
    * Establishes a subscription that will trigger callback (via your specified
    * executor) whenever matching files change.
    */
-  folly::Future<SubscriptionPtr> subscribe(
+  folly::SemiFuture<SubscriptionPtr> subscribe(
       folly::dynamic query,
       WatchPathPtr path,
       folly::Executor* executor,
@@ -198,7 +200,7 @@ struct WatchmanClient {
    * As-per subscribe above but automatically creates a WatchPath from a string.
    * This is probably what you want but see comments on watch() for details.
    */
-  folly::Future<SubscriptionPtr> subscribe(
+  folly::SemiFuture<SubscriptionPtr> subscribe(
       const folly::dynamic& query,
       folly::StringPiece path,
       folly::Executor* executor,
@@ -209,12 +211,12 @@ struct WatchmanClient {
    * been received or a timeout occurs.
    * See https://facebook.github.io/watchman/docs/cmd/flush-subscriptions.html
    */
-  folly::Future<folly::dynamic> flushSubscription(
+  folly::SemiFuture<folly::dynamic> flushSubscription(
       SubscriptionPtr subscription,
       std::chrono::milliseconds timeout);
 
   /** Cancels an existing subscription. */
-  folly::Future<folly::dynamic> unsubscribe(SubscriptionPtr subscription);
+  folly::SemiFuture<folly::dynamic> unsubscribe(SubscriptionPtr subscription);
 
   /** Intended for test only. */
   WatchmanConnection& getConnection() {
@@ -223,6 +225,8 @@ struct WatchmanClient {
 
  private:
   void connectionCallback(folly::Try<folly::dynamic>&& try_data);
+
+  folly::Future<WatchPathPtr> watchImpl(folly::StringPiece path);
 
   std::shared_ptr<WatchmanConnection> conn_;
   ErrorCallback errorCallback_;
