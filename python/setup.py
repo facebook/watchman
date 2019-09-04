@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 # vim:ts=4:sw=4:et:
 
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import os
+from distutils.core import Extension, setup
 
 
 watchman_src_dir = os.environ.get("CMAKE_CURRENT_SOURCE_DIR")
@@ -22,11 +25,6 @@ def srcs(names):
     """ transform a list of sources to be relative to py_dir """
     return ["%s/%s" % (py_dir, n) for n in names]
 
-
-try:
-    from setuptools import setup, Extension
-except:
-    from distutils.core import setup, Extension
 
 setup(
     name="pywatchman",
