@@ -40,6 +40,27 @@ class TestEdenSince(WatchmanEdenTestCase.WatchmanEdenTestCase):
         )
         self.assertFileListsEqual(res["files"], ["bdir/test.sh", "bdir/noexec.sh"])
 
+    def test_eden_empty_relative_root(self):
+        root = self.makeEdenMount(populate)
+        res = self.watchmanCommand("watch", root)
+        self.assertEqual("eden", res["watcher"])
+
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {
+                "expression": ["type", "f"],
+                "relative_root": "",
+                "fields": ["name"],
+                "since": "c:0:0",
+            },
+        )
+
+        self.assertFileListsEqual(
+            res["files"],
+            [".watchmanconfig", "hello", "adir/file", "bdir/test.sh", "bdir/noexec.sh"],
+        )
+
     def test_eden_since(self):
         root = self.makeEdenMount(populate)
         res = self.watchmanCommand("watch", root)
