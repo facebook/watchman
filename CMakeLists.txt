@@ -310,10 +310,12 @@ if (ENABLE_EDEN_SUPPORT)
   include_directories(${FB303_INCLUDE_DIR})
 endif()
 
-find_package(PythonInterp REQUIRED)
-message(STATUS "Found python ${PYTHON_VERSION_STRING}")
-
-if(PYTHONINTERP_FOUND)
+# Why not `find_package(Python3)`?  On a system that has
+# python3, python3.6 and python3.7 that will select 3.7,
+# even though python3 -> python3.6.  On such a system we
+# want the python3/python3.6 selection, not the 3.7 selection
+find_program(PYTHON3 python3)
+if(PYTHON3)
   set(PYOUT "${CMAKE_CURRENT_BINARY_DIR}/build/pytimestamp")
   set(SETUP_PY "${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py")
   file(GLOB PYWATCHMAN_PY_SRCS "python/pywatchman/*.py")
@@ -324,7 +326,7 @@ if(PYTHONINTERP_FOUND)
     COMMAND ${CMAKE_COMMAND} -E env
       CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
       CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}
-      ${PYTHON_EXECUTABLE} ${SETUP_PY} build
+      ${PYTHON3} ${SETUP_PY} build
     COMMAND ${CMAKE_COMMAND} -E touch ${PYOUT}
   )
   add_custom_target(pybuild ALL DEPENDS ${PYOUT})
@@ -332,7 +334,7 @@ if(PYTHONINTERP_FOUND)
     execute_process(COMMAND
       ${CMAKE_COMMAND} -E env
         CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-      ${PYTHON_EXECUTABLE} ${SETUP_PY} install
+        ${PYTHON3} ${SETUP_PY} install
       --root ${CMAKE_INSTALL_PREFIX}
       RESULT_VARIABLE STATUS)
     if (NOT STATUS STREQUAL 0)
@@ -654,9 +656,8 @@ add_custom_target(check
   DEPENDS ${tests}
   COMMAND ${CMAKE_CTEST_COMMAND})
 
-if(PYTHONINTERP_FOUND)
-
-  if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(PYTHON3)
+  if(WIN32)
     add_executable(susres winbuild/susres.cpp)
     add_custom_target(make_susres ALL DEPENDS susres)
   endif()
@@ -664,7 +665,7 @@ if(PYTHONINTERP_FOUND)
   # The `integration` target runs the unit tests and integration tests
   add_custom_target(integration
     DEPENDS pybuild check
-    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/runtests.py
+    COMMAND ${PYTHON3} ${CMAKE_CURRENT_SOURCE_DIR}/runtests.py
       --watchman-path ${CMAKE_CURRENT_BINARY_DIR}/watchman
       --pybuild-dir ${CMAKE_CURRENT_BINARY_DIR}/python
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
