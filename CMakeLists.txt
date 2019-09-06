@@ -341,6 +341,7 @@ if(PYTHON3)
       message(FATAL_ERROR \"pywatchman install failed\")
     endif()
   ")
+  add_subdirectory(python)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
