@@ -194,6 +194,12 @@ bool w_getopt(struct watchman_getopt *opts, int *argcp, char ***argvp,
           }
         }
 
+        /* Check if we will be dereferencing a null pointer later. */
+        if (!o) {
+          fprintf(stderr, "\"o\" (watchman_getopt *) is NULL!\n");
+          return false;
+        }
+
         if (o->is_daemon) {
           char *val;
           ignore_result(asprintf(&val, "--%s=%s", o->optname, optarg));
