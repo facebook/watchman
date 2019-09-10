@@ -1,7 +1,5 @@
 use std::f64::consts;
 
-use serde_bytes;
-
 use super::serialize;
 
 #[derive(Debug, Serialize)]
