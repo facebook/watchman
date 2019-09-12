@@ -1,4 +1,5 @@
-use serde::de;
+use error_chain::bail;
+use serde::{de, forward_to_deserialize_any};
 
 use crate::errors::*;
 use crate::header::*;

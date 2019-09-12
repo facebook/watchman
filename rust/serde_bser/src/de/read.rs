@@ -3,6 +3,7 @@ use std::result;
 
 use crate::errors::*;
 use byteorder::{ByteOrder, NativeEndian};
+use error_chain::bail;
 
 #[cfg(feature = "debug_bytes")]
 use std::fmt;

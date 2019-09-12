@@ -1,5 +1,6 @@
 use std::fmt;
 
+use error_chain::error_chain;
 use serde::{de, ser};
 
 use crate::header::header_byte_desc;

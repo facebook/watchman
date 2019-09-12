@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use serde::de;
+use serde::{de, forward_to_deserialize_any, Deserialize};
 
 use crate::errors::*;
 use crate::header::*;

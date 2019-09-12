@@ -1,6 +1,7 @@
 //! Internal stateless code for handling BSER deserialization.
 
 use byteorder::{ByteOrder, NativeEndian};
+use error_chain::bail;
 
 use crate::de::read::{DeRead, Reference};
 use crate::errors::*;

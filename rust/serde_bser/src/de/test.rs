@@ -1,4 +1,6 @@
 use bytes::Buf;
+use maplit::hashmap;
+use serde::Deserialize;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Cursor;

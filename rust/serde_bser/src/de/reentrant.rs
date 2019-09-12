@@ -1,5 +1,6 @@
 //! Module to handle reentrant/recursion limits while deserializing.
 
+use error_chain::bail;
 use std::cell::Cell;
 use std::rc::Rc;
 
