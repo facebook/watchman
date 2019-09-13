@@ -226,7 +226,7 @@ class AIOClient(object):
         self.log_queue = asyncio.Queue()
         self.sub_by_root = {}
         self.bilateral_response_queue = asyncio.Queue()
-        self.recieive_task = None
+        self.receive_task = None
         self.receive_task_exception = None
         self._closed = False
 
@@ -351,8 +351,8 @@ class AIOClient(object):
                 self.close()
 
     async def _broadcast_exception(self, ex):
-        self.bilateral_response_queue.put(ex)
-        self.log_queue.put(ex)
+        await self.bilateral_response_queue.put(ex)
+        await self.log_queue.put(ex)
         for root in self.sub_by_root.values():
             for sub_queue in root.values():
                 await sub_queue.put(ex)
