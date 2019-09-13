@@ -48,7 +48,7 @@ class BuilderBase(object):
                 # the cmd quoting rules to assemble a command that calls the script
                 # to prep the environment and then triggers the actual command that
                 # we wanted to run.
-                return [vcvarsall, "amd64", "&&"]
+                return [vcvarsall, "amd64", "&&", "set", "&&"]
         return []
 
     def _run_cmd(self, cmd, cwd=None, env=None):
