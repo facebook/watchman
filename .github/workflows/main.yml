@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
+    
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+    steps:
+    - uses: actions/checkout@v1
+    - name: Build
+      run: python3 build/fbcode_builder/getdeps.py build watchman
+    - name: Test
+      run: python3 build/fbcode_builder/getdeps.py test watchman
