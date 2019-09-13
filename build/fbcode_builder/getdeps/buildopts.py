@@ -99,18 +99,20 @@ class BuildOptions(object):
             # environment. We use a glob to find some version of this script
             # as deployed with Visual Studio 2017.  This logic will need
             # updating when we switch to a newer compiler.
-            vcvarsall = glob.glob(
-                os.path.join(
-                    os.environ["ProgramFiles(x86)"],
-                    "Microsoft Visual Studio",
-                    "2017",
-                    "*",
-                    "VC",
-                    "Auxiliary",
-                    "Build",
-                    "vcvarsall.bat",
+            vcvarsall = []
+            for year in ["2019", "2017"]:
+                vcvarsall += glob.glob(
+                    os.path.join(
+                        os.environ["ProgramFiles(x86)"],
+                        "Microsoft Visual Studio",
+                        year,
+                        "*",
+                        "VC",
+                        "Auxiliary",
+                        "Build",
+                        "vcvarsall.bat",
+                    )
                 )
-            )
             vcvars_path = vcvarsall[0]
 
         self.vcvars_path = vcvars_path
