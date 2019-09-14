@@ -15,101 +15,101 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Fetch boost
-      run: python build/fbcode_builder/getdeps.py fetch boost
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests boost
     - name: Fetch ninja
-      run: python build/fbcode_builder/getdeps.py fetch ninja
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests ninja
     - name: Fetch cmake
-      run: python build/fbcode_builder/getdeps.py fetch cmake
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests cmake
     - name: Fetch pcre
-      run: python build/fbcode_builder/getdeps.py fetch pcre
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests pcre
     - name: Fetch fmt
-      run: python build/fbcode_builder/getdeps.py fetch fmt
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests fmt
     - name: Fetch googletest
-      run: python build/fbcode_builder/getdeps.py fetch googletest
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests googletest
     - name: Fetch zstd
-      run: python build/fbcode_builder/getdeps.py fetch zstd
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests zstd
     - name: Fetch double-conversion
-      run: python build/fbcode_builder/getdeps.py fetch double-conversion
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests double-conversion
     - name: Fetch gflags
-      run: python build/fbcode_builder/getdeps.py fetch gflags
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests gflags
     - name: Fetch glog
-      run: python build/fbcode_builder/getdeps.py fetch glog
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests glog
     - name: Fetch libevent
-      run: python build/fbcode_builder/getdeps.py fetch libevent
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests libevent
     - name: Fetch snappy
-      run: python build/fbcode_builder/getdeps.py fetch snappy
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests snappy
     - name: Fetch folly
-      run: python build/fbcode_builder/getdeps.py fetch folly
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests folly
     - name: Fetch rsocket-cpp
-      run: python build/fbcode_builder/getdeps.py fetch rsocket-cpp
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests rsocket-cpp
     - name: Fetch autoconf
-      run: python build/fbcode_builder/getdeps.py fetch autoconf
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests autoconf
     - name: Fetch automake
-      run: python build/fbcode_builder/getdeps.py fetch automake
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests automake
     - name: Fetch libtool
-      run: python build/fbcode_builder/getdeps.py fetch libtool
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests libtool
     - name: Fetch bison
-      run: python build/fbcode_builder/getdeps.py fetch bison
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests bison
     - name: Fetch libsodium
-      run: python build/fbcode_builder/getdeps.py fetch libsodium
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests libsodium
     - name: Fetch fizz
-      run: python build/fbcode_builder/getdeps.py fetch fizz
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests fizz
     - name: Fetch flex
-      run: python build/fbcode_builder/getdeps.py fetch flex
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests flex
     - name: Fetch wangle
-      run: python build/fbcode_builder/getdeps.py fetch wangle
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests wangle
     - name: Fetch fbthrift
-      run: python build/fbcode_builder/getdeps.py fetch fbthrift
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests fbthrift
     - name: Fetch fb303
-      run: python build/fbcode_builder/getdeps.py fetch fb303
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests fb303
     - name: Build boost
-      run: python build/fbcode_builder/getdeps.py build boost
+      run: python build/fbcode_builder/getdeps.py build --no-tests boost
     - name: Build ninja
-      run: python build/fbcode_builder/getdeps.py build ninja
+      run: python build/fbcode_builder/getdeps.py build --no-tests ninja
     - name: Build cmake
-      run: python build/fbcode_builder/getdeps.py build cmake
+      run: python build/fbcode_builder/getdeps.py build --no-tests cmake
     - name: Build pcre
-      run: python build/fbcode_builder/getdeps.py build pcre
+      run: python build/fbcode_builder/getdeps.py build --no-tests pcre
     - name: Build fmt
-      run: python build/fbcode_builder/getdeps.py build fmt
+      run: python build/fbcode_builder/getdeps.py build --no-tests fmt
     - name: Build googletest
-      run: python build/fbcode_builder/getdeps.py build googletest
+      run: python build/fbcode_builder/getdeps.py build --no-tests googletest
     - name: Build zstd
-      run: python build/fbcode_builder/getdeps.py build zstd
+      run: python build/fbcode_builder/getdeps.py build --no-tests zstd
     - name: Build double-conversion
-      run: python build/fbcode_builder/getdeps.py build double-conversion
+      run: python build/fbcode_builder/getdeps.py build --no-tests double-conversion
     - name: Build gflags
-      run: python build/fbcode_builder/getdeps.py build gflags
+      run: python build/fbcode_builder/getdeps.py build --no-tests gflags
     - name: Build glog
-      run: python build/fbcode_builder/getdeps.py build glog
+      run: python build/fbcode_builder/getdeps.py build --no-tests glog
     - name: Build libevent
-      run: python build/fbcode_builder/getdeps.py build libevent
+      run: python build/fbcode_builder/getdeps.py build --no-tests libevent
     - name: Build snappy
-      run: python build/fbcode_builder/getdeps.py build snappy
+      run: python build/fbcode_builder/getdeps.py build --no-tests snappy
     - name: Build folly
-      run: python build/fbcode_builder/getdeps.py build folly
+      run: python build/fbcode_builder/getdeps.py build --no-tests folly
     - name: Build rsocket-cpp
-      run: python build/fbcode_builder/getdeps.py build rsocket-cpp
+      run: python build/fbcode_builder/getdeps.py build --no-tests rsocket-cpp
     - name: Build autoconf
-      run: python build/fbcode_builder/getdeps.py build autoconf
+      run: python build/fbcode_builder/getdeps.py build --no-tests autoconf
     - name: Build automake
-      run: python build/fbcode_builder/getdeps.py build automake
+      run: python build/fbcode_builder/getdeps.py build --no-tests automake
     - name: Build libtool
-      run: python build/fbcode_builder/getdeps.py build libtool
+      run: python build/fbcode_builder/getdeps.py build --no-tests libtool
     - name: Build bison
-      run: python build/fbcode_builder/getdeps.py build bison
+      run: python build/fbcode_builder/getdeps.py build --no-tests bison
     - name: Build libsodium
-      run: python build/fbcode_builder/getdeps.py build libsodium
+      run: python build/fbcode_builder/getdeps.py build --no-tests libsodium
     - name: Build fizz
-      run: python build/fbcode_builder/getdeps.py build fizz
+      run: python build/fbcode_builder/getdeps.py build --no-tests fizz
     - name: Build flex
-      run: python build/fbcode_builder/getdeps.py build flex
+      run: python build/fbcode_builder/getdeps.py build --no-tests flex
     - name: Build wangle
-      run: python build/fbcode_builder/getdeps.py build wangle
+      run: python build/fbcode_builder/getdeps.py build --no-tests wangle
     - name: Build fbthrift
-      run: python build/fbcode_builder/getdeps.py build fbthrift
+      run: python build/fbcode_builder/getdeps.py build --no-tests fbthrift
     - name: Build fb303
-      run: python build/fbcode_builder/getdeps.py build fb303
+      run: python build/fbcode_builder/getdeps.py build --no-tests fb303
     - name: Build watchman
       run: python build/fbcode_builder/getdeps.py build --src-dir=. watchman
     - name: Test watchman
@@ -119,105 +119,105 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Fetch boost
-      run: python build/fbcode_builder/getdeps.py fetch boost
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests boost
     - name: Fetch openssl
-      run: python build/fbcode_builder/getdeps.py fetch openssl
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests openssl
     - name: Fetch ninja
-      run: python build/fbcode_builder/getdeps.py fetch ninja
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests ninja
     - name: Fetch cmake
-      run: python build/fbcode_builder/getdeps.py fetch cmake
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests cmake
     - name: Fetch pcre
-      run: python build/fbcode_builder/getdeps.py fetch pcre
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests pcre
     - name: Fetch fmt
-      run: python build/fbcode_builder/getdeps.py fetch fmt
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests fmt
     - name: Fetch googletest
-      run: python build/fbcode_builder/getdeps.py fetch googletest
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests googletest
     - name: Fetch zstd
-      run: python build/fbcode_builder/getdeps.py fetch zstd
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests zstd
     - name: Fetch double-conversion
-      run: python build/fbcode_builder/getdeps.py fetch double-conversion
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests double-conversion
     - name: Fetch gflags
-      run: python build/fbcode_builder/getdeps.py fetch gflags
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests gflags
     - name: Fetch glog
-      run: python build/fbcode_builder/getdeps.py fetch glog
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests glog
     - name: Fetch libevent
-      run: python build/fbcode_builder/getdeps.py fetch libevent
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests libevent
     - name: Fetch snappy
-      run: python build/fbcode_builder/getdeps.py fetch snappy
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests snappy
     - name: Fetch folly
-      run: python build/fbcode_builder/getdeps.py fetch folly
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests folly
     - name: Fetch rsocket-cpp
-      run: python build/fbcode_builder/getdeps.py fetch rsocket-cpp
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests rsocket-cpp
     - name: Fetch autoconf
-      run: python build/fbcode_builder/getdeps.py fetch autoconf
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests autoconf
     - name: Fetch automake
-      run: python build/fbcode_builder/getdeps.py fetch automake
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests automake
     - name: Fetch libtool
-      run: python build/fbcode_builder/getdeps.py fetch libtool
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests libtool
     - name: Fetch bison
-      run: python build/fbcode_builder/getdeps.py fetch bison
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests bison
     - name: Fetch libsodium
-      run: python build/fbcode_builder/getdeps.py fetch libsodium
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests libsodium
     - name: Fetch fizz
-      run: python build/fbcode_builder/getdeps.py fetch fizz
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests fizz
     - name: Fetch flex
-      run: python build/fbcode_builder/getdeps.py fetch flex
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests flex
     - name: Fetch wangle
-      run: python build/fbcode_builder/getdeps.py fetch wangle
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests wangle
     - name: Fetch fbthrift
-      run: python build/fbcode_builder/getdeps.py fetch fbthrift
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests fbthrift
     - name: Fetch fb303
-      run: python build/fbcode_builder/getdeps.py fetch fb303
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests fb303
     - name: Build boost
-      run: python build/fbcode_builder/getdeps.py build boost
+      run: python build/fbcode_builder/getdeps.py build --no-tests boost
     - name: Build openssl
-      run: python build/fbcode_builder/getdeps.py build openssl
+      run: python build/fbcode_builder/getdeps.py build --no-tests openssl
     - name: Build ninja
-      run: python build/fbcode_builder/getdeps.py build ninja
+      run: python build/fbcode_builder/getdeps.py build --no-tests ninja
     - name: Build cmake
-      run: python build/fbcode_builder/getdeps.py build cmake
+      run: python build/fbcode_builder/getdeps.py build --no-tests cmake
     - name: Build pcre
-      run: python build/fbcode_builder/getdeps.py build pcre
+      run: python build/fbcode_builder/getdeps.py build --no-tests pcre
     - name: Build fmt
-      run: python build/fbcode_builder/getdeps.py build fmt
+      run: python build/fbcode_builder/getdeps.py build --no-tests fmt
     - name: Build googletest
-      run: python build/fbcode_builder/getdeps.py build googletest
+      run: python build/fbcode_builder/getdeps.py build --no-tests googletest
     - name: Build zstd
-      run: python build/fbcode_builder/getdeps.py build zstd
+      run: python build/fbcode_builder/getdeps.py build --no-tests zstd
     - name: Build double-conversion
-      run: python build/fbcode_builder/getdeps.py build double-conversion
+      run: python build/fbcode_builder/getdeps.py build --no-tests double-conversion
     - name: Build gflags
-      run: python build/fbcode_builder/getdeps.py build gflags
+      run: python build/fbcode_builder/getdeps.py build --no-tests gflags
     - name: Build glog
-      run: python build/fbcode_builder/getdeps.py build glog
+      run: python build/fbcode_builder/getdeps.py build --no-tests glog
     - name: Build libevent
-      run: python build/fbcode_builder/getdeps.py build libevent
+      run: python build/fbcode_builder/getdeps.py build --no-tests libevent
     - name: Build snappy
-      run: python build/fbcode_builder/getdeps.py build snappy
+      run: python build/fbcode_builder/getdeps.py build --no-tests snappy
     - name: Build folly
-      run: python build/fbcode_builder/getdeps.py build folly
+      run: python build/fbcode_builder/getdeps.py build --no-tests folly
     - name: Build rsocket-cpp
-      run: python build/fbcode_builder/getdeps.py build rsocket-cpp
+      run: python build/fbcode_builder/getdeps.py build --no-tests rsocket-cpp
     - name: Build autoconf
-      run: python build/fbcode_builder/getdeps.py build autoconf
+      run: python build/fbcode_builder/getdeps.py build --no-tests autoconf
     - name: Build automake
-      run: python build/fbcode_builder/getdeps.py build automake
+      run: python build/fbcode_builder/getdeps.py build --no-tests automake
     - name: Build libtool
-      run: python build/fbcode_builder/getdeps.py build libtool
+      run: python build/fbcode_builder/getdeps.py build --no-tests libtool
     - name: Build bison
-      run: python build/fbcode_builder/getdeps.py build bison
+      run: python build/fbcode_builder/getdeps.py build --no-tests bison
     - name: Build libsodium
-      run: python build/fbcode_builder/getdeps.py build libsodium
+      run: python build/fbcode_builder/getdeps.py build --no-tests libsodium
     - name: Build fizz
-      run: python build/fbcode_builder/getdeps.py build fizz
+      run: python build/fbcode_builder/getdeps.py build --no-tests fizz
     - name: Build flex
-      run: python build/fbcode_builder/getdeps.py build flex
+      run: python build/fbcode_builder/getdeps.py build --no-tests flex
     - name: Build wangle
-      run: python build/fbcode_builder/getdeps.py build wangle
+      run: python build/fbcode_builder/getdeps.py build --no-tests wangle
     - name: Build fbthrift
-      run: python build/fbcode_builder/getdeps.py build fbthrift
+      run: python build/fbcode_builder/getdeps.py build --no-tests fbthrift
     - name: Build fb303
-      run: python build/fbcode_builder/getdeps.py build fb303
+      run: python build/fbcode_builder/getdeps.py build --no-tests fb303
     - name: Build watchman
       run: python build/fbcode_builder/getdeps.py build --src-dir=. watchman
     - name: Test watchman
@@ -227,101 +227,101 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Fetch boost
-      run: python build/fbcode_builder/getdeps.py fetch boost
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests boost
     - name: Fetch bison
-      run: python build/fbcode_builder/getdeps.py fetch bison
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests bison
     - name: Fetch flex
-      run: python build/fbcode_builder/getdeps.py fetch flex
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests flex
     - name: Fetch libsodium
-      run: python build/fbcode_builder/getdeps.py fetch libsodium
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests libsodium
     - name: Fetch ninja
-      run: python build/fbcode_builder/getdeps.py fetch ninja
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests ninja
     - name: Fetch cmake
-      run: python build/fbcode_builder/getdeps.py fetch cmake
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests cmake
     - name: Fetch pcre
-      run: python build/fbcode_builder/getdeps.py fetch pcre
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests pcre
     - name: Fetch fmt
-      run: python build/fbcode_builder/getdeps.py fetch fmt
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests fmt
     - name: Fetch googletest
-      run: python build/fbcode_builder/getdeps.py fetch googletest
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests googletest
     - name: Fetch zstd
-      run: python build/fbcode_builder/getdeps.py fetch zstd
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests zstd
     - name: Fetch double-conversion
-      run: python build/fbcode_builder/getdeps.py fetch double-conversion
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests double-conversion
     - name: Fetch gflags
-      run: python build/fbcode_builder/getdeps.py fetch gflags
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests gflags
     - name: Fetch glog
-      run: python build/fbcode_builder/getdeps.py fetch glog
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests glog
     - name: Fetch snappy
-      run: python build/fbcode_builder/getdeps.py fetch snappy
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests snappy
     - name: Fetch zlib
-      run: python build/fbcode_builder/getdeps.py fetch zlib
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests zlib
     - name: Fetch perl
-      run: python build/fbcode_builder/getdeps.py fetch perl
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests perl
     - name: Fetch openssl
-      run: python build/fbcode_builder/getdeps.py fetch openssl
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests openssl
     - name: Fetch libevent
-      run: python build/fbcode_builder/getdeps.py fetch libevent
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests libevent
     - name: Fetch folly
-      run: python build/fbcode_builder/getdeps.py fetch folly
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests folly
     - name: Fetch fizz
-      run: python build/fbcode_builder/getdeps.py fetch fizz
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests fizz
     - name: Fetch rsocket-cpp
-      run: python build/fbcode_builder/getdeps.py fetch rsocket-cpp
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests rsocket-cpp
     - name: Fetch wangle
-      run: python build/fbcode_builder/getdeps.py fetch wangle
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests wangle
     - name: Fetch fbthrift
-      run: python build/fbcode_builder/getdeps.py fetch fbthrift
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests fbthrift
     - name: Fetch fb303
-      run: python build/fbcode_builder/getdeps.py fetch fb303
+      run: python build/fbcode_builder/getdeps.py fetch --no-tests fb303
     - name: Build boost
-      run: python build/fbcode_builder/getdeps.py build boost
+      run: python build/fbcode_builder/getdeps.py build --no-tests boost
     - name: Build bison
-      run: python build/fbcode_builder/getdeps.py build bison
+      run: python build/fbcode_builder/getdeps.py build --no-tests bison
     - name: Build flex
-      run: python build/fbcode_builder/getdeps.py build flex
+      run: python build/fbcode_builder/getdeps.py build --no-tests flex
     - name: Build libsodium
-      run: python build/fbcode_builder/getdeps.py build libsodium
+      run: python build/fbcode_builder/getdeps.py build --no-tests libsodium
     - name: Build ninja
-      run: python build/fbcode_builder/getdeps.py build ninja
+      run: python build/fbcode_builder/getdeps.py build --no-tests ninja
     - name: Build cmake
-      run: python build/fbcode_builder/getdeps.py build cmake
+      run: python build/fbcode_builder/getdeps.py build --no-tests cmake
     - name: Build pcre
-      run: python build/fbcode_builder/getdeps.py build pcre
+      run: python build/fbcode_builder/getdeps.py build --no-tests pcre
     - name: Build fmt
-      run: python build/fbcode_builder/getdeps.py build fmt
+      run: python build/fbcode_builder/getdeps.py build --no-tests fmt
     - name: Build googletest
-      run: python build/fbcode_builder/getdeps.py build googletest
+      run: python build/fbcode_builder/getdeps.py build --no-tests googletest
     - name: Build zstd
-      run: python build/fbcode_builder/getdeps.py build zstd
+      run: python build/fbcode_builder/getdeps.py build --no-tests zstd
     - name: Build double-conversion
-      run: python build/fbcode_builder/getdeps.py build double-conversion
+      run: python build/fbcode_builder/getdeps.py build --no-tests double-conversion
     - name: Build gflags
-      run: python build/fbcode_builder/getdeps.py build gflags
+      run: python build/fbcode_builder/getdeps.py build --no-tests gflags
     - name: Build glog
-      run: python build/fbcode_builder/getdeps.py build glog
+      run: python build/fbcode_builder/getdeps.py build --no-tests glog
     - name: Build snappy
-      run: python build/fbcode_builder/getdeps.py build snappy
+      run: python build/fbcode_builder/getdeps.py build --no-tests snappy
     - name: Build zlib
-      run: python build/fbcode_builder/getdeps.py build zlib
+      run: python build/fbcode_builder/getdeps.py build --no-tests zlib
     - name: Build perl
-      run: python build/fbcode_builder/getdeps.py build perl
+      run: python build/fbcode_builder/getdeps.py build --no-tests perl
     - name: Build openssl
-      run: python build/fbcode_builder/getdeps.py build openssl
+      run: python build/fbcode_builder/getdeps.py build --no-tests openssl
     - name: Build libevent
-      run: python build/fbcode_builder/getdeps.py build libevent
+      run: python build/fbcode_builder/getdeps.py build --no-tests libevent
     - name: Build folly
-      run: python build/fbcode_builder/getdeps.py build folly
+      run: python build/fbcode_builder/getdeps.py build --no-tests folly
     - name: Build fizz
-      run: python build/fbcode_builder/getdeps.py build fizz
+      run: python build/fbcode_builder/getdeps.py build --no-tests fizz
     - name: Build rsocket-cpp
-      run: python build/fbcode_builder/getdeps.py build rsocket-cpp
+      run: python build/fbcode_builder/getdeps.py build --no-tests rsocket-cpp
     - name: Build wangle
-      run: python build/fbcode_builder/getdeps.py build wangle
+      run: python build/fbcode_builder/getdeps.py build --no-tests wangle
     - name: Build fbthrift
-      run: python build/fbcode_builder/getdeps.py build fbthrift
+      run: python build/fbcode_builder/getdeps.py build --no-tests fbthrift
     - name: Build fb303
-      run: python build/fbcode_builder/getdeps.py build fb303
+      run: python build/fbcode_builder/getdeps.py build --no-tests fb303
     - name: Build watchman
       run: python build/fbcode_builder/getdeps.py build --src-dir=. watchman
     - name: Test watchman
