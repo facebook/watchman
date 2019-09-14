@@ -344,8 +344,8 @@ if __name__ == "__main__":
         if "GITHUB_ACTIONS" in os.environ and self.build_opts.is_windows():
             # GitHub actions: the host has both gcc and msvc installed, and for some
             # reason cmake picks gcc first; let's try to persuade it to not do that.
-            define["CMAKE_C_COMPILER"] = "cl.exe"
-            define["CMAKE_CXX_COMPILER"] = "cl.exe"
+            defines["CMAKE_C_COMPILER"] = "cl.exe"
+            defines["CMAKE_CXX_COMPILER"] = "cl.exe"
 
         if self.build_opts.is_darwin():
             # Try to persuade cmake to set the rpath to match the lib
