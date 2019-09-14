@@ -527,6 +527,50 @@ class TestCmd(ProjectCmdBase):
         parser.add_argument("--test-owner", help="Owner for testpilot")
 
 
+@cmd("generate-github-actions", "generate a GitHub actions configuration")
+class GenerateGitHubActionsCmd(ProjectCmdBase):
+    def run_project_cmd(self, args, loader, manifest):
+        projects = loader.manifests_in_dependency_order()
+
+        with open(args.output_file, "w") as out:
+            out.write("""
+name: CI
+
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macOS-latest, windows-2016]
+    steps:
+    - uses: actions/checkout@v1
+""")
+            for m in projects:
+                out.write("    - name: Fetch %s\n" % m.name)
+                out.write("      run python build/fbcode_builder/getdeps.py fetch %s\n" % m.name)
+            for m in projects:
+                out.write("    - name: Build %s\n" % m.name)
+                if m == manifest:
+                    out.write("      run python build/fbcode_builder/getdeps.py build --src-dir=. %s\n" % m.name)
+                else:
+                    out.write("      run python build/fbcode_builder/getdeps.py build %s\n" % m.name)
+
+            out.write("    - name: Test %s\n" % manifest.name)
+            out.write("      run python build/fbcode_builder/getdeps.py --src-dir=. test %s\n" % manifest.name)
+
+    def setup_project_cmd_parser(self, parser):
+        parser.add_argument(
+            "--output-file", help="The name of the yaml file")
+
 def get_arg_var_name(args):
     for arg in args:
         if arg.startswith("--"):

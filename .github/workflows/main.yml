@@ -1,3 +1,4 @@
+
 name: CI
 
 on:
@@ -7,7 +8,7 @@ on:
   pull_request:
     branches:
     - master
-    
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -17,7 +18,109 @@ jobs:
         os: [ubuntu-latest, macOS-latest, windows-2016]
     steps:
     - uses: actions/checkout@v1
-    - name: Build
-      run: python build/fbcode_builder/getdeps.py build watchman
-    - name: Test
-      run: python build/fbcode_builder/getdeps.py test watchman
+    - name: Fetch boost
+      run python build/fbcode_builder/getdeps.py fetch boost
+    - name: Fetch openssl
+      run python build/fbcode_builder/getdeps.py fetch openssl
+    - name: Fetch ninja
+      run python build/fbcode_builder/getdeps.py fetch ninja
+    - name: Fetch cmake
+      run python build/fbcode_builder/getdeps.py fetch cmake
+    - name: Fetch pcre
+      run python build/fbcode_builder/getdeps.py fetch pcre
+    - name: Fetch fmt
+      run python build/fbcode_builder/getdeps.py fetch fmt
+    - name: Fetch googletest
+      run python build/fbcode_builder/getdeps.py fetch googletest
+    - name: Fetch zstd
+      run python build/fbcode_builder/getdeps.py fetch zstd
+    - name: Fetch double-conversion
+      run python build/fbcode_builder/getdeps.py fetch double-conversion
+    - name: Fetch gflags
+      run python build/fbcode_builder/getdeps.py fetch gflags
+    - name: Fetch glog
+      run python build/fbcode_builder/getdeps.py fetch glog
+    - name: Fetch libevent
+      run python build/fbcode_builder/getdeps.py fetch libevent
+    - name: Fetch snappy
+      run python build/fbcode_builder/getdeps.py fetch snappy
+    - name: Fetch folly
+      run python build/fbcode_builder/getdeps.py fetch folly
+    - name: Fetch rsocket-cpp
+      run python build/fbcode_builder/getdeps.py fetch rsocket-cpp
+    - name: Fetch autoconf
+      run python build/fbcode_builder/getdeps.py fetch autoconf
+    - name: Fetch automake
+      run python build/fbcode_builder/getdeps.py fetch automake
+    - name: Fetch libtool
+      run python build/fbcode_builder/getdeps.py fetch libtool
+    - name: Fetch bison
+      run python build/fbcode_builder/getdeps.py fetch bison
+    - name: Fetch libsodium
+      run python build/fbcode_builder/getdeps.py fetch libsodium
+    - name: Fetch fizz
+      run python build/fbcode_builder/getdeps.py fetch fizz
+    - name: Fetch flex
+      run python build/fbcode_builder/getdeps.py fetch flex
+    - name: Fetch wangle
+      run python build/fbcode_builder/getdeps.py fetch wangle
+    - name: Fetch fbthrift
+      run python build/fbcode_builder/getdeps.py fetch fbthrift
+    - name: Fetch fb303
+      run python build/fbcode_builder/getdeps.py fetch fb303
+    - name: Fetch watchman
+      run python build/fbcode_builder/getdeps.py fetch watchman
+    - name: Build boost
+      run python build/fbcode_builder/getdeps.py build boost
+    - name: Build openssl
+      run python build/fbcode_builder/getdeps.py build openssl
+    - name: Build ninja
+      run python build/fbcode_builder/getdeps.py build ninja
+    - name: Build cmake
+      run python build/fbcode_builder/getdeps.py build cmake
+    - name: Build pcre
+      run python build/fbcode_builder/getdeps.py build pcre
+    - name: Build fmt
+      run python build/fbcode_builder/getdeps.py build fmt
+    - name: Build googletest
+      run python build/fbcode_builder/getdeps.py build googletest
+    - name: Build zstd
+      run python build/fbcode_builder/getdeps.py build zstd
+    - name: Build double-conversion
+      run python build/fbcode_builder/getdeps.py build double-conversion
+    - name: Build gflags
+      run python build/fbcode_builder/getdeps.py build gflags
+    - name: Build glog
+      run python build/fbcode_builder/getdeps.py build glog
+    - name: Build libevent
+      run python build/fbcode_builder/getdeps.py build libevent
+    - name: Build snappy
+      run python build/fbcode_builder/getdeps.py build snappy
+    - name: Build folly
+      run python build/fbcode_builder/getdeps.py build folly
+    - name: Build rsocket-cpp
+      run python build/fbcode_builder/getdeps.py build rsocket-cpp
+    - name: Build autoconf
+      run python build/fbcode_builder/getdeps.py build autoconf
+    - name: Build automake
+      run python build/fbcode_builder/getdeps.py build automake
+    - name: Build libtool
+      run python build/fbcode_builder/getdeps.py build libtool
+    - name: Build bison
+      run python build/fbcode_builder/getdeps.py build bison
+    - name: Build libsodium
+      run python build/fbcode_builder/getdeps.py build libsodium
+    - name: Build fizz
+      run python build/fbcode_builder/getdeps.py build fizz
+    - name: Build flex
+      run python build/fbcode_builder/getdeps.py build flex
+    - name: Build wangle
+      run python build/fbcode_builder/getdeps.py build wangle
+    - name: Build fbthrift
+      run python build/fbcode_builder/getdeps.py build fbthrift
+    - name: Build fb303
+      run python build/fbcode_builder/getdeps.py build fb303
+    - name: Build watchman
+      run python build/fbcode_builder/getdeps.py build --src-dir=. watchman
+    - name: Test watchman
+      run python build/fbcode_builder/getdeps.py --src-dir=. test watchman
