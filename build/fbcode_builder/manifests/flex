@@ -22,5 +22,5 @@ win_flex.exe = bin/flex.exe
 
 # Moral equivalent to this PR that fixes a crash when bootstrapping the compiler
 # on linux: https://github.com/easybuilders/easybuild-easyconfigs/pull/5792
-[autoconf.args]
+[autoconf.args.os=linux]
 CFLAGS=-D_GNU_SOURCE
