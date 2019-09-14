@@ -19,5 +19,11 @@ EVENT__DISABLE_BENCHMARK = ON
 EVENT__DISABLE_SAMPLES = ON
 EVENT__DISABLE_REGRESS = ON
 
+# GitHub actions: the host has both gcc and msvc installed, and for some
+# reason the libevent cmake picks gcc first; let's try to persuade it
+# to not do that.
+[cmake.defines.os=windows]
+CMAKE_C_COMPILE=cl.exe
+
 [dependencies.os=windows]
 openssl
