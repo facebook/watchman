@@ -23,7 +23,7 @@ EVENT__DISABLE_REGRESS = ON
 # reason the libevent cmake picks gcc first; let's try to persuade it
 # to not do that.
 [cmake.defines.os=windows]
-CMAKE_C_COMPILE=cl.exe
+CMAKE_C_COMPILER=cl.exe
 
 [dependencies.os=windows]
 openssl
