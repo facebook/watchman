@@ -556,16 +556,16 @@ jobs:
 """)
             for m in projects:
                 out.write("    - name: Fetch %s\n" % m.name)
-                out.write("      run python build/fbcode_builder/getdeps.py fetch %s\n" % m.name)
+                out.write("      run: python build/fbcode_builder/getdeps.py fetch %s\n" % m.name)
             for m in projects:
                 out.write("    - name: Build %s\n" % m.name)
                 if m == manifest:
-                    out.write("      run python build/fbcode_builder/getdeps.py build --src-dir=. %s\n" % m.name)
+                    out.write("      run: python build/fbcode_builder/getdeps.py build --src-dir=. %s\n" % m.name)
                 else:
-                    out.write("      run python build/fbcode_builder/getdeps.py build %s\n" % m.name)
+                    out.write("      run: python build/fbcode_builder/getdeps.py build %s\n" % m.name)
 
             out.write("    - name: Test %s\n" % manifest.name)
-            out.write("      run python build/fbcode_builder/getdeps.py --src-dir=. test %s\n" % manifest.name)
+            out.write("      run: python build/fbcode_builder/getdeps.py --src-dir=. test %s\n" % manifest.name)
 
     def setup_project_cmd_parser(self, parser):
         parser.add_argument(
