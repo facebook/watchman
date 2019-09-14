@@ -532,6 +532,12 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
     def run_project_cmd(self, args, loader, manifest):
         projects = loader.manifests_in_dependency_order()
 
+        platforms = [
+            HostType("linux", "ubuntu", "18"),
+            HostType("darwin", None, None),
+            HostType("windows", None, None),
+        ]
+
         with open(args.output_file, "w") as out:
             out.write("""
 name: CI
@@ -545,27 +551,58 @@ on:
     - master
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macOS-latest, windows-2016]
-    steps:
-    - uses: actions/checkout@v1
 """)
-            for m in projects:
+            for p in platforms:
+                build_opts = setup_build_options(args, p)
+                self.write_job_for_platform(out, args, build_opts)
+
+
+    def write_job_for_platform(self, out, args, build_opts):
+        ctx_gen = build_opts.get_context_generator()
+        loader = ManifestLoader(build_opts, ctx_gen)
+        manifest = loader.load_manifest(args.project)
+        manifest_ctx = loader.ctx_gen.get_context(manifest.name)
+
+        # Some projects don't do anything "useful" as a leaf project, only
+        # as a dep for a leaf project.  Check for those here; we don't want
+        # to waste the effort scheduling them on CI.
+        # We do this by looking at the builder type in the manifest file
+        # rather than creating a builder and checking its type because we
+        # don't know enough to create the full builder instance here.
+        if manifest.get("build", "builder", ctx=manifest_ctx) == "nop":
+            return None
+
+        if build_opts.is_linux():
+            job_name = "linux"
+            runs_on = "ubuntu-18.04"
+        elif build_opts.is_windows():
+            job_name = "windows"
+            runs_on = "windows-2016"
+        else:
+            job_name = "mac"
+            runs_on = "macOS-latest"
+
+        out.write("  %s:\n" % job_name)
+        out.write("    runs-on: %s\n" % runs_on)
+        out.write("    steps:\n")
+        out.write("    - uses: actions/checkout@v1\n")
+
+        projects = loader.manifests_in_dependency_order()
+
+        for m in projects:
+            if m != manifest:
                 out.write("    - name: Fetch %s\n" % m.name)
                 out.write("      run: python build/fbcode_builder/getdeps.py fetch %s\n" % m.name)
-            for m in projects:
-                out.write("    - name: Build %s\n" % m.name)
-                if m == manifest:
-                    out.write("      run: python build/fbcode_builder/getdeps.py build --src-dir=. %s\n" % m.name)
-                else:
-                    out.write("      run: python build/fbcode_builder/getdeps.py build %s\n" % m.name)
 
-            out.write("    - name: Test %s\n" % manifest.name)
-            out.write("      run: python build/fbcode_builder/getdeps.py --src-dir=. test %s\n" % manifest.name)
+        for m in projects:
+            out.write("    - name: Build %s\n" % m.name)
+            if m == manifest:
+                out.write("      run: python build/fbcode_builder/getdeps.py build --src-dir=. %s\n" % m.name)
+            else:
+                out.write("      run: python build/fbcode_builder/getdeps.py build %s\n" % m.name)
+
+        out.write("    - name: Test %s\n" % manifest.name)
+        out.write("      run: python build/fbcode_builder/getdeps.py test --src-dir=. %s\n" % manifest.name)
 
     def setup_project_cmd_parser(self, parser):
         parser.add_argument(
