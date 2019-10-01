@@ -168,3 +168,19 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
 
         res = self.watchmanCommand("query", root, {"fields": ["name"], "glob": []})
         self.assertFileListsEqual(res["files"], [])
+
+    def test_glob_generator_absolute(self):
+        """ Make it easier to understand buck errors resulting from bad globs """
+        root = self.mkdtemp()
+
+        os.mkdir(os.path.join(root, "mydir"))
+        self.watchmanCommand("watch", root)
+
+        with self.assertRaises(pywatchman.WatchmanError) as ctx:
+            self.watchmanCommand("query", root, {"glob": ["//fbandroid/*.cpp"]})
+        self.assertIn(
+            "watchman command error: failed to parse query: "
+            "glob `//fbandroid/*.cpp` is an absolute path.  "
+            "All globs must be relative paths",
+            str(ctx.exception),
+        )

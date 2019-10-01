@@ -89,6 +89,13 @@ static bool add_glob(
   const char* pattern_end = pattern + glob_str.size();
   bool had_specials;
 
+  if (glob_str.piece().pathIsAbsolute()) {
+    throw QueryParseError(watchman::to<std::string>(
+        "glob `",
+        glob_str,
+        "` is an absolute path.  All globs must be relative paths!"));
+  }
+
   while (pattern < pattern_end) {
     const char* sep =
         find_sep_and_specials(pattern, pattern_end, &had_specials);
