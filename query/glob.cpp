@@ -81,10 +81,12 @@ static watchman_glob_tree* lookup_node_child(
 // Compile and add a new glob pattern to the tree.
 // Compilation splits a pattern into nodes, with one node for each directory
 // separator separated path component.
-static bool add_glob(struct watchman_glob_tree* tree, w_string_t* glob_str) {
+static bool add_glob(
+    struct watchman_glob_tree* tree,
+    const w_string& glob_str) {
   struct watchman_glob_tree* parent = tree;
-  const char* pattern = glob_str->buf;
-  const char* pattern_end = pattern + glob_str->len;
+  const char* pattern = glob_str.data();
+  const char* pattern_end = pattern + glob_str.size();
   bool had_specials;
 
   while (pattern < pattern_end) {
