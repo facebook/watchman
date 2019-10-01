@@ -286,6 +286,10 @@ find_package(
   Boost 1.54.0 REQUIRED #1.54.0 or greater
   COMPONENTS
     context
+    filesystem
+    program_options
+    regex
+    system
     thread
 )
 
