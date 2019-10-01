@@ -32,9 +32,10 @@ W_CAP_REG("glob_generator")
 // Look ahead in pattern; we want to find the directory separator.
 // While we are looking, check for wildmatch special characters.
 // If we do not find a directory separator, return NULL.
-static inline const char *find_sep_and_specials(const char *pattern,
-                                                const char *end,
-                                                bool *had_specials) {
+static inline const char* find_sep_and_specials(
+    const char* pattern,
+    const char* end,
+    bool* had_specials) {
   *had_specials = false;
   while (pattern < end) {
     switch (*pattern) {
@@ -80,17 +81,17 @@ static watchman_glob_tree* lookup_node_child(
 // Compile and add a new glob pattern to the tree.
 // Compilation splits a pattern into nodes, with one node for each directory
 // separator separated path component.
-static bool add_glob(struct watchman_glob_tree *tree, w_string_t *glob_str) {
-  struct watchman_glob_tree *parent = tree;
-  const char *pattern = glob_str->buf;
-  const char *pattern_end = pattern + glob_str->len;
+static bool add_glob(struct watchman_glob_tree* tree, w_string_t* glob_str) {
+  struct watchman_glob_tree* parent = tree;
+  const char* pattern = glob_str->buf;
+  const char* pattern_end = pattern + glob_str->len;
   bool had_specials;
 
   while (pattern < pattern_end) {
-    const char *sep =
+    const char* sep =
         find_sep_and_specials(pattern, pattern_end, &had_specials);
-    const char *end;
-    struct watchman_glob_tree *node;
+    const char* end;
+    struct watchman_glob_tree* node;
     bool is_doublestar = false;
     auto* container = &parent->children;
 
@@ -130,7 +131,7 @@ static bool add_glob(struct watchman_glob_tree *tree, w_string_t *glob_str) {
     }
 
     pattern = end + 1; // skip separator
-    parent = node;     // the next iteration uses this node as its parent
+    parent = node; // the next iteration uses this node as its parent
   }
 
   return true;
@@ -239,13 +240,15 @@ void InMemoryView::globGeneratorDoublestar(
     // as it doesn't make a lot of sense to yield multiple results for
     // the same file.
     for (const auto& child_node : node->doublestar_children) {
-      matched = wildmatch(child_node->pattern.c_str(), subject.c_str(),
-                          ctx->query->glob_flags | WM_PATHNAME |
-                              (ctx->query->case_sensitive ==
-                                       CaseSensitivity::CaseSensitive
-                                   ? 0
-                                   : WM_CASEFOLD),
-                          0) == WM_MATCH;
+      matched =
+          wildmatch(
+              child_node->pattern.c_str(),
+              subject.c_str(),
+              ctx->query->glob_flags | WM_PATHNAME |
+                  (ctx->query->case_sensitive == CaseSensitivity::CaseSensitive
+                       ? 0
+                       : WM_CASEFOLD),
+              0) == WM_MATCH;
 
       if (matched) {
         w_query_process_file(
@@ -277,7 +280,6 @@ void InMemoryView::globGeneratorTree(
     struct w_query_ctx* ctx,
     const struct watchman_glob_tree* node,
     const struct watchman_dir* dir) const {
-
   if (!node->doublestar_children.empty()) {
     globGeneratorDoublestar(ctx, dir, node, nullptr, 0);
   }
@@ -310,13 +312,15 @@ void InMemoryView::globGeneratorTree(
             continue;
           }
 
-          if (wildmatch(child_node->pattern.c_str(), child_dir->name.c_str(),
-                        ctx->query->glob_flags |
-                            (ctx->query->case_sensitive ==
-                                     CaseSensitivity::CaseSensitive
-                                 ? 0
-                                 : WM_CASEFOLD),
-                        0) == WM_MATCH) {
+          if (wildmatch(
+                  child_node->pattern.c_str(),
+                  child_dir->name.c_str(),
+                  ctx->query->glob_flags |
+                      (ctx->query->case_sensitive ==
+                               CaseSensitivity::CaseSensitive
+                           ? 0
+                           : WM_CASEFOLD),
+                  0) == WM_MATCH) {
             globGeneratorTree(ctx, child_node.get(), child_dir);
           }
         }
@@ -354,13 +358,15 @@ void InMemoryView::globGeneratorTree(
             continue;
           }
 
-          if (wildmatch(child_node->pattern.c_str(), file_name.data(),
-                        ctx->query->glob_flags |
-                            (ctx->query->case_sensitive ==
-                                     CaseSensitivity::CaseSensitive
-                                 ? WM_CASEFOLD
-                                 : 0),
-                        0) == WM_MATCH) {
+          if (wildmatch(
+                  child_node->pattern.c_str(),
+                  file_name.data(),
+                  ctx->query->glob_flags |
+                      (ctx->query->case_sensitive ==
+                               CaseSensitivity::CaseSensitive
+                           ? WM_CASEFOLD
+                           : 0),
+                  0) == WM_MATCH) {
             w_query_process_file(
                 ctx->query,
                 ctx,
@@ -374,7 +380,7 @@ void InMemoryView::globGeneratorTree(
 
 void InMemoryView::globGenerator(w_query* query, struct w_query_ctx* ctx)
     const {
-  w_string_t *relative_root;
+  w_string_t* relative_root;
 
   if (query->relative_root) {
     relative_root = query->relative_root;
@@ -395,7 +401,7 @@ void InMemoryView::globGenerator(w_query* query, struct w_query_ctx* ctx)
 
   globGeneratorTree(ctx, query->glob_tree.get(), dir);
 }
-}
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */
