@@ -202,8 +202,13 @@ class ElfDeps(DepBase):
     def __init__(self, buildopts, install_dirs):
         super(ElfDeps, self).__init__(buildopts, install_dirs)
         self.patchelf = path_search(self.env, "patchelf")
+        if self.patchelf is None:
+            print("WARNING: `patchelf` binary not found in path, fixup-dyn-deps will NOP.",file=sys.stderr)
 
     def list_dynamic_deps(self, objfile):
+        if self.patchelf is None:
+            return []
+
         out = (
             subprocess.check_output(
                 [self.patchelf, "--print-needed", objfile], env=dict(self.env.items())

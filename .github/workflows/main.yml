@@ -118,9 +118,9 @@ jobs:
     - name: Build watchman
       run: python build/fbcode_builder/getdeps.py build --src-dir=. watchman
     - name: Make Artifacts dir
-      run: mkdir _artifacts
+      run: mkdir _artifacts && mkdir _artifacts/linux
     - name: Copy artifacts
-      run: python build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. watchman _artifacts
+      run: python build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. watchman _artifacts/linux
     - uses: actions/upload-artifact@master
       with:
         name: watchman
@@ -238,9 +238,9 @@ jobs:
     - name: Build watchman
       run: python build/fbcode_builder/getdeps.py build --src-dir=. watchman
     - name: Make Artifacts dir
-      run: mkdir _artifacts
+      run: mkdir _artifacts && mkdir _artifacts/mac
     - name: Copy artifacts
-      run: python build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. watchman _artifacts
+      run: python build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. watchman _artifacts/mac
     - uses: actions/upload-artifact@master
       with:
         name: watchman
@@ -354,9 +354,9 @@ jobs:
     - name: Build watchman
       run: python build/fbcode_builder/getdeps.py build --src-dir=. watchman
     - name: Make Artifacts dir
-      run: mkdir _artifacts
+      run: mkdir _artifacts && mkdir _artifacts/windows
     - name: Copy artifacts
-      run: python build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. watchman _artifacts
+      run: python build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. watchman _artifacts/windows
     - uses: actions/upload-artifact@master
       with:
         name: watchman
