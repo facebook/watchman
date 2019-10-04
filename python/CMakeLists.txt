@@ -1,4 +1,3 @@
-include(FBPythonBinary)
 add_subdirectory(pywatchman)
 
 add_fb_python_executable(watchman-wait

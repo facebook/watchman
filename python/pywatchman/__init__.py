@@ -596,6 +596,15 @@ class WindowsNamedPipeTransport(Transport):
         )
 
 
+def _default_binpath(binpath=None):
+    if binpath:
+        return binpath
+    # The test harness sets WATCHMAN_BINARY to the binary under test,
+    # so we use that by default, otherwise, allow resolving watchman
+    # from the users PATH.
+    return os.environ.get("WATCHMAN_BINARY", "watchman")
+
+
 class CLIProcessTransport(Transport):
     """ open a pipe to the cli to talk to the service
     This intended to be used only in the test harness!
@@ -619,10 +628,10 @@ class CLIProcessTransport(Transport):
     proc = None
     closed = True
 
-    def __init__(self, sockpath, timeout, binpath="watchman"):
+    def __init__(self, sockpath, timeout, binpath=None):
         self.sockpath = sockpath
         self.timeout = timeout
-        self.binpath = binpath
+        self.binpath = _default_binpath(binpath)
 
     def close(self):
         if self.proc:
@@ -857,12 +866,12 @@ class client(object):
         # meaning
         valueEncoding=False,
         valueErrors=False,
-        binpath="watchman",
+        binpath=None,
     ):
         self.sockpath = sockpath
         self.timeout = timeout
         self.useImmutableBser = useImmutableBser
-        self.binpath = binpath
+        self.binpath = _default_binpath(binpath)
 
         if inspect.isclass(transport) and issubclass(transport, Transport):
             self.transport = transport

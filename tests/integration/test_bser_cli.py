@@ -32,7 +32,7 @@ class TestDashJCliOption(unittest.TestCase):
             watchman_cmd = watchman_cmd + b"\n"
 
         cli_cmd = [
-            "watchman",
+            os.environ.get("WATCHMAN_BINARY", "watchman"),
             "--sockname={0}".format(sockname),
             "--logfile=/BOGUS",
             "--statefile=/BOGUS",
@@ -66,7 +66,7 @@ class TestDashJCliOption(unittest.TestCase):
         sockname = self.getSockPath()
         watchman_cmd = bser.dumps(["get-sockname"])
         cli_cmd = [
-            "watchman",
+            os.environ.get("WATCHMAN_BINARY", "watchman"),
             "--sockname={0}".format(sockname),
             "--logfile=/BOGUS",
             "--statefile=/BOGUS",

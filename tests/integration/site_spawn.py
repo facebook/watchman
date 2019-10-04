@@ -9,6 +9,6 @@ import sys
 
 
 args = sys.argv[1:]
-args.insert(0, "watchman")
+args.insert(0, os.environ.get("WATCHMAN_BINARY", "watchman"))
 args.insert(1, "--foreground")
 subprocess.Popen(args)
