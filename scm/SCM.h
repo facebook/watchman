@@ -9,6 +9,15 @@
 
 namespace watchman {
 
+// Walks the paths from rootPath up to the root of the filesystem.
+// At each level, checks to see if any of the candidate filenames
+// in the provided candidates list exist.  Returns the name of
+// the first one it finds.  If no candidates are found, returns
+// nullptr.
+w_string findFileInDirTree(
+    w_string_piece rootPath,
+    std::initializer_list<w_string_piece> candidates);
+
 class SCM {
  protected:
   // Construct an SCM instance for the specified rootPath on disk.

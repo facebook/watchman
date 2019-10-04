@@ -1207,6 +1207,22 @@ class EdenView : public QueryableView {
 };
 
 std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
+#ifdef _WIN32
+  static const w_string_piece kDotEden{".eden"};
+  auto edenRoot = findFileInDirTree(root->root_path, {kDotEden});
+  if (edenRoot) {
+    // On Windows, Watchman is crawling the Eden repo and pulling down
+    // all the contents. Until the Eden integration is complete Watchman will
+    // skip Eden repos on Windows.
+    throw TerminalWatcherError(to<std::string>(
+        "This is an Eden clone - Watchman integration with Eden Windows"
+        " isn't complete yet. Watchman will not watch this repo."));
+  }
+
+  throw std::runtime_error(
+      to<std::string>("Not an Eden clone: ", root->root_path));
+
+#else
   if (root->fs_type != "fuse" && root->fs_type != "osxfuse_eden") {
     throw std::runtime_error(to<std::string>("not a FUSE file system"));
   }
@@ -1223,7 +1239,7 @@ std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
         "Try again using ",
         edenRoot));
   }
-
+#endif
   // Given that the readlink() succeeded, assume this is an Eden mount.
   return std::make_shared<EdenView>(root);
 }
