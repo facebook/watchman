@@ -424,8 +424,6 @@ add_library(wildmatch STATIC
   thirdparty/wildmatch/wildmatch.c
   thirdparty/wildmatch/wildmatch.h
 )
-add_library(tap STATIC thirdparty/tap.cpp thirdparty/tap.h)
-target_link_libraries(tap third_party_deps)
 add_library(log STATIC PubSub.cpp log.cpp)
 target_link_libraries(log third_party_deps)
 add_library(hash STATIC hash.cpp)
@@ -652,7 +650,7 @@ function(t_test NAME)
   add_executable(${NAME}.t ${ARGN})
   target_link_libraries(
     ${NAME}.t
-    testsupport tap wildmatch third_party_deps
+    testsupport wildmatch third_party_deps
     ${LIBGMOCK_LIBRARIES}
   )
   target_compile_definitions(${NAME}.t
