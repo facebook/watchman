@@ -3,9 +3,10 @@
 
 #include "watchman.h"
 #include <folly/ScopeGuard.h>
+#include <folly/logging/xlog.h>
+#include <folly/portability/GTest.h>
 #include "thirdparty/jansson/jansson_private.h"
 #include "thirdparty/jansson/strbuffer.h"
-#include "thirdparty/tap.h"
 
 #define UTF8_PILE_OF_POO "\xf0\x9f\x92\xa9"
 
@@ -123,50 +124,41 @@ static struct {
           "\x30\x05\x87\xd6\x12\x00\x06\x4e\xd6\x14\x5e\x54\xdc\x2b\x00"),
     }};
 
-static bool check_roundtrip(
+static void check_roundtrip(
     uint32_t bser_version,
     uint32_t bser_capabilities,
     const char* input,
     const char* template_text) {
-  diag(
-      "testing BSER version %" PRIu32 ", capabilities %" PRIu32,
-      bser_version,
-      bser_capabilities);
+  XLOG(ERR) << "testing BSER version " << bser_version << ", capabilities "
+            << bser_capabilities;
   char* jdump;
   json_ref templ;
   json_error_t jerr;
   json_int_t needed;
 
   auto expected = json_loads(input, 0, &jerr);
-  ok(expected, "loaded %s: %s", input, jerr.text);
-  if (!expected) {
-    return false;
-  }
+  ASSERT_TRUE(expected) << "loaded " << input << " " << jerr.text;
   if (template_text) {
     templ = json_loads(template_text, 0, &jerr);
     json_array_set_template(expected, templ);
   }
 
   auto dump_buf = bdumps(bser_version, bser_capabilities, expected);
-  ok(dump_buf != nullptr, "dumped something");
-  if (!dump_buf) {
-    return false;
-  }
+  ASSERT_NE(dump_buf, nullptr) << "dumped something";
   const char* end = dump_buf->data() + dump_buf->size();
   hexdump(dump_buf->data(), end);
 
   jerr = json_error_t();
   auto decoded = bunser(dump_buf->data(), end, &needed, &jerr);
-  ok(decoded, "decoded something (err = %s)", jerr.text);
+  EXPECT_TRUE(decoded) << "decoded something err = " << jerr.text;
 
   jdump = json_dumps(decoded, JSON_SORT_KEYS);
-  ok(jdump, "dumped %s", jdump);
+  EXPECT_TRUE(jdump) << "dumped " << jdump;
 
-  ok(json_equal(expected, decoded), "round-tripped json_equal");
-  ok(!strcmp(jdump, input), "round-tripped strcmp");
+  EXPECT_TRUE(json_equal(expected, decoded)) << "round-tripped json_equal";
+  EXPECT_TRUE(!strcmp(jdump, input)) << "round-tripped strcmp";
 
   free(jdump);
-  return true;
 }
 
 static void check_serialization(
@@ -174,16 +166,14 @@ static void check_serialization(
     uint32_t bser_capabilities,
     const char* json_in,
     const std::string& bser_out) {
-  diag(
-      "testing BSER version %" PRIu32 ", capabilities %" PRIu32,
-      bser_version,
-      bser_capabilities);
+  XLOG(ERR) << "testing BSER version " << bser_version << ", capabilities "
+            << bser_capabilities;
 
   // Test JSON -> BSER serialization.
   json_error_t jerr;
   auto input = json_loads(json_in, 0, &jerr);
   auto bser_in = bdumps_pdu(bser_version, bser_capabilities, input);
-  ok(*bser_in == bser_out, "raw bser comparison %s", json_in);
+  EXPECT_EQ(*bser_in, bser_out) << "raw bser comparison " << json_in;
 }
 
 // The strings are left as mixed escaped and unescaped bytes so that it's easy
@@ -216,33 +206,28 @@ static std::vector<std::tuple<uint32_t, uint32_t, std::string>>
             1,
             0,
             bser_typed_intro + bser_typed_bytestring +
-                bser_typed_utf8string_byte +
-                bser_typed_mixedstring_byte),
+                bser_typed_utf8string_byte + bser_typed_mixedstring_byte),
         std::make_tuple(
             2,
             0,
             bser_typed_intro + bser_typed_bytestring +
-                bser_typed_utf8string_utf8 +
-                bser_typed_mixedstring_utf8),
+                bser_typed_utf8string_utf8 + bser_typed_mixedstring_utf8),
         std::make_tuple(
             2,
             BSER_CAP_DISABLE_UNICODE,
             bser_typed_intro + bser_typed_bytestring +
-                bser_typed_utf8string_byte +
-                bser_typed_mixedstring_byte),
+                bser_typed_utf8string_byte + bser_typed_mixedstring_byte),
         std::make_tuple(
             2,
             BSER_CAP_DISABLE_UNICODE_FOR_ERRORS,
             bser_typed_intro + bser_typed_bytestring +
-                bser_typed_utf8string_utf8 +
-                bser_typed_mixedstring_byte),
+                bser_typed_utf8string_utf8 + bser_typed_mixedstring_byte),
 
         std::make_tuple(
             2,
             BSER_CAP_DISABLE_UNICODE | BSER_CAP_DISABLE_UNICODE_FOR_ERRORS,
             bser_typed_intro + bser_typed_bytestring +
-                bser_typed_utf8string_byte +
-                bser_typed_mixedstring_byte)};
+                bser_typed_utf8string_byte + bser_typed_mixedstring_byte)};
 
 static void check_bser_typed_strings() {
   auto bytestring = typed_string_to_json("foo\xd0\xff", W_STRING_BYTE);
@@ -265,32 +250,21 @@ static void check_bser_typed_strings() {
     uint32_t bser_version = std::get<0>(t);
     uint32_t bser_capabilities = std::get<1>(t);
     const std::string& bser_out = std::get<2>(t);
-    diag(
-        "testing BSER version %" PRIu32 ", capabilities %" PRIu32,
-        bser_version,
-        bser_capabilities);
+    XLOG(ERR) << "testing BSER version " << bser_version << ", capabilities "
+              << bser_capabilities;
 
     auto bser_buf = bdumps(bser_version, bser_capabilities, str_array);
-    ok(*bser_buf == bser_out, "bser string array");
+    EXPECT_EQ(*bser_buf, bser_out);
   }
 }
 
-int main(int argc, char** argv) {
+TEST(Bser, bser_tests) {
   int i, num_json_inputs, num_templ;
-  (void)argc;
-  (void)argv;
 
   num_json_inputs = sizeof(json_inputs) / sizeof(json_inputs[0]);
   num_templ = sizeof(template_tests) / sizeof(template_tests[0]);
   int num_serial = sizeof(serialization_tests) / sizeof(serialization_tests[0]);
   int num_typed = typed_string_checks.size();
-
-  plan_tests(
-      (6 * num_json_inputs * 5) /* JSON roundtrip tests */ +
-      (6 * num_templ * 5) /* template tests */ +
-      (1 * num_serial * 2) /* serialization tests */ +
-      (1 * num_typed) /* typed string checks */
-      );
 
   for (i = 0; i < num_json_inputs; i++) {
     check_roundtrip(1, 0, json_inputs[i], nullptr);
@@ -335,8 +309,6 @@ int main(int argc, char** argv) {
   }
 
   check_bser_typed_strings();
-
-  return exit_status();
 }
 
 /* vim:ts=2:sw=2:et:
