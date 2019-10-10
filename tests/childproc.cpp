@@ -1,15 +1,16 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0. */
 #include "watchman_system.h"
+#include <folly/logging/xlog.h>
+#include <folly/portability/GTest.h>
 #include <list>
 #include "ChildProcess.h"
-#include "thirdparty/tap.h"
 
 using watchman::ChildProcess;
 using Environment = ChildProcess::Environment;
 using Options = ChildProcess::Options;
 
-void test_pipe() {
+TEST(ChildProcess, pipe) {
   Options opts;
   opts.pipeStdout();
   ChildProcess echo(
@@ -31,7 +32,7 @@ void test_pipe() {
   echo.wait();
 
   w_string_piece line(outputs.first);
-  ok(line.startsWith("hello"), "starts with hello");
+  EXPECT_TRUE(line.startsWith("hello"));
 }
 
 void test_pipe_input(bool threaded) {
@@ -62,16 +63,14 @@ void test_pipe_input(bool threaded) {
 
   std::vector<std::string> resultLines;
   w_string_piece(outputs.first).split(resultLines, '\n');
-  ok(resultLines.size() == 3, "got three lines of output");
-  ok(resultLines == expected, "got all input lines");
+  EXPECT_EQ(resultLines.size(), 3);
+  EXPECT_EQ(resultLines, expected);
 #else
   (void)threaded;
-  pass("dummy1");
-  pass("dummy2");
 #endif
 }
 
-void stresstest_pipe_output() {
+TEST(ChildProcess, stresstest_pipe_output) {
   bool okay = true;
 #ifndef _WIN32
   for (int i = 0; i < 3000; ++i) {
@@ -88,18 +87,13 @@ void stresstest_pipe_output() {
     }
   }
 #endif
-  ok(okay, "pipe output looks sane");
+  EXPECT_TRUE(okay);
 }
 
-int main(int argc, char **argv) {
-  (void)argc;
-  (void)argv;
-
-  plan_tests(6);
-  test_pipe();
+TEST(ChildProcess, inputThreaded) {
   test_pipe_input(true);
-  test_pipe_input(false);
-  stresstest_pipe_output();
+}
 
-  return exit_status();
+TEST(ChildProcess, inputNotThreaded) {
+  test_pipe_input(false);
 }
