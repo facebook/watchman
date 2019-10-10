@@ -2,32 +2,29 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/logging/xlog.h>
+#include <folly/portability/GTest.h>
 #include "Logging.h"
-#include "thirdparty/tap.h"
 
 void w_request_shutdown(void) {}
 
-int main(int, char**) {
+TEST(Log, logging) {
   char huge[8192];
+  bool logged = false;
 
-  plan_tests(3);
   auto sub = watchman::getLog().subscribe(
-      watchman::DBG, []() { pass("made it to logging callback"); });
+      watchman::DBG, [&logged]() { logged = true; });
 
   memset(huge, 'X', sizeof(huge));
-  huge[sizeof(huge)-1] = '\0';
+  huge[sizeof(huge) - 1] = '\0';
 
   w_log(W_LOG_DBG, "test %s", huge);
 
   std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
   sub->getPending(pending);
-  ok(!pending.empty(), "got an item from our subscription");
-
-  pass("made it to the end");
-
-  return exit_status();
+  EXPECT_FALSE(pending.empty()) << "got an item from our subscription";
+  EXPECT_TRUE(logged);
 }
-
 
 /* vim:ts=2:sw=2:et:
  */
