@@ -6,7 +6,6 @@
 #include <folly/logging/xlog.h>
 #include <folly/portability/GTest.h>
 #include "thirdparty/jansson/jansson_private.h"
-#include "thirdparty/jansson/strbuffer.h"
 
 #define UTF8_PILE_OF_POO "\xf0\x9f\x92\xa9"
 
@@ -14,8 +13,10 @@
 // The -1 compensates for the NUL terminator that is included in sizeof()
 #define S(str_literal) std::string(str_literal, sizeof(str_literal) - 1)
 
-static int dump_to_strbuffer(const char* buffer, size_t size, void* data) {
-  return strbuffer_append_bytes((strbuffer_t*)data, buffer, size);
+static int dump_to_string(const char* buffer, size_t size, void* data) {
+  auto str = (std::string*)data;
+  str->append(buffer, size);
+  return 0;
 }
 
 static void hexdump(const char* start, const char* end) {
@@ -46,19 +47,11 @@ static void hexdump(const char* start, const char* end) {
 
 static std::unique_ptr<std::string>
 bdumps(uint32_t version, uint32_t capabilities, const json_ref& json) {
-  strbuffer_t strbuff;
-  bser_ctx_t ctx{version, capabilities, dump_to_strbuffer};
+  std::string buffer;
+  bser_ctx_t ctx{version, capabilities, dump_to_string};
 
-  if (strbuffer_init(&strbuff)) {
-    return nullptr;
-  }
-
-  SCOPE_EXIT {
-    strbuffer_close(&strbuff);
-  };
-
-  if (w_bser_dump(&ctx, json, &strbuff) == 0) {
-    return std::make_unique<std::string>(strbuff.value, strbuff.length);
+  if (w_bser_dump(&ctx, json, &buffer) == 0) {
+    return std::make_unique<std::string>(std::move(buffer));
   }
 
   return nullptr;
@@ -66,19 +59,11 @@ bdumps(uint32_t version, uint32_t capabilities, const json_ref& json) {
 
 static std::unique_ptr<std::string>
 bdumps_pdu(uint32_t version, uint32_t capabilities, const json_ref& json) {
-  strbuffer_t strbuff;
+  std::string buffer;
 
-  if (strbuffer_init(&strbuff)) {
-    return nullptr;
-  }
-
-  SCOPE_EXIT {
-    strbuffer_close(&strbuff);
-  };
-
-  if (w_bser_write_pdu(
-          version, capabilities, dump_to_strbuffer, json, &strbuff) == 0) {
-    return std::make_unique<std::string>(strbuff.value, strbuff.length);
+  if (w_bser_write_pdu(version, capabilities, dump_to_string, json, &buffer) ==
+      0) {
+    return std::make_unique<std::string>(std::move(buffer));
   }
 
   return nullptr;
