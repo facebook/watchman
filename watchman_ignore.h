@@ -40,7 +40,6 @@ struct watchman_ignore {
   bool isIgnoreDir(const w_string& path) const;
 };
 
-
 #ifdef __cplusplus
 }
 #endif

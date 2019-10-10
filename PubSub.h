@@ -107,4 +107,4 @@ void getPending(
     std::vector<std::shared_ptr<const Publisher::Item>>& pending,
     const std::shared_ptr<Publisher::Subscriber>& sub1,
     const std::shared_ptr<Publisher::Subscriber>& sub2);
-}
+} // namespace watchman

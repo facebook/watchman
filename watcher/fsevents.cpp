@@ -126,7 +126,7 @@ static void fse_callback(
     const FSEventStreamEventId eventIds[]) {
   size_t i;
   auto paths = (char**)eventPaths;
-  auto stream = (fse_stream *)clientCallBackInfo;
+  auto stream = (fse_stream*)clientCallBackInfo;
   auto root = stream->root;
   std::deque<watchman_fsevent> items;
   auto watcher = watcherFromRoot(root);
@@ -143,22 +143,25 @@ static void fse_callback(
     // processing the events from the point at which we lost sync, so we have
     // to check this before we start allocating events for the consumer.
     for (i = 0; i < numEvents; i++) {
-      if ((eventFlags[i] & (kFSEventStreamEventFlagUserDropped |
-                            kFSEventStreamEventFlagKernelDropped)) != 0) {
+      if ((eventFlags[i] &
+           (kFSEventStreamEventFlagUserDropped |
+            kFSEventStreamEventFlagKernelDropped)) != 0) {
         // We don't ever need to clear lost_sync as the code below will either
         // set up a new stream instance with it cleared, or will recrawl and
         // set up a whole new state for the recrawled instance.
         stream->lost_sync = true;
 
-        log_drop_event(root,
-                       eventFlags[i] & kFSEventStreamEventFlagKernelDropped);
+        log_drop_event(
+            root, eventFlags[i] & kFSEventStreamEventFlagKernelDropped);
 
         if (watcher->attempt_resync_on_drop) {
         // fseventsd has a reliable journal so we can attempt to resync.
         do_resync:
           if (stream->event_id_wrapped) {
-            w_log(W_LOG_ERR, "fsevents lost sync and the event_ids wrapped, so "
-                             "we have no choice but to do a full recrawl\n");
+            w_log(
+                W_LOG_ERR,
+                "fsevents lost sync and the event_ids wrapped, so "
+                "we have no choice but to do a full recrawl\n");
             // Allow the Dropped event to propagate and trigger a recrawl
             goto propagate;
           }
@@ -172,27 +175,32 @@ static void fse_callback(
             // to the consumer thread which has existing logic to schedule
             // a recrawl.
             w_string failure_reason;
-            struct fse_stream *replacement =
+            struct fse_stream* replacement =
                 fse_stream_make(root, stream->last_good, failure_reason);
 
             if (!replacement) {
-              w_log(W_LOG_ERR,
-                    "Failed to rebuild fsevent stream (%s) while trying to "
-                    "resync, falling back to a regular recrawl\n",
-                    failure_reason.c_str());
+              w_log(
+                  W_LOG_ERR,
+                  "Failed to rebuild fsevent stream (%s) while trying to "
+                  "resync, falling back to a regular recrawl\n",
+                  failure_reason.c_str());
               // Allow the UserDropped event to propagate and trigger a recrawl
               goto propagate;
             }
 
             if (!FSEventStreamStart(replacement->stream)) {
-              w_log(W_LOG_ERR, "FSEventStreamStart failed while trying to "
-                               "resync, falling back to a regular recrawl\n");
+              w_log(
+                  W_LOG_ERR,
+                  "FSEventStreamStart failed while trying to "
+                  "resync, falling back to a regular recrawl\n");
               // Allow the UserDropped event to propagate and trigger a recrawl
               goto propagate;
             }
 
-            w_log(W_LOG_ERR, "Lost sync, so resync from last_good event %llu\n",
-                  stream->last_good);
+            w_log(
+                W_LOG_ERR,
+                "Lost sync, so resync from last_good event %llu\n",
+                stream->last_good);
 
             // mark the replacement as the winner
             watcher->stream = replacement;
@@ -219,15 +227,18 @@ propagate:
 
   for (i = 0; i < numEvents; i++) {
     uint32_t len;
-    const char *path = paths[i];
+    const char* path = paths[i];
 
     if (eventFlags[i] & kFSEventStreamEventFlagHistoryDone) {
       // The docs say to ignore this event; it's just a marker informing
       // us that a resync completed.  Take this opportunity to log how
       // many events were replayed to catch up.
-      w_log(W_LOG_ERR, "Historical resync completed at event id %llu (caught "
-                       "up on %llu events)\n",
-            eventIds[i], eventIds[i] - stream->since);
+      w_log(
+          W_LOG_ERR,
+          "Historical resync completed at event id %llu (caught "
+          "up on %llu events)\n",
+          eventIds[i],
+          eventIds[i] - stream->since);
       continue;
     }
 
@@ -236,7 +247,7 @@ propagate:
     }
 
     len = strlen(path);
-    while (path[len-1] == '/') {
+    while (path[len - 1] == '/') {
       len--;
     }
 
@@ -374,8 +385,8 @@ static fse_stream* fse_stream_make(
     goto fail;
   }
 
-  FSEventStreamScheduleWithRunLoop(fse_stream->stream,
-      CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+  FSEventStreamScheduleWithRunLoop(
+      fse_stream->stream, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
 
 #ifdef HAVE_FSEVENTSTREAMSETEXCLUSIONPATHS
   if (!root->ignore.dirs_vec.empty() &&
@@ -561,8 +572,9 @@ bool FSEventsWatcher::consumeNotify(
       break;
     }
 
-    recurse = (item.flags & (kFSEventStreamEventFlagMustScanSubDirs |
-                             kFSEventStreamEventFlagItemRenamed))
+    recurse = (item.flags &
+               (kFSEventStreamEventFlagMustScanSubDirs |
+                kFSEventStreamEventFlagItemRenamed))
         ? true
         : false;
 
@@ -578,8 +590,7 @@ bool FSEventsWatcher::consumeNotify(
 FSEventsWatcher::FSEventsWatcher(w_root_t*)
     : Watcher(
           "fsevents",
-          WATCHER_HAS_PER_FILE_NOTIFICATIONS | WATCHER_COALESCED_RENAME) {
-}
+          WATCHER_HAS_PER_FILE_NOTIFICATIONS | WATCHER_COALESCED_RENAME) {}
 
 void FSEventsWatcher::signalThreads() {
   write(fse_pipe.write.fd(), "X", 1);
@@ -683,8 +694,11 @@ static void cmd_debug_fsevents_inject_drop(
   resp.set("last_good", json_integer(last_good));
   send_and_dispose_response(client, std::move(resp));
 }
-W_CMD_REG("debug-fsevents-inject-drop", cmd_debug_fsevents_inject_drop,
-          CMD_DAEMON, w_cmd_realpath_root);
+W_CMD_REG(
+    "debug-fsevents-inject-drop",
+    cmd_debug_fsevents_inject_drop,
+    CMD_DAEMON,
+    w_cmd_realpath_root);
 
 #endif // HAVE_FSEVENTS
 

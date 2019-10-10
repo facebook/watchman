@@ -24,11 +24,7 @@ struct ClockPosition {
   w_string toClockString() const;
 };
 
-enum w_clockspec_tag {
-  w_cs_timestamp,
-  w_cs_clock,
-  w_cs_named_cursor
-};
+enum w_clockspec_tag { w_cs_timestamp, w_cs_clock, w_cs_named_cursor };
 
 struct ClockSpec {
   enum w_clockspec_tag tag;

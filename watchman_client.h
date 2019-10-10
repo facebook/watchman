@@ -133,4 +133,4 @@ struct watchman_user_client : public watchman_client {
 extern folly::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
 
-void w_client_vacate_states(struct watchman_user_client *client);
+void w_client_vacate_states(struct watchman_user_client* client);

@@ -119,4 +119,4 @@ struct FileInformation {
   // files that were deleted between two revisions.
   static FileInformation makeDeletedFileInformation();
 };
-}
+} // namespace watchman

@@ -104,4 +104,4 @@ FileInformation FileInformation::makeDeletedFileInformation() {
 #endif
   return info;
 }
-}
+} // namespace watchman

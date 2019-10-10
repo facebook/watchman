@@ -15,7 +15,7 @@ static void cmd_shutdown(struct watchman_client* client, const json_ref&) {
   resp.set("shutdown-server", json_true());
   send_and_dispose_response(client, std::move(resp));
 }
-W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON|CMD_POISON_IMMUNE, NULL)
+W_CMD_REG("shutdown-server", cmd_shutdown, CMD_DAEMON | CMD_POISON_IMMUNE, NULL)
 
 void add_root_warnings_to_response(
     json_ref& response,
@@ -43,7 +43,7 @@ std::shared_ptr<w_root_t> doResolveOrCreateRoot(
     struct watchman_client* client,
     const json_ref& args,
     bool create) {
-  const char *root_name;
+  const char* root_name;
   char* errmsg = nullptr;
 
   SCOPE_EXIT {

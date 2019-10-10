@@ -3,16 +3,16 @@
 
 #include "watchman.h"
 #ifdef HAVE_SYS_VFS_H
-# include <sys/vfs.h>
+#include <sys/vfs.h>
 #endif
 #ifdef HAVE_SYS_STATVFS_H
-# include <sys/statvfs.h>
+#include <sys/statvfs.h>
 #endif
 #ifdef HAVE_SYS_PARAM_H
-# include <sys/param.h>
+#include <sys/param.h>
 #endif
 #ifdef HAVE_SYS_MOUNT_H
-# include <sys/mount.h>
+#include <sys/mount.h>
 #endif
 #ifdef __linux__
 #include <linux/magic.h>
@@ -25,11 +25,10 @@
 // need to have a fully comprehensive mapping of the underlying filesystem
 // type codes to names, just the known problematic types
 
-w_string w_fstype(const char *path)
-{
+w_string w_fstype(const char* path) {
 #ifdef __linux__
   struct statfs sfs;
-  const char *name = "unknown";
+  const char* name = "unknown";
 
   // Unfortunately the FUSE magic number is not defined in linux/magic.h,
   // and is only available in the Linux source code in fs/fuse/inode.c
@@ -90,8 +89,9 @@ w_string w_fstype(const char *path)
       OPEN_EXISTING,
       FILE_FLAG_BACKUP_SEMANTICS,
       nullptr)));
-  if (h && GetVolumeInformationByHandleW(
-               (HANDLE)h.handle(), nullptr, 0, 0, 0, 0, fstype, MAX_PATH + 1)) {
+  if (h &&
+      GetVolumeInformationByHandleW(
+          (HANDLE)h.handle(), nullptr, 0, 0, 0, 0, fstype, MAX_PATH + 1)) {
     return w_string(fstype, wcslen(fstype));
   }
   return w_string("unknown", W_STRING_UNICODE);

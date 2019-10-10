@@ -15,8 +15,8 @@ static json_ref load_root_config(const char* path) {
     if (errno == ENOENT) {
       return nullptr;
     }
-    w_log(W_LOG_ERR, "%s is not accessible: %s\n",
-        cfgfilename, strerror(errno));
+    w_log(
+        W_LOG_ERR, "%s is not accessible: %s\n", cfgfilename, strerror(errno));
     return nullptr;
   }
 

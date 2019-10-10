@@ -18,8 +18,8 @@
 #include "watchman_preprocessor.h"
 
 extern int log_level;
-extern char *log_name;
-const char *w_set_thread_name(const char *fmt, ...);
+extern char* log_name;
+const char* w_set_thread_name(const char* fmt, ...);
 void w_setup_signal_handlers(void);
 void w_log(int level, WATCHMAN_FMT_STRING(const char* fmt), ...)
     WATCHMAN_FMT_ATTR(2, 3);
@@ -33,7 +33,7 @@ void w_log(int level, WATCHMAN_FMT_STRING(const char* fmt), ...)
 // Similar to assert(), but uses W_LOG_FATAL to log the stack trace
 // before giving up the ghost
 #ifdef NDEBUG
-# define w_assert(e, ...) ((void)0)
+#define w_assert(e, ...) ((void)0)
 #else
 #define w_assert(e, ...) w_check(e, __VA_ARGS__)
 #endif

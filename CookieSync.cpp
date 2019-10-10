@@ -2,8 +2,8 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman_system.h"
-#include <exception>
 #include "watchman.h"
+#include <exception>
 
 namespace watchman {
 
@@ -147,4 +147,4 @@ void CookieSync::notifyCookie(const w_string& path) {
     // cookie file will be unlinked when we exit this scope
   }
 }
-}
+} // namespace watchman

@@ -8,8 +8,8 @@
 #include "FileSystem.h"
 #include "watchman_error_category.h"
 
-using watchman::realPath;
 using watchman::readSymbolicLink;
+using watchman::realPath;
 
 // Given a target of the form "absolute_path/filename", return
 // realpath(absolute_path) + filename, where realpath(absolute_path) resolves
@@ -37,7 +37,6 @@ static w_string get_normalized_target(const w_string& target) {
 
 // Requires target to be an absolute path
 static void watch_symlink_target(const w_string& target, json_t* root_files) {
-
   w_assert(
       w_string_path_is_absolute(target),
       "watch_symlink_target: path %s is not absolute\n",
@@ -67,10 +66,11 @@ static void watch_symlink_target(const w_string& target, json_t* root_files) {
       watchman::log(
           watchman::ERR,
           "watch_symlink_target: No watchable root for ",
-          resolved, "\n");
+          resolved,
+          "\n");
     } else {
       char* errmsg = nullptr;
-      SCOPE_EXIT{
+      SCOPE_EXIT {
         free(errmsg);
       };
       auto root = w_root_resolve(resolved.asWString().c_str(), true, &errmsg);
@@ -78,7 +78,10 @@ static void watch_symlink_target(const w_string& target, json_t* root_files) {
         watchman::log(
             watchman::ERR,
             "watch_symlink_target: unable to watch ",
-            resolved, ": ", errmsg, "\n");
+            resolved,
+            ": ",
+            errmsg,
+            "\n");
       }
     }
   }
@@ -154,8 +157,7 @@ void watchman_root::processPendingSymlinkTargets() {
         "watch_symlink_target: error computing root_files configuration "
         "value, consult your log file at ",
         log_name,
-        " for more details\n"
-        );
+        " for more details\n");
     return;
   }
 
@@ -165,7 +167,6 @@ void watchman_root::processPendingSymlinkTargets() {
     p = std::move(p->next);
   }
 }
-
 
 /* vim:ts=2:sw=2:et:
  */

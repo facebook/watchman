@@ -158,9 +158,9 @@ bool w_root_load_state(const json_ref& state) {
   for (i = 0; i < json_array_size(watched); i++) {
     const auto& obj = watched.at(i);
     bool created = false;
-    const char *filename;
+    const char* filename;
     size_t j;
-    char *errmsg = NULL;
+    char* errmsg = NULL;
 
     auto triggers = obj.get_default("triggers");
     filename = json_string_value(json_object_get(obj, "path"));

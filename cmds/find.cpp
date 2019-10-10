@@ -5,7 +5,6 @@
 
 /* find /root [patterns] */
 static void cmd_find(struct watchman_client* client, const json_ref& args) {
-
   /* resolve the root */
   if (json_array_size(args) < 2) {
     send_error_response(client, "not enough arguments for 'find'");
@@ -26,8 +25,11 @@ static void cmd_find(struct watchman_client* client, const json_ref& args) {
 
   send_and_dispose_response(client, std::move(response));
 }
-W_CMD_REG("find", cmd_find, CMD_DAEMON | CMD_ALLOW_ANY_USER,
-          w_cmd_realpath_root)
+W_CMD_REG(
+    "find",
+    cmd_find,
+    CMD_DAEMON | CMD_ALLOW_ANY_USER,
+    w_cmd_realpath_root)
 
 /* vim:ts=2:sw=2:et:
  */

@@ -211,4 +211,4 @@ json_ref Publisher::getDebugInfo() const {
 
   return ret;
 }
-}
+} // namespace watchman

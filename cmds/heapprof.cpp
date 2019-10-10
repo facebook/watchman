@@ -1,9 +1,9 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman.h"
 #include <folly/String.h>
 #include <folly/memory/Malloc.h>
-#include "watchman.h"
 
 #if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && !FOLLY_SANITIZE
 

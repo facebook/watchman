@@ -397,7 +397,7 @@ void ChildProcess::kill(
 #ifndef _WIN32
     int signo
 #endif
-    ) {
+) {
 #ifndef _WIN32
   if (!waited_) {
     ::kill(pid_, signo);
@@ -638,4 +638,4 @@ std::pair<w_string, w_string> ChildProcess::threadedCommunicate(
   return std::make_pair(std::move(outFuture).get(), std::move(errFuture).get());
 }
 
-}
+} // namespace watchman

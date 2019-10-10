@@ -80,4 +80,4 @@ void ThreadPool::add(folly::Func func) {
 
   condition_.notify_one();
 }
-}
+} // namespace watchman

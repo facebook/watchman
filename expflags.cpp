@@ -7,8 +7,11 @@
  * expand the flag bits that are set in `flags` into the corresponding
  * labels in `fmap` and print the result into the caller provided
  * buffer `buf` of size `len` bytes. */
-void w_expand_flags(const struct flag_map *fmap, uint32_t flags,
-    char *buf, size_t len) {
+void w_expand_flags(
+    const struct flag_map* fmap,
+    uint32_t flags,
+    char* buf,
+    size_t len) {
   bool first = true;
   *buf = '\0';
   while (fmap->label && len) {

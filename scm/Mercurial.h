@@ -51,4 +51,4 @@ class Mercurial : public SCM {
   };
   mutable folly::Synchronized<infoCache> cache_;
 };
-}
+} // namespace watchman

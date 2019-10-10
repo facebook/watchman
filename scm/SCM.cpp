@@ -66,4 +66,4 @@ std::unique_ptr<SCM> SCM::scmForPath(w_string_piece rootPath) {
 
   return nullptr;
 }
-}
+} // namespace watchman

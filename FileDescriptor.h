@@ -130,4 +130,4 @@ class FileDescriptor {
  private:
   system_handle_type fd_{kInvalid};
 };
-}
+} // namespace watchman

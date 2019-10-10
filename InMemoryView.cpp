@@ -938,4 +938,4 @@ W_CMD_REG(
     InMemoryView::debugSymlinkTargetCache,
     CMD_DAEMON,
     w_cmd_realpath_root);
-}
+} // namespace watchman

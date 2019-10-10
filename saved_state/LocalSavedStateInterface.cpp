@@ -1,8 +1,8 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
-#include "LocalSavedStateInterface.h"
 #include "watchman.h"
+#include "LocalSavedStateInterface.h"
 #include "watchman_cmd.h"
 
 static const int kDefaultMaxCommits{10};

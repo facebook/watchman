@@ -16,7 +16,7 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
   char stdin_file_name[WATCHMAN_NAME_MAX];
 
   if (cmd->stdin_style == trigger_input_style::input_dev_null) {
-    return w_stm_open("/dev/null", O_RDONLY|O_CLOEXEC);
+    return w_stm_open("/dev/null", O_RDONLY | O_CLOEXEC);
   }
 
   // Adjust result to fit within the specified limit
@@ -34,8 +34,11 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
       watchman_tmp_dir);
   auto stdin_file = w_mkstemp(stdin_file_name);
   if (!stdin_file) {
-    w_log(W_LOG_ERR, "unable to create a temporary file: %s %s\n",
-        stdin_file_name, strerror(errno));
+    w_log(
+        W_LOG_ERR,
+        "unable to create a temporary file: %s %s\n",
+        stdin_file_name,
+        strerror(errno));
     return NULL;
   }
 
@@ -44,20 +47,19 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
   unlink(stdin_file_name); // FIXME: windows path translation
 
   switch (cmd->stdin_style) {
-    case input_json:
-      {
-        w_jbuffer_t buffer;
+    case input_json: {
+      w_jbuffer_t buffer;
 
-        w_log(W_LOG_DBG, "input_json: sending json object to stm\n");
-        if (!buffer.jsonEncodeToStream(
-                res->resultsArray, stdin_file.get(), 0)) {
-          w_log(W_LOG_ERR,
-              "input_json: failed to write json data to stream: %s\n",
-              strerror(errno));
-          return NULL;
-        }
-        break;
+      w_log(W_LOG_DBG, "input_json: sending json object to stm\n");
+      if (!buffer.jsonEncodeToStream(res->resultsArray, stdin_file.get(), 0)) {
+        w_log(
+            W_LOG_ERR,
+            "input_json: failed to write json data to stream: %s\n",
+            strerror(errno));
+        return NULL;
       }
+      break;
+    }
     case input_name_list:
       for (auto& name : res->resultsArray.array()) {
         auto& nameStr = json_to_w_string(name);
@@ -91,7 +93,7 @@ static void spawn_command(
   bool file_overflow = false;
 
 #ifdef _WIN32
-  arg_max = 32*1024;
+  arg_max = 32 * 1024;
 #else
   arg_max = sysconf(_SC_ARG_MAX);
 #endif
@@ -151,7 +153,7 @@ static void spawn_command(
   if (cmd->append_files) {
     // Measure how much space the base args take up
     for (size_t i = 0; i < json_array_size(args); i++) {
-      const char *ele = json_string_value(json_array_get(args, i));
+      const char* ele = json_string_value(json_array_get(args, i));
 
       argspace_remaining -= strlen(ele) + 1 + sizeof(char*);
     }

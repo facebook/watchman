@@ -50,4 +50,4 @@ Pipe::Pipe() {
 #endif
 #endif
 }
-}
+} // namespace watchman

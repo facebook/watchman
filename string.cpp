@@ -134,7 +134,6 @@ bool w_string_piece::pathIsEqual(w_string_piece other) const {
 #endif
 }
 
-
 w_string_piece w_string_piece::dirName() const {
   if (e_ == s_) {
     return nullptr;
@@ -228,7 +227,7 @@ bool w_string_piece::startsWith(w_string_piece prefix) const {
   return memcmp(data(), prefix.data(), prefix.size()) == 0;
 }
 
-bool w_string_piece::startsWithCaseInsensitive(w_string_piece prefix) const{
+bool w_string_piece::startsWithCaseInsensitive(w_string_piece prefix) const {
   if (prefix.size() > size()) {
     return false;
   }
@@ -308,7 +307,7 @@ void w_string::reset() {
   }
 }
 
-w_string_t *w_string::release() {
+w_string_t* w_string::release() {
   auto res = str_;
   str_ = nullptr;
   return res;
@@ -400,10 +399,10 @@ bool w_string::operator!=(const w_string& other) const {
 
 w_string w_string::pathCat(std::initializer_list<w_string_piece> elems) {
   uint32_t length = 0;
-  w_string_t *s;
-  char *buf;
+  w_string_t* s;
+  char* buf;
 
-  for (auto &p : elems) {
+  for (auto& p : elems) {
     length += p.size() + 1;
   }
 
@@ -413,7 +412,7 @@ w_string w_string::pathCat(std::initializer_list<w_string_piece> elems) {
   s->refcnt = 1;
   buf = const_cast<char*>(s->buf);
 
-  for (auto &p : elems) {
+  for (auto& p : elems) {
     if (p.size() == 0) {
       // Skip empty strings
       continue;
@@ -431,7 +430,7 @@ w_string w_string::pathCat(std::initializer_list<w_string_piece> elems) {
   return w_string(s, false);
 }
 
-uint32_t w_string_compute_hval(w_string_t *str) {
+uint32_t w_string_compute_hval(w_string_t* str) {
   str->_hval = w_hash_bytes(str->buf, str->len, 0);
   str->hval_computed = 1;
   return str->_hval;
@@ -441,7 +440,7 @@ uint32_t w_string_piece::hashValue() const {
   return w_hash_bytes(data(), size(), 0);
 }
 
-uint32_t strlen_uint32(const char *str) {
+uint32_t strlen_uint32(const char* str) {
   size_t slen = strlen(str);
   if (slen > UINT32_MAX) {
     throw std::range_error("string length exceeds UINT32_MAX");
@@ -452,8 +451,8 @@ uint32_t strlen_uint32(const char *str) {
 
 static w_string_t*
 w_string_new_len_typed(const char* str, uint32_t len, w_string_type_t type) {
-  w_string_t *s;
-  char *buf;
+  w_string_t* s;
+  char* buf;
 
   s = (w_string_t*)(new char[sizeof(*s) + len + 1]);
   new (s) watchman_string();
@@ -471,9 +470,9 @@ w_string_new_len_typed(const char* str, uint32_t len, w_string_type_t type) {
 }
 
 w_string w_string::vprintf(const char* format, va_list args) {
-  w_string_t *s;
+  w_string_t* s;
   int len;
-  char *buf;
+  char* buf;
   va_list args_copy;
 
   va_copy(args_copy, args);
@@ -500,13 +499,11 @@ w_string w_string::printf(WATCHMAN_FMT_STRING(const char* format), ...) {
   return res;
 }
 
-void w_string_addref(w_string_t *str)
-{
+void w_string_addref(w_string_t* str) {
   ++str->refcnt;
 }
 
-void w_string_delref(w_string_t *str)
-{
+void w_string_delref(w_string_t* str) {
   if (--str->refcnt != 0) {
     return;
   }
@@ -518,10 +515,10 @@ void w_string_delref(w_string_t *str)
   delete[](char*) str;
 }
 
-int w_string_compare(const w_string_t *a, const w_string_t *b)
-{
+int w_string_compare(const w_string_t* a, const w_string_t* b) {
   int res;
-  if (a == b) return 0;
+  if (a == b)
+    return 0;
   if (a->len < b->len) {
     res = memcmp(a->buf, b->buf, a->len);
     return res == 0 ? -1 : res;
@@ -532,18 +529,20 @@ int w_string_compare(const w_string_t *a, const w_string_t *b)
   return memcmp(a->buf, b->buf, a->len);
 }
 
-bool w_string_equal_cstring(const w_string_t *a, const char *b)
-{
+bool w_string_equal_cstring(const w_string_t* a, const char* b) {
   uint32_t blen = strlen_uint32(b);
-  if (a->len != blen) return false;
+  if (a->len != blen)
+    return false;
   return memcmp(a->buf, b, a->len) == 0 ? true : false;
 }
 
-bool w_string_equal(const w_string_t *a, const w_string_t *b)
-{
-  if (a == b) return true;
-  if (a == nullptr || b == nullptr) return false;
-  if (a->len != b->len) return false;
+bool w_string_equal(const w_string_t* a, const w_string_t* b) {
+  if (a == b)
+    return true;
+  if (a == nullptr || b == nullptr)
+    return false;
+  if (a->len != b->len)
+    return false;
   if (a->hval_computed && b->hval_computed && a->_hval != b->_hval) {
     return false;
   }
@@ -586,16 +585,14 @@ bool w_string_piece::hasSuffix(w_string_piece suffix) const {
   return true;
 }
 
-bool w_string_startswith(w_string_t *str, w_string_t *prefix)
-{
+bool w_string_startswith(w_string_t* str, w_string_t* prefix) {
   if (prefix->len > str->len) {
     return false;
   }
   return memcmp(str->buf, prefix->buf, prefix->len) == 0;
 }
 
-bool w_string_startswith_caseless(w_string_t *str, w_string_t *prefix)
-{
+bool w_string_startswith_caseless(w_string_t* str, w_string_t* prefix) {
   size_t i;
 
   if (prefix->len > str->len) {
@@ -618,9 +615,9 @@ bool w_string_contains_cstr_len(
 #else
   // Most likely only for Windows.
   // Inspired by http://stackoverflow.com/a/24000056/149111
-  const char *haystack = str->buf;
+  const char* haystack = str->buf;
   uint32_t hlen = str->len;
-  const char *limit;
+  const char* limit;
 
   if (nlen == 0 || hlen < nlen) {
     return false;
@@ -654,7 +651,7 @@ w_string_piece w_string_canon_path(w_string_t* str) {
 w_string watchman_dir::getFullPathToChild(w_string_piece extra) const {
   uint32_t length = 0;
   const struct watchman_dir* d;
-  w_string_t *s;
+  w_string_t* s;
   char *buf, *end;
 
   if (extra.size()) {
@@ -689,19 +686,19 @@ w_string watchman_dir::getFullPathToChild(w_string_piece extra) const {
   return w_string(s, false);
 }
 
-bool w_string_is_known_unicode(w_string_t *str) {
+bool w_string_is_known_unicode(w_string_t* str) {
   return str->type == W_STRING_UNICODE;
 }
 
-bool w_string_path_is_absolute(const w_string_t *str) {
+bool w_string_path_is_absolute(const w_string_t* str) {
   return w_is_path_absolute_cstr_len(str->buf, str->len);
 }
 
-bool w_is_path_absolute_cstr(const char *path) {
+bool w_is_path_absolute_cstr(const char* path) {
   return w_is_path_absolute_cstr_len(path, strlen_uint32(path));
 }
 
-bool w_is_path_absolute_cstr_len(const char *path, uint32_t len) {
+bool w_is_path_absolute_cstr_len(const char* path, uint32_t len) {
 #ifdef _WIN32
   char drive_letter;
 

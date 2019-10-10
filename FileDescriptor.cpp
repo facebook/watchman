@@ -1,9 +1,9 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 
+#include "watchman.h"
 #include "FileDescriptor.h"
 #include "FileSystem.h"
-#include "watchman.h"
 #ifdef __APPLE__
 #include <sys/attr.h>
 #include <sys/utsname.h>
@@ -50,7 +50,7 @@ struct REPARSE_DATA_BUFFER {
     } GenericReparseBuffer;
   };
 };
-}
+} // namespace
 #endif
 
 namespace watchman {
@@ -149,7 +149,7 @@ bool FileDescriptor::isNonBlock() const {
  * matches the canonical case of the path on disk.
  * It only makes sense to call this function on a case insensitive filesystem.
  * If the case does not match, throws an exception. */
-static void checkCanonicalBaseName(const char *path) {
+static void checkCanonicalBaseName(const char* path) {
 #ifdef __APPLE__
   struct attrlist attrlist;
   struct {
@@ -166,17 +166,26 @@ static void checkCanonicalBaseName(const char *path) {
 
   if (getattrlist(path, &attrlist, &vomit, sizeof(vomit), FSOPT_NOFOLLOW) ==
       -1) {
-    throw std::system_error(errno, std::generic_category(),
-                            to<std::string>("checkCanonicalBaseName(", path,
-                                            "): getattrlist failed"));
+    throw std::system_error(
+        errno,
+        std::generic_category(),
+        to<std::string>(
+            "checkCanonicalBaseName(", path, "): getattrlist failed"));
   }
 
-  w_string_piece name(((char *)&vomit.ref) + vomit.ref.attr_dataoffset);
+  w_string_piece name(((char*)&vomit.ref) + vomit.ref.attr_dataoffset);
   if (name != base) {
     throw std::system_error(
-        ENOENT, std::generic_category(),
-        to<std::string>("checkCanonicalBaseName(", path, "): (", name,
-                        ") doesn't match canonical base (", base, ")"));
+        ENOENT,
+        std::generic_category(),
+        to<std::string>(
+            "checkCanonicalBaseName(",
+            path,
+            "): (",
+            name,
+            ") doesn't match canonical base (",
+            base,
+            ")"));
   }
 #else
   // Older Linux and BSDish systems are in this category.
@@ -192,9 +201,12 @@ static void checkCanonicalBaseName(const char *path) {
     if (!ent) {
       // We didn't find an entry that exactly matched -> fail
       throw std::system_error(
-          ENOENT, std::generic_category(),
-          to<std::string>("checkCanonicalBaseName(", path,
-                          "): no match found in parent dir"));
+          ENOENT,
+          std::generic_category(),
+          to<std::string>(
+              "checkCanonicalBaseName(",
+              path,
+              "): no match found in parent dir"));
     }
     // Note: we don't break out early if we get a case-insensitive match
     // because the dir may contain multiple representations of the same
@@ -211,21 +223,21 @@ static void checkCanonicalBaseName(const char *path) {
 }
 #endif
 
-FileDescriptor openFileHandle(const char *path,
-                              const OpenFileHandleOptions &opts) {
+FileDescriptor openFileHandle(
+    const char* path,
+    const OpenFileHandleOptions& opts) {
 #ifndef _WIN32
   int flags = (!opts.followSymlinks ? O_NOFOLLOW : 0) |
-              (opts.closeOnExec ? O_CLOEXEC : 0) |
+      (opts.closeOnExec ? O_CLOEXEC : 0) |
 #ifdef O_PATH
-              (opts.metaDataOnly ? O_PATH : 0) |
+      (opts.metaDataOnly ? O_PATH : 0) |
 #endif
-              ((opts.readContents && opts.writeContents)
-                   ? O_RDWR
-                   : (opts.writeContents ? O_WRONLY
-                                         : opts.readContents ? O_RDONLY : 0)) |
-              (opts.create ? O_CREAT : 0) |
-              (opts.exclusiveCreate ? O_EXCL : 0) |
-              (opts.truncate ? O_TRUNC : 0);
+      ((opts.readContents && opts.writeContents)
+           ? O_RDWR
+           : (opts.writeContents ? O_WRONLY
+                                 : opts.readContents ? O_RDONLY : 0)) |
+      (opts.create ? O_CREAT : 0) | (opts.exclusiveCreate ? O_EXCL : 0) |
+      (opts.truncate ? O_TRUNC : 0);
 
   auto fd = open(path, flags);
   if (fd == -1) {
@@ -316,9 +328,13 @@ FileDescriptor openFileHandle(const char *path,
   }
 
   throw std::system_error(
-      ENOENT, std::generic_category(),
-      to<std::string>("open(", path,
-                      "): opened path doesn't match canonical path ", opened));
+      ENOENT,
+      std::generic_category(),
+      to<std::string>(
+          "open(",
+          path,
+          "): opened path doesn't match canonical path ",
+          opened));
 }
 
 FileInformation FileDescriptor::getInfo() const {
@@ -362,14 +378,13 @@ FileInformation FileDescriptor::getInfo() const {
 #endif
 }
 
-
 w_string FileDescriptor::getOpenedPath() const {
 #if defined(F_GETPATH)
   // macOS.  The kernel interface only allows MAXPATHLEN
   char buf[MAXPATHLEN + 1];
   if (fcntl(fd_, F_GETPATH, buf) == -1) {
-    throw std::system_error(errno, std::generic_category(),
-                            "fcntl for getOpenedPath");
+    throw std::system_error(
+        errno, std::generic_category(), "fcntl for getOpenedPath");
   }
   return w_string(buf);
 #elif defined(__linux__) || defined(__sun)
@@ -397,20 +412,22 @@ w_string FileDescriptor::getOpenedPath() const {
   if (errno == ENOENT) {
     // For this path to not exist must mean that /proc is not mounted.
     // Report this with an actionable message
-    throw std::system_error(ENOSYS, std::generic_category(),
-                            "getOpenedPath: need /proc to be mounted!");
+    throw std::system_error(
+        ENOSYS,
+        std::generic_category(),
+        "getOpenedPath: need /proc to be mounted!");
   }
 
   if (errno != ENAMETOOLONG) {
-    throw std::system_error(errno, std::generic_category(),
-                            "readlink for getOpenedPath");
+    throw std::system_error(
+        errno, std::generic_category(), "readlink for getOpenedPath");
   }
 
   // Figure out how much space we need
   struct stat st;
   if (fstat(fd_, &st)) {
-    throw std::system_error(errno, std::generic_category(),
-                            "fstat for getOpenedPath");
+    throw std::system_error(
+        errno, std::generic_category(), "fstat for getOpenedPath");
   }
   std::string result;
   result.resize(st.st_size + 1, 0);
@@ -419,15 +436,16 @@ w_string FileDescriptor::getOpenedPath() const {
   if (len == int(result.size())) {
     // It's longer than we expected; TOCTOU detected!
     throw std::system_error(
-        ENAMETOOLONG, std::generic_category(),
+        ENAMETOOLONG,
+        std::generic_category(),
         "readlinkat: link contents grew while examining file");
   }
   if (len >= 0) {
     return w_string(&result[0], len);
   }
 
-  throw std::system_error(errno, std::generic_category(),
-                          "readlink for getOpenedPath");
+  throw std::system_error(
+      errno, std::generic_category(), "readlink for getOpenedPath");
 #elif defined(_WIN32)
   std::wstring wchar;
   wchar.resize(WATCHMAN_NAME_MAX);
@@ -453,8 +471,10 @@ w_string FileDescriptor::getOpenedPath() const {
 
   return w_string(wchar.data(), len);
 #else
-  throw std::system_error(ENOSYS, std::generic_category(),
-                          "getOpenedPath not implemented on this platform");
+  throw std::system_error(
+      ENOSYS,
+      std::generic_category(),
+      "getOpenedPath not implemented on this platform");
 #endif
 }
 
@@ -512,7 +532,8 @@ w_string FileDescriptor::readSymbolicLink() const {
   if (atlen == int(result.size())) {
     // It's longer than we expected; TOCTOU detected!
     throw std::system_error(
-        ENAMETOOLONG, std::generic_category(),
+        ENAMETOOLONG,
+        std::generic_category(),
         "readlinkat: link contents grew while examining file");
   }
   if (atlen >= 0) {
@@ -531,7 +552,8 @@ w_string FileDescriptor::readSymbolicLink() const {
   if (len == int(result.size())) {
     // It's longer than we expected; TOCTOU detected!
     throw std::system_error(
-        ENAMETOOLONG, std::generic_category(),
+        ENAMETOOLONG,
+        std::generic_category(),
         "readlink: link contents grew while examining file");
   }
   if (len >= 0) {
@@ -613,7 +635,7 @@ w_string FileDescriptor::readSymbolicLink() const {
 #endif
 }
 
-w_string realPath(const char *path) {
+w_string realPath(const char* path) {
   auto options = OpenFileHandleOptions::queryFileInfo();
   // Follow symlinks, because that's really the point of this function
   options.followSymlinks = 1;
@@ -632,8 +654,8 @@ w_string realPath(const char *path) {
     auto len = GetCurrentDirectoryW(wchar.size(), &wchar[0]);
     auto err = GetLastError();
     if (len == 0) {
-      throw std::system_error(err, std::system_category(),
-                              "GetCurrentDirectoryW");
+      throw std::system_error(
+          err, std::system_category(), "GetCurrentDirectoryW");
     }
     // Assumption: that the OS maintains the CWD in canonical form
     return w_string(wchar.data(), len);
@@ -644,8 +666,9 @@ w_string realPath(const char *path) {
   return handle.getOpenedPath();
 }
 
-FileInformation getFileInformation(const char *path,
-                                   CaseSensitivity caseSensitive) {
+FileInformation getFileInformation(
+    const char* path,
+    CaseSensitivity caseSensitive) {
   auto options = OpenFileHandleOptions::queryFileInfo();
   options.caseSensitive = caseSensitive;
 #if defined(_WIN32) || defined(O_PATH)
@@ -663,7 +686,7 @@ FileInformation getFileInformation(const char *path,
   auto handle = openFileHandle(parent.c_str(), options);
   struct stat st;
   if (fstatat(
-        handle.fd(), pathPiece.baseName().data(), &st, AT_SYMLINK_NOFOLLOW)) {
+          handle.fd(), pathPiece.baseName().data(), &st, AT_SYMLINK_NOFOLLOW)) {
     throw std::system_error(errno, std::generic_category(), "fstatat");
   }
 
@@ -681,7 +704,7 @@ FileInformation getFileInformation(const char *path,
 #endif
 }
 
-CaseSensitivity getCaseSensitivityForPath(const char *path) {
+CaseSensitivity getCaseSensitivityForPath(const char* path) {
 #ifdef __APPLE__
   return pathconf(path, _PC_CASE_SENSITIVE) ? CaseSensitivity::CaseSensitive
                                             : CaseSensitivity::CaseInSensitive;
@@ -692,7 +715,6 @@ CaseSensitivity getCaseSensitivityForPath(const char *path) {
   unused_parameter(path);
   return CaseSensitivity::CaseSensitive;
 #endif
-
 }
 
 Result<int, std::error_code> FileDescriptor::read(void* buf, int size) const {
@@ -747,7 +769,7 @@ const FileDescriptor& FileDescriptor::stdIn() {
 #else
       STDIN_FILENO
 #endif
-          );
+  );
   return f;
 }
 
@@ -758,7 +780,7 @@ const FileDescriptor& FileDescriptor::stdOut() {
 #else
       STDOUT_FILENO
 #endif
-          );
+  );
   return f;
 }
 
@@ -769,7 +791,7 @@ const FileDescriptor& FileDescriptor::stdErr() {
 #else
       STDERR_FILENO
 #endif
-          );
+  );
   return f;
 }
-}
+} // namespace watchman

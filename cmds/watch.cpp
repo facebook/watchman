@@ -5,7 +5,7 @@
 using watchman::realPath;
 
 bool w_cmd_realpath_root(json_ref& args, char** errmsg) {
-  const char *path;
+  const char* path;
 
   if (json_array_size(args) < 2) {
     ignore_result(asprintf(errmsg, "wrong number of arguments"));
@@ -22,9 +22,14 @@ bool w_cmd_realpath_root(json_ref& args, char** errmsg) {
     auto resolved = realPath(path);
     args.array()[1] = w_string_to_json(resolved);
     return true;
-  } catch (const std::exception &exc) {
-    watchman::log(watchman::DBG, "w_cmd_realpath_root: path ", path,
-                  " does not resolve: ", exc.what(), "\n");
+  } catch (const std::exception& exc) {
+    watchman::log(
+        watchman::DBG,
+        "w_cmd_realpath_root: path ",
+        path,
+        " does not resolve: ",
+        exc.what(),
+        "\n");
     // We don't treat this as an error; the caller will subsequently
     // fail and perform their usual error handling
     return true;
@@ -42,10 +47,15 @@ static void cmd_clock(struct watchman_client* client, const json_ref& args) {
   int sync_timeout = 0;
 
   if (json_array_size(args) == 3) {
-    const char *ignored;
-    if (0 != json_unpack(args, "[s, s, {s?:i*}]",
-                         &ignored, &ignored,
-                         "sync_timeout", &sync_timeout)) {
+    const char* ignored;
+    if (0 !=
+        json_unpack(
+            args,
+            "[s, s, {s?:i*}]",
+            &ignored,
+            &ignored,
+            "sync_timeout",
+            &sync_timeout)) {
       send_error_response(client, "malformated argument list for 'clock'");
       return;
     }
@@ -66,15 +76,17 @@ static void cmd_clock(struct watchman_client* client, const json_ref& args) {
 
   send_and_dispose_response(client, std::move(resp));
 }
-W_CMD_REG("clock", cmd_clock, CMD_DAEMON | CMD_ALLOW_ANY_USER,
-          w_cmd_realpath_root)
+W_CMD_REG(
+    "clock",
+    cmd_clock,
+    CMD_DAEMON | CMD_ALLOW_ANY_USER,
+    w_cmd_realpath_root)
 
 /* watch-del /root
  * Stops watching the specified root */
 static void cmd_watch_delete(
     struct watchman_client* client,
     const json_ref& args) {
-
   /* resolve the root */
   if (json_array_size(args) != 2) {
     send_error_response(client, "wrong number of arguments to 'watch-del'");
@@ -98,8 +110,11 @@ static void cmd_watch_del_all(struct watchman_client* client, const json_ref&) {
   resp.set("roots", std::move(roots));
   send_and_dispose_response(client, std::move(resp));
 }
-W_CMD_REG("watch-del-all", cmd_watch_del_all, CMD_DAEMON | CMD_POISON_IMMUNE,
-          NULL)
+W_CMD_REG(
+    "watch-del-all",
+    cmd_watch_del_all,
+    CMD_DAEMON | CMD_POISON_IMMUNE,
+    NULL)
 
 /* watch-list
  * Returns a list of watched roots */
@@ -187,9 +202,11 @@ resolve_projpath(const json_ref& args, char** errmsg, w_string& relpath) {
 
   auto root_files = cfg_compute_root_files(&enforcing);
   if (!root_files) {
-    ignore_result(asprintf(errmsg,
-          "resolve_projpath: error computing root_files configuration value, "
-          "consult your log file at %s for more details", log_name));
+    ignore_result(asprintf(
+        errmsg,
+        "resolve_projpath: error computing root_files configuration value, "
+        "consult your log file at %s for more details",
+        log_name));
     return nullptr;
   }
 
@@ -259,8 +276,11 @@ static void cmd_watch(struct watchman_client* client, const json_ref& args) {
   add_root_warnings_to_response(resp, root);
   send_and_dispose_response(client, std::move(resp));
 }
-W_CMD_REG("watch", cmd_watch, CMD_DAEMON | CMD_ALLOW_ANY_USER,
-          w_cmd_realpath_root)
+W_CMD_REG(
+    "watch",
+    cmd_watch,
+    CMD_DAEMON | CMD_ALLOW_ANY_USER,
+    w_cmd_realpath_root)
 
 static void cmd_watch_project(
     struct watchman_client* client,
@@ -298,14 +318,15 @@ static void cmd_watch_project(
   }
   add_root_warnings_to_response(resp, root);
   if (!rel_path_from_watch.empty()) {
-    resp.set(
-        "relative_path",
-        w_string_to_json(rel_path_from_watch));
+    resp.set("relative_path", w_string_to_json(rel_path_from_watch));
   }
   send_and_dispose_response(client, std::move(resp));
 }
-W_CMD_REG("watch-project", cmd_watch_project, CMD_DAEMON | CMD_ALLOW_ANY_USER,
-          w_cmd_realpath_root)
+W_CMD_REG(
+    "watch-project",
+    cmd_watch_project,
+    CMD_DAEMON | CMD_ALLOW_ANY_USER,
+    w_cmd_realpath_root)
 
 /* vim:ts=2:sw=2:et:
  */

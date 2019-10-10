@@ -112,7 +112,7 @@ ClockSpec::ClockSpec(const json_ref& value) {
        * The redundant looking comment below is a hint to
        * gcc that it is ok to fall through. */
     }
-    /* fall through */
+      /* fall through */
 
     default:
       throw std::domain_error("invalid clockspec");
@@ -207,10 +207,19 @@ w_query_since ClockSpec::evaluate(
   }
 }
 
-bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
-                     size_t bufsize) {
-  int res = snprintf(buf, bufsize, "c:%" PRIu64 ":%d:%u:%" PRIu32,
-                     proc_start_time, proc_pid, root_number, ticks);
+bool clock_id_string(
+    uint32_t root_number,
+    uint32_t ticks,
+    char* buf,
+    size_t bufsize) {
+  int res = snprintf(
+      buf,
+      bufsize,
+      "c:%" PRIu64 ":%d:%u:%" PRIu32,
+      proc_start_time,
+      proc_pid,
+      root_number,
+      ticks);
 
   if (res == -1) {
     return false;

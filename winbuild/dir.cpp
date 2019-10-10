@@ -32,8 +32,10 @@ class WinDirHandle : public watchman_dir_handle {
     int err = 0;
     dirWPath_ = w_string_piece(path).asWideUNC();
 
-    h_ = openFileHandle(path, strict ? OpenFileHandleOptions::strictOpenDir()
-                                     : OpenFileHandleOptions::openDir());
+    h_ = openFileHandle(
+        path,
+        strict ? OpenFileHandleOptions::strictOpenDir()
+               : OpenFileHandleOptions::openDir());
 
     // Use Win7 compatibility mode for readDir()
     if (getenv("WATCHMAN_WIN7_COMPAT") &&
@@ -171,7 +173,7 @@ class WinDirHandle : public watchman_dir_handle {
     return &ent_;
   }
 };
-}
+} // namespace
 
 std::unique_ptr<watchman_dir_handle> w_dir_open(const char* path, bool strict) {
   return std::make_unique<WinDirHandle>(path, strict);

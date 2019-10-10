@@ -13,7 +13,9 @@ class NameExpr : public QueryExpr {
       std::unordered_set<w_string>&& set,
       CaseSensitivity caseSensitive,
       bool wholename)
-      : set(std::move(set)), caseSensitive(caseSensitive), wholename(wholename) {}
+      : set(std::move(set)),
+        caseSensitive(caseSensitive),
+        wholename(wholename) {}
 
  public:
   EvaluateResult evaluate(struct w_query_ctx* ctx, FileResult* file) override {
@@ -28,8 +30,8 @@ class NameExpr : public QueryExpr {
         }
       } else {
         str = caseSensitive == CaseSensitivity::CaseInSensitive
-                  ? file->baseName().asLowerCase()
-                  : file->baseName().asWString();
+            ? file->baseName().asLowerCase()
+            : file->baseName().asWString();
       }
 
       matched = set.find(str) != set.end();
@@ -54,7 +56,7 @@ class NameExpr : public QueryExpr {
   static std::unique_ptr<QueryExpr>
   parse(w_query*, const json_ref& term, CaseSensitivity caseSensitive) {
     const char *pattern = nullptr, *scope = "basename";
-    const char *which =
+    const char* which =
         caseSensitive == CaseSensitivity::CaseInSensitive ? "iname" : "name";
     std::unordered_set<w_string> set;
 
@@ -119,8 +121,8 @@ class NameExpr : public QueryExpr {
           "' must be either a string or an array of string");
     }
 
-    auto data = new NameExpr(std::move(set), caseSensitive,
-                             !strcmp(scope, "wholename"));
+    auto data = new NameExpr(
+        std::move(set), caseSensitive, !strcmp(scope, "wholename"));
 
     if (pattern) {
       data->name = json_to_w_string(name).normalizeSeparators();

@@ -64,7 +64,7 @@ class StdioStream : public watchman_stream {
     return fd_;
   }
 };
-}
+} // namespace
 
 w_stm_t w_stm_stdout(void) {
   static StdioStream stdoutStream(FileDescriptor::stdOut());

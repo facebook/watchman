@@ -12,21 +12,21 @@
 
 using namespace watchman;
 using watchman::FileDescriptor;
-using watchman::Pipe;
 using watchman::inotify_category;
+using watchman::Pipe;
 
 #ifndef IN_EXCL_UNLINK
 /* defined in <linux/inotify.h> but we can't include that without
  * breaking userspace */
-# define WATCHMAN_IN_EXCL_UNLINK 0x04000000
+#define WATCHMAN_IN_EXCL_UNLINK 0x04000000
 #else
-# define WATCHMAN_IN_EXCL_UNLINK IN_EXCL_UNLINK
+#define WATCHMAN_IN_EXCL_UNLINK IN_EXCL_UNLINK
 #endif
 
-#define WATCHMAN_INOTIFY_MASK \
-  IN_ATTRIB | IN_CREATE | IN_DELETE | \
-  IN_DELETE_SELF | IN_MODIFY | IN_MOVE_SELF | IN_MOVED_FROM | \
-  IN_MOVED_TO | IN_DONT_FOLLOW | IN_ONLYDIR | WATCHMAN_IN_EXCL_UNLINK
+#define WATCHMAN_INOTIFY_MASK                                       \
+  IN_ATTRIB | IN_CREATE | IN_DELETE | IN_DELETE_SELF | IN_MODIFY |  \
+      IN_MOVE_SELF | IN_MOVED_FROM | IN_MOVED_TO | IN_DONT_FOLLOW | \
+      IN_ONLYDIR | WATCHMAN_IN_EXCL_UNLINK
 
 static const struct flag_map inflags[] = {
     {IN_ACCESS, "IN_ACCESS"},
@@ -154,8 +154,13 @@ void InotifyWatcher::process_inotify_event(
   char flags_label[128];
 
   w_expand_flags(inflags, ine->mask, flags_label, sizeof(flags_label));
-  w_log(W_LOG_DBG, "notify: wd=%d mask=0x%x %s %s\n", ine->wd, ine->mask,
-      flags_label, ine->len > 0 ? ine->name : "");
+  w_log(
+      W_LOG_DBG,
+      "notify: wd=%d mask=0x%x %s %s\n",
+      ine->wd,
+      ine->mask,
+      flags_label,
+      ine->len > 0 ? ine->name : "");
 
   if (ine->wd == -1 && (ine->mask & IN_Q_OVERFLOW)) {
     /* we missed something, will need to re-crawl */
@@ -189,9 +194,9 @@ void InotifyWatcher::process_inotify_event(
       }
     }
 
-    if (ine->len > 0 && (ine->mask & (IN_MOVED_FROM|IN_ISDIR))
-        == (IN_MOVED_FROM|IN_ISDIR)) {
-
+    if (ine->len > 0 &&
+        (ine->mask & (IN_MOVED_FROM | IN_ISDIR)) ==
+            (IN_MOVED_FROM | IN_ISDIR)) {
       // record this as a pending move, so that we can automatically
       // watch the target when we get the other side of it.
       {
@@ -241,9 +246,11 @@ void InotifyWatcher::process_inotify_event(
     }
 
     if (dir_name) {
-      if ((ine->mask & (IN_UNMOUNT|IN_IGNORED|IN_DELETE_SELF|IN_MOVE_SELF))) {
+      if ((ine->mask &
+           (IN_UNMOUNT | IN_IGNORED | IN_DELETE_SELF | IN_MOVE_SELF))) {
         if (w_string_equal(root->root_path, name)) {
-          w_log(W_LOG_ERR,
+          w_log(
+              W_LOG_ERR,
               "root dir %s has been (re)moved, canceling watch\n",
               root->root_path.c_str());
           root->cancel();
@@ -260,7 +267,7 @@ void InotifyWatcher::process_inotify_event(
         name = pname;
       }
 
-      if (ine->mask & (IN_CREATE|IN_DELETE)) {
+      if (ine->mask & (IN_CREATE | IN_DELETE)) {
         pending_flags |= W_PENDING_RECURSIVE;
       }
 
@@ -285,12 +292,17 @@ void InotifyWatcher::process_inotify_event(
         wlock->wd_to_name.erase(ine->wd);
       }
 
-    } else if ((ine->mask & (IN_MOVE_SELF|IN_IGNORED)) == 0) {
+    } else if ((ine->mask & (IN_MOVE_SELF | IN_IGNORED)) == 0) {
       // If we can't resolve the dir, and this isn't notification
       // that it has gone away, then we want to recrawl to fix
       // up our state.
-      w_log(W_LOG_ERR, "wanted dir %d for mask %x but not found %.*s\n",
-          ine->wd, ine->mask, ine->len, ine->name);
+      w_log(
+          W_LOG_ERR,
+          "wanted dir %d for mask %x but not found %.*s\n",
+          ine->wd,
+          ine->mask,
+          ine->len,
+          ine->name);
       root->scheduleRecrawl("dir missing from internal state");
     }
   }
@@ -299,8 +311,8 @@ void InotifyWatcher::process_inotify_event(
 bool InotifyWatcher::consumeNotify(
     const std::shared_ptr<w_root_t>& root,
     PendingCollection::LockedPtr& coll) {
-  struct inotify_event *ine;
-  char *iptr;
+  struct inotify_event* ine;
+  char* iptr;
   int n;
   struct timeval now;
 

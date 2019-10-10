@@ -5,7 +5,7 @@
 
 struct watchman_dir_ent {
   bool has_stat;
-  char *d_name;
+  char* d_name;
   watchman::FileInformation stat;
 };
 

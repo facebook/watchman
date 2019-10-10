@@ -287,4 +287,4 @@ struct InMemoryView : public QueryableView {
   // The source control system that we detected during initialization
   std::unique_ptr<SCM> scm_;
 };
-}
+} // namespace watchman

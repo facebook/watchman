@@ -27,7 +27,7 @@ struct state {
 folly::Synchronized<state, std::mutex> saveState;
 std::condition_variable stateCond;
 std::thread state_saver_thread;
-}
+} // namespace
 
 static bool do_state_save(void);
 
@@ -61,8 +61,7 @@ void w_state_shutdown(void) {
   state_saver_thread.join();
 }
 
-bool w_state_load(void)
-{
+bool w_state_load(void) {
   json_error_t err;
 
   if (dont_save_state) {
@@ -74,7 +73,9 @@ bool w_state_load(void)
   auto state = json_load_file(watchman_state_file, 0, &err);
 
   if (!state) {
-    w_log(W_LOG_ERR, "failed to parse json from %s: %s\n",
+    w_log(
+        W_LOG_ERR,
+        "failed to parse json from %s: %s\n",
         watchman_state_file,
         err.text);
     return false;
@@ -89,12 +90,12 @@ bool w_state_load(void)
 
 #if defined(HAVE_MKOSTEMP) && defined(sun)
 // Not guaranteed to be defined in stdlib.h
-extern int mkostemp(char *, int);
+extern int mkostemp(char*, int);
 #endif
 
 std::unique_ptr<watchman_stream> w_mkstemp(char* templ) {
 #if defined(_WIN32)
-  char *name = _mktemp(templ);
+  char* name = _mktemp(templ);
   if (!name) {
     return nullptr;
   }
@@ -117,11 +118,11 @@ std::unique_ptr<watchman_stream> w_mkstemp(char* templ) {
   return nullptr;
 #else
   FileDescriptor fd;
-# ifdef HAVE_MKOSTEMP
+#ifdef HAVE_MKOSTEMP
   fd = FileDescriptor(mkostemp(templ, O_CLOEXEC));
-# else
+#else
   fd = FileDescriptor(mkstemp(templ));
-# endif
+#endif
   if (!fd) {
     return nullptr;
   }

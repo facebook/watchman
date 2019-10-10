@@ -64,8 +64,8 @@ class TypeExpr : public QueryExpr {
       case 'D':
         return S_ISDOOR(stat->mode);
 #endif
-    default:
-      return false;
+      default:
+        return false;
     }
   }
 

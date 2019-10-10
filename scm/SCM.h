@@ -2,10 +2,10 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include "watchman_system.h"
+#include "watchman_string.h"
 #include <chrono>
 #include <memory>
 #include <vector>
-#include "watchman_string.h"
 
 namespace watchman {
 
@@ -90,4 +90,4 @@ class SCM {
   w_string rootPath_;
   w_string scmRoot_;
 };
-}
+} // namespace watchman

@@ -13,23 +13,24 @@
  */
 
 /* Return the smallest size int that can store the value */
-#define INT_SIZE(x) (((x) == ((int8_t)x))  ? 1 :    \
-                     ((x) == ((int16_t)x)) ? 2 :    \
-                     ((x) == ((int32_t)x)) ? 4 : 8)
+#define INT_SIZE(x)     \
+  (((x) == ((int8_t)x)) \
+       ? 1              \
+       : ((x) == ((int16_t)x)) ? 2 : ((x) == ((int32_t)x)) ? 4 : 8)
 
-#define BSER_ARRAY     0x00
-#define BSER_OBJECT    0x01
+#define BSER_ARRAY 0x00
+#define BSER_OBJECT 0x01
 #define BSER_BYTESTRING 0x02
-#define BSER_INT8      0x03
-#define BSER_INT16     0x04
-#define BSER_INT32     0x05
-#define BSER_INT64     0x06
-#define BSER_REAL      0x07
-#define BSER_TRUE      0x08
-#define BSER_FALSE     0x09
-#define BSER_NULL      0x0a
-#define BSER_TEMPLATE  0x0b
-#define BSER_SKIP      0x0c
+#define BSER_INT8 0x03
+#define BSER_INT16 0x04
+#define BSER_INT32 0x05
+#define BSER_INT64 0x06
+#define BSER_REAL 0x07
+#define BSER_TRUE 0x08
+#define BSER_FALSE 0x09
+#define BSER_NULL 0x0a
+#define BSER_TEMPLATE 0x0b
+#define BSER_SKIP 0x0c
 #define BSER_UTF8STRING 0x0d
 
 static const char bser_true = BSER_TRUE;
@@ -42,12 +43,11 @@ static const char bser_template_hdr = BSER_TEMPLATE;
 static const char bser_utf8string_hdr = BSER_UTF8STRING;
 static const char bser_skip = BSER_SKIP;
 
-static bool is_bser_version_supported(const bser_ctx_t *ctx) {
+static bool is_bser_version_supported(const bser_ctx_t* ctx) {
   return ctx->bser_version == 1 || ctx->bser_version == 2;
 }
 
-static int bser_real(const bser_ctx_t *ctx, double val, void *data)
-{
+static int bser_real(const bser_ctx_t* ctx, double val, void* data) {
   char sz = BSER_REAL;
   if (!is_bser_version_supported(ctx)) {
     return -1;
@@ -88,9 +88,11 @@ bool bunser_generic_string(
 // Returns bool if successful, and populates *val with the value.
 // Otherwise populates *needed with the size required to successfully
 // decode the integer value
-bool bunser_int(const char *buf, json_int_t avail,
-    json_int_t *needed, json_int_t *val)
-{
+bool bunser_int(
+    const char* buf,
+    json_int_t avail,
+    json_int_t* needed,
+    json_int_t* val) {
   int8_t i8;
   int16_t i16;
   int32_t i32;
@@ -139,15 +141,14 @@ bool bunser_int(const char *buf, json_int_t avail,
   }
 }
 
-static int bser_int(const bser_ctx_t *ctx, json_int_t val, void *data)
-{
+static int bser_int(const bser_ctx_t* ctx, json_int_t val, void* data) {
   int8_t i8;
   int16_t i16;
   int32_t i32;
   int64_t i64;
   char sz;
   int size = INT_SIZE(val);
-  char *iptr;
+  char* iptr;
 
   if (!is_bser_version_supported(ctx)) {
     return -1;
@@ -235,11 +236,13 @@ bser_mixedstring(const bser_ctx_t* ctx, w_string_piece str, void* data) {
   }
 }
 
-static int bser_array(const bser_ctx_t *ctx, const json_t *array, void *data);
+static int bser_array(const bser_ctx_t* ctx, const json_t* array, void* data);
 
-static int bser_template(const bser_ctx_t *ctx, const json_t *array,
-    const json_t *templ, void *data)
-{
+static int bser_template(
+    const bser_ctx_t* ctx,
+    const json_t* array,
+    const json_t* templ,
+    void* data) {
   size_t n = json_array_size(array);
   size_t i, pn;
 
@@ -271,7 +274,7 @@ static int bser_template(const bser_ctx_t *ctx, const json_t *array,
 
     // For each factored key
     for (pi = 0; pi < pn; pi++) {
-      const char *key = json_string_value(json_array_get(templ, pi));
+      const char* key = json_string_value(json_array_get(templ, pi));
 
       // Look up the object property
       auto val = json_object_get(obj, key);
@@ -293,8 +296,7 @@ static int bser_template(const bser_ctx_t *ctx, const json_t *array,
   return 0;
 }
 
-static int bser_array(const bser_ctx_t *ctx, const json_t *array, void *data)
-{
+static int bser_array(const bser_ctx_t* ctx, const json_t* array, void* data) {
   size_t n = json_array_size(array);
   size_t i;
 
@@ -343,8 +345,8 @@ static int bser_object(const bser_ctx_t* ctx, const json_ref& obj, void* data) {
   }
 
   for (auto& it : obj.object()) {
-    auto &key = it.first;
-    auto &val = it.second;
+    auto& key = it.first;
+    auto& val = it.second;
 
     if (bser_bytestring(ctx, key.c_str(), data)) {
       return -1;
@@ -466,15 +468,22 @@ static json_ref bunser_array(
 
   if (!bunser_int(buf, end - buf, &needed, &nelems)) {
     if (needed == -1) {
-      snprintf(jerr->text, sizeof(jerr->text),
+      snprintf(
+          jerr->text,
+          sizeof(jerr->text),
           "invalid integer encoding 0x%02x for array length. buf=%p\n",
-          (int)buf[0], buf);
+          (int)buf[0],
+          buf);
       return nullptr;
     }
     *used = needed + total;
-    snprintf(jerr->text, sizeof(jerr->text),
+    snprintf(
+        jerr->text,
+        sizeof(jerr->text),
         "invalid array length encoding 0x%02x (needed %d but have %d)",
-        (int)buf[0], (int)needed, (int)(end - buf));
+        (int)buf[0],
+        (int)needed,
+        (int)(end - buf));
     return nullptr;
   }
 
@@ -496,8 +505,7 @@ static json_ref bunser_array(
 
     if (json_array_append_new(arrval, std::move(item))) {
       *used = total;
-      snprintf(jerr->text, sizeof(jerr->text),
-        "failed to append array item");
+      snprintf(jerr->text, sizeof(jerr->text), "failed to append array item");
       return nullptr;
     }
   }
@@ -520,8 +528,11 @@ static json_ref bunser_template(
   total++;
 
   if (*buf != BSER_ARRAY) {
-    snprintf(jerr->text, sizeof(jerr->text),
-        "Expected array encoding, but found 0x%02x", *buf);
+    snprintf(
+        jerr->text,
+        sizeof(jerr->text),
+        "Expected array encoding, but found 0x%02x",
+        *buf);
     *used = total;
     return nullptr;
   }
@@ -539,9 +550,12 @@ static json_ref bunser_template(
   needed = 0;
   if (!bunser_int(buf, end - buf, &needed, &nelems)) {
     *used = needed + total;
-    snprintf(jerr->text, sizeof(jerr->text),
+    snprintf(
+        jerr->text,
+        sizeof(jerr->text),
         "invalid object number encoding (needed %d but have %d)",
-        (int)needed, (int)(end - buf));
+        (int)needed,
+        (int)(end - buf));
     return nullptr;
   }
   total += needed;
@@ -597,7 +611,9 @@ static json_ref bunser_object(
 
   if (!bunser_int(buf, end - buf, &needed, &nelems)) {
     *used = needed + total;
-    snprintf(jerr->text, sizeof(jerr->text),
+    snprintf(
+        jerr->text,
+        sizeof(jerr->text),
         "invalid object property count encoding");
     return nullptr;
   }
@@ -607,14 +623,14 @@ static json_ref bunser_object(
 
   auto objval = json_object();
   for (i = 0; i < nelems; i++) {
-    const char *start;
+    const char* start;
     json_int_t slen;
 
     // Read key
     if (!bunser_generic_string(buf, end - buf, &needed, &start, &slen)) {
       *used = total + needed;
-      snprintf(jerr->text, sizeof(jerr->text),
-          "invalid bytestring for object key");
+      snprintf(
+          jerr->text, sizeof(jerr->text), "invalid bytestring for object key");
       return nullptr;
     }
     total += needed;
@@ -623,8 +639,7 @@ static json_ref bunser_object(
     // Saves us allocating a string when the library is going to
     // do that anyway
     if ((uint16_t)slen > sizeof(keybuf) - 1) {
-      snprintf(jerr->text, sizeof(jerr->text),
-          "object key is too long");
+      snprintf(jerr->text, sizeof(jerr->text), "object key is too long");
       return nullptr;
     }
     memcpy(keybuf, start, (size_t)slen);
@@ -642,8 +657,7 @@ static json_ref bunser_object(
 
     if (json_object_set_new_nocheck(objval, keybuf, std::move(item))) {
       *used = total;
-      snprintf(jerr->text, sizeof(jerr->text),
-          "failed to add object property");
+      snprintf(jerr->text, sizeof(jerr->text), "failed to add object property");
       return nullptr;
     }
   }
@@ -665,20 +679,18 @@ json_ref bunser(
     case BSER_INT32:
     case BSER_INT64:
       if (!bunser_int(buf, end - buf, needed, &ival)) {
-        snprintf(jerr->text, sizeof(jerr->text),
-            "invalid integer encoding");
+        snprintf(jerr->text, sizeof(jerr->text), "invalid integer encoding");
         return nullptr;
       }
       return json_integer(ival);
 
     case BSER_BYTESTRING:
     case BSER_UTF8STRING: {
-      const char *start;
+      const char* start;
       json_int_t len;
 
       if (!bunser_generic_string(buf, end - buf, needed, &start, &len)) {
-        snprintf(jerr->text, sizeof(jerr->text),
-            "invalid bytestring encoding");
+        snprintf(jerr->text, sizeof(jerr->text), "invalid bytestring encoding");
         return nullptr;
       }
 
@@ -688,8 +700,7 @@ json_ref bunser(
           buf[0] == BSER_BYTESTRING ? W_STRING_BYTE : W_STRING_UNICODE);
     }
 
-    case BSER_REAL:
-    {
+    case BSER_REAL: {
       double dval;
       *needed = sizeof(double) + 1;
       memcpy(&dval, buf + 1, sizeof(dval));
@@ -712,8 +723,11 @@ json_ref bunser(
     case BSER_OBJECT:
       return bunser_object(buf, end, needed, jerr);
     default:
-      snprintf(jerr->text, sizeof(jerr->text),
-            "invalid bser encoding type %02x", (int)buf[0]);
+      snprintf(
+          jerr->text,
+          sizeof(jerr->text),
+          "invalid bser encoding type %02x",
+          (int)buf[0]);
       return nullptr;
   }
 

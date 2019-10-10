@@ -15,7 +15,7 @@ extern "C" {
 
 struct watchman_perf_sample {
   // What we're sampling across
-  const char *description;
+  const char* description;
 
   // Additional arbitrary information.  This is either NULL
   // or is a json object with various properties set inside it
@@ -67,8 +67,6 @@ struct watchman_perf_sample {
   void log();
 };
 typedef struct watchman_perf_sample w_perf_t;
-
-
 
 #ifdef __cplusplus
 }

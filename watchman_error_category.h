@@ -101,4 +101,4 @@ struct is_error_condition_enum<watchman::error_code> : public true_type {};
 template <>
 struct is_error_condition_enum<watchman::windows_error_code>
     : public true_type {};
-}
+} // namespace std

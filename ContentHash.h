@@ -2,9 +2,9 @@
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
 #include "watchman_system.h"
+#include "watchman_string.h"
 #include <array>
 #include "LRUCache.h"
-#include "watchman_string.h"
 
 namespace watchman {
 struct ContentHashCacheKey {
@@ -19,7 +19,7 @@ struct ContentHashCacheKey {
   std::size_t hashValue() const;
   bool operator==(const ContentHashCacheKey& other) const;
 };
-}
+} // namespace watchman
 
 namespace std {
 template <>
@@ -28,7 +28,7 @@ struct hash<watchman::ContentHashCacheKey> {
     return key.hashValue();
   }
 };
-}
+} // namespace std
 
 namespace watchman {
 class ContentHashCache {
@@ -76,4 +76,4 @@ class ContentHashCache {
   LRUCache<ContentHashCacheKey, HashValue> cache_;
   w_string rootPath_;
 };
-}
+} // namespace watchman

@@ -8,6 +8,8 @@
 #ifndef STRBUFFER_H
 #define STRBUFFER_H
 
+#include <cstdlib> /* for size_t */
+
 struct strbuffer_t {
   char* value;
   size_t length; /* bytes used */

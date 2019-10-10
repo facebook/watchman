@@ -21,7 +21,7 @@ inline uint64_t hash_128_to_64(const uint64_t upper, const uint64_t lower) {
   b *= kMul;
   return b;
 }
-}
+} // namespace watchman
 
 #endif
 

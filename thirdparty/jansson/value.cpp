@@ -15,9 +15,9 @@
 #include <cmath>
 #include <string>
 
+#include "watchman_string.h"
 #include "utf.h"
 #include "watchman_log.h"
-#include "watchman_string.h"
 
 json_ref::json_ref() : ref_(nullptr) {}
 json_ref::json_ref(std::nullptr_t) : ref_(nullptr) {}
@@ -123,15 +123,14 @@ json_ref json_object(void) {
   return json_object_of_size(0);
 }
 
-size_t json_object_size(const json_t *json)
-{
-    json_object_t *object;
+size_t json_object_size(const json_t* json) {
+  json_object_t* object;
 
-    if(!json_is_object(json))
-        return 0;
+  if (!json_is_object(json))
+    return 0;
 
-    object = json_to_object(json);
-    return object->map.size();
+  object = json_to_object(json);
+  return object->map.size();
 }
 
 typename std::unordered_map<w_string, json_ref>::iterator
@@ -165,19 +164,18 @@ json_ref json_ref::get_default(const char* key, json_ref defval) const {
   return it->second;
 }
 
-json_t *json_object_get(const json_t *json, const char *key)
-{
-    json_object_t *object;
+json_t* json_object_get(const json_t* json, const char* key) {
+  json_object_t* object;
 
-    if(!json_is_object(json))
-        return NULL;
+  if (!json_is_object(json))
+    return NULL;
 
-    object = json_to_object(json);
-    auto it = object->findCString(key);
-    if (it == object->map.end()) {
-      return nullptr;
-    }
-    return it->second;
+  object = json_to_object(json);
+  auto it = object->findCString(key);
+  if (it == object->map.end()) {
+    return nullptr;
+  }
+  return it->second;
 }
 
 int json_object_set_new_nocheck(
@@ -223,33 +221,31 @@ int json_object_set_new(json_t* json, const char* key, json_ref&& value) {
   return json_object_set_new_nocheck(json, key, std::move(value));
 }
 
-int json_object_del(json_t *json, const char *key)
-{
-    json_object_t *object;
+int json_object_del(json_t* json, const char* key) {
+  json_object_t* object;
 
-    if(!json_is_object(json))
-        return -1;
+  if (!json_is_object(json))
+    return -1;
 
-    object = json_to_object(json);
-    auto it = object->findCString(key);
-    if (it == object->map.end()) {
-      return -1;
-    }
-    object->map.erase(it);
-    return 0;
+  object = json_to_object(json);
+  auto it = object->findCString(key);
+  if (it == object->map.end()) {
+    return -1;
+  }
+  object->map.erase(it);
+  return 0;
 }
 
-int json_object_clear(json_t *json)
-{
-    json_object_t *object;
+int json_object_clear(json_t* json) {
+  json_object_t* object;
 
-    if(!json_is_object(json))
-        return -1;
+  if (!json_is_object(json))
+    return -1;
 
-    object = json_to_object(json);
-    object->map.clear();
+  object = json_to_object(json);
+  object->map.clear();
 
-    return 0;
+  return 0;
 }
 
 int json_object_update(const json_t* src, json_t* target) {
@@ -339,7 +335,6 @@ static json_ref json_object_deep_copy(const json_t* object) {
   return result;
 }
 
-
 /*** array ***/
 
 json_array_t::json_array_t(size_t sizeHint) : json(JSON_ARRAY) {
@@ -377,8 +372,7 @@ json_ref json_array(std::initializer_list<json_ref> values) {
   return json_ref(&array->json, false);
 }
 
-int json_array_set_template(json_t *json, json_t *templ)
-{
+int json_array_set_template(json_t* json, json_t* templ) {
   return json_array_set_template_new(json, json_ref(templ));
 }
 
@@ -391,19 +385,17 @@ int json_array_set_template_new(json_t* json, json_ref&& templ) {
   return 1;
 }
 
-json_t *json_array_get_template(const json_t *array)
-{
-    if(!json_is_array(array))
-        return 0;
-    return json_to_array(array)->templ;
+json_t* json_array_get_template(const json_t* array) {
+  if (!json_is_array(array))
+    return 0;
+  return json_to_array(array)->templ;
 }
 
-size_t json_array_size(const json_t *json)
-{
-    if(!json_is_array(json))
-        return 0;
+size_t json_array_size(const json_t* json) {
+  if (!json_is_array(json))
+    return 0;
 
-    return json_to_array(json)->table.size();
+  return json_to_array(json)->table.size();
 }
 
 json_ref json_array_get(const json_t* json, size_t index) {
@@ -472,68 +464,63 @@ int json_array_insert_new(json_t* json, size_t index, json_ref&& value) {
   return 0;
 }
 
-int json_array_remove(json_t *json, size_t index)
-{
-    json_array_t *array;
+int json_array_remove(json_t* json, size_t index) {
+  json_array_t* array;
 
-    if(!json_is_array(json))
-        return -1;
-    array = json_to_array(json);
+  if (!json_is_array(json))
+    return -1;
+  array = json_to_array(json);
 
-    if (index > array->table.size()) {
-      return -1;
-    }
+  if (index > array->table.size()) {
+    return -1;
+  }
 
-    auto it = array->table.begin();
-    std::advance(it, index);
+  auto it = array->table.begin();
+  std::advance(it, index);
 
-    array->table.erase(it);
-    return 0;
+  array->table.erase(it);
+  return 0;
 }
 
-int json_array_clear(json_t *json)
-{
-    if(!json_is_array(json))
-        return -1;
-    json_to_array(json)->table.clear();
-    return 0;
+int json_array_clear(json_t* json) {
+  if (!json_is_array(json))
+    return -1;
+  json_to_array(json)->table.clear();
+  return 0;
 }
 
-int json_array_extend(json_t *json, json_t *other_json)
-{
-    json_array_t *array, *other;
+int json_array_extend(json_t* json, json_t* other_json) {
+  json_array_t *array, *other;
 
-    if(!json_is_array(json) || !json_is_array(other_json))
-        return -1;
-    array = json_to_array(json);
-    other = json_to_array(other_json);
+  if (!json_is_array(json) || !json_is_array(other_json))
+    return -1;
+  array = json_to_array(json);
+  other = json_to_array(other_json);
 
-    array->table.insert(
-        array->table.end(), other->table.begin(), other->table.end());
+  array->table.insert(
+      array->table.end(), other->table.begin(), other->table.end());
 
-    return 0;
+  return 0;
 }
 
-static int json_array_equal(json_t *array1, json_t *array2)
-{
-    size_t i, size;
+static int json_array_equal(json_t* array1, json_t* array2) {
+  size_t i, size;
 
-    size = json_array_size(array1);
-    if(size != json_array_size(array2))
-        return 0;
+  size = json_array_size(array1);
+  if (size != json_array_size(array2))
+    return 0;
 
-    for(i = 0; i < size; i++)
-    {
-        json_t *value1, *value2;
+  for (i = 0; i < size; i++) {
+    json_t *value1, *value2;
 
-        value1 = json_array_get(array1, i);
-        value2 = json_array_get(array2, i);
+    value1 = json_array_get(array1, i);
+    value2 = json_array_get(array2, i);
 
-        if(!json_equal(value1, value2))
-            return 0;
-    }
+    if (!json_equal(value1, value2))
+      return 0;
+  }
 
-    return 1;
+  return 1;
 }
 
 static json_ref json_array_copy(const json_t* array) {
@@ -594,8 +581,7 @@ const w_string& json_to_w_string(const json_t* json) {
   return json_to_string(json)->value;
 }
 
-static int json_string_equal(json_t *string1, json_t *string2)
-{
+static int json_string_equal(json_t* string1, json_t* string2) {
   return json_to_string(string1)->value == json_to_string(string2)->value;
 }
 
@@ -613,33 +599,29 @@ json_ref json_integer(json_int_t value) {
   return json_ref(&integer->json, false);
 }
 
-json_int_t json_integer_value(const json_t *json)
-{
-    if(!json_is_integer(json))
-        return 0;
-
-    return json_to_integer(json)->value;
-}
-
-int json_integer_set(json_t *json, json_int_t value)
-{
-    if(!json_is_integer(json))
-        return -1;
-
-    json_to_integer(json)->value = value;
-
+json_int_t json_integer_value(const json_t* json) {
+  if (!json_is_integer(json))
     return 0;
+
+  return json_to_integer(json)->value;
 }
 
-static int json_integer_equal(json_t *integer1, json_t *integer2)
-{
-    return json_integer_value(integer1) == json_integer_value(integer2);
+int json_integer_set(json_t* json, json_int_t value) {
+  if (!json_is_integer(json))
+    return -1;
+
+  json_to_integer(json)->value = value;
+
+  return 0;
+}
+
+static int json_integer_equal(json_t* integer1, json_t* integer2) {
+  return json_integer_value(integer1) == json_integer_value(integer2);
 }
 
 static json_t* json_integer_copy(const json_t* integer) {
   return json_integer(json_integer_value(integer));
 }
-
 
 /*** real ***/
 
@@ -653,12 +635,11 @@ json_ref json_real(double value) {
   return json_ref(&real->json, false);
 }
 
-double json_real_value(const json_t *json)
-{
-    if(!json_is_real(json))
-        return 0;
+double json_real_value(const json_t* json) {
+  if (!json_is_real(json))
+    return 0;
 
-    return json_to_real(json)->value;
+  return json_to_real(json)->value;
 }
 
 int json_real_set(json_t* json, double value) {
@@ -671,28 +652,24 @@ int json_real_set(json_t* json, double value) {
   return 0;
 }
 
-static int json_real_equal(json_t *real1, json_t *real2)
-{
-    return json_real_value(real1) == json_real_value(real2);
+static int json_real_equal(json_t* real1, json_t* real2) {
+  return json_real_value(real1) == json_real_value(real2);
 }
 
 static json_t* json_real_copy(const json_t* real) {
   return json_real(json_real_value(real));
 }
 
-
 /*** number ***/
 
-double json_number_value(const json_t *json)
-{
-    if(json_is_integer(json))
-        return (double)json_integer_value(json);
-    else if(json_is_real(json))
-        return json_real_value(json);
-    else
-        return 0.0;
+double json_number_value(const json_t* json) {
+  if (json_is_integer(json))
+    return (double)json_integer_value(json);
+  else if (json_is_real(json))
+    return json_real_value(json);
+  else
+    return 0.0;
 }
-
 
 /*** simple values ***/
 
@@ -710,7 +687,6 @@ json_ref json_null(void) {
   static json_t the_null{JSON_NULL, json_t::SingletonHack()};
   return &the_null;
 }
-
 
 /*** deletion ***/
 
@@ -738,39 +714,36 @@ void json_ref::json_delete(json_t* json) {
   }
 }
 
-
 /*** equality ***/
 
-int json_equal(json_t *json1, json_t *json2)
-{
-    if(!json1 || !json2)
-        return 0;
-
-    if(json_typeof(json1) != json_typeof(json2))
-        return 0;
-
-    /* this covers true, false and null as they are singletons */
-    if(json1 == json2)
-        return 1;
-
-    if(json_is_object(json1))
-        return json_object_equal(json1, json2);
-
-    if(json_is_array(json1))
-        return json_array_equal(json1, json2);
-
-    if(json_is_string(json1))
-        return json_string_equal(json1, json2);
-
-    if(json_is_integer(json1))
-        return json_integer_equal(json1, json2);
-
-    if(json_is_real(json1))
-        return json_real_equal(json1, json2);
-
+int json_equal(json_t* json1, json_t* json2) {
+  if (!json1 || !json2)
     return 0;
-}
 
+  if (json_typeof(json1) != json_typeof(json2))
+    return 0;
+
+  /* this covers true, false and null as they are singletons */
+  if (json1 == json2)
+    return 1;
+
+  if (json_is_object(json1))
+    return json_object_equal(json1, json2);
+
+  if (json_is_array(json1))
+    return json_array_equal(json1, json2);
+
+  if (json_is_string(json1))
+    return json_string_equal(json1, json2);
+
+  if (json_is_integer(json1))
+    return json_integer_equal(json1, json2);
+
+  if (json_is_real(json1))
+    return json_real_equal(json1, json2);
+
+  return 0;
+}
 
 /*** copying ***/
 

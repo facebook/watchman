@@ -3,7 +3,7 @@
 
 #include "watchman.h"
 
-void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec *deadline) {
+void w_timeoutms_to_abs_timespec(int timeoutms, struct timespec* deadline) {
   struct timeval now, delta, target;
 
   /* compute deadline */

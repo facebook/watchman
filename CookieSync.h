@@ -87,4 +87,4 @@ class CookieSync {
   folly::Synchronized<std::unordered_map<w_string, std::unique_ptr<Cookie>>>
       cookies_;
 };
-}
+} // namespace watchman

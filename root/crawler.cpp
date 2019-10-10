@@ -2,14 +2,14 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman_system.h"
-#include "InMemoryView.h"
 #include "watchman.h"
+#include "InMemoryView.h"
 #include "watchman_error_category.h"
 
 using namespace watchman;
 
-static void apply_dir_size_hint(struct watchman_dir *dir,
-    uint32_t ndirs, uint32_t nfiles) {
+static void
+apply_dir_size_hint(struct watchman_dir* dir, uint32_t ndirs, uint32_t nfiles) {
   if (dir->files.empty() && nfiles > 0) {
     dir->files.reserve(nfiles);
   }
@@ -26,7 +26,7 @@ void InMemoryView::crawler(
     const w_string& dir_name,
     struct timeval now,
     bool recursive) {
-  struct watchman_file *file;
+  struct watchman_file* file;
   const watchman_dir_ent* dirent;
   char path[WATCHMAN_NAME_MAX];
   bool stat_all = false;
@@ -80,8 +80,11 @@ void InMemoryView::crawler(
   memcpy(path, dir_name.data(), dir_name.size());
   path[dir_name.size()] = 0;
 
-  w_log(W_LOG_DBG, "opendir(%s) recursive=%s\n",
-      path, recursive ? "true" : "false");
+  w_log(
+      W_LOG_DBG,
+      "opendir(%s) recursive=%s\n",
+      path,
+      recursive ? "true" : "false");
 
   /* Start watching and open the dir for crawling.
    * Whether we open the dir prior to watching or after is watcher specific,
@@ -180,7 +183,7 @@ void InMemoryView::crawler(
     }
   }
 }
-}
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */

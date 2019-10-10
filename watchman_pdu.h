@@ -11,7 +11,7 @@ enum w_pdu_type {
 };
 
 struct watchman_json_buffer {
-  char *buf;
+  char* buf;
   uint32_t allocd;
   uint32_t rpos, wpos;
   enum w_pdu_type pdu_type;

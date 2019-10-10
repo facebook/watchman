@@ -15,7 +15,7 @@ typedef bool (*watchman_cli_cmd_validate_func)(json_ref& args, char** errmsg);
 #define CMD_POISON_IMMUNE 4
 #define CMD_ALLOW_ANY_USER 8
 struct watchman_command_handler_def {
-  const char *name;
+  const char* name;
   watchman_command_func func;
   int flags;
   watchman_cli_cmd_validate_func cli_validate;
@@ -47,20 +47,18 @@ bool dispatch_command(
     const json_ref& args,
     int mode);
 bool try_client_mode_command(const json_ref& cmd, bool pretty);
-void w_register_command(struct watchman_command_handler_def *defs);
+void w_register_command(struct watchman_command_handler_def* defs);
 
 #define W_CMD_REG_1(symbol, name, func, flags, clivalidate) \
-  static w_ctor_fn_type(symbol) {                    \
-    static struct watchman_command_handler_def d = { \
-      name, func, flags, clivalidate                 \
-    };                                               \
-    w_register_command(&d);                          \
-  }                                                  \
+  static w_ctor_fn_type(symbol) {                           \
+    static struct watchman_command_handler_def d = {        \
+        name, func, flags, clivalidate};                    \
+    w_register_command(&d);                                 \
+  }                                                         \
   w_ctor_fn_reg(symbol)
 
 #define W_CMD_REG(name, func, flags, clivalidate) \
-  W_CMD_REG_1(w_gen_symbol(w_cmd_register_), \
-      name, func, flags, clivalidate)
+  W_CMD_REG_1(w_gen_symbol(w_cmd_register_), name, func, flags, clivalidate)
 
 #define W_CAP_REG1(symbol, name)  \
   static w_ctor_fn_type(symbol) { \
@@ -68,10 +66,9 @@ void w_register_command(struct watchman_command_handler_def *defs);
   }                               \
   w_ctor_fn_reg(symbol)
 
-#define W_CAP_REG(name) \
-  W_CAP_REG1(w_gen_symbol(w_cap_reg_), name)
+#define W_CAP_REG(name) W_CAP_REG1(w_gen_symbol(w_cap_reg_), name)
 
-void w_capability_register(const char *name);
+void w_capability_register(const char* name);
 bool w_capability_supported(const w_string& name);
 json_ref w_capability_get_list(void);
 
@@ -104,7 +101,10 @@ void add_root_warnings_to_response(
     json_ref& response,
     const std::shared_ptr<w_root_t>& root);
 
-bool clock_id_string(uint32_t root_number, uint32_t ticks, char *buf,
+bool clock_id_string(
+    uint32_t root_number,
+    uint32_t ticks,
+    char* buf,
     size_t bufsize);
 
 #endif

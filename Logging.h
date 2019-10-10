@@ -1,9 +1,9 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #pragma once
+#include "watchman_string.h"
 #include "PubSub.h"
 #include "watchman_preprocessor.h"
-#include "watchman_string.h"
 
 namespace watchman {
 
@@ -114,4 +114,4 @@ template <typename... Args>
 void logPrintf(enum LogLevel level, Args&&... args) {
   getLog().logPrintf(level, std::forward<Args>(args)...);
 }
-}
+} // namespace watchman

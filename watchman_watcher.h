@@ -11,7 +11,7 @@ class TerminalWatcherError : public std::runtime_error {
  public:
   using std::runtime_error::runtime_error;
 };
-}
+} // namespace watchman
 
 struct Watcher : public std::enable_shared_from_this<Watcher> {
   // What's it called??

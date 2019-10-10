@@ -36,10 +36,11 @@ class WatchmanResponseError : public WatchmanError {
 };
 
 // Represents a raw connection to the watchman service
-class WatchmanConnection : folly::AsyncSocket::ConnectCallback,
-                           folly::AsyncReader::ReadCallback,
-                           folly::AsyncWriter::WriteCallback,
-                           public std::enable_shared_from_this<WatchmanConnection> {
+class WatchmanConnection
+    : folly::AsyncSocket::ConnectCallback,
+      folly::AsyncReader::ReadCallback,
+      folly::AsyncWriter::WriteCallback,
+      public std::enable_shared_from_this<WatchmanConnection> {
  public:
   using Callback = std::function<void(folly::Try<folly::dynamic>)>;
 

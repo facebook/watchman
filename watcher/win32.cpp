@@ -8,16 +8,16 @@
 
 #include <algorithm>
 #include <condition_variable>
-#include <list>
 #include <iterator>
-#include <tuple>
+#include <list>
 #include <mutex>
+#include <tuple>
 
 using watchman::FileDescriptor;
 
 #ifdef _WIN32
 
-#define NETWORK_BUF_SIZE (64*1024)
+#define NETWORK_BUF_SIZE (64 * 1024)
 
 namespace {
 
@@ -25,10 +25,10 @@ struct Item {
   w_string path;
   int flags;
 
-  Item(w_string &&path, int flags) : path(std::move(path)), flags(flags) {}
+  Item(w_string&& path, int flags) : path(std::move(path)), flags(flags) {}
 };
 
-}
+} // namespace
 
 struct WinWatcher : public Watcher {
   HANDLE ping{INVALID_HANDLE_VALUE}, olapEvent{INVALID_HANDLE_VALUE};
@@ -177,7 +177,8 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
               &olap,
               nullptr)) {
         err = GetLastError();
-        w_log(W_LOG_ERR,
+        w_log(
+            W_LOG_ERR,
             "ReadDirectoryChangesW: failed, cancel watch. %s\n",
             win32_strerror(err));
         root->cancel();
@@ -281,9 +282,11 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
       break;
     } else if (status == WAIT_TIMEOUT) {
       if (!items.empty()) {
-        watchman::log(watchman::DBG,
-                      "timed out waiting for changes, and we have ",
-                      items.size(), " items; move and notify\n");
+        watchman::log(
+            watchman::DBG,
+            "timed out waiting for changes, and we have ",
+            items.size(),
+            " items; move and notify\n");
         auto wlock = changedItems.lock();
         wlock->splice(wlock->end(), items);
         cond.notify_one();
@@ -371,8 +374,13 @@ bool WinWatcher::consumeNotify(
   gettimeofday(&now, nullptr);
 
   for (auto& item : items) {
-    watchman::log(watchman::DBG, "readchanges: add pending ", item.path, " ",
-                  item.flags, "\n");
+    watchman::log(
+        watchman::DBG,
+        "readchanges: add pending ",
+        item.path,
+        " ",
+        item.flags,
+        "\n");
     coll->add(item.path, now, W_PENDING_VIA_NOTIFY | item.flags);
   }
 

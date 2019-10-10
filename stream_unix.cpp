@@ -208,14 +208,14 @@ class UnixStream : public watchman_stream {
 #endif
   }
 };
-}
+} // namespace
 
 std::unique_ptr<watchman_event> w_event_make(void) {
   return std::make_unique<PipeEvent>();
 }
 
 #define MAX_POLL_EVENTS 63 // Must match MAXIMUM_WAIT_OBJECTS-1 on win
-int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
+int w_poll_events(struct watchman_event_poll* p, int n, int timeoutms) {
   struct pollfd pfds[MAX_POLL_EVENTS];
   int i;
   int res;
@@ -229,7 +229,7 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
     auto pe = dynamic_cast<PollableEvent*>(p[i].evt);
     w_check(pe != nullptr, "PollableEvent!?");
     pfds[i].fd = pe->getFd();
-    pfds[i].events = POLLIN|POLLHUP|POLLERR;
+    pfds[i].events = POLLIN | POLLHUP | POLLERR;
     pfds[i].revents = 0;
   }
 

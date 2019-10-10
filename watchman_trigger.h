@@ -19,8 +19,8 @@ struct watchman_trigger_command {
 
   int stdout_flags;
   int stderr_flags;
-  const char *stdout_name;
-  const char *stderr_name;
+  const char* stdout_name;
+  const char* stderr_name;
 
   /* While we are running, this holds the pid
    * of the running process */

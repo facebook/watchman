@@ -18,8 +18,7 @@ WatchmanClient::WatchmanClient(
     : conn_(std::make_shared<WatchmanConnection>(
           eventBase,
           std::move(socketPath),
-          Optional<WatchmanConnection::Callback>(
-          [this](Try<dynamic>&& data) {
+          Optional<WatchmanConnection::Callback>([this](Try<dynamic>&& data) {
             connectionCallback(std::move(data));
           }),
           cpuExecutor)),
@@ -31,7 +30,7 @@ void WatchmanClient::connectionCallback(Try<dynamic>&& try_data) {
   if (try_data.hasException()) {
     for (auto& subscription : subscriptionMap_) {
       subscription.second->executor_->add(
-          [ sub_ptr = subscription.second, try_data]() mutable {
+          [sub_ptr = subscription.second, try_data]() mutable {
             if (sub_ptr->active_) {
               sub_ptr->callback_(std::move(try_data));
             }
@@ -53,7 +52,7 @@ void WatchmanClient::connectionCallback(Try<dynamic>&& try_data) {
                  << subscription_data->asString();
     } else {
       subscription->second->executor_->add(
-          [ sub_ptr = subscription->second, data = std::move(data) ]() mutable {
+          [sub_ptr = subscription->second, data = std::move(data)]() mutable {
             if (sub_ptr->active_) {
               sub_ptr->callback_(Try<dynamic>(std::move(data)));
             }

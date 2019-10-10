@@ -3,30 +3,31 @@
 
 #include "watchman.h"
 #ifdef __APPLE__
-# include <sys/attr.h>
+#include <sys/attr.h>
 #endif
 
 bool did_file_change(
     const watchman::FileInformation* saved,
     const watchman::FileInformation* fresh) {
-/* we have to compare this way because the stat structure
- * may contain fields that vary and that don't impact our
- * understanding of the file */
+  /* we have to compare this way because the stat structure
+   * may contain fields that vary and that don't impact our
+   * understanding of the file */
 
-#define FIELD_CHG(name) \
+#define FIELD_CHG(name)             \
   if (saved->name != fresh->name) { \
-    return true; \
+    return true;                    \
   }
 
   // Can't compare with memcmp due to padding and garbage in the struct
   // on OpenBSD, which has a 32-bit tv_sec + 64-bit tv_nsec
-#define TIMESPEC_FIELD_CHG(wat) { \
-  struct timespec a = saved->wat##time; \
-  struct timespec b = fresh->wat##time; \
-  if (a.tv_sec != b.tv_sec || a.tv_nsec != b.tv_nsec) { \
-    return true; \
-  } \
-}
+#define TIMESPEC_FIELD_CHG(wat)                           \
+  {                                                       \
+    struct timespec a = saved->wat##time;                 \
+    struct timespec b = fresh->wat##time;                 \
+    if (a.tv_sec != b.tv_sec || a.tv_nsec != b.tv_nsec) { \
+      return true;                                        \
+    }                                                     \
+  }
 
   FIELD_CHG(mode);
 

@@ -9,7 +9,6 @@
 
 namespace watchman {
 
-
 // Represents the Result of an operation, and thus can hold either
 // a value or an error, or neither.  This is similar to the folly::Try
 // type and also to the rust Result type.  The contained Error type
@@ -288,4 +287,4 @@ makeResultWith(Func&& func) {
     return Result<folly::Unit>(std::current_exception());
   }
 }
-}
+} // namespace watchman

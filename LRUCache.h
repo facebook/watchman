@@ -631,4 +631,4 @@ class LRUCache {
   const std::chrono::milliseconds errorTTL_;
   folly::Synchronized<State> state_;
 };
-}
+} // namespace watchman

@@ -3,12 +3,12 @@
 
 #include "WatchmanClient.h"
 
+#include <unistd.h>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
-#include <unistd.h>
 
 #include <folly/experimental/TestUtil.h>
 #include <folly/experimental/io/FsUtil.h>
@@ -177,14 +177,14 @@ int main(int argc, char** argv) {
   } catch (FutureTimeout& e) {
     LOG(ERROR) << "FAIL: did not get callback from global error handler";
     return 1;
-   }
-   try {
-     subErrorCallbackTrigger.getFuture().within(seconds(1)).wait().value();
-   } catch (FutureTimeout& e) {
-     LOG(ERROR) << "FAIL: did not get subscription error";
-     return 1;
-   }
-   LOG(INFO) << "PASS: caught expected errors";
+  }
+  try {
+    subErrorCallbackTrigger.getFuture().within(seconds(1)).wait().value();
+  } catch (FutureTimeout& e) {
+    LOG(ERROR) << "FAIL: did not get subscription error";
+    return 1;
+  }
+  LOG(INFO) << "PASS: caught expected errors";
 
   return 0;
 }

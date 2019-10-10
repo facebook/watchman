@@ -1,12 +1,12 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
+#include "watchman.h"
 #include "Mercurial.h"
 #include <chrono>
 #include <cmath>
 #include <cstdio>
 #include "ChildProcess.h"
 #include "Logging.h"
-#include "watchman.h"
 
 // Capability indicating support for the mercurial SCM
 W_CAP_REG("scm-hg")
@@ -101,8 +101,8 @@ bool Mercurial::infoCache::dotChanged() {
   bool result;
 
   try {
-    auto info = getFileInformation(dirStatePath.c_str(),
-                                   CaseSensitivity::CaseSensitive);
+    auto info = getFileInformation(
+        dirStatePath.c_str(), CaseSensitivity::CaseSensitive);
 
     if (!fileTimeEqual(info, dirstate)) {
       log(DBG, "mergeBases stat(", dirStatePath, ") info differs\n");
@@ -114,7 +114,7 @@ bool Mercurial::infoCache::dotChanged() {
 
     dirstate = info;
 
-  } catch (const std::system_error &exc) {
+  } catch (const std::system_error& exc) {
     // Failed to stat, so assume that it changed
     log(DBG, "mergeBases stat(", dirStatePath, ") failed: ", exc.what(), "\n");
     result = true;

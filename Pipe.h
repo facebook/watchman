@@ -15,4 +15,4 @@ class Pipe {
   // non-blocking bits.
   Pipe();
 };
-}
+} // namespace watchman

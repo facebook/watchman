@@ -3,7 +3,7 @@
 
 #include "watchman.h"
 #ifdef HAVE_LIBGIMLI_H
-# include <libgimli.h>
+#include <libgimli.h>
 #endif
 #include <folly/Synchronized.h>
 #include <chrono>
@@ -22,7 +22,7 @@ static HANDLE listener_thread_event;
 #endif
 static volatile bool stopping = false;
 #ifdef HAVE_LIBGIMLI_H
-static volatile struct gimli_heartbeat *hb = NULL;
+static volatile struct gimli_heartbeat* hb = NULL;
 #endif
 
 bool w_is_stopping(void) {
@@ -51,9 +51,7 @@ void send_and_dispose_response(
   enqueue_response(client, std::move(response), false);
 }
 
-void send_error_response(struct watchman_client *client,
-    const char *fmt, ...)
-{
+void send_error_response(struct watchman_client* client, const char* fmt, ...) {
   va_list ap;
 
   va_start(ap, fmt);
@@ -68,7 +66,7 @@ void send_error_response(struct watchman_client *client,
   }
 
   if (client->current_command) {
-    char *command = NULL;
+    char* command = NULL;
     command = json_dumps(client->current_command, 0);
     watchman::log(
         watchman::ERR,
@@ -318,9 +316,9 @@ static void wakeme(int) {}
 #include <sys/siginfo.h>
 #endif
 #include <sys/param.h>
+#include <sys/resource.h>
 #include <sys/sysctl.h>
 #include <sys/time.h>
-#include <sys/resource.h>
 #endif
 
 #ifndef _WIN32
@@ -338,8 +336,7 @@ void w_listener_prep_inetd() {
   listener_fd = FileDescriptor(dup(STDIN_FILENO), "dup(stdin) for listener");
 }
 
-static FileDescriptor get_listener_socket(const char *path)
-{
+static FileDescriptor get_listener_socket(const char* path) {
   struct sockaddr_un un;
   mode_t perms = cfg_get_perms(
       "sock_access", true /* write bits */, false /* execute bits */);
@@ -354,8 +351,7 @@ static FileDescriptor get_listener_socket(const char *path)
 #endif
 
   if (strlen(path) >= sizeof(un.sun_path) - 1) {
-    w_log(W_LOG_ERR, "%s: path is too long\n",
-        path);
+    w_log(W_LOG_ERR, "%s: path is too long\n", path);
     return FileDescriptor();
   }
 
@@ -366,8 +362,7 @@ static FileDescriptor get_listener_socket(const char *path)
   unlink(path);
 
   if (bind(listener_fd.fd(), (struct sockaddr*)&un, sizeof(un)) != 0) {
-    w_log(W_LOG_ERR, "bind(%s): %s\n",
-      path, strerror(errno));
+    w_log(W_LOG_ERR, "bind(%s): %s\n", path, strerror(errno));
     return FileDescriptor();
   }
 
@@ -389,30 +384,36 @@ static FileDescriptor get_listener_socket(const char *path)
 
   // This is for testing only
   // (test_sock_perms.py:test_user_previously_in_sock_group). Do not document.
-  const char *sock_group_name = cfg_get_string("__sock_file_group", nullptr);
+  const char* sock_group_name = cfg_get_string("__sock_file_group", nullptr);
   if (!sock_group_name) {
     sock_group_name = cfg_get_string("sock_group", nullptr);
   }
 
   if (sock_group_name) {
-    const struct group *sock_group = w_get_group(sock_group_name);
+    const struct group* sock_group = w_get_group(sock_group_name);
     if (!sock_group) {
       return FileDescriptor();
     }
     if (st.st_gid != sock_group->gr_gid) {
       watchman::log(
-        watchman::ERR,
-        "for socket '", path, "', gid ", st.st_gid,
-        " doesn't match expected gid ", sock_group->gr_gid, " (group name ",
-        sock_group_name, "). Ensure that you are still a member of group ",
-        sock_group_name, ".\n");
+          watchman::ERR,
+          "for socket '",
+          path,
+          "', gid ",
+          st.st_gid,
+          " doesn't match expected gid ",
+          sock_group->gr_gid,
+          " (group name ",
+          sock_group_name,
+          "). Ensure that you are still a member of group ",
+          sock_group_name,
+          ".\n");
       return FileDescriptor();
     }
   }
 
   if (listen(listener_fd.fd(), 200) != 0) {
-    w_log(W_LOG_ERR, "listen(%s): %s\n",
-        path, strerror(errno));
+    w_log(W_LOG_ERR, "listen(%s): %s\n", path, strerror(errno));
     return FileDescriptor();
   }
 
@@ -481,8 +482,11 @@ static void named_pipe_accept_loop_internal(const char* path) {
 
     client_fd = create_pipe_server(path);
     if (!client_fd) {
-      w_log(W_LOG_ERR, "CreateNamedPipe(%s) failed: %s\n",
-          path, win32_strerror(GetLastError()));
+      w_log(
+          W_LOG_ERR,
+          "CreateNamedPipe(%s) failed: %s\n",
+          path,
+          win32_strerror(GetLastError()));
       continue;
     }
 
@@ -496,7 +500,9 @@ static void named_pipe_accept_loop_internal(const char* path) {
       }
 
       if (res != ERROR_IO_PENDING) {
-        w_log(W_LOG_ERR, "ConnectNamedPipe: %s\n",
+        w_log(
+            W_LOG_ERR,
+            "ConnectNamedPipe: %s\n",
             win32_strerror(GetLastError()));
         continue;
       }
@@ -590,8 +596,7 @@ static void accept_loop(FileDescriptor&& listenerDescriptor) {
 }
 #endif
 
-bool w_start_listener(const char *path)
-{
+bool w_start_listener(const char* path) {
 #ifndef _WIN32
   struct sigaction sa;
   sigset_t sigset;
@@ -604,58 +609,62 @@ bool w_start_listener(const char *path)
 #if defined(HAVE_KQUEUE) || defined(HAVE_FSEVENTS)
   {
     struct rlimit limit;
-# ifndef __OpenBSD__
-    int mib[2] = { CTL_KERN,
-#  ifdef KERN_MAXFILESPERPROC
-      KERN_MAXFILESPERPROC
-#  else
-      KERN_MAXFILES
-#  endif
+#ifndef __OpenBSD__
+    int mib[2] = {CTL_KERN,
+#ifdef KERN_MAXFILESPERPROC
+                  KERN_MAXFILESPERPROC
+#else
+                  KERN_MAXFILES
+#endif
     };
-# endif
+#endif
     int maxperproc;
 
     getrlimit(RLIMIT_NOFILE, &limit);
 
-# ifndef __OpenBSD__
+#ifndef __OpenBSD__
     {
       size_t len;
 
       len = sizeof(maxperproc);
       sysctl(mib, 2, &maxperproc, &len, NULL, 0);
-      w_log(W_LOG_ERR, "file limit is %" PRIu64
-          " kern.maxfilesperproc=%i\n",
-          limit.rlim_cur, maxperproc);
+      w_log(
+          W_LOG_ERR,
+          "file limit is %" PRIu64 " kern.maxfilesperproc=%i\n",
+          limit.rlim_cur,
+          maxperproc);
     }
-# else
+#else
     maxperproc = limit.rlim_max;
-    w_log(W_LOG_ERR, "openfiles-cur is %" PRIu64
-        " openfiles-max=%i\n",
-        limit.rlim_cur, maxperproc);
-# endif
+    w_log(
+        W_LOG_ERR,
+        "openfiles-cur is %" PRIu64 " openfiles-max=%i\n",
+        limit.rlim_cur,
+        maxperproc);
+#endif
 
-    if (limit.rlim_cur != RLIM_INFINITY &&
-        maxperproc > 0 &&
+    if (limit.rlim_cur != RLIM_INFINITY && maxperproc > 0 &&
         limit.rlim_cur < (rlim_t)maxperproc) {
       limit.rlim_cur = maxperproc;
 
       if (setrlimit(RLIMIT_NOFILE, &limit)) {
-        w_log(W_LOG_ERR,
-          "failed to raise limit to %" PRIu64 " (%s).\n",
-          limit.rlim_cur,
-          strerror(errno));
+        w_log(
+            W_LOG_ERR,
+            "failed to raise limit to %" PRIu64 " (%s).\n",
+            limit.rlim_cur,
+            strerror(errno));
       } else {
-        w_log(W_LOG_ERR,
-            "raised file limit to %" PRIu64 "\n",
-            limit.rlim_cur);
+        w_log(W_LOG_ERR, "raised file limit to %" PRIu64 "\n", limit.rlim_cur);
       }
     }
 
     getrlimit(RLIMIT_NOFILE, &limit);
 #ifndef HAVE_FSEVENTS
     if (limit.rlim_cur < 10240) {
-      w_log(W_LOG_ERR,
-          "Your file descriptor limit is very low (%" PRIu64 "), "
+      w_log(
+          W_LOG_ERR,
+          "Your file descriptor limit is very low (%" PRIu64
+          "), "
           "please consult the watchman docs on raising the limits\n",
           limit.rlim_cur);
     }
@@ -767,7 +776,6 @@ static void cmd_get_pid(struct watchman_client* client, const json_ref&) {
   send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("get-pid", cmd_get_pid, CMD_DAEMON, NULL)
-
 
 /* vim:ts=2:sw=2:et:
  */

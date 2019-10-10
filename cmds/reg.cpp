@@ -20,16 +20,15 @@ reg& get_reg() {
   static struct reg reg;
   return reg;
 }
-}
+} // namespace
 
 /* Some error conditions will put us into a non-recoverable state where we
  * can't guarantee that we will be operating correctly.  Rather than suffering
  * in silence and misleading our clients, we'll poison ourselves and advertise
  * that we have done so and provide some advice on how the user can cure us. */
-char *poisoned_reason = NULL;
+char* poisoned_reason = NULL;
 
-void print_command_list_for_help(FILE *where)
-{
+void print_command_list_for_help(FILE* where) {
   std::vector<watchman_command_handler_def*> defs;
 
   for (auto& it : get_reg().commands) {
@@ -49,8 +48,7 @@ void print_command_list_for_help(FILE *where)
   }
 }
 
-void w_register_command(struct watchman_command_handler_def *defs)
-{
+void w_register_command(struct watchman_command_handler_def* defs) {
   char capname[128];
 
   get_reg().commands[w_string(defs->name, W_STRING_UNICODE)] = defs;
@@ -61,19 +59,19 @@ void w_register_command(struct watchman_command_handler_def *defs)
 
 static struct watchman_command_handler_def*
 lookup(const json_ref& args, char** errmsg, int mode) {
-  const char *cmd_name;
+  const char* cmd_name;
 
   if (!json_array_size(args)) {
-    ignore_result(asprintf(errmsg,
-        "invalid command (expected an array with some elements!)"));
+    ignore_result(asprintf(
+        errmsg, "invalid command (expected an array with some elements!)"));
     return nullptr;
   }
 
   const auto jstr = json_array_get(args, 0);
   cmd_name = json_string_value(jstr);
   if (!cmd_name) {
-    ignore_result(asprintf(errmsg,
-        "invalid command: expected element 0 to be the command name"));
+    ignore_result(asprintf(
+        errmsg, "invalid command: expected element 0 to be the command name"));
     return nullptr;
   }
   auto cmd = json_to_w_string(jstr);
@@ -82,8 +80,8 @@ lookup(const json_ref& args, char** errmsg, int mode) {
 
   if (def) {
     if (mode && ((def->flags & mode) == 0)) {
-      ignore_result(asprintf(errmsg,
-          "command %s not available in this mode", cmd_name));
+      ignore_result(
+          asprintf(errmsg, "command %s not available in this mode", cmd_name));
       return nullptr;
     }
     return def;
@@ -100,8 +98,8 @@ void preprocess_command(
     json_ref& args,
     enum w_pdu_type output_pdu,
     uint32_t output_capabilities) {
-  char *errmsg = NULL;
-  struct watchman_command_handler_def *def;
+  char* errmsg = NULL;
+  struct watchman_command_handler_def* def;
 
   def = lookup(args, &errmsg, 0);
 
@@ -134,8 +132,8 @@ bool dispatch_command(
     struct watchman_client* client,
     const json_ref& args,
     int mode) {
-  struct watchman_command_handler_def *def;
-  char *errmsg = NULL;
+  struct watchman_command_handler_def* def;
+  char* errmsg = NULL;
   char sample_name[128];
 
   SCOPE_EXIT {
@@ -203,7 +201,7 @@ bool dispatch_command(
   }
 }
 
-void w_capability_register(const char *name) {
+void w_capability_register(const char* name) {
   get_reg().capabilities.insert(w_string(name, W_STRING_UNICODE));
 }
 

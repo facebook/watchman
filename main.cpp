@@ -1,9 +1,9 @@
 /* Copyright 2012-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
+#include "watchman.h"
 #include "ChildProcess.h"
 #include "Logging.h"
 #include "ThreadPool.h"
-#include "watchman.h"
 #ifndef _WIN32
 #include <poll.h>
 #endif
@@ -22,11 +22,11 @@ static enum w_pdu_type server_pdu = is_bser;
 static enum w_pdu_type output_pdu = is_json_pretty;
 static uint32_t server_capabilities = 0;
 static uint32_t output_capabilities = 0;
-static char *server_encoding = NULL;
-static char *output_encoding = NULL;
-static char *test_state_dir = NULL;
-static char *pid_file = NULL;
-static char **daemon_argv = NULL;
+static char* server_encoding = NULL;
+static char* output_encoding = NULL;
+static char* test_state_dir = NULL;
+static char* pid_file = NULL;
+static char** daemon_argv = NULL;
 static int persistent = 0;
 static int foreground = 0;
 static int no_pretty = 0;
@@ -43,9 +43,12 @@ static int json_input_arg = 0;
 #include <mach-o/dyld.h>
 #endif
 
-static const char *compute_user_name(void);
-static void compute_file_name(char **strp, const char *user, const char *suffix,
-                              const char *what);
+static const char* compute_user_name(void);
+static void compute_file_name(
+    char** strp,
+    const char* user,
+    const char* suffix,
+    const char* what);
 
 static bool lock_pidfile(void) {
   // We defer computing this path until we're in the server context because
@@ -67,8 +70,11 @@ static bool lock_pidfile(void) {
   FileDescriptor fd(open(pid_file, O_RDWR | O_CREAT, 0644));
 
   if (!fd) {
-    w_log(W_LOG_ERR, "Failed to open pidfile %s for write: %s\n", pid_file,
-          strerror(errno));
+    w_log(
+        W_LOG_ERR,
+        "Failed to open pidfile %s for write: %s\n",
+        pid_file,
+        strerror(errno));
     return false;
   }
   // Ensure that no children inherit the locked pidfile descriptor
@@ -81,15 +87,22 @@ static bool lock_pidfile(void) {
     len = read(fd.fd(), pidstr, sizeof(pidstr) - 1);
     pidstr[len] = '\0';
 
-    w_log(W_LOG_ERR, "Failed to lock pidfile %s: process %s owns it: %s\n",
-          pid_file, pidstr, strerror(errno));
+    w_log(
+        W_LOG_ERR,
+        "Failed to lock pidfile %s: process %s owns it: %s\n",
+        pid_file,
+        pidstr,
+        strerror(errno));
     return false;
   }
 
   // Replace contents of the pidfile with our pid string
   if (ftruncate(fd.fd(), 0)) {
-    w_log(W_LOG_ERR, "Failed to truncate pidfile %s: %s\n",
-        pid_file, strerror(errno));
+    w_log(
+        W_LOG_ERR,
+        "Failed to truncate pidfile %s: %s\n",
+        pid_file,
+        strerror(errno));
     return false;
   }
 
@@ -196,8 +209,7 @@ static void check_nice_value() {
 }
 #endif
 
-static void run_service(void)
-{
+static void run_service(void) {
   int fd;
   bool res;
 
@@ -221,7 +233,7 @@ static void run_service(void)
     ignore_result(::dup2(fd, STDIN_FILENO));
     ::close(fd);
   }
-  fd = open(log_name, O_WRONLY|O_APPEND|O_CREAT, 0600);
+  fd = open(log_name, O_WRONLY | O_APPEND | O_CREAT, 0600);
   if (fd != -1) {
     ignore_result(::dup2(fd, STDOUT_FILENO));
     ignore_result(::dup2(fd, STDERR_FILENO));
@@ -248,7 +260,9 @@ static void run_service(void)
     char hostname[256];
     gethostname(hostname, sizeof(hostname));
     hostname[sizeof(hostname) - 1] = '\0';
-    w_log(W_LOG_ERR, "Watchman %s %s starting up on %s\n",
+    w_log(
+        W_LOG_ERR,
+        "Watchman %s %s starting up on %s\n",
         PACKAGE_VERSION,
 #ifdef WATCHMAN_BUILD_INFO
         WATCHMAN_BUILD_INFO,
@@ -332,8 +346,7 @@ static void close_random_fds(void) {
 #endif
 
 #if !defined(USE_GIMLI) && !defined(_WIN32)
-static void daemonize(void)
-{
+static void daemonize(void) {
   // Make sure we're not about to inherit an undesirable nice value
   check_nice_value();
   close_random_fds();
@@ -385,8 +398,7 @@ static void spawn_win32(void) {
 #endif
 
 #ifdef USE_GIMLI
-static void spawn_via_gimli(void)
-{
+static void spawn_via_gimli(void) {
   std::vector<w_string_piece> args{
       GIMLI_MONITOR_PATH,
 #ifdef WATCHMAN_STATE_DIR
@@ -418,8 +430,7 @@ static void spawn_via_gimli(void)
 // Spawn watchman via a site-specific spawn helper program.
 // We'll pass along any daemon-appropriate arguments that
 // we noticed during argument parsing.
-static void spawn_site_specific(const char *spawner)
-{
+static void spawn_site_specific(const char* spawner) {
   std::vector<w_string_piece> args{
       spawner,
   };
@@ -472,13 +483,12 @@ static void spawn_site_specific(const char *spawner)
 #endif
 
 #ifdef __APPLE__
-static void spawn_via_launchd(void)
-{
+static void spawn_via_launchd(void) {
   char watchman_path[WATCHMAN_NAME_MAX];
   uint32_t size = sizeof(watchman_path);
   char plist_path[WATCHMAN_NAME_MAX];
-  FILE *fp;
-  struct passwd *pw;
+  FILE* fp;
+  struct passwd* pw;
   uid_t uid;
 
   close_random_fds();
@@ -498,13 +508,16 @@ static void spawn_via_launchd(void)
         ".  I don't know who you are\n");
   }
 
-  snprintf(plist_path, sizeof(plist_path),
-      "%s/Library/LaunchAgents", pw->pw_dir);
+  snprintf(
+      plist_path, sizeof(plist_path), "%s/Library/LaunchAgents", pw->pw_dir);
   // Best effort attempt to ensure that the agents dir exists.  We'll detect
   // and report the failure in the fopen call below.
   mkdir(plist_path, 0755);
-  snprintf(plist_path, sizeof(plist_path),
-      "%s/Library/LaunchAgents/com.github.facebook.watchman.plist", pw->pw_dir);
+  snprintf(
+      plist_path,
+      sizeof(plist_path),
+      "%s/Library/LaunchAgents/com.github.facebook.watchman.plist",
+      pw->pw_dir);
 
   if (access(plist_path, R_OK) == 0) {
     // Unload any that may already exist, as it is likely wrong
@@ -607,8 +620,7 @@ static void spawn_via_launchd(void)
 }
 #endif
 
-static void parse_encoding(const char *enc, enum w_pdu_type *pdu)
-{
+static void parse_encoding(const char* enc, enum w_pdu_type* pdu) {
   if (!enc) {
     return;
   }
@@ -624,15 +636,18 @@ static void parse_encoding(const char *enc, enum w_pdu_type *pdu)
     *pdu = is_bser_v2;
     return;
   }
-  w_log(W_LOG_ERR, "Invalid encoding '%s', use one of json, bser or bser-v2\n",
+  w_log(
+      W_LOG_ERR,
+      "Invalid encoding '%s', use one of json, bser or bser-v2\n",
       enc);
   exit(EX_USAGE);
 }
 
-static const char *get_env_with_fallback(const char *name1,
-    const char *name2, const char *fallback)
-{
-  const char *val;
+static const char* get_env_with_fallback(
+    const char* name1,
+    const char* name2,
+    const char* fallback) {
+  const char* val;
 
   val = getenv(name1);
   if (!val || *val == 0) {
@@ -645,26 +660,26 @@ static const char *get_env_with_fallback(const char *name1,
   return val;
 }
 
-static void compute_file_name(char **strp,
-    const char *user,
-    const char *suffix,
-    const char *what)
-{
-  char *str = NULL;
+static void compute_file_name(
+    char** strp,
+    const char* user,
+    const char* suffix,
+    const char* what) {
+  char* str = NULL;
 
   str = *strp;
 
   if (!str) {
     /* We'll put our various artifacts in a user specific dir
      * within the state dir location */
-    char *state_dir = NULL;
-    const char *state_parent = test_state_dir ? test_state_dir :
+    char* state_dir = NULL;
+    const char* state_parent = test_state_dir ? test_state_dir :
 #ifdef WATCHMAN_STATE_DIR
-          WATCHMAN_STATE_DIR
+                                              WATCHMAN_STATE_DIR
 #else
-          watchman_tmp_dir
+                                              watchman_tmp_dir
 #endif
-          ;
+        ;
 
     ignore_result(asprintf(&state_dir, "%s/%s-state", state_parent, user));
 
@@ -703,14 +718,18 @@ static void compute_file_name(char **strp,
         goto bail;
       }
       if (euid != st.st_uid) {
-        w_log(W_LOG_ERR,
+        w_log(
+            W_LOG_ERR,
             "the owner of %s is uid %d and doesn't match your euid %d\n",
-            state_dir, st.st_uid, euid);
+            state_dir,
+            st.st_uid,
+            euid);
         ret = 1;
         goto bail;
       }
       if (st.st_mode & 0022) {
-        w_log(W_LOG_ERR,
+        w_log(
+            W_LOG_ERR,
             "the permissions on %s allow others to write to it. "
             "Verify that you own the contents and then fix its "
             "permissions by running `chmod 0700 %s`\n",
@@ -721,15 +740,18 @@ static void compute_file_name(char **strp,
       }
 
       if (sock_group_name) {
-        const struct group *sock_group = w_get_group(sock_group_name);
+        const struct group* sock_group = w_get_group(sock_group_name);
         if (!sock_group) {
           ret = 1;
           goto bail;
         }
 
         if (fchown(dir_fd, -1, sock_group->gr_gid) == -1) {
-          w_log(W_LOG_ERR, "setting up group '%s' failed: %s\n",
-                sock_group_name, strerror(errno));
+          w_log(
+              W_LOG_ERR,
+              "setting up group '%s' failed: %s\n",
+              sock_group_name,
+              strerror(errno));
           ret = 1;
           goto bail;
         }
@@ -742,8 +764,12 @@ static void compute_file_name(char **strp,
       // directory.
       w_log(W_LOG_DBG, "Setting permissions on state dir to 0%o\n", dir_perms);
       if (fchmod(dir_fd, dir_perms) == -1) {
-        w_log(W_LOG_ERR, "fchmod(%s, %#o): %s\n", state_dir, dir_perms,
-              strerror(errno));
+        w_log(
+            W_LOG_ERR,
+            "fchmod(%s, %#o): %s\n",
+            state_dir,
+            dir_perms,
+            strerror(errno));
         ret = 1;
         goto bail;
       }
@@ -754,8 +780,12 @@ static void compute_file_name(char **strp,
       }
 #endif
     } else {
-      w_log(W_LOG_ERR, "while computing %s: failed to create %s: %s\n", what,
-            state_dir, strerror(errno));
+      w_log(
+          W_LOG_ERR,
+          "while computing %s: failed to create %s: %s\n",
+          what,
+          state_dir,
+          strerror(errno));
       exit(1);
     }
 
@@ -777,8 +807,8 @@ static void compute_file_name(char **strp,
   *strp = str;
 }
 
-static const char *compute_user_name(void) {
-  const char *user = get_env_with_fallback("USER", "LOGNAME", NULL);
+static const char* compute_user_name(void) {
+  const char* user = get_env_with_fallback("USER", "LOGNAME", NULL);
 #ifdef _WIN32
   static char user_buf[256];
 #endif
@@ -797,7 +827,7 @@ static const char *compute_user_name(void) {
     }
 #else
     uid_t uid = getuid();
-    struct passwd *pw;
+    struct passwd* pw;
 
     pw = getpwuid(uid);
     if (!pw) {
@@ -820,9 +850,8 @@ static const char *compute_user_name(void) {
   return user;
 }
 
-static void setup_sock_name(void)
-{
-  const char *user = compute_user_name();
+static void setup_sock_name(void) {
+  const char* user = compute_user_name();
 
   watchman_tmp_dir = get_env_with_fallback("TMPDIR", "TMP", "/tmp");
 
@@ -849,8 +878,7 @@ static void setup_sock_name(void)
 #endif
 }
 
-static bool should_start(int err)
-{
+static bool should_start(int err) {
   if (err == ECONNREFUSED) {
     return true;
   }
@@ -860,8 +888,7 @@ static bool should_start(int err)
   return false;
 }
 
-static bool try_command(json_t *cmd, int timeout)
-{
+static bool try_command(json_t* cmd, int timeout) {
   w_jbuffer_t buffer;
   w_jbuffer_t output_pdu_buffer;
   int err;
@@ -1039,8 +1066,7 @@ static struct watchman_getopt opts[] = {
     {"test-state-dir", 0, NULL, REQ_STRING, &test_state_dir, "DIR", NOT_DAEMON},
     {0, 0, 0, OPT_NONE, 0, 0, 0}};
 
-static void parse_cmdline(int *argcp, char ***argvp)
-{
+static void parse_cmdline(int* argcp, char*** argvp) {
   cfg_load_global_config_file();
   w_getopt(opts, argcp, argvp, &daemon_argv);
   if (show_help) {
@@ -1159,8 +1185,7 @@ static void spawn_watchman(void) {
 #endif
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char** argv) {
   bool ran;
 
   // Since we don't fully integrate with folly, but may pull
@@ -1215,26 +1240,31 @@ int main(int argc, char **argv)
   }
 
   if (!no_spawn) {
-    w_log(W_LOG_ERR, "unable to talk to your watchman on %s! (%s)\n",
-        sock_name, strerror(errno));
+    w_log(
+        W_LOG_ERR,
+        "unable to talk to your watchman on %s! (%s)\n",
+        sock_name,
+        strerror(errno));
 #ifdef __APPLE__
     if (getenv("TMUX")) {
-      w_log(W_LOG_ERR, "\n"
-"You may be hitting a tmux related session issue.\n"
-"An immediate workaround is to run:\n"
-"\n"
-"    watchman version\n"
-"\n"
-"just once, from *outside* your tmux session, to allow the launchd\n"
-"registration to be setup.  Once done, you can continue to access\n"
-"watchman from inside your tmux sessions as usual.\n"
-"\n"
-"Longer term, you may wish to install this tool:\n"
-"\n"
-"    https://github.com/ChrisJohnsen/tmux-MacOSX-pasteboard\n"
-"\n"
-"and configure tmux to use `reattach-to-user-namespace`\n"
-"when it launches your shell.\n");
+      w_log(
+          W_LOG_ERR,
+          "\n"
+          "You may be hitting a tmux related session issue.\n"
+          "An immediate workaround is to run:\n"
+          "\n"
+          "    watchman version\n"
+          "\n"
+          "just once, from *outside* your tmux session, to allow the launchd\n"
+          "registration to be setup.  Once done, you can continue to access\n"
+          "watchman from inside your tmux sessions as usual.\n"
+          "\n"
+          "Longer term, you may wish to install this tool:\n"
+          "\n"
+          "    https://github.com/ChrisJohnsen/tmux-MacOSX-pasteboard\n"
+          "\n"
+          "and configure tmux to use `reattach-to-user-namespace`\n"
+          "when it launches your shell.\n");
     }
 #endif
   }

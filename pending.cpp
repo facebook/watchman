@@ -5,10 +5,10 @@
 #include <folly/Synchronized.h>
 
 static const struct flag_map kflags[] = {
-  {W_PENDING_CRAWL_ONLY, "CRAWL_ONLY"},
-  {W_PENDING_RECURSIVE, "RECURSIVE"},
-  {W_PENDING_VIA_NOTIFY, "VIA_NOTIFY"},
-  {0, NULL},
+    {W_PENDING_CRAWL_ONLY, "CRAWL_ONLY"},
+    {W_PENDING_RECURSIVE, "RECURSIVE"},
+    {W_PENDING_VIA_NOTIFY, "VIA_NOTIFY"},
+    {0, NULL},
 };
 
 // Since the tree has no internal knowledge about path structures, when we
@@ -16,15 +16,23 @@ static const struct flag_map kflags[] = {
 // with the key "foo/bard".  We use this function to test whether the string
 // exactly matches the input ("foo/bar") or whether it has a slash as the next
 // character after the common prefix ("foo/bar/" as a prefix).
-static bool is_path_prefix(const char *path, size_t path_len, const char *other,
-                           size_t common_prefix) {
+static bool is_path_prefix(
+    const char* path,
+    size_t path_len,
+    const char* other,
+    size_t common_prefix) {
   if (common_prefix > path_len) {
     return false;
   }
 
-  w_assert(memcmp(path, other, common_prefix) == 0,
-           "is_path_prefix: %.*s vs %.*s should have %d common_prefix chars\n",
-           (int)path_len, path, (int)common_prefix, other, (int)common_prefix);
+  w_assert(
+      memcmp(path, other, common_prefix) == 0,
+      "is_path_prefix: %.*s vs %.*s should have %d common_prefix chars\n",
+      (int)path_len,
+      path,
+      (int)common_prefix,
+      other,
+      (int)common_prefix);
 
   if (common_prefix == path_len) {
     return true;
@@ -185,7 +193,7 @@ void PendingCollectionBase::consolidateItem(watchman_pending_fs* p, int flags) {
   // We upgrade crawl-only as well as recursive; it indicates that
   // we've recently just performed the stat and we want to avoid
   // infinitely trying to stat-and-crawl
-  p->flags |= flags & (W_PENDING_CRAWL_ONLY|W_PENDING_RECURSIVE);
+  p->flags |= flags & (W_PENDING_CRAWL_ONLY | W_PENDING_RECURSIVE);
 
   maybePruneObsoletedChildren(p->path, p->flags);
 }
@@ -201,11 +209,12 @@ bool PendingCollectionBase::isObsoletedByContainingDir(const w_string& path) {
   }
   auto p = leaf->value;
 
-  if ((p->flags & W_PENDING_RECURSIVE) && is_path_prefix(
-                                              path.data(),
-                                              path.size(),
-                                              (const char*)leaf->key.data(),
-                                              leaf->key.size())) {
+  if ((p->flags & W_PENDING_RECURSIVE) &&
+      is_path_prefix(
+          path.data(),
+          path.size(),
+          (const char*)leaf->key.data(),
+          leaf->key.size())) {
     if (watchman::CookieSync::isPossiblyACookie(path)) {
       return false;
     }

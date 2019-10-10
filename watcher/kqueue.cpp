@@ -10,7 +10,7 @@
 
 #ifdef HAVE_KQUEUE
 #if !defined(O_EVTONLY)
-# define O_EVTONLY O_RDONLY
+#define O_EVTONLY O_RDONLY
 #endif
 
 using watchman::FileDescriptor;
@@ -192,8 +192,7 @@ std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
   }
 
   if (kevent(kq_fd.fd(), &k, 1, nullptr, 0, 0)) {
-    w_log(W_LOG_DBG, "kevent EV_ADD dir %s failed: %s",
-        path, strerror(errno));
+    w_log(W_LOG_DBG, "kevent EV_ADD dir %s failed: %s", path, strerror(errno));
 
     auto wlock = maps_.wlock();
     wlock->name_to_fd.erase(dir_name);
@@ -210,7 +209,7 @@ bool KQueueWatcher::consumeNotify(
     PendingCollection::LockedPtr& coll) {
   int n;
   int i;
-  struct timespec ts = { 0, 0 };
+  struct timespec ts = {0, 0};
   struct timeval now;
 
   errno = 0;
@@ -245,9 +244,12 @@ bool KQueueWatcher::consumeNotify(
     if (!path) {
       // Was likely a buffered notification for something that we decided
       // to stop watching
-      w_log(W_LOG_DBG,
+      w_log(
+          W_LOG_DBG,
           " KQ notif for fd=%d; flags=0x%x %s no ref for it in fd_to_name\n",
-          fd, fflags, flags_label);
+          fd,
+          fflags,
+          flags_label);
       continue;
     }
 
@@ -258,7 +260,7 @@ bool KQueueWatcher::consumeNotify(
         path.data(),
         fflags,
         flags_label);
-    if ((fflags & (NOTE_DELETE|NOTE_RENAME|NOTE_REVOKE))) {
+    if ((fflags & (NOTE_DELETE | NOTE_RENAME | NOTE_REVOKE))) {
       struct kevent k;
 
       if (w_string_equal(path, root->root_path)) {

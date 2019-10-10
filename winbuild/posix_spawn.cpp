@@ -36,7 +36,7 @@ pid_t waitpid(pid_t pid, int* status, int options) {
   }
 }
 
-int posix_spawnattr_init(posix_spawnattr_t *attrp) {
+int posix_spawnattr_init(posix_spawnattr_t* attrp) {
   *attrp = posix_spawnattr_t();
   return 0;
 }
@@ -51,8 +51,8 @@ int posix_spawnattr_getflags(posix_spawnattr_t* attrp, short* flags) {
   return 0;
 }
 
-int posix_spawnattr_setcwd_np(posix_spawnattr_t *attrp, const char *path) {
-  char *path_dup = NULL;
+int posix_spawnattr_setcwd_np(posix_spawnattr_t* attrp, const char* path) {
+  char* path_dup = NULL;
 
   if (path) {
     path_dup = strdup(path);
@@ -66,20 +66,22 @@ int posix_spawnattr_setcwd_np(posix_spawnattr_t *attrp, const char *path) {
   return 0;
 }
 
-int posix_spawnattr_destroy(posix_spawnattr_t *attrp) {
+int posix_spawnattr_destroy(posix_spawnattr_t* attrp) {
   free(attrp->working_dir);
   return 0;
 }
 
-int posix_spawn_file_actions_init(posix_spawn_file_actions_t *actions) {
+int posix_spawn_file_actions_init(posix_spawn_file_actions_t* actions) {
   *actions = posix_spawn_file_actions_t();
   return 0;
 }
 
-int posix_spawn_file_actions_adddup2(posix_spawn_file_actions_t *actions,
-    int fd, int target_fd) {
+int posix_spawn_file_actions_adddup2(
+    posix_spawn_file_actions_t* actions,
+    int fd,
+    int target_fd) {
   struct _posix_spawn_file_action *acts, *act;
-  acts = (_posix_spawn_file_action *)realloc(
+  acts = (_posix_spawn_file_action*)realloc(
       actions->acts, (actions->nacts + 1) * sizeof(*acts));
   if (!acts) {
     return ENOMEM;
@@ -98,7 +100,7 @@ int posix_spawn_file_actions_adddup2_handle_np(
     intptr_t handle,
     int target_fd) {
   struct _posix_spawn_file_action *acts, *act;
-  acts = (_posix_spawn_file_action *)realloc(
+  acts = (_posix_spawn_file_action*)realloc(
       actions->acts, (actions->nacts + 1) * sizeof(*acts));
   if (!acts) {
     return ENOMEM;
@@ -112,14 +114,18 @@ int posix_spawn_file_actions_adddup2_handle_np(
   return 0;
 }
 
-int posix_spawn_file_actions_addopen(posix_spawn_file_actions_t *actions,
-    int target_fd, const char *name, int flags, int mode) {
+int posix_spawn_file_actions_addopen(
+    posix_spawn_file_actions_t* actions,
+    int target_fd,
+    const char* name,
+    int flags,
+    int mode) {
   struct _posix_spawn_file_action *acts, *act;
-  char *name_dup = strdup(name);
+  char* name_dup = strdup(name);
   if (!name_dup) {
     return ENOMEM;
   }
-  acts = (_posix_spawn_file_action *)realloc(
+  acts = (_posix_spawn_file_action*)realloc(
       actions->acts, (actions->nacts + 1) * sizeof(*acts));
   if (!acts) {
     free(name_dup);
@@ -137,7 +143,7 @@ int posix_spawn_file_actions_addopen(posix_spawn_file_actions_t *actions,
   return 0;
 }
 
-int posix_spawn_file_actions_destroy(posix_spawn_file_actions_t *actions) {
+int posix_spawn_file_actions_destroy(posix_spawn_file_actions_t* actions) {
   int i;
   for (i = 0; i < actions->nacts; i++) {
     if (actions->acts[i].action != _posix_spawn_file_action::open_file) {
@@ -150,7 +156,7 @@ int posix_spawn_file_actions_destroy(posix_spawn_file_actions_t *actions) {
 }
 
 #define CMD_EXE_PREFIX "cmd.exe /c \""
-static char *build_command_line(char *const argv[]) {
+static char* build_command_line(char* const argv[]) {
   int argc = 0, i = 0;
   size_t size = 0;
   char *cmdbuf = NULL, *cur = NULL;
@@ -174,7 +180,7 @@ static char *build_command_line(char *const argv[]) {
   cur = cmdbuf + strlen(CMD_EXE_PREFIX);
   for (i = 0; i < argc; i++) {
     int j;
-    char *arg = argv[i];
+    char* arg = argv[i];
 
     // Space separated
     if (i > 0) {
@@ -206,11 +212,11 @@ static char *build_command_line(char *const argv[]) {
   return cmdbuf;
 }
 
-static char *make_env_block(char *const envp[]) {
+static char* make_env_block(char* const envp[]) {
   int i;
   size_t total_len = 1; /* for final NUL */
-  char *block = NULL;
-  char *target = NULL;
+  char* block = NULL;
+  char* target = NULL;
 
   for (i = 0; envp[i]; i++) {
     total_len += strlen(envp[i]) + 1;
@@ -238,16 +244,18 @@ static char *make_env_block(char *const envp[]) {
 
 static int posix_spawn_common(
     bool search_path,
-    pid_t *pid, const char *path,
-    const posix_spawn_file_actions_t *file_actions,
-    const posix_spawnattr_t *attrp,
-    char *const argv[], char *const envp[]) {
+    pid_t* pid,
+    const char* path,
+    const posix_spawn_file_actions_t* file_actions,
+    const posix_spawnattr_t* attrp,
+    char* const argv[],
+    char* const envp[]) {
   auto sinfo = STARTUPINFOEX();
   auto sec = SECURITY_ATTRIBUTES();
   auto pinfo = PROCESS_INFORMATION();
-  char *cmdbuf;
-  char *env_block;
-  DWORD create_flags = CREATE_NO_WINDOW|EXTENDED_STARTUPINFO_PRESENT;
+  char* cmdbuf;
+  char* env_block;
+  DWORD create_flags = CREATE_NO_WINDOW | EXTENDED_STARTUPINFO_PRESENT;
   int ret;
   int i;
   HANDLE inherited_handles[3] = {0, 0, 0};
@@ -264,7 +272,7 @@ static int posix_spawn_common(
   }
 
   sinfo.StartupInfo.cb = sizeof(sinfo);
-  sinfo.StartupInfo.dwFlags = STARTF_USESTDHANDLES|STARTF_USESHOWWINDOW;
+  sinfo.StartupInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
   sinfo.StartupInfo.wShowWindow = SW_HIDE;
 
   sec.nLength = sizeof(sec);
@@ -275,8 +283,8 @@ static int posix_spawn_common(
   }
 
   for (i = 0; i < file_actions->nacts; i++) {
-    struct _posix_spawn_file_action *act = &file_actions->acts[i];
-    HANDLE *target = NULL;
+    struct _posix_spawn_file_action* act = &file_actions->acts[i];
+    HANDLE* target = NULL;
 
     switch (act->target_fd) {
       case 0:
@@ -333,7 +341,9 @@ static int posix_spawn_common(
               TRUE,
               DUPLICATE_SAME_ACCESS)) {
         err = GetLastError();
-        w_log(W_LOG_ERR, "posix_spawn: failed to duplicate handle: %s\n",
+        w_log(
+            W_LOG_ERR,
+            "posix_spawn: failed to duplicate handle: %s\n",
             win32_strerror(err));
         ret = map_win32_err(err);
         goto done;
@@ -345,7 +355,9 @@ static int posix_spawn_common(
           act->u.open_info.name, act->u.open_info.flags & ~O_CLOEXEC);
       if (!h) {
         ret = errno;
-        w_log(W_LOG_ERR, "posix_spawn: failed to open %s:\n",
+        w_log(
+            W_LOG_ERR,
+            "posix_spawn: failed to open %s:\n",
             act->u.open_info.name);
         goto done;
       }
@@ -379,16 +391,31 @@ static int posix_spawn_common(
     InitializeProcThreadAttributeList(NULL, 1, 0, &size);
     sinfo.lpAttributeList = (LPPROC_THREAD_ATTRIBUTE_LIST)malloc(size);
     InitializeProcThreadAttributeList(sinfo.lpAttributeList, 1, 0, &size);
-    UpdateProcThreadAttribute(sinfo.lpAttributeList, 0,
+    UpdateProcThreadAttribute(
+        sinfo.lpAttributeList,
+        0,
         PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
-        inherited_handles, 3 * sizeof(HANDLE),
-        NULL, NULL);
+        inherited_handles,
+        3 * sizeof(HANDLE),
+        NULL,
+        NULL);
   }
 
-  if (!CreateProcess(search_path ? NULL : path,
-        cmdbuf, &sec, &sec, TRUE, create_flags, env_block,
-        attrp->working_dir, &sinfo.StartupInfo, &pinfo)) {
-    w_log(W_LOG_ERR, "CreateProcess: `%s`: (cwd=%s) %s\n", cmdbuf,
+  if (!CreateProcess(
+          search_path ? NULL : path,
+          cmdbuf,
+          &sec,
+          &sec,
+          TRUE,
+          create_flags,
+          env_block,
+          attrp->working_dir,
+          &sinfo.StartupInfo,
+          &pinfo)) {
+    w_log(
+        W_LOG_ERR,
+        "CreateProcess: `%s`: (cwd=%s) %s\n",
+        cmdbuf,
         attrp->working_dir ? attrp->working_dir : "<process cwd>",
         win32_strerror(GetLastError()));
     ret = EACCES;
@@ -422,18 +449,22 @@ done:
   return ret;
 }
 
-int posix_spawn(pid_t *pid, const char *path,
-    const posix_spawn_file_actions_t *file_actions,
-    const posix_spawnattr_t *attrp,
-    char *const argv[], char *const envp[]) {
-
+int posix_spawn(
+    pid_t* pid,
+    const char* path,
+    const posix_spawn_file_actions_t* file_actions,
+    const posix_spawnattr_t* attrp,
+    char* const argv[],
+    char* const envp[]) {
   return posix_spawn_common(false, pid, path, file_actions, attrp, argv, envp);
 }
 
-int posix_spawnp(pid_t *pid, const char *file,
-    const posix_spawn_file_actions_t *file_actions,
-    const posix_spawnattr_t *attrp,
-    char *const argv[], char *const envp[]) {
-
+int posix_spawnp(
+    pid_t* pid,
+    const char* file,
+    const posix_spawn_file_actions_t* file_actions,
+    const posix_spawnattr_t* attrp,
+    char* const argv[],
+    char* const envp[]) {
   return posix_spawn_common(true, pid, file, file_actions, attrp, argv, envp);
 }

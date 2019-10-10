@@ -1,4 +1,4 @@
-/* @nolint
+/*
  * Copyright (c) 2009-2012 Petri Lehtinen <petri@digip.org>
  * Copyright (c) 2011-2012 Basile Starynkevitch <basile@starynkevitch.net>
  *
@@ -16,36 +16,32 @@
 static json_malloc_t do_malloc = malloc;
 static json_free_t do_free = free;
 
-void *jsonp_malloc(size_t size)
-{
-    if(!size)
-        return NULL;
+void* jsonp_malloc(size_t size) {
+  if (!size)
+    return NULL;
 
-    return (*do_malloc)(size);
+  return (*do_malloc)(size);
 }
 
-void jsonp_free(void *ptr)
-{
-    if(!ptr)
-        return;
+void jsonp_free(void* ptr) {
+  if (!ptr)
+    return;
 
-    (*do_free)(ptr);
+  (*do_free)(ptr);
 }
 
-char *jsonp_strdup(const char *str)
-{
-    char *new_str;
+char* jsonp_strdup(const char* str) {
+  char* new_str;
 
-    new_str = (char*)jsonp_malloc(strlen(str) + 1);
-    if(!new_str)
-        return NULL;
+  new_str = (char*)jsonp_malloc(strlen(str) + 1);
+  if (!new_str)
+    return NULL;
 
-    strcpy(new_str, str);
-    return new_str;
+  strcpy(new_str, str);
+  return new_str;
 }
 
-void json_set_alloc_funcs(json_malloc_t malloc_fn, json_free_t free_fn)
-{
-    do_malloc = malloc_fn;
-    do_free = free_fn;
+void json_set_alloc_funcs(json_malloc_t malloc_fn, json_free_t free_fn) {
+  do_malloc = malloc_fn;
+  do_free = free_fn;
 }

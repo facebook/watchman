@@ -10,11 +10,11 @@ enum argtype {
 
 struct watchman_getopt {
   /* name of long option: --optname */
-  const char *optname;
+  const char* optname;
   /* if non-zero, short option character */
   int shortopt;
   /* help text shown in the usage information */
-  const char *helptext;
+  const char* helptext;
   /* whether we accept an argument */
   enum argtype argtype;
   /* if an argument was provided, *val will be set to
@@ -23,13 +23,13 @@ struct watchman_getopt {
    * by the user, you can safely pre-initialize the val
    * pointer to your choice of default.
    * */
-  void *val;
+  void* val;
 
   /* if argtype != OPT_NONE, this is the label used to
    * refer to the argument in the help text.  If left
    * blank, we'll use the string "ARG" as a generic
    * alternative */
-  const char *arglabel;
+  const char* arglabel;
 
   // Whether this option should be passed to the child
   // when running under the gimli monitor

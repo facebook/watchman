@@ -33,8 +33,8 @@ struct watchman_string {
   std::atomic<long> refcnt;
   uint32_t _hval;
   uint32_t len;
-  w_string_type_t type:3;
-  unsigned hval_computed:1;
+  w_string_type_t type : 3;
+  unsigned hval_computed : 1;
 
   // This holds the character data.  This is a variable
   // sized member and we have to specify at least 1 byte
@@ -46,9 +46,9 @@ struct watchman_string {
       : refcnt(0), len(0), type(W_STRING_BYTE), hval_computed(0), buf{0} {}
 };
 
-uint32_t w_string_compute_hval(w_string_t *str);
+uint32_t w_string_compute_hval(w_string_t* str);
 
-static inline uint32_t w_string_hval(w_string_t *str) {
+static inline uint32_t w_string_hval(w_string_t* str) {
   if (str->hval_computed) {
     return str->_hval;
   }
@@ -56,27 +56,27 @@ static inline uint32_t w_string_hval(w_string_t *str) {
 }
 
 w_string_piece w_string_canon_path(w_string_t* str);
-int w_string_compare(const w_string_t *a, const w_string_t *b);
+int w_string_compare(const w_string_t* a, const w_string_t* b);
 bool w_string_contains_cstr_len(
     const w_string_t* str,
     const char* needle,
     uint32_t nlen);
 
-bool w_string_equal(const w_string_t *a, const w_string_t *b);
-bool w_string_equal_cstring(const w_string_t *a, const char *b);
+bool w_string_equal(const w_string_t* a, const w_string_t* b);
+bool w_string_equal_cstring(const w_string_t* a, const char* b);
 
-bool w_string_path_is_absolute(const w_string_t *str);
+bool w_string_path_is_absolute(const w_string_t* str);
 
-bool w_string_startswith(w_string_t *str, w_string_t *prefix);
-bool w_string_startswith_caseless(w_string_t *str, w_string_t *prefix);
+bool w_string_startswith(w_string_t* str, w_string_t* prefix);
+bool w_string_startswith_caseless(w_string_t* str, w_string_t* prefix);
 
-bool w_string_is_known_unicode(w_string_t *str);
-bool w_string_is_null_terminated(w_string_t *str);
+bool w_string_is_known_unicode(w_string_t* str);
+bool w_string_is_null_terminated(w_string_t* str);
 
-uint32_t strlen_uint32(const char *str);
+uint32_t strlen_uint32(const char* str);
 
-bool w_is_path_absolute_cstr(const char *path);
-bool w_is_path_absolute_cstr_len(const char *path, uint32_t len);
+bool w_is_path_absolute_cstr(const char* path);
+bool w_is_path_absolute_cstr_len(const char* path, uint32_t len);
 
 inline bool is_slash(char c) {
   return c == '/'
@@ -265,7 +265,7 @@ class w_string {
   /** Stop tracking the underlying string object, returning the
    * reference to the caller.  The caller is responsible for
    * decrementing the refcount */
-  w_string_t *release();
+  w_string_t* release();
 
   operator w_string_t*() const {
     return str_;
@@ -345,6 +345,7 @@ class w_string {
   w_string baseName() const;
   /** Returns the filename suffix of a path string */
   w_string asLowerCaseSuffix() const;
+
  private:
   w_string_t* str_{nullptr};
 };
@@ -363,7 +364,7 @@ struct hash<w_string_piece> {
     return str.hashValue();
   }
 };
-}
+} // namespace std
 
 namespace detail {
 
@@ -647,7 +648,7 @@ Container to(Args&&... args) {
   result.resize(reserved - appender.avail());
   return result;
 }
-}
+} // namespace watchman
 
 #endif
 

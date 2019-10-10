@@ -11,12 +11,11 @@ struct config_state {
   json_ref arg_cfg;
 };
 folly::Synchronized<config_state> configState;
-}
+} // namespace
 
 /* Called during shutdown to free things so that we run cleanly
  * under valgrind */
-void cfg_shutdown(void)
-{
+void cfg_shutdown(void) {
   auto state = configState.wlock();
   state->global_cfg.reset();
   state->arg_cfg.reset();
@@ -26,11 +25,10 @@ w_string cfg_get_global_config_file_path(void) {
   return configState.rlock()->global_config_file_path;
 }
 
-void cfg_load_global_config_file(void)
-{
+void cfg_load_global_config_file(void) {
   json_error_t err;
 
-  const char *cfg_file = getenv("WATCHMAN_CONFIG_FILE");
+  const char* cfg_file = getenv("WATCHMAN_CONFIG_FILE");
 #ifdef WATCHMAN_CONFIG_FILE
   if (!cfg_file) {
     cfg_file = WATCHMAN_CONFIG_FILE;
@@ -46,8 +44,7 @@ void cfg_load_global_config_file(void)
 
   auto config = json_load_file(cfg_file, 0, &err);
   if (!config) {
-    w_log(W_LOG_ERR, "failed to parse json from %s: %s\n",
-          cfg_file, err.text);
+    w_log(W_LOG_ERR, "failed to parse json from %s: %s\n", cfg_file, err.text);
     return;
   }
 
@@ -129,13 +126,13 @@ static bool is_array_of_strings(const json_ref& ref) {
 // Given an array of string values, if that array does not contain
 // a ".watchmanconfig" entry, prepend it
 static void prepend_watchmanconfig_to_array(json_ref& ref) {
-  const char *val;
+  const char* val;
 
   if (json_array_size(ref) == 0) {
     // json_array_insert_new at index can fail when the array is empty,
     // so just append in this case.
-    json_array_append_new(ref, typed_string_to_json(".watchmanconfig",
-          W_STRING_UNICODE));
+    json_array_append_new(
+        ref, typed_string_to_json(".watchmanconfig", W_STRING_UNICODE));
     return;
   }
 
@@ -143,8 +140,8 @@ static void prepend_watchmanconfig_to_array(json_ref& ref) {
   if (!strcmp(val, ".watchmanconfig")) {
     return;
   }
-  json_array_insert_new(ref, 0, typed_string_to_json(".watchmanconfig",
-        W_STRING_UNICODE));
+  json_array_insert_new(
+      ref, 0, typed_string_to_json(".watchmanconfig", W_STRING_UNICODE));
 }
 
 // Compute the effective value of the root_files configuration and
@@ -159,7 +156,8 @@ json_ref cfg_compute_root_files(bool* enforcing) {
   json_ref ref = cfg_get_json("enforce_root_files");
   if (ref) {
     if (!ref.isBool()) {
-      w_log(W_LOG_FATAL,
+      w_log(
+          W_LOG_FATAL,
           "Expected config value enforce_root_files to be boolean\n");
     }
     *enforcing = ref.asBool();
@@ -168,7 +166,8 @@ json_ref cfg_compute_root_files(bool* enforcing) {
   ref = cfg_get_json("root_files");
   if (ref) {
     if (!is_array_of_strings(ref)) {
-      w_log(W_LOG_FATAL,
+      w_log(
+          W_LOG_FATAL,
           "global config root_files must be an array of strings\n");
       *enforcing = false;
       return nullptr;
@@ -182,7 +181,9 @@ json_ref cfg_compute_root_files(bool* enforcing) {
   ref = cfg_get_json("root_restrict_files");
   if (ref) {
     if (!is_array_of_strings(ref)) {
-      w_log(W_LOG_FATAL, "deprecated global config root_restrict_files "
+      w_log(
+          W_LOG_FATAL,
+          "deprecated global config root_restrict_files "
           "must be an array of strings\n");
       *enforcing = false;
       return nullptr;
@@ -316,7 +317,7 @@ mode_t cfg_get_perms(const char* name, bool write_bits, bool execute_bits) {
 }
 #endif
 
-const char *cfg_get_trouble_url(void) {
+const char* cfg_get_trouble_url(void) {
   return cfg_get_string(
       "troubleshooting_url",
       "https://facebook.github.io/watchman/docs/troubleshooting.html");

@@ -44,14 +44,15 @@ class WildMatchExpr : public QueryExpr {
     str = normBuf;
 #endif
 
-    res = wildmatch(pattern.c_str(), str.data(),
-                    (includedotfiles ? 0 : WM_PERIOD) |
-                        (noescape ? WM_NOESCAPE : 0) |
-                        (wholename ? WM_PATHNAME : 0) |
-                        (caseSensitive == CaseSensitivity::CaseInSensitive
-                             ? WM_CASEFOLD
-                             : 0),
-                    0) == WM_MATCH;
+    res =
+        wildmatch(
+            pattern.c_str(),
+            str.data(),
+            (includedotfiles ? 0 : WM_PERIOD) | (noescape ? WM_NOESCAPE : 0) |
+                (wholename ? WM_PATHNAME : 0) |
+                (caseSensitive == CaseSensitivity::CaseInSensitive ? WM_CASEFOLD
+                                                                   : 0),
+            0) == WM_MATCH;
 
     return res;
   }
@@ -59,7 +60,7 @@ class WildMatchExpr : public QueryExpr {
   static std::unique_ptr<QueryExpr>
   parse(w_query*, const json_ref& term, CaseSensitivity case_sensitive) {
     const char *ignore, *pattern, *scope = "basename";
-    const char *which =
+    const char* which =
         case_sensitive == CaseSensitivity::CaseInSensitive ? "imatch" : "match";
     int noescape = 0;
     int includedotfiles = 0;

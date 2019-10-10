@@ -2,9 +2,9 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman_system.h"
+#include "watchman.h"
 #include "MapUtil.h"
 #include "ThreadPool.h"
-#include "watchman.h"
 
 using namespace watchman;
 using ms = std::chrono::milliseconds;
@@ -284,7 +284,7 @@ static void leave_state(
 }
 
 // Abandon any states that haven't been explicitly vacated
-void w_client_vacate_states(struct watchman_user_client *client) {
+void w_client_vacate_states(struct watchman_user_client* client) {
   while (!client->states.empty()) {
     auto it = client->states.begin();
     auto assertion = it->second.lock();

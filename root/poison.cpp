@@ -8,7 +8,7 @@ void set_poison_state(
     struct timeval now,
     const char* syscall,
     const std::error_code& err) {
-  char *why = NULL;
+  char* why = NULL;
 
   if (poisoned_reason) {
     return;

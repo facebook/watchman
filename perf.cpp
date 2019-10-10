@@ -46,7 +46,7 @@ PerfLogThread& getPerfThread() {
   static PerfLogThread perfThread;
   return perfThread;
 }
-}
+} // namespace
 
 watchman_perf_sample::watchman_perf_sample(const char* description)
     : description(description) {
@@ -120,7 +120,8 @@ void watchman_perf_sample::add_root_meta(
   auto meta = json_object(
       {{"path", w_string_to_json(root->root_path)},
        {"recrawl_count", json_integer(root->recrawlInfo.rlock()->recrawlCount)},
-       {"case_sensitive", json_boolean(root->case_sensitive == CaseSensitivity::CaseSensitive)}});
+       {"case_sensitive",
+        json_boolean(root->case_sensitive == CaseSensitivity::CaseSensitive)}});
 
   // During recrawl, the view may be re-assigned.  Protect against
   // reading a nullptr.
@@ -180,7 +181,7 @@ void PerfLogThread::loop() noexcept {
         json_array_extend(cmd, perf_cmd);
 
         while (i < sample_batch && json_array_size(samples) > 0) {
-          char *stringy = json_dumps(json_array_get(samples, 0), 0);
+          char* stringy = json_dumps(json_array_get(samples, 0), 0);
           if (stringy) {
             json_array_append_new(
                 cmd, typed_string_to_json(stringy, W_STRING_MIXED));
@@ -210,7 +211,7 @@ void PerfLogThread::loop() noexcept {
 }
 
 void watchman_perf_sample::log() {
-  char *dumped = NULL;
+  char* dumped = NULL;
 
   if (!will_log) {
     return;

@@ -12,8 +12,7 @@ using Node = typename SymlinkTargetCache::Node;
 
 bool SymlinkTargetCacheKey::operator==(
     const SymlinkTargetCacheKey& other) const {
-  return otime.ticks == other.otime.ticks &&
-      relativePath == other.relativePath;
+  return otime.ticks == other.otime.ticks && relativePath == other.relativePath;
 }
 
 std::size_t SymlinkTargetCacheKey::hashValue() const {

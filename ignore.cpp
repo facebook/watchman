@@ -20,7 +20,7 @@ void watchman_ignore::add(const w_string& path, bool is_vcs_ignore) {
 }
 
 bool watchman_ignore::isIgnored(const char* path, uint32_t pathlen) const {
-  const char *skip_prefix;
+  const char* skip_prefix;
   uint32_t len;
   auto leaf = tree.longestMatch((const unsigned char*)path, (int)pathlen);
 

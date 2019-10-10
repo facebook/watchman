@@ -2,7 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
 // some versions of dbghelp.h do: typedef enum {}; with no typedef name
-#pragma warning(disable: 4091)
+#pragma warning(disable : 4091)
 
 // dbghelp.h relies on these symbols being defined by its user
 #ifndef IN
@@ -26,18 +26,19 @@ static constexpr size_t kMaxSymbolLen = 4096;
 static void sym_init(void) {
   proc = GetCurrentProcess();
   SymInitialize(proc, NULL, TRUE);
-  SymSetOptions(SYMOPT_LOAD_LINES|SYMOPT_FAIL_CRITICAL_ERRORS|
-      SYMOPT_NO_PROMPTS|SYMOPT_UNDNAME);
+  SymSetOptions(
+      SYMOPT_LOAD_LINES | SYMOPT_FAIL_CRITICAL_ERRORS | SYMOPT_NO_PROMPTS |
+      SYMOPT_UNDNAME);
 }
 
-size_t backtrace(void **frames, size_t n_frames) {
+size_t backtrace(void** frames, size_t n_frames) {
   std::call_once(sym_init_once, sym_init);
   // Skip the first three frames; they're always going to show
   // w_log, log_stack_trace and backtrace
   return CaptureStackBackTrace(3, (DWORD)n_frames, frames, NULL);
 }
 
-char **backtrace_symbols(void **array, size_t n_frames) {
+char** backtrace_symbols(void** array, size_t n_frames) {
   std::vector<std::string> arr;
   size_t i;
   union {
@@ -71,12 +72,24 @@ char **backtrace_symbols(void **array, size_t n_frames) {
     }
 
     if (SymGetLineFromAddr64(proc, addr, &displacement, &line)) {
-      snprintf(str, sizeof(str), "#%" PRIsize_t " %p %s %s:%u", i,
-        array[i], sym.info.Name, line.FileName, line.LineNumber);
+      snprintf(
+          str,
+          sizeof(str),
+          "#%" PRIsize_t " %p %s %s:%u",
+          i,
+          array[i],
+          sym.info.Name,
+          line.FileName,
+          line.LineNumber);
 
     } else {
-      snprintf(str, sizeof(str), "#%" PRIsize_t " %p %s", i,
-        array[i], sym.info.Name);
+      snprintf(
+          str,
+          sizeof(str),
+          "#%" PRIsize_t " %p %s",
+          i,
+          array[i],
+          sym.info.Name);
     }
 
     arr.emplace_back(str);
@@ -140,16 +153,17 @@ size_t backtrace_from_exception(
 #else
   return 0; // No stack trace for you!
 #endif
-  while (i < n_frames && StackWalk64(
-                             image,
-                             proc,
-                             thread,
-                             &frame,
-                             context,
-                             nullptr,
-                             nullptr,
-                             nullptr,
-                             nullptr)) {
+  while (i < n_frames &&
+         StackWalk64(
+             image,
+             proc,
+             thread,
+             &frame,
+             context,
+             nullptr,
+             nullptr,
+             nullptr,
+             nullptr)) {
     frames[i++] = (void*)frame.AddrPC.Offset;
   }
   return i;

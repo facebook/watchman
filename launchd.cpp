@@ -38,8 +38,10 @@ FileDescriptor w_get_listener_socket_from_launchd() {
   }
 
   if (launch_data_get_type(resp) == LAUNCH_DATA_ERRNO) {
-    w_log(W_LOG_ERR, "launchd checkin failed: %s\n",
-          strerror(launch_data_get_errno(resp)));
+    w_log(
+        W_LOG_ERR,
+        "launchd checkin failed: %s\n",
+        strerror(launch_data_get_errno(resp)));
     launch_data_free(resp);
     return FileDescriptor();
   }

@@ -67,9 +67,9 @@
 
 #include <folly/Executor.h>
 #include <folly/Optional.h>
+#include <folly/Try.h>
 #include <folly/dynamic.h>
 #include <folly/futures/Future.h>
-#include <folly/Try.h>
 
 namespace watchman {
 

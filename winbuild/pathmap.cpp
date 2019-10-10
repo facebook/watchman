@@ -84,7 +84,7 @@ w_string::w_string(const WCHAR* wpath, size_t pathlen) {
   buf[res] = 0;
 }
 
-bool w_path_exists(const char *path) {
+bool w_path_exists(const char* path) {
   auto wpath = w_string_piece(path).asWideUNC();
   WIN32_FILE_ATTRIBUTE_DATA data;
   DWORD err;

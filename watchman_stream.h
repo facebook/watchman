@@ -43,7 +43,7 @@ std::unique_ptr<watchman_event> w_event_make(void);
 // Go to sleep for up to timeoutms.
 // Returns sooner if any of the watchman_event objects referenced
 // in the array P are signalled
-int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms);
+int w_poll_events(struct watchman_event_poll* p, int n, int timeoutms);
 
 // Create a connected unix socket or a named pipe client stream
 std::unique_ptr<watchman_stream> w_stm_connect(const char* path, int timeoutms);

@@ -1,8 +1,8 @@
 #pragma once
-#include "thirdparty/jansson/jansson.h"
 #include "watchman.h"
-#include "watchman_query.h"
 #include "watchman_string.h"
+#include "thirdparty/jansson/jansson.h"
+#include "watchman_query.h"
 
 namespace watchman {
 

@@ -58,4 +58,4 @@ class ThreadPool : public folly::Executor {
 
 // Return a reference to the shared thread pool for the watchman process.
 ThreadPool& getThreadPool();
-}
+} // namespace watchman

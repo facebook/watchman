@@ -1,8 +1,8 @@
 #pragma once
 #include "watchman_system.h"
+#include "watchman_string.h"
 #include <string>
 #include "LRUCache.h"
-#include "watchman_string.h"
 #include "thirdparty/jansson/jansson.h"
 #include "watchman_clockspec.h"
 

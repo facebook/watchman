@@ -23,7 +23,7 @@ static bool query_caps(
     }
     result.set(capname, json_boolean(have));
     if (required && !have) {
-      char *buf = NULL;
+      char* buf = NULL;
       ignore_result(asprintf(
           &buf,
           "client required capability `%s` is not supported by this server",
@@ -78,8 +78,11 @@ static void cmd_version(struct watchman_client* client, const json_ref& args) {
 
   send_and_dispose_response(client, std::move(resp));
 }
-W_CMD_REG("version", cmd_version, CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
-          NULL)
+W_CMD_REG(
+    "version",
+    cmd_version,
+    CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
+    NULL)
 
 /* list-capabilities */
 static void cmd_list_capabilities(
@@ -90,8 +93,11 @@ static void cmd_list_capabilities(
   resp.set("capabilities", w_capability_get_list());
   send_and_dispose_response(client, std::move(resp));
 }
-W_CMD_REG("list-capabilities", cmd_list_capabilities,
-          CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER, NULL)
+W_CMD_REG(
+    "list-capabilities",
+    cmd_list_capabilities,
+    CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
+    NULL)
 
 /* get-sockname */
 static void cmd_get_sockname(struct watchman_client* client, const json_ref&) {
@@ -101,8 +107,11 @@ static void cmd_get_sockname(struct watchman_client* client, const json_ref&) {
 
   send_and_dispose_response(client, std::move(resp));
 }
-W_CMD_REG("get-sockname", cmd_get_sockname,
-          CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER, NULL)
+W_CMD_REG(
+    "get-sockname",
+    cmd_get_sockname,
+    CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
+    NULL)
 
 static void cmd_get_config(
     struct watchman_client* client,

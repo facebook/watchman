@@ -2,13 +2,13 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-#include "InMemoryView.h"
 #include "FileSystem.h"
+#include "InMemoryView.h"
 #include "watchman_error_category.h"
 
 /* Returns true if the global config root_restrict_files is not defined or if
  * one of the files in root_restrict_files exists, false otherwise. */
-static bool root_check_restrict(const char *watch_path) {
+static bool root_check_restrict(const char* watch_path) {
   uint32_t i;
   bool enforcing;
 
@@ -22,13 +22,16 @@ static bool root_check_restrict(const char *watch_path) {
 
   for (i = 0; i < json_array_size(root_restrict_files); i++) {
     auto obj = json_array_get(root_restrict_files, i);
-    const char *restrict_file = json_string_value(obj);
-    char *restrict_path;
+    const char* restrict_file = json_string_value(obj);
+    char* restrict_path;
     bool rv;
 
     if (!restrict_file) {
-      w_log(W_LOG_ERR, "resolve_root: global config root_restrict_files "
-            "element %" PRIu32 " should be a string\n", i);
+      w_log(
+          W_LOG_ERR,
+          "resolve_root: global config root_restrict_files "
+          "element %" PRIu32 " should be a string\n",
+          i);
       continue;
     }
 
@@ -45,7 +48,7 @@ static bool root_check_restrict(const char *watch_path) {
 static bool
 check_allowed_fs(const char* filename, const w_string& fs_type, char** errmsg) {
   uint32_t i;
-  const char *advice = NULL;
+  const char* advice = NULL;
 
   // Report this to the log always, as it is helpful in understanding
   // problem reports
@@ -69,18 +72,22 @@ check_allowed_fs(const char* filename, const w_string& fs_type, char** errmsg) {
   }
 
   if (!illegal_fstypes.isArray()) {
-    w_log(W_LOG_ERR,
-          "resolve_root: global config illegal_fstypes is not an array\n");
+    w_log(
+        W_LOG_ERR,
+        "resolve_root: global config illegal_fstypes is not an array\n");
     return true;
   }
 
   for (i = 0; i < json_array_size(illegal_fstypes); i++) {
     auto obj = json_array_get(illegal_fstypes, i);
-    const char *name = json_string_value(obj);
+    const char* name = json_string_value(obj);
 
     if (!name) {
-      w_log(W_LOG_ERR, "resolve_root: global config illegal_fstypes "
-            "element %" PRIu32 " should be a string\n", i);
+      w_log(
+          W_LOG_ERR,
+          "resolve_root: global config illegal_fstypes "
+          "element %" PRIu32 " should be a string\n",
+          i);
       continue;
     }
 
@@ -132,14 +139,18 @@ std::shared_ptr<w_root_t> root_resolve(
       watchman::getFileInformation(filename);
     } catch (const std::system_error& exc) {
       if (exc.code() == watchman::error_code::no_such_file_or_directory) {
-        ignore_result(asprintf(errmsg, "\"%s\" resolved to \"%s\" but we were "
-                                       "unable to examine \"%s\" using strict "
-                                       "case sensitive rules.  Please check "
-                                       "each component of the path and make "
-                                       "sure that that path exactly matches "
-                                       "the correct case of the files on your "
-                                       "filesystem.",
-                               filename, root_str.c_str(), filename));
+        ignore_result(asprintf(
+            errmsg,
+            "\"%s\" resolved to \"%s\" but we were "
+            "unable to examine \"%s\" using strict "
+            "case sensitive rules.  Please check "
+            "each component of the path and make "
+            "sure that that path exactly matches "
+            "the correct case of the files on your "
+            "filesystem.",
+            filename,
+            root_str.c_str(),
+            filename));
         w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
         return nullptr;
       }
@@ -148,7 +159,7 @@ std::shared_ptr<w_root_t> root_resolve(
       w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
       return nullptr;
     }
-  } catch (const std::system_error &exc) {
+  } catch (const std::system_error& exc) {
     realpath_err = exc.code();
     root_str = w_string(filename, W_STRING_BYTE);
   }
@@ -163,8 +174,11 @@ std::shared_ptr<w_root_t> root_resolve(
 
   if (!root && realpath_err.value() != 0) {
     // Path didn't resolve and neither did the name they passed in
-    ignore_result(asprintf(errmsg, "realpath(%s) -> %s", filename,
-                           realpath_err.message().c_str()));
+    ignore_result(asprintf(
+        errmsg,
+        "realpath(%s) -> %s",
+        filename,
+        realpath_err.message().c_str()));
     w_log(W_LOG_ERR, "resolve_root: %s\n", *errmsg);
     return nullptr;
   }

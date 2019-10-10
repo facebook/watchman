@@ -32,8 +32,11 @@ static void cmd_query(struct watchman_client* client, const json_ref& args) {
 
   send_and_dispose_response(client, std::move(response));
 }
-W_CMD_REG("query", cmd_query, CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
-          w_cmd_realpath_root)
+W_CMD_REG(
+    "query",
+    cmd_query,
+    CMD_DAEMON | CMD_CLIENT | CMD_ALLOW_ANY_USER,
+    w_cmd_realpath_root)
 
 /* vim:ts=2:sw=2:et:
  */

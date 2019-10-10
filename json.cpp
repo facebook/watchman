@@ -86,7 +86,7 @@ inline enum w_pdu_type watchman_json_buffer::detectPdu() {
 json_ref watchman_json_buffer::readJsonPrettyPdu(
     w_stm_t stm,
     json_error_t* jerr) {
-  char *nl;
+  char* nl;
   int r;
   json_ref res;
 
@@ -157,8 +157,7 @@ bool watchman_json_buffer::decodePduInfo(
     uint32_t capabilities;
     while (wpos - rpos < sizeof(capabilities)) {
       if (!fillBuffer(stm)) {
-        snprintf(jerr->text, sizeof(jerr->text),
-            "unable to fill buffer");
+        snprintf(jerr->text, sizeof(jerr->text), "unable to fill buffer");
         return false;
       }
     }
@@ -171,13 +170,11 @@ bool watchman_json_buffer::decodePduInfo(
 
   while (!bunser_int(buf + rpos, wpos - rpos, &needed, len)) {
     if (needed == -1) {
-      snprintf(jerr->text, sizeof(jerr->text),
-          "failed to read PDU size");
+      snprintf(jerr->text, sizeof(jerr->text), "failed to read PDU size");
       return false;
     }
     if (!fillBuffer(stm)) {
-      snprintf(jerr->text, sizeof(jerr->text),
-          "unable to fill buffer");
+      snprintf(jerr->text, sizeof(jerr->text), "unable to fill buffer");
       return false;
     }
   }
@@ -215,7 +212,9 @@ json_ref watchman_json_buffer::readBserPdu(
       auto newBuf = (char*)realloc(buf, ideal);
 
       if (!newBuf) {
-        snprintf(jerr->text, sizeof(jerr->text),
+        snprintf(
+            jerr->text,
+            sizeof(jerr->text),
             "out of memory while allocating %" PRIu32 " bytes",
             ideal);
         return nullptr;
@@ -234,8 +233,8 @@ json_ref watchman_json_buffer::readBserPdu(
       snprintf(
           jerr->text,
           sizeof(jerr->text),
-          "error reading %" PRIu32 " bytes val=%" PRIu64
-          " wpos=%" PRIu32 " rpos=%" PRIu32 " for PDU: %s",
+          "error reading %" PRIu32 " bytes val=%" PRIu64 " wpos=%" PRIu32
+          " rpos=%" PRIu32 " for PDU: %s",
           uint32_t(allocd - wpos),
           int64_t(val),
           wpos,
@@ -266,9 +265,11 @@ bool watchman_json_buffer::readAndDetectPdu(w_stm_t stm, json_error_t* jerr) {
   if (pdu == need_data) {
     if (!fillBuffer(stm)) {
       if (errno != EAGAIN) {
-        snprintf(jerr->text, sizeof(jerr->text),
-          "fill_buffer: %s",
-          errno ? strerror(errno) : "EOF");
+        snprintf(
+            jerr->text,
+            sizeof(jerr->text),
+            "fill_buffer: %s",
+            errno ? strerror(errno) : "EOF");
       }
       return false;
     }
@@ -305,8 +306,7 @@ bool watchman_json_buffer::readAndDetectPdu(w_stm_t stm, json_error_t* jerr) {
   return true;
 }
 
-static bool output_bytes(const char *buf, int x)
-{
+static bool output_bytes(const char* buf, int x) {
   int res;
 
   while (x > 0) {
@@ -419,19 +419,18 @@ bool watchman_json_buffer::streamPdu(w_stm_t stm, json_error_t* jerr) {
     case is_json_pretty:
       return streamUntilNewLine(stm);
     case is_bser:
-    case is_bser_v2:
-      {
+    case is_bser_v2: {
       if (pdu_type == is_bser_v2) {
         bser_version = 2;
-        } else {
-          bser_version = 1;
-        }
-        rpos += 2;
-        if (!decodePduInfo(stm, bser_version, &len, &bser_capabilities, jerr)) {
-          return false;
-        }
-        return streamN(stm, len, jerr);
+      } else {
+        bser_version = 1;
       }
+      rpos += 2;
+      if (!decodePduInfo(stm, bser_version, &len, &bser_capabilities, jerr)) {
+        return false;
+      }
+      return streamN(stm, len, jerr);
+    }
     default:
       w_log(W_LOG_FATAL, "not streaming for pdu type %d\n", pdu_type);
       return false;
@@ -461,8 +460,7 @@ bool watchman_json_buffer::passThru(
 
   stm->setNonBlock(false);
   if (!readAndDetectPdu(stm, &jerr)) {
-    w_log(W_LOG_ERR, "failed to identify PDU: %s\n",
-        jerr.text);
+    w_log(W_LOG_ERR, "failed to identify PDU: %s\n", jerr.text);
     return false;
   }
 
@@ -478,8 +476,7 @@ bool watchman_json_buffer::passThru(
   auto j = decodePdu(stm, &jerr);
 
   if (!j) {
-    w_log(W_LOG_ERR, "failed to parse response: %s\n",
-        jerr.text);
+    w_log(W_LOG_ERR, "failed to parse response: %s\n", jerr.text);
     return false;
   }
 

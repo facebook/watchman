@@ -6,7 +6,7 @@
 
 struct watchman_file {
   /* the parent dir */
-  watchman_dir *parent;
+  watchman_dir* parent;
 
   /* linkage to files ordered by changed time.
    * prev points to the address of `next` in the

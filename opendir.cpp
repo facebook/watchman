@@ -7,9 +7,9 @@
 #include <dirent.h>
 #endif
 #ifdef __APPLE__
-# include <sys/utsname.h>
-# include <sys/attr.h>
-# include <sys/vnode.h>
+#include <sys/attr.h>
+#include <sys/utsname.h>
+#include <sys/vnode.h>
 #endif
 #include "FileDescriptor.h"
 
@@ -33,7 +33,7 @@ typedef struct {
    * character may take up to three bytes
    */
   attrreference_t name; // ATTR_CMN_NAME
-  dev_t dev;            // ATTR_CMN_DEVID
+  dev_t dev; // ATTR_CMN_DEVID
   fsobj_type_t objtype; // ATTR_CMN_OBJTYPE
   struct timespec mtime; // ATTR_CMN_MODTIME
   struct timespec ctime; // ATTR_CMN_CHGTIME
@@ -43,7 +43,7 @@ typedef struct {
   uint32_t mode; // ATTR_CMN_ACCESSMASK, Only the permission bits of st_mode
                  // are valid; other bits should be ignored,
                  // e.g., by masking with ~S_IFMT.
-  uint64_t ino;  // ATTR_CMN_FILEID
+  uint64_t ino; // ATTR_CMN_FILEID
   uint32_t link; // ATTR_FILE_LINKCOUNT or ATTR_DIR_LINKCOUNT
   off_t file_size; // ATTR_FILE_TOTALSIZE
 
@@ -58,9 +58,9 @@ class DirHandle : public watchman_dir_handle {
   struct attrlist attrlist_;
   int retcount_{0};
   char buf_[64 * (sizeof(bulk_attr_item) + NAME_MAX * 3 + 1)];
-  char *cursor_{nullptr};
+  char* cursor_{nullptr};
 #endif
-  DIR *d_{nullptr};
+  DIR* d_{nullptr};
   struct watchman_dir_ent ent_;
 
  public:
@@ -73,22 +73,21 @@ class DirHandle : public watchman_dir_handle {
 
 #ifndef _WIN32
 /* Opens a directory making sure it's not a symlink */
-static DIR *opendir_nofollow(const char *path)
-{
+static DIR* opendir_nofollow(const char* path) {
   auto fd = openFileHandle(path, OpenFileHandleOptions::strictOpenDir());
-# if !defined(HAVE_FDOPENDIR) || defined(__APPLE__)
+#if !defined(HAVE_FDOPENDIR) || defined(__APPLE__)
   /* fdopendir doesn't work on earlier versions OS X, and we don't
    * use this function since 10.10, as we prefer to use getattrlistbulk
    * in that case */
   return opendir(path);
-# else
+#else
   // errno should be set appropriately if this is not a directory
   auto d = fdopendir(fd.fd());
   if (d) {
     fd.release();
   }
   return d;
-# endif
+#endif
 }
 #endif
 
@@ -189,18 +188,10 @@ DirHandle::DirHandle(const char* path, bool strict)
     // are listed in the getattrlist() manpage, which is also the
     // same order that they will be emitted into the buffer, which
     // is thus the order that they must appear in bulk_attr_item.
-    attrlist_.commonattr = ATTR_CMN_RETURNED_ATTRS |
-      ATTR_CMN_ERROR |
-      ATTR_CMN_NAME |
-      ATTR_CMN_DEVID |
-      ATTR_CMN_OBJTYPE |
-      ATTR_CMN_MODTIME |
-      ATTR_CMN_CHGTIME |
-      ATTR_CMN_ACCTIME |
-      ATTR_CMN_OWNERID |
-      ATTR_CMN_GRPID |
-      ATTR_CMN_ACCESSMASK |
-      ATTR_CMN_FILEID;
+    attrlist_.commonattr = ATTR_CMN_RETURNED_ATTRS | ATTR_CMN_ERROR |
+        ATTR_CMN_NAME | ATTR_CMN_DEVID | ATTR_CMN_OBJTYPE | ATTR_CMN_MODTIME |
+        ATTR_CMN_CHGTIME | ATTR_CMN_ACCTIME | ATTR_CMN_OWNERID |
+        ATTR_CMN_GRPID | ATTR_CMN_ACCESSMASK | ATTR_CMN_FILEID;
 
     attrlist_.dirattr = ATTR_DIR_LINKCOUNT;
     attrlist_.fileattr = ATTR_FILE_TOTALSIZE | ATTR_FILE_LINKCOUNT;
@@ -220,7 +211,7 @@ DirHandle::DirHandle(const char* path, bool strict)
 const watchman_dir_ent* DirHandle::readDir() {
 #ifdef HAVE_GETATTRLISTBULK
   if (fd_) {
-    bulk_attr_item *item;
+    bulk_attr_item* item;
 
     if (!cursor_) {
       // Read the next batch of results

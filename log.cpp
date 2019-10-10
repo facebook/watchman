@@ -35,13 +35,13 @@ void write_stderr(const String& str, Strings&&... strings) {
   write_stderr(str);
   write_stderr(strings...);
 }
-}
+} // namespace
 
 static void log_stack_trace(void) {
 #if defined(HAVE_BACKTRACE) && defined(HAVE_BACKTRACE_SYMBOLS)
   std::array<void*, kMaxFrames> array;
   size_t size;
-  char **strings;
+  char** strings;
   size_t i;
 
   size = backtrace(array.data(), array.size());
@@ -86,7 +86,7 @@ levelMaps& getLevelMaps() {
   return maps;
 }
 
-}
+} // namespace
 
 const w_string& logLevelToLabel(enum LogLevel level) {
   return getLevelMaps().levelToLabel.at(static_cast<int>(level));
@@ -204,45 +204,84 @@ void Log::doLogToStdErr() {
 
 #ifndef _WIN32
 static void crash_handler(int signo, siginfo_t* si, void*) {
-  const char *reason = "";
+  const char* reason = "";
   if (si) {
     switch (si->si_signo) {
       case SIGILL:
         switch (si->si_code) {
-          case ILL_ILLOPC: reason = "illegal opcode"; break;
-          case ILL_ILLOPN: reason = "illegal operand"; break;
-          case ILL_ILLADR: reason = "illegal addressing mode"; break;
-          case ILL_ILLTRP: reason = "illegal trap"; break;
-          case ILL_PRVOPC: reason = "privileged opcode"; break;
-          case ILL_PRVREG: reason = "privileged register"; break;
-          case ILL_COPROC: reason = "co-processor error"; break;
-          case ILL_BADSTK: reason = "internal stack error"; break;
+          case ILL_ILLOPC:
+            reason = "illegal opcode";
+            break;
+          case ILL_ILLOPN:
+            reason = "illegal operand";
+            break;
+          case ILL_ILLADR:
+            reason = "illegal addressing mode";
+            break;
+          case ILL_ILLTRP:
+            reason = "illegal trap";
+            break;
+          case ILL_PRVOPC:
+            reason = "privileged opcode";
+            break;
+          case ILL_PRVREG:
+            reason = "privileged register";
+            break;
+          case ILL_COPROC:
+            reason = "co-processor error";
+            break;
+          case ILL_BADSTK:
+            reason = "internal stack error";
+            break;
         }
         break;
       case SIGFPE:
         switch (si->si_code) {
-          case FPE_INTDIV: reason = "integer divide by zero"; break;
-          case FPE_INTOVF: reason = "integer overflow"; break;
-          case FPE_FLTDIV: reason = "floating point divide by zero"; break;
-          case FPE_FLTOVF: reason = "floating point overflow"; break;
-          case FPE_FLTUND: reason = "floating point underflow"; break;
-          case FPE_FLTRES: reason = "floating point inexact result"; break;
-          case FPE_FLTINV: reason = "invalid floating point operation"; break;
-          case FPE_FLTSUB: reason = "subscript out of range"; break;
+          case FPE_INTDIV:
+            reason = "integer divide by zero";
+            break;
+          case FPE_INTOVF:
+            reason = "integer overflow";
+            break;
+          case FPE_FLTDIV:
+            reason = "floating point divide by zero";
+            break;
+          case FPE_FLTOVF:
+            reason = "floating point overflow";
+            break;
+          case FPE_FLTUND:
+            reason = "floating point underflow";
+            break;
+          case FPE_FLTRES:
+            reason = "floating point inexact result";
+            break;
+          case FPE_FLTINV:
+            reason = "invalid floating point operation";
+            break;
+          case FPE_FLTSUB:
+            reason = "subscript out of range";
+            break;
         }
         break;
       case SIGSEGV:
         switch (si->si_code) {
-          case SEGV_MAPERR: reason = "address not mapped to object"; break;
-          case SEGV_ACCERR: reason = "invalid permissions for mapped object";
-                            break;
+          case SEGV_MAPERR:
+            reason = "address not mapped to object";
+            break;
+          case SEGV_ACCERR:
+            reason = "invalid permissions for mapped object";
+            break;
         }
         break;
 #ifdef SIGBUS
       case SIGBUS:
         switch (si->si_code) {
-          case BUS_ADRALN: reason = "invalid address alignment"; break;
-          case BUS_ADRERR: reason = "non-existent physical address"; break;
+          case BUS_ADRALN:
+            reason = "invalid address alignment";
+            break;
+          case BUS_ADRERR:
+            reason = "non-existent physical address";
+            break;
         }
         break;
 #endif
@@ -279,8 +318,8 @@ static void crash_handler(int signo, siginfo_t* si, void*) {
 
 #if defined(HAVE_BACKTRACE) && defined(HAVE_BACKTRACE_SYMBOLS_FD)
   {
-    void *array[24];
-    size_t size = backtrace(array, sizeof(array)/sizeof(array[0]));
+    void* array[24];
+    size_t size = backtrace(array, sizeof(array) / sizeof(array[0]));
     backtrace_symbols_fd(array, size, STDERR_FILENO);
   }
 #endif
@@ -356,7 +395,7 @@ void w_setup_signal_handlers(void) {
 
   memset(&sa, 0, sizeof(sa));
   sa.sa_sigaction = crash_handler;
-  sa.sa_flags = SA_SIGINFO|SA_RESETHAND;
+  sa.sa_flags = SA_SIGINFO | SA_RESETHAND;
 
   sigaction(SIGSEGV, &sa, NULL);
 #ifdef SIGBUS
@@ -388,7 +427,7 @@ static w_ctor_fn_type(register_thread_name) {
 w_ctor_fn_reg(register_thread_name);
 #endif
 
-const char *w_set_thread_name(const char *fmt, ...) {
+const char* w_set_thread_name(const char* fmt, ...) {
   va_list ap;
 #ifdef __APPLE__
   auto thread_name = (char*)pthread_getspecific(thread_name_key);
@@ -413,8 +452,7 @@ const char *w_set_thread_name(const char *fmt, ...) {
 #endif
 }
 
-void w_log(int level, WATCHMAN_FMT_STRING(const char *fmt), ...)
-{
+void w_log(int level, WATCHMAN_FMT_STRING(const char* fmt), ...) {
   va_list ap;
   va_start(ap, fmt);
   watchman::getLog().logVPrintf(

@@ -40,18 +40,18 @@ class WindowsEvent : public watchman_event {
     ResetEvent(hEvent);
   }
 };
-}
+} // namespace
 
 struct overlapped_op {
   OVERLAPPED olap;
   class win_handle* h;
-  struct write_buf *wbuf;
+  struct write_buf* wbuf;
 };
 
 struct write_buf {
-  struct write_buf *next;
+  struct write_buf* next;
   int len;
-  char *cursor;
+  char* cursor;
   char data[1];
 };
 
@@ -96,21 +96,21 @@ class win_handle : public watchman_stream {
 #if 1
 #define stream_debug(x, ...) 0
 #else
-#define stream_debug(x, ...)                                                   \
-  do {                                                                         \
-    time_t now;                                                                \
-    char timebuf[64];                                                          \
-    struct tm tm;                                                              \
-    time(&now);                                                                \
-    localtime_s(&tm, &now);                                                    \
-    strftime(timebuf, sizeof(timebuf), "%Y-%m-%dT%H:%M:%S", &tm);              \
-    fprintf(stderr, "%s    : ", timebuf);                                      \
-    fprintf(stderr, x, __VA_ARGS__);                                           \
-    fflush(stderr);                                                            \
+#define stream_debug(x, ...)                                      \
+  do {                                                            \
+    time_t now;                                                   \
+    char timebuf[64];                                             \
+    struct tm tm;                                                 \
+    time(&now);                                                   \
+    localtime_s(&tm, &now);                                       \
+    strftime(timebuf, sizeof(timebuf), "%Y-%m-%dT%H:%M:%S", &tm); \
+    fprintf(stderr, "%s    : ", timebuf);                         \
+    fprintf(stderr, x, __VA_ARGS__);                              \
+    fflush(stderr);                                               \
   } while (0)
 #endif
 
-typedef BOOL (WINAPI *get_overlapped_result_ex_func)(
+typedef BOOL(WINAPI* get_overlapped_result_ex_func)(
     HANDLE file,
     LPOVERLAPPED olap,
     LPDWORD bytes,
@@ -131,62 +131,59 @@ static BOOL WINAPI get_overlapped_result_ex_impl(
     LPDWORD bytes,
     DWORD millis,
     BOOL alertable) {
-
   DWORD waitReturnCode, err;
 
-  stream_debug( "Preparing to wait for maximum %ums\n", millis );
-  if ( millis != 0 ) {
-
+  stream_debug("Preparing to wait for maximum %ums\n", millis);
+  if (millis != 0) {
     waitReturnCode = WaitForSingleObjectEx(olap->hEvent, millis, alertable);
-    switch (waitReturnCode)
-    {
-    case WAIT_OBJECT_0:
-      // Event is signaled, overlapped IO operation result should be available.
-      break;
-    case WAIT_IO_COMPLETION:
-      // WaitForSingleObjectEx returnes because the system added an I/O
-      // completion routine or an asynchronous procedure call (APC) to the
-      // thread queue.
-      SetLastError(WAIT_IO_COMPLETION);
-      break;
-    case WAIT_TIMEOUT:
-      // We reached the maximum allowed wait time, the IO operation failed
-      // to complete in timely fashion.
-      SetLastError(WAIT_TIMEOUT);
-      return FALSE;
+    switch (waitReturnCode) {
+      case WAIT_OBJECT_0:
+        // Event is signaled, overlapped IO operation result should be
+        // available.
+        break;
+      case WAIT_IO_COMPLETION:
+        // WaitForSingleObjectEx returnes because the system added an I/O
+        // completion routine or an asynchronous procedure call (APC) to the
+        // thread queue.
+        SetLastError(WAIT_IO_COMPLETION);
+        break;
+      case WAIT_TIMEOUT:
+        // We reached the maximum allowed wait time, the IO operation failed
+        // to complete in timely fashion.
+        SetLastError(WAIT_TIMEOUT);
+        return FALSE;
 
-    case WAIT_FAILED:
-      // something went wrong calling WaitForSingleObjectEx
-      err = GetLastError();
-      stream_debug("WaitForSingleObjectEx failed: %s\n", win32_strerror(err));
-      return FALSE;
+      case WAIT_FAILED:
+        // something went wrong calling WaitForSingleObjectEx
+        err = GetLastError();
+        stream_debug("WaitForSingleObjectEx failed: %s\n", win32_strerror(err));
+        return FALSE;
 
-    default:
-      // unexpected situation deserving investigation.
-      err = GetLastError();
-      stream_debug("Unexpected error: %s\n", win32_strerror(err));
-      return FALSE;
+      default:
+        // unexpected situation deserving investigation.
+        err = GetLastError();
+        stream_debug("Unexpected error: %s\n", win32_strerror(err));
+        return FALSE;
     }
   }
 
   return GetOverlappedResult(file, olap, bytes, FALSE);
 }
 
-
 static BOOL WINAPI probe_get_overlapped_result_ex(
     HANDLE file,
     LPOVERLAPPED olap,
     LPDWORD bytes,
     DWORD millis,
-    BOOL alertable ) {
+    BOOL alertable) {
   get_overlapped_result_ex_func func;
 
   func = (get_overlapped_result_ex_func)GetProcAddress(
-      GetModuleHandle("kernel32.dll"),
-      "GetOverlappedResultEx");
+      GetModuleHandle("kernel32.dll"), "GetOverlappedResultEx");
 
   if ((getenv("WATCHMAN_WIN7_COMPAT") &&
-       getenv("WATCHMAN_WIN7_COMPAT")[0] == '1') || !func) {
+       getenv("WATCHMAN_WIN7_COMPAT")[0] == '1') ||
+      !func) {
     func = get_overlapped_result_ex_impl;
   }
 
@@ -277,8 +274,10 @@ again:
   EnterCriticalSection(&h->mtx);
 
   if (olap_res) {
-    stream_debug("pending read completed, read %d bytes, %s\n",
-        (int)bytes, win32_strerror(err));
+    stream_debug(
+        "pending read completed, read %d bytes, %s\n",
+        (int)bytes,
+        win32_strerror(err));
     h->read_avail += bytes;
     free(h->read_pending);
     h->read_pending = nullptr;
@@ -319,8 +318,8 @@ static int win_read_blocking(class win_handle* h, void* buf, int size) {
   stream_debug("blocking read of %d bytes\n", (int)size);
   if (ReadFile(h->handle(), buf, size, &bytes, nullptr)) {
     total_read += bytes;
-    stream_debug("blocking read provided %d bytes, total=%d\n",
-        (int)bytes, total_read);
+    stream_debug(
+        "blocking read provided %d bytes, total=%d\n", (int)bytes, total_read);
     return total_read;
   }
 
@@ -339,7 +338,7 @@ static int win_read_blocking(class win_handle* h, void* buf, int size) {
 
 static int win_read_non_blocking(class win_handle* h, void* buf, int size) {
   int total_read = 0;
-  char *target;
+  char* target;
   DWORD target_space;
   DWORD bytes;
 
@@ -369,8 +368,7 @@ static int win_read_non_blocking(class win_handle* h, void* buf, int size) {
       free(h->read_pending);
       h->read_pending = nullptr;
 
-      stream_debug("olap read failed immediately: %s\n",
-          win32_strerror(err));
+      stream_debug("olap read failed immediately: %s\n", win32_strerror(err));
       h->waitable.notify();
     } else {
       stream_debug("olap read queued ok\n");
@@ -424,15 +422,17 @@ int win_handle::read(void* buf, int size) {
 
 static void initiate_write(class win_handle* h);
 
-static void CALLBACK write_completed(DWORD err, DWORD bytes,
-    LPOVERLAPPED olap) {
+static void CALLBACK
+write_completed(DWORD err, DWORD bytes, LPOVERLAPPED olap) {
   // Reverse engineer our handle from the olap pointer
-  struct overlapped_op *op = (overlapped_op*)olap;
+  struct overlapped_op* op = (overlapped_op*)olap;
   class win_handle* h = op->h;
-  struct write_buf *wbuf = op->wbuf;
+  struct write_buf* wbuf = op->wbuf;
 
-  stream_debug("WriteFileEx: completion callback invoked: bytes=%d %s\n",
-      (int)bytes, win32_strerror(err));
+  stream_debug(
+      "WriteFileEx: completion callback invoked: bytes=%d %s\n",
+      (int)bytes,
+      win32_strerror(err));
 
   EnterCriticalSection(&h->mtx);
   if (h->write_pending == op) {
@@ -447,8 +447,10 @@ static void CALLBACK write_completed(DWORD err, DWORD bytes,
       // Consumed this buffer
       free(wbuf);
     } else {
-      stream_debug("WriteFileEx: short write: %d written, %d remain\n",
-              bytes, wbuf->len);
+      stream_debug(
+          "WriteFileEx: short write: %d written, %d remain\n",
+          bytes,
+          wbuf->len);
       // the initiate_write call will send the remainder
       // but we need to re-insert this wbuf in the write queue
       wbuf->next = h->write_head;
@@ -458,8 +460,7 @@ static void CALLBACK write_completed(DWORD err, DWORD bytes,
       }
     }
   } else {
-    stream_debug("WriteFilex: completion: failed: %s\n",
-        win32_strerror(err));
+    stream_debug("WriteFilex: completion: failed: %s\n", win32_strerror(err));
     h->errcode = err;
     h->error_pending = true;
   }
@@ -480,7 +481,7 @@ static void CALLBACK write_completed(DWORD err, DWORD bytes,
 
 // Must be called with the mutex held
 static void initiate_write(class win_handle* h) {
-  struct write_buf *wbuf = h->write_head;
+  struct write_buf* wbuf = h->write_head;
   if (h->write_pending || !wbuf) {
     return;
   }
@@ -495,16 +496,18 @@ static void initiate_write(class win_handle* h) {
   h->write_pending->wbuf = wbuf;
 
   stream_debug(
-      "Calling WriteFileEx with wbuf=%p wbuf->cursor=%p len=%d olap=%p\n", wbuf,
-      wbuf->cursor, wbuf->len, &h->write_pending->olap);
+      "Calling WriteFileEx with wbuf=%p wbuf->cursor=%p len=%d olap=%p\n",
+      wbuf,
+      wbuf->cursor,
+      wbuf->len,
+      &h->write_pending->olap);
   if (!WriteFileEx(
           h->handle(),
           wbuf->cursor,
           wbuf->len,
           &h->write_pending->olap,
           write_completed)) {
-    stream_debug("WriteFileEx: failed %s\n",
-        win32_strerror(GetLastError()));
+    stream_debug("WriteFileEx: failed %s\n", win32_strerror(GetLastError()));
     free(h->write_pending);
     h->write_pending = nullptr;
   } else {
@@ -513,7 +516,7 @@ static void initiate_write(class win_handle* h) {
 }
 
 int win_handle::write(const void* buf, int size) {
-  struct write_buf *wbuf;
+  struct write_buf* wbuf;
 
   EnterCriticalSection(&mtx);
   if (file_type != FILE_TYPE_PIPE && blocking && !write_head) {
@@ -671,14 +674,17 @@ std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(
   }
 }
 
-int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
+int w_poll_events(struct watchman_event_poll* p, int n, int timeoutms) {
   HANDLE handles[MAXIMUM_WAIT_OBJECTS];
   int i;
   DWORD res;
 
   if (n > MAXIMUM_WAIT_OBJECTS - 1) {
     // Programmer error :-/
-    w_log(W_LOG_FATAL, "%d > MAXIMUM_WAIT_OBJECTS-1 (%d)\n", n,
+    w_log(
+        W_LOG_FATAL,
+        "%d > MAXIMUM_WAIT_OBJECTS-1 (%d)\n",
+        n,
         MAXIMUM_WAIT_OBJECTS - 1);
   }
 
@@ -689,8 +695,8 @@ int w_poll_events(struct watchman_event_poll *p, int n, int timeoutms) {
     p[i].ready = false;
   }
 
-  res = WaitForMultipleObjectsEx(n, handles, false,
-          timeoutms == -1 ? INFINITE : timeoutms, true);
+  res = WaitForMultipleObjectsEx(
+      n, handles, false, timeoutms == -1 ? INFINITE : timeoutms, true);
 
   if (res == WAIT_FAILED) {
     errno = map_win32_err(GetLastError());
@@ -724,7 +730,7 @@ FileDescriptor w_handle_open(const char* path, int flags) {
 
   auto wpath = w_string_piece(path).asWideUNC();
 
-  if (flags & (O_WRONLY|O_RDWR)) {
+  if (flags & (O_WRONLY | O_RDWR)) {
     access |= GENERIC_WRITE;
   }
   if ((flags & O_WRONLY) == 0) {
@@ -732,7 +738,7 @@ FileDescriptor w_handle_open(const char* path, int flags) {
   }
 
   // We want more posix-y behavior by default
-  share = FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE;
+  share = FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE;
 
   sec.nLength = sizeof(sec);
   sec.bInheritHandle = TRUE;
@@ -740,9 +746,9 @@ FileDescriptor w_handle_open(const char* path, int flags) {
     sec.bInheritHandle = FALSE;
   }
 
-  if ((flags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL)) {
+  if ((flags & (O_CREAT | O_EXCL)) == (O_CREAT | O_EXCL)) {
     create = CREATE_NEW;
-  } else if ((flags & (O_CREAT|O_TRUNC)) == (O_CREAT|O_TRUNC)) {
+  } else if ((flags & (O_CREAT | O_TRUNC)) == (O_CREAT | O_TRUNC)) {
     create = CREATE_ALWAYS;
   } else if (flags & O_CREAT) {
     create = OPEN_ALWAYS;

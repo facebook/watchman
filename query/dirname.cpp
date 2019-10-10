@@ -64,9 +64,9 @@ class DirNameExpr : public QueryExpr {
   // ["dirname", "foo"] -> ["dirname", "foo", ["depth", "ge", 0]]
   static std::unique_ptr<QueryExpr>
   parse(w_query*, const json_ref& term, CaseSensitivity case_sensitive) {
-    const char *which = case_sensitive == CaseSensitivity::CaseInSensitive
-                            ? "idirname"
-                            : "dirname";
+    const char* which = case_sensitive == CaseSensitivity::CaseInSensitive
+        ? "idirname"
+        : "dirname";
     struct w_query_int_compare depth_comp;
 
     if (!term.isArray()) {

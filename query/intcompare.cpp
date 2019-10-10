@@ -8,21 +8,21 @@
 // Helper functions for integer comparisons in query expressions
 
 static const struct {
-  const char *opname;
+  const char* opname;
   enum w_query_icmp_op op;
 } opname_to_op[] = {
-  {"eq", W_QUERY_ICMP_EQ},
-  {"ne", W_QUERY_ICMP_NE},
-  {"gt", W_QUERY_ICMP_GT},
-  {"ge", W_QUERY_ICMP_GE},
-  {"lt", W_QUERY_ICMP_LT},
-  {"le", W_QUERY_ICMP_LE},
+    {"eq", W_QUERY_ICMP_EQ},
+    {"ne", W_QUERY_ICMP_NE},
+    {"gt", W_QUERY_ICMP_GT},
+    {"ge", W_QUERY_ICMP_GE},
+    {"lt", W_QUERY_ICMP_LT},
+    {"le", W_QUERY_ICMP_LE},
 };
 
 // term is a json array that looks like:
 // ["size", "eq", 1024]
 void parse_int_compare(const json_ref& term, struct w_query_int_compare* comp) {
-  const char *opname;
+  const char* opname;
   size_t i;
   bool found = false;
 
@@ -37,7 +37,7 @@ void parse_int_compare(const json_ref& term, struct w_query_int_compare* comp) {
   }
 
   opname = json_string_value(json_array_get(term, 1));
-  for (i = 0; i < sizeof(opname_to_op)/sizeof(opname_to_op[0]); i++) {
+  for (i = 0; i < sizeof(opname_to_op) / sizeof(opname_to_op[0]); i++) {
     if (!strcmp(opname_to_op[i].opname, opname)) {
       comp->op = opname_to_op[i].op;
       found = true;
@@ -50,11 +50,10 @@ void parse_int_compare(const json_ref& term, struct w_query_int_compare* comp) {
         "integer comparator opname `", opname, "' is invalid"));
   }
 
-
   comp->operand = json_integer_value(json_array_get(term, 2));
 }
 
-bool eval_int_compare(json_int_t ival, struct w_query_int_compare *comp) {
+bool eval_int_compare(json_int_t ival, struct w_query_int_compare* comp) {
   switch (comp->op) {
     case W_QUERY_ICMP_EQ:
       return ival == comp->operand;

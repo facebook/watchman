@@ -9,6 +9,9 @@
 #endif
 #define __STDC_LIMIT_MACROS
 #define __STDC_FORMAT_MACROS
+#include <folly/portability/SysTypes.h>
+#include "config.h"
+
 // This header plays tricks with posix IO functions and
 // can result in ambiguous overloads on Windows if io.h
 // is included before this header, so we pull it in early.
@@ -103,22 +106,22 @@ size_t backtrace_from_exception(
 #include <stdint.h>
 #include <sys/stat.h>
 #if HAVE_SYS_INOTIFY_H
-# include <sys/inotify.h>
+#include <sys/inotify.h>
 #endif
 #if HAVE_SYS_EVENT_H
-# include <sys/event.h>
+#include <sys/event.h>
 #endif
 #if HAVE_PORT_H
-# include <port.h>
+#include <port.h>
 #endif
-#include <signal.h>
 #include <errno.h>
+#include <signal.h>
+#include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <stdbool.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <time.h>
 #ifndef _WIN32
 #include <grp.h>
@@ -132,62 +135,62 @@ size_t backtrace_from_exception(
 #endif
 #include <fcntl.h>
 #if defined(__linux__) && !defined(O_CLOEXEC)
-# define O_CLOEXEC   02000000 /* set close_on_exec, from asm/fcntl.h */
+#define O_CLOEXEC 02000000 /* set close_on_exec, from asm/fcntl.h */
 #endif
 #ifndef O_CLOEXEC
-# define O_CLOEXEC 0
+#define O_CLOEXEC 0
 #endif
 #ifndef _WIN32
 #include <poll.h>
 #include <sys/wait.h>
 #endif
 #ifdef HAVE_PCRE_H
-# include <pcre.h>
+#include <pcre.h>
 #endif
 #ifdef HAVE_EXECINFO_H
-# include <execinfo.h>
+#include <execinfo.h>
 #endif
 #ifndef _WIN32
-#include <sys/uio.h>
 #include <pwd.h>
+#include <sys/uio.h>
 #include <sysexits.h>
 #endif
 #include <spawn.h>
 #include <stddef.h>
 #ifdef HAVE_SYS_PARAM_H
-# include <sys/param.h>
+#include <sys/param.h>
 #endif
 #ifdef HAVE_SYS_RESOURCE_H
-# include <sys/resource.h>
+#include <sys/resource.h>
 #endif
 
 #ifdef _WIN32
-# define PRIsize_t "Iu"
+#define PRIsize_t "Iu"
 #else
-# define PRIsize_t "zu"
+#define PRIsize_t "zu"
 #endif
 
 #if defined(__clang__)
-# if __has_feature(address_sanitizer)
-#  define WATCHMAN_ASAN 1
-# endif
-#elif defined (__GNUC__) && \
-      (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ >= 5)) && \
-      __SANITIZE_ADDRESS__
-# define WATCHMAN_ASAN 1
+#if __has_feature(address_sanitizer)
+#define WATCHMAN_ASAN 1
+#endif
+#elif defined(__GNUC__) &&                                             \
+    (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ >= 5)) && \
+    __SANITIZE_ADDRESS__
+#define WATCHMAN_ASAN 1
 #endif
 
 #ifndef WATCHMAN_ASAN
-# define WATCHMAN_ASAN 0
+#define WATCHMAN_ASAN 0
 #endif
 
 #ifdef HAVE_CORESERVICES_CORESERVICES_H
-# include <CoreServices/CoreServices.h>
-# if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ < 1070
-#  define HAVE_FSEVENTS 0
-# else
-#  define HAVE_FSEVENTS 1
-# endif
+#include <CoreServices/CoreServices.h>
+#if __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ < 1070
+#define HAVE_FSEVENTS 0
+#else
+#define HAVE_FSEVENTS 1
+#endif
 #endif
 
 // We make use of constructors to glue together modules
@@ -209,32 +212,37 @@ size_t backtrace_from_exception(
   w_paste1(sym, _reg_inst);
 
 #else
-# define w_ctor_fn_type(sym) \
-  __attribute__((constructor)) void sym(void)
-# define w_ctor_fn_reg(sym) /* not needed */
+#define w_ctor_fn_type(sym) __attribute__((constructor)) void sym(void)
+#define w_ctor_fn_reg(sym) /* not needed */
 #endif
 
 /* sane, reasonably large filename size that we'll use
  * throughout; POSIX seems to define smallish buffers
  * that seem risky */
-#define WATCHMAN_NAME_MAX   4096
+#define WATCHMAN_NAME_MAX 4096
 
 // rpmbuild may enable fortify which turns on
 // warn_unused_result on a number of system functions.
 // This gives us a reasonably clean way to suppress
 // these warnings when we're using stack protection.
 #if __USE_FORTIFY_LEVEL > 0
-# define ignore_result(x) \
-  do { __typeof__(x) _res = x; (void)_res; } while(0)
+#define ignore_result(x)    \
+  do {                      \
+    __typeof__(x) _res = x; \
+    (void)_res;             \
+  } while (0)
 #elif _MSC_VER >= 1400
-# define ignore_result(x) \
-  do { int _res = (int)x; (void)_res; } while(0)
+#define ignore_result(x) \
+  do {                   \
+    int _res = (int)x;   \
+    (void)_res;          \
+  } while (0)
 #else
-# define ignore_result(x) x
+#define ignore_result(x) x
 #endif
 
 // self-documenting hint to the compiler that we didn't use it
-#define unused_parameter(x)  (void)x
+#define unused_parameter(x) (void)x
 
 #ifdef __cplusplus
 extern "C" {
@@ -242,7 +250,7 @@ extern "C" {
 
 #ifndef _WIN32
 // Not explicitly exported on Darwin, so we get to define it.
-extern char **environ;
+extern char** environ;
 #endif
 
 #ifdef __cplusplus

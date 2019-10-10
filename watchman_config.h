@@ -16,7 +16,7 @@ double cfg_get_double(const char* name, double defval);
 #ifndef _WIN32
 mode_t cfg_get_perms(const char* name, bool write_bits, bool execute_bits);
 #endif
-const char *cfg_get_trouble_url(void);
+const char* cfg_get_trouble_url(void);
 json_ref cfg_compute_root_files(bool* enforcing);
 
 // Convert root files to comma delimited string for error message

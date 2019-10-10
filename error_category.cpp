@@ -132,4 +132,4 @@ bool error_category::equivalent(const std::error_code& code, int condition)
       return false;
   }
 }
-}
+} // namespace watchman

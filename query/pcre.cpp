@@ -10,8 +10,8 @@
 using watchman::CaseSensitivity;
 
 class PcreExpr : public QueryExpr {
-  pcre *re;
-  pcre_extra *extra;
+  pcre* re;
+  pcre_extra* extra;
   bool wholename;
 
  public:
@@ -52,7 +52,7 @@ class PcreExpr : public QueryExpr {
   static std::unique_ptr<QueryExpr>
   parse(w_query*, const json_ref& term, CaseSensitivity caseSensitive) {
     const char *ignore, *pattern, *scope = "basename";
-    const char *which =
+    const char* which =
         caseSensitive == CaseSensitivity::CaseInSensitive ? "ipcre" : "pcre";
     pcre* re;
     const char* errptr = nullptr;

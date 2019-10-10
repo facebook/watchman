@@ -22,9 +22,8 @@ std::unique_ptr<QueryExpr> QueryExpr::aggregate(
 }
 
 bool w_query_register_expression_parser(
-    const char *term,
-    w_query_expr_parser parser)
-{
+    const char* term,
+    w_query_expr_parser parser) {
   char capname[128];
   w_string name(term, W_STRING_UNICODE);
 
@@ -228,8 +227,7 @@ static void parse_request_id(w_query* res, const json_ref& query) {
 static void parse_sync(w_query* res, const json_ref& query) {
   int value = DEFAULT_QUERY_SYNC_MS.count();
 
-  if (query &&
-      json_unpack(query, "{s?:i*}", "sync_timeout", &value) != 0) {
+  if (query && json_unpack(query, "{s?:i*}", "sync_timeout", &value) != 0) {
     throw QueryParseError("sync_timeout must be an integer value >= 0");
   }
 
@@ -243,8 +241,7 @@ static void parse_sync(w_query* res, const json_ref& query) {
 static void parse_lock_timeout(w_query* res, const json_ref& query) {
   int value = DEFAULT_QUERY_SYNC_MS.count();
 
-  if (query &&
-      json_unpack(query, "{s?:i*}", "lock_timeout", &value) != 0) {
+  if (query && json_unpack(query, "{s?:i*}", "lock_timeout", &value) != 0) {
     throw QueryParseError("lock_timeout must be an integer value >= 0");
   }
 
@@ -260,12 +257,11 @@ W_CAP_REG("dedup_results")
 static void parse_dedup(w_query* res, const json_ref& query) {
   int value = 0;
 
-  if (query &&
-      json_unpack(query, "{s?:b*}", "dedup_results", &value) != 0) {
+  if (query && json_unpack(query, "{s?:b*}", "dedup_results", &value) != 0) {
     throw QueryParseError("dedup_results must be a boolean");
   }
 
-  res->dedup_results = (bool) value;
+  res->dedup_results = (bool)value;
 }
 
 static void parse_empty_on_fresh_instance(w_query* res, const json_ref& query) {
@@ -276,7 +272,7 @@ static void parse_empty_on_fresh_instance(w_query* res, const json_ref& query) {
     throw QueryParseError("empty_on_fresh_instance must be a boolean");
   }
 
-  res->empty_on_fresh_instance = (bool) value;
+  res->empty_on_fresh_instance = (bool)value;
 }
 
 static void parse_benchmark(w_query* res, const json_ref& query) {
@@ -301,8 +297,8 @@ static void parse_case_sensitive(
     throw QueryParseError("case_sensitive must be a boolean");
   }
 
-  res->case_sensitive = value ? CaseSensitivity::CaseSensitive
-                              : CaseSensitivity::CaseInSensitive;
+  res->case_sensitive =
+      value ? CaseSensitivity::CaseSensitive : CaseSensitivity::CaseInSensitive;
 }
 
 std::shared_ptr<w_query> w_query_parse(
@@ -352,16 +348,26 @@ bool w_query::isFieldRequested(w_string_piece name) const {
 }
 
 void w_query_legacy_field_list(w_query_field_list* flist) {
-  static const char *names[] = {
-    "name", "exists", "size", "mode", "uid", "gid", "mtime",
-    "ctime", "ino", "dev", "nlink", "new", "cclock", "oclock"
-  };
+  static const char* names[] = {"name",
+                                "exists",
+                                "size",
+                                "mode",
+                                "uid",
+                                "gid",
+                                "mtime",
+                                "ctime",
+                                "ino",
+                                "dev",
+                                "nlink",
+                                "new",
+                                "cclock",
+                                "oclock"};
   uint8_t i;
   auto list = json_array();
 
-  for (i = 0; i < sizeof(names)/sizeof(names[0]); i++) {
-    json_array_append_new(list, typed_string_to_json(names[i],
-        W_STRING_UNICODE));
+  for (i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+    json_array_append_new(
+        list, typed_string_to_json(names[i], W_STRING_UNICODE));
   }
 
   parse_field_list(list, flist);
@@ -380,7 +386,7 @@ std::shared_ptr<w_query> w_query_parse_legacy(
   bool include = true;
   bool negated = false;
   uint32_t i;
-  const char *term_name = "match";
+  const char* term_name = "match";
   json_ref included, excluded;
   auto query_obj = json_object();
 
@@ -389,7 +395,7 @@ std::shared_ptr<w_query> w_query_parse_legacy(
   }
 
   for (i = start; i < json_array_size(args); i++) {
-    const char *arg = json_string_value(json_array_get(args, i));
+    const char* arg = json_string_value(json_array_get(args, i));
     if (!arg) {
       /* not a string value! */
       throw QueryParseError(watchman::to<std::string>(
@@ -398,7 +404,7 @@ std::shared_ptr<w_query> w_query_parse_legacy(
   }
 
   for (i = start; i < json_array_size(args); i++) {
-    const char *arg = json_string_value(json_array_get(args, i));
+    const char* arg = json_string_value(json_array_get(args, i));
     if (!strcmp(arg, "--")) {
       i++;
       break;
@@ -482,8 +488,8 @@ std::shared_ptr<w_query> w_query_parse_legacy(
   }
 
   if (clockspec) {
-    json_object_set_new_nocheck(query_obj,
-        "since", typed_string_to_json(clockspec, W_STRING_UNICODE));
+    json_object_set_new_nocheck(
+        query_obj, "since", typed_string_to_json(clockspec, W_STRING_UNICODE));
   }
 
   /* compose the query with the field list */

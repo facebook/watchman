@@ -49,7 +49,7 @@ void InMemoryView::notifyThread(const std::shared_ptr<w_root_t>& root) {
     }
   }
 }
-}
+} // namespace watchman
 
 /* vim:ts=2:sw=2:et:
  */

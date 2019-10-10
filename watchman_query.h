@@ -14,7 +14,7 @@
 #include "watchman_clockspec.h"
 
 namespace watchman {
-  struct FileInformation;
+struct FileInformation;
 }
 struct watchman_file;
 
@@ -177,7 +177,7 @@ class FileResult {
 
 // Holds state for the execution of a query
 struct w_query_ctx {
-  struct w_query *query;
+  struct w_query* query;
   std::shared_ptr<w_root_t> root;
   std::unique_ptr<FileResult> file;
   w_string wholename;
@@ -331,7 +331,8 @@ class RootResolveError : public std::runtime_error {
 };
 
 struct w_query {
-  watchman::CaseSensitivity case_sensitive{watchman::CaseSensitivity::CaseInSensitive};
+  watchman::CaseSensitivity case_sensitive{
+      watchman::CaseSensitivity::CaseInSensitive};
   bool empty_on_fresh_instance{false};
   bool dedup_results{false};
   uint32_t bench_iterations{0};
@@ -375,7 +376,7 @@ typedef std::unique_ptr<QueryExpr> (
     *w_query_expr_parser)(w_query* query, const json_ref& term);
 
 bool w_query_register_expression_parser(
-    const char *term,
+    const char* term,
     w_query_expr_parser parser);
 
 std::shared_ptr<w_query> w_query_parse(
@@ -454,7 +455,7 @@ struct w_query_int_compare {
   json_int_t operand;
 };
 void parse_int_compare(const json_ref& term, struct w_query_int_compare* comp);
-bool eval_int_compare(json_int_t ival, struct w_query_int_compare *comp);
+bool eval_int_compare(json_int_t ival, struct w_query_int_compare* comp);
 
 void parse_field_list(json_ref field_list, w_query_field_list* selected);
 json_ref field_list_to_json_name_array(const w_query_field_list& fieldList);
@@ -476,7 +477,7 @@ struct watchman_glob_tree {
   watchman_glob_tree(const char* pattern, uint32_t pattern_len);
 };
 
-#define W_TERM_PARSER1(symbol, name, func) \
+#define W_TERM_PARSER1(symbol, name, func)          \
   static w_ctor_fn_type(symbol) {                   \
     w_query_register_expression_parser(name, func); \
   }                                                 \

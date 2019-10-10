@@ -142,7 +142,7 @@ class ChildProcess {
 #ifndef _WIN32
       int signo = SIGTERM
 #endif
-      );
+  );
 
   // The pipeWriteCallback is called by communicate when it is safe to write
   // data to the pipe.  The callback should then attempt to write to it.
@@ -178,4 +178,4 @@ class ChildProcess {
 
   folly::Future<w_string> readPipe(int fd);
 };
-}
+} // namespace watchman

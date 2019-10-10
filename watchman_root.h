@@ -11,18 +11,18 @@
 #include "QueryableView.h"
 #include "watchman_config.h"
 
-#define HINT_NUM_DIRS 128*1024
+#define HINT_NUM_DIRS 128 * 1024
 #define CFG_HINT_NUM_DIRS "hint_num_dirs"
 
 #define DEFAULT_SETTLE_PERIOD 20
 constexpr std::chrono::milliseconds DEFAULT_QUERY_SYNC_MS(60000);
 
 /* Prune out nodes that were deleted roughly 12-36 hours ago */
-#define DEFAULT_GC_AGE (86400/2)
+#define DEFAULT_GC_AGE (86400 / 2)
 #define DEFAULT_GC_INTERVAL 86400
 
 /* Idle out watches that haven't had activity in several days */
-#define DEFAULT_REAP_AGE (86400*5)
+#define DEFAULT_REAP_AGE (86400 * 5)
 
 namespace watchman {
 class ClientStateAssertion;

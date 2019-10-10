@@ -175,19 +175,23 @@ static json_ref build_legacy_trigger(
   return trig;
 }
 
-static bool parse_redirection(const char **name_p, int *flags,
-  const char *label, char **errmsg)
-{
-  const char *name = *name_p;
+static bool parse_redirection(
+    const char** name_p,
+    int* flags,
+    const char* label,
+    char** errmsg) {
+  const char* name = *name_p;
 
   if (!name) {
     return true;
   }
 
   if (name[0] != '>') {
-    ignore_result(asprintf(errmsg,
-      "%s: must be prefixed with either > or >>, got %s",
-      label, name));
+    ignore_result(asprintf(
+        errmsg,
+        "%s: must be prefixed with either > or >>, got %s",
+        label,
+        name));
     return false;
   }
 
@@ -195,8 +199,7 @@ static bool parse_redirection(const char **name_p, int *flags,
 
   if (name[1] == '>') {
 #ifdef _WIN32
-    ignore_result(asprintf(errmsg,
-      "Windows does not support O_APPEND"));
+    ignore_result(asprintf(errmsg, "Windows does not support O_APPEND"));
     return false;
 #else
     *flags |= O_APPEND;
@@ -270,7 +273,7 @@ watchman_trigger_command::watchman_trigger_command(
     stdin_style = input_json;
     parse_field_list(ele, &query->fieldList);
   } else if (ele.isString()) {
-    const char *str = json_string_value(ele);
+    const char* str = json_string_value(ele);
     if (!strcmp(str, "/dev/null")) {
       stdin_style = input_dev_null;
     } else if (!strcmp(str, "NAME_PER_LINE")) {
@@ -346,7 +349,7 @@ void watchman_trigger_command::start(const std::shared_ptr<w_root_t>& root) {
  * Sets up a trigger so that we can execute a command when a change
  * is detected */
 static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
-  char *errmsg = NULL;
+  char* errmsg = NULL;
   bool need_save = true;
   std::unique_ptr<watchman_trigger_command> cmd;
   json_ref trig;

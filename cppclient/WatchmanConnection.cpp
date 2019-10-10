@@ -112,9 +112,8 @@ void WatchmanConnection::close() {
       sock_.reset();
     });
   }
-  failQueuedCommands(
-      make_exception_wrapper<WatchmanError>(
-          "WatchmanConnection::close() was called"));
+  failQueuedCommands(make_exception_wrapper<WatchmanError>(
+      "WatchmanConnection::close() was called"));
 }
 
 // The convention for Watchman responses is that they represent
@@ -151,12 +150,12 @@ void WatchmanConnection::connectSuccess() noexcept {
                         shared_from_this()](const folly::exception_wrapper& e) {
           shared_this->connectPromise_.setException(e);
         });
-  } catch(const std::exception& e) {
+  } catch (const std::exception& e) {
     connectPromise_.setException(
-      folly::exception_wrapper(std::current_exception(), e));
-  } catch(...) {
+        folly::exception_wrapper(std::current_exception(), e));
+  } catch (...) {
     connectPromise_.setException(
-      folly::exception_wrapper(std::current_exception()));
+        folly::exception_wrapper(std::current_exception()));
   }
 }
 
@@ -192,10 +191,7 @@ Future<dynamic> WatchmanConnection::run(const dynamic& command) noexcept {
 
   if (shouldWrite) {
     eventBase_->runInEventBaseThread(
-      [shared_this=shared_from_this()] {
-        shared_this->sendCommand();
-      }
-    );
+        [shared_this = shared_from_this()] { shared_this->sendCommand(); });
   }
 
   return cmd->promise.getFuture();
@@ -217,7 +213,7 @@ void WatchmanConnection::failQueuedCommands(
 
   // If the user has explicitly closed the connection no need for callback
   if (callback_ && !closing_) {
-    cpuExecutor_->add([shared_this=shared_from_this(), ex] {
+    cpuExecutor_->add([shared_this = shared_from_this(), ex] {
       (*(shared_this->callback_))(folly::Try<folly::dynamic>(ex));
     });
   }
@@ -274,7 +270,7 @@ void WatchmanConnection::readDataAvailable(size_t len) noexcept {
     std::lock_guard<std::mutex> g(mutex_);
     bufQ_.postallocate(len);
   }
-  cpuExecutor_->add([shared_this=shared_from_this()] {
+  cpuExecutor_->add([shared_this = shared_from_this()] {
     shared_this->decodeNextResponse();
   });
 }

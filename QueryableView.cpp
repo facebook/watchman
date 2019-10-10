@@ -7,7 +7,7 @@ namespace watchman {
 QueryableView::~QueryableView() {}
 
 /** Perform a time-based (since) query and emit results to the supplied
-   * query context */
+ * query context */
 void QueryableView::timeGenerator(w_query*, struct w_query_ctx*) const {
   throw QueryExecError("timeGenerator not implemented");
 }
@@ -47,4 +47,4 @@ bool QueryableView::isVCSOperationInProgress() const {
   static const std::vector<w_string> lockFiles{".hg/wlock", ".git/index.lock"};
   return doAnyOfTheseFilesExist(lockFiles);
 }
-}
+} // namespace watchman

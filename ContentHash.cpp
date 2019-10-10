@@ -164,4 +164,4 @@ const w_string& ContentHashCache::rootPath() const {
 CacheStats ContentHashCache::stats() const {
   return cache_.stats();
 }
-}
+} // namespace watchman
