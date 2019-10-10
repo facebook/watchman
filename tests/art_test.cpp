@@ -3,24 +3,18 @@
  * Derived from thirdparty/libart/tests/test_art.c which is
  * Copyright 2012 Armon Dadgar. See thirdparty/libart/LICENSE. */
 #include "watchman_system.h"
+#include <fcntl.h>
+#include <folly/logging/xlog.h>
+#include <folly/portability/GTest.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <inttypes.h>
 
 #include "thirdparty/libart/src/art.h"
 
-// This has to come after the art.h include because the MSVC
-// runtime gets confused by the #define fail in tap.h
-#include "thirdparty/tap.h"
-
-#define stringy2(line)  #line
-#define stringy(line)   stringy2(line)
-#define fail_unless(__x)  ok(__x, __FILE__ ":" stringy(__LINE__) " " # __x)
-
-static FILE *open_test_file(const char *name) {
-  FILE *f = fopen(name, "r");
+static FILE* open_test_file(const char* name) {
+  FILE* f = fopen(name, "r");
   char altname[1024];
 
   if (f) {
@@ -40,29 +34,27 @@ static FILE *open_test_file(const char *name) {
   if (f) {
     return f;
   }
-  fail("can't find test data file %s", name);
-  return NULL;
+  throw std::runtime_error(
+      folly::to<std::string>("can't find test data file ", name));
 }
 
-void test_art_insert(void) {
+TEST(Art, insert) {
   art_tree<uintptr_t> t;
   int len;
   char buf[512];
-  FILE *f = open_test_file("thirdparty/libart/tests/words.txt");
+  FILE* f = open_test_file("thirdparty/libart/tests/words.txt");
   uintptr_t line = 1;
 
   while (fgets(buf, sizeof buf, f)) {
     len = (int)strlen(buf);
     buf[len - 1] = '\0';
     t.insert(buf, line);
-    if (t.size() != line) {
-      fail("art_size didn't match current line no");
-    }
+    EXPECT_EQ(t.size(), line) << "art_size didn't match current line no";
     line++;
   }
 }
 
-void test_art_insert_verylong(void) {
+TEST(Art, insert_verylong) {
   art_tree<void*> t;
 
   unsigned char key1[300] = {
@@ -114,14 +106,14 @@ void test_art_insert_verylong(void) {
   t.insert(std::string(reinterpret_cast<char*>(key1), 299), (void*)key1);
   t.insert(std::string(reinterpret_cast<char*>(key2), 302), (void*)key2);
   t.insert(std::string(reinterpret_cast<char*>(key2), 302), (void*)key2);
-  fail_unless(t.size() == 2);
+  EXPECT_TRUE(t.size() == 2);
 }
 
-void test_art_insert_search(void) {
+TEST(Art, insert_search) {
   art_tree<uintptr_t> t;
   int len;
   char buf[512];
-  FILE *f = open_test_file("thirdparty/libart/tests/words.txt");
+  FILE* f = open_test_file("thirdparty/libart/tests/words.txt");
   uintptr_t line = 1;
 
   while (fgets(buf, sizeof buf, f)) {
@@ -142,27 +134,26 @@ void test_art_insert_search(void) {
 
     {
       uintptr_t val = *t.search(buf);
-      if (line != val) {
-        fail("Line: %d Val: %" PRIuPTR " Str: %s", line, val, buf);
-      }
+      EXPECT_EQ(line, val) << "Line: " << line << " Val: " << val
+                           << " Str: " << buf;
     }
     line++;
   }
 
   // Check the minimum
   auto l = t.minimum();
-  fail_unless(l && l->key == "A");
+  EXPECT_TRUE(l && l->key == "A");
 
   // Check the maximum
   l = t.maximum();
-  fail_unless(l && l->key == "zythum");
+  EXPECT_TRUE(l && l->key == "zythum");
 }
 
-void test_art_insert_delete(void) {
+TEST(Art, insert_delete) {
   art_tree<uintptr_t> t;
   int len;
   char buf[512];
-  FILE *f = open_test_file("thirdparty/libart/tests/words.txt");
+  FILE* f = open_test_file("thirdparty/libart/tests/words.txt");
 
   uintptr_t line = 1, nlines;
   while (fgets(buf, sizeof buf, f)) {
@@ -187,33 +178,29 @@ void test_art_insert_delete(void) {
     // Search first, ensure all entries still
     // visible
     val = *t.search(buf);
-    if (line != val) {
-      fail("Line: %d Val: %" PRIuPTR " Str: %s", line, val, buf);
-    }
+    EXPECT_EQ(line, val) << "Line: " << line << " Val: " << val
+                         << " Str: " << buf;
 
     // Delete, should get lineno back
-    if (!t.erase(buf)) {
-      fail("failed to erase line %d, str: %s", line, buf);
-    }
+    EXPECT_TRUE(t.erase(buf))
+        << "failed to erase line " << line << " str: " << buf;
 
     // Check the size
-    if (t.size() != nlines - line) {
-      fail("bad size after delete");
-    }
+    EXPECT_EQ(t.size(), nlines - line) << "bad size after delete";
     line++;
   }
 
   // Check the minimum and maximum
-  fail_unless(!t.minimum());
-  fail_unless(!t.maximum());
+  EXPECT_TRUE(!t.minimum());
+  EXPECT_TRUE(!t.maximum());
 }
 
-void test_art_insert_iter(void) {
+TEST(Art, insert_iter) {
   art_tree<uintptr_t> t;
 
   int len;
   char buf[512];
-  FILE *f = open_test_file("thirdparty/libart/tests/words.txt");
+  FILE* f = open_test_file("thirdparty/libart/tests/words.txt");
 
   uint64_t xor_mask = 0;
   uintptr_t lineno = 1, nlines;
@@ -229,16 +216,15 @@ void test_art_insert_iter(void) {
 
   {
     uint64_t out[] = {0, 0};
-    fail_unless(t.iter([&out](const std::string& key, uintptr_t& line) {
+    EXPECT_TRUE(t.iter([&out](const std::string& key, uintptr_t& line) {
       uint64_t mask = (line * (key[0] + key.size()));
       out[0]++;
       out[1] ^= mask;
       return 0;
-
     }) == 0);
 
-    fail_unless(out[0] == nlines);
-    fail_unless(out[1] == xor_mask);
+    EXPECT_TRUE(out[0] == nlines);
+    EXPECT_TRUE(out[1] == xor_mask);
   }
 }
 
@@ -246,21 +232,25 @@ template <typename T>
 struct prefix_data {
   int count;
   int max_count;
-  const char **expected;
+  const char** expected;
 
   int operator()(const std::string& k, T&) {
-    fail_unless(count < max_count);
-    diag("Key: %s Expect: %s", k.c_str(), expected[count]);
-    fail_unless(memcmp(k.data(), expected[count], k.size()) == 0);
+    EXPECT_TRUE(count < max_count);
+    XLOG(ERR) << "Key: " << k << " Expect: " << expected[count];
+    EXPECT_TRUE(memcmp(k.data(), expected[count], k.size()) == 0);
     count++;
     return 0;
   }
 };
 
-void test_art_iter_prefix(void) {
+TEST(Art, iter_prefix) {
   art_tree<void*> t;
-  const char *expected2[] = {"abc.123.456", "api",         "api.foe.fum",
-                             "api.foo",     "api.foo.bar", "api.foo.baz"};
+  const char* expected2[] = {"abc.123.456",
+                             "api",
+                             "api.foe.fum",
+                             "api.foo",
+                             "api.foo.bar",
+                             "api.foo.baz"};
 
   t.insert("api.foo.bar", nullptr);
   t.insert("api.foo.baz", nullptr);
@@ -271,63 +261,63 @@ void test_art_iter_prefix(void) {
 
   {
     // Iterate over api
-    const char *expected[] = {"api", "api.foe.fum", "api.foo", "api.foo.bar",
-                              "api.foo.baz"};
+    const char* expected[] = {
+        "api", "api.foe.fum", "api.foo", "api.foo.bar", "api.foo.baz"};
     prefix_data<void*> p = {0, 5, expected};
-    fail_unless(!t.iterPrefix((unsigned char*)"api", 3, p));
-    diag("Count: %d Max: %d", p.count, p.max_count);
-    fail_unless(p.count == p.max_count);
+    EXPECT_TRUE(!t.iterPrefix((unsigned char*)"api", 3, p));
+    XLOG(ERR) << "Count: " << p.count << " Max: " << p.max_count;
+    EXPECT_TRUE(p.count == p.max_count);
   }
 
   {
     // Iterate over 'a'
     prefix_data<void*> p2 = {0, 6, expected2};
-    fail_unless(!t.iterPrefix((unsigned char*)"a", 1, p2));
-    fail_unless(p2.count == p2.max_count);
+    EXPECT_TRUE(!t.iterPrefix((unsigned char*)"a", 1, p2));
+    EXPECT_TRUE(p2.count == p2.max_count);
   }
 
   {
     // Check a failed iteration
     prefix_data<void*> p3 = {0, 0, nullptr};
-    fail_unless(!t.iterPrefix((unsigned char*)"b", 1, p3));
-    fail_unless(p3.count == 0);
+    EXPECT_TRUE(!t.iterPrefix((unsigned char*)"b", 1, p3));
+    EXPECT_TRUE(p3.count == 0);
   }
 
   {
     // Iterate over api.
-    const char *expected4[] = {"api.foe.fum", "api.foo", "api.foo.bar",
-                               "api.foo.baz"};
+    const char* expected4[] = {
+        "api.foe.fum", "api.foo", "api.foo.bar", "api.foo.baz"};
     prefix_data<void*> p4 = {0, 4, expected4};
-    fail_unless(!t.iterPrefix((unsigned char*)"api.", 4, p4));
-    diag("Count: %d Max: %d", p4.count, p4.max_count);
-    fail_unless(p4.count == p4.max_count);
+    EXPECT_TRUE(!t.iterPrefix((unsigned char*)"api.", 4, p4));
+    XLOG(ERR) << "Count: " << p4.count << " Max: " << p4.max_count;
+    EXPECT_TRUE(p4.count == p4.max_count);
   }
 
   {
     // Iterate over api.foo.ba
-    const char *expected5[] = {"api.foo.bar"};
+    const char* expected5[] = {"api.foo.bar"};
     prefix_data<void*> p5 = {0, 1, expected5};
-    fail_unless(!t.iterPrefix((unsigned char*)"api.foo.bar", 11, p5));
-    diag("Count: %d Max: %d", p5.count, p5.max_count);
-    fail_unless(p5.count == p5.max_count);
+    EXPECT_TRUE(!t.iterPrefix((unsigned char*)"api.foo.bar", 11, p5));
+    XLOG(ERR) << "Count: " << p5.count << " Max: " << p5.max_count;
+    EXPECT_TRUE(p5.count == p5.max_count);
   }
 
   // Check a failed iteration on api.end
   {
     prefix_data<void*> p6 = {0, 0, nullptr};
-    fail_unless(!t.iterPrefix((unsigned char*)"api.end", 7, p6));
-    fail_unless(p6.count == 0);
+    EXPECT_TRUE(!t.iterPrefix((unsigned char*)"api.end", 7, p6));
+    EXPECT_TRUE(p6.count == 0);
   }
 
   // Iterate over empty prefix
   {
     prefix_data<void*> p7 = {0, 6, expected2};
-    fail_unless(!t.iterPrefix((unsigned char*)"", 0, p7));
-    fail_unless(p7.count == p7.max_count);
+    EXPECT_TRUE(!t.iterPrefix((unsigned char*)"", 0, p7));
+    EXPECT_TRUE(p7.count == p7.max_count);
   }
 }
 
-void test_art_long_prefix(void) {
+TEST(Art, long_prefix) {
   art_tree<uintptr_t> t;
 
   t.insert("this:key:has:a:long:prefix:3", 3);
@@ -335,54 +325,51 @@ void test_art_long_prefix(void) {
   t.insert("this:key:has:a:long:common:prefix:1", 1);
 
   // Search for the keys
-  fail_unless(1 == *t.search("this:key:has:a:long:common:prefix:1"));
-  fail_unless(2 == *t.search("this:key:has:a:long:common:prefix:2"));
-  fail_unless(3 == *t.search("this:key:has:a:long:prefix:3"));
+  EXPECT_TRUE(1 == *t.search("this:key:has:a:long:common:prefix:1"));
+  EXPECT_TRUE(2 == *t.search("this:key:has:a:long:common:prefix:2"));
+  EXPECT_TRUE(3 == *t.search("this:key:has:a:long:prefix:3"));
 
   {
-    const char *expected[] = {
+    const char* expected[] = {
         "this:key:has:a:long:common:prefix:1",
-        "this:key:has:a:long:common:prefix:2", "this:key:has:a:long:prefix:3",
+        "this:key:has:a:long:common:prefix:2",
+        "this:key:has:a:long:prefix:3",
     };
     prefix_data<uintptr_t> p = {0, 3, expected};
-    fail_unless(!t.iterPrefix((unsigned char*)"this:key:has", 12, p));
-    diag("Count: %d Max: %d", p.count, p.max_count);
-    fail_unless(p.count == p.max_count);
+    EXPECT_TRUE(!t.iterPrefix((unsigned char*)"this:key:has", 12, p));
+    XLOG(ERR) << "Count: " << p.count << " Max: " << p.max_count;
+    EXPECT_TRUE(p.count == p.max_count);
   }
 }
 
-void test_art_prefix(void) {
+TEST(Art, prefix) {
   art_tree<void*> t;
-  void *v;
+  void* v;
 
   t.insert("food", (void*)"food");
   t.insert("foo", (void*)"foo");
-  diag("size is now %d", t.size());
-  fail_unless(t.size() == 2);
-  fail_unless((v = *t.search("food")) != nullptr);
-  diag("food lookup yields %s", v);
-  fail_unless(v && strcmp((char*)v, "food") == 0);
+  XLOG(ERR) << "size is now " << t.size();
+  EXPECT_TRUE(t.size() == 2);
+  EXPECT_TRUE((v = *t.search("food")) != nullptr);
+  XLOG(ERR) << "food lookup yields " << v;
+  EXPECT_TRUE(v && strcmp((char*)v, "food") == 0);
 
   t.iter([](const std::string& key, void*& value) {
-    diag(
-        "iter leaf: key_len=%d %.*s value=%p",
-        int(key.size()),
-        int(key.size()),
-        key.data(),
-        value);
+    XLOG(ERR) << "iter leaf: key_len=" << key.size() << " " << key
+              << " value=" << value;
     return 0;
   });
 
-  fail_unless((v = *t.search("foo")) != nullptr);
-  diag("foo lookup yields %s", v);
-  fail_unless(v && strcmp((char*)v, "foo") == 0);
+  EXPECT_TRUE((v = *t.search("foo")) != nullptr);
+  XLOG(ERR) << "foo lookup yields " << v;
+  EXPECT_TRUE(v && strcmp((char*)v, "foo") == 0);
 }
 
-void test_art_insert_search_uuid(void) {
+TEST(Art, insert_search_uuid) {
   art_tree<uintptr_t> t;
   int len;
   char buf[512];
-  FILE *f = open_test_file("thirdparty/libart/tests/uuid.txt");
+  FILE* f = open_test_file("thirdparty/libart/tests/uuid.txt");
   uintptr_t line = 1;
 
   while (fgets(buf, sizeof buf, f)) {
@@ -403,37 +390,18 @@ void test_art_insert_search_uuid(void) {
     buf[len - 1] = '\0';
 
     val = *t.search(buf);
-    if (line != val) {
-      fail("Line: %d Val: %" PRIuPTR " Str: %s\n", line, val, buf);
-    }
+    EXPECT_EQ(line, val) << "Line: " << line << " Val: " << val
+                         << " Str: " << buf;
     line++;
   }
 
   // Check the minimum
   auto l = t.minimum();
-  diag("minimum is %s", l->key.c_str());
-  fail_unless(l && l->key == "00026bda-e0ea-4cda-8245-522764e9f325");
+  XLOG(ERR) << "minimum is " << l->key;
+  EXPECT_TRUE(l && l->key == "00026bda-e0ea-4cda-8245-522764e9f325");
 
   // Check the maximum
   l = t.maximum();
-  diag("maximum is %s", l->key.c_str());
-  fail_unless(l && l->key == "ffffcb46-a92e-4822-82af-a7190f9c1ec5");
-}
-
-int main(int argc, char **argv) {
-  (void)argc;
-  (void)argv;
-
-  plan_tests(84);
-  test_art_insert();
-  test_art_insert_verylong();
-  test_art_insert_search();
-  test_art_insert_delete();
-  test_art_insert_iter();
-  test_art_iter_prefix();
-  test_art_long_prefix();
-  test_art_insert_search_uuid();
-  test_art_prefix();
-
-  return exit_status();
+  XLOG(ERR) << "maximum is " << l->key;
+  EXPECT_TRUE(l && l->key == "ffffcb46-a92e-4822-82af-a7190f9c1ec5");
 }

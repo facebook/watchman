@@ -682,6 +682,7 @@ if(PYTHON3)
 endif()
 
 t_test(art tests/art_test.cpp tests/log_stub.cpp)
+gtest_discover_tests(art.t)
 t_test(ignore tests/ignore_test.cpp tests/log_stub.cpp)
 t_test(pending tests/pending_test.cpp tests/log_stub.cpp)
 t_test(string tests/string_test.cpp tests/log_stub.cpp)
