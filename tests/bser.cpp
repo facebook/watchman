@@ -116,7 +116,6 @@ static void check_roundtrip(
     const char* template_text) {
   XLOG(ERR) << "testing BSER version " << bser_version << ", capabilities "
             << bser_capabilities;
-  char* jdump;
   json_ref templ;
   json_error_t jerr;
   json_int_t needed;
@@ -137,13 +136,9 @@ static void check_roundtrip(
   auto decoded = bunser(dump_buf->data(), end, &needed, &jerr);
   EXPECT_TRUE(decoded) << "decoded something err = " << jerr.text;
 
-  jdump = json_dumps(decoded, JSON_SORT_KEYS);
-  EXPECT_TRUE(jdump) << "dumped " << jdump;
-
+  auto jdump = json_dumps(decoded, JSON_SORT_KEYS);
   EXPECT_TRUE(json_equal(expected, decoded)) << "round-tripped json_equal";
-  EXPECT_TRUE(!strcmp(jdump, input)) << "round-tripped strcmp";
-
-  free(jdump);
+  EXPECT_EQ(jdump, input) << "round-tripped";
 }
 
 static void check_serialization(

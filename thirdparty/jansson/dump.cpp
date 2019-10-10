@@ -27,8 +27,10 @@ struct object_key {
   const char* key;
 };
 
-static int dump_to_strbuffer(const char* buffer, size_t size, void* data) {
-  return strbuffer_append_bytes((strbuffer_t*)data, buffer, size);
+static int dump_to_string(const char* buffer, size_t size, void* data) {
+  auto str = (std::string*)data;
+  str->append(buffer, size);
+  return 0;
 }
 
 static int dump_to_file(const char* buffer, size_t size, void* data) {
@@ -344,21 +346,13 @@ static int do_dump(
   }
 }
 
-char* json_dumps(const json_t* json, size_t flags) {
-  strbuffer_t strbuff;
-  char* result;
+std::string json_dumps(const json_t* json, size_t flags) {
+  std::string strbuff;
 
-  if (strbuffer_init(&strbuff)) {
-    throw std::bad_alloc();
+  if (json_dump_callback(json, dump_to_string, (void*)&strbuff, flags)) {
+    throw std::runtime_error("json_dumps failed");
   }
-
-  if (json_dump_callback(json, dump_to_strbuffer, (void*)&strbuff, flags))
-    result = NULL;
-  else
-    result = jsonp_strdup(strbuffer_value(&strbuff));
-
-  strbuffer_close(&strbuff);
-  return result;
+  return strbuff;
 }
 
 int json_dumpf(const json_t* json, FILE* output, size_t flags) {

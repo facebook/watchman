@@ -66,8 +66,7 @@ void send_error_response(struct watchman_client* client, const char* fmt, ...) {
   }
 
   if (client->current_command) {
-    char* command = NULL;
-    command = json_dumps(client->current_command, 0);
+    auto command = json_dumps(client->current_command, 0);
     watchman::log(
         watchman::ERR,
         "send_error_response: ",
@@ -75,7 +74,6 @@ void send_error_response(struct watchman_client* client, const char* fmt, ...) {
         ", failed: ",
         errorText,
         "\n");
-    free(command);
   } else {
     watchman::log(watchman::ERR, "send_error_response: ", errorText, "\n");
   }
@@ -212,9 +210,8 @@ static void client_thread(std::shared_ptr<watchman_client> client) noexcept {
                   "Unilateral payload for sub ",
                   sub->name,
                   " ",
-                  dumped ? dumped : "<<MISSING!!>>",
+                  dumped,
                   "\n");
-              free(dumped);
 
               if (item->payload.get_default("canceled")) {
                 auto resp = make_response();

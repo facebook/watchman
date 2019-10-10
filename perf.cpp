@@ -181,11 +181,11 @@ void PerfLogThread::loop() noexcept {
         json_array_extend(cmd, perf_cmd);
 
         while (i < sample_batch && json_array_size(samples) > 0) {
-          char* stringy = json_dumps(json_array_get(samples, 0), 0);
-          if (stringy) {
+          try {
+            auto stringy = json_dumps(json_array_get(samples, 0), 0);
             json_array_append_new(
-                cmd, typed_string_to_json(stringy, W_STRING_MIXED));
-            free(stringy);
+                cmd, typed_string_to_json(stringy.c_str(), W_STRING_MIXED));
+          } catch (const std::runtime_error&) {
           }
           json_array_remove(samples, 0);
           i++;
@@ -211,8 +211,6 @@ void PerfLogThread::loop() noexcept {
 }
 
 void watchman_perf_sample::log() {
-  char* dumped = NULL;
-
   if (!will_log) {
     return;
   }
@@ -239,9 +237,8 @@ void watchman_perf_sample::log() {
 #undef ADDTV
 
   // Log to the log file
-  dumped = json_dumps(info, 0);
-  w_log(W_LOG_ERR, "PERF: %s\n", dumped);
-  free(dumped);
+  auto dumped = json_dumps(info, 0);
+  watchman::log(watchman::ERR, "PERF: ", dumped, "\n");
 
   if (!cfg_get_json("perf_logger_command")) {
     return;

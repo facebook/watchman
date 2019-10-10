@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <cstdlib> /* for size_t */
 #include <unordered_map>
-
+#include <string>
 #include <atomic>
 #include <vector>
 #include "jansson_config.h"
@@ -349,7 +349,7 @@ json_ref json_load_file(const char* path, size_t flags, json_error_t* error);
 typedef int (
     *json_dump_callback_t)(const char* buffer, size_t size, void* data);
 
-char* json_dumps(const json_t* json, size_t flags);
+std::string json_dumps(const json_t* json, size_t flags);
 int json_dumpf(const json_t* json, FILE* output, size_t flags);
 int json_dump_file(const json_t* json, const char* path, size_t flags);
 int json_dump_callback(
