@@ -1,96 +1,75 @@
 /* Copyright 2017-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman_system.h"
-#include <string>
 #include "Result.h"
-#include "thirdparty/tap.h"
+#include <folly/logging/xlog.h>
+#include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
+#include <string>
 
 using namespace watchman;
 
-void test_empty() {
+TEST(Result, empty) {
   Result<bool> b;
 
-  ok(b.empty(), "default constructed and empty");
+  EXPECT_TRUE(b.empty()) << "default constructed and empty";
 
-  try {
-    b.throwIfError();
-    ok(false, "expected to throw");
-  } catch (const std::logic_error&) {
-    ok(true, "throwIfError throws logic error for empty result");
-  }
-
-  try {
-    b.value();
-    ok(false, "expected to throw");
-  } catch (const std::logic_error&) {
-    ok(true, "throwIfError throws logic error for empty result");
-  }
-
-  try {
-    b.error();
-    ok(false, "expected to throw");
-  } catch (const std::logic_error&) {
-    ok(true, "throwIfError throws logic error for empty result");
-  }
+  EXPECT_THROW(b.throwIfError(), std::logic_error);
+  EXPECT_THROW(b.value(), std::logic_error);
+  EXPECT_THROW(b.error(), std::logic_error)
+      << "error throws logic error for empty result";
 }
 
-void test_simple_value() {
+TEST(Result, simple_value) {
   auto b = makeResult(true);
 
-  ok(!b.empty(), "b is not empty");
-  ok(b.hasValue(), "b has a value");
-  ok(b.value(), "b holds true");
+  EXPECT_FALSE(b.empty());
+  EXPECT_TRUE(b.hasValue());
+  EXPECT_TRUE(b.value());
 
   Result<bool> copyOfB(b);
 
-  ok(!b.empty(), "b is not empty after being copied");
-  ok(!copyOfB.empty(), "copyOfB is not empty");
-  ok(copyOfB.hasValue(), "copyOfB has a value");
-  ok(copyOfB.value(), "copyOfB holds true");
+  EXPECT_FALSE(b.empty()) << "b is not empty after being copied";
+  EXPECT_FALSE(copyOfB.empty()) << "copyOfB is not empty";
+  EXPECT_TRUE(copyOfB.hasValue()) << "copyOfB has a value";
+  EXPECT_TRUE(copyOfB.value()) << "copyOfB holds true";
 
   Result<bool> movedB(std::move(b));
 
-  ok(b.empty(), "b empty after move");
-  ok(!movedB.empty(), "movedB is not empty");
-  ok(movedB.hasValue(), "movedB has a value");
-  ok(movedB.value(), "movedB holds true");
+  EXPECT_TRUE(b.empty()) << "b empty after move";
+  EXPECT_FALSE(movedB.empty()) << "movedB is not empty";
+  EXPECT_TRUE(movedB.hasValue()) << "movedB has a value";
+  EXPECT_TRUE(movedB.value()) << "movedB holds true";
 
   b = movedB;
-  ok(!b.empty(), "b is not empty after copying");
-  ok(b.hasValue(), "b has a value");
-  ok(b.value(), "b holds true");
+  EXPECT_FALSE(b.empty()) << "b is not empty after copying";
+  EXPECT_TRUE(b.hasValue()) << "b has a value";
+  EXPECT_TRUE(b.value()) << "b holds true";
 
   b = std::move(copyOfB);
-  ok(!b.empty(), "b is not empty after copying");
-  ok(b.hasValue(), "b has a value");
-  ok(b.value(), "b holds true");
-  ok(copyOfB.empty(), "copyOfB is empty after being moved");
+  EXPECT_FALSE(b.empty()) << "b is not empty after copying";
+  EXPECT_TRUE(b.hasValue()) << "b has a value";
+  EXPECT_TRUE(b.value()) << "b holds true";
+  EXPECT_TRUE(copyOfB.empty()) << "copyOfB is empty after being moved";
 }
 
-void test_error() {
+TEST(Result, error) {
   auto a = makeResultWith([] { return std::string("noice"); });
-  ok(a.hasValue(), "got a value");
-  ok(a.value() == "noice", "got our string out");
+  EXPECT_TRUE(a.hasValue()) << "got a value";
+  EXPECT_EQ(a.value(), "noice") << "got our string out";
   using atype = decltype(a);
   auto is_string = std::is_same<typename atype::value_type, std::string>::value;
-  ok(is_string, "a has std::string as a value type");
+  EXPECT_TRUE(is_string) << "a has std::string as a value type";
 
   auto b = makeResultWith([] { throw std::runtime_error("w00t"); });
 
-  ok(b.hasError(), "we got an exception contained");
+  EXPECT_TRUE(b.hasError()) << "we got an exception contained";
 
-  try {
-    b.throwIfError();
-    ok(false, "should not get here");
-  } catch (const std::logic_error&) {
-    ok(false, "should not have caught logic_error");
-  } catch (const std::runtime_error& exc) {
-    ok(!strcmp(exc.what(), "w00t"), "have our exception message in the error");
-  }
+  EXPECT_THROW_RE(b.throwIfError(), std::runtime_error, "w00t");
 
   using btype = decltype(b);
   auto is_unit = std::is_same<typename btype::value_type, folly::Unit>::value;
-  ok(is_unit, "b has Unit as a value type");
+  EXPECT_TRUE(is_unit) << "b has Unit as a value type";
 
   auto c = makeResultWith([] {
     if (false) {
@@ -101,34 +80,20 @@ void test_error() {
 
   using ctype = decltype(c);
   auto is_int = std::is_same<typename ctype::value_type, int>::value;
-  ok(is_int, "c has int as a value type");
+  EXPECT_TRUE(is_int) << "c has int as a value type";
 
-  ok(c.hasError(), "c has an error");
+  EXPECT_TRUE(c.hasError()) << "c has an error";
 }
 
-void test_non_exception_error_type() {
+TEST(Result, non_exception_error_type) {
   Result<std::string, int> result("hello");
 
-  ok(result.hasValue(), "has value");
-  ok(result.value() == "hello", "has hello string");
+  EXPECT_TRUE(result.hasValue()) << "has value";
+  EXPECT_EQ(result.value(), "hello");
 
   result = Result<std::string, int>(42);
-  ok(result.hasError(), "holding error");
-  ok(result.error() == 42, "holding 42");
+  EXPECT_TRUE(result.hasError()) << "holding error";
+  EXPECT_EQ(result.error(), 42) << "holding 42";
 
-  try {
-    result.throwIfError();
-    ok(false, "should not get here");
-  } catch (const std::logic_error&) {
-    ok(true, "got logic error");
-  }
-}
-
-int main() {
-  plan_tests(35);
-  test_empty();
-  test_simple_value();
-  test_error();
-  test_non_exception_error_type();
-  return exit_status();
+  EXPECT_THROW(result.throwIfError(), std::logic_error);
 }
