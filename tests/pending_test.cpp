@@ -2,7 +2,8 @@
  * Licensed under the Apache License, Version 2.0. */
 
 #include "watchman.h"
-#include "thirdparty/tap.h"
+#include <folly/logging/xlog.h>
+#include <folly/portability/GTest.h>
 
 static void build_list(
     std::vector<watchman_pending_fs>* list,
@@ -39,7 +40,7 @@ size_t process_items(PendingCollection::LockedPtr& coll) {
 }
 
 // Simulate
-static void bench_pending(void) {
+TEST(Pending, bench) {
   // These parameters give us 262140 items to track
   const size_t tree_depth = 7;
   const size_t num_files_per_dir = 8;
@@ -60,7 +61,7 @@ static void bench_pending(void) {
       tree_depth,
       num_files_per_dir,
       num_dirs_per_dir);
-  diag("built list with %u items", list.size());
+  XLOG(ERR) << "built list with " << list.size() << " items";
 
   // Benchmark insertion in top-down order.
   {
@@ -75,8 +76,8 @@ static void bench_pending(void) {
     drained = process_items(lock);
 
     gettimeofday(&end, NULL);
-    diag("took %.3fs to insert %u items into pending coll",
-         w_timeval_diff(start, end), drained);
+    XLOG(ERR) << "took " << w_timeval_diff(start, end) << "s to insert "
+              << drained << " items into pending coll";
   }
 
   // and now in reverse order; this is from the leaves of the filesystem
@@ -96,15 +97,7 @@ static void bench_pending(void) {
     drained = process_items(lock);
 
     gettimeofday(&end, NULL);
-    diag("took %.3fs to reverse insert %u items into pending coll",
-         w_timeval_diff(start, end), drained);
+    XLOG(ERR) << "took " << w_timeval_diff(start, end) << "s to reverse insert "
+              << drained << " items into pending coll";
   }
-}
-
-int main(int, char**) {
-  plan_tests(1);
-  bench_pending();
-  pass("got here");
-
-  return exit_status();
 }
