@@ -1,29 +1,25 @@
 /* Copyright 2016-present Facebook, Inc.
  * Licensed under the Apache License, Version 2.0. */
 
-#include "saved_state/LocalSavedStateInterface.h"
-#include "thirdparty/jansson/jansson.h"
-#include "thirdparty/tap.h"
 #include "watchman.h"
+#include "saved_state/LocalSavedStateInterface.h"
+#include <folly/logging/xlog.h>
+#include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
+#include "thirdparty/jansson/jansson.h"
 
 using namespace watchman;
 
 void expect_query_parse_error(
     const json_ref& config,
     const char* expectedError) {
-  try {
-    LocalSavedStateInterface interface(config, nullptr);
-    ok(false, "expected to throw %s", expectedError);
-  } catch (const QueryParseError& error) {
-    ok(true, "QueryParseError expected");
-    ok(!strcmp(error.what(), expectedError),
-       "Expected error \"%s\" and observed \"%s\"",
-       expectedError,
-       error.what());
-  }
+  EXPECT_THROW_RE(
+      LocalSavedStateInterface interface(config, nullptr),
+      QueryParseError,
+      expectedError);
 }
 
-void test_max_commits() {
+TEST(LocalSavedStateInterfaceTest, max_commits) {
   auto localStoragePath = w_string_to_json(w_string("/absolute/path"));
   auto project = w_string_to_json("foo");
   expect_query_parse_error(
@@ -46,10 +42,10 @@ void test_max_commits() {
                    {"project", project},
                    {"max-commits", json_integer(1)}}),
       nullptr);
-  ok(true, "expected constructor to succeed");
+  EXPECT_TRUE(true) << "expected constructor to succeed";
 }
 
-void test_localStoragePath() {
+TEST(LocalSavedStateInterfaceTest, localStoragePath) {
   auto project = w_string_to_json(w_string("foo"));
   expect_query_parse_error(
       json_object({{"project", project}}),
@@ -66,10 +62,10 @@ void test_localStoragePath() {
       json_object({{"project", project},
                    {"local-storage-path", w_string_to_json("/absolute/path")}}),
       nullptr);
-  ok(true, "expected constructor to succeed");
+  EXPECT_TRUE(true) << "expected constructor to succeed";
 }
 
-void test_project() {
+TEST(LocalSavedStateInterfaceTest, project) {
   auto localStoragePath = w_string_to_json("/absolute/path");
   expect_query_parse_error(
       json_object({{"local-storage-path", localStoragePath}}),
@@ -86,10 +82,10 @@ void test_project() {
       json_object({{"local-storage-path", localStoragePath},
                    {"project", w_string_to_json("foo")}}),
       nullptr);
-  ok(true, "expected constructor to succeed");
+  EXPECT_TRUE(true) << "expected constructor to succeed";
 }
 
-void test_project_metadata() {
+TEST(LocalSavedStateInterfaceTest, project_metadata) {
   auto localStoragePath = w_string_to_json("/absolute/path");
   expect_query_parse_error(
       json_object({{"local-storage-path", localStoragePath},
@@ -101,10 +97,10 @@ void test_project_metadata() {
                    {"project", w_string_to_json("foo")},
                    {"project-metadata", w_string_to_json("meta")}}),
       nullptr);
-  ok(true, "expected constructor to succeed");
+  EXPECT_TRUE(true) << "expected constructor to succeed";
 }
 
-void test_path() {
+TEST(LocalSavedStateInterfaceTest, path) {
   auto localStoragePath = w_string_to_json("/absolute/path");
   LocalSavedStateInterface interface(
       json_object({{"local-storage-path", localStoragePath},
@@ -112,10 +108,7 @@ void test_path() {
       nullptr);
   auto path = interface.getLocalPath("hash");
   auto expectedPath = "/absolute/path/foo/hash";
-  ok(!strcmp(path.c_str(), expectedPath),
-     "Expected path to be \"%s\" but observed \"%s\"",
-     expectedPath,
-     path.c_str());
+  EXPECT_EQ(path, expectedPath);
   interface = LocalSavedStateInterface(
       json_object({{"local-storage-path", localStoragePath},
                    {"project", w_string_to_json("foo")},
@@ -123,19 +116,5 @@ void test_path() {
       nullptr);
   path = interface.getLocalPath("hash");
   expectedPath = "/absolute/path/foo/hash_meta";
-  ok(!strcmp(path.c_str(), expectedPath),
-     "Expected path to be \"%s\" but observed \"%s\"",
-     expectedPath,
-     path.c_str());
-}
-
-int main(int, char**) {
-  plan_tests(26);
-  test_max_commits();
-  test_localStoragePath();
-  test_project();
-  test_project_metadata();
-  test_path();
-
-  return exit_status();
+  EXPECT_EQ(path, expectedPath);
 }
