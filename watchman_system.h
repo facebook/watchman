@@ -9,6 +9,11 @@
 #endif
 #define __STDC_LIMIT_MACROS
 #define __STDC_FORMAT_MACROS
+// This header plays tricks with posix IO functions and
+// can result in ambiguous overloads on Windows if io.h
+// is included before this header, so we pull it in early.
+#include <folly/portability/Unistd.h>
+
 #include "config.h"
 #include <folly/portability/SysTypes.h>
 
@@ -28,7 +33,6 @@
 #endif
 #define EX_USAGE 1
 #include <errno.h>
-#include <io.h>
 #include <process.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -95,9 +99,6 @@ size_t backtrace_from_exception(
 #endif
 
 #include <assert.h>
-#if HAVE_UNISTD_H
-#include <unistd.h>
-#endif
 #include <ctype.h>
 #include <stdint.h>
 #include <sys/stat.h>

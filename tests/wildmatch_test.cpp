@@ -3,60 +3,43 @@
 
 #include "watchman_system.h"
 
+#include <folly/portability/GTest.h>
 #include "thirdparty/jansson/jansson.h"
 #include "thirdparty/wildmatch/wildmatch.h"
-#include "thirdparty/tap.h"
 
 #define WILDMATCH_TEST_JSON_FILE "tests/wildmatch_test.json"
 
-static void run_test(json_t *test_case_data)
-{
+static void run_test(json_t* test_case_data) {
   int wildmatch_should_succeed;
   int wildmatch_flags;
-  char *text_to_match;
-  char *pattern_to_use;
+  char* text_to_match;
+  char* pattern_to_use;
   int wildmatch_succeeded;
 
   json_error_t error;
-  if (json_unpack_ex(
-        test_case_data,
-        &error,
-        0,
-        "[b,i,s,s]",
-        &wildmatch_should_succeed,
-        &wildmatch_flags,
-        &text_to_match,
-        &pattern_to_use) == -1) {
-    fail(
-      "Error decoding JSON: %s (source=%s, line=%d, col=%d)\n",
-      error.text,
-      error.source,
-      error.line,
-      error.column);
-    return;
-  }
+  EXPECT_NE(
+      json_unpack_ex(
+          test_case_data,
+          &error,
+          0,
+          "[b,i,s,s]",
+          &wildmatch_should_succeed,
+          &wildmatch_flags,
+          &text_to_match,
+          &pattern_to_use),
+      -1)
+      << "Error decoding JSON: " << error.text << " source=" << error.source
+      << " line=" << error.line << " col=" << error.column;
 
   wildmatch_succeeded =
-    wildmatch(pattern_to_use, text_to_match, wildmatch_flags, 0) == WM_MATCH;
-  if (wildmatch_should_succeed) {
-    ok(
-      wildmatch_succeeded,
-      "Pattern [%s] should match text [%s] with flags %d",
-      pattern_to_use,
-      text_to_match,
-      wildmatch_flags);
-  } else {
-    ok(
-      !wildmatch_succeeded,
-      "Pattern [%s] should not match text [%s] with flags %d",
-      pattern_to_use,
-      text_to_match,
-      wildmatch_flags);
-  }
+      wildmatch(pattern_to_use, text_to_match, wildmatch_flags, 0) == WM_MATCH;
+  EXPECT_EQ(wildmatch_succeeded, wildmatch_should_succeed)
+      << "Pattern [" << pattern_to_use << "] matching text [" << text_to_match
+      << "] with flags " << wildmatch_flags;
 }
 
-int main(int, char**) {
-  FILE *test_cases_file;
+TEST(WildMatch, tests) {
+  FILE* test_cases_file;
   json_error_t error;
   size_t num_tests;
   size_t index;
@@ -72,32 +55,29 @@ int main(int, char**) {
     test_cases_file = fopen("watchman/" WILDMATCH_TEST_JSON_FILE, "r");
   }
   if (!test_cases_file) {
-    diag("Couldn't open %s: %s\n", WILDMATCH_TEST_JSON_FILE, strerror(errno));
-    abort();
+    throw std::runtime_error(watchman::to<std::string>(
+        "Couldn't open ", WILDMATCH_TEST_JSON_FILE, ": ", strerror(errno)));
   }
   auto test_cases = json_loadf(test_cases_file, 0, &error);
   if (!test_cases) {
-    diag(
-      "Error decoding JSON: %s (source=%s, line=%d, col=%d)\n",
-      error.text,
-      error.source,
-      error.line,
-      error.column);
-    abort();
+    throw std::runtime_error(watchman::to<std::string>(
+        "Error decoding JSON: ",
+        error.text,
+        " (source=",
+        error.source,
+        ", line=",
+        error.line,
+        ", col=",
+        error.column,
+        ")"));
   }
-  if (fclose(test_cases_file) != 0) {
-    diag("Error closing %s: %s\n", WILDMATCH_TEST_JSON_FILE, strerror(errno));
-    abort();
-  }
-  if (!test_cases.isArray()) {
-    diag("Expected JSON in %s to be an array\n", WILDMATCH_TEST_JSON_FILE);
-    abort();
-  }
+  EXPECT_EQ(fclose(test_cases_file), 0);
+  EXPECT_TRUE(test_cases.isArray())
+      << "Expected JSON in " << WILDMATCH_TEST_JSON_FILE << "  to be an array";
+
   num_tests = json_array_size(test_cases);
-  plan_tests((unsigned int)num_tests);
   for (index = 0; index < num_tests; index++) {
     auto test_case_data = json_array_get(test_cases, index);
     run_test(test_case_data);
   }
-  return exit_status();
 }

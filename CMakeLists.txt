@@ -85,6 +85,12 @@ set(PACKAGE_STRING    "${PACKAGE_NAME} ${PACKAGE_VERSION}")
 set(PACKAGE_TARNAME   "${PACKAGE_NAME}-${PACKAGE_VERSION}")
 set(PACKAGE_BUGREPORT "https://github.com/facebook/watchman/issues")
 project(${PACKAGE_NAME} CXX C)
+
+find_package(GMock MODULE REQUIRED)
+include_directories(${GMOCK_INCLUDEDIR} ${LIBGMOCK_INCLUDE_DIR})
+include(GoogleTest)
+enable_testing()
+
 include(FBThriftCppLibrary)
 include(CheckFunctionExists)
 include(CheckIncludeFiles)
@@ -185,7 +191,6 @@ foreach(wat_header
     sys/ucred.h
     sys/vfs.h
     valgrind/valgrind.h
-    unistd.h
 )
   CHECK_INCLUDE_FILES(${wat_header} have_${wat_header})
   if (have_${wat_header})
@@ -647,7 +652,9 @@ function(t_test NAME)
   add_executable(${NAME}.t ${ARGN})
   target_link_libraries(
     ${NAME}.t
-    testsupport tap wildmatch third_party_deps)
+    testsupport tap wildmatch third_party_deps
+    ${LIBGMOCK_LIBRARIES}
+  )
   target_compile_definitions(${NAME}.t
     PUBLIC WATCHMAN_TEST_SRC_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
   add_test(NAME ${NAME} COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${NAME}.t)
@@ -681,6 +688,7 @@ t_test(string tests/string_test.cpp tests/log_stub.cpp)
 t_test(log tests/log.cpp)
 t_test(bser tests/bser.cpp tests/log_stub.cpp)
 t_test(wildmatch tests/wildmatch_test.cpp tests/log_stub.cpp)
+gtest_discover_tests(wildmatch.t)
 t_test(childproc tests/childproc.cpp tests/log_stub.cpp)
 t_test(result tests/ResultTest.cpp tests/log_stub.cpp)
 t_test(cache tests/CacheTest.cpp tests/log_stub.cpp)
