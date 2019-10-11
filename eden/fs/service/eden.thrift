@@ -4,6 +4,7 @@
  * This software may be used and distributed according to the terms of the
  * GNU General Public License version 2.
  */
+
 include "eden/fs/config/eden_config.thrift"
 include "fb303/thrift/fb303_core.thrift"
 
