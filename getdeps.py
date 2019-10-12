@@ -278,6 +278,8 @@ def run_cmd(cmd, env=None, cwd=None, allow_fail=False):
 
 
 def install_apt(pkgs):
+    cmd = ["sudo", "apt-get", "update", "-yq"]
+    run_cmd(cmd)
     cmd = ["sudo", "apt-get", "install", "-yq"] + pkgs
     run_cmd(cmd)
 
