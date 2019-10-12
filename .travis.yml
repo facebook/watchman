@@ -1,80 +1,19 @@
 language: c
 
-# use container infra for linux
-dist: xenial
-sudo: false
-
-addons:
-  apt:
-    sources:
-      - deadsnakes
-      - ubuntu-toolchain-r-test
-    packages:
-      - cmake
-      - python2.7
-      - python2.7-dev
-      - python3.5
-      - python3.5-dev
-      - python3.6
-      - python3.6-dev
-      - gcc-5
-      - g++-5
-      - gcc-6
-      - g++-6
-      - autoconf-archive
-      - bison
-      - build-essential
-      - ccache
-      - cmake
-      - curl
-      - flex
-      - git
-      - gperf
-      - joe
-      - libboost-all-dev
-      - libcap-dev
-      - libdouble-conversion-dev
-      - libevent-dev
-      - libgflags-dev
-      - libgoogle-glog-dev
-      - libpthread-stubs0-dev
-      - libkrb5-dev
-      - libpcre3-dev
-      - libnuma-dev
-      - libsasl2-dev
-      - libsnappy-dev
-      - libsqlite3-dev
-      - libssl-dev
-      - libtool
-      - netcat-openbsd
-      - pkg-config
-      - sudo
-      - unzip
-      - wget
-#      - ruby
-#      - rubygems
+dist: bionic
 
 branches:
   only:
     - master
 
-os: osx
-
-
 matrix:
   include:
-    - os: osx
-      osx_image: xcode10.1
+    - os: linux
       env: TRAVIS_PYTHON=python2.7
     - os: linux
-      env: CXX=g++-6 TRAVIS_PYTHON=python3.6
-      compiler: gcc-6
+      env: TRAVIS_PYTHON=python3.6
     - os: linux
-      env: CXX=g++-5 TRAVIS_PYTHON=python3.5
-      compiler: gcc-5
-    - os: linux
-      env: CXX=g++-6 TRAVIS_PYTHON=python2.7
-      compiler: gcc-6
+      env: TRAVIS_PYTHON=python3.7
 
 before_script: ./travis/deps.sh
 
