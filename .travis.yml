@@ -15,6 +15,9 @@ matrix:
     - os: linux
       env: TRAVIS_PYTHON=python3.7
 
-before_script: ./travis/deps.sh
+#before_script: ./travis/deps.sh
 
-script: ./travis/run.sh
+script:
+  - ./autogen.sh
+  - make
+# ./travis/run.sh
