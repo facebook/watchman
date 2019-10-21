@@ -16,7 +16,6 @@
 
 #include "jansson.h"
 #include "jansson_private.h"
-#include "strbuffer.h"
 #include "utf.h"
 
 #define MAX_INTEGER_STR_LENGTH 100

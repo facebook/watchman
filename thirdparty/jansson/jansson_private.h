@@ -13,7 +13,6 @@
 #include <unordered_map>
 #include <vector>
 #include "jansson.h"
-#include "strbuffer.h"
 
 /* va_copy is a C99 feature. In C89 implementations, it's sometimes
    available as __va_copy. If not, memcpy() should do the trick. */

@@ -443,7 +443,6 @@ thirdparty/jansson/error.cpp
 thirdparty/jansson/load.cpp
 thirdparty/jansson/memory.cpp
 thirdparty/jansson/pack_unpack.cpp
-thirdparty/jansson/strbuffer.cpp
 thirdparty/jansson/strconv.cpp
 thirdparty/jansson/value.cpp
 )

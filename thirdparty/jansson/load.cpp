@@ -17,7 +17,6 @@
 
 #include "jansson.h"
 #include "jansson_private.h"
-#include "strbuffer.h"
 #include "utf.h"
 
 #define STREAM_STATE_OK 0
