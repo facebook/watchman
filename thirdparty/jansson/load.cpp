@@ -61,17 +61,11 @@ struct lex_t {
   stream_t stream;
   std::string saved_text;
   int token;
-  union {
-    char* string;
+  struct {
+    std::string string;
     json_int_t integer;
     double real;
   } value;
-
-  ~lex_t() {
-    if (token == TOKEN_STRING) {
-      jsonp_free(value.string);
-    }
-  }
 };
 }
 
@@ -288,7 +282,7 @@ static void lex_scan_string(lex_t* lex, json_error_t* error) {
   char* t;
   int i;
 
-  lex->value.string = nullptr;
+  lex->value.string.clear();
   lex->token = TOKEN_INVALID;
 
   c = lex_get_save(lex, error);
@@ -338,14 +332,10 @@ static void lex_scan_string(lex_t* lex, json_error_t* error) {
        - two \uXXXX escapes (length 12) forming an UTF-16 surrogate pair
          are converted to 4 bytes
   */
-  lex->value.string = (char*)jsonp_malloc(lex->saved_text.size() + 1);
-  if (!lex->value.string) {
-    /* this is not very nice, since TOKEN_INVALID is returned */
-    goto out;
-  }
+  lex->value.string.resize(lex->saved_text.size() + 1);
 
   /* the target */
-  t = lex->value.string;
+  t = &lex->value.string[0];
 
   /* + 1 to skip the " */
   p = lex->saved_text.c_str() + 1;
@@ -434,7 +424,7 @@ static void lex_scan_string(lex_t* lex, json_error_t* error) {
   return;
 
 out:
-  jsonp_free(lex->value.string);
+  lex->value.string.clear();
 }
 
 #if JSON_INTEGER_IS_LONG_LONG
@@ -544,8 +534,7 @@ static int lex_scan(lex_t* lex, json_error_t* error) {
   lex->saved_text.clear();
 
   if (lex->token == TOKEN_STRING) {
-    jsonp_free(lex->value.string);
-    lex->value.string = nullptr;
+    lex->value.string.clear();
   }
 
   c = lex_get(lex, error);
@@ -606,11 +595,10 @@ out:
   return lex->token;
 }
 
-static char* lex_steal_string(lex_t* lex) {
-  char* result = nullptr;
+static std::string lex_steal_string(lex_t* lex) {
+  std::string result;
   if (lex->token == TOKEN_STRING) {
-    result = lex->value.string;
-    lex->value.string = nullptr;
+    std::swap(result, lex->value.string);
   }
   return result;
 }
@@ -634,7 +622,6 @@ static json_ref parse_object(lex_t* lex, size_t flags, json_error_t* error) {
     return object;
 
   while (1) {
-    char* key;
     json_ref value;
 
     if (lex->token != TOKEN_STRING) {
@@ -642,13 +629,13 @@ static json_ref parse_object(lex_t* lex, size_t flags, json_error_t* error) {
       return nullptr;
     }
 
-    key = lex_steal_string(lex);
-    if (!key)
+    auto key = lex_steal_string(lex);
+    if (key.empty()) {
       return nullptr;
+    }
 
     if (flags & JSON_REJECT_DUPLICATES) {
-      if (json_object_get(object, key)) {
-        jsonp_free(key);
+      if (json_object_get(object, key.c_str())) {
         error_set(error, lex, "duplicate object key");
         return nullptr;
       }
@@ -656,7 +643,6 @@ static json_ref parse_object(lex_t* lex, size_t flags, json_error_t* error) {
 
     lex_scan(lex, error);
     if (lex->token != ':') {
-      jsonp_free(key);
       error_set(error, lex, "':' expected");
       return nullptr;
     }
@@ -664,16 +650,12 @@ static json_ref parse_object(lex_t* lex, size_t flags, json_error_t* error) {
     lex_scan(lex, error);
     value = parse_value(lex, flags, error);
     if (!value) {
-      jsonp_free(key);
       return nullptr;
     }
 
-    if (json_object_set_nocheck(object, key, value)) {
-      jsonp_free(key);
+    if (json_object_set_nocheck(object, key.c_str(), value)) {
       return nullptr;
     }
-
-    jsonp_free(key);
 
     lex_scan(lex, error);
     if (lex->token != ',')
@@ -731,7 +713,7 @@ static json_ref parse_value(lex_t* lex, size_t flags, json_error_t* error) {
 
   switch (lex->token) {
     case TOKEN_STRING: {
-      json = typed_string_to_json(lex->value.string, W_STRING_BYTE);
+      json = typed_string_to_json(lex->value.string.c_str(), W_STRING_BYTE);
       break;
     }
 
