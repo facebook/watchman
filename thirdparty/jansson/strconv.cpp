@@ -25,19 +25,18 @@
     this way. Multi-threaded programs should use uselocale() instead.
 */
 
-static void to_locale(strbuffer_t* strbuffer) {
-  const char* point;
-  char* pos;
+static void to_locale(std::string& strbuffer) {
+  const char* point = localeconv()->decimal_point;
 
-  point = localeconv()->decimal_point;
   if (*point == '.') {
     /* No conversion needed */
     return;
   }
 
-  pos = strchr(strbuffer->value, '.');
-  if (pos)
-    *pos = *point;
+  auto pos = strbuffer.find('.');
+  if (pos != std::string::npos) {
+    strbuffer.replace(pos, 1, point);
+  }
 }
 
 static void from_locale(char* buffer) {
@@ -56,7 +55,7 @@ static void from_locale(char* buffer) {
 }
 #endif
 
-int jsonp_strtod(strbuffer_t* strbuffer, double* out) {
+int jsonp_strtod(std::string& strbuffer, double* out) {
   double value;
   char* end;
 
@@ -65,8 +64,8 @@ int jsonp_strtod(strbuffer_t* strbuffer, double* out) {
 #endif
 
   errno = 0;
-  value = strtod(strbuffer->value, &end);
-  assert(end == strbuffer->value + strbuffer->length);
+  value = strtod(strbuffer.c_str(), &end);
+  assert(end == strbuffer.c_str() + strbuffer.size());
 
   if (errno == ERANGE && value != 0) {
     /* Overflow */

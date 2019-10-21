@@ -103,7 +103,7 @@ void jsonp_error_vset(
     va_list ap);
 
 /* Locale independent string<->double conversions */
-int jsonp_strtod(strbuffer_t* strbuffer, double* out);
+int jsonp_strtod(std::string& strbuffer, double* out);
 int jsonp_dtostr(char* buffer, size_t size, double value);
 
 /* Wrappers for custom memory functions */

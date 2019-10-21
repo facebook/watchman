@@ -46,6 +46,7 @@
    behaviour of fgetc(). */
 typedef int (*get_func)(void* data);
 
+namespace {
 typedef struct {
   get_func get;
   void* data;
@@ -57,16 +58,23 @@ typedef struct {
   size_t position;
 } stream_t;
 
-typedef struct {
+struct lex_t {
   stream_t stream;
-  strbuffer_t saved_text;
+  std::string saved_text;
   int token;
   union {
     char* string;
     json_int_t integer;
     double real;
   } value;
-} lex_t;
+
+  ~lex_t() {
+    if (token == TOKEN_STRING) {
+      jsonp_free(value.string);
+    }
+  }
+};
+}
 
 inline lex_t* stream_to_lex(stream_t* stream) {
   return reinterpret_cast<lex_t*>(stream);
@@ -93,14 +101,13 @@ error_set(json_error_t* error, const lex_t* lex, const char* msg, ...) {
   va_end(ap);
 
   if (lex) {
-    const char* saved_text = strbuffer_value(&lex->saved_text);
-
     line = lex->stream.line;
     col = lex->stream.column;
     pos = lex->stream.position;
 
-    if (saved_text && saved_text[0]) {
-      if (lex->saved_text.length <= 20) {
+    if (!lex->saved_text.empty()) {
+      if (lex->saved_text.size() <= 20) {
+        auto* saved_text = lex->saved_text.c_str();
         snprintf(
             msg_with_context,
             JSON_ERROR_TEXT_LENGTH,
@@ -222,7 +229,7 @@ static int lex_get(lex_t* lex, json_error_t* error) {
 }
 
 static void lex_save(lex_t* lex, int c) {
-  strbuffer_append_byte(&lex->saved_text, c);
+  lex->saved_text.push_back(c);
 }
 
 static int lex_get_save(lex_t* lex, json_error_t* error) {
@@ -238,9 +245,9 @@ static void lex_unget(lex_t* lex, int c) {
 
 static void lex_unget_unsave(lex_t* lex, int c) {
   if (c != STREAM_STATE_EOF && c != STREAM_STATE_ERROR) {
-    char d;
     stream_unget(&lex->stream, c);
-    d = strbuffer_pop(&lex->saved_text);
+    auto d = lex->saved_text.back();
+    lex->saved_text.pop_back();
     assert(c == d);
   }
 }
@@ -294,9 +301,7 @@ static void lex_scan_string(lex_t* lex, json_error_t* error) {
     else if (c == STREAM_STATE_EOF) {
       error_set(error, lex, "premature end of input");
       goto out;
-    }
-
-    else if (0 <= c && c <= 0x1F) {
+    } else if (0 <= c && c <= 0x1F) {
       /* control character */
       lex_unget_unsave(lex, c);
       if (c == '\n')
@@ -304,9 +309,7 @@ static void lex_scan_string(lex_t* lex, json_error_t* error) {
       else
         error_set(error, lex, "control character 0x%x", c);
       goto out;
-    }
-
-    else if (c == '\\') {
+    } else if (c == '\\') {
       c = lex_get_save(lex, error);
       if (c == 'u') {
         c = lex_get_save(lex, error);
@@ -336,7 +339,7 @@ static void lex_scan_string(lex_t* lex, json_error_t* error) {
        - two \uXXXX escapes (length 12) forming an UTF-16 surrogate pair
          are converted to 4 bytes
   */
-  lex->value.string = (char*)jsonp_malloc(lex->saved_text.length + 1);
+  lex->value.string = (char*)jsonp_malloc(lex->saved_text.size() + 1);
   if (!lex->value.string) {
     /* this is not very nice, since TOKEN_INVALID is returned */
     goto out;
@@ -346,7 +349,7 @@ static void lex_scan_string(lex_t* lex, json_error_t* error) {
   t = lex->value.string;
 
   /* + 1 to skip the " */
-  p = strbuffer_value(&lex->saved_text) + 1;
+  p = lex->saved_text.c_str() + 1;
 
   while (*p != '"') {
     if (*p == '\\') {
@@ -446,7 +449,6 @@ out:
 #endif
 
 static int lex_scan_number(lex_t* lex, int c, json_error_t* error) {
-  const char* saved_text;
   char* end;
 
   lex->token = TOKEN_INVALID;
@@ -474,7 +476,7 @@ static int lex_scan_number(lex_t* lex, int c, json_error_t* error) {
 
     lex_unget_unsave(lex, c);
 
-    saved_text = strbuffer_value(&lex->saved_text);
+    auto saved_text = lex->saved_text.c_str();
 
     errno = 0;
     value = json_strtoint(saved_text, &end, 10);
@@ -486,7 +488,7 @@ static int lex_scan_number(lex_t* lex, int c, json_error_t* error) {
       goto out;
     }
 
-    assert(end == saved_text + lex->saved_text.length);
+    assert(end == saved_text + lex->saved_text.size());
 
     lex->token = TOKEN_INTEGER;
     lex->value.integer = value;
@@ -524,7 +526,7 @@ static int lex_scan_number(lex_t* lex, int c, json_error_t* error) {
   lex_unget_unsave(lex, c);
 
   double value;
-  if (jsonp_strtod(&lex->saved_text, &value)) {
+  if (jsonp_strtod(lex->saved_text, &value)) {
     error_set(error, lex, "real number overflow");
     goto out;
   }
@@ -540,7 +542,7 @@ out:
 static int lex_scan(lex_t* lex, json_error_t* error) {
   int c;
 
-  strbuffer_clear(&lex->saved_text);
+  lex->saved_text.clear();
 
   if (lex->token == TOKEN_STRING) {
     jsonp_free(lex->value.string);
@@ -576,14 +578,13 @@ static int lex_scan(lex_t* lex, json_error_t* error) {
 
   else if (l_isalpha(c)) {
     /* eat up the whole identifier for clearer error messages */
-    const char* saved_text;
 
     c = lex_get_save(lex, error);
     while (l_isalpha(c))
       c = lex_get_save(lex, error);
     lex_unget_unsave(lex, c);
 
-    saved_text = strbuffer_value(&lex->saved_text);
+    auto saved_text = lex->saved_text.c_str();
 
     if (strcmp(saved_text, "true") == 0)
       lex->token = TOKEN_TRUE;
@@ -617,17 +618,9 @@ static char* lex_steal_string(lex_t* lex) {
 
 static int lex_init(lex_t* lex, get_func get, void* data) {
   stream_init(&lex->stream, get, data);
-  if (strbuffer_init(&lex->saved_text))
-    return -1;
 
   lex->token = TOKEN_INVALID;
   return 0;
-}
-
-static void lex_close(lex_t* lex) {
-  if (lex->token == TOKEN_STRING)
-    jsonp_free(lex->value.string);
-  strbuffer_close(&lex->saved_text);
 }
 
 /*** parser ***/
@@ -855,7 +848,6 @@ json_ref json_loads(const char* string, size_t flags, json_error_t* error) {
 
   auto result = parse_json(&lex, flags, error);
 
-  lex_close(&lex);
   return result;
 }
 
@@ -900,7 +892,6 @@ json_ref json_loadb(
 
   auto result = parse_json(&lex, flags, error);
 
-  lex_close(&lex);
   return result;
 }
 
@@ -925,7 +916,6 @@ json_ref json_loadf(FILE* input, size_t flags, json_error_t* error) {
 
   auto result = parse_json(&lex, flags, error);
 
-  lex_close(&lex);
   return result;
 }
 
