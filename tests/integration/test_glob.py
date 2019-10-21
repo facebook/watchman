@@ -184,3 +184,36 @@ class TestGlob(WatchmanTestCase.WatchmanTestCase):
             "All globs must be relative paths",
             str(ctx.exception),
         )
+
+    def test_case_sensitive(self):
+        root = self.mkdtemp()
+
+        os.mkdir(os.path.join(root, "Hello"))
+        self.touchRelative(root, "hello.c")
+
+        self.watchmanCommand("watch", root)
+
+        expect_sensitive = ["Hello"]
+        expect_insensitive = ["Hello", "hello.c"]
+
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {"fields": ["name"], "glob": ["Hello*"], "case_sensitive": True},
+        )
+        self.assertFileListsEqual(res["files"], expect_sensitive)
+
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {"fields": ["name"], "glob": ["Hello*"], "case_sensitive": False},
+        )
+        self.assertFileListsEqual(res["files"], expect_insensitive)
+
+        res = self.watchmanCommand(
+            "query", root, {"fields": ["name"], "glob": ["Hello*"]}
+        )
+        self.assertFileListsEqual(
+            res["files"],
+            expect_insensitive if self.isCaseInsensitive() else expect_sensitive,
+        )

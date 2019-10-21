@@ -373,8 +373,8 @@ void InMemoryView::globGeneratorTree(
                   ctx->query->glob_flags |
                       (ctx->query->case_sensitive ==
                                CaseSensitivity::CaseSensitive
-                           ? WM_CASEFOLD
-                           : 0),
+                           ? 0
+                           : WM_CASEFOLD),
                   0) == WM_MATCH) {
             w_query_process_file(
                 ctx->query,
