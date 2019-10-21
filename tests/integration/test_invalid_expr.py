@@ -46,7 +46,7 @@ class TestInvalidExpr(WatchmanTestCase.WatchmanTestCase):
             )
 
         self.assertIn(
-            ("failed to parse query: sync_timeout " "must be an integer value >= 0"),
+            "failed to parse query: sync_timeout must be an integer value >= 0",
             str(ctx.exception),
         )
 

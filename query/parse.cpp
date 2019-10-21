@@ -225,11 +225,14 @@ static void parse_request_id(w_query* res, const json_ref& query) {
 }
 
 static void parse_sync(w_query* res, const json_ref& query) {
-  int value = DEFAULT_QUERY_SYNC_MS.count();
+  auto sync_timeout = query.get_default(
+      "sync_timeout", json_integer(DEFAULT_QUERY_SYNC_MS.count()));
 
-  if (query && json_unpack(query, "{s?:i*}", "sync_timeout", &value) != 0) {
+  if (!sync_timeout.isInt()) {
     throw QueryParseError("sync_timeout must be an integer value >= 0");
   }
+
+  auto value = sync_timeout.asInt();
 
   if (value < 0) {
     throw QueryParseError("sync_timeout must be an integer value >= 0");
@@ -239,11 +242,14 @@ static void parse_sync(w_query* res, const json_ref& query) {
 }
 
 static void parse_lock_timeout(w_query* res, const json_ref& query) {
-  int value = DEFAULT_QUERY_SYNC_MS.count();
+  auto lock_timeout = query.get_default(
+      "lock_timeout", json_integer(DEFAULT_QUERY_SYNC_MS.count()));
 
-  if (query && json_unpack(query, "{s?:i*}", "lock_timeout", &value) != 0) {
+  if (!lock_timeout.isInt()) {
     throw QueryParseError("lock_timeout must be an integer value >= 0");
   }
+
+  auto value = lock_timeout.asInt();
 
   if (value < 0) {
     throw QueryParseError("lock_timeout must be an integer value >= 0");
@@ -255,24 +261,24 @@ static void parse_lock_timeout(w_query* res, const json_ref& query) {
 W_CAP_REG("dedup_results")
 
 static void parse_dedup(w_query* res, const json_ref& query) {
-  int value = 0;
+  auto dedup_results = query.get_default("dedup_results", json_false());
 
-  if (query && json_unpack(query, "{s?:b*}", "dedup_results", &value) != 0) {
+  if (!dedup_results.isBool()) {
     throw QueryParseError("dedup_results must be a boolean");
   }
 
-  res->dedup_results = (bool)value;
+  res->dedup_results = dedup_results.asBool();
 }
 
 static void parse_empty_on_fresh_instance(w_query* res, const json_ref& query) {
-  int value = 0;
+  auto empty_on_fresh_instance =
+      query.get_default("empty_on_fresh_instance", json_false());
 
-  if (query &&
-      json_unpack(query, "{s?:b*}", "empty_on_fresh_instance", &value) != 0) {
+  if (!empty_on_fresh_instance.isBool()) {
     throw QueryParseError("empty_on_fresh_instance must be a boolean");
   }
 
-  res->empty_on_fresh_instance = (bool)value;
+  res->empty_on_fresh_instance = empty_on_fresh_instance.asBool();
 }
 
 static void parse_benchmark(w_query* res, const json_ref& query) {
@@ -291,14 +297,17 @@ static void parse_case_sensitive(
     w_query* res,
     const std::shared_ptr<w_root_t>& root,
     const json_ref& query) {
-  int value = root->case_sensitive == CaseSensitivity::CaseSensitive;
+  auto case_sensitive = query.get_default(
+      "case_sensitive",
+      json_boolean(root->case_sensitive == CaseSensitivity::CaseSensitive));
 
-  if (query && json_unpack(query, "{s?:b*}", "case_sensitive", &value) != 0) {
+  if (!case_sensitive.isBool()) {
     throw QueryParseError("case_sensitive must be a boolean");
   }
 
-  res->case_sensitive =
-      value ? CaseSensitivity::CaseSensitive : CaseSensitivity::CaseInSensitive;
+  res->case_sensitive = case_sensitive.asBool()
+      ? CaseSensitivity::CaseSensitive
+      : CaseSensitivity::CaseInSensitive;
 }
 
 std::shared_ptr<w_query> w_query_parse(
