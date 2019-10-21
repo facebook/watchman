@@ -105,11 +105,6 @@ void jsonp_error_vset(
 int jsonp_strtod(std::string& strbuffer, double* out);
 int jsonp_dtostr(char* buffer, size_t size, double value);
 
-/* Wrappers for custom memory functions */
-void* jsonp_malloc(size_t size);
-void jsonp_free(void* ptr);
-char* jsonp_strdup(const char* str);
-
 /* Windows compatibility */
 #ifdef _WIN32
 #define snprintf _snprintf

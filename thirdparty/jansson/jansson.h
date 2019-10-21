@@ -358,11 +358,4 @@ int json_dump_callback(
     void* data,
     size_t flags);
 
-/* custom memory allocation */
-
-typedef void* (*json_malloc_t)(size_t);
-typedef void (*json_free_t)(void*);
-
-void json_set_alloc_funcs(json_malloc_t malloc_fn, json_free_t free_fn);
-
 #endif
