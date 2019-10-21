@@ -206,9 +206,9 @@ bool w_getopt(
         if (o->argtype != OPT_NONE && o->val && optarg) {
           switch (o->argtype) {
             case REQ_INT: {
-              auto ival = json_integer(atoi(optarg));
-              *(int*)o->val = (int)json_integer_value(ival);
-              cfg_set_arg(o->optname, ival);
+              auto ival = atoi(optarg);
+              *(int*)o->val = ival;
+              cfg_set_arg(o->optname, json_integer(ival));
               break;
             }
             case REQ_STRING: {

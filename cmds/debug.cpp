@@ -71,7 +71,7 @@ static void cmd_debug_ageout(
 
   auto root = resolveRoot(client, args);
 
-  std::chrono::seconds min_age(json_integer_value(json_array_get(args, 2)));
+  std::chrono::seconds min_age(json_array_get(args, 2).asInt());
 
   auto resp = make_response();
 

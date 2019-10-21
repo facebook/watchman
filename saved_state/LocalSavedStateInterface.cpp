@@ -21,7 +21,7 @@ LocalSavedStateInterface::LocalSavedStateInterface(
     if (!maxCommits.isInt()) {
       throw QueryParseError("'max-commits' must be an integer");
     }
-    maxCommits_ = json_integer_value(maxCommits);
+    maxCommits_ = maxCommits.asInt();
     if (maxCommits_ < 1) {
       throw QueryParseError("'max-commits' must be a positive integer");
     }

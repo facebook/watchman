@@ -606,6 +606,10 @@ json_int_t json_integer_value(const json_t* json) {
   return json_to_integer(json)->value;
 }
 
+json_int_t json_ref::asInt() const {
+  return json_integer_value(ref_);
+}
+
 int json_integer_set(json_t* json, json_int_t value) {
   if (!json_is_integer(json))
     return -1;

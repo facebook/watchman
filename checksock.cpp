@@ -50,7 +50,7 @@ void check_my_sock(watchman_stream* client) {
         "\n");
     /* NOTREACHED */
   }
-  auto remote_pid = json_integer_value(pid);
+  auto remote_pid = pid.asInt();
 
   if (remote_pid != my_pid) {
     log(watchman::FATAL,

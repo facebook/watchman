@@ -290,8 +290,7 @@ watchman_trigger_command::watchman_trigger_command(
   }
 
   // unlimited unless specified
-  auto ival =
-      json_integer_value(trig.get_default("max_files_stdin", json_integer(0)));
+  auto ival = trig.get_default("max_files_stdin", json_integer(0)).asInt();
   if (ival < 0) {
     *errmsg = strdup("max_files_stdin must be >= 0");
     return;

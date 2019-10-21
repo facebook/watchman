@@ -59,6 +59,18 @@ struct json_t {
   json_t(json_type type, SingletonHack&&);
 };
 
+#if JSON_INTEGER_IS_LONG_LONG
+#ifdef _WIN32
+#define JSON_INTEGER_FORMAT "I64d"
+#else
+#define JSON_INTEGER_FORMAT "lld"
+#endif
+typedef long long json_int_t;
+#else
+#define JSON_INTEGER_FORMAT "ld"
+typedef long json_int_t;
+#endif /* JSON_INTEGER_IS_LONG_LONG */
+
 class json_ref {
   json_t* ref_;
 
@@ -172,19 +184,8 @@ class json_ref {
   }
 
   bool asBool() const;
+  json_int_t asInt() const;
 };
-
-#if JSON_INTEGER_IS_LONG_LONG
-#ifdef _WIN32
-#define JSON_INTEGER_FORMAT "I64d"
-#else
-#define JSON_INTEGER_FORMAT "lld"
-#endif
-typedef long long json_int_t;
-#else
-#define JSON_INTEGER_FORMAT "ld"
-typedef long json_int_t;
-#endif /* JSON_INTEGER_IS_LONG_LONG */
 
 inline json_type json_typeof(const json_t* json) {
   return json->type;

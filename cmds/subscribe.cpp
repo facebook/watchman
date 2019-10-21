@@ -330,7 +330,7 @@ static void cmd_flush_subscriptions(
       send_error_response(client, "'sync_timeout' must be an integer");
       return;
     }
-    sync_timeout = json_integer_value(sync_timeout_obj);
+    sync_timeout = sync_timeout_obj.asInt();
   } else {
     send_error_response(
         client, "wrong number of arguments to 'flush-subscriptions'");

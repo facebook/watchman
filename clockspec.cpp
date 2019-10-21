@@ -57,7 +57,7 @@ ClockSpec::ClockSpec(const json_ref& value) {
   switch (json_typeof(value)) {
     case JSON_INTEGER:
       tag = w_cs_timestamp;
-      timestamp = (time_t)json_integer_value(value);
+      timestamp = (time_t)value.asInt();
       return;
 
     case JSON_OBJECT: {

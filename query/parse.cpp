@@ -159,7 +159,7 @@ static bool parse_paths(w_query* res, const json_ref& query) {
         throw QueryParseError("path.depth must be an integer");
       }
 
-      res_paths[i].depth = json_integer_value(depth);
+      res_paths[i].depth = depth.asInt();
     } else {
       throw QueryParseError(
           "expected object with 'path' and 'depth' properties");
@@ -282,7 +282,7 @@ static void parse_benchmark(w_query* res, const json_ref& query) {
     if (bench.isBool()) {
       res->bench_iterations = 100;
     } else {
-      res->bench_iterations = json_integer_value(bench);
+      res->bench_iterations = bench.asInt();
     }
   }
 }

@@ -227,7 +227,7 @@ json_int_t cfg_get_int(const char* name, json_int_t defval) {
       throw std::runtime_error(watchman::to<std::string>(
           "Expected config value ", name, " to be an integer"));
     }
-    return json_integer_value(val);
+    return val.asInt();
   }
 
   return defval;
@@ -370,7 +370,7 @@ json_int_t Configuration::getInt(const char* name, json_int_t defval) const {
       throw std::runtime_error(watchman::to<std::string>(
           "Expected config value ", name, " to be an integer"));
     }
-    return json_integer_value(val);
+    return val.asInt();
   }
 
   return defval;

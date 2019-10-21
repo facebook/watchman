@@ -376,7 +376,7 @@ int w_bser_dump(const bser_ctx_t* ctx, const json_ref& json, void* data) {
     case JSON_REAL:
       return bser_real(ctx, json_real_value(json), data);
     case JSON_INTEGER:
-      return bser_int(ctx, json_integer_value(json), data);
+      return bser_int(ctx, json.asInt(), data);
     case JSON_STRING: {
       auto& wstr = json_to_w_string(json);
       switch (wstr.type()) {

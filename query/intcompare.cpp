@@ -50,7 +50,7 @@ void parse_int_compare(const json_ref& term, struct w_query_int_compare* comp) {
         "integer comparator opname `", opname, "' is invalid"));
   }
 
-  comp->operand = json_integer_value(json_array_get(term, 2));
+  comp->operand = json_array_get(term, 2).asInt();
 }
 
 bool eval_int_compare(json_int_t ival, struct w_query_int_compare* comp) {

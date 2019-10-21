@@ -45,8 +45,11 @@ static bool parse_state_arg(
   // [cmd, root, {name:, metadata:, sync_timeout:}]
   parsed->name = json_to_w_string(state_args.get("name"));
   parsed->metadata = state_args.get_default("metadata");
-  parsed->sync_timeout = ms(json_integer_value(state_args.get_default(
-      "sync_timeout", json_integer(parsed->sync_timeout.count()))));
+  parsed->sync_timeout =
+      ms(state_args
+             .get_default(
+                 "sync_timeout", json_integer(parsed->sync_timeout.count()))
+             .asInt());
 
   if (parsed->sync_timeout < ms::zero()) {
     send_error_response(client, "sync_timeout must be >= 0");
