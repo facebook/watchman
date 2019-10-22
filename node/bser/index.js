@@ -400,7 +400,7 @@ BunserBuf.prototype.decodeString = function() {
 // the PDU length from the PDU header; we'll set relaxSizeAsserts
 // in that case.
 BunserBuf.prototype.decodeInt = function(relaxSizeAsserts) {
-  if (relaxSizeAsserts && !this.buf.readAvail(1)) {
+  if (relaxSizeAsserts && (this.buf.readAvail() < 1)) {
     return false;
   } else {
     this.buf.assertReadableSize(1);
@@ -424,7 +424,7 @@ BunserBuf.prototype.decodeInt = function(relaxSizeAsserts) {
       this.raise("invalid bser int encoding " + code);
   }
 
-  if (relaxSizeAsserts && !this.buf.readAvail(1 + size)) {
+  if (relaxSizeAsserts && (this.buf.readAvail() < 1 + size)) {
     return false;
   }
   this.buf.readAdvance(1);
