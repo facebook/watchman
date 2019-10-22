@@ -47,17 +47,22 @@ static void cmd_clock(struct watchman_client* client, const json_ref& args) {
   int sync_timeout = 0;
 
   if (json_array_size(args) == 3) {
-    const char* ignored;
-    if (0 !=
-        json_unpack(
-            args,
-            "[s, s, {s?:i*}]",
-            &ignored,
-            &ignored,
-            "sync_timeout",
-            &sync_timeout)) {
-      send_error_response(client, "malformated argument list for 'clock'");
+    auto& opts = args.at(2);
+    if (!opts.isObject()) {
+      send_error_response(
+          client, "the third argument to 'clock' must be an optional object");
       return;
+    }
+
+    auto sync = opts.get_default("sync_timeout");
+    if (sync) {
+      if (!sync.isInt()) {
+        send_error_response(
+            client,
+            "the sync_timeout option passed to 'clock' must be an integer");
+        return;
+      }
+      sync_timeout = sync.asInt();
     }
   } else if (json_array_size(args) != 2) {
     send_error_response(client, "wrong number of arguments to 'clock'");
