@@ -190,14 +190,14 @@ static void spawn_command(
 
   opts.dup2(stdin_file->getFileDescriptor(), STDIN_FILENO);
 
-  if (cmd->stdout_name) {
-    opts.open(STDOUT_FILENO, cmd->stdout_name, cmd->stdout_flags, 0666);
+  if (!cmd->stdout_name.empty()) {
+    opts.open(STDOUT_FILENO, cmd->stdout_name.c_str(), cmd->stdout_flags, 0666);
   } else {
     opts.dup2(FileDescriptor::stdOut(), STDOUT_FILENO);
   }
 
-  if (cmd->stderr_name) {
-    opts.open(STDERR_FILENO, cmd->stderr_name, cmd->stderr_flags, 0666);
+  if (!cmd->stderr_name.empty()) {
+    opts.open(STDERR_FILENO, cmd->stderr_name.c_str(), cmd->stderr_flags, 0666);
   } else {
     opts.dup2(FileDescriptor::stdErr(), STDERR_FILENO);
   }

@@ -176,22 +176,31 @@ static json_ref build_legacy_trigger(
 }
 
 static bool parse_redirection(
-    const char** name_p,
+    json_ref trig,
+    std::string& name,
     int* flags,
     const char* label,
     char** errmsg) {
-  const char* name = *name_p;
+  *flags = 0;
 
-  if (!name) {
+  auto ele = trig.get_default(label);
+  if (!ele) {
+    // Specifying a redirection is optional
     return true;
   }
 
-  if (name[0] != '>') {
+  if (!ele.isString()) {
+    ignore_result(asprintf(errmsg, "%s must be a string", label));
+    return false;
+  }
+
+  name = json_string_value(ele);
+  if (name.empty() || name[0] != '>') {
     ignore_result(asprintf(
         errmsg,
         "%s: must be prefixed with either > or >>, got %s",
         label,
-        name));
+        name.c_str()));
     return false;
   }
 
@@ -203,11 +212,11 @@ static bool parse_redirection(
     return false;
 #else
     *flags |= O_APPEND;
-    *name_p = name + 2;
+    name.erase(0, 2);
 #endif
   } else {
     *flags |= O_TRUNC;
-    *name_p = name + 1;
+    name.erase(0, 1);
   }
 
   return true;
@@ -223,8 +232,6 @@ watchman_trigger_command::watchman_trigger_command(
       max_files_stdin(0),
       stdout_flags(0),
       stderr_flags(0),
-      stdout_name(nullptr),
-      stderr_name(nullptr),
       ping_(w_event_make()) {
   auto queryDef = json_object();
   auto expr = definition.get_default("expression");
@@ -297,14 +304,11 @@ watchman_trigger_command::watchman_trigger_command(
   }
   max_files_stdin = ival;
 
-  json_unpack(trig, "{s:s}", "stdout", &stdout_name);
-  json_unpack(trig, "{s:s}", "stderr", &stderr_name);
-
-  if (!parse_redirection(&stdout_name, &stdout_flags, "stdout", errmsg)) {
+  if (!parse_redirection(trig, stdout_name, &stdout_flags, "stdout", errmsg)) {
     return;
   }
 
-  if (!parse_redirection(&stderr_name, &stderr_flags, "stderr", errmsg)) {
+  if (!parse_redirection(trig, stderr_name, &stderr_flags, "stderr", errmsg)) {
     return;
   }
 
