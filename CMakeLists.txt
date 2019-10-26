@@ -317,6 +317,9 @@ if (ENABLE_EDEN_SUPPORT)
   include_directories(${FB303_INCLUDE_DIR})
 endif()
 
+find_program(NODE node)
+find_program(YARN yarn)
+
 # Why not `find_package(Python3)`?  On a system that has
 # python3, python3.6 and python3.7 that will select 3.7,
 # even though python3 -> python3.6.  On such a system we
@@ -351,6 +354,10 @@ if(PYTHON3)
   include(FBPythonBinary)
   add_subdirectory(python)
   add_subdirectory(tests/integration)
+endif()
+
+if(PYTHON3 AND NODE AND YARN)
+  add_subdirectory(node/bser)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

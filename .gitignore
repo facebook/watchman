@@ -51,6 +51,8 @@ buck-cache
 /a
 /arc
 /node/package-lock.json
+/node/yarn.lock
+/node/bser/yarn.lock
 /node/node_modules
 /node/bser/node_modules
 /website/node_modules

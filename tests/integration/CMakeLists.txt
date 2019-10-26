@@ -38,6 +38,8 @@ add_fb_python_unittest(test_py
     ${CMAKE_BINARY_DIR}
 
   ENV
+    "YARN_PATH=${YARN}"
+    "NODE_BIN=${NODE}"
     "HGUSER=John Smith <smith@example.com>"
     "NOSCMLOG=1"
     "TESTING_VIA_BUCK=1"

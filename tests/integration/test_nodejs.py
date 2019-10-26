@@ -21,10 +21,19 @@ try:
 except ImportError:
     import unittest
 
-node_bin = distutils.spawn.find_executable("node") or distutils.spawn.find_executable(
-    "nodejs"
-)
-npm_bin = distutils.spawn.find_executable("npm")
+
+def find_node():
+    node_bin = os.environ.get("NODE_BIN", distutils.spawn.find_executable("node"))
+    if node_bin:
+        try:
+            subprocess.check_output([node_bin, "-v"])
+        except Exception:
+            return None
+    return node_bin
+
+
+node_bin = find_node()
+yarn_bin = os.environ.get("YARN_PATH", distutils.spawn.find_executable("yarn"))
 
 WATCHMAN_SRC_DIR = os.environ.get("WATCHMAN_SRC_DIR", os.getcwd())
 THIS_DIR = os.path.join(WATCHMAN_SRC_DIR, "tests", "integration")
@@ -76,21 +85,36 @@ class NodeTestCase(WatchmanTestCase.TempDirPerTestMixin, unittest.TestCase):
         """ enable flaky test retry """
         self.attempt = attempt
 
-    @unittest.skipIf(node_bin is None or npm_bin is None, "node not installed")
+    @unittest.skipIf(
+        yarn_bin is None or node_bin is None, "yarn/node not correctly installed"
+    )
     def runTest(self):
         env = os.environ.copy()
         env["WATCHMAN_SOCK"] = WatchmanInstance.getSharedInstance().getSockPath()
         env["TMPDIR"] = self.tempdir
 
-        # build the node module with npm
+        offline_mirror = env.get("YARN_OFFLINE_MIRROR_PATH_POINTER", None)
+        if offline_mirror:
+            with open(offline_mirror, "r") as f:
+                mirror = f.read().strip()
+                env["YARN_YARN_OFFLINE_MIRROR"] = mirror
+        offline = "YARN_YARN_OFFLINE_MIRROR" in env
+
+        # build the node module with yarn
         node_dir = os.path.join(env["TMPDIR"], "fb-watchman")
         shutil.copytree(os.path.join(WATCHMAN_SRC_DIR, "node"), node_dir)
-        subprocess.check_call(["npm", "install"], cwd=node_dir)
+
+        install_args = [yarn_bin, "install"]
+        if offline:
+            install_args.append("--offline")
+
+        bser_dir = os.path.join(node_dir, "bser")
+        subprocess.check_call(install_args, cwd=bser_dir, env=env)
 
         env["TMP"] = env["TMPDIR"]
         env["TEMP"] = env["TMPDIR"]
         env["IN_PYTHON_HARNESS"] = "1"
-        env["NODE_PATH"] = "%s:%s" % (env["TMPDIR"], env.get("NODE_PATH", ""))
+        env["NODE_PATH"] = "%s:%s" % (node_dir, env["TMPDIR"])
         proc = subprocess.Popen(
             self.getCommandArgs(),
             env=env,
