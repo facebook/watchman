@@ -182,7 +182,7 @@ DirHandle::DirHandle(const char* path, bool strict)
       throw std::system_error(ENOTDIR, std::generic_category(), path);
     }
 
-    attrlist_ = attrlist();
+    attrlist_ = attrlist{};
     attrlist_.bitmapcount = ATTR_BIT_MAP_COUNT;
     // These field flags are listed here in the same order that they
     // are listed in the getattrlist() manpage, which is also the
@@ -217,6 +217,7 @@ const watchman_dir_ent* DirHandle::readDir() {
       // Read the next batch of results
       int retcount;
 
+      memset(buf_, 0, sizeof(buf_));
       errno = 0;
       retcount = getattrlistbulk(
           fd_.fd(),
@@ -244,7 +245,17 @@ const watchman_dir_ent* DirHandle::readDir() {
     // Decode the next item
     item = (bulk_attr_item*)cursor_;
     cursor_ += item->len;
+    if (cursor_ > buf_ + sizeof(buf_)) {
+      // This shouldn't happen in practice: the man page indicates that ERANGE
+      // is returned from getattrlistbulk() if the buffer isn't large enough
+      // for a single entry.
+      throw std::system_error(
+          ENOSPC,
+          std::generic_category(),
+          "getattrlistbulk: attributes overflow size of buf storage");
+    }
     if (--retcount_ == 0) {
+      // No more entries from the last chunk
       cursor_ = nullptr;
     }
 
@@ -252,6 +263,18 @@ const watchman_dir_ent* DirHandle::readDir() {
 
     if (item->returned.commonattr & ATTR_CMN_NAME) {
       ent_.d_name = ((char*)&item->name) + item->name.attr_dataoffset;
+      // Check that the data is within bounds.
+      // This shouldn't happen in practice: as per the above comment,
+      // we expect to have encountered an ERANGE before we get here.
+      // Note that even though the data reference records the length,
+      // that length is the padded length of the value; the true
+      // name value is a NUL terminated string within that space.
+      if (ent_.d_name + item->name.attr_length > buf_ + sizeof(buf_)) {
+        throw std::system_error(
+            ENOSPC,
+            std::generic_category(),
+            "getattrlistbulk: name overflows size of buf storage");
+      }
       name = w_string_piece(ent_.d_name);
     }
 
@@ -289,7 +312,8 @@ const watchman_dir_ent* DirHandle::readDir() {
               "!?"));
     }
 
-    if (item->returned.commonattr != attrlist_.commonattr) {
+    if ((item->returned.commonattr & attrlist_.commonattr) !=
+        attrlist_.commonattr) {
       log(ERR,
           "getattrlistbulk didn't return all useful stat data for ",
           dirName_,
