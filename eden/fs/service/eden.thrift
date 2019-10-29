@@ -45,9 +45,44 @@ typedef binary BinaryHash
  */
 typedef binary PathString
 
+/**
+ * A customizable type to be returned with an EdenError, helpful for catching
+ * and having custom client logic to handle specfic error cases
+ */
+enum EdenErrorType {
+  /** The errorCode property is a posix errno value */
+  POSIX_ERROR = 0,
+  /** The errorCode property is a win32 error value */
+  WIN32_ERROR = 1,
+  /** The errorCode property is a windows NT HResult error value */
+  HRESULT_ERROR = 2,
+  /**
+   * An argument passed to thrift was invalid. errorCode will be set to EINVAL
+   */
+  ARGUMENT_ERROR = 3,
+  /** An error occurred. errorCode will be not set */
+  GENERIC_ERROR = 4,
+  /** The mount generation changed. errorCode will be set to ERANGE */
+  MOUNT_GENERATION_CHANGED = 5,
+  /** The journal has been truncated. errorCode will be set to EDOM */
+  JOURNAL_TRUNCATED = 6,
+  /**
+   * The thrift funtion that receives this in an error is being called while
+   * a checkout is in progress. errorCode will not be set.
+   */
+  CHECKOUT_IN_PROGRESS = 7,
+  /**
+  * The thrift function that receives this is an error is being called with a
+  * parent that is not the current parent. errorCode will not be set.
+  */
+  OUT_OF_DATE_PARENT = 8,
+
+}
+
 exception EdenError {
   1: required string message
   2: optional i32 errorCode
+  3: EdenErrorType errorType
 } (message = 'message')
 
 exception NoValueForKeyError {
