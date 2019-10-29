@@ -648,6 +648,40 @@ struct UnblockFaultArg {
   4: optional string errorMessage
 }
 
+struct GetScmStatusResult {
+  1: ScmStatus status
+  // The version of the EdenFS daemon.
+  // This is returned since we usually want status calls to be able to check
+  // the current EdenFS version and warn the user if EdenFS is running an old
+  // or known-bad version.
+  2: string version
+}
+
+struct GetScmStatusParams {
+  /**
+   * The Eden checkout to query
+   */
+  1: PathString mountPoint
+
+  /**
+   * The commit ID of the current working directory parent commit.
+   *
+   * An error will be returned if this is not actually the current parent
+   * commit.  This behavior exists to support callers that do not perform their
+   * own external synchronization around access to the current parent commit,
+   * like Mercurial.
+   */
+  2: BinaryHash commit
+
+  /**
+   * Whether ignored files should be reported in the results.
+   *
+   * Some special source-control related files (e.g., inside the .hg or .git
+   * directory) will never be reported even when listIgnored is true.
+   */
+  3: bool listIgnored = false
+}
+
 service EdenService extends fb303_core.BaseService {
   list<MountInfo> listMounts() throws (1: EdenError ex)
   void mount(1: MountArgument info) throws (1: EdenError ex)
@@ -821,10 +855,19 @@ service EdenService extends fb303_core.BaseService {
   void chown(1: PathString mountPoint, 2: i32 uid, 3: i32 gid)
 
   /**
+   * Return the list of files that are different from the specified source
+   * control commit.
+   */
+  GetScmStatusResult getScmStatusV2(
+    1: GetScmStatusParams params
+  ) throws (1: EdenError ex)
+
+  /**
    * Get the status of the working directory against the specified commit.
    *
-   * This may exclude special files according to the rules of the underlying
-   * SCM system, such as the .git folder in Git and the .hg folder in Mercurial.
+   * DEPRECATED: Prefer using getScmStatusV2() in new code.  Callers may still
+   * need to fall back to getScmStatus() if talking to an older edenfs daemon
+   * that does not support getScmStatusV2() yet.
    */
   ScmStatus getScmStatus(
     1: PathString mountPoint,
