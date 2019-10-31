@@ -305,7 +305,7 @@ class QueryParseError : public std::runtime_error {
  public:
   template <typename... Args>
   explicit QueryParseError(Args&&... args)
-      : std::runtime_error(watchman::to<std::string>(
+      : std::runtime_error(folly::to<std::string>(
             "failed to parse query: ",
             std::forward<Args>(args)...)) {}
 };
@@ -315,7 +315,7 @@ class QueryExecError : public std::runtime_error {
  public:
   template <typename... Args>
   explicit QueryExecError(Args&&... args)
-      : std::runtime_error(watchman::to<std::string>(
+      : std::runtime_error(folly::to<std::string>(
             "query failed: ",
             std::forward<Args>(args)...)) {}
 };
@@ -325,7 +325,7 @@ class RootResolveError : public std::runtime_error {
  public:
   template <typename... Args>
   explicit RootResolveError(Args&&... args)
-      : std::runtime_error(watchman::to<std::string>(
+      : std::runtime_error(folly::to<std::string>(
             "RootResolveError: ",
             std::forward<Args>(args)...)) {}
 };

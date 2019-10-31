@@ -110,7 +110,7 @@ static bool lock_pidfile(void) {
     return false;
   }
 
-  auto pidString = watchman::to<std::string>(mypid);
+  auto pidString = folly::to<std::string>(mypid);
   ignore_result(write(fd.fd(), pidString.data(), pidString.size()));
   fsync(fd.fd());
 
@@ -547,7 +547,7 @@ static void spawn_via_launchd(void) {
 
   compute_file_name(pid_file, compute_user_name(), "pid", "pidfile");
 
-  auto plist_content = watchman::to<std::string>(
+  auto plist_content = folly::to<std::string>(
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
       "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
       "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
@@ -677,8 +677,7 @@ static void compute_file_name(
 #endif
         ;
 
-    auto state_dir =
-        watchman::to<std::string>(state_parent, "/", user, "-state");
+    auto state_dir = folly::to<std::string>(state_parent, "/", user, "-state");
 
     if (mkdir(state_dir.c_str(), 0700) == 0 || errno == EEXIST) {
 #ifndef _WIN32
@@ -788,7 +787,7 @@ static void compute_file_name(
       exit(1);
     }
 
-    str = watchman::to<std::string>(state_dir, "/", suffix);
+    str = folly::to<std::string>(state_dir, "/", suffix);
   }
 
 #ifndef _WIN32
@@ -848,7 +847,7 @@ static void setup_sock_name(void) {
 
 #ifdef _WIN32
   if (!sock_name) {
-    sock_name = watchman::to<std::string>("\\\\.\\pipe\\watchman-", user);
+    sock_name = folly::to<std::string>("\\\\.\\pipe\\watchman-", user);
   }
 #else
   compute_file_name(sock_name, user, "sock", "sockname");

@@ -62,7 +62,7 @@ class PcreExpr : public QueryExpr {
     if (term.array().size() > 1 && term.at(1).isString()) {
       pattern = json_string_value(term.at(1));
     } else {
-      throw QueryParseError(watchman::to<std::string>(
+      throw QueryParseError(folly::to<std::string>(
           "First parameter to \"", which, "\" term must be a pattern string"));
     }
 
@@ -70,7 +70,7 @@ class PcreExpr : public QueryExpr {
       if (term.at(2).isString()) {
         scope = json_string_value(term.at(2));
       } else {
-        throw QueryParseError(watchman::to<std::string>(
+        throw QueryParseError(folly::to<std::string>(
             "Second parameter to \"",
             which,
             "\" term must be an optional scope string"));
@@ -78,7 +78,7 @@ class PcreExpr : public QueryExpr {
     }
 
     if (strcmp(scope, "basename") && strcmp(scope, "wholename")) {
-      throw QueryParseError(watchman::to<std::string>(
+      throw QueryParseError(folly::to<std::string>(
           "Invalid scope '", scope, "' for ", which, " expression"));
     }
 
@@ -90,7 +90,7 @@ class PcreExpr : public QueryExpr {
         &erroff,
         nullptr);
     if (!re) {
-      throw QueryParseError(watchman::to<std::string>(
+      throw QueryParseError(folly::to<std::string>(
           "invalid ",
           which,
           ": code ",

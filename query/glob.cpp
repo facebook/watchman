@@ -90,7 +90,7 @@ static bool add_glob(
   bool had_specials;
 
   if (glob_str.piece().pathIsAbsolute()) {
-    throw QueryParseError(watchman::to<std::string>(
+    throw QueryParseError(folly::to<std::string>(
         "glob `",
         glob_str,
         "` is an absolute path.  All globs must be relative paths!"));
@@ -389,7 +389,7 @@ void InMemoryView::globGeneratorTree(
 
 void InMemoryView::globGenerator(w_query* query, struct w_query_ctx* ctx)
     const {
-  w_string_t* relative_root;
+  w_string relative_root;
 
   if (query->relative_root) {
     relative_root = query->relative_root;
@@ -401,9 +401,9 @@ void InMemoryView::globGenerator(w_query* query, struct w_query_ctx* ctx)
 
   const auto dir = resolveDir(view, relative_root);
   if (!dir) {
-    throw QueryExecError(watchman::to<std::string>(
+    throw QueryExecError(folly::to<std::string>(
         "glob_generator could not resolve ",
-        w_string_piece(relative_root),
+        relative_root,
         ", check your "
         "relative_root parameter!"));
   }

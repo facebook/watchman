@@ -59,7 +59,7 @@ std::unique_ptr<QueryExpr> w_query_expr_parse(
   auto it = term_hash().find(name);
   if (it == term_hash().end()) {
     throw QueryParseError(
-        watchman::to<std::string>("unknown expression term '", name, "'"));
+        folly::to<std::string>("unknown expression term '", name, "'"));
   }
   return it->second(query, exp);
 }
@@ -406,7 +406,7 @@ std::shared_ptr<w_query> w_query_parse_legacy(
     const char* arg = json_string_value(json_array_get(args, i));
     if (!arg) {
       /* not a string value! */
-      throw QueryParseError(watchman::to<std::string>(
+      throw QueryParseError(folly::to<std::string>(
           "rule @ position ", i, " is not a string value"));
     }
   }

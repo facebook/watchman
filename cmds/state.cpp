@@ -8,6 +8,7 @@
 
 using namespace watchman;
 using ms = std::chrono::milliseconds;
+using folly::to;
 using watchman::ClientStateAssertion;
 using watchman::ClientStateDisposition;
 

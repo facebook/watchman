@@ -24,8 +24,8 @@ static void cmd_debug_prof_dump(
   resp.set(
       "prof.dump",
       w_string_to_json(
-          watchman::to<std::string>(
-              "mallctl prof.dump returned: ", folly::errnoStr(result).c_str())
+          folly::to<std::string>(
+              "mallctl prof.dump returned: ", folly::errnoStr(result))
               .c_str()));
   send_and_dispose_response(client, std::move(resp));
 }

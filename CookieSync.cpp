@@ -61,7 +61,7 @@ folly::Future<folly::Unit> CookieSync::sync() {
     throw std::system_error(
         errcode,
         std::generic_category(),
-        to<std::string>(
+        folly::to<std::string>(
             "sync: creat(", path_str, ") failed: ", strerror(errcode)));
   }
   log(DBG, "sync created cookie file ", path_str, "\n");
@@ -77,7 +77,7 @@ void CookieSync::syncToNow(std::chrono::milliseconds timeout) {
     auto cookie = sync();
 
     if (!cookie.wait(timeout).isReady()) {
-      auto why = to<std::string>(
+      auto why = folly::to<std::string>(
           "syncToNow: timed out waiting for cookie file to be "
           "observed by watcher within ",
           timeout.count(),

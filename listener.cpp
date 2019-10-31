@@ -132,9 +132,9 @@ static void client_thread(std::shared_ptr<watchman_client> client) noexcept {
   client->stm->setNonBlock(true);
   w_set_thread_name(
       "client=",
-      client.get(),
+      uintptr_t(client.get()),
       ":stm=",
-      client->stm.get(),
+      uintptr_t(client->stm.get()),
       ":pid=",
       client->stm->getPeerProcessID());
 
@@ -295,9 +295,9 @@ static void client_thread(std::shared_ptr<watchman_client> client) noexcept {
 disconnected:
   w_set_thread_name(
       "NOT_CONN:client=",
-      client.get(),
+      uintptr_t(client.get()),
       ":stm=",
-      client->stm.get(),
+      uintptr_t(client->stm.get()),
       ":pid=",
       client->stm->getPeerProcessID());
   // Remove the client from the map before we tear it down, as this makes

@@ -3,6 +3,7 @@
 
 #include "watchman_system.h"
 
+#include <folly/Conv.h>
 #include <folly/portability/GTest.h>
 #include "thirdparty/jansson/jansson.h"
 #include "thirdparty/wildmatch/wildmatch.h"
@@ -40,12 +41,12 @@ TEST(WildMatch, tests) {
     test_cases_file = fopen("watchman/" WILDMATCH_TEST_JSON_FILE, "r");
   }
   if (!test_cases_file) {
-    throw std::runtime_error(watchman::to<std::string>(
+    throw std::runtime_error(folly::to<std::string>(
         "Couldn't open ", WILDMATCH_TEST_JSON_FILE, ": ", strerror(errno)));
   }
   auto test_cases = json_loadf(test_cases_file, 0, &error);
   if (!test_cases) {
-    throw std::runtime_error(watchman::to<std::string>(
+    throw std::runtime_error(folly::to<std::string>(
         "Error decoding JSON: ",
         error.text,
         " (source=",

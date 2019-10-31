@@ -169,7 +169,7 @@ static void checkCanonicalBaseName(const char* path) {
     throw std::system_error(
         errno,
         std::generic_category(),
-        to<std::string>(
+        folly::to<std::string>(
             "checkCanonicalBaseName(", path, "): getattrlist failed"));
   }
 
@@ -178,7 +178,7 @@ static void checkCanonicalBaseName(const char* path) {
     throw std::system_error(
         ENOENT,
         std::generic_category(),
-        to<std::string>(
+        folly::to<std::string>(
             "checkCanonicalBaseName(",
             path,
             "): (",
@@ -203,7 +203,7 @@ static void checkCanonicalBaseName(const char* path) {
       throw std::system_error(
           ENOENT,
           std::generic_category(),
-          to<std::string>(
+          folly::to<std::string>(
               "checkCanonicalBaseName(",
               path,
               "): no match found in parent dir"));
@@ -243,7 +243,7 @@ FileDescriptor openFileHandle(
   if (fd == -1) {
     int err = errno;
     throw std::system_error(
-        err, std::generic_category(), to<std::string>("open: ", path));
+        err, std::generic_category(), folly::to<std::string>("open: ", path));
   }
   FileDescriptor file(fd);
 #else // _WIN32
@@ -330,7 +330,7 @@ FileDescriptor openFileHandle(
   throw std::system_error(
       ENOENT,
       std::generic_category(),
-      to<std::string>(
+      folly::to<std::string>(
           "open(",
           path,
           "): opened path doesn't match canonical path ",

@@ -293,7 +293,7 @@ static void crash_handler(int signo, siginfo_t* si, void*) {
   }
 
   if (si) {
-    auto msg = watchman::to<std::string>(
+    auto msg = folly::to<std::string>(
         "Terminating due to signal ",
         signo,
         " ",
@@ -305,11 +305,11 @@ static void crash_handler(int signo, siginfo_t* si, void*) {
         " ",
         reason,
         " (",
-        si->si_value.sival_ptr,
+        uintptr_t(si->si_value.sival_ptr),
         ")\n");
     ignore_result(write(STDERR_FILENO, msg.data(), msg.size()));
   } else {
-    auto msg = watchman::to<std::string>(
+    auto msg = folly::to<std::string>(
         "Terminating due to signal ",
         signo,
         " ",

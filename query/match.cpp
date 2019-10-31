@@ -68,7 +68,7 @@ class WildMatchExpr : public QueryExpr {
     if (term.array().size() > 1 && term.at(1).isString()) {
       pattern = json_string_value(term.at(1));
     } else {
-      throw QueryParseError(watchman::to<std::string>(
+      throw QueryParseError(folly::to<std::string>(
           "First parameter to \"", which, "\" term must be a pattern string"));
     }
 
@@ -76,7 +76,7 @@ class WildMatchExpr : public QueryExpr {
       if (term.at(2).isString()) {
         scope = json_string_value(term.at(2));
       } else {
-        throw QueryParseError(watchman::to<std::string>(
+        throw QueryParseError(folly::to<std::string>(
             "Second parameter to \"",
             which,
             "\" term must be an optional scope string"));
@@ -86,7 +86,7 @@ class WildMatchExpr : public QueryExpr {
     if (term.array().size() > 3) {
       auto& opts = term.at(3);
       if (!opts.isObject()) {
-        throw QueryParseError(watchman::to<std::string>(
+        throw QueryParseError(folly::to<std::string>(
             "Third parameter to \"",
             which,
             "\" term must be an optional object"));
@@ -94,14 +94,14 @@ class WildMatchExpr : public QueryExpr {
 
       auto ele = opts.get_default("noescape", json_false());
       if (!ele.isBool()) {
-        throw QueryParseError(watchman::to<std::string>(
+        throw QueryParseError(folly::to<std::string>(
             "noescape option for \"", which, "\" term must be a boolean"));
       }
       noescape = ele.asBool();
 
       ele = opts.get_default("includedotfiles", json_false());
       if (!ele.isBool()) {
-        throw QueryParseError(watchman::to<std::string>(
+        throw QueryParseError(folly::to<std::string>(
             "includedotfiles option for \"",
             which,
             "\" term must be a boolean"));

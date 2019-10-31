@@ -12,7 +12,7 @@ void set_poison_state(
     return;
   }
 
-  auto why = watchman::to<std::string>(
+  auto why = folly::to<std::string>(
       "A non-recoverable condition has triggered.  Watchman needs your help!\n"
       "The triggering condition was at timestamp=",
       now.tv_sec,

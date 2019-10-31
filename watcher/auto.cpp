@@ -21,7 +21,7 @@ void WatcherRegistry::registerFactory(const WatcherRegistry& factory) {
   auto& reg = getRegistry();
   reg.emplace(factory.name_, factory);
 
-  auto capname = watchman::to<std::string>("watcher-", factory.name_);
+  auto capname = folly::to<std::string>("watcher-", factory.name_);
   w_capability_register(capname.c_str());
 }
 
@@ -41,7 +41,7 @@ static inline std::shared_ptr<watchman::QueryableView> reportWatcher(
     w_root_t* root,
     std::shared_ptr<watchman::QueryableView>&& watcher) {
   if (!watcher) {
-    throw std::runtime_error(watchman::to<std::string>(
+    throw std::runtime_error(folly::to<std::string>(
         "watcher ",
         watcherName,
         " returned nullptr, but should throw an exception"

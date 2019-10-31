@@ -17,6 +17,8 @@
 #include "FileSystem.h"
 #include "Logging.h"
 
+using folly::to;
+
 namespace watchman {
 
 using HashValue = typename ContentHashCache::HashValue;

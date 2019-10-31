@@ -296,7 +296,7 @@ ChildProcess::ChildProcess(std::vector<w_string_piece> args, Options&& options)
       throw std::system_error(
           errno,
           std::generic_category(),
-          watchman::to<std::string>("failed to chdir to ", options.cwd_));
+          folly::to<std::string>("failed to chdir to ", options.cwd_));
     }
   }
 #endif

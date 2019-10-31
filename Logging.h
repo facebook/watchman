@@ -119,6 +119,6 @@ void logPrintf(enum LogLevel level, Args&&... args) {
 
 template <typename... Args>
 const char* w_set_thread_name(Args&&... args) {
-  auto name = watchman::to<std::string>(std::forward<Args>(args)...);
+  auto name = folly::to<std::string>(std::forward<Args>(args)...);
   return watchman::Log::setThreadName(std::move(name));
 }

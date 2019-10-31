@@ -17,7 +17,7 @@ class CommandValidationError : public std::runtime_error {
  public:
   template <typename... Args>
   explicit CommandValidationError(Args&&... args)
-      : std::runtime_error(watchman::to<std::string>(
+      : std::runtime_error(folly::to<std::string>(
             "failed to validate command: ",
             std::forward<Args>(args)...)) {}
 };

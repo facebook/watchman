@@ -12,6 +12,7 @@
 W_CAP_REG("scm-hg")
 
 using namespace std::chrono;
+using folly::to;
 
 namespace watchman {
 

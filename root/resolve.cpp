@@ -34,8 +34,7 @@ static bool root_check_restrict(const char* watch_path) {
       continue;
     }
 
-    auto restrict_path =
-        watchman::to<std::string>(watch_path, "/", restrict_file);
+    auto restrict_path = folly::to<std::string>(watch_path, "/", restrict_file);
     rv = w_path_exists(restrict_path.c_str());
     if (rv)
       return true;

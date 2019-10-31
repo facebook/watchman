@@ -577,8 +577,8 @@ static void cmd_subscribe(
 
   // Connect the root to our subscription
   {
-    auto client_id = watchman::to<std::string>(client);
-    auto client_stream = watchman::to<std::string>(client->stm.get());
+    auto client_id = folly::to<std::string>(uintptr_t(client));
+    auto client_stream = folly::to<std::string>(uintptr_t(client->stm.get()));
     auto info_json = json_object(
         {{"name", w_string_to_json(sub->name)},
          {"query", sub->query->query_spec},

@@ -33,6 +33,7 @@ using facebook::eden::JournalPosition;
 using facebook::eden::SHA1Result;
 using facebook::eden::StreamingEdenServiceAsyncClient;
 using folly::Optional;
+using folly::to;
 using std::make_unique;
 
 namespace {
@@ -149,13 +150,13 @@ folly::SocketAddress getEdenSocketAddress(w_string_piece rootPath) {
   // Resolve the eden socket; we use the .eden dir that is present in
   // every dir of an eden mount.
   folly::SocketAddress addr;
-  auto path = watchman::to<std::string>(rootPath, "/.eden/socket");
+  auto path = to<std::string>(rootPath, "/.eden/socket");
 
   // It is important to resolve the link because the path in the eden mount
   // may exceed the maximum permitted unix domain socket path length.
   // This is actually how things our in our integration test environment.
   auto socketPath = readSymbolicLink(path.c_str());
-  addr.setFromPath(watchman::to<std::string>(socketPath));
+  addr.setFromPath(to<std::string>(socketPath));
   return addr;
 }
 
@@ -1227,8 +1228,8 @@ std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
     throw std::runtime_error(to<std::string>("not a FUSE file system"));
   }
 
-  auto edenRoot = readSymbolicLink(
-      watchman::to<std::string>(root->root_path, "/.eden/root").c_str());
+  auto edenRoot =
+      readSymbolicLink(to<std::string>(root->root_path, "/.eden/root").c_str());
   if (edenRoot != root->root_path) {
     // We aren't at the root of the eden mount.
     // Throw a TerminalWatcherError to indicate that the Eden watcher is the

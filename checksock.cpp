@@ -75,14 +75,14 @@ void check_clock_command(watchman_stream* client, json_ref& root) {
                          root,
                          json_object({{"sync_timeout", json_integer(20000)}})});
   if (!buf.pduEncodeToStream(is_bser, 0, cmd, client)) {
-    throw std::runtime_error(watchman::to<std::string>(
-        "Failed to send clock PDU: ", strerror(errno)));
+    throw std::runtime_error(
+        folly::to<std::string>("Failed to send clock PDU: ", strerror(errno)));
   }
 
   buf.clear();
   auto result = decodeNext(client, buf, jerr);
   if (!result) {
-    throw std::runtime_error(watchman::to<std::string>(
+    throw std::runtime_error(folly::to<std::string>(
         "Failed to decode clock response: ", jerr.text, " ", strerror(errno)));
   }
 
@@ -90,7 +90,7 @@ void check_clock_command(watchman_stream* client, json_ref& root) {
   auto error = result.get_default("error");
   if (error) {
     throw std::runtime_error(
-        watchman::to<std::string>("Clock error : ", json_to_w_string(error)));
+        folly::to<std::string>("Clock error : ", json_to_w_string(error)));
   }
 
   // We use presence of "clock" as success
@@ -109,14 +109,14 @@ json_ref get_watch_list(watchman_stream* client) {
   json_error_t jerr;
 
   if (!buf.pduEncodeToStream(is_bser, 0, cmd, client)) {
-    throw std::runtime_error(watchman::to<std::string>(
+    throw std::runtime_error(folly::to<std::string>(
         "Failed to send watch-list PDU: ", strerror(errno)));
   }
 
   buf.clear();
   auto result = decodeNext(client, buf, jerr);
   if (!result) {
-    throw std::runtime_error(watchman::to<std::string>(
+    throw std::runtime_error(folly::to<std::string>(
         "Failed to decode watch-list response: ",
         jerr.text,
         " error:  ",

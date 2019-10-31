@@ -16,6 +16,8 @@
 #ifdef _WIN32
 #include <string>
 #endif
+#include <folly/Conv.h>
+#include <folly/Range.h>
 #include <stdexcept>
 #include <vector>
 
@@ -204,6 +206,10 @@ class w_string_piece {
     }
   }
 
+  operator folly::StringPiece() const {
+    return folly::StringPiece(s_, e_);
+  }
+
   bool operator==(w_string_piece other) const;
   bool operator!=(w_string_piece other) const;
   bool operator<(w_string_piece other) const;
@@ -273,6 +279,13 @@ class w_string {
 
   operator w_string_piece() const {
     return piece();
+  }
+
+  operator folly::StringPiece() const {
+    if (str_ == nullptr) {
+      return folly::StringPiece();
+    }
+    return folly::StringPiece(data(), size());
   }
 
   inline w_string_piece piece() const {
@@ -626,27 +639,6 @@ w_string w_string::build(Args&&... args) {
 
   return w_string(s, false);
 }
-
-namespace watchman {
-
-// Helper for building a stringy container of a given type.
-// This is similar in spirit to folly::to<>.  Usage is:
-// auto str = watchman::to<std::string>("foo", 123)
-// and it will return a std::string holding "foo123"
-template <typename Container, typename... Args>
-Container to(Args&&... args) {
-  auto reserved = ::detail::estimateSpaceToReserve(1, args...);
-
-  Container result;
-  result.resize(reserved);
-
-  ::detail::Appender appender(&result[0], reserved);
-  ::detail::appendTo(appender, args...);
-
-  result.resize(reserved - appender.avail());
-  return result;
-}
-} // namespace watchman
 
 #endif
 

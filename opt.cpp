@@ -197,7 +197,7 @@ bool w_getopt(
         }
 
         if (o->is_daemon) {
-          auto value = watchman::to<std::string>(
+          auto value = folly::to<std::string>(
               "--", o->optname, "=", optarg ? optarg : "");
           // we deliberately leak this value to the caller
           daemon_argv[num_daemon++] = strdup(value.c_str());

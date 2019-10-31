@@ -223,12 +223,6 @@ TEST(String, string_piece_lowercase_suffix) {
   EXPECT_EQ(sp.asLowerCaseSuffix().size(), 255);
 }
 
-TEST(String, to) {
-  auto str = watchman::to<std::string>("foo", 123);
-  EXPECT_EQ(str, "foo123");
-  EXPECT_EQ(str.size(), 6);
-}
-
 TEST(String, path_cat) {
   auto str = w_string::pathCat({"foo", ""});
   EXPECT_EQ(str, "foo");

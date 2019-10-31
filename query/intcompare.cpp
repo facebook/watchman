@@ -46,7 +46,7 @@ void parse_int_compare(const json_ref& term, struct w_query_int_compare* comp) {
   }
 
   if (!found) {
-    throw QueryParseError(watchman::to<std::string>(
+    throw QueryParseError(folly::to<std::string>(
         "integer comparator opname `", opname, "' is invalid"));
   }
 

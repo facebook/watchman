@@ -80,7 +80,7 @@ class TypeExpr : public QueryExpr {
     if (term.array().size() > 1 && term.at(1).isString()) {
       typestr = json_string_value(term.at(1));
     } else {
-      throw QueryParseError(watchman::to<std::string>(
+      throw QueryParseError(folly::to<std::string>(
           "First parameter to \"type\" term must be a type string"));
     }
 
