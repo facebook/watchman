@@ -26,7 +26,7 @@ reg& get_reg() {
  * can't guarantee that we will be operating correctly.  Rather than suffering
  * in silence and misleading our clients, we'll poison ourselves and advertise
  * that we have done so and provide some advice on how the user can cure us. */
-char* poisoned_reason = NULL;
+folly::Synchronized<std::string> poisoned_reason;
 
 void print_command_list_for_help(FILE* where) {
   std::vector<watchman_command_handler_def*> defs;
@@ -144,8 +144,9 @@ bool dispatch_command(
       return false;
     }
 
-    if (poisoned_reason && (def->flags & CMD_POISON_IMMUNE) == 0) {
-      send_error_response(client, "%s", poisoned_reason);
+    if (!poisoned_reason.rlock()->empty() &&
+        (def->flags & CMD_POISON_IMMUNE) == 0) {
+      send_error_response(client, "%s", poisoned_reason.rlock()->c_str());
       return false;
     }
 

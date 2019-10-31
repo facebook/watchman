@@ -42,7 +42,7 @@ typedef struct watchman_root w_root_t;
 // Returns the name of the filesystem for the specified path
 w_string w_fstype(const char* path);
 
-extern char* poisoned_reason;
+extern folly::Synchronized<std::string> poisoned_reason;
 
 #ifndef _WIN32
 static inline bool w_path_exists(const char* path) {

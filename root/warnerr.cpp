@@ -25,7 +25,7 @@ void handle_open_errno(
   } else if (err == watchman::error_code::system_limits_exceeded) {
     set_poison_state(dir_name, now, syscall, err);
     if (!root->failure_reason) {
-      root->failure_reason = poisoned_reason;
+      root->failure_reason = w_string::build(*poisoned_reason.rlock());
     }
     return;
   } else {

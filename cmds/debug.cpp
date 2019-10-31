@@ -98,7 +98,9 @@ static void cmd_debug_poison(
       std::error_code(ENOMEM, std::generic_category()));
 
   auto resp = make_response();
-  resp.set("poison", typed_string_to_json(poisoned_reason, W_STRING_UNICODE));
+  resp.set(
+      "poison",
+      typed_string_to_json(poisoned_reason.rlock()->c_str(), W_STRING_UNICODE));
   send_and_dispose_response(client, std::move(resp));
 }
 W_CMD_REG("debug-poison", cmd_debug_poison, CMD_DAEMON, w_cmd_realpath_root)
