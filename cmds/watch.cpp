@@ -181,31 +181,27 @@ bool find_project_root(
 // relpath will hold the path to the project dir, relative to the
 // watched dir.  If it is NULL it means that the project dir is
 // equivalent to the watched dir.
-static w_string
-resolve_projpath(const json_ref& args, char** errmsg, w_string& relpath) {
+static w_string resolve_projpath(const json_ref& args, w_string& relpath) {
   const char* path;
   bool enforcing;
   if (json_array_size(args) < 2) {
-    ignore_result(asprintf(errmsg, "wrong number of arguments"));
-    return nullptr;
+    throw CommandValidationError("wrong number of arguments");
   }
 
   path = json_string_value(json_array_get(args, 1));
   if (!path) {
-    ignore_result(asprintf(errmsg, "second argument must be a string"));
-    return nullptr;
+    throw CommandValidationError("second argument must be a string");
   }
 
   auto resolved = realPath(path);
 
   auto root_files = cfg_compute_root_files(&enforcing);
   if (!root_files) {
-    ignore_result(asprintf(
-        errmsg,
+    throw CommandValidationError(
         "resolve_projpath: error computing root_files configuration value, "
-        "consult your log file at %s for more details",
-        log_name));
-    return nullptr;
+        "consult your log file at ",
+        log_name,
+        " for more details");
   }
 
   // See if we're requesting something in a pre-existing watch
@@ -234,19 +230,19 @@ resolve_projpath(const json_ref& args, char** errmsg, w_string& relpath) {
   // Convert root files to comma delimited string for error message
   auto root_files_list = cfg_pretty_print_root_files(root_files);
 
-  ignore_result(asprintf(
-      errmsg,
+  throw CommandValidationError(
       "resolve_projpath:  None of the files listed in global config "
-      "root_files are present in path `%s` or any of its "
-      "parent directories.  root_files is defined by the "
-      "`%s` config file and includes %s.  "
-      "One or more of these files must be present in order to allow "
-      "a watch. Try pulling and checking out a newer version of the project?",
+      "root_files are present in path `",
       path,
-      cfg_get_global_config_file_path().c_str(),
-      root_files_list.c_str()));
-
-  return nullptr;
+      "` or any of its "
+      "parent directories.  root_files is defined by the "
+      "`",
+      cfg_get_global_config_file_path(),
+      "` config file and includes ",
+      root_files_list,
+      ".  "
+      "One or more of these files must be present in order to allow "
+      "a watch. Try pulling and checking out a newer version of the project?");
 }
 
 /* watch /root */
@@ -283,8 +279,6 @@ W_CMD_REG(
 static void cmd_watch_project(
     struct watchman_client* client,
     const json_ref& args) {
-  char* errmsg = nullptr;
-
   /* resolve the root */
   if (json_array_size(args) != 2) {
     send_error_response(client, "wrong number of arguments to 'watch-project'");
@@ -292,12 +286,7 @@ static void cmd_watch_project(
   }
 
   w_string rel_path_from_watch;
-  auto dir_to_watch = resolve_projpath(args, &errmsg, rel_path_from_watch);
-  if (!dir_to_watch) {
-    send_error_response(client, "%s", errmsg);
-    free(errmsg);
-    return;
-  }
+  auto dir_to_watch = resolve_projpath(args, rel_path_from_watch);
 
   auto root = resolveOrCreateRoot(client, args);
 
