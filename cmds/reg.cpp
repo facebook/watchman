@@ -57,22 +57,21 @@ void w_register_command(struct watchman_command_handler_def* defs) {
   w_capability_register(capname);
 }
 
-static struct watchman_command_handler_def*
-lookup(const json_ref& args, char** errmsg, int mode) {
+static struct watchman_command_handler_def* lookup(
+    const json_ref& args,
+    int mode) {
   const char* cmd_name;
 
   if (!json_array_size(args)) {
-    ignore_result(asprintf(
-        errmsg, "invalid command (expected an array with some elements!)"));
-    return nullptr;
+    throw CommandValidationError(
+        "invalid command (expected an array with some elements!)");
   }
 
   const auto jstr = json_array_get(args, 0);
   cmd_name = json_string_value(jstr);
   if (!cmd_name) {
-    ignore_result(asprintf(
-        errmsg, "invalid command: expected element 0 to be the command name"));
-    return nullptr;
+    throw CommandValidationError(
+        "invalid command: expected element 0 to be the command name");
   }
   auto cmd = json_to_w_string(jstr);
   auto it = get_reg().commands.find(cmd);
@@ -80,15 +79,14 @@ lookup(const json_ref& args, char** errmsg, int mode) {
 
   if (def) {
     if (mode && ((def->flags & mode) == 0)) {
-      ignore_result(
-          asprintf(errmsg, "command %s not available in this mode", cmd_name));
-      return nullptr;
+      throw CommandValidationError(
+          "command ", cmd_name, " not available in this mode");
     }
     return def;
   }
 
   if (mode) {
-    ignore_result(asprintf(errmsg, "unknown command %s", cmd_name));
+    throw CommandValidationError("unknown command ", cmd_name);
   }
 
   return nullptr;
@@ -98,32 +96,29 @@ void preprocess_command(
     json_ref& args,
     enum w_pdu_type output_pdu,
     uint32_t output_capabilities) {
-  char* errmsg = NULL;
   struct watchman_command_handler_def* def;
 
-  def = lookup(args, &errmsg, 0);
+  try {
+    def = lookup(args, 0);
 
-  if (!def && !errmsg) {
-    // Nothing known about it, pass the command on anyway for forwards
-    // compatibility
-    return;
-  }
+    if (!def) {
+      // Nothing known about it, pass the command on anyway for forwards
+      // compatibility
+      return;
+    }
 
-  if (!errmsg && def->cli_validate) {
-    def->cli_validate(args, &errmsg);
-  }
-
-  if (errmsg) {
+    if (def->cli_validate) {
+      def->cli_validate(args);
+    }
+  } catch (const std::exception& exc) {
     w_jbuffer_t jr;
 
     auto err = json_object(
-        {{"error", typed_string_to_json(errmsg, W_STRING_MIXED)},
+        {{"error", typed_string_to_json(exc.what(), W_STRING_MIXED)},
          {"version", typed_string_to_json(PACKAGE_VERSION, W_STRING_UNICODE)},
          {"cli_validated", json_true()}});
 
     jr.pduEncodeToStream(output_pdu, output_capabilities, err, w_stm_stdout());
-
-    free(errmsg);
     exit(1);
   }
 }
@@ -133,12 +128,7 @@ bool dispatch_command(
     const json_ref& args,
     int mode) {
   struct watchman_command_handler_def* def;
-  char* errmsg = NULL;
   char sample_name[128];
-
-  SCOPE_EXIT {
-    free(errmsg);
-  };
 
   try {
     // Stash a reference to the current command to make it easier to log
@@ -148,10 +138,9 @@ bool dispatch_command(
       client->current_command = nullptr;
     };
 
-    def = lookup(args, &errmsg, mode);
-
+    def = lookup(args, mode);
     if (!def) {
-      send_error_response(client, "%s", errmsg);
+      send_error_response(client, "Unknown command");
       return false;
     }
 

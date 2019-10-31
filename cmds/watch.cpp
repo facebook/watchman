@@ -4,35 +4,28 @@
 #include "watchman.h"
 using watchman::realPath;
 
-bool w_cmd_realpath_root(json_ref& args, char** errmsg) {
+void w_cmd_realpath_root(json_ref& args) {
   const char* path;
 
   if (json_array_size(args) < 2) {
-    ignore_result(asprintf(errmsg, "wrong number of arguments"));
-    return false;
+    throw CommandValidationError("wrong number of arguments");
   }
 
   path = json_string_value(json_array_get(args, 1));
   if (!path) {
-    ignore_result(asprintf(errmsg, "second argument must be a string"));
-    return false;
+    throw CommandValidationError(
+        "second argument must be a string expressing the path to the watch");
   }
 
   try {
     auto resolved = realPath(path);
     args.array()[1] = w_string_to_json(resolved);
-    return true;
   } catch (const std::exception& exc) {
-    watchman::log(
-        watchman::DBG,
-        "w_cmd_realpath_root: path ",
+    throw CommandValidationError(
+        "Could not resolve ",
         path,
-        " does not resolve: ",
-        exc.what(),
-        "\n");
-    // We don't treat this as an error; the caller will subsequently
-    // fail and perform their usual error handling
-    return true;
+        " to the canonical watch path: ",
+        exc.what());
   }
 }
 W_CAP_REG("clock-sync-timeout")

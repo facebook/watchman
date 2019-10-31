@@ -3,12 +3,24 @@
 
 #ifndef WATCHMAN_CMD_H
 #define WATCHMAN_CMD_H
+#include <stdexcept>
 
 typedef void (*watchman_command_func)(
     struct watchman_client* client,
     const json_ref& args);
 
-typedef bool (*watchman_cli_cmd_validate_func)(json_ref& args, char** errmsg);
+// Should throw an exception (ideally CommandValidationError) if validation
+// fails
+typedef void (*watchman_cli_cmd_validate_func)(json_ref& args);
+
+class CommandValidationError : public std::runtime_error {
+ public:
+  template <typename... Args>
+  explicit CommandValidationError(Args&&... args)
+      : std::runtime_error(watchman::to<std::string>(
+            "failed to validate command: ",
+            std::forward<Args>(args)...)) {}
+};
 
 #define CMD_DAEMON 1
 #define CMD_CLIENT 2
@@ -24,7 +36,7 @@ struct watchman_command_handler_def {
 // For commands that take the root dir as the second parameter,
 // realpath's that parameter on the client side and updates the
 // argument list
-bool w_cmd_realpath_root(json_ref& args, char** errmsg);
+void w_cmd_realpath_root(json_ref& args);
 
 // Try to find a project root that contains the path `resolved`. If found,
 // modify `resolved` to hold the path to the root project and return true.
