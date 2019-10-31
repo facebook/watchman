@@ -23,14 +23,12 @@ static bool query_caps(
     }
     result.set(capname, json_boolean(have));
     if (required && !have) {
-      char* buf = NULL;
-      ignore_result(asprintf(
-          &buf,
-          "client required capability `%s` is not supported by this server",
-          capname));
-      response.set("error", typed_string_to_json(buf, W_STRING_UNICODE));
-      w_log(W_LOG_ERR, "version: %s\n", buf);
-      free(buf);
+      auto buf = w_string::build(
+          "client required capability `",
+          capname,
+          "` is not supported by this server");
+      response.set("error", w_string_to_json(buf));
+      watchman::log(watchman::ERR, "version: ", buf, "\n");
 
       // Only trigger the error on the first one we hit.  Ideally
       // we'd tell the user about all of them, but it is a PITA to
