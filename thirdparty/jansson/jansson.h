@@ -300,20 +300,6 @@ int json_real_set(json_t* real, double value);
 #define JSON_VALIDATE_ONLY 0x1
 #define JSON_STRICT 0x2
 
-int json_unpack(json_t* root, const char* fmt, ...);
-int json_unpack_ex(
-    json_t* root,
-    json_error_t* error,
-    size_t flags,
-    const char* fmt,
-    ...);
-int json_vunpack_ex(
-    json_t* root,
-    json_error_t* error,
-    size_t flags,
-    const char* fmt,
-    va_list ap);
-
 /* equality */
 
 int json_equal(json_t* value1, json_t* value2);

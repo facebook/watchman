@@ -448,7 +448,6 @@ add_library(jansson STATIC
 thirdparty/jansson/dump.cpp
 thirdparty/jansson/error.cpp
 thirdparty/jansson/load.cpp
-thirdparty/jansson/pack_unpack.cpp
 thirdparty/jansson/strconv.cpp
 thirdparty/jansson/value.cpp
 )
