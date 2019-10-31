@@ -1169,7 +1169,7 @@ class EdenView : public QueryableView {
       root->cancel();
     };
 
-    w_set_thread_name("edensub %s", root->root_path.c_str());
+    w_set_thread_name("edensub ", root->root_path);
     watchman::log(watchman::DBG, "Started subscription thread\n");
 
     try {

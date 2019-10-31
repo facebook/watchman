@@ -8,17 +8,16 @@
 #ifdef __APPLE__
 #include <pthread.h>
 #endif
+#include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
+#include <folly/ThreadLocal.h>
+#include <folly/system/ThreadName.h>
 #include "Logging.h"
 
 using namespace watchman;
 
 int log_level = W_LOG_ERR;
-#ifdef __APPLE__
-static pthread_key_t thread_name_key;
-#else
-static thread_local std::string thread_name_str;
-#endif
+static folly::ThreadLocal<folly::Optional<std::string>> threadName;
 static constexpr size_t kMaxFrames = 64;
 
 char* log_name = NULL;
@@ -126,19 +125,24 @@ char* Log::currentTimeString(char* buf, size_t bufsize) {
   return buf;
 }
 
-const char* Log::getThreadName() {
-#ifdef __APPLE__
-  auto thread_name = (char*)pthread_getspecific(thread_name_key);
-#else
-  auto thread_name = thread_name_str.c_str();
-#endif
+const char* Log::setThreadName(std::string&& name) {
+  folly::setThreadName(name);
+  threadName->assign(name);
+  return threadName->value().c_str();
+}
 
-  if (thread_name) {
-    return thread_name;
+const char* Log::getThreadName() {
+  if (!threadName->hasValue()) {
+    auto name = folly::getCurrentThreadName();
+    if (name.hasValue()) {
+      threadName->assign(name);
+    } else {
+      std::stringstream ss;
+      ss << std::this_thread::get_id();
+      threadName->assign(ss.str());
+    }
   }
-  std::stringstream ss;
-  ss << std::this_thread::get_id();
-  return w_set_thread_name(ss.str().c_str());
+  return threadName->value().c_str();
 }
 
 void Log::setStdErrLoggingLevel(enum LogLevel level) {
@@ -418,38 +422,6 @@ void w_setup_signal_handlers(void) {
 #endif
 
   std::set_terminate(terminationHandler);
-}
-
-#ifdef __APPLE__
-static w_ctor_fn_type(register_thread_name) {
-  pthread_key_create(&thread_name_key, free);
-}
-w_ctor_fn_reg(register_thread_name);
-#endif
-
-const char* w_set_thread_name(const char* fmt, ...) {
-  va_list ap;
-#ifdef __APPLE__
-  auto thread_name = (char*)pthread_getspecific(thread_name_key);
-  free(thread_name);
-#else
-  char* thread_name = nullptr;
-  SCOPE_EXIT {
-    free(thread_name);
-  };
-#endif
-
-  va_start(ap, fmt);
-  ignore_result(vasprintf(&thread_name, fmt, ap));
-  va_end(ap);
-
-#ifdef __APPLE__
-  pthread_setspecific(thread_name_key, thread_name);
-  return thread_name;
-#else
-  thread_name_str = thread_name;
-  return thread_name_str.c_str();
-#endif
 }
 
 void w_log(int level, WATCHMAN_FMT_STRING(const char* fmt), ...) {

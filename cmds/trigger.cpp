@@ -17,8 +17,7 @@ bool watchman_trigger_command::waitNoIntr() {
 
 void watchman_trigger_command::run(const std::shared_ptr<w_root_t>& root) {
   std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
-  w_set_thread_name(
-      "trigger %s %s", triggername.c_str(), root->root_path.c_str());
+  w_set_thread_name("trigger ", triggername, " ", root->root_path);
 
   try {
     watchman_event_poll pfd[1];

@@ -131,9 +131,11 @@ static void client_thread(std::shared_ptr<watchman_client> client) noexcept {
 
   client->stm->setNonBlock(true);
   w_set_thread_name(
-      "client=%p:stm=%p:pid=%d",
+      "client=",
       client.get(),
+      ":stm=",
       client->stm.get(),
+      ":pid=",
       client->stm->getPeerProcessID());
 
   client->client_is_owner = client->stm->peerIsOwner();
@@ -292,9 +294,11 @@ static void client_thread(std::shared_ptr<watchman_client> client) noexcept {
 
 disconnected:
   w_set_thread_name(
-      "NOT_CONN:client=%p:stm=%p:pid=%d",
+      "NOT_CONN:client=",
       client.get(),
+      ":stm=",
       client->stm.get(),
+      ":pid=",
       client->stm->getPeerProcessID());
   // Remove the client from the map before we tear it down, as this makes
   // it easier to flush out pending writes on windows without worrying
@@ -530,7 +534,7 @@ static void named_pipe_accept_loop(const char* path) {
   listener_thread_event = CreateEvent(NULL, TRUE, FALSE, NULL);
   for (json_int_t i = 0; i < cfg_get_int("win32_concurrent_accepts", 32); ++i) {
     acceptors.push_back(std::thread([path, i]() {
-      w_set_thread_name("accept%d", i);
+      w_set_thread_name("accept", i);
       named_pipe_accept_loop_internal(path);
     }));
   }

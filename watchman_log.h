@@ -19,7 +19,8 @@
 
 extern int log_level;
 extern char* log_name;
-const char* w_set_thread_name(const char* fmt, ...);
+const char* w_set_thread_name_impl(std::string&& name);
+
 void w_setup_signal_handlers(void);
 void w_log(int level, WATCHMAN_FMT_STRING(const char* fmt), ...)
     WATCHMAN_FMT_ATTR(2, 3);

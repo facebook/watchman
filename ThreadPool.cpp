@@ -27,7 +27,7 @@ void ThreadPool::start(size_t numWorkers, size_t maxItems) {
 
   for (auto i = 0U; i < numWorkers; ++i) {
     workers_.emplace_back([ this, i ]() noexcept {
-      w_set_thread_name("ThreadPool-%i", i);
+      w_set_thread_name("ThreadPool-", i);
       runWorker();
     });
   }

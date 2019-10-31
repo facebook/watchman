@@ -23,6 +23,7 @@ class Log {
 
   static char* currentTimeString(char* buf, size_t bufsize);
   static const char* getThreadName();
+  static const char* setThreadName(std::string&& name);
 
   void setStdErrLoggingLevel(enum LogLevel level);
 
@@ -115,3 +116,9 @@ void logPrintf(enum LogLevel level, Args&&... args) {
   getLog().logPrintf(level, std::forward<Args>(args)...);
 }
 } // namespace watchman
+
+template <typename... Args>
+const char* w_set_thread_name(Args&&... args) {
+  auto name = watchman::to<std::string>(std::forward<Args>(args)...);
+  return watchman::Log::setThreadName(std::move(name));
+}
