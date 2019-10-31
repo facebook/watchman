@@ -122,7 +122,7 @@ std::vector<w_string> build_list_with_prefix(const char* prefix, size_t limit) {
     // Remove newline
     uint32_t len = strlen_uint32(buf);
     buf[len - 1] = '\0';
-    strings.emplace_back(w_string::printf("%s%s", prefix, buf));
+    strings.emplace_back(w_string::build(prefix, buf));
 
     if (strings.size() >= limit) {
       break;

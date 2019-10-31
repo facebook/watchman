@@ -296,8 +296,6 @@ class w_string {
   static w_string pathCat(std::initializer_list<w_string_piece> elems);
 
   /** Similar to asprintf, but returns a w_string */
-  static w_string printf(WATCHMAN_FMT_STRING(const char* format), ...)
-      WATCHMAN_FMT_ATTR(1, 2);
   static w_string vprintf(const char* format, va_list ap);
 
   template <typename... Args>

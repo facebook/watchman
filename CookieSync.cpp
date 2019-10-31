@@ -32,21 +32,13 @@ void CookieSync::setCookieDir(const w_string& dir) {
   gethostname(hostname, sizeof(hostname));
   hostname[sizeof(hostname) - 1] = '\0';
 
-  cookiePrefix_ = w_string::printf(
-      "%.*s/" WATCHMAN_COOKIE_PREFIX "%s-%d-",
-      int(cookieDir_.size()),
-      cookieDir_.data(),
-      hostname,
-      int(::getpid()));
+  cookiePrefix_ = w_string::build(
+      cookieDir_, "/" WATCHMAN_COOKIE_PREFIX, hostname, "-", ::getpid(), "-");
 }
 
 folly::Future<folly::Unit> CookieSync::sync() {
   /* generate a cookie name: cookie prefix + id */
-  auto path_str = w_string::printf(
-      "%.*s%" PRIu32,
-      int(cookiePrefix_.size()),
-      cookiePrefix_.data(),
-      serial_++);
+  auto path_str = w_string::build(cookiePrefix_, serial_++);
 
   auto cookie = std::make_unique<Cookie>(path_str);
   auto future = cookie->promise.getFuture();

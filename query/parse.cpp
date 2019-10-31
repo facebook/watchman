@@ -197,8 +197,7 @@ static void parse_relative_root(
 
   auto canon_path = w_string_canon_path(path);
   res->relative_root = w_string::pathCat({root->root_path, canon_path});
-  res->relative_root_slash =
-      w_string::printf("%s/", res->relative_root.c_str());
+  res->relative_root_slash = w_string::build(res->relative_root, "/");
 }
 
 static void parse_query_expression(w_query* res, const json_ref& query) {

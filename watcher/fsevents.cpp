@@ -306,8 +306,8 @@ static fse_stream* fse_stream_make(
   // We need to lookup up the UUID for the associated path and use that to
   // help decide whether we can use a value of `since` other than SinceNow.
   if (stat(root->root_path.c_str(), &st)) {
-    failure_reason = w_string::printf(
-        "failed to stat(%s): %s\n", root->root_path.c_str(), strerror(errno));
+    failure_reason = w_string::build(
+        "failed to stat(", root->root_path, "): ", strerror(errno) "\n");
     goto fail;
   }
 
@@ -319,8 +319,8 @@ static fse_stream* fse_stream_make(
     if (!fse_stream->uuid) {
       // If there is no UUID available and we want to use an event offset,
       // we fail: a nullptr UUID means that the journal is not available.
-      failure_reason = w_string::printf(
-          "fsevents journal is not available for dev_t=%d\n", st.st_dev);
+      failure_reason = w_string::build(
+          "fsevents journal is not available for dev_t=", st.st_dev, "\n");
       goto fail;
     }
     // Compare the UUID with that of the current stream
@@ -487,11 +487,12 @@ void FSEventsWatcher::FSEventsThread(const std::shared_ptr<w_root_t>& root) {
     }
 
     if (!FSEventStreamStart(stream->stream)) {
-      root->failure_reason = w_string::printf(
-          "FSEventStreamStart failed, look at your log file %s for "
-          "lines mentioning FSEvents and see %s#fsevents for more information\n",
-          log_name.c_str(),
-          cfg_get_trouble_url());
+      root->failure_reason = w_string::build(
+          "FSEventStreamStart failed, look at your log file ",
+          log_name,
+          " for lines mentioning FSEvents and see ",
+          cfg_get_trouble_url(),
+          "#fsevents for more information\n");
       goto done;
     }
 

@@ -491,14 +491,6 @@ w_string w_string::vprintf(const char* format, va_list args) {
   return w_string(s, false);
 }
 
-w_string w_string::printf(WATCHMAN_FMT_STRING(const char* format), ...) {
-  va_list args;
-  va_start(args, format);
-  auto res = w_string::vprintf(format, args);
-  va_end(args);
-  return res;
-}
-
 void w_string_addref(w_string_t* str) {
   ++str->refcnt;
 }
