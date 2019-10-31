@@ -102,9 +102,9 @@ void InMemoryView::statPath(
           "getFileInformation(",
           path,
           ") file=",
-          file,
+          fmt::ptr(file),
           " dir=",
-          dir_ent,
+          fmt::ptr(dir_ent),
           "\n");
     } catch (const std::system_error& exc) {
       errcode = exc.code();
@@ -112,9 +112,9 @@ void InMemoryView::statPath(
           "getFileInformation(",
           path,
           ") file=",
-          file,
+          fmt::ptr(file),
           " dir=",
-          dir_ent,
+          fmt::ptr(dir_ent),
           " failed: ",
           exc.what(),
           "\n");

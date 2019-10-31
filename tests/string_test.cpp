@@ -42,8 +42,8 @@ TEST(String, integrals) {
 
   EXPECT_EQ(w_string::build(int8_t(-127)), w_string("-127"));
 
-  EXPECT_EQ(w_string::build(bool(true)), w_string("1"));
-  EXPECT_EQ(w_string::build(bool(false)), w_string("0"));
+  EXPECT_EQ(w_string::build(bool(true)), w_string("true"));
+  EXPECT_EQ(w_string::build(bool(false)), w_string("false"));
 }
 
 TEST(String, strings) {
@@ -94,7 +94,7 @@ TEST(String, pointers) {
   bool foo = true;
   char lowerBuf[20];
 
-  auto str = w_string::build(&foo);
+  auto str = w_string::build(fmt::ptr(&foo));
   snprintf(
       lowerBuf, sizeof(lowerBuf), "0x%" PRIx64, (uint64_t)(uintptr_t)(&foo));
   EXPECT_EQ(str.size(), strlen_uint32(lowerBuf))
@@ -117,17 +117,12 @@ TEST(String, pointers) {
 
 TEST(String, double) {
   auto str = w_string::build(5.5);
-  char buf[16];
-  snprintf(buf, sizeof(buf), "%f", 5.5);
-  EXPECT_EQ(str.size(), 8);
-  EXPECT_TRUE(!strcmp(str.c_str(), buf))
-      << "str.c_str=" << str.c_str() << " buf=" << buf;
-  EXPECT_EQ(str, w_string("5.500000"));
+  EXPECT_EQ(str, w_string("5.5"));
 }
 
 TEST(String, concat) {
   auto str = w_string::build("one", 2, "three", 1.2, false, w_string(nullptr));
-  EXPECT_EQ(str, w_string("one2three1.2000000"));
+  EXPECT_EQ(str, w_string("one2three1.2false"));
 }
 
 TEST(String, lowercase_suffix) {

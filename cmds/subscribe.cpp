@@ -55,7 +55,7 @@ static std::tuple<sub_action, w_string> get_subscription_action(
   watchman::log(
       watchman::DBG,
       "sub=",
-      sub,
+      fmt::ptr(sub),
       " ",
       sub->name,
       ", last=",
@@ -577,18 +577,15 @@ static void cmd_subscribe(
 
   // Connect the root to our subscription
   {
-    auto client_id = folly::to<std::string>(uintptr_t(client));
-    auto client_stream = folly::to<std::string>(uintptr_t(client->stm.get()));
-    auto info_json = json_object(
-        {{"name", w_string_to_json(sub->name)},
-         {"query", sub->query->query_spec},
-         {"client",
-          w_string_to_json(w_string(client_id.data(), client_id.size()))},
-         {"stm",
-          w_string_to_json(
-              w_string(client_stream.data(), client_stream.size()))},
-         {"is_owner", json_boolean(client->stm->peerIsOwner())},
-         {"pid", json_integer(client->stm->getPeerProcessID())}});
+    auto client_id = w_string::build(fmt::ptr(client));
+    auto client_stream = w_string::build(fmt::ptr(client->stm.get()));
+    auto info_json =
+        json_object({{"name", w_string_to_json(sub->name)},
+                     {"query", sub->query->query_spec},
+                     {"client", w_string_to_json(client_id)},
+                     {"stm", w_string_to_json(client_stream)},
+                     {"is_owner", json_boolean(client->stm->peerIsOwner())},
+                     {"pid", json_integer(client->stm->getPeerProcessID())}});
 
     std::weak_ptr<watchman_client> clientRef(client->shared_from_this());
     client->unilateralSub.insert(std::make_pair(
