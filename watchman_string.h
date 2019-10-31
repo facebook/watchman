@@ -16,8 +16,10 @@
 #ifdef _WIN32
 #include <string>
 #endif
+#include <fmt/format.h>
 #include <folly/Conv.h>
 #include <folly/Range.h>
+#include <folly/ScopeGuard.h>
 #include <stdexcept>
 #include <vector>
 
@@ -313,6 +315,34 @@ class w_string {
 
   template <typename... Args>
   static w_string build(Args&&... args);
+
+  /** Construct a new string using the `fmt` formatting library.
+   * Syntax: https://fmt.dev/latest/syntax.html
+   */
+  template <typename... Args>
+  static w_string format(fmt::string_view format_str, Args&&... args) {
+    auto size = fmt::formatted_size(format_str, args...);
+
+    w_string_t* s = (w_string_t*)(new char[sizeof(*s) + size + 1]);
+    new (s) watchman_string();
+
+    {
+      // in case format_to throws
+      SCOPE_FAIL {
+        delete[](char*) s;
+      };
+
+      s->refcnt = 1;
+      s->len = size;
+
+      auto mut_buf = const_cast<char*>(s->buf);
+      fmt::format_to(mut_buf, format_str, args...);
+
+      mut_buf[s->len] = 0;
+    }
+
+    return w_string(s, false);
+  }
 
   /** Return a possibly new version of this string that has its separators
    * normalized to unix slashes */
@@ -639,6 +669,10 @@ w_string w_string::build(Args&&... args) {
 
   return w_string(s, false);
 }
+
+// Streaming operators for logging and printing
+std::ostream& operator<<(std::ostream& stream, const w_string& a);
+std::ostream& operator<<(std::ostream& stream, const w_string_piece& a);
 
 #endif
 

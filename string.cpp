@@ -722,5 +722,15 @@ bool w_is_path_absolute_cstr_len(const char* path, uint32_t len) {
 #endif
 }
 
+std::ostream& operator<<(std::ostream& stream, const w_string& a) {
+  stream << folly::StringPiece(a);
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, const w_string_piece& a) {
+  stream << folly::StringPiece(a);
+  return stream;
+}
+
 /* vim:ts=2:sw=2:et:
  */

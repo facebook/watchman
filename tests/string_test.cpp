@@ -7,6 +7,18 @@
 #include <folly/portability/GTest.h>
 #include <string>
 
+TEST(String, fmt) {
+  EXPECT_EQ(w_string::format("hello {}", "world"), w_string("hello world"));
+
+  // Tickle the boundary case between the stack buffer and the dynamic
+  // string construction in w_string::vformat
+  for (size_t i = 1023; i <= 1025; ++i) {
+    std::string a(i, 'a');
+    auto s = w_string::format("{}", a);
+    EXPECT_EQ(s, w_string(a.data(), a.size()));
+  }
+}
+
 TEST(String, integrals) {
   EXPECT_EQ(w_string::build(int8_t(1)), w_string("1"));
   EXPECT_EQ(w_string::build(int16_t(1)), w_string("1"));
