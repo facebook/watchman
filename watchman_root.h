@@ -162,12 +162,9 @@ struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   void applyIgnoreConfiguration();
 };
 
-std::shared_ptr<w_root_t>
-w_root_resolve(const char* path, bool auto_watch, char** errmsg);
+std::shared_ptr<w_root_t> w_root_resolve(const char* path, bool auto_watch);
 
-std::shared_ptr<w_root_t> w_root_resolve_for_client_mode(
-    const char* filename,
-    char** errmsg);
+std::shared_ptr<w_root_t> w_root_resolve_for_client_mode(const char* filename);
 bool findEnclosingRoot(
     const w_string& fileName,
     w_string_piece& prefix,
@@ -186,11 +183,8 @@ extern folly::Synchronized<
     std::unordered_map<w_string, std::shared_ptr<w_root_t>>>
     watched_roots;
 
-std::shared_ptr<w_root_t> root_resolve(
-    const char* filename,
-    bool auto_watch,
-    bool* created,
-    char** errmsg);
+std::shared_ptr<w_root_t>
+root_resolve(const char* filename, bool auto_watch, bool* created);
 
 void set_poison_state(
     const w_string& dir,

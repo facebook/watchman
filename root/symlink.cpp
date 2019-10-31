@@ -69,18 +69,15 @@ static void watch_symlink_target(const w_string& target, json_t* root_files) {
           resolved,
           "\n");
     } else {
-      char* errmsg = nullptr;
-      SCOPE_EXIT {
-        free(errmsg);
-      };
-      auto root = w_root_resolve(resolved.asWString().c_str(), true, &errmsg);
-      if (!root) {
+      try {
+        auto root = w_root_resolve(resolved.asWString().c_str(), true);
+      } catch (const std::exception& exc) {
         watchman::log(
             watchman::ERR,
             "watch_symlink_target: unable to watch ",
             resolved,
             ": ",
-            errmsg,
+            exc.what(),
             "\n");
       }
     }

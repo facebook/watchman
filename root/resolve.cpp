@@ -23,7 +23,6 @@ static bool root_check_restrict(const char* watch_path) {
   for (i = 0; i < json_array_size(root_restrict_files); i++) {
     auto obj = json_array_get(root_restrict_files, i);
     const char* restrict_file = json_string_value(obj);
-    char* restrict_path;
     bool rv;
 
     if (!restrict_file) {
@@ -35,9 +34,9 @@ static bool root_check_restrict(const char* watch_path) {
       continue;
     }
 
-    ignore_result(asprintf(&restrict_path, "%s/%s", watch_path, restrict_file));
-    rv = w_path_exists(restrict_path);
-    free(restrict_path);
+    auto restrict_path =
+        watchman::to<std::string>(watch_path, "/", restrict_file);
+    rv = w_path_exists(restrict_path.c_str());
     if (rv)
       return true;
   }
@@ -45,8 +44,7 @@ static bool root_check_restrict(const char* watch_path) {
   return false;
 }
 
-static bool
-check_allowed_fs(const char* filename, const w_string& fs_type, char** errmsg) {
+static void check_allowed_fs(const char* filename, const w_string& fs_type) {
   uint32_t i;
   const char* advice = NULL;
 
@@ -60,7 +58,7 @@ check_allowed_fs(const char* filename, const w_string& fs_type, char** errmsg) {
 
   auto illegal_fstypes = cfg_get_json("illegal_fstypes");
   if (!illegal_fstypes) {
-    return true;
+    return;
   }
 
   auto advice_string = cfg_get_json("illegal_fstypes_advice");
@@ -75,7 +73,7 @@ check_allowed_fs(const char* filename, const w_string& fs_type, char** errmsg) {
     w_log(
         W_LOG_ERR,
         "resolve_root: global config illegal_fstypes is not an array\n");
-    return true;
+    return;
   }
 
   for (i = 0; i < json_array_size(illegal_fstypes); i++) {
@@ -95,24 +93,17 @@ check_allowed_fs(const char* filename, const w_string& fs_type, char** errmsg) {
       continue;
     }
 
-    ignore_result(asprintf(
-        errmsg,
-        "path uses the \"%s\" filesystem "
-        "and is disallowed by global config illegal_fstypes: %s",
-        fs_type.c_str(),
-        advice));
-
-    return false;
+    throw RootResolveError(
+        "path uses the \"",
+        fs_type,
+        "\" filesystem "
+        "and is disallowed by global config illegal_fstypes: ",
+        advice);
   }
-
-  return true;
 }
 
-std::shared_ptr<w_root_t> root_resolve(
-    const char* filename,
-    bool auto_watch,
-    bool* created,
-    char** errmsg) {
+std::shared_ptr<w_root_t>
+root_resolve(const char* filename, bool auto_watch, bool* created) {
   std::error_code realpath_err;
   std::shared_ptr<w_root_t> root;
 
@@ -120,15 +111,17 @@ std::shared_ptr<w_root_t> root_resolve(
 
   // Sanity check that the path is absolute
   if (!w_is_path_absolute_cstr(filename)) {
-    ignore_result(asprintf(errmsg, "path \"%s\" must be absolute", filename));
-    w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
-    return nullptr;
+    watchman::log(
+        watchman::ERR,
+        "resolve_root: path \"",
+        filename,
+        "\" must be absolute\n");
+    throw RootResolveError("path \"", filename, "\" must be absolute");
   }
 
   if (!strcmp(filename, "/")) {
-    ignore_result(asprintf(errmsg, "cannot watch \"/\""));
-    w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
-    return nullptr;
+    watchman::log(watchman::ERR, "resolve_root: cannot watchman \"/\"\n");
+    throw RootResolveError("cannot watch \"/\"");
   }
 
   w_string root_str;
@@ -139,25 +132,23 @@ std::shared_ptr<w_root_t> root_resolve(
       watchman::getFileInformation(filename);
     } catch (const std::system_error& exc) {
       if (exc.code() == watchman::error_code::no_such_file_or_directory) {
-        ignore_result(asprintf(
-            errmsg,
-            "\"%s\" resolved to \"%s\" but we were "
-            "unable to examine \"%s\" using strict "
+        throw RootResolveError(
+            "\"",
+            filename,
+            "\" resolved to \"",
+            root_str,
+            "\" but we were "
+            "unable to examine \"",
+            filename,
+            "\" using strict "
             "case sensitive rules.  Please check "
             "each component of the path and make "
             "sure that that path exactly matches "
             "the correct case of the files on your "
-            "filesystem.",
-            filename,
-            root_str.c_str(),
-            filename));
-        w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
-        return nullptr;
+            "filesystem.");
       }
-      ignore_result(
-          asprintf(errmsg, "unable to lstat \"%s\" %s", filename, exc.what()));
-      w_log(W_LOG_ERR, "resolve_root: %s", *errmsg);
-      return nullptr;
+      throw RootResolveError(
+          "unable to lstat \"", filename, "\" %s", exc.what());
     }
   } catch (const std::system_error& exc) {
     realpath_err = exc.code();
@@ -174,24 +165,13 @@ std::shared_ptr<w_root_t> root_resolve(
 
   if (!root && realpath_err.value() != 0) {
     // Path didn't resolve and neither did the name they passed in
-    ignore_result(asprintf(
-        errmsg,
-        "realpath(%s) -> %s",
-        filename,
-        realpath_err.message().c_str()));
-    w_log(W_LOG_ERR, "resolve_root: %s\n", *errmsg);
-    return nullptr;
+    throw RootResolveError(
+        "realpath(", filename, ") -> ", realpath_err.message());
   }
 
   if (root || !auto_watch) {
     if (!root) {
-      ignore_result(
-          asprintf(errmsg, "directory %s is not watched", root_str.c_str()));
-      w_log(W_LOG_DBG, "resolve_root: %s\n", *errmsg);
-    }
-
-    if (!root) {
-      return nullptr;
+      throw RootResolveError("directory ", root_str, " is not watched");
     }
 
     // Treat this as new activity for aging purposes; this roughly maps
@@ -210,43 +190,31 @@ std::shared_ptr<w_root_t> root_resolve(
   w_log(W_LOG_DBG, "Want to watch %s -> %s\n", filename, root_str.c_str());
 
   auto fs_type = w_fstype(filename);
-  if (!check_allowed_fs(root_str.c_str(), fs_type, errmsg)) {
-    w_log(W_LOG_ERR, "resolve_root: %s\n", *errmsg);
-    return nullptr;
-  }
+  check_allowed_fs(root_str.c_str(), fs_type);
 
   if (!root_check_restrict(root_str.c_str())) {
     bool enforcing;
     auto root_files = cfg_compute_root_files(&enforcing);
     auto root_files_list = cfg_pretty_print_root_files(root_files);
-    ignore_result(asprintf(
-        errmsg,
+    throw RootResolveError(
         "Your watchman administrator has configured watchman "
-        "to prevent watching path `%s`.  None of the files "
+        "to prevent watching path `",
+        root_str,
+        "`.  None of the files "
         "listed in global config root_files are "
         "present and enforce_root_files is set to true.  "
-        "root_files is defined by the `%s` config file and "
-        "includes %s.  One or more of these files must be "
+        "root_files is defined by the `",
+        cfg_get_global_config_file_path(),
+        "` config file and "
+        "includes ",
+        root_files_list,
+        ".  One or more of these files must be "
         "present in order to allow a watch.  Try pulling "
-        "and checking out a newer version of the project?",
-        root_str.c_str(),
-        cfg_get_global_config_file_path().c_str(),
-        root_files_list.c_str()));
-    w_log(W_LOG_ERR, "resolve_root: %s\n", *errmsg);
-    return nullptr;
+        "and checking out a newer version of the project?");
   }
 
   // created with 1 ref
-  try {
-    root = std::make_shared<w_root_t>(root_str, fs_type);
-  } catch (const std::exception& e) {
-    watchman::log(watchman::ERR, "while making a new root: ", e.what());
-    *errmsg = strdup(e.what());
-  }
-
-  if (!root) {
-    return nullptr;
-  }
+  root = std::make_shared<w_root_t>(root_str, fs_type);
 
   {
     auto wlock = watched_roots.wlock();
@@ -265,10 +233,11 @@ std::shared_ptr<w_root_t> root_resolve(
   return root;
 }
 
-std::shared_ptr<w_root_t>
-w_root_resolve(const char* filename, bool auto_watch, char** errmsg) {
+std::shared_ptr<w_root_t> w_root_resolve(
+    const char* filename,
+    bool auto_watch) {
   bool created = false;
-  auto root = root_resolve(filename, auto_watch, &created, errmsg);
+  auto root = root_resolve(filename, auto_watch, &created);
 
   if (created) {
     try {
@@ -278,26 +247,22 @@ w_root_resolve(const char* filename, bool auto_watch, char** errmsg) {
           watchman::ERR,
           "w_root_resolve, while calling startThreads: ",
           e.what());
-      *errmsg = strdup(e.what());
       root->cancel();
-      return nullptr;
+      throw;
     }
     w_state_save();
   }
   return root;
 }
 
-std::shared_ptr<w_root_t> w_root_resolve_for_client_mode(
-    const char* filename,
-    char** errmsg) {
+std::shared_ptr<w_root_t> w_root_resolve_for_client_mode(const char* filename) {
   bool created = false;
-  auto root = root_resolve(filename, true, &created, errmsg);
+  auto root = root_resolve(filename, true, &created);
 
   if (created) {
     auto view = std::dynamic_pointer_cast<watchman::InMemoryView>(root->view());
     if (!view) {
-      *errmsg = strdup("client mode not available");
-      return nullptr;
+      throw RootResolveError("client mode not available");
     }
 
     /* force a walk now */

@@ -44,11 +44,6 @@ std::shared_ptr<w_root_t> doResolveOrCreateRoot(
     const json_ref& args,
     bool create) {
   const char* root_name;
-  char* errmsg = nullptr;
-
-  SCOPE_EXIT {
-    free(errmsg);
-  };
 
   // Assume root is first element
   size_t root_index = 1;
@@ -65,35 +60,33 @@ std::shared_ptr<w_root_t> doResolveOrCreateRoot(
         ", expected a string naming the root dir");
   }
 
-  std::shared_ptr<w_root_t> root;
-  if (client->client_mode) {
-    root = w_root_resolve_for_client_mode(root_name, &errmsg);
-  } else {
-    if (!client->client_is_owner) {
-      // Only the owner is allowed to create watches
-      create = false;
-    }
-    root = w_root_resolve(root_name, create, &errmsg);
-  }
-
-  if (!root) {
-    if (!client->client_is_owner) {
-      throw RootResolveError(
-          "unable to resolve root ",
-          root_name,
-          ": ",
-          errmsg ? errmsg : "",
-          " (this may be because you are not the process owner)");
+  try {
+    std::shared_ptr<w_root_t> root;
+    if (client->client_mode) {
+      root = w_root_resolve_for_client_mode(root_name);
     } else {
-      throw RootResolveError(
-          "unable to resolve root ", root_name, ": ", errmsg ? errmsg : "");
+      if (!client->client_is_owner) {
+        // Only the owner is allowed to create watches
+        create = false;
+      }
+      root = w_root_resolve(root_name, create);
     }
-  }
 
-  if (client->perf_sample) {
-    client->perf_sample->add_root_meta(root);
+    if (client->perf_sample) {
+      client->perf_sample->add_root_meta(root);
+    }
+    return root;
+
+  } catch (const std::exception& exc) {
+    throw RootResolveError(
+        "unable to resolve root ",
+        root_name,
+        ": ",
+        exc.what(),
+        client->client_is_owner
+            ? ""
+            : " (this may be because you are not the process owner)");
   }
-  return root;
 }
 
 std::shared_ptr<w_root_t> resolveRoot(
