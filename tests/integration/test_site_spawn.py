@@ -51,6 +51,7 @@ class TestSiteSpawn(unittest.TestCase):
         inst = WatchmanInstance.Instance(config=config)
         stdout, stderr = inst.commandViaCLI(["version", "--no-site-spawner"])
 
+        print(stdout, stderr.decode("ascii"))
         parsed = json.loads(stdout.decode("ascii"))
         self.assertTrue("version" in parsed)
 

@@ -197,9 +197,10 @@ bool w_getopt(
         }
 
         if (o->is_daemon) {
-          char* val;
-          ignore_result(asprintf(&val, "--%s=%s", o->optname, optarg));
-          daemon_argv[num_daemon++] = val;
+          auto value = watchman::to<std::string>(
+              "--", o->optname, "=", optarg ? optarg : "");
+          // we deliberately leak this value to the caller
+          daemon_argv[num_daemon++] = strdup(value.c_str());
         }
 
         /* store the argument if we found one */
