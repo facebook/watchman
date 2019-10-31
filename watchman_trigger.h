@@ -28,8 +28,7 @@ struct watchman_trigger_command {
 
   watchman_trigger_command(
       const std::shared_ptr<w_root_t>& root,
-      const json_ref& trig,
-      char** errmsg);
+      const json_ref& trig);
   watchman_trigger_command(const watchman_trigger_command&) = delete;
   ~watchman_trigger_command();
 

@@ -175,41 +175,34 @@ static json_ref build_legacy_trigger(
   return trig;
 }
 
-static bool parse_redirection(
+static void parse_redirection(
     json_ref trig,
     std::string& name,
     int* flags,
-    const char* label,
-    char** errmsg) {
+    const char* label) {
   *flags = 0;
 
   auto ele = trig.get_default(label);
   if (!ele) {
     // Specifying a redirection is optional
-    return true;
+    return;
   }
 
   if (!ele.isString()) {
-    ignore_result(asprintf(errmsg, "%s must be a string", label));
-    return false;
+    throw CommandValidationError(label, " must be a string");
   }
 
   name = json_string_value(ele);
   if (name.empty() || name[0] != '>') {
-    ignore_result(asprintf(
-        errmsg,
-        "%s: must be prefixed with either > or >>, got %s",
-        label,
-        name.c_str()));
-    return false;
+    throw CommandValidationError(
+        label, ": must be prefixed with either > or >>, got ", name);
   }
 
   *flags = O_CREAT | O_WRONLY;
 
   if (name[1] == '>') {
 #ifdef _WIN32
-    ignore_result(asprintf(errmsg, "Windows does not support O_APPEND"));
-    return false;
+    throw CommandValidationError(label, ": Windows does not support O_APPEND");
 #else
     *flags |= O_APPEND;
     name.erase(0, 2);
@@ -218,14 +211,11 @@ static bool parse_redirection(
     *flags |= O_TRUNC;
     name.erase(0, 1);
   }
-
-  return true;
 }
 
 watchman_trigger_command::watchman_trigger_command(
     const std::shared_ptr<w_root_t>& root,
-    const json_ref& trig,
-    char** errmsg)
+    const json_ref& trig)
     : definition(trig),
       append_files(false),
       stdin_style(input_dev_null),
@@ -250,15 +240,13 @@ watchman_trigger_command::watchman_trigger_command(
 
   auto name = trig.get_default("name");
   if (!name || !name.isString()) {
-    *errmsg = strdup("invalid or missing name");
-    return;
+    throw CommandValidationError("invalid or missing name");
   }
   triggername = json_to_w_string(name);
 
   command = definition.get_default("command");
   if (!command || !command.isArray() || !json_array_size(command)) {
-    *errmsg = strdup("invalid command array");
-    return;
+    throw CommandValidationError("invalid command array");
   }
 
   append_files = trig.get_default("append_files", json_false()).asBool();
@@ -288,29 +276,21 @@ watchman_trigger_command::watchman_trigger_command(
       parse_field_list(
           json_array({typed_string_to_json("name")}), &query->fieldList);
     } else {
-      ignore_result(asprintf(errmsg, "invalid stdin value %s", str));
-      return;
+      throw CommandValidationError("invalid stdin value ", str);
     }
   } else {
-    *errmsg = strdup("invalid value for stdin");
-    return;
+    throw CommandValidationError("invalid value for stdin");
   }
 
   // unlimited unless specified
   auto ival = trig.get_default("max_files_stdin", json_integer(0)).asInt();
   if (ival < 0) {
-    *errmsg = strdup("max_files_stdin must be >= 0");
-    return;
+    throw CommandValidationError("max_files_stdin must be >= 0");
   }
   max_files_stdin = ival;
 
-  if (!parse_redirection(trig, stdout_name, &stdout_flags, "stdout", errmsg)) {
-    return;
-  }
-
-  if (!parse_redirection(trig, stderr_name, &stderr_flags, "stderr", errmsg)) {
-    return;
-  }
+  parse_redirection(trig, stdout_name, &stdout_flags, "stdout");
+  parse_redirection(trig, stderr_name, &stderr_flags, "stderr");
 
   // Set some standard vars
   env.set({{"WATCHMAN_ROOT", root->root_path},
@@ -352,7 +332,6 @@ void watchman_trigger_command::start(const std::shared_ptr<w_root_t>& root) {
  * Sets up a trigger so that we can execute a command when a change
  * is detected */
 static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
-  char* errmsg = NULL;
   bool need_save = true;
   std::unique_ptr<watchman_trigger_command> cmd;
   json_ref trig;
@@ -362,23 +341,18 @@ static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
 
   if (json_array_size(args) < 3) {
     send_error_response(client, "not enough arguments");
-    goto done;
+    return;
   }
 
   trig = args.at(2);
   if (trig.isString()) {
     trig = build_legacy_trigger(root, client, args);
     if (!trig) {
-      goto done;
+      return;
     }
   }
 
-  cmd = std::make_unique<watchman_trigger_command>(root, trig, &errmsg);
-
-  if (errmsg) {
-    send_error_response(client, "%s", errmsg);
-    goto done;
-  }
+  cmd = std::make_unique<watchman_trigger_command>(root, trig);
 
   resp = make_response();
   resp.set("triggerid", w_string_to_json(cmd->triggername));
@@ -418,11 +392,6 @@ static void cmd_trigger(struct watchman_client* client, const json_ref& args) {
   }
 
   send_and_dispose_response(client, std::move(resp));
-
-done:
-  if (errmsg) {
-    free(errmsg);
-  }
 }
 W_CMD_REG("trigger", cmd_trigger, CMD_DAEMON, w_cmd_realpath_root)
 

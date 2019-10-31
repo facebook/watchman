@@ -184,23 +184,20 @@ bool w_root_load_state(const json_ref& state) {
           continue;
         }
 
-        auto cmd =
-            std::make_unique<watchman_trigger_command>(root, tobj, &errmsg);
-        if (errmsg) {
+        try {
+          auto cmd = std::make_unique<watchman_trigger_command>(root, tobj);
+          cmd->start(root);
+          auto& mapEntry = map[cmd->triggername];
+          mapEntry = std::move(cmd);
+        } catch (const std::exception& exc) {
           watchman::log(
               watchman::ERR,
               "loading trigger for ",
               root->root_path,
               ": ",
-              errmsg,
+              exc.what(),
               "\n");
-          free(errmsg);
-          continue;
         }
-
-        cmd->start(root);
-        auto& mapEntry = map[cmd->triggername];
-        mapEntry = std::move(cmd);
       }
     }
 
