@@ -51,7 +51,7 @@ class PcreExpr : public QueryExpr {
 
   static std::unique_ptr<QueryExpr>
   parse(w_query*, const json_ref& term, CaseSensitivity caseSensitive) {
-    const char *ignore, *pattern, *scope = "basename";
+    const char *pattern, *scope = "basename";
     const char* which =
         caseSensitive == CaseSensitivity::CaseInSensitive ? "ipcre" : "pcre";
     pcre* re;
@@ -59,10 +59,22 @@ class PcreExpr : public QueryExpr {
     int erroff = 0;
     int errcode = 0;
 
-    if (json_unpack(term, "[s,s,s]", &ignore, &pattern, &scope) != 0 &&
-        json_unpack(term, "[s,s]", &ignore, &pattern) != 0) {
+    if (term.array().size() > 1 && term.at(1).isString()) {
+      pattern = json_string_value(term.at(1));
+    } else {
       throw QueryParseError(watchman::to<std::string>(
-          "Expected [\"", which, "\", \"pattern\", \"scope\"?]"));
+          "First parameter to \"", which, "\" term must be a pattern string"));
+    }
+
+    if (term.array().size() > 2) {
+      if (term.at(2).isString()) {
+        scope = json_string_value(term.at(2));
+      } else {
+        throw QueryParseError(watchman::to<std::string>(
+            "Second parameter to \"",
+            which,
+            "\" term must be an optional scope string"));
+      }
     }
 
     if (strcmp(scope, "basename") && strcmp(scope, "wholename")) {
