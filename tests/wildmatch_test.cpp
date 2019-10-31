@@ -9,30 +9,15 @@
 
 #define WILDMATCH_TEST_JSON_FILE "tests/wildmatch_test.json"
 
-static void run_test(json_t* test_case_data) {
-  int wildmatch_should_succeed;
-  int wildmatch_flags;
-  char* text_to_match;
-  char* pattern_to_use;
-  int wildmatch_succeeded;
+static void run_test(const json_ref& test_case_data) {
+  auto wildmatch_should_succeed = test_case_data.at(0).asBool();
+  auto wildmatch_flags = test_case_data.at(1).asInt();
+  auto text_to_match = json_string_value(test_case_data.at(2));
+  auto pattern_to_use = json_string_value(test_case_data.at(3));
 
-  json_error_t error;
-  EXPECT_NE(
-      json_unpack_ex(
-          test_case_data,
-          &error,
-          0,
-          "[b,i,s,s]",
-          &wildmatch_should_succeed,
-          &wildmatch_flags,
-          &text_to_match,
-          &pattern_to_use),
-      -1)
-      << "Error decoding JSON: " << error.text << " source=" << error.source
-      << " line=" << error.line << " col=" << error.column;
-
-  wildmatch_succeeded =
-      wildmatch(pattern_to_use, text_to_match, wildmatch_flags, 0) == WM_MATCH;
+  auto wildmatch_succeeded =
+      wildmatch(pattern_to_use, text_to_match, wildmatch_flags, nullptr) ==
+      WM_MATCH;
   EXPECT_EQ(wildmatch_succeeded, wildmatch_should_succeed)
       << "Pattern [" << pattern_to_use << "] matching text [" << text_to_match
       << "] with flags " << wildmatch_flags;
