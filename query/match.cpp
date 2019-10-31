@@ -59,26 +59,59 @@ class WildMatchExpr : public QueryExpr {
 
   static std::unique_ptr<QueryExpr>
   parse(w_query*, const json_ref& term, CaseSensitivity case_sensitive) {
-    const char *ignore, *pattern, *scope = "basename";
+    const char *pattern, *scope = "basename";
     const char* which =
         case_sensitive == CaseSensitivity::CaseInSensitive ? "imatch" : "match";
     int noescape = 0;
     int includedotfiles = 0;
 
-    if (json_unpack(
-            term,
-            "[s,s,s,{s?b,s?b}]",
-            &ignore,
-            &pattern,
-            &scope,
-            "noescape",
-            &noescape,
-            "includedotfiles",
-            &includedotfiles) != 0 &&
-        json_unpack(term, "[s,s,s]", &ignore, &pattern, &scope) != 0 &&
-        json_unpack(term, "[s,s]", &ignore, &pattern) != 0) {
-      throw QueryParseError(
-          "Expected [\"", which, "\", \"pattern\", \"scope\"?]");
+    if (term.array().size() > 1 && term.at(1).isString()) {
+      pattern = json_string_value(term.at(1));
+    } else {
+      throw QueryParseError(watchman::to<std::string>(
+          "First parameter to \"", which, "\" term must be a pattern string"));
+    }
+
+    if (term.array().size() > 2) {
+      if (term.at(2).isString()) {
+        scope = json_string_value(term.at(2));
+      } else {
+        throw QueryParseError(watchman::to<std::string>(
+            "Second parameter to \"",
+            which,
+            "\" term must be an optional scope string"));
+      }
+    }
+
+    if (term.array().size() > 3) {
+      auto& opts = term.at(3);
+      if (!opts.isObject()) {
+        throw QueryParseError(watchman::to<std::string>(
+            "Third parameter to \"",
+            which,
+            "\" term must be an optional object"));
+      }
+
+      auto ele = opts.get_default("noescape", json_false());
+      if (!ele.isBool()) {
+        throw QueryParseError(watchman::to<std::string>(
+            "noescape option for \"", which, "\" term must be a boolean"));
+      }
+      noescape = ele.asBool();
+
+      ele = opts.get_default("includedotfiles", json_false());
+      if (!ele.isBool()) {
+        throw QueryParseError(watchman::to<std::string>(
+            "includedotfiles option for \"",
+            which,
+            "\" term must be a boolean"));
+      }
+      includedotfiles = ele.asBool();
+    }
+
+    if (term.array().size() > 4) {
+      throw QueryParseError(folly::to<std::string>(
+          "too many parameters passed to \"", which, "\" expression"));
     }
 
     if (strcmp(scope, "basename") && strcmp(scope, "wholename")) {
