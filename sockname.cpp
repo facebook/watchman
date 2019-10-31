@@ -3,8 +3,8 @@
 
 #include "watchman.h"
 
-char* sock_name = NULL;
+std::string sock_name;
 
 const char* get_sock_name(void) {
-  return sock_name;
+  return sock_name.c_str();
 }

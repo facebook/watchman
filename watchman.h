@@ -66,7 +66,7 @@ void w_request_shutdown(void);
 #include "watchman_time.h"
 
 extern const char* watchman_tmp_dir;
-extern char* watchman_state_file;
+extern std::string watchman_state_file;
 extern int dont_save_state;
 void w_state_shutdown(void);
 void w_state_save(void);
@@ -94,7 +94,7 @@ void startSanityCheckThread(void);
 #define w_strsignal(val) strsignal((val))
 #endif
 
-extern char* sock_name;
+extern std::string sock_name;
 const char* get_sock_name(void);
 
 #ifndef _WIN32

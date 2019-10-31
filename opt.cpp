@@ -214,7 +214,7 @@ bool w_getopt(
             }
             case REQ_STRING: {
               auto sval = typed_string_to_json(optarg, W_STRING_UNICODE);
-              *(char**)o->val = strdup(optarg);
+              *(std::string*)o->val = optarg;
               cfg_set_arg(o->optname, sval);
               break;
             }

@@ -7,7 +7,7 @@
 
 using namespace watchman;
 
-char* watchman_state_file = NULL;
+std::string watchman_state_file;
 int dont_save_state = 0;
 
 /** The state saving thread is responsible for writing out the
@@ -70,14 +70,15 @@ bool w_state_load(void) {
 
   state_saver_thread = std::thread(state_saver);
 
-  auto state = json_load_file(watchman_state_file, 0, &err);
+  auto state = json_load_file(watchman_state_file.c_str(), 0, &err);
 
   if (!state) {
-    w_log(
-        W_LOG_ERR,
-        "failed to parse json from %s: %s\n",
+    log(ERR,
+        "failed to parse json from ",
         watchman_state_file,
-        err.text);
+        ": ",
+        err.text,
+        "\n");
     return false;
   }
 
@@ -137,14 +138,15 @@ static bool do_state_save(void) {
 
   auto state = json_object();
 
-  auto file =
-      w_stm_open(watchman_state_file, O_WRONLY | O_TRUNC | O_CREAT, 0600);
+  auto file = w_stm_open(
+      watchman_state_file.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0600);
   if (!file) {
-    w_log(
-        W_LOG_ERR,
-        "save_state: unable to open %s for write: %s\n",
+    log(ERR,
+        "save_state: unable to open ",
         watchman_state_file,
-        strerror(errno));
+        " for write: ",
+        strerror(errno),
+        "\n");
     return false;
   }
 

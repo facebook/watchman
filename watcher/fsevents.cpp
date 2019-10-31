@@ -490,7 +490,7 @@ void FSEventsWatcher::FSEventsThread(const std::shared_ptr<w_root_t>& root) {
       root->failure_reason = w_string::printf(
           "FSEventStreamStart failed, look at your log file %s for "
           "lines mentioning FSEvents and see %s#fsevents for more information\n",
-          log_name,
+          log_name.c_str(),
           cfg_get_trouble_url());
       goto done;
     }

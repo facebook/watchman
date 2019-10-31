@@ -18,7 +18,7 @@
 #include "watchman_preprocessor.h"
 
 extern int log_level;
-extern char* log_name;
+extern std::string log_name;
 const char* w_set_thread_name_impl(std::string&& name);
 
 void w_setup_signal_handlers(void);

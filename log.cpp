@@ -20,7 +20,7 @@ int log_level = W_LOG_ERR;
 static folly::ThreadLocal<folly::Optional<std::string>> threadName;
 static constexpr size_t kMaxFrames = 64;
 
-char* log_name = NULL;
+std::string log_name;
 
 namespace {
 template <typename String>

@@ -22,10 +22,10 @@ static enum w_pdu_type server_pdu = is_bser;
 static enum w_pdu_type output_pdu = is_json_pretty;
 static uint32_t server_capabilities = 0;
 static uint32_t output_capabilities = 0;
-static char* server_encoding = NULL;
-static char* output_encoding = NULL;
-static char* test_state_dir = NULL;
-static char* pid_file = NULL;
+static std::string server_encoding;
+static std::string output_encoding;
+static std::string test_state_dir;
+static std::string pid_file;
 static char** daemon_argv = NULL;
 static int persistent = 0;
 static int foreground = 0;
@@ -45,7 +45,7 @@ static int json_input_arg = 0;
 
 static const char* compute_user_name(void);
 static void compute_file_name(
-    char** strp,
+    std::string& str,
     const char* user,
     const char* suffix,
     const char* what);
@@ -54,7 +54,7 @@ static bool lock_pidfile(void) {
   // We defer computing this path until we're in the server context because
   // eager evaluation can trigger integration test failures unless all clients
   // are aware of both the pidfile and the sockpath being used in the tests.
-  compute_file_name(&pid_file, compute_user_name(), "pid", "pidfile");
+  compute_file_name(pid_file, compute_user_name(), "pid", "pidfile");
 
 #if !defined(USE_GIMLI) && !defined(_WIN32)
   struct flock lock;
@@ -67,14 +67,15 @@ static bool lock_pidfile(void) {
   lock.l_whence = SEEK_SET;
   lock.l_len = 0;
 
-  FileDescriptor fd(open(pid_file, O_RDWR | O_CREAT, 0644));
+  FileDescriptor fd(open(pid_file.c_str(), O_RDWR | O_CREAT, 0644));
 
   if (!fd) {
-    w_log(
-        W_LOG_ERR,
-        "Failed to open pidfile %s for write: %s\n",
+    log(ERR,
+        "Failed to open pidfile ",
         pid_file,
-        strerror(errno));
+        " for write: ",
+        strerror(errno),
+        "\n");
     return false;
   }
   // Ensure that no children inherit the locked pidfile descriptor
@@ -87,22 +88,25 @@ static bool lock_pidfile(void) {
     len = read(fd.fd(), pidstr, sizeof(pidstr) - 1);
     pidstr[len] = '\0';
 
-    w_log(
-        W_LOG_ERR,
-        "Failed to lock pidfile %s: process %s owns it: %s\n",
+    log(ERR,
+        "Failed to lock pidfile ",
         pid_file,
+        ": process ",
         pidstr,
-        strerror(errno));
+        " owns it: ",
+        strerror(errno),
+        "\n");
     return false;
   }
 
   // Replace contents of the pidfile with our pid string
   if (ftruncate(fd.fd(), 0)) {
-    w_log(
-        W_LOG_ERR,
-        "Failed to truncate pidfile %s: %s\n",
+    log(ERR,
+        "Failed to truncate pidfile ",
         pid_file,
-        strerror(errno));
+        ": ",
+        strerror(errno),
+        "\n");
     return false;
   }
 
@@ -157,8 +161,7 @@ static bool lock_pidfile(void) {
   auto mutex = CreateMutexA(nullptr, true, name.c_str());
 
   if (!mutex) {
-    watchman::log(
-        watchman::ERR,
+    log(ERR,
         "Failed to create mutex named: ",
         name,
         ": ",
@@ -168,8 +171,7 @@ static bool lock_pidfile(void) {
   }
 
   if (GetLastError() == ERROR_ALREADY_EXISTS) {
-    watchman::log(
-        watchman::ERR,
+    log(ERR,
         "Failed to acquire mutex named: ",
         name,
         "; watchman is already running for this context\n");
@@ -200,8 +202,7 @@ static int get_nice_value() {
 
 static void check_nice_value() {
   if (get_nice_value() > cfg_get_int("min_acceptable_nice_value", 0)) {
-    watchman::log(
-        watchman::FATAL,
+    log(watchman::FATAL,
         "Watchman is running at a lower than normal priority. Since that "
         "results in poor performance that is otherwise very difficult to "
         "trace, diagnose and debug, Watchman is refusing to start.\n");
@@ -233,7 +234,7 @@ static void run_service(void) {
     ignore_result(::dup2(fd, STDIN_FILENO));
     ::close(fd);
   }
-  fd = open(log_name, O_WRONLY | O_APPEND | O_CREAT, 0600);
+  fd = open(log_name.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0600);
   if (fd != -1) {
     ignore_result(::dup2(fd, STDOUT_FILENO));
     ignore_result(::dup2(fd, STDERR_FILENO));
@@ -292,11 +293,11 @@ static void run_service(void) {
 
   ClockSpec::init();
   w_state_load();
-  res = w_start_listener(sock_name);
+  res = w_start_listener(sock_name.c_str());
   w_root_free_watched_roots();
   cfg_shutdown();
 
-  watchman::log(watchman::ERR, "Exiting from service with res=", res, "\n");
+  log(ERR, "Exiting from service with res=", res, "\n");
 
   if (res) {
     exit(0);
@@ -384,7 +385,8 @@ static void spawn_win32(void) {
   Options opts;
   opts.setFlags(POSIX_SPAWN_SETPGROUP);
   opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
-  opts.open(STDOUT_FILENO, log_name, O_WRONLY | O_CREAT | O_APPEND, 0600);
+  opts.open(
+      STDOUT_FILENO, log_name.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0600);
   opts.dup2(STDOUT_FILENO, STDERR_FILENO);
 
   std::vector<w_string_piece> args{module_name, "--foreground"};
@@ -418,7 +420,8 @@ static void spawn_via_gimli(void) {
 
   Options opts;
   opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
-  opts.open(STDOUT_FILENO, log_name, O_WRONLY | O_CREAT | O_APPEND, 0600);
+  opts.open(
+      STDOUT_FILENO, log_name.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0600);
   opts.dup2(STDOUT_FILENO, STDERR_FILENO);
 
   ChildProcess proc(args, std::move(opts));
@@ -542,7 +545,7 @@ static void spawn_via_launchd(void) {
         "\n");
   }
 
-  compute_file_name(&pid_file, compute_user_name(), "pid", "pidfile");
+  compute_file_name(pid_file, compute_user_name(), "pid", "pidfile");
 
   auto plist_content = watchman::to<std::string>(
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
@@ -620,26 +623,23 @@ static void spawn_via_launchd(void) {
 }
 #endif
 
-static void parse_encoding(const char* enc, enum w_pdu_type* pdu) {
-  if (!enc) {
+static void parse_encoding(const std::string& enc, enum w_pdu_type* pdu) {
+  if (enc.empty()) {
     return;
   }
-  if (!strcmp(enc, "json")) {
+  if (enc == "json") {
     *pdu = is_json_compact;
     return;
   }
-  if (!strcmp(enc, "bser")) {
+  if (enc == "bser") {
     *pdu = is_bser;
     return;
   }
-  if (!strcmp(enc, "bser-v2")) {
+  if (enc == "bser-v2") {
     *pdu = is_bser_v2;
     return;
   }
-  w_log(
-      W_LOG_ERR,
-      "Invalid encoding '%s', use one of json, bser or bser-v2\n",
-      enc);
+  log(ERR, "Invalid encoding '", enc, "', use one of json, bser or bser-v2\n");
   exit(EX_USAGE);
 }
 
@@ -661,33 +661,26 @@ static const char* get_env_with_fallback(
 }
 
 static void compute_file_name(
-    char** strp,
+    std::string& str,
     const char* user,
     const char* suffix,
     const char* what) {
-  char* str = NULL;
-
-  str = *strp;
-
-  if (!str) {
+  if (str.empty()) {
     /* We'll put our various artifacts in a user specific dir
      * within the state dir location */
-    char* state_dir = NULL;
-    const char* state_parent = test_state_dir ? test_state_dir :
+    const char* state_parent = !test_state_dir.empty() ? test_state_dir.c_str()
+                                                       :
 #ifdef WATCHMAN_STATE_DIR
-                                              WATCHMAN_STATE_DIR
+                                                       WATCHMAN_STATE_DIR
 #else
-                                              watchman_tmp_dir
+                                                       watchman_tmp_dir
 #endif
         ;
 
-    ignore_result(asprintf(&state_dir, "%s/%s-state", state_parent, user));
+    auto state_dir =
+        watchman::to<std::string>(state_parent, "/", user, "-state");
 
-    if (!state_dir) {
-      log(FATAL, "out of memory computing ", what, "\n");
-    }
-
-    if (mkdir(state_dir, 0700) == 0 || errno == EEXIST) {
+    if (mkdir(state_dir.c_str(), 0700) == 0 || errno == EEXIST) {
 #ifndef _WIN32
       // verify ownership
       struct stat st;
@@ -703,38 +696,41 @@ static void compute_file_name(
               "sock_access", false /* write bits */, true /* execute bits */) |
           S_ISGID;
 
-      auto dirp =
-          w_dir_open(state_dir, false /* don't need strict symlink rules */);
+      auto dirp = w_dir_open(
+          state_dir.c_str(), false /* don't need strict symlink rules */);
 
       dir_fd = dirp->getFd();
       if (dir_fd == -1) {
-        w_log(W_LOG_ERR, "dirfd(%s): %s\n", state_dir, strerror(errno));
+        log(ERR, "dirfd(", state_dir, "): ", strerror(errno), "\n");
         goto bail;
       }
 
       if (fstat(dir_fd, &st) != 0) {
-        w_log(W_LOG_ERR, "fstat(%s): %s\n", state_dir, strerror(errno));
+        log(ERR, "fstat(", state_dir, "): ", strerror(errno), "\n");
         ret = 1;
         goto bail;
       }
       if (euid != st.st_uid) {
-        w_log(
-            W_LOG_ERR,
-            "the owner of %s is uid %d and doesn't match your euid %d\n",
+        log(ERR,
+            "the owner of ",
             state_dir,
+            " is uid ",
             st.st_uid,
-            euid);
+            " and doesn't match your euid ",
+            euid,
+            "\n");
         ret = 1;
         goto bail;
       }
       if (st.st_mode & 0022) {
-        w_log(
-            W_LOG_ERR,
-            "the permissions on %s allow others to write to it. "
-            "Verify that you own the contents and then fix its "
-            "permissions by running `chmod 0700 %s`\n",
+        log(ERR,
+            "the permissions on ",
             state_dir,
-            state_dir);
+            " allow others to write to it. "
+            "Verify that you own the contents and then fix its "
+            "permissions by running `chmod 0700 '",
+            state_dir,
+            "'`\n");
         ret = 1;
         goto bail;
       }
@@ -747,11 +743,12 @@ static void compute_file_name(
         }
 
         if (fchown(dir_fd, -1, sock_group->gr_gid) == -1) {
-          w_log(
-              W_LOG_ERR,
-              "setting up group '%s' failed: %s\n",
+          log(ERR,
+              "setting up group '",
               sock_group_name,
-              strerror(errno));
+              "' failed: ",
+              strerror(errno),
+              "\n");
           ret = 1;
           goto bail;
         }
@@ -767,7 +764,7 @@ static void compute_file_name(
         w_log(
             W_LOG_ERR,
             "fchmod(%s, %#o): %s\n",
-            state_dir,
+            state_dir.c_str(),
             dir_perms,
             strerror(errno));
         ret = 1;
@@ -780,22 +777,18 @@ static void compute_file_name(
       }
 #endif
     } else {
-      w_log(
-          W_LOG_ERR,
-          "while computing %s: failed to create %s: %s\n",
+      log(ERR,
+          "while computing ",
           what,
+          ": failed to create ",
           state_dir,
-          strerror(errno));
+          ": ",
+          strerror(errno),
+          "\n");
       exit(1);
     }
 
-    ignore_result(asprintf(&str, "%s/%s", state_dir, suffix));
-
-    if (!str) {
-      log(FATAL, "out of memory computing ", what, "\n");
-    }
-
-    free(state_dir);
+    str = watchman::to<std::string>(state_dir, "/", suffix);
   }
 
 #ifndef _WIN32
@@ -803,8 +796,6 @@ static void compute_file_name(
     log(FATAL, "invalid ", what, ": ", str, "\n");
   }
 #endif
-
-  *strp = str;
 }
 
 static const char* compute_user_name(void) {
@@ -857,24 +848,24 @@ static void setup_sock_name(void) {
 
 #ifdef _WIN32
   if (!sock_name) {
-    asprintf(&sock_name, "\\\\.\\pipe\\watchman-%s", user);
+    sock_name = watchman::to<std::string>("\\\\.\\pipe\\watchman-", user);
   }
 #else
-  compute_file_name(&sock_name, user, "sock", "sockname");
+  compute_file_name(sock_name, user, "sock", "sockname");
 #endif
-  compute_file_name(&watchman_state_file, user, "state", "statefile");
-  compute_file_name(&log_name, user, "log", "logname");
+  compute_file_name(watchman_state_file, user, "state", "statefile");
+  compute_file_name(log_name, user, "log", "logname");
 #ifdef USE_GIMLI
-  compute_file_name(&pid_file, user, "pid", "pidfile");
+  compute_file_name(pid_file, user, "pid", "pidfile");
 #endif
 
 #ifndef _WIN32
-  if (strlen(sock_name) >= sizeof(un.sun_path) - 1) {
+  if (sock_name.size() >= sizeof(un.sun_path) - 1) {
     log(FATAL, sock_name, ": path is too long\n");
   }
 
   un.sun_family = PF_LOCAL;
-  memcpy(un.sun_path, sock_name, strlen(sock_name) + 1);
+  memcpy(un.sun_path, sock_name.c_str(), sock_name.size() + 1);
 #endif
 }
 
@@ -893,7 +884,7 @@ static bool try_command(json_t* cmd, int timeout) {
   w_jbuffer_t output_pdu_buffer;
   int err;
 
-  auto client = w_stm_connect(sock_name, timeout * 1000);
+  auto client = w_stm_connect(sock_name.c_str(), timeout * 1000);
   if (!client) {
     return false;
   }
@@ -1081,7 +1072,7 @@ static void parse_cmdline(int* argcp, char*** argvp) {
   setup_sock_name();
   parse_encoding(server_encoding, &server_pdu);
   parse_encoding(output_encoding, &output_pdu);
-  if (!output_encoding) {
+  if (output_encoding.empty()) {
     output_pdu = no_pretty ? is_json_compact : is_json_pretty;
   }
 
@@ -1105,19 +1096,19 @@ static json_ref build_command(int argc, char** argv) {
     if (buf.pdu_type == is_bser) {
       // If they used bser for the input, select bser for output
       // unless they explicitly requested something else
-      if (!server_encoding) {
+      if (server_encoding.empty()) {
         server_pdu = is_bser;
       }
-      if (!output_encoding) {
+      if (output_encoding.empty()) {
         output_pdu = is_bser;
       }
     } else if (buf.pdu_type == is_bser_v2) {
       // If they used bser v2 for the input, select bser v2 for output
       // unless they explicitly requested something else
-      if (!server_encoding) {
+      if (server_encoding.empty()) {
         server_pdu = is_bser_v2;
       }
-      if (!output_encoding) {
+      if (output_encoding.empty()) {
         output_pdu = is_bser_v2;
       }
     }
@@ -1240,11 +1231,12 @@ int main(int argc, char** argv) {
   }
 
   if (!no_spawn) {
-    w_log(
-        W_LOG_ERR,
-        "unable to talk to your watchman on %s! (%s)\n",
+    log(ERR,
+        "unable to talk to your watchman on ",
         sock_name,
-        strerror(errno));
+        "! (",
+        strerror(errno),
+        ")\n");
 #ifdef __APPLE__
     if (getenv("TMUX")) {
       w_log(
