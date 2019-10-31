@@ -141,7 +141,7 @@ std::unique_ptr<watchman_dir_handle> InotifyWatcher::startWatchDir(
     auto wlock = maps.wlock();
     wlock->wd_to_name[newwd] = dir_name;
   }
-  w_log(W_LOG_DBG, "adding %d -> %s mapping\n", newwd, path);
+  logf(DBG, "adding {} -> {} mapping\n", newwd, path);
 
   return osdir;
 }
@@ -154,9 +154,9 @@ void InotifyWatcher::process_inotify_event(
   char flags_label[128];
 
   w_expand_flags(inflags, ine->mask, flags_label, sizeof(flags_label));
-  w_log(
-      W_LOG_DBG,
-      "notify: wd=%d mask=0x%x %s %s\n",
+  logf(
+      DBG,
+      "notify: wd={} mask={:x} {} {}\n",
       ine->wd,
       ine->mask,
       flags_label,
@@ -233,15 +233,15 @@ void InotifyWatcher::process_inotify_event(
                 "\n");
           }
         } else {
-          w_log(W_LOG_DBG, "moved %s -> %s\n", old.name.c_str(), name.c_str());
+          logf(DBG, "moved {} -> {}\n", old.name.c_str(), name.c_str());
           wlock->wd_to_name[wd] = name;
         }
       } else {
-        w_log(
-            W_LOG_DBG,
-            "move: cookie=%" PRIx32 " not found in move map %s\n",
+        logf(
+            DBG,
+            "move: cookie={:x} not found in move map {}\n",
             ine->cookie,
-            name.c_str());
+            name);
       }
     }
 
@@ -249,21 +249,17 @@ void InotifyWatcher::process_inotify_event(
       if ((ine->mask &
            (IN_UNMOUNT | IN_IGNORED | IN_DELETE_SELF | IN_MOVE_SELF))) {
         if (w_string_equal(root->root_path, name)) {
-          w_log(
-              W_LOG_ERR,
-              "root dir %s has been (re)moved, canceling watch\n",
-              root->root_path.c_str());
+          logf(
+              ERR,
+              "root dir {} has been (re)moved, canceling watch\n",
+              root->root_path);
           root->cancel();
           return;
         }
 
         // We need to examine the parent and potentially crawl down
         auto pname = name.dirName();
-        w_log(
-            W_LOG_DBG,
-            "mask=%x, focus on parent: %s\n",
-            ine->mask,
-            pname.c_str());
+        logf(DBG, "mask={:x}, focus on parent: {}\n", ine->mask, pname);
         name = pname;
       }
 
@@ -271,9 +267,9 @@ void InotifyWatcher::process_inotify_event(
         pending_flags |= W_PENDING_RECURSIVE;
       }
 
-      w_log(
-          W_LOG_DBG,
-          "add_pending for inotify mask=%x %s\n",
+      logf(
+          DBG,
+          "add_pending for inotify mask={:x} {}\n",
           ine->mask,
           name.c_str());
       coll->add(name, now, pending_flags);
@@ -281,13 +277,12 @@ void InotifyWatcher::process_inotify_event(
       // The kernel removed the wd -> name mapping, so let's update
       // our state here also
       if ((ine->mask & IN_IGNORED) != 0) {
-        w_log(
-            W_LOG_DBG,
-            "mask=%x: remove watch %d %.*s\n",
+        logf(
+            DBG,
+            "mask={:x}: remove watch {} {}\n",
             ine->mask,
             ine->wd,
-            int(dir_name.size()),
-            dir_name.data());
+            dir_name);
         auto wlock = maps.wlock();
         wlock->wd_to_name.erase(ine->wd);
       }
@@ -296,12 +291,11 @@ void InotifyWatcher::process_inotify_event(
       // If we can't resolve the dir, and this isn't notification
       // that it has gone away, then we want to recrawl to fix
       // up our state.
-      w_log(
-          W_LOG_ERR,
-          "wanted dir %d for mask %x but not found %.*s\n",
+      logf(
+          ERR,
+          "wanted dir {} for mask {:x} but not found {}\n",
           ine->wd,
           ine->mask,
-          ine->len,
           ine->name);
       root->scheduleRecrawl("dir missing from internal state");
     }
@@ -321,15 +315,15 @@ bool InotifyWatcher::consumeNotify(
     if (errno == EINTR) {
       return false;
     }
-    w_log(
-        W_LOG_FATAL,
-        "read(%d, %zu): error %s\n",
+    logf(
+        FATAL,
+        "read({}, {}): error {}\n",
         infd.fd(),
         sizeof(ibuf),
         strerror(errno));
   }
 
-  w_log(W_LOG_DBG, "inotify read: returned %d.\n", n);
+  logf(DBG, "inotify read: returned {}.\n", n);
   gettimeofday(&now, nullptr);
 
   for (iptr = ibuf; iptr < ibuf + n; iptr = iptr + sizeof(*ine) + ine->len) {
@@ -354,10 +348,10 @@ bool InotifyWatcher::consumeNotify(
       while (it != wlock->move_map.end()) {
         auto& pending = it->second;
         if (now.tv_sec - pending.created > 5 /* seconds */) {
-          w_log(
-              W_LOG_DBG,
-              "deleting pending move %s (moved outside of watch?)\n",
-              pending.name.c_str());
+          logf(
+              DBG,
+              "deleting pending move {} (moved outside of watch?)\n",
+              pending.name);
           it = wlock->move_map.erase(it);
         } else {
           ++it;

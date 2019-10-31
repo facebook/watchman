@@ -9,6 +9,7 @@ using watchman::ChildProcess;
 using watchman::FileDescriptor;
 using Options = watchman::ChildProcess::Options;
 using Environment = watchman::ChildProcess::Environment;
+using namespace watchman;
 
 static std::unique_ptr<watchman_stream> prepare_stdin(
     struct watchman_trigger_command* cmd,
@@ -34,9 +35,9 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
       watchman_tmp_dir);
   auto stdin_file = w_mkstemp(stdin_file_name);
   if (!stdin_file) {
-    w_log(
-        W_LOG_ERR,
-        "unable to create a temporary file: %s %s\n",
+    logf(
+        ERR,
+        "unable to create a temporary file: {} {}\n",
         stdin_file_name,
         strerror(errno));
     return NULL;
@@ -50,11 +51,11 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
     case input_json: {
       w_jbuffer_t buffer;
 
-      w_log(W_LOG_DBG, "input_json: sending json object to stm\n");
+      logf(DBG, "input_json: sending json object to stm\n");
       if (!buffer.jsonEncodeToStream(res->resultsArray, stdin_file.get(), 0)) {
-        w_log(
-            W_LOG_ERR,
-            "input_json: failed to write json data to stream: %s\n",
+        logf(
+            ERR,
+            "input_json: failed to write json data to stream: {}\n",
             strerror(errno));
         return NULL;
       }
@@ -66,9 +67,9 @@ static std::unique_ptr<watchman_stream> prepare_stdin(
         if (stdin_file->write(nameStr.data(), nameStr.size()) !=
                 (int)nameStr.size() ||
             stdin_file->write("\n", 1) != 1) {
-          w_log(
-              W_LOG_ERR,
-              "write failure while producing trigger stdin: %s\n",
+          logf(
+              ERR,
+              "write failure while producing trigger stdin: {}\n",
               strerror(errno));
           return nullptr;
         }
@@ -116,11 +117,11 @@ static void spawn_command(
 
   auto stdin_file = prepare_stdin(cmd, res);
   if (!stdin_file) {
-    w_log(
-        W_LOG_ERR,
-        "trigger %s:%s %s\n",
-        root->root_path.c_str(),
-        cmd->triggername.c_str(),
+    logf(
+        ERR,
+        "trigger {}:{} {}\n",
+        root->root_path,
+        cmd->triggername,
         strerror(errno));
     return;
   }
@@ -255,20 +256,20 @@ bool watchman_trigger_command::maybeSpawn(
   // other similar operation, we want to defer triggers until
   // things settle down
   if (root->view()->isVCSOperationInProgress()) {
-    w_log(W_LOG_DBG, "deferring triggers until VCS operations complete\n");
+    logf(DBG, "deferring triggers until VCS operations complete\n");
     return false;
   }
 
   auto since_spec = query->since_spec.get();
 
   if (since_spec && since_spec->tag == w_cs_clock) {
-    w_log(
-        W_LOG_DBG,
-        "running trigger \"%s\" rules! since %" PRIu32 "\n",
-        triggername.c_str(),
+    logf(
+        DBG,
+        "running trigger \"{}\" rules! since {}\n",
+        triggername,
         since_spec->clock.position.ticks);
   } else {
-    w_log(W_LOG_DBG, "running trigger \"%s\" rules!\n", triggername.c_str());
+    logf(DBG, "running trigger \"{}\" rules!\n", triggername);
   }
 
   // Triggers never need to sync explicitly; we are only dispatched

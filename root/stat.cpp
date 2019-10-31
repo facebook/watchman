@@ -66,20 +66,12 @@ void InMemoryView::statPath(
   bool via_notify = flags & W_PENDING_VIA_NOTIFY;
 
   if (root->ignore.isIgnoreDir(full_path)) {
-    w_log(
-        W_LOG_DBG,
-        "%.*s matches ignore_dir rules\n",
-        int(full_path.size()),
-        full_path.data());
+    logf(DBG, "{} matches ignore_dir rules\n", full_path);
     return;
   }
 
   if (full_path.size() > sizeof(path) - 1) {
-    w_log(
-        W_LOG_FATAL,
-        "path %.*s is too big\n",
-        int(full_path.size()),
-        full_path.data());
+    logf(FATAL, "path {} is too big\n", full_path);
   }
 
   memcpy(path, full_path.data(), full_path.size());
@@ -179,13 +171,12 @@ void InMemoryView::statPath(
       /* If we rejected the name because it wasn't canonical,
        * we need to ensure that we look in the parent dir to discover
        * the new item(s) */
-      w_log(
-          W_LOG_DBG,
-          "we're case insensitive, and %s is ENOENT, "
-          "speculatively look at parent dir %.*s\n",
+      logf(
+          DBG,
+          "we're case insensitive, and {} is ENOENT, "
+          "speculatively look at parent dir {}\n",
           path,
-          int(dir_name.size()),
-          dir_name.data());
+          dir_name);
       coll->add(dir_name, now, W_PENDING_CRAWL_ONLY);
     }
 
@@ -215,12 +206,12 @@ void InMemoryView::statPath(
       recursive = true;
     }
     if (!file->exists || via_notify || did_file_change(&file->stat, &st)) {
-      w_log(
-          W_LOG_DBG,
-          "file changed exists=%d via_notify=%d stat-changed=%d isdir=%d %s\n",
-          (int)file->exists,
-          (int)via_notify,
-          (int)(file->exists && !via_notify),
+      logf(
+          DBG,
+          "file changed exists={} via_notify={} stat-changed={} isdir={} {}\n",
+          file->exists,
+          via_notify,
+          file->exists && !via_notify,
           st.isDir(),
           path);
       file->exists = true;

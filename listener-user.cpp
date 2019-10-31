@@ -6,10 +6,12 @@
 
 // Functions relating to the per-user service
 
+using namespace watchman;
+
 static void cmd_shutdown(struct watchman_client* client, const json_ref&) {
   auto resp = make_response();
 
-  w_log(W_LOG_ERR, "shutdown-server was requested, exiting!\n");
+  logf(ERR, "shutdown-server was requested, exiting!\n");
   w_request_shutdown();
 
   resp.set("shutdown-server", json_true());

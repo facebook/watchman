@@ -16,7 +16,7 @@
 
 using namespace watchman;
 
-int log_level = W_LOG_ERR;
+int log_level = LogLevel::ERR;
 static folly::ThreadLocal<folly::Optional<std::string>> threadName;
 static constexpr size_t kMaxFrames = 64;
 
@@ -422,14 +422,6 @@ void w_setup_signal_handlers(void) {
 #endif
 
   std::set_terminate(terminationHandler);
-}
-
-void w_log(int level, WATCHMAN_FMT_STRING(const char* fmt), ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  watchman::getLog().logVPrintf(
-      static_cast<enum watchman::LogLevel>(level), fmt, ap);
-  va_end(ap);
 }
 
 /* vim:ts=2:sw=2:et:

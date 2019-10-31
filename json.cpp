@@ -3,6 +3,8 @@
 
 #include "watchman.h"
 
+using namespace watchman;
+
 W_CAP_REG("bser-v2")
 watchman_json_buffer::watchman_json_buffer()
     : buf((char*)malloc(WATCHMAN_IO_BUF_SIZE)),
@@ -432,7 +434,7 @@ bool watchman_json_buffer::streamPdu(w_stm_t stm, json_error_t* jerr) {
       return streamN(stm, len, jerr);
     }
     default:
-      w_log(W_LOG_FATAL, "not streaming for pdu type %d\n", pdu_type);
+      logf(FATAL, "not streaming for pdu type {}\n", pdu_type);
       return false;
   }
 }
@@ -460,14 +462,14 @@ bool watchman_json_buffer::passThru(
 
   stm->setNonBlock(false);
   if (!readAndDetectPdu(stm, &jerr)) {
-    w_log(W_LOG_ERR, "failed to identify PDU: %s\n", jerr.text);
+    logf(ERR, "failed to identify PDU: {}\n", jerr.text);
     return false;
   }
 
   if (pdu_type == output_pdu) {
     // We can stream it through
     if (!streamPdu(stm, &jerr)) {
-      w_log(W_LOG_ERR, "stream_pdu: %s\n", jerr.text);
+      logf(ERR, "stream_pdu: {}\n", jerr.text);
       return false;
     }
     return true;
@@ -476,7 +478,7 @@ bool watchman_json_buffer::passThru(
   auto j = decodePdu(stm, &jerr);
 
   if (!j) {
-    w_log(W_LOG_ERR, "failed to parse response: %s\n", jerr.text);
+    logf(ERR, "failed to parse response: {}\n", jerr.text);
     return false;
   }
 

@@ -299,7 +299,7 @@ static int posix_spawn_common(
     }
 
     if (!target) {
-      w_log(W_LOG_ERR, "posix_spawn: can't target fd outside range [0-2]\n");
+      logf(ERR, "posix_spawn: can't target fd outside range [0-2]\n");
       ret = ENOSYS;
       goto done;
     }
@@ -341,9 +341,9 @@ static int posix_spawn_common(
               TRUE,
               DUPLICATE_SAME_ACCESS)) {
         err = GetLastError();
-        w_log(
-            W_LOG_ERR,
-            "posix_spawn: failed to duplicate handle: %s\n",
+        logf(
+            ERR,
+            "posix_spawn: failed to duplicate handle: {}\n",
             win32_strerror(err));
         ret = map_win32_err(err);
         goto done;
@@ -355,10 +355,7 @@ static int posix_spawn_common(
           act->u.open_info.name, act->u.open_info.flags & ~O_CLOEXEC);
       if (!h) {
         ret = errno;
-        w_log(
-            W_LOG_ERR,
-            "posix_spawn: failed to open %s:\n",
-            act->u.open_info.name);
+        logf(ERR, "posix_spawn: failed to open {}:\n", act->u.open_info.name);
         goto done;
       }
 
@@ -412,9 +409,9 @@ static int posix_spawn_common(
           attrp->working_dir,
           &sinfo.StartupInfo,
           &pinfo)) {
-    w_log(
-        W_LOG_ERR,
-        "CreateProcess: `%s`: (cwd=%s) %s\n",
+    logf(
+        ERR,
+        "CreateProcess: `{}`: (cwd={}) {}\n",
         cmdbuf,
         attrp->working_dir ? attrp->working_dir : "<process cwd>",
         win32_strerror(GetLastError()));

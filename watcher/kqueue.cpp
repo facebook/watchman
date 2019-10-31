@@ -13,6 +13,7 @@
 #define O_EVTONLY O_RDONLY
 #endif
 
+using namespace watchman;
 using watchman::FileDescriptor;
 using watchman::Pipe;
 
@@ -81,7 +82,7 @@ bool KQueueWatcher::startWatchFile(struct watchman_file* file) {
     }
   }
 
-  w_log(W_LOG_DBG, "watch_file(%s)\n", full_name.c_str());
+  logf(DBG, "watch_file({})\n", full_name);
 
   int openFlags = O_EVTONLY | O_CLOEXEC;
 #if HAVE_DECL_O_SYMLINK
@@ -192,7 +193,7 @@ std::unique_ptr<watchman_dir_handle> KQueueWatcher::startWatchDir(
   }
 
   if (kevent(kq_fd.fd(), &k, 1, nullptr, 0, 0)) {
-    w_log(W_LOG_DBG, "kevent EV_ADD dir %s failed: %s", path, strerror(errno));
+    logf(DBG, "kevent EV_ADD dir {} failed: {}", path, strerror(errno));
 
     auto wlock = maps_.wlock();
     wlock->name_to_fd.erase(dir_name);
@@ -220,10 +221,10 @@ bool KQueueWatcher::consumeNotify(
       keventbuf,
       sizeof(keventbuf) / sizeof(keventbuf[0]),
       &ts);
-  w_log(
-      W_LOG_DBG,
-      "consume_kqueue: %s n=%d err=%s\n",
-      root->root_path.c_str(),
+  logf(
+      DBG,
+      "consume_kqueue: {} n={} err={}\n",
+      root->root_path,
       n,
       strerror(errno));
   if (root->inner.cancelled) {
@@ -244,30 +245,24 @@ bool KQueueWatcher::consumeNotify(
     if (!path) {
       // Was likely a buffered notification for something that we decided
       // to stop watching
-      w_log(
-          W_LOG_DBG,
-          " KQ notif for fd=%d; flags=0x%x %s no ref for it in fd_to_name\n",
+      logf(
+          DBG,
+          " KQ notif for fd={}; flags={:x} {} no ref for it in fd_to_name\n",
           fd,
           fflags,
           flags_label);
       continue;
     }
 
-    w_log(
-        W_LOG_DBG,
-        " KQ fd=%d path %s [0x%x %s]\n",
-        fd,
-        path.data(),
-        fflags,
-        flags_label);
+    logf(DBG, " KQ fd={} path {} [{:x} {}]\n", fd, path, fflags, flags_label);
     if ((fflags & (NOTE_DELETE | NOTE_RENAME | NOTE_REVOKE))) {
       struct kevent k;
 
       if (w_string_equal(path, root->root_path)) {
-        w_log(
-            W_LOG_ERR,
-            "root dir %s has been (re)moved [code 0x%x], canceling watch\n",
-            root->root_path.c_str(),
+        logf(
+            ERR,
+            "root dir {} has been (re)moved [code {:x}], canceling watch\n",
+            root->root_path,
             fflags);
         root->cancel();
         return 0;

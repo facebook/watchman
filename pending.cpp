@@ -4,6 +4,8 @@
 #include "watchman.h"
 #include <folly/Synchronized.h>
 
+using namespace watchman;
+
 static const struct flag_map kflags[] = {
     {W_PENDING_CRAWL_ONLY, "CRAWL_ONLY"},
     {W_PENDING_RECURSIVE, "RECURSIVE"},
@@ -133,16 +135,14 @@ int PendingCollectionBase::iterContext::operator()(
       is_path_prefix(
           (const char*)key.data(), key.size(), root.data(), root.size()) &&
       !watchman::CookieSync::isPossiblyACookie(p->path)) {
-    w_log(
-        W_LOG_DBG,
-        "delete_kids: removing (%d) %.*s from pending because it is "
-        "obsoleted by (%d) %.*s\n",
-        int(p->path.size()),
-        int(p->path.size()),
-        p->path.data(),
-        int(root.size()),
-        int(root.size()),
-        root.data());
+    logf(
+        DBG,
+        "delete_kids: removing ({}) {} from pending because it is "
+        "obsoleted by ({}) {}\n",
+        p->path.size(),
+        p->path,
+        root.size(),
+        root);
 
     // Unlink the child from the pending index.
     coll.unlinkItem(p);
@@ -176,13 +176,12 @@ void PendingCollectionBase::maybePruneObsoletedChildren(
     }
 
     if (pruned) {
-      w_log(
-          W_LOG_DBG,
-          "maybePruneObsoletedChildren: pruned %u nodes under (%d) %.*s\n",
+      logf(
+          DBG,
+          "maybePruneObsoletedChildren: pruned {} nodes under ({}) {}\n",
           pruned,
-          int(path.size()),
-          int(path.size()),
-          path.data());
+          path.size(),
+          path);
     }
   }
 }
@@ -221,13 +220,7 @@ bool PendingCollectionBase::isObsoletedByContainingDir(const w_string& path) {
 
     // Yes: the pre-existing entry higher up in the tree obsoletes this
     // one that we would add now.
-    w_log(
-        W_LOG_DBG,
-        "is_obsoleted: SKIP %.*s is obsoleted by %.*s\n",
-        int(path.size()),
-        path.data(),
-        int(p->path.size()),
-        p->path.data());
+    logf(DBG, "is_obsoleted: SKIP {} is obsoleted by {}\n", path, p->path);
     return true;
   }
   return false;
@@ -266,12 +259,7 @@ bool PendingCollectionBase::add(
   maybePruneObsoletedChildren(path, flags);
 
   w_expand_flags(kflags, flags, flags_label, sizeof(flags_label));
-  w_log(
-      W_LOG_DBG,
-      "add_pending: %.*s %s\n",
-      int(path.size()),
-      path.data(),
-      flags_label);
+  logf(DBG, "add_pending: {} {}\n", path, flags_label);
 
   tree_.insert(path, p);
   linkHead(std::move(p));

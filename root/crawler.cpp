@@ -80,11 +80,7 @@ void InMemoryView::crawler(
   memcpy(path, dir_name.data(), dir_name.size());
   path[dir_name.size()] = 0;
 
-  w_log(
-      W_LOG_DBG,
-      "opendir(%s) recursive=%s\n",
-      path,
-      recursive ? "true" : "false");
+  logf(DBG, "opendir({}) recursive={}\n", path, recursive);
 
   /* Start watching and open the dir for crawling.
    * Whether we open the dir prior to watching or after is watcher specific,
@@ -144,10 +140,7 @@ void InMemoryView::crawler(
       }
       if (!file || !file->exists || stat_all || recursive) {
         auto full_path = dir->getFullPathToChild(name);
-        w_log(
-            W_LOG_DBG,
-            "in crawler calling process_path on %s\n",
-            full_path.c_str());
+        logf(DBG, "in crawler calling process_path on {}\n", full_path);
         processPath(
             root,
             view,

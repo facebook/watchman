@@ -5,6 +5,8 @@
 
 #include "InMemoryView.h"
 
+using namespace watchman;
+
 static json_ref load_root_config(const char* path) {
   char cfgfilename[WATCHMAN_NAME_MAX];
   json_error_t err;
@@ -15,8 +17,7 @@ static json_ref load_root_config(const char* path) {
     if (errno == ENOENT) {
       return nullptr;
     }
-    w_log(
-        W_LOG_ERR, "%s is not accessible: %s\n", cfgfilename, strerror(errno));
+    logf(ERR, "{} is not accessible: {}\n", cfgfilename, strerror(errno));
     return nullptr;
   }
 
@@ -36,7 +37,7 @@ void watchman_root::applyIgnoreConfiguration() {
     return;
   }
   if (!ignores.isArray()) {
-    w_log(W_LOG_ERR, "ignore_dirs must be an array of strings\n");
+    logf(ERR, "ignore_dirs must be an array of strings\n");
     return;
   }
 
@@ -44,14 +45,14 @@ void watchman_root::applyIgnoreConfiguration() {
     auto jignore = json_array_get(ignores, i);
 
     if (!jignore.isString()) {
-      w_log(W_LOG_ERR, "ignore_dirs must be an array of strings\n");
+      logf(ERR, "ignore_dirs must be an array of strings\n");
       continue;
     }
 
     auto name = json_to_w_string(jignore);
     auto fullname = w_string::pathCat({root_path, name});
     ignore.add(fullname, false);
-    w_log(W_LOG_DBG, "ignoring %s recursively\n", fullname.c_str());
+    logf(DBG, "ignoring {} recursively\n", fullname);
   }
 }
 
@@ -92,7 +93,7 @@ watchman_root::watchman_root(const w_string& root_path, const w_string& fs_type)
 }
 
 watchman_root::~watchman_root() {
-  w_log(W_LOG_DBG, "root: final ref on %s\n", root_path.c_str());
+  logf(DBG, "root: final ref on {}\n", root_path);
   --live_roots;
 }
 

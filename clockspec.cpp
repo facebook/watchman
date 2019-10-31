@@ -5,6 +5,8 @@
 #include <folly/Synchronized.h>
 #include <memory>
 
+using namespace watchman;
+
 static int proc_pid;
 static uint64_t proc_start_time;
 
@@ -13,7 +15,7 @@ void ClockSpec::init() {
 
   proc_pid = (int)::getpid();
   if (gettimeofday(&tv, NULL) == -1) {
-    w_log(W_LOG_FATAL, "gettimeofday failed: %s\n", strerror(errno));
+    logf(FATAL, "gettimeofday failed: {}\n", strerror(errno));
   }
   proc_start_time = (uint64_t)tv.tv_sec;
 }

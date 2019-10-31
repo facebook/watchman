@@ -4,6 +4,8 @@
 #include "watchman.h"
 #include <folly/Synchronized.h>
 
+using namespace watchman;
+
 namespace {
 struct config_state {
   json_ref global_cfg;
@@ -44,7 +46,7 @@ void cfg_load_global_config_file(void) {
 
   auto config = json_load_file(cfg_file, 0, &err);
   if (!config) {
-    w_log(W_LOG_ERR, "failed to parse json from %s: %s\n", cfg_file, err.text);
+    logf(ERR, "failed to parse json from {}: {}\n", cfg_file, err.text);
     return;
   }
 
@@ -156,9 +158,7 @@ json_ref cfg_compute_root_files(bool* enforcing) {
   json_ref ref = cfg_get_json("enforce_root_files");
   if (ref) {
     if (!ref.isBool()) {
-      w_log(
-          W_LOG_FATAL,
-          "Expected config value enforce_root_files to be boolean\n");
+      logf(FATAL, "Expected config value enforce_root_files to be boolean\n");
     }
     *enforcing = ref.asBool();
   }
@@ -166,9 +166,7 @@ json_ref cfg_compute_root_files(bool* enforcing) {
   ref = cfg_get_json("root_files");
   if (ref) {
     if (!is_array_of_strings(ref)) {
-      w_log(
-          W_LOG_FATAL,
-          "global config root_files must be an array of strings\n");
+      logf(FATAL, "global config root_files must be an array of strings\n");
       *enforcing = false;
       return nullptr;
     }
@@ -181,8 +179,8 @@ json_ref cfg_compute_root_files(bool* enforcing) {
   ref = cfg_get_json("root_restrict_files");
   if (ref) {
     if (!is_array_of_strings(ref)) {
-      w_log(
-          W_LOG_FATAL,
+      logf(
+          FATAL,
           "deprecated global config root_restrict_files "
           "must be an array of strings\n");
       *enforcing = false;
@@ -272,9 +270,9 @@ double cfg_get_double(const char* name, double defval) {
     auto perm = val.get_default(#PROP);                             \
     if (perm) {                                                     \
       if (!perm.isBool()) {                                         \
-        w_log(                                                      \
-            W_LOG_FATAL,                                            \
-            "Expected config value %s." #PROP " to be a boolean\n", \
+        logf(                                                       \
+            FATAL,                                                  \
+            "Expected config value {}." #PROP " to be a boolean\n", \
             name);                                                  \
       }                                                             \
       if (perm.asBool()) {                                          \
@@ -306,7 +304,7 @@ mode_t cfg_get_perms(const char* name, bool write_bits, bool execute_bits) {
 
   if (val) {
     if (!val.isObject()) {
-      w_log(W_LOG_FATAL, "Expected config value %s to be an object\n", name);
+      logf(FATAL, "Expected config value {} to be an object\n", name);
     }
 
     ret |= get_group_perm(name, val, write_bits, execute_bits);

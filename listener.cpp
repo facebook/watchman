@@ -85,14 +85,14 @@ watchman_client::watchman_client() : watchman_client(nullptr) {}
 
 watchman_client::watchman_client(std::unique_ptr<watchman_stream>&& stm)
     : stm(std::move(stm)), ping(w_event_make()) {
-  w_log(W_LOG_DBG, "accepted client:stm=%p\n", this->stm.get());
+  logf(DBG, "accepted client:stm={}\n", fmt::ptr(this->stm.get()));
 }
 
 watchman_client::~watchman_client() {
   debugSub.reset();
   errorSub.reset();
 
-  w_log(W_LOG_DBG, "client_delete %p\n", this);
+  logf(DBG, "client_delete {}\n", fmt::ptr(this));
 
   if (stm) {
     stm->shutdown();
@@ -170,7 +170,7 @@ static void client_thread(std::shared_ptr<watchman_client> client) noexcept {
             "invalid json at position %d: %s",
             jerr.position,
             jerr.text);
-        w_log(W_LOG_ERR, "invalid data from client: %s\n", jerr.text);
+        logf(ERR, "invalid data from client: {}\n", jerr.text);
 
         goto disconnected;
       } else if (request) {
@@ -346,13 +346,13 @@ static FileDescriptor get_listener_socket(const char* path) {
 #ifdef __APPLE__
   listener_fd = w_get_listener_socket_from_launchd();
   if (listener_fd) {
-    w_log(W_LOG_ERR, "Using socket from launchd as listening socket\n");
+    logf(ERR, "Using socket from launchd as listening socket\n");
     return listener_fd;
   }
 #endif
 
   if (strlen(path) >= sizeof(un.sun_path) - 1) {
-    w_log(W_LOG_ERR, "%s: path is too long\n", path);
+    logf(ERR, "{}: path is too long\n", path);
     return FileDescriptor();
   }
 
@@ -363,14 +363,14 @@ static FileDescriptor get_listener_socket(const char* path) {
   unlink(path);
 
   if (bind(listener_fd.fd(), (struct sockaddr*)&un, sizeof(un)) != 0) {
-    w_log(W_LOG_ERR, "bind(%s): %s\n", path, strerror(errno));
+    logf(ERR, "bind({}): {}\n", path, strerror(errno));
     return FileDescriptor();
   }
 
   // The permissions in the containing directory should be correct, so this
   // should be correct as well. But set the permissions in any case.
   if (chmod(path, perms) == -1) {
-    w_log(W_LOG_ERR, "chmod(%s, %#o): %s", path, perms, strerror(errno));
+    logf(ERR, "chmod({}, {:o}): {}", path, perms, strerror(errno));
     return FileDescriptor();
   }
 
@@ -414,7 +414,7 @@ static FileDescriptor get_listener_socket(const char* path) {
   }
 
   if (listen(listener_fd.fd(), 200) != 0) {
-    w_log(W_LOG_ERR, "listen(%s): %s\n", path, strerror(errno));
+    logf(ERR, "listen({}): {}\n", path, strerror(errno));
     return FileDescriptor();
   }
 
@@ -465,9 +465,9 @@ static void named_pipe_accept_loop_internal(const char* path) {
   HANDLE connected_event = CreateEvent(NULL, FALSE, TRUE, NULL);
 
   if (!connected_event) {
-    w_log(
-        W_LOG_ERR,
-        "named_pipe_accept_loop_internal: CreateEvent failed: %s\n",
+    logf(
+        ERR,
+        "named_pipe_accept_loop_internal: CreateEvent failed: {}\n",
         win32_strerror(GetLastError()));
     return;
   }
@@ -476,15 +476,15 @@ static void named_pipe_accept_loop_internal(const char* path) {
   handles[1] = listener_thread_event;
   olap.hEvent = connected_event;
 
-  w_log(W_LOG_ERR, "waiting for pipe clients on %s\n", path);
+  logf(ERR, "waiting for pipe clients on {}\n", path);
   while (!stopping) {
     FileDescriptor client_fd;
     DWORD res;
 
     client_fd = create_pipe_server(path);
     if (!client_fd) {
-      w_log(
-          W_LOG_ERR,
+      logf(
+          ERR,
           "CreateNamedPipe(%s) failed: %s\n",
           path,
           win32_strerror(GetLastError()));
@@ -501,10 +501,7 @@ static void named_pipe_accept_loop_internal(const char* path) {
       }
 
       if (res != ERROR_IO_PENDING) {
-        w_log(
-            W_LOG_ERR,
-            "ConnectNamedPipe: %s\n",
-            win32_strerror(GetLastError()));
+        logf(ERR, "ConnectNamedPipe: {}\n", win32_strerror(GetLastError()));
         continue;
       }
 
@@ -516,10 +513,10 @@ static void named_pipe_accept_loop_internal(const char* path) {
       }
 
       if (res != WAIT_OBJECT_0) {
-        w_log(
-            W_LOG_ERR,
+        logf(
+            ERR,
             "WaitForMultipleObjectsEx: ConnectNamedPipe: "
-            "unexpected status %u\n",
+            "unexpected status {}\n",
             res);
         CancelIoEx((HANDLE)client_fd.handle(), &olap);
         continue;
@@ -629,17 +626,17 @@ bool w_start_listener(const char* path) {
 
       len = sizeof(maxperproc);
       sysctl(mib, 2, &maxperproc, &len, NULL, 0);
-      w_log(
-          W_LOG_ERR,
-          "file limit is %" PRIu64 " kern.maxfilesperproc=%i\n",
+      logf(
+          ERR,
+          "file limit is {} kern.maxfilesperproc={}\n",
           limit.rlim_cur,
           maxperproc);
     }
 #else
     maxperproc = limit.rlim_max;
-    w_log(
-        W_LOG_ERR,
-        "openfiles-cur is %" PRIu64 " openfiles-max=%i\n",
+    logf(
+        ERR,
+        "openfiles-cur is {} openfiles-max={}\n",
         limit.rlim_cur,
         maxperproc);
 #endif
@@ -649,23 +646,22 @@ bool w_start_listener(const char* path) {
       limit.rlim_cur = maxperproc;
 
       if (setrlimit(RLIMIT_NOFILE, &limit)) {
-        w_log(
-            W_LOG_ERR,
-            "failed to raise limit to %" PRIu64 " (%s).\n",
+        logf(
+            ERR,
+            "failed to raise limit to {} ({}).\n",
             limit.rlim_cur,
             strerror(errno));
       } else {
-        w_log(W_LOG_ERR, "raised file limit to %" PRIu64 "\n", limit.rlim_cur);
+        logf(ERR, "raised file limit to {}\n", limit.rlim_cur);
       }
     }
 
     getrlimit(RLIMIT_NOFILE, &limit);
 #ifndef HAVE_FSEVENTS
     if (limit.rlim_cur < 10240) {
-      w_log(
-          W_LOG_ERR,
-          "Your file descriptor limit is very low (%" PRIu64
-          "), "
+      logf(
+          ERR,
+          "Your file descriptor limit is very low ({})"
           "please consult the watchman docs on raising the limits\n",
           limit.rlim_cur);
     }
@@ -691,7 +687,7 @@ bool w_start_listener(const char* path) {
 
   if (listener_fd) {
     // Assume that it was prepped by w_listener_prep_inetd()
-    w_log(W_LOG_ERR, "Using socket from inetd as listening socket\n");
+    logf(ERR, "Using socket from inetd as listening socket\n");
   } else {
     listener_fd = get_listener_socket(path);
     if (!listener_fd) {

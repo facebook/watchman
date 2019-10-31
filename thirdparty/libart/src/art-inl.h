@@ -5,6 +5,7 @@
 #endif
 #include <algorithm>
 #include <new>
+#include <cassert>
 
 #if defined(__clang__)
 # if __has_feature(address_sanitizer)
@@ -56,9 +57,7 @@ inline unsigned char art_tree<ValueType, KeyType>::keyAt(
 #if !ART_SANITIZE_ADDRESS
     // If we were built with -fsanitize=address, let ASAN catch this,
     // otherwise, make sure we blow up if the input depth is out of bounds.
-    w_assert(idx >= 0 && idx <= key_len,
-             "key_at: key is %d %.*s and idx is %d, which is out of bounds",
-             key_len, key_len, key, idx);
+    assert(idx >= 0 && idx <= key_len);
 #endif
     return key[idx];
 }

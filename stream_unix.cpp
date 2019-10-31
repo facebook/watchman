@@ -17,6 +17,7 @@
 
 using watchman::FileDescriptor;
 using watchman::Pipe;
+using namespace watchman;
 
 static const int kWriteTimeout = 60000;
 
@@ -222,7 +223,7 @@ int w_poll_events(struct watchman_event_poll* p, int n, int timeoutms) {
 
   if (n > MAX_POLL_EVENTS) {
     // Programmer error :-/
-    w_log(W_LOG_FATAL, "%d > MAX_POLL_EVENTS (%d)\n", n, MAX_POLL_EVENTS);
+    logf(FATAL, "{} > MAX_POLL_EVENTS ({})\n", n, MAX_POLL_EVENTS);
   }
 
   for (i = 0; i < n; i++) {
@@ -258,7 +259,7 @@ std::unique_ptr<watchman_stream> w_stm_connect_unix(
   int bufsize = WATCHMAN_IO_BUF_SIZE;
 
   if (strlen(path) >= sizeof(un.sun_path) - 1) {
-    w_log(W_LOG_ERR, "w_stm_connect_unix(%s) path is too long\n", path);
+    logf(ERR, "w_stm_connect_unix({}) path is too long\n", path);
     errno = E2BIG;
     return NULL;
   }

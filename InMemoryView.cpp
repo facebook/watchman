@@ -395,7 +395,7 @@ void InMemoryView::markDirDeleted(
 
     if (file->exists) {
       auto full_name = dir->getFullPathToChild(file->getName());
-      w_log(W_LOG_DBG, "mark_deleted: %s\n", full_name.c_str());
+      logf(DBG, "mark_deleted: {}\n", full_name);
       file->exists = false;
       markFileChanged(view, file, now);
     }
@@ -458,7 +458,7 @@ void InMemoryView::ageOutFile(
   auto parent = file->parent;
 
   auto full_name = parent->getFullPathToChild(file->getName());
-  w_log(W_LOG_DBG, "age_out file=%s\n", full_name.c_str());
+  logf(DBG, "age_out file={}\n", full_name);
 
   // Revise tick for fresh instance reporting
   last_age_out_tick = std::max(last_age_out_tick, file->otime.ticks);
@@ -512,11 +512,7 @@ void InMemoryView::ageOut(w_perf_t& sample, std::chrono::seconds minAge) {
   }
 
   if (num_aged_files + dirs_to_erase.size()) {
-    w_log(
-        W_LOG_ERR,
-        "aged %" PRIu32 " files, %" PRIu32 " dirs\n",
-        num_aged_files,
-        uint32_t(dirs_to_erase.size()));
+    logf(ERR, "aged {} files, {} dirs\n", num_aged_files, dirs_to_erase.size());
   }
   sample.add_meta(
       "age_out",
@@ -711,7 +707,7 @@ time_t InMemoryView::getLastAgeOutTimeStamp() const {
 void InMemoryView::startThreads(const std::shared_ptr<w_root_t>& root) {
   // Start a thread to call into the watcher API for filesystem notifications
   auto self = std::static_pointer_cast<InMemoryView>(shared_from_this());
-  w_log(W_LOG_DBG, "starting threads for %p %s\n", this, root_path.c_str());
+  logf(DBG, "starting threads for {} {}\n", fmt::ptr(this), root_path);
   std::thread notifyThreadInstance([self, root]() {
     w_set_thread_name("notify ", uintptr_t(self.get()), " ", self->root_path);
     try {
@@ -743,7 +739,7 @@ void InMemoryView::startThreads(const std::shared_ptr<w_root_t>& root) {
 }
 
 void InMemoryView::signalThreads() {
-  w_log(W_LOG_DBG, "signalThreads! %p %s\n", this, root_path.c_str());
+  logf(DBG, "signalThreads! {} {}\n", fmt::ptr(this), root_path);
   stopThreads_ = true;
   watcher_->signalThreads();
   pending_.ping();

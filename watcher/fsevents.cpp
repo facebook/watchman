@@ -158,8 +158,8 @@ static void fse_callback(
         // fseventsd has a reliable journal so we can attempt to resync.
         do_resync:
           if (stream->event_id_wrapped) {
-            w_log(
-                W_LOG_ERR,
+            logf(
+                ERR,
                 "fsevents lost sync and the event_ids wrapped, so "
                 "we have no choice but to do a full recrawl\n");
             // Allow the Dropped event to propagate and trigger a recrawl
@@ -179,27 +179,27 @@ static void fse_callback(
                 fse_stream_make(root, stream->last_good, failure_reason);
 
             if (!replacement) {
-              w_log(
-                  W_LOG_ERR,
-                  "Failed to rebuild fsevent stream (%s) while trying to "
+              logf(
+                  ERR,
+                  "Failed to rebuild fsevent stream ({}) while trying to "
                   "resync, falling back to a regular recrawl\n",
-                  failure_reason.c_str());
+                  failure_reason);
               // Allow the UserDropped event to propagate and trigger a recrawl
               goto propagate;
             }
 
             if (!FSEventStreamStart(replacement->stream)) {
-              w_log(
-                  W_LOG_ERR,
+              logf(
+                  ERR,
                   "FSEventStreamStart failed while trying to "
                   "resync, falling back to a regular recrawl\n");
               // Allow the UserDropped event to propagate and trigger a recrawl
               goto propagate;
             }
 
-            w_log(
-                W_LOG_ERR,
-                "Lost sync, so resync from last_good event %llu\n",
+            logf(
+                ERR,
+                "Lost sync, so resync from last_good event {}\n",
                 stream->last_good);
 
             // mark the replacement as the winner
@@ -233,10 +233,10 @@ propagate:
       // The docs say to ignore this event; it's just a marker informing
       // us that a resync completed.  Take this opportunity to log how
       // many events were replayed to catch up.
-      w_log(
-          W_LOG_ERR,
-          "Historical resync completed at event id %llu (caught "
-          "up on %llu events)\n",
+      logf(
+          ERR,
+          "Historical resync completed at event id {} (caught "
+          "up on {} events)\n",
           eventIds[i],
           eventIds[i] - stream->since);
       continue;
@@ -269,7 +269,7 @@ propagate:
 }
 
 static void fse_pipe_callback(CFFileDescriptorRef, CFOptionFlags, void*) {
-  w_log(W_LOG_DBG, "pipe signalled\n");
+  logf(DBG, "pipe signalled\n");
   CFRunLoopStop(CFRunLoopGetCurrent());
 }
 
@@ -364,10 +364,10 @@ static fse_stream* fse_stream_make(
   CFArrayAppendValue(parray, cpath);
 
   latency = root->config.getDouble("fsevents_latency", 0.01),
-  w_log(
-      W_LOG_DBG,
-      "FSEventStreamCreate for path %s with latency %f seconds\n",
-      root->root_path.c_str(),
+  logf(
+      DBG,
+      "FSEventStreamCreate for path {} with latency {} seconds\n",
+      root->root_path,
       latency);
 
   fse_stream->stream = FSEventStreamCreate(
@@ -511,7 +511,7 @@ done:
     CFRelease(fdref);
   }
 
-  w_log(W_LOG_DBG, "fse_thread done\n");
+  logf(DBG, "fse_thread done\n");
 }
 
 bool FSEventsWatcher::consumeNotify(
@@ -531,12 +531,7 @@ bool FSEventsWatcher::consumeNotify(
 
   for (auto& item : items) {
     w_expand_flags(kflags, item.flags, flags_label, sizeof(flags_label));
-    w_log(
-        W_LOG_DBG,
-        "fsevents: got %s 0x%" PRIx32 " %s\n",
-        item.path.c_str(),
-        item.flags,
-        flags_label);
+    logf(DBG, "fsevents: got {} {:x} {}\n", item.path, item.flags, flags_label);
 
     if (item.flags & kFSEventStreamEventFlagUserDropped) {
       root->scheduleRecrawl("kFSEventStreamEventFlagUserDropped");
@@ -549,10 +544,7 @@ bool FSEventsWatcher::consumeNotify(
     }
 
     if (item.flags & kFSEventStreamEventFlagUnmount) {
-      w_log(
-          W_LOG_ERR,
-          "kFSEventStreamEventFlagUnmount %s, cancel watch\n",
-          item.path.c_str());
+      logf(ERR, "kFSEventStreamEventFlagUnmount {}, cancel watch\n", item.path);
       root->cancel();
       break;
     }
@@ -565,10 +557,10 @@ bool FSEventsWatcher::consumeNotify(
     }
 
     if (item.flags & kFSEventStreamEventFlagRootChanged) {
-      w_log(
-          W_LOG_ERR,
-          "kFSEventStreamEventFlagRootChanged %s, cancel watch\n",
-          item.path.c_str());
+      logf(
+          ERR,
+          "kFSEventStreamEventFlagRootChanged {}, cancel watch\n",
+          item.path);
       root->cancel();
       break;
     }
@@ -627,10 +619,7 @@ bool FSEventsWatcher::start(const std::shared_ptr<w_root_t>& root) {
     fse_cond.wait(wlock.getUniqueLock());
 
     if (root->failure_reason) {
-      w_log(
-          W_LOG_ERR,
-          "failed to start fsevents thread: %s\n",
-          root->failure_reason.c_str());
+      logf(ERR, "failed to start fsevents thread: {}\n", root->failure_reason);
       return false;
     }
 

@@ -231,16 +231,16 @@ json_ref watchman_client_subscription::buildSubscriptionResults(
   // can use a short lock_timeout
   query->lock_timeout =
       uint32_t(root->config.getInt("subscription_lock_timeout_ms", 100));
-  w_log(W_LOG_DBG, "running subscription %s %p\n", name.c_str(), this);
+  logf(DBG, "running subscription {} {}\n", name, fmt::ptr(this));
 
   try {
     auto res = w_query_execute(query.get(), root, time_generator);
 
-    w_log(
-        W_LOG_DBG,
-        "subscription %s generated %" PRIu32 " results\n",
-        name.c_str(),
-        uint32_t(res.resultsArray.array().size()));
+    logf(
+        DBG,
+        "subscription {} generated {} results\n",
+        name,
+        res.resultsArray.array().size());
 
     position = res.clockAtStartOfQuery;
 

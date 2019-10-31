@@ -16,11 +16,11 @@ void InMemoryView::notifyThread(const std::shared_ptr<w_root_t>& root) {
   auto localLock = pending.lock();
 
   if (!watcher_->start(root)) {
-    w_log(
-        W_LOG_ERR,
-        "failed to start root %s, cancelling watch: %s\n",
-        root->root_path.c_str(),
-        root->failure_reason.c_str());
+    logf(
+        ERR,
+        "failed to start root {}, cancelling watch: {}\n",
+        root->root_path,
+        root->failure_reason);
     root->cancel();
     return;
   }

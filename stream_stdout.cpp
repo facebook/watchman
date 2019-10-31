@@ -3,6 +3,7 @@
 #include "watchman.h"
 
 using watchman::FileDescriptor;
+using namespace watchman;
 
 namespace {
 class StdioStream : public watchman_stream {
@@ -38,7 +39,7 @@ class StdioStream : public watchman_stream {
   }
 
   w_evt_t getEvents() override {
-    w_log(W_LOG_FATAL, "calling get_events on a stdio stm\n");
+    log(FATAL, "calling get_events on a stdio stm\n");
     return nullptr;
   }
 

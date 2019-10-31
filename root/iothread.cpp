@@ -73,9 +73,9 @@ void InMemoryView::fullCrawl(
   sample.force_log();
   sample.log();
 
-  w_log(
-      W_LOG_ERR,
-      "%scrawl complete\n",
+  logf(
+      ERR,
+      "{}crawl complete\n",
       root->recrawlInfo.rlock()->recrawlCount ? "re" : "");
 }
 
@@ -164,10 +164,10 @@ void InMemoryView::ioThread(const std::shared_ptr<w_root_t>& root) {
     // Wait for the notify thread to give us pending items, or for
     // the settle period to expire
     {
-      w_log(W_LOG_DBG, "poll_events timeout=%dms\n", timeoutms);
+      logf(DBG, "poll_events timeout={}ms\n", timeoutms);
       auto targetPendingLock =
           pending_.lockAndWait(std::chrono::milliseconds(timeoutms), pinged);
-      w_log(W_LOG_DBG, " ... wake up (pinged=%s)\n", pinged ? "true" : "false");
+      logf(DBG, " ... wake up (pinged={})\n", pinged);
       localPendingLock->append(&*targetPendingLock);
     }
 
@@ -272,11 +272,7 @@ bool InMemoryView::processPending(
     return false;
   }
 
-  w_log(
-      W_LOG_DBG,
-      "processing %d events in %s\n",
-      coll->size(),
-      root_path.c_str());
+  logf(DBG, "processing {} events in {}\n", coll->size(), root_path);
 
   auto pending = coll->stealItems();
 

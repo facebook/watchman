@@ -261,9 +261,9 @@ static void run_service(void) {
     char hostname[256];
     gethostname(hostname, sizeof(hostname));
     hostname[sizeof(hostname) - 1] = '\0';
-    w_log(
-        W_LOG_ERR,
-        "Watchman %s %s starting up on %s\n",
+    logf(
+        ERR,
+        "Watchman {} {} starting up on {}\n",
         PACKAGE_VERSION,
 #ifdef WATCHMAN_BUILD_INFO
         WATCHMAN_BUILD_INFO,
@@ -614,11 +614,11 @@ static void spawn_via_launchd(void) {
 
   // Most likely cause is "headless" operation with no GUI context
   if (WIFEXITED(res)) {
-    w_log(W_LOG_ERR, "launchctl: exited with status %d\n", WEXITSTATUS(res));
+    logf(ERR, "launchctl: exited with status {}\n", WEXITSTATUS(res));
   } else if (WIFSIGNALED(res)) {
-    w_log(W_LOG_ERR, "launchctl: signaled with %d\n", WTERMSIG(res));
+    logf(ERR, "launchctl: signaled with {}\n", WTERMSIG(res));
   }
-  w_log(W_LOG_ERR, "Falling back to daemonize\n");
+  logf(ERR, "Falling back to daemonize\n");
   daemonize();
 }
 #endif
@@ -758,12 +758,12 @@ static void compute_file_name(
       // socket because not all POSIX systems respect permissions on UNIX domain
       // sockets, but all POSIX systems respect permissions on the containing
       // directory.
-      w_log(W_LOG_DBG, "Setting permissions on state dir to 0%o\n", dir_perms);
+      logf(DBG, "Setting permissions on state dir to {:o}\n", dir_perms);
       if (fchmod(dir_fd, dir_perms) == -1) {
-        w_log(
-            W_LOG_ERR,
-            "fchmod(%s, %#o): %s\n",
-            state_dir.c_str(),
+        logf(
+            ERR,
+            "fchmod({}, {:o}): {}\n",
+            state_dir,
             dir_perms,
             strerror(errno));
         ret = 1;
@@ -896,7 +896,7 @@ static bool try_command(json_t* cmd, int timeout) {
   if (!buffer.pduEncodeToStream(
           server_pdu, server_capabilities, cmd, client.get())) {
     err = errno;
-    w_log(W_LOG_ERR, "error sending PDU to server\n");
+    logf(ERR, "error sending PDU to server\n");
     errno = err;
     return false;
   }
@@ -1238,8 +1238,8 @@ int main(int argc, char** argv) {
         ")\n");
 #ifdef __APPLE__
     if (getenv("TMUX")) {
-      w_log(
-          W_LOG_ERR,
+      logf(
+          ERR,
           "\n"
           "You may be hitting a tmux related session issue.\n"
           "An immediate workaround is to run:\n"

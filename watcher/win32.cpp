@@ -14,6 +14,7 @@
 #include <tuple>
 
 using watchman::FileDescriptor;
+using namespace watchman;
 
 #ifdef _WIN32
 
@@ -146,9 +147,9 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
             &olap,
             nullptr)) {
       err = GetLastError();
-      w_log(
-          W_LOG_ERR,
-          "ReadDirectoryChangesW: failed, cancel watch. %s\n",
+      logf(
+          ERR,
+          "ReadDirectoryChangesW: failed, cancel watch. {}\n",
           win32_strerror(err));
       root->cancel();
       return;
@@ -157,7 +158,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
     // successful ReadDirectoryChangesW, otherwise there is a race condition
     // where we'll miss observing the cookie for a query that comes in
     // after we've crawled but before the watch is established.
-    w_log(W_LOG_DBG, "ReadDirectoryChangesW signalling as init done\n");
+    logf(DBG, "ReadDirectoryChangesW signalling as init done\n");
     cond.notify_one();
   }
   initiate_read = false;
@@ -177,9 +178,9 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
               &olap,
               nullptr)) {
         err = GetLastError();
-        w_log(
-            W_LOG_ERR,
-            "ReadDirectoryChangesW: failed, cancel watch. %s\n",
+        logf(
+            ERR,
+            "ReadDirectoryChangesW: failed, cancel watch. {}\n",
             win32_strerror(err));
         root->cancel();
         break;
@@ -207,10 +208,10 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
       if (!GetOverlappedResult(
               (HANDLE)dir_handle.handle(), &olap, &bytes, FALSE)) {
         err = GetLastError();
-        w_log(
-            W_LOG_ERR,
-            "overlapped ReadDirectoryChangesW(%s): 0x%x %s\n",
-            root->root_path.c_str(),
+        logf(
+            ERR,
+            "overlapped ReadDirectoryChangesW({}): {:x} {}\n",
+            root->root_path,
             err,
             win32_strerror(err));
 
@@ -218,11 +219,11 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
           // May be a network buffer related size issue; the docs say that
           // we can hit this when watching a UNC path. Let's downsize and
           // retry the read just one time
-          w_log(
-              W_LOG_ERR,
-              "retrying watch for possible network location %s "
+          logf(
+              ERR,
+              "retrying watch for possible network location {} "
               "with smaller buffer\n",
-              root->root_path.c_str());
+              root->root_path);
           size = NETWORK_BUF_SIZE;
           initiate_read = true;
           continue;
@@ -231,8 +232,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
         if (err == ERROR_NOTIFY_ENUM_DIR) {
           root->scheduleRecrawl("ERROR_NOTIFY_ENUM_DIR");
         } else {
-          w_log(
-              W_LOG_ERR, "Cancelling watch for %s\n", root->root_path.c_str());
+          logf(ERR, "Cancelling watch for {}\n", root->root_path);
           root->cancel();
           break;
         }
@@ -278,7 +278,7 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
         initiate_read = true;
       }
     } else if (status == WAIT_OBJECT_0 + 1) {
-      w_log(W_LOG_ERR, "signalled\n");
+      logf(ERR, "signalled\n");
       break;
     } else if (status == WAIT_TIMEOUT) {
       if (!items.empty()) {
@@ -292,12 +292,12 @@ void WinWatcher::readChangesThread(const std::shared_ptr<w_root_t>& root) {
         cond.notify_one();
       }
     } else {
-      w_log(W_LOG_ERR, "impossible wait status=%d\n", status);
+      logf(ERR, "impossible wait status={}\n", status);
       break;
     }
   }
 
-  w_log(W_LOG_DBG, "done\n");
+  logf(DBG, "done\n");
 }
 
 bool WinWatcher::start(const std::shared_ptr<w_root_t>& root) {
@@ -340,15 +340,15 @@ bool WinWatcher::start(const std::shared_ptr<w_root_t>& root) {
     }
 
     if (root->failure_reason) {
-      w_log(
-          W_LOG_ERR,
-          "failed to start readchanges thread: %s\n",
-          root->failure_reason.c_str());
+      logf(
+          ERR,
+          "failed to start readchanges thread: {}\n",
+          root->failure_reason);
       return false;
     }
     return true;
   } catch (const std::exception& e) {
-    w_log(W_LOG_ERR, "failed to start readchanges thread: %s\n", e.what());
+    logf(ERR, "failed to start readchanges thread: {}\n", e.what());
     return false;
   }
 }

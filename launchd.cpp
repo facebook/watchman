@@ -5,6 +5,7 @@
 #include <launch.h>
 
 using watchman::FileDescriptor;
+using namespace watchman;
 
 /* When running under launchd, we prefer to obtain our listening
  * socket from it.  We don't strictly need to run this way, but if we didn't,
@@ -25,7 +26,7 @@ FileDescriptor w_get_listener_socket_from_launchd() {
 
   req = launch_data_new_string(LAUNCH_KEY_CHECKIN);
   if (req == NULL) {
-    w_log(W_LOG_ERR, "unable to create LAUNCH_KEY_CHECKIN\n");
+    logf(ERR, "unable to create LAUNCH_KEY_CHECKIN\n");
     return FileDescriptor();
   }
 
@@ -33,14 +34,14 @@ FileDescriptor w_get_listener_socket_from_launchd() {
   launch_data_free(req);
 
   if (resp == NULL) {
-    w_log(W_LOG_ERR, "launchd checkin failed %s\n", strerror(errno));
+    logf(ERR, "launchd checkin failed {}\n", strerror(errno));
     return FileDescriptor();
   }
 
   if (launch_data_get_type(resp) == LAUNCH_DATA_ERRNO) {
-    w_log(
-        W_LOG_ERR,
-        "launchd checkin failed: %s\n",
+    logf(
+        ERR,
+        "launchd checkin failed: {}\n",
         strerror(launch_data_get_errno(resp)));
     launch_data_free(resp);
     return FileDescriptor();
@@ -48,7 +49,7 @@ FileDescriptor w_get_listener_socket_from_launchd() {
 
   socks = launch_data_dict_lookup(resp, LAUNCH_JOBKEY_SOCKETS);
   if (socks == NULL) {
-    w_log(W_LOG_ERR, "launchd didn't provide any sockets\n");
+    logf(ERR, "launchd didn't provide any sockets\n");
     launch_data_free(resp);
     return FileDescriptor();
   }
@@ -56,7 +57,7 @@ FileDescriptor w_get_listener_socket_from_launchd() {
   // the "sock" name here is coupled with the plist in main.c
   socks = launch_data_dict_lookup(socks, "sock");
   if (socks == NULL) {
-    w_log(W_LOG_ERR, "launchd: \"sock\" wasn't present in Sockets\n");
+    logf(ERR, "launchd: \"sock\" wasn't present in Sockets\n");
     launch_data_free(resp);
     return FileDescriptor();
   }

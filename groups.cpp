@@ -10,6 +10,8 @@
 #endif
 
 #ifndef _WIN32
+using namespace watchman;
+
 const struct group* w_get_group(const char* group_name) {
   // This explicit errno statement is necessary to distinguish between the
   // group not existing and an error.
@@ -17,11 +19,11 @@ const struct group* w_get_group(const char* group_name) {
   struct group* group = getgrnam(group_name);
   if (!group) {
     if (errno == 0) {
-      w_log(W_LOG_ERR, "group '%s' does not exist\n", group_name);
+      logf(ERR, "group '{}' does not exist\n", group_name);
     } else {
-      w_log(
-          W_LOG_ERR,
-          "getting gid for '%s' failed: %s\n",
+      logf(
+          ERR,
+          "getting gid for '{}' failed: {}\n",
           group_name,
           strerror(errno));
     }

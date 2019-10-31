@@ -6,6 +6,8 @@
 #include <folly/portability/GTest.h>
 #include "Logging.h"
 
+using namespace watchman;
+
 void w_request_shutdown(void) {}
 
 TEST(Log, logging) {
@@ -18,7 +20,7 @@ TEST(Log, logging) {
   memset(huge, 'X', sizeof(huge));
   huge[sizeof(huge) - 1] = '\0';
 
-  w_log(W_LOG_DBG, "test %s", huge);
+  logf(DBG, "test {}", huge);
 
   std::vector<std::shared_ptr<const watchman::Publisher::Item>> pending;
   sub->getPending(pending);

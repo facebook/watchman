@@ -4,6 +4,8 @@
 #include "watchman.h"
 #include <folly/ScopeGuard.h>
 
+using namespace watchman;
+
 namespace {
 struct reg {
   std::unordered_map<w_string, watchman_command_handler_def*> commands;
@@ -158,7 +160,7 @@ bool dispatch_command(
 
     // Scope for the perf sample
     {
-      w_log(W_LOG_DBG, "dispatch_command: %s\n", def->name);
+      logf(DBG, "dispatch_command: {}\n", def->name);
       snprintf(
           sample_name, sizeof(sample_name), "dispatch_command:%s", def->name);
       w_perf_t sample(sample_name);
@@ -180,7 +182,7 @@ bool dispatch_command(
                 {{"pid", json_integer(client->stm->getPeerProcessID())}}));
         sample.log();
       } else {
-        w_log(W_LOG_DBG, "dispatch_command: %s (completed)\n", def->name);
+        logf(DBG, "dispatch_command: {} (completed)\n", def->name);
       }
     }
 

@@ -6,6 +6,8 @@
 #include "InMemoryView.h"
 #include "watchman_error_category.h"
 
+using namespace watchman;
+
 /* Returns true if the global config root_restrict_files is not defined or if
  * one of the files in root_restrict_files exists, false otherwise. */
 static bool root_check_restrict(const char* watch_path) {
@@ -26,10 +28,10 @@ static bool root_check_restrict(const char* watch_path) {
     bool rv;
 
     if (!restrict_file) {
-      w_log(
-          W_LOG_ERR,
+      logf(
+          ERR,
           "resolve_root: global config root_restrict_files "
-          "element %" PRIu32 " should be a string\n",
+          "element {} should be a string\n",
           i);
       continue;
     }
@@ -49,11 +51,7 @@ static void check_allowed_fs(const char* filename, const w_string& fs_type) {
 
   // Report this to the log always, as it is helpful in understanding
   // problem reports
-  w_log(
-      W_LOG_ERR,
-      "path %s is on filesystem type %s\n",
-      filename,
-      fs_type.c_str());
+  logf(ERR, "path {} is on filesystem type {}\n", filename, fs_type);
 
   auto illegal_fstypes = cfg_get_json("illegal_fstypes");
   if (!illegal_fstypes) {
@@ -69,9 +67,7 @@ static void check_allowed_fs(const char* filename, const w_string& fs_type) {
   }
 
   if (!illegal_fstypes.isArray()) {
-    w_log(
-        W_LOG_ERR,
-        "resolve_root: global config illegal_fstypes is not an array\n");
+    logf(ERR, "resolve_root: global config illegal_fstypes is not an array\n");
     return;
   }
 
@@ -80,10 +76,10 @@ static void check_allowed_fs(const char* filename, const w_string& fs_type) {
     const char* name = json_string_value(obj);
 
     if (!name) {
-      w_log(
-          W_LOG_ERR,
+      logf(
+          ERR,
           "resolve_root: global config illegal_fstypes "
-          "element %" PRIu32 " should be a string\n",
+          "element {} should be a string\n",
           i);
       continue;
     }
@@ -186,7 +182,7 @@ root_resolve(const char* filename, bool auto_watch, bool* created) {
     return root;
   }
 
-  w_log(W_LOG_DBG, "Want to watch %s -> %s\n", filename, root_str.c_str());
+  logf(DBG, "Want to watch {} -> {}\n", filename, root_str);
 
   auto fs_type = w_fstype(filename);
   check_allowed_fs(root_str.c_str(), fs_type);

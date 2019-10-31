@@ -5,6 +5,7 @@
 #include <memory>
 
 using watchman::FileDescriptor;
+using namespace watchman;
 
 // Things are more complicated here than on unix.
 // We maintain an overlapped context for reads and
@@ -629,7 +630,7 @@ std::unique_ptr<watchman_stream> w_stm_connect_named_pipe(
   DWORD64 deadline = GetTickCount64() + timeoutms;
 
   if (strlen(path) > 255) {
-    w_log(W_LOG_ERR, "w_stm_connect_named_pipe(%s) path is too long\n", path);
+    logf(ERR, "w_stm_connect_named_pipe({}) path is too long\n", path);
     errno = E2BIG;
     return nullptr;
   }
@@ -681,9 +682,9 @@ int w_poll_events(struct watchman_event_poll* p, int n, int timeoutms) {
 
   if (n > MAXIMUM_WAIT_OBJECTS - 1) {
     // Programmer error :-/
-    w_log(
-        W_LOG_FATAL,
-        "%d > MAXIMUM_WAIT_OBJECTS-1 (%d)\n",
+    logf(
+        FATAL,
+        "{} > MAXIMUM_WAIT_OBJECTS-1 ({})\n",
         n,
         MAXIMUM_WAIT_OBJECTS - 1);
   }

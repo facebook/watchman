@@ -155,8 +155,8 @@ void PerfLogThread::loop() noexcept {
     perf_cmd = json_array({perf_cmd});
   }
   if (!perf_cmd.isArray()) {
-    w_log(
-        W_LOG_FATAL,
+    logf(
+        FATAL,
         "perf_logger_command must be either a string or an array of strings\n");
   }
 

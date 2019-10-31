@@ -112,7 +112,7 @@ bool PortFSWatcher::do_watch(
   auto rawFile = f.get();
   wlock->emplace(name, std::move(f));
 
-  w_log(W_LOG_DBG, "watching %s\n", name.c_str());
+  logf(DBG, "watching {}\n", name);
   errno = 0;
   if (port_associate(
           port_fd.fd(),
@@ -121,9 +121,9 @@ bool PortFSWatcher::do_watch(
           WATCHMAN_PORT_EVENTS,
           (void*)rawFile)) {
     int err = errno;
-    w_log(
-        W_LOG_ERR,
-        "port_associate %s %s\n",
+    logf(
+        ERR,
+        "port_associate {} {}\n",
         rawFile->port_file.fo_name,
         strerror(errno));
     wlock->erase(name);
@@ -155,7 +155,7 @@ bool PortFSWatcher::start(const std::shared_ptr<w_root_t>& root) {
   auto rawFile = f.get();
   root_delete_w_port_file = std::move(f);
 
-  w_log(W_LOG_DBG, "watching %s\n for delete events", root->root_path.c_str());
+  logf(DBG, "watching {} for delete events\n", root->root_path);
   errno = 0;
   if (port_associate(
           port_delete_fd.fd(),
@@ -229,10 +229,10 @@ bool PortFSWatcher::consumeNotify(
     if (errno == EINTR) {
       return false;
     }
-    w_log(W_LOG_FATAL, "port_getn: %s\n", strerror(errno));
+    logf(FATAL, "port_getn: {}\n", strerror(errno));
   }
 
-  w_log(W_LOG_DBG, "port_getn: n=%u\n", n);
+  logf(DBG, "port_getn: n={}\n", n);
 
   if (n == 0) {
     return false;
@@ -248,19 +248,14 @@ bool PortFSWatcher::consumeNotify(
 
     f = (struct watchman_port_file*)portevents[i].portev_user;
     w_expand_flags(pflags, pe, flags_label, sizeof(flags_label));
-    w_log(
-        W_LOG_DBG,
-        "port: %s [0x%x %s]\n",
-        f->port_file.fo_name,
-        pe,
-        flags_label);
+    logf(DBG, "port: {} [{:x} {}]\n", f->port_file.fo_name, pe, flags_label);
 
     if ((pe & (FILE_RENAME_FROM | UNMOUNTED | MOUNTEDOVER | FILE_DELETE)) &&
         (f->name == root->root_path)) {
-      w_log(
-          W_LOG_ERR,
-          "root dir %s has been (re)moved (code 0x%x %s), canceling watch\n",
-          root->root_path.c_str(),
+      logf(
+          ERR,
+          "root dir {} has been (re)moved (code {:x} {}), canceling watch\n",
+          root->root_path,
           pe,
           flags_label);
 

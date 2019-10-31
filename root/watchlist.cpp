@@ -6,6 +6,8 @@
 #include <folly/Synchronized.h>
 #include <vector>
 
+using namespace watchman;
+
 folly::Synchronized<std::unordered_map<w_string, std::shared_ptr<w_root_t>>>
     watched_roots;
 std::atomic<long> live_roots{0};
@@ -107,7 +109,7 @@ bool w_root_save_state(json_ref& state) {
 
   auto watched_dirs = json_array();
 
-  w_log(W_LOG_DBG, "saving state\n");
+  logf(DBG, "saving state\n");
 
   {
     auto map = watched_roots.rlock();
@@ -248,7 +250,7 @@ void w_root_free_watched_roots(void) {
 
   last = live_roots;
   time(&started);
-  w_log(W_LOG_DBG, "waiting for roots to cancel and go away %d\n", last);
+  logf(DBG, "waiting for roots to cancel and go away {}\n", last);
   interval = 100;
   for (;;) {
     auto current = live_roots.load();
@@ -256,11 +258,11 @@ void w_root_free_watched_roots(void) {
       break;
     }
     if (time(NULL) > started + 3) {
-      w_log(W_LOG_ERR, "%ld roots were still live at exit\n", current);
+      logf(ERR, "{} roots were still live at exit\n", current);
       break;
     }
     if (current != last) {
-      w_log(W_LOG_DBG, "waiting: %ld live\n", current);
+      logf(DBG, "waiting: {} live\n", current);
       last = current;
     }
     /* sleep override */ std::this_thread::sleep_for(
@@ -268,7 +270,7 @@ void w_root_free_watched_roots(void) {
     interval = std::min(interval * 2, 1000000);
   }
 
-  w_log(W_LOG_DBG, "all roots are gone\n");
+  logf(DBG, "all roots are gone\n");
 }
 
 /* vim:ts=2:sw=2:et:

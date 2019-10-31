@@ -53,7 +53,9 @@ class Log {
     pub.enqueue(std::move(payload));
   }
 
-  inline void logVPrintf(enum LogLevel level, const char* fmt, va_list ap) {
+  // Format a string and log it
+  template <typename... Args>
+  void logf(enum LogLevel level, fmt::string_view format_str, Args&&... args) {
     auto& pub = levelToPub(level);
 
     // Avoid building the string if there are no subscribers
@@ -63,28 +65,18 @@ class Log {
 
     char timebuf[64];
 
-    auto payload =
-        json_object({{"log",
-                      typed_string_to_json(w_string::build(
-                          currentTimeString(timebuf, sizeof(timebuf)),
-                          ": [",
-                          getThreadName(),
-                          "] ",
-                          w_string::vprintf(fmt, ap)))},
-                     {"unilateral", json_true()},
-                     {"level", typed_string_to_json(logLevelToLabel(level))}});
+    auto payload = json_object(
+        {{"log",
+          typed_string_to_json(w_string::build(
+              currentTimeString(timebuf, sizeof(timebuf)),
+              ": [",
+              getThreadName(),
+              "] ",
+              fmt::format(format_str, std::forward<Args>(args)...)))},
+         {"unilateral", json_true()},
+         {"level", typed_string_to_json(logLevelToLabel(level))}});
 
     pub.enqueue(std::move(payload));
-  }
-
-  inline void logPrintf(
-      enum LogLevel level,
-      WATCHMAN_FMT_STRING(const char* fmt),
-      ...) WATCHMAN_FMT_ATTR(3, 4) {
-    va_list ap;
-    va_start(ap, fmt);
-    logVPrintf(level, fmt, ap);
-    va_end(ap);
   }
 
   Log();
@@ -112,9 +104,10 @@ void log(enum LogLevel level, Args&&... args) {
 }
 
 template <typename... Args>
-void logPrintf(enum LogLevel level, Args&&... args) {
-  getLog().logPrintf(level, std::forward<Args>(args)...);
+void logf(enum LogLevel level, fmt::string_view format_str, Args&&... args) {
+  getLog().logf(level, format_str, std::forward<Args>(args)...);
 }
+
 } // namespace watchman
 
 template <typename... Args>
@@ -122,3 +115,22 @@ const char* w_set_thread_name(Args&&... args) {
   auto name = folly::to<std::string>(std::forward<Args>(args)...);
   return watchman::Log::setThreadName(std::move(name));
 }
+
+#define w_check(e, ...)                          \
+  if (!(e)) {                                    \
+    watchman::logf(                              \
+        watchman::ERR,                           \
+        "{}:{} failed assertion `{}'\n",         \
+        __FILE__,                                \
+        __LINE__,                                \
+        #e);                                     \
+    watchman::log(watchman::FATAL, __VA_ARGS__); \
+  }
+
+// Similar to assert(), but uses W_LOG_FATAL to log the stack trace
+// before giving up the ghost
+#ifdef NDEBUG
+#define w_assert(e, ...) ((void)0)
+#else
+#define w_assert(e, ...) w_check(e, __VA_ARGS__)
+#endif
