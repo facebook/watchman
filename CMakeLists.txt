@@ -471,7 +471,6 @@ stream.cpp
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   list(APPEND testsupport_sources
-winbuild/asprintf.cpp
 winbuild/time.cpp
 winbuild/backtrace.cpp
 winbuild/errmap.cpp
@@ -617,7 +616,6 @@ winbuild/errmap.cpp
 winbuild/pathmap.cpp
 winbuild/mkdir.cpp
 winbuild/dir.cpp
-winbuild/asprintf.cpp
 winbuild/time.cpp
 winbuild/backtrace.cpp
 winbuild/getopt_long.cpp

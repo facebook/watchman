@@ -65,8 +65,6 @@ int map_win32_err(DWORD err);
 int map_winsock_err(void);
 
 #define snprintf _snprintf
-int asprintf(char** out, WATCHMAN_FMT_STRING(const char* fmt), ...);
-int vasprintf(char** out, WATCHMAN_FMT_STRING(const char* fmt), va_list ap);
 char* dirname(char* path);
 
 #define STDIN_FILENO 0
