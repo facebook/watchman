@@ -44,4 +44,13 @@ class TestTypeExpr(WatchmanTestCase.WatchmanTestCase):
         with self.assertRaises(pywatchman.WatchmanError) as ctx:
             self.watchmanCommand("query", root, {"expression": "type"})
 
-        self.assertIn('must use ["type", "typestr"]', str(ctx.exception))
+        self.assertIn(
+            '"type" term requires a type string parameter', str(ctx.exception)
+        )
+
+        with self.assertRaises(pywatchman.WatchmanError) as ctx:
+            self.watchmanCommand("query", root, {"expression": ["type", 123]})
+
+        self.assertIn(
+            'First parameter to "type" term must be a type string', str(ctx.exception)
+        )

@@ -70,11 +70,18 @@ class TypeExpr : public QueryExpr {
   }
 
   static std::unique_ptr<QueryExpr> parse(w_query*, const json_ref& term) {
-    const char *ignore, *typestr, *found;
+    const char *typestr, *found;
     char arg;
 
-    if (json_unpack(term, "[s,u]", &ignore, &typestr) != 0) {
-      throw QueryParseError("must use [\"type\", \"typestr\"]");
+    if (!term.isArray()) {
+      throw QueryParseError("\"type\" term requires a type string parameter");
+    }
+
+    if (term.array().size() > 1 && term.at(1).isString()) {
+      typestr = json_string_value(term.at(1));
+    } else {
+      throw QueryParseError(watchman::to<std::string>(
+          "First parameter to \"type\" term must be a type string"));
     }
 
     found = strpbrk(typestr, "bcdfplsD");
