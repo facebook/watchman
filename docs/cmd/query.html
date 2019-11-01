@@ -16,9 +16,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2019-02-27T14:52:01-08:00" />
+<meta property="article:published_time" content="2019-11-01T16:28:17-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"query","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2019-02-27T14:52:01-08:00","dateModified":"2019-02-27T14:52:01-08:00","description":"Since 1.6.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cmd/query.html"},"url":"https://facebook.github.io/watchman/docs/cmd/query.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"query","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2019-11-01T16:28:17-07:00","dateModified":"2019-11-01T16:28:17-07:00","description":"Since 1.6.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/cmd/query.html"},"url":"https://facebook.github.io/watchman/docs/cmd/query.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -792,6 +792,54 @@ fields will return a response something like this:</p>
 </div>
 </div>
 
+<p>If a field’s value cannot be computed, a field’s value may be <code class="highlighter-rouge">null</code>, or may
+be an object with an <code class="highlighter-rouge">error</code> key containing a descriptive message string:</p>
+
+<div class="language-json highlighter-rouge"><div class="rougeHighlight"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21</pre></td><td class="code"><pre><span class="p">{</span><span class="w">
+    </span><span class="nt">"version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2019-07-22T13:50:36Z"</span><span class="p">,</span><span class="w">
+    </span><span class="nt">"is_fresh_instance"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w">
+    </span><span class="nt">"clock"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c:1563834049:1830370:791543813:2257494"</span><span class="p">,</span><span class="w">
+    </span><span class="nt">"files"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+        </span><span class="p">{</span><span class="w">
+            </span><span class="nt">"content.sha1hex"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w">
+            </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"docs"</span><span class="w">
+            </span><span class="s2">"symlink_target"</span><span class="err">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w">
+            </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"d"</span><span class="p">,</span><span class="w">
+        </span><span class="err">}</span><span class="p">,</span><span class="w">
+        </span><span class="p">{</span><span class="w">
+            </span><span class="nt">"content.sha1hex"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+                </span><span class="nt">"error"</span><span class="p">:</span><span class="w"> </span><span class="s2">"eloop: file is a symlink: Invalid argument: Invalid argument"</span><span class="w">
+            </span><span class="p">},</span><span class="w">
+            </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"l"</span><span class="p">,</span><span class="w">
+            </span><span class="nt">"symlink_target"</span><span class="p">:</span><span class="w"> </span><span class="s2">"eloop"</span><span class="p">,</span><span class="w">
+            </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"eloop"</span><span class="w">
+        </span><span class="p">}</span><span class="w">
+    </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></pre></td></tr></tbody></table>
+</div>
+</div>
+
 <p>For queries using the <code class="highlighter-rouge">since</code> generator, the <code class="highlighter-rouge">is_fresh_instance</code> member is true
 if the particular clock value indicates that it was returned by a different
 instance of watchman, or a named cursor hasn’t been seen before. In that case,
@@ -854,6 +902,14 @@ the values listed in <a href="../expr/type.html">the type query expression</a></
 <ul>
   <li><code class="highlighter-rouge">symlink_target</code> - string: the target of a symbolic link if the file is a
 symbolic link</li>
+</ul>
+
+<p><em>Since 4.9.</em></p>
+
+<ul>
+  <li><code class="highlighter-rouge">content.sha1hex</code> - string: the SHA-1 digest of the file’s byte content,
+encoded as 40 hexidecimal digits (e.g.
+<code class="highlighter-rouge">"da39a3ee5e6b4b0d3255bfef95601890afd80709"</code> for an empty file)</li>
 </ul>
 
 <h3 id="synchronization-timeout-since-21">Synchronization timeout (since 2.1)</h3>

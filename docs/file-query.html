@@ -16,9 +16,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2019-02-27T14:52:01-08:00" />
+<meta property="article:published_time" content="2019-11-01T16:28:17-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"File Queries","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2019-02-27T14:52:01-08:00","dateModified":"2019-02-27T14:52:01-08:00","description":"Watchman file queries consist of 1 or more generators that feed files through the expression evaluator.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/file-query.html"},"url":"https://facebook.github.io/watchman/docs/file-query.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"File Queries","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2019-11-01T16:28:17-07:00","dateModified":"2019-11-01T16:28:17-07:00","description":"Watchman file queries consist of 1 or more generators that feed files through the expression evaluator.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/file-query.html"},"url":"https://facebook.github.io/watchman/docs/file-query.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -805,6 +805,18 @@ will be set to <code class="highlighter-rouge">true</code> in the result object.
 <p>The since generator also knows how to talk to source control;
 <a href="/watchman/docs/scm-query.html">you can read more about that here</a>.</p>
 
+<p>The <code class="highlighter-rouge">since</code> generator does not consider the targets of symlinks. In particular,
+the <code class="highlighter-rouge">since</code> generator may <em>not</em> produce a symlink in the following cases:</p>
+
+<ul>
+  <li>The symlink’s target was a file, and the file is since modified.</li>
+  <li>The symlink’s target was a file, and the file is since deleted or replaced
+with a different file.</li>
+  <li>An ancestor of the symlink’s target was created or deleted or modified.</li>
+  <li>The symlink’s target was a directory, and a file is since added or removed
+from that directory.</li>
+</ul>
+
 <h3 id="suffix-generator">Suffix Generator</h3>
 
 <p>The <code class="highlighter-rouge">suffix</code> generator produces a list of files that have a particular suffix
@@ -835,6 +847,14 @@ EOT
 </span></pre></td></tr></tbody></table>
 </div>
 </div>
+
+<p>If the <code class="highlighter-rouge">suffix</code> generator is given an empty array, it produces no files.</p>
+
+<p>The <code class="highlighter-rouge">suffix</code> generator can produce symlinks.</p>
+
+<p>The <code class="highlighter-rouge">suffix</code> generator does not follow symlinks. For example, a symlink to
+<code class="highlighter-rouge">/etc</code> will not cause a <code class="highlighter-rouge">"suffix": "conf"</code> query to search within <code class="highlighter-rouge">/etc</code> and
+produce <code class="highlighter-rouge">/etc/resolv.conf</code>.</p>
 
 <h3 id="glob-generator">Glob Generator</h3>
 
@@ -884,6 +904,14 @@ globbing.</p>
 
 <p>The glob generator implicitly enables <code class="highlighter-rouge">dedup_results</code> mode.</p>
 
+<p>If the <code class="highlighter-rouge">glob</code> generator is given an empty array, it produces no files.</p>
+
+<p>The <code class="highlighter-rouge">glob</code> generator can produce symlinks.</p>
+
+<p>The <code class="highlighter-rouge">glob</code> generator does not follow symlinks. For example, a symlink to <code class="highlighter-rouge">/etc</code>
+will not cause a <code class="highlighter-rouge">"glob": ["**/resolv.conf"]</code> query to search within <code class="highlighter-rouge">/etc</code> and
+produce <code class="highlighter-rouge">/etc/resolv.conf</code>.</p>
+
 <h3 id="path-generator">Path Generator</h3>
 
 <p>The <code class="highlighter-rouge">path</code> generator produces a list of files based on their path and depth.
@@ -930,6 +958,12 @@ EOT
 </div>
 </div>
 
+<p>If the <code class="highlighter-rouge">path</code> generator is given an empty array, it produces no files.</p>
+
+<p>The <code class="highlighter-rouge">path</code> generator can produce symlinks.</p>
+
+<p>The <code class="highlighter-rouge">path</code> generator does not follow symlinks.</p>
+
 <h3 id="all-generator">All Generator</h3>
 
 <p>The <code class="highlighter-rouge">all</code> generator produces a list of all file nodes.  It is the default
@@ -946,6 +980,10 @@ EOT
 </span></pre></td></tr></tbody></table>
 </div>
 </div>
+
+<p>The <code class="highlighter-rouge">all</code> generator can produce symlinks.</p>
+
+<p>The <code class="highlighter-rouge">all</code> generator does not follow symlinks.</p>
 
 <h3 id="expressions">Expressions</h3>
 

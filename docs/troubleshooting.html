@@ -16,9 +16,9 @@
 <meta property="og:site_name" content="Watchman" />
 <meta property="og:image" content="https://facebook.github.io/watchman/static/og_image.png" />
 <meta property="og:type" content="article" />
-<meta property="article:published_time" content="2019-02-27T14:52:01-08:00" />
+<meta property="article:published_time" content="2019-11-01T16:28:17-07:00" />
 <script type="application/ld+json">
-{"@context":"http://schema.org","@type":"BlogPosting","headline":"Troubleshooting","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2019-02-27T14:52:01-08:00","dateModified":"2019-02-27T14:52:01-08:00","description":"We try to give directed advice in Watchman error diagnostics, which means that we will show a link to a section on this page with some context and advice where we have enough information to do so. Some operating systems provide richer diagnostic information than others, so we have to resort to more generic advice in some cases.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/troubleshooting.html"},"url":"https://facebook.github.io/watchman/docs/troubleshooting.html"}</script>
+{"@context":"http://schema.org","@type":"BlogPosting","headline":"Troubleshooting","image":"https://facebook.github.io/watchman/static/og_image.png","datePublished":"2019-11-01T16:28:17-07:00","dateModified":"2019-11-01T16:28:17-07:00","description":"We try to give directed advice in Watchman error diagnostics, which means that we will show a link to a section on this page with some context and advice where we have enough information to do so. Some operating systems provide richer diagnostic information than others, so we have to resort to more generic advice in some cases.","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://facebook.github.io/watchman/static/logo.png"}},"mainEntityOfPage":{"@type":"WebPage","@id":"https://facebook.github.io/watchman/docs/troubleshooting.html"},"url":"https://facebook.github.io/watchman/docs/troubleshooting.html"}</script>
 <!-- End Jekyll SEO tag -->
 
 
@@ -792,14 +792,11 @@ be the location that holds your logs.  If not, the default for <code class="high
 will be <code class="highlighter-rouge">&lt;PREFIX&gt;/var/run/watchman</code>, or for older versions of watchman,
 the logs may be placed in <code class="highlighter-rouge">&lt;TMPDIR&gt;/.watchman.&lt;USER&gt;.log</code>.</p>
 
-<p>If you’re running a <code class="highlighter-rouge">homebrew</code> build of watchman, you’ll find the logs in a
-path named something like
-<code class="highlighter-rouge">/usr/local/Cellar/watchman/3.2.0/var/run/watchman/&lt;USER&gt;.log</code>.</p>
-
 <p><em>Since 3.8.</em></p>
 
 <p>Watchman places the logs in a file named <code class="highlighter-rouge">&lt;STATEDIR&gt;/log</code>, which will
-typically be a location like <code class="highlighter-rouge">&lt;PREFIX&gt;/var/run/watchman/&lt;USER&gt;-state/log</code>.</p>
+typically be a location like <code class="highlighter-rouge">&lt;PREFIX&gt;/var/run/watchman/&lt;USER&gt;-state/log</code>. If
+you’re running a <code class="highlighter-rouge">homebrew</code> build of watchman, <code class="highlighter-rouge">&lt;PREFIX&gt;</code> is usually <code class="highlighter-rouge">/usr/local</code>.</p>
 
 <p>The default log location may be overridden by the <code class="highlighter-rouge">--logfile</code> <a href="/watchman/docs/cli-options.html#server-options">Server Option</a>.</p>
 
