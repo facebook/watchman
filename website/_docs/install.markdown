@@ -93,9 +93,9 @@ need to install `libfolly`.
 See below for some more information on options to configure your build.
 
 ```bash
-$ git clone https://github.com/facebook/watchman.git
-$ cd watchman
-$ git checkout {{ site.data.current_release.tag }}  # the latest stable release
+$ # use the latest stable release
+$ git clone https://github.com/facebook/watchman.git -b {{ site.data.current_release.tag }} --depth 1
+$ cd watchman 
 $ ./autogen.sh
 $ ./configure
 $ make
