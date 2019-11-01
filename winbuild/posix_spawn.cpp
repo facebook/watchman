@@ -3,6 +3,8 @@
 #include "watchman.h"
 #include <folly/Synchronized.h>
 
+using namespace watchman;
+
 // Maps pid => process handle
 // This is so that we can wait/poll/query the termination status
 static folly::Synchronized<std::unordered_map<DWORD, HANDLE>> child_procs;

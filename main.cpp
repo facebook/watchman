@@ -146,16 +146,14 @@ static bool lock_pidfile(void) {
   // they are doing something elaborate like being logged in via
   // ssh in multiple sessions and expecting to share state.
   std::string name("Global\\Watchman-");
-  const auto* it = pid_file;
-  while (*it != 0) {
-    if (*it == '\\') {
+  for (const auto& it : pid_file) {
+    if (it == '\\') {
       // We're not allowed to use backslash in the name, so normalize
       // to forward slashes.
       name.append("/");
     } else {
       name.append(it, 1);
     }
-    ++it;
   }
 
   auto mutex = CreateMutexA(nullptr, true, name.c_str());
@@ -846,7 +844,7 @@ static void setup_sock_name(void) {
   watchman_tmp_dir = get_env_with_fallback("TMPDIR", "TMP", "/tmp");
 
 #ifdef _WIN32
-  if (!sock_name) {
+  if (sock_name.empty()) {
     sock_name = folly::to<std::string>("\\\\.\\pipe\\watchman-", user);
   }
 #else

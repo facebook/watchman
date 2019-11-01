@@ -8,6 +8,8 @@
 #ifndef WATCHMAN_LOG_H
 #define WATCHMAN_LOG_H
 
+#include <string>
+
 extern int log_level;
 extern std::string log_name;
 const char* w_set_thread_name_impl(std::string&& name);

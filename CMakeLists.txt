@@ -303,12 +303,12 @@ find_package(
 find_package(LibEvent REQUIRED)
 get_filename_component(LIBEVENT_LIBDIR "${LIBEVENT_LIB}" DIRECTORY)
 link_directories(${LIBEVENT_LIBDIR})
+find_package(fmt CONFIG REQUIRED)
 find_package(folly CONFIG REQUIRED)
 
 
 if (ENABLE_EDEN_SUPPORT)
   find_package(fizz CONFIG REQUIRED)
-  find_package(fmt CONFIG REQUIRED)
   find_package(wangle CONFIG REQUIRED)
   find_package(FBThrift CONFIG REQUIRED)
   find_package(yarpl CONFIG REQUIRED)
@@ -389,6 +389,7 @@ target_link_libraries(third_party_deps INTERFACE
   glog::glog
   gflags
   ${Boost_LIBRARIES}
+  fmt::fmt
 )
 target_include_directories(third_party_deps INTERFACE
   ${FOLLY_INCLUDE_DIR}

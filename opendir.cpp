@@ -144,7 +144,7 @@ static std::string flagsToLabel(
   if (flags == 0) {
     return str;
   }
-  return to<std::string>(str, " unknown:", flags);
+  return folly::to<std::string>(str, " unknown:", flags);
 }
 
 static const std::unordered_map<uint32_t, const char*> commonLabels = {
@@ -306,7 +306,7 @@ const watchman_dir_ent* DirHandle::readDir() {
       throw std::system_error(
           EIO,
           std::generic_category(),
-          to<std::string>(
+          folly::to<std::string>(
               "getattrlistbulk didn't return a name for a directory entry under ",
               dirName_,
               "!?"));
