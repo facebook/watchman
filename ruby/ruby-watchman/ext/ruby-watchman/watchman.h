@@ -35,7 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * Methods for working with the Watchman binary protocol
  *
- * @see https://github.com/facebook/watchman/blob/master/BSER.markdown
+ * @see https://facebook.github.io/watchman/docs/bser.html
  */
 extern VALUE mRubyWatchman;
 
