@@ -32,7 +32,7 @@ struct watchman_getopt {
   const char* arglabel;
 
   // Whether this option should be passed to the child
-  // when running under the gimli monitor
+  // when spawning the daemon
   int is_daemon;
 #define IS_DAEMON 1
 #define NOT_DAEMON 0

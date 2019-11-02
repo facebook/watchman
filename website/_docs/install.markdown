@@ -151,9 +151,6 @@ that are specific to watchman that might be relevant to your needs:
                      Default is to enable and look for pcre-config in your
                      $PATH
 
---with-gimli    Enable support for the gimli process monitor
-                https://bitbucket.org/wez/gimli/
-
 --with-folly=PATH  Specify root for Folly (needed for the C++ client library)
                    https://github.com/facebook/folly
 ```

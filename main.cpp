@@ -56,7 +56,7 @@ static bool lock_pidfile(void) {
   // are aware of both the pidfile and the sockpath being used in the tests.
   compute_file_name(pid_file, compute_user_name(), "pid", "pidfile");
 
-#if !defined(USE_GIMLI) && !defined(_WIN32)
+#if !defined(_WIN32)
   struct flock lock;
   pid_t mypid;
 
@@ -344,7 +344,7 @@ static void close_random_fds(void) {
 }
 #endif
 
-#if !defined(USE_GIMLI) && !defined(_WIN32)
+#if !defined(_WIN32)
 static void daemonize(void) {
   // Make sure we're not about to inherit an undesirable nice value
   check_nice_value();
@@ -391,36 +391,6 @@ static void spawn_win32(void) {
   for (size_t i = 0; daemon_argv[i]; i++) {
     args.push_back(daemon_argv[i]);
   }
-
-  ChildProcess proc(args, std::move(opts));
-  proc.disown();
-}
-#endif
-
-#ifdef USE_GIMLI
-static void spawn_via_gimli(void) {
-  std::vector<w_string_piece> args{
-      GIMLI_MONITOR_PATH,
-#ifdef WATCHMAN_STATE_DIR
-      "--trace-dir=" WATCHMAN_STATE_DIR "/traces",
-#endif
-      "--pidfile",
-      pid_file,
-      "watchman",
-      "--foreground",
-  };
-
-  for (size_t i = 0; daemon_argv[i]; i++) {
-    args.push_back(daemon_argv[i]);
-  }
-
-  close_random_fds();
-
-  Options opts;
-  opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
-  opts.open(
-      STDOUT_FILENO, log_name.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0600);
-  opts.dup2(STDOUT_FILENO, STDERR_FILENO);
 
   ChildProcess proc(args, std::move(opts));
   proc.disown();
@@ -852,9 +822,6 @@ static void setup_sock_name(void) {
 #endif
   compute_file_name(watchman_state_file, user, "state", "statefile");
   compute_file_name(log_name, user, "log", "logname");
-#ifdef USE_GIMLI
-  compute_file_name(pid_file, user, "pid", "pidfile");
-#endif
 
 #ifndef _WIN32
   if (sock_name.size() >= sizeof(un.sun_path) - 1) {
@@ -960,15 +927,6 @@ static struct watchman_getopt opts[] = {
      &log_level,
      NULL,
      IS_DAEMON},
-#ifdef USE_GIMLI
-    {"pidfile",
-     0,
-     "Specify path to gimli monitor pidfile",
-     REQ_STRING,
-     &pid_file,
-     "PATH",
-     NOT_DAEMON},
-#else
     {"pidfile",
      0,
      "Specify path to pidfile",
@@ -976,7 +934,6 @@ static struct watchman_getopt opts[] = {
      &pid_file,
      "PATH",
      IS_DAEMON},
-#endif
     {"persistent",
      'p',
      "Persist and wait for further responses",
@@ -1162,9 +1119,7 @@ static void spawn_watchman(void) {
   }
 #endif
 
-#ifdef USE_GIMLI
-  spawn_via_gimli();
-#elif defined(__APPLE__)
+#if defined(__APPLE__)
   spawn_via_launchd();
 #elif defined(_WIN32)
   spawn_win32();

@@ -2,9 +2,6 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
-#ifdef HAVE_LIBGIMLI_H
-#include <libgimli.h>
-#endif
 #include <folly/Synchronized.h>
 #include <chrono>
 #include <thread>
@@ -21,9 +18,6 @@ static std::unique_ptr<watchman_event> listener_thread_event;
 static HANDLE listener_thread_event;
 #endif
 static volatile bool stopping = false;
-#ifdef HAVE_LIBGIMLI_H
-static volatile struct gimli_heartbeat* hb = NULL;
-#endif
 
 bool w_is_stopping(void) {
   return stopping;
@@ -549,12 +543,6 @@ static void accept_loop(FileDescriptor&& listenerDescriptor) {
     struct watchman_event_poll pfd[2];
     int bufsize;
 
-#ifdef HAVE_LIBGIMLI_H
-    if (hb) {
-      gimli_heartbeat_set(hb, GIMLI_HB_RUNNING);
-    }
-#endif
-
     pfd[0].evt = listener->getEvents();
     pfd[1].evt = listener_thread_event.get();
 
@@ -598,10 +586,6 @@ bool w_start_listener(const char* path) {
 #ifndef _WIN32
   struct sigaction sa;
   sigset_t sigset;
-#endif
-
-#ifdef HAVE_LIBGIMLI_H
-  hb = gimli_heartbeat_attach();
 #endif
 
 #if defined(HAVE_KQUEUE) || defined(HAVE_FSEVENTS)
@@ -697,15 +681,7 @@ bool w_start_listener(const char* path) {
   listener_fd.setCloExec();
 #endif
 
-#ifdef HAVE_LIBGIMLI_H
-  if (hb) {
-    gimli_heartbeat_set(hb, GIMLI_HB_RUNNING);
-  } else {
-    w_setup_signal_handlers();
-  }
-#else
   w_setup_signal_handlers();
-#endif
   listener_fd.setNonBlock();
 
   startSanityCheckThread();
