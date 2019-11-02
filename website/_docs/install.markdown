@@ -38,19 +38,35 @@ a reasonably sized group of users depending on it already, and we expect
 to remove the beta label in the coming months.
 
 Watchman was built to support Windows Server 2012 R2 and later, but has
-had community provided patches that enable support for Windows 7 and later.
+had community-provided patches that enable support for Windows 7 and later.
 
 At this time, we recommend running the latest master build of watchman on
-Windows.
-
-* [Download latest watchman.zip](https://ci.appveyor.com/api/buildjobs/vkp4mmk1cri9jsel/artifacts/watchman.zip)
-
-Extract the zip file and make sure that `watchman.exe` is located in a directory
-that is in your `PATH`.
+Windows; see below for binary downloads!
 
 If you encounter issues with the Windows version of watchman, please report
 them via GitHub!  [You can find the list of known Windows issues here](
 https://github.com/facebook/watchman/issues?utf8=%E2%9C%93&q=is%3Aopen+Windows).
+
+## Binary Downloads for Linux, macOS and Windows (Beta)
+
+We use GitHub Actions to build binaries for the following platforms:
+
+* macOS
+* Ubuntu 18.04
+* Windows
+
+GitHub Actions doesn't provide a way to link directly to these builds at
+this time, so you will need to follow these steps to download the binaries:
+
+* [Navigate to recent CI builds](https://github.com/facebook/watchman/actions?query=is%3Asuccess+event%3Apush+branch%3Amaster)
+* Click on the `CI` label
+  <img src="/watchman/static/ci-link.png" style="border: 1px solid black" />
+* Look in the top right of the resulting page for the `Artifacts` drop down
+  <img src="/watchman/static/artifacts-download.png" style="border: 1px solid black" />
+* Click it to reveal the download artifacts link
+* Click that and extract the zip file
+* For Windows users:
+  * Copy `windows\bin` directory somewhere and add it to your `PATH` environment variable.
 
 ## Build/Install
 
