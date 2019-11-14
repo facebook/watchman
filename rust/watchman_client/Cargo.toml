@@ -5,7 +5,7 @@ authors = ["Wez Furlong"]
 edition = "2018"
 repository = "https://github.com/facebook/watchman/rust/watchman_client"
 description = "a client for the Watchman file watching service"
-license = "APACHE"
+license = "Apache-2.0"
 documentation = "https://docs.rs/watchman_client"
 
 [dependencies]
