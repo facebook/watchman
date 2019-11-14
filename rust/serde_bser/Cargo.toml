@@ -1,13 +1,17 @@
 [package]
 name = "serde_bser"
 version = "0.1.0"
-authors = ["Rain <rain1@fb.com>"]
+authors = ["Rain <rain1@fb.com>", "Wez Furlong"]
 edition = "2018"
+repository = "https://github.com/facebook/watchman/rust/serde_bser"
+description = "Implements the Watchman BSER encoding for serde. https://facebook.github.io/watchman/docs/bser.html"
+license = "APACHE"
+documentation = "https://docs.rs/serde_bser"
 
 [dependencies]
 byteorder = "1.0"
 bytes = "0.4"
-error-chain = "*"
+error-chain = "0.12"
 serde = { version = "1", features = ["derive"] }
 serde_bytes = "0.11"
 

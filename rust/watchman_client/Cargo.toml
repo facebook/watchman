@@ -1,0 +1,17 @@
+[package]
+name = "watchman_client"
+version = "0.1.0"
+authors = ["Wez Furlong"]
+edition = "2018"
+repository = "https://github.com/facebook/watchman/rust/watchman_client"
+description = "a client for the Watchman file watching service"
+license = "APACHE"
+documentation = "https://docs.rs/watchman_client"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_bser = { version = "0.1", path = "../serde_bser" }
+serde_json = "1.0"
+thiserror = "1.0"
+tokio = {version="0.2.0-alpha.6", features=["process"]}
+serde_with_macros = "1.0"

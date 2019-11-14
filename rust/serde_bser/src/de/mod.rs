@@ -17,8 +17,8 @@ use serde::{de, forward_to_deserialize_any};
 use crate::errors::*;
 use crate::header::*;
 
-use self::bunser::{Bunser, PduInfo};
-use self::read::{DeRead, Reference, SliceRead};
+pub use self::bunser::{Bunser, PduInfo};
+pub use self::read::{DeRead, Reference, SliceRead};
 use self::reentrant::ReentrantLimit;
 
 pub struct Deserializer<R> {

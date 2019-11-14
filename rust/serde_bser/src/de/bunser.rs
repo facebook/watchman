@@ -15,8 +15,8 @@ pub struct Bunser<R> {
 
 pub struct PduInfo {
     pub bser_capabilities: u32,
-    len: i64,
-    start: i64,
+    pub len: i64,
+    pub start: i64,
 }
 
 impl<'de, R> Bunser<R>
