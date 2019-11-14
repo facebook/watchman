@@ -26,6 +26,7 @@
 //! }
 //! ```
 mod expr;
+mod named_pipe;
 mod pdu;
 pub use expr::*;
 pub use pdu::*;
@@ -33,6 +34,7 @@ use serde_bser::de::{Bunser, PduInfo, SliceRead};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tokio::net::process::Command;
+#[cfg(unix)]
 use tokio::net::unix::UnixStream;
 use tokio::prelude::*;
 
@@ -62,6 +64,12 @@ pub enum Error {
 
     #[error("{}", .source)]
     Serialize { source: Box<dyn std::error::Error> },
+
+    #[error("while attempting to connect to {}: {}", .endpoint.display(), .source)]
+    Connect {
+        endpoint: PathBuf,
+        source: Box<dyn std::error::Error>,
+    },
 }
 
 /// The Connector defines how to connect to the watchman server.
@@ -160,7 +168,14 @@ impl Connector {
     /// the watchman server.
     pub async fn connect(self) -> Result<Client, Error> {
         let sock_path = self.resolve_unix_domain_path().await?;
-        let stream = UnixStream::connect(sock_path).await?;
+
+        #[cfg(unix)]
+        let stream: Box<dyn ReadWriteStream> = Box::new(UnixStream::connect(sock_path).await?);
+
+        #[cfg(windows)]
+        let stream: Box<dyn ReadWriteStream> =
+            Box::new(named_pipe::NamedPipe::connect(sock_path).await?);
+
         Ok(Client { stream })
     }
 }
@@ -177,7 +192,7 @@ impl CanonicalPath {
     /// to use the `with_canonicalized_path` function instead.
     pub fn canonicalize<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
         let path = std::fs::canonicalize(path)?;
-        Ok(Self(path))
+        Ok(Self(Self::strip_unc_escape(path)))
     }
 
     /// Construct from an already canonicalized path.
@@ -190,7 +205,26 @@ impl CanonicalPath {
              CanonicalPath::with_canonicalized_path on a non-canonical path! \
              You probably want to call CanonicalPath::canonicalize instead!"
         );
-        Self(path)
+        Self(Self::strip_unc_escape(path))
+    }
+
+    /// Watchman doesn't like the UNC prefix being present for incoming paths
+    /// in its current implementation: we should fix that, but in the meantime
+    /// we want clients to be able to connect to existing versions, so let's
+    /// strip off the UNC escape
+    #[cfg(windows)]
+    #[inline]
+    fn strip_unc_escape(path: PathBuf) -> PathBuf {
+        match path.to_str() {
+            Some(s) if s.starts_with("\\\\?\\") => PathBuf::from(&s[4..]),
+            _ => path,
+        }
+    }
+
+    #[cfg(unix)]
+    #[inline]
+    fn strip_unc_escape(path: PathBuf) -> PathBuf {
+        path
     }
 }
 
@@ -205,10 +239,15 @@ pub struct ResolvedRoot {
     relative: Option<PathBuf>,
 }
 
+trait ReadWriteStream: AsyncRead + AsyncWrite + std::marker::Unpin {}
+
+#[cfg(unix)]
+impl ReadWriteStream for UnixStream {}
+
 /// A live connection to a watchman server.
 /// Use [Connector](struct.Connector.html) to establish a connection.
 pub struct Client {
-    stream: UnixStream,
+    stream: Box<dyn ReadWriteStream>,
 }
 
 struct PduHeader {
@@ -316,12 +355,20 @@ impl Client {
     /// device and its performance characteristics.
     pub async fn resolve_root(&mut self, path: CanonicalPath) -> Result<ResolvedRoot, Error> {
         let response: WatchProjectResponse = self
-            .generic_request(WatchProjectRequest("watch-project", path.0))
+            .generic_request(WatchProjectRequest("watch-project", path.0.clone()))
             .await?;
-        Ok(ResolvedRoot {
-            root: response.watch,
-            relative: response.relative_path,
-        })
+
+        if let Some(message) = response.error {
+            Err(Error::WatchmanServerError {
+                message,
+                command: format!("watch-project {}", path.0.display()),
+            })
+        } else {
+            Ok(ResolvedRoot {
+                root: response.watch.expect("watch field missing!?"),
+                relative: response.relative_path,
+            })
+        }
     }
 
     /// Perform a generic watchman query.
