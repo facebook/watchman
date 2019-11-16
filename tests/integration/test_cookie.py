@@ -36,6 +36,7 @@ class TestCookie(WatchmanTestCase.WatchmanTestCase):
         self.assertTrue(
             ("No such file" in reason)
             or ("root dir was removed" in reason)
+            or ("The system cannot find the file specified" in reason)
             or ("unable to resolve root" in reason),
             msg=reason,
         )
