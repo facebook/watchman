@@ -309,15 +309,23 @@ bool watchman_json_buffer::readAndDetectPdu(w_stm_t stm, json_error_t* jerr) {
 }
 
 static bool output_bytes(const char* buf, int x) {
-  int res;
+  auto& stm = FileDescriptor::stdOut();
 
   while (x > 0) {
-    res = (int)fwrite(buf, 1, x, stdout);
-    if (res == 0) {
+    auto res = stm.write(buf, x);
+    if (res.hasError()) {
+      errno = res.error().value();
+#ifdef _WIN32
+      // TODO: propagate Result<int, std::error_code> as return type
+      errno = map_win32_err(errno);
+#endif
       return false;
     }
-    buf += res;
-    x -= res;
+
+    auto len = res.value();
+
+    buf += len;
+    x -= len;
   }
   return true;
 }
