@@ -101,7 +101,18 @@ W_CMD_REG(
 static void cmd_get_sockname(struct watchman_client* client, const json_ref&) {
   auto resp = make_response();
 
-  resp.set("sockname", typed_string_to_json(get_sock_name(), W_STRING_BYTE));
+  // For legacy reasons we report the unix domain socket as sockname on
+  // unix but the named pipe path on windows
+
+#ifdef WIN32
+  auto named_pipe = w_string(get_sock_name(), W_STRING_BYTE);
+  resp.set("sockname", w_string_to_json(named_pipe));
+  resp.set("named_pipe", w_string_to_json(named_pipe));
+#else
+  auto unix_domain = w_string(get_sock_name(), W_STRING_BYTE);
+  resp.set("sockname", w_string_to_json(unix_domain));
+  resp.set("unix_domain", w_string_to_json(unix_domain));
+#endif
 
   send_and_dispose_response(client, std::move(resp));
 }

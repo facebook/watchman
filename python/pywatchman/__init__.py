@@ -288,6 +288,42 @@ class CommandError(WatchmanError):
         super(CommandError, self).__init__("watchman command error: %s" % (msg,), cmd)
 
 
+def is_named_pipe_path(path):
+    """Returns True if path is a watchman named pipe path """
+    return path.startswith("\\\\.\\pipe\\watchman")
+
+
+class SockPath(object):
+    """Describes how to connect to watchman"""
+
+    unix_domain = None
+    named_pipe = None
+
+    def __init__(self, unix_domain=None, named_pipe=None, sockpath=None):
+        if named_pipe is None and sockpath is not None and is_named_pipe_path(sockpath):
+            named_pipe = sockpath
+
+        if (
+            unix_domain is None
+            and sockpath is not None
+            and not is_named_pipe_path(sockpath)
+        ):
+            unix_domain = sockpath
+
+        if compat.PYTHON3 and named_pipe:
+            named_pipe = os.fsencode(named_pipe)
+
+        self.unix_domain = unix_domain
+        self.named_pipe = named_pipe
+
+    def legacy_sockpath(self):
+        """Returns a sockpath suitable for passing to the watchman
+        CLI --sockname parameter"""
+        if self.named_pipe:
+            return os.fsdecode(self.named_pipe)
+        return self.unix_domain
+
+
 class Transport(object):
     """ communication transport to the watchman server """
 
@@ -363,11 +399,11 @@ class UnixSocketTransport(Transport):
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             sock.settimeout(self.timeout)
-            sock.connect(self.sockpath)
+            sock.connect(self.sockpath.unix_domain)
             self.sock = sock
         except socket.error as e:
             sock.close()
-            raise SocketConnectError(self.sockpath, e)
+            raise SocketConnectError(self.sockpath.unix_domain, e)
 
     def close(self):
         if self.sock:
@@ -442,10 +478,8 @@ class WindowsNamedPipeTransport(Transport):
         self.timeout = int(math.ceil(timeout * 1000))
         self._iobuf = None
 
-        if compat.PYTHON3:
-            sockpath = os.fsencode(sockpath)
         self.pipe = CreateFile(
-            sockpath,
+            self.sockpath.named_pipe,
             GENERIC_READ | GENERIC_WRITE,
             0,
             None,
@@ -457,7 +491,9 @@ class WindowsNamedPipeTransport(Transport):
         err = GetLastError()
         if self.pipe == INVALID_HANDLE_VALUE or self.pipe == 0:
             self.pipe = None
-            raise SocketConnectError(self.sockpath, self._make_win_err("", err))
+            raise SocketConnectError(
+                self.sockpath.named_pipe, self._make_win_err("", err)
+            )
 
         # event for the overlapped I/O operations
         self._waitable = CreateEvent(None, True, False, None)
@@ -647,7 +683,7 @@ class CLIProcessTransport(Transport):
             return self.proc
         args = [
             self.binpath,
-            "--sockname={0}".format(self.sockpath),
+            "--sockname={0}".format(self.sockpath.legacy_sockpath()),
             "--logfile=/BOGUS",
             "--statefile=/BOGUS",
             "--no-spawn",
@@ -868,6 +904,8 @@ class client(object):
         valueErrors=False,
         binpath=None,
     ):
+        if sockpath is not None:
+            sockpath = SockPath(sockpath=sockpath)
         self.sockpath = sockpath
         self.timeout = timeout
         self.useImmutableBser = useImmutableBser
@@ -950,7 +988,7 @@ class client(object):
         # should use it unless explicitly set otherwise
         path = os.getenv("WATCHMAN_SOCK")
         if path:
-            return path
+            return SockPath(sockpath=path)
 
         cmd = [self.binpath, "--output-encoding=bser", "get-sockname"]
         try:
@@ -979,7 +1017,14 @@ class client(object):
         if "error" in result:
             raise WatchmanError("get-sockname error: %s" % result["error"])
 
-        return result["sockname"]
+        return SockPath(
+            # unix_domain and named_pipe are reported by newer versions
+            # of the server and may not be present
+            unix_domain=result.get("unix_domain", None),
+            named_pipe=result.get("named_pipe", None),
+            # sockname is always present
+            sockname=result["sockname"],
+        )
 
     def _connect(self):
         """ establish transport connection """
