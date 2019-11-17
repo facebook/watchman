@@ -30,6 +30,6 @@
     "index.js"
   ],
   "dependencies": {
-    "bser": "^2.0.0"
+    "bser": "^2.1.0"
   }
 }

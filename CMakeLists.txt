@@ -316,9 +316,16 @@ if (ENABLE_EDEN_SUPPORT)
   find_package(fb303 CONFIG REQUIRED)
   include_directories(${FB303_INCLUDE_DIR})
 endif()
-
-find_program(NODE node)
-find_program(YARN yarn)
+if(DEFINED ENV{NODE_BIN})
+  set(NODE $ENV{NODE_BIN})
+else()
+  find_program(NODE node)
+endif()
+if(DEFINED ENV{YARN_PATH})
+  set(YARN $ENV{YARN_PATH})
+else()
+  find_program(YARN yarn)
+endif()
 
 # Why not `find_package(Python3)`?  On a system that has
 # python3, python3.6 and python3.7 that will select 3.7,
