@@ -1,3 +1,4 @@
+//! Working with the watchman expression term syntax
 use crate::pdu::*;
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -22,51 +23,51 @@ pub enum Expr {
     Any(Vec<Expr>),
 
     /// Match on the parent directory structure
-    /// https://facebook.github.io/watchman/docs/expr/dirname.html
+    /// <https://facebook.github.io/watchman/docs/expr/dirname.html>
     DirName(DirNameTerm),
 
     /// Evaluates as true if the file exists, has size 0 and is a regular
     /// file or directory.
-    /// https://facebook.github.io/watchman/docs/expr/empty.html
+    /// <https://facebook.github.io/watchman/docs/expr/empty.html>
     Empty,
 
     /// Evaluates as true if the file exists; this is useful for filtering
     /// out notifications for files that have been deleted.
     /// Note that this term doesn't add value for `path` and `glob` generators
     /// which implicitly add this constraint.
-    /// https://facebook.github.io/watchman/docs/expr/exists.html
+    /// <https://facebook.github.io/watchman/docs/expr/exists.html>
     Exists,
 
     /// Performs a glob-style match against the file name
-    /// https://facebook.github.io/watchman/docs/expr/match.html
+    /// <https://facebook.github.io/watchman/docs/expr/match.html>
     Match(MatchTerm),
 
     /// Performs an exact match against the file name.
-    /// https://facebook.github.io/watchman/docs/expr/name.html
+    /// <https://facebook.github.io/watchman/docs/expr/name.html>
     Name(NameTerm),
 
     /// Use PCRE to match the filename.
     /// Note that this is an optional server feature and using this term
     /// on a server that doesn't support this feature will generate an
     /// error in response to the query.
-    /// https://facebook.github.io/watchman/docs/expr/pcre.html
+    /// <https://facebook.github.io/watchman/docs/expr/pcre.html>
     Pcre(PcreTerm),
 
     /// Evaluates as true if the specified time property of the file is
     /// greater than the since value.
-    /// https://facebook.github.io/watchman/docs/expr/since.html
+    /// <https://facebook.github.io/watchman/docs/expr/since.html>
     Since(SinceTerm),
 
     /// Evaluate as true if the size of a file matches the specified constraint.
     /// Files that do not presently exist will evaluate as false.
-    /// https://facebook.github.io/watchman/docs/expr/size.html
+    /// <https://facebook.github.io/watchman/docs/expr/size.html>
     Size(RelOp),
 
     /// Evaluate as true if the filename suffix (also known as extension)
     /// matches the provided set of suffixes.
     /// Suffix matches are always case insensitive.
     /// `php` matches `foo.php` and `foo.PHP` but not `foophp`.
-    /// https://facebook.github.io/watchman/docs/expr/suffix.html
+    /// <https://facebook.github.io/watchman/docs/expr/suffix.html>
     // FIXME: this String should be PathBuf but we cannot guarantee
     // representation while we rely on serde_json::Value as an intermediate.
     Suffix(Vec<String>),
@@ -148,7 +149,7 @@ impl Into<Value> for Expr {
 }
 
 /// Performs an exact match against the file name.
-/// https://facebook.github.io/watchman/docs/expr/name.html
+/// <https://facebook.github.io/watchman/docs/expr/name.html>
 #[derive(Clone, Debug)]
 pub struct NameTerm {
     // FIXME: this String should be PathBuf but we cannot guarantee
@@ -161,7 +162,7 @@ pub struct NameTerm {
 }
 
 /// Match on the parent directory structure
-/// https://facebook.github.io/watchman/docs/expr/dirname.html
+/// <https://facebook.github.io/watchman/docs/expr/dirname.html>
 #[derive(Clone, Debug)]
 pub struct DirNameTerm {
     /// The path to a directory
@@ -180,7 +181,7 @@ pub struct DirNameTerm {
 /// Note that this is an optional server feature and using this term
 /// on a server that doesn't support this feature will generate an
 /// error in response to the query.
-/// https://facebook.github.io/watchman/docs/expr/pcre.html
+/// <https://facebook.github.io/watchman/docs/expr/pcre.html>
 #[derive(Clone, Debug, Default)]
 pub struct PcreTerm {
     /// The perl compatible regular expression
@@ -193,7 +194,7 @@ pub struct PcreTerm {
 }
 
 /// Encodes the match expression term
-/// https://facebook.github.io/watchman/docs/expr/match.html
+/// <https://facebook.github.io/watchman/docs/expr/match.html>
 #[derive(Clone, Debug, Default)]
 pub struct MatchTerm {
     /// The glob expression to evaluate
@@ -237,7 +238,7 @@ impl RelOp {
 
 /// Evaluates as true if the specified time property of the file is greater
 /// than the since value.
-/// https://facebook.github.io/watchman/docs/expr/since.html
+/// <https://facebook.github.io/watchman/docs/expr/since.html>
 #[derive(Clone, Debug)]
 pub enum SinceTerm {
     /// Yield true if the file was observed to be modified more recently than

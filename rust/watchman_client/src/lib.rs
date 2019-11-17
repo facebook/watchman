@@ -11,7 +11,7 @@
 //! current working directory:
 //!
 //! ```norun
-//! use watchman_client::*;
+//! use watchman_client::prelude::*;
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!   let mut client = Connector::new().connect().await?;
@@ -25,16 +25,27 @@
 //!   Ok(())
 //! }
 //! ```
-mod expr;
-mod pdu;
-pub use expr::*;
-pub use pdu::*;
+pub mod expr;
+pub mod fields;
+pub mod pdu;
 use serde_bser::de::{Bunser, PduInfo, SliceRead};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tokio::net::process::Command;
 use tokio::net::unix::UnixStream;
 use tokio::prelude::*;
+
+/// `use watchman_client::prelude::*` for convenient access to the types
+/// provided by this crate
+pub mod prelude {
+    pub use crate::expr::*;
+    pub use crate::fields::*;
+    pub use crate::pdu::*;
+    pub use crate::query_result_type;
+    pub use crate::{CanonicalPath, Client, Connector, ResolvedRoot};
+}
+
+use prelude::*;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -331,7 +342,7 @@ impl Client {
     /// [NameOnly](struct.NameOnly.html) struct.
     ///
     /// ```
-    /// use watchman_client::*;
+    /// use watchman_client::prelude::*;
     /// use serde::Deserialize;
     ///
     /// query_result_type! {
@@ -381,6 +392,8 @@ impl Client {
     /// * [OwnerUidField](struct.OwnerUidField.html)
     /// * [SizeField](struct.SizeField.html)
     /// * [SymlinkTargetField](struct.SymlinkTargetField.html)
+    ///
+    /// (See [the fields module](fields/index.html) for a definitive list)
     ///
     /// The file names are all relative to the `root` parameter.
     pub async fn query<F>(

@@ -1,9 +1,9 @@
 [package]
 name = "watchman_client"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Wez Furlong"]
 edition = "2018"
-repository = "https://github.com/facebook/watchman/rust/watchman_client"
+repository = "https://github.com/facebook/watchman/"
 description = "a client for the Watchman file watching service"
 license = "Apache-2.0"
 documentation = "https://docs.rs/watchman_client"

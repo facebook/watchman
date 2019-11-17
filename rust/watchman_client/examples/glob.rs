@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use watchman_client::*;
+use watchman_client::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
