@@ -14,4 +14,13 @@ serde_bser = { version = "0.1", path = "../serde_bser" }
 serde_json = "1.0"
 thiserror = "1.0"
 tokio = {version="0.2.0-alpha.6", features=["process"]}
+tokio-net = {version="0.2.0-alpha.6"}
 serde_with_macros = "1.0"
+
+[target."cfg(windows)".dependencies]
+mio-named-pipes = "0.1"
+mio = "0.6"
+winapi = { version = "0.3", features = [
+    "handleapi",
+    "winuser",
+]}

@@ -47,9 +47,11 @@ pub struct WatchProjectResponse {
     /// this must be passed to QueryRequestCommon::relative_root
     pub relative_path: Option<PathBuf>,
     /// The root of the watched project
-    pub watch: PathBuf,
+    pub watch: Option<PathBuf>,
     /// The watcher that the server is using to monitor this path
-    pub watcher: String,
+    pub watcher: Option<String>,
+    /// an error initiating the watch
+    pub error: Option<String>,
 }
 
 /// When using the `path` generator, this specifies a path to be
