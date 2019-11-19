@@ -290,7 +290,7 @@ class CommandError(WatchmanError):
 
 def is_named_pipe_path(path):
     """Returns True if path is a watchman named pipe path """
-    return path.startswith("\\\\.\\pipe\\watchman")
+    return path.startswith(tuple("\\\\.\\pipe\\watchman"))
 
 
 class SockPath(object):
@@ -1023,7 +1023,7 @@ class client(object):
             unix_domain=result.get("unix_domain", None),
             named_pipe=result.get("named_pipe", None),
             # sockname is always present
-            sockname=result["sockname"],
+            sockpath=result["sockname"],
         )
 
     def _connect(self):
