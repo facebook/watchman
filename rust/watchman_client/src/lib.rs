@@ -500,12 +500,12 @@ impl Client {
     }
 
     /// Returns the current clock value for a watched root.
-    /// If `sync_timeout` is `None` then the instantaneous clock value is
-    /// returned without using a sync cookie.
+    /// If `sync_timeout` is `SyncTimeout::DisableCookie` then the instantaneous
+    /// clock value is returned without using a sync cookie.
     ///
     /// Otherwise, a sync cookie will be created and the server will wait
-    /// for up to the `sync_timeout` duration to observe it.  If that timeout
-    /// is reached, this method will yield an error.
+    /// for up to the associated `sync_timeout` duration to observe it.
+    /// If that timeout is reached, this method will yield an error.
     ///
     /// When should you use a cookie?  If you need to a clock value that is
     /// guaranteed to reflect any filesystem changes that happened before
@@ -517,15 +517,13 @@ impl Client {
     pub async fn clock(
         &mut self,
         root: &ResolvedRoot,
-        sync_timeout: Option<std::time::Duration>,
+        sync_timeout: SyncTimeout,
     ) -> Result<ClockSpec, Error> {
         let response: ClockResponse = self
             .generic_request(ClockRequest(
                 "clock",
                 root.root.clone(),
-                ClockRequestParams {
-                    sync_timeout: sync_timeout.map(|d| d.as_millis() as i64),
-                },
+                ClockRequestParams { sync_timeout },
             ))
             .await?;
         if let Some(message) = response.error {

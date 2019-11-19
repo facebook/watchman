@@ -28,8 +28,8 @@ pub struct ClockRequest(pub &'static str, pub PathBuf, pub ClockRequestParams);
 
 #[derive(Serialize, Debug)]
 pub struct ClockRequestParams {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sync_timeout: Option<i64>,
+    #[serde(skip_serializing_if = "SyncTimeout::is_disabled", default)]
+    pub sync_timeout: SyncTimeout,
 }
 
 /// The `watch-project` command request.
@@ -71,6 +71,78 @@ pub struct QueryRequest(pub &'static str, pub PathBuf, pub QueryRequestCommon);
 #[allow(clippy::trivially_copy_pass_by_ref)]
 fn is_false(v: &bool) -> bool {
     !*v
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(into = "i64")]
+pub enum SyncTimeout {
+    /// Use the default cookie synchronization timeout
+    Default,
+    /// Disable the use of a sync cookie.
+    /// This can save ~15ms of latency, but may result in
+    /// results from an outdated view of the filesystem.
+    /// It is safe to use after you have performed a synchronized
+    /// query or clock call, so that you can guarantee that the
+    /// server is at least as current as the time that you started
+    /// your processing.
+    DisableCookie,
+    /// Specify a timeout for the sync cookie.  You should not
+    /// need to override the default value in most cases.
+    /// Note that the server has millisecond level granularity
+    /// for the timeout.
+    Duration(std::time::Duration),
+}
+
+impl Default for SyncTimeout {
+    fn default() -> Self {
+        Self::Default
+    }
+}
+
+impl SyncTimeout {
+    fn is_default(&self) -> bool {
+        match self {
+            Self::Default => true,
+            _ => false,
+        }
+    }
+
+    fn is_disabled(&self) -> bool {
+        match self {
+            Self::DisableCookie => true,
+            _ => false,
+        }
+    }
+}
+
+impl From<std::time::Duration> for SyncTimeout {
+    fn from(duration: std::time::Duration) -> Self {
+        let millis = duration.as_millis();
+        if millis == 0 {
+            Self::DisableCookie
+        } else {
+            Self::Duration(duration)
+        }
+    }
+}
+
+impl Into<i64> for SyncTimeout {
+    fn into(self) -> i64 {
+        match self {
+            // This is only really here because the `ClockRequestParams` PDU
+            // treats a missing sync_timeout as `DisableCookie`, whereas
+            // the `QueryRequestCommon` PDU treats it as `Default`.
+            // We don't really know for sure what the server will use for
+            // its default value as it may potentially be changed in a future
+            // revision of the server, but for the sake of having reasonable
+            // default behavior, we use the current default sync timeout here.
+            // We're honestly not likely to change this, so this should be fine.
+            // The server uses 1 minute; the value here is expressed in milliseconds.
+            Self::Default => 60_000,
+            Self::DisableCookie => 0,
+            Self::Duration(d) => d.as_millis() as i64,
+        }
+    }
 }
 
 /// The query parameters.
@@ -182,10 +254,21 @@ pub struct QueryRequestCommon {
     /// The timeout controls how long the server will wait to observe a cookie
     /// file through the notification stream.
     /// If the timeout is reached, the query will fail.
-    /// <https://facebook.github.io/watchman/docs/cookies.html>
-    /// <https://facebook.github.io/watchman/docs/cmd/query.html#synchronization-timeout-since-21>
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sync_timeout: Option<i64>,
+    ///
+    /// Specify `SyncTimeout::DisableCookie` to tell the server not to use a sync
+    /// cookie.  **Disabling sync cookies means that your query results may be
+    /// slightly out of date**.  You can safely perform a query with sync cookies
+    /// disabled if you have explicitly synchronized.  For example, you can perform a
+    /// synchronized `Client::clock` call at the start of your processing run
+    /// to ensure that the server is current up to that point in time,
+    /// and then issue a large volume of additional queries with the sync cookie
+    /// disabled and save approximately ~15ms of latency per query.
+    ///
+    /// ## See also:
+    /// * <https://facebook.github.io/watchman/docs/cookies.html>
+    /// * <https://facebook.github.io/watchman/docs/cmd/query.html#synchronization-timeout-since-21>
+    #[serde(skip_serializing_if = "SyncTimeout::is_default", default)]
+    pub sync_timeout: SyncTimeout,
 
     /// If set to true, when mixing generators (not recommended), dedup results by filename.
     /// This defaults to false.  When not enabled, if multiple generators match
