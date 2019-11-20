@@ -289,8 +289,9 @@ class CommandError(WatchmanError):
 
 
 def is_named_pipe_path(path):
+    # type: (str) -> bool
     """Returns True if path is a watchman named pipe path """
-    return path.startswith(tuple("\\\\.\\pipe\\watchman"))
+    return path.startswith("\\\\.\\pipe\\watchman")
 
 
 class SockPath(object):
@@ -320,7 +321,7 @@ class SockPath(object):
         """Returns a sockpath suitable for passing to the watchman
         CLI --sockname parameter"""
         if self.named_pipe:
-            return os.fsdecode(self.named_pipe)
+            return self.named_pipe
         return self.unix_domain
 
 
@@ -1017,13 +1018,23 @@ class client(object):
         if "error" in result:
             raise WatchmanError("get-sockname error: %s" % result["error"])
 
+        def get_path_result(name):
+            value = result.get(name, None)
+            if value is None:
+                return None
+            return os.fsdecode(value)
+
+        # sockname is always present
+        sockpath = get_path_result("sockname")
+        assert sockpath is not None
+
         return SockPath(
             # unix_domain and named_pipe are reported by newer versions
             # of the server and may not be present
-            unix_domain=result.get("unix_domain", None),
-            named_pipe=result.get("named_pipe", None),
+            unix_domain=get_path_result("unix_domain"),
+            named_pipe=get_path_result("named_pipe"),
             # sockname is always present
-            sockpath=result["sockname"],
+            sockpath=sockpath,
         )
 
     def _connect(self):
