@@ -53,10 +53,10 @@ use prelude::*;
 pub enum Error {
     #[error("IO Error: {0}")]
     Tokio(#[from] tokio::io::Error),
-    #[error("While invoking the {} CLI to discover the server connection details: {}, stderr=`{}`", .watchman_path.display(), .source, .stderr )]
+    #[error("While invoking the {watchman_path} CLI to discover the server connection details: {reason}, stderr=`{stderr}`")]
     ConnectionDiscovery {
         watchman_path: PathBuf,
-        source: Box<dyn std::error::Error>,
+        reason: String,
         stderr: String,
     },
     #[error("The watchman server reported an error: \"{}\", while executing command: {}", .message, .command)]
@@ -72,16 +72,20 @@ pub enum Error {
     #[error("Unexpected EOF from server")]
     Eof,
 
-    #[error("{}", .source)]
-    Deserialize { source: Box<dyn std::error::Error> },
+    #[error("{source}")]
+    Deserialize {
+        source: Box<dyn std::error::Error + Send>,
+    },
 
-    #[error("{}", .source)]
-    Serialize { source: Box<dyn std::error::Error> },
+    #[error("{source}")]
+    Serialize {
+        source: Box<dyn std::error::Error + Send>,
+    },
 
-    #[error("while attempting to connect to {}: {}", .endpoint.display(), .source)]
+    #[error("while attempting to connect to {endpoint}: {source}")]
     Connect {
         endpoint: PathBuf,
-        source: Box<dyn std::error::Error>,
+        source: Box<dyn std::error::Error + Send>,
     },
 
     #[error("{0}")]
@@ -154,7 +158,7 @@ impl Connector {
                 .await
                 .map_err(|source| Error::ConnectionDiscovery {
                     watchman_path: watchman_path.to_path_buf(),
-                    source: Box::new(source),
+                    reason: source.to_string(),
                     stderr: "".to_string(),
                 })?;
 
@@ -162,7 +166,7 @@ impl Connector {
                 serde_bser::from_slice(&output.stdout).map_err(|source| {
                     Error::ConnectionDiscovery {
                         watchman_path: watchman_path.to_path_buf(),
-                        source: Box::new(source),
+                        reason: source.to_string(),
                         stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
                     }
                 })?;
@@ -330,8 +334,8 @@ impl ClientTask {
         }
 
         let mut bunser = Bunser::new(SliceRead::new(&buf[..pos]));
-        let pdu = bunser.read_pdu().map_err(|e| Error::Deserialize {
-            source: Box::new(e),
+        let pdu = bunser.read_pdu().map_err(|source| Error::Deserialize {
+            source: Box::new(source),
         })?;
         let buf = buf[..pos].to_vec();
         Ok(PduHeader { buf, pdu })
