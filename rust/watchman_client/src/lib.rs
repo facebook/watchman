@@ -83,6 +83,15 @@ pub enum Error {
         endpoint: PathBuf,
         source: Box<dyn std::error::Error>,
     },
+
+    #[error("{0}")]
+    Generic(String),
+}
+
+impl Error {
+    fn generic<T: std::fmt::Display>(error: T) -> Self {
+        Self::Generic(format!("{}", error))
+    }
 }
 
 /// The Connector defines how to connect to the watchman server.
@@ -189,7 +198,16 @@ impl Connector {
         let stream: Box<dyn ReadWriteStream> =
             Box::new(named_pipe::NamedPipe::connect(sock_path).await?);
 
-        Ok(Client { stream })
+        let (request_tx, request_rx) = tokio::sync::mpsc::channel(128);
+
+        let mut task = ClientTask { stream, request_rx };
+        tokio::spawn(async move {
+            if let Err(()) = task.run().await {
+                eprintln!("watchman request task failed");
+            }
+        });
+
+        Ok(Client { request_tx })
     }
 }
 
@@ -252,33 +270,52 @@ pub struct ResolvedRoot {
     relative: Option<PathBuf>,
 }
 
-trait ReadWriteStream: AsyncRead + AsyncWrite + std::marker::Unpin {}
+trait ReadWriteStream: AsyncRead + AsyncWrite + std::marker::Unpin + Send {}
 
 #[cfg(unix)]
 impl ReadWriteStream for UnixStream {}
 
+struct SendRequest {
+    /// The serialized request to send to the server
+    buf: Vec<u8>,
+    /// to pass the response back to the requstor
+    tx: tokio::sync::oneshot::Sender<Result<Vec<u8>, String>>,
+}
+
+impl SendRequest {
+    fn respond(self, result: Result<Vec<u8>, String>) -> Result<(), Error> {
+        self.tx
+            .send(result)
+            .map_err(|_| Error::generic("requestor has dropped its receiver"))
+    }
+}
+
 /// A live connection to a watchman server.
 /// Use [Connector](struct.Connector.html) to establish a connection.
 pub struct Client {
+    request_tx: tokio::sync::mpsc::Sender<SendRequest>,
+}
+
+struct ClientTask {
     stream: Box<dyn ReadWriteStream>,
+    request_rx: tokio::sync::mpsc::Receiver<SendRequest>,
 }
 
-struct PduHeader {
-    buf: Vec<u8>,
-    pdu: PduInfo,
-}
+impl ClientTask {
+    async fn run(&mut self) -> Result<(), ()> {
+        loop {
+            let request = match self.request_rx.next().await {
+                Some(request) => request,
+                None => break,
+            };
+            if let Err(err) = self.process_request(request).await {
+                eprintln!("Error in watchman request task: {}", err);
+                break;
+            }
+        }
+        Ok(())
+    }
 
-fn bunser<T>(buf: &[u8]) -> Result<T, Error>
-where
-    T: serde::de::DeserializeOwned,
-{
-    let response: T = serde_bser::from_slice(&buf).map_err(|source| Error::Deserialize {
-        source: Box::new(source),
-    })?;
-    Ok(response)
-}
-
-impl Client {
     /// Sniffs out the BSER PDU header to determine the length of data that
     /// needs to be read in order to decode the full PDU
     async fn read_bser_pdu_length(&mut self) -> Result<PduHeader, Error> {
@@ -324,43 +361,33 @@ impl Client {
         Ok(buf)
     }
 
-    /// Read and deserialize a PDU
-    async fn read_pdu<T>(&mut self) -> Result<T, Error>
-    where
-        for<'de> T: serde::Deserialize<'de>,
-    {
-        let buf = self.read_pdu_vec().await?;
-
-        use serde::Deserialize;
-        #[derive(Deserialize, Debug)]
-        struct MaybeError {
-            #[serde(default)]
-            error: Option<String>,
+    async fn process_request(&mut self, request: SendRequest) -> Result<(), Error> {
+        if let Err(err) = self.stream.write_all(&request.buf).await {
+            request.respond(Err(err.to_string()))?;
+            return Ok(());
         }
 
-        let maybe_err: MaybeError = bunser(&buf)?;
-        if let Some(message) = maybe_err.error {
-            return Err(Error::WatchmanResponseError { message });
-        }
-
-        let response: T = bunser(&buf)?;
-        Ok(response)
-    }
-
-    /// Serialize and write a PDU
-    async fn write_pdu<T>(&mut self, value: &T) -> Result<(), Error>
-    where
-        T: serde::Serialize,
-    {
-        let mut buf = vec![];
-        serde_bser::ser::serialize(&mut buf, value).map_err(|source| Error::Serialize {
-            source: Box::new(source),
-        })?;
-
-        self.stream.write_all(&buf).await?;
+        request.respond(self.read_pdu_vec().await.map_err(|e| e.to_string()))?;
         Ok(())
     }
+}
 
+struct PduHeader {
+    buf: Vec<u8>,
+    pdu: PduInfo,
+}
+
+fn bunser<T>(buf: &[u8]) -> Result<T, Error>
+where
+    T: serde::de::DeserializeOwned,
+{
+    let response: T = serde_bser::from_slice(&buf).map_err(|source| Error::Deserialize {
+        source: Box::new(source),
+    })?;
+    Ok(response)
+}
+
+impl Client {
     /// This method will send a request to the watchman server
     /// and wait for its response.
     /// This is really an internal method, but it is made public in case a
@@ -375,14 +402,46 @@ impl Client {
         Request: serde::Serialize + std::fmt::Debug,
         for<'de> Response: serde::Deserialize<'de>,
     {
-        self.write_pdu(&request).await?;
-        match self.read_pdu().await {
-            Err(Error::WatchmanResponseError { message }) => Err(Error::WatchmanServerError {
+        // Step 1: serialize into a bser byte buffer
+        let mut request_data = vec![];
+        serde_bser::ser::serialize(&mut request_data, &request).map_err(|source| {
+            Error::Serialize {
+                source: Box::new(source),
+            }
+        })?;
+
+        // Step 2: ask the client task to send it for us
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.request_tx
+            .send(SendRequest {
+                buf: request_data,
+                tx,
+            })
+            .await
+            .map_err(Error::generic)?;
+
+        // Step 3: wait for the client task to give us the response
+        let pdu_data = rx.await.map_err(Error::generic)?.map_err(Error::generic)?;
+
+        // Step 4: sniff for an error response in the deserialized data
+        use serde::Deserialize;
+        #[derive(Deserialize, Debug)]
+        struct MaybeError {
+            #[serde(default)]
+            error: Option<String>,
+        }
+
+        // Step 5: deserialize into the caller-desired format
+        let maybe_err: MaybeError = bunser(&pdu_data)?;
+        if let Some(message) = maybe_err.error {
+            return Err(Error::WatchmanServerError {
                 message,
                 command: format!("{:#?}", request),
-            }),
-            result => result,
+            });
         }
+
+        let response: Response = bunser(&pdu_data)?;
+        Ok(response)
     }
 
     /// This is typically the first method invoked on a client.
