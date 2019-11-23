@@ -8,6 +8,9 @@ description = "a client for the Watchman file watching service"
 license = "Apache-2.0"
 documentation = "https://docs.rs/watchman_client"
 
+[dev-dependencies]
+structopt = "0.3"
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_bser = { version = "0.1", path = "../serde_bser" }

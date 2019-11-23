@@ -59,8 +59,10 @@ pub enum Error {
         source: Box<dyn std::error::Error>,
         stderr: String,
     },
-    #[error("The watchman server reported an error: {}, command: {}", .message, .command)]
+    #[error("The watchman server reported an error: \"{}\", while executing command: {}", .message, .command)]
     WatchmanServerError { message: String, command: String },
+    #[error("The watchman server reported an error: \"{}\"", .message)]
+    WatchmanResponseError { message: String },
     #[error("The watchman server didn't return a value for field `{}` in response to a `{}` command. {:?}", .fieldname, .command, .response)]
     MissingField {
         fieldname: &'static str,
@@ -266,6 +268,16 @@ struct PduHeader {
     pdu: PduInfo,
 }
 
+fn bunser<T>(buf: &[u8]) -> Result<T, Error>
+where
+    T: serde::de::DeserializeOwned,
+{
+    let response: T = serde_bser::from_slice(&buf).map_err(|source| Error::Deserialize {
+        source: Box::new(source),
+    })?;
+    Ok(response)
+}
+
 impl Client {
     /// Sniffs out the BSER PDU header to determine the length of data that
     /// needs to be read in order to decode the full PDU
@@ -288,11 +300,8 @@ impl Client {
         Ok(PduHeader { buf, pdu })
     }
 
-    /// Read and deserialize a PDU
-    async fn read_pdu<T>(&mut self) -> Result<T, Error>
-    where
-        for<'de> T: serde::Deserialize<'de>,
-    {
+    /// Read the bytes that comprise a BSER encoded PDU
+    async fn read_pdu_vec(&mut self) -> Result<Vec<u8>, Error> {
         let header = self.read_bser_pdu_length().await?;
         let total_size = (header.pdu.start + header.pdu.len) as usize;
         let mut buf = header.buf;
@@ -312,14 +321,34 @@ impl Client {
             end += n;
         }
 
-        let response: T = serde_bser::from_slice(&buf).map_err(|source| Error::Deserialize {
-            source: Box::new(source),
-        })?;
+        Ok(buf)
+    }
+
+    /// Read and deserialize a PDU
+    async fn read_pdu<T>(&mut self) -> Result<T, Error>
+    where
+        for<'de> T: serde::Deserialize<'de>,
+    {
+        let buf = self.read_pdu_vec().await?;
+
+        use serde::Deserialize;
+        #[derive(Deserialize, Debug)]
+        struct MaybeError {
+            #[serde(default)]
+            error: Option<String>,
+        }
+
+        let maybe_err: MaybeError = bunser(&buf)?;
+        if let Some(message) = maybe_err.error {
+            return Err(Error::WatchmanResponseError { message });
+        }
+
+        let response: T = bunser(&buf)?;
         Ok(response)
     }
 
     /// Serialize and write a PDU
-    async fn write_pdu<T>(&mut self, value: T) -> Result<(), Error>
+    async fn write_pdu<T>(&mut self, value: &T) -> Result<(), Error>
     where
         T: serde::Serialize,
     {
@@ -343,11 +372,17 @@ impl Client {
         request: Request,
     ) -> Result<Response, Error>
     where
-        Request: serde::Serialize,
+        Request: serde::Serialize + std::fmt::Debug,
         for<'de> Response: serde::Deserialize<'de>,
     {
-        self.write_pdu(request).await?;
-        self.read_pdu().await
+        self.write_pdu(&request).await?;
+        match self.read_pdu().await {
+            Err(Error::WatchmanResponseError { message }) => Err(Error::WatchmanServerError {
+                message,
+                command: format!("{:#?}", request),
+            }),
+            result => result,
+        }
     }
 
     /// This is typically the first method invoked on a client.
@@ -369,17 +404,10 @@ impl Client {
             .generic_request(WatchProjectRequest("watch-project", path.0.clone()))
             .await?;
 
-        if let Some(message) = response.error {
-            Err(Error::WatchmanServerError {
-                message,
-                command: format!("watch-project {}", path.0.display()),
-            })
-        } else {
-            Ok(ResolvedRoot {
-                root: response.watch.expect("watch field missing!?"),
-                relative: response.relative_path,
-            })
-        }
+        Ok(ResolvedRoot {
+            root: response.watch,
+            relative: response.relative_path,
+        })
     }
 
     /// Perform a generic watchman query.
@@ -463,14 +491,7 @@ impl Client {
 
         let response: QueryResult<F> = self.generic_request(query.clone()).await?;
 
-        if let Some(message) = response.error {
-            Err(Error::WatchmanServerError {
-                message,
-                command: format!("{:#?}", query),
-            })
-        } else {
-            Ok(response)
-        }
+        Ok(response)
     }
 
     /// Expand a set of globs into the set of matching file names.
@@ -526,19 +547,7 @@ impl Client {
                 ClockRequestParams { sync_timeout },
             ))
             .await?;
-        if let Some(message) = response.error {
-            Err(Error::WatchmanServerError {
-                message,
-                command: "clock".into(),
-            })
-        } else {
-            let debug = format!("{:#?}", response);
-            response.clock.ok_or_else(|| Error::MissingField {
-                fieldname: "clock",
-                command: "clock".into(),
-                response: debug,
-            })
-        }
+        Ok(response.clock)
     }
 }
 

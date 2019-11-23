@@ -18,8 +18,7 @@ pub struct GetSockNameResponse {
 #[derive(Deserialize, Debug)]
 pub struct ClockResponse {
     pub version: String,
-    pub clock: Option<ClockSpec>,
-    pub error: Option<String>,
+    pub clock: ClockSpec,
 }
 
 /// The `clock` command request.
@@ -35,7 +34,7 @@ pub struct ClockRequestParams {
 /// The `watch-project` command request.
 /// You should use `Client::resolve_root` rather than directly
 /// constructing this type.
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub struct WatchProjectRequest(pub &'static str, pub PathBuf);
 
 /// The `watch-project` response
@@ -47,11 +46,9 @@ pub struct WatchProjectResponse {
     /// this must be passed to QueryRequestCommon::relative_root
     pub relative_path: Option<PathBuf>,
     /// The root of the watched project
-    pub watch: Option<PathBuf>,
+    pub watch: PathBuf,
     /// The watcher that the server is using to monitor this path
     pub watcher: Option<String>,
-    /// an error initiating the watch
-    pub error: Option<String>,
 }
 
 /// When using the `path` generator, this specifies a path to be
@@ -312,10 +309,6 @@ where
     /// any files not included in the list of files in this QueryResult
     /// otherwise you risk diverging your state.
     pub is_fresh_instance: Option<bool>,
-
-    /// If present, indicates that the query failed.  Holds the error
-    /// message.
-    pub error: Option<String>,
 
     /// Holds the list of matching files from the query
     pub files: Option<Vec<F>>,
