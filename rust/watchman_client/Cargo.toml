@@ -18,6 +18,7 @@ serde_json = "1.0"
 thiserror = ">=1.0.6"
 tokio = {version="0.2.0-alpha.6", features=["process"]}
 tokio-net = {version="0.2.0-alpha.6"}
+tokio-io = {version="0.2.0-alpha.6"}
 serde_with_macros = "1.0"
 
 [target."cfg(windows)".dependencies]

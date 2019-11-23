@@ -202,9 +202,15 @@ impl Connector {
         let stream: Box<dyn ReadWriteStream> =
             Box::new(named_pipe::NamedPipe::connect(sock_path).await?);
 
+        let (reader, writer) = tokio::io::split(stream);
+
         let (request_tx, request_rx) = tokio::sync::mpsc::channel(128);
 
-        let mut task = ClientTask { stream, request_rx };
+        let mut task = ClientTask {
+            reader,
+            writer,
+            request_rx,
+        };
         tokio::spawn(async move {
             if let Err(()) = task.run().await {
                 eprintln!("watchman request task failed");
@@ -301,7 +307,8 @@ pub struct Client {
 }
 
 struct ClientTask {
-    stream: Box<dyn ReadWriteStream>,
+    writer: tokio_io::split::WriteHalf<Box<dyn ReadWriteStream>>,
+    reader: tokio_io::split::ReadHalf<Box<dyn ReadWriteStream>>,
     request_rx: tokio::sync::mpsc::Receiver<SendRequest>,
 }
 
@@ -328,7 +335,7 @@ impl ClientTask {
         const BUF_SIZE: usize = 16;
         let mut buf = [0u8; BUF_SIZE];
 
-        let pos = self.stream.read(&mut buf).await?;
+        let pos = self.reader.read(&mut buf).await?;
         if pos == 0 {
             return Err(Error::Eof);
         }
@@ -353,7 +360,7 @@ impl ClientTask {
 
         while end != total_size {
             let n = self
-                .stream
+                .reader
                 .read(&mut buf.as_mut_slice()[end..total_size])
                 .await?;
             if n == 0 {
@@ -366,7 +373,7 @@ impl ClientTask {
     }
 
     async fn process_request(&mut self, request: SendRequest) -> Result<(), Error> {
-        if let Err(err) = self.stream.write_all(&request.buf).await {
+        if let Err(err) = self.writer.write_all(&request.buf).await {
             request.respond(Err(err.to_string()))?;
             return Ok(());
         }
