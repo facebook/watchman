@@ -21,10 +21,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = Connector::new().connect().await?;
-
     let opt = Opt::from_args();
-
+    let client = Connector::new().connect().await?;
     let resolved = client
         .resolve_root(CanonicalPath::canonicalize(opt.path)?)
         .await?;

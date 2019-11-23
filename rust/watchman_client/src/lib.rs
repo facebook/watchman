@@ -5,7 +5,8 @@
 //! [Client::resolve_root](struct.Client.html#method.resolve_root) to
 //! resolve a path and initiate a watch, and then
 //! [Client::query](struct.Client.html#method.query) to perform
-//! a query.
+//! a query, or [Client::subscribe](struct.Client.html#method.subscribe)
+//! to subscribe to file changes in real time.
 //!
 //! This example shows how to connect and expand a glob from the
 //! current working directory:
@@ -30,13 +31,21 @@ pub mod fields;
 mod named_pipe;
 pub mod pdu;
 use serde_bser::de::{Bunser, PduInfo, SliceRead};
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
+use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use thiserror::Error;
 use tokio::net::process::Command;
 #[cfg(unix)]
 use tokio::net::unix::UnixStream;
 use tokio::prelude::*;
+use tokio::sync::mpsc::{Receiver, Sender, UnboundedReceiver, UnboundedSender};
+use tokio::sync::Mutex;
+
+/// The next id number to use when generating a subscription name
+static SUB_ID: AtomicUsize = AtomicUsize::new(1);
 
 /// `use watchman_client::prelude::*` for convenient access to the types
 /// provided by this crate
@@ -73,9 +82,10 @@ pub enum Error {
     #[error("Unexpected EOF from server")]
     Eof,
 
-    #[error("{source}")]
+    #[error("{source} (data: {data:x?})")]
     Deserialize {
         source: Box<dyn std::error::Error + Send>,
+        data: Vec<u8>,
     },
 
     #[error("{source}")]
@@ -222,6 +232,7 @@ impl Connector {
             request_rx,
             request_queue: VecDeque::new(),
             waiting_response: false,
+            subscriptions: HashMap::new(),
         };
         tokio::spawn(async move {
             if let Err(err) = task.run().await {
@@ -229,7 +240,9 @@ impl Connector {
             }
         });
 
-        Ok(Client { request_tx })
+        let inner = Arc::new(Mutex::new(ClientInner { request_tx }));
+
+        Ok(Client { inner })
     }
 }
 
@@ -286,7 +299,7 @@ impl CanonicalPath {
 /// to watch a subdirectory will resolve to the higher level root path
 /// and a relative path offset.
 /// This struct encodes both pieces of information.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ResolvedRoot {
     root: PathBuf,
     relative: Option<PathBuf>,
@@ -315,18 +328,19 @@ impl SendRequest {
 enum TaskItem {
     QueueRequest(SendRequest),
     ProcessReceivedPdu(Vec<u8>),
+    RegisterSubscription(String, UnboundedSender<Vec<u8>>),
 }
 
 /// A live connection to a watchman server.
 /// Use [Connector](struct.Connector.html) to establish a connection.
 pub struct Client {
-    request_tx: tokio::sync::mpsc::Sender<TaskItem>,
+    inner: Arc<Mutex<ClientInner>>,
 }
 
 /// The reader task lives to read a PDU and send it to the ClientTask
 struct ReaderTask {
     reader: tokio_io::split::ReadHalf<Box<dyn ReadWriteStream>>,
-    request_tx: tokio::sync::mpsc::Sender<TaskItem>,
+    request_tx: Sender<TaskItem>,
 }
 
 impl ReaderTask {
@@ -353,11 +367,14 @@ impl ReaderTask {
             return Err(Error::Eof);
         }
 
-        let mut bunser = Bunser::new(SliceRead::new(&buf[..pos]));
+        let buf = &buf[..pos];
+
+        let mut bunser = Bunser::new(SliceRead::new(buf));
         let pdu = bunser.read_pdu().map_err(|source| Error::Deserialize {
             source: Box::new(source),
+            data: buf.to_vec(),
         })?;
-        let buf = buf[..pos].to_vec();
+        let buf = buf.to_vec();
         Ok(PduHeader { buf, pdu })
     }
 
@@ -390,9 +407,10 @@ impl ReaderTask {
 /// unilateral results
 struct ClientTask {
     writer: tokio_io::split::WriteHalf<Box<dyn ReadWriteStream>>,
-    request_rx: tokio::sync::mpsc::Receiver<TaskItem>,
+    request_rx: Receiver<TaskItem>,
     request_queue: VecDeque<SendRequest>,
     waiting_response: bool,
+    subscriptions: HashMap<String, UnboundedSender<Vec<u8>>>,
 }
 
 impl Drop for ClientTask {
@@ -419,10 +437,17 @@ impl ClientTask {
             match self.request_rx.next().await {
                 Some(TaskItem::QueueRequest(request)) => self.queue_request(request).await?,
                 Some(TaskItem::ProcessReceivedPdu(pdu)) => self.process_pdu(pdu).await?,
+                Some(TaskItem::RegisterSubscription(name, tx)) => {
+                    self.register_subscription(name, tx)
+                }
                 None => break,
             };
         }
         Ok(())
+    }
+
+    fn register_subscription(&mut self, name: String, tx: UnboundedSender<Vec<u8>>) {
+        self.subscriptions.insert(name, tx);
     }
 
     /// Generate an error for each queued request.
@@ -464,7 +489,23 @@ impl ClientTask {
 
     /// Dispatch a PDU that we just read to the appropriate client code.
     async fn process_pdu(&mut self, pdu: Vec<u8>) -> Result<(), Error> {
-        if self.waiting_response {
+        use serde::Deserialize;
+        #[derive(Deserialize, Debug)]
+        pub struct Unilateral {
+            pub unilateral: bool,
+            pub subscription: String,
+        }
+
+        if let Ok(unilateral) = bunser::<Unilateral>(&pdu) {
+            if let Some(subscription) = self.subscriptions.get_mut(&unilateral.subscription) {
+                if let Err(_) = subscription.send(pdu).await {
+                    // The `Subscription` was dropped; we don't need to
+                    // treat this as terminal for this client session,
+                    // so just de-register the handler
+                    self.subscriptions.remove(&unilateral.subscription);
+                }
+            }
+        } else if self.waiting_response {
             let request = self
                 .request_queue
                 .pop_front()
@@ -493,24 +534,28 @@ where
 {
     let response: T = serde_bser::from_slice(&buf).map_err(|source| Error::Deserialize {
         source: Box::new(source),
+        data: buf.to_vec(),
     })?;
     Ok(response)
 }
 
-impl Client {
+struct ClientInner {
+    request_tx: Sender<TaskItem>,
+}
+
+impl ClientInner {
     /// This method will send a request to the watchman server
     /// and wait for its response.
     /// This is really an internal method, but it is made public in case a
     /// consumer of this crate needs to issue a command for which we haven't
     /// yet made an ergonomic wrapper.
-    #[doc(hidden)]
-    pub async fn generic_request<Request, Response>(
+    pub(crate) async fn generic_request<Request, Response>(
         &mut self,
         request: Request,
     ) -> Result<Response, Error>
     where
         Request: serde::Serialize + std::fmt::Debug,
-        for<'de> Response: serde::Deserialize<'de>,
+        Response: serde::de::DeserializeOwned,
     {
         // Step 1: serialize into a bser byte buffer
         let mut request_data = vec![];
@@ -553,6 +598,150 @@ impl Client {
         let response: Response = bunser(&pdu_data)?;
         Ok(response)
     }
+}
+
+/// Returned by [Subscription::next](struct.Subscription.html#method.next)
+/// as events are observed by Watchman.
+#[derive(Debug, Clone)]
+pub enum SubscriptionData<F>
+where
+    F: serde::de::DeserializeOwned + std::fmt::Debug + Clone + QueryFieldList,
+{
+    /// The Subscription was canceled.
+    /// This could be for a number of reasons that are not knowable
+    /// to the client:
+    /// * The user may have issued the `watch-del` command
+    /// * The containing watch root may have been deleted or
+    ///   un-mounted
+    /// * The containing watch may no longer be accessible
+    ///   to the watchman user/process
+    /// * Some other error condition that renders the project
+    ///   unwatchable may have occurred
+    /// * The server may have been gracefully shutdown
+    ///
+    /// A Canceled subscription will deliver no further results.
+    Canceled,
+
+    /// Files matching your criteria have changed.
+    /// The QueryResult contains the details.
+    /// Pay attention to the
+    /// [is_fresh_instance](pdu/struct.QueryResult.html#structfield.is_fresh_instance) field!
+    FilesChanged(QueryResult<F>),
+
+    /// Some other watchman client has broadcast that the watched
+    /// project is entering a new named state.
+    /// For example, `hg.update` may be generated by the FB
+    /// internal source control system to indicate that the
+    /// working copy is about to be updated to a new revision.
+    /// The metadata field contains data specific to the named
+    /// state.
+    StateEnter {
+        state_name: String,
+        metadata: Option<serde_json::Value>,
+    },
+    /// Some other watchman client has broadcast that the watched
+    /// project is no longer in the named state.
+    /// This event can also be generated if the watchman client
+    /// that entered the state disconnects unexpectedly from
+    /// the watchman server.
+    /// The `metadata` field will be `None` in that situation.
+    StateLeave {
+        state_name: String,
+        metadata: Option<serde_json::Value>,
+    },
+}
+
+/// A handle to a subscription initiated via `Client::subscribe`.
+/// Repeatedly call `Subscription::next().await` to yield the next
+/// set of subscription results.
+/// Use the `cancel` method to gracefully halt this subscription
+/// if you have a program that creates and destroys subscriptions
+/// throughout its lifetime.
+pub struct Subscription<F>
+where
+    F: serde::de::DeserializeOwned + std::fmt::Debug + Clone + QueryFieldList,
+{
+    name: String,
+    inner: Arc<Mutex<ClientInner>>,
+    root: ResolvedRoot,
+    responses: UnboundedReceiver<Vec<u8>>,
+    _phantom: PhantomData<F>,
+}
+
+impl<F> Subscription<F>
+where
+    F: serde::de::DeserializeOwned + std::fmt::Debug + Clone + QueryFieldList,
+{
+    /// Returns the assigned name for this subscription instance.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Yield the next set of subscription data.
+    /// An error is generated if the subscription is disconnected
+    /// from the server.
+    pub async fn next(&mut self) -> Result<SubscriptionData<F>, Error> {
+        let pdu = self
+            .responses
+            .recv()
+            .await
+            .ok_or_else(|| Error::generic("client was torn down"))?;
+
+        let response: QueryResult<F> = bunser(&pdu)?;
+
+        if response.subscription_canceled {
+            self.responses.close();
+            Ok(SubscriptionData::Canceled)
+        } else if let Some(state_name) = response.state_enter {
+            Ok(SubscriptionData::StateEnter {
+                state_name,
+                metadata: None, //response.state_metadata,
+            })
+        } else if let Some(state_name) = response.state_leave {
+            Ok(SubscriptionData::StateLeave {
+                state_name,
+                metadata: None, //response.state_metadata,
+            })
+        } else {
+            Ok(SubscriptionData::FilesChanged(response))
+        }
+    }
+
+    /// Gracefully cancel this subscription.
+    /// If you are imminently about to drop the associated client then you
+    /// need not call this method.
+    /// However, if the associated client is going to live much longer
+    /// than a Subscription that you are about to drop,
+    /// then it is recommended that you call `cancel` so that the server
+    /// will stop delivering data about it.
+    pub async fn cancel(self) -> Result<(), Error> {
+        let mut inner = self.inner.lock().await;
+        let _: UnsubscribeResponse = inner
+            .generic_request(Unsubscribe("unsubscribe", self.root.root, self.name))
+            .await?;
+        Ok(())
+    }
+}
+
+impl Client {
+    /// This method will send a request to the watchman server
+    /// and wait for its response.
+    /// This is really an internal method, but it is made public in case a
+    /// consumer of this crate needs to issue a command for which we haven't
+    /// yet made an ergonomic wrapper.
+    #[doc(hidden)]
+    pub async fn generic_request<Request, Response>(
+        &self,
+        request: Request,
+    ) -> Result<Response, Error>
+    where
+        Request: serde::Serialize + std::fmt::Debug,
+        Response: serde::de::DeserializeOwned,
+    {
+        let mut inner = self.inner.lock().await;
+        let response: Response = inner.generic_request(request).await?;
+        Ok(response)
+    }
 
     /// This is typically the first method invoked on a client.
     /// Its purpose is to ensure that the watchman server is watching the specified
@@ -568,7 +757,7 @@ impl Client {
     /// In other words, the worst case performance of this is
     /// `O(recursive-number-of-files)` and is impacted by the underlying storage
     /// device and its performance characteristics.
-    pub async fn resolve_root(&mut self, path: CanonicalPath) -> Result<ResolvedRoot, Error> {
+    pub async fn resolve_root(&self, path: CanonicalPath) -> Result<ResolvedRoot, Error> {
         let response: WatchProjectResponse = self
             .generic_request(WatchProjectRequest("watch-project", path.0.clone()))
             .await?;
@@ -641,12 +830,12 @@ impl Client {
     ///
     /// The file names are all relative to the `root` parameter.
     pub async fn query<F>(
-        &mut self,
+        &self,
         root: &ResolvedRoot,
         query: QueryRequestCommon,
     ) -> Result<QueryResult<F>, Error>
     where
-        for<'de> F: serde::Deserialize<'de> + std::fmt::Debug + Clone + QueryFieldList,
+        F: serde::de::DeserializeOwned + std::fmt::Debug + Clone + QueryFieldList,
     {
         let query = QueryRequest(
             "query",
@@ -663,14 +852,74 @@ impl Client {
         Ok(response)
     }
 
+    /// Create a Subscription that will yield file changes as they occur in
+    /// real time.
+    /// The `F` type is a struct defined by the
+    /// [query_result_type!](macro.query_result_type.html) macro,
+    /// or, if you want only the file name from the results, the
+    /// [NameOnly](struct.NameOnly.html) struct.
+    ///
+    /// Returns two pieces of information:
+    /// * A [Subscription](struct.Subscription.html) handle that can be used to yield changes
+    ///   as they are observed by watchman
+    /// * A [SubscribeResponse](pdu/struct.SubscribeResponse.html) that contains some data about the
+    ///   state of the watch at the time the subscription was
+    ///   initiated
+    pub async fn subscribe<F>(
+        &self,
+        root: &ResolvedRoot,
+        query: SubscribeRequest,
+    ) -> Result<(Subscription<F>, SubscribeResponse), Error>
+    where
+        F: serde::de::DeserializeOwned + std::fmt::Debug + Clone + QueryFieldList,
+    {
+        let name = format!(
+            "sub-[{}]-{}",
+            std::env::args()
+                .nth(0)
+                .unwrap_or_else(|| "<no-argv-0>".to_string()),
+            SUB_ID.fetch_add(1, Ordering::Relaxed)
+        );
+
+        let query = SubscribeCommand(
+            "subscribe",
+            root.root.clone(),
+            name.clone(),
+            SubscribeRequest {
+                relative_root: root.relative.clone(),
+                fields: F::field_list(),
+                ..query
+            },
+        );
+
+        let (tx, responses) = tokio::sync::mpsc::unbounded_channel();
+
+        {
+            let mut inner = self.inner.lock().await;
+            inner
+                .request_tx
+                .send(TaskItem::RegisterSubscription(name.clone(), tx))
+                .await
+                .map_err(Error::generic)?;
+        }
+
+        let subscription = Subscription::<F> {
+            name,
+            inner: Arc::clone(&self.inner),
+            root: root.clone(),
+            responses,
+            _phantom: PhantomData,
+        };
+
+        let response: SubscribeResponse = self.generic_request(query).await?;
+
+        Ok((subscription, response))
+    }
+
     /// Expand a set of globs into the set of matching file names.
     /// The globs must be relative to the `root` parameter.
     /// The returned file names are all relative to the `root` parameter.
-    pub async fn glob(
-        &mut self,
-        root: &ResolvedRoot,
-        globs: &[&str],
-    ) -> Result<Vec<PathBuf>, Error> {
+    pub async fn glob(&self, root: &ResolvedRoot, globs: &[&str]) -> Result<Vec<PathBuf>, Error> {
         let response: QueryResult<NameOnly> = self
             .query(
                 root,
@@ -705,7 +954,7 @@ impl Client {
     ///  * <https://facebook.github.io/watchman/docs/cmd/clock.html>
     ///  * <https://facebook.github.io/watchman/docs/cookies.html>
     pub async fn clock(
-        &mut self,
+        &self,
         root: &ResolvedRoot,
         sync_timeout: SyncTimeout,
     ) -> Result<ClockSpec, Error> {

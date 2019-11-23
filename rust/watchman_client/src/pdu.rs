@@ -302,16 +302,132 @@ where
 {
     /// The version of the watchman server
     pub version: String,
-    /// If present and true, indicates that this result set represents the
+    /// If true, indicates that this result set represents the
     /// total set of possible matches.  Otherwise the results should be
     /// considered to be incremental since your last since query.
     /// If is_fresh_instance is true you MUST arrange to forget about
     /// any files not included in the list of files in this QueryResult
     /// otherwise you risk diverging your state.
-    pub is_fresh_instance: Option<bool>,
+    #[serde(default)]
+    pub is_fresh_instance: bool,
 
     /// Holds the list of matching files from the query
     pub files: Option<Vec<F>>,
+
+    /// in the context of a subscription, this is set to true if
+    /// the subscription was canceled, perhaps by an unsubscribe request,
+    /// or perhaps because the watch was deleted.  The server logs
+    /// will explain the reason.
+    #[serde(rename = "canceled", default)]
+    #[doc(hidden)]
+    pub subscription_canceled: bool,
+
+    #[serde(rename = "state-enter")]
+    #[doc(hidden)]
+    pub state_enter: Option<String>,
+
+    #[serde(rename = "state-leave")]
+    #[doc(hidden)]
+    pub state_leave: Option<String>,
+    //    #[serde(rename = "metadata")]
+    //    pub state_metadata: Option<serde_json::Value>,
+}
+
+#[derive(Serialize, Default, Clone, Debug)]
+pub struct SubscribeRequest {
+    /// If set, enables the use of the `since` generator and specifies the last
+    /// time you queried the server and for which you wish to receive a delta of
+    /// changes.
+    /// You will typically thread the QueryResult.clock field back to a subsequent
+    /// since query to process the continuity of matching file changes.
+    /// <https://facebook.github.io/watchman/docs/file-query.html#since-generator>
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub since: Option<Clock>,
+
+    /// if set, indicates that all input paths are relative to this subdirectory
+    /// in the project, and that all returned filenames will also be relative to
+    /// this subdirectory.
+    /// In large virtualized filesystems it is undesirable to leave this set to
+    /// None as it makes it more likely that you will trigger an O(project)
+    /// filesystem walk.
+    /// This field is set automatically from the ResolvedRoot when you perform queries
+    /// using Client::query.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub relative_root: Option<PathBuf>,
+
+    /// If set, specifies the expression to use to filter the candidate matches
+    /// produced by the selected query generator.
+    /// Each candidate is visited in turn and has the expression applied.
+    /// Candidates for which the expression evaluates as true will be included
+    /// in the returned list of files.
+    /// If left unspecified, the server will assume `Expr::True`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expression: Option<Expr>,
+
+    /// Specifies the list of fields names returned by the server.
+    /// The `name` field should be considered a required field and is the cheapest
+    /// field to return.
+    /// Depending on the watcher implementation, other metadata has varying cost.
+    /// In general, avoid querying `size` and `mode` fields and instead prefer to
+    /// query `content.sha1hex` and `type` instead to avoid materializing inodes
+    /// in a virtualized filesystem.
+    pub fields: Vec<&'static str>,
+
+    /// If true you indicate that you know how to 100% correctly deal with a fresh
+    /// instance result set.  It is strongly recommended that you leave this
+    /// option alone as it is a common source of cache invalidation and divergence
+    /// issues for clients.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub empty_on_fresh_instance: bool,
+
+    /// If true, treat filenames as case sensitive even on filesystems that otherwise
+    /// appear to be case insensitive.
+    /// This can improve performance of directory traversal in queries by turning
+    /// O(directory-size) operations into an O(1) hash lookup.
+    /// <https://facebook.github.io/watchman/docs/cmd/query.html#case-sensitivity>
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub case_sensitive: bool,
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct SubscribeCommand(
+    pub &'static str,
+    pub PathBuf,
+    pub String,
+    pub SubscribeRequest,
+);
+
+/// Returns information about the state of the watch at the time the
+/// subscription was initiated.
+#[derive(Deserialize, Debug)]
+pub struct SubscribeResponse {
+    pub version: String,
+    subscribe: String,
+
+    /// The plain clock at initiation time.
+    pub clock: ClockSpec,
+
+    /// The set of asserted states at watch initiation time.
+    /// This is useful in the case where you need to reason
+    /// about the states and may have connected after the
+    /// StateEnter was generated but prior to the StateLeave
+    #[serde(default, rename = "asserted-states")]
+    pub asserted_states: Vec<String>,
+
+    /// When using source control aware queries with saved
+    /// state configuration, this field holds metadata from
+    /// the save state storage engine.
+    #[serde(rename = "saved-state-info")]
+    pub saved_state_info: Option<serde_json::Value>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct Unsubscribe(pub &'static str, pub PathBuf, pub String);
+
+#[derive(Deserialize, Debug)]
+pub struct UnsubscribeResponse {
+    pub version: String,
+    pub unsubscribe: String,
 }
 
 /// A `Clock` is used to refer to a logical point in time.
