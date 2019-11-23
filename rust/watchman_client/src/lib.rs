@@ -31,6 +31,7 @@ pub mod fields;
 mod named_pipe;
 pub mod pdu;
 use serde_bser::de::{Bunser, PduInfo, SliceRead};
+use serde_bser::value::Value;
 use std::collections::{HashMap, VecDeque};
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
@@ -637,7 +638,7 @@ where
     /// state.
     StateEnter {
         state_name: String,
-        metadata: Option<serde_json::Value>,
+        metadata: Option<Value>,
     },
     /// Some other watchman client has broadcast that the watched
     /// project is no longer in the named state.
@@ -647,7 +648,7 @@ where
     /// The `metadata` field will be `None` in that situation.
     StateLeave {
         state_name: String,
-        metadata: Option<serde_json::Value>,
+        metadata: Option<Value>,
     },
 }
 
@@ -695,12 +696,12 @@ where
         } else if let Some(state_name) = response.state_enter {
             Ok(SubscriptionData::StateEnter {
                 state_name,
-                metadata: None, //response.state_metadata,
+                metadata: response.state_metadata,
             })
         } else if let Some(state_name) = response.state_leave {
             Ok(SubscriptionData::StateLeave {
                 state_name,
-                metadata: None, //response.state_metadata,
+                metadata: response.state_metadata,
             })
         } else {
             Ok(SubscriptionData::FilesChanged(response))

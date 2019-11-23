@@ -1,11 +1,14 @@
 //! Working with the watchman expression term syntax
 use crate::pdu::*;
+use maplit::hashmap;
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_bser::value::Value;
+use std::convert::TryInto;
+use std::path::PathBuf;
 
 /// An expression term used to filter candidate files from query results.
 #[derive(Serialize, Debug, Clone)]
-#[serde(into = "serde_json::Value")]
+#[serde(into = "Value")]
 pub enum Expr {
     /// Always evaluates to true
     True,
@@ -68,9 +71,7 @@ pub enum Expr {
     /// Suffix matches are always case insensitive.
     /// `php` matches `foo.php` and `foo.PHP` but not `foophp`.
     /// <https://facebook.github.io/watchman/docs/expr/suffix.html>
-    // FIXME: this String should be PathBuf but we cannot guarantee
-    // representation while we rely on serde_json::Value as an intermediate.
-    Suffix(Vec<String>),
+    Suffix(Vec<PathBuf>),
 
     /// Evaluate as true if the file type exactly matches the specified type.
     FileType(FileType),
@@ -93,7 +94,7 @@ impl Into<Value> for Expr {
                 Value::Array(expr)
             }
             Self::DirName(term) => {
-                let mut expr: Vec<Value> = vec!["dirname".into(), term.path.into()];
+                let mut expr: Vec<Value> = vec!["dirname".into(), term.path.try_into().unwrap()];
                 if let Some(depth) = term.depth {
                     expr.push(depth.into_term("depth"));
                 }
@@ -101,49 +102,69 @@ impl Into<Value> for Expr {
             }
             Self::Empty => "empty".into(),
             Self::Exists => "exists".into(),
-            Self::Match(term) => json!([
-                "match",
-                term.glob,
-                if term.wholename {
-                    "wholename"
-                } else {
-                    "basename"
-                },
-                {
-                    "includedotfiles": term.include_dot_files,
-                    "noescape": term.no_escape
-                },
-            ]),
-            Self::Name(term) => json!([
-                "name",
-                Value::Array(term.paths.into_iter().map(Into::into).collect()),
+            Self::Match(term) => vec![
+                "match".into(),
+                term.glob.into(),
                 if term.wholename {
                     "wholename"
                 } else {
                     "basename"
                 }
-            ]),
-            Self::Pcre(term) => json!([
-                "pcre",
-                term.pattern,
+                .into(),
+                Value::Object(hashmap! {
+                    "includedotfiles".to_string() => term.include_dot_files.into(),
+                    "noescape".to_string() => term.no_escape.into()
+                }),
+            ]
+            .into(),
+            Self::Name(term) => vec![
+                "name".into(),
+                Value::Array(
+                    term.paths
+                        .into_iter()
+                        .map(|p| p.try_into().unwrap())
+                        .collect(),
+                ),
                 if term.wholename {
                     "wholename"
                 } else {
                     "basename"
                 }
-            ]),
+                .into(),
+            ]
+            .into(),
+            Self::Pcre(term) => vec![
+                "pcre".into(),
+                term.pattern.into(),
+                if term.wholename {
+                    "wholename"
+                } else {
+                    "basename"
+                }
+                .into(),
+            ]
+            .into(),
             Self::Since(term) => match term {
-                SinceTerm::ObservedClock(c) => json!(["since", c, "oclock"]),
-                SinceTerm::CreatedClock(c) => json!(["since", c, "cclock"]),
-                SinceTerm::MTime(c) => json!(["since", c.to_string(), "mtime"]),
-                SinceTerm::CTime(c) => json!(["since", c.to_string(), "ctime"]),
+                SinceTerm::ObservedClock(c) => {
+                    vec!["since".into(), c.to_string().into(), "oclock".into()].into()
+                }
+                SinceTerm::CreatedClock(c) => {
+                    vec!["since".into(), c.to_string().into(), "cclock".into()].into()
+                }
+                SinceTerm::MTime(c) => {
+                    vec!["since".into(), c.to_string().into(), "mtime".into()].into()
+                }
+                SinceTerm::CTime(c) => {
+                    vec!["since".into(), c.to_string().into(), "ctime".into()].into()
+                }
             },
             Self::Size(term) => term.into_term("size"),
-            Self::Suffix(term) => json!([
-                "suffix",
-                Value::Array(term.into_iter().map(Into::into).collect())
-            ]),
-            Self::FileType(term) => json!(["type", term.to_string()]),
+            Self::Suffix(term) => vec![
+                "suffix".into(),
+                Value::Array(term.into_iter().map(|p| p.try_into().unwrap()).collect()),
+            ]
+            .into(),
+            Self::FileType(term) => vec!["type".into(), term.to_string().into()].into(),
         }
     }
 }
@@ -152,9 +173,7 @@ impl Into<Value> for Expr {
 /// <https://facebook.github.io/watchman/docs/expr/name.html>
 #[derive(Clone, Debug)]
 pub struct NameTerm {
-    // FIXME: this String should be PathBuf but we cannot guarantee
-    // representation while we rely on serde_json::Value as an intermediate.
-    pub paths: Vec<String>,
+    pub paths: Vec<PathBuf>,
     /// By default, the name is evaluated against the basename portion
     /// of the filename.  Set wholename=true to have it match against
     /// the path relative to the root of the project.
@@ -166,9 +185,7 @@ pub struct NameTerm {
 #[derive(Clone, Debug)]
 pub struct DirNameTerm {
     /// The path to a directory
-    // FIXME: this String should be PathBuf but we cannot guarantee
-    // representation while we rely on serde_json::Value as an intermediate.
-    pub path: String,
+    pub path: PathBuf,
     /// Specifies the matching depth.  A file has depth == 0
     /// if it is contained directory within `path`, depth == 1 if
     /// it is in a direct child directory of `path`, depth == 2 if
@@ -232,7 +249,7 @@ impl RelOp {
             Self::Less(value) => ("lt", value),
             Self::LessOrEqual(value) => ("le", value),
         };
-        Value::Array(vec![field.into(), op.into(), value.into()])
+        Value::Array(vec![field.into(), op.into(), value.try_into().unwrap()])
     }
 }
 
@@ -268,21 +285,21 @@ mod tests {
 
     #[test]
     fn exprs() {
-        assert_eq!(val(Expr::True), json!("true"));
-        assert_eq!(val(Expr::False), json!("false"));
-        assert_eq!(val(Expr::Empty), json!("empty"));
-        assert_eq!(val(Expr::Exists), json!("exists"));
+        assert_eq!(val(Expr::True), "true".into());
+        assert_eq!(val(Expr::False), "false".into());
+        assert_eq!(val(Expr::Empty), "empty".into());
+        assert_eq!(val(Expr::Exists), "exists".into());
         assert_eq!(
             val(Expr::Not(Box::new(Expr::False))),
-            json!(["not", "false"])
+            vec!["not".into(), "false".into()].into()
         );
         assert_eq!(
             val(Expr::All(vec![Expr::True, Expr::False])),
-            json!(["allof", "true", "false"])
+            vec!["allof".into(), "true".into(), "false".into()].into()
         );
         assert_eq!(
             val(Expr::Any(vec![Expr::True, Expr::False])),
-            json!(["anyof", "true", "false"])
+            vec!["anyof".into(), "true".into(), "false".into()].into()
         );
 
         assert_eq!(
@@ -290,14 +307,19 @@ mod tests {
                 path: "foo".into(),
                 depth: None,
             })),
-            json!(["dirname", "foo"])
+            vec!["dirname".into(), Value::ByteString("foo".into())].into()
         );
         assert_eq!(
             val(Expr::DirName(DirNameTerm {
                 path: "foo".into(),
                 depth: Some(RelOp::GreaterOrEqual(1)),
             })),
-            json!(["dirname", "foo", ["depth", "ge", 1]])
+            vec![
+                "dirname".into(),
+                Value::ByteString("foo".into()),
+                vec!["depth".into(), "ge".into(), 1.into()].into()
+            ]
+            .into()
         );
 
         assert_eq!(
@@ -305,10 +327,17 @@ mod tests {
                 glob: "*.txt".into(),
                 ..Default::default()
             })),
-            json!(["match", "*.txt", "basename", {
-                "includedotfiles": false,
-                "noescape": false,
-            }])
+            vec![
+                "match".into(),
+                "*.txt".into(),
+                "basename".into(),
+                hashmap! {
+                    "includedotfiles".to_string() => Value::Bool(false),
+                    "noescape".to_string() => Value::Bool(false),
+                }
+                .into()
+            ]
+            .into()
         );
 
         assert_eq!(
@@ -318,10 +347,17 @@ mod tests {
                 include_dot_files: true,
                 ..Default::default()
             })),
-            json!(["match", "*.txt", "wholename", {
-                "includedotfiles": true,
-                "noescape": false,
-            }])
+            vec![
+                "match".into(),
+                "*.txt".into(),
+                "wholename".into(),
+                hashmap! {
+                    "includedotfiles".to_string() => Value::Bool(true),
+                    "noescape".to_string() => Value::Bool(false),
+                }
+                .into()
+            ]
+            .into()
         );
 
         assert_eq!(
@@ -329,7 +365,12 @@ mod tests {
                 paths: vec!["foo".into()],
                 wholename: true,
             })),
-            json!(["name", ["foo"], "wholename"])
+            vec![
+                "name".into(),
+                vec![Value::ByteString("foo".into())].into(),
+                "wholename".into()
+            ]
+            .into()
         );
 
         assert_eq!(
@@ -337,19 +378,30 @@ mod tests {
                 pattern: "foo$".into(),
                 wholename: true,
             })),
-            json!(["pcre", "foo$", "wholename"])
+            vec!["pcre".into(), "foo$".into(), "wholename".into()].into()
         );
 
-        assert_eq!(val(Expr::FileType(FileType::Regular)), json!(["type", "f"]));
+        assert_eq!(
+            val(Expr::FileType(FileType::Regular)),
+            vec!["type".into(), "f".into()].into()
+        );
 
         assert_eq!(
             val(Expr::Suffix(vec!["php".into(), "js".into()])),
-            json!(["suffix", ["php", "js"]])
+            vec![
+                "suffix".into(),
+                vec![
+                    Value::ByteString("php".into()),
+                    Value::ByteString("js".into())
+                ]
+                .into()
+            ]
+            .into()
         );
 
         assert_eq!(
             val(Expr::Since(SinceTerm::ObservedClock(ClockSpec::null()))),
-            json!(["since", "c:0:0", "oclock"])
+            vec!["since".into(), "c:0:0".into(), "oclock".into()].into()
         );
     }
 }

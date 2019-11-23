@@ -1,6 +1,6 @@
 [package]
 name = "serde_bser"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Rain <rain1@fb.com>", "Wez Furlong"]
 edition = "2018"
 repository = "https://github.com/facebook/watchman/"

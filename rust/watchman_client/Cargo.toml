@@ -12,9 +12,9 @@ documentation = "https://docs.rs/watchman_client"
 structopt = "0.3"
 
 [dependencies]
+maplit = "1.0"
 serde = { version = "1", features = ["derive"] }
-serde_bser = { version = "0.1", path = "../serde_bser" }
-serde_json = "1.0"
+serde_bser = { version = "0.2", path = "../serde_bser" }
 thiserror = ">=1.0.6"
 tokio = {version="0.2.0-alpha.6", features=["process"]}
 tokio-net = {version="0.2.0-alpha.6"}

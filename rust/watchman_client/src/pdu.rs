@@ -3,6 +3,7 @@
 
 use crate::expr::Expr;
 use serde::{Deserialize, Serialize};
+use serde_bser::value::Value;
 use serde_with_macros::*;
 use std::path::PathBuf;
 
@@ -329,8 +330,8 @@ where
     #[serde(rename = "state-leave")]
     #[doc(hidden)]
     pub state_leave: Option<String>,
-    //    #[serde(rename = "metadata")]
-    //    pub state_metadata: Option<serde_json::Value>,
+    #[serde(rename = "metadata")]
+    pub state_metadata: Option<Value>,
 }
 
 #[derive(Serialize, Default, Clone, Debug)]
@@ -418,7 +419,7 @@ pub struct SubscribeResponse {
     /// state configuration, this field holds metadata from
     /// the save state storage engine.
     #[serde(rename = "saved-state-info")]
-    pub saved_state_info: Option<serde_json::Value>,
+    pub saved_state_info: Option<Value>,
 }
 
 #[derive(Serialize, Debug)]
@@ -515,6 +516,13 @@ impl ClockSpec {
     }
 }
 
+impl std::ops::Deref for ClockSpec {
+    type Target = str;
+    fn deref(&self) -> &str {
+        &self.0
+    }
+}
+
 /// Holds extended clock data that includes source control aware
 /// query metadata.
 /// <https://facebook.github.io/watchman/docs/scm-query.html>
@@ -548,7 +556,7 @@ pub struct SavedStateClockData {
     pub storage: Option<String>,
     #[serde(rename = "commit-id")]
     pub commit: Option<String>,
-    pub config: Option<serde_json::Value>,
+    pub config: Option<Value>,
 }
 
 /// Reports the content SHA1 hash for a file.
