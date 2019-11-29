@@ -17,12 +17,12 @@ serde = { version = "1", features = ["derive"] }
 serde_bser = { version = "0.2", path = "../serde_bser" }
 thiserror = ">=1.0.6"
 tokio = { version = "0.2.1", features = [
+    "io-util",
     "macros",
     "process",
+    "rt-core",
     "sync",
     "uds",
-    "io-util",
-    "rt-core",
 ] }
 serde_with_macros = "1.0"
 
