@@ -38,10 +38,10 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use thiserror::Error;
-use tokio::net::process::Command;
 #[cfg(unix)]
-use tokio::net::unix::UnixStream;
+use tokio::net::UnixStream;
 use tokio::prelude::*;
+use tokio::process::Command;
 use tokio::sync::mpsc::{Receiver, Sender, UnboundedReceiver, UnboundedSender};
 use tokio::sync::Mutex;
 
@@ -340,7 +340,7 @@ pub struct Client {
 
 /// The reader task lives to read a PDU and send it to the ClientTask
 struct ReaderTask {
-    reader: tokio_io::split::ReadHalf<Box<dyn ReadWriteStream>>,
+    reader: tokio::io::ReadHalf<Box<dyn ReadWriteStream>>,
     request_tx: Sender<TaskItem>,
 }
 
@@ -407,7 +407,7 @@ impl ReaderTask {
 /// The client task coordinates sending requests with processing
 /// unilateral results
 struct ClientTask {
-    writer: tokio_io::split::WriteHalf<Box<dyn ReadWriteStream>>,
+    writer: tokio::io::WriteHalf<Box<dyn ReadWriteStream>>,
     request_rx: Receiver<TaskItem>,
     request_queue: VecDeque<SendRequest>,
     waiting_response: bool,
@@ -435,7 +435,7 @@ impl ClientTask {
 
     async fn run_loop(&mut self) -> Result<(), Error> {
         loop {
-            match self.request_rx.next().await {
+            match self.request_rx.recv().await {
                 Some(TaskItem::QueueRequest(request)) => self.queue_request(request).await?,
                 Some(TaskItem::ProcessReceivedPdu(pdu)) => self.process_pdu(pdu).await?,
                 Some(TaskItem::RegisterSubscription(name, tx)) => {
@@ -499,7 +499,7 @@ impl ClientTask {
 
         if let Ok(unilateral) = bunser::<Unilateral>(&pdu) {
             if let Some(subscription) = self.subscriptions.get_mut(&unilateral.subscription) {
-                if let Err(_) = subscription.send(pdu).await {
+                if let Err(_) = subscription.send(pdu) {
                     // The `Subscription` was dropped; we don't need to
                     // treat this as terminal for this client session,
                     // so just de-register the handler
