@@ -3,6 +3,7 @@
 
 #include "watchman.h"
 #include <folly/Synchronized.h>
+#include <atomic>
 #include <chrono>
 #include <thread>
 
@@ -17,10 +18,10 @@ static std::unique_ptr<watchman_event> listener_thread_event;
 #else
 static HANDLE listener_thread_event;
 #endif
-static volatile bool stopping = false;
+static std::atomic<bool> stopping = false;
 
 bool w_is_stopping(void) {
-  return stopping;
+  return stopping.load(std::memory_order_relaxed);
 }
 
 json_ref make_response(void) {
@@ -102,7 +103,7 @@ void watchman_client::enqueueResponse(json_ref&& resp, bool ping) {
 }
 
 void w_request_shutdown(void) {
-  stopping = true;
+  stopping.store(true, std::memory_order_relaxed);
   // Knock listener thread out of poll/accept
 #ifndef _WIN32
   if (listener_thread_event) {
@@ -137,13 +138,13 @@ static void client_thread(std::shared_ptr<watchman_client> client) noexcept {
   pfd[0].evt = client->stm->getEvents();
   pfd[1].evt = client->ping.get();
 
-  while (!stopping && client_alive) {
+  while (!w_is_stopping() && client_alive) {
     // Wait for input from either the client socket or
     // via the ping pipe, which signals that some other
     // thread wants to unilaterally send data to the client
 
     ignore_result(w_poll_events(pfd, 2, 2000));
-    if (stopping) {
+    if (w_is_stopping()) {
       break;
     }
 
@@ -471,7 +472,7 @@ static void named_pipe_accept_loop_internal(const char* path) {
   olap.hEvent = connected_event;
 
   logf(ERR, "waiting for pipe clients on {}\n", path);
-  while (!stopping) {
+  while (!w_is_stopping()) {
     FileDescriptor client_fd;
     DWORD res;
 
@@ -538,7 +539,7 @@ static void named_pipe_accept_loop(const char* path) {
 #ifndef _WIN32
 static void accept_loop(FileDescriptor&& listenerDescriptor) {
   auto listener = w_stm_fdopen(std::move(listenerDescriptor));
-  while (!stopping) {
+  while (!w_is_stopping()) {
     FileDescriptor client_fd;
     struct watchman_event_poll pfd[2];
     int bufsize;
@@ -547,14 +548,14 @@ static void accept_loop(FileDescriptor&& listenerDescriptor) {
     pfd[1].evt = listener_thread_event.get();
 
     if (w_poll_events(pfd, 2, 60000) == 0) {
-      if (stopping) {
+      if (w_is_stopping()) {
         break;
       }
       // Timed out, or error.
       continue;
     }
 
-    if (stopping) {
+    if (w_is_stopping()) {
       break;
     }
 
