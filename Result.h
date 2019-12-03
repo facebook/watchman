@@ -267,7 +267,7 @@ makeResultWith(Func&& func) {
 
   try {
     return Result<ResType>(func());
-  } catch (const std::exception& e) {
+  } catch (const std::exception&) {
     return Result<ResType>(std::current_exception());
   }
 }
@@ -283,7 +283,7 @@ makeResultWith(Func&& func) {
   try {
     func();
     return Result<folly::Unit>(folly::Unit{});
-  } catch (const std::exception& e) {
+  } catch (const std::exception&) {
     return Result<folly::Unit>(std::current_exception());
   }
 }
