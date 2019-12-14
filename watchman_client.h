@@ -42,6 +42,7 @@ class ClientStateAssertion {
 } // namespace watchman
 
 struct watchman_client : public std::enable_shared_from_this<watchman_client> {
+  const uint64_t unique_id;
   std::unique_ptr<watchman_stream> stm;
   std::unique_ptr<watchman_event> ping;
   w_jbuffer_t reader, writer;

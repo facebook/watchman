@@ -577,7 +577,7 @@ static void cmd_subscribe(
 
   // Connect the root to our subscription
   {
-    auto client_id = w_string::build(fmt::ptr(client));
+    auto client_id = w_string::build(client->unique_id);
     auto client_stream = w_string::build(fmt::ptr(client->stm.get()));
     auto info_json =
         json_object({{"name", w_string_to_json(sub->name)},

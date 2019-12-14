@@ -76,10 +76,16 @@ void send_error_response(struct watchman_client* client, const char* fmt, ...) {
   send_and_dispose_response(client, std::move(resp));
 }
 
+namespace {
+// TODO: If used in a hot loop, EdenFS has a faster implementation.
+// https://github.com/facebookexperimental/eden/blob/c745d644d969dae1e4c0d184c19320fac7c27ae5/eden/fs/utils/IDGen.h
+std::atomic<uint64_t> id_generator{1};
+} // namespace
+
 watchman_client::watchman_client() : watchman_client(nullptr) {}
 
 watchman_client::watchman_client(std::unique_ptr<watchman_stream>&& stm)
-    : stm(std::move(stm)), ping(w_event_make()) {
+    : unique_id{id_generator++}, stm(std::move(stm)), ping(w_event_make()) {
   logf(DBG, "accepted client:stm={}\n", fmt::ptr(this->stm.get()));
 }
 
@@ -87,7 +93,7 @@ watchman_client::~watchman_client() {
   debugSub.reset();
   errorSub.reset();
 
-  logf(DBG, "client_delete {}\n", fmt::ptr(this));
+  logf(DBG, "client_delete {}\n", unique_id);
 
   if (stm) {
     stm->shutdown();
@@ -127,7 +133,7 @@ static void client_thread(std::shared_ptr<watchman_client> client) noexcept {
   client->stm->setNonBlock(true);
   w_set_thread_name(
       "client=",
-      uintptr_t(client.get()),
+      client->unique_id,
       ":stm=",
       uintptr_t(client->stm.get()),
       ":pid=",
@@ -290,7 +296,7 @@ static void client_thread(std::shared_ptr<watchman_client> client) noexcept {
 disconnected:
   w_set_thread_name(
       "NOT_CONN:client=",
-      uintptr_t(client.get()),
+      client->unique_id,
       ":stm=",
       uintptr_t(client->stm.get()),
       ":pid=",
