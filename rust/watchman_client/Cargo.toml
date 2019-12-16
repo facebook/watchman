@@ -1,6 +1,6 @@
 [package]
 name = "watchman_client"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Wez Furlong"]
 edition = "2018"
 repository = "https://github.com/facebook/watchman/"

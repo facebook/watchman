@@ -49,7 +49,7 @@ pub struct WatchProjectResponse {
     /// The root of the watched project
     pub watch: PathBuf,
     /// The watcher that the server is using to monitor this path
-    pub watcher: Option<String>,
+    pub watcher: String,
 }
 
 /// When using the `path` generator, this specifies a path to be
@@ -314,6 +314,9 @@ where
 
     /// Holds the list of matching files from the query
     pub files: Option<Vec<F>>,
+
+    /// The clock value at the time that these results were generated
+    pub clock: Clock,
 
     /// in the context of a subscription, this is set to true if
     /// the subscription was canceled, perhaps by an unsubscribe request,

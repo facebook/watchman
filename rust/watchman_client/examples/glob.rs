@@ -27,6 +27,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         .resolve_root(CanonicalPath::canonicalize(opt.path)?)
         .await?;
 
+    println!("resolved watch to {:?}", resolved);
+
     // Basic globs -> names
     let files = client.glob(&resolved, &["**/*.rs"]).await?;
     println!("files: {:#?}", files);

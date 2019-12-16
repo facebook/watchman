@@ -304,6 +304,40 @@ impl CanonicalPath {
 pub struct ResolvedRoot {
     root: PathBuf,
     relative: Option<PathBuf>,
+    watcher: String,
+}
+
+impl ResolvedRoot {
+    /// Returns the name of the watcher that the server is using to
+    /// monitor the path.  The watcher is generally system dependent,
+    /// but some systems offer multipler watchers.
+    /// You generally don't care too much about the watcher that is
+    /// in use, but if the watcher is a virtualized filesystem such as
+    /// `eden` then you may wish to use to alternative queries to get the
+    /// best performance.
+    pub fn watcher(&self) -> &str {
+        self.watcher.as_str()
+    }
+
+    /// Returns the root of the watchman project that is being watched
+    pub fn project_root(&self) -> &Path {
+        &self.root
+    }
+
+    /// Returns the absolute path to the directory that you requested be resolved.
+    pub fn path(&self) -> PathBuf {
+        if let Some(relative) = self.relative.as_ref() {
+            self.root.join(relative)
+        } else {
+            self.root.clone()
+        }
+    }
+
+    /// Returns the path to the directory that you requested be resolved,
+    /// relative to the `project_root`.
+    pub fn project_relative_path(&self) -> Option<&Path> {
+        self.relative.as_ref().map(PathBuf::as_ref)
+    }
 }
 
 trait ReadWriteStream: AsyncRead + AsyncWrite + std::marker::Unpin + Send {}
@@ -766,6 +800,7 @@ impl Client {
         Ok(ResolvedRoot {
             root: response.watch,
             relative: response.relative_path,
+            watcher: response.watcher,
         })
     }
 
