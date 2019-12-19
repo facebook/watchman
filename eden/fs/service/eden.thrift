@@ -874,6 +874,8 @@ service EdenService extends fb303_core.BaseService {
   ) throws (1: EdenError ex)
 
   /**
+   * DEPRECATED
+   *
    * Computes the status between two specified revisions.
    * This does not care about the state of the working copy.
    */
