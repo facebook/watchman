@@ -24,7 +24,6 @@ tokio = { version = "0.2", features = [
     "sync",
     "uds",
 ] }
-serde_with_macros = "1.0"
 
 [target."cfg(windows)".dependencies]
 mio-named-pipes = "0.1"

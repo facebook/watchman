@@ -4,7 +4,6 @@
 use crate::expr::Expr;
 use serde::{Deserialize, Serialize};
 use serde_bser::value::Value;
-use serde_with_macros::*;
 use std::path::PathBuf;
 
 /// The `get-sockname` command response
@@ -529,36 +528,40 @@ impl std::ops::Deref for ClockSpec {
 /// Holds extended clock data that includes source control aware
 /// query metadata.
 /// <https://facebook.github.io/watchman/docs/scm-query.html>
-#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FatClockData {
     pub clock: ClockSpec,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub scm: Option<ScmAwareClockData>,
 }
 
 /// Holds extended clock data that includes source control aware
 /// query metadata.
 /// <https://facebook.github.io/watchman/docs/scm-query.html>
-#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ScmAwareClockData {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub mergebase: Option<String>,
     #[serde(rename = "mergebase-with")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub mergebase_with: Option<String>,
 
     #[serde(rename = "saved-state")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub saved_state: Option<SavedStateClockData>,
 }
 
 /// Holds extended clock data that includes source control aware
 /// query metadata.
 /// <https://facebook.github.io/watchman/docs/scm-query.html>
-#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SavedStateClockData {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub storage: Option<String>,
     #[serde(rename = "commit-id")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub commit: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub config: Option<Value>,
 }
 
