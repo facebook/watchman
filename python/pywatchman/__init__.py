@@ -34,6 +34,7 @@ import math
 import os
 import socket
 import subprocess
+import sys
 import time
 
 from . import capabilities, compat, encoding, load
@@ -1022,7 +1023,7 @@ class client(object):
             value = result.get(name, None)
             if value is None:
                 return None
-            return os.fsdecode(value)
+            return value.decode(sys.getfilesystemencoding(), errors="surrogateescape")
 
         # sockname is always present
         sockpath = get_path_result("sockname")
