@@ -64,7 +64,14 @@ class Target(object):
         data = client.getSubscription(self.name)
         if data is None:
             return
-        self.triggered = True
+        for item in data:
+            # We only want to trigger if files matched;
+            # updates without a files list are metadata
+            # such as state-enter/leave notices so we skip them
+            if "files" in item:
+                self.triggered = True
+            if "canceled" in item:
+                raise RuntimeError("Watch was cancelled")
 
     def execute(self):
         if not self.triggered:
