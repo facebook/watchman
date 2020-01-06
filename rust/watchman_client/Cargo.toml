@@ -13,7 +13,7 @@ structopt = "0.3"
 
 [dependencies]
 maplit = "1.0"
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1.0.102", features = ["derive"] }
 serde_bser = { version = "0.2", path = "../serde_bser" }
 thiserror = ">=1.0.6"
 tokio = { version = "0.2", features = [
