@@ -81,7 +81,7 @@ void usage(struct watchman_getopt* opts, FILE* where) {
       "See https://github.com/facebook/watchman#watchman for more help\n"
       "\n"
       "Watchman, by Wez Furlong.\n"
-      "Copyright 2012-2017 Facebook, Inc.\n");
+      "Copyright 2012-2020 Facebook, Inc.\n");
 
   exit(1);
 }
