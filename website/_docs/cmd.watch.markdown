@@ -43,7 +43,7 @@ across a process restart.
 ## Case-Insensitivity
 
 Watchman has the following level of support for case-insensitive filesystems,
-starting in version 2.9.9 on OS X only:
+starting in version 2.9.9 on macOS only:
 
  * each watched root is queried to determine if it is case-insensitive.
    This is the common default for most Mac systems running HFS+.

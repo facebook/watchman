@@ -57,7 +57,7 @@ accordingly.
 
 ### kFSEventStreamEventFlagUserDropped
 
-OS X has a similar internal limit and behavior when that limit is exceeded.
+macOS has a similar internal limit and behavior when that limit is exceeded.
 If you're encountering a message like:
 
 ```
@@ -185,7 +185,7 @@ limits.
 
 ## FSEvents
 
-FSEvents is the file watching facility on OS X.  There are few diagnostics
+FSEvents is the file watching facility on macOS.  There are few diagnostics
 that can help diagnose issues with FSEvents; the API itself gives little
 feedback on a number of error cases and instead emits rather cryptic error
 messages to the log file.
@@ -229,7 +229,7 @@ progressively more invasive:
 * Restart the fsevents service: `sudo pkill -9 -x fseventsd`
 * Restart your computer
 
-## Triggers/Subscriptions don't fire on OS X
+## Triggers/Subscriptions don't fire on macOS
 
 There is a rare fsevents bug that can prevent any notifications from working
 in directories where the case of the name of a directory in the kernel has

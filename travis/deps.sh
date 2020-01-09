@@ -12,7 +12,7 @@ case "$OSTYPE" in
     # so let's force nodejs to be reinstalled and see if that helps.
     brew install nodejs || brew upgrade nodejs || true
 
-    # avoid snafu with OS X and python builds
+    # avoid snafu with macOS and python builds
     #ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future
     #CFLAGS="$CFLAGS $ARCHFLAGS"
     #export ARCHFLAGS CFLAGS

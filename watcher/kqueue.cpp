@@ -310,7 +310,7 @@ void KQueueWatcher::signalThreads() {
 
 static RegisterWatcher<KQueueWatcher> reg(
     "kqueue",
-    -1 /* last resort on OS X */);
+    -1 /* last resort on macOS */);
 
 #endif // HAVE_KQUEUE
 

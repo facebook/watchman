@@ -200,7 +200,7 @@ effective value of infinity.
 *Since 2.9.9.*
 
 On systems where the watched root is a case insensitive filesystem (this is the
-common case for OS X and Windows), various name matching operations default to
+common case for macOS and Windows), various name matching operations default to
 case insensitive.
 
 *Since 4.7.*

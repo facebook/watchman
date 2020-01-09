@@ -189,7 +189,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 ### Watchman 4.3.0 (2015-12-14)
 
 * Improved handling of case insensitive renames; halved the memory usage
-  and doubled crawl speed on OS X.
+  and doubled crawl speed on macOS.
 
 ### Watchman 4.2.0 (2015-12-08)
 
@@ -197,7 +197,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
   whether the leaf of a directory tree is a symlink, we now check each
   component down from the root of the watch.  This improves detection
   and processing for directory-to-symlink (and vice versa) transitions.
-* Increased priority of the watchman process on OS X.
+* Increased priority of the watchman process on macOS.
 
 ### pywatchman 1.3.0 (2015-10-22)
 
@@ -206,7 +206,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 
 ### Watchman 4.1.0 (2015-10-20)
 
-* Fixed an issue where symlink size was always reported as 0 on OS X
+* Fixed an issue where symlink size was always reported as 0 on macOS
   using the new bulkstat functionality
 
 ### Watchman 4.0.0 (2015-10-19)
@@ -219,17 +219,17 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 
 ### Watchman 3.9.0 (2015-10-12)
 
-* Fixed an issue where dir renames on OS X could cause us to lose track of
+* Fixed an issue where dir renames on macOS could cause us to lose track of
   the files inside the renamed dir
 * Fixed an issue where dir deletes and replacements on Linux could cause us
-  to lose track of the files inside the replaced dir (similar to the OS X issue
+  to lose track of the files inside the replaced dir (similar to the macOS issue
   above in manifestation, but a different root cause).
 * Improved (re)crawl speed for dirs with more than a couple of entries on average
   (improvement can be up to 5x for dirs with up to 64 entries on average).
   You may now tune the `hint_num_files_per_dir` setting in your
   `.watchmanconfig` to better match your tree.  [More details](
   /watchman/docs/config.html#hint_num_files_per_dir)
-* Improved (re)crawl speed on OS X 10.10 and later by using `getattrlistbulk`.
+* Improved (re)crawl speed on macOS 10.10 and later by using `getattrlistbulk`.
   This allows us to improve the data:syscall ratio during crawling and can
   improve throughput by up to 40% for larger trees.
 * Add optional `sync_timeout` to the `clock` command
@@ -238,7 +238,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 * Fixed a race condition where we could start two sets of watcher threads
   for the same dir if two clients issue a `watch` or `watch-project` at
   the same time
-* Added a helpful error for a tmux + launchd issue on OS X
+* Added a helpful error for a tmux + launchd issue on macOS
 
 ### Watchman 3.8.0 (2015-09-14)
 
