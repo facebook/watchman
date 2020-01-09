@@ -1130,32 +1130,35 @@ class EdenView : public QueryableView {
         std::string(root->root_path.data(), root->root_path.size()));
     auto streamFuture =
         std::move(stream)
-            .via(&subscriberEventBase_)
-            .subscribe(
+            .subscribeExTry(
+                &subscriberEventBase_,
                 [&settleCallback, this, root, settleTimeout](
-                    const JournalPosition&) {
-                  watchman::log(DBG, "Got subscription push from eden\n");
-                  if (settleCallback.isScheduled()) {
-                    watchman::log(DBG, "reschedule settle timeout\n");
-                    settleCallback.cancelTimeout();
-                  }
-                  subscriberEventBase_.timer().scheduleTimeout(
-                      &settleCallback, settleTimeout);
+                    folly::Try<JournalPosition>&& t) {
+                  if (t.hasValue()) {
+                    watchman::log(DBG, "Got subscription push from eden\n");
+                    if (settleCallback.isScheduled()) {
+                      watchman::log(DBG, "reschedule settle timeout\n");
+                      settleCallback.cancelTimeout();
+                    }
+                    subscriberEventBase_.timer().scheduleTimeout(
+                        &settleCallback, settleTimeout);
 
-                  // We need to process cookie files with the lowest
-                  // possible latency, so we consume that information now
-                  checkCookies(root);
-                },
-                [this](folly::exception_wrapper e) {
-                  auto reason = folly::exceptionStr(std::move(e));
-                  watchman::log(
-                      ERR,
-                      "subscription stream ended: ",
-                      w_string_piece(reason.data(), reason.size()),
-                      ", cancel watch\n");
-                  // We won't be called again, but we terminate the loop
-                  // just to make sure.
-                  subscriberEventBase_.terminateLoopSoon();
+                    // We need to process cookie files with the lowest
+                    // possible latency, so we consume that information now
+                    checkCookies(root);
+                  } else {
+                    auto reason = t.hasException()
+                        ? folly::exceptionStr(std::move(t.exception()))
+                        : "controlled shutdown";
+                    watchman::log(
+                        ERR,
+                        "subscription stream ended: ",
+                        w_string_piece(reason.data(), reason.size()),
+                        ", cancel watch\n");
+                    // We won't be called again, but we terminate the loop
+                    // just to make sure.
+                    subscriberEventBase_.terminateLoopSoon();
+                  }
                 })
             .futureJoin();
     return client;
