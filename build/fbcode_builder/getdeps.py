@@ -663,6 +663,13 @@ jobs:
         out.write("        name: %s\n" % manifest.name)
         out.write("        path: _artifacts\n")
 
+        out.write("    - name: Copy release\n")
+        out.write("    - uses: fnkr/github-action-ghr@v1\n")
+        out.write("      env:\n")
+        out.write("        GHR_PATH: _artifacts\n")
+        out.write("        GHR_COMPRESS: zip\n")
+        out.write("        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n")
+        
         out.write("    - name: Test %s\n" % manifest.name)
         out.write(
             "      run: python build/fbcode_builder/getdeps.py test --src-dir=. %s\n"
