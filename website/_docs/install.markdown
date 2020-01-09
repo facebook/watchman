@@ -70,7 +70,7 @@ this time, so you will need to follow these steps to download the binaries:
 
 ## Build/Install
 
-### Installing on macOS via Homebrew
+### Installing on macOS or Linux via Homebrew
 
 To build the most recent release currently tracked by
 [Homebrew](http://brew.sh/):
