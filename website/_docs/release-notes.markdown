@@ -99,7 +99,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 	BSERv2 can carry information about string encoding over the wire. This lets
 	pywatchman convert to Unicode strings on Python 3. Clients and servers know how
 	to  transparently fall back to BSERv1.
-* macOS: we no longer use socket activation when registering with launchd.
+* OS X: we no longer use socket activation when registering with launchd.
   This was the source of some upgrade problems for mac Homebrew users.
 
 ### Watchman 4.7.0 (2016-09-10)
@@ -128,13 +128,13 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 
 * Improved I/O scheduling when processing recursive deletes and deep directory
   rename operations.
-* Improved performance of the `ignore_dirs` configuration option on macOS and
+* Improved performance of the `ignore_dirs` configuration option on OS X and
   Windows systems.  We take advantage of an undocumented (but supported!)
   API to further accelerate this for the first 8 entries in the `ignore_dirs`
-  on macOS.  Users that depend on this configuration to avoid recrawls will
+  on OS X.  Users that depend on this configuration to avoid recrawls will
   want to review and prioritize their most active build dirs to the front
   of the `ignore_dirs` specified in their `.watchmanconfig` file.
-* Added an optional recrawl recovery strategy for macOS that will attempt to
+* Added an optional recrawl recovery strategy for OS X that will attempt to
   resync from the fseventsd journal rather than performing a full filesystem
   walk.  This is currently disabled by default but will likely be enabled
   by default in the next Watchman release.  You can enable this by setting
@@ -144,7 +144,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
   large trees.
 * Fixed accidental exponential time complexity issue with recursive deletes
   and deep directory rename operations on case-insensitive filesystems (such as
-  macOS).  This manifested as high CPU utilization for extended periods of time.
+  OS X).  This manifested as high CPU utilization for extended periods of time.
 * Added support for allowing non-owner access to a Watchman instance.  Only
   the owner is authorized to create or delete watches.  Non-owners can view
   information about existing watches.  Access control is based on unix domain
@@ -189,7 +189,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 ### Watchman 4.3.0 (2015-12-14)
 
 * Improved handling of case insensitive renames; halved the memory usage
-  and doubled crawl speed on macOS.
+  and doubled crawl speed on OS X.
 
 ### Watchman 4.2.0 (2015-12-08)
 
@@ -197,7 +197,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
   whether the leaf of a directory tree is a symlink, we now check each
   component down from the root of the watch.  This improves detection
   and processing for directory-to-symlink (and vice versa) transitions.
-* Increased priority of the watchman process on macOS.
+* Increased priority of the watchman process on OS X.
 
 ### pywatchman 1.3.0 (2015-10-22)
 
@@ -206,7 +206,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 
 ### Watchman 4.1.0 (2015-10-20)
 
-* Fixed an issue where symlink size was always reported as 0 on macOS
+* Fixed an issue where symlink size was always reported as 0 on OS X
   using the new bulkstat functionality
 
 ### Watchman 4.0.0 (2015-10-19)
@@ -219,17 +219,17 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 
 ### Watchman 3.9.0 (2015-10-12)
 
-* Fixed an issue where dir renames on macOS could cause us to lose track of
+* Fixed an issue where dir renames on OS X could cause us to lose track of
   the files inside the renamed dir
 * Fixed an issue where dir deletes and replacements on Linux could cause us
-  to lose track of the files inside the replaced dir (similar to the macOS issue
+  to lose track of the files inside the replaced dir (similar to the OS X issue
   above in manifestation, but a different root cause).
 * Improved (re)crawl speed for dirs with more than a couple of entries on average
   (improvement can be up to 5x for dirs with up to 64 entries on average).
   You may now tune the `hint_num_files_per_dir` setting in your
   `.watchmanconfig` to better match your tree.  [More details](
   /watchman/docs/config.html#hint_num_files_per_dir)
-* Improved (re)crawl speed on macOS 10.10 and later by using `getattrlistbulk`.
+* Improved (re)crawl speed on OS X 10.10 and later by using `getattrlistbulk`.
   This allows us to improve the data:syscall ratio during crawling and can
   improve throughput by up to 40% for larger trees.
 * Add optional `sync_timeout` to the `clock` command
@@ -238,7 +238,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 * Fixed a race condition where we could start two sets of watcher threads
   for the same dir if two clients issue a `watch` or `watch-project` at
   the same time
-* Added a helpful error for a tmux + launchd issue on macOS
+* Added a helpful error for a tmux + launchd issue on OS X
 
 ### Watchman 3.8.0 (2015-09-14)
 
