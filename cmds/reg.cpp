@@ -132,14 +132,14 @@ bool dispatch_command(
   struct watchman_command_handler_def* def;
   char sample_name[128];
 
-  try {
-    // Stash a reference to the current command to make it easier to log
-    // the command context in some of the error paths
-    client->current_command = args;
-    SCOPE_EXIT {
-      client->current_command = nullptr;
-    };
+  // Stash a reference to the current command to make it easier to log
+  // the command context in some of the error paths
+  client->current_command = args;
+  SCOPE_EXIT {
+    client->current_command = nullptr;
+  };
 
+  try {
     def = lookup(args, mode);
     if (!def) {
       send_error_response(client, "Unknown command");
