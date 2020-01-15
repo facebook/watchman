@@ -11,7 +11,7 @@ permalink: docs/install.html
 Watchman is known to compile and pass its test suite on:
 
  * <i class="fa fa-linux"></i> Linux systems with `inotify`
- * <i class="fa fa-apple"></i> OS X (uses `FSEvents` on 10.7+,
+ * <i class="fa fa-apple"></i> macOS (uses `FSEvents` on 10.7+,
    `kqueue(2)` on earlier versions)
  * <i class="fa fa-windows"></i> Windows x64 on Windows 7,
    Windows Server 2012 R2 and later is currently in **beta** status.
@@ -70,7 +70,7 @@ this time, so you will need to follow these steps to download the binaries:
 
 ## Build/Install
 
-### Installing on OS X via Homebrew
+### Installing on macOS or Linux via Homebrew
 
 To build the most recent release currently tracked by
 [Homebrew](http://brew.sh/):
@@ -86,7 +86,7 @@ To install the latest build from github:
 $ brew install --HEAD watchman
 ```
 
-### Installing on OS X via macports
+### Installing on macOS via macports
 
 To install the package maintained by [MacPorts](https://www.macports.org):
 
@@ -97,7 +97,7 @@ $ sudo port install watchman
 ### Installing from source
 
 You can use these steps below to get watchman built.  You will need `libssl-dev`,
-`autoconf`, `automake` and `libtool` (or `glibtool` on OS X).
+`autoconf`, `automake` and `libtool` (or `glibtool` on macOS).
 
 You may optionally build watchman without `pcre` and `python` support (see
 configuration options below).
@@ -204,9 +204,9 @@ haven't actually changed.
 
 ### Mac OS File Descriptor Limits
 
-*Only applicable on OS X 10.6 and earlier*
+*Only applicable on macOS 10.6 and earlier*
 
-The default per-process descriptor limit on OS X is extremely low (256!).
+The default per-process descriptor limit on macOS is extremely low (256!).
 
 Watchman will attempt to raise its descriptor limit to match
 `kern.maxfilesperproc` when it starts up, so you shouldn't need to mess with
@@ -220,7 +220,7 @@ $ sudo sysctl -w kern.maxfiles=10485760
 $ sudo sysctl -w kern.maxfilesperproc=1048576
 ```
 
-Putting the following into a file named `/etc/sysctl.conf` on OS X will cause
+Putting the following into a file named `/etc/sysctl.conf` on macOS will cause
 these values to persist across reboots:
 
 ```

@@ -30,7 +30,7 @@ case.
 *Since 2.9.9.*
 
 On systems where the watched root is a case insensitive filesystem (this is the
-common case for OS X and Windows), `match` is equivalent to `imatch`.
+common case for macOS and Windows), `match` is equivalent to `imatch`.
 
 *Since 4.7.*
 

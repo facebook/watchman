@@ -32,7 +32,7 @@ You will need:
 * automake
 * autoconf
 * cmake
-* libtool (or glibtool on OS X)
+* libtool (or glibtool on macOS)
 * libpcre
 * libfolly (only needed if building the cppclient library)
 * nodejs (for fb-watchman)

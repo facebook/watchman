@@ -229,7 +229,7 @@ this to `0` to disable the periodic pruning operation.
 
 ### fsevents_latency
 
-Controls the latency parameter that is passed to `FSEventStreamCreate` on OS X.
+Controls the latency parameter that is passed to `FSEventStreamCreate` on macOS.
 The value is measured in seconds.  The fixed value of this parameter prior to
 version 3.2 of watchman was `0.0001` seconds.  Starting in version 3.2 of
 watchman, the default is now `0.01` seconds and can be controlled on a

@@ -26,8 +26,8 @@ case.
 
 *Since 2.9.9.*
 
-Starting in version 2.9.9, on OS X systems where the watched root is a case
-insensitive filesystem (this is the common case for OS X), `pcre` is equivalent
+Starting in version 2.9.9, on macOS systems where the watched root is a case
+insensitive filesystem (this is the common case for macOS), `pcre` is equivalent
 to `ipcre`.
 
 *Since 4.7.*

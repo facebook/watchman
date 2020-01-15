@@ -16,10 +16,10 @@ struct watchman_ignore {
   std::unordered_set<w_string> ignore_vcs;
   std::unordered_set<w_string> ignore_dirs;
   /* radix tree containing the same information as the ignore
-   * entries above.  This is used only on OS X and Windows because
+   * entries above.  This is used only on macOS and Windows because
    * we cannot exclude these dirs using the kernel watching APIs */
   art_tree<uint8_t, w_string> tree;
-  /* On OS X, we need to preserve the order of the ignore list so
+  /* On macOS, we need to preserve the order of the ignore list so
    * that we can exclude things deterministically and fit within
    * system limits. */
   std::vector<w_string> dirs_vec;

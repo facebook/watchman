@@ -99,7 +99,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 	BSERv2 can carry information about string encoding over the wire. This lets
 	pywatchman convert to Unicode strings on Python 3. Clients and servers know how
 	to  transparently fall back to BSERv1.
-* macOS: we no longer use socket activation when registering with launchd.
+* OS X: we no longer use socket activation when registering with launchd.
   This was the source of some upgrade problems for mac Homebrew users.
 
 ### Watchman 4.7.0 (2016-09-10)
@@ -128,13 +128,13 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 
 * Improved I/O scheduling when processing recursive deletes and deep directory
   rename operations.
-* Improved performance of the `ignore_dirs` configuration option on macOS and
+* Improved performance of the `ignore_dirs` configuration option on OS X and
   Windows systems.  We take advantage of an undocumented (but supported!)
   API to further accelerate this for the first 8 entries in the `ignore_dirs`
-  on macOS.  Users that depend on this configuration to avoid recrawls will
+  on OS X.  Users that depend on this configuration to avoid recrawls will
   want to review and prioritize their most active build dirs to the front
   of the `ignore_dirs` specified in their `.watchmanconfig` file.
-* Added an optional recrawl recovery strategy for macOS that will attempt to
+* Added an optional recrawl recovery strategy for OS X that will attempt to
   resync from the fseventsd journal rather than performing a full filesystem
   walk.  This is currently disabled by default but will likely be enabled
   by default in the next Watchman release.  You can enable this by setting
@@ -144,7 +144,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
   large trees.
 * Fixed accidental exponential time complexity issue with recursive deletes
   and deep directory rename operations on case-insensitive filesystems (such as
-  macOS).  This manifested as high CPU utilization for extended periods of time.
+  OS X).  This manifested as high CPU utilization for extended periods of time.
 * Added support for allowing non-owner access to a Watchman instance.  Only
   the owner is authorized to create or delete watches.  Non-owners can view
   information about existing watches.  Access control is based on unix domain

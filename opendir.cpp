@@ -76,7 +76,7 @@ class DirHandle : public watchman_dir_handle {
 static DIR* opendir_nofollow(const char* path) {
   auto fd = openFileHandle(path, OpenFileHandleOptions::strictOpenDir());
 #if !defined(HAVE_FDOPENDIR) || defined(__APPLE__)
-  /* fdopendir doesn't work on earlier versions OS X, and we don't
+  /* fdopendir doesn't work on earlier versions macOS, and we don't
    * use this function since 10.10, as we prefer to use getattrlistbulk
    * in that case */
   return opendir(path);
