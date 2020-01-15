@@ -13,6 +13,7 @@ class watchman_event {
   virtual ~watchman_event() = default;
   virtual void notify() = 0;
   virtual bool testAndClear() = 0;
+  virtual watchman::FileDescriptor::system_handle_type system_handle() = 0;
 };
 
 using w_evt_t = watchman_event*;

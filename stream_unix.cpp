@@ -50,15 +50,20 @@ class PipeEvent : public PollableEvent {
   int getFd() const override {
     return pipe.read.fd();
   }
+
+  FileDescriptor::system_handle_type system_handle() override {
+    return pipe.read.system_handle();
+  }
 };
 
 // Event object that UnixStream returns via getEvents.
 // It cannot be poked by hand; it is just a helper to
 // allow waiting on a socket using w_poll_events.
 class FakeSocketEvent : public PollableEvent {
- public:
+ private:
   int socket;
 
+ public:
   explicit FakeSocketEvent(int fd) : socket(fd) {}
 
   void notify() override {}
@@ -66,6 +71,10 @@ class FakeSocketEvent : public PollableEvent {
     return false;
   }
   int getFd() const override {
+    return socket;
+  }
+
+  FileDescriptor::system_handle_type system_handle() override {
     return socket;
   }
 };

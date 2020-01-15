@@ -13,11 +13,7 @@ using watchman::FileDescriptor;
 folly::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
 static FileDescriptor listener_fd;
-#ifndef _WIN32
 static std::unique_ptr<watchman_event> listener_thread_event;
-#else
-static HANDLE listener_thread_event;
-#endif
 static std::atomic<bool> stopping = false;
 
 bool w_is_stopping(void) {
@@ -111,13 +107,9 @@ void watchman_client::enqueueResponse(json_ref&& resp, bool ping) {
 void w_request_shutdown(void) {
   stopping.store(true, std::memory_order_relaxed);
   // Knock listener thread out of poll/accept
-#ifndef _WIN32
   if (listener_thread_event) {
     listener_thread_event->notify();
   }
-#else
-  SetEvent(listener_thread_event);
-#endif
 }
 
 // The client thread reads and decodes json packets,
@@ -414,7 +406,7 @@ static FileDescriptor get_listener_socket(const char* path) {
     }
   }
 
-  if (listen(listener_fd.fd(), 200) != 0) {
+  if (listen(listener_fd.system_handle(), 200) != 0) {
     logf(ERR, "listen({}): {}\n", path, strerror(errno));
     return FileDescriptor();
   }
@@ -474,7 +466,7 @@ static void named_pipe_accept_loop_internal(const char* path) {
   }
 
   handles[0] = connected_event;
-  handles[1] = listener_thread_event;
+  handles[1] = (HANDLE)listener_thread_event.get()->system_handle();
   olap.hEvent = connected_event;
 
   logf(ERR, "waiting for pipe clients on {}\n", path);
@@ -529,7 +521,7 @@ static void named_pipe_accept_loop_internal(const char* path) {
 
 static void named_pipe_accept_loop(const char* path) {
   std::vector<std::thread> acceptors;
-  listener_thread_event = CreateEvent(NULL, TRUE, FALSE, NULL);
+  listener_thread_event = w_event_make();
   for (json_int_t i = 0; i < cfg_get_int("win32_concurrent_accepts", 32); ++i) {
     acceptors.push_back(std::thread([path, i]() {
       w_set_thread_name("accept", i);
@@ -542,7 +534,6 @@ static void named_pipe_accept_loop(const char* path) {
 }
 #endif
 
-#ifndef _WIN32
 static void accept_loop(FileDescriptor&& listenerDescriptor) {
   auto listener = w_stm_fdopen(std::move(listenerDescriptor));
   while (!w_is_stopping()) {
@@ -566,11 +557,14 @@ static void accept_loop(FileDescriptor&& listenerDescriptor) {
     }
 
 #ifdef HAVE_ACCEPT4
-    client_fd = FileDescriptor(
-        accept4(listener->getFileDescriptor().fd(), nullptr, 0, SOCK_CLOEXEC));
+    client_fd = FileDescriptor(accept4(
+        listener->getFileDescriptor().system_handle(),
+        nullptr,
+        0,
+        SOCK_CLOEXEC));
 #else
-    client_fd =
-        FileDescriptor(accept(listener->getFileDescriptor().fd(), nullptr, 0));
+    client_fd = FileDescriptor(
+        ::accept(listener->getFileDescriptor().system_handle(), nullptr, 0));
 #endif
     if (!client_fd) {
       continue;
@@ -578,16 +572,15 @@ static void accept_loop(FileDescriptor&& listenerDescriptor) {
     client_fd.setCloExec();
     bufsize = WATCHMAN_IO_BUF_SIZE;
     setsockopt(
-        client_fd.fd(),
+        client_fd.system_handle(),
         SOL_SOCKET,
         SO_SNDBUF,
-        (void*)&bufsize,
+        (char*)&bufsize,
         sizeof(bufsize));
 
     make_new_client(w_stm_fdopen(std::move(client_fd)));
   }
 }
-#endif
 
 bool w_start_listener(const char* path) {
 #ifndef _WIN32

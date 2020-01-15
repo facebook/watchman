@@ -40,6 +40,10 @@ class WindowsEvent : public watchman_event {
   void reset() {
     ResetEvent(hEvent);
   }
+
+  FileDescriptor::system_handle_type system_handle() override {
+    return (FileDescriptor::system_handle_type)hEvent;
+  }
 };
 } // namespace
 
