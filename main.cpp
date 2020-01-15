@@ -1051,6 +1051,14 @@ static void parse_cmdline(int* argcp, char*** argvp) {
   if (getenv("WATCHMAN_NO_SPAWN")) {
     no_spawn = true;
   }
+
+  if (Configuration().getBool("tcp-listener-enable", false)) {
+    // hg requires the state-enter/state-leave commands, which are disabled over
+    // TCP by default since at present it is unauthenticated. This should be
+    // removed once TLS authentication is added to the TCP listener.
+    lookup(w_string("state-enter"), CMD_DAEMON)->flags |= CMD_ALLOW_ANY_USER;
+    lookup(w_string("state-leave"), CMD_DAEMON)->flags |= CMD_ALLOW_ANY_USER;
+  }
 }
 
 static json_ref build_command(int argc, char** argv) {

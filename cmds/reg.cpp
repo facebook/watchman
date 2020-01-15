@@ -59,6 +59,27 @@ void w_register_command(struct watchman_command_handler_def* defs) {
   w_capability_register(capname);
 }
 
+struct watchman_command_handler_def* lookup(
+    const w_string& cmd_name,
+    int mode) {
+  auto it = get_reg().commands.find(cmd_name.c_str());
+  auto def = it == get_reg().commands.end() ? nullptr : it->second;
+
+  if (def) {
+    if (mode && ((def->flags & mode) == 0)) {
+      throw CommandValidationError(
+          "command ", cmd_name, " not available in this mode");
+    }
+    return def;
+  }
+
+  if (mode) {
+    throw CommandValidationError("unknown command ", cmd_name);
+  }
+
+  return nullptr;
+}
+
 static struct watchman_command_handler_def* lookup(
     const json_ref& args,
     int mode) {
@@ -75,23 +96,8 @@ static struct watchman_command_handler_def* lookup(
     throw CommandValidationError(
         "invalid command: expected element 0 to be the command name");
   }
-  auto cmd = json_to_w_string(jstr);
-  auto it = get_reg().commands.find(cmd);
-  auto def = it == get_reg().commands.end() ? nullptr : it->second;
 
-  if (def) {
-    if (mode && ((def->flags & mode) == 0)) {
-      throw CommandValidationError(
-          "command ", cmd_name, " not available in this mode");
-    }
-    return def;
-  }
-
-  if (mode) {
-    throw CommandValidationError("unknown command ", cmd_name);
-  }
-
-  return nullptr;
+  return lookup(json_to_w_string(jstr), mode);
 }
 
 void preprocess_command(

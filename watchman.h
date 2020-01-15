@@ -119,5 +119,12 @@ void w_expand_flags(
 
 #endif
 
+/**
+ * Provide a way to query (and eventually modify) command line arguments
+ *
+ * This is not thread-safe and should only be invoked from main()
+ */
+struct watchman_command_handler_def* lookup(const w_string& cmd_name, int mode);
+
 /* vim:ts=2:sw=2:et:
  */
