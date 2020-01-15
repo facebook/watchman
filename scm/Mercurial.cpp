@@ -193,7 +193,13 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
   // The "" argument at the end causes paths to be printed out relative to the
   // cwd (set to root path above).
   ChildProcess proc(
-      {hgExecutablePath(), "status", "-n", "--rev", commitId, ""},
+      {hgExecutablePath(),
+       "--traceback",
+       "status",
+       "-n",
+       "--rev",
+       commitId,
+       ""},
       makeHgOptions(requestId));
 
   auto outputs = proc.communicate();
@@ -225,6 +231,7 @@ SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
   // relative to the cwd (set to root path above).
   ChildProcess proc(
       {hgExecutablePath(),
+       "--traceback",
        "status",
        "--print0",
        "--rev",
@@ -276,7 +283,13 @@ time_point<system_clock> Mercurial::getCommitDate(
     w_string_piece commitId,
     w_string requestId) const {
   ChildProcess proc(
-      {hgExecutablePath(), "log", "-r", commitId.data(), "-T", "{date}\n"},
+      {hgExecutablePath(),
+       "--traceback",
+       "log",
+       "-r",
+       commitId.data(),
+       "-T",
+       "{date}\n"},
       makeHgOptions(requestId));
   auto outputs = proc.communicate();
   auto status = proc.wait();
@@ -308,7 +321,13 @@ std::vector<w_string> Mercurial::getCommitsPriorToAndIncluding(
   auto revset = to<std::string>(
       "reverse(last(_firstancestors(", commitId, "), ", numCommits, "))\n");
   ChildProcess proc(
-      {hgExecutablePath(), "log", "-r", revset, "-T", "{node}\n"},
+      {hgExecutablePath(),
+       "--traceback",
+       "log",
+       "-r",
+       revset,
+       "-T",
+       "{node}\n"},
       makeHgOptions(requestId));
   auto outputs = proc.communicate();
   auto status = proc.wait();
