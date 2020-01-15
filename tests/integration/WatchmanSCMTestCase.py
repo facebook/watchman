@@ -50,13 +50,23 @@ class WatchmanSCMTestCase(WatchmanTestCase.WatchmanTestCase):
         env["HGPLAIN"] = "1"
         env["HGUSER"] = "John Smith <smith@example.com>"
         env["NOSCMLOG"] = "1"  # disable some instrumentation at FB
-        env["WATCHMAN_SOCK"] = WatchmanInstance.getSharedInstance().getSockPath()
+        sockpath = WatchmanInstance.getSharedInstance().getSockPath()
+        env["WATCHMAN_SOCK"] = sockpath
         p = subprocess.Popen(
-            # we force the extension on.  This is a soft error for
-            # mercurial if it is not available, so we also employ
-            # the skipIfNoFSMonitor() test above to make sure the
-            # environment is sane.
-            [env.get("EDEN_HG_BINARY", "hg"), "--config", "extensions.fsmonitor="]
+            [
+                env.get("EDEN_HG_BINARY", "hg"),
+                # we force the extension on.  This is a soft error for
+                # mercurial if it is not available, so we also employ
+                # the skipIfNoFSMonitor() test above to make sure the
+                # environment is sane.
+                "--config",
+                "extensions.fsmonitor=",
+                # Deployed versions of mercurial regressed and stopped
+                # respecting the WATCHMAN_SOCK environment override, so
+                # we have to reach in and force their hardcoded sockpath here.
+                "--config",
+                "fsmonitor.sockpath=%s" % sockpath,
+            ]
             + args,
             env=env,
             cwd=cwd,
