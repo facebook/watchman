@@ -2,7 +2,10 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/Exception.h>
+#include <folly/SocketAddress.h>
 #include <folly/Synchronized.h>
+#include <folly/net/NetworkSocket.h>
 #include <atomic>
 #include <chrono>
 #include <thread>
@@ -13,6 +16,7 @@ using watchman::FileDescriptor;
 folly::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
 static FileDescriptor listener_fd;
+static FileDescriptor tcp_listener_fd;
 static std::unique_ptr<watchman_event> listener_thread_event;
 static std::atomic<bool> stopping = false;
 
@@ -330,7 +334,56 @@ void w_listener_prep_inetd() {
   listener_fd = FileDescriptor(dup(STDIN_FILENO), "dup(stdin) for listener");
 }
 
-static FileDescriptor get_listener_socket(const char* path) {
+#endif
+
+static FileDescriptor get_listener_tcp_socket() {
+  FileDescriptor listener_fd;
+
+  folly::SocketAddress addr;
+  addr.setFromHostPort(
+      Configuration().getString("tcp-listener-address", nullptr));
+
+  listener_fd = FileDescriptor(
+      ::socket(addr.getFamily(), SOCK_STREAM, 0), "socket() for TCP socket");
+
+  int one = 1;
+  ::setsockopt(
+      listener_fd.system_handle(),
+      SOL_SOCKET,
+      SO_REUSEADDR,
+      (char*)&one,
+      sizeof(one));
+  // Most of our TCP transactions are quite small, so this seems appropriate
+  ::setsockopt(
+      listener_fd.system_handle(),
+      IPPROTO_TCP,
+      TCP_NODELAY,
+      (char*)&one,
+      sizeof(one));
+
+  sockaddr_storage storage;
+  auto addrLen = addr.getAddress(&storage);
+
+  folly::checkUnixError(
+      ::bind(listener_fd.system_handle(), (struct sockaddr*)&storage, addrLen),
+      "bind to ",
+      addr.getAddressStr(),
+      "failed");
+
+  folly::checkUnixError(
+      ::listen(listener_fd.system_handle(), 200),
+      "listen on ",
+      addr.getAddressStr(),
+      "failed");
+
+  addr.setFromLocalAddress(folly::NetworkSocket(listener_fd.system_handle()));
+  log(ERR, "Started TCP listener on ", addr.describe(), "\n");
+
+  return listener_fd;
+}
+
+#ifndef _WIN32
+static FileDescriptor get_listener_unix_domain_socket(const char* path) {
   struct sockaddr_un un;
   mode_t perms = cfg_get_perms(
       "sock_access", true /* write bits */, false /* execute bits */);
@@ -355,7 +408,8 @@ static FileDescriptor get_listener_socket(const char* path) {
   memcpy(un.sun_path, path, strlen(path) + 1);
   unlink(path);
 
-  if (bind(listener_fd.fd(), (struct sockaddr*)&un, sizeof(un)) != 0) {
+  if (bind(listener_fd.system_handle(), (struct sockaddr*)&un, sizeof(un)) !=
+      0) {
     logf(ERR, "bind({}): {}\n", path, strerror(errno));
     return FileDescriptor();
   }
@@ -571,7 +625,7 @@ static void accept_loop(FileDescriptor&& listenerDescriptor) {
     }
     client_fd.setCloExec();
     bufsize = WATCHMAN_IO_BUF_SIZE;
-    setsockopt(
+    ::setsockopt(
         client_fd.system_handle(),
         SOL_SOCKET,
         SO_SNDBUF,
@@ -673,7 +727,7 @@ bool w_start_listener(const char* path) {
     // Assume that it was prepped by w_listener_prep_inetd()
     logf(ERR, "Using socket from inetd as listening socket\n");
   } else {
-    listener_fd = get_listener_socket(path);
+    listener_fd = get_listener_unix_domain_socket(path);
     if (!listener_fd) {
       return false;
     }
@@ -686,13 +740,36 @@ bool w_start_listener(const char* path) {
 
   startSanityCheckThread();
 
-  // Now run the dispatch
-#ifndef _WIN32
   listener_thread_event = w_event_make();
+
+  std::thread tcp_loop;
+
+  auto enable_tcp = Configuration().getBool("tcp-listener-enable", false);
+  if (enable_tcp) {
+    tcp_listener_fd = get_listener_tcp_socket();
+    tcp_loop = std::thread([=] { accept_loop(std::move(tcp_listener_fd)); });
+  }
+
+  SCOPE_EXIT {
+    if (enable_tcp) {
+      if (!w_is_stopping()) {
+        w_request_shutdown();
+      }
+      tcp_loop.join();
+    }
+  };
+
+    // Now run the non-TCP dispatch
+#ifndef _WIN32
+  log(DBG, "Starting pipe listener on ", path, "\n");
   accept_loop(std::move(listener_fd));
 #else
   named_pipe_accept_loop(path);
 #endif
+
+  if (enable_tcp) {
+    tcp_loop.join();
+  }
 
   // Wait for clients, waking any sleeping clients up in the process
   {

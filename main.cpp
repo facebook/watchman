@@ -18,6 +18,8 @@ using namespace watchman;
 
 static int show_help = 0;
 static int show_version = 0;
+static int enable_tcp = 0;
+static std::string tcp_host;
 static enum w_pdu_type server_pdu = is_bser;
 static enum w_pdu_type output_pdu = is_json_pretty;
 static uint32_t server_capabilities = 0;
@@ -912,6 +914,20 @@ static struct watchman_getopt opts[] = {
      REQ_STRING,
      &sock_name,
      "PATH",
+     IS_DAEMON},
+    {"tcp-listener-enable",
+     't',
+     "Enable listening on TCP; see also tcp-listener-address and tcp-listener-port",
+     OPT_NONE,
+     &enable_tcp,
+     nullptr,
+     IS_DAEMON},
+    {"tcp-listener-address",
+     0,
+     "Specify in <address>:<port> the address to bind to and listen on when tcp-listener-enable is true",
+     REQ_STRING,
+     &tcp_host,
+     "ADDRESS",
      IS_DAEMON},
     {"logfile",
      'o',
