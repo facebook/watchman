@@ -146,10 +146,10 @@ impl Into<Value> for Expr {
             .into(),
             Self::Since(term) => match term {
                 SinceTerm::ObservedClock(c) => {
-                    vec!["since".into(), c.to_string().into(), "oclock".into()].into()
+                    vec!["since".into(), c.into(), "oclock".into()].into()
                 }
                 SinceTerm::CreatedClock(c) => {
-                    vec!["since".into(), c.to_string().into(), "cclock".into()].into()
+                    vec!["since".into(), c.into(), "cclock".into()].into()
                 }
                 SinceTerm::MTime(c) => {
                     vec!["since".into(), c.to_string().into(), "mtime".into()].into()

@@ -463,7 +463,11 @@ pub enum Clock {
 ///
 /// <https://facebook.github.io/watchman/docs/clockspec.html>
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ClockSpec(String);
+#[serde(untagged)]
+pub enum ClockSpec {
+    StringClock(String),
+    UnixTimestamp(i64),
+}
 
 /// Construct a null clockspec
 impl Default for ClockSpec {
@@ -481,7 +485,7 @@ impl ClockSpec {
     /// starting up from scratch and don't have a saved clock value
     /// to use as the basis for your query.
     pub fn null() -> Self {
-        Self("c:0:0".to_string())
+        Self::StringClock("c:0:0".to_string())
     }
 
     /// Construct a named cursor clockspec.
@@ -504,7 +508,7 @@ impl ClockSpec {
     /// We do not recommend using named cursors because of the exclusive
     /// lock requirement.
     pub fn named_cursor(cursor: &str) -> Self {
-        Self(format!("n:{}", cursor))
+        Self::StringClock(format!("n:{}", cursor))
     }
 
     /// A clock specified as a unix timestamp.
@@ -514,14 +518,16 @@ impl ClockSpec {
     /// 1 second and will often result in over-reporting the same events
     /// when they happen in the same second.
     pub fn unix_timestamp(time_t: i64) -> Self {
-        Self(time_t.to_string())
+        Self::UnixTimestamp(time_t)
     }
 }
 
-impl std::ops::Deref for ClockSpec {
-    type Target = str;
-    fn deref(&self) -> &str {
-        &self.0
+impl Into<Value> for ClockSpec {
+    fn into(self) -> Value {
+        match self {
+            Self::StringClock(st) => Value::Utf8String(st),
+            Self::UnixTimestamp(ts) => Value::Integer(ts),
+        }
     }
 }
 
