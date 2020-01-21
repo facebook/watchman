@@ -888,6 +888,9 @@ service EdenService extends fb303_core.BaseService {
   //////// SCM Commit-Related APIs ////////
 
   /**
+   * DEPRECATED: Remove when Mercurial has migrated to not calling
+   * getManifestEntry, probably by July 2020.
+   *
    * If the relative path exists in the manifest (i.e., the current commit),
    * then return the corresponding ManifestEntry; otherwise, throw
    * NoValueForKeyError.
