@@ -533,7 +533,7 @@ impl ClientTask {
 
         if let Ok(unilateral) = bunser::<Unilateral>(&pdu) {
             if let Some(subscription) = self.subscriptions.get_mut(&unilateral.subscription) {
-                if let Err(_) = subscription.send(pdu) {
+                if subscription.send(pdu).is_err() {
                     // The `Subscription` was dropped; we don't need to
                     // treat this as terminal for this client session,
                     // so just de-register the handler
