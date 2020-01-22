@@ -250,9 +250,9 @@ where
         'b: 'a,
         'c: 'a,
     {
-        match self {
-            &Reference::Borrowed(borrowed) => borrowed,
-            &Reference::Copied(copied) => copied,
+        match *self {
+            Reference::Borrowed(borrowed) => borrowed,
+            Reference::Copied(copied) => copied,
         }
     }
 }
