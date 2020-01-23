@@ -53,7 +53,7 @@ if PYTHON3:
             value = None
             tb = None
 
-
+    import collections.abc as collections_abc
 else:
     exec(
         """
@@ -64,6 +64,8 @@ def reraise(tp, value, tb=None):
         tb = None
 """.strip()
     )
+
+    import collections as collections_abc
 
 if PYTHON3:
     UNICODE = str

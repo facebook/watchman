@@ -30,13 +30,11 @@
 from __future__ import absolute_import, division, print_function
 
 import binascii
-import collections
 import ctypes
 import struct
 import sys
 
 from . import compat
-
 
 BSER_ARRAY = b"\x00"
 BSER_OBJECT = b"\x01"
@@ -61,10 +59,12 @@ if compat.PYTHON3:
         return str(i).encode("ascii")
 
     long = int
+
 else:
     STRING_TYPES = (unicode, str)
     tobytes = bytes
 
+collections_abc = compat.collections_abc
 # Leave room for the serialization header, which includes
 # our overall length.  To make things simpler, we'll use an
 # int32 for the header
@@ -205,8 +205,8 @@ class _bser_buffer(object):
             self.ensure_size(needed)
             struct.pack_into(b"=cd", self.buf, self.wpos, BSER_REAL, val)
             self.wpos += needed
-        elif isinstance(val, collections.Mapping) and isinstance(
-            val, collections.Sized
+        elif isinstance(val, collections_abc.Mapping) and isinstance(
+            val, collections_abc.Sized
         ):
             val_len = len(val)
             size = _int_size(val_len)
@@ -238,8 +238,8 @@ class _bser_buffer(object):
             for k, v in iteritems:
                 self.append_string(k)
                 self.append_recursive(v)
-        elif isinstance(val, collections.Iterable) and isinstance(
-            val, collections.Sized
+        elif isinstance(val, collections_abc.Iterable) and isinstance(
+            val, collections_abc.Sized
         ):
             val_len = len(val)
             size = _int_size(val_len)
