@@ -333,6 +333,7 @@ class RootResolveError : public std::runtime_error {
 struct w_query {
   watchman::CaseSensitivity case_sensitive{
       watchman::CaseSensitivity::CaseInSensitive};
+  bool fail_if_no_saved_state{false};
   bool empty_on_fresh_instance{false};
   bool dedup_results{false};
   uint32_t bench_iterations{0};

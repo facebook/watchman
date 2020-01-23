@@ -239,6 +239,15 @@ pub struct QueryRequestCommon {
     #[serde(default, skip_serializing_if = "is_false")]
     pub empty_on_fresh_instance: bool,
 
+    /// When requesting saved state information via SavedStateClockData, if
+    /// `fail_if_no_saved_state` is set to true, the server will generate a
+    /// query error in the case that the merge base change and no appropriate
+    /// saved state could be found.
+    /// Otherwise, the default behavior is to perform a normal watchman since
+    /// query that may return a large number of changed files.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub fail_if_no_saved_state: bool,
+
     /// If true, treat filenames as case sensitive even on filesystems that otherwise
     /// appear to be case insensitive.
     /// This can improve performance of directory traversal in queries by turning

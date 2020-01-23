@@ -425,6 +425,11 @@ w_query_res w_query_execute(
                 q, c, std::make_unique<LocalFileResult>(r, fullPath, clock));
           }
         };
+      } else if (query->fail_if_no_saved_state) {
+        throw QueryExecError(
+            "The merge base changed but no corresponding saved state was "
+            "found for the new merge base. fail_if_no_saved_state was set "
+            "in the query so treating this as an error");
       }
     } else {
       if (query->since_spec->hasSavedStateParams()) {

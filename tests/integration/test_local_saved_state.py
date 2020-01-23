@@ -210,6 +210,30 @@ o  changeset:
         self.assertMergebaseEquals(res, expected_mergebase)
         self.assertFileListsEqual(res["files"], ["foo", "p1", "m2", "bar", "car", "f1"])
 
+    def test_localSavedStateNotWithinLimitError(self):
+        # Local saved state should return an empty commit id, error message,
+        # and changed files since prior clock if the first available saved
+        # state is not within the limit
+        local_storage = self.mkdtemp()
+        self.saveState("example_project", "feature3", local_storage)
+        self.saveState("example_project", "feature0", local_storage)
+        config = {
+            "local-storage-path": local_storage,
+            "project": "example_project",
+            "max-commits": 1,
+        }
+        test_query = self.getQuery(config)
+        test_query["fail_if_no_saved_state"] = True
+        with self.assertRaises(pywatchman.WatchmanError) as ctx:
+            self.watchmanCommand("query", self.root, test_query)
+        self.assertIn(
+            (
+                "The merge base changed but no corresponding saved state "
+                "was found for the new merge base"
+            ),
+            str(ctx.exception),
+        )
+
     def test_localSavedStateLookupSuccess(self):
         # Local saved state should return the saved state commit id, info, and
         # changed files since the saved state if valid state found within limit

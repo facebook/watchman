@@ -257,27 +257,30 @@ static void parse_lock_timeout(w_query* res, const json_ref& query) {
   res->lock_timeout = value;
 }
 
+static bool
+parse_bool_param(const json_ref& query, const char* name, bool default_value) {
+  auto value = query.get_default(name, json_boolean(default_value));
+  if (!value.isBool()) {
+    throw QueryParseError(folly::to<std::string>(name, " must be a boolean"));
+  }
+
+  return value.asBool();
+}
+
 W_CAP_REG("dedup_results")
 
 static void parse_dedup(w_query* res, const json_ref& query) {
-  auto dedup_results = query.get_default("dedup_results", json_false());
+  res->dedup_results = parse_bool_param(query, "dedup_results", false);
+}
 
-  if (!dedup_results.isBool()) {
-    throw QueryParseError("dedup_results must be a boolean");
-  }
-
-  res->dedup_results = dedup_results.asBool();
+static void parse_fail_if_no_saved_state(w_query* res, const json_ref& query) {
+  res->fail_if_no_saved_state =
+      parse_bool_param(query, "fail_if_no_saved_state", false);
 }
 
 static void parse_empty_on_fresh_instance(w_query* res, const json_ref& query) {
-  auto empty_on_fresh_instance =
-      query.get_default("empty_on_fresh_instance", json_false());
-
-  if (!empty_on_fresh_instance.isBool()) {
-    throw QueryParseError("empty_on_fresh_instance must be a boolean");
-  }
-
-  res->empty_on_fresh_instance = empty_on_fresh_instance.asBool();
+  res->empty_on_fresh_instance =
+      parse_bool_param(query, "empty_on_fresh_instance", false);
 }
 
 static void parse_benchmark(w_query* res, const json_ref& query) {
@@ -296,17 +299,13 @@ static void parse_case_sensitive(
     w_query* res,
     const std::shared_ptr<w_root_t>& root,
     const json_ref& query) {
-  auto case_sensitive = query.get_default(
+  auto case_sensitive = parse_bool_param(
+      query,
       "case_sensitive",
-      json_boolean(root->case_sensitive == CaseSensitivity::CaseSensitive));
+      root->case_sensitive == CaseSensitivity::CaseSensitive);
 
-  if (!case_sensitive.isBool()) {
-    throw QueryParseError("case_sensitive must be a boolean");
-  }
-
-  res->case_sensitive = case_sensitive.asBool()
-      ? CaseSensitivity::CaseSensitive
-      : CaseSensitivity::CaseInSensitive;
+  res->case_sensitive = case_sensitive ? CaseSensitivity::CaseSensitive
+                                       : CaseSensitivity::CaseInSensitive;
 }
 
 std::shared_ptr<w_query> w_query_parse(
@@ -322,6 +321,7 @@ std::shared_ptr<w_query> w_query_parse(
   parse_lock_timeout(res, query);
   parse_relative_root(root, res, query);
   parse_empty_on_fresh_instance(res, query);
+  parse_fail_if_no_saved_state(res, query);
 
   /* Look for path generators */
   parse_paths(res, query);
