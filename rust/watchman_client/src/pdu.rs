@@ -583,13 +583,19 @@ pub struct SavedStateClockData {
 /// Reports the content SHA1 hash for a file.
 /// Since computing the hash can fail, this struct can also represent
 /// the error that happened during hash computation.
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum ContentSha1Hex {
     /// The 40-hex-digit SHA1 content hash of the file contents
     Hash(String),
     /// The error that occured while trying to determine the hash
     Error { error: String },
+    /// Value if the file was deleted.
+    /// Note that this is distinct from the case where watchman believes
+    /// that the file exists and where some other process unlinks it before
+    /// watchman can compute the hash: in that racy scenario, the value
+    /// will be `ContentSha1Hex::Error(_)`.
+    None,
 }
 
 /// Encodes the file type field returned in query results and
@@ -657,5 +663,51 @@ impl Into<String> for FileType {
             Self::SolarisDoor => "D",
         }
         .to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bunser;
+    use serde_bser::value::Value;
+    use std::collections::HashMap;
+
+    fn convert_bser_value<T>(input: Value) -> T
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let binary = serde_bser::ser::serialize(Vec::new(), input).unwrap();
+        bunser(&binary).unwrap()
+    }
+
+    #[test]
+    fn test_content_sha1hex_hash() {
+        let value: ContentSha1Hex =
+            convert_bser_value("e820c2c600a36f05ba905cf1bf32c4834e804e22".into());
+        assert_eq!(
+            value,
+            ContentSha1Hex::Hash("e820c2c600a36f05ba905cf1bf32c4834e804e22".into())
+        );
+    }
+
+    #[test]
+    fn test_content_sha1hex_error() {
+        let mut error_obj: HashMap<String, Value> = HashMap::new();
+        error_obj.insert("error".to_string(), "out of cookies".into());
+
+        let value: ContentSha1Hex = convert_bser_value(error_obj.into());
+        assert_eq!(
+            value,
+            ContentSha1Hex::Error {
+                error: "out of cookies".into()
+            }
+        );
+    }
+
+    #[test]
+    fn test_content_sha1hex_none() {
+        let value: ContentSha1Hex = convert_bser_value(Value::Null);
+        assert_eq!(value, ContentSha1Hex::None);
     }
 }
