@@ -416,8 +416,8 @@ pub struct SubscribeResponse {
     pub version: String,
     subscribe: String,
 
-    /// The plain clock at initiation time.
-    pub clock: ClockSpec,
+    /// The clock at initiation time.
+    pub clock: Clock,
 
     /// The set of asserted states at watch initiation time.
     /// This is useful in the case where you need to reason
