@@ -94,6 +94,14 @@ To install the package maintained by [MacPorts](https://www.macports.org):
 $ sudo port install watchman
 ```
 
+### Installing on Debian/Ubuntu Linux
+
+To install the package on [Debian](https://www.debian.org) or [Ubuntu](https://www.ubuntu.com):
+
+```bash
+$ sudo apt-get install watchman
+```
+
 ### Installing from source
 
 You can use these steps below to get watchman built.  You will need `libssl-dev`,
