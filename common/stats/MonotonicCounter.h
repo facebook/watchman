@@ -17,13 +17,16 @@
 namespace facebook { namespace stats {
 
 class MonotonicCounter {
-public:
+ public:
   MonotonicCounter(folly::StringPiece, fb303::ExportType, fb303::ExportType) {}
   void updateValue(std::chrono::seconds, int64_t) {}
   void swap(MonotonicCounter& counter) {}
-  std::string getName() {
-    return {};
+  int64_t get() const {
+    return 0;
+  }
+  const std::string& getName() const {
+    static const std::string kName;
+    return kName;
   }
 };
-
 }}
