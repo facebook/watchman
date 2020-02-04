@@ -127,8 +127,10 @@ static PyObject* bserobj_getattrro(PyObject* o, PyObject* name) {
   bserObject* obj = (bserObject*)o;
   Py_ssize_t i, n;
   PyObject* name_bytes = NULL;
+  PyObject* key_bytes = NULL;
   PyObject* ret = NULL;
   const char* namestr;
+  const char* keystr;
 
   if (PyIndex_Check(name)) {
     i = PyNumber_AsSsize_t(name, PyExc_IndexError);
@@ -161,20 +163,35 @@ static PyObject* bserobj_getattrro(PyObject* o, PyObject* name) {
 
   n = PyTuple_GET_SIZE(obj->keys);
   for (i = 0; i < n; i++) {
-    const char* item_name = NULL;
     PyObject* key = PyTuple_GET_ITEM(obj->keys, i);
 
-    item_name = PyBytes_AsString(key);
-    if (!strcmp(item_name, namestr)) {
+    if (PyUnicode_Check(key)) {
+      key_bytes = PyUnicode_AsUTF8String(key);
+      if (key_bytes == NULL) {
+        goto bail;
+      }
+      keystr = PyBytes_AsString(key_bytes);
+    } else {
+      keystr = PyBytes_AsString(key);
+    }
+
+    if (keystr == NULL) {
+      goto bail;
+    }
+
+    if (!strcmp(keystr, namestr)) {
       ret = PySequence_GetItem(obj->values, i);
       goto bail;
     }
+    Py_XDECREF(key_bytes);
+    key_bytes = NULL;
   }
 
   PyErr_Format(
       PyExc_AttributeError, "bserobject has no attribute '%.400s'", namestr);
 bail:
   Py_XDECREF(name_bytes);
+  Py_XDECREF(key_bytes);
   return ret;
 }
 
