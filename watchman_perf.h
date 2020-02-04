@@ -17,9 +17,9 @@ struct watchman_perf_sample {
   // What we're sampling across
   const char* description;
 
-  // Additional arbitrary information.  This is either NULL
-  // or is a json object with various properties set inside it
-  json_ref meta_data;
+  // Additional arbitrary information.
+  // This is a json object with various properties set inside it
+  json_ref meta_data{json_object()};
 
   // Measure the wall time
   struct timeval time_begin, time_end, duration;

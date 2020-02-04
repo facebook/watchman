@@ -106,9 +106,6 @@ bool watchman_perf_sample::finish() {
 }
 
 void watchman_perf_sample::add_meta(const char* key, json_ref&& val) {
-  if (!meta_data) {
-    meta_data = json_object();
-  }
   meta_data.set(key, std::move(val));
 }
 
