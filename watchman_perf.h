@@ -68,6 +68,8 @@ struct watchman_perf_sample {
 };
 typedef struct watchman_perf_sample w_perf_t;
 
+void perf_shutdown();
+
 #ifdef __cplusplus
 }
 #endif

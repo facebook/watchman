@@ -295,6 +295,7 @@ static void run_service(void) {
   w_state_load();
   res = w_start_listener(sock_name.c_str());
   w_root_free_watched_roots();
+  perf_shutdown();
   cfg_shutdown();
 
   log(ERR, "Exiting from service with res=", res, "\n");

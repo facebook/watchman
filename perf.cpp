@@ -16,34 +16,56 @@ using Environment = ChildProcess::Environment;
 
 namespace {
 class PerfLogThread {
-  folly::Synchronized<json_ref, std::mutex> samples_;
+  struct State {
+    explicit State(bool start) : running(start) {}
+
+    bool running;
+    json_ref samples;
+  };
+
+  folly::Synchronized<State, std::mutex> state_;
   std::thread thread_;
   std::condition_variable cond_;
 
   void loop() noexcept;
 
  public:
-  PerfLogThread() : thread_([this] { loop(); }) {}
+  explicit PerfLogThread(bool start) : state_(folly::in_place, start) {
+    if (start) {
+      thread_ = std::thread([this] { loop(); });
+    }
+  }
 
   ~PerfLogThread() {
+    stop();
+  }
+
+  void stop() {
+    {
+      auto state = state_.lock();
+      if (!state->running) {
+        return;
+      }
+      state->running = false;
+    }
     cond_.notify_all();
     thread_.join();
   }
 
   void addSample(json_ref&& sample) {
-    auto wlock = samples_.lock();
-    if (!*wlock) {
-      *wlock = json_array();
+    auto wlock = state_.lock();
+    if (!wlock->samples) {
+      wlock->samples = json_array();
     }
-    json_array_append_new(*wlock, std::move(sample));
+    json_array_append_new(wlock->samples, std::move(sample));
     cond_.notify_one();
   }
 };
 
-PerfLogThread& getPerfThread() {
+PerfLogThread& getPerfThread(bool start = true) {
   // Get the perf logging thread, starting it on the first call.
   // Meyer's singleton!
-  static PerfLogThread perfThread;
+  static PerfLogThread perfThread(start);
   return perfThread;
 }
 } // namespace
@@ -159,15 +181,23 @@ void PerfLogThread::loop() noexcept {
 
   sample_batch = cfg_get_int("perf_logger_command_max_samples_per_call", 4);
 
-  while (!w_is_stopping()) {
+  while (true) {
     {
-      auto wlock = samples_.lock();
-      if (!*wlock) {
-        cond_.wait(wlock.getUniqueLock());
+      auto state = state_.lock();
+      while (true) {
+        if (state->samples) {
+          // We found samples to process
+          break;
+        }
+        if (!state->running) {
+          // No samples remaining, and we have been asked to quit.
+          return;
+        }
+        cond_.wait(state.getUniqueLock());
       }
 
       samples = nullptr;
-      std::swap(samples, *wlock);
+      std::swap(samples, state->samples);
     }
 
     if (samples) {
@@ -244,6 +274,10 @@ void watchman_perf_sample::log() {
   // Send this to our logging thread for async processing
   auto& perfThread = getPerfThread();
   perfThread.addSample(std::move(info));
+}
+
+void perf_shutdown() {
+  getPerfThread(false).stop();
 }
 
 /* vim:ts=2:sw=2:et:
