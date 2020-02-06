@@ -549,6 +549,7 @@ opendir.cpp
 opt.cpp
 pending.cpp
 perf.cpp
+signal.cpp
 sockname.cpp
 spawn.cpp
 state.cpp
@@ -691,14 +692,14 @@ if(PYTHON3)
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
-t_test(art tests/art_test.cpp tests/log_stub.cpp)
-t_test(ignore tests/ignore_test.cpp tests/log_stub.cpp)
-t_test(pending tests/pending_test.cpp tests/log_stub.cpp)
-t_test(string tests/string_test.cpp tests/log_stub.cpp)
+t_test(art tests/art_test.cpp)
+t_test(ignore tests/ignore_test.cpp)
+t_test(pending tests/pending_test.cpp)
+t_test(string tests/string_test.cpp)
 t_test(log tests/log.cpp)
-t_test(bser tests/bser.cpp tests/log_stub.cpp)
-t_test(wildmatch tests/wildmatch_test.cpp tests/log_stub.cpp)
-t_test(childproc tests/childproc.cpp tests/log_stub.cpp)
-t_test(result tests/ResultTest.cpp tests/log_stub.cpp)
-t_test(cache tests/CacheTest.cpp tests/log_stub.cpp)
-t_test(MapUtilTest tests/MapUtilTest.cpp tests/log_stub.cpp)
+t_test(bser tests/bser.cpp)
+t_test(wildmatch tests/wildmatch_test.cpp)
+t_test(childproc tests/childproc.cpp)
+t_test(result tests/ResultTest.cpp)
+t_test(cache tests/CacheTest.cpp)
+t_test(MapUtilTest tests/MapUtilTest.cpp)
