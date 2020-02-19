@@ -1,4 +1,4 @@
-use bytes::Buf;
+use bytes::buf::BufExt;
 use maplit::hashmap;
 use serde::Deserialize;
 use std::borrow::Cow;
