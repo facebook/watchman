@@ -617,10 +617,13 @@ static void cmd_subscribe(
   }
 
   auto asserted_states = json_array();
-  for (const auto& key : sub->drop_or_defer) {
-    if (root->assertedStates->isStateAsserted(key.first)) {
-      // Not sure what to do in case of failure here. -jupi
-      json_array_append(asserted_states, w_string_to_json(key.first));
+  {
+    auto rootAssertedStates = root->assertedStates.rlock();
+    for (const auto& key : sub->drop_or_defer) {
+      if (rootAssertedStates->isStateAsserted(key.first)) {
+        // Not sure what to do in case of failure here. -jupi
+        json_array_append(asserted_states, w_string_to_json(key.first));
+      }
     }
   }
   resp.set("asserted-states", json_ref(asserted_states));
