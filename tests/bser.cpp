@@ -244,7 +244,6 @@ TEST(Bser, bser_tests) {
   num_json_inputs = sizeof(json_inputs) / sizeof(json_inputs[0]);
   num_templ = sizeof(template_tests) / sizeof(template_tests[0]);
   int num_serial = sizeof(serialization_tests) / sizeof(serialization_tests[0]);
-  int num_typed = typed_string_checks.size();
 
   for (i = 0; i < num_json_inputs; i++) {
     check_roundtrip(1, 0, json_inputs[i], nullptr);

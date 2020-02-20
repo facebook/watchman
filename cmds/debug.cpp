@@ -114,7 +114,7 @@ static void cmd_debug_drop_privs(
   resp.set("owner", json_boolean(client->client_is_owner));
   send_and_dispose_response(client, std::move(resp));
 }
-W_CMD_REG("debug-drop-privs", cmd_debug_drop_privs, CMD_DAEMON, NULL);
+W_CMD_REG("debug-drop-privs", cmd_debug_drop_privs, CMD_DAEMON, NULL)
 
 static void cmd_debug_set_subscriptions_paused(
     struct watchman_client* clientbase,

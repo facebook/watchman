@@ -530,6 +530,8 @@ static PyObject* bser_dumps(PyObject* self, PyObject* args, PyObject* kw) {
   bser_t bser;
   uint32_t len, bser_version = 1, bser_capabilities = 0;
 
+  (void)self;
+
   static char* kw_list[] = {"val", "version", "capabilities", NULL};
 
   if (!PyArg_ParseTupleAndKeywords(
@@ -1048,6 +1050,8 @@ static int pdu_info_helper(
   int64_t expected_len;
   off_t position;
 
+  (void)self;
+
   if (!PyArg_ParseTuple(args, "s#", &start, &datalen)) {
     return 0;
   }
@@ -1104,6 +1108,8 @@ static PyObject* bser_loads(PyObject* self, PyObject* args, PyObject* kw) {
 
   static char* kw_list[] = {
       "buf", "mutable", "value_encoding", "value_errors", NULL};
+
+  (void)self;
 
   if (!PyArg_ParseTupleAndKeywords(
           args,
@@ -1165,6 +1171,8 @@ static PyObject* bser_load(PyObject* self, PyObject* args, PyObject* kw) {
 
   static char* kw_list[] = {
       "fp", "mutable", "value_encoding", "value_errors", NULL};
+
+  (void)self;
 
   if (!PyArg_ParseTupleAndKeywords(
           args,

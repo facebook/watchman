@@ -43,5 +43,5 @@ bool w_getopt(
     int* argcp,
     char*** argvp,
     char*** daemon_argv);
-void usage(struct watchman_getopt* opts, FILE* where);
+[[noreturn]] void usage(struct watchman_getopt* opts, FILE* where);
 void print_command_list_for_help(FILE* where);

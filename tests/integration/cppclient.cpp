@@ -174,13 +174,13 @@ int main(int argc, char** argv) {
   c.getConnection().forceEOF();
   try {
     errorCallbackTrigger.getFuture().within(seconds(1)).wait().value();
-  } catch (FutureTimeout& e) {
+  } catch (FutureTimeout&) {
     LOG(ERROR) << "FAIL: did not get callback from global error handler";
     return 1;
   }
   try {
     subErrorCallbackTrigger.getFuture().within(seconds(1)).wait().value();
-  } catch (FutureTimeout& e) {
+  } catch (FutureTimeout&) {
     LOG(ERROR) << "FAIL: did not get subscription error";
     return 1;
   }

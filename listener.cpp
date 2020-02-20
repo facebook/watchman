@@ -484,7 +484,7 @@ static std::shared_ptr<watchman_client> make_new_client(
     std::thread thr([client] { client_thread(client); });
 
     thr.detach();
-  } catch (const std::exception& e) {
+  } catch (const std::exception&) {
     clients.wlock()->erase(client);
     throw;
   }

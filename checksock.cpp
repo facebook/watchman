@@ -188,7 +188,7 @@ void sanityCheckThread() noexcept {
   }
   log(ERR, "done with sanityCheckThread\n");
 }
-}; // namespace
+} // namespace
 
 void startSanityCheckThread(void) {
   // The blocking pipe reads we use on win32 can cause us to get blocked

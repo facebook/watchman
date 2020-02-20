@@ -10,7 +10,7 @@ using namespace watchman;
 
 /* One does not simply use getopt_long() */
 
-void usage(struct watchman_getopt* opts, FILE* where) {
+[[noreturn]] void usage(struct watchman_getopt* opts, FILE* where) {
   int i;
   size_t len;
   size_t longest = 0;

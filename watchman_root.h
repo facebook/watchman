@@ -61,7 +61,7 @@ class ClientStateAssertions {
       unordered_map<w_string, std::deque<std::shared_ptr<ClientStateAssertion>>>
           states_;
 };
-}; // namespace watchman
+} // namespace watchman
 
 struct watchman_root : public std::enable_shared_from_this<watchman_root> {
   /* path to root */

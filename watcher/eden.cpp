@@ -446,7 +446,7 @@ class EdenFileResult : public FileResult {
   // the batchFetchProperties() method that calls us, so we know that
   // we unconditionally need to read these links.
   void loadSymlinkTargets(
-      StreamingEdenServiceAsyncClient* client,
+      StreamingEdenServiceAsyncClient*,
       const std::vector<EdenFileResult*>& files) {
     for (auto& edenFile : files) {
       if (!edenFile->stat_->isSymlink()) {

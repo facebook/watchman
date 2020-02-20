@@ -904,7 +904,7 @@ W_CMD_REG(
     "debug-contenthash",
     InMemoryView::debugContentHashCache,
     CMD_DAEMON,
-    w_cmd_realpath_root);
+    w_cmd_realpath_root)
 
 void InMemoryView::debugSymlinkTargetCache(
     struct watchman_client* client,
@@ -933,5 +933,5 @@ W_CMD_REG(
     "debug-symlink-target-cache",
     InMemoryView::debugSymlinkTargetCache,
     CMD_DAEMON,
-    w_cmd_realpath_root);
+    w_cmd_realpath_root)
 } // namespace watchman

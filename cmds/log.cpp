@@ -15,7 +15,7 @@ static void cmd_loglevel(struct watchman_client* client, const json_ref& args) {
   watchman::LogLevel level;
   try {
     level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
-  } catch (std::out_of_range& e) {
+  } catch (std::out_of_range&) {
     send_error_response(client, "invalid log level for 'log-level'");
     return;
   }
@@ -55,7 +55,7 @@ static void cmd_log(struct watchman_client* client, const json_ref& args) {
   watchman::LogLevel level;
   try {
     level = watchman::logLabelToLevel(json_to_w_string(args.at(1)));
-  } catch (std::out_of_range& e) {
+  } catch (std::out_of_range&) {
     send_error_response(client, "invalid log level for 'log'");
     return;
   }
