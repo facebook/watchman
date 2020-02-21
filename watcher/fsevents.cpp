@@ -688,7 +688,7 @@ W_CMD_REG(
     "debug-fsevents-inject-drop",
     cmd_debug_fsevents_inject_drop,
     CMD_DAEMON,
-    w_cmd_realpath_root);
+    w_cmd_realpath_root)
 
 #endif // HAVE_FSEVENTS
 
