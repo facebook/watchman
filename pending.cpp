@@ -35,6 +35,7 @@ static bool is_path_prefix(
       (int)common_prefix,
       other,
       (int)common_prefix);
+  (void)other;
 
   if (common_prefix == path_len) {
     return true;

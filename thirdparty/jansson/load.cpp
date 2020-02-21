@@ -242,6 +242,7 @@ static void lex_unget_unsave(lex_t* lex, int c) {
     auto d = lex->saved_text.back();
     lex->saved_text.pop_back();
     assert(c == d);
+    (void)d;
   }
 }
 
