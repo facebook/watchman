@@ -54,6 +54,11 @@ int main(int argc, char** argv) {
                   current_dir,
                   eb,
                   [&](Try<dynamic>&& data) {
+                    // Skip "state-enter" and "state-leave" updates that
+                    // don't describe filesystem changes
+                    if (data->get_ptr("files") == nullptr) {
+                      return;
+                    }
                     if ((*data)["is_fresh_instance"].getBool()) {
                       return;
                     } else {
