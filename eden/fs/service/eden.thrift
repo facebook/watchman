@@ -99,6 +99,11 @@ struct DaemonInfo {
    * given to the edenfs process.
    */
   2: list<string> commandLine
+  /**
+   * The service status.
+   * This is the same data reported by fb303_core.getStatus()
+   */
+  3: optional fb303_core.fb303_status status
 }
 
 /**
