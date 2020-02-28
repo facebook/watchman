@@ -2,6 +2,7 @@
  * Licensed under the Apache License, Version 2.0 */
 #include "watchman.h"
 #include "Mercurial.h"
+#include <folly/String.h>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -14,7 +15,12 @@ W_CAP_REG("scm-hg")
 using namespace std::chrono;
 using folly::to;
 
-namespace watchman {
+namespace {
+using namespace watchman;
+
+void replaceEmbeddedNulls(std::string& str) {
+  std::replace(str.begin(), str.end(), '\0', '\n');
+}
 
 std::string hgExecutablePath() {
   auto hg = getenv("EDEN_HG_BINARY");
@@ -23,6 +29,40 @@ std::string hgExecutablePath() {
   }
   return "hg";
 }
+
+struct MercurialResult {
+  w_string stdout;
+};
+
+MercurialResult runMercurial(
+    std::vector<w_string_piece> cmdline,
+    ChildProcess::Options options,
+    folly::StringPiece description) {
+  ChildProcess proc{cmdline, std::move(options)};
+  auto outputs = proc.communicate();
+  auto status = proc.wait();
+  if (status) {
+    auto stdout = folly::StringPiece{outputs.first}.str();
+    auto stderr = folly::StringPiece{outputs.second}.str();
+    replaceEmbeddedNulls(stdout);
+    replaceEmbeddedNulls(stderr);
+    throw std::runtime_error{to<std::string>(
+        "failed to ",
+        description,
+        "\ncmd = ",
+        folly::join(" ", cmdline),
+        "\nstdout = ",
+        stdout,
+        "\nstderr = ",
+        stderr)};
+  }
+
+  return MercurialResult{std::move(outputs.first)};
+}
+
+} // namespace
+
+namespace watchman {
 
 ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
   ChildProcess::Options opt;
@@ -149,27 +189,15 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
   }
 
   auto revset = to<std::string>("ancestor(.,", commitId, ")");
-  ChildProcess proc(
+  auto result = runMercurial(
       {hgExecutablePath(), "log", "-T", "{node}", "-r", revset},
-      makeHgOptions(requestId));
+      makeHgOptions(requestId),
+      "query for the merge base");
 
-  auto outputs = proc.communicate();
-  auto status = proc.wait();
-
-  if (status) {
-    throw std::runtime_error(to<std::string>(
-        "failed query for the merge base; command returned with status ",
-        status,
-        ", output=",
-        outputs.first,
-        " error=",
-        outputs.second));
-  }
-
-  if (outputs.first.size() != 40) {
+  if (result.stdout.size() != 40) {
     throw std::runtime_error(to<std::string>(
         "expected merge base to be a 40 character string, got ",
-        outputs.first));
+        result.stdout));
   }
 
   {
@@ -181,10 +209,10 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
     // the new state
     auto cache = cache_.wlock();
     if (fileTimeEqual(startDirState, cache->dirstate)) {
-      cache->mergeBases[idString] = outputs.first;
+      cache->mergeBases[idString] = result.stdout;
     }
   }
-  return outputs.first;
+  return result.stdout;
 }
 
 std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
@@ -192,7 +220,7 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
     w_string requestId) const {
   // The "" argument at the end causes paths to be printed out relative to the
   // cwd (set to root path above).
-  ChildProcess proc(
+  auto result = runMercurial(
       {hgExecutablePath(),
        "--traceback",
        "status",
@@ -200,26 +228,11 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
        "--rev",
        commitId,
        ""},
-      makeHgOptions(requestId));
-
-  auto outputs = proc.communicate();
+      makeHgOptions(requestId),
+      "query for files changed since merge base");
 
   std::vector<w_string> lines;
-  w_string_piece(outputs.first).split(lines, '\n');
-
-  auto status = proc.wait();
-  if (status) {
-    throw std::runtime_error(to<std::string>(
-        "failed query for the ",
-        hgExecutablePath(),
-        " status; command returned with status ",
-        status,
-        " out=",
-        outputs.first,
-        " err=",
-        outputs.second));
-  }
-
+  w_string_piece(result.stdout).split(lines, '\n');
   return lines;
 }
 
@@ -229,7 +242,8 @@ SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
     w_string requestId) const {
   // The "" argument at the end causes paths to be printed out
   // relative to the cwd (set to root path above).
-  ChildProcess proc(
+
+  auto hgresult = runMercurial(
       {hgExecutablePath(),
        "--traceback",
        "status",
@@ -239,23 +253,11 @@ SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
        "--rev",
        commitB,
        ""},
-      makeHgOptions(requestId));
-
-  auto outputs = proc.communicate();
+      makeHgOptions(requestId),
+      "get files changed between commits");
 
   std::vector<w_string> lines;
-  w_string_piece(outputs.first).split(lines, '\0');
-
-  auto status = proc.wait();
-  if (status) {
-    throw std::runtime_error(to<std::string>(
-        "failed query for the hg status; command returned with status ",
-        status,
-        " out=",
-        outputs.first,
-        " err=",
-        outputs.second));
-  }
+  w_string_piece(hgresult.stdout).split(lines, '\0');
 
   SCM::StatusResult result;
   log(DBG, "processing ", lines.size(), " status lines\n");
@@ -282,7 +284,7 @@ SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
 time_point<system_clock> Mercurial::getCommitDate(
     w_string_piece commitId,
     w_string requestId) const {
-  ChildProcess proc(
+  auto result = runMercurial(
       {hgExecutablePath(),
        "--traceback",
        "log",
@@ -290,19 +292,9 @@ time_point<system_clock> Mercurial::getCommitDate(
        commitId.data(),
        "-T",
        "{date}\n"},
-      makeHgOptions(requestId));
-  auto outputs = proc.communicate();
-  auto status = proc.wait();
-  if (status) {
-    throw std::runtime_error(to<std::string>(
-        "failed query for hg log; command returned with status ",
-        status,
-        " out=",
-        outputs.first,
-        " err=",
-        outputs.second));
-  }
-  return Mercurial::convertCommitDate(outputs.first.c_str());
+      makeHgOptions(requestId),
+      "get commit date");
+  return Mercurial::convertCommitDate(result.stdout.c_str());
 }
 
 time_point<system_clock> Mercurial::convertCommitDate(const char* commitDate) {
@@ -320,7 +312,7 @@ std::vector<w_string> Mercurial::getCommitsPriorToAndIncluding(
     w_string requestId) const {
   auto revset = to<std::string>(
       "reverse(last(_firstancestors(", commitId, "), ", numCommits, "))\n");
-  ChildProcess proc(
+  auto result = runMercurial(
       {hgExecutablePath(),
        "--traceback",
        "log",
@@ -328,20 +320,11 @@ std::vector<w_string> Mercurial::getCommitsPriorToAndIncluding(
        revset,
        "-T",
        "{node}\n"},
-      makeHgOptions(requestId));
-  auto outputs = proc.communicate();
-  auto status = proc.wait();
-  if (status) {
-    throw std::runtime_error(to<std::string>(
-        "failed query for hg log; command returned with status ",
-        status,
-        " out=",
-        outputs.first,
-        " err=",
-        outputs.second));
-  }
+      makeHgOptions(requestId),
+      "get prior commits");
+
   std::vector<w_string> lines;
-  w_string_piece(outputs.first).split(lines, '\n');
+  w_string_piece(result.stdout).split(lines, '\n');
   return lines;
 }
 } // namespace watchman
