@@ -75,6 +75,12 @@ enum class OnStateTransition { QueryAnyway, DontAdvance };
 
 struct watchman_client_subscription
     : public std::enable_shared_from_this<watchman_client_subscription> {
+  struct LoggedResponse {
+    // TODO: also track the time when the response was enqueued
+    std::chrono::system_clock::time_point written;
+    json_ref response;
+  };
+
   std::shared_ptr<w_root_t> root;
   w_string name;
   /* whether this subscription is paused */
@@ -86,6 +92,8 @@ struct watchman_client_subscription
   // map of statename => bool.  If true, policy is drop, else defer
   std::unordered_map<w_string, bool> drop_or_defer;
   std::weak_ptr<watchman_client> weakClient;
+
+  std::deque<LoggedResponse> lastResponses;
 
   explicit watchman_client_subscription(
       const std::shared_ptr<w_root_t>& root,

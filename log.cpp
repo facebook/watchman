@@ -106,23 +106,25 @@ Log& getLog() {
   return log;
 }
 
-char* Log::currentTimeString(char* buf, size_t bufsize) {
-  struct timeval tv;
-  char timebuf[64];
+char* Log::timeString(char* buf, size_t bufsize, timeval tv) {
   struct tm tm;
-
-  gettimeofday(&tv, NULL);
 #ifdef _WIN32
   time_t seconds = (time_t)tv.tv_sec;
   tm = *localtime(&seconds);
 #else
   localtime_r(&tv.tv_sec, &tm);
 #endif
+
+  char timebuf[64];
   strftime(timebuf, sizeof(timebuf), "%Y-%m-%dT%H:%M:%S", &tm);
-
   snprintf(buf, bufsize, "%s,%03d", timebuf, (int)tv.tv_usec / 1000);
-
   return buf;
+}
+
+char* Log::currentTimeString(char* buf, size_t bufsize) {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return timeString(buf, bufsize, tv);
 }
 
 const char* Log::setThreadName(std::string&& name) {

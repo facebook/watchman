@@ -2,6 +2,11 @@
  * Licensed under the Apache License, Version 2.0 */
 
 #include "watchman.h"
+#include <folly/chrono/Conv.h>
+#include <iomanip>
+#include "Logging.h"
+
+using watchman::Log;
 
 static void cmd_debug_recrawl(
     struct watchman_client* client,
@@ -163,6 +168,39 @@ W_CMD_REG(
     CMD_DAEMON,
     nullptr)
 
+static json_ref getDebugSubscriptionInfo(watchman_root* root) {
+  auto subscriptions = json_array();
+  for (const auto& c : *::clients.rlock()) {
+    auto* user_client = dynamic_cast<watchman_user_client*>(c.get());
+    if (!user_client) {
+      continue;
+    }
+    for (const auto& sub : user_client->subscriptions) {
+      if (root == sub.second->root.get()) {
+        auto last_responses = json_array();
+        for (auto& response : sub.second->lastResponses) {
+          char timebuf[64];
+          last_responses.array().push_back(json_object({
+              {"written_time",
+               typed_string_to_json(Log::timeString(
+                   timebuf,
+                   std::size(timebuf),
+                   folly::to<timeval>(response.written)))},
+              {"response", response.response},
+          }));
+        }
+
+        subscriptions.array().push_back(json_object({
+            {"name", w_string_to_json(sub.first)},
+            {"client_id", json_integer(user_client->unique_id)},
+            {"last_responses", last_responses},
+        }));
+      }
+    }
+  }
+  return subscriptions;
+}
+
 static void cmd_debug_get_subscriptions(
     struct watchman_client* clientbase,
     const json_ref& args) {
@@ -174,6 +212,10 @@ static void cmd_debug_get_subscriptions(
   auto debug_info = root->unilateralResponses->getDebugInfo();
   // copy over all the key-value pairs from debug_info
   resp.object().insert(debug_info.object().begin(), debug_info.object().end());
+
+  auto subscriptions = getDebugSubscriptionInfo(root.get());
+  resp.object().emplace("subscriptions", subscriptions);
+
   send_and_dispose_response(clientbase, std::move(resp));
 }
 W_CMD_REG(

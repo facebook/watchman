@@ -22,6 +22,7 @@ class Log {
   }
 
   static char* currentTimeString(char* buf, size_t bufsize);
+  static char* timeString(char* buf, size_t bufsize, timeval tv);
   static const char* getThreadName();
   static const char* setThreadName(std::string&& name);
 
