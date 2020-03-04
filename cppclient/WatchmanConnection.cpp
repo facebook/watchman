@@ -44,7 +44,7 @@ WatchmanConnection::~WatchmanConnection() {
 
 folly::Future<std::string> WatchmanConnection::getSockPath() {
   // Take explicit configuration first
-  if (sockPath_.hasValue()) {
+  if (sockPath_.has_value()) {
     return makeFuture(sockPath_.value());
   }
 
@@ -331,7 +331,7 @@ void WatchmanConnection::decodeNextResponse() {
       for (const auto& k : kUnilateralLabels) {
         if (decoded.get_ptr(k)) {
           // This is a unilateral response
-          if (callback_.hasValue()) {
+          if (callback_.has_value()) {
             callback_.value()(watchmanResponseToTry(std::move(decoded)));
             is_unilateral = true;
             break;
