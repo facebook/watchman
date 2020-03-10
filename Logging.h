@@ -109,6 +109,10 @@ void logf(enum LogLevel level, fmt::string_view format_str, Args&&... args) {
   getLog().logf(level, format_str, std::forward<Args>(args)...);
 }
 
+#ifdef _WIN32
+LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep);
+#endif
+
 } // namespace watchman
 
 template <typename... Args>

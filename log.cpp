@@ -206,10 +206,8 @@ void Log::doLogToStdErr() {
   }
 }
 
-} // namespace watchman
-
 #ifdef _WIN32
-static LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep) {
+LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep) {
   std::array<void*, kMaxFrames> array;
   size_t size;
   char** strings;
@@ -244,3 +242,5 @@ static LONG WINAPI exception_filter(LPEXCEPTION_POINTERS excep) {
   return EXCEPTION_CONTINUE_SEARCH;
 }
 #endif
+
+} // namespace watchman
