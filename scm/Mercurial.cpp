@@ -31,7 +31,7 @@ std::string hgExecutablePath() {
 }
 
 struct MercurialResult {
-  w_string stdout;
+  w_string output;
 };
 
 MercurialResult runMercurial(
@@ -42,19 +42,19 @@ MercurialResult runMercurial(
   auto outputs = proc.communicate();
   auto status = proc.wait();
   if (status) {
-    auto stdout = folly::StringPiece{outputs.first}.str();
-    auto stderr = folly::StringPiece{outputs.second}.str();
-    replaceEmbeddedNulls(stdout);
-    replaceEmbeddedNulls(stderr);
+    auto output = folly::StringPiece{outputs.first}.str();
+    auto error = folly::StringPiece{outputs.second}.str();
+    replaceEmbeddedNulls(output);
+    replaceEmbeddedNulls(error);
     throw std::runtime_error{to<std::string>(
         "failed to ",
         description,
         "\ncmd = ",
         folly::join(" ", cmdline),
         "\nstdout = ",
-        stdout,
+        output,
         "\nstderr = ",
-        stderr)};
+        error)};
   }
 
   return MercurialResult{std::move(outputs.first)};
@@ -194,10 +194,10 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
       makeHgOptions(requestId),
       "query for the merge base");
 
-  if (result.stdout.size() != 40) {
+  if (result.output.size() != 40) {
     throw std::runtime_error(to<std::string>(
         "expected merge base to be a 40 character string, got ",
-        result.stdout));
+        result.output));
   }
 
   {
@@ -209,10 +209,10 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
     // the new state
     auto cache = cache_.wlock();
     if (fileTimeEqual(startDirState, cache->dirstate)) {
-      cache->mergeBases[idString] = result.stdout;
+      cache->mergeBases[idString] = result.output;
     }
   }
-  return result.stdout;
+  return result.output;
 }
 
 std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
@@ -232,7 +232,7 @@ std::vector<w_string> Mercurial::getFilesChangedSinceMergeBaseWith(
       "query for files changed since merge base");
 
   std::vector<w_string> lines;
-  w_string_piece(result.stdout).split(lines, '\n');
+  w_string_piece(result.output).split(lines, '\n');
   return lines;
 }
 
@@ -257,7 +257,7 @@ SCM::StatusResult Mercurial::getFilesChangedBetweenCommits(
       "get files changed between commits");
 
   std::vector<w_string> lines;
-  w_string_piece(hgresult.stdout).split(lines, '\0');
+  w_string_piece(hgresult.output).split(lines, '\0');
 
   SCM::StatusResult result;
   log(DBG, "processing ", lines.size(), " status lines\n");
@@ -294,7 +294,7 @@ time_point<system_clock> Mercurial::getCommitDate(
        "{date}\n"},
       makeHgOptions(requestId),
       "get commit date");
-  return Mercurial::convertCommitDate(result.stdout.c_str());
+  return Mercurial::convertCommitDate(result.output.c_str());
 }
 
 time_point<system_clock> Mercurial::convertCommitDate(const char* commitDate) {
@@ -324,7 +324,7 @@ std::vector<w_string> Mercurial::getCommitsPriorToAndIncluding(
       "get prior commits");
 
   std::vector<w_string> lines;
-  w_string_piece(result.stdout).split(lines, '\n');
+  w_string_piece(result.output).split(lines, '\n');
   return lines;
 }
 } // namespace watchman
