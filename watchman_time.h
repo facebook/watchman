@@ -11,9 +11,14 @@ inline timespec durationToTimeSpecDuration(
   timespec ts{0, 0};
 
   ts.tv_sec = std::chrono::duration_cast<std::chrono::seconds>(d).count();
-  ts.tv_nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                   d - std::chrono::seconds(ts.tv_sec))
-                   .count();
+  auto nsec = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                  d - std::chrono::seconds(ts.tv_sec))
+                  .count();
+#ifdef _WIN32
+  ts.tv_nsec = long(nsec);
+#else
+  ts.tv_nsec = nsec;
+#endif
   return ts;
 }
 
@@ -90,14 +95,22 @@ static inline void w_timeval_sub(
 static inline void w_timeval_to_timespec(
     const struct timeval a,
     struct timespec* ts) {
+#ifdef _WIN32
+  ts->tv_sec = long(a.tv_sec);
+#else
   ts->tv_sec = a.tv_sec;
+#endif
   ts->tv_nsec = a.tv_usec * WATCHMAN_NSEC_IN_USEC;
 }
 
 static inline void w_timespec_to_timeval(
     const struct timespec ts,
     struct timeval* tv) {
+#ifdef _WIN32
+  tv->tv_sec = long(ts.tv_sec);
+#else
   tv->tv_sec = ts.tv_sec;
+#endif
   tv->tv_usec = ts.tv_nsec / WATCHMAN_NSEC_IN_USEC;
 }
 

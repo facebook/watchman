@@ -343,7 +343,7 @@ class w_string {
       };
 
       s->refcnt = 1;
-      s->len = size;
+      s->len = uint32_t(size);
 
       auto mut_buf = const_cast<char*>(s->buf);
       fmt::format_to(mut_buf, format_str, args...);
