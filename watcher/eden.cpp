@@ -1218,9 +1218,26 @@ std::shared_ptr<watchman::QueryableView> detectEden(w_root_t* root) {
     // On Windows, Watchman is crawling the Eden repo and pulling down
     // all the contents. Until the Eden integration is complete Watchman will
     // skip Eden repos on Windows.
+
+    auto homeDotEdenRaw = w_string::pathCat({getenv("USERPROFILE"), kDotEden});
+    auto homeDotEden = homeDotEdenRaw.normalizeSeparators();
+
+    if (edenRoot == homeDotEden) {
+      throw std::runtime_error(to<std::string>(
+          "Not considering HOME/.eden as a valid Eden repo (found ",
+          edenRoot,
+          ")"));
+    }
+
     throw TerminalWatcherError(to<std::string>(
         "This is an Eden clone - Watchman integration with Eden Windows"
-        " isn't complete yet. Watchman will not watch this repo."));
+        " isn't complete yet. Watchman will not watch this repo. (found ",
+        edenRoot,
+        " above ",
+        root->root_path,
+        ", homeDotEden is ",
+        homeDotEden,
+        ")"));
   }
 
   throw std::runtime_error(
