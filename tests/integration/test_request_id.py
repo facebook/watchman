@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 
+import WatchmanInstance
 import WatchmanTestCase
 
 
@@ -22,8 +23,12 @@ except ImportError:
 def is_hg_installed():
     with open(os.devnull, "wb") as devnull:
         try:
+            env = os.environ.copy()
+            env["HGPLAIN"] = "1"
+            env["WATCHMAN_SOCK"] = WatchmanInstance.getSharedInstance().getSockPath()
+
             exit_code = subprocess.call(
-                ["hg", "--version"], stdout=devnull, stderr=devnull
+                ["hg", "--version"], stdout=devnull, stderr=devnull, env=env
             )
             return exit_code == 0
         except OSError as e:
@@ -57,6 +62,7 @@ class TestRequestId(WatchmanTestCase.WatchmanTestCase):
         env = os.environ.copy()
         env["HGPLAIN"] = "1"
         env["HGREQUESTID"] = request_id
+        env["WATCHMAN_SOCK"] = WatchmanInstance.getSharedInstance().getSockPath()
 
         subprocess.call(["hg", "init"], env=env, cwd=root)
         subprocess.call(["hg", "log"], env=env, cwd=root)
@@ -81,6 +87,7 @@ class TestRequestId(WatchmanTestCase.WatchmanTestCase):
         # have request_id logged without fsmonitor.
         env = os.environ.copy()
         env["HGPLAIN"] = "1"
+        env["WATCHMAN_SOCK"] = WatchmanInstance.getSharedInstance().getSockPath()
         subprocess.call(["hg", "init"], env=env, cwd=root)
         subprocess.call(
             [
