@@ -174,6 +174,7 @@ struct MountInfo {
 struct MountArgument {
   1: PathString mountPoint
   2: PathString edenClientPath
+  3: bool readOnly
 }
 
 union SHA1Result {
