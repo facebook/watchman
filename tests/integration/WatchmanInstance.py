@@ -164,11 +164,13 @@ class _Instance(object):
         )
         return proc.communicate()
 
-    def start(self):
+    def start(self, extra_env=None):
         args = [self.watchmanBinary(), "--foreground", "--log-level=2"]
         args.extend(self.get_state_args())
         env = os.environ.copy()
         env["WATCHMAN_CONFIG_FILE"] = self.cfg_file
+        if extra_env:
+            env.update(extra_env)
         with open(self.cli_log_file_name, "w+") as cli_log_file:
             self.proc = subprocess.Popen(
                 args, env=env, stdin=None, stdout=cli_log_file, stderr=cli_log_file

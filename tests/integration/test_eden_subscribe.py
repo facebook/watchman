@@ -15,15 +15,24 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         return True
 
     def test_eden_subscribe(self):
+        commits = []
+
         def populate(repo):
             # We ignore ".hg" here just so some of the tests that list files don't have
             # to explicitly filter out the contents of this directory.  However, in most
             # situations the .hg directory normally should not be ignored.
             repo.write_file(".watchmanconfig", '{"ignore_dirs":[".buckd", ".hg"]}')
             repo.write_file("hello", "hola\n")
-            repo.commit("initial commit.")
+            commits.append(repo.commit("initial commit."))
+            repo.write_file("welcome", "bienvenue\n")
+            commits.append(repo.commit("commit 2"))
+            repo.write_file("readme.txt", "important docs\n")
+            commits.append(repo.commit("commit 3"))
+            # Switch back to the first commit at the start of the test
+            repo.update(commits[0])
 
         root = self.makeEdenMount(populate)
+        repo = self.repoForPath(root)
 
         res = self.watchmanCommand("watch", root)
         self.assertEqual("eden", res["watcher"])
@@ -50,6 +59,13 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertEqual(False, dat["is_fresh_instance"])
         self.assertFileListsEqual(dat["files"], ["hello"])
 
+        # performing an hg checkout should notify us of the files changed between
+        # commits
+        repo.update(commits[2])
+        dat = self.waitForSub("myname", root=root)[0]
+        self.assertEqual(False, dat["is_fresh_instance"])
+        self.assertFileListsEqual(dat["files"], ["welcome", "readme.txt"])
+
         # make another subscription and assert that we get a fresh
         # instance result with all the files in it
         self.watchmanCommand("subscribe", root, "othersub", {"fields": ["name"]})
@@ -58,7 +74,8 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
         self.assertEqual(True, dat["is_fresh_instance"])
         self.assertFileListsEqual(
             dat["files"],
-            self.eden_dir_entries + [".eden", ".watchmanconfig", "hello", "w0000t"],
+            self.eden_dir_entries
+            + [".eden", ".watchmanconfig", "hello", "w0000t", "welcome", "readme.txt"],
         )
 
     def assertWaitForAssertedStates(self, root, states):
@@ -109,3 +126,63 @@ class TestEdenSubscribe(WatchmanEdenTestCase.WatchmanEdenTestCase):
 
         self.watchmanCommand("state-leave", root, "bar")
         self.assertWaitForAssertedStates(root, [])
+
+    def test_hg_failure(self):
+        commits = []
+
+        def populate(repo):
+            # We ignore ".hg" here just so some of the tests that list files don't have
+            # to explicitly filter out the contents of this directory.  However, in most
+            # situations the .hg directory normally should not be ignored.
+            repo.write_file(".watchmanconfig", '{"ignore_dirs":[".buckd", ".hg"]}')
+            repo.write_file("hello", "hola\n")
+            commits.append(repo.commit("initial commit."))
+            repo.write_file("hello", "aloha\n")
+            commits.append(repo.commit("commit2."))
+            repo.write_file("welcome", "bienvenue\n")
+            commits.append(repo.commit("commit3."))
+
+        root = self.makeEdenMount(populate)
+        repo = self.repoForPath(root)
+
+        # Point EDEN_HG_BINARY to /bin/false so that watchman will be unable to
+        # successfully query hg.
+        watchman_env = {"EDEN_HG_BINARY": "/bin/false"}
+        self.eden_watchman.stop()
+        self.eden_watchman.start(extra_env=watchman_env)
+        self.client = self.getClient(self.eden_watchman)
+
+        res = self.watchmanCommand("watch", root)
+        self.assertEqual("eden", res["watcher"])
+
+        self.watchmanCommand("subscribe", root, "myname", {"fields": ["name"]})
+
+        dat = self.waitForSub("myname", root=root)[0]
+        self.assertTrue(dat["is_fresh_instance"])
+        self.assertFileListsEqual(
+            dat["files"],
+            self.eden_dir_entries + [".eden", ".watchmanconfig", "hello", "welcome"],
+        )
+
+        # Sanity check that the subscription is working
+        self.touchRelative(root, "w0000t")
+        dat = self.waitForSub("myname", root=root)[0]
+        self.assertEqual(False, dat["is_fresh_instance"])
+        self.assertFileListsEqual(dat["files"], ["w0000t"])
+
+        # Do a checkout, and make sure the subscription is updated.
+        # Since watchman won't be able to run hg to query the list of files changed
+        # between commits, it will generate a fresh instance result.
+        repo.update(commits[0])
+        dat = self.waitForSub("myname", root=root)[0]
+        self.assertFileListsEqual(
+            dat["files"],
+            self.eden_dir_entries + [".eden", ".watchmanconfig", "hello", "w0000t"],
+        )
+        self.assertEqual(True, dat["is_fresh_instance"])
+
+        # Make sure the subscription still delivers normal file update events
+        self.touchRelative(root, "new2")
+        dat = self.waitForSub("myname", root=root)[0]
+        self.assertEqual(False, dat["is_fresh_instance"])
+        self.assertFileListsEqual(dat["files"], ["new2"])

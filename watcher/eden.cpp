@@ -863,6 +863,19 @@ class EdenView : public QueryableView {
         ctx->since.clock.is_fresh_instance = true;
         client->sync_getCurrentJournalPosition(resultPosition, mountPoint_);
         fileInfo = getAllFiles();
+      } catch (const SCMError& err) {
+        // Most likely this means a checkout occurred but we encountered
+        // an error trying to get the list of files changed between the two
+        // commits.  Generate a fresh instance result since we were unable
+        // to compute the list of files changed.
+        watchman::log(
+            ERR,
+            "SCM error while processing EdenFS journal update: ",
+            err.what(),
+            "\n");
+        ctx->since.clock.is_fresh_instance = true;
+        client->sync_getCurrentJournalPosition(resultPosition, mountPoint_);
+        fileInfo = getAllFiles();
       }
     }
 

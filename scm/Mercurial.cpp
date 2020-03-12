@@ -46,15 +46,14 @@ MercurialResult runMercurial(
     auto error = folly::StringPiece{outputs.second}.str();
     replaceEmbeddedNulls(output);
     replaceEmbeddedNulls(error);
-    throw std::runtime_error{to<std::string>(
-        "failed to ",
-        description,
-        "\ncmd = ",
-        folly::join(" ", cmdline),
-        "\nstdout = ",
-        output,
-        "\nstderr = ",
-        error)};
+    throw SCMError{"failed to ",
+                   description,
+                   "\ncmd = ",
+                   folly::join(" ", cmdline),
+                   "\nstdout = ",
+                   output,
+                   "\nstderr = ",
+                   error};
   }
 
   return MercurialResult{std::move(outputs.first)};
@@ -199,9 +198,8 @@ w_string Mercurial::mergeBaseWith(w_string_piece commitId, w_string requestId)
       "query for the merge base");
 
   if (result.output.size() != 40) {
-    throw std::runtime_error(to<std::string>(
-        "expected merge base to be a 40 character string, got ",
-        result.output));
+    throw SCMError(
+        "expected merge base to be a 40 character string, got ", result.output);
   }
 
   {

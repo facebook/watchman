@@ -3,8 +3,10 @@
 #pragma once
 #include "watchman_system.h"
 #include "watchman_string.h"
+#include <folly/Conv.h>
 #include <chrono>
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 namespace watchman {
@@ -17,6 +19,14 @@ namespace watchman {
 w_string findFileInDirTree(
     w_string_piece rootPath,
     std::initializer_list<w_string_piece> candidates);
+
+class SCMError : public std::runtime_error {
+ public:
+  template <typename... Args>
+  explicit SCMError(Args&&... args)
+      : std::runtime_error(
+            folly::to<std::string>(std::forward<Args>(args)...)) {}
+};
 
 class SCM {
  protected:
