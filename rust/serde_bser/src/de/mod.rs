@@ -31,11 +31,12 @@ macro_rules! make_visit_num {
     ($fn:ident, $next:ident) => {
         #[inline]
         fn $fn<V>(&mut self, visitor: V) -> Result<V::Value>
-            where V: de::Visitor<'de>,
+        where
+            V: de::Visitor<'de>,
         {
             visitor.$fn(self.bunser.$next()?)
         }
-    }
+    };
 }
 
 fn from_trait<'de, R, T>(read: R) -> Result<T>
