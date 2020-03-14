@@ -112,8 +112,11 @@ SemiFuture<SubscriptionPtr> WatchmanClient::subscribe(
     dynamic query,
     WatchPathPtr path,
     Executor* executor,
-    SubscriptionCallback&& callback) {
-  auto name = folly::to<std::string>("sub", (int)++nextSubID_);
+    SubscriptionCallback&& callback,
+    std::string subscriptionName) {
+  auto name = subscriptionName.empty()
+      ? folly::to<std::string>("sub", (int)++nextSubID_)
+      : std::move(subscriptionName);
   auto subscription =
       std::make_shared<Subscription>(executor, std::move(callback), name, path);
   {
@@ -136,10 +139,19 @@ SemiFuture<SubscriptionPtr> WatchmanClient::subscribe(
     const dynamic& query,
     StringPiece path,
     Executor* executor,
-    SubscriptionCallback&& callback) {
+    SubscriptionCallback&& callback,
+    std::string subscriptionName) {
   return watchImpl(path).thenValue(
-      [=, callback = std::move(callback)](WatchPathPtr watch_path) mutable {
-        return subscribe(query, watch_path, executor, std::move(callback));
+      [=,
+       callback = std::move(callback),
+       subscriptionName =
+           std::move(subscriptionName)](WatchPathPtr watch_path) mutable {
+        return subscribe(
+            query,
+            watch_path,
+            executor,
+            std::move(callback),
+            std::move(subscriptionName));
       });
 }
 
