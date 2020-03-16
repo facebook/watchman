@@ -637,6 +637,7 @@ impl ClientInner {
 
 /// Returned by [Subscription::next](struct.Subscription.html#method.next)
 /// as events are observed by Watchman.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum SubscriptionData<F>
 where
@@ -715,6 +716,7 @@ where
     /// Yield the next set of subscription data.
     /// An error is generated if the subscription is disconnected
     /// from the server.
+    #[allow(clippy::should_implement_trait)]
     pub async fn next(&mut self) -> Result<SubscriptionData<F>, Error> {
         let pdu = self
             .responses
@@ -912,7 +914,7 @@ impl Client {
         let name = format!(
             "sub-[{}]-{}",
             std::env::args()
-                .nth(0)
+                .next()
                 .unwrap_or_else(|| "<no-argv-0>".to_string()),
             SUB_ID.fetch_add(1, Ordering::Relaxed)
         );
