@@ -7,8 +7,8 @@ use std::os::windows::io::FromRawHandle;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use tokio::io::PollEvented;
 use tokio::prelude::*;
-use tokio_net::util::PollEvented;
 use winapi::um::fileapi::*;
 use winapi::um::winbase::*;
 use winapi::um::winnt::*;
@@ -49,7 +49,7 @@ impl NamedPipe {
         }
 
         let pipe = unsafe { mio_named_pipes::NamedPipe::from_raw_handle(handle) };
-        let io = PollEvented::new(pipe);
+        let io = PollEvented::new(pipe)?;
         Ok(Self { io })
     }
 }
