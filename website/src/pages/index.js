@@ -20,8 +20,8 @@ function Home() {
   const {siteConfig = {}} = context;
   return (
     <Layout
-      title={`Hello from ${siteConfig.title}`}
-      description="Description will go into a meta tag in <head />">
+      title={`${siteConfig.title} | ${siteConfig.tagline}`}
+    >
       <header className={classnames('hero hero--primary', styles.heroBanner)}>
         <div className="container">
           <img
@@ -44,14 +44,24 @@ function Home() {
               Get Started
             </Link>
           </div>
+          <span className={styles.indexCtasGitHubButtonWrapper}>
+            <iframe
+              className={styles.indexCtasGitHubButton}
+              src="https://ghbtns.com/github-btn.html?user=facebook&amp;repo=watchman&amp;type=star&amp;count=true&amp;size=large"
+              width={160}
+              height={30}
+              title="GitHub Stars"
+            />
+          </span>
         </div>
       </header>
-      <div className="row" style={{
-          display: 'flex'
-        }}>
-        <p>Watchman exists to watch files and record when they change. It can also trigger actions (such as rebuilding assets) when matching files change.</p>
-        <br/><br/><span>Concepts</span>
-        <ul>
+      <div className="container">
+      <div className="row">
+        <p className="padding-top--md">Watchman exists to watch files and record when they change. It can also trigger actions (such as rebuilding assets) when matching files change.</p>
+      </div>
+      <div className="row">
+        <h1 className="padding-top--md">Concepts</h1>
+        <ul className="padding-horiz--md">
           <li>Watchman can recursively watch one or more directory trees (we call them roots).</li>
           <li>Watchman does not follow symlinks. It knows they exist, but they show up the same as any other file in its reporting.</li>
           <li>Watchman waits for a root to settle down before it will start to trigger notifications or command execution.</li>
@@ -61,6 +71,7 @@ function Home() {
         </ul>
       </div>
       <div className="row">
+        <h1 className="padding-top--md">Quick Starter</h1>
         <p>
          These two lines establish a watch on a source directory and then set up a trigger named buildme that will run a tool named minify-css whenever a CSS file is changed. The tool will be passed a list of the changed filenames.
         </p>
@@ -69,7 +80,10 @@ function Home() {
           # the single quotes around '*.css' are important!<br/>
           $ watchman -- trigger ~/src buildme '*.css' -- minify-css<br/>
         </code>
-        <span>The output for buildme will land in the Watchman log file unless you send it somewhere else.</span>
+      </div>
+      <div className="row">
+        <span className="padding-top--md margin-bottom--md">The output for buildme will land in the Watchman log file unless you send it somewhere else.</span>
+      </div>
       </div>
     </Layout>
   );

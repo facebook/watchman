@@ -10,7 +10,7 @@
 module.exports = {
   title: 'Watchman',
   tagline: 'A file watching service',
-  url: 'https://your-docusaurus-test-site.com',
+  url: 'https://facebook.github.io/watchman/',
   baseUrl: '/',
   favicon: 'img/favicon.png',
   organizationName: 'facebook',
@@ -29,9 +29,8 @@ module.exports = {
           label: 'Docs',
         },
         {to: 'docs/support', label: 'Support', position: 'left'},
-        // Please keep GitHub link to the right for consistency.
         {
-          href: 'https://github.com/facebook/docusaurus',
+          href: 'https://github.com/facebook/watchman',
           label: 'GitHub',
           position: 'right',
         },
