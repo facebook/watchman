@@ -6,6 +6,7 @@
 from __future__ import absolute_import, division, print_function
 
 import time
+from os import path
 
 import WatchmanEdenTestCase
 
@@ -151,3 +152,36 @@ class TestEdenJournal(WatchmanEdenTestCase.WatchmanEdenTestCase):
         clock = res["clock"]
         self.assertTrue(res["is_fresh_instance"])
         self.assertFileListsEqual(res["files"], ["hello", ".hg", ".eden"])
+
+    def test_changing_root_tree(self):
+        def populate(repo):
+            repo.write_file("hello", "hola\n")
+            repo.commit("initial commit.")
+
+        root = self.makeEdenMount(populate)
+
+        res = self.watchmanCommand("watch", root)
+        self.assertEqual("eden", res["watcher"])
+
+        clock = self.watchmanCommand("clock", root)
+
+        # When the root tree inode changes, EdenFS will report an empty path
+        # for such change. This test ensures we handle this case well.
+        self.touchRelative(root, "")
+        self.touchRelative(root, "")
+
+        # This should not throw
+        res = self.watchmanCommand(
+            "query",
+            root,
+            {
+                "expression": [
+                    "not",
+                    ["anyof", ["dirname", ".hg"], ["dirname", ".eden"]],
+                ],
+                "fields": ["name", "exists"],
+                "since": clock,
+            },
+        )
+
+        self.assertEqual(res["files"][0], {"name": path.basename(root), "exists": True})

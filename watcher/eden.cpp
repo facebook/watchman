@@ -370,9 +370,15 @@ class EdenFileResult : public FileResult {
       auto& edenFile = dynamic_cast<EdenFileResult&>(*f.get());
 
       auto relName = edenFile.fullName_.piece();
-      // Strip off the mount point prefix for the names we're going
-      // to pass to eden.  The +1 is its trailing slash.
-      relName.advance(root_path_.size() + 1);
+
+      if (root_path_ == edenFile.fullName_) {
+        // The root tree inode has changed
+        relName = "";
+      } else {
+        // Strip off the mount point prefix for the names we're going
+        // to pass to eden.  The +1 is its trailing slash.
+        relName.advance(root_path_.size() + 1);
+      }
 
       if (edenFile.neededProperties() & FileResult::Property::SymlinkTarget) {
         // We need to know if the node is a symlink
