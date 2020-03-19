@@ -71,7 +71,7 @@ module.exports = {
       'bser',
       'casefolding',
       'contributing',
-      'query'
+      'cookies'
     ],
     Troubleshooting: ['troubleshooting']
   },

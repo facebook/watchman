@@ -8,28 +8,27 @@
  */
 
 module.exports = {
-  title: 'My Site',
-  tagline: 'The tagline of my site',
+  title: 'Watchman',
+  tagline: 'A file watching service',
   url: 'https://your-docusaurus-test-site.com',
   baseUrl: '/',
-  favicon: 'img/favicon.ico',
-  organizationName: 'facebook', // Usually your GitHub org/user name.
-  projectName: 'docusaurus', // Usually your repo name.
+  favicon: 'img/favicon.png',
+  organizationName: 'facebook',
+  projectName: 'watchman',
   themeConfig: {
     navbar: {
-      title: 'My Facebook Project',
+      title: 'Watchman',
       logo: {
-        alt: 'My Facebook Project Logo',
-        src: 'img/logo.svg',
+        alt: 'Watchman Logo',
+        src: 'img/logo.png',
       },
       links: [
         {
           to: 'docs/install',
           activeBasePath: 'docs',
           label: 'Docs',
-          position: 'left',
         },
-        {to: 'blog', label: 'Blog', position: 'left'},
+        {to: 'docs/support', label: 'Support', position: 'left'},
         // Please keep GitHub link to the right for consistency.
         {
           href: 'https://github.com/facebook/docusaurus',
@@ -40,51 +39,6 @@ module.exports = {
     },
     footer: {
       style: 'dark',
-      links: [
-        {
-          title: 'Docs',
-          items: [
-            {
-              label: 'Style Guide',
-              to: 'docs/doc1',
-            },
-            {
-              label: 'Second Doc',
-              to: 'docs/doc2',
-            },
-          ],
-        },
-        {
-          title: 'Community',
-          items: [
-            {
-              label: 'Stack Overflow',
-              href: 'https://stackoverflow.com/questions/tagged/docusaurus',
-            },
-            {
-              label: 'Discord',
-              href: 'https://discordapp.com/invite/docusaurus',
-            },
-          ],
-        },
-        {
-          title: 'Social',
-          items: [
-            {
-              label: 'Blog',
-              to: 'blog',
-            },
-            {
-              label: 'GitHub',
-              href: 'https://github.com/facebook/docusaurus',
-            },
-            {
-              label: 'Twitter',
-              href: 'https://twitter.com/docusaurus',
-            },
-          ],
-        },
-      ],
       logo: {
         alt: 'Facebook Open Source Logo',
         src: 'img/oss_logo.png',

@@ -15,54 +15,6 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import styles from './styles.module.css';
 
-const features = [
-  {
-    title: <>Easy to Use</>,
-    imageUrl: 'img/undraw_docusaurus_mountain.svg',
-    description: (
-      <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
-      </>
-    ),
-  },
-  {
-    title: <>Focus on What Matters</>,
-    imageUrl: 'img/undraw_docusaurus_tree.svg',
-    description: (
-      <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
-      </>
-    ),
-  },
-  {
-    title: <>Powered by React</>,
-    imageUrl: 'img/undraw_docusaurus_react.svg',
-    description: (
-      <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
-      </>
-    ),
-  },
-];
-
-function Feature({imageUrl, title, description}) {
-  const imgUrl = useBaseUrl(imageUrl);
-  return (
-    <div className={classnames('col col--4', styles.feature)}>
-      {imgUrl && (
-        <div className="text--center">
-          <img className={styles.featureImage} src={imgUrl} alt={title} />
-        </div>
-      )}
-      <h3>{title}</h3>
-      <p>{description}</p>
-    </div>
-  );
-}
-
 function Home() {
   const context = useDocusaurusContext();
   const {siteConfig = {}} = context;
@@ -72,6 +24,7 @@ function Home() {
       description="Description will go into a meta tag in <head />">
       <header className={classnames('hero hero--primary', styles.heroBanner)}>
         <div className="container">
+          <img src="img/logo.png"/>
           <h1 className="hero__title">{siteConfig.title}</h1>
           <p className="hero__subtitle">{siteConfig.tagline}</p>
           <div className={styles.buttons}>
@@ -86,24 +39,29 @@ function Home() {
           </div>
         </div>
       </header>
-      <main>
-        {features && features.length && (
-          <section className={styles.features}>
-            <div className="container">
-              <div className="row">
-                {features.map(({title, imageUrl, description}) => (
-                  <Feature
-                    key={title}
-                    title={title}
-                    imageUrl={imageUrl}
-                    description={description}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-      </main>
+      <div>
+          <p>Watchman exists to watch files and record when they change. It can also trigger actions (such as rebuilding assets) when matching files change.</p>
+          <h2>Concepts</h2>
+          <ul>
+            <li>Watchman can recursively watch one or more directory trees (we call them roots).</li>
+            <li>Watchman does not follow symlinks. It knows they exist, but they show up the same as any other file in its reporting.</li>
+            <li>Watchman waits for a root to settle down before it will start to trigger notifications or command execution.</li>
+            <li>Watchman is conservative, preferring to err on the side of caution; it considers files to be freshly changed when you start to watch them or when it is unsure.</li>
+            <li>You can query a root for file changes since you last checked, or the current state of the tree</li>
+            <li>You can subscribe to file changes that occur in a root</li>
+          </ul>
+        </div>
+        <div>
+          <p>
+          These two lines establish a watch on a source directory and then set up a trigger named buildme that will run a tool named minify-css whenever a CSS file is changed. The tool will be passed a list of the changed filenames.
+          </p>
+          <code>
+            $ watchman watch ~/src<br/>
+            # the single quotes around '*.css' are important!<br/>
+            $ watchman -- trigger ~/src buildme '*.css' -- minify-css<br/>
+          </code>
+          <span>The output for buildme will land in the Watchman log file unless you send it somewhere else.</span>
+      </div>
     </Layout>
   );
 }
