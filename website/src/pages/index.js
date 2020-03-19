@@ -24,7 +24,14 @@ function Home() {
       description="Description will go into a meta tag in <head />">
       <header className={classnames('hero hero--primary', styles.heroBanner)}>
         <div className="container">
-          <img src="img/logo.png"/>
+          <img
+            src="img/logo.png"
+            alt="logo"
+            style={{
+              borderRadius: '90%',
+              maxWidth: 180,
+            }}
+          />
           <h1 className="hero__title">{siteConfig.title}</h1>
           <p className="hero__subtitle">{siteConfig.tagline}</p>
           <div className={styles.buttons}>
@@ -33,34 +40,36 @@ function Home() {
                 'button button--outline button--secondary button--lg',
                 styles.getStarted,
               )}
-              to={useBaseUrl('docs/doc1')}>
+              to={useBaseUrl('docs/install')}>
               Get Started
             </Link>
           </div>
         </div>
       </header>
-      <div>
-          <p>Watchman exists to watch files and record when they change. It can also trigger actions (such as rebuilding assets) when matching files change.</p>
-          <h2>Concepts</h2>
-          <ul>
-            <li>Watchman can recursively watch one or more directory trees (we call them roots).</li>
-            <li>Watchman does not follow symlinks. It knows they exist, but they show up the same as any other file in its reporting.</li>
-            <li>Watchman waits for a root to settle down before it will start to trigger notifications or command execution.</li>
-            <li>Watchman is conservative, preferring to err on the side of caution; it considers files to be freshly changed when you start to watch them or when it is unsure.</li>
-            <li>You can query a root for file changes since you last checked, or the current state of the tree</li>
-            <li>You can subscribe to file changes that occur in a root</li>
-          </ul>
-        </div>
-        <div>
-          <p>
-          These two lines establish a watch on a source directory and then set up a trigger named buildme that will run a tool named minify-css whenever a CSS file is changed. The tool will be passed a list of the changed filenames.
-          </p>
-          <code>
-            $ watchman watch ~/src<br/>
-            # the single quotes around '*.css' are important!<br/>
-            $ watchman -- trigger ~/src buildme '*.css' -- minify-css<br/>
-          </code>
-          <span>The output for buildme will land in the Watchman log file unless you send it somewhere else.</span>
+      <div className="row" style={{
+          display: 'flex'
+        }}>
+        <p>Watchman exists to watch files and record when they change. It can also trigger actions (such as rebuilding assets) when matching files change.</p>
+        <br/><br/><span>Concepts</span>
+        <ul>
+          <li>Watchman can recursively watch one or more directory trees (we call them roots).</li>
+          <li>Watchman does not follow symlinks. It knows they exist, but they show up the same as any other file in its reporting.</li>
+          <li>Watchman waits for a root to settle down before it will start to trigger notifications or command execution.</li>
+          <li>Watchman is conservative, preferring to err on the side of caution; it considers files to be freshly changed when you start to watch them or when it is unsure.</li>
+          <li>You can query a root for file changes since you last checked, or the current state of the tree</li>
+          <li>You can subscribe to file changes that occur in a root</li>
+        </ul>
+      </div>
+      <div className="row">
+        <p>
+         These two lines establish a watch on a source directory and then set up a trigger named buildme that will run a tool named minify-css whenever a CSS file is changed. The tool will be passed a list of the changed filenames.
+        </p>
+        <code>
+          $ watchman watch ~/src<br/>
+          # the single quotes around '*.css' are important!<br/>
+          $ watchman -- trigger ~/src buildme '*.css' -- minify-css<br/>
+        </code>
+        <span>The output for buildme will land in the Watchman log file unless you send it somewhere else.</span>
       </div>
     </Layout>
   );
