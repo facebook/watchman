@@ -1,9 +1,6 @@
 ---
 id: cppclient
 title: C++ Client
-layout: docs
-section: Invocation
-permalink: docs/cppclient.html
 ---
 
 *Since 4.8.*
@@ -19,7 +16,7 @@ data from C++ applications. This library provides APIs for:
 
 Provided the Folly library is present when Watchman is built, the C++ client
 library is automatically built and installed. For details on building Watchman
-see [Installation](/watchman/docs/install.html).
+see [Installation](/docs/install).
 
 ## API
 

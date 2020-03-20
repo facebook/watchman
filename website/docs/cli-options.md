@@ -1,9 +1,6 @@
 ---
 id: cli-options
 title: Command Line
-layout: docs
-section: Invocation
-permalink: docs/cli-options.html
 ---
 
 The `watchman` executable contains both the client and the server components
@@ -72,7 +69,7 @@ it was configured.
 
 If you are building a client to access the service programmatically, we
 recommend that you invoke [watchman get-sockname](
-/watchman/docs/cmd/get-sockname.html) to discover the path that the client and
+/docs/get-sockname) to discover the path that the client and
 server would use.  This has the side effect of spawning the service for you if
 it isn't already running.
 
@@ -90,7 +87,7 @@ starting the service if it isn't running:
 ```
 
 Client mode implements the [watchman find command](
-/watchman/docs/cmd/find.html) as an immediate search.
+/docs/find) as an immediate search.
 
 These options control how the client talks to the server:
 
@@ -101,7 +98,7 @@ These options control how the client talks to the server:
 
 Persistent connections have relatively limited use with the CLI, but can be
 useful to connect ad-hoc to the service to receive logging information (See
-[log-level](/watchman/docs/cmd/log-level.html)).
+[log-level](/docs/log-level)).
 
 The server encoding option controls how requests and responses are formatted
 when talking to the server.  You generally shouldn't need to worry about this.
@@ -121,7 +118,7 @@ This is turned into a request like this:
 ```
 
 and sent to the service using the [Socket Interface](
-/watchman/docs/socket-interface.html).
+/docs/socket-interface).
 
 The response is received and then sent to the `stdout` stream formatted based on
 the selected output-encoding:
@@ -193,7 +190,7 @@ These options are used when starting the server.  They are recognized by the
 client and affect how it will start the server, but have no effect if the
 server is already running.  To change the effective values of these options
 for a running server, you will need to restart it (you can stop it by running
-[watchman shutdown-server](/watchman/docs/cmd/shutdown-server.html)).
+[watchman shutdown-server](/docs/shutdown-server)).
 
 By default, watchman will remember all watches and associated triggers and
 reinstate them if the process is restarted.  This state is stored in the

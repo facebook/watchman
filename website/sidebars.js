@@ -8,7 +8,8 @@
  */
 
 module.exports = {
-  someSidebar: {
+  sidebar: {
+    Installation: ['install', 'release-notes'],
     Invocation: [
       'cli-options',
       'watchman-make',
@@ -19,14 +20,7 @@ module.exports = {
       'config',
       'socket-interface'
     ],
-    Installation: ['install','release-notes'],
     Compatibility: ['compatibility', 'capabilities'],
-    Queries: [
-      'clockspec',
-      'file-query',
-      'simple-query',
-      'scm-query'
-    ],
     Commands: [
       'find',
       'flush-subscriptions',
@@ -52,7 +46,13 @@ module.exports = {
       'watch-list',
       'watch-project'
     ],
-    Expressions : [
+    Queries: [
+      'clockspec',
+      'file-query',
+      'simple-query',
+      'scm-query'
+    ],
+    "Expressions Terms": [
       'allof',
       'anyof',
       'dirname',

@@ -1,9 +1,6 @@
 ---
 id: watchman-replicate-subscription
 title: watchman-replicate-subscription
-layout: docs
-category: Invocation
-permalink: docs/watchman-replicate-subscription.html
 ---
 
 *Since 5.0*

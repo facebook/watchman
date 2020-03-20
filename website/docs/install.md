@@ -1,9 +1,6 @@
 ---
 id: install
 title: Installation
-layout: docs
-section: Installation
-permalink: docs/install.html
 ---
 
 ## System Requirements
@@ -60,9 +57,11 @@ this time, so you will need to follow these steps to download the binaries:
 
 * [Navigate to recent CI builds](https://github.com/facebook/watchman/actions?query=is%3Asuccess+event%3Apush+branch%3Amaster)
 * Click on the `CI` label
-![](/watchman/static/ci-link.png)
+
+![](/img/ci-link.png)
 * Look in the top right of the resulting page for the `Artifacts` drop down
-![](/watchman/static/artifacts-download.png)
+
+![](/img/artifacts-download.png)
 * Click it to reveal the download artifacts link
 * Click that and extract the zip file
 * For Windows users:

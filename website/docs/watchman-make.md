@@ -1,9 +1,6 @@
 ---
 id: watchman-make
 title: watchman-make
-layout: docs
-category: Invocation
-permalink: docs/watchman-make.html
 ---
 
 `watchman-make` is a convenience tool to help automatically invoke a build

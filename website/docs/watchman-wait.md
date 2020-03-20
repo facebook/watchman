@@ -1,9 +1,6 @@
 ---
 id: watchman-wait
 title: watchman-wait
-layout: docs
-category: Invocation
-permalink: docs/watchman-wait.html
 ---
 
 `watchman-wait` waits for changes to files.  It uses the watchman service to
@@ -86,7 +83,7 @@ the output:
 * `--fields NAME,NAME` - specifies the list of fields to be printed for each
   event.  The default is `--fields name` which will print just the `name` of the
   file that was changed.  You may use any of the available fields listed in
-  [available fields](/watchman/docs/cmd/query.html#available-fields).
+  [available fields](/docs/query#available-fields).
   The fields will be printed in the order you list them.
 * `--relative DIR` - the `name` field will be adjusted to be relative to `DIR`
   before it is printed out.  The default for `DIR` is the current working directory

@@ -1,9 +1,6 @@
 ---
 id: release-notes
 title: Release Notes
-layout: docs
-section: Installation
-permalink: docs/release-notes.html
 ---
 
 We focus on the highlights only in these release notes.  For a full history
@@ -18,7 +15,7 @@ GitHub](https://github.com/facebook/watchman/commits/master).
 * Added support for suffix sets in suffix expressions.  You now can specify
   multiple suffixes to match against by setting the second argument to a list
   of suffixes. See `suffix-set` documentation for
-  [more details](/watchman/docs/expr/suffix.html#suffix-set)
+  [more details](suffix.md#suffix-set)
 * pywatchman: introduced new pywatchman_aio client for python
 
 ### Watchman 4.9.0 (2017-08-24)
@@ -227,8 +224,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 * Improved (re)crawl speed for dirs with more than a couple of entries on average
   (improvement can be up to 5x for dirs with up to 64 entries on average).
   You may now tune the `hint_num_files_per_dir` setting in your
-  `.watchmanconfig` to better match your tree.  [More details](
-  /watchman/docs/config.html#hint_num_files_per_dir)
+  `.watchmanconfig` to better match your tree.  [More details](/docs/config#hint_num_files_per_dir)
 * Improved (re)crawl speed on OS X 10.10 and later by using `getattrlistbulk`.
   This allows us to improve the data:syscall ratio during crawling and can
   improve throughput by up to 40% for larger trees.
@@ -257,8 +253,8 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 * Disabled the IO-throttling-during-crawl that we added in 3.7. It proved to
   be more harmful than beneficial.
 * `-j` CLI option now accepts either JSON or BSER encoded command on stdin
-* Added [capabilities](/watchman/docs/capabilities.html) to the server,
-  and added the [capabilityCheck](/watchman/docs/cmd/version.html#capabilityCheck)
+* Added [capabilities](/docs/capabilities) to the server,
+  and added the [capabilityCheck](/docs/version#capabilityCheck)
   method to the python and node clients.
 
 ### pywatchman 1.2.0 (2015-08-15)
@@ -269,7 +265,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 
 ### fb-watchman 1.3.0 for node (2015-08-15)
 
-* Added the [capabilityCheck](/watchman/docs/nodejs.html#checking-for-watchman-availability) method.
+* Added the [capabilityCheck](/docs/nodejs#checking-for-watchman-availability) method.
 
 ### pywatchman 1.0.0 (2015-08-06)
 
@@ -288,7 +284,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
   whose names start with `.`.
 * Added `noescape` option to `query match` to make `\` match literal `\`.
 * We'll now automatically age out and stop watches. See [idle_reap_age_seconds](
-/watchman/docs/config.html#idle_reap_age_seconds) for more information.
+/docs/config#idle_reap_age_seconds) for more information.
 * `watch-project` will now try harder to re-use an existing watch and avoid
   creating an overlapping watch.
 * Reduce I/O priority during crawling on systems that support this
@@ -308,7 +304,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 
 * `trigger` now supports an optional `relative_root` argument. The trigger is
   evaluated with respect to this subdirectory. See
-  [trigger](/watchman/docs/cmd/trigger.html#relative-roots) for more.
+  [trigger](/docs/trigger#relative-roots) for more.
 
 ### fb-watchman 1.1.0 for node (2015-06-25)
 
@@ -319,7 +315,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 
 ### fb-watchman 1.0.0 for node (2015-06-23)
 
-* Updated the node client to support [BSER](/watchman/docs/bser.html)
+* Updated the node client to support [BSER](/docs/bser)
   encoding, fixing a quadratic performance issue in the JSON stream
   decoder that was used previously.
 
@@ -328,4 +324,4 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 * `query` and `subscribe` now support an optional `relative_root`
   argument. Inputs and outputs are evaluated with respect to this
   subdirectory. See
-  [File Queries](/watchman/docs/file-query.html#relative-roots) for more.
+  [File Queries](/docs/file-query#relative-roots) for more.

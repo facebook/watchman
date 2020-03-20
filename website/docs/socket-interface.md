@@ -1,9 +1,6 @@
 ---
 id: socket-interface
 title: Socket Interface
-layout: docs
-section: Invocation
-permalink: docs/socket-interface.html
 ---
 
 Most simple uses of Watchman will invoke the watchman binary and process its
@@ -52,7 +49,7 @@ representation of strings.
 When you make a request using BSER, the server will respond in BSER encoding.
 
 You can [read more about BSER in the BSER specification](
-/watchman/docs/bser.html).
+/docs/bser).
 
 ### Reporting Errors and Warnings
 
