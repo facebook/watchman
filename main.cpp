@@ -154,7 +154,7 @@ static bool lock_pidfile(void) {
       // to forward slashes.
       name.append("/");
     } else {
-      name.append(it, 1);
+      name.push_back(it);
     }
   }
 
