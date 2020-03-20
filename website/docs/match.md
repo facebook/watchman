@@ -1,9 +1,6 @@
 ---
 id: match
 title: match & imatch
-layout: docs
-section: Expression Terms
-permalink: docs/expr/match.html
 ---
 
 The `match` expression performs a glob-style match against the basename of
@@ -42,7 +39,7 @@ in the query by setting the `case_sensitive` field in your query.
 *Since 3.7.*
 
 The `match` expression has been enhanced as described below.  The
-[capability](/watchman/docs/capabilities.html) name associated with this
+[capability](/docs/capabilities) name associated with this
 enhanced functionality is `wildmatch`.
 
 If you want to recursively match all files under a directory, use the `**`

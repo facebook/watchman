@@ -1,9 +1,6 @@
 ---
 id: casefolding
 title: Case-Insensitivity
-layout: docs
-section: Internals
-permalink: docs/casefolding.html
 ---
 
 Watchman is currently completely unaware of case-insensitivity in file systems,

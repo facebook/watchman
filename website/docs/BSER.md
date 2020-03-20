@@ -1,9 +1,6 @@
 ---
 id: bser
 title: BSER Binary Protocol
-layout: docs
-section: Internals
-permalink: docs/bser.html
 ---
 
 The basic JSON protocol in watchman allows quick and easy integration.

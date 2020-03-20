@@ -1,9 +1,6 @@
 ---
 id: type
 title: type
-layout: docs
-section: Expression Terms
-permalink: docs/expr/type.html
 ---
 
 Evaluates as true if the type of the file matches that specified by the second

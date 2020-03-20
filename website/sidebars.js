@@ -62,7 +62,7 @@ module.exports = {
       'name',
       'not',
       'pcre',
-      'since',
+      'exp-since',
       'size',
       'suffix',
       'type'

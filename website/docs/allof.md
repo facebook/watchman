@@ -1,9 +1,6 @@
 ---
 id: allof
 title: allof
-layout: docs
-section: Expression Terms
-permalink: docs/expr/allof.html
 ---
 
 The `allof` expression term evaluates as true if all of the grouped expressions

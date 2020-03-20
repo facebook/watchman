@@ -1,9 +1,6 @@
 ---
 id: anyof
 title: anyof
-layout: docs
-section: Expression Terms
-permalink: docs/expr/anyof.html
 ---
 
 The `anyof` expression term evaluates as true if any of the grouped expressions

@@ -1,9 +1,6 @@
 ---
 id: dirname
 title: dirname & idirname
-layout: docs
-section: Expression Terms
-permalink: docs/expr/dirname.html
 ---
 
 *Since version 3.1*
@@ -28,7 +25,7 @@ the file within the specified dirname.  A file is considered to have
 dirname, `depth == 2` if it is contained in a grand-child directory and so on.
 
 The relational expression accepts the same relational operators as described in
-the [size term](size.html).
+the [size term](/docs/size).
 
 If you wanted to match only files that were directly in the `foo/bar` dir:
 

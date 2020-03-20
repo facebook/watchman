@@ -1,9 +1,6 @@
 ---
 id: troubleshooting
 title: Troubleshooting
-layout: docs
-section: Troubleshooting
-permalink: docs/troubleshooting.html
 ---
 
 We try to give directed advice in Watchman error diagnostics, which means that
@@ -25,7 +22,7 @@ version of the software, so that you avoid any known issues.
 If you are running a pre-built binary provided by your operating system
 distribution system, there is a chance that you'll need to build the
 latest version from source.  You can find instructions for this in
-[the installation section](/watchman/docs/install.html).
+[the installation section](/docs/install).
 
 ## Recrawl
 
@@ -52,7 +49,7 @@ There is no simple formula for setting your system limits; bigger is better but
 comes at the cost of kernel memory to maintain the buffers.  You and/or your
 system administrator should review the workload for your system and the
 [System Specific Preparation Documentation](
-/watchman/docs/install.html#system-specific-preparation) and raise your limits
+/docs/install#system-specific-preparation) and raise your limits
 accordingly.
 
 ### kFSEventStreamEventFlagUserDropped
@@ -67,7 +64,7 @@ Recrawled this watch 1 times, most recently because:
 
 then you are hitting the limits of your system.  There is no direct control
 over the limit, but starting in Watchman 3.2 you may increase the
-[fsevents_latency](/watchman/docs/config.html#fsevents-latency)
+[fsevents_latency](/docs/config#fsevents_latency)
 parameter in your `.watchmanconfig` file.
 
 ### I've changed my limits, how can I clear the warning?
@@ -93,10 +90,10 @@ typically be a location like `<PREFIX>/var/run/watchman/<USER>-state/log`. If
 you're running a `homebrew` build of watchman, `<PREFIX>` is usually `/usr/local`.
 
 The default log location may be overridden by the `--logfile` [Server Option](
-/watchman/docs/cli-options.html#server-options).
+/docs/cli-options#server-options).
 
 [Quick note on default locations](
-/watchman/docs/cli-options.html#quick-note-on-default-locations) explains what
+/docs/cli-options#quick-note-on-default-locations) explains what
 we mean by `<STATEDIR>`, `<TMPDIR>`, `<USER>` and so on.
 
 ## <a id="poison-inotify-add-watch"></a>Poison: inotify_add_watch
@@ -106,7 +103,7 @@ A non-recoverable condition has triggered.  Watchman needs your help!
 The triggering condition was at timestamp=1407695600: inotify-add-watch(/my/path) -> Cannot allocate memory
 All requests will continue to fail with this message until you resolve
 the underlying problem.  You will find more information on fixing this at
-https://facebook.github.io/watchman/docs/troubleshooting.html#poison-inotify-add-watch
+docs/troubleshooting#poison-inotify-add-watch
 ```
 
 If you've encountered this state it means that your *kernel* was unable to
@@ -126,7 +123,7 @@ There are two primary reasons that this can trigger:
 
 The resolution for the former is to revisit
 [System Specific Preparation Documentation](
-/watchman/docs/install.html#system-specific-preparation) and raise your limits
+/docs/install#system-specific-preparation) and raise your limits
 accordingly.
 
 The latter condition implies that your workload is exceeding the available RAM
@@ -163,7 +160,7 @@ A non-recoverable condition has triggered.  Watchman needs your help!
 The triggering condition was at timestamp=1407695600: opendir(/my/path) -> Too many open files in system
 All requests will continue to fail with this message until you resolve
 the underlying problem.  You will find more information on fixing this at
-https://facebook.github.io/watchman/docs/troubleshooting.html#opendir
+/docs/troubleshooting#opendir
 ```
 
 If you've encountered this state it means that your entire system had too many
@@ -177,7 +174,7 @@ limits for the number of files.
 ### How do I resolve this?
 
 [Follow these directions](
-/watchman/docs/troubleshooting.html#i-39-ve-changed-my-limits-how-can-i-clear-the-error)
+/docs/troubleshooting#ive-changed-my-limits-how-can-i-clear-the-warning)
 
 If the issue persists, consult your system administrator to identify what
 is consuming these resources and remediate it, or to increase your system
@@ -214,7 +211,7 @@ progressively more invasive:
   tree, especially for large trees.  We recommend watching only the root of a
   project or repo and not watching sub-trees within that tree.  Organizations
   with large trees may wish to deploy the
-  [root_restrict_files](config.html#root-restrict-files) configuration option
+  [root_restrict_files](/docs/config#root_restrict_files) configuration option
   so that watchman will only allow watching project roots.
 * Close or restart other applications that are using fsevents.
   Some examples are:

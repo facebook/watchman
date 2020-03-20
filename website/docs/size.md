@@ -1,9 +1,6 @@
 ---
 id: size
 title: size
-layout: docs
-section: Expression Terms
-permalink: docs/expr/size.html
 ---
 
 *Since version 3.1*

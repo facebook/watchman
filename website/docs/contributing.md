@@ -1,9 +1,6 @@
 ---
 id: contributing
 title: Contributing
-layout: docs
-permalink: contributing.html
-section: Internals
 ---
 
 If you're thinking of hacking on watchman we'd love to hear from you!
@@ -84,5 +81,5 @@ $ jekyll serve -w -t
 This will print out a URL that you can open in your browser to preview your
 documentation changes.
 
-The source for the documentation is in the `website/_docs` dir in markdown
+The source for the documentation is in the `website/docs` dir in markdown
 format.

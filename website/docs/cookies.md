@@ -1,9 +1,6 @@
 ---
 id: cookies
 title: Query Synchronization
-layout: docs
-category: Internals
-permalink: docs/cookies.html
 ---
 
 A file system monitor needs to make sure that queries see up-to-date

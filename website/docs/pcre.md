@@ -1,9 +1,6 @@
 ---
 id: pcre
 title: pcre & ipcre
-layout: docs
-section: Expression Terms
-permalink: docs/expr/pcre.html
 ---
 
 *To use this feature, you must configure watchman `--with-pcre`!*

@@ -1,9 +1,6 @@
 ---
 id: suffix
 title: suffix
-layout: docs
-section: Expression Terms
-permalink: docs/expr/suffix.html
 ---
 
 The `suffix` expression evaluates true if the file suffix matches the second
@@ -30,5 +27,5 @@ equivalent but the set form has a more efficient and thus faster runtime:
 
     ["suffix", ["php", "html"]]
 
-The [capability](/watchman/docs/capabilities.html) name associated with this
+The [capability](/docs/capabilities) name associated with this
 enhanced functionality is `suffix-set`.
