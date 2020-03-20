@@ -1,9 +1,6 @@
 ---
 id: log
 title: log
-layout: docs
-section: Commands
-permalink: docs/cmd/log.html
 ---
 
 Generates a log line in the watchman log.

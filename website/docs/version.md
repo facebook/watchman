@@ -1,9 +1,6 @@
 ---
 id: version
 title: version
-layout: docs
-section: Commands
-permalink: docs/cmd/version.html
 ---
 
 The version command will tell you the version and build information
@@ -38,7 +35,7 @@ having the client build up knowledge about when those functions
 were introduced.
 
 You can read more about the [available capability names](
-/watchman/docs/capabilities.html).
+/docs/capabilities).
 
 To check whether the `relative_root` capability is supported:
 

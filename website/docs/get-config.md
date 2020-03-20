@@ -1,9 +1,6 @@
 ---
 id: get-config
 title: get-config
-layout: docs
-section: Commands
-permalink: docs/cmd/get-config.html
 ---
 
 The `get-config` command returns the `.watchmanconfig` for the root.
@@ -33,7 +30,7 @@ Note that watchman only reads the `.watchmanconfig` file when the watch is
 established.  If changes are made after that point, the `get-config` response
 will not reflect them.
 
-See [Configuration Options](/watchman/docs/config.html#configuration-options)
+See [Configuration Options](/docs/config#configuration-options)
 for details on valid contents of the `config` field.  Note that the values
 returned by `get-config` are passed straight through from the `.watchmanconfig`
 file, and thus may contain fields that are not strictly legal.

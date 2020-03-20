@@ -1,9 +1,6 @@
 ---
 id: since
 title: since
-layout: docs
-section: Commands
-permalink: docs/cmd/since.html
 ---
 
 ```bash

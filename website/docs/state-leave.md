@@ -1,16 +1,13 @@
 ---
 id: state-leave
 title: state-leave
-layout: docs
-section: Commands
-permalink: docs/cmd/state-leave.html
 ---
 
 *Since 4.4*
 
 The `state-leave` command works in conjunction with
-[state-enter](/watchman/docs/cmd/state-enter.html) to facilitate [advanced
-settling in subscriptions](/watchman/docs/cmd/subscribe.html#advanced-settling).
+[state-enter](/docs/state-enter) to facilitate [advanced
+settling in subscriptions](/docs/subscribe#advanced-settling).
 
 `state-leave` causes a watch to no longer be marked as being in a particular
 named state.
@@ -96,7 +93,7 @@ possible for subscribers to reason about when files changed with respect to
 the state.
 
 This means that issuing a `state-leave` command will [perform query
-synchronization](/watchman/docs/cookies.html#how-cookies-work) to ensure that
+synchronization](/docs/cookies#how-cookies-work) to ensure that
 things are in sync.
 
 The `state-leave` command will use a default `sync_timeout` of 60 seconds.

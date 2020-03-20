@@ -1,9 +1,6 @@
 ---
 id: trigger-list
 title: trigger-list
-layout: docs
-section: Commands
-permalink: docs/cmd/trigger-list.html
 ---
 
 Returns the set of registered triggers associated with a root directory.

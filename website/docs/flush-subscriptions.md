@@ -1,9 +1,6 @@
 ---
 id: flush-subscriptions
 title: flush-subscriptions
-layout: docs
-section: Commands
-permalink: docs/cmd/flush-subscriptions.html
 ---
 
 *Since 4.8.*

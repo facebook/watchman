@@ -1,16 +1,13 @@
 ---
 id: state-enter
 title: state-enter
-layout: docs
-section: Commands
-permalink: docs/cmd/state-enter.html
 ---
 
 *Since 4.4*
 
 The `state-enter` command works in conjunction with
-[state-leave](/watchman/docs/cmd/state-leave.html) to facilitate [advanced
-settling in subscriptions](/watchman/docs/cmd/subscribe.html#advanced-settling).
+[state-leave](/docs/state-leave) to facilitate [advanced
+settling in subscriptions](/docs/subscribe#advanced-settling).
 
 `state-enter` causes a watch to be marked as being in a particular named
 state.  The state is asserted until a corresponding `state-leave` command is
@@ -18,8 +15,8 @@ issued or *until the watchman client session that entered the state
 disconnects*.  This automatic cleanup helps to avoid breaking subscribers
 if the tooling that initiated a state terminates unexpectedly.
 
-Subscriptions can use the [defer](/watchman/docs/cmd/subscribe.html#defer) and
-[drop](/watchman/docs/cmd/subscribe.html#drop) fields to defer or drop
+Subscriptions can use the [defer](/docs/subscribe#defer) and
+[drop](/docs/subscribe#drop) fields to defer or drop
 notifications generated while the watch is in a particular named state.
 
 ### Examples
@@ -81,7 +78,7 @@ possible for subscribers to reason about when files changed with respect to
 the state.
 
 This means that issuing a `state-enter` command will [perform query
-synchronization](/watchman/docs/cookies.html#how-cookies-work) to ensure that
+synchronization](/docs/cookies#how-cookies-work) to ensure that
 things are in sync.
 
 The `state-enter` command will use a default `sync_timeout` of 60 seconds.

@@ -1,17 +1,14 @@
 ---
 id: list-capabilities
 title: list-capabilities
-layout: docs
-category: Commands
-permalink: docs/cmd/list-capabilities.html
 ---
 
 *Since 3.8.*
 
 This command returns the full list of supported [capabilities](
-/watchman/docs/capabilities.html) offered by the watchman server.  The
+/docs/capabilities) offered by the watchman server.  The
 intention is that client applications will use the
-[expanded version command](/watchman/docs/cmd/version.html) to check
+[expanded version command](/docs/version) to check
 compatibility rather than interrogating the full list.
 
 Here's some example output.  The actual capabilities list is in unspecified

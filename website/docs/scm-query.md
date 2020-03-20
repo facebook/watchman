@@ -1,14 +1,11 @@
 ---
 id: scm-query
 title: Source Control Aware Queries
-layout: docs
-section: Queries
-permalink: docs/scm-query.html
 ---
 
 *Since 4.9.*
 
-*The [capability](/watchman/docs/capabilities.html) name associated with this
+*The [capability](/docs/capabilities) name associated with this
 enhanced functionality is `scm-since`.*
 
 At the time of writing, only Mercurial is supported.  The capability name for

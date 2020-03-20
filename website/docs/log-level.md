@@ -1,9 +1,6 @@
 ---
 id: log-level
 title: log-level
-layout: docs
-section: Commands
-permalink: docs/cmd/log-level.html
 ---
 
 Changes the log level of your connection to the watchman service.

@@ -1,9 +1,6 @@
 ---
 id: trigger
 title: trigger
-layout: docs
-section: Commands
-permalink: docs/cmd/trigger.html
 ---
 
 The trigger command will create or replace a trigger.
@@ -169,7 +166,7 @@ The possible trigger object properties are:
 The simple syntax is easier to execute from the CLI than the JSON based
 extended syntax, but doesn't allow all of the trigger options to be set.
 In only supports the [Simple Pattern Syntax](
-/watchman/docs/simple-query.html) for queries.
+/docs/simple-query) for queries.
 
 From the command line:
 
@@ -209,7 +206,7 @@ settings:
 * `name` is set to the `triggername`
 * `command` is set to the `<cmd>` list
 * `expression` is generated from the `<patterns>` list using the rules laid
-  out in [Simple Pattern Syntax](/watchman/docs/simple-query.html)
+  out in [Simple Pattern Syntax](/docs/simple-query)
 * `append_files` is set to `true`
 * `stdin` is set to `["name", "exists", "new", "size", "mode"]`
 * `stdout` and `stderr` will be set to output to the Watchman log file
@@ -255,7 +252,7 @@ watched root. This is used with the `relative_root` parameter:
 Setting a relative root results in the following modifications to triggers:
 
 * Queries are evaluated with respect to the relative root. See
-  [File Queries](/watchman/docs/file-query.html) for more.
+  [File Queries](/docs/file-query) for more.
 * The current directory for triggered processes is set to the relative root,
   unless it is changed with `chdir`. If `chdir` is a relative path then it will
   be evaluated with respect to the relative root. So, for the example trigger

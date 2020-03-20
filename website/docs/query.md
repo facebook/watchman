@@ -1,9 +1,6 @@
 ---
 id: query
 title: query
-layout: docs
-section: Commands
-permalink: docs/cmd/query.html
 ---
 
 *Since 1.6.*
@@ -32,7 +29,7 @@ documented in the protocol spec.
 The first argument to query is the path to the watched root.  The second
 argument holds a JSON object describing the query to be run.  The query object
 is processed by passing it to the query engine (see [File Queries](
-/watchman/docs/file-query.html)) which will generate a set of matching files.
+/docs/file-query)) which will generate a set of matching files.
 
 The query command will then consult the `fields` member of the query object;
 if it is not present it will default to:
@@ -135,7 +132,7 @@ microseconds, nanoseconds or floating point seconds respectively.
 *Since 3.1.*
 
  * `type` - string: the file type. Has the
-   the values listed in [the type query expression](../expr/type.html)
+   the values listed in [the type query expression](/docs/type)
 
 *Since 4.6.*
 

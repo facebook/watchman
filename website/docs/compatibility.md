@@ -30,7 +30,7 @@ documented in release notes.
 
 *Since 3.8.*
 
-`watchman` introduces [capabilities](capabilities.html) to describe new
+`watchman` introduces [capabilities](/docs/capabilities) to describe new
 or optional features.  You can use the [expanded version command](
-/watchman/docs/cmd/version.html) to query capabilities and avoid building
+/docs/version) to query capabilities and avoid building
 knowledge of version numbers in your client application(s).

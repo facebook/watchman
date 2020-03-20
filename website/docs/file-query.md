@@ -1,9 +1,6 @@
 ---
 id: file-query
 title: File Queries
-layout: docs
-section: Queries
-permalink: docs/file-query.html
 ---
 
 Watchman file queries consist of 1 or more *generators* that feed files through
@@ -56,7 +53,7 @@ the capability name `dedup_results`.
 ### Since Generator
 
 The `since` generator produces a list of files that were modified since a
-specific [clockspec](../docs/clockspec.html).
+specific [clockspec](/docs/clockspec).
 
 The following query will consider the set of files changed since the last
 query using the named cursor `mycursor` and then pass them to the expression
@@ -85,7 +82,7 @@ If the query was configured with the `empty_on_fresh_instance` property set to
 will be set to `true` in the result object.
 
 The since generator also knows how to talk to source control;
-[you can read more about that here](/watchman/docs/scm-query.html).
+[you can read more about that here](/docs/scm-query).
 
 The `since` generator does not consider the targets of symlinks. In particular,
 the `since` generator may *not* produce a symlink in the following cases:

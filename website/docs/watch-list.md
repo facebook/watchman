@@ -1,9 +1,6 @@
 ---
 id: watch-list
 title: watch-list
-layout: docs
-section: Commands
-permalink: docs/cmd/watch-list.html
 ---
 
 Returns a list of watched dirs.

@@ -1,9 +1,6 @@
 ---
 id: unsubscribe
 title: unsubscribe
-layout: docs
-section: Commands
-permalink: docs/cmd/unsubscribe.html
 ---
 
 Available starting in version 1.6

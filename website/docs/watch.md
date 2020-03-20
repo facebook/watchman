@@ -1,13 +1,10 @@
 ---
 id: watch
 title: watch
-layout: docs
-section: Commands
-permalink: docs/cmd/watch.html
 ---
 
 Deprecated starting in version 3.1.  We recommend that clients adopt
-the [watch-project](/watchman/docs/cmd/watch-project.html) command.
+the [watch-project](/docs/watch-project) command.
 
 Requests that the specified dir is watched for changes.
 Watchman will track all files and dirs rooted at the specified path.

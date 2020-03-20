@@ -1,9 +1,6 @@
 ---
 id: watch-del
 title: watch-del
-layout: docs
-section: Commands
-permalink: docs/cmd/watch-del.html
 ---
 
 Removes a watch and any associated triggers.

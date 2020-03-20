@@ -1,9 +1,6 @@
 ---
 id: simple-query
 title: Simple Pattern Syntax
-layout: docs
-section: Queries
-permalink: docs/simple-query.html
 ---
 
 Simple patterns follow a more traditional UNIX command line approach of
