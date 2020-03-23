@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
+import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
 
 import java.util.ArrayList;
@@ -219,9 +220,10 @@ public class BserDeserializer implements Deserializer {
     }
   }
 
-  private String deserializeString(ByteBuffer buffer) throws IOException {
+  private Object deserializeString(ByteBuffer buffer) throws IOException {
     byte intType = buffer.get();
     int len = deserializeIntLen(buffer, intType);
+    int pos = buffer.position();
 
     // We use a CharsetDecoder here instead of String(byte[], Charset)
     // because we want it to throw an exception for any non-UTF-8 input.
@@ -234,6 +236,11 @@ public class BserDeserializer implements Deserializer {
       //
       // See: http://java-performance.info/string-intern-in-java-6-7-8/
       return utf8Decoder.decode(buffer).toString().intern();
+    } catch (MalformedInputException notUtf8) {
+      buffer.position(pos);
+      byte[] b = new byte[buffer.remaining()];
+      buffer.get(b);
+      return b;
     } finally {
       buffer.limit(buffer.capacity());
     }
@@ -272,7 +279,7 @@ public class BserDeserializer implements Deserializer {
                 "Unrecognized BSER object key type %d, expected string",
                 stringType));
       }
-      String key = deserializeString(buffer);
+      String key = (String) deserializeString(buffer);
       Object value = deserializeRecursive(buffer);
       map.put(key, value);
     }
