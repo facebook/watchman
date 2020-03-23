@@ -56,10 +56,10 @@ function Home() {
         </div>
       </header>
       <div className="container">
-      <div className="row">
+      <section className="row">
         <p className="padding-top--md">Watchman exists to watch files and record when they change. It can also trigger actions (such as rebuilding assets) when matching files change.</p>
-      </div>
-      <div className="row">
+      </section>
+      <section className="row">
         <h1 className="padding-top--md">Concepts</h1>
         <ul className="padding-horiz--md">
           <li>Watchman can recursively watch one or more directory trees (we call them roots).</li>
@@ -69,8 +69,8 @@ function Home() {
           <li>You can query a root for file changes since you last checked, or the current state of the tree</li>
           <li>You can subscribe to file changes that occur in a root</li>
         </ul>
-      </div>
-      <div className="row">
+      </section>
+      <section className="row">
         <h1 className="padding-top--md">Quick Starter</h1>
         <p>
          These two lines establish a watch on a source directory and then set up a trigger named buildme that will run a tool named minify-css whenever a CSS file is changed. The tool will be passed a list of the changed filenames.
@@ -80,10 +80,10 @@ function Home() {
           # the single quotes around '*.css' are important!<br/>
           $ watchman -- trigger ~/src buildme '*.css' -- minify-css<br/>
         </code>
-      </div>
-      <div className="row">
+      </section>
+      <section className="row">
         <span className="padding-top--md margin-bottom--md">The output for buildme will land in the Watchman log file unless you send it somewhere else.</span>
-      </div>
+      </section>
       </div>
     </Layout>
   );
