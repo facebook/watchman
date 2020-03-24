@@ -367,7 +367,7 @@ class EdenFileResult : public FileResult {
     std::vector<EdenFileResult*> getSymlinkFiles;
 
     for (auto& f : files) {
-      auto& edenFile = dynamic_cast<EdenFileResult&>(*f.get());
+      auto& edenFile = dynamic_cast<EdenFileResult&>(*f);
 
       auto relName = edenFile.fullName_.piece();
 
@@ -410,7 +410,10 @@ class EdenFileResult : public FileResult {
 
     auto client = getEdenClient(root_path_);
     loadFileInformation(
-        client.get(), getFileInformationNames, getFileInformationFiles);
+        client.get(),
+        root_path_,
+        getFileInformationNames,
+        getFileInformationFiles);
 
     // TODO: add eden bulk readlink call
     loadSymlinkTargets(client.get(), getSymlinkFiles);
@@ -451,7 +454,7 @@ class EdenFileResult : public FileResult {
   // had SymlinkTarget set in neededProperties prior to clearing it in
   // the batchFetchProperties() method that calls us, so we know that
   // we unconditionally need to read these links.
-  void loadSymlinkTargets(
+  static void loadSymlinkTargets(
       StreamingEdenServiceAsyncClient*,
       const std::vector<EdenFileResult*>& files) {
     for (auto& edenFile : files) {
@@ -467,8 +470,9 @@ class EdenFileResult : public FileResult {
     }
   }
 
-  void loadFileInformation(
+  static void loadFileInformation(
       StreamingEdenServiceAsyncClient* client,
+      const w_string& rootPath,
       const std::vector<std::string>& names,
       const std::vector<EdenFileResult*>& outFiles) {
     w_assert(
@@ -478,7 +482,7 @@ class EdenFileResult : public FileResult {
     }
 
     std::vector<FileInformationOrError> info;
-    client->sync_getFileInformation(info, to<std::string>(root_path_), names);
+    client->sync_getFileInformation(info, to<std::string>(rootPath), names);
 
     if (names.size() != info.size()) {
       watchman::log(
