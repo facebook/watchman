@@ -121,7 +121,8 @@ class TestContentHash(WatchmanTestCase.WatchmanTestCase):
         self.assertFileList(root, [".watchmanconfig", "foo"])
 
         def cachePopulate():
-            return self.watchmanCommand("debug-contenthash", root)["size"] == 2
+            stats = self.watchmanCommand("debug-contenthash", root)
+            return stats["size"] == 2 and stats["cacheStore"] == 2
 
         self.waitFor(cachePopulate)
         stats = self.watchmanCommand("debug-contenthash", root)
