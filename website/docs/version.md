@@ -34,8 +34,7 @@ functionality based on the name of that function rather than by
 having the client build up knowledge about when those functions
 were introduced.
 
-You can read more about the [available capability names](
-/docs/capabilities).
+You can read more about the [available capability names](capabilities).
 
 To check whether the `relative_root` capability is supported:
 

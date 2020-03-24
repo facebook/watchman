@@ -48,8 +48,7 @@ representation of strings.
 
 When you make a request using BSER, the server will respond in BSER encoding.
 
-You can [read more about BSER in the BSER specification](
-/docs/bser).
+You can [read more about BSER in the BSER specification](bser).
 
 ### Reporting Errors and Warnings
 

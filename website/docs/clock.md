@@ -10,7 +10,7 @@ Returns the current clock value for a watched root.
 
 *Since 3.9.*
 
-*The [capability](/watchman/docs/capabilities.html) name associated with this
+*The [capability](capabilities) name associated with this
 enhanced functionality is `clock-sync-timeout`.*
 
 `sync_timeout` specifies the number of milliseconds that you want to

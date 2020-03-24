@@ -25,7 +25,7 @@ the file within the specified dirname.  A file is considered to have
 dirname, `depth == 2` if it is contained in a grand-child directory and so on.
 
 The relational expression accepts the same relational operators as described in
-the [size term](/docs/size).
+the [size term](size).
 
 If you wanted to match only files that were directly in the `foo/bar` dir:
 

@@ -68,8 +68,7 @@ of Watchman would default to `<TMPDIR>/.watchman.<USER>`, depending on how
 it was configured.
 
 If you are building a client to access the service programmatically, we
-recommend that you invoke [watchman get-sockname](
-/docs/get-sockname) to discover the path that the client and
+recommend that you invoke [watchman get-sockname](get-sockname) to discover the path that the client and
 server would use.  This has the side effect of spawning the service for you if
 it isn't already running.
 
@@ -98,7 +97,7 @@ These options control how the client talks to the server:
 
 Persistent connections have relatively limited use with the CLI, but can be
 useful to connect ad-hoc to the service to receive logging information (See
-[log-level](/docs/log-level)).
+[log-level](log-level)).
 
 The server encoding option controls how requests and responses are formatted
 when talking to the server.  You generally shouldn't need to worry about this.
@@ -117,8 +116,7 @@ This is turned into a request like this:
 ["watch", "/path/to/dir"]
 ```
 
-and sent to the service using the [Socket Interface](
-/docs/socket-interface).
+and sent to the service using the [Socket Interface](socket-interface).
 
 The response is received and then sent to the `stdout` stream formatted based on
 the selected output-encoding:
@@ -190,7 +188,7 @@ These options are used when starting the server.  They are recognized by the
 client and affect how it will start the server, but have no effect if the
 server is already running.  To change the effective values of these options
 for a running server, you will need to restart it (you can stop it by running
-[watchman shutdown-server](/docs/shutdown-server)).
+[watchman shutdown-server](shutdown-server)).
 
 By default, watchman will remember all watches and associated triggers and
 reinstate them if the process is restarted.  This state is stored in the

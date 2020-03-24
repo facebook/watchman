@@ -39,7 +39,7 @@ in the query by setting the `case_sensitive` field in your query.
 *Since 3.7.*
 
 The `match` expression has been enhanced as described below.  The
-[capability](/docs/capabilities) name associated with this
+[capability](capabilities) name associated with this
 enhanced functionality is `wildmatch`.
 
 If you want to recursively match all files under a directory, use the `**`

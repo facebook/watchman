@@ -5,10 +5,9 @@ title: list-capabilities
 
 *Since 3.8.*
 
-This command returns the full list of supported [capabilities](
-/docs/capabilities) offered by the watchman server.  The
+This command returns the full list of supported [capabilities](capabilities) offered by the watchman server.  The
 intention is that client applications will use the
-[expanded version command](/docs/version) to check
+[expanded version command](version) to check
 compatibility rather than interrogating the full list.
 
 Here's some example output.  The actual capabilities list is in unspecified

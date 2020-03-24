@@ -30,7 +30,7 @@ Note that watchman only reads the `.watchmanconfig` file when the watch is
 established.  If changes are made after that point, the `get-config` response
 will not reflect them.
 
-See [Configuration Options](/docs/config#configuration-options)
+See [Configuration Options](config#configuration-options)
 for details on valid contents of the `config` field.  Note that the values
 returned by `get-config` are passed straight through from the `.watchmanconfig`
 file, and thus may contain fields that are not strictly legal.

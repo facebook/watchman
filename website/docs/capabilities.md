@@ -8,11 +8,11 @@ title: Capabilities
 Capability names are used to identify modules that are either conditionally
 configured or that are introduced over time.
 
-You can use the [expanded version command](/docs/version)
+You can use the [expanded version command](version)
 to query capabilities and avoid building knowledge of version numbers in
 your client application(s).
 
-You can use [list-capabilities](/docs/list-capabilities)
+You can use [list-capabilities](list-capabilities)
 command to obtain a list of capabilities supported by your watchman server.
 
 ### Commands
@@ -44,5 +44,5 @@ The following feature capabilities are possible / released:
 Capability Name | Since version | Description
 ----------------|---------------|------------
 `relative_root` | 3.3           | `relative_root` query option
-`wildmatch`     | 3.7           | [Expanded `match` term with recursive globs](/docs/match#wildmatch)
-`suffix-set`    | 5.0           | [Expanded `suffix` to support set of suffixes](/docs/suffix#suffixset)
+`wildmatch`     | 3.7           | [Expanded `match` term with recursive globs](match#wildmatch)
+`suffix-set`    | 5.0           | [Expanded `suffix` to support set of suffixes](suffix#suffixset)

@@ -4,7 +4,7 @@ title: watch
 ---
 
 Deprecated starting in version 3.1.  We recommend that clients adopt
-the [watch-project](/docs/watch-project) command.
+the [watch-project](watch-project) command.
 
 Requests that the specified dir is watched for changes.
 Watchman will track all files and dirs rooted at the specified path.

@@ -109,7 +109,7 @@ See below for some more information on options to configure your build.
 
 ```bash
 $ # use the latest stable release
-$ git clone https://github.com/facebook/watchman.git -b {{ site.data.current_release.tag }} --depth 1
+$ git clone https://github.com/facebook/watchman.git -b v4.9.0 --depth 1
 $ cd watchman 
 $ ./autogen.sh
 $ ./configure

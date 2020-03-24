@@ -5,7 +5,7 @@ title: Source Control Aware Queries
 
 *Since 4.9.*
 
-*The [capability](/docs/capabilities) name associated with this
+*The [capability](capabilities) name associated with this
 enhanced functionality is `scm-since`.*
 
 At the time of writing, only Mercurial is supported.  The capability name for

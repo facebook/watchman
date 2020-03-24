@@ -22,7 +22,7 @@ version of the software, so that you avoid any known issues.
 If you are running a pre-built binary provided by your operating system
 distribution system, there is a chance that you'll need to build the
 latest version from source.  You can find instructions for this in
-[the installation section](/docs/install).
+[the installation section](install).
 
 ## Recrawl
 
@@ -48,8 +48,7 @@ falsely) changed state of the majority of files.
 There is no simple formula for setting your system limits; bigger is better but
 comes at the cost of kernel memory to maintain the buffers.  You and/or your
 system administrator should review the workload for your system and the
-[System Specific Preparation Documentation](
-/docs/install#system-specific-preparation) and raise your limits
+[System Specific Preparation Documentation](install#system-specific-preparation) and raise your limits
 accordingly.
 
 ### kFSEventStreamEventFlagUserDropped
@@ -64,7 +63,7 @@ Recrawled this watch 1 times, most recently because:
 
 then you are hitting the limits of your system.  There is no direct control
 over the limit, but starting in Watchman 3.2 you may increase the
-[fsevents_latency](/docs/config#fsevents_latency)
+[fsevents_latency](config#fsevents_latency)
 parameter in your `.watchmanconfig` file.
 
 ### I've changed my limits, how can I clear the warning?
@@ -89,11 +88,9 @@ Watchman places the logs in a file named `<STATEDIR>/log`, which will
 typically be a location like `<PREFIX>/var/run/watchman/<USER>-state/log`. If
 you're running a `homebrew` build of watchman, `<PREFIX>` is usually `/usr/local`.
 
-The default log location may be overridden by the `--logfile` [Server Option](
-/docs/cli-options#server-options).
+The default log location may be overridden by the `--logfile` [Server Option](cli-options#server-options).
 
-[Quick note on default locations](
-/docs/cli-options#quick-note-on-default-locations) explains what
+[Quick note on default locations](cli-options#quick-note-on-default-locations) explains what
 we mean by `<STATEDIR>`, `<TMPDIR>`, `<USER>` and so on.
 
 ## <a id="poison-inotify-add-watch"></a>Poison: inotify_add_watch
@@ -122,8 +119,7 @@ There are two primary reasons that this can trigger:
 * Insufficient kernel memory was available
 
 The resolution for the former is to revisit
-[System Specific Preparation Documentation](
-/docs/install#system-specific-preparation) and raise your limits
+[System Specific Preparation Documentation](install#system-specific-preparation) and raise your limits
 accordingly.
 
 The latter condition implies that your workload is exceeding the available RAM
@@ -173,8 +169,7 @@ limits for the number of files.
 
 ### How do I resolve this?
 
-[Follow these directions](
-/docs/troubleshooting#ive-changed-my-limits-how-can-i-clear-the-warning)
+[Follow these directions](troubleshooting#ive-changed-my-limits-how-can-i-clear-the-warning)
 
 If the issue persists, consult your system administrator to identify what
 is consuming these resources and remediate it, or to increase your system
@@ -211,7 +206,7 @@ progressively more invasive:
   tree, especially for large trees.  We recommend watching only the root of a
   project or repo and not watching sub-trees within that tree.  Organizations
   with large trees may wish to deploy the
-  [root_restrict_files](/docs/config#root_restrict_files) configuration option
+  [root_restrict_files](config#root_restrict_files) configuration option
   so that watchman will only allow watching project roots.
 * Close or restart other applications that are using fsevents.
   Some examples are:

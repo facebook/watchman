@@ -94,16 +94,16 @@ root file:
 }
 ```
 
-See the [watch-project](/docs/watch-project) command for more information.
+See the [watch-project](watch-project) command for more information.
 
 ### enforce_root_files
 
 *Since 3.1.*
 
 This is a boolean option that defaults to `false`.  If it is set to `true`
-then the [watch](/docs/watch) command will only succeed if the requested
+then the [watch](watch) command will only succeed if the requested
 directory contains one of the files listed by the [root_files](#root_files)
-configuration option, and the [watch-project](/docs/watch-project) command
+configuration option, and the [watch-project](watch-project) command
 will only succeed if a valid project root is found.
 
 If left unspecified, to aid in transitioning between versions, watchman will
@@ -194,7 +194,7 @@ the busy build dirs out of the tree for more optimal performance.
 Since version 2.9.9, if you list a dir in `ignore_dirs` that is also listed in
 `ignore_vcs`, the `ignore_dirs` placement will take precedence.  This may not
 sound like a big deal, but since `ignore_vcs` is used as a hint to for the
-placement of [cookie files](/docs/cookies), having these two
+placement of [cookie files](cookies), having these two
 options overlap in earlier versions would break watchman queries.
 
 *Since 4.6.*

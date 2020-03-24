@@ -27,5 +27,5 @@ equivalent but the set form has a more efficient and thus faster runtime:
 
     ["suffix", ["php", "html"]]
 
-The [capability](/docs/capabilities) name associated with this
+The [capability](capabilities) name associated with this
 enhanced functionality is `suffix-set`.
