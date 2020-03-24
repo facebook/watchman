@@ -85,8 +85,7 @@ starting the service if it isn't running:
  --no-local            When no-spawn is enabled, don't use client mode
 ```
 
-Client mode implements the [watchman find command](
-/docs/find) as an immediate search.
+Client mode implements the [watchman find command](find) as an immediate search.
 
 These options control how the client talks to the server:
 

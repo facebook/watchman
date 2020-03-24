@@ -314,7 +314,7 @@ Whoops, we never got around to tagging this beyond a release candidate tag!
 
 ### fb-watchman 1.0.0 for node (2015-06-23)
 
-* Updated the node client to support [BSER](/docs/bser)
+* Updated the node client to support [BSER](bser)
   encoding, fixing a quadratic performance issue in the JSON stream
   decoder that was used previously.
 
