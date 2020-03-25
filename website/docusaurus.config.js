@@ -10,7 +10,7 @@
 module.exports = {
   title: 'Watchman',
   tagline: 'A file watching service',
-  url: 'https://facebook.github.io/watchman/',
+  url: 'https://facebook.github.io',
   baseUrl: '/watchman/',
   favicon: 'img/favicon.png',
   organizationName: 'facebook',
@@ -53,8 +53,7 @@ module.exports = {
       {
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
-          editUrl:
-            'https://github.com/facebook/watchman/edit/master/website/',
+          editUrl: 'https://github.com/facebook/watchman/edit/master/website/',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
