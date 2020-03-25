@@ -18,8 +18,9 @@ import styles from './styles.module.css';
 function Home() {
   const context = useDocusaurusContext();
   const {siteConfig = {}} = context;
+
   return (
-    <Layout title={`${siteConfig.title} | ${siteConfig.tagline}`}>
+    <Layout title={siteConfig.tagline}>
       <header className={classnames('hero hero--primary', styles.heroBanner)}>
         <div className="container">
           <img
