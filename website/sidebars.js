@@ -18,7 +18,7 @@ module.exports = {
       'cppclient',
       'nodejs',
       'config',
-      'socket-interface',
+      'socket-interface'
     ],
     Compatibility: ['compatibility', 'capabilities'],
     Commands: [
@@ -44,10 +44,15 @@ module.exports = {
       'watch-del',
       'watch-del-all',
       'watch-list',
-      'watch-project',
+      'watch-project'
     ],
-    Queries: ['clockspec', 'file-query', 'simple-query', 'scm-query'],
-    'Expressions Terms': [
+    Queries: [
+      'clockspec',
+      'file-query',
+      'simple-query',
+      'scm-query'
+    ],
+    "Expressions Terms": [
       'allof',
       'anyof',
       'dirname',
@@ -60,9 +65,14 @@ module.exports = {
       'exp-since',
       'size',
       'suffix',
-      'type',
+      'type'
     ],
-    Internals: ['bser', 'casefolding', 'contributing', 'cookies'],
-    Troubleshooting: ['troubleshooting'],
+    Internals: [
+      'bser',
+      'casefolding',
+      'contributing',
+      'cookies'
+    ],
+    Troubleshooting: ['troubleshooting']
   },
 };
