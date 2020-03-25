@@ -246,6 +246,8 @@ jobs:
   windows:
     runs-on: windows-2016
     steps:
+    - name: Fix Git config
+      run: git config --system core.longpaths true
     - uses: actions/checkout@v1
     - name: Fetch boost
       run: python build/fbcode_builder/getdeps.py fetch --no-tests boost
