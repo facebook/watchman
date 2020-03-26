@@ -107,9 +107,15 @@ class TestSubscribe(WatchmanTestCase.WatchmanTestCase):
         self.touchRelative(root, "a")
         self.assertNotEqual(None, self.waitForSub("defer", root=root))
 
+        def isStateEnterFoo(sub):
+            for item in sub:
+                if item.get("state-enter", None) == "foo":
+                    return True
+            return False
+
         self.watchmanCommand("state-enter", root, "foo")
-        begin = self.waitForSub("defer", root)[0]
-        self.assertEqual("foo", begin["state-enter"])
+        sub = self.waitForSub("defer", root, accept=isStateEnterFoo)
+        self.assertTrue(isStateEnterFoo(sub))
 
         self.touchRelative(root, "in-foo")
         # We expect this to timeout because state=foo is asserted
