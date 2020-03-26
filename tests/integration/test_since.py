@@ -54,10 +54,16 @@ class TestSince(WatchmanTestCase.WatchmanTestCase):
 
         # now check the delta for the since
         expected = ["foo/bar", "foo/bar/222"]
+        files = self.getFileList(root, cursor="n:foo")
         if watch["watcher"] in ("portfs", "kqueue"):
             # These systems also show the containing dir as modified
             expected.append("foo")
-        self.assertFileList(root, cursor="n:foo", files=expected)
+        elif watch["watcher"] == "win32":
+            # the containing directory sometimes(!) shows as modified
+            # on win32, but the important thing is that the other files
+            # show up in the list
+            files = [f for f in files if f != "foo"]
+        self.assertFileListsEqual(files, expected)
 
     def test_sinceRelativeRoot(self):
         root = self.mkdtemp()
