@@ -51,7 +51,7 @@ class WatchmanSCMTestCase(WatchmanTestCase.WatchmanTestCase):
         env["HGUSER"] = "John Smith <smith@example.com>"
         env["NOSCMLOG"] = "1"  # disable some instrumentation at FB
         sockpath = WatchmanInstance.getSharedInstance().getSockPath()
-        env["WATCHMAN_SOCK"] = sockpath
+        env["WATCHMAN_SOCK"] = sockpath.legacy_sockpath()
         p = subprocess.Popen(
             [
                 env.get("EDEN_HG_BINARY", "hg"),
@@ -65,7 +65,7 @@ class WatchmanSCMTestCase(WatchmanTestCase.WatchmanTestCase):
                 # respecting the WATCHMAN_SOCK environment override, so
                 # we have to reach in and force their hardcoded sockpath here.
                 "--config",
-                "fsmonitor.sockpath=%s" % sockpath,
+                "fsmonitor.sockpath=%s" % sockpath.legacy_sockpath(),
             ]
             + args,
             env=env,

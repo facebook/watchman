@@ -10,6 +10,8 @@
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Singleton.h>
+#include <folly/SocketAddress.h>
+#include <folly/net/NetworkSocket.h>
 
 using watchman::ChildProcess;
 using watchman::FileDescriptor;
@@ -37,8 +39,8 @@ static int no_local = 0;
 static int no_site_spawner = 0;
 #ifndef _WIN32
 static int inetd_style = 0;
-static struct sockaddr_un un;
 #endif
+static struct sockaddr_un un;
 static int json_input_arg = 0;
 
 #ifdef __APPLE__
@@ -293,7 +295,7 @@ static void run_service(void) {
 
   ClockSpec::init();
   w_state_load();
-  res = w_start_listener(sock_name.c_str());
+  res = w_start_listener();
   w_root_free_watched_roots();
   perf_shutdown();
   cfg_shutdown();
@@ -540,8 +542,11 @@ static void spawn_via_launchd(void) {
       "        <string>--log-level=",
       log_level,
       "</string>\n"
+      // TODO: switch from `--sockname` to `--unix-listener-path`
+      // after a grace period to allow for sane results if we
+      // roll back to an earlier version
       "        <string>--sockname=",
-      sock_name,
+      get_unix_sock_name(),
       "</string>\n"
       "        <string>--statefile=",
       watchman_state_file,
@@ -817,23 +822,20 @@ static void setup_sock_name(void) {
   watchman_tmp_dir = get_env_with_fallback("TMPDIR", "TMP", "/tmp");
 
 #ifdef _WIN32
-  if (sock_name.empty()) {
-    sock_name = folly::to<std::string>("\\\\.\\pipe\\watchman-", user);
+  if (named_pipe_path.empty()) {
+    named_pipe_path = folly::to<std::string>("\\\\.\\pipe\\watchman-", user);
   }
-#else
-  compute_file_name(sock_name, user, "sock", "sockname");
 #endif
+  compute_file_name(unix_sock_name, user, "sock", "sockname");
+
   compute_file_name(watchman_state_file, user, "state", "statefile");
   compute_file_name(log_name, user, "log", "logname");
 
-#ifndef _WIN32
-  if (sock_name.size() >= sizeof(un.sun_path) - 1) {
-    log(FATAL, sock_name, ": path is too long\n");
+  if (unix_sock_name.size() >= sizeof(un.sun_path) - 1) {
+    log(FATAL, unix_sock_name, ": path is too long\n");
   }
-
   un.sun_family = PF_LOCAL;
-  memcpy(un.sun_path, sock_name.c_str(), sock_name.size() + 1);
-#endif
+  memcpy(un.sun_path, unix_sock_name.c_str(), unix_sock_name.size() + 1);
 }
 
 static bool should_start(int err) {
@@ -851,7 +853,7 @@ static bool try_command(json_t* cmd, int timeout) {
   w_jbuffer_t output_pdu_buffer;
   int err;
 
-  auto client = w_stm_connect(sock_name.c_str(), timeout * 1000);
+  auto client = w_stm_connect(get_sock_name_legacy(), timeout * 1000);
   if (!client) {
     return false;
   }
@@ -909,11 +911,40 @@ static struct watchman_getopt opts[] = {
      &show_version,
      NULL,
      NOT_DAEMON},
+/* -U / --sockname  have legacy meaning; unix domain on unix,
+ * named pipe path on windows.  After we chose this assignment,
+ * Windows evolved unix domain support which muddies this.
+ * We need to preserve the sockname/U option here for backwards
+ * compatibility */
+#ifdef _WIN32
+    {"sockname",
+     'U',
+     "Specify alternate named pipe path",
+     REQ_STRING,
+     &named_pipe_path,
+     "PATH",
+     IS_DAEMON},
+#else
     {"sockname",
      'U',
      "Specify alternate sockname",
      REQ_STRING,
-     &sock_name,
+     &unix_sock_name,
+     "PATH",
+     IS_DAEMON},
+#endif
+    {"named-pipe-path",
+     0,
+     "Specify alternate named pipe path",
+     REQ_STRING,
+     &named_pipe_path,
+     "PATH",
+     IS_DAEMON},
+    {"unix-listener-path",
+     'u',
+     "Specify alternate unix domain socket path",
+     REQ_STRING,
+     &unix_sock_name,
      "PATH",
      IS_DAEMON},
     {"tcp-listener-enable",
@@ -1210,7 +1241,7 @@ int main(int argc, char** argv) {
   if (!no_spawn) {
     log(ERR,
         "unable to talk to your watchman on ",
-        sock_name,
+        get_sock_name_legacy(),
         "! (",
         strerror(errno),
         ")\n");

@@ -92,7 +92,7 @@ class TestSockPerms(unittest.TestCase):
         os.chmod(instance.user_dir, 0o777)
         with self.assertRaises(pywatchman.SocketConnectError) as ctx:
             instance.start()
-        self.assertEqual(ctx.exception.sockpath, instance.getSockPath())
+        self.assertEqual(ctx.exception.sockpath, instance.getSockPath().unix_domain)
 
         wanted = "the permissions on %s allow others to write to it" % (
             instance.user_dir
@@ -116,7 +116,7 @@ class TestSockPerms(unittest.TestCase):
         instance = self._new_instance({"sock_group": group_name}, expect_success=False)
         with self.assertRaises(pywatchman.SocketConnectError) as ctx:
             instance.start()
-        self.assertEqual(ctx.exception.sockpath, instance.getSockPath())
+        self.assertEqual(ctx.exception.sockpath, instance.getSockPath().unix_domain)
         wanted = "group '%s' does not exist" % group_name
         self.assertWaitFor(
             lambda: wanted in instance.getCLILogContents(),
@@ -130,7 +130,7 @@ class TestSockPerms(unittest.TestCase):
         )
         with self.assertRaises(pywatchman.SocketConnectError) as ctx:
             instance.start()
-        self.assertEqual(ctx.exception.sockpath, instance.getSockPath())
+        self.assertEqual(ctx.exception.sockpath, instance.getSockPath().unix_domain)
         wanted = "setting up group '%s' failed" % group.gr_name
         self.assertWaitFor(
             lambda: wanted in instance.getCLILogContents(),
@@ -179,7 +179,7 @@ class TestSockPerms(unittest.TestCase):
             "for socket '%s', gid %d doesn't match expected gid %d "
             "(group name %s)."
             % (
-                instance.getSockPath(),
+                instance.getSockPath().unix_domain,
                 gid,
                 non_member_group.gr_gid,
                 non_member_group.gr_name,
@@ -191,7 +191,7 @@ class TestSockPerms(unittest.TestCase):
         instance = self._new_instance({"sock_access": "bogus"}, expect_success=False)
         with self.assertRaises(pywatchman.SocketConnectError) as ctx:
             instance.start()
-        self.assertEqual(ctx.exception.sockpath, instance.getSockPath())
+        self.assertEqual(ctx.exception.sockpath, instance.getSockPath().unix_domain)
         wanted = "Expected config value sock_access to be an object"
         self.assertWaitFor(
             lambda: wanted in instance.getCLILogContents(),
@@ -203,7 +203,7 @@ class TestSockPerms(unittest.TestCase):
         )
         with self.assertRaises(pywatchman.SocketConnectError) as ctx:
             instance.start()
-        self.assertEqual(ctx.exception.sockpath, instance.getSockPath())
+        self.assertEqual(ctx.exception.sockpath, instance.getSockPath().unix_domain)
         wanted = "Expected config value sock_access.group to be a boolean"
         self.assertWaitFor(
             lambda: wanted in instance.getCLILogContents(),

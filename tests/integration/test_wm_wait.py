@@ -30,7 +30,7 @@ class TestWatchmanWait(WatchmanTestCase.WatchmanTestCase):
 
         env = os.environ.copy()
         sock_path = WatchmanInstance.getSharedInstance().getSockPath()
-        env["WATCHMAN_SOCK"] = sock_path
+        env["WATCHMAN_SOCK"] = sock_path.legacy_sockpath()
         pywatchman_path = env.get("PYWATCHMAN_PATH")
         if pywatchman_path:
             env["PYTHONPATH"] = pywatchman_path

@@ -102,7 +102,7 @@ ChildProcess::Options Mercurial::makeHgOptions(w_string requestId) const {
 
   // Ensure that mercurial uses this path to communicate with us,
   // rather than whatever is hardcoded in its config.
-  opt.environment().set("WATCHMAN_SOCK", get_sock_name());
+  opt.environment().set("WATCHMAN_SOCK", get_sock_name_legacy());
 
   opt.nullStdin();
   opt.pipeStdout();

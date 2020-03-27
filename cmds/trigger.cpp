@@ -293,7 +293,7 @@ watchman_trigger_command::watchman_trigger_command(
 
   // Set some standard vars
   env.set({{"WATCHMAN_ROOT", root->root_path},
-           {"WATCHMAN_SOCK", get_sock_name()},
+           {"WATCHMAN_SOCK", get_sock_name_legacy()},
            {"WATCHMAN_TRIGGER", triggername}});
 }
 

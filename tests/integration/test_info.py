@@ -17,7 +17,8 @@ class TestInfo(WatchmanTestCase.WatchmanTestCase):
     def test_sock_name(self):
         resp = self.watchmanCommand("get-sockname")
         self.assertEqual(
-            resp["sockname"], WatchmanInstance.getSharedInstance().getSockPath()
+            resp["sockname"],
+            WatchmanInstance.getSharedInstance().getSockPath().legacy_sockpath(),
         )
 
     def test_get_config_empty(self):

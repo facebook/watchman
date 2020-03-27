@@ -220,7 +220,7 @@ void PerfLogThread::loop() noexcept {
 
         ChildProcess::Options opts;
         opts.environment().set({{"WATCHMAN_STATE_DIR", stateDir},
-                                {"WATCHMAN_SOCK", get_sock_name()}});
+                                {"WATCHMAN_SOCK", get_sock_name_legacy()}});
         opts.open(STDIN_FILENO, "/dev/null", O_RDONLY, 0666);
         opts.open(STDOUT_FILENO, "/dev/null", O_WRONLY, 0666);
         opts.open(STDERR_FILENO, "/dev/null", O_WRONLY, 0666);

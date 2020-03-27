@@ -6,5 +6,6 @@ add_fb_python_library(pywatchman
     encoding.py
     load.py
     pybser.py
+    windows.py
   NAMESPACE pywatchman
 )

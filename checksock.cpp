@@ -175,7 +175,7 @@ void sanityCheckThread() noexcept {
     lastCheck = now;
     log(DBG, "running sanity checks\n");
 
-    auto client = w_stm_connect(get_sock_name(), 6000);
+    auto client = w_stm_connect(get_sock_name_legacy(), 6000);
     if (!client) {
       log(watchman::FATAL,
           "Failed to connect to myself for sanity check: ",

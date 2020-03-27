@@ -90,7 +90,9 @@ class NodeTestCase(WatchmanTestCase.TempDirPerTestMixin, unittest.TestCase):
     )
     def runTest(self):
         env = os.environ.copy()
-        env["WATCHMAN_SOCK"] = WatchmanInstance.getSharedInstance().getSockPath()
+        env["WATCHMAN_SOCK"] = (
+            WatchmanInstance.getSharedInstance().getSockPath().legacy_sockpath()
+        )
         env["TMPDIR"] = self.tempdir
 
         offline_mirror = env.get("YARN_OFFLINE_MIRROR_PATH_POINTER", None)

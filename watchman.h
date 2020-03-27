@@ -81,7 +81,7 @@ json_ref w_root_watch_list_to_json(void);
 watchman::FileDescriptor w_get_listener_socket_from_launchd();
 #endif
 void w_listener_prep_inetd();
-bool w_start_listener(const char* socket_path);
+bool w_start_listener();
 namespace watchman {
 void startSanityCheckThread(void);
 }
@@ -94,8 +94,24 @@ void startSanityCheckThread(void);
 #define w_strsignal(val) strsignal((val))
 #endif
 
-extern std::string sock_name;
-const char* get_sock_name(void);
+extern std::string unix_sock_name;
+extern std::string named_pipe_path;
+
+/** Returns the legacy socket name.
+ * It is legacy because its meaning is system dependent and
+ * a little confusing, but needs to be retained for backwards
+ * compatibility reasons as it is exported into the environment
+ * in a number of scenarios.
+ * You should prefer to use get_unix_sock_name() or
+ * get_named_pipe_sock_path() instead
+ */
+const char* get_sock_name_legacy();
+
+/** Returns the configured unix domain socket path. */
+const std::string& get_unix_sock_name();
+
+/** Returns the configured named pipe socket path */
+const std::string& get_named_pipe_sock_path();
 
 #ifndef _WIN32
 /**

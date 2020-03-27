@@ -464,13 +464,16 @@ def expand_matrix(test_class):
     """
 
     matrix = [
-        ("local", "bser", "LocalBser2"),
-        ("local", "json", "LocalJson"),
+        ("unix", "bser", "UnixBser2"),
+        ("unix", "json", "UnixJson"),
         ("cli", "json", "CliJson"),
     ]
 
     if not pywatchman.compat.PYTHON3:
-        matrix += [("local", "bser-v1", "LocalBser")]
+        matrix += [("unix", "bser-v1", "UnixBser")]
+
+    if os.name == "nt":
+        matrix += [("namedpipe", "bser", "NamedPipeBser2")]
 
     # We do some rather hacky things here to define new test class types
     # in our caller's scope.  This is needed so that the unittest TestLoader

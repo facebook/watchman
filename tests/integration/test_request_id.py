@@ -25,7 +25,9 @@ def is_hg_installed():
         try:
             env = os.environ.copy()
             env["HGPLAIN"] = "1"
-            env["WATCHMAN_SOCK"] = WatchmanInstance.getSharedInstance().getSockPath()
+            env["WATCHMAN_SOCK"] = (
+                WatchmanInstance.getSharedInstance().getSockPath().legacy_sockpath()
+            )
 
             exit_code = subprocess.call(
                 ["hg", "--version"], stdout=devnull, stderr=devnull, env=env
@@ -62,7 +64,9 @@ class TestRequestId(WatchmanTestCase.WatchmanTestCase):
         env = os.environ.copy()
         env["HGPLAIN"] = "1"
         env["HGREQUESTID"] = request_id
-        env["WATCHMAN_SOCK"] = WatchmanInstance.getSharedInstance().getSockPath()
+        env["WATCHMAN_SOCK"] = (
+            WatchmanInstance.getSharedInstance().getSockPath().legacy_sockpath()
+        )
 
         subprocess.call(["hg", "init"], env=env, cwd=root)
         subprocess.call(["hg", "log"], env=env, cwd=root)
@@ -76,8 +80,9 @@ class TestRequestId(WatchmanTestCase.WatchmanTestCase):
 
         self.skipTest("HGREQUESTID is not supported")
 
-    @unittest.skipIf(not is_hg_installed(), "Hg not installed")
     def test_scmHgRequestId(self):
+        if not is_hg_installed():
+            self.skipTest("Hg not installed")
         self.skipIfNoHgRequestIdSupport()
 
         root = self.mkdtemp()
@@ -87,7 +92,9 @@ class TestRequestId(WatchmanTestCase.WatchmanTestCase):
         # have request_id logged without fsmonitor.
         env = os.environ.copy()
         env["HGPLAIN"] = "1"
-        env["WATCHMAN_SOCK"] = WatchmanInstance.getSharedInstance().getSockPath()
+        env["WATCHMAN_SOCK"] = (
+            WatchmanInstance.getSharedInstance().getSockPath().legacy_sockpath()
+        )
         subprocess.call(["hg", "init"], env=env, cwd=root)
         subprocess.call(
             [

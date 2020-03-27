@@ -21,7 +21,7 @@ class TestDashJCliOption(unittest.TestCase):
         return WatchmanInstance.getSharedInstance().getSockPath()
 
     def doJson(self, addNewLine, pretty=False):
-        sockname = self.getSockPath()
+        sockname = self.getSockPath().legacy_sockpath()
         if pretty:
             watchman_cmd = b'[\n"get-sockname"\n]'
         else:
@@ -63,7 +63,7 @@ class TestDashJCliOption(unittest.TestCase):
         self.doJson(True, True)
 
     def test_bserInput(self):
-        sockname = self.getSockPath()
+        sockname = self.getSockPath().legacy_sockpath()
         watchman_cmd = bser.dumps(["get-sockname"])
         cli_cmd = [
             os.environ.get("WATCHMAN_BINARY", "watchman"),

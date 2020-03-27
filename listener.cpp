@@ -4,6 +4,7 @@
 #include "watchman.h"
 #include <folly/Exception.h>
 #include <folly/MapUtil.h>
+#include <folly/Optional.h>
 #include <folly/SocketAddress.h>
 #include <folly/Synchronized.h>
 #include <folly/net/NetworkSocket.h>
@@ -17,7 +18,6 @@ using watchman::FileDescriptor;
 folly::Synchronized<std::unordered_set<std::shared_ptr<watchman_client>>>
     clients;
 static FileDescriptor listener_fd;
-static FileDescriptor tcp_listener_fd;
 static std::unique_ptr<watchman_event> listener_thread_event;
 static std::atomic<bool> stopping = false;
 static constexpr size_t kResponseLogLimit = 8;
@@ -387,11 +387,13 @@ static FileDescriptor get_listener_tcp_socket() {
   return listener_fd;
 }
 
-#ifndef _WIN32
 static FileDescriptor get_listener_unix_domain_socket(const char* path) {
-  struct sockaddr_un un;
+  struct sockaddr_un un {};
+
+#ifndef _WIN32
   mode_t perms = cfg_get_perms(
       "sock_access", true /* write bits */, false /* execute bits */);
+#endif
   FileDescriptor listener_fd;
 
 #ifdef __APPLE__
@@ -407,18 +409,19 @@ static FileDescriptor get_listener_unix_domain_socket(const char* path) {
     return FileDescriptor();
   }
 
-  listener_fd = FileDescriptor(socket(PF_LOCAL, SOCK_STREAM, 0), "socket");
+  listener_fd = FileDescriptor(::socket(PF_LOCAL, SOCK_STREAM, 0), "socket");
 
   un.sun_family = PF_LOCAL;
   memcpy(un.sun_path, path, strlen(path) + 1);
   unlink(path);
 
-  if (bind(listener_fd.system_handle(), (struct sockaddr*)&un, sizeof(un)) !=
+  if (::bind(listener_fd.system_handle(), (struct sockaddr*)&un, sizeof(un)) !=
       0) {
     logf(ERR, "bind({}): {}\n", path, strerror(errno));
     return FileDescriptor();
   }
 
+#ifndef _WIN32
   // The permissions in the containing directory should be correct, so this
   // should be correct as well. But set the permissions in any case.
   if (chmod(path, perms) == -1) {
@@ -464,15 +467,15 @@ static FileDescriptor get_listener_unix_domain_socket(const char* path) {
       return FileDescriptor();
     }
   }
+#endif
 
-  if (listen(listener_fd.system_handle(), 200) != 0) {
+  if (::listen(listener_fd.system_handle(), 200) != 0) {
     logf(ERR, "listen({}): {}\n", path, strerror(errno));
     return FileDescriptor();
   }
 
   return listener_fd;
 }
-#endif
 
 static std::shared_ptr<watchman_client> make_new_client(
     std::unique_ptr<watchman_stream>&& stm) {
@@ -511,10 +514,11 @@ static FileDescriptor create_pipe_server(const char* path) {
       nullptr)));
 }
 
-static void named_pipe_accept_loop_internal(const char* path) {
+static void named_pipe_accept_loop_internal() {
   HANDLE handles[2];
   auto olap = OVERLAPPED();
   HANDLE connected_event = CreateEvent(NULL, FALSE, TRUE, NULL);
+  auto path = get_named_pipe_sock_path();
 
   if (!connected_event) {
     logf(
@@ -528,12 +532,12 @@ static void named_pipe_accept_loop_internal(const char* path) {
   handles[1] = (HANDLE)listener_thread_event.get()->system_handle();
   olap.hEvent = connected_event;
 
-  logf(ERR, "waiting for pipe clients on {}\n", path);
+  logf(ERR, "waiting for pipe clients on {}\n", get_named_pipe_sock_path());
   while (!w_is_stopping()) {
     FileDescriptor client_fd;
     DWORD res;
 
-    client_fd = create_pipe_server(path);
+    client_fd = create_pipe_server(path.c_str());
     if (!client_fd) {
       logf(
           ERR,
@@ -576,15 +580,18 @@ static void named_pipe_accept_loop_internal(const char* path) {
     }
     make_new_client(w_stm_fdopen(std::move(client_fd)));
   }
+  logf(ERR, "is_stopping is true, so acceptor is done\n");
 }
 
-static void named_pipe_accept_loop(const char* path) {
+static void named_pipe_accept_loop() {
+  log(DBG, "Starting pipe listener on ", get_named_pipe_sock_path(), "\n");
+
   std::vector<std::thread> acceptors;
   listener_thread_event = w_event_make();
   for (json_int_t i = 0; i < cfg_get_int("win32_concurrent_accepts", 32); ++i) {
-    acceptors.push_back(std::thread([path, i]() {
+    acceptors.push_back(std::thread([i]() {
       w_set_thread_name("accept", i);
-      named_pipe_accept_loop_internal(path);
+      named_pipe_accept_loop_internal();
     }));
   }
   for (auto& thr : acceptors) {
@@ -593,55 +600,107 @@ static void named_pipe_accept_loop(const char* path) {
 }
 #endif
 
-static void accept_loop(FileDescriptor&& listenerDescriptor) {
-  auto listener = w_stm_fdopen(std::move(listenerDescriptor));
-  while (!w_is_stopping()) {
-    FileDescriptor client_fd;
-    struct watchman_event_poll pfd[2];
-    int bufsize;
+/** A helper for owning and running a socket-style (rather than
+ * named pipe style) accept loop that runs in another thread.
+ */
+class AcceptLoop {
+  std::thread thread_;
+  bool joined_{false};
 
-    pfd[0].evt = listener->getEvents();
-    pfd[1].evt = listener_thread_event.get();
+  static void accept_thread(FileDescriptor&& listenerDescriptor) {
+    auto listener = w_stm_fdopen(std::move(listenerDescriptor));
+    while (!w_is_stopping()) {
+      FileDescriptor client_fd;
+      struct watchman_event_poll pfd[2];
+      int bufsize;
 
-    if (w_poll_events(pfd, 2, 60000) == 0) {
+      pfd[0].evt = listener->getEvents();
+      pfd[1].evt = listener_thread_event.get();
+
+      if (w_poll_events(pfd, 2, 60000) == 0) {
+        if (w_is_stopping()) {
+          break;
+        }
+        // Timed out, or error.
+        continue;
+      }
+
       if (w_is_stopping()) {
         break;
       }
-      // Timed out, or error.
-      continue;
-    }
-
-    if (w_is_stopping()) {
-      break;
-    }
 
 #ifdef HAVE_ACCEPT4
-    client_fd = FileDescriptor(accept4(
-        listener->getFileDescriptor().system_handle(),
-        nullptr,
-        0,
-        SOCK_CLOEXEC));
+      client_fd = FileDescriptor(accept4(
+          listener->getFileDescriptor().system_handle(),
+          nullptr,
+          0,
+          SOCK_CLOEXEC));
 #else
-    client_fd = FileDescriptor(
-        ::accept(listener->getFileDescriptor().system_handle(), nullptr, 0));
+      client_fd = FileDescriptor(
+          ::accept(listener->getFileDescriptor().system_handle(), nullptr, 0));
 #endif
-    if (!client_fd) {
-      continue;
+      if (!client_fd) {
+        continue;
+      }
+      client_fd.setCloExec();
+      bufsize = WATCHMAN_IO_BUF_SIZE;
+      ::setsockopt(
+          client_fd.system_handle(),
+          SOL_SOCKET,
+          SO_SNDBUF,
+          (char*)&bufsize,
+          sizeof(bufsize));
+
+      make_new_client(w_stm_fdopen(std::move(client_fd)));
     }
-    client_fd.setCloExec();
-    bufsize = WATCHMAN_IO_BUF_SIZE;
-    ::setsockopt(
-        client_fd.system_handle(),
-        SOL_SOCKET,
-        SO_SNDBUF,
-        (char*)&bufsize,
-        sizeof(bufsize));
-
-    make_new_client(w_stm_fdopen(std::move(client_fd)));
   }
-}
 
-bool w_start_listener(const char* path) {
+ public:
+  /** Start an accept loop thread using the provided socket
+   * descriptor (`fd`).  The `name` parameter is used to name the
+   * thread */
+  AcceptLoop(std::string name, FileDescriptor&& fd) {
+    fd.setCloExec();
+    fd.setNonBlock();
+
+    thread_ = std::thread([listener_fd = std::move(fd), name]() mutable {
+      w_set_thread_name(name);
+      accept_thread(std::move(listener_fd));
+    });
+  }
+
+  AcceptLoop(const AcceptLoop&) = delete;
+  AcceptLoop& operator=(const AcceptLoop&) = delete;
+
+  AcceptLoop(AcceptLoop&& other) {
+    *this = std::move(other);
+  }
+
+  AcceptLoop& operator=(AcceptLoop&& other) {
+    thread_ = std::move(other.thread_);
+    joined_ = other.joined_;
+    // Ensure that we don't try to join the source,
+    // as std::thread::join will std::terminate in that case.
+    // If it weren't for this we could use the compiler
+    // default implementation of move.
+    other.joined_ = true;
+    return *this;
+  }
+
+  ~AcceptLoop() {
+    join();
+  }
+
+  void join() {
+    if (joined_) {
+      return;
+    }
+    thread_.join();
+    joined_ = true;
+  }
+};
+
+bool w_start_listener() {
 #ifndef _WIN32
   struct sigaction sa;
   sigset_t sigset;
@@ -727,54 +786,56 @@ bool w_start_listener(const char* path) {
   sigemptyset(&sigset);
   sigaddset(&sigset, SIGCHLD);
   sigprocmask(SIG_BLOCK, &sigset, NULL);
+#endif
+  w_setup_signal_handlers();
+
+  folly::Optional<AcceptLoop> tcp_loop;
+  folly::Optional<AcceptLoop> unix_loop;
+
+  // When we unwind, ensure that we stop the accept threads
+  SCOPE_EXIT {
+    if (!w_is_stopping()) {
+      w_request_shutdown();
+    }
+    unix_loop.clear();
+    tcp_loop.clear();
+  };
+
+  listener_thread_event = w_event_make();
 
   if (listener_fd) {
     // Assume that it was prepped by w_listener_prep_inetd()
     logf(ERR, "Using socket from inetd as listening socket\n");
   } else {
-    listener_fd = get_listener_unix_domain_socket(path);
+    listener_fd = get_listener_unix_domain_socket(get_unix_sock_name().c_str());
     if (!listener_fd) {
+      logf(ERR, "Failed to initialize unix domain listener\n");
       return false;
     }
   }
-  listener_fd.setCloExec();
-#endif
 
-  w_setup_signal_handlers();
-  listener_fd.setNonBlock();
+  if (listener_fd) {
+    unix_loop.assign(AcceptLoop("unix-listener", std::move(listener_fd)));
+  }
+
+  if (Configuration().getBool("tcp-listener-enable", false)) {
+    tcp_loop.assign(AcceptLoop("tcp-listener", get_listener_tcp_socket()));
+  }
 
   startSanityCheckThread();
 
-  listener_thread_event = w_event_make();
-
-  std::thread tcp_loop;
-
-  auto enable_tcp = Configuration().getBool("tcp-listener-enable", false);
-  if (enable_tcp) {
-    tcp_listener_fd = get_listener_tcp_socket();
-    tcp_loop = std::thread([=] { accept_loop(std::move(tcp_listener_fd)); });
-  }
-
-  SCOPE_EXIT {
-    if (enable_tcp) {
-      if (!w_is_stopping()) {
-        w_request_shutdown();
-      }
-      tcp_loop.join();
-    }
-  };
-
-    // Now run the non-TCP dispatch
-#ifndef _WIN32
-  log(DBG, "Starting pipe listener on ", path, "\n");
-  accept_loop(std::move(listener_fd));
-#else
-  named_pipe_accept_loop(path);
+#ifdef _WIN32
+  // Start the named pipes and join them; this will
+  // block until the server is shutdown.
+  named_pipe_accept_loop();
 #endif
 
-  if (enable_tcp) {
-    tcp_loop.join();
-  }
+  // Clearing these will cause .join() to be called,
+  // so the next two lines will block until the server
+  // shutdown is initiated, rather than cause the server
+  // to shutdown.
+  unix_loop.clear();
+  tcp_loop.clear();
 
   // Wait for clients, waking any sleeping clients up in the process
   {
@@ -783,7 +844,7 @@ bool w_start_listener(const char* path) {
     const auto deadline =
         std::chrono::steady_clock::now() + std::chrono::seconds(10);
 
-    int last_count = 0, n_clients = 0;
+    size_t last_count = 0, n_clients = 0;
 
     while (true) {
       {

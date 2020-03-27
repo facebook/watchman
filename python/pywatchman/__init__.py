@@ -54,140 +54,38 @@ except ImportError:
 
 if os.name == "nt":
     import ctypes
-    import ctypes.wintypes
-
-    wintypes = ctypes.wintypes
-    GENERIC_READ = 0x80000000
-    GENERIC_WRITE = 0x40000000
-    FILE_FLAG_OVERLAPPED = 0x40000000
-    OPEN_EXISTING = 3
-    INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
-    FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000
-    FORMAT_MESSAGE_ALLOCATE_BUFFER = 0x00000100
-    FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200
-    WAIT_FAILED = 0xFFFFFFFF
-    WAIT_TIMEOUT = 0x00000102
-    WAIT_OBJECT_0 = 0x00000000
-    WAIT_IO_COMPLETION = 0x000000C0
-    INFINITE = 0xFFFFFFFF
-
-    # Overlapped I/O operation is in progress. (997)
-    ERROR_IO_PENDING = 0x000003E5
-
-    # The pointer size follows the architecture
-    # We use WPARAM since this type is already conditionally defined
-    ULONG_PTR = ctypes.wintypes.WPARAM
-
-    class OVERLAPPED(ctypes.Structure):
-        _fields_ = [
-            ("Internal", ULONG_PTR),
-            ("InternalHigh", ULONG_PTR),
-            ("Offset", wintypes.DWORD),
-            ("OffsetHigh", wintypes.DWORD),
-            ("hEvent", wintypes.HANDLE),
-        ]
-
-        def __init__(self):
-            self.Internal = 0
-            self.InternalHigh = 0
-            self.Offset = 0
-            self.OffsetHigh = 0
-            self.hEvent = 0
-
-    LPDWORD = ctypes.POINTER(wintypes.DWORD)
-
-    CreateFile = ctypes.windll.kernel32.CreateFileA
-    CreateFile.argtypes = [
-        wintypes.LPSTR,
-        wintypes.DWORD,
-        wintypes.DWORD,
-        wintypes.LPVOID,
-        wintypes.DWORD,
-        wintypes.DWORD,
-        wintypes.HANDLE,
-    ]
-    CreateFile.restype = wintypes.HANDLE
-
-    CloseHandle = ctypes.windll.kernel32.CloseHandle
-    CloseHandle.argtypes = [wintypes.HANDLE]
-    CloseHandle.restype = wintypes.BOOL
-
-    ReadFile = ctypes.windll.kernel32.ReadFile
-    ReadFile.argtypes = [
-        wintypes.HANDLE,
-        wintypes.LPVOID,
-        wintypes.DWORD,
-        LPDWORD,
-        ctypes.POINTER(OVERLAPPED),
-    ]
-    ReadFile.restype = wintypes.BOOL
-
-    WriteFile = ctypes.windll.kernel32.WriteFile
-    WriteFile.argtypes = [
-        wintypes.HANDLE,
-        wintypes.LPVOID,
-        wintypes.DWORD,
-        LPDWORD,
-        ctypes.POINTER(OVERLAPPED),
-    ]
-    WriteFile.restype = wintypes.BOOL
-
-    GetLastError = ctypes.windll.kernel32.GetLastError
-    GetLastError.argtypes = []
-    GetLastError.restype = wintypes.DWORD
-
-    SetLastError = ctypes.windll.kernel32.SetLastError
-    SetLastError.argtypes = [wintypes.DWORD]
-    SetLastError.restype = None
-
-    FormatMessage = ctypes.windll.kernel32.FormatMessageA
-    FormatMessage.argtypes = [
-        wintypes.DWORD,
-        wintypes.LPVOID,
-        wintypes.DWORD,
-        wintypes.DWORD,
-        ctypes.POINTER(wintypes.LPSTR),
-        wintypes.DWORD,
-        wintypes.LPVOID,
-    ]
-    FormatMessage.restype = wintypes.DWORD
-
-    LocalFree = ctypes.windll.kernel32.LocalFree
-
-    GetOverlappedResult = ctypes.windll.kernel32.GetOverlappedResult
-    GetOverlappedResult.argtypes = [
-        wintypes.HANDLE,
-        ctypes.POINTER(OVERLAPPED),
-        LPDWORD,
-        wintypes.BOOL,
-    ]
-    GetOverlappedResult.restype = wintypes.BOOL
-
-    GetOverlappedResultEx = getattr(
-        ctypes.windll.kernel32, "GetOverlappedResultEx", None
+    from ctypes import wintypes
+    from .windows import (
+        CancelIoEx,
+        CloseHandle,
+        CreateEvent,
+        CreateFile,
+        ERROR_IO_PENDING,
+        FILE_FLAG_OVERLAPPED,
+        FORMAT_MESSAGE_ALLOCATE_BUFFER,
+        FORMAT_MESSAGE_FROM_SYSTEM,
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        FormatMessage,
+        GENERIC_READ,
+        GENERIC_WRITE,
+        GetLastError,
+        GetOverlappedResult,
+        GetOverlappedResultEx,
+        INVALID_HANDLE_VALUE,
+        LocalFree,
+        OPEN_EXISTING,
+        OVERLAPPED,
+        ReadFile,
+        SetLastError,
+        WAIT_FAILED,
+        WAIT_IO_COMPLETION,
+        WAIT_OBJECT_0,
+        WAIT_TIMEOUT,
+        WaitForSingleObjectEx,
+        WindowsSocketException,
+        WindowsSocketHandle,
+        WriteFile,
     )
-    if GetOverlappedResultEx is not None:
-        GetOverlappedResultEx.argtypes = [
-            wintypes.HANDLE,
-            ctypes.POINTER(OVERLAPPED),
-            LPDWORD,
-            wintypes.DWORD,
-            wintypes.BOOL,
-        ]
-        GetOverlappedResultEx.restype = wintypes.BOOL
-
-    WaitForSingleObjectEx = ctypes.windll.kernel32.WaitForSingleObjectEx
-    WaitForSingleObjectEx.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.BOOL]
-    WaitForSingleObjectEx.restype = wintypes.DWORD
-
-    CreateEvent = ctypes.windll.kernel32.CreateEventA
-    CreateEvent.argtypes = [LPDWORD, wintypes.BOOL, wintypes.BOOL, wintypes.LPSTR]
-    CreateEvent.restype = wintypes.HANDLE
-
-    # Windows Vista is the minimum supported client for CancelIoEx.
-    CancelIoEx = ctypes.windll.kernel32.CancelIoEx
-    CancelIoEx.argtypes = [wintypes.HANDLE, ctypes.POINTER(OVERLAPPED)]
-    CancelIoEx.restype = wintypes.BOOL
 
 # 2 bytes marker, 1 byte int size, 8 bytes int64 value
 sniff_len = 13
@@ -199,7 +97,8 @@ if _debugging:
     def log(fmt, *args):
         print(
             "[%s] %s"
-            % (time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime()), fmt % args[:])
+            % (time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime()), fmt % args[:]),
+            file=sys.stderr,
         )
 
 
@@ -315,18 +214,15 @@ class SockPath(object):
         ):
             unix_domain = sockpath
 
-        if compat.PYTHON3 and named_pipe:
-            named_pipe = os.fsencode(named_pipe)
-
         self.unix_domain = unix_domain
         self.named_pipe = named_pipe
-
         self.tcp_address = tcp_address
 
     def legacy_sockpath(self):
         """Returns a sockpath suitable for passing to the watchman
         CLI --sockname parameter"""
-        if self.named_pipe:
+        log("legacy_sockpath called: %r", self)
+        if os.name == "nt":
             return self.named_pipe
         return self.unix_domain
 
@@ -423,6 +319,7 @@ class SocketTransport(Transport):
 
     def write(self, data):
         try:
+            log("write %r", data)
             self.sock.sendall(data)
         except socket.timeout:
             raise SocketTimeout("timed out sending query command")
@@ -443,6 +340,29 @@ class UnixSocketTransport(SocketTransport):
             self.sock = sock
         except socket.error as e:
             sock.close()
+            raise SocketConnectError(self.sockpath.unix_domain, e)
+
+
+class WindowsUnixSocketTransport(SocketTransport):
+    """ local unix domain socket transport on Windows """
+
+    sock = None
+    timeout = None
+
+    def __init__(self, sockpath, timeout):
+        super(WindowsUnixSocketTransport, self).__init__()
+        self.sockpath = sockpath
+        self.timeout = timeout
+
+        sock = None
+        try:
+            sock = WindowsSocketHandle()
+            sock.settimeout(self.timeout)
+            sock.connect(self.sockpath.unix_domain)
+            self.sock = sock
+        except WindowsSocketException as e:
+            if sock is not None:
+                sock.close()
             raise SocketConnectError(self.sockpath.unix_domain, e)
 
 
@@ -527,8 +447,15 @@ class WindowsNamedPipeTransport(Transport):
         self.timeout = int(math.ceil(timeout * 1000))
         self._iobuf = None
 
+        if compat.PYTHON3:
+            path = os.fsencode(self.sockpath.named_pipe)
+        else:
+            path = self.sockpath.named_pipe
+
+        log("CreateFile %r", path)
+
         self.pipe = CreateFile(
-            self.sockpath.named_pipe,
+            path,
             GENERIC_READ | GENERIC_WRITE,
             0,
             None,
@@ -732,7 +659,8 @@ class CLIProcessTransport(Transport):
             return self.proc
         args = [
             self.binpath,
-            "--sockname={0}".format(self.sockpath.legacy_sockpath()),
+            "--unix-listener-path={0}".format(self.sockpath.unix_domain),
+            "--named-pipe-path={0}".format(self.sockpath.named_pipe),
             "--logfile=/BOGUS",
             "--statefile=/BOGUS",
             "--no-spawn",
@@ -740,6 +668,7 @@ class CLIProcessTransport(Transport):
             "--no-pretty",
             "-j",
         ]
+        log("starting with %r", args)
         self.proc = subprocess.Popen(
             args, stdin=subprocess.PIPE, stdout=subprocess.PIPE
         )
@@ -748,6 +677,7 @@ class CLIProcessTransport(Transport):
     def readBytes(self, size):
         self._connect()
         res = self.proc.stdout.read(size)
+        log("CLI read %r", repr(res))
         if not res:
             raise WatchmanError("EOF on CLI process transport")
         return res
@@ -757,6 +687,7 @@ class CLIProcessTransport(Transport):
             self.close()
             self.closed = False
         self._connect()
+        log("CLI write %r", data)
         res = self.proc.stdin.write(data)
         self.proc.stdin.close()
         self.closed = True
@@ -964,15 +895,22 @@ class client(object):
         if inspect.isclass(transport) and issubclass(transport, Transport):
             self.transport = transport
         else:
+            log(
+                "figure out transport. param=%r, env=%r",
+                transport,
+                os.getenv("WATCHMAN_TRANSPORT"),
+            )
             transport = transport or os.getenv("WATCHMAN_TRANSPORT") or "local"
             if self.transport == "tcp" and tcpAddress is None:
                 raise WatchmanError(
                     "Constructor requires argument tcpAddress when 'tcp' "
                     "transport protocol is used"
                 )
-            if transport == "local" and os.name == "nt":
+            if (transport == "namedpipe") or (transport == "local" and os.name == "nt"):
                 self.transport = WindowsNamedPipeTransport
-            elif transport == "local":
+            elif transport == "unix" and os.name == "nt":
+                self.transport = WindowsUnixSocketTransport
+            elif transport == "local" or transport == "unix":
                 self.transport = UnixSocketTransport
             elif transport == "cli":
                 self.transport = CLIProcessTransport

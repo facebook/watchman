@@ -31,7 +31,9 @@ class TestCppClient(unittest.TestCase):
     @unittest.skipIf(not os.path.isfile(TEST_BINARY), "test binary not built")
     def test_cppclient(self):
         env = os.environ.copy()
-        env["WATCHMAN_SOCK"] = WatchmanInstance.getSharedInstance().getSockPath()
+        env["WATCHMAN_SOCK"] = (
+            WatchmanInstance.getSharedInstance().getSockPath().legacy_sockpath()
+        )
         proc = subprocess.Popen(
             TEST_BINARY, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )

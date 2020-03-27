@@ -63,18 +63,17 @@ class InitWithFilesMixin(object):
         self.log_file_name = os.path.join(self.base_dir, "log")
         self.cli_log_file_name = os.path.join(self.base_dir, "cli-log")
         self.pid_file = os.path.join(self.base_dir, "pid")
-        if os.name == "nt":
-            self.sock_file = (
-                "\\\\.\\pipe\\watchman-test-%s"
-                % uuid.uuid5(uuid.NAMESPACE_URL, self.base_dir).hex
-            )
-        else:
-            self.sock_file = os.path.join(self.base_dir, "sock")
+        self.pipe_name = (
+            "\\\\.\\pipe\\watchman-test-%s"
+            % uuid.uuid5(uuid.NAMESPACE_URL, self.base_dir).hex
+        )
+        self.sock_file = os.path.join(self.base_dir, "sock")
         self.state_file = os.path.join(self.base_dir, "state")
 
     def get_state_args(self):
         return [
-            "--sockname={0}".format(self.sock_file),
+            "--unix-listener-path={0}".format(self.sock_file),
+            "--named-pipe-path={0}".format(self.pipe_name),
             "--logfile={0}".format(self.log_file_name),
             "--statefile={0}".format(self.state_file),
             "--pidfile={0}".format(self.pid_file),
@@ -101,6 +100,7 @@ class InitWithDirMixin(object):
         self.log_file_name = os.path.join(self.user_dir, "log")
         self.sock_file = os.path.join(self.user_dir, "sock")
         self.state_file = os.path.join(self.user_dir, "state")
+        self.pipe_name = "INVALID"
 
     def get_state_args(self):
         return ["--test-state-dir={0}".format(self.base_dir)]
@@ -130,7 +130,15 @@ class _Instance(object):
         self.stop()
 
     def getSockPath(self):
+        return pywatchman.SockPath(
+            unix_domain=self.getUnixSockPath(), named_pipe=self.getNamedPipePath()
+        )
+
+    def getUnixSockPath(self):
         return self.sock_file
+
+    def getNamedPipePath(self):
+        return self.pipe_name
 
     def getCLILogContents(self):
         with open(self.cli_log_file_name, "r") as f:
@@ -187,7 +195,7 @@ class _Instance(object):
         deadline = time.time() + self.start_timeout
         while time.time() < deadline:
             try:
-                client = pywatchman.client(sockpath=self.sock_file)
+                client = pywatchman.client(sockpath=self.getSockPath())
                 self.pid = client.query("get-pid")["pid"]
                 break
             except pywatchman.SocketConnectError:
